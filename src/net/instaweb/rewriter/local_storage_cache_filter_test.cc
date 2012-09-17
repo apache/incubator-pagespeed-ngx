@@ -108,7 +108,7 @@ class LocalStorageCacheTest : public RewriteTestBase,
     AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFilename),
                          kPuzzleJpgFilename, kContentTypeJpeg, 100);
     StaticJavascriptManager* static_js_manager =
-        resource_manager()->static_javascript_manager();
+        server_context()->static_javascript_manager();
     local_storage_cache_js_ =
         StrCat("<script pagespeed_no_defer>",
                static_js_manager->GetJsSnippet(
@@ -123,7 +123,7 @@ class LocalStorageCacheTest : public RewriteTestBase,
                         const GoogleString& body_html_in,
                         const GoogleString& body_html_out) {
     StaticJavascriptManager* static_js_manager =
-        resource_manager()->static_javascript_manager();
+        server_context()->static_javascript_manager();
     StringPiece local_storage_cache_js =
         static_js_manager->GetJsSnippet(
             StaticJavascriptManager::kLocalStorageCacheJs, options());
@@ -256,7 +256,7 @@ TEST_F(LocalStorageCacheTest, ImgLocalStorageDisabled) {
   options()->ClearSignatureForTesting();
   options()->DisableFilter(RewriteOptions::kLocalStorageCache);
   options()->set_ajax_rewriting_enabled(true);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   TestLocalStorage("img_local_storage_disabled", "", "",
                    StrCat("<img src='", kPuzzleJpgFilename, "'>"),

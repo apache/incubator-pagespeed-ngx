@@ -177,7 +177,7 @@ TEST_F(CssOutlineFilterTest, UrlTooLong) {
   // But if we set max_url_size too small, it will fail cleanly.
   options()->ClearSignatureForTesting();
   options()->set_max_url_size(0);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   TestOutlineCss(html_url, "", style_text, false, style_text, "");
 }
 

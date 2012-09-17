@@ -166,7 +166,7 @@ GoogleString OutputResource::url() const {
   // so we compute it the first time we're called and cache the result;
   // computed_url_ is declared mutable.
   if (computed_url_.empty()) {
-    computed_url_ = resource_manager()->url_namer()->Encode(rewrite_options_,
+    computed_url_ = server_context()->url_namer()->Encode(rewrite_options_,
                                                             *this);
   }
   return computed_url_;
@@ -176,7 +176,7 @@ GoogleString OutputResource::UrlEvenIfHashNotSet() {
   GoogleString result;
   if (!has_hash()) {
     full_name_.set_hash("0");
-    result = resource_manager()->url_namer()->Encode(rewrite_options_, *this);
+    result = server_context()->url_namer()->Encode(rewrite_options_, *this);
     full_name_.ClearHash();
   } else {
     result = url();
@@ -198,7 +198,7 @@ bool OutputResource::Load(MessageHandler* handler) {
 GoogleString OutputResource::decoded_base() const {
   GoogleUrl gurl(url());
   GoogleString decoded_url;
-  if (resource_manager()->url_namer()->Decode(gurl, NULL, &decoded_url)) {
+  if (server_context()->url_namer()->Decode(gurl, NULL, &decoded_url)) {
     gurl.Reset(decoded_url);
   }
   return gurl.AllExceptLeaf().as_string();

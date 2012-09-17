@@ -102,7 +102,7 @@ class AddInstrumentationFilterTest : public RewriteTestBase {
 
   void DoNotRelyOnContentType() {
     cdata_mode_ = true;
-    resource_manager()->set_response_headers_finalized(false);
+    server_context()->set_response_headers_finalized(false);
   }
 
   void AssumeHttps() {

@@ -67,7 +67,7 @@ class Resource : public RefCounted<Resource> {
   Resource(ServerContext* resource_manager, const ContentType* type);
 
   // Common methods across all deriviations
-  ServerContext* resource_manager() const { return server_context_; }
+  ServerContext* server_context() const { return server_context_; }
 
   // Answers question: Are we allowed to rewrite the contents now?
   //

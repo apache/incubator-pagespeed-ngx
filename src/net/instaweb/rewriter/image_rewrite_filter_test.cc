@@ -814,7 +814,7 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
   StringSet* critical_images = new StringSet;
   rewrite_driver()->set_critical_images(critical_images);
   MeaningfulCriticalImagesFinder* finder = new MeaningfulCriticalImagesFinder;
-  resource_manager()->set_critical_images_finder(finder);
+  server_context()->set_critical_images_finder(finder);
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
   rewrite_driver()->AddFilters();
@@ -830,7 +830,7 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
 
 TEST_F(ImageRewriteTest, ComputeCriticalImages) {
   MeaningfulCriticalImagesFinder* finder = new MeaningfulCriticalImagesFinder;
-  resource_manager()->set_critical_images_finder(finder);
+  server_context()->set_critical_images_finder(finder);
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
   rewrite_driver()->AddFilters();

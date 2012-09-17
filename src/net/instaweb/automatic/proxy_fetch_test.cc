@@ -81,7 +81,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
  protected:
   ProxyFetchPropertyCallbackCollectorTest() :
     thread_system_(ThreadSystem::CreateThreadSystem()),
-    server_context_(resource_manager()),
+    server_context_(server_context()),
     post_lookup_called_(false) {}
 
   scoped_ptr<ThreadSystem> thread_system_;

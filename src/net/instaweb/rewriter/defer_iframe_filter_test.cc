@@ -46,7 +46,7 @@ class DeferIframeFilterTest : public RewriteTestBase {
 
 TEST_F(DeferIframeFilterTest, TestDeferIframe) {
   StringPiece defer_iframe_js_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
+      server_context()->static_javascript_manager()->GetJsSnippet(
           StaticJavascriptManager::kDeferIframe, options());
   GoogleString input_html = "<head></head>"
       "<body>"
@@ -69,7 +69,7 @@ TEST_F(DeferIframeFilterTest, TestNoIframePresent) {
 
 TEST_F(DeferIframeFilterTest, TestMultipleIframePresent) {
   StringPiece defer_iframe_js_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
+      server_context()->static_javascript_manager()->GetJsSnippet(
           StaticJavascriptManager::kDeferIframe, options());
   GoogleString input_html = "<head></head>"
       "<body>"

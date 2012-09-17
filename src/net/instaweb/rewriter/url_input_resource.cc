@@ -469,7 +469,7 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
 
 bool UrlInputResource::IsValidAndCacheable() const {
   return IsValidAndCacheableImpl(
-      resource_manager()->http_cache(),
+      server_context()->http_cache(),
       rewrite_options_->min_resource_cache_time_to_rewrite_ms(),
       respect_vary_, response_headers_);
 }
@@ -492,7 +492,7 @@ void UrlInputResource::Freshen(Resource::FreshenCallback* callback,
   // TODO(jmarantz): use if-modified-since
   // For now this is much like Load(), except we do not
   // touch our value, but just the cache
-  HTTPCache* http_cache = resource_manager()->http_cache();
+  HTTPCache* http_cache = server_context()->http_cache();
   if (rewrite_driver_ != NULL) {
     // Ensure that the rewrite driver is alive until the freshen is completed.
     rewrite_driver_->increment_async_events_count();
@@ -502,7 +502,7 @@ void UrlInputResource::Freshen(Resource::FreshenCallback* callback,
   }
 
   FreshenHttpCacheCallback* freshen_callback = new FreshenHttpCacheCallback(
-      url_, resource_manager(), rewrite_driver_, rewrite_options_, callback);
+      url_, server_context(), rewrite_driver_, rewrite_options_, callback);
   // Lookup the cache before doing the fetch since the response may have already
   // been fetched elsewhere.
   http_cache->Find(url_, handler, freshen_callback);
@@ -517,7 +517,7 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
  public:
   explicit UrlReadAsyncFetchCallback(Resource::AsyncCallback* callback,
                                      UrlInputResource* resource)
-      : UrlResourceFetchCallback(resource->resource_manager(),
+      : UrlResourceFetchCallback(resource->server_context(),
                                  resource->rewrite_options(),
                                  &resource->fallback_value_),
         resource_(resource),
@@ -555,7 +555,7 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
   virtual HTTPValue* http_value() { return &resource_->value_; }
   virtual GoogleString url() const { return resource_->url(); }
   virtual HTTPCache* http_cache() {
-    return resource_->resource_manager()->http_cache();
+    return resource_->server_context()->http_cache();
   }
   virtual HTTPValueWriter* http_value_writer() { return &http_value_writer_; }
   virtual bool should_yield() { return false; }

@@ -307,7 +307,7 @@ TEST_F(JsCombineFilterTest, CombineJs) {
 TEST_F(JsCombineFilterTest, CombineJsAvoidRewritingIntrospectiveJavascripOn) {
   options()->ClearSignatureForTesting();
   options()->set_avoid_renaming_introspective_javascript(true);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   TestCombineJs(MultiUrl("a.js", "b.js"), "g2Xe9o4bQ2", "KecOGCIjKt",
                 "dzsx6RqvJJ", false, kTestDomain);
 }
@@ -492,7 +492,7 @@ TEST_F(JsCombineFilterTest, TestBarriers) {
   // UnsafeToRename, with plain and jquery syntax
   options()->ClearSignatureForTesting();
   options()->set_avoid_renaming_introspective_javascript(true);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   ValidateNoChanges("introspective1",
                     StrCat("<script src=", kJsUrl1, "></script>",
                            "<script src=", kIntrospectiveUrl1, "></script>"));
@@ -955,7 +955,7 @@ TEST_F(JsCombineFilterTest, TestMaxCombinedJsSize) {
   options()->ClearSignatureForTesting();
   options()->set_max_combined_js_bytes(
       STATIC_STRLEN(kJsText1) + STATIC_STRLEN(kJsText2));
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   ScriptInfoVector scripts;
   PrepareToCollectScriptsInto(&scripts);

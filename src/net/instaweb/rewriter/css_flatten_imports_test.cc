@@ -297,7 +297,7 @@ class CssFlattenImportsTest : public CssRewriteTestBase {
                  bool limit_exceeded) {
     options()->ClearSignatureForTesting();
     options()->set_css_flatten_max_bytes(flattening_limit);
-    resource_manager()->ComputeSignature(options());
+    server_context()->ComputeSignature(options());
 
     SetResponseWithDefaultHeaders(kSimpleCssFile, kContentTypeCss,
                                   kSimpleCss, 100);
@@ -343,7 +343,7 @@ TEST_F(CssFlattenImportsTest, FlattenInlineCss) {
 TEST_F(CssFlattenImportsTest, DontFlattenAttributeCss) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   SetResponseWithDefaultHeaders(kSimpleCssFile, kContentTypeCss,
                                 kSimpleCss, 100);
@@ -678,7 +678,7 @@ TEST_F(CssFlattenImportsTest, CacheExtendsAfterFlatteningNestedAbsoluteUrls) {
 TEST_F(CssFlattenImportsTest, CacheExtendsAfterFlatteningNestedRelativeUrls) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   TestCacheExtendsAfterFlatteningNested(true);
 }
 

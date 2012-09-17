@@ -677,7 +677,7 @@ class RewriteContextTest : public RewriteTestBase {
 
     // trimmable, with charset.
     ResponseHeaders encoded_css_header;
-    resource_manager()->SetDefaultLongCacheHeadersWithCharset(
+    server_context()->SetDefaultLongCacheHeadersWithCharset(
         &kContentTypeCss, "koi8-r", &encoded_css_header);
     SetFetchResponse("http://test.com/a_ru.css", encoded_css_header,
                      " a = \xc1 ");
@@ -1467,7 +1467,7 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
                             "css", &content));
   EXPECT_EQ("a", content);
   EXPECT_EQ(
-      0, resource_manager()->rewrite_stats()->cached_resource_fetches()->Get());
+      0, server_context()->rewrite_stats()->cached_resource_fetches()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
   // We did the output_resource lookup twice: once before acquiring the lock,
   // and the second time after acquiring the lock, because presumably whoever
@@ -1488,7 +1488,7 @@ TEST_F(RewriteContextTest, TrimFetchRewritten) {
                             "css", &content, &headers));
   EXPECT_EQ("a", content);
   EXPECT_EQ(
-      1, resource_manager()->rewrite_stats()->cached_resource_fetches()->Get());
+      1, server_context()->rewrite_stats()->cached_resource_fetches()->Get());
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -1639,7 +1639,7 @@ TEST_F(RewriteContextTest, CacheTtlOverridingForPrivateResources) {
   // Now override caching for a pattern that matches the css url.
   options()->ClearSignatureForTesting();
   options()->AddOverrideCacheTtl("*a_private*");
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   GoogleString output_html(CssLinkHref(
       Encode(kTestDomain, "tw", "0", "a_private.css", "css")));
@@ -2700,7 +2700,7 @@ TEST_F(RewriteContextTest, FetchDeadlineTestBeforeDeadline) {
 
 TEST_F(RewriteContextTest, LoadSheddingTest) {
   const int kThresh = 20;
-  resource_manager()->low_priority_rewrite_workers()->
+  server_context()->low_priority_rewrite_workers()->
       SetLoadSheddingThreshold(kThresh);
 
   const char kCss[] = " * { display: none; } ";
@@ -2718,8 +2718,8 @@ TEST_F(RewriteContextTest, LoadSheddingTest) {
   InitCombiningFilter(0);
   combining_filter_->set_prefix("|");
   WorkerTestBase::SyncPoint rewrite_reached(
-      resource_manager()->thread_system());
-  WorkerTestBase::SyncPoint resume_rewrite(resource_manager()->thread_system());
+      server_context()->thread_system());
+  WorkerTestBase::SyncPoint resume_rewrite(server_context()->thread_system());
   combining_filter_->set_rewrite_signal_on(&rewrite_reached);
   combining_filter_->set_rewrite_block_on(&resume_rewrite);
 
@@ -2741,7 +2741,7 @@ TEST_F(RewriteContextTest, LoadSheddingTest) {
     GoogleString file_name = IntegerToString(i);
     GoogleString* out = new GoogleString;
     StringAsyncFetch* fetch = new StringAsyncFetch(out);
-    RewriteDriver* driver = resource_manager()->NewRewriteDriver();
+    RewriteDriver* driver = server_context()->NewRewriteDriver();
     GoogleString out_url =
         Encode(kTestDomain, "cf", "0", file_name, "css");
     driver->FetchResource(out_url, fetch);
@@ -3003,12 +3003,12 @@ TEST_F(RewriteContextTest, UltraQuickRewrite) {
   rewrite_driver()->set_externally_managed(false);
   InitResources();
 
-  WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
+  WorkerTestBase::SyncPoint sync(server_context()->thread_system());
   rewrite_driver()->AppendOwnedPreRenderFilter(
       new TestNotifyFilter(rewrite_driver(), &sync));
   rewrite_driver()->AddOwnedPostRenderFilter(
       new TestWaitFilter(rewrite_driver(), &sync));
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   ValidateExpected("trimmable.quick", CssLinkHref("a.css"),
                    CssLinkHref("a.css"));
@@ -3102,7 +3102,7 @@ TEST_F(RewriteContextTest, TestFreshen) {
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(
       1,
-      resource_manager()->rewrite_stats()->num_conditional_refreshes()->Get());
+      server_context()->rewrite_stats()->num_conditional_refreshes()->Get());
   // No bytes are downloaded since we conditionally refresh the resource.
   EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
   // Miss for the original since it is within a minute of its expiration time.
@@ -3381,7 +3381,7 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   LRUCache l2_cache(1000);
   WriteThroughHTTPCache* two_level_cache = new WriteThroughHTTPCache(
       lru_cache(), &l2_cache, mock_timer(), hasher(), statistics());
-  resource_manager()->set_http_cache(two_level_cache);
+  server_context()->set_http_cache(two_level_cache);
 
   // Start with non-zero time, and init our resource.
   mock_timer()->AdvanceMs(kTtlMs / 2);
@@ -3525,7 +3525,7 @@ TEST_F(RewriteContextTest, TestFreshenWithTwoLevelCache) {
   EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
   EXPECT_EQ(
       1,
-      resource_manager()->rewrite_stats()->num_conditional_refreshes()->Get());
+      server_context()->rewrite_stats()->num_conditional_refreshes()->Get());
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   // The entries in both the caches are not within the freshness threshold, and
@@ -3711,7 +3711,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
   EXPECT_EQ(
       0,
-      resource_manager()->rewrite_stats()->fallback_responses_served()->Get());
+      server_context()->rewrite_stats()->fallback_responses_served()->Get());
 
   ClearStats();
   // Advance the timer by less than kImplicitCacheTtlMs. Since we remembered
@@ -3724,7 +3724,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
   EXPECT_EQ(
       0,
-      resource_manager()->rewrite_stats()->fallback_responses_served()->Get());
+      server_context()->rewrite_stats()->fallback_responses_served()->Get());
 
   ClearStats();
 
@@ -3748,7 +3748,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
   EXPECT_EQ(
       0,
-      resource_manager()->rewrite_stats()->fallback_responses_served()->Get());
+      server_context()->rewrite_stats()->fallback_responses_served()->Get());
 
   ClearStats();
 
@@ -3766,7 +3766,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
   EXPECT_EQ(
       1,
-      resource_manager()->rewrite_stats()->fallback_responses_served()->Get());
+      server_context()->rewrite_stats()->fallback_responses_served()->Get());
 
   response_headers.Clear();
   response_content.clear();
@@ -3790,7 +3790,7 @@ TEST_F(RewriteContextTest, TestFallbackOnFetchFails) {
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
   EXPECT_EQ(
       0,
-      resource_manager()->rewrite_stats()->fallback_responses_served()->Get());
+      server_context()->rewrite_stats()->fallback_responses_served()->Get());
 
   response_headers.Clear();
   response_content.clear();
@@ -4288,7 +4288,7 @@ TEST_F(ResourceUpdateTest, Rewritten) {
   EXPECT_EQ(0, counting_url_async_fetcher()->byte_count());
   EXPECT_EQ(
       1,
-      resource_manager()->rewrite_stats()->num_conditional_refreshes()->Get());
+      server_context()->rewrite_stats()->num_conditional_refreshes()->Get());
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 }
 

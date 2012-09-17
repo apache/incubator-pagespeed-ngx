@@ -124,7 +124,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsImagesEmbeddedSpace) {
 TEST_F(CssImageRewriterTest, MinifyImagesEmbeddedSpace) {
   options()->ClearSignatureForTesting();
   options()->DisableFilter(RewriteOptions::kExtendCacheImages);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   static const char css_before[] =
       "body {\n"
@@ -145,7 +145,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsWhenCssGrows) {
   // (We want to rewrite the CSS in that case)
   options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(false);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 100);
   static const char css_before[] =
       "body{background-image: url(foo.png)}";
@@ -237,7 +237,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsImages) {
 TEST_F(CssImageRewriterTest, TrimsImageUrls) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 100);
   static const char kCss[] =
       "body {\n"
@@ -269,7 +269,7 @@ TEST_F(CssImageRewriterTestUrlNamer, TrimsImageUrls) {
   // A verbatim copy of the test above but using TestUrlNamer.
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 100);
   static const char kCss[] =
       "body {\n"
@@ -292,7 +292,7 @@ TEST_F(CssImageRewriterTest, InlinePaths) {
   // null rewrites from cache.
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   SetResponseWithDefaultHeaders("dir/foo.png", kContentTypePng,
                                 kDummyContent, 100);
 
@@ -323,7 +323,7 @@ TEST_F(CssImageRewriterTest, RewriteCached) {
   // Make sure we produce the same output from cache.
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   SetResponseWithDefaultHeaders("dir/foo.png", kContentTypePng,
                                 kDummyContent, 100);
 
@@ -374,7 +374,7 @@ TEST_F(CssImageRewriterTest, CacheInlineParseFailures) {
 TEST_F(CssImageRewriterTest, RecompressImages) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRecompressPng);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
                        kContentTypePng, 100);
   static const char kCss[] =
@@ -399,7 +399,7 @@ TEST_F(CssImageRewriterTest, InlineImages) {
   options()->set_css_image_inline_max_bytes(2000);
   EXPECT_EQ(2000, options()->ImageInlineMaxBytes());
   EXPECT_EQ(2000, options()->CssImageInlineMaxBytes());
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   // Here Cuppa.png is 1763 bytes, so should be inlined.
   AddFileToMockFetcher(StrCat(kTestDomain, "Cuppa.png"), kCuppaPngFile,
                        kContentTypePng, 100);
@@ -432,7 +432,7 @@ TEST_F(CssImageRewriterTest, InlineImagesFallback) {
   options()->EnableFilter(RewriteOptions::kInlineImages);
   options()->set_image_inline_max_bytes(2000);
   options()->set_css_image_inline_max_bytes(2000);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   // Here Cuppa.png is 1763 bytes, so should be inlined.
   AddFileToMockFetcher(StrCat(kTestDomain, "Cuppa.png"), kCuppaPngFile,
                        kContentTypePng, 100);
@@ -473,7 +473,7 @@ TEST_F(CssImageRewriterTest, InlineImageOnlyInOutlineCss) {
   options()->set_css_image_inline_max_bytes(2000);
   EXPECT_EQ(0, options()->ImageInlineMaxBytes());  // This is disabled...
   ASSERT_EQ(2000, options()->CssImageInlineMaxBytes());  // But this is enabled.
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   // Here Cuppa.png is 1763 bytes, so should be inlined.
   AddFileToMockFetcher(StrCat(kTestDomain, "Cuppa.png"), kCuppaPngFile,
                        kContentTypePng, 100);
@@ -552,7 +552,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsImagesInStyleAttributes) {
 
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   ValidateExpected("cache_extend_images_simple",
                    "<div style=\""
@@ -690,7 +690,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsImagesFallback) {
 TEST_F(CssImageRewriterTest, RecompressImagesFallback) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRecompressPng);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
                        kContentTypePng, 100);
   // Note: Extra }s cause parse failure.
@@ -710,7 +710,7 @@ TEST_F(CssImageRewriterTest, RecompressImagesFallback) {
 TEST_F(CssImageRewriterTest, FallbackImportsAndUnknownContentType) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRecompressPng);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   AddFileToMockFetcher(StrCat(kTestDomain, "image.png"), kBikePngFile,
                        kContentTypePng, 100);
@@ -769,7 +769,7 @@ TEST_F(CssImageRewriterTest, FallbackAbsolutify) {
                                   &message_handler_);
   // Turn off trimming to make sure we can see full absolutifications.
   options()->DisableFilter(RewriteOptions::kLeftTrimUrls);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 0);
 
@@ -798,7 +798,7 @@ TEST_F(CssImageRewriterTest, FallbackNoAbsolutify) {
   options()->ClearSignatureForTesting();
   // Turn off trimming to make sure we can see full absolutifications.
   options()->DisableFilter(RewriteOptions::kLeftTrimUrls);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 0);
 
@@ -820,7 +820,7 @@ TEST_F(CssImageRewriterTest, FetchRewriteFailure) {
   // Turn off trimming to make sure we can see full absolutifications.
   options()->DisableFilter(RewriteOptions::kLeftTrimUrls);
   options()->DisableFilter(RewriteOptions::kFallbackRewriteCssUrls);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 0);
 

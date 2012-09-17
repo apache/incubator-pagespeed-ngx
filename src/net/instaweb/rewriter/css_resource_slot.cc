@@ -57,7 +57,7 @@ void CssResourceSlot::Render() {
     if (trim_base_.get() != NULL) {
       if (UrlLeftTrimFilter::Trim(
               *trim_base_, url, &trimmed_url,
-              resource()->resource_manager()->message_handler())) {
+              resource()->server_context()->message_handler())) {
         url = trimmed_url;
       }
     }

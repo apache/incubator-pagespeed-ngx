@@ -692,7 +692,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
   virtual ~ProxyInterfaceTest() {}
 
   virtual void SetUp() {
-    RewriteOptions* options = resource_manager()->global_options();
+    RewriteOptions* options = server_context()->global_options();
     server_context_->set_enable_property_cache(true);
     page_property_cache()->AddCohort(RewriteDriver::kDomCohort);
     server_context_->client_property_cache()->AddCohort(
@@ -702,16 +702,16 @@ class ProxyInterfaceTest : public RewriteTestBase {
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
     options->set_ajax_rewriting_enabled(true);
     options->Disallow("*blacklist*");
-    resource_manager()->ComputeSignature(options);
+    server_context()->ComputeSignature(options);
     RewriteTestBase::SetUp();
     ProxyInterface::InitStats(statistics());
     // The original url_async_fetcher() is still owned by RewriteDriverFactory.
     background_fetch_fetcher_.reset(new BackgroundFetchCheckingUrlAsyncFetcher(
         factory()->ComputeUrlAsyncFetcher()));
-    resource_manager()->set_default_system_fetcher(
+    server_context()->set_default_system_fetcher(
         background_fetch_fetcher_.get());
     proxy_interface_.reset(
-        new ProxyInterface("localhost", 80, resource_manager(), statistics()));
+        new ProxyInterface("localhost", 80, server_context(), statistics()));
     start_time_ms_ = mock_timer()->NowMs();
 
     SetResponseWithDefaultHeaders(kImageFilenameLackingExt, kContentTypeJpeg,
@@ -724,7 +724,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
     // Make sure all the jobs are over before we check for leaks ---
     // someone might still be trying to clean themselves up.
     mock_scheduler()->AwaitQuiescence();
-    EXPECT_EQ(0, resource_manager()->num_active_rewrite_drivers());
+    EXPECT_EQ(0, server_context()->num_active_rewrite_drivers());
     RewriteTestBase::TearDown();
   }
 
@@ -774,10 +774,10 @@ class ProxyInterfaceTest : public RewriteTestBase {
                             bool log_flush,
                             ResponseHeaders* headers_out) {
     sync_.reset(new WorkerTestBase::SyncPoint(
-        resource_manager()->thread_system()));
+        server_context()->thread_system()));
     callback_.reset(new AsyncExpectStringAsyncFetch(
         expect_success, log_flush, sync_.get(),
-        resource_manager()->thread_synchronizer()));
+        server_context()->thread_synchronizer()));
     callback_->set_response_headers(headers_out);
     callback_->request_headers()->CopyFrom(request_headers);
     fetch_already_done_ = proxy_interface_->Fetch(AbsolutifyUrl(url),
@@ -903,7 +903,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
     scoped_ptr<QueuedWorkerPool> pool;
     QueuedWorkerPool::Sequence* sequence = NULL;
 
-    ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+    ThreadSynchronizer* sync = server_context()->thread_synchronizer();
     GoogleString delay_pcache_key, delay_http_cache_key;
     if (delay_pcache || thread_pcache) {
       PropertyCache* pcache = page_property_cache();
@@ -915,7 +915,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
       if (thread_pcache) {
         delay_cache()->DelayKey(delay_http_cache_key);
         pool.reset(new QueuedWorkerPool(
-            1, resource_manager()->thread_system()));
+            1, server_context()->thread_system()));
         sequence = pool->NewSequence();
       }
     }
@@ -973,24 +973,24 @@ class ProxyInterfaceTest : public RewriteTestBase {
     PropertyPage* page = callback_collector->GetPropertyPageWithoutOwnership(
         ProxyFetchPropertyCallback::kPagePropertyCache);
     EXPECT_NE(static_cast<PropertyPage*>(NULL), page);
-    resource_manager()->ComputeSignature(options());
+    server_context()->ComputeSignature(options());
     GoogleString expected = StrCat(gurl.Spec(), "_", options()->signature());
     EXPECT_EQ(expected, page->key());
   }
 
   void DisableAjax() {
-    RewriteOptions* options = resource_manager()->global_options();
+    RewriteOptions* options = server_context()->global_options();
     options->ClearSignatureForTesting();
     options->set_ajax_rewriting_enabled(false);
-    resource_manager()->ComputeSignature(options);
+    server_context()->ComputeSignature(options);
   }
 
   void RejectBlacklisted() {
-    RewriteOptions* options = resource_manager()->global_options();
+    RewriteOptions* options = server_context()->global_options();
     options->ClearSignatureForTesting();
     options->set_reject_blacklisted(true);
     options->set_reject_blacklisted_status_code(HttpStatus::kImATeapot);
-    resource_manager()->ComputeSignature(options);
+    server_context()->ComputeSignature(options);
   }
 
   void SetupForFlushEarlyFlow(bool enable_experimental) {
@@ -1005,7 +1005,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
     mock_url_fetcher_.SetResponse(kTestDomain, headers, kFlushEarlyHtml);
 
     // Enable FlushSubresourcesFilter filter.
-    RewriteOptions* rewrite_options = resource_manager()->global_options();
+    RewriteOptions* rewrite_options = server_context()->global_options();
     rewrite_options->ClearSignatureForTesting();
     rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
     rewrite_options->EnableFilter(RewriteOptions::kCombineCss);
@@ -1086,13 +1086,13 @@ class ProxyInterfaceTest : public RewriteTestBase {
           StrCat(domain_prefix, rewritten_css_url_3).data(),
           LazyloadImagesFilter::GetLazyloadJsSnippet(
               options_,
-              resource_manager()->static_javascript_manager()).c_str(),
+              server_context()->static_javascript_manager()).c_str(),
           StrCat("<script type=\"text/javascript\">",
                  JsDisableFilter::GetJsDisableScriptSnippet(options_),
                  "</script>").c_str(),
           JsDeferDisabledFilter::GetDeferJsSnippet(
               options_,
-              resource_manager()->static_javascript_manager()).c_str(),
+              server_context()->static_javascript_manager()).c_str(),
           cookie_script.data(),
           rewritten_css_url_1.data(), rewritten_css_url_2.data(),
           combined_js_url.data(), rewritten_img_url_1.data(),
@@ -1108,12 +1108,12 @@ class ProxyInterfaceTest : public RewriteTestBase {
           StrCat(domain_prefix, rewritten_css_url_3).data(),
           LazyloadImagesFilter::GetLazyloadJsSnippet(
               options_,
-              resource_manager()->static_javascript_manager()).c_str(),
+              server_context()->static_javascript_manager()).c_str(),
           StrCat("<script type=\"text/javascript\">",
                  JsDisableFilter::GetJsDisableScriptSnippet(options_),
                  "</script>",
                  "<script src=\"", SplitHtmlFilter::GetBlinkJsUrl(options_,
-                 resource_manager()->static_javascript_manager()),
+                 server_context()->static_javascript_manager()),
                  "\" type=\"text/javascript\"></script>").c_str(),
           SplitHtmlFilter::kDeferJsSnippet,
           cookie_script.data(),
@@ -1330,11 +1330,11 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestLinkScript) {
 TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestWithDeferJsImageTag) {
   SetupForFlushEarlyFlow(false);
   scoped_ptr<RewriteOptions> custom_options(
-      resource_manager()->global_options()->Clone());
+      server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
 
   GoogleString text;
   RequestHeaders request_headers;
@@ -1352,11 +1352,11 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestWithDeferJsImageTag) {
 TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestWithDeferJsPreferch) {
   SetupForFlushEarlyFlow(false);
   scoped_ptr<RewriteOptions> custom_options(
-      resource_manager()->global_options()->Clone());
+      server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
 
   GoogleString text;
   RequestHeaders request_headers;
@@ -1398,11 +1398,11 @@ TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestLinkScript) {
 TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestWithDeferJsImageTag) {
   SetupForFlushEarlyFlow(true);
   scoped_ptr<RewriteOptions> custom_options(
-      resource_manager()->global_options()->Clone());
+      server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
 
   GoogleString text;
   RequestHeaders request_headers;
@@ -1420,11 +1420,11 @@ TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestWithDeferJsImageTag) {
 TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestWithDeferJsPreferch) {
   SetupForFlushEarlyFlow(true);
   scoped_ptr<RewriteOptions> custom_options(
-      resource_manager()->global_options()->Clone());
+      server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
 
   GoogleString text;
   RequestHeaders request_headers;
@@ -1444,11 +1444,11 @@ TEST_F(ProxyInterfaceTest,
        ExperimentalFlushEarlyFlowTestWithInsertDnsPreferch) {
   SetupForFlushEarlyFlow(true);
   scoped_ptr<RewriteOptions> custom_options(
-      resource_manager()->global_options()->Clone());
+      server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kInsertDnsPrefetch);
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_image_tag");
@@ -1469,12 +1469,12 @@ TEST_F(ProxyInterfaceTest,
 TEST_F(ProxyInterfaceTest, LazyloadAndDeferJsScriptFlushedEarly) {
   SetupForFlushEarlyFlow(true);
   scoped_ptr<RewriteOptions> custom_options(
-      resource_manager()->global_options()->Clone());
+      server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
   GoogleString text;
   RequestHeaders request_headers;
   // Useragent is set to Firefox/ 9.0 because all flush early flow, defer
@@ -1493,12 +1493,12 @@ TEST_F(ProxyInterfaceTest, LazyloadAndDeferJsScriptFlushedEarly) {
 TEST_F(ProxyInterfaceTest, LazyloadAndBlinkScriptFlushedEarly) {
   SetupForFlushEarlyFlow(true);
   scoped_ptr<RewriteOptions> custom_options(
-      resource_manager()->global_options()->Clone());
+      server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
   GoogleString text;
   RequestHeaders request_headers;
   // Useragent is set to Firefox/ 9.0 because all flush early flow, defer
@@ -1560,7 +1560,7 @@ TEST_F(ProxyInterfaceTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
   mock_url_fetcher_.SetResponse(kTestDomain, headers, kInputHtml);
 
   // Enable FlushSubresourcesFilter filter.
-  RewriteOptions* rewrite_options = resource_manager()->global_options();
+  RewriteOptions* rewrite_options = server_context()->global_options();
   rewrite_options->ClearSignatureForTesting();
   rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
   rewrite_options->set_enable_flush_subresources_experimental(true);
@@ -1575,11 +1575,11 @@ TEST_F(ProxyInterfaceTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
                                 kCssContent, kHtmlCacheTimeSec * 2);
 
   scoped_ptr<RewriteOptions> custom_options(
-      resource_manager()->global_options()->Clone());
+      server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
 
   GoogleString text;
   RequestHeaders request_headers;
@@ -1620,7 +1620,7 @@ TEST_F(ProxyInterfaceTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
                    redirect_url.c_str()),
       "<script type=\"text/javascript\">",
       LazyloadImagesFilter::GetLazyloadJsSnippet(
-          options_, resource_manager()->static_javascript_manager()),
+          options_, server_context()->static_javascript_manager()),
       "</script>"
       "<img pagespeed_lazy_src=1.jpg.pagespeed.ce.0.jpg"
       " src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\""
@@ -1636,7 +1636,7 @@ TEST_F(ProxyInterfaceTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
   mock_url_fetcher_.SetResponse(kTestDomain, headers, kInputHtml);
 
   // Enable FlushSubresourcesFilter filter.
-  RewriteOptions* rewrite_options = resource_manager()->global_options();
+  RewriteOptions* rewrite_options = server_context()->global_options();
   rewrite_options->ClearSignatureForTesting();
   rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
   rewrite_options->set_enable_flush_subresources_experimental(true);
@@ -1651,11 +1651,11 @@ TEST_F(ProxyInterfaceTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
                                 "image", kHtmlCacheTimeSec * 2);
 
   scoped_ptr<RewriteOptions> custom_options(
-      resource_manager()->global_options()->Clone());
+      server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
 
   GoogleString text;
   RequestHeaders request_headers;
@@ -1759,7 +1759,7 @@ TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
                                 orig_css, kHtmlCacheTimeSec * 2);
 
   // By default, cache extension is off in the default options.
-  resource_manager()->global_options()->SetDefaultRewriteLevel(
+  server_context()->global_options()->SetDefaultRewriteLevel(
       RewriteOptions::kPassThrough);
 
   // Because cache-extension was turned off, the image in the CSS file
@@ -1924,7 +1924,7 @@ TEST_F(ProxyInterfaceTest, NotCachedIfAuthorizedAndNotPublic) {
   // We should not cache things which are default cache-control if we
   // are sending Authorization:. See RFC 2616, 14.8.
   ReflectingTestFetcher reflect;
-  resource_manager()->set_default_system_fetcher(&reflect);
+  server_context()->set_default_system_fetcher(&reflect);
 
   RequestHeaders request_headers;
   request_headers.Add("Was", "Here");
@@ -1972,7 +1972,7 @@ TEST_F(ProxyInterfaceTest, CachedIfAuthorizedAndPublic) {
   // This with Cache-Control: public should be cached even if
   // we are sending Authorization:. See RFC 2616.
   ReflectingTestFetcher reflect;
-  resource_manager()->set_default_system_fetcher(&reflect);
+  server_context()->set_default_system_fetcher(&reflect);
 
   RequestHeaders request_headers;
   request_headers.Add("Was", "Here");
@@ -2256,11 +2256,11 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
 
   // Invalidate the cache.
   scoped_ptr<RewriteOptions> custom_options(
-      resource_manager()->global_options()->Clone());
+      server_context()->global_options()->Clone());
   custom_options->set_cache_invalidation_timestamp(mock_timer()->NowMs());
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
 
   ClearStats();
   text.clear();
@@ -2356,12 +2356,12 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
 
   // Invalidate the cache for some URL other than 'text.html'.
   scoped_ptr<RewriteOptions> custom_options_1(
-      resource_manager()->global_options()->Clone());
+      server_context()->global_options()->Clone());
   custom_options_1->AddUrlCacheInvalidationEntry(
       AbsolutifyUrl("foo.bar"), mock_timer()->NowMs(), true);
   ProxyUrlNamer url_namer_1;
   url_namer_1.set_options(custom_options_1.get());
-  resource_manager()->set_url_namer(&url_namer_1);
+  server_context()->set_url_namer(&url_namer_1);
 
   ClearStats();
   text.clear();
@@ -2385,7 +2385,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
 
   // Invalidate the cache.
   scoped_ptr<RewriteOptions> custom_options_2(
-      resource_manager()->global_options()->Clone());
+      server_context()->global_options()->Clone());
   // Strictness of URL cache invalidation entry (last argument below) does not
   // matter in this test since there is nothing cached in metadata or property
   // caches.
@@ -2393,7 +2393,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
       AbsolutifyUrl("text.html"), mock_timer()->NowMs(), true);
   ProxyUrlNamer url_namer_2;
   url_namer_2.set_options(custom_options_2.get());
-  resource_manager()->set_url_namer(&url_namer_2);
+  server_context()->set_url_namer(&url_namer_2);
 
   ClearStats();
   text.clear();
@@ -2459,10 +2459,10 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
 }
 
 TEST_F(ProxyInterfaceTest, ModifiedImplicitCachingHeadersForCss) {
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->set_implicit_cache_ttl_ms(500 * Timer::kSecondMs);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
@@ -2793,10 +2793,10 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingForCss) {
 
   // Disable ajax rewriting. We now received the response fetched while
   // freshening. This response has kBackgroundFetchHeader set to 1.
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->set_ajax_rewriting_enabled(false);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   ClearStats();
   text.clear();
@@ -2874,10 +2874,10 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingWhenAuthorizationButPublic) {
 }
 
 TEST_F(ProxyInterfaceTest, AjaxRewritingDisabledByGlobalDisable) {
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->set_enabled(false);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,
                                 kHtmlCacheTimeSec * 2);
@@ -2991,11 +2991,11 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   GoogleString text;
   ResponseHeaders headers;
 
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->SetRewriteLevel(RewriteOptions::kPassThrough);
   options->EnableFilter(RewriteOptions::kRewriteCss);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   headers.Add(HttpAttributes::kEtag, "something");
   headers.SetDateAndCaching(MockTimer::kApr_5_2010_ms,
@@ -3044,11 +3044,11 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
 
 TEST_F(ProxyInterfaceTest, FlushHugeHtml) {
   // Test the forced flushing of HTML controlled by flush_buffer_limit_bytes().
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->set_flush_buffer_limit_bytes(8);  // 2 self-closing tags ("<p/>")
   options->set_flush_html(true);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
                                 "<a/><b/><c/><d/><e/><f/><g/><h/>",
@@ -3063,7 +3063,7 @@ TEST_F(ProxyInterfaceTest, FlushHugeHtml) {
   // Now tell to flush after 3 self-closing tags.
   options->ClearSignatureForTesting();
   options->set_flush_buffer_limit_bytes(12);  // 3 self-closing tags
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   FetchFromProxyLoggingFlushes("page.html", true /*success*/, &out);
   EXPECT_EQ(
@@ -3073,7 +3073,7 @@ TEST_F(ProxyInterfaceTest, FlushHugeHtml) {
   // then 5, and 7.
   options->ClearSignatureForTesting();
   options->set_flush_buffer_limit_bytes(10);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   FetchFromProxyLoggingFlushes("page.html", true /*success*/, &out);
   EXPECT_EQ(
@@ -3084,7 +3084,7 @@ TEST_F(ProxyInterfaceTest, FlushHugeHtml) {
   // at the end.
   options->ClearSignatureForTesting();
   options->set_flush_buffer_limit_bytes(9);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
   FetchFromProxyLoggingFlushes("page.html", true /*success*/, &out);
   EXPECT_EQ(
       "<a/><b/>|Flush|<c/><d/>|Flush|<e/><f/>|Flush|<g/><h/>|Flush|",
@@ -3176,7 +3176,7 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
                                 orig_css, kHtmlCacheTimeSec * 2);
 
   // By default, cache extension is off in the default options.
-  resource_manager()->global_options()->SetDefaultRewriteLevel(
+  server_context()->global_options()->SetDefaultRewriteLevel(
       RewriteOptions::kPassThrough);
   ASSERT_FALSE(options()->Enabled(RewriteOptions::kExtendCacheCss));
   ASSERT_FALSE(options()->Enabled(RewriteOptions::kExtendCacheImages));
@@ -3203,7 +3203,7 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
   // Inject the custom options into the flow via a custom URL namer.
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
 
   // Use EncodeNormal because it matches the logic used by ProxyUrlNamer.
   const GoogleString kExtendedBackgroundImage =
@@ -3368,13 +3368,13 @@ TEST_F(ProxyInterfaceTest, CustomOptionsWithUrlNamerOptions) {
 }
 
 TEST_F(ProxyInterfaceTest, MinResourceTimeZero) {
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->SetRewriteLevel(RewriteOptions::kPassThrough);
   options->EnableFilter(RewriteOptions::kRewriteCss);
   options->set_min_resource_cache_time_to_rewrite_ms(
       kHtmlCacheTimeSec * Timer::kSecondMs);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml,
                                 CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
@@ -3388,13 +3388,13 @@ TEST_F(ProxyInterfaceTest, MinResourceTimeZero) {
 }
 
 TEST_F(ProxyInterfaceTest, MinResourceTimeLarge) {
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->SetRewriteLevel(RewriteOptions::kPassThrough);
   options->EnableFilter(RewriteOptions::kRewriteCss);
   options->set_min_resource_cache_time_to_rewrite_ms(
       4 * kHtmlCacheTimeSec * Timer::kSecondMs);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml,
                                 CssLinkHref("a.css"), kHtmlCacheTimeSec * 2);
@@ -3447,7 +3447,7 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnProxy) {
   SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "a");
 
   ProxyUrlNamer url_namer;
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
   ResponseHeaders out_headers;
   GoogleString out_text;
 
@@ -3501,11 +3501,11 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
   resource_headers.ComputeCaching();
   SetFetchResponse(AbsolutifyUrl("style.css"), resource_headers, "a");
 
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->SetRewriteLevel(RewriteOptions::kPassThrough);
   options->EnableFilter(RewriteOptions::kRewriteCss);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   ResponseHeaders out_headers;
   GoogleString out_text;
@@ -3574,10 +3574,10 @@ TEST_F(ProxyInterfaceTest, UncacheableResourcesNotCachedOnResourceFetch) {
 // No matter what options->respect_vary() is set to we will respect HTML Vary
 // headers.
 TEST_F(ProxyInterfaceTest, NoCacheVaryHtml) {
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->set_respect_vary(false);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   ResponseHeaders html_headers;
   DefaultResponseHeaders(kContentTypeHtml, kHtmlCacheTimeSec, &html_headers);
@@ -3615,10 +3615,10 @@ TEST_F(ProxyInterfaceTest, NoCacheVaryHtml) {
 
 // Test https HTML responses are never cached, while https resources are cached.
 TEST_F(ProxyInterfaceTest, NoCacheHttpsHtml) {
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->set_respect_vary(false);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
   http_cache()->set_disable_html_caching_on_https(true);
 
   ResponseHeaders html_headers;
@@ -3656,10 +3656,10 @@ TEST_F(ProxyInterfaceTest, NoCacheHttpsHtml) {
 
 // Respect Vary for resources if options tell us to.
 TEST_F(ProxyInterfaceTest, NoCacheVaryAll) {
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->set_respect_vary(true);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   ResponseHeaders html_headers;
   DefaultResponseHeaders(kContentTypeHtml, kHtmlCacheTimeSec, &html_headers);
@@ -3723,7 +3723,7 @@ TEST_F(ProxyInterfaceTest, RepairMismappedResource) {
   ProxyUrlNamer url_namer;
   ResponseHeaders headers;
   GoogleString text;
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
 
   // Now fetch the origin content.  This will simply hit the
   // mock fetcher and always worked.
@@ -3762,7 +3762,7 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeaders) {
   SetFetchResponse("http://test.com/file.css", orig_headers, kText);
 
   ProxyUrlNamer url_namer;
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
   ResponseHeaders out_headers;
   GoogleString out_text;
   FetchFromProxy(
@@ -3779,10 +3779,10 @@ TEST_F(ProxyInterfaceTest, CrossDomainAuthorization) {
   // they may have been cached from good.com (as both would look like
   // kProxyHost to the browser).
   ReflectingTestFetcher reflect;
-  resource_manager()->set_default_system_fetcher(&reflect);
+  server_context()->set_default_system_fetcher(&reflect);
 
   ProxyUrlNamer url_namer;
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
 
   RequestHeaders request_headers;
   request_headers.Add("Was", "Here");
@@ -3816,7 +3816,7 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnProxy) {
   SetFetchResponse("http://test.com/file.css", orig_headers, kText);
 
   ProxyUrlNamer url_namer;
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
   ResponseHeaders out_headers;
   GoogleString out_text;
   FetchFromProxy(
@@ -3855,7 +3855,7 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnFetch) {
   SetFetchResponse("http://test.com/file.css", orig_headers, kText);
 
   ProxyUrlNamer url_namer;
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
   ResponseHeaders out_headers;
   GoogleString out_text;
   FetchFromProxy(Encode(kTestDomain, "ce", "0", "file.css", "css"),
@@ -3891,7 +3891,7 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeadersWithUncacheableResourceOnFetch2) {
   SetFetchResponse("http://test.com/file.css", orig_headers, kText);
 
   ProxyUrlNamer url_namer;
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
   ResponseHeaders out_headers;
   GoogleString out_text;
   FetchFromProxy(Encode(kTestDomain, "cf", "0", "file.css", "css"),
@@ -3919,7 +3919,7 @@ TEST_F(ProxyInterfaceTest, ProxyResourceQueryOnly) {
                                 "var a = 2;// stuff", kHtmlCacheTimeSec * 2);
 
   ProxyUrlNamer url_namer;
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
   ResponseHeaders out_headers;
   GoogleString out_text;
   FetchFromProxy(
@@ -3941,7 +3941,7 @@ TEST_F(ProxyInterfaceTest, NoRehostIncompatMPS) {
   SetResponseWithDefaultHeaders(kOldName, kContentTypeCss, kContent, 100);
 
   ProxyUrlNamer url_namer;
-  resource_manager()->set_url_namer(&url_namer);
+  server_context()->set_url_namer(&url_namer);
   ResponseHeaders out_headers;
   GoogleString out_text;
   FetchFromProxy(
@@ -3955,10 +3955,10 @@ TEST_F(ProxyInterfaceTest, NoRehostIncompatMPS) {
 
 // Test that we serve "Cache-Control: no-store" only when original page did.
 TEST_F(ProxyInterfaceTest, NoStore) {
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->set_max_html_cache_time_ms(0);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   // Most headers get converted to "no-cache, max-age=0".
   EXPECT_STREQ("max-age=0, no-cache",
@@ -4089,7 +4089,7 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNonHtmlThreadedCache) {
   // extension, where the property-cache lookup is delivered in a
   // separate thread.
   DisableAjax();
-  ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+  ThreadSynchronizer* sync = server_context()->thread_synchronizer();
   sync->EnableForPrefix(ProxyFetch::kCollectorPrefix);
   TestPropertyCache(kImageFilenameLackingExt, true, true, true);
 }
@@ -4098,7 +4098,7 @@ TEST_F(ProxyInterfaceTest, ThreadedHtml) {
   // Tests rewriting HTML resource where property-cache lookup is delivered
   // in a separate thread.
   DisableAjax();
-  ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+  ThreadSynchronizer* sync = server_context()->thread_synchronizer();
   sync->EnableForPrefix(ProxyFetch::kCollectorPrefix);
   TestPropertyCache(kPageUrl, true, true, true);
 }
@@ -4138,15 +4138,15 @@ TEST_F(ProxyInterfaceTest, HeadersSetupRace) {
   // not occur at all, so we have to declare it as "Sloppy" so the
   // ThreadSynchronizer class doesn't vomit on destruction.
   const int kIdleCallbackTimeoutMs = 10;
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->set_idle_flush_time_ms(kIdleCallbackTimeoutMs);
   options->set_flush_html(true);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
   DisableAjax();
-  ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+  ThreadSynchronizer* sync = server_context()->thread_synchronizer();
   sync->EnableForPrefix(ProxyFetch::kHeadersSetupRacePrefix);
-  ThreadSystem* thread_system = resource_manager()->thread_system();
+  ThreadSystem* thread_system = server_context()->thread_system();
   QueuedWorkerPool pool(1, thread_system);
   QueuedWorkerPool::Sequence* sequence = pool.NewSequence();
   WorkerTestBase::SyncPoint sync_point(thread_system);
@@ -4176,7 +4176,7 @@ TEST_F(ProxyInterfaceTest, BothClientAndPropertyCache) {
   // incorrectly calls Done() twice, then it will block forever on the
   // second call to Wait(ProxyFetch::kCollectorDone), since we only offer
   // one Signal here.
-  ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+  ThreadSynchronizer* sync = server_context()->thread_synchronizer();
   sync->EnableForPrefix(ProxyFetch::kCollectorPrefix);
   sync->Signal(ProxyFetch::kCollectorDone);
 
@@ -4198,13 +4198,13 @@ TEST_F(ProxyInterfaceTest, BothClientAndPropertyCache) {
 
 // Test that we set the Furious cookie up appropriately.
 TEST_F(ProxyInterfaceTest, FuriousTest) {
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->set_ga_id("123-455-2341");
   options->set_running_furious_experiment(true);
   NullMessageHandler handler;
   options->AddFuriousSpec("id=2;enable=extend_cache;percent=100", &handler);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   SetResponseWithDefaultHeaders("example.jpg", kContentTypeJpeg,
                                 "image data", 300);
@@ -4268,7 +4268,7 @@ TEST_F(ProxyInterfaceTest, FuriousTest) {
 }
 
 TEST_F(ProxyInterfaceTest, UrlAttributeTest) {
-  RewriteOptions* options = resource_manager()->global_options();
+  RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
   options->EnableFilter(RewriteOptions::kRewriteDomains);
   options->set_domain_rewrite_hyperlinks(true);
@@ -4278,7 +4278,7 @@ TEST_F(ProxyInterfaceTest, UrlAttributeTest) {
   options->AddUrlValuedAttribute(
       "span", "src", semantic_type::kHyperlink);
   options->AddUrlValuedAttribute("hr", "imgsrc", semantic_type::kImage);
-  resource_manager()->ComputeSignature(options);
+  server_context()->ComputeSignature(options);
 
   SetResponseWithDefaultHeaders(
       "http://src.example.com/null", kContentTypeHtml, "", 0);

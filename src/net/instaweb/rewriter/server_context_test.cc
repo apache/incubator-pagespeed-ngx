@@ -228,7 +228,7 @@ class ServerContextTest : public RewriteTestBase {
     // Write some data
     ASSERT_TRUE(ResourceManagerTestingPeer::HasHash(output.get()));
     EXPECT_EQ(kRewrittenResource, output->kind());
-    EXPECT_TRUE(resource_manager()->Write(
+    EXPECT_TRUE(server_context()->Write(
         ResourceVector(), contents, &kContentTypeText, "utf-8",
         output.get(), message_handler()));
     EXPECT_TRUE(output->IsWritten());
@@ -266,8 +266,8 @@ class ServerContextTest : public RewriteTestBase {
   // Accessor for ResourceManager field; also cleans up
   // deferred_release_rewrite_drivers_.
   void EnableRewriteDriverCleanupMode(bool s) {
-    resource_manager()->trying_to_cleanup_rewrite_drivers_ = s;
-    resource_manager()->deferred_release_rewrite_drivers_.clear();
+    server_context()->trying_to_cleanup_rewrite_drivers_ = s;
+    server_context()->deferred_release_rewrite_drivers_.clear();
   }
 
   // Creates a response with given ttl and extra cache control under given URL.
@@ -292,8 +292,8 @@ class ServerContextTest : public RewriteTestBase {
     rewrite_driver()->SetBaseUrlForFetch(kTestDomain);
     ResourcePtr resource(rewrite_driver()->CreateInputResource(gurl));
     VerifyContentsCallback callback(resource, "payload");
-    resource_manager()->ReadAsync(Resource::kLoadEvenIfNotCacheable,
-                                  &callback);
+    server_context()->ReadAsync(Resource::kLoadEvenIfNotCacheable,
+                                &callback);
     callback.AssertCalled();
     return resource;
   }
@@ -385,7 +385,7 @@ TEST_F(ServerContextTest, TestMapRewriteAndOrigin) {
 
   // We need to 'Write' an output resource before we can determine its
   // URL.
-  resource_manager()->Write(
+  server_context()->Write(
       ResourceVector(), StringPiece(kStyleContent), &kContentTypeCss,
       StringPiece(), output.get(), message_handler());
   EXPECT_EQ(Encode("http://cdn.com/", "ce", "0", "style.css", "css"),
@@ -445,14 +445,14 @@ TEST_F(ServerContextTest, TestPlatformSpecificConfiguration) {
   MockPlatformConfigCallback custom_callback(&rec_custom_driver);
 
   factory()->AddPlatformSpecificConfigurationCallback(&normal_callback);
-  RewriteDriver* normal_driver = resource_manager()->NewRewriteDriver();
+  RewriteDriver* normal_driver = server_context()->NewRewriteDriver();
   EXPECT_EQ(normal_driver, rec_normal_driver);
   factory()->ClearPlatformSpecificConfigurationCallback();
   normal_driver->Cleanup();
 
   factory()->AddPlatformSpecificConfigurationCallback(&custom_callback);
   RewriteDriver* custom_driver =
-      resource_manager()->NewCustomRewriteDriver(new RewriteOptions());
+      server_context()->NewCustomRewriteDriver(new RewriteOptions());
   EXPECT_EQ(custom_driver, rec_custom_driver);
   custom_driver->Cleanup();
 }
@@ -465,7 +465,7 @@ TEST_F(ServerContextTest, TestPlatformSpecificRewritersDecoding) {
   RewriteFilter* dummy;
 
   // Without the mock rewriter enabled, this URL should not be decoded.
-  RewriteDriver* driver = resource_manager()->decoding_driver();
+  RewriteDriver* driver = server_context()->decoding_driver();
   OutputResourcePtr bad_output(driver->DecodeOutputResource(gurl, &dummy));
   ASSERT_TRUE(bad_output.get() == NULL);
 
@@ -473,8 +473,8 @@ TEST_F(ServerContextTest, TestPlatformSpecificRewritersDecoding) {
   CreateMockRewriterCallback callback;
   factory()->AddCreateRewriterCallback(&callback);
   factory()->set_add_platform_specific_decoding_passes(true);
-  resource_manager()->InitWorkersAndDecodingDriver();
-  driver = resource_manager()->decoding_driver();
+  server_context()->InitWorkersAndDecodingDriver();
+  driver = server_context()->decoding_driver();
   OutputResourcePtr good_output(driver->DecodeOutputResource(gurl, &dummy));
   ASSERT_TRUE(good_output.get() != NULL);
   EXPECT_EQ(url, good_output->url());
@@ -494,8 +494,8 @@ TEST_F(ServerContextTest, TestPlatformSpecificRewritersImplicitDecoding) {
   CreateMockRewriterCallback callback;
   factory()->AddCreateRewriterCallback(&callback);
   factory()->set_add_platform_specific_decoding_passes(false);
-  resource_manager()->InitWorkersAndDecodingDriver();
-  RewriteDriver* driver = resource_manager()->decoding_driver();
+  server_context()->InitWorkersAndDecodingDriver();
+  RewriteDriver* driver = server_context()->decoding_driver();
   OutputResourcePtr good_output(driver->DecodeOutputResource(gurl, &dummy));
   ASSERT_TRUE(good_output.get() != NULL);
   EXPECT_EQ(url, good_output->url());
@@ -613,7 +613,7 @@ TEST_F(ServerContextTest, TestNonCacheableReadResultPolicy) {
   ResourcePtr resource1(CreateResource("http://example.com/", "/"));
   ASSERT_TRUE(resource1.get() != NULL);
   MockResourceCallback callback1(resource1);
-  resource_manager()->ReadAsync(
+  server_context()->ReadAsync(
       Resource::kReportFailureIfNotCacheable, &callback1);
   EXPECT_TRUE(callback1.done());
   EXPECT_FALSE(callback1.success());
@@ -621,7 +621,7 @@ TEST_F(ServerContextTest, TestNonCacheableReadResultPolicy) {
   ResourcePtr resource2(CreateResource("http://example.com/", "/"));
   ASSERT_TRUE(resource2.get() != NULL);
   MockResourceCallback callback2(resource2);
-  resource_manager()->ReadAsync(Resource::kLoadEvenIfNotCacheable, &callback2);
+  server_context()->ReadAsync(Resource::kLoadEvenIfNotCacheable, &callback2);
   EXPECT_TRUE(callback2.done());
   EXPECT_TRUE(callback2.success());
 }
@@ -669,7 +669,7 @@ TEST_F(ServerContextTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
-  resource_manager()->Write(
+  server_context()->Write(
       ResourceVector(), "", &kContentTypeCss, StringPiece(),
       output_resource.get(), message_handler());
   EXPECT_EQ(NULL, output_resource->cached_result());
@@ -710,7 +710,7 @@ TEST_F(ServerContextTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
-  resource_manager()->Write(
+  server_context()->Write(
       ResourceVector(), "", &kContentTypeCss, StringPiece(),
       output_resource.get(), message_handler());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
@@ -721,15 +721,15 @@ TEST_F(ServerContextTest, TestOnTheFly) {
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconNoLoadParam) {
-  ASSERT_FALSE(resource_manager()->HandleBeacon("/index.html"));
+  ASSERT_FALSE(server_context()->HandleBeacon("/index.html"));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconInvalidLoadParam) {
-  ASSERT_FALSE(resource_manager()->HandleBeacon("/beacon?ets=asd"));
+  ASSERT_FALSE(server_context()->HandleBeacon("/beacon?ets=asd"));
 }
 
 TEST_F(ServerContextTest, TestHandleBeacon) {
-  ASSERT_TRUE(resource_manager()->HandleBeacon("/beacon?ets=load:34"));
+  ASSERT_TRUE(server_context()->HandleBeacon("/beacon?ets=load:34"));
 }
 
 TEST_F(ServerContextTest, TestNotGenerated) {
@@ -749,7 +749,7 @@ TEST_F(ServerContextTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
-  resource_manager()->Write(
+  server_context()->Write(
       ResourceVector(), "", &kContentTypeCss, StringPiece(),
       output_resource.get(), message_handler());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
@@ -901,12 +901,12 @@ TEST_F(ResourceManagerShardedTest, TestNamed) {
           "orig.js",
           kRewrittenResource));
   ASSERT_TRUE(output_resource.get());
-  ASSERT_TRUE(resource_manager()->Write(ResourceVector(),
-                                        "alert('hello');",
-                                        &kContentTypeJavascript,
-                                        StringPiece(),
-                                        output_resource.get(),
-                                        message_handler()));
+  ASSERT_TRUE(server_context()->Write(ResourceVector(),
+                                      "alert('hello');",
+                                      &kContentTypeJavascript,
+                                      StringPiece(),
+                                      output_resource.get(),
+                                      message_handler()));
 
   // This always gets mapped to shard0 because we are using the mock
   // hasher for the content hash.  Note that the sharding sensitivity
@@ -920,7 +920,7 @@ TEST_F(ServerContextTest, TestMergeNonCachingResponseHeaders) {
   ResponseHeaders input, output;
   input.Add("X-Extra-Header", "Extra Value");  // should be copied to output
   input.Add(HttpAttributes::kCacheControl, "max-age=300");  // should not be
-  resource_manager()->MergeNonCachingResponseHeaders(input, &output);
+  server_context()->MergeNonCachingResponseHeaders(input, &output);
   ConstStringStarVector v;
   EXPECT_FALSE(output.Lookup(HttpAttributes::kCacheControl, &v));
   ASSERT_TRUE(output.Lookup("X-Extra-Header", &v));
@@ -950,7 +950,7 @@ TEST_F(ServerContextTest, ApplyInputCacheControl) {
     ResourceVector two_public;
     two_public.push_back(public_100);
     two_public.push_back(public_200);
-    resource_manager()->ApplyInputCacheControl(two_public, &out);
+    server_context()->ApplyInputCacheControl(two_public, &out);
 
     GoogleString expect_ttl = StrCat(
         "max-age=",
@@ -968,7 +968,7 @@ TEST_F(ServerContextTest, ApplyInputCacheControl) {
     some_private.push_back(public_100);
     some_private.push_back(private_300);
     some_private.push_back(private_400);
-    resource_manager()->ApplyInputCacheControl(some_private, &out);
+    server_context()->ApplyInputCacheControl(some_private, &out);
     EXPECT_FALSE(out.HasValue(HttpAttributes::kCacheControl, "public"));
     EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "private"));
     EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "max-age=100"));
@@ -984,7 +984,7 @@ TEST_F(ServerContextTest, ApplyInputCacheControl) {
     some_nocache.push_back(private_300);
     some_nocache.push_back(private_400);
     some_nocache.push_back(no_cache_150);
-    resource_manager()->ApplyInputCacheControl(some_nocache, &out);
+    server_context()->ApplyInputCacheControl(some_nocache, &out);
     EXPECT_FALSE(out.HasValue(HttpAttributes::kCacheControl, "public"));
     EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "no-cache"));
     EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "max-age=0"));
@@ -1000,7 +1000,7 @@ TEST_F(ServerContextTest, ApplyInputCacheControl) {
     some_nostore.push_back(private_400);
     some_nostore.push_back(no_cache_150);
     some_nostore.push_back(no_store_200);
-    resource_manager()->ApplyInputCacheControl(some_nostore, &out);
+    server_context()->ApplyInputCacheControl(some_nostore, &out);
     EXPECT_FALSE(out.HasValue(HttpAttributes::kCacheControl, "public"));
     EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "no-cache"));
     EXPECT_TRUE(out.HasValue(HttpAttributes::kCacheControl, "no-store"));
@@ -1022,12 +1022,12 @@ TEST_F(ServerContextTest, WriteChecksInputVector) {
           private_400, kRewrittenResource));
 
 
-  resource_manager()->Write(ResourceVector(1, private_400),
-                            "boo!",
-                            &kContentTypeText,
-                            "\"\\koi8-r\"",  // covers escaping behavior, too.
-                            output_resource.get(),
-                            message_handler());
+  server_context()->Write(ResourceVector(1, private_400),
+                          "boo!",
+                          &kContentTypeText,
+                          "\"\\koi8-r\"",  // covers escaping behavior, too.
+                          output_resource.get(),
+                          message_handler());
   ResponseHeaders* headers = output_resource->response_headers();
   EXPECT_FALSE(headers->HasValue(HttpAttributes::kCacheControl, "public"));
   EXPECT_TRUE(headers->HasValue(HttpAttributes::kCacheControl, "private"));
@@ -1043,7 +1043,7 @@ TEST_F(ServerContextTest, ShutDownAssumptions) {
   // The code in ResourceManager::ShutDownWorkers assumes that some potential
   // interleaving of operations are safe. Since they are pretty unlikely
   // in practice, this test exercises them.
-  RewriteDriver* driver = resource_manager()->NewRewriteDriver();
+  RewriteDriver* driver = server_context()->NewRewriteDriver();
   EnableRewriteDriverCleanupMode(true);
   driver->WaitForShutDown();
   driver->WaitForShutDown();
@@ -1059,10 +1059,10 @@ TEST_F(ServerContextTest, ShutDownAssumptions) {
 TEST_F(ServerContextTest, IsPagespeedResource) {
   GoogleUrl rewritten(Encode("http://shard0.com/dir/", "jm", "0",
                              "orig.js", "js"));
-  EXPECT_TRUE(resource_manager()->IsPagespeedResource(rewritten));
+  EXPECT_TRUE(server_context()->IsPagespeedResource(rewritten));
 
   GoogleUrl normal("http://jqueryui.com/jquery-1.6.2.js");
-  EXPECT_FALSE(resource_manager()->IsPagespeedResource(normal));
+  EXPECT_FALSE(server_context()->IsPagespeedResource(normal));
 }
 
 TEST_F(ServerContextTest, PartlyFailedFetch) {
@@ -1247,7 +1247,7 @@ class ResourceManagerTestThreadedCache : public ServerContextTest {
   virtual void SetUp() {
     ServerContextTest::SetUp();
     HTTPCache* cache = http_cache_.release();
-    resource_manager()->set_http_cache(cache);
+    server_context()->set_http_cache(cache);
   }
 
   void ClearHTTPCache() { cache_backend_->Clear(); }

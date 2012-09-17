@@ -47,7 +47,7 @@ class DetectReflowJsDeferFilterTest : public RewriteTestBase {
 TEST_F(DetectReflowJsDeferFilterTest, DetectReflow) {
   InitDetectReflowJsDeferFilter();
   StringPiece detect_reflow_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
+      server_context()->static_javascript_manager()->GetJsSnippet(
           StaticJavascriptManager::kDetectReflowJs, options());
   ValidateExpected("detect_reflow",
       "<head>"
@@ -69,7 +69,7 @@ TEST_F(DetectReflowJsDeferFilterTest, DetectReflow) {
 TEST_F(DetectReflowJsDeferFilterTest, DetectReflowNoHead) {
   InitDetectReflowJsDeferFilter();
   StringPiece detect_reflow_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
+      server_context()->static_javascript_manager()->GetJsSnippet(
           StaticJavascriptManager::kDetectReflowJs, options());
   ValidateExpected("detect_reflow_no_head",
       "<body>Hello, world!</body>"

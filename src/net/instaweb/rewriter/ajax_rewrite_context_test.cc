@@ -197,7 +197,7 @@ class AjaxRewriteContextTest : public RewriteTestBase {
     options()->EnableFilter(RewriteOptions::kRewriteJavascript);
     options()->EnableFilter(RewriteOptions::kRewriteCss);
     options()->set_ajax_rewriting_enabled(true);
-    resource_manager()->ComputeSignature(options());
+    server_context()->ComputeSignature(options());
     // Clear stats since we may have added something to the cache.
     ClearStats();
   }
@@ -241,7 +241,7 @@ class AjaxRewriteContextTest : public RewriteTestBase {
                              int64 expected_ttl,
                              const char* etag,
                              int64 date_ms) {
-    WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
+    WorkerTestBase::SyncPoint sync(server_context()->thread_system());
     FakeFetch mock_fetch(&sync, &response_headers_);
     mock_fetch.set_request_headers(&request_headers_);
 
@@ -667,7 +667,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingSucceeds) {
 TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
   options()->ClearSignatureForTesting();
   options()->set_metadata_cache_staleness_threshold_ms(ttl_ms_);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   FetchAndCheckResponse(cache_js_url_, cache_body_, true, ttl_ms_, NULL,
                         start_time_ms());
@@ -735,7 +735,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlModifiedImplicitCacheTtl) {
 TEST_F(AjaxRewriteContextTest, CacheableCssUrlIfCssRewritingDisabled) {
   options()->ClearSignatureForTesting();
   options()->DisableFilter(RewriteOptions::kRewriteCss);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   FetchAndCheckResponse(cache_css_url_, cache_body_, true, ttl_ms_, NULL,
                         start_time_ms());
 

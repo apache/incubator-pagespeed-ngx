@@ -427,8 +427,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
     return file_system()->WriteFile(filename, contents, message_handler());
   }
 
-  ServerContext* resource_manager() { return server_context_; }
-  ServerContext* other_resource_manager() { return other_server_context_; }
+  ServerContext* server_context() { return server_context_; }
+  ServerContext* other_server_context() { return other_server_context_; }
   CountingUrlAsyncFetcher* counting_url_async_fetcher() {
     return factory_->counting_url_async_fetcher();
   }

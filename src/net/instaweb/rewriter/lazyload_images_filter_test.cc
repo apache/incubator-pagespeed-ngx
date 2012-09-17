@@ -23,7 +23,6 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -82,7 +81,7 @@ class LazyloadImagesFilterTest : public RewriteTestBase {
   GoogleString GetLazyloadScriptHtml() {
     return GetScriptHtml(
         LazyloadImagesFilter::GetLazyloadJsSnippet(
-            options(), resource_manager()->static_javascript_manager()),
+            options(), server_context()->static_javascript_manager()),
         false);
   }
 
@@ -155,7 +154,7 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
   critical_images->insert("http://test.com/critical4.jpg");
 
   rewrite_driver()->set_critical_images(critical_images);
-  resource_manager()->set_critical_images_finder(
+  server_context()->set_critical_images_finder(
       new MeaningfulCriticalImagesFinder());
 
   GoogleString rewritten_url = Encode(

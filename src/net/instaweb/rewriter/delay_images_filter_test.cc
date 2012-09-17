@@ -155,14 +155,14 @@ class DelayImagesFilterTest : public RewriteTestBase {
   }
 
   GoogleString GetLazyloadImagesCode() {
-    return resource_manager()->static_javascript_manager()->GetJsSnippet(
+    return server_context()->static_javascript_manager()->GetJsSnippet(
         StaticJavascriptManager::kLazyloadImagesJs, options());
   }
 
   GoogleString GetJsCode(StaticJavascriptManager::JsModule module,
                          const StringPiece& call) {
     StringPiece code =
-        resource_manager()->static_javascript_manager()->GetJsSnippet(
+        server_context()->static_javascript_manager()->GetJsSnippet(
             module, options());
     return StrCat(code, call);
   }

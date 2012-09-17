@@ -482,7 +482,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
                                           kNoBlinkUrl, kNoBlinkUrl),
                              "</body></html>");
     StringPiece lazyload_js_code =
-        resource_manager()->static_javascript_manager()->GetJsSnippet(
+        server_context()->static_javascript_manager()->GetJsSnippet(
             StaticJavascriptManager::kLazyloadImagesJs, options());
     noblink_output_with_lazy_load_ = StringPrintf(kLazyLoadHtml,
         StringPrintf(kNoScriptRedirectFormatter,
@@ -512,7 +512,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
 
   virtual void SetUp() {
     UseMd5Hasher();
-    ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+    ThreadSynchronizer* sync = server_context()->thread_synchronizer();
     sync->EnableForPrefix(BlinkFlowCriticalLine::kBackgroundComputationDone);
     sync->AllowSloppyTermination(
         BlinkFlowCriticalLine::kBackgroundComputationDone);
@@ -522,7 +522,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     fake_blink_critical_line_data_finder_ =
         static_cast<FakeBlinkCriticalLineDataFinder*> (
             server_context_->blink_critical_line_data_finder());
-    options_.reset(resource_manager()->NewOptions());
+    options_.reset(server_context()->NewOptions());
     options_->set_enable_blink_critical_line(true);
     options_->set_passthrough_blink_for_last_invalid_response_code(true);
     options_->EnableFilter(RewriteOptions::kPrioritizeVisibleContent);
@@ -544,12 +544,12 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
 
     options_->Disallow("*blacklist*");
 
-    resource_manager()->ComputeSignature(options_.get());
+    server_context()->ComputeSignature(options_.get());
 
     RewriteTestBase::SetUp();
     ProxyInterface::InitStats(statistics());
     proxy_interface_.reset(
-        new ProxyInterface("localhost", 80, resource_manager(), statistics()));
+        new ProxyInterface("localhost", 80, server_context(), statistics()));
 
     statistics()->AddVariable(kNumPrepareRequestCalls);
     fake_url_namer_.reset(new FakeUrlNamer(statistics()));
@@ -557,7 +557,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     flaky_fake_url_namer_.reset(new FlakyFakeUrlNamer(statistics()));
     flaky_fake_url_namer_->set_options(options_.get());
 
-    resource_manager()->set_url_namer(fake_url_namer_.get());
+    server_context()->set_url_namer(fake_url_namer_.get());
 
     mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
     mock_url_fetcher_.set_fail_on_unexpected(false);
@@ -606,7 +606,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
   }
 
   virtual void TearDown() {
-    EXPECT_EQ(0, resource_manager()->num_active_rewrite_drivers());
+    EXPECT_EQ(0, server_context()->num_active_rewrite_drivers());
     RewriteTestBase::TearDown();
   }
 
@@ -729,11 +729,11 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     FetchFromProxyNoQuiescence(url, expect_success, request_headers,
                                string_out, headers_out, user_agent_out);
     if (wait_for_background_computation) {
-      ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+      ThreadSynchronizer* sync = server_context()->thread_synchronizer();
       sync->Wait(BlinkFlowCriticalLine::kBackgroundComputationDone);
     }
     if (wait_for_update_response_code) {
-      ThreadSynchronizer* sync = resource_manager()->thread_synchronizer();
+      ThreadSynchronizer* sync = server_context()->thread_synchronizer();
       sync->Wait(BlinkFlowCriticalLine::kUpdateResponseCodeDone);
     }
   }
@@ -753,15 +753,15 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
                                   GoogleString* string_out,
                                   ResponseHeaders* headers_out,
                                   GoogleString* user_agent_out) {
-    WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
+    WorkerTestBase::SyncPoint sync(server_context()->thread_system());
     AsyncExpectStringAsyncFetch callback(expect_success, &sync);
     TimingInfo timing_info = callback.logging_info()->timing_info();
-    timing_info.set_request_start_ms(resource_manager()->timer()->NowMs());
+    timing_info.set_request_start_ms(server_context()->timer()->NowMs());
     callback.set_response_headers(headers_out);
     callback.request_headers()->CopyFrom(request_headers);
     bool already_done = proxy_interface_->Fetch(AbsolutifyUrl(url),
                                                 message_handler(), &callback);
-    CHECK(resource_manager()->thread_synchronizer() != NULL);
+    CHECK(server_context()->thread_synchronizer() != NULL);
     if (already_done) {
       EXPECT_TRUE(callback.done());
     } else {
@@ -785,13 +785,13 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
       ProxyInterfaceWithDelayCache* proxy_interface,
       GoogleString* string_out,
       ResponseHeaders* headers_out) {
-    WorkerTestBase::SyncPoint sync(resource_manager()->thread_system());
+    WorkerTestBase::SyncPoint sync(server_context()->thread_system());
     AsyncExpectStringAsyncFetch callback(expect_success, &sync);
     callback.set_response_headers(headers_out);
     callback.request_headers()->CopyFrom(request_headers);
     bool already_done = proxy_interface->Fetch(AbsolutifyUrl(url),
                                                message_handler(), &callback);
-    CHECK(resource_manager()->thread_synchronizer() != NULL);
+    CHECK(server_context()->thread_synchronizer() != NULL);
     delay_cache()->ReleaseKey(proxy_interface->key());
     if (already_done) {
       EXPECT_TRUE(callback.done());
@@ -799,7 +799,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
       sync.Wait();
     }
     *string_out = callback.buffer();
-    ThreadSynchronizer* ts = resource_manager()->thread_synchronizer();
+    ThreadSynchronizer* ts = server_context()->thread_synchronizer();
     ts->Wait(BlinkFlowCriticalLine::kBackgroundComputationDone);
     mock_scheduler()->AwaitQuiescence();
   }
@@ -815,7 +815,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
   // Verifies the fields of BlinkInfo proto being logged.
   BlinkInfo* VerifyBlinkInfo(int blink_request_flow, const char* url) {
     CustomRewriteDriverFactory* factory =
-        static_cast<CustomRewriteDriverFactory*>(resource_manager()->factory());
+        static_cast<CustomRewriteDriverFactory*>(server_context()->factory());
     BlinkInfo* blink_info = factory->logging_info()->mutable_blink_info();
     EXPECT_EQ(blink_request_flow, blink_info->blink_request_flow());
     EXPECT_EQ("1345815119391831", blink_info->request_event_id_time_usec());
@@ -890,7 +890,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     options_->ClearSignatureForTesting();
     options_->set_enable_blink_html_change_detection(!just_logging);
     options_->set_enable_blink_html_change_detection_logging(just_logging);
-    resource_manager()->ComputeSignature(options_.get());
+    server_context()->ComputeSignature(options_.get());
 
     GoogleString text;
     ResponseHeaders response_headers;
@@ -1096,7 +1096,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestFlakyNon200ResponseCodeValidHitAfter404) {
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkInfoErrorScenarios) {
   GoogleString text;
   ResponseHeaders response_headers_out;
-  resource_manager()->set_url_namer(flaky_fake_url_namer_.get());
+  server_context()->set_url_namer(flaky_fake_url_namer_.get());
   SetFetchHtmlResponseWithStatus("http://test.com/flaky.html",
       HttpStatus::kOK);
   FetchFromProxyWaitForBackground(
@@ -1108,7 +1108,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkInfoErrorScenarios) {
 
   ClearStats();
   response_headers_out.Clear();
-  resource_manager()->set_url_namer(fake_url_namer_.get());
+  server_context()->set_url_namer(fake_url_namer_.get());
   SetFetchHtmlResponseWithStatus("http://test.com/flaky.html",
                                  HttpStatus::kNotFound);
   SetBlinkCriticalLineData(false);
@@ -1124,7 +1124,7 @@ TEST_F(BlinkFlowCriticalLineTest,
        TestFlakyNon200ResponseCodeDoNotWriteResponseCode) {
   options_->ClearSignatureForTesting();
   options_->set_passthrough_blink_for_last_invalid_response_code(false);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
 
   GoogleString text;
   ResponseHeaders response_headers_out;
@@ -1211,7 +1211,7 @@ TEST_F(BlinkFlowCriticalLineTest,
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkCacheMissFuriousSetCookie) {
   options_->ClearSignatureForTesting();
   InitializeFuriousSpec();
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
   GoogleString text;
   ResponseHeaders response_headers;
 
@@ -1227,7 +1227,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkCacheMissFuriousSetCookie) {
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkCacheHitFuriousSetCookie) {
   options_->ClearSignatureForTesting();
   InitializeFuriousSpec();
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
   GoogleString text;
   ResponseHeaders response_headers;
 
@@ -1245,7 +1245,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkCacheHitFuriousSetCookie) {
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkFuriousCookieHandling) {
   options_->ClearSignatureForTesting();
   InitializeFuriousSpec();
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
   GoogleString text;
   ResponseHeaders response_headers;
   RequestHeaders request_headers;
@@ -1383,7 +1383,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkUrlCacheInvalidation) {
   options_->ClearSignatureForTesting();
   options_->AddUrlCacheInvalidationEntry(
       AbsolutifyUrl("foo.bar"), mock_timer()->NowMs(), true);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
 
   // Property cache hit.
   FetchFromProxyNoWaitForBackground(
@@ -1406,7 +1406,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkUrlCacheInvalidation) {
   options_->ClearSignatureForTesting();
   options_->AddUrlCacheInvalidationEntry(
       AbsolutifyUrl("text.html"), mock_timer()->NowMs(), true);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
 
   SetBlinkCriticalLineData();
   // Property cache hit, but invalidated.  Hence treated as a miss and
@@ -1507,7 +1507,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkCriticalLineDataMissDelayCache) {
   ResponseHeaders response_headers;
   ProxyInterfaceWithDelayCache* proxy_interface =
       new ProxyInterfaceWithDelayCache("localhost", 80,
-                                       resource_manager(), statistics(),
+                                       server_context(), statistics(),
                                        delay_cache());
   proxy_interface_.reset(proxy_interface);
   RequestHeaders request_headers;
@@ -1559,7 +1559,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithHttpsUrl) {
   // Disable support no script, so that we don't insert the noscript node and
   // the output is simple.
   options_->set_support_noscript_enabled(false);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
 
   GoogleString text;
   ResponseHeaders response_headers;
@@ -1603,7 +1603,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlOverThreshold) {
   int64 html_buffer_threshold = size_of_small_html - 1;
   options_->ClearSignatureForTesting();
   options_->set_blink_max_html_size_rewritable(html_buffer_threshold);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
 
   GoogleString text;
   ResponseHeaders response_headers;
@@ -1627,7 +1627,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlOverThreshold) {
   options_->ClearSignatureForTesting();
   html_buffer_threshold = size_of_small_html + 1;
   options_->set_blink_max_html_size_rewritable(html_buffer_threshold);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
 
   FetchFromProxyWaitForBackground(
       "smalltest.html", true, &text, &response_headers);
@@ -1645,7 +1645,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlHeaderOverThreshold) {
   int64 html_buffer_threshold = size_of_small_html;
   options_->ClearSignatureForTesting();
   options_->set_blink_max_html_size_rewritable(html_buffer_threshold);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
 
   GoogleString text;
   ResponseHeaders response_headers;
@@ -1797,7 +1797,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestFixedUserAgentForDesktop) {
   options_->ClearSignatureForTesting();
   options_->set_use_fixed_user_agent_for_blink_cache_misses(true);
   options_->set_blink_desktop_user_agent(kLinuxUserAgent);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
   GoogleString text;
   GoogleString user_agent;
   ResponseHeaders response_headers;
@@ -1815,7 +1815,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestNoFixedUserAgentForDesktop) {
   options_->ClearSignatureForTesting();
   options_->set_use_fixed_user_agent_for_blink_cache_misses(false);
   options_->set_blink_desktop_user_agent(kLinuxUserAgent);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
   GoogleString text;
   GoogleString user_agent;
   ResponseHeaders response_headers;
@@ -1836,7 +1836,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileUserAgent) {
   RequestHeaders request_headers;
   options_->ClearSignatureForTesting();
   options_->set_enable_blink_for_mobile_devices(true);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
   request_headers.Add(HttpAttributes::kUserAgent,
                       UserAgentStrings::kIPhone4Safari);  // Mobile Request.
   FetchFromProxyWaitForBackground("text.html", true, request_headers, &text,
@@ -1889,7 +1889,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionLogging) {
 TEST_F(BlinkFlowCriticalLineTest, TestSetBlinkCriticalLineDataFalse) {
   options_->ClearSignatureForTesting();
   options_->set_enable_blink_critical_line(false);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
   GoogleString text;
   ResponseHeaders response_headers;
   FetchFromProxyNoWaitForBackground(
@@ -1917,7 +1917,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithLazyLoad) {
   options_->ClearSignatureForTesting();
   options_->EnableFilter(RewriteOptions::kLazyloadImages);
   options_->set_enable_lazyload_in_blink(true);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
   GoogleString text;
   ResponseHeaders response_headers;
 
@@ -1948,7 +1948,7 @@ TEST_F(BlinkFlowCriticalLineTest,
        TestBlinkHtmlChangeDetectionNon200StatusCode) {
   options_->ClearSignatureForTesting();
   options_->set_enable_blink_html_change_detection(true);
-  resource_manager()->ComputeSignature(options_.get());
+  server_context()->ComputeSignature(options_.get());
 
   GoogleString text;
   ResponseHeaders response_headers_out;

@@ -1083,7 +1083,7 @@ TEST_F(CssCombineFilterTest, CrossAcrossPathsExceedingUrlSize) {
 TEST_F(CssCombineFilterTest, CrossAcrossPathsDisallowed) {
   options()->ClearSignatureForTesting();
   options()->set_combine_across_paths(false);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   CssLink::Vector css_in, css_out;
   css_in.Add("a/a.css", kYellow, "", true);
   css_in.Add("b/b.css", kBlue, "", true);

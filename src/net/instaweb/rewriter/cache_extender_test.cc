@@ -566,7 +566,7 @@ TEST_F(CacheExtenderTest, MadeOnTheFly) {
   ValidateExpected("and_img", "<img src=\"b.jpg\">",
                    StrCat("<img src=\"", b_ext, "\">"));
 
-  RewriteStats* stats = resource_manager()->rewrite_stats();
+  RewriteStats* stats = server_context()->rewrite_stats();
   EXPECT_EQ(0, stats->cached_resource_fetches()->Get());
   EXPECT_EQ(0, stats->succeeded_filter_resource_fetches()->Get());
   GoogleString out;
@@ -581,7 +581,7 @@ TEST_F(CacheExtenderTest, RetainExtraHeaders) {
   SetResponseWithDefaultHeaders(url, kContentTypeCss, kCssData, 300);
   // We must explicitly call ComputeSignature here because we are not
   // calling InitTest in this test.
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   TestRetainExtraHeaders("retain.css", "ce", "css");
 }
 

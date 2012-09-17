@@ -215,7 +215,7 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyCharset) {
   FlushEarlyRenderInfo* info = new FlushEarlyRenderInfo;
   info->set_charset("utf-8");
   rewrite_driver()->set_flush_early_render_info(info);
-  resource_manager()->set_flush_early_info_finder(
+  server_context()->set_flush_early_info_finder(
       new MeaningfulFlushEarlyInfoFinder);
   headers()->Add(HttpAttributes::kContentType, "text/html");
 
@@ -247,7 +247,7 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyPreExistingCharset) {
   FlushEarlyRenderInfo* info = new FlushEarlyRenderInfo;
   info->set_charset("utf-8");
   rewrite_driver()->set_flush_early_render_info(info);
-  resource_manager()->set_flush_early_info_finder(
+  server_context()->set_flush_early_info_finder(
       new MeaningfulFlushEarlyInfoFinder);
   // The charset returned by FlushEarlyRenderInfo will never be different from
   // what is already set on page. However, for the purpose of testing we have a

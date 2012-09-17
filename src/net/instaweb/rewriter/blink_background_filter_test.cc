@@ -113,7 +113,7 @@ TEST_F(BlinkBackgroundFilterTest, StripNonCacheable) {
 TEST_F(BlinkBackgroundFilterTest, TestGstatic) {
   UrlNamer url_namer;
   StaticJavascriptManager js_manager(&url_namer, true, "1");
-  resource_manager()->set_static_javascript_manager(&js_manager);
+  server_context()->set_static_javascript_manager(&js_manager);
   ValidateExpectedUrl(kRequestUrl, kHtmlInput,
                       GetExpectedOutput(kBlinkUrlGstatic));
 }

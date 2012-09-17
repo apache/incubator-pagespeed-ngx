@@ -271,7 +271,7 @@ TEST_F(InsertDnsPrefetchFilterTest, InsertDnsPrefetchFilterWithOtherFilters) {
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
   options()->EnableFilter(RewriteOptions::kLazyloadImages);
   options()->EnableFilter(RewriteOptions::kDelayImages);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   GoogleString html =
       "<head>"
         "<script src=\"http://b.com/\"/>"
@@ -290,7 +290,7 @@ TEST_F(InsertDnsPrefetchFilterTest, InsertDnsPrefetchFilterWithOtherFilters) {
 TEST_F(InsertDnsPrefetchFilterTest, InsertDomainsinHeadForFlushEarlyFlow) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kFlushSubresources);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   GoogleString html =
       "<head>"
         "<script src=\"http://b.com/\"/>"

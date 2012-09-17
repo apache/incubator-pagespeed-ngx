@@ -74,7 +74,7 @@ class CssFilterTest : public CssRewriteTestBase {
       options()->DisableFilter(RewriteOptions::kExtendCacheImages);
       options()->DisableFilter(RewriteOptions::kSpriteImages);
     }
-    resource_manager()->ComputeSignature(options());
+    server_context()->ComputeSignature(options());
 
     // Set things up so that RewriteDriver::ShouldAbsolutifyUrl returns true
     // even though we are not proxying (but skip it if it has already been
@@ -1050,7 +1050,7 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   // Note: when this example is fixed in the minifier, this test will break :/
   options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(true);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   ValidateRewrite("expanding_example",
                   "@import url(http://www.example.com)",
                   "@import url(http://www.example.com) ;",
@@ -1060,7 +1060,7 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   // else, like rewrite sub-resources.
   options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(false);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   ValidateRewrite("non_expanding_example",
                   "@import url(http://www.example.com)",
                   "@import url(http://www.example.com)",
@@ -1069,14 +1069,14 @@ TEST_F(CssFilterTest, NoAlwaysRewriteCss) {
   // When we force always_rewrite_css, we allow rewriting something to nothing.
   options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(true);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   ValidateRewrite("contracting_example", "  ", "", kExpectSuccess);
 
   // We still contract it with set_always_rewrite_css(false).
   // Note: In the past we did not allow rewrites that resulted in empty output.
   options()->ClearSignatureForTesting();
   options()->set_always_rewrite_css(false);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   ValidateRewrite("contracting_example2", "  ", "", kExpectSuccess);
 }
 
@@ -1117,7 +1117,7 @@ TEST_F(CssFilterTest, RewriteStyleAttribute) {
 
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   // Test no rewriting.
   ValidateNoChanges("no-rewriting",
@@ -1204,7 +1204,7 @@ TEST_F(CssFilterTest, WebpRewriting) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
   rewrite_driver()->set_user_agent("webp");
 
   SetResponseWithDefaultHeaders("foo.css", kContentTypeCss, css_input, 100);
@@ -1365,7 +1365,7 @@ TEST_F(CssFilterTest, InlineCssWithExternalUrlAndDelayCache) {
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   // Delay the http cache lookup for the image so that it is not rewritten.
   delay_cache()->DelayKey(img_url);

@@ -19,7 +19,6 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
-#include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -48,7 +47,7 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     rewrite_driver()->set_flushing_early(true);
     rewrite_driver()->SetWriter(&writer_);
-    resource_manager()->set_flush_early_info_finder(
+    server_context()->set_flush_early_info_finder(
         new MeaningfulFlushEarlyInfoFinder);
   }
 
@@ -135,7 +134,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   output_.clear();
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   html_output =
       "<script type=\"text/javascript\">(function(){"
@@ -240,7 +239,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources) {
   output_.clear();
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
-  resource_manager()->ComputeSignature(options());
+  server_context()->ComputeSignature(options());
 
   html_output =
       "<script type=\"text/javascript\">(function(){"

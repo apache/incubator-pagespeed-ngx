@@ -54,7 +54,7 @@ class JsDeferDisabledFilterTest : public RewriteTestBase {
 TEST_F(JsDeferDisabledFilterTest, DeferScript) {
   InitJsDeferDisabledFilter(false);
   StringPiece defer_js_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
+      server_context()->static_javascript_manager()->GetJsSnippet(
           StaticJavascriptManager::kDeferJs, options());
   ValidateExpected("defer_script",
       "<head>"
@@ -78,7 +78,7 @@ TEST_F(JsDeferDisabledFilterTest, DeferScript) {
 TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
   InitJsDeferDisabledFilter(false);
   StringPiece defer_js_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
+      server_context()->static_javascript_manager()->GetJsSnippet(
           StaticJavascriptManager::kDeferJs, options());
   ValidateExpected("defer_script_multi_body",
       "<head>"
@@ -102,7 +102,7 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
 TEST_F(JsDeferDisabledFilterTest, DeferScriptNoHead) {
   InitJsDeferDisabledFilter(false);
   StringPiece defer_js_code =
-      resource_manager()->static_javascript_manager()->GetJsSnippet(
+      server_context()->static_javascript_manager()->GetJsSnippet(
           StaticJavascriptManager::kDeferJs, options());
   ValidateExpected("defer_script_no_head",
       "<body>Hello, world!</body><body>"

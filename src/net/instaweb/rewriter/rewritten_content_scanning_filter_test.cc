@@ -59,20 +59,20 @@ class RewrittenContentScanningFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     rewrite_driver()->AddOwnedPostRenderFilter(
         new RewrittenContentScanningFilter(rewrite_driver_));
-    resource_manager()->page_property_cache()->AddCohort(
+    server_context()->page_property_cache()->AddCohort(
         RewriteDriver::kDomCohort);
-    resource_manager()->page_property_cache()->set_enabled(true);
+    server_context()->page_property_cache()->set_enabled(true);
     MockPage* page = new MockPage(factory_->thread_system()->NewMutex());
     rewrite_driver()->set_property_page(page);
-    resource_manager()->page_property_cache()->Read(page);
+    server_context()->page_property_cache()->Read(page);
     url_namer_.reset(new TestUrlNamer);
-    resource_manager()->set_url_namer(url_namer_.get());
+    server_context()->set_url_namer(url_namer_.get());
     url_namer_->SetProxyMode(true);
   }
 
   StringPiece GetNumRewrittenResources() {
     const PropertyCache::Cohort* cohort =
-        resource_manager()->page_property_cache()->GetCohort(
+        server_context()->page_property_cache()->GetCohort(
             RewriteDriver::kDomCohort);
     PropertyValue* value = rewrite_driver()->property_page()->GetProperty(
         cohort,
