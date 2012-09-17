@@ -204,6 +204,7 @@ class RewriteOptions {
     kLowercaseHtmlNames,
     kMaxCombinedJsBytes,
     kMaxHtmlCacheTimeMs,
+    kMaxHtmlParseBytes,
     kMaxImageBytesForWebpInCss,
     kMaxImageSizeLowResolutionBytes,
     kMaxInlinedPreviewImagesIndex,
@@ -421,6 +422,7 @@ class RewriteOptions {
   static const int64 kDefaultJsOutlineMinBytes;
   static const int64 kDefaultProgressiveJpegMinBytes;
   static const int64 kDefaultMaxHtmlCacheTimeMs;
+  static const int64 kDefaultMaxHtmlParseBytes;
   static const int64 kDefaultMaxImageBytesForWebpInCss;
   static const int64 kDefaultMinResourceCacheTimeToRewriteMs;
   static const int64 kDefaultCacheInvalidationTimestamp;
@@ -900,6 +902,12 @@ class RewriteOptions {
   }
   void set_max_html_cache_time_ms(int64 x) {
     set_option(x, &max_html_cache_time_ms_);
+  }
+  int64 max_html_parse_bytes() const {
+    return max_html_parse_bytes_.value();
+  }
+  void set_max_html_parse_bytes(int64 x) {
+    set_option(x, &max_html_parse_bytes_);
   }
   int64 max_image_bytes_for_webp_in_css() const {
     return max_image_bytes_for_webp_in_css_.value();
@@ -2183,6 +2191,9 @@ class RewriteOptions {
   Option<int64> progressive_jpeg_min_bytes_;
   // The max Cache-Control TTL for HTML.
   Option<int64> max_html_cache_time_ms_;
+  // The maximum number of bytes of HTML that we parse, before redirecting to
+  // ?ModPagespeed=off.
+  Option<int64> max_html_parse_bytes_;
   // The maximum size of an image in CSS, which we convert to webp.
   Option<int64> max_image_bytes_for_webp_in_css_;
   // Resources with Cache-Control TTL less than this will not be rewritten.

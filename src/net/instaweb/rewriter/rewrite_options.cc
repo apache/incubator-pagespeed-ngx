@@ -117,6 +117,7 @@ const int64 RewriteOptions::kDefaultJsOutlineMinBytes = 3000;
 const int64 RewriteOptions::kDefaultProgressiveJpegMinBytes = 10240;
 
 const int64 RewriteOptions::kDefaultMaxHtmlCacheTimeMs = 0;
+const int64 RewriteOptions::kDefaultMaxHtmlParseBytes = -1;
 const int64 RewriteOptions::kDefaultMaxImageBytesForWebpInCss = kint64max;
 
 const int64 RewriteOptions::kDefaultMinResourceCacheTimeToRewriteMs = 0;
@@ -582,6 +583,9 @@ void RewriteOptions::AddProperties() {
   add_option(kDefaultMaxHtmlCacheTimeMs,
              &RewriteOptions::max_html_cache_time_ms_, "hc",
              kMaxHtmlCacheTimeMs);
+  add_option(kDefaultMaxHtmlParseBytes,
+             &RewriteOptions::max_html_parse_bytes_, "hpb",
+             kMaxHtmlParseBytes);
   add_option(kDefaultMaxImageBytesForWebpInCss,
              &RewriteOptions::max_image_bytes_for_webp_in_css_, "miwc",
              kMaxImageBytesForWebpInCss);

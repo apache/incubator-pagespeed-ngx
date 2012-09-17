@@ -954,6 +954,14 @@ void HtmlParse::add_event_listener(HtmlFilter* listener) {
   event_listeners_.push_back(listener);
 }
 
+void HtmlParse::set_size_limit(int64 x) {
+  lexer_->set_size_limit(x);
+}
+
+bool HtmlParse::size_limit_exceeded() const {
+  return lexer_->size_limit_exceeded();
+}
+
 void HtmlParse::InsertComment(const StringPiece& sp) {
   HtmlElement* parent = NULL;
 

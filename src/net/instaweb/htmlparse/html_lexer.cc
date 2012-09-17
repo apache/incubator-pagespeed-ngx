@@ -129,7 +129,8 @@ HtmlLexer::HtmlLexer(HtmlParse* html_parse)
       has_attr_value_(false),
       element_(NULL),
       line_(1),
-      tag_start_line_(-1) {
+      tag_start_line_(-1),
+      size_limit_(-1) {
 #ifndef NDEBUG
   CHECK_KEYWORD_SET_ORDERING(kImplicitlyClosedHtmlTags);
   CHECK_KEYWORD_SET_ORDERING(kNonBriefTerminatedTags);
@@ -600,7 +601,7 @@ void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
     HtmlName::Keyword open_keyword = open_element->keyword();
     if (HtmlKeywords::IsAutoClose(open_keyword, next_keyword)) {
       element_stack_.pop_back();
-      html_parse_->CloseElement(open_element, HtmlElement::AUTO_CLOSE, line_);
+      CloseElement(open_element, HtmlElement::AUTO_CLOSE);
 
       // Having automatically closed the element that was open on the stack,
       // we must recompute the open element from whatever is now on top of
@@ -616,6 +617,9 @@ void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
 
   literal_.clear();
   html_parse_->AddElement(element_, tag_start_line_);
+  if (size_limit_exceeded_) {
+    skip_parsing_ = true;
+  }
   element_stack_.push_back(element_);
   if (IS_IN_SET(kLiteralTags, element_->keyword())) {
     state_ = LITERAL_TAG;
@@ -636,7 +640,7 @@ void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
 
 void HtmlLexer::EmitTagBriefClose() {
   HtmlElement* element = PopElement();
-  html_parse_->CloseElement(element, HtmlElement::BRIEF_CLOSE, line_);
+  CloseElement(element, HtmlElement::BRIEF_CLOSE);
   state_ = START;
 }
 
@@ -674,6 +678,9 @@ void HtmlLexer::StartParse(const StringPiece& id,
   attr_name_.clear();
   attr_value_.clear();
   literal_.clear();
+  size_limit_exceeded_ = false;
+  skip_parsing_ = false;
+  num_bytes_parsed_ = 0;
   // clear buffers
 }
 
@@ -704,7 +711,9 @@ void HtmlLexer::FinishParse() {
   for (int i = element_stack_.size() - 1; i > 0; --i) {
     HtmlElement* element = element_stack_.back();
     token_ = element->name_str();
-    EmitTagClose(HtmlElement::UNCLOSED);
+    HtmlElement::CloseStyle close_style = skip_parsing_ ?
+        HtmlElement::EXPLICIT_CLOSE : HtmlElement::UNCLOSED;
+    EmitTagClose(close_style);
     if (!HtmlKeywords::IsOptionallyClosedTag(element->keyword())) {
       html_parse_->Info(id_.c_str(), element->begin_line_number(),
                         "End-of-file with open tag: %s", element->name_str());
@@ -860,7 +869,7 @@ void HtmlLexer::EmitTagClose(HtmlElement::CloseStyle close_style) {
   if (element != NULL) {
     DCHECK(StringCaseEqual(token_, element->name_str()));
     element->set_end_line_number(line_);
-    html_parse_->CloseElement(element, close_style, line_);
+    CloseElement(element, close_style);
   } else {
     SyntaxError("Unexpected close-tag `%s', no tags are open",
                 token_.c_str());
@@ -893,7 +902,18 @@ void HtmlLexer::EmitDirective() {
 }
 
 void HtmlLexer::Parse(const char* text, int size) {
+  num_bytes_parsed_ += size;
+  if (size_limit_ > 0 && num_bytes_parsed_ > size_limit_) {
+    size_limit_exceeded_ = true;
+  }
+  // TODO(nikhilmadan): Protect against an unbounded sequence of bytes within an
+  // element, probably by just aborting the parse completely.
+
   for (int i = 0; i < size; ++i) {
+    if (skip_parsing_) {
+      // Return without doing anything if skip_parsing_ is true.
+      return;
+    }
     char c = text[i];
     if (c == '\n') {
       ++line_;
@@ -977,6 +997,14 @@ HtmlElement* HtmlLexer::PopElement() {
   return element;
 }
 
+void HtmlLexer::CloseElement(HtmlElement* element,
+                             HtmlElement::CloseStyle close_style) {
+  html_parse_->CloseElement(element, close_style, line_);
+  if (size_limit_exceeded_) {
+    skip_parsing_ = true;
+  }
+}
+
 HtmlElement* HtmlLexer::PopElementMatchingTag(const StringPiece& tag) {
   HtmlElement* element = NULL;
 
@@ -1026,7 +1054,7 @@ HtmlElement* HtmlLexer::PopElementMatchingTag(const StringPiece& tag) {
       // Before closing the skipped element, pop it off the stack.  Otherwise,
       // the parent redundancy check in HtmlParse::AddEvent will fail.
       element_stack_.resize(j);
-      html_parse_->CloseElement(skipped, HtmlElement::UNCLOSED, line_);
+      CloseElement(skipped, HtmlElement::UNCLOSED);
     }
     element_stack_.resize(close_index);
   }

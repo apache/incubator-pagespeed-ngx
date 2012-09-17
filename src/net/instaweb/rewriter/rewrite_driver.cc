@@ -94,6 +94,7 @@
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/redirect_on_size_limit_filter.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -1042,6 +1043,11 @@ void RewriteDriver::AddPostRenderFilters() {
 
   if (rewrite_options->Enabled(RewriteOptions::kHandleNoscriptRedirect)) {
     AddOwnedPostRenderFilter(new HandleNoscriptRedirectFilter(this));
+  }
+
+  if (rewrite_options->max_html_parse_bytes() > 0) {
+    AddOwnedPostRenderFilter(new RedirectOnSizeLimitFilter(this));
+    set_size_limit(rewrite_options->max_html_parse_bytes());
   }
 
   if (rewrite_options->Enabled(RewriteOptions::kStripNonCacheable)) {

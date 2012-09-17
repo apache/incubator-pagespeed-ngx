@@ -305,6 +305,103 @@ TEST_F(HtmlParseTest, OpenBracketAfterName) {
   ValidateNoChanges("open_brack_after_name", input);
 }
 
+class HtmlParseTestNoBodyNoHtml : public HtmlParseTestNoBody {
+ protected:
+  virtual bool AddHtmlTags() const { return false; }
+
+  void CheckOutput(int start_index, int end_index,
+                   const GoogleString& input,
+                   const GoogleString& expected_output) {
+    for (int i = start_index; i < end_index; ++i) {
+      SetupWriter();
+      html_parse()->set_size_limit(i);
+      html_parse()->StartParse("http://test.com/in.html");
+      // Flush after every character.
+      for (int j = 0; j < input.size(); ++j) {
+        GoogleString x;
+        x.push_back(input[j]);
+        html_parse()->ParseText(StringPiece(x));
+        html_parse()->Flush();
+      }
+      html_parse()->FinishParse();
+      EXPECT_EQ(expected_output, output_buffer_);
+    }
+  }
+};
+
+TEST_F(HtmlParseTestNoBodyNoHtml, SizeLimit) {
+  static const char input[] =
+      "<html>"  // 6 chars
+      "<input type=\"text\"/>"  // 20 chars
+      "<script type=\"text/javascript\">alert('123');</script>"  // 53 chars
+      "<!--[if IE]>...<![endif]-->"  // 27 chars
+      "<table><tr><td>blah</td></tr></table>"  // 37 chars
+      "</html>";  // 7 chars
+  ValidateNoChanges("no_limit", input);
+
+  static const char output_when_break_in_html[] =
+      "<html></html>";
+
+  for (int i = 1; i < 150; ++i) {
+    // With no flushes, the output is just <html></html>
+    html_parse_.set_size_limit(i);
+    ValidateExpected("break_in_input", input,
+                     output_when_break_in_html);
+  }
+
+  // Now test with flushes injected.
+
+  CheckOutput(1, 6, input, output_when_break_in_html);
+
+  static const char output_when_break_in_input[] =
+      "<html><input type=\"text\"/></html>";
+  CheckOutput(6, 26, input, output_when_break_in_input);
+
+  static const char output_with_break_in_script_tag[] =
+      "<html><input type=\"text\"/>"
+      "<script type=\"text/javascript\"></script>"
+      "</html>";
+  CheckOutput(26, 57, input, output_with_break_in_script_tag);
+
+  static const char output_with_break_in_script_text_or_later[] =
+      "<html><input type=\"text\"/>"
+      "<script type=\"text/javascript\">alert('123');</script>"
+      "</html>";
+  CheckOutput(57, 79, input, output_with_break_in_script_text_or_later);
+
+  static const char output_with_break_in_comment[] =
+      "<html><input type=\"text\"/>"
+      "<script type=\"text/javascript\">alert('123');</script>"
+      "<!--[if IE]>...<![endif]-->"
+      "<table></table>"
+      "</html>";
+  CheckOutput(79, 113, input, output_with_break_in_comment);
+
+  static const char output_with_break_in_tr[] =
+      "<html><input type=\"text\"/>"
+      "<script type=\"text/javascript\">alert('123');</script>"
+      "<!--[if IE]>...<![endif]-->"
+      "<table><tr></tr></table>"
+      "</html>";
+  CheckOutput(113, 117, input, output_with_break_in_tr);
+
+  static const char output_with_break_in_td[] =
+      "<html><input type=\"text\"/>"
+      "<script type=\"text/javascript\">alert('123');</script>"
+      "<!--[if IE]>...<![endif]-->"
+      "<table><tr><td></td></tr></table>"
+      "</html>";
+  CheckOutput(117, 121, input, output_with_break_in_td);
+
+  static const char output_with_break_in_td_text[] =
+      "<html><input type=\"text\"/>"
+      "<script type=\"text/javascript\">alert('123');</script>"
+      "<!--[if IE]>...<![endif]-->"
+      "<table><tr><td>blah</td></tr></table>"
+      "</html>";
+  CheckOutput(121, 160, input, output_with_break_in_td_text);
+}
+
 TEST_F(HtmlParseTest, OpenBracketAfterSpace) {
   // '<' after after unquoted attr value. Here name<input is an attribute
   // name.

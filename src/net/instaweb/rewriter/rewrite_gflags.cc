@@ -259,6 +259,11 @@ DEFINE_bool(override_ie_document_mode, false,
             "If enabled, IE will be made to use the highest mode available"
             " to that version of IE.");
 
+DEFINE_int64(max_html_parse_bytes,
+             net_instaweb::RewriteOptions::kDefaultMaxHtmlParseBytes,
+             "The maximum number of bytes in a html that we parse before "
+             "redirecting to a page with no rewriting.");
+
 namespace net_instaweb {
 
 namespace {
@@ -462,6 +467,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("override_ie_document_mode")) {
     options->set_override_ie_document_mode(FLAGS_override_ie_document_mode);
+  }
+  if (WasExplicitlySet("max_html_parse_bytes")) {
+    options->set_max_html_parse_bytes(FLAGS_max_html_parse_bytes);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

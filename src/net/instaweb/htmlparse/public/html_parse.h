@@ -353,6 +353,11 @@ class HtmlParse {
   // whether the current node is a start-element, end-element, or a leaf.
   void InsertComment(const StringPiece& sp);
 
+  // Sets the limit on the maximum number of bytes that should be parsed.
+  void set_size_limit(int64 x);
+  // Returns whether we have exceeded the size limit.
+  bool size_limit_exceeded() const;
+
  protected:
   typedef std::vector<HtmlFilter*> FilterVector;
   typedef std::list<HtmlFilter*> FilterList;
@@ -399,7 +404,6 @@ class HtmlParse {
   void CoalesceAdjacentCharactersNodes();
   void ClearEvents();
   void EmitQueue(MessageHandler* handler);
-
 
   // Visible for testing only, via HtmlTestingPeer
   friend class HtmlTestingPeer;

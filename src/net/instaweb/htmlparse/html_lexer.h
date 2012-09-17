@@ -76,6 +76,13 @@ class HtmlLexer {
   // type and any HTML directives encountered so far).
   const DocType& doctype() const { return doctype_; }
 
+  // Sets the limit on the maximum number of bytes that should be parsed.
+  void set_size_limit(int64 x) { size_limit_ = x; }
+
+  // Indicates whether we have exceeded the limit on the maximum number of bytes
+  // that we should parse.
+  bool size_limit_exceeded() const { return size_limit_exceeded_; }
+
  private:
   // Most of these routines expect c to be the last character of literal_
   inline void EvalStart(char c);
@@ -140,8 +147,7 @@ class HtmlLexer {
   HtmlElement* PopElementMatchingTag(const StringPiece& tag);
 
   HtmlElement* PopElement();
-  void CloseElement(HtmlElement* element, HtmlElement::CloseStyle close_style,
-                    int line_nubmer);
+  void CloseElement(HtmlElement* element, HtmlElement::CloseStyle close_style);
 
   // Minimal i18n analysis.  With utf-8 and gb2312 we can do this
   // context-free, and thus the method can be static.  If we add
@@ -213,6 +219,15 @@ class HtmlLexer {
   DocType doctype_;
 
   std::vector<HtmlElement*> element_stack_;
+
+  // Indicates that we have exceeded the enforced size limit on the maximum
+  // number of input HTML that we can parse.
+  bool size_limit_exceeded_;
+  // Whether we should skip parsing of all subsequent bytes. HtmlParse calls
+  // this once it has started or ended an HtmlElement.
+  bool skip_parsing_;
+  int64 num_bytes_parsed_;
+  int64 size_limit_;
 
   DISALLOW_COPY_AND_ASSIGN(HtmlLexer);
 };
