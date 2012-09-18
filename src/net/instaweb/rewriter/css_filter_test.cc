@@ -51,6 +51,7 @@ const char kOutputStyle[] =
     ".background_blue{background-color:red}"
     ".foreground_yellow{color:#ff0}";
 const char kPuzzleJpgFile[] = "Puzzle.jpg";
+const char kBikePngFile[] = "BikeCrashIcn.png";
 
 class CssFilterTest : public CssRewriteTestBase {
  protected:
@@ -1202,6 +1203,63 @@ TEST_F(CssFilterTest, WebpRewriting) {
                        kContentTypeJpeg, 100);
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->set_image_jpeg_recompress_quality(85);
+  server_context()->ComputeSignature(options());
+  rewrite_driver()->set_user_agent("webp");
+
+  SetResponseWithDefaultHeaders("foo.css", kContentTypeCss, css_input, 100);
+  Parse("webp", CssLinkHref("foo.css"));
+  // Check for CSS files in the rewritten page.
+  StringVector css_urls;
+  CollectCssLinks("collect", output_buffer_, &css_urls);
+  ASSERT_EQ(1, css_urls.size());
+  EXPECT_EQ("http://test.com/W.foo.css.pagespeed.cf.0.css", css_urls[0]);
+
+  // Check the content of the CSS file.
+  GoogleString actual_output;
+  EXPECT_TRUE(FetchResourceUrl(css_urls[0], &actual_output));
+  EXPECT_STREQ(css_output, actual_output);
+}
+
+TEST_F(CssFilterTest, NoWebpRewritingFromJpgIfDisabled) {
+  const char css_input[] = "body{background:url(a.jpg)}";
+  const char css_output[] =
+      "body{background:url(http://test.com/xa.jpg.pagespeed.ic.0.jpg)}";
+  AddFileToMockFetcher(StrCat(kTestDomain, "a.jpg"), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+  options()->ClearSignatureForTesting();
+  options()->DisableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->set_image_jpeg_recompress_quality(85);
+  server_context()->ComputeSignature(options());
+  rewrite_driver()->set_user_agent("webp");
+
+  SetResponseWithDefaultHeaders("foo.css", kContentTypeCss, css_input, 100);
+  Parse("webp", CssLinkHref("foo.css"));
+  // Check for CSS files in the rewritten page.
+  StringVector css_urls;
+  CollectCssLinks("collect", output_buffer_, &css_urls);
+  ASSERT_EQ(1, css_urls.size());
+  EXPECT_EQ("http://test.com/W.foo.css.pagespeed.cf.0.css", css_urls[0]);
+
+  // Check the content of the CSS file.
+  GoogleString actual_output;
+  EXPECT_TRUE(FetchResourceUrl(css_urls[0], &actual_output));
+  EXPECT_STREQ(css_output, actual_output);
+}
+
+TEST_F(CssFilterTest, NoWebpRewritingFromPngIfDisabled) {
+  const char css_input[] = "body{background:url(a.png)}";
+  const char css_output[] =
+      "body{background:url(http://test.com/xa.png.pagespeed.ic.0.png)}";
+  AddFileToMockFetcher(StrCat(kTestDomain, "a.png"), kBikePngFile,
+                       kContentTypePng, 100);
+  options()->ClearSignatureForTesting();
+  options()->DisableFilter(RewriteOptions::kConvertPngToJpeg);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
   server_context()->ComputeSignature(options());

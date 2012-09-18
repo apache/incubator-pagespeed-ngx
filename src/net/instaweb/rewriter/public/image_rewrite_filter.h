@@ -175,6 +175,9 @@ class ImageRewriteFilter : public RewriteFilter {
   // true if a PropertyValue was written.
   bool StoreUrlInPropertyCache(const StringPiece& url);
 
+  // Set attempt_webp in resource_context.
+  void SetAttemptWebp(StringPiece url, ResourceContext* resource_context);
+
   scoped_ptr<WorkBound> work_bound_;
 
   // Statistics

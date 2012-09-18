@@ -603,22 +603,8 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     GetDimensions(element, resource_context->mutable_desired_image_dims());
   }
   StringPiece url(src->DecodedValueOrNull());
-  if (options->Enabled(RewriteOptions::kConvertJpegToWebp) &&
-      driver_->UserAgentSupportsWebp() &&
-      (options->Enabled(RewriteOptions::kConvertPngToJpeg) ||
-       !(url.ends_with(".png") || url.ends_with(".gif")))) {
-    // Note that we guess content type based on extension above. This avoids
-    // the common case where we rewrite a .png twice, once for webp capable
-    // browsers and once for non-webp browsers, even though neither rewrite uses
-    // webp code paths at all. We only consider webp as a candidate image
-    // format if we might have a jpg.
-    // TODO(jmaessen): if we instead set up the ResourceContext mapping
-    // explicitly from within the filter, we can imagine doing so after we know
-    // the content type of the image. But that involves throwing away quite a
-    // bit of the plumbing that is otherwise provided for us by
-    // SingleRewriteContext.
-    resource_context->set_attempt_webp(true);
-  }
+  SetAttemptWebp(url, resource_context.get());
+
   if (options->NeedLowResImages() &&
       options->Enabled(RewriteOptions::kResizeMobileImages) &&
       driver_->IsMobileUserAgent()) {
@@ -644,6 +630,28 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
     context->AddSlot(slot);
     driver_->InitiateRewrite(context);
+  }
+}
+
+void ImageRewriteFilter::SetAttemptWebp(StringPiece url,
+                                        ResourceContext* resource_context) {
+  const RewriteOptions* options = driver_->options();
+  resource_context->set_attempt_webp(false);
+  if (options->Enabled(RewriteOptions::kConvertJpegToWebp) &&
+      driver_->UserAgentSupportsWebp() &&
+      (options->Enabled(RewriteOptions::kConvertPngToJpeg) ||
+       !(url.ends_with(".png") || url.ends_with(".gif")))) {
+    // Note that we guess content type based on extension above. This avoids
+    // the common case where we rewrite a .png twice, once for webp capable
+    // browsers and once for non-webp browsers, even though neither rewrite uses
+    // webp code paths at all. We only consider webp as a candidate image
+    // format if we might have a jpg.
+    // TODO(jmaessen): if we instead set up the ResourceContext mapping
+    // explicitly from within the filter, we can imagine doing so after we know
+    // the content type of the image. But that involves throwing away quite a
+    // bit of the plumbing that is otherwise provided for us by
+    // SingleRewriteContext.
+    resource_context->set_attempt_webp(true);
   }
 }
 
@@ -1068,6 +1076,13 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
   const ResourceContext* parent_context = parent->resource_context();
   if (parent_context != NULL) {
     cloned_context->CopyFrom(*parent_context);
+  }
+  if (cloned_context->attempt_webp()) {
+    // CopyFrom parent_context is not sufficient because parent_context checks
+    // only UserAgentSupportsWebp while setting attempt_webp but while
+    // rewriting the image, rewrite options should also be checked.
+    GoogleString url = slot->resource()->url();
+    SetAttemptWebp(url.c_str(), cloned_context);
   }
   Context* context = new Context(css_image_inline_max_bytes,
                                  this, NULL /* driver*/, parent,
