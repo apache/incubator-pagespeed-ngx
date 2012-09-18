@@ -183,6 +183,50 @@ class ParserTest : public testing::Test {
     EXPECT_TRUE(found_x);
     EXPECT_TRUE(found_y);
   }
+
+  enum MethodToTest {
+    PARSE_STYLESHEET,
+    PARSE_CHARSET,
+    EXTRACT_CHARSET,
+  };
+
+  void TrapEOF(StringPiece contents) {
+    TrapEOF(contents, PARSE_STYLESHEET);
+  }
+  void TrapEOF(StringPiece contents, MethodToTest method) {
+    int size = contents.size();
+    if (size == 0) {
+      // new char[0] doesn't seem to work correctly with ASAN (maybe it gets
+      // optimized out?) So we use NULL, which shouldn't be dereferenced.
+      StringPiece copy_contents(NULL, 0);
+      TryParse(copy_contents, method);
+    } else {
+      // We copy the data region of contents into  it's own buffer which is
+      // not NULL-terminated. Therefore a single check past the end of the
+      // buffer will be a buffer overflow.
+      char* copy = new char[size];
+      memcpy(copy, contents.data(), size);
+      StringPiece copy_contents(copy, size);
+      TryParse(copy_contents, method);
+      delete [] copy;
+    }
+  }
+
+  void TryParse(StringPiece contents, MethodToTest method) {
+    Parser parser(contents);
+    switch (method) {
+      case PARSE_STYLESHEET:
+        delete parser.ParseStylesheet();
+        EXPECT_NE(Parser::kNoError, parser.errors_seen_mask());
+        break;
+      case PARSE_CHARSET:
+        parser.ParseCharset();
+        break;
+      case EXTRACT_CHARSET:
+        parser.ExtractCharset();
+        break;
+    }
+  }
 };
 
 
@@ -1973,6 +2017,36 @@ TEST_F(ParserTest, UnexpectedAtRule) {
             "@media screen { .bar {height: 2px} }\n"
             "@media screen { .baz {height: 4px} }\n"
             ".foo {width: 1px}\n", stylesheet->ToString());
+}
+
+// Make sure parser does not overflow buffers when file ends abruptly.
+// Note: You must test with --config=asan for these tests to detect overflows.
+TEST_F(ParserTest, EOFMedia) {
+  TrapEOF("@media");
+  TrapEOF("@media ");
+  TrapEOF("@media (");
+  TrapEOF("@media ( ");
+  TrapEOF("@media (size");
+  TrapEOF("@media (size ");
+  TrapEOF("@media (size:");
+  TrapEOF("@media (size: ");
+  TrapEOF("@media (size: foo");
+  TrapEOF("@media (size: foo ");
+  TrapEOF("@media (size: foo)");
+  TrapEOF("@media (size: foo) ");
+  TrapEOF("@media ( size : foo ) ");
+}
+
+TEST_F(ParserTest, EOFOther) {
+  TrapEOF(".a { margin: 5");
+  TrapEOF(".a { margin: 5.5");
+  TrapEOF(".a { color: rgb");
+  TrapEOF(".a { color: rgb(80, 80, 80");
+  TrapEOF(".a[");
+
+  TrapEOF("", EXTRACT_CHARSET);
+  TrapEOF("", PARSE_CHARSET);
+  TrapEOF("'foo'", PARSE_CHARSET);
 }
 
 }  // namespace

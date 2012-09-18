@@ -66,7 +66,7 @@ static inline bool IsAscii(char c) {
 
 class Tracer {  // in opt mode, do nothing.
  public:
-  Tracer(const char* name, const char** in) { }
+  Tracer(const char* name, const Parser* parser) { }
 };
 
 
@@ -123,6 +123,9 @@ void Parser::ReportParsingError(uint64 error_flag,
                                              static_cast<int64>(in_ - begin_));
   const char* context_end = in_ + std::min(static_cast<int64>(kErrorContext),
                                            static_cast<int64>(end_ - in_));
+  CHECK_LE(begin_, context_begin);
+  CHECK_LE(context_begin, context_end);
+  CHECK_LE(context_end, end_);
   string context(context_begin, context_end - context_begin);
   string full_message = StringPrintf(
       "%s at byte %d \"...%s...\"",
@@ -177,7 +180,7 @@ static int DeHex(char c) {
 
 // consume whitespace and comments.
 void Parser::SkipSpace() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
   while (in_ < end_) {
     if (IsSpace(*in_))
       in_++;
@@ -259,7 +262,7 @@ bool Parser::SkipPastDelimiterWithMatching(char delim) {
 
 // returns true if there might be a token to read
 bool Parser::SkipToNextAny() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   while (in_ < end_) {
@@ -314,7 +317,7 @@ static bool StartsIdent(char c) {
 }
 
 UnicodeText Parser::ParseIdent(const StringPiece& allowed_chars) {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
   UnicodeText s;
   while (in_ < end_) {
     if ((*in_ >= 'A' && *in_ <= 'Z')
@@ -351,7 +354,7 @@ UnicodeText Parser::ParseIdent(const StringPiece& allowed_chars) {
 // \abcdef => codepoint 0xabcdef.  also consumes whitespace afterwards.
 // \(UTF8-encoded unicode character) => codepoint for that character
 char32 Parser::ParseEscape() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
   SkipSpace();
   DCHECK_LT(in_, end_);
   DCHECK_EQ(*in_, '\\');
@@ -402,7 +405,7 @@ char32 Parser::ParseEscape() {
 // Starts at delim.
 template<char delim>
 UnicodeText Parser::ParseString() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   DCHECK_LT(in_, end_);
@@ -448,7 +451,7 @@ UnicodeText Parser::ParseString() {
 
 // parse ident or 'string'
 UnicodeText Parser::ParseStringOrIdent() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return UnicodeText();
@@ -465,22 +468,22 @@ UnicodeText Parser::ParseStringOrIdent() {
 
 // Parse a CSS number, including unit or percent sign.
 Value* Parser::ParseNumber() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return NULL;
   DCHECK_LT(in_, end_);
 
   const char* begin = in_;
-  if (in_ < end_ && (*in_ == '-' || *in_ == '+'))  // sign
+  if (!Done() && (*in_ == '-' || *in_ == '+'))  // sign
     in_++;
-  while (in_ < end_ && isdigit(*in_)) {
+  while (!Done() && isdigit(*in_)) {
     in_++;
   }
-  if (*in_ == '.') {
+  if (!Done() && *in_ == '.') {
     in_++;
 
-    while (in_ < end_ && isdigit(*in_)) {
+    while (!Done() && isdigit(*in_)) {
       in_++;
     }
   }
@@ -490,7 +493,9 @@ Value* Parser::ParseNumber() {
         "Failed to parse number %s", string(begin, in_ - begin).c_str()));
     return NULL;
   }
-  if (*in_ == '%') {
+  if (Done()) {
+    return new Value(num, Value::NO_UNIT);
+  } else if (*in_ == '%') {
     in_++;
     return new Value(num, Value::PERCENT);
   } else if (StartsIdent(*in_)) {
@@ -501,7 +506,7 @@ Value* Parser::ParseNumber() {
 }
 
 HtmlColor Parser::ParseColor() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return HtmlColor("", 0);
@@ -566,6 +571,7 @@ HtmlColor Parser::ParseColor() {
     // A named color must not begin with #, but we need to parse it anyway and
     // report failure later.
     bool name_valid = true;
+    DCHECK(!Done());
     if (*in_ == '#') {
       in_++;
       name_valid = false;
@@ -587,7 +593,7 @@ HtmlColor Parser::ParseColor() {
 //
 // Both commas and spaces are allowed as separators and are remembered.
 FunctionParameters* Parser::ParseFunction() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
   scoped_ptr<FunctionParameters> params(new FunctionParameters);
 
   SkipSpace();
@@ -664,7 +670,7 @@ unsigned char Parser::ValueToRGB(Value* v) {
 // parse RGB color 25, 32, 12 or 25%, 1%, 7%.
 // stops without consuming final right-paren
 Value* Parser::ParseRgbColor() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return NULL;
@@ -697,7 +703,7 @@ Value* Parser::ParseRgbColor() {
 // parse url yellow.png or 'yellow.png'
 // (doesn't consume subsequent right-paren).
 Value* Parser::ParseUrl() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return NULL;
@@ -720,6 +726,7 @@ Value* Parser::ParseUrl() {
         if (len && rune != Runeerror) {
           s.push_back(rune);
           in_ += len;
+          DCHECK(!Done());
         } else {
           ReportParsingError(kUtf8Error, "UTF8 parsing error in URL");
           in_++;
@@ -738,7 +745,7 @@ Value* Parser::ParseUrl() {
 }
 
 Value* Parser::ParseAnyExpectingColor(const StringPiece& allowed_chars) {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
   Value* toret = NULL;
 
   SkipSpace();
@@ -758,7 +765,7 @@ Value* Parser::ParseAnyExpectingColor(const StringPiece& allowed_chars) {
 
 // Parses a CSS value.  Could be just about anything.
 Value* Parser::ParseAny(const StringPiece& allowed_chars) {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
   Value* toret = NULL;
 
   SkipSpace();
@@ -817,7 +824,7 @@ Value* Parser::ParseAny(const StringPiece& allowed_chars) {
       UnicodeText id = ParseIdent(allowed_chars);
       if (id.empty()) {
         toret = NULL;
-      } else if (*in_ == '(') {
+      } else if (!Done() && *in_ == '(') {
         in_++;
         if (StringCaseEquals(id, "url")) {
           toret = ParseUrl();
@@ -842,7 +849,7 @@ Value* Parser::ParseAny(const StringPiece& allowed_chars) {
           }
         }
         SkipSpace();
-        if (*in_ != ')') {
+        if (!Done() && *in_ != ')') {
           ReportParsingError(kFunctionError,
                              "Ignored chars at end of function.");
         }
@@ -888,7 +895,7 @@ static bool IsPropExpectingColor(Property::Prop prop) {
 // If you make any change to this function, please also update
 // ParseBackground, ParseFont and ParseFontFamily accordingly.
 Values* Parser::ParseValues(Property::Prop prop) {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return new Values();
@@ -1102,7 +1109,7 @@ bool Parser::ExpandBackground(const Declaration& original_declaration,
 // If you make any change to this function, please also update ParseValues,
 // ParseBackground and ParseFont if applicable.
 bool Parser::ParseFontFamily(Values* values) {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return true;
@@ -1110,6 +1117,7 @@ bool Parser::ParseFontFamily(Values* values) {
 
   UnicodeText family;
   while (SkipToNextAny()) {
+    DCHECK(!Done());
     if (*in_ == ',') {
       if (!family.empty()) {
         values->push_back(new Value(Identifier(family)));
@@ -1154,7 +1162,7 @@ bool Parser::ParseFontFamily(Values* values) {
 // If you make any change to this function, please also update ParseValues,
 // ParseBackground and ParseFontFamily if applicable.
 Values* Parser::ParseFont() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return NULL;
@@ -1392,7 +1400,7 @@ static void ExpandShorthandProperties(Declarations* declarations,
 
 // Parse declarations like "background: white; color: #333; line-height: 1.3;"
 Declarations* Parser::ParseRawDeclarations() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return new Declarations();
@@ -1568,7 +1576,7 @@ Declarations* Parser::ParseDeclarations() {
 // in [ foo ~= bar ].
 // Whitespace is not skipped at beginning or the end.
 SimpleSelector* Parser::ParseAttributeSelector() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   DCHECK_LT(in_, end_);
   DCHECK_EQ('[', *in_);
@@ -1606,7 +1614,7 @@ SimpleSelector* Parser::ParseAttributeSelector() {
     }
   }
   SkipSpace();
-  if (*in_ != ']') {
+  if (!Done() && *in_ != ']') {
     ReportParsingError(kSelectorError, "Ignoring chars in attribute selector.");
   }
   if (SkipPastDelimiter(']'))
@@ -1616,7 +1624,7 @@ SimpleSelector* Parser::ParseAttributeSelector() {
 }
 
 SimpleSelector* Parser::ParseSimpleSelector() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   if (Done()) return NULL;
   DCHECK_LT(in_, end_);
@@ -1644,7 +1652,7 @@ SimpleSelector* Parser::ParseSimpleSelector() {
       // object, so that the original value can be reconstructed.
       //
       // http://www.w3.org/TR/css3-selectors/#pseudo-elements
-      if (*in_ == ':') {
+      if (!Done() && *in_ == ':') {
         in_++;
         sep.CopyUTF8("::", 2);
       } else {
@@ -1652,7 +1660,7 @@ SimpleSelector* Parser::ParseSimpleSelector() {
       }
       UnicodeText pseudoclass = ParseIdent();
       // FIXME(yian): skip constructs "(en)" in lang(en) for now.
-      if (in_ < end_ && *in_ == '(') {
+      if (!Done() && *in_ == '(') {
         ReportParsingError(kSelectorError,
                            "Cannot parse parameters for pseudoclass.");
         in_++;
@@ -1701,7 +1709,7 @@ bool Parser::AtValidSimpleSelectorsTerminator() const {
 }
 
 SimpleSelectors* Parser::ParseSimpleSelectors(bool expecting_combinator) {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return NULL;
@@ -1746,7 +1754,7 @@ SimpleSelectors* Parser::ParseSimpleSelectors(bool expecting_combinator) {
 }
 
 Selectors* Parser::ParseSelectors() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return NULL;
@@ -1787,6 +1795,7 @@ Selectors* Parser::ParseSelectors() {
         if (!simple_selectors) {
           success = false;
           if (in_ == oldin) {
+            DCHECK(!Done());
             ReportParsingError(kSelectorError, StringPrintf(
                 "Could not parse selector: illegal char %c", *in_));
             in_++;
@@ -1812,7 +1821,7 @@ Selectors* Parser::ParseSelectors() {
 }
 
 Import* Parser::ParseNextImport() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return NULL;
@@ -1835,7 +1844,7 @@ Import* Parser::ParseNextImport() {
 }
 
 Import* Parser::ParseAsSingleImport() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   Import* import = ParseNextImport();
   if (import == NULL || Done()) return import;
@@ -1846,10 +1855,10 @@ Import* Parser::ParseAsSingleImport() {
 }
 
 UnicodeText Parser::ExtractCharset() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   UnicodeText result;
-  if (*in_ == '@') {
+  if (!Done() && *in_ == '@') {
     ++in_;
     UnicodeText ident = ParseIdent();
     if (StringCaseEquals(ident, "charset")) {
@@ -1860,10 +1869,16 @@ UnicodeText Parser::ExtractCharset() {
 }
 
 UnicodeText Parser::ParseCharset() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   UnicodeText result;
   SkipSpace();
+
+  if (Done()) {
+    ReportParsingError(kCharsetError, "Unexpected EOF parsing @charset.");
+    return result;
+  }
+
   switch (*in_) {
     case '\'': {
       result = ParseString<'\''>();
@@ -1879,7 +1894,10 @@ UnicodeText Parser::ParseCharset() {
     }
   }
   SkipSpace();
-  if (*in_ != ';') {
+  if (Done()) {
+    ReportParsingError(kCharsetError, "Unexpected EOF parsing @charset.");
+    return result;
+  } else if (*in_ != ';') {
     ReportParsingError(kCharsetError,
                        "Ignoring chars at end of charset declaration.");
   }
@@ -1888,7 +1906,7 @@ UnicodeText Parser::ParseCharset() {
 }
 
 Ruleset* Parser::ParseRuleset() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return NULL;
@@ -1937,12 +1955,13 @@ Ruleset* Parser::ParseRuleset() {
     ruleset->set_selectors(selectors.release());
   }
 
+  DCHECK(!Done());
   DCHECK_EQ('{', *in_);
   in_++;
   ruleset->set_declarations(ParseRawDeclarations());
 
   SkipSpace();
-  if (*in_ != '}') {
+  if (Done() || *in_ != '}') {
     // TODO(sligocki): Can this ever be hit? Add a test that does.
     ReportParsingError(kRulesetError, "Ignored chars at end of ruleset.");
   }
@@ -1955,7 +1974,7 @@ Ruleset* Parser::ParseRuleset() {
 }
 
 MediaQueries* Parser::ParseMediaQueries() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   scoped_ptr<MediaQueries> media_queries(new MediaQueries);
 
@@ -1992,7 +2011,7 @@ MediaQueries* Parser::ParseMediaQueries() {
 }
 
 MediaQuery* Parser::ParseMediaQuery() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
   SkipSpace();
 
   scoped_ptr<MediaQuery> query(new MediaQuery);
@@ -2024,8 +2043,13 @@ MediaQuery* Parser::ParseMediaQuery() {
         break;
       case '(': {  // CSS3 media expression. Ex: (max-width:290px)
         in_++;
+        SkipSpace();
         UnicodeText name = ParseIdent();
         SkipSpace();
+        if (Done()) {
+          ReportParsingError(kMediaError, "Unexpected EOF in media query.");
+          return query.release();
+        }
         switch (*in_) {
           case ')':
             in_++;
@@ -2035,11 +2059,18 @@ MediaQuery* Parser::ParseMediaQuery() {
           case ':': {
             in_++;
             SkipSpace();
+            if (Done()) {
+              ReportParsingError(kMediaError, "Unexpected EOF in media query.");
+              return query.release();
+            }
             const char* begin = in_;
             // TODO(sligocki): Actually parse value?
             if (SkipPastDelimiterWithMatching(')')) {
               const char* end = in_ - 1;
               UnicodeText value;
+              // Note: If SkipPastDelimiterWithMatching() returns true, then
+              // it has always runs ++in_ at the end. So this is safe.
+              CHECK_LE(begin, end);
               value.CopyUTF8(begin, end - begin);
               query->add_expression(new MediaExpression(name, value));
             } else {
@@ -2086,7 +2117,7 @@ MediaQuery* Parser::ParseMediaQuery() {
 
 // Start after @import is parsed.
 Import* Parser::ParseImport() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return NULL;
@@ -2106,7 +2137,7 @@ Import* Parser::ParseImport() {
 }
 
 void Parser::ParseAtRule(Stylesheet* stylesheet) {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   DCHECK_LT(in_, end_);
@@ -2150,6 +2181,7 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
       ReportParsingError(kMediaError, "Malformed @media statement.");
       return;
     }
+    DCHECK(!Done());
     DCHECK_EQ('{', *in_);
     in_++;
     SkipSpace();
@@ -2207,7 +2239,7 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
 //   next semicolon (;), or up to and including the next block ({...}),
 //   whichever comes first.
 void Parser::SkipToAtRuleEnd() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   while (in_ < end_) {
     switch (*in_) {
@@ -2232,7 +2264,7 @@ void Parser::SkipToAtRuleEnd() {
 }
 
 void Parser::SkipBlock() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   ReportParsingError(kBlockError, "Ignoring {} block.");
 
@@ -2269,7 +2301,7 @@ void Parser::SkipBlock() {
 }
 
 Stylesheet* Parser::ParseRawStylesheet() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   SkipSpace();
   if (Done()) return new Stylesheet();
@@ -2322,7 +2354,7 @@ Stylesheet* Parser::ParseRawStylesheet() {
 }
 
 Stylesheet* Parser::ParseStylesheet() {
-  Tracer trace(__func__, &in_);
+  Tracer trace(__func__, this);
 
   Stylesheet* stylesheet = ParseRawStylesheet();
 

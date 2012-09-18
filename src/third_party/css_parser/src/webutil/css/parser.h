@@ -156,7 +156,10 @@ class Parser {
   const char* getpos() const { return in_; }
 
   // Done with the parse?
-  bool Done() const { return in_ == end_; }
+  bool Done() const {
+    DCHECK(in_ <= end_) << "in_ is out of bounds, buffer overflow.";
+    return in_ >= end_;
+  }
 
   // Whether quirks mode (the default) is used in parsing. Standard compliant
   // (non-quirks) mode is stricter in color parsing, where a form of "rrgbbb"
@@ -582,6 +585,7 @@ class Parser {
   // Vector of all errors { error_type_number, location, message }.
   std::vector<ErrorInfo> errors_seen_;
 
+  friend class Tracer;
   friend class ParserTest;  // we need to unit test private Parse functions.
   FRIEND_TEST(ParserTest, color);
   FRIEND_TEST(ParserTest, url);
