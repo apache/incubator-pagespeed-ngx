@@ -302,6 +302,8 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kAddBaseTag:                      return "Add Base Tag";
     case kAddHead:                         return "Add Head";
     case kAddInstrumentation:              return "Add Instrumentation";
+    case kCanonicalizeJavascriptLibraries:
+      return "Canonicalize Javascript library URLs";
     case kCollapseWhitespace:              return "Collapse Whitespace";
     case kCombineCss:                      return "Combine Css";
     case kCombineHeads:                    return "Combine Heads";
@@ -384,6 +386,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kAddBaseTag:                      return "ab";
     case kAddHead:                         return "ah";
     case kAddInstrumentation:              return "ai";
+    case kCanonicalizeJavascriptLibraries: return "ij";
     case kCollapseWhitespace:              return "cw";
     case kCombineCss:                      return kCssCombinerId;
     case kCombineHeads:                    return "ch";
@@ -1477,6 +1480,8 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   file_load_policy_.Merge(src.file_load_policy_);
   allow_resources_.AppendFrom(src.allow_resources_);
   retain_comments_.AppendFrom(src.retain_comments_);
+  javascript_library_identification_.Merge(
+      src.javascript_library_identification_);
   override_caching_wildcard_.AppendFrom(src.override_caching_wildcard_);
 
   // Merge url_cache_invalidation_entries_ so that increasing order of timestamp
@@ -1602,6 +1607,11 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
     if (option->is_used_for_signature_computation() && option->was_set()) {
       StrAppend(&signature_, option->id(), ":", option->Signature(hasher), "_");
     }
+  }
+  if (javascript_library_identification() != NULL) {
+    StrAppend(&signature_, "LI:");
+    javascript_library_identification()->AppendSignature(&signature_);
+    StrAppend(&signature_, "_");
   }
   StrAppend(&signature_, domain_lawyer_.Signature(), "_");
   StrAppend(&signature_, "AR:", allow_resources_.Signature(), "_");

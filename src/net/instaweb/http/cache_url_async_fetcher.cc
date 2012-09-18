@@ -120,9 +120,17 @@ class CachePutFetch : public SharedAsyncFetch {
       // saved headers.
       const char* orig_content_length = extra_response_headers()->Lookup1(
           HttpAttributes::kXOriginalContentLength);
-      if (orig_content_length != NULL) {
-        saved_headers_.Replace(HttpAttributes::kXOriginalContentLength,
-                               orig_content_length);
+      int64 ocl;
+      if (orig_content_length != NULL && StringToInt64(orig_content_length,
+                                                       &ocl)) {
+        if (ocl == 0) {
+          // TODO(mdw): This is temporary in order to track down a bug where
+          // the X-OCL field is being set to zero in some cases (b/7172676).
+          // Remove this once the bug is resolved.
+          LOG(WARNING) << "CachePutFetch::HandleDone setting X-OCL to 0 for "
+                       << url_;
+        }
+        saved_headers_.SetOriginalContentLength(ocl);
       }
       // Finalize the headers.
       cache_value_writer_.SetHeaders(&saved_headers_);

@@ -122,7 +122,6 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -880,7 +879,9 @@ void RewriteDriver::AddPreRenderFilters() {
     // Like MakeGoogleAnalyticsAsync, InsertGA should be before js rewriting.
     AppendOwnedPreRenderFilter(new InsertGAFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kRewriteJavascript)) {
+  if (rewrite_options->Enabled(RewriteOptions::kRewriteJavascript) ||
+      rewrite_options->Enabled(
+          RewriteOptions::kCanonicalizeJavascriptLibraries)) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
     // interaction.
     EnableRewriteFilter(RewriteOptions::kJavascriptMinId);

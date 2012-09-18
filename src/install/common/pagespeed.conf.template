@@ -139,6 +139,30 @@
     # You can turn this off to let mod_pagespeed rename all JS files.
     ModPagespeedAvoidRenamingIntrospectiveJavascript on
 
+    # Certain common JavaScript libraries are available from Google, which acts
+    # as a CDN and allows you to benefit from browser caching if a new visitor
+    # to your site previously visited another site that makes use of the same
+    # libraries as you do.  Enable the following filter to turn on this feature.
+    #
+    # ModPagespeedEnableFilters canonicalize_javascript_libraries
+
+    # The following lines configure libraries that are recognized by
+    # canonicalize_javascript_libraries.  These will have no effect unless you
+    # enable this filter (generally by uncommenting the last line in the
+    # previous stanza).  It simply provides a sensible default configuration
+    # when the filter is switched on.
+    # The format is:
+    #    ModPagespeedLibrary bytes md5 canonical_url
+    # Where bytes and md5 are with respect to the *minified* JS; use
+    # js_minify --print_size_and_hash to obtain this data.
+    # Note that we can register multiple hashes for the same canonical url;
+    # we do this if there are versions available that have already been minified
+    # with more sophisticated tools.
+    ModPagespeedLibrary 105527 ltVVzzYxo0 //ajax.googleapis.com/ajax/libs/prototype/1.6.1.0/prototype.js
+    ModPagespeedLibrary 92501 J8KF47pYOq //ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js
+    ModPagespeedLibrary 141547 GKjMUuF4PK //ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js
+    ModPagespeedLibrary 43 1o978_K0_L http://www.modpagespeed.com/rewrite_javascript.js
+
     # Explicitly tell mod_pagespeed to load some resources from disk.
     # This will speed up load time and update frequency.
     #

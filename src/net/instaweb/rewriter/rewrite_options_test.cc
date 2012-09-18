@@ -1067,7 +1067,7 @@ TEST_F(RewriteOptionsTest, FuriousSpecTest) {
 
   // Check that we have a maximum size of 26 concurrent experiment specs.
   // Get us up to 26.
-  for(int i = options_.num_furious_experiments(); i < 26 ; i++) {
+  for (int i = options_.num_furious_experiments(); i < 26 ; ++i) {
     int tmp_id = i+100;  // Don't want conflict with experiments added above.
     EXPECT_TRUE(options_.AddFuriousSpec(
         StrCat("id=", IntegerToString(tmp_id),
@@ -1103,7 +1103,7 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   EXPECT_EQ("Experiment: 1", options_.ToExperimentString());
   options_.SetFuriousState(7);
   // This should be all non-dangerous filters.
-  EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,cc,ch,jc,gp,jp,jw,mc,pj,db,di,"
+  EXPECT_EQ("Experiment: 7; ab,ah,ai,ij,cw,cc,ch,jc,gp,jp,jw,mc,pj,db,di,"
             "ea,ec,ei,ep,es,fc,if,fs,hn,hw,ci,ii,il,ji,idp,ig,id,js,tu,ls,"
             "ga,cj,cm,co,jo,pv,rj,rp,rw,rc,rq,ri,rm,cf,rd,jm,cs,cu,is,cp,md,"
             "css:2048,im:2048,js:2048;",

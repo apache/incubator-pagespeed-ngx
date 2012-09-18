@@ -163,6 +163,7 @@ const char kModPagespeedJsOutlineMinBytes[] = "ModPagespeedJsOutlineMinBytes";
 const char kModPagespeedLRUCacheByteLimit[] = "ModPagespeedLRUCacheByteLimit";
 const char kModPagespeedLRUCacheKbPerProcess[] =
     "ModPagespeedLRUCacheKbPerProcess";
+const char* kModPagespeedLibrary = "ModPagespeedLibrary";
 const char kModPagespeedListOutstandingUrlsOnError[] =
     "ModPagespeedListOutstandingUrlsOnError";
 const char kModPagespeedLoadFromFile[] = "ModPagespeedLoadFromFile";
@@ -1469,8 +1470,22 @@ static const char* ParseDirective3(
     } else {
       options->AddUrlValuedAttribute(arg1, arg2, category);
     }
+  } else if (StringCaseEqual(directive, kModPagespeedLibrary)) {
+    // ModPagespeedLibrary bytes md5 canonical_url
+    // Examples:
+    //   ModPagespeedLibrary 43567 5giEj_jl-Ag5G8 http://www.example.com/url.js
+    int64 bytes;
+    if (!StringToInt64(arg1, &bytes) || bytes < 0) {
+      return apr_pstrcat(cmd->pool, directive,
+                         " size must be a positive 64-bit integer", NULL);
+    }
+    if (!options->RegisterLibrary(bytes, arg2, arg3)) {
+      return apr_pstrcat(cmd->pool, directive,
+                         "Format is size md5 url; bad md5 ", arg2,
+                         " or URL ", arg3, NULL);
+    }
   } else {
-    return "Unknown directive.";
+    return apr_pstrcat(cmd->pool, directive, " unknown directive.", NULL);
   }
   return NULL;
 }
@@ -1753,6 +1768,14 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   // All three parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION3(kModPagespeedUrlValuedAttribute,
         "Specify an additional url-valued attribute."),
+  APACHE_CONFIG_DIR_OPTION3(kModPagespeedLibrary,
+        "Specify size, md5, and canonical url for JavaScript library, "
+        "separated by spaces.\n"
+        "These values may be obtained by running:\n"
+        "  js_minify --print_size_and_hash library.js\n"
+        "Yielding an entry like:\n"
+        "  ModPagespeedLibrary 105527 ltVVzzYxo0 "
+        "//ajax.googleapis.com/ajax/libs/1.6.1.0/prototype.js"),
 
   {NULL}
 };

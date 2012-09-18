@@ -18,9 +18,9 @@
         </tr>
     </table>
 
-    <div style="background-color:#EBEFF9; width:100%"><table>
+    <div style="background-color:#EBEFF9; width:100%"><table summary="index">
       <tbody><tr>
-          <td class="menu"><img src="images/pagespeed_logo.png" width=30 height=30 /></td>
+          <td class="menu"><img src="images/pagespeed_logo.png" width=30 height=30 alt="pagespeed logo" /></td>
           <td class="menu"><a
             href="https://developers.google.com/speed/pagespeed/"
             >Google Page Speed Family</a></td>
@@ -65,7 +65,7 @@
       the <span class="inline_code">mod_pagespeed</span> difference!
     </p>
     <table style="width: 100%; border-collapse: collapse; text-color:
-      black;" id="filters">
+      black;" id="filters" summary="filters">
 
 <!-- TODO(jmarantz): re-indent this whole file -->
 
@@ -85,6 +85,27 @@
   </td>
   <td class="after">
     <a href="add_instrumentation.html?ModPagespeed=on&ModPagespeedFilters=add_instrumentation">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr class="filter_row">
+  <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-canonicalize-js">
+      canonicalize_javascript_libraries
+    </a>
+  </td>
+  <td class="desc">
+    Recognizes common JavaScript libraries and redirects each to a canonical URL.
+  </td>
+  <td class="before">
+    <a href="canonicalize_javascript_libraries.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="canonicalize_javascript_libraries.html?ModPagespeed=on&ModPagespeedFilters=canonicalize_javascript_libraries">
       after
     </a>
   </td>
@@ -810,4 +831,4 @@
 
     </table>
   </body>
-<html>
+</html>

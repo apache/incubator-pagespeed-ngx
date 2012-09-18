@@ -28,7 +28,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
-using namespace google;  // NOLINT
+using google::CommandLineFlagInfo;
+using google::GetCommandLineFlagInfo;
 
 // This is used for prefixing file-based locks.
 DEFINE_string(filename_prefix, "/tmp/instaweb/",
@@ -184,6 +185,17 @@ DEFINE_bool(avoid_renaming_introspective_javascript, false,
             "javascript in ways that require changing the URL if we see "
             "introspection in the form of "
             "document.getElementsByTagName('script').");
+
+DEFINE_string(known_libraries, "",
+              "Metadata about known libraries, formatted as bytes md5 url.  "
+              "May contain multiple space-separated entries: "
+              "--known_libraries=\"105527 ltVVzzYxo0 "
+              "//ajax.googleapis.com/ajax/libs/1.6.1.0/prototype.js  "
+              "92501 J8KF47pYOq "
+              "//ajax.googleapis.com/ajax/libs/jquery/1.8.0/jquery.min.js\"  "
+              "Obtain entry data by running "
+              "net/instaweb/rewriter/js_minify --print_size_and_hash "
+              "library.js");
 
 DEFINE_string(experiment_specs, "",
               "A '+'-separated list of experiment_specs. For example "
@@ -530,6 +542,30 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("support_noscript_enabled")) {
     options->set_support_noscript_enabled(FLAGS_support_noscript_enabled);
+  }
+  if (WasExplicitlySet("known_libraries")) {
+    StringPieceVector library_specs;
+    SplitStringPieceToVector(FLAGS_known_libraries, " ", &library_specs, true);
+    int i = 0;
+    for (int max = library_specs.size() - 2; i < max; i += 3) {
+      int64 bytes;
+      if (!StringToInt64(library_specs[i].as_string(), &bytes)) {
+        LOG(ERROR) << "Invalid library size in bytes; skipping: " <<
+            library_specs[i];
+        continue;
+      }
+      const StringPiece& md5 = library_specs[i + 1];
+      const StringPiece& url = library_specs[i + 2];
+      if (!options->RegisterLibrary(bytes, md5, url)) {
+        LOG(ERROR) << "Invalid library md5 or url; skipping: " <<
+            md5 << " " << url;
+      }
+      LOG(INFO) << "Registering library " << bytes << " " <<
+          md5 << " " << url;
+    }
+    for (int max = library_specs.size(); i < max; ++i) {
+      LOG(ERROR) << "Unused library flag " << library_specs[i];
+    }
   }
   if (WasExplicitlySet("experiment_specs")) {
     options->set_running_furious_experiment(true);

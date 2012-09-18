@@ -41,7 +41,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -106,26 +105,30 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     JavascriptCodeBlock code_block(script, config_, input->url(),
                                    message_handler);
     // Consider whether this is a known javascript library.
-    ResourceSlot* output_slot = slot(0).get();
-    if (output_slot->CanDirectSetUrl()) {
-      StringPiece library_url = code_block.ComputeJavascriptLibrary();
-      if (!library_url.empty()) {
-        // We expect canonical urls to be protocol relative, and so we use the
-        // base to provide a protocol when one is missing (while still
-        // permitting absolute canonical urls when they are required).
-        GoogleUrl library_gurl(Driver()->base_url(), library_url);
-        message_handler->Message(
-            kInfo, "Script %s is %s", input->url().c_str(),
-            library_gurl.UncheckedSpec().as_string().c_str());
-        if (library_gurl.is_valid()) {
-          output_slot->DirectSetUrl(library_gurl.Spec());
-          output_slot->set_disable_rendering(true);
-          CachedResult* cached = output->EnsureCachedResultCreated();
-          cached->set_optimizable(true);
-          cached->set_url(library_gurl.Spec().data(),
-                          library_gurl.Spec().size());
-          return kRewriteOk;
-        }
+    StringPiece library_url = code_block.ComputeJavascriptLibrary();
+    if (!library_url.empty()) {
+      // We expect canonical urls to be protocol relative, and so we use the
+      // base to provide a protocol when one is missing (while still permitting
+      // absolute canonical urls when they are required).
+      GoogleUrl library_gurl(Driver()->base_url(), library_url);
+      message_handler->Message(
+          kInfo, "Script %s is %s", input->url().c_str(),
+          library_gurl.UncheckedSpec().as_string().c_str());
+      if (library_gurl.is_valid()) {
+        // We remember the canonical url in the CachedResult in the metadata
+        // cache, but don't actually write any kind of resource corresponding to
+        // the rewritten file (since we don't need it).  This means we'll end up
+        // with a CachedResult with a url() set, but none of the output resource
+        // metadata such as a hash().  We set canonicalize_url to signal the
+        // Render() method below to handle this case.  If necessary logic can
+        // move up to RewriteContext::Propagate(...), but this ought to be
+        // sufficient for a single filter-specific path.
+        CachedResult* cached = output->EnsureCachedResultCreated();
+        cached->set_optimizable(true);
+        cached->set_url(library_gurl.Spec().data(),
+                        library_gurl.Spec().size());
+        cached->set_canonicalize_url(true);
+        return kRewriteOk;
       }
     }
     if (!code_block.ProfitableToRewrite()) {
@@ -170,6 +173,19 @@ class JavascriptFilter::Context : public SingleRewriteContext {
         Driver()->log_record()->LogAppliedRewriter(id());
       }
     }
+    if (num_output_partitions() != 1) {
+      return;
+    }
+    CachedResult* result = output_partition(0);
+    if (result->canonicalize_url()) {
+      // Library url in result->url(), does not need to be created from
+      // OutputResource by output_slot->Render().  Just update the url and
+      // disable the later render step.  This permits us to patch in a library
+      // url that doesn't correspond to the OutputResource naming scheme.
+      ResourceSlot* output_slot = slot(0).get();
+      output_slot->DirectSetUrl(result->url());
+      output_slot->set_disable_rendering(true);
+    }
   }
 
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
@@ -188,9 +204,16 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     MessageHandler* message_handler = resource_manager->message_handler();
     resource_manager->MergeNonCachingResponseHeaders(
         script_resource, script_dest);
+    // Try to preserve original content type to avoid breaking upstream proxies
+    // and the like.
+    const ContentType* content_type = script_resource->type();
+    if (content_type == NULL ||
+        content_type->type() != ContentType::kJavascript) {
+      content_type = &kContentTypeJavascript;
+    }
     if (resource_manager->Write(ResourceVector(1, script_resource),
                                 script_out,
-                                &kContentTypeJavascript,
+                                content_type,
                                 script_resource->charset(),
                                 script_dest.get(),
                                 message_handler)) {
@@ -249,7 +272,7 @@ void JavascriptFilter::InitializeConfig() {
       new JavascriptRewriteConfig(
           driver_->server_context()->statistics(),
           driver_->options()->Enabled(RewriteOptions::kRewriteJavascript),
-          NULL));
+          driver_->options()->javascript_library_identification()));
 }
 
 void JavascriptFilter::RewriteInlineScript() {

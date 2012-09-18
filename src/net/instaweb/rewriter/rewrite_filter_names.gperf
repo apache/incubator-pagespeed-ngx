@@ -30,6 +30,7 @@ struct FilterMap {
 "add_base_tag",                      RewriteOptions::kAddBaseTag
 "add_head",                          RewriteOptions::kAddHead
 "add_instrumentation",               RewriteOptions::kAddInstrumentation
+"canonicalize_javascript_libraries", RewriteOptions::kCanonicalizeJavascriptLibraries
 "collapse_whitespace",               RewriteOptions::kCollapseWhitespace
 "combine_css",                       RewriteOptions::kCombineCss
 "combine_javascript",                RewriteOptions::kCombineJavascript

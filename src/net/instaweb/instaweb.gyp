@@ -21,6 +21,8 @@
     'data2c_out_dir': '<(SHARED_INTERMEDIATE_DIR)/data2c_out/instaweb',
     'data2c_exe':
         '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)instaweb_data2c<(EXECUTABLE_SUFFIX)',
+    'js_minify':
+        '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)js_minify<(EXECUTABLE_SUFFIX)',
     # Setting chromium_code to 1 turns on extra warnings. Also, if the compiler
     # is whitelisted in our common.gypi, those warnings will get treated as
     # errors.
@@ -831,6 +833,23 @@
           '<(DEPTH)',
         ],
       },
+    },
+    {
+      'target_name': 'js_minify',
+      'type': 'executable',
+      'sources': [
+         'rewriter/js_minify_main.cc',
+       ],
+      'dependencies': [
+        'instaweb_util',
+        '<(DEPTH)/third_party/gflags/gflags.gyp:gflags',
+        '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/libpagespeed/src/pagespeed/js/js.gyp:pagespeed_jsminify',
+      ],
+      'include_dirs': [
+        '<(instaweb_root)',
+        '<(DEPTH)',
+      ],
     },
     {
       'target_name': 'instaweb_rewriter_javascript',

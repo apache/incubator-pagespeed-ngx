@@ -33,8 +33,8 @@ namespace net_instaweb {
 // Statistics names
 const char JavascriptRewriteConfig::kBlocksMinified[] =
     "javascript_blocks_minified";
-const char JavascriptRewriteConfig::kLibrariesRedirected[] =
-    "javascript_libraries_redirected";
+const char JavascriptRewriteConfig::kLibrariesIdentified[] =
+    "javascript_libraries_identified";
 const char JavascriptRewriteConfig::kMinificationFailures[] =
     "javascript_minification_failures";
 const char JavascriptRewriteConfig::kTotalBytesSaved[] =
@@ -49,7 +49,7 @@ JavascriptRewriteConfig::JavascriptRewriteConfig(
     : minify_(minify),
       library_identification_(identification) {
   blocks_minified_ = stats->GetVariable(kBlocksMinified);
-  libraries_redirected_ = stats->GetVariable(kLibrariesRedirected);
+  libraries_identified_ = stats->GetVariable(kLibrariesIdentified);
   minification_failures_ = stats->GetVariable(kMinificationFailures);
   total_bytes_saved_ = stats->GetVariable(kTotalBytesSaved);
   total_original_bytes_ = stats->GetVariable(kTotalOriginalBytes);
@@ -58,7 +58,7 @@ JavascriptRewriteConfig::JavascriptRewriteConfig(
 
 void JavascriptRewriteConfig::InitStats(Statistics* statistics) {
   statistics->AddVariable(kBlocksMinified);
-  statistics->AddVariable(kLibrariesRedirected);
+  statistics->AddVariable(kLibrariesIdentified);
   statistics->AddVariable(kMinificationFailures);
   statistics->AddVariable(kTotalBytesSaved);
   statistics->AddVariable(kTotalOriginalBytes);
@@ -94,7 +94,7 @@ StringPiece JavascriptCodeBlock::ComputeJavascriptLibrary() {
   }
   StringPiece result = library_identification->Find(rewritten_code_);
   if (!result.empty()) {
-    config_->libraries_redirected()->Add(1);
+    config_->libraries_identified()->Add(1);
   }
   return result;
 }

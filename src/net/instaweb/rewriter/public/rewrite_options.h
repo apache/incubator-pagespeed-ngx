@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/fast_wildcard_group.h"
 #include "net/instaweb/util/public/gtest_prod.h"
@@ -72,6 +73,7 @@ class RewriteOptions {
     kAddBaseTag,  // Update kFirstFilter if you add something before this.
     kAddHead,
     kAddInstrumentation,
+    kCanonicalizeJavascriptLibraries,
     kCollapseWhitespace,
     kCombineCss,
     kCombineHeads,
@@ -752,6 +754,24 @@ class RewriteOptions {
       return 0;
     } else {
       return url_valued_attributes_->size();
+    }
+  }
+
+  // Store size, md5 hash and canonical url for library recognition.
+  bool RegisterLibrary(
+      uint64 bytes, StringPiece md5_hash, StringPiece canonical_url) {
+    return javascript_library_identification_.RegisterLibrary(
+        bytes, md5_hash, canonical_url);
+  }
+
+  // Return the javascript_library_identification_ object that applies to
+  // the current configuration (NULL if identification is disabled).
+  const JavascriptLibraryIdentification* javascript_library_identification()
+      const {
+    if (Enabled(kCanonicalizeJavascriptLibraries)) {
+      return &javascript_library_identification_;
+    } else {
+      return NULL;
     }
   }
 
@@ -2448,6 +2468,8 @@ class RewriteOptions {
   // If this is non-NULL it tells us additional attributes that should be
   // interpreted as containing urls.
   scoped_ptr<std::vector<ElementAttributeCategory> > url_valued_attributes_;
+
+  JavascriptLibraryIdentification javascript_library_identification_;
 
   DomainLawyer domain_lawyer_;
   FileLoadPolicy file_load_policy_;

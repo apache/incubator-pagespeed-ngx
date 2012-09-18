@@ -55,7 +55,7 @@ class JavascriptRewriteConfig {
   }
 
   Variable* blocks_minified() { return blocks_minified_; }
-  Variable* libraries_redirected() { return libraries_redirected_; }
+  Variable* libraries_identified() { return libraries_identified_; }
   Variable* minification_failures() { return minification_failures_; }
   Variable* total_bytes_saved() { return total_bytes_saved_; }
   Variable* total_original_bytes() { return total_original_bytes_; }
@@ -63,7 +63,7 @@ class JavascriptRewriteConfig {
 
   // Statistics names.
   static const char kBlocksMinified[];
-  static const char kLibrariesRedirected[];
+  static const char kLibrariesIdentified[];
   static const char kMinificationFailures[];
   static const char kTotalBytesSaved[];
   static const char kTotalOriginalBytes[];
@@ -77,8 +77,8 @@ class JavascriptRewriteConfig {
   // Statistics
   // # of JS blocks (JS files and <script> blocks) successfully minified.
   Variable* blocks_minified_;
-  // # of JS blocks that were redirected to a known URL.
-  Variable* libraries_redirected_;
+  // # of JS blocks that were identified as redirectable a known URL.
+  Variable* libraries_identified_;
   // # of JS blocks we failed to minify.
   Variable* minification_failures_;
   // Sum of all bytes saved from minifying JS.

@@ -1,0 +1,17 @@
+<!doctype html>
+<html>
+  <head>
+    <title>canonicalize_javascript_libraries example</title>
+    <script>var state = 0;</script>
+  </head>
+  <body>
+    <p>
+      Expected: External 0
+    <p>
+      Actual:
+      <script src="rewrite_javascript.js"></script>
+    <p>
+      The script tag above refers to the a local script using a relative url.
+      We rewrite the local script to point to the copy on www.modpagespeed.com.
+  </body>
+</html>
