@@ -369,8 +369,7 @@ typedef void (ApacheResourceManager::*AddTimeFn)(int64 delta);
 
 class ScopedTimer {
  public:
-  explicit ScopedTimer(ApacheResourceManager* manager,
-                       AddTimeFn add_time_fn)
+  ScopedTimer(ApacheResourceManager* manager, AddTimeFn add_time_fn)
       : manager_(manager),
         add_time_fn_(add_time_fn),
         start_time_us_(timer_.NowUs()) {
@@ -794,8 +793,14 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
         GoogleString file_cache_path = config->file_cache_path();
         if (file_cache_path.empty()) {
           manager->message_handler()->Message(
-              kError, "mod_pagespeed is enabled. %s must not be empty\n",
-              kModPagespeedFileCachePath);
+              kError, "mod_pagespeed is enabled. %s must not be empty:"
+              " defn_name=%s"
+              " defn_line_number=%d"
+              " server_hostname=%s"
+              " port=%d",
+              kModPagespeedFileCachePath,
+              server->defn_name, server->defn_line_number,
+              server->server_hostname, server->port);
           return HTTP_INTERNAL_SERVER_ERROR;
         }
       }

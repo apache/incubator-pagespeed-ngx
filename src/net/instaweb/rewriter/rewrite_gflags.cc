@@ -243,6 +243,9 @@ DEFINE_int64(
     net_instaweb::RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs,
     "Time after which we should try to detect if publisher html has changed");
 
+DEFINE_bool(propagate_blink_cache_deletes, false,
+            "Enable publishing of cache deletion events for blink.");
+
 DEFINE_bool(enable_blink_html_change_detection_logging, false,
             "If enabled, html change detection is applied to all blink sites"
             " and the results are logged. Critical line recomputation is not"
@@ -456,6 +459,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_blink_html_change_detection_logging")) {
     options->set_enable_blink_html_change_detection_logging(
         FLAGS_enable_blink_html_change_detection_logging);
+  }
+  if (WasExplicitlySet("propagate_blink_cache_deletes")) {
+    options->set_propagate_blink_cache_deletes(
+        FLAGS_propagate_blink_cache_deletes);
   }
   if (WasExplicitlySet("max_image_bytes_for_webp_in_css")) {
     options->set_max_image_bytes_for_webp_in_css(

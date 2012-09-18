@@ -77,8 +77,16 @@ message BlinkInfo {
   optional bool html_smart_diff_match = 6;
 }
 
+// This proto stores information related to metadata cache lookups.
+// Next id for MetadataCacheInfo: 4
+message MetadataCacheInfo {
+  optional int32 num_hits = 1;
+  optional int32 num_revalidates = 2;
+  optional int32 num_misses = 3;
+}
+
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 3
+// Next id for LoggingInfo: 5
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -87,4 +95,6 @@ message LoggingInfo {
   optional BlinkInfo blink_info = 2;
   // Sorted list of applied rewriter ids separated by comma.
   optional string applied_rewriters = 3;
+  // Metadata cache info.
+  optional MetadataCacheInfo metadata_cache_info = 4;
 }

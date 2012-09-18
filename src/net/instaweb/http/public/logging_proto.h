@@ -20,8 +20,9 @@
 
 namespace net_instaweb {
 
-class LoggingInfo;
 class BlinkInfo;
+class LoggingInfo;
+class MetadataCacheInfo;
 class TimingInfo;
 
 }

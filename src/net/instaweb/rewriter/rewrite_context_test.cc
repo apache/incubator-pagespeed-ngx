@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -639,7 +640,8 @@ class CombiningFilter : public RewriteFilter {
 class RewriteContextTest : public RewriteTestBase {
  protected:
   RewriteContextTest() : trim_filter_(NULL), other_trim_filter_(NULL),
-                         combining_filter_(NULL), nested_filter_(NULL) {}
+                         combining_filter_(NULL), nested_filter_(NULL),
+                         logging_info_(log_record_.logging_info()) {}
   virtual ~RewriteContextTest() {}
 
   virtual void SetUp() {
@@ -813,12 +815,15 @@ class RewriteContextTest : public RewriteTestBase {
     if (nested_filter_ != NULL) {
       nested_filter_->ClearStats();
     }
+    log_record_.logging_info()->Clear();
   }
 
   TrimWhitespaceRewriter* trim_filter_;
   TrimWhitespaceRewriter* other_trim_filter_;
   CombiningFilter* combining_filter_;
   NestedFilter* nested_filter_;
+  LogRecord log_record_;
+  const LoggingInfo* logging_info_;
 };
 
 TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
@@ -834,23 +839,31 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   GoogleString input_html(CssLinkHref("a.css"));
   GoogleString output_html(CssLinkHref(
       Encode(kTestDomain, "tw", "0", "a.css", "css")));
+  rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("trimmable", input_html, output_html);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());  // 2 because it's kOnTheFlyResource
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_hits());
   ClearStats();
 
   // The second time we request this URL, we should find no additional
   // cache inserts or fetches.  The rewrite should complete using a
   // single cache hit for the metadata.  No cache misses will occur.
+  rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("trimmable", input_html, output_html);
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_hits());
   ClearStats();
 
   // The third time we request this URL, we've advanced time so that the origin
@@ -859,22 +872,30 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   // miss, but we'll re-insert.  We won't need to do any more rewrites because
   // the data did not actually change.
   mock_timer()->AdvanceMs(2 * kOriginTtlMs);
+  rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("trimmable", input_html, output_html);
   EXPECT_EQ(2, lru_cache()->num_hits());     // 1 expired hit, 1 valid hit.
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());  // re-inserts after expiration.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, http_cache()->cache_expirations()->Get());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_misses());
+  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_hits());
   ClearStats();
 
   // The fourth time we request this URL, the cache is in good shape despite
   // the expired date header from the origin.
+  rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("trimmable", input_html, output_html);
   EXPECT_EQ(1, lru_cache()->num_hits());     // 1 expired hit, 1 valid hit.
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());  // re-inserts after expiration.
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_hits());
   ClearStats();
 }
 

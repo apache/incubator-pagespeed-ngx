@@ -47,6 +47,7 @@ struct OptionName {
 "EnableBlinkHtmlChangeDetectionLogging", RewriteOptions::kEnableBlinkHtmlChangeDetectionLogging
 "EnableDeferJsExperimental",             RewriteOptions::kEnableDeferJsExperimental
 "EnableFlushSubresourcesExperimental",   RewriteOptions::kEnableFlushSubresourcesExperimental
+"EnableLazyloadInBlink",                 RewriteOptions::kEnableLazyloadInBlink
 "EnableRewriting",                       RewriteOptions::kEnabled
 "ExperimentSlot",                        RewriteOptions::kFuriousSlot
 "FlushBufferLimitBytes",                 RewriteOptions::kFlushBufferLimitBytes
@@ -89,6 +90,7 @@ struct OptionName {
 "OverrideCachingTtlMs",                  RewriteOptions::kOverrideCachingTtlMs
 "OverrideIeDocumentMode",                RewriteOptions::kOverrideIeDocumentMode
 "ProgressiveJpegMinBytes",               RewriteOptions::kProgressiveJpegMinBytes
+"PropagateBlinkCacheDeletes",            RewriteOptions::kPropagateBlinkCacheDeletes
 "RejectBlacklisted",                     RewriteOptions::kRejectBlacklisted
 "RejectBlacklistedStatusCode",           RewriteOptions::kRejectBlacklistedStatusCode
 "ReportUnloadTime",                      RewriteOptions::kReportUnloadTime

@@ -635,7 +635,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(107, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(109, RewriteOptions::kEndOfOptions);
   EXPECT_EQ(StringPiece("AjaxRewritingEnabled"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kAjaxRewritingEnabled));
@@ -690,6 +690,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("DomainShardCount"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kDomainShardCount));
+  EXPECT_EQ(StringPiece("PropagateBlinkCacheDeletes"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kPropagateBlinkCacheDeletes));
   EXPECT_EQ(StringPiece("EnableBlinkCriticalLine"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kEnableBlinkCriticalLine));
@@ -708,6 +711,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_EQ(StringPiece("EnableFlushSubresourcesExperimental"),
             RewriteOptions::LookupOptionEnum(
                 RewriteOptions::kEnableFlushSubresourcesExperimental));
+  EXPECT_EQ(StringPiece("EnableLazyloadInBlink"),
+              RewriteOptions::LookupOptionEnum(
+                  RewriteOptions::kEnableLazyloadInBlink));
   EXPECT_EQ(StringPiece("EnableRewriting"),
             RewriteOptions::LookupOptionEnum(
                   RewriteOptions::kEnabled));

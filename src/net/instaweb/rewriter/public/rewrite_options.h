@@ -178,6 +178,7 @@ class RewriteOptions {
     kEnableDeferJsExperimental,
     kEnableFlushSubresourcesExperimental,
     kEnableInlinePreviewImagesExperimental,
+    kEnableLazyloadInBlink,
     kFlushBufferLimitBytes,
     kFlushHtml,
     kFuriousSlot,
@@ -218,6 +219,7 @@ class RewriteOptions {
     kOverrideIeDocumentMode,
     kPassthroughBlinkForInvalidResponseCode,
     kProgressiveJpegMinBytes,
+    kPropagateBlinkCacheDeletes,
     kRejectBlacklisted,
     kRejectBlacklistedStatusCode,
     kReportUnloadTime,
@@ -1274,6 +1276,13 @@ class RewriteOptions {
   }
   bool enable_blink_html_change_detection_logging() const {
     return enable_blink_html_change_detection_logging_.value();
+  }
+
+  void set_propagate_blink_cache_deletes(bool x) {
+    set_option(x, &propagate_blink_cache_deletes_);
+  }
+  bool propagate_blink_cache_deletes() const {
+    return propagate_blink_cache_deletes_.value();
   }
 
   void set_enable_lazyload_in_blink(bool x) {
@@ -2371,6 +2380,8 @@ class RewriteOptions {
   Option<bool> enable_blink_html_change_detection_;
   // Enable logging of publisher changes detected in html in blink flow.
   Option<bool> enable_blink_html_change_detection_logging_;
+  // Enable publishing of cache deletion events.
+  Option<bool> propagate_blink_cache_deletes_;
   // Don't force disable lazyload in blink;
   Option<bool> enable_lazyload_in_blink_;
   // Override cache-time for cacheable resources in blink.

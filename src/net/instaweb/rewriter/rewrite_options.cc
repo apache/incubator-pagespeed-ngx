@@ -732,13 +732,17 @@ void RewriteOptions::AddProperties() {
   add_option(false,
              &RewriteOptions::enable_blink_html_change_detection_logging_,
              "ebhcdl", kEnableBlinkHtmlChangeDetectionLogging);
+  add_option(false,
+             &RewriteOptions::propagate_blink_cache_deletes_,
+             "pbcd", kPropagateBlinkCacheDeletes);
   add_option("", &RewriteOptions::critical_line_config_, "clc",
              kCriticalLineConfig);
   add_option(-1, &RewriteOptions::override_caching_ttl_ms_, "octm",
              kOverrideCachingTtlMs);
   add_option(5 * Timer::kSecondMs, &RewriteOptions::blocking_fetch_timeout_ms_,
              "bfto", RewriteOptions::kFetcherTimeOutMs);
-  add_option(false, &RewriteOptions::enable_lazyload_in_blink_, "elib");
+  add_option(false, &RewriteOptions::enable_lazyload_in_blink_, "elib",
+             kEnableLazyloadInBlink);
   add_option("", &RewriteOptions::pre_connect_url_, "pcu");
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &RewriteOptions::metadata_cache_staleness_threshold_ms_, "mcst");

@@ -351,21 +351,17 @@ class CriticalLineFetch : public AsyncFetch {
       return;
     }
     if (computed_hash_ != blink_critical_line_data_->hash()) {
-      LOG(ERROR) << "\n\nFull diff mismatch";
       blink_info_->set_html_match(false);
       num_blink_html_mismatches_->IncBy(1);
     } else {
-      LOG(ERROR) << "\n\nFull diff match";
       blink_info_->set_html_match(true);
       num_blink_html_matches_->IncBy(1);
     }
     if (computed_hash_smart_diff_ !=
         blink_critical_line_data_->hash_smart_diff()) {
-      LOG(ERROR) << "\n\nSmart diff mismatch";
       blink_info_->set_html_smart_diff_match(false);
       num_blink_html_smart_diff_mismatches_->IncBy(1);
     } else {
-      LOG(ERROR) << "\n\nSmart diff match";
       blink_info_->set_html_smart_diff_match(true);
       num_blink_html_smart_diff_matches_->IncBy(1);
     }
@@ -411,19 +407,24 @@ class CriticalLineFetch : public AsyncFetch {
       return;
     }
     if (computed_hash_ != blink_critical_line_data_->hash()) {
-      LOG(ERROR) << "\n\nDeleting from cache";
       num_blink_html_mismatches_cache_deletes_->IncBy(1);
       const PropertyCache::Cohort* cohort =
           rewrite_driver_->server_context()->page_property_cache()->
               GetCohort(BlinkUtil::kBlinkCohort);
       PropertyPage* page = rewrite_driver_->property_page();
+      if (options_->propagate_blink_cache_deletes()) {
+        const GoogleString cache_key =
+            rewrite_driver_->server_context()->page_property_cache()
+                ->CacheKey(page->key(), cohort);
+        server_context_->blink_critical_line_data_finder()->
+            PropagateCacheDeletes(rewrite_driver_, cache_key);
+      }
       page->DeleteProperty(
           cohort, BlinkUtil::kBlinkCriticalLineDataPropertyName);
       rewrite_driver_->server_context()->
           page_property_cache()->WriteCohort(cohort, page);
       CreateCriticalLineComputationDriverAndRewrite();
     } else {
-      LOG(ERROR) << "\n\nJust updating cache";
       blink_critical_line_data_->set_hash(computed_hash_);
       blink_critical_line_data_->set_hash_smart_diff(computed_hash_smart_diff_);
       blink_critical_line_data_->set_last_diff_timestamp_ms(

@@ -44,4 +44,9 @@ void BlinkCriticalLineDataFinder::ComputeBlinkCriticalLineData(
   // Default interface is empty and derived classes can override.
 }
 
+void BlinkCriticalLineDataFinder::PropagateCacheDeletes(
+    RewriteDriver* driver, const GoogleString& key) {
+  // Default interface is empty and derived classes can override.
+}
+
 }  // namespace net_instaweb

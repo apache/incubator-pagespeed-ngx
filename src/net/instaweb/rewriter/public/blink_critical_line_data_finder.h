@@ -51,6 +51,9 @@ class BlinkCriticalLineDataFinder {
       const ResponseHeaders* response_headers,
       RewriteDriver* driver);
 
+  virtual void PropagateCacheDeletes(RewriteDriver* driver,
+                                     const GoogleString& key);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(BlinkCriticalLineDataFinder);
 };

@@ -34,6 +34,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -766,6 +767,28 @@ GoogleString HashSplit(const Hasher* hasher, const StringPiece& str) {
   return StrCat(hash.substr(0, 1), "/", hash.substr(1));
 }
 
+// Utility to log metadata cache lookup info.
+// This executes in driver's rewrite thread, i.e., all calls to this are from
+// Functions added to the same QueuedWorkedPool::Sequence and so none of the
+// calls will be concurrent.
+void LogMetadataCacheInfo(
+    bool cache_ok, bool can_revalidate, RewriteDriver* driver) {
+  LogRecord* log_record = driver->log_record();
+  if (log_record == NULL) {
+    return;
+  }
+  MetadataCacheInfo* metadata_log_info =
+      log_record->logging_info()->mutable_metadata_cache_info();
+  if (cache_ok) {
+    metadata_log_info->set_num_hits(metadata_log_info->num_hits() + 1);
+  } else if (can_revalidate) {
+    metadata_log_info->set_num_revalidates(
+        metadata_log_info->num_revalidates() + 1);
+  } else {
+    metadata_log_info->set_num_misses(metadata_log_info->num_misses() + 1);
+  }
+}
+
 }  // namespace
 
 void RewriteContext::SetPartitionKey() {
@@ -972,6 +995,7 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
   bool cache_ok, can_revalidate;
   InputInfoStarVector revalidate;
   cache_ok = TryDecodeCacheResult(state, value, &can_revalidate, &revalidate);
+  LogMetadataCacheInfo(cache_ok, can_revalidate, Driver());
   // If OK or worth rechecking, set things up for the cache hit case.
   if (cache_ok || can_revalidate) {
     for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
@@ -1796,8 +1820,10 @@ void RewriteContext::FetchCacheDone(
   // so these two are ignored.
   bool can_revalidate = false;
   InputInfoStarVector revalidate;
-  if (TryDecodeCacheResult(state, value, &can_revalidate, &revalidate) &&
-      (num_output_partitions() == 1)) {
+  bool cache_ok = TryDecodeCacheResult(
+      state, value, &can_revalidate, &revalidate);
+  LogMetadataCacheInfo(cache_ok, can_revalidate, Driver());
+  if (cache_ok && (num_output_partitions() == 1)) {
     CachedResult* result = output_partition(0);
     OutputResourcePtr output_resource;
     if (result->optimizable() &&
