@@ -19,7 +19,6 @@
 
 #include "net/instaweb/util/public/delegating_cache_callback.h"
 
-#include "base/logging.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
