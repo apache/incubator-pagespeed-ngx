@@ -20,10 +20,8 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_DELEGATING_CACHE_CALLBACK_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_DELEGATING_CACHE_CALLBACK_H_
 
-#include <vector>
-
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {

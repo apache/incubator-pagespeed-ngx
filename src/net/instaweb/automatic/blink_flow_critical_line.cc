@@ -340,9 +340,9 @@ class CriticalLineFetch : public AsyncFetch {
     value_.ExtractContents(&output);
     StringVector result;
     GoogleString output_string = output.as_string();
-    SplitStringUsingSubstr(output_string,
-                           BlinkUtil::kComputeVisibleTextFilterOutputEndMarker,
-                           &result);
+    net_instaweb::SplitStringUsingSubstr(
+        output_string, BlinkUtil::kComputeVisibleTextFilterOutputEndMarker,
+        &result);
     if (result.size() == 2) {
       computed_hash_smart_diff_ = server_context_->hasher()->Hash(result[0]);
       computed_hash_ = server_context_->hasher()->Hash(result[1]);

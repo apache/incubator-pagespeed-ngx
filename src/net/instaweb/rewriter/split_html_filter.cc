@@ -436,7 +436,7 @@ bool SplitHtmlFilter::ParseXpath(const GoogleString& xpath,
   static const char* kXpathWithChildNumber = "(\\w+)(\\[(\\d+)\\])";
   static const char* kXpathWithId = "(\\w+)(\\[@(\\w+)\\s*=\\s*\"(.*)\"\\])";
   std::vector<GoogleString> list;
-  SplitStringUsingSubstr(xpath, "/", &list);
+  net_instaweb::SplitStringUsingSubstr(xpath, "/", &list);
   for (int j = 0, n = list.size(); j < n; j++) {
     XpathUnit unit;
     GoogleString str;
