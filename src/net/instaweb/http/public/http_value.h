@@ -22,7 +22,6 @@
 #include <cstddef>                     // for size_t
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/shared_string.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
 
@@ -42,7 +41,7 @@ class HTTPValue : public Writer {
   void Clear();
 
   // Is this HTTPValue empty
-  bool Empty() const { return storage_->empty(); }
+  bool Empty() const { return storage_.empty(); }
 
   // Sets the HTTP headers for this value. This method may only
   // be called once and must be called before or after all of the
@@ -92,13 +91,15 @@ class HTTPValue : public Writer {
   // Access the shared string, for insertion into a cache via Put.
   SharedString* share() { return &storage_; }
 
-  size_t size() const { return storage_->size(); }
+  size_t size() const { return storage_.size(); }
   int64 contents_size() { return contents_size_; }
 
  private:
   friend class HTTPValueTest;
 
-  char type_identifier() const { return (*storage_.get())[0]; }
+  // Must be called with storage_ non-empty.
+  char type_identifier() const { return *storage_.data(); }
+
   unsigned int SizeOfFirstChunk() const;
   void SetSizeOfFirstChunk(unsigned int size);
   int64 ComputeContentsSize() const;

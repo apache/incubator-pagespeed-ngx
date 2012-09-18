@@ -58,7 +58,7 @@ class CacheTestBase : public testing::Test {
     virtual bool ValidateCandidate(const GoogleString& key,
                                    CacheInterface::KeyState state) {
       validate_called_ = true;
-      if ((invalid_value_ != NULL) && (*value()->get() == invalid_value_)) {
+      if ((invalid_value_ != NULL) && (value_str() == invalid_value_)) {
         return false;
       }
       return true;
@@ -81,7 +81,7 @@ class CacheTestBase : public testing::Test {
     void set_invalid_value(const char* v) { invalid_value_ = v; }
     CacheInterface::KeyState state() const { return state_; }
     bool called() const { return called_; }
-    const GoogleString& value_str() { return **value(); }
+    StringPiece value_str() { return value()->Value(); }
 
     bool called_;
     bool validate_called_;
@@ -160,7 +160,7 @@ class CacheTestBase : public testing::Test {
   void WaitAndCheck(Callback* callback, const GoogleString& expected_value) {
     callback->Wait();
     ASSERT_TRUE(callback->called());
-    EXPECT_STREQ(expected_value, *(callback->value()->get()));
+    EXPECT_STREQ(expected_value, callback->value_str());
     EXPECT_EQ(CacheInterface::kAvailable, callback->state());
     PostOpCleanup();
   }

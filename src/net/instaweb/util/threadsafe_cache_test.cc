@@ -64,7 +64,7 @@ class CacheSpammer : public ThreadSystem::Thread {
     const char name_pattern[] = "name%d";
     SharedString inserts[kNumInserts];
     for (int j = 0; j < kNumInserts; ++j) {
-      *inserts[j] = StringPrintf(value_pattern_, j);
+      inserts[j].Assign(StringPrintf(value_pattern_, j));
     }
 
     int iter_limit = RunningOnValgrind() ? kNumIters / 100 : kNumIters;
@@ -155,7 +155,7 @@ TEST_F(ThreadsafeCacheTest, BasicOperation) {
   threadsafe_cache_.Get("key", &callback);
   EXPECT_TRUE(callback.called_);
   EXPECT_EQ(CacheInterface::kAvailable, callback.state_);
-  EXPECT_EQ(GoogleString("val"), *callback.value()->get());
+  EXPECT_EQ(GoogleString("val"), callback.value()->Value());
 }
 
 TEST_F(ThreadsafeCacheTest, SpamCacheNoEvictionsOrDeletions) {

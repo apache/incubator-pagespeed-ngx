@@ -232,6 +232,7 @@
         'util/shared_mem_referer_statistics_test_base.cc',
         'util/shared_mem_statistics_test_base.cc',
         'util/shared_mem_test_base.cc',
+        'util/shared_string_test.cc',
         'util/simple_stats_test.cc',
         'util/slow_worker_test.cc',
         'util/split_statistics_test.cc',

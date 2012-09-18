@@ -114,6 +114,15 @@ class CacheInterface {
   virtual void Put(const GoogleString& key, SharedString* value) = 0;
   virtual void Delete(const GoogleString& key) = 0;
 
+  // Convenience method to do a Put from a GoogleString* value.  The
+  // bytes will be swapped out of the value and into a temp
+  // SharedString.
+  void PutSwappingString(const GoogleString& key, GoogleString* value) {
+    SharedString shared_string;
+    shared_string.SwapWithString(value);
+    Put(key, &shared_string);
+  }
+
   // The name of this CacheInterface -- used for logging and debugging.
   virtual const char* Name() const = 0;
 

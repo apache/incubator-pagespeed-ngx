@@ -114,7 +114,7 @@ class CacheStats::StatsCallback : public DelegatingCacheCallback {
     if (state == CacheInterface::kAvailable) {
       int64 end_time_us = timer_->NowUs();
       stats_->hits_->Add(1);
-      stats_->lookup_size_bytes_histogram_->Add((*value())->size());
+      stats_->lookup_size_bytes_histogram_->Add(value()->size());
       stats_->hit_latency_us_histogram_->Add(end_time_us - start_time_us_);
     } else {
       stats_->misses_->Add(1);
@@ -149,7 +149,7 @@ void CacheStats::MultiGet(MultiGetRequest* request) {
 void CacheStats::Put(const GoogleString& key, SharedString* value) {
   int64 start_time_us = timer_->NowUs();
   inserts_->Add(1);
-  insert_size_bytes_histogram_->Add((*value)->size());
+  insert_size_bytes_histogram_->Add(value->size());
   cache_->Put(key, value);
   insert_latency_us_histogram_->Add(timer_->NowUs() - start_time_us);
 }

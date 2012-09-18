@@ -148,11 +148,13 @@ class FreshenMetadataUpdateManager {
       // One of the resources changed. Delete the metadata.
       metadata_cache_->Delete(partition_key_);
     } else if (partitions_.get() != NULL) {
-      SharedString buf;
-      StringOutputStream sstream(buf.get());
-      partitions_->SerializeToZeroCopyStream(&sstream);
+      GoogleString buf;
+      {
+        StringOutputStream sstream(&buf);  // finalizes buf in destructor
+        partitions_->SerializeToZeroCopyStream(&sstream);
+      }
       // Write the updated partition info to the metadata cache.
-      metadata_cache_->Put(partition_key_, &buf);
+      metadata_cache_->PutSwappingString(partition_key_, &buf);
     }
     delete this;
   }
@@ -960,8 +962,8 @@ bool RewriteContext::TryDecodeCacheResult(CacheInterface::KeyState state,
 
   // We've got a hit on the output metadata; the contents should
   // be a protobuf.  Try to parse it.
-  const GoogleString* val_str = value.get();
-  ArrayInputStream input(val_str->data(), val_str->size());
+  StringPiece val_str = value.Value();
+  ArrayInputStream input(val_str.data(), val_str.size());
   if (partitions_->ParseFromZeroCopyStream(&input) &&
       IsOtherDependencyValid(partitions_.get())) {
     bool ok = true;
@@ -1288,7 +1290,7 @@ void RewriteContext::WritePartition() {
   if (ok_to_write_output_partitions_ &&
       !manager->metadata_cache_readonly()) {
     CacheInterface* metadata_cache = manager->metadata_cache();
-    SharedString buf;
+    GoogleString buf;
     {
 #ifndef NDEBUG
       for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
@@ -1300,11 +1302,10 @@ void RewriteContext::WritePartition() {
       }
 #endif
 
-      StringOutputStream sstream(buf.get());
+      StringOutputStream sstream(&buf);  // finalizes buf in destructor
       partitions_->SerializeToZeroCopyStream(&sstream);
-      // destructor of sstream prepares *buf.get()
     }
-    metadata_cache->Put(partition_key_, &buf);
+    metadata_cache->PutSwappingString(partition_key_, &buf);
   } else {
     // TODO(jmarantz): if our rewrite failed due to lock contention or
     // being too busy, then cancel all successors.

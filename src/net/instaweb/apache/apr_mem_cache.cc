@@ -96,8 +96,7 @@ void AprMemCache::DecodeValueMatchingKeyAndCallCallback(
         decoding_error = false;
         StringPiece encoded_key(data + kKeyLengthEncodingBytes, key_size);
         if (encoded_key == key) {
-          GoogleString* value = callback->value()->get();
-          value->assign(data + overhead, data_len - overhead);
+          callback->value()->Assign(data + overhead, data_len - overhead);
           ValidateAndReportResult(key, CacheInterface::kAvailable, callback);
         } else {
           // TODO(jmarantz): bump hash-key collision stats?
@@ -160,8 +159,8 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
 }
 
 void AprMemCache::Put(const GoogleString& key, SharedString* value) {
-  GoogleString* str = value->get();
-  size_t encoded_size = str->size() + key.size() + kKeyLengthEncodingBytes;
+  StringPiece str = value->Value();
+  size_t encoded_size = str.size() + key.size() + kKeyLengthEncodingBytes;
   size_t encoded_key_size = key.size();
   GoogleString encoded_value;
   if ((encoded_key_size > kKeyMaxLength) ||
@@ -184,7 +183,7 @@ void AprMemCache::Put(const GoogleString& key, SharedString* value) {
                                             & 0xff));
   if (encoded_key_size != kFallbackCacheSentinel) {
     encoded_value.append(key.data(), key.size());
-    encoded_value.append(str->data(), str->size());
+    encoded_value.append(str.data(), str.size());
   }
   servers_->Set(key, encoded_value);
 }

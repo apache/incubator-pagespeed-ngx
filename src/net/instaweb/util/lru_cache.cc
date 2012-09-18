@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -79,7 +80,7 @@ void LRUCache::Put(const GoogleString& key, SharedString* new_value) {
     // it from the entry_list prior to calling EvictIfNecessary,
     // which can't find it if it isn't in the list.
     lru_ordered_list_.erase(cell);
-    if (**new_value == *(key_value->second)) {
+    if (new_value->Value() == key_value->second.Value()) {
       map_iter->second = Freshen(key_value);
       need_to_insert = false;
       ++num_identical_reinserts_;
@@ -97,7 +98,7 @@ void LRUCache::Put(const GoogleString& key, SharedString* new_value) {
     // insertions the same way.  In both cases, the new key is in the map
     // as a result of the call to map_.insert above.
 
-    if (EvictIfNecessary(key.size() + (*new_value)->size())) {
+    if (EvictIfNecessary(key.size() + new_value->size())) {
       // The new value fits.  Put it in the LRU-list.
       KeyValuePair* kvp = new KeyValuePair(&map_iter->first, *new_value);
       map_iter->second = Freshen(kvp);
@@ -181,7 +182,7 @@ void LRUCache::SanityCheck() {
 // cells, string objects, etc.  Currently we are only accounting for the
 // actual characters in the key and value.
 size_t LRUCache::entry_size(KeyValuePair* kvp) const {
-  return kvp->first->size() + kvp->second->size();
+  return kvp->first->size() + kvp->second.size();
 }
 
 void LRUCache::Clear() {

@@ -27,7 +27,6 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
-
 namespace net_instaweb {
 
 const char FlushEarlyInfoFinder::kFlushEarlyRenderPropertyName[] =
@@ -91,8 +90,10 @@ void FlushEarlyInfoFinder::UpdateFlushEarlyInfoCacheEntry(
       PropertyValue* property_value = page->GetProperty(
           cohort, kFlushEarlyRenderPropertyName);
       GoogleString value;
-      StringOutputStream sstream(&value);
-      flush_early_render_info->SerializeToZeroCopyStream(&sstream);
+      {
+        StringOutputStream sstream(&value);  // finalizes in destructor
+        flush_early_render_info->SerializeToZeroCopyStream(&sstream);
+      }
       property_cache->UpdateValue(value, property_value);
     } else {
       driver->message_handler()->Message(kWarning, "FlushEarly FinderCohort is"

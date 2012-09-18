@@ -621,6 +621,7 @@
         'util/shared_mem_lock_manager.cc',
         'util/shared_mem_referer_statistics.cc',
         'util/shared_mem_statistics.cc',
+        'util/shared_string.cc',
         'util/simple_stats.cc',
         'util/scheduler_thread.cc',
         'util/slow_worker.cc',

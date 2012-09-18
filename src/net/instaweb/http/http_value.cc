@@ -38,8 +38,7 @@ const char kBodyFirst = 'b';
 
 const int kStorageTypeOverhead = 1;
 const int kStorageSizeOverhead = 4;
-const unsigned int kStorageOverhead =
-    kStorageTypeOverhead + kStorageSizeOverhead;
+const int kStorageOverhead = kStorageTypeOverhead + kStorageSizeOverhead;
 
 }  // namespace
 
@@ -48,16 +47,12 @@ namespace net_instaweb {
 class MessageHandler;
 
 void HTTPValue::CopyOnWrite() {
-  if (!storage_.unique()) {
-    SharedString new_storage(*storage_);
-    storage_ = new_storage;
-  }
+  storage_.DetachRetainingContent();
 }
 
 void HTTPValue::Clear() {
-  CopyOnWrite();
+  storage_.DetachAndClear();
   contents_size_ = 0;
-  storage_->clear();
 }
 
 void HTTPValue::SetHeaders(ResponseHeaders* headers) {
@@ -65,35 +60,35 @@ void HTTPValue::SetHeaders(ResponseHeaders* headers) {
   GoogleString headers_string;
   StringWriter writer(&headers_string);
   headers->WriteAsBinary(&writer, NULL);
-  if (storage_->empty()) {
-    storage_->push_back(kHeadersFirst);
+  if (storage_.empty()) {
+    storage_.Append(&kHeadersFirst, 1);
     SetSizeOfFirstChunk(headers_string.size());
   } else {
     CHECK(type_identifier() == kBodyFirst);
     // Using 'unsigned int' to facilitate bit-shifting in
     // SizeOfFirstChunk and SetSizeOfFirstChunk, and I don't
     // want to worry about sign extension.
-    unsigned int size = SizeOfFirstChunk();
-    CHECK(storage_->size() == (kStorageOverhead + size));
+    int size = SizeOfFirstChunk();
+    CHECK_EQ(storage_.size(), (kStorageOverhead + size));
   }
-  storage_->append(headers_string);
+  storage_.Append(headers_string);
 }
 
 bool HTTPValue::Write(const StringPiece& str, MessageHandler* handler) {
   CopyOnWrite();
-  if (storage_->empty()) {
-    storage_->push_back(kBodyFirst);
-    storage_->append("    ", 4);
+  if (storage_.empty()) {
+    // We have received data prior to receiving response headers.
+    storage_.Append(&kBodyFirst, 1);
     SetSizeOfFirstChunk(str.size());
   } else if (type_identifier() == kBodyFirst) {
-    CHECK(storage_->size() >= kStorageOverhead);
-    unsigned int string_size = SizeOfFirstChunk();
-    CHECK(string_size == storage_->size() - kStorageOverhead);
+    CHECK(storage_.size() >= kStorageOverhead);
+    int string_size = SizeOfFirstChunk();
+    CHECK(string_size == storage_.size() - kStorageOverhead);
     SetSizeOfFirstChunk(str.size() + string_size);
   } else {
     CHECK(type_identifier() == kHeadersFirst);
   }
-  storage_->append(str.data(), str.size());
+  storage_.Append(str.data(), str.size());
   contents_size_ += str.size();
   return true;
 }
@@ -107,18 +102,14 @@ bool HTTPValue::Flush(MessageHandler* handler) {
 // particular alignment for casting between char* and int*, we just manually
 // encode one byte at a time.
 void HTTPValue::SetSizeOfFirstChunk(unsigned int size) {
-  CHECK(!storage_->empty()) << "type encoding should already be in first byte";
-  unsigned char size_buffer[4];
+  CHECK(!storage_.empty()) << "type encoding should already be in first byte";
+  char size_buffer[4];
   size_buffer[0] = size & 0xff;
   size_buffer[1] = (size >> 8) & 0xff;
   size_buffer[2] = (size >> 16) & 0xff;
   size_buffer[3] = (size >> 24) & 0xff;
-  if (storage_->size() < kStorageOverhead) {
-    // Ensure the buffer is exactly 5 bytes so we can overwrite
-    // bytes 1-4 (the type code in byte 0).
-    storage_->append("    ", kStorageOverhead - storage_->size());
-  }
-  memcpy(&((*storage_)[1]), &size_buffer, sizeof(size_buffer));
+  storage_.Extend(1 + sizeof(size_buffer));
+  storage_.WriteAt(1, size_buffer, sizeof(size_buffer));
 }
 
 // Decodes the size of the first chunk, which is either the headers or body,
@@ -126,9 +117,9 @@ void HTTPValue::SetSizeOfFirstChunk(unsigned int size) {
 // particular alignment for casting between char* and int*, we just manually
 // decode one byte at a time.
 unsigned int HTTPValue::SizeOfFirstChunk() const {
-  CHECK(storage_->size() >= kStorageOverhead);
-  const unsigned char *size_buffer =
-      reinterpret_cast<const unsigned char*>(storage_->data() + 1);
+  CHECK(storage_.size() >= kStorageOverhead);
+  const unsigned char* size_buffer =
+      reinterpret_cast<const unsigned char*>(storage_.data() + 1);
   unsigned int size = size_buffer[0];
   size |= size_buffer[1] << 8;
   size |= size_buffer[2] << 16;
@@ -144,14 +135,14 @@ bool HTTPValue::ExtractHeaders(ResponseHeaders* headers,
     const {
   bool ret = false;
   headers->Clear();
-  if (storage_->size() >= kStorageOverhead) {
+  if (storage_.size() >= kStorageOverhead) {
     char type_id = type_identifier();
-    const char* start = storage_->data() + kStorageOverhead;
-    unsigned int size = SizeOfFirstChunk();
-    if (size <= storage_->size() - kStorageOverhead) {
+    const char* start = storage_.data() + kStorageOverhead;
+    int size = SizeOfFirstChunk();
+    if (size <= storage_.size() - kStorageOverhead) {
       if (type_id == kBodyFirst) {
         start += size;
-        size = storage_->size() - size - kStorageOverhead;
+        size = storage_.size() - size - kStorageOverhead;
         ret = true;
       } else {
         ret = (type_id == kHeadersFirst);
@@ -169,14 +160,14 @@ bool HTTPValue::ExtractHeaders(ResponseHeaders* headers,
 // invalid entry rather than aborting the server.
 bool HTTPValue::ExtractContents(StringPiece* val) const {
   bool ret = false;
-  if (storage_->size() >= kStorageOverhead) {
+  if (storage_.size() >= kStorageOverhead) {
     char type_id = type_identifier();
-    const char* start = storage_->data() + kStorageOverhead;
-    unsigned int size = SizeOfFirstChunk();
-    if (size <= storage_->size() - kStorageOverhead) {
+    const char* start = storage_.data() + kStorageOverhead;
+    int size = SizeOfFirstChunk();
+    if (size <= storage_.size() - kStorageOverhead) {
       if (type_id == kHeadersFirst) {
         start += size;
-        size = storage_->size() - size - kStorageOverhead;
+        size = storage_.size() - size - kStorageOverhead;
         ret = true;
       } else {
         ret = (type_id == kBodyFirst);
@@ -190,16 +181,16 @@ bool HTTPValue::ExtractContents(StringPiece* val) const {
 int64 HTTPValue::ComputeContentsSize() const {
   // Return size as 0 if the cache is corrupted.
   int64 size = 0;
-  if (storage_->size() >= kStorageOverhead) {
+  if (storage_.size() >= kStorageOverhead) {
     // Get the type id which is stored first (head or body).
     char type_id = type_identifier();
     // Get the size of the type which is stored first.
     size = SizeOfFirstChunk();
     // If the headers are stored first then update the size with storage size -
     // first chunk size.
-    if ((size <= static_cast<int64>(storage_->size() - kStorageOverhead)) &&
+    if ((size <= static_cast<int64>(storage_.size() - kStorageOverhead)) &&
         (type_id == kHeadersFirst)) {
-      size = storage_->size() - size - kStorageOverhead;
+      size = storage_.size() - size - kStorageOverhead;
     }
   }
   return size;
@@ -208,7 +199,7 @@ int64 HTTPValue::ComputeContentsSize() const {
 bool HTTPValue::Link(SharedString* src, ResponseHeaders* headers,
                      MessageHandler* handler) {
   bool ok = false;
-  if ((*src)->size() >= kStorageOverhead) {
+  if (src->size() >= kStorageOverhead) {
     // The simplest way to ensure that src is well formed is to save the
     // existing storage_ in a temp, assign the storage, and make sure
     // Headers and Contents return true.  The drawback is that the headers

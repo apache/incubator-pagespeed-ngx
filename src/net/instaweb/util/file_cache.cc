@@ -100,14 +100,14 @@ void FileCache::Get(const GoogleString& key, Callback* callback) {
   GoogleString filename;
   bool ret = EncodeFilename(key, &filename);
   if (ret) {
-    GoogleString* buffer = callback->value()->get();
-
     // Suppress read errors.  Note that we want to show Write errors,
     // as they likely indicate a permissions or disk-space problem
     // which is best not eaten.  It's cheap enough to construct
     // a NullMessageHandler on the stack when we want one.
     NullMessageHandler null_handler;
-    ret = file_system_->ReadFile(filename.c_str(), buffer, &null_handler);
+    GoogleString buf;
+    ret = file_system_->ReadFile(filename.c_str(), &buf, &null_handler);
+    callback->value()->SwapWithString(&buf);
   }
   ValidateAndReportResult(key, ret ? kAvailable : kNotFound, callback);
 }
@@ -115,9 +115,8 @@ void FileCache::Get(const GoogleString& key, Callback* callback) {
 void FileCache::Put(const GoogleString& key, SharedString* value) {
   GoogleString filename;
   if (EncodeFilename(key, &filename)) {
-    const GoogleString& buffer = **value;
     GoogleString temp_filename;
-    if (file_system_->WriteTempFile(filename, buffer,
+    if (file_system_->WriteTempFile(filename, value->Value(),
                                     &temp_filename, message_handler_)) {
       file_system_->RenameFile(temp_filename.c_str(), filename.c_str(),
                                message_handler_);

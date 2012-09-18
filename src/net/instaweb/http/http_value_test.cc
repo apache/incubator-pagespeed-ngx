@@ -23,7 +23,6 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/shared_string.h"
@@ -187,15 +186,15 @@ TEST_F(HTTPValueTest, LinkCorrupt) {
   HTTPValue value;
   ResponseHeaders headers;
   ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
-  storage->append("9999");
+  storage.Append("9999");
   ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
-  storage->append("xyz");
+  storage.Append("xyz");
   ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
-  *storage = "b";
+  storage.Assign("b");
   ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
-  storage->append("9999");
+  storage.Append("9999");
   ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
-  storage->append("xyz");
+  storage.Append("xyz");
   ASSERT_FALSE(value.Link(&storage, &headers, &message_handler_));
 }
 

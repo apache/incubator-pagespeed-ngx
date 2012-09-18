@@ -129,7 +129,7 @@ class PropertyCache::CacheInterfaceCallback : public CacheInterface::Callback {
   virtual void Done(CacheInterface::KeyState state) {
     bool valid = false;
     if (state == CacheInterface::kAvailable) {
-      const GoogleString& value_string = *value()->get();
+      StringPiece value_string = value()->Value();
       ArrayInputStream input(value_string.data(), value_string.size());
       PropertyCacheValues values;
       if (values.ParseFromZeroCopyStream(&input)) {
@@ -217,7 +217,7 @@ bool PropertyPage::EncodeCacheEntry(const PropertyCache::Cohort* cohort,
     }
   }
   if (ret) {
-    StringOutputStream sstream(value);
+    StringOutputStream sstream(value);  // finalizes in destructor
     values.SerializeToZeroCopyStream(&sstream);
   }
   return ret;
@@ -325,11 +325,11 @@ void PropertyCache::WriteCohort(const PropertyCache::Cohort* cohort,
                                 PropertyPage* page) const {
   if (enabled_) {
     DCHECK(GetCohort(*cohort) == cohort);
-    SharedString value;
-    if (page->EncodeCacheEntry(cohort, value.get()) ||
+    GoogleString value;
+    if (page->EncodeCacheEntry(cohort, &value) ||
         page->HasPropertyValueDeleted(cohort)) {
       const GoogleString cache_key = CacheKey(page->key(), cohort);
-      cache_->Put(cache_key, &value);
+      cache_->PutSwappingString(cache_key, &value);
     }
   }
 }
