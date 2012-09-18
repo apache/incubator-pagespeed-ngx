@@ -131,7 +131,7 @@
           'actions': [
             {
               'variables': {
-                'channel': 'beta',
+                'channel%': 'beta',
               },
               'action_name': 'deb_package_<(channel)',
               'process_outputs_as_sources': 1,
@@ -159,7 +159,7 @@
           'actions': [
             {
               'variables': {
-                'channel': 'beta',
+                'channel%': 'beta',
               },
               'action_name': 'rpm_package_<(channel)',
               'process_outputs_as_sources': 1,
