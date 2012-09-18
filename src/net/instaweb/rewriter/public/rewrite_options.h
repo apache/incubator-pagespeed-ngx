@@ -1954,6 +1954,12 @@ class RewriteOptions {
   // successfully. Takes ownership of (and may delete) spec.
   bool InsertFuriousSpecInVector(FuriousSpec* spec);
 
+  // Protected option values so that derived class can modify.
+  Option<BeaconUrl> beacon_url_;
+
+  // The value we put for the X-Mod-Pagespeed header. Default is our version.
+  Option<GoogleString> x_header_value_;
+
  private:
   static Properties* properties_;          // from RewriteOptions only
   static Properties* all_properties_;      // includes subclass properties
@@ -2345,11 +2351,7 @@ class RewriteOptions {
   std::vector<PrioritizeVisibleContentFamily*>
       prioritize_visible_content_families_;
 
-  Option<BeaconUrl> beacon_url_;
   Option<GoogleString> ga_id_;
-
-  // The value we put for the X-Mod-Pagespeed header. Default is our version.
-  Option<GoogleString> x_header_value_;
 
   // Whether to apply prioritize_visible_content for mobile user agents.
   Option<bool> enable_blink_for_mobile_devices_;

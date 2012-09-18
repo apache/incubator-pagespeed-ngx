@@ -224,6 +224,7 @@ class ProxyFetch : public SharedAsyncFetch {
   static const char kCollectorDone[];
   static const char kCollectorPrefix[];
   static const char kCollectorReady[];
+  static const char kCollectorDelete[];
 
   // These strings identify sync-points for introducing races between
   // PropertyCache lookup completion and HeadersComplete.

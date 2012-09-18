@@ -309,7 +309,8 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     "<script type=\"text/psajs\" orig_index=\"2\">eval(mod_pagespeed_0);"
     "</script>"
     "<img pagespeed_lazy_src=\"%s\""
-    " src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\""
+    " src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////"
+    "yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\""
     " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
     "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
     "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
@@ -400,12 +401,24 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
  public:
   AsyncExpectStringAsyncFetch(bool expect_success,
                               bool log_flush,
+                              GoogleString* buffer,
+                              ResponseHeaders* response_headers,
+                              LoggingInfo* logging_info,
+                              bool* done_value,
                               WorkerTestBase::SyncPoint* notify,
                               ThreadSynchronizer* sync)
       : ExpectStringAsyncFetch(expect_success),
+        buffer_(buffer),
+        done_value_(done_value),
+        logging_info_(logging_info),
         notify_(notify),
         sync_(sync),
         log_flush_(log_flush) {
+    buffer->clear();
+    response_headers->Clear();
+    logging_info->Clear();
+    *done_value = false;
+    set_response_headers(response_headers);
   }
 
   virtual ~AsyncExpectStringAsyncFetch() {}
@@ -417,8 +430,13 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
   }
 
   virtual void HandleDone(bool success) {
+    *buffer_ = buffer();
+    *done_value_ = success;
+    logging_info_->CopyFrom(*logging_info());
     ExpectStringAsyncFetch::HandleDone(success);
-    notify_->Notify();
+    WorkerTestBase::SyncPoint* notify = notify_;
+    delete this;
+    notify->Notify();
   }
 
   virtual bool HandleFlush(MessageHandler* handler) {
@@ -429,6 +447,9 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
   }
 
  private:
+  GoogleString* buffer_;
+  bool* done_value_;
+  LoggingInfo* logging_info_;
   WorkerTestBase::SyncPoint* notify_;
   ThreadSynchronizer* sync_;
   bool log_flush_;
@@ -739,8 +760,8 @@ class ProxyInterfaceTest : public RewriteTestBase {
     FetchFromProxyNoWait(url, request_headers, expect_success,
                          false /* log_flush*/, headers_out);
     WaitForFetch();
-    *string_out = callback_->buffer();
-    logging_info_.CopyFrom(*callback_->logging_info());
+    *string_out = callback_buffer_;
+    logging_info_.CopyFrom(callback_logging_info_);
   }
 
   // TODO(jmarantz): eliminate this interface as it's annoying to have
@@ -762,8 +783,8 @@ class ProxyInterfaceTest : public RewriteTestBase {
     FetchFromProxyNoWait(url, request_headers, expect_success,
                          true /* log_flush*/, &response_headers);
     WaitForFetch();
-    *string_out = callback_->buffer();
-    logging_info_.CopyFrom(*callback_->logging_info());
+    *string_out = callback_buffer_;
+    logging_info_.CopyFrom(callback_logging_info_);
   }
 
   // Initiates a fetch using the proxy interface, without waiting for it to
@@ -776,16 +797,18 @@ class ProxyInterfaceTest : public RewriteTestBase {
                             ResponseHeaders* headers_out) {
     sync_.reset(new WorkerTestBase::SyncPoint(
         server_context()->thread_system()));
-    callback_.reset(new AsyncExpectStringAsyncFetch(
-        expect_success, log_flush, sync_.get(),
-        server_context()->thread_synchronizer()));
-    callback_->set_response_headers(headers_out);
-    callback_->request_headers()->CopyFrom(request_headers);
+    AsyncFetch* fetch = new AsyncExpectStringAsyncFetch(
+        expect_success, log_flush, &callback_buffer_,
+        &callback_response_headers_, &callback_logging_info_,
+        &callback_done_value_, sync_.get(),
+        server_context()->thread_synchronizer());
+    fetch->set_response_headers(headers_out);
+    fetch->request_headers()->CopyFrom(request_headers);
     fetch_already_done_ = proxy_interface_->Fetch(AbsolutifyUrl(url),
                                                   message_handler(),
-                                                  callback_.get());
+                                                  fetch);
     if (fetch_already_done_) {
-      EXPECT_TRUE(callback_->done());
+      EXPECT_TRUE(callback_done_value_);
     }
   }
 
@@ -892,19 +915,20 @@ class ProxyInterfaceTest : public RewriteTestBase {
     ResponseHeaders response_headers;
     GoogleString output;
     TestPropertyCacheWithHeadersAndOutput(
-        url, delay_pcache, thread_pcache, expect_success, true, true,
+        url, delay_pcache, thread_pcache, expect_success, true, true, false,
         request_headers, &response_headers, &output);
   }
 
   void TestPropertyCacheWithHeadersAndOutput(
       const StringPiece& url, bool delay_pcache, bool thread_pcache,
       bool expect_success, bool check_stats, bool add_create_filter_callback,
-      const RequestHeaders& request_headers,
+      bool expect_detach_before_pcache, const RequestHeaders& request_headers,
       ResponseHeaders* response_headers, GoogleString* output) {
     scoped_ptr<QueuedWorkerPool> pool;
     QueuedWorkerPool::Sequence* sequence = NULL;
 
     ThreadSynchronizer* sync = server_context()->thread_synchronizer();
+    sync->EnableForPrefix(ProxyFetch::kCollectorDelete);
     GoogleString delay_pcache_key, delay_http_cache_key;
     if (delay_pcache || thread_pcache) {
       PropertyCache* pcache = page_property_cache();
@@ -947,14 +971,23 @@ class ProxyInterfaceTest : public RewriteTestBase {
       // Now we can release the property-cache thread.
       sync->Signal(ProxyFetch::kCollectorDone);
       WaitForFetch();
-      *output = callback_->buffer();
+      *output = callback_buffer_;
+      sync->Wait(ProxyFetch::kCollectorDelete);
       pool->ShutDown();
     } else {
-      FetchFromProxy(url, request_headers, expect_success, output,
-                     response_headers);
+      FetchFromProxyNoWait(url, request_headers, expect_success, false,
+                           response_headers);
+      if (expect_detach_before_pcache) {
+        WaitForFetch();
+      }
       if (delay_pcache) {
         delay_cache()->ReleaseKey(delay_pcache_key);
       }
+      if (!expect_detach_before_pcache) {
+        WaitForFetch();
+      }
+      *output = callback_buffer_;
+      sync->Wait(ProxyFetch::kCollectorDelete);
     }
 
     if (check_stats) {
@@ -1174,20 +1207,22 @@ class ProxyInterfaceTest : public RewriteTestBase {
 
   void ExperimentalFlushEarlyFlowTestHelper(
       const GoogleString& user_agent,
-      UserAgentMatcher::PrefetchMechanism mechanism) {
+      UserAgentMatcher::PrefetchMechanism mechanism, bool inject_error) {
     ExperimentalFlushEarlyFlowTestHelperWithPropertyCache(
-        user_agent, mechanism, false, false);
+        user_agent, mechanism, false, false, inject_error);
     ExperimentalFlushEarlyFlowTestHelperWithPropertyCache(
-        user_agent, mechanism, false, true);
+        user_agent, mechanism, false, true, inject_error);
     ExperimentalFlushEarlyFlowTestHelperWithPropertyCache(
-        user_agent, mechanism, true, true);
+        user_agent, mechanism, true, true, inject_error);
+    ExperimentalFlushEarlyFlowTestHelperWithPropertyCache(
+        user_agent, mechanism, true, false, inject_error);
   }
 
   void ExperimentalFlushEarlyFlowTestHelperWithPropertyCache(
       const GoogleString& user_agent,
       UserAgentMatcher::PrefetchMechanism mechanism,
-      bool delay_pcache,
-      bool thread_pcache) {
+      bool delay_pcache, bool thread_pcache, bool inject_error) {
+    lru_cache()->Clear();
     SetupForFlushEarlyFlow(true);
     GoogleString text;
     RequestHeaders request_headers;
@@ -1195,17 +1230,26 @@ class ProxyInterfaceTest : public RewriteTestBase {
     ResponseHeaders headers;
     TestPropertyCacheWithHeadersAndOutput(
         kTestDomain, delay_pcache, thread_pcache, true, false, false,
-        request_headers, &headers, &text);
+        false, request_headers, &headers, &text);
+
+    if (inject_error) {
+      ResponseHeaders error_headers;
+      error_headers.SetStatusAndReason(HttpStatus::kOK);
+      mock_url_fetcher_.SetResponse(
+          kTestDomain, error_headers, "");
+    }
 
     // Fetch the url again. This time FlushEarlyFlow should not be triggered.
     // None
     TestPropertyCacheWithHeadersAndOutput(
         kTestDomain, delay_pcache, thread_pcache, true, false, false,
-        request_headers, &headers, &text);
+        inject_error, request_headers, &headers, &text);
     GoogleString expected_output = FlushEarlyRewrittenHtml(mechanism,
                                                            false, false);
-    EXPECT_EQ(expected_output, text);
-    VerifyCharset(&headers);
+    if (!inject_error) {
+      EXPECT_EQ(expected_output, text);
+      VerifyCharset(&headers);
+    }
   }
 
   scoped_ptr<ProxyInterface> proxy_interface_;
@@ -1220,7 +1264,10 @@ class ProxyInterfaceTest : public RewriteTestBase {
 
   bool fetch_already_done_;
   scoped_ptr<WorkerTestBase::SyncPoint> sync_;
-  scoped_ptr<AsyncExpectStringAsyncFetch> callback_;
+  ResponseHeaders callback_response_headers_;
+  GoogleString callback_buffer_;
+  bool callback_done_value_;
+  LoggingInfo callback_logging_info_;
 
  private:
   friend class FilterCallback;
@@ -1374,25 +1421,46 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestWithDeferJsPreferch) {
 
 TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTest) {
   ExperimentalFlushEarlyFlowTestHelper(
-      "", UserAgentMatcher::kPrefetchNotSupported);
+      "", UserAgentMatcher::kPrefetchNotSupported, false);
+}
+
+TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestError) {
+  ExperimentalFlushEarlyFlowTestHelper(
+      "", UserAgentMatcher::kPrefetchNotSupported, true);
 }
 
 TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestPrefetch) {
   ExperimentalFlushEarlyFlowTestHelper(
       "prefetch_link_rel_subresource",
-      UserAgentMatcher::kPrefetchLinkRelSubresource);
+      UserAgentMatcher::kPrefetchLinkRelSubresource, false);
+}
+
+TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestPrefetchError) {
+  ExperimentalFlushEarlyFlowTestHelper(
+       "prefetch_link_rel_subresource",
+      UserAgentMatcher::kPrefetchLinkRelSubresource, true);
 }
 
 TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestImageTag) {
   ExperimentalFlushEarlyFlowTestHelper(
-      "prefetch_image_tag",
-      UserAgentMatcher::kPrefetchImageTag);
+      "prefetch_image_tag", UserAgentMatcher::kPrefetchImageTag, false);
+}
+
+TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestImageTagError) {
+  ExperimentalFlushEarlyFlowTestHelper(
+      "prefetch_image_tag", UserAgentMatcher::kPrefetchImageTag, true);
 }
 
 TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestLinkScript) {
   ExperimentalFlushEarlyFlowTestHelper(
-      "prefetch_link_script_tag",
-      UserAgentMatcher::kPrefetchLinkScriptTag);
+      "prefetch_link_script_tag", UserAgentMatcher::kPrefetchLinkScriptTag,
+      false);
+}
+
+TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestLinkScriptError) {
+  ExperimentalFlushEarlyFlowTestHelper(
+      "prefetch_link_script_tag", UserAgentMatcher::kPrefetchLinkScriptTag,
+      true);
 }
 
 TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestWithDeferJsImageTag) {
@@ -1624,7 +1692,8 @@ TEST_F(ProxyInterfaceTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
           options_, server_context()->static_javascript_manager()),
       "</script>"
       "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.0.jpg"
-      " src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\""
+      " src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////"
+      "yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\""
       " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
       "Hello, mod_pagespeed!"
       "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
@@ -4191,6 +4260,7 @@ TEST_F(ProxyInterfaceTest, BothClientAndPropertyCache) {
   GoogleString response;
   FetchFromProxy(kPageUrl, request_headers, true, &response, &response_headers);
   sync->Wait(ProxyFetch::kCollectorReady);  // Clears Signal from PFPCC::Done.
+  sync->Wait(ProxyFetch::kCollectorDelete);
 }
 
 // TODO(jmarantz): add a test with a simulated slow cache to see what happens

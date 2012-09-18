@@ -60,8 +60,10 @@ class DelayCache::DelayCallback : public CacheInterface::Callback {
   // Helper method so that DelayCache can call the callback for keys
   // that are not being delayed, or for keys that have been released.
   void Run() {
-    orig_callback_->DelegatedDone(state_);
+    Callback* callback = orig_callback_;
+    KeyState state = state_;
     delete this;
+    callback->DelegatedDone(state);
   }
 
   const GoogleString& key() const { return key_; }

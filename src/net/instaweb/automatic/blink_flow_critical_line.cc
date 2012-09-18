@@ -51,6 +51,7 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -686,7 +687,8 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
   blink_critical_line_data_.reset(finder_->ExtractBlinkCriticalLineData(
       options_->GetBlinkCacheTimeFor(google_url_), page,
       manager_->timer()->NowMs(),
-      options_->enable_blink_html_change_detection()));
+      options_->enable_blink_html_change_detection(),
+      options_->propagate_blink_cache_deletes()));
 
   if (blink_critical_line_data_ != NULL &&
       !(options_->passthrough_blink_for_last_invalid_response_code() &&
@@ -759,11 +761,12 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
   ResponseHeaders* response_headers = base_fetch_->response_headers();
   response_headers->SetStatusAndReason(HttpStatus::kOK);
   // TODO(pulkitg): Store content type in pcache.
-  // TODO(guptaa): Send response in source encoding to avoid inconsistencies and
-  // response bloating.
-  // Setting the charset as utf-8 since thats that output we get from webkit.
-  response_headers->Add(HttpAttributes::kContentType,
-                        "text/html; charset=utf-8");
+  GoogleString content_type =
+      StringPrintf("text/html; charset=%s",
+                   blink_critical_line_data_->has_charset() ?
+                   blink_critical_line_data_->charset().c_str() :
+                   kUtf8Charset);
+  response_headers->Add(HttpAttributes::kContentType, content_type);
   response_headers->Add(kPsaRewriterHeader,
                         BlinkFlowCriticalLine::kAboveTheFold);
   response_headers->ComputeCaching();

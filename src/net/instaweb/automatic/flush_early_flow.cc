@@ -83,6 +83,8 @@ const char FlushEarlyFlow::kFlushEarlyRewriteLatencyMs[] =
 // TODO(mmohabey): If the cookie is HttpOnly then do not enter FlushEarlyFlow.
 // TODO(mmohabey): Do not flush early if the html is cacheable.
 // If this is called then the content type must be html.
+// TODO(nikhilmadan): Disable flush early if the response code isn't
+// consistently a 200.
 bool FlushEarlyFlow::CanFlushEarly(const GoogleString& url,
                                    const AsyncFetch* async_fetch,
                                    const RewriteDriver* driver) {
@@ -106,8 +108,9 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   FlushEarlyAsyncFetch(AsyncFetch* fetch, AbstractMutex* mutex)
       : base_fetch_(fetch),
         mutex_(mutex),
-        flushing_early_(false),
         flush_early_flow_done_(false),
+        flushed_early_(false),
+        headers_complete_called_(false),
         flush_called_(false),
         done_called_(false),
         done_value_(false),
@@ -116,19 +119,16 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
     set_log_record(fetch->log_record());
   }
 
-  // Indicates that we are flushing early. Note that it isn't necessary for this
-  // function be called. However, if called, this must be called before the
-  // first call to HandleHeadersComplete / HandleWrite / HandleDone from either
-  // the FlushEarlyFlow or ProxyFetch.
-  void set_flushing_early() { flushing_early_ = true; }
-
-  // Indicates that the flush early flow is complete. This should only be called
-  // if set_flushing_early was called earlier.
-  void set_flush_early_flow_done() {
+  // Indicates that the flush early flow is complete.
+  void set_flush_early_flow_done(bool flushed_early) {
     bool should_delete = false;
     {
       ScopedMutex lock(mutex_.get());
       flush_early_flow_done_ = true;
+      flushed_early_ = flushed_early;
+      if (!flushed_early && headers_complete_called_) {
+        base_fetch_->response_headers()->CopyFrom(*response_headers());
+      }
       // Write out all the buffered content and call Flush and Done if it were
       // called earlier.
       if (!buffered_content_.empty()) {
@@ -150,19 +150,26 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   }
 
  private:
-  // If we are flushing early, then the FlushEarlyFlow would have already set
+  // If the flush early flow isn't done yet, do nothing here since
+  // set_flush_early_flow_done will do the needful.
+  // If we flushed early, then the FlushEarlyFlow would have already set
   // the headers. Hence, do nothing.
-  // If we aren't flushing early, copy the response headers into the base fetch.
+  // If we didn't flush early, copy the response headers into the base fetch.
   virtual void HandleHeadersComplete() {
-    if (!flushing_early_) {
-      base_fetch_->response_headers()->CopyFrom(*response_headers());
+    {
+      ScopedMutex lock(mutex_.get());
+      if (!flush_early_flow_done_ || flushed_early_) {
+        headers_complete_called_ = true;
+        return;
+      }
     }
+    base_fetch_->response_headers()->CopyFrom(*response_headers());
   }
 
-  // If we are flushing early and the flush early flow is still in progress,
-  // buffer the bytes. Otherwise, right them out to base_fetch.
+  // If the flush early flow is still in progress, buffer the bytes. Otherwise,
+  // write them out to base_fetch.
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler) {
-    if (flushing_early_) {
+    {
       ScopedMutex lock(mutex_.get());
       if (!flush_early_flow_done_) {
         buffered_content_.append(sp.data(), sp.size());
@@ -172,11 +179,10 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
     return base_fetch_->Write(sp, handler);
   }
 
-  // If we are flushing early and the flush early flow is still in progress,
-  // store the fact that flush was called. Otherwise, pass the call to
-  // base_fetch.
+  // If the flush early flow is still in progress, store the fact that flush
+  // was called. Otherwise, pass the call to base_fetch.
   virtual bool HandleFlush(MessageHandler* handler) {
-    if (flushing_early_) {
+    {
       ScopedMutex lock(mutex_.get());
       if (!flush_early_flow_done_) {
         flush_called_ = true;
@@ -187,11 +193,10 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
     return base_fetch_->Flush(handler);
   }
 
-  // If we are flushing early and the flush early flow is still in progress,
-  // store the fact that done was called. Otherwise, pass the call to
-  // base_fetch.
+  // If the flush early flow is still in progress, store the fact that done was
+  // called. Otherwise, pass the call to base_fetch.
   virtual void HandleDone(bool success) {
-    if (flushing_early_) {
+    {
       ScopedMutex lock(mutex_.get());
       if (!flush_early_flow_done_) {
         done_called_ = true;
@@ -206,8 +211,9 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   AsyncFetch* base_fetch_;
   scoped_ptr<AbstractMutex> mutex_;
   GoogleString buffered_content_;
-  bool flushing_early_;
   bool flush_early_flow_done_;
+  bool flushed_early_;
+  bool headers_complete_called_;
   bool flush_called_;
   bool done_called_;
   bool done_value_;
@@ -230,7 +236,8 @@ void FlushEarlyFlow::Start(
 
   // Change the base_fetch in ProxyFetch to flush_early_fetch.
   *base_fetch = flush_early_fetch;
-  Function* func = MakeFunction(flow, &FlushEarlyFlow::FlushEarly);
+  Function* func = MakeFunction(flow, &FlushEarlyFlow::FlushEarly,
+                                &FlushEarlyFlow::Cancel);
   property_cache_callback->AddPostLookupTask(func);
 }
 
@@ -271,9 +278,12 @@ FlushEarlyFlow::FlushEarlyFlow(
       FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly);
   flush_early_rewrite_latency_ms_ = stats->GetHistogram(
       kFlushEarlyRewriteLatencyMs);
+  driver_->increment_async_events_count();
 }
 
-FlushEarlyFlow::~FlushEarlyFlow() {}
+FlushEarlyFlow::~FlushEarlyFlow() {
+  driver_->decrement_async_events_count();
+}
 
 void FlushEarlyFlow::FlushEarly() {
   const PropertyCache::Cohort* cohort = manager_->page_property_cache()->
@@ -298,7 +308,9 @@ void FlushEarlyFlow::FlushEarly() {
                              property_value->value().size());
       flush_early_info.ParseFromZeroCopyStream(&value);
       if (flush_early_info.has_resource_html() &&
-          !flush_early_info.resource_html().empty()) {
+          !flush_early_info.resource_html().empty() &&
+          flush_early_info.response_headers().status_code() ==
+          HttpStatus::kOK) {
         // If the flush early info has non-empty resource html, we flush early.
         DCHECK(driver_->options()->enable_flush_subresources_experimental());
 
@@ -365,10 +377,7 @@ void FlushEarlyFlow::FlushEarly() {
         new_driver->ParseText(flush_early_info.resource_html());
         driver_->set_flushed_early(true);
         // Keep driver alive till the FlushEarlyFlow is completed.
-        driver_->increment_async_events_count();
         num_requests_flushed_early_->IncBy(1);
-
-        flush_early_fetch_->set_flushing_early();
 
         // This deletes the driver once done.
         new_driver->FinishParseAsync(
@@ -387,12 +396,16 @@ void FlushEarlyFlow::FlushEarly() {
           base_fetch_->Write(dummy_head_, handler_);
           base_fetch_->Flush(handler_);
           driver_->set_flushed_early(true);
-          flush_early_fetch_->set_flushing_early();
-          flush_early_fetch_->set_flush_early_flow_done();
         }
       }
     }
   }
+  flush_early_fetch_->set_flush_early_flow_done(driver_->flushed_early());
+  delete this;
+}
+
+void FlushEarlyFlow::Cancel() {
+  flush_early_fetch_->set_flush_early_flow_done(false);
   delete this;
 }
 
@@ -439,12 +452,11 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
     base_fetch_->Write("</script>", handler_);
   }
   flush_early_driver->decrement_async_events_count();
-  driver_->decrement_async_events_count();
   base_fetch_->Write("</head>", handler_);
   base_fetch_->Flush(handler_);
   flush_early_rewrite_latency_ms_->Add(
       manager_->timer()->NowMs() - start_time_ms);
-  flush_early_fetch_->set_flush_early_flow_done();
+  flush_early_fetch_->set_flush_early_flow_done(true);
   delete this;
 }
 

@@ -52,6 +52,7 @@ namespace net_instaweb {
 const char ProxyFetch::kCollectorDone[] = "Collector:Done";
 const char ProxyFetch::kCollectorPrefix[] = "Collector:";
 const char ProxyFetch::kCollectorReady[] = "Collector:Ready";
+const char ProxyFetch::kCollectorDelete[] = "Collector:Delete";
 
 const char ProxyFetch::kHeadersSetupRaceAlarmQueued[] =
     "HeadersSetupRace:AlarmQueued";
@@ -105,13 +106,13 @@ void ProxyFetchFactory::StartNewProxyFetch(
       } else {
         async_fetch->response_headers()->SetStatusAndReason(
             HttpStatus::kForbidden);
-        async_fetch->Done(false);
-        if (original_content_fetch != NULL) {
-          original_content_fetch->Done(false);
-        }
         driver->Cleanup();
         if (property_callback != NULL) {
           property_callback->Detach();
+        }
+        async_fetch->Done(false);
+        if (original_content_fetch != NULL) {
+          original_content_fetch->Done(false);
         }
         return;
       }
@@ -288,6 +289,7 @@ void ProxyFetchPropertyCallbackCollector::Done(
       fetch->PropertyCacheComplete(this, success);  // deletes this.
     } else if (do_delete) {
       delete this;
+      sync->Signal(ProxyFetch::kCollectorDelete);
     }
   }
 }
@@ -309,15 +311,24 @@ void ProxyFetchPropertyCallbackCollector::ConnectProxyFetch(
 
 void ProxyFetchPropertyCallbackCollector::Detach() {
   bool do_delete = false;
+  scoped_ptr<std::vector<Function*> > post_lookup_task_vector;
   {
     ScopedMutex lock(mutex_.get());
     proxy_fetch_ = NULL;
     DCHECK(!detached_);
     detached_ = true;
     do_delete = done_;
+    post_lookup_task_vector.reset(post_lookup_task_vector_.release());
+  }
+  if (post_lookup_task_vector.get() != NULL) {
+    for (int i = 0, n = post_lookup_task_vector->size(); i < n; ++i) {
+      (*post_lookup_task_vector.get())[i]->CallCancel();
+    }
   }
   if (do_delete) {
+    ThreadSynchronizer* sync = server_context_->thread_synchronizer();
     delete this;
+    sync->Signal(ProxyFetch::kCollectorDelete);
   }
 }
 
@@ -632,6 +643,8 @@ void ProxyFetch::PropertyCacheComplete(
     LOG(DFATAL) << "Expected non-null property_cache_callback_.";
   } else {
     delete property_cache_callback_;
+    ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+    sync->Signal(ProxyFetch::kCollectorDelete);
     property_cache_callback_ = NULL;
   }
   if (sequence_ != NULL) {

@@ -66,9 +66,12 @@ class FlushEarlyFlow {
 
  private:
   class FlushEarlyAsyncFetch;
-  // Flush some response for this request before receiving the fetch response
+  // Flushes some response for this request before receiving the fetch response
   // from the origin server.
   void FlushEarly();
+
+  // Cancels the flush early flow.
+  void Cancel();
 
   FlushEarlyFlow(const GoogleString& url,
                  AsyncFetch* base_fetch,
@@ -97,7 +100,7 @@ class FlushEarlyFlow {
 
   void Write(const StringPiece& val);
 
-  // Write the script content to base_fetch.
+  // Writes the script content to base_fetch.
   void WriteScript(const GoogleString& script_content);
 
   // Write the external script to base fetch.
