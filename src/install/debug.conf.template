@@ -77,6 +77,11 @@ ModPagespeedBlockingRewriteKey psatest
 # add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
 ModPagespeedEnableFilters add_instrumentation
 
+<Directory "@@APACHE_DOC_ROOT@@/>
+    # This is enabled to make sure we don't crash mod_negotiation.
+    Options +MultiViews
+</Directory>
+
 # Enable htaccess
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/" >
     AllowOverride All

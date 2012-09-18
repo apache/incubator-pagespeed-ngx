@@ -713,6 +713,14 @@ apr_status_t instaweb_map_to_storage(request_rec* request) {
     // code above that mangles it to use a temporary buffer instead.
     request->filename = NULL;
 
+    // While setting request->filename helps get mod_speling (as well as
+    // mod_mime and mod_mime_magic) out of our hair, it causes crashes
+    // in mod_negotiation (if on) when finfo.filetype is APR_NOFILE.
+    // So we give it a type that's something other than APR_NOFILE (plus we
+    // also don't want APR_DIR, since that would make mod_mime to set the
+    // mimetype to httpd/unix-directory).
+    request->finfo.filetype = APR_UNKFILE;
+
     // Keep core_map_to_storage from running and rejecting our long filenames.
     ret = OK;
   }
