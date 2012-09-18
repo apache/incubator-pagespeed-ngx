@@ -67,6 +67,9 @@ class RewriteStats {
   }
   Variable* num_conditional_refreshes() { return num_conditional_refreshes_; }
 
+  Histogram* beacon_timings_ms_histogram() {
+    return beacon_timings_ms_histogram_;
+  }
   Histogram* fetch_latency_histogram() { return fetch_latency_histogram_; }
   Histogram* rewrite_latency_histogram() { return rewrite_latency_histogram_; }
   Histogram* backend_latency_histogram() { return backend_latency_histogram_; }
@@ -98,6 +101,7 @@ class RewriteStats {
   Variable* fallback_responses_served_;
   Variable* num_conditional_refreshes_;
 
+  Histogram* beacon_timings_ms_histogram_;
   Histogram* fetch_latency_histogram_;
   Histogram* rewrite_latency_histogram_;
   Histogram* backend_latency_histogram_;

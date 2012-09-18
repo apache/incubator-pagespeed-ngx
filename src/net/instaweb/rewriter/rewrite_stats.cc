@@ -48,12 +48,15 @@ const char kNumConditionalRefreshes[] = "num_conditional_refreshes";
 // mod_pagespeed_handler on apache.  The average load time in milliseconds is
 // total_page_load_ms / page_load_count.  Note that these are not updated
 // together atomically, so you might get a slightly bogus value.
+//
+// We also keep a histogram, kBeaconTimingsMsHistogram of these.
 const char kTotalPageLoadMs[] = "total_page_load_ms";
 const char kPageLoadCount[] = "page_load_count";
 
 const int kNumWaveformSamples = 200;
 
 // Histogram names.
+const char kBeaconTimingsMsHistogram[] = "Beacon Reported Load Time (ms)";
 const char kFetchLatencyHistogram[] = "Pagespeed Resource Latency Histogram";
 const char kRewriteLatencyHistogram[] = "Rewrite Latency Histogram";
 const char kBackendLatencyHistogram[] =
@@ -87,6 +90,7 @@ void RewriteStats::InitStats(Statistics* statistics) {
   statistics->AddVariable(kResourceFetchConstructSuccesses);
   statistics->AddVariable(kResourceFetchConstructFailures);
   statistics->AddVariable(kNumFlushes);
+  statistics->AddHistogram(kBeaconTimingsMsHistogram);
   statistics->AddHistogram(kFetchLatencyHistogram);
   statistics->AddHistogram(kRewriteLatencyHistogram);
   statistics->AddHistogram(kBackendLatencyHistogram);
@@ -138,6 +142,8 @@ RewriteStats::RewriteStats(Statistics* stats,
           stats->GetVariable(kFallbackResponsesServed)),
       num_conditional_refreshes_(
           stats->GetVariable(kNumConditionalRefreshes)),
+      beacon_timings_ms_histogram_(
+          stats->GetHistogram(kBeaconTimingsMsHistogram)),
       fetch_latency_histogram_(
           stats->GetHistogram(kFetchLatencyHistogram)),
       rewrite_latency_histogram_(
@@ -153,6 +159,7 @@ RewriteStats::RewriteStats(Statistics* stats,
   // EnableNegativeBuckets is called, allowing bars to be created with
   // negative x-axis labels in the histogram.
   // TODO(sligocki): Any reason not to set this by default for all Histograms?
+  beacon_timings_ms_histogram_->EnableNegativeBuckets();
   fetch_latency_histogram_->EnableNegativeBuckets();
   rewrite_latency_histogram_->EnableNegativeBuckets();
   backend_latency_histogram_->EnableNegativeBuckets();

@@ -616,6 +616,7 @@ bool ServerContext::HandleBeacon(const StringPiece& unparsed_url) {
 
   rewrite_stats_->total_page_load_ms()->Add(value);
   rewrite_stats_->page_load_count()->Add(1);
+  rewrite_stats_->beacon_timings_ms_histogram()->Add(value);
   return true;
 }
 
