@@ -214,6 +214,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kExtendCacheCss,
   RewriteOptions::kExtendCacheImages,
   RewriteOptions::kExtendCacheScripts,
+  RewriteOptions::kFallbackRewriteCssUrls,
   RewriteOptions::kFlattenCssImports,
   RewriteOptions::kInlineCss,
   RewriteOptions::kInlineImages,
@@ -235,8 +236,6 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
 // this is managed in the c++ switch statement.
 const RewriteOptions::Filter kTestFilterSet[] = {
   RewriteOptions::kConvertJpegToWebp,
-  // TODO(sligocki): Move kFallbackRewriteCssUrls to kCoreFilterSet when ready.
-  RewriteOptions::kFallbackRewriteCssUrls,
   RewriteOptions::kInsertGA,
   RewriteOptions::kInsertImageDimensions,
   RewriteOptions::kLeftTrimUrls,
