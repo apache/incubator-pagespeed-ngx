@@ -176,7 +176,9 @@ class SerfFetch : public PoolElement<SerfFetch> {
       if (!success) {
         fetcher_->failure_count_->Add(1);
       }
-      if (fetcher_->track_original_content_length()) {
+      if (fetcher_->track_original_content_length() &&
+          !async_fetch_->response_headers()->Has(
+              HttpAttributes::kXOriginalContentLength)) {
         async_fetch_->extra_response_headers()->SetOriginalContentLength(
             bytes_received_);
       }
@@ -385,6 +387,15 @@ class SerfFetch : public PoolElement<SerfFetch> {
     if (IsStatusOk(status) && (len > 0)) {
       if (parser_.ParseChunk(StringPiece(data, len), message_handler_)) {
         if (parser_.headers_complete()) {
+          if (fetcher_->track_original_content_length()) {
+            // Set X-Original-Content-Length, if Content-Length is available.
+            int64 content_length;
+            if (async_fetch_->response_headers()->FindContentLength(
+                &content_length)) {
+              async_fetch_->response_headers()->SetOriginalContentLength(
+                  content_length);
+            }
+          }
           // Stream the one byte read from ReadOneByteFromBody to writer.
           if (has_saved_byte_) {
             ++bytes_received_;

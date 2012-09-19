@@ -587,9 +587,7 @@ TEST_F(SerfUrlAsyncFetcherTest, ThreadedConnectionRefusedWithDetail) {
 }
 
 // Test that the X-Original-Content-Length header is properly set
-// when requested. Since this appears in the extra_response_headers()
-// field in AsyncFetch, we need to use the Fetch() variant, rather
-// than StreamingFetch(), to get direct access to this.
+// when requested.
 TEST_F(SerfUrlAsyncFetcherTest, TestTrackOriginalContentLength) {
   serf_url_async_fetcher_->set_track_original_content_length(true);
   StringAsyncFetch async_fetch;
@@ -599,7 +597,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTrackOriginalContentLength) {
     YieldToThread();
     serf_url_async_fetcher_->Poll(kThreadedPollMs);
   }
-  const char* ocl_header = async_fetch.extra_response_headers()->Lookup1(
+  const char* ocl_header = async_fetch.response_headers()->Lookup1(
       HttpAttributes::kXOriginalContentLength);
   EXPECT_TRUE(ocl_header != NULL);
   int bytes_count =
