@@ -201,6 +201,7 @@
         'util/hasher_test.cc',
         'util/inline_slist_test.cc',
         'util/inprocess_shared_mem_test.cc',
+        'util/key_value_codec_test.cc',
         'util/lru_cache_test.cc',
         'util/md5_hasher_test.cc',
         'util/mem_debug.cc',

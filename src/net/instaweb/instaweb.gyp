@@ -599,6 +599,7 @@
         'util/hasher.cc',
         'util/inprocess_shared_mem.cc',
         'util/json_writer.cc',
+        'util/key_value_codec.cc',
         'util/lru_cache.cc',
         'util/md5_hasher.cc',
         'util/mock_hasher.cc',
