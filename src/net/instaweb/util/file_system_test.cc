@@ -33,8 +33,9 @@
 
 namespace net_instaweb {
 
-FileSystemTest::FileSystemTest() { }
-FileSystemTest::~FileSystemTest() { }
+FileSystemTest::FileSystemTest()
+    : test_tmpdir_(StrCat(GTestTempDir(), "/file_system_test")) {}
+FileSystemTest::~FileSystemTest() {}
 
 // Used by TestDirInfo to make sure vector of FileInfos can be compared
 // consistently
@@ -89,7 +90,7 @@ void FileSystemTest::CheckDoesNotExist(const GoogleString& filename) {
 
 // Write a named file, then read it.
 void FileSystemTest::TestWriteRead() {
-  GoogleString filename = test_tmpdir() + "/write.txt";
+  GoogleString filename = StrCat(test_tmpdir(), "/write.txt");
   GoogleString msg("Hello, world!");
 
   DeleteRecursively(filename);
@@ -104,7 +105,7 @@ void FileSystemTest::TestWriteRead() {
 
 // Write a temp file, then read it.
 void FileSystemTest::TestTemp() {
-  GoogleString prefix = test_tmpdir() + "/temp_prefix";
+  GoogleString prefix = StrCat(test_tmpdir(), "/temp_prefix");
   FileSystem::OutputFile* ofile = file_system()->OpenTempFile(
       prefix, &handler_);
   ASSERT_TRUE(ofile != NULL);
@@ -118,7 +119,7 @@ void FileSystemTest::TestTemp() {
 
 // Write a temp file, close it, append to it, then read it.
 void FileSystemTest::TestAppend() {
-  GoogleString prefix = test_tmpdir() + "/temp_prefix";
+  GoogleString prefix = StrCat(test_tmpdir(), "/temp_prefix");
   FileSystem::OutputFile* ofile = file_system()->OpenTempFile(
       prefix, &handler_);
   ASSERT_TRUE(ofile != NULL);
@@ -135,7 +136,7 @@ void FileSystemTest::TestAppend() {
 // Write a temp file, rename it, then read it.
 void FileSystemTest::TestRename() {
   GoogleString from_text = "Now is time time";
-  GoogleString to_file = test_tmpdir() + "/to.txt";
+  GoogleString to_file = StrCat(test_tmpdir(), "/to.txt");
   DeleteRecursively(to_file);
 
   GoogleString from_file = WriteNewFile("/from.txt", from_text);
@@ -161,7 +162,7 @@ void FileSystemTest::TestExists() {
 
 // Create a file along with its directory which does not exist.
 void FileSystemTest::TestCreateFileInDir() {
-  GoogleString dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = StrCat(test_tmpdir(), "/make_dir");
   DeleteRecursively(dir_name);
   GoogleString filename = dir_name + "/file-in-dir.txt";
 
@@ -174,7 +175,7 @@ void FileSystemTest::TestCreateFileInDir() {
 
 // Make a directory and check that files may be placed in it.
 void FileSystemTest::TestMakeDir() {
-  GoogleString dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = StrCat(test_tmpdir(), "/make_dir");
   DeleteRecursively(dir_name);
   GoogleString filename = dir_name + "/file-in-dir.txt";
 
@@ -189,7 +190,7 @@ void FileSystemTest::TestMakeDir() {
 // Make a directory and then remove it.
 void FileSystemTest::TestRemoveDir() {
   // mem_file_system depends on dir_names ending with a '/'
-  GoogleString dir_name = test_tmpdir() + "/make_dir/";
+  GoogleString dir_name = StrCat(test_tmpdir(), "/make_dir/");
   DeleteRecursively(dir_name);
   GoogleString filename = dir_name + "file-in-dir.txt";
 
@@ -214,7 +215,7 @@ void FileSystemTest::TestRemoveDir() {
 
 // Make a directory and check that it is a directory.
 void FileSystemTest::TestIsDir() {
-  GoogleString dir_name = test_tmpdir() + "/this_is_a_dir";
+  GoogleString dir_name = StrCat(test_tmpdir(), "/this_is_a_dir");
   DeleteRecursively(dir_name);
 
   // Make sure we don't think the directory is there when it isn't ...
@@ -232,7 +233,7 @@ void FileSystemTest::TestIsDir() {
 
 // Recursively make directories and check that it worked.
 void FileSystemTest::TestRecursivelyMakeDir() {
-  GoogleString base = test_tmpdir() + "/base";
+  GoogleString base = StrCat(test_tmpdir(), "/base");
   GoogleString long_path = base + "/dir/of/a/really/deep/hierarchy";
   DeleteRecursively(base);
 
@@ -257,7 +258,7 @@ void FileSystemTest::TestRecursivelyMakeDir_NoPermission() {
 
 // Check that we cannot create a directory below a file.
 void FileSystemTest::TestRecursivelyMakeDir_FileInPath() {
-  GoogleString base = test_tmpdir() + "/file-in-path";
+  GoogleString base = StrCat(test_tmpdir(), "/file-in-path");
   GoogleString filename = base + "/this-is-a-file";
   GoogleString bad_path = filename + "/some/more/path";
   DeleteRecursively(base);
@@ -269,7 +270,7 @@ void FileSystemTest::TestRecursivelyMakeDir_FileInPath() {
 }
 
 void FileSystemTest::TestListContents() {
-  GoogleString dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = StrCat(test_tmpdir(), "/make_dir");
   DeleteRecursively(dir_name);
   GoogleString filename1 = dir_name + "/file-in-dir.txt";
   GoogleString filename2 = dir_name + "/another-file-in-dir.txt";
@@ -290,7 +291,7 @@ void FileSystemTest::TestListContents() {
 }
 
 void FileSystemTest::TestAtime() {
-  GoogleString dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = StrCat(test_tmpdir(), "/make_dir");
   DeleteRecursively(dir_name);
   GoogleString filename1 = "file-in-dir.txt";
   GoogleString filename2 = "another-file-in-dir.txt";
@@ -322,7 +323,7 @@ void FileSystemTest::TestAtime() {
 }
 
 void FileSystemTest::TestMtime() {
-  GoogleString dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = StrCat(test_tmpdir(), "/make_dir");
   DeleteRecursively(dir_name);
   GoogleString filename1 = "file-in-dir.txt";
   GoogleString filename2 = "another-file-in-dir.txt";
@@ -370,7 +371,7 @@ void FileSystemTest::TestMtime() {
 }
 
 void FileSystemTest::TestDirInfo() {
-  GoogleString dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = StrCat(test_tmpdir(), "/make_dir");
   DeleteRecursively(dir_name);
   GoogleString dir_name2 = dir_name + "/make_dir2";
   GoogleString dir_name3 = dir_name + "/make_dir3/";
@@ -431,7 +432,7 @@ void FileSystemTest::TestDirInfo() {
 }
 
 void FileSystemTest::TestLock() {
-  GoogleString dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = StrCat(test_tmpdir(), "/make_dir");
   DeleteRecursively(dir_name);
   ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
   GoogleString lock_name = dir_name + "/lock";
@@ -450,7 +451,7 @@ void FileSystemTest::TestLock() {
 // Test lock timeout; assumes the file system has at least 1-second creation
 // granularity.
 void FileSystemTest::TestLockTimeout() {
-  GoogleString dir_name = test_tmpdir() + "/make_dir";
+  GoogleString dir_name = StrCat(test_tmpdir(), "/make_dir");
   DeleteRecursively(dir_name);
   ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
   GoogleString lock_name = dir_name + "/lock";

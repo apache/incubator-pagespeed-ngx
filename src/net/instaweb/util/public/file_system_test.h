@@ -58,7 +58,7 @@ class FileSystemTest : public testing::Test {
   virtual Timer* timer() = 0;
 
   // Provide a temporary directory for tests to put files in.
-  virtual GoogleString test_tmpdir() = 0;
+  const GoogleString& test_tmpdir() { return test_tmpdir_; }
 
   GoogleString WriteNewFile(const StringPiece& suffix,
                             const GoogleString& content);
@@ -87,6 +87,7 @@ class FileSystemTest : public testing::Test {
   void TestLockTimeout();
 
   GoogleMessageHandler handler_;
+  GoogleString test_tmpdir_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FileSystemTest);
