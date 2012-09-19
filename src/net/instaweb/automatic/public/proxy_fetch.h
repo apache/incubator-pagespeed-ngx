@@ -353,9 +353,6 @@ class ProxyFetch : public SharedAsyncFetch {
 
   HtmlDetector html_detector_;
 
-  // Statistics
-  int64 start_time_us_;
-
   // Tracks a set of outstanding property-cache lookups.  This is NULLed
   // when the property-cache completes or when we detach it.  We use
   // this to detach the callback if we decide we don't care about the

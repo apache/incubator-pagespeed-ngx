@@ -106,7 +106,7 @@ class ResourceFetch : public SharedAsyncFetch {
   Timer* timer_;
   MessageHandler* message_handler_;
 
-  int64 start_time_us_;
+  int64 start_time_ms_;
   int redirect_count_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceFetch);

@@ -33,7 +33,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -41,7 +40,6 @@
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/queued_alarm.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -365,7 +363,6 @@ ProxyFetch::ProxyFetch(
       claims_html_(false),
       started_parse_(false),
       done_called_(false),
-      start_time_us_(0),
       property_cache_callback_(property_cache_callback),
       original_content_fetch_(original_content_fetch),
       driver_(driver),
@@ -547,7 +544,6 @@ void ProxyFetch::SetupForHtml() {
       // TODO(sligocki): Support Etags and/or Last-Modified.
       response_headers()->RemoveAll(HttpAttributes::kEtag);
       response_headers()->RemoveAll(HttpAttributes::kLastModified);
-      start_time_us_ = server_context_->timer()->NowUs();
 
       // HTML sizes are likely to be altered by HTML rewriting.
       response_headers()->RemoveAll(HttpAttributes::kContentLength);
@@ -945,13 +941,6 @@ void ProxyFetch::Finish(bool success) {
       driver_->Cleanup();
       driver_ = NULL;
     }
-  }
-
-  if (started_parse_ && success) {
-    RewriteStats* stats = server_context_->rewrite_stats();
-    stats->rewrite_latency_histogram()->Add(
-        (timer_->NowUs() - start_time_us_) / 1000.0);
-    stats->total_rewrite_count()->IncBy(1);
   }
 
   base_fetch()->Done(success);

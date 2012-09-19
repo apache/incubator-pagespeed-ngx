@@ -136,7 +136,7 @@ ResourceFetch::ResourceFetch(const GoogleUrl& url,
       driver_(driver),
       timer_(timer),
       message_handler_(handler),
-      start_time_us_(timer->NowUs()),
+      start_time_ms_(timer->NowMs()),
       redirect_count_(0) {
   resource_url_.Reset(url);
 }
@@ -175,8 +175,7 @@ void ResourceFetch::HandleDone(bool success) {
     }
   }
   RewriteStats* stats = driver_->server_context()->rewrite_stats();
-  stats->fetch_latency_histogram()->Add(
-      (timer_->NowUs() - start_time_us_) / 1000.0);
+  stats->fetch_latency_histogram()->Add(timer_->NowMs() - start_time_ms_);
   stats->total_fetch_count()->IncBy(1);
   driver_->Cleanup();
   base_fetch()->Done(success);

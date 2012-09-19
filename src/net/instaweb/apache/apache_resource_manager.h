@@ -104,6 +104,7 @@ class ApacheResourceManager : public ServerContext {
   void PollFilesystemForCacheFlush();
 
   // Accumulate in a histogram the amount of time spent rewriting HTML.
+  // TODO(sligocki): Remove in favor of RewriteStats::rewrite_latency_histogram.
   void AddHtmlRewriteTimeUs(int64 rewrite_time_us);
 
   static void InitStats(Statistics* statistics);

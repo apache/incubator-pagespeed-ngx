@@ -131,7 +131,7 @@ class ImageTest : public ImageTestBase {
     // Construct data url, then decode it and check for match.
     CachedResult cached;
     GoogleString data_url;
-    EXPECT_NE(Image::IMAGE_UNKNOWN, image->image_type());
+    ASSERT_NE(Image::IMAGE_UNKNOWN, image->image_type());
     StringPiece image_contents = image->Contents();
 
     if (progressive) {

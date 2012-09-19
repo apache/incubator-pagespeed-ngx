@@ -1282,6 +1282,9 @@ class RewriteDriver : public HtmlParse {
   // Reset to NULL in Cleanup()
   LogRecord* log_record_;
 
+  // Start time for HTML requests. Used for statistics reporting.
+  int64 start_time_ms_;
+
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };
 

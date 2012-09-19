@@ -23,16 +23,18 @@
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/waveform.h"
 
+namespace net_instaweb {
+
 namespace {
 
 // resource_url_domain_rejections counts the number of urls on a page that we
 // could have rewritten, except that they lay in a domain that did not
 // permit resource rewriting relative to the current page.
 const char kResourceUrlDomainRejections[] = "resource_url_domain_rejections";
-static const char kCachedOutputMissedDeadline[] =
+const char kCachedOutputMissedDeadline[] =
     "rewrite_cached_output_missed_deadline";
-static const char kCachedOutputHits[] = "rewrite_cached_output_hits";
-static const char kCachedOutputMisses[] = "rewrite_cached_output_misses";
+const char kCachedOutputHits[] = "rewrite_cached_output_hits";
+const char kCachedOutputMisses[] = "rewrite_cached_output_misses";
 const char kInstawebResource404Count[] = "resource_404_count";
 const char kInstawebSlurp404Count[] = "slurp_404_count";
 const char kResourceFetchesCached[] = "resource_fetches_cached";
@@ -69,8 +71,6 @@ const char kRewritesExecuted[] = "num_rewrites_executed";
 const char kRewritesDropped[] = "num_rewrites_dropped";
 
 }  // namespace
-
-namespace net_instaweb {
 
 // In Apache, this is called in the root process to establish shared memory
 // boundaries prior to the primary initialization of RewriteDriverFactories.

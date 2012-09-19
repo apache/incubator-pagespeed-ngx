@@ -229,7 +229,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       collect_subresources_filter_(NULL),
       serve_blink_non_critical_(false),
       is_blink_request_(false),
-      log_record_(NULL)
+      log_record_(NULL),
+      start_time_ms_(0)
       // NOTE:  Be sure to clear per-request member vars in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // Set up default values for the amount of time an HTML rewrite will wait for
@@ -340,6 +341,7 @@ void RewriteDriver::Clear() {
   serve_blink_non_critical_ = false;
   is_blink_request_ = false;
   log_record_ = NULL;
+  start_time_ms_ = 0;
 
   if (owns_property_page_) {
     delete property_page_;
@@ -1718,12 +1720,12 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
 void RewriteDriver::ReadAsync(Resource::AsyncCallback* callback,
                               MessageHandler* handler) {
   // TODO(jmarantz): fix call-sites and eliminate this wrapper.
-  server_context_->ReadAsync(Resource::kReportFailureIfNotCacheable,
-                               callback);
+  server_context_->ReadAsync(Resource::kReportFailureIfNotCacheable, callback);
 }
 
 bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
                                  const ContentType& content_type) {
+  start_time_ms_ = server_context_->timer()->NowMs();
   set_log_rewrite_timing(options()->log_rewrite_timing());
   bool ret = HtmlParse::StartParseId(url, id, content_type);
   {
@@ -2045,6 +2047,13 @@ void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
   DCHECK_EQ(0U, GetEventQueueSize());
   HtmlParse::EndFinishParse();
   WriteClientStateIntoPropertyCache();
+
+  // Update stats.
+  RewriteStats* stats = server_context_->rewrite_stats();
+  stats->rewrite_latency_histogram()->Add(
+      server_context_->timer()->NowMs() - start_time_ms_);
+  stats->total_rewrite_count()->IncBy(1);
+
   Cleanup();
   if (user_callback != NULL) {
     user_callback->CallRun();

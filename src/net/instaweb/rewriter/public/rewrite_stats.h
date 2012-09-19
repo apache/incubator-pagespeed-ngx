@@ -61,6 +61,8 @@ class RewriteStats {
     return succeeded_filter_resource_fetches_;
   }
   Variable* total_page_load_ms() { return total_page_load_ms_; }
+  // Note: page_load_count is a misnomer, it is really beacon count.
+  // TODO(sligocki): Rename to something more clear.
   Variable* page_load_count() { return page_load_count_; }
   Variable* fallback_responses_served() {
     return fallback_responses_served_;
@@ -70,11 +72,15 @@ class RewriteStats {
   Histogram* beacon_timings_ms_histogram() {
     return beacon_timings_ms_histogram_;
   }
+  // .pagespeed. resource latency in ms.
   Histogram* fetch_latency_histogram() { return fetch_latency_histogram_; }
+  // HTML rewrite latency in ms.
   Histogram* rewrite_latency_histogram() { return rewrite_latency_histogram_; }
   Histogram* backend_latency_histogram() { return backend_latency_histogram_; }
 
+  // Number of .pagespeed. resources fetched.
   TimedVariable* total_fetch_count() { return total_fetch_count_; }
+  // Number of HTML pages rewritten.
   TimedVariable* total_rewrite_count() { return total_rewrite_count_; }
 
   Waveform* thread_queue_depth(RewriteDriverFactory::WorkerPoolName name) {
