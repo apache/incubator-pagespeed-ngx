@@ -2,6 +2,8 @@
 
 set -x
 exec make \
+    APACHE_ROOT=/etc/httpd \
+    APACHE_MODULES=/etc/httpd/modules \
     APACHE_CONTROL_PROGRAM=/etc/init.d/httpd \
     APACHE_USER=apache \
     APACHE_DOC_ROOT=/var/www/html \

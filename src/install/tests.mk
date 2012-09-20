@@ -16,12 +16,12 @@
 #                       OPT_DOMAIN_HYPERLINKS_TEST, OPT_ABSOLUTE_URLS_TEST,
 #                       OPT_PER_VHOST_STATS_TEST,
 #                       OPT_DOMAIN_RESOURCE_TAGS_TEST, OPT_ALL_DIRECTIVES_TEST)
+#  stop, start  (to stop and start Apache)
 #  apache_debug_restart
 #  apache_debug_stop
 #  apache_debug_leak_test, apache_debug_proxy_test, apache_debug_slurp_test
 #  APACHE_DEBUG_PORT
 #  APACHE_HTTPS_PORT
-#  APACHE_CTRL_BIN
 #  APACHE_DEBUG_PAGESPEED_CONF
 #  MOD_PAGESPEED_CACHE
 #  INSTALL_DATA_DIR
@@ -103,11 +103,9 @@ TEST_ROOT = $(APACHE_SERVER)/mod_pagespeed_test
 # restoring it at the end
 apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	@echo '***' System-test with cold cache
-	-$(APACHE_CTRL_BIN) stop
-	sleep 2
+	$(MAKE) stop
 	rm -rf $(MOD_PAGESPEED_CACHE)
-	$(APACHE_CTRL_BIN) start
-	sleep 2
+	$(MAKE) start
 	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
 	                                          $(APACHE_HTTPS_SERVER)
 	@echo '***' System-test with warm cache
@@ -119,8 +117,8 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 		< $(APACHE_DEBUG_PAGESPEED_CONF).save \
 		> $(APACHE_DEBUG_PAGESPEED_CONF)
 	grep ModPagespeedStatistics $(APACHE_DEBUG_PAGESPEED_CONF)
-	-$(APACHE_CTRL_BIN) restart
-	sleep 2
+	$(MAKE) stop
+	$(MAKE) start
 	CACHE_FLUSH_TEST=on \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
