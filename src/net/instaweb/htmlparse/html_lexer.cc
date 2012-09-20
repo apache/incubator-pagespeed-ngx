@@ -130,6 +130,8 @@ HtmlLexer::HtmlLexer(HtmlParse* html_parse)
       element_(NULL),
       line_(1),
       tag_start_line_(-1),
+      size_limit_exceeded_(false),
+      skip_parsing_(false),
       size_limit_(-1) {
 #ifndef NDEBUG
   CHECK_KEYWORD_SET_ORDERING(kImplicitlyClosedHtmlTags);

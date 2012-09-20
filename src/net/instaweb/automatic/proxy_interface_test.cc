@@ -4416,4 +4416,58 @@ TEST_F(ProxyInterfaceTest, TestOptionsUsedInCacheKey) {
   TestOptionsUsedInCacheKey();
 }
 
+TEST_F(ProxyInterfaceTest, BailOutOfParsing) {
+  RewriteOptions* options = server_context()->global_options();
+  options->ClearSignatureForTesting();
+  options->EnableExtendCacheFilters();
+  options->set_max_html_parse_bytes(60);
+  server_context()->ComputeSignature(options);
+
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.jpg"), kContentTypeJpeg,
+                                "image", kHtmlCacheTimeSec * 2);
+
+  // This is larger than 60 bytes.
+  const char kContent[] = "<html><head></head><body>"
+      "<img src=\"1.jpg\">"
+      "<p>Some very long and very boring text</p>"
+      "</body></html>";
+  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml, kContent, 0);
+  ResponseHeaders headers;
+  GoogleString text;
+  FetchFromProxy(kPageUrl, true, &text, &headers);
+  // For the first request, we bail out of parsing and insert the redirect. We
+  // also update the pcache.
+  EXPECT_EQ("<html><script type=\"text/javascript\">"
+            "window.location=\"http://test.com/page.html?ModPagespeed=off\";"
+            "</script></html>", text);
+
+  headers.Clear();
+  text.clear();
+  // We look up the pcache and find that we should skip parsing. Hence, we just
+  // pass the bytes through.
+  FetchFromProxy(kPageUrl, true, &text, &headers);
+  EXPECT_EQ(kContent, text);
+
+  // This is smaller than 60 bytes.
+  const char kNewContent[] = "<html><head></head><body>"
+       "<img src=\"1.jpg\"></body></html>";
+
+  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml, kNewContent, 0);
+  headers.Clear();
+  text.clear();
+  // We still remember that we should skip parsing. Hence, we pass the bytes
+  // through. However, after this request, we update the pcache to indicate that
+  // we should no longer skip parsing.
+  FetchFromProxy(kPageUrl, true, &text, &headers);
+  EXPECT_EQ(kNewContent, text);
+
+  headers.Clear();
+  text.clear();
+  // This request is rewritten.
+  FetchFromProxy(kPageUrl, true, &text, &headers);
+  EXPECT_EQ("<html><head></head><body>"
+            "<img src=\"http://test.com/1.jpg.pagespeed.ce.0.jpg\">"
+            "</body></html>", text);
+}
+
 }  // namespace net_instaweb

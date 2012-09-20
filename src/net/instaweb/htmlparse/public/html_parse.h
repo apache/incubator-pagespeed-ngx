@@ -94,9 +94,11 @@ class HtmlParse {
   //
   // It is invalid to call ParseText when the StartParse* routines returned
   // false.
-  void ParseText(const char* content, int size);
+  void ParseText(const char* content, int size) {
+    ParseTextInternal(content, size);
+  }
   void ParseText(const StringPiece& sp) {
-    ParseText(sp.data(), sp.size());
+    ParseTextInternal(sp.data(), sp.size());
   }
 
   // Flush the currently queued events through the filters.  It is desirable
@@ -382,6 +384,8 @@ class HtmlParse {
   // Return the EndElementEvent for this element, or NULL if it doesn't exist
   // yet.
   HtmlEvent* GetEndElementEvent(const HtmlElement* element);
+
+  virtual void ParseTextInternal(const char* content, int size);
 
  private:
   void ApplyFilterHelper(HtmlFilter* filter);

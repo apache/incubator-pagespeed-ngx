@@ -128,6 +128,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
@@ -200,6 +201,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       user_agent_supports_webp_(kNotSet),
       is_mobile_user_agent_(kNotSet),
       user_agent_supports_flush_early_(kNotSet),
+      should_skip_parsing_(kNotSet),
       using_spdy_(false),
       response_headers_(NULL),
       request_headers_(NULL),
@@ -226,6 +228,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0),
       num_flushed_early_pagespeed_resources_(0),
+      num_bytes_in_(0),
       collect_subresources_filter_(NULL),
       serve_blink_non_critical_(false),
       is_blink_request_(false),
@@ -314,6 +317,7 @@ void RewriteDriver::Clear() {
   client_state_.reset(NULL);
   is_mobile_user_agent_ = kNotSet;
   user_agent_supports_flush_early_ = kNotSet;
+  should_skip_parsing_ = kNotSet;
   pending_async_events_ = 0;
   user_agent_is_bot_ = kNotSet;
   request_headers_ = NULL;
@@ -335,6 +339,7 @@ void RewriteDriver::Clear() {
   fully_rewrite_on_flush_ = false;
   num_inline_preview_images_ = 0;
   num_flushed_early_pagespeed_resources_ = 0;
+  num_bytes_in_ = 0;
   flush_early_info_.reset(NULL);
   flush_early_render_info_.reset(NULL);
   collect_subresources_filter_ = NULL;
@@ -650,6 +655,8 @@ const char* RewriteDriver::kPassThroughRequestAttributes[3] = {
 const char RewriteDriver::kDomCohort[] = "dom";
 const char RewriteDriver::kSubresourcesPropertyName[] = "subresources";
 const char RewriteDriver::kLastRequestTimestamp[] = "last_request_timestamp";
+const char RewriteDriver::kParseSizeLimitExceeded[] =
+    "parse_size_limit_exceeded";
 
 void RewriteDriver::Initialize() {
   if (RewriteOptions::Initialize()) {
@@ -1743,6 +1750,15 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
   return ret;
 }
 
+void RewriteDriver::ParseTextInternal(const char* content, int size) {
+  num_bytes_in_ += size;
+  if (ShouldSkipParsing()) {
+    writer()->Write(content, message_handler());
+  } else {
+    HtmlParse::ParseTextInternal(content, size);
+  }
+}
+
 void RewriteDriver::SetDecodedUrlFromBase() {
   UrlNamer* namer = server_context()->url_namer();
   GoogleString decoded_base;
@@ -1752,6 +1768,25 @@ void RewriteDriver::SetDecodedUrlFromBase() {
     decoded_base_url_.Reset(base_url_);
   }
   DCHECK(decoded_base_url_.is_valid());
+}
+
+bool RewriteDriver::ShouldSkipParsing() {
+  if (should_skip_parsing_ == kNotSet) {
+    bool should_skip = false;
+    PropertyPage* page = property_page();
+    if (page != NULL) {
+      PropertyCache* pcache = server_context_->page_property_cache();
+      const PropertyCache::Cohort* dom_cohort = pcache->GetCohort(kDomCohort);
+      if (dom_cohort != NULL) {
+        PropertyValue* property_value = property_page()->GetProperty(
+            dom_cohort, kParseSizeLimitExceeded);
+        should_skip = property_value->has_value() &&
+            StringCaseEqual(property_value->value(), "1");
+      }
+    }
+    should_skip_parsing_ = should_skip ? kTrue : kFalse;
+  }
+  return (should_skip_parsing_ == kTrue);
 }
 
 void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
@@ -1871,6 +1906,12 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
       UpdatePropertyValueInDomCohort(
           kLastRequestTimestamp,
           Integer64ToString(server_context()->timer()->NowMs()));
+      if (options()->max_html_parse_bytes() > 0) {
+        // Update whether the page exceeded the html parse size limit.
+        UpdatePropertyValueInDomCohort(
+            kParseSizeLimitExceeded,
+            num_bytes_in_ > options()->max_html_parse_bytes() ? "1" : "0");
+      }
       if (flush_early_info_.get() != NULL) {
         PropertyValue* subresources_property_value = page->GetProperty(
             dom_cohort, RewriteDriver::kSubresourcesPropertyName);
@@ -2339,7 +2380,6 @@ void RewriteDriver::set_unowned_property_page(PropertyPage* page) {
   property_page_ = page;
   owns_property_page_ = false;
 }
-
 
 void RewriteDriver::increment_num_inline_preview_images() {
   ++num_inline_preview_images_;

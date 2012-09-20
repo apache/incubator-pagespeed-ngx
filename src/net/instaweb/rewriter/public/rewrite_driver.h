@@ -27,6 +27,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -46,8 +47,6 @@
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
-
-struct ContentType;
 
 class AbstractMutex;
 class AddInstrumentationFilter;
@@ -144,6 +143,10 @@ class RewriteDriver : public HtmlParse {
   // The name of the property in the DomCohort that tracks the timestamp when
   // we last received a request for this url.
   static const char kLastRequestTimestamp[];
+
+  // The name of the property in the DomCohort that tracks whether we exceeded
+  // the maximum size limit of html which we should parse.
+  static const char kParseSizeLimitExceeded[];
 
   // This proprty is used to store information regarding the subresources
   // associted with the HTML page.
@@ -958,6 +961,12 @@ class RewriteDriver : public HtmlParse {
   // The rewrite_mutex is owned by the scheduler.
   AbstractMutex* rewrite_mutex() { return scheduler_->mutex(); }
 
+  // Parses an arbitrary block of an html file
+  virtual void ParseTextInternal(const char* content, int size);
+
+  // Indicates whether we should skip parsing for the given request.
+  bool ShouldSkipParsing();
+
   friend class ScanFilter;
 
   // Adds a CommonFilter into the HtmlParse filter-list, and into the
@@ -1133,6 +1142,8 @@ class RewriteDriver : public HtmlParse {
   mutable LazyBool is_mobile_user_agent_;
   mutable LazyBool user_agent_supports_flush_early_;
 
+  LazyBool should_skip_parsing_;
+
   // If true, request is known to have been made using SPDY.
   bool using_spdy_;
 
@@ -1263,6 +1274,9 @@ class RewriteDriver : public HtmlParse {
 
   // Number of flushed early pagespeed rewritten resource.
   int num_flushed_early_pagespeed_resources_;
+
+  // The total number of bytes for which ParseText is called.
+  int num_bytes_in_;
 
   CollectSubresourcesFilter* collect_subresources_filter_;
 

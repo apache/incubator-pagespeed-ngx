@@ -243,7 +243,7 @@ void HtmlParse::EndFinishParse() {
   }
 }
 
-void HtmlParse::ParseText(const char* text, int size) {
+void HtmlParse::ParseTextInternal(const char* text, int size) {
   DCHECK(url_valid_) << "Invalid to call ParseText with invalid url";
   if (url_valid_) {
     lexer_->Parse(text, size);
