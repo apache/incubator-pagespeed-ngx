@@ -385,6 +385,7 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   # the html.
   echo "echo \".class myclass { color: blue; }\" > $CSS_FILE"
   echo ".class myclass { color: blue; }" >$TMP_CSS_FILE
+  chmod ugo+r $TMP_CSS_FILE  # in case the user's umask doesn't allow o+r
   $SUDO cp $TMP_CSS_FILE $CSS_FILE
   fetch_until $URL 'grep -c blue' 1
 
