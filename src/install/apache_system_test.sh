@@ -453,9 +453,19 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
 
   # Monitor the Apache log starting now.  tail -F will catch log rotations.
   SERF_REFUSED_PATH=/tmp/instaweb_apache_serf_refused.$$
+  rm $SERF_REFUSED_PATH
   echo APACHE_LOG = $APACHE_LOG
   tail --sleep-interval=0.1 -F $APACHE_LOG > $SERF_REFUSED_PATH &
   TAIL_PID=$!
+
+  # Wait for tail to start.
+  echo -n "Waiting for tail to start..."
+  while [ ! -f $SERF_REFUSED_PATH ]; do
+    sleep 0.1
+    echo -n "."
+  done
+  echo "done!"
+
   # Actually kick off the request.
   echo $WGET_DUMP $TEST_ROOT/connection_refused.html
   echo checking...
@@ -469,10 +479,10 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
     if [ $ERRS -ge 1 ]; then
       break;
     fi;
-    /bin/echo -n "."
+    echo -n "."
     sleep 0.1
   done;
-  /bin/echo "."
+  echo "."
   # Kill the log monitor silently.
   kill $TAIL_PID
   wait $TAIL_PID 2> /dev/null
