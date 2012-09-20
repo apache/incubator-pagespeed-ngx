@@ -189,6 +189,7 @@
         'util/data_url_test.cc',
         'util/delay_cache_test.cc',
         'util/escaping_test.cc',
+        'util/fallback_cache_test.cc',
         'util/fast_wildcard_group_test.cc',
         'util/fast_wildcard_group_speed_test.cc',
         'util/file_cache_test.cc',

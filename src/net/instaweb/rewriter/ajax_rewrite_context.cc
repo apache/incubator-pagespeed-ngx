@@ -113,13 +113,6 @@ void RecordingFetch::HandleDone(bool success) {
     int64 ocl;
     if (original_content_length_hdr != NULL &&
         StringToInt64(original_content_length_hdr, &ocl)) {
-      if (ocl == 0) {
-        // TODO(mdw): This is temporary in order to track down a bug where
-        // the X-OCL field is being set to zero in some cases (b/7172676).
-        // Remove this once the bug is resolved.
-        LOG(WARNING) << "RecordingFetch::HandleDone setting X-OCL to 0 for "
-                     << context_->url_;
-      }
       saved_headers_.SetOriginalContentLength(ocl);
     }
     // Now finalize the headers.
