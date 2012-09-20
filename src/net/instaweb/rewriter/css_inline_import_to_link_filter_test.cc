@@ -95,6 +95,70 @@ TEST_F(CssInlineImportToLinkFilterTest, ConvertGoodStyle) {
   ValidateStyleToLink("<style>@import url(assets/styles.css)</style>", kLink);
 }
 
+TEST_F(CssInlineImportToLinkFilterTest, ConvertStyleWithMultipleImports) {
+  AddFilter(RewriteOptions::kInlineImportToLink);
+  ValidateStyleToLink(
+      "<style>"
+      "@import \"first.css\" all;\n"
+      "@import url(\"second.css\" );\n"
+      "@import 'third.css';\n"
+      "</style>",
+      "<link rel=\"stylesheet\" href=\"first.css\" media=\"all\">"
+      "<link rel=\"stylesheet\" href=\"second.css\">"
+      "<link rel=\"stylesheet\" href=\"third.css\">");
+  ValidateStyleToLink(
+      "<style>"
+      "@import \"first.css\" screen;\n"
+      "@import \"third.css\" print;\n"
+      "</style>",
+      "<link rel=\"stylesheet\" href=\"first.css\" media=\"screen\">"
+      "<link rel=\"stylesheet\" href=\"third.css\" media=\"print\">");
+
+  // Variations where there's more than just valid @imports.
+  ValidateStyleUnchanged("<style>"
+                         "@import \"first.css\" all;\n"
+                         "@import url('second.css' );\n"
+                         "@import \"third.css\";\n"
+                         ".a { background-color: red }"
+                         "</style>");
+  ValidateStyleUnchanged("<style>"
+                         "@import \"first.css\" all;\n"
+                         "@import url( );\n"
+                         "@import \"third.css\";\n"
+                         "</style>");
+  ValidateStyleUnchanged("<style>"
+                         "@charset \"ISO-8859-1\";\n"
+                         "@import \"first.css\" all;\n"
+                         "@import url('second.css' );\n"
+                         "@import \"third.css\";\n"
+                         "</style>");
+
+  // These could be handled as it's "obvious" what the right thing is, but
+  // at the moment we don't handle all perms-and-combs of media [queries].
+  // The first 4 could "ignore" the style's media as it includes the imports.
+  ValidateStyleUnchanged("<style>"
+                         "@import \"first.css\" screen;\n"
+                         "@import \"third.css\" not screen;\n"
+                         "</style>");
+  ValidateStyleUnchanged("<style media=\"all\">"
+                         "@import \"first.css\" screen;\n"
+                         "@import \"third.css\" print;\n"
+                         "</style>");
+  ValidateStyleUnchanged("<style media=\"all\">"
+                         "@import \"first.css\" screen;\n"
+                         "@import \"third.css\" not screen;\n");
+  ValidateStyleUnchanged("<style media=\"screen, not screen\">"
+                         "@import \"first.css\" screen;\n"
+                         "@import \"third.css\" not screen;\n"
+                         "</style>");
+  // This one could determine that the intersection of screen & not screen
+  // is the empty set and therefore drop the 2nd import/link completely.
+  ValidateStyleUnchanged("<style media=\"screen\">"
+                         "@import \"first.css\" screen;\n"
+                         "@import \"third.css\" not screen;\n"
+                         "</style>");
+}
+
 TEST_F(CssInlineImportToLinkFilterTest, ConvertStyleWithAttributes) {
   AddFilter(RewriteOptions::kInlineImportToLink);
   ValidateStyleToLink("<style type=\"text/css\">"
@@ -171,8 +235,6 @@ TEST_F(CssInlineImportToLinkFilterTest, DoNotConvertBadStyle) {
   ValidateStyleUnchanged("<style>@import url (assets/styles.css);</style>");
   ValidateStyleUnchanged("<style>@ import url(assets/styles.css)</style>");
   ValidateStyleUnchanged("<style>*border: 0px</style>");
-  ValidateStyleUnchanged("<style>@import \"mystyle.css\" all;\n"
-                         "@import url(\"mystyle.css\" );\n</style>");
   ValidateStyleUnchanged("<style>@charset \"ISO-8859-1\";\n"
                          "@import \"mystyle.css\" all;</style>");
   ValidateStyleUnchanged("<style><p/>@import url(assets/styles.css)</style>");

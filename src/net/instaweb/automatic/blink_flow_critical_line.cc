@@ -218,7 +218,8 @@ class CriticalLineFetch : public AsyncFetch {
         blink_info_->set_blink_request_flow(
             BlinkInfo::BLINK_CACHE_MISS_FOUND_RESOURCE);
       }
-      if (options_->enable_blink_html_change_detection() &&
+      if ((options_->enable_blink_html_change_detection() ||
+           options_->enable_blink_html_change_detection_logging()) &&
           blink_critical_line_data_ != NULL) {
         // Calling Finish since the deletion of this object needs to be
         // synchronized with HandleDone call in AsyncFetchWithHeadersInhibited,
@@ -314,12 +315,7 @@ class CriticalLineFetch : public AsyncFetch {
                  << " for url: " << url_;
     complete_finish_parse_html_change_driver_fn_->CallCancel();
     html_change_detection_driver_->Cleanup();
-    if (options_->enable_blink_html_change_detection()) {
-      Finish();
-    } else {
-      // Only logging the diff, OK to delete.
-      delete this;
-    }
+    Finish();
   }
 
   void CompleteFinishParseForCriticalLineDriver() {
@@ -366,12 +362,7 @@ class CriticalLineFetch : public AsyncFetch {
       blink_info_->set_html_smart_diff_match(true);
       num_blink_html_smart_diff_matches_->IncBy(1);
     }
-    if (options_->enable_blink_html_change_detection()) {
-      Finish();
-    } else {
-      // Only logging the diff, OK to delete.
-      delete this;
-    }
+    Finish();
   }
 
   // This function should only be called if change detection is enabled and
@@ -407,7 +398,8 @@ class CriticalLineFetch : public AsyncFetch {
       delete this;
       return;
     }
-    if (computed_hash_ != blink_critical_line_data_->hash()) {
+    if (options_->enable_blink_html_change_detection() &&
+        computed_hash_ != blink_critical_line_data_->hash()) {
       num_blink_html_mismatches_cache_deletes_->IncBy(1);
       const PropertyCache::Cohort* cohort =
           rewrite_driver_->server_context()->page_property_cache()->
@@ -418,14 +410,17 @@ class CriticalLineFetch : public AsyncFetch {
             rewrite_driver_->server_context()->page_property_cache()
                 ->CacheKey(page->key(), cohort);
         server_context_->blink_critical_line_data_finder()->
-            PropagateCacheDeletes(rewrite_driver_, cache_key);
+            PropagateCacheDeletes(cache_key);
       }
       page->DeleteProperty(
           cohort, BlinkUtil::kBlinkCriticalLineDataPropertyName);
       rewrite_driver_->server_context()->
           page_property_cache()->WriteCohort(cohort, page);
       CreateCriticalLineComputationDriverAndRewrite();
-    } else {
+    } else if (options_->enable_blink_html_change_detection() ||
+               computed_hash_ != blink_critical_line_data_->hash() ||
+               computed_hash_smart_diff_ !=
+               blink_critical_line_data_->hash_smart_diff()) {
       blink_critical_line_data_->set_hash(computed_hash_);
       blink_critical_line_data_->set_hash_smart_diff(computed_hash_smart_diff_);
       blink_critical_line_data_->set_last_diff_timestamp_ms(
@@ -442,6 +437,8 @@ class CriticalLineFetch : public AsyncFetch {
           cohort, BlinkUtil::kBlinkCriticalLineDataPropertyName);
       property_cache->UpdateValue(buf, property_value);
       property_cache->WriteCohort(cohort, page);
+      delete this;
+    } else {
       delete this;
     }
   }
@@ -506,7 +503,8 @@ class AsyncFetchWithHeadersInhibited : public AsyncFetchUsingWriter {
         base_fetch_(fetch),
         critical_line_fetch_(critical_line_fetch),
         enable_blink_html_change_detection_(
-            options->enable_blink_html_change_detection()) {
+            options->enable_blink_html_change_detection() ||
+            options->enable_blink_html_change_detection_logging()) {
     set_request_headers(fetch->request_headers());
   }
 

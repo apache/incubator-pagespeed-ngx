@@ -928,12 +928,16 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
         BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
     EXPECT_EQ(1, statistics()->FindVariable(
         BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
+    // Even in case of just_logging == true, there should be a cache insert
+    // since we update the cache with the new computed hashes. The number of
+    // inserts below is 2 because there is also a DOM cohort write.
+    EXPECT_EQ(2, lru_cache()->num_inserts());
     VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, false,
                     "http://test.com/text.html");
     ClearStats();
-
     // Hashes set. No mismatches.
     SetBlinkCriticalLineData(true, "5SmNjVuPwO", "iWAZTRzhFW");
+
     FetchFromProxyWaitForBackground(
         "text.html", true, &text, &response_headers);
 
@@ -947,6 +951,11 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
         BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
     EXPECT_EQ(1, statistics()->FindVariable(
         BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
+    // In case just_logging == true, there should be no cache update since the
+    // hashes matched. If just_logging == false, there should be a cache update.
+    // There is also a cache write for DOM cohort, hence the values 1 and 2
+    // below.
+    EXPECT_EQ(just_logging ? 1 : 2, lru_cache()->num_inserts());
     VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, true,
                     "http://test.com/text.html");
     ClearStats();
@@ -995,6 +1004,10 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
         BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
     EXPECT_EQ(1, statistics()->FindVariable(
         BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
+    // Even in case just_logging == true, there should be a cache insert since
+    // we update the new hash values in the cache. Since there is also a DOM
+    // cohort update, the value below is 2.
+    EXPECT_EQ(2, lru_cache()->num_inserts());
     VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, false,
                     "http://test.com/text.html");
     ClearStats();

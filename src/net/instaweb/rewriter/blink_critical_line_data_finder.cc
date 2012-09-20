@@ -46,7 +46,7 @@ void BlinkCriticalLineDataFinder::ComputeBlinkCriticalLineData(
 }
 
 void BlinkCriticalLineDataFinder::PropagateCacheDeletes(
-    RewriteDriver* driver, const GoogleString& key) {
+    const GoogleString& key) {
   // Default interface is empty and derived classes can override.
 }
 

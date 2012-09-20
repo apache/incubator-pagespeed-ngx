@@ -1633,6 +1633,8 @@ class RewriteOptions {
         option_enum_to_name_array_[option_enum] : NULL;
   }
 
+  static OptionEnum LookupOption(const StringPiece& option_name);
+
   // Return the list of all options.  Used to initialize the configuration
   // vector to the Apache configuration system.
   const OptionBaseVector& all_options() const {
@@ -2097,7 +2099,6 @@ class RewriteOptions {
   static bool AddCommaSeparatedListToFilterSet(
       const StringPiece& filters, FilterSet* set, MessageHandler* handler);
   static Filter LookupFilter(const StringPiece& filter_name);
-  static OptionEnum LookupOption(const StringPiece& option_name);
   // Initialize the option-enum to option-name array for fast lookups by
   // OptionEnum.
   static void InitOptionEnumToNameArray();

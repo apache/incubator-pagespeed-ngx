@@ -2,10 +2,14 @@
   <head>
     <title>inline_import_to_link example</title>
     <style type="text/css">@import url(styles/all_styles.css);</style>
+    <style type="text/css">
+      @import url(styles/big.css);
+      @import url(styles/yellow.css);
+    </style>
   </head>
   <body>
     <div class="blue yellow big bold">
-      &lt;style&gt; tag should be changed to a &lt;link&gt; tag.
+      The &lt;style&gt; tags should be changed to &lt;link&gt; tags.
     </div>
   </body>
 </html>
