@@ -1396,7 +1396,7 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestWithDeferJsImageTag) {
   VerifyCharset(&headers);
 }
 
-TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestWithDeferJsPreferch) {
+TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestWithDeferJsPrefetch) {
   SetupForFlushEarlyFlow(false);
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
@@ -1485,7 +1485,7 @@ TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestWithDeferJsImageTag) {
   VerifyCharset(&headers);
 }
 
-TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestWithDeferJsPreferch) {
+TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestWithDeferJsPrefetch) {
   SetupForFlushEarlyFlow(true);
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
@@ -1509,7 +1509,7 @@ TEST_F(ProxyInterfaceTest, ExperimentalFlushEarlyFlowTestWithDeferJsPreferch) {
 }
 
 TEST_F(ProxyInterfaceTest,
-       ExperimentalFlushEarlyFlowTestWithInsertDnsPreferch) {
+       ExperimentalFlushEarlyFlowTestWithInsertDnsPrefetch) {
   SetupForFlushEarlyFlow(true);
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
@@ -1740,6 +1740,27 @@ TEST_F(ProxyInterfaceTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
   // lazyload js will be flushed early as no resource is present in the html.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(kOutputHtml, text);
+}
+
+TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestWithLocalStorageDoesNotCrash) {
+  SetupForFlushEarlyFlow(true);
+  GoogleString text;
+  RequestHeaders request_headers;
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          "prefetch_link_rel_subresource");
+
+  RewriteOptions* rewrite_options = server_context()->global_options();
+  rewrite_options->ClearSignatureForTesting();
+  rewrite_options->EnableFilter(RewriteOptions::kLocalStorageCache);
+  rewrite_options->ForceEnableFilter(RewriteOptions::kInlineImages);
+  rewrite_options->ForceEnableFilter(RewriteOptions::kInlineCss);
+  rewrite_options->ComputeSignature(hasher());
+
+  // This sequence of requests used to cause a crash earlier. Here, we just test
+  // that this server doesn't crash and don't check the output.
+  ResponseHeaders headers;
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
 }
 
 TEST_F(ProxyInterfaceTest, LoggingInfo) {
