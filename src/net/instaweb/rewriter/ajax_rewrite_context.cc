@@ -39,7 +39,6 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -152,10 +151,10 @@ bool RecordingFetch::CanAjaxRewrite() {
 }
 
 AjaxRewriteContext::AjaxRewriteContext(RewriteDriver* driver,
-                                       const GoogleString& url)
+                                       const StringPiece& url)
     : SingleRewriteContext(driver, NULL, NULL),
       driver_(driver),
-      url_(url),
+      url_(url.data(), url.size()),
       is_rewritten_(true),
       etag_prefix_(StrCat(HTTPCache::kEtagPrefix, id(), "-")) {
   set_notify_driver_on_fetch_done(true);

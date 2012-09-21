@@ -68,7 +68,7 @@ class AjaxRewriteResourceSlot : public ResourceSlot {
 // Context that is used for an ajax rewrite.
 class AjaxRewriteContext : public SingleRewriteContext {
  public:
-  AjaxRewriteContext(RewriteDriver* driver, const GoogleString& url);
+  AjaxRewriteContext(RewriteDriver* driver, const StringPiece& url);
 
   virtual ~AjaxRewriteContext();
 

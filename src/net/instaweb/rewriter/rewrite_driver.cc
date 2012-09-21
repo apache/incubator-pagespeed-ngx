@@ -1508,7 +1508,7 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
         base, namer, options(), kRewrittenResource));
     SetBaseUrlForFetch(url);
     fetch_queued_ = true;
-    AjaxRewriteContext* context = new AjaxRewriteContext(this, url.data());
+    AjaxRewriteContext* context = new AjaxRewriteContext(this, url);
     context->Fetch(output_resource, async_fetch, message_handler());
   }
   return handled;
