@@ -368,6 +368,12 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   check [ $(grep -c "<script" $WGET_OUTPUT) = 3 ]
   check [ $(grep -c 'ets=unload' $WGET_OUTPUT) = 1 ]
 
+  echo TEST: When ModPagespeedMaxHtmlParseBytes is not set, we do not insert \
+      a redirect.
+  $WGET -O $WGET_OUTPUT \
+      $SECONDARY_TEST_ROOT/large_file.html?ModPagespeedFilters=
+  check [ $(grep -c "window.location=" $WGET_OUTPUT) = 0 ]
+
   echo TEST: Cache flushing works by touching cache.flush in cache directory.
 
   echo Clear out our existing state before we begin the test.

@@ -175,6 +175,7 @@ const char kModPagespeedLogRewriteTiming[] = "ModPagespeedLogRewriteTiming";
 const char kModPagespeedLowercaseHtmlNames[] = "ModPagespeedLowercaseHtmlNames";
 const char kModPagespeedMapOriginDomain[] = "ModPagespeedMapOriginDomain";
 const char kModPagespeedMapRewriteDomain[] = "ModPagespeedMapRewriteDomain";
+const char kModPagespeedMaxHtmlParseBytes[] = "ModPagespeedMaxHtmlParseBytes";
 const char kModPagespeedMaxImageSizeLowResolutionBytes[] =
     "ModPagespeedMaxImageSizeLowResolutionBytes";
 const char kModPagespeedMaxInlinedPreviewImagesIndex[] =
@@ -1692,6 +1693,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "in-memory LRU cache"),
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheKbPerProcess,
         "Set the total size, in KB, of the per-process in-memory LRU cache"),
+  APACHE_CONFIG_OPTION(kModPagespeedMaxHtmlParseBytes,
+        "Maximum number of bytes of HTML that we parse, before redirecting to "
+        "?ModPagespeed=off"),
   APACHE_CONFIG_OPTION(kModPagespeedMaxImageSizeLowResolutionBytes,
         "Maximum image size below which low resolution image is generated."),
   APACHE_CONFIG_OPTION(kModPagespeedMaxInlinedPreviewImagesIndex,

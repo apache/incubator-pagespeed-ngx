@@ -22,6 +22,9 @@ AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 # rewritten before being flushed to the client.
 ModPagespeedBlockingRewriteKey psatest
 
+# Disable parsing if the size of the HTML exceeds 50kB.
+ModPagespeedMaxHtmlParseBytes 50000
+
 #PER_VHOST_STATS ModPagespeedUsePerVHostStatistics on
 #PER_VHOST_STATS <Location /mod_pagespeed_global_statistics>
 #PER_VHOST_STATS    Order allow,deny
@@ -161,7 +164,7 @@ ModPagespeedListOutstandingUrlsOnError on
 
 ModPagespeedAvoidRenamingIntrospectiveJavascript off
 
-# Test converage for <ModPagespeedIf>
+# Test coverage for <ModPagespeedIf>
 <ModPagespeedIf spdy>
   ModPagespeedDisableFilters combine_css
 </ModPagespeedIf>

@@ -666,6 +666,17 @@ PDF_CE_URL="$($WGET_EC $URL | \
 echo Extracted cache-extended url $PDF_CE_URL
 check grep -a 'Content-Type: application/pdf' <($WGET_EC $PDF_CE_URL)
 
+# Test that for large HTML, we bail out of parsing and insert a script
+# redirecting to ?ModPagespeed=off.
+# For this test, it doesn't really matter which filter we enable as long as we
+# parse the page
+echo TEST: Bail out of parsing and insert redirect for large files.
+FILE=large_file.html
+URL=$TEST_ROOT/$FILE
+WGET_ARGS="--header=ModPagespeedFilters:"
+WGET_EC="$WGET_DUMP $WGET_ARGS"
+check grep 'window.location=".*?ModPagespeed=off"' <($WGET_EC $URL)
+
 # Cleanup
 rm -rf $OUTDIR
 
