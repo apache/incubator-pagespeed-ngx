@@ -621,30 +621,23 @@ apr_status_t save_url_hook(request_rec *request) {
   // saves it for future use so that if another module changes the
   // url in the request, we still have the original one.
   const char* url = InstawebContext::MakeRequestUrl(request);
+  GoogleUrl gurl(url);
 
-  StringPiece parsed_url(request->uri);
   bool bypass_mod_rewrite = false;
-  // Note: We cannot use request->handler because it may not be set yet :(
-  // TODO(sligocki): Make this robust to custom statistics and beacon URLs.
-  // Note: we must compare against the parsed URL because unparsed_url has
-  // ?ets=load:xx at the end for kBeaconHandler.
-  if (parsed_url.ends_with(kStatisticsHandler) ||
-      parsed_url.ends_with(kConsoleHandler) ||
-      parsed_url.ends_with(kGlobalStatisticsHandler) ||
-      parsed_url.ends_with(kBeaconHandler) ||
-      parsed_url.ends_with(kMessageHandler) ||
-      parsed_url.ends_with(kRefererStatisticsHandler)) {
-    bypass_mod_rewrite = true;
-  } else {
-    ApacheResourceManager* manager =
-        InstawebContext::ManagerFromServerRec(request->server);
-    RewriteDriver* rewrite_driver = manager->decoding_driver();
-    RewriteFilter* filter;
-    GoogleUrl gurl(url);
-    OutputResourcePtr output_resource(
-        rewrite_driver->DecodeOutputResource(gurl, &filter));
-    if (output_resource.get() != NULL) {
+  if (gurl.is_valid()) {
+    // Note: We cannot use request->handler because it may not be set yet :(
+    // TODO(sligocki): Make this robust to custom statistics and beacon URLs.
+    StringPiece leaf = gurl.LeafSansQuery();
+    if (leaf == kStatisticsHandler || leaf == kConsoleHandler ||
+        leaf == kGlobalStatisticsHandler || leaf == kBeaconHandler ||
+        leaf == kMessageHandler || leaf == kRefererStatisticsHandler) {
       bypass_mod_rewrite = true;
+    } else {
+      ApacheResourceManager* manager =
+          InstawebContext::ManagerFromServerRec(request->server);
+      if (manager->IsPagespeedResource(gurl)) {
+        bypass_mod_rewrite = true;
+      }
     }
   }
 

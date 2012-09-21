@@ -301,6 +301,10 @@ class ServerContextTest : public RewriteTestBase {
   void DefaultHeaders(ResponseHeaders* headers) {
     SetDefaultLongCacheHeaders(&kContentTypeCss, headers);
   }
+
+  RewriteDriver* decoding_driver() {
+    return server_context()->decoding_driver_.get();
+  }
 };
 
 TEST_F(ServerContextTest, TestNamed) {
@@ -465,8 +469,8 @@ TEST_F(ServerContextTest, TestPlatformSpecificRewritersDecoding) {
   RewriteFilter* dummy;
 
   // Without the mock rewriter enabled, this URL should not be decoded.
-  RewriteDriver* driver = server_context()->decoding_driver();
-  OutputResourcePtr bad_output(driver->DecodeOutputResource(gurl, &dummy));
+  OutputResourcePtr bad_output(
+      decoding_driver()->DecodeOutputResource(gurl, &dummy));
   ASSERT_TRUE(bad_output.get() == NULL);
 
   // With the mock rewriter enabled, this URL should be decoded.
@@ -474,8 +478,11 @@ TEST_F(ServerContextTest, TestPlatformSpecificRewritersDecoding) {
   factory()->AddCreateRewriterCallback(&callback);
   factory()->set_add_platform_specific_decoding_passes(true);
   server_context()->InitWorkersAndDecodingDriver();
-  driver = server_context()->decoding_driver();
-  OutputResourcePtr good_output(driver->DecodeOutputResource(gurl, &dummy));
+  // TODO(sligocki): Do we still want to expose decoding_driver() for
+  // platform-specific rewriters? Or should we just use IsPagespeedResource()
+  // in these tests?
+  OutputResourcePtr good_output(
+      decoding_driver()->DecodeOutputResource(gurl, &dummy));
   ASSERT_TRUE(good_output.get() != NULL);
   EXPECT_EQ(url, good_output->url());
 }
@@ -495,8 +502,8 @@ TEST_F(ServerContextTest, TestPlatformSpecificRewritersImplicitDecoding) {
   factory()->AddCreateRewriterCallback(&callback);
   factory()->set_add_platform_specific_decoding_passes(false);
   server_context()->InitWorkersAndDecodingDriver();
-  RewriteDriver* driver = server_context()->decoding_driver();
-  OutputResourcePtr good_output(driver->DecodeOutputResource(gurl, &dummy));
+  OutputResourcePtr good_output(
+      decoding_driver()->DecodeOutputResource(gurl, &dummy));
   ASSERT_TRUE(good_output.get() != NULL);
   EXPECT_EQ(url, good_output->url());
 }

@@ -293,12 +293,6 @@ class ServerContext {
   // url could not be parsed; in this case the request should be declined.
   bool HandleBeacon(const StringPiece& unparsed_url);
 
-  // Returns a RewriteDriver* suitable for decoding pagespeed URLs.  This
-  // driver does not necessarily have up-to-date Options, especially in the
-  // case of a cache flush.  However, this doesn't affect its ability to
-  // correctly decode options.
-  RewriteDriver* decoding_driver() const { return decoding_driver_.get(); }
-
   // Returns a pointer to the master global_options.  These are not used
   // directly in RewriteDrivers, but are Cloned into the drivers as they
   // are created.  We generally do not expect global_options() to change once
