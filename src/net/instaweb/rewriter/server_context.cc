@@ -21,7 +21,7 @@
 #include <algorithm>                   // for std::binary_search
 #include <cstddef>                     // for size_t
 #include <set>
-#include <vector>
+
 #include "base/logging.h"               // for operator<<, etc
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -39,6 +39,7 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -139,6 +140,20 @@ class ResourceManagerHttpCallback : public OptionsAwareHTTPCacheCallback {
   DISALLOW_COPY_AND_ASSIGN(ResourceManagerHttpCallback);
 };
 
+class GlobalOptionsRewriteDriverPool : public RewriteDriverPool {
+ public:
+  explicit GlobalOptionsRewriteDriverPool(ServerContext* context)
+      : server_context_(context) {
+  }
+
+  virtual RewriteOptions* TargetOptions() const {
+    return server_context_->global_options();
+  }
+
+ private:
+  ServerContext* server_context_;
+};
+
 ServerContext::ServerContext(RewriteDriverFactory* factory)
     : thread_system_(factory->thread_system()),
       rewrite_stats_(NULL),
@@ -158,6 +173,7 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       enable_property_cache_(false),
       lock_manager_(NULL),
       message_handler_(NULL),
+      available_rewrite_drivers_(new GlobalOptionsRewriteDriverPool(this)),
       trying_to_cleanup_rewrite_drivers_(false),
       factory_(factory),
       rewrite_drivers_mutex_(thread_system_->NewMutex()),
@@ -195,7 +211,7 @@ ServerContext::~ServerContext() {
   // We scan for "leaked_rewrite_drivers" in apache/install/tests.mk.
   DCHECK(active_rewrite_drivers_.empty()) << "leaked_rewrite_drivers";
   STLDeleteElements(&active_rewrite_drivers_);
-  STLDeleteElements(&available_rewrite_drivers_);
+  available_rewrite_drivers_.reset();
   decoding_driver_.reset(NULL);
 }
 
@@ -207,8 +223,7 @@ void ServerContext::InitWorkersAndDecodingDriver() {
   low_priority_rewrite_workers_ = factory_->WorkerPool(
       RewriteDriverFactory::kLowPriorityRewriteWorkers);
   decoding_driver_.reset(NewUnmanagedRewriteDriver(
-      false /* !is_custom */,
-      global_options()->Clone()));
+      NULL, global_options()->Clone()));
   // Apply platform configuration mutation for consistency's sake.
   factory_->ApplyPlatformSpecificConfiguration(decoding_driver_.get());
   // Inserts platform-specific rewriters into the resource_filter_map_, so that
@@ -637,7 +652,7 @@ bool ServerContext::HandleBeacon(const StringPiece& unparsed_url) {
 RewriteDriver* ServerContext::NewCustomRewriteDriver(
     RewriteOptions* options) {
   RewriteDriver* rewrite_driver = NewUnmanagedRewriteDriver(
-      true /* is_custom */,
+      NULL /* no pool as custom*/,
       options);
   {
     ScopedMutex lock(rewrite_drivers_mutex_.get());
@@ -654,26 +669,29 @@ RewriteDriver* ServerContext::NewCustomRewriteDriver(
 }
 
 RewriteDriver* ServerContext::NewUnmanagedRewriteDriver(
-    bool is_custom, RewriteOptions* options) {
+    RewriteDriverPool* pool, RewriteOptions* options) {
   RewriteDriver* rewrite_driver = new RewriteDriver(
       message_handler_, file_system_, default_system_fetcher_);
-  rewrite_driver->set_options(is_custom, options);
+  rewrite_driver->set_options_for_pool(pool, options);
   rewrite_driver->SetResourceManager(this);
   return rewrite_driver;
 }
 
 RewriteDriver* ServerContext::NewRewriteDriver() {
+  return NewRewriteDriverFromPool(available_rewrite_drivers_.get());
+}
+
+RewriteDriver* ServerContext::NewRewriteDriverFromPool(
+    RewriteDriverPool* pool) {
   RewriteDriver* rewrite_driver = NULL;
 
+  RewriteOptions* options = pool->TargetOptions();
   // Note that options->signature() takes a reader-lock so it's thread-safe
   // even if another thread is concurrently handling a cache-flush request.
-  GoogleString expected_signature = global_options()->signature();
+  GoogleString expected_signature = options->signature();
   {
     ScopedMutex lock(rewrite_drivers_mutex_.get());
-    while (!available_rewrite_drivers_.empty() && (rewrite_driver == NULL)) {
-      rewrite_driver = available_rewrite_drivers_.back();
-      available_rewrite_drivers_.pop_back();
-
+    while ((rewrite_driver = pool->PopDriver()) != NULL) {
       // Note: there is currently some activity to make the RewriteOptions
       // signature insensitive to changes that need not affect the metadata
       // cache key.  As we are dependent on a comprehensive signature in
@@ -685,7 +703,9 @@ RewriteDriver* ServerContext::NewRewriteDriver() {
       // signature, and revisit the issue of pulling options out if we
       // find we are having poor hit-rate in the metadata cache during
       // operations.
-      if (rewrite_driver->options()->signature() != expected_signature) {
+      if (rewrite_driver->options()->signature() == expected_signature) {
+        break;
+      } else {
         delete rewrite_driver;
         rewrite_driver = NULL;
       }
@@ -693,8 +713,7 @@ RewriteDriver* ServerContext::NewRewriteDriver() {
   }
 
   if (rewrite_driver == NULL) {
-    rewrite_driver = NewUnmanagedRewriteDriver(false /* !is_custom */,
-                                               global_options()->Clone());
+    rewrite_driver = NewUnmanagedRewriteDriver(pool, options->Clone());
     if (factory_ != NULL) {
       factory_->ApplyPlatformSpecificConfiguration(rewrite_driver);
     }
@@ -727,11 +746,11 @@ void ServerContext::ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver) {
     LOG(ERROR) << "ReleaseRewriteDriver called with driver not in active set.";
     DLOG(FATAL);
   } else {
-    if (rewrite_driver->has_custom_options()) {
+    RewriteDriverPool* pool = rewrite_driver->controlling_pool();
+    if (pool == NULL) {
       delete rewrite_driver;
     } else {
-      available_rewrite_drivers_.push_back(rewrite_driver);
-      rewrite_driver->Clear();
+      pool->RecycleDriver(rewrite_driver);
     }
   }
 }

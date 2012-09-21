@@ -58,6 +58,7 @@ class PropertyCache;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
+class RewriteDriverPool;
 class RewriteOptions;
 class RewriteStats;
 class Scheduler;
@@ -326,10 +327,15 @@ class ServerContext {
   // already frozen (see AddFilters()).
   RewriteDriver* NewRewriteDriver();
 
-  // Generates a new unmanaged RewriteDriver using the RewriteOptions
-  // managed by this class.  Each RewriteDriver is not thread-safe,
-  // but you can generate a RewriteDriver* for each thread.  The
-  // returned drivers must be explicitly deleted by the caller.
+  // As above, but uses a specific RewriteDriverPool to determine the options
+  // and manage the lifetime of the result. 'pool' must not be NULL.
+  RewriteDriver* NewRewriteDriverFromPool(RewriteDriverPool* pool);
+
+  // Generates a new unmanaged RewriteDriver with given RewriteOptions,
+  // which are assumed to correspond to drivers managed by 'pool'
+  // (which may be NULL if the options are custom).  Each RewriteDriver is
+  // not thread-safe, but you can generate a RewriteDriver* for each thread.
+  // The returned drivers must be explicitly deleted by the caller.
   //
   // RewriteDrivers allocated using this mechanism have not yet frozen
   // their filters, and so callers may explicitly enable individual
@@ -339,10 +345,10 @@ class ServerContext {
   //
   // Takes ownership of 'options'.
   RewriteDriver* NewUnmanagedRewriteDriver(
-      bool is_custom, RewriteOptions* options);
+      RewriteDriverPool* pool, RewriteOptions* options);
 
-  // Like NewUnmanagedRewriteDriver, but uses supplied options instead
-  // of RewriteDriver's global_options().
+  // Like NewUnmanagedRewriteDriver, but uses standard semi-automatic
+  // memory management for RewriteDrivers.
   //
   // NOTE: This does not merge custom_options with global_options(), the
   // caller must do that if they want them merged.
@@ -519,7 +525,7 @@ class ServerContext {
   // been released with ReleaseRewriteDriver, and are ready
   // for re-use with NewRewriteDriver.
   // Protected by rewrite_drivers_mutex_.
-  std::vector<RewriteDriver*> available_rewrite_drivers_;
+  scoped_ptr<RewriteDriverPool> available_rewrite_drivers_;
 
   // RewriteDrivers that are currently in use.  This is retained
   // as a sanity check to make sure our system is coherent,

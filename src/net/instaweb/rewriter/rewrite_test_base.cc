@@ -704,7 +704,8 @@ RewriteDriver* RewriteTestBase::MakeDriver(
   // standard flow.
   RewriteDriver* rd;
   if (!use_managed_rewrite_drivers_) {
-    rd = resource_manager->NewUnmanagedRewriteDriver(true, options);
+    rd = resource_manager->NewUnmanagedRewriteDriver(
+        NULL /* custom options, so no pool*/, options);
     rd->set_externally_managed(true);
   } else {
     rd = resource_manager->NewCustomRewriteDriver(options);

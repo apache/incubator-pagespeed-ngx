@@ -70,6 +70,7 @@ class ResourceContext;
 class ResourceNamer;
 class ResponseHeaders;
 class RewriteContext;
+class RewriteDriverPool;
 class RewriteFilter;
 class ScopedMutex;
 class Statistics;
@@ -372,17 +373,18 @@ class RewriteDriver : public HtmlParse {
 
   // Takes ownership of 'options'.
   void set_custom_options(RewriteOptions* options) {
-    set_options(true, options);
+    set_options_for_pool(NULL, options);
   }
 
-  // Takes ownership of 'options'.
-  void set_options(bool is_custom, RewriteOptions* options) {
-    has_custom_options_ = is_custom;
+  // Takes ownership of 'options'. pool denotes the pool of rewrite drivers that
+  // use these options. May be NULL if using custom options.
+  void set_options_for_pool(RewriteDriverPool* pool, RewriteOptions* options) {
+    controlling_pool_ = pool;
     options_.reset(options);
   }
 
-  // Determines whether this RewriteDriver was built with custom options.
-  bool has_custom_options() const { return has_custom_options_; }
+  // Pool in which this driver can be recycled. May be NULL.
+  RewriteDriverPool* controlling_pool() { return controlling_pool_; }
 
   // Return the options used for this RewriteDriver.
   const RewriteOptions* options() const { return options_.get(); }
@@ -1225,7 +1227,7 @@ class RewriteDriver : public HtmlParse {
   HtmlResourceSlotSet slots_;
 
   scoped_ptr<RewriteOptions> options_;
-  bool has_custom_options_;
+  RewriteDriverPool* controlling_pool_;  // or NULL if this has custom options.
 
   // The default resource encoder
   UrlSegmentEncoder default_encoder_;

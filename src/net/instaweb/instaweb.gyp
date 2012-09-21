@@ -1041,6 +1041,7 @@
         'rewriter/rewrite_context.cc',
         'rewriter/rewrite_driver.cc',
         'rewriter/rewrite_driver_factory.cc',
+        'rewriter/rewrite_driver_pool.cc',
         'rewriter/rewrite_filter.cc',
         'rewriter/rewrite_query.cc',
         'rewriter/rewrite_stats.cc',

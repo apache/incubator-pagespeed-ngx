@@ -132,6 +132,8 @@
 
 namespace net_instaweb {
 
+class RewriteDriverPool;
+
 namespace {
 
 // TODO(jmarantz): make these changeable from the Factory based on the
@@ -216,7 +218,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       add_instrumentation_filter_(NULL),
       scan_filter_(this),
       domain_rewriter_(NULL),
-      has_custom_options_(false),
+      controlling_pool_(NULL),
       html_worker_(NULL),
       rewrite_worker_(NULL),
       low_priority_rewrite_worker_(NULL),
@@ -273,12 +275,13 @@ RewriteDriver::~RewriteDriver() {
 
 RewriteDriver* RewriteDriver::Clone() {
   RewriteDriver* result;
-  if (has_custom_options()) {
+  RewriteDriverPool* pool = controlling_pool();
+  if (pool == NULL) {
     RewriteOptions* options_copy = options()->Clone();
     server_context_->ComputeSignature(options_copy);
     result = server_context_->NewCustomRewriteDriver(options_copy);
   } else {
-    result = server_context_->NewRewriteDriver();
+    result = server_context_->NewRewriteDriverFromPool(pool);
   }
   return result;
 }
