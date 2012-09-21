@@ -438,7 +438,7 @@ deferJsNs.DeferJs.prototype.attemptPrefetchOrQueue = function(url) {
   if (this.isWebKit()) {
     new Image().src = url;
   } else {
-    this.prefetchScriptsHtml_ += "< " + "script type='psa_prefetch' src='" +
+    this.prefetchScriptsHtml_ += "<" + "script type='psa_prefetch' src='" +
         url + "'><\/script>";
   }
 };
