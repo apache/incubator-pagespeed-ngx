@@ -333,7 +333,7 @@ void JavascriptFilter::EndElementImpl(HtmlElement* element) {
       driver_->IsRewritable(element)) {
     if (element->keyword() == HtmlName::kScript) {
       if (element->close_style() == HtmlElement::BRIEF_CLOSE) {
-        driver_->ErrorHere("Brief close of script tag (non-portable)");
+        driver_->InfoHere("Brief close of script tag (non-portable)");
       }
       if (script_src_ == NULL) {
         RewriteInlineScript();

@@ -480,7 +480,7 @@ class RewriteContext::FetchContext {
       if (rewrite_context_->CanFetchFallbackToOriginal(kFallbackEmergency)) {
         ResourcePtr input_resource(rewrite_context_->slot(0)->resource());
         if (input_resource.get() != NULL && input_resource->HttpStatusOk()) {
-          handler_->Message(kError, "Rewrite %s failed while fetching %s",
+          handler_->Message(kWarning, "Rewrite %s failed while fetching %s",
                             input_resource->url().c_str(),
                             output_resource_->UrlEvenIfHashNotSet().c_str());
           // TODO(sligocki): Log variable for number of failed rewrites in
@@ -498,7 +498,7 @@ class RewriteContext::FetchContext {
               input_resource->contents(), async_fetch_, handler_);
         } else {
           GoogleString url = input_resource->url();
-          handler_->Error(
+          handler_->Warning(
               output_resource_->name().as_string().c_str(), 0,
               "Resource based on %s but cannot access the original",
               url.c_str());

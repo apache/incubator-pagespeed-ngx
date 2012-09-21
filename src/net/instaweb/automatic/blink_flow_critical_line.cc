@@ -734,7 +734,7 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
   size_t end_body_pos = critical_html.rfind(BlinkUtil::kEndBodyTag);
   if (start_body_pos == StringPiece::npos ||
       end_body_pos == StringPiece::npos) {
-    LOG(ERROR) << "Marker not found for url " << url_;
+    LOG(WARNING) << "Marker not found for url " << url_;
     VLOG(1) << "Critical html without marker is " << critical_html;
     blink_info_->set_blink_request_flow(BlinkInfo::FOUND_MALFORMED_HTML);
     BlinkCriticalLineDataMiss();

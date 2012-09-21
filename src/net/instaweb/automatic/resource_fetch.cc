@@ -115,12 +115,12 @@ bool ResourceFetch::BlockingFetch(const GoogleUrl& url,
     if (callback->success()) {
       ok = true;
     } else {
-      message_handler->Message(kError, "Fetch failed for %s, status=%d",
+      message_handler->Message(kWarning, "Fetch failed for %s, status=%d",
                                url.spec_c_str(),
                                callback->response_headers()->status_code());
     }
   } else {
-    message_handler->Message(kError, "Fetch timed out for %s",
+    message_handler->Message(kWarning, "Fetch timed out for %s",
                              url.spec_c_str());
   }
 
@@ -169,7 +169,7 @@ void ResourceFetch::HandleDone(bool success) {
   } else {
     // This is a fetcher failure, like connection refused, not just an error
     // status code.
-    LOG(ERROR) << "Fetch failed for resource url " << resource_url_.Spec();
+    LOG(WARNING) << "Fetch failed for resource url " << resource_url_.Spec();
     if (!response_headers()->headers_complete()) {
       response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
     }

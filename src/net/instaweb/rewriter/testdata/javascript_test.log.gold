@@ -4,7 +4,7 @@ Info: javascript_test.html:16: Unrecognized script:'<script type="text/html"></s
 Info: javascript_test.html:21: Found script with src missing.js
 Info: javascript_test.html:24: Found script with src extScript.js
 Info: javascript_test.html:27: Found script with src extScript.js
-Error: javascript_test.html:27: Brief close of script tag (non-portable)
+Info: javascript_test.html:27: Brief close of script tag (non-portable)
 Info: javascript_test.html:35: Found script with src extScript.js
 Info: javascript_test.html:40: Found script with src extScript.js
 Info: javascript_test.html:47: Found script with src third_party.js

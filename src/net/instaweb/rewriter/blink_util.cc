@@ -228,8 +228,8 @@ void PopulateAttributeToNonCacheableValuesMap(
     SplitStringPieceToVector(non_cacheable_values[i], "=",
                              &non_cacheable_values_pair, true);
     if (non_cacheable_values_pair.size() != 2) {
-      LOG(ERROR) << "Incorrect non cacheable element value "
-                 << non_cacheable_values[i];
+      LOG(WARNING) << "Incorrect non cacheable element value "
+                   << non_cacheable_values[i];
       return;
     }
     StringPiece attribute_name = non_cacheable_values_pair[0];

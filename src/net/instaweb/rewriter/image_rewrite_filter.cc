@@ -48,7 +48,6 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_work_bound.h"
 #include "net/instaweb/util/public/string.h"
@@ -360,8 +359,9 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
 
   Image::Type original_image_type = image->image_type();
   if (original_image_type == Image::IMAGE_UNKNOWN) {
-    message_handler->Error(result->name().as_string().c_str(), 0,
-                           "Unrecognized image content type.");
+    message_handler->Message(kWarning, "Image MIME type could not be "
+                             "discovered from reading magic bytes for URL %s",
+                             input_resource->url().c_str());
     image_rewrites_dropped_intentionally_->Add(1);
     return kRewriteFailed;
   }
