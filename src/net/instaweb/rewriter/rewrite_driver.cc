@@ -1046,8 +1046,7 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kLazyloadImages)) {
     AddOwnedPostRenderFilter(new LazyloadImagesFilter(this));
   }
-  if (rewrite_options->support_noscript_enabled() &&
-      rewrite_options->IsAnyFilterRequiringScriptExecutionEnabled()) {
+  if (rewrite_options->support_noscript_enabled()) {
     AddOwnedPostRenderFilter(new SupportNoscriptFilter(this));
   }
 

@@ -370,14 +370,18 @@ TEST_F(RewriteQueryTest, NoChangesShouldNotModify) {
 
 TEST_F(RewriteQueryTest, NoscriptQueryParamEmptyValue) {
   RewriteOptions* options = ParseAndScan("ModPagespeed=noscript", "");
-  EXPECT_FALSE(options->IsAnyFilterRequiringScriptExecutionEnabled());
+  RewriteOptions::FilterSet filter_set;
+  options->GetEnabledFiltersRequiringScriptExecution(&filter_set);
+  EXPECT_TRUE(filter_set.empty());
   EXPECT_FALSE(options->Enabled(RewriteOptions::kPrioritizeVisibleContent));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
 }
 
 TEST_F(RewriteQueryTest, NoscriptHeader) {
   RewriteOptions* options = ParseAndScan("", "ModPagespeed;noscript");
-  EXPECT_FALSE(options->IsAnyFilterRequiringScriptExecutionEnabled());
+  RewriteOptions::FilterSet filter_set;
+  options->GetEnabledFiltersRequiringScriptExecution(&filter_set);
+  EXPECT_TRUE(filter_set.empty());
   EXPECT_FALSE(options->Enabled(RewriteOptions::kPrioritizeVisibleContent));
   EXPECT_TRUE(options->Enabled(RewriteOptions::kHandleNoscriptRedirect));
 }

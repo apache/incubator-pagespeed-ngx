@@ -19,15 +19,22 @@
 
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
+const char kChromeUserAgent[] =
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.4 (KHTML, like Gecko) "
+    "Chrome/22.0.1229.64 Safari/537.4";
+const char kUnsupportedUserAgent[] = "Unsupported";
+
 class SupportNoscriptFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    options()->EnableFilter(RewriteOptions::kDelayImages);
     rewrite_driver()->AddOwnedPostRenderFilter(
         new SupportNoscriptFilter(rewrite_driver()));
   }
@@ -46,6 +53,7 @@ TEST_F(SupportNoscriptFilterTest, TestNoscript) {
       "\"http://test.com/support_noscript&#39;%22.html?ModPagespeed=noscript\">"
       "here</a> if you are not redirected within a few seconds.</div>"
       "</noscript><img src=\"http://test.com/1.jpeg\"/></body>";
+  rewrite_driver()->set_user_agent(kChromeUserAgent);
   ValidateExpected("support_noscript'\"", input_html, output_html);
 }
 
@@ -64,12 +72,22 @@ TEST_F(SupportNoscriptFilterTest, TestNoscriptMultipleBodies) {
       "here</a> if you are not redirected within a few seconds.</div>"
       "</noscript><img src=\"http://test.com/1.jpeg\"/></body>"
       "<body><img src=\"http://test.com/2.jpeg\"/></body>";
+  rewrite_driver()->set_user_agent(kChromeUserAgent);
   ValidateExpected("support_noscript", input_html, output_html);
 }
 
 TEST_F(SupportNoscriptFilterTest, TestNoBody) {
   GoogleString input_html =
       "<head></head>";
+  rewrite_driver()->set_user_agent(kChromeUserAgent);
+  ValidateExpected("support_noscript", input_html, input_html);
+}
+
+TEST_F(SupportNoscriptFilterTest, TestUnsupportedUserAgent) {
+  GoogleString input_html =
+      "<head></head><body>"
+      "<img src=\"http://test.com/1.jpeg\"/></body>";
+  rewrite_driver()->set_user_agent(kUnsupportedUserAgent);
   ValidateExpected("support_noscript", input_html, input_html);
 }
 

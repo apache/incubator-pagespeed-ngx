@@ -17,6 +17,8 @@
 
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
 
+#include <set>                          // for _Rb_tree_const_iterator, etc
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
@@ -34,14 +36,20 @@ namespace net_instaweb {
 
 SupportNoscriptFilter::SupportNoscriptFilter(RewriteDriver* rewrite_driver)
     : rewrite_driver_(rewrite_driver),
-      noscript_inserted_(false) {
+      should_insert_noscript_(false) {
 }
 
 SupportNoscriptFilter::~SupportNoscriptFilter() {
 }
 
 void SupportNoscriptFilter::StartDocument() {
-  noscript_inserted_ = false;
+  // Insert a NOSCRIPT tag only if at least one of the filters requiring
+  // JavaScript for execution is enabled.
+  if (IsAnyFilterRequiringScriptExecutionEnabled()) {
+    should_insert_noscript_ = false;
+  } else {
+    should_insert_noscript_ = true;
+  }
 }
 
 void SupportNoscriptFilter::StartElement(HtmlElement* element) {
@@ -51,7 +59,7 @@ void SupportNoscriptFilter::StartElement(HtmlElement* element) {
     // will get attached.
     return;
   }
-  if (!noscript_inserted_ && element->keyword() == HtmlName::kBody) {
+  if (!should_insert_noscript_ && element->keyword() == HtmlName::kBody) {
     scoped_ptr<GoogleUrl> url_with_psa_off(
         rewrite_driver_->google_url().CopyAndAddQueryParam(
             RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue));
@@ -63,10 +71,49 @@ void SupportNoscriptFilter::StartElement(HtmlElement* element) {
         element, StringPrintf(kNoScriptRedirectFormatter,
                               escaped_url.c_str(), escaped_url.c_str()));
     rewrite_driver_->PrependChild(element, noscript_node);
-    noscript_inserted_ = true;
+    should_insert_noscript_ = true;
   }
   // TODO(sriharis):  Handle the case where there is no body -- insert a body in
   // EndElement of kHtml?
+}
+
+bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
+  RewriteOptions::FilterSet js_filters;
+  rewrite_driver_->options()->GetEnabledFiltersRequiringScriptExecution(
+      &js_filters);
+  if (!js_filters.empty()) {
+    for (RewriteOptions::FilterSet::const_iterator p = js_filters.begin(),
+         e = js_filters.end(); p != e; ++p) {
+      RewriteOptions::Filter filter = *p;
+      bool (RewriteDriver::*filter_user_agent_checker)(void) const = NULL;
+      switch (filter) {
+        case RewriteOptions::kDeferIframe:
+        case RewriteOptions::kDeferJavascript:
+        case RewriteOptions::kDetectReflowWithDeferJavascript:
+          filter_user_agent_checker = &RewriteDriver::UserAgentSupportsJsDefer;
+          break;
+        case RewriteOptions::kDelayImages:
+        case RewriteOptions::kLazyloadImages:
+        case RewriteOptions::kLocalStorageCache:
+          filter_user_agent_checker =
+              &RewriteDriver::UserAgentSupportsImageInlining;
+          break;
+        case RewriteOptions::kFlushSubresources:
+          filter_user_agent_checker =
+              &RewriteDriver::UserAgentSupportsFlushEarly;
+          break;
+        default:
+          break;
+      }
+      // For an enabled filter, it is applicable on the page if either there is
+      // no user-agent checker or there is one and it returns true.
+      if (filter_user_agent_checker == NULL ||
+          (rewrite_driver_->*filter_user_agent_checker)()) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 }  // namespace net_instaweb

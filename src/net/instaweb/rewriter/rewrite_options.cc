@@ -266,7 +266,10 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kStripScripts,
 };
 
-// List of filters whose correct behaviour requires script execuction.
+// List of filters whose correct behavior requires script execution.
+// NOTE: Modify the
+// SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() method
+// if you update this list.
 const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
   RewriteOptions::kDeferIframe,
   RewriteOptions::kDeferJavascript,
@@ -1400,17 +1403,14 @@ void RewriteOptions::AddBlinkCacheableFamily(
           url_pattern, cache_time_ms, non_cacheable_elements));
 }
 
-bool RewriteOptions::IsAnyFilterRequiringScriptExecutionEnabled() const {
-  // TODO(sriharis):  Instead of just checking whether the filters are enabled,
-  // tighten the check to also include the UserAgentSupports* conditions so that
-  // we can avoid some unnecessary noscript redirects.
+void RewriteOptions::GetEnabledFiltersRequiringScriptExecution(
+    FilterSet* filter_set) const {
   for (int i = 0, n = arraysize(kRequiresScriptExecutionFilterSet); i < n;
        ++i) {
     if (Enabled(kRequiresScriptExecutionFilterSet[i])) {
-      return true;
+      filter_set->insert(kRequiresScriptExecutionFilterSet[i]);
     }
   }
-  return false;
 }
 
 void RewriteOptions::DisableFiltersRequiringScriptExecution() {

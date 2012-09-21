@@ -41,8 +41,9 @@ class SupportNoscriptFilter : public EmptyHtmlFilter {
   virtual const char* Name() const { return "SupportNoscript"; }
 
  private:
+  bool IsAnyFilterRequiringScriptExecutionEnabled() const;
   RewriteDriver* rewrite_driver_;  // We do not own this.
-  bool noscript_inserted_;
+  bool should_insert_noscript_;
 
   DISALLOW_COPY_AND_ASSIGN(SupportNoscriptFilter);
 };

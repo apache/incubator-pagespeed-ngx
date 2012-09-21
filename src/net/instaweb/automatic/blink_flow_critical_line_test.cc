@@ -1800,7 +1800,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkBlacklistUserAgent) {
 
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
-  EXPECT_STREQ(noblink_output_, text);
+  EXPECT_STREQ(kHtmlInputForNoBlink, text);
   // No blink flow should have happened.
   EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());

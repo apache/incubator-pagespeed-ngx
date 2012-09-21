@@ -136,7 +136,7 @@ const char kRewrittenHtml[] =
     "<script src=\"http://test.com/private.js\"></script>"
     "<script src=\"http://www.domain1.com/private.js\"></script>"
     "</head>"
-    "<body>%s"
+    "<body>"
     "Hello, mod_pagespeed!"
     "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
     "<script src=\"http://www.domain2.com/private.js\"></script>"
@@ -1165,8 +1165,6 @@ class ProxyInterfaceTest : public RewriteTestBase {
       return StringPrintf(kRewrittenHtml, rewritten_css_url_1.data(),
           rewritten_css_url_2.data(), rewritten_js_url_1.data(),
           rewritten_js_url_2.data(), rewritten_img_url_1.data(),
-          StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
-                       redirect_url.c_str()).c_str(),
           rewritten_css_url_3.data());
     } else if (defer_js_enabled) {
       return StringPrintf(

@@ -824,9 +824,8 @@ class RewriteOptions {
 
   bool Enabled(Filter filter) const;
 
-  // Returns true if any filter that depends on executing custom javascript is
-  // enabled.
-  bool IsAnyFilterRequiringScriptExecutionEnabled() const;
+  // Returns the set of enabled filters that require JavaScript for execution.
+  void GetEnabledFiltersRequiringScriptExecution(FilterSet* filter_set) const;
 
   // Disables all filters that depend on executing custom javascript.
   void DisableFiltersRequiringScriptExecution();

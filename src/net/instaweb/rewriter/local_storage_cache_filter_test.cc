@@ -254,6 +254,8 @@ TEST_F(LocalStorageCacheTest, ImgTooBig) {
 
 TEST_F(LocalStorageCacheTest, ImgLocalStorageDisabled) {
   options()->ClearSignatureForTesting();
+  // Enabling another filter that triggers the NOSCRIPT tag-insertion in HTML.
+  options()->EnableFilter(RewriteOptions::kDeferIframe);
   options()->DisableFilter(RewriteOptions::kLocalStorageCache);
   options()->set_ajax_rewriting_enabled(true);
   server_context()->ComputeSignature(options());

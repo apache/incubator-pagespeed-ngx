@@ -1330,4 +1330,23 @@ TEST_F(RewriteOptionsTest, UrlCacheInvalidationSignatureTest) {
   EXPECT_NE(signature2, signature3);
 }
 
+TEST_F(RewriteOptionsTest, EnabledFiltersRequiringJavaScriptTest) {
+  RewriteOptions foo;
+  foo.ClearFilters();
+  foo.EnableFilter(RewriteOptions::kDeferJavascript);
+  foo.EnableFilter(RewriteOptions::kResizeImages);
+  FilterSet foo_fs;
+  foo.GetEnabledFiltersRequiringScriptExecution(&foo_fs);
+  EXPECT_FALSE(foo_fs.empty());
+  EXPECT_EQ(1, foo_fs.size());
+
+  RewriteOptions bar;
+  bar.ClearFilters();
+  bar.EnableFilter(RewriteOptions::kResizeImages);
+  bar.EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  FilterSet bar_fs;
+  bar.GetEnabledFiltersRequiringScriptExecution(&bar_fs);
+  EXPECT_TRUE(bar_fs.empty());
+}
+
 }  // namespace net_instaweb

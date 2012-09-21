@@ -56,6 +56,7 @@ class InsertDnsPrefetchFilterTest : public RewriteTestBase {
 
  protected:
   virtual void SetUp() {
+    options()->set_support_noscript_enabled(false);
     options()->EnableFilter(RewriteOptions::kInsertDnsPrefetch);
     RewriteTestBase::SetUp();
     rewrite_driver()->AddFilters();
