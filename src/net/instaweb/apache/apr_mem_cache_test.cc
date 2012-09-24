@@ -18,7 +18,7 @@
 
 // Unit-test the memcache interface.
 
-#include "net/instaweb/apache/apr_mem_cache_servers.h"
+#include "net/instaweb/apache/apr_mem_cache.h"
 
 #include <cstddef>
 
@@ -67,7 +67,7 @@ class AprMemCacheTest : public CacheTestBase {
     if (use_md5_hasher) {
       hasher = &md5_hasher_;
     }
-    servers_.reset(new AprMemCacheServers(servers, 5, hasher, &handler_));
+    servers_.reset(new AprMemCache(servers, 5, hasher, &handler_));
 
     // apr_memcache actually lazy-connects to memcached, it seems, so
     // if we fail the Connect call then something is truly broken.  To
@@ -90,7 +90,7 @@ class AprMemCacheTest : public CacheTestBase {
   MD5Hasher md5_hasher_;
   MockHasher mock_hasher_;
   scoped_ptr<LRUCache> lru_cache_;
-  scoped_ptr<AprMemCacheServers> servers_;
+  scoped_ptr<AprMemCache> servers_;
   scoped_ptr<FallbackCache> cache_;
 };
 

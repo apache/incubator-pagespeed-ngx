@@ -16,8 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_APACHE_APR_MEM_CACHE_SERVERS_H_
-#define NET_INSTAWEB_APACHE_APR_MEM_CACHE_SERVERS_H_
+#ifndef NET_INSTAWEB_APACHE_APR_MEM_CACHE_H_
+#define NET_INSTAWEB_APACHE_APR_MEM_CACHE_H_
 
 #include <vector>
 
@@ -42,9 +42,7 @@ class SharedString;
 //
 // While this class derives from CacheInterface, it is a blocking
 // implementation, suitable for instantiating underneath an AsyncCache.
-//
-// TODO(jmarantz): rename to AprMemCache and rename cc/h to apr_mem_cache.*.
-class AprMemCacheServers : public CacheInterface {
+class AprMemCache : public CacheInterface {
  public:
   // Experimentally it seems large values larger than 1M bytes result in
   // a failure, e.g. from load-tests:
@@ -61,9 +59,9 @@ class AprMemCacheServers : public CacheInterface {
   //
   // thread_limit is used to provide apr_memcache_server_create with
   // a hard maximum number of client connections to open.
-  AprMemCacheServers(const StringPiece& servers, int thread_limit,
-                     Hasher* hasher, MessageHandler* handler);
-  ~AprMemCacheServers();
+  AprMemCache(const StringPiece& servers, int thread_limit, Hasher* hasher,
+              MessageHandler* handler);
+  ~AprMemCache();
 
   const GoogleString& server_spec() const { return server_spec_; }
 
@@ -83,7 +81,7 @@ class AprMemCacheServers : public CacheInterface {
   // failed to return status.
   bool GetStatus(GoogleString* status_string);
 
-  virtual const char* Name() const { return "AprMemCacheServers"; }
+  virtual const char* Name() const { return "AprMemCache"; }
 
  private:
   void DecodeValueMatchingKeyAndCallCallback(
@@ -101,9 +99,9 @@ class AprMemCacheServers : public CacheInterface {
   Hasher* hasher_;
   MessageHandler* message_handler_;
 
-  DISALLOW_COPY_AND_ASSIGN(AprMemCacheServers);
+  DISALLOW_COPY_AND_ASSIGN(AprMemCache);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APR_MEM_CACHE_SERVERS_H_
+#endif  // NET_INSTAWEB_APACHE_APR_MEM_CACHE_H_

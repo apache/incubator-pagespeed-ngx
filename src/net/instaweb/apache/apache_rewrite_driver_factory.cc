@@ -31,7 +31,7 @@
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apache_thread_system.h"
 #include "net/instaweb/apache/apr_file_system.h"
-#include "net/instaweb/apache/apr_mem_cache_servers.h"
+#include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/loopback_route_fetcher.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
@@ -191,9 +191,9 @@ CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
       int thread_limit;
       ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
       thread_limit += num_rewrite_threads() + num_expensive_rewrite_threads();
-      AprMemCacheServers* servers = new AprMemCacheServers(
+      AprMemCache* mem_cache = new AprMemCache(
           server_spec, thread_limit, hasher(), message_handler());
-      memcache_servers_.push_back(servers);
+      memcache_servers_.push_back(mem_cache);
 
       int num_threads = config->memcached_threads();
       if (num_threads != 0) {
@@ -204,11 +204,11 @@ CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
                                                      thread_system()));
         }
         AsyncCache* async_cache = new AsyncCache(
-            servers, thread_system()->NewMutex(), memcached_pool_.get());
+            mem_cache, thread_system()->NewMutex(), memcached_pool_.get());
         async_caches_.push_back(async_cache);
         memcached = async_cache;
       } else {
-        memcached = servers;
+        memcached = mem_cache;
       }
 
       // Put the batcher above the stats so that the stats sees the MultiGets
@@ -235,7 +235,7 @@ CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
     // memcache & file-cache specs as a key, so it's simpler to make a new
     // small FallbackCache object for each VirtualHost.
     memcached = new FallbackCache(memcached, l2_cache,
-                                  AprMemCacheServers::kValueSizeThreshold,
+                                  AprMemCache::kValueSizeThreshold,
                                   message_handler());
   }
   return memcached;
@@ -574,8 +574,8 @@ void ApacheRewriteDriverFactory::ChildInit() {
   uninitialized_managers_.clear();
 
   for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
-    AprMemCacheServers* servers = memcache_servers_[i];
-    if (!servers->Connect()) {
+    AprMemCache* mem_cache = memcache_servers_[i];
+    if (!mem_cache->Connect()) {
       message_handler()->Message(kError, "Memory cache failed");
       abort();  // TODO(jmarantz): is there a better way to exit?
     }
@@ -739,10 +739,10 @@ RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptionsForQuery() {
 
 void ApacheRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
   for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
-    AprMemCacheServers* servers = memcache_servers_[i];
-    if (!servers->GetStatus(out)) {
+    AprMemCache* mem_cache = memcache_servers_[i];
+    if (!mem_cache->GetStatus(out)) {
       StrAppend(out, "\nError getting memcached server status for ",
-                servers->server_spec());
+                mem_cache->server_spec());
     }
   }
 }

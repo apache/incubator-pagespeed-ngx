@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/apache/apr_mem_cache_servers.h"
+#include "net/instaweb/apache/apr_mem_cache.h"
 
 #include "apr_pools.h"
 #include "apr_memcache.h"
@@ -44,9 +44,8 @@ namespace net_instaweb {
 class Timer;
 class ThreadSystem;
 
-AprMemCacheServers::AprMemCacheServers(const StringPiece& servers,
-                                       int thread_limit, Hasher* hasher,
-                                       MessageHandler* handler)
+AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
+                         Hasher* hasher, MessageHandler* handler)
     : valid_server_spec_(false),
       thread_limit_(thread_limit),
       memcached_(NULL),
@@ -86,11 +85,11 @@ AprMemCacheServers::AprMemCacheServers(const StringPiece& servers,
   valid_server_spec_ = success && !server_vector.empty();
 }
 
-AprMemCacheServers::~AprMemCacheServers() {
+AprMemCache::~AprMemCache() {
   apr_pool_destroy(pool_);
 }
 
-bool AprMemCacheServers::Connect() {
+bool AprMemCache::Connect() {
   apr_status_t status =
       apr_memcache_create(pool_, hosts_.size(), 0, &memcached_);
   bool success = false;
@@ -120,7 +119,7 @@ bool AprMemCacheServers::Connect() {
   return success;
 }
 
-void AprMemCacheServers::DecodeValueMatchingKeyAndCallCallback(
+void AprMemCache::DecodeValueMatchingKeyAndCallCallback(
     const GoogleString& key, const char* data, size_t data_len,
     Callback* callback) {
   SharedString key_value;
@@ -131,19 +130,19 @@ void AprMemCacheServers::DecodeValueMatchingKeyAndCallCallback(
       ValidateAndReportResult(actual_key, CacheInterface::kAvailable, callback);
     } else {
       message_handler_->Message(
-          kError, "AprMemCacheServers::Get key collision %s != %s",
+          kError, "AprMemCache::Get key collision %s != %s",
           key.c_str(), actual_key.c_str());
       ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
     }
   } else {
     message_handler_->Message(
-        kError, "AprMemCacheServers::Get decoding error on key %s",
+        kError, "AprMemCache::Get decoding error on key %s",
         key.c_str());
     ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
   }
 }
 
-void AprMemCacheServers::Get(const GoogleString& key, Callback* callback) {
+void AprMemCache::Get(const GoogleString& key, Callback* callback) {
   apr_pool_t* data_pool;
   apr_pool_create(&data_pool, NULL);
   CHECK(data_pool != NULL) << "apr_pool_t data_pool allocation failure";
@@ -159,7 +158,7 @@ void AprMemCacheServers::Get(const GoogleString& key, Callback* callback) {
       char buf[kStackBufferSize];
       apr_strerror(status, buf, sizeof(buf));
       message_handler_->Message(
-          kError, "AprMemCacheServers::Get error: %s (%d) on key %s",
+          kError, "AprMemCache::Get error: %s (%d) on key %s",
           buf, status, key.c_str());
     }
     ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
@@ -167,7 +166,7 @@ void AprMemCacheServers::Get(const GoogleString& key, Callback* callback) {
   apr_pool_destroy(data_pool);
 }
 
-void AprMemCacheServers::MultiGet(MultiGetRequest* request) {
+void AprMemCache::MultiGet(MultiGetRequest* request) {
   // apr_memcache_multgetp documentation indicates it may clear the
   // temp_pool inside the function.  Thus it is risky to pass the same
   // pool for both temp_pool and data_pool, as we need to read the
@@ -203,7 +202,7 @@ void AprMemCacheServers::MultiGet(MultiGetRequest* request) {
           char buf[kStackBufferSize];
           apr_strerror(status, buf, sizeof(buf));
           message_handler_->Message(
-              kError, "AprMemCacheServers::Get error: %s (%d) on key %s",
+              kError, "AprMemCache::Get error: %s (%d) on key %s",
               buf, status, key.c_str());
         }
         ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
@@ -217,7 +216,7 @@ void AprMemCacheServers::MultiGet(MultiGetRequest* request) {
   delete request;
 }
 
-void AprMemCacheServers::Put(const GoogleString& key,
+void AprMemCache::Put(const GoogleString& key,
                              SharedString* encoded_value) {
   GoogleString hashed_key = hasher_->Hash(key);
   SharedString key_value;
@@ -232,18 +231,18 @@ void AprMemCacheServers::Put(const GoogleString& key,
       char buf[kStackBufferSize];
       apr_strerror(status, buf, sizeof(buf));
       message_handler_->Message(
-          kError, "AprMemCacheServers::Put error: %s on key %s, value-size %d",
+          kError, "AprMemCache::Put error: %s on key %s, value-size %d",
           buf, key.c_str(), encoded_value->size());
     }
   } else {
     message_handler_->Message(
-        kError, "AprMemCacheServers::Put error: key size %d too large, first "
+        kError, "AprMemCache::Put error: key size %d too large, first "
         "100 bytes of key is: %s",
         static_cast<int>(key.size()), key.substr(0, 100).c_str());
   }
 }
 
-void AprMemCacheServers::Delete(const GoogleString& key) {
+void AprMemCache::Delete(const GoogleString& key) {
   // Note that deleting a key whose value exceeds our size threshold
   // will not actually remove it from the fallback cache.  However, it
   // will remove our sentinel indicating that it's in the fallback cache,
@@ -264,12 +263,12 @@ void AprMemCacheServers::Delete(const GoogleString& key) {
     char buf[kStackBufferSize];
     apr_strerror(status, buf, sizeof(buf));
     message_handler_->Message(
-        kError, "AprMemCacheServers::Delete error: %s on key %s", buf,
+        kError, "AprMemCache::Delete error: %s on key %s", buf,
         key.c_str());
   }
 }
 
-bool AprMemCacheServers::GetStatus(GoogleString* buffer) {
+bool AprMemCache::GetStatus(GoogleString* buffer) {
   apr_pool_t* temp_pool = NULL;
   apr_pool_create(&temp_pool, NULL);
   CHECK(temp_pool != NULL) << "apr_pool_t allocation failure";

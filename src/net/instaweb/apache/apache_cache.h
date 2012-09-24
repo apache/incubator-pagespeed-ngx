@@ -27,7 +27,6 @@ namespace net_instaweb {
 class ApacheConfig;
 class ApacheRewriteDriverFactory;
 class AprMemCache;
-class AprMemCacheServers;
 class AsyncCache;
 class CacheInterface;
 class FileCache;

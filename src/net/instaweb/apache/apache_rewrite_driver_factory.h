@@ -42,7 +42,7 @@ class ApacheCache;
 class ApacheConfig;
 class ApacheMessageHandler;
 class ApacheResourceManager;
-class AprMemCacheServers;
+class AprMemCache;
 class AsyncCache;
 class SerfUrlAsyncFetcher;
 class SharedMemLockManager;
@@ -365,13 +365,13 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   //
   // The CacheInterface* value in the MemcacheMap now includes,
   // depending on options, instances of CacheBatcher, AsyncCache,
-  // and CacheStats.  Explicit lists of AprMemCacheServers and
+  // and CacheStats.  Explicit lists of AprMemCache instances and
   // AsyncCache objects are also included, as they require extra
   // treatment during startup and shutdown.
   typedef std::map<GoogleString, CacheInterface*> MemcachedMap;
   MemcachedMap memcached_map_;
   scoped_ptr<QueuedWorkerPool> memcached_pool_;
-  std::vector<AprMemCacheServers*> memcache_servers_;
+  std::vector<AprMemCache*> memcache_servers_;
   std::vector<AsyncCache*> async_caches_;
 
   // Serf fetchers are expensive -- they each cost a thread. Allocate
