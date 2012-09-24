@@ -1,0 +1,10 @@
+Files in this directory should not be modified or removed. They are used by
+system tests, such as serf_url_async_fetcher_test, which expects them to be
+specific golden sizes and contents.
+
+Make sure httpd.conf has this:
+
+    <Directory "/var/www/html/do_not_modify/cgi" >
+      Options +ExecCGI
+    </Directory>
+    AddHandler cgi-script .cgi

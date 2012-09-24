@@ -62,7 +62,7 @@ const int kFetcherTimeoutMs = 5 * 1000;
 const int kModpagespeedSite = 0;  // TODO(matterbury): These should be an enum?
 const int kGoogleFavicon = 1;
 const int kGoogleLogo = 2;
-const int kSteveSoudersCgi = 3;
+const int kCgiSlowJs = 3;
 const int kModpagespeedBeacon = 4;
 const int kHttpsGoogleFavicon = 5;
 const int kConnectionRefused = 6;
@@ -167,8 +167,8 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
                GoogleString("\000\000\001\000", 4));
     AddTestUrl(StrCat("http:", fetch_test_domain, "/do_not_modify/"
                       "logo.e80d1c59a673f560785784fb1ac10959.gif"), "GIF");
-    AddTestUrl("http://stevesouders.com/bin/resource.cgi?type=js&sleep=10",
-               "var");
+    AddTestUrl("http://modpagespeed.com/do_not_modify/cgi/slow_js.cgi",
+               "alert('hello world');");
     AddTestUrl(StrCat("http:", fetch_test_domain, "/mod_pagespeed_beacon"), "");
     AddTestUrl(StrCat("https:", fetch_test_domain, "/do_not_modify/"
                       "favicon.d034f46c06475a27478e98ef5dff965e.ico"),
@@ -531,16 +531,14 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTwoThreadedOneSync) {
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestTimeout) {
-  StartFetches(kSteveSoudersCgi, kSteveSoudersCgi, false);
+  StartFetches(kCgiSlowJs, kCgiSlowJs, false);
   int timeouts =
       statistics_.GetVariable(SerfStats::kSerfFetchTimeoutCount)->Get();
-  ASSERT_EQ(0, WaitTillDone(kSteveSoudersCgi, kSteveSoudersCgi,
-                            kThreadedPollMs));
+  ASSERT_EQ(0, WaitTillDone(kCgiSlowJs, kCgiSlowJs, kThreadedPollMs));
   timer_->AdvanceMs(2 * kFetcherTimeoutMs);
-  ASSERT_EQ(1, WaitTillDone(kSteveSoudersCgi, kSteveSoudersCgi,
-                            kThreadedPollMs));
-  ASSERT_TRUE(callbacks_[kSteveSoudersCgi]->IsDone());
-  EXPECT_FALSE(callbacks_[kSteveSoudersCgi]->success());
+  ASSERT_EQ(1, WaitTillDone(kCgiSlowJs, kCgiSlowJs, kThreadedPollMs));
+  ASSERT_TRUE(callbacks_[kCgiSlowJs]->IsDone());
+  EXPECT_FALSE(callbacks_[kCgiSlowJs]->success());
   EXPECT_EQ(timeouts + 1,
             statistics_.GetVariable(SerfStats::kSerfFetchTimeoutCount)->Get());
 }
