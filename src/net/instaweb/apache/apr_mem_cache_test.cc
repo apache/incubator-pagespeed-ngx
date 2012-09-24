@@ -54,8 +54,13 @@ const size_t kHugeWriteSize = 2 * AprMemCache::kValueSizeThreshold;
 class AprMemCacheTest : public CacheTestBase {
  protected:
   AprMemCacheTest() : fallback_cache_(new LRUCache(kFallbackCacheSize)) {}
-  bool ConnectToMemcached(bool use_md5_hasher) {
+
+  static void SetUpTestCase() {
     apr_initialize();
+    atexit(apr_terminate);
+  }
+
+  bool ConnectToMemcached(bool use_md5_hasher) {
     GoogleString servers = StrCat("localhost:", kPortString);
     Hasher* hasher = &mock_hasher_;
     if (use_md5_hasher) {

@@ -47,6 +47,7 @@ class LoopbackRouteFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
 
   static void SetUpTestCase() {
     apr_initialize();
+    atexit(apr_terminate);
   }
 
   virtual void SetUp() {

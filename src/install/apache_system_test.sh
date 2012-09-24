@@ -85,8 +85,9 @@ if fgrep -q "# ModPagespeedStatistics off" $APACHE_DEBUG_PAGESPEED_CONF; then
   MACHINE_NAME=$(hostname)
   ALT_STAT_URL=$(echo $STATISTICS_URL | sed s#localhost#$MACHINE_NAME#)
 
-  wget $ALT_STAT_URL
+  wget $ALT_STAT_URL >& "$TEMPDIR/alt_stat_url.$$"
   check [ $? = 8 ]
+  rm -f "$TEMPDIR/alt_stat_url.$$"
 
 
 else
@@ -262,7 +263,6 @@ check egrep -q 'Cache-Control: max-age=31536000' <(echo $RESOURCE_HEADERS)
 
 echo TEST: ModPagespeedModifyCachingHeaders
 URL=$TEST_ROOT/retain_cache_control/index.html
-$WGET_DUMP $URL
 check grep -q "Cache-Control: private, max-age=3000" <($WGET_DUMP $URL)
 
 test_filter combine_javascript combines 2 JS files into 1.
@@ -340,11 +340,12 @@ ModPagespeedFilters=flush_subresources,extend_cache_css,\
 extend_cache_scripts"
 # Fetch once with X-PSA-Blocking-Rewrite so that the resources get rewritten and
 # property cache is updated with them.
-wget -O - --header 'X-PSA-Blocking-Rewrite: psatest' $URL
+wget -O - --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $TEMPDIR/flush.$$
 # Fetch again. The property cache has the subresources this time but
 # flush_subresources rewriter is not applied. This is a negative test case
 # because this rewriter does not exist in mod_pagespeed yet.
 check [ `wget -O - $URL | grep -o 'link rel="subresource"' | wc -l` = 0 ]
+rm -f $TEMPDIR/flush.$$
 
 echo TEST: Respect custom options on resources.
 IMG_NON_CUSTOM="$EXAMPLE_ROOT/images/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
@@ -385,7 +386,7 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   URL_PATH=cache_flush_test.html?ModPagespeedFilters=inline_css
   URL=$TEST_ROOT/$URL_PATH
   CSS_FILE=$APACHE_DOC_ROOT/mod_pagespeed_test/update.css
-  TMP_CSS_FILE=/tmp/update.css.$$
+  TMP_CSS_FILE=$TEMPDIR/update.css.$$
 
   # First, write 'blue' into the css file and make sure it gets inlined into
   # the html.
@@ -458,7 +459,7 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   echo TEST: Connection refused handling
 
   # Monitor the Apache log starting now.  tail -F will catch log rotations.
-  SERF_REFUSED_PATH=/tmp/instaweb_apache_serf_refused.$$
+  SERF_REFUSED_PATH=$TEMPDIR/instaweb_apache_serf_refused.$$
   rm $SERF_REFUSED_PATH
   echo APACHE_LOG = $APACHE_LOG
   tail --sleep-interval=0.1 -F $APACHE_LOG > $SERF_REFUSED_PATH &

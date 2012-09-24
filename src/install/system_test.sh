@@ -193,26 +193,26 @@ URL=$TEST_ROOT/blacklist/blacklist.html?ModPagespeedFilters=extend_cache,rewrite
 FETCHED=$OUTDIR/blacklist.html
 fetch_until $URL 'grep -c .js.pagespeed.' 4
 $WGET_DUMP $URL > $FETCHED
-cat $FETCHED
-check grep "<script src=\".*normal\.js\.pagespeed\..*\.js\">" $FETCHED
-check grep "<script src=\"js_tinyMCE\.js\"></script>" $FETCHED
-check grep "<script src=\"tiny_mce\.js\"></script>" $FETCHED
-check grep "<script src=\"tinymce\.js\"></script>" $FETCHED
+JS_TMP="$TEMPDIR/js_grep.$$"
+check grep "<script src=\".*normal\.js\.pagespeed\..*\.js\">" $FETCHED  > $JS_TMP
+check grep "<script src=\"js_tinyMCE\.js\"></script>" $FETCHED >> $JS_TMP
+check grep "<script src=\"tiny_mce\.js\"></script>" $FETCHED >> $JS_TMP
+check grep "<script src=\"tinymce\.js\"></script>" $FETCHED >> $JS_TMP
 check grep "<script src=\"scriptaculous\.js?load=effects,builder\"></script>" \
-  $FETCHED
+  $FETCHED >> $JS_TMP
 check grep "<script src=\"connect\.facebook\.net/en_US/all\.js\"></script>" \
-  $FETCHED
-check grep "<script src=\".*jquery.*\.js\.pagespeed\..*\.js\">" $FETCHED
-check grep "<script src=\".*ckeditor\.js\">" $FETCHED
-check grep "<script src=\".*swfobject\.js\.pagespeed\..*\.js\">" $FETCHED
-check grep "<script src=\".*another_normal\.js\.pagespeed\..*\.js\">" $FETCHED
+  $FETCHED >> $JS_TMP
+check grep "<script src=\".*jquery.*\.js\.pagespeed\..*\.js\">" $FETCHED >> $JS_TMP
+check grep "<script src=\".*ckeditor\.js\">" $FETCHED >> $JS_TMP
+check grep "<script src=\".*swfobject\.js\.pagespeed\..*\.js\">" $FETCHED >> $JS_TMP
+check grep "<script src=\".*another_normal\.js\.pagespeed\..*\.js\">" $FETCHED >> $JS_TMP
+rm -f $JS_TMP
 
 WGET_ARGS=""
 echo TEST: move_css_above_scripts works.
 URL=$EXAMPLE_ROOT/move_css_above_scripts.html?ModPagespeedFilters=move_css_above_scripts
 $WGET_DUMP $URL > $FETCHED
 # Link moved before script.
-cat $FETCHED
 check grep -q "styles/all_styles.css\"><script" $FETCHED
 
 echo TEST: move_css_above_scripts off.
@@ -253,7 +253,6 @@ JS_URL=$(egrep -o http://.*.pagespeed.*.js $FETCHED)
 echo "JS_URL=\$\(egrep -o http://.*[.]pagespeed.*[.]js $FETCHED\)=\"$JS_URL\""
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)
-echo JS_HEADERS=$JS_HEADERS
 check egrep -qi 'HTTP/1[.]. 200 OK' <(echo $JS_HEADERS)
 check fgrep -qi 'Content-Encoding: gzip' <(echo $JS_HEADERS)
 #check fgrep -qi 'Vary: Accept-Encoding' <(echo $JS_HEADERS)
@@ -294,7 +293,6 @@ check [ x"$IMG_URL" != x ]
 echo TEST: headers for rewritten image "$IMG_URL"
 IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $IMG_URL 2>&1)
-echo "IMG_HEADERS=\"$IMG_HEADERS\""
 check egrep -qi 'HTTP/1[.]. 200 OK' <(echo $IMG_HEADERS)
 # Make sure we have some valid headers.
 check fgrep -qi 'Content-Type: image/jpeg' <(echo "$IMG_HEADERS")
@@ -384,7 +382,6 @@ $WGET_DUMP $URL > $OUTDIR/sprite_output
 CSS=$(grep stylesheet $OUTDIR/sprite_output | cut -d\" -f 6)
 echo css is $CSS
 $WGET_DUMP $CSS > $OUTDIR/sprite_css_output
-cat $OUTDIR/sprite_css_output
 echo ""
 check [ $(grep -c "ic.pagespeed.is" $OUTDIR/sprite_css_output) -gt 0 ]
 
@@ -473,8 +470,6 @@ test_filter extend_cache with no-cache js origin
 URL="$REWRITTEN_TEST_ROOT/no_cache/hello.js.pagespeed.ce.0.js"
 echo run_wget_with_args $URL
 run_wget_with_args $URL
-cat $WGET_OUTPUT
-cat $OUTDIR/hello.js.pagespeed.ce.0.js
 check fgrep -q "'Hello'" $OUTDIR/hello.js.pagespeed.ce.0.js
 check fgrep -q "no-cache" $WGET_OUTPUT
 

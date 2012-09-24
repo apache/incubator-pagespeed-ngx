@@ -861,14 +861,15 @@ void RewriteTestBase::SetMimetype(const StringPiece& mimetype) {
 
 // Logging at the INFO level slows down tests, adds to the noise, and
 // adds considerably to the speed variability.
-class ResourceManagerProcessContext {
+class RewriteTestBaseProcessContext {
  public:
-  ResourceManagerProcessContext() {
+  RewriteTestBaseProcessContext() {
     logging::SetMinLogLevel(logging::LOG_WARNING);
   }
 
  private:
   ProcessContext process_context_;
 };
+RewriteTestBaseProcessContext rewrite_test_base_process_context;
 
 }  // namespace net_instaweb
