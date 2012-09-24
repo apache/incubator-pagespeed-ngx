@@ -356,6 +356,33 @@ IMG_CUSTOM="$TEST_ROOT/custom_options/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
 fetch_until $IMG_NON_CUSTOM 'wc -c' 231192
 fetch_until $IMG_CUSTOM 'wc -c' 216942
 
+# Test our handling of headers when a FLUSH event occurs.
+# Skip if PHP is not installed to cater for admins who don't want it installed.
+# Always fetch the first file so we can check if PHP is enabled.
+echo "TEST: Headers are not destroyed by a flush event."
+FILE=php_withoutflush.php
+URL=$TEST_ROOT/$FILE
+FETCHED=$OUTDIR/$FILE
+$WGET_DUMP $URL > $FETCHED
+if grep -q '<?php' $FETCHED; then
+  echo "*** Skipped because PHP is not installed. If you'd like to enable this"
+  echo "*** test please run: sudo apt-get install php5-common php5"
+else
+  check [ $(grep -c '^X-Mod-Pagespeed:'               $FETCHED) = 1 ]
+  check [ $(grep -c '^X-My-PHP-Header: without_flush' $FETCHED) = 1 ]
+  check [ $(grep -c '^Content-Length: [0-9]'          $FETCHED) = 1 ]
+
+  FILE=php_withflush.php
+  URL=$TEST_ROOT/$FILE
+  FETCHED=$OUTDIR/$FILE
+  $WGET_DUMP $URL > $FETCHED
+  check [ $(grep -c '^X-Mod-Pagespeed:'               $FETCHED) = 1 ]
+  check [ $(grep -c '^X-My-PHP-Header: with_flush'    $FETCHED) = 1 ]
+  # 2.2 prefork returns no content length while 2.2 worker returns a real
+  # content length. IDK why but skip this test because of that.
+  # check [ $(grep -c '^Content-Length: [0-9]'          $FETCHED) = 1 ]
+fi
+
 # TODO(sligocki): TEST: ModPagespeedMaxSegmentLength
 
 if [ "$CACHE_FLUSH_TEST" == "on" ]; then
