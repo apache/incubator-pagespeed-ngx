@@ -363,15 +363,15 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // The QueuedWorkerPool for async cache-gets is shared among all
   // memcached connections.
   //
-  // TODO(jmarantz): We should really have the CacheBatcher &
-  // AsyncCache associated with the AprMemCacheServers, shared among
-  // all vhosts accessing the same memcached-set. Currently we get a
-  // new CacheBatcher & AsyncCache for each vhost, and that's subotimal;
-  // we should be able to batch together requests for different vhosts
-  // to the same memcached.
-  typedef std::map<GoogleString, AprMemCacheServers*> MemcachedMap;
+  // The CacheInterface* value in the MemcacheMap now includes,
+  // depending on options, instances of CacheBatcher, AsyncCache,
+  // and CacheStats.  Explicit lists of AprMemCacheServers and
+  // AsyncCache objects are also included, as they require extra
+  // treatment during startup and shutdown.
+  typedef std::map<GoogleString, CacheInterface*> MemcachedMap;
   MemcachedMap memcached_map_;
   scoped_ptr<QueuedWorkerPool> memcached_pool_;
+  std::vector<AprMemCacheServers*> memcache_servers_;
   std::vector<AsyncCache*> async_caches_;
 
   // Serf fetchers are expensive -- they each cost a thread. Allocate

@@ -40,13 +40,22 @@ class SharedString;
 // Interface to memcached via the apr_memcache*, as documented in
 // http://apr.apache.org/docs/apr-util/1.4/group___a_p_r___util___m_c.html.
 //
-// This is an entirely blocking interface.  Note that it does not
-// implement CacheInterface: it's intended solely for use by
-// apr_mem_cache.cc, so that a single memcached configuration can be
-// combined with other caches without opening up redundant TCP/IP
-// connections or making extra threads.
-class AprMemCacheServers {
+// While this class derives from CacheInterface, it is a blocking
+// implementation, suitable for instantiating underneath an AsyncCache.
+//
+// TODO(jmarantz): rename to AprMemCache and rename cc/h to apr_mem_cache.*.
+class AprMemCacheServers : public CacheInterface {
  public:
+  // Experimentally it seems large values larger than 1M bytes result in
+  // a failure, e.g. from load-tests:
+  //     [Fri Jul 20 10:29:34 2012] [error] [mod_pagespeed 0.10.0.0-1699 @1522]
+  //     AprMemCache::Put error: Internal error on key
+  //     http://example.com/image.jpg, value-size 1393146
+  // External to this class, we use a fallback cache (in Apache a FileCache) to
+  // handle too-large requests.  This is managed by class FallbackCache in
+  // ../util.
+  static const size_t kValueSizeThreshold = 1 * 1000 * 1000;
+
   // servers is a comma-separated list of host[:port] where port defaults
   // to 11211, the memcached default.
   //
@@ -58,29 +67,11 @@ class AprMemCacheServers {
 
   const GoogleString& server_spec() const { return server_spec_; }
 
-  // Typedefs to facilitate returning values from a MultiGet.  The string data
-  // is owned by the apr_pool_t* passed into Get and MultiGet.
-  typedef std::pair<CacheInterface::KeyState, StringPiece> Result;
-  typedef std::vector<Result> ResultVector;
-
-  // Blocking get for a single value in one of the memcached servers.
-  // Returns true for success, false for failure or not-found, placing
-  // the result in *result, and allocating the result in data_pool.
-  bool Get(const GoogleString& key, apr_pool_t* data_pool, StringPiece* result);
-
-  // Sets the value of a cache item on one of the memcached servers.
-  void Set(const GoogleString& key, const GoogleString& encoded_value);
-
-  // Deletes an item from one of the memcached servers.
-  void Delete(const GoogleString& key);
-
-  // Performs a blocking multi-get, depositing the results in *results,
-  // which will be sized the same as request.  If the call to memcached fails
-  // completely, then false is returned and every one of the requested keys
-  // should be considered a failure.
-  bool MultiGet(CacheInterface::MultiGetRequest* request,
-                apr_pool_t* data_pool,
-                ResultVector* results);
+  // As mentioned above, Get and MultiGet are blocking in this implementation.
+  virtual void Get(const GoogleString& key, Callback* callback);
+  virtual void Put(const GoogleString& key, SharedString* value);
+  virtual void Delete(const GoogleString& key);
+  virtual void MultiGet(MultiGetRequest* request);
 
   // Connects to the server, returning whether the connnection was
   // successful or not.
@@ -92,7 +83,13 @@ class AprMemCacheServers {
   // failed to return status.
   bool GetStatus(GoogleString* status_string);
 
+  virtual const char* Name() const { return "AprMemCacheServers"; }
+
  private:
+  void DecodeValueMatchingKeyAndCallCallback(
+      const GoogleString& key, const char* data, size_t data_len,
+      Callback* callback);
+
   StringVector hosts_;
   std::vector<int> ports_;
   GoogleString server_spec_;

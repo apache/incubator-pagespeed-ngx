@@ -21,7 +21,6 @@
 #include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_slurp.h"
 #include "net/instaweb/apache/apache_message_handler.h"
-#include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/instaweb_context.h"

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2012 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@
 
 // Unit-test the memcache interface.
 
-#include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_mem_cache_servers.h"
 
 #include <cstddef>
@@ -29,6 +28,7 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/util/cache_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/fallback_cache.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -44,16 +44,17 @@ namespace net_instaweb {
 namespace {
 
 const char kPortString[] = "6765";
-const size_t kFallbackCacheSize = 3 * AprMemCache::kValueSizeThreshold;
-const size_t kJustUnderThreshold = AprMemCache::kValueSizeThreshold - 100;
-const size_t kLargeWriteSize = AprMemCache::kValueSizeThreshold + 1;
-const size_t kHugeWriteSize = 2 * AprMemCache::kValueSizeThreshold;
+const int kTestValueSizeThreshold = 200;
+const size_t kLRUCacheSize = 3 * kTestValueSizeThreshold;
+const size_t kJustUnderThreshold = kTestValueSizeThreshold - 100;
+const size_t kLargeWriteSize = kTestValueSizeThreshold + 1;
+const size_t kHugeWriteSize = 2 * kTestValueSizeThreshold;
 
 }  // namespace
 
 class AprMemCacheTest : public CacheTestBase {
  protected:
-  AprMemCacheTest() : fallback_cache_(new LRUCache(kFallbackCacheSize)) {}
+  AprMemCacheTest() : lru_cache_(new LRUCache(kLRUCacheSize)) {}
 
   static void SetUpTestCase() {
     apr_initialize();
@@ -78,8 +79,9 @@ class AprMemCacheTest : public CacheTestBase {
       return false;
     }
 
-    cache_.reset(new AprMemCache(servers_.get(), fallback_cache_.get(),
-                                 &handler_));
+    cache_.reset(new FallbackCache(servers_.get(), lru_cache_.get(),
+                                   kTestValueSizeThreshold,
+                                   &handler_));
     return true;
   }
   virtual CacheInterface* Cache() { return cache_.get(); }
@@ -87,9 +89,9 @@ class AprMemCacheTest : public CacheTestBase {
   GoogleMessageHandler handler_;
   MD5Hasher md5_hasher_;
   MockHasher mock_hasher_;
-  scoped_ptr<LRUCache> fallback_cache_;
+  scoped_ptr<LRUCache> lru_cache_;
   scoped_ptr<AprMemCacheServers> servers_;
-  scoped_ptr<AprMemCache> cache_;
+  scoped_ptr<FallbackCache> cache_;
 };
 
 // Simple flow of putting in an item, getting it, deleting it.
@@ -105,13 +107,13 @@ TEST_F(AprMemCacheTest, PutGetDelete) {
 
   cache_->Delete("Name");
   CheckNotFound("Name");
-  EXPECT_EQ(0, fallback_cache_->size_bytes()) << "fallback not used.";
+  EXPECT_EQ(0, lru_cache_->size_bytes()) << "fallback not used.";
 }
 
 TEST_F(AprMemCacheTest, MultiGet) {
   ASSERT_TRUE(ConnectToMemcached(true));
   TestMultiGet();
-  EXPECT_EQ(0, fallback_cache_->size_bytes()) << "fallback not used.";
+  EXPECT_EQ(0, lru_cache_->size_bytes()) << "fallback not used.";
 }
 
 TEST_F(AprMemCacheTest, BasicInvalid) {
@@ -125,33 +127,33 @@ TEST_F(AprMemCacheTest, BasicInvalid) {
   set_invalid_value("valueA");
   CheckNotFound("nameA");
   CheckGet("nameB", "valueB");
-  EXPECT_EQ(0, fallback_cache_->size_bytes()) << "fallback not used.";
+  EXPECT_EQ(0, lru_cache_->size_bytes()) << "fallback not used.";
 }
 
 TEST_F(AprMemCacheTest, SizeTest) {
   ASSERT_TRUE(ConnectToMemcached(true));
 
   for (int x = 0; x < 10; ++x) {
-    for (int i = 128; i < (1<<20); i += i) {
+    for (int i = kJustUnderThreshold/2; i < kJustUnderThreshold - 10; ++i) {
       GoogleString value(i, 'a');
       GoogleString key = StrCat("big", IntegerToString(i));
       CheckPut(key, value);
       CheckGet(key, value);
     }
   }
-  EXPECT_EQ(0, fallback_cache_->size_bytes()) << "fallback not used.";
+  EXPECT_EQ(0, lru_cache_->size_bytes()) << "fallback not used.";
 }
 
 TEST_F(AprMemCacheTest, StatsTest) {
   ASSERT_TRUE(ConnectToMemcached(true));
   GoogleString buf;
-  ASSERT_TRUE(cache_->GetStatus(&buf));
+  ASSERT_TRUE(servers_->GetStatus(&buf));
   EXPECT_TRUE(buf.find("memcached server localhost:") != GoogleString::npos);
   EXPECT_TRUE(buf.find(" pid ") != GoogleString::npos);
   EXPECT_TRUE(buf.find("\nbytes_read: ") != GoogleString::npos);
   EXPECT_TRUE(buf.find("\ncurr_connections: ") != GoogleString::npos);
   EXPECT_TRUE(buf.find("\ntotal_items: ") != GoogleString::npos);
-  EXPECT_EQ(0, fallback_cache_->size_bytes()) << "fallback not used.";
+  EXPECT_EQ(0, lru_cache_->size_bytes()) << "fallback not used.";
 }
 
 TEST_F(AprMemCacheTest, HashCollision) {
@@ -165,7 +167,7 @@ TEST_F(AprMemCacheTest, HashCollision) {
   CheckPut("N2", "V2");
   CheckGet("N2", "V2");
   CheckNotFound("N1");
-  EXPECT_EQ(0, fallback_cache_->size_bytes()) << "fallback not used.";
+  EXPECT_EQ(0, lru_cache_->size_bytes()) << "fallback not used.";
 }
 
 TEST_F(AprMemCacheTest, JustUnderThreshold) {
@@ -174,7 +176,7 @@ TEST_F(AprMemCacheTest, JustUnderThreshold) {
   const char kKey[] = "just_under_threshold";
   CheckPut(kKey, kValue);
   CheckGet(kKey, kValue);
-  EXPECT_EQ(0, fallback_cache_->size_bytes()) << "fallback not used.";
+  EXPECT_EQ(0, lru_cache_->size_bytes()) << "fallback not used.";
 }
 
 // Basic operation with huge values, only one of which will fit
@@ -185,7 +187,7 @@ TEST_F(AprMemCacheTest, HugeValue) {
   const char kKey1[] = "large1";
   CheckPut(kKey1, kValue);
   CheckGet(kKey1, kValue);
-  EXPECT_LE(kHugeWriteSize, fallback_cache_->size_bytes());
+  EXPECT_LE(kHugeWriteSize, lru_cache_->size_bytes());
 
   // Now put in another large value, causing the 1st to get evicted from
   // the fallback cache.
@@ -209,7 +211,7 @@ TEST_F(AprMemCacheTest, LargeValueMultiGet) {
   CheckPut(kKey1, kLargeValue1);
   CheckGet(kKey1, kLargeValue1);
   EXPECT_EQ(kLargeWriteSize + STATIC_STRLEN(kKey1),
-            fallback_cache_->size_bytes());
+            lru_cache_->size_bytes());
 
   const char kSmallKey[] = "small";
   const char kSmallValue[] = "value";
@@ -219,7 +221,7 @@ TEST_F(AprMemCacheTest, LargeValueMultiGet) {
   const char kKey2[] = "large2";
   CheckPut(kKey2, kLargeValue2);
   CheckGet(kKey2, kLargeValue2);
-  EXPECT_LE(2 * kLargeWriteSize, fallback_cache_->size_bytes())
+  EXPECT_LE(2 * kLargeWriteSize, lru_cache_->size_bytes())
       << "Checks that both large values were written to the fallback cache";
 
   Callback* large1 = AddCallback();
@@ -236,8 +238,10 @@ TEST_F(AprMemCacheTest, MultiServerFallback) {
 
   // Make another connection to the same memcached, but with a different
   // fallback cache.
-  LRUCache fallback_cache2(kFallbackCacheSize);
-  AprMemCache mem_cache2(servers_.get(), &fallback_cache2, &handler_);
+  LRUCache lru_cache2(kLRUCacheSize);
+  FallbackCache mem_cache2(servers_.get(), &lru_cache2,
+                           kTestValueSizeThreshold,
+                           &handler_);
 
   // Now when we store a large object from server1, and fetch it from
   // server2, we will get a miss because they do not share fallback caches..
@@ -255,14 +259,25 @@ TEST_F(AprMemCacheTest, MultiServerFallback) {
   CheckGet(cache_.get(), kKey1, kLargeValue);
 }
 
-TEST_F(AprMemCacheTest, LargeKeyUnderThreshold) {
+TEST_F(AprMemCacheTest, KeyOver64kDropped) {
   ASSERT_TRUE(ConnectToMemcached(true));
-  const GoogleString kKey(kJustUnderThreshold, 'a');
-  const char kValue[] = "value";
-  CheckPut(kKey, kValue);
-  CheckGet(kKey, kValue);
-  EXPECT_EQ(kKey.size() + STATIC_STRLEN(kValue),
-            fallback_cache_->size_bytes());
+
+  // We set our testing byte thresholds too low to trigger the case where
+  // the key-value encoding fails, so make an alternate fallback cache
+  // with a threshold over 64k.
+
+  // Make another connection to the same memcached, but with a different
+  // fallback cache.
+  const int kBigLruSize = 1000000;
+  const int kBigKeySize = 100000;    // >64k
+  const int kThreshold =  200000;    // fits key and small value.
+  LRUCache lru_cache2(kLRUCacheSize);
+  FallbackCache mem_cache2(servers_.get(), &lru_cache2,
+                           kThreshold, &handler_);
+
+  const GoogleString kKey(kBigLruSize, 'a');
+  CheckPut(&mem_cache2, kKey, "value");
+  CheckNotFound(&mem_cache2, kKey.c_str());
 }
 
 // Even keys that are over the *value* threshold can be stored in and
@@ -277,8 +292,7 @@ TEST_F(AprMemCacheTest, LargeKeyOverThreshold) {
   const char kValue[] = "value";
   CheckPut(kKey, kValue);
   CheckGet(kKey, kValue);
-  EXPECT_EQ(kKey.size() + STATIC_STRLEN(kValue),
-            fallback_cache_->size_bytes());
+  EXPECT_EQ(kKey.size() + STATIC_STRLEN(kValue), lru_cache_->size_bytes());
 }
 
 }  // namespace net_instaweb

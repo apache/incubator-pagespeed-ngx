@@ -31,7 +31,6 @@
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apache_thread_system.h"
 #include "net/instaweb/apache/apr_file_system.h"
-#include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_mem_cache_servers.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/loopback_route_fetcher.h"
@@ -53,6 +52,7 @@
 #ifndef NDEBUG
 #include "net/instaweb/util/public/checking_thread_system.h"
 #endif
+#include "net/instaweb/util/public/fallback_cache.h"
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/gflags.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -159,8 +159,8 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
 
   for (MemcachedMap::iterator p = memcached_map_.begin(),
            e = memcached_map_.end(); p != e; ++p) {
-    AprMemCacheServers* servers = p->second;
-    defer_delete(new Deleter<AprMemCacheServers>(servers));
+    CacheInterface* memcached = p->second;
+    defer_delete(new Deleter<CacheInterface>(memcached));
   }
 
   shared_mem_statistics_.reset(NULL);
@@ -186,43 +186,57 @@ CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
   if (!config->memcached_servers().empty()) {
     const GoogleString& server_spec = config->memcached_servers();
     std::pair<MemcachedMap::iterator, bool> result = memcached_map_.insert(
-        MemcachedMap::value_type(server_spec,
-                                static_cast<AprMemCacheServers*>(NULL)));
-    MemcachedMap::iterator iter = result.first;
+        MemcachedMap::value_type(server_spec, memcached));
     if (result.second) {
       int thread_limit;
       ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
       thread_limit += num_rewrite_threads() + num_expensive_rewrite_threads();
-      iter->second = new AprMemCacheServers(server_spec, thread_limit,
-                                            hasher(), message_handler());
-    }
-    AprMemCacheServers* servers = iter->second;
-    memcached = new AprMemCache(servers, l2_cache, message_handler());
-    int num_threads = config->memcached_threads();
-    if (num_threads != 0) {
-      if (memcached_pool_.get() == NULL) {
-        // Note -- we will use the first value of ModPagespeedMemCacheThreads
-        // that we see in a VirtualHost, ignoring later ones.
-        memcached_pool_.reset(new QueuedWorkerPool(num_threads,
-                                                   thread_system()));
+      AprMemCacheServers* servers = new AprMemCacheServers(
+          server_spec, thread_limit, hasher(), message_handler());
+      memcache_servers_.push_back(servers);
+
+      int num_threads = config->memcached_threads();
+      if (num_threads != 0) {
+        if (memcached_pool_.get() == NULL) {
+          // Note -- we will use the first value of ModPagespeedMemCacheThreads
+          // that we see in a VirtualHost, ignoring later ones.
+          memcached_pool_.reset(new QueuedWorkerPool(num_threads,
+                                                     thread_system()));
+        }
+        AsyncCache* async_cache = new AsyncCache(
+            servers, thread_system()->NewMutex(), memcached_pool_.get());
+        async_caches_.push_back(async_cache);
+        memcached = async_cache;
+      } else {
+        memcached = servers;
       }
-      AsyncCache* async_cache = new AsyncCache(
-          memcached, thread_system()->NewMutex(), memcached_pool_.get());
-      async_caches_.push_back(async_cache);
-      memcached = async_cache;
+
+      // Put the batcher above the stats so that the stats sees the MultiGets
+      // and can show us the histogram of how they are sized.
+#if CACHE_STATISTICS
+      memcached = new CacheStats(kMemcached, memcached, timer(), statistics());
+#endif
+      CacheBatcher* batcher = new CacheBatcher(
+          memcached, thread_system()->NewMutex(), statistics());
+      if (num_threads != 0) {
+        batcher->set_max_parallel_lookups(num_threads);
+      }
+      memcached = batcher;
+      result.first->second = memcached;
+    } else {
+      memcached = result.first->second;
     }
 
-    // Put the batcher above the stats so that the stats sees the MultiGets
-    // and can show us the histogram of how they are sized.
-#if CACHE_STATISTICS
-    memcached = new CacheStats(kMemcached, memcached, timer(), statistics());
-#endif
-    CacheBatcher* batcher = new CacheBatcher(
-        memcached, thread_system()->NewMutex(), statistics());
-    if (num_threads != 0) {
-      batcher->set_max_parallel_lookups(num_threads);
-    }
-    memcached = batcher;
+    // Note that a distinct FallbackCache gets created for every VirtualHost
+    // that employs memcached, even if the memcached and file-cache
+    // specifications are identical.  This does no harm, because there
+    // is no data in the cache object itself; just configuration.  Sharing
+    // FallbackCache* objects would require making a map using the
+    // memcache & file-cache specs as a key, so it's simpler to make a new
+    // small FallbackCache object for each VirtualHost.
+    memcached = new FallbackCache(memcached, l2_cache,
+                                  AprMemCacheServers::kValueSizeThreshold,
+                                  message_handler());
   }
   return memcached;
 }
@@ -559,9 +573,8 @@ void ApacheRewriteDriverFactory::ChildInit() {
   }
   uninitialized_managers_.clear();
 
-  for (MemcachedMap::iterator p = memcached_map_.begin(),
-           e = memcached_map_.end(); p != e; ++p) {
-    AprMemCacheServers* servers = p->second;
+  for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
+    AprMemCacheServers* servers = memcache_servers_[i];
     if (!servers->Connect()) {
       message_handler()->Message(kError, "Memory cache failed");
       abort();  // TODO(jmarantz): is there a better way to exit?
@@ -725,9 +738,8 @@ RewriteOptions* ApacheRewriteDriverFactory::NewRewriteOptionsForQuery() {
 }
 
 void ApacheRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
-  for (MemcachedMap::iterator p = memcached_map_.begin(),
-           e = memcached_map_.end(); p != e; ++p) {
-    AprMemCacheServers* servers = p->second;
+  for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
+    AprMemCacheServers* servers = memcache_servers_[i];
     if (!servers->GetStatus(out)) {
       StrAppend(out, "\nError getting memcached server status for ",
                 servers->server_spec());

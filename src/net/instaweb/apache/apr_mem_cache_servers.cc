@@ -23,6 +23,7 @@
 
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/key_value_codec.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/stack_buffer.h"
@@ -119,16 +120,40 @@ bool AprMemCacheServers::Connect() {
   return success;
 }
 
-bool AprMemCacheServers::Get(
-    const GoogleString& key, apr_pool_t* data_pool, StringPiece* result) {
+void AprMemCacheServers::DecodeValueMatchingKeyAndCallCallback(
+    const GoogleString& key, const char* data, size_t data_len,
+    Callback* callback) {
+  SharedString key_value;
+  key_value.Assign(data, data_len);
+  GoogleString actual_key;
+  if (key_value_codec::Decode(&key_value, &actual_key, callback->value())) {
+    if (key == actual_key) {
+      ValidateAndReportResult(actual_key, CacheInterface::kAvailable, callback);
+    } else {
+      message_handler_->Message(
+          kError, "AprMemCacheServers::Get key collision %s != %s",
+          key.c_str(), actual_key.c_str());
+      ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
+    }
+  } else {
+    message_handler_->Message(
+        kError, "AprMemCacheServers::Get decoding error on key %s",
+        key.c_str());
+    ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
+  }
+}
+
+void AprMemCacheServers::Get(const GoogleString& key, Callback* callback) {
+  apr_pool_t* data_pool;
+  apr_pool_create(&data_pool, NULL);
+  CHECK(data_pool != NULL) << "apr_pool_t data_pool allocation failure";
   GoogleString hashed_key = hasher_->Hash(key);
   char* data;
   apr_size_t data_len;
   apr_status_t status = apr_memcache_getp(
       memcached_, data_pool, hashed_key.c_str(), &data, &data_len, NULL);
-  bool ret = true;
   if (status == APR_SUCCESS) {
-    *result = StringPiece(data, data_len);
+    DecodeValueMatchingKeyAndCallCallback(key, data, data_len, callback);
   } else {
     if (status != APR_NOTFOUND) {
       char buf[kStackBufferSize];
@@ -137,18 +162,19 @@ bool AprMemCacheServers::Get(
           kError, "AprMemCacheServers::Get error: %s (%d) on key %s",
           buf, status, key.c_str());
     }
-    ret = false;
+    ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
   }
-  return ret;
+  apr_pool_destroy(data_pool);
 }
 
-bool AprMemCacheServers::MultiGet(CacheInterface::MultiGetRequest* request,
-                                  apr_pool_t* data_pool,
-                                  ResultVector* results) {
+void AprMemCacheServers::MultiGet(MultiGetRequest* request) {
   // apr_memcache_multgetp documentation indicates it may clear the
   // temp_pool inside the function.  Thus it is risky to pass the same
   // pool for both temp_pool and data_pool, as we need to read the
   // data after the call.
+  apr_pool_t* data_pool;
+  apr_pool_create(&data_pool, NULL);
+  CHECK(data_pool != NULL) << "apr_pool_t data_pool allocation failure";
   apr_pool_t* temp_pool = NULL;
   apr_pool_create(&temp_pool, NULL);
   CHECK(temp_pool != NULL) << "apr_pool_t temp_pool allocation failure";
@@ -161,14 +187,14 @@ bool AprMemCacheServers::MultiGet(CacheInterface::MultiGetRequest* request,
     apr_memcache_add_multget_key(data_pool, hashed_key.c_str(), &hash_table);
   }
 
-  bool ret = false;
   apr_status_t status = apr_memcache_multgetp(memcached_, temp_pool, data_pool,
                                               hash_table);
+  apr_pool_destroy(temp_pool);
   if (status == APR_SUCCESS) {
-    ret = true;
     for (int i = 0, n = request->size(); i < n; ++i) {
       CacheInterface::KeyCallback* key_callback = &(*request)[i];
       const GoogleString& key = key_callback->key;
+      Callback* callback = key_callback->callback;
       const GoogleString& hashed_key = hashed_keys[i];
       apr_memcache_value_t* value = static_cast<apr_memcache_value_t*>(
           apr_hash_get(hash_table, hashed_key.data(), hashed_key.size()));
@@ -180,33 +206,40 @@ bool AprMemCacheServers::MultiGet(CacheInterface::MultiGetRequest* request,
               kError, "AprMemCacheServers::Get error: %s (%d) on key %s",
               buf, status, key.c_str());
         }
-        results->push_back(Result(CacheInterface::kNotFound, NULL));
+        ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
       } else {
-        results->push_back(Result(CacheInterface::kAvailable,
-                                  StringPiece(value->data, value->len)));
+        DecodeValueMatchingKeyAndCallCallback(key, value->data, value->len,
+                                              callback);
       }
     }
   }
-  apr_pool_destroy(temp_pool);
-  return ret;
+  apr_pool_destroy(data_pool);
+  delete request;
 }
 
-void AprMemCacheServers::Set(const GoogleString& key,
-                             const GoogleString& encoded_value) {
+void AprMemCacheServers::Put(const GoogleString& key,
+                             SharedString* encoded_value) {
   GoogleString hashed_key = hasher_->Hash(key);
-
-  // I believe apr_memcache_set erroneously takes a char* for the value.
-  // Hence we const_cast.
-  apr_status_t status = apr_memcache_set(
-      memcached_, hashed_key.c_str(),
-      const_cast<char*>(encoded_value.data()), encoded_value.size(),
-      0, 0);
-  if (status != APR_SUCCESS) {
-    char buf[kStackBufferSize];
-    apr_strerror(status, buf, sizeof(buf));
+  SharedString key_value;
+  if (key_value_codec::Encode(key, encoded_value, &key_value)) {
+    // I believe apr_memcache_set erroneously takes a char* for the value.
+    // Hence we const_cast.
+    apr_status_t status = apr_memcache_set(
+        memcached_, hashed_key.c_str(),
+        const_cast<char*>(key_value.data()), key_value.size(),
+        0, 0);
+    if (status != APR_SUCCESS) {
+      char buf[kStackBufferSize];
+      apr_strerror(status, buf, sizeof(buf));
+      message_handler_->Message(
+          kError, "AprMemCacheServers::Put error: %s on key %s, value-size %d",
+          buf, key.c_str(), encoded_value->size());
+    }
+  } else {
     message_handler_->Message(
-        kError, "AprMemCacheServers::Put error: %s on key %s, value-size %d",
-        buf, key.c_str(), static_cast<int>(encoded_value.size()));
+        kError, "AprMemCacheServers::Put error: key size %d too large, first "
+        "100 bytes of key is: %s",
+        static_cast<int>(key.size()), key.substr(0, 100).c_str());
   }
 }
 
