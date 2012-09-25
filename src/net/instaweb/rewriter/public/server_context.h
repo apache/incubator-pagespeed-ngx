@@ -81,9 +81,7 @@ typedef std::vector<OutputResourcePtr> OutputResourceVector;
 //               some associated fixes outstanding --
 // 1. abc of includes and class declarations.
 // 2. Rename variables, data members, parameters, etc.
-// 3. Rename methods, such as:
-//     CreateResourceManager() in rewrite_driver_factory.*
-//     Manager() in rewrite_context.*
+// 3. Rename methods.
 class ServerContext {
  public:
   // The lifetime for cache-extended generated resources, in milliseconds.

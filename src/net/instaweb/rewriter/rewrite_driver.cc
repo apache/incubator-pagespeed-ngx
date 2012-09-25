@@ -1136,7 +1136,7 @@ void RewriteDriver::EnableRewriteFilter(const char* id) {
 
 void RewriteDriver::RegisterRewriteFilter(RewriteFilter* filter) {
   // Track resource_fetches if we care about statistics.  Note that
-  // the statistics are owned by the resource manager, which generally
+  // the statistics are owned by the server context, which generally
   // should be set up prior to the rewrite_driver.
   //
   // TODO(sligocki): It'd be nice to get this into the constructor.

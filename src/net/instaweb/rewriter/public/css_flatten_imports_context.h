@@ -113,7 +113,7 @@ class CssFlattenImportsContext : public SingleRewriteContext {
     // Our result is the combination of all our imports and our own rules.
     output_partition(0)->set_inlined_data(hierarchy_->minified_contents());
 
-    ServerContext* manager = Manager();
+    ServerContext* manager = FindServerContext();
     manager->MergeNonCachingResponseHeaders(input_resource_, output_resource_);
     if (manager->Write(ResourceVector(1, input_resource_),
                        hierarchy_->minified_contents(),

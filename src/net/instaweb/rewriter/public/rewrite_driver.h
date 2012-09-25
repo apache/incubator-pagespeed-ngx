@@ -27,7 +27,6 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -37,6 +36,7 @@
 #include "net/instaweb/rewriter/public/scan_filter.h"
 #include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
@@ -178,7 +178,7 @@ class RewriteDriver : public HtmlParse {
   static void Initialize();
   static void Terminate();
 
-  // Adds a resource manager enabling the rewriting of
+  // Adds a server context enabling the rewriting of
   // resources. This will replace any previous resource managers.
   void SetResourceManager(ServerContext* resource_manager);
 

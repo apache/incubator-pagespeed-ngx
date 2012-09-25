@@ -63,7 +63,8 @@ RecordingFetch::RecordingFetch(AsyncFetch* async_fetch,
       resource_(resource),
       context_(context),
       can_ajax_rewrite_(false),
-      cache_value_writer_(&cache_value_, context_->Manager()->http_cache()) {}
+      cache_value_writer_(&cache_value_,
+                          context_->FindServerContext()->http_cache()) {}
 
 RecordingFetch::~RecordingFetch() {}
 
@@ -236,7 +237,7 @@ void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
       UpdateDateAndExpiry(output_partition(0)->input(), &date_ms,
                           &expire_at_ms);
     }
-    int64 now_ms = Manager()->timer()->NowMs();
+    int64 now_ms = FindServerContext()->timer()->NowMs();
     if (expire_at_ms == kint64max) {
       // If expire_at_ms is not set, set the cache ttl to the implicit ttl value
       // specified in the response headers.

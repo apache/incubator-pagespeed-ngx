@@ -164,7 +164,7 @@ class RewriteDriverFactory {
   // Computes URL fetchers using the based fetcher, and optionally,
   // slurp_directory and slurp_read_only.  These are not thread-safe;
   // they must be called once prior to spawning threads, e.g. via
-  // CreateResourceManager.
+  // CreateServerContext.
   virtual UrlFetcher* ComputeUrlFetcher();
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
 
@@ -234,7 +234,7 @@ class RewriteDriverFactory {
   void SetStatistics(Statistics* stats);
 
   // Clean up all the factory-owned resources: fetchers, pools,
-  // Resource Managers, the Drivers owned by the Resource Managers,
+  // Server Contexts, the Drivers owned by the Server Contexts,
   // and worker threads.
   virtual void ShutDown();
 
@@ -243,7 +243,7 @@ class RewriteDriverFactory {
 
   // Creates a new empty RewriteOptions object, with no default settings.
   // Note that InitResourceManager() will copy the factory's default_options()
-  // into the resource manager's global_options(), but this method just provides
+  // into the server context's global_options(), but this method just provides
   // a blank set of options.
   virtual RewriteOptions* NewRewriteOptions();
 
@@ -287,7 +287,7 @@ class RewriteDriverFactory {
   StringPiece filename_prefix();
 
   // Used by subclasses to indicate that a ResourceManager has been
-  // terminated.  Returns true if this was the last resource manager
+  // terminated.  Returns true if this was the last server context
   // known to this factory.
   bool TerminateServerContext(ServerContext* rm);
 

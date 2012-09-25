@@ -206,10 +206,10 @@ class RewriteContext {
 
   // The following methods are provided for the benefit of subclasses.
 
-  // Finds the ResourceManager associated with this context.  Note that
+  // Finds the ServerContext associated with this context.  Note that
   // this method might have to climb up the parent-tree, but it's typically
   // not a deep tree.  Same with Driver() and Options().
-  ServerContext* Manager() const;
+  ServerContext* FindServerContext() const;
   const RewriteOptions* Options() const;
   RewriteDriver* Driver() const;
 

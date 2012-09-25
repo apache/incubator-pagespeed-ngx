@@ -64,7 +64,6 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -325,7 +324,7 @@ class NestedFilter : public RewriteFilter {
         ResourcePtr resource(slot->resource());
         StrAppend(&new_content, resource->url(), "\n");
       }
-      ServerContext* resource_manager = Manager();
+      ServerContext* resource_manager = FindServerContext();
       MessageHandler* message_handler = resource_manager->message_handler();
       // Warning: this uses input's content-type for simplicity, but real
       // filters should not do that --- see comments in

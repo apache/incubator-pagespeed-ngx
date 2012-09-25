@@ -55,7 +55,6 @@
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -506,7 +505,7 @@ void CssFilter::Context::Harvest() {
 
   if (ok) {
     if (rewrite_inline_element_ == NULL) {
-      ServerContext* manager = Manager();
+      ServerContext* manager = FindServerContext();
       manager->MergeNonCachingResponseHeaders(input_resource_,
                                               output_resource_);
       ok = manager->Write(ResourceVector(1, input_resource_),
@@ -611,7 +610,7 @@ GoogleString CssFilter::Context::CacheKeySuffix() const {
     // matters for inline CSS since resources are resolved against
     // that (while it doesn't for external CSS, since that uses the
     // stylesheet as the base).
-    const Hasher* hasher = Manager()->lock_hasher();
+    const Hasher* hasher = FindServerContext()->lock_hasher();
     StrAppend(&suffix, "_@", hasher->Hash(css_base_gurl_.AllExceptLeaf()));
   }
 

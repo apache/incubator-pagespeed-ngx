@@ -16,7 +16,7 @@
 
 // Author: abliss@google.com (Adam Bliss)
 
-// Unit-test the resource manager
+// Unit-test the server context
 
 #include "net/instaweb/rewriter/public/server_context.h"
 
@@ -1237,7 +1237,7 @@ class ThreadAlternatingCache : public CacheInterface {
 };
 
 // Hooks up an instances of a ThreadAlternatingCache as the http cache
-// on resource_manager()
+// on server_context()
 class ResourceManagerTestThreadedCache : public ServerContextTest {
  public:
   ResourceManagerTestThreadedCache()

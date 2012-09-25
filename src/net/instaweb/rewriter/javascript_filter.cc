@@ -100,7 +100,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
 
   RewriteResult RewriteJavascript(
       const ResourcePtr& input, const OutputResourcePtr& output) {
-    MessageHandler* message_handler = Manager()->message_handler();
+    MessageHandler* message_handler = FindServerContext()->message_handler();
     StringPiece script = input->contents();
     JavascriptCodeBlock code_block(script, config_, input->url(),
                                    message_handler);
@@ -200,7 +200,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
       const ResourcePtr script_resource,
       const StringPiece& script_out, const OutputResourcePtr& script_dest) {
     bool ok = false;
-    ServerContext* resource_manager = Manager();
+    ServerContext* resource_manager = FindServerContext();
     MessageHandler* message_handler = resource_manager->message_handler();
     resource_manager->MergeNonCachingResponseHeaders(
         script_resource, script_dest);

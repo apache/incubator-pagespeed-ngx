@@ -58,7 +58,7 @@ void SimpleTextFilter::Context::RewriteSingle(const ResourcePtr& input,
                                               const OutputResourcePtr& output) {
   RewriteResult result = kRewriteFailed;
   GoogleString rewritten;
-  ServerContext* resource_manager = Manager();
+  ServerContext* resource_manager = FindServerContext();
   if (rewriter_->RewriteText(input->url(), input->contents(), &rewritten,
                              resource_manager))  {
     MessageHandler* message_handler = resource_manager->message_handler();
