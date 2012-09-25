@@ -106,9 +106,16 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	$(MAKE) stop
 	rm -rf $(MOD_PAGESPEED_CACHE)
 	$(MAKE) start
+	CACHE_FLUSH_TEST=on \
+	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
 	                                          $(APACHE_HTTPS_SERVER)
+	#
 	@echo '***' System-test with warm cache
+	CACHE_FLUSH_TEST=on \
+	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
 	                                          $(APACHE_HTTPS_SERVER)
 	@echo '***' System-test with statistics off
@@ -117,15 +124,29 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 		< $(APACHE_DEBUG_PAGESPEED_CONF).save \
 		> $(APACHE_DEBUG_PAGESPEED_CONF)
 	grep ModPagespeedStatistics $(APACHE_DEBUG_PAGESPEED_CONF)
+	grep ModPagespeedInheritVHostConfig $(APACHE_DEBUG_PAGESPEED_CONF)
+	$(MAKE) stop
+	$(MAKE) start
+	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
+	                                          $(APACHE_HTTPS_SERVER)
+	#
+	# Now turn off ModPagespeedInheritVHostConfig, turn stats back on.
+	sed -e "s/InheritVHostConfig on/InheritVHostConfig off/" \
+		< $(APACHE_DEBUG_PAGESPEED_CONF).save \
+		> $(APACHE_DEBUG_PAGESPEED_CONF)
+	grep ModPagespeedStatistics $(APACHE_DEBUG_PAGESPEED_CONF)
+	grep ModPagespeedInheritVHostConfig $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) stop
 	$(MAKE) start
 	CACHE_FLUSH_TEST=on \
+	NO_VHOST_MERGE=on \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	    $(INSTALL_DATA_DIR)/apache_system_test.sh \
 	    $(APACHE_SERVER) $(APACHE_HTTPS_SERVER)
+	#
+	# Restore config
 	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
-	grep ModPagespeedStatistics $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_stop
 	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
 

@@ -806,6 +806,10 @@ const RewriteOptions* ServerContext::global_options() const {
   return base_class_options_.get();
 }
 
+void ServerContext::reset_global_options(RewriteOptions* options) {
+  base_class_options_.reset(options);
+}
+
 RewriteOptions* ServerContext::NewOptions() {
   return factory_->NewRewriteOptions();
 }

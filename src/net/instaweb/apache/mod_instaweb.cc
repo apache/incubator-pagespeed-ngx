@@ -156,6 +156,7 @@ const char kModPagespeedImageLimitResizeAreaPercent[] =
     "ModPagespeedImageLimitResizeAreaPercent";
 const char kModPagespeedImageMaxRewritesAtOnce[] =
     "ModPagespeedImageMaxRewritesAtOnce";
+const char kModPagespeedInheritVHostConfig[] = "ModPagespeedInheritVHostConfig";
 const char kModPagespeedJpegRecompressQuality[] =
     "ModPagespeedJpegRecompressionQuality";
 const char kModPagespeedJsInlineMaxBytes[] = "ModPagespeedJsInlineMaxBytes";
@@ -1238,11 +1239,18 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     if (!succeeded) {
       ret = apr_pstrcat(cmd->pool, "Invalid experiment spec: ", arg, NULL);
     }
+  } else if (StringCaseEqual(directive, kModPagespeedInheritVHostConfig)) {
+    ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
+    if (ret == NULL) {
+      ret = ParseBoolOption(
+          factory, cmd,
+          &ApacheRewriteDriverFactory::set_inherit_vhost_config, arg);
+    }
   } else if (StringCaseEqual(directive,
                              kModPagespeedListOutstandingUrlsOnError)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
-      ParseBoolOption(
+      ret = ParseBoolOption(
           factory, cmd,
           &ApacheRewriteDriverFactory::list_outstanding_urls_on_error, arg);
     }
@@ -1684,6 +1692,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
                        "image area; 100 means replace if smaller."),
   APACHE_CONFIG_OPTION(kModPagespeedImgMaxRewritesAtOnce,
         "DEPRECATED, use ModPagespeedImageMaxRewritesAtOnce."),
+  APACHE_CONFIG_OPTION(kModPagespeedInheritVHostConfig,
+        "Inherit global configuration into VHosts."),
   APACHE_CONFIG_OPTION(kModPagespeedJpegRecompressQuality,
                        "Set quality parameter for recompressing jpeg "
                        "images [-1,100], 100 refers to best quality, "
@@ -1830,6 +1840,41 @@ void* merge_dir_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
   return dir3;
 }
 
+void* merge_server_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
+  ApacheResourceManager* global_context =
+      static_cast<ApacheResourceManager*>(base_conf);
+  ApacheResourceManager* vhost_context =
+      static_cast<ApacheResourceManager*>(new_conf);
+  if (global_context->apache_factory()->inherit_vhost_config()) {
+    scoped_ptr<ApacheConfig> merged_config(global_context->config()->Clone());
+    merged_config->Merge(*vhost_context->config());
+    // Note that we don't need to do any special handling of cache paths here,
+    // since it's all related to actually creating the directories + giving
+    // permissions, so doing it at top-level is sufficient.
+    vhost_context->reset_global_options(merged_config.release());
+
+    // Merge the overlays, if any exist.
+    if (global_context->has_spdy_config_overlay() ||
+        vhost_context->has_spdy_config_overlay()) {
+      scoped_ptr<ApacheConfig> new_spdy_overlay(
+          global_context->SpdyConfigOverlay()->Clone());
+      new_spdy_overlay->Merge(*vhost_context->SpdyConfigOverlay());
+      vhost_context->set_spdy_config_overlay(new_spdy_overlay.release());
+    }
+
+    if (global_context->has_non_spdy_config_overlay() ||
+        vhost_context->has_non_spdy_config_overlay()) {
+      scoped_ptr<ApacheConfig> new_non_spdy_overlay(
+          global_context->NonSpdyConfigOverlay()->Clone());
+      new_non_spdy_overlay->Merge(*vhost_context->NonSpdyConfigOverlay());
+      vhost_context->set_non_spdy_config_overlay(
+          new_non_spdy_overlay.release());
+    }
+  }
+
+  return new_conf;
+}
+
 }  // namespace
 
 }  // namespace net_instaweb
@@ -1854,7 +1899,7 @@ module AP_MODULE_DECLARE_DATA pagespeed_module = {
   net_instaweb::create_dir_config,
   net_instaweb::merge_dir_config,
   net_instaweb::mod_pagespeed_create_server_config,
-  NULL,  // TODO(jmarantz): merge root/VirtualHost configs via merge_dir_config.
+  net_instaweb::merge_server_config,
   net_instaweb::mod_pagespeed_filter_cmds,
   net_instaweb::mod_pagespeed_register_hooks,
 };

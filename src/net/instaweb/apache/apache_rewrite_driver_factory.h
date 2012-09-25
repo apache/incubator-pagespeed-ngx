@@ -178,6 +178,15 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
     enable_property_cache_ = x;
   }
 
+  // If true, virtual hosts should inherit global configuration.
+  bool inherit_vhost_config() const {
+    return inherit_vhost_config_;
+  }
+
+  void set_inherit_vhost_config(bool x) {
+    inherit_vhost_config_ = x;
+  }
+
   // Finds a Cache for the file_cache_path in the config.  If none exists,
   // creates one, using all the other parameters in the ApacheConfig.
   // Currently, no checking is done that the other parameters (e.g. cache
@@ -329,6 +338,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   // Enable the property cache.
   bool enable_property_cache_;
+
+  // Inherit configuration from global context into vhosts.
+  bool inherit_vhost_config_;
 
   // true iff we ran through AutoDetectThreadCounts()
   bool thread_counts_finalized_;

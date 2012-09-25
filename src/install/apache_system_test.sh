@@ -10,6 +10,10 @@
 #
 # Expects APACHE_DEBUG_PAGESPEED_CONF to point to our config file,
 # APACHE_LOG to the log file.
+#
+# CACHE_FLUSH_TEST=on can be passed to test our cache.flush behavior
+# NO_VHOST_MERGE=on can be passed to tell tests to assume
+# that ModPagespeedInheritVHostConfig has been turned off.
 
 if [ -z $APACHE_DEBUG_PAGESPEED_CONF ]; then
   APACHE_DEBUG_PAGESPEED_CONF=/usr/local/apache2/conf/pagespeed.conf
@@ -30,9 +34,9 @@ source "$this_dir/system_test.sh" || exit 1
 # Extract secondary hostname when set. Currently it's only set
 # when doing the cache flush test, but it can be used in other
 # tests we run in that run.
-if [ "$CACHE_FLUSH_TEST" == "on" ]; then
+if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   SECONDARY_HOSTNAME=$(echo $HOSTNAME | sed -e s/8080/$APACHE_SECONDARY_PORT/g)
-  if [ "$SECONDARY_HOSTNAME" == "$HOSTNAME" ]; then
+  if [ "$SECONDARY_HOSTNAME" = "$HOSTNAME" ]; then
     SECONDARY_HOSTNAME=${HOSTNAME}:$APACHE_SECONDARY_PORT
   fi
   SECONDARY_TEST_ROOT=http://$SECONDARY_HOSTNAME/mod_pagespeed_test
@@ -385,7 +389,7 @@ fi
 
 # TODO(sligocki): TEST: ModPagespeedMaxSegmentLength
 
-if [ "$CACHE_FLUSH_TEST" == "on" ]; then
+if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   WGET_ARGS=""
 
   echo TEST: add_instrumentation has added unload handler with \
@@ -396,13 +400,26 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   check [ $(grep -c "<script" $WGET_OUTPUT) = 3 ]
   check [ $(grep -c 'ets=unload' $WGET_OUTPUT) = 1 ]
 
-  echo TEST: When ModPagespeedMaxHtmlParseBytes is not set, we do not insert \
-      a redirect.
-  $WGET -O $WGET_OUTPUT \
-      $SECONDARY_TEST_ROOT/large_file.html?ModPagespeedFilters=
-  check [ $(grep -c "window.location=" $WGET_OUTPUT) = 0 ]
+  if [ "$NO_VHOST_MERGE" = "on" ]; then
+    echo TEST: When ModPagespeedMaxHtmlParseBytes is not set, we do not insert \
+        a redirect.
+    $WGET -O $WGET_OUTPUT \
+        $SECONDARY_TEST_ROOT/large_file.html?ModPagespeedFilters=
+    check [ $(grep -c "window.location=" $WGET_OUTPUT) = 0 ]
+  fi
 
   echo TEST: Cache flushing works by touching cache.flush in cache directory.
+
+  # If we write fixed values into the css file here, there is a risk that
+  # we will end up seeing the 'right' value because an old process hasn't
+  # invalidated things yet, rather than because it updated to what we expect
+  # in the first run followed by what we expect in the second run.
+  # So, we incorporate the timestamp into RGB colors, using hours
+  # prefixed with 1 (as 0-123 fits the 0-255 range) to get a second value.
+  # A one-second precision is good enough since there is a sleep 2 below.
+  COLOR_SUFFIX=`date +%H,%M,%S\)`
+  COLOR0=rgb\($COLOR_SUFFIX
+  COLOR1=rgb\(1$COLOR_SUFFIX
 
   echo Clear out our existing state before we begin the test.
   echo $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
@@ -415,18 +432,18 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   CSS_FILE=$APACHE_DOC_ROOT/mod_pagespeed_test/update.css
   TMP_CSS_FILE=$TEMPDIR/update.css.$$
 
-  # First, write 'blue' into the css file and make sure it gets inlined into
+  # First, write color 0 into the css file and make sure it gets inlined into
   # the html.
-  echo "echo \".class myclass { color: blue; }\" > $CSS_FILE"
-  echo ".class myclass { color: blue; }" >$TMP_CSS_FILE
+  echo "echo \".class myclass { color: $COLOR0; }\" > $CSS_FILE"
+  echo ".class myclass { color: $COLOR0; }" >$TMP_CSS_FILE
   chmod ugo+r $TMP_CSS_FILE  # in case the user's umask doesn't allow o+r
   $SUDO cp $TMP_CSS_FILE $CSS_FILE
-  fetch_until $URL 'grep -c blue' 1
+  fetch_until $URL "grep -c $COLOR0" 1
 
   # Also do the same experiment using a different VirtualHost.  It points
   # to the same htdocs, but uses a separate cache directory.
   SECONDARY_URL=$SECONDARY_TEST_ROOT/$URL_PATH
-  fetch_until $SECONDARY_URL 'grep -c blue' 1
+  fetch_until $SECONDARY_URL "grep -c $COLOR0" 1
 
   # Track how many flushes were noticed by Apache processes up till
   # this point in time.  Note that each Apache process/vhost
@@ -434,29 +451,29 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   NUM_INITIAL_FLUSHES=$($WGET_DUMP $STATISTICS_URL | grep cache_flush_count \
     | cut -d: -f2)
 
-  # Now change the file to 'green'.
-  echo echo ".class myclass { color: green; }" ">" $CSS_FILE
-  echo ".class myclass { color: green; }" >$TMP_CSS_FILE
+  # Now change the file to $COLOR1.
+  echo echo ".class myclass { color: $COLOR1; }" ">" $CSS_FILE
+  echo ".class myclass { color: $COLOR1; }" >$TMP_CSS_FILE
   $SUDO cp $TMP_CSS_FILE $CSS_FILE
 
   # We might have stale cache for 5 minutes, so the result might stay
-  # 'blue', but we can't really test for that since the child process
+  # $COLOR0, but we can't really test for that since the child process
   # handling this request might not have it in cache.
-  # fetch_until $URL 'grep -c blue' 1
+  # fetch_until $URL 'grep -c $COLOR0' 1
 
   # Flush the cache by touching a special file in the cache directory.  Now
-  # css gets re-read and we get 'green' in the output.  Sleep here to avoid
+  # css gets re-read and we get $COLOR1 in the output.  Sleep here to avoid
   # a race due to 1-second granularity of file-system timestamp checks.  For
   # the test to pass we need to see time pass from the previous 'touch'.
   sleep 2
   echo $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
   $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
-  fetch_until $URL 'grep -c green' 1
+  fetch_until $URL "grep -c $COLOR1" 1
 
   NUM_FLUSHES=$($WGET_DUMP $STATISTICS_URL | grep cache_flush_count \
     | cut -d: -f2)
   NUM_NEW_FLUSHES=$(expr $NUM_FLUSHES - $NUM_INITIAL_FLUSHES)
-  echo NUM_NEW_FLUSHES = $NUM_NEW_FLUSHES
+  echo NUM_NEW_FLUSHES = $NUM_FLUSHES - $NUM_INITIAL_FLUSHES = $NUM_NEW_FLUSHES
   check [ $NUM_NEW_FLUSHES -ge 1 ]
   check [ $NUM_NEW_FLUSHES -lt 20 ]
 
@@ -466,10 +483,10 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   # with just 1 child process we could do this test.
   # fetch_until $SECONDARY_URL 'grep -c blue' 1
 
-  # Now flush the secondary cache too so it can see the change to 'green'.
+  # Now flush the secondary cache too so it can see the change to $COLOR1.
   echo $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
   $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
-  fetch_until $SECONDARY_URL 'grep -c green' 1
+  fetch_until $SECONDARY_URL "grep -c $COLOR1" 1
 
   # Clean up update.css from mod_pagespeed_test so it doesn't leave behind
   # a stray file not under source control.
@@ -483,79 +500,84 @@ if [ "$CACHE_FLUSH_TEST" == "on" ]; then
   # on "ModPagespeedDomain modpagespeed.com:1023" in debug.conf.template.  Also
   # relies on running after a cache-flush to avoid bypassing the serf fetch,
   # since mod_pagespeed remembers fetch-failures in its cache for 5 minutes.
-  echo TEST: Connection refused handling
+  # Because of the empty cache requirement, we conditionalize it on a single
+  # value of NO_VHOST_MERGE, so it runs only once per apache_debug_smoke_test
+  if [ "$NO_VHOST_MERGE" = "on" ]; then
+    echo TEST: Connection refused handling
 
-  # Monitor the Apache log starting now.  tail -F will catch log rotations.
-  SERF_REFUSED_PATH=$TEMPDIR/instaweb_apache_serf_refused.$$
-  rm $SERF_REFUSED_PATH
-  echo APACHE_LOG = $APACHE_LOG
-  tail --sleep-interval=0.1 -F $APACHE_LOG > $SERF_REFUSED_PATH &
-  TAIL_PID=$!
+    # Monitor the Apache log starting now.  tail -F will catch log rotations.
+    SERF_REFUSED_PATH=$TEMPDIR/instaweb_apache_serf_refused.$$
+    rm $SERF_REFUSED_PATH
+    echo APACHE_LOG = $APACHE_LOG
+    tail --sleep-interval=0.1 -F $APACHE_LOG > $SERF_REFUSED_PATH &
+    TAIL_PID=$!
 
-  # Wait for tail to start.
-  echo -n "Waiting for tail to start..."
-  while [ ! -f $SERF_REFUSED_PATH ]; do
-    sleep 0.1
-    echo -n "."
-  done
-  echo "done!"
+    # Wait for tail to start.
+    echo -n "Waiting for tail to start..."
+    while [ ! -s $SERF_REFUSED_PATH ]; do
+      sleep 0.1
+      echo -n "."
+    done
+    echo "done!"
 
-  # Actually kick off the request.
-  echo $WGET_DUMP $TEST_ROOT/connection_refused.html
-  echo checking...
-  check $WGET_DUMP $TEST_ROOT/connection_refused.html > /dev/null
-  echo check done
-  # If we are spewing errors, this gives time to spew lots of them.
-  sleep 1
-  # Wait up to 10 seconds for the background fetch of someimage.png to fail.
-  for i in {1..100}; do
-    ERRS=$(grep -c "Serf status 111" $SERF_REFUSED_PATH)
-    if [ $ERRS -ge 1 ]; then
-      break;
-    fi;
-    echo -n "."
-    sleep 0.1
-  done;
-  echo "."
-  # Kill the log monitor silently.
-  kill $TAIL_PID
-  wait $TAIL_PID 2> /dev/null
-  check [ $ERRS -ge 1 ]
-  # Make sure we have the URL detail we expect because
-  # ModPagespeedListOutstandingUrlsOnError is on in debug.conf.template.
-  echo Check that ModPagespeedSerfListOutstandingUrlsOnError works
-  check grep "URL http://modpagespeed.com:1023/someimage.png active for " \
-      $SERF_REFUSED_PATH
+    # Actually kick off the request.
+    echo $WGET_DUMP $TEST_ROOT/connection_refused.html
+    echo checking...
+    check $WGET_DUMP $TEST_ROOT/connection_refused.html > /dev/null
+    echo check done
+    # If we are spewing errors, this gives time to spew lots of them.
+    sleep 1
+    # Wait up to 10 seconds for the background fetch of someimage.png to fail.
+    for i in {1..100}; do
+      ERRS=$(grep -c "Serf status 111" $SERF_REFUSED_PATH)
+      if [ $ERRS -ge 1 ]; then
+        break;
+      fi;
+      echo -n "."
+      sleep 0.1
+    done;
+    echo "."
+    # Kill the log monitor silently.
+    kill $TAIL_PID
+    wait $TAIL_PID 2> /dev/null
+    check [ $ERRS -ge 1 ]
+    # Make sure we have the URL detail we expect because
+    # ModPagespeedListOutstandingUrlsOnError is on in debug.conf.template.
+    echo Check that ModPagespeedSerfListOutstandingUrlsOnError works
+    check grep "URL http://modpagespeed.com:1023/someimage.png active for " \
+        $SERF_REFUSED_PATH
 
-  echo "TEST: Blocking rewrite enabled."
-  # We assume that blocking_rewrite_test_dont_reuse_1.jpg will not be rewritten
-  # on the first request since it takes significantly more time to rewrite than
-  # the rewrite deadline and it is not already accessed by another request
-  # earlier.
-  BLOCKING_REWRITE_URL="$TEST_ROOT/blocking_rewrite.html?\
+    # Likewise, blocking rewrite tests are only run once.
+    echo "TEST: Blocking rewrite enabled."
+    # We assume that blocking_rewrite_test_dont_reuse_1.jpg will not be
+    # rewritten on the first request since it takes significantly more time to
+    # rewrite than the rewrite deadline and it is not already accessed by
+    # another request earlier.
+    BLOCKING_REWRITE_URL="$TEST_ROOT/blocking_rewrite.html?\
 ModPagespeedFilters=rewrite_images"
-  OUTFILE=$OUTDIR/blocking_rewrite.out.html
-  OLDSTATS=$OUTDIR/blocking_rewrite_stats.old
-  NEWSTATS=$OUTDIR/blocking_rewrite_stats.new
-  $WGET_DUMP $STATISTICS_URL > $OLDSTATS
-  check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest'\
-    $BLOCKING_REWRITE_URL > $OUTFILE
-  $WGET_DUMP $STATISTICS_URL > $NEWSTATS
-  check_stat $OLDSTATS $NEWSTATS image_rewrites 1
-  check_stat $OLDSTATS $NEWSTATS cache_hits 0
-  check_stat $OLDSTATS $NEWSTATS cache_misses 1
-  check_stat $OLDSTATS $NEWSTATS cache_inserts 2
-  check_stat $OLDSTATS $NEWSTATS num_rewrites_executed 1
+    OUTFILE=$OUTDIR/blocking_rewrite.out.html
+    OLDSTATS=$OUTDIR/blocking_rewrite_stats.old
+    NEWSTATS=$OUTDIR/blocking_rewrite_stats.new
+    $WGET_DUMP $STATISTICS_URL > $OLDSTATS
+    check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest'\
+      $BLOCKING_REWRITE_URL > $OUTFILE
+    $WGET_DUMP $STATISTICS_URL > $NEWSTATS
+    check_stat $OLDSTATS $NEWSTATS image_rewrites 1
+    check_stat $OLDSTATS $NEWSTATS cache_hits 0
+    check_stat $OLDSTATS $NEWSTATS cache_misses 1
+    check_stat $OLDSTATS $NEWSTATS cache_inserts 2
+    check_stat $OLDSTATS $NEWSTATS num_rewrites_executed 1
 
-  echo "TEST: Blocking rewrite enabled using wrong key."
-  BLOCKING_REWRITE_URL="$SECONDARY_TEST_ROOT/\
+    echo "TEST: Blocking rewrite enabled using wrong key."
+    BLOCKING_REWRITE_URL="$SECONDARY_TEST_ROOT/\
 blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
-  OUTFILE=$OUTDIR/blocking_rewrite.out.html
-  check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: junk' \
-    $BLOCKING_REWRITE_URL > $OUTFILE
-  check [ $(grep -c "[.]pagespeed[.]" $OUTFILE) -lt 1 ]
+    OUTFILE=$OUTDIR/blocking_rewrite.out.html
+    check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: junk' \
+      $BLOCKING_REWRITE_URL > $OUTFILE
+    check [ $(grep -c "[.]pagespeed[.]" $OUTFILE) -lt 1 ]
 
-  fetch_until $BLOCKING_REWRITE_URL 'grep -c [.]pagespeed[.]' 1
+    fetch_until $BLOCKING_REWRITE_URL 'grep -c [.]pagespeed[.]' 1
+  fi
 fi
 
 
@@ -640,32 +662,57 @@ SPDY_CONFIG=$($WGET_DUMP $SPDY_CONFIG_URL)
 check_not egrep -q "Configuration:" <(echo $SPDY_CONFIG)
 check egrep -q "SPDY-specific configuration:" <(echo $SPDY_CONFIG)
 
-# Non-SPDY config should have neither shards, nor combine CSS.
+# SPDY config should have neither shards, nor combine CSS.
 check_not egrep -q "http://nonspdy.example.com" <(echo $SPDY_CONFIG)
 check_not egrep -q "s1.example.com" <(echo $SPDY_CONFIG)
 check_not egrep -q "s2.example.com" <(echo $SPDY_CONFIG)
 check_not egrep -q "Combine Css" <(echo $SPDY_CONFIG)
 
-# Now check stuff on secondary host, which doesn't have those blocks
-# (since we don't inherit into vhosts). We run this only for some tests,
+# Now check stuff on secondary host. The results will depend on whether
+# ModPagespeedInheritVHostConfig is on or off. We run this only for some tests,
 # since we don't always have the secondary port number available here.
 if [ x$SECONDARY_HOSTNAME != x ]; then
   SECONDARY_STATS_URL=http://$SECONDARY_HOSTNAME/mod_pagespeed_statistics
   SECONDARY_CONFIG_URL=$SECONDARY_STATS_URL?config
   SECONDARY_SPDY_CONFIG_URL=$SECONDARY_STATS_URL?spdy_config
 
-  echo $WGET_DUMP $SECONDARY_CONFIG_URL
-  SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
-  check egrep -q "Configuration:" <(echo $SECONDARY_CONFIG)
-  check_not egrep -q "SPDY-specific configuration:" <(echo $SECONDARY_CONFIG)
-  # Sharding isn't applied in this host..
-  check_not egrep -q "http://nonspdy.example.com/" <(echo $SECONDARY_CONFIG)
+  if [ "$NO_VHOST_MERGE" = "on" ]; then
+    echo "TEST: Config with VHost inheritance off"
+    echo $WGET_DUMP $SECONDARY_CONFIG_URL
+    SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
+    check egrep -q "Configuration:" <(echo $SECONDARY_CONFIG)
+    check_not egrep -q "SPDY-specific configuration:" <(echo $SECONDARY_CONFIG)
+    # No inherit, no sharding.
+    check_not egrep -q "http://nonspdy.example.com/" <(echo $SECONDARY_CONFIG)
 
-  echo $WGET_DUMP $SECONDARY_SPDY_CONFIG_URL
-  SECONDARY_SPDY_CONFIG=$($WGET_DUMP $SECONDARY_SPDY_CONFIG_URL)
-  check_not egrep -q "Configuration:" <(echo $SECONDARY_SPDY_CONFIG)
-  check egrep -q "SPDY-specific configuration missing" \
-      <(echo $SECONDARY_SPDY_CONFIG)
+    # Should not inherit the blocking rewrite key.
+    check_not egrep -q "blrw" <(echo $SECONDARY_CONFIG)
+
+    echo $WGET_DUMP $SECONDARY_SPDY_CONFIG_URL
+    SECONDARY_SPDY_CONFIG=$($WGET_DUMP $SECONDARY_SPDY_CONFIG_URL)
+    check_not egrep -q "Configuration:" <(echo $SECONDARY_SPDY_CONFIG)
+    check egrep -q "SPDY-specific configuration missing" \
+        <(echo $SECONDARY_SPDY_CONFIG)
+  else
+    echo "TEST: Config with VHost inheritance on"
+    echo $WGET_DUMP $SECONDARY_CONFIG_URL
+    SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
+    check egrep -q "Configuration:" <(echo $SECONDARY_CONFIG)
+    check_not egrep -q "SPDY-specific configuration:" <(echo $SECONDARY_CONFIG)
+    # Sharding is applied in this host, thanks to global inherit flag.
+    check egrep -q "http://nonspdy.example.com/" <(echo $SECONDARY_CONFIG)
+
+    # We should also inherit the blocking rewrite key.
+    check egrep -q "blrw[[:space:]]+psatest" <(echo $SECONDARY_CONFIG)
+
+    echo $WGET_DUMP $SECONDARY_SPDY_CONFIG_URL
+    SECONDARY_SPDY_CONFIG=$($WGET_DUMP $SECONDARY_SPDY_CONFIG_URL)
+    check_not egrep -q "Configuration:" <(echo $SECONDARY_SPDY_CONFIG)
+    check egrep -q "SPDY-specific configuration:" \
+        <(echo $SECONDARY_SPDY_CONFIG)
+    # Disabling of combine CSS should get inherited.
+    check_not egrep -q "Combine Css" <(echo $SECONDARY_SPDY_CONFIG)
+  fi
 fi
 
 # Cleanup

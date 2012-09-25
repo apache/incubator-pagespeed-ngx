@@ -65,6 +65,25 @@ class ApacheResourceManager : public ServerContext {
   ApacheConfig* SpdyConfigOverlay();
   ApacheConfig* NonSpdyConfigOverlay();
 
+  // These return true if the given overlays were constructed (in response
+  // to having something in config files to put in them).
+  bool has_spdy_config_overlay() const {
+    return spdy_config_overlay_.get() != NULL;
+  }
+
+  bool has_non_spdy_config_overlay() const {
+    return non_spdy_config_overlay_.get() != NULL;
+  }
+
+  // These two take ownership of their parameters.
+  void set_spdy_config_overlay(ApacheConfig* x) {
+    spdy_config_overlay_.reset(x);
+  }
+
+  void set_non_spdy_config_overlay(ApacheConfig* x) {
+    non_spdy_config_overlay_.reset(x);
+  }
+
   // Returns special configuration that should be used for SPDY sessions
   // instead of config(). Returns NULL if config() should be used instead.
   ApacheConfig* SpdyConfig() { return spdy_specific_config_.get(); }

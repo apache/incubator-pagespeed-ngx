@@ -301,8 +301,13 @@ class ServerContext {
   RewriteOptions* global_options();
 
   // Returns a pointer to the master global_options without modifying the
-  // ResourceManager.
+  // ServerContext.
   const RewriteOptions* global_options() const;
+
+  // Note that you have to ensure the argument has the right type in case
+  // a subclass of RewriteOptions is in use. This should also not be called
+  // once request processing has commenced.
+  void reset_global_options(RewriteOptions* options);
 
   // Makes a new, empty set of RewriteOptions.
   RewriteOptions* NewOptions();

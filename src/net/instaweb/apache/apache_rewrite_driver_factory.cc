@@ -113,6 +113,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
           server_rec_, version_, timer())),
       use_per_vhost_statistics_(false),
       enable_property_cache_(false),
+      inherit_vhost_config_(false),
       thread_counts_finalized_(false),
       num_rewrite_threads_(-1),
       num_expensive_rewrite_threads_(-1),

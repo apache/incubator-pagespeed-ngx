@@ -246,7 +246,7 @@ void ApacheResourceManager::PollFilesystemForCacheFlush() {
         check_cache_file = true;
       }
       if (cache_flush_count_ == NULL) {
-        cache_flush_count_ = statistics()->AddVariable(kCacheFlushCount);
+        cache_flush_count_ = statistics()->GetVariable(kCacheFlushCount);
       }
     }
 
