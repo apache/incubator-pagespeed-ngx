@@ -36,7 +36,7 @@ namespace net_instaweb {
 
 SupportNoscriptFilter::SupportNoscriptFilter(RewriteDriver* rewrite_driver)
     : rewrite_driver_(rewrite_driver),
-      should_insert_noscript_(false) {
+      should_insert_noscript_(true) {
 }
 
 SupportNoscriptFilter::~SupportNoscriptFilter() {
@@ -46,9 +46,9 @@ void SupportNoscriptFilter::StartDocument() {
   // Insert a NOSCRIPT tag only if at least one of the filters requiring
   // JavaScript for execution is enabled.
   if (IsAnyFilterRequiringScriptExecutionEnabled()) {
-    should_insert_noscript_ = false;
-  } else {
     should_insert_noscript_ = true;
+  } else {
+    should_insert_noscript_ = false;
   }
 }
 
@@ -59,7 +59,7 @@ void SupportNoscriptFilter::StartElement(HtmlElement* element) {
     // will get attached.
     return;
   }
-  if (!should_insert_noscript_ && element->keyword() == HtmlName::kBody) {
+  if (should_insert_noscript_ && element->keyword() == HtmlName::kBody) {
     scoped_ptr<GoogleUrl> url_with_psa_off(
         rewrite_driver_->google_url().CopyAndAddQueryParam(
             RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue));
@@ -71,7 +71,7 @@ void SupportNoscriptFilter::StartElement(HtmlElement* element) {
         element, StringPrintf(kNoScriptRedirectFormatter,
                               escaped_url.c_str(), escaped_url.c_str()));
     rewrite_driver_->PrependChild(element, noscript_node);
-    should_insert_noscript_ = true;
+    should_insert_noscript_ = false;
   }
   // TODO(sriharis):  Handle the case where there is no body -- insert a body in
   // EndElement of kHtml?
@@ -85,30 +85,25 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
     for (RewriteOptions::FilterSet::const_iterator p = js_filters.begin(),
          e = js_filters.end(); p != e; ++p) {
       RewriteOptions::Filter filter = *p;
-      bool (RewriteDriver::*filter_user_agent_checker)(void) const = NULL;
+      bool filter_enabled = true;
       switch (filter) {
         case RewriteOptions::kDeferIframe:
         case RewriteOptions::kDeferJavascript:
         case RewriteOptions::kDetectReflowWithDeferJavascript:
-          filter_user_agent_checker = &RewriteDriver::UserAgentSupportsJsDefer;
+          filter_enabled = rewrite_driver_->UserAgentSupportsJsDefer();
           break;
         case RewriteOptions::kDelayImages:
         case RewriteOptions::kLazyloadImages:
         case RewriteOptions::kLocalStorageCache:
-          filter_user_agent_checker =
-              &RewriteDriver::UserAgentSupportsImageInlining;
+          filter_enabled = rewrite_driver_->UserAgentSupportsImageInlining();
           break;
         case RewriteOptions::kFlushSubresources:
-          filter_user_agent_checker =
-              &RewriteDriver::UserAgentSupportsFlushEarly;
+          filter_enabled = rewrite_driver_->UserAgentSupportsFlushEarly();
           break;
         default:
           break;
       }
-      // For an enabled filter, it is applicable on the page if either there is
-      // no user-agent checker or there is one and it returns true.
-      if (filter_user_agent_checker == NULL ||
-          (rewrite_driver_->*filter_user_agent_checker)()) {
+      if (filter_enabled) {
         return true;
       }
     }

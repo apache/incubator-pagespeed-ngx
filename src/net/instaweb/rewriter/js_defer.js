@@ -227,13 +227,6 @@ deferJsNs.DeferJs = function() {
    * @private
    */
   this.noDeferAsyncScripts_ = [];
-
-  /**
-   * Generated Html to prefetch the js files.
-   * @type {string}
-   * @private
-   */
-  this.prefetchScriptsHtml_ = '';
 };
 
 /**
@@ -407,43 +400,6 @@ deferJsNs.DeferJs.prototype.createIdVars = function() {
 };
 
 /**
- * Downloads all the queued Js files to prefetch without executing them.
- */
-deferJsNs.DeferJs.prototype.prefetchQueuedScripts = function() {
-  if (this.prefetchScriptsHtml_ && this.isExperimentalMode()) {
-    var iframe = document.createElement('iframe');
-    iframe.setAttribute('class', 'psa_prefetch_container');
-    iframe.style.display = 'none';
-    document.body.appendChild(iframe);
-    if (this.isFireFox()) {
-      iframe.src = 'data:text/html,' +
-          encodeURIComponent(this.prefetchScriptsHtml_);
-    } else if (this.getIEVersion()) {
-      iframe.contentWindow.document.write(this.prefetchScriptsHtml_);
-      // Close the document, else IE doesn't close the iframe connection.
-      iframe.contentWindow.document.write(
-          '<script>setTimeout(function() {document.close();}, 0);<\/script>');
-    }
-    this.prefetchScriptsHtml_ = '';
-  }
-};
-
-/**
- * Tries to prefetch the file using image technique based on browser. If it
- * can't queue the url to the list and will be prefetched when
- * prefetchQueuedScripts is called.
- * @param {!string} url Url to be downloaded.
- */
-deferJsNs.DeferJs.prototype.attemptPrefetchOrQueue = function(url) {
-  if (this.isWebKit()) {
-    new Image().src = url;
-  } else {
-    this.prefetchScriptsHtml_ += "<" + "script type='psa_prefetch' src='" +
-        url + "'><\/script>";
-  }
-};
-
-/**
  * Defers execution of scriptNode, by adding it to the queue.
  * @param {Element} script script node.
  * @param {number} opt_pos Optional position for ordering.
@@ -454,7 +410,7 @@ deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos, opt_prefetch) {
       script.getAttribute('src');
   if (src) {
     if (opt_prefetch) {
-      this.attemptPrefetchOrQueue(src);
+      new Image().src = src;
     }
     this.addUrl(src, script, opt_pos);
   } else {
@@ -707,13 +663,6 @@ deferJsNs.DeferJs.prototype.fireOnload = function() {
   var psanodes = document.body.getElementsByTagName('psanode');
   for (var i = (psanodes.length - 1); i >= 0; i--) {
     document.body.removeChild(psanodes[i]);
-  }
-
-  // Clean up all prefetch containers we added.
-  var prefetchContainers =
-      document.body.getElementsByClassName('psa_prefetch_container');
-  for (var i = (prefetchContainers.length - 1); i >= 0; i--) {
-    prefetchContainers[i].parentNode.removeChild(prefetchContainers[i]);
   }
 
   this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_DONE;
@@ -1337,6 +1286,7 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(opt_callback) {
     var isFirstScript = (this.queue_.length == this.next_);
     var script = scripts[i];
     // TODO(ksimbili): Use orig_type
+    // TODO(ksimbili): Remove these script nodes from DOM.
     if (script.getAttribute('type') == deferJsNs.DeferJs.PSA_SCRIPT_TYPE) {
       if (opt_callback) {
         if (script.getAttribute('orig_index') == this.nextScriptIndexInHtml_) {
@@ -1352,7 +1302,6 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(opt_callback) {
       }
     }
   }
-  this.prefetchQueuedScripts();
 };
 deferJsNs.DeferJs.prototype['registerScriptTags'] =
     deferJsNs.DeferJs.prototype.registerScriptTags;
@@ -1395,13 +1344,6 @@ pagespeed['addHandler'] = deferJsNs.addHandler;
  */
 deferJsNs.DeferJs.prototype.isFireFox = function() {
   return (navigator.userAgent.indexOf('Firefox') != -1);
-};
-
-/**
- * @return {boolean} true if browser is WebKit based.
- */
-deferJsNs.DeferJs.prototype.isWebKit = function() {
-  return (navigator.userAgent.indexOf('AppleWebKit') != -1);
 };
 
 /**
