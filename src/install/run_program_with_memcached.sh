@@ -30,8 +30,12 @@ set -u
 if [ $grep_status = 0 ]; then
   echo memcached is running.
 else
-  echo starting memcached on port 6765, then sleeping for 2 seconds...
-  memcached -p 6765 >/tmp/memcached.log &
+  echo starting memcached with 1G on port 6765, then sleeping for 2 seconds...
+
+  # '-m 1024' means run with a maximum of 1G cache space, which is helpful
+  # for load-testing, and harmless for unit testing since memcached does not
+  # preallocate the storage.
+  memcached -p 6765 -m 1024 >/tmp/memcached.log &
   memcached_pid="$!"
   sleep 2
 fi

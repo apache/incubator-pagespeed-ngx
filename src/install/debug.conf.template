@@ -210,6 +210,7 @@ ModPagespeedCustomFetchHeader x-other False
 #COVERAGE   ModPagespeedTestProxy on
 #COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
 #COVERAGE
+#MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:6765
 #COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
 #COVERAGE   ModPagespeedRewriteLevel AllFilters
 #COVERAGE   ModPagespeedEnableFilters elide_attributes

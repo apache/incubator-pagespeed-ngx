@@ -8,7 +8,7 @@
 # Imports:
 #  apache_install_conf (should read OPT_REWRITE_TEST, OPT_PROXY_TEST,
 #                       OPT_SLURP_TEST, OPT_SPELING_TEST, OPT_MEMCACHED_TEST,
-#                       OPT_HTTPS_TEST,
+#                       OPT_MEMCACHE_COVERAGE_TEST, OPT_HTTPS_TEST,
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
 #                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
 #                       OPT_FURIOUS_GA_TEST, OPT_FURIOUS_NO_GA_TEST,
