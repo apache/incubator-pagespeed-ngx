@@ -246,6 +246,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
 
 // Note: These filters should not be included even if the level is "All".
 const RewriteOptions::Filter kDangerousFilterSet[] = {
+  RewriteOptions::kCanonicalizeJavascriptLibraries,
   RewriteOptions::kComputePanelJson,  // internal, enabled conditionally
   RewriteOptions::kComputeVisibleText,
   RewriteOptions::kDeferIframe,
