@@ -719,6 +719,8 @@ void RewriteOptions::AddProperties() {
   add_option(false,
              &RewriteOptions::passthrough_blink_for_last_invalid_response_code_,
              "ptbi", kPassthroughBlinkForInvalidResponseCode);
+  add_option(false, &RewriteOptions::use_full_url_in_blink_families_, "bffu",
+             kUseFullUrlInBlinkFamilies);
   add_option(false, &RewriteOptions::reject_blacklisted_, "rbl",
              kRejectBlacklisted);
   add_option(HttpStatus::kForbidden,
@@ -1349,15 +1351,19 @@ bool RewriteOptions::IsInBlinkCacheableFamily(const GoogleUrl& gurl) const {
       prioritize_visible_content_families_.empty()) {
     return true;
   }
-  return FindPrioritizeVisibleContentFamily(gurl.Spec()) != NULL;
+  StringPiece url_to_match = (use_full_url_in_blink_families() ?
+                              gurl.Spec() : gurl.PathAndLeaf());
+  return FindPrioritizeVisibleContentFamily(url_to_match) != NULL;
 }
 
 int64 RewriteOptions::GetBlinkCacheTimeFor(const GoogleUrl& gurl) const {
   if (override_blink_cache_time_ms_.value() > 0) {
     return override_blink_cache_time_ms_.value();
   }
+  StringPiece url_to_match = (use_full_url_in_blink_families() ?
+                              gurl.Spec() : gurl.PathAndLeaf());
   const PrioritizeVisibleContentFamily* family =
-      FindPrioritizeVisibleContentFamily(gurl.Spec());
+      FindPrioritizeVisibleContentFamily(url_to_match);
   if (family != NULL) {
     return family->cache_time_ms;
   }
@@ -1366,8 +1372,10 @@ int64 RewriteOptions::GetBlinkCacheTimeFor(const GoogleUrl& gurl) const {
 
 GoogleString RewriteOptions::GetBlinkNonCacheableElementsFor(
     const GoogleUrl& gurl) const {
+  StringPiece url_to_match = (use_full_url_in_blink_families() ?
+                              gurl.Spec() : gurl.PathAndLeaf());
   const PrioritizeVisibleContentFamily* family =
-      FindPrioritizeVisibleContentFamily(gurl.Spec());
+      FindPrioritizeVisibleContentFamily(url_to_match);
   if (family != NULL) {
     return family->non_cacheable_elements;
   }

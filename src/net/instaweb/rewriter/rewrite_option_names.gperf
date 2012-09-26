@@ -99,6 +99,7 @@ struct OptionName {
 "RunExperiment",                         RewriteOptions::kRunningFurious
 "ServeStaleIfFetchError",                RewriteOptions::kServeStaleIfFetchError
 "SupportNoScriptEnabled",                RewriteOptions::kSupportNoScriptEnabled
+"UseFullUrlInBlinkFamilies",             RewriteOptions::kUseFullUrlInBlinkFamilies
 "XHeaderValue",                          RewriteOptions::kXModPagespeedHeaderValue
 # The following are Apache specific options.
 "CacheFlushFilename",                    RewriteOptions::kCacheFlushFilename

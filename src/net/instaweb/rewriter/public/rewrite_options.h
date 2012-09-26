@@ -1437,6 +1437,13 @@ class RewriteOptions {
     return apply_blink_if_no_families_.value();
   }
 
+  void set_use_full_url_in_blink_families(bool x) {
+    set_option(x, &use_full_url_in_blink_families_);
+  }
+  bool use_full_url_in_blink_families() const {
+    return use_full_url_in_blink_families_.value();
+  }
+
   void set_critical_line_config(const StringPiece& p) {
       set_option(GoogleString(p.data(), p.size()), &critical_line_config_);
   }
@@ -2386,6 +2393,9 @@ class RewriteOptions {
   // then prioritize_visible_content applies on all URLs (with default cache
   // time and no non-cacheables).
   Option<bool> apply_blink_if_no_families_;
+  // Consider the prioritize_visible_content_families_ url_patterns to be on
+  // full URL and not URL path.
+  Option<bool> use_full_url_in_blink_families_;
   // Show the blink debug dashboard.
   Option<bool> enable_blink_debug_dashboard_;
   // Enable automatic detection of publisher changes in html in blink.
