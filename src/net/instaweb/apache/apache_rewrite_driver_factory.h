@@ -187,6 +187,14 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
     inherit_vhost_config_ = x;
   }
 
+  bool disable_loopback_routing() const {
+    return disable_loopback_routing_;
+  }
+
+  void set_disable_loopback_routing(bool x) {
+    disable_loopback_routing_ = x;
+  }
+
   // Finds a Cache for the file_cache_path in the config.  If none exists,
   // creates one, using all the other parameters in the ApacheConfig.
   // Currently, no checking is done that the other parameters (e.g. cache
@@ -341,6 +349,10 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   // Inherit configuration from global context into vhosts.
   bool inherit_vhost_config_;
+
+  // If false (default) we will redirect all fetches to unknown hosts to
+  // localhost.
+  bool disable_loopback_routing_;
 
   // true iff we ran through AutoDetectThreadCounts()
   bool thread_counts_finalized_;

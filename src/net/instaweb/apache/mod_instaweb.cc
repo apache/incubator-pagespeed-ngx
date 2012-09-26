@@ -125,6 +125,8 @@ const char kModPagespeedCssImageInlineMaxBytes[] =
 const char kModPagespeedCssInlineMaxBytes[] = "ModPagespeedCssInlineMaxBytes";
 const char kModPagespeedCssOutlineMinBytes[] = "ModPagespeedCssOutlineMinBytes";
 const char kModPagespeedCustomFetchHeader[] = "ModPagespeedCustomFetchHeader";
+const char kModPagespeedDangerPermitFetchFromUnknownHosts[] =
+    "ModPagespeedDangerPermitFetchFromUnknownHosts";
 const char kModPagespeedDisableFilters[] = "ModPagespeedDisableFilters";
 const char kModPagespeedDisableForBots[] = "ModPagespeedDisableForBots";
 const char kModPagespeedDisallow[] = "ModPagespeedDisallow";
@@ -1205,6 +1207,14 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     ret = ParseBoolOption(options, cmd, &RewriteOptions::set_enabled, arg);
   } else if (StringCaseEqual(directive, kModPagespeedAllow)) {
     options->Allow(arg);
+  } else if (StringCaseEqual(directive,
+                             kModPagespeedDangerPermitFetchFromUnknownHosts)) {
+    ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
+    if (ret == NULL) {
+      ret = ParseBoolOption(
+          factory, cmd,
+          &ApacheRewriteDriverFactory::set_disable_loopback_routing, arg);
+    }
   } else if (StringCaseEqual(directive, kModPagespeedDisableFilters)) {
     if (!options->DisableFiltersByCommaSeparatedList(arg, handler)) {
       ret = "Failed to disable some filters.";
@@ -1663,6 +1673,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "does not begin with a slash."),
   APACHE_CONFIG_OPTION(kModPagespeedCacheFlushPollIntervalSec,
         "Number of seconds to wait between polling for cache-flush requests"),
+  APACHE_CONFIG_OPTION(kModPagespeedDangerPermitFetchFromUnknownHosts,
+        "Disable security checks that prohibit fetching from hostnames "
+        "mod_pagespeed does not know about"),
   APACHE_CONFIG_OPTION(kModPagespeedFetcherTimeoutMs,
         "Set internal fetcher timeout in milliseconds"),
   APACHE_CONFIG_OPTION(kModPagespeedFetchProxy, "Set the fetch proxy"),

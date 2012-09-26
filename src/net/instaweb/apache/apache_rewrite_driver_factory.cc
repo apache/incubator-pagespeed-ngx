@@ -114,6 +114,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       use_per_vhost_statistics_(false),
       enable_property_cache_(false),
       inherit_vhost_config_(false),
+      disable_loopback_routing_(false),
       thread_counts_finalized_(false),
       num_rewrite_threads_(-1),
       num_expensive_rewrite_threads_(-1),
@@ -755,7 +756,8 @@ void ApacheRewriteDriverFactory::ApplySessionFetchers(
                                                     driver->async_fetcher()));
   }
 
-  if (!manager->config()->slurping_enabled() &&
+  if (!disable_loopback_routing_ &&
+      !manager->config()->slurping_enabled() &&
       !manager->config()->test_proxy()) {
     // Note the port here is our port, not from the request, since
     // LoopbackRouteFetcher may decide we should be talking to ourselves.
