@@ -421,8 +421,7 @@ deferJsNs.DeferJs.prototype.prefetchQueuedScripts = function() {
     } else if (this.getIEVersion()) {
       iframe.contentWindow.document.write(this.prefetchScriptsHtml_);
       // Close the document, else IE doesn't close the iframe connection.
-      iframe.contentWindow.document.write(
-          '<script>setTimeout(function() {document.close();}, 0);<\/script>');
+      iframe.contentWindow.document.close();
     }
     this.prefetchScriptsHtml_ = '';
   }
