@@ -36,6 +36,8 @@ namespace net_instaweb {
 class Hasher;
 class MessageHandler;
 class SharedString;
+class Statistics;
+class Variable;
 
 // Interface to memcached via the apr_memcache*, as documented in
 // http://apr.apache.org/docs/apr-util/1.4/group___a_p_r___util___m_c.html.
@@ -60,8 +62,10 @@ class AprMemCache : public CacheInterface {
   // thread_limit is used to provide apr_memcache_server_create with
   // a hard maximum number of client connections to open.
   AprMemCache(const StringPiece& servers, int thread_limit, Hasher* hasher,
-              MessageHandler* handler);
+              Statistics* statistics, MessageHandler* handler);
   ~AprMemCache();
+
+  static void InitStats(Statistics* statistics);
 
   const GoogleString& server_spec() const { return server_spec_; }
 
@@ -86,7 +90,7 @@ class AprMemCache : public CacheInterface {
  private:
   void DecodeValueMatchingKeyAndCallCallback(
       const GoogleString& key, const char* data, size_t data_len,
-      Callback* callback);
+      const char* calling_method, Callback* callback);
 
   StringVector hosts_;
   std::vector<int> ports_;
@@ -97,6 +101,7 @@ class AprMemCache : public CacheInterface {
   apr_memcache_t* memcached_;
   std::vector<apr_memcache_server_t*> servers_;
   Hasher* hasher_;
+  Variable* timeouts_;
   MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(AprMemCache);

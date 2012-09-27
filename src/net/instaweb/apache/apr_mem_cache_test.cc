@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mock_hasher.h"
+#include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -54,7 +55,9 @@ const size_t kHugeWriteSize = 2 * kTestValueSizeThreshold;
 
 class AprMemCacheTest : public CacheTestBase {
  protected:
-  AprMemCacheTest() : lru_cache_(new LRUCache(kLRUCacheSize)) {}
+  AprMemCacheTest() : lru_cache_(new LRUCache(kLRUCacheSize)) {
+    AprMemCache::InitStats(&statistics_);
+  }
 
   static void SetUpTestCase() {
     apr_initialize();
@@ -67,7 +70,8 @@ class AprMemCacheTest : public CacheTestBase {
     if (use_md5_hasher) {
       hasher = &md5_hasher_;
     }
-    servers_.reset(new AprMemCache(servers, 5, hasher, &handler_));
+    servers_.reset(new AprMemCache(servers, 5, hasher, &statistics_,
+                                   &handler_));
 
     // apr_memcache actually lazy-connects to memcached, it seems, so
     // if we fail the Connect call then something is truly broken.  To
@@ -89,6 +93,7 @@ class AprMemCacheTest : public CacheTestBase {
   GoogleMessageHandler handler_;
   MD5Hasher md5_hasher_;
   MockHasher mock_hasher_;
+  NullStatistics statistics_;
   scoped_ptr<LRUCache> lru_cache_;
   scoped_ptr<AprMemCache> servers_;
   scoped_ptr<FallbackCache> cache_;

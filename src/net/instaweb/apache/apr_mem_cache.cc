@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/key_value_codec.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/stack_buffer.h"
 
@@ -35,7 +36,18 @@ namespace {
 const int kDefaultMemcachedPort = 11211;
 const int kDefaultServerMin = 0;      // minimum # client sockets to open
 const int kDefaultServerSmax = 1;     // soft max # client connections to open
-const int kDefaultServerTtlUs = 600;  // time-to-live of a client connection
+const char kMemCacheTimeouts[] = "memcache_timeouts";
+
+// time-to-live of a client connection.  There is a bug in the APR
+// implementation, where the TTL argument to apr_memcache_server_create was
+// being interpreted in microseconds, rather than seconds.
+//
+// See: http://mail-archives.apache.org/mod_mbox/apr-dev/201209.mbox/browser
+// and: http://svn.apache.org/viewvc?view=revision&revision=1390530
+//
+// TODO(jmarantz): figure out somehow if that fix is applied, and if so,
+// do not multiply by 1M.
+const int kDefaultServerTtlUs = 600*1000*1000;
 
 }  // namespace
 
@@ -45,11 +57,13 @@ class Timer;
 class ThreadSystem;
 
 AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
-                         Hasher* hasher, MessageHandler* handler)
+                         Hasher* hasher, Statistics* statistics,
+                         MessageHandler* handler)
     : valid_server_spec_(false),
       thread_limit_(thread_limit),
       memcached_(NULL),
       hasher_(hasher),
+      timeouts_(statistics->GetVariable(kMemCacheTimeouts)),
       message_handler_(handler) {
   servers.CopyToString(&server_spec_);
   apr_pool_create(&pool_, NULL);
@@ -89,6 +103,10 @@ AprMemCache::~AprMemCache() {
   apr_pool_destroy(pool_);
 }
 
+void AprMemCache::InitStats(Statistics* statistics) {
+  statistics->AddVariable(kMemCacheTimeouts);
+}
+
 bool AprMemCache::Connect() {
   apr_status_t status =
       apr_memcache_create(pool_, hosts_.size(), 0, &memcached_);
@@ -121,7 +139,7 @@ bool AprMemCache::Connect() {
 
 void AprMemCache::DecodeValueMatchingKeyAndCallCallback(
     const GoogleString& key, const char* data, size_t data_len,
-    Callback* callback) {
+    const char* calling_method, Callback* callback) {
   SharedString key_value;
   key_value.Assign(data, data_len);
   GoogleString actual_key;
@@ -130,14 +148,14 @@ void AprMemCache::DecodeValueMatchingKeyAndCallCallback(
       ValidateAndReportResult(actual_key, CacheInterface::kAvailable, callback);
     } else {
       message_handler_->Message(
-          kError, "AprMemCache::Get key collision %s != %s",
-          key.c_str(), actual_key.c_str());
+          kError, "AprMemCache::%s key collision %s != %s",
+          calling_method, key.c_str(), actual_key.c_str());
       ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
     }
   } else {
     message_handler_->Message(
-        kError, "AprMemCache::Get decoding error on key %s",
-        key.c_str());
+        kError, "AprMemCache::%s decoding error on key %s",
+        calling_method, key.c_str());
     ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
   }
 }
@@ -152,7 +170,7 @@ void AprMemCache::Get(const GoogleString& key, Callback* callback) {
   apr_status_t status = apr_memcache_getp(
       memcached_, data_pool, hashed_key.c_str(), &data, &data_len, NULL);
   if (status == APR_SUCCESS) {
-    DecodeValueMatchingKeyAndCallCallback(key, data, data_len, callback);
+    DecodeValueMatchingKeyAndCallCallback(key, data, data_len, "Get", callback);
   } else {
     if (status != APR_NOTFOUND) {
       char buf[kStackBufferSize];
@@ -160,6 +178,9 @@ void AprMemCache::Get(const GoogleString& key, Callback* callback) {
       message_handler_->Message(
           kError, "AprMemCache::Get error: %s (%d) on key %s",
           buf, status, key.c_str());
+      if (status == APR_TIMEUP) {
+        timeouts_->Add(1);
+      }
     }
     ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
   }
@@ -197,18 +218,26 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
       const GoogleString& hashed_key = hashed_keys[i];
       apr_memcache_value_t* value = static_cast<apr_memcache_value_t*>(
           apr_hash_get(hash_table, hashed_key.data(), hashed_key.size()));
-      if ((value == NULL) || (value->status != APR_SUCCESS)) {
-        if ((value != NULL) && (value->status != APR_NOTFOUND)) {
+      if (value == NULL) {
+        status = APR_NOTFOUND;
+      } else {
+        status = value->status;
+      }
+      if (status == APR_SUCCESS) {
+        DecodeValueMatchingKeyAndCallCallback(key, value->data, value->len,
+                                              "MultiGet", callback);
+      } else {
+        if (status != APR_NOTFOUND) {
           char buf[kStackBufferSize];
           apr_strerror(status, buf, sizeof(buf));
           message_handler_->Message(
-              kError, "AprMemCache::Get error: %s (%d) on key %s",
+              kError, "AprMemCache::MultiGet error: %s (%d) on key %s",
               buf, status, key.c_str());
+          if (status == APR_TIMEUP) {
+            timeouts_->Add(1);
+          }
         }
         ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
-      } else {
-        DecodeValueMatchingKeyAndCallCallback(key, value->data, value->len,
-                                              callback);
       }
     }
   }

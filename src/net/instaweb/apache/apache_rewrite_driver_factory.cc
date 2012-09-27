@@ -194,7 +194,7 @@ CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
       ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
       thread_limit += num_rewrite_threads() + num_expensive_rewrite_threads();
       AprMemCache* mem_cache = new AprMemCache(
-          server_spec, thread_limit, hasher(), message_handler());
+          server_spec, thread_limit, hasher(), statistics(), message_handler());
       memcache_servers_.push_back(mem_cache);
 
       int num_threads = config->memcached_threads();
@@ -699,6 +699,7 @@ void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
   RewriteDriverFactory::InitStats(statistics);
   SerfUrlAsyncFetcher::InitStats(statistics);
   ApacheResourceManager::InitStats(statistics);
+  AprMemCache::InitStats(statistics);
   CacheStats::InitStats(ApacheCache::kFileCache, statistics);
   CacheStats::InitStats(ApacheCache::kLruCache, statistics);
   CacheStats::InitStats(kMemcached, statistics);
