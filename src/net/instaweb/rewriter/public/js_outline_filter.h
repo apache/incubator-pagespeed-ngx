@@ -55,15 +55,6 @@ class JsOutlineFilter : public CommonFilter {
   // HTML Events we expect to be in <script> elements.
   virtual void Characters(HtmlCharactersNode* characters);
 
-  // HTML Events we do not expect to be in <style> and <script> elements.
-  virtual void Comment(HtmlCommentNode* comment);
-  virtual void Cdata(HtmlCdataNode* cdata);
-  virtual void IEDirective(HtmlIEDirectiveNode* directive);
-
-  // Ignored HTML Events.
-  virtual void EndDocument() {}
-  virtual void Directive(HtmlDirectiveNode* directive) {}
-
   virtual const char* Name() const { return "OutlineJs"; }
 
  private:
@@ -71,11 +62,11 @@ class JsOutlineFilter : public CommonFilter {
                      MessageHandler* handler);
   void OutlineScript(HtmlElement* element, const GoogleString& content);
 
-  // The style or script element we are in (if it hasn't been flushed).
-  // If we are not in a script or style element, inline_element_ == NULL.
+  // The script element we are in (if it hasn't been flushed).
+  // If we are not in a script element, inline_element_ == NULL.
   HtmlElement* inline_element_;
-  // Temporarily buffers the content between open and close of inline_element_.
-  GoogleString buffer_;
+  // CharactersNode to be outlined.
+  HtmlCharactersNode* inline_chars_;
   ServerContext* server_context_;
   size_t size_threshold_bytes_;
   ScriptTagScanner script_tag_scanner_;

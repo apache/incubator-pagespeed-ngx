@@ -43,6 +43,7 @@ const char JsOutlineFilter::kFilterId[] = "jo";
 JsOutlineFilter::JsOutlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
       inline_element_(NULL),
+      inline_chars_(NULL),
       server_context_(driver->server_context()),
       size_threshold_bytes_(driver->options()->js_outline_min_bytes()),
       script_tag_scanner_(driver_) { }
@@ -51,7 +52,7 @@ JsOutlineFilter::~JsOutlineFilter() {}
 
 void JsOutlineFilter::StartDocumentImpl() {
   inline_element_ = NULL;
-  buffer_.clear();
+  inline_chars_ = NULL;
 }
 
 void JsOutlineFilter::StartElementImpl(HtmlElement* element) {
@@ -60,7 +61,7 @@ void JsOutlineFilter::StartElementImpl(HtmlElement* element) {
     // TODO(sligocki): Add negative unit tests to hit these errors.
     driver_->ErrorHere("Tag '%s' found inside script.", element->name_str());
     inline_element_ = NULL;  // Don't outline what we don't understand.
-    buffer_.clear();
+    inline_chars_ = NULL;
   }
 
   HtmlElement::Attribute* src;
@@ -68,7 +69,7 @@ void JsOutlineFilter::StartElementImpl(HtmlElement* element) {
   if (script_tag_scanner_.ParseScriptElement(element, &src) ==
       ScriptTagScanner::kJavaScript) {
     inline_element_ = element;
-    buffer_.clear();
+    inline_chars_ = NULL;
     // script elements which already have a src should not be outlined.
     if (src != NULL) {
       inline_element_ = NULL;
@@ -81,52 +82,28 @@ void JsOutlineFilter::EndElementImpl(HtmlElement* element) {
     if (element != inline_element_) {
       // No other tags allowed inside script element.
       driver_->ErrorHere("Tag '%s' found inside script.", element->name_str());
-    } else if (buffer_.size() >= size_threshold_bytes_) {
-      OutlineScript(inline_element_, buffer_);
+    } else if (inline_chars_->contents().size() >= size_threshold_bytes_) {
+      OutlineScript(inline_element_, inline_chars_->contents());
     } else {
       driver_->InfoHere("Inline element not outlined because its size %d, "
                         "is below threshold %d",
-                        static_cast<int>(buffer_.size()),
+                        static_cast<int>(inline_chars_->contents().size()),
                         static_cast<int>(size_threshold_bytes_));
     }
     inline_element_ = NULL;
-    buffer_.clear();
+    inline_chars_ = NULL;
   }
 }
 
 void JsOutlineFilter::Flush() {
   // If we were flushed in a script element, we cannot outline it.
   inline_element_ = NULL;
-  buffer_.clear();
+  inline_chars_ = NULL;
 }
 
 void JsOutlineFilter::Characters(HtmlCharactersNode* characters) {
   if (inline_element_ != NULL) {
-    buffer_ += characters->contents();
-  }
-}
-
-void JsOutlineFilter::Comment(HtmlCommentNode* comment) {
-  if (inline_element_ != NULL) {
-    driver_->ErrorHere("Comment found inside script.");
-    inline_element_ = NULL;  // Don't outline what we don't understand.
-    buffer_.clear();
-  }
-}
-
-void JsOutlineFilter::Cdata(HtmlCdataNode* cdata) {
-  if (inline_element_ != NULL) {
-    driver_->ErrorHere("CDATA found inside script.");
-    inline_element_ = NULL;  // Don't outline what we don't understand.
-    buffer_.clear();
-  }
-}
-
-void JsOutlineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
-  if (inline_element_ != NULL) {
-    driver_->ErrorHere("IE Directive found inside script.");
-    inline_element_ = NULL;  // Don't outline what we don't understand.
-    buffer_.clear();
+    inline_chars_ = characters;
   }
 }
 

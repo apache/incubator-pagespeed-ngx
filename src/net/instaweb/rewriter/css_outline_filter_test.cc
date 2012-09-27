@@ -181,6 +181,14 @@ TEST_F(CssOutlineFilterTest, UrlTooLong) {
   TestOutlineCss(html_url, "", style_text, false, style_text, "");
 }
 
+// Test our behavior with CDATA blocks.
+TEST_F(CssOutlineFilterTest, CdataInContents) {
+  SetXhtmlMimetype();
+  // TODO(sligocki): Fix. The outlined file should be "foo  bar ".
+  GoogleString css = "foo <![CDATA[ bar ]]>";
+  TestOutlineCss("http://outline_css.test/cdata.html", "", css, true, css, "");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

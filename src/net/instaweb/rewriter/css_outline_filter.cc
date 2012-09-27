@@ -45,6 +45,7 @@ const char CssOutlineFilter::kFilterId[] = "co";
 CssOutlineFilter::CssOutlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
       inline_element_(NULL),
+      inline_chars_(NULL),
       size_threshold_bytes_(driver->options()->css_outline_min_bytes()) {
 }
 
@@ -52,7 +53,7 @@ CssOutlineFilter::~CssOutlineFilter() {}
 
 void CssOutlineFilter::StartDocumentImpl() {
   inline_element_ = NULL;
-  buffer_.clear();
+  inline_chars_ = NULL;
 }
 
 void CssOutlineFilter::StartElementImpl(HtmlElement* element) {
@@ -62,67 +63,40 @@ void CssOutlineFilter::StartElementImpl(HtmlElement* element) {
     driver_->ErrorHere("Tag '%s' found inside style.",
                            element->name_str());
     inline_element_ = NULL;  // Don't outline what we don't understand.
-    buffer_.clear();
+    inline_chars_ = NULL;
   }
   if (element->keyword() == HtmlName::kStyle) {
     inline_element_ = element;
-    buffer_.clear();
+    inline_chars_ = NULL;
   }
 }
 
 void CssOutlineFilter::EndElementImpl(HtmlElement* element) {
   if (inline_element_ != NULL) {
-    if (element != inline_element_) {
-      // No other tags allowed inside style element.
-      driver_->ErrorHere("Tag '%s' found inside style.",
-                                 element->name_str());
-
-    } else if (buffer_.size() >= size_threshold_bytes_) {
-      OutlineStyle(inline_element_, buffer_);
+    CHECK(element == inline_element_);
+    if (inline_chars_->contents().size() >= size_threshold_bytes_) {
+      OutlineStyle(inline_element_, inline_chars_->contents());
     } else {
       driver_->InfoHere("Inline element not outlined because its size %d, "
-                                "is below threshold %d",
-                                static_cast<int>(buffer_.size()),
-                                static_cast<int>(size_threshold_bytes_));
+                        "is below threshold %d",
+                        static_cast<int>(inline_chars_->contents().size()),
+                        static_cast<int>(size_threshold_bytes_));
     }
     inline_element_ = NULL;
-    buffer_.clear();
+    inline_chars_ = NULL;
   }
 }
 
 void CssOutlineFilter::Flush() {
   // If we were flushed in a style element, we cannot outline it.
   inline_element_ = NULL;
-  buffer_.clear();
+  inline_chars_ = NULL;
 }
 
 void CssOutlineFilter::Characters(HtmlCharactersNode* characters) {
   if (inline_element_ != NULL) {
-    buffer_ += characters->contents();
-  }
-}
-
-void CssOutlineFilter::Comment(HtmlCommentNode* comment) {
-  if (inline_element_ != NULL) {
-    driver_->ErrorHere("Comment found inside style.");
-    inline_element_ = NULL;  // Don't outline what we don't understand.
-    buffer_.clear();
-  }
-}
-
-void CssOutlineFilter::Cdata(HtmlCdataNode* cdata) {
-  if (inline_element_ != NULL) {
-    driver_->ErrorHere("CDATA found inside style.");
-    inline_element_ = NULL;  // Don't outline what we don't understand.
-    buffer_.clear();
-  }
-}
-
-void CssOutlineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
-  if (inline_element_ != NULL) {
-    driver_->ErrorHere("IE Directive found inside style.");
-    inline_element_ = NULL;  // Don't outline what we don't understand.
-    buffer_.clear();
+    CHECK(inline_chars_ == NULL) << "Multiple character blocks in style.";
+    inline_chars_ = characters;
   }
 }
 
