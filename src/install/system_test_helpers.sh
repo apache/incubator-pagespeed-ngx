@@ -203,12 +203,24 @@ function check_stat() {
   fi
 }
 
+FETCH_UNTIL_OUTFILE="$TEMPDIR/fetch_until_output.$$"
+
 # Continuously fetches URL and pipes the output to COMMAND.  Loops until
 # COMMAND outputs RESULT, in which case we return 0, or until 10 seconds have
 # passed, in which case we return 1.
+#
+# Usage:
+#    fetch_until [-save] REQUESTURL COMMAND RESULT [WGET_ARGS]
+#
+# If "-save" is specified as the first argument, then the output from $COMMAND
+# is retained in $FETCH_UNTIL_OUTFILE.
 function fetch_until() {
-  # Should not user URL as PARAM here, it rewrites value of URL for
-  # the rest tests.
+  save=0
+  if [ $1 = "-save" ]; then
+    save=1
+    shift
+  fi
+
   REQUESTURL=$1
   COMMAND=$2
   RESULT=$3
@@ -221,11 +233,16 @@ function fetch_until() {
   echo "      Fetching $REQUESTURL $WGET_ARGS until \$($COMMAND) = $RESULT"
   echo "$WGET_HERE -O - $REQUESTURL 2>&1 | $COMMAND"
   while test -t; do
-    if [ "$($WGET_HERE -O - $REQUESTURL 2>&1 | $COMMAND)" = "$RESULT" ]; then
+    $WGET_HERE -O - $REQUESTURL 2>&1 > "$FETCH_UNTIL_OUTFILE"
+    if [ $($COMMAND < "$FETCH_UNTIL_OUTFILE") = "$RESULT" ]; then
       /bin/echo ".";
+      if [ $save = 0 ]; then
+        rm -f "$FETCH_UNTIL_OUTFILE"
+      fi
       return;
     fi;
     if [ $(date +%s) -gt $STOP ]; then
+      echo "*** $WGET_HERE output in $FETCH_UNTIL_OUTFILE"
       print_failure_info_and_exit
     fi;
     /bin/echo -n "."
