@@ -66,7 +66,7 @@ class UserAgentMatcher;
 // subclass of RewriteDriverFactory to use these by default.
 class RewriteDriverFactory {
  public:
-  // Helper for users of defer_delete; see below.
+  // Helper for users of defer_cleanup; see below.
   template<class T> class Deleter;
 
   enum WorkerPoolName {
@@ -265,7 +265,7 @@ class RewriteDriverFactory {
   // Causes the given function to be Run after all the threads are shutdown,
   // in order to do any needed resource cleanups. The Deleter<T> template below
   // may be useful for object deletion cleanups.
-  void defer_delete(Function* f) { deferred_deletes_.push_back(f); }
+  void defer_cleanup(Function* f) { deferred_cleanups_.push_back(f); }
 
   // Base method that returns true if the given ip is a debug ip.
   virtual bool IsDebugClient(const GoogleString& ip) const {
@@ -408,7 +408,7 @@ class RewriteDriverFactory {
 
   // To assist with subclass destruction-order, subclasses can register
   // functions to run late in the destructor.
-  std::vector<Function*> deferred_deletes_;
+  std::vector<Function*> deferred_cleanups_;
 
   // Version string to put into HTTP response headers.
   // TODO(sligocki): Remove. Redundant with RewriteOptions::x_header_value().
@@ -417,7 +417,7 @@ class RewriteDriverFactory {
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };
 
-// Helper for users of RewriterDriverFactory::defer_delete --- instantiates
+// Helper for users of RewriterDriverFactory::defer_cleanup --- instantiates
 // into objects that call the appropriate delete operator when Run.
 template<class T> class RewriteDriverFactory::Deleter : public Function {
  public:

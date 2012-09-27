@@ -39,7 +39,7 @@ class SchedulerThread : public ThreadSystem::Thread {
 
   // Returns a function that, when run, will properly synchronize with this
   // thread and shut it down cleanly, deleting the object as well.
-  // It is suggested for use with RewriteDriverFactory::defer_delete(); as it
+  // It is suggested for use with RewriteDriverFactory::defer_cleanup(); as it
   // needs to be run after it's OK if scheduler timeouts no longer work.
   Function* MakeDeleter();
 

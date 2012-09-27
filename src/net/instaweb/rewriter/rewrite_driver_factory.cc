@@ -121,8 +121,8 @@ RewriteDriverFactory::~RewriteDriverFactory() {
   }
   url_fetcher_ = NULL;
 
-  for (int i = 0, n = deferred_deletes_.size(); i < n; ++i) {
-    deferred_deletes_[i]->CallRun();
+  for (int i = 0, n = deferred_cleanups_.size(); i < n; ++i) {
+    deferred_cleanups_[i]->CallRun();
   }
 }
 

@@ -156,13 +156,13 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
     ApacheCache* cache = p->second;
-    defer_delete(new Deleter<ApacheCache>(cache));
+    defer_cleanup(new Deleter<ApacheCache>(cache));
   }
 
   for (MemcachedMap::iterator p = memcached_map_.begin(),
            e = memcached_map_.end(); p != e; ++p) {
     CacheInterface* memcached = p->second;
-    defer_delete(new Deleter<CacheInterface>(memcached));
+    defer_cleanup(new Deleter<CacheInterface>(memcached));
   }
 
   shared_mem_statistics_.reset(NULL);
@@ -416,7 +416,7 @@ UrlAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(ApacheConfig* config) {
       if (config->slurp_read_only()) {
         HttpDumpUrlFetcher* dump_fetcher = new HttpDumpUrlFetcher(
             config->slurp_directory(), file_system(), timer());
-        defer_delete(new Deleter<HttpDumpUrlFetcher>(dump_fetcher));
+        defer_cleanup(new Deleter<HttpDumpUrlFetcher>(dump_fetcher));
         fetcher = new FakeUrlAsyncFetcher(dump_fetcher);
       } else {
         SerfUrlAsyncFetcher* base_fetcher = GetSerfFetcher(config);
@@ -424,10 +424,10 @@ UrlAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(ApacheConfig* config) {
         UrlFetcher* sync_fetcher = new SyncFetcherAdapter(
             timer(), config->blocking_fetch_timeout_ms(), base_fetcher,
             thread_system());
-        defer_delete(new Deleter<UrlFetcher>(sync_fetcher));
+        defer_cleanup(new Deleter<UrlFetcher>(sync_fetcher));
         HttpDumpUrlWriter* dump_writer = new HttpDumpUrlWriter(
             config->slurp_directory(), sync_fetcher, file_system(), timer());
-        defer_delete(new Deleter<HttpDumpUrlWriter>(dump_writer));
+        defer_cleanup(new Deleter<HttpDumpUrlWriter>(dump_writer));
         fetcher = new FakeUrlAsyncFetcher(dump_writer);
       }
     } else {
@@ -625,7 +625,7 @@ void ApacheRewriteDriverFactory::ShutDown() {
        p != e; ++p) {
     UrlAsyncFetcher* fetcher = p->second;
     fetcher->ShutDown();
-    defer_delete(new Deleter<UrlAsyncFetcher>(fetcher));
+    defer_cleanup(new Deleter<UrlAsyncFetcher>(fetcher));
   }
   fetcher_map_.clear();
 
