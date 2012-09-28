@@ -526,9 +526,11 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     options_->set_enable_blink_critical_line(true);
     options_->set_passthrough_blink_for_last_invalid_response_code(true);
     options_->EnableFilter(RewriteOptions::kPrioritizeVisibleContent);
-    options_->AddBlinkCacheableFamily("/text.html", 1000 * Timer::kSecondMs,
+    options_->AddBlinkCacheableFamily("http://test.com/text.html",
+                                      1000 * Timer::kSecondMs,
                                       "class=item,id=beforeItems");
-    options_->AddBlinkCacheableFamily("*html", 1000 * Timer::kSecondMs, "");
+    options_->AddBlinkCacheableFamily("http://test.com/*html",
+                                      1000 * Timer::kSecondMs, "");
 
     // Force disable filters that will be enabled in the blink flow
     // since we want to test that they get enabled in the blink flow.

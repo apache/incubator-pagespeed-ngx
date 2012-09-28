@@ -242,6 +242,7 @@ function fetch_until() {
       return;
     fi;
     if [ $(date +%s) -gt $STOP ]; then
+      echo ""
       echo "*** $WGET_HERE output in $FETCH_UNTIL_OUTFILE"
       print_failure_info_and_exit
     fi;

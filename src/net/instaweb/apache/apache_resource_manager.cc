@@ -271,6 +271,9 @@ void ApacheResourceManager::PollFilesystemForCacheFlush() {
         if (global_options()->UpdateCacheInvalidationTimestampMs(
                 timestamp_ms, lock_hasher())) {
           cache_flush_count_->Add(1);
+          message_handler()->Message(
+              kWarning, "Cache Flush %d",
+              static_cast<int>(cache_flush_count_->Get()));
         }
       }
     }
