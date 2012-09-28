@@ -486,6 +486,7 @@ class RewriteContext {
   void Start();
   void SetPartitionKey();
   void StartFetch();
+  void CancelFetch();
   void OutputCacheDone(CacheInterface::KeyState state, SharedString value);
   void OutputCacheHit(bool write_partitions);
   void OutputCacheRevalidate(const InputInfoStarVector& to_revalidate);

@@ -1799,7 +1799,9 @@ bool RewriteContext::Fetch(
       if (output_resource->has_hash()) {
         fetch_->set_requested_hash(output_resource->hash());
       }
-      Driver()->AddRewriteTask(MakeFunction(this, &RewriteContext::StartFetch));
+      Driver()->AddRewriteTask(MakeFunction(this,
+                                            &RewriteContext::StartFetch,
+                                            &RewriteContext::CancelFetch));
       ret = true;
     }
   }
@@ -1808,6 +1810,13 @@ bool RewriteContext::Fetch(
   }
 
   return ret;
+}
+
+void RewriteContext::CancelFetch() {
+  AsyncFetch* fetch = fetch_->async_fetch();
+    fetch->response_headers()->SetStatusAndReason(
+        HttpStatus::kInternalServerError  /* 500 */);
+  FetchCallbackDone(false);
 }
 
 void RewriteContext::FetchCacheDone(
@@ -1880,7 +1889,7 @@ void RewriteContext::FetchFallbackCacheDone(HTTPCache::FindResult result,
 void RewriteContext::FetchCallbackDone(bool success) {
   RewriteDriver* notify_driver =
       notify_driver_on_fetch_done_ ? Driver() : NULL;
-  async_fetch()->Done(success);
+  async_fetch()->Done(success);  // deletes this.
   if (notify_driver != NULL) {
     notify_driver->FetchComplete();
   }

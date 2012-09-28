@@ -4794,4 +4794,17 @@ TEST_F(RewriteContextTest, CssCdnMapToDifferentOriginSharded) {
                           start_time_ms + Timer::kYearMs);
 }
 
+TEST_F(RewriteContextTest, ShutdownBeforeFetch) {
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+  factory()->ShutDown();
+  GoogleString output;
+
+  ResponseHeaders response_headers;
+  EXPECT_FALSE(FetchResourceUrl(
+      Encode(kTestDomain, "tw", "0", "b.css", "css"),
+      &output, &response_headers));
+  EXPECT_EQ(HttpStatus::kInternalServerError, response_headers.status_code());
+}
+
 }  // namespace net_instaweb

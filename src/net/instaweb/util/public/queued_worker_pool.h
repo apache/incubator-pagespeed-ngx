@@ -89,6 +89,9 @@ class QueuedWorkerPool {
     //
     // Ownership of 'function' is transferred to the Sequence, which deletes
     // it after execution or upon cancellation due to shutdown.
+    //
+    // If the pool is being shut down at the time Add is being called,
+    // this method will call function->Cancel().
     void Add(Function* function);
 
     void set_queue_size_stat(Waveform* x) { queue_size_ = x; }

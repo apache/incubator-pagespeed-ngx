@@ -343,16 +343,21 @@ void QueuedWorkerPool::Sequence::Cancel() {
 
 void QueuedWorkerPool::Sequence::Add(Function* function) {
   bool queue_sequence = false;
+  bool cancel = false;
   {
     ScopedMutex lock(sequence_mutex_.get());
     if (shutdown_) {
       LOG(WARNING) << "Adding function to sequence " << this
                    << " after shutdown";
-      function->CallCancel();
-      return;
+      cancel = true;
+    } else {
+      work_queue_.push_back(function);
+      queue_sequence = (!active_ && (work_queue_.size() == 1));
     }
-    work_queue_.push_back(function);
-    queue_sequence = (!active_ && (work_queue_.size() == 1));
+  }
+  if (cancel) {
+    function->CallCancel();
+    return;
   }
   if (queue_sequence) {
     pool_->QueueSequence(this);
