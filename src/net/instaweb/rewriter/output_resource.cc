@@ -166,17 +166,23 @@ GoogleString OutputResource::url() const {
   // so we compute it the first time we're called and cache the result;
   // computed_url_ is declared mutable.
   if (computed_url_.empty()) {
-    computed_url_ = server_context()->url_namer()->Encode(rewrite_options_,
-                                                            *this);
+    computed_url_ = server_context()->url_namer()->Encode(
+        rewrite_options_, *this, UrlNamer::kSharded);
   }
   return computed_url_;
+}
+
+GoogleString OutputResource::UnshardedUrl() const {
+  return server_context()->url_namer()->Encode(rewrite_options_, *this,
+                                               UrlNamer::kUnsharded);
 }
 
 GoogleString OutputResource::UrlEvenIfHashNotSet() {
   GoogleString result;
   if (!has_hash()) {
     full_name_.set_hash("0");
-    result = server_context()->url_namer()->Encode(rewrite_options_, *this);
+    result = server_context()->url_namer()->Encode(
+        rewrite_options_, *this, UrlNamer::kSharded);
     full_name_.ClearHash();
   } else {
     result = url();

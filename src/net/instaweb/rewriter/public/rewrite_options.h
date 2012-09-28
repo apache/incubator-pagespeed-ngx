@@ -281,6 +281,23 @@ class RewriteOptions {
     GoogleString value;
   };
 
+  // This version index serves as global signature key.  Much of the
+  // data emitted in signatures is based on the option ordering, which
+  // can change as we add new options.  So every time there is a
+  // binary-incompatible change to the option ordering, we bump this
+  // version.
+  //
+  // Note: we now use a two-letter code for identifying enabled filters, so
+  // there is no need bump the option version when changing the filter enum.
+  //
+  // Updating this value will have the indirect effect of flushing the metadata
+  // cache.
+  //
+  // This version number should be incremented if any default-values
+  // are changed, either in the add_option() call or via
+  // options->set_default.
+  static const int kOptionsVersion = 13;
+
   static const char kAjaxRewriteId[];
   static const char kCssCombinerId[];
   static const char kCssFilterId[];

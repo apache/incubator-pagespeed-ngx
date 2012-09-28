@@ -1399,6 +1399,25 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
         async_fetch_(async_fetch),
         handler_(handler),
         did_locking_(false) {
+    // Canonicalize the URL before looking it up.  Applies
+    // rewrite-domain mappings, and reverses any sharding.  E.g.
+    // if you have
+    //     ModPagespeedMapRewriteDomain master alias
+    //     ModPagespeedShardDomain master shard1,shard2
+    // then this will convert:
+    //    http://alias/foo    -->   http://master/foo
+    //    http://shard1/foo   -->   http://master/foo
+    //    http://shard2/foo   -->   http://master/foo
+    //    http://master/foo   -->   http://master/foo
+    const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
+    canonical_url_ = output_resource_->UnshardedUrl();
+    GoogleString mapped_domain_name;
+    GoogleUrl resolved_request;
+    if (lawyer->MapRequestToDomain(driver_->base_url(), canonical_url_,
+                                   &mapped_domain_name, &resolved_request,
+                                   driver_->message_handler())) {
+      resolved_request.Spec().CopyToString(&canonical_url_);
+    }
   }
 
   virtual ~CacheCallback() {}
@@ -1406,7 +1425,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   void Find() {
     ServerContext* resource_manager = driver_->server_context();
     HTTPCache* http_cache = resource_manager->http_cache();
-    http_cache->Find(output_resource_->url(), handler_, this);
+    http_cache->Find(canonical_url_, handler_, this);
   }
 
   virtual void Done(HTTPCache::FindResult find_result) {
@@ -1436,7 +1455,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
         response_headers->CopyFrom(*output_resource_->response_headers());
         ServerContext* resource_manager = driver_->server_context();
         HTTPCache* http_cache = resource_manager->http_cache();
-        http_cache->Put(output_resource_->url(), response_headers,
+        http_cache->Put(canonical_url_, response_headers,
                         content, handler_);
         async_fetch_->Done(async_fetch_->Write(content, handler_));
         driver_->FetchComplete();
@@ -1479,6 +1498,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
   AsyncFetch* async_fetch_;
   MessageHandler* handler_;
   bool did_locking_;
+  GoogleString canonical_url_;
 };
 
 }  // namespace

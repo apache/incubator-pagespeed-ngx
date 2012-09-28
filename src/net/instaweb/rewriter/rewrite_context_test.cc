@@ -37,6 +37,7 @@
 #include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -272,7 +273,6 @@ class NestedFilter : public RewriteFilter {
     virtual void RewriteSingle(
         const ResourcePtr& input, const OutputResourcePtr& output) {
       ++filter_->num_top_rewrites_;
-      output_ = output;
       // Assume that this file just has nested CSS URLs one per line,
       // which we will rewrite.
       StringPieceVector pieces;
@@ -345,7 +345,6 @@ class NestedFilter : public RewriteFilter {
     virtual OutputResourceKind kind() const { return kRewrittenResource; }
 
    private:
-    OutputResourcePtr output_;
     std::vector<GoogleString*> strings_;
     NestedFilter* filter_;
     bool chain_;
@@ -662,6 +661,10 @@ class RewriteContextTest : public RewriteTestBase {
   virtual bool AddBody() const { return false; }
 
   void InitResources() {
+    InitResourcesToDomain(kTestDomain);
+  }
+
+  void InitResourcesToDomain(const char* domain) {
     ResponseHeaders default_css_header;
     SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
     int64 now_ms = http_cache()->timer()->NowMs();
@@ -669,18 +672,18 @@ class RewriteContextTest : public RewriteTestBase {
     default_css_header.ComputeCaching();
 
     // trimmable
-    SetFetchResponse("http://test.com/a.css", default_css_header, " a ");
+    SetFetchResponse(StrCat(domain, "a.css"), default_css_header, " a ");
 
     // not trimmable
-    SetFetchResponse("http://test.com/b.css", default_css_header, "b");
-    SetFetchResponse("http://test.com/c.css", default_css_header,
+    SetFetchResponse(StrCat(domain, "b.css"), default_css_header, "b");
+    SetFetchResponse(StrCat(domain, "c.css"), default_css_header,
                      "a.css\nb.css\n");
 
     // trimmable, with charset.
     ResponseHeaders encoded_css_header;
     server_context()->SetDefaultLongCacheHeadersWithCharset(
         &kContentTypeCss, "koi8-r", &encoded_css_header);
-    SetFetchResponse("http://test.com/a_ru.css", encoded_css_header,
+    SetFetchResponse(StrCat(domain, "a_ru.css"), encoded_css_header,
                      " a = \xc1 ");
 
     // trimmable, private
@@ -692,7 +695,7 @@ class RewriteContextTest : public RewriteTestBase {
     private_css_header.SetDateAndCaching(now_ms, kOriginTtlMs, ",private");
     private_css_header.ComputeCaching();
 
-    SetFetchResponse("http://test.com/a_private.css",
+    SetFetchResponse(StrCat(domain, "a_private.css"),
                      private_css_header,
                      " a ");
 
@@ -705,7 +708,7 @@ class RewriteContextTest : public RewriteTestBase {
     no_cache_css_header.SetDateAndCaching(now_ms, 0, ",no-cache");
     no_cache_css_header.ComputeCaching();
 
-    SetFetchResponse("http://test.com/a_no_cache.css",
+    SetFetchResponse(StrCat(domain, "a_no_cache.css"),
                      no_cache_css_header,
                      " a ");
 
@@ -718,7 +721,7 @@ class RewriteContextTest : public RewriteTestBase {
     no_store_css_header.SetDateAndCaching(now_ms, 0, ",no-cache,no-store");
     no_store_css_header.ComputeCaching();
 
-    SetFetchResponse("http://test.com/a_no_store.css",
+    SetFetchResponse(StrCat(domain, "a_no_store.css"),
                      no_store_css_header,
                      " a ");
   }
@@ -4682,6 +4685,113 @@ TEST_F(RewriteContextTest, BlockingRewrite) {
   EXPECT_EQ(3, lru_cache()->num_misses());   // partition, and 2 inputs.
   EXPECT_EQ(4, lru_cache()->num_inserts());  // partition, output, and 2 inputs.
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+}
+
+// See http://code.google.com/p/modpagespeed/issues/detail?id=494.  Make sure
+// we apply domain-mapping when fetching resources, so that we get HTTP cache
+// hits on the resource fetch based on the CSS file we optimized during the
+// HTML rewrite.
+TEST_F(RewriteContextTest, CssCdnMapToDifferentOrigin) {
+  int64 start_time_ms = mock_timer()->NowMs();
+  UseMd5Hasher();
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  InitNestedFilter(true);
+  InitResources();
+  lawyer->AddRewriteDomainMapping("test.com", "static.test.com",
+                                  message_handler());
+  const char kCdnOriginDomain[] = "http://static.test.com/";
+  InitResourcesToDomain(kCdnOriginDomain);
+  const char kHash[] = "WTYjEzrEWX";
+
+  // The newline-separated list of URLS is the format used by the simple
+  // nested rewriter used in testing.
+  const GoogleString kRewrittenCssContents = StrCat(
+      Encode(kTestDomain, kUpperCaseFilterId, "lRGWyjVMXH", "a.css", "css"),
+      "\n",
+      Encode(kTestDomain, kUpperCaseFilterId, "nV7WeP5XvM", "b.css", "css"),
+      "\n");
+
+  // First, rewrite the HTML.
+  GoogleString rewritten_css = Encode(kTestDomain, kNestedFilterId, kHash,
+                                      "c.css", "css");
+  ValidateExpected("trimmable_async",
+                   CssLinkHref("c.css"),
+                   CssLinkHref(rewritten_css));
+
+  // Now fetch this file from its "natural" domain -- the one that we wrote
+  // into the HTML file.  This works fine, and did so even with Issue 494
+  // broken.  This will hit cache and give long cache lifetimes.
+  CheckFetchFromHttpCache(rewritten_css, kRewrittenCssContents,
+                          start_time_ms + Timer::kYearMs);
+
+  // Now simulate an origin-fetch from a CDN, which has been instructed
+  // to fetch from "static.test.com".  This requires proper domain-mapping
+  // of Fetch urls to succeed.
+  GoogleString cdn_origin_css = Encode(
+      "http://static.test.com/", kNestedFilterId, kHash, "c.css", "css");
+  CheckFetchFromHttpCache(cdn_origin_css, kRewrittenCssContents,
+                          start_time_ms + Timer::kYearMs);
+}
+
+TEST_F(RewriteContextTest, CssCdnMapToDifferentOriginSharded) {
+  int64 start_time_ms = mock_timer()->NowMs();
+  UseMd5Hasher();
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  InitNestedFilter(true);
+  InitResources();
+
+  const char kShard1[] = "http://s1.com/";
+  const char kShard2[] = "http://s2.com/";
+  const char kCdnOriginDomain[] = "http://static.test.com/";
+
+  lawyer->AddRewriteDomainMapping(kTestDomain, kCdnOriginDomain,
+                                  message_handler());
+
+  lawyer->AddShard(kTestDomain, StrCat(kShard1, ",", kShard2),
+                   message_handler());
+  InitResourcesToDomain(kCdnOriginDomain);
+  const char kHash[] = "HeWbtJb3Ks";
+
+  const GoogleString kRewrittenCssContents = StrCat(
+      Encode(kShard1, kUpperCaseFilterId, "lRGWyjVMXH", "a.css", "css"), "\n",
+      Encode(kShard2, kUpperCaseFilterId, "nV7WeP5XvM", "b.css", "css"), "\n");
+
+  // First, rewrite the HTML.
+  GoogleString rewritten_css = Encode(kShard2, kNestedFilterId, kHash,
+                                      "c.css", "css");
+  ValidateExpected("trimmable_async",
+                   CssLinkHref("c.css"),
+                   CssLinkHref(rewritten_css));
+
+  // Now fetch this file from its "natural" domain -- the one that we wrote
+  // into the HTML file.  This works fine, and did so even with Issue 494
+  // broken.  This will hit cache and give long cache lifetimes.
+  ClearStats();
+  CheckFetchFromHttpCache(rewritten_css, kRewrittenCssContents,
+                          start_time_ms + Timer::kYearMs);
+
+  // Now simulate an origin-fetch from a CDN, which has been instructed
+  // to fetch from "static.test.com".  This requires proper domain-mapping
+  // of Fetch urls to succeed.
+  ClearStats();
+  GoogleString cdn_origin_css = Encode(
+      kCdnOriginDomain, kNestedFilterId, kHash, "c.css", "css");
+  CheckFetchFromHttpCache(cdn_origin_css, kRewrittenCssContents,
+                          start_time_ms + Timer::kYearMs);
+
+  // Check from either shard -- we should always be looking up based on
+  // the rewrite domain.
+  ClearStats();
+  GoogleString shard1_css = Encode(
+      kShard1, kNestedFilterId, kHash, "c.css", "css");
+  CheckFetchFromHttpCache(shard1_css, kRewrittenCssContents,
+                          start_time_ms + Timer::kYearMs);
+
+  ClearStats();
+  GoogleString shard2_css = Encode(
+      kTestDomain, kNestedFilterId, kHash, "c.css", "css");
+  CheckFetchFromHttpCache(shard2_css, kRewrittenCssContents,
+                          start_time_ms + Timer::kYearMs);
 }
 
 }  // namespace net_instaweb

@@ -498,6 +498,13 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // Sets the response-headers Content-Type as specified.
   void SetMimetype(const StringPiece& mimetype);
 
+  // Verifies that the specified URL can be fetched from HTTP cache, and that
+  // its cache TTL and contents are as specified.
+  void CheckFetchFromHttpCache(
+      StringPiece url,
+      StringPiece expected_contents,
+      int64 expected_expiration_ms);
+
  protected:
   void Init();
 

@@ -859,6 +859,25 @@ void RewriteTestBase::SetMimetype(const StringPiece& mimetype) {
   response_headers_.ComputeCaching();
 }
 
+void RewriteTestBase::CheckFetchFromHttpCache(
+    StringPiece url,
+    StringPiece expected_contents,
+    int64 expected_expiration_ms) {
+  GoogleString contents;
+  ResponseHeaders response;
+  ClearStats();
+  EXPECT_TRUE(FetchResourceUrl(url, &contents, &response)) << url;
+  EXPECT_STREQ(expected_contents, contents);
+  EXPECT_EQ(expected_expiration_ms, response.CacheExpirationTimeMs());
+  EXPECT_TRUE(response.IsProxyCacheable());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, static_cast<int>(lru_cache()->num_hits()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
+}
+
 // Logging at the INFO level slows down tests, adds to the noise, and
 // adds considerably to the speed variability.
 class RewriteTestBaseProcessContext {

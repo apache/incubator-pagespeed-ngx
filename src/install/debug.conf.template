@@ -80,7 +80,7 @@ ModPagespeedMaxHtmlParseBytes 50000
 # add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
 ModPagespeedEnableFilters add_instrumentation
 
-<Directory "@@APACHE_DOC_ROOT@@/>
+<Directory "@@APACHE_DOC_ROOT@@/" >
     # This is enabled to make sure we don't crash mod_negotiation.
     Options +MultiViews
 </Directory>
@@ -402,8 +402,16 @@ ModPagespeedCustomFetchHeader x-other False
 # Another VirtualHost can be enabled by default as it does no harm.  This can
 # be used for testing alternate configuration settings in system tests without
 # restarting Apache.
+#
+# We use NameVirtualHost so we can have multiple VirtualHost
+# configurations sharing the same port.  Note that the port is
+# different depending on whether we are running system tests as root
+# or as a normal user.  Note that fetches must be done with
+#    http_proxy=SECONDARY_HOST:SECONDARY_PORT.
 Listen @@APACHE_SECONDARY_PORT@@
+NameVirtualHost *:@@APACHE_SECONDARY_PORT@@
 <VirtualHost *:@@APACHE_SECONDARY_PORT@@>
+  ServerName secondary.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeed on
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/_secondary/"
@@ -431,6 +439,39 @@ Listen @@APACHE_SECONDARY_PORT@@
 #REWRITE   RewriteRule (.*).jpg.pagespeed.(.*).jpg /broken.jpg
 #REWRITE   RewriteRule mod_pagespeed_statistics /broken
 #REWRITE   RewriteRule shortcut.html /mod_pagespeed_example/index.html
+</VirtualHost>
+
+# Sets up a logical home-page server on www.example.com
+<VirtualHost *:@@APACHE_SECONDARY_PORT@@>
+  ServerName www.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedLoadFromFile http://cdn.example.com @@APACHE_DOC_ROOT@@
+  ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters rewrite_css,rewrite_images
+</VirtualHost>
+
+# Sets up a logical origin for CDNs to fetch content from, on origin.example.com.
+<VirtualHost *:@@APACHE_SECONDARY_PORT@@>
+  ServerName origin.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedLoadFromFile http://cdn.example.com @@APACHE_DOC_ROOT@@
+  ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters rewrite_css,rewrite_images
+</VirtualHost>
+
+# Sets up a logical cdn, which is where we tell browsers to fetch resources from.
+<VirtualHost *:@@APACHE_SECONDARY_PORT@@>
+  ServerName cdn.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedLoadFromFile http://cdn.example.com @@APACHE_DOC_ROOT@@
+  ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters rewrite_css,rewrite_images
 </VirtualHost>
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:

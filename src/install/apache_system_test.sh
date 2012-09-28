@@ -39,7 +39,10 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   if [ "$SECONDARY_HOSTNAME" = "$HOSTNAME" ]; then
     SECONDARY_HOSTNAME=${HOSTNAME}:$APACHE_SECONDARY_PORT
   fi
-  SECONDARY_TEST_ROOT=http://$SECONDARY_HOSTNAME/mod_pagespeed_test
+
+  # To fetch from the secondary test root, we must set
+  # http_proxy=$(SECONDARY_HOSTNAME) during fetches.
+  SECONDARY_TEST_ROOT=http://secondary.example.com/mod_pagespeed_test
 fi
 
 rm -rf $OUTDIR
@@ -394,7 +397,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
 
   echo TEST: add_instrumentation has added unload handler with \
       ModPagespeedReportUnloadTime enabled in APACHE_SECONDARY_PORT.
-  $WGET -O $WGET_OUTPUT \
+  http_proxy=$SECONDARY_HOSTNAME $WGET -O $WGET_OUTPUT \
       $SECONDARY_TEST_ROOT/add_instrumentation.html\
 ?ModPagespeedFilters=add_instrumentation
   check [ $(grep -c "<script" $WGET_OUTPUT) = 3 ]
@@ -443,7 +446,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   # Also do the same experiment using a different VirtualHost.  It points
   # to the same htdocs, but uses a separate cache directory.
   SECONDARY_URL=$SECONDARY_TEST_ROOT/$URL_PATH
-  fetch_until $SECONDARY_URL "grep -c $COLOR0" 1
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $SECONDARY_URL "grep -c $COLOR0" 1
 
   # Track how many flushes were noticed by Apache processes up till
   # this point in time.  Note that each Apache process/vhost
@@ -486,7 +489,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   # Now flush the secondary cache too so it can see the change to $COLOR1.
   echo $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
   $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
-  fetch_until $SECONDARY_URL "grep -c $COLOR1" 1
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $SECONDARY_URL "grep -c $COLOR1" 1
 
   # Clean up update.css from mod_pagespeed_test so it doesn't leave behind
   # a stray file not under source control.
@@ -572,14 +575,39 @@ ModPagespeedFilters=rewrite_images"
     BLOCKING_REWRITE_URL="$SECONDARY_TEST_ROOT/\
 blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
     OUTFILE=$OUTDIR/blocking_rewrite.out.html
-    check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: junk' \
+    http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: junk' \
       $BLOCKING_REWRITE_URL > $OUTFILE
     check [ $(grep -c "[.]pagespeed[.]" $OUTFILE) -lt 1 ]
 
-    fetch_until $BLOCKING_REWRITE_URL 'grep -c [.]pagespeed[.]' 1
+    http_proxy=$SECONDARY_HOSTNAME fetch_until $BLOCKING_REWRITE_URL 'grep -c [.]pagespeed[.]' 1
   fi
-fi
 
+  # http://code.google.com/p/modpagespeed/issues/detail?id=494 -- test
+  # that fetching a css with embedded relative images from a different
+  # VirtualHost, accessing the same content, and rewrite-mapped to the
+  # primary domain, delivers results that are cached for a year, which
+  # implies the hash matches when serving vs when rewriting from HTML.
+  #
+  # This rewrites the CSS, absolutifying the embedded relative image URL
+  # reference based on the the main server host.
+  echo TEST: Relative images embedded in a CSS file served from a mapped domain
+  WGET_ARGS=""
+  DIR="mod_pagespeed_test/map_css_embedded"
+  URL="http://www.example.com/$DIR/issue494.html"
+  MAPPED_CSS="$DIR/I.styles.css.pagespeed.cf.OOyfQ_LoNP.css"
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
+      "grep -c cdn.example.com/$MAPPED_CSS" 1
+
+  # Now fetch the resource using a different host, which is mapped to the first
+  # one.  To get the correct bytes, matching hash, and long TTL, we need to do
+  # apply the domain mapping in the CSS resource fetch.
+  CSS_OUT="$OUTDIR/mapped_css.$$"
+  URL="http://origin.example.com/$MAPPED_CSS"
+  echo http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL '>' $CSS_OUT
+  http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL > $CSS_OUT
+  check fgrep -q "Cache-Control: max-age=31536000" $CSS_OUT
+  rm -f $CSS_OUT
+fi
 
 echo "TEST: Send custom fetch headers on resource re-fetches."
 PLAIN_HEADER="header=value"

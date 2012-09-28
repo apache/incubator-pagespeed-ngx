@@ -335,7 +335,9 @@ bool ServerContext::Write(const ResourceVector& inputs,
 
     if (output->kind() != kOnTheFlyResource &&
         (http_cache_->force_caching() || meta_data->IsProxyCacheable())) {
-      http_cache_->Put(output->url(), &output->value_, handler);
+      // This URL should already be mapped to the canonical rewrite domain,
+      // But we should store its unsharded form in the cache.
+      http_cache_->Put(output->UnshardedUrl(), &output->value_, handler);
     }
 
     // If we're asked to, also save a debug dump
@@ -349,7 +351,7 @@ bool ServerContext::Write(const ResourceVector& inputs,
     if (output->kind() != kOutlinedResource) {
       CachedResult* cached = output->EnsureCachedResultCreated();
       cached->set_optimizable(true);
-      cached->set_url(output->url());
+      cached->set_url(output->url());  // Note: output->url() will be sharded.
     }
   } else {
     // Note that we've already gotten a "could not open file" message;

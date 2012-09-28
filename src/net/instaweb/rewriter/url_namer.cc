@@ -37,7 +37,8 @@ UrlNamer::~UrlNamer() {
 
 // Moved from OutputResource::url()
 GoogleString UrlNamer::Encode(const RewriteOptions* rewrite_options,
-                              const OutputResource& output_resource) const {
+                              const OutputResource& output_resource,
+                              EncodeOption encode_option) const {
   GoogleString encoded_leaf(output_resource.full_name().Encode());
   GoogleString encoded_path;
   if (rewrite_options == NULL) {
@@ -51,7 +52,8 @@ GoogleString UrlNamer::Encode(const RewriteOptions* rewrite_options,
     GoogleUrl gurl(output_resource.resolved_base());
     GoogleString domain = StrCat(gurl.Origin(), "/");
     GoogleString sharded_domain;
-    if (domain_lawyer->ShardDomain(domain, int_hash, &sharded_domain)) {
+    if ((encode_option == kSharded) &&
+        domain_lawyer->ShardDomain(domain, int_hash, &sharded_domain)) {
       // The Path has a leading "/", and sharded_domain has a trailing "/".
       // So we need to perform some StringPiece substring arithmetic to
       // make them all fit together.  Note that we could have used

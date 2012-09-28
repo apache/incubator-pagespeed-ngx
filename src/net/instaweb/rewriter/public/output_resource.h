@@ -115,6 +115,18 @@ class OutputResource : public Resource {
   // cache.
   virtual GoogleString name_key() const;
 
+  // Builds a canonical URL in its unsharded form.  The Unsharded URL
+  // is used as a canonical key for HTTP Cache Puts and Gets.  The
+  // DomainLawyer can be used to find this same canonical domain during
+  // lookups in case the Fetch uses the unsharded form, or the wrong shard.
+  //
+  // For example, if you have a resource styles.css
+  //     ModPagespeedMapRewriteDomain master alias
+  //     ModPagespeedShardDomain master shard1,shard2
+  // then all HTTP cache puts/gets will use the key "http://master/style.css",
+  // which can be obtained from an output resource using this method.
+  GoogleString UnshardedUrl() const;
+
   // output-specific
   const GoogleString& resolved_base() const { return resolved_base_; }
   const GoogleString& unmapped_base() const { return unmapped_base_; }

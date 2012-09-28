@@ -40,7 +40,8 @@ class TestUrlNamer : public UrlNamer {
   virtual ~TestUrlNamer();
 
   virtual GoogleString Encode(const RewriteOptions* rewrite_options,
-                              const OutputResource& output_resource) const;
+                              const OutputResource& output_resource,
+                              EncodeOption encode_option) const;
 
   virtual bool Decode(const GoogleUrl& request_url,
                       GoogleUrl* owner_domain,

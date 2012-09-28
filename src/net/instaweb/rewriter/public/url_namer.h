@@ -38,6 +38,11 @@ class RewriteOptions;
 // '.pagespeed.<filter>.<hash>.<extension>'
 class UrlNamer {
  public:
+  enum EncodeOption {
+    kSharded,
+    kUnsharded
+  };
+
   class Callback {
    public:
     Callback() {}
@@ -56,9 +61,13 @@ class UrlNamer {
   // Given an output resource and an optional set of options, generate the URL
   // that will be embedded in the rewritten page.
   //
+  // encode_options is used to determine whether sharding is applied in this
+  // encoding.
+  //
   // Note: the default implementation returns the url of the output resource.
   virtual GoogleString Encode(const RewriteOptions* rewrite_options,
-                              const OutputResource& output_resource) const;
+                              const OutputResource& output_resource,
+                              EncodeOption encode_option) const;
 
   // Given the request_url, generate the original url.  If the URL naming
   // syntax supports an "owner" domain, and 'owner_domain' is non-null, then
