@@ -107,18 +107,6 @@ class UrlAsyncFetcher {
                      MessageHandler* message_handler,
                      AsyncFetch* fetch);
 
-  // Like StreamingFetch, but sends out a conditional GET that will not
-  // return the contents if they have not been modified since
-  // if_modified_since_ms.
-  // TODO(sligocki): GoogleString -> GoogleUrl
-  virtual bool ConditionalFetch(const GoogleString& url,
-                                int64 if_modified_since_ms,
-                                const RequestHeaders& request_headers,
-                                ResponseHeaders* response_headers,
-                                Writer* response_writer,
-                                MessageHandler* message_handler,
-                                Callback* callback);
-
   // Returns a maximum time that we will allow fetches to take, or
   // kUnspecifiedTimeout (the default) if we don't promise to timeout fetches.
   virtual int64 timeout_ms() { return kUnspecifiedTimeout; }
