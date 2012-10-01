@@ -772,13 +772,18 @@ GoogleString HashSplit(const Hasher* hasher, const StringPiece& str) {
   return StrCat(hash.substr(0, 1), "/", hash.substr(1));
 }
 
+}  // namespace
+
 // Utility to log metadata cache lookup info.
 // This executes in driver's rewrite thread, i.e., all calls to this are from
 // Functions added to the same QueuedWorkedPool::Sequence and so none of the
 // calls will be concurrent.
-void LogMetadataCacheInfo(
-    bool cache_ok, bool can_revalidate, RewriteDriver* driver) {
-  LogRecord* log_record = driver->log_record();
+void RewriteContext::LogMetadataCacheInfo(bool cache_ok, bool can_revalidate) {
+  if (has_parent()) {
+    // We do not log nested rewrites.
+    return;
+  }
+  LogRecord* log_record = Driver()->log_record();
   if (log_record == NULL) {
     return;
   }
@@ -793,8 +798,6 @@ void LogMetadataCacheInfo(
     metadata_log_info->set_num_misses(metadata_log_info->num_misses() + 1);
   }
 }
-
-}  // namespace
 
 void RewriteContext::SetPartitionKey() {
   // In Apache, we are populating a file-cache.  To be friendly to
@@ -1001,7 +1004,7 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
   bool cache_ok, can_revalidate;
   InputInfoStarVector revalidate;
   cache_ok = TryDecodeCacheResult(state, value, &can_revalidate, &revalidate);
-  LogMetadataCacheInfo(cache_ok, can_revalidate, Driver());
+  LogMetadataCacheInfo(cache_ok, can_revalidate);
   // If OK or worth rechecking, set things up for the cache hit case.
   if (cache_ok || can_revalidate) {
     for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
@@ -1836,7 +1839,7 @@ void RewriteContext::FetchCacheDone(
   InputInfoStarVector revalidate;
   bool cache_ok = TryDecodeCacheResult(
       state, value, &can_revalidate, &revalidate);
-  LogMetadataCacheInfo(cache_ok, can_revalidate, Driver());
+  LogMetadataCacheInfo(cache_ok, can_revalidate);
   if (cache_ok && (num_output_partitions() == 1)) {
     CachedResult* result = output_partition(0);
     OutputResourcePtr output_resource;

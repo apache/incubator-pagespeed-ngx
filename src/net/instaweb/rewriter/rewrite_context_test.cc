@@ -890,9 +890,9 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   // the expired date header from the origin.
   rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("trimmable", input_html, output_html);
-  EXPECT_EQ(1, lru_cache()->num_hits());     // 1 expired hit, 1 valid hit.
+  EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());  // re-inserts after expiration.
+  EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
   EXPECT_EQ(0, logging_info_->metadata_cache_info().num_misses());
@@ -2495,6 +2495,75 @@ TEST_F(RewriteContextTest, ReconstructChainedWrongHash) {
   EXPECT_STREQ("div{display:block}", content);
   EXPECT_TRUE(headers.HasValue(HttpAttributes::kCacheControl, "private"))
       << headers.ToString();
+}
+
+TEST_F(RewriteContextTest, NestedLogging) {
+  ResponseHeaders default_css_header;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  int64 now_ms = http_cache()->timer()->NowMs();
+  default_css_header.SetDateAndCaching(now_ms, 3 * kOriginTtlMs);
+  default_css_header.ComputeCaching();
+  SetFetchResponse(StrCat(kTestDomain, "x.css"), default_css_header,
+                   "a.css\nb.css\n");
+
+  const GoogleString kRewrittenUrl = Encode(kTestDomain, kNestedFilterId, "0",
+                                            "x.css", "css");
+  InitNestedFilter(kExpectNestedRewritesSucceed);
+  InitResources();
+  rewrite_driver()->set_log_record(&log_record_);
+  ValidateExpected("async3", CssLinkHref("x.css"), CssLinkHref(kRewrittenUrl));
+
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(6, lru_cache()->num_misses());
+  EXPECT_EQ(7, lru_cache()->num_inserts());
+  EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+  // The following would be 3 if we also logged for nested rewrites.
+  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_hits());
+  ClearStats();
+
+  GoogleString rewritten_contents;
+  EXPECT_TRUE(FetchResourceUrl(kRewrittenUrl, &rewritten_contents));
+  EXPECT_EQ(StrCat(Encode(kTestDomain, "uc", "0", "a.css", "css"), "\n",
+                   Encode(kTestDomain, "uc", "0", "b.css", "css"), "\n"),
+            rewritten_contents);
+  // HTTP cache hit for rewritten URL.
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_hits());
+  ClearStats();
+
+  rewrite_driver()->set_log_record(&log_record_);
+  ValidateExpected("async3", CssLinkHref("x.css"), CssLinkHref(kRewrittenUrl));
+  // Completes with a single hit for meta-data.
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_hits());
+  ClearStats();
+
+  mock_timer()->AdvanceMs(2 * kOriginTtlMs);
+  rewrite_driver()->set_log_record(&log_record_);
+  ValidateExpected("async3", CssLinkHref("x.css"), CssLinkHref(kRewrittenUrl));
+  // Expired meta-data (3).  expired HTTP cache for a.css and b.css, fresh in
+  // HTTP cache for x.css.
+  EXPECT_EQ(6, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  // Inserts for all meta-data, a.css and b.css in HTTPcache and rewritten URL
+  // in HTTP cache.
+  EXPECT_EQ(6, lru_cache()->num_inserts());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(2, http_cache()->cache_expirations()->Get());
+  // We log only for x.css metadata miss.
+  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_hits());
+  ClearStats();
 }
 
 TEST_F(RewriteContextTest, Nested) {

@@ -127,6 +127,7 @@ struct OptionName {
 "StatisticsLoggingChartsJS",             RewriteOptions::kStatisticsLoggingChartsJS
 "TestProxy",                             RewriteOptions::kTestProxy
 "UseFixedUserAgentForBlinkCacheMisses",  RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses
+"UseSmartDiffInBlink",                   RewriteOptions::kUseSmartDiffInBlink
 %%
 
 RewriteOptions::OptionEnum RewriteOptions::LookupOption(

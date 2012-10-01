@@ -231,6 +231,7 @@ class RewriteOptions {
     kServeStaleIfFetchError,
     kSupportNoScriptEnabled,
     kUseFixedUserAgentForBlinkCacheMisses,
+    kUseSmartDiffInBlink,
     kXPsaBlockingRewrite,
     kXModPagespeedHeaderValue,
 
@@ -1311,6 +1312,13 @@ class RewriteOptions {
   }
   bool enable_blink_html_change_detection_logging() const {
     return enable_blink_html_change_detection_logging_.value();
+  }
+
+  void set_use_smart_diff_in_blink(bool x) {
+    set_option(x, &use_smart_diff_in_blink_);
+  }
+  bool use_smart_diff_in_blink() const {
+    return use_smart_diff_in_blink_.value();
   }
 
   void set_propagate_blink_cache_deletes(bool x) {
@@ -2408,6 +2416,8 @@ class RewriteOptions {
   Option<bool> enable_blink_html_change_detection_;
   // Enable logging of publisher changes detected in html in blink flow.
   Option<bool> enable_blink_html_change_detection_logging_;
+  // Use smart diff to detect publisher changes in html in blink.
+  Option<bool> use_smart_diff_in_blink_;
   // Enable publishing of cache deletion events.
   Option<bool> propagate_blink_cache_deletes_;
   // Don't force disable lazyload in blink;

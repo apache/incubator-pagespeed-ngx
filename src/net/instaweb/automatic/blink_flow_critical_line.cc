@@ -398,8 +398,18 @@ class CriticalLineFetch : public AsyncFetch {
       delete this;
       return;
     }
+    bool recompute_critical_line = false;
+    if (options_->use_smart_diff_in_blink()) {
+      recompute_critical_line =
+          (computed_hash_smart_diff_ !=
+              blink_critical_line_data_->hash_smart_diff());
+    } else {
+      recompute_critical_line =
+          (computed_hash_ !=
+              blink_critical_line_data_->hash());
+    }
     if (options_->enable_blink_html_change_detection() &&
-        computed_hash_ != blink_critical_line_data_->hash()) {
+        recompute_critical_line) {
       num_blink_html_mismatches_cache_deletes_->IncBy(1);
       const PropertyCache::Cohort* cohort =
           rewrite_driver_->server_context()->page_property_cache()->

@@ -35,7 +35,7 @@ message FlushEarlyResource {
 
 // FlushEarlyInfo stores various information for flushing a request early i.e.
 // before receiving a response form the origin server.
-// NextId: 10
+// NextId: 12
 message FlushEarlyInfo {
   // ResponseHeaders proto from previous response which is used for subsequent
   // response for the same html url.
@@ -66,6 +66,14 @@ message FlushEarlyInfo {
 
   // The HTML for all resource elements that we want to try to flush early.
   optional string resource_html = 9;
+
+  // Stores the last n fetch latencies (time to first byte from the origin).
+  // Each entry is separated by a comma. Insertion happens at the front and
+  // entry will be deleted from the back.
+  optional string last_n_fetch_latencies = 10;
+
+  // Stores the average fetch latency in milliseconds.
+  optional double average_fetch_latency_ms = 11;
 }
 
 // FlushEarlyRenderInfo stores information for flushing a request early i.e.

@@ -17,9 +17,11 @@
 
 #include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
@@ -36,7 +38,12 @@ const char kCookieJs[] =
     "document.cookie = data[i];"
     "}})()";
 
+const char kFetchLatencySeparator[] = ",";
+
+const char kNumFetchLatencyEntries = 10;
+
 }  // namespace
+
 namespace net_instaweb {
 
 SuppressPreheadFilter::SuppressPreheadFilter(RewriteDriver* driver)
@@ -112,6 +119,14 @@ void SuppressPreheadFilter::Clear() {
 }
 
 void SuppressPreheadFilter::EndDocument() {
+  LogRecord* log_record = driver_->log_record();
+  if (!driver_->flushing_early() && log_record != NULL &&
+      log_record->logging_info()->timing_info().has_header_fetch_ms()) {
+    UpdateFetchLatencyInFlushEarlyProto(
+        log_record->logging_info()->timing_info().header_fetch_ms(),
+        driver_);
+  }
+
   driver_->flush_early_info()->set_pre_head(pre_head_);
   if (!charset_.empty()) {
     GoogleString type = StrCat(";charset=", charset_);
@@ -119,6 +134,59 @@ void SuppressPreheadFilter::EndDocument() {
     response_headers_.MergeContentType(type);
   }
   driver_->SaveOriginalHeaders(response_headers_);
+}
+
+void SuppressPreheadFilter::UpdateFetchLatencyInFlushEarlyProto(
+    int64 latency, RewriteDriver* driver) {
+  double average_fetch_latency = latency;
+  GoogleString last_n_fetch_latency;
+  FlushEarlyInfo* flush_early_info = driver->flush_early_info();
+  if (flush_early_info->has_last_n_fetch_latencies() &&
+      flush_early_info->has_average_fetch_latency_ms()) {
+    last_n_fetch_latency = flush_early_info->last_n_fetch_latencies();
+    average_fetch_latency = flush_early_info->average_fetch_latency_ms();
+    StringPieceVector fetch_latency_vector;
+    SplitStringPieceToVector(
+        last_n_fetch_latency.c_str(), kFetchLatencySeparator,
+        &fetch_latency_vector, true);
+    int num_fetch_latency = fetch_latency_vector.size();
+    if (num_fetch_latency > kNumFetchLatencyEntries) {
+      LOG(WARNING) << "Number of fetch latencies in flush early proto is more "
+                 << "than " << kNumFetchLatencyEntries << " for url: "
+                 << driver->url();
+      average_fetch_latency = 0;
+      last_n_fetch_latency = "";
+    } else if (num_fetch_latency == kNumFetchLatencyEntries) {
+      // If last_n_fetch_latency contains 'n' entries, then remove the entry
+      // from the end and add new entry at the front. Also update the average
+      // latency.
+      int64 nth_latency;
+      if (StringToInt64(
+          fetch_latency_vector[kNumFetchLatencyEntries - 1].as_string(),
+          &nth_latency)) {
+        average_fetch_latency = ((average_fetch_latency * num_fetch_latency) -
+            nth_latency + latency) / num_fetch_latency;
+        last_n_fetch_latency = StrCat(
+            Integer64ToString(latency), kFetchLatencySeparator,
+            last_n_fetch_latency.substr(
+                0, last_n_fetch_latency.find_last_of(kFetchLatencySeparator)));
+      }
+    } else {
+      // last_n_fetch_latency does not contains 'n' entries. Add a new entry at
+      // the front and update average.
+      average_fetch_latency =
+          (average_fetch_latency * (num_fetch_latency) + latency) /
+          (num_fetch_latency + 1);
+      last_n_fetch_latency = StrCat(
+          Integer64ToString(latency), ",",
+          flush_early_info->last_n_fetch_latencies());
+    }
+  } else {
+    // Add entry in the proto if no information is present.
+    last_n_fetch_latency = Integer64ToString(latency);
+  }
+  flush_early_info->set_average_fetch_latency_ms(average_fetch_latency);
+  flush_early_info->set_last_n_fetch_latencies(last_n_fetch_latency);
 }
 
 void SuppressPreheadFilter::SendCookies(HtmlElement* element) {

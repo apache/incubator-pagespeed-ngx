@@ -888,10 +888,11 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     SetFetchResponse(url, response_headers, kHtmlInput);
   }
 
-  void TestBlinkHtmlChangeDetection(bool just_logging) {
+  void TestBlinkHtmlChangeDetection(bool just_logging, bool use_smart_diff) {
     options_->ClearSignatureForTesting();
     options_->set_enable_blink_html_change_detection(!just_logging);
     options_->set_enable_blink_html_change_detection_logging(just_logging);
+    options_->set_use_smart_diff_in_blink(use_smart_diff);
     server_context()->ComputeSignature(options_.get());
 
     GoogleString text;
@@ -1002,7 +1003,8 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
         BlinkFlowCriticalLine::kNumBlinkHtmlMatches)->Get());
     EXPECT_EQ(0, statistics()->FindVariable(
         BlinkFlowCriticalLine::kNumBlinkHtmlSmartdiffMismatches)->Get());
-    EXPECT_EQ(just_logging ? 0 : 1, statistics()->FindVariable(
+    EXPECT_EQ((just_logging || use_smart_diff) ? 0 : 1,
+        statistics()->FindVariable(
         BlinkFlowCriticalLine::kNumComputeBlinkCriticalLineDataCalls)->Get());
     EXPECT_EQ(1, statistics()->FindVariable(
         BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
@@ -1894,11 +1896,15 @@ TEST_F(BlinkFlowCriticalLineTest, TestNullUserAgentAndEmptyUserAgent) {
 }
 
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetection) {
-  TestBlinkHtmlChangeDetection(false);
+  TestBlinkHtmlChangeDetection(false, false);
 }
 
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionLogging) {
-  TestBlinkHtmlChangeDetection(true);
+  TestBlinkHtmlChangeDetection(true, false);
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlChangeDetectionWithSmartDiff) {
+  TestBlinkHtmlChangeDetection(false, true);
 }
 
 TEST_F(BlinkFlowCriticalLineTest, TestSetBlinkCriticalLineDataFalse) {

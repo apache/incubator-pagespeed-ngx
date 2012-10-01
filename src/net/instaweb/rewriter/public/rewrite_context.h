@@ -493,6 +493,7 @@ class RewriteContext {
   void OutputCacheMiss();
   void ResourceFetchDone(bool success, ResourcePtr resource, int slot_index);
   void ResourceRevalidateDone(InputInfo* input_info, bool success);
+  void LogMetadataCacheInfo(bool cache_ok, bool can_revalidate);
 
   // When a RewriteContext 'B' discovers that it's doing the exact same rewrite
   // as a previous RewriteContext 'A', B adds itself to A->repeated_, and

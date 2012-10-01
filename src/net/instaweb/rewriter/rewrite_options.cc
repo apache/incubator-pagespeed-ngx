@@ -740,6 +740,8 @@ void RewriteOptions::AddProperties() {
   add_option(kDefaultBlinkHtmlChangeDetectionTimeMs,
              &RewriteOptions::blink_html_change_detection_time_ms_, "bhcdt");
   add_option(false, &RewriteOptions::override_ie_document_mode_, "oidm");
+  add_option(false, &RewriteOptions::use_smart_diff_in_blink_, "usdb",
+             RewriteOptions::kUseSmartDiffInBlink);
 
   //
   // Recently sriharis@ excluded a variety of options from

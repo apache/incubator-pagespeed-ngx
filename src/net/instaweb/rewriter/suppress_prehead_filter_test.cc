@@ -19,6 +19,7 @@
 
 #include "net/instaweb/http/http.pb.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
@@ -91,12 +92,47 @@ class SuppressPreheadFilterTest : public RewriteTestBase {
     EXPECT_STREQ(val, content_type);
   }
 
+  void CallUpdateFetchLatencyInFlushEarlyProto(double latency) {
+    SuppressPreheadFilter::UpdateFetchLatencyInFlushEarlyProto(
+        latency, rewrite_driver_);
+  }
+
  private:
   StringWriter writer_;
   ResponseHeaders headers_;
 
   DISALLOW_COPY_AND_ASSIGN(SuppressPreheadFilterTest);
 };
+
+TEST_F(SuppressPreheadFilterTest, UpdateFetchLatencyInFlushEarlyProto) {
+  EXPECT_FALSE(
+      rewrite_driver_->flush_early_info()->has_last_n_fetch_latencies());
+  EXPECT_FALSE(
+      rewrite_driver_->flush_early_info()->has_average_fetch_latency_ms());
+  // When there is no entry.
+  CallUpdateFetchLatencyInFlushEarlyProto(100);
+  EXPECT_EQ("100",
+            rewrite_driver_->flush_early_info()->last_n_fetch_latencies());
+  EXPECT_EQ(100,
+            rewrite_driver_->flush_early_info()->average_fetch_latency_ms());
+
+  // When less than 10 entries exists.
+  CallUpdateFetchLatencyInFlushEarlyProto(150);
+  EXPECT_EQ("150,100",
+            rewrite_driver_->flush_early_info()->last_n_fetch_latencies());
+  EXPECT_EQ(125,
+            rewrite_driver_->flush_early_info()->average_fetch_latency_ms());
+
+  // When there are 10 entries.
+  rewrite_driver_->flush_early_info()->set_last_n_fetch_latencies(
+      "95,96,97,98,99,101,102,103,104,105");
+  rewrite_driver_->flush_early_info()->set_average_fetch_latency_ms(100);
+  CallUpdateFetchLatencyInFlushEarlyProto(205);
+  EXPECT_EQ("205,95,96,97,98,99,101,102,103,104",
+            rewrite_driver_->flush_early_info()->last_n_fetch_latencies());
+  EXPECT_EQ(110,
+            rewrite_driver_->flush_early_info()->average_fetch_latency_ms());
+}
 
 TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
   InitResources();
@@ -109,6 +145,12 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
       "</head>"
       "<body></body></html>";
   GoogleString html_input = StrCat(pre_head_input, post_head_input);
+  scoped_ptr<LogRecord> log_record(new LogRecord);
+  rewrite_driver_->set_log_record(log_record.get());
+  rewrite_driver_->log_record()->logging_info()
+      ->mutable_timing_info()->set_header_fetch_ms(100);
+  rewrite_driver_->flush_early_info()->set_last_n_fetch_latencies("96,98");
+  rewrite_driver_->flush_early_info()->set_average_fetch_latency_ms(97);
 
   Parse("not_flushed_early", html_input);
   EXPECT_EQ(html_input, output_);
@@ -117,6 +159,11 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
   // appropriate pre head information.
   EXPECT_EQ(pre_head_input,
             rewrite_driver()->flush_early_info()->pre_head());
+  EXPECT_EQ("100,96,98",
+            rewrite_driver_->flush_early_info()->last_n_fetch_latencies());
+  EXPECT_EQ(98,
+            rewrite_driver_->flush_early_info()->average_fetch_latency_ms());
+  rewrite_driver_->set_log_record(NULL);
 
   // pre head is suppressed if the dummy head was flushed early.
   output_.clear();
