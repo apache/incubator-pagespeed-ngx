@@ -27,18 +27,40 @@ extern "C" {
   #include <ngx_http.h>
 }
 
-#include "net/instaweb/htmlparse/public/html_parse.h"
-#include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "ngx_rewrite_driver_factory.h"
+
+#include "net/instaweb/rewriter/public/process_context.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/google_message_handler.h"
 
 extern ngx_module_t ngx_pagespeed;
+
+// Hacks for debugging.
+#define DBG(r, args...)                                       \
+  ngx_log_error(NGX_LOG_ALERT, (r)->connection->log, 0, args)
+#define CDBG(cf, args...)                                     \
+  ngx_conf_log_error(NGX_LOG_ALERT, cf, 0, args)
 
 typedef struct {
   ngx_flag_t  active;
 } ngx_http_pagespeed_loc_conf_t;
+
+typedef struct {
+  net_instaweb::NgxRewriteDriverFactory* driver_factory;
+  net_instaweb::ServerContext* server_context;
+} ngx_http_pagespeed_module_ctx_t;
+
+typedef struct {
+  net_instaweb::RewriteDriver* driver;
+  GoogleString* output;
+  net_instaweb::StringWriter* writer;
+} ngx_http_pagespeed_request_ctx_t;
+
+// TODO(jefftk): Giant hack.  Need to make this not be global.
+static ngx_http_pagespeed_module_ctx_t* context = NULL;
 
 static ngx_command_t ngx_http_pagespeed_commands[] = {
   { ngx_string("pagespeed"),
@@ -95,6 +117,8 @@ ngx_int_t ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
 static
 ngx_int_t ngx_http_pagespeed_note_processed(ngx_http_request_t* r,
                                             ngx_chain_t* in) {
+  DBG(r, "Noting processed");
+
   // Find the end of the buffer chain.
   ngx_chain_t* chain_link;
   int chain_contains_last_buffer = 0;
@@ -154,26 +178,52 @@ ngx_int_t ngx_http_pagespeed_note_processed(ngx_http_request_t* r,
   return NGX_OK;
 }
 
-// Replace each buffer with a new one that's been through HtmlParse.
+// Replace each buffer chain with a new one that's been optimized.
 static
-ngx_int_t ngx_http_pagespeed_parse_and_replace_buffer(ngx_http_request_t* r,
-                                                      ngx_chain_t* in) {
-  GoogleString output_buffer;
-  net_instaweb::StringWriter write_to_string(&output_buffer);
-  net_instaweb::NullMessageHandler handler;
+ngx_int_t ngx_http_pagespeed_optimize_and_replace_buffer(ngx_http_request_t* r,
+                                                         ngx_chain_t* in) {
+  // TODO(jefftk): figure out how to get the real url out of r.
+  StringPiece url("http://example.com");
 
-  net_instaweb::HtmlParse html_parse(&handler);
-  net_instaweb::HtmlWriterFilter html_writer_filter(&html_parse);
+  ngx_http_pagespeed_request_ctx_t* ctx =
+      static_cast<ngx_http_pagespeed_request_ctx_t*>(
+          ngx_http_get_module_ctx(r, ngx_pagespeed));
+  if (ctx == NULL) {
+    // Set up things we do once at the beginning of the request.
+    
+    ctx = new ngx_http_pagespeed_request_ctx_t;
+    ctx->driver = context->server_context->NewRewriteDriver();
 
-  html_writer_filter.set_writer(&write_to_string);
-  html_parse.AddFilter(&html_writer_filter);
+    // TODO(jefftk): replace this with a writer that generates proper nginx
+    // buffers and puts them in the chain.  Or avoids the double
+    // copy some other way.
+    ctx->output = new GoogleString();
+    ctx->writer = new net_instaweb::StringWriter(ctx->output);
+    ctx->driver->SetWriter(ctx->writer);
+
+    // For testing we always want to perform any optimizations we can, so we
+    // wait until everything is done rather than using a deadline, the way we
+    // want to eventually.
+    ctx->driver->set_fully_rewrite_on_flush(true);
+
+    ngx_http_set_ctx(r, ctx, ngx_pagespeed);
+    bool ok = ctx->driver->StartParse(url);
+    if (!ok) {
+      ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
+                    "Failed to StartParse on url %*s",
+                    url.size(), url.data());
+      return NGX_ERROR;
+    }
+  }
 
   u_char* file_contents = NULL;
   StringPiece buffer_contents;
   ngx_chain_t* cur;
-  for (cur = in; cur != NULL; cur = cur->next) {
-    html_parse.StartParse("http://example.com");
-
+  int last_buf = 0;
+  int last_in_chain = 0;
+  for (cur = in; cur != NULL;) {
+    last_buf = cur->buf->last_buf;
+    last_in_chain = cur->buf->last_in_chain;
     if (cur->buf->file != NULL) {
       ssize_t file_size = cur->buf->file_last - cur->buf->file_pos;
       // TODO(jefftk): if file_size is big enough can we still read it all at
@@ -198,42 +248,71 @@ ngx_int_t ngx_http_pagespeed_parse_and_replace_buffer(ngx_http_request_t* r,
       buffer_contents = StringPiece(reinterpret_cast<char*>(cur->buf->pos),
                                     cur->buf->last - cur->buf->pos);
     }
-    html_parse.ParseText(buffer_contents);
+    ctx->driver->ParseText(buffer_contents);
     if (file_contents != NULL) {
-      // TODO(jefftk): this pfree call fails with NGX_DECLINED, but I think
+      // TODO(jefftk): the pfree calls fail with NGX_DECLINED, but I think
       // that's just NGINX only bothering to free large allocs.
       ngx_pfree(r->pool, file_contents);
       file_contents = NULL;
     }
+    buffer_contents= StringPiece(NULL, 0);
 
-    html_parse.FinishParse();
-
-    // Prepare the new buffer.
-    ngx_buf_t* b = static_cast<ngx_buf_t*>(ngx_calloc_buf(r->pool));
-    if (b == NULL) {
-      ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
-                    "failed to allocate buffer");
-
-      return NGX_ERROR;
+    // We're done with buffers as we pass them to the rewrite driver, so free
+    // them and their chain links as we go.  Don't free the first buffer (in)
+    // which we need below.
+    ngx_chain_t* next_link = cur->next;
+    if (cur != in) {
+      ngx_pfree(r->pool, cur->buf);
+      ngx_pfree(r->pool, cur);
     }
-    b->pos = b->start = static_cast<u_char*>(
-        ngx_pnalloc(r->pool, output_buffer.length()));
-    if (b->pos == NULL) {
-      ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
-                    "failed to allocate %d bytes", output_buffer.length());
-      return NGX_ERROR;
-    }
-    output_buffer.copy(reinterpret_cast<char*>(b->pos), output_buffer.length());
-    b->last = b->end = b->pos + output_buffer.length();
-    b->temporary = 1;
-    b->last_buf = cur->buf->last_buf;
-    b->last_in_chain = cur->buf->last_in_chain;
-
-    ngx_pfree(r->pool, cur->buf);
-    cur->buf = b;
-
-    output_buffer.clear();
+    cur = next_link;
   }
+  in->next = NULL;  // We freed all the later buffers.
+
+  // Prepare the new buffer.
+  ngx_buf_t* b = static_cast<ngx_buf_t*>(ngx_calloc_buf(r->pool));
+  if (b == NULL) {
+    ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
+                  "failed to allocate buffer");
+
+    return NGX_ERROR;
+  }
+
+  b->temporary = 1;
+  b->last_buf = last_buf;
+  b->last_in_chain = last_in_chain;
+  in->next = NULL;
+
+  // replace the first link's buffer with our new one.
+  ngx_pfree(r->pool, in->buf);
+  in->buf = b;
+
+  if (last_buf) {
+    ctx->driver->FinishParse();
+  } else {
+    ctx->driver->Flush();
+  }
+
+  // TODO(jefftk): need to store how much went out on previous flushes and only
+  // copy here the new stuff.  Keep the count in the request context.
+  b->pos = b->start = static_cast<u_char*>(
+      ngx_pnalloc(r->pool, ctx->output->length()));
+  if (b->pos == NULL) {
+    ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
+                  "failed to allocate %d bytes", ctx->output->length());
+    return NGX_ERROR;
+  }
+  ctx->output->copy(reinterpret_cast<char*>(b->pos), ctx->output->length());
+  b->last = b->end = b->pos + ctx->output->length();
+
+  if (last_buf) {
+    // release request context
+    ngx_http_set_ctx(r, NULL, ngx_pagespeed);
+    delete ctx->writer;
+    delete ctx->output;
+    delete ctx;
+  }
+
   return NGX_OK;
 }
 
@@ -242,7 +321,7 @@ ngx_int_t ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
 {
   ngx_int_t rc;
 
-  rc = ngx_http_pagespeed_parse_and_replace_buffer(r, in);
+  rc = ngx_http_pagespeed_optimize_and_replace_buffer(r, in);
   if (rc != NGX_OK) {
     return rc;
   }
@@ -268,12 +347,20 @@ ngx_http_pagespeed_init(ngx_conf_t* cf)
 
     ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_pagespeed_body_filter;
+
+    net_instaweb::NgxRewriteDriverFactory::Initialize();
+    // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
+    // we're done with this module.
+
+    context = new ngx_http_pagespeed_module_ctx_t();
+    context->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
+    context->server_context = context->driver_factory->CreateServerContext();
   }
 
   return NGX_OK;
 }
 
-static ngx_http_module_t ngx_http_pagespeed_module_ctx = {
+static ngx_http_module_t ngx_http_pagespeed_module = {
   NULL,
   ngx_http_pagespeed_init,  // Post configuration.
   NULL,
@@ -286,7 +373,7 @@ static ngx_http_module_t ngx_http_pagespeed_module_ctx = {
 
 ngx_module_t ngx_pagespeed = {
   NGX_MODULE_V1,
-  &ngx_http_pagespeed_module_ctx,
+  &ngx_http_pagespeed_module,
   ngx_http_pagespeed_commands,
   NGX_HTTP_MODULE,
   NULL,
