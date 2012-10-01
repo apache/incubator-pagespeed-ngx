@@ -12,12 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-ngx_addon_name=ngx_pagespeed
+this_dir="$(dirname ${BASH_SOURCE[0]})"
+mod_pagespeed_dir="$this_dir/../mod_pagespeed/src/out/Release"
+ngx_feature="psol"
+ngx_feature_name=""
+ngx_feature_run=no
+ngx_feature_incs="#include \"net/instaweb/public/version.h\""
+pagespeed_include="$mod_pagespeed_dir/obj/gen"
+ngx_feature_path="$pagespeed_include"
+pagespeed_lib_dir="$mod_pagespeed_dir/obj.target/net/instaweb/"
+pagespeed_libs="-linstaweb_automatic -L $pagespeed_lib_dir -lstdc++"
+ngx_feature_libs="$pagespeed_libs"
+ngx_feature_test="char c = MOD_PAGESPEED_VERSION_STRING[0]"
 
-NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/src/ngx_pagespeed.c"
-HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
+# Test whether we have pagespeed and can compile and link against it.
+. "$this_dir/cpp_feature"
 
-# TODO link against libpagespeed / libpsol
-# CORE_LIBS="$CORE_LIBS -lpagespeed"
+if [ $ngx_found = yes ]; then
+  ngx_addon_name=ngx_pagespeed
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/src/ngx_pagespeed.cc"
+  HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
+  CORE_LIBS="$CORE_LIBS $pagespeed_libs"
+  CORE_INCS="$CORE_INCS $pagespeed_include"
+else
+  cat << END
+$0: error: module ngx_pagespeed requires the pagespeed optimization library
+END
+  exit 1
+fi
 
 have=NGX_PAGESPEED . auto/have
