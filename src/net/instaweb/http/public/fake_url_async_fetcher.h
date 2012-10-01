@@ -22,7 +22,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_FAKE_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_FAKE_URL_ASYNC_FETCHER_H_
 
-#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/url_pollable_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -31,9 +31,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class RequestHeaders;
-class ResponseHeaders;
-class Writer;
 
 // Constructs an async fetcher using a synchronous fetcher, blocking
 // on a fetch and then the 'done' callback directly.  It's also
@@ -51,15 +48,13 @@ class FakeUrlAsyncFetcher : public UrlPollableAsyncFetcher {
 
   virtual bool SupportsHttps() const { return fetcher_supports_https_; }
 
-  virtual bool StreamingFetch(const GoogleString& url,
-                              const RequestHeaders& request_headers,
-                              ResponseHeaders* response_headers,
-                              Writer* writer,
-                              MessageHandler* handler,
-                              Callback* callback) {
+  virtual bool Fetch(const GoogleString& url,
+                     MessageHandler* message_handler,
+                     AsyncFetch* fetch) {
     bool ret = url_fetcher_->StreamingFetchUrl(
-        url, request_headers, response_headers, writer, handler);
-    callback->Done(ret);
+        url, *fetch->request_headers(), fetch->response_headers(), fetch,
+        message_handler);
+    fetch->Done(ret);
     return true;
   }
 

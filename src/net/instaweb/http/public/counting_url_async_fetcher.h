@@ -27,10 +27,8 @@
 
 namespace net_instaweb {
 
+class AsyncFetch;
 class MessageHandler;
-class RequestHeaders;
-class ResponseHeaders;
-class Writer;
 
 class CountingUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
@@ -44,20 +42,18 @@ class CountingUrlAsyncFetcher : public UrlAsyncFetcher {
 
   virtual bool SupportsHttps() const { return fetcher_->SupportsHttps(); }
 
-  virtual bool StreamingFetch(const GoogleString& url,
-                              const RequestHeaders& request_headers,
-                              ResponseHeaders* response_headers,
-                              Writer* fetched_content_writer,
-                              MessageHandler* message_handler,
-                              Callback* callback);
+  virtual bool Fetch(const GoogleString& url,
+                     MessageHandler* message_handler,
+                     AsyncFetch* fetch);
+
   int fetch_count() const { return fetch_count_; }
   int byte_count() const { return byte_count_; }
   int failure_count() const { return failure_count_; }
 
   void Clear();
 
-  class Fetch;
-  friend class Fetch;
+  class CountingFetch;
+  friend class CountingFetch;
 
  private:
   UrlAsyncFetcher* fetcher_;

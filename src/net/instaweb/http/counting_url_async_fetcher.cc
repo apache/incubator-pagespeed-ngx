@@ -18,59 +18,51 @@
 
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 
-#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/counting_writer.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
-class RequestHeaders;
-class ResponseHeaders;
-class Writer;
 
-class CountingUrlAsyncFetcher::Fetch : public UrlAsyncFetcher::Callback {
+class CountingUrlAsyncFetcher::CountingFetch : public SharedAsyncFetch {
  public:
-  Fetch(UrlAsyncFetcher::Callback* callback, CountingUrlAsyncFetcher* counter,
-        Writer* writer)
-      : callback_(callback),
-        counter_(counter),
-        byte_counter_(writer) {
+  CountingFetch(CountingUrlAsyncFetcher* counter, AsyncFetch* base_fetch)
+      : SharedAsyncFetch(base_fetch), counter_(counter) {
   }
 
-  virtual void Done(bool success) {
+  virtual bool HandleWrite(const StringPiece& content,
+                           MessageHandler* handler) {
+    counter_->byte_count_ += content.size();
+    return base_fetch()->Write(content, handler);
+  }
+
+  virtual void HandleDone(bool success) {
     // TODO(jmarantz): consider whether a Mutex is needed and how to supply one.
     ++counter_->fetch_count_;
-    if (success) {
-      counter_->byte_count_ += byte_counter_.byte_count();
-    } else {
+    if (!success) {
       ++counter_->failure_count_;
     }
-    callback_->Done(success);
+    base_fetch()->Done(success);
     delete this;
   }
 
-  Writer* writer() { return &byte_counter_; }
-
  private:
-  UrlAsyncFetcher::Callback* callback_;
   CountingUrlAsyncFetcher* counter_;
-  CountingWriter byte_counter_;
 
-  DISALLOW_COPY_AND_ASSIGN(Fetch);
+  DISALLOW_COPY_AND_ASSIGN(CountingFetch);
 };
 
 CountingUrlAsyncFetcher::~CountingUrlAsyncFetcher() {
 }
 
-bool CountingUrlAsyncFetcher::StreamingFetch(
-    const GoogleString& url, const RequestHeaders& request_headers,
-    ResponseHeaders* response_headers, Writer* fetched_content_writer,
-    MessageHandler* message_handler, Callback* callback) {
-  Fetch* fetch = new Fetch(callback, this, fetched_content_writer);
-  return fetcher_->StreamingFetch(url, request_headers, response_headers,
-                                  fetch->writer(), message_handler, fetch);
+bool CountingUrlAsyncFetcher::Fetch(const GoogleString& url,
+                                    MessageHandler* message_handler,
+                                    AsyncFetch* base_fetch) {
+  CountingFetch* counting_fetch = new CountingFetch(this, base_fetch);
+  return fetcher_->Fetch(url, message_handler, counting_fetch);
 }
 
 void CountingUrlAsyncFetcher::Clear() {

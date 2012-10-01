@@ -23,21 +23,22 @@
 
 #include <utility>  // for pair
 #include <vector>
-#include "net/instaweb/util/public/basictypes.h"
+
 #include "base/logging.h"
-#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
 class RequestHeaders;
+class ResponseHeaders;
 class SimpleStats;
 class Writer;
 
@@ -91,43 +92,35 @@ class FetcherTest : public testing::Test {
     explicit MockAsyncFetcher(UrlFetcher* url_fetcher)
         : url_fetcher_(url_fetcher) {}
 
-    virtual bool StreamingFetch(const GoogleString& url,
-                                const RequestHeaders& request_headers,
-                                ResponseHeaders* response_headers,
-                                Writer* response_writer,
-                                MessageHandler* handler,
-                                Callback* callback);
+    virtual bool Fetch(const GoogleString& url,
+                       MessageHandler* handler,
+                       AsyncFetch* fetch);
 
     void CallCallbacks();
 
    private:
     UrlFetcher* url_fetcher_;
-    std::vector<std::pair<bool, Callback*> > deferred_callbacks_;
+    std::vector<std::pair<bool, AsyncFetch*> > deferred_callbacks_;
 
     DISALLOW_COPY_AND_ASSIGN(MockAsyncFetcher);
   };
 
   // Callback that just checks correct Done status and keeps track of whether
   // it has been called yet or not.
-  class CheckCallback : public UrlAsyncFetcher::Callback {
+  class CheckCallback : public StringAsyncFetch {
    public:
     explicit CheckCallback(bool expect_success, bool* callback_called)
-        : expect_success_(expect_success),
-          content_writer_(&content_),
-          callback_called_(callback_called) {
+        : expect_success_(expect_success), callback_called_(callback_called) {
     }
 
-    virtual void Done(bool success) {
+    virtual void HandleDone(bool success) {
       *callback_called_ = true;
       CHECK_EQ(expect_success_, success);
-      ValidateMockFetcherResponse(success, true, content_, response_headers_);
+      ValidateMockFetcherResponse(success, true, buffer(), *response_headers());
       delete this;
     }
 
     bool expect_success_;
-    ResponseHeaders response_headers_;
-    GoogleString content_;
-    StringWriter content_writer_;
     bool* callback_called_;
 
    private:

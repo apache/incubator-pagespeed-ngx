@@ -27,12 +27,10 @@
 
 namespace net_instaweb {
 
+class AsyncFetch;
 class FileSystem;
 class MessageHandler;
-class RequestHeaders;
-class ResponseHeaders;
 class Timer;
-class Writer;
 
 // HttpDumpWriter checks to see whether the HTTP dump is available on the
 // filesystem.  If not, it fetches it from another fetcher (e.g. one that
@@ -55,12 +53,9 @@ class HttpDumpUrlAsyncWriter : public UrlAsyncFetcher {
   virtual bool SupportsHttps() const { return base_fetcher_->SupportsHttps(); }
 
   // This is a synchronous/blocking implementation.
-  virtual bool StreamingFetch(const GoogleString& url,
-                              const RequestHeaders& request_headers,
-                              ResponseHeaders* response_headers,
-                              Writer* response_writer,
-                              MessageHandler* message_handler,
-                              Callback* callback);
+  virtual bool Fetch(const GoogleString& url,
+                     MessageHandler* handler,
+                     AsyncFetch* base_fetch);
 
   // Controls whether we will request and save gzipped content to the
   // file system.  Note that http_dump_url_fetcher will inflate on
@@ -69,7 +64,7 @@ class HttpDumpUrlAsyncWriter : public UrlAsyncFetcher {
 
  private:
   // Helper class to manage individual fetchs.
-  class Fetch;
+  class DumpFetch;
 
   HttpDumpUrlFetcher dump_fetcher_;
   // Used to fetch urls that aren't in the dump yet.

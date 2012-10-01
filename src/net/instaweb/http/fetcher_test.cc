@@ -21,6 +21,7 @@
 #include <utility>                      // for pair, make_pair
 #include <vector>
 #include "base/logging.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -94,11 +95,8 @@ int FetcherTest::CountFetchesAsync(const StringPiece& url, bool expect_success,
   CHECK(async_fetcher() != NULL);
   *callback_called = false;
   int starting_fetches = mock_fetcher_.num_fetches();
-  RequestHeaders request_headers;
   CheckCallback* fetch = new CheckCallback(expect_success, callback_called);
-  async_fetcher()->StreamingFetch(
-      url.as_string(), request_headers, &fetch->response_headers_,
-      &fetch->content_writer_, &message_handler_, fetch);
+  async_fetcher()->Fetch(url.as_string(), &message_handler_, fetch);
   return mock_fetcher_.num_fetches() - starting_fetches;
 }
 
@@ -138,6 +136,8 @@ bool FetcherTest::MockFetcher::StreamingFetchUrl(
     ret = Populate("no-cache", response_headers, writer,
                    message_handler);
   } else {
+    // Note: Non-zero status code must be set.
+    response_headers->set_status_code(HttpStatus::kNotFound);
     writer->Write(kErrorMessage, message_handler);
   }
   ++num_fetches_;
@@ -161,24 +161,21 @@ bool FetcherTest::MockFetcher::Populate(const char* cache_control,
 
 
 // MockAsyncFetcher
-bool FetcherTest::MockAsyncFetcher::StreamingFetch(
-    const GoogleString& url,
-    const RequestHeaders& request_headers,
-    ResponseHeaders* response_headers,
-    Writer* writer,
-    MessageHandler* handler,
-    Callback* callback) {
+bool FetcherTest::MockAsyncFetcher::Fetch(const GoogleString& url,
+                                          MessageHandler* handler,
+                                          AsyncFetch* fetch) {
   bool status = url_fetcher_->StreamingFetchUrl(
-      url, request_headers, response_headers, writer, handler);
-  deferred_callbacks_.push_back(std::make_pair(status, callback));
+      url, *fetch->request_headers(), fetch->response_headers(), fetch,
+      handler);
+  deferred_callbacks_.push_back(std::make_pair(status, fetch));
   return false;
 }
 
 void FetcherTest::MockAsyncFetcher::CallCallbacks() {
   for (int i = 0, n = deferred_callbacks_.size(); i < n; ++i) {
     bool status = deferred_callbacks_[i].first;
-    Callback* callback = deferred_callbacks_[i].second;
-    callback->Done(status);
+    AsyncFetch* fetch = deferred_callbacks_[i].second;
+    fetch->Done(status);
   }
   deferred_callbacks_.clear();
 }

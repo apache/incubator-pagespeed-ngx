@@ -21,10 +21,10 @@
 #include <algorithm>
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/url_pollable_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -70,7 +70,7 @@ class TrapWriter : public Writer {
 // fetch at a time!
 class DelayedFetcher : public UrlPollableAsyncFetcher {
  public:
-  // Note: if sim_delay <= 0, will report immediately at StreamingFetch
+  // Note: If sim_delay <= 0, will report immediately at Fetch.
   DelayedFetcher(Timer* timer, MessageHandler* handler,
                  int64 sim_delay_ms, bool sim_success)
       : timer_(timer), handler_(handler), sim_delay_ms_(sim_delay_ms),
@@ -78,16 +78,10 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
     CleanFetchSettings();
   }
 
-  virtual bool StreamingFetch(const GoogleString& url,
-                              const RequestHeaders& request_headers,
-                              ResponseHeaders* response_headers,
-                              Writer* response_writer,
-                              MessageHandler* message_handler,
-                              Callback* callback) {
+  virtual bool Fetch(const GoogleString& url, MessageHandler* handler,
+                     AsyncFetch* fetch) {
     CHECK(!fetch_pending_);
-    response_headers_ = response_headers;
-    response_writer_ = response_writer;
-    callback_ = callback;
+    fetch_ = fetch;
     remaining_ms_ = sim_delay_ms_;
     fetch_pending_ = true;
 
@@ -118,22 +112,20 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
     fetch_pending_ = false;
 
     // Defensively set active fetch variables to catch us doing something silly.
-    response_headers_ = NULL;
-    response_writer_ = NULL;
-    callback_ = NULL;
+    fetch_ = NULL;
     remaining_ms_ = 0;
   }
 
   void ReportResult() {
     ResponseHeaders headers;
     if (sim_success_) {
-      response_headers_->CopyFrom(headers);
-      response_headers_->Add(kHeader, kText);
-      response_headers_->set_status_code(HttpStatus::kOK);
-      response_writer_->Write(kText, handler_);
-      response_writer_->Flush(handler_);
+      fetch_->response_headers()->CopyFrom(headers);
+      fetch_->response_headers()->Add(kHeader, kText);
+      fetch_->response_headers()->set_status_code(HttpStatus::kOK);
+      fetch_->HeadersComplete();
+      fetch_->Write(kText, handler_);
     }
-    callback_->Done(sim_success_);
+    fetch_->Done(sim_success_);
     CleanFetchSettings();
   }
 
@@ -145,9 +137,7 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
 
   // Fetch session:
   bool fetch_pending_;
-  ResponseHeaders* response_headers_;
-  Writer* response_writer_;
-  Callback* callback_;  // callback for current fetch
+  AsyncFetch* fetch_;
   int64 remaining_ms_;  // how much time left to report result of current fetch
 };
 

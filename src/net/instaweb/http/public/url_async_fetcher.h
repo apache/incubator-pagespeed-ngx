@@ -42,6 +42,7 @@ class UrlAsyncFetcher {
   // Default statistics group name.
   static const char kStatisticsGroup[];
 
+  // DEPRECATED.
   class Callback {
    public:
     Callback() : modified_(true) {}
@@ -70,8 +71,8 @@ class UrlAsyncFetcher {
   // assume a fetcher can.
   virtual bool SupportsHttps() const { return true; }
 
-  // Fetch a URL, set response_headers and stream the output to response_writer.
-  // response_headers and response_writer must be valid until callback->Done().
+  // Asynchronously fetch a URL, set the response headers and stream the
+  // contents to fetch and call fetch->Done() when the fetch finishes.
   //
   // There is an unchecked contract that response_headers are set before the
   // response_writer or callback are used.
@@ -80,32 +81,20 @@ class UrlAsyncFetcher {
   // This function returns true if the request was immediately satisfied.
   // In either case, the callback will be called with the completion status,
   // so it's safe to ignore the return value.
-  // TODO(sligocki): GoogleString -> GoogleUrl
   //
-  // Default implementation uses Fetch. So derivative classes only need to
-  // define one of these functions.
-  virtual bool StreamingFetch(const GoogleString& url,
-                              const RequestHeaders& request_headers,
-                              ResponseHeaders* response_headers,
-                              Writer* response_writer,
-                              MessageHandler* message_handler,
-                              Callback* callback);
-
-  // Fetch with AsyncFetch interface.
-  //
-  // Default implementation uses StreamingFetch method and calls
-  // HeadersComplete right before the first call to Write, Flush or Done.
-  //
-  // Future implementations ought to call HeadersComplete directly.
-  //
-  // Return value is the same as StreamingFetch. (Returns true iff callback
-  // has already been called by the time Fetch returns.)
-  //
-  // TODO(sligocki): Stick all other params into AsyncFetch object (url,
-  // request_headers, response_headers, message_handler).
+  // TODO(sligocki): GoogleString -> GoogleUrl or at least StringPiece.
+  // TODO(sligocki): Include the URL in the fetch, like the request headers.
   virtual bool Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
-                     AsyncFetch* fetch);
+                     AsyncFetch* fetch) = 0;
+
+  // DEPRECATED: Call Fetch() instead.
+  bool StreamingFetch(const GoogleString& url,
+                      const RequestHeaders& request_headers,
+                      ResponseHeaders* response_headers,
+                      Writer* response_writer,
+                      MessageHandler* message_handler,
+                      Callback* callback);
 
   // Returns a maximum time that we will allow fetches to take, or
   // kUnspecifiedTimeout (the default) if we don't promise to timeout fetches.
