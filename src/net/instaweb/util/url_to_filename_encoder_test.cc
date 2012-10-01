@@ -346,6 +346,16 @@ TEST_F(UrlToFilenameEncoderTest, BackslashSeparator) {
       UrlToFilenameEncoder::kMaximumSubdirectoryLength]);
 }
 
+TEST_F(UrlToFilenameEncoderTest, Unescape) {
+  EXPECT_EQ("", UrlToFilenameEncoder::Unescape(""));
+  EXPECT_EQ("noescaping", UrlToFilenameEncoder::Unescape("noescaping"));
+  EXPECT_EQ("http://example.com:8080/src/example.html?a=b&a=c,d",
+            UrlToFilenameEncoder::Unescape(
+                "http%3A%2f%2Fexample.com%3A8080%2Fsrc%2Fexample.html"
+                "%3Fa%3Db%26a%3dc%2Cd"));
+  EXPECT_EQ("%:%1z%zZ%a%", UrlToFilenameEncoder::Unescape("%%3a%1z%zZ%a%"));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

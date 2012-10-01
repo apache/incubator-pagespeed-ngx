@@ -29,8 +29,8 @@ namespace {
 // Convenience functions.
 bool IsHexDigit(char c) {
   return ('0' <= c && c <= '9') ||
-         ('A' <= c && c <= 'Z') ||
-         ('a' <= c && c <= 'z');
+         ('A' <= c && c <= 'F') ||
+         ('a' <= c && c <= 'f');
 }
 
 }

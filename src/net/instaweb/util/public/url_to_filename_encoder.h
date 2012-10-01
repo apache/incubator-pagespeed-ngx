@@ -174,6 +174,12 @@ class UrlToFilenameEncoder {
                      char dir_separator,
                      GoogleString* decoded_url);
 
+  // Unescape a url, converting all %XX to the the actual char 0xXX.
+  // For example, this will convert "foo%21bar" to "foo!bar".
+  //
+  // This will work with strings that have embedded NULLs.
+  static GoogleString Unescape(const GoogleString& escaped_url);
+
   static const char kEscapeChar;
   static const char kTruncationChar;
   static const size_t kMaximumSubdirectoryLength;
@@ -233,12 +239,6 @@ class UrlToFilenameEncoder {
   // e.g   http://www.foo.com/path
   //       returns /path
   static GoogleString GetUrlPath(const GoogleString& url);
-
-  // Unescape a url, converting all %XX to the the actual char 0xXX.
-  // For example, this will convert "foo%21bar" to "foo!bar".
-  //
-  // This will work with strings that have embedded NULLs.
-  static GoogleString Unescape(const GoogleString& escaped_url);
 };
 
 }  // namespace net_instaweb
