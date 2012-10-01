@@ -464,9 +464,23 @@ class ServerContext {
     response_headers_finalized_ = x;
   }
 
+  // Returns the RewriteDriverPool that's used by NewRewriteDriver (so calling
+  // NewRewriteDriverFromPool(standard_rewrite_driver_pool()) is equivalent to
+  // calling NewRewriteDriver.
+  RewriteDriverPool* standard_rewrite_driver_pool() {
+    return available_rewrite_drivers_.get();
+  }
+
   // Builds a PropertyCache given a key prefix and a CacheInterface.
   PropertyCache* MakePropertyCache(const GoogleString& cache_key_prefix,
                                    CacheInterface* cache) const;
+
+ protected:
+  // Takes ownership of the given pool, making sure to clean it up at the
+  // appropriate spot during shutdown.
+  void ManageRewriteDriverPool(RewriteDriverPool* pool) {
+    additional_driver_pools_.push_back(pool);
+  }
 
  private:
   friend class ServerContextTest;
@@ -522,7 +536,11 @@ class ServerContext {
   // been released with ReleaseRewriteDriver, and are ready
   // for re-use with NewRewriteDriver.
   // Protected by rewrite_drivers_mutex_.
+  // TODO(morlovich): Give this a better name in an immediate follow up.
   scoped_ptr<RewriteDriverPool> available_rewrite_drivers_;
+
+  // Other RewriteDriverPool's whose lifetime we help manage for our subclasses.
+  std::vector<RewriteDriverPool*> additional_driver_pools_;
 
   // RewriteDrivers that are currently in use.  This is retained
   // as a sanity check to make sure our system is coherent,

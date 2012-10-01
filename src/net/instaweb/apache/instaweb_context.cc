@@ -19,7 +19,6 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/instaweb_context.h"
-#include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -77,6 +76,7 @@ InstawebContext::InstawebContext(request_rec* request,
                                  const ContentType& content_type,
                                  ApacheResourceManager* manager,
                                  const GoogleString& absolute_url,
+                                 bool using_spdy,
                                  bool use_custom_options,
                                  const RewriteOptions& options)
     : content_encoding_(kNone),
@@ -109,6 +109,9 @@ InstawebContext::InstawebContext(request_rec* request,
     }
     server_context_->ComputeSignature(custom_options);
     rewrite_driver_ = server_context_->NewCustomRewriteDriver(custom_options);
+  } else if (using_spdy && (server_context_->SpdyConfig() != NULL)) {
+    rewrite_driver_ = server_context_->NewRewriteDriverFromPool(
+        server_context_->spdy_driver_pool());
   } else {
     rewrite_driver_ = server_context_->NewRewriteDriver();
   }
@@ -160,8 +163,7 @@ InstawebContext::InstawebContext(request_rec* request,
     }
   }
 
-  rewrite_driver_->set_using_spdy(
-      mod_spdy_get_spdy_version(request->connection) != 0);
+  rewrite_driver_->set_using_spdy(using_spdy);
 
   const char* user_agent = apr_table_get(request->headers_in,
                                          HttpAttributes::kUserAgent);

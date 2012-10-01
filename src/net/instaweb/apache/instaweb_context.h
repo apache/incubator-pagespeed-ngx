@@ -82,6 +82,7 @@ class InstawebContext {
                   const ContentType& content_type,
                   ApacheResourceManager* manager,
                   const GoogleString& base_url,
+                  bool using_spdy,
                   bool use_custom_options,
                   const RewriteOptions& options);
   ~InstawebContext();

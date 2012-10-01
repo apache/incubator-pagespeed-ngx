@@ -166,7 +166,13 @@ ModPagespeedAvoidRenamingIntrospectiveJavascript off
 
 # Test coverage for <ModPagespeedIf>
 <ModPagespeedIf spdy>
+  # A setting one might want...
   ModPagespeedDisableFilters combine_css
+
+  # Settings that doesn't make much sense, but which we want for tests.
+  ModPagespeedDisableFilters rewrite_css
+  ModPagespeedDisableFilters extend_cache
+  ModPagespeedDisableFilters rewrite_images
 </ModPagespeedIf>
 
 <ModPagespeedIf !spdy>

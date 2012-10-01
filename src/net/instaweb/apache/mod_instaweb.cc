@@ -402,7 +402,12 @@ InstawebContext* build_context_for_request(request_rec* request) {
       InstawebContext::ManagerFromServerRec(request->server);
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   scoped_ptr<RewriteOptions> custom_options;
+
+  bool using_spdy = factory->TreatRequestAsSpdy(request);
   const RewriteOptions* host_options = manager->global_options();
+  if (using_spdy && manager->SpdyConfig() != NULL) {
+    host_options = manager->SpdyConfig();
+  }
   const RewriteOptions* options = host_options;
   bool use_custom_options = false;
 
@@ -546,7 +551,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   InstawebContext* context = new InstawebContext(
       request, request_headers.release(), *content_type, manager, final_url,
-      use_custom_options, *options);
+      using_spdy, use_custom_options, *options);
 
   // TODO(sligocki): Move inside PSA.
   InstawebContext::ContentEncoding encoding = context->content_encoding();

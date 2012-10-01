@@ -24,7 +24,6 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/instaweb_context.h"
-#include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/automatic/public/resource_fetch.h"
@@ -167,6 +166,12 @@ bool handle_as_resource(ApacheResourceManager* manager,
       }
     }
 
+    bool using_spdy = ApacheRewriteDriverFactory::TreatRequestAsSpdy(request);
+    RewriteOptions* global_options = manager->global_options();
+    if (using_spdy && (manager->SpdyConfig() != NULL)) {
+      global_options = manager->SpdyConfig();
+    }
+
     // Set directory specific options.  These will be the options for the
     // directory the resource is in, which under some configurations will be
     // different from the options for the directory that the referencing html is
@@ -181,13 +186,20 @@ bool handle_as_resource(ApacheResourceManager* manager,
         ap_get_module_config(request->per_dir_config, &pagespeed_module);
     if ((directory_options != NULL) && directory_options->modified()) {
       custom_options = manager->apache_factory()->NewRewriteOptions();
-      custom_options->Merge(*manager->global_options());
+      custom_options->Merge(*global_options);
       custom_options->Merge(*directory_options);
     }
 
-    bool using_spdy = (mod_spdy_get_spdy_version(request->connection) != 0);
+    RewriteDriverPool* driver_pool = NULL;
+    if (custom_options == NULL) {
+      if (using_spdy && (manager->SpdyConfig() != NULL)) {
+        driver_pool = manager->spdy_driver_pool();
+      } else {
+        driver_pool = manager->standard_rewrite_driver_pool();
+      }
+    }
     RewriteDriver* driver = ResourceFetch::GetDriver(
-        gurl, custom_options, using_spdy, manager);
+        gurl, custom_options, driver_pool, using_spdy, manager);
 
     // Insert proxy fetchers to add custom fetch headers or apply
     // routing policy.

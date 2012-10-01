@@ -212,6 +212,7 @@ ServerContext::~ServerContext() {
   DCHECK(active_rewrite_drivers_.empty()) << "leaked_rewrite_drivers";
   STLDeleteElements(&active_rewrite_drivers_);
   available_rewrite_drivers_.reset();
+  STLDeleteElements(&additional_driver_pools_);
   decoding_driver_.reset(NULL);
 }
 

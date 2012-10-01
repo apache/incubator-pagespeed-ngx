@@ -65,10 +65,15 @@ struct HttpAttributes {
   static const char kXAssociatedContent[];
   static const char kXForwardedFor[];
   static const char kXGooglePagespeedClientId[];
+  static const char kXGoogleRequestEventId[];
   // If this header's value matches the configured blocking rewrite key, then
   // all rewrites are completed before the response is sent to the client.
-  static const char kXGoogleRequestEventId[];
   static const char kXPsaBlockingRewrite[];
+
+  // If this header is present on an incoming request it will be treated as if
+  // it came over a SPDY connection for purposes of applying special
+  // configuration or optimizations.
+  static const char kXPsaOptimizeForSpdy[];
 
   // This header is set on optional fetches that got dropped due to load.
   static const char kXPsaLoadShed[];

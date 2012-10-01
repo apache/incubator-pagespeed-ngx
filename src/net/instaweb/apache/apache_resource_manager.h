@@ -30,6 +30,7 @@ class ApacheMessageHandler;
 class ApacheRewriteDriverFactory;
 class Histogram;
 class HTTPCache;
+class RewriteDriverPool;
 class RewriteStats;
 class SharedMemStatistics;
 class Statistics;
@@ -87,6 +88,11 @@ class ApacheResourceManager : public ServerContext {
   // Returns special configuration that should be used for SPDY sessions
   // instead of config(). Returns NULL if config() should be used instead.
   ApacheConfig* SpdyConfig() { return spdy_specific_config_.get(); }
+
+  // Pool to pass to NewRewriteDriverFromPool to get a RewriteDriver configured
+  // with SPDY-specific options. May be NULL in case there is no spdy-specific
+  // configuration.
+  RewriteDriverPool* spdy_driver_pool() { return spdy_driver_pool_; }
 
   // This should be called after all configuration parsing is done to collapse
   // configuration inside the config overlays into actual ApacheConfig objects.
@@ -159,6 +165,10 @@ class ApacheResourceManager : public ServerContext {
 
   // May be NULL if we don't have any special settings for when using SPDY.
   scoped_ptr<ApacheConfig> spdy_specific_config_;
+
+  // Owned by ServerContext via a call to ManageRewriteDriverPool.
+  // May be NULL if we don't have a spdy-specific configuration.
+  RewriteDriverPool* spdy_driver_pool_;
 
   Histogram* html_rewrite_time_us_histogram_;
 

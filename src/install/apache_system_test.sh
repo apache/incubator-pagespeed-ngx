@@ -743,6 +743,34 @@ if [ x$SECONDARY_HOSTNAME != x ]; then
   fi
 fi
 
+echo "TEST: <ModPagespeedIf> application"
+# Without SPDY, we should combine things
+OUT=$($WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' \
+    $EXAMPLE_ROOT/combine_css.html)
+check egrep -q ',Mcc' <(echo $OUT)
+
+# Despite combine_css being disabled in <ModPagespeedIf>, we still
+# expect it with SPDY since it's turned on in mod_pagespeed_example/.htaccess.
+# However, since rewrite_css is off, the result should be rewritten by
+# cc and not also cf or ce.
+OUT=$($WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' \
+  --header 'X-PSA-Optimize-For-SPDY: true' \
+  $EXAMPLE_ROOT/combine_css.html)
+check_not egrep -q ',Mcc' <(echo $OUT)
+check egrep -q '.pagespeed.cc' <(echo $OUT)
+
+# Now test resource fetch. Since we've disabled extend_cache and
+# rewrite_images for spdy, we should not see rewritten resources there,
+# while we will in the other normal case.
+OUT=$($WGET_DUMP  --header 'X-PSA-Blocking-Rewrite: psatest' \
+    $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.rnLTdExmOm.css)
+check grep -q 'png.pagespeed.' <(echo $OUT)
+
+OUT=$($WGET_DUMP  --header 'X-PSA-Blocking-Rewrite: psatest' \
+    --header 'X-PSA-Optimize-For-SPDY: true' \
+    $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.rnLTdExmOm.css)
+check_not grep -q 'png.pagespeed.' <(echo $OUT)
+
 # Cleanup
 rm -rf $OUTDIR
 echo "PASS."

@@ -33,6 +33,7 @@
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_timer.h"
+#include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/loopback_route_fetcher.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -766,6 +767,17 @@ void ApacheRewriteDriverFactory::ApplySessionFetchers(
         driver->options(), req->connection->local_addr->port,
         driver->async_fetcher()));
   }
+}
+
+bool ApacheRewriteDriverFactory::TreatRequestAsSpdy(request_rec* request) {
+  if (mod_spdy_get_spdy_version(request->connection) != 0) {
+    return true;
+  }
+
+  const char* value = apr_table_get(
+      request->headers_in,
+      HttpAttributes::kXPsaOptimizeForSpdy);
+  return (value != NULL);
 }
 
 }  // namespace net_instaweb

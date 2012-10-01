@@ -23,6 +23,7 @@
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -32,8 +33,9 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 
-namespace {
+namespace net_instaweb {
 
+namespace {
 
 const char kCacheFlushCount[] = "cache_flush_count";
 
@@ -42,9 +44,22 @@ const char kHtmlRewriteTimeUsHistogram[] = "Html Time us Histogram";
 
 const char kLocalFetcherStatsPrefix[] = "http";
 
-}  // namespace
+class SpdyOptionsRewriteDriverPool : public RewriteDriverPool {
+ public:
+  explicit SpdyOptionsRewriteDriverPool(ApacheResourceManager* context)
+      : apache_server_context_(context) {
+  }
 
-namespace net_instaweb {
+  virtual RewriteOptions* TargetOptions() const {
+    DCHECK(apache_server_context_->SpdyConfig() != NULL);
+    return apache_server_context_->SpdyConfig();
+  }
+
+ private:
+  ApacheResourceManager* apache_server_context_;
+};
+
+}  // namespace
 
 class Statistics;
 class RewriteStats;
@@ -62,6 +77,7 @@ ApacheResourceManager::ApacheResourceManager(
                                   IntegerToString(server->port))),
       initialized_(false),
       local_statistics_(NULL),
+      spdy_driver_pool_(NULL),
       html_rewrite_time_us_histogram_(NULL),
       cache_flush_mutex_(thread_system()->NewMutex()),
       last_cache_flush_check_sec_(0),
@@ -142,6 +158,8 @@ void ApacheResourceManager::CollapseConfigOverlaysAndComputeSignatures() {
     // We compute the SPDY one first since we need config() to be
     // the common config and not common + !spdy.
     spdy_specific_config_.reset(config()->Clone());
+    spdy_specific_config_->set_cache_invalidation_timestamp_mutex(
+        thread_system()->NewRWLock());
     if (spdy_config_overlay_.get() != NULL) {
       spdy_specific_config_->Merge(*spdy_config_overlay_);
     }
@@ -153,6 +171,11 @@ void ApacheResourceManager::CollapseConfigOverlaysAndComputeSignatures() {
   }
 
   ComputeSignature(config());
+
+  if (spdy_specific_config_.get() != NULL) {
+    spdy_driver_pool_ = new SpdyOptionsRewriteDriverPool(this);
+    ManageRewriteDriverPool(spdy_driver_pool_);
+  }
 }
 
 void ApacheResourceManager::CreateLocalStatistics(
@@ -268,8 +291,17 @@ void ApacheResourceManager::PollFilesystemForCacheFlush() {
                                &cache_flush_timestamp_sec,
                                &null_handler)) {
         int64 timestamp_ms = cache_flush_timestamp_sec * Timer::kSecondMs;
-        if (global_options()->UpdateCacheInvalidationTimestampMs(
-                timestamp_ms, lock_hasher())) {
+
+        bool flushed = global_options()->UpdateCacheInvalidationTimestampMs(
+                           timestamp_ms, lock_hasher());
+        if (SpdyConfig() != NULL) {
+          // We need to make sure to update the invalidation timestamp in the
+          // SPDY configuration as well, so it also gets any cache flushes.
+          flushed = SpdyConfig()->UpdateCacheInvalidationTimestampMs(
+              timestamp_ms, lock_hasher()) || flushed;
+        }
+
+        if (flushed) {
           cache_flush_count_->Add(1);
           message_handler()->Message(
               kWarning, "Cache Flush %d",

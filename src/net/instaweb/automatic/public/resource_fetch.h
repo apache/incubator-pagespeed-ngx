@@ -32,6 +32,7 @@ namespace net_instaweb {
 class MessageHandler;
 class ServerContext;
 class RewriteDriver;
+class RewriteDriverPool;
 class RewriteOptions;
 class SyncFetcherAdapterCallback;
 class Timer;
@@ -72,11 +73,16 @@ class ResourceFetch : public SharedAsyncFetch {
 
   // Creates a rewrite_driver suitable for passing to BlockingFetch
   // (or StartWithDriver) incorporating any experiment settings.
-  // If custom_options it not NULL, takes ownership of it and and can mutate it.
+  // If custom_options it not NULL, takes ownership of it and and can mutate it;
+  // otherwise the driver will be made using driver_pool with matching options
+  // as the pre-experiment starting point.
+  //
+  // Exactly one of custom_options and driver_pool must be non-NULL.
   static RewriteDriver* GetDriver(const GoogleUrl& url,
                                   RewriteOptions* custom_options,
+                                  RewriteDriverPool* driver_pool,
                                   bool using_spdy,
-                                  ServerContext* resource_manager);
+                                  ServerContext* server_context);
 
  protected:
   // Protected interface from AsyncFetch.
@@ -97,8 +103,9 @@ class ResourceFetch : public SharedAsyncFetch {
   // If we're running an experiment and the url specifies an experiment spec,
   // set custom_options to use that experiment spec.  If custom_options is NULL
   // one will be allocated and the caller takes ownership of it.
-  static void ApplyFuriousOptions(const ServerContext* manager,
+  static void ApplyFuriousOptions(const ServerContext* server_context,
                                   const GoogleUrl& url,
+                                  RewriteDriverPool* driver_pool,
                                   RewriteOptions** custom_options);
 
   GoogleUrl resource_url_;

@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -36,12 +37,13 @@
 
 namespace net_instaweb {
 
-void ResourceFetch::ApplyFuriousOptions(const ServerContext* manager,
+void ResourceFetch::ApplyFuriousOptions(const ServerContext* server_context,
                                         const GoogleUrl& url,
+                                        RewriteDriverPool* driver_pool,
                                         RewriteOptions** custom_options) {
   const RewriteOptions* active_options;
   if (*custom_options == NULL) {
-    active_options = manager->global_options();
+    active_options = driver_pool->TargetOptions();
   } else {
     active_options = *custom_options;
   }
@@ -55,18 +57,20 @@ void ResourceFetch::ApplyFuriousOptions(const ServerContext* manager,
         *custom_options = active_options->Clone();
       }
       (*custom_options)->SetFuriousStateStr(namer.experiment());
-      manager->ComputeSignature(*custom_options);
+      server_context->ComputeSignature(*custom_options);
     }
   }
 }
 
 RewriteDriver* ResourceFetch::GetDriver(
-    const GoogleUrl& url, RewriteOptions* custom_options, bool using_spdy,
-    ServerContext* manager) {
-  ApplyFuriousOptions(manager, url, &custom_options);
+    const GoogleUrl& url, RewriteOptions* custom_options,
+    RewriteDriverPool* driver_pool, bool using_spdy,
+    ServerContext* server_context) {
+  DCHECK((custom_options != NULL) ^ (driver_pool != NULL));
+  ApplyFuriousOptions(server_context, url, driver_pool, &custom_options);
   RewriteDriver* driver = (custom_options == NULL)
-      ? manager->NewRewriteDriver()
-      : manager->NewCustomRewriteDriver(custom_options);
+      ? server_context->NewRewriteDriverFromPool(driver_pool)
+      : server_context->NewCustomRewriteDriver(custom_options);
   // Note: this is reset in RewriteDriver::clear().
   driver->set_using_spdy(using_spdy);
   return driver;
@@ -85,10 +89,14 @@ void ResourceFetch::StartWithDriver(
 void ResourceFetch::Start(const GoogleUrl& url,
                           RewriteOptions* custom_options,
                           bool using_spdy,
-                          ServerContext* manager,
+                          ServerContext* server_context,
                           AsyncFetch* async_fetch) {
-  RewriteDriver* driver = GetDriver(url, custom_options, using_spdy, manager);
-  StartWithDriver(url, manager, driver, async_fetch);
+  RewriteDriver* driver = GetDriver(
+      url, custom_options,
+      (custom_options != NULL) ?
+          NULL : server_context->standard_rewrite_driver_pool(),
+      using_spdy, server_context);
+  StartWithDriver(url, server_context, driver, async_fetch);
 }
 
 bool ResourceFetch::BlockingFetch(const GoogleUrl& url,

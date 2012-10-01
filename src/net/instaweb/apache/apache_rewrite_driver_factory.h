@@ -251,8 +251,13 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // b) Route requests directly to this very server when they are not
   //    configured to be external.
   void ApplySessionFetchers(ApacheResourceManager* manager,
-                                 RewriteDriver* driver,
-                                 request_rec* req);
+                            RewriteDriver* driver, request_rec* req);
+
+  // Returns true if we should handle request as SPDY.
+  // This happens in two cases:
+  // 1) It's actually a SPDY request using mod_spdy
+  // 2) The header X-PSA-Optimize-For-SPDY is present, with any value.
+  static bool TreatRequestAsSpdy(request_rec* req);
 
  protected:
   virtual UrlFetcher* DefaultUrlFetcher();
