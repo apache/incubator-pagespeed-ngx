@@ -12,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-this_dir="$(dirname ${BASH_SOURCE[0]})"
-mod_pagespeed_dir="$this_dir/../mod_pagespeed/src/out/Release"
+mod_pagespeed_dir="$ngx_addon_dir/../mod_pagespeed/src/out/Release"
 ngx_feature="psol"
 ngx_feature_name=""
 ngx_feature_run=no
@@ -26,7 +25,7 @@ ngx_feature_libs="$pagespeed_libs"
 ngx_feature_test="char c = MOD_PAGESPEED_VERSION_STRING[0]"
 
 # Test whether we have pagespeed and can compile and link against it.
-. "$this_dir/cpp_feature"
+. "$ngx_addon_dir/cpp_feature"
 
 if [ $ngx_found = yes ]; then
   ngx_addon_name=ngx_pagespeed
