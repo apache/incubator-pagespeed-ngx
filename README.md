@@ -12,6 +12,11 @@ the pagespeed optimization library.
 First build mod_pagespeed, following these instructions:
 http://code.google.com/p/modpagespeed/wiki/HowToBuild
 
+Then build the pagespeed optimization library:
+
+    $ cd /where/you/built/mod_pagespeed/src/net/instaweb/automatic
+    $ make all
+
 Then move the mod_pagespeed directory to a parallel directory to your
 ngx_pagespeed checkout:
 

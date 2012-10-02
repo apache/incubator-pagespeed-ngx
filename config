@@ -12,17 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-mod_pagespeed_dir="$ngx_addon_dir/../mod_pagespeed/src/out/Release"
+mod_pagespeed_dir="$ngx_addon_dir/../mod_pagespeed/src"
 ngx_feature="psol"
 ngx_feature_name=""
 ngx_feature_run=no
-ngx_feature_incs="#include \"net/instaweb/public/version.h\""
-pagespeed_include="$mod_pagespeed_dir/obj/gen"
+ngx_feature_incs="
+#include \"net/instaweb/htmlparse/public/html_parse.h\"
+#include \"net/instaweb/htmlparse/public/html_writer_filter.h\"
+#include \"net/instaweb/util/public/string.h\"
+#include \"net/instaweb/util/public/string_writer.h\"
+#include \"net/instaweb/util/public/null_message_handler.h\"
+"
+pagespeed_include="$mod_pagespeed_dir
+                   $mod_pagespeed_dir/third_party/chromium/src/"
 ngx_feature_path="$pagespeed_include"
-pagespeed_lib_dir="$mod_pagespeed_dir/obj.target/net/instaweb/"
-pagespeed_libs="-linstaweb_automatic -L $pagespeed_lib_dir -lstdc++"
+pagespeed_automatic_dir="$mod_pagespeed_dir/net/instaweb/automatic"
+pagespeed_libs="-lstdc++ -lrt $pagespeed_automatic_dir/pagespeed_automatic.a"
 ngx_feature_libs="$pagespeed_libs"
-ngx_feature_test="char c = MOD_PAGESPEED_VERSION_STRING[0]"
+ngx_feature_test="
+    GoogleString output_buffer;
+    net_instaweb::StringWriter write_to_string(&output_buffer);
+
+    net_instaweb::NullMessageHandler handler;
+    net_instaweb::HtmlParse html_parse(&handler);
+    net_instaweb::HtmlWriterFilter html_writer_filter(&html_parse);
+
+    html_writer_filter.set_writer(&write_to_string);
+    html_parse.AddFilter(&html_writer_filter);
+
+    html_parse.StartParse(\"http:example.com\");
+    html_parse.ParseText(
+        \"<html ><body ><h1 >Test</h1 ><p>Test Text</p></body></html>\n\");
+    html_parse.FinishParse();
+
+    printf(\"parsed as: %s\", output_buffer.c_str())"
 
 # Test whether we have pagespeed and can compile and link against it.
 . "$ngx_addon_dir/cpp_feature"
