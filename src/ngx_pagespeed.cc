@@ -88,12 +88,12 @@ ngx_int_t ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
 // Add a buffer to the end of the buffer chain indicating that we were processed
 // through ngx_pagespeed.
 static
-ngx_int_t ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
-{
+ngx_int_t ngx_http_pagespeed_note_processed(ngx_http_request_t* r,
+                                            ngx_chain_t* in) {
   // Find the end of the buffer chain.
   ngx_chain_t* chain_link;
   int chain_contains_last_buffer = 0;
-  for ( chain_link = in; chain_link != NULL; chain_link = chain_link->next ) {
+  for (chain_link = in; chain_link != NULL; chain_link = chain_link->next) {
     if (chain_link->buf->last_buf) {
       chain_contains_last_buffer = 1;
       if (chain_link->next != NULL) {
@@ -107,10 +107,9 @@ ngx_int_t ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
 
   if (!chain_contains_last_buffer) {
     // None of the buffers had last_buf set, meaning we have an incomplete chain
-    // and are still waiting to get the final buffer.  Let other body filters
-    // act on the buffers we have so far and wait until we're called again with
-    // the last buffer.
-    return ngx_http_next_body_filter(r, in);
+    // and are still waiting to get the final buffer.  Wait until we're called
+    // again with the last buffer.
+    return NGX_OK;
   }
 
   // Prepare a new buffer to put the note into.
@@ -146,6 +145,35 @@ ngx_int_t ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
   added_link->buf->last_buf = 1;
   chain_link->buf->last_in_chain = 0;
   added_link->buf->last_in_chain = 1;
+
+  return NGX_OK;
+}
+
+// Replace each buffer with a new one that's been through HtmlParse.
+static
+ngx_int_t ngx_http_pagespeed_parse_and_replace_buffer(ngx_http_request_t* r,
+                                                      ngx_chain_t* in) {
+  ngx_chain_t* chain_link;
+  for (chain_link = in; chain_link != NULL; chain_link = chain_link->next) {
+    // working here
+  }
+  return NGX_OK;  
+}
+
+static
+ngx_int_t ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
+{
+  ngx_int_t rc;
+
+  rc = ngx_http_pagespeed_parse_and_replace_buffer(r, in);
+  if (rc != NGX_OK) {
+    return rc;
+  }
+
+  rc = ngx_http_pagespeed_note_processed(r, in);
+  if (rc != NGX_OK) {
+    return rc;
+  }
 
   return ngx_http_next_body_filter(r, in);
 }
