@@ -336,6 +336,7 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kMoveCssToHead:                   return "Move Css To Head";
     case kOutlineCss:                      return "Outline Css";
     case kOutlineJavascript:               return "Outline Javascript";
+    case kPedantic:                        return "Add pedantic types";
     case kPrioritizeVisibleContent:        return "Prioritize Visible Content";
     case kProcessBlinkInBackground:        return "Blink Background Processing";
     case kRecompressJpeg:                  return "Recompress Jpeg";
@@ -417,6 +418,7 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kMoveCssToHead:                   return "cm";
     case kOutlineCss:                      return "co";
     case kOutlineJavascript:               return "jo";
+    case kPedantic:                        return "pc";
     case kPrioritizeVisibleContent:        return "pv";
     case kProcessBlinkInBackground:        return "bb";
     case kRecompressJpeg:                  return "rj";

@@ -94,6 +94,7 @@
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
+#include "net/instaweb/rewriter/public/pedantic_filter.h"
 #include "net/instaweb/rewriter/public/redirect_on_size_limit_filter.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -1074,6 +1075,12 @@ void RewriteDriver::AddPostRenderFilters() {
 
   if (rewrite_options->Enabled(RewriteOptions::kComputeVisibleText)) {
     ComputeVisibleTextFilter* filter = new ComputeVisibleTextFilter(this);
+    AddOwnedPostRenderFilter(filter);
+  }
+
+  if (rewrite_options->Enabled(RewriteOptions::kPedantic)) {
+    // Add HTML type attributes where HTML4 says that it's necessary.
+    PedanticFilter* filter = new PedanticFilter(this);
     AddOwnedPostRenderFilter(filter);
   }
 

@@ -75,6 +75,7 @@ struct FilterMap {
 "move_css_to_head",                  RewriteOptions::kMoveCssToHead
 "outline_css",                       RewriteOptions::kOutlineCss
 "outline_javascript",                RewriteOptions::kOutlineJavascript
+"pedantic",                          RewriteOptions::kPedantic
 "prioritize_visible_content",        RewriteOptions::kPrioritizeVisibleContent
 "recompress_jpeg",                   RewriteOptions::kRecompressJpeg
 "recompress_png",                    RewriteOptions::kRecompressPng

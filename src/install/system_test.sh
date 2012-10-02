@@ -259,6 +259,12 @@ check fgrep -qi 'Content-Encoding: gzip' <(echo $JS_HEADERS)
 fgrep -qi 'Etag: W/0' <(echo $JS_HEADERS)
 check fgrep -qi 'Last-Modified:' <(echo $JS_HEADERS)
 
+test_filter pedantic adds default type attributes.
+check run_wget_with_args $URL
+check fgrep -q 'text/javascript' $FETCHED # should find script type
+check fgrep -q 'text/css' $FETCHED        # should find style type
+
+
 test_filter remove_comments removes comments but not IE directives.
 check run_wget_with_args $URL
 check_not grep removed $FETCHED   # comment, should not find

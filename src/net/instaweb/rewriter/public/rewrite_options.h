@@ -121,6 +121,7 @@ class RewriteOptions {
     kMoveCssToHead,
     kOutlineCss,
     kOutlineJavascript,
+    kPedantic,
     kPrioritizeVisibleContent,
     kProcessBlinkInBackground,
     kRecompressJpeg,

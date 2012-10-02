@@ -148,6 +148,7 @@
         'rewriter/local_storage_cache_filter_test.cc',
         'rewriter/meta_tag_filter_test.cc',
         'rewriter/mock_resource_callback.cc',
+        'rewriter/pedantic_filter_test.cc',
         'rewriter/redirect_on_size_limit_filter_test.cc',
         'rewriter/remove_comments_filter_test.cc',
         'rewriter/resource_combiner_test.cc',
