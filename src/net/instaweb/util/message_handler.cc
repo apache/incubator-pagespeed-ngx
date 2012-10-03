@@ -55,7 +55,7 @@ const char* MessageHandler::MessageTypeToString(const MessageType type) const {
   return type_string;
 }
 
-const MessageType MessageHandler::StringToMessageType(const StringPiece& msg) {
+MessageType MessageHandler::StringToMessageType(const StringPiece& msg) {
   if (StringCaseEqual(msg, "Info")) {
     return kInfo;
   } else if (StringCaseEqual(msg, "Warning")) {

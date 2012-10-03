@@ -42,7 +42,7 @@ class MessageHandler {
   const char* MessageTypeToString(const MessageType type) const;
 
   // Convert string to MessageType.
-  static const MessageType StringToMessageType(const StringPiece& msg);
+  static MessageType StringToMessageType(const StringPiece& msg);
 
   // Specify the minimum message type. Lower message types will not be
   // logged.
