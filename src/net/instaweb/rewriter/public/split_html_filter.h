@@ -60,6 +60,8 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   static const char kRenderCohort[];
   static const char kCriticalLineInfoPropertyName[];
   static const char kDeferJsSnippet[];
+  static const char kSplitInit[];
+  static const char kPagespeedFunc[];
 
   explicit SplitHtmlFilter(RewriteDriver* rewrite_driver);
   virtual ~SplitHtmlFilter();
@@ -129,9 +131,10 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
 
   void Cleanup();
 
-  // Inserts blink js and defer js init code into the head element. If no head
-  // tag in the page, it inserts one before body tag.
-  void InsertBlinkJavascript(HtmlElement* element);
+  // Inserts lazy load and other scripts needed for split initialization into
+  // the head element. If no head tag in the page, it inserts one before
+  // body tag.
+  void InsertSplitInitScripts(HtmlElement* element);
 
   bool ElementMatchesXpath(const HtmlElement* element,
                            const std::vector<XpathUnit>& xpath_units);
@@ -157,6 +160,8 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   StringPiece url_;
   bool script_written_;
   bool flush_head_enabled_;
+  bool send_lazyload_script_;
+  int num_low_res_images_inlined_;
   HtmlElement* current_panel_parent_element_;
 
   DISALLOW_COPY_AND_ASSIGN(SplitHtmlFilter);

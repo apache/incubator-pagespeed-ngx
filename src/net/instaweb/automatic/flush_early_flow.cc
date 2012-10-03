@@ -40,7 +40,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -269,7 +268,6 @@ FlushEarlyFlow::FlushEarlyFlow(
       property_cache_callback_(property_cache_callback),
       should_flush_early_lazyload_script_(false),
       should_flush_early_js_defer_script_(false),
-      should_flush_early_blink_script_(false),
       handler_(driver_->server_context()->message_handler()) {
   Statistics* stats = manager_->statistics();
   num_requests_flushed_early_ = stats->GetTimedVariable(
@@ -326,24 +324,17 @@ void FlushEarlyFlow::FlushEarly() {
           should_flush_early_lazyload_script_ = true;
         }
 
-        if (driver_->options()->Enabled(RewriteOptions::kSplitHtml) &&
-            SplitHtmlFilter::ShouldApply(driver_)) {
-          // TODO(rahulbansal): Add checks using value stored in property
-          // cache.
-          driver_->set_is_blink_script_flushed(true);
-          should_flush_early_blink_script_= true;
-        } else {
-          // We don't flush defer js here since blink js contains defer js.
-          PropertyValue* defer_js_property_value = page->GetProperty(
-              cohort,
-              JsDeferDisabledFilter::kIsJsDeferScriptInsertedPropertyName);
-          if (defer_js_property_value->has_value() &&
-              StringCaseEqual(defer_js_property_value->value(), "1") &&
-              driver_->options()->Enabled(RewriteOptions::kDeferJavascript) &&
-              JsDeferDisabledFilter::ShouldApply(driver_)) {
-            driver_->set_is_defer_javascript_script_flushed(true);
-            should_flush_early_js_defer_script_ = true;
-          }
+        // We don't flush defer js here since blink js contains defer js.
+        PropertyValue* defer_js_property_value = page->GetProperty(
+            cohort,
+            JsDeferDisabledFilter::kIsJsDeferScriptInsertedPropertyName);
+        if (!driver_->options()->Enabled(RewriteOptions::kSplitHtml) &&
+            defer_js_property_value->has_value() &&
+            StringCaseEqual(defer_js_property_value->value(), "1") &&
+            driver_->options()->Enabled(RewriteOptions::kDeferJavascript) &&
+            JsDeferDisabledFilter::ShouldApply(driver_)) {
+          driver_->set_is_defer_javascript_script_flushed(true);
+          should_flush_early_js_defer_script_ = true;
         }
 
         int64 now_ms = manager_->timer()->NowMs();
@@ -425,13 +416,6 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
     if (!driver_->options()->lazyload_images_blank_url().empty()) {
       --max_preconnect_attempts;
     }
-  }
-  if (should_flush_early_blink_script_) {
-    // Flush blink script.
-    WriteScript(JsDisableFilter::GetJsDisableScriptSnippet(driver_->options()));
-    WriteExternalScript(SplitHtmlFilter::GetBlinkJsUrl(
-        driver_->options(), static_js_manager));
-    WriteScript(SplitHtmlFilter::kDeferJsSnippet);
   }
   if (should_flush_early_js_defer_script_) {
     // Flush defer_javascript script content.

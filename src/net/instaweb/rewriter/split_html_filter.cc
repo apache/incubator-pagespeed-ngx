@@ -53,6 +53,20 @@ const char SplitHtmlFilter::kCriticalLineInfoPropertyName[] =
     "critical_line_info";
 const char SplitHtmlFilter::kDeferJsSnippet[] =
     "pagespeed.deferInit();";
+const char SplitHtmlFilter::kSplitInit[] =
+    "<script type=\"text/javascript\">"
+    "pagespeed.splitOnload = function() {"
+    "pagespeed.num_high_res_images_loaded++;"
+    "if (pagespeed.panelLoader && pagespeed.num_high_res_images_loaded == "
+    "pagespeed.num_low_res_images_inlined) {"
+    "pagespeed.panelLoader.loadData(null);"
+    "}};"
+    "pagespeed.num_high_res_images_loaded=0;"
+    "</script>";
+const char SplitHtmlFilter::kPagespeedFunc[] =
+    "<script type=\"text/javascript\">"
+    "window[\"pagespeed\"] = window[\"pagespeed\"] || {};"
+    "var pagespeed = window[\"pagespeed\"];</script>";
 
 // At StartElement, if element is panel instance push a new json to capture
 // contents of instance to the json stack.
@@ -82,6 +96,8 @@ void SplitHtmlFilter::StartDocument() {
   url_ = rewrite_driver_->google_url().Spec();
   script_written_ = false;
   flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
+  send_lazyload_script_ = false;
+  num_low_res_images_inlined_ = 0;
   current_panel_parent_element_ = NULL;
 
   // Push the base panel.
@@ -115,6 +131,19 @@ void SplitHtmlFilter::EndDocument() {
     HtmlWriterFilter::EndDocument();
   }
 
+  WriteString(StrCat("<script type=\"text/javascript\">"
+      "pagespeed.num_low_res_images_inlined=",
+      IntegerToString(num_low_res_images_inlined_),
+      ";</script>"));
+  StaticJavascriptManager* js_manager =
+      rewrite_driver_->server_context()->static_javascript_manager();
+  WriteString(StrCat("<script src=\"",
+                     GetBlinkJsUrl(options_, js_manager),
+                     "\" type=\"text/javascript\"></script>"));
+
+  WriteString(StrCat("<script type=\"text/javascript\">", kDeferJsSnippet,
+                     "</script>"));
+
   // Remove critical html since it should already have been sent out by now.
   element_json_stack_[0].second->removeMember(BlinkUtil::kInstanceHtml);
 
@@ -126,6 +155,10 @@ void SplitHtmlFilter::EndDocument() {
   // Fix that.
   WriteString("\n</body></html>\n");
   Cleanup();
+
+  rewrite_driver_->UpdatePropertyValueInDomCohort(
+      LazyloadImagesFilter::kIsLazyloadScriptInsertedPropertyName,
+      send_lazyload_script_ ? "1" : "0");
 }
 
 void SplitHtmlFilter::WriteString(const StringPiece& str) {
@@ -166,17 +199,18 @@ void SplitHtmlFilter::ReadCriticalLineConfig() {
     }
   } else if (page_property_cache != NULL && page_property_cache->enabled() &&
              rewrite_driver_->property_page() != NULL) {
-    const PropertyCache::Cohort* cohort_ =
+    const PropertyCache::Cohort* cohort =
         page_property_cache->GetCohort(kRenderCohort);
-    PropertyValue* property_value = rewrite_driver_->property_page()->
-        GetProperty(cohort_, kCriticalLineInfoPropertyName);
-    if (property_value != NULL) {
-      ArrayInputStream input(property_value->value().data(),
-                             property_value->value().size());
-      critical_line_info_.ParseFromZeroCopyStream(&input);
+    if (cohort != NULL) {
+      PropertyValue* property_value = rewrite_driver_->property_page()->
+          GetProperty(cohort, kCriticalLineInfoPropertyName);
+      if (property_value != NULL) {
+        ArrayInputStream input(property_value->value().data(),
+                               property_value->value().size());
+        critical_line_info_.ParseFromZeroCopyStream(&input);
+      }
     }
   }
-
   ComputePanels(critical_line_info_, &panel_id_to_spec_);
   PopulateXpathMap();
 }
@@ -264,16 +298,8 @@ void SplitHtmlFilter::InsertPanelStub(HtmlElement* element,
   Comment(comment);
 }
 
-void SplitHtmlFilter::InsertBlinkJavascript(HtmlElement* element) {
-  bool send_blink_script = !rewrite_driver_->is_blink_script_flushed();
-  bool send_lazyload_script =
-      LazyloadImagesFilter::ShouldApply(rewrite_driver_) &&
-      options_->Enabled(RewriteOptions::kLazyloadImages) &&
-      !rewrite_driver_->is_lazyload_script_flushed();
-  if (!send_blink_script && !send_lazyload_script) {
-    return;
-  }
-
+void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
+  // TODO(rahulbansal): Enable AddHead filter and this code can be made simpler.
   bool include_head = (element->keyword() != HtmlName::kHead);
   GoogleString defer_js_with_blink = "";
   if (include_head) {
@@ -283,22 +309,24 @@ void SplitHtmlFilter::InsertBlinkJavascript(HtmlElement* element) {
   StaticJavascriptManager* js_manager =
       rewrite_driver_->server_context()->static_javascript_manager();
 
-  if (send_blink_script) {
-    StrAppend(&defer_js_with_blink, "<script src=\"",
-              GetBlinkJsUrl(options_, js_manager),
-              "\" type=\"text/javascript\"></script>");
-
-    StrAppend(&defer_js_with_blink, "<script>", kDeferJsSnippet,
-              "</script>");
-  }
   // TODO(rahulbansal): It is sub-optimal to send lazyload script in the head.
   // Figure out a better way to do it.
-  if (send_lazyload_script) {
+  send_lazyload_script_ =
+      LazyloadImagesFilter::ShouldApply(rewrite_driver_) &&
+      options_->Enabled(RewriteOptions::kLazyloadImages);
+
+  if (send_lazyload_script_ &&
+      !rewrite_driver_->is_lazyload_script_flushed()) {
     GoogleString lazyload_js = LazyloadImagesFilter::GetLazyloadJsSnippet(
         options_, js_manager);
     StrAppend(&defer_js_with_blink, "<script type=\"text/javascript\">",
               lazyload_js, "</script>");
   }
+
+  if (!send_lazyload_script_) {
+    StrAppend(&defer_js_with_blink, kPagespeedFunc);
+  }
+  StrAppend(&defer_js_with_blink, kSplitInit);
 
   if (include_head) {
     StrAppend(&defer_js_with_blink, "</head>");
@@ -320,7 +348,7 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
   }
 
   if (element->keyword() == HtmlName::kBody && !script_written_) {
-    InsertBlinkJavascript(element);
+    InsertSplitInitScripts(element);
   }
 
   if (IsEndMarkerForCurrentPanel(element)) {
@@ -341,6 +369,19 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
     // Suppress these bytes since they belong to a panel.
     HtmlWriterFilter::StartElement(element);
   } else {
+    if (element->keyword() == HtmlName::kImg) {
+      HtmlElement::Attribute* pagespeed_high_res_src_attr =
+          element->FindAttribute(HtmlName::HtmlName::kPagespeedHighResSrc);
+      if (pagespeed_high_res_src_attr != NULL &&
+          pagespeed_high_res_src_attr->DecodedValueOrNull() != NULL) {
+        num_low_res_images_inlined_++;
+        HtmlElement::Attribute* onload =
+            element->FindAttribute(HtmlName::kOnload);
+        GoogleString overridden_onload = StrCat("pagespeed.splitOnload();",
+            onload->DecodedValueOrNull());
+        onload->SetValue(overridden_onload);
+      }
+    }
     if (flush_head_enabled_) {
       SuppressPreheadFilter::StartElement(element);
     } else {
@@ -360,7 +401,7 @@ void SplitHtmlFilter::EndElement(HtmlElement* element) {
   }
 
   if (element->keyword() == HtmlName::kHead && !script_written_) {
-    InsertBlinkJavascript(element);
+    InsertSplitInitScripts(element);
   }
 
   if (element_json_stack_.size() > 1) {

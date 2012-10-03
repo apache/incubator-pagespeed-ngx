@@ -120,7 +120,6 @@ class FlushEarlyFlow {
   ProxyFetchPropertyCallbackCollector* property_cache_callback_;
   bool should_flush_early_lazyload_script_;
   bool should_flush_early_js_defer_script_;
-  bool should_flush_early_blink_script_;
   MessageHandler* handler_;
 
   TimedVariable* num_requests_flushed_early_;
