@@ -27,7 +27,12 @@ extern "C" {
   #include <ngx_http.h>
 }
 
+#include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/public/version.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 
 extern ngx_module_t ngx_pagespeed;
 
@@ -79,8 +84,8 @@ static ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 static
 ngx_int_t ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
 {
-  // We're adding content below, so switch to 'Transfer-Encoding: chunked' and
-  // calculate on the fly.
+  // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
+  // and calculate on the fly.
   ngx_http_clear_content_length(r);
   return ngx_http_next_header_filter(r);
 }
@@ -153,11 +158,83 @@ ngx_int_t ngx_http_pagespeed_note_processed(ngx_http_request_t* r,
 static
 ngx_int_t ngx_http_pagespeed_parse_and_replace_buffer(ngx_http_request_t* r,
                                                       ngx_chain_t* in) {
-  ngx_chain_t* chain_link;
-  for (chain_link = in; chain_link != NULL; chain_link = chain_link->next) {
-    // working here
+  GoogleString output_buffer;
+  net_instaweb::StringWriter write_to_string(&output_buffer);
+  net_instaweb::NullMessageHandler handler;
+
+  net_instaweb::HtmlParse html_parse(&handler);
+  net_instaweb::HtmlWriterFilter html_writer_filter(&html_parse);
+
+  html_writer_filter.set_writer(&write_to_string);
+  html_parse.AddFilter(&html_writer_filter);
+
+  u_char* file_contents = NULL;
+  StringPiece buffer_contents;
+  ngx_chain_t* cur;
+  for (cur = in; cur != NULL; cur = cur->next) {
+    html_parse.StartParse("http://example.com");
+
+    if (cur->buf->file != NULL) {
+      ssize_t file_size = cur->buf->file_last - cur->buf->file_pos;
+      // TODO(jefftk): if file_size is big enough can we still read it all at
+      // once?
+      file_contents = static_cast<u_char*>(ngx_pnalloc(r->pool, file_size));
+      if (file_contents == NULL) {
+        ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
+                      "failed to allocate %d bytes", file_size);
+        return NGX_ERROR;
+      }
+      ssize_t n = ngx_read_file(cur->buf->file, file_contents, file_size,
+                                cur->buf->file_pos);
+      if (n != file_size) {
+        ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
+                      "Failed to read file; got %d bytes expected %d bytes",
+                      n, file_size);
+        return NGX_ERROR;
+      }
+      buffer_contents = StringPiece(reinterpret_cast<char*>(file_contents),
+                                    file_size);
+    } else {
+      buffer_contents = StringPiece(reinterpret_cast<char*>(cur->buf->pos),
+                                    cur->buf->last - cur->buf->pos);
+    }
+    html_parse.ParseText(buffer_contents);
+    if (file_contents != NULL) {
+      // TODO(jefftk): this pfree call fails with NGX_DECLINED, but I think
+      // that's just NGINX only bothering to free large allocs.
+      ngx_pfree(r->pool, file_contents);
+      file_contents = NULL;
+    }
+
+    html_parse.FinishParse();
+
+    // Prepare the new buffer.
+    ngx_buf_t* b = static_cast<ngx_buf_t*>(ngx_calloc_buf(r->pool));
+    if (b == NULL) {
+      ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
+                    "failed to allocate buffer");
+
+      return NGX_ERROR;
+    }
+    b->pos = b->start = static_cast<u_char*>(
+        ngx_pnalloc(r->pool, output_buffer.length()));
+    if (b->pos == NULL) {
+      ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
+                    "failed to allocate %d bytes", output_buffer.length());
+      return NGX_ERROR;
+    }
+    output_buffer.copy(reinterpret_cast<char*>(b->pos), output_buffer.length());
+    b->last = b->end = b->pos + output_buffer.length();
+    b->temporary = 1;
+    b->last_buf = cur->buf->last_buf;
+    b->last_in_chain = cur->buf->last_in_chain;
+
+    ngx_pfree(r->pool, cur->buf);
+    cur->buf = b;
+
+    output_buffer.clear();
   }
-  return NGX_OK;  
+  return NGX_OK;
 }
 
 static
