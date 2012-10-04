@@ -57,8 +57,8 @@ class Image {
   struct CompressionOptions {
     CompressionOptions()
         : webp_preferred(false),
-          webp_quality(RewriteOptions::kDefaultImageWebpRecompressQuality),
-          jpeg_quality(RewriteOptions::kDefaultImageJpegRecompressQuality),
+          webp_quality(RewriteOptions::kDefaultImagesRecompressQuality),
+          jpeg_quality(RewriteOptions::kDefaultImagesRecompressQuality),
           progressive_jpeg(false),
           convert_png_to_jpeg(false),
           convert_gif_to_png(false),

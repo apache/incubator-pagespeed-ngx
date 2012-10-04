@@ -118,6 +118,10 @@ const int RewriteOptions::kDefaultImageMaxRewritesAtOnce = 8;
 // http://support.microsoft.com/kb/208427/EN-US
 const int RewriteOptions::kDefaultMaxUrlSize = 2083;
 
+// Quality that needs to be used while recompressing any image type.
+// If set to -1, we use source image quality parameters, and is lossless.
+const int RewriteOptions::kDefaultImagesRecompressQuality = -1;
+
 // Jpeg quality that needs to be used while recompressing. If set to -1, we
 // use source image quality parameters, and is lossless.
 const int RewriteOptions::kDefaultImageJpegRecompressQuality = -1;
@@ -643,6 +647,9 @@ void RewriteOptions::AddProperties() {
   add_option(kDefaultImageJpegRecompressQuality,
              &RewriteOptions::image_jpeg_recompress_quality_, "iq",
              kImageJpegRecompressionQuality);
+  add_option(kDefaultImagesRecompressQuality,
+             &RewriteOptions::images_recompress_quality_, "irq",
+             kImagesRecompressionQuality);
   add_option(kDefaultImageLimitOptimizedPercent,
              &RewriteOptions::image_limit_optimized_percent_, "ip",
              kImageLimitOptimizedPercent);
@@ -651,7 +658,7 @@ void RewriteOptions::AddProperties() {
              kImageLimitResizeAreaPercent);
   add_option(kDefaultImageWebpRecompressQuality,
              &RewriteOptions::image_webp_recompress_quality_, "iw",
-             kImageWebpRecompressQuality);
+             kImageWebpRecompressionQuality);
   add_option(kDefaultMaxInlinedPreviewImagesIndex,
              &RewriteOptions::max_inlined_preview_images_index_, "mdii",
              kMaxInlinedPreviewImagesIndex);

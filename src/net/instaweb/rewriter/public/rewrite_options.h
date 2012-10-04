@@ -195,9 +195,10 @@ class RewriteOptions {
     kImageRetainColorProfile,
     kImageRetainColorSampling,
     kImageRetainExifData,
+    kImagesRecompressionQuality,
     kCacheSmallImagesUnrewritten,
     kImageResolutionLimitBytes,
-    kImageWebpRecompressQuality,
+    kImageWebpRecompressionQuality,
     kImplicitCacheTtlMs,
     kIncreaseSpeedTracking,
     kJsInlineMaxBytes,
@@ -453,6 +454,7 @@ class RewriteOptions {
   static const int64 kDefaultImplicitCacheTtlMs;
   static const int64 kDefaultPrioritizeVisibleContentCacheTimeMs;
   static const char kDefaultBeaconUrl[];
+  static const int kDefaultImagesRecompressQuality;
   static const int kDefaultImageJpegRecompressQuality;
   static const int kDefaultImageLimitOptimizedPercent;
   static const int kDefaultImageLimitResizeAreaPercent;
@@ -1230,6 +1232,13 @@ class RewriteOptions {
   }
   void set_image_jpeg_recompress_quality(int x) {
     set_option(x, &image_jpeg_recompress_quality_);
+  }
+
+  int images_recompress_quality() const {
+    return images_recompress_quality_.value();
+  }
+  void set_images_recompress_quality(int x) {
+    set_option(x, &images_recompress_quality_);
   }
 
   int image_limit_optimized_percent() const {
@@ -2258,6 +2267,10 @@ class RewriteOptions {
   // Applies to ResourceFetch::BlockingFetch() and class SyncFetcherAdapter.
   // Does not apply to async fetches.
   Option<int64> blocking_fetch_timeout_ms_;
+
+  // Option related to generic image quality. This is overridden by
+  // image(jpeg/webp) specific options.
+  Option<int> images_recompress_quality_;
 
   // Options related to jpeg compression.
   Option<int> image_jpeg_recompress_quality_;

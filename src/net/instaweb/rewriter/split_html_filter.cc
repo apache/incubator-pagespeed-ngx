@@ -372,11 +372,12 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
     if (element->keyword() == HtmlName::kImg) {
       HtmlElement::Attribute* pagespeed_high_res_src_attr =
           element->FindAttribute(HtmlName::HtmlName::kPagespeedHighResSrc);
+      HtmlElement::Attribute* onload =
+          element->FindAttribute(HtmlName::kOnload);
       if (pagespeed_high_res_src_attr != NULL &&
-          pagespeed_high_res_src_attr->DecodedValueOrNull() != NULL) {
+          pagespeed_high_res_src_attr->DecodedValueOrNull() != NULL &&
+          onload != NULL && onload->DecodedValueOrNull() != NULL) {
         num_low_res_images_inlined_++;
-        HtmlElement::Attribute* onload =
-            element->FindAttribute(HtmlName::kOnload);
         GoogleString overridden_onload = StrCat("pagespeed.splitOnload();",
             onload->DecodedValueOrNull());
         onload->SetValue(overridden_onload);

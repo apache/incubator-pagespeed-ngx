@@ -61,9 +61,10 @@ struct OptionName {
 "ImageRetainColorProfile",               RewriteOptions::kImageRetainColorProfile
 "ImageRetainColorSampling",              RewriteOptions::kImageRetainColorSampling
 "ImageRetainExifData",                   RewriteOptions::kImageRetainExifData
+"ImagesRecompressionQuality",            RewriteOptions::kImagesRecompressionQuality
 "CacheSmallImagesUnrewritten",           RewriteOptions::kCacheSmallImagesUnrewritten
 "ImageResolutionLimitBytes",             RewriteOptions::kImageResolutionLimitBytes
-"ImageWebpRecompressQuality",            RewriteOptions::kImageWebpRecompressQuality
+"ImageWebpRecompressionQuality",         RewriteOptions::kImageWebpRecompressionQuality
 "ImplicitCacheTtlMs",                    RewriteOptions::kImplicitCacheTtlMs
 "IncreaseSpeedTracking",                 RewriteOptions::kIncreaseSpeedTracking
 "JpegRecompressionQuality",              RewriteOptions::kImageJpegRecompressionQuality

@@ -24,6 +24,7 @@
 
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -35,7 +36,6 @@ namespace net_instaweb {
 
 class LogRecord;
 class MessageHandler;
-class RequestHeaders;
 class Variable;
 
 // Abstract base class for encapsulating streaming, asynchronous HTTP fetches.
@@ -211,6 +211,7 @@ class StringAsyncFetch : public AsyncFetch {
     buffer_pointer_->clear();
     response_headers()->Clear();
     extra_response_headers()->Clear();
+    request_headers()->Clear();
     AsyncFetch::Reset();
   }
 

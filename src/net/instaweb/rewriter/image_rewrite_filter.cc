@@ -234,8 +234,16 @@ Image::CompressionOptions* ImageOptionsForLoadedResource(
   // large background images.
   image_options->webp_preferred = context.attempt_webp() &&
       (!is_css || input_size <= options->max_image_bytes_for_webp_in_css());
-  image_options->jpeg_quality = options->image_jpeg_recompress_quality();
-  image_options->webp_quality = options->image_webp_recompress_quality();
+  image_options->jpeg_quality = options->images_recompress_quality();
+  if (options->image_jpeg_recompress_quality() != -1) {
+    // if jpeg quality is explicitly set, it takes precedence over generic image
+    // quality.
+    image_options->jpeg_quality = options->image_jpeg_recompress_quality();
+  }
+  image_options->webp_quality = options->images_recompress_quality();
+  if (options->image_webp_recompress_quality() != -1) {
+    image_options->webp_quality = options->image_webp_recompress_quality();
+  }
   image_options->progressive_jpeg =
       options->Enabled(RewriteOptions::kConvertJpegToProgressive) &&
       input_size >= options->progressive_jpeg_min_bytes();
@@ -446,8 +454,16 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       Image::CompressionOptions* image_options =
           new Image::CompressionOptions();
       image_options->webp_preferred = false;
-      image_options->jpeg_quality = options->image_jpeg_recompress_quality();
-      image_options->webp_quality = options->image_webp_recompress_quality();
+      image_options->jpeg_quality = options->images_recompress_quality();
+      if (options->image_jpeg_recompress_quality() != -1) {
+        // if jpeg quality is explicitly set, it takes precedence over
+        // generic image quality.
+        image_options->jpeg_quality = options->image_jpeg_recompress_quality();
+      }
+      image_options->webp_quality = options->images_recompress_quality();
+      if (options->image_webp_recompress_quality() != -1) {
+        image_options->webp_quality = options->image_webp_recompress_quality();
+      }
       image_options->progressive_jpeg = false;
       image_options->convert_png_to_jpeg =
           options->Enabled(RewriteOptions::kConvertPngToJpeg);
@@ -512,8 +528,16 @@ void ImageRewriteFilter::ResizeLowQualityImage(
         new Image::CompressionOptions();
     // TODO(bolian): Use webp format for supported user agents.
     image_options->webp_preferred = false;
-    image_options->jpeg_quality = options->image_jpeg_recompress_quality();
-    image_options->webp_quality = options->image_webp_recompress_quality();
+    image_options->jpeg_quality = options->images_recompress_quality();
+    if (options->image_jpeg_recompress_quality() != -1) {
+      // if jpeg quality is explicitly set, it takes precedence over
+      // generic image quality.
+      image_options->jpeg_quality = options->image_jpeg_recompress_quality();
+    }
+    image_options->webp_quality = options->images_recompress_quality();
+    if (options->image_webp_recompress_quality() != -1) {
+      image_options->webp_quality = options->image_webp_recompress_quality();
+    }
     image_options->progressive_jpeg = false;
     image_options->convert_png_to_jpeg =
         options->Enabled(RewriteOptions::kConvertPngToJpeg);
