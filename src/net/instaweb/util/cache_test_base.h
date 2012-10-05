@@ -38,19 +38,19 @@ namespace net_instaweb {
 
 class CacheTestBase : public testing::Test {
  public:
-  // Helper class for calling Get on cache implementations
-  // that are blocking in nature (e.g. in-memory LRU or blocking file-system).
-  class Callback : public CacheInterface::Callback {
+  // Helper class for calling Get on cache implementations that are blocking
+  // in nature (e.g. in-memory LRU or blocking file-system). Also tests the
+  // CacheInterface::SynchronousCallback class in the process.
+  class Callback : public CacheInterface::SynchronousCallback {
    public:
     explicit Callback(CacheTestBase* test) : test_(test) { Reset(); }
     Callback() : test_(NULL) { Reset(); }
     virtual ~Callback() {}
     Callback* Reset() {
-      called_ = false;
+      SynchronousCallback::Reset();
       validate_called_ = false;
-      state_ = CacheInterface::kNotFound;
-      SharedString empty;
-      *value() = empty;
+      noop_wait_called_ = false;
+      value_of_called_when_wait_was_invoked_ = false;
       invalid_value_ = NULL;
       return this;
     }
@@ -65,9 +65,8 @@ class CacheTestBase : public testing::Test {
     }
 
     virtual void Done(CacheInterface::KeyState state) {
+      SynchronousCallback::Done(state);
       EXPECT_TRUE(validate_called_);
-      called_ = true;
-      state_ = state;
       if (test_ != NULL) {
         test_->GetDone();
       }
@@ -76,16 +75,17 @@ class CacheTestBase : public testing::Test {
     // The default implementation has an empty Wait implementation.
     // If you override this, be sure also to call set_mutex() from the
     // test subclass constructor or SetUp to protect outstanding_fetches_.
-    virtual void Wait() {}
+    virtual void Wait() {
+      noop_wait_called_ = true;
+      value_of_called_when_wait_was_invoked_ = called();
+    }
 
     void set_invalid_value(const char* v) { invalid_value_ = v; }
-    CacheInterface::KeyState state() const { return state_; }
-    bool called() const { return called_; }
     StringPiece value_str() { return value()->Value(); }
 
-    bool called_;
     bool validate_called_;
-    CacheInterface::KeyState state_;
+    bool noop_wait_called_;
+    bool value_of_called_when_wait_was_invoked_;
 
    private:
     CacheTestBase* test_;
@@ -158,7 +158,20 @@ class CacheTestBase : public testing::Test {
   }
 
   void WaitAndCheck(Callback* callback, const GoogleString& expected_value) {
+    // noop_wait_called_ means the callback hasn't overridden Wait() so
+    // Callback's do-nothing method was called; if that's the case, then
+    // we expect the cache to be blocking, and we expect the Get() call
+    // to have invoked Done() before the do-nothing Wait(). Since we can't
+    // know which version of Wait() was called before calling it, we use the
+    // value of called() as noted by the do-nothing Wait().
     callback->Wait();
+    if (callback->noop_wait_called_) {
+      EXPECT_TRUE(callback->value_of_called_when_wait_was_invoked_);
+      // We'd like to test this but it's valid for a CacheInterface to report
+      // that it is not blocking even though it actually is (or can be).
+      // DelayCache is an example.
+      // EXPECT_TRUE(Cache()->IsBlocking());
+    }
     ASSERT_TRUE(callback->called());
     EXPECT_STREQ(expected_value, callback->value_str());
     EXPECT_EQ(CacheInterface::kAvailable, callback->state());

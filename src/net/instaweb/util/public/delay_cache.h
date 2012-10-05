@@ -73,6 +73,8 @@ class DelayCache : public CacheInterface {
                             QueuedWorkerPool::Sequence* sequence);
 
   virtual const char* Name() const { return name_.c_str(); }
+  virtual bool IsBlocking() const { return false; }
+  virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
 
  private:
   class DelayCallback;

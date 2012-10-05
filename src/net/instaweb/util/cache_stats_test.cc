@@ -74,13 +74,13 @@ TEST_F(CacheStatsTest, BasicOperation) {
   cache_stats_->Get("key", &callback);
   EXPECT_EQ(1, stats_.GetVariable("test_hits")->Get());
   EXPECT_EQ(0, stats_.GetVariable("test_misses")->Get());
-  EXPECT_TRUE(callback.called_);
-  EXPECT_EQ(CacheInterface::kAvailable, callback.state_);
+  EXPECT_TRUE(callback.called());
+  EXPECT_EQ(CacheInterface::kAvailable, callback.state());
   EXPECT_EQ(GoogleString("val"), callback.value()->Value());
 
   cache_stats_->Get("no such key", &callback);
   EXPECT_EQ(1, stats_.GetVariable("test_misses")->Get());
-  EXPECT_EQ(CacheInterface::kNotFound, callback.state_);
+  EXPECT_EQ(CacheInterface::kNotFound, callback.state());
 
   cache_stats_->Delete("key");
   EXPECT_EQ(1, stats_.GetVariable("test_deletes")->Get());

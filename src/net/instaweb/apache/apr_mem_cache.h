@@ -86,6 +86,8 @@ class AprMemCache : public CacheInterface {
   bool GetStatus(GoogleString* status_string);
 
   virtual const char* Name() const { return "AprMemCache"; }
+  virtual bool IsBlocking() const { return true; }
+  virtual bool IsMachineLocal() const { return is_machine_local_; }
 
  private:
   void DecodeValueMatchingKeyAndCallCallback(
@@ -102,6 +104,7 @@ class AprMemCache : public CacheInterface {
   std::vector<apr_memcache_server_t*> servers_;
   Hasher* hasher_;
   Variable* timeouts_;
+  bool is_machine_local_;
   MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(AprMemCache);

@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -56,6 +57,14 @@ class WriteThroughCache : public CacheInterface {
   CacheInterface* cache1() { return cache1_; }
   CacheInterface* cache2() { return cache2_; }
   virtual const char* Name() const { return name_.c_str(); }
+  virtual bool IsBlocking() const {
+    // We can fulfill our guarantee only if both caches block.
+    return (cache1_->IsBlocking() && cache2_->IsBlocking());
+  }
+  virtual bool IsMachineLocal() const {
+    // We can fulfill our guarantee only if both caches are machine local.
+    return (cache1_->IsMachineLocal() && cache2_->IsMachineLocal());
+  }
 
  private:
   void PutInCache1(const GoogleString& key, SharedString* value);

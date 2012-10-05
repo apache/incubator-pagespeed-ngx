@@ -50,6 +50,8 @@ class CacheCopy : public CacheInterface {
   virtual void Delete(const GoogleString& key) { cache_->Delete(key); }
   virtual const char* Name() const { return name_.c_str(); }
   virtual void MultiGet(MultiGetRequest* request) { cache_->MultiGet(request); }
+  virtual bool IsBlocking() const { return cache_->IsBlocking(); }
+  virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
 
  private:
   CacheInterface* cache_;

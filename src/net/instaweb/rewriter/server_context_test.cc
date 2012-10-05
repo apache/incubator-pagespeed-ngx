@@ -1220,6 +1220,8 @@ class ThreadAlternatingCache : public CacheInterface {
   }
 
   virtual const char* Name() const { return "ThreadAlternatingCache"; }
+  virtual bool IsBlocking() const { return false; }
+  virtual bool IsMachineLocal() const { return backend_->IsMachineLocal(); }
 
  private:
   void GetImpl(GoogleString key, Callback* callback) {

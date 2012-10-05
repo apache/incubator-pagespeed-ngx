@@ -61,6 +61,8 @@ class FileCache : public CacheInterface {
   void set_worker(SlowWorker* worker) { worker_ = worker; }
 
   virtual const char* Name() const { return "FileCache"; }
+  virtual bool IsBlocking() const { return true; }
+  virtual bool IsMachineLocal() const { return true; }
 
  private:
   class CacheCleanFunction;

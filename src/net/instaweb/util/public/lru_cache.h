@@ -86,6 +86,8 @@ class LRUCache : public CacheInterface {
   void ClearStats();
 
   virtual const char* Name() const { return "LRUCache"; }
+  virtual bool IsBlocking() const { return true; }
+  virtual bool IsMachineLocal() const { return true; }
 
  private:
   typedef std::pair<const GoogleString*, SharedString> KeyValuePair;

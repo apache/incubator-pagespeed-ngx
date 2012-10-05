@@ -21,6 +21,7 @@
 
 #include <vector>
 
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -81,6 +82,35 @@ class CacheInterface {
     SharedString value_;
   };
 
+  // Helper class for use with implementations for which IsBlocking is true.
+  // It simply saves the state, value, and whether Done() has been called.
+  class SynchronousCallback : public Callback {
+   public:
+    SynchronousCallback() { Reset(); }
+
+    bool called() const { return called_; }
+    KeyState state() const { return state_; }
+    // super.value() is used to get/set the value.
+
+    void Reset() {
+      called_ = false;
+      state_ = CacheInterface::kNotFound;
+      SharedString empty;
+      *value() = empty;
+    }
+
+    virtual void Done(CacheInterface::KeyState state) {
+      called_ = true;
+      state_ = state;
+    }
+
+   private:
+    bool called_;
+    CacheInterface::KeyState state_;
+
+    DISALLOW_COPY_AND_ASSIGN(SynchronousCallback);
+  };
+
   // Vector of structures used to initiate a MultiGet.
   struct KeyCallback {
     KeyCallback(const GoogleString& k, Callback* c) : key(k), callback(c) {}
@@ -125,6 +155,15 @@ class CacheInterface {
 
   // The name of this CacheInterface -- used for logging and debugging.
   virtual const char* Name() const = 0;
+
+  // Returns true if this cache is guaranteed to call its callbacks before
+  // returning from Get and MultiGet.
+  virtual bool IsBlocking() const = 0;
+
+  // Returns true if this cache is local to the server's machine. For the
+  // currently intended use of this method, it would be better to say deny
+  // locality if not sure/determinable.
+  virtual bool IsMachineLocal() const = 0;
 
  protected:
   // Invokes callback->ValidateCandidate() and callback->Done() as appropriate.

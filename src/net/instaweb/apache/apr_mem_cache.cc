@@ -23,6 +23,7 @@
 
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/hostname_util.h"
 #include "net/instaweb/util/public/key_value_codec.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -64,9 +65,13 @@ AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
       memcached_(NULL),
       hasher_(hasher),
       timeouts_(statistics->GetVariable(kMemCacheTimeouts)),
+      is_machine_local_(true),
       message_handler_(handler) {
   servers.CopyToString(&server_spec_);
   apr_pool_create(&pool_, NULL);
+
+  // Get our hostname for the is_machine_local_ analysis below.
+  GoogleString hostname(GetHostname());
 
   // Don't try to connect on construction; we don't want to bother creating
   // connections to the memcached servers in the root process.  But do parse
@@ -88,6 +93,8 @@ AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
       ok = StringToInt(host_port[1].as_string(), &port);
     }
     if (ok) {
+      // If any host isn't "localhost" then the machine isn't local.
+      is_machine_local_ &= IsLocalhost(host_port[0], hostname);
       host_port[0].CopyToString(StringVectorAdd(&hosts_));
       ports_.push_back(port);
     } else {

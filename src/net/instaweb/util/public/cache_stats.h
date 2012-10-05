@@ -54,6 +54,8 @@ class CacheStats : public CacheInterface {
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
   virtual const char* Name() const { return name_.c_str(); }
+  virtual bool IsBlocking() const { return cache_->IsBlocking(); }
+  virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
 
  private:
   class StatsCallback;

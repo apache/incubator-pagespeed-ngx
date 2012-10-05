@@ -21,7 +21,6 @@
 #include "net/instaweb/util/public/threadsafe_cache.h"
 
 #include "base/scoped_ptr.h"
-#include "base/stringprintf.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/cache_test_base.h"
@@ -78,8 +77,8 @@ class CacheSpammer : public ThreadSystem::Thread {
         GoogleString key = StringPrintf(name_pattern, j);
         CacheTestBase::Callback callback;
         cache_->Get(key, &callback);
-        bool found = (callback.called_ &&
-                      (callback.state_ == CacheInterface::kAvailable));
+        bool found = (callback.called() &&
+                      (callback.state() == CacheInterface::kAvailable));
 
         // We cannot assume that a Get succeeds if there are evictions
         // or deletions going on.  But we are still verifying that the code
@@ -153,8 +152,8 @@ TEST_F(ThreadsafeCacheTest, BasicOperation) {
   threadsafe_cache_.Put("key", &put_buffer);
   CacheTestBase::Callback callback;
   threadsafe_cache_.Get("key", &callback);
-  EXPECT_TRUE(callback.called_);
-  EXPECT_EQ(CacheInterface::kAvailable, callback.state_);
+  EXPECT_TRUE(callback.called());
+  EXPECT_EQ(CacheInterface::kAvailable, callback.state());
   EXPECT_EQ(GoogleString("val"), callback.value()->Value());
 }
 

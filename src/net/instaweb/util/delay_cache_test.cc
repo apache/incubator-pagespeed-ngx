@@ -76,18 +76,18 @@ TEST_F(DelayCacheTest, DelayOpsFound) {
   cache_.Get("OtherName", &other_result);
 
   // Initially, should not have been called.
-  EXPECT_FALSE(result.called_);
+  EXPECT_FALSE(result.called());
 
   // Release an unrelated key.  That should not call "Name".
   cache_.ReleaseKey("OtherName");
-  EXPECT_FALSE(result.called_);
-  EXPECT_TRUE(other_result.called_);
-  EXPECT_EQ(CacheInterface::kAvailable, other_result.state_);
+  EXPECT_FALSE(result.called());
+  EXPECT_TRUE(other_result.called());
+  EXPECT_EQ(CacheInterface::kAvailable, other_result.state());
 
   // Now after it is released, it should be OK.
   cache_.ReleaseKey("Name");
-  EXPECT_TRUE(result.called_);
-  EXPECT_EQ(CacheInterface::kAvailable, result.state_);
+  EXPECT_TRUE(result.called());
+  EXPECT_EQ(CacheInterface::kAvailable, result.state());
   EXPECT_EQ("Value", result.value()->Value());
 }
 
@@ -98,14 +98,14 @@ TEST_F(DelayCacheTest, DelayOpsNotFound) {
   CacheTestBase::Callback result, other_result;
   cache_.Get("Name", result.Reset());
   cache_.Get("OtherName", &other_result);
-  EXPECT_FALSE(result.called_);
+  EXPECT_FALSE(result.called());
   cache_.ReleaseKey("OtherName");
-  EXPECT_FALSE(result.called_);
-  EXPECT_TRUE(other_result.called_);
-  EXPECT_EQ(CacheInterface::kNotFound, other_result.state_);
+  EXPECT_FALSE(result.called());
+  EXPECT_TRUE(other_result.called());
+  EXPECT_EQ(CacheInterface::kNotFound, other_result.state());
   cache_.ReleaseKey("Name");
-  EXPECT_TRUE(result.called_);
-  EXPECT_EQ(CacheInterface::kNotFound, result.state_);
+  EXPECT_TRUE(result.called());
+  EXPECT_EQ(CacheInterface::kNotFound, result.state());
 }
 
 TEST_F(DelayCacheTest, DelayOpsFoundInSequence) {
@@ -127,24 +127,24 @@ TEST_F(DelayCacheTest, DelayOpsFoundInSequence) {
   cache_.Get("OtherName", &other_result);
 
   // Initially, should not have been called.
-  EXPECT_FALSE(result.called_);
+  EXPECT_FALSE(result.called());
 
   // Release an unrelated key.  That should not call "Name".
   cache_.ReleaseKeyInSequence("OtherName", sequence);
   sequence->Add(new WorkerTestBase::NotifyRunFunction(&sync_point));
   sync_point.Wait();
 
-  EXPECT_FALSE(result.called_);
-  EXPECT_TRUE(other_result.called_);
-  EXPECT_EQ(CacheInterface::kAvailable, other_result.state_);
+  EXPECT_FALSE(result.called());
+  EXPECT_TRUE(other_result.called());
+  EXPECT_EQ(CacheInterface::kAvailable, other_result.state());
 
   // Now after it is released, it should be OK.
   cache_.ReleaseKey("Name");
   sequence->Add(new WorkerTestBase::NotifyRunFunction(&sync_point));
   sync_point.Wait();
 
-  EXPECT_TRUE(result.called_);
-  EXPECT_EQ(CacheInterface::kAvailable, result.state_);
+  EXPECT_TRUE(result.called());
+  EXPECT_EQ(CacheInterface::kAvailable, result.state());
   EXPECT_EQ("Value", result.value()->Value());
 
   pool.ShutDown();

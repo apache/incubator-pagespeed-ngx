@@ -24,7 +24,6 @@
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -55,14 +54,7 @@ class AsyncCache : public CacheInterface {
   // in.  Does not take ownership of the pool, which might be shared
   // with other users.
   AsyncCache(CacheInterface* cache, AbstractMutex* mutex,
-             QueuedWorkerPool* pool)
-      : cache_(cache),
-        mutex_(mutex),
-        name_(StrCat("AsyncCache using ", cache_->Name())),
-        num_threads_(kDefaultNumThreads),
-        active_threads_(0),
-        pool_(pool) {
-  }
+             QueuedWorkerPool* pool);
   virtual ~AsyncCache();
 
   virtual void Get(const GoogleString& key, Callback* callback);
@@ -70,6 +62,8 @@ class AsyncCache : public CacheInterface {
   virtual void Delete(const GoogleString& key);
   virtual void MultiGet(MultiGetRequest* request);
   virtual const char* Name() const { return name_.c_str(); }
+  virtual bool IsBlocking() const { return false; }
+  virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
 
   // Sets the maximum number of parallel lookups that AsyncCache will
   // attempt to make.

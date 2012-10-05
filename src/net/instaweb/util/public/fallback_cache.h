@@ -51,6 +51,16 @@ class FallbackCache : public CacheInterface {
   virtual void Delete(const GoogleString& key);
   virtual void MultiGet(MultiGetRequest* request);
   virtual const char* Name() const { return name_.c_str(); }
+  virtual bool IsBlocking() const {
+    // We can fulfill our guarantee only if both caches block.
+    return (small_object_cache_->IsBlocking() &&
+            large_object_cache_->IsBlocking());
+  }
+  virtual bool IsMachineLocal() const {
+    // We can fulfill our guarantee only if both caches are machine local.
+    return (small_object_cache_->IsMachineLocal() &&
+            large_object_cache_->IsMachineLocal());
+  }
 
  private:
   void DecodeValueMatchingKeyAndCallCallback(

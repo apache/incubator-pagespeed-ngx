@@ -25,8 +25,20 @@
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
+AsyncCache::AsyncCache(CacheInterface* cache, AbstractMutex* mutex,
+                       QueuedWorkerPool* pool)
+    : cache_(cache),
+      mutex_(mutex),
+      name_(StrCat("AsyncCache using ", cache_->Name())),
+      num_threads_(kDefaultNumThreads),
+      active_threads_(0),
+      pool_(pool) {
+  CHECK(cache->IsBlocking());
+}
 
 AsyncCache::~AsyncCache() {
   DCHECK_EQ(0, active_threads_)

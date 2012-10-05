@@ -23,6 +23,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -47,6 +48,8 @@ class ThreadsafeCache : public CacheInterface {
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
   virtual const char* Name() const { return name_.c_str(); }
+  virtual bool IsBlocking() const { return cache_->IsBlocking(); }
+  virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
 
  private:
   scoped_ptr<CacheInterface> cache_;

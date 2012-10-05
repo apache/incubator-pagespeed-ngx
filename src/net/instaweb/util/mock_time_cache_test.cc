@@ -75,27 +75,27 @@ TEST_F(MockTimeCacheTest, DelayOps) {
   cache_.Get("Name", &result);
 
   // Initially, should not have been called.
-  EXPECT_FALSE(result.called_);
+  EXPECT_FALSE(result.called());
 
   // Move halfways to completion; should still have not been called.
   timer_.AdvanceUs(kDelayUs / 2);
-  EXPECT_FALSE(result.called_);
+  EXPECT_FALSE(result.called());
 
   // Now after it expires, it should be OK.
   timer_.AdvanceUs(kDelayUs / 2 + 1);
-  EXPECT_TRUE(result.called_);
-  EXPECT_EQ(CacheInterface::kAvailable, result.state_);
+  EXPECT_TRUE(result.called());
+  EXPECT_EQ(CacheInterface::kAvailable, result.state());
   EXPECT_EQ("Value", result.value()->Value());
 
   // Do the same thing after deleting it.
   cache_.Delete("Name");
   cache_.Get("Name", result.Reset());
-  EXPECT_FALSE(result.called_);
+  EXPECT_FALSE(result.called());
   timer_.AdvanceUs(kDelayUs / 2);
-  EXPECT_FALSE(result.called_);
+  EXPECT_FALSE(result.called());
   timer_.AdvanceUs(kDelayUs / 2 + 1);
-  EXPECT_TRUE(result.called_);
-  EXPECT_EQ(CacheInterface::kNotFound, result.state_);
+  EXPECT_TRUE(result.called());
+  EXPECT_EQ(CacheInterface::kNotFound, result.state());
 }
 
 }  // namespace

@@ -57,6 +57,8 @@ class MockTimeCache : public CacheInterface {
   MockTimer* timer() { return timer_; }
 
   virtual const char* Name() const { return name_.c_str(); }
+  virtual bool IsBlocking() const { return cache_->IsBlocking(); }
+  virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
 
  private:
   class DelayCallback;
