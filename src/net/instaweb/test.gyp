@@ -201,6 +201,7 @@
         'util/gzip_inflater_test.cc',
         'util/hashed_referer_statistics_test_base.cc',
         'util/hasher_test.cc',
+        'util/hostname_util_test.cc',
         'util/inline_slist_test.cc',
         'util/inprocess_shared_mem_test.cc',
         'util/key_value_codec_test.cc',

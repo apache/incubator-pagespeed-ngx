@@ -45,6 +45,17 @@ inline GTEST_API_ AssertionResult CmpHelperSTREQ(
                         actual.as_string().c_str());
 }
 
+// Allows EXPECT_STRNE to be used on StringPiece.
+inline GTEST_API_ AssertionResult CmpHelperSTRNE(
+    const char* expected_expression,
+    const char* actual_expression,
+    const StringPiece& expected,
+    const StringPiece& actual) {
+  return CmpHelperSTRNE(expected_expression, actual_expression,
+                        expected.as_string().c_str(),
+                        actual.as_string().c_str());
+}
+
 }  // namespace internal
 }  // namespace testing
 

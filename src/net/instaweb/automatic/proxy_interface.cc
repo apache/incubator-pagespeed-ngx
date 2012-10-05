@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hostname_util.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -204,11 +205,7 @@ bool ProxyInterface::UrlAndPortMatchThisServer(const GoogleUrl& url) {
     // browser window like "exeda.cam", which should match
     // "exeda.cam.corp.google.com".
     StringPiece host = url.Host();
-    if ((host == "localhost") ||
-        (host == "127.0.0.1") ||
-        (host == "::1") ||
-        // TODO(sligocki): Cover other representations of IPv6 localhost IP?
-        (host == hostname_) ||
+    if (IsLocalhost(host, hostname_) ||
         StringPiece(hostname_).starts_with(StrCat(host, "."))) {
       ret = true;
     }

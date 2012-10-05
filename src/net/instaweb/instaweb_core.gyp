@@ -35,6 +35,7 @@
         'util/file_message_handler.cc',
         'util/google_message_handler.cc',
         'util/google_url.cc',
+        'util/hostname_util.cc',
         'util/message_handler.cc',
         'util/print_message_handler.cc',
         'util/query_params.cc',
