@@ -60,6 +60,7 @@ parent.
 To your nginx.conf add to the main block or to a server or location block:
 
     pagespeed on;
+    pagespeed_cache /path/to/cache/dir;
 
 To confirm that the module is working, fetch a page and check that you see the
 following comment in the source:
