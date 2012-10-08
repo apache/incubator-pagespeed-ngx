@@ -758,20 +758,20 @@ check egrep -q ',Mcc' <(echo $OUT)
 OUT=$($WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' \
   --header 'X-PSA-Optimize-For-SPDY: true' \
   $EXAMPLE_ROOT/combine_css.html)
-check_not egrep -q ',Mcc' <(echo $OUT)
-check egrep -q '.pagespeed.cc' <(echo $OUT)
+check_not_from "$OUT" egrep -q ',Mcc'
+check_from "$OUT" egrep -q '.pagespeed.cc'
 
 # Now test resource fetch. Since we've disabled extend_cache and
 # rewrite_images for spdy, we should not see rewritten resources there,
 # while we will in the other normal case.
 OUT=$($WGET_DUMP  --header 'X-PSA-Blocking-Rewrite: psatest' \
     $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.rnLTdExmOm.css)
-check grep -q 'png.pagespeed.' <(echo $OUT)
+check_from "$OUT" grep -q 'png.pagespeed.'
 
 OUT=$($WGET_DUMP  --header 'X-PSA-Blocking-Rewrite: psatest' \
     --header 'X-PSA-Optimize-For-SPDY: true' \
     $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.rnLTdExmOm.css)
-check_not grep -q 'png.pagespeed.' <(echo $OUT)
+check_not_from "$OUT" grep -q 'png.pagespeed.'
 COMMENTING_BLOCK
 # Cleanup
 rm -rf $OUTDIR

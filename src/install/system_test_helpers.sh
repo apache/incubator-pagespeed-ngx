@@ -154,6 +154,9 @@ function print_failure_info_and_exit() {
     # "caller 1" is our caller's caller.
     echo "     failure at line $(caller 1 | sed 's/ .*//')" 1>&2
   fi
+  if [ $# -eq 1 ]; then
+    echo FAILed Input: "$1"
+  fi
   echo FAIL.
   exit 1;
 }
@@ -165,10 +168,28 @@ function check() {
   "$@" || print_failure_info_and_exit
 }
 
+# Like check, but the first argument is text to pipe into the command given in
+# the remaining arguments.
+function check_from() {
+  text="$1"
+  shift
+  echo "     check" "$@"
+  echo "$text" | "$@" || print_failure_info_and_exit "$text"
+}
+
 # Same as check(), but expects command to fail.
 function check_not() {
   echo "     check_not" "$@"
   "$@" && print_failure_info_and_exit
+}
+
+# Like check_not, but the first argument is text to pipe into the
+# command given in the remaining arguments.
+function check_not_from() {
+  text="$1"
+  shift
+  echo "     check_not" "$@"
+  echo "$text" | "$@" && print_failure_info_and_exit "$text"
 }
 
 # In a pipeline a failed check or check_not will not halt the script on error.
@@ -179,6 +200,8 @@ function check_not() {
 # If you can legibly rewrite the code not to need a pipeline at all, however,
 # check is better because it can print the problem test:
 #   check grep foo <(echo foo)
+# Or, even better, because it can print the failing input on failure:
+#   check_from "foo" grep foo
 function fail() {
   print_failure_info_and_exit
 }
