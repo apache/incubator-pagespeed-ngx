@@ -55,6 +55,11 @@ TEST_F(CollectFlushEarlyContentFilterTest, CollectFlushEarlyContentFilter) {
         "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\" "
           "media=\"print\"/>"
         "<link type=\"text/css\" rel=\"stylesheet\" href=\"b.css\"/>"
+        "<link type=\"text/css\" rel=\"stylesheet\" "
+        "href=\"d.css.pagespeed.ce.0.css\" media=\"print\"/>"
+        "<link type=\"text/css\" rel=\"stylesheet\" "
+        "href=\"http://www.test.com/I.e.css+f.css.pagespeed.cc.0.css\" "
+        "media=\"print\"/>"
         "<script src=\"b.js\" type=\"text/javascript\"></script>"
         "<noscript>"
         "<script src=\"c.js\">"
@@ -71,14 +76,17 @@ TEST_F(CollectFlushEarlyContentFilterTest, CollectFlushEarlyContentFilter) {
   FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
   EXPECT_STREQ("<script src=\"http://test.com/a.js\"></script>"
                "<link type=\"text/css\" rel=\"stylesheet\" "
-               "href=\"http://test.com/a.css\" media=\"print\"/>"
+               "href=\"http://test.com/a.css\"/>"
                "<link type=\"text/css\" rel=\"stylesheet\" "
                "href=\"http://test.com/b.css\"/>"
-               "<script src=\"http://test.com/b.js\" type=\"text/javascript\">"
+               "<link type=\"text/css\" rel=\"stylesheet\" "
+               "href=\"http://test.com/d.css\"/>"
+               "<script type=\"text/javascript\" src=\"http://test.com/b.js\">"
                "</script>"
                "<link type=\"text/css\" rel=\"stylesheet\" "
                "href=\"http://test.com/c.css\"/>",
                flush_early_info->resource_html());
+  EXPECT_STREQ(output_buffer_, html_input);
 }
 
 TEST_F(CollectFlushEarlyContentFilterTest, WithInlineInportToLinkFilter) {

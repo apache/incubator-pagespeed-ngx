@@ -18,11 +18,13 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_COLLECT_FLUSH_EARLY_CONTENT_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_COLLECT_FLUSH_EARLY_CONTENT_FILTER_H_
 
-#include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/semantic_type.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -34,27 +36,32 @@ class RewriteDriver;
 // and stores it in property cache to be used by FlushEarlyFlow. If a request is
 // flushed early then this HTML is used to make the client download resources
 // early.
-class CollectFlushEarlyContentFilter : public HtmlWriterFilter {
+class CollectFlushEarlyContentFilter : public RewriteFilter {
  public:
   explicit CollectFlushEarlyContentFilter(RewriteDriver* driver);
 
-  virtual void StartDocument();
+  virtual void StartDocumentImpl();
   virtual void EndDocument();
-  virtual void StartElement(HtmlElement* element);
-  virtual void EndElement(HtmlElement* element);
+  virtual void StartElementImpl(HtmlElement* element);
+  virtual void EndElementImpl(HtmlElement* element);
+
+  virtual const char* Name() const {
+    return "Collect Flush Early Content Filter";
+  }
+  virtual const char* id() const {
+    return RewriteOptions::kCollectFlushEarlyContentFilterId;
+  }
 
  protected:
   virtual void Clear();
 
  private:
+  void AppendToHtml(StringPiece url, semantic_type::Category category,
+                    HtmlElement* element);
+  void AppendAttribute(HtmlName::Keyword keyword, HtmlElement* element);
   // Are we inside a <head> node.
   bool in_head_;
-  HtmlElement* current_element_;
-  HtmlElement* no_script_element_;
-  RewriteDriver* driver_;
-  NullWriter null_writer_;  // Null writer that ignores all writes.
   GoogleString resource_html_;  // The html text containing resource elements.
-  StringWriter resource_html_writer_;  // Write to write the resource_html_.
 
   DISALLOW_COPY_AND_ASSIGN(CollectFlushEarlyContentFilter);
 };

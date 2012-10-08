@@ -51,6 +51,7 @@ const char RewriteOptions::kJavascriptCombinerId[] = "jc";
 const char RewriteOptions::kJavascriptMinId[] = "jm";
 const char RewriteOptions::kJavascriptInlineId[] = "ji";
 const char RewriteOptions::kLocalStorageCacheId[] = "ls";
+const char RewriteOptions::kCollectFlushEarlyContentFilterId[] = "fe";
 const char RewriteOptions::kPanelCommentPrefix[] = "GooglePanel";
 
 // Sets limit for buffering html in blink secondary fetch to 10MB default.
@@ -292,6 +293,8 @@ const char* RewriteOptions::FilterName(Filter filter) {
     case kCanonicalizeJavascriptLibraries:
       return "Canonicalize Javascript library URLs";
     case kCollapseWhitespace:              return "Collapse Whitespace";
+    case kCollectFlushEarlyContentFilter:
+      return "Collect Flush Early Content Filter";
     case kCombineCss:                      return "Combine Css";
     case kCombineHeads:                    return "Combine Heads";
     case kCombineJavascript:               return "Combine Javascript";
@@ -376,6 +379,8 @@ const char* RewriteOptions::FilterId(Filter filter) {
     case kAddInstrumentation:              return "ai";
     case kCanonicalizeJavascriptLibraries: return "ij";
     case kCollapseWhitespace:              return "cw";
+    case kCollectFlushEarlyContentFilter:
+      return kCollectFlushEarlyContentFilterId;
     case kCombineCss:                      return kCssCombinerId;
     case kCombineHeads:                    return "ch";
     case kCombineJavascript:               return kJavascriptCombinerId;

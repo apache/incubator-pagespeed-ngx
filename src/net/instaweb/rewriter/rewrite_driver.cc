@@ -841,13 +841,6 @@ void RewriteDriver::AddPreRenderFilters() {
     AppendOwnedPreRenderFilter(new CssInlineImportToLinkFilter(this,
                                                                statistics()));
   }
-  // Enable Flush subresources early filter to extract the subresources from
-  // head. This should ideally (but not necessarily) be before any filters that
-  // trigger async rewrites.
-  if (flush_subresources_enabled &&
-      rewrite_options->enable_flush_subresources_experimental()) {
-    AppendOwnedPreRenderFilter(new CollectFlushEarlyContentFilter(this));
-  }
   if (rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
     // Cut out inlined styles and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
@@ -956,10 +949,13 @@ void RewriteDriver::AddPreRenderFilters() {
   }
   // Enable Flush subresources early filter to extract the subresources from
   // head. This should be the last prerender filter.
-  if (flush_subresources_enabled &&
-      !rewrite_options->enable_flush_subresources_experimental()) {
-    collect_subresources_filter_ = new CollectSubresourcesFilter(this);
-    AppendOwnedPreRenderFilter(collect_subresources_filter_);
+  if (flush_subresources_enabled) {
+    if (rewrite_options->enable_flush_subresources_experimental()) {
+      AppendOwnedPreRenderFilter(new CollectFlushEarlyContentFilter(this));
+    } else {
+      collect_subresources_filter_ = new CollectSubresourcesFilter(this);
+      AppendOwnedPreRenderFilter(collect_subresources_filter_);
+    }
   }
 }
 

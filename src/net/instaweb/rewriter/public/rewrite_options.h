@@ -75,6 +75,7 @@ class RewriteOptions {
     kAddInstrumentation,
     kCanonicalizeJavascriptLibraries,
     kCollapseWhitespace,
+    kCollectFlushEarlyContentFilter,
     kCombineCss,
     kCombineHeads,
     kCombineJavascript,
@@ -313,6 +314,7 @@ class RewriteOptions {
   static const char kJavascriptInlineId[];
   static const char kLocalStorageCacheId[];
   static const char kJavascriptMinId[];
+  static const char kCollectFlushEarlyContentFilterId[];
 
   static const char kPanelCommentPrefix[];
 
