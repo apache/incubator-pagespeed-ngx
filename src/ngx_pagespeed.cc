@@ -45,7 +45,8 @@ extern ngx_module_t ngx_pagespeed;
   ngx_conf_log_error(NGX_LOG_ALERT, cf, 0, args)
 
 typedef struct {
-  ngx_flag_t  active;
+  ngx_flag_t active;
+  ngx_str_t cache_dir;
 } ngx_http_pagespeed_loc_conf_t;
 
 typedef struct {
@@ -70,6 +71,13 @@ static ngx_command_t ngx_http_pagespeed_commands[] = {
     offsetof(ngx_http_pagespeed_loc_conf_t, active),
     NULL },
 
+  { ngx_string("pagespeed_cache"),
+    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+    ngx_conf_set_str_slot,
+    NGX_HTTP_LOC_CONF_OFFSET,
+    offsetof(ngx_http_pagespeed_loc_conf_t, cache_dir),
+    NULL },
+
   ngx_null_command
 };
 
@@ -84,6 +92,10 @@ ngx_http_pagespeed_create_loc_conf(ngx_conf_t* cf)
     return NGX_CONF_ERROR;
   }
   conf->active = NGX_CONF_UNSET;
+
+  // set by ngx_pcalloc():
+  //   conf->cache_dir = { 0, NULL };
+
   return conf;
 }
 
@@ -95,7 +107,26 @@ ngx_http_pagespeed_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child)
   ngx_http_pagespeed_loc_conf_t* conf =
       static_cast<ngx_http_pagespeed_loc_conf_t*>(child);
 
+  CDBG(cf, "prev Cache[0-%d]=%p: '%*s'",
+       prev->cache_dir.len,
+       prev->cache_dir.data,
+       prev->cache_dir.len,
+       prev->cache_dir.data);
+  
+  CDBG(cf, "conf Cache[0-%d]=%p: '%*s'",
+       conf->cache_dir.len,
+       conf->cache_dir.data,
+       conf->cache_dir.len,
+       conf->cache_dir.data);  
+
   ngx_conf_merge_value(conf->active, prev->active, 0);  // Default off.
+  ngx_conf_merge_str_value(conf->cache_dir, prev->cache_dir, "");
+
+  CDBG(cf, "conf revised Cache[0-%d]=%p: '%*s'",
+       conf->cache_dir.len,
+       conf->cache_dir.data,
+       conf->cache_dir.len,
+       conf->cache_dir.data);
 
   return NGX_CONF_OK;
 }
@@ -190,7 +221,7 @@ ngx_int_t ngx_http_pagespeed_optimize_and_replace_buffer(ngx_http_request_t* r,
           ngx_http_get_module_ctx(r, ngx_pagespeed));
   if (ctx == NULL) {
     // Set up things we do once at the beginning of the request.
-    
+
     ctx = new ngx_http_pagespeed_request_ctx_t;
     ctx->driver = context->server_context->NewRewriteDriver();
 
@@ -305,6 +336,7 @@ ngx_int_t ngx_http_pagespeed_optimize_and_replace_buffer(ngx_http_request_t* r,
   ctx->output->copy(reinterpret_cast<char*>(b->pos), ctx->output->length());
   b->last = b->end = b->pos + ctx->output->length();
 
+
   if (last_buf) {
     // release request context
     ngx_http_set_ctx(r, NULL, ngx_pagespeed);
@@ -321,12 +353,12 @@ ngx_int_t ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
 {
   ngx_int_t rc;
 
-  rc = ngx_http_pagespeed_optimize_and_replace_buffer(r, in);
+  rc = ngx_http_pagespeed_note_processed(r, in);
   if (rc != NGX_OK) {
     return rc;
   }
 
-  rc = ngx_http_pagespeed_note_processed(r, in);
+  rc = ngx_http_pagespeed_optimize_and_replace_buffer(r, in);
   if (rc != NGX_OK) {
     return rc;
   }
@@ -350,10 +382,19 @@ ngx_http_pagespeed_init(ngx_conf_t* cf)
 
     net_instaweb::NgxRewriteDriverFactory::Initialize();
     // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
-    // we're done with this module.
+    // we're done with it.
 
     context = new ngx_http_pagespeed_module_ctx_t();
     context->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
+    CDBG(cf, "Cache[0-%d]=%p: '%*s'",
+         pagespeed_config->cache_dir.len,
+         pagespeed_config->cache_dir.data,
+         pagespeed_config->cache_dir.len,
+         pagespeed_config->cache_dir.data);
+
+    context->driver_factory->set_filename_prefix(StringPiece(
+        reinterpret_cast<char*>(pagespeed_config->cache_dir.data),
+        pagespeed_config->cache_dir.len));
     context->server_context = context->driver_factory->CreateServerContext();
   }
 
