@@ -61,6 +61,10 @@ namespace {
 const char kTotalRequestCount[] = "all-requests";
 const char kPagespeedRequestCount[] = "pagespeed-requests";
 const char kBlinkRequestCount[] = "blink-requests";
+const char kRejectedRequestCount[] = "publisher-rejected-requests";
+const char kRejectedRequestHtmlResponse[] = "<html><body>Unable to serve "
+    "content as the content is blocked by the administrator of the domain."
+    "</body></html>";
 
 bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
   const ContentType* type = NameExtensionToContentType(url.LeafSansQuery());
@@ -96,6 +100,20 @@ bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
   }
   LOG(DFATAL) << "URL " << url.Spec() << ": unexpected type:" << type->type()
               << "; " << type->mime_type() << "; " << type->file_extension();
+  return false;
+}
+
+bool HasRejectedHeader(const StringPiece& header_name,
+                       const RequestHeaders* request_headers,
+                       const RewriteOptions* options) {
+  ConstStringStarVector header_values;
+  if (request_headers->Lookup(header_name, &header_values)) {
+    for (int i = 0, n = header_values.size(); i < n; ++i) {
+      if (options->IsRejectedRequest(header_name, *header_values[i])) {
+        return true;
+      }
+    }
+  }
   return false;
 }
 
@@ -153,7 +171,8 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
       pagespeed_requests_(stats->GetTimedVariable(kPagespeedRequestCount)),
       blink_requests_(stats->GetTimedVariable(kBlinkRequestCount)),
       blink_critical_line_requests_(
-          stats->GetTimedVariable(kBlinkCriticalLineRequestCount)) {
+          stats->GetTimedVariable(kBlinkCriticalLineRequestCount)),
+      rejected_requests_(stats->GetTimedVariable(kRejectedRequestCount)) {
   proxy_fetch_factory_.reset(new ProxyFetchFactory(manager));
 }
 
@@ -168,6 +187,8 @@ void ProxyInterface::InitStats(Statistics* statistics) {
   statistics->AddTimedVariable(kBlinkRequestCount,
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kBlinkCriticalLineRequestCount,
+                               ServerContext::kStatisticsGroup);
+  statistics->AddTimedVariable(kRejectedRequestCount,
                                ServerContext::kStatisticsGroup);
   BlinkFlowCriticalLine::InitStats(statistics);
   FlushEarlyFlow::InitStats(statistics);
@@ -447,16 +468,33 @@ ProxyFetchPropertyCallbackCollector*
 
 void ProxyInterface::ProxyRequestCallback(
     bool is_resource_fetch,
-    GoogleUrl* request_url,
+    GoogleUrl* url,
     AsyncFetch* async_fetch,
     RewriteOptions* domain_options,
     RewriteOptions* query_options,
     MessageHandler* handler) {
+  scoped_ptr<GoogleUrl> request_url(url);
   RewriteOptions* options = GetCustomOptions(
-      request_url, async_fetch->request_headers(), domain_options,
+      request_url.get(), async_fetch->request_headers(), domain_options,
       query_options, handler);
   GoogleString url_string;
+  RequestHeaders* request_headers = async_fetch->request_headers();
   request_url->Spec().CopyToString(&url_string);
+  if ((options != NULL) &&
+      (options->IsRejectedUrl(url_string) ||
+       HasRejectedHeader(
+           HttpAttributes::kUserAgent, request_headers, options) ||
+       HasRejectedHeader(
+           HttpAttributes::kXForwardedFor, request_headers, options))) {
+    rejected_requests_->IncBy(1);
+    async_fetch->response_headers()->SetStatusAndReason(
+        HttpStatus::kProxyDeclinedRequest);
+    async_fetch->Write(kRejectedRequestHtmlResponse, handler);
+    async_fetch->Done(false);
+    delete options;
+    return;
+  }
+
   scoped_ptr<ProxyFetchPropertyCallbackCollector> property_callback;
 
   // Update request_headers.
@@ -563,7 +601,6 @@ void ProxyInterface::ProxyRequestCallback(
     // then we must detach it so it deletes itself when complete.
     property_callback.release()->Detach();
   }
-  delete request_url;
 }
 
 }  // namespace net_instaweb

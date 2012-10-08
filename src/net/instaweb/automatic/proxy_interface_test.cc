@@ -1978,6 +1978,72 @@ TEST_F(ProxyInterfaceTest, FetchFailure) {
   CheckNumBackgroundFetches(0);
 }
 
+TEST_F(ProxyInterfaceTest, ReturnUnavailableForBlockedUrls) {
+  GoogleString text;
+  ResponseHeaders response_headers;
+  response_headers.SetStatusAndReason(HttpStatus::kOK);
+  mock_url_fetcher_.SetResponse(AbsolutifyUrl("blocked"), response_headers,
+                                "<html></html>");
+  FetchFromProxy("blocked", true,
+                 &text, &response_headers);
+  EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+
+  text.clear();
+  response_headers.Clear();
+
+  scoped_ptr<RewriteOptions> custom_options(
+      server_context()->global_options()->Clone());
+
+  custom_options->AddRejectedUrlWildcard(AbsolutifyUrl("block*"));
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  server_context()->set_url_namer(&url_namer);
+
+  FetchFromProxy("blocked", false, &text, &response_headers);
+  EXPECT_EQ(HttpStatus::kProxyDeclinedRequest, response_headers.status_code());
+}
+
+TEST_F(ProxyInterfaceTest, ReturnUnavailableForBlockedHeaders) {
+  GoogleString text;
+  RequestHeaders request_headers;
+  ResponseHeaders response_headers;
+  response_headers.SetStatusAndReason(HttpStatus::kOK);
+  mock_url_fetcher_.SetResponse(kTestDomain, response_headers, "<html></html>");
+  scoped_ptr<RewriteOptions> custom_options(
+      server_context()->global_options()->Clone());
+
+  custom_options->AddRejectedHeaderWildcard(HttpAttributes::kUserAgent,
+                                            "*Chrome*");
+  custom_options->AddRejectedHeaderWildcard(HttpAttributes::kXForwardedFor,
+                                            "10.3.4.*");
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  server_context()->set_url_namer(&url_namer);
+
+  request_headers.Add(HttpAttributes::kUserAgent, "Firefox");
+  request_headers.Add(HttpAttributes::kXForwardedFor, "10.0.0.11");
+  FetchFromProxy(kTestDomain, request_headers, true,
+                 &text, &response_headers);
+  EXPECT_EQ(HttpStatus::kOK, response_headers.status_code());
+
+  request_headers.Clear();
+  response_headers.Clear();
+
+  request_headers.Add(HttpAttributes::kUserAgent, "abc");
+  request_headers.Add(HttpAttributes::kUserAgent, "xyz Chrome abc");
+  FetchFromProxy(kTestDomain, request_headers, false,
+                 &text, &response_headers);
+  EXPECT_EQ(HttpStatus::kProxyDeclinedRequest, response_headers.status_code());
+
+  request_headers.Clear();
+  response_headers.Clear();
+
+  request_headers.Add(HttpAttributes::kXForwardedFor, "10.3.4.32");
+  FetchFromProxy(kTestDomain, request_headers, false,
+                 &text, &response_headers);
+  EXPECT_EQ(HttpStatus::kProxyDeclinedRequest, response_headers.status_code());
+}
+
 TEST_F(ProxyInterfaceTest, PassThrough404) {
   GoogleString text;
   ResponseHeaders headers;

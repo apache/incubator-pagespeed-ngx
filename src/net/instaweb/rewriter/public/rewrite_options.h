@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_OPTIONS_H_
 
 #include <cstddef>                      // for size_t
+#include <map>
 #include <set>
 #include <utility>                      // for pair
 #include <vector>
@@ -507,6 +508,8 @@ class RewriteOptions {
   static const char kDefaultBlinkDesktopUserAgentValue[];
 
   static const char kDefaultBlockingRewriteKey[];
+
+  static const char kRejectedRequestUrlKeyName[];
 
   // This class is a separate subset of options for running a furious
   // experiment.
@@ -1593,6 +1596,36 @@ class RewriteOptions {
     return override_caching_wildcard_.Match(url, false);
   }
 
+  void AddRejectedUrlWildcard(const GoogleString& wildcard) {
+    AddRejectedHeaderWildcard(kRejectedRequestUrlKeyName, wildcard);
+  }
+
+  void AddRejectedHeaderWildcard(const StringPiece& header_name,
+                                 const GoogleString& wildcard) {
+    Modify();
+    std::pair<FastWildcardGroupMap::iterator, bool> insert_result =
+        rejected_request_map_.insert(std::make_pair(
+            header_name, static_cast<FastWildcardGroup*>(NULL)));
+
+    if (insert_result.second) {
+      insert_result.first->second = new FastWildcardGroup;
+    }
+    insert_result.first->second->Allow(wildcard);
+  }
+
+  bool IsRejectedUrl(const GoogleString& url) const {
+    return IsRejectedRequest(kRejectedRequestUrlKeyName, url);
+  }
+
+  bool IsRejectedRequest(const StringPiece& header_name,
+                         const StringPiece& value) const {
+    FastWildcardGroupMap::const_iterator it = rejected_request_map_.find(
+        header_name);
+    if (it != rejected_request_map_.end()) {
+      return it->second->Match(value, false);
+    }
+    return false;
+  }
   // Make an identical copy of these options and return it.  This does
   // *not* copy the signature, and the returned options are not in
   // a frozen state.
@@ -2508,6 +2541,11 @@ class RewriteOptions {
 
   FastWildcardGroup allow_resources_;
   FastWildcardGroup retain_comments_;
+
+  // Using StringPiece here is safe since all entries in this map have static
+  // strings as the key.
+  typedef std::map<StringPiece, FastWildcardGroup*> FastWildcardGroupMap;
+  FastWildcardGroupMap rejected_request_map_;
 
   GoogleString signature_;
 

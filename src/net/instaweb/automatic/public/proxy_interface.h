@@ -155,6 +155,8 @@ class ProxyInterface : public UrlAsyncFetcher {
   TimedVariable* blink_requests_;
   // Blink requests in the critical line flow.
   TimedVariable* blink_critical_line_requests_;
+  // Rejected requests counter.
+  TimedVariable* rejected_requests_;
 
   scoped_ptr<ProxyFetchFactory> proxy_fetch_factory_;
 

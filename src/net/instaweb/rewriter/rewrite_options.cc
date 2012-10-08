@@ -176,6 +176,8 @@ const char RewriteOptions::kDefaultBlinkDesktopUserAgentValue[] =
 // An empty default key indicates that the blocking rewrite feature is disabled.
 const char RewriteOptions::kDefaultBlockingRewriteKey[] = "";
 
+const char RewriteOptions::kRejectedRequestUrlKeyName[] = "RejectedUrl";
+
 // Allow all the declared shards.
 const int RewriteOptions::kDefaultDomainShardCount = 0;
 
@@ -803,6 +805,7 @@ RewriteOptions::~RewriteOptions() {
   STLDeleteElements(&furious_specs_);
   STLDeleteElements(&prioritize_visible_content_families_);
   STLDeleteElements(&url_cache_invalidation_entries_);
+  STLDeleteValues(&rejected_request_map_);
 }
 
 void RewriteOptions::InitializeOptions(const Properties* properties) {
@@ -1464,6 +1467,17 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     all_options_[i]->Merge(src.all_options_[i]);
   }
 
+  FastWildcardGroupMap::const_iterator it = src.rejected_request_map_.begin();
+  for (; it != src.rejected_request_map_.end(); ++it) {
+    std::pair<FastWildcardGroupMap::iterator, bool> insert_result =
+        rejected_request_map_.insert(std::make_pair(
+            it->first, static_cast<FastWildcardGroup*>(NULL)));
+    if (insert_result.second) {
+      insert_result.first->second = new FastWildcardGroup;
+    }
+    insert_result.first->second->AppendFrom(*it->second);
+  }
+
   domain_lawyer_.Merge(src.domain_lawyer_);
   file_load_policy_.Merge(src.file_load_policy_);
   allow_resources_.AppendFrom(src.allow_resources_);
@@ -1612,6 +1626,9 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
       StrAppend(&signature_, entry.ComputeSignature(), "|");
     }
   }
+
+  // rejected_request_map_ is not added to rewrite options signature as this
+  // should not affect rewriting and metadata or property cache lookups.
   StrAppend(&signature_, "OC:", override_caching_wildcard_.Signature(), "_");
   StrAppend(&signature_, "PVC:");
   for (int i = 0, n = prioritize_visible_content_families_.size(); i < n; ++i) {
@@ -1678,6 +1695,13 @@ GoogleString RewriteOptions::OptionsToString() const {
          ++i) {
       StrAppend(&output, "  ",
                 prioritize_visible_content_families_[i]->ToString(), "\n");
+    }
+  }
+  if (rejected_request_map_.size() > 0) {
+    StrAppend(&output, "\nRejected request map\n");
+    FastWildcardGroupMap::const_iterator it = rejected_request_map_.begin();
+    for (; it != rejected_request_map_.end(); ++it) {
+      StrAppend(&output, " ", it->first, " ", it->second->Signature(), "\n");
     }
   }
   GoogleString override_caching_wildcard_string(

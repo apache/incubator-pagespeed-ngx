@@ -485,6 +485,35 @@ TEST_F(RewriteOptionsTest, AllDoesNotImplyStripScrips) {
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kStripScripts));
 }
 
+TEST_F(RewriteOptionsTest, RejectedRequestUrl) {
+  options_.AddRejectedUrlWildcard("http://www.a.com/b/*");
+  EXPECT_TRUE(options_.IsRejectedUrl("http://www.a.com/b/sdsd123"));
+  EXPECT_FALSE(options_.IsRejectedUrl("http://www.a.com/"));
+  EXPECT_FALSE(options_.IsRejectedUrl("http://www.b.com/b/"));
+}
+
+TEST_F(RewriteOptionsTest, RejectedRequest) {
+  options_.AddRejectedHeaderWildcard("UserAgent", "*Chrome*");
+  EXPECT_FALSE(options_.IsRejectedRequest("Host", "www.a.com"));
+  EXPECT_FALSE(options_.IsRejectedRequest("UserAgent", "firefox"));
+  EXPECT_TRUE(options_.IsRejectedRequest("UserAgent", "abc Chrome 456"));
+}
+
+TEST_F(RewriteOptionsTest, RejectedRequestMerge) {
+  RewriteOptions one, two;
+  one.AddRejectedUrlWildcard("http://www.a.com/b/*");
+  one.AddRejectedHeaderWildcard("UserAgent", "*Chrome*");
+  two.AddRejectedUrlWildcard("http://www.b.com/b/*");
+  MergeOptions(one, two);
+
+  EXPECT_FALSE(options_.IsRejectedRequest("Host", "www.a.com"));
+  EXPECT_FALSE(options_.IsRejectedRequest("UserAgent", "firefox"));
+  EXPECT_TRUE(options_.IsRejectedRequest("UserAgent", "abc Chrome 456"));
+  EXPECT_TRUE(options_.IsRejectedUrl("http://www.a.com/b/sdsd123"));
+  EXPECT_FALSE(options_.IsRejectedUrl("http://www.a.com/"));
+  EXPECT_TRUE(options_.IsRejectedUrl("http://www.b.com/b/"));
+}
+
 TEST_F(RewriteOptionsTest, ExplicitlyEnabledDangerousFilters) {
   options_.SetRewriteLevel(RewriteOptions::kAllFilters);
   options_.EnableFilter(RewriteOptions::kStripScripts);
