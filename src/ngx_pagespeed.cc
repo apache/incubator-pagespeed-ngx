@@ -50,14 +50,14 @@ typedef struct {
 } ngx_http_pagespeed_loc_conf_t;
 
 typedef struct {
-  net_instaweb::NgxRewriteDriverFactory* driver_factory;
+  scoped_ptr<net_instaweb::NgxRewriteDriverFactory> driver_factory;
   net_instaweb::ServerContext* server_context;
 } ngx_http_pagespeed_module_ctx_t;
 
 typedef struct {
   net_instaweb::RewriteDriver* driver;
-  GoogleString* output;
-  net_instaweb::StringWriter* writer;
+  scoped_ptr<GoogleString> output;
+  scoped_ptr<net_instaweb::StringWriter> writer;
 } ngx_http_pagespeed_request_ctx_t;
 
 // TODO(jefftk): Giant hack.  Need to make this not be global.
@@ -107,26 +107,8 @@ ngx_http_pagespeed_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child)
   ngx_http_pagespeed_loc_conf_t* conf =
       static_cast<ngx_http_pagespeed_loc_conf_t*>(child);
 
-  CDBG(cf, "prev Cache[0-%d]=%p: '%*s'",
-       prev->cache_dir.len,
-       prev->cache_dir.data,
-       prev->cache_dir.len,
-       prev->cache_dir.data);
-  
-  CDBG(cf, "conf Cache[0-%d]=%p: '%*s'",
-       conf->cache_dir.len,
-       conf->cache_dir.data,
-       conf->cache_dir.len,
-       conf->cache_dir.data);  
-
   ngx_conf_merge_value(conf->active, prev->active, 0);  // Default off.
   ngx_conf_merge_str_value(conf->cache_dir, prev->cache_dir, "");
-
-  CDBG(cf, "conf revised Cache[0-%d]=%p: '%*s'",
-       conf->cache_dir.len,
-       conf->cache_dir.data,
-       conf->cache_dir.len,
-       conf->cache_dir.data);
 
   return NGX_CONF_OK;
 }
@@ -148,8 +130,6 @@ ngx_int_t ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
 static
 ngx_int_t ngx_http_pagespeed_note_processed(ngx_http_request_t* r,
                                             ngx_chain_t* in) {
-  DBG(r, "Noting processed");
-
   // Find the end of the buffer chain.
   ngx_chain_t* chain_link;
   int chain_contains_last_buffer = 0;
@@ -209,45 +189,68 @@ ngx_int_t ngx_http_pagespeed_note_processed(ngx_http_request_t* r,
   return NGX_OK;
 }
 
-// Replace each buffer chain with a new one that's been optimized.
-static
-ngx_int_t ngx_http_pagespeed_optimize_and_replace_buffer(ngx_http_request_t* r,
-                                                         ngx_chain_t* in) {
+static void ngx_http_pagespeed_release_request_context(
+    ngx_http_request_t* r, ngx_http_pagespeed_request_ctx_t* ctx) {
+
+    // release request context
+    ngx_http_set_ctx(r, NULL, ngx_pagespeed);
+    delete ctx;
+}
+
+// Get the context for this request.  If one doesn't exist yet, create it.  When
+// the request finishes, call ngx_http_pagespeed_release_request_context.
+static ngx_http_pagespeed_request_ctx_t* ngx_http_pagespeed_request_context(
+    ngx_http_request_t* r) {
+  ngx_http_pagespeed_request_ctx_t* ctx =
+      static_cast<ngx_http_pagespeed_request_ctx_t*>(
+          ngx_http_get_module_ctx(r, ngx_pagespeed));
+
+  if (ctx != NULL) {
+    return ctx;
+  }
+
+  // Set up things we do once at the beginning of the request.
+
   // TODO(jefftk): figure out how to get the real url out of r.  Because we're
   // currently blocking nginx's main event loop, however, fixing this now would
   // unbreak the code that makes a fetch back to ourselves and make us
   // deadlock.
   StringPiece url("http://localhost");
 
-  ngx_http_pagespeed_request_ctx_t* ctx =
-      static_cast<ngx_http_pagespeed_request_ctx_t*>(
-          ngx_http_get_module_ctx(r, ngx_pagespeed));
+  ctx = new ngx_http_pagespeed_request_ctx_t;
+  ctx->driver = context->server_context->NewRewriteDriver();
+
+  // TODO(jefftk): replace this with a writer that generates proper nginx
+  // buffers and puts them in the chain.  Or avoids the double
+  // copy some other way.
+  ctx->output.reset(new GoogleString());
+  ctx->writer.reset(new net_instaweb::StringWriter(ctx->output.get()));
+  ctx->driver->SetWriter(ctx->writer.get());
+
+  // For testing we always want to perform any optimizations we can, so we
+  // wait until everything is done rather than using a deadline, the way we
+  // want to eventually.
+  ctx->driver->set_fully_rewrite_on_flush(true);
+
+  ngx_http_set_ctx(r, ctx, ngx_pagespeed);
+  bool ok = ctx->driver->StartParse(url);
+  if (!ok) {
+    ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
+                  "Failed to StartParse on url %*s",
+                  url.size(), url.data());
+    return NULL;
+  }
+
+  return ctx;
+}
+
+// Replace each buffer chain with a new one that's been optimized.
+static
+ngx_int_t ngx_http_pagespeed_optimize_and_replace_buffer(
+    ngx_http_request_t* r, ngx_chain_t* in) {
+  ngx_http_pagespeed_request_ctx_t* ctx = ngx_http_pagespeed_request_context(r);
   if (ctx == NULL) {
-    // Set up things we do once at the beginning of the request.
-
-    ctx = new ngx_http_pagespeed_request_ctx_t;
-    ctx->driver = context->server_context->NewRewriteDriver();
-
-    // TODO(jefftk): replace this with a writer that generates proper nginx
-    // buffers and puts them in the chain.  Or avoids the double
-    // copy some other way.
-    ctx->output = new GoogleString();
-    ctx->writer = new net_instaweb::StringWriter(ctx->output);
-    ctx->driver->SetWriter(ctx->writer);
-
-    // For testing we always want to perform any optimizations we can, so we
-    // wait until everything is done rather than using a deadline, the way we
-    // want to eventually.
-    ctx->driver->set_fully_rewrite_on_flush(true);
-
-    ngx_http_set_ctx(r, ctx, ngx_pagespeed);
-    bool ok = ctx->driver->StartParse(url);
-    if (!ok) {
-      ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
-                    "Failed to StartParse on url %*s",
-                    url.size(), url.data());
-      return NGX_ERROR;
-    }
+    return NGX_ERROR;
   }
 
   u_char* file_contents = NULL;
@@ -339,13 +342,9 @@ ngx_int_t ngx_http_pagespeed_optimize_and_replace_buffer(ngx_http_request_t* r,
   ctx->output->copy(reinterpret_cast<char*>(b->pos), ctx->output->length());
   b->last = b->end = b->pos + ctx->output->length();
 
-
   if (last_buf) {
-    // release request context
-    ngx_http_set_ctx(r, NULL, ngx_pagespeed);
-    delete ctx->writer;
-    delete ctx->output;
-    delete ctx;
+    ngx_http_pagespeed_release_request_context(r, ctx);
+    ctx = NULL;
   }
 
   return NGX_OK;
@@ -383,18 +382,12 @@ ngx_http_pagespeed_init(ngx_conf_t* cf)
     ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_pagespeed_body_filter;
 
+    context = new ngx_http_pagespeed_module_ctx_t();
+
     net_instaweb::NgxRewriteDriverFactory::Initialize();
     // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
     // we're done with it.
-
-    context = new ngx_http_pagespeed_module_ctx_t();
-    context->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
-    CDBG(cf, "Cache[0-%d]=%p: '%*s'",
-         pagespeed_config->cache_dir.len,
-         pagespeed_config->cache_dir.data,
-         pagespeed_config->cache_dir.len,
-         pagespeed_config->cache_dir.data);
-
+    context->driver_factory.reset(new net_instaweb::NgxRewriteDriverFactory());
     context->driver_factory->set_filename_prefix(StringPiece(
         reinterpret_cast<char*>(pagespeed_config->cache_dir.data),
         pagespeed_config->cache_dir.len));
