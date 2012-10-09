@@ -138,7 +138,7 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
 
 // TODO(pulkitg): Change all instances of critical_images_set to
 // html_critical_images_set.
-bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
+bool CriticalImagesFinder::UpdateCriticalImagesCacheEntryFromDriver(
     RewriteDriver* driver, StringSet* critical_images_set,
     StringSet* css_critical_images_set) {
   // Update property cache if above the fold critical images are successfully
@@ -146,6 +146,15 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
   PropertyPage* page = driver->property_page();
   PropertyCache* page_property_cache =
       driver->server_context()->page_property_cache();
+  return UpdateCriticalImagesCacheEntry(
+      page, page_property_cache, critical_images_set, css_critical_images_set);
+}
+
+bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
+    PropertyPage* page, PropertyCache* page_property_cache,
+    StringSet* critical_images_set, StringSet* css_critical_images_set) {
+  // Update property cache if above the fold critical images are successfully
+  // determined.
   scoped_ptr<StringSet> critical_images(critical_images_set);
   scoped_ptr<StringSet> css_critical_images(css_critical_images_set);
   if (page_property_cache != NULL && page != NULL) {

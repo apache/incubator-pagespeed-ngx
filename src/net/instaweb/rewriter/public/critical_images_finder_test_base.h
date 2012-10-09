@@ -39,7 +39,7 @@ class CriticalImagesFinderTestBase : public RewriteTestBase {
       RewriteDriver* driver,
       StringSet* critical_images_set,
       StringSet* css_critical_images_set) {
-    return finder()->UpdateCriticalImagesCacheEntry(
+    return finder()->UpdateCriticalImagesCacheEntryFromDriver(
         driver, critical_images_set, css_critical_images_set);
   }
 

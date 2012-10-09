@@ -25,6 +25,8 @@
 
 namespace net_instaweb {
 
+class PropertyCache;
+class PropertyPage;
 class RewriteDriver;
 
 // Finds critical images i.e. images which are above the fold for a given url.
@@ -59,13 +61,22 @@ class CriticalImagesFinder {
   // is located in.
   virtual const char* GetCriticalImagesCohort() const = 0;
 
- protected:
   // Updates the critical images property cache entry. This will take the
-  // ownership of the critical_images_set. Returns if the update succeeded or
-  // not. Note that this base implementation does not call WriteCohort. This
+  // ownership of the critical_images_set. Returns whether the update succeeded
+  // or not. Note that this base implementation does not call WriteCohort. This
   // should be called in the subclass if the cohort is not written elsewhere.
-  virtual bool UpdateCriticalImagesCacheEntry(
+  bool UpdateCriticalImagesCacheEntryFromDriver(
       RewriteDriver* driver,
+      StringSet* critical_images_set,
+      StringSet* css_critical_images_set);
+
+  // Alternative interface to update the critical images cache entry. This is
+  // useful in contexts like the beacon handler where the RewriteDriver for the
+  // original request no longer exists. This will take ownership of
+  // critical_images_set.
+  bool UpdateCriticalImagesCacheEntry(
+      PropertyPage* page,
+      PropertyCache* page_property_cache,
       StringSet* critical_images_set,
       StringSet* css_critical_images_set);
 
