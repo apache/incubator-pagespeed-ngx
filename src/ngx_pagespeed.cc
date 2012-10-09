@@ -213,8 +213,11 @@ ngx_int_t ngx_http_pagespeed_note_processed(ngx_http_request_t* r,
 static
 ngx_int_t ngx_http_pagespeed_optimize_and_replace_buffer(ngx_http_request_t* r,
                                                          ngx_chain_t* in) {
-  // TODO(jefftk): figure out how to get the real url out of r.
-  StringPiece url("http://example.com");
+  // TODO(jefftk): figure out how to get the real url out of r.  Because we're
+  // currently blocking nginx's main event loop, however, fixing this now would
+  // unbreak the code that makes a fetch back to ourselves and make us
+  // deadlock.
+  StringPiece url("http://localhost");
 
   ngx_http_pagespeed_request_ctx_t* ctx =
       static_cast<ngx_http_pagespeed_request_ctx_t*>(
