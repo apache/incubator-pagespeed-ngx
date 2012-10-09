@@ -60,7 +60,6 @@ class BlinkFlowCriticalLine {
 
   static void InitStats(Statistics* statistics);
 
-  static const char kAboveTheFold[];
   static const char kNumBlinkHtmlCacheHits[];
   static const char kNumBlinkHtmlCacheMisses[];
   static const char kNumBlinkSharedFetchesStarted[];

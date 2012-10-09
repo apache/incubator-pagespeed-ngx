@@ -1410,15 +1410,7 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
     //    http://shard1/foo   -->   http://master/foo
     //    http://shard2/foo   -->   http://master/foo
     //    http://master/foo   -->   http://master/foo
-    const DomainLawyer* lawyer = driver_->options()->domain_lawyer();
-    canonical_url_ = output_resource_->UnshardedUrl();
-    GoogleString mapped_domain_name;
-    GoogleUrl resolved_request;
-    if (lawyer->MapRequestToDomain(driver_->base_url(), canonical_url_,
-                                   &mapped_domain_name, &resolved_request,
-                                   driver_->message_handler())) {
-      resolved_request.Spec().CopyToString(&canonical_url_);
-    }
+    canonical_url_ = output_resource_->HttpCacheKey();
   }
 
   virtual ~CacheCallback() {}

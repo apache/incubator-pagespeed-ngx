@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -36,7 +37,6 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/worker_test_base.h"
@@ -562,6 +562,16 @@ TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
 }
 
 TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingSucceeds) {
+  ExpectAjaxImageSuccessFlow(cache_png_url_);
+}
+
+TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingSucceedsWithShards) {
+  const char kShard1[] = "http://s1.example.com/";
+  const char kShard2[] = "http://s2.example.com/";
+
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  lawyer->AddShard("http://www.example.com", StrCat(kShard1, ",", kShard2),
+                   message_handler());
   ExpectAjaxImageSuccessFlow(cache_png_url_);
 }
 

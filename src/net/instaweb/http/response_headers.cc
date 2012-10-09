@@ -881,7 +881,7 @@ bool ResponseHeaders::GetCookieString(GoogleString* cookie_str) const {
   StrAppend(cookie_str, "[");
   for (int i = 0, n = cookies.size(); i < n; ++i) {
     GoogleString escaped;
-    EscapeToJsStringLiteral(cookies[i]->c_str(), true, &escaped);
+    EscapeToJsStringLiteral(*cookies[i], true, &escaped);
     StrAppend(cookie_str, escaped);
     if (i != (n-1)) {
       StrAppend(cookie_str, ",");

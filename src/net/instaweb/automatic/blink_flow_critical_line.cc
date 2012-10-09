@@ -91,7 +91,6 @@ const char BlinkFlowCriticalLine::kNumBlinkHtmlSmartdiffMatches[] =
     "num_blink_html_smart_diff_matches";
 const char BlinkFlowCriticalLine::kNumBlinkHtmlSmartdiffMismatches[] =
     "num_blink_html_smart_diff_mismatches";
-const char BlinkFlowCriticalLine::kAboveTheFold[] = "Above the fold";
 
 namespace {
 
@@ -775,8 +774,9 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
                    blink_critical_line_data_->charset().c_str() :
                    kUtf8Charset);
   response_headers->Add(HttpAttributes::kContentType, content_type);
-  response_headers->Add(kPsaRewriterHeader,
-                        BlinkFlowCriticalLine::kAboveTheFold);
+  response_headers->Add(
+      kPsaRewriterHeader,
+      RewriteOptions::FilterId(RewriteOptions::kPrioritizeVisibleContent));
   response_headers->ComputeCaching();
   response_headers->SetDateAndCaching(manager_->timer()->NowMs(), 0,
                                       ", private, no-cache");
@@ -983,6 +983,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
         fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent));
     delete log_record_;
   }  // else, logging will be done by secondary_fetch.
+  driver->set_log_record(base_fetch_->log_record());
   factory_->StartNewProxyFetch(
       url_, fetch, driver, property_callback_, secondary_fetch);
   delete this;

@@ -27,10 +27,12 @@
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -172,9 +174,24 @@ GoogleString OutputResource::url() const {
   return computed_url_;
 }
 
-GoogleString OutputResource::UnshardedUrl() const {
-  return server_context()->url_namer()->Encode(rewrite_options_, *this,
-                                               UrlNamer::kUnsharded);
+GoogleString OutputResource::HttpCacheKey() const {
+  GoogleString canonical_url =
+      server_context()->url_namer()->Encode(rewrite_options_, *this,
+                                            UrlNamer::kUnsharded);
+  GoogleString mapped_domain_name;
+  GoogleUrl resolved_request;
+  const DomainLawyer* lawyer = rewrite_options()->domain_lawyer();
+
+  // MapRequestToDomain needs a base URL, which ought to be irrelevant here,
+  // as we're already absolute.
+  GoogleUrl base(canonical_url);
+  if (base.is_valid() &&
+      lawyer->MapRequestToDomain(
+          base, canonical_url, &mapped_domain_name, &resolved_request,
+          server_context()->message_handler())) {
+    resolved_request.Spec().CopyToString(&canonical_url);
+  }
+  return canonical_url;
 }
 
 GoogleString OutputResource::UrlEvenIfHashNotSet() {

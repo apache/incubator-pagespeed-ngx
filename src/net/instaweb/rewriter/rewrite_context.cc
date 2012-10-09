@@ -1848,7 +1848,8 @@ void RewriteContext::FetchCacheDone(
       if (fetch_->requested_hash() != output_resource->hash()) {
         // Try to do a cache look up on the proper hash; if it's available,
         // we can serve it.
-        FetchTryFallback(output_resource->url(), output_resource->hash());
+        FetchTryFallback(output_resource->HttpCacheKey(),
+                         output_resource->hash());
         return;
       }
     } else if (CanFetchFallbackToOriginal(kFallbackDiscretional)) {

@@ -311,11 +311,11 @@ void ServerContext::set_filename_prefix(const StringPiece& file_prefix) {
 }
 
 bool ServerContext::Write(const ResourceVector& inputs,
-                            const StringPiece& contents,
-                            const ContentType* type,
-                            StringPiece charset,
-                            OutputResource* output,
-                            MessageHandler* handler) {
+                          const StringPiece& contents,
+                          const ContentType* type,
+                          StringPiece charset,
+                          OutputResource* output,
+                          MessageHandler* handler) {
   output->SetType(type);
   output->set_charset(charset);
   ResponseHeaders* meta_data = output->response_headers();
@@ -338,7 +338,7 @@ bool ServerContext::Write(const ResourceVector& inputs,
         (http_cache_->force_caching() || meta_data->IsProxyCacheable())) {
       // This URL should already be mapped to the canonical rewrite domain,
       // But we should store its unsharded form in the cache.
-      http_cache_->Put(output->UnshardedUrl(), &output->value_, handler);
+      http_cache_->Put(output->HttpCacheKey(), &output->value_, handler);
     }
 
     // If we're asked to, also save a debug dump
@@ -365,7 +365,7 @@ bool ServerContext::Write(const ResourceVector& inputs,
 }
 
 void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
-                                             ResponseHeaders* headers) {
+                                           ResponseHeaders* headers) {
   headers->ComputeCaching();
   bool proxy_cacheable = headers->IsProxyCacheable();
   bool cacheable = headers->IsCacheable();

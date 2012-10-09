@@ -101,6 +101,48 @@ const char kHtmlInput[] =
       "</div>"
     "</body></html>";
 
+const char kHtmlInputWithMinifiableJs[] =
+    "<html>"
+    "<head>"
+    "<script type=\"text/javascript\">var a = \"hello\"; </script>"
+    "</head>"
+    "<body>\n"
+    "<div id=\"header\"> This is the header </div>"
+    "<div id=\"container\" class>"
+      "<h2 id=\"beforeItems\"> This is before Items </h2>"
+      "<div class=\"item\">"
+         "<img src=\"image1\">"
+         "<img src=\"image2\">"
+      "</div>"
+      "<div class=\"item\">"
+         "<img src=\"image3\">"
+          "<div class=\"item\">"
+             "<img src=\"image4\">"
+          "</div>"
+      "</div>"
+    "</body></html>";
+
+const char kHtmlInputWithMinifiedJs[] =
+    "<html>"
+    "<head>"
+    "<script type=\"text/javascript\">var a=\"hello\";</script>"
+    "</head>"
+    "<body>\n"
+    "<div id=\"header\"> This is the header </div>"
+    "<div id=\"container\" class>"
+      "<h2 id=\"beforeItems\"> This is before Items </h2>"
+      "<div class=\"item\">"
+         "<img src=\"image1\">"
+         "<img src=\"image2\">"
+      "</div>"
+      "<div class=\"item\">"
+         "<img src=\"image3\">"
+          "<div class=\"item\">"
+             "<img src=\"image4\">"
+          "</div>"
+      "</div>"
+    "</body></html>";
+
 const char kLazyLoadHtml[] =
     "<html>"
     "<head>"
@@ -543,6 +585,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     options_->ForceEnableFilter(RewriteOptions::kCombineCss);
     options_->ForceEnableFilter(RewriteOptions::kCombineJavascript);
     options_->ForceEnableFilter(RewriteOptions::kDelayImages);
+    options_->ForceEnableFilter(RewriteOptions::kRewriteJavascript);
 
     options_->Disallow("*blacklist*");
 
@@ -593,6 +636,8 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     response_headers_.Add(HttpAttributes::kSetCookie, "helo=world; path=/");
     SetFetchResponse("http://test.com/text.html", response_headers_,
                      kHtmlInput);
+    SetFetchResponse("http://test.com/minifiable_text.html", response_headers_,
+                     kHtmlInputWithMinifiableJs);
     SetFetchResponse("https://test.com/text.html", response_headers_,
                      kHtmlInputForNoBlink);
     SetFetchResponse("http://test.com/smalltest.html", response_headers_,
@@ -1280,7 +1325,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkFuriousCookieHandling) {
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   GoogleString text;
   ResponseHeaders response_headers;
-  FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
+  FetchFromProxyWaitForBackground("minifiable_text.html", true, &text,
+                                  &response_headers);
   EXPECT_EQ(BlinkInfo::BLINK_DESKTOP_WHITELIST,
             logging_info_.blink_info().blink_user_agent());
   ConstStringStarVector values;
@@ -1292,7 +1338,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   }
   VerifyNonBlinkResponse(&response_headers);
 
-  EXPECT_STREQ(kHtmlInput, text);
+  EXPECT_STREQ(kHtmlInputWithMinifiedJs, text);
   EXPECT_STREQ("text/html; charset=utf-8",
                response_headers.Lookup1(HttpAttributes::kContentType));
 
@@ -1305,10 +1351,11 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   EXPECT_EQ(1, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
   EXPECT_EQ(1, num_compute_calls());
-  EXPECT_EQ(kHtmlInput, text);
+  EXPECT_EQ(kHtmlInputWithMinifiedJs, text);
   ConstStringStarVector psa_rewriter_header_values;
   EXPECT_FALSE(response_headers.Lookup(kPsaRewriterHeader,
                                        &psa_rewriter_header_values));
+  EXPECT_STREQ("jm", logging_info_.applied_rewriters());
   EXPECT_EQ(1, statistics()->FindVariable(
       BlinkFlowCriticalLine::kNumBlinkSharedFetchesStarted)->Get());
   EXPECT_EQ(1, statistics()->FindVariable(

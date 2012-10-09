@@ -147,7 +147,7 @@ void SuppressPreheadFilter::UpdateFetchLatencyInFlushEarlyProto(
     average_fetch_latency = flush_early_info->average_fetch_latency_ms();
     StringPieceVector fetch_latency_vector;
     SplitStringPieceToVector(
-        last_n_fetch_latency.c_str(), kFetchLatencySeparator,
+        last_n_fetch_latency, kFetchLatencySeparator,
         &fetch_latency_vector, true);
     int num_fetch_latency = fetch_latency_vector.size();
     if (num_fetch_latency > kNumFetchLatencyEntries) {

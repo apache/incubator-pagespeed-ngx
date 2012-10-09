@@ -115,17 +115,16 @@ class OutputResource : public Resource {
   // cache.
   virtual GoogleString name_key() const;
 
-  // Builds a canonical URL in its unsharded form.  The Unsharded URL
-  // is used as a canonical key for HTTP Cache Puts and Gets.  The
-  // DomainLawyer can be used to find this same canonical domain during
-  // lookups in case the Fetch uses the unsharded form, or the wrong shard.
+  // Builds a canonical URL in a form for use with the HTTP cache.
+  // The DomainLawyer from options is used to find the proper domain in case
+  // there is a fetch for the unsharded form, or the wrong shard.
   //
   // For example, if you have a resource styles.css
   //     ModPagespeedMapRewriteDomain master alias
   //     ModPagespeedShardDomain master shard1,shard2
   // then all HTTP cache puts/gets will use the key "http://master/style.css",
   // which can be obtained from an output resource using this method.
-  GoogleString UnshardedUrl() const;
+  GoogleString HttpCacheKey() const;
 
   // output-specific
   const GoogleString& resolved_base() const { return resolved_base_; }
@@ -278,11 +277,6 @@ class OutputResource : public Resource {
   // unlocked on destruction, DropCreationLock or EndWrite.
   scoped_ptr<NamedLock> creation_lock_;
 
-  // rewrite_options_ is NULL when we are creating an output resource on
-  // behalf of a fetch.  This is because there's no point or need to implement
-  // sharding on the fetch -- we are not rewriting a URL, we are just decoding
-  // it.  However, when rewriting a resources, we need rewrite_options_ to
-  // be non-null.
   const RewriteOptions* rewrite_options_;
 
   // Output resource have a 'kind' associated with them that controls the kind

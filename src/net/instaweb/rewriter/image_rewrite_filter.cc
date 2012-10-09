@@ -1106,7 +1106,7 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
     // only UserAgentSupportsWebp while setting attempt_webp but while
     // rewriting the image, rewrite options should also be checked.
     GoogleString url = slot->resource()->url();
-    SetAttemptWebp(url.c_str(), cloned_context);
+    SetAttemptWebp(url, cloned_context);
   }
   Context* context = new Context(css_image_inline_max_bytes,
                                  this, NULL /* driver*/, parent,
