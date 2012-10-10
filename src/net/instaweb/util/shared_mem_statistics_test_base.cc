@@ -16,7 +16,13 @@
 
 #include "net/instaweb/util/public/shared_mem_statistics_test_base.h"
 
+#include <cstddef>
+#include <map>
+#include <utility>
+#include <vector>
+
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/json.h"

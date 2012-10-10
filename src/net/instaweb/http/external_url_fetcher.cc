@@ -21,6 +21,7 @@
 
 #include <cerrno>
 #include <cstdio>                      // for pclose, popen, FILE
+#include "base/logging.h"
 #include "net/instaweb/http/public/http_response_parser.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"

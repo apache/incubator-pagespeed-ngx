@@ -37,7 +37,8 @@ class HtmlElement;
 class HtmlIEDirectiveNode;
 
 // TODO(jmarantz): remove this -- it's IWYU-superfluous but is needed until
-// PageSpeed Insights puts this declaration in.
+// PageSpeed Insights puts this declaration in.  Note that IWYU annoyingly
+// ignores the pragma on forward declarations, but the intent should be clear.
 class HtmlParse;
 
 // Base class for rewriting filters that don't need to be sure to

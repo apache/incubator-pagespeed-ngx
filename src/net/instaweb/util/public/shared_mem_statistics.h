@@ -16,7 +16,9 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SHARED_MEM_STATISTICS_H_
 
 #include <cstddef>
+#include <map>
 #include <set>
+#include <utility>
 #include <vector>
 
 #include "base/scoped_ptr.h"
@@ -27,13 +29,11 @@
 #include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/gtest_prod.h"  // for FRIEND_TEST
 
 namespace net_instaweb {
 
-class FileSystem;
 class MessageHandler;
 class Timer;
 class Writer;

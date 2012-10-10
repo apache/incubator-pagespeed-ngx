@@ -19,6 +19,8 @@
 
 #include "net/instaweb/http/public/wget_url_fetcher.h"
 
+#include <vector>
+
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

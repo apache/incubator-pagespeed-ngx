@@ -19,15 +19,13 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_CLIENT_STATE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_ABSTRACT_CLIENT_STATE_H_
 
-#include <vector>
-
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+class PropertyCache;
+class PropertyPage;
+class Timer;
 
 // Represent state tracked on a per-client basis. For now, this interface
 // estimates whether a given object is resident in the client's cache.

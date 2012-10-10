@@ -30,6 +30,8 @@
 
 namespace net_instaweb {
 
+class RewriteOptions;
+
 namespace {
 
 class DummyResource : public Resource {

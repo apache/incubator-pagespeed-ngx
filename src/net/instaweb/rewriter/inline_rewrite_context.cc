@@ -28,7 +28,6 @@
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -62,7 +61,7 @@ bool InlineRewriteContext::StartInlining() {
 
 bool InlineRewriteContext::Partition(OutputPartitions* partitions,
                                      OutputResourceVector* outputs) {
-  CHECK(num_slots() == 1) << "InlineRewriteContext only handles one slot";
+  CHECK_EQ(1, num_slots()) << "InlineRewriteContext only handles one slot";
   ResourcePtr resource(slot(0)->resource());
   if (resource->IsValidAndCacheable() && ShouldInline(resource)) {
     CachedResult* partition = partitions->add_partition();
@@ -79,7 +78,7 @@ void InlineRewriteContext::Rewrite(int partition_index,
                                    CachedResult* partition,
                                    const OutputResourcePtr& output_resource) {
   CHECK(output_resource.get() == NULL);
-  CHECK(partition_index == 0);
+  CHECK_EQ(0, partition_index);
 
   // We signal as rewrite failed, as we do not create an output resource.
   RewriteDone(kRewriteFailed, 0);

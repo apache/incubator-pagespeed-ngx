@@ -96,13 +96,13 @@
 #include <set>
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class CacheInterface;
 class PropertyValueProtobuf;
 class PropertyPage;

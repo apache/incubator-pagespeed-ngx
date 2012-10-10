@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_PRINT_MESSAGE_HANDLER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_PRINT_MESSAGE_HANDLER_H_
 
+#include <cstdarg>
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 
 namespace net_instaweb {

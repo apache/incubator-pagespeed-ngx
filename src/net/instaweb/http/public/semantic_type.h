@@ -21,7 +21,6 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_SEMANTIC_TYPE_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_SEMANTIC_TYPE_H_
 
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

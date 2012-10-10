@@ -21,6 +21,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/http_value_writer.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -43,7 +44,6 @@ class MessageHandler;
 class RewriteDriver;
 class RewriteFilter;
 class UrlAsyncFetcher;
-struct ContentType;
 
 // A resource-slot created for an ajax rewrite. This has an empty render method.
 // Note that this class is usually used as a RefCountedPtr and gets deleted when

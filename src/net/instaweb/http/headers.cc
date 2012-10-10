@@ -16,9 +16,11 @@
 
 #include "net/instaweb/http/public/headers.h"
 
+#include <cstddef>
 #include <set>
 #include <vector>
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/http.pb.h"
 #include "net/instaweb/http/public/meta_data.h"

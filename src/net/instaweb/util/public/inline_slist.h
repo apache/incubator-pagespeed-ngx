@@ -28,6 +28,8 @@
 
 namespace net_instaweb {
 
+// This forward declaration is necessary!  Ignore IWYU when it tells you to
+// remove it.  Sadly, the pragma is being ignored right now.
 template<class T> class InlineSList;
 
 // A helper base class for things that would get stored in the list.

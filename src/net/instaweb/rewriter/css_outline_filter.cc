@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"

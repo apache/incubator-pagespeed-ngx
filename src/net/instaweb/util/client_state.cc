@@ -23,6 +23,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/util/client_state.pb.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/timer.h"

@@ -19,11 +19,12 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_BASE_TAG_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_BASE_TAG_FILTER_H_
 
-#include "base/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
 
+class HtmlElement;
 class RewriteDriver;
 
 // Add this filter into the HtmlParse chain to add a base

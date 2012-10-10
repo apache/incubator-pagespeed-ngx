@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_FLUSH_HTML_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {

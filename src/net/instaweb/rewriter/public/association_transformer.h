@@ -28,7 +28,6 @@
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 
 namespace net_instaweb {
 

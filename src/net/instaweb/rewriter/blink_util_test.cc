@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/blink_util.h"
 
-#include "base/logging.h"               // for operator<<, etc
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "testing/base/public/gunit.h"
 

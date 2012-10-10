@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_TAG_SCANNER_H_
 
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/semantic_type.h"
 
 namespace net_instaweb {

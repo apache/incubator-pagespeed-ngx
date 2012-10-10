@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 

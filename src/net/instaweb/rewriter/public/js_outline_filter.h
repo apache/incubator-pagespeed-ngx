@@ -27,12 +27,8 @@
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
-class HtmlCdataNode;
 class HtmlCharactersNode;
-class HtmlCommentNode;
-class HtmlDirectiveNode;
 class HtmlElement;
-class HtmlIEDirectiveNode;
 class MessageHandler;
 class OutputResource;
 class ServerContext;

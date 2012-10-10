@@ -50,7 +50,6 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -279,7 +278,7 @@ class SpriteFuture {
     // TODO(abliss): move this to webutil/css?
     Css::Value* x_value = NULL;
     Css::Value* y_value = NULL;
-    if (((int)values->size() - values_offset == 1) ||
+    if ((static_cast<int>(values->size()) - values_offset == 1) ||
         !IsPositionValue(*(values->at(values_offset + 1)))) {
       if (!ReadSingleValue(values, values_offset, &x_value, &y_value)) {
         return false;

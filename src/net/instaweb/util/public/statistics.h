@@ -20,17 +20,18 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_STATISTICS_H_
 
 #include <map>
+#include <set>
 #include "base/logging.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
+class Timer;
 class Writer;
 
 class Variable {
@@ -74,8 +75,8 @@ class Histogram {
   virtual void Clear() = 0;
   // True if the histogram is empty.
   bool Empty() {
-   ScopedMutex hold(lock());
-   return CountInternal() == 0;
+    ScopedMutex hold(lock());
+    return CountInternal() == 0;
   }
   // Write Histogram Data to the writer.
   // Default implementation does not include histogram graph, but only raw

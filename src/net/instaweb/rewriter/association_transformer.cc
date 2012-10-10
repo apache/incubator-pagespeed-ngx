@@ -18,8 +18,9 @@
 
 #include "net/instaweb/rewriter/public/association_transformer.h"
 
+#include <utility>
+
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
-#include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 
