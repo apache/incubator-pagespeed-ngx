@@ -24,6 +24,8 @@
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
@@ -42,10 +44,16 @@ void ComputeVisibleTextFilter::StartDocument() {
 
 void ComputeVisibleTextFilter::StartElement(HtmlElement* element) {
   // Overridden to suppress emitting the bytes.
+  if (element->keyword() == HtmlName::kMeta) {
+    HtmlWriterFilter::StartElement(element);
+  }
 }
 
 void ComputeVisibleTextFilter::EndElement(HtmlElement* element) {
   // Overridden to suppress emitting the bytes.
+  if (element->keyword() == HtmlName::kMeta) {
+    HtmlWriterFilter::EndElement(element);
+  }
 }
 
 void ComputeVisibleTextFilter::EndDocument() {

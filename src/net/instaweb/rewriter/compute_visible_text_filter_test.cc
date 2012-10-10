@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/compute_visible_text_filter.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -39,6 +38,7 @@ const char kHtmlInput[] =
     "<html>"
     "<head>"
     "<title>Title.</title>"
+    "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
     "<script>Script.</script>"
     "<script>"
     "<![CDATA["
@@ -46,6 +46,7 @@ const char kHtmlInput[] =
     "]]>"
     "</script>"
     "<style>Style.</style>"
+    "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
     "</head>"
     "<body>"
     "<noscript>No Script.</noscript>"
@@ -67,7 +68,11 @@ const char kHtmlInput[] =
     "</div>"
     "</body></html>";
 
-const char kTextContent[] = "Title.Header.Header 2.Paragraph text.";
+const char kTextContent[] =
+    "Title."
+    "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
+    "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
+    "Header.Header 2.Paragraph text.";
 
 }  // namespace
 
