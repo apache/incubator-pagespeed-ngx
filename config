@@ -28,7 +28,7 @@ pagespeed_include="$mod_pagespeed_dir
                    $mod_pagespeed_dir/out/Release/obj/gen/"
 ngx_feature_path="$pagespeed_include"
 pagespeed_automatic_dir="$mod_pagespeed_dir/net/instaweb/automatic"
-pagespeed_libs="-lstdc++ -lrt $pagespeed_automatic_dir/pagespeed_automatic.a"
+pagespeed_libs="-lstdc++ $pagespeed_automatic_dir/pagespeed_automatic.a -lrt"
 ngx_feature_libs="$pagespeed_libs"
 ngx_feature_test="
     GoogleString output_buffer;
