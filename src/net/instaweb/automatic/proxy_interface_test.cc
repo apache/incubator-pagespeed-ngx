@@ -1956,7 +1956,7 @@ TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
   expected_response_headers_string = "HTTP/1.1 200 OK\r\n"
       "Content-Type: text/css\r\n"
       "X-Background-Fetch: 0\r\n"
-      "Etag: W/PSA-0\r\n"
+      "Etag: W/\"PSA-0\"\r\n"
       "Date: Tue, 02 Feb 2010 18:51:26 GMT\r\n"
       "Expires: Tue, 02 Feb 2010 18:56:26 GMT\r\n"
       "Cache-Control: max-age=300,private\r\n"
@@ -2789,7 +2789,7 @@ TEST_F(ProxyInterfaceTest, EtagsAddedWhenAbsent) {
   ResponseHeaders response_headers2;
   FetchFromProxy("text.txt", true, &text2, &response_headers2);
   EXPECT_EQ(HttpStatus::kOK, response_headers2.status_code());
-  EXPECT_STREQ("W/PSA-0", response_headers2.Lookup1(HttpAttributes::kEtag));
+  EXPECT_STREQ("W/\"PSA-0\"", response_headers2.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ(kContent, text2);
   // One lookup for ajax metadata and one for the HTTP response. The metadata is
   // not found but the HTTP response is found.
@@ -2803,7 +2803,7 @@ TEST_F(ProxyInterfaceTest, EtagsAddedWhenAbsent) {
   GoogleString text3;
   ResponseHeaders response_headers3;
   RequestHeaders request_headers;
-  request_headers.Add(HttpAttributes::kIfNoneMatch, "W/PSA-0");
+  request_headers.Add(HttpAttributes::kIfNoneMatch, "W/\"PSA-0\"");
   FetchFromProxy("text.txt", request_headers, true, &text3, &response_headers3);
   EXPECT_EQ(HttpStatus::kNotModified, response_headers3.status_code());
   EXPECT_STREQ(NULL, response_headers3.Lookup1(HttpAttributes::kEtag));

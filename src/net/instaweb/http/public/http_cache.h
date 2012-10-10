@@ -52,8 +52,11 @@ class HTTPCache {
   static const char kCacheInserts[];
   static const char kCacheDeletes[];
 
-  // The prefix to be added to Etags.
+  // The prefix used for Etags.
   static const char kEtagPrefix[];
+
+  // Format that is used while generating Etags.
+  static const char kEtagFormat[];
 
   // Does not take ownership of any inputs.
   HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,

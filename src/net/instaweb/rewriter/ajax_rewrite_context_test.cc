@@ -147,7 +147,7 @@ class AjaxRewriteContextTest : public RewriteTestBase {
         rewritten_jpg_url_(
             "http://www.example.com/cacheable.jpg.pagespeed.ic.0.jpg"),
         cache_body_("good"), nocache_body_("bad"), bad_body_("ugly"),
-        ttl_ms_(Timer::kHourMs), etag_("W/PSA-aj-0"),
+        ttl_ms_(Timer::kHourMs), etag_("W/\"PSA-aj-0\""),
         original_etag_("original_etag") {}
 
   virtual void SetUp() {
@@ -481,7 +481,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   // the original resource.
   FetchAndCheckResponse(
       cache_jpg_url_, "good", true, ttl_ms_,
-      StrCat(HTTPCache::kEtagPrefix, "0").c_str(), start_time_ms());
+      StringPrintf(HTTPCache::kEtagFormat, "0").c_str(), start_time_ms());
   // We find the metadata in cache, but don't find the rewritten resource.
   // Hence, we reconstruct the resource and insert it into cache. We see 2
   // identical reinserts - one for the image rewrite filter metadata and one for
@@ -768,7 +768,7 @@ TEST_F(AjaxRewriteContextTest, CacheableCssUrlIfCssRewritingDisabled) {
   // The ETag we check for here is the ETag HTTPCache synthesized for
   // the original resource.
   FetchAndCheckResponse(cache_css_url_, cache_body_, true, ttl_ms_,
-                        StrCat(HTTPCache::kEtagPrefix, "0").c_str(),
+                        StringPrintf(HTTPCache::kEtagFormat, "0").c_str(),
                         start_time_ms());
 
   // Second fetch hits the metadata cache, finds that the result is not

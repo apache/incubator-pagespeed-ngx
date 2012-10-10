@@ -156,8 +156,7 @@ AjaxRewriteContext::AjaxRewriteContext(RewriteDriver* driver,
     : SingleRewriteContext(driver, NULL, NULL),
       driver_(driver),
       url_(url.data(), url.size()),
-      is_rewritten_(true),
-      etag_prefix_(StrCat(HTTPCache::kEtagPrefix, id(), "-")) {
+      is_rewritten_(true) {
   set_notify_driver_on_fetch_done(true);
 }
 
@@ -197,7 +196,8 @@ void AjaxRewriteContext::FetchTryFallback(const GoogleString& url,
   const char* request_etag = async_fetch()->request_headers()->Lookup1(
       HttpAttributes::kIfNoneMatch);
   if (request_etag != NULL && !hash.empty() &&
-      StringEqualConcat(request_etag, etag_prefix_, hash)) {
+      (StringPrintf(HTTPCache::kEtagFormat,
+                    StrCat(id(), "-",  hash).c_str()) == request_etag)) {
     // Serve out a 304.
     async_fetch()->response_headers()->Clear();
     async_fetch()->response_headers()->SetStatusAndReason(
@@ -223,8 +223,9 @@ void AjaxRewriteContext::FetchTryFallback(const GoogleString& url,
 void AjaxRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
   if (is_rewritten_) {
     if (!rewritten_hash_.empty()) {
-      headers->Replace(HttpAttributes::kEtag,
-                       StrCat(etag_prefix_, rewritten_hash_));
+      headers->Replace(HttpAttributes::kEtag, StringPrintf(
+          HTTPCache::kEtagFormat,
+          StrCat(id(), "-", rewritten_hash_).c_str()));
     }
 
     headers->ComputeCaching();

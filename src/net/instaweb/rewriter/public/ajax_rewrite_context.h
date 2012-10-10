@@ -113,9 +113,6 @@ class AjaxRewriteContext : public SingleRewriteContext {
   // is_rewritten_ is true. This may be empty.
   GoogleString rewritten_hash_;
 
-  // Prefix to be appended to etags.
-  const GoogleString etag_prefix_;
-
   scoped_ptr<UrlAsyncFetcher> cache_fetcher_;
 
   DISALLOW_COPY_AND_ASSIGN(AjaxRewriteContext);

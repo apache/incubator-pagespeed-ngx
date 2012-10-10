@@ -161,7 +161,7 @@ const char ServerContext::kCacheKeyResourceNamePrefix[] = "rname/";
 // This value is a shared constant so that it can also be used in
 // the Apache-specific code that repairs headers after mod_headers
 // alters them.
-const char ServerContext::kResourceEtagValue[] = "W/0";
+const char ServerContext::kResourceEtagValue[] = "W/\"0\"";
 
 class ResourceManagerHttpCallback : public OptionsAwareHTTPCacheCallback {
  public:

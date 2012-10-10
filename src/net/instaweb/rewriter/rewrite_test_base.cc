@@ -749,7 +749,7 @@ void RewriteTestBase::TestRetainExtraHeaders(
 
   ASSERT_TRUE(response.Lookup(HttpAttributes::kEtag, &v));
   ASSERT_EQ(1U, v.size());
-  EXPECT_STREQ("W/0", *v[0]);
+  EXPECT_STREQ("W/\"0\"", *v[0]);
 }
 
 void RewriteTestBase::ClearStats() {

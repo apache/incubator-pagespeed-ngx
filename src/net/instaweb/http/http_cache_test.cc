@@ -298,7 +298,7 @@ TEST_F(HTTPCacheTest, EtagsAddedIfAbsent) {
   ASSERT_TRUE(meta_data_out.Lookup("name", &values));
   ASSERT_EQ(static_cast<size_t>(1), values.size());
   EXPECT_EQ(GoogleString("value"), *(values[0]));
-  EXPECT_STREQ("W/PSA-0", meta_data_out.Lookup1(HttpAttributes::kEtag));
+  EXPECT_STREQ("W/\"PSA-0\"", meta_data_out.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ("content", contents);
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));  // The "query" counts as a hit.
 }

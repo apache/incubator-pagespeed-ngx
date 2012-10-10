@@ -256,7 +256,7 @@ JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
 check egrep -qi 'HTTP/1[.]. 200 OK' <(echo $JS_HEADERS)
 check fgrep -qi 'Content-Encoding: gzip' <(echo $JS_HEADERS)
 #check fgrep -qi 'Vary: Accept-Encoding' <(echo $JS_HEADERS)
-fgrep -qi 'Etag: W/0' <(echo $JS_HEADERS)
+fgrep -qi 'Etag: W/"0"' <(echo $JS_HEADERS)
 check fgrep -qi 'Last-Modified:' <(echo $JS_HEADERS)
 
 test_filter pedantic adds default type attributes.
@@ -310,7 +310,7 @@ echo TEST: Vary is not set for images.
 check_not fgrep -i 'Vary: Accept-Encoding' <(echo "$IMG_HEADERS")
 # Make sure there is an etag
 echo TEST: Etags is present.
-check fgrep -qi 'Etag: W/0' <(echo "$IMG_HEADERS")
+check fgrep -qi 'Etag: W/"0"' <(echo "$IMG_HEADERS")
 # TODO(sligocki): Allow setting arbitrary headers in static_server.
 # Make sure an extra header is propagated from input resource to output
 # resource.  X-Extra-Header is added in debug.conf.template.
