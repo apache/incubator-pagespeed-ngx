@@ -3,10 +3,10 @@
 This is the [nginx](http://nginx.org/) port of
 [mod_pagespeed](https://developers.google.com/speed/pagespeed/mod).
 
-**ngx_pagespeed is a work in progress**, and only a few of the mod_pagespeed
-filters are currently functional. If you are interested in test-driving the
-module, or contributing to the project, please follow the instructions below,
-and do provide feedback if you run into any issues or questions!
+**ngx_pagespeed is a work in progress**, and is not yet functional. If you are
+interested in test-driving the module, or contributing to the project, please
+follow the instructions below, and do provide feedback if you run into any
+issues or questions!
 
 ---
 
@@ -63,4 +63,4 @@ To your nginx.conf add to the main block or to a server or location block:
 To confirm that the module is working, fetch a page and check that you see the
 following comment in the source:
 
-    <!-- Processed through ngx_pagespeed using PSOL version 0.10.0.0  -->
+    <!-- Processed through ngx_pagespeed using PSOL version 0.10.0.0 -->
