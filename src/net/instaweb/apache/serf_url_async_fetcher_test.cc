@@ -67,67 +67,50 @@ const int kModpagespeedBeacon = 4;
 const int kHttpsGoogleFavicon = 5;
 const int kConnectionRefused = 6;
 
-class SerfTestCallback : public UrlAsyncFetcher::Callback {
+// Note: We do not subclass StringAsyncFetch because we want to lock access
+// to done_.
+class SerfTestFetch : public AsyncFetch {
  public:
-  SerfTestCallback(AbstractMutex* mutex, const GoogleString& url)
-      : done_(false),
-        mutex_(mutex),
-        url_(url),
-        enable_threaded_(false),
-        success_(false) {
+  explicit SerfTestFetch(AbstractMutex* mutex)
+      : mutex_(mutex), enable_threaded_(false), success_(false), done_(false) {
   }
-  virtual ~SerfTestCallback() {}
-  virtual void Done(bool success)  {
+  virtual ~SerfTestFetch() {}
+
+  virtual bool HandleWrite(const StringPiece& content,
+                           MessageHandler* handler) {
+    content.AppendToString(&buffer_);
+    return true;
+  }
+  virtual bool HandleFlush(MessageHandler* handler) { return true; }
+  virtual void HandleHeadersComplete() {}
+  virtual void HandleDone(bool success) {
     ScopedMutex lock(mutex_);
     CHECK(!done_);
-    done_ = true;
     success_ = success;
+    done_ = true;
   }
+
+  const GoogleString& buffer() const { return buffer_; }
+  bool success() const { return success_; }
   bool IsDone() const {
     ScopedMutex lock(mutex_);
     return done_;
   }
+
   virtual bool EnableThreaded() const {
     return enable_threaded_;
   }
   void set_enable_threaded(bool b) { enable_threaded_ = b; }
-  bool success() const { return success_; }
-  void Reset() {
-    done_ = false;
-    success_ = false;
-  }
 
  private:
-  bool done_;
   AbstractMutex* mutex_;
-  GoogleString url_;
   bool enable_threaded_;
+
+  GoogleString buffer_;
   bool success_;
+  bool done_;
 
-  DISALLOW_COPY_AND_ASSIGN(SerfTestCallback);
-};
-
-class CheckedWriter : public Writer {
- public:
-  // Takes ownership of writer passed in.
-  CheckedWriter(Writer* writer)
-      : writer_(writer),
-        first_(true) {
-  }
-
-  virtual bool Write(const StringPiece& str, MessageHandler* handler) {
-    first_ = false;
-    return writer_->Write(str, handler);
-  }
-
-  virtual bool Flush(MessageHandler* handler) {
-    CHECK(!first_) << "Flush called before Write()";
-    return writer_->Flush(handler);
-  }
-
- private:
-  scoped_ptr<Writer> writer_;
-  bool first_;
+  DISALLOW_COPY_AND_ASSIGN(SerfTestFetch);
 };
 
 }  // namespace
@@ -182,11 +165,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     // Need to free the fetcher before destroy the pool.
     serf_url_async_fetcher_.reset(NULL);
     timer_.reset(NULL);
-    STLDeleteElements(&request_headers_);
-    STLDeleteElements(&response_headers_);
-    STLDeleteElements(&contents_);
-    STLDeleteElements(&writers_);
-    STLDeleteElements(&callbacks_);
+    STLDeleteElements(&fetches_);
     apr_pool_destroy(pool_);
   }
 
@@ -194,35 +173,29 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
                   const GoogleString& content_start) {
     urls_.push_back(url);
     content_starts_.push_back(content_start);
-    request_headers_.push_back(new RequestHeaders);
-    response_headers_.push_back(new ResponseHeaders);
-    contents_.push_back(new GoogleString);
-    writers_.push_back(new CheckedWriter(new StringWriter(contents_.back())));
-    callbacks_.push_back(new SerfTestCallback(mutex_.get(), url));
+    fetches_.push_back(new SerfTestFetch(mutex_.get()));
   }
 
   void StartFetch(int idx) {
-    serf_url_async_fetcher_->StreamingFetch(
-        urls_[idx], *request_headers_[idx], response_headers_[idx],
-        writers_[idx], &message_handler_, callbacks_[idx]);
+    serf_url_async_fetcher_->Fetch(
+        urls_[idx], &message_handler_, fetches_[idx]);
   }
 
   void StartFetches(size_t first, size_t last, bool enable_threaded) {
     for (size_t idx = first; idx <= last; ++idx) {
-      callbacks_[idx]->set_enable_threaded(enable_threaded);
+      fetches_[idx]->set_enable_threaded(enable_threaded);
       StartFetch(idx);
     }
   }
 
   int ActiveFetches() {
-    return statistics_.GetVariable(SerfStats::kSerfFetchActiveCount)
-        ->Get();
+    return statistics_.GetVariable(SerfStats::kSerfFetchActiveCount)->Get();
   }
 
   int CountCompletedFetches(size_t first, size_t last) {
     int completed = 0;
     for (size_t idx = first; idx <= last; ++idx) {
-      if (callbacks_[idx]->IsDone()) {
+      if (fetches_[idx]->IsDone()) {
         ++completed;
       }
     }
@@ -231,9 +204,9 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
 
   void ValidateFetches(size_t first, size_t last) {
     for (size_t idx = first; idx <= last; ++idx) {
-      ASSERT_TRUE(callbacks_[idx]->IsDone());
+      ASSERT_TRUE(fetches_[idx]->IsDone());
 
-      for (int i = 0; !callbacks_[idx]->success() && (i < 10); ++i) {
+      for (int i = 0; !fetches_[idx]->success() && (i < 10); ++i) {
         // We've started to see some flakiness in this test requesting
         // google.com/favicon, so try, at most 10 times, to re-issue
         // the request and sleep.
@@ -241,24 +214,24 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
         // changed to a static resource.
         usleep(50 * Timer::kMsUs);
         LOG(ERROR) << "Serf retrying flaky url " << urls_[idx];
-        callbacks_[idx]->Reset();
+        fetches_[idx]->Reset();
         StartFetch(idx);
         WaitTillDone(idx, idx, kMaxMs);
       }
-      EXPECT_TRUE(callbacks_[idx]->success());
+      EXPECT_TRUE(fetches_[idx]->success());
 
       if (content_starts_[idx].empty()) {
-        EXPECT_TRUE(contents_[idx]->empty());
+        EXPECT_TRUE(contents(idx).empty());
         EXPECT_EQ(HttpStatus::kNoContent,
-                  response_headers_[idx]->status_code());
+                  response_headers(idx)->status_code());
       } else {
-        EXPECT_LT(static_cast<size_t>(0), contents_[idx]->size())
+        EXPECT_LT(static_cast<size_t>(0), contents(idx).size())
             << urls_[idx];
-        EXPECT_EQ(HttpStatus::kOK, response_headers_[idx]->status_code())
+        EXPECT_EQ(HttpStatus::kOK, response_headers(idx)->status_code())
             << urls_[idx];
       }
       EXPECT_EQ(content_starts_[idx],
-                contents_[idx]->substr(0, content_starts_[idx].size()));
+                contents(idx).substr(0, content_starts_[idx].size()));
     }
   }
 
@@ -282,7 +255,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
       serf_url_async_fetcher_->Poll(to_wait_ms);
       done_count = 0;
       for (size_t idx = first; idx <= last; ++idx) {
-        if (callbacks_[idx]->IsDone()) {
+        if (fetches_[idx]->IsDone()) {
           ++done_count;
         }
       }
@@ -308,19 +281,24 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     StartFetches(kConnectionRefused, kConnectionRefused, threaded);
     timer_->AdvanceMs(kTimerAdvanceMs);
     ASSERT_EQ(WaitTillDone(kConnectionRefused, kConnectionRefused, kMaxMs), 1);
-    ASSERT_TRUE(callbacks_[kConnectionRefused]->IsDone());
+    ASSERT_TRUE(fetches_[kConnectionRefused]->IsDone());
     EXPECT_EQ(HttpStatus::kNotFound,
-              response_headers_[kConnectionRefused]->status_code());
+              response_headers(kConnectionRefused)->status_code());
   }
+
+  // Convenience getters.
+  RequestHeaders* request_headers(int idx) {
+    return fetches_[idx]->request_headers();
+  }
+  ResponseHeaders* response_headers(int idx) {
+    return fetches_[idx]->response_headers();
+  }
+  const GoogleString& contents(int idx) { return fetches_[idx]->buffer(); }
 
   apr_pool_t* pool_;
   std::vector<GoogleString> urls_;
   std::vector<GoogleString> content_starts_;
-  std::vector<RequestHeaders*> request_headers_;
-  std::vector<ResponseHeaders*> response_headers_;
-  std::vector<GoogleString*> contents_;
-  std::vector<Writer*> writers_;
-  std::vector<SerfTestCallback*> callbacks_;
+  std::vector<SerfTestFetch*> fetches_;
   // The fetcher to be tested.
   scoped_ptr<SerfUrlAsyncFetcher> serf_url_async_fetcher_;
   scoped_ptr<MockTimer> timer_;
@@ -336,7 +314,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
 
 TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {
   EXPECT_TRUE(TestFetch(kModpagespeedSite, kModpagespeedSite));
-  EXPECT_FALSE(response_headers_[kModpagespeedSite]->IsGzipped());
+  EXPECT_FALSE(response_headers(kModpagespeedSite)->IsGzipped());
   int request_count =
       statistics_.GetVariable(SerfStats::kSerfFetchRequestCount)->Get();
   EXPECT_EQ(1, request_count);
@@ -353,20 +331,20 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURL) {
 // Tests that when the fetcher requests gzipped data it gets it.  Note
 // that the callback is delivered content that must be explicitly unzipped.
 TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
-  request_headers_[kModpagespeedSite]->Add(HttpAttributes::kAcceptEncoding,
-                                           HttpAttributes::kGzip);
+  request_headers(kModpagespeedSite)->Add(HttpAttributes::kAcceptEncoding,
+                                          HttpAttributes::kGzip);
   StartFetches(kModpagespeedSite, kModpagespeedSite, false);
   EXPECT_EQ(1, ActiveFetches());
   ASSERT_EQ(1, WaitTillDone(kModpagespeedSite, kModpagespeedSite, kMaxMs));
-  ASSERT_TRUE(callbacks_[kModpagespeedSite]->IsDone());
-  EXPECT_LT(static_cast<size_t>(0), contents_[kModpagespeedSite]->size());
-  EXPECT_EQ(200, response_headers_[kModpagespeedSite]->status_code());
-  ASSERT_TRUE(response_headers_[kModpagespeedSite]->IsGzipped());
+  ASSERT_TRUE(fetches_[kModpagespeedSite]->IsDone());
+  EXPECT_LT(static_cast<size_t>(0), contents(kModpagespeedSite).size());
+  EXPECT_EQ(200, response_headers(kModpagespeedSite)->status_code());
+  ASSERT_TRUE(response_headers(kModpagespeedSite)->IsGzipped());
 
   GzipInflater inflater(GzipInflater::kGzip);
   ASSERT_TRUE(inflater.Init());
-  ASSERT_TRUE(inflater.SetInput(contents_[kModpagespeedSite]->data(),
-                                contents_[kModpagespeedSite]->size()));
+  ASSERT_TRUE(inflater.SetInput(contents(kModpagespeedSite).data(),
+                                contents(kModpagespeedSite).size()));
   ASSERT_TRUE(inflater.HasUnconsumedInput());
   int size = content_starts_[kModpagespeedSite].size();
   scoped_array<char> buf(new char[size]);
@@ -383,7 +361,7 @@ TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLGzipped) {
 TEST_F(SerfUrlAsyncFetcherTest, FetchOneURLWithGzip) {
   serf_url_async_fetcher_->set_fetch_with_gzip(true);
   EXPECT_TRUE(TestFetch(kModpagespeedSite, kModpagespeedSite));
-  EXPECT_FALSE(response_headers_[kModpagespeedSite]->IsGzipped());
+  EXPECT_FALSE(response_headers(kModpagespeedSite)->IsGzipped());
   int request_count =
       statistics_.GetVariable(SerfStats::kSerfFetchRequestCount)->Get();
   EXPECT_EQ(1, request_count);
@@ -537,8 +515,8 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTimeout) {
   ASSERT_EQ(0, WaitTillDone(kCgiSlowJs, kCgiSlowJs, kThreadedPollMs));
   timer_->AdvanceMs(2 * kFetcherTimeoutMs);
   ASSERT_EQ(1, WaitTillDone(kCgiSlowJs, kCgiSlowJs, kThreadedPollMs));
-  ASSERT_TRUE(callbacks_[kCgiSlowJs]->IsDone());
-  EXPECT_FALSE(callbacks_[kCgiSlowJs]->success());
+  ASSERT_TRUE(fetches_[kCgiSlowJs]->IsDone());
+  EXPECT_FALSE(fetches_[kCgiSlowJs]->success());
   EXPECT_EQ(timeouts + 1,
             statistics_.GetVariable(SerfStats::kSerfFetchTimeoutCount)->Get());
 }
@@ -546,20 +524,20 @@ TEST_F(SerfUrlAsyncFetcherTest, TestTimeout) {
 TEST_F(SerfUrlAsyncFetcherTest, Test204) {
   TestFetch(kModpagespeedBeacon, kModpagespeedBeacon);
   EXPECT_EQ(HttpStatus::kNoContent,
-            response_headers_[kModpagespeedBeacon]->status_code());
+            response_headers(kModpagespeedBeacon)->status_code());
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFails) {
   StartFetches(kHttpsGoogleFavicon, kHttpsGoogleFavicon, false);
   timer_->AdvanceMs(kTimerAdvanceMs);
   ASSERT_EQ(WaitTillDone(kHttpsGoogleFavicon, kHttpsGoogleFavicon, kMaxMs), 1);
-  ASSERT_TRUE(callbacks_[kHttpsGoogleFavicon]->IsDone());
+  ASSERT_TRUE(fetches_[kHttpsGoogleFavicon]->IsDone());
   ASSERT_TRUE(content_starts_[kHttpsGoogleFavicon].empty());
-  EXPECT_TRUE(contents_[kHttpsGoogleFavicon]->empty());
+  EXPECT_TRUE(contents(kHttpsGoogleFavicon).empty());
 
   // TODO(jmarantz): Consider using a 500 error code for https support.
   EXPECT_EQ(HttpStatus::kNotFound,
-            response_headers_[kHttpsGoogleFavicon]->status_code());
+            response_headers(kHttpsGoogleFavicon)->status_code());
 }
 
 TEST_F(SerfUrlAsyncFetcherTest, ConnectionRefusedNoDetail) {

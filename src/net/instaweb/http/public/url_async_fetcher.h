@@ -15,11 +15,6 @@
  */
 
 // Author: jmarantz@google.com (Joshua Marantz)
-//
-// UrlAsyncFetcher is an interface for asynchronously fetching urls.  The
-// caller must supply a callback to be called when the fetch is complete.
-//
-// You must implement one of Fetch or StreamingFetch.
 
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_URL_ASYNC_FETCHER_H_
@@ -31,10 +26,10 @@ namespace net_instaweb {
 
 class AsyncFetch;
 class MessageHandler;
-class RequestHeaders;
-class ResponseHeaders;
-class Writer;
 
+// UrlAsyncFetcher is an interface for asynchronously fetching URLs.
+// The results of a fetch are asynchronously passed back to the callbacks
+// in the supplied AsyncFetch object.
 class UrlAsyncFetcher {
  public:
   static const int64 kUnspecifiedTimeout;
@@ -42,34 +37,7 @@ class UrlAsyncFetcher {
   // Default statistics group name.
   static const char kStatisticsGroup[];
 
-  // DEPRECATED.
-  class Callback {
-   public:
-    Callback() : modified_(true) {}
-    virtual ~Callback();
-    virtual void Done(bool success) = 0;
-
-    // Set to true if it's OK to call the callback from a different
-    // thread.  The base class implementation returns false.
-    virtual bool EnableThreaded() const;
-
-    // Callers should set these before calling Done(), if appropriate.
-    void set_modified(bool modified) { modified_ = modified; }
-    bool modified() const { return modified_; }
-
-   private:
-    // If we are doing a ConditionalFetch, this tells us if the resource
-    // has been modified. If true, the response will have the new contents
-    // just like for a normal StreamingFetch. If false, only the response
-    // headers are meaningful.
-    bool modified_;
-  };
-
   virtual ~UrlAsyncFetcher();
-
-  // Determine if the fetcher supports fetching using HTTPS. By default we
-  // assume a fetcher can.
-  virtual bool SupportsHttps() const { return true; }
 
   // Asynchronously fetch a URL, set the response headers and stream the
   // contents to fetch and call fetch->Done() when the fetch finishes.
@@ -88,13 +56,9 @@ class UrlAsyncFetcher {
                      MessageHandler* message_handler,
                      AsyncFetch* fetch) = 0;
 
-  // DEPRECATED: Call Fetch() instead.
-  bool StreamingFetch(const GoogleString& url,
-                      const RequestHeaders& request_headers,
-                      ResponseHeaders* response_headers,
-                      Writer* response_writer,
-                      MessageHandler* message_handler,
-                      Callback* callback);
+  // Determine if the fetcher supports fetching using HTTPS. By default we
+  // assume a fetcher can.
+  virtual bool SupportsHttps() const { return true; }
 
   // Returns a maximum time that we will allow fetches to take, or
   // kUnspecifiedTimeout (the default) if we don't promise to timeout fetches.

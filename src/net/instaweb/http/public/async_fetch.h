@@ -80,7 +80,7 @@ class AsyncFetch : public Writer {
 
   // Data available.  This interface is intended for callers.  Implementors
   // must override HandlerWrite and HandleFlush.
-  virtual bool Write(const StringPiece& sp, MessageHandler* handler);
+  virtual bool Write(const StringPiece& content, MessageHandler* handler);
   virtual bool Flush(MessageHandler* handler);
 
   // Is the cache entry corresponding to headers valid? Default is that it is
@@ -102,6 +102,8 @@ class AsyncFetch : public Writer {
   // Sets the request-headers to the specifid pointer.  The caller must
   // guarantee that the pointed-to headers remain valid as long as the
   // AsyncFetch is running.
+  //
+  // Does not take ownership of headers.
   void set_request_headers(RequestHeaders* headers);
 
   // Returns the request_headers as a const pointer: it is required
@@ -205,7 +207,7 @@ class StringAsyncFetch : public AsyncFetch {
   bool done() const { return done_; }
   const GoogleString& buffer() const { return *buffer_pointer_; }
 
-  void Reset() {
+  virtual void Reset() {
     done_ = false;
     success_ = false;
     buffer_pointer_->clear();
@@ -214,6 +216,12 @@ class StringAsyncFetch : public AsyncFetch {
     request_headers()->Clear();
     AsyncFetch::Reset();
   }
+
+ protected:
+  // For subclasses that need to use complex logic to set success_ and done_.
+  // Most subclasses should not need these.
+  void set_success(bool success) { success_ = success; }
+  void set_done(bool done) { done_ = done; }
 
  private:
   void Init() {

@@ -39,6 +39,7 @@
 // For now use wget when slurping additional files.
 
 #include "net/instaweb/apache/apache_resource_manager.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -85,26 +86,22 @@ void SlurpDefaultHandler(request_rec* r) {
 
 class ApacheWriter : public Writer {
  public:
-  ApacheWriter(request_rec* r, ResponseHeaders* response_headers)
-      : request_(r),
-        response_headers_(response_headers),
-        headers_out_(false) {
-  }
+  explicit ApacheWriter(request_rec* r) : request_(r), headers_out_(false) {}
 
   virtual bool Write(const StringPiece& str, MessageHandler* handler) {
-    if (!headers_out_) {
-      OutputHeaders();
-    }
+    DCHECK(headers_out_);
     ap_rwrite(str.data(), str.size(), request_);
     return true;
   }
 
   virtual bool Flush(MessageHandler* handler) {
+    DCHECK(headers_out_);
     ap_rflush(request_);
     return true;
   }
 
-  void OutputHeaders() {
+  void OutputHeaders(ResponseHeaders* response_headers) {
+    DCHECK(!headers_out_);
     if (headers_out_) {
       return;
     }
@@ -115,15 +112,15 @@ class ApacheWriter : public Writer {
     // HTTP/1.0.  I'm not sure why/whether we need to do this; it was in
     // mod_static from the sdpy project, which is where I copied this
     // code from.
-    if ((response_headers_->major_version() == 1) &&
-        (response_headers_->minor_version() == 0)) {
+    if ((response_headers->major_version() == 1) &&
+        (response_headers->minor_version() == 0)) {
       apr_table_set(request_->subprocess_env, "force-response-1.0", "1");
     }
 
     char* content_type = NULL;
     ConstStringStarVector v;
-    CHECK(response_headers_->headers_complete());
-    if (response_headers_->Lookup(HttpAttributes::kContentType, &v)) {
+    CHECK(response_headers->headers_complete());
+    if (response_headers->Lookup(HttpAttributes::kContentType, &v)) {
       CHECK(!v.empty());
       // ap_set_content_type does not make a copy of the string, we need
       // to duplicate it.  Note that we will update the content type below,
@@ -132,9 +129,9 @@ class ApacheWriter : public Writer {
       content_type = apr_pstrdup(request_->pool,
                                  (last == NULL) ? NULL : last->c_str());
     }
-    response_headers_->RemoveAll(HttpAttributes::kTransferEncoding);
-    response_headers_->RemoveAll(HttpAttributes::kContentLength);
-    ResponseHeadersToApacheRequest(*response_headers_, request_);
+    response_headers->RemoveAll(HttpAttributes::kTransferEncoding);
+    response_headers->RemoveAll(HttpAttributes::kContentLength);
+    ResponseHeadersToApacheRequest(*response_headers, request_);
     if (content_type != NULL) {
       ap_set_content_type(request_, content_type);
     }
@@ -146,7 +143,6 @@ class ApacheWriter : public Writer {
 
  private:
   request_rec* request_;
-  ResponseHeaders* response_headers_;
   bool headers_out_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheWriter);
@@ -194,36 +190,30 @@ GoogleString RemoveModPageSpeedQueryParams(
   return stripped_url;
 }
 
-// Some of the sites we are trying to slurp have mod-pagespeed enabled already.
+// Some of the sites we are trying to slurp have pagespeed enabled already.
 // We actually want to start with the non-pagespeed-enabled site.  But we'd
 // rather not send ModPagespeed=off to servers that are not expecting it.
-class StrippingFetch : public UrlAsyncFetcher::Callback {
+// TODO(sligocki): Perhaps we should just send the "ModPagespeed: off" header
+// which seems less intrusive.
+class StrippingFetch : public StringAsyncFetch {
  public:
-  StrippingFetch(const DomainLawyer* lawyer,
-                 const GoogleString& url_input,
-                 const RequestHeaders& request_headers,
+  StrippingFetch(const GoogleString& url_input,
+                 const DomainLawyer* lawyer,
                  UrlAsyncFetcher* fetcher,
-                 ResponseHeaders* response_headers,
-                 GoogleString* dest_buffer,
                  ThreadSystem* thread_system,
                  MessageHandler* message_handler)
       : fetcher_(fetcher),
         lawyer_(lawyer),
         url_(url_input),
-        response_headers_(response_headers),
-        dest_buffer_(dest_buffer),
-        writer_(dest_buffer_),
         message_handler_(message_handler),
         stripped_(false),
-        success_(false),
-        done_(false),
         mutex_(thread_system->NewMutex()),
         condvar_(mutex_->NewCondvar()) {
-    request_headers_.CopyFrom(request_headers);  // we may mutate Host header
   }
 
   virtual bool EnableThreaded() const { return true; }
 
+  // Blocking fetch.
   bool Fetch() {
     // To test sharding domains from a slurp of a site that does not support
     // sharded domains, we apply mapping origin domain here.  Simply map all
@@ -232,32 +222,32 @@ class StrippingFetch : public UrlAsyncFetcher::Callback {
     if (lawyer_->MapOrigin(url_, &origin_url)) {
       url_ = origin_url;
       GoogleUrl gurl(url_);
-      request_headers_.Replace(HttpAttributes::kHost, gurl.Host());
+      request_headers()->Replace(HttpAttributes::kHost, gurl.Host());
     }
 
-    fetcher_->StreamingFetch(url_, request_headers_, response_headers_,
-                             &writer_, message_handler_, this);
+    fetcher_->Fetch(url_, message_handler_, this);
     {
       ScopedMutex lock(mutex_.get());
-      while (!done_) {
+      while (!done()) {
         condvar_->TimedWait(Timer::kSecondMs);
       }
     }
-    return success_;
+    return success();
   }
 
-  virtual void Done(bool success) {
+  virtual void HandleDone(bool success) {
     bool done = true;
     if (!success) {
-      success_ = false;
+      set_success(false);
     } else if (stripped_) {
       // Second pass -- declare completion.
-      success_ = true;
-    } else if (response_headers_->Lookup1(kModPagespeedHeader) != NULL) {
+      set_success(true);
+    // TODO(sligocki): Check for kPageSpeedHeader as well.
+    } else if (response_headers()->Lookup1(kModPagespeedHeader) != NULL) {
       // First pass -- the slurped site evidently had mod_pagespeed already
       // enabled.  Turn it off and re-fetch.
       LOG(ERROR) << "URL " << url_ << " already has mod_pagespeed.  Stripping.";
-      response_headers_->Clear();
+      Reset();  // Clears output buffer and response_headers.
       GoogleString::size_type question = url_.find('?');
       if (question == GoogleString::npos) {
         url_ += "?ModPagespeed=off";
@@ -265,18 +255,18 @@ class StrippingFetch : public UrlAsyncFetcher::Callback {
         url_ += "&ModPagespeed=off";
       }
       stripped_ = true;
-      dest_buffer_->clear();
-      fetcher_->StreamingFetch(url_, request_headers_, response_headers_,
-                               &writer_, message_handler_, this);
+      // TODO(sligocki): This currently allows infinite looping behavior if
+      // someone returns X-Mod-Pagespeed headers unexpectedly.
+      fetcher_->Fetch(url_, message_handler_, this);
       done = false;
     } else {
       // First-pass -- the origin site did not have mod_pagespeed so no need
       // for a second pass.
-      success_ = true;
+      set_success(true);
     }
     if (done) {
       ScopedMutex lock(mutex_.get());
-      done_ = true;
+      set_done(true);
       condvar_->Signal();
       // Don't "delete this" -- this is allocated on the stack in ApacheSlurp.
     }
@@ -285,15 +275,12 @@ class StrippingFetch : public UrlAsyncFetcher::Callback {
  private:
   UrlAsyncFetcher* fetcher_;
   const DomainLawyer* lawyer_;
+
   GoogleString url_;
-  RequestHeaders request_headers_;
-  ResponseHeaders* response_headers_;
-  GoogleString* dest_buffer_;
-  StringWriter writer_;
   MessageHandler* message_handler_;
+
   bool stripped_;
-  bool success_;
-  bool done_;
+
   scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
   scoped_ptr<ThreadSystem::Condvar> condvar_;
 
@@ -303,32 +290,28 @@ class StrippingFetch : public UrlAsyncFetcher::Callback {
 }  // namespace
 
 void SlurpUrl(ApacheResourceManager* manager, request_rec* r) {
-  const char* uri = InstawebContext::MakeRequestUrl(r);
-  RequestHeaders request_headers;
-  ResponseHeaders response_headers;
-  ApacheRequestToRequestHeaders(*r, &request_headers);
-  ApacheWriter apache_writer(r, &response_headers);
-  ChunkingWriter writer(&apache_writer, manager->config()->slurp_flush_limit());
-
+  const char* url = InstawebContext::MakeRequestUrl(r);
   GoogleString stripped_url = RemoveModPageSpeedQueryParams(
-      uri, r->parsed_uri.query);
+      url, r->parsed_uri.query);
 
   UrlAsyncFetcher* fetcher = manager->DefaultSystemFetcher();
-  GoogleString contents;
   MessageHandler* handler = manager->message_handler();
-  StrippingFetch fetch(manager->config()->domain_lawyer(),
-                       stripped_url, request_headers,
-                       fetcher, &response_headers, &contents,
-                       manager->thread_system(), handler);
+  StrippingFetch fetch(stripped_url, manager->config()->domain_lawyer(),
+                       fetcher, manager->thread_system(), handler);
+  ApacheRequestToRequestHeaders(*r, fetch.request_headers());
+
   if (fetch.Fetch()) {
-    apache_writer.OutputHeaders();
-    writer.Write(contents, handler);
+    ApacheWriter apache_writer(r);
+    ChunkingWriter chunking_writer(&apache_writer,
+                                   manager->config()->slurp_flush_limit());
+    apache_writer.OutputHeaders(fetch.response_headers());
+    chunking_writer.Write(fetch.buffer(), handler);
   } else {
     handler->Message(kInfo, "mod_pagespeed: slurp of url %s failed.\n"
                      "Request Headers: %s\n\nResponse Headers: %s",
                      stripped_url.c_str(),
-                     request_headers.ToString().c_str(),
-                     response_headers.ToString().c_str());
+                     fetch.request_headers()->ToString().c_str(),
+                     fetch.response_headers()->ToString().c_str());
     SlurpDefaultHandler(r);
   }
 }
