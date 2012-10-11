@@ -189,6 +189,12 @@ TEST_F(CssOutlineFilterTest, CdataInContents) {
   TestOutlineCss("http://outline_css.test/cdata.html", "", css, true, css, "");
 }
 
+// Make sure we deal well with no Charactors() node between StartElement()
+// and EndElement().
+TEST_F(CssOutlineFilterTest, EmptyStyle) {
+  ValidateNoChanges("empty_style", "<style></style>");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

@@ -155,6 +155,13 @@ TEST_F(JsOutlineFilterTest, UrlTooLong) {
   OutlineScript("url_too_long", false);
 }
 
+// Make sure we deal well with no Charactors() node between StartElement()
+// and EndElement().
+TEST_F(JsOutlineFilterTest, EmptyScript) {
+  SetupOutliner();
+  ValidateNoChanges("empty_script", "<script></script>");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

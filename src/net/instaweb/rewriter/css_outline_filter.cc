@@ -75,13 +75,14 @@ void CssOutlineFilter::StartElementImpl(HtmlElement* element) {
 void CssOutlineFilter::EndElementImpl(HtmlElement* element) {
   if (inline_element_ != NULL) {
     CHECK(element == inline_element_);
-    if (inline_chars_->contents().size() >= size_threshold_bytes_) {
+    if (inline_chars_ != NULL &&
+        inline_chars_->contents().size() >= size_threshold_bytes_) {
       OutlineStyle(inline_element_, inline_chars_->contents());
     } else {
+      int size = (inline_chars_ == NULL ? 0 : inline_chars_->contents().size());
       driver_->InfoHere("Inline element not outlined because its size %d, "
                         "is below threshold %d",
-                        static_cast<int>(inline_chars_->contents().size()),
-                        static_cast<int>(size_threshold_bytes_));
+                        size, static_cast<int>(size_threshold_bytes_));
     }
     inline_element_ = NULL;
     inline_chars_ = NULL;
