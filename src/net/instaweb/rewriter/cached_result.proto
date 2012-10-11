@@ -160,6 +160,9 @@ message CachedResult {
   // of url and skip the default resource-based rendering (eg when we recognize
   // a JS library and canonicalize its URL).
   optional bool canonicalize_url = 19 [ default = false ];
+
+  // Stores the size of the rewritten resource.
+  optional int64 size = 20;
 }
 
 // Contains the mapping of input URLs to output URLs.  In the general

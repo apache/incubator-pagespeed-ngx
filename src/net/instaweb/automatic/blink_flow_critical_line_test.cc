@@ -22,6 +22,7 @@
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/proxy_interface.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
@@ -33,6 +34,7 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/blink_critical_line_data.pb.h"
+#include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -66,6 +68,8 @@ class Function;
 class MessageHandler;
 
 namespace {
+
+const char kCssContent[] = "* { display: none; }";
 
 const char kLinuxUserAgent[] =
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 "
@@ -126,6 +130,27 @@ const char kHtmlInputWithMinifiedJs[] =
     "<html>"
     "<head>"
     "<script type=\"text/javascript\">var a=\"hello\";</script>"
+    "</head>"
+    "<body>\n"
+    "<div id=\"header\"> This is the header </div>"
+    "<div id=\"container\" class>"
+      "<h2 id=\"beforeItems\"> This is before Items </h2>"
+      "<div class=\"item\">"
+         "<img src=\"image1\">"
+         "<img src=\"image2\">"
+      "</div>"
+      "<div class=\"item\">"
+         "<img src=\"image3\">"
+          "<div class=\"item\">"
+             "<img src=\"image4\">"
+          "</div>"
+      "</div>"
+    "</body></html>";
+
+const char kFlushSubresourcesHtmlInput[] =
+    "<html>"
+    "<head>"
+    "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
     "</head>"
     "<body>\n"
     "<div id=\"header\"> This is the header </div>"
@@ -564,6 +589,8 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     fake_blink_critical_line_data_finder_ =
         static_cast<FakeBlinkCriticalLineDataFinder*> (
             server_context_->blink_critical_line_data_finder());
+    flush_early_info_finder_ = new MeaningfulFlushEarlyInfoFinder;
+    server_context()->set_flush_early_info_finder(flush_early_info_finder_);
     options_.reset(server_context()->NewOptions());
     options_->set_enable_blink_critical_line(true);
     options_->set_passthrough_blink_for_last_invalid_response_code(true);
@@ -586,6 +613,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     options_->ForceEnableFilter(RewriteOptions::kCombineJavascript);
     options_->ForceEnableFilter(RewriteOptions::kDelayImages);
     options_->ForceEnableFilter(RewriteOptions::kRewriteJavascript);
+    options_->ForceEnableFilter(RewriteOptions::kFlushSubresources);
 
     options_->Disallow("*blacklist*");
 
@@ -650,6 +678,10 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
                      kFakePngInput);
     SetFetchResponse("http://test.com/ws_text.html", response_headers_,
                      StrCat(kWhitespace, kHtmlInput));
+    SetFetchResponse("http://test.com/flush_subresources.html",
+                     response_headers_, kFlushSubresourcesHtmlInput);
+    SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.css"), kContentTypeCss,
+                                  kCssContent, kHtmlCacheTimeSec * 2);
   }
 
   virtual void TearDown() {
@@ -705,6 +737,21 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     EXPECT_EQ("max-age=0", *v[0]);
     EXPECT_EQ("private", *v[1]);
     EXPECT_EQ("no-cache", *v[2]);
+  }
+
+  void VerifyFlushSubresourcesResponse(GoogleString text,
+                                       bool is_applied_expected) {
+    // If FlushSubresources Filter is applied then the response has 2 head tags.
+    bool is_applied = false;
+    const char head[] = "<head>";
+    int head_position1 = text.find(head);
+    if (head_position1 != GoogleString::npos) {
+      if (text.find(head, head_position1 + strlen(head)) !=
+          GoogleString::npos) {
+        is_applied = true;
+      }
+    }
+    EXPECT_EQ(is_applied_expected, is_applied);
   }
 
   void FetchFromProxyWaitForUpdateResponseCode(
@@ -1085,6 +1132,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
   GoogleString noblink_output_with_lazy_load_;
   GoogleString blink_output_with_lazy_load_;
   FakeBlinkCriticalLineDataFinder* fake_blink_critical_line_data_finder_;
+  MeaningfulFlushEarlyInfoFinder* flush_early_info_finder_;
   LoggingInfo logging_info_;
   const GoogleString blink_output_;
   const GoogleString blink_output_with_extra_non_cacheable_;
@@ -1268,6 +1316,61 @@ TEST_F(BlinkFlowCriticalLineTest,
   UnEscapeString(&text);
   EXPECT_STREQ(blink_output_with_cacheable_panels_no_cookies_, text);
   EXPECT_EQ(2, num_compute_calls());
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkFlushSubresources) {
+  // FlushSubresources is applied when blink is enabled and user agent does not
+  // support blink.
+  GoogleString text;
+  RequestHeaders request_headers;
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          "prefetch_link_rel_subresource");
+  ResponseHeaders response_headers;
+  FetchFromProxy("http://test.com/flush_subresources.html", true,
+                 request_headers, &text, &response_headers, NULL, false);
+  VerifyNonBlinkResponse(&response_headers);
+  EXPECT_EQ(1, flush_early_info_finder_->num_compute_calls());
+
+  // Requesting again.
+  flush_early_info_finder_->Clear();
+  response_headers.Clear();
+  FetchFromProxy("http://test.com/flush_subresources.html", true,
+                 request_headers, &text, &response_headers, NULL, false);
+  VerifyFlushSubresourcesResponse(text, true);
+  // Since 2 rewrite drivers are crested in flush early flow so compute is
+  // called twice.
+  EXPECT_EQ(2, flush_early_info_finder_->num_compute_calls());
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkCacheMissHitFlushSubresources) {
+  // FlushSubresources is not applied when blink is enabled and user agent
+  // supports blink and its a blink cache miss.
+  GoogleString text;
+  RequestHeaders request_headers;
+  GetDefaultRequestHeaders(&request_headers);
+  ResponseHeaders response_headers;
+  FetchFromProxy("http://test.com/flush_subresources.html", true,
+                 request_headers, &text, &response_headers, NULL, true);
+  VerifyNonBlinkResponse(&response_headers);
+  EXPECT_EQ(0, flush_early_info_finder_->num_compute_calls());
+
+  // Requesting again.
+  response_headers.Clear();
+  FetchFromProxy("http://test.com/flush_subresources.html", true,
+                 request_headers, &text, &response_headers, NULL, true);
+  VerifyFlushSubresourcesResponse(text, false);
+  VerifyNonBlinkResponse(&response_headers);
+  EXPECT_EQ(0, flush_early_info_finder_->num_compute_calls());
+
+  // FlushSubresources is not applied when blink is enabled and user agent
+  // supports blink and its a blink cache hit.
+  SetBlinkCriticalLineData();
+  response_headers.Clear();
+  FetchFromProxy("http://test.com/flush_subresources.html", true,
+                 request_headers, &text, &response_headers, NULL, false);
+  VerifyFlushSubresourcesResponse(text, false);
+  VerifyBlinkResponse(&response_headers);
+  EXPECT_EQ(0, flush_early_info_finder_->num_compute_calls());
 }
 
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkCacheMissFuriousSetCookie) {

@@ -36,6 +36,10 @@ class RewriteDriver;
 // and stores it in property cache to be used by FlushEarlyFlow. If a request is
 // flushed early then this HTML is used to make the client download resources
 // early.
+// pagespeed_size attribute is added to the html elements which are being
+// flushed in the flush early flow. This information will be used by
+// FlushEarlyContentWriterFilter to flush more resources based on origin server
+// fetch latency.
 class CollectFlushEarlyContentFilter : public RewriteFilter {
  public:
   explicit CollectFlushEarlyContentFilter(RewriteDriver* driver);
@@ -56,6 +60,8 @@ class CollectFlushEarlyContentFilter : public RewriteFilter {
   virtual void Clear();
 
  private:
+  class Context;
+
   void AppendToHtml(StringPiece url, semantic_type::Category category,
                     HtmlElement* element);
   void AppendAttribute(HtmlName::Keyword keyword, HtmlElement* element);

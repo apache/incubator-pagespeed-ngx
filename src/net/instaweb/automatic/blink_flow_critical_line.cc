@@ -911,6 +911,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
   // when we have non-200 code but we just blanket disable here.
   options_->DisableFilter(RewriteOptions::kDelayImages);
   options_->DisableFilter(RewriteOptions::kInlineImages);
+  options_->DisableFilter(RewriteOptions::kFlushSubresources);
   if (critical_line_data_found) {
     SetFilterOptions(options_);
     options_->ForceEnableFilter(RewriteOptions::kServeNonCacheableNonCritical);

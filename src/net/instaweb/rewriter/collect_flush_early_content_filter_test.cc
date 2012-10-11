@@ -17,6 +17,8 @@
 
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
 
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -65,6 +67,7 @@ TEST_F(CollectFlushEarlyContentFilterTest, CollectFlushEarlyContentFilter) {
         "<script src=\"c.js\">"
         "</script>"
         "</noscript>"
+        "<img src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP\"/>"
       "</head>"
       "<body>"
         "<link type=\"text/css\" rel=\"stylesheet\" href=\"c.css\"/>"
@@ -105,6 +108,25 @@ TEST_F(CollectFlushEarlyContentFilterTest, WithInlineInportToLinkFilter) {
   EXPECT_STREQ("<link rel=\"stylesheet\" "
                "href=\"http://test.com/assets/styles.css\"/>",
                flush_early_info->resource_html());
+}
+
+TEST_F(CollectFlushEarlyContentFilterTest, ApplyIfFlushingEarly) {
+  rewrite_driver()->set_flushing_early(true);
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.jpg"),
+                                kContentTypeJpeg, "image", 100);
+  GoogleString input_html =
+    "<head></head>"
+    "<body>"
+      "<img src=\"1.jpg\"/>"
+      "<img src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP\"/>"
+    "</body>";
+  GoogleString output_html =
+    "<head></head>"
+    "<body>"
+      "<img src=\"1.jpg\" pagespeed_size=\"5\"/>"
+      "<img src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP\"/>"
+    "</body>";
+  ValidateExpected("flushing_early", input_html, output_html);
 }
 
 }  // namespace net_instaweb

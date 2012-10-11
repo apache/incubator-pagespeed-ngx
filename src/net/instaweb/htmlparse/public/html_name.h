@@ -164,6 +164,7 @@ class HtmlName {
     kPagespeedNoDefer,
     kPagespeedOrigSrc,
     kPagespeedOrigType,
+    kPagespeedSize,
     kParam,
     kPre,
     kProfile,

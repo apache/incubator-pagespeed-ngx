@@ -25,11 +25,13 @@
 
 namespace net_instaweb {
 
+class RewriteDriver;
+
 // By default, FlushEarlyInfoFinder does not return meaningful results. This
 // class can be used by tests which manually manage FlushEarlyRenderInfo.
 class MeaningfulFlushEarlyInfoFinder : public FlushEarlyInfoFinder {
  public:
-  MeaningfulFlushEarlyInfoFinder() {}
+  MeaningfulFlushEarlyInfoFinder() : num_compute_calls_(0) {}
   virtual ~MeaningfulFlushEarlyInfoFinder() {}
   virtual bool IsMeaningful() const {
     return true;
@@ -40,6 +42,18 @@ class MeaningfulFlushEarlyInfoFinder : public FlushEarlyInfoFinder {
   virtual int64 cache_expiration_time_ms() const {
     return Timer::kHourMs;
   }
+  virtual void ComputeFlushEarlyInfo(RewriteDriver* driver) {
+    num_compute_calls_++;
+  }
+  int num_compute_calls() {
+    return num_compute_calls_;
+  }
+  void Clear() {
+    num_compute_calls_ = 0;
+  }
+
+ private:
+  int num_compute_calls_;
 };
 
 }  // namespace net_instaweb
