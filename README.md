@@ -5,8 +5,9 @@ This is the [nginx](http://nginx.org/) port of
 
 **ngx_pagespeed is a work in progress**, and is not yet functional. If you are
 interested in test-driving the module, or contributing to the project, please
-follow the instructions below, and do provide feedback if you run into any
-issues or questions!
+follow the instructions below. For feedback, questions, and to follow the progress of the project:
+
+- [ngx-pagespeed-discuss Google Group](https://groups.google.com/d/topic/ngx-pagespeed-discuss/)
 
 ---
 
