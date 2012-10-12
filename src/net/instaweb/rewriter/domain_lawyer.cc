@@ -298,28 +298,58 @@ DomainLawyer::Domain* DomainLawyer::FindDomain(const GoogleUrl& gurl) const {
   // First do a quick lookup on the domain name only, since that's the most
   // common case. Failing that, try searching for domain + path.
   // TODO(matterbury): see AddDomainHelper for speed issues.
-  GoogleString domain_name;
-  gurl.Origin().CopyToString(&domain_name);
-  EnsureEndsInSlash(&domain_name);
-  DomainMap::const_iterator p = domain_map_.find(domain_name);
-  if (p == domain_map_.end() && gurl.has_path()) {
-    StringPiece domain_spec(gurl.Spec());
-    for (p = domain_map_.begin(); p != domain_map_.end(); ++p) {
-      Domain* src_domain = p->second;
-      if (!src_domain->IsWildcarded() &&
-          HasPrefixString(domain_spec, src_domain->name())) {
-        break;
-      }
+  Domain* domain = NULL;
+
+  // There may be multiple entries in the map with the same domain,
+  // but varying paths.  We want to choose the entry with the longest
+  // domain that prefix-matches GURL.  So do the lookup starting
+  // with the entire origin+path, then shorten the string removing
+  // path components, looking for an exact match till we get to the origin
+  // with no path.
+  //
+  // TODO(jmarantz): IMO the best data structure for this is an explicit
+  // tree.  That would allow starting from the top and searching down,
+  // rather than starting at the bottom and searching up, with each search
+  // a lookup over the entire set of domains.
+  GoogleString domain_path;
+  gurl.AllExceptLeaf().CopyToString(&domain_path);
+  StringPieceVector components;
+  SplitStringPieceToVector(gurl.PathSansLeaf(), "/", &components, false);
+
+  // PathSansLeaf gives something like "/a/b/c/" so after splitting with
+  // omit_empty_strings==false, the first and last elements are always
+  // present and empty.
+  DCHECK_LE(2, static_cast<int>(components.size()));
+  DCHECK(components[0].empty());
+  DCHECK(components[components.size() - 1].empty());
+
+  int component_size = 0;
+  for (int i = components.size() - 1; (domain == NULL) && (i >= 1); --i) {
+    domain_path.resize(domain_path.size() - component_size);
+    DCHECK(StringPiece(domain_path).ends_with("/"));
+    DomainMap::const_iterator p = domain_map_.find(domain_path);
+    if (p != domain_map_.end()) {
+      domain = p->second;
+    } else {
+      // Remove the path component.  Consider input
+      // "http://a.com/x/yy/zzz/w".  We will split PathSansLeaf, which
+      // is "/x/yy/zzz/", so we will get StringPieceVector ["", "x",
+      // "yy", "zzz", ""].  In the first iteration we want to consider
+      // the entire path in the search, so we initialize
+      // component_size to 0 above the loop.  In the next iteration we
+      // want to chop off "zzz/" so we increment the component size by
+      // one to get rid of the slash.  Note that we passed 'false'
+      // into SplitStringPieceToVector so if there are double-slashes
+      // they will show up as distinct components and we will get rid
+      // of them one at a time.
+      component_size = components[i - 1].size() + 1;
     }
   }
 
-  Domain* domain = NULL;
-  if (p != domain_map_.end()) {
-    domain = p->second;
-  } else {
+  if (domain == NULL) {
     for (int i = 0, n = wildcarded_domains_.size(); i < n; ++i) {
       domain = wildcarded_domains_[i];
-      if (domain->Match(domain_name)) {
+      if (domain->Match(domain_path)) {
         break;
       } else {
         domain = NULL;
@@ -398,19 +428,14 @@ bool DomainLawyer::MapRequestToDomain(
       Domain* mapped_domain = resolved_domain->rewrite_domain();
       if (mapped_domain != NULL) {
         CHECK(!mapped_domain->IsWildcarded());
+        CHECK(mapped_domain != resolved_domain);
         *mapped_domain_name = mapped_domain->name();
-        GoogleUrl mapped_domain_url(*mapped_domain_name);
-        // mapped_domain_url can have a path part after the domain, which is
-        // lost if we join it with an absolute path (which is what PathAndLeaf
-        // returns), so remove the leading slash to make it relative so
-        // domain of http://domain.com/path/ + path of [/]root/dir/leaf
-        // gives http://domain.com/path/root/dir/leaf.
-        //
-        // TODO(sligocki): Note, this will technically fail if path starts
-        // with "//", which is technically legal, but I've never seen it before
-        // in the wild.
-        resolved_request->Reset(mapped_domain_url,
-                                resolved_request->PathAndLeaf().substr(1));
+        GoogleUrl mapped_request;
+        ret = MapUrlHelper(*resolved_domain, *mapped_domain,
+                           *resolved_request, &mapped_request);
+        if (ret) {
+          resolved_request->Swap(&mapped_request);
+        }
       }
     }
   }
@@ -442,12 +467,13 @@ bool DomainLawyer::IsOriginKnown(const GoogleUrl& domain_to_check) const {
 
 bool DomainLawyer::MapOrigin(const StringPiece& in, GoogleString* out) const {
   GoogleUrl gurl(in);
-  return MapOriginUrl(gurl, out);
+  return gurl.is_valid() && MapOriginUrl(gurl, out);
 }
 
 bool DomainLawyer::MapOriginUrl(const GoogleUrl& gurl,
                                 GoogleString* out) const {
   bool ret = false;
+
   // We can map an origin TO http only, but FROM http or https.
   if (gurl.is_valid()) {
     ret = true;
@@ -456,16 +482,42 @@ bool DomainLawyer::MapOriginUrl(const GoogleUrl& gurl,
     if (domain != NULL) {
       Domain* origin_domain = domain->origin_domain();
       if (origin_domain != NULL) {
-        CHECK(!origin_domain->IsWildcarded());
-        GoogleUrl original_domain_url(origin_domain->name());
-        GoogleUrl mapped_gurl(original_domain_url, gurl.PathAndLeaf());
-        if (mapped_gurl.is_valid()) {
+        GoogleUrl mapped_gurl;
+        if (MapUrlHelper(*domain, *origin_domain, gurl, &mapped_gurl)) {
           mapped_gurl.Spec().CopyToString(out);
         }
       }
     }
   }
   return ret;
+}
+
+bool DomainLawyer::MapUrlHelper(const Domain& from_domain,
+                                const Domain& to_domain,
+                                const GoogleUrl& gurl,
+                                GoogleUrl* mapped_gurl) const {
+  CHECK(!to_domain.IsWildcarded());
+
+  GoogleUrl from_domain_gurl(from_domain.name());
+  StringPiece from_domain_path(from_domain_gurl.PathSansLeaf());
+  StringPiece path_and_leaf(gurl.PathAndLeaf());
+  DCHECK(path_and_leaf.starts_with(from_domain_path));
+
+  // Trim the URL's domain we came from based on how it was specifed in the
+  // from_domain.  E.g. if you write
+  //    ModPagespeedMap*Domain localhost/foo cdn.com/bar
+  // and the URL being mapped is
+  //    http://cdn.com/bar/x
+  // then we set path_and_leaf to "x".  This testcase gets hit in
+  // DomainLawyerTest.OriginAndExternWithPaths.
+  //
+  // Even if the from_domain has no subdirectory, we need to remove
+  // the leading slash to make it a relative reference and retain any
+  // subdirectory in the to_domain.
+  path_and_leaf = path_and_leaf.substr(from_domain_path.size());
+  GoogleUrl to_domain_gurl(to_domain.name());
+  mapped_gurl->Reset(to_domain_gurl, path_and_leaf);
+  return mapped_gurl->is_valid();
 }
 
 bool DomainLawyer::AddRewriteDomainMapping(

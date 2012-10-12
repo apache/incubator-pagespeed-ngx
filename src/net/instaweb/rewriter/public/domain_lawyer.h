@@ -244,6 +244,11 @@ class DomainLawyer {
       bool authorize,
       MessageHandler* handler);
 
+  bool MapUrlHelper(const Domain& from_domain,
+                    const Domain& to_domain,
+                    const GoogleUrl& gurl,
+                    GoogleUrl* mapped_gurl) const;
+
   bool DomainNameToTwoProtocols(const StringPiece& domain_name,
                                 GoogleString* http_url,
                                 GoogleString* https_url);

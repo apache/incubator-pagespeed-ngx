@@ -609,6 +609,85 @@ TEST_F(DomainLawyerTest, MapRewriteDomainAndPath) {
                resolved_request.Spec());
 }
 
+TEST_F(DomainLawyerTest, RewriteWithPath) {
+  GoogleUrl context_gurl("http://example.com/index.html");
+  ASSERT_TRUE(AddRewriteDomainMapping(
+      "http://example.com/static/images/", "http://static.com/images/"));
+  GoogleString mapped_domain_name;
+  GoogleUrl resolved_request;
+  ASSERT_TRUE(MapRequest(context_gurl,
+                         "http://static.com/images/teapot.png",
+                         &mapped_domain_name, &resolved_request));
+  EXPECT_STREQ("http://example.com/static/images/", mapped_domain_name);
+  EXPECT_STREQ("http://example.com/static/images/teapot.png",
+               resolved_request.Spec());
+}
+
+TEST_F(DomainLawyerTest, OriginWithPath) {
+  ASSERT_TRUE(AddOriginDomainMapping(
+      "http://origin.com/subdir/", "http://external.com"));
+  GoogleString origin_url;
+  ASSERT_TRUE(MapOrigin("http://external.com/styles/main.css", &origin_url));
+  EXPECT_STREQ("http://origin.com/subdir/styles/main.css", origin_url);
+}
+
+TEST_F(DomainLawyerTest, OriginAndExternWithPaths) {
+  ASSERT_TRUE(AddOriginDomainMapping(
+      "http://origin.com/subdir/", "http://external.com/static/"));
+  GoogleString origin_url;
+  ASSERT_TRUE(MapOrigin("http://external.com/static/styles/main.css",
+                        &origin_url));
+  EXPECT_STREQ("http://origin.com/subdir/styles/main.css", origin_url);
+}
+
+TEST_F(DomainLawyerTest, OriginAndExternWithMultipleMatches) {
+  domain_lawyer_.AddDomain("http://origin.com", &message_handler_);
+  domain_lawyer_.AddDomain("http://origin.com/a/b", &message_handler_);
+  domain_lawyer_.AddDomain("http://external.com", &message_handler_);
+  ASSERT_TRUE(AddOriginDomainMapping(
+      "http://origin.com/a/", "http://external.com/static/"));
+
+  GoogleString origin_url;
+  ASSERT_TRUE(MapOrigin("http://external.com/static/styles/main.css",
+                        &origin_url));
+  EXPECT_STREQ("http://origin.com/a/styles/main.css", origin_url);
+
+  // No mappings should occur on a top level page on external.com,
+  // since our directive should apply only to external.com/static.
+  const char kTopLevelExternalPage[] = "http://external.com/index.html";
+  origin_url.clear();
+  ASSERT_TRUE(MapOrigin(kTopLevelExternalPage, &origin_url));
+  EXPECT_STREQ(kTopLevelExternalPage, origin_url);
+}
+
+TEST_F(DomainLawyerTest, RootDomainOfProxySourceNotAuthorized) {
+  ASSERT_TRUE(AddOriginDomainMapping(
+      "http://origin.com/a/", "http://external.com/static/"));
+  GoogleUrl context_gurl("http://origin.com/index.html");
+  GoogleUrl external_domain("http://external.com");
+
+  // It is not OK to rewrite content on external.com.
+  EXPECT_FALSE(domain_lawyer_.IsDomainAuthorized(context_gurl,
+                                                 external_domain));
+
+  // But it *is* OK to rewrite content on external.com/static.
+  external_domain.Reset("http://external.com/static/");
+  EXPECT_TRUE(domain_lawyer_.IsDomainAuthorized(context_gurl,
+                                                external_domain));
+}
+
+TEST_F(DomainLawyerTest, OriginAndExternWithMultipleMatchesDoubleSlash) {
+  domain_lawyer_.AddDomain("http://origin.com", &message_handler_);
+  domain_lawyer_.AddDomain("http://external.com", &message_handler_);
+  ASSERT_TRUE(AddOriginDomainMapping(
+      "http://origin.com/subdir/", "http://external.com/static/"));
+
+  GoogleString origin_url;
+  ASSERT_TRUE(MapOrigin("http://external.com/static/styles//main.css",
+                        &origin_url));
+  EXPECT_STREQ("http://origin.com/subdir/styles//main.css", origin_url);
+}
+
 TEST_F(DomainLawyerTest, MapOriginDomain) {
   ASSERT_TRUE(AddOriginDomainMapping(
       "http://localhost:8080", "http://origin.com:8080"));
