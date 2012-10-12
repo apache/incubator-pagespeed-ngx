@@ -34,10 +34,24 @@ optimization library.
 First build mod_pagespeed, following these instructions:
 https://developers.google.com/speed/docs/mod_pagespeed/build_from_source
 
+---
+
+Latest stable version (current version mod_pagespeed):
+
+    $ mkdir /where/you/built/mod_pagespeed/src/net/instaweb/automatic
+    $ svn checkout http://modpagespeed.googlecode.com/svn/branches/latest-beta/src/net/instaweb/automatic
+
+Bleeding edge version (old stable version mod_pagespeed):
+
+    $ mkdir /where/you/built/mod_pagespeed/src/net/instaweb/automatic
+    $ svn checkout http://modpagespeed.googlecode.com/svn/branches/latest-beta/src/net/instaweb/automatic
+
+---
+
 Then build the pagespeed optimization library:
 
     $ cd /where/you/built/mod_pagespeed/src/net/instaweb/automatic
-    $ make all
+    $ make
 
 Then move the mod_pagespeed directory to a parallel directory to your
 ngx_pagespeed checkout:
