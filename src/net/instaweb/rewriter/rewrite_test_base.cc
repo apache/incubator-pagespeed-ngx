@@ -102,11 +102,10 @@ RewriteTestBase::RewriteTestBase(Statistics* statistics)
 }
 
 RewriteTestBase::RewriteTestBase(
-    TestRewriteDriverFactory* factory,
-    TestRewriteDriverFactory* other_factory)
+    std::pair<TestRewriteDriverFactory*, TestRewriteDriverFactory*> factories)
     : statistics_(new SimpleStats()),
-      factory_(factory),
-      other_factory_(other_factory),
+      factory_(factories.first),
+      other_factory_(factories.second),
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
       other_options_(other_factory_->NewRewriteOptions()) {

@@ -19,6 +19,8 @@
 
 #include "net/instaweb/automatic/public/blink_flow_critical_line.h"
 
+#include <utility>
+
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/proxy_interface.h"
@@ -531,8 +533,8 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
 
   BlinkFlowCriticalLineTest()
       : RewriteTestBase(
-          new CustomRewriteDriverFactory(&mock_url_fetcher_),
-          new CustomRewriteDriverFactory(&mock_url_fetcher_)),
+          std::make_pair(new CustomRewriteDriverFactory(&mock_url_fetcher_),
+                         new CustomRewriteDriverFactory(&mock_url_fetcher_))),
         blink_output_(StrCat(StringPrintf(
             kBlinkOutputCommon, "text.html", "text.html"), kBlinkOutputSuffix)),
         blink_output_with_extra_non_cacheable_(StrCat(StringPrintf(

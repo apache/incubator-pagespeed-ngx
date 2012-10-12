@@ -21,6 +21,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_TEST_BASE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_TEST_BASE_H_
 
+#include <utility>
 #include <vector>
 
 #include "base/scoped_ptr.h"
@@ -84,8 +85,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // your own subclass of TestRewriteDriverFactory using this
   // constructor.  If you do, you probably also want to override
   // MakeTestFactory.
-  RewriteTestBase(TestRewriteDriverFactory* factory,
-                  TestRewriteDriverFactory* other_factory);
+  explicit RewriteTestBase(std::pair<TestRewriteDriverFactory*,
+                                     TestRewriteDriverFactory*> factories);
   virtual ~RewriteTestBase();
 
   virtual void SetUp();
