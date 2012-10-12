@@ -52,6 +52,7 @@ struct OptionName {
 "ExperimentSlot",                        RewriteOptions::kFuriousSlot
 "FlushBufferLimitBytes",                 RewriteOptions::kFlushBufferLimitBytes
 "FlushHtml",                             RewriteOptions::kFlushHtml
+"FlushMoreResourcesEarlyIfTimePermits",  RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits
 "IdleFlushTimeMs",                       RewriteOptions::kIdleFlushTimeMs
 "ImageInlineMaxBytes",                   RewriteOptions::kImageInlineMaxBytes
 "ImageJpegNumProgressiveScans",          RewriteOptions::kImageJpegNumProgressiveScans

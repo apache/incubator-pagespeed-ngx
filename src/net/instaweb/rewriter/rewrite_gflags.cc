@@ -184,6 +184,9 @@ DEFINE_bool(enable_flush_subresources_experimental, true,
 DEFINE_bool(enable_inline_preview_images_experimental, false,
             "Enables experimental inline preview images.");
 
+DEFINE_bool(flush_more_resources_early_if_time_permits, false,
+            "Flush more resources if origin is slow to respond.");
+
 DEFINE_bool(avoid_renaming_introspective_javascript, false,
             "Don't combine, inline, cache extend, or otherwise modify "
             "javascript in ways that require changing the URL if we see "
@@ -448,6 +451,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_flush_subresources_experimental")) {
     options->set_enable_flush_subresources_experimental(
         FLAGS_enable_flush_subresources_experimental);
+  }
+  if (WasExplicitlySet("flush_more_resources_early_if_time_permits")) {
+    options->set_flush_more_resources_early_if_time_permits(
+        FLAGS_flush_more_resources_early_if_time_permits);
   }
   if (WasExplicitlySet("enable_inline_preview_images_experimental")) {
     options->set_enable_inline_preview_images_experimental(

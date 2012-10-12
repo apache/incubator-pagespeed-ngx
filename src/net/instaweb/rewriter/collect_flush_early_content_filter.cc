@@ -63,8 +63,12 @@ class CollectFlushEarlyContentFilter::Context : public SingleRewriteContext {
       HtmlResourceSlot* html_slot = static_cast<HtmlResourceSlot*>(
           slot(0).get());
       HtmlElement* element = html_slot->element();
-      Driver()->AddAttribute(element, HtmlName::kPagespeedSize,
-                            Integer64ToString(output_partition(0)->size()));
+      if (Driver()->IsRewritable(element)) {
+        // TODO(pulkitg): Can IsRewritable be false here (see comment to
+        // Propagate in rewrite_context.h)?
+        Driver()->AddAttribute(element, HtmlName::kPagespeedSize,
+                               Integer64ToString(output_partition(0)->size()));
+      }
     }
   }
 
@@ -122,7 +126,8 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
   if (url.empty() || url.starts_with("data:")) {
     return;
   }
-  if (driver()->flushing_early()) {
+  if (driver()->flushing_early() &&
+      driver()->options()->flush_more_resources_early_if_time_permits()) {
     if (category == semantic_type::kStylesheet ||
         category == semantic_type::kScript ||
         category == semantic_type::kImage) {

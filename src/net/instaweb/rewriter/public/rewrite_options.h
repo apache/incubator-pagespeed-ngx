@@ -186,6 +186,7 @@ class RewriteOptions {
     kEnableLazyloadInBlink,
     kFlushBufferLimitBytes,
     kFlushHtml,
+    kFlushMoreResourcesEarlyIfTimePermits,
     kFuriousSlot,
     kIdleFlushTimeMs,
     kImageInlineMaxBytes,
@@ -1287,6 +1288,13 @@ class RewriteOptions {
     set_option(x, &client_domain_rewrite_);
   }
 
+  void set_flush_more_resources_early_if_time_permits(bool x) {
+    set_option(x, &flush_more_resources_early_if_time_permits_);
+  }
+  bool flush_more_resources_early_if_time_permits() const {
+    return flush_more_resources_early_if_time_permits_.value();
+  }
+
   void set_enable_defer_js_experimental(bool x) {
     set_option(x, &enable_defer_js_experimental_);
   }
@@ -2384,6 +2392,9 @@ class RewriteOptions {
   // won't have effect, if onload beacon is sent before unload event is
   // trigggered.
   Option<bool> report_unload_time_;
+
+  // Flush more resources if origin is slow to respond.
+  Option<bool> flush_more_resources_early_if_time_permits_;
 
   // Enables experimental code in defer js.
   Option<bool> enable_defer_js_experimental_;

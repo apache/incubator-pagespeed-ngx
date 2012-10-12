@@ -664,7 +664,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(110, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(111, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AjaxRewritingEnabled",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAjaxRewritingEnabled));
@@ -752,6 +752,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("FlushHtml",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kFlushHtml));
+  EXPECT_STREQ("FlushMoreResourcesEarlyIfTimePermits",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits));
   EXPECT_STREQ("IdleFlushTimeMs",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kIdleFlushTimeMs));
