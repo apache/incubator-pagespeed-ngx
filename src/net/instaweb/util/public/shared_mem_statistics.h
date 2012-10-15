@@ -60,9 +60,8 @@ class SharedMemVariable : public Variable {
  public:
   virtual ~SharedMemVariable() {}
   int64 Get64() const;
-  virtual int Get() const;
-  virtual void Set(int newValue);
-  virtual void Add(int delta);
+  virtual void Set64(int64 newValue);
+  virtual int64 Add(int delta);
   virtual StringPiece GetName() const { return name_; }
   AbstractMutex* mutex();
 

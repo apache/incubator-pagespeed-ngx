@@ -34,8 +34,10 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mock_hasher.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_statistics.h"
 #include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -55,7 +57,9 @@ const size_t kHugeWriteSize = 2 * kTestValueSizeThreshold;
 
 class AprMemCacheTest : public CacheTestBase {
  protected:
-  AprMemCacheTest() : lru_cache_(new LRUCache(kLRUCacheSize)) {
+  AprMemCacheTest()
+      : timer_(MockTimer::kApr_5_2010_ms),
+        lru_cache_(new LRUCache(kLRUCacheSize)) {
     AprMemCache::InitStats(&statistics_);
   }
 
@@ -70,7 +74,7 @@ class AprMemCacheTest : public CacheTestBase {
     if (use_md5_hasher) {
       hasher = &md5_hasher_;
     }
-    servers_.reset(new AprMemCache(servers, 5, hasher, &statistics_,
+    servers_.reset(new AprMemCache(servers, 5, hasher, &statistics_, &timer_,
                                    &handler_));
 
     // apr_memcache actually lazy-connects to memcached, it seems, so
@@ -93,7 +97,8 @@ class AprMemCacheTest : public CacheTestBase {
   GoogleMessageHandler handler_;
   MD5Hasher md5_hasher_;
   MockHasher mock_hasher_;
-  NullStatistics statistics_;
+  SimpleStats statistics_;
+  MockTimer timer_;
   scoped_ptr<LRUCache> lru_cache_;
   scoped_ptr<AprMemCache> servers_;
   scoped_ptr<FallbackCache> cache_;
@@ -298,6 +303,22 @@ TEST_F(AprMemCacheTest, LargeKeyOverThreshold) {
   CheckPut(kKey, kValue);
   CheckGet(kKey, kValue);
   EXPECT_EQ(kKey.size() + STATIC_STRLEN(kValue), lru_cache_->size_bytes());
+}
+
+TEST_F(AprMemCacheTest, ThrottleLogMessages) {
+  ASSERT_TRUE(ConnectToMemcached(true));
+  EXPECT_TRUE(servers_->ShouldLogAprError());
+  EXPECT_TRUE(servers_->ShouldLogAprError());
+  EXPECT_TRUE(servers_->ShouldLogAprError());
+  EXPECT_TRUE(servers_->ShouldLogAprError());
+  EXPECT_FALSE(servers_->ShouldLogAprError());  // Too many.
+
+  timer_.AdvanceMs(40 * Timer::kMinuteMs);
+  EXPECT_TRUE(servers_->ShouldLogAprError());
+  EXPECT_TRUE(servers_->ShouldLogAprError());
+  EXPECT_TRUE(servers_->ShouldLogAprError());
+  EXPECT_TRUE(servers_->ShouldLogAprError());
+  EXPECT_FALSE(servers_->ShouldLogAprError());  // Too many.
 }
 
 }  // namespace net_instaweb

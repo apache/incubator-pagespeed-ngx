@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_SIMPLE_STATS_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_SIMPLE_STATS_H_
 
-#include "net/instaweb/util/public/atomic_int32.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
@@ -28,34 +28,36 @@
 
 namespace net_instaweb {
 
+class AbstractMutex;
+class ThreadSystem;
+
 class SimpleStatsVariable : public Variable {
  public:
-  SimpleStatsVariable() : value_(0) {}
+  explicit SimpleStatsVariable(AbstractMutex* mutex);
   virtual ~SimpleStatsVariable();
-  virtual int Get() const { return value_.value(); }
-  virtual int64 Get64() const { return value_.value(); }
-  virtual void Set(int value) { value_.set_value(value); }
-  virtual void Add(int delta) { value_.increment(delta); }
+  virtual int64 Get64() const;
+  virtual void Set64(int64 value);
+  virtual int64 Add(int delta);
   virtual StringPiece GetName() const { return StringPiece(NULL); }
 
  private:
-  AtomicInt32 value_;
-
+  int64 value_;
+  scoped_ptr<AbstractMutex> mutex_;
   DISALLOW_COPY_AND_ASSIGN(SimpleStatsVariable);
 };
 
 // Simple name/value pair statistics implementation.
 class SimpleStats : public ScalarStatisticsTemplate<SimpleStatsVariable> {
  public:
-  static const int kNotFound;
-
-  SimpleStats() { }
+  SimpleStats();
   virtual ~SimpleStats();
 
  protected:
   virtual SimpleStatsVariable* NewVariable(const StringPiece& name, int index);
 
  private:
+  scoped_ptr<ThreadSystem> thread_system_;
+
   DISALLOW_COPY_AND_ASSIGN(SimpleStats);
 };
 

@@ -37,6 +37,7 @@ class Hasher;
 class MessageHandler;
 class SharedString;
 class Statistics;
+class Timer;
 class Variable;
 
 // Interface to memcached via the apr_memcache*, as documented in
@@ -62,7 +63,7 @@ class AprMemCache : public CacheInterface {
   // thread_limit is used to provide apr_memcache_server_create with
   // a hard maximum number of client connections to open.
   AprMemCache(const StringPiece& servers, int thread_limit, Hasher* hasher,
-              Statistics* statistics, MessageHandler* handler);
+              Statistics* statistics, Timer* timer, MessageHandler* handler);
   ~AprMemCache();
 
   static void InitStats(Statistics* statistics);
@@ -89,6 +90,16 @@ class AprMemCache : public CacheInterface {
   virtual bool IsBlocking() const { return true; }
   virtual bool IsMachineLocal() const { return is_machine_local_; }
 
+  // This class will print up to 4 apr_memcache-induced system error
+  // messages within 30 minutes. For the 5th one, it will instead display
+  // the status for each server, based on the assumption that one or
+  // more of the shards is down.  All subsequent messages will be
+  // suppressed the 30 minutes have elapsed.
+  //
+  // This method helps implement that policy, and is made public for
+  // testing.
+  bool ShouldLogAprError();
+
  private:
   void DecodeValueMatchingKeyAndCallCallback(
       const GoogleString& key, const char* data, size_t data_len,
@@ -103,9 +114,27 @@ class AprMemCache : public CacheInterface {
   apr_memcache_t* memcached_;
   std::vector<apr_memcache_server_t*> servers_;
   Hasher* hasher_;
+  Timer* timer_;
+
   Variable* timeouts_;
+  Variable* last_unsquelch_time_ms_;
+  Variable* message_burst_size_;
+
   bool is_machine_local_;
   MessageHandler* message_handler_;
+
+  // When memcached is killed, we will generate errors for every cache
+  // operation.  To bound the amount of logging we do, we keep track
+  // of the last time when we issued a log message for an APR failure.
+  // We use a Statistic here for this so that it's shared across
+  // Apache processes.
+  //
+  // Note that we have some messages indicating a potential functional issue on
+  // (e.g. key collision) and a variety of places where we print messages
+  // because the Apr routine failed.  We are grouping together Apr failures
+  // for Get, Put, Delete, and MultiGet.  We might at some point wish to
+  // track the last time we sent a message for each of those.
+  Variable* last_apr_error_;
 
   DISALLOW_COPY_AND_ASSIGN(AprMemCache);
 };

@@ -97,11 +97,7 @@ int64 SharedMemVariable::Get64LockHeld() const {
   return *value_ptr_;
 }
 
-int SharedMemVariable::Get() const {
-  return Get64();
-}
-
-void SharedMemVariable::Set(int new_value) {
+void SharedMemVariable::Set64(int64 new_value) {
   if (mutex_.get() != NULL) {
     {
       ScopedMutex hold_lock(mutex_.get());
@@ -123,17 +119,20 @@ void SharedMemVariable::SetConsoleStatisticsLogger(
   logger_ = logger;
 }
 
-void SharedMemVariable::Add(int delta) {
+int64 SharedMemVariable::Add(int delta) {
+  int64 value = 0;
   if (mutex_.get() != NULL) {
     {
       ScopedMutex hold_lock(mutex_.get());
       *value_ptr_ += delta;
+      value = *value_ptr_;
     }
     // The variable was changed, so dump statistics if past the update interval.
     if (logger_ != NULL) {
       logger_->UpdateAndDumpIfRequired();
     }
   }
+  return value;
 }
 
 void SharedMemVariable::AttachTo(

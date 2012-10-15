@@ -28,7 +28,11 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"
+
+namespace net_instaweb {
 
 namespace {
 
@@ -38,6 +42,12 @@ const int kDefaultMemcachedPort = 11211;
 const int kDefaultServerMin = 0;      // minimum # client sockets to open
 const int kDefaultServerSmax = 1;     // soft max # client connections to open
 const char kMemCacheTimeouts[] = "memcache_timeouts";
+const int64 kMaxMessagesPerThrottleInterval = 4;
+const char kLastSquelchTimeMs[] = "_memcache_last_unsquelch_time_ms";
+const char kMessageBurstSize[] = "_memcache_message_burst_size";
+
+// Amount of time to squelch logging between bursts of errors.
+const int64 kWaitingPeriodMs = 30 * Timer::kMinuteMs;  // 30 minutes
 
 // time-to-live of a client connection.  There is a bug in the APR
 // implementation, where the TTL argument to apr_memcache_server_create was
@@ -52,19 +62,19 @@ const int kDefaultServerTtlUs = 600*1000*1000;
 
 }  // namespace
 
-namespace net_instaweb {
-
-class Timer;
 class ThreadSystem;
 
 AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
                          Hasher* hasher, Statistics* statistics,
-                         MessageHandler* handler)
+                         Timer* timer, MessageHandler* handler)
     : valid_server_spec_(false),
       thread_limit_(thread_limit),
       memcached_(NULL),
       hasher_(hasher),
+      timer_(timer),
       timeouts_(statistics->GetVariable(kMemCacheTimeouts)),
+      last_unsquelch_time_ms_(statistics->GetVariable(kLastSquelchTimeMs)),
+      message_burst_size_(statistics->GetVariable(kMessageBurstSize)),
       is_machine_local_(true),
       message_handler_(handler) {
   servers.CopyToString(&server_spec_);
@@ -112,6 +122,8 @@ AprMemCache::~AprMemCache() {
 
 void AprMemCache::InitStats(Statistics* statistics) {
   statistics->AddVariable(kMemCacheTimeouts);
+  statistics->AddVariable(kLastSquelchTimeMs);
+  statistics->AddVariable(kMessageBurstSize);
 }
 
 bool AprMemCache::Connect() {
@@ -133,8 +145,8 @@ bool AprMemCache::Connect() {
         char buf[kStackBufferSize];
         apr_strerror(status, buf, sizeof(buf));
         message_handler_->Message(
-            kError, "Failed to attach memcached server %s:%d %s",
-            hosts_[i].c_str(), ports_[i], buf);
+            kError, "Failed to attach memcached server %s:%d %s (%d)",
+            hosts_[i].c_str(), ports_[i], buf, status);
         success = false;
       } else {
         servers_.push_back(server);
@@ -154,12 +166,16 @@ void AprMemCache::DecodeValueMatchingKeyAndCallCallback(
     if (key == actual_key) {
       ValidateAndReportResult(actual_key, CacheInterface::kAvailable, callback);
     } else {
+      // Note: this is likely to be a functional issue, not a server error,
+      // so we are not squelching this message.
       message_handler_->Message(
           kError, "AprMemCache::%s key collision %s != %s",
           calling_method, key.c_str(), actual_key.c_str());
       ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
     }
   } else {
+    // Note: this is likely to be a functional issue, not a server error,
+    // so we are not squelching this message.
     message_handler_->Message(
         kError, "AprMemCache::%s decoding error on key %s",
         calling_method, key.c_str());
@@ -180,11 +196,13 @@ void AprMemCache::Get(const GoogleString& key, Callback* callback) {
     DecodeValueMatchingKeyAndCallCallback(key, data, data_len, "Get", callback);
   } else {
     if (status != APR_NOTFOUND) {
-      char buf[kStackBufferSize];
-      apr_strerror(status, buf, sizeof(buf));
-      message_handler_->Message(
-          kError, "AprMemCache::Get error: %s (%d) on key %s",
-          buf, status, key.c_str());
+      if (ShouldLogAprError()) {
+        char buf[kStackBufferSize];
+        apr_strerror(status, buf, sizeof(buf));
+        message_handler_->Message(
+            kError, "AprMemCache::Get error: %s (%d) on key %s",
+            buf, status, key.c_str());
+      }
       if (status == APR_TIMEUP) {
         timeouts_->Add(1);
       }
@@ -235,11 +253,13 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
                                               "MultiGet", callback);
       } else {
         if (status != APR_NOTFOUND) {
-          char buf[kStackBufferSize];
-          apr_strerror(status, buf, sizeof(buf));
-          message_handler_->Message(
-              kError, "AprMemCache::MultiGet error: %s (%d) on key %s",
-              buf, status, key.c_str());
+          if (ShouldLogAprError()) {
+            char buf[kStackBufferSize];
+            apr_strerror(status, buf, sizeof(buf));
+            message_handler_->Message(
+                kError, "AprMemCache::MultiGet error: %s (%d) on key %s",
+                buf, status, key.c_str());
+          }
           if (status == APR_TIMEUP) {
             timeouts_->Add(1);
           }
@@ -264,13 +284,17 @@ void AprMemCache::Put(const GoogleString& key,
         const_cast<char*>(key_value.data()), key_value.size(),
         0, 0);
     if (status != APR_SUCCESS) {
-      char buf[kStackBufferSize];
-      apr_strerror(status, buf, sizeof(buf));
-      message_handler_->Message(
-          kError, "AprMemCache::Put error: %s on key %s, value-size %d",
-          buf, key.c_str(), encoded_value->size());
+      if (ShouldLogAprError()) {
+        char buf[kStackBufferSize];
+        apr_strerror(status, buf, sizeof(buf));
+        message_handler_->Message(
+            kError, "AprMemCache::Put error: %s (%d) on key %s, value-size %d",
+            buf, status, key.c_str(), encoded_value->size());
+      }
     }
   } else {
+    // Note: this is likely to be a functional issue, not a server error,
+    // so we are not squelching this message.
     message_handler_->Message(
         kError, "AprMemCache::Put error: key size %d too large, first "
         "100 bytes of key is: %s",
@@ -295,11 +319,11 @@ void AprMemCache::Delete(const GoogleString& key) {
 
   GoogleString hashed_key = hasher_->Hash(key);
   apr_status_t status = apr_memcache_delete(memcached_, hashed_key.c_str(), 0);
-  if (status != APR_SUCCESS) {
+  if ((status != APR_SUCCESS) && ShouldLogAprError()) {
     char buf[kStackBufferSize];
     apr_strerror(status, buf, sizeof(buf));
     message_handler_->Message(
-        kError, "AprMemCache::Delete error: %s on key %s", buf,
+        kError, "AprMemCache::Delete error: %s (%d) on key %s", buf, status,
         key.c_str());
   }
 }
@@ -361,6 +385,58 @@ bool AprMemCache::GetStatus(GoogleString* buffer) {
     }
   }
   apr_pool_destroy(temp_pool);
+  return ret;
+}
+
+bool AprMemCache::ShouldLogAprError() {
+  bool ret = false;
+
+  // Note that we are sharing state with other Apache child processes,
+  // and we use Statistics Variables to determine our current squelch
+  // state.  In Apache those are implemented via shared memory.
+  int64 time_ms = timer_->NowMs();
+  int64 last_unsquelch_time_ms = last_unsquelch_time_ms_->Get64();  // strobe
+  int64 delta_ms = time_ms - last_unsquelch_time_ms;
+  if (delta_ms > kWaitingPeriodMs) {
+    last_unsquelch_time_ms_->Set64(time_ms);
+    message_burst_size_->Set(1);
+    ret = true;
+  } else {
+    int64 num_recent_messages = message_burst_size_->Add(1);
+    if (num_recent_messages <= kMaxMessagesPerThrottleInterval) {
+      ret = true;
+    } else if (num_recent_messages == (kMaxMessagesPerThrottleInterval + 1)) {
+      GoogleString time_string;
+      int64 next_unsquelch_time_ms = last_unsquelch_time_ms + kWaitingPeriodMs;
+      if (!ConvertTimeToString(next_unsquelch_time_ms, &time_string)) {
+        time_string = "???";
+      }
+      message_handler_->Message(
+          kWarning, "AprMemCache: Squelching server error messages until "
+          "%s.  Checking server status for %d servers...",
+          time_string.c_str(), static_cast<int>(servers_.size()));
+      apr_pool_t* temp_pool = NULL;
+      apr_pool_create(&temp_pool, NULL);
+      CHECK(temp_pool != NULL) << "apr_pool_t allocation failure";
+      for (int i = 0, n = servers_.size(); i < n; ++i) {
+        apr_memcache_stats_t* stats;
+        apr_status_t status = apr_memcache_stats(servers_[i], temp_pool,
+                                                 &stats);
+        if (status == APR_SUCCESS) {
+          message_handler_->Message(
+              kWarning, "AprMemCache: memcached on %s:%d appears to be up",
+              hosts_[i].c_str(), ports_[i]);
+        } else {
+          char buf[kStackBufferSize];
+          apr_strerror(status, buf, sizeof(buf));
+          message_handler_->Message(
+              kWarning, "AprMemCache: memcached on %s:%d error %s (%d)",
+              hosts_[i].c_str(), ports_[i], buf, status);
+        }
+      }
+      apr_pool_destroy(temp_pool);
+    }
+  }
   return ret;
 }
 

@@ -38,15 +38,23 @@ class Variable {
  public:
   virtual ~Variable();
   // TODO(sligocki): int -> int64
-  virtual int Get() const = 0;
-  virtual void Set(int delta) = 0;
+  int Get() const { return Get64(); }  // Deprecated: use Get64.
+  virtual void Set64(int64 value) = 0;
+  void Set(int value) { Set64(value); }  // Deprecated: use Set64.
   virtual int64 Get64() const = 0;
   // Return some name representing the variable, provided that the specific
   // implementation has some sensible way of doing so.
   virtual StringPiece GetName() const = 0;
 
-  virtual void Add(int delta) { Set(delta + Get()); }
-  void Clear() { Set(0); }
+  // Adds 'delta' to the variable's value, returning the result.  This
+  // is virtual so that subclasses can add platform-specific atomicity.
+  virtual int64 Add(int delta) {
+    int64 value = Get64() + delta;
+    Set64(value);
+    return value;
+  }
+
+  void Clear() { Set64(0); }
 };
 
 // Class that manages dumping statistics periodically to a file.

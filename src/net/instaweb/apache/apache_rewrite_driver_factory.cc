@@ -196,7 +196,8 @@ CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
       ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
       thread_limit += num_rewrite_threads() + num_expensive_rewrite_threads();
       AprMemCache* mem_cache = new AprMemCache(
-          server_spec, thread_limit, hasher(), statistics(), message_handler());
+          server_spec, thread_limit, hasher(), statistics(), timer(),
+          message_handler());
       memcache_servers_.push_back(mem_cache);
 
       int num_threads = config->memcached_threads();

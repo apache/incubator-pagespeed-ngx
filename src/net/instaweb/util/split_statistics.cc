@@ -33,13 +33,9 @@ SplitVariable::SplitVariable(Variable* rw, Variable* w)
 SplitVariable::~SplitVariable() {
 }
 
-int SplitVariable::Get() const {
-  return rw_->Get();
-}
-
-void SplitVariable::Set(int delta) {
-  w_->Set(delta);
-  rw_->Set(delta);
+void SplitVariable::Set64(int64 value) {
+  w_->Set64(value);
+  rw_->Set64(value);
 }
 
 int64 SplitVariable::Get64() const {
@@ -50,9 +46,9 @@ StringPiece SplitVariable::GetName() const {
   return rw_->GetName();
 }
 
-void SplitVariable::Add(int delta) {
+int64 SplitVariable::Add(int delta) {
   w_->Add(delta);
-  rw_->Add(delta);
+  return rw_->Add(delta);
 }
 
 SplitConsoleStatisticsLogger::SplitConsoleStatisticsLogger(
