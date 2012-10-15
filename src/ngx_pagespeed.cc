@@ -355,12 +355,12 @@ ngx_int_t ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
 {
   ngx_int_t rc;
 
-  rc = ngx_http_pagespeed_note_processed(r, in);
+  rc = ngx_http_pagespeed_optimize_and_replace_buffer(r, in);
   if (rc != NGX_OK) {
     return rc;
   }
 
-  rc = ngx_http_pagespeed_optimize_and_replace_buffer(r, in);
+  rc = ngx_http_pagespeed_note_processed(r, in);
   if (rc != NGX_OK) {
     return rc;
   }
