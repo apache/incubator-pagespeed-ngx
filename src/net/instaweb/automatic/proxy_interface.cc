@@ -487,8 +487,12 @@ void ProxyInterface::ProxyRequestCallback(
        HasRejectedHeader(
            HttpAttributes::kXForwardedFor, request_headers, options))) {
     rejected_requests_->IncBy(1);
-    async_fetch->response_headers()->SetStatusAndReason(
-        HttpStatus::kProxyDeclinedRequest);
+    ResponseHeaders* response_headers = async_fetch->response_headers();
+    response_headers->SetStatusAndReason(HttpStatus::kProxyDeclinedRequest);
+    response_headers->Replace(HttpAttributes::kContentType,
+                              kContentTypeText.mime_type());
+    response_headers->Replace(HttpAttributes::kCacheControl,
+                              "private, max-age=0");
     async_fetch->Write(kRejectedRequestHtmlResponse, handler);
     async_fetch->Done(false);
     delete options;
