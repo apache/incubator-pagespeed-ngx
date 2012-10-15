@@ -70,3 +70,13 @@ following comment in the source:
 
     <!-- Processed through ngx_pagespeed using PSOL version 0.10.0.0  -->
 
+### Testing
+
+There is an example html file in:
+
+    test/www/test.html
+
+If you fetch it through nginx with ngx_pagespeed enabled you should see it
+rewritten to look like the html in:
+
+    test/expected/test.html

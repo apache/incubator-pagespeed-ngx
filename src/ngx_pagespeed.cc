@@ -34,7 +34,7 @@ extern "C" {
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 
 extern ngx_module_t ngx_pagespeed;
 
@@ -382,6 +382,7 @@ ngx_http_pagespeed_init(ngx_conf_t* cf)
     ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_pagespeed_body_filter;
 
+    // TODO(jefftk): move this to be per-server-block and not global.
     context = new ngx_http_pagespeed_module_ctx_t();
 
     net_instaweb::NgxRewriteDriverFactory::Initialize();
@@ -392,6 +393,14 @@ ngx_http_pagespeed_init(ngx_conf_t* cf)
         reinterpret_cast<char*>(pagespeed_config->cache_dir.data),
         pagespeed_config->cache_dir.len));
     context->server_context = context->driver_factory->CreateServerContext();
+
+    net_instaweb::NullMessageHandler handler;
+
+    // Turn on some filters so we can see if this is working.
+    net_instaweb::RewriteOptions* global_options =
+        context->server_context->global_options();
+    global_options->EnableFiltersByCommaSeparatedList(
+        "collapse_whitespace,remove_comments,remove_quotes", &handler);
   }
 
   return NGX_OK;
