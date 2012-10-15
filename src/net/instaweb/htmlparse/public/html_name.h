@@ -140,6 +140,7 @@ class HtmlName {
     kMuted,
     kName,
     kNav,
+    kNoembed,
     kNohref,
     kNoresize,
     kNoscript,

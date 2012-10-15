@@ -96,6 +96,10 @@ void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
     return;
   }
   if (skip_rewrite_ == NULL) {
+    if (element->keyword() == HtmlName::kNoembed) {
+      skip_rewrite_ = element;
+      return;
+    }
     // Check if the element has dfcg in the class name and skip rewriting all
     // images till we reach the end of this element.
     HtmlElement::Attribute* class_attribute = element->FindAttribute(
@@ -105,6 +109,7 @@ void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
       if (class_value.find(kDfcg) != StringPiece::npos ||
           class_value.find(kNivoSlider) != StringPiece::npos) {
         skip_rewrite_ = element;
+        return;
       }
     }
   }

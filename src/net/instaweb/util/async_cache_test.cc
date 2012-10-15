@@ -353,6 +353,10 @@ TEST_F(AsyncCacheTest, ShutdownQueueWhileBusy) {
   InitCache(1, 1);
   PopulateCache(1);
 
+  WorkerTestBase::SyncPoint shutdown_started(thread_system_.get());
+  pool_->set_shutdown_notifier(new WorkerTestBase::NotifyRunFunction(
+      &shutdown_started));
+
   WorkerTestBase::SyncPoint sync_point(thread_system_.get());
   QueuedWorkerPool::Sequence* sequence = pool_->NewSequence();
   sequence->Add(new WorkerTestBase::WaitRunFunction(&sync_point));
@@ -364,15 +368,12 @@ TEST_F(AsyncCacheTest, ShutdownQueueWhileBusy) {
   sequence2->Add(MakeFunction(pool_.get(), &QueuedWorkerPool::ShutDown));
 
   // We must now wait for the ShutDown sequence be *initiated* on
-  // pool_.  However, there is no callback for this at all, and
-  // ShutDown itself will block due to the fact that the function
-  // currently running in pool_ is blocked.  To resolve this we can
-  // add a short sleep, so we are likely to get into the ShutDown
-  // flow before releasing the sync_point.
-  //
-  // Calling pool->ShutDown() directly blocks on the completion
-  // of the function blocked on sync_point.
-  timer_->SleepMs(10);
+  // pool_, in order to capture the potential race we want to test.
+  // What we are trying to do here is to create a race between shutting
+  // down the worker-pool driving the Async cache, and a lookup on the
+  // async cache.
+  shutdown_started.Wait();
+
   sync_point.Notify();
   pool2.ShutDown();
 
@@ -382,6 +383,10 @@ TEST_F(AsyncCacheTest, ShutdownQueueWhileBusy) {
 TEST_F(AsyncCacheTest, ShutdownQueueWhileBusyWithMultiGet) {
   InitCache(1, 1);
   PopulateCache(1);
+
+  WorkerTestBase::SyncPoint shutdown_started(thread_system_.get());
+  pool_->set_shutdown_notifier(new WorkerTestBase::NotifyRunFunction(
+      &shutdown_started));
 
   WorkerTestBase::SyncPoint sync_point(thread_system_.get());
   QueuedWorkerPool::Sequence* sequence = pool_->NewSequence();
@@ -397,12 +402,8 @@ TEST_F(AsyncCacheTest, ShutdownQueueWhileBusyWithMultiGet) {
   sequence2->Add(MakeFunction(pool_.get(), &QueuedWorkerPool::ShutDown));
 
   // We must now wait for the ShutDown sequence be *initiated* on
-  // pool_.  However, there is no callback for this at all, and
-  // ShutDown itself will block due to the fact that the function
-  // currently running in pool_ is blocked.  To resolve this we can
-  // add a short sleep, so we are certain we'll get into the ShutDown
-  // flow before releaing the sync_point.
-  timer_->SleepMs(10);
+  // pool_, in order to capture the potential race we want to test.
+  shutdown_started.Wait();
 
   sync_point.Notify();
   pool2.ShutDown();

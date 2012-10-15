@@ -49,7 +49,8 @@ QueuedWorkerPool::QueuedWorkerPool(int max_workers, ThreadSystem* thread_system)
       max_workers_(max_workers),
       shutdown_(false),
       queue_size_(NULL),
-      load_shedding_threshold_(kNoLoadShedding) {
+      load_shedding_threshold_(kNoLoadShedding),
+      shutdown_notifier_(NULL) {
 }
 
 QueuedWorkerPool::~QueuedWorkerPool() {
@@ -78,6 +79,11 @@ void QueuedWorkerPool::ShutDown() {
       return;
     }
     shutdown_ = true;
+  }
+
+  if (shutdown_notifier_ != NULL) {
+    shutdown_notifier_->CallRun();
+    shutdown_notifier_ = NULL;
   }
 
   // Clear out all the sequences, so that no one adds any more runnable

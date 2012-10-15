@@ -193,6 +193,10 @@ class QueuedWorkerPool {
   // This must be called prior to creating sequences.
   void set_queue_size_stat(Waveform* x) { queue_size_ = x; }
 
+  // Provide a function that is called when shutdown is initiated.  This
+  // is useful for testing shutdown sequences.
+  void set_shutdown_notifier(Function* f) { shutdown_notifier_ = f; }
+
  private:
   friend class Sequence;
   void Run(Sequence* sequence, QueuedWorker* worker);
@@ -218,6 +222,8 @@ class QueuedWorkerPool {
 
   Waveform* queue_size_;
   int load_shedding_threshold_;
+
+  Function* shutdown_notifier_;
 
   DISALLOW_COPY_AND_ASSIGN(QueuedWorkerPool);
 };
