@@ -31,7 +31,6 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
@@ -49,7 +48,6 @@ class ResourceContext;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
-class SharedString;
 class Writer;
 
 // A RewriteContext is all the contextual information required to
@@ -213,24 +211,6 @@ class RewriteContext {
   const RewriteOptions* Options() const;
   RewriteDriver* Driver() const;
 
-  // Check that an CachedResult is valid, specifically, that all the
-  // inputs are still valid/non-expired.
-  // If return value is false, it will also check to see if we should
-  // re-check validity of the CachedResult based on input contents, and set
-  // *can_revalidate accordingly. If *can_revalidate is true,
-  // *revalidate will contain info on resources to re-check, with the
-  // InputInfo pointers being pointers into the partition.
-  bool IsCachedResultValid(CachedResult* partition,
-                           bool* can_revalidate,
-                           InputInfoStarVector* revalidate);
-
-  // Checks whether all the entries in the given partition tables' other
-  // dependency table are valid.
-  bool IsOtherDependencyValid(const OutputPartitions* partitions);
-
-  // Checks whether the given input is still unchanged.
-  bool IsInputValid(const InputInfo& input_info);
-
   // Add a dummy other_dependency that will force the rewrite's OutputPartitions
   // to be rechecked after a modest TTL.
   void AddRecheckDependency();
@@ -256,22 +236,6 @@ class RewriteContext {
   // that they can all be added before any of them are started.
   // May be called from any thread.
   void StartNestedTasks();
-
-  // Tries to decode result of a cache lookup (which may or may not have
-  // succeeded) into partitions_, and also checks the dependency tables.
-  //
-  // Returns true if cache hit, and all dependencies checked out.
-  //
-  // May also return false, but set *can_revalidate to true and
-  // output a list of inputs to re-check if the situation may be
-  // salvageable if inputs did not change.
-  //
-  // Will return false with *can_revalidate = false if the cached
-  // result is entirely unsalvageable.
-  bool TryDecodeCacheResult(CacheInterface::KeyState state,
-                            const SharedString& value,
-                            bool* can_revalidate,
-                            InputInfoStarVector* revalidate);
 
   // Deconstructs a URL by name and creates an output resource that
   // corresponds to it.
@@ -456,6 +420,7 @@ class RewriteContext {
   bool stale_rewrite() const { return stale_rewrite_; }
 
  private:
+  struct CacheLookupResult;
   class OutputCacheCallback;
   friend class OutputCacheCallback;
   class HTTPCacheCallback;
@@ -487,7 +452,7 @@ class RewriteContext {
   void SetPartitionKey();
   void StartFetch();
   void CancelFetch();
-  void OutputCacheDone(CacheInterface::KeyState state, SharedString value);
+  void OutputCacheDone(CacheLookupResult* cache_result);
   void OutputCacheHit(bool write_partitions);
   void OutputCacheRevalidate(const InputInfoStarVector& to_revalidate);
   void OutputCacheMiss();
@@ -589,7 +554,7 @@ class RewriteContext {
   void StartNestedTasksImpl();
 
   // Callback for metadata lookup on fetch path.
-  void FetchCacheDone(CacheInterface::KeyState state, SharedString value);
+  void FetchCacheDone(CacheLookupResult* cache_result);
 
   // Callback for HTTP lookup on fetch path where the metadata cache suggests
   // we should try either serving a different path or the original.

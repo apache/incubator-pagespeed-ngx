@@ -173,33 +173,240 @@ class FreshenMetadataUpdateManager {
 
 }  // namespace
 
+// Used to pass the result of the metadata cache lookup from OutputCacheCallback
+// to RewriteContext.  These are deleted by RewriteContext.
+struct RewriteContext::CacheLookupResult {
+  CacheLookupResult()
+      : cache_ok(false),
+        can_revalidate(false),
+        partitions(new OutputPartitions) {}
+
+  bool cache_ok;
+  bool can_revalidate;
+  InputInfoStarVector revalidate;
+  scoped_ptr<OutputPartitions> partitions;
+};
+
 // Two callback classes for completed caches & fetches.  These gaskets
 // help RewriteContext, which knows about all the pending inputs,
 // trigger the rewrite once the data is available.  There are two
 // versions of the callback.
 
 // Callback to wake up the RewriteContext when the partitioning is looked up
-// in the cache.  The RewriteContext can then decide whether to queue the
-// output-resource for a DOM update, or re-initiate the Rewrite, depending
-// on the metadata returned.
+// in the cache.  This takes care of parsing and validation of cached results.
+// The RewriteContext can then decide whether to queue the output-resource for a
+// DOM update, or re-initiate the Rewrite, depending on the metadata returned.
+// Note that the parsing and validation happens in the caching thread and in
+// Apache this will block other cache lookups from starting.  Hence this should
+// be as streamlined as possible.
 class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
  public:
   typedef void (RewriteContext::*CacheResultHandlerFunction)(
-      CacheInterface::KeyState, SharedString value);
+      CacheLookupResult* cache_result);
 
   OutputCacheCallback(RewriteContext* rc, CacheResultHandlerFunction function)
-      : rewrite_context_(rc), function_(function) {}
+      : rewrite_context_(rc), function_(function),
+        cache_result_(new CacheLookupResult) {}
+
   virtual ~OutputCacheCallback() {}
+
   virtual void Done(CacheInterface::KeyState state) {
     RewriteDriver* rewrite_driver = rewrite_context_->Driver();
     rewrite_driver->AddRewriteTask(MakeFunction(
-        rewrite_context_, function_, state, *value()));
+        rewrite_context_, function_, cache_result_.release()));
     delete this;
   }
 
+ protected:
+  virtual bool ValidateCandidate(const GoogleString& key,
+                                 CacheInterface::KeyState state) {
+    DCHECK(!cache_result_->cache_ok);
+    // The following is used to hold the cache lookup information obtained from
+    // the current cache's value.  Note that the cache_ok field of this is not
+    // used as we update cache_result_->cache_ok directly.
+    CacheLookupResult candidate_cache_result;
+    cache_result_->cache_ok = TryDecodeCacheResult(
+        state, *value(), &candidate_cache_result);
+    bool use_this_revalidate = (candidate_cache_result.can_revalidate &&
+                                (!cache_result_->can_revalidate ||
+                                 (candidate_cache_result.revalidate.size() <
+                                  cache_result_->revalidate.size())));
+    // For the first call to ValidateCandidate if
+    // candidate_cache_result.can_revalidate is true, then use_this_revalidate
+    // will also be true (since cache_result_->can_revalidate will be false from
+    // CacheLookupResult construction).
+    bool use_partitions = true;
+    if (!cache_result_->cache_ok) {
+      if (use_this_revalidate) {
+        cache_result_->can_revalidate = true;
+        cache_result_->revalidate.swap(candidate_cache_result.revalidate);
+        // cache_result_->partitions should be set to
+        // candidate_cache_result.partitions, so that the pointers in
+        // cache_result_->revalidate are valid.
+      } else {
+        // If the current cache value is not ok and if an earlier cache value
+        // has a better revalidate than the current then do not use the current
+        // candidate partitions and revalidate.
+        use_partitions = false;
+      }
+    }
+    // At this point the following holds:
+    // use_partitions is true iff cache_result_->cache_ok is true or revalidate
+    // has been moved to cache_result_->revalidate.
+    if (use_partitions) {
+      cache_result_->partitions.reset(
+          candidate_cache_result.partitions.release());
+    }
+    // We return cache_result_->cache_ok.  This means for the last call to
+    // ValidateCandidate we might return false when we might actually end up
+    // using the cached result via revalidate.
+    return cache_result_->cache_ok;
+  }
+
  private:
+  // Checks whether the given input is still unchanged.
+  bool IsInputValid(const InputInfo& input_info) {
+    switch (input_info.type()) {
+      case InputInfo::CACHED: {
+        // It is invalid if cacheable inputs have expired or ...
+        DCHECK(input_info.has_expiration_time_ms());
+        if (!input_info.has_expiration_time_ms()) {
+          return false;
+        }
+        int64 ttl_ms = input_info.expiration_time_ms() -
+            rewrite_context_->FindServerContext()->timer()->NowMs();
+        if (ttl_ms > 0) {
+          return true;
+        } else if (ttl_ms + rewrite_context_->Options()->
+                   metadata_cache_staleness_threshold_ms() > 0) {
+          rewrite_context_->stale_rewrite_ = true;
+          return true;
+        }
+        return false;
+      }
+      case InputInfo::FILE_BASED: {
+        // ... if file-based inputs have changed.
+        DCHECK(input_info.has_last_modified_time_ms() &&
+               input_info.has_filename());
+        if (!input_info.has_last_modified_time_ms() ||
+            !input_info.has_filename()) {
+          return false;
+        }
+        int64 mtime_sec;
+        rewrite_context_->FindServerContext()->file_system()->Mtime(
+            input_info.filename(), &mtime_sec,
+            rewrite_context_->FindServerContext()->message_handler());
+        return (mtime_sec * Timer::kSecondMs ==
+                  input_info.last_modified_time_ms());
+      }
+      case InputInfo::ALWAYS_VALID:
+        return true;
+    }
+
+    DLOG(FATAL) << "Corrupt InputInfo object !?";
+    return false;
+  }
+
+  // Check that a CachedResult is valid, specifically, that all the inputs are
+  // still valid/non-expired.  If return value is false, it will also check to
+  // see if we should re-check validity of the CachedResult based on input
+  // contents, and set *can_revalidate accordingly. If *can_revalidate is true,
+  // *revalidate will contain info on resources to re-check, with the InputInfo
+  // pointers being pointers into the partition.
+  bool IsCachedResultValid(CachedResult* partition,
+                           bool* can_revalidate,
+                           InputInfoStarVector* revalidate) {
+    bool valid = true;
+    *can_revalidate = true;
+    for (int j = 0, m = partition->input_size(); j < m; ++j) {
+      const InputInfo& input_info = partition->input(j);
+      if (!IsInputValid(input_info)) {
+        valid = false;
+        // We currently do not attempt to re-check file-based resources
+        // based on contents; as mtime is a lot more reliable than
+        // cache expiration, and permitting 'touch' to force recomputation
+        // is potentially useful.
+        if (input_info.has_input_content_hash() && input_info.has_index() &&
+            (input_info.type() == InputInfo::CACHED)) {
+          revalidate->push_back(partition->mutable_input(j));
+        } else {
+          *can_revalidate = false;
+          // No point in checking further.
+          return false;
+        }
+      }
+    }
+    return valid;
+  }
+
+  // Checks whether all the entries in the given partition tables' other
+  // dependency table are valid.
+  bool IsOtherDependencyValid(const OutputPartitions* partitions) {
+    for (int j = 0, m = partitions->other_dependency_size(); j < m; ++j) {
+      if (!IsInputValid(partitions->other_dependency(j))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  // Tries to decode result of a cache lookup (which may or may not have
+  // succeeded) into partitions (in result->partitions), and also checks the
+  // dependency tables.
+  //
+  // Returns true if cache hit, and all dependencies checked out.
+  //
+  // May also return false, but set result->can_revalidate to true and output a
+  // list of inputs (result->revalidate) to re-check if the situation may be
+  // salvageable if inputs did not change.
+  //
+  // Will return false with result->can_revalidate = false if the cached result
+  // is entirely unsalvageable.
+  bool TryDecodeCacheResult(CacheInterface::KeyState state,
+                            const SharedString& value,
+                            CacheLookupResult* result) {
+    bool* can_revalidate = &(result->can_revalidate);
+    InputInfoStarVector* revalidate = &(result->revalidate);
+    OutputPartitions* partitions = result->partitions.get();
+
+    if (state != CacheInterface::kAvailable) {
+      rewrite_context_->FindServerContext()->rewrite_stats()->
+          cached_output_misses()->Add(1);
+      *can_revalidate = false;
+      return false;
+    }
+    // We've got a hit on the output metadata; the contents should
+    // be a protobuf.  Try to parse it.
+    StringPiece val_str = value.Value();
+    ArrayInputStream input(val_str.data(), val_str.size());
+    if (partitions->ParseFromZeroCopyStream(&input) &&
+        IsOtherDependencyValid(partitions)) {
+      bool ok = true;
+      *can_revalidate = true;
+      for (int i = 0, n = partitions->partition_size(); i < n; ++i) {
+        CachedResult* partition = partitions->mutable_partition(i);
+        bool can_revalidate_resource;
+        if (!IsCachedResultValid(partition, &can_revalidate_resource,
+                                 revalidate)) {
+          ok = false;
+          *can_revalidate = *can_revalidate && can_revalidate_resource;
+        }
+      }
+      return ok;
+    } else {
+      // This case includes both corrupt protobufs and the case where
+      // external dependencies are invalid. We do not attempt to reuse
+      // rewrite results by input content hashes even in the second
+      // case as that would require us to try to re-fetch those URLs as well.
+      // TODO(jmarantz): count cache corruptions in a stat?
+      *can_revalidate = false;
+      return false;
+    }
+  }
+
   RewriteContext* rewrite_context_;
   CacheResultHandlerFunction function_;
+  scoped_ptr<CacheLookupResult> cache_result_;
 };
 
 // Bridge class for routing cache callbacks to RewriteContext methods
@@ -869,44 +1076,6 @@ void RewriteContext::SetPartitionKey() {
                           url, "@", suffix);
 }
 
-// Check if this mapping from input to output URLs is still valid; and if not
-// if we can re-check based on content.
-bool RewriteContext::IsCachedResultValid(CachedResult* partition,
-                                         bool* can_revalidate,
-                                         InputInfoStarVector* revalidate) {
-  bool valid = true;
-  *can_revalidate = true;
-  for (int j = 0, m = partition->input_size(); j < m; ++j) {
-    const InputInfo& input_info = partition->input(j);
-    if (!IsInputValid(input_info)) {
-      valid = false;
-      // We currently do not attempt to re-check file-based resources
-      // based on contents; as mtime is a lot more reliable than
-      // cache expiration, and permitting 'touch' to force recomputation
-      // is potentially useful.
-      if (input_info.has_input_content_hash() && input_info.has_index() &&
-          (input_info.type() == InputInfo::CACHED)) {
-        revalidate->push_back(partition->mutable_input(j));
-      } else {
-        *can_revalidate = false;
-        // No point in checking further.
-        return false;
-      }
-    }
-  }
-  return valid;
-}
-
-bool RewriteContext::IsOtherDependencyValid(
-    const OutputPartitions* partitions) {
-  for (int j = 0, m = partitions->other_dependency_size(); j < m; ++j) {
-    if (!IsInputValid(partitions->other_dependency(j))) {
-      return false;
-    }
-  }
-  return true;
-}
-
 void RewriteContext::AddRecheckDependency() {
   int64 now_ms = FindServerContext()->timer()->NowMs();
   InputInfo* force_recheck = partitions_->add_other_dependency();
@@ -915,98 +1084,17 @@ void RewriteContext::AddRecheckDependency() {
       now_ms + Options()->implicit_cache_ttl_ms());
 }
 
-bool RewriteContext::IsInputValid(const InputInfo& input_info) {
-  switch (input_info.type()) {
-    case InputInfo::CACHED: {
-      // It is invalid if cacheable inputs have expired or ...
-      DCHECK(input_info.has_expiration_time_ms());
-      if (!input_info.has_expiration_time_ms()) {
-        return false;
-      }
-      int64 ttl_ms = input_info.expiration_time_ms() -
-          FindServerContext()->timer()->NowMs();
-      if (ttl_ms > 0) {
-        return true;
-      } else if (ttl_ms + Options()->metadata_cache_staleness_threshold_ms()
-                 > 0) {
-        stale_rewrite_ = true;
-        return true;
-      }
-      return false;
-    }
-    case InputInfo::FILE_BASED: {
-      // ... if file-based inputs have changed.
-      DCHECK(input_info.has_last_modified_time_ms() &&
-             input_info.has_filename());
-      if (!input_info.has_last_modified_time_ms() ||
-          !input_info.has_filename()) {
-        return false;
-      }
-      int64 mtime_sec;
-      FindServerContext()->file_system()->Mtime(
-          input_info.filename(), &mtime_sec,
-          FindServerContext()->message_handler());
-      return (mtime_sec * Timer::kSecondMs ==
-                input_info.last_modified_time_ms());
-    }
-    case InputInfo::ALWAYS_VALID:
-      return true;
-  }
-
-  DLOG(FATAL) << "Corrupt InputInfo object !?";
-  return false;
-}
-
-bool RewriteContext::TryDecodeCacheResult(CacheInterface::KeyState state,
-                                          const SharedString& value,
-                                          bool* can_revalidate,
-                                          InputInfoStarVector* revalidate) {
-  if (state != CacheInterface::kAvailable) {
-    FindServerContext()->rewrite_stats()->cached_output_misses()->Add(1);
-    *can_revalidate = false;
-    return false;
-  }
-
-  // We've got a hit on the output metadata; the contents should
-  // be a protobuf.  Try to parse it.
-  StringPiece val_str = value.Value();
-  ArrayInputStream input(val_str.data(), val_str.size());
-  if (partitions_->ParseFromZeroCopyStream(&input) &&
-      IsOtherDependencyValid(partitions_.get())) {
-    bool ok = true;
-    *can_revalidate = true;
-    for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
-      CachedResult* partition = partitions_->mutable_partition(i);
-      bool can_revalidate_resource;
-      if (!IsCachedResultValid(partition, &can_revalidate_resource,
-                               revalidate)) {
-        ok = false;
-        *can_revalidate = *can_revalidate && can_revalidate_resource;
-      }
-    }
-    return ok;
-  } else {
-    // This case includes both corrupt protobufs and the case where
-    // external dependencies are invalid. We do not attempt to reuse
-    // rewrite results by input content hashes even in the second
-    // case as that would require us to try to re-fetch those URLs as well.
-    // TODO(jmarantz): count cache corruptions in a stat?
-    *can_revalidate = false;
-    return false;
-  }
-}
-
-void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
-                                     SharedString value) {
+void RewriteContext::OutputCacheDone(CacheLookupResult* cache_result) {
   DCHECK_LE(0, outstanding_fetches_);
   DCHECK_EQ(static_cast<size_t>(0), outputs_.size());
 
-  bool cache_ok, can_revalidate;
-  InputInfoStarVector revalidate;
-  cache_ok = TryDecodeCacheResult(state, value, &can_revalidate, &revalidate);
-  LogMetadataCacheInfo(cache_ok, can_revalidate);
+  scoped_ptr<CacheLookupResult> owned_cache_result(cache_result);
+
+  partitions_.reset(owned_cache_result->partitions.release());
+  LogMetadataCacheInfo(owned_cache_result->cache_ok,
+                       owned_cache_result->can_revalidate);
   // If OK or worth rechecking, set things up for the cache hit case.
-  if (cache_ok || can_revalidate) {
+  if (owned_cache_result->cache_ok || owned_cache_result->can_revalidate) {
     for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
       const CachedResult& partition = partitions_->partition(i);
       OutputResourcePtr output_resource;
@@ -1021,12 +1109,12 @@ void RewriteContext::OutputCacheDone(CacheInterface::KeyState state,
 
   // If the cache gave a miss, or yielded unparsable data, then acquire a lock
   // and start fetching the input resources.
-  if (cache_ok) {
+  if (owned_cache_result->cache_ok) {
     OutputCacheHit(false /* no need to write back to cache*/);
   } else {
     MarkSlow();
-    if (can_revalidate) {
-      OutputCacheRevalidate(revalidate);
+    if (owned_cache_result->can_revalidate) {
+      OutputCacheRevalidate(owned_cache_result->revalidate);
     } else {
       OutputCacheMiss();
     }
@@ -1822,8 +1910,7 @@ void RewriteContext::CancelFetch() {
   FetchCallbackDone(false);
 }
 
-void RewriteContext::FetchCacheDone(
-    CacheInterface::KeyState state, SharedString value) {
+void RewriteContext::FetchCacheDone(CacheLookupResult* cache_result) {
   // If we have metadata during a resource fetch, we see if we can use it
   // to find a pre-existing result in HTTP cache we can serve. This is done
   // by sanity-checking the metadata here, then doing an async cache lookup via
@@ -1833,14 +1920,12 @@ void RewriteContext::FetchCacheDone(
   // we call StartFetchReconstruction which will invoke the normal process of
   // locking things, fetching inputs, rewriting, and so on.
 
-  // Note that we don't try to revalidate inputs on fetch reconstruct,
-  // so these two are ignored.
-  bool can_revalidate = false;
-  InputInfoStarVector revalidate;
-  bool cache_ok = TryDecodeCacheResult(
-      state, value, &can_revalidate, &revalidate);
-  LogMetadataCacheInfo(cache_ok, can_revalidate);
-  if (cache_ok && (num_output_partitions() == 1)) {
+  scoped_ptr<CacheLookupResult> owned_cache_result(cache_result);
+  partitions_.reset(owned_cache_result->partitions.release());
+  LogMetadataCacheInfo(owned_cache_result->cache_ok,
+                       owned_cache_result->can_revalidate);
+
+  if (owned_cache_result->cache_ok && (num_output_partitions() == 1)) {
     CachedResult* result = output_partition(0);
     OutputResourcePtr output_resource;
     if (result->optimizable() &&

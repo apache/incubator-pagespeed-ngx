@@ -753,7 +753,9 @@ void RewriteTestBase::TestRetainExtraHeaders(
 
 void RewriteTestBase::ClearStats() {
   statistics()->Clear();
-  lru_cache()->ClearStats();
+  if (lru_cache() != NULL) {
+    lru_cache()->ClearStats();
+  }
   counting_url_async_fetcher()->Clear();
   file_system()->ClearStats();
 }
