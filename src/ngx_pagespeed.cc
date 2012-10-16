@@ -236,6 +236,7 @@ ngx_http_pagespeed_request_context(ngx_http_request_t* r) {
     // Turn on some filters so we can see if this is working.
     net_instaweb::RewriteOptions* global_options =
         cfg->server_context->global_options();
+    global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kPassThrough);
     global_options->EnableFiltersByCommaSeparatedList(
         "collapse_whitespace,remove_comments,remove_quotes", &handler);
   }
@@ -253,10 +254,7 @@ ngx_http_pagespeed_request_context(ngx_http_request_t* r) {
     return NULL;
   }
 
-  // TODO(jefftk): figure out how to get the real url out of r.  Because we're
-  // currently blocking nginx's main event loop, however, fixing this now would
-  // unbreak the code that makes a fetch back to ourselves and make us
-  // deadlock.
+  // TODO(jefftk): figure out how to get the real url out of r.
   StringPiece url("http://localhost");
 
   ctx = new ngx_http_pagespeed_request_ctx_t;
