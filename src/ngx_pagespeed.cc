@@ -112,18 +112,6 @@ ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child)
 static ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
-static ngx_int_t
-ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
-{
-  // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
-  // and calculate on the fly.
-  ngx_http_clear_content_length(r);
-
-  r->filter_need_in_memory = 1;
-
-  return ngx_http_next_header_filter(r);
-}
-
 // Add a buffer to the end of the buffer chain indicating that we were processed
 // through ngx_pagespeed.
 static ngx_int_t
@@ -196,51 +184,59 @@ ngx_http_pagespeed_release_request_context(
     delete ctx;
 }
 
-// Get the context for this request.  If one doesn't exist yet, create it.  When
-// the request finishes, call ngx_http_pagespeed_release_request_context.
+
+// Get the context for this request.  ngx_http_pagespeed_create_request_context
+// should already have been called to create it.
 static ngx_http_pagespeed_request_ctx_t*
-ngx_http_pagespeed_request_context(ngx_http_request_t* r) {
-  ngx_http_pagespeed_request_ctx_t* ctx =
-      static_cast<ngx_http_pagespeed_request_ctx_t*>(
-          ngx_http_get_module_ctx(r, ngx_pagespeed));
+ngx_http_pagespeed_get_request_context(ngx_http_request_t* r) {
+  return static_cast<ngx_http_pagespeed_request_ctx_t*>(
+      ngx_http_get_module_ctx(r, ngx_pagespeed));
+}
 
-  if (ctx != NULL) {
-    return ctx;
-  }
+// Initialize the ngx_http_pagespeed_srv_conf_t by allocating and configuring
+// the long-lived objects it contains.
+// TODO(jefftk): This shouldn't be done on the first request but instead
+// when we're done processing the configuration.
+static void
+ngx_http_pagespeed_initialize_server_context(
+    ngx_http_pagespeed_srv_conf_t* cfg) { 
+  net_instaweb::NgxRewriteDriverFactory::Initialize();
+  // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
+  // we're done with it.
+  
+  cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
+  cfg->driver_factory->set_filename_prefix(StringPiece(
+      reinterpret_cast<char*>(cfg->cache_dir.data), cfg->cache_dir.len));
+  cfg->server_context = cfg->driver_factory->CreateServerContext();
+  
+  // In real use, with filters coming from the user, this would be some other
+  // kind of message handler that actually sent errors back to the user.
+  net_instaweb::NullMessageHandler handler;
+  
+  // Turn on some filters so we can see if this is working.  These filters are
+  // specifically chosen as ones that don't make requests for subresources or do
+  // work that needs to complete asynchronously.  They should be fast enough to
+  // run in the line of the request.
+  net_instaweb::RewriteOptions* global_options =
+      cfg->server_context->global_options();
+  global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kPassThrough);
+  global_options->EnableFiltersByCommaSeparatedList(
+      "collapse_whitespace,remove_comments,remove_quotes", &handler);
+}
 
+
+// Set us up for processing a request.  When the request finishes, call
+// ngx_http_pagespeed_release_request_context.
+static ngx_int_t
+ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   ngx_http_pagespeed_srv_conf_t* cfg =
       static_cast<ngx_http_pagespeed_srv_conf_t*>(
           ngx_http_get_module_srv_conf(r, ngx_pagespeed));
 
   if (cfg->driver_factory == NULL) {
-    // Set up per-server context; this is the first request to this server
-    // block.
-
-    DBG(r, "Initializing ServerContext and RewriteDriverFactory");
-
-    // TODO(jefftk): This shouldn't be done on the first request but instead
-    // when we're done processing the configuration.
-
-    net_instaweb::NgxRewriteDriverFactory::Initialize();
-    // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
-    // we're done with it.
-
-    cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
-    cfg->driver_factory->set_filename_prefix(StringPiece(
-        reinterpret_cast<char*>(cfg->cache_dir.data), cfg->cache_dir.len));
-    cfg->server_context = cfg->driver_factory->CreateServerContext();
-
-    net_instaweb::NullMessageHandler handler;
-
-    // Turn on some filters so we can see if this is working.
-    net_instaweb::RewriteOptions* global_options =
-        cfg->server_context->global_options();
-    global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kPassThrough);
-    global_options->EnableFiltersByCommaSeparatedList(
-        "collapse_whitespace,remove_comments,remove_quotes", &handler);
+    // This is the first request handled by this server block.
+    ngx_http_pagespeed_initialize_server_context(cfg);
   }
-
-  // Set up things we do once at the beginning of the request.
 
   // Pull the server context out of the per-server config.
   net_instaweb::ServerContext* server_context =
@@ -250,13 +246,15 @@ ngx_http_pagespeed_request_context(ngx_http_request_t* r) {
   if (server_context == NULL) {
     ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
                   "ServerContext should have been initialized.");
-    return NULL;
+    return NGX_ERROR;
   }
 
   // TODO(jefftk): figure out how to get the real url out of r.
   StringPiece url("http://localhost");
 
-  ctx = new ngx_http_pagespeed_request_ctx_t;
+  ngx_http_pagespeed_request_ctx_t* ctx = 
+      new ngx_http_pagespeed_request_ctx_t();
+
   ctx->driver = server_context->NewRewriteDriver();
 
   // TODO(jefftk): replace this with a writer that generates proper nginx
@@ -277,17 +275,18 @@ ngx_http_pagespeed_request_context(ngx_http_request_t* r) {
     ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
                   "Failed to StartParse on url %*s",
                   url.size(), url.data());
-    return NULL;
+    return NGX_ERROR;
   }
 
-  return ctx;
+  return NGX_OK;
 }
 
 // Replace each buffer chain with a new one that's been optimized.
 static ngx_int_t
 ngx_http_pagespeed_optimize_and_replace_buffer(ngx_http_request_t* r,
                                                ngx_chain_t* in) {
-  ngx_http_pagespeed_request_ctx_t* ctx = ngx_http_pagespeed_request_context(r);
+  ngx_http_pagespeed_request_ctx_t* ctx =
+      ngx_http_pagespeed_get_request_context(r);
   if (ctx == NULL) {
     return NGX_ERROR;
   }
@@ -374,6 +373,23 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
   }
 
   return ngx_http_next_body_filter(r, in);
+}
+
+static ngx_int_t
+ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
+{
+  // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
+  // and calculate on the fly.
+  ngx_http_clear_content_length(r);
+
+  r->filter_need_in_memory = 1;
+
+  int rc = ngx_http_pagespeed_create_request_context(r);
+  if (rc != NGX_OK) {
+    return rc;
+  }
+
+  return ngx_http_next_header_filter(r);
 }
 
 static ngx_int_t
