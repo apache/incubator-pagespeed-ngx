@@ -122,6 +122,9 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
   // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
   // and calculate on the fly.
   ngx_http_clear_content_length(r);
+
+  r->filter_need_in_memory = 1;
+
   return ngx_http_next_header_filter(r);
 }
 
@@ -254,46 +257,15 @@ ngx_http_pagespeed_optimize_and_replace_buffer(ngx_http_request_t* r,
     return NGX_ERROR;
   }
 
-  u_char* file_contents = NULL;
-  StringPiece buffer_contents;
   ngx_chain_t* cur;
   int last_buf = 0;
   int last_in_chain = 0;
   for (cur = in; cur != NULL;) {
     last_buf = cur->buf->last_buf;
     last_in_chain = cur->buf->last_in_chain;
-    if (cur->buf->file != NULL) {
-      ssize_t file_size = cur->buf->file_last - cur->buf->file_pos;
-      // TODO(jefftk): if file_size is big enough can we still read it all at
-      // once?
-      file_contents = static_cast<u_char*>(ngx_pnalloc(r->pool, file_size));
-      if (file_contents == NULL) {
-        ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
-                      "failed to allocate %d bytes", file_size);
-        return NGX_ERROR;
-      }
-      ssize_t n = ngx_read_file(cur->buf->file, file_contents, file_size,
-                                cur->buf->file_pos);
-      if (n != file_size) {
-        ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
-                      "Failed to read file; got %d bytes expected %d bytes",
-                      n, file_size);
-        return NGX_ERROR;
-      }
-      buffer_contents = StringPiece(reinterpret_cast<char*>(file_contents),
-                                    file_size);
-    } else {
-      buffer_contents = StringPiece(reinterpret_cast<char*>(cur->buf->pos),
-                                    cur->buf->last - cur->buf->pos);
-    }
-    ctx->driver->ParseText(buffer_contents);
-    if (file_contents != NULL) {
-      // TODO(jefftk): the pfree calls fail with NGX_DECLINED, but I think
-      // that's just NGINX only bothering to free large allocs.
-      ngx_pfree(r->pool, file_contents);
-      file_contents = NULL;
-    }
-    buffer_contents = StringPiece(NULL, 0);
+
+    ctx->driver->ParseText(StringPiece(reinterpret_cast<char*>(cur->buf->pos),
+                                       cur->buf->last - cur->buf->pos));
 
     // We're done with buffers as we pass them to the rewrite driver, so free
     // them and their chain links as we go.  Don't free the first buffer (in)
