@@ -127,8 +127,7 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
 // Add a buffer to the end of the buffer chain indicating that we were processed
 // through ngx_pagespeed.
 static ngx_int_t
-ngx_http_pagespeed_note_processed(ngx_http_request_t* r,
-                                            ngx_chain_t* in) {
+ngx_http_pagespeed_note_processed(ngx_http_request_t* r, ngx_chain_t* in) {
   // Find the end of the buffer chain.
   ngx_chain_t* chain_link;
   int chain_contains_last_buffer = 0;
