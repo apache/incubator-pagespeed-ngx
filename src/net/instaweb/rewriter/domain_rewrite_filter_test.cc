@@ -49,6 +49,7 @@ class DomainRewriteFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
     options()->Disallow("*dont_shard*");
     DomainLawyer* lawyer = options()->domain_lawyer();
     lawyer->AddRewriteDomainMapping(kTo1Domain, kFrom1Domain,

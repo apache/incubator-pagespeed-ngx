@@ -22,9 +22,12 @@
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
+class HtmlElement;
+class RewriteDriver;
 class RewriteOptions;
 class UrlNamer;
 
@@ -61,6 +64,12 @@ class StaticJavascriptManager {
 
   const char* GetJsSnippet(JsModule module,
                            const RewriteOptions* options);
+
+  // Add a CharacterNode to an already created script element, properly escaping
+  // the text with CDATA tags is necessary. The script element should be added
+  // already, say with a call to InsertElementBeforeElement.
+  void AddJsToElement(StringPiece js, HtmlElement* script,
+                      RewriteDriver* driver);
 
  private:
   typedef std::vector<const char*> StaticJsVector;

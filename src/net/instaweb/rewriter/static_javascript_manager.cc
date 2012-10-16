@@ -19,7 +19,13 @@
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 
 #include "base/logging.h"
+#include "net/instaweb/htmlparse/public/doctype.h"
+#include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -129,6 +135,29 @@ const char* StaticJavascriptManager::GetJsSnippet(
   int module = js_module;
   return options->Enabled(RewriteOptions::kDebug) ?
       debug_js_vector_[module] : opt_js_vector_[module];
+}
+
+void StaticJavascriptManager::AddJsToElement(
+    StringPiece js, HtmlElement* script, RewriteDriver* driver) {
+  DCHECK(script->keyword() == HtmlName::kScript);
+  // CDATA tags are required for inlined JS in XHTML pages to prevent
+  // interpretation of certain characters (like &). In apache, something
+  // downstream of mod_pagespeed could modify the content type of the response.
+  // So CDATA tags are added conservatively if we are not sure that it is safe
+  // to exclude them.
+  GoogleString js_str;
+
+  if (!(driver->server_context()->response_headers_finalized() &&
+        driver->MimeTypeXhtmlStatus() == RewriteDriver::kIsNotXhtml)) {
+    StrAppend(&js_str, "//<![CDATA[\n", js, "\n//]]>");
+    js = js_str;
+  }
+
+  if (!driver->doctype().IsVersion5()) {
+    driver->AddAttribute(script, HtmlName::kType, "text/javascript");
+  }
+  HtmlCharactersNode* script_content = driver->NewCharactersNode(script, js);
+  driver->AppendChild(script, script_content);
 }
 
 }  // namespace net_instaweb

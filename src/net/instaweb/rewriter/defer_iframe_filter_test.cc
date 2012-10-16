@@ -32,6 +32,7 @@ class DeferIframeFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
     rewrite_driver_->AddOwnedPostRenderFilter(
         new DeferIframeFilter(rewrite_driver_));
   }

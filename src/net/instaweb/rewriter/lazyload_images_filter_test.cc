@@ -61,6 +61,7 @@ class LazyloadImagesFilterTest : public RewriteTestBase {
   // TODO(matterbury): Delete this method as it should be redundant.
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
   }
 
   virtual void InitLazyloadImagesFilter(bool debug) {

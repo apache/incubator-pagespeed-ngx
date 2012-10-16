@@ -126,12 +126,10 @@ void LocalStorageCacheFilter::InsertOurScriptElement(HtmlElement* before) {
                                               kLscInitializer);
   HtmlElement* script_element = driver_->NewElement(before->parent(),
                                                     HtmlName::kScript);
+  driver_->InsertElementBeforeElement(before, script_element);
+  static_js_manager->AddJsToElement(initialized_js, script_element, driver_);
   script_element->AddAttribute(driver_->MakeName(HtmlName::kPagespeedNoDefer),
                                NULL, HtmlElement::NO_QUOTE);
-  driver_->InsertElementBeforeElement(before, script_element);
-  HtmlNode* script_code = driver_->NewCharactersNode(script_element,
-                                                     initialized_js);
-  driver_->AppendChild(script_element, script_code);
   script_inserted_ = true;
 }
 

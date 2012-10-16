@@ -27,7 +27,6 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -169,13 +168,9 @@ void DelayImagesFilter::InsertDelayImagesInlineJS(HtmlElement* element) {
   StrAppend(&inline_script,
             inline_data_script,
             "\npagespeed.delayImagesInline.replaceWithLowRes();\n");
-  HtmlElement* script = driver_->NewElement(element,
-                                            HtmlName::kScript);
-  driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
-  HtmlCharactersNode* script_content = driver_->NewCharactersNode(
-      script, inline_script);
+  HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
   driver_->InsertElementAfterElement(element, script);
-  driver_->AppendChild(script, script_content);
+  static_js_manager_->AddJsToElement(inline_script, script, driver_);
   InsertDelayImagesJS(script);
 }
 
@@ -183,9 +178,6 @@ void DelayImagesFilter::InsertDelayImagesJS(HtmlElement* element) {
   if (is_experimental_enabled_) {
     return;
   }
-  HtmlElement* script = driver_->NewElement(element,
-                                            HtmlName::kScript);
-  driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
   GoogleString delay_images_js;
   // Check script for changing src to high res src is inserted once.
   if (!low_res_map_inserted_) {
@@ -197,10 +189,9 @@ void DelayImagesFilter::InsertDelayImagesJS(HtmlElement* element) {
   } else {
     delay_images_js = "\npagespeed.delayImages.replaceWithHighRes();\n";
   }
-  HtmlCharactersNode* script_content = driver_->NewCharactersNode(
-      script, delay_images_js);
+  HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
   driver_->InsertElementAfterElement(element, script);
-  driver_->AppendChild(script, script_content);
+  static_js_manager_->AddJsToElement(delay_images_js, script, driver_);
   low_res_map_inserted_ = true;
 }
 

@@ -20,7 +20,6 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
@@ -43,19 +42,16 @@ void DeterministicJsFilter::StartElement(HtmlElement* element) {
   if (!found_head_ && element->keyword() == HtmlName::kHead) {
     found_head_ = true;
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-    driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
-    script->AddAttribute(
-        driver_->MakeName(HtmlName::kPagespeedNoDefer), NULL,
-        HtmlElement::NO_QUOTE);
+    driver_->InsertElementAfterCurrent(script);
     StaticJavascriptManager* static_js_manager =
         driver_->server_context()->static_javascript_manager();
     StringPiece deterministic_js =
         static_js_manager->GetJsSnippet(
             StaticJavascriptManager::kDeterministicJs, driver_->options());
-    HtmlCharactersNode* script_code = driver_->NewCharactersNode(script,
-        deterministic_js);
-    driver_->InsertElementAfterCurrent(script);
-    driver_->AppendChild(script, script_code);
+    static_js_manager->AddJsToElement(deterministic_js, script, driver_);
+    script->AddAttribute(
+        driver_->MakeName(HtmlName::kPagespeedNoDefer), NULL,
+        HtmlElement::NO_QUOTE);
   }
 }
 

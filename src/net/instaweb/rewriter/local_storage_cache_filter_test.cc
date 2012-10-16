@@ -110,11 +110,12 @@ class LocalStorageCacheTest : public RewriteTestBase,
     StaticJavascriptManager* static_js_manager =
         server_context()->static_javascript_manager();
     local_storage_cache_js_ =
-        StrCat("<script pagespeed_no_defer>",
+        StrCat("<script type=\"text/javascript\" pagespeed_no_defer>"
+               "//<![CDATA[\n",
                static_js_manager->GetJsSnippet(
                    StaticJavascriptManager::kLocalStorageCacheJs, options()),
                LocalStorageCacheFilter::kLscInitializer,
-               "</script>");
+               "\n//]]></script>");
   }
 
   void TestLocalStorage(const StringPiece& case_id,

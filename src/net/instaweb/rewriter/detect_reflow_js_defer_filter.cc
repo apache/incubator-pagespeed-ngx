@@ -21,7 +21,6 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -71,15 +70,12 @@ void DetectReflowJsDeferFilter::InsertDetectReflowCode(HtmlElement* element) {
   // Detect reflow functions script node.
   HtmlElement* script_node = rewrite_driver_->NewElement(element,
                                                          HtmlName::kScript);
-  rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
-                                "text/javascript");
-  rewrite_driver_->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, "");
+  rewrite_driver_->AppendChild(element, script_node);
   StringPiece detect_reflow_script = static_js_manager->GetJsSnippet(
       StaticJavascriptManager::kDetectReflowJs, rewrite_driver_->options());
-  HtmlNode* script_code = rewrite_driver_->NewCharactersNode(
-      script_node, detect_reflow_script);
-  rewrite_driver_->AppendChild(element, script_node);
-  rewrite_driver_->AppendChild(script_node, script_code);
+  static_js_manager->AddJsToElement(detect_reflow_script, script_node,
+                                    rewrite_driver_);
+  rewrite_driver_->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, "");
   script_written_ = true;
 }
 

@@ -222,15 +222,12 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
 void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
   if (!driver()->is_lazyload_script_flushed()) {
     HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
-    driver()->AddAttribute(script, HtmlName::kType, "text/javascript");
+    driver()->InsertElementBeforeElement(element, script);
     StaticJavascriptManager* static_js_manager =
         driver()->server_context()->static_javascript_manager();
     GoogleString lazyload_js = GetLazyloadJsSnippet(
         driver()->options(), static_js_manager);
-    HtmlNode* script_code = driver()->NewCharactersNode(
-        script, lazyload_js);
-    driver()->InsertElementBeforeElement(element, script);
-    driver()->AppendChild(script, script_code);
+    static_js_manager->AddJsToElement(lazyload_js, script, driver());
   }
   main_script_inserted_ = true;
 }

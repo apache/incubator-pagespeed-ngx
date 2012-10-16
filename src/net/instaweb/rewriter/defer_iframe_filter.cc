@@ -54,15 +54,13 @@ void DeferIframeFilter::StartElement(HtmlElement* element) {
     if (!script_inserted_) {
       HtmlElement* script = driver_->NewElement(element->parent(),
                                                 HtmlName::kScript);
-      driver_->AddAttribute(script, HtmlName::kType, "text/javascript");
+      driver_->InsertElementBeforeElement(element, script);
+
       GoogleString js = StrCat(
           static_js_manager_->GetJsSnippet(
               StaticJavascriptManager::kDeferIframe, driver_->options()),
               kDeferIframeInit);
-      HtmlCharactersNode* script_content = driver_->NewCharactersNode(
-          script, js);
-      driver_->InsertElementBeforeElement(element, script);
-      driver_->AppendChild(script, script_content);
+      static_js_manager_->AddJsToElement(js, script, driver_);
       script_inserted_ = true;
     }
     element->set_name(HtmlName(HtmlName::kPagespeedIframe, "pagespeed_iframe"));

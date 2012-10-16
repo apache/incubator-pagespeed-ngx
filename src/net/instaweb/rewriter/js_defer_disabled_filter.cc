@@ -20,7 +20,6 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -88,16 +87,12 @@ void JsDeferDisabledFilter::InsertJsDeferCode(HtmlElement* element) {
   if (!rewrite_driver_->is_defer_javascript_script_flushed()) {
     HtmlElement* script_node =
         rewrite_driver_->NewElement(element, HtmlName::kScript);
-    rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
-                                  "text/javascript");
+    rewrite_driver_->AppendChild(element, script_node);
     StaticJavascriptManager* static_js_manager =
         rewrite_driver_->server_context()->static_javascript_manager();
     GoogleString defer_js = GetDeferJsSnippet(
         rewrite_driver_->options(), static_js_manager);
-    HtmlNode* script_code =
-        rewrite_driver_->NewCharactersNode(script_node, defer_js);
-    rewrite_driver_->AppendChild(element, script_node);
-    rewrite_driver_->AppendChild(script_node, script_code);
+    static_js_manager->AddJsToElement(defer_js, script_node, rewrite_driver_);
   }
   script_written_ = true;
 }

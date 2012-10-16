@@ -34,6 +34,7 @@ class DeterministicJsFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
     deterministic_js_filter_.reset(new DeterministicJsFilter(rewrite_driver()));
     rewrite_driver()->AddFilter(deterministic_js_filter_.get());
   }

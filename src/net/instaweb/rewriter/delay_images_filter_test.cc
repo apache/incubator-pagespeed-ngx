@@ -82,6 +82,7 @@ class DelayImagesFilterTest : public RewriteTestBase {
   // TODO(matterbury): Delete this method as it should be redundant.
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
   }
 
   // Match rewritten html content and return its byte count.
@@ -165,6 +166,12 @@ class DelayImagesFilterTest : public RewriteTestBase {
         server_context()->static_javascript_manager()->GetJsSnippet(
             module, options());
     return StrCat(code, call);
+  }
+
+  void SetupUserAgentTest(StringPiece user_agent) {
+    rewrite_driver()->Clear();
+    rewrite_driver()->set_user_agent(user_agent);
+    SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
   }
 };
 
@@ -520,24 +527,22 @@ TEST_F(DelayImagesFilterTest, ResizeForResolution) {
   // Mobile output should be smaller than desktop because inlined low quality
   // image is resized smaller for mobile.
   // Do desktop and mobile rewriting twice. They should not affect each other.
-  rewrite_driver()->set_user_agent("Safari");
+  SetupUserAgentTest("Safari");
   int byte_count_desktop1 = MatchOutputAndCountBytes(input_html, output_html);
-  rewrite_driver()->Clear();
-  rewrite_driver()->set_user_agent("Android 3.1");
+
+  SetupUserAgentTest("Android 3.1");
   int byte_count_android1 = MatchOutputAndCountBytes(input_html, output_html);
   EXPECT_LT(byte_count_android1, byte_count_desktop1);
 
-  rewrite_driver()->Clear();
-  rewrite_driver()->set_user_agent("MSIE 8.0");
+  SetupUserAgentTest("MSIE 8.0");
   int byte_count_desktop2 = MatchOutputAndCountBytes(input_html, output_html);
-  rewrite_driver()->Clear();
-  rewrite_driver()->set_user_agent("Android 4");
+
+  SetupUserAgentTest("Android 4");
   int byte_count_android2 = MatchOutputAndCountBytes(input_html, output_html);
   EXPECT_EQ(byte_count_android1, byte_count_android2);
   EXPECT_EQ(byte_count_desktop1, byte_count_desktop2);
 
-  rewrite_driver()->Clear();
-  rewrite_driver()->set_user_agent("iPhone OS");
+  SetupUserAgentTest("iPhone OS");
   int byte_count_iphone = MatchOutputAndCountBytes(input_html, output_html);
   EXPECT_EQ(byte_count_iphone, byte_count_android1);
 }
@@ -582,10 +587,9 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionNegative) {
 
   // If kResizeMobileImages is not explicitly enabled, desktop and mobile
   // outputs will have the same size.
-  rewrite_driver()->set_user_agent("Safari");
+  SetupUserAgentTest("Safari");
   int byte_count_desktop = MatchOutputAndCountBytes(input_html, output_html);
-  rewrite_driver()->Clear();
-  rewrite_driver()->set_user_agent("Android 3.1");
+  SetupUserAgentTest("Android 3.1");
   int byte_count_mobile = MatchOutputAndCountBytes(input_html, output_html);
   EXPECT_EQ(byte_count_mobile, byte_count_desktop);
 }

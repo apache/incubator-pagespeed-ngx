@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
@@ -203,8 +202,8 @@ void DomainRewriteFilter::EndElementImpl(HtmlElement* element) {
       }
     }
 
-    HtmlElement* script_node =driver_->NewElement(element, HtmlName::kScript);
-    driver_->AddAttribute(script_node, HtmlName::kType, "text/javascript");
+    HtmlElement* script_node = driver_->NewElement(element, HtmlName::kScript);
+    driver_->AppendChild(element, script_node);
     StaticJavascriptManager* js_manager =
         driver_->server_context()->static_javascript_manager();
     GoogleString js = StrCat(
@@ -212,10 +211,7 @@ void DomainRewriteFilter::EndElementImpl(HtmlElement* element) {
             StaticJavascriptManager::kClientDomainRewriter, driver_->options()),
             "pagespeed.clientDomainRewriterInit([",
             comma_separated_from_domains, "]);");
-    HtmlCharactersNode* script_content = driver_->NewCharactersNode(
-        script_node, js);
-    driver_->AppendChild(element, script_node);
-    driver_->AppendChild(script_node, script_content);
+    js_manager->AddJsToElement(js, script_node, driver_);
     client_domain_rewriter_script_written_ = true;
   }
 }

@@ -33,6 +33,7 @@ class DetectReflowJsDeferFilterTest : public RewriteTestBase {
   // TODO(matterbury): Delete this method as it should be redundant.
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
   }
 
   void InitDetectReflowJsDeferFilter() {
