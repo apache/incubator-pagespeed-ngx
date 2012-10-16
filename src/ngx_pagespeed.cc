@@ -116,8 +116,8 @@ ngx_http_pagespeed_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child)
 static ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
-static
-ngx_int_t ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
+static ngx_int_t
+ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
 {
   // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
   // and calculate on the fly.
@@ -127,8 +127,8 @@ ngx_int_t ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
 
 // Add a buffer to the end of the buffer chain indicating that we were processed
 // through ngx_pagespeed.
-static
-ngx_int_t ngx_http_pagespeed_note_processed(ngx_http_request_t* r,
+static ngx_int_t
+ngx_http_pagespeed_note_processed(ngx_http_request_t* r,
                                             ngx_chain_t* in) {
   // Find the end of the buffer chain.
   ngx_chain_t* chain_link;
@@ -189,7 +189,8 @@ ngx_int_t ngx_http_pagespeed_note_processed(ngx_http_request_t* r,
   return NGX_OK;
 }
 
-static void ngx_http_pagespeed_release_request_context(
+static void
+ngx_http_pagespeed_release_request_context(
     ngx_http_request_t* r, ngx_http_pagespeed_request_ctx_t* ctx) {
 
     // release request context
@@ -199,8 +200,8 @@ static void ngx_http_pagespeed_release_request_context(
 
 // Get the context for this request.  If one doesn't exist yet, create it.  When
 // the request finishes, call ngx_http_pagespeed_release_request_context.
-static ngx_http_pagespeed_request_ctx_t* ngx_http_pagespeed_request_context(
-    ngx_http_request_t* r) {
+static ngx_http_pagespeed_request_ctx_t*
+ngx_http_pagespeed_request_context(ngx_http_request_t* r) {
   ngx_http_pagespeed_request_ctx_t* ctx =
       static_cast<ngx_http_pagespeed_request_ctx_t*>(
           ngx_http_get_module_ctx(r, ngx_pagespeed));
@@ -245,9 +246,9 @@ static ngx_http_pagespeed_request_ctx_t* ngx_http_pagespeed_request_context(
 }
 
 // Replace each buffer chain with a new one that's been optimized.
-static
-ngx_int_t ngx_http_pagespeed_optimize_and_replace_buffer(
-    ngx_http_request_t* r, ngx_chain_t* in) {
+static ngx_int_t
+ngx_http_pagespeed_optimize_and_replace_buffer(ngx_http_request_t* r,
+                                               ngx_chain_t* in) {
   ngx_http_pagespeed_request_ctx_t* ctx = ngx_http_pagespeed_request_context(r);
   if (ctx == NULL) {
     return NGX_ERROR;
@@ -350,8 +351,8 @@ ngx_int_t ngx_http_pagespeed_optimize_and_replace_buffer(
   return NGX_OK;
 }
 
-static
-ngx_int_t ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
+static ngx_int_t
+ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
 {
   ngx_int_t rc;
 
