@@ -57,15 +57,12 @@ parent.
 
 ## How to use
 
-To your nginx.conf add to the main block:
+In your nginx.conf, add to the main or server block:
 
     pagespeed on;
     pagespeed_cache /path/to/cache/dir;
 
-Eventually this should also work in a server or location block, but for now
-there's a hack with a global variable that precludes that.
-
-To confirm that the module is working, fetch a page and check that you see the
+To confirm that the module is loaded, fetch a page and check that you see the
 following comment in the source:
 
     <!-- Processed through ngx_pagespeed using PSOL version 0.10.0.0 -->

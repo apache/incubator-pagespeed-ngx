@@ -47,12 +47,9 @@ extern ngx_module_t ngx_pagespeed;
 typedef struct {
   ngx_flag_t active;
   ngx_str_t cache_dir;
-} ngx_http_pagespeed_loc_conf_t;
-
-typedef struct {
-  scoped_ptr<net_instaweb::NgxRewriteDriverFactory> driver_factory;
+  net_instaweb::NgxRewriteDriverFactory* driver_factory;
   net_instaweb::ServerContext* server_context;
-} ngx_http_pagespeed_module_ctx_t;
+} ngx_http_pagespeed_srv_conf_t;
 
 typedef struct {
   net_instaweb::RewriteDriver* driver;
@@ -60,34 +57,31 @@ typedef struct {
   scoped_ptr<net_instaweb::StringWriter> writer;
 } ngx_http_pagespeed_request_ctx_t;
 
-// TODO(jefftk): Giant hack.  Need to make this not be global.
-static ngx_http_pagespeed_module_ctx_t* context = NULL;
-
 static ngx_command_t ngx_http_pagespeed_commands[] = {
   { ngx_string("pagespeed"),
-    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
     ngx_conf_set_flag_slot,
-    NGX_HTTP_LOC_CONF_OFFSET,
-    offsetof(ngx_http_pagespeed_loc_conf_t, active),
+    NGX_HTTP_SRV_CONF_OFFSET,
+    offsetof(ngx_http_pagespeed_srv_conf_t, active),
     NULL },
 
   { ngx_string("pagespeed_cache"),
-    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
+    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
     ngx_conf_set_str_slot,
-    NGX_HTTP_LOC_CONF_OFFSET,
-    offsetof(ngx_http_pagespeed_loc_conf_t, cache_dir),
+    NGX_HTTP_SRV_CONF_OFFSET,
+    offsetof(ngx_http_pagespeed_srv_conf_t, cache_dir),
     NULL },
 
   ngx_null_command
 };
 
 static void*
-ngx_http_pagespeed_create_loc_conf(ngx_conf_t* cf)
+ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf)
 {
-  ngx_http_pagespeed_loc_conf_t* conf;
+  ngx_http_pagespeed_srv_conf_t* conf;
 
-  conf = static_cast<ngx_http_pagespeed_loc_conf_t*>(
-      ngx_pcalloc(cf->pool, sizeof(ngx_http_pagespeed_loc_conf_t)));
+  conf = static_cast<ngx_http_pagespeed_srv_conf_t*>(
+      ngx_pcalloc(cf->pool, sizeof(ngx_http_pagespeed_srv_conf_t)));
   if (conf == NULL) {
     return NGX_CONF_ERROR;
   }
@@ -95,17 +89,19 @@ ngx_http_pagespeed_create_loc_conf(ngx_conf_t* cf)
 
   // set by ngx_pcalloc():
   //   conf->cache_dir = { 0, NULL };
+  //   conf->driver_factory = NULL;
+  //   conf->server_context = NULL;
 
   return conf;
 }
 
 static char*
-ngx_http_pagespeed_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child)
+ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child)
 {
-  ngx_http_pagespeed_loc_conf_t* prev =
-      static_cast<ngx_http_pagespeed_loc_conf_t*>(parent);
-  ngx_http_pagespeed_loc_conf_t* conf =
-      static_cast<ngx_http_pagespeed_loc_conf_t*>(child);
+  ngx_http_pagespeed_srv_conf_t* prev =
+      static_cast<ngx_http_pagespeed_srv_conf_t*>(parent);
+  ngx_http_pagespeed_srv_conf_t* conf =
+      static_cast<ngx_http_pagespeed_srv_conf_t*>(child);
 
   ngx_conf_merge_value(conf->active, prev->active, 0);  // Default off.
   ngx_conf_merge_str_value(conf->cache_dir, prev->cache_dir, "");
@@ -213,7 +209,49 @@ ngx_http_pagespeed_request_context(ngx_http_request_t* r) {
     return ctx;
   }
 
+  ngx_http_pagespeed_srv_conf_t* cfg =
+      static_cast<ngx_http_pagespeed_srv_conf_t*>(
+          ngx_http_get_module_srv_conf(r, ngx_pagespeed));
+
+  if (cfg->driver_factory == NULL) {
+    // Set up per-server context; this is the first request to this server
+    // block.
+
+    DBG(r, "Initializing ServerContext and RewriteDriverFactory");
+
+    // TODO(jefftk): This shouldn't be done on the first request but instead
+    // when we're done processing the configuration.
+
+    net_instaweb::NgxRewriteDriverFactory::Initialize();
+    // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
+    // we're done with it.
+
+    cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
+    cfg->driver_factory->set_filename_prefix(StringPiece(
+        reinterpret_cast<char*>(cfg->cache_dir.data), cfg->cache_dir.len));
+    cfg->server_context = cfg->driver_factory->CreateServerContext();
+
+    net_instaweb::NullMessageHandler handler;
+
+    // Turn on some filters so we can see if this is working.
+    net_instaweb::RewriteOptions* global_options =
+        cfg->server_context->global_options();
+    global_options->EnableFiltersByCommaSeparatedList(
+        "collapse_whitespace,remove_comments,remove_quotes", &handler);
+  }
+
   // Set up things we do once at the beginning of the request.
+
+  // Pull the server context out of the per-server config.
+  net_instaweb::ServerContext* server_context =
+      static_cast<ngx_http_pagespeed_srv_conf_t*>(
+          ngx_http_get_module_srv_conf(r, ngx_pagespeed))->server_context;
+
+  if (server_context == NULL) {
+    ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
+                  "ServerContext should have been initialized.");
+    return NULL;
+  }
 
   // TODO(jefftk): figure out how to get the real url out of r.  Because we're
   // currently blocking nginx's main event loop, however, fixing this now would
@@ -222,7 +260,7 @@ ngx_http_pagespeed_request_context(ngx_http_request_t* r) {
   StringPiece url("http://localhost");
 
   ctx = new ngx_http_pagespeed_request_ctx_t;
-  ctx->driver = context->server_context->NewRewriteDriver();
+  ctx->driver = server_context->NewRewriteDriver();
 
   // TODO(jefftk): replace this with a writer that generates proper nginx
   // buffers and puts them in the chain.  Or avoids the double
@@ -344,9 +382,9 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
 static ngx_int_t
 ngx_http_pagespeed_init(ngx_conf_t* cf)
 {
-  ngx_http_pagespeed_loc_conf_t* pagespeed_config;
-  pagespeed_config = static_cast<ngx_http_pagespeed_loc_conf_t*>(
-    ngx_http_conf_get_module_loc_conf(cf, ngx_pagespeed));
+  ngx_http_pagespeed_srv_conf_t* pagespeed_config;
+  pagespeed_config = static_cast<ngx_http_pagespeed_srv_conf_t*>(
+    ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
 
   if (pagespeed_config->active) {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
@@ -354,40 +392,23 @@ ngx_http_pagespeed_init(ngx_conf_t* cf)
 
     ngx_http_next_body_filter = ngx_http_top_body_filter;
     ngx_http_top_body_filter = ngx_http_pagespeed_body_filter;
-
-    // TODO(jefftk): move this to be per-server-block and not global.
-    context = new ngx_http_pagespeed_module_ctx_t();
-
-    net_instaweb::NgxRewriteDriverFactory::Initialize();
-    // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
-    // we're done with it.
-    context->driver_factory.reset(new net_instaweb::NgxRewriteDriverFactory());
-    context->driver_factory->set_filename_prefix(StringPiece(
-        reinterpret_cast<char*>(pagespeed_config->cache_dir.data),
-        pagespeed_config->cache_dir.len));
-    context->server_context = context->driver_factory->CreateServerContext();
-
-    net_instaweb::NullMessageHandler handler;
-
-    // Turn on some filters so we can see if this is working.
-    net_instaweb::RewriteOptions* global_options =
-        context->server_context->global_options();
-    global_options->EnableFiltersByCommaSeparatedList(
-        "collapse_whitespace,remove_comments,remove_quotes", &handler);
   }
 
   return NGX_OK;
 }
 
 static ngx_http_module_t ngx_http_pagespeed_module = {
-  NULL,
-  ngx_http_pagespeed_init,  // Post configuration.
-  NULL,
-  NULL,
-  NULL,
-  NULL,
-  ngx_http_pagespeed_create_loc_conf,
-  ngx_http_pagespeed_merge_loc_conf
+  NULL,  // preconfiguration
+  ngx_http_pagespeed_init,  // postconfiguration
+
+  NULL,  // create main configuration
+  NULL,  // init main configuration
+
+  ngx_http_pagespeed_create_srv_conf,  // create server configuration
+  ngx_http_pagespeed_merge_srv_conf,  // merge server configuration
+
+  NULL,  // create location configuration
+  NULL  // merge location configuration
 };
 
 ngx_module_t ngx_pagespeed = {
