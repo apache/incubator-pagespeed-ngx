@@ -5069,9 +5069,9 @@ TEST_F(TwoLevelCacheTest, BothCachesInSameState) {
   EXPECT_EQ(2, cache1_->num_hits());     // 1 expired hit, 1 valid hit.
   EXPECT_EQ(0, cache1_->num_misses());
   EXPECT_EQ(2, cache1_->num_inserts());  // re-inserts after expiration.
-  // TODO(sriharis):  Remove this comment before submitting.  Note: The
-  // following will be 0 without the change in this CL since we will simply
-  // return expired value from cache1 instead of trying cache2.
+  // The following is 1 because the ValidateCandidate check in
+  // OutputCacheCallback will return false for cache1.  Without the check we
+  // will simply return expired value from cache1 instead of trying cache2.
   EXPECT_EQ(1, cache2_->num_hits());     // 1 expired hit
   EXPECT_EQ(0, cache2_->num_misses());
   EXPECT_EQ(1, cache2_->num_inserts());  // re-inserts after expiration.
@@ -5166,12 +5166,8 @@ TEST_F(TwoLevelCacheTest, BothCachesInDifferentState) {
   // also inserted into L1 cache.
   rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("trimmable", input_html, output_html);
-  // TODO(sriharis):  Remove this comment before submitting.  The following
-  // checks are different if I run this test without the changes of this CL.
-  // The cache2_->num_hits() will be 0, since the expired value from cache1_ is
-  // taken, and in metadata_cache_info num_revalidates will be 1 (also
-  // cache1_->num_hits() will be 2 due to origin content hit for revalidate) and
-  // num_hits 0.
+  // We have an expired hit for metadata in cache1, and a fresh hit for it in
+  // cache2.  The fresh metadata is inserted in cache1.
   EXPECT_EQ(1, cache1_->num_hits());     // expired hit
   EXPECT_EQ(0, cache1_->num_misses());
   EXPECT_EQ(1, cache1_->num_inserts());  // re-inserts after expiration.
