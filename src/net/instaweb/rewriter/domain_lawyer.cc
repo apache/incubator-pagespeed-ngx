@@ -514,9 +514,19 @@ bool DomainLawyer::MapUrlHelper(const Domain& from_domain,
   // Even if the from_domain has no subdirectory, we need to remove
   // the leading slash to make it a relative reference and retain any
   // subdirectory in the to_domain.
-  path_and_leaf = path_and_leaf.substr(from_domain_path.size());
+  //
+  // Note: We must prepend "./" to make sure the path_and_leaf is not an
+  // absolute URL, which will cause problems below. For example:
+  // "http://www.example.com/data:image/jpeg" should be converted to the
+  // relative URL "./data:image/jpeg", not the absolute URL "data:image/jpeg".
+  GoogleString rel_url =
+      StrCat("./", path_and_leaf.substr(from_domain_path.size()));
+  // Make sure this isn't a valid absolute URL.
+  DCHECK(!GoogleUrl(rel_url).is_valid())
+      << "URL " << gurl.Spec() << " is being mapped to absolute URL "
+      << rel_url << " which will break many things.";
   GoogleUrl to_domain_gurl(to_domain.name());
-  mapped_gurl->Reset(to_domain_gurl, path_and_leaf);
+  mapped_gurl->Reset(to_domain_gurl, rel_url);
   return mapped_gurl->is_valid();
 }
 

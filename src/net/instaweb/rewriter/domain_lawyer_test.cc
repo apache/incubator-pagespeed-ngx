@@ -1198,4 +1198,20 @@ TEST_F(DomainLawyerTest, IsOriginKnownTest) {
   EXPECT_TRUE(lawyer.IsOriginKnown(s2_f_com));
 }
 
+TEST_F(DomainLawyerTest, NoAbsoluteUrlPath) {
+  DomainLawyer lawyer;
+  lawyer.AddOriginDomainMapping("b.com", "a.com", &message_handler_);
+
+  GoogleUrl foo("http://a.com/foo");
+  GoogleString out;
+  EXPECT_TRUE(lawyer.MapOriginUrl(foo, &out));
+  EXPECT_STREQ("http://b.com/foo", out);
+
+  // Make sure we don't resolve the path: data:image/jpeg as an absolute URL.
+  GoogleUrl data("http://a.com/data:image/jpeg");
+  out.clear();
+  EXPECT_TRUE(lawyer.MapOriginUrl(data, &out));
+  EXPECT_STREQ("http://b.com/data:image/jpeg", out);
+}
+
 }  // namespace net_instaweb
