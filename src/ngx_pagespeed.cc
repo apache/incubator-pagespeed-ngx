@@ -293,7 +293,7 @@ ngx_http_pagespeed_optimize_and_replace_buffer(ngx_http_request_t* r,
       ngx_pfree(r->pool, file_contents);
       file_contents = NULL;
     }
-    buffer_contents= StringPiece(NULL, 0);
+    buffer_contents = StringPiece(NULL, 0);
 
     // We're done with buffers as we pass them to the rewrite driver, so free
     // them and their chain links as we go.  Don't free the first buffer (in)
