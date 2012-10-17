@@ -111,6 +111,7 @@ class FlushEarlyFlow {
   StringWriter dummy_head_writer_;
   int num_resources_flushed_;
   int num_rewritten_resources_;
+  int64 average_fetch_time_;
 
   AsyncFetch* base_fetch_;
   FlushEarlyAsyncFetch* flush_early_fetch_;

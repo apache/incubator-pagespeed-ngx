@@ -70,6 +70,9 @@ const char kPrefetchObjectTagHtml[] = "preload(%s);";
 
 const int kMaxParallelConnections = 6;
 
+// Minimum fetch latency for sending pre-connect requests.
+const int kMinLatencyForPreconnectMs = 100;
+
 }  // namespace
 
 namespace net_instaweb {
@@ -293,6 +296,7 @@ FlushEarlyFlow::FlushEarlyFlow(
       dummy_head_writer_(&dummy_head_),
       num_resources_flushed_(0),
       num_rewritten_resources_(0),
+      average_fetch_time_(0),
       base_fetch_(base_fetch),
       flush_early_fetch_(flush_early_fetch),
       driver_(driver),
@@ -384,6 +388,9 @@ void FlushEarlyFlow::FlushEarly() {
         new_driver->StartParse(url_);
 
         InitFlushEarlyDriverWithPropertyCacheValues(new_driver, page);
+        if (flush_early_info.has_average_fetch_latency_ms()) {
+          average_fetch_time_ = flush_early_info.average_fetch_latency_ms();
+        }
         // Copy over the response headers from flush_early_info.
         GenerateResponseHeaders(flush_early_info);
 
@@ -467,6 +474,7 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
       --max_preconnect_attempts;
     }
   }
+
   if (should_flush_early_js_defer_script_) {
     // Flush defer_javascript script content.
     WriteScript(JsDisableFilter::GetJsDisableScriptSnippet(driver_->options()));
@@ -475,15 +483,17 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
   }
 
   if (max_preconnect_attempts > 0 &&
-      !flush_early_driver->options()->pre_connect_url().empty()) {
-    base_fetch_->Write("<script type=\"text/javascript\" >", handler_);
+      !flush_early_driver->options()->pre_connect_url().empty() &&
+      average_fetch_time_ > kMinLatencyForPreconnectMs) {
     for (int index = 0; index < max_preconnect_attempts; ++index) {
-      base_fetch_->Write(StrCat(
-          "new Image().src='",
-          flush_early_driver->options()->pre_connect_url(), "?id=",
-          IntegerToString(index), "';"), handler_);
+      GoogleString url =
+          StrCat(flush_early_driver->options()->pre_connect_url(),
+                 "?id=",IntegerToString(index));
+
+      base_fetch_->Write(StringPrintf(
+          FlushEarlyContentWriterFilter::kPrefetchLinkTagHtml,
+          url.c_str()), handler_);
     }
-    base_fetch_->Write("</script>", handler_);
   }
   flush_early_driver->decrement_async_events_count();
   base_fetch_->Write("</head>", handler_);
