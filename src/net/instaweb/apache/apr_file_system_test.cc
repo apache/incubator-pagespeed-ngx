@@ -28,6 +28,10 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
+namespace {
+  const int kBlockSize = 4096;
+}  // namespace
+
 namespace net_instaweb {
 
 class AprFileSystemTest : public FileSystemTest {
@@ -50,6 +54,13 @@ class AprFileSystemTest : public FileSystemTest {
   virtual void TearDown() {
     file_system_.reset();
     apr_pool_destroy(pool_);
+  }
+
+  // AprFileSystem::Size returns the amount of space consumed on disk by a file,
+  // not the number of bytes in file. Return size rounded up to nearest default
+  // block size to represent file size in tests.
+  virtual int FileSize(StringPiece contents) {
+    return ((contents.size() + kBlockSize - 1) / kBlockSize) * kBlockSize;
   }
 
   void MyDeleteFileRecursively(const GoogleString& filename,
@@ -105,6 +116,7 @@ class AprFileSystemTest : public FileSystemTest {
   scoped_ptr<AprFileSystem> file_system_;
   apr_pool_t* pool_;
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(AprFileSystemTest);
 };
 

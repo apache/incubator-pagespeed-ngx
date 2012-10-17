@@ -63,6 +63,14 @@ class FileSystemTest : public testing::Test {
   GoogleString WriteNewFile(const StringPiece& suffix,
                             const GoogleString& content);
 
+  // Memory based file system implementations of Size return the size of the
+  // file, while the APR file system returns the size allocated on disk. This
+  // function is overridable to allow AprFileSystemTest to calculate the on-disk
+  // size of the file.
+  virtual int FileSize(StringPiece contents) {
+    return contents.size();
+  }
+
   // All FileSystem implementations should run the following tests.
   // Note: If you add a test below, please add invocations in:
   // AprFileSystemTest, StdioFileSystemTest, MemFileSystemTest.

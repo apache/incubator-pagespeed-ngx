@@ -391,14 +391,14 @@ void FileSystemTest::TestDirInfo() {
 
   int64 size;
   EXPECT_TRUE(file_system()->Size(full_path1, &size, &handler_));
-  EXPECT_EQ(content1.size(), static_cast<size_t>(size));
+  EXPECT_EQ(FileSize(content1), static_cast<size_t>(size));
   EXPECT_TRUE(file_system()->Size(full_path2, &size, &handler_));
-  EXPECT_EQ(content2.size(), static_cast<size_t>(size));
+  EXPECT_EQ(FileSize(content2), static_cast<size_t>(size));
 
   FileSystem::DirInfo dir_info;
   FileSystem::DirInfo dir_info2;
   file_system()->GetDirInfo(dir_name2, &dir_info2, &handler_);
-  EXPECT_EQ(content1.size() + content2.size(),
+  EXPECT_EQ(FileSize(content1) + FileSize(content2),
             static_cast<size_t>(dir_info2.size_bytes));
   EXPECT_EQ(2, dir_info2.inode_count);
   EXPECT_EQ(static_cast<size_t>(2), dir_info2.files.size());
@@ -422,7 +422,7 @@ void FileSystemTest::TestDirInfo() {
     // Apr file system.
     dir_size = 4096;
   }
-  EXPECT_EQ(dir_size * 2 + content1.size() + content2.size(),
+  EXPECT_EQ(dir_size * 2 + FileSize(content1) + FileSize(content2),
             static_cast<size_t>(dir_info.size_bytes));
   EXPECT_EQ(4, dir_info.inode_count);
   std::sort(dir_info.files.begin(), dir_info.files.end(), CompareByName());

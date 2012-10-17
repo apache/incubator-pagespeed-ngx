@@ -421,9 +421,9 @@ bool AprFileSystem::Mtime(const StringPiece& path,
 bool AprFileSystem::Size(const StringPiece& path, int64* size,
                            MessageHandler* handler) {
   apr_finfo_t file_info;
-  bool ret = Stat(path, &file_info, APR_FINFO_SIZE, handler);
+  bool ret = Stat(path, &file_info, APR_FINFO_CSIZE, handler);
   if (ret) {
-    *size = file_info.size;
+    *size = file_info.csize;
   }
   return ret;
 }

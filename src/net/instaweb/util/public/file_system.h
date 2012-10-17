@@ -270,7 +270,12 @@ class FileSystem {
   // Given a file, computes its size in bytes and store it in *size.  Returns
   // true on success, false on failure.  Behavior is undefined if path refers to
   // a directory.
+  // This function has different behavior depending on the underlying
+  // implementation. Memory-based implementations will report the size of the
+  // file, while disk-based implementations should return the actual allocated
+  // size on disk.
   // TODO(abliss): replace this with a single Stat() function.
+  // TODO(jud): Make sure all disk implementations return on-disk size.
   virtual bool Size(const StringPiece& path, int64* size,
                     MessageHandler* handler) = 0;
 
