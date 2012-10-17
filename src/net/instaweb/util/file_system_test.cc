@@ -16,13 +16,13 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/file_system_test.h"
 
 #include <cstddef>
 #include <algorithm>
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/file_system_test.h"
+#include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mem_file_system.h"
@@ -391,15 +391,14 @@ void FileSystemTest::TestDirInfo() {
 
   int64 size;
   EXPECT_TRUE(file_system()->Size(full_path1, &size, &handler_));
-  EXPECT_EQ(FileSize(content1), static_cast<size_t>(size));
+  EXPECT_EQ(FileSize(content1), size);
   EXPECT_TRUE(file_system()->Size(full_path2, &size, &handler_));
-  EXPECT_EQ(FileSize(content2), static_cast<size_t>(size));
+  EXPECT_EQ(FileSize(content2), size);
 
   FileSystem::DirInfo dir_info;
   FileSystem::DirInfo dir_info2;
   file_system()->GetDirInfo(dir_name2, &dir_info2, &handler_);
-  EXPECT_EQ(FileSize(content1) + FileSize(content2),
-            static_cast<size_t>(dir_info2.size_bytes));
+  EXPECT_EQ(FileSize(content1) + FileSize(content2), dir_info2.size_bytes);
   EXPECT_EQ(2, dir_info2.inode_count);
   EXPECT_EQ(static_cast<size_t>(2), dir_info2.files.size());
   // dir_info.files is not guaranteed to be in any particular order, and in fact
