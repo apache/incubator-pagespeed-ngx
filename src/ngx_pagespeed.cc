@@ -33,6 +33,7 @@ extern "C" {
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 
@@ -74,6 +75,11 @@ static ngx_command_t ngx_http_pagespeed_commands[] = {
 
   ngx_null_command
 };
+
+static StringPiece
+ngx_http_pagespeed_str_to_string_piece(ngx_str_t* s) {
+  return StringPiece(reinterpret_cast<char*>(s->data), s->len);
+}
 
 static void*
 ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf)
@@ -185,6 +191,59 @@ ngx_http_pagespeed_release_request_context(
 }
 
 
+static GoogleString
+ngx_http_pagespeed_determine_url(ngx_http_request_t* r) {
+  // Based on ngx_http_variable_scheme.
+  bool is_https = false;
+#if (NGX_HTTP_SSL)
+  is_https = r->connection->ssl;
+#endif
+
+  // Based on ngx_http_variable_server_port.
+  ngx_uint_t port;
+  bool have_port = false;
+#if (NGX_HAVE_INET6)
+  if (r->connection->local_sockaddr->sa_family == AF_INET6) {
+    port = ntohs(reinterpret_cast<struct sockaddr_in6*>(
+        r->connection->local_sockaddr)->sin6_port);
+    have_port= true;
+  }
+#endif
+  if (!have_port) {
+    port = ntohs(reinterpret_cast<struct sockaddr_in*>(
+        r->connection->local_sockaddr)->sin_port);
+  }
+
+  GoogleString port_string;
+  if ((is_https && port == 443) || (!is_https && port == 80)) {
+    // No port specifier needed for requests on default ports.
+    port_string = "";
+  } else {
+    port_string = net_instaweb::StrCat(
+        ":", net_instaweb::IntegerToString(port));
+  }
+
+  StringPiece host =
+      ngx_http_pagespeed_str_to_string_piece(&r->headers_in.server);
+  if (host.size() == 0) {
+    // If host is unspecified, perhaps because of a pure HTTP 1.0 "GET /path",
+    // fall back to server IP address.  Based on ngx_http_variable_server_addr.
+    ngx_str_t  s;
+    u_char addr[NGX_SOCKADDR_STRLEN];
+    s.len = NGX_SOCKADDR_STRLEN;
+    s.data = addr;
+    ngx_int_t rc = ngx_connection_local_sockaddr(r->connection, &s, 0);
+    if (rc != NGX_OK) {
+      s.len = 0;
+    }
+    host = ngx_http_pagespeed_str_to_string_piece(&s);
+  }
+
+  return net_instaweb::StrCat(
+      is_https ? "https://" : "http://", host, port_string,
+      ngx_http_pagespeed_str_to_string_piece(&r->unparsed_uri));
+}
+
 // Get the context for this request.  ngx_http_pagespeed_create_request_context
 // should already have been called to create it.
 static ngx_http_pagespeed_request_ctx_t*
@@ -199,20 +258,20 @@ ngx_http_pagespeed_get_request_context(ngx_http_request_t* r) {
 // when we're done processing the configuration.
 static void
 ngx_http_pagespeed_initialize_server_context(
-    ngx_http_pagespeed_srv_conf_t* cfg) { 
+    ngx_http_pagespeed_srv_conf_t* cfg) {
   net_instaweb::NgxRewriteDriverFactory::Initialize();
   // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
   // we're done with it.
-  
+
   cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
-  cfg->driver_factory->set_filename_prefix(StringPiece(
-      reinterpret_cast<char*>(cfg->cache_dir.data), cfg->cache_dir.len));
+  cfg->driver_factory->set_filename_prefix(
+      ngx_http_pagespeed_str_to_string_piece(&cfg->cache_dir));
   cfg->server_context = cfg->driver_factory->CreateServerContext();
-  
+
   // In real use, with filters coming from the user, this would be some other
   // kind of message handler that actually sent errors back to the user.
   net_instaweb::NullMessageHandler handler;
-  
+
   // Turn on some filters so we can see if this is working.  These filters are
   // specifically chosen as ones that don't make requests for subresources or do
   // work that needs to complete asynchronously.  They should be fast enough to
@@ -249,10 +308,9 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
     return NGX_ERROR;
   }
 
-  // TODO(jefftk): figure out how to get the real url out of r.
-  StringPiece url("http://localhost");
+  GoogleString url = ngx_http_pagespeed_determine_url(r);
 
-  ngx_http_pagespeed_request_ctx_t* ctx = 
+  ngx_http_pagespeed_request_ctx_t* ctx =
       new ngx_http_pagespeed_request_ctx_t();
 
   ctx->driver = server_context->NewRewriteDriver();
