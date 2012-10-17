@@ -22,6 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
@@ -53,7 +54,7 @@ JsDisableFilter::~JsDisableFilter() {
 void JsDisableFilter::StartDocument() {
   index_ = 0;
   defer_js_experimental_script_written_ = false;
-  defer_js_enabled_ = rewrite_driver_->UserAgentSupportsJsDefer();
+  defer_js_enabled_ = JsDeferDisabledFilter::ShouldApply(rewrite_driver_);
 }
 
 void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {

@@ -102,6 +102,10 @@ void CollectFlushEarlyContentFilter::EndDocument() {
   if (driver()->flushing_early()) {
     return;
   }
+  // Empty the resource_html_ if no resource is found.
+  if (!found_resource_) {
+    resource_html_ = "";
+  }
   if (!resource_html_.empty()) {
     driver()->flush_early_info()->set_resource_html(resource_html_);
   }
@@ -112,8 +116,8 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
     //Do nothing.
     return;
   }
-  if (element->keyword() == HtmlName::kHead) {
-    in_head_ = true;
+  if (element->keyword() == HtmlName::kBody) {
+    StrAppend(&resource_html_, "<body>");
     return;
   }
   semantic_type::Category category;
@@ -143,7 +147,7 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
   }
   // Find javascript elements in the head, and css elements in the entire page.
   if ((category == semantic_type::kStylesheet ||
-       (category == semantic_type::kScript && in_head_))) {
+       (category == semantic_type::kScript))) {
     // TODO(pulkitg): Collect images which can be flushed early.
     // Absolutify the url before storing its value so that we handle
     // <base> tags correctly.
@@ -171,6 +175,7 @@ void CollectFlushEarlyContentFilter::AppendToHtml(
     StringPiece url, semantic_type::Category category, HtmlElement* element) {
   GoogleString escaped_url;
   HtmlKeywords::Escape(url, &escaped_url);
+  found_resource_ = true;
   if (category == semantic_type::kStylesheet) {
     StrAppend(&resource_html_, "<link ");
     AppendAttribute(HtmlName::kType, element);
@@ -200,17 +205,14 @@ void CollectFlushEarlyContentFilter::AppendAttribute(
 void CollectFlushEarlyContentFilter::EndElementImpl(HtmlElement* element) {
   if (noscript_element() != NULL) {
     // Do nothing.
-  } else if (element->keyword() == HtmlName::kHead) {
-    // Check if we are exiting a <head> node.
-    if (in_head_) {
-      in_head_ = false;
-    }
+  } else if (element->keyword() == HtmlName::kBody) {
+    StrAppend(&resource_html_, "</body>");
   }
 }
 
 void CollectFlushEarlyContentFilter::Clear() {
-  in_head_ = false;
   resource_html_.clear();
+  found_resource_ = false;
 }
 
 }  // namespace net_instaweb

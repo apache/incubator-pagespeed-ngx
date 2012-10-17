@@ -88,7 +88,7 @@ void LazyloadImagesFilter::Clear() {
 }
 
 bool LazyloadImagesFilter::ShouldApply(RewriteDriver* driver) {
-  return driver->UserAgentSupportsImageInlining();
+  return driver->UserAgentSupportsImageInlining() && !driver->flushing_early();
 }
 
 void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {

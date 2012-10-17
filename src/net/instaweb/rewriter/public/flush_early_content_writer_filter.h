@@ -18,8 +18,11 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_FLUSH_EARLY_CONTENT_WRITER_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_FLUSH_EARLY_CONTENT_WRITER_FILTER_H_
 
+#include <list>
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/null_writer.h"
@@ -28,10 +31,13 @@
 
 namespace net_instaweb {
 
+class GoogleUrl;
 class HtmlElement;
 class RewriteDriver;
 class TimedVariable;
 class Writer;
+
+struct ResourceInfo;
 
 // FlushEarlyContentWriterFilter finds rewritten resources in the DOM and
 // inserts HTML that makes the browser download them. Note that we set a
@@ -61,9 +67,20 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   // Writes the string to original_writer_.
   void WriteToOriginalWriter(const GoogleString& in);
 
+  // Check whether resource can be flushed or not.
+  bool IsFlushable(const GoogleUrl& gurl, bool is_pagespeed_resource);
+
+  // Flush the resource and update time_consumed_ms_ based on time_to_download.
+  void FlushResources(
+      StringPiece url,
+      int64 time_to_download,
+      bool is_pagespeed_resource,
+      semantic_type::Category category);
+
   RewriteDriver* driver_;
   TimedVariable* num_resources_flushed_early_;
   // Whether we need to insert a close script tag at EndDocument.
+  bool in_body_;
   bool insert_close_script_;
   int num_resources_flushed_;
   NullWriter null_writer_;
@@ -71,6 +88,10 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   HtmlElement* current_element_;
   UserAgentMatcher::PrefetchMechanism prefetch_mechanism_;
   scoped_ptr<StringSet> private_cacheable_resources_;
+  int64 time_consumed_ms_;
+  int64 max_available_time_ms_;
+  typedef std::list<ResourceInfo*> ResourceInfoList;
+  ResourceInfoList js_resources_info_;
 
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyContentWriterFilter);
 };

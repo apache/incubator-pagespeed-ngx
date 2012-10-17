@@ -58,7 +58,7 @@ JsDeferDisabledFilter::JsDeferDisabledFilter(RewriteDriver* driver)
 JsDeferDisabledFilter::~JsDeferDisabledFilter() { }
 
 bool JsDeferDisabledFilter::ShouldApply(RewriteDriver* driver) {
-  return driver->UserAgentSupportsJsDefer();
+  return driver->UserAgentSupportsJsDefer() && !driver->flushing_early();
 }
 
 void JsDeferDisabledFilter::StartDocument() {

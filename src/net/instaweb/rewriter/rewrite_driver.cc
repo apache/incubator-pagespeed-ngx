@@ -890,11 +890,7 @@ void RewriteDriver::AddPreRenderFilters() {
     // interaction.
     EnableRewriteFilter(RewriteOptions::kJavascriptMinId);
   }
-  // Disable combine javascript if flush subresources is enabled and
-  // defer_javascript is disabled.
-  bool disable_combine_js_due_to_flush_early = flush_subresources_enabled &&
-      !rewrite_options->Enabled(RewriteOptions::kDeferJavascript);
-  if (!disable_combine_js_due_to_flush_early &&
+  if (!flush_subresources_enabled &&
       rewrite_options->Enabled(RewriteOptions::kCombineJavascript)) {
     // Combine external JS resources. Done after minification and analytics
     // detection, as it converts script sources into string literals, making
@@ -2458,7 +2454,6 @@ FlushEarlyInfo* RewriteDriver::flush_early_info() {
     if (property_page() != NULL && cohort != NULL) {
       PropertyValue* property_value = property_page()->GetProperty(
           cohort, RewriteDriver::kSubresourcesPropertyName);
-
       if (property_value->has_value()) {
         ArrayInputStream value(property_value->value().data(),
                                property_value->value().size());

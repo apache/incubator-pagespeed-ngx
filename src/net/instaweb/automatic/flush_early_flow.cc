@@ -19,10 +19,12 @@
 #include "net/instaweb/automatic/public/flush_early_flow.h"
 
 #include <algorithm>
+#include <set>
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
@@ -32,7 +34,9 @@
 #include "net/instaweb/js/public/js_minify.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
+#include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
@@ -69,6 +73,35 @@ const int kMaxParallelConnections = 6;
 }  // namespace
 
 namespace net_instaweb {
+
+namespace {
+
+void InitFlushEarlyDriverWithPropertyCacheValues(
+    RewriteDriver* flush_early_driver, PropertyPage* page) {
+  // Reading Flush early flow info from Property Page. After reading,
+  // property page in new_driver is set to NULL, so that no one writes to
+  // property cache while flushing early. Also property page isn't guaranteed to
+  // exist in flush_early_driver lifetime.
+  flush_early_driver->set_unowned_property_page(page);
+  // Populates all fields which are needed from property_page as property_page
+  // will be set to NULL afterwards.
+  flush_early_driver->flush_early_info();
+  FlushEarlyInfoFinder* finder =
+      flush_early_driver->server_context()->flush_early_info_finder();
+  if (finder != NULL && finder->IsMeaningful()) {
+    finder->UpdateFlushEarlyInfoInDriver(flush_early_driver);
+  }
+
+  // Populating critical images from css in flush early driver.
+  CriticalImagesFinder* critical_images_finder =
+      flush_early_driver->server_context()->critical_images_finder();
+  if (critical_images_finder->IsMeaningful()) {
+    critical_images_finder->UpdateCriticalImagesSetInDriver(flush_early_driver);
+  }
+  flush_early_driver->set_unowned_property_page(NULL);
+}
+
+}  // namespace
 
 class StaticJavascriptManager;
 
@@ -345,11 +378,12 @@ void FlushEarlyFlow::FlushEarly() {
         new_driver->set_response_headers_ptr(base_fetch_->response_headers());
         new_driver->set_request_headers(base_fetch_->request_headers());
         new_driver->set_flushing_early(true);
-        new_driver->set_unowned_property_page(page);
+
         new_driver->SetWriter(base_fetch_);
         new_driver->set_user_agent(driver_->user_agent());
         new_driver->StartParse(url_);
 
+        InitFlushEarlyDriverWithPropertyCacheValues(new_driver, page);
         // Copy over the response headers from flush_early_info.
         GenerateResponseHeaders(flush_early_info);
 
@@ -366,6 +400,22 @@ void FlushEarlyFlow::FlushEarly() {
         new_driver->ParseText(flush_early_info.pre_head());
         new_driver->ParseText("<head>");
         new_driver->ParseText(flush_early_info.resource_html());
+
+        const StringSet* css_critical_images =
+            new_driver->css_critical_images();
+        if (new_driver->options()->
+            flush_more_resources_early_if_time_permits() &&
+            css_critical_images != NULL) {
+          // Critical images inside css.
+          StringSet::iterator it = css_critical_images->begin();
+          for (; it != css_critical_images->end(); ++it) {
+            new_driver->ParseText("<img src='");
+            GoogleString escaped_url;
+            HtmlKeywords::Escape(*it, &escaped_url);
+            new_driver->ParseText(escaped_url);
+            new_driver->ParseText("' />");
+          }
+        }
         driver_->set_flushed_early(true);
         // Keep driver alive till the FlushEarlyFlow is completed.
         num_requests_flushed_early_->IncBy(1);

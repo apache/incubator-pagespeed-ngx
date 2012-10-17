@@ -65,8 +65,9 @@ class CollectFlushEarlyContentFilter : public RewriteFilter {
   void AppendToHtml(StringPiece url, semantic_type::Category category,
                     HtmlElement* element);
   void AppendAttribute(HtmlName::Keyword keyword, HtmlElement* element);
-  // Are we inside a <head> node.
-  bool in_head_;
+
+  // It will be false if there is no resource to flush early.
+  bool found_resource_;
   GoogleString resource_html_;  // The html text containing resource elements.
 
   DISALLOW_COPY_AND_ASSIGN(CollectFlushEarlyContentFilter);

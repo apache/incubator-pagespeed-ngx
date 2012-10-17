@@ -44,11 +44,18 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
       ServerContext::kStatisticsGroup);
     options()->EnableFilter(RewriteOptions::kFlushSubresources);
     options()->set_enable_flush_subresources_experimental(true);
+    options()->set_flush_more_resources_early_if_time_permits(true);
     RewriteTestBase::SetUp();
     rewrite_driver()->set_flushing_early(true);
     rewrite_driver()->SetWriter(&writer_);
     server_context()->set_flush_early_info_finder(
         new MeaningfulFlushEarlyInfoFinder);
+  }
+
+  virtual void Clear() {
+    rewrite_driver()->Clear();
+    rewrite_driver_->flush_early_info()->set_average_fetch_latency_ms(190);
+    output_.clear();
   }
 
   GoogleString output_;
@@ -61,19 +68,31 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
 };
 
 TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
+  Clear();
   GoogleString html_input =
       "<!DOCTYPE html>"
       "<html>"
       "<head>"
-        "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
-        "<script src=\"b.js\"></script>"
-        "<script src=\"http://www.test.com/c.js.pagespeed.jm.0.js\"></script>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\" "
+        "pagespeed_size=\"1000\"/>"
+        "<script src=\"b.js\" pagespeed_size=\"1000\"></script>"
+        "<script src=\"http://www.test.com/c.js.pagespeed.jm.0.js\" "
+        "pagespeed_size=\"1000\"></script>"
         "<link type=\"text/css\" rel=\"stylesheet\" href="
-        "\"d.css.pagespeed.cf.0.css\"/>"
+        "\"d.css.pagespeed.cf.0.css\" pagespeed_size=\"1000\"/>"
+        "<img src=\"http://www.test.com/e.jpg.pagespeed.ce.0.jpg\" "
+        "pagespeed_size=\"1000\"/>"
+        "<img src=\"http://www.test.com/g.jpg.pagespeed.ce.0.jpg\" "
+        "pagespeed_size=\"1000000\"/>"
         "<link rel=\"dns-prefetch\" href=\"//test.com\">"
         "<link rel=\"prefetch\" href=\"//test1.com\">"
       "</head>"
-      "<body></body></html>";
+      "<body>"
+      "<script src=\"d.js.pagespeed.ce.0.js\" "
+      "pagespeed_size=\"1000\"></script>"
+      "<script src=\"e.js.pagespeed.ce.0.js\" "
+      "pagespeed_size=\"100000\"></script>"
+      "</body></html>";
   GoogleString html_output;
 
   // First test with no User-Agent.
@@ -81,7 +100,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   EXPECT_EQ(html_output, output_);
 
   // Set the User-Agent to prefetch_link_rel_subresource.
-  output_.clear();
+  Clear();
   rewrite_driver()->set_user_agent("prefetch_link_rel_subresource");
   html_output =
       "<link rel=\"subresource\" href="
@@ -97,7 +116,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   EXPECT_EQ(html_output, output_);
 
   // Set the User-Agent to prefetch_link_script_tag.
-  output_.clear();
+  Clear();
   rewrite_driver()->set_user_agent("prefetch_link_script_tag");
   html_output =
       "<script type=\"psa_prefetch\" src="
@@ -114,37 +133,46 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   EXPECT_EQ(html_output, output_);
 
   // Set the User-Agent to prefetch_image_tag.
-  output_.clear();
+  Clear();
   rewrite_driver()->set_user_agent("prefetch_image_tag");
   html_output =
       "<script type=\"text/javascript\">(function(){"
       "new Image().src=\"http://www.test.com/c.js.pagespeed.jm.0.js\";"
-      "new Image().src=\"d.css.pagespeed.cf.0.css\";})()"
+      "new Image().src=\"d.css.pagespeed.cf.0.css\";"
+      "new Image().src=\"http://www.test.com/e.jpg.pagespeed.ce.0.jpg\";})()"
       "</script>"
       "<link rel=\"dns-prefetch\" href=\"//test.com\">"
       "<link rel=\"prefetch\" href=\"//test1.com\">"
+      "<script type=\"text/javascript\">"
+      "(function(){new Image().src=\"d.js.pagespeed.ce.0.js\";})()</script>"
       "<script type='text/javascript'>"
       "window.mod_pagespeed_prefetch_start = Number(new Date());"
-      "window.mod_pagespeed_num_resources_prefetched = 2</script>";
+      "window.mod_pagespeed_num_resources_prefetched = 4</script>";
 
   Parse("prefetch_image_tag", html_input);
   EXPECT_EQ(html_output, output_);
 
-  // Enable defer_javasript. We don't flush JS resources now.
-  output_.clear();
+  // Enable defer_javasript. We will flush JS resources only if time permits.
+  Clear();
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
   server_context()->ComputeSignature(options());
 
   html_output =
       "<script type=\"text/javascript\">(function(){"
-      "new Image().src=\"d.css.pagespeed.cf.0.css\";})()"
+      "new Image().src=\"d.css.pagespeed.cf.0.css\";"
+      "new Image().src=\"http://www.test.com/e.jpg.pagespeed.ce.0.jpg\";})()"
       "</script>"
       "<link rel=\"dns-prefetch\" href=\"//test.com\">"
       "<link rel=\"prefetch\" href=\"//test1.com\">"
+      "<script type=\"text/javascript\">"
+      "(function(){"
+      "new Image().src=\"http://www.test.com/c.js.pagespeed.jm.0.js\";"
+      "new Image().src=\"d.js.pagespeed.ce.0.js\";})()"
+      "</script>"
       "<script type='text/javascript'>"
       "window.mod_pagespeed_prefetch_start = Number(new Date());"
-      "window.mod_pagespeed_num_resources_prefetched = 1</script>";
+      "window.mod_pagespeed_num_resources_prefetched = 4</script>";
 
   Parse("defer_javasript", html_input);
   EXPECT_EQ(html_output, output_);

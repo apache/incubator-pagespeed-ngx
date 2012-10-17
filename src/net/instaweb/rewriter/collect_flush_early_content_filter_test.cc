@@ -87,8 +87,11 @@ TEST_F(CollectFlushEarlyContentFilterTest, CollectFlushEarlyContentFilter) {
                "href=\"http://test.com/d.css\"/>"
                "<script type=\"text/javascript\" src=\"http://test.com/b.js\">"
                "</script>"
+               "<body>"
                "<link type=\"text/css\" rel=\"stylesheet\" "
-               "href=\"http://test.com/c.css\"/>",
+               "href=\"http://test.com/c.css\"/>"
+               "<script src=\"http://test.com/c.js\"></script>"
+               "</body>",
                flush_early_info->resource_html());
   EXPECT_STREQ(output_buffer_, html_input);
 }
@@ -107,7 +110,7 @@ TEST_F(CollectFlushEarlyContentFilterTest, WithInlineInportToLinkFilter) {
   Parse("not_flushed_early", html_input);
   FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
   EXPECT_STREQ("<link rel=\"stylesheet\" "
-               "href=\"http://test.com/assets/styles.css\"/>",
+               "href=\"http://test.com/assets/styles.css\"/><body></body>",
                flush_early_info->resource_html());
 }
 
