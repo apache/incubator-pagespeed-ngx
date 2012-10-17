@@ -76,7 +76,7 @@ ProxyFetchFactory::~ProxyFetchFactory() {
             << " outstanding requests.";
 }
 
-void ProxyFetchFactory::StartNewProxyFetch(
+ProxyFetch* ProxyFetchFactory::CreateNewProxyFetch(
     const GoogleString& url_in, AsyncFetch* async_fetch,
     RewriteDriver* driver,
     ProxyFetchPropertyCallbackCollector* property_callback,
@@ -112,7 +112,7 @@ void ProxyFetchFactory::StartNewProxyFetch(
         if (original_content_fetch != NULL) {
           original_content_fetch->Done(false);
         }
-        return;
+        return NULL;
       }
     }
   }
@@ -145,16 +145,28 @@ void ProxyFetchFactory::StartNewProxyFetch(
     // ones so we don't confuse the origin.
     furious::RemoveFuriousCookie(fetch->request_headers());
   }
-  Start(fetch);
-  fetch->StartFetch();
+  RegisterNewFetch(fetch);
+  return fetch;
 }
 
-void ProxyFetchFactory::Start(ProxyFetch* fetch) {
+void ProxyFetchFactory::StartNewProxyFetch(
+    const GoogleString& url_in, AsyncFetch* async_fetch,
+    RewriteDriver* driver,
+    ProxyFetchPropertyCallbackCollector* property_callback,
+    AsyncFetch* original_content_fetch) {
+  ProxyFetch* fetch = CreateNewProxyFetch(
+      url_in, async_fetch, driver, property_callback, original_content_fetch);
+  if (fetch != NULL) {
+    fetch->StartFetch();
+  }
+}
+
+void ProxyFetchFactory::RegisterNewFetch(ProxyFetch* fetch) {
   ScopedMutex lock(outstanding_proxy_fetches_mutex_.get());
   outstanding_proxy_fetches_.insert(fetch);
 }
 
-void ProxyFetchFactory::Finish(ProxyFetch* fetch) {
+void ProxyFetchFactory::RegisterFinishedFetch(ProxyFetch* fetch) {
   ScopedMutex lock(outstanding_proxy_fetches_mutex_.get());
   outstanding_proxy_fetches_.erase(fetch);
 }
@@ -945,7 +957,7 @@ void ProxyFetch::Finish(bool success) {
 
   base_fetch()->Done(success);
   done_called_ = true;
-  factory_->Finish(this);
+  factory_->RegisterFinishedFetch(this);
 
   // In ProxyInterfaceTest.HeadersSetupRace, raise a signal that
   // indicates the test functionality is complete.  In other contexts

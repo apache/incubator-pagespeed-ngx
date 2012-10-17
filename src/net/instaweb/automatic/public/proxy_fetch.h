@@ -59,7 +59,25 @@ class ProxyFetchFactory {
   explicit ProxyFetchFactory(ServerContext* manager);
   ~ProxyFetchFactory();
 
+  // Convenience method that calls CreateNewProxyFetch and then StartFetch() on
+  // the resulting fetch.
   void StartNewProxyFetch(
+      const GoogleString& url,
+      AsyncFetch* async_fetch,
+      RewriteDriver* driver,
+      ProxyFetchPropertyCallbackCollector* property_callback,
+      AsyncFetch* original_content_fetch);
+
+  // Creates a new proxy fetch and passes it to the fetcher to start it.  If the
+  // UrlNamer doesn't authorize this url it calls CleanUp() on the driver,
+  // Detach() on the property callback, Done() on the async_fetch and
+  // original_content_fetch, and returns NULL.
+  //
+  // If you're using a fetcher for the original request content you should use
+  // StartNewProxyFetch() instead. CreateNewProxyFetch is for callers who will
+  // not be calling StartFetch() and instead will call HeadersComplete(),
+  // Write(), Flush(), and Done() as they get data in from another source.
+  ProxyFetch* CreateNewProxyFetch(
       const GoogleString& url,
       AsyncFetch* async_fetch,
       RewriteDriver* driver,
@@ -75,8 +93,8 @@ class ProxyFetchFactory {
   // use only by ProxyFetch.
   //
   // TODO(jmarantz): Enumerate outstanding fetches in server status page.
-  void Start(ProxyFetch* proxy_fetch);
-  void Finish(ProxyFetch* proxy_fetch);
+  void RegisterNewFetch(ProxyFetch* proxy_fetch);
+  void RegisterFinishedFetch(ProxyFetch* proxy_fetch);
 
   ServerContext* manager_;
   Timer* timer_;
