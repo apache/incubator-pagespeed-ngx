@@ -1464,6 +1464,34 @@ TEST_F(CssFilterTest, FlushInEndTag) {
             output_buffer_);
 }
 
+// See: http://www.alistapart.com/articles/alternate/
+//  and http://www.w3.org/TR/html4/present/styles.html#h-14.3.1
+TEST_F(CssFilterTest, AlternateStylesheet) {
+  SetResponseWithDefaultHeaders("foo.css", kContentTypeCss, kInputStyle, 100);
+
+  const char html_format[] = "<link rel='%s' href='%s' title='foo'>";
+  const GoogleString new_url = Encode(kTestDomain, "cf", "0", "foo.css", "css");
+
+  ValidateExpected("preferred_stylesheet",
+                   StringPrintf(html_format, "stylesheet", "foo.css"),
+                   StringPrintf(html_format, "stylesheet", new_url.c_str()));
+
+  ValidateExpected("alternate_stylesheet",
+                   StringPrintf(html_format, "alternate stylesheet", "foo.css"),
+                   StringPrintf(html_format, "alternate stylesheet",
+                                new_url.c_str()));
+
+  ValidateExpected("alternate_stylesheet2",
+                   StringPrintf(html_format, " StyleSheet alterNATE  ",
+                                "foo.css"),
+                   StringPrintf(html_format, " StyleSheet alterNATE  ",
+                                new_url.c_str()));
+
+  ValidateNoChanges("alternate_stylesheet_and_more",
+                    StringPrintf(html_format, "  foo stylesheet alternate bar ",
+                                 "foo.css"));
+}
+
 class CssFilterTestUrlNamer : public CssFilterTest {
  public:
   CssFilterTestUrlNamer() {

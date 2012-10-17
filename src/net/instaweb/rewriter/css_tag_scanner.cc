@@ -43,6 +43,7 @@ CssTagScanner::Transformer::~Transformer() {
 }
 
 const char CssTagScanner::kStylesheet[] = "stylesheet";
+const char CssTagScanner::kAlternate[] = "alternate";
 const char CssTagScanner::kUriValue[] = "url(";
 
 // Finds CSS files and calls another filter.
@@ -373,6 +374,27 @@ bool CssTagScanner::HasImport(const StringPiece& contents,
 
 bool CssTagScanner::HasUrl(const StringPiece& contents) {
   return (contents.find(CssTagScanner::kUriValue) != StringPiece::npos);
+}
+
+bool CssTagScanner::IsStylesheetOrAlternate(
+    const StringPiece& attribute_value) {
+  bool has_stylesheet = false;
+  bool has_alternate = false;
+  bool has_other = false;
+  StringPieceVector values;
+  SplitStringPieceToVector(attribute_value, " ", &values, true);
+  for (int i = 0, n = values.size(); i < n; ++i) {
+    if (StringCaseEqual(values[i], kStylesheet)) {
+      has_stylesheet = true;
+    } else if (StringCaseEqual(values[i], kAlternate)) {
+      has_alternate = true;
+    } else {
+      has_other = true;
+    }
+  }
+
+  // Require "stylesheet", ignore "alternate", disallow all other values.
+  return has_stylesheet && !has_other;
 }
 
 

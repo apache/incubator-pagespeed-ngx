@@ -16,6 +16,7 @@
 
 // Authors: jmarantz@google.com (Joshua Marantz)
 //          jefftk@google.com (Jeff Kaufman)
+
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 
 #include "net/instaweb/util/public/basictypes.h"
@@ -64,8 +65,8 @@ HtmlElement::Attribute* ScanElement(
       *category = semantic_type::kHyperlink;
       HtmlElement::Attribute* rel_attr = element->FindAttribute(HtmlName::kRel);
       if (rel_attr != NULL) {
-        if (StringCaseEqual(rel_attr->DecodedValueOrNull(),
-                            CssTagScanner::kStylesheet)) {
+        if (CssTagScanner::IsStylesheetOrAlternate(
+                rel_attr->DecodedValueOrNull())) {
           *category = semantic_type::kStylesheet;
         } else if (StringCaseEqual(rel_attr->DecodedValueOrNull(),
                                    kIcon) ||

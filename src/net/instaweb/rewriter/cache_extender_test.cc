@@ -640,6 +640,34 @@ TEST_F(CacheExtenderTest, DoNotExtendRewrittenCss) {
           "0", kCssTail, "css").c_str()));
 }
 
+// See: http://www.alistapart.com/articles/alternate/
+//  and http://www.w3.org/TR/html4/present/styles.html#h-14.3.1
+TEST_F(CacheExtenderTest, AlternateStylesheet) {
+  InitTest(kMediumTtlSec);
+
+  const char html_format[] = "<link rel='%s' href='%s' title='foo'>";
+  const GoogleString new_url = Encode(kCssPath, "ce", "0", kCssTail, "css");
+
+  ValidateExpected("preferred_stylesheet",
+                   StringPrintf(html_format, "stylesheet", kCssFile),
+                   StringPrintf(html_format, "stylesheet", new_url.c_str()));
+
+  ValidateExpected("alternate_stylesheet",
+                   StringPrintf(html_format, "alternate stylesheet", kCssFile),
+                   StringPrintf(html_format, "alternate stylesheet",
+                                new_url.c_str()));
+
+  ValidateExpected("alternate_stylesheet2",
+                   StringPrintf(html_format, " StyleSheet alterNATE  ",
+                                kCssFile),
+                   StringPrintf(html_format, " StyleSheet alterNATE  ",
+                                new_url.c_str()));
+
+  ValidateNoChanges("alternate_stylesheet_and_more",
+                    StringPrintf(html_format, "  foo stylesheet alternate bar ",
+                                 "foo.css"));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

@@ -80,8 +80,6 @@ class UrlSegmentEncoder;
 
 namespace {
 
-const char kStylesheet[] = "stylesheet";
-
 // A slot we use when rewriting inline CSS --- there is no place or need
 // to write out an output URL, so it has a no-op Render().
 class InlineCssSlot : public ResourceSlot {
@@ -740,8 +738,8 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
   // Rewrite an external style.
   } else if (element->keyword() == HtmlName::kLink &&
              driver_->IsRewritable(element)) {
-    StringPiece relation(element->AttributeValue(HtmlName::kRel));
-    if (StringCaseEqual(relation, kStylesheet)) {
+    if (CssTagScanner::IsStylesheetOrAlternate(
+            element->AttributeValue(HtmlName::kRel))) {
       HtmlElement::Attribute* element_href = element->FindAttribute(
           HtmlName::kHref);
       if (element_href != NULL) {

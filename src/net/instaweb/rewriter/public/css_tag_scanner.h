@@ -48,6 +48,7 @@ class CssTagScanner {
   };
 
   static const char kStylesheet[];
+  static const char kAlternate[];
   static const char kUriValue[];
 
   explicit CssTagScanner(HtmlParse* html_parse);
@@ -71,6 +72,10 @@ class CssTagScanner {
 
   // Detemines whether this CSS contains a URI value (aka URL).
   static bool HasUrl(const StringPiece& contents);
+
+  // Does this attribute value represent a stylesheet or alternate stylesheet?
+  // Should be called with element->AttributeValue(HtmlName::kRel) as the arg.
+  static bool IsStylesheetOrAlternate(const StringPiece& attribute_value);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CssTagScanner);
