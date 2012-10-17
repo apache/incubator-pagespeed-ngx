@@ -31,8 +31,11 @@ nginx does not support dynamic loading of modules. You need to add ngx_pagespeed
 as a build time dependency, and to do that you have to first build the pagespeed
 optimization library.
 
-First build mod_pagespeed, following these instructions:
+First build mod_pagespeed against trunk, following these instructions:
 https://developers.google.com/speed/docs/mod_pagespeed/build_from_source
+
+When you run `gclient sync`, be sure to run it against
+http://modpagespeed.googlecode.com/svn/trunk/src
 
 Then build the pagespeed optimization library:
 
