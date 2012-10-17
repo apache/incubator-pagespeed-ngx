@@ -91,8 +91,24 @@ CssInlineFilter::~CssInlineFilter() {}
 void CssInlineFilter::EndElementImpl(HtmlElement* element) {
   if ((element->keyword() == HtmlName::kLink) &&
       !driver_->HasChildrenInFlushWindow(element)) {
-    const char* rel = element->AttributeValue(HtmlName::kRel);
-    if (rel == NULL || strcmp(rel, "stylesheet") != 0) {
+    StringPiece rel(element->AttributeValue(HtmlName::kRel));
+    TrimWhitespace(&rel);
+    // Note: We intentionally do not inline rel="alternate stylesheet".
+    if (!StringCaseEqual(rel, "stylesheet")) {
+      return;
+    }
+    const char* type = element->AttributeValue(HtmlName::kType);
+    if (type != NULL) {
+      StringPiece type_trimmed(type);
+      TrimWhitespace(&type_trimmed);
+      if (!StringCaseEqual(type_trimmed, "text/css")) {
+        // Do not inline any <link> which has a non-CSS type= explicitly set.
+        return;
+      }
+    }
+
+    // Only inline <link> elements that do not contain unexpected attributes.
+    if (ContainsNonStandardAttributes(element)) {
       return;
     }
 
@@ -149,6 +165,28 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
       }
     }
   }
+}
+
+bool CssInlineFilter::ContainsNonStandardAttributes(
+    const HtmlElement* element) {
+  // We allow rel, href, media and type.
+  for (HtmlElement::AttributeList::const_iterator iter =
+           element->attributes().begin();
+       iter != element->attributes().end(); ++iter) {
+    const HtmlElement::Attribute& attr = *iter;
+    switch (attr.keyword()) {
+      case HtmlName::kRel:
+      case HtmlName::kHref:
+      case HtmlName::kMedia:
+      case HtmlName::kType:
+        // These attribute names are allowed.
+        break;
+      default:
+        // Any others are non-standard.
+        return true;
+    }
+  }
+  return false;
 }
 
 bool CssInlineFilter::ShouldInline(const ResourcePtr& resource,

@@ -1198,6 +1198,8 @@ TEST_F(CssCombineFilterTest, InvalidFetchCache) {
 }
 
 TEST_F(CssCombineFilterTest, NoCombineParseErrors) {
+  // Notice: This CSS file does not close its { and thus will break the
+  // next stylesheet if they are combined, changing the page.
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
                                 "h1 { color: red", 100);
   SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
@@ -1205,6 +1207,58 @@ TEST_F(CssCombineFilterTest, NoCombineParseErrors) {
 
   ValidateNoChanges("bad_parse", StrCat(CssLinkHref("a.css"),
                                         CssLinkHref("b.css")));
+}
+
+// See: http://www.alistapart.com/articles/alternate/
+//  and http://www.w3.org/TR/html4/present/styles.html#h-14.3.1
+TEST_F(CssCombineFilterTest, AlternateStylesheets) {
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
+                                "h1 { color: red; }", 100);
+  SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
+                                "h2 { color: blue; }", 100);
+
+  // Normal (persistent) CSS links are combined.
+  ValidateExpected(
+      "persistent",
+      "<link rel='stylesheet' href='a.css'>"
+      "<link rel='stylesheet' href='b.css'>",
+      StringPrintf("<link rel='stylesheet' href='%s'/>", Encode(
+          kTestDomain, "cc", "0", MultiUrl("a.css", "b.css"), "css").c_str()
+                   ).c_str());
+
+  // Make sure we accept mixed case for the keyword.
+  ValidateExpected(
+      "mixed_case",
+      "<link rel=' StyleSheet' href='a.css'>"
+      "<link rel='styleSHEET  ' href='b.css'>",
+      StringPrintf("<link rel=' StyleSheet' href='%s'/>", Encode(
+          kTestDomain, "cc", "0", MultiUrl("a.css", "b.css"), "css").c_str()
+                   ).c_str());
+
+  // Preferred CSS links are not because we don't want to combine styles with
+  // different titles.
+  ValidateNoChanges(
+      "preferred_different",
+      "<link rel='stylesheet' href='a.css' title='foo'>"
+      "<link rel='stylesheet' href='b.css' title='bar'>");
+
+  // TODO(sligocki): Should we combine ones with the same title?
+  ValidateNoChanges(
+      "preferred_same",
+      "<link rel='stylesheet' href='a.css' title='foo'>"
+      "<link rel='stylesheet' href='b.css' title='foo'>");
+
+  // Alternate CSS links, likewise.
+  ValidateNoChanges(
+      "alternate_different",
+      "<link rel='alternate stylesheet' href='a.css' title='foo'>"
+      "<link rel='alternate stylesheet' href='b.css' title='bar'>");
+
+  // TODO(sligocki): Should we combine ones with the same title?
+  ValidateNoChanges(
+      "alternate_same",
+      "<link rel='alternate stylesheet' href='a.css' title='foo'>"
+      "<link rel='alternate stylesheet' href='b.css' title='foo'>");
 }
 
 class CssFilterWithCombineTest : public CssCombineFilterTest {

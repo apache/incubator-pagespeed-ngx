@@ -70,7 +70,9 @@ bool CssTagScanner::ParseCssElement(
         *href = &attr;
         ++num_required_attributes_found;
       } else if (attr.keyword() == HtmlName::kRel) {
-        if (StringCaseEqual(attr.DecodedValueOrNull(), kStylesheet)) {
+        StringPiece rel(attr.DecodedValueOrNull());
+        TrimWhitespace(&rel);
+        if (StringCaseEqual(rel, kStylesheet)) {
           ++num_required_attributes_found;
         } else {
           // rel=something_else.  abort.

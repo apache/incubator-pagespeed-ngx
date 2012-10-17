@@ -28,6 +28,7 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
 class CachedResult;
 class GoogleUrl;
 class HtmlElement;
@@ -48,6 +49,7 @@ class CssInlineFilter : public CommonFilter {
   class Context;
   friend class Context;
 
+  bool ContainsNonStandardAttributes(const HtmlElement* element);
   bool ShouldInline(const ResourcePtr& resource,
                     const StringPiece& attrs_attribute) const;
   void RenderInline(const ResourcePtr& resource, const CachedResult& cached,

@@ -399,6 +399,53 @@ TEST_F(CssInlineFilterTest, DoNotInlineWithIncompatibleBom) {
                              "", css_with_bom, false, "");
 }
 
+// See: http://www.alistapart.com/articles/alternate/
+//  and http://www.w3.org/TR/html4/present/styles.html#h-14.3.1
+TEST_F(CssInlineFilterTest, AlternateStylesheet) {
+  AddFilter(RewriteOptions::kInlineCss);
+  SetResponseWithDefaultHeaders("foo.css", kContentTypeCss, "a{margin:0}", 100);
+
+  // Normal (persistent) CSS links are inlined.
+  ValidateExpected(
+      "persistent",
+      "<link rel='stylesheet' href='foo.css'>",
+      "<style>a{margin:0}</style>");
+
+  // Make sure we accept mixed case for the keyword.
+  ValidateExpected(
+      "mixed_case",
+      "<link rel=' StyleSheet ' href='foo.css'>",
+      "<style>a{margin:0}</style>");
+
+  // Preferred CSS links are not because inline styles cannot be given
+  // a title (AFAICT).
+  ValidateNoChanges(
+      "preferred",
+      "<link rel='stylesheet' href='foo.css' title='foo'>");
+
+  // Alternate CSS links, likewise.
+  ValidateNoChanges(
+      "alternate",
+      "<link rel='alternate stylesheet' href='foo.css' title='foo'>");
+}
+
+TEST_F(CssInlineFilterTest, NoRel) {
+  AddFilter(RewriteOptions::kInlineCss);
+  SetResponseWithDefaultHeaders("foo.css", kContentTypeCss, "a{margin:0}", 100);
+
+  // We don't mess with links that lack rel attributes.
+  ValidateNoChanges("no_rel", "<link href='foo.css'>");
+}
+
+TEST_F(CssInlineFilterTest, NonCss) {
+  AddFilter(RewriteOptions::kInlineCss);
+  SetResponseWithDefaultHeaders("foo.xsl", kContentTypeXml,
+                                "<xsl:variable name='foo' select='bar'>", 100);
+
+  ValidateNoChanges("non_css",
+                    "<link rel='stylesheet' href='foo.xsl' type='text/xsl'/>");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb
