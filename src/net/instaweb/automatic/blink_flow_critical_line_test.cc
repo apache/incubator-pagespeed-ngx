@@ -243,7 +243,7 @@ const char kHtmlInputForNoBlink[] =
 const char kBlinkOutputCommon[] =
     "<html><body>"
     "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
-    "url='http://test.com/%s?ModPagespeed=noscript'\">"
+    "url='http://test.com/%s?ModPagespeed=noscript'\" />"
     "<style><!--table,div,span,font,p{display:none} --></style>"
     "<div style=\"display:block\">Please click "
     "<a href=\"http://test.com/%s?ModPagespeed=noscript\">here</a> "

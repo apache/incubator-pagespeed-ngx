@@ -47,8 +47,8 @@ TEST_F(SupportNoscriptFilterTest, TestNoscript) {
   GoogleString output_html =
       "<head></head><body>"
       "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;url="
-      "'http://test.com/support_noscript&#39;%22.html?ModPagespeed=noscript'\">"
-      "<style><!--table,div,span,font,p{display:none} --></style>"
+      "'http://test.com/support_noscript&#39;%22.html?ModPagespeed=noscript'\" "
+      "/><style><!--table,div,span,font,p{display:none} --></style>"
       "<div style=\"display:block\">Please click <a href="
       "\"http://test.com/support_noscript&#39;%22.html?ModPagespeed=noscript\">"
       "here</a> if you are not redirected within a few seconds.</div>"
@@ -65,7 +65,7 @@ TEST_F(SupportNoscriptFilterTest, TestNoscriptMultipleBodies) {
   GoogleString output_html =
       "<head></head><body>"
       "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
-      "url='http://test.com/support_noscript.html?ModPagespeed=noscript'\">"
+      "url='http://test.com/support_noscript.html?ModPagespeed=noscript'\" />"
       "<style><!--table,div,span,font,p{display:none} --></style>"
       "<div style=\"display:block\">Please click "
       "<a href=\"http://test.com/support_noscript.html?ModPagespeed=noscript\">"
