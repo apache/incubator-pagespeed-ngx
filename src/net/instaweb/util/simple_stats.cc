@@ -46,12 +46,12 @@ SimpleStatsVariable::SimpleStatsVariable(AbstractMutex* mutex)
       mutex_(mutex) {
 }
 
-int64 SimpleStatsVariable::Get64() const {
+int64 SimpleStatsVariable::Get() const {
   ScopedMutex lock(mutex_.get());
   return value_;
 }
 
-void SimpleStatsVariable::Set64(int64 value) {
+void SimpleStatsVariable::Set(int64 value) {
   ScopedMutex lock(mutex_.get());
   value_ = value;
 }

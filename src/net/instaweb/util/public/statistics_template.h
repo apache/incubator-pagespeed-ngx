@@ -134,7 +134,7 @@ template<class Var, class Hist, class TimedVar> class StatisticsTemplate
     int longest_string = 0;
     for (int i = 0, n = variables_.size(); i < n; ++i) {
       const GoogleString& var_name = variable_names_[i];
-      int length_number = Integer64ToString(variables_[i]->Get64()).size();
+      int length_number = Integer64ToString(variables_[i]->Get()).size();
       int length_name = var_name.size();
       longest_string = std::max(longest_string, length_name + length_number);
     }
@@ -143,7 +143,7 @@ template<class Var, class Hist, class TimedVar> class StatisticsTemplate
     StringPiece spaces(spaces_buffer);
     for (int i = 0, n = variables_.size(); i < n; ++i) {
       const GoogleString& var_name = variable_names_[i];
-      GoogleString var_as_str = Integer64ToString(variables_[i]->Get64());
+      GoogleString var_as_str = Integer64ToString(variables_[i]->Get());
       writer->Write(var_name, message_handler);
       writer->Write(": ", message_handler);
       int num_spaces = longest_string - var_name.size() - var_as_str.size();

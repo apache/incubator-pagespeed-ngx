@@ -35,8 +35,8 @@ class SimpleStatsVariable : public Variable {
  public:
   explicit SimpleStatsVariable(AbstractMutex* mutex);
   virtual ~SimpleStatsVariable();
-  virtual int64 Get64() const;
-  virtual void Set64(int64 value);
+  virtual int64 Get() const;
+  virtual void Set(int64 value);
   virtual int64 Add(int delta);
   virtual StringPiece GetName() const { return StringPiece(NULL); }
 

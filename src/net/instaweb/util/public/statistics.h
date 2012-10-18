@@ -37,11 +37,8 @@ class Writer;
 class Variable {
  public:
   virtual ~Variable();
-  // TODO(sligocki): int -> int64
-  int Get() const { return Get64(); }  // Deprecated: use Get64.
-  virtual void Set64(int64 value) = 0;
-  void Set(int value) { Set64(value); }  // Deprecated: use Set64.
-  virtual int64 Get64() const = 0;
+  virtual void Set(int64 value) = 0;
+  virtual int64 Get() const = 0;
   // Return some name representing the variable, provided that the specific
   // implementation has some sensible way of doing so.
   virtual StringPiece GetName() const = 0;
@@ -49,12 +46,12 @@ class Variable {
   // Adds 'delta' to the variable's value, returning the result.  This
   // is virtual so that subclasses can add platform-specific atomicity.
   virtual int64 Add(int delta) {
-    int64 value = Get64() + delta;
-    Set64(value);
+    int64 value = Get() + delta;
+    Set(value);
     return value;
   }
 
-  void Clear() { Set64(0); }
+  void Clear() { Set(0); }
 };
 
 // Class that manages dumping statistics periodically to a file.
@@ -254,7 +251,7 @@ class FakeTimedVariable : public TimedVariable {
     // total value. This should be override in subclass if we want the
     // values for different levels.
     if (level == START) {
-      return var_->Get64();
+      return var_->Get();
     }
     return 0;
   }

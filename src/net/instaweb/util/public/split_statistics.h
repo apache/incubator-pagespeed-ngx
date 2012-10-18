@@ -47,8 +47,8 @@ class SplitVariable : public Variable {
   // 'rw' or 'w'. 'rw' and 'w' must be non-NULL.
   SplitVariable(Variable* rw, Variable* w);
   virtual ~SplitVariable();
-  virtual void Set64(int64 delta);
-  virtual int64 Get64() const;
+  virtual void Set(int64 delta);
+  virtual int64 Get() const;
   virtual StringPiece GetName() const;
   virtual int64 Add(int delta);
 

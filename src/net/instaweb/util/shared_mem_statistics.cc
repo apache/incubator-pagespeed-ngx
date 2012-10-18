@@ -84,7 +84,7 @@ SharedMemVariable::SharedMemVariable(const StringPiece& name)
       logger_(NULL) {
 }
 
-int64 SharedMemVariable::Get64() const {
+int64 SharedMemVariable::Get() const {
   if (mutex_.get() != NULL) {
     ScopedMutex hold_lock(mutex_.get());
     return *value_ptr_;
@@ -93,11 +93,11 @@ int64 SharedMemVariable::Get64() const {
   }
 }
 
-int64 SharedMemVariable::Get64LockHeld() const {
+int64 SharedMemVariable::GetLockHeld() const {
   return *value_ptr_;
 }
 
-void SharedMemVariable::Set64(int64 new_value) {
+void SharedMemVariable::Set(int64 new_value) {
   if (mutex_.get() != NULL) {
     {
       ScopedMutex hold_lock(mutex_.get());
@@ -182,7 +182,7 @@ void SharedMemConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
   // Avoid blocking if the dump is already happening in another thread/process.
   if (mutex->TryLock()) {
     if (current_time_ms >=
-        (last_dump_timestamp_->Get64LockHeld() + update_interval_ms_)) {
+        (last_dump_timestamp_->GetLockHeld() + update_interval_ms_)) {
       // It's possible we'll need to do some of the following here for
       // cross-process consistency:
       // - flush the logfile before unlock to force out buffered data
@@ -990,7 +990,7 @@ void SharedMemStatistics::DumpConsoleVarsToWriter(
     if (IsIgnoredVariable(var_name)) {
       continue;
     }
-    GoogleString var_as_str = Integer64ToString(var->Get64());
+    GoogleString var_as_str = Integer64ToString(var->Get());
     writer->Write(StringPrintf("%s: %s\n", var_name.c_str(),
         var_as_str.c_str()), message_handler);
   }

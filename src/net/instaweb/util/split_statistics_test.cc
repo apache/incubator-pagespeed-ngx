@@ -135,19 +135,15 @@ TEST_F(SplitStatisticsTest, BasicOperation) {
   // Locals, as well as splits themselves get just what was done to them.
   EXPECT_EQ(1, local_a_->GetVariable(kVarA)->Get());
   EXPECT_EQ(1, split_a_->GetVariable(kVarA)->Get());
-  EXPECT_EQ(1, split_a_->GetVariable(kVarA)->Get64());
 
   EXPECT_EQ(2, local_a_->GetVariable(kVarB)->Get());
   EXPECT_EQ(2, split_a_->GetVariable(kVarB)->Get());
-  EXPECT_EQ(2, split_a_->GetVariable(kVarB)->Get64());
 
   EXPECT_EQ(10, local_b_->GetVariable(kVarA)->Get());
   EXPECT_EQ(10, split_b_->GetVariable(kVarA)->Get());
-  EXPECT_EQ(10, split_b_->GetVariable(kVarA)->Get64());
 
   EXPECT_EQ(15, local_b_->GetVariable(kVarB)->Get());
   EXPECT_EQ(15, split_b_->GetVariable(kVarB)->Get());
-  EXPECT_EQ(15, split_b_->GetVariable(kVarB)->Get64());
 
   // Global has aggregates
   EXPECT_EQ(11, global_->GetVariable(kVarA)->Get());

@@ -33,13 +33,13 @@ SplitVariable::SplitVariable(Variable* rw, Variable* w)
 SplitVariable::~SplitVariable() {
 }
 
-void SplitVariable::Set64(int64 value) {
-  w_->Set64(value);
-  rw_->Set64(value);
+void SplitVariable::Set(int64 value) {
+  w_->Set(value);
+  rw_->Set(value);
 }
 
-int64 SplitVariable::Get64() const {
-  return rw_->Get64();
+int64 SplitVariable::Get() const {
+  return rw_->Get();
 }
 
 StringPiece SplitVariable::GetName() const {

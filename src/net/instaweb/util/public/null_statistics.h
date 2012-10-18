@@ -31,8 +31,8 @@ class NullStatisticsVariable : public Variable {
  public:
   NullStatisticsVariable() {}
   virtual ~NullStatisticsVariable();
-  virtual void Set64(int64 value) { }
-  virtual int64 Get64() const { return 0; }
+  virtual void Set(int64 value) { }
+  virtual int64 Get() const { return 0; }
   virtual StringPiece GetName() const { return StringPiece(NULL); }
 
  private:

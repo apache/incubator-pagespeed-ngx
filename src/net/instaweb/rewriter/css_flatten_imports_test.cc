@@ -336,8 +336,10 @@ TEST_F(CssFlattenImportsTest, FlattenInlineCss) {
   // misleading because originally, the user would have loaded both files
   // and now they will only load one. So total bytes are less.
   // I think this should be listing bytes saved as STATIC_STRLEN(css_in).
-  EXPECT_EQ(STATIC_STRLEN(css_in) - STATIC_STRLEN(kSimpleCss),
-            total_bytes_saved_->Get());
+  int64 expected_savings =
+      static_cast<int64>(STATIC_STRLEN(css_in)) -
+      static_cast<int64>(STATIC_STRLEN(kSimpleCss));
+  EXPECT_EQ(expected_savings, total_bytes_saved_->Get());
 }
 
 TEST_F(CssFlattenImportsTest, DontFlattenAttributeCss) {

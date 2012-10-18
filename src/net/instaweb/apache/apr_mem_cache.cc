@@ -395,10 +395,10 @@ bool AprMemCache::ShouldLogAprError() {
   // and we use Statistics Variables to determine our current squelch
   // state.  In Apache those are implemented via shared memory.
   int64 time_ms = timer_->NowMs();
-  int64 last_unsquelch_time_ms = last_unsquelch_time_ms_->Get64();  // strobe
+  int64 last_unsquelch_time_ms = last_unsquelch_time_ms_->Get();  // strobe
   int64 delta_ms = time_ms - last_unsquelch_time_ms;
   if (delta_ms > kWaitingPeriodMs) {
-    last_unsquelch_time_ms_->Set64(time_ms);
+    last_unsquelch_time_ms_->Set(time_ms);
     message_burst_size_->Set(1);
     ret = true;
   } else {

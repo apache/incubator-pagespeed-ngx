@@ -94,7 +94,7 @@ class AprMemCache : public CacheInterface {
   // messages within 30 minutes. For the 5th one, it will instead display
   // the status for each server, based on the assumption that one or
   // more of the shards is down.  All subsequent messages will be
-  // suppressed the 30 minutes have elapsed.
+  // suppressed until the 30 minutes have elapsed.
   //
   // This method helps implement that policy, and is made public for
   // testing.

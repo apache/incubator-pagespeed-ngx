@@ -59,8 +59,8 @@ class Writer;
 class SharedMemVariable : public Variable {
  public:
   virtual ~SharedMemVariable() {}
-  int64 Get64() const;
-  virtual void Set64(int64 newValue);
+  int64 Get() const;
+  virtual void Set(int64 newValue);
   virtual int64 Add(int delta);
   virtual StringPiece GetName() const { return name_; }
   AbstractMutex* mutex();
@@ -88,7 +88,7 @@ class SharedMemVariable : public Variable {
   void SetLockHeldNoUpdate(int64 newValue);
 
   // Get the variable's value assuming that the lock is already held.
-  int64 Get64LockHeld() const;
+  int64 GetLockHeld() const;
 
   // The name of this variable.
   const GoogleString name_;
