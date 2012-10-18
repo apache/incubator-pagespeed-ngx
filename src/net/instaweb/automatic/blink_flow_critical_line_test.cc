@@ -855,14 +855,11 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     timing_info.set_request_start_ms(server_context()->timer()->NowMs());
     callback.set_response_headers(headers_out);
     callback.request_headers()->CopyFrom(request_headers);
-    bool already_done = proxy_interface_->Fetch(AbsolutifyUrl(url),
-                                                message_handler(), &callback);
+    proxy_interface_->Fetch(AbsolutifyUrl(url), message_handler(), &callback);
     CHECK(server_context()->thread_synchronizer() != NULL);
-    if (already_done) {
-      EXPECT_TRUE(callback.done());
-    } else {
-      sync.Wait();
-    }
+    sync.Wait();
+    EXPECT_TRUE(callback.done());
+
     *string_out = callback.buffer();
     if (user_agent_out != NULL &&
         callback.request_headers()->Lookup1(HttpAttributes::kUserAgent)
@@ -885,15 +882,11 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     AsyncExpectStringAsyncFetch callback(expect_success, &sync);
     callback.set_response_headers(headers_out);
     callback.request_headers()->CopyFrom(request_headers);
-    bool already_done = proxy_interface->Fetch(AbsolutifyUrl(url),
-                                               message_handler(), &callback);
+    proxy_interface->Fetch(AbsolutifyUrl(url), message_handler(), &callback);
     CHECK(server_context()->thread_synchronizer() != NULL);
     delay_cache()->ReleaseKey(proxy_interface->key());
-    if (already_done) {
-      EXPECT_TRUE(callback.done());
-    } else {
-      sync.Wait();
-    }
+    sync.Wait();
+    EXPECT_TRUE(callback.done());
     *string_out = callback.buffer();
     ThreadSynchronizer* ts = server_context()->thread_synchronizer();
     ts->Wait(BlinkFlowCriticalLine::kBackgroundComputationDone);

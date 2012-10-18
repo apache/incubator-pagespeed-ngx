@@ -44,7 +44,7 @@ LoopbackRouteFetcher::LoopbackRouteFetcher(
 LoopbackRouteFetcher::~LoopbackRouteFetcher() {
 }
 
-bool LoopbackRouteFetcher::Fetch(const GoogleString& original_url,
+void LoopbackRouteFetcher::Fetch(const GoogleString& original_url,
                                  MessageHandler* message_handler,
                                  AsyncFetch* fetch) {
   GoogleString url = original_url;
@@ -56,7 +56,7 @@ bool LoopbackRouteFetcher::Fetch(const GoogleString& original_url,
     // and backend_fetcher_.
     LOG(WARNING) << "Can't parse URL:" << original_url;
     fetch->Done(false);
-    return true;
+    return;
   }
 
   RequestHeaders* request_headers = fetch->request_headers();
@@ -93,7 +93,7 @@ bool LoopbackRouteFetcher::Fetch(const GoogleString& original_url,
     // keep the host: header matching what's in the request_headers.
   }
 
-  return backend_fetcher_->Fetch(url, message_handler, fetch);
+  backend_fetcher_->Fetch(url, message_handler, fetch);
 }
 
 bool LoopbackRouteFetcher::IsLoopbackAddr(const apr_sockaddr_t* addr) {

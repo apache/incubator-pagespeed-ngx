@@ -121,12 +121,11 @@ bool UrlAsyncFetcherStats::SupportsHttps() const {
 }
 
 
-bool UrlAsyncFetcherStats::Fetch(const GoogleString& url,
+void UrlAsyncFetcherStats::Fetch(const GoogleString& url,
                                  MessageHandler* message_handler,
                                  AsyncFetch* fetch) {
   fetch = EnableInflation(fetch);
-  return base_fetcher_->Fetch(url, message_handler,
-                              new StatsAsyncFetch(this, fetch));
+  base_fetcher_->Fetch(url, message_handler, new StatsAsyncFetch(this, fetch));
 }
 
 int64 UrlAsyncFetcherStats::timeout_ms() {

@@ -42,7 +42,7 @@ class CountingUrlAsyncFetcher : public UrlAsyncFetcher {
 
   virtual bool SupportsHttps() const { return fetcher_->SupportsHttps(); }
 
-  virtual bool Fetch(const GoogleString& url,
+  virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
                      AsyncFetch* fetch);
 

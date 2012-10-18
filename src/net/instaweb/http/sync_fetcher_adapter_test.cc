@@ -78,7 +78,7 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
     CleanFetchSettings();
   }
 
-  virtual bool Fetch(const GoogleString& url, MessageHandler* handler,
+  virtual void Fetch(const GoogleString& url, MessageHandler* handler,
                      AsyncFetch* fetch) {
     CHECK(!fetch_pending_);
     fetch_ = fetch;
@@ -87,9 +87,6 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
 
     if (remaining_ms_ <= 0) {
       ReportResult();
-      return true;
-    } else {
-      return false;
     }
   }
 

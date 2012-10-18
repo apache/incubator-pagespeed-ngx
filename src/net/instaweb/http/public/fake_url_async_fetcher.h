@@ -48,14 +48,13 @@ class FakeUrlAsyncFetcher : public UrlPollableAsyncFetcher {
 
   virtual bool SupportsHttps() const { return fetcher_supports_https_; }
 
-  virtual bool Fetch(const GoogleString& url,
+  virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
                      AsyncFetch* fetch) {
     bool ret = url_fetcher_->StreamingFetchUrl(
         url, *fetch->request_headers(), fetch->response_headers(), fetch,
         message_handler);
     fetch->Done(ret);
-    return true;
   }
 
   // Since the underlying fetcher is blocking, there can never be

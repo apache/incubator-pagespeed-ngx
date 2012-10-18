@@ -59,7 +59,7 @@ class UrlAsyncFetcherStats : public UrlAsyncFetcher {
   // Reimplementation of UrlAsyncFetcher methods. See base class
   // for API specifications.
   virtual bool SupportsHttps() const;
-  virtual bool Fetch(const GoogleString& url,
+  virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
                      AsyncFetch* fetch);
   virtual int64 timeout_ms();

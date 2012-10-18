@@ -66,7 +66,7 @@ class RateControllingUrlAsyncFetcher : public UrlAsyncFetcher {
     return base_fetcher_->SupportsHttps();
   }
 
-  virtual bool Fetch(const GoogleString& url,
+  virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
                      AsyncFetch* fetch);
 

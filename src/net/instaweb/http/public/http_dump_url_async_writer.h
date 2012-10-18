@@ -53,7 +53,7 @@ class HttpDumpUrlAsyncWriter : public UrlAsyncFetcher {
   virtual bool SupportsHttps() const { return base_fetcher_->SupportsHttps(); }
 
   // This is a synchronous/blocking implementation.
-  virtual bool Fetch(const GoogleString& url,
+  virtual void Fetch(const GoogleString& url,
                      MessageHandler* handler,
                      AsyncFetch* base_fetch);
 

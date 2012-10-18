@@ -92,7 +92,7 @@ class FetcherTest : public testing::Test {
     explicit MockAsyncFetcher(UrlFetcher* url_fetcher)
         : url_fetcher_(url_fetcher) {}
 
-    virtual bool Fetch(const GoogleString& url,
+    virtual void Fetch(const GoogleString& url,
                        MessageHandler* handler,
                        AsyncFetch* fetch);
 

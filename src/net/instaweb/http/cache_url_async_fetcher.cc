@@ -341,7 +341,7 @@ class CacheFindCallback : public HTTPCache::Callback {
 CacheUrlAsyncFetcher::~CacheUrlAsyncFetcher() {
 }
 
-bool CacheUrlAsyncFetcher::Fetch(
+void CacheUrlAsyncFetcher::Fetch(
     const GoogleString& url, MessageHandler* handler, AsyncFetch* base_fetch) {
 
   // TODO(mmohabey): If the url is in cache, then use it for serving the head
@@ -353,7 +353,7 @@ bool CacheUrlAsyncFetcher::Fetch(
     // in cache, but not use the value in cache. For now just bypassing
     // cache for non GET requests.
     fetcher_->Fetch(url, handler, base_fetch);
-    return false;
+    return;
   }
 
   CacheFindCallback* find_callback =
@@ -362,7 +362,7 @@ bool CacheUrlAsyncFetcher::Fetch(
   http_cache_->Find(url, handler, find_callback);
   // Cache interface does not tell us if the request was immediately resolved,
   // so we must say that it wasn't.
-  return false;
+  return;
 }
 
 }  // namespace net_instaweb

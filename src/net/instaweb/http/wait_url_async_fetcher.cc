@@ -57,7 +57,7 @@ class WaitUrlAsyncFetcher::DelayedFetch {
 
 WaitUrlAsyncFetcher::~WaitUrlAsyncFetcher() {}
 
-bool WaitUrlAsyncFetcher::Fetch(const GoogleString& url,
+void WaitUrlAsyncFetcher::Fetch(const GoogleString& url,
                                 MessageHandler* handler,
                                 AsyncFetch* base_fetch) {
   DelayedFetch* delayed_fetch =
@@ -67,13 +67,12 @@ bool WaitUrlAsyncFetcher::Fetch(const GoogleString& url,
     if (!pass_through_mode_) {
       // Don't call the blocking fetcher until CallCallbacks.
       delayed_fetches_.push_back(delayed_fetch);
-      return false;
+      return;
     }
   }
   // pass_through_mode_ == true
   delayed_fetch->FetchNow();
   delete delayed_fetch;
-  return true;
 }
 
 bool WaitUrlAsyncFetcher::CallCallbacksAndSwitchModesHelper(bool new_mode) {

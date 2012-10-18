@@ -42,7 +42,7 @@ class AddHeadersFetcher : public UrlAsyncFetcher {
     return backend_fetcher_->SupportsHttps();
   }
 
-  virtual bool Fetch(const GoogleString& url,
+  virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
                      AsyncFetch* callback);
 

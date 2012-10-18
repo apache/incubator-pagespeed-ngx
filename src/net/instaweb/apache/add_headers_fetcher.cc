@@ -29,7 +29,7 @@ AddHeadersFetcher::AddHeadersFetcher(const RewriteOptions* options,
 
 AddHeadersFetcher::~AddHeadersFetcher() {}
 
-bool AddHeadersFetcher::Fetch(const GoogleString& original_url,
+void AddHeadersFetcher::Fetch(const GoogleString& original_url,
                               MessageHandler* message_handler,
                               AsyncFetch* fetch) {
   RequestHeaders* request_headers = fetch->request_headers();
@@ -37,7 +37,7 @@ bool AddHeadersFetcher::Fetch(const GoogleString& original_url,
     const RewriteOptions::NameValue* nv = options_->custom_fetch_header(i);
     request_headers->Replace(nv->name, nv->value);
   }
-  return backend_fetcher_->Fetch(original_url, message_handler, fetch);
+  backend_fetcher_->Fetch(original_url, message_handler, fetch);
 }
 
 }  // namespace net_instaweb

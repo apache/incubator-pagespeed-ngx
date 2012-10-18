@@ -234,7 +234,7 @@ bool ProxyInterface::UrlAndPortMatchThisServer(const GoogleUrl& url) {
   return ret;
 }
 
-bool ProxyInterface::Fetch(const GoogleString& requested_url_string,
+void ProxyInterface::Fetch(const GoogleString& requested_url_string,
                            MessageHandler* handler,
                            AsyncFetch* async_fetch) {
   const GoogleUrl requested_url(requested_url_string);
@@ -242,14 +242,11 @@ bool ProxyInterface::Fetch(const GoogleString& requested_url_string,
       (async_fetch->request_headers()->method() == RequestHeaders::kGet) ||
       (async_fetch->request_headers()->method() == RequestHeaders::kHead);
 
-  bool done = false;
-
   all_requests_->IncBy(1);
   if (!(requested_url.is_valid() && IsWellFormedUrl(requested_url))) {
     LOG(ERROR) << "Bad URL, failing request: " << requested_url_string;
     async_fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
     async_fetch->Done(false);
-    done = true;
   } else {
     // Try to handle this as a .pagespeed. resource.
     if (server_context_->IsPagespeedResource(requested_url) &&
@@ -264,15 +261,12 @@ bool ProxyInterface::Fetch(const GoogleString& requested_url_string,
           HttpStatus::kNotFound);
       LOG(INFO) << "Returning 404 for URL: " << requested_url.Spec();
       async_fetch->Done(false);
-      done = true;
     } else {
       // Otherwise we proxy it (rewriting if it is HTML).
       LOG(INFO) << "Proxying URL normally: " << requested_url.Spec();
       ProxyRequest(false, requested_url, async_fetch, handler);
     }
   }
-
-  return done;
 }
 
 RewriteOptions* ProxyInterface::GetCustomOptions(

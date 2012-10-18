@@ -161,14 +161,13 @@ bool FetcherTest::MockFetcher::Populate(const char* cache_control,
 
 
 // MockAsyncFetcher
-bool FetcherTest::MockAsyncFetcher::Fetch(const GoogleString& url,
+void FetcherTest::MockAsyncFetcher::Fetch(const GoogleString& url,
                                           MessageHandler* handler,
                                           AsyncFetch* fetch) {
   bool status = url_fetcher_->StreamingFetchUrl(
       url, *fetch->request_headers(), fetch->response_headers(), fetch,
       handler);
   deferred_callbacks_.push_back(std::make_pair(status, fetch));
-  return false;
 }
 
 void FetcherTest::MockAsyncFetcher::CallCallbacks() {

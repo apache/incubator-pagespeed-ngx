@@ -760,14 +760,14 @@ class LatencyUrlAsyncFetcher : public UrlAsyncFetcher {
         latency_ms_(-1) {}
   virtual ~LatencyUrlAsyncFetcher() {}
 
-  virtual bool Fetch(const GoogleString& url,
+  virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
                      AsyncFetch* fetch) {
     if (latency_ms_ != -1) {
       fetch->log_record()->logging_info()->mutable_timing_info()->
           set_header_fetch_ms(latency_ms_);
     }
-    return base_fetcher_->Fetch(url, message_handler, fetch);
+    base_fetcher_->Fetch(url, message_handler, fetch);
   }
 
   void set_latency(int64 latency) { latency_ms_ = latency; }
@@ -787,7 +787,7 @@ class BackgroundFetchCheckingUrlAsyncFetcher : public UrlAsyncFetcher {
         num_background_fetches_(0) {}
   virtual ~BackgroundFetchCheckingUrlAsyncFetcher() {}
 
-  virtual bool Fetch(const GoogleString& url,
+  virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
                      AsyncFetch* fetch) {
     if (fetch->IsBackgroundFetch()) {
@@ -795,7 +795,7 @@ class BackgroundFetchCheckingUrlAsyncFetcher : public UrlAsyncFetcher {
     }
     BackgroundFetchCheckingAsyncFetch* new_fetch =
         new BackgroundFetchCheckingAsyncFetch(fetch);
-    return base_fetcher_->Fetch(url, message_handler, new_fetch);
+    base_fetcher_->Fetch(url, message_handler, new_fetch);
   }
 
   int num_background_fetches() { return num_background_fetches_; }
@@ -831,7 +831,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
       : fake_critical_images_finder_(new FakeCriticalImagesFinder()),
         max_age_300_("max-age=300"),
         request_start_time_ms_(-1),
-        fetch_already_done_(false) {
+        callback_done_value_(false) {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
     ConvertTimeToString(MockTimer::kApr_5_2010_ms + 5 * Timer::kMinuteMs,
                         &start_time_plus_300s_string_);
@@ -934,20 +934,13 @@ class ProxyInterfaceTest : public RewriteTestBase {
         server_context()->thread_synchronizer());
     fetch->set_response_headers(headers_out);
     fetch->request_headers()->CopyFrom(request_headers);
-    fetch_already_done_ = proxy_interface_->Fetch(AbsolutifyUrl(url),
-                                                  message_handler(),
-                                                  fetch);
-    if (fetch_already_done_) {
-      EXPECT_TRUE(callback_done_value_);
-    }
+    proxy_interface_->Fetch(AbsolutifyUrl(url), message_handler(), fetch);
   }
 
   // This must be called after FetchFromProxyNoWait, once all of the required
   // resources (fetches, cache lookups) have been released.
   void WaitForFetch() {
-    if (!fetch_already_done_) {
-      sync_->Wait();
-    }
+    sync_->Wait();
     mock_scheduler()->AwaitQuiescence();
   }
 
@@ -1401,7 +1394,6 @@ class ProxyInterfaceTest : public RewriteTestBase {
   const GoogleString max_age_300_;
   int64 request_start_time_ms_;
 
-  bool fetch_already_done_;
   scoped_ptr<WorkerTestBase::SyncPoint> sync_;
   ResponseHeaders callback_response_headers_;
   GoogleString callback_buffer_;

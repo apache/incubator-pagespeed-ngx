@@ -46,13 +46,9 @@ class UrlAsyncFetcher {
   // response_writer or callback are used.
   // Caution, several implementations do not satisfy this contract (but should).
   //
-  // This function returns true if the request was immediately satisfied.
-  // In either case, the callback will be called with the completion status,
-  // so it's safe to ignore the return value.
-  //
   // TODO(sligocki): GoogleString -> GoogleUrl or at least StringPiece.
   // TODO(sligocki): Include the URL in the fetch, like the request headers.
-  virtual bool Fetch(const GoogleString& url,
+  virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
                      AsyncFetch* fetch) = 0;
 

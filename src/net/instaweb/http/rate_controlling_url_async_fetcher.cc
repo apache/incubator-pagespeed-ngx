@@ -223,7 +223,7 @@ RateControllingUrlAsyncFetcher::RateControllingUrlAsyncFetcher(
 RateControllingUrlAsyncFetcher::~RateControllingUrlAsyncFetcher() {
 }
 
-bool RateControllingUrlAsyncFetcher::Fetch(const GoogleString& url,
+void RateControllingUrlAsyncFetcher::Fetch(const GoogleString& url,
                                            MessageHandler* message_handler,
                                            AsyncFetch* fetch) {
   GoogleUrl gurl(url);
@@ -276,14 +276,14 @@ bool RateControllingUrlAsyncFetcher::Fetch(const GoogleString& url,
     // push it to the back of the per-host queue.
     current_global_fetch_queue_size_->Add(1);
     queued_fetch_count_->IncBy(1);
-    return false;
+    return;
   }
 
   dropped_fetch_count_->IncBy(1);
   message_handler->Message(kInfo, "Dropping request for %s", url.c_str());
   fetch->response_headers()->Add(HttpAttributes::kXPsaLoadShed, "1");
   fetch->Done(false);
-  return true;
+  return;
 }
 
 void RateControllingUrlAsyncFetcher::InitStats(Statistics* statistics) {

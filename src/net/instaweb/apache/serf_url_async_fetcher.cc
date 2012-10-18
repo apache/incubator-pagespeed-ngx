@@ -1029,7 +1029,7 @@ bool SerfUrlAsyncFetcher::StartFetch(SerfFetch* fetch) {
   return started;
 }
 
-bool SerfUrlAsyncFetcher::Fetch(const GoogleString& url,
+void SerfUrlAsyncFetcher::Fetch(const GoogleString& url,
                                 MessageHandler* message_handler,
                                 AsyncFetch* async_fetch) {
   async_fetch = EnableInflation(async_fetch);
@@ -1048,7 +1048,6 @@ bool SerfUrlAsyncFetcher::Fetch(const GoogleString& url,
       StartFetch(fetch);
     }
   }
-  return false;
 }
 
 void SerfUrlAsyncFetcher::PrintActiveFetches(

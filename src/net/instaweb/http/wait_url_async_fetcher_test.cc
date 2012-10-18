@@ -57,7 +57,7 @@ TEST_F(WaitUrlAsyncFetcherTest, FetcherWaits) {
   GoogleMessageHandler handler;
   ExpectStringAsyncFetch callback(true);
 
-  EXPECT_FALSE(wait_fetcher()->Fetch(kUrl, &handler, &callback));
+  wait_fetcher()->Fetch(kUrl, &handler, &callback);
 
   // Nothing gets set ...
   EXPECT_EQ(false, callback.done());
@@ -73,7 +73,7 @@ TEST_F(WaitUrlAsyncFetcherTest, PassThrough) {
   GoogleMessageHandler handler;
   ExpectStringAsyncFetch callback(true);
 
-  EXPECT_FALSE(wait_fetcher()->Fetch(kUrl, &handler, &callback));
+  wait_fetcher()->Fetch(kUrl, &handler, &callback);
 
   // Nothing gets set ...
   EXPECT_EQ(false, callback.done());
@@ -87,7 +87,7 @@ TEST_F(WaitUrlAsyncFetcherTest, PassThrough) {
 
   // Now fetches happen instantly.
   ExpectStringAsyncFetch callback2(true);
-  EXPECT_TRUE(wait_fetcher()->Fetch(kUrl, &handler, &callback2));
+  wait_fetcher()->Fetch(kUrl, &handler, &callback2);
   EXPECT_EQ(true, callback2.done());
   EXPECT_EQ(kBody, callback2.buffer());
 }

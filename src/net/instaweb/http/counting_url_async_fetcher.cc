@@ -58,11 +58,11 @@ class CountingUrlAsyncFetcher::CountingFetch : public SharedAsyncFetch {
 CountingUrlAsyncFetcher::~CountingUrlAsyncFetcher() {
 }
 
-bool CountingUrlAsyncFetcher::Fetch(const GoogleString& url,
+void CountingUrlAsyncFetcher::Fetch(const GoogleString& url,
                                     MessageHandler* message_handler,
                                     AsyncFetch* base_fetch) {
   CountingFetch* counting_fetch = new CountingFetch(this, base_fetch);
-  return fetcher_->Fetch(url, message_handler, counting_fetch);
+  fetcher_->Fetch(url, message_handler, counting_fetch);
 }
 
 void CountingUrlAsyncFetcher::Clear() {

@@ -45,9 +45,7 @@ class HttpDumpUrlAsyncWriter::DumpFetch : public StringAsyncFetch {
         file_system_(file_system) {
   }
 
-  // Like UrlAsyncFetcher::StreamingFetch, returns true if callback has been
-  // called already.
-  bool StartFetch(const bool accept_gzip, UrlAsyncFetcher* base_fetcher) {
+  void StartFetch(const bool accept_gzip, UrlAsyncFetcher* base_fetcher) {
     // In general we will want to always ask the origin for gzipped output,
     // but we are leaving in variable so this could be overridden by the
     // instantiator of the DumpUrlWriter.
@@ -57,7 +55,7 @@ class HttpDumpUrlAsyncWriter::DumpFetch : public StringAsyncFetch {
                                  HttpAttributes::kGzip);
     }
 
-    return base_fetcher->Fetch(url_, handler_, this);
+    base_fetcher->Fetch(url_, handler_, this);
   }
 
   // Finishes the Fetch when called back.
@@ -122,7 +120,7 @@ class HttpDumpUrlAsyncWriter::DumpFetch : public StringAsyncFetch {
 HttpDumpUrlAsyncWriter::~HttpDumpUrlAsyncWriter() {
 }
 
-bool HttpDumpUrlAsyncWriter::Fetch(const GoogleString& url,
+void HttpDumpUrlAsyncWriter::Fetch(const GoogleString& url,
                                    MessageHandler* handler,
                                    AsyncFetch* base_fetch) {
   GoogleString filename;
@@ -134,11 +132,10 @@ bool HttpDumpUrlAsyncWriter::Fetch(const GoogleString& url,
         url, *base_fetch->request_headers(), base_fetch->response_headers(),
         base_fetch, handler);
     base_fetch->Done(success);
-    return true;
   } else {
     DumpFetch* fetch = new DumpFetch(url, handler, base_fetch, filename,
                                      &dump_fetcher_, file_system_);
-    return fetch->StartFetch(accept_gzip_, base_fetcher_);
+    fetch->StartFetch(accept_gzip_, base_fetcher_);
   }
 }
 
