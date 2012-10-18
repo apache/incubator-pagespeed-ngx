@@ -60,11 +60,23 @@ parent.
 
 ## How to use
 
-To your nginx.conf add to the main block or to a server or location block:
+In your nginx.conf, add to the main or server block:
 
     pagespeed on;
+    pagespeed_cache /path/to/cache/dir;
 
-To confirm that the module is working, fetch a page and check that you see the
+To confirm that the module is loaded, fetch a page and check that you see the
 following comment in the source:
 
     <!-- Processed through ngx_pagespeed using PSOL version 0.10.0.0 -->
+
+### Testing
+
+There is an example html file in:
+
+    test/www/test.html
+
+If you fetch it through nginx with ngx_pagespeed enabled you should see it
+rewritten to look like the html in:
+
+    test/expected/test.html
