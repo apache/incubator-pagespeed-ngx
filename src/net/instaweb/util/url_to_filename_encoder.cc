@@ -172,7 +172,6 @@ bool UrlToFilenameEncoder::Decode(const GoogleString& encoded_filename,
     kEscapeDot
   };
   State state = kStart;
-  int char_code = 0;
   char hex_buffer[3] = { '\0', '\0', '\0' };
   for (size_t i = 0; i < encoded_filename.size(); ++i) {
     char ch = encoded_filename[i];
@@ -212,7 +211,6 @@ bool UrlToFilenameEncoder::Decode(const GoogleString& encoded_filename,
           ok = ok && AccumulateHexValue(hex_buffer[1], &hex_value);
           DCHECK(ok) << "Should not have gotten here unless both were hex";
           decoded_url->push_back(static_cast<char>(hex_value));
-          char_code = 0;
           state = kStart;
         } else {
           return false;
