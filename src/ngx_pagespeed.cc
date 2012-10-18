@@ -310,7 +310,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   
   // Deletes itself when HandleDone is called, which happens when we call Done()
   // on the proxy fetch below.
-  ctx->base_fetch = new net_instaweb::NgxBaseFetch();
+  ctx->base_fetch = new net_instaweb::NgxBaseFetch(r);
 
   if (ctx->cfg->driver_factory == NULL) {
     // This is the first request handled by this server block.
@@ -427,7 +427,7 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
   if (!ctx->data_received) {
     // This is the first set of buffers we've got for this request.
     ctx->data_received = true;
-    ctx->base_fetch->PopulateHeaders(r);
+    ctx->base_fetch->PopulateHeaders();
   }
 
   int rc;
