@@ -391,7 +391,6 @@ PropertyValue* PropertyPage::GetProperty(const PropertyCache::Cohort* cohort,
   DCHECK(was_read_);
   DCHECK(cohort != NULL);
   PropertyValue* property = NULL;
-  CohortDataMap::iterator p = cohort_data_map_.find(cohort);
   PropertyMapStruct* pmap_struct = NULL;
   GoogleString property_name_str(property_name.data(), property_name.size());
   std::pair<CohortDataMap::iterator, bool> insertion = cohort_data_map_.insert(
