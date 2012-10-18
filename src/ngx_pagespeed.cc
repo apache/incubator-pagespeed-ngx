@@ -28,10 +28,14 @@ extern "C" {
 }
 
 #include "ngx_rewrite_driver_factory.h"
+#include "ngx_base_fetch.h"
 
+#include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/public/version.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -54,8 +58,7 @@ typedef struct {
 
 typedef struct {
   net_instaweb::RewriteDriver* driver;
-  scoped_ptr<GoogleString> output;
-  scoped_ptr<net_instaweb::StringWriter> writer;
+  net_instaweb::ProxyFetch* proxy_fetch;
 } ngx_http_pagespeed_request_ctx_t;
 
 static ngx_command_t ngx_http_pagespeed_commands[] = {
@@ -292,6 +295,11 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
       static_cast<ngx_http_pagespeed_srv_conf_t*>(
           ngx_http_get_module_srv_conf(r, ngx_pagespeed));
 
+  // TODO(jefftk): make a proper async_fetch out of r
+  // Deletes itself when HandleDone is called, which happens when we call Done()
+  // on the proxy fetch below.
+  net_instaweb::NgxBaseFetch* base_fetch = new net_instaweb::NgxBaseFetch();
+
   if (cfg->driver_factory == NULL) {
     // This is the first request handled by this server block.
     ngx_http_pagespeed_initialize_server_context(cfg);
@@ -308,34 +316,52 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
     return NGX_ERROR;
   }
 
-  GoogleString url = ngx_http_pagespeed_determine_url(r);
+  GoogleString url_string = ngx_http_pagespeed_determine_url(r);
+  net_instaweb::GoogleUrl request_url = net_instaweb::GoogleUrl(url_string);
 
   ngx_http_pagespeed_request_ctx_t* ctx =
       new ngx_http_pagespeed_request_ctx_t();
 
-  ctx->driver = server_context->NewRewriteDriver();
+  // This code is based off of ProxyInterface::ProxyRequestCallback and
+  // ProxyFetchFactory::StartNewProxyFetch
 
-  // TODO(jefftk): replace this with a writer that generates proper nginx
-  // buffers and puts them in the chain.  Or avoids the double
-  // copy some other way.
-  ctx->output.reset(new GoogleString());
-  ctx->writer.reset(new net_instaweb::StringWriter(ctx->output.get()));
-  ctx->driver->SetWriter(ctx->writer.get());
-
-  // For testing we always want to perform any optimizations we can, so we
-  // wait until everything is done rather than using a deadline, the way we
-  // want to eventually.
-  ctx->driver->set_fully_rewrite_on_flush(true);
-
-  ngx_http_set_ctx(r, ctx, ngx_pagespeed);
-  bool ok = ctx->driver->StartParse(url);
-  if (!ok) {
-    ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
-                  "Failed to StartParse on url %*s",
-                  url.size(), url.data());
-    return NGX_ERROR;
+  // If the global options say we're running furious (the experiment framework)
+  // then clone them into custom_options so we can manipulate custom options
+  // without affecting the global options.
+  net_instaweb::RewriteOptions* custom_options = NULL;
+  net_instaweb::RewriteOptions* global_options =
+      cfg->server_context->global_options();
+  if (global_options->running_furious()) {
+    custom_options = global_options->Clone();
+    custom_options->set_need_to_store_experiment_data(
+        cfg->server_context->furious_matcher()->ClassifyIntoExperiment(
+            *base_fetch->request_headers(), custom_options));
   }
 
+  // TODO(jefftk): port ProxyInterface::InitiatePropertyCacheLookup so that we
+  // have the propery cache in nginx.
+  net_instaweb::ProxyFetchPropertyCallbackCollector* property_callback = NULL;
+
+  // If we don't have custom options we can use NewRewriteDriver which reuses
+  // rewrite drivers and so is faster because there's no wait to construct
+  // them.  Otherwise we have to build a new one every time.
+  if (custom_options == NULL) {
+    ctx->driver = cfg->server_context->NewRewriteDriver();
+  } else {
+    // NewCustomRewriteDriver takes ownership of custom_options.
+    ctx->driver = cfg->server_context->NewCustomRewriteDriver(custom_options);
+  }
+  ctx->driver->set_log_record(base_fetch->log_record());
+
+  // TODO(jefftk): FlushEarlyFlow would go here.
+
+  // Will call StartParse etc.  Takes ownership of property_callback.
+  ctx->proxy_fetch = new net_instaweb::ProxyFetch(
+      url_string, false /* cross_domain */, property_callback, base_fetch,
+      NULL /* original_content_fetch */, ctx->driver, cfg->server_context,
+      NULL /* timer */, NULL /* ProxyFetchFactory */);
+
+  ngx_http_set_ctx(r, ctx, ngx_pagespeed);
   return NGX_OK;
 }
 
@@ -356,63 +382,32 @@ ngx_http_pagespeed_optimize_and_replace_buffer(ngx_http_request_t* r,
     last_buf = cur->buf->last_buf;
     last_in_chain = cur->buf->last_in_chain;
 
-    ctx->driver->ParseText(StringPiece(reinterpret_cast<char*>(cur->buf->pos),
-                                       cur->buf->last - cur->buf->pos));
+    ctx->proxy_fetch->Write(StringPiece(reinterpret_cast<char*>(cur->buf->pos),
+                                        cur->buf->last - cur->buf->pos));
 
-    // We're done with buffers as we pass them to the rewrite driver, so free
-    // them and their chain links as we go.  Don't free the first buffer (in)
-    // which we need below.
+    // We're done with buffers as we pass them through, so free them and their
+    // chain links as we go.
     ngx_chain_t* next_link = cur->next;
-    if (cur != in) {
-      ngx_pfree(r->pool, cur->buf);
-      ngx_pfree(r->pool, cur);
-    }
+    ngx_pfree(r->pool, cur->buf);
+    ngx_pfree(r->pool, cur);
     cur = next_link;
   }
-  in->next = NULL;  // We freed all the later buffers.
-
-  // Prepare the new buffer.
-  ngx_buf_t* b = static_cast<ngx_buf_t*>(ngx_calloc_buf(r->pool));
-  if (b == NULL) {
-    ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
-                  "failed to allocate buffer");
-
-    return NGX_ERROR;
-  }
-
-  b->temporary = 1;
-  b->last_buf = last_buf;
-  b->last_in_chain = last_in_chain;
-  in->next = NULL;
-
-  // replace the first link's buffer with our new one.
-  ngx_pfree(r->pool, in->buf);
-  in->buf = b;
+  in = NULL;  // We freed all the buffers.
 
   if (last_buf) {
-    ctx->driver->FinishParse();
-  } else {
-    ctx->driver->Flush();
-  }
-
-  // TODO(jefftk): need to store how much went out on previous flushes and only
-  // copy here the new stuff.  Keep the count in the request context.
-  b->pos = b->start = static_cast<u_char*>(
-      ngx_pnalloc(r->pool, ctx->output->length()));
-  if (b->pos == NULL) {
-    ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
-                  "failed to allocate %d bytes", ctx->output->length());
-    return NGX_ERROR;
-  }
-  ctx->output->copy(reinterpret_cast<char*>(b->pos), ctx->output->length());
-  b->last = b->end = b->pos + ctx->output->length();
-
-  if (last_buf) {
+    ctx->proxy_fetch->Done(true /* success */);
     ngx_http_pagespeed_release_request_context(r, ctx);
     ctx = NULL;
+  } else {
+    // TODO(jefftk): Decide whether ctx->proxy_fetch->Flush is warranted here.
   }
 
-  return NGX_OK;
+  return NGX_DONE; // No output.
+
+  // In the future I think we need to return NGX_AGAIN after adding some sort of
+  // notification pipe to nginx's main event loop so it knows when to wake us
+  // back up.  For now we're just dumping all output from pagespeed to the error
+  // log, so don't worry about it.
 }
 
 static ngx_int_t
