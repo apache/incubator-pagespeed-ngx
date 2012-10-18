@@ -97,7 +97,6 @@ bool CheckAndUpdateInputInfo(const ResponseHeaders& headers,
                               headers)) {
     StringPiece content;
     if (value.ExtractContents(&content)) {
-      InputInfo* input_info = callback->input_info();
       GoogleString new_hash = manager.contents_hasher()->Hash(content);
       // TODO(nikhilmadan): Consider using the Etag / Last-Modified header to
       // validate if the resource has changed instead of computing the hash.
