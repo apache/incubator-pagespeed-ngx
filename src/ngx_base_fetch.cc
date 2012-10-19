@@ -67,12 +67,13 @@ void NgxBaseFetch::PopulateHeaders() {
 
 bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
                                MessageHandler* handler) {
-  handler->Message(kInfo, "\nHandleWrite(%s)", sp.as_string().c_str());
+  buffer_.append(sp.data(), sp.size());
   return true;
 }
 
 bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
-  handler->Message(kInfo, "HandleFlush()");
+  handler->Message(kInfo, "HandleFlush() -> '%s'", buffer_.c_str());
+  buffer_.clear();
   return true;
 }
 void NgxBaseFetch::HandleDone(bool success) {

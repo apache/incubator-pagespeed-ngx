@@ -24,6 +24,7 @@ extern "C" {
 }
 
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -42,6 +43,7 @@ class NgxBaseFetch : public AsyncFetch {
   virtual void HandleDone(bool success);
   
   ngx_http_request_t* request_;
+  GoogleString buffer_;
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };
 

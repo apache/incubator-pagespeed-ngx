@@ -37,8 +37,6 @@ extern "C" {
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 
 extern ngx_module_t ngx_pagespeed;
