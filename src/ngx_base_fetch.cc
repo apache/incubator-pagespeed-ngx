@@ -72,7 +72,12 @@ bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
 }
 
 bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
-  handler->Message(kInfo, "HandleFlush() -> '%s'", buffer_.c_str());
+  if (response_headers()->IsHtmlLike()) {
+    handler->Message(kInfo, "HandleFlush() -> '%s'", buffer_.c_str());
+  } else {
+    handler->Message(kInfo, "HandleFlush() -> not html");
+  }
+
   buffer_.clear();
   return true;
 }
