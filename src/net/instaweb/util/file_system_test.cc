@@ -20,13 +20,12 @@
 
 #include <cstddef>
 #include <algorithm>
+#include <vector>
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mem_file_system.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -380,7 +379,11 @@ void FileSystemTest::TestDirInfo() {
   GoogleString full_path1 = dir_name2 + "/" + filename1;
   GoogleString full_path2 = dir_name2 + "/" + filename2;
   GoogleString content1 = "12345";
-  GoogleString content2 = "1234567890";
+  // Make content2 longer than the default block size of 4096 to make sure disk
+  // based file systems are calculating the on-disk size, not just apparent size
+  // of file. stdio and apr file systems should report 8192 as the size of
+  // content2.
+  GoogleString content2(4097, 'a');
   ASSERT_TRUE(file_system()->MakeDir(dir_name.c_str(), &handler_));
   ASSERT_TRUE(file_system()->MakeDir(dir_name2.c_str(), &handler_));
   ASSERT_TRUE(file_system()->MakeDir(dir_name3.c_str(), &handler_));
@@ -410,19 +413,9 @@ void FileSystemTest::TestDirInfo() {
   EXPECT_EQ(static_cast<size_t>(0), dir_info2.empty_dirs.size());
 
   file_system()->GetDirInfo(dir_name, &dir_info, &handler_);
-  // Different filesystems have different directory sizes. dynamic_cast to
-  // determine which directory size to use.
-  size_t dir_size;
-  if (dynamic_cast<MemFileSystem*>(file_system()) != NULL) {
-    dir_size = 0;
-  } else if (dynamic_cast<StdioFileSystem*>(file_system()) != NULL) {
-    dir_size = 60;
-  } else {
-    // Apr file system.
-    dir_size = 4096;
-  }
+  int dir_size = DefaultDirSize();
   EXPECT_EQ(dir_size * 2 + FileSize(content1) + FileSize(content2),
-            static_cast<size_t>(dir_info.size_bytes));
+            dir_info.size_bytes);
   EXPECT_EQ(4, dir_info.inode_count);
   std::sort(dir_info.files.begin(), dir_info.files.end(), CompareByName());
   EXPECT_STREQ(full_path1, dir_info.files[0].name);

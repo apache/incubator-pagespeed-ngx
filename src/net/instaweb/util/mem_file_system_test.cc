@@ -50,6 +50,14 @@ class MemFileSystemTest : public FileSystemTest {
   virtual Timer* timer() { return &timer_; }
   virtual GoogleString test_tmpdir() { return GTestTempDir(); }
 
+  virtual int FileSize(StringPiece contents) const {
+    return FileContentSize(contents);
+  }
+
+  virtual int DefaultDirSize() const {
+    return 0;
+  }
+
  private:
   scoped_ptr<ThreadSystem> thread_system_;
   MockTimer timer_;

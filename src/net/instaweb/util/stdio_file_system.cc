@@ -36,6 +36,12 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
+namespace {
+// The st_blocks field returned by stat is the number of 512B blocks allocated
+// for the files.
+const int kBlockSize = 512;
+}  // namespace
+
 namespace net_instaweb {
 
 // Helper class to factor out common implementation details between Input and
@@ -373,7 +379,7 @@ bool StdioFileSystem::Size(const StringPiece& path, int64* size,
   struct stat statbuf;
   bool ret = Stat(path, &statbuf, handler);
   if (ret) {
-    *size = statbuf.st_size;
+    *size = statbuf.st_blocks * kBlockSize;
   }
   return ret;
 }

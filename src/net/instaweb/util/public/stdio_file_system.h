@@ -56,6 +56,9 @@ class StdioFileSystem : public FileSystem {
                      MessageHandler* handler);
   virtual bool Mtime(const StringPiece& path, int64* timestamp_sec,
                      MessageHandler* handler);
+  // Report the disk utilization of the file specified by path. Note that disk
+  // utilization could differ from the apparent size of the file as it depends
+  // on the underlying file system and default block size.
   virtual bool Size(const StringPiece& path, int64* size,
                     MessageHandler* handler);
   virtual BoolOrError Exists(const char* path, MessageHandler* handler);

@@ -65,11 +65,24 @@ class FileSystemTest : public testing::Test {
 
   // Memory based file system implementations of Size return the size of the
   // file, while the APR file system returns the size allocated on disk. This
-  // function is overridable to allow AprFileSystemTest to calculate the on-disk
-  // size of the file.
-  virtual int FileSize(StringPiece contents) {
+  // function is overridable to allow AprFileSystemTest and StdioFileSystemTest
+  // to calculate the on-disk size of the file.
+  virtual int FileSize(StringPiece contents) const = 0;
+
+  int FileContentSize(StringPiece contents) const {
     return contents.size();
   }
+
+  // Calculate on-disk usage of contents by returning size rounded up to nearest
+  // default block size.
+  int FileBlockSize(StringPiece contents) const {
+    return ((contents.size() + kBlockSize - 1) / kBlockSize) * kBlockSize;
+  }
+
+  // Return the size of directories in the file system. This can vary depending
+  // on the implementation, since directories in disk-based file systems can
+  // consume a disk block.
+  virtual int DefaultDirSize() const = 0;
 
   // All FileSystem implementations should run the following tests.
   // Note: If you add a test below, please add invocations in:
@@ -98,6 +111,9 @@ class FileSystemTest : public testing::Test {
   GoogleString test_tmpdir_;
 
  private:
+  // Default file system block size is 4KB.
+  static const int kBlockSize = 4096;
+
   DISALLOW_COPY_AND_ASSIGN(FileSystemTest);
 };
 

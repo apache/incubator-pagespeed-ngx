@@ -275,7 +275,6 @@ class FileSystem {
   // file, while disk-based implementations should return the actual allocated
   // size on disk.
   // TODO(abliss): replace this with a single Stat() function.
-  // TODO(jud): Make sure all disk implementations return on-disk size.
   virtual bool Size(const StringPiece& path, int64* size,
                     MessageHandler* handler) = 0;
 
