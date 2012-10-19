@@ -121,11 +121,11 @@ const int RewriteOptions::kDefaultMaxUrlSize = 2083;
 
 // Quality that needs to be used while recompressing any image type.
 // If set to -1, we use source image quality parameters, and is lossless.
-const int RewriteOptions::kDefaultImagesRecompressQuality = -1;
+const int64 RewriteOptions::kDefaultImagesRecompressQuality = -1;
 
 // Jpeg quality that needs to be used while recompressing. If set to -1, we
 // use source image quality parameters, and is lossless.
-const int RewriteOptions::kDefaultImageJpegRecompressQuality = -1;
+const int64 RewriteOptions::kDefaultImageJpegRecompressQuality = -1;
 
 // Number of scans to output for jpeg images when using progressive mode. If set
 // to -1, we ignore this setting.
@@ -142,7 +142,7 @@ const int64 RewriteOptions::kDefaultImageResolutionLimitBytes = 32*1024*1024;
 
 // WebP quality that needs to be used while recompressing. If set to -1, we
 // use source image quality parameters.
-const int RewriteOptions::kDefaultImageWebpRecompressQuality = -1;
+const int64 RewriteOptions::kDefaultImageWebpRecompressQuality = -1;
 
 // See http://code.google.com/p/modpagespeed/issues/detail?id=9.  By
 // default, Apache evidently limits each URL path segment (between /)
@@ -658,8 +658,8 @@ void RewriteOptions::AddProperties() {
              &RewriteOptions::image_jpeg_recompress_quality_, "iq",
              kImageJpegRecompressionQuality);
   add_option(kDefaultImagesRecompressQuality,
-             &RewriteOptions::images_recompress_quality_, "irq",
-             kImagesRecompressionQuality);
+             &RewriteOptions::image_recompress_quality_, "irq",
+             kImageRecompressionQuality);
   add_option(kDefaultImageLimitOptimizedPercent,
              &RewriteOptions::image_limit_optimized_percent_, "ip",
              kImageLimitOptimizedPercent);

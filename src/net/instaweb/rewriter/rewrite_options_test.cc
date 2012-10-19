@@ -785,9 +785,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ImageRetainExifData",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageRetainExifData));
-  EXPECT_STREQ("ImagesRecompressionQuality",
+  EXPECT_STREQ("ImageRecompressionQuality",
                RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kImagesRecompressionQuality));
+                   RewriteOptions::kImageRecompressionQuality));
   EXPECT_STREQ("ImageWebpRecompressionQuality",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageWebpRecompressionQuality));

@@ -98,6 +98,9 @@ class AprMemCache : public CacheInterface {
   //
   // This method helps implement that policy, and is made public for
   // testing.
+  //
+  // Tracks squelched messages in statistics variable
+  // "memcache_squelched_message_count".
   bool ShouldLogAprError();
 
  private:
@@ -117,6 +120,7 @@ class AprMemCache : public CacheInterface {
   Timer* timer_;
 
   Variable* timeouts_;
+  Variable* squelched_message_count_;
   Variable* last_unsquelch_time_ms_;
   Variable* message_burst_size_;
 

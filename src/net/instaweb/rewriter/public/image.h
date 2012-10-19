@@ -71,8 +71,8 @@ class Image {
           jpeg_num_progressive_scans(
               RewriteOptions::kDefaultImageJpegNumProgressiveScans) {}
     bool webp_preferred;
-    int webp_quality;
-    int jpeg_quality;
+    int64 webp_quality;
+    int64 jpeg_quality;
     bool progressive_jpeg;
     bool convert_png_to_jpeg;
     bool convert_gif_to_png;

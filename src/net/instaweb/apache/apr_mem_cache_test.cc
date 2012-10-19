@@ -306,19 +306,28 @@ TEST_F(AprMemCacheTest, LargeKeyOverThreshold) {
 }
 
 TEST_F(AprMemCacheTest, ThrottleLogMessages) {
+  Variable* squelched_count = statistics_.GetVariable(
+      "memcache_squelched_message_count");
+
   ASSERT_TRUE(ConnectToMemcached(true));
   EXPECT_TRUE(servers_->ShouldLogAprError());
   EXPECT_TRUE(servers_->ShouldLogAprError());
   EXPECT_TRUE(servers_->ShouldLogAprError());
   EXPECT_TRUE(servers_->ShouldLogAprError());
+  EXPECT_EQ(0, squelched_count->Get());
   EXPECT_FALSE(servers_->ShouldLogAprError());  // Too many.
+  EXPECT_FALSE(servers_->ShouldLogAprError());
+  EXPECT_FALSE(servers_->ShouldLogAprError());
+  EXPECT_EQ(3, squelched_count->Get());
 
   timer_.AdvanceMs(40 * Timer::kMinuteMs);
   EXPECT_TRUE(servers_->ShouldLogAprError());
   EXPECT_TRUE(servers_->ShouldLogAprError());
   EXPECT_TRUE(servers_->ShouldLogAprError());
   EXPECT_TRUE(servers_->ShouldLogAprError());
+  EXPECT_EQ(3, squelched_count->Get());
   EXPECT_FALSE(servers_->ShouldLogAprError());  // Too many.
+  EXPECT_EQ(4, squelched_count->Get());
 }
 
 }  // namespace net_instaweb

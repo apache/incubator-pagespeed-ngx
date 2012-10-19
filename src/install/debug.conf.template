@@ -123,6 +123,21 @@ ModPagespeedEnableFilters add_instrumentation
     Header set Cache-control "no-cache"
 </Directory>
 
+# Set jpeg Quality
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/jpeg_rewriting/" >
+    ModPagespeedJpegRecompressionQuality 70
+</Directory>
+
+# Set Generic Image Quality
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/webp_rewriting" >
+    ModPagespeedImageRecompressionQuality 75
+</Directory>
+
+# Set Webp Quality
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/image_rewriting" >
+    ModPagespeedImageWebpRecompressionQuality 65
+</Directory>
+
 # This is needed for the server-side includes test in
 # apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
 <IfModule !include_module>
@@ -521,6 +536,7 @@ NameVirtualHost *:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedImageLimitOptimizedPercent 80
 #ALL_DIRECTIVES ModPagespeedImageLimitResizeAreaPercent 80
 #ALL_DIRECTIVES ModPagespeedImageMaxRewritesAtOnce 5
+#ALL_DIRECTIVES ModPagespeedImageRecompressionQuality 75
 #ALL_DIRECTIVES ModPagespeedImgInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedImgMaxRewritesAtOnce 5
 #ALL_DIRECTIVES ModPagespeedIncreaseSpeedTracking true
@@ -569,4 +585,5 @@ NameVirtualHost *:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedTestProxy off
 #ALL_DIRECTIVES ModPagespeedUrlValuedAttribute span src Hyperlink
 #ALL_DIRECTIVES ModPagespeedUsePerVHostStatistics on
+#ALL_DIRECTIVES ModPagespeedImageWebpRecompressionQuality 85
 #ALL_DIRECTIVES ModPagespeedXHeaderValue "test"

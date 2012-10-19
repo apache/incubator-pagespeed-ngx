@@ -55,6 +55,11 @@ DEFINE_int64(image_inline_max_bytes,
 DEFINE_int64(css_image_inline_max_bytes,
              net_instaweb::RewriteOptions::kDefaultCssImageInlineMaxBytes,
              "Number of bytes below which images in CSS will be inlined.");
+DEFINE_int32(image_recompress_quality,
+             net_instaweb::RewriteOptions::kDefaultImagesRecompressQuality,
+             "Quality parameter to use while recompressing any image type."
+             "This should be in range [0,100], 100 refers to best quality.");
+// Deprecated flag.
 DEFINE_int32(images_recompress_quality,
              net_instaweb::RewriteOptions::kDefaultImagesRecompressQuality,
              "Quality parameter to use while recompressing any image type."
@@ -381,7 +386,7 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_flush_buffer_limit_bytes(FLAGS_psa_flush_buffer_limit_bytes);
   }
   if (WasExplicitlySet("images_recompress_quality")) {
-    options->set_images_recompress_quality(
+    options->set_image_recompress_quality(
         FLAGS_images_recompress_quality);
   }
   if (WasExplicitlySet("image_jpeg_recompress_quality")) {

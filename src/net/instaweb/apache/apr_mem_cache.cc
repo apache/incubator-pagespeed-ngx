@@ -42,6 +42,7 @@ const int kDefaultMemcachedPort = 11211;
 const int kDefaultServerMin = 0;      // minimum # client sockets to open
 const int kDefaultServerSmax = 1;     // soft max # client connections to open
 const char kMemCacheTimeouts[] = "memcache_timeouts";
+const char kMemCacheSquelchedMessages[] = "memcache_squelched_message_count";
 const int64 kMaxMessagesPerThrottleInterval = 4;
 const char kLastSquelchTimeMs[] = "_memcache_last_unsquelch_time_ms";
 const char kMessageBurstSize[] = "_memcache_message_burst_size";
@@ -73,6 +74,8 @@ AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
       hasher_(hasher),
       timer_(timer),
       timeouts_(statistics->GetVariable(kMemCacheTimeouts)),
+      squelched_message_count_(statistics->GetVariable(
+          kMemCacheSquelchedMessages)),
       last_unsquelch_time_ms_(statistics->GetVariable(kLastSquelchTimeMs)),
       message_burst_size_(statistics->GetVariable(kMessageBurstSize)),
       is_machine_local_(true),
@@ -122,6 +125,7 @@ AprMemCache::~AprMemCache() {
 
 void AprMemCache::InitStats(Statistics* statistics) {
   statistics->AddVariable(kMemCacheTimeouts);
+  statistics->AddVariable(kMemCacheSquelchedMessages);
   statistics->AddVariable(kLastSquelchTimeMs);
   statistics->AddVariable(kMessageBurstSize);
 }
@@ -436,6 +440,9 @@ bool AprMemCache::ShouldLogAprError() {
       }
       apr_pool_destroy(temp_pool);
     }
+  }
+  if (!ret) {
+    squelched_message_count_->Add(1);
   }
   return ret;
 }

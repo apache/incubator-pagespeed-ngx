@@ -87,7 +87,7 @@ const size_t kGifDimStart = kGifHeaderLength + 2;
 const size_t kGifIntSize = 2;
 
 const size_t kJpegIntSize = 2;
-const int kMaxJpegQuality = 100;
+const int64 kMaxJpegQuality = 100;
 
 }  // namespace ImageHeaders
 
@@ -837,8 +837,8 @@ void ImageImpl::ConvertToJpegOptions(const Image::CompressionOptions& options,
   jpeg_options->retain_color_profile = options.retain_color_profile;
   jpeg_options->retain_exif_data = options.retain_exif_data;
   jpeg_options->progressive = options.progressive_jpeg;
-  int output_quality = std::min(ImageHeaders::kMaxJpegQuality,
-                                options.jpeg_quality);
+  int64 output_quality = std::min(ImageHeaders::kMaxJpegQuality,
+                                  options.jpeg_quality);
   if (options.jpeg_quality > 0) {
     // If the source image is JPEG we want to fallback to lossless if the input
     // quality is less than the quality we want to set for final compression and

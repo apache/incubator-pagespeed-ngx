@@ -198,7 +198,7 @@ class RewriteOptions {
     kImageRetainColorProfile,
     kImageRetainColorSampling,
     kImageRetainExifData,
-    kImagesRecompressionQuality,
+    kImageRecompressionQuality,
     kCacheSmallImagesUnrewritten,
     kImageResolutionLimitBytes,
     kImageWebpRecompressionQuality,
@@ -458,13 +458,13 @@ class RewriteOptions {
   static const int64 kDefaultImplicitCacheTtlMs;
   static const int64 kDefaultPrioritizeVisibleContentCacheTimeMs;
   static const char kDefaultBeaconUrl[];
-  static const int kDefaultImagesRecompressQuality;
-  static const int kDefaultImageJpegRecompressQuality;
+  static const int64 kDefaultImagesRecompressQuality;
+  static const int64 kDefaultImageJpegRecompressQuality;
   static const int kDefaultImageLimitOptimizedPercent;
   static const int kDefaultImageLimitResizeAreaPercent;
   static const int64 kDefaultImageResolutionLimitBytes;
   static const int kDefaultImageJpegNumProgressiveScans;
-  static const int kDefaultImageWebpRecompressQuality;
+  static const int64 kDefaultImageWebpRecompressQuality;
   static const int kDefaultDomainShardCount;
   static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;
   static const int64 kDefaultOverrideBlinkCacheTimeMs;
@@ -1233,18 +1233,18 @@ class RewriteOptions {
   // Return false in a subclass if you want to disallow all URL trimming in CSS.
   virtual bool trim_urls_in_css() const { return true; }
 
-  int image_jpeg_recompress_quality() const {
+  int64 image_jpeg_recompress_quality() const {
     return image_jpeg_recompress_quality_.value();
   }
-  void set_image_jpeg_recompress_quality(int x) {
+  void set_image_jpeg_recompress_quality(int64 x) {
     set_option(x, &image_jpeg_recompress_quality_);
   }
 
-  int images_recompress_quality() const {
-    return images_recompress_quality_.value();
+  int64 image_recompress_quality() const {
+    return image_recompress_quality_.value();
   }
-  void set_images_recompress_quality(int x) {
-    set_option(x, &images_recompress_quality_);
+  void set_image_recompress_quality(int64 x) {
+    set_option(x, &image_recompress_quality_);
   }
 
   int image_limit_optimized_percent() const {
@@ -1267,10 +1267,10 @@ class RewriteOptions {
     set_option(x, &image_jpeg_num_progressive_scans_);
   }
 
-  int image_webp_recompress_quality() const {
+  int64 image_webp_recompress_quality() const {
     return image_webp_recompress_quality_.value();
   }
-  void set_image_webp_recompress_quality(int x) {
+  void set_image_webp_recompress_quality(int64 x) {
     set_option(x, &image_webp_recompress_quality_);
   }
 
@@ -2313,10 +2313,10 @@ class RewriteOptions {
 
   // Option related to generic image quality. This is overridden by
   // image(jpeg/webp) specific options.
-  Option<int> images_recompress_quality_;
+  Option<int64> image_recompress_quality_;
 
   // Options related to jpeg compression.
-  Option<int> image_jpeg_recompress_quality_;
+  Option<int64> image_jpeg_recompress_quality_;
   Option<int> image_jpeg_num_progressive_scans_;
   Option<bool> image_retain_color_profile_;
   Option<bool> image_retain_color_sampling_;
@@ -2327,7 +2327,7 @@ class RewriteOptions {
   Option<int> image_limit_resize_area_percent_;
 
   // Options related to webp compression.
-  Option<int> image_webp_recompress_quality_;
+  Option<int64> image_webp_recompress_quality_;
 
   Option<int> image_max_rewrites_at_once_;
   Option<int> max_url_segment_size_;  // For http://a/b/c.d, use strlen("c.d").

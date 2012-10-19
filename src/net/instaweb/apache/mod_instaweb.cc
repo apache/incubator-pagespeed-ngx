@@ -158,9 +158,14 @@ const char kModPagespeedImageLimitResizeAreaPercent[] =
     "ModPagespeedImageLimitResizeAreaPercent";
 const char kModPagespeedImageMaxRewritesAtOnce[] =
     "ModPagespeedImageMaxRewritesAtOnce";
+const char kModPagespeedImageRecompressionQuality[] =
+    "ModPagespeedImageRecompressionQuality";
 const char kModPagespeedInheritVHostConfig[] = "ModPagespeedInheritVHostConfig";
-const char kModPagespeedJpegRecompressQuality[] =
+const char kModPagespeedJpegRecompressionQuality[] =
     "ModPagespeedJpegRecompressionQuality";
+const char kModPagespeedWebpRecompressionQuality[] =
+    "ModPagespeedImageWebpRecompressionQuality";
+
 const char kModPagespeedJsInlineMaxBytes[] = "ModPagespeedJsInlineMaxBytes";
 const char kModPagespeedJsOutlineMinBytes[] = "ModPagespeedJsOutlineMinBytes";
 const char kModPagespeedLRUCacheByteLimit[] = "ModPagespeedLRUCacheByteLimit";
@@ -1620,8 +1625,16 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Hash URLs and div locations in referer statistics."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImageInlineMaxBytes,
         "Number of bytes below which images will be inlined."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedImageRecompressionQuality,
+                       "Set quality parameter for recompressing jpeg/webp "
+                       "images [-1,100], 100 refers to best quality, "
+                       "-1 disables lossy compression."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImgInlineMaxBytes,
         "DEPRECATED, use ModPagespeedImageInlineMaxBytes."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedJpegRecompressionQuality,
+                       "Set quality parameter for recompressing jpeg "
+                       "images [-1,100], 100 refers to best quality, "
+                       "-1 disables lossy compression."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJsInlineMaxBytes,
         "Number of bytes below which javascript will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJsOutlineMinBytes,
@@ -1665,6 +1678,10 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Where to log cross-process statistics if they're being collected."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedStatisticsLoggingIntervalMs,
         "How often to log cross-process statistics, in milliseconds."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedWebpRecompressionQuality,
+                       "Set quality parameter for recompressing webp "
+                       "images [-1,100], 100 refers to best quality, "
+                       "-1 disables lossy compression."),
 
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)
@@ -1712,10 +1729,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "DEPRECATED, use ModPagespeedImageMaxRewritesAtOnce."),
   APACHE_CONFIG_OPTION(kModPagespeedInheritVHostConfig,
         "Inherit global configuration into VHosts."),
-  APACHE_CONFIG_OPTION(kModPagespeedJpegRecompressQuality,
-                       "Set quality parameter for recompressing jpeg "
-                       "images [-1,100], 100 refers to best quality, "
-                       "-1 disables lossy compression."),
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheByteLimit,
         "Set the maximum byte size entry to store in the per-process "
         "in-memory LRU cache"),

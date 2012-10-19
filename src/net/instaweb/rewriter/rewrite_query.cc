@@ -37,10 +37,12 @@ const char RewriteQuery::kNoscriptValue[] = "noscript";
 // TODO(matterbury): Accept or solve the problem that the query parameter
 // names are duplicated here and in apache/mod_instaweb.cc.
 typedef void (RewriteOptions::*RewriteOptionsInt64PMF)(int64);
+
 struct Int64QueryParam {
   const char* name_;
   RewriteOptionsInt64PMF method_;
 };
+
 static struct Int64QueryParam int64_query_params_[] = {
   { "ModPagespeedCssFlattenMaxBytes",
     &RewriteOptions::set_css_flatten_max_bytes },
@@ -57,6 +59,12 @@ static struct Int64QueryParam int64_query_params_[] = {
     &RewriteOptions::set_js_inline_max_bytes },
   { "ModPagespeedDomainShardCount",
     &RewriteOptions::set_domain_shard_count },
+  { "ModPagespeedJpegRecompressionQuality",
+    &RewriteOptions::set_image_jpeg_recompress_quality },
+  { "ModPagespeedImageRecompressionQuality",
+    &RewriteOptions::set_image_recompress_quality },
+  { "ModPagespeedWebpRecompressionQuality",
+    &RewriteOptions::set_image_webp_recompress_quality },
 };
 
 // Scan for option-sets in query-params.  We will only allow a limited
