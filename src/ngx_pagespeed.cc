@@ -124,71 +124,6 @@ ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child)
 static ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
-// Add a buffer to the end of the buffer chain indicating that we were processed
-// through ngx_pagespeed.
-static ngx_int_t
-ngx_http_pagespeed_note_processed(ngx_http_request_t* r,
-                                  ngx_http_pagespeed_request_ctx_t* ctx,
-                                  ngx_chain_t* in) {
-  // Find the end of the buffer chain.
-  ngx_chain_t* chain_link;
-  int chain_contains_last_buffer = 0;
-  for (chain_link = in; chain_link != NULL; chain_link = chain_link->next) {
-    if (chain_link->buf->last_buf) {
-      chain_contains_last_buffer = 1;
-      if (chain_link->next != NULL) {
-        ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
-                      "Chain link thinks its last but has a child.");
-        return NGX_ERROR;
-      }
-      break;  // Chain link now is the last link in the chain.
-    }
-  }
-
-  if (!chain_contains_last_buffer) {
-    // None of the buffers had last_buf set, meaning we have an incomplete chain
-    // and are still waiting to get the final buffer.  Wait until we're called
-    // again with the last buffer.
-    return NGX_OK;
-  }
-
-  // Prepare a new buffer to put the note into.
-  ngx_buf_t* b = static_cast<ngx_buf_t*>(ngx_calloc_buf(r->pool));
-  if (b == NULL) {
-    return NGX_ERROR;
-  }
-
-  // Write to the new buffer.
-  const char note[] = "<!-- Processed through ngx_pagespeed using PSOL version "
-      MOD_PAGESPEED_VERSION_STRING " -->\n";
-  int note_len = strlen(note);
-  b->start = b->pos = static_cast<u_char*>(ngx_pnalloc(r->pool, note_len));
-  strncpy((char*)b->pos, note, note_len);
-  b->end = b->last = b->pos + note_len;
-  b->temporary = 1;
-
-  // Link the new buffer into the buffer chain.
-  ngx_chain_t* added_link = static_cast<ngx_chain_t*>(
-      ngx_alloc_chain_link(r->pool));
-  if (added_link == NULL) {
-    return NGX_ERROR;
-  }
-
-  added_link->buf = b;
-
-  // Add our new link to the buffer chain.
-  added_link->next = NULL;
-  chain_link->next = added_link;
-
-  // Mark our new link as the end of the chain.
-  chain_link->buf->last_buf = 0;
-  added_link->buf->last_buf = 1;
-  chain_link->buf->last_in_chain = 0;
-  added_link->buf->last_in_chain = 1;
-
-  return NGX_OK;
-}
-
 static void
 ngx_http_pagespeed_release_request_context(
     ngx_http_request_t* r, ngx_http_pagespeed_request_ctx_t* ctx) {
@@ -428,14 +363,7 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
     ctx->base_fetch->PopulateHeaders();
   }
 
-  int rc;
-
-  rc = ngx_http_pagespeed_note_processed(r, ctx, in);
-  if (rc != NGX_OK) {
-    return rc;
-  }
-
-  rc = ngx_http_pagespeed_optimize_and_replace_buffer(r, ctx, in);
+  int rc = ngx_http_pagespeed_optimize_and_replace_buffer(r, ctx, in);
   if (rc != NGX_OK) {
     return rc;
   }
