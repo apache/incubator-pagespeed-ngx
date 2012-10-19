@@ -35,6 +35,14 @@ class NgxBaseFetch : public AsyncFetch {
 
   // Copies the response headers out of request_->headers_out->headers.
   void PopulateHeaders();
+
+  // Puts a chain link in link_ptr if we have any output data buffered.  Returns
+  // NGX_Ok on success, NGX_ERROR on errors.  If there's no data to send, sends
+  // data only if Done() has been called.  Indicates the end of output by
+  // setting last_buf on the chain link
+  //
+  // Always sets link_ptr to a single chain link, never a full chain.
+  ngx_int_t CollectAccumulatedWrites(ngx_chain_t** link_ptr);
  private:
   ResponseHeaders response_headers_;
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
@@ -44,6 +52,9 @@ class NgxBaseFetch : public AsyncFetch {
   
   ngx_http_request_t* request_;
   GoogleString buffer_;
+
+  bool done_called_;
+
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };
 

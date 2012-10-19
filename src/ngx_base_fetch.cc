@@ -22,7 +22,9 @@
 
 namespace net_instaweb {
 
-NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r) : request_(r) { }
+NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r)
+    : request_(r), done_called_(false) {
+}
 
 NgxBaseFetch::~NgxBaseFetch() { }
 
@@ -67,22 +69,75 @@ void NgxBaseFetch::PopulateHeaders() {
 
 bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
                                MessageHandler* handler) {
+  // TODO(jefftk): acquire lock on buffer_ here.
   buffer_.append(sp.data(), sp.size());
+  // TODO(jefftk): release lock here.
   return true;
+}
+
+// TODO(jefftk): this is vulnerable to race conditions.  Memory inconsistencies
+// between threads can mean that chain links get dropped, which is of course
+// very bad.  To fix this we should protect buffer_ with a lock that gets
+// acquired both here and in HandleWrite so that we make sure they both have a
+// consistent view of memory.
+//
+// There may also be a race condition if this is called between the last Write()
+// and Done() such that we're sending an empty buffer with last_buf set, which I
+// think nginx will reject.
+ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
+  // TODO(jefftk): acquire lock on buffer_ here.
+
+  if (!done_called_ && buffer_.length() == 0) {
+    // Nothing to send.  But if done_called_ then we can't short circuit because
+    // we need to set last_buf.
+    *link_ptr = NULL;
+    return NGX_OK;
+  }
+
+  // Prepare a new nginx buffer to put our buffered writes into.
+  ngx_buf_t* b = static_cast<ngx_buf_t*>(ngx_calloc_buf(request_->pool));
+  if (b == NULL) {
+    return NGX_ERROR;
+  }
+  b->start = b->pos = static_cast<u_char*>(
+      ngx_pnalloc(request_->pool, buffer_.length()));
+  if (b->pos == NULL) {
+    return NGX_ERROR;
+  }
+
+  // Copy our writes over.
+  buffer_.copy(reinterpret_cast<char*>(b->pos), buffer_.length());
+  b->last = b->end = b->pos + buffer_.length();
+
+  // Done with buffer contents now.
+  buffer_.clear();
+
+  // TODO(jefftk): release lock here.
+
+  b->last_buf = b->last_in_chain = done_called_;
+  
+  // Prepare a chain link for our new buffer.
+  *link_ptr = static_cast<ngx_chain_t*>(
+      ngx_alloc_chain_link(request_->pool));
+  if (*link_ptr == NULL) {
+    return NGX_ERROR;
+  }
+
+  (*link_ptr)->buf = b;
+  (*link_ptr)->next = NULL;
+  return NGX_OK;
 }
 
 bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
-  if (response_headers()->IsHtmlLike()) {
-    handler->Message(kInfo, "HandleFlush() -> '%s'", buffer_.c_str());
-  } else {
-    handler->Message(kInfo, "HandleFlush() -> not html");
-  }
-
-  buffer_.clear();
+  // Do nothing for now.
+  // TODO(jefftk): let nginx know through some pipe that it should call
+  // CollectAccumulatedWrites() from it's main thread.
+  handler->Message(kInfo, "Have accumulated '%s'", buffer_.c_str());
   return true;
 }
+
 void NgxBaseFetch::HandleDone(bool success) {
-  delete this;
+  done_called_ = true;
 }
 
 }  // namespace net_instaweb

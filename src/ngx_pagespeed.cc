@@ -131,6 +131,9 @@ ngx_http_pagespeed_release_request_context(
     // release request context
     ngx_http_set_ctx(r, NULL, ngx_pagespeed);
 
+    // BaseFetch doesn't delete itself
+    delete ctx->base_fetch;
+
     // the proxy fetch deleted itself when we called Done()
     delete ctx;
 }
@@ -240,7 +243,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
 
   ctx->cfg = static_cast<ngx_http_pagespeed_srv_conf_t*>(
       ngx_http_get_module_srv_conf(r, ngx_pagespeed));
-  
+
   // Deletes itself when HandleDone is called, which happens when we call Done()
   // on the proxy fetch below.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(r);
@@ -302,12 +305,14 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   return NGX_OK;
 }
 
-// Replace each buffer chain with a new one that's been optimized.
-static ngx_int_t
-ngx_http_pagespeed_optimize_and_replace_buffer(
+// Send each buffer in the chain to the proxy_fetch for optimization.
+// Eventually it will make it's way, optimized, to base_fetch.
+static void
+ngx_http_pagespeed_send_to_pagespeed(
     ngx_http_request_t* r,
     ngx_http_pagespeed_request_ctx_t* ctx,
     ngx_chain_t* in) {
+
   ngx_chain_t* cur;
   int last_buf = 0;
   int last_in_chain = 0;
@@ -323,34 +328,26 @@ ngx_http_pagespeed_optimize_and_replace_buffer(
 
     // We're done with buffers as we pass them through, so free them and their
     // chain links as we go.
-    // TODO(jefftk): for now don't free any buffers.
-    // ngx_pfree(r->pool, cur->buf);
-    // ngx_pfree(r->pool, cur);
+    ngx_pfree(r->pool, cur->buf);
+    ngx_pfree(r->pool, cur);
     cur = next_link;
   }
-  // in = NULL;  // We freed all the buffers.
+  in = NULL;  // We freed all the buffers.
 
   if (last_buf) {
     ctx->proxy_fetch->Done(true /* success */);
-    ngx_http_pagespeed_release_request_context(r, ctx);
-    ctx = NULL;
   } else {
     // TODO(jefftk): Decide whether Flush() is warranted here.
     ctx->proxy_fetch->Flush(ctx->cfg->handler);
   }
-
-  //return NGX_DONE; // No output.
-  return NGX_OK; // Passed buffers through.
-
-  // In the future I think we need to return NGX_AGAIN after adding some sort of
-  // notification pipe to nginx's main event loop so it knows when to wake us
-  // back up.  For now we're just dumping all output from pagespeed to the error
-  // log, so don't worry about it.
 }
 
 static ngx_int_t
 ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
 {
+  DBG(r, "ngx_http_pagespeed_body_filter called, in=%p", in);
+  int rc;
+
   ngx_http_pagespeed_request_ctx_t* ctx =
       ngx_http_pagespeed_get_request_context(r);
   if (ctx == NULL) {
@@ -363,12 +360,43 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
     ctx->base_fetch->PopulateHeaders();
   }
 
-  int rc = ngx_http_pagespeed_optimize_and_replace_buffer(r, ctx, in);
+  // Send all input data to the proxy fetch.
+  ngx_http_pagespeed_send_to_pagespeed(r, ctx, in);
+
+  // Get any finished data back
+  rc = ctx->base_fetch->CollectAccumulatedWrites(&in);
   if (rc != NGX_OK) {
     return rc;
   }
 
-  return ngx_http_next_body_filter(r, in);
+  if (in == NULL) {
+    DBG(r, "got null from pagespeed");
+  } else {
+    DBG(r, "got '%*s' from pagespeed",
+        in->buf->end - in->buf->pos, in->buf->pos);
+  }
+
+  bool last_buf = (in == NULL) ? false : in->buf->last_buf;
+  if (last_buf) {
+    DBG(r, "got last buffer");
+    ngx_http_pagespeed_release_request_context(r, ctx);
+
+    if (in->buf->pos == in->buf->end) {
+      // Empty buffer just to signal the end of output.  Maybe need to do
+      // something special here.
+    }
+  }
+
+  rc = ngx_http_next_body_filter(r, in);
+  if (rc != NGX_OK) {
+    return rc;
+  }
+
+  if (last_buf) {
+    return NGX_OK;
+  } else {
+    return NGX_AGAIN;
+  }
 }
 
 static ngx_int_t
