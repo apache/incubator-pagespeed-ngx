@@ -489,10 +489,8 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
       GoogleString url =
           StrCat(flush_early_driver->options()->pre_connect_url(),
                  "?id=",IntegerToString(index));
-
-      base_fetch_->Write(StringPrintf(
-          FlushEarlyContentWriterFilter::kPrefetchLinkTagHtml,
-          url.c_str()), handler_);
+      base_fetch_->Write(StringPrintf("<link rel=\"stylesheet\" href=\"%s\"/>",
+                                      url.c_str()), handler_);
     }
   }
   flush_early_driver->decrement_async_events_count();

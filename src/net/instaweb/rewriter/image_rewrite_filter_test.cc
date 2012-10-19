@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -160,6 +161,10 @@ class ImageRewriteTest : public RewriteTestBase {
     options()->set_image_inline_max_bytes(2000);
     rewrite_driver()->AddFilters();
 
+    LoggingInfo logging_info;
+    LogRecord log_record(&logging_info);
+    rewrite_driver()->set_log_record(&log_record);
+
     // URLs and content for HTML document and resources.
     const GoogleUrl domain(EncodeWithBase("http://rewrite_image.test/",
                                           "http://rewrite_image.test/",
@@ -222,6 +227,9 @@ class ImageRewriteTest : public RewriteTestBase {
 
     // Try to fetch from an independent server.
     ServeResourceFromManyContexts(src_string, rewritten_image);
+
+    // Check that filter application was logged.
+    EXPECT_STREQ("ic", logging_info.applied_rewriters());
   }
 
   // Helper class to collect image srcs.

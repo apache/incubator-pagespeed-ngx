@@ -153,6 +153,7 @@ void ImageRewriteFilter::Context::Render() {
     // We wrote out the URL ourselves; don't let the default handling mess it up
     // (in particular replacing data: with out-of-line version)
     resource_slot->set_disable_rendering(true);
+    filter_->LogFilterModifiedContent();
   }
 }
 

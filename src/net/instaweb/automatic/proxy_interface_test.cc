@@ -1999,8 +1999,7 @@ TEST_F(ProxyInterfaceTest, PreconnectTest) {
 
   GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
   const char pre_connect_tag[] =
-      "<link rel=\"stylesheet\" href=\"http://cdn.com/pre_connect?id=%s\" "
-      "media=\"print\" disabled=\"true\"/>\n";
+      "<link rel=\"stylesheet\" href=\"http://cdn.com/pre_connect?id=%s\"/>";
   const char image_tag[] =
       "<img src=http://cdn.com/http/test.com/http/test.com/%s />";
 
