@@ -1214,4 +1214,14 @@ TEST_F(DomainLawyerTest, NoAbsoluteUrlPath) {
   EXPECT_STREQ("http://b.com/data:image/jpeg", out);
 }
 
+TEST_F(DomainLawyerTest, AboutBlank) {
+  DomainLawyer lawyer;
+  lawyer.AddOriginDomainMapping("b.com", "a.com", &message_handler_);
+
+  GoogleUrl foo("about:blank");
+  GoogleString out;
+  EXPECT_TRUE(lawyer.MapOriginUrl(foo, &out));
+  EXPECT_STREQ("about:blank", out);
+}
+
 }  // namespace net_instaweb

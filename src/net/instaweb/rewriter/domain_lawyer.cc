@@ -319,30 +319,33 @@ DomainLawyer::Domain* DomainLawyer::FindDomain(const GoogleUrl& gurl) const {
   // PathSansLeaf gives something like "/a/b/c/" so after splitting with
   // omit_empty_strings==false, the first and last elements are always
   // present and empty.
-  DCHECK_LE(2, static_cast<int>(components.size()));
-  DCHECK(components[0].empty());
-  DCHECK(components[components.size() - 1].empty());
-
-  int component_size = 0;
-  for (int i = components.size() - 1; (domain == NULL) && (i >= 1); --i) {
-    domain_path.resize(domain_path.size() - component_size);
-    DCHECK(StringPiece(domain_path).ends_with("/"));
-    DomainMap::const_iterator p = domain_map_.find(domain_path);
-    if (p != domain_map_.end()) {
-      domain = p->second;
-    } else {
-      // Remove the path component.  Consider input
-      // "http://a.com/x/yy/zzz/w".  We will split PathSansLeaf, which
-      // is "/x/yy/zzz/", so we will get StringPieceVector ["", "x",
-      // "yy", "zzz", ""].  In the first iteration we want to consider
-      // the entire path in the search, so we initialize
-      // component_size to 0 above the loop.  In the next iteration we
-      // want to chop off "zzz/" so we increment the component size by
-      // one to get rid of the slash.  Note that we passed 'false'
-      // into SplitStringPieceToVector so if there are double-slashes
-      // they will show up as distinct components and we will get rid
-      // of them one at a time.
-      component_size = components[i - 1].size() + 1;
+  //
+  // Note that the GURL can be 'about:blank' so be paranoid about getting
+  // what we expect.
+  if ((2U <= components.size()) &&
+      components[0].empty() &&
+      components[components.size() - 1].empty()) {
+    int component_size = 0;
+    for (int i = components.size() - 1; (domain == NULL) && (i >= 1); --i) {
+      domain_path.resize(domain_path.size() - component_size);
+      DCHECK(StringPiece(domain_path).ends_with("/"));
+      DomainMap::const_iterator p = domain_map_.find(domain_path);
+      if (p != domain_map_.end()) {
+        domain = p->second;
+      } else {
+        // Remove the path component.  Consider input
+        // "http://a.com/x/yy/zzz/w".  We will split PathSansLeaf, which
+        // is "/x/yy/zzz/", so we will get StringPieceVector ["", "x",
+        // "yy", "zzz", ""].  In the first iteration we want to consider
+        // the entire path in the search, so we initialize
+        // component_size to 0 above the loop.  In the next iteration we
+        // want to chop off "zzz/" so we increment the component size by
+        // one to get rid of the slash.  Note that we passed 'false'
+        // into SplitStringPieceToVector so if there are double-slashes
+        // they will show up as distinct components and we will get rid
+        // of them one at a time.
+        component_size = components[i - 1].size() + 1;
+      }
     }
   }
 
