@@ -167,6 +167,26 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
         // pagespeed_lazy_src attribute / pagespeed_no_defer attribute and is
         // not inlined.
         // Note that we remove the pagespeed_no_defer if it was present.
+        // Decode the url if it is rewritten.
+        GoogleUrl gurl(base_url(), url);
+        StringVector decoded_url_vector;
+        if (driver()->DecodeUrl(gurl, &decoded_url_vector) &&
+            decoded_url_vector.size() == 1) {
+          // We only handle the case where the rewritten url corresponds to
+          // a single original url which should be sufficient for all cases
+          // other than image sprites.
+          gurl.Reset(decoded_url_vector[0]);
+        }
+        if (!gurl.is_valid()) {
+          // Do not lazily load images with invalid urls.
+          return;
+        }
+        StringPiece full_url = gurl.Spec();
+        if (full_url.empty() || !driver()->options()->IsAllowed(full_url)) {
+          // Do not lazily load images with blacklist urls.
+          return;
+        }
+
         // Critical Images are required only if it is not a blink request as
         // blink automatically decides critical images.
         // Lazyload script will only be inserted if it is not a blink request.
@@ -181,16 +201,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
           if (finder->IsMeaningful()) {
             // Decode the url since the critical images in the finder are not
             // rewritten.
-            GoogleUrl gurl(base_url(), url);
-            StringVector decoded_url_vector;
-            if (driver()->DecodeUrl(gurl, &decoded_url_vector) &&
-                decoded_url_vector.size() == 1) {
-              // We only handle the case where the rewritten url corresponds to
-              // a single original url which should be sufficient for all cases
-              // other than image sprites.
-              gurl.Reset(decoded_url_vector[0]);
-            }
-            if (finder->IsCriticalImage(gurl.spec_c_str(), driver())) {
+            if (finder->IsCriticalImage(full_url.data(), driver())) {
               // Do not try to lazily load this image since it is critical.
               return;
             }

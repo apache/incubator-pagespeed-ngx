@@ -152,6 +152,35 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
                     "</body>")));
 }
 
+TEST_F(LazyloadImagesFilterTest, Blacklist) {
+  options()->Disallow("*blacklist*");
+  InitLazyloadImagesFilter(false);
+
+  GoogleString input_html= "<head></head>"
+      "<body>"
+      "<img src=\"http://www.1.com/blacklist.jpg\"/>"
+      "<img src=\"http://www.1.com/img1\"/>"
+      "<img src=\"img2\"/>"
+      "</body>";
+
+  ValidateExpected(
+      "lazyload_images",
+      input_html,
+      StrCat("<head></head><body>"
+             "<img src=\"http://www.1.com/blacklist.jpg\"/>",
+             GetLazyloadScriptHtml(),
+             StrCat(
+                 GenerateRewrittenImageTag(
+                     "img", "http://www.1.com/img1", ""),
+                 GenerateRewrittenImageTag(
+                     "img", "img2", ""),
+                 GetOverrideAttributesScriptHtml(),
+                 "</body>")));
+
+  rewrite_driver()->set_user_agent("Firefox/1.0");
+  ValidateNoChanges("inlining_not_supported", input_html);
+}
+
 TEST_F(LazyloadImagesFilterTest, CriticalImages) {
   InitLazyloadImagesFilter(false);
   StringSet* critical_images = new StringSet;
@@ -297,7 +326,7 @@ TEST_F(LazyloadImagesFilterTest, LazyloadScriptOptimized) {
 TEST_F(LazyloadImagesFilterTest, LazyloadScriptDebug) {
   InitLazyloadImagesFilter(true);
   Parse("debug",
-        "<head></head><img src=\"1.jpg\"></body>");
+        "<head></head><body><img src=\"1.jpg\"></body>");
   EXPECT_NE(GoogleString::npos, output_buffer_.find("/*"))
       << "There should still be some comments in the debug code";
 }
