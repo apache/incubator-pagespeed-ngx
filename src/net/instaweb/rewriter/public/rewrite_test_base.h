@@ -51,6 +51,7 @@ class CountingUrlAsyncFetcher;
 class DelayCache;
 class HTTPValue;
 class Hasher;
+class HtmlWriterFilter;
 class LRUCache;
 class MessageHandler;
 class MockScheduler;
@@ -76,6 +77,17 @@ class RewriteOptionsTestBase : public HtmlParseTestBaseNoAlloc {
 class RewriteTestBase : public RewriteOptionsTestBase {
  public:
   static const char kTestData[];    // Testdata directory.
+
+  // Specifies which server should be "active" in that rewrites and fetches
+  // will use it. The data members affected are those returned by:
+  // - factory() / other_factory()
+  // - server_context() / other_server_context()
+  // - rewrite_driver() / other_rewrite_driver()
+  // - options() / other_options()
+  enum ActiveServerFlag {
+    kPrimary,    // Use the normal data members.
+    kSecondary,  // Use all the other_ data members.
+  };
 
   RewriteTestBase();
   explicit RewriteTestBase(Statistics* statistics);
@@ -520,6 +532,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
                               int64 original_content_length,
                               ResponseHeaders* headers);
 
+  // Set the "active" server to that specified; the active server is used for
+  // rewriting and serving pages.
+  void SetActiveServer(ActiveServerFlag server_to_use);
+
   // The mock fetcher & stats are global across all Factories used in the tests.
   MockUrlFetcher mock_url_fetcher_;
   scoped_ptr<Statistics> statistics_;
@@ -535,6 +551,8 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   RewriteDriver* rewrite_driver_;
   ServerContext* other_server_context_;
   RewriteDriver* other_rewrite_driver_;
+  scoped_ptr<HtmlWriterFilter> other_html_writer_filter_;
+  ActiveServerFlag active_server_;
   bool use_managed_rewrite_drivers_;
 
   MD5Hasher md5_hasher_;

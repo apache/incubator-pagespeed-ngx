@@ -97,11 +97,15 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
   }
 
   void SetupWriter() {
+    SetupWriter(&html_writer_filter_);
+  }
+
+  void SetupWriter(scoped_ptr<HtmlWriterFilter>* html_writer_filter) {
     output_buffer_.clear();
-    if (html_writer_filter_.get() == NULL) {
-      html_writer_filter_.reset(new HtmlWriterFilter(html_parse()));
-      html_writer_filter_->set_writer(&write_to_string_);
-      html_parse()->AddFilter(html_writer_filter_.get());
+    if (html_writer_filter->get() == NULL) {
+      html_writer_filter->reset(new HtmlWriterFilter(html_parse()));
+      (*html_writer_filter)->set_writer(&write_to_string_);
+      html_parse()->AddFilter(html_writer_filter->get());
     }
   }
 

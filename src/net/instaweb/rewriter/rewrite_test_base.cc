@@ -26,6 +26,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
@@ -120,6 +121,7 @@ void RewriteTestBase::Init() {
   server_context_ = factory_->CreateServerContext();
   other_server_context_ = other_factory_->CreateServerContext();
   other_rewrite_driver_ = MakeDriver(other_server_context_, other_options_);
+  active_server_ = kPrimary;
 }
 
 RewriteTestBase::~RewriteTestBase() {
@@ -877,6 +879,28 @@ void RewriteTestBase::CheckFetchFromHttpCache(
   EXPECT_EQ(1, static_cast<int>(lru_cache()->num_hits()));
   EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
   EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
+}
+
+void RewriteTestBase::SetActiveServer(ActiveServerFlag server_to_use) {
+  if (active_server_ != server_to_use) {
+    factory_.swap(other_factory_);
+    std::swap(server_context_, other_server_context_);
+    std::swap(rewrite_driver_, other_rewrite_driver_);
+    std::swap(options_, other_options_);
+    active_server_ = server_to_use;
+
+    // If we have just swapped from a driver with an initialized writer to one
+    // without an initialized writer, we have to initialize the new one ourself
+    // because HtmlParseTestBaseNoAlloc::SetupWriter initializes once only, so
+    // won't do it for the new one, resulting in fetched content not going to
+    // the output_ data member, causing ValidateExpected calls to fail horribly.
+    if (html_writer_filter_.get() != NULL &&
+        other_html_writer_filter_.get() == NULL) {
+      other_html_writer_filter_.reset(new HtmlWriterFilter(html_parse()));
+      other_html_writer_filter_->set_writer(&write_to_string_);
+      html_parse()->AddFilter(other_html_writer_filter_.get());
+    }
+  }
 }
 
 // Logging at the INFO level slows down tests, adds to the noise, and
