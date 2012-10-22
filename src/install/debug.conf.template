@@ -226,6 +226,12 @@ ModPagespeedCustomFetchHeader x-other False
 #STRESS   </IfModule>
 #STRESS </IfVersion>
 
+# Globally set the message-buffer size during load-tests.
+#
+# TODO(jmarantz): add a test-path where we set this in a VirtualHost and
+# make sure the right error message comes out.
+#COVERAGE ModPagespeedMessageBufferSize 100000
+#COVERAGE
 #COVERAGE # These lines are used for large-scale code coverage testing.
 #COVERAGE # We use 2 servers for it, one doing rewriting and fetching
 #COVERAGE # from the other one, which plays back slurps
@@ -265,7 +271,6 @@ ModPagespeedCustomFetchHeader x-other False
 #COVERAGE       Allow from localhost
 #COVERAGE       SetHandler mod_pagespeed_statistics
 #COVERAGE   </Location>
-#COVERAGE    ModPagespeedMessageBufferSize 100000
 #COVERAGE    <Location /mod_pagespeed_message>
 #COVERAGE        Allow from localhost
 #COVERAGE        Allow from 127.0.0.1

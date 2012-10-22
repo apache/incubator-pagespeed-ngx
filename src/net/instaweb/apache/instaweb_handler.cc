@@ -467,10 +467,12 @@ apr_status_t instaweb_statistics_handler(
     writer.Write("</pre>", message_handler);
     statistics->RenderHistograms(&writer, message_handler);
 
-    GoogleString memcached_stats;
-    factory->PrintMemCacheStats(&memcached_stats);
-    if (!memcached_stats.empty()) {
-      WritePre(memcached_stats, &writer, message_handler);
+    if (params.Has("memcached")) {
+      GoogleString memcached_stats;
+      factory->PrintMemCacheStats(&memcached_stats);
+      if (!memcached_stats.empty()) {
+        WritePre(memcached_stats, &writer, message_handler);
+      }
     }
 
     if (print_normal_config) {
