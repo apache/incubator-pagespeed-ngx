@@ -27,6 +27,8 @@ extern "C" {
   #include <ngx_http.h>
 }
 
+#include <unistd.h>
+
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_base_fetch.h"
 
@@ -62,6 +64,7 @@ typedef struct {
   net_instaweb::ProxyFetch* proxy_fetch;
   net_instaweb::NgxBaseFetch* base_fetch;
   bool data_received;
+  int pipe_fd;
 } ngx_http_pagespeed_request_ctx_t;
 
 static ngx_command_t ngx_http_pagespeed_commands[] = {
@@ -244,9 +247,17 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   ctx->cfg = static_cast<ngx_http_pagespeed_srv_conf_t*>(
       ngx_http_get_module_srv_conf(r, ngx_pagespeed));
 
+  int file_descriptors[2];
+  int rc = pipe2(file_descriptors, O_NONBLOCK);
+  if (rc != 0) {
+    ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0, "pipe() failed");
+    return NGX_ERROR;
+  }
+  ctx->pipe_fd = file_descriptors[0];
+
   // Deletes itself when HandleDone is called, which happens when we call Done()
   // on the proxy fetch below.
-  ctx->base_fetch = new net_instaweb::NgxBaseFetch(r);
+  ctx->base_fetch = new net_instaweb::NgxBaseFetch(r, file_descriptors[1]);
 
   if (ctx->cfg->driver_factory == NULL) {
     // This is the first request handled by this server block.

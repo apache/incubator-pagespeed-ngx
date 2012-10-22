@@ -30,18 +30,20 @@ namespace net_instaweb {
 
 class NgxBaseFetch : public AsyncFetch {
  public:
-  explicit NgxBaseFetch(ngx_http_request_t* r);
+  NgxBaseFetch(ngx_http_request_t* r, int pipe_fd);
   virtual ~NgxBaseFetch();
 
   // Copies the response headers out of request_->headers_out->headers.
   void PopulateHeaders();
 
   // Puts a chain link in link_ptr if we have any output data buffered.  Returns
-  // NGX_Ok on success, NGX_ERROR on errors.  If there's no data to send, sends
+  // NGX_OK on success, NGX_ERROR on errors.  If there's no data to send, sends
   // data only if Done() has been called.  Indicates the end of output by
   // setting last_buf on the chain link
   //
   // Always sets link_ptr to a single chain link, never a full chain.
+  //
+  // Called by nginx.
   ngx_int_t CollectAccumulatedWrites(ngx_chain_t** link_ptr);
  private:
   ResponseHeaders response_headers_;
@@ -49,11 +51,15 @@ class NgxBaseFetch : public AsyncFetch {
   virtual bool HandleFlush(MessageHandler* handler);
   virtual void HandleHeadersComplete() {}
   virtual void HandleDone(bool success);
-  
+
+  // Indicate to nginx that we would like it to call
+  // CollectAccumulatedWrites().
+  void RequestCollection();
+
   ngx_http_request_t* request_;
   GoogleString buffer_;
-
   bool done_called_;
+  int pipe_fd_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };

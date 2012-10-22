@@ -22,8 +22,8 @@
 
 namespace net_instaweb {
 
-NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r)
-    : request_(r), done_called_(false) {
+NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd)
+    : request_(r), done_called_(false), pipe_fd_(pipe_fd) {
 }
 
 NgxBaseFetch::~NgxBaseFetch() { }
@@ -128,16 +128,33 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
   return NGX_OK;
 }
 
+void NgxBaseFetch::RequestCollection() {
+  int rc;
+
+  do {
+    rc = write(pipe_fd_, "A", 1);
+    if (rc < 0) {
+      perror("NgxBaseFetch::RequestCollection");
+    }
+  } while (rc != 1);  // Keep trying.
+}
+
 bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
   // Do nothing for now.
   // TODO(jefftk): let nginx know through some pipe that it should call
   // CollectAccumulatedWrites() from it's main thread.
   handler->Message(kInfo, "Have accumulated '%s'", buffer_.c_str());
+  RequestCollection();
   return true;
 }
 
 void NgxBaseFetch::HandleDone(bool success) {
   done_called_ = true;
+  RequestCollection();
+  int rc;
+  do {
+    rc = close(pipe_fd_);
+  } while (errno == EINTR || errno == EIO);
 }
 
 }  // namespace net_instaweb
