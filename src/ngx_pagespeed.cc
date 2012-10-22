@@ -260,7 +260,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   }
 
   GoogleString url_string = ngx_http_pagespeed_determine_url(r);
-  net_instaweb::GoogleUrl request_url = net_instaweb::GoogleUrl(url_string);
+  net_instaweb::GoogleUrl request_url(url_string);
 
   // This code is based off of ProxyInterface::ProxyRequestCallback and
   // ProxyFetchFactory::StartNewProxyFetch
