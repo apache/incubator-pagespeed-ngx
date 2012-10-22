@@ -1003,10 +1003,6 @@ void RewriteOptions::DisallowTroublesomeResources() {
   // unique urls:
   // Disallow("*//stats.wordpress.com/e-*");
 
-  // http://code.google.com/p/modpagespeed/issues/detail?id=537
-  Disallow("*/wp-admin/*");  // wordpress admin pages.
-  Disallow("*/admin/*");
-
   if (Enabled(kComputePanelJson)) {
     RetainComment(StrCat(kPanelCommentPrefix, "*"));
   }

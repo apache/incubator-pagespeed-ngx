@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -95,6 +96,9 @@ class CachePutFetch : public SharedAsyncFetch {
       saved_headers_.CopyFrom(*headers);
     }
 
+    // Set is_original_resource_cacheable.
+    base_fetch()->logging_info()->set_is_original_resource_cacheable(
+        cacheable_);
     base_fetch()->HeadersComplete();
   }
 

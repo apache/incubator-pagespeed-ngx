@@ -506,6 +506,8 @@ void ProxyInterface::ProxyRequestCallback(
   if (is_resource_fetch) {
     // TODO(sligocki): Set using_spdy appropriately.
     bool using_spdy = false;
+    // TODO(pulkitg): Set is_original_resource_cacheable to false if pagespeed
+    // resource is not cacheable.
     ResourceFetch::Start(*request_url, options, using_spdy,
                          server_context_, async_fetch);
   } else {

@@ -86,7 +86,7 @@ message MetadataCacheInfo {
 }
 
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 5
+// Next id for LoggingInfo: 6
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -97,4 +97,6 @@ message LoggingInfo {
   optional string applied_rewriters = 3;
   // Metadata cache info.
   optional MetadataCacheInfo metadata_cache_info = 4;
+  // Whether the original resource is cacheable.
+  optional bool is_original_resource_cacheable = 5 [ default = true ];
 }
