@@ -62,9 +62,8 @@ const char kTotalRequestCount[] = "all-requests";
 const char kPagespeedRequestCount[] = "pagespeed-requests";
 const char kBlinkRequestCount[] = "blink-requests";
 const char kRejectedRequestCount[] = "publisher-rejected-requests";
-const char kRejectedRequestHtmlResponse[] = "<html><body>Unable to serve "
-    "content as the content is blocked by the administrator of the domain."
-    "</body></html>";
+const char kRejectedRequestHtmlResponse[] = "Unable to serve "
+    "content as the content is blocked by the administrator of the domain.";
 
 bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
   const ContentType* type = NameExtensionToContentType(url.LeafSansQuery());
