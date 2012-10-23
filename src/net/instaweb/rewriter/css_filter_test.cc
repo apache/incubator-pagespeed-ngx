@@ -17,6 +17,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //     and sligocki@google.com (Shawn Ligocki)
 
+#include "net/instaweb/rewriter/public/css_filter.h"
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -1152,6 +1154,69 @@ TEST_F(CssFilterTest, RewriteStyleAttribute) {
   // which is actually invalid.
   ValidateNoChanges("rewrite-style-with-style",
                    "<style style='background-color: #f00; color: yellow;'/>");
+}
+
+TEST_F(CssFilterTest, RewriteStyleAttributeDifferentDirsNoUrl) {
+  // Make sure we don't pointlessly produce different cache keys for
+  // attribute CSS w/o URLs in different directories.
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
+  server_context()->ComputeSignature(options());
+
+  const char kCss[] = "color : yellow;  ";
+  const char kMinCss[] = "color:#ff0";
+
+  ValidateExpected("main_page",
+                   StrCat("<div style='", kCss, "'/>"),
+                   StrCat("<div style='", kMinCss, "'/>"));
+
+  ValidateExpected("subdir/file",
+                   StrCat("<div style='", kCss, "'/>"),
+                   StrCat("<div style='", kMinCss, "'/>"));
+
+  EXPECT_EQ(1, statistics()->GetVariable(CssFilter::kBlocksRewritten)->Get());
+}
+
+TEST_F(CssFilterTest, RewriteStyleAttributeDifferentDirsAbsUrl) {
+  // Make sure we don't pointlessly produce different cache keys for
+  // attribute CSS with same absolute URLs in different directories.
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
+  server_context()->ComputeSignature(options());
+
+  const char kCss[] = "background : url(http://example.com/artful.png); ";
+  const char kMinCss[] = "background:url(http://example.com/artful.png)";
+
+  ValidateExpected("main_page",
+                   StrCat("<div style='", kCss, "'/>"),
+                   StrCat("<div style='", kMinCss, "'/>"));
+
+  ValidateExpected("subdir/file",
+                   StrCat("<div style='", kCss, "'/>"),
+                   StrCat("<div style='", kMinCss, "'/>"));
+
+  EXPECT_EQ(1, statistics()->GetVariable(CssFilter::kBlocksRewritten)->Get());
+}
+
+TEST_F(CssFilterTest, RewriteStyleAttributeDifferentDirsRelUrl) {
+  // When URLs inside the inline CSS are relative (and resolve to different
+  // bases) we should get 2 separate rewrites.
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributes);
+  server_context()->ComputeSignature(options());
+
+  const char kCss[] = "background : url(artful.png); ";
+  const char kMinCss[] = "background:url(artful.png)";
+
+  ValidateExpected("main_page",
+                   StrCat("<div style='", kCss, "'/>"),
+                   StrCat("<div style='", kMinCss, "'/>"));
+
+  ValidateExpected("subdir/file",
+                   StrCat("<div style='", kCss, "'/>"),
+                   StrCat("<div style='", kMinCss, "'/>"));
+
+  EXPECT_EQ(2, statistics()->GetVariable(CssFilter::kBlocksRewritten)->Get());
 }
 
 TEST_F(CssFilterTest, DontAbsolutifyCssImportUrls) {

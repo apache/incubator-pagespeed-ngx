@@ -136,6 +136,12 @@ class CssFilter : public RewriteFilter {
   friend class CssFlattenImportsContext;  // for statistics
   friend class CssHierarchy;              // for statistics
 
+  enum InlineCssKind {
+    kInsideStyleTag,
+    kAttributeWithoutUrls,
+    kAttributeWithUrls
+  };
+
   Context* MakeContext(RewriteDriver* driver,
                        RewriteContext* parent);
 
@@ -145,7 +151,8 @@ class CssFilter : public RewriteFilter {
   // Starts the asynchronous rewrite process for inline CSS inside the given
   // element's given style attribute.
   void StartAttributeRewrite(HtmlElement* element,
-                             HtmlElement::Attribute* style);
+                             HtmlElement::Attribute* style,
+                             InlineCssKind inline_css_kind);
 
   // Starts the asynchronous rewrite process for external CSS referenced by
   // attribute 'src' of 'link'.
@@ -237,7 +244,9 @@ class CssFilter::Context : public SingleRewriteContext {
 
   // Setup rewriting for inline, attribute, or external CSS.
   void SetupInlineRewrite(HtmlElement* style_element, HtmlCharactersNode* text);
-  void SetupAttributeRewrite(HtmlElement* element, HtmlElement::Attribute* src);
+  void SetupAttributeRewrite(HtmlElement* element,
+                             HtmlElement::Attribute* src,
+                             InlineCssKind inline_css_kind);
   void SetupExternalRewrite(const GoogleUrl& base_gurl,
                             const GoogleUrl& trim_gurl);
 
@@ -346,6 +355,11 @@ class CssFilter::Context : public SingleRewriteContext {
   // exclusive with rewrite_inline_char_node_ since style elements cannot
   // have style attributes.
   HtmlElement::Attribute* rewrite_inline_attribute_;
+
+  // Indicates the kind of CSS inline CSS we are rewriting (<style> vs. style=,
+  // and whether we've noticed any URLs). Only valid if the other
+  // rewrite_inline_ fields reflect us doing inline rewriting.
+  InlineCssKind rewrite_inline_css_kind_;
 
   // Information needed for nested rewrites or finishing up serialization.
   int64 in_text_size_;

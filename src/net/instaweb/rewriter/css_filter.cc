@@ -95,6 +95,29 @@ class InlineCssSlot : public ResourceSlot {
   DISALLOW_COPY_AND_ASSIGN(InlineCssSlot);
 };
 
+// A simple transformer that resolves URLs against a base. Unlike
+// RewriteDomainTransformer, does not do any mapping or trimming.
+class SimpleAbsolutifyTransformer : public CssTagScanner::Transformer {
+ public:
+  explicit SimpleAbsolutifyTransformer(const GoogleUrl* base_url)
+      : base_url_(base_url) {}
+  virtual ~SimpleAbsolutifyTransformer() {}
+
+  virtual TransformStatus Transform(const StringPiece& in, GoogleString* out) {
+    GoogleUrl abs(*base_url_, in);
+    if (abs.is_valid()) {
+      abs.Spec().CopyToString(out);
+      return kSuccess;
+    } else {
+      return kNoChange;
+    }
+  }
+
+ private:
+  const GoogleUrl* base_url_;
+  DISALLOW_COPY_AND_ASSIGN(SimpleAbsolutifyTransformer);
+};
+
 }  // namespace
 
 // Statistics variable names.
@@ -133,6 +156,7 @@ CssFilter::Context::Context(CssFilter* filter, RewriteDriver* driver,
       rewrite_inline_element_(NULL),
       rewrite_inline_char_node_(NULL),
       rewrite_inline_attribute_(NULL),
+      rewrite_inline_css_kind_(kInsideStyleTag),
       in_text_size_(-1) {
   css_base_gurl_.Reset(filter_->decoded_base_url());
   DCHECK(css_base_gurl_.is_valid());
@@ -205,12 +229,17 @@ void CssFilter::Context::SetupInlineRewrite(HtmlElement* style_element,
   // as a rewrite of a data: URL.
   rewrite_inline_element_ = style_element;
   rewrite_inline_char_node_ = text;
+  rewrite_inline_css_kind_ = kInsideStyleTag;
 }
 
 void CssFilter::Context::SetupAttributeRewrite(HtmlElement* element,
-                                               HtmlElement::Attribute* src) {
+                                               HtmlElement::Attribute* src,
+                                               InlineCssKind inline_css_kind) {
+  DCHECK(inline_css_kind == kAttributeWithoutUrls ||
+         inline_css_kind == kAttributeWithUrls);
   rewrite_inline_element_ = element;
   rewrite_inline_attribute_ = src;
+  rewrite_inline_css_kind_ = inline_css_kind;
 }
 
 void CssFilter::Context::SetupExternalRewrite(const GoogleUrl& base_gurl,
@@ -608,8 +637,39 @@ GoogleString CssFilter::Context::CacheKeySuffix() const {
     // matters for inline CSS since resources are resolved against
     // that (while it doesn't for external CSS, since that uses the
     // stylesheet as the base).
-    const Hasher* hasher = FindServerContext()->lock_hasher();
-    StrAppend(&suffix, "_@", hasher->Hash(css_base_gurl_.AllExceptLeaf()));
+    switch (rewrite_inline_css_kind_) {
+      case kInsideStyleTag: {
+        const Hasher* hasher = FindServerContext()->lock_hasher();
+        StrAppend(&suffix, "_@", hasher->Hash(css_base_gurl_.AllExceptLeaf()));
+        break;
+      }
+
+      case kAttributeWithUrls: {
+        // For attributes, we take a somewhat different strategy. There are
+        // a lot of them, and they can be repeated in many directories,
+        // so just appending the directory causes the metadata cache usage
+        // to balloon. Fortunately, they are also usually very short,
+        // so instead, we use the absolutified version of the data: URLs
+        // as a disambiguator, so that paths that resolve URLs the same way
+        // get the same keys.
+        GoogleString absolutified_version;
+        SimpleAbsolutifyTransformer transformer(&driver_->decoded_base_url());
+        StringWriter writer(&absolutified_version);
+        CssTagScanner::TransformUrls(
+            slot(0)->resource()->contents(), &writer, &transformer,
+            driver_->message_handler());
+
+        const Hasher* hasher = FindServerContext()->lock_hasher();
+        StrAppend(&suffix, "_@", hasher->Hash(absolutified_version));
+        break;
+      }
+
+      case kAttributeWithoutUrls: {
+        // If there are no URLs, then there is no dependence on the
+        // path, either.
+        break;
+      }
+    }
   }
 
   return suffix;
@@ -710,10 +770,14 @@ void CssFilter::StartElementImpl(HtmlElement* element) {
       // "The format of a URI value is 'url(' followed by ..."
       HtmlElement::Attribute* element_style = element->FindAttribute(
           HtmlName::kStyle);
-      if (element_style != NULL &&
-          (!check_for_url || CssTagScanner::HasUrl(
-              element_style->DecodedValueOrNull()))) {
-        StartAttributeRewrite(element, element_style);
+      if (element_style != NULL) {
+        bool has_url =
+            CssTagScanner::HasUrl(element_style->DecodedValueOrNull());
+        if (!check_for_url || has_url) {
+          StartAttributeRewrite(
+              element, element_style,
+              has_url ? kAttributeWithUrls : kAttributeWithoutUrls);
+        }
       }
     }
   }
@@ -780,10 +844,11 @@ void CssFilter::StartInlineRewrite(HtmlCharactersNode* text) {
 }
 
 void CssFilter::StartAttributeRewrite(HtmlElement* element,
-                                      HtmlElement::Attribute* style) {
+                                      HtmlElement::Attribute* style,
+                                      InlineCssKind inline_css_kind) {
   ResourceSlotPtr slot(MakeSlotForInlineCss(style->DecodedValueOrNull()));
   CssFilter::Context* rewriter = StartRewriting(slot);
-  rewriter->SetupAttributeRewrite(element, style);
+  rewriter->SetupAttributeRewrite(element, style, inline_css_kind);
 
   // @import is not allowed (nor handled) in attribute CSS, which must be
   // declarations only, so disable flattening from the get-go. Since this
