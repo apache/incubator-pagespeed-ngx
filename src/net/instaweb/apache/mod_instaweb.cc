@@ -20,14 +20,16 @@
 
 #include <unistd.h>
 
+#include <cerrno>
+#include <cstddef>
 #include <set>
-#include <string>
+#include <utility>
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/loopback_route_fetcher.h"
-#include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
@@ -35,19 +37,22 @@
 #include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/process_context.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/query_params.h"
-#include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 // Note: a very useful reference is this file, which demos many Apache module
@@ -60,10 +65,8 @@
 #include "ap_release.h"
 #include "apr_strings.h"
 #include "apr_timer.h"
-#include "apr_version.h"
 #include "httpd.h"
 #include "http_config.h"
-#include "http_core.h"
 #include "http_protocol.h"
 #include "http_request.h"
 #include "net/instaweb/apache/apache_logging_includes.h"
@@ -80,7 +83,11 @@
 #define unixd_config ap_unixd_config
 #endif
 
+struct apr_pool_t;
+
 namespace net_instaweb {
+
+class Statistics;
 
 namespace {
 

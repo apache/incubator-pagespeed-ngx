@@ -16,6 +16,7 @@
 
 #include "net/instaweb/apache/loopback_route_fetcher.h"
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"

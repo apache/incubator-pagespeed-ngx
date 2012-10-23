@@ -17,6 +17,7 @@
 #include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/cache_stats.h"
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
@@ -25,11 +26,8 @@
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
-#include "net/instaweb/util/public/write_through_cache.h"
 
 namespace net_instaweb {
-
-class Timer;
 
 const char ApacheCache::kFileCache[] = "file_cache";
 const char ApacheCache::kLruCache[] = "lru_cache";

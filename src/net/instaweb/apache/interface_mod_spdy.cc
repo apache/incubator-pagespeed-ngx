@@ -18,7 +18,11 @@
 
 #include "net/instaweb/apache/interface_mod_spdy.h"
 
+#include <cstddef>
+
 #include "apr_optional.h"
+
+struct conn_rec;
 
 extern "C" {
   APR_DECLARE_OPTIONAL_FN(int, spdy_get_version, (conn_rec*));

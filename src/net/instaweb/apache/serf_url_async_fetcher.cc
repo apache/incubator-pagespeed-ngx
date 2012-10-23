@@ -22,23 +22,22 @@
 
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 
-#include <algorithm>
-#include <string>
+#include <cstddef>
+#include <list>
 #include <vector>
 
-#include "apr_atomic.h"
 #include "apr_strings.h"
 #include "apr_thread_proc.h"
-#include "apr_version.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "base/stl_util-inl.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/inflating_fetch.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/public/version.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/pool.h"
@@ -47,9 +46,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/writer.h"
 #include "third_party/serf/src/serf.h"
-#include "third_party/serf/src/serf_bucket_util.h"
 
 // This is an easy way to turn on lots of debug messages. Note that this
 // is somewhat verbose.
@@ -70,7 +67,6 @@ serf_bucket_t* serf_request_bucket_request_create_for_host(
     serf_bucket_alloc_t *allocator, const char* host);
 
 int serf_connection_is_in_error_state(serf_connection_t* connection);
-
 }  // extern "C"
 
 namespace net_instaweb {
@@ -213,7 +209,6 @@ class SerfFetch : public PoolElement<SerfFetch> {
   MessageHandler* message_handler() { return message_handler_; }
 
  private:
-
   // Static functions used in callbacks.
   static apr_status_t ConnectionSetup(
       apr_socket_t* socket, serf_bucket_t **read_bkt, serf_bucket_t **write_bkt,

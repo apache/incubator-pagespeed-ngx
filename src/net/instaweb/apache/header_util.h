@@ -17,14 +17,12 @@
 #ifndef NET_INSTAWEB_APACHE_HEADER_UTIL_H_
 #define NET_INSTAWEB_APACHE_HEADER_UTIL_H_
 
-#include "net/instaweb/http/public/request_headers.h"
-#include "net/instaweb/http/public/response_headers.h"
-// The httpd header must be after the meta_data.h.  Otherwise, the
-// compiler will complain
-//   "strtoul_is_not_a_portable_function_use_strtol_instead".
-#include "httpd.h"
+struct request_rec;
 
 namespace net_instaweb {
+
+class RequestHeaders;
+class ResponseHeaders;
 
 // Converts Apache header structure into RequestHeaders.
 void ApacheRequestToRequestHeaders(const request_rec& request,

@@ -576,7 +576,7 @@ void ImageRewriteFilter::ResizeLowQualityImage(
           static_cast<int>(contents.size()));
     } else {
       message_handler->Message(
-          kInfo,
+          kError,
           "Couldn't resize low quality image (%s) or resized image file is "
           "not smaller: "
           "%dx%d(%d bytes) => %dx%d(%d bytes)",

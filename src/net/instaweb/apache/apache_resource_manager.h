@@ -18,23 +18,23 @@
 #define NET_INSTAWEB_APACHE_APACHE_RESOURCE_MANAGER_H_
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
-struct apr_pool_t;
 struct server_rec;
 
 namespace net_instaweb {
 
-class ApacheConfig;
-class ApacheMessageHandler;
+class AbstractMutex;
 class ApacheRewriteDriverFactory;
 class Histogram;
-class HTTPCache;
 class RewriteDriverPool;
 class RewriteStats;
 class SharedMemStatistics;
 class Statistics;
-class ThreadSystem;
 class UrlAsyncFetcherStats;
 class Variable;
 

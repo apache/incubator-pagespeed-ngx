@@ -21,7 +21,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/string_util.h"
 
 struct apr_finfo_t;
 struct apr_pool_t;
@@ -29,6 +29,7 @@ struct apr_pool_t;
 namespace net_instaweb {
 
 class AbstractMutex;
+class MessageHandler;
 class ThreadSystem;
 
 void AprReportError(MessageHandler* message_handler, const char* filename,

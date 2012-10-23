@@ -18,6 +18,7 @@
 #define NET_INSTAWEB_APACHE_MOD_INSTAWEB_H_
 
 #include "http_config.h"
+#include "httpd.h"
 
 extern "C" {
 extern module AP_MODULE_DECLARE_DATA pagespeed_module;

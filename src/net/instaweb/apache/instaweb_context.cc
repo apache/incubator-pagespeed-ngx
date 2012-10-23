@@ -15,27 +15,34 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
+#include "net/instaweb/apache/instaweb_context.h"
+
+#include "base/logging.h"
 #include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
+#include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"
 #include "apr_strings.h"
 #include "http_config.h"
 #include "http_core.h"
 
 namespace net_instaweb {
-
-class ApacheResourceManager;
 
 // Number of times to go down the request->prev chain looking for an
 // absolute url.

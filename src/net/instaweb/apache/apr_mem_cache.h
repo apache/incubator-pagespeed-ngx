@@ -19,9 +19,9 @@
 #ifndef NET_INSTAWEB_APACHE_APR_MEM_CACHE_H_
 #define NET_INSTAWEB_APACHE_APR_MEM_CACHE_H_
 
+#include <cstddef>
 #include <vector>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"

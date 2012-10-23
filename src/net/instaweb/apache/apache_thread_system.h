@@ -29,6 +29,8 @@
 
 namespace net_instaweb {
 
+class Timer;
+
 class ApacheThreadSystem : public PthreadThreadSystem {
  public:
   ApacheThreadSystem();
@@ -38,6 +40,7 @@ class ApacheThreadSystem : public PthreadThreadSystem {
  protected:
   virtual void BeforeThreadRunHook();
 
+ private:
   DISALLOW_COPY_AND_ASSIGN(ApacheThreadSystem);
 };
 

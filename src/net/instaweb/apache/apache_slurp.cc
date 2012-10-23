@@ -19,6 +19,7 @@
 // Must precede any Apache includes, for now, due a conflict in
 // the use of 'OK" as an Instaweb enum and as an Apache #define.
 #include "net/instaweb/apache/header_util.h"
+#include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/instaweb_context.h"
 
 // TODO(jmarantz): serf_url_async_fetcher evidently sets
@@ -38,26 +39,35 @@
 //
 // For now use wget when slurping additional files.
 
+#include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/chunking_writer.h"
 #include "net/instaweb/util/public/condvar.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/writer.h"
 
 // The Apache headers must be after instaweb headers.  Otherwise, the
 // compiler will complain
 //   "strtoul_is_not_a_portable_function_use_strtol_instead".
 #include "apr_strings.h"  // for apr_pstrdup
 #include "http_protocol.h"
+#include "httpd.h"
 
 namespace net_instaweb {
 
@@ -182,7 +192,7 @@ GoogleString RemoveModPageSpeedQueryParams(
     CHECK(question_mark != GoogleString::npos);
     stripped_url.append(uri.data(), question_mark);  // does not include "?" yet
     if (stripped_query_params.size() != 0) {
-      stripped_url += StrCat("?", stripped_query_params.ToString());
+      StrAppend(&stripped_url, "?", stripped_query_params.ToString());
     }
   } else {
     stripped_url = uri;

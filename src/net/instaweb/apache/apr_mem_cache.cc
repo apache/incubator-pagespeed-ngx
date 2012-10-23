@@ -21,11 +21,13 @@
 #include "apr_pools.h"
 #include "apr_memcache.h"
 
+#include "base/logging.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/hostname_util.h"
 #include "net/instaweb/util/public/key_value_codec.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/time_util.h"
@@ -62,8 +64,6 @@ const int64 kWaitingPeriodMs = 30 * Timer::kMinuteMs;  // 30 minutes
 const int kDefaultServerTtlUs = 600*1000*1000;
 
 }  // namespace
-
-class ThreadSystem;
 
 AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
                          Hasher* hasher, Statistics* statistics,

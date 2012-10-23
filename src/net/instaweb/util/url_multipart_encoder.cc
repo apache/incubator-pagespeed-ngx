@@ -81,7 +81,8 @@ bool UrlMultipartEncoder::Decode(const StringPiece& encoding,
 
   // Reverse the two-step encoding process described above.
   if (!UrlEscaper::DecodeFromUrlSegment(encoding, &buf)) {
-    handler->Message(kWarning, "Invalid escaped URL segment: %s",
+    handler->Message(kError,
+                     "Invalid escaped URL segment: %s",
                      encoding.as_string().c_str());
     return false;
   }
@@ -100,14 +101,14 @@ bool UrlMultipartEncoder::Decode(const StringPiece& encoding,
       if (ch == kEscape) {
         ++c;
         if (c == nc) {
-          handler->Message(kWarning,
+          handler->Message(kError,
                            "Invalid encoding: escape at end of string %s",
                            buf.c_str());
           return false;
         }
         ch = buf[c];
         if ((ch != kEscape) && (ch != kSeparator)) {
-          handler->Message(kWarning,
+          handler->Message(kError,
                            "Invalid character `%c', after escape `%c' in %s",
                            ch, kEscape, buf.c_str());
           return false;

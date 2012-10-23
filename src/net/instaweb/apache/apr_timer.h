@@ -15,10 +15,12 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         lsong@google.com (Libo Song)
 
-#ifndef HTML_REWRITER_APR_TIMER_H_
-#define HTML_REWRITER_APR_TIMER_H_
+#ifndef NET_INSTAWEB_APACHE_APR_TIMER_H_
+#define NET_INSTAWEB_APACHE_APR_TIMER_H_
 
 #include "net/instaweb/util/public/timer.h"
+
+#include "net/instaweb/util/public/basictypes.h"
 
 using net_instaweb::Timer;
 
@@ -33,4 +35,4 @@ class AprTimer : public Timer {
 
 }  // namespace net_instaweb
 
-#endif  // HTML_REWRITER_APR_TIMER_H_
+#endif  // NET_INSTAWEB_APACHE_APR_TIMER_H_

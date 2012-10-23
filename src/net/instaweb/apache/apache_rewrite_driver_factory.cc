@@ -19,16 +19,22 @@
 
 #include <unistd.h>
 
+#include <cstddef>
+#include <cstdlib>
+
 #include <algorithm>
+#include <utility>
 
 #include "apr_pools.h"
 #include "httpd.h"
 #include "ap_mpm.h"
 
+#include "base/logging.h"
 #include "net/instaweb/apache/add_headers_fetcher.h"
 #include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_message_handler.h"
+#include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/apache/apache_thread_system.h"
 #include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mem_cache.h"
@@ -36,40 +42,44 @@
 #include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/loopback_route_fetcher.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
-#include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_writer.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter.h"
+#include "net/instaweb/http/public/url_async_fetcher.h"
+#include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/async_cache.h"
 #include "net/instaweb/util/public/cache_batcher.h"
 #include "net/instaweb/util/public/cache_copy.h"
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/cache_stats.h"
 #ifndef NDEBUG
 #include "net/instaweb/util/public/checking_thread_system.h"
 #endif
 #include "net/instaweb/util/public/fallback_cache.h"
-#include "net/instaweb/util/public/file_cache.h"
-#include "net/instaweb/util/public/gflags.h"
 #include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/hashed_referer_statistics.h"
-#include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
-#include "net/instaweb/util/public/shared_mem_lock_manager.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
+#include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/slow_worker.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/threadsafe_cache.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 
 namespace net_instaweb {

@@ -16,18 +16,19 @@
 
 #include "net/instaweb/apache/apr_file_system.h"
 
-#include <string>
+#include <cerrno>
 
+#include "apr.h"
 #include "apr_file_info.h"
 #include "apr_file_io.h"
 #include "apr_pools.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"

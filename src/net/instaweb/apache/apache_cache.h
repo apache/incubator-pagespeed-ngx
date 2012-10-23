@@ -18,7 +18,6 @@
 #define NET_INSTAWEB_APACHE_APACHE_CACHE_H_
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -26,19 +25,12 @@ namespace net_instaweb {
 
 class ApacheConfig;
 class ApacheRewriteDriverFactory;
-class AprMemCache;
-class AsyncCache;
 class CacheInterface;
 class FileCache;
 class FileSystemLockManager;
-class Hasher;
-class HTTPCache;
 class MessageHandler;
 class NamedLockManager;
-class PropertyCache;
-class SharedMemRuntime;
 class SharedMemLockManager;
-class Timer;
 
 // The ApacheCache encapsulates a cache-sharing model where a user specifies
 // a file-cache path per virtual-host.  With each file-cache object we keep

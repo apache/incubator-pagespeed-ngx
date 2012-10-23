@@ -17,18 +17,20 @@
 #ifndef NET_INSTAWEB_APACHE_APACHE_MESSAGE_HANDLER_H_
 #define NET_INSTAWEB_APACHE_APACHE_MESSAGE_HANDLER_H_
 
-#include <string>
-#include "net/instaweb/apache/apr_timer.h"
+#include <cstdarg>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 struct server_rec;
 
 namespace net_instaweb {
+
+class SharedCircularBuffer;
+class Timer;
+class Writer;
 
 // Implementation of an HTML parser message handler that uses Apache
 // logging to emit messsages.

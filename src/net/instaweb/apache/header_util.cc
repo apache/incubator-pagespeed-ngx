@@ -15,17 +15,19 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/apache/header_util.h"
-#include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/instaweb_context.h"
-#include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/http/public/headers.h"
+
+#include <cstdio>
+
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 #include "apr_strings.h"
 #include "http_core.h"
 #include "http_protocol.h"
+#include "httpd.h"
 
 namespace net_instaweb {
 

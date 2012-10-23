@@ -19,7 +19,7 @@
 #ifndef NET_INSTAWEB_APACHE_INTERFACE_MOD_SPDY_H_
 #define NET_INSTAWEB_APACHE_INTERFACE_MOD_SPDY_H_
 
-#include "httpd.h"  // NOLINT
+struct conn_rec;
 
 namespace net_instaweb {
 
@@ -33,4 +33,3 @@ int mod_spdy_get_spdy_version(conn_rec* conn);
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_APACHE_INTERFACE_MOD_SPDY_H_
-

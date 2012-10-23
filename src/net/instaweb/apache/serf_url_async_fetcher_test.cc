@@ -17,29 +17,31 @@
 
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 
-#include <algorithm>
+#include <unistd.h>
+#include <cstddef>
 #include <cstdlib>
-#include <string>
 #include <vector>
-#include "apr_atomic.h"
+
 #include "apr_pools.h"
-#include "apr_strings.h"
-#include "apr_version.h"
-#include "net/instaweb/util/public/basictypes.h"
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "base/stl_util-inl.h"
-#include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/thread_system.h"
-#include "testing/gtest/include/gtest/gtest.h"
+#include "net/instaweb/util/public/timer.h"
 
 // Default domain to test URL fetches from.  If the default site is
 // down, the tests can be directed to a backup host by setting the

@@ -17,8 +17,6 @@
 #ifndef NET_INSTAWEB_APACHE_APACHE_SLURP_H_
 #define NET_INSTAWEB_APACHE_APACHE_SLURP_H_
 
-#include "net/instaweb/util/public/string.h"
-
 struct request_rec;
 
 namespace net_instaweb {

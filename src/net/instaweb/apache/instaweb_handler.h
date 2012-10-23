@@ -17,14 +17,13 @@
 //
 // The Apache handler for rewriten resources and a couple other Apache hooks.
 
-#ifndef MOD_INSTAWEB_INSTAWEB_HANDLER_H_
-#define MOD_INSTAWEB_INSTAWEB_HANDLER_H_
+#ifndef NET_INSTAWEB_APACHE_INSTAWEB_HANDLER_H_
+#define NET_INSTAWEB_APACHE_INSTAWEB_HANDLER_H_
 
 // The httpd header must be after the instaweb_context.h. Otherwise,
 // the compiler will complain
 // "strtoul_is_not_a_portable_function_use_strtol_instead".
-#include "net/instaweb/apache/instaweb_context.h"
-#include "httpd.h"  // NOLINT
+#include "httpd.h"
 
 namespace net_instaweb {
 
@@ -45,4 +44,4 @@ apr_status_t instaweb_map_to_storage(request_rec* request);
 
 }  // namespace net_instaweb
 
-#endif  // MOD_INSTAWEB_INSTAWEB_HANDLER_H_
+#endif  // NET_INSTAWEB_APACHE_INSTAWEB_HANDLER_H_

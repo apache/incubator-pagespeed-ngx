@@ -18,18 +18,15 @@
 #ifndef NET_INSTAWEB_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
 #define NET_INSTAWEB_APACHE_APACHE_REWRITE_DRIVER_FACTORY_H_
 
-#include <cstdio>
+#include <map>
 #include <set>
-#include <string>
 #include <vector>
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/apache/apache_config.h"
-#include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/ref_counted_owner.h"
-#include "net/instaweb/util/public/shared_circular_buffer.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 struct apr_pool_t;
 struct request_rec;
@@ -44,13 +41,26 @@ class ApacheMessageHandler;
 class ApacheResourceManager;
 class AprMemCache;
 class AsyncCache;
+class CacheInterface;
+class FileSystem;
+class Hasher;
+class MessageHandler;
+class NamedLockManager;
+class QueuedWorkerPool;
+class RewriteDriver;
+class RewriteOptions;
 class SerfUrlAsyncFetcher;
-class SharedMemLockManager;
+class ServerContext;
+class SharedCircularBuffer;
 class SharedMemRefererStatistics;
 class SharedMemStatistics;
 class SlowWorker;
-class SyncFetcherAdapter;
+class Statistics;
+class Timer;
+class UrlAsyncFetcher;
+class UrlFetcher;
 class UrlPollableAsyncFetcher;
+class Writer;
 
 // Creates an Apache RewriteDriver.
 class ApacheRewriteDriverFactory : public RewriteDriverFactory {

@@ -23,6 +23,7 @@
 
 #include "httpd.h"
 #include "net/instaweb/apache/apache_logging_includes.h"
+#include "net/instaweb/util/public/shared_circular_buffer.h"
 
 namespace {
 

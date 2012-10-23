@@ -20,9 +20,10 @@
 //
 #include "net/instaweb/apache/loopback_route_fetcher.h"
 
+#include <cstdlib>
+
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"

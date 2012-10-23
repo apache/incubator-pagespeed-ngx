@@ -15,7 +15,10 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/apache/apache_config.h"
+
+#include "base/logging.h"
 #include "net/instaweb/public/version.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {

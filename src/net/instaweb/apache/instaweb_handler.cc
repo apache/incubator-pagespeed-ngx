@@ -17,38 +17,42 @@
 
 #include "net/instaweb/apache/instaweb_handler.h"
 
-#include "base/scoped_ptr.h"
-#include "net/instaweb/apache/apache_cache.h"
+#include <cstddef>
+#include <set>
+#include <vector>
+
+#include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_slurp.h"
 #include "net/instaweb/apache/apache_message_handler.h"
+#include "net/instaweb/apache/apache_resource_manager.h"
+#include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/mod_instaweb.h"
-#include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/automatic/public/resource_fetch.h"
+#include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/escaping.h"
-#include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/null_statistics.h"
-#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
-#include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
+#include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/writer.h"
 
-#include "apr_strings.h"
 #include "http_config.h"
 #include "http_core.h"
 #include "http_protocol.h"
@@ -56,6 +60,8 @@
 #include "net/instaweb/apache/apache_logging_includes.h"
 
 namespace net_instaweb {
+
+class RewriteDriverPool;
 
 extern const char* JS_mod_pagespeed_console_js;
 extern const char* CSS_mod_pagespeed_console_css;
@@ -629,7 +635,6 @@ apr_status_t instaweb_handler(request_rec* request) {
 // Additionally we store whether or not this request is a pagespeed
 // resource or not in kResourceUrlNote.
 apr_status_t save_url_hook(request_rec *request) {
-
   // This call to MakeRequestUrl() not only returns the url but also
   // saves it for future use so that if another module changes the
   // url in the request, we still have the original one.

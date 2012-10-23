@@ -18,15 +18,13 @@
 #define NET_INSTAWEB_APACHE_APACHE_CONFIG_H_
 
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
-// The httpd header must be after the
-// apache_rewrite_driver_factory.h. Otherwise, the compiler will
-// complain "strtoul_is_not_a_portable_function_use_strtol_instead".
-#include "httpd.h"
-
 namespace net_instaweb {
+
+class Hasher;
 
 // Establishes a context for VirtualHosts and directory-scoped
 // options, either via .htaccess or <Directory>...</Directory>.

@@ -23,6 +23,8 @@
 
 namespace net_instaweb {
 
+class Timer;
+
 ApacheThreadSystem::ApacheThreadSystem() {}
 
 ApacheThreadSystem::~ApacheThreadSystem() {}
