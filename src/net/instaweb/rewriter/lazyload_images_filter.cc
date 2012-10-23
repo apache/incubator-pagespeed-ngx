@@ -43,9 +43,9 @@ const char kNivoSlider[] = "nivoSlider";
 
 }  // namespace
 
-// base64 encoding of a blank 1x1 gif with GIF comment "PSA".
-const char* LazyloadImagesFilter::kBlankImageSrc = "data:image/gif;base64"
-    ",R0lGODlhAQABAIAAAP///////yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7";
+// base64 encoding of a transparent 1x1 gif.
+const char* LazyloadImagesFilter::kBlankImageSrc = "data:image/gif;"
+    "base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
 
 const char* LazyloadImagesFilter::kImageOnloadCode =
     "pagespeed.lazyLoadImages.loadIfVisible(this);";

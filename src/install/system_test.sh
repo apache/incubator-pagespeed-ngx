@@ -253,11 +253,11 @@ JS_URL=$(egrep -o http://.*.pagespeed.*.js $FETCHED)
 echo "JS_URL=\$\(egrep -o http://.*[.]pagespeed.*[.]js $FETCHED\)=\"$JS_URL\""
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)
-check_from "$JS_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
-check_from "$JS_HEADERS" fgrep -qi 'Content-Encoding: gzip'
+check egrep -qi 'HTTP/1[.]. 200 OK' <(echo $JS_HEADERS)
+check fgrep -qi 'Content-Encoding: gzip' <(echo $JS_HEADERS)
 #check fgrep -qi 'Vary: Accept-Encoding' <(echo $JS_HEADERS)
-check_from "$JS_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
-check_from "$JS_HEADERS" fgrep -qi 'Last-Modified:'
+fgrep -qi 'Etag: W/"0"' <(echo $JS_HEADERS)
+check fgrep -qi 'Last-Modified:' <(echo $JS_HEADERS)
 
 test_filter pedantic adds default type attributes.
 check run_wget_with_args $URL
@@ -289,9 +289,8 @@ check [ $(stat -c %s $FETCHED) -lt 680 ]  # down from 689
 
 test_filter rewrite_images inlines, compresses, and resizes.
 fetch_until $URL 'grep -c data:image/png' 1  # inlined
-
-# Wait until other 2 images optimized
-fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2
+fetch_until $URL 'grep -c .pagespeed.ic' 2   # other 2 images optimized
+check run_wget_with_args $URL
 check [ "$(stat -c %s $OUTDIR/xBikeCrashIcn*)" -lt 25000 ]      # re-encoded
 check [ "$(stat -c %s $OUTDIR/*256x192*Puzzle*)"  -lt 24126  ]  # resized
 URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
@@ -311,7 +310,7 @@ echo TEST: Vary is not set for images.
 check_not fgrep -i 'Vary: Accept-Encoding' <(echo "$IMG_HEADERS")
 # Make sure there is an etag
 echo TEST: Etags is present.
-check_from "$IMG_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
+check fgrep -qi 'Etag: W/"0"' <(echo "$IMG_HEADERS")
 # TODO(sligocki): Allow setting arbitrary headers in static_server.
 # Make sure an extra header is propagated from input resource to output
 # resource.  X-Extra-Header is added in debug.conf.template.
@@ -440,14 +439,13 @@ if [ -n "$HTTPS_HOST" ]; then
   EXPECTED='href="styles/yellow\.css+blue\.css+big\.css+bold\.css'
   EXPECTED="$EXPECTED"'\.pagespeed\.cc\..*\.css"/>'
   fetch_until "$URL?ModPagespeedFilters=combine_css,trim_urls" \
-      "grep -ic $EXPECTED" 1 --no-check-certificate
+      "grep -ic $EXPECTED" 1
 
   echo Checking for combined CSS URL without URL trimming
   EXPECTED="href=\"$HTTPS_EXAMPLE_ROOT/"
   EXPECTED="$EXPECTED"'styles/yellow\.css+blue\.css+big\.css+bold\.css'
   EXPECTED="$EXPECTED"'\.pagespeed\.cc\..*\.css"/>'
-  fetch_until "$URL?ModPagespeedFilters=combine_css" "grep -ic $EXPECTED" 1 \
-     --no-check-certificate
+  fetch_until "$URL?ModPagespeedFilters=combine_css" "grep -ic $EXPECTED" 1
 fi
 
 # This filter convert the meta tags in the html into headers.

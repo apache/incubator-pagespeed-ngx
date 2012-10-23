@@ -206,6 +206,7 @@ class RewriteOptions {
     kIncreaseSpeedTracking,
     kJsInlineMaxBytes,
     kJsOutlineMinBytes,
+    kLazyloadImagesBlankUrl,
     kLazyloadImagesAfterOnload,
     kInlineOnlyCriticalImages,
     kLogRewriteTiming,

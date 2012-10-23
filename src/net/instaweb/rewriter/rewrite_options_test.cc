@@ -664,7 +664,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(111, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(112, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AjaxRewritingEnabled",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAjaxRewritingEnabled));
@@ -803,6 +803,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("JsOutlineMinBytes",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kJsOutlineMinBytes));
+  EXPECT_STREQ("LazyloadImagesBlankUrl",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kLazyloadImagesBlankUrl));
   EXPECT_STREQ("LazyloadImagesAfterOnload",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kLazyloadImagesAfterOnload));

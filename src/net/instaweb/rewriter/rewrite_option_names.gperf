@@ -71,6 +71,7 @@ struct OptionName {
 "JpegRecompressionQuality",              RewriteOptions::kImageJpegRecompressionQuality
 "JsInlineMaxBytes",                      RewriteOptions::kJsInlineMaxBytes
 "JsOutlineMinBytes",                     RewriteOptions::kJsOutlineMinBytes
+"LazyloadImagesBlankUrl",                RewriteOptions::kLazyloadImagesBlankUrl
 "LazyloadImagesAfterOnload",             RewriteOptions::kLazyloadImagesAfterOnload
 "InlineOnlyCriticalImages",              RewriteOptions::kInlineOnlyCriticalImages
 "LogRewriteTiming",                      RewriteOptions::kLogRewriteTiming

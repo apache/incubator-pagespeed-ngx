@@ -648,6 +648,8 @@ void RewriteOptions::AddProperties() {
              kBeaconUrl);
   add_option(false, &RewriteOptions::lazyload_images_after_onload_, "llio",
              kLazyloadImagesAfterOnload);
+  add_option("", &RewriteOptions::lazyload_images_blank_url_, "llbu",
+             kLazyloadImagesBlankUrl);
   add_option(true, &RewriteOptions::inline_only_critical_images_, "ioci",
              kInlineOnlyCriticalImages);
   add_option(false, &RewriteOptions::domain_rewrite_hyperlinks_, "drh",
@@ -755,7 +757,6 @@ void RewriteOptions::AddProperties() {
   add_option(true, &RewriteOptions::enable_blink_debug_dashboard_, "ebdd");
   add_option(kDefaultOverrideBlinkCacheTimeMs,
              &RewriteOptions::override_blink_cache_time_ms_, "obctm");
-  add_option("", &RewriteOptions::lazyload_images_blank_url_, "llbu");
   add_option(kDefaultBlinkHtmlChangeDetectionTimeMs,
              &RewriteOptions::blink_html_change_detection_time_ms_, "bhcdt");
   add_option(false, &RewriteOptions::override_ie_document_mode_, "oidm");

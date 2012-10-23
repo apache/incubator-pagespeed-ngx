@@ -324,8 +324,8 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     "<script pagespeed_orig_src=\"%s\" type=\"text/psajs\" orig_index=\"1\">"
     "</script>"
     "<img pagespeed_lazy_src=\"%s\""
-    " src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////"
-    "yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\""
+    " src=\"data:image/gif;"
+    "base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==\""
     " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
     "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
     "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
@@ -392,8 +392,8 @@ const char kRewrittenSplitHtmlWithLazyloadScriptFlushedEarly[] =
     "<script>pagespeed.panelLoader.bufferNonCriticalData({});</script>\n"
     "</body></html>\n";
 const char kRewrittenPageSpeedLazyImg[] = "<img pagespeed_lazy_src=\"%s\""
-    " src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////"
-    "yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\""
+    " src=\"data:image/gif;"
+    "base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==\""
     " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
     "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
     "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>";
@@ -1930,8 +1930,8 @@ TEST_F(ProxyInterfaceTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
           options_, server_context()->static_javascript_manager()),
       "</script>"
       "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.0.jpg"
-      " src=\"data:image/gif;base64,R0lGODlhAQABAIAAAP///////"
-      "yH+A1BTQQAsAAAAAAEAAQAAAgJEAQA7\""
+      " src=\"data:image/gif;"
+      "base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==\""
       " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
       "Hello, mod_pagespeed!"
       "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
