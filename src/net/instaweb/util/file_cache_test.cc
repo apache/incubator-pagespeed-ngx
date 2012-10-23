@@ -176,22 +176,20 @@ TEST_F(FileCacheTest, Clean) {
   EXPECT_EQ(15, dir_info.inode_count);
 
   // Test cleaning by target_size, not inode_count
-  // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
-  // but this really should be factored into a settable member var.
-  int64 target_size = (4 * dir_info.size_bytes) / 5 - 1;
-  int64 target_inode_count = dir_info.inode_count * 2;
+  int64 target_size = dir_info.size_bytes;
+  int64 target_inode_count = dir_info.inode_count + 1;
   EXPECT_TRUE(Clean(target_size, target_inode_count));
-  // b/c/, b/1, b2, b3, b4, b5, b6 should be removed
+  // b/c/, b/1, b2, b3 should be removed
   for (int i = 0; i < 3; i++) {
     CheckGet(names1[i], values1[i]);
+    CheckNotFound(names2[i]);
+    CheckGet(names2[i+3], values2[i+3]);
     CheckGet(names2[i+6], values2[i+6]);
   }
-  for (int i = 0; i < 6; i++) {
-    CheckNotFound(names2[i]);
-  }
+
   file_system_.GetDirInfo(GTestTempDir(), &dir_info, &message_handler_);
-  EXPECT_EQ((2 + 4 + 8) * 2, dir_info.size_bytes);
-  EXPECT_EQ(8, dir_info.inode_count);
+  EXPECT_EQ((2 + 4 + 8) * 3, dir_info.size_bytes);
+  EXPECT_EQ(11, dir_info.inode_count);
 
   // Test that empty directories get removed, non-empty directories stay
   EXPECT_TRUE(file_system_.Exists(dir1.c_str(), &message_handler_).is_true());
@@ -199,29 +197,31 @@ TEST_F(FileCacheTest, Clean) {
   EXPECT_TRUE(file_system_.Exists(dir3.c_str(), &message_handler_).is_false());
 
   // Test cleaning by inode_count, not target_size
-  target_size = dir_info.size_bytes * 2;
-  target_inode_count = (4 * dir_info.inode_count) / 5 - 1;
+  target_size = dir_info.size_bytes + 1;
+  target_inode_count = dir_info.inode_count;
   EXPECT_TRUE(Clean(target_size, target_inode_count));
-  // b/, b8, a2, b7, a1 should be removed
+  // b/, b4, b7, a1, a2 should be removed
   for (int i = 0; i < 2; i++) {
     CheckNotFound(names1[i]);
-  }
-  for (int i = 0; i < 8; i++) {
     CheckNotFound(names2[i]);
+    CheckNotFound(names2[i + 2]);
+    CheckGet(names2[i + 4], values2[i + 4]);
+    CheckGet(names2[i + 7], values2[i + 7]);
   }
   CheckGet(names1[2], values1[2]);
-  CheckGet(names2[8], values2[8]);
+  CheckNotFound(names2[6]);
+
   EXPECT_TRUE(file_system_.Exists(dir1.c_str(), &message_handler_).is_true());
   EXPECT_TRUE(file_system_.Exists(dir2.c_str(), &message_handler_).is_false());
   EXPECT_TRUE(file_system_.Exists(dir3.c_str(), &message_handler_).is_false());
   file_system_.GetDirInfo(GTestTempDir(), &dir_info, &message_handler_);
-  EXPECT_EQ(8 * 2, dir_info.size_bytes);
-  EXPECT_EQ(3, dir_info.inode_count);
+  EXPECT_EQ((4 + 8) * 2 + 8, dir_info.size_bytes);
+  EXPECT_EQ(6, dir_info.inode_count);
 }
 
 // Test the auto-cleaning behavior
 TEST_F(FileCacheTest, CheckClean) {
-  CheckPut("Name1", "Value1");
+  CheckPut("Name1", "Value");
   // Cache should not clean at first.
   EXPECT_FALSE(CheckClean());
   mock_timer_.SleepMs(kCleanIntervalMs + 1);
@@ -229,7 +229,7 @@ TEST_F(FileCacheTest, CheckClean) {
   int64 time_ms = mock_timer_.NowUs() / 1000;
   EXPECT_TRUE(CheckClean());
   // .. but since we're under the desired size, nothing should be removed.
-  CheckGet("Name1", "Value1");
+  CheckGet("Name1", "Value");
   // Check that the timestamp was written correctly.
   CheckCleanTimestamp(time_ms);
 

@@ -48,7 +48,7 @@ struct CompareByAtime {
   }
 };
 
-}  // namespace for structs used only in Clean().
+}  // namespace
 
 class FileCache::CacheCleanFunction : public Function {
  public:
@@ -169,15 +169,11 @@ bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
 
   // Check to see if cache size or inode count exceeds our limits.
   // target_inode_count of 0 indicates no inode limit.
-  // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
-  // but this really should be factored into a settable member var.
-  int64 size_clean_threshold = (target_size * 5) / 4;
-  int64 inode_count_clean_threshold = (target_inode_count * 5) / 4;
   int64 cache_size = dir_info.size_bytes;
   int64 cache_inode_count = dir_info.inode_count;
-  if (cache_size < size_clean_threshold &&
+  if (cache_size < target_size &&
       (target_inode_count == 0 ||
-       cache_inode_count < inode_count_clean_threshold)) {
+       cache_inode_count < target_inode_count)) {
     message_handler_->Message(kInfo,
                               "File cache size is %s and contains %s inodes; "
                               "no cleanup needed.",
@@ -209,8 +205,6 @@ bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
   std::sort(dir_info.files.begin(), dir_info.files.end(), CompareByAtime());
 
   // Set the target size to clean to.
-  // TODO(jmarantz): gcc 4.1 warns about double/int64 comparisons here,
-  // but this really should be factored into a settable member var.
   target_size = (target_size * 3) / 4;
   target_inode_count = (target_inode_count * 3) / 4;
 
