@@ -337,7 +337,8 @@ bool CssTagScanner::TransformUrls(
         }
         case Transformer::kFailure: {
           // We could not transform URL, fail fast.
-          handler->Message(kError, "Transform failed for url %s", url.c_str());
+          handler->Message(kWarning,
+                           "Transform failed for url %s", url.c_str());
           return false;
         }
         case Transformer::kNoChange: {
