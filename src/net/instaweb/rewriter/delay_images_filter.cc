@@ -81,7 +81,17 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
   if (element->keyword() == HtmlName::kBody && !low_res_map_inserted_ &&
       !low_res_data_map_.empty()) {
     InsertDelayImagesInlineJS(element);
-  } else if (driver_->IsRewritable(element)) {
+  } else if (driver_->IsRewritable(element) &&
+             (element->keyword() == HtmlName::kImg ||
+              element->keyword() == HtmlName::kInput)) {
+    // We only handle img and input tag images.  Note that delay_images.js and
+    // delay_images_inline.js must be modified to handle other possible tags.
+    // We should probably specifically *not* include low res images for link
+    // tags of various sorts (favicons, mobile desktop icons, etc.).  Use of low
+    // res for explicit background images is a more interesting case, but the
+    // current DOM walk in the above js files would need to be modified to
+    // handle the large number of tags that we can identify in
+    // resource_tag_scanner::ScanElement.
     semantic_type::Category category;
     HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
         element, driver_, &category);
@@ -96,38 +106,34 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
       if ((low_res_src != NULL) &&
           (low_res_src->DecodedValueOrNull() != NULL)) {
         ++num_low_res_inlined_images_;
-        // TODO(pulkitg): Add support for input tag.
-        if (element->keyword() == HtmlName::kImg) {
-          // Experimental mode adds an onload attribute of the image tag. So,
-          // low res image is only added if onload function is not already
-          // present.
-          if (!is_experimental_enabled_ ||
-              element->FindAttribute(HtmlName::kOnload) == NULL) {
-            // Low res image data is collected in low_res_data_map_ map. This
-            // low_res_src will be moved just after last low res image in the
-            // html DOM.
-            // It is better to move inlined low resolution data later in the
-            // DOM, otherwise they will block further parsing and rendering of
-            // the html page.
-            // High res src is added and original img src attribute is removed
-            // from img tag.
-            if (driver_->log_record() != NULL) {
-              driver_->log_record()->LogAppliedRewriter(
-                  RewriteOptions::FilterId(RewriteOptions::kDelayImages));
+        // Experimental mode adds an onload attribute of the image tag. So, low
+        // res image is only added if onload function is not already present.
+        if (!is_experimental_enabled_ ||
+            element->FindAttribute(HtmlName::kOnload) == NULL) {
+          // Low res image data is collected in low_res_data_map_ map. This
+          // low_res_src will be moved just after last low res image in the html
+          // DOM.
+          // It is better to move inlined low resolution data later in the DOM,
+          // otherwise they will block further parsing and rendering of the html
+          // page.
+          // High res src is added and original img src attribute is removed
+          // from img tag.
+          if (driver_->log_record() != NULL) {
+            driver_->log_record()->LogAppliedRewriter(
+                RewriteOptions::FilterId(RewriteOptions::kDelayImages));
+          }
+          driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
+          if (insert_low_res_images_inplace_) {
+            driver_->AddAttribute(element, HtmlName::kSrc,
+                                  low_res_src->DecodedValueOrNull());
+            if (is_experimental_enabled_) {
+              driver_->AddEscapedAttribute(
+                  element, HtmlName::kOnload, kOnloadFunction);
             }
-            driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
-            if (insert_low_res_images_inplace_) {
-              driver_->AddAttribute(element, HtmlName::kSrc,
-                                    low_res_src->DecodedValueOrNull());
-              if (is_experimental_enabled_) {
-                driver_->AddEscapedAttribute(
-                    element, HtmlName::kOnload, kOnloadFunction);
-              }
-            } else {
-              const GoogleString& src_content = src->DecodedValueOrNull();
-              low_res_data_map_[src_content] =
-                  low_res_src->DecodedValueOrNull();
-            }
+          } else {
+            const GoogleString& src_content = src->DecodedValueOrNull();
+            low_res_data_map_[src_content] =
+                low_res_src->DecodedValueOrNull();
           }
         }
         if (num_low_res_inlined_images_ ==

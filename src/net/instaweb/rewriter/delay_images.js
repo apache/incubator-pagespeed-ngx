@@ -34,16 +34,26 @@ pagespeed.DelayImages = function() {
 };
 
 /**
+ * For given elements, replace src with pagespeed_high_res_src if present.
+ * @param {NodeList.<Element>} elements list of DOM elements to check.
+ */
+pagespeed.DelayImages.prototype.replaceElementSrc = function(elements) {
+  for (var i = 0; i < elements.length; ++i) {
+    var src = elements[i].getAttribute('pagespeed_high_res_src');
+    if (src) {
+      elements[i].setAttribute('src', src);
+    }
+  }
+};
+pagespeed.DelayImages.prototype['replaceElementSrc'] =
+  pagespeed.DelayImages.prototype.replaceElementSrc;
+
+/**
  * Replaces low resolution image with high resolution image.
  */
 pagespeed.DelayImages.prototype.replaceWithHighRes = function() {
-  var imgTags = document.getElementsByTagName('img');
-   for (var i = 0; i < imgTags.length; ++i) {
-     var src = imgTags[i].getAttribute('pagespeed_high_res_src');
-     if (src) {
-       imgTags[i].setAttribute('src', src);
-     }
-  }
+  this.replaceElementSrc(document.getElementsByTagName('img'));
+  this.replaceElementSrc(document.getElementsByTagName('input'));
 };
 pagespeed.DelayImages.prototype['replaceWithHighRes'] =
   pagespeed.DelayImages.prototype.replaceWithHighRes;

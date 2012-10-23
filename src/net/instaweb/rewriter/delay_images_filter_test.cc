@@ -90,7 +90,8 @@ class DelayImagesFilterTest : public RewriteTestBase {
                                const GoogleString& expected) {
     Parse("inline_preview_images", html_input);
     GoogleString full_html = doctype_string_ + AddHtmlBody(expected);
-    EXPECT_TRUE(Wildcard(full_html).Match(output_buffer_));
+    EXPECT_TRUE(Wildcard(full_html).Match(output_buffer_)) <<
+        "Expected:\n" << full_html << "\n\nGot:\n" << output_buffer_;
     int output_size = output_buffer_.size();
     output_buffer_.clear();
     return output_size;
@@ -309,7 +310,8 @@ TEST_F(DelayImagesFilterTest, DelayWebPImage) {
       "<body>",
       GetNoscript(),
       "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
-      "<input src=\"http://test.com/1.webp\" type=\"image\"/>",
+      "<input pagespeed_high_res_src=\"http://test.com/1.webp\"",
+      " type=\"image\"/>",
       StrCat(GetInlineScript(),
              GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
@@ -331,6 +333,28 @@ TEST_F(DelayImagesFilterTest, DelayJpegImage) {
       "<body>",
       GetNoscript(),
       "<img pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
+      StrCat(GetInlineScript(),
+             GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
+             "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
+             GetDelayImages(), "</body>"));
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
+TEST_F(DelayImagesFilterTest, DelayJpegImageOnInputElement) {
+  options()->EnableFilter(RewriteOptions::kDeferJavascript);
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
+                       kContentTypeJpeg, 100);
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<input type=\"image\" src=\"http://test.com/1.jpeg\" />"
+      "</body>";
+  GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
+      "<body>",
+      GetNoscript(),
+      "<input type=\"image\"",
+      " pagespeed_high_res_src=\"http://test.com/1.jpeg\"/>",
       StrCat(GetInlineScript(),
              GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",

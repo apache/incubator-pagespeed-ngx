@@ -52,16 +52,29 @@ pagespeed.DelayImagesInline.prototype['addLowResImages'] =
   pagespeed.DelayImagesInline.prototype.addLowResImages;
 
 /**
+ * For given elements, replace src with low res data url by looking up
+ * pagespeed_high_res_src attribute value in inlineMap_ (does nothing if the
+ * latter attribute is absent).
+ * @param {NodeList.<Element>} elements list of DOM elements to check.
+ */
+pagespeed.DelayImagesInline.prototype.replaceElementSrc =
+    function(elements) {
+  for (var i = 0; i < elements.length; ++i) {
+    var src = elements[i].getAttribute('pagespeed_high_res_src');
+    if (src) {
+      elements[i].setAttribute('src', this.inlineMap_[src]);
+    }
+  }
+};
+pagespeed.DelayImagesInline.prototype['replaceElementSrc'] =
+  pagespeed.DelayImagesInline.prototype.replaceElementSrc;
+
+/**
  * Replace images with the low resolution version if available.
  */
 pagespeed.DelayImagesInline.prototype.replaceWithLowRes = function() {
-  var imgTags = document.getElementsByTagName('img');
-  for (var i = 0; i < imgTags.length; ++i) {
-    var src = imgTags[i].getAttribute('pagespeed_high_res_src');
-    if (src) {
-      imgTags[i].setAttribute('src', this.inlineMap_[src]);
-    }
-  }
+  this.replaceElementSrc(document.getElementsByTagName('img'));
+  this.replaceElementSrc(document.getElementsByTagName('input'));
 };
 pagespeed.DelayImagesInline.prototype['replaceWithLowRes'] =
   pagespeed.DelayImagesInline.prototype.replaceWithLowRes;
