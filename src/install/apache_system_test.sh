@@ -155,11 +155,11 @@ echo "JS_URL=\$\(egrep -o http://.*[.]pagespeed.*[.]js $FETCHED\)=\"$JS_URL\""
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)
 echo JS_HEADERS=$JS_HEADERS
-check egrep -qi 'HTTP/1[.]. 200 OK' <(echo $JS_HEADERS)
-check fgrep -qi 'Content-Encoding: gzip' <(echo $JS_HEADERS)
-check fgrep -qi 'Vary: Accept-Encoding' <(echo $JS_HEADERS)
-check fgrep -qi 'Etag: W/"0"' <(echo $JS_HEADERS)
-check fgrep -qi 'Last-Modified:' <(echo $JS_HEADERS)
+check_from "$JS_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
+check_from "$JS_HEADERS" fgrep -qi 'Content-Encoding: gzip'
+check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
+check_from "$JS_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
+check_from "$JS_HEADERS" fgrep -qi 'Last-Modified:'
 
 # Test RetainComment directive.
 test_filter remove_comments retains appropriate comments.

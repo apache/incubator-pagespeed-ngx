@@ -230,6 +230,8 @@ ModPagespeedCustomFetchHeader x-other False
 #
 # TODO(jmarantz): add a test-path where we set this in a VirtualHost and
 # make sure the right error message comes out.
+#COVERAGE # Don't want global slurp inheriting into :8080
+#COVERAGE ModPagespeedInheritVHostConfig off
 #COVERAGE ModPagespeedMessageBufferSize 100000
 #COVERAGE
 #COVERAGE # These lines are used for large-scale code coverage testing.
