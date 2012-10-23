@@ -254,54 +254,33 @@ ngx_http_pagespeed_initialize_server_context(
       "collapse_whitespace,remove_comments,remove_quotes", cfg->handler);
 }
 
+// Returns:
+//   NGX_OK: pagespeed is done, request complete
+//   NGX_AGAIN: pagespeed still working, needs to be called again later
+//   NGX_ERROR: error
+static ngx_int_t
+ngx_http_pagespeed_update(ngx_http_request_t* r,
+                          ngx_http_pagespeed_request_ctx_t* ctx,
+                          ngx_event_t* ev) {
 
-static void
-ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
-  int rc = NGX_OK;
-  ngx_http_request_t* r = NULL;
-  ngx_http_pagespeed_request_ctx_t* ctx;
-  ngx_connection_t* c;
-  char chr;
+  fprintf(stderr, "processing event, ctx=%p for r=%p uri=%*s\n",
+          ctx, r, static_cast<int>(r->uri.len), r->uri.data);
 
-  if (ev == NULL) {
-    fprintf(stderr, "ev is null\n");
-    return;
-  }
-
-  c = static_cast<ngx_connection_t*>(ev->data);
-  if (c == NULL) {
-    fprintf(stderr, "c is null\n");
-    goto finalize;
-  }
-
-  ctx = static_cast<ngx_http_pagespeed_request_ctx_t*>(c->data);
-
-  if (ctx == NULL) {
-    fprintf(stderr, "ctx is null\n");
-    goto finalize;
-  }
-
-  r = ctx->r;
-
-  if (r == NULL) {
-    fprintf(stderr, "r is null\n");
-    goto finalize;
-  }
-
-  rc = read(c->fd, &chr, 1);
-  if (rc != 1) {
-    perror("ngx_http_pagespeed_connection_read_handler");
-    goto finalize;
-  }
-
-  fprintf(stderr, "Got '%c'\n", chr);
+  int rc;
+  // char chr;
+  //rc = read(ctx->pipe_fd, &chr, 1);
+  //if (rc != 1) {
+  //  perror("ngx_http_pagespeed_connection_read_handler");
+  //  return NGX_ERROR;
+  // }
+  //fprintf(stderr, "Got '%c'\n", chr);
 
   // Get any finished data back
   ngx_chain_t* in;
   rc = ctx->base_fetch->CollectAccumulatedWrites(&in);
   if (rc != NGX_OK) {
     DBG(r, "problem with CollectAccumulatedWrites");
-    goto finalize;
+    return rc;
   }
 
   if (in == NULL) {
@@ -311,25 +290,58 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
         in->buf->end - in->buf->pos, in->buf->pos);
   }
 
-  rc = ngx_http_next_body_filter(r, in);
-  if (rc != NGX_OK && rc != NGX_AGAIN) {
-    DBG(r, "problem with next body filter");
-    goto finalize;
-  }
+  return ngx_http_next_body_filter(r, in);
+}
 
-  if (chr != 'F') {
+static void
+ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
+  if (ev == NULL) {
+    fprintf(stderr, "ev is null\n");
     return;
   }
 
-finalize:
-  ngx_del_event(ev, NGX_READ_EVENT, 0);
+  ngx_connection_t* c = static_cast<ngx_connection_t*>(ev->data);
+  if (c == NULL) {
+    fprintf(stderr, "c is null\n");
+    ngx_del_event(ev, NGX_READ_EVENT, 0);
+    return;
+  }
 
-  if (r != NULL) {
+  ngx_http_pagespeed_request_ctx_t* ctx =
+      static_cast<ngx_http_pagespeed_request_ctx_t*>(c->data);
+  if (ctx == NULL) {
+    fprintf(stderr, "ctx is null\n");
+    ngx_del_event(ev, NGX_READ_EVENT, 0);
+    return;
+  }
+
+  ngx_http_request_t* r = ctx->r;
+  if (r == NULL) {
+    fprintf(stderr, "r is null\n");
+    ngx_del_event(ev, NGX_READ_EVENT, 0);
+    return;
+  }
+
+  int rc = ngx_http_pagespeed_update(r, ctx, ev);
+  if (rc == NGX_OK) {
+    DBG(r, "ok");
+    // request complete
+    ngx_del_event(ev, NGX_READ_EVENT, 0);
     ngx_http_pagespeed_release_request_context(r, ctx);
-    //ngx_http_finalize_request(r, NGX_DONE);
-    //if (rc != NGX_AGAIN) {
-    //  ngx_http_finalize_request(r, rc);
-    //}
+    ngx_http_finalize_request(r, NGX_DONE);
+  } else if (rc == NGX_ERROR) {
+    DBG(r, "error");
+    ngx_del_event(ev, NGX_READ_EVENT, 0);
+    ngx_http_finalize_request(r, NGX_ERROR);
+  } else if (rc == NGX_AGAIN) { 
+    DBG(r, "again");
+    // request needs more work by pagespeed
+    rc = ngx_handle_read_event(ev, 0);
+    if (rc != NGX_OK) {
+      DBG(r, "ngx_handle_read_event failed");
+    }
+  } else {
+    DBG(r, "Got unknown return code %d from ngx_http_pagespeed_update", rc);
   }
 }
 
@@ -337,10 +349,11 @@ finalize:
 // ngx_http_pagespeed_release_request_context.
 static ngx_int_t
 ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
-  fprintf(stderr, "creating request context for %p\n", r);
-
   ngx_http_pagespeed_request_ctx_t* ctx =
       new ngx_http_pagespeed_request_ctx_t();
+
+  fprintf(stderr, "created request context %p for %p uri=%*s\n",
+          ctx, r, static_cast<int>(r->uri.len), r->uri.data);
 
   ctx->r = r;
 
@@ -484,6 +497,7 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
   }
 
   if (!ctx->data_received) {
+    DBG(r, "initial buffer");
     // This is the first set of buffers we've got for this request.
     ctx->data_received = true;
     ctx->base_fetch->PopulateHeaders();  // TODO(jefftk): is this thread safe?
@@ -494,7 +508,9 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
     ngx_http_pagespeed_send_to_pagespeed(r, ctx, in);
   }
 
-  return NGX_OK;
+  DBG(r, "not finished until pagespeed returns");
+
+  return NGX_AGAIN;
 }
 
 static ngx_int_t
