@@ -54,7 +54,7 @@ class NgxBaseFetch : public AsyncFetch {
 
   // Indicate to nginx that we would like it to call
   // CollectAccumulatedWrites().
-  void RequestCollection();
+  void RequestCollection(char c);
 
   ngx_http_request_t* request_;
   GoogleString buffer_;

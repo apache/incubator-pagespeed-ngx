@@ -65,6 +65,8 @@ typedef struct {
   net_instaweb::NgxBaseFetch* base_fetch;
   bool data_received;
   int pipe_fd;
+  ngx_connection_t* pagespeed_connection;
+  ngx_http_request_t* r;
 } ngx_http_pagespeed_request_ctx_t;
 
 static ngx_command_t ngx_http_pagespeed_commands[] = {
@@ -84,6 +86,9 @@ static ngx_command_t ngx_http_pagespeed_commands[] = {
 
   ngx_null_command
 };
+
+static ngx_int_t
+ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
 static StringPiece
 ngx_http_pagespeed_str_to_string_piece(ngx_str_t* s) {
@@ -131,14 +136,19 @@ static void
 ngx_http_pagespeed_release_request_context(
     ngx_http_request_t* r, ngx_http_pagespeed_request_ctx_t* ctx) {
 
-    // release request context
-    ngx_http_set_ctx(r, NULL, ngx_pagespeed);
+  DBG(r, "releasing request context");
 
-    // BaseFetch doesn't delete itself
-    delete ctx->base_fetch;
+  // release request context
+  ngx_http_set_ctx(r, NULL, ngx_pagespeed);
 
-    // the proxy fetch deleted itself when we called Done()
-    delete ctx;
+  // BaseFetch doesn't delete itself
+  delete ctx->base_fetch;
+
+  // Stop watching the pipe.
+  close(ctx->pipe_fd);
+
+  // the proxy fetch deleted itself when we called Done()
+  delete ctx;
 }
 
 
@@ -199,8 +209,15 @@ ngx_http_pagespeed_determine_url(ngx_http_request_t* r) {
 // should already have been called to create it.
 static ngx_http_pagespeed_request_ctx_t*
 ngx_http_pagespeed_get_request_context(ngx_http_request_t* r) {
-  return static_cast<ngx_http_pagespeed_request_ctx_t*>(
-      ngx_http_get_module_ctx(r, ngx_pagespeed));
+  ngx_http_pagespeed_request_ctx_t* ctx =
+      static_cast<ngx_http_pagespeed_request_ctx_t*>(
+          ngx_http_get_module_ctx(r, ngx_pagespeed));
+  if (ctx != NULL && ctx->r != r) {
+    DBG(r, "ngx_http_pagespeed_get_request_context: "
+        "Broken request pointer");
+    return NULL;
+  }
+  return ctx;
 }
 
 // Initialize the ngx_http_pagespeed_srv_conf_t by allocating and configuring
@@ -237,12 +254,95 @@ ngx_http_pagespeed_initialize_server_context(
       "collapse_whitespace,remove_comments,remove_quotes", cfg->handler);
 }
 
+
+static void
+ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
+  int rc = NGX_OK;
+  ngx_http_request_t* r = NULL;
+  ngx_http_pagespeed_request_ctx_t* ctx;
+  ngx_connection_t* c;
+  char chr;
+
+  if (ev == NULL) {
+    fprintf(stderr, "ev is null\n");
+    return;
+  }
+
+  c = static_cast<ngx_connection_t*>(ev->data);
+  if (c == NULL) {
+    fprintf(stderr, "c is null\n");
+    goto finalize;
+  }
+
+  ctx = static_cast<ngx_http_pagespeed_request_ctx_t*>(c->data);
+
+  if (ctx == NULL) {
+    fprintf(stderr, "ctx is null\n");
+    goto finalize;
+  }
+
+  r = ctx->r;
+
+  if (r == NULL) {
+    fprintf(stderr, "r is null\n");
+    goto finalize;
+  }
+
+  rc = read(c->fd, &chr, 1);
+  if (rc != 1) {
+    perror("ngx_http_pagespeed_connection_read_handler");
+    goto finalize;
+  }
+
+  fprintf(stderr, "Got '%c'\n", chr);
+
+  // Get any finished data back
+  ngx_chain_t* in;
+  rc = ctx->base_fetch->CollectAccumulatedWrites(&in);
+  if (rc != NGX_OK) {
+    DBG(r, "problem with CollectAccumulatedWrites");
+    goto finalize;
+  }
+
+  if (in == NULL) {
+    DBG(r, "got null from pagespeed");
+  } else {
+    DBG(r, "got '%*s' from pagespeed",
+        in->buf->end - in->buf->pos, in->buf->pos);
+  }
+
+  rc = ngx_http_next_body_filter(r, in);
+  if (rc != NGX_OK && rc != NGX_AGAIN) {
+    DBG(r, "problem with next body filter");
+    goto finalize;
+  }
+
+  if (chr != 'F') {
+    return;
+  }
+
+finalize:
+  ngx_del_event(ev, NGX_READ_EVENT, 0);
+
+  if (r != NULL) {
+    ngx_http_pagespeed_release_request_context(r, ctx);
+    //ngx_http_finalize_request(r, NGX_DONE);
+    //if (rc != NGX_AGAIN) {
+    //  ngx_http_finalize_request(r, rc);
+    //}
+  }
+}
+
 // Set us up for processing a request.  When the request finishes, call
 // ngx_http_pagespeed_release_request_context.
 static ngx_int_t
 ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
+  fprintf(stderr, "creating request context for %p\n", r);
+
   ngx_http_pagespeed_request_ctx_t* ctx =
       new ngx_http_pagespeed_request_ctx_t();
+
+  ctx->r = r;
 
   ctx->cfg = static_cast<ngx_http_pagespeed_srv_conf_t*>(
       ngx_http_get_module_srv_conf(r, ngx_pagespeed));
@@ -253,7 +353,28 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
     ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0, "pipe() failed");
     return NGX_ERROR;
   }
+  fprintf(stderr, "pipe created: %d -> %d\n",
+          file_descriptors[1], file_descriptors[0]);
+
   ctx->pipe_fd = file_descriptors[0];
+  ctx->pagespeed_connection =
+      ngx_get_connection(ctx->pipe_fd, r->connection->log);
+  if (ctx->pagespeed_connection == NULL) {
+    close(file_descriptors[0]);
+    close(file_descriptors[1]);
+
+    ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
+                  "ngx_http_pagespeed_create_request_context: "
+                  "no pagespeed connection.");
+    return NGX_ERROR;
+  }
+
+  ctx->pagespeed_connection->data = ctx;
+
+  ctx->pagespeed_connection->read->handler =
+      ngx_http_pagespeed_connection_read_handler;
+
+  ngx_add_event(ctx->pagespeed_connection->read, NGX_READ_EVENT, 0);
 
   // Deletes itself when HandleDone is called, which happens when we call Done()
   // on the proxy fetch below.
@@ -356,9 +477,6 @@ ngx_http_pagespeed_send_to_pagespeed(
 static ngx_int_t
 ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
 {
-  DBG(r, "ngx_http_pagespeed_body_filter called, in=%p", in);
-  int rc;
-
   ngx_http_pagespeed_request_ctx_t* ctx =
       ngx_http_pagespeed_get_request_context(r);
   if (ctx == NULL) {
@@ -371,43 +489,12 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
     ctx->base_fetch->PopulateHeaders();
   }
 
-  // Send all input data to the proxy fetch.
-  ngx_http_pagespeed_send_to_pagespeed(r, ctx, in);
-
-  // Get any finished data back
-  rc = ctx->base_fetch->CollectAccumulatedWrites(&in);
-  if (rc != NGX_OK) {
-    return rc;
+  if (in != NULL) {
+    // Send all input data to the proxy fetch.
+    ngx_http_pagespeed_send_to_pagespeed(r, ctx, in);
   }
 
-  if (in == NULL) {
-    DBG(r, "got null from pagespeed");
-  } else {
-    DBG(r, "got '%*s' from pagespeed",
-        in->buf->end - in->buf->pos, in->buf->pos);
-  }
-
-  bool last_buf = (in == NULL) ? false : in->buf->last_buf;
-  if (last_buf) {
-    DBG(r, "got last buffer");
-    ngx_http_pagespeed_release_request_context(r, ctx);
-
-    if (in->buf->pos == in->buf->end) {
-      // Empty buffer just to signal the end of output.  Maybe need to do
-      // something special here.
-    }
-  }
-
-  rc = ngx_http_next_body_filter(r, in);
-  if (rc != NGX_OK) {
-    return rc;
-  }
-
-  if (last_buf) {
-    return NGX_OK;
-  } else {
-    return NGX_AGAIN;
-  }
+  return NGX_OK;
 }
 
 static ngx_int_t

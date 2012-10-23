@@ -128,11 +128,11 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
   return NGX_OK;
 }
 
-void NgxBaseFetch::RequestCollection() {
+void NgxBaseFetch::RequestCollection(char c) {
   int rc;
 
   do {
-    rc = write(pipe_fd_, "A", 1);
+    rc = write(pipe_fd_, &c, 1);
     if (rc < 0) {
       perror("NgxBaseFetch::RequestCollection");
     }
@@ -144,14 +144,14 @@ bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
   // TODO(jefftk): let nginx know through some pipe that it should call
   // CollectAccumulatedWrites() from it's main thread.
   handler->Message(kInfo, "Have accumulated '%s'", buffer_.c_str());
-  RequestCollection();
+  RequestCollection('D');  // data available.
   return true;
 }
 
 void NgxBaseFetch::HandleDone(bool success) {
   done_called_ = true;
-  RequestCollection();
-  int rc;
+  RequestCollection('F');  // finished; can close the pipe.
+  int rc; 
   do {
     rc = close(pipe_fd_);
   } while (errno == EINTR || errno == EIO);
