@@ -486,7 +486,7 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
   if (!ctx->data_received) {
     // This is the first set of buffers we've got for this request.
     ctx->data_received = true;
-    ctx->base_fetch->PopulateHeaders();
+    ctx->base_fetch->PopulateHeaders();  // TODO(jefftk): is this thread safe?
   }
 
   if (in != NULL) {
