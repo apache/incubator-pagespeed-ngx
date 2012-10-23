@@ -27,8 +27,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
-struct apr_memcache_t;
-struct apr_memcache_server_t;
+struct apr_memcache2_t;
+struct apr_memcache2_server_t;
 struct apr_pool_t;
 
 namespace net_instaweb {
@@ -40,7 +40,7 @@ class Statistics;
 class Timer;
 class Variable;
 
-// Interface to memcached via the apr_memcache*, as documented in
+// Interface to memcached via the apr_memcache2*, as documented in
 // http://apr.apache.org/docs/apr-util/1.4/group___a_p_r___util___m_c.html.
 //
 // While this class derives from CacheInterface, it is a blocking
@@ -60,7 +60,7 @@ class AprMemCache : public CacheInterface {
   // servers is a comma-separated list of host[:port] where port defaults
   // to 11211, the memcached default.
   //
-  // thread_limit is used to provide apr_memcache_server_create with
+  // thread_limit is used to provide apr_memcache2_server_create with
   // a hard maximum number of client connections to open.
   AprMemCache(const StringPiece& servers, int thread_limit, Hasher* hasher,
               Statistics* statistics, Timer* timer, MessageHandler* handler);
@@ -90,7 +90,7 @@ class AprMemCache : public CacheInterface {
   virtual bool IsBlocking() const { return true; }
   virtual bool IsMachineLocal() const { return is_machine_local_; }
 
-  // This class will print up to 4 apr_memcache-induced system error
+  // This class will print up to 4 apr_memcache2-induced system error
   // messages within 30 minutes. For the 5th one, it will instead display
   // the status for each server, based on the assumption that one or
   // more of the shards is down.  All subsequent messages will be
@@ -114,8 +114,8 @@ class AprMemCache : public CacheInterface {
   bool valid_server_spec_;
   int thread_limit_;
   apr_pool_t* pool_;
-  apr_memcache_t* memcached_;
-  std::vector<apr_memcache_server_t*> servers_;
+  apr_memcache2_t* memcached_;
+  std::vector<apr_memcache2_server_t*> servers_;
   Hasher* hasher_;
   Timer* timer_;
 

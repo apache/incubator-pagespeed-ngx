@@ -44,6 +44,7 @@
         '<(DEPTH)',
       ],
       'sources': [
+        '<(DEPTH)/third_party/aprutil/apr_memcache2.c',
         'apache/add_headers_fetcher.cc',
         'apache/apache_thread_system.cc',
         'apache/apr_file_system.cc',

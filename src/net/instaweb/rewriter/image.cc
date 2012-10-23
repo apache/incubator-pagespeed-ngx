@@ -292,8 +292,8 @@ void ImageImpl::FindJpegSize() {
   if (!ImageUrlEncoder::HasValidDimensions(dims_) ||
       (dims_.height() <= 0) || (dims_.width() <= 0)) {
     dims_.Clear();
-    handler_->Error(url_.c_str(), 0,
-                    "Couldn't find jpeg dimensions (data truncated?).");
+    handler_->Warning(url_.c_str(), 0,
+                      "Couldn't find jpeg dimensions (data truncated?).");
   }
 }
 
@@ -315,9 +315,9 @@ void ImageImpl::FindPngSize() {
     dims_.set_height(PngIntAtPosition(
         buf, ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize));
   } else {
-    handler_->Error(url_.c_str(), 0,
-                    "Couldn't find png dimensions "
-                    "(data truncated or IHDR missing).");
+    handler_->Warning(url_.c_str(), 0,
+                      "Couldn't find png dimensions "
+                      "(data truncated or IHDR missing).");
   }
 }
 
@@ -334,8 +334,8 @@ void ImageImpl::FindGifSize() {
     dims_.set_height(GifIntAtPosition(
         buf, ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize));
   } else {
-    handler_->Error(url_.c_str(), 0,
-                    "Couldn't find gif dimensions (data truncated)");
+    handler_->Warning(url_.c_str(), 0,
+                      "Couldn't find gif dimensions (data truncated)");
   }
 }
 
@@ -347,7 +347,7 @@ void ImageImpl::FindWebpSize() {
     dims_.set_width(width);
     dims_.set_height(height);
   } else {
-    handler_->Error(url_.c_str(), 0, "Couldn't find webp dimensions ");
+    handler_->Warning(url_.c_str(), 0, "Couldn't find webp dimensions ");
   }
 }
 
@@ -534,16 +534,12 @@ bool ImageImpl::EnsureLoaded(bool output_useful) {
       // A bit of belt and suspenders dimension checking.  We used to do this
       // for every image we loaded, but now we only do it when we're already
       // paying the cost of OpenCV image conversion.
-      if (dims_.width() != opencv_image_->width) {
-        handler_->Error(url_.c_str(), 0,
-                        "Computed width %d doesn't match OpenCV %d",
-                        dims_.width(), opencv_image_->width);
-      }
-      if (dims_.height() != opencv_image_->height) {
-        handler_->Error(url_.c_str(), 0,
-                        "Computed height %d doesn't match OpenCV %d",
-                        dims_.height(), opencv_image_->height);
-      }
+      DCHECK(dims_.width() == opencv_image_->width)
+          << "Computed width " << dims_.width() << " doesn't match OpenCV "
+          << opencv_image_->width << " for URL " << url_;
+      DCHECK(dims_.height() == opencv_image_->height)
+          << "Computed height " << dims_.height() << " doesn't match OpenCV "
+          << opencv_image_->height << " for URL " << url_;
     }
   }
   return opencv_load_possible_;
@@ -758,8 +754,7 @@ bool ImageImpl::ComputeOutputContents() {
             ok = OptimizeWebp(string_for_image, options_->webp_quality,
                               &output_contents_);
             if (!ok) {
-              handler_->Error(url_.c_str(), 0,
-                              "Failed to create webp!");
+              handler_->Warning(url_.c_str(), 0, "Failed to create webp!");
             }
           }
           if (ok) {  // && webp_preferred, which is implied.

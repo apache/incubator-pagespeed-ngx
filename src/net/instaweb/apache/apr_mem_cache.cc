@@ -19,7 +19,6 @@
 #include "net/instaweb/apache/apr_mem_cache.h"
 
 #include "apr_pools.h"
-#include "apr_memcache.h"
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/cache_interface.h"
@@ -33,6 +32,7 @@
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"
+#include "third_party/aprutil/apr_memcache2.h"
 
 namespace net_instaweb {
 
@@ -53,7 +53,7 @@ const char kMessageBurstSize[] = "_memcache_message_burst_size";
 const int64 kWaitingPeriodMs = 30 * Timer::kMinuteMs;  // 30 minutes
 
 // time-to-live of a client connection.  There is a bug in the APR
-// implementation, where the TTL argument to apr_memcache_server_create was
+// implementation, where the TTL argument to apr_memcache2_server_create was
 // being interpreted in microseconds, rather than seconds.
 //
 // See: http://mail-archives.apache.org/mod_mbox/apr-dev/201209.mbox/browser
@@ -132,19 +132,19 @@ void AprMemCache::InitStats(Statistics* statistics) {
 
 bool AprMemCache::Connect() {
   apr_status_t status =
-      apr_memcache_create(pool_, hosts_.size(), 0, &memcached_);
+      apr_memcache2_create(pool_, hosts_.size(), 0, &memcached_);
   bool success = false;
   if ((status == APR_SUCCESS) && !hosts_.empty()) {
     success = true;
     CHECK_EQ(hosts_.size(), ports_.size());
     for (int i = 0, n = hosts_.size(); i < n; ++i) {
-      apr_memcache_server_t* server = NULL;
-      status = apr_memcache_server_create(
+      apr_memcache2_server_t* server = NULL;
+      status = apr_memcache2_server_create(
           pool_, hosts_[i].c_str(), ports_[i],
           kDefaultServerMin, kDefaultServerSmax,
           thread_limit_, kDefaultServerTtlUs, &server);
       if ((status != APR_SUCCESS) ||
-          ((status = apr_memcache_add_server(memcached_, server) !=
+          ((status = apr_memcache2_add_server(memcached_, server) !=
             APR_SUCCESS))) {
         char buf[kStackBufferSize];
         apr_strerror(status, buf, sizeof(buf));
@@ -194,7 +194,7 @@ void AprMemCache::Get(const GoogleString& key, Callback* callback) {
   GoogleString hashed_key = hasher_->Hash(key);
   char* data;
   apr_size_t data_len;
-  apr_status_t status = apr_memcache_getp(
+  apr_status_t status = apr_memcache2_getp(
       memcached_, data_pool, hashed_key.c_str(), &data, &data_len, NULL);
   if (status == APR_SUCCESS) {
     DecodeValueMatchingKeyAndCallCallback(key, data, data_len, "Get", callback);
@@ -233,11 +233,11 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
   for (int i = 0, n = request->size(); i < n; ++i) {
     GoogleString hashed_key = hasher_->Hash((*request)[i].key);
     hashed_keys.push_back(hashed_key);
-    apr_memcache_add_multget_key(data_pool, hashed_key.c_str(), &hash_table);
+    apr_memcache2_add_multget_key(data_pool, hashed_key.c_str(), &hash_table);
   }
 
-  apr_status_t status = apr_memcache_multgetp(memcached_, temp_pool, data_pool,
-                                              hash_table);
+  apr_status_t status = apr_memcache2_multgetp(memcached_, temp_pool, data_pool,
+                                               hash_table);
   apr_pool_destroy(temp_pool);
   if (status == APR_SUCCESS) {
     for (int i = 0, n = request->size(); i < n; ++i) {
@@ -245,7 +245,7 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
       const GoogleString& key = key_callback->key;
       Callback* callback = key_callback->callback;
       const GoogleString& hashed_key = hashed_keys[i];
-      apr_memcache_value_t* value = static_cast<apr_memcache_value_t*>(
+      apr_memcache2_value_t* value = static_cast<apr_memcache2_value_t*>(
           apr_hash_get(hash_table, hashed_key.data(), hashed_key.size()));
       if (value == NULL) {
         status = APR_NOTFOUND;
@@ -281,9 +281,9 @@ void AprMemCache::Put(const GoogleString& key,
   GoogleString hashed_key = hasher_->Hash(key);
   SharedString key_value;
   if (key_value_codec::Encode(key, encoded_value, &key_value)) {
-    // I believe apr_memcache_set erroneously takes a char* for the value.
+    // I believe apr_memcache2_set erroneously takes a char* for the value.
     // Hence we const_cast.
-    apr_status_t status = apr_memcache_set(
+    apr_status_t status = apr_memcache2_set(
         memcached_, hashed_key.c_str(),
         const_cast<char*>(key_value.data()), key_value.size(),
         0, 0);
@@ -322,7 +322,7 @@ void AprMemCache::Delete(const GoogleString& key) {
   // will be tossed.
 
   GoogleString hashed_key = hasher_->Hash(key);
-  apr_status_t status = apr_memcache_delete(memcached_, hashed_key.c_str(), 0);
+  apr_status_t status = apr_memcache2_delete(memcached_, hashed_key.c_str(), 0);
   if ((status != APR_SUCCESS) && ShouldLogAprError()) {
     char buf[kStackBufferSize];
     apr_strerror(status, buf, sizeof(buf));
@@ -338,8 +338,8 @@ bool AprMemCache::GetStatus(GoogleString* buffer) {
   CHECK(temp_pool != NULL) << "apr_pool_t allocation failure";
   bool ret = true;
   for (int i = 0, n = servers_.size(); i < n; ++i) {
-    apr_memcache_stats_t* stats;
-    apr_status_t status = apr_memcache_stats(servers_[i], temp_pool, &stats);
+    apr_memcache2_stats_t* stats;
+    apr_status_t status = apr_memcache2_stats(servers_[i], temp_pool, &stats);
     if (status == APR_SUCCESS) {
       StrAppend(buffer, "memcached server ", hosts_[i], ":",
                 IntegerToString(ports_[i]), " version ", stats->version);
@@ -423,9 +423,9 @@ bool AprMemCache::ShouldLogAprError() {
       apr_pool_create(&temp_pool, NULL);
       CHECK(temp_pool != NULL) << "apr_pool_t allocation failure";
       for (int i = 0, n = servers_.size(); i < n; ++i) {
-        apr_memcache_stats_t* stats;
-        apr_status_t status = apr_memcache_stats(servers_[i], temp_pool,
-                                                 &stats);
+        apr_memcache2_stats_t* stats;
+        apr_status_t status = apr_memcache2_stats(servers_[i], temp_pool,
+                                                  &stats);
         if (status == APR_SUCCESS) {
           message_handler_->Message(
               kWarning, "AprMemCache: memcached on %s:%d appears to be up",

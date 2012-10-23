@@ -243,7 +243,7 @@ void ProxyInterface::Fetch(const GoogleString& requested_url_string,
 
   all_requests_->IncBy(1);
   if (!(requested_url.is_valid() && IsWellFormedUrl(requested_url))) {
-    LOG(ERROR) << "Bad URL, failing request: " << requested_url_string;
+    LOG(WARNING) << "Bad URL, failing request: " << requested_url_string;
     async_fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
     async_fetch->Done(false);
   } else {
