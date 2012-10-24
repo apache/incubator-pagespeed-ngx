@@ -53,6 +53,7 @@ const char HttpAttributes::kTransferEncoding[] = "Transfer-Encoding";
 const char HttpAttributes::kUserAgent[] = "User-Agent";
 const char HttpAttributes::kVary[] = "Vary";
 const char HttpAttributes::kWarning[] = "Warning";
+const char HttpAttributes::kXmlHttpRequest[] = "XMLHttpRequest";
 const char HttpAttributes::kXAssociatedContent[] = "X-Associated-Content";
 const char HttpAttributes::kXForwardedFor[] = "X-Forwarded-For";
 const char HttpAttributes::kXGooglePagespeedClientId[] =

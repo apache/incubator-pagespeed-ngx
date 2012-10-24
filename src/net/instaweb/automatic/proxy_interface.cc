@@ -34,7 +34,6 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -53,7 +52,6 @@ class MessageHandler;
 const char ProxyInterface::kBlinkRequestCount[] = "blink-requests";
 const char ProxyInterface::kBlinkCriticalLineRequestCount[] =
     "blink-critical-line-requests";
-const char ProxyInterface::kXmlHttpRequest[] = "XMLHttpRequest";
 
 namespace {
 
@@ -268,94 +266,6 @@ void ProxyInterface::Fetch(const GoogleString& requested_url_string,
   }
 }
 
-RewriteOptions* ProxyInterface::GetCustomOptions(
-    GoogleUrl* request_url, RequestHeaders* request_headers,
-    RewriteOptions* domain_options, RewriteOptions* query_options,
-    MessageHandler* handler) {
-  RewriteOptions* options = server_context_->global_options();
-  scoped_ptr<RewriteOptions> custom_options;
-  scoped_ptr<RewriteOptions> scoped_domain_options(domain_options);
-  if (scoped_domain_options.get() != NULL) {
-    custom_options.reset(server_context_->NewOptions());
-    custom_options->Merge(*options);
-    custom_options->Merge(*scoped_domain_options.get());
-    options = custom_options.get();
-  }
-
-  scoped_ptr<RewriteOptions> query_options_ptr(query_options);
-  // Check query params & request-headers
-  if (query_options_ptr.get() != NULL) {
-    // Subtle memory management to handle deleting any domain_options
-    // after the merge, and transferring ownership to the caller for
-    // the new merged options.
-    scoped_ptr<RewriteOptions> options_buffer(custom_options.release());
-    custom_options.reset(server_context_->NewOptions());
-    custom_options->Merge(*options);
-    custom_options->Merge(*query_options);
-    // Don't run any experiments if this is a special query-params request.
-    custom_options->set_running_furious_experiment(false);
-  }
-
-  if (IsXmlHttpRequest(request_headers)) {
-    // For XmlHttpRequests, disable filters that insert js. Otherwise, there
-    // will be two copies of the same scripts in the html dom- one from main
-    // html page and another from html content fetched from ajax and this
-    // will messed up many global variable states.
-    // Sometimes, js present in the ajax request does not get executed.
-    if (custom_options == NULL) {
-      custom_options.reset(options->Clone());
-    }
-    custom_options->DisableFilter(RewriteOptions::kLazyloadImages);
-    custom_options->DisableFilter(RewriteOptions::kDelayImages);
-    custom_options->DisableFilter(RewriteOptions::kPrioritizeVisibleContent);
-    custom_options->DisableFilter(RewriteOptions::kDeferJavascript);
-    custom_options->DisableFilter(RewriteOptions::kLocalStorageCache);
-  }
-
-  return custom_options.release();
-}
-
-bool ProxyInterface::IsXmlHttpRequest(RequestHeaders* headers) const {
-  // Check if kXRequestedWith header is present to determine whether it is
-  // XmlHttpRequest or not.
-  // Note: Not every ajax request sends this header but many libraries like
-  // jquery, prototype and mootools etc. send this header. Google closure and
-  // custom ajax hacks will not set this header.
-  // It is not guaranteed that javascript present in the html loaded via
-  // ajax request will execute.
-  const char* x_requested_with =
-      headers->Lookup1(HttpAttributes::kXRequestedWith);
-  if (x_requested_with != NULL &&
-      StringCaseEqual(x_requested_with, kXmlHttpRequest)) {
-    return true;
-  }
-  return false;
-}
-
-ProxyInterface::OptionsBoolPair ProxyInterface::GetQueryOptions(
-    GoogleUrl* request_url, RequestHeaders* request_headers,
-    MessageHandler* handler) {
-  scoped_ptr<RewriteOptions> query_options;
-  bool success = false;
-  switch (RewriteQuery::Scan(
-              server_context_->factory(), request_url, request_headers,
-              &query_options, handler)) {
-    case RewriteQuery::kInvalid:
-      query_options.reset(NULL);
-      break;
-    case RewriteQuery::kNoneFound:
-      query_options.reset(NULL);
-      success = true;
-      break;
-    case RewriteQuery::kSuccess:
-      success = true;
-      break;
-    default:
-      query_options.reset(NULL);
-  }
-  return OptionsBoolPair(query_options.release(), success);
-}
-
 void ProxyInterface::ProxyRequest(bool is_resource_fetch,
                                   const GoogleUrl& request_url,
                                   AsyncFetch* async_fetch,
@@ -365,8 +275,9 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
 
   // Stripping ModPagespeed query params before the property cache lookup to
   // make cache key consistent for both lookup and storing in cache.
-  OptionsBoolPair query_options_success = GetQueryOptions(
-      gurl.get(), async_fetch->request_headers(), handler);
+  ServerContext::OptionsBoolPair query_options_success =
+      server_context_->GetQueryOptions(gurl.get(),
+                                       async_fetch->request_headers());
 
   if (!query_options_success.second) {
     async_fetch->response_headers()->SetStatusAndReason(
@@ -467,9 +378,8 @@ void ProxyInterface::ProxyRequestCallback(
     RewriteOptions* query_options,
     MessageHandler* handler) {
   scoped_ptr<GoogleUrl> request_url(url);
-  RewriteOptions* options = GetCustomOptions(
-      request_url.get(), async_fetch->request_headers(), domain_options,
-      query_options, handler);
+  RewriteOptions* options = server_context_->GetCustomOptions(
+      async_fetch->request_headers(), domain_options, query_options);
   GoogleString url_string;
   RequestHeaders* request_headers = async_fetch->request_headers();
   request_url->Spec().CopyToString(&url_string);

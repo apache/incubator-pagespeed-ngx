@@ -62,6 +62,7 @@ struct HttpAttributes {
   static const char kUserAgent[];
   static const char kVary[];
   static const char kWarning[];
+  static const char kXmlHttpRequest[];
   static const char kXAssociatedContent[];
   static const char kXForwardedFor[];
   static const char kXGooglePagespeedClientId[];

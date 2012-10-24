@@ -143,4 +143,20 @@ bool RequestHeaders::AcceptsGzip() const {
   return false;
 }
 
+bool RequestHeaders::IsXmlHttpRequest() const {
+  // Check if kXRequestedWith header is present to determine whether it is
+  // XmlHttpRequest or not.
+  // Note: Not every ajax request sends this header but many libraries like
+  // jquery, prototype and mootools etc. send this header. Google closure and
+  // custom ajax hacks will not set this header.
+  // It is not guaranteed that javascript present in the html loaded via
+  // ajax request will execute.
+  const char* x_requested_with = Lookup1(HttpAttributes::kXRequestedWith);
+  if (x_requested_with != NULL &&
+      StringCaseEqual(x_requested_with, HttpAttributes::kXmlHttpRequest)) {
+    return true;
+  }
+  return false;
+}
+
 }  // namespace net_instaweb

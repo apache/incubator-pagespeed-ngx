@@ -508,34 +508,36 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
   {
-    // TODO(sligocki): Move inside PSA.
-    //
     // TODO(mmohabey): Add a hook which strips off the ModPagespeed* query
     // (instead of stripping them here) params before content generation.
     GoogleUrl gurl(absolute_url);
     ApacheRequestToRequestHeaders(*request, request_headers.get());
-    scoped_ptr<RewriteOptions> query_options;
-    switch (RewriteQuery::Scan(factory, &gurl, request_headers.get(),
-                               &query_options, manager->message_handler())) {
-      case RewriteQuery::kInvalid:
-        return NULL;
-      case RewriteQuery::kNoneFound:
-        break;
-      case RewriteQuery::kSuccess: {
-        use_custom_options = true;
-        RewriteOptions* merged_options = factory->NewRewriteOptions();
-        merged_options->Merge(*options);
-        merged_options->Merge(*query_options.get());
-        // Don't run any experiments if we're handling a query params request.
-        merged_options->set_running_furious_experiment(false);
-        manager->ComputeSignature(merged_options);
-        custom_options.reset(merged_options);
-        options = merged_options;
-        if (gurl.is_valid()) {
-          // Set final url to gurl which has ModPagespeed* query params
-          // stripped.
-          final_url = gurl.Spec().as_string();
-        }
+
+    ServerContext::OptionsBoolPair query_options_success =
+        manager->GetQueryOptions(&gurl, request_headers.get());
+    if (!query_options_success.second) {
+      return NULL;
+    }
+    if (query_options_success.first != NULL) {
+      use_custom_options = true;
+      // TODO(sriharis): Can we use ServerContext::GetCustomOptions(
+      //   request_headers.get(), NULL, query_options_success.first) here?
+      // The only issue will be the XmlHttpRequest disabling of filters that
+      // insert js, that is done there.
+      scoped_ptr<RewriteOptions> query_options(query_options_success.first);
+      RewriteOptions* merged_options = factory->NewRewriteOptions();
+      merged_options->Merge(*options);
+      merged_options->Merge(*query_options.get());
+      // Don't run any experiments if we're handling a query params request.
+      merged_options->set_running_furious_experiment(false);
+      manager->ComputeSignature(merged_options);
+      custom_options.reset(merged_options);
+      options = merged_options;
+
+      if (gurl.is_valid()) {
+        // Set final url to gurl which has ModPagespeed* query params
+        // stripped.
+        final_url = gurl.Spec().as_string();
       }
     }
   }

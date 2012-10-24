@@ -27,8 +27,6 @@
 #ifndef NET_INSTAWEB_AUTOMATIC_PUBLIC_PROXY_INTERFACE_H_
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_PROXY_INTERFACE_H_
 
-#include <utility>
-
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -42,7 +40,6 @@ class GoogleUrl;
 class MessageHandler;
 class ProxyFetchPropertyCallbackCollector;
 class ProxyFetchFactory;
-class RequestHeaders;
 class ServerContext;
 class RewriteOptions;
 class Statistics;
@@ -52,8 +49,6 @@ class Timer;
 // TODO(sligocki): Rename as per style-guide.
 class ProxyInterface : public UrlAsyncFetcher {
  public:
-  typedef std::pair<RewriteOptions*, bool> OptionsBoolPair;
-
   ProxyInterface(const StringPiece& hostname, int port,
                  ServerContext* manager, Statistics* stats);
   virtual ~ProxyInterface();
@@ -67,27 +62,6 @@ class ProxyInterface : public UrlAsyncFetcher {
   virtual void Fetch(const GoogleString& requested_url,
                      MessageHandler* handler,
                      AsyncFetch* async_fetch);
-
-  // Returns any options set in query-params or in request headers. Possible
-  // return-value scenarios for the pair are:
-  //
-  // .first==*, .second==false:  query-params or req-headers failed in parse.
-  // .first==NULL, .second==true: No query-params or req-headers is present.
-  // .first!=NULL, .second==true: Use query-params.
-  //  It also strips off the ModPageSpeed query parameters and headers from the
-  // request_url and request_headers respectively.
-  OptionsBoolPair GetQueryOptions(GoogleUrl* request_url,
-                                  RequestHeaders* request_headers,
-                                  MessageHandler* handler);
-
-  // Returns any custom options required for this request, incorporating
-  // any domain-specific options from the UrlNamer, options set in query-params,
-  // and options set in request headers.
-  RewriteOptions* GetCustomOptions(GoogleUrl* request_url,
-                                   RequestHeaders* request_headers,
-                                   RewriteOptions* domain_options,
-                                   RewriteOptions* query_options,
-                                   MessageHandler* handler);
 
   // Callback function passed to UrlNamer to finish handling requests once we
   // have rewrite_options for requests that are being proxied.
@@ -104,7 +78,6 @@ class ProxyInterface : public UrlAsyncFetcher {
 
   static const char kBlinkRequestCount[];
   static const char kBlinkCriticalLineRequestCount[];
-  static const char kXmlHttpRequest[];
 
   // Initiates the PropertyCache look up.
   virtual ProxyFetchPropertyCallbackCollector* InitiatePropertyCacheLookup(
@@ -127,12 +100,6 @@ class ProxyInterface : public UrlAsyncFetcher {
   // If the URL and port are for this server, don't proxy those (to avoid
   // infinite fetching loops). This might be the favicon or something...
   bool UrlAndPortMatchThisServer(const GoogleUrl& url);
-
-  // Returns true if current request is XmlHttp request (i.e. ajax request).
-  // XmlHttp request is checked based on the request headers. This mechanism is
-  // not reliable because sometimes this header is not set even for XmlHttp
-  // requests.
-  bool IsXmlHttpRequest(RequestHeaders* headers) const;
 
   // References to unowned objects.
   ServerContext* server_context_;     // thread-safe

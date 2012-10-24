@@ -86,6 +86,13 @@ pagespeed.LazyloadImages = function(blankImageSrc) {
    * @private
    */
   this.min_scroll_time_ = 200;
+
+  /**
+   * Boolean indicating whether the onload of the page has been triggered.
+   * @type {boolean}
+   * @private
+   */
+  this.onload_done_ = false;
 };
 
 /**
@@ -191,12 +198,21 @@ pagespeed.LazyloadImages.prototype.getStyle_ = function(element, property) {
 pagespeed.LazyloadImages.prototype.isVisible_ = function(element) {
   var element_position = this.getStyle_(element, 'position');
   if (element_position == 'relative') {
+    // TODO(ksimbili): Check if this code is still needed. Find out if any other
+    // alterntive will solve this.
     // If the element contains a "position: relative" style attribute, assume
     // it is visible since getBoundingClientRect() doesn't seem to work
     // correctly here.
     return true;
   }
 
+  if (!this.onload_done_ &&
+      (element.offsetHeight == 0 || element.offsetWidth == 0)) {
+    // The element is most likely hidden.
+    // Since we don't know when the element will become visible, we'll try to
+    // load the image after onload, so that we can improve PLT.
+    return false;
+  }
   var viewport = this.viewport_();
   var rect = element.getBoundingClientRect();
   var top_diff, bottom_diff;
@@ -382,6 +398,7 @@ pagespeed.lazyLoadInit = function(loadAfterOnload, blankImageSrc) {
   // become visible because of reflows or DOM manipulation. If loadAfterOnload
   // is true, load all images on the page.
   var lazy_onload = function() {
+    context.onload_done_ = true;
     // Note that the timeout here should be greater than the timeout for the
     // delay_images filter to avoid CPU contention between the two filters.
     window.setTimeout(function() {

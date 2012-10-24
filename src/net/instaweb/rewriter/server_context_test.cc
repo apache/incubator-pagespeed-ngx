@@ -32,6 +32,7 @@
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
@@ -323,7 +324,180 @@ class ServerContextTest : public RewriteTestBase {
   RewriteDriver* decoding_driver() {
     return server_context()->decoding_driver_.get();
   }
+
+  RewriteOptions* GetCustomOptions(const StringPiece& url,
+                                   RequestHeaders* request_headers,
+                                   RewriteOptions* domain_options) {
+    // The default url_namer does not yield any name-derived options, and we
+    // have not specified any URL params or request-headers, so there will be
+    // no custom options, and no errors.
+    GoogleUrl gurl(url);
+    RewriteOptions* copy_options = domain_options != NULL ?
+        domain_options->Clone() : NULL;
+    ServerContext::OptionsBoolPair query_options_success =
+        server_context()->GetQueryOptions(&gurl, request_headers);
+    EXPECT_TRUE(query_options_success.second);
+    RewriteOptions* options =
+        server_context()->GetCustomOptions(request_headers, copy_options,
+                                           query_options_success.first);
+    return options;
+  }
+
+  void CheckExtendCache(RewriteOptions* options, bool x) {
+    EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheCss));
+    EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheImages));
+    EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheScripts));
+  }
 };
+
+TEST_F(ServerContextTest, CustomOptionsWithNoUrlNamerOptions) {
+  // The default url_namer does not yield any name-derived options, and we
+  // have not specified any URL params or request-headers, so there will be
+  // no custom options, and no errors.
+  RequestHeaders request_headers;
+  scoped_ptr<RewriteOptions> options(
+      GetCustomOptions("http://example.com/", &request_headers, NULL));
+  ASSERT_TRUE(options.get() == NULL);
+
+  // Now put a query-param in, just turning on PageSpeed.  The core filters
+  // should be enabled.
+  options.reset(GetCustomOptions(
+      "http://example.com/?ModPagespeed=on",
+      &request_headers, NULL));
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  CheckExtendCache(options.get(), true);
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineJavascript));
+
+  // Now explicitly enable a filter, which should disable others.
+  options.reset(GetCustomOptions(
+      "http://example.com/?ModPagespeedFilters=extend_cache",
+      &request_headers, NULL));
+  ASSERT_TRUE(options.get() != NULL);
+  CheckExtendCache(options.get(), true);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineJavascript));
+
+  // Now put a request-header in, turning off pagespeed.  request-headers get
+  // priority over query-params.
+  request_headers.Add("ModPagespeed", "off");
+  options.reset(GetCustomOptions(
+      "http://example.com/?ModPagespeed=on",
+      &request_headers, NULL));
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_FALSE(options->enabled());
+
+  // Now explicitly enable a bogus filter, which should will cause the
+  // options to be uncomputable.
+  GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
+  EXPECT_FALSE(server_context()->GetQueryOptions(
+      &gurl, &request_headers).second);
+
+  // The default url_namer does not yield any name-derived options, and we
+  // have not specified any URL params or request-headers, and kXRequestedWith
+  // header is set with bogus value, so there will be no custom options, and no
+  // errors.
+  request_headers.Add(
+      HttpAttributes::kXRequestedWith, "bogus");
+  options.reset(
+      GetCustomOptions("http://example.com/", &request_headers, NULL));
+  ASSERT_TRUE(options.get() == NULL);
+
+  // The default url_namer does not yield any name-derived options, and we
+  // have not specified any URL params or request-headers, but kXRequestedWith
+  // header is set to 'XmlHttpRequest', so there will be custom options with
+  // all js inserted filters disabled.
+  request_headers.RemoveAll(HttpAttributes::kXRequestedWith);
+  request_headers.Add(
+      HttpAttributes::kXRequestedWith, HttpAttributes::kXmlHttpRequest);
+  options.reset(
+      GetCustomOptions("http://example.com/", &request_headers, NULL));
+  // Disable DelayImages for XmlHttpRequests.
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kDelayImages));
+  // As kDelayImages filter is present in the disabled list, so it will not get
+  // enabled even if it is enabled via EnableFilter().
+  options->EnableFilter(RewriteOptions::kDelayImages);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kDelayImages));
+}
+
+TEST_F(ServerContextTest, CustomOptionsWithUrlNamerOptions) {
+  // Inject a url-namer that will establish a domain configuration.
+  RewriteOptions namer_options;
+  namer_options.EnableFilter(RewriteOptions::kCombineJavascript);
+  namer_options.EnableFilter(RewriteOptions::kDelayImages);
+
+  RequestHeaders request_headers;
+  scoped_ptr<RewriteOptions> options(
+      GetCustomOptions("http://example.com/", &request_headers,
+                       &namer_options));
+  // Even with no query-params or request-headers, we get the custom
+  // options as domain options provided as argument.
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  CheckExtendCache(options.get(), false);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineJavascript));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kDelayImages));
+
+  // Now combine with query params, which turns core-filters on.
+  options.reset(GetCustomOptions(
+      "http://example.com/?ModPagespeed=on",
+      &request_headers, &namer_options));
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  CheckExtendCache(options.get(), true);
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineJavascript));
+
+  // Explicitly enable a filter in query-params, which will turn off
+  // the core filters that have not been explicitly enabled.  Note
+  // that explicit filter-setting in query-params overrides completely
+  // the options provided as a parameter.
+  options.reset(GetCustomOptions(
+      "http://example.com/?ModPagespeedFilters=combine_css",
+      &request_headers, &namer_options));
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  CheckExtendCache(options.get(), false);
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineJavascript));
+
+  // Now explicitly enable a bogus filter, which should will cause the
+  // options to be uncomputable.
+  GoogleUrl gurl("http://example.com/?ModPagespeedFilters=bogus_filter");
+  EXPECT_FALSE(server_context()->GetQueryOptions(
+      &gurl, &request_headers).second);
+
+  request_headers.Add(
+      HttpAttributes::kXRequestedWith, "bogus");
+  options.reset(
+      GetCustomOptions("http://example.com/", &request_headers,
+                       &namer_options));
+  // Don't disable DelayImages for Non-XmlHttpRequests.
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  CheckExtendCache(options.get(), false);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineJavascript));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kDelayImages));
+
+  request_headers.RemoveAll(HttpAttributes::kXRequestedWith);
+  request_headers.Add(
+      HttpAttributes::kXRequestedWith, HttpAttributes::kXmlHttpRequest);
+  options.reset(
+      GetCustomOptions("http://example.com/", &request_headers,
+                       &namer_options));
+  // Disable DelayImages for XmlHttpRequests.
+  ASSERT_TRUE(options.get() != NULL);
+  EXPECT_TRUE(options->enabled());
+  CheckExtendCache(options.get(), false);
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kCombineCss));
+  EXPECT_TRUE(options->Enabled(RewriteOptions::kCombineJavascript));
+  EXPECT_FALSE(options->Enabled(RewriteOptions::kDelayImages));
+}
 
 TEST_F(ServerContextTest, TestNamed) {
   TestNamed();

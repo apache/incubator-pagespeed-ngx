@@ -22,6 +22,7 @@
 
 #include <cstddef>                     // for size_t
 #include <set>
+#include <utility>
 #include <vector>
 
 #include "base/scoped_ptr.h"
@@ -55,6 +56,7 @@ class MessageHandler;
 class NamedLock;
 class NamedLockManager;
 class PropertyCache;
+class RequestHeaders;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteDriverFactory;
@@ -84,6 +86,8 @@ typedef std::vector<OutputResourcePtr> OutputResourceVector;
 // 3. Rename methods.
 class ServerContext {
  public:
+  typedef std::pair<RewriteOptions*, bool> OptionsBoolPair;
+
   // The lifetime for cache-extended generated resources, in milliseconds.
   static const int64 kGeneratedMaxAgeMs;
 
@@ -309,6 +313,26 @@ class ServerContext {
 
   // Makes a new, empty set of RewriteOptions.
   RewriteOptions* NewOptions();
+
+  // Returns any options set in query-params or in request headers. Possible
+  // return-value scenarios for the pair are:
+  // * first==*, .second==false:  query-params or req-headers failed in parse.
+  //   We return 405 in this case (see ProxyInterface::ProxyRequest).
+  // * first==NULL, .second==true: No query-params or req-headers is present.
+  //   This is treated as there are no query param (or request header) options.
+  // * first!=NULL, .second==true: Use query-params.
+  // It also strips off the ModPageSpeed query parameters and headers from the
+  // request_url and request_headers respectively.
+  OptionsBoolPair GetQueryOptions(GoogleUrl* request_url,
+                                  RequestHeaders* request_headers);
+
+  // Returns any custom options required for this request, incorporating
+  // any domain-specific options from the UrlNamer, options set in query-params,
+  // and options set in request headers.
+  // Takes ownership of domain_options and query_options.
+  RewriteOptions* GetCustomOptions(RequestHeaders* request_headers,
+                                   RewriteOptions* domain_options,
+                                   RewriteOptions* query_options);
 
   // Makes a new LogRecord. The caller of this method has to take the ownership
   // of the object.

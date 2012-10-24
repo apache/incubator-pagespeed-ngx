@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
@@ -42,14 +43,15 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/client_state.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/query_params.h"
@@ -913,6 +915,81 @@ void ServerContext::reset_global_options(RewriteOptions* options) {
 
 RewriteOptions* ServerContext::NewOptions() {
   return factory_->NewRewriteOptions();
+}
+
+ServerContext::OptionsBoolPair ServerContext::GetQueryOptions(
+    GoogleUrl* request_url, RequestHeaders* request_headers) {
+  scoped_ptr<RewriteOptions> query_options;
+  bool success = false;
+  switch (RewriteQuery::Scan(factory(), request_url, request_headers,
+                             &query_options, message_handler_)) {
+    case RewriteQuery::kInvalid:
+      query_options.reset(NULL);
+      break;
+    case RewriteQuery::kNoneFound:
+      query_options.reset(NULL);
+      success = true;
+      break;
+    case RewriteQuery::kSuccess:
+      success = true;
+      break;
+    default:
+      query_options.reset(NULL);
+  }
+  // Note: success==false is treated as an error (we return 405 in
+  // proxy_interface.cc), while query_options==NULL merely means there are no
+  // query options.
+  return OptionsBoolPair(query_options.release(), success);
+}
+
+RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
+                                                RewriteOptions* domain_options,
+                                                RewriteOptions* query_options) {
+  RewriteOptions* options = global_options();
+  scoped_ptr<RewriteOptions> custom_options;
+  scoped_ptr<RewriteOptions> scoped_domain_options(domain_options);
+  if (scoped_domain_options.get() != NULL) {
+    custom_options.reset(NewOptions());
+    custom_options->Merge(*options);
+    custom_options->Merge(*scoped_domain_options);
+    options = custom_options.get();
+  }
+
+  scoped_ptr<RewriteOptions> query_options_ptr(query_options);
+  // Check query params & request-headers
+  if (query_options_ptr.get() != NULL) {
+    // Subtle memory management to handle deleting any domain_options
+    // after the merge, and transferring ownership to the caller for
+    // the new merged options.
+    scoped_ptr<RewriteOptions> options_buffer(custom_options.release());
+    custom_options.reset(NewOptions());
+    custom_options->Merge(*options);
+    custom_options->Merge(*query_options);
+    // Don't run any experiments if this is a special query-params request.
+    custom_options->set_running_furious_experiment(false);
+  }
+
+  if (request_headers->IsXmlHttpRequest()) {
+    // For XmlHttpRequests, disable filters that insert js. Otherwise, there
+    // will be two copies of the same scripts in the html dom -- one from main
+    // html page and another from html content fetched from ajax and this
+    // will corrupt global variable state.
+    // Sometimes, js present in the ajax request does not get executed.
+    // TODO(sriharis): Set a flag in RewriteOptions indicating that we are
+    // working with Ajax and thus should not assume the base URL is correct.
+    // Note that there is no guarantee that the header will be set on an ajax
+    // request and so the option will not be set for all ajax requests.
+    if (custom_options == NULL) {
+      custom_options.reset(options->Clone());
+    }
+    custom_options->DisableFilter(RewriteOptions::kLazyloadImages);
+    custom_options->DisableFilter(RewriteOptions::kDelayImages);
+    custom_options->DisableFilter(RewriteOptions::kPrioritizeVisibleContent);
+    custom_options->DisableFilter(RewriteOptions::kDeferJavascript);
+    custom_options->DisableFilter(RewriteOptions::kLocalStorageCache);
+  }
+
+  return custom_options.release();
 }
 
 LogRecord* ServerContext::NewLogRecord() {
