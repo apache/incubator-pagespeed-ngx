@@ -143,18 +143,21 @@ ngx_http_pagespeed_release_request_context(
   // BaseFetch doesn't delete itself
   delete ctx->base_fetch;
 
-  ctx->r->buffered &= ~NGX_HTTP_SSI_BUFFERED;
-
   // Stop watching the pipe.
   close(ctx->pipe_fd);
-
-  // Clear the request context.
-  ngx_http_set_ctx(ctx->r, NULL, ngx_pagespeed);
 
   // the proxy fetch deleted itself when we called Done()
   delete ctx;
 }
 
+static void
+ngx_http_pagespeed_set_buffered(ngx_http_request_t* r, bool on) {
+  if (on) {
+    r->buffered |= NGX_HTTP_SSI_BUFFERED;
+  } else {
+    r->buffered &= ~NGX_HTTP_SSI_BUFFERED;
+  }
+}
 
 static GoogleString
 ngx_http_pagespeed_determine_url(ngx_http_request_t* r) {
@@ -278,21 +281,21 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
   fprintf(stderr, "Got '%c'\n", chr);
 
   // Get any finished data back
-  ngx_chain_t* in;
-  rc = ctx->base_fetch->CollectAccumulatedWrites(&in);
+  ngx_chain_t* cl;
+  rc = ctx->base_fetch->CollectAccumulatedWrites(&cl);
   if (rc != NGX_OK) {
     PDBG(ctx, "problem with CollectAccumulatedWrites");
     return rc;
   }
 
-  if (in == NULL) {
+  if (cl == NULL) {
     PDBG(ctx, "got null from pagespeed");
   } else {
-    PDBG(ctx, "got '%*s' from pagespeed",
-        in->buf->end - in->buf->pos, in->buf->pos);
+    PDBG(ctx, "got '%*s' from pagespeed (last buf: %d)",
+         cl->buf->end - cl->buf->pos, cl->buf->pos, cl->buf->last_buf);
   }
 
-  rc = ngx_http_next_body_filter(ctx->r, in);
+  rc = ngx_http_next_body_filter(ctx->r, cl);
   if (rc != NGX_OK) {
     return rc;
   }
@@ -328,13 +331,14 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
     return;
   }
 
+  ngx_http_pagespeed_set_buffered(ctx->r, false);
   rc = ngx_http_pagespeed_update(ctx, ev);
   if (rc == NGX_OK) {
     PDBG(ctx, "NGX_OK");
     // request complete
     ngx_del_event(ev, NGX_READ_EVENT, 0);
-    ngx_http_pagespeed_release_request_context(ctx);
     ngx_http_finalize_request(ctx->r, NGX_DONE);
+    ngx_http_pagespeed_release_request_context(ctx);
   } else if (rc == NGX_ERROR) {
     PDBG(ctx, "NGX_ERROR");
     ngx_del_event(ev, NGX_READ_EVENT, 0);
@@ -455,8 +459,6 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
 
   ngx_http_set_ctx(r, ctx, ngx_pagespeed);
 
-  r->buffered |= NGX_HTTP_SSI_BUFFERED;
-
   return NGX_OK;
 }
 
@@ -518,6 +520,7 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
 
   DBG(r, "not finished until pagespeed returns");
 
+  ngx_http_pagespeed_set_buffered(r, true);
   return NGX_AGAIN;
 }
 
