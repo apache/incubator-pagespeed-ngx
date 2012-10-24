@@ -263,17 +263,17 @@ ngx_http_pagespeed_update(ngx_http_request_t* r,
                           ngx_http_pagespeed_request_ctx_t* ctx,
                           ngx_event_t* ev) {
 
-  fprintf(stderr, "processing event, ctx=%p for r=%p uri=%*s\n",
-          ctx, r, static_cast<int>(r->uri.len), r->uri.data);
-
+  fprintf(stderr, "ngx_http_pagespeed_update\n");
+  DBG(r, "processing event, ctx=%p for r=%p", ctx, r);
+  
   int rc;
-  // char chr;
-  //rc = read(ctx->pipe_fd, &chr, 1);
-  //if (rc != 1) {
-  //  perror("ngx_http_pagespeed_connection_read_handler");
-  //  return NGX_ERROR;
-  // }
-  //fprintf(stderr, "Got '%c'\n", chr);
+  char chr;
+  rc = read(ctx->pipe_fd, &chr, 1);
+  if (rc != 1) {
+    perror("ngx_http_pagespeed_connection_read_handler");
+    return NGX_ERROR;
+  }
+  fprintf(stderr, "Got '%c'\n", chr);
 
   // Get any finished data back
   ngx_chain_t* in;
@@ -290,11 +290,22 @@ ngx_http_pagespeed_update(ngx_http_request_t* r,
         in->buf->end - in->buf->pos, in->buf->pos);
   }
 
-  return ngx_http_next_body_filter(r, in);
+  rc = ngx_http_next_body_filter(r, in);
+  if (rc != NGX_OK) {
+    return rc;
+  }
+  
+  if (chr == 'D' /* more data */) {
+    return NGX_AGAIN;
+  } else {
+    return NGX_OK;
+  }
 }
 
 static void
 ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
+  int rc;
+
   if (ev == NULL) {
     fprintf(stderr, "ev is null\n");
     return;
@@ -307,22 +318,32 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
     return;
   }
 
-  ngx_http_pagespeed_request_ctx_t* ctx =
-      static_cast<ngx_http_pagespeed_request_ctx_t*>(c->data);
-  if (ctx == NULL) {
-    fprintf(stderr, "ctx is null\n");
-    ngx_del_event(ev, NGX_READ_EVENT, 0);
-    return;
-  }
-
-  ngx_http_request_t* r = ctx->r;
+  ngx_http_request_t* r = static_cast<ngx_http_request_t*>(c->data);
   if (r == NULL) {
     fprintf(stderr, "r is null\n");
     ngx_del_event(ev, NGX_READ_EVENT, 0);
     return;
   }
 
-  int rc = ngx_http_pagespeed_update(r, ctx, ev);
+  ngx_http_pagespeed_request_ctx_t* ctx =
+      ngx_http_pagespeed_get_request_context(r);
+  if (ctx == NULL) {
+    fprintf(stderr, "ctx is null\n");
+    rc = ngx_handle_read_event(ev, 0);
+    if (rc != NGX_OK) {
+      fprintf(stderr, "ngx_handle_read_event failed with ctx null\n");
+    }
+    ngx_del_event(ev, NGX_READ_EVENT, 0);
+    return;
+  }
+
+  if (r != ctx->r) {
+    fprintf(stderr, "r mismatch\n");
+    ngx_del_event(ev, NGX_READ_EVENT, 0);
+    return;
+  }    
+
+  rc = ngx_http_pagespeed_update(r, ctx, ev);
   if (rc == NGX_OK) {
     DBG(r, "ok");
     // request complete
@@ -349,11 +370,12 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
 // ngx_http_pagespeed_release_request_context.
 static ngx_int_t
 ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
+  fprintf(stderr, "ngx_http_pagespeed_create_request_context\n");
+
   ngx_http_pagespeed_request_ctx_t* ctx =
       new ngx_http_pagespeed_request_ctx_t();
 
-  fprintf(stderr, "created request context %p for %p uri=%*s\n",
-          ctx, r, static_cast<int>(r->uri.len), r->uri.data);
+  DBG(r, "created request context %p for %p\n", ctx, r);
 
   ctx->r = r;
 
@@ -382,7 +404,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
     return NGX_ERROR;
   }
 
-  ctx->pagespeed_connection->data = ctx;
+  ctx->pagespeed_connection->data = r;
 
   ctx->pagespeed_connection->read->handler =
       ngx_http_pagespeed_connection_read_handler;
@@ -460,24 +482,21 @@ ngx_http_pagespeed_send_to_pagespeed(
 
   ngx_chain_t* cur;
   int last_buf = 0;
-  int last_in_chain = 0;
-  for (cur = in; cur != NULL;) {
+  for (cur = in; cur != NULL; cur = cur->next) {
     last_buf = cur->buf->last_buf;
-    last_in_chain = cur->buf->last_in_chain;
+    
+    // Buffers are not really the last buffer until they've been through
+    // pagespeed.
+    cur->buf->last_buf = 0;
 
     ctx->proxy_fetch->Write(StringPiece(reinterpret_cast<char*>(cur->buf->pos),
                                         cur->buf->last - cur->buf->pos),
                             ctx->cfg->handler);
 
-    ngx_chain_t* next_link = cur->next;
-
-    // We're done with buffers as we pass them through, so free them and their
-    // chain links as we go.
-    ngx_pfree(r->pool, cur->buf);
-    ngx_pfree(r->pool, cur);
-    cur = next_link;
+    // We're done with buffers as we pass them through, so mark them as sent as
+    // we go.
+    cur->buf->pos = cur->buf->last;
   }
-  in = NULL;  // We freed all the buffers.
 
   if (last_buf) {
     ctx->proxy_fetch->Done(true /* success */);
@@ -506,7 +525,7 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
   if (in != NULL) {
     // Send all input data to the proxy fetch.
     ngx_http_pagespeed_send_to_pagespeed(r, ctx, in);
-  }
+  }  
 
   DBG(r, "not finished until pagespeed returns");
 
