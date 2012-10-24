@@ -46,6 +46,8 @@ extern ngx_module_t ngx_pagespeed;
 // Hacks for debugging.
 #define DBG(r, args...)                                       \
   ngx_log_error(NGX_LOG_ALERT, (r)->connection->log, 0, args)
+#define PDBG(ctx, args...)                                       \
+  ngx_log_error(NGX_LOG_ALERT, (ctx)->pagespeed_connection->log, 0, args)
 #define CDBG(cf, args...)                                     \
   ngx_conf_log_error(NGX_LOG_ALERT, cf, 0, args)
 
@@ -134,12 +136,9 @@ static ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
 static void
 ngx_http_pagespeed_release_request_context(
-    ngx_http_request_t* r, ngx_http_pagespeed_request_ctx_t* ctx) {
+    ngx_http_pagespeed_request_ctx_t* ctx) {
 
-  DBG(r, "releasing request context");
-
-  // release request context
-  ngx_http_set_ctx(r, NULL, ngx_pagespeed);
+  PDBG(ctx, "releasing request context");
 
   // BaseFetch doesn't delete itself
   delete ctx->base_fetch;
@@ -259,13 +258,19 @@ ngx_http_pagespeed_initialize_server_context(
 //   NGX_AGAIN: pagespeed still working, needs to be called again later
 //   NGX_ERROR: error
 static ngx_int_t
-ngx_http_pagespeed_update(ngx_http_request_t* r,
-                          ngx_http_pagespeed_request_ctx_t* ctx,
+ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
                           ngx_event_t* ev) {
 
   fprintf(stderr, "ngx_http_pagespeed_update\n");
-  DBG(r, "processing event, ctx=%p for r=%p", ctx, r);
-  
+
+  fprintf(stderr, "ctx->r %p\n", ctx->r);
+  fprintf(stderr, "ctx->r->connection %p\n", ctx->r->connection);
+  fprintf(stderr, "ctx->r->connection->log %p\n", ctx->r->connection->log);
+  fprintf(stderr, "ctx->pagespeed_connection->log %p\n",
+          ctx->pagespeed_connection->log);
+
+  PDBG(ctx, "processing event, ctx=%p for r=%p", ctx, ctx->r);
+
   int rc;
   char chr;
   rc = read(ctx->pipe_fd, &chr, 1);
@@ -279,18 +284,18 @@ ngx_http_pagespeed_update(ngx_http_request_t* r,
   ngx_chain_t* in;
   rc = ctx->base_fetch->CollectAccumulatedWrites(&in);
   if (rc != NGX_OK) {
-    DBG(r, "problem with CollectAccumulatedWrites");
+    PDBG(ctx, "problem with CollectAccumulatedWrites");
     return rc;
   }
 
   if (in == NULL) {
-    DBG(r, "got null from pagespeed");
+    PDBG(ctx, "got null from pagespeed");
   } else {
-    DBG(r, "got '%*s' from pagespeed",
+    PDBG(ctx, "got '%*s' from pagespeed",
         in->buf->end - in->buf->pos, in->buf->pos);
   }
 
-  rc = ngx_http_next_body_filter(r, in);
+  rc = ngx_http_next_body_filter(ctx->r, in);
   if (rc != NGX_OK) {
     return rc;
   }
@@ -318,51 +323,34 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
     return;
   }
 
-  ngx_http_request_t* r = static_cast<ngx_http_request_t*>(c->data);
-  if (r == NULL) {
-    fprintf(stderr, "r is null\n");
-    ngx_del_event(ev, NGX_READ_EVENT, 0);
-    return;
-  }
-
   ngx_http_pagespeed_request_ctx_t* ctx =
-      ngx_http_pagespeed_get_request_context(r);
+      static_cast<ngx_http_pagespeed_request_ctx_t*>(c->data);
   if (ctx == NULL) {
     fprintf(stderr, "ctx is null\n");
-    rc = ngx_handle_read_event(ev, 0);
-    if (rc != NGX_OK) {
-      fprintf(stderr, "ngx_handle_read_event failed with ctx null\n");
-    }
     ngx_del_event(ev, NGX_READ_EVENT, 0);
     return;
   }
 
-  if (r != ctx->r) {
-    fprintf(stderr, "r mismatch\n");
-    ngx_del_event(ev, NGX_READ_EVENT, 0);
-    return;
-  }    
-
-  rc = ngx_http_pagespeed_update(r, ctx, ev);
+  rc = ngx_http_pagespeed_update(ctx, ev);
   if (rc == NGX_OK) {
-    DBG(r, "ok");
+    PDBG(ctx, "ok");
     // request complete
     ngx_del_event(ev, NGX_READ_EVENT, 0);
-    ngx_http_pagespeed_release_request_context(r, ctx);
-    ngx_http_finalize_request(r, NGX_DONE);
+    ngx_http_pagespeed_release_request_context(ctx);
+    ngx_http_finalize_request(ctx->r, NGX_DONE);
   } else if (rc == NGX_ERROR) {
-    DBG(r, "error");
+    PDBG(ctx, "error");
     ngx_del_event(ev, NGX_READ_EVENT, 0);
-    ngx_http_finalize_request(r, NGX_ERROR);
+    ngx_http_finalize_request(ctx->r, NGX_ERROR);
   } else if (rc == NGX_AGAIN) { 
-    DBG(r, "again");
+    PDBG(ctx, "again");
     // request needs more work by pagespeed
     rc = ngx_handle_read_event(ev, 0);
     if (rc != NGX_OK) {
-      DBG(r, "ngx_handle_read_event failed");
+      PDBG(ctx, "ngx_handle_read_event failed");
     }
   } else {
-    DBG(r, "Got unknown return code %d from ngx_http_pagespeed_update", rc);
+    PDBG(ctx, "Got %d from ngx_http_pagespeed_update", rc);
   }
 }
 
@@ -404,7 +392,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
     return NGX_ERROR;
   }
 
-  ctx->pagespeed_connection->data = r;
+  ctx->pagespeed_connection->data = ctx;
 
   ctx->pagespeed_connection->read->handler =
       ngx_http_pagespeed_connection_read_handler;
