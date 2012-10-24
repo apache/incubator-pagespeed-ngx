@@ -120,9 +120,9 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
                                   ":",
                                   IntegerToString(server->port))),
       apache_message_handler_(new ApacheMessageHandler(
-          server_rec_, version_, timer())),
+          server_rec_, version_, timer(), thread_system()->NewMutex())),
       apache_html_parse_message_handler_(new ApacheMessageHandler(
-          server_rec_, version_, timer())),
+          server_rec_, version_, timer(), thread_system()->NewMutex())),
       use_per_vhost_statistics_(false),
       enable_property_cache_(false),
       inherit_vhost_config_(false),

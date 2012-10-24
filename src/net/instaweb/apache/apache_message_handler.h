@@ -18,6 +18,7 @@
 #define NET_INSTAWEB_APACHE_APACHE_MESSAGE_HANDLER_H_
 
 #include <cstdarg>
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -28,6 +29,7 @@ struct server_rec;
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class SharedCircularBuffer;
 class Timer;
 class Writer;
@@ -39,13 +41,11 @@ class ApacheMessageHandler : public MessageHandler {
   // version is a string added to each message.
   // Timer is used to generate timestamp for messages in shared memory.
   ApacheMessageHandler(const server_rec* server, const StringPiece& version,
-                       Timer* timer);
+                       Timer* timer, AbstractMutex* mutex);
   // When we initialize ApacheMessageHandler in ApacheRewriteDriverFactory,
   // SharedCircularBuffer of ApacheRewriteDriverFactory is not initialized yet.
   // We need to set buffer_ later in RootInit() or ChildInit().
-  inline void set_buffer(SharedCircularBuffer* buff) {
-    buffer_ = buff;
-  }
+  void set_buffer(SharedCircularBuffer* buff);
   void SetPidString(const int64 pid) {
     pid_string_ = StrCat("[", Integer64ToString(pid), "]");
   }
@@ -67,6 +67,7 @@ class ApacheMessageHandler : public MessageHandler {
   // This timer is used to prepend time when writing a message
   // to SharedCircularBuffer.
   Timer* timer_;
+  scoped_ptr<AbstractMutex> mutex_;
   // String "[pid]".
   GoogleString pid_string_;
   // This handler is for internal use.

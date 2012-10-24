@@ -23,6 +23,7 @@
 
 #include "httpd.h"
 #include "net/instaweb/apache/apache_logging_includes.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 
 namespace {
@@ -43,10 +44,11 @@ namespace net_instaweb {
 // SharedCircularBuffer in RootInit() when filename_prefix is set.
 ApacheMessageHandler::ApacheMessageHandler(const server_rec* server,
                                            const StringPiece& version,
-                                           Timer* timer)
+                                           Timer* timer, AbstractMutex* mutex)
     : server_rec_(server),
       version_(version.data(), version.size()),
       timer_(timer),
+      mutex_(mutex),
       buffer_(NULL) {
   // Tell log_message_handler about this server_rec and version.
   log_message_handler::AddServerConfig(server_rec_, version);
@@ -83,6 +85,11 @@ int ApacheMessageHandler::GetApacheLogLevel(MessageType type) {
   return APLOG_ALERT;
 }
 
+void ApacheMessageHandler::set_buffer(SharedCircularBuffer* buff) {
+  ScopedMutex lock(mutex_.get());
+  buffer_ = buff;
+}
+
 void ApacheMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                         va_list args) {
   int log_level = GetApacheLogLevel(type);
@@ -92,20 +99,24 @@ void ApacheMessageHandler::MessageVImpl(MessageType type, const char* msg,
                kModuleName, version_.c_str(), static_cast<long>(getpid()),
                formatted_message.c_str());
   // Can not write to SharedCircularBuffer before it's set up.
-  if (buffer_ != NULL) {
-    // Prepend time (down to microseconds) and severity to message.
-    // Format is [time:microseconds] [severity] [pid] message.
-    GoogleString message;
-    char time_buffer[APR_CTIME_LEN + 1];
-    const char* time = time_buffer;
-    apr_status_t status = apr_ctime(time_buffer, apr_time_now());
-    if (status != APR_SUCCESS) {
-      time = "?";
+
+  // Prepend time (down to microseconds) and severity to message.
+  // Format is [time:microseconds] [severity] [pid] message.
+  GoogleString message;
+  char time_buffer[APR_CTIME_LEN + 1];
+  const char* time = time_buffer;
+  apr_status_t status = apr_ctime(time_buffer, apr_time_now());
+  if (status != APR_SUCCESS) {
+    time = "?";
+  }
+  StrAppend(&message, "[", time, "] ",
+            "[", MessageTypeToString(type), "] ");
+  StrAppend(&message, pid_string_, " ", formatted_message, "\n");
+  {
+    ScopedMutex lock(mutex_.get());
+    if (buffer_ != NULL) {
+      buffer_->Write(message);
     }
-    StrAppend(&message, "[", time, "] ",
-              "[", MessageTypeToString(type), "] ");
-    StrAppend(&message, pid_string_, " ", formatted_message, "\n");
-    buffer_->Write(message);
   }
 }
 

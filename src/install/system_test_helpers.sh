@@ -131,7 +131,8 @@ mkdir -p $OUTDIR
 WGET_OUTPUT=$OUTDIR/wget_output.txt
 WGET_DUMP="$WGET -q -O - --save-headers"
 WGET_DUMP_HTTPS="$WGET -q -O - --save-headers --no-check-certificate"
-WGET_PREREQ="$WGET -H -p -S -o $WGET_OUTPUT -nd -P $OUTDIR -e robots=off"
+PREREQ_ARGS="-H -p -S -o $WGET_OUTPUT -nd -P $OUTDIR -e robots=off"
+WGET_PREREQ="$WGET $PREREQ_ARGS"
 WGET_ARGS=""
 
 function run_wget_with_args() {
@@ -233,10 +234,13 @@ FETCH_UNTIL_OUTFILE="$TEMPDIR/fetch_until_output.$$"
 # passed, in which case we return 1.
 #
 # Usage:
-#    fetch_until [-save] REQUESTURL COMMAND RESULT [WGET_ARGS]
+#    fetch_until [-save] [-recursive] REQUESTURL COMMAND RESULT [WGET_ARGS]
 #
 # If "-save" is specified as the first argument, then the output from $COMMAND
 # is retained in $FETCH_UNTIL_OUTFILE.
+#
+# If "-recursive" is specified, then the resources referenced from the HTML
+# file are loaded into $OUTDIR as a result of this command.
 function fetch_until() {
   save=0
   if [ $1 = "-save" ]; then
@@ -244,31 +248,56 @@ function fetch_until() {
     shift
   fi
 
+  recursive=0
+  if [ $1 = "-recursive" ]; then
+    recursive=1
+    shift
+  fi
+
   REQUESTURL=$1
   COMMAND=$2
   RESULT=$3
-  WGET_ARGS="$WGET_ARGS $4"
+  FETCH_UNTIL_WGET_ARGS="$WGET_ARGS $4"
+
+  if [ $recursive -eq 1 ]; then
+    FETCH_FILE="$OUTDIR/$(basename $REQUESTURL)"
+    FETCH_UNTIL_WGET_ARGS="$FETCH_UNTIL_WGET_ARGS $PREREQ_ARGS"
+  else
+    FETCH_FILE="$FETCH_UNTIL_OUTFILE"
+    FETCH_UNTIL_WGET_ARGS="$FETCH_UNTIL_WGET_ARGS -O $FETCH_FILE"
+  fi
+
 
   TIMEOUT=10
   START=$(date +%s)
   STOP=$((START+$TIMEOUT))
-  WGET_HERE="$WGET -q $WGET_ARGS"
-  echo "      Fetching $REQUESTURL $WGET_ARGS until \$($COMMAND) = $RESULT"
-  echo "$WGET_HERE -O - $REQUESTURL 2>&1 | $COMMAND"
+  WGET_HERE="$WGET -q $FETCH_UNTIL_WGET_ARGS"
+  echo -n "      Fetching $REQUESTURL $FETCH_UNTIL_WGET_ARGS"
+  echo " until \$($COMMAND) = $RESULT"
+  echo "$WGET_HERE $REQUESTURL and checking with $COMMAND"
   while test -t; do
-    $WGET_HERE -O - $REQUESTURL 2>&1 > "$FETCH_UNTIL_OUTFILE"
-    if [ $($COMMAND < "$FETCH_UNTIL_OUTFILE") = "$RESULT" ]; then
+    $WGET_HERE $REQUESTURL
+    if [ $($COMMAND < "$FETCH_FILE") = "$RESULT" ]; then
       /bin/echo ".";
       if [ $save = 0 ]; then
-        rm -f "$FETCH_UNTIL_OUTFILE"
+        if [ $recursive -eq 1 ]; then
+          rm -rf $OUTDIR
+        else
+          rm -f "$FETCH_FILE"
+        fi
       fi
       return;
-    fi;
+    fi
     if [ $(date +%s) -gt $STOP ]; then
       echo ""
-      echo "*** $WGET_HERE output in $FETCH_UNTIL_OUTFILE"
+      echo "*** $WGET_HERE output in $FETCH_FILE"
       print_failure_info_and_exit
-    fi;
+    fi
+    if [ $recursive -eq 1 ]; then
+      rm -rf $OUTDIR
+    else
+      rm -f "$FETCH_FILE"
+    fi
     /bin/echo -n "."
     sleep 0.1
   done;
