@@ -150,6 +150,8 @@ const char kModPagespeedFileCacheInodeLimit[] =
     "ModPagespeedFileCacheInodeLimit";
 const char kModPagespeedFileCachePath[] = "ModPagespeedFileCachePath";
 const char kModPagespeedFileCacheSizeKb[] = "ModPagespeedFileCacheSizeKb";
+const char kModPagespeedFilesystemMetadataCache[] =
+    "ModPagespeedFilesystemMetadataCache";
 const char kModPagespeedForceCaching[] = "ModPagespeedForceCaching";
 const char kModPagespeedFuriousSlot[] = "ModPagespeedExperimentVariable";
 const char kModPagespeedFuriousSpec[] = "ModPagespeedExperimentSpec";
@@ -1720,6 +1722,10 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Set the path for file cache"),
   APACHE_CONFIG_OPTION(kModPagespeedFileCacheSizeKb,
         "Set the target size (in kilobytes) for file cache"),
+  APACHE_CONFIG_OPTION(kModPagespeedFilesystemMetadataCache,
+        "Either 'lrucache' for a per-process in-memory cache, or 'memcached' "
+        "for the first local server found in ModPagespeedMemcachedServers, "
+        "or a memcached server specification of the form hostname[:port]"),
   APACHE_CONFIG_OPTION(kModPagespeedForceCaching,
         "Ignore HTTP cache headers and TTLs"),
   APACHE_CONFIG_OPTION(kModPagespeedGeneratedFilePrefix, "No longer used."),

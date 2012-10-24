@@ -211,6 +211,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // size, cleanup interval, etc.) are consistent.
   ApacheCache* GetCache(ApacheConfig* config);
 
+  // Create a new AprMemCache from the given hostname[:port] specification.
+  AprMemCache* NewAprMemCache(const GoogleString& spec);
+
   // Makes a memcached-based cache if the configuration contains a
   // memcached server specification.  The l2_cache passed in is used
   // to handle puts/gets for huge (>1M) values.  NULL is returned if
@@ -219,6 +222,10 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // If a non-null CacheInterface* is returned, its ownership is transferred
   // to the caller and must be freed on destruction.
   CacheInterface* GetMemcached(ApacheConfig* config, CacheInterface* l2_cache);
+
+  // Makes a filesystem metadata cache for the given config's specification (if
+  // it has one). NULL is returned if no cache is specified.
+  CacheInterface* NewFilesystemMetadataCache(ApacheConfig* config);
 
   // Stops any further Gets from occuring in the Async cache.  This is used to
   // help wind down activity during a shutdown.

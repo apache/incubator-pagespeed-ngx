@@ -211,17 +211,31 @@ class ServerContext {
     return client_property_cache_.get();
   }
 
-  // Cache for small non-HTTP objects.
+  // Cache for storing file system metadata. It must be private to a server,
+  // preferably but not necessarily shared between its processes, and is
+  // required if using load-from-file and memcached (or any cache shared
+  // between servers). This class takes ownership.
+  CacheInterface* filesystem_metadata_cache() const {
+    return filesystem_metadata_cache_.get();
+  }
+  void set_filesystem_metadata_cache(CacheInterface* x) {
+    filesystem_metadata_cache_.reset(x);
+  }
+
+  // Cache for small non-HTTP objects. This class takes ownership.
   //
   // Note that this might share namespace with the HTTP cache, so make sure
   // your key names do not start with http://.
   CacheInterface* metadata_cache() const { return metadata_cache_.get(); }
   void set_metadata_cache(CacheInterface* x) { metadata_cache_.reset(x); }
 
+  // Release the metadata_cache and return the released pointer. For tests only.
+  CacheInterface* release_metadata_cache() { return metadata_cache_.release(); }
+
   // If a CacheInterface* was created on behalf of this server context,
   // then we can ensure its timely destruction by setting it here.  Note
-  // that the ownership of the metadata_cache is also transferred to this
-  // class.
+  // that ownership of the filesystem_metadata_cache and metadata_cache are
+  // also transferred to this class.
   void set_owned_cache(CacheInterface* owned_cache) {
     owned_cache_.reset(owned_cache);
   }
@@ -547,6 +561,7 @@ class ServerContext {
   scoped_ptr<HTTPCache> http_cache_;
   scoped_ptr<PropertyCache> page_property_cache_;
   scoped_ptr<PropertyCache> client_property_cache_;
+  scoped_ptr<CacheInterface> filesystem_metadata_cache_;
   scoped_ptr<CacheInterface> metadata_cache_;
 
   bool store_outputs_in_file_system_;

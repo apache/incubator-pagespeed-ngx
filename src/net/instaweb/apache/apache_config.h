@@ -38,6 +38,11 @@ class ApacheConfig : public RewriteOptions {
 
   static const char kClassName[];
 
+  // Special names for ModPagespeedFilesystemMetadataCache. See the
+  // declaration of filesystem_metadata_cache_ below for interpretation.
+  static const char kFilesystemMetadataCacheUseLruCache[];
+  static const char kFilesystemMetadataCacheUseMemcached[];
+
   static bool ParseRefererStatisticsOutputLevel(
       const StringPiece& in, RefererStatisticsOutputLevel* out);
 
@@ -155,6 +160,12 @@ class ApacheConfig : public RewriteOptions {
   }
   void set_file_cache_path(GoogleString x) {
     set_option(x, &file_cache_path_);
+  }
+  const GoogleString& filesystem_metadata_cache() const {
+    return filesystem_metadata_cache_.value();
+  }
+  void set_filesystem_metadata_cache(GoogleString x) {
+    set_option(x, &filesystem_metadata_cache_);
   }
   const GoogleString& memcached_servers() const {
     return memcached_servers_.value();
@@ -297,6 +308,13 @@ class ApacheConfig : public RewriteOptions {
 
   Option<GoogleString> fetcher_proxy_;
   Option<GoogleString> file_cache_path_;
+
+  // Either the hostname[:port] of a memcached server to use for this cache,
+  // or one of these special values:
+  // lrucache:  Use an in-memory LRU Cache; per process, shared between threads.
+  // memcached: Use the first local memcached specified in the
+  //            ModPagespeedMemcachedServers directive.
+  Option<GoogleString> filesystem_metadata_cache_;
 
   // comma-separated list of host[:port].  See AprMemCache::AprMemCache
   // for code that parses it.

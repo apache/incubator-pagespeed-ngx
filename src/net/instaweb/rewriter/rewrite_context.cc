@@ -264,6 +264,82 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   }
 
  private:
+  bool AreInputInfosEqual(const InputInfo& input_info,
+                          const InputInfo& fsmdc_info,
+                          int64 mtime_ms) {
+    return (fsmdc_info.has_last_modified_time_ms() &&
+            fsmdc_info.has_input_content_hash() &&
+            fsmdc_info.last_modified_time_ms() == mtime_ms &&
+            fsmdc_info.input_content_hash() == input_info.input_content_hash());
+  }
+
+  // Checks if the stat() data about the input_info's file matches that in the
+  // filesystem metadata cache; it needs to be for the input to be "valid".
+  bool IsFilesystemMetadataCacheCurrent(CacheInterface* fsmdc,
+                                        const InputInfo& input_info,
+                                        int64 mtime_ms) {
+    //   Get the filesystem metadata cache (FSMDC) entry for the filename.
+    //   If we found an entry,
+    //     Extract the FSMDC timestamp and contents hash.
+    //     If the FSMDC timestamp == the file's current timestamp,
+    //       (the FSMDC contents hash is valid/current/correct)
+    //       If the FSMDC content hash == the metadata cache's content hash,
+    //         The metadata cache's entry is valid so its input_info is valid.
+    //       Else
+    //         Return false as the metadata cache's entry is not valid as
+    //         someone has changed it on us.
+    //     Else
+    //       Return false as our FSMDC entry is out of date so we can't
+    //       tell if the metadata cache's input_info is valid.
+    //   Else
+    //     Return false as we can't tell if the metadata cache's input_info is
+    //     valid.
+    CacheInterface::SynchronousCallback callback;
+    fsmdc->Get(input_info.filename(), &callback);
+    DCHECK(callback.called());
+    if (callback.state() == CacheInterface::kAvailable) {
+      StringPiece val_str = callback.value()->Value();
+      ArrayInputStream input(val_str.data(), val_str.size());
+      InputInfo fsmdc_info;
+      if (fsmdc_info.ParseFromZeroCopyStream(&input)) {
+        // We have a filesystem metadata cache entry: if its timestamp equals
+        // the file's, and its contents hash equals the metadata caches's, then
+        // the input is valid.
+        return AreInputInfosEqual(input_info, fsmdc_info, mtime_ms);
+      }
+    }
+    return false;
+  }
+
+  // Update the filesystem metadata cache with the timestamp and contents hash
+  // of the given input's file (which is read from disk to compute the hash).
+  // Returns false if the file cannot be read.
+  bool UpdateFilesystemMetadataCache(ServerContext* server_context,
+                                     const InputInfo& input_info,
+                                     int64 mtime_ms,
+                                     CacheInterface* fsmdc,
+                                     InputInfo* fsmdc_info) {
+    GoogleString contents;
+    if (!server_context->file_system()->ReadFile(
+            input_info.filename().c_str(), &contents,
+            server_context->message_handler())) {
+      return false;
+    }
+    GoogleString contents_hash =
+        server_context->contents_hasher()->Hash(contents);
+    fsmdc_info->set_type(InputInfo::FILE_BASED);
+    fsmdc_info->set_last_modified_time_ms(mtime_ms);
+    fsmdc_info->set_input_content_hash(contents_hash);
+    GoogleString buf;
+    {
+      // MUST be in a block so that sstream is destructed to finalize buf.
+      StringOutputStream sstream(&buf);
+      fsmdc_info->SerializeToZeroCopyStream(&sstream);
+    }
+    fsmdc->PutSwappingString(input_info.filename(), &buf);
+    return true;
+  }
+
   // Checks whether the given input is still unchanged.
   bool IsInputValid(const InputInfo& input_info) {
     switch (input_info.type()) {
@@ -285,6 +361,8 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
         return false;
       }
       case InputInfo::FILE_BASED: {
+        ServerContext* server_context = rewrite_context_->FindServerContext();
+
         // ... if file-based inputs have changed.
         DCHECK(input_info.has_last_modified_time_ms() &&
                input_info.has_filename());
@@ -293,11 +371,30 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
           return false;
         }
         int64 mtime_sec;
-        rewrite_context_->FindServerContext()->file_system()->Mtime(
-            input_info.filename(), &mtime_sec,
-            rewrite_context_->FindServerContext()->message_handler());
-        return (mtime_sec * Timer::kSecondMs ==
-                  input_info.last_modified_time_ms());
+        server_context->file_system()->Mtime(input_info.filename(), &mtime_sec,
+                                             server_context->message_handler());
+        int64 mtime_ms = mtime_sec * Timer::kSecondMs;
+
+        CacheInterface* fsmdc = server_context->filesystem_metadata_cache();
+        if (fsmdc != NULL) {
+          CHECK(fsmdc->IsBlocking());
+          if (!input_info.has_input_content_hash()) {
+            return false;
+          }
+          if (IsFilesystemMetadataCacheCurrent(fsmdc, input_info, mtime_ms)) {
+            return true;
+          }
+          InputInfo fsmdc_info;
+          if (!UpdateFilesystemMetadataCache(server_context, input_info,
+                                             mtime_ms, fsmdc, &fsmdc_info)) {
+            return false;
+          }
+          // Check again now that we KNOW we have the most up-to-date data
+          // in the filesystem metadata cache.
+          return AreInputInfosEqual(input_info, fsmdc_info, mtime_ms);
+        } else {
+          return (mtime_ms == input_info.last_modified_time_ms());
+        }
       }
       case InputInfo::ALWAYS_VALID:
         return true;
@@ -1750,6 +1847,7 @@ void RewriteContext::CrossThreadPartitionDone(bool result) {
 }
 
 void RewriteContext::Freshen() {
+  // Note: only CACHED inputs are freshened (not FILE_BASED or ALWAYS_VALID).
   FreshenMetadataUpdateManager* freshen_manager =
       new FreshenMetadataUpdateManager(
           partition_key_, FindServerContext()->metadata_cache(),

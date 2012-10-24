@@ -60,15 +60,18 @@ message InputInfo {
   // been updated or not. For web-based resources, we use Last-Modified headers.
   // For file-based resources, we use mtime.
   optional int64 last_modified_time_ms = 3;
+
+  // For CACHED resources, keeps track of when the input expires, as taken
+  // from the headers returned when it was fetched.
   optional int64 expiration_time_ms = 4;
 
   // For CACHED resources, we keep track of the original fetch time so we
   // can freshen.
   optional int64 date_ms = 6;
 
-  // For CACHED resources, we also store a hash of the input, so that we
-  // we can reuse optimization results if it did not change, even if it
-  // expired from the HTTP cache.
+  // For CACHED and FILE_BASED resources, we store a hash of the input, so
+  // that we can reuse optimization results if it did not change, even if it
+  // has expired from the HTTP cache.
   optional string input_content_hash = 7;
 
   // For FILE_BASED resources, the file this was loaded from.

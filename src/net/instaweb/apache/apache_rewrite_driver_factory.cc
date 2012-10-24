@@ -191,23 +191,29 @@ ApacheCache* ApacheRewriteDriverFactory::GetCache(ApacheConfig* config) {
   return iter->second;
 }
 
+AprMemCache* ApacheRewriteDriverFactory::NewAprMemCache(
+    const GoogleString& spec) {
+  int thread_limit;
+  ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
+  thread_limit += num_rewrite_threads() + num_expensive_rewrite_threads();
+  return new AprMemCache(spec, thread_limit, hasher(), statistics(), timer(),
+                         message_handler());
+}
+
 CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
     ApacheConfig* config, CacheInterface* l2_cache) {
   CacheInterface* memcached = NULL;
 
   // Find a memcache that matches the current spec, or create a new one
-  // if needed.
+  // if needed. Note that this means that two different VirtualHost's will
+  // share a memcached if their specs are the same but will create their own
+  // if the specs are different.
   if (!config->memcached_servers().empty()) {
     const GoogleString& server_spec = config->memcached_servers();
     std::pair<MemcachedMap::iterator, bool> result = memcached_map_.insert(
         MemcachedMap::value_type(server_spec, memcached));
     if (result.second) {
-      int thread_limit;
-      ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
-      thread_limit += num_rewrite_threads() + num_expensive_rewrite_threads();
-      AprMemCache* mem_cache = new AprMemCache(
-          server_spec, thread_limit, hasher(), statistics(), timer(),
-          message_handler());
+      AprMemCache* mem_cache = NewAprMemCache(server_spec);
       memcache_servers_.push_back(mem_cache);
 
       int num_threads = config->memcached_threads();
@@ -256,6 +262,72 @@ CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
   return memcached;
 }
 
+CacheInterface* ApacheRewriteDriverFactory::NewFilesystemMetadataCache(
+    ApacheConfig* config) {
+  // The accepted spec values are:
+  // hostname[:port] - a new, private, AprMemCache is created for the config.
+  // memcached - if the config specifies only [a] local memcached server[s] in
+  //             its ModPagespeedMemcachedServers directive then that is used,
+  //             otherwise an error message is logged and NULL is returned.
+  // lrucache - a private LRUCache is created for the config.
+
+  // Check the special values first.
+  const GoogleString& spec = config->filesystem_metadata_cache();
+  if (StringCaseEqual(
+          spec, ApacheConfig::kFilesystemMetadataCacheUseLruCache)) {
+    // Use a per-process LRU cache.
+    // TODO(matterbury): Can we even do this?
+    message_handler()->Message(
+        kError,
+        "Ignoring 'ModPagespeedFilesystemMetadataCache %s' because "
+        "it is not implemented yet.", spec.c_str());
+      DCHECK(false);
+  } else if (StringCaseEqual(
+      spec, ApacheConfig::kFilesystemMetadataCacheUseMemcached)) {
+    // Find the config's memcached and check that it's local and not sharded.
+    MemcachedMap::iterator iter = memcached_map_.end();
+    if (!config->memcached_servers().empty()) {
+      iter = memcached_map_.find(config->memcached_servers());
+    }
+    if (iter == memcached_map_.end()) {
+      message_handler()->Message(
+          kError,
+          "Ignoring 'ModPagespeedFilesystemMetadataCache %s' because "
+          "it needs ModPagespeedMemcachedServers to be set.", spec.c_str());
+    } else {
+      CacheInterface* mem_cache = iter->second;
+      if (!mem_cache->IsMachineLocal()) {
+        message_handler()->Message(
+            kError,
+            "Ignoring 'ModPagespeedFilesystemMetadataCache %s' because "
+            "ModPagespeedMemcachedServers specifies one or more non-local "
+            "servers.", spec.c_str());
+      } else {
+        // Return a copy to keep memory management simple.
+        return new CacheCopy(mem_cache);
+      }
+    }
+  } else if (!spec.empty()) {
+    // It is a hostname[:port] specification.
+    AprMemCache* mem_cache = NewAprMemCache(spec);
+    // Fail if it isn't a single local server.
+    if (!mem_cache->IsMachineLocal()) {
+      message_handler()->Message(
+          kError,
+          "Ignoring 'ModPagespeedFilesystemMetadataCache %s' because "
+          "it specifies a non-local server.", spec.c_str());
+      delete mem_cache;
+      mem_cache = NULL;
+    } else {
+      // It needs to be managed just like the normal memcached servers, so:
+      memcache_servers_.push_back(mem_cache);
+    }
+    return mem_cache;
+  }
+
+  return NULL;
+}
+
 FileSystem* ApacheRewriteDriverFactory::DefaultFileSystem() {
   // Pass in NULL for the pool.  We do not want the file-system to
   // be auto-destructed based on the factory's pool: we want to follow
@@ -290,6 +362,11 @@ void ApacheRewriteDriverFactory::SetupCaches(
   if (memcached != NULL) {
     l2_cache = memcached;
     resource_manager->set_owned_cache(memcached);
+    resource_manager->set_filesystem_metadata_cache(
+        NewFilesystemMetadataCache(config));
+    // TODO(matterbury): Check that if LoadFromFile is enabled, then either
+    // the metadata cache is local -or- a filesystem metadata cache is setup,
+    // and fail hard if not, since it's too risky to proceeed.
   }
   Statistics* stats = resource_manager->statistics();
 

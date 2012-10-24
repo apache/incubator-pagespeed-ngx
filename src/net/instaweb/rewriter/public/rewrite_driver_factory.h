@@ -179,9 +179,10 @@ class RewriteDriverFactory {
   // call this if you use CreateServerContext.
   void InitServerContext(ServerContext* server_context);
 
-  // Called from InitServerContext, but virtualized separately
-  // as it is platform-specific.  This method must call on the resource
-  // manager: set_http_cache, set_metadata_cache, and MakePropertyCaches.
+  // Called from InitServerContext, but virtualized separately as it is
+  // platform-specific.  This method must call on the server context:
+  // set_http_cache, set_metadata_cache, set_filesystem_metadata_cache, and
+  // MakePropertyCaches.
   virtual void SetupCaches(ServerContext* server_context) = 0;
 
   // Provides an optional hook for adding rewrite passes to the HTML filter

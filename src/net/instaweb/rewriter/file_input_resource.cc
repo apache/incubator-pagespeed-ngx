@@ -49,6 +49,12 @@ void FileInputResource::FillInPartitionInputInfo(
   input->set_type(InputInfo::FILE_BASED);
   input->set_last_modified_time_ms(last_modified_time_sec_ * Timer::kSecondMs);
   input->set_filename(filename_);
+  // If the file is valid and we are using a filesystem metadata cache, save
+  // the hash of the file's contents for subsequent storing into it (the cache).
+  if (IsValidAndCacheable() &&
+      server_context_->filesystem_metadata_cache() != NULL) {
+    input->set_input_content_hash(ContentsHash());
+  }
 }
 
 // TODO(sligocki): Is this reasonable? People might want custom headers.
