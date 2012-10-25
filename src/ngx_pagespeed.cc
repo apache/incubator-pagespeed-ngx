@@ -331,12 +331,12 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
     return;
   }
 
-  ngx_http_pagespeed_set_buffered(ctx->r, false);
   rc = ngx_http_pagespeed_update(ctx, ev);
   if (rc == NGX_OK) {
     PDBG(ctx, "NGX_OK");
     // request complete
     ngx_del_event(ev, NGX_READ_EVENT, 0);
+    ngx_http_pagespeed_set_buffered(ctx->r, false);
     ngx_http_finalize_request(ctx->r, NGX_DONE);
     ngx_http_pagespeed_release_request_context(ctx);
   } else if (rc == NGX_ERROR) {
@@ -372,11 +372,23 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
       ngx_http_get_module_srv_conf(r, ngx_pagespeed));
 
   int file_descriptors[2];
-  int rc = pipe2(file_descriptors, O_NONBLOCK);
+  int rc = pipe(file_descriptors);
   if (rc != 0) {
     ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0, "pipe() failed");
     return NGX_ERROR;
   }
+
+  if (ngx_nonblocking(file_descriptors[0]) == -1) {
+      ngx_log_error(NGX_LOG_EMERG, r->connection->log, ngx_socket_errno,
+                    ngx_nonblocking_n " pipe[0] failed");
+  }
+
+  if (ngx_nonblocking(file_descriptors[1]) == -1) {
+      ngx_log_error(NGX_LOG_EMERG, r->connection->log, ngx_socket_errno,
+                    ngx_nonblocking_n " pipe[1] failed");
+  }
+
+
   fprintf(stderr, "pipe created: %d -> %d\n",
           file_descriptors[1], file_descriptors[0]);
 
@@ -392,6 +404,20 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
                   "no pagespeed connection.");
     return NGX_ERROR;
   }
+
+  ngx_connection_t *c;
+
+  c = ctx->pagespeed_connection;
+
+  c->recv = ngx_recv;
+  c->send = ngx_send;
+  c->recv_chain = ngx_recv_chain;
+  c->send_chain = ngx_send_chain;
+
+  c->log_error = r->connection->log_error;
+
+  c->read->log = c->log;
+  c->write->log = c->log;
 
   ctx->pagespeed_connection->data = ctx;
 
