@@ -3,7 +3,7 @@
 This is the [nginx](http://nginx.org/) port of
 [mod_pagespeed](https://developers.google.com/speed/pagespeed/mod).
 
-**ngx_pagespeed is a work in progress**, and is not yet functional. If you are
+**ngx_pagespeed is a work in progress**, and is not yet functional ([current status](https://github.com/pagespeed/ngx_pagespeed/wiki/Status). If you are
 interested in test-driving the module, or contributing to the project, please
 follow the instructions below. For feedback, questions, and to follow the progress of the project:
 
