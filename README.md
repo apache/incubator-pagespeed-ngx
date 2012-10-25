@@ -11,10 +11,10 @@ follow the instructions below. For feedback, questions, and to follow the progre
 
 ---
 
-ngx_pagespeed speeds up your site and reduces page load time by automatically
-applying web performance best practices to pages, and associated assets (CSS,
-JavaScript, images) without requiring that you modify your existing content or
-workflow. Features (will) include:
+The goal of ngx_pagespeed is to speed up your site and reduce page load time by
+automatically applying web performance best practices to pages and associated
+assets (CSS, JavaScript, images) without requiring that you modify your existing
+content or workflow. Features will include:
 
 - Image optimization: stripping meta-data, dynamic resizing, recompression
 - CSS & JavaScript minification, concatenation, inlining, and outlining
