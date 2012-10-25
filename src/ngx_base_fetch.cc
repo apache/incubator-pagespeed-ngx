@@ -151,10 +151,8 @@ bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
 void NgxBaseFetch::HandleDone(bool success) {
   done_called_ = true;
   RequestCollection('F');  // finished; can close the pipe.
-  int rc; 
-  do {
-    rc = close(pipe_fd_);
-  } while (errno == EINTR || errno == EIO);
+  close(pipe_fd_);
+  pipe_fd_ = -1;
 }
 
 }  // namespace net_instaweb
