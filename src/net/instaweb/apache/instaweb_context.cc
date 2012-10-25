@@ -223,7 +223,9 @@ void InstawebContext::Finish() {
     // We couldn't determine whether this is HTML or not till the very end,
     // so serve it unmodified.
     html_detector_.ReleaseBuffered(&output_);
-  } else if (started_parse_) {
+  }
+
+  if (started_parse_) {
     rewrite_driver_->FinishParse();
   } else {
     rewrite_driver_->Cleanup();
