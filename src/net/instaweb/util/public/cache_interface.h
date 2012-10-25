@@ -165,6 +165,14 @@ class CacheInterface {
   // locality if not sure/determinable.
   virtual bool IsMachineLocal() const = 0;
 
+  // Returns true if the cache is in a healthy state.  For memory and file-based
+  // caches, it is fine to leave the default implementation, which returns
+  // true.  But for server-based caches, it is handy to be able to query to
+  // see whether it is in a good state.  It should be safe to call this
+  // frequently -- the implementation shouldn't do much more than check a
+  // bool flag under mutex.
+  virtual bool IsHealthy() const { return true; }
+
  protected:
   // Invokes callback->ValidateCandidate() and callback->Done() as appropriate.
   void ValidateAndReportResult(const GoogleString& key, KeyState state,

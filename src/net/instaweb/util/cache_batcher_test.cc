@@ -51,9 +51,7 @@ class CacheBatcherTest : public CacheTestBase {
     pool_.reset(new QueuedWorkerPool(kMaxWorkers, thread_system_.get()));
     ThreadsafeCache* threadsafe_cache = new ThreadsafeCache(
         lru_cache_, thread_system_->NewMutex());
-    async_cache_.reset(new AsyncCache(threadsafe_cache,
-                                      thread_system_->NewMutex(),
-                                      pool_.get()));
+    async_cache_.reset(new AsyncCache(threadsafe_cache, pool_.get()));
     delay_cache_ = new DelayCache(async_cache_.get(), thread_system_.get());
     batcher_.reset(new CacheBatcher(delay_cache_, thread_system_->NewMutex(),
                                     &statistics_));

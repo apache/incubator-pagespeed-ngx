@@ -21,40 +21,46 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/atomic_bool.h"
+#include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class SharedString;
 
 // Employs a QueuedWorkerPool to turn a synchronous cache implementation
 // into an asynchronous one.  This makes sense to do only if the cache
 // implemention is potentially slow, due to network latency or disk seek time.
 //
-// In those situations, this class enables multiple cache lookups to be
-// threaded against one another, and potentially batched.
-//
-// Currently, Put and Delete are not made asynchronous by this class; just Get.
+// This class also serves to serialize access to the passed-in cache, ensuring
+// that it is accessed from only one thread at a time.
 class AsyncCache : public CacheInterface {
  public:
-  // The default maximum number of QueuedWorkerPool sequences to make.
-  // Fetches that exceed this limit are dropped immediately reporting
-  // kNotFound.  Note that QueuedWorkerPool itself may force queueing of
-  // lookups depending on how many worker threads are available.
+  // The maximum number of operations that can be queued up while a
+  // server is slow.  When this is reached, old Deletes/Puts get
+  // dropped, and old Gets are retired with a kNotFound.
   //
-  // Most importantly, note that when this is used with CacheBatcher, the
-  // number of concurrent lookups will also be limited by
-  // CacheBatcher::set_max_parallel_lookups.
-  static const int kDefaultNumThreads = 10;
+  // This helps bound the amount of memory consumed by queued operations
+  // when the cache gets wedged.  Note that when CacheBatcher is layered
+  // above AsyncCache, it will queue up its Gets at a level above this one,
+  // and ultimately send those using a MultiGet.
+  //
+  // TODO(jmarantz): Analyze whether we drop operations under load with
+  // a non-wedged cache.  If it looks like we are dropping Puts the first
+  // time we encounter a page then I think we may need to bump this up.
+  static const int64 kMaxQueueSize = 20;
 
-  // Takes ownership of the synchronous cache and mutex that are passed
-  // in.  Does not take ownership of the pool, which might be shared
-  // with other users.
-  AsyncCache(CacheInterface* cache, AbstractMutex* mutex,
-             QueuedWorkerPool* pool);
+  // Takes ownership of the synchronous cache that is passed in.
+  // Does not take ownership of the pool, which might be shared with
+  // other users.
+  //
+  // Note that in the future we may try to add multi-threaded access
+  // to the underlying cache (e.g. AprMemCache supports this), so we
+  // take the pool as the constructor arg.
+  AsyncCache(CacheInterface* cache, QueuedWorkerPool* pool);
   virtual ~AsyncCache();
 
   virtual void Get(const GoogleString& key, Callback* callback);
@@ -65,16 +71,6 @@ class AsyncCache : public CacheInterface {
   virtual bool IsBlocking() const { return false; }
   virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
 
-  // Sets the maximum number of parallel lookups that AsyncCache will
-  // attempt to make.
-  void set_num_threads(int num_threads) { num_threads_ = num_threads; }
-
-  // Returns whether the AsyncCache would accept new Get requests or
-  // reject them immediately.  This entry-point is intended for tests
-  // because in a live server, another thread might interleave a Get
-  // request after this returns and before your Get is issued.
-  bool CanIssueGet();
-
   // Prevent the AsyncCache from issuing any more Gets.  Any subsequent
   // Gets will have their callback invoked immediately with kNotFound.
   // Outstanding Gets may be completed depending on timing.
@@ -82,34 +78,43 @@ class AsyncCache : public CacheInterface {
   // This can be called during the process Shutdown flow to avoid
   // introducing more work asynchronously that will have to be
   // completed prior to Shutdown.
-  void StopCacheGets();
+  void StopCacheActivity();
+
+  // Cancels all pending cache operations.  Puts and Deletes are dropped.
+  // Gets and MultiGets are retired by calling their callbacks with
+  // kNotFound.
+  void CancelPendingOperations() { sequence_->CancelPendingFunctions(); }
+
+  virtual bool IsHealthy() const {
+    return !stopped_.value() && cache_->IsHealthy();
+  }
+  int32 outstanding_operations() { return outstanding_operations_.value(); }
 
  private:
-  // Attempts to reserve a thread-count to initiate a lookup, returning true
-  // if success, false, if the lookup needs to be dropped.
-  bool InitiateLookup();
+  // Function to execute a single-key Get in sequence_.  Canceling
+  // a Get calls the callback with kNotFound.
+  void DoGet(GoogleString* key, Callback* callback);
+  void CancelGet(GoogleString* key, Callback* callback);
 
-  // Function to execute a single-key Get in its own thread.
-  void DoGet(GoogleString key, Callback* callback,
-             QueuedWorkerPool::Sequence* sequence);
-  void CancelGet(GoogleString key, Callback* callback,
-                 QueuedWorkerPool::Sequence* sequence);
+  // Function to execute a multi-key Get in sequence_.  Canceling
+  // a MultiGet calls all the callbacks with kNotFound.
+  void DoMultiGet(MultiGetRequest* request);
+  void CancelMultiGet(MultiGetRequest* request);
 
-  // Function to execute a multi-key Get in its own thread.
-  void DoMultiGet(MultiGetRequest* request,
-                  QueuedWorkerPool::Sequence* sequence);
-  void CancelMultiGet(MultiGetRequest* request,
-                      QueuedWorkerPool::Sequence* sequence);
-  bool CanIssueGetMutexHeld() const;  // Must be called with mutex_ held.
+  // Functions to execute Put/Delete in sequence_.  Canceling
+  // a Put/Delete just drops the request.
+  void DoPut(GoogleString* key, SharedString* value);
+  void CancelPut(GoogleString* key, SharedString* value);
+  void DoDelete(GoogleString* key);
+  void CancelDelete(GoogleString* key);
 
   void MultiGetReportNotFound(MultiGetRequest* request);
 
   scoped_ptr<CacheInterface> cache_;
-  scoped_ptr<AbstractMutex> mutex_;
   GoogleString name_;
-  int num_threads_;
-  int active_threads_;
-  QueuedWorkerPool* pool_;
+  QueuedWorkerPool::Sequence* sequence_;
+  AtomicBool stopped_;
+  AtomicInt32 outstanding_operations_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncCache);
 };

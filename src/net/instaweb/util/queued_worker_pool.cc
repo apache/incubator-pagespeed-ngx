@@ -41,6 +41,8 @@ inline void UpdateWaveform(Waveform* queue_size, int delta) {
   }
 }
 
+const size_t kUnboundedQueue = 0;
+
 }  // namespace
 
 QueuedWorkerPool::QueuedWorkerPool(int max_workers, ThreadSystem* thread_system)
@@ -49,8 +51,7 @@ QueuedWorkerPool::QueuedWorkerPool(int max_workers, ThreadSystem* thread_system)
       max_workers_(max_workers),
       shutdown_(false),
       queue_size_(NULL),
-      load_shedding_threshold_(kNoLoadShedding),
-      shutdown_notifier_(NULL) {
+      load_shedding_threshold_(kNoLoadShedding) {
 }
 
 QueuedWorkerPool::~QueuedWorkerPool() {
@@ -66,6 +67,11 @@ QueuedWorkerPool::~QueuedWorkerPool() {
 }
 
 void QueuedWorkerPool::ShutDown() {
+  InitiateShutDown();
+  WaitForShutDownComplete();
+}
+
+void QueuedWorkerPool::InitiateShutDown() {
   // Set the shutdown flag so that no one adds any more groups.
   {
     ScopedMutex lock(mutex_.get());
@@ -81,14 +87,23 @@ void QueuedWorkerPool::ShutDown() {
     shutdown_ = true;
   }
 
-  if (shutdown_notifier_ != NULL) {
-    shutdown_notifier_->CallRun();
-    shutdown_notifier_ = NULL;
-  }
-
   // Clear out all the sequences, so that no one adds any more runnable
   // functions. We don't need to lock our access to all_sequences_ as
   // that can only be mutated when shutdown_ == false.
+  for (int i = 0, n = all_sequences_.size(); i < n; ++i) {
+    Sequence* sequence = all_sequences_[i];
+    sequence->InitiateShutDown();
+    // Do not delete the sequence; just leave it in shutdown-mode so no
+    // further tasks will be started in the thread.
+  }
+}
+
+void QueuedWorkerPool::WaitForShutDownComplete() {
+  DCHECK(shutdown_);
+
+  // The sequence shutdown was initiated in ::InitiateShutDown and now
+  // we must wait for the sequences to all exit before we can delete
+  // the worker object, otherwise segfaults will occur.
   for (int i = 0, n = all_sequences_.size(); i < n; ++i) {
     Sequence* sequence = all_sequences_[i];
     sequence->WaitForShutDown();
@@ -280,7 +295,8 @@ QueuedWorkerPool::Sequence::Sequence(ThreadSystem* thread_system,
     : sequence_mutex_(thread_system->NewMutex()),
       pool_(pool),
       termination_condvar_(sequence_mutex_->NewCondvar()),
-      queue_size_(NULL) {
+      queue_size_(NULL),
+      max_queue_size_(kUnboundedQueue) {
   Reset();
 }
 
@@ -357,18 +373,44 @@ void QueuedWorkerPool::Sequence::Add(Function* function) {
                    << " after shutdown";
       cancel = true;
     } else {
-      work_queue_.push_back(function);
+      Function* function_to_add = function;
+      if ((max_queue_size_ != kUnboundedQueue) &&
+          (work_queue_.size() >= max_queue_size_)) {
+        // Overflowing a bounded queue cancels the oldest function.  We
+        // cancel old ones because those are likely to be lookups on behalf
+        // of older HTML requests that are waiting to be retired.  We'd rather
+        // retire them without optimization than delay them further with a
+        // slow cache.
+        function = work_queue_.front();
+        work_queue_.pop_front();
+        cancel = true;
+      }
+
+      work_queue_.push_back(function_to_add);
       queue_sequence = (!active_ && (work_queue_.size() == 1));
     }
   }
   if (cancel) {
     function->CallCancel();
-    return;
   }
   if (queue_sequence) {
     pool_->QueueSequence(this);
   }
-  UpdateWaveform(queue_size_, 1);
+  UpdateWaveform(queue_size_, cancel ? 0 : 1);
+}
+
+void QueuedWorkerPool::Sequence::CancelPendingFunctions() {
+  std::deque<Function*> cancel_queue;
+  {
+    ScopedMutex lock(sequence_mutex_.get());
+    work_queue_.swap(cancel_queue);
+  }
+  UpdateWaveform(queue_size_, -cancel_queue.size());
+  while (!cancel_queue.empty()) {
+    Function* f = cancel_queue.front();
+    cancel_queue.pop_front();
+    f->CallCancel();
+  }
 }
 
 Function* QueuedWorkerPool::Sequence::NextFunction() {

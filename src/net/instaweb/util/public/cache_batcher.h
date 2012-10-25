@@ -93,6 +93,8 @@ class CacheBatcher : public CacheInterface {
 
   int Pending();  // This is used to help synchronize tests.
 
+  virtual bool IsHealthy() const { return cache_->IsHealthy(); }
+
  private:
   class Group;
   class BatcherCallback;

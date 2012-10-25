@@ -224,8 +224,8 @@ CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
           memcached_pool_.reset(new QueuedWorkerPool(num_threads,
                                                      thread_system()));
         }
-        AsyncCache* async_cache = new AsyncCache(
-            mem_cache, thread_system()->NewMutex(), memcached_pool_.get());
+        AsyncCache* async_cache = new AsyncCache(mem_cache,
+                                                 memcached_pool_.get());
         async_caches_.push_back(async_cache);
         memcached = async_cache;
       } else {
@@ -701,7 +701,7 @@ void ApacheRewriteDriverFactory::StopCacheActivity() {
   RewriteDriverFactory::StopCacheActivity();
   for (int i = 0, n = async_caches_.size(); i < n; ++i) {
     AsyncCache* async_cache = async_caches_[i];
-    async_cache->StopCacheGets();
+    async_cache->StopCacheActivity();
   }
 }
 

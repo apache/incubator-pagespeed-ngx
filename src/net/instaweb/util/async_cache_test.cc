@@ -26,8 +26,8 @@
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/shared_string.h"
@@ -120,17 +120,30 @@ class AsyncCacheTest : public CacheTestBase {
     SyncedLRUCache(DelayMap* delay_map, LRUCache* lru_cache,
                    AbstractMutex* mutex)
         : ThreadsafeCache(lru_cache, mutex),
-          delay_map_(delay_map) {
+          delay_map_(delay_map),
+          sync_point_(NULL) {
+      set_is_healthy(true);
     }
     virtual ~SyncedLRUCache() {}
 
+    void set_sync_point(WorkerTestBase::SyncPoint* x) { sync_point_ = x; }
+
     void Get(const GoogleString& key, Callback* callback) {
+      if (sync_point_ != NULL) {
+        sync_point_->Notify();
+      }
       delay_map_->Wait(key);
       ThreadsafeCache::Get(key, callback);
     }
 
+    virtual bool IsHealthy() const { return is_healthy_.value(); }
+    void set_is_healthy(bool x) { is_healthy_.set_value(x); }
+
    private:
     DelayMap* delay_map_;
+    WorkerTestBase::SyncPoint* sync_point_;
+    AtomicBool is_healthy_;
+
     DISALLOW_COPY_AND_ASSIGN(SyncedLRUCache);
   };
 
@@ -157,21 +170,18 @@ class AsyncCacheTest : public CacheTestBase {
         thread_system_(ThreadSystem::CreateThreadSystem()),
         delay_map_(thread_system_.get()),
         timer_(thread_system_->NewTimer()),
-        suppress_post_get_cleanup_(false) {
+        suppress_post_get_cleanup_(false),
+        synced_lru_cache_(NULL),
+        expected_outstanding_operations_(0) {
     set_mutex(thread_system_->NewMutex());
+    pool_.reset(new QueuedWorkerPool(1, thread_system_.get()));
+    synced_lru_cache_ = new SyncedLRUCache(
+        &delay_map_, lru_cache_, thread_system_->NewMutex());
+    async_cache_.reset(new AsyncCache(synced_lru_cache_, pool_.get()));
   }
 
   ~AsyncCacheTest() {
     pool_->ShutDown();  // quiesce before destructing cache.
-  }
-
-  void InitCache(int num_workers, int num_threads) {
-    pool_.reset(new QueuedWorkerPool(num_workers, thread_system_.get()));
-    SyncedLRUCache* synced_lru_cache = new SyncedLRUCache(
-        &delay_map_, lru_cache_, thread_system_->NewMutex());
-    async_cache_.reset(new AsyncCache(
-        synced_lru_cache, thread_system_->NewMutex(), pool_.get()));
-    async_cache_->set_num_threads(num_threads);
   }
 
   virtual CacheInterface* Cache() { return async_cache_.get(); }
@@ -187,19 +197,32 @@ class AsyncCacheTest : public CacheTestBase {
     // If mainline issues another Get too quickly after the callback is
     // called, it will immediately fail due to the count not being
     // updated yet.
-    if (!suppress_post_get_cleanup_) {
-      while (!async_cache_->CanIssueGet()) {
-        timer_->SleepMs(1);
-      }
+    while (async_cache_->outstanding_operations() >
+           expected_outstanding_operations_) {
+      timer_->SleepMs(1);
     }
   }
 
   void DelayKey(const GoogleString& key) {
     delay_map_.Delay(key);
+    ++expected_outstanding_operations_;
   }
 
   void ReleaseKey(const GoogleString& key) {
     delay_map_.Notify(key);
+    --expected_outstanding_operations_;
+  }
+
+  // Delays the specified key, and initiates a Get, waiting for the
+  // Get to be initiated prior to the callback being called.
+  Callback* InitiateDelayedGet(const GoogleString& key) {
+    WorkerTestBase::SyncPoint sync_point(thread_system_.get());
+    DelayKey(key);
+    synced_lru_cache_->set_sync_point(&sync_point);
+    Callback* callback = InitiateGet(key);
+    sync_point.Wait();
+    synced_lru_cache_->set_sync_point(NULL);
+    return callback;
   }
 
   LRUCache* lru_cache_;
@@ -209,6 +232,8 @@ class AsyncCacheTest : public CacheTestBase {
   scoped_ptr<QueuedWorkerPool> pool_;
   scoped_ptr<AsyncCache> async_cache_;
   bool suppress_post_get_cleanup_;
+  SyncedLRUCache* synced_lru_cache_;
+  int32 expected_outstanding_operations_;
 };
 
 // In this version, no keys are delayed, so AsyncCache will not
@@ -218,8 +243,6 @@ class AsyncCacheTest : public CacheTestBase {
 //
 // TODO(jmarantz): refactor this with LRUCacheTest::PutGetDelete.
 TEST_F(AsyncCacheTest, PutGetDelete) {
-  InitCache(1, 1);
-
   EXPECT_EQ(static_cast<size_t>(0), lru_cache_->size_bytes());
   EXPECT_EQ(static_cast<size_t>(0), lru_cache_->num_elements());
   CheckPut("Name", "Value");
@@ -243,19 +266,14 @@ TEST_F(AsyncCacheTest, PutGetDelete) {
 }
 
 TEST_F(AsyncCacheTest, DelayN0NoParallelism) {
-  InitCache(1, 1);
-
   PopulateCache(4);  // Inserts "n0"->"v0", "n1"->"v1", "n2"->"v2", "n3"->"v3".
 
-  // Delaying "n0" causes the fetches for "n1" to be dropped
-  // immediately because we've initialized the cache to only one
-  // request at a time.
-  DelayKey("n0");
-  Callback* n0 = InitiateGet("n0");
+  Callback* n0 = InitiateDelayedGet("n0");
   EXPECT_EQ(1, outstanding_fetches());
-  suppress_post_get_cleanup_ = true;  // avoid blocking waiting for delayed n0.
-  CheckNotFound("n1");
-  suppress_post_get_cleanup_ = false;
+  Callback* n1 = InitiateGet("n1");
+  EXPECT_EQ(2, outstanding_fetches());
+  async_cache_->CancelPendingOperations();
+  WaitAndCheckNotFound(n1);
   EXPECT_EQ(1, outstanding_fetches());
 
   ReleaseKey("n0");
@@ -267,150 +285,206 @@ TEST_F(AsyncCacheTest, DelayN0NoParallelism) {
   CheckGet("n3", "v3");
 }
 
-TEST_F(AsyncCacheTest, DelayN0TwoWayParallelism) {
-  InitCache(2, 2);
-
-  PopulateCache(8);
-
-  DelayKey("n0");
-  Callback* n0 = InitiateGet("n0");
-  EXPECT_EQ(1, outstanding_fetches());
-
-  // We still have some parallelism available to us, so "n2" and "n3" will
-  // complete even while n1 is outstanding.
-  CheckGet("n1", "v1");
-  CheckGet("n2", "v2");
-
-  // Now block "n3" and look it up.  n4 and n5 will now be dropped.
-  DelayKey("n3");
-  Callback* n3 = InitiateGet("n3");
-  Callback* n4 = InitiateGet("n4");
-  Callback* n5 = InitiateGet("n5");
-  EXPECT_EQ(2, outstanding_fetches());
-  suppress_post_get_cleanup_ = true;  // avoid blocking waiting for delayed n0.
-  WaitAndCheckNotFound(n4);
-  WaitAndCheckNotFound(n5);
-  suppress_post_get_cleanup_ = false;
-
-  ReleaseKey("n0");
-  WaitAndCheck(n0, "v0");
-  CheckGet("n6", "v6");
-  EXPECT_EQ(1, outstanding_fetches());
-
-  // Finally, release n3 and we are all clean.
-  ReleaseKey("n3");
-  WaitAndCheck(n3, "v3");
-  EXPECT_EQ(0, outstanding_fetches());
-
-  CheckGet("n7", "v7");
-  EXPECT_EQ(0, outstanding_fetches());
-}
-
 TEST_F(AsyncCacheTest, MultiGet) {
-  InitCache(1, 1);
   TestMultiGet();
 }
 
 TEST_F(AsyncCacheTest, MultiGetDrop) {
-  InitCache(1, 1);
-
   PopulateCache(3);
-  DelayKey("n2");
-  Callback* n2 = InitiateGet("n2");
-
+  Callback* n2 = InitiateDelayedGet("n2");
   Callback* n0 = AddCallback();
   Callback* not_found = AddCallback();
   Callback* n1 = AddCallback();
   IssueMultiGet(n0, "n0", not_found, "not_found", n1, "n1");
-  suppress_post_get_cleanup_ = true;  // avoid blocking waiting for delayed n0.
+  async_cache_->CancelPendingOperations();
   WaitAndCheckNotFound(n0);
   WaitAndCheckNotFound(not_found);
   WaitAndCheckNotFound(n1);
-  suppress_post_get_cleanup_ = false;
 
   ReleaseKey("n2");
   WaitAndCheck(n2, "v2");
 }
 
 TEST_F(AsyncCacheTest, StopGets) {
-  InitCache(1, 1);
   PopulateCache(1);
   CheckGet("n0", "v0");
-  async_cache_->StopCacheGets();
+  async_cache_->StopCacheActivity();
   suppress_post_get_cleanup_ = true;  // avoid blocking waiting for delayed n0.
   CheckNotFound("n0");
   suppress_post_get_cleanup_ = false;
 }
 
 TEST_F(AsyncCacheTest, ShutdownQueue) {
-  InitCache(1, 1);
   PopulateCache(1);
   pool_->ShutDown();
   CheckNotFound("n0");
 }
 
 TEST_F(AsyncCacheTest, ShutdownQueueWhileBusy) {
-  InitCache(1, 1);
   PopulateCache(1);
 
-  WorkerTestBase::SyncPoint shutdown_started(thread_system_.get());
-  pool_->set_shutdown_notifier(new WorkerTestBase::NotifyRunFunction(
-      &shutdown_started));
+  Callback* n0 = InitiateDelayedGet("n0");
+  Callback* n1 = InitiateGet("n1");
+  pool_->InitiateShutDown();
+  ReleaseKey("n0");
+  WaitAndCheck(n0, "v0");
+  WaitAndCheckNotFound(n1);
 
-  WorkerTestBase::SyncPoint sync_point(thread_system_.get());
-  QueuedWorkerPool::Sequence* sequence = pool_->NewSequence();
-  sequence->Add(new WorkerTestBase::WaitRunFunction(&sync_point));
-
-  Callback* n0 = InitiateGet("n0");  // blocks waiting for timer.
-
-  QueuedWorkerPool pool2(2, thread_system_.get());
-  QueuedWorkerPool::Sequence* sequence2 = pool2.NewSequence();
-  sequence2->Add(MakeFunction(pool_.get(), &QueuedWorkerPool::ShutDown));
-
-  // We must now wait for the ShutDown sequence be *initiated* on
-  // pool_, in order to capture the potential race we want to test.
-  // What we are trying to do here is to create a race between shutting
-  // down the worker-pool driving the Async cache, and a lookup on the
-  // async cache.
-  shutdown_started.Wait();
-
-  sync_point.Notify();
-  pool2.ShutDown();
-
-  WaitAndCheckNotFound(n0);
+  pool_->WaitForShutDownComplete();
 }
 
 TEST_F(AsyncCacheTest, ShutdownQueueWhileBusyWithMultiGet) {
-  InitCache(1, 1);
-  PopulateCache(1);
+  PopulateCache(3);
 
-  WorkerTestBase::SyncPoint shutdown_started(thread_system_.get());
-  pool_->set_shutdown_notifier(new WorkerTestBase::NotifyRunFunction(
-      &shutdown_started));
+  Callback* n0 = InitiateDelayedGet("n0");
+  Callback* n1 = AddCallback();
+  Callback* not_found = AddCallback();
+  Callback* n2 = AddCallback();
+  IssueMultiGet(n1, "n1", not_found, "not_found", n2, "n2");
+  pool_->InitiateShutDown();
+  ReleaseKey("n0");
+  WaitAndCheck(n0, "v0");
+  WaitAndCheckNotFound(n1);
+  WaitAndCheckNotFound(not_found);
+  WaitAndCheckNotFound(n2);
 
-  WorkerTestBase::SyncPoint sync_point(thread_system_.get());
-  QueuedWorkerPool::Sequence* sequence = pool_->NewSequence();
-  sequence->Add(new WorkerTestBase::WaitRunFunction(&sync_point));
+  pool_->WaitForShutDownComplete();
+}
 
+TEST_F(AsyncCacheTest, NoPutsOnSickServer) {
+  synced_lru_cache_->set_is_healthy(false);
+  PopulateCache(3);
+  synced_lru_cache_->set_is_healthy(true);
+  CheckNotFound("n0");
+}
+
+TEST_F(AsyncCacheTest, NoGetsOnSickServer) {
+  PopulateCache(3);
+  CheckGet("n0", "v0");
+  synced_lru_cache_->set_is_healthy(false);
+  CheckNotFound("n0");
+}
+
+TEST_F(AsyncCacheTest, NoMultiGetsOnSickServer) {
+  PopulateCache(3);
+  synced_lru_cache_->set_is_healthy(false);
   Callback* n0 = AddCallback();
   Callback* not_found = AddCallback();
   Callback* n1 = AddCallback();
   IssueMultiGet(n0, "n0", not_found, "not_found", n1, "n1");
-
-  QueuedWorkerPool pool2(2, thread_system_.get());
-  QueuedWorkerPool::Sequence* sequence2 = pool2.NewSequence();
-  sequence2->Add(MakeFunction(pool_.get(), &QueuedWorkerPool::ShutDown));
-
-  // We must now wait for the ShutDown sequence be *initiated* on
-  // pool_, in order to capture the potential race we want to test.
-  shutdown_started.Wait();
-
-  sync_point.Notify();
-  pool2.ShutDown();
-
   WaitAndCheckNotFound(n0);
   WaitAndCheckNotFound(not_found);
   WaitAndCheckNotFound(n1);
+}
+
+TEST_F(AsyncCacheTest, NoDeletesOnSickServer) {
+  PopulateCache(3);
+  CheckGet("n0", "v0");
+  synced_lru_cache_->set_is_healthy(false);
+  async_cache_->Delete("n0");
+  synced_lru_cache_->set_is_healthy(true);
+  CheckGet("n0", "v0");
+}
+
+TEST_F(AsyncCacheTest, CancelOutstandingDeletes) {
+  PopulateCache(3);
+  Callback* n0 = InitiateDelayedGet("n0");
+  ++expected_outstanding_operations_;  // Delete will be blocked.
+  async_cache_->Delete("n1");
+  async_cache_->CancelPendingOperations();  // Delete will not happen.
+  --expected_outstanding_operations_;  // Delete was canceled.
+  ReleaseKey("n0");
+  WaitAndCheck(n0, "v0");
+  CheckGet("n1", "v1");   // works because the delete did not happen.
+}
+
+TEST_F(AsyncCacheTest, DeleteNotQueuedOnSickServer) {
+  PopulateCache(3);
+  Callback* n0 = InitiateDelayedGet("n0");
+  synced_lru_cache_->set_is_healthy(false);
+  async_cache_->Delete("n1");
+  synced_lru_cache_->set_is_healthy(true);
+  ReleaseKey("n0");
+  WaitAndCheck(n0, "v0");
+  CheckGet("n1", "v1");   // works because the delete did not happen.
+}
+
+TEST_F(AsyncCacheTest, PutNotQueuedOnSickServer) {
+  PopulateCache(3);
+  Callback* n0 = InitiateDelayedGet("n0");
+  synced_lru_cache_->set_is_healthy(false);
+  CheckPut("n1", "new value for n1");
+  synced_lru_cache_->set_is_healthy(true);
+  ReleaseKey("n0");
+  WaitAndCheck(n0, "v0");
+  CheckGet("n1", "v1");   // still "v1" not "new value for n1"
+}
+
+TEST_F(AsyncCacheTest, GetNotQueuedOnSickServer) {
+  PopulateCache(3);
+  Callback* n0 = InitiateDelayedGet("n0");
+  synced_lru_cache_->set_is_healthy(false);
+  Callback* n1 = InitiateGet("n1");
+  synced_lru_cache_->set_is_healthy(true);
+  ReleaseKey("n0");
+  WaitAndCheck(n0, "v0");
+  WaitAndCheckNotFound(n1);  // 'Get' was never queued cause server was sick.
+}
+
+TEST_F(AsyncCacheTest, MultiGetNotQueuedOnSickServer) {
+  PopulateCache(3);
+  Callback* n0 = InitiateDelayedGet("n0");
+  synced_lru_cache_->set_is_healthy(false);
+  Callback* n1 = AddCallback();
+  Callback* not_found = AddCallback();
+  Callback* n2 = AddCallback();
+  IssueMultiGet(n1, "n1", not_found, "not_found", n2, "n2");
+  synced_lru_cache_->set_is_healthy(true);
+  ReleaseKey("n0");
+  WaitAndCheck(n0, "v0");
+  WaitAndCheckNotFound(n1);          // 'MultiGet' was never queued cause server
+  WaitAndCheckNotFound(not_found);   //  was sick.
+  WaitAndCheckNotFound(n2);
+}
+
+TEST_F(AsyncCacheTest, RetireOldOperations) {
+  PopulateCache(4);
+  Callback* n0 = InitiateDelayedGet("n0");
+
+  // Now the AsyncCache is stuck.  While it's stuck, add in 4 operations which
+  // are all destined to fail.  Here's a MultiGet and a Get which will all get
+  // a miss.
+  Callback* n1 = AddCallback();
+  Callback* not_found = AddCallback();
+  Callback* n2 = AddCallback();
+  ++expected_outstanding_operations_;  // MultiGet will be blocked.
+  IssueMultiGet(n1, "n1", not_found, "not_found", n2, "n2");
+  ++expected_outstanding_operations_;
+  Callback* n3 = InitiateGet("n3");
+
+  ++expected_outstanding_operations_;
+  async_cache_->Delete("n1");
+
+  ++expected_outstanding_operations_;
+  CheckPut("n5", "v5");
+
+  // Now make a bunch of new Delete calls which, though ineffective, will push
+  // the above operations out of the FIFO causing them to fail.
+  for (int64 i = 0; i < AsyncCache::kMaxQueueSize; ++i) {
+    async_cache_->Delete("no such key anyway");
+  }
+
+  ReleaseKey("n0");
+  WaitAndCheck(n0, "v0");
+
+  // Now see that the MultiGet and Get failed.
+  WaitAndCheckNotFound(n1);          // 'MultiGet' was never queued because
+  WaitAndCheckNotFound(not_found);   // the server was sick.
+  WaitAndCheckNotFound(n2);
+  WaitAndCheckNotFound(n3);
+
+  CheckGet("n1", "v1");  // Delete "n1" got dropped.
+  CheckNotFound("n5");   // Put "n5", "v5" got dropped.
 }
 
 }  // namespace net_instaweb

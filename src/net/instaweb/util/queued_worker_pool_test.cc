@@ -19,6 +19,7 @@
 
 #include "net/instaweb/util/public/queued_worker_pool.h"
 
+#include "base/logging.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
@@ -258,6 +259,65 @@ TEST_F(QueuedWorkerPoolTest, LoadShedding) {
   }
 
   worker_->FreeSequence(done);
+}
+
+class NotifyAndWait : public Function {
+ public:
+  NotifyAndWait(WorkerTestBase::SyncPoint* notify,
+                WorkerTestBase::SyncPoint* wait)
+      : notify_(notify),
+        wait_(wait) {
+  }
+
+  virtual void Run() {
+    notify_->Notify();
+    wait_->Wait();
+  }
+
+  virtual void Cancel() {
+    CHECK(false);
+  }
+
+ private:
+  WorkerTestBase::SyncPoint* notify_;
+  WorkerTestBase::SyncPoint* wait_;
+};
+
+TEST_F(QueuedWorkerPoolTest, MaxQueueSize) {
+  SyncPoint started(thread_runtime_.get());
+  SyncPoint wait(thread_runtime_.get());
+  SyncPoint done(thread_runtime_.get());
+  QueuedWorkerPool::Sequence* sequence = worker_->NewSequence();
+  sequence->set_max_queue_size(4);
+  int count = 0;
+  sequence->Add(new NotifyAndWait(&started, &wait));
+  started.Wait();
+  sequence->Add(new Increment(-100, &count));  // will be canceled: -100.
+  sequence->Add(new Increment(-99, &count));   // will be run: +1 == -99.
+  sequence->Add(new Increment(-98, &count));   // will be run: +1 == -98.
+  sequence->Add(new NotifyRunFunction(&done));
+  sequence->Add(new Increment(-97, &count));   // Cancels first increment.
+  wait.Notify();
+  done.Wait();
+  EXPECT_EQ(-97, count);
+  worker_->FreeSequence(sequence);
+}
+
+TEST_F(QueuedWorkerPoolTest, CancelPending) {
+  SyncPoint wait(thread_runtime_.get());
+  SyncPoint done(thread_runtime_.get());
+  QueuedWorkerPool::Sequence* sequence = worker_->NewSequence();
+  int count = 0;
+  sequence->Add(new WaitRunFunction(&wait));
+  sequence->Add(new Increment(-100, &count));
+  sequence->Add(new Increment(-200, &count));
+  sequence->Add(new Increment(-300, &count));
+  sequence->CancelPendingFunctions();
+  sequence->Add(new NotifyRunFunction(&done));
+  wait.Notify();
+  done.Wait();
+  EXPECT_EQ(-300, count);
+  worker_->FreeSequence(sequence);
 }
 
 }  // namespace

@@ -96,6 +96,14 @@ class QueuedWorkerPool {
 
     void set_queue_size_stat(Waveform* x) { queue_size_ = x; }
 
+    // Sets the maximum number of functions that can be enqueued to a sequence.
+    // By default, sequences are unbounded.  When a bound is reached, the oldest
+    // functions are retired by calling Cancel() on them.
+    void set_max_queue_size(size_t x) { max_queue_size_ = x; }
+
+    // Calls Cancel on all pending functions in the queue.
+    void CancelPendingFunctions();
+
    private:
     // Construct using QueuedWorkerPool::NewSequence().
     Sequence(ThreadSystem* thread_system, QueuedWorkerPool* pool);
@@ -141,6 +149,7 @@ class QueuedWorkerPool {
     bool active_;
     scoped_ptr<ThreadSystem::Condvar> termination_condvar_;
     Waveform* queue_size_;
+    size_t max_queue_size_;
 
     DISALLOW_COPY_AND_ASSIGN(Sequence);
   };
@@ -159,7 +168,19 @@ class QueuedWorkerPool {
 
   // Shuts down all Sequences and Worker threads, but does not delete the
   // sequences.  The sequences will be deleted when the pool is destructed.
+  //
+  // Equivalent to "InitiateShutDown(); WaitForShutDownComplete();"
   void ShutDown();
+
+  // Starts the shutdown process, preventing further tasks from being queued.
+  // Does not wait for any active tasks to be completed.  This must be followed
+  // by WaitForShutDownComplete.  It is invalid to call InitiateShutDown() twice
+  // in a row.
+  void InitiateShutDown();
+
+  // Blocks waiting for all outstanding tasks to be completed.  Must be preceded
+  // by InitiateShutDown().
+  void WaitForShutDownComplete();
 
   // Returns true if any of the given sequences is busy. Note that multiple
   // sequences are checked atomically; otherwise we could end up missing
@@ -193,10 +214,6 @@ class QueuedWorkerPool {
   // This must be called prior to creating sequences.
   void set_queue_size_stat(Waveform* x) { queue_size_ = x; }
 
-  // Provide a function that is called when shutdown is initiated.  This
-  // is useful for testing shutdown sequences.
-  void set_shutdown_notifier(Function* f) { shutdown_notifier_ = f; }
-
  private:
   friend class Sequence;
   void Run(Sequence* sequence, QueuedWorker* worker);
@@ -222,8 +239,6 @@ class QueuedWorkerPool {
 
   Waveform* queue_size_;
   int load_shedding_threshold_;
-
-  Function* shutdown_notifier_;
 
   DISALLOW_COPY_AND_ASSIGN(QueuedWorkerPool);
 };

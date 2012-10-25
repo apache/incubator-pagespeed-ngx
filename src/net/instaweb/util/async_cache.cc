@@ -20,145 +20,137 @@
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/atomic_bool.h"
+#include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
+#include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-AsyncCache::AsyncCache(CacheInterface* cache, AbstractMutex* mutex,
-                       QueuedWorkerPool* pool)
+AsyncCache::AsyncCache(CacheInterface* cache, QueuedWorkerPool* pool)
     : cache_(cache),
-      mutex_(mutex),
-      name_(StrCat("AsyncCache using ", cache_->Name())),
-      num_threads_(kDefaultNumThreads),
-      active_threads_(0),
-      pool_(pool) {
+      name_(StrCat("AsyncCache using ", cache_->Name())) {
   CHECK(cache->IsBlocking());
+  sequence_ = pool->NewSequence();
+  sequence_->set_max_queue_size(kMaxQueueSize);
 }
 
 AsyncCache::~AsyncCache() {
-  DCHECK_EQ(0, active_threads_)
-      << "Shutdown the pool before destructing AsyncCache";
-}
-
-bool AsyncCache::CanIssueGet() {
-  ScopedMutex lock(mutex_.get());
-  return CanIssueGetMutexHeld();
-}
-
-bool AsyncCache::CanIssueGetMutexHeld() const {
-  return (active_threads_ < num_threads_);
-}
-
-bool AsyncCache::InitiateLookup() {
-  ScopedMutex mutex(mutex_.get());
-  if (CanIssueGetMutexHeld()) {
-    ++active_threads_;
-    return true;
-  }
-  return false;
+  DCHECK_EQ(0, outstanding_operations());
 }
 
 void AsyncCache::Get(const GoogleString& key, Callback* callback) {
-  if (InitiateLookup()) {
-    QueuedWorkerPool::Sequence* sequence = pool_->NewSequence();
-    if (sequence == NULL) {
-      CancelGet(key, callback, sequence);
-    } else {
-      sequence->Add(MakeFunction(this, &AsyncCache::DoGet,
-                                 &AsyncCache::CancelGet,
-                                 key, callback, sequence));
-    }
+  if (IsHealthy()) {
+    outstanding_operations_.increment(1);
+    sequence_->Add(MakeFunction(this, &AsyncCache::DoGet,
+                                &AsyncCache::CancelGet,
+                                new GoogleString(key), callback));
   } else {
     ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
   }
 }
 
 void AsyncCache::MultiGet(MultiGetRequest* request) {
-  if (InitiateLookup()) {
-    QueuedWorkerPool::Sequence* sequence = pool_->NewSequence();
-    if (sequence == NULL) {
-      CancelMultiGet(request, sequence);
-    } else {
-      sequence->Add(MakeFunction(this, &AsyncCache::DoMultiGet,
-                                 &AsyncCache::CancelMultiGet, request,
-                                 sequence));
-    }
+  outstanding_operations_.increment(1);
+  if (IsHealthy()) {
+    sequence_->Add(MakeFunction(this, &AsyncCache::DoMultiGet,
+                                &AsyncCache::CancelMultiGet, request));
   } else {
-    MultiGetReportNotFound(request);
+    CancelMultiGet(request);
   }
 }
 
-void AsyncCache::DoGet(GoogleString key, Callback* callback,
-                       QueuedWorkerPool::Sequence* sequence) {
-  pool_->FreeSequence(sequence);
-  cache_->Get(key, callback);
-
-  {
-    ScopedMutex mutex(mutex_.get());
-    --active_threads_;
+void AsyncCache::DoGet(GoogleString* key, Callback* callback) {
+  if (IsHealthy()) {
+    cache_->Get(*key, callback);
+    delete key;
+    outstanding_operations_.increment(-1);
+  } else {
+    CancelGet(key, callback);
   }
 }
 
-void AsyncCache::CancelGet(GoogleString key, Callback* callback,
-                           QueuedWorkerPool::Sequence* sequence) {
-  // It is not necessary to free the sequence in this call.  In fact the
-  // sequence is already being freed, which is why this method is called.
+void AsyncCache::CancelGet(GoogleString* key, Callback* callback) {
+  ValidateAndReportResult(*key, CacheInterface::kNotFound, callback);
+  delete key;
+  outstanding_operations_.increment(-1);
+}
 
-  ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
-  {
-    ScopedMutex mutex(mutex_.get());
-    --active_threads_;
+void AsyncCache::DoMultiGet(MultiGetRequest* request) {
+  if (IsHealthy()) {
+    cache_->MultiGet(request);
+    outstanding_operations_.increment(-1);
+  } else {
+    CancelMultiGet(request);
   }
 }
 
-void AsyncCache::DoMultiGet(MultiGetRequest* request,
-                            QueuedWorkerPool::Sequence* sequence) {
-  pool_->FreeSequence(sequence);
-  cache_->MultiGet(request);
-
-  {
-    ScopedMutex mutex(mutex_.get());
-    --active_threads_;
-  }
-}
-
-void AsyncCache::CancelMultiGet(MultiGetRequest* request,
-                                QueuedWorkerPool::Sequence* sequence) {
-  // It is not necessary to free the sequence in this call.  In fact the
-  // sequence is already being freed, which is why this method is called.
-
-  MultiGetReportNotFound(request);
-  {
-    ScopedMutex mutex(mutex_.get());
-    --active_threads_;
-  }
-}
-
-void AsyncCache::MultiGetReportNotFound(MultiGetRequest* request) {
+void AsyncCache::CancelMultiGet(MultiGetRequest* request) {
   for (int i = 0, n = request->size(); i < n; ++i) {
     KeyCallback& key_callback = (*request)[i];
     ValidateAndReportResult(key_callback.key, CacheInterface::kNotFound,
                             key_callback.callback);
   }
   delete request;
+  outstanding_operations_.increment(-1);
 }
 
 void AsyncCache::Put(const GoogleString& key, SharedString* value) {
-  cache_->Put(key, value);
+  if (IsHealthy()) {
+    outstanding_operations_.increment(1);
+    value = new SharedString(*value);
+    sequence_->Add(
+        MakeFunction(this, &AsyncCache::DoPut, &AsyncCache::CancelPut,
+                     new GoogleString(key), value));
+  }
+}
+
+void AsyncCache::DoPut(GoogleString* key, SharedString* value) {
+  if (IsHealthy()) {
+    // TODO(jmarantz): Start timers at the beginning of each operation,
+    // particularly this one, and use long delays as a !IsHealthy signal.
+    cache_->Put(*key, value);
+  }
+  delete key;
+  delete value;
+  outstanding_operations_.increment(-1);
+}
+
+void AsyncCache::CancelPut(GoogleString* key, SharedString* value) {
+  delete key;
+  delete value;
+  outstanding_operations_.increment(-1);
 }
 
 void AsyncCache::Delete(const GoogleString& key) {
-  cache_->Delete(key);
+  if (IsHealthy()) {
+    outstanding_operations_.increment(1);
+    sequence_->Add(MakeFunction(this, &AsyncCache::DoDelete,
+                                &AsyncCache::CancelDelete,
+                                new GoogleString(key)));
+  }
 }
 
-void AsyncCache::StopCacheGets() {
-  ScopedMutex mutex(mutex_.get());
-  num_threads_ = 0;
+void AsyncCache::DoDelete(GoogleString* key) {
+  if (IsHealthy()) {
+    cache_->Delete(*key);
+  }
+  delete key;
+  outstanding_operations_.increment(-1);
+}
+
+void AsyncCache::CancelDelete(GoogleString* key) {
+  outstanding_operations_.increment(-1);
+  delete key;
+}
+
+void AsyncCache::StopCacheActivity() {
+  stopped_.set_value(true);
+  sequence_->CancelPendingFunctions();
 }
 
 }  // namespace net_instaweb
