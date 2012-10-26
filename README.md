@@ -51,7 +51,7 @@ ngx_pagespeed checkout:
 Now build nginx:
 
     $ cd /path/to/nginx
-    $ auto/configure --add-module=/path/to/ngx_pagespeed
+    $ auto/configure --with-debug --add-module=/path/to/ngx_pagespeed
     $ make install
 
 While ngx_pagespeed doesn't need to be anywhere specific in relation to nginx,
@@ -64,6 +64,7 @@ In your nginx.conf, add to the main or server block:
 
     pagespeed on;
     pagespeed_cache /path/to/cache/dir;
+    error_log logs/error.log debug;
 
 To confirm that the module is loaded, fetch a page and check that you see the
 following comment in the source:
