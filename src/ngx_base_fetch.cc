@@ -143,7 +143,7 @@ void NgxBaseFetch::RequestCollection() {
     rc = write(pipe_fd_, &c, 1);
     if (rc == 1) {
       break;
-    } else if (rc == EINTR || rc == EAGAIN || rc == EWOULDBLOCK) {
+    } else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
       // TODO(jefftk): is this rare enough that spinning isn't a problem?  Could
       // we get into a case where the pipe fills up and we spin forever?
       
