@@ -247,7 +247,7 @@ ngx_http_pagespeed_initialize_server_context(
   global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kPassThrough);
   global_options->EnableFiltersByCommaSeparatedList(
       "collapse_whitespace,remove_comments,remove_quotes,"
-      "inline_css,inline_javascript", cfg->handler);
+      "inline_css,inline_javascript,rewrite_css", cfg->handler);
 }
 
 // Returns:
