@@ -299,8 +299,8 @@ TEST_F(QueuedWorkerPoolTest, MaxQueueSize) {
   sequence->Add(new Increment(-97, &count));   // Cancels first increment.
   wait.Notify();
   done.Wait();
-  EXPECT_EQ(-97, count);
   worker_->FreeSequence(sequence);
+  EXPECT_EQ(-97, count);
 }
 
 TEST_F(QueuedWorkerPoolTest, CancelPending) {
@@ -316,8 +316,8 @@ TEST_F(QueuedWorkerPoolTest, CancelPending) {
   sequence->Add(new NotifyRunFunction(&done));
   wait.Notify();
   done.Wait();
-  EXPECT_EQ(-300, count);
   worker_->FreeSequence(sequence);
+  EXPECT_EQ(-300, count);
 }
 
 }  // namespace
