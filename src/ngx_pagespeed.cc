@@ -138,8 +138,6 @@ static void
 ngx_http_pagespeed_release_request_context(
     ngx_http_pagespeed_request_ctx_t* ctx) {
 
-  PDBG(ctx, "releasing request context");
-
   // BaseFetch doesn't delete itself
   delete ctx->base_fetch;
 
@@ -150,6 +148,7 @@ ngx_http_pagespeed_release_request_context(
   delete ctx;
 }
 
+// Tell nginx whether we have network activity we're waiting for.
 static void
 ngx_http_pagespeed_set_buffered(ngx_http_request_t* r, bool on) {
   if (on) {
@@ -216,15 +215,8 @@ ngx_http_pagespeed_determine_url(ngx_http_request_t* r) {
 // should already have been called to create it.
 static ngx_http_pagespeed_request_ctx_t*
 ngx_http_pagespeed_get_request_context(ngx_http_request_t* r) {
-  ngx_http_pagespeed_request_ctx_t* ctx =
-      static_cast<ngx_http_pagespeed_request_ctx_t*>(
-          ngx_http_get_module_ctx(r, ngx_pagespeed));
-  if (ctx != NULL && ctx->r != r) {
-    DBG(r, "ngx_http_pagespeed_get_request_context: "
-        "Broken request pointer");
-    return NULL;
-  }
-  return ctx;
+  return static_cast<ngx_http_pagespeed_request_ctx_t*>(
+      ngx_http_get_module_ctx(r, ngx_pagespeed));
 }
 
 // Initialize the ngx_http_pagespeed_srv_conf_t by allocating and configuring
@@ -247,12 +239,15 @@ ngx_http_pagespeed_initialize_server_context(
   cfg->proxy_fetch_factory =
       new net_instaweb::ProxyFetchFactory(cfg->server_context);
 
-  // Turn on some filters so we can see if this is working.
+  // Turn on some filters so we can see if this is working.  These filters are
+  // chosen to make sub-resource fetches but not create any *.pagespeed.*
+  // resource urls because we don't yet have a handler in place for them.
   net_instaweb::RewriteOptions* global_options =
       cfg->server_context->global_options();
   global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kPassThrough);
   global_options->EnableFiltersByCommaSeparatedList(
-      "collapse_whitespace,remove_comments,remove_quotes", cfg->handler);
+      "collapse_whitespace,remove_comments,remove_quotes,"
+      "inline_css,inline_javascript", cfg->handler);
 }
 
 // Returns:
@@ -514,7 +509,6 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
   }
 
   if (!ctx->data_received) {
-    DBG(r, "initial buffer");
     // This is the first set of buffers we've got for this request.
     ctx->data_received = true;
     ctx->base_fetch->PopulateHeaders();  // TODO(jefftk): is this thread safe?
@@ -524,8 +518,6 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
     // Send all input data to the proxy fetch.
     ngx_http_pagespeed_send_to_pagespeed(r, ctx, in);
   }  
-
-  DBG(r, "not finished until pagespeed returns");
 
   ngx_http_pagespeed_set_buffered(r, true);
   return NGX_AGAIN;

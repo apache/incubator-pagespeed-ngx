@@ -134,9 +134,9 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
   return NGX_OK;
 }
 
-void NgxBaseFetch::RequestCollection(char c) {
+void NgxBaseFetch::RequestCollection() {
   int rc;
-
+  char c = done_called_ ? 'F' : 'D';
   do {
     rc = write(pipe_fd_, &c, 1);
     if (rc < 0) {
@@ -146,13 +146,13 @@ void NgxBaseFetch::RequestCollection(char c) {
 }
 
 bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
-  RequestCollection('D');  // data available.
+  RequestCollection();  // data available.
   return true;
 }
 
 void NgxBaseFetch::HandleDone(bool success) {
   done_called_ = true;
-  RequestCollection('F');  // finished; can close the pipe.
+  RequestCollection();  // finished; can close the pipe.
   close(pipe_fd_);
   pipe_fd_ = -1;
 }
