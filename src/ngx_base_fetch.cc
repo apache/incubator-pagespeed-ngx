@@ -139,12 +139,19 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
 void NgxBaseFetch::RequestCollection() {
   int rc;
   char c = done_called_ ? 'F' : 'D';
-  do {
+  while (true) {
     rc = write(pipe_fd_, &c, 1);
-    if (rc < 0) {
+    if (rc == 1) {
+      break;
+    } else if (rc == EINTR || rc == EAGAIN || rc == EWOULDBLOCK) {
+      // TODO(jefftk): is this rare enough that spinning isn't a problem?  Could
+      // we get into a case where the pipe fills up and we spin forever?
+      
+    } else {
       perror("NgxBaseFetch::RequestCollection");
+      break;
     }
-  } while (rc != 1);  // Keep trying.
+  }
 }
 
 bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
