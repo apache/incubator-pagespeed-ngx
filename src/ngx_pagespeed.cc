@@ -45,11 +45,11 @@ extern ngx_module_t ngx_pagespeed;
 
 // Hacks for debugging.
 #define DBG(r, args...)                                       \
-  ngx_log_error(NGX_LOG_ALERT, (r)->connection->log, 0, args)
+  ngx_log_error(NGX_LOG_DEBUG, (r)->connection->log, 0, args)
 #define PDBG(ctx, args...)                                       \
-  ngx_log_error(NGX_LOG_ALERT, (ctx)->pagespeed_connection->log, 0, args)
+  ngx_log_error(NGX_LOG_DEBUG, (ctx)->pagespeed_connection->log, 0, args)
 #define CDBG(cf, args...)                                     \
-  ngx_conf_log_error(NGX_LOG_ALERT, cf, 0, args)
+  ngx_conf_log_error(NGX_LOG_DEBUG, cf, 0, args)
 
 typedef struct {
   ngx_flag_t active;
