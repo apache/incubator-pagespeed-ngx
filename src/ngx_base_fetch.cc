@@ -109,16 +109,16 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
   buffer_.copy(reinterpret_cast<char*>(b->pos), buffer_.length());
   b->last = b->end = b->pos + buffer_.length();
 
+  if (buffer_.length()) {
+    b->temporary = 1;
+  } else {
+    b->sync = 1;
+  }
+
   // Done with buffer contents now.
   buffer_.clear();
 
   // TODO(jefftk): release lock here.
-
-  if (buffer_.length()) {
-      b->temporary = 1;
-  } else {
-      b->sync = 1;
-  }
 
   b->last_buf = b->last_in_chain = done_called_;
   
