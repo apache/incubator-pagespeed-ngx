@@ -68,4 +68,14 @@ void ThreadsafeCache::Delete(const GoogleString& key) {
   cache_->Delete(key);
 }
 
+bool ThreadsafeCache::IsHealthy() const {
+  ScopedMutex mutex(mutex_.get());
+  return cache_->IsHealthy();
+}
+
+void ThreadsafeCache::ShutDown() {
+  ScopedMutex mutex(mutex_.get());
+  return cache_->ShutDown();
+}
+
 }  // namespace net_instaweb

@@ -103,6 +103,10 @@ class AprMemCache : public CacheInterface {
   // "memcache_squelched_message_count".
   bool ShouldLogAprError();
 
+  // TODO(jmarantz): Temporary implementations; real ones are coming soon.
+  virtual bool IsHealthy() const { return true; }
+  virtual void ShutDown() {}
+
  private:
   void DecodeValueMatchingKeyAndCallCallback(
       const GoogleString& key, const char* data, size_t data_len,

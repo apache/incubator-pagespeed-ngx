@@ -62,6 +62,16 @@ class FallbackCache : public CacheInterface {
             large_object_cache_->IsMachineLocal());
   }
 
+  virtual bool IsHealthy() const {
+    return (small_object_cache_->IsHealthy() &&
+            large_object_cache_->IsHealthy());
+  }
+
+  virtual void ShutDown() {
+    small_object_cache_->ShutDown();
+    large_object_cache_->ShutDown();
+  }
+
  private:
   void DecodeValueMatchingKeyAndCallCallback(
       const GoogleString& key, const char* data, size_t data_len,

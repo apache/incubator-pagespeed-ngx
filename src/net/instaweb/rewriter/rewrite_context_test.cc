@@ -914,6 +914,29 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   ClearStats();
 }
 
+TEST_F(RewriteContextTest, UnhealthyCacheNoHtmlRewrites) {
+  lru_cache()->set_is_healthy(false);
+  InitTrimFilters(kOnTheFlyResource);
+  InitResources();
+
+  // We expect no changes in the HTML because the system gives up without
+  // a healthy cache.  No cache lookups or fetches are attempted in this
+  // flow, though if we need to handle a request for a .pagespeed. url
+  // then we'll have to do fetches for that.
+  GoogleString input_html(CssLinkHref("a.css"));
+  rewrite_driver()->set_log_record(&log_record_);
+  ValidateNoChanges("trimmable", input_html);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_hits());
+}
+
+
 TEST_F(RewriteContextTest, TrimOnTheFlyOptimizableCacheInvalidation) {
   InitTrimFilters(kOnTheFlyResource);
   InitResources();
@@ -2074,6 +2097,72 @@ TEST_F(RewriteContextTest, CacheControlWithMultipleInputResources) {
   EXPECT_STREQ(kOriginTtlMaxAge, *values[0]);
   EXPECT_STREQ("private", *values[1]);
 }
+
+// Fetching & reconstructing a combined resource with a healthy cache.
+TEST_F(RewriteContextTest, CombineFetchHealthyCache) {
+  InitCombiningFilter(0);
+  InitResources();
+
+  GoogleString content;
+  ResponseHeaders headers;
+
+  GoogleString combined_url =
+      Encode(kTestDomain, kCombiningFilterId, "0",
+             MultiUrl("a.css", "b.css"), "css");
+  FetchResourceUrl(combined_url, &content, &headers);
+  EXPECT_EQ(" a b", content);
+
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(5, lru_cache()->num_misses())
+      << "output (twice; once after lock), metadata, 2 inputs";
+  EXPECT_EQ(4, lru_cache()->num_inserts()) << "ouptput, metadata, 2 inputs";
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+
+  // Now do the fetch again and we will get everything we need in one
+  // cache lookup.
+  ClearStats();
+  content.clear();
+  FetchResourceUrl(combined_url, &content, &headers);
+  EXPECT_EQ(" a b", content);
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+}
+
+// Fetching & reconstructing a combined resource with an unhealthy cache.
+TEST_F(RewriteContextTest, CombineFetchUnhealthyCache) {
+  lru_cache()->set_is_healthy(false);
+  InitCombiningFilter(0);
+  InitResources();
+
+  GoogleString content;
+  ResponseHeaders headers;
+
+  GoogleString combined_url =
+      Encode(kTestDomain, kCombiningFilterId, "0",
+             MultiUrl("a.css",
+                      "b.css"), "css");
+  FetchResourceUrl(combined_url, &content, &headers);
+  EXPECT_EQ(" a b", content);
+
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+
+  // Now do the fetch again.  Because we have no cache, we must fetch
+  // the inputs & recombine them, so the stats are exactly the same.
+  ClearStats();
+  content.clear();
+  FetchResourceUrl(combined_url, &content, &headers);
+  EXPECT_EQ(" a b", content);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+}
+
 
 // Verifies that we intersect cache-control when there are multiple input
 // resources.

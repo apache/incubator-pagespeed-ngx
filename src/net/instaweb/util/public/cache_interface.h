@@ -165,13 +165,19 @@ class CacheInterface {
   // locality if not sure/determinable.
   virtual bool IsMachineLocal() const = 0;
 
-  // Returns true if the cache is in a healthy state.  For memory and file-based
-  // caches, it is fine to leave the default implementation, which returns
-  // true.  But for server-based caches, it is handy to be able to query to
-  // see whether it is in a good state.  It should be safe to call this
-  // frequently -- the implementation shouldn't do much more than check a
-  // bool flag under mutex.
-  virtual bool IsHealthy() const { return true; }
+  // Returns true if the cache is in a healthy state.  Memory and
+  // file-based caches can simply return 'true'.  But for server-based
+  // caches, it is handy to be able to query to see whether it is in a
+  // good state.  It should be safe to call this frequently -- the
+  // implementation shouldn't do much more than check a bool flag
+  // under mutex.
+  virtual bool IsHealthy() const = 0;
+
+  // Stops all cache activity.  Further Put/Delete calls will be dropped, and
+  // MultiGet/Get will call the callback with kNotFound immediately.  Note there
+  // is no Enable(); once the cache is stopped it is stopped forever.  This
+  // function is intended for use during process shutdown.
+  virtual void ShutDown() = 0;
 
  protected:
   // Invokes callback->ValidateCandidate() and callback->Done() as appropriate.

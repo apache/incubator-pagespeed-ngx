@@ -46,7 +46,8 @@ class LRUCache : public CacheInterface {
  public:
   explicit LRUCache(size_t max_size)
       : max_bytes_in_cache_(max_size),
-        current_bytes_in_cache_(0) {
+        current_bytes_in_cache_(0),
+        is_healthy_(true) {
     ClearStats();
   }
   virtual ~LRUCache();
@@ -88,6 +89,10 @@ class LRUCache : public CacheInterface {
   virtual const char* Name() const { return "LRUCache"; }
   virtual bool IsBlocking() const { return true; }
   virtual bool IsMachineLocal() const { return true; }
+  virtual bool IsHealthy() const { return is_healthy_; }
+  virtual void ShutDown() { set_is_healthy(false); }
+
+  void set_is_healthy(bool x) { is_healthy_ = x; }
 
  private:
   typedef std::pair<const GoogleString*, SharedString> KeyValuePair;
@@ -107,6 +112,7 @@ class LRUCache : public CacheInterface {
   size_t num_inserts_;
   size_t num_identical_reinserts_;
   size_t num_deletes_;
+  bool is_healthy_;
   EntryList lru_ordered_list_;
   Map map_;
 

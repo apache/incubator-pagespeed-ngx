@@ -117,6 +117,7 @@
 #include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -2261,12 +2262,25 @@ HtmlResourceSlotPtr RewriteDriver::GetSlot(
 }
 
 void RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {
-  rewrites_.push_back(rewrite_context);
-  ++pending_rewrites_;
-  ++possibly_quick_rewrites_;
+  if (server_context_->metadata_cache()->IsHealthy()) {
+    rewrites_.push_back(rewrite_context);
+    ++pending_rewrites_;
+    ++possibly_quick_rewrites_;
+  } else {
+    // Drop all rewrites of metadata_cache is unhealthy.
+    delete rewrite_context;
+  }
 }
 
 void RewriteDriver::InitiateFetch(RewriteContext* rewrite_context) {
+  // TODO(jmarantz): consider setting a bit in the RewriteContext
+  // based on server_context_->metadata_cache()->IsHealthy() to tell
+  // the system not to perform any optimization on single resources,
+  // since the results would not wind up cached.  Instead, just serve
+  // the origin resource as it's fetched.  For combined resources, of
+  // course, we'll have to run the combiner logic on the fetched data
+  // after we collect it all in memory.
+
   // Note that we don't let the fetch start until ::FlushAsync(), above,
   // loops through all the rewriters_ and calls Initiate().  This
   // avoids races between rewriters mutating slots, and filters adding

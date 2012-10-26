@@ -63,6 +63,8 @@ class FileCache : public CacheInterface {
   virtual const char* Name() const { return "FileCache"; }
   virtual bool IsBlocking() const { return true; }
   virtual bool IsMachineLocal() const { return true; }
+  virtual bool IsHealthy() const { return true; }
+  virtual void ShutDown() {}  // TODO(jmarantz): implement.
 
  private:
   class CacheCleanFunction;

@@ -43,6 +43,11 @@ LRUCache::ListNode LRUCache::Freshen(KeyValuePair* key_value) {
 }
 
 void LRUCache::Get(const GoogleString& key, Callback* callback) {
+  if (!is_healthy_) {
+    ValidateAndReportResult(key, kNotFound, callback);
+    return;
+  }
+
   KeyState key_state = kNotFound;
   Map::iterator p = map_.find(key);
   if (p != map_.end()) {
@@ -60,6 +65,10 @@ void LRUCache::Get(const GoogleString& key, Callback* callback) {
 }
 
 void LRUCache::Put(const GoogleString& key, SharedString* new_value) {
+  if (!is_healthy_) {
+    return;
+  }
+
   // Just do one map operation, calling the awkward 'insert' which returns
   // a pair.  The bool indicates whether a new value was inserted, and the
   // iterator provides access to the element, whether it's new or old.
@@ -135,6 +144,10 @@ bool LRUCache::EvictIfNecessary(size_t bytes_needed) {
 }
 
 void LRUCache::Delete(const GoogleString& key) {
+  if (!is_healthy_) {
+    return;
+  }
+
   Map::iterator p = map_.find(key);
   if (p != map_.end()) {
     ListNode cell = p->second;

@@ -88,6 +88,9 @@ class AsyncCache : public CacheInterface {
   virtual bool IsHealthy() const {
     return !stopped_.value() && cache_->IsHealthy();
   }
+
+  virtual void ShutDown() { cache_->ShutDown(); }
+
   int32 outstanding_operations() { return outstanding_operations_.value(); }
 
  private:

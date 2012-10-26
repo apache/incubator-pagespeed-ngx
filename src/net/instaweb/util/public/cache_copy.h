@@ -52,6 +52,8 @@ class CacheCopy : public CacheInterface {
   virtual void MultiGet(MultiGetRequest* request) { cache_->MultiGet(request); }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
   virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
+  virtual bool IsHealthy() const { return cache_->IsHealthy(); }
+  virtual void ShutDown() { cache_->ShutDown(); }
 
  private:
   CacheInterface* cache_;

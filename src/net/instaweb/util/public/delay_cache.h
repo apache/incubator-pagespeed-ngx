@@ -75,6 +75,8 @@ class DelayCache : public CacheInterface {
   virtual const char* Name() const { return name_.c_str(); }
   virtual bool IsBlocking() const { return false; }
   virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
+  virtual bool IsHealthy() const { return cache_->IsHealthy(); }
+  virtual void ShutDown() { cache_->ShutDown(); }
 
  private:
   class DelayCallback;
