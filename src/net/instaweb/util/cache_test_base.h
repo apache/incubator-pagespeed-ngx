@@ -138,6 +138,11 @@ class CacheTestBase : public testing::Test {
     PostOpCleanup();
   }
 
+  void CheckDelete(const GoogleString& key) {
+    Cache()->Delete(key);
+    PostOpCleanup();
+  }
+
   // Performs a Get and verifies that the key is not found.
   void CheckNotFound(const char* key) {
     CheckNotFound(Cache(), key);

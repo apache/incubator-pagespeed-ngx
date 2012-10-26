@@ -89,7 +89,8 @@ class CacheBatcherTest : public CacheTestBase {
   // schedule another lookup.  To test the sequences we want, wait
   // till the batcher catches up with our expectations.
   virtual void PostOpCleanup() {
-    while (batcher_->Pending() != expected_pending_) {
+    while ((batcher_->Pending() != expected_pending_) ||
+           (async_cache_->outstanding_operations() != 0)) {
       timer_->SleepMs(1);
     }
   }
@@ -133,7 +134,7 @@ TEST_F(CacheBatcherTest, PutGetDelete) {
   EXPECT_EQ(static_cast<size_t>(12), lru_cache_->size_bytes());
   EXPECT_EQ(static_cast<size_t>(1), lru_cache_->num_elements());
 
-  batcher_->Delete("Name");
+  CheckDelete("Name");
   lru_cache_->SanityCheck();
   CheckNotFound("Name");
   EXPECT_EQ(static_cast<size_t>(0), lru_cache_->size_bytes());

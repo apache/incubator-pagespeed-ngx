@@ -256,7 +256,7 @@ TEST_F(AsyncCacheTest, PutGetDelete) {
   EXPECT_EQ(static_cast<size_t>(12), lru_cache_->size_bytes());
   EXPECT_EQ(static_cast<size_t>(1), lru_cache_->num_elements());
 
-  async_cache_->Delete("Name");
+  CheckDelete("Name");
   lru_cache_->SanityCheck();
   SharedString value_buffer;
   CheckNotFound("Name");
@@ -381,7 +381,7 @@ TEST_F(AsyncCacheTest, NoDeletesOnSickServer) {
   PopulateCache(3);
   CheckGet("n0", "v0");
   synced_lru_cache_->set_is_healthy(false);
-  async_cache_->Delete("n0");
+  CheckDelete("n0");
   synced_lru_cache_->set_is_healthy(true);
   CheckGet("n0", "v0");
 }
@@ -390,7 +390,7 @@ TEST_F(AsyncCacheTest, CancelOutstandingDeletes) {
   PopulateCache(3);
   Callback* n0 = InitiateDelayedGet("n0");
   ++expected_outstanding_operations_;  // Delete will be blocked.
-  async_cache_->Delete("n1");
+  CheckDelete("n1");
   async_cache_->CancelPendingOperations();  // Delete will not happen.
   --expected_outstanding_operations_;  // Delete was canceled.
   ReleaseKey("n0");
@@ -402,7 +402,7 @@ TEST_F(AsyncCacheTest, DeleteNotQueuedOnSickServer) {
   PopulateCache(3);
   Callback* n0 = InitiateDelayedGet("n0");
   synced_lru_cache_->set_is_healthy(false);
-  async_cache_->Delete("n1");
+  CheckDelete("n1");
   synced_lru_cache_->set_is_healthy(true);
   ReleaseKey("n0");
   WaitAndCheck(n0, "v0");
@@ -463,7 +463,7 @@ TEST_F(AsyncCacheTest, RetireOldOperations) {
   Callback* n3 = InitiateGet("n3");
 
   ++expected_outstanding_operations_;
-  async_cache_->Delete("n1");
+  CheckDelete("n1");
 
   ++expected_outstanding_operations_;
   CheckPut("n5", "v5");
@@ -471,11 +471,19 @@ TEST_F(AsyncCacheTest, RetireOldOperations) {
   // Now make a bunch of new Delete calls which, though ineffective, will push
   // the above operations out of the FIFO causing them to fail.
   for (int64 i = 0; i < AsyncCache::kMaxQueueSize; ++i) {
-    async_cache_->Delete("no such key anyway");
+    ++expected_outstanding_operations_;  // The deletes are blocked.
+    CheckDelete("no such key anyway");
   }
 
   ReleaseKey("n0");
   WaitAndCheck(n0, "v0");
+
+  // The bogus Deletes have pushed all the gets other than n0 off the queue.
+  // Because we released the blocking Get that was active ahead of
+  // the bogus deletes will all be executed and we should have drained
+  // the queue.
+  expected_outstanding_operations_ = 0;
+  PostOpCleanup();   // waits for the Deletes to complete.
 
   // Now see that the MultiGet and Get failed.
   WaitAndCheckNotFound(n1);          // 'MultiGet' was never queued because
