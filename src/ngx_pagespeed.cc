@@ -259,10 +259,18 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
                           ngx_event_t* ev) {
   int rc;
   char chr;
-  rc = read(ctx->pipe_fd, &chr, 1);
+  do {
+    rc = read(ctx->pipe_fd, &chr, 1);
+  } while (rc != 1 && errno == EINTR);  // Retry on EINTR.
+
   if (rc != 1) {
-    perror("ngx_http_pagespeed_connection_read_handler");
-    return NGX_ERROR;
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      PDBG(ctx, "no data to read from pagespeed yet");
+      return NGX_AGAIN;
+    } else {
+      perror("ngx_http_pagespeed_connection_read_handler");
+      return NGX_ERROR;
+    }
   }
 
   // Get any finished data back
