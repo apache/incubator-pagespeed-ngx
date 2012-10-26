@@ -264,6 +264,9 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
     rc = read(ctx->pipe_fd, &chr, 1);
   } while (rc != 1 && errno == EINTR);  // Retry on EINTR.
 
+  // read() should only ever return 0 (closed), 1 (data), or -1 (error).
+  CHECK(rc == -1 || rc == 0 || rc == 1);
+
   if (rc == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       PDBG(ctx, "no data to read from pagespeed yet");
@@ -272,14 +275,9 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
       perror("ngx_http_pagespeed_connection_read_handler");
       return NGX_ERROR;
     }
-  } else if (rc == 0) {
-    done = true;  // Pipe closed; rewrite complete.
-  } else if (rc == 1) {
-    done = false;  // Pipe open; data to pick up.
   } else {
-    // read() should only ever return 0 (closed), 1 (data), or -1 (error).
-    PDBG(ctx, "this should never happen");
-    return NGX_ERROR;
+    // We're done iff we read 0 bytes because that means the pipe was closed.
+    done = (rc == 0);
   }
 
   // Get output from pagespeed.
@@ -323,26 +321,18 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
   }
 
   rc = ngx_http_pagespeed_update(ctx, ev);
-  if (rc == NGX_OK) {
-    PDBG(ctx, "NGX_OK");
-    // request complete
+  CHECK(rc == NGX_OK || rc == NGX_ERROR || rc == NGX_AGAIN);
+  if (rc == NGX_AGAIN) {
+    // request needs more work by pagespeed
+    rc = ngx_handle_read_event(ev, 0);    
+    CHECK(rc == NGX_OK);
+  } else {
     ngx_del_event(ev, NGX_READ_EVENT, 0);
     ngx_http_pagespeed_set_buffered(ctx->r, false);
-    ngx_http_finalize_request(ctx->r, NGX_DONE);
+    ngx_http_finalize_request(ctx->r, rc == NGX_OK ? NGX_DONE : NGX_ERROR);
+
+    // TODO(jefftk): move this to a request cleanup handler.
     ngx_http_pagespeed_release_request_context(ctx);
-  } else if (rc == NGX_ERROR) {
-    PDBG(ctx, "NGX_ERROR");
-    ngx_del_event(ev, NGX_READ_EVENT, 0);
-    ngx_http_finalize_request(ctx->r, NGX_ERROR);
-  } else if (rc == NGX_AGAIN) { 
-    PDBG(ctx, "NGX_AGAIN");
-    // request needs more work by pagespeed
-    rc = ngx_handle_read_event(ev, 0);
-    if (rc != NGX_OK) {
-      PDBG(ctx, "'ngx_handle_read_event failed'");
-    }
-  } else {
-    PDBG(ctx, "'Got %d from ngx_http_pagespeed_update'", rc);
   }
 }
 
