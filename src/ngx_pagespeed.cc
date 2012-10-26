@@ -238,8 +238,6 @@ ngx_http_pagespeed_initialize_server_context(
   // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
   // we're done with it.
 
-  // TODO(jefftk): Replace this with a real message handler that logs errors
-  // somewhere useful.
   cfg->handler = new net_instaweb::GoogleMessageHandler();
 
   cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
@@ -249,14 +247,10 @@ ngx_http_pagespeed_initialize_server_context(
   cfg->proxy_fetch_factory =
       new net_instaweb::ProxyFetchFactory(cfg->server_context);
 
-  // Turn on some filters so we can see if this is working.  These filters are
-  // specifically chosen as ones that don't make requests for subresources or do
-  // work that needs to complete asynchronously.  They should be fast enough to
-  // run in the line of the request.
+  // Turn on some filters so we can see if this is working.
   net_instaweb::RewriteOptions* global_options =
       cfg->server_context->global_options();
-  //global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kPassThrough);
-  global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kCoreFilters);
+  global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kPassThrough);
   global_options->EnableFiltersByCommaSeparatedList(
       "collapse_whitespace,remove_comments,remove_quotes", cfg->handler);
 }
@@ -268,9 +262,6 @@ ngx_http_pagespeed_initialize_server_context(
 static ngx_int_t
 ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
                           ngx_event_t* ev) {
-
-  fprintf(stderr, "ngx_http_pagespeed_update\n");
-
   int rc;
   char chr;
   rc = read(ctx->pipe_fd, &chr, 1);
@@ -278,7 +269,6 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
     perror("ngx_http_pagespeed_connection_read_handler");
     return NGX_ERROR;
   }
-  fprintf(stderr, "Got '%c'\n", chr);
 
   // Get any finished data back
   ngx_chain_t* cl;
@@ -288,13 +278,6 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
     return rc;
   }
 
-  if (cl == NULL) {
-    PDBG(ctx, "got null from pagespeed");
-  } else {
-    PDBG(ctx, "got '%*s' from pagespeed (last buf: %d)",
-         cl->buf->end - cl->buf->pos, cl->buf->pos, cl->buf->last_buf);
-  }
-
   rc = ngx_http_next_body_filter(ctx->r, cl);
   if (rc != NGX_OK) {
     return rc;
@@ -302,7 +285,7 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
   
   if (chr == 'D' /* more data */) {
     return NGX_AGAIN;
-  } else {
+  } else /* chr == 'F' */ {
     return NGX_OK;
   }
 }
@@ -363,8 +346,6 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
 
   ngx_http_pagespeed_request_ctx_t* ctx =
       new ngx_http_pagespeed_request_ctx_t();
-
-  DBG(r, "created request context %p for %p\n", ctx, r);
 
   ctx->r = r;
 

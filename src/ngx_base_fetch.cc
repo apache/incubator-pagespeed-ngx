@@ -146,10 +146,6 @@ void NgxBaseFetch::RequestCollection(char c) {
 }
 
 bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
-  // Do nothing for now.
-  // TODO(jefftk): let nginx know through some pipe that it should call
-  // CollectAccumulatedWrites() from it's main thread.
-  handler->Message(kInfo, "Have accumulated '%s'", buffer_.c_str());
   RequestCollection('D');  // data available.
   return true;
 }
