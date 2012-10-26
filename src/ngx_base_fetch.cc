@@ -138,7 +138,7 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
 
 void NgxBaseFetch::RequestCollection() {
   int rc;
-  char c = done_called_ ? 'F' : 'D';
+  char c = 'A';  // What byte we write is arbitrary.
   while (true) {
     rc = write(pipe_fd_, &c, 1);
     if (rc == 1) {
@@ -161,8 +161,7 @@ bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
 
 void NgxBaseFetch::HandleDone(bool success) {
   done_called_ = true;
-  RequestCollection();  // finished; can close the pipe.
-  close(pipe_fd_);
+  close(pipe_fd_);  // Indicates to nginx that we're done with the rewrite.
   pipe_fd_ = -1;
 }
 

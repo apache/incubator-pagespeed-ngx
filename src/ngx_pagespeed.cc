@@ -257,13 +257,14 @@ ngx_http_pagespeed_initialize_server_context(
 static ngx_int_t
 ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
                           ngx_event_t* ev) {
+  bool done;
   int rc;
   char chr;
   do {
     rc = read(ctx->pipe_fd, &chr, 1);
   } while (rc != 1 && errno == EINTR);  // Retry on EINTR.
 
-  if (rc != 1) {
+  if (rc == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       PDBG(ctx, "no data to read from pagespeed yet");
       return NGX_AGAIN;
@@ -271,9 +272,17 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
       perror("ngx_http_pagespeed_connection_read_handler");
       return NGX_ERROR;
     }
+  } else if (rc == 0) {
+    done = true;  // Pipe closed; rewrite complete.
+  } else if (rc == 1) {
+    done = false;  // Pipe open; data to pick up.
+  } else {
+    // read() should only ever return 0 (closed), 1 (data), or -1 (error).
+    PDBG(ctx, "this should never happen");
+    return NGX_ERROR;
   }
 
-  // Get any finished data back
+  // Get output from pagespeed.
   ngx_chain_t* cl;
   rc = ctx->base_fetch->CollectAccumulatedWrites(&cl);
   if (rc != NGX_OK) {
@@ -286,11 +295,7 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
     return rc;
   }
   
-  if (chr == 'D' /* more data */) {
-    return NGX_AGAIN;
-  } else /* chr == 'F' */ {
-    return NGX_OK;
-  }
+  return done ? NGX_OK : NGX_AGAIN;
 }
 
 static void
@@ -345,8 +350,6 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
 // ngx_http_pagespeed_release_request_context.
 static ngx_int_t
 ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
-  fprintf(stderr, "ngx_http_pagespeed_create_request_context\n");
-
   ngx_http_pagespeed_request_ctx_t* ctx =
       new ngx_http_pagespeed_request_ctx_t();
 
