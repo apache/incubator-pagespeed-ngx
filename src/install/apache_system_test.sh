@@ -210,8 +210,7 @@ mkdir $OUTDIR
 IMG_REWRITE=$TEST_ROOT"/image_rewriting/rewrite_images.html"
 REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
 URL=$REWRITE_URL"&"$IMAGES_QUALITY"=75"
-fetch_until $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
-check run_wget_with_args $URL
+fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
 check [ "$(stat -c %s $OUTDIR/*256x192*Puzzle*)" -le 8155  ]  # resized
 
 echo TEST: quality of jpeg output images
@@ -220,8 +219,7 @@ mkdir $OUTDIR
 IMG_REWRITE=$TEST_ROOT"/jpeg_rewriting/rewrite_images.html"
 REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
 URL=$REWRITE_URL",recompress_jpeg&"$IMAGES_QUALITY"=85&"$JPEG_QUALITY"=70"
-fetch_until $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
-check run_wget_with_args $URL
+fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
 check [ "$(stat -c %s $OUTDIR/*256x192*Puzzle*)" -le 7564  ]  # resized
 
 echo TEST: quality of webp output images
@@ -646,8 +644,9 @@ PLAIN_HEADER="header=value"
 X_OTHER_HEADER="x-other=False"
 
 URL="http://$HOSTNAME/mod_pagespeed_log_request_headers.js.pagespeed.jm.0.js"
-check grep "$PLAIN_HEADER" <($WGET_DUMP $URL)
-check grep "$X_OTHER_HEADER" <($WGET_DUMP $URL)
+WGET_OUT=$($WGET_DUMP $URL)
+check_from "$WGET_OUT" grep "$PLAIN_HEADER"
+check_from "$WGET_OUT" grep "$X_OTHER_HEADER"
 
 echo "TEST: Send custom fetch headers on resource subfetches."
 URL=$TEST_ROOT/custom_fetch_headers.html?ModPagespeedFilters=inline_javascript

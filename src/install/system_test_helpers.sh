@@ -295,6 +295,7 @@ function fetch_until() {
     fi
     if [ $recursive -eq 1 ]; then
       rm -rf $OUTDIR
+      mkdir $OUTDIR
     else
       rm -f "$FETCH_FILE"
     fi

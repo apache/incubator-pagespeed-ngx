@@ -382,17 +382,15 @@ echo TEST: rewrite_css,sprite_images sprites images in CSS.
 FILE=sprite_images.html?ModPagespeedFilters=rewrite_css,sprite_images
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
-fetch_until -save $URL 'grep -c css.pagespeed.cf' 1
+fetch_until -save -recursive $URL 'grep -c css.pagespeed.cf' 1
 
 # Extract out the rewritten CSS file from the HTML saved by fetch_until
 # above (see -save and definition of fetch_until).  Fetch that CSS
 # file and look inside for the sprited image reference (ic.pagespeed.is...).
-CSS=$(grep stylesheet "$FETCH_UNTIL_OUTFILE" | cut -d\" -f 6)
+CSS=$(grep stylesheet "$OUTDIR/$(basename $URL)" | cut -d\" -f 6)
 echo css is $CSS
-SPRITE_CSS_OUT="$OUTDIR/sprite_css_output"
-echo $WGET_DUMP $CSS '>' "$SPRITE_CSS_OUT"
-$WGET_DUMP $CSS > "$SPRITE_CSS_OUT"
-echo ""
+SPRITE_CSS_OUT="$OUTDIR/$(basename $CSS)"
+echo css file = $SPRITE_CSS_OUT
 check [ $(grep -c "ic.pagespeed.is" "$SPRITE_CSS_OUT") -gt 0 ]
 
 test_filter rewrite_javascript minifies JavaScript and saves bytes.
