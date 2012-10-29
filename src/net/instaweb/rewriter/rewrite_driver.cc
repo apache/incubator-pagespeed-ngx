@@ -1946,6 +1946,7 @@ void RewriteDriver::WriteClientStateIntoPropertyCache() {
 
 void RewriteDriver::FinalizeFilterLogging() {
   if (log_record_ != NULL) {
+    log_record_->logging_info()->set_furious_id(options()->furious_id());
     log_record_->Finalize();
   }
   log_record_ = NULL;

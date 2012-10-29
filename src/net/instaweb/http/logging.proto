@@ -86,7 +86,7 @@ message MetadataCacheInfo {
 }
 
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 6
+// Next id for LoggingInfo: 7
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -99,4 +99,6 @@ message LoggingInfo {
   optional MetadataCacheInfo metadata_cache_info = 4;
   // Whether the original resource is cacheable.
   optional bool is_original_resource_cacheable = 5 [ default = true ];
+  // Furious ID used for this request.
+  optional int32 furious_id = 6;
 }
