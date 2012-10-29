@@ -31,7 +31,9 @@
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -428,6 +430,33 @@ class ImageRewriteTest : public RewriteTestBase {
     return property_page->GetProperty(
         cohort, ImageRewriteFilter::kInlinableImageUrlsPropertyName);
   }
+
+  // Test dimensions of an optimized image by fetching it.
+  void TestDimensionRounding(
+      StringPiece leaf, int expected_width, int expected_height) {
+    GoogleString initial_url = StrCat(kTestDomain, kPuzzleJpgFile);
+    GoogleString fetch_url = StrCat(kTestDomain, leaf);
+    AddFileToMockFetcher(initial_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
+    // Set up resizing
+    options()->EnableFilter(RewriteOptions::kResizeImages);
+    rewrite_driver()->AddFilters();
+    // Perform resource fetch
+    ExpectStringAsyncFetch expect_callback(true);
+    EXPECT_TRUE(rewrite_driver()->FetchResource(fetch_url, &expect_callback));
+    rewrite_driver()->WaitForCompletion();
+    EXPECT_EQ(HttpStatus::kOK,
+              expect_callback.response_headers()->status_code()) <<
+        "Looking for " << fetch_url;
+    // Look up dimensions of resulting image
+    scoped_ptr<Image> image(
+        NewImage(expect_callback.buffer(),
+                 fetch_url, server_context_->filename_prefix(),
+                 new Image::CompressionOptions(), &message_handler_));
+    ImageDim image_dim;
+    image->Dimensions(&image_dim);
+    EXPECT_EQ(expected_width, image_dim.width());
+    EXPECT_EQ(expected_height, image_dim.height());
+  }
 };
 
 TEST_F(ImageRewriteTest, ImgTag) {
@@ -715,6 +744,20 @@ TEST_F(ImageRewriteTest, ResizeHeightOnly) {
   const char kResizedDims[] = " height=\"192\"";
   TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     kResizedDims, kResizedDims, true, false);
+}
+
+TEST_F(ImageRewriteTest, ResizeHeightRounding) {
+  // Make sure fractional heights are rounded.  We used to truncate, but this
+  // didn't match WebKit's behavior.  To check this we need to fetch the resized
+  // image and verify its dimensions.  The original image is 1023 x 766.
+  const char kLeafNoHeight[] = "256xNxPuzzle.jpg.pagespeed.ic.0.jpg";
+  TestDimensionRounding(kLeafNoHeight, 256, 192);
+}
+
+TEST_F(ImageRewriteTest, ResizeWidthRounding) {
+  // Make sure fractional widths are rounded, as above (with the same image).
+  const char kLeafNoWidth[] = "Nx383xPuzzle.jpg.pagespeed.ic.0.jpg";
+  TestDimensionRounding(kLeafNoWidth, 512, 383);
 }
 
 TEST_F(ImageRewriteTest, ResizeStyleTest) {

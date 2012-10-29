@@ -293,28 +293,30 @@ bool ResizeImageIfNecessary(
        options->Enabled(RewriteOptions::kConvertGifToPng) ||
        options->NeedLowResImages())) {
     if (!desired_dim->has_width()) {
-      // Fill in a missing page height
-      // multiply page_height * (image_width / image_height),
-      // but to avoid fractions we instead group as
-      // (page_height * image_width) / image_height and do the
-      // math in int64 to avoid overflow in the numerator.
-      // Note that we can fiddle with rounding by adding factors
-      // of image_height to the numerator before we divide.
-      int64 page_height = desired_dim->height();
-      int64 page_width =
-          (page_height * image_dim.width()) / image_dim.height();
+      // Fill in a missing page height:
+      //   page_height * (image_width / image_height),
+      // rounding the result.
+      // To avoid fractions we instead group as
+      //   (page_height * image_width) / image_height and do the
+      // math in int64 to avoid overflow in the numerator.  The additional
+      // image_height / 2 causes us to round rather than truncate.
+      const int64 page_height = desired_dim->height();
+      const int64 image_height = image_dim.height();
+      const int64 page_width =
+          (page_height * image_dim.width() + image_height / 2) / image_height;
       desired_dim->set_width(static_cast<int32>(page_width));
     } else if (!desired_dim->has_height()) {
       // Fill in a missing page width
       // Math as above, swapping width and height.
-      int64 page_width = desired_dim->width();
-      int64 page_height =
-          (page_width * image_dim.height()) / image_dim.width();
+      const int64 page_width = desired_dim->width();
+      const int64 image_width = image_dim.width();
+      const int64 page_height =
+          (page_width * image_dim.height() + image_width / 2) / image_width;
       desired_dim->set_height(static_cast<int32>(page_height));
     }
-    int64 page_area =
+    const int64 page_area =
         static_cast<int64>(desired_dim->width()) * desired_dim->height();
-    int64 image_area =
+    const int64 image_area =
         static_cast<int64>(image_dim.width()) * image_dim.height();
     if (page_area * 100 <
         image_area * options->image_limit_resize_area_percent()) {
@@ -770,14 +772,10 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
         !HasAnyDimensions(element) &&
         cached->has_image_file_dims() &&
         ImageUrlEncoder::HasValidDimensions(cached->image_file_dims())) {
-      // Add image dimensions. We don't bother if even a single image
-      // dimension is already specified---even though we don't resize in that
-      // case, either, because we might be off by a pixel in the other
-      // dimension from the size chosen by the browser. We also don't bother
-      // to resize if either dimension is specified with units (px, em, %)
-      // rather than as absolute pixels. But note that we DO attempt to
-      // include image dimensions even if we otherwise choose not to optimize
-      // an image.
+      // Add image dimensions. We don't bother to resize if either dimension is
+      // specified with units (em, %) rather than as absolute pixels. But note
+      // that we DO attempt to include image dimensions even if we otherwise
+      // choose not to optimize an image.
       const ImageDim& file_dims = cached->image_file_dims();
       driver_->AddAttribute(element, HtmlName::kWidth, file_dims.width());
       driver_->AddAttribute(element, HtmlName::kHeight, file_dims.height());
