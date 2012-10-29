@@ -49,26 +49,49 @@ class NgxBaseFetch : public AsyncFetch {
   // Copies the response headers out of request_->headers_out->headers.
   void PopulateHeaders();
 
-  // Puts a chain link in link_ptr if we have any output data buffered.  Returns
+  // Puts a chain in link_ptr if we have any output data buffered.  Returns
   // NGX_OK on success, NGX_ERROR on errors.  If there's no data to send, sends
   // data only if Done() has been called.  Indicates the end of output by
-  // setting last_buf on the chain link
+  // setting last_buf on the last buffer in the chain.
   //
-  // Always sets link_ptr to a single chain link, never a full chain.
+  // Sets link_ptr to a chain of as many buffers are needed for the output.
   //
-  // Called by nginx.
+  // Called by nginx in response to seeing a byte on the pipe.
   ngx_int_t CollectAccumulatedWrites(ngx_chain_t** link_ptr);
 
+  // Copies response headers into headers_out.
+  //
+  // Called by nginx before calling CollectAccumulatedWrites() for the first
+  // time for resource fetches.  Not called at all for proxy fetches.
+  ngx_int_t CollectHeaders(ngx_http_headers_out_t* headers_out);
+
  private:
-  ResponseHeaders response_headers_;
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
   virtual bool HandleFlush(MessageHandler* handler);
-  virtual void HandleHeadersComplete() {}
+  virtual void HandleHeadersComplete();
   virtual void HandleDone(bool success);
 
   // Indicate to nginx that we would like it to call
   // CollectAccumulatedWrites().
   void RequestCollection();
+
+  // Lock must be acquired first.
+  // Returns:
+  //   NGX_DECLINED: nothing to send, short circuit.  Buffer not allocated.
+  //   NGX_OK, NGX_ERROR: success, failure
+  // Allocates an nginx buffer, copies our buffer_ contents into it, clears
+  // buffer_.
+  ngx_int_t CopyBufferToNginx(ngx_chain_t** link_ptr);
+
+  // Acquire this lock before manipulating buffer_.
+  // TODO(jefftk): Actually implement this.  Possibly with ngx_shmtx_lock and
+  // ngx_shmtx_unlock.
+  void Lock() {
+    fprintf(stderr, "Would lock buffer_\n");
+  }
+  void Unlock() {
+    fprintf(stderr, "Would unlock buffer_\n");
+  }
 
   ngx_http_request_t* request_;
   GoogleString buffer_;
