@@ -99,10 +99,8 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
   if (b == NULL) {
     return NGX_ERROR;
   }
-  // TODO(jefftk): ngx_pnalloc() returns unaligned pointers which might slow
-  // down buffer_.copy() below.
   b->start = b->pos = static_cast<u_char*>(
-      ngx_pnalloc(request_->pool, buffer_.length()));
+      ngx_palloc(request_->pool, buffer_.length()));
   if (b->pos == NULL) {
     return NGX_ERROR;
   }
