@@ -99,6 +99,8 @@ void ApacheConfig::AddProperties() {
              RewriteOptions::kUseSharedMemLocking);
   add_option(false, &ApacheConfig::slurp_read_only_, "asro",
              RewriteOptions::kSlurpReadOnly);
+  add_option(false, &ApacheConfig::rate_limit_background_fetches_, "rlbf",
+             RewriteOptions::kRateLimitBackgroundFetches);
 
   add_option(Timer::kHourMs, &ApacheConfig::file_cache_clean_interval_ms_,
              "afcci", RewriteOptions::kFileCacheCleanIntervalMs);

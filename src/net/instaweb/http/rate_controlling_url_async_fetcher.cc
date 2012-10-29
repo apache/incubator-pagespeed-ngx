@@ -286,6 +286,12 @@ void RateControllingUrlAsyncFetcher::Fetch(const GoogleString& url,
   return;
 }
 
+void RateControllingUrlAsyncFetcher::ShutDown() {
+  // For now, we rely on the base fetcher shutdown to quickly reject everything
+  // we push to it.
+  base_fetcher_->ShutDown();
+}
+
 void RateControllingUrlAsyncFetcher::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCurrentGlobalFetchQueueSize);
   statistics->AddTimedVariable(kQueuedFetchCount,

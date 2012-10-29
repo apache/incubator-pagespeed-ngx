@@ -49,6 +49,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -209,6 +210,8 @@ const char kModPagespeedNumExpensiveRewriteThreads[] =
     "ModPagespeedNumExpensiveRewriteThreads";
 const char kModPagespeedNumRewriteThreads[] = "ModPagespeedNumRewriteThreads";
 const char kModPagespeedNumShards[] = "ModPagespeedNumShards";
+const char kModPagespeedRateLimitBackgroundFetches[] =
+    "ModPagespeedRateLimitBackgroundFetches";
 const char kModPagespeedRefererStatisticsOutputLevel[] =
     "ModPagespeedRefererStatisticsOutputLevel";
 const char kModPagespeedReportUnloadTime[] = "ModPagespeedReportUnloadTime";
@@ -1772,6 +1775,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Number of threads to use for computation-intensive portions of "
         "resource-rewriting. <= 0 to auto-detect"),
   APACHE_CONFIG_OPTION(kModPagespeedNumShards, "No longer used."),
+  APACHE_CONFIG_OPTION(kModPagespeedRateLimitBackgroundFetches,
+         "Rate-limit the number of background HTTP fetches done at once"),
   APACHE_CONFIG_OPTION(kModPagespeedReportUnloadTime,
          "If set reports optional page unload time."),
   APACHE_CONFIG_OPTION(kModPagespeedSharedMemoryLocks,

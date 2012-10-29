@@ -70,6 +70,8 @@ class RateControllingUrlAsyncFetcher : public UrlAsyncFetcher {
                      MessageHandler* message_handler,
                      AsyncFetch* fetch);
 
+  virtual void ShutDown();
+
   // Initializes statistics variables associated with this class.
   static void InitStats(Statistics* statistics);
 

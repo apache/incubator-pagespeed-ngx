@@ -258,6 +258,7 @@ class RewriteOptions {
     kMemcachedServers,
     kMemcachedThreads,
     kMessageBufferSize,
+    kRateLimitBackgroundFetches,
     kRefererStatisticsOutputLevel,
     kSlurpDirectory,
     kSlurpFlushLimit,

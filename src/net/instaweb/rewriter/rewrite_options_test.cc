@@ -664,7 +664,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(113, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(114, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AjaxRewritingEnabled",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAjaxRewritingEnabled));
@@ -928,6 +928,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("MemcachedThreads",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kMemcachedThreads));
+  EXPECT_STREQ("RateLimitBackgroundFetches",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kRateLimitBackgroundFetches));
   EXPECT_STREQ("RefererStatisticsOutputLevel",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kRefererStatisticsOutputLevel));

@@ -149,6 +149,9 @@ class ApacheConfig : public RewriteOptions {
   void set_slurp_read_only(bool x) {
     set_option(x, &slurp_read_only_);
   }
+  bool rate_limit_background_fetches() const {
+    return rate_limit_background_fetches_.value();
+  }
   RefererStatisticsOutputLevel referer_statistics_output_level() const {
     return referer_statistics_output_level_.value();
   }
@@ -334,6 +337,7 @@ class ApacheConfig : public RewriteOptions {
   Option<bool> test_proxy_;
   Option<bool> use_shared_mem_locking_;
   Option<bool> slurp_read_only_;
+  Option<bool> rate_limit_background_fetches_;
 
   Option<int> memcached_threads_;
 

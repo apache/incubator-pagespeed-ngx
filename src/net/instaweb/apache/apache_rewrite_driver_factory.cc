@@ -47,6 +47,7 @@
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_writer.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
@@ -521,7 +522,26 @@ UrlAsyncFetcher* ApacheRewriteDriverFactory::GetFetcher(ApacheConfig* config) {
         fetcher = new FakeUrlAsyncFetcher(dump_writer);
       }
     } else {
-      fetcher = GetSerfFetcher(config);
+      SerfUrlAsyncFetcher* serf = GetSerfFetcher(config);
+      fetcher = serf;
+      if (config->rate_limit_background_fetches()) {
+        // Unfortunately, we need stats for load-shedding.
+        if (config->statistics_enabled()) {
+          CHECK(thread_counts_finalized_);
+          int multiplier = std::min(4, num_rewrite_threads_);
+          defer_cleanup(new Deleter<SerfUrlAsyncFetcher>(serf));
+          fetcher = new RateControllingUrlAsyncFetcher(
+              serf,
+              500 * multiplier /* max queue size */,
+              multiplier /* requests/host */,
+              500 * multiplier /* queued per host */,
+              thread_system(),
+              statistics());
+        } else {
+          message_handler()->Message(
+              kError, "Can't enable fetch rate-limiting without statistics");
+        }
+      }
     }
     iter->second = fetcher;
   }
@@ -788,6 +808,7 @@ void ApacheRewriteDriverFactory::Initialize() {
 void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
   RewriteDriverFactory::InitStats(statistics);
   SerfUrlAsyncFetcher::InitStats(statistics);
+  RateControllingUrlAsyncFetcher::InitStats(statistics);
   ApacheResourceManager::InitStats(statistics);
   AprMemCache::InitStats(statistics);
   CacheStats::InitStats(ApacheCache::kFileCache, statistics);
