@@ -373,7 +373,7 @@ void RewriteTestBase::AddFileToMockFetcher(
   // physical filesystem for anything else, use file_system_ which can be
   // abstracted as a MemFileSystem instead.
   GoogleString contents;
-  StdioFileSystem stdio_file_system;
+  StdioFileSystem stdio_file_system(mock_timer());
   GoogleString filename_str = StrCat(GTestSrcDir(), kTestData, filename);
   ASSERT_TRUE(stdio_file_system.ReadFile(
       filename_str.c_str(), &contents, message_handler()));

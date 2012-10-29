@@ -241,6 +241,7 @@
         'util/slow_worker_test.cc',
         'util/split_statistics_test.cc',
         'util/statistics_work_bound_test.cc',
+        'util/stdio_file_system_test.cc',
         'util/string_multi_map_test.cc',
         'util/string_util_test.cc',
         'util/symbol_table_test.cc',
@@ -258,7 +259,6 @@
         'util/worker_test_base.cc',
         'util/write_through_cache_test.cc',
 #        'util/split_writer_test.cc',               # not currently needed
-#        'util/stdio_file_system_test.cc',          # not currently needed
       ],
       'conditions': [
         ['support_posix_shared_mem != 1', {

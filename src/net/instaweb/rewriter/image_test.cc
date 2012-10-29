@@ -33,7 +33,6 @@
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/image_compression/jpeg_optimizer_test_helper.h"
@@ -218,7 +217,6 @@ class ImageTest : public ImageTestBase {
     options->recompress_jpeg = true;
   }
 
-  StdioFileSystem file_system_;
   GoogleMessageHandler handler_;
   ImageUrlEncoder encoder_;
   scoped_ptr<Image::CompressionOptions> options_;

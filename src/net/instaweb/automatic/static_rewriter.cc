@@ -88,7 +88,7 @@ MessageHandler* FileRewriter::DefaultMessageHandler() {
 }
 
 FileSystem* FileRewriter::DefaultFileSystem() {
-  return new StdioFileSystem;
+  return new StdioFileSystem(timer());
 }
 
 Timer* FileRewriter::DefaultTimer() {

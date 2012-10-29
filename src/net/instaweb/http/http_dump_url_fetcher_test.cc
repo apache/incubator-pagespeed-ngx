@@ -48,8 +48,9 @@ namespace {
 class HttpDumpUrlFetcherTest : public testing::Test {
  public:
   HttpDumpUrlFetcherTest()
-      : content_writer_(&content_),
-        mock_timer_(0),
+      : mock_timer_(0),
+        file_system_(&mock_timer_),
+        content_writer_(&content_),
         http_dump_fetcher_(
             GTestSrcDir() + "/net/instaweb/http/testdata",
             &file_system_,
@@ -57,10 +58,10 @@ class HttpDumpUrlFetcherTest : public testing::Test {
   }
 
  protected:
+  MockTimer mock_timer_;
   StdioFileSystem file_system_;
   GoogleString content_;
   StringWriter content_writer_;
-  MockTimer mock_timer_;
   HttpDumpUrlFetcher http_dump_fetcher_;
   GoogleMessageHandler message_handler_;
 

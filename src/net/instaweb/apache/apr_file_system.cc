@@ -22,9 +22,11 @@
 #include "apr_file_info.h"
 #include "apr_file_io.h"
 #include "apr_pools.h"
-#include "net/instaweb/util/public/basictypes.h"
+
 #include "base/scoped_ptr.h"
+#include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
@@ -200,7 +202,8 @@ AprFileSystem::~AprFileSystem() {
 
 int AprFileSystem::MaxPathLength(const StringPiece& base) const {
   // We delegate to StdioFileSystem for simplicity.
-  return StdioFileSystem().MaxPathLength(base);
+  AprTimer timer;
+  return StdioFileSystem(&timer).MaxPathLength(base);
 }
 
 FileSystem::InputFile* AprFileSystem::OpenInputFile(

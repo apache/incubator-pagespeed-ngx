@@ -31,14 +31,17 @@
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace {
 // The st_blocks field returned by stat is the number of 512B blocks allocated
-// for the files.
+// for the files. (While POSIX doesn't specify this, it's the proper value on
+// at least Linux, FreeBSD, and OS X).
 const int kBlockSize = 512;
 }  // namespace
 
@@ -399,6 +402,59 @@ BoolOrError StdioFileSystem::TryLock(const StringPiece& lock_name,
                      lock_str, strerror(errno));
     return BoolOrError();
   }
+}
+
+BoolOrError StdioFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
+                                                int64 timeout_ms,
+                                                MessageHandler* handler) {
+  const GoogleString lock_string = lock_name.as_string();
+  BoolOrError result = TryLock(lock_name, handler);
+  if (result.is_true() || result.is_error()) {
+    // We got the lock, or the lock is ungettable.
+    return result;
+  }
+  int64 m_time_sec;
+  if (!Mtime(lock_name, &m_time_sec, handler)) {
+    // We can't stat the lockfile.
+    return BoolOrError();
+  }
+
+  int64 now_us = timer_->NowUs();
+  int64 elapsed_since_lock_us = now_us - Timer::kSecondUs * m_time_sec;
+  int64 timeout_us = Timer::kMsUs * timeout_ms;
+  if (elapsed_since_lock_us < timeout_us) {
+    // The lock is held and timeout hasn't elapsed.
+    return BoolOrError(false);
+  }
+  // Lock has timed out.  We have two options here:
+  // 1) Leave the lock in its present state and assume we've taken ownership.
+  //    This is kind to the file system, but causes lots of repeated work at
+  //    timeout, as subsequent threads also see a timed-out lock.
+  // 2) Force-unlock the lock and re-lock it.  This resets the timeout period,
+  //    but is hard on the file system metadata log.
+  const char* lock_str = lock_string.c_str();
+  if (!Unlock(lock_name, handler)) {
+    // We couldn't break the lock.  Maybe someone else beat us to it.
+    // We optimistically forge ahead anyhow (1), since we know we've timed out.
+    handler->Info(lock_str, 0,
+                  "Breaking lock without reset! now-ctime=%d-%d > %d (sec)\n%s",
+                  static_cast<int>(now_us / Timer::kSecondUs),
+                  static_cast<int>(m_time_sec),
+                  static_cast<int>(timeout_ms / Timer::kSecondMs),
+                  StackTraceString().c_str());
+    return BoolOrError(true);
+  }
+  handler->Info(lock_str, 0, "Broke lock! now-ctime=%d-%d > %d (sec)\n%s",
+                static_cast<int>(now_us / Timer::kSecondUs),
+                static_cast<int>(m_time_sec),
+                static_cast<int>(timeout_ms / Timer::kSecondMs),
+                StackTraceString().c_str());
+  result = TryLock(lock_name, handler);
+  if (!result.is_true()) {
+    // Someone else grabbed the lock after we broke it.
+    handler->Info(lock_str, 0, "Failed to take lock after breaking it!");
+  }
+  return result;
 }
 
 bool StdioFileSystem::Unlock(const StringPiece& lock_name,

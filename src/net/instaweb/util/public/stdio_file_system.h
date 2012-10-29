@@ -28,10 +28,12 @@ struct stat;
 namespace net_instaweb {
 
 class MessageHandler;
+class Timer;
 
 class StdioFileSystem : public FileSystem {
  public:
-  StdioFileSystem() {}
+  // The timer will be used only by TryLockWithTimeout.
+  explicit StdioFileSystem(Timer* timer) : timer_(timer) {}
   virtual ~StdioFileSystem();
 
   virtual int MaxPathLength(const StringPiece& base) const;
@@ -66,6 +68,10 @@ class StdioFileSystem : public FileSystem {
 
   virtual BoolOrError TryLock(const StringPiece& lock_name,
                               MessageHandler* handler);
+  virtual BoolOrError TryLockWithTimeout(const StringPiece& lock_name,
+                                         int64 timeout_ms,
+                                         MessageHandler* handler);
+
   virtual bool Unlock(const StringPiece& lock_name, MessageHandler* handler);
 
   InputFile* Stdin();
@@ -77,6 +83,7 @@ class StdioFileSystem : public FileSystem {
   bool Stat(const StringPiece& path, struct stat* statbuf,
             MessageHandler* handler);
 
+  Timer* timer_;
   DISALLOW_COPY_AND_ASSIGN(StdioFileSystem);
 };
 

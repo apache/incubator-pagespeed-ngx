@@ -41,6 +41,7 @@ class HttpDumpUrlWriterTest : public FetcherTest {
  protected:
   HttpDumpUrlWriterTest()
       : mock_timer_(0),
+        file_system_(&mock_timer_),
         http_dump_writer_(GTestTempDir() + "/http_dump/", &mock_fetcher_,
                           &file_system_, &mock_timer_) {
   }
@@ -61,8 +62,8 @@ class HttpDumpUrlWriterTest : public FetcherTest {
     file_system_.RemoveFile(path.c_str(), &message_handler_);
   }
 
-  StdioFileSystem file_system_;
   MockTimer mock_timer_;
+  StdioFileSystem file_system_;
   HttpDumpUrlWriter http_dump_writer_;
 
  private:

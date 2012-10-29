@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include "net/instaweb/util/public/gflags.h"
+#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
@@ -44,7 +45,8 @@ namespace net_instaweb {
 void DataToC(int argc, char* argv[]) {
   ParseCommandLineFlags(&argc, &argv, true);
   NullMessageHandler handler;
-  StdioFileSystem file_system;
+  GoogleTimer timer;
+  StdioFileSystem file_system(&timer);
   GoogleString input;
   file_system.ReadFile(FLAGS_data_file.c_str(), &input, &handler);
   GoogleString joined = "";

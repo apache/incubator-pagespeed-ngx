@@ -34,6 +34,7 @@
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/util/public/benchmark.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
@@ -55,7 +56,8 @@ GoogleString* sHtmlText = NULL;
 const StringPiece GetHtmlText() {
   if (sHtmlText == NULL) {
     sHtmlText = new GoogleString;
-    StdioFileSystem file_system;
+    GoogleTimer timer;
+    StdioFileSystem file_system(&timer);
     StringVector files;
     GoogleMessageHandler handler;
     static const char kDir[] = "net/instaweb/htmlparse/testdata";

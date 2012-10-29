@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -42,7 +43,7 @@ class ImageTestBase : public testing::Test {
 
   typedef scoped_ptr<Image> ImagePtr;
 
-  ImageTestBase() {}
+  ImageTestBase() : timer_(0), file_system_(&timer_) {}
   virtual ~ImageTestBase();
 
   // We use the output_type (ultimate expected output type after image
@@ -64,6 +65,7 @@ class ImageTestBase : public testing::Test {
                            const char* filename, GoogleString* buffer,
                            bool progressive);
 
+  MockTimer timer_;
   StdioFileSystem file_system_;
   GoogleMessageHandler handler_;
 

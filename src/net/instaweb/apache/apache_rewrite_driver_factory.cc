@@ -77,6 +77,7 @@
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/slow_worker.h"
+#include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -330,10 +331,7 @@ CacheInterface* ApacheRewriteDriverFactory::NewFilesystemMetadataCache(
 }
 
 FileSystem* ApacheRewriteDriverFactory::DefaultFileSystem() {
-  // Pass in NULL for the pool.  We do not want the file-system to
-  // be auto-destructed based on the factory's pool: we want to follow
-  // C++ destruction semantics.
-  return new AprFileSystem(NULL, thread_system());
+  return new StdioFileSystem(timer());
 }
 
 Hasher* ApacheRewriteDriverFactory::NewHasher() {

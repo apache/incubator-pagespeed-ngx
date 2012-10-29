@@ -29,6 +29,7 @@
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
@@ -410,7 +411,7 @@ TEST_F(CssImageRewriterTest, InlineImages) {
 
   // Read original image file and create data url for comparison purposes.
   GoogleString contents;
-  StdioFileSystem stdio_file_system;
+  StdioFileSystem stdio_file_system(mock_timer());
   GoogleString filename = StrCat(GTestSrcDir(), kTestData, kCuppaPngFile);
   ASSERT_TRUE(stdio_file_system.ReadFile(
       filename.c_str(), &contents, message_handler()));
@@ -446,7 +447,7 @@ TEST_F(CssImageRewriterTest, InlineImagesFallback) {
 
   // Read original image file and create data url for comparison purposes.
   GoogleString contents;
-  StdioFileSystem stdio_file_system;
+  StdioFileSystem stdio_file_system(mock_timer());
   GoogleString filename = StrCat(GTestSrcDir(), kTestData, kCuppaPngFile);
   ASSERT_TRUE(stdio_file_system.ReadFile(
       filename.c_str(), &contents, message_handler()));
@@ -484,7 +485,7 @@ TEST_F(CssImageRewriterTest, InlineImageOnlyInOutlineCss) {
 
   // Read original image file and create data url for comparison purposes.
   GoogleString contents;
-  StdioFileSystem stdio_file_system;
+  StdioFileSystem stdio_file_system(mock_timer());
   GoogleString filename = StrCat(GTestSrcDir(), kTestData, kCuppaPngFile);
   ASSERT_TRUE(stdio_file_system.ReadFile(
       filename.c_str(), &contents, message_handler()));
