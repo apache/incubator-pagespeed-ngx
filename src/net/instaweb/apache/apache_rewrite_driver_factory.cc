@@ -264,67 +264,19 @@ CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
   return memcached;
 }
 
-CacheInterface* ApacheRewriteDriverFactory::NewFilesystemMetadataCache(
+CacheInterface* ApacheRewriteDriverFactory::GetFilesystemMetadataCache(
     ApacheConfig* config) {
-  // The accepted spec values are:
-  // hostname[:port] - a new, private, AprMemCache is created for the config.
-  // memcached - if the config specifies only [a] local memcached server[s] in
-  //             its ModPagespeedMemcachedServers directive then that is used,
-  //             otherwise an error message is logged and NULL is returned.
-  // lrucache - a private LRUCache is created for the config.
-
-  // Check the special values first.
-  const GoogleString& spec = config->filesystem_metadata_cache();
-  if (StringCaseEqual(
-          spec, ApacheConfig::kFilesystemMetadataCacheUseLruCache)) {
-    // Use a per-process LRU cache.
-    // TODO(matterbury): Can we even do this?
-    message_handler()->Message(
-        kError,
-        "Ignoring 'ModPagespeedFilesystemMetadataCache %s' because "
-        "it is not implemented yet.", spec.c_str());
-      DCHECK(false);
-  } else if (StringCaseEqual(
-      spec, ApacheConfig::kFilesystemMetadataCacheUseMemcached)) {
-    // Find the config's memcached and check that it's local and not sharded.
-    MemcachedMap::iterator iter = memcached_map_.end();
-    if (!config->memcached_servers().empty()) {
-      iter = memcached_map_.find(config->memcached_servers());
+  // Reuse the memcached server(s) for the filesystem metadata cache. We need
+  // to search for our config's entry in the vector of servers (not the more
+  // obvious map) because the map's entries are wrapped in an AsyncCache, and
+  // the filesystem metadata cache requires a blocking cache (like memcached).
+  // Note that if we have a server spec we *know* it's in the searched vector.
+  DCHECK_EQ(config->memcached_servers().empty(), memcache_servers_.empty());
+  const GoogleString& server_spec = config->memcached_servers();
+  for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
+    if (server_spec == memcache_servers_[i]->server_spec()) {
+      return memcache_servers_[i];
     }
-    if (iter == memcached_map_.end()) {
-      message_handler()->Message(
-          kError,
-          "Ignoring 'ModPagespeedFilesystemMetadataCache %s' because "
-          "it needs ModPagespeedMemcachedServers to be set.", spec.c_str());
-    } else {
-      CacheInterface* mem_cache = iter->second;
-      if (!mem_cache->IsMachineLocal()) {
-        message_handler()->Message(
-            kError,
-            "Ignoring 'ModPagespeedFilesystemMetadataCache %s' because "
-            "ModPagespeedMemcachedServers specifies one or more non-local "
-            "servers.", spec.c_str());
-      } else {
-        // Return a copy to keep memory management simple.
-        return new CacheCopy(mem_cache);
-      }
-    }
-  } else if (!spec.empty()) {
-    // It is a hostname[:port] specification.
-    AprMemCache* mem_cache = NewAprMemCache(spec);
-    // Fail if it isn't a single local server.
-    if (!mem_cache->IsMachineLocal()) {
-      message_handler()->Message(
-          kError,
-          "Ignoring 'ModPagespeedFilesystemMetadataCache %s' because "
-          "it specifies a non-local server.", spec.c_str());
-      delete mem_cache;
-      mem_cache = NULL;
-    } else {
-      // It needs to be managed just like the normal memcached servers, so:
-      memcache_servers_.push_back(mem_cache);
-    }
-    return mem_cache;
   }
 
   return NULL;
@@ -362,10 +314,7 @@ void ApacheRewriteDriverFactory::SetupCaches(
     l2_cache = memcached;
     resource_manager->set_owned_cache(memcached);
     resource_manager->set_filesystem_metadata_cache(
-        NewFilesystemMetadataCache(config));
-    // TODO(matterbury): Check that if LoadFromFile is enabled, then either
-    // the metadata cache is local -or- a filesystem metadata cache is setup,
-    // and fail hard if not, since it's too risky to proceeed.
+        new CacheCopy(GetFilesystemMetadataCache(config)));
   }
   Statistics* stats = resource_manager->statistics();
 

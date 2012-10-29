@@ -276,6 +276,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   // Checks if the stat() data about the input_info's file matches that in the
   // filesystem metadata cache; it needs to be for the input to be "valid".
   bool IsFilesystemMetadataCacheCurrent(CacheInterface* fsmdc,
+                                        const GoogleString& file_key,
                                         const InputInfo& input_info,
                                         int64 mtime_ms) {
     //   Get the filesystem metadata cache (FSMDC) entry for the filename.
@@ -295,7 +296,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
     //     Return false as we can't tell if the metadata cache's input_info is
     //     valid.
     CacheInterface::SynchronousCallback callback;
-    fsmdc->Get(input_info.filename(), &callback);
+    fsmdc->Get(file_key, &callback);
     DCHECK(callback.called());
     if (callback.state() == CacheInterface::kAvailable) {
       StringPiece val_str = callback.value()->Value();
@@ -315,6 +316,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   // of the given input's file (which is read from disk to compute the hash).
   // Returns false if the file cannot be read.
   bool UpdateFilesystemMetadataCache(ServerContext* server_context,
+                                     const GoogleString& file_key,
                                      const InputInfo& input_info,
                                      int64 mtime_ms,
                                      CacheInterface* fsmdc,
@@ -336,7 +338,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
       StringOutputStream sstream(&buf);
       fsmdc_info->SerializeToZeroCopyStream(&sstream);
     }
-    fsmdc->PutSwappingString(input_info.filename(), &buf);
+    fsmdc->PutSwappingString(file_key, &buf);
     return true;
   }
 
@@ -381,12 +383,21 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
           if (!input_info.has_input_content_hash()) {
             return false;
           }
-          if (IsFilesystemMetadataCacheCurrent(fsmdc, input_info, mtime_ms)) {
+          // Construct a host-specific key. The format is somewhat arbitrary,
+          // all it needs to do is differentiate the same path on different
+          // hosts. If the size of the key becomes a concern we can hash it
+          // and hope.
+          GoogleString file_key;
+          StrAppend(&file_key, "file://", server_context->hostname(),
+                    input_info.filename());
+          if (IsFilesystemMetadataCacheCurrent(fsmdc, file_key, input_info,
+                                               mtime_ms)) {
             return true;
           }
           InputInfo fsmdc_info;
-          if (!UpdateFilesystemMetadataCache(server_context, input_info,
-                                             mtime_ms, fsmdc, &fsmdc_info)) {
+          if (!UpdateFilesystemMetadataCache(server_context, file_key,
+                                             input_info, mtime_ms, fsmdc,
+                                             &fsmdc_info)) {
             return false;
           }
           // Check again now that we KNOW we have the most up-to-date data

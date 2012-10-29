@@ -223,9 +223,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // to the caller and must be freed on destruction.
   CacheInterface* GetMemcached(ApacheConfig* config, CacheInterface* l2_cache);
 
-  // Makes a filesystem metadata cache for the given config's specification (if
-  // it has one). NULL is returned if no cache is specified.
-  CacheInterface* NewFilesystemMetadataCache(ApacheConfig* config);
+  // Returns the filesystem metadata cache for the given config's specification
+  // (if it has one). NULL is returned if no cache is specified.
+  CacheInterface* GetFilesystemMetadataCache(ApacheConfig* config);
 
   // Stops any further Gets from occuring in the Async cache.  This is used to
   // help wind down activity during a shutdown.

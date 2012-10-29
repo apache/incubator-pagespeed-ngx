@@ -31,9 +31,6 @@ const int64 kDefaultCacheFlushIntervalSec = 5;
 
 const char ApacheConfig::kClassName[] = "ApacheConfig";
 
-const char ApacheConfig::kFilesystemMetadataCacheUseLruCache[] = "lrucache";
-const char ApacheConfig::kFilesystemMetadataCacheUseMemcached[] = "memcached";
-
 RewriteOptions::Properties* ApacheConfig::apache_properties_ = NULL;
 
 void ApacheConfig::Initialize() {
@@ -69,8 +66,6 @@ void ApacheConfig::AddProperties() {
              RewriteOptions::kFetcherProxy);
   add_option("", &ApacheConfig::file_cache_path_, "afcp",
              RewriteOptions::kFileCachePath);
-  add_option("", &ApacheConfig::filesystem_metadata_cache_, "fsmdc",
-             RewriteOptions::kFilesystemMetadataCache);
   add_option("", &ApacheConfig::memcached_servers_, "ams",
              RewriteOptions::kMemcachedServers);
   add_option(1, &ApacheConfig::memcached_threads_, "amt",

@@ -50,7 +50,6 @@ struct OptionName {
 "EnableLazyloadInBlink",                 RewriteOptions::kEnableLazyloadInBlink
 "EnableRewriting",                       RewriteOptions::kEnabled
 "ExperimentSlot",                        RewriteOptions::kFuriousSlot
-"FilesystemMetadataCache",               RewriteOptions::kFilesystemMetadataCache
 "FlushBufferLimitBytes",                 RewriteOptions::kFlushBufferLimitBytes
 "FlushHtml",                             RewriteOptions::kFlushHtml
 "FlushMoreResourcesEarlyIfTimePermits",  RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits

@@ -5333,7 +5333,6 @@ class SharedCacheTest : public RewriteContextTest {
 
   void SetUpFilesystemMetadataCaches() {
     // Add a filesystem metadata cache to each server.
-    // TODO(matterbury): Perhaps use NewFilesystemMetadataCache("lrucache")?
     server1_->set_filesystem_metadata_cache(new LRUCache(10000));
     server2_->set_filesystem_metadata_cache(new LRUCache(10000));
   }
