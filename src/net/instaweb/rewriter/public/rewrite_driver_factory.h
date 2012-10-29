@@ -415,6 +415,9 @@ class RewriteDriverFactory {
   // TODO(sligocki): Remove. Redundant with RewriteOptions::x_header_value().
   GoogleString version_string_;
 
+  // The hostname we're running on. Used to set the same field in ServerContext.
+  GoogleString hostname_;
+
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };
 

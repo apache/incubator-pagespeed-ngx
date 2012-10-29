@@ -513,6 +513,14 @@ class ServerContext {
   PropertyCache* MakePropertyCache(const GoogleString& cache_key_prefix,
                                    CacheInterface* cache) const;
 
+  // Returns the current server hostname.
+  const GoogleString& hostname() const {
+    return hostname_;
+  }
+  void set_hostname(const GoogleString& x) {
+    hostname_ = x;
+  }
+
  protected:
   // Takes ownership of the given pool, making sure to clean it up at the
   // appropriate spot during shutdown.
@@ -639,6 +647,9 @@ class ServerContext {
   UsageDataReporter* usage_data_reporter_;
 
   scoped_ptr<CacheInterface> owned_cache_;
+
+  // A convenient central place to store the hostname we're running on.
+  GoogleString hostname_;
 
   DISALLOW_COPY_AND_ASSIGN(ServerContext);
 };

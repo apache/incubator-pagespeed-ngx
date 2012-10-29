@@ -44,6 +44,7 @@
 #include "net/instaweb/util/public/filename_encoder.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/hostname_util.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
@@ -77,6 +78,7 @@ void RewriteDriverFactory::Init() {
   SetStatistics(&null_statistics_);
   server_context_mutex_.reset(thread_system_->NewMutex());
   worker_pools_.assign(kNumWorkerPools, NULL);
+  hostname_ = GetHostname();
 
   // Pre-initializes the default options.  IMPORTANT: subclasses overridding
   // NewRewriteOptions() should re-call this method from their constructor
@@ -407,6 +409,7 @@ void RewriteDriverFactory::InitServerContext(
   resource_manager->set_flush_early_info_finder(DefaultFlushEarlyInfoFinder());
   resource_manager->set_blink_critical_line_data_finder(
       DefaultBlinkCriticalLineDataFinder(pcache));
+  resource_manager->set_hostname(hostname_);
   resource_manager->InitWorkersAndDecodingDriver();
   server_contexts_.insert(resource_manager);
 }
