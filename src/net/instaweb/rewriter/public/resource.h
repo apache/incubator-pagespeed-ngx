@@ -119,7 +119,7 @@ class Resource : public RefCounted<Resource> {
   StringPiece contents() const {
     StringPiece val;
     bool got_contents = value_.ExtractContents(&val);
-    CHECK(got_contents) << "Resource contents read before loading";
+    CHECK(got_contents) << "Resource contents read before loading: " << url();
     return val;
   }
   ResponseHeaders* response_headers() { return &response_headers_; }

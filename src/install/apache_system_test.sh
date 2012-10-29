@@ -510,7 +510,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   check [ $NUM_NEW_FLUSHES -ge 1 ]
   check [ $NUM_NEW_FLUSHES -lt 20 ]
 
-  # However, the secondary cache might not have sees this cache-flush, but
+  # However, the secondary cache might not have seen this cache-flush, but
   # due to the multiple child processes, each of which does polling separately,
   # we cannot guarantee it.  I think if we knew we were running a 'worker' mpm
   # with just 1 child process we could do this test.
