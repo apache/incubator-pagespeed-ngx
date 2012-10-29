@@ -135,16 +135,28 @@ static ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
 static void
-ngx_http_pagespeed_release_request_context(
-    ngx_http_pagespeed_request_ctx_t* ctx) {
+ngx_http_pagespeed_release_request_context(void* data) {
+  ngx_http_pagespeed_request_ctx_t* ctx =
+      static_cast<ngx_http_pagespeed_request_ctx_t*>(data);
 
-  // BaseFetch doesn't delete itself
+  // The proxy fetch deleted itself if we called Done(), but if an error
+  // happened before then we need to tell it to delete itself.
+  if (ctx->proxy_fetch != NULL) {
+    ctx->proxy_fetch->Done(false /* failure */);
+  }
+
+  // BaseFetch doesn't delete itself in HandleDone() because we still need to
+  // recive notification via pipe and call CollectAccumulatedWrites.
+  // TODO(jefftk): If we close the proxy_fetch above and not in the normal flow,
+  // can this delete base_fetch while proxy_fetch still needs it? Is there a
+  // race condition here?
   delete ctx->base_fetch;
 
-  // Stop watching the pipe.
-  close(ctx->pipe_fd);
+  // Don't close the pipe if it was never opened or already closed.
+  if (ctx->pipe_fd != -1) {
+    close(ctx->pipe_fd);
+  }
 
-  // the proxy fetch deleted itself when we called Done()
   delete ctx;
 }
 
@@ -330,18 +342,15 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
     ngx_del_event(ev, NGX_READ_EVENT, 0);
     ngx_http_pagespeed_set_buffered(ctx->r, false);
     ngx_http_finalize_request(ctx->r, rc == NGX_OK ? NGX_DONE : NGX_ERROR);
-
-    // TODO(jefftk): move this to a request cleanup handler.
-    ngx_http_pagespeed_release_request_context(ctx);
   }
 }
 
-// Set us up for processing a request.  When the request finishes, call
-// ngx_http_pagespeed_release_request_context.
+// Set us up for processing a request.
 static ngx_int_t
 ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   ngx_http_pagespeed_request_ctx_t* ctx =
       new ngx_http_pagespeed_request_ctx_t();
+  ctx->pipe_fd = -1;
 
   ctx->r = r;
 
@@ -352,19 +361,23 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   int rc = pipe(file_descriptors);
   if (rc != 0) {
     ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0, "pipe() failed");
+    ngx_http_pagespeed_release_request_context(ctx);
     return NGX_ERROR;
   }
 
   if (ngx_nonblocking(file_descriptors[0]) == -1) {
       ngx_log_error(NGX_LOG_EMERG, r->connection->log, ngx_socket_errno,
                     ngx_nonblocking_n " pipe[0] failed");
+      ngx_http_pagespeed_release_request_context(ctx);
+      return NGX_ERROR;
   }
 
   if (ngx_nonblocking(file_descriptors[1]) == -1) {
       ngx_log_error(NGX_LOG_EMERG, r->connection->log, ngx_socket_errno,
                     ngx_nonblocking_n " pipe[1] failed");
+      ngx_http_pagespeed_release_request_context(ctx);
+      return NGX_ERROR;
   }
-
 
   fprintf(stderr, "pipe created: %d -> %d\n",
           file_descriptors[1], file_descriptors[0]);
@@ -375,10 +388,12 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   if (ctx->pagespeed_connection == NULL) {
     close(file_descriptors[0]);
     close(file_descriptors[1]);
+    ctx->pipe_fd = -1;
 
     ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
                   "ngx_http_pagespeed_create_request_context: "
                   "no pagespeed connection.");
+    ngx_http_pagespeed_release_request_context(ctx);
     return NGX_ERROR;
   }
 
@@ -410,12 +425,6 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   if (ctx->cfg->driver_factory == NULL) {
     // This is the first request handled by this server block.
     ngx_http_pagespeed_initialize_server_context(ctx->cfg);
-  }
-
-  if (ctx->cfg->server_context == NULL) {
-    ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
-                  "ServerContext should have been initialized.");
-    return NGX_ERROR;
   }
 
   GoogleString url_string = ngx_http_pagespeed_determine_url(r);
@@ -454,13 +463,22 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
 
   // TODO(jefftk): FlushEarlyFlow would go here.
 
+  ngx_http_set_ctx(r, ctx, ngx_pagespeed);
+
+  // Set up a cleanup handler on the request.
+  ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
+  if (cleanup == NULL) {
+    ngx_http_pagespeed_release_request_context(ctx);
+    return NGX_ERROR;
+  }
+  cleanup->handler = ngx_http_pagespeed_release_request_context;
+  cleanup->data = ctx;
+
   // Will call StartParse etc.
   ctx->proxy_fetch = ctx->cfg->proxy_fetch_factory->CreateNewProxyFetch(
       url_string, ctx->base_fetch, ctx->driver,
       NULL /* property_callback */,
       NULL /* original_content_fetch */);
-
-  ngx_http_set_ctx(r, ctx, ngx_pagespeed);
 
   return NGX_OK;
 }
@@ -493,6 +511,7 @@ ngx_http_pagespeed_send_to_pagespeed(
 
   if (last_buf) {
     ctx->proxy_fetch->Done(true /* success */);
+    ctx->proxy_fetch = NULL;  // ProxyFetch deletes itself on Done().
   } else {
     // TODO(jefftk): Decide whether Flush() is warranted here.
     ctx->proxy_fetch->Flush(ctx->cfg->handler);
@@ -535,6 +554,7 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
 
   int rc = ngx_http_pagespeed_create_request_context(r);
   if (rc != NGX_OK) {
+    ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
     return rc;
   }
 
