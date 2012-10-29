@@ -385,9 +385,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("psa_flush_buffer_limit_bytes")) {
     options->set_flush_buffer_limit_bytes(FLAGS_psa_flush_buffer_limit_bytes);
   }
-  if (WasExplicitlySet("images_recompress_quality")) {
+  if (WasExplicitlySet("image_recompress_quality")) {
     options->set_image_recompress_quality(
-        FLAGS_images_recompress_quality);
+        FLAGS_image_recompress_quality);
   }
   if (WasExplicitlySet("image_jpeg_recompress_quality")) {
     options->set_image_jpeg_recompress_quality(
