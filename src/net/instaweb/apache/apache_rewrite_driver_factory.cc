@@ -132,7 +132,8 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       thread_counts_finalized_(false),
       num_rewrite_threads_(-1),
       num_expensive_rewrite_threads_(-1),
-      message_buffer_size_(0) {
+      message_buffer_size_(0),
+      cache_hasher_(20) {
   apr_pool_create(&pool_, NULL);
 
   // Make sure the ownership of apache_message_handler_ and
@@ -198,8 +199,8 @@ AprMemCache* ApacheRewriteDriverFactory::NewAprMemCache(
   int thread_limit;
   ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
   thread_limit += num_rewrite_threads() + num_expensive_rewrite_threads();
-  return new AprMemCache(spec, thread_limit, hasher(), statistics(), timer(),
-                         message_handler());
+  return new AprMemCache(spec, thread_limit, &cache_hasher_, statistics(),
+                         timer(), message_handler());
 }
 
 CacheInterface* ApacheRewriteDriverFactory::GetMemcached(

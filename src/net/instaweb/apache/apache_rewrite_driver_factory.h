@@ -25,6 +25,7 @@
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -438,6 +439,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   FetcherMap fetcher_map_;
   typedef std::map<GoogleString, SerfUrlAsyncFetcher*> SerfFetcherMap;
   SerfFetcherMap serf_fetcher_map_;
+  MD5Hasher cache_hasher_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };

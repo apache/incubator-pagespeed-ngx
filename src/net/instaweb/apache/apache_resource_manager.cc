@@ -109,7 +109,7 @@ void ApacheResourceManager::InitStats(Statistics* statistics) {
   // We set the boundary at 2 seconds which is about 2 orders of magnitude
   // worse than anything we have reasonably seen, to make sure we don't
   // cut off actual samples.
-  html_rewrite_time_us_histogram->SetMaxValue(2000 * Timer::kMsUs);
+  html_rewrite_time_us_histogram->SetMaxValue(2 * Timer::kSecondUs);
   UrlAsyncFetcherStats::InitStats(kLocalFetcherStatsPrefix, statistics);
 }
 
@@ -244,6 +244,7 @@ void ApacheResourceManager::ChildInit() {
 
     html_rewrite_time_us_histogram_ = statistics()->GetHistogram(
         kHtmlRewriteTimeUsHistogram);
+    html_rewrite_time_us_histogram_->SetMaxValue(2 * Timer::kSecondUs);
   }
 }
 
