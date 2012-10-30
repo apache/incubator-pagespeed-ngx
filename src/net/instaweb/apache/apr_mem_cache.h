@@ -22,10 +22,12 @@
 #include <cstddef>
 #include <vector>
 
+#include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 struct apr_memcache2_t;
 struct apr_memcache2_server_t;
@@ -37,7 +39,6 @@ class Hasher;
 class MessageHandler;
 class SharedString;
 class Statistics;
-class Timer;
 class Variable;
 
 // Interface to memcached via the apr_memcache2*, as documented in
@@ -56,6 +57,14 @@ class AprMemCache : public CacheInterface {
   // handle too-large requests.  This is managed by class FallbackCache in
   // ../util.
   static const size_t kValueSizeThreshold = 1 * 1000 * 1000;
+
+  // Amount of time after a burst of errors to retry memcached operations.
+  static const int64 kHealthCheckpointIntervalMs = 30 * Timer::kSecondMs;
+
+  // Maximum number of errors tolerated within kHealthCheckpointIntervalMs,
+  // after which AprMemCache will declare itself unhealthy for
+  // kHealthCheckpointIntervalMs.
+  static const int64 kMaxErrorBurst = 4;
 
   // servers is a comma-separated list of host[:port] where port defaults
   // to 11211, the memcached default.
@@ -90,22 +99,19 @@ class AprMemCache : public CacheInterface {
   virtual bool IsBlocking() const { return true; }
   virtual bool IsMachineLocal() const { return is_machine_local_; }
 
-  // This class will print up to 4 apr_memcache2-induced system error
-  // messages within 30 minutes. For the 5th one, it will instead display
-  // the status for each server, based on the assumption that one or
-  // more of the shards is down.  All subsequent messages will be
-  // suppressed until the 30 minutes have elapsed.
-  //
-  // This method helps implement that policy, and is made public for
-  // testing.
-  //
-  // Tracks squelched messages in statistics variable
-  // "memcache_squelched_message_count".
-  bool ShouldLogAprError();
+  // Records in statistics that a system error occurred, helping it detect
+  // when it's unhealthy if they are too frequent.
+  void RecordError();
 
-  // TODO(jmarantz): Temporary implementations; real ones are coming soon.
-  virtual bool IsHealthy() const { return true; }
-  virtual void ShutDown() {}
+  // Determines whether memcached is healthy enough to attempt another
+  // operation.  Note that even though there may be multiple shards,
+  // some of which are healthy and some not, we don't currently track
+  // errors on a per-shard basis, so we effectively declare all the
+  // memcached instances unhealthy if any of them are.
+  virtual bool IsHealthy() const;
+
+  // Close down the connection to the memcached servers.
+  virtual void ShutDown();
 
  private:
   void DecodeValueMatchingKeyAndCallCallback(
@@ -122,11 +128,11 @@ class AprMemCache : public CacheInterface {
   std::vector<apr_memcache2_server_t*> servers_;
   Hasher* hasher_;
   Timer* timer_;
+  AtomicBool shutdown_;
 
   Variable* timeouts_;
-  Variable* squelched_message_count_;
-  Variable* last_unsquelch_time_ms_;
-  Variable* message_burst_size_;
+  Variable* last_error_checkpoint_ms_;
+  Variable* error_burst_size_;
 
   bool is_machine_local_;
   MessageHandler* message_handler_;

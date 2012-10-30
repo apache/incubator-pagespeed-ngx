@@ -341,31 +341,23 @@ TEST_F(AprMemCacheTest, LargeKeyOverThreshold) {
   EXPECT_EQ(kKey.size() + STATIC_STRLEN(kValue), lru_cache_->size_bytes());
 }
 
-TEST_F(AprMemCacheTest, ThrottleLogMessages) {
-  Variable* squelched_count = statistics_.GetVariable(
-      "memcache_squelched_message_count");
-
+TEST_F(AprMemCacheTest, HealthCheck) {
   if (!ConnectToMemcached(true)) {
     return;
   }
-  EXPECT_TRUE(servers_->ShouldLogAprError());
-  EXPECT_TRUE(servers_->ShouldLogAprError());
-  EXPECT_TRUE(servers_->ShouldLogAprError());
-  EXPECT_TRUE(servers_->ShouldLogAprError());
-  EXPECT_EQ(0, squelched_count->Get());
-  EXPECT_FALSE(servers_->ShouldLogAprError());  // Too many.
-  EXPECT_FALSE(servers_->ShouldLogAprError());
-  EXPECT_FALSE(servers_->ShouldLogAprError());
-  EXPECT_EQ(3, squelched_count->Get());
 
-  timer_.AdvanceMs(40 * Timer::kMinuteMs);
-  EXPECT_TRUE(servers_->ShouldLogAprError());
-  EXPECT_TRUE(servers_->ShouldLogAprError());
-  EXPECT_TRUE(servers_->ShouldLogAprError());
-  EXPECT_TRUE(servers_->ShouldLogAprError());
-  EXPECT_EQ(3, squelched_count->Get());
-  EXPECT_FALSE(servers_->ShouldLogAprError());  // Too many.
-  EXPECT_EQ(4, squelched_count->Get());
+  const int kNumIters = 5;  // Arbitrary number of repetitions.
+  for (int i = 0; i < kNumIters; ++i) {
+    for (int j = 0; j < AprMemCache::kMaxErrorBurst; ++j) {
+      EXPECT_TRUE(servers_->IsHealthy());
+      servers_->RecordError();
+    }
+    EXPECT_FALSE(servers_->IsHealthy());
+    timer_.AdvanceMs(AprMemCache::kHealthCheckpointIntervalMs - 1);
+    EXPECT_FALSE(servers_->IsHealthy());
+    timer_.AdvanceMs(2);
+  }
+  EXPECT_TRUE(servers_->IsHealthy());
 }
 
 }  // namespace net_instaweb

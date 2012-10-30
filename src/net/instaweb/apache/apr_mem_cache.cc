@@ -19,7 +19,6 @@
 #include "net/instaweb/apache/apr_mem_cache.h"
 
 #include "apr_pools.h"
-
 #include "base/logging.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -29,7 +28,6 @@
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"
 #include "third_party/aprutil/apr_memcache2.h"
@@ -44,13 +42,8 @@ const int kDefaultMemcachedPort = 11211;
 const int kDefaultServerMin = 0;      // minimum # client sockets to open
 const int kDefaultServerSmax = 1;     // soft max # client connections to open
 const char kMemCacheTimeouts[] = "memcache_timeouts";
-const char kMemCacheSquelchedMessages[] = "memcache_squelched_message_count";
-const int64 kMaxMessagesPerThrottleInterval = 4;
-const char kLastSquelchTimeMs[] = "_memcache_last_unsquelch_time_ms";
-const char kMessageBurstSize[] = "_memcache_message_burst_size";
-
-// Amount of time to squelch logging between bursts of errors.
-const int64 kWaitingPeriodMs = 30 * Timer::kMinuteMs;  // 30 minutes
+const char kLastErrorCheckpointMs[] = "memcache_last_error_checkpoint_ms";
+const char kErrorBurstSize[] = "memcache_error_burst_size";
 
 // time-to-live of a client connection.  There is a bug in the APR
 // implementation, where the TTL argument to apr_memcache2_server_create was
@@ -70,14 +63,14 @@ AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
                          Timer* timer, MessageHandler* handler)
     : valid_server_spec_(false),
       thread_limit_(thread_limit),
+      pool_(NULL),
       memcached_(NULL),
       hasher_(hasher),
       timer_(timer),
       timeouts_(statistics->GetVariable(kMemCacheTimeouts)),
-      squelched_message_count_(statistics->GetVariable(
-          kMemCacheSquelchedMessages)),
-      last_unsquelch_time_ms_(statistics->GetVariable(kLastSquelchTimeMs)),
-      message_burst_size_(statistics->GetVariable(kMessageBurstSize)),
+      last_error_checkpoint_ms_(statistics->GetVariable(
+          kLastErrorCheckpointMs)),
+      error_burst_size_(statistics->GetVariable(kErrorBurstSize)),
       is_machine_local_(true),
       message_handler_(handler) {
   servers.CopyToString(&server_spec_);
@@ -125,9 +118,8 @@ AprMemCache::~AprMemCache() {
 
 void AprMemCache::InitStats(Statistics* statistics) {
   statistics->AddVariable(kMemCacheTimeouts);
-  statistics->AddVariable(kMemCacheSquelchedMessages);
-  statistics->AddVariable(kLastSquelchTimeMs);
-  statistics->AddVariable(kMessageBurstSize);
+  statistics->AddVariable(kLastErrorCheckpointMs);
+  statistics->AddVariable(kErrorBurstSize);
 }
 
 bool AprMemCache::Connect() {
@@ -170,16 +162,12 @@ void AprMemCache::DecodeValueMatchingKeyAndCallCallback(
     if (key == actual_key) {
       ValidateAndReportResult(actual_key, CacheInterface::kAvailable, callback);
     } else {
-      // Note: this is likely to be a functional issue, not a server error,
-      // so we are not squelching this message.
       message_handler_->Message(
           kError, "AprMemCache::%s key collision %s != %s",
           calling_method, key.c_str(), actual_key.c_str());
       ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
     }
   } else {
-    // Note: this is likely to be a functional issue, not a server error,
-    // so we are not squelching this message.
     message_handler_->Message(
         kError, "AprMemCache::%s decoding error on key %s",
         calling_method, key.c_str());
@@ -188,6 +176,10 @@ void AprMemCache::DecodeValueMatchingKeyAndCallCallback(
 }
 
 void AprMemCache::Get(const GoogleString& key, Callback* callback) {
+  if (!IsHealthy()) {
+    ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
+    return;
+  }
   apr_pool_t* data_pool;
   apr_pool_create(&data_pool, NULL);
   CHECK(data_pool != NULL) << "apr_pool_t data_pool allocation failure";
@@ -200,13 +192,12 @@ void AprMemCache::Get(const GoogleString& key, Callback* callback) {
     DecodeValueMatchingKeyAndCallCallback(key, data, data_len, "Get", callback);
   } else {
     if (status != APR_NOTFOUND) {
-      if (ShouldLogAprError()) {
-        char buf[kStackBufferSize];
-        apr_strerror(status, buf, sizeof(buf));
-        message_handler_->Message(
-            kError, "AprMemCache::Get error: %s (%d) on key %s",
-            buf, status, key.c_str());
-      }
+      RecordError();
+      char buf[kStackBufferSize];
+      apr_strerror(status, buf, sizeof(buf));
+      message_handler_->Message(
+          kError, "AprMemCache::Get error: %s (%d) on key %s",
+          buf, status, key.c_str());
       if (status == APR_TIMEUP) {
         timeouts_->Add(1);
       }
@@ -217,7 +208,12 @@ void AprMemCache::Get(const GoogleString& key, Callback* callback) {
 }
 
 void AprMemCache::MultiGet(MultiGetRequest* request) {
-  // apr_memcache_multgetp documentation indicates it may clear the
+  if (!IsHealthy()) {
+    ReportMultiGetNotFound(request);
+    return;
+  }
+
+  // apr_memcache2_multgetp documentation indicates it may clear the
   // temp_pool inside the function.  Thus it is risky to pass the same
   // pool for both temp_pool and data_pool, as we need to read the
   // data after the call.
@@ -257,13 +253,12 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
                                               "MultiGet", callback);
       } else {
         if (status != APR_NOTFOUND) {
-          if (ShouldLogAprError()) {
-            char buf[kStackBufferSize];
-            apr_strerror(status, buf, sizeof(buf));
-            message_handler_->Message(
-                kError, "AprMemCache::MultiGet error: %s (%d) on key %s",
-                buf, status, key.c_str());
-          }
+          RecordError();
+          char buf[kStackBufferSize];
+          apr_strerror(status, buf, sizeof(buf));
+          message_handler_->Message(
+              kError, "AprMemCache::MultiGet error: %s (%d) on key %s",
+              buf, status, key.c_str());
           if (status == APR_TIMEUP) {
             timeouts_->Add(1);
           }
@@ -276,8 +271,11 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
   delete request;
 }
 
-void AprMemCache::Put(const GoogleString& key,
-                             SharedString* encoded_value) {
+void AprMemCache::Put(const GoogleString& key, SharedString* encoded_value) {
+  if (!IsHealthy()) {
+    return;
+  }
+
   GoogleString hashed_key = hasher_->Hash(key);
   SharedString key_value;
   if (key_value_codec::Encode(key, encoded_value, &key_value)) {
@@ -288,17 +286,14 @@ void AprMemCache::Put(const GoogleString& key,
         const_cast<char*>(key_value.data()), key_value.size(),
         0, 0);
     if (status != APR_SUCCESS) {
-      if (ShouldLogAprError()) {
-        char buf[kStackBufferSize];
-        apr_strerror(status, buf, sizeof(buf));
-        message_handler_->Message(
-            kError, "AprMemCache::Put error: %s (%d) on key %s, value-size %d",
-            buf, status, key.c_str(), encoded_value->size());
-      }
+      RecordError();
+      char buf[kStackBufferSize];
+      apr_strerror(status, buf, sizeof(buf));
+      message_handler_->Message(
+          kError, "AprMemCache::Put error: %s (%d) on key %s, value-size %d",
+          buf, status, key.c_str(), encoded_value->size());
     }
   } else {
-    // Note: this is likely to be a functional issue, not a server error,
-    // so we are not squelching this message.
     message_handler_->Message(
         kError, "AprMemCache::Put error: key size %d too large, first "
         "100 bytes of key is: %s",
@@ -307,6 +302,10 @@ void AprMemCache::Put(const GoogleString& key,
 }
 
 void AprMemCache::Delete(const GoogleString& key) {
+  if (!IsHealthy()) {
+    return;
+  }
+
   // Note that deleting a key whose value exceeds our size threshold
   // will not actually remove it from the fallback cache.  However, it
   // will remove our sentinel indicating that it's in the fallback cache,
@@ -323,7 +322,8 @@ void AprMemCache::Delete(const GoogleString& key) {
 
   GoogleString hashed_key = hasher_->Hash(key);
   apr_status_t status = apr_memcache2_delete(memcached_, hashed_key.c_str(), 0);
-  if ((status != APR_SUCCESS) && ShouldLogAprError()) {
+  if ((status != APR_SUCCESS) && (status != APR_NOTFOUND)) {
+    RecordError();
     char buf[kStackBufferSize];
     apr_strerror(status, buf, sizeof(buf));
     message_handler_->Message(
@@ -392,59 +392,53 @@ bool AprMemCache::GetStatus(GoogleString* buffer) {
   return ret;
 }
 
-bool AprMemCache::ShouldLogAprError() {
-  bool ret = false;
-
+void AprMemCache::RecordError() {
   // Note that we are sharing state with other Apache child processes,
-  // and we use Statistics Variables to determine our current squelch
-  // state.  In Apache those are implemented via shared memory.
+  // and we use Statistics Variables to determine our current health
+  // status.  In Apache those are implemented via shared memory.
   int64 time_ms = timer_->NowMs();
-  int64 last_unsquelch_time_ms = last_unsquelch_time_ms_->Get();  // strobe
-  int64 delta_ms = time_ms - last_unsquelch_time_ms;
-  if (delta_ms > kWaitingPeriodMs) {
-    last_unsquelch_time_ms_->Set(time_ms);
-    message_burst_size_->Set(1);
-    ret = true;
+  int64 last_error_checkpoint_ms = last_error_checkpoint_ms_->Get();
+  int64 delta_ms = time_ms - last_error_checkpoint_ms;
+
+  // The first time we catch an error we'll set the time of the error.
+  // We'll keep counting errors for 30 seconds declaring sickness when
+  // we reach 4.  That's an approximation because there will be
+  // cross-process races between accesses of the time & counts.
+  //
+  // When we get to 30 seconds since the start of the error burst we
+  // clear everything & start counting again.
+  if (delta_ms > kHealthCheckpointIntervalMs) {
+    last_error_checkpoint_ms_->Set(time_ms);
+    error_burst_size_->Set(1);
   } else {
-    int64 num_recent_messages = message_burst_size_->Add(1);
-    if (num_recent_messages <= kMaxMessagesPerThrottleInterval) {
-      ret = true;
-    } else if (num_recent_messages == (kMaxMessagesPerThrottleInterval + 1)) {
-      GoogleString time_string;
-      int64 next_unsquelch_time_ms = last_unsquelch_time_ms + kWaitingPeriodMs;
-      if (!ConvertTimeToString(next_unsquelch_time_ms, &time_string)) {
-        time_string = "???";
-      }
+    error_burst_size_->Add(1);
+  }
+}
+
+bool AprMemCache::IsHealthy() const {
+  if (shutdown_.value()) {
+    return false;
+  }
+  int64 time_ms = timer_->NowMs();
+  int64 last_error_checkpoint_ms = last_error_checkpoint_ms_->Get();
+  int64 delta_ms = time_ms - last_error_checkpoint_ms;
+  int64 error_burst_size = error_burst_size_->Get();
+
+  if (delta_ms > kHealthCheckpointIntervalMs) {
+    if (error_burst_size >= kMaxErrorBurst) {
+      // We were sick, but now it seems enough time has expired to
+      // see whether we've recovered.
       message_handler_->Message(
-          kWarning, "AprMemCache: Squelching server error messages until "
-          "%s.  Checking server status for %d servers...",
-          time_string.c_str(), static_cast<int>(servers_.size()));
-      apr_pool_t* temp_pool = NULL;
-      apr_pool_create(&temp_pool, NULL);
-      CHECK(temp_pool != NULL) << "apr_pool_t allocation failure";
-      for (int i = 0, n = servers_.size(); i < n; ++i) {
-        apr_memcache2_stats_t* stats;
-        apr_status_t status = apr_memcache2_stats(servers_[i], temp_pool,
-                                                  &stats);
-        if (status == APR_SUCCESS) {
-          message_handler_->Message(
-              kWarning, "AprMemCache: memcached on %s:%d appears to be up",
-              hosts_[i].c_str(), ports_[i]);
-        } else {
-          char buf[kStackBufferSize];
-          apr_strerror(status, buf, sizeof(buf));
-          message_handler_->Message(
-              kWarning, "AprMemCache: memcached on %s:%d error %s (%d)",
-              hosts_[i].c_str(), ports_[i], buf, status);
-        }
-      }
-      apr_pool_destroy(temp_pool);
+          kInfo, "AprMemCache::IsHealthy error: Attempting to recover");
     }
+    error_burst_size_->Set(0);
+    return true;
   }
-  if (!ret) {
-    squelched_message_count_->Add(1);
-  }
-  return ret;
+  return error_burst_size < kMaxErrorBurst;
+}
+
+void AprMemCache::ShutDown() {
+  shutdown_.set_value(true);
 }
 
 }  // namespace net_instaweb
