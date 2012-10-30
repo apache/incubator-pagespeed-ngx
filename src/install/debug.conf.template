@@ -234,6 +234,10 @@ ModPagespeedCustomFetchHeader x-other False
 #COVERAGE ModPagespeedInheritVHostConfig off
 #COVERAGE ModPagespeedMessageBufferSize 100000
 #COVERAGE
+#COVERAGE # We want backtraces to be dumped during the load test, as
+#COVERAGE # one of its purposes is to discover crash bugs.
+#COVERAGE ModPagespeedInstallCrashHandler on
+#COVERAGE
 #COVERAGE # These lines are used for large-scale code coverage testing.
 #COVERAGE # We use 2 servers for it, one doing rewriting and fetching
 #COVERAGE # from the other one, which plays back slurps
@@ -547,6 +551,7 @@ NameVirtualHost *:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedImgInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedImgMaxRewritesAtOnce 5
 #ALL_DIRECTIVES ModPagespeedIncreaseSpeedTracking true
+#ALL_DIRECTIVES ModPagespeedInstallCrashHandler off
 #ALL_DIRECTIVES ModPagespeedJpegRecompressionQuality 80
 #ALL_DIRECTIVES ModPagespeedJsInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedJsOutlineMinBytes 2000

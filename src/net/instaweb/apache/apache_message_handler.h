@@ -42,6 +42,11 @@ class ApacheMessageHandler : public MessageHandler {
   // Timer is used to generate timestamp for messages in shared memory.
   ApacheMessageHandler(const server_rec* server, const StringPiece& version,
                        Timer* timer, AbstractMutex* mutex);
+
+  // Installs a signal handler for common crash signals that tries to print
+  // out a backtrace.
+  static void InstallCrashHandler(server_rec* global_server);
+
   // When we initialize ApacheMessageHandler in ApacheRewriteDriverFactory,
   // SharedCircularBuffer of ApacheRewriteDriverFactory is not initialized yet.
   // We need to set buffer_ later in RootInit() or ChildInit().

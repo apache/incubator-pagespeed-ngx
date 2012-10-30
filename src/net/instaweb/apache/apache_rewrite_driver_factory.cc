@@ -128,6 +128,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       enable_property_cache_(false),
       inherit_vhost_config_(false),
       disable_loopback_routing_(false),
+      install_crash_handler_(false),
       thread_counts_finalized_(false),
       num_rewrite_threads_(-1),
       num_expensive_rewrite_threads_(-1),
@@ -584,6 +585,9 @@ void ApacheRewriteDriverFactory::SharedMemRefererStatisticsInit(bool is_root) {
 }
 
 void ApacheRewriteDriverFactory::ParentOrChildInit() {
+  if (install_crash_handler_) {
+    ApacheMessageHandler::InstallCrashHandler(server_rec_);
+  }
   SharedCircularBufferInit(is_root_process_);
   SharedMemRefererStatisticsInit(is_root_process_);
 }

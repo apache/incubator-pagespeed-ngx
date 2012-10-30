@@ -16,6 +16,7 @@
 
 #include "net/instaweb/apache/apache_message_handler.h"
 
+#include <signal.h>
 #include <unistd.h>
 
 #include "net/instaweb/apache/apr_timer.h"
@@ -24,7 +25,9 @@
 #include "httpd.h"
 #include "net/instaweb/apache/apache_logging_includes.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace {
 
@@ -33,7 +36,27 @@ namespace {
 // and it would be good to let people know where messages are coming from.
 const char kModuleName[] = "mod_pagespeed";
 
+// For crash handler's use.
+const server_rec* global_server;
+
+}  // namespace
+
+extern "C" {
+
+static void signal_handler(int sig) {
+  // Try to output the backtrace to the log file. Since this may end up
+  // crashing/deadlocking/etc. we set an alarm() to abort us if it comes to
+  // that.
+  alarm(2);
+  ap_log_error(APLOG_MARK, APLOG_ALERT, APR_SUCCESS, global_server,
+               "[@%s] CRASH with signal:%d at %s",
+               net_instaweb::Integer64ToString(getpid()).c_str(),
+               sig,
+               net_instaweb::StackTraceString().c_str());
+  kill(getpid(), SIGKILL);
 }
+
+}  // extern "C"
 
 namespace net_instaweb {
 
@@ -57,6 +80,16 @@ ApacheMessageHandler::ApacheMessageHandler(const server_rec* server,
   // TODO(jmarantz): consider making this a little terser by default.
   // The string we expect in is something like "0.9.1.1-171" and we will
   // may be able to pick off some of the 5 fields that prove to be boring.
+}
+
+// Installs a signal handler for common crash signals that tries to print
+// out a backtrace.
+void ApacheMessageHandler::InstallCrashHandler(server_rec* server) {
+  global_server = server;
+  signal(SIGTRAP, signal_handler);  // On check failures
+  signal(SIGABRT, signal_handler);
+  signal(SIGFPE, signal_handler);
+  signal(SIGSEGV, signal_handler);
 }
 
 bool ApacheMessageHandler::Dump(Writer* writer) {

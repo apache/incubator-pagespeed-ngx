@@ -169,6 +169,8 @@ const char kModPagespeedImageMaxRewritesAtOnce[] =
 const char kModPagespeedImageRecompressionQuality[] =
     "ModPagespeedImageRecompressionQuality";
 const char kModPagespeedInheritVHostConfig[] = "ModPagespeedInheritVHostConfig";
+const char kModPagespeedInstallCrashHandler[] =
+    "ModPagespeedInstallCrashHandler";
 const char kModPagespeedJpegRecompressionQuality[] =
     "ModPagespeedJpegRecompressionQuality";
 const char kModPagespeedWebpRecompressionQuality[] =
@@ -1278,6 +1280,13 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
           factory, cmd,
           &ApacheRewriteDriverFactory::set_inherit_vhost_config, arg);
     }
+  } else if (StringCaseEqual(directive, kModPagespeedInstallCrashHandler)) {
+    ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
+    if (ret == NULL) {
+      ret = ParseBoolOption(
+          factory, cmd,
+          &ApacheRewriteDriverFactory::set_install_crash_handler, arg);
+    }
   } else if (StringCaseEqual(directive,
                              kModPagespeedListOutstandingUrlsOnError)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
@@ -1741,6 +1750,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "DEPRECATED, use ModPagespeedImageMaxRewritesAtOnce."),
   APACHE_CONFIG_OPTION(kModPagespeedInheritVHostConfig,
         "Inherit global configuration into VHosts."),
+  APACHE_CONFIG_OPTION(kModPagespeedInstallCrashHandler,
+         "Try to dump backtrace on crashes. For developer use"),
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheByteLimit,
         "Set the maximum byte size entry to store in the per-process "
         "in-memory LRU cache"),

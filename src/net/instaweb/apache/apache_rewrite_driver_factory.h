@@ -205,6 +205,14 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
     disable_loopback_routing_ = x;
   }
 
+  bool install_crash_handler() const {
+    return install_crash_handler_;
+  }
+
+  void set_install_crash_handler(bool x) {
+    install_crash_handler_ = x;
+  }
+
   // Finds a Cache for the file_cache_path in the config.  If none exists,
   // creates one, using all the other parameters in the ApacheConfig.
   // Currently, no checking is done that the other parameters (e.g. cache
@@ -375,6 +383,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // If false (default) we will redirect all fetches to unknown hosts to
   // localhost.
   bool disable_loopback_routing_;
+
+  // If true, we'll install a signal handler that prints backtraces.
+  bool install_crash_handler_;
 
   // true iff we ran through AutoDetectThreadCounts()
   bool thread_counts_finalized_;
