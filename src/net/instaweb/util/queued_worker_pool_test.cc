@@ -37,6 +37,13 @@ class QueuedWorkerPoolTest: public WorkerTestBase {
  protected:
   scoped_ptr<QueuedWorkerPool> worker_;
 
+  // Blocks mainline until a sequence completes all outstanding tasks.
+  void WaitUntilSequenceCompletes(QueuedWorkerPool::Sequence* sequence) {
+    SyncPoint done(thread_runtime_.get());
+    sequence->Add(new NotifyRunFunction(&done));
+    done.Wait();
+  }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(QueuedWorkerPoolTest);
 };
@@ -299,8 +306,7 @@ TEST_F(QueuedWorkerPoolTest, MaxQueueSize) {
   sequence->Add(new Increment(-97, &count));   // Cancels first increment.
   wait.Notify();
   done.Wait();
-  worker_->FreeSequence(sequence);
-  worker_->ShutDown();
+  WaitUntilSequenceCompletes(sequence);
   EXPECT_EQ(-97, count);
 }
 
@@ -317,8 +323,6 @@ TEST_F(QueuedWorkerPoolTest, CancelPending) {
   sequence->Add(new NotifyRunFunction(&done));
   wait.Notify();
   done.Wait();
-  worker_->FreeSequence(sequence);
-  worker_->ShutDown();
   EXPECT_EQ(-300, count);
 }
 
