@@ -42,6 +42,10 @@ fi
 
 exit_status="0"
 
+# Provide an environment variable for use in apr_mem_cache_test.cc indicating
+# what port # we used.
+export MEMCACHED_PORT=6765
+
 # TODO(jmarantz): replace what's below with 'eval "$@"' or the like, eliminating
 # the loop and special cases.
 if [ "$1" = "-multi" ]; then

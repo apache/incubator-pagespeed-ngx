@@ -46,7 +46,6 @@ namespace net_instaweb {
 
 namespace {
 
-const char kPortString[] = "6765";
 const int kTestValueSizeThreshold = 200;
 const size_t kLRUCacheSize = 3 * kTestValueSizeThreshold;
 const size_t kJustUnderThreshold = kTestValueSizeThreshold - 100;
@@ -69,6 +68,18 @@ class AprMemCacheTest : public CacheTestBase {
   }
 
   bool ConnectToMemcached(bool use_md5_hasher) {
+    // See install/run_program_with_memcached.sh where this environment
+    // variable is established during development testing flows.
+    const char* kPortString = getenv("MEMCACHED_PORT");
+    if (kPortString == NULL) {
+      LOG(ERROR) << "AprMemCache tests are skipped because env var "
+                 << "$MEMCACHED_PORT is not set.  Set that to the port "
+                 << "number where memcached is running to enable the "
+                 << "tests.  See install/run_program_with_memcached.sh";
+      // Does not fail the test.
+      return false;
+    }
+
     GoogleString servers = StrCat("localhost:", kPortString);
     Hasher* hasher = &mock_hasher_;
     if (use_md5_hasher) {
@@ -83,7 +94,8 @@ class AprMemCacheTest : public CacheTestBase {
     // call, such as GetStatus.
     GoogleString buf;
     if (!servers_->Connect() || !servers_->GetStatus(&buf)) {
-      LOG(ERROR) << "please start 'memcached -p 6765";
+      // $MEMCACHED_PORT was specified, but did not work, so fail the test.
+      EXPECT_TRUE(false) << "please start 'memcached -p " << kPortString << "'";
       return false;
     }
 
@@ -106,7 +118,9 @@ class AprMemCacheTest : public CacheTestBase {
 
 // Simple flow of putting in an item, getting it, deleting it.
 TEST_F(AprMemCacheTest, PutGetDelete) {
-  ASSERT_TRUE(ConnectToMemcached(true));
+  if (!ConnectToMemcached(true)) {
+    return;
+  }
 
   CheckPut("Name", "Value");
   CheckGet("Name", "Value");
@@ -121,13 +135,17 @@ TEST_F(AprMemCacheTest, PutGetDelete) {
 }
 
 TEST_F(AprMemCacheTest, MultiGet) {
-  ASSERT_TRUE(ConnectToMemcached(true));
+  if (!ConnectToMemcached(true)) {
+    return;
+  }
   TestMultiGet();
   EXPECT_EQ(0, lru_cache_->size_bytes()) << "fallback not used.";
 }
 
 TEST_F(AprMemCacheTest, BasicInvalid) {
-  ASSERT_TRUE(ConnectToMemcached(true));
+  if (!ConnectToMemcached(true)) {
+    return;
+  }
 
   // Check that we honor callback veto on validity.
   CheckPut("nameA", "valueA");
@@ -141,7 +159,9 @@ TEST_F(AprMemCacheTest, BasicInvalid) {
 }
 
 TEST_F(AprMemCacheTest, SizeTest) {
-  ASSERT_TRUE(ConnectToMemcached(true));
+  if (!ConnectToMemcached(true)) {
+    return;
+  }
 
   for (int x = 0; x < 10; ++x) {
     for (int i = kJustUnderThreshold/2; i < kJustUnderThreshold - 10; ++i) {
@@ -155,7 +175,9 @@ TEST_F(AprMemCacheTest, SizeTest) {
 }
 
 TEST_F(AprMemCacheTest, StatsTest) {
-  ASSERT_TRUE(ConnectToMemcached(true));
+  if (!ConnectToMemcached(true)) {
+    return;
+  }
   GoogleString buf;
   ASSERT_TRUE(servers_->GetStatus(&buf));
   EXPECT_TRUE(buf.find("memcached server localhost:") != GoogleString::npos);
@@ -167,7 +189,9 @@ TEST_F(AprMemCacheTest, StatsTest) {
 }
 
 TEST_F(AprMemCacheTest, HashCollision) {
-  ASSERT_TRUE(ConnectToMemcached(false));
+  if (!ConnectToMemcached(false)) {
+    return;
+  }
   CheckPut("N1", "V1");
   CheckGet("N1", "V1");
 
@@ -181,7 +205,9 @@ TEST_F(AprMemCacheTest, HashCollision) {
 }
 
 TEST_F(AprMemCacheTest, JustUnderThreshold) {
-  ASSERT_TRUE(ConnectToMemcached(true));
+  if (!ConnectToMemcached(true)) {
+    return;
+  }
   const GoogleString kValue(kJustUnderThreshold, 'a');
   const char kKey[] = "just_under_threshold";
   CheckPut(kKey, kValue);
@@ -192,7 +218,9 @@ TEST_F(AprMemCacheTest, JustUnderThreshold) {
 // Basic operation with huge values, only one of which will fit
 // in the fallback cache at a time.
 TEST_F(AprMemCacheTest, HugeValue) {
-  ASSERT_TRUE(ConnectToMemcached(true));
+  if (!ConnectToMemcached(true)) {
+    return;
+  }
   const GoogleString kValue(kHugeWriteSize, 'a');
   const char kKey1[] = "large1";
   CheckPut(kKey1, kValue);
@@ -215,7 +243,9 @@ TEST_F(AprMemCacheTest, HugeValue) {
 }
 
 TEST_F(AprMemCacheTest, LargeValueMultiGet) {
-  ASSERT_TRUE(ConnectToMemcached(true));
+  if (!ConnectToMemcached(true)) {
+    return;
+  }
   const GoogleString kLargeValue1(kLargeWriteSize, 'a');
   const char kKey1[] = "large1";
   CheckPut(kKey1, kLargeValue1);
@@ -244,7 +274,9 @@ TEST_F(AprMemCacheTest, LargeValueMultiGet) {
 }
 
 TEST_F(AprMemCacheTest, MultiServerFallback) {
-  ASSERT_TRUE(ConnectToMemcached(true));
+  if (!ConnectToMemcached(true)) {
+    return;
+  }
 
   // Make another connection to the same memcached, but with a different
   // fallback cache.
@@ -270,7 +302,9 @@ TEST_F(AprMemCacheTest, MultiServerFallback) {
 }
 
 TEST_F(AprMemCacheTest, KeyOver64kDropped) {
-  ASSERT_TRUE(ConnectToMemcached(true));
+  if (!ConnectToMemcached(true)) {
+    return;
+  }
 
   // We set our testing byte thresholds too low to trigger the case where
   // the key-value encoding fails, so make an alternate fallback cache
@@ -297,7 +331,9 @@ TEST_F(AprMemCacheTest, KeyOver64kDropped) {
 // Note: we do not expect to see ridiculously large keys; we are just
 // testing for corner cases here.
 TEST_F(AprMemCacheTest, LargeKeyOverThreshold) {
-  ASSERT_TRUE(ConnectToMemcached(true));
+  if (!ConnectToMemcached(true)) {
+    return;
+  }
   const GoogleString kKey(kLargeWriteSize, 'a');
   const char kValue[] = "value";
   CheckPut(kKey, kValue);
@@ -309,7 +345,9 @@ TEST_F(AprMemCacheTest, ThrottleLogMessages) {
   Variable* squelched_count = statistics_.GetVariable(
       "memcache_squelched_message_count");
 
-  ASSERT_TRUE(ConnectToMemcached(true));
+  if (!ConnectToMemcached(true)) {
+    return;
+  }
   EXPECT_TRUE(servers_->ShouldLogAprError());
   EXPECT_TRUE(servers_->ShouldLogAprError());
   EXPECT_TRUE(servers_->ShouldLogAprError());
