@@ -78,7 +78,7 @@ class AsyncCache : public CacheInterface {
   // This can be called during the process Shutdown flow to avoid
   // introducing more work asynchronously that will have to be
   // completed prior to Shutdown.
-  void StopCacheActivity();
+  virtual void ShutDown();
 
   // Cancels all pending cache operations.  Puts and Deletes are dropped.
   // Gets and MultiGets are retired by calling their callbacks with
@@ -88,8 +88,6 @@ class AsyncCache : public CacheInterface {
   virtual bool IsHealthy() const {
     return !stopped_.value() && cache_->IsHealthy();
   }
-
-  virtual void ShutDown() { cache_->ShutDown(); }
 
   int32 outstanding_operations() { return outstanding_operations_.value(); }
 

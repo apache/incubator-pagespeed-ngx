@@ -162,4 +162,20 @@ int CacheBatcher::Pending() {
   return pending_;
 }
 
+void CacheBatcher::ShutDown() {
+  MultiGetRequest* request = NULL;
+  {
+    ScopedMutex mutex(mutex_.get());
+    if (!queue_.empty()) {
+      request = new MultiGetRequest;
+      request->swap(queue_);
+    }
+  }
+
+  if (request != NULL) {
+    ReportMultiGetNotFound(request);
+  }
+  cache_->ShutDown();
+}
+
 }  // namespace net_instaweb

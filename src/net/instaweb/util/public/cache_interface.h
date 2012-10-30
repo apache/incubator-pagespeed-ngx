@@ -183,6 +183,10 @@ class CacheInterface {
   // Invokes callback->ValidateCandidate() and callback->Done() as appropriate.
   void ValidateAndReportResult(const GoogleString& key, KeyState state,
                                Callback* callback);
+
+  // Helper method to report a NotFound on each MultiGet key.  Deletes
+  // the request.
+  void ReportMultiGetNotFound(MultiGetRequest* request);
 };
 
 }  // namespace net_instaweb

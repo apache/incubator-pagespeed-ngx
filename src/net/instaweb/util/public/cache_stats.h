@@ -19,8 +19,9 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_CACHE_STATS_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_CACHE_STATS_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/atomic_bool.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -56,8 +57,15 @@ class CacheStats : public CacheInterface {
   virtual const char* Name() const { return name_.c_str(); }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
   virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
-  virtual bool IsHealthy() const { return cache_->IsHealthy(); }
-  virtual void ShutDown() { cache_->ShutDown(); }
+
+  virtual bool IsHealthy() const {
+    return !shutdown_.value() && cache_->IsHealthy();
+  }
+
+  virtual void ShutDown() {
+    shutdown_.set_value(true);
+    cache_->ShutDown();
+  }
 
  private:
   class StatsCallback;
@@ -75,6 +83,7 @@ class CacheStats : public CacheInterface {
   Variable* inserts_;
   Variable* misses_;
   GoogleString name_;
+  AtomicBool shutdown_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheStats);
 };

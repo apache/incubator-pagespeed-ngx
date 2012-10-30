@@ -131,32 +131,44 @@ class CacheStats::StatsCallback : public DelegatingCacheCallback {
 };
 
 void CacheStats::Get(const GoogleString& key, Callback* callback) {
-  StatsCallback* cb = new StatsCallback(this, timer_, callback);
-  cache_->Get(key, cb);
-  get_count_histogram_->Add(1);
+  if (shutdown_.value()) {
+    ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
+  } else {
+    StatsCallback* cb = new StatsCallback(this, timer_, callback);
+    cache_->Get(key, cb);
+    get_count_histogram_->Add(1);
+  }
 }
 
 void CacheStats::MultiGet(MultiGetRequest* request) {
-  get_count_histogram_->Add(request->size());
-  for (int i = 0, n = request->size(); i < n; ++i) {
-    KeyCallback* key_callback = &(*request)[i];
-    key_callback->callback = new StatsCallback(this, timer_,
-                                               key_callback->callback);
+  if (shutdown_.value()) {
+    ReportMultiGetNotFound(request);
+  } else {
+    get_count_histogram_->Add(request->size());
+    for (int i = 0, n = request->size(); i < n; ++i) {
+      KeyCallback* key_callback = &(*request)[i];
+      key_callback->callback = new StatsCallback(this, timer_,
+                                                 key_callback->callback);
+    }
+    cache_->MultiGet(request);
   }
-  cache_->MultiGet(request);
 }
 
 void CacheStats::Put(const GoogleString& key, SharedString* value) {
-  int64 start_time_us = timer_->NowUs();
-  inserts_->Add(1);
-  insert_size_bytes_histogram_->Add(value->size());
-  cache_->Put(key, value);
-  insert_latency_us_histogram_->Add(timer_->NowUs() - start_time_us);
+  if (!shutdown_.value()) {
+    int64 start_time_us = timer_->NowUs();
+    inserts_->Add(1);
+    insert_size_bytes_histogram_->Add(value->size());
+    cache_->Put(key, value);
+    insert_latency_us_histogram_->Add(timer_->NowUs() - start_time_us);
+  }
 }
 
 void CacheStats::Delete(const GoogleString& key) {
-  deletes_->Add(1);
-  cache_->Delete(key);
+  if (!shutdown_.value()) {
+    deletes_->Add(1);
+    cache_->Delete(key);
+  }
 }
 
 }  // namespace net_instaweb

@@ -90,12 +90,7 @@ void AsyncCache::DoMultiGet(MultiGetRequest* request) {
 }
 
 void AsyncCache::CancelMultiGet(MultiGetRequest* request) {
-  for (int i = 0, n = request->size(); i < n; ++i) {
-    KeyCallback& key_callback = (*request)[i];
-    ValidateAndReportResult(key_callback.key, CacheInterface::kNotFound,
-                            key_callback.callback);
-  }
-  delete request;
+  ReportMultiGetNotFound(request);
   outstanding_operations_.increment(-1);
 }
 
@@ -148,9 +143,17 @@ void AsyncCache::CancelDelete(GoogleString* key) {
   delete key;
 }
 
-void AsyncCache::StopCacheActivity() {
+void AsyncCache::ShutDown() {
   stopped_.set_value(true);
   sequence_->CancelPendingFunctions();
+
+  // Note that though we've canceled pending functions, the cache might be
+  // still be busy with a function -- say if it's blocked on a wedged memcached.
+  //
+  // So we can't Disable it until it quiesces.  The only way out from a
+  // completely wedged system is kill -9.  Other solutions likely cause
+  // core dumps.
+  sequence_->Add(MakeFunction(cache_.get(), &CacheInterface::ShutDown));
 }
 
 }  // namespace net_instaweb

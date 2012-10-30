@@ -36,7 +36,6 @@
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/apache/apache_thread_system.h"
-#include "net/instaweb/apache/apr_file_system.h"
 #include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
@@ -666,13 +665,21 @@ void ApacheRewriteDriverFactory::DumpRefererStatistics(Writer* writer) {
 
 void ApacheRewriteDriverFactory::StopCacheActivity() {
   RewriteDriverFactory::StopCacheActivity();
-  for (int i = 0, n = async_caches_.size(); i < n; ++i) {
-    AsyncCache* async_cache = async_caches_[i];
-    async_cache->StopCacheActivity();
+
+  // Iterate through the map of CacheInterface* objects constructed for
+  // the memcached.  Note that these are not typically AprMemCache* objects,
+  // but instead are a hierarchy of CacheStats*, CacheBatcher*, AsyncCache*,
+  // and AprMemCache*, all of which must be stopped.
+  for (MemcachedMap::iterator p = memcached_map_.begin(),
+           e = memcached_map_.end(); p != e; ++p) {
+    CacheInterface* cache = p->second;
+    cache->ShutDown();
   }
 }
 
 void ApacheRewriteDriverFactory::ShutDown() {
+  message_handler()->Message(kError, "Shutting down mod_pagespeed %s",
+                             is_root_process_ ? "root" : "child");
   StopCacheActivity();
 
   // Next, we shutdown the fetchers before killing the workers in
@@ -708,6 +715,17 @@ void ApacheRewriteDriverFactory::ShutDown() {
   apache_message_handler_->set_buffer(NULL);
   apache_html_parse_message_handler_->set_buffer(NULL);
   RewriteDriverFactory::ShutDown();
+
+  // Take down any memcached threads.  Note that this will block
+  // waiting for any wedged operations to terminate, possibly
+  // requiring kill -9 to restart Apache if memcached is permanently
+  // hung.  In pracice, the patches made in
+  // src/third_party/aprutil/apr_memcache2.c make that very unlikely.
+  //
+  // The alternative scenario of exiting with pending I/O will often
+  // crash and always leak memory.  Note that if memcached crashes, as
+  // opposed to hanging, it will probably not appear wedged.
+  memcached_pool_.reset(NULL);
 }
 
 // Initializes global statistics object if needed, using factory to

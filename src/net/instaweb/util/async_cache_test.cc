@@ -308,7 +308,7 @@ TEST_F(AsyncCacheTest, MultiGetDrop) {
 TEST_F(AsyncCacheTest, StopGets) {
   PopulateCache(1);
   CheckGet("n0", "v0");
-  async_cache_->StopCacheActivity();
+  async_cache_->ShutDown();
   suppress_post_get_cleanup_ = true;  // avoid blocking waiting for delayed n0.
   CheckNotFound("n0");
   suppress_post_get_cleanup_ = false;

@@ -43,4 +43,12 @@ void CacheInterface::MultiGet(MultiGetRequest* request) {
   delete request;
 }
 
+void CacheInterface::ReportMultiGetNotFound(MultiGetRequest* request) {
+  for (int i = 0, n = request->size(); i < n; ++i) {
+    KeyCallback& key_callback = (*request)[i];
+    ValidateAndReportResult(key_callback.key, kNotFound, key_callback.callback);
+  }
+  delete request;
+}
+
 }  // namespace net_instaweb
