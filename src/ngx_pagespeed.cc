@@ -146,7 +146,7 @@ ngx_http_pagespeed_release_request_context(void* data) {
   }
 
   // BaseFetch doesn't delete itself in HandleDone() because we still need to
-  // recive notification via pipe and call CollectAccumulatedWrites.
+  // recieve notification via pipe and call CollectAccumulatedWrites.
   // TODO(jefftk): If we close the proxy_fetch above and not in the normal flow,
   // can this delete base_fetch while proxy_fetch still needs it? Is there a
   // race condition here?
@@ -160,7 +160,8 @@ ngx_http_pagespeed_release_request_context(void* data) {
   delete ctx;
 }
 
-// Tell nginx whether we have network activity we're waiting for.
+// Tell nginx whether we have network activity we're waiting for so that it sets
+// a write handler.  See src/http/ngx_http_request.c:2083.
 static void
 ngx_http_pagespeed_set_buffered(ngx_http_request_t* r, bool on) {
   if (on) {
@@ -274,7 +275,7 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
   char chr;
   do {
     rc = read(ctx->pipe_fd, &chr, 1);
-  } while (rc != 1 && errno == EINTR);  // Retry on EINTR.
+  } while (rc == -1 && errno == EINTR);  // Retry on EINTR.
 
   // read() should only ever return 0 (closed), 1 (data), or -1 (error).
   CHECK(rc == -1 || rc == 0 || rc == 1);
@@ -312,25 +313,14 @@ static void
 ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
   int rc;
 
-  if (ev == NULL) {
-    fprintf(stderr, "ev is null\n");
-    return;
-  }
+  CHECK(ev != NULL);
 
   ngx_connection_t* c = static_cast<ngx_connection_t*>(ev->data);
-  if (c == NULL) {
-    fprintf(stderr, "c is null\n");
-    ngx_del_event(ev, NGX_READ_EVENT, 0);
-    return;
-  }
+  CHECK(c != NULL);
 
   ngx_http_pagespeed_request_ctx_t* ctx =
       static_cast<ngx_http_pagespeed_request_ctx_t*>(c->data);
-  if (ctx == NULL) {
-    fprintf(stderr, "ctx is null\n");
-    ngx_del_event(ev, NGX_READ_EVENT, 0);
-    return;
-  }
+  CHECK(ctx != NULL);
 
   rc = ngx_http_pagespeed_update(ctx, ev);
   CHECK(rc == NGX_OK || rc == NGX_ERROR || rc == NGX_AGAIN);
@@ -360,7 +350,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   int file_descriptors[2];
   int rc = pipe(file_descriptors);
   if (rc != 0) {
-    ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0, "pipe() failed");
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "pipe() failed");
     ngx_http_pagespeed_release_request_context(ctx);
     return NGX_ERROR;
   }
@@ -390,17 +380,15 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
     close(file_descriptors[1]);
     ctx->pipe_fd = -1;
 
-    ngx_log_error(NGX_LOG_ERR, (r)->connection->log, 0,
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                   "ngx_http_pagespeed_create_request_context: "
                   "no pagespeed connection.");
     ngx_http_pagespeed_release_request_context(ctx);
     return NGX_ERROR;
   }
 
-  ngx_connection_t *c;
-
-  c = ctx->pagespeed_connection;
-
+  // Configure the connection.
+  ngx_connection_t* c = ctx->pagespeed_connection;
   c->recv = ngx_recv;
   c->send = ngx_send;
   c->recv_chain = ngx_recv_chain;
@@ -411,12 +399,10 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   c->read->log = c->log;
   c->write->log = c->log;
 
-  ctx->pagespeed_connection->data = ctx;
-
-  ctx->pagespeed_connection->read->handler =
-      ngx_http_pagespeed_connection_read_handler;
-
-  ngx_add_event(ctx->pagespeed_connection->read, NGX_READ_EVENT, 0);
+  // Tell nginx to monitor this pipe and call us back when there's data.
+  c->data = ctx;
+  c->read->handler = ngx_http_pagespeed_connection_read_handler;
+  ngx_add_event(c->read, NGX_READ_EVENT, 0);
 
   // Deletes itself when HandleDone is called, which happens when we call Done()
   // on the proxy fetch below.
