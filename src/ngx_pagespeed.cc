@@ -311,8 +311,6 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
 
 static void
 ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
-  int rc;
-
   CHECK(ev != NULL);
 
   ngx_connection_t* c = static_cast<ngx_connection_t*>(ev->data);
@@ -322,7 +320,7 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
       static_cast<ngx_http_pagespeed_request_ctx_t*>(c->data);
   CHECK(ctx != NULL);
 
-  rc = ngx_http_pagespeed_update(ctx, ev);
+  int rc = ngx_http_pagespeed_update(ctx, ev);
   CHECK(rc == NGX_OK || rc == NGX_ERROR || rc == NGX_AGAIN);
   if (rc == NGX_AGAIN) {
     // request needs more work by pagespeed
@@ -335,15 +333,41 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
   }
 }
 
+static ngx_int_t
+ngx_http_pagespeed_create_connection(ngx_http_pagespeed_request_ctx_t* ctx) {
+  ngx_connection_t* c = ngx_get_connection(
+      ctx->pipe_fd, ctx->r->connection->log);
+  if (c == NULL) {
+    return NGX_ERROR;
+  }
+
+  c->recv = ngx_recv;
+  c->send = ngx_send;
+  c->recv_chain = ngx_recv_chain;
+  c->send_chain = ngx_send_chain;
+
+  c->log_error = ctx->r->connection->log_error;
+
+  c->read->log = c->log;
+  c->write->log = c->log;
+
+  ctx->pagespeed_connection = c;
+
+  // Tell nginx to monitor this pipe and call us back when there's data.
+  c->data = ctx;
+  c->read->handler = ngx_http_pagespeed_connection_read_handler;
+  ngx_add_event(c->read, NGX_READ_EVENT, 0);
+
+  return NGX_OK;
+}
+
 // Set us up for processing a request.
 static ngx_int_t
 ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   ngx_http_pagespeed_request_ctx_t* ctx =
       new ngx_http_pagespeed_request_ctx_t();
   ctx->pipe_fd = -1;
-
   ctx->r = r;
-
   ctx->cfg = static_cast<ngx_http_pagespeed_srv_conf_t*>(
       ngx_http_get_module_srv_conf(r, ngx_pagespeed));
 
@@ -369,13 +393,9 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
       return NGX_ERROR;
   }
 
-  fprintf(stderr, "pipe created: %d -> %d\n",
-          file_descriptors[1], file_descriptors[0]);
-
   ctx->pipe_fd = file_descriptors[0];
-  ctx->pagespeed_connection =
-      ngx_get_connection(ctx->pipe_fd, r->connection->log);
-  if (ctx->pagespeed_connection == NULL) {
+  rc = ngx_http_pagespeed_create_connection(ctx);
+  if (rc != NGX_OK) {
     close(file_descriptors[0]);
     close(file_descriptors[1]);
     ctx->pipe_fd = -1;
@@ -386,23 +406,6 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
     ngx_http_pagespeed_release_request_context(ctx);
     return NGX_ERROR;
   }
-
-  // Configure the connection.
-  ngx_connection_t* c = ctx->pagespeed_connection;
-  c->recv = ngx_recv;
-  c->send = ngx_send;
-  c->recv_chain = ngx_recv_chain;
-  c->send_chain = ngx_send_chain;
-
-  c->log_error = r->connection->log_error;
-
-  c->read->log = c->log;
-  c->write->log = c->log;
-
-  // Tell nginx to monitor this pipe and call us back when there's data.
-  c->data = ctx;
-  c->read->handler = ngx_http_pagespeed_connection_read_handler;
-  ngx_add_event(c->read, NGX_READ_EVENT, 0);
 
   // Deletes itself when HandleDone is called, which happens when we call Done()
   // on the proxy fetch below.
