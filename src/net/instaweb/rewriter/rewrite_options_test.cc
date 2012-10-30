@@ -1367,4 +1367,45 @@ TEST_F(RewriteOptionsTest, EnabledFiltersRequiringJavaScriptTest) {
   EXPECT_TRUE(bar_fs.empty());
 }
 
+TEST_F(RewriteOptionsTest, FilterLookupMethods) {
+  EXPECT_STREQ("Add Head",
+               RewriteOptions::FilterName(RewriteOptions::kAddHead));
+  EXPECT_STREQ("Remove Comments",
+               RewriteOptions::FilterName(RewriteOptions::kRemoveComments));
+  // Can't do these unless we remove the LOG(DFATAL) from FilterName().
+  // EXPECT_STREQ("End of Filters",
+  //              RewriteOptions::FilterName(RewriteOptions::kEndOfFilters));
+  // EXPECT_STREQ("Unknown Filter",
+  //              RewriteOptions::FilterName(
+  //                  static_cast<RewriteOptions::Filter>(-1)));
+
+  EXPECT_STREQ("ah",
+               RewriteOptions::FilterId(RewriteOptions::kAddHead));
+  EXPECT_STREQ("rc",
+               RewriteOptions::FilterId(RewriteOptions::kRemoveComments));
+  // Can't do these unless we remove the LOG(DFATAL) from FilterName().
+  // EXPECT_STREQ("UF",
+  //              RewriteOptions::FilterId(RewriteOptions::kEndOfFilters));
+  // EXPECT_STREQ("UF",
+  //              RewriteOptions::FilterId(
+  //                  static_cast<RewriteOptions::Filter>(-1)));
+
+  EXPECT_EQ(RewriteOptions::kEndOfFilters,
+            RewriteOptions::LookupFilterById("  "));
+  EXPECT_EQ(RewriteOptions::kAddHead,
+            RewriteOptions::LookupFilterById("ah"));
+  EXPECT_EQ(RewriteOptions::kRemoveComments,
+            RewriteOptions::LookupFilterById("rc"));
+  EXPECT_EQ(RewriteOptions::kEndOfFilters,
+            RewriteOptions::LookupFilterById("zz"));
+  EXPECT_EQ(RewriteOptions::kEndOfFilters,
+            RewriteOptions::LookupFilterById("UF"));
+  EXPECT_EQ(RewriteOptions::kEndOfFilters,
+            RewriteOptions::LookupFilterById("junk"));
+  EXPECT_EQ(RewriteOptions::kEndOfFilters,
+            RewriteOptions::LookupFilterById(""));
+  EXPECT_EQ(RewriteOptions::kEndOfFilters,
+            RewriteOptions::LookupFilterById(NULL));
+}
+
 }  // namespace net_instaweb

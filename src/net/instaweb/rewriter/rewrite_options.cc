@@ -187,6 +187,9 @@ const int64 RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs =
 const char* RewriteOptions::option_enum_to_name_array_[
     RewriteOptions::kEndOfOptions];
 
+const RewriteOptions::FilterEnumToIdAndNameEntry*
+    RewriteOptions::filter_id_to_enum_array_[RewriteOptions::kEndOfFilters];
+
 RewriteOptions::Properties* RewriteOptions::properties_ = NULL;
 RewriteOptions::Properties* RewriteOptions::all_properties_ = NULL;
 
@@ -271,6 +274,167 @@ const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
   // this response will not have any custom script inserted.
 };
 
+// Array of mappings from Filter enum to corresponding filter id and name,
+// used to map an enum value to id/name, and also used to initialize the
+// reverse map from id to enum. Although the filter_enum field is not strictly
+// necessary (because it equals the entry's index in the array), it is here so
+// we can check during initialization that the array has been set up correctly.
+//
+// MUST be updated whenever a new Filter value is added and the new entry
+// MUST be inserted in Filter enum order.
+const RewriteOptions::FilterEnumToIdAndNameEntry
+    kFilterVectorStaticInitializer[] = {
+  { RewriteOptions::kAddBaseTag,
+    "ab", "Add Base Tag" },
+  { RewriteOptions::kAddHead,
+    "ah", "Add Head" },
+  { RewriteOptions::kAddInstrumentation,
+    "ai", "Add Instrumentation" },
+  { RewriteOptions::kCanonicalizeJavascriptLibraries,
+    "ij", "Canonicalize Javascript library URLs" },
+  { RewriteOptions::kCollapseWhitespace,
+    "cw", "Collapse Whitespace" },
+  { RewriteOptions::kCollectFlushEarlyContentFilter,
+    RewriteOptions::kCollectFlushEarlyContentFilterId,
+    "Collect Flush Early Content Filter" },
+  { RewriteOptions::kCombineCss,
+    RewriteOptions::kCssCombinerId, "Combine Css" },
+  { RewriteOptions::kCombineHeads,
+    "ch", "Combine Heads" },
+  { RewriteOptions::kCombineJavascript,
+    RewriteOptions::kJavascriptCombinerId, "Combine Javascript" },
+  { RewriteOptions::kComputePanelJson,
+    "cv", "Computes panel json" },
+  { RewriteOptions::kComputeVisibleText,
+    "bp", "Computes visible text" },
+  { RewriteOptions::kConvertGifToPng,
+    "gp", "Convert Gif to Png" },
+  { RewriteOptions::kConvertJpegToProgressive,
+    "jp", "Convert Jpeg to Progressive" },
+  { RewriteOptions::kConvertJpegToWebp,
+    "jw", "Convert Jpeg To Webp" },
+  { RewriteOptions::kConvertMetaTags,
+    "mc", "Convert Meta Tags" },
+  { RewriteOptions::kConvertPngToJpeg,
+    "pj", "Convert Png to Jpeg" },
+  { RewriteOptions::kDebug,
+    "db", "Debug" },
+  { RewriteOptions::kDeferIframe,
+    "df", "Defer Iframe" },
+  { RewriteOptions::kDeferJavascript,
+    "dj", "Defer Javascript" },
+  { RewriteOptions::kDelayImages,
+    "di", "Delay Images" },
+  { RewriteOptions::kDetectReflowWithDeferJavascript,
+    "dr", "Detect Reflow With Defer Javascript" },
+  { RewriteOptions::kDeterministicJs,
+    "mj", "Deterministic Js" },
+  { RewriteOptions::kDisableJavascript,
+    "jd", "Disables scripts by placing them inside noscript tags" },
+  { RewriteOptions::kDivStructure,
+    "ds", "Div Structure" },
+  { RewriteOptions::kElideAttributes,
+    "ea", "Elide Attributes" },
+  { RewriteOptions::kExperimentSpdy,
+    "xs", "SPDY Resources Experiment" },
+  { RewriteOptions::kExplicitCloseTags,
+    "xc", "Explicit Close Tags" },
+  { RewriteOptions::kExtendCacheCss,
+    "ec", "Cache Extend Css" },
+  { RewriteOptions::kExtendCacheImages,
+    "ei", "Cache Extend Images" },
+  { RewriteOptions::kExtendCachePdfs,
+    "ep", "Cache Extend PDFs" },
+  { RewriteOptions::kExtendCacheScripts,
+    "es", "Cache Extend Scripts" },
+  { RewriteOptions::kFallbackRewriteCssUrls,
+    "fc", "Fallback Rewrite Css " },
+  { RewriteOptions::kFlattenCssImports,
+    RewriteOptions::kCssImportFlattenerId, "Flatten CSS Imports" },
+  { RewriteOptions::kFlushSubresources,
+    "fs", "Flush Subresources" },
+  { RewriteOptions::kHandleNoscriptRedirect,
+    "hn", "Handles Noscript Redirects" },
+  { RewriteOptions::kHtmlWriterFilter,
+    "hw", "Flushes html" },
+  { RewriteOptions::kInlineCss,
+    RewriteOptions::kCssInlineId, "Inline Css" },
+  { RewriteOptions::kInlineImages,
+    "ii", "Inline Images" },
+  { RewriteOptions::kInlineImportToLink,
+    "il", "Inline @import to Link" },
+  { RewriteOptions::kInlineJavascript,
+    RewriteOptions::kJavascriptInlineId, "Inline Javascript" },
+  { RewriteOptions::kInsertDnsPrefetch,
+    "idp", "Insert DNS Prefetch" },
+  { RewriteOptions::kInsertGA,
+    "ig", "Insert Google Analytics" },
+  { RewriteOptions::kInsertImageDimensions,
+    "id", "Insert Image Dimensions" },
+  { RewriteOptions::kJpegSubsampling,
+    "js", "Jpeg Subsampling" },
+  { RewriteOptions::kLazyloadImages,
+    "ll", "Lazyload Images" },
+  { RewriteOptions::kLeftTrimUrls,
+    "tu", "Left Trim Urls" },
+  { RewriteOptions::kLocalStorageCache,
+    RewriteOptions::kLocalStorageCacheId, "Local Storage Cache" },
+  { RewriteOptions::kMakeGoogleAnalyticsAsync,
+    "ga", "Make Google Analytics Async" },
+  { RewriteOptions::kMoveCssAboveScripts,
+    "cj", "Move Css Above Scripts" },
+  { RewriteOptions::kMoveCssToHead,
+    "cm", "Move Css To Head" },
+  { RewriteOptions::kOutlineCss,
+    "co", "Outline Css" },
+  { RewriteOptions::kOutlineJavascript,
+    "jo", "Outline Javascript" },
+  { RewriteOptions::kPedantic,
+    "pc", "Add pedantic types" },
+  { RewriteOptions::kPrioritizeVisibleContent,
+    "pv", "Prioritize Visible Content" },
+  { RewriteOptions::kProcessBlinkInBackground,
+    "bb", "Blink Background Processing" },
+  { RewriteOptions::kRecompressJpeg,
+    "rj", "Recompress Jpeg" },
+  { RewriteOptions::kRecompressPng,
+    "rp", "Recompress Png" },
+  { RewriteOptions::kRecompressWebp,
+    "rw", "Recompress Webp" },
+  { RewriteOptions::kRemoveComments,
+    "rc", "Remove Comments" },
+  { RewriteOptions::kRemoveQuotes,
+    "rq", "Remove Quotes" },
+  { RewriteOptions::kResizeImages,
+    "ri", "Resize Images" },
+  { RewriteOptions::kResizeMobileImages,
+    "rm", "Resize Mobile Images" },
+  { RewriteOptions::kRewriteCss,
+    RewriteOptions::kCssFilterId, "Rewrite Css" },
+  { RewriteOptions::kRewriteDomains,
+    "rd", "Rewrite Domains" },
+  { RewriteOptions::kRewriteJavascript,
+    RewriteOptions::kJavascriptMinId, "Rewrite Javascript" },
+  { RewriteOptions::kRewriteStyleAttributes,
+    "cs", "Rewrite Style Attributes" },
+  { RewriteOptions::kRewriteStyleAttributesWithUrl,
+    "cu", "Rewrite Style Attributes With Url" },
+  { RewriteOptions::kServeNonCacheableNonCritical,
+    "sn", "Serve Non Cacheable and Non Critical Content" },
+  { RewriteOptions::kSplitHtml,
+    "sh", "Split Html" },
+  { RewriteOptions::kSpriteImages,
+    RewriteOptions::kImageCombineId, "Sprite Images" },
+  { RewriteOptions::kStripImageColorProfile,
+    "cp", "Strip Image Color Profiles" },
+  { RewriteOptions::kStripImageMetaData,
+    "md", "Strip Image Meta Data" },
+  { RewriteOptions::kStripNonCacheable,
+    "nc", "Strip Non Cacheable" },
+  { RewriteOptions::kStripScripts,
+    "ss", "Strip Scripts" },
+};
+
 #ifndef NDEBUG
 void CheckFilterSetOrdering(const RewriteOptions::Filter* filters, int num) {
   for (int i = 1; i < num; ++i) {
@@ -288,172 +452,20 @@ bool IsInSet(const RewriteOptions::Filter* filters, int num,
 }  // namespace
 
 const char* RewriteOptions::FilterName(Filter filter) {
-  switch (filter) {
-    case kAddBaseTag:                      return "Add Base Tag";
-    case kAddHead:                         return "Add Head";
-    case kAddInstrumentation:              return "Add Instrumentation";
-    case kCanonicalizeJavascriptLibraries:
-      return "Canonicalize Javascript library URLs";
-    case kCollapseWhitespace:              return "Collapse Whitespace";
-    case kCollectFlushEarlyContentFilter:
-      return "Collect Flush Early Content Filter";
-    case kCombineCss:                      return "Combine Css";
-    case kCombineHeads:                    return "Combine Heads";
-    case kCombineJavascript:               return "Combine Javascript";
-    case kComputePanelJson:                return "Computes panel json";
-    case kComputeVisibleText:              return "Computes visible text";
-    case kConvertGifToPng:                 return "Convert Gif to Png";
-    case kConvertJpegToProgressive:        return "Convert Jpeg to Progressive";
-    case kConvertJpegToWebp:               return "Convert Jpeg To Webp";
-    case kConvertMetaTags:                 return "Convert Meta Tags";
-    case kConvertPngToJpeg:                return "Convert Png to Jpeg";
-    case kDebug:                           return "Debug";
-    case kDeferIframe:                     return "Defer Iframe";
-    case kDeferJavascript:                 return "Defer Javascript";
-    case kDelayImages:                     return "Delay Images";
-    case kDetectReflowWithDeferJavascript:
-      return "Detect Reflow With Defer Javascript";
-    case kDeterministicJs:                 return "Deterministic Js";
-    case kDisableJavascript:
-      return "Disables scripts by placing them inside noscript tags";
-    case kDivStructure:                    return "Div Structure";
-    case kElideAttributes:                 return "Elide Attributes";
-    case kExperimentSpdy:                  return "SPDY Resources Experiment";
-    case kExplicitCloseTags:               return "Explicit Close Tags";
-    case kExtendCacheCss:                  return "Cache Extend Css";
-    case kExtendCacheImages:               return "Cache Extend Images";
-    case kExtendCachePdfs:                 return "Cache Extend PDFs";
-    case kExtendCacheScripts:              return "Cache Extend Scripts";
-    case kFallbackRewriteCssUrls:          return "Fallback Rewrite Css Urls";
-    case kFlattenCssImports:               return "Flatten CSS Imports";
-    case kFlushSubresources:               return "Flush Subresources";
-    case kHandleNoscriptRedirect:          return "Handles Noscript Redirects";
-    case kHtmlWriterFilter:                return "Flushes html";
-    case kInlineCss:                       return "Inline Css";
-    case kInlineImages:                    return "Inline Images";
-    case kInlineImportToLink:              return "Inline @import to Link";
-    case kInlineJavascript:                return "Inline Javascript";
-    case kInsertDnsPrefetch:               return "Insert DNS Prefetch";
-    case kInsertGA:                        return "Insert Google Analytics";
-    case kInsertImageDimensions:           return "Insert Image Dimensions";
-    case kJpegSubsampling:                 return "Jpeg Subsampling";
-    case kLazyloadImages:                  return "Lazyload Images";
-    case kLeftTrimUrls:                    return "Left Trim Urls";
-    case kLocalStorageCache:               return "Local Storage Cache";
-    case kMakeGoogleAnalyticsAsync:        return "Make Google Analytics Async";
-    case kMoveCssAboveScripts:             return "Move Css Above Scripts";
-    case kMoveCssToHead:                   return "Move Css To Head";
-    case kOutlineCss:                      return "Outline Css";
-    case kOutlineJavascript:               return "Outline Javascript";
-    case kPedantic:                        return "Add pedantic types";
-    case kPrioritizeVisibleContent:        return "Prioritize Visible Content";
-    case kProcessBlinkInBackground:        return "Blink Background Processing";
-    case kRecompressJpeg:                  return "Recompress Jpeg";
-    case kRecompressPng:                   return "Recompress Png";
-    case kRecompressWebp:                  return "Recompress Webp";
-    case kRemoveComments:                  return "Remove Comments";
-    case kRemoveQuotes:                    return "Remove Quotes";
-    case kResizeImages:                    return "Resize Images";
-    case kResizeMobileImages:              return "Resize Mobile Images";
-    case kRewriteCss:                      return "Rewrite Css";
-    case kRewriteDomains:                  return "Rewrite Domains";
-    case kRewriteJavascript:               return "Rewrite Javascript";
-    case kRewriteStyleAttributes:          return "Rewrite Style Attributes";
-    case kRewriteStyleAttributesWithUrl:
-      return "Rewrite Style Attributes With Url";
-    case kServeNonCacheableNonCritical:
-        return "Serve Non Cacheable and Non Critical Content";
-    case kSpriteImages:                    return "Sprite Images";
-    case kSplitHtml:                       return "Split Html";
-    case kStripNonCacheable:               return "Strip Non Cacheable";
-    case kStripImageColorProfile:          return "Strip Image Color Profiles";
-    case kStripImageMetaData:              return "Strip Image Meta Data";
-    case kStripScripts:                    return "Strip Scripts";
-    case kEndOfFilters:                    return "End of Filters";
+  int i = static_cast<int>(filter);
+  int n = arraysize(kFilterVectorStaticInitializer);
+  if (i >= 0 && i < n) {
+    return kFilterVectorStaticInitializer[i].filter_name;
   }
+  LOG(DFATAL) << "Unknown filter: " << filter;
   return "Unknown Filter";
 }
 
 const char* RewriteOptions::FilterId(Filter filter) {
-  switch (filter) {
-    case kAddBaseTag:                      return "ab";
-    case kAddHead:                         return "ah";
-    case kAddInstrumentation:              return "ai";
-    case kCanonicalizeJavascriptLibraries: return "ij";
-    case kCollapseWhitespace:              return "cw";
-    case kCollectFlushEarlyContentFilter:
-      return kCollectFlushEarlyContentFilterId;
-    case kCombineCss:                      return kCssCombinerId;
-    case kCombineHeads:                    return "ch";
-    case kCombineJavascript:               return kJavascriptCombinerId;
-    case kComputePanelJson:                return "cv";
-    case kComputeVisibleText:              return "bp";
-    case kConvertGifToPng:                 return "gp";
-    case kConvertJpegToProgressive:        return "jp";
-    case kConvertJpegToWebp:               return "jw";
-    case kConvertMetaTags:                 return "mc";
-    case kConvertPngToJpeg:                return "pj";
-    case kDebug:                           return "db";
-    case kDeferIframe:                     return "df";
-    case kDeferJavascript:                 return "dj";
-    case kDelayImages:                     return "di";
-    case kDetectReflowWithDeferJavascript: return "dr";
-    case kDeterministicJs:                 return "mj";
-    case kDisableJavascript:               return "jd";
-    case kDivStructure:                    return "ds";
-    case kElideAttributes:                 return "ea";
-    case kExperimentSpdy:                  return "xs";
-    case kExplicitCloseTags:               return "xc";
-    case kExtendCacheCss:                  return "ec";
-    case kExtendCacheImages:               return "ei";
-    case kExtendCachePdfs:                 return "ep";
-    case kExtendCacheScripts:              return "es";
-    case kFallbackRewriteCssUrls:          return "fc";
-    case kFlattenCssImports:               return kCssImportFlattenerId;
-    case kFlushSubresources:               return "fs";
-    case kHandleNoscriptRedirect:          return "hn";
-    case kHtmlWriterFilter:                return "hw";
-    case kInlineCss:                       return kCssInlineId;
-    case kInlineImages:                    return "ii";
-    case kInlineImportToLink:              return "il";
-    case kInlineJavascript:                return kJavascriptInlineId;
-    case kInsertDnsPrefetch:               return "idp";
-    case kInsertGA:                        return "ig";
-    case kInsertImageDimensions:           return "id";
-    case kJpegSubsampling:                 return "js";
-    case kLazyloadImages:                  return "ll";
-    case kLeftTrimUrls:                    return "tu";
-    case kLocalStorageCache:               return kLocalStorageCacheId;
-    case kMakeGoogleAnalyticsAsync:        return "ga";
-    case kMoveCssAboveScripts:             return "cj";
-    case kMoveCssToHead:                   return "cm";
-    case kOutlineCss:                      return "co";
-    case kOutlineJavascript:               return "jo";
-    case kPedantic:                        return "pc";
-    case kPrioritizeVisibleContent:        return "pv";
-    case kProcessBlinkInBackground:        return "bb";
-    case kRecompressJpeg:                  return "rj";
-    case kRecompressPng:                   return "rp";
-    case kRecompressWebp:                  return "rw";
-    case kRemoveComments:                  return "rc";
-    case kRemoveQuotes:                    return "rq";
-    case kResizeImages:                    return "ri";
-    case kResizeMobileImages:              return "rm";
-    case kRewriteCss:                      return kCssFilterId;
-    case kRewriteDomains:                  return "rd";
-    case kRewriteJavascript:               return kJavascriptMinId;
-    case kRewriteStyleAttributes:          return "cs";
-    case kRewriteStyleAttributesWithUrl:   return "cu";
-    case kServeNonCacheableNonCritical:    return "sn";
-    case kSplitHtml:                       return "sh";
-    case kStripNonCacheable:               return "nc";
-    case kSpriteImages:                    return kImageCombineId;
-    case kStripImageColorProfile:          return "cp";
-    case kStripImageMetaData:              return "md";
-    case kStripScripts:                    return "ss";
-    case kEndOfFilters:
-      LOG(DFATAL) << "EndOfFilters passed as code: " << filter;
-      return "EF";
+  int i = static_cast<int>(filter);
+  int n = arraysize(kFilterVectorStaticInitializer);
+  if (i >= 0 && i < n) {
+    return kFilterVectorStaticInitializer[i].filter_id;
   }
   LOG(DFATAL) << "Unknown filter code: " << filter;
   return "UF";
@@ -892,10 +904,35 @@ bool RewriteOptions::Initialize() {
     Properties::Initialize(&all_properties_);
     AddProperties();
     InitOptionEnumToNameArray();
+    InitFilterIdToEnumArray();
     all_properties_->Merge(properties_);
     return true;
   }
   return false;
+}
+
+void RewriteOptions::InitFilterIdToEnumArray() {
+  // Sanity-checks -- will be active only when compiled for debug.
+#ifndef NDEBUG
+  // The forward map must have an entry for every Filter enum value except
+  // the sentinel (kEndOfFilters) and they must be in order.
+  DCHECK_EQ(arraysize(kFilterVectorStaticInitializer),
+            static_cast<size_t>(kEndOfFilters));
+  for (int i = 0, n = arraysize(kFilterVectorStaticInitializer); i < n; ++i) {
+    DCHECK_EQ(i,
+              static_cast<int>(kFilterVectorStaticInitializer[i].filter_enum));
+  }
+  // The reverse map must have the same number of elements as the forward map.
+  DCHECK_EQ(arraysize(kFilterVectorStaticInitializer),
+            arraysize(filter_id_to_enum_array_));
+#endif
+  // Initialize the reverse map.
+  for (int i = 0, n = arraysize(kFilterVectorStaticInitializer); i < n; ++i) {
+    filter_id_to_enum_array_[i] = &kFilterVectorStaticInitializer[i];
+  }
+  std::sort(filter_id_to_enum_array_,
+            filter_id_to_enum_array_ + arraysize(filter_id_to_enum_array_),
+            RewriteOptions::FilterEnumToIdAndNameEntryLessThanById);
 }
 
 bool RewriteOptions::Terminate() {
@@ -1232,6 +1269,30 @@ bool RewriteOptions::AddCommaSeparatedListToOptionSet(
   return ret;
 }
 
+RewriteOptions::Filter RewriteOptions::LookupFilterById(
+    const StringPiece& filter_id) {
+  GoogleString key(filter_id.data(), filter_id.size());
+
+  FilterEnumToIdAndNameEntry entry;
+  entry.filter_enum = kEndOfFilters;
+  entry.filter_id = key.c_str();
+  entry.filter_name = "";
+  const FilterEnumToIdAndNameEntry** it = std::lower_bound(
+      filter_id_to_enum_array_,
+      filter_id_to_enum_array_ + arraysize(filter_id_to_enum_array_),
+      &entry,
+      RewriteOptions::FilterEnumToIdAndNameEntryLessThanById);
+  // We use lower_bound because it's O(log n) so relatively efficient. It
+  // returns a pointer to the entry whose id is >= filter_id; if filter_id is
+  // higher than all ids then 'it' will point past the end, otherwise we have
+  // to check that the ids actually match.
+  if (it == filter_id_to_enum_array_ + arraysize(filter_id_to_enum_array_) ||
+      filter_id != (*it)->filter_id) {
+    return kEndOfFilters;
+  }
+  return (*it)->filter_enum;
+}
+
 bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set) {
   bool ret = true;
   for (RewriteOptions::OptionSet::const_iterator iter = option_set.begin();
@@ -1257,21 +1318,22 @@ RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
   }
   OptionBaseVector::iterator it = std::lower_bound(
       all_options_.begin(), all_options_.end(), name_enum,
-      RewriteOptions::LessThanArg);
-  OptionBase* option = *it;
-  if (option->option_enum() == name_enum) {
-    if (!option->SetFromString(value)) {
-      SStringPrintf(msg, "Cannot set %s for option %s.", value.c_str(),
-                    name.as_string().c_str());
-      return kOptionValueInvalid;
-    } else {
-      return kOptionOk;
+      RewriteOptions::OptionEnumLessThanArg);
+  if (it != all_options_.end()) {
+    OptionBase* option = *it;
+    if (option->option_enum() == name_enum) {
+      if (!option->SetFromString(value)) {
+        SStringPrintf(msg, "Cannot set %s for option %s.", value.c_str(),
+                      name.as_string().c_str());
+        return kOptionValueInvalid;
+      } else {
+        return kOptionOk;
+      }
     }
-  } else {
-    // No Option with name_enum in all_options_.
-    SStringPrintf(msg, "Option %s not found.", name.as_string().c_str());
-    return kOptionNameUnknown;
   }
+  // No Option with name_enum in all_options_.
+  SStringPrintf(msg, "Option %s not found.", name.as_string().c_str());
+  return kOptionNameUnknown;
 }
 
 bool RewriteOptions::SetOptionFromNameAndLog(const StringPiece& name,

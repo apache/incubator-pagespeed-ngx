@@ -69,7 +69,8 @@ class MessageHandler;
 class RewriteOptions {
  public:
   // If you add or remove anything from this list, you need to update the
-  // version number in rewrite_options.cc and FilterName().
+  // kFilterVectorStaticInitializer array in rewrite_options.cc and the
+  // LookupOptionEnumTest method in rewrite_options_test.cc.
   enum Filter {
     kAddBaseTag,  // Update kFirstFilter if you add something before this.
     kAddHead,
@@ -1698,6 +1699,10 @@ class RewriteOptions {
     return Enabled(kDelayImages);
   }
 
+  // Convert an id string like "ah" to a Filter enum like kAddHead.
+  // Returns kEndOfFilters if the id isn't known.
+  static Filter LookupFilterById(const StringPiece& filter_id);
+
   // Returns the option name corresponding to the option enum.
   static const char* LookupOptionEnum(OptionEnum option_enum) {
     return (option_enum < kEndOfOptions) ?
@@ -1711,6 +1716,13 @@ class RewriteOptions {
   const OptionBaseVector& all_options() const {
     return all_options_;
   }
+
+  // Maps a filter's enum (kAddHead) to its id ("ah") and name ("Add Head").
+  struct FilterEnumToIdAndNameEntry {
+    RewriteOptions::Filter filter_enum;
+    const char* filter_id;
+    const char* filter_name;
+  };
 
  protected:
   // Type-specific class of Property.  This subclass of PropertyBase
@@ -2173,6 +2185,8 @@ class RewriteOptions {
   // Initialize the option-enum to option-name array for fast lookups by
   // OptionEnum.
   static void InitOptionEnumToNameArray();
+  // Initialize the Filter id to enum reverse array used for fast lookups.
+  static void InitFilterIdToEnumArray();
   // If str match a cacheable family pattern then returns the
   // PrioritizeVisibleContentFamily that it matches, else returns NULL.
   const PrioritizeVisibleContentFamily* FindPrioritizeVisibleContentFamily(
@@ -2257,8 +2271,8 @@ class RewriteOptions {
     return p1->option_enum() < p2->option_enum();
   }
 
-  // Returns if option's enum is less than arg.
-  static bool LessThanArg(OptionBase* option, OptionEnum arg) {
+  // Returns true if option's enum is less than arg.
+  static bool OptionEnumLessThanArg(OptionBase* option, OptionEnum arg) {
     return option->option_enum() < arg;
   }
 
@@ -2266,6 +2280,13 @@ class RewriteOptions {
   static bool CompareUrlCacheInvalidationEntry(UrlCacheInvalidationEntry* e1,
                                                UrlCacheInvalidationEntry* e2) {
     return e1->timestamp_ms < e2->timestamp_ms;
+  }
+
+  // Returns true if the first entry's id is less than the second's id.
+  static bool FilterEnumToIdAndNameEntryLessThanById(
+      const FilterEnumToIdAndNameEntry* e1,
+      const FilterEnumToIdAndNameEntry* e2) {
+    return strcmp(e1->filter_id, e2->filter_id) < 0;
   }
 
   bool modified_;
@@ -2524,6 +2545,10 @@ class RewriteOptions {
 
   // Array of option names indexed by corresponding OptionEnum.
   static const char* option_enum_to_name_array_[kEndOfOptions];
+
+  // Reverse map from filter id to corresponding Filter enum.
+  static const FilterEnumToIdAndNameEntry* filter_id_to_enum_array_[
+      kEndOfFilters];
 
   // When compiled for debug, we lazily check whether the all the Option<>
   // member variables in all_options have unique IDs.

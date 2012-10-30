@@ -300,6 +300,7 @@ TEST_F(QueuedWorkerPoolTest, MaxQueueSize) {
   wait.Notify();
   done.Wait();
   worker_->FreeSequence(sequence);
+  worker_->ShutDown();
   EXPECT_EQ(-97, count);
 }
 
@@ -317,6 +318,7 @@ TEST_F(QueuedWorkerPoolTest, CancelPending) {
   wait.Notify();
   done.Wait();
   worker_->FreeSequence(sequence);
+  worker_->ShutDown();
   EXPECT_EQ(-300, count);
 }
 

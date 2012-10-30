@@ -300,15 +300,15 @@ check [ x"$IMG_URL" != x ]
 echo TEST: headers for rewritten image "$IMG_URL"
 IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $IMG_URL 2>&1)
-check egrep -qi 'HTTP/1[.]. 200 OK' <(echo $IMG_HEADERS)
+check_from "$IMG_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
 # Make sure we have some valid headers.
-check fgrep -qi 'Content-Type: image/jpeg' <(echo "$IMG_HEADERS")
+check_from "$IMG_HEADERS" fgrep -qi 'Content-Type: image/jpeg'
 # Make sure the response was not gzipped.
 echo TEST: Images are not gzipped.
-check_not fgrep -i 'Content-Encoding: gzip' <(echo "$IMG_HEADERS")
+check_not_from "$IMG_HEADERS" fgrep -i 'Content-Encoding: gzip'
 # Make sure there is no vary-encoding
 echo TEST: Vary is not set for images.
-check_not fgrep -i 'Vary: Accept-Encoding' <(echo "$IMG_HEADERS")
+check_not_from "$IMG_HEADERS" fgrep -i 'Vary: Accept-Encoding'
 # Make sure there is an etag
 echo TEST: Etags is present.
 check_from "$IMG_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
