@@ -146,6 +146,17 @@ TEST_F(CssFilterTest, SimpleRewriteCssTest) {
   ValidateRewrite("rewrite_css", kInputStyle, kOutputStyle, kExpectSuccess);
 }
 
+TEST_F(CssFilterTest, SimpleRewriteCssTestExternal) {
+  ValidateRewriteExternalCss("rewrite_css", kInputStyle, kOutputStyle,
+                             kExpectSuccess);
+}
+
+TEST_F(CssFilterTest, SimpleRewriteCssTestExternalUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+  ValidateRewriteExternalCss("rewrite_css", kInputStyle, kOutputStyle,
+                             kExpectNoChange);
+}
+
 TEST_F(CssFilterTest, RewriteCss404) {
   // Test to make sure that a missing input is handled well.
   SetFetchResponse404("404.css");
@@ -1432,6 +1443,25 @@ TEST_F(CssFilterTest, AbsolutifyCursorUrlsWithDomainMapping) {
                           true  /* enable_image_rewriting */,
                           false /* enable_proxy_mode */,
                           true  /* enable_mapping_and_sharding */);
+}
+
+TEST_F(CssFilterTest, SimpleFetch) {
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "style.css"),
+                                kContentTypeCss, kInputStyle, 100);
+  GoogleString output;
+  ASSERT_TRUE(FetchResourceUrl(
+      Encode(kTestDomain, "cf", "0", "style.css", "css"), &output));
+  EXPECT_EQ(kOutputStyle, output);
+}
+
+TEST_F(CssFilterTest, SimpleFetchUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "style.css"),
+                                kContentTypeCss, kInputStyle, 100);
+  GoogleString output;
+  ASSERT_TRUE(FetchResourceUrl(
+      Encode(kTestDomain, "cf", "0", "style.css", "css"), &output));
+  EXPECT_EQ(kOutputStyle, output);
 }
 
 // Make sure we correctly decode the previously unexpected I.. format.

@@ -20,6 +20,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
@@ -133,27 +134,69 @@ class CacheExtenderTest : public RewriteTestBase {
     return StringPrintf(kCssDataFormat, url.as_string().c_str());
   }
 
+  void TestExtendFromHtml() {
+    LoggingInfo logging_info;
+    LogRecord log_record(&logging_info);
+    rewrite_driver()->set_log_record(&log_record);
+    InitTest(kShortTtlSec);
+    for (int i = 0; i < 3; i++) {
+      const GoogleString input_html = GenerateHtml(kCssFile, "b.jpg", "c.js");
+      if (lru_cache()->IsHealthy()) {
+        ValidateExpected(
+            "do_extend",
+            input_html,
+            GenerateHtml(Encode(kCssPath, "ce", "0", kCssTail, "css"),
+                         Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
+                         Encode(kTestDomain, "ce", "0", "c.js", "js")));
+        EXPECT_EQ((i + 1) * 3, num_cache_extended_->Get())
+            << "Number of cache extended resources is wrong";
+        EXPECT_STREQ("ec,ei,es", logging_info.applied_rewriters());
+      } else {
+        ValidateNoChanges("unhealthy", input_html);
+        EXPECT_EQ(0, num_cache_extended_->Get())
+            << "Number of cache extended resources is wrong";
+        EXPECT_STREQ("", logging_info.applied_rewriters());
+      }
+    }
+  }
+
+  void TestServeFiles() {
+    GoogleString content;
+
+    InitTest(kShortTtlSec);
+    // To ensure there's no absolutification (below) of embedded.png's URL in
+    // the served CSS file, we have to serve it from test.com and not from
+    // cdn.com which TestUrlNamer does when it's being used.
+    ASSERT_TRUE(FetchResourceUrl(
+        EncodeNormal(kCssPath, kFilterId, "0", kCssTail, "css"), &content));
+    EXPECT_EQ(kCssData, content);  // no absolutification
+    ASSERT_TRUE(FetchResource(kTestDomain, kFilterId, "b.jpg", "jpg",
+                              &content));
+    EXPECT_EQ(GoogleString(kImageData), content);
+    ASSERT_TRUE(FetchResource(kTestDomain, kFilterId, "c.js", "js", &content));
+    EXPECT_EQ(GoogleString(kJsData), content);
+  }
+
   Variable* num_cache_extended_;
   const GoogleString kCssData;
   const GoogleString kCssPath;
 };
 
 TEST_F(CacheExtenderTest, DoExtend) {
-  LoggingInfo logging_info;
-  LogRecord log_record(&logging_info);
-  rewrite_driver()->set_log_record(&log_record);
-  InitTest(kShortTtlSec);
-  for (int i = 0; i < 3; i++) {
-    ValidateExpected(
-        "do_extend",
-        GenerateHtml(kCssFile, "b.jpg", "c.js"),
-        GenerateHtml(Encode(kCssPath, "ce", "0", kCssTail, "css"),
-                     Encode(kTestDomain, "ce", "0", "b.jpg", "jpg"),
-                     Encode(kTestDomain, "ce", "0", "c.js", "js")));
-    EXPECT_EQ((i + 1) * 3, num_cache_extended_->Get())
-        << "Number of cache extended resources is wrong";
-    EXPECT_STREQ("ec,ei,es", logging_info.applied_rewriters());
-  }
+  TestExtendFromHtml();
+  EXPECT_EQ(6, lru_cache()->num_hits()) << "3 metadata * 2 cached iterations";
+  EXPECT_EQ(6, lru_cache()->num_misses()) << "3 metadata + 3 input resources";
+  EXPECT_EQ(6, lru_cache()->num_inserts()) << "3 metadata + 3 input resources";
+  EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(CacheExtenderTest, ExtendUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+  TestExtendFromHtml();
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
 TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascript) {
@@ -373,19 +416,12 @@ TEST_F(CacheExtenderTest, NoExtendOriginUncacheable) {
 }
 
 TEST_F(CacheExtenderTest, ServeFiles) {
-  GoogleString content;
+  TestServeFiles();
+}
 
-  InitTest(kShortTtlSec);
-  // To ensure there's no absolutification (below) of embedded.png's URL in
-  // the served CSS file, we have to serve it from test.com and not from
-  // cdn.com which TestUrlNamer does when it's being used.
-  ASSERT_TRUE(FetchResourceUrl(
-      EncodeNormal(kCssPath, kFilterId, "0", kCssTail, "css"), &content));
-  EXPECT_EQ(kCssData, content);  // no absolutification
-  ASSERT_TRUE(FetchResource(kTestDomain, kFilterId, "b.jpg", "jpg", &content));
-  EXPECT_EQ(GoogleString(kImageData), content);
-  ASSERT_TRUE(FetchResource(kTestDomain, kFilterId, "c.js", "js", &content));
-  EXPECT_EQ(GoogleString(kJsData), content);
+TEST_F(CacheExtenderTest, ServeFilesUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+  TestServeFiles();
 }
 
 TEST_F(CacheExtenderTest, ConsistentHashWithRewrite) {

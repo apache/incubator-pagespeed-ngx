@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -160,6 +161,17 @@ TEST_F(JavascriptFilterTest, DoRewrite) {
   EXPECT_STREQ("jm", logging_info.applied_rewriters());
 }
 
+TEST_F(JavascriptFilterTest, DoRewriteUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+
+  LoggingInfo logging_info;
+  LogRecord log_record(&logging_info);
+  rewrite_driver()->set_log_record(&log_record);
+  InitFiltersAndTest(100);
+  ValidateNoChanges("do_rewrite", GenerateHtml(kOrigJsName));
+  EXPECT_STREQ("", logging_info.applied_rewriters());
+}
+
 TEST_F(JavascriptFilterTest, RewriteAlreadyCachedProperly) {
   InitFiltersAndTest(100000000);  // cached for a long time to begin with
   // But we will rewrite because we can make the data smaller.
@@ -273,6 +285,16 @@ TEST_F(JavascriptFilterTest, ServeFiles) {
 
   // Finally, serve from a completely separate server.
   ServeResourceFromManyContexts(expected_rewritten_path_, kJsMinData);
+}
+
+TEST_F(JavascriptFilterTest, ServeFilesUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+
+  InitFilters();
+  InitTest(100);
+  TestServeFiles(&kContentTypeJavascript, kFilterId, "js",
+                 kOrigJsName, kJsData,
+                 kRewrittenJsName, kJsMinData);
 }
 
 TEST_F(JavascriptFilterTest, InvalidInputMimetype) {

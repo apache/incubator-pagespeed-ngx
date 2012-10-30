@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -206,6 +207,28 @@ TEST_F(CollectSubresourcesFilterTest, HtmlHasRewrittenUrl) {
   collect_subresources_filter()->AddSubresourcesToFlushEarlyInfo(
       flush_early_info);
   EXPECT_EQ(1, flush_early_info->subresource_size());
+}
+
+TEST_F(CollectSubresourcesFilterTest, CollectSubresourcesFilterUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+  InitFilters(false);
+  GoogleString html_ip =
+      "<head>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
+        "<script src=\"b.js\"></script>"
+      "</head>"
+      "<body>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"c.css\"/>"
+        "<script src=\"d.js\"></script>"
+      "</body>";
+
+  Parse("not_flushed_early", html_ip);
+  FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
+  collect_subresources_filter()->AddSubresourcesToFlushEarlyInfo(
+      flush_early_info);
+  // CollectSubresourcesFilter does not populate the flush_early_info
+  // proto due to the cache being sick.
+  EXPECT_EQ(0, flush_early_info->subresource_size());
 }
 
 }  // namespace net_instaweb

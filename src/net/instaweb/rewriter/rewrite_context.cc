@@ -1243,7 +1243,14 @@ void RewriteContext::OutputCacheHit(bool write_partitions) {
 void RewriteContext::OutputCacheMiss() {
   outputs_.clear();
   partitions_->Clear();
-  if (FindServerContext()->TryLockForCreation(Lock())) {
+  ServerContext* server_context = FindServerContext();
+  if (server_context->TryLockForCreation(Lock())) {
+    if (server_context->metadata_cache_readonly()) {
+      FindServerContext()->message_handler()->Message(
+          kError,
+          "RewriteContext::OutputCacheMiss called with "
+          "metadata_cache_readonly");
+    }
     FetchInputs();
   } else {
     // TODO(jmarantz): bump stat for abandoned rewrites due to lock contention.
@@ -1697,10 +1704,14 @@ void RewriteContext::RenderPartitionOnDetach(int rewrite_index) {
   }
 }
 
-void RewriteContext::RunSuccessors() {
+void RewriteContext::DetachSlots() {
   for (int i = 0, n = slots_.size(); i < n; ++i) {
     slot(i)->DetachContext(this);
   }
+}
+
+void RewriteContext::RunSuccessors() {
+  DetachSlots();
 
   for (int i = 0, n = successors_.size(); i < n; ++i) {
     RewriteContext* successor = successors_[i];

@@ -235,6 +235,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       collect_subresources_filter_(NULL),
       serve_blink_non_critical_(false),
       is_blink_request_(false),
+      can_rewrite_resources_(true),
       log_record_(NULL),
       start_time_ms_(0)
       // NOTE:  Be sure to clear per-request member vars in Clear()
@@ -348,6 +349,7 @@ void RewriteDriver::Clear() {
   collect_subresources_filter_ = NULL;
   serve_blink_non_critical_ = false;
   is_blink_request_ = false;
+  can_rewrite_resources_ = true;
   log_record_ = NULL;
   start_time_ms_ = 0;
 
@@ -1759,6 +1761,8 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
       SetDecodedUrlFromBase();
     }
   }
+
+  can_rewrite_resources_ = server_context_->metadata_cache()->IsHealthy();
   return ret;
 }
 
@@ -2262,15 +2266,33 @@ HtmlResourceSlotPtr RewriteDriver::GetSlot(
   return slot;
 }
 
-void RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {
-  if (server_context_->metadata_cache()->IsHealthy()) {
-    rewrites_.push_back(rewrite_context);
-    ++pending_rewrites_;
-    ++possibly_quick_rewrites_;
-  } else {
-    // Drop all rewrites of metadata_cache is unhealthy.
-    delete rewrite_context;
+bool RewriteDriver::InitiateRewrite(RewriteContext* rewrite_context) {
+  // Drop all rewrites if metadata_cache is unhealthy.  This has
+  // got to be done 100% or not at all, otherwise we can wind up with
+  // a broken slot-context graph.
+  //
+  // Note that we strobe cache health at the beginning of request
+  // (StartParseId), so that we don't decide in the middle of an HTML
+  // rewrite that we won't be able to initialize the resource, thus leaving
+  // us with a partially constructed slot-graph.
+  if (!can_rewrite_resources_) {
+    if (rewrites_.empty()) {
+      rewrite_context->DetachSlots();
+      delete rewrite_context;
+      return false;
+    } else {
+      // A programming error has allowed a RewriteContext to be added
+      // despite not being able to rewrite resources.  Log a fatal for
+      // debug builds, and otherwise fall through to keep the context-slot
+      // graph coherent.
+      LOG(DFATAL)
+          << "Unexpected queued RewriteContext when cannot rewrite resources";
+    }
   }
+  rewrites_.push_back(rewrite_context);
+  ++pending_rewrites_;
+  ++possibly_quick_rewrites_;
+  return true;
 }
 
 void RewriteDriver::InitiateFetch(RewriteContext* rewrite_context) {

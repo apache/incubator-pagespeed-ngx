@@ -198,6 +198,12 @@ class RewriteContext {
 
   const ResourceContext* resource_context() { return resource_context_.get(); }
 
+  // Removes this RewriteContext from all slots.  This is done normally when
+  // a RewriteContext is completed and we are ready to run the successors.
+  // It is also done when aborting a RewriteContext due to cache being
+  // unhealthy.
+  void DetachSlots();
+
  protected:
   typedef std::vector<InputInfo*> InputInfoStarVector;
   typedef std::vector<GoogleUrl*> GoogleUrlStarVector;

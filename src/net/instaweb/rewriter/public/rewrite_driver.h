@@ -575,8 +575,9 @@ class RewriteDriver : public HtmlParse {
 
   // Method to start a resource rewrite.  This is called by a filter during
   // parsing, although the Rewrite might continue after deadlines expire
-  // and the rewritten HTML must be flushed.
-  void InitiateRewrite(RewriteContext* rewrite_context);
+  // and the rewritten HTML must be flushed.  Returns InitiateRewrite returns
+  // false if the system is not healthy enough to support resource rewrites.
+  bool InitiateRewrite(RewriteContext* rewrite_context);
   void InitiateFetch(RewriteContext* rewrite_context);
 
   // Provides a mechanism for a RewriteContext to notify a
@@ -890,6 +891,10 @@ class RewriteDriver : public HtmlParse {
   // log_record() can return NULL.
   LogRecord* log_record() { return log_record_; }
   void set_log_record(LogRecord* l) { log_record_ = l; }
+
+  // Determines whether the system is healthy enough to rewrite resources.
+  // Currently, systems get sick based on the health of the metadata cache.
+  bool can_rewrite_resources() { return can_rewrite_resources_; }
 
  private:
   friend class RewriteTestBase;
@@ -1282,6 +1287,7 @@ class RewriteDriver : public HtmlParse {
   bool serve_blink_non_critical_;
   // Is this a blink request?
   bool is_blink_request_;
+  bool can_rewrite_resources_;
 
   // Pointer to the base fetch's log record, passed in from ProxyInterface; this
   // may be NULL and accessing it beyond the base fetch's lifespan is unsafe.

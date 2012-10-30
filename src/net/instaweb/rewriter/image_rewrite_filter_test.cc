@@ -457,6 +457,20 @@ class ImageRewriteTest : public RewriteTestBase {
     EXPECT_EQ(expected_width, image_dim.width());
     EXPECT_EQ(expected_height, image_dim.height());
   }
+
+  void TestTranscodeAndOptimizePng(bool expect_rewritten,
+                                   const char* width_height_tags,
+                                   const ContentType& expected_type) {
+    // Make sure we convert png to jpeg if we requested that.
+    // We lower compression quality to ensure the jpeg is smaller.
+    options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+    options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+    options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+    options()->set_image_jpeg_recompress_quality(85);
+    rewrite_driver()->AddFilters();
+    TestSingleRewrite(kBikePngFile, kContentTypePng, expected_type,
+                      "", width_height_tags, expect_rewritten, false);
+  }
 };
 
 TEST_F(ImageRewriteTest, ImgTag) {
@@ -513,15 +527,13 @@ TEST_F(ImageRewriteTest, AddDimTest) {
 }
 
 TEST_F(ImageRewriteTest, PngToJpeg) {
-  // Make sure we convert png to jpeg if we requested that.
-  // We lower compression quality to ensure the jpeg is smaller.
-  options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
-  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
-  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
-  options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->AddFilters();
-  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeJpeg,
-                    "", " width=\"100\" height=\"100\"", true, false);
+  TestTranscodeAndOptimizePng(true, " width=\"100\" height=\"100\"",
+                              kContentTypeJpeg);
+}
+
+TEST_F(ImageRewriteTest, PngToJpegUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+  TestTranscodeAndOptimizePng(false, "", kContentTypePng);
 }
 
 TEST_F(ImageRewriteTest, PngToWebp) {

@@ -53,7 +53,9 @@ namespace {
 const char kDomain[] = "http://combine_css.test/";
 const char kYellow[] = ".yellow {background-color: yellow;}";
 const char kBlue[] = ".blue {color: blue;}\n";
-
+const char kACssBody[] = ".c1 {\n background-color: blue;\n}\n";
+const char kBCssBody[] = ".c2 {\n color: yellow;\n}\n";
+const char kCCssBody[] = ".c3 {\n font-weight: bold;\n}\n";
 
 class CssCombineFilterTest : public RewriteTestBase {
  protected:
@@ -93,6 +95,17 @@ class CssCombineFilterTest : public RewriteTestBase {
     return out;
   }
 
+  void SetupCssResources(const char* a_css_name,
+                         const char* b_css_name) {
+    ResponseHeaders default_css_header;
+    SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+    SetFetchResponse(StrCat(kDomain, a_css_name), default_css_header,
+                     kACssBody);
+    SetFetchResponse(StrCat(kDomain, b_css_name), default_css_header,
+                     kBCssBody);
+    SetFetchResponse(StrCat(kDomain, "c.css"), default_css_header, kCCssBody);
+  }
+
   void CombineCssWithNames(const StringPiece& id,
                            const StringPiece& barrier_text,
                            const StringPiece& debug_text,
@@ -125,16 +138,8 @@ class CssCombineFilterTest : public RewriteTestBase {
         "  </div>\n"
         "  ", Link("c.css"), "\n"
         "</body>\n");
-    const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
-    const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
-    const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
 
-    // Put original CSS files into our fetcher.
-    ResponseHeaders default_css_header;
-    SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
-    SetFetchResponse(a_css_url, default_css_header, a_css_body);
-    SetFetchResponse(b_css_url, default_css_header, b_css_body);
-    SetFetchResponse(c_css_url, default_css_header, c_css_body);
+    SetupCssResources(a_css_name, b_css_name);
 
     Variable* css_file_count_reduction =
         statistics()->GetVariable(CssCombineFilter::kCssFileCountReduction);
@@ -157,11 +162,11 @@ class CssCombineFilterTest : public RewriteTestBase {
     // Expected CSS combination.
     // This syntax must match that in css_combine_filter
     // a.css + b.css => a+b.css
-    GoogleString expected_combination = StrCat(a_css_body, b_css_body);
+    GoogleString expected_combination = StrCat(kACssBody, kBCssBody);
     int expected_file_count_reduction = orig_file_count_reduction + 1;
     if (!is_barrier) {
       // a.css + b.css + c.css => a+b+c.css
-      expected_combination.append(c_css_body);
+      expected_combination.append(kCCssBody);
       expected_file_count_reduction = orig_file_count_reduction + 2;
     }
 
@@ -222,15 +227,13 @@ class CssCombineFilterTest : public RewriteTestBase {
     GoogleString a_css_url = StrCat(kDomain, "a.css");
     GoogleString c_css_url = StrCat(kDomain, "c.css");
 
-    const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
-    const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
-    GoogleString expected_combination = StrCat(a_css_body, c_css_body);
+    GoogleString expected_combination = StrCat(kACssBody, kCCssBody);
 
     // Put original CSS files into our fetcher.
     ResponseHeaders default_css_header;
     SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
-    SetFetchResponse(a_css_url, default_css_header, a_css_body);
-    SetFetchResponse(c_css_url, default_css_header, c_css_body);
+    SetFetchResponse(a_css_url, default_css_header, kACssBody);
+    SetFetchResponse(c_css_url, default_css_header, kCCssBody);
 
     // First make sure we can serve the combination of a & c.  This is to avoid
     // spurious test successes.
@@ -393,21 +396,26 @@ class CssCombineFilterTest : public RewriteTestBase {
     const char b_css_url[] = "http://other_domain.test/foo/b.css";
     const char c_css_url[] = "http://other_domain.test/foo/c.css";
 
-    const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
-    const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
-    const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
-
     ResponseHeaders default_css_header;
     SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
-    SetFetchResponse(a_css_url, default_css_header, a_css_body);
-    SetFetchResponse(b_css_url, default_css_header, b_css_body);
-    SetFetchResponse(c_css_url, default_css_header, c_css_body);
+    SetFetchResponse(a_css_url, default_css_header, kACssBody);
+    SetFetchResponse(b_css_url, default_css_header, kBCssBody);
+    SetFetchResponse(c_css_url, default_css_header, kCCssBody);
 
     // Rewrite
     ParseUrl(html_url, html_input);
 
     // Check for CSS files in the rewritten page.
     CollectCssLinks("combine_css_no_media-links", output_buffer_, css_urls);
+  }
+
+  void TestFetch() {
+    SetupCssResources("a.css", "b.css");
+    GoogleString content;
+    const GoogleString combined_url = Encode(
+        kDomain, "cc", "0", MultiUrl("a.css", "b.css"), "css");
+    ASSERT_TRUE(FetchResourceUrl(combined_url, &content));
+    EXPECT_EQ(StrCat(kACssBody, kBCssBody), content);
   }
 
  private:
@@ -417,6 +425,29 @@ class CssCombineFilterTest : public RewriteTestBase {
 TEST_F(CssCombineFilterTest, CombineCss) {
   SetHtmlMimetype();
   CombineCss("combine_css_no_hash", "", "", false);
+}
+
+TEST_F(CssCombineFilterTest, CombineCssUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+  SetHtmlMimetype();
+  SetupCssResources("a.css", "b.css");
+  GoogleString html_input = StrCat(
+      "<head>\n"
+      "  ", Link("a.css"), "\n"
+      "  ", Link("b.css"), "\n");
+  ParseUrl(StrCat(kDomain, "unhealthy.html"), html_input);
+  EXPECT_EQ(AddHtmlBody(html_input), output_buffer_);
+}
+
+TEST_F(CssCombineFilterTest, Fetch) {
+  TestFetch();
+}
+
+// Even with the cache unhealthy, we can still fetch already-optimized
+// resources.
+TEST_F(CssCombineFilterTest, FetchUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+  TestFetch();
 }
 
 TEST_F(CssCombineFilterTest, CombineCssMD5) {
@@ -595,14 +626,12 @@ TEST_F(CssCombineFilterTest, StripBom) {
   GoogleString b_css_url = StrCat(kDomain, "b.css");
 
   // BOM documentation: http://www.unicode.org/faq/utf_bom.html
-  const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
-  const char b_css_body[] = ".c4 {\n color: purple;\n}\n";
-  GoogleString bom_body = StrCat(kUtf8Bom, b_css_body);
+  GoogleString bom_body = StrCat(kUtf8Bom, kBCssBody);
 
   ResponseHeaders default_header;
   SetDefaultLongCacheHeaders(&kContentTypeCss, &default_header);
 
-  SetFetchResponse(a_css_url, default_header, a_css_body);
+  SetFetchResponse(a_css_url, default_header, kACssBody);
   SetFetchResponse(b_css_url, default_header, bom_body);
 
   StringVector css_urls;
@@ -708,16 +737,13 @@ TEST_F(CssCombineFilterTest, CombineCssWithNonMediaBarrier) {
   GoogleString c_css_url = StrCat(kDomain, "c.css");
   GoogleString d_css_url = StrCat(kDomain, "d.css");
 
-  const char a_css_body[] = ".c1 {\n background-color: blue;\n}\n";
-  const char b_css_body[] = ".c2 {\n color: yellow;\n}\n";
-  const char c_css_body[] = ".c3 {\n font-weight: bold;\n}\n";
   const char d_css_body[] = ".c4 {\n color: green;\n}\n";
 
   ResponseHeaders default_css_header;
   SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
-  SetFetchResponse(a_css_url, default_css_header, a_css_body);
-  SetFetchResponse(b_css_url, default_css_header, b_css_body);
-  SetFetchResponse(c_css_url, default_css_header, c_css_body);
+  SetFetchResponse(a_css_url, default_css_header, kACssBody);
+  SetFetchResponse(b_css_url, default_css_header, kBCssBody);
+  SetFetchResponse(c_css_url, default_css_header, kCCssBody);
   SetFetchResponse(d_css_url, default_css_header, d_css_body);
 
   // Only the first two CSS files should be combined.

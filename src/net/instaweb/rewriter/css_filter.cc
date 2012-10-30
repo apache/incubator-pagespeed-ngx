@@ -754,7 +754,7 @@ void CssFilter::StartElementImpl(HtmlElement* element) {
   if (element->keyword() == HtmlName::kStyle) {
     in_style_element_ = true;
     style_element_ = element;
-  } else {
+  } else if (driver_->can_rewrite_resources()) {
     bool do_rewrite = false;
     bool check_for_url = false;
     if (driver_->options()->Enabled(RewriteOptions::kRewriteStyleAttributes)) {
@@ -785,7 +785,7 @@ void CssFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void CssFilter::Characters(HtmlCharactersNode* characters_node) {
-  if (in_style_element_) {
+  if (in_style_element_ && driver_->can_rewrite_resources()) {
     // Note: HtmlParse should guarantee that we only get one CharactersNode
     // per <style> block even if it is split by a flush. However, this code
     // will still mostly work if we somehow got multiple CharacterNodes.
@@ -830,6 +830,9 @@ void CssFilter::StartInlineRewrite(HtmlCharactersNode* text) {
   HtmlElement* element = text->parent();
   ResourceSlotPtr slot(MakeSlotForInlineCss(text->contents()));
   CssFilter::Context* rewriter = StartRewriting(slot);
+  if (rewriter == NULL) {
+    return;
+  }
   rewriter->SetupInlineRewrite(element, text);
 
   // Get the applicable media and charset. If the charset on the link doesn't
@@ -848,6 +851,9 @@ void CssFilter::StartAttributeRewrite(HtmlElement* element,
                                       InlineCssKind inline_css_kind) {
   ResourceSlotPtr slot(MakeSlotForInlineCss(style->DecodedValueOrNull()));
   CssFilter::Context* rewriter = StartRewriting(slot);
+  if (rewriter == NULL) {
+    return;
+  }
   rewriter->SetupAttributeRewrite(element, style, inline_css_kind);
 
   // @import is not allowed (nor handled) in attribute CSS, which must be
@@ -860,11 +866,14 @@ void CssFilter::StartExternalRewrite(HtmlElement* link,
                                      HtmlElement::Attribute* src) {
   // Create the input resource for the slot.
   ResourcePtr input_resource(CreateInputResource(src->DecodedValueOrNull()));
-  if (input_resource.get() == NULL) {
+  if ((input_resource.get() == NULL) || !driver_->can_rewrite_resources()) {
     return;
   }
   ResourceSlotPtr slot(driver_->GetSlot(input_resource, link, src));
   CssFilter::Context* rewriter = StartRewriting(slot);
+  if (rewriter == NULL) {
+    return;
+  }
   GoogleUrl input_resource_gurl(input_resource->url());
   // TODO(sligocki): I don't think css_trim_gurl_ should be set to
   // decoded_base_url(). But I also think that the values passed in here
@@ -895,9 +904,12 @@ ResourceSlot* CssFilter::MakeSlotForInlineCss(const StringPiece& content) {
 
 CssFilter::Context* CssFilter::StartRewriting(const ResourceSlotPtr& slot) {
   // Create the context add it to the slot, then kick everything off.
+  DCHECK(driver_->can_rewrite_resources());
   CssFilter::Context* rewriter = MakeContext(driver_, NULL);
   rewriter->AddSlot(slot);
-  driver_->InitiateRewrite(rewriter);
+  if (!driver_->InitiateRewrite(rewriter)) {
+    rewriter = NULL;
+  }
   return rewriter;
 }
 

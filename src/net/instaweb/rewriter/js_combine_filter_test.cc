@@ -226,6 +226,11 @@ class JsCombineFilterTest : public RewriteTestBase {
     VerifyUseOnDomain(kTestDomain, info, rel_url);
   }
 
+  GoogleString TestHtml() {
+    return StrCat("<script src=", kJsUrl1, "></script>",
+                  "<script src=", kJsUrl2, "></script>");
+  }
+
   // Test basic combining of multiple JS files.  The resultant names and
   // hashes may differ depending on whether we are working with rewritten
   // or sharded domains, and whether we minify the js files before combining
@@ -242,8 +247,7 @@ class JsCombineFilterTest : public RewriteTestBase {
                      const StringPiece& domain) {
     ScriptInfoVector scripts;
     PrepareToCollectScriptsInto(&scripts);
-    ParseUrl(kTestDomain, StrCat("<script src=", kJsUrl1, "></script>",
-                                 "<script src=", kJsUrl2, "></script>"));
+    ParseUrl(kTestDomain, TestHtml());
 
     // This should produce 3 script elements, with the first one referring to
     // the combination, and the second and third using eval.
@@ -300,6 +304,28 @@ class JsFilterAndCombineFilterTest : public JsCombineFilterTest {
 TEST_F(JsCombineFilterTest, CombineJs) {
   TestCombineJs(MultiUrl("a.js", "b.js"), "g2Xe9o4bQ2", "KecOGCIjKt",
                 "dzsx6RqvJJ", false, kTestDomain);
+}
+
+// When cache is unhealthy, don't rewrite URLs in HTML.
+TEST_F(JsCombineFilterTest, CombineJsUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+  ValidateNoChanges("unhealthy", TestHtml());
+}
+
+// But do serve correctly rewritten resources when
+// .pagespeed. resources are requested even if cache is unhealthy.
+TEST_F(JsCombineFilterTest, ServeFilesUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+  SetResponseWithDefaultHeaders("a.js", kContentTypeJavascript, "var a;", 100);
+  SetResponseWithDefaultHeaders("b.js", kContentTypeJavascript, "var b;", 100);
+  GoogleString content;
+  const GoogleString combined_url = Encode(
+      kTestDomain, "jc", "0", MultiUrl("a.js", "b.js"), "js");
+  ASSERT_TRUE(FetchResourceUrl(combined_url, &content));
+  const char kCombinedContent[] =
+      "var mod_pagespeed_KecOGCIjKt = \"var a;\";\n"
+      "var mod_pagespeed_dzsx6RqvJJ = \"var b;\";\n";
+  EXPECT_EQ(kCombinedContent, content);
 }
 
 // Turning on AvoidRewritingIntrospectiveJavascript should not affect normal

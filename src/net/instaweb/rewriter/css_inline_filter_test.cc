@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -117,6 +118,14 @@ TEST_F(CssInlineFilterTest, InlineCssSimple) {
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 "", css, true, css);
+}
+
+TEST_F(CssInlineFilterTest, InlineCssUnhealthy) {
+  lru_cache()->set_is_healthy(false);
+  const GoogleString css = "BODY { color: red; }\n";
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/styles.css",
+                "", css, false, css);
 }
 
 TEST_F(CssInlineFilterTest, InlineCss404) {
