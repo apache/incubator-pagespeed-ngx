@@ -15,6 +15,19 @@
  */
 
 // Author: jefftk@google.com (Jeff Kaufman)
+//
+// Collects output from pagespeed and buffers it until nginx asks for it.
+// Notifies nginx via pipe to call CollectAccumulatedWrites() on flush.
+//
+//  - nginx creates a base fetch and passes it to a new proxy fetch.
+//  - The proxy fetch manages rewriting and thread complexity, and through
+//    several chained steps passes rewritten html to HandleWrite().
+//  - Written data is buffered.
+//  - When Flush() is called the base fetch writes a byte to a pipe nginx is
+//    watching so nginx knows to call CollectAccumulatedWrites() to pick up the
+//    rewritten html.
+//  - When Done() is called the base fetch closes the pipe, which tells nginx to
+//    make a final call to CollectAccumulatedWrites().
 
 #ifndef NGX_BASE_FETCH_H_
 #define NGX_BASE_FETCH_H_
@@ -45,6 +58,7 @@ class NgxBaseFetch : public AsyncFetch {
   //
   // Called by nginx.
   ngx_int_t CollectAccumulatedWrites(ngx_chain_t** link_ptr);
+
  private:
   ResponseHeaders response_headers_;
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
