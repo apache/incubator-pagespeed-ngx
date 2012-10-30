@@ -54,9 +54,11 @@ class Writer;
 NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SetStatistics(&simple_stats_);
+  timer_ = DefaultTimer();
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
+  delete timer_;
 }
 
 Hasher* NgxRewriteDriverFactory::NewHasher() {
@@ -80,7 +82,7 @@ MessageHandler* NgxRewriteDriverFactory::DefaultMessageHandler() {
 }
 
 FileSystem* NgxRewriteDriverFactory::DefaultFileSystem() {
-  return new StdioFileSystem;
+  return new StdioFileSystem(timer_);
 }
 
 Timer* NgxRewriteDriverFactory::DefaultTimer() {
