@@ -42,6 +42,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
  private:
   SimpleStats simple_stats_;
   const RewriteGflags gflags_;
+  Timer* timer_;
   
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
