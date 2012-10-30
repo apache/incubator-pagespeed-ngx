@@ -563,9 +563,7 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ngx_http_pagespeed_request_ctx_t* ctx =
       ngx_http_pagespeed_get_request_context(r);
 
-  if (ctx == NULL) {
-    return NGX_ERROR;
-  }
+  CHECK(ctx != NULL);
 
   if (!ctx->data_received) {
     // This is the first set of buffers we've got for this request.
