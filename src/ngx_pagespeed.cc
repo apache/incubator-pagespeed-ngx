@@ -73,6 +73,7 @@ typedef struct {
   int pipe_fd;
   ngx_connection_t* pagespeed_connection;
   ngx_http_request_t* r;
+  const net_instaweb::ContentType* content_type;
 } ngx_http_pagespeed_request_ctx_t;
 
 static ngx_int_t
@@ -563,7 +564,23 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ngx_http_pagespeed_request_ctx_t* ctx =
       ngx_http_pagespeed_get_request_context(r);
 
-  CHECK(ctx != NULL);
+  if (ctx == NULL) {
+    // ctx is null iff we've decided to pass through this request unchanged.
+    return ngx_http_next_body_filter(r, in);
+  }
+
+  if (ctx->content_type == NULL) {
+    // We don't know what type of resource this is, but we only want to send
+    // html through to pagespeed.  Check the content type header and find out.
+    ctx->content_type = net_instaweb::MimeTypeToContentType(
+        ngx_http_pagespeed_str_to_string_piece(
+            &r->headers_out.content_type));
+    if (ctx->content_type == NULL || !ctx->content_type->IsHtmlLike()) {
+      // Unknown or otherwise non-html content type: skip it.
+      ngx_http_set_ctx(r, NULL, ngx_pagespeed);
+      return ngx_http_next_body_filter(r, in);
+    }
+  }
 
   if (!ctx->data_received) {
     // This is the first set of buffers we've got for this request.
