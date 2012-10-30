@@ -14,12 +14,16 @@
  * limitations under the License.
  */
 
+// Author: jefftk@google.com (Jeff Kaufman)
+
 /*
  * Usage:
  *   server {
  *     pagespeed    on|off;
  *   }
  */
+
+#include "ngx_pagespeed.h"
 
 extern "C" {
   #include <ngx_config.h>
@@ -71,6 +75,59 @@ typedef struct {
   ngx_http_request_t* r;
 } ngx_http_pagespeed_request_ctx_t;
 
+static ngx_int_t
+ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
+
+static void*
+ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf);
+
+static char*
+ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child);
+
+static void
+ngx_http_pagespeed_release_request_context(void* data);
+
+static void
+ngx_http_pagespeed_set_buffered(ngx_http_request_t* r, bool on);
+
+static GoogleString
+ngx_http_pagespeed_determine_url(ngx_http_request_t* r);
+
+static ngx_http_pagespeed_request_ctx_t*
+ngx_http_pagespeed_get_request_context(ngx_http_request_t* r);
+
+static void
+ngx_http_pagespeed_initialize_server_context(
+    ngx_http_pagespeed_srv_conf_t* cfg);
+
+static ngx_int_t
+ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
+                          ngx_event_t* ev);
+
+static void
+ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev);
+
+static ngx_int_t
+ngx_http_pagespeed_create_connection(ngx_http_pagespeed_request_ctx_t* ctx);
+
+static ngx_int_t
+ngx_http_pagespeed_create_request_context(ngx_http_request_t* r);
+
+static void
+ngx_http_pagespeed_send_to_pagespeed(
+    ngx_http_request_t* r,
+    ngx_http_pagespeed_request_ctx_t* ctx,
+    ngx_chain_t* in);
+
+static ngx_int_t
+ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
+
+static ngx_int_t
+ngx_http_pagespeed_header_filter(ngx_http_request_t* r);
+
+static ngx_int_t
+ngx_http_pagespeed_init(ngx_conf_t* cf);
+
 static ngx_command_t ngx_http_pagespeed_commands[] = {
   { ngx_string("pagespeed"),
     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -78,7 +135,6 @@ static ngx_command_t ngx_http_pagespeed_commands[] = {
     NGX_HTTP_SRV_CONF_OFFSET,
     offsetof(ngx_http_pagespeed_srv_conf_t, active),
     NULL },
-
   { ngx_string("pagespeed_cache"),
     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
     ngx_conf_set_str_slot,
@@ -89,17 +145,13 @@ static ngx_command_t ngx_http_pagespeed_commands[] = {
   ngx_null_command
 };
 
-static ngx_int_t
-ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
-
-static StringPiece
+StringPiece
 ngx_http_pagespeed_str_to_string_piece(ngx_str_t* s) {
   return StringPiece(reinterpret_cast<char*>(s->data), s->len);
 }
 
 static void*
-ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf)
-{
+ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
   ngx_http_pagespeed_srv_conf_t* conf;
 
   conf = static_cast<ngx_http_pagespeed_srv_conf_t*>(
@@ -118,8 +170,7 @@ ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf)
 }
 
 static char*
-ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child)
-{
+ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   ngx_http_pagespeed_srv_conf_t* prev =
       static_cast<ngx_http_pagespeed_srv_conf_t*>(parent);
   ngx_http_pagespeed_srv_conf_t* conf =
@@ -508,8 +559,7 @@ ngx_http_pagespeed_send_to_pagespeed(
 }
 
 static ngx_int_t
-ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
-{
+ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ngx_http_pagespeed_request_ctx_t* ctx =
       ngx_http_pagespeed_get_request_context(r);
 
@@ -533,8 +583,7 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in)
 }
 
 static ngx_int_t
-ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
-{
+ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
   // and calculate on the fly.
   ngx_http_clear_content_length(r);
@@ -551,8 +600,7 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r)
 }
 
 static ngx_int_t
-ngx_http_pagespeed_init(ngx_conf_t* cf)
-{
+ngx_http_pagespeed_init(ngx_conf_t* cf) {
   ngx_http_pagespeed_srv_conf_t* pagespeed_config;
   pagespeed_config = static_cast<ngx_http_pagespeed_srv_conf_t*>(
     ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));

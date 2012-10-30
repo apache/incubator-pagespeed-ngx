@@ -17,6 +17,7 @@
 // Author: jefftk@google.com (Jeff Kaufman)
 
 #include "ngx_base_fetch.h"
+#include "ngx_pagespeed.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
 
@@ -50,10 +51,9 @@ void NgxBaseFetch::PopulateHeaders() {
       i = 0;
     }
 
-    StringPiece key = StringPiece(
-        reinterpret_cast<char*>(header[i].key.data), header[i].key.len);
-    StringPiece value = StringPiece(
-        reinterpret_cast<char*>(header[i].value.data), header[i].value.len);
+    StringPiece key = ngx_http_pagespeed_str_to_string_piece(&header[i].key);
+    StringPiece value = ngx_http_pagespeed_str_to_string_piece(
+        &header[i].value);
 
     response_headers()->Add(key, value);
   }
@@ -61,10 +61,9 @@ void NgxBaseFetch::PopulateHeaders() {
   // For some reason content_type is not included in
   // request_->headers_out.headers, which means I don't fully understand how
   // headers_out works, but manually copying over content type works.
-  StringPiece content_type = StringPiece(
-      reinterpret_cast<char*>(request_->headers_out.content_type.data),
-      request_->headers_out.content_type.len);
-  response_headers()->Add("Content-Type", content_type);
+  StringPiece content_type = ngx_http_pagespeed_str_to_string_piece(
+      &request_->headers_out.content_type);
+  response_headers()->Add(HttpAttributes::kContentType, content_type);
 }
 
 bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
