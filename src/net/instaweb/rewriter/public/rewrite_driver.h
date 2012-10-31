@@ -583,7 +583,14 @@ class RewriteDriver : public HtmlParse {
   // Provides a mechanism for a RewriteContext to notify a
   // RewriteDriver that it is complete, to allow the RewriteDriver
   // to delete itself or return it back to a free pool in the ResourceManager.
-  void RewriteComplete(RewriteContext* rewrite_context);
+  //
+  // This will also call back into RewriteContext::Propagate, letting it
+  // know whether the context is still attached to the HTML DOM
+  // (and hence safe to render), and to do other bookkeeping.
+  //
+  // If 'permit_render' is false, no rendering will be asked for even if
+  // the context is still attached.
+  void RewriteComplete(RewriteContext* rewrite_context, bool permit_render);
 
   // Provides a mechanism for a RewriteContext to notify a
   // RewriteDriver that a certain number of rewrites have been discovered

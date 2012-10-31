@@ -22,6 +22,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -32,6 +33,7 @@
 #include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -330,6 +332,68 @@ TEST_F(CssInlineFilterTest, InlineMinimizeInteraction) {
       false,
       "div{display: none}");
 }
+
+TEST_F(CssInlineFilterTest, InlineCacheExtendInteraction) {
+  options()->set_css_inline_max_bytes(400);
+  options()->EnableFilter(RewriteOptions::kInlineCss);
+  options()->EnableFilter(RewriteOptions::kExtendCacheCss);
+  rewrite_driver()->AddFilters();
+  const char kCssUrl[] = "a.css";
+  const char kCss[] = "div {display:block;}";
+
+  SetResponseWithDefaultHeaders(kCssUrl, kContentTypeCss, kCss, 3000);
+
+  ValidateExpected("inline_plus_ce", CssLinkHref(kCssUrl),
+                   StrCat("<style>", kCss, "</style>"));
+
+  // Cache extender should not have successfully produced an output on this
+  // CSS, as it got inlined --- in the past it would have.
+  EXPECT_EQ(0,
+            rewrite_driver()->statistics()->GetVariable(
+                CacheExtender::kCacheExtensions)->Get());
+
+  // Now try again (as this should be hitting cache hit paths for the inliner).
+  ValidateExpected("inline_plus_ce", CssLinkHref(kCssUrl),
+                   StrCat("<style>", kCss, "</style>"));
+
+  EXPECT_EQ(0,
+            rewrite_driver()->statistics()->GetVariable(
+                CacheExtender::kCacheExtensions)->Get());
+}
+
+TEST_F(CssInlineFilterTest, InlineCacheExtendInteractionRepeated) {
+  // As above, but also with a repeated link
+  options()->set_css_inline_max_bytes(400);
+  options()->EnableFilter(RewriteOptions::kInlineCss);
+  options()->EnableFilter(RewriteOptions::kExtendCacheCss);
+  rewrite_driver()->AddFilters();
+  const char kCssUrl[] = "a.css";
+  const char kCss[] = "div {display:block;}";
+
+  SetResponseWithDefaultHeaders(kCssUrl, kContentTypeCss, kCss, 3000);
+
+  GoogleString inlined_css = StrCat("<style>", kCss, "</style>");
+
+  ValidateExpected("inline_plus_ce_repeated",
+                   StrCat(CssLinkHref(kCssUrl), CssLinkHref(kCssUrl)),
+                   StrCat(inlined_css, inlined_css));
+
+  // Cache extender should not have successfully produced an output on this
+  // CSS, as it got inlined --- in the past it would have.
+  EXPECT_EQ(0,
+            rewrite_driver()->statistics()->GetVariable(
+                CacheExtender::kCacheExtensions)->Get());
+
+  // Now try again (as this should be hitting cache hit paths for the inliner).
+  ValidateExpected("inline_plus_ce_repeated",
+                   StrCat(CssLinkHref(kCssUrl), CssLinkHref(kCssUrl)),
+                   StrCat(inlined_css, inlined_css));
+
+  EXPECT_EQ(0,
+            rewrite_driver()->statistics()->GetVariable(
+                CacheExtender::kCacheExtensions)->Get());
+}
+
 
 TEST_F(CssInlineFilterTest, CharsetDetermination) {
   // Sigh. rewrite_filter.cc doesn't have its own unit test so we test this

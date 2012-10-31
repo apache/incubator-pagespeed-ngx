@@ -1805,7 +1805,8 @@ bool RewriteDriver::ShouldSkipParsing() {
   return (should_skip_parsing_ == kTrue);
 }
 
-void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
+void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context,
+                                    bool permit_render) {
   ScopedMutex lock(rewrite_mutex());
   DCHECK(!fetch_queued_);
   bool signal = false;
@@ -1837,7 +1838,7 @@ void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context) {
       signal = true;
     }
   }
-  rewrite_context->Propagate(attached);
+  rewrite_context->Propagate(attached && permit_render);
   ++rewrites_to_delete_;
   if (signal) {
     DCHECK(!fetch_queued_);

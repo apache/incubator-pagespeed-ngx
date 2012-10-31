@@ -53,6 +53,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
       : resource_(resource),
         disable_rendering_(false),
         should_delete_element_(false),
+        disable_further_processing_(false),
         was_optimized_(false) {
   }
 
@@ -82,7 +83,13 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   // Determines whether rendering the slot deletes the HTML Element.
   // For example, in the CSS combine filter we want the Render to
   // rewrite the first <link href>, but delete all the other <link>s.
-  void set_should_delete_element(bool x) { should_delete_element_ = x; }
+  //
+  // Calling RequestDeleteElement() also forces
+  // set_disable_further_processing(true);
+  void RequestDeleteElement() {
+    should_delete_element_ = true;
+    disable_further_processing_ = true;
+  }
   bool should_delete_element() const { return should_delete_element_; }
 
   // Returns true if any of the contexts touching this slot optimized it
@@ -93,6 +100,21 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
 
   // Marks the slot as having been optimized.
   void set_was_optimized(bool x) { was_optimized_ = x; }
+
+  // If disable_further_processing is true, no further filter taking this slot
+  // as input will run. Note that this affects only HTML rewriting
+  // (or nested rewrites) since fetch-style rewrites do not share slots
+  // even when more than one filter was involved. For this to persist properly
+  // on cache hits it should be set before RewriteDone is called.
+  // (This also means you should not be using this when partitioning failed).
+  // Only later filters are affected, not the currently running one.
+  void set_disable_further_processing(bool x) {
+    disable_further_processing_ = x;
+  }
+
+  bool disable_further_processing() const {
+    return disable_further_processing_;
+  }
 
   // Render is not thread-safe.  This must be called from the thread that
   // owns the DOM or CSS file. The RewriteContext state machine will only
@@ -142,6 +164,7 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   ResourcePtr resource_;
   bool disable_rendering_;
   bool should_delete_element_;
+  bool disable_further_processing_;
   bool was_optimized_;
 
   // We track the RewriteContexts that are atempting to rewrite this

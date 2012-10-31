@@ -538,6 +538,13 @@ class RewriteContext {
   // waiting for a convenient point to render the rewrites into HTML.
   void FinalizeRewriteForHtml();
 
+  // Arranges for commit of all the state (if permit_render is true), and
+  // notification of parents, rewrite driver, etc., as well as running of
+  // successors if applicable. This is the tail portion of
+  // FinalizeRewriteForHtml that must be called even if we didn't
+  // actually get as far as computing a partition_key_.
+  void RetireRewriteForHtml(bool permit_render);
+
   // Marks this job and any dependents slow as appropriate, notifying the
   // RewriteDriver of any changes.
   void MarkSlow();

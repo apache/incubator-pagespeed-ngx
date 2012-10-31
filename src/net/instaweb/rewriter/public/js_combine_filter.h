@@ -38,6 +38,7 @@ class HtmlCharactersNode;
 class HtmlIEDirectiveNode;
 class RewriteDriver;
 class RewriteContext;
+class ServerContext;
 class Statistics;
 class UrlSegmentEncoder;
 
@@ -99,13 +100,15 @@ class JsCombineFilter : public RewriteFilter {
                                 HtmlElement::Attribute* src);
 
   // Returns JS variable name where code for given URL should be stored.
-  GoogleString VarName(const GoogleString& url) const;
+  static GoogleString VarName(const ServerContext* server_context,
+                              const GoogleString& url);
 
   void NextCombination();
 
   Context* MakeContext();
 
   JsCombiner* combiner() const;
+  ServerContext* server_context() const { return server_context_; }
 
   ScriptTagScanner script_scanner_;
   int script_depth_;  // how many script elements we are inside

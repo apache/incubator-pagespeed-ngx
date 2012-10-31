@@ -191,7 +191,11 @@ TEST_F(ResourceSlotTest, RenderDelete) {
   EXPECT_EQ("<link href=\"v1\" src=\"v2\"/><link href=\"v3\" src=\"v4\"/>",
             GetHtmlDomAsString());
 
-  slot(0)->set_should_delete_element(true);
+  EXPECT_FALSE(slot(0)->should_delete_element());
+  EXPECT_FALSE(slot(0)->disable_further_processing());
+  slot(0)->RequestDeleteElement();
+  EXPECT_TRUE(slot(0)->should_delete_element());
+  EXPECT_TRUE(slot(0)->disable_further_processing());
   slot(0)->Render();
 
   // After update, first link is gone.

@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -1285,6 +1286,39 @@ TEST_F(CssCombineFilterTest, AlternateStylesheets) {
       "alternate_same",
       "<link rel='alternate stylesheet' href='a.css' title='foo'>"
       "<link rel='alternate stylesheet' href='b.css' title='foo'>");
+}
+
+class CssCombineAndCacheExtendTest : public CssCombineFilterTest {
+ protected:
+  virtual void SetUp() {
+    // We setup the options before the upcall so that the
+    // CSS filter is created aware of these.
+    options()->EnableFilter(RewriteOptions::kExtendCacheCss);
+    CssCombineFilterTest::SetUp();
+  }
+};
+
+TEST_F(CssCombineAndCacheExtendTest, CombineCssNoExtraCacheExtension) {
+  SetHtmlMimetype();
+  SetResponseWithDefaultHeaders("a.css", kContentTypeJavascript, kYellow, 100);
+  SetResponseWithDefaultHeaders("b.css", kContentTypeJavascript, kBlue, 100);
+  GoogleString combined_url =
+      Encode(kTestDomain, "cc", "0", MultiUrl("a.css", "b.css"), "css");
+
+  ValidateExpected("combine",
+                   StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+                   CssLinkHref(combined_url));
+  EXPECT_EQ(0,
+            rewrite_driver()->statistics()->GetVariable(
+                CacheExtender::kCacheExtensions)->Get());
+
+  // Now try cached.
+  ValidateExpected("combine",
+                   StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+                   CssLinkHref(combined_url));
+  EXPECT_EQ(0,
+            rewrite_driver()->statistics()->GetVariable(
+                CacheExtender::kCacheExtensions)->Get());
 }
 
 class CssFilterWithCombineTest : public CssCombineFilterTest {

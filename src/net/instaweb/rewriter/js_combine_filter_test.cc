@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -139,10 +140,6 @@ class JsCombineFilterTest : public RewriteTestBase {
   };
 
   virtual void SetUp() {
-    SetUpWithJsFilter(false);
-  }
-
-  void SetUpWithJsFilter(bool use_js_filter) {
     RewriteTestBase::SetUp();
     UseMd5Hasher();
     SetDefaultLongCacheHeaders(&kContentTypeJavascript, &default_js_header_);
@@ -156,12 +153,10 @@ class JsCombineFilterTest : public RewriteTestBase {
     SimulateJsResource(kIntrospectiveUrl1, kIntrospectiveText1);
     SimulateJsResource(kIntrospectiveUrl2, kIntrospectiveText2);
 
-    if (use_js_filter) {
-      options()->EnableFilter(RewriteOptions::kRewriteJavascript);
-    }
+    options()->EnableFilter(RewriteOptions::kCombineJavascript);
+    SetUpExtraFilters();
     rewrite_driver()->AddFilters();
-    filter_ = new JsCombineFilter(rewrite_driver());
-    AddRewriteFilter(filter_);
+
     // Some tests need an another domain, with (different)source files on it as
     // well.
     GoogleString test_domain(kTestDomain);
@@ -171,6 +166,9 @@ class JsCombineFilterTest : public RewriteTestBase {
     other_domain_ = StrCat(test_domain, ".us/");
     SimulateJsResourceOnDomain(other_domain_, kJsUrl1, "othera");
     SimulateJsResourceOnDomain(other_domain_, kJsUrl2, "otherb");
+  }
+
+  virtual void SetUpExtraFilters() {
   }
 
   void SimulateJsResource(const StringPiece& url, const StringPiece& text) {
@@ -218,8 +216,11 @@ class JsCombineFilterTest : public RewriteTestBase {
                          const StringPiece& rel_url) {
     GoogleString abs_url = StrCat(domain, rel_url);
     EXPECT_TRUE(info.url.empty());
-    EXPECT_EQ(StrCat("eval(", filter_->VarName(abs_url), ");"),
-              info.text_content);
+    EXPECT_EQ(
+        StrCat("eval(",
+               JsCombineFilter::VarName(server_context(), abs_url),
+               ");"),
+        info.text_content);
   }
 
   void VerifyUse(const ScriptInfo& info, const StringPiece& rel_url) {
@@ -291,12 +292,11 @@ class JsCombineFilterTest : public RewriteTestBase {
  protected:
   ResponseHeaders default_js_header_;
   GoogleString other_domain_;
-  JsCombineFilter* filter_;  // Owned by rewrite_driver_
 };
 
 class JsFilterAndCombineFilterTest : public JsCombineFilterTest {
-  virtual void SetUp() {
-    SetUpWithJsFilter(true);
+  virtual void SetUpExtraFilters() {
+    options()->EnableFilter(RewriteOptions::kRewriteJavascript);
   }
 };
 
@@ -326,6 +326,26 @@ TEST_F(JsCombineFilterTest, ServeFilesUnhealthy) {
       "var mod_pagespeed_KecOGCIjKt = \"var a;\";\n"
       "var mod_pagespeed_dzsx6RqvJJ = \"var b;\";\n";
   EXPECT_EQ(kCombinedContent, content);
+}
+
+class JsCombineAndCacheExtendFilterTest : public JsCombineFilterTest {
+  virtual void SetUpExtraFilters() {
+    options()->EnableFilter(RewriteOptions::kExtendCacheScripts);
+  }
+};
+
+TEST_F(JsCombineAndCacheExtendFilterTest, CombineJsNoExtraCacheExtension) {
+  // Make sure we don't end up trying to cache extend things
+  // the combiner removed. We need to custom-set resources here to give them
+  // shorter TTL than the fixture would.
+  SetResponseWithDefaultHeaders("a.js", kContentTypeJavascript, kJsText1, 100);
+  SetResponseWithDefaultHeaders("b.js", kContentTypeJavascript, kJsText2, 100);
+
+  TestCombineJs(MultiUrl("a.js", "b.js"), "g2Xe9o4bQ2", "KecOGCIjKt",
+                "dzsx6RqvJJ", false, kTestDomain);
+  EXPECT_EQ(0,
+            rewrite_driver()->statistics()->GetVariable(
+                CacheExtender::kCacheExtensions)->Get());
 }
 
 // Turning on AvoidRewritingIntrospectiveJavascript should not affect normal

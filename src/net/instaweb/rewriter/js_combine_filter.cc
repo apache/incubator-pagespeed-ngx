@@ -382,14 +382,11 @@ class JsCombineFilter::Context : public RewriteContext {
     Driver()->InsertElementBeforeElement(original, element);
     //    Driver()->DeleteElement(original);
     GoogleString var_name = filter_->VarName(
-        html_slot->resource()->url());
+        FindServerContext(), html_slot->resource()->url());
     HtmlNode* script_code = Driver()->NewCharactersNode(
         element, StrCat("eval(", var_name, ");"));
     Driver()->AppendChild(element, script_code);
-    // Don't render this slot because it no longer has a resource attached
-    // to it.
-    //    html_slot->set_disable_rendering(true);
-    html_slot->set_should_delete_element(true);
+    html_slot->RequestDeleteElement();
   }
 
   JsCombineFilter::JsCombiner combiner_;
@@ -408,7 +405,10 @@ bool JsCombineFilter::JsCombiner::WritePiece(
     int index, const Resource* input, OutputResource* combination,
     Writer* writer, MessageHandler* handler) {
   // We write out code of each script into a variable.
-  writer->Write(StrCat("var ", filter_->VarName(input->url()), " = "),
+  writer->Write(StrCat("var ",
+                       JsCombineFilter::VarName(
+                           filter_->server_context(), input->url()),
+                       " = "),
                 handler);
 
   StringPiece original = input->contents();
@@ -549,12 +549,13 @@ void JsCombineFilter::ConsiderJsForCombination(HtmlElement* element,
   context_->AddElement(element, src);
 }
 
-GoogleString JsCombineFilter::VarName(const GoogleString& url) const {
+GoogleString JsCombineFilter::VarName(const ServerContext* server_context,
+                                      const GoogleString& url) {
   // We hash the non-host portion of URL to keep it consistent when sharding.
   // This is safe since we never include URLs from different hosts in a single
   // combination.
-  GoogleString url_hash = JavascriptCodeBlock::JsUrlHash(url,
-    server_context_->hasher());
+  GoogleString url_hash =
+      JavascriptCodeBlock::JsUrlHash(url, server_context->hasher());
 
   return StrCat("mod_pagespeed_", url_hash);
 }

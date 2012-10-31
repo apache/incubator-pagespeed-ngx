@@ -80,6 +80,10 @@ void InlineRewriteContext::Rewrite(int partition_index,
   CHECK(output_resource.get() == NULL);
   CHECK_EQ(0, partition_index);
 
+  // Mark slot as needing no further processing. Note that needs to be done
+  // before calling RewriteDone, as that may cause us to be deleted!
+  slot(0)->set_disable_further_processing(true);
+
   // We signal as rewrite failed, as we do not create an output resource.
   RewriteDone(kRewriteFailed, 0);
 }

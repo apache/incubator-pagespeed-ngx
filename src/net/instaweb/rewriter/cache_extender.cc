@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -191,12 +192,10 @@ void CacheExtender::Context::RewriteSingle(
 }
 
 void CacheExtender::Context::Render() {
-  // num_slots() should be 1 at this point because this is a single resource
-  // rewriter, but we just double-check this before incrementing the stats.
-  if (num_slots() == 1 && slot(0)->was_optimized()) {
+  if (num_output_partitions() == 1 && output_partition(0)->optimizable()) {
     extender_->extension_count_->Add(1);
     // Log applied rewriter id. Here, we care only about non-nested
-    // cache extensions, and that too, those ocurring in synchronous
+    // cache extensions, and that too, those occurring in synchronous
     // flows only.
     if (driver_ != NULL && driver_->log_record() != NULL) {
       if (slot(0)->resource().get() != NULL &&

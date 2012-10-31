@@ -248,8 +248,6 @@ class CssCombineFilter::Context : public RewriteContext {
   }
 
   virtual void Render() {
-    // Slot 0 will be replaced by the combined resource as part of
-    // rewrite_context.cc.  But we still need to delete slots 1-N.
     for (int p = 0, np = num_output_partitions(); p < np; ++p) {
       CachedResult* partition = output_partition(p);
       if (partition->input_size() == 0) {
@@ -266,10 +264,11 @@ class CssCombineFilter::Context : public RewriteContext {
         first_element->set_close_style(HtmlElement::BRIEF_CLOSE);
       }
 
-      for (int i = 1; i < partition->input_size(); ++i) {
-        int slot_index = partition->input(i).index();
-        slot(slot_index)->set_should_delete_element(true);
-      }
+      // We want to call this here so that we disable_further_processing
+      // and delete elements in cases where we Render() but don't partition
+      // (cache hits).
+      DisableRemovedSlots(partition);
+
       combiner_.AddFileCountReduction(partition->input_size() - 1);
     }
   }
@@ -291,8 +290,22 @@ class CssCombineFilter::Context : public RewriteContext {
       } else {
         combination_output->UpdateCachedResultPreservingInputInfo(partition);
         outputs->push_back(combination_output);
+
+        // We want to call this here so that we disable_further_processing
+        // even in cases where we do not Render().
+        DisableRemovedSlots(partition);
       }
       Reset();
+    }
+  }
+
+  void DisableRemovedSlots(CachedResult* partition) {
+    // Slot 0 will be replaced by the combined resource as part of
+    // rewrite_context.cc.  But we still need to delete links for slots 1-N,
+    // and to prevent further acting on them.
+    for (int i = 1; i < partition->input_size(); ++i) {
+      int slot_index = partition->input(i).index();
+      slot(slot_index)->RequestDeleteElement();
     }
   }
 

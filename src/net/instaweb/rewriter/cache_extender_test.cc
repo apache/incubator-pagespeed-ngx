@@ -674,6 +674,12 @@ TEST_F(CacheExtenderTest, DoNotExtendRewrittenCss) {
       StringPrintf(kCssFormat, Encode(
           StrCat(kShard1Domain, kCssSubdir), RewriteOptions::kCssFilterId,
           "0", kCssTail, "css").c_str()));
+
+  // Also we shouldn't have bumped our stat mistakenly just because
+  // the CSS filter optimized the slot.
+  EXPECT_EQ(0,
+            rewrite_driver()->statistics()->GetVariable(
+                CacheExtender::kCacheExtensions)->Get());
 }
 
 // See: http://www.alistapart.com/articles/alternate/

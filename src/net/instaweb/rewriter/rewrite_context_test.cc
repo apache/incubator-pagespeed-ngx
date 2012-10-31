@@ -415,7 +415,8 @@ class CombiningFilter : public RewriteFilter {
       rewrite_block_on_(NULL),
       rewrite_signal_on_(NULL),
       on_the_fly_(false),
-      optimization_only_(true) {
+      optimization_only_(true),
+      disable_successors_(false) {
     ClearStats();
   }
   virtual ~CombiningFilter() {}
@@ -491,6 +492,7 @@ class CombiningFilter : public RewriteFilter {
       // cached_result directly but this allows code-sharing as we
       // transition to the async flow.
       combination->UpdateCachedResultPreservingInputInfo(partition);
+      DisableRemovedSlots(partition);
       outputs->push_back(combination);
       return true;
     }
@@ -544,11 +546,17 @@ class CombiningFilter : public RewriteFilter {
       // Slot 0 will be replaced by the combined resource as part of
       // rewrite_context.cc.  But we still need to delete slots 1-N.
       for (int p = 0, np = num_output_partitions(); p < np; ++p) {
-        CachedResult* partition = output_partition(p);
-        for (int i = 1; i < partition->input_size(); ++i) {
-          int slot_index = partition->input(i).index();
-          slot(slot_index)->set_should_delete_element(true);
-        }
+        DisableRemovedSlots(output_partition(p));
+      }
+    }
+
+    void DisableRemovedSlots(CachedResult* partition) {
+      if (filter_->disable_successors_) {
+        slot(0)->set_disable_further_processing(true);
+      }
+      for (int i = 1; i < partition->input_size(); ++i) {
+        int slot_index = partition->input(i).index();
+        slot(slot_index)->RequestDeleteElement();
       }
     }
 
@@ -611,7 +619,9 @@ class CombiningFilter : public RewriteFilter {
   // Each entry in combination will be prefixed with this.
   void set_prefix(const GoogleString& prefix) { prefix_ = prefix; }
 
-  void set_on_the_fly(bool v) { on_the_fly_ = true; }
+  void set_on_the_fly(bool v) { on_the_fly_ = v; }
+
+  void set_disable_successors(bool v) { disable_successors_ = v; }
 
   bool optimization_only() const { return optimization_only_; }
   void set_optimization_only(bool o) { optimization_only_ = o; }
@@ -637,6 +647,8 @@ class CombiningFilter : public RewriteFilter {
   bool on_the_fly_;  // If true, will act as an on-the-fly filter.
   bool optimization_only_;  // If false, will disable load-shedding and fetch
                             // rewrite deadlines.
+  bool disable_successors_;  // if true, will disable successors for all
+                             // slots, not just mutated ones.
 
   DISALLOW_COPY_AND_ASSIGN(CombiningFilter);
 };
@@ -2716,6 +2728,56 @@ TEST_F(RewriteContextTest, NestedChained) {
                    Encode(kTestDomain, "uc", "0", "b.css", "css"), "\n",
                    Encode(kTestDomain, "uc", "0", "b.css", "css"), "\n"),
             rewritten_contents);
+}
+
+TEST_F(RewriteContextTest, DisableFurtherProcessing) {
+  // Make sure that set_disable_further_processing() done in the combiner
+  // prevents later rewrites from running. To test this, we add the combiner
+  // before the trimmer.
+  RewriteDriver* driver = rewrite_driver();
+  CombiningFilter* combining_filter =
+      new CombiningFilter(driver, mock_scheduler(), 0 /* no delay */);
+  driver->AppendRewriteFilter(combining_filter);
+  TrimWhitespaceRewriter* trimmer =
+      new TrimWhitespaceRewriter(kRewrittenResource);
+  rewrite_driver()->AppendRewriteFilter(
+      new SimpleTextFilter(trimmer, rewrite_driver()));
+  driver->AddFilters();
+
+  InitResources();
+  GoogleString combined_leaf = Encode("", kCombiningFilterId, "0",
+                                      MultiUrl("a.css", "b.css"), "css");
+  GoogleString trimmed_url = Encode(kTestDomain, kTrimWhitespaceFilterId, "0",
+                                    combined_leaf, "css");
+  ValidateExpected(
+      "combine_then_trim",
+      StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+      CssLinkHref(trimmed_url));
+
+  // Should only be 1 rewrite: on the actual combined link, not the slot
+  // that used to have b.css. Note that this doesn't really cover
+  // disable_further_processing, since the framework may avoid
+  // the issue by reusing the rewrite.
+  EXPECT_EQ(1, trimmer->num_rewrites());
+
+  // Now prevent trim from running. Should not see it in the URL.
+  combining_filter->set_disable_successors(true);
+  GoogleString combined_url = Encode(kTestDomain, kCombiningFilterId, "0",
+                                     MultiUrl("a.css", "b.css"), "css");
+  ValidateExpected(
+      "combine_then_block_trim",
+      StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+      CssLinkHref(combined_url));
+
+  EXPECT_EQ(1, trimmer->num_rewrites());  // unchanged.
+
+  // Cached, too.
+  ValidateExpected(
+      "combine_then_block_trim",
+      StrCat(CssLinkHref("a.css"), CssLinkHref("b.css")),
+      CssLinkHref(combined_url));
+
+  EXPECT_EQ(1, trimmer->num_rewrites());  // unchanged.
 }
 
 TEST_F(RewriteContextTest, CombinationRewrite) {

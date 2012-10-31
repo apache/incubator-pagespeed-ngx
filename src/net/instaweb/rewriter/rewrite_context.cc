@@ -1026,6 +1026,17 @@ void RewriteContext::Start() {
   DCHECK_EQ(0, num_predecessors_);
   started_ = true;
 
+  // See if any of the input slots are marked as unsafe for use,
+  // and if so bail out quickly.
+  // TODO(morlovich): Add API for filters to do something more refined.
+  for (int c = 0; c < num_slots(); ++c) {
+    if (slot(c)->disable_further_processing()) {
+      rewrite_done_ = true;
+      RetireRewriteForHtml(false /* no rendering*/);
+      return;
+    }
+  }
+
   // The best-case scenario for a Rewrite is that we have already done
   // it, and just need to look up in our metadata cache what the final
   // rewritten URL is.  In the simplest scenario, we are doing a
@@ -1205,6 +1216,23 @@ void RewriteContext::OutputCacheDone(CacheLookupResult* cache_result) {
   if (owned_cache_result->cache_ok || owned_cache_result->can_revalidate) {
     for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
       const CachedResult& partition = partitions_->partition(i);
+
+      // Extract the further processing bit from InputInfo structures
+      // back into the slots.
+      for (int j = 0; j < partition.input_size(); ++j) {
+        const InputInfo& input = partition.input(j);
+        if (input.disable_further_processing()) {
+          int slot_index = input.index();
+          if (slot_index < 0 || slot_index >> slots_.size()) {
+            LOG(DFATAL) << "Index of processing disabled slot out of range:"
+                        << slot_index;
+          } else {
+            slots_[slot_index]->set_disable_further_processing(true);
+          }
+        }
+      }
+
+      // Create output resources, if appropriate.
       OutputResourcePtr output_resource;
       if (partition.optimizable() &&
           CreateOutputResourceForCachedOutput(&partition, &output_resource)) {
@@ -1295,6 +1323,8 @@ void RewriteContext::RepeatedSuccess(const RewriteContext* primary) {
 
   for (int i = 0, n = primary->num_slots(); i < n; ++i) {
     slot(i)->set_was_optimized(primary->slot(i)->was_optimized());
+    slot(i)->set_disable_further_processing(
+        primary->slot(i)->disable_further_processing());
     render_slots_[i] = primary->render_slots_[i];
   }
 
@@ -1539,16 +1569,20 @@ void RewriteContext::FinalizeRewriteForHtml() {
   Driver()->DeregisterForPartitionKey(partition_key_, this);
   WritePartition();
 
+  RetireRewriteForHtml(true /* permit rendering, if attached */);
+}
+
+void RewriteContext::RetireRewriteForHtml(bool permit_render) {
   if (parent_ != NULL) {
     DCHECK(driver_ == NULL);
-    Propagate(true);
+    Propagate(permit_render);
     parent_->NestedRewriteDone(this);
   } else {
     // The RewriteDriver is waiting for this to complete.  Defer to the
     // RewriteDriver to schedule the Rendering of this context on the main
     // thread.
     CHECK(driver_ != NULL);
-    driver_->RewriteComplete(this);
+    driver_->RewriteComplete(this, permit_render);
   }
 }
 
@@ -1626,6 +1660,20 @@ void RewriteContext::RewriteDoneImpl(RewriteResult result,
     CachedResult* partition =
         partitions_->mutable_partition(partition_index);
     bool optimizable = (result == kRewriteOk);
+
+    // Persist disable_further_processing bits from slots in the corresponding
+    // InputInfo entries in metadata cache.
+    for (int i = 0; i < partition->input_size(); ++i) {
+      InputInfo* input = partition->mutable_input(i);
+      if (!input->has_index()) {
+        LOG(DFATAL) << "No index on InputInfo. Huh?";
+      } else {
+        if (slot(input->index())->disable_further_processing()) {
+          input->set_disable_further_processing(true);
+        }
+      }
+    }
+
     partition->set_optimizable(optimizable);
     if (optimizable && (fetch_.get() == NULL)) {
       // TODO(morlovich): currently in async mode, we tie rendering of slot
