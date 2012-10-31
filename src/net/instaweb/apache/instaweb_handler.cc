@@ -22,10 +22,10 @@
 #include <vector>
 
 #include "net/instaweb/apache/apache_config.h"
-#include "net/instaweb/apache/apache_slurp.h"
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/apache/apache_slurp.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/instaweb_context.h"
@@ -40,6 +40,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -196,6 +197,28 @@ bool handle_as_resource(ApacheResourceManager* manager,
       custom_options->Merge(*directory_options);
     }
 
+    // TODO(sligocki): Move inside PSOL.
+    // Merge in query-param or header-based options.
+    // Note: We do not generally get response headers in the resource flow,
+    // so NULL is passed in instead.
+    ServerContext::OptionsBoolPair query_options_success =
+        manager->GetQueryOptions(&gurl, callback->request_headers(), NULL);
+    if (!query_options_success.second) {
+      message_handler->Message(kWarning, "Invalid ModPagespeed query params "
+                               "or headers for request %s. Serving with "
+                               "default options.", url.c_str());
+    }
+    if (query_options_success.first != NULL) {
+      if (custom_options == NULL) {
+        custom_options = manager->apache_factory()->NewRewriteOptions();
+        custom_options->Merge(*global_options);
+      }
+      custom_options->Merge(*query_options_success.first);
+      delete query_options_success.first;
+      // Don't run any experiments if we're handling a customized request.
+      custom_options->set_running_furious_experiment(false);
+    }
+
     RewriteDriverPool* driver_pool = NULL;
     if (custom_options == NULL) {
       if (using_spdy && (manager->SpdyConfig() != NULL)) {
@@ -218,7 +241,7 @@ bool handle_as_resource(ApacheResourceManager* manager,
       response_headers->SetDate(manager->timer()->NowMs());
       // ResourceFetch adds X-Page-Speed header, old mod_pagespeed code
       // did not. For now, we remove that header for consistency.
-      // TODO(sligocki): Consistently use X- headers in MPS and PSA.
+      // TODO(sligocki): Consistently use X- headers in MPS and PSOL.
       // I think it would be good to change X-Mod-Pagespeed -> X-Page-Speed
       // and use that for all HTML and resource requests.
       response_headers->RemoveAll(kPageSpeedHeader);

@@ -28,10 +28,8 @@
 
 namespace net_instaweb {
 
-const char RewriteQuery::kModPagespeed[] =
-    "ModPagespeed";
-const char RewriteQuery::kModPagespeedFilters[] =
-    "ModPagespeedFilters";
+const char RewriteQuery::kModPagespeed[] = "ModPagespeed";
+const char RewriteQuery::kModPagespeedFilters[] = "ModPagespeedFilters";
 const char RewriteQuery::kNoscriptValue[] = "noscript";
 
 // static array of query params that have setters taking a single int64 arg.

@@ -104,6 +104,7 @@
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
@@ -651,10 +652,14 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
   }
 }
 
-const char* RewriteDriver::kPassThroughRequestAttributes[3] = {
+const char* RewriteDriver::kPassThroughRequestAttributes[5] = {
   HttpAttributes::kIfModifiedSince,
   HttpAttributes::kReferer,
-  HttpAttributes::kUserAgent
+  HttpAttributes::kUserAgent,
+  // Note: These headers are listed so that the headers we see contain them,
+  // but should immediately be detected and removed by RewriteQuery::Scan().
+  RewriteQuery::kModPagespeed,
+  RewriteQuery::kModPagespeedFilters,
 };
 
 const char RewriteDriver::kDomCohort[] = "dom";

@@ -256,7 +256,7 @@ const char kModPagespeedBlockingRewriteKey[] =
 
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
 
-// TODO(sligocki): Move inside PSA.
+// TODO(sligocki): Move inside PSOL.
 // Check if pagespeed optimization rules applicable.
 bool check_pagespeed_applicable(request_rec* request,
                                 const ContentType& content_type) {
@@ -469,7 +469,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   // TODO(sligocki): Should we rewrite any other statuses?
   // Maybe 206 Partial Content?
-  // TODO(sligocki): Make this decision inside PSA.
+  // TODO(sligocki): Make this decision inside PSOL.
   if (request->status != 200) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Request not rewritten because: request->status != 200 "
@@ -479,7 +479,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   const ContentType* content_type =
       MimeTypeToContentType(request->content_type);
-  // TODO(sligocki): Move inside PSA.
+  // TODO(sligocki): Move inside PSOL.
   if (content_type == NULL) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Request not rewritten because: request->content_type was "
@@ -497,7 +497,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   // setup as both the original and the proxy server, mod_pagespeed filter may
   // be applied twice. To avoid this, skip the content if it is already
   // optimized by mod_pagespeed.
-  // TODO(sligocki): Move inside PSA.
+  // TODO(sligocki): Move inside PSOL.
   if (apr_table_get(request->headers_out, kModPagespeedHeader) != NULL) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                   "Request not rewritten because: X-Mod-Pagespeed header set.");
@@ -523,6 +523,9 @@ InstawebContext* build_context_for_request(request_rec* request) {
         manager->GetQueryOptions(&gurl, request_headers.get(),
                                  &response_headers);
     if (!query_options_success.second) {
+      ap_log_rerror(APLOG_MARK, APLOG_WARNING, APR_SUCCESS, request,
+                    "Request not rewritten because ModPagespeed "
+                    "query-params or headers are invalid.");
       return NULL;
     }
     if (query_options_success.first != NULL) {
@@ -563,7 +566,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
     final_url = absolute_url;
   }
 
-  // TODO(sligocki): Move inside PSA.
+  // TODO(sligocki): Move inside PSOL.
   // Is ModPagespeed turned off? We check after parsing query params so that
   // they can override .conf settings.
   if (!options->enabled()) {
@@ -572,7 +575,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
     return NULL;
   }
 
-  // TODO(sligocki): Move inside PSA.
+  // TODO(sligocki): Move inside PSOL.
   // Do ModPagespeedDisallow statements restrict us from rewriting this URL?
   if (!options->IsAllowed(final_url)) {
     ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
@@ -584,7 +587,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
       request, request_headers.release(), *content_type, manager, final_url,
       using_spdy, use_custom_options, *options);
 
-  // TODO(sligocki): Move inside PSA.
+  // TODO(sligocki): Move inside PSOL.
   InstawebContext::ContentEncoding encoding = context->content_encoding();
   if ((encoding == InstawebContext::kGzip) ||
       (encoding == InstawebContext::kDeflate)) {
@@ -603,7 +606,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   }
 
   // Set X-Mod-Pagespeed header.
-  // TODO(sligocki): Move inside PSA.
+  // TODO(sligocki): Move inside PSOL.
   apr_table_set(request->headers_out,
                 kModPagespeedHeader, options->x_header_value().c_str());
 
@@ -736,7 +739,7 @@ apr_status_t instaweb_fix_headers_filter(
     ap_filter_t *filter, apr_bucket_brigade *bb) {
   request_rec* request = filter->r;
 
-  // TODO(sligocki): Move inside PSA.
+  // TODO(sligocki): Move inside PSOL.
   // Turn off caching for the HTTP requests.
   apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
                 HttpAttributes::kNoCache);

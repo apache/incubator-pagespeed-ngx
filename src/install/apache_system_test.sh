@@ -133,7 +133,7 @@ check $WGET -q -S -O - \
   "$TEST_ROOT/response_header_mps_off.php" > $OUTDIR/result_off 2>&1
 check $WGET -q -S -O - \
   "$TEST_ROOT/response_header_mps_on.php" > $OUTDIR/result_on 2>&1
-if grep -q '<?php' $OUTDIR/result; then
+if grep -q '<?php' $OUTDIR/result_off; then
   echo "*** Skipped because PHP is not installed. If you'd like to enable this"
   echo "*** test please run: sudo apt-get install php5-common php5"
 else
@@ -404,6 +404,9 @@ wget -O - --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $TEMPDIR/flush.$$
 check [ `wget -O - $URL | grep -o 'link rel="subresource"' | wc -l` = 0 ]
 rm -f $TEMPDIR/flush.$$
 
+# Note: This tests will fail with default
+# WGET_ARGS="--header=ModPagespeedFilters:rewrite_javascript"
+WGET_ARGS=""
 echo TEST: Respect custom options on resources.
 IMG_NON_CUSTOM="$EXAMPLE_ROOT/images/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
 IMG_CUSTOM="$TEST_ROOT/custom_options/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"

@@ -84,6 +84,25 @@ check_not egrep 'X-Mod-Pagespeed|X-Page-Speed' <(
 echo TEST: We behave sanely on whitespace served as HTML
 check egrep -q 'HTTP/1[.]. 200 OK' <($WGET_DUMP $TEST_ROOT/whitespace.html)
 
+echo TEST: Query params and headers are recognized in resource flow.
+URL=$REWRITTEN_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css
+echo "Image gets rewritten by default."
+# TODO(sligocki): Remove this fetch_until. The blocking rewrite header below
+# should take care of this on the first load, unfortunately that currently
+# fails in PSS :/ (Note: it works in MPS tests).
+$WGET_ARGS=""
+fetch_until $URL 'fgrep -c BikeCrashIcn.png.pagespeed.ic' 1
+OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest" $URL)
+check_from "$OUT" fgrep -q "BikeCrashIcn.png.pagespeed.ic"
+echo "Image doesn't get rewritten when we turn it off with headers."
+OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest"
+  --header="ModPagespeedFilters:-rewrite_images" $URL)
+check_not_from "$OUT" fgrep -q "BikeCrashIcn.png.pagespeed.ic"
+echo "Image doesn't get rewritten when we turn it off with query params."
+OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest"
+  $URL?ModPagespeedFilters=-rewrite_images)
+check_not_from "$OUT" fgrep -q "BikeCrashIcn.png.pagespeed.ic"
+
 # Individual filter tests, in alphabetical order
 
 test_filter add_instrumentation adds 2 script tags
