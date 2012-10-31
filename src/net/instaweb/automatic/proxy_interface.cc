@@ -277,7 +277,8 @@ void ProxyInterface::ProxyRequest(bool is_resource_fetch,
   // make cache key consistent for both lookup and storing in cache.
   ServerContext::OptionsBoolPair query_options_success =
       server_context_->GetQueryOptions(gurl.get(),
-                                       async_fetch->request_headers());
+                                       async_fetch->request_headers(),
+                                       NULL);
 
   if (!query_options_success.second) {
     async_fetch->response_headers()->SetStatusAndReason(

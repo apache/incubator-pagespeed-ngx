@@ -918,11 +918,13 @@ RewriteOptions* ServerContext::NewOptions() {
 }
 
 ServerContext::OptionsBoolPair ServerContext::GetQueryOptions(
-    GoogleUrl* request_url, RequestHeaders* request_headers) {
+    GoogleUrl* request_url, RequestHeaders* request_headers,
+    ResponseHeaders* response_headers) {
   scoped_ptr<RewriteOptions> query_options;
   bool success = false;
   switch (RewriteQuery::Scan(factory(), request_url, request_headers,
-                             &query_options, message_handler_)) {
+                             response_headers, &query_options,
+                             message_handler_)) {
     case RewriteQuery::kInvalid:
       query_options.reset(NULL);
       break;

@@ -49,7 +49,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -512,14 +511,17 @@ InstawebContext* build_context_for_request(request_rec* request) {
   GoogleString final_url;
 
   scoped_ptr<RequestHeaders> request_headers(new RequestHeaders);
+  ResponseHeaders response_headers;
   {
     // TODO(mmohabey): Add a hook which strips off the ModPagespeed* query
     // (instead of stripping them here) params before content generation.
     GoogleUrl gurl(absolute_url);
     ApacheRequestToRequestHeaders(*request, request_headers.get());
-
+    ApacheRequestToResponseHeaders(*request, &response_headers);
+    int num_response_attributes = response_headers.NumAttributes();
     ServerContext::OptionsBoolPair query_options_success =
-        manager->GetQueryOptions(&gurl, request_headers.get());
+        manager->GetQueryOptions(&gurl, request_headers.get(),
+                                 &response_headers);
     if (!query_options_success.second) {
       return NULL;
     }
@@ -543,6 +545,16 @@ InstawebContext* build_context_for_request(request_rec* request) {
         // Set final url to gurl which has ModPagespeed* query params
         // stripped.
         final_url = gurl.Spec().as_string();
+      }
+
+      // Write back the modified response headers if any have been stripped by
+      // GetQueryOptions (which indicates that options were found).
+      // Note: GetQueryOptions should not add or mutate headers, only remove
+      // them.
+      DCHECK(response_headers.NumAttributes() <= num_response_attributes);
+      if (response_headers.NumAttributes() < num_response_attributes) {
+        apr_table_clear(request->headers_out);
+        AddResponseHeadersToRequest(response_headers, request);
       }
     }
   }

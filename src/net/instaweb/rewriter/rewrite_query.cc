@@ -16,6 +16,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -67,18 +68,51 @@ static struct Int64QueryParam int64_query_params_[] = {
     &RewriteOptions::set_image_webp_recompress_quality },
 };
 
-// Scan for option-sets in query-params.  We will only allow a limited
-// number of options to be set.  In particular, some options are risky
-// to set per query, such as image inline threshold, which exposes a
-// DOS vulnerability and a risk of poisoning our internal cache.
-// Domain adjustments can potentially introduce a security
-// vulnerability.
-//
-// So we will check for explicit parameters we want to support.
+template <class HeaderT>
+RewriteQuery::Status RewriteQuery::ScanHeader(
+    HeaderT* headers,
+    RewriteOptions* options,
+    MessageHandler* handler) {
+  Status status = kNoneFound;
+
+  if (headers == NULL) {
+    return status;
+  }
+
+  // Tracks the headers that need to be removed.
+  HeaderT headers_to_remove;
+
+  for (int i = 0, n = headers->NumAttributes(); i < n; ++i) {
+    switch (ScanNameValue(headers->Name(i), headers->Value(i), options,
+                          handler)) {
+      case kNoneFound:
+        break;
+      case kSuccess:
+        headers_to_remove.Add(headers->Name(i), headers->Value(i));
+        status = kSuccess;
+        break;
+      case kInvalid:
+        return kInvalid;
+    }
+  }
+
+  for (int i = 0, n = headers_to_remove.NumAttributes(); i < n; ++i) {
+    headers->Remove(headers_to_remove.Name(i), headers_to_remove.Value(i));
+  }
+
+  return status;
+}
+
+// Scan for option-sets in query-params. We will only allow a limited number of
+// options to be set. In particular, some options are risky to set per query,
+// such as image inline threshold, which exposes a DOS vulnerability and a risk
+// of poisoning our internal cache. Domain adjustments can potentially introduce
+// a security vulnerability.
 RewriteQuery::Status RewriteQuery::Scan(
     RewriteDriverFactory* factory,
     GoogleUrl* request_url,
     RequestHeaders* request_headers,
+    ResponseHeaders* response_headers,
     scoped_ptr<RewriteOptions>* options,
     MessageHandler* handler) {
   options->reset(NULL);
@@ -88,7 +122,7 @@ RewriteQuery::Status RewriteQuery::Scan(
 
   // See if anything looks even remotely like one of our options before doing
   // any more work.
-  if (!MayHaveCustomOptions(query_params, *request_headers)) {
+  if (!MayHaveCustomOptions(query_params, request_headers, response_headers)) {
     return kNoneFound;
   }
 
@@ -122,54 +156,67 @@ RewriteQuery::Status RewriteQuery::Scan(
                               request_url->AllAfterQuery()));
   }
 
-  // Tracks the headers that needs to be removed.
-  RequestHeaders request_headers_to_remove;
-
-  for (int i = 0, n = request_headers->NumAttributes(); i < n; ++i) {
-    switch (ScanNameValue(request_headers->Name(i), request_headers->Value(i),
-                          options->get(), handler)) {
-      case kNoneFound:
-        break;
-      case kSuccess:
-        request_headers_to_remove.Add(request_headers->Name(i),
-                                 request_headers->Value(i));
-        status = kSuccess;
-        break;
-      case kInvalid:
-        return kInvalid;
-    }
+  switch (ScanHeader<RequestHeaders>(request_headers, options->get(),
+                                     handler)) {
+    case kNoneFound:
+      break;
+    case kSuccess:
+      status = kSuccess;
+      break;
+    case kInvalid:
+      return kInvalid;
   }
 
-  if (status == kSuccess) {
-    for (int i = 0, n = request_headers_to_remove.NumAttributes(); i < n; ++i) {
-      request_headers->Remove(request_headers_to_remove.Name(i),
-                              request_headers_to_remove.Value(i));
-    }
+  switch (ScanHeader<ResponseHeaders>(response_headers, options->get(),
+                                      handler)) {
+    case kNoneFound:
+      break;
+    case kSuccess:
+      status = kSuccess;
+      break;
+    case kInvalid:
+      return kInvalid;
+  }
 
-    // This semantic provides for a mod_pagespeed server that has no rewriting
-    // options configured at all.  Turning the module on should provide some
-    // reasonable defaults.  Note that if any filters are explicitly set with
-    // ModPagespeedFilters=..., then the call to
-    // DisableAllFiltersNotExplicitlyEnabled() below will make the 'level'
-    // irrelevant.
+  // Set a default rewrite level in case the mod_pagespeed server has no
+  // rewriting options configured.
+  // Note that if any filters are explicitly set with
+  // ModPagespeedFilters=..., then the call to
+  // DisableAllFiltersNotExplicitlyEnabled() below will make the 'level'
+  // irrelevant.
+  if (status == kSuccess) {
     options->get()->SetDefaultRewriteLevel(RewriteOptions::kCoreFilters);
   }
 
   return status;
 }
 
+template <class HeaderT>
+bool RewriteQuery::HeadersMayHaveCustomOptions(const QueryParams& params,
+                                               const HeaderT* headers) {
+  if (headers != NULL) {
+    for (int i = 0, n = headers->NumAttributes(); i < n; ++i) {
+      if (StringPiece(headers->Name(i)).starts_with(kModPagespeed)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 bool RewriteQuery::MayHaveCustomOptions(
-    const QueryParams& params, const RequestHeaders& headers) {
+    const QueryParams& params, const RequestHeaders* req_headers,
+    const ResponseHeaders* resp_headers) {
   for (int i = 0, n = params.size(); i < n; ++i) {
     if (StringPiece(params.name(i)).starts_with(kModPagespeed)) {
       return true;
     }
   }
-
-  for (int i = 0, n = headers.NumAttributes(); i < n; ++i) {
-    if (StringPiece(headers.Name(i)).starts_with(kModPagespeed)) {
-      return true;
-    }
+  if (HeadersMayHaveCustomOptions(params, req_headers)) {
+    return true;
+  }
+  if (HeadersMayHaveCustomOptions(params, resp_headers)) {
+    return true;
   }
   return false;
 }

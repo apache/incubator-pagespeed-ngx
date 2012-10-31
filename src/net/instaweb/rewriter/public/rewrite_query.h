@@ -25,6 +25,7 @@ class GoogleUrl;
 class MessageHandler;
 class QueryParams;
 class RequestHeaders;
+class ResponseHeaders;
 class RewriteDriverFactory;
 class RewriteOptions;
 
@@ -52,18 +53,46 @@ class RewriteQuery {
   // "ModPagespeed" flags from the query_params of the url and the
   // request_headers.
   //
+  // First queries are processed, then request headers, then response headers.
+  // Therefore parameters set by response headers take precedence over request
+  // headers over query parameters. The exception is filter disables, which
+  // always take precedence over enables, even those processed later.
+  //
+  // If NULL is passed for request_headers or response_headers those particular
+  // headers will be skipped in the scan.
+  //
   // TODO(jmarantz): consider allowing an alternative prefix to "ModPagespeed"
   // to accomodate other Page Speed Automatic applications that might want to
   // brand differently.
   static Status Scan(RewriteDriverFactory* factory,
                      GoogleUrl* request_url,
                      RequestHeaders* request_headers,
+                     ResponseHeaders* response_headers,
                      scoped_ptr<RewriteOptions>* options,
                      MessageHandler* handler);
 
  private:
+  // Performs the request and response header scanning for Scan(). If any
+  // "ModPagespeed" options are found in the headers they are stripped.
+  // Returns kNoneFound if no options found.  Returns kSuccess and
+  // populates *'options' if options are found.  Returns kInvalid if
+  // any headers were parsed unsuccessfully.
+  // Note: mod_instaweb::build_context_for_request assumes that headers will be
+  // stripped from the headers if options are found and that headers will not
+  // grow in this call.
+  template <class HeaderT>
+  static Status ScanHeader(HeaderT* headers,
+                           RewriteOptions* options,
+                           MessageHandler* handler);
+
   static bool MayHaveCustomOptions(const QueryParams& params,
-                                   const RequestHeaders& headers);
+                                   const RequestHeaders* req_headers,
+                                   const ResponseHeaders* resp_headers);
+
+  template <class HeaderT>
+  static bool HeadersMayHaveCustomOptions(const QueryParams& params,
+                                          const HeaderT* headers);
+
 
   static Status ScanNameValue(const StringPiece& name,
                               const GoogleString& value,

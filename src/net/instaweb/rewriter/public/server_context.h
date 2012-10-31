@@ -328,17 +328,18 @@ class ServerContext {
   // Makes a new, empty set of RewriteOptions.
   RewriteOptions* NewOptions();
 
-  // Returns any options set in query-params or in request headers. Possible
+  // Returns any options set in query-params or in the headers. Possible
   // return-value scenarios for the pair are:
-  // * first==*, .second==false:  query-params or req-headers failed in parse.
+  // * first==*, .second==false:  query-params or headers failed in parse.
   //   We return 405 in this case (see ProxyInterface::ProxyRequest).
-  // * first==NULL, .second==true: No query-params or req-headers is present.
-  //   This is treated as there are no query param (or request header) options.
+  // * first==NULL, .second==true: No query-params or headers are present.
+  //   This is treated as if there are no query param (or header) options.
   // * first!=NULL, .second==true: Use query-params.
   // It also strips off the ModPageSpeed query parameters and headers from the
-  // request_url and request_headers respectively.
+  // request_url, request headers, and response headers respectively.
   OptionsBoolPair GetQueryOptions(GoogleUrl* request_url,
-                                  RequestHeaders* request_headers);
+                                  RequestHeaders* request_headers,
+                                  ResponseHeaders* response_headers);
 
   // Returns any custom options required for this request, incorporating
   // any domain-specific options from the UrlNamer, options set in query-params,

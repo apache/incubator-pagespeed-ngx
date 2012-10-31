@@ -126,6 +126,26 @@ check $WGET -q "$EXAMPLE_ROOT/?ModPagespeed=off" \
 check $WGET -q "$EXAMPLE_ROOT/index.html?ModPagespeed=off" -O $OUTDIR/index.html
 check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
+echo TEST: Request Headers affect MPS options
+rm -rf $OUTDIR
+mkdir -p $OUTDIR
+check $WGET -q -S -O - \
+  "$TEST_ROOT/response_header_mps_off.php" > $OUTDIR/result_off 2>&1
+check $WGET -q -S -O - \
+  "$TEST_ROOT/response_header_mps_on.php" > $OUTDIR/result_on 2>&1
+if grep -q '<?php' $OUTDIR/result; then
+  echo "*** Skipped because PHP is not installed. If you'd like to enable this"
+  echo "*** test please run: sudo apt-get install php5-common php5"
+else
+  echo ' TEST: ModPagespeed: off header was stripped'
+  check_not fgrep 'ModPagespeed: off' $OUTDIR/result_off
+
+  echo ' TEST: Verify that ModPagespeed was off (check for inserted javascript)'
+  check_not fgrep '<script' $OUTDIR/result_off
+
+  echo ' TEST: Verify that ModPagespeed was on for result_on'
+  check fgrep '<script' $OUTDIR/result_on
+fi
 
 # Individual filter tests, in alphabetical order
 
