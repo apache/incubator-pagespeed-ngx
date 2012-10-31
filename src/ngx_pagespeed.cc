@@ -569,6 +569,9 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     return ngx_http_next_body_filter(r, in);
   }
 
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                 "http pagespeed filter \"%V\"", &r->uri);
+
   if (ctx->content_type == NULL) {
     // We don't know what type of resource this is, but we only want to send
     // html through to pagespeed.  Check the content type header and find out.
