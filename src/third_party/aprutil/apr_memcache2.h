@@ -55,6 +55,9 @@ typedef enum
 /** Opaque memcache client connection object */
 typedef struct apr_memcache2_conn_t apr_memcache2_conn_t;
 
+/** memcache2 object -- contains each server shard */
+typedef struct apr_memcache2_t apr_memcache2_t;
+
 /** Memcache Server Info Object */
 typedef struct apr_memcache2_server_t apr_memcache2_server_t;
 struct apr_memcache2_server_t
@@ -72,6 +75,7 @@ struct apr_memcache2_server_t
     apr_thread_mutex_t *lock;
 #endif
     apr_time_t btime;
+    apr_memcache2_t* memcache;
 };
 
 /* Custom hash callback function prototype, user for server selection.
@@ -82,8 +86,6 @@ struct apr_memcache2_server_t
 typedef apr_uint32_t (*apr_memcache2_hash_func)(void *baton,
                                                const char *data,
                                                const apr_size_t data_len);
-
-typedef struct apr_memcache2_t apr_memcache2_t;
 
 /* Custom Server Select callback function prototype.
 * @param baton user selected baton

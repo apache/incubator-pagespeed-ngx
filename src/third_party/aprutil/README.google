@@ -1,0 +1,12 @@
+Modified version of apr_memcache.c
+
+URL: http://apr.apache.org/download.cgi
+License: Apache2
+License File: LICENSE
+
+apr_memcache2.c started out as an almost-exact clone of apr_memcache.c
+from the Apache HTTPD distribution.  It was initially checked in with
+only some (char*) casts to avoid const-errors in the blaze build.
+
+It has been modified to poll server-connections prior to reading to
+reduce the possibility of freezing Apache if memcached is wedged.

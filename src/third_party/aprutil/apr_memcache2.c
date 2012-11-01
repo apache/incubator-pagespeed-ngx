@@ -17,6 +17,7 @@
 #include "apr_memcache2.h"
 #include "apr_poll.h"
 #include "apr_version.h"
+#include <assert.h>
 #include <stdlib.h>
 
 #define BUFFER_SIZE 512
@@ -30,7 +31,17 @@ struct apr_memcache2_conn_t
     apr_bucket_brigade *bb;
     apr_bucket_brigade *tb;
     apr_memcache2_server_t *ms;
+    apr_pollset_t* pollset;  /* Set-up to poll only for this one connection */
 };
+
+/**
+ * Indicates whewther a lock is held when calling helper functions from either
+ * state.
+ */
+typedef enum {
+  LOCK_NOT_HELD,
+  LOCK_HELD
+} lock_status_t;
 
 /* Strings for Client Commands */
 
@@ -109,15 +120,20 @@ struct cache_server_query_t {
 
 #define MULT_GET_TIMEOUT 50000
 
-static apr_status_t make_server_dead(apr_memcache2_t *mc, apr_memcache2_server_t *ms)
+static apr_status_t mark_server_dead(apr_memcache2_server_t *ms,
+                                     lock_status_t lock_status)
 {
 #if APR_HAS_THREADS
-    apr_thread_mutex_lock(ms->lock);
+    if (lock_status == LOCK_NOT_HELD) {
+        apr_thread_mutex_lock(ms->lock);
+    }
 #endif
     ms->status = APR_MC_SERVER_DEAD;
     ms->btime = apr_time_now();
 #if APR_HAS_THREADS
-    apr_thread_mutex_unlock(ms->lock);
+    if (lock_status == LOCK_NOT_HELD) {
+        apr_thread_mutex_unlock(ms->lock);
+    }
 #endif
     return APR_SUCCESS;
 }
@@ -139,11 +155,12 @@ APU_DECLARE(apr_status_t) apr_memcache2_add_server(apr_memcache2_t *mc, apr_memc
 
     mc->live_servers[mc->ntotal] = ms;
     mc->ntotal++;
+    ms->memcache = mc;
     make_server_live(mc, ms);
     return rv;
 }
 
-static apr_status_t mc_version_ping(apr_memcache2_server_t *ms);
+static apr_status_t mc_version_ping_lock_held(apr_memcache2_server_t *ms);
 
 APU_DECLARE(apr_memcache2_server_t *)
 apr_memcache2_find_server_hash(apr_memcache2_t *mc, const apr_uint32_t hash)
@@ -181,9 +198,9 @@ apr_memcache2_find_server_hash_default(void *baton, apr_memcache2_t *mc,
 #if APR_HAS_THREADS
             apr_thread_mutex_lock(ms->lock);
 #endif
-            /* Try the the dead server, every 5 seconds */
+            /* Try the the dead server, every 5 seconds, keeping the lock. */
             if (curtime - ms->btime >  apr_time_from_sec(5)) {
-                if (mc_version_ping(ms) == APR_SUCCESS) {
+                if (mc_version_ping_lock_held(ms) == APR_SUCCESS) {
                     ms->btime = curtime;
                     make_server_live(mc, ms);
 #if APR_HAS_THREADS
@@ -282,7 +299,50 @@ APU_DECLARE(apr_status_t) apr_memcache2_enable_server(apr_memcache2_t *mc, apr_m
 
 APU_DECLARE(apr_status_t) apr_memcache2_disable_server(apr_memcache2_t *mc, apr_memcache2_server_t *ms)
 {
-    return make_server_dead(mc, ms);
+    assert(mc == ms->memcache);
+    return mark_server_dead(ms, LOCK_NOT_HELD);
+}
+
+/*
+ * Cleans up connections and/or bad servers as required.
+ *
+ * This function should only be called if rv is not APR_SUCCESS.
+ */
+static void disable_server_and_connection(apr_memcache2_server_t *ms,
+                                          lock_status_t lock_status,
+                                          apr_memcache2_conn_t *conn) {
+    if (conn != NULL) {
+        ms_bad_conn(ms, conn);
+    }
+    mark_server_dead(ms, lock_status);
+}
+
+/*
+ * Polls a socket to see whether the next I/O operation call will block.
+ * The status returned is based on apr_pollset_poll:
+ * http://apr.apache.org/docs/apr/trunk/group__apr__poll.html#ga6b31d7b3a7b2d356370403dd2b79ecf3
+ *
+ * In practice this appears to return APR_TIMEUP on timeout (hardcoded to 50ms).
+ *
+ * Returns APR_SUCCESSS if it's OK to read.  Otherwise it releases the
+ * connection and returns the status.
+ */
+static apr_status_t poll_server_releasing_connection_on_failure(
+    apr_memcache2_server_t *ms,
+    lock_status_t lock_status,
+    apr_memcache2_conn_t *conn) {
+    apr_int32_t queries_recvd;
+    const apr_pollfd_t* activefds;
+    apr_status_t rv = apr_pollset_poll(conn->pollset, MULT_GET_TIMEOUT,
+                                       &queries_recvd, &activefds);
+    if (rv == APR_SUCCESS) {
+        assert(queries_recvd == 1);
+        assert(activefds->desc.s == conn->sock);
+        assert(activefds->client_data == NULL);
+    } else {
+        disable_server_and_connection(ms, lock_status, conn);
+    }
+    return rv;
 }
 
 static apr_status_t conn_connect(apr_memcache2_conn_t *conn)
@@ -343,9 +403,17 @@ mc_conn_construct(void **conn_, void *params, apr_pool_t *pool)
     apr_pool_t *np;
     apr_pool_t *tp;
     apr_memcache2_server_t *ms = params;
+    apr_pollset_t* pollset = NULL;
 
     rv = apr_pool_create(&np, pool);
     if (rv != APR_SUCCESS) {
+        return rv;
+    }
+
+    /* Pre-allocate a pollset at a point where it's easy to bail on failure. */
+    rv = apr_pollset_create(&pollset, 1, np, 0);
+    if (rv != APR_SUCCESS) {
+        apr_pool_destroy(np);
         return rv;
     }
 
@@ -388,6 +456,19 @@ mc_conn_construct(void **conn_, void *params, apr_pool_t *pool)
     else {
         apr_pool_cleanup_register(np, conn, conn_clean, apr_pool_cleanup_null);
         *conn_ = conn;
+
+        /*
+         * Populate an 'is readable' pollset for this socket to allow early
+         * timeout detection.
+         */
+        conn->pollset = pollset;
+        apr_pollfd_t pollfd;
+        pollfd.desc_type = APR_POLL_SOCKET;
+        pollfd.reqevents = APR_POLLIN;
+        pollfd.p = np;
+        pollfd.desc.s = conn->sock;
+        pollfd.client_data = NULL;
+        apr_pollset_add(conn->pollset, &pollfd);
     }
 
     return rv;
@@ -427,6 +508,7 @@ APU_DECLARE(apr_status_t) apr_memcache2_server_create(apr_pool_t *p,
     server->host = apr_pstrdup(np, host);
     server->port = port;
     server->status = APR_MC_SERVER_DEAD;
+    server->memcache = NULL;
 #if APR_HAS_THREADS
     rv = apr_thread_mutex_create(&server->lock, APR_THREAD_MUTEX_DEFAULT, np);
     if (rv != APR_SUCCESS) {
@@ -607,6 +689,33 @@ static apr_status_t get_server_line(apr_memcache2_conn_t *conn)
     return apr_brigade_cleanup(conn->tb);
 }
 
+static apr_status_t sendv_and_get_server_line_with_timeout(
+    apr_memcache2_server_t *ms,
+    apr_memcache2_conn_t *conn,
+    struct iovec* vec,
+    int vec_size,
+    lock_status_t lock_status) {
+
+    apr_size_t written;
+    apr_status_t rv = apr_socket_sendv(conn->sock, vec, vec_size, &written);
+    if (rv != APR_SUCCESS) {
+        disable_server_and_connection(ms, lock_status, conn);
+        return rv;
+    }
+
+    rv = poll_server_releasing_connection_on_failure(ms, lock_status, conn);
+    if (rv != APR_SUCCESS) {
+        return rv;
+    }
+
+    rv = get_server_line(conn);
+    if (rv != APR_SUCCESS) {
+        disable_server_and_connection(ms, LOCK_NOT_HELD, conn);
+    }
+
+    return rv;
+}
+
 static apr_status_t storage_cmd_write(apr_memcache2_t *mc,
                                       const char *cmd,
                                       const apr_size_t cmd_size,
@@ -620,7 +729,6 @@ static apr_status_t storage_cmd_write(apr_memcache2_t *mc,
     apr_memcache2_server_t *ms;
     apr_memcache2_conn_t *conn;
     apr_status_t rv;
-    apr_size_t written;
     struct iovec vec[5];
     apr_size_t klen;
 
@@ -660,19 +768,9 @@ static apr_status_t storage_cmd_write(apr_memcache2_t *mc,
     vec[4].iov_base = (char*) MC_EOL;
     vec[4].iov_len  = MC_EOL_LEN;
 
-    rv = apr_socket_sendv(conn->sock, vec, 5, &written);
-
+    rv = sendv_and_get_server_line_with_timeout(ms, conn, vec, 5,
+                                                LOCK_NOT_HELD);
     if (rv != APR_SUCCESS) {
-        ms_bad_conn(ms, conn);
-        apr_memcache2_disable_server(mc, ms);
-        return rv;
-    }
-
-    rv = get_server_line(conn);
-
-    if (rv != APR_SUCCESS) {
-        ms_bad_conn(ms, conn);
-        apr_memcache2_disable_server(mc, ms);
         return rv;
     }
 
@@ -749,7 +847,6 @@ apr_memcache2_getp(apr_memcache2_t *mc,
     apr_memcache2_server_t *ms;
     apr_memcache2_conn_t *conn;
     apr_uint32_t hash;
-    apr_size_t written;
     apr_size_t klen = strlen(key);
     struct iovec vec[3];
 
@@ -775,18 +872,9 @@ apr_memcache2_getp(apr_memcache2_t *mc,
     vec[2].iov_base = (char*) MC_EOL;
     vec[2].iov_len  = MC_EOL_LEN;
 
-    rv = apr_socket_sendv(conn->sock, vec, 3, &written);
-
+    rv = sendv_and_get_server_line_with_timeout(ms, conn, vec, 3,
+                                                LOCK_NOT_HELD);
     if (rv != APR_SUCCESS) {
-        ms_bad_conn(ms, conn);
-        apr_memcache2_disable_server(mc, ms);
-        return rv;
-    }
-
-    rv = get_server_line(conn);
-    if (rv != APR_SUCCESS) {
-        ms_bad_conn(ms, conn);
-        apr_memcache2_disable_server(mc, ms);
         return rv;
     }
 
@@ -883,7 +971,6 @@ apr_memcache2_delete(apr_memcache2_t *mc,
     apr_memcache2_server_t *ms;
     apr_memcache2_conn_t *conn;
     apr_uint32_t hash;
-    apr_size_t written;
     struct iovec vec[3];
     apr_size_t klen = strlen(key);
 
@@ -911,18 +998,9 @@ apr_memcache2_delete(apr_memcache2_t *mc,
     vec[2].iov_base = conn->buffer;
     vec[2].iov_len  = klen;
 
-    rv = apr_socket_sendv(conn->sock, vec, 3, &written);
-
+    rv = sendv_and_get_server_line_with_timeout(ms, conn, vec, 3,
+                                                LOCK_NOT_HELD);
     if (rv != APR_SUCCESS) {
-        ms_bad_conn(ms, conn);
-        apr_memcache2_disable_server(mc, ms);
-        return rv;
-    }
-
-    rv = get_server_line(conn);
-    if (rv != APR_SUCCESS) {
-        ms_bad_conn(ms, conn);
-        apr_memcache2_disable_server(mc, ms);
         return rv;
     }
 
@@ -952,7 +1030,6 @@ static apr_status_t num_cmd_write(apr_memcache2_t *mc,
     apr_memcache2_server_t *ms;
     apr_memcache2_conn_t *conn;
     apr_uint32_t hash;
-    apr_size_t written;
     struct iovec vec[3];
     apr_size_t klen = strlen(key);
 
@@ -980,18 +1057,9 @@ static apr_status_t num_cmd_write(apr_memcache2_t *mc,
     vec[2].iov_base = conn->buffer;
     vec[2].iov_len  = klen;
 
-    rv = apr_socket_sendv(conn->sock, vec, 3, &written);
-
+    rv = sendv_and_get_server_line_with_timeout(ms, conn, vec, 3,
+                                                LOCK_NOT_HELD);
     if (rv != APR_SUCCESS) {
-        ms_bad_conn(ms, conn);
-        apr_memcache2_disable_server(mc, ms);
-        return rv;
-    }
-
-    rv = get_server_line(conn);
-    if (rv != APR_SUCCESS) {
-        ms_bad_conn(ms, conn);
-        apr_memcache2_disable_server(mc, ms);
         return rv;
     }
 
@@ -1051,7 +1119,6 @@ apr_memcache2_version(apr_memcache2_server_t *ms,
 {
     apr_status_t rv;
     apr_memcache2_conn_t *conn;
-    apr_size_t written;
     struct iovec vec[2];
 
     rv = ms_find_conn(ms, &conn);
@@ -1067,16 +1134,9 @@ apr_memcache2_version(apr_memcache2_server_t *ms,
     vec[1].iov_base = (char*) MC_EOL;
     vec[1].iov_len  = MC_EOL_LEN;
 
-    rv = apr_socket_sendv(conn->sock, vec, 2, &written);
-
+    rv = sendv_and_get_server_line_with_timeout(ms, conn, vec, 2,
+                                                LOCK_NOT_HELD);
     if (rv != APR_SUCCESS) {
-        ms_bad_conn(ms, conn);
-        return rv;
-    }
-
-    rv = get_server_line(conn);
-    if (rv != APR_SUCCESS) {
-        ms_bad_conn(ms, conn);
         return rv;
     }
 
@@ -1094,10 +1154,9 @@ apr_memcache2_version(apr_memcache2_server_t *ms,
     return rv;
 }
 
-apr_status_t mc_version_ping(apr_memcache2_server_t *ms)
+static apr_status_t mc_version_ping_lock_held(apr_memcache2_server_t *ms)
 {
     apr_status_t rv;
-    apr_size_t written;
     struct iovec vec[2];
     apr_memcache2_conn_t *conn;
 
@@ -1114,14 +1173,11 @@ apr_status_t mc_version_ping(apr_memcache2_server_t *ms)
     vec[1].iov_base = (char*) MC_EOL;
     vec[1].iov_len  = MC_EOL_LEN;
 
-    rv = apr_socket_sendv(conn->sock, vec, 2, &written);
-
+    rv = sendv_and_get_server_line_with_timeout(ms, conn, vec, 2, LOCK_HELD);
     if (rv != APR_SUCCESS) {
-        ms_bad_conn(ms, conn);
         return rv;
     }
 
-    rv = get_server_line(conn);
     ms_release_conn(ms, conn);
     return rv;
 }
@@ -1684,6 +1740,11 @@ apr_memcache2_stats(apr_memcache2_server_t *ms,
 
     if (rv != APR_SUCCESS) {
         ms_bad_conn(ms, conn);
+        return rv;
+    }
+
+    rv = poll_server_releasing_connection_on_failure(ms, LOCK_NOT_HELD, conn);
+    if (rv != APR_SUCCESS) {
         return rv;
     }
 
