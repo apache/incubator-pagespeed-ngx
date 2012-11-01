@@ -381,7 +381,8 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
   } else {
     ngx_del_event(ev, NGX_READ_EVENT, 0);
     ngx_http_pagespeed_set_buffered(ctx->r, false);
-    ngx_http_finalize_request(ctx->r, rc == NGX_OK ? NGX_DONE : NGX_ERROR);
+    ngx_http_finalize_request(
+        ctx->r, rc == NGX_OK ? NGX_DONE : NGX_HTTP_INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -569,6 +570,10 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     return ngx_http_next_body_filter(r, in);
   }
 
+  // We don't want to handle requests with errors, but we should be dealing with
+  // that in the header filter and not initializing ctx.
+  CHECK(r->err_status == 0);
+
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed filter \"%V\"", &r->uri);
 
@@ -611,10 +616,12 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
 
   r->filter_need_in_memory = 1;
 
-  int rc = ngx_http_pagespeed_create_request_context(r);
-  if (rc != NGX_OK) {
-    ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-    return rc;
+  if (r->err_status == 0) {
+    int rc = ngx_http_pagespeed_create_request_context(r);
+    if (rc != NGX_OK) {
+      ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+      return rc;
+    }
   }
 
   return ngx_http_next_header_filter(r);
