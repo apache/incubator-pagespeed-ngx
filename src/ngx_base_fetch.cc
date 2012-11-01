@@ -114,7 +114,7 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
       // The purpose of this buffer is just to pass along last_buf.
       b->sync = 1;
     } else {
-      CHECK(buffer_.length() - offset > 0);
+      CHECK(buffer_.length() > offset);
       ngx_uint_t b_size = buffer_.length() - offset;
       if (b_size > max_buffer_size) {
         b_size = max_buffer_size;
