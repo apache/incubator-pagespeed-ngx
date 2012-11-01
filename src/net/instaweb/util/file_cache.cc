@@ -130,7 +130,8 @@ void FileCache::Delete(const GoogleString& key) {
   if (!EncodeFilename(key, &filename)) {
     return;
   }
-  file_system_->RemoveFile(filename.c_str(), message_handler_);
+  NullMessageHandler null_handler;  // Do not emit messages on delete failures.
+  file_system_->RemoveFile(filename.c_str(), &null_handler);
   return;
 }
 
