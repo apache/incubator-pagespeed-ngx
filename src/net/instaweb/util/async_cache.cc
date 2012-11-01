@@ -24,6 +24,7 @@
 #include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/key_value_codec.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
@@ -96,8 +97,22 @@ void AsyncCache::CancelMultiGet(MultiGetRequest* request) {
 
 void AsyncCache::Put(const GoogleString& key, SharedString* value) {
   if (IsHealthy()) {
+    // If the cache will encode the key into the value during Put,
+    // then instead do it inline now, not in sequence_, as
+    // SharedString::Append can mutate the shared value storage in a
+    // thread-unsafe way.
+    if (cache_->MustEncodeKeyInValueOnPut()) {
+      SharedString* encoded_value = new SharedString;
+      if (!key_value_codec::Encode(key, value, encoded_value)) {
+        delete encoded_value;
+        return;
+      }
+      value = encoded_value;
+    } else {
+      value = new SharedString(*value);
+    }
+
     outstanding_operations_.increment(1);
-    value = new SharedString(*value);
     sequence_->Add(
         MakeFunction(this, &AsyncCache::DoPut, &AsyncCache::CancelPut,
                      new GoogleString(key), value));
@@ -108,7 +123,11 @@ void AsyncCache::DoPut(GoogleString* key, SharedString* value) {
   if (IsHealthy()) {
     // TODO(jmarantz): Start timers at the beginning of each operation,
     // particularly this one, and use long delays as a !IsHealthy signal.
-    cache_->Put(*key, value);
+    if (cache_->MustEncodeKeyInValueOnPut()) {
+      cache_->PutWithKeyInValue(*key, value);
+    } else {
+      cache_->Put(*key, value);
+    }
   }
   delete key;
   delete value;

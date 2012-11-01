@@ -26,9 +26,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
-namespace net_instaweb {
-
-namespace key_value_codec {
+namespace {
 
 // We can't store arbitrary keys in some caches (e.g. memcached), so
 // encode the actual key in the value.  Thus in the unlikely event of
@@ -37,7 +35,14 @@ namespace key_value_codec {
 //
 // We encode the length as the last two bytes.  Keys of length greater than
 // 65535 bytes result in an encode failure, and false returned.
-const size_t kKeyMaxLength = (1 << (2 * CHAR_BIT)) - 1;
+const int kKeySizeOverheadBytes = 2;
+const size_t kKeyMaxLength = (1 << (kKeySizeOverheadBytes * CHAR_BIT)) - 1;
+
+}  // namespace
+
+namespace net_instaweb {
+
+namespace key_value_codec {
 
 // Takes a key and a value, and encodes the pair of them into key_value,
 // sharing storage with value.
@@ -61,22 +66,28 @@ bool Encode(StringPiece key, SharedString* value, SharedString* key_value) {
 // sharing the storage with key_value.
 bool Decode(SharedString* key_value, GoogleString* key, SharedString* value) {
   int key_value_size = key_value->size();
-  if (key_value_size < 2) {
+  if (key_value_size < kKeySizeOverheadBytes) {
     return false;
   }
   const uint8* data = reinterpret_cast<const uint8*>(key_value->data());
   int key_size = data[key_value_size - 1];
   key_size <<= 8;
   key_size |= data[key_value_size - 2];
-  key_value_size -= 2;  // ignore overhead now.
+  key_value_size -= kKeySizeOverheadBytes;  // ignore overhead now.
   if (key_value_size < key_size) {
     return false;
   }
   uint32 value_size = key_value_size - key_size;
   key->assign(reinterpret_cast<const char*>(data) + value_size, key_size);
   *value = *key_value;  // Shares string storage, but with different prefixes.
-  value->RemoveSuffix(key_size + 2);
+  value->RemoveSuffix(key_size + kKeySizeOverheadBytes);
   return true;
+}
+
+int GetValueSizeFromKeyAndKeyValue(StringPiece key,
+                                   const SharedString& key_and_value) {
+  return key_and_value.size() - key.size() - kKeySizeOverheadBytes;
+
 }
 
 }  // namespace key_value_codec

@@ -155,10 +155,10 @@ bool AprMemCache::Connect() {
 void AprMemCache::DecodeValueMatchingKeyAndCallCallback(
     const GoogleString& key, const char* data, size_t data_len,
     const char* calling_method, Callback* callback) {
-  SharedString key_value;
-  key_value.Assign(data, data_len);
+  SharedString key_and_value;
+  key_and_value.Assign(data, data_len);
   GoogleString actual_key;
-  if (key_value_codec::Decode(&key_value, &actual_key, callback->value())) {
+  if (key_value_codec::Decode(&key_and_value, &actual_key, callback->value())) {
     if (key == actual_key) {
       ValidateAndReportResult(actual_key, CacheInterface::kAvailable, callback);
     } else {
@@ -271,28 +271,44 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
   delete request;
 }
 
-void AprMemCache::Put(const GoogleString& key, SharedString* encoded_value) {
+void AprMemCache::PutHelper(const GoogleString& key,
+                            SharedString* key_and_value) {
+  // I believe apr_memcache2_set erroneously takes a char* for the value.
+  // Hence we const_cast.
+  GoogleString hashed_key = hasher_->Hash(key);
+  apr_status_t status = apr_memcache2_set(
+      memcached_, hashed_key.c_str(),
+      const_cast<char*>(key_and_value->data()), key_and_value->size(),
+      0, 0);
+  if (status != APR_SUCCESS) {
+    RecordError();
+    char buf[kStackBufferSize];
+    apr_strerror(status, buf, sizeof(buf));
+
+    int value_size = key_value_codec::GetValueSizeFromKeyAndKeyValue(
+        key, *key_and_value);
+    message_handler_->Message(
+        kError, "AprMemCache::Put error: %s (%d) on key %s, value-size %d",
+        buf, status, key.c_str(), value_size);
+  }
+}
+
+void AprMemCache::PutWithKeyInValue(const GoogleString& key,
+                                    SharedString* key_and_value) {
+  if (!IsHealthy()) {
+    return;
+  }
+  PutHelper(key, key_and_value);
+}
+
+void AprMemCache::Put(const GoogleString& key, SharedString* value) {
   if (!IsHealthy()) {
     return;
   }
 
-  GoogleString hashed_key = hasher_->Hash(key);
-  SharedString key_value;
-  if (key_value_codec::Encode(key, encoded_value, &key_value)) {
-    // I believe apr_memcache2_set erroneously takes a char* for the value.
-    // Hence we const_cast.
-    apr_status_t status = apr_memcache2_set(
-        memcached_, hashed_key.c_str(),
-        const_cast<char*>(key_value.data()), key_value.size(),
-        0, 0);
-    if (status != APR_SUCCESS) {
-      RecordError();
-      char buf[kStackBufferSize];
-      apr_strerror(status, buf, sizeof(buf));
-      message_handler_->Message(
-          kError, "AprMemCache::Put error: %s (%d) on key %s, value-size %d",
-          buf, status, key.c_str(), encoded_value->size());
-    }
+  SharedString key_and_value;
+  if (key_value_codec::Encode(key, value, &key_and_value)) {
+    PutHelper(key, &key_and_value);
   } else {
     message_handler_->Message(
         kError, "AprMemCache::Put error: key size %d too large, first "

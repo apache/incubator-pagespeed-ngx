@@ -113,10 +113,19 @@ class AprMemCache : public CacheInterface {
   // Close down the connection to the memcached servers.
   virtual void ShutDown();
 
+  virtual bool MustEncodeKeyInValueOnPut() const { return true; }
+  virtual void PutWithKeyInValue(const GoogleString& key,
+                                 SharedString* key_and_value);
+
  private:
   void DecodeValueMatchingKeyAndCallCallback(
       const GoogleString& key, const char* data, size_t data_len,
       const char* calling_method, Callback* callback);
+
+  // Puts a value that's already encoded with the key into the cache, without
+  // checking health first.  This is meant to be called from Put and
+  // PutWithKeyInValue, which will do the health check.
+  void PutHelper(const GoogleString& key, SharedString* key_and_value);
 
   StringVector hosts_;
   std::vector<int> ports_;

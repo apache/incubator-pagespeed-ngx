@@ -100,6 +100,7 @@ void SharedString::UniquifyIfTruncated() {
       ref_string_->resize(size_ + skip_);
     } else {
       *this = SharedString(Value());
+      DCHECK(unique());
     }
   }
 }

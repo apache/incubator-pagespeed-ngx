@@ -27,6 +27,7 @@
 
 #include <cstddef>                     // for size_t
 
+#include "base/logging.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -83,6 +84,9 @@ class SharedString {
   // Unlike Assign, it is invalid to append characters managed by this
   // SharedString.  In other words, shared_string.Append(shared_string.Value())
   // will fail.
+  //
+  // Note: Append() is not thread-safe.  Concurrent accesses to any
+  // SharedStrings with the same storage will fail.
   void Append(StringPiece str) { Append(str.data(), str.size()); }
   void Append(const char* data, size_t size);
 
@@ -133,6 +137,7 @@ class SharedString {
   void DetachRetainingContent() {
     if (!unique()) {
       *this = SharedString(Value());
+      DCHECK(unique());
     }
   }
 

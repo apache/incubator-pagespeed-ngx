@@ -28,19 +28,24 @@ class SharedString;
 
 namespace key_value_codec {
 
-// Takes a key and a value, and encodes the pair of them into key_value,
+// Takes a key and a value, and encodes the pair of them into key_and_value,
 // sharing storage with value.
 //
 // Returns false if the key's size was too large (65535 max) to fit into the
 // encoding.
-bool Encode(StringPiece key, SharedString* value, SharedString* key_value);
+bool Encode(StringPiece key, SharedString* value, SharedString* key_and_value);
 
 // Takes a combined key and a value, and decodes them into key and value,
-// sharing the storage with key_value.
+// sharing the storage with key_and_value.
 //
-// Returns false if the key_value could not be successfully decoded, e.g.
+// Returns false if the key_and_value could not be successfully decoded, e.g.
 // because it was corrupted or was not the result of Encode().
-bool Decode(SharedString* key_value, GoogleString* key, SharedString* value);
+bool Decode(SharedString* key_and_value, GoogleString* key,
+            SharedString* value);
+
+// Given a key and the encoded key_and_value, returns the size of the value.
+int GetValueSizeFromKeyAndKeyValue(StringPiece key,
+                                   const SharedString& key_and_value);
 
 }  // namespace key_value_codec
 

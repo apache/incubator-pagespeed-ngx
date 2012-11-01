@@ -21,6 +21,7 @@
 
 #include <vector>
 
+#include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
@@ -178,6 +179,29 @@ class CacheInterface {
   // is no Enable(); once the cache is stopped it is stopped forever.  This
   // function is intended for use during process shutdown.
   virtual void ShutDown() = 0;
+
+  // To deal with underlying cache systems (e.g. memcached) that
+  // cannot tolerate arbitrary-sized keys, we use a hash of the
+  // key and put the key in the value, using the functions in
+  // key_value_codec.h.
+  //
+  // To do this without pointlessly copying the value bytes, we
+  // use SharedString::Append().   However, that's not thread-safe.
+  // So when making a cache Asynchronous with AsyncCache, we must
+  // do the SharedString::Append call in the thread that initiates
+  // the Put, before queuing a threaded Put.
+  //
+  // This method indicates whether a cache implementation requires
+  // encoding the keys in the value using key_value_codec.
+  virtual bool MustEncodeKeyInValueOnPut() const { return false; }
+
+  // Performs a cache Put, but assumes the key has already been
+  // encoded into the value with key_value_codec.  It is only valid
+  // to call this when MustEncodeKeyInValueOnPut() returns true.
+  virtual void PutWithKeyInValue(const GoogleString& key,
+                                 SharedString* key_and_value) {
+    CHECK(false);
+  }
 
  protected:
   // Invokes callback->ValidateCandidate() and callback->Done() as appropriate.
