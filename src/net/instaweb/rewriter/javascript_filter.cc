@@ -292,7 +292,9 @@ void JavascriptFilter::RewriteInlineScript() {
       // Replace the old script string with the new, minified one.
       GoogleString* rewritten_script = code_block.RewrittenString();
       if ((driver_->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) &&
-          script->find("<![CDATA[") != StringPiece::npos) {
+          (script->find("<![CDATA[") != StringPiece::npos) &&
+          !StringPiece(*rewritten_script).starts_with(
+              "<![CDATA")) {  // See Issue 542.
         // Minifier strips leading and trailing CDATA comments from scripts.
         // Restore them if necessary and safe according to the original script.
         script->clear();

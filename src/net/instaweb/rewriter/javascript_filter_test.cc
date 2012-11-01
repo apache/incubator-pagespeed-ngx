@@ -39,6 +39,11 @@ namespace {
 
 const char kHtmlFormat[] =
     "<script type='text/javascript' src='%s'></script>\n";
+const char kInlineScriptFormat[] =
+    "<script type='text/javascript'>"
+    "%s"
+    "</script>";
+const char kEndInlineScript[] = "<script type='text/javascript'>";
 
 const char kCdataWrapper[] = "//<![CDATA[\n%s\n//]]>";
 const char kCdataAltWrapper[] = "//<![CDATA[\r%s\r//]]>";
@@ -523,6 +528,37 @@ TEST_F(JavascriptFilterTest, NoReuseInline) {
   // not be worth it).
   EXPECT_EQ(1, blocks_minified_->Get());
   EXPECT_EQ(1, num_uses_->Get());
+}
+
+// See http://code.google.com/p/modpagespeed/issues/detail?id=542
+TEST_F(JavascriptFilterTest, ExtraCdataOnMalformedInput) {
+  InitFiltersAndTest(100);
+
+  // This is an entirely bogus thing to have in a script tag, but that was
+  // what was reported  by a user.  We were wrapping this an an extra CDATA
+  // tag, so this test proves we are no longer doing that.
+  static const char kIssue542LinkInScript[] =
+      "<![CDATA[<link href='http://fonts.googleapis.com/css'>]]>";
+
+  const GoogleString kHtmlInput = StringPrintf(
+      kInlineScriptFormat,
+      StrCat("\n", kIssue542LinkInScript, "\n").c_str());
+  const GoogleString kHtmlOutput = StringPrintf(
+      kInlineScriptFormat,
+      kIssue542LinkInScript);
+  ValidateExpected("broken_cdata", kHtmlInput, kHtmlOutput);
+}
+
+TEST_F(JavascriptFilterTest, ValidCdata) {
+  InitFiltersAndTest(100);
+
+  const GoogleString kHtmlInput = StringPrintf(
+      kInlineScriptFormat,
+      StringPrintf(kCdataWrapper, "alert ( 'foo' ) ; \n").c_str());
+  const GoogleString kHtmlOutput = StringPrintf(
+      kInlineScriptFormat,
+      StringPrintf(kCdataWrapper, "alert('foo');").c_str());
+  ValidateExpected("valid_cdata", kHtmlInput, kHtmlOutput);
 }
 
 }  // namespace net_instaweb
