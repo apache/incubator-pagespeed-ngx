@@ -195,8 +195,6 @@ ngx_http_pagespeed_release_request_context(void* data) {
   ngx_http_pagespeed_request_ctx_t* ctx =
       static_cast<ngx_http_pagespeed_request_ctx_t*>(data);
 
-  fprintf(stderr, "\n\nngx_http_pagespeed_release_request_context\n\n");
-
   // proxy_fetch deleted itself if we called Done(), but if an error happened
   // before then we need to tell it to delete itself.
   //
@@ -682,9 +680,6 @@ static ngx_int_t
 ngx_http_pagespeed_content_handler(ngx_http_request_t* r) {
   // TODO(jefftk): return NGX_DECLINED for non-get non-head requests.
 
-  DBG(r, "\n\n\nngx_http_pagespeed_content_handler invoked for %V\n\n",
-      &r->uri);
-
   int rc = ngx_http_pagespeed_create_request_context(
       r, true /* is a resource fetch */);
   if (rc != NGX_OK) {
@@ -697,9 +692,6 @@ ngx_http_pagespeed_content_handler(ngx_http_request_t* r) {
 
   // Tell nginx we're still working on this one.
   r->count++;
-
-  DBG(r, "\n\n\nngx_http_pagespeed_content_handler complete for %V\n\n",
-      &r->uri);
 
   return NGX_DONE;
 }
