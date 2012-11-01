@@ -27,7 +27,6 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
-#include "net/instaweb/rewriter/public/rewrite_gflags.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -90,7 +89,8 @@ Timer* NgxRewriteDriverFactory::DefaultTimer() {
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* resource_manager) {
-  LRUCache* lru_cache = new LRUCache(gflags_.lru_cache_size_bytes());
+  // TODO(jefftk): make LRUCache size configurable.
+  LRUCache* lru_cache = new LRUCache(10 * 1000 * 1000);
   CacheInterface* cache = new ThreadsafeCache(
       lru_cache, thread_system()->NewMutex());
   HTTPCache* http_cache = new HTTPCache(cache, timer(), hasher(), statistics());

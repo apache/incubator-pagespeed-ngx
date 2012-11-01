@@ -20,7 +20,6 @@
 #define NGX_REWRITE_DRIVER_FACTORY_H_
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
-#include "net/instaweb/rewriter/public/rewrite_gflags.h"
 #include "net/instaweb/util/public/simple_stats.h"
 
 namespace net_instaweb {
@@ -41,7 +40,6 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
 
  private:
   SimpleStats simple_stats_;
-  const RewriteGflags gflags_;
   Timer* timer_;
   
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
