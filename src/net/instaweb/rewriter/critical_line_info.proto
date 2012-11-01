@@ -25,12 +25,14 @@ option optimize_for = LITE_RUNTIME;
 package net_instaweb;
 
 // Protobuf to encapsulate the information use by blink flow.
-// Next id = 3
+// Next id = 4
 message CriticalLineInfo {
   // Panels that are below the critical line.
   repeated Panel panels = 1;
   // URLs of images above the critical line.
   repeated string critical_image_url = 2;
+  // URLs of css background images above the critical line.
+  repeated string css_critical_image_url = 3;
 }
 
 message Panel {
