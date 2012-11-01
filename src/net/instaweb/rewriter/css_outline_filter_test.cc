@@ -18,13 +18,14 @@
 
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -193,6 +194,24 @@ TEST_F(CssOutlineFilterTest, CdataInContents) {
 // and EndElement().
 TEST_F(CssOutlineFilterTest, EmptyStyle) {
   ValidateNoChanges("empty_style", "<style></style>");
+}
+
+// http://code.google.com/p/modpagespeed/issues/detail?id=416
+TEST_F(CssOutlineFilterTest, RewriteDomain) {
+  DomainLawyer* laywer = options()->domain_lawyer();
+  laywer->AddRewriteDomainMapping("cdn.com", kTestDomain, &message_handler_);
+
+  // Check that CSS gets outlined to the rewritten domain.
+  GoogleString expected_url = Encode("http://cdn.com/", "co", "0", "_", "css");
+  ValidateExpected("rewrite_domain",
+                   "<style>.a { color: red; }</style>",
+                   StrCat("<link rel=\"stylesheet\" href=\"", expected_url,
+                          "\">"));
+
+  // And check that it serves correctly from that domain.
+  GoogleString content;
+  ASSERT_TRUE(FetchResourceUrl(expected_url, &content));
+  EXPECT_EQ(".a { color: red; }", content);
 }
 
 }  // namespace

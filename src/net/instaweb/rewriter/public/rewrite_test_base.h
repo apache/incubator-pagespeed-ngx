@@ -180,17 +180,6 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   void DefaultResponseHeaders(const ContentType& content_type, int64 ttl_sec,
                               ResponseHeaders* response_headers);
 
-  // Add content to mock fetcher (with default headers).
-  void SetResponseWithDefaultHeaders(const StringPiece& relative_url,
-                                     const ContentType& content_type,
-                                     const StringPiece& content,
-                                     int64 ttl_sec);
-
-  // Add the contents of a file to mock fetcher (with default headers).
-  void AddFileToMockFetcher(const StringPiece& url,
-                            const StringPiece& filename,
-                            const ContentType& content_type, int64 ttl_sec);
-
   // Helper function to test resource fetching, returning true if the fetch
   // succeeded, and modifying content.  It is up to the caller to EXPECT_TRUE
   // on the status and EXPECT_EQ on the content.
@@ -382,6 +371,17 @@ class RewriteTestBase : public RewriteOptionsTestBase {
                         const StringPiece& response_body) {
     mock_url_fetcher()->SetResponse(url, response_header, response_body);
   }
+
+  // Add content to mock fetcher (with default headers).
+  void SetResponseWithDefaultHeaders(const StringPiece& relative_url,
+                                     const ContentType& content_type,
+                                     const StringPiece& content,
+                                     int64 ttl_sec);
+
+  // Add the contents of a file to mock fetcher (with default headers).
+  void AddFileToMockFetcher(const StringPiece& url,
+                            const StringPiece& filename,
+                            const ContentType& content_type, int64 ttl_sec);
 
   void AddToResponse(const StringPiece& url,
                      const StringPiece& name,

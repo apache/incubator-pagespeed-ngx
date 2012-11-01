@@ -213,8 +213,10 @@ OutputResourcePtr ResourceCombiner::Combine(MessageHandler* handler) {
   // Start building up the combination.  At this point we are still
   // not committed to the combination, because the 'write' can fail.
   // TODO(jmaessen, jmarantz): encode based on partnership
-  combination.reset(rewrite_driver_->CreateOutputResourceWithUnmappedPath(
-      ResolvedBase(), filter_->id(), url_safe_id, kRewrittenResource));
+  GoogleString resolved_base = ResolvedBase();
+  combination.reset(rewrite_driver_->CreateOutputResourceWithMappedPath(
+      resolved_base, resolved_base, filter_->id(), url_safe_id,
+      kRewrittenResource));
   if (combination.get() != NULL) {
     if (combination->cached_result() != NULL &&
         combination->cached_result()->optimizable()) {

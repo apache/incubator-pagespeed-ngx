@@ -29,7 +29,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -129,9 +128,8 @@ void JsOutlineFilter::OutlineScript(HtmlElement* inline_element,
     MessageHandler* handler = driver_->message_handler();
     // Create outline resource at the document location, not base URL location
     OutputResourcePtr resource(
-        driver_->CreateOutputResourceWithUnmappedPath(
-            driver_->google_url().AllExceptLeaf(), kFilterId, "_",
-            kOutlinedResource));
+        driver_->CreateOutputResourceWithUnmappedUrl(
+            driver_->google_url(), kFilterId, "_", kOutlinedResource));
     if (resource.get() != NULL &&
         WriteResource(content, resource.get(), handler)) {
       HtmlElement* outline_element = driver_->CloneElement(inline_element);

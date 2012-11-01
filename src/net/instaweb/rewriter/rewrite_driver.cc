@@ -2159,20 +2159,20 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
   if (input_resource.get() != NULL) {
     // TODO(jmarantz): It would be more efficient to pass in the base
     // document GURL or save that in the input resource.
-    GoogleUrl gurl(input_resource->url());
-    GoogleString mapped_domain;
+    GoogleUrl unmapped_gurl(input_resource->url());
+    GoogleString mapped_domain;  // Unused. TODO(sligocki): Stop setting this?
     GoogleUrl mapped_gurl;
     // Get the domain and URL after any domain lawyer rewriting.
-    if (options()->IsAllowed(gurl.Spec()) &&
+    if (options()->IsAllowed(unmapped_gurl.Spec()) &&
         options()->domain_lawyer()->MapRequestToDomain(
-            gurl, gurl.Spec(), &mapped_domain, &mapped_gurl,
+            unmapped_gurl, unmapped_gurl.Spec(), &mapped_domain, &mapped_gurl,
             server_context_->message_handler())) {
       GoogleString name;
       StringVector v;
       v.push_back(mapped_gurl.LeafWithQuery().as_string());
       encoder->Encode(v, data, &name);
       result.reset(CreateOutputResourceWithMappedPath(
-          mapped_gurl.AllExceptLeaf(), gurl.AllExceptLeaf(),
+          mapped_gurl.AllExceptLeaf(), unmapped_gurl.AllExceptLeaf(),
           filter_id, name, kind));
     }
   }
@@ -2201,6 +2201,24 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
         server_context_, mapped_path, unmapped_path, base_url,
         full_name, options(), kind);
     resource.reset(output_resource);
+  }
+  return resource;
+}
+
+OutputResourcePtr RewriteDriver::CreateOutputResourceWithUnmappedUrl(
+    const GoogleUrl& unmapped_gurl, const StringPiece& filter_id,
+    const StringPiece& name, OutputResourceKind kind) {
+  OutputResourcePtr resource;
+  GoogleString mapped_domain;  // Unused. TODO(sligocki): Stop setting this?
+  GoogleUrl mapped_gurl;
+  // Get the domain and URL after any domain lawyer rewriting.
+  if (options()->IsAllowed(unmapped_gurl.Spec()) &&
+      options()->domain_lawyer()->MapRequestToDomain(
+          unmapped_gurl, unmapped_gurl.Spec(), &mapped_domain, &mapped_gurl,
+          server_context_->message_handler())) {
+    resource.reset(CreateOutputResourceWithMappedPath(
+        mapped_gurl.AllExceptLeaf(), unmapped_gurl.AllExceptLeaf(),
+        filter_id, name, kind));
   }
   return resource;
 }

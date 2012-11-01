@@ -445,7 +445,7 @@ class RewriteDriver : public HtmlParse {
   // TODO(jmaessen, jmarantz): Do we want to permit NULL input_resources here?
   // jmarantz has evinced a distaste.
   OutputResourcePtr CreateOutputResourceFromResource(
-      const StringPiece& filter_prefix,
+      const StringPiece& filter_id,
       const UrlSegmentEncoder* encoder,
       const ResourceContext* data,
       const ResourcePtr& input_resource,
@@ -472,14 +472,12 @@ class RewriteDriver : public HtmlParse {
       const StringPiece& base_url, const StringPiece& filter_id,
       const StringPiece& name, OutputResourceKind kind);
 
-  // Version of CreateOutputResourceWithPath where the unmapped and mapped
-  // paths are the same and the base_url is this driver's base_url.
-  OutputResourcePtr CreateOutputResourceWithUnmappedPath(
-      const StringPiece& path, const StringPiece& filter_id,
-      const StringPiece& name, OutputResourceKind kind) {
-    return CreateOutputResourceWithPath(path, path, base_url_.AllExceptLeaf(),
-                                        filter_id, name, kind);
-  }
+  // Version of CreateOutputResourceWithPath which first takes only the
+  // unmapped path and finds the mapped path using the DomainLawyer
+  // and the base_url is this driver's base_url.
+  OutputResourcePtr CreateOutputResourceWithUnmappedUrl(
+      const GoogleUrl& unmapped_gurl, const StringPiece& filter_id,
+      const StringPiece& name, OutputResourceKind kind);
 
   // Version of CreateOutputResourceWithPath where the unmapped and mapped
   // paths are different and the base_url is this driver's base_url.

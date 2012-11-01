@@ -29,7 +29,6 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -129,9 +128,8 @@ void CssOutlineFilter::OutlineStyle(HtmlElement* style_element,
       // Create outline resource at the document location,
       // not base URL location.
       OutputResourcePtr output_resource(
-          driver_->CreateOutputResourceWithUnmappedPath(
-              driver_->google_url().AllExceptLeaf(), kFilterId, "_",
-              kOutlinedResource));
+          driver_->CreateOutputResourceWithUnmappedUrl(
+              driver_->google_url(), kFilterId, "_", kOutlinedResource));
 
       if (output_resource.get() != NULL) {
         // Rewrite URLs in content.
