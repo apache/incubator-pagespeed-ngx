@@ -96,6 +96,7 @@ class NgxBaseFetch : public AsyncFetch {
   ngx_http_request_t* request_;
   GoogleString buffer_;
   bool done_called_;
+  bool last_buf_sent_;
   int pipe_fd_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);

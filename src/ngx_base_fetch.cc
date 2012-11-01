@@ -25,7 +25,8 @@
 namespace net_instaweb {
 
 NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd)
-    : request_(r), done_called_(false), pipe_fd_(pipe_fd) {
+    : request_(r), done_called_(false), last_buf_sent_(false),
+      pipe_fd_(pipe_fd) {
 }
 
 NgxBaseFetch::~NgxBaseFetch() { }
@@ -76,9 +77,9 @@ bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
 }
 
 ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
-  if (!done_called_ && buffer_.length() == 0) {
+  if ((last_buf_sent_ || !done_called_) && buffer_.length() == 0) {
     // Nothing to send.  But if done_called_ then we can't short circuit because
-    // we need to set last_buf.
+    // we need to set last_buf unless last_buf_sent_.
     return NGX_DECLINED;
   }
 
@@ -160,7 +161,10 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
   buffer_.clear();
 
   CHECK(tail_link != NULL);
-  tail_link->buf->last_buf = done_called_;
+  if (done_called_) {
+    tail_link->buf->last_buf = true;
+    last_buf_sent_ = true;
+  }  
 
   return NGX_OK;
 }
