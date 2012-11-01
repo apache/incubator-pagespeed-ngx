@@ -698,6 +698,25 @@ void ApacheRewriteDriverFactory::ShutDown() {
   }
   fetcher_map_.clear();
 
+  RewriteDriverFactory::ShutDown();
+
+  // Take down any memcached threads.  Note that this may block
+  // waiting for any wedged operations to terminate, possibly
+  // requiring kill -9 to restart Apache if memcached is permanently
+  // hung.  In pracice, the patches made in
+  // src/third_party/aprutil/apr_memcache2.c make that very unlikely.
+  //
+  // The alternative scenario of exiting with pending I/O will often
+  // crash and always leak memory.  Note that if memcached crashes, as
+  // opposed to hanging, it will probably not appear wedged.
+  memcached_pool_.reset(NULL);
+
+  // Reset SharedCircularBuffer to NULL, so that any shutdown warnings
+  // (e.g. in ResourceManager::ShutDownDrivers) don't reference
+  // deleted objects as the base-class is deleted.
+  apache_message_handler_->set_buffer(NULL);
+  apache_html_parse_message_handler_->set_buffer(NULL);
+
   if (is_root_process_) {
     // Cleanup statistics.
     // TODO(morlovich): This looks dangerous with async.
@@ -713,24 +732,6 @@ void ApacheRewriteDriverFactory::ShutDown() {
       shared_circular_buffer_->GlobalCleanup(&handler);
     }
   }
-
-  // Reset SharedCircularBuffer to NULL, so that any shutdown warnings
-  // (e.g. in ResourceManager::ShutDownDrivers) don't reference
-  // deleted objects as the base-class is deleted.
-  apache_message_handler_->set_buffer(NULL);
-  apache_html_parse_message_handler_->set_buffer(NULL);
-  RewriteDriverFactory::ShutDown();
-
-  // Take down any memcached threads.  Note that this will block
-  // waiting for any wedged operations to terminate, possibly
-  // requiring kill -9 to restart Apache if memcached is permanently
-  // hung.  In pracice, the patches made in
-  // src/third_party/aprutil/apr_memcache2.c make that very unlikely.
-  //
-  // The alternative scenario of exiting with pending I/O will often
-  // crash and always leak memory.  Note that if memcached crashes, as
-  // opposed to hanging, it will probably not appear wedged.
-  memcached_pool_.reset(NULL);
 }
 
 // Initializes global statistics object if needed, using factory to

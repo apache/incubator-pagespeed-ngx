@@ -138,6 +138,40 @@ ModPagespeedEnableFilters add_instrumentation
     ModPagespeedImageWebpRecompressionQuality 65
 </Directory>
 
+# This Directory does not even exist, but by setting some options in that
+# scope we test to make sure the options we claim are really settable in
+# .htaccess.  Note that <Directory> and .htaccess are enforced the same way.
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/htaccess_test" >
+ModPagespeed on
+ModPagespeedAllow *
+ModPagespeedAvoidRenamingIntrospectiveJavascript on
+ModPagespeedBeaconUrl foo
+ModPagespeedCombineAcrossPaths off
+ModPagespeedCssFlattenMaxBytes 100
+ModPagespeedCssImageInlineMaxBytes 100
+ModPagespeedCssInlineMaxBytes 100
+ModPagespeedCssOutlineMinBytes 10000
+ModPagespeedDisableFilters rewrite_images
+ModPagespeedDisallow *bad*
+ModPagespeedDomain example.com
+ModPagespeedEnableFilters extend_cache
+ModPagespeedImageInlineMaxBytes 100
+ModPagespeedImageLimitOptimizedPercent 50
+ModPagespeedImageLimitResizeAreaPercent 50
+ModPagespeedJpegRecompressionQuality 85
+ModPagespeedJsInlineMaxBytes 100
+ModPagespeedJsOutlineMinBytes 10000
+ModPagespeedLowercaseHtmlNames on
+ModPagespeedMapOriginDomain localhost example.com
+ModPagespeedMapRewriteDomain cdn.com example.com
+ModPagespeedMaxHtmlParseBytes 100000
+ModPagespeedMaxInlinedPreviewImagesIndex 10
+ModPagespeedMinImageSizeLowResolutionBytes 100
+ModPagespeedModifyCachingHeaders off
+ModPagespeedRetainComment *ad_tag*
+ModPagespeedRewriteLevel PassThrough
+</Directory>
+
 # This is needed for the server-side includes test in
 # apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
 <IfModule !include_module>

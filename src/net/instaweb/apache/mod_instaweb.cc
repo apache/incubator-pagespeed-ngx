@@ -49,6 +49,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -69,6 +70,9 @@
 #include "http_config.h"
 #include "http_protocol.h"
 #include "http_request.h"
+
+// This include-file is order-dependent; it must come after the above apache
+// includes, and not be in abc-order with the net/instaweb/... includes.
 #include "net/instaweb/apache/apache_logging_includes.h"
 
 #include "net/instaweb/apache/log_message_handler.h"
@@ -1647,8 +1651,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDomain,
         "Authorize mod_pagespeed to rewrite resources in a domain."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDomainRewriteHyperlinks,
-                           "Allow rewrite_domains to rewrite <form> and <a> "
-                           "tags in addition to resource tags."),
+        "Allow rewrite_domains to rewrite <form> and <a> tags in addition "
+        "to resource tags."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedEnableFilters,
         "Comma-separated list of enabled filters"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousSlot,
@@ -1661,16 +1665,20 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Hash URLs and div locations in referer statistics."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImageInlineMaxBytes,
         "Number of bytes below which images will be inlined."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedImageLimitOptimizedPercent,
+        "Replace images whose size after recompression is less than the "
+        "given percent of original image size; 100 means replace if smaller."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedImageLimitResizeAreaPercent,
+        "Consider resizing images whose area in pixels is less than the "
+        "given percent of original image area; 100 means replace if smaller."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImageRecompressionQuality,
-                       "Set quality parameter for recompressing jpeg/webp "
-                       "images [-1,100], 100 refers to best quality, "
-                       "-1 disables lossy compression."),
+        "Set quality parameter for recompressing jpeg/webp images [-1,100], "
+        "100 refers to best quality, -1 disables lossy compression."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImgInlineMaxBytes,
         "DEPRECATED, use ModPagespeedImageInlineMaxBytes."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJpegRecompressionQuality,
-                       "Set quality parameter for recompressing jpeg "
-                       "images [-1,100], 100 refers to best quality, "
-                       "-1 disables lossy compression."),
+        "Set quality parameter for recompressing jpeg images [-1,100], 100 "
+        "refers to best quality, -1 disables lossy compression."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJsInlineMaxBytes,
         "Number of bytes below which javascript will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJsOutlineMinBytes,
@@ -1684,6 +1692,16 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Whether or not to report timing information about HtmlParse."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedLowercaseHtmlNames,
         "Lowercase tag and attribute names for HTML."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedMaxHtmlParseBytes,
+        "Maximum number of bytes of HTML that we parse, before redirecting to "
+        "?ModPagespeed=off"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedMaxImageSizeLowResolutionBytes,
+        "Maximum image size below which low resolution image is generated."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedMaxInlinedPreviewImagesIndex,
+        "Number of first N images for which low resolution image is generated. "
+        "Negative values result in generation for all images."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedMinImageSizeLowResolutionBytes,
+        "Minimum image size above which low resolution image is generated."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedMaxSegmentLength,
         "Maximum size of a URL segment."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedModifyCachingHeaders,
@@ -1715,9 +1733,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedStatisticsLoggingIntervalMs,
         "How often to log cross-process statistics, in milliseconds."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedWebpRecompressionQuality,
-                       "Set quality parameter for recompressing webp "
-                       "images [-1,100], 100 refers to best quality, "
-                       "-1 disables lossy compression."),
+        "Set quality parameter for recompressing webp images [-1,100], 100 "
+        "refers to best quality, -1 disables lossy compression."),
 
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)
@@ -1753,14 +1770,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedImageMaxRewritesAtOnce,
         "Set bound on number of images being rewritten at one time "
         "(0 = unbounded)."),
-  APACHE_CONFIG_OPTION(kModPagespeedImageLimitOptimizedPercent,
-                       "Replace images whose size after recompression "
-                       "is less than the given percent of original "
-                       "image size; 100 means replace if smaller."),
-  APACHE_CONFIG_OPTION(kModPagespeedImageLimitResizeAreaPercent,
-                       "Consider resizing images whose area in pixels "
-                       "is less than the given percent of original "
-                       "image area; 100 means replace if smaller."),
   APACHE_CONFIG_OPTION(kModPagespeedImgMaxRewritesAtOnce,
         "DEPRECATED, use ModPagespeedImageMaxRewritesAtOnce."),
   APACHE_CONFIG_OPTION(kModPagespeedInheritVHostConfig,
@@ -1772,22 +1781,12 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "in-memory LRU cache"),
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheKbPerProcess,
         "Set the total size, in KB, of the per-process in-memory LRU cache"),
-  APACHE_CONFIG_OPTION(kModPagespeedMaxHtmlParseBytes,
-        "Maximum number of bytes of HTML that we parse, before redirecting to "
-        "?ModPagespeed=off"),
-  APACHE_CONFIG_OPTION(kModPagespeedMaxImageSizeLowResolutionBytes,
-        "Maximum image size below which low resolution image is generated."),
-  APACHE_CONFIG_OPTION(kModPagespeedMaxInlinedPreviewImagesIndex,
-        "Number of first N images for which low resolution image is generated. "
-        "Negative values result in generation for all images."),
   APACHE_CONFIG_OPTION(kModPagespeedMemcachedServers,
         "Comma-separated list of servers e.g. host1:port1,host2:port2"),
   APACHE_CONFIG_OPTION(kModPagespeedMemcachedThreads,
         "Number of background threads to use to run memcached fetches"),
   APACHE_CONFIG_OPTION(kModPagespeedMessageBufferSize,
         "Set the size of buffer used for /mod_pagespeed_message."),
-  APACHE_CONFIG_OPTION(kModPagespeedMinImageSizeLowResolutionBytes,
-        "Minimum image size above which low resolution image is generated."),
   APACHE_CONFIG_OPTION(kModPagespeedNumRewriteThreads,
         "Number of threads to use for inexpensive portions of "
         "resource-rewriting. <= 0 to auto-detect"),
@@ -1819,8 +1818,7 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedTestProxy,
         "Act as a proxy without maintaining a slurp dump."),
   APACHE_CONFIG_OPTION(kModPagespeedTrackOriginalContentLength,
-                       "Add X-Original-Content-Length headers to rewritten "
-                       "resources"),
+        "Add X-Original-Content-Length headers to rewritten resources"),
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "No longer used."),
   APACHE_CONFIG_OPTION(kModPagespeedUsePerVHostStatistics,
         "If true, keep track of statistics per VHost and not just globally"),
