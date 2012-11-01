@@ -176,11 +176,8 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
   if (rc == NGX_DECLINED) {
     *link_ptr = NULL;
     return NGX_OK;
-  } else if (rc == NGX_ERROR) {
-    return NGX_ERROR;
   }
-
-  return NGX_OK;
+  return rc;
 }
 
 ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
