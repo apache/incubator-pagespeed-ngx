@@ -516,7 +516,7 @@ void RewriteDriverFactory::StopCacheActivity() {
   for (ServerContextSet::iterator p = server_contexts_.begin();
        p != server_contexts_.end(); ++p) {
     ServerContext* resource_manager = *p;
-    resource_manager->set_metadata_cache_readonly();
+    resource_manager->set_shutting_down();
   }
 }
 

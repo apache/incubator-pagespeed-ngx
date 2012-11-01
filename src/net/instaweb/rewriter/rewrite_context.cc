@@ -1272,13 +1272,12 @@ void RewriteContext::OutputCacheMiss() {
   outputs_.clear();
   partitions_->Clear();
   ServerContext* server_context = FindServerContext();
-  if (server_context->TryLockForCreation(Lock())) {
-    if (server_context->metadata_cache_readonly()) {
-      FindServerContext()->message_handler()->Message(
-          kError,
-          "RewriteContext::OutputCacheMiss called with "
-          "metadata_cache_readonly");
-    }
+  if (server_context->shutting_down()) {
+    FindServerContext()->message_handler()->Message(
+        kInfo,
+        "RewriteContext::OutputCacheMiss called with "
+        "server_context->shutting_down(); leaking the context.");
+  } else if (server_context->TryLockForCreation(Lock())) {
     FetchInputs();
   } else {
     // TODO(jmarantz): bump stat for abandoned rewrites due to lock contention.
@@ -1527,8 +1526,7 @@ void RewriteContext::PartitionDone(bool result) {
 
 void RewriteContext::WritePartition() {
   ServerContext* manager = FindServerContext();
-  if (ok_to_write_output_partitions_ &&
-      !manager->metadata_cache_readonly()) {
+  if (ok_to_write_output_partitions_ && !manager->shutting_down()) {
     CacheInterface* metadata_cache = manager->metadata_cache();
     GoogleString buf;
     {

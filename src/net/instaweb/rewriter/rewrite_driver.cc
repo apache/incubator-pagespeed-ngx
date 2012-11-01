@@ -299,21 +299,24 @@ void RewriteDriver::Clear() {
   decoded_base_url_.Clear();
   using_spdy_ = false;
   resource_map_.clear();
-  DCHECK(end_elements_inhibited_.empty());
-  DCHECK(deferred_queue_.empty());
-  DCHECK(inhibiting_event_ == NULL);
-  DCHECK(finish_parse_on_hold_ == NULL);
-  DCHECK(!flush_in_progress_);
-  DCHECK(!uninhibit_reflush_requested_);
-  DCHECK(primary_rewrite_context_map_.empty());
-  DCHECK(initiated_rewrites_.empty());
-  DCHECK(detached_rewrites_.empty());
-  DCHECK(rewrites_.empty());
-  DCHECK_EQ(0, rewrites_to_delete_);
-  DCHECK_EQ(0, pending_rewrites_);
-  DCHECK_EQ(0, possibly_quick_rewrites_);
-  DCHECK(!fetch_queued_);
-  DCHECK_EQ(0, pending_async_events_);
+
+  if (!server_context_->shutting_down()) {
+    DCHECK(end_elements_inhibited_.empty());
+    DCHECK(deferred_queue_.empty());
+    DCHECK(inhibiting_event_ == NULL);
+    DCHECK(finish_parse_on_hold_ == NULL);
+    DCHECK(!flush_in_progress_);
+    DCHECK(!uninhibit_reflush_requested_);
+    DCHECK(primary_rewrite_context_map_.empty());
+    DCHECK(initiated_rewrites_.empty());
+    DCHECK(detached_rewrites_.empty());
+    DCHECK(rewrites_.empty());
+    DCHECK_EQ(0, rewrites_to_delete_);
+    DCHECK_EQ(0, pending_rewrites_);
+    DCHECK_EQ(0, possibly_quick_rewrites_);
+    DCHECK(!fetch_queued_);
+    DCHECK_EQ(0, pending_async_events_);
+  }
   user_agent_supports_image_inlining_ = kNotSet;
   user_agent_supports_js_defer_ = kNotSet;
   user_agent_supports_webp_ = kNotSet;
@@ -400,8 +403,8 @@ void RewriteDriver::CheckForCompletionAsync(WaitMode wait_mode,
                                             int64 timeout_ms,
                                             Function* done) {
   scheduler_->DCheckLocked();
-  DCHECK(wait_mode != kNoWait);
-  DCHECK(waiting_ == kNoWait);
+  DCHECK_NE(kNoWait, wait_mode);
+  DCHECK_EQ(kNoWait, waiting_);
   waiting_ = wait_mode;
 
   int64 end_time_ms;

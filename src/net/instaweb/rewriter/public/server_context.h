@@ -414,12 +414,12 @@ class ServerContext {
 
   // Calling this method will stop results of rewrites being cached in the
   // metadata cache. This is meant for the shutdown sequence.
-  void set_metadata_cache_readonly() {
-    metadata_cache_readonly_.set_value(true);
+  void set_shutting_down() {
+    shutting_down_.set_value(true);
   }
 
-  bool metadata_cache_readonly() const {
-    return metadata_cache_readonly_.value();
+  bool shutting_down() const {
+    return shutting_down_.value();
   }
 
   // Waits a bounded amount of time for all currently running jobs to
@@ -633,7 +633,7 @@ class ServerContext {
   QueuedWorkerPool* rewrite_workers_;  // Owned by the factory
   QueuedWorkerPool* low_priority_rewrite_workers_;  // Owned by the factory
 
-  AtomicBool metadata_cache_readonly_;
+  AtomicBool shutting_down_;
 
   // Used to create URLs for various filter javascript files.
   StaticJavascriptManager* static_javascript_manager_;

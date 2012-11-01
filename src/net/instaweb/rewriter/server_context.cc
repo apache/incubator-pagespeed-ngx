@@ -250,7 +250,11 @@ ServerContext::~ServerContext() {
   }
 
   // We scan for "leaked_rewrite_drivers" in apache/install/tests.mk.
-  DCHECK(active_rewrite_drivers_.empty()) << "leaked_rewrite_drivers";
+  if (!active_rewrite_drivers_.empty()) {
+    message_handler_->Message(
+        kError, "ServerContext: %d leaked_rewrite_drivers on destruction",
+        static_cast<int>(active_rewrite_drivers_.size()));
+  }
   STLDeleteElements(&active_rewrite_drivers_);
   available_rewrite_drivers_.reset();
   STLDeleteElements(&additional_driver_pools_);
