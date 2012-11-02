@@ -609,6 +609,10 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   // and calculate on the fly.
   ngx_http_clear_content_length(r);
 
+  // Pagespeed doesn't need etags: html is always not to be cached while
+  // resources are modified to have an etag-like hash in the url.
+  ngx_http_clear_etag(r);
+
   r->filter_need_in_memory = 1;
 
   int rc = ngx_http_pagespeed_create_request_context(r);
