@@ -196,8 +196,13 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
     const GoogleString& name = pagespeed_headers->Name(i);
     const GoogleString& value = pagespeed_headers->Value(i);
 
-    // TODO(jefftk): if we're setting a cache control header, do we have to
-    // disable downstream header filters somehow?  See
+    // TODO(jefftk): If we're setting a cache control header we'd like to
+    // prevent any downstream code from changing it.  Specifically, if we're
+    // serving a cache-extended resource the url will change if the resource
+    // does and so we've given it a long lifetime.  If the site owner has done
+    // something like set all css files to a 10-minute cache lifetime, that
+    // shouldn't apply to our generated resources.  See discussion on
+    // https://github.com/pagespeed/ngx_pagespeed/pull/15 and Apache code in
     // net/instaweb/apache/header_util:AddResponseHeadersToRequest
 
     // TODO(jefftk): actually copy headers over
