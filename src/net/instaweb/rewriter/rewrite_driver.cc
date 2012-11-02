@@ -397,6 +397,7 @@ void RewriteDriver::BoundedWaitFor(WaitMode mode, int64 timeout_ms) {
     CheckForCompletionAsync(mode, timeout_ms, &wait);
   }
   wait.Block();
+  DCHECK_EQ(waiting_, kNoWait);
 }
 
 void RewriteDriver::CheckForCompletionAsync(WaitMode wait_mode,
@@ -1617,9 +1618,10 @@ void RewriteDriver::FetchCompleteImpl(bool signal, ScopedMutex* lock) {
   if (signal) {
     scheduler_->Signal();
   }
+  bool do_cleanup = cleanup_on_fetch_complete_;
   lock->Release();
 
-  if (cleanup_on_fetch_complete_) {
+  if (do_cleanup) {
     // If cleanup_on_fetch_complete_ is set, the main thread has already tried
     // to call Cleanup on us, so it's not going to be touching us any more ---
     // and so this is race-free.

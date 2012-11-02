@@ -90,12 +90,23 @@ class ResourceFetch : public SharedAsyncFetch {
   virtual void HandleDone(bool success);
 
  private:
-  ResourceFetch(const GoogleUrl& url, RewriteDriver* driver, Timer* timer,
+  enum CleanupMode {
+    kAutoCleanupDriver,
+    kDontAutoCleanupDriver
+  };
+
+  ResourceFetch(const GoogleUrl& url, CleanupMode cleanup_mode,
+                RewriteDriver* driver, Timer* timer,
                 MessageHandler* handler, AsyncFetch* async_fetch);
   virtual ~ResourceFetch();
 
   // Same as Start(), but takes the RewriteDriver to use.
+  // cleanup_mode determines whether ResourceFetch will call Cleanup()
+  // on the driver itself. If it's set to kAutoCleanupDriver, the driver should
+  // not be used by the caller after this call. Otherwise, it may be used by
+  // the caller, but it's responsible for calling Cleanup() once done with it.
   static void StartWithDriver(const GoogleUrl& url,
+                              CleanupMode cleanup_mode,
                               ServerContext* manager,
                               RewriteDriver* driver,
                               AsyncFetch* async_fetch);
@@ -115,6 +126,7 @@ class ResourceFetch : public SharedAsyncFetch {
 
   int64 start_time_ms_;
   int redirect_count_;
+  CleanupMode cleanup_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(ResourceFetch);
 };

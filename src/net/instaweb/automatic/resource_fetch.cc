@@ -77,11 +77,12 @@ RewriteDriver* ResourceFetch::GetDriver(
 }
 
 void ResourceFetch::StartWithDriver(
-    const GoogleUrl& url, ServerContext* manager, RewriteDriver* driver,
-    AsyncFetch* async_fetch) {
+    const GoogleUrl& url, CleanupMode cleanup_mode,
+    ServerContext* manager, RewriteDriver* driver, AsyncFetch* async_fetch) {
 
   ResourceFetch* resource_fetch = new ResourceFetch(
-      url, driver, manager->timer(), manager->message_handler(), async_fetch);
+      url, cleanup_mode, driver, manager->timer(),
+      manager->message_handler(), async_fetch);
 
   driver->FetchResource(url.Spec(), resource_fetch);
 }
@@ -96,14 +97,17 @@ void ResourceFetch::Start(const GoogleUrl& url,
       (custom_options != NULL) ?
           NULL : server_context->standard_rewrite_driver_pool(),
       using_spdy, server_context);
-  StartWithDriver(url, server_context, driver, async_fetch);
+  StartWithDriver(url, kAutoCleanupDriver,
+                  server_context, driver, async_fetch);
 }
 
 bool ResourceFetch::BlockingFetch(const GoogleUrl& url,
                                   ServerContext* manager,
                                   RewriteDriver* driver,
                                   SyncFetcherAdapterCallback* callback) {
-  StartWithDriver(url, manager, driver, callback);
+  // Here, we do not want the driver to be cleaned up by the ResourceFetch
+  // since we will be calling BoundedWaitFor on it!
+  StartWithDriver(url, kDontAutoCleanupDriver, manager, driver, callback);
 
   // Wait for resource fetch to complete.
   if (!callback->done()) {
@@ -132,10 +136,13 @@ bool ResourceFetch::BlockingFetch(const GoogleUrl& url,
                              url.spec_c_str());
   }
 
+  driver->Cleanup();
+
   return ok;
 }
 
 ResourceFetch::ResourceFetch(const GoogleUrl& url,
+                             CleanupMode cleanup_mode,
                              RewriteDriver* driver,
                              Timer* timer,
                              MessageHandler* handler,
@@ -145,7 +152,8 @@ ResourceFetch::ResourceFetch(const GoogleUrl& url,
       timer_(timer),
       message_handler_(handler),
       start_time_ms_(timer->NowMs()),
-      redirect_count_(0) {
+      redirect_count_(0),
+      cleanup_mode_(cleanup_mode) {
   resource_url_.Reset(url);
 }
 
@@ -185,7 +193,9 @@ void ResourceFetch::HandleDone(bool success) {
   RewriteStats* stats = driver_->server_context()->rewrite_stats();
   stats->fetch_latency_histogram()->Add(timer_->NowMs() - start_time_ms_);
   stats->total_fetch_count()->IncBy(1);
-  driver_->Cleanup();
+  if (cleanup_mode_ == kAutoCleanupDriver) {
+    driver_->Cleanup();
+  }
   base_fetch()->Done(success);
   delete this;
 }

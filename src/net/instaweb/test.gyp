@@ -61,6 +61,7 @@
         'automatic/blink_flow_critical_line_test.cc',
         'automatic/proxy_fetch_test.cc',
         'automatic/proxy_interface_test.cc',
+        'automatic/resource_fetch_test.cc',
         'htmlparse/canonical_attributes_test.cc',
         'htmlparse/html_keywords_test.cc',
         'htmlparse/html_name_test.cc',
