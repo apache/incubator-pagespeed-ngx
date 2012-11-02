@@ -683,8 +683,9 @@ void ApacheRewriteDriverFactory::StopCacheActivity() {
 }
 
 void ApacheRewriteDriverFactory::ShutDown() {
-  message_handler()->Message(kError, "Shutting down mod_pagespeed %s",
-                             is_root_process_ ? "root" : "child");
+  if (!is_root_process_) {
+    message_handler()->Message(kError, "Shutting down mod_pagespeed child");
+  }
   StopCacheActivity();
 
   // Next, we shutdown the fetchers before killing the workers in
