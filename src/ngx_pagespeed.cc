@@ -443,7 +443,6 @@ ngx_http_set_pagespeed_write_handler(ngx_http_request_t *r)
     r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
     r->read_event_handler = ngx_http_request_empty_handler;
-    //r->read_event_handler = ngx_http_discarded_request_body_handler;
     r->write_event_handler = ngx_http_pagespeed_writer;
 
     wev = r->connection->write;
@@ -770,6 +769,10 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
 static ngx_int_t
 ngx_http_pagespeed_content_handler(ngx_http_request_t* r) {
   // TODO(jefftk): return NGX_DECLINED for non-get non-head requests.
+
+
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                 "http pagespeed handler \"%V\"", &r->uri);
 
   int rc = ngx_http_pagespeed_create_request_context(
       r, true /* is a resource fetch */);
