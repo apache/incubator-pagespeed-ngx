@@ -376,8 +376,9 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
     PDBG(ctx, "pagespeed update: %p, done: %d", cl, done);
 
     // Pass the optimized content along to later body filters.
-    // This function should be called mutiple times, send the file only one
-    // time is too aggressive
+    // From Weibin: This function should be called mutiple times. Store the
+    // whole file in one chain buffers is too aggressive. It could consume
+    // too much memory in busy servers.
     rc = ngx_http_next_body_filter(ctx->r, cl);
     if (rc == NGX_AGAIN && done) {
       ctx->write_pending = 1;
@@ -395,20 +396,12 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
 static void
 ngx_http_pagespeed_writer(ngx_http_request_t *r)
 {
-    int                        rc;
-    ngx_event_t               *wev;
-    ngx_connection_t          *c;
-    ngx_http_core_loc_conf_t  *clcf;
-
-    c = r->connection;
-    wev = c->write;
+    ngx_connection_t *c = r->connection;
+    ngx_event_t *wev = c->write;
 
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, wev->log, 0,
                    "http pagespeed writer handler: \"%V?%V\"",
                    &r->uri, &r->args);
-
-    clcf = static_cast<ngx_http_core_loc_conf_t*>(
-        ngx_http_get_module_loc_conf(r, ngx_http_core_module));
 
     if (wev->timedout) {
       ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
@@ -419,7 +412,7 @@ ngx_http_pagespeed_writer(ngx_http_request_t *r)
       return;
     }
 
-    rc = ngx_http_output_filter(r, NULL);
+    int rc = ngx_http_output_filter(r, NULL);
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http pagespeed writer output filter: %d, \"%V?%V\"",
@@ -437,17 +430,14 @@ ngx_http_pagespeed_writer(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_set_pagespeed_write_handler(ngx_http_request_t *r)
 {
-    ngx_event_t               *wev;
-    ngx_http_core_loc_conf_t  *clcf;
-
     r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
     r->read_event_handler = ngx_http_request_empty_handler;
     r->write_event_handler = ngx_http_pagespeed_writer;
 
-    wev = r->connection->write;
+    ngx_event_t *wev = r->connection->write;
 
-    clcf = static_cast<ngx_http_core_loc_conf_t*>(
+    ngx_http_core_loc_conf_t *clcf = static_cast<ngx_http_core_loc_conf_t*>(
         ngx_http_get_module_loc_conf(r, ngx_http_core_module));
 
     ngx_add_timer(wev, clcf->send_timeout);
