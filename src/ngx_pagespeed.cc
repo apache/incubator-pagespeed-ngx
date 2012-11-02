@@ -40,6 +40,7 @@ extern "C" {
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -616,6 +617,18 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
     ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
     return rc;
   }
+
+  // Set the "X-Page-Speed: VERSION" header.
+  ngx_table_elt_t* x_pagespeed = static_cast<ngx_table_elt_t*>(
+      ngx_list_push(&r->headers_out.headers));
+  if (x_pagespeed == NULL) {
+    return NGX_ERROR;
+  }
+  x_pagespeed->hash = 1;  // Why do we do this?
+  x_pagespeed->key.len = sizeof(kPageSpeedHeader);
+  x_pagespeed->key.data = (u_char*)kPageSpeedHeader;
+  x_pagespeed->value.len = sizeof(MOD_PAGESPEED_VERSION_STRING);
+  x_pagespeed->value.data = (u_char*)MOD_PAGESPEED_VERSION_STRING;
 
   return ngx_http_next_header_filter(r);
 }
