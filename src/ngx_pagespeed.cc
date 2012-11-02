@@ -407,7 +407,7 @@ ngx_http_pagespeed_writer(ngx_http_request_t *r)
                    "http pagespeed writer handler: \"%V?%V\"",
                    &r->uri, &r->args);
 
-    clcf = static_cast<ngx_http_core_loc_conf_t *>(
+    clcf = static_cast<ngx_http_core_loc_conf_t*>(
         ngx_http_get_module_loc_conf(r, ngx_http_core_module));
 
     if (wev->timedout) {
@@ -442,12 +442,13 @@ ngx_http_set_pagespeed_write_handler(ngx_http_request_t *r)
 
     r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
-    r->read_event_handler = ngx_http_discarded_request_body_handler;
+    r->read_event_handler = ngx_http_request_empty_handler;
+    //r->read_event_handler = ngx_http_discarded_request_body_handler;
     r->write_event_handler = ngx_http_pagespeed_writer;
 
     wev = r->connection->write;
 
-    clcf = static_cast<ngx_http_core_loc_conf_t *>(
+    clcf = static_cast<ngx_http_core_loc_conf_t*>(
         ngx_http_get_module_loc_conf(r, ngx_http_core_module));
 
     ngx_add_timer(wev, clcf->send_timeout);
@@ -578,7 +579,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   ctx->r = r;
   ctx->pipe_fd = file_descriptors[0];
   ctx->is_resource_fetch = is_resource_fetch;
-  ctx->write_pending = 0;
+  ctx->write_pending = false;
 
   rc = ngx_http_pagespeed_create_connection(ctx);
   if (rc != NGX_OK) {
