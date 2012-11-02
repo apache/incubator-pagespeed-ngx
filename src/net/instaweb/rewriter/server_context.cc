@@ -49,6 +49,7 @@
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/client_state.h"
+#include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -888,7 +889,11 @@ void ServerContext::ShutDownDrivers() {
     // trying_to_cleanup_rewrite_drivers_ is true.
     // ResourceManagerTest.ShutDownAssumptions() exists to cover this scenario.
     RewriteDriver* active = *i;
-    active->BoundedWaitFor(RewriteDriver::kWaitForShutDown, Timer::kSecondMs);
+    int64 timeout_ms = Timer::kSecondMs;
+    if (RunningOnValgrind()) {
+      timeout_ms *= 20;
+    }
+    active->BoundedWaitFor(RewriteDriver::kWaitForShutDown, timeout_ms);
     active->Cleanup();  // Note: only cleans up if the rewrites are complete.
     // TODO(jmarantz): rename RewriteDriver::Cleanup to CleanupIfDone.
   }

@@ -50,6 +50,7 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -1272,7 +1273,7 @@ void RewriteContext::OutputCacheMiss() {
   outputs_.clear();
   partitions_->Clear();
   ServerContext* server_context = FindServerContext();
-  if (server_context->shutting_down()) {
+  if (server_context->shutting_down() && !RunningOnValgrind()) {
     FindServerContext()->message_handler()->Message(
         kInfo,
         "RewriteContext::OutputCacheMiss called with "
