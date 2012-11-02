@@ -27,10 +27,11 @@
 #include <vector>
 
 #include "apr_strings.h"
+#include "apr_pools.h"
 #include "apr_thread_proc.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
+#include "net/instaweb/apache/apr_thread_compatible_pool.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -38,6 +39,7 @@
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/pool.h"
@@ -963,21 +965,8 @@ void SerfUrlAsyncFetcher::ShutDown() {
 
 void SerfUrlAsyncFetcher::Init(apr_pool_t* parent_pool, const char* proxy) {
   // Here, we give each our Serf threads' (main and work) separate pools
-  // with separate allocators. This is done because:
-  //
-  // 1) Concurrent allocations from the same pools are not (thread)safe.
-  // 2) Concurrent allocations from different pools using the same allocator
-  //    are not safe unless the allocator has a mutex set.
-  // 3) prefork's pchild pool (which is our ancestor) has an allocator without
-  //    a mutex set.
-  //
-  // Note: the above is all about the release version of the pool code, the
-  // checking one has some additional locking!
-  apr_allocator_t* allocator = NULL;
-  CHECK(apr_allocator_create(&allocator) == APR_SUCCESS);
-  apr_pool_create_ex(&pool_, parent_pool, NULL /*abortfn*/, allocator);
-  apr_allocator_owner_set(allocator, pool_);
-
+  // with separate threadsafe allocators.
+  pool_ = AprCreateThreadCompatiblePool(parent_pool);
   mutex_ = thread_system_->NewMutex();
   serf_context_ = serf_context_create(pool_);
 

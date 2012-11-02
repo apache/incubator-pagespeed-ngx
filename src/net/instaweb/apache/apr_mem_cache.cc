@@ -20,6 +20,7 @@
 
 #include "apr_pools.h"
 #include "base/logging.h"
+#include "net/instaweb/apache/apr_thread_compatible_pool.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/hostname_util.h"
@@ -74,7 +75,7 @@ AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
       is_machine_local_(true),
       message_handler_(handler) {
   servers.CopyToString(&server_spec_);
-  apr_pool_create(&pool_, NULL);
+  pool_ = AprCreateThreadCompatiblePool(NULL);
 
   // Get our hostname for the is_machine_local_ analysis below.
   GoogleString hostname(GetHostname());
@@ -181,7 +182,7 @@ void AprMemCache::Get(const GoogleString& key, Callback* callback) {
     return;
   }
   apr_pool_t* data_pool;
-  apr_pool_create(&data_pool, NULL);
+  apr_pool_create(&data_pool, pool_);
   CHECK(data_pool != NULL) << "apr_pool_t data_pool allocation failure";
   GoogleString hashed_key = hasher_->Hash(key);
   char* data;
@@ -218,10 +219,10 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
   // pool for both temp_pool and data_pool, as we need to read the
   // data after the call.
   apr_pool_t* data_pool;
-  apr_pool_create(&data_pool, NULL);
+  apr_pool_create(&data_pool, pool_);
   CHECK(data_pool != NULL) << "apr_pool_t data_pool allocation failure";
   apr_pool_t* temp_pool = NULL;
-  apr_pool_create(&temp_pool, NULL);
+  apr_pool_create(&temp_pool, pool_);
   CHECK(temp_pool != NULL) << "apr_pool_t temp_pool allocation failure";
   apr_hash_t* hash_table = apr_hash_make(data_pool);
   StringVector hashed_keys;
@@ -350,7 +351,7 @@ void AprMemCache::Delete(const GoogleString& key) {
 
 bool AprMemCache::GetStatus(GoogleString* buffer) {
   apr_pool_t* temp_pool = NULL;
-  apr_pool_create(&temp_pool, NULL);
+  apr_pool_create(&temp_pool, pool_);
   CHECK(temp_pool != NULL) << "apr_pool_t allocation failure";
   bool ret = true;
   for (int i = 0, n = servers_.size(); i < n; ++i) {
