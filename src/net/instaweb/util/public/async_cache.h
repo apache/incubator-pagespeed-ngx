@@ -51,7 +51,7 @@ class AsyncCache : public CacheInterface {
   // TODO(jmarantz): Analyze whether we drop operations under load with
   // a non-wedged cache.  If it looks like we are dropping Puts the first
   // time we encounter a page then I think we may need to bump this up.
-  static const int64 kMaxQueueSize = 20;
+  static const int64 kMaxQueueSize = 2000;
 
   // Takes ownership of the synchronous cache that is passed in.
   // Does not take ownership of the pool, which might be shared with
