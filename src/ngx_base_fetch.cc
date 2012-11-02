@@ -191,6 +191,8 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
   const ResponseHeaders* pagespeed_headers = response_headers();
   Unlock();
 
+  headers_out->status = NGX_HTTP_OK;
+
   ngx_int_t i;
   for (i = 0 ; i < pagespeed_headers->NumAttributes() ; i++) {
     const GoogleString& name = pagespeed_headers->Name(i);

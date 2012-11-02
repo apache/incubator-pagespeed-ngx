@@ -76,6 +76,7 @@ typedef struct {
   const net_instaweb::ContentType* content_type;
   bool is_resource_fetch;
   bool sent_headers;
+  bool write_pending;
 } ngx_http_pagespeed_request_ctx_t;
 
 static ngx_int_t
@@ -371,15 +372,81 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
       PDBG(ctx, "problem with CollectAccumulatedWrites");
       return rc;
     }
-    
+
+    PDBG(ctx, "pagespeed update: %p, done: %d", cl, done);
+
     // Pass the optimized content along to later body filters.
+    // From Weibin: This function should be called mutiple times. Store the
+    // whole file in one chain buffers is too aggressive. It could consume
+    // too much memory in busy servers.
     rc = ngx_http_next_body_filter(ctx->r, cl);
+    if (rc == NGX_AGAIN && done) {
+      ctx->write_pending = 1;
+      return NGX_OK;
+    }
+
     if (rc != NGX_OK) {
       return rc;
     }
   }
   
   return done ? NGX_OK : NGX_AGAIN;
+}
+
+static void
+ngx_http_pagespeed_writer(ngx_http_request_t *r)
+{
+    ngx_connection_t *c = r->connection;
+    ngx_event_t *wev = c->write;
+
+    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, wev->log, 0,
+                   "http pagespeed writer handler: \"%V?%V\"",
+                   &r->uri, &r->args);
+
+    if (wev->timedout) {
+      ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
+                    "client timed out");
+      c->timedout = 1;
+
+      ngx_http_finalize_request(r, NGX_HTTP_REQUEST_TIME_OUT);
+      return;
+    }
+
+    int rc = ngx_http_output_filter(r, NULL);
+
+    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                   "http pagespeed writer output filter: %d, \"%V?%V\"",
+                   rc, &r->uri, &r->args);
+
+    if (rc == NGX_AGAIN) {
+      return;
+    }
+
+    r->write_event_handler = ngx_http_request_empty_handler;
+
+    ngx_http_finalize_request(r, rc);
+}
+
+static ngx_int_t
+ngx_http_set_pagespeed_write_handler(ngx_http_request_t *r)
+{
+    r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
+
+    r->read_event_handler = ngx_http_request_empty_handler;
+    r->write_event_handler = ngx_http_pagespeed_writer;
+
+    ngx_event_t *wev = r->connection->write;
+
+    ngx_http_core_loc_conf_t *clcf = static_cast<ngx_http_core_loc_conf_t*>(
+        ngx_http_get_module_loc_conf(r, ngx_http_core_module));
+
+    ngx_add_timer(wev, clcf->send_timeout);
+
+    if (ngx_handle_write_event(wev, clcf->send_lowat) != NGX_OK) {
+      return NGX_ERROR;
+    }
+
+    return NGX_OK;
 }
 
 static void
@@ -394,15 +461,27 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
   CHECK(ctx != NULL);
 
   int rc = ngx_http_pagespeed_update(ctx, ev);
+
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0,
+                 "http pagespeed connection read handler rc: %d", rc);
+
   CHECK(rc == NGX_OK || rc == NGX_ERROR || rc == NGX_AGAIN);
   if (rc == NGX_AGAIN) {
     // request needs more work by pagespeed
     rc = ngx_handle_read_event(ev, 0);    
     CHECK(rc == NGX_OK);
-  } else {
+  } else if (rc == NGX_OK) {
     ngx_del_event(ev, NGX_READ_EVENT, 0);
     ngx_http_pagespeed_set_buffered(ctx->r, false);
-    ngx_http_finalize_request(ctx->r, rc == NGX_OK ? NGX_DONE : NGX_ERROR);
+    if (ctx->write_pending) {
+      if (ngx_http_set_pagespeed_write_handler(ctx->r) != NGX_OK) {
+        ngx_http_finalize_request(ctx->r, NGX_ERROR);
+      }
+    } else {
+      ngx_http_finalize_request(ctx->r, NGX_DONE);
+    }
+  } else {
+    ngx_http_finalize_request(ctx->r, NGX_ERROR);
   }
 }
 
@@ -489,6 +568,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   ctx->r = r;
   ctx->pipe_fd = file_descriptors[0];
   ctx->is_resource_fetch = is_resource_fetch;
+  ctx->write_pending = false;
 
   rc = ngx_http_pagespeed_create_connection(ctx);
   if (rc != NGX_OK) {
@@ -679,6 +759,10 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
 static ngx_int_t
 ngx_http_pagespeed_content_handler(ngx_http_request_t* r) {
   // TODO(jefftk): return NGX_DECLINED for non-get non-head requests.
+
+
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                 "http pagespeed handler \"%V\"", &r->uri);
 
   int rc = ngx_http_pagespeed_create_request_context(
       r, true /* is a resource fetch */);
