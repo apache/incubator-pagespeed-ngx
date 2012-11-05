@@ -300,7 +300,8 @@ class StrippingFetch : public StringAsyncFetch {
 }  // namespace
 
 void SlurpUrl(ApacheResourceManager* manager, request_rec* r) {
-  const char* url = InstawebContext::MakeRequestUrl(r);
+  const char* url =
+      InstawebContext::MakeRequestUrl(*manager->global_options(), r);
   GoogleString stripped_url = RemoveModPageSpeedQueryParams(
       url, r->parsed_uri.query);
 

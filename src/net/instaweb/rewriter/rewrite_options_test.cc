@@ -664,7 +664,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(113, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(114, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AjaxRewritingEnabled",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAjaxRewritingEnabled));
@@ -863,6 +863,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("RespectVary",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kRespectVary));
+  EXPECT_STREQ("RespectXForwardedProto",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kRespectXForwardedProto));
   EXPECT_STREQ("RewriteLevel",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kRewriteLevel));

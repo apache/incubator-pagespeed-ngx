@@ -633,6 +633,8 @@ void RewriteOptions::AddProperties() {
   add_option(false, &RewriteOptions::always_rewrite_css_, "arc",
              kAlwaysRewriteCss);
   add_option(false, &RewriteOptions::respect_vary_, "rv", kRespectVary);
+  add_option(false, &RewriteOptions::respect_x_forwarded_proto_, "rxfp",
+             kRespectXForwardedProto);
   add_option(false, &RewriteOptions::flush_html_, "fh", kFlushHtml);
   add_option(true, &RewriteOptions::serve_stale_if_fetch_error_, "ss",
              kServeStaleIfFetchError);

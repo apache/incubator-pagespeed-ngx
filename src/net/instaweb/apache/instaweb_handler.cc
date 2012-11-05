@@ -658,10 +658,13 @@ apr_status_t instaweb_handler(request_rec* request) {
 // Additionally we store whether or not this request is a pagespeed
 // resource or not in kResourceUrlNote.
 apr_status_t save_url_hook(request_rec *request) {
+  ApacheResourceManager* manager =
+      InstawebContext::ManagerFromServerRec(request->server);
   // This call to MakeRequestUrl() not only returns the url but also
   // saves it for future use so that if another module changes the
   // url in the request, we still have the original one.
-  const char* url = InstawebContext::MakeRequestUrl(request);
+  const char* url =
+      InstawebContext::MakeRequestUrl(*manager->global_options(), request);
   GoogleUrl gurl(url);
 
   bool bypass_mod_rewrite = false;
@@ -674,8 +677,6 @@ apr_status_t save_url_hook(request_rec *request) {
         leaf == kMessageHandler || leaf == kRefererStatisticsHandler) {
       bypass_mod_rewrite = true;
     } else {
-      ApacheResourceManager* manager =
-          InstawebContext::ManagerFromServerRec(request->server);
       if (manager->IsPagespeedResource(gurl)) {
         bypass_mod_rewrite = true;
       }

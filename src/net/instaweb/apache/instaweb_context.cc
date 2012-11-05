@@ -332,56 +332,86 @@ ApacheResourceManager* InstawebContext::ManagerFromServerRec(
 // url.  Therefore, if we have not yet stored the url, check to see if
 // there was a previous request in this chain, and use its url as the
 // original.
-const char* InstawebContext::MakeRequestUrl(request_rec* request) {
+const char* InstawebContext::MakeRequestUrl(const RewriteOptions& options,
+                                            request_rec* request) {
   const char* url = apr_table_get(request->notes, kPagespeedOriginalUrl);
 
-  // Go down the prev chain to see if there this request was a rewrite
-  // from another one.  We want to store the uri the user passed in,
-  // not what we re-wrote it to.  We should not iterate down this
-  // chain more than once (MakeRequestUrl will already have been
-  // called for request->prev, before this request is created).
-  // However, max out at 5 iterations, just in case.
-  request_rec *prev = request->prev;
-  for (int i = 0; (url == NULL) && (prev != NULL) && (i < kRequestChainLimit);
-       ++i, prev = prev->prev) {
-    url = apr_table_get(prev->notes, kPagespeedOriginalUrl);
-  }
-
-  // Chase 'main' chain as well, clamping at kRequestChainLimit loops.
-  // This will eliminate spurious 'index.html' noise we've seen from
-  // slurps.  See 'make apache_debug_slurp_test' -- the attempt to
-  // slurp 'www.example.com'.  The reason this is necessary is that
-  // mod_dir.c's fixup_dir() calls ap_internal_fast_redirect in
-  // http_request.c, which mutates the original requests's uri fields,
-  // leaving little trace of the url we actually need to resolve.  Also
-  // note that http_request.c:ap_internal_fast_redirect 'overlays'
-  // the source r.notes onto the dest r.notes, which in this case would
-  // work against us if we don't first propagate the OriginalUrl.
-  request_rec *main = request->main;
-  for (int i = 0; (url == NULL) && (main != NULL) && (i < kRequestChainLimit);
-       ++i, main = main->main) {
-    url = apr_table_get(main->notes, kPagespeedOriginalUrl);
-  }
-
-  /*
-   * In some contexts we are seeing relative URLs passed
-   * into request->unparsed_uri.  But when using mod_slurp, the rewritten
-   * HTML contains complete URLs, so this construction yields the host:port
-   * prefix twice.
-   *
-   * TODO(jmarantz): Figure out how to do this correctly at all times.
-   */
   if (url == NULL) {
-    if ((strncmp(request->unparsed_uri, "http://", 7) == 0) ||
-        (strncmp(request->unparsed_uri, "https://", 8) == 0)) {
-      url = apr_pstrdup(request->pool, request->unparsed_uri);
-    } else {
-      url = ap_construct_url(request->pool, request->unparsed_uri, request);
+    // Go down the prev chain to see if there this request was a rewrite
+    // from another one.  We want to store the uri the user passed in,
+    // not what we re-wrote it to.  We should not iterate down this
+    // chain more than once (MakeRequestUrl will already have been
+    // called for request->prev, before this request is created).
+    // However, max out at 5 iterations, just in case.
+    request_rec *prev = request->prev;
+    for (int i = 0; (url == NULL) && (prev != NULL) && (i < kRequestChainLimit);
+         ++i, prev = prev->prev) {
+      url = apr_table_get(prev->notes, kPagespeedOriginalUrl);
     }
+
+    // Chase 'main' chain as well, clamping at kRequestChainLimit loops.
+    // This will eliminate spurious 'index.html' noise we've seen from
+    // slurps.  See 'make apache_debug_slurp_test' -- the attempt to
+    // slurp 'www.example.com'.  The reason this is necessary is that
+    // mod_dir.c's fixup_dir() calls ap_internal_fast_redirect in
+    // http_request.c, which mutates the original requests's uri fields,
+    // leaving little trace of the url we actually need to resolve.  Also
+    // note that http_request.c:ap_internal_fast_redirect 'overlays'
+    // the source r.notes onto the dest r.notes, which in this case would
+    // work against us if we don't first propagate the OriginalUrl.
+    request_rec *main = request->main;
+    for (int i = 0; (url == NULL) && (main != NULL) && (i < kRequestChainLimit);
+         ++i, main = main->main) {
+      url = apr_table_get(main->notes, kPagespeedOriginalUrl);
+    }
+
+    /*
+     * In some contexts we are seeing relative URLs passed
+     * into request->unparsed_uri.  But when using mod_slurp, the rewritten
+     * HTML contains complete URLs, so this construction yields the host:port
+     * prefix twice.
+     *
+     * TODO(jmarantz): Figure out how to do this correctly at all times.
+     */
+    if (url == NULL) {
+      if ((strncmp(request->unparsed_uri, "http://", 7) == 0) ||
+          (strncmp(request->unparsed_uri, "https://", 8) == 0)) {
+        url = apr_pstrdup(request->pool, request->unparsed_uri);
+      } else {
+        url = ap_construct_url(request->pool, request->unparsed_uri, request);
+      }
+    }
+
+    // Fix URL based on X-Forwarded-Proto.
+    // http://code.google.com/p/modpagespeed/issues/detail?id=546
+    // For example, if Apache gives us the URL "http://www.example.com/"
+    // and there is a header: "X-Forwarded-Proto: https", then we update
+    // this base URL to "https://www.example.com/".
+    if (options.respect_x_forwarded_proto()) {
+      const char* x_forwarded_proto =
+          apr_table_get(request->headers_in, HttpAttributes::kXForwardedProto);
+      if (x_forwarded_proto != NULL) {
+        if (StringCaseEqual(x_forwarded_proto, "http") ||
+            StringCaseEqual(x_forwarded_proto, "https")) {
+          StringPiece url_sp(url);
+          StringPiece::size_type colon_pos = url_sp.find(":");
+          if (colon_pos != StringPiece::npos) {
+            // Replace URL protocol with that specified in X-Forwarded-Proto.
+            GoogleString new_url =
+                StrCat(x_forwarded_proto, url_sp.substr(colon_pos));
+            url = apr_pstrdup(request->pool, new_url.c_str());
+          }
+        } else {
+          LOG(WARNING) << "Unsupported X-Forwarded-Proto: " << x_forwarded_proto
+                       << " for URL " << url << " protocol not changed.";
+        }
+      }
+    }
+
+    // Note: apr_table_setn does not take ownership of url, it is owned by
+    // the Apache pool.
+    apr_table_setn(request->notes, kPagespeedOriginalUrl, url);
   }
-  // Note: apr_table_setn does not take ownership of url, it is owned by
-  // the Apache pool.
-  apr_table_setn(request->notes, kPagespeedOriginalUrl, url);
   return url;
 }
 

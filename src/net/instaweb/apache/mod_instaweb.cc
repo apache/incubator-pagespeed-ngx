@@ -22,6 +22,7 @@
 
 #include <cerrno>
 #include <cstddef>
+#include <cstring>
 #include <set>
 #include <utility>
 
@@ -219,6 +220,8 @@ const char kModPagespeedRefererStatisticsOutputLevel[] =
     "ModPagespeedRefererStatisticsOutputLevel";
 const char kModPagespeedReportUnloadTime[] = "ModPagespeedReportUnloadTime";
 const char kModPagespeedRespectVary[] = "ModPagespeedRespectVary";
+const char kModPagespeedRespectXForwardedProto[] =
+    "ModPagespeedRespectXForwardedProto";
 const char kModPagespeedRetainComment[] = "ModPagespeedRetainComment";
 const char kModPagespeedRewriteLevel[] = "ModPagespeedRewriteLevel";
 const char kModPagespeedRunFurious[] = "ModPagespeedRunExperiment";
@@ -509,7 +512,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
   }
 
   // Determine the absolute URL for this request.
-  const char* absolute_url = InstawebContext::MakeRequestUrl(request);
+  const char* absolute_url = InstawebContext::MakeRequestUrl(*options, request);
   // The final URL.  This is same as absolute_url but with ModPagespeed* query
   // params, if any, stripped.
   GoogleString final_url;
@@ -1798,6 +1801,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
          "Rate-limit the number of background HTTP fetches done at once"),
   APACHE_CONFIG_OPTION(kModPagespeedReportUnloadTime,
          "If set reports optional page unload time."),
+  APACHE_CONFIG_OPTION(kModPagespeedRespectXForwardedProto,
+        "Whether to respect the X-Forwarded-Proto header."),
   APACHE_CONFIG_OPTION(kModPagespeedSharedMemoryLocks,
         "Use shared memory for internal named lock service"),
   APACHE_CONFIG_OPTION(kModPagespeedSlurpDirectory,

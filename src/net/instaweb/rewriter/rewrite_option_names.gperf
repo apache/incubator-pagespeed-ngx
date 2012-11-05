@@ -98,6 +98,7 @@ struct OptionName {
 "RejectBlacklistedStatusCode",           RewriteOptions::kRejectBlacklistedStatusCode
 "ReportUnloadTime",                      RewriteOptions::kReportUnloadTime
 "RespectVary",                           RewriteOptions::kRespectVary
+"RespectXForwardedProto",                RewriteOptions::kRespectXForwardedProto
 "RewriteLevel",                          RewriteOptions::kRewriteLevel
 "RunExperiment",                         RewriteOptions::kRunningFurious
 "ServeStaleIfFetchError",                RewriteOptions::kServeStaleIfFetchError

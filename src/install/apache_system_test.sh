@@ -148,6 +148,14 @@ check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 #  check fgrep '<script' $OUTDIR/result_on
 #fi
 
+echo "TEST: Respect X-Forwarded-Proto when told to"
+FETCHED=$OUTDIR/x_forwarded_proto
+URL=$TEST_ROOT/?ModPagespeedFilters=add_base_tag
+check $WGET_DUMP -O $FETCHED --header="X-Forwarded-Proto: https" $URL
+# When enabled, we respect X-Forwarded-Proto and thus list base as https.
+check fgrep -q '<base href="https://' $FETCHED
+
+
 # Individual filter tests, in alphabetical order
 
 # This is dependent upon having a /mod_pagespeed_beacon handler.

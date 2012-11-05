@@ -56,6 +56,7 @@ const char HttpAttributes::kWarning[] = "Warning";
 const char HttpAttributes::kXmlHttpRequest[] = "XMLHttpRequest";
 const char HttpAttributes::kXAssociatedContent[] = "X-Associated-Content";
 const char HttpAttributes::kXForwardedFor[] = "X-Forwarded-For";
+const char HttpAttributes::kXForwardedProto[] = "X-Forwarded-Proto";
 const char HttpAttributes::kXGooglePagespeedClientId[] =
     "X-Google-Pagespeed-Client-Id";
 const char HttpAttributes::kXGoogleRequestEventId[] =

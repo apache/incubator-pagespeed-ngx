@@ -240,6 +240,8 @@ ModPagespeedCustomFetchHeader x-other False
   SetHandler mod_pagespeed_log_request_headers
 </Location>
 
+ModPagespeedRespectXForwardedProto on
+
 #SPELING # Enable mod_speling to ensure that we don't regress Issue 194
 #SPELING <IfModule !speling_module>
 #SPELING   LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so
@@ -614,6 +616,7 @@ NameVirtualHost *:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedRefererStatisticsOutputLevel simple
 #ALL_DIRECTIVES ModPagespeedReportUnloadTime true
 #ALL_DIRECTIVES ModPagespeedRespectVary true
+#ALL_DIRECTIVES ModPagespeedRespectXForwardedProto off
 #ALL_DIRECTIVES ModPagespeedRetainComment "special"
 #ALL_DIRECTIVES ModPagespeedRewriteLevel CoreFilters
 #ALL_DIRECTIVES ModPagespeedRunExperiment true

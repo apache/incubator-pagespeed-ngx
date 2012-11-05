@@ -65,6 +65,7 @@ struct HttpAttributes {
   static const char kXmlHttpRequest[];
   static const char kXAssociatedContent[];
   static const char kXForwardedFor[];
+  static const char kXForwardedProto[];
   static const char kXGooglePagespeedClientId[];
   static const char kXGoogleRequestEventId[];
   // If this header's value matches the configured blocking rewrite key, then

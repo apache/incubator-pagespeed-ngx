@@ -233,6 +233,7 @@ class RewriteOptions {
     kRejectBlacklistedStatusCode,
     kReportUnloadTime,
     kRespectVary,
+    kRespectXForwardedProto,
     kRewriteLevel,
     kRunningFurious,
     kServeStaleIfFetchError,
@@ -1123,6 +1124,13 @@ class RewriteOptions {
     set_option(x, &respect_vary_);
   }
   bool respect_vary() const { return respect_vary_.value(); }
+
+  void set_respect_x_forwarded_proto(bool x) {
+    set_option(x, &respect_x_forwarded_proto_);
+  }
+  bool respect_x_forwarded_proto() const {
+    return respect_x_forwarded_proto_.value();
+  }
 
   void set_flush_html(bool x) { set_option(x, &flush_html_); }
   bool flush_html() const { return flush_html_.value(); }
@@ -2366,6 +2374,7 @@ class RewriteOptions {
   Option<bool> lowercase_html_names_;
   Option<bool> always_rewrite_css_;  // For tests/debugging.
   Option<bool> respect_vary_;
+  Option<bool> respect_x_forwarded_proto_;
   Option<bool> flush_html_;
   // Should we serve stale responses if the fetch results in a server side
   // error.

@@ -19,15 +19,15 @@
 #define NET_INSTAWEB_APACHE_INSTAWEB_CONTEXT_H_
 
 #include "base/scoped_ptr.h"
-#include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 // The httpd header must be after the
 // apache_rewrite_driver_factory.h. Otherwise, the compiler will
@@ -38,6 +38,8 @@ namespace net_instaweb {
 
 class ApacheResourceManager;
 class GzipInflater;
+class RequestHeaders;
+class RewriteDriver;
 class RewriteOptions;
 
 const char kPagespeedOriginalUrl[] = "mod_pagespeed_original_url";
@@ -115,7 +117,8 @@ class InstawebContext {
   static ApacheResourceManager* ManagerFromServerRec(server_rec* server);
 
   // Returns a fetchable URI from a request, using the request pool.
-  static const char* MakeRequestUrl(request_rec* request);
+  static const char* MakeRequestUrl(const RewriteOptions& options,
+                                    request_rec* request);
 
  private:
   void ComputeContentEncoding(request_rec* request);
