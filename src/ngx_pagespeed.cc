@@ -618,7 +618,8 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     // Call this here and not in the header filter because we want to see the
     // headers after any other filters are finished modifying them.  At this
     // point they are final.
-    ctx->base_fetch->PopulateHeaders();  // TODO(jefftk): is this thread safe?
+    // TODO(jefftk): is this thread safe?
+    ctx->base_fetch->PopulateResponseHeaders();
   }
 
   if (in != NULL) {
