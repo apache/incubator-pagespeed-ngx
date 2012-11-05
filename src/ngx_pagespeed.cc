@@ -40,6 +40,7 @@ extern "C" {
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -402,7 +403,8 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
   } else {
     ngx_del_event(ev, NGX_READ_EVENT, 0);
     ngx_http_pagespeed_set_buffered(ctx->r, false);
-    ngx_http_finalize_request(ctx->r, rc == NGX_OK ? NGX_DONE : NGX_ERROR);
+    ngx_http_finalize_request(
+        ctx->r, rc == NGX_OK ? NGX_DONE : NGX_HTTP_INTERNAL_SERVER_ERROR);
   }
 }
 
@@ -615,6 +617,10 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     return ngx_http_next_body_filter(r, in);
   }
 
+  // We don't want to handle requests with errors, but we should be dealing with
+  // that in the header filter and not initializing ctx.
+  CHECK(r->err_status == 0);
+
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed filter \"%V\"", &r->uri);
 
@@ -663,14 +669,32 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   // and calculate on the fly.
   ngx_http_clear_content_length(r);
 
+  // Pagespeed doesn't need etags: html is always not to be cached while
+  // resources are modified to have an etag-like hash in the url.
+  ngx_http_clear_etag(r);
+
   r->filter_need_in_memory = 1;
 
-  int rc = ngx_http_pagespeed_create_request_context(
-      r, false /* not a resource fetch */);
-  if (rc != NGX_OK) {
-    ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-    return rc;
+  if (r->err_status == 0) {
+    int rc = ngx_http_pagespeed_create_request_context(
+        r, false /* not a resource fetch */);
+    if (rc != NGX_OK) {
+      ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+      return rc;
+    }
   }
+
+  // Set the "X-Page-Speed: VERSION" header.
+  ngx_table_elt_t* x_pagespeed = static_cast<ngx_table_elt_t*>(
+      ngx_list_push(&r->headers_out.headers));
+  if (x_pagespeed == NULL) {
+    return NGX_ERROR;
+  }
+  // Tell ngx_http_header_filter_module to include this header in the response.
+  x_pagespeed->hash = 1;
+
+  ngx_str_set(&x_pagespeed->key, kPageSpeedHeader);
+  ngx_str_set(&x_pagespeed->value, MOD_PAGESPEED_VERSION_STRING);
 
   return ngx_http_next_header_filter(r);
 }
