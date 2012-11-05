@@ -473,13 +473,34 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r) {
   GoogleString url_string = ngx_http_pagespeed_determine_url(r);
   net_instaweb::GoogleUrl request_url(url_string);
 
+  // Stripping ModPagespeed query params before the property cache lookup to
+  // make cache key consistent for both lookup and storing in cache.
+  //
+  // Sets option from request headers and url.
+  net_instaweb::ServerContext::OptionsBoolPair query_options_success =
+      ctx->cfg->server_context->GetQueryOptions(
+          &request_url, ctx->base_fetch->request_headers(), NULL);
+  bool get_query_options_success = query_options_success.second;
+  if (!get_query_options_success) {
+    // Failed to parse query params or request headers.
+    // TODO(jefftk): send a helpful error message to the visitor.
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "ngx_http_pagespeed_create_request_context: "
+                  "parsing headers or query params failed.");
+    ngx_http_pagespeed_release_request_context(ctx);
+    return NGX_ERROR;
+
+  }
+
+  // Will be NULL if there aren't custom options..
+  net_instaweb::RewriteOptions* custom_options = query_options_success.first;
+
   // This code is based off of ProxyInterface::ProxyRequestCallback and
   // ProxyFetchFactory::StartNewProxyFetch
 
   // If the global options say we're running furious (the experiment framework)
   // then clone them into custom_options so we can manipulate custom options
   // without affecting the global options.
-  net_instaweb::RewriteOptions* custom_options = NULL;
   net_instaweb::RewriteOptions* global_options =
       ctx->cfg->server_context->global_options();
   if (global_options->running_furious()) {
