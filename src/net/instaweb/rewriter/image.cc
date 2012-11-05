@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/webp_optimizer.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -620,7 +621,8 @@ bool ImageImpl::TempFileForImage(FileSystem* fs,
 }
 
 bool ImageImpl::LoadOpenCvFromBuffer(const StringPiece& data) {
-  StdioFileSystem fs;
+  GoogleTimer timer;
+  StdioFileSystem fs(&timer);
   GoogleString filename;
   bool ok = TempFileForImage(&fs, data, &filename);
   if (ok) {
@@ -631,7 +633,8 @@ bool ImageImpl::LoadOpenCvFromBuffer(const StringPiece& data) {
 }
 
 bool ImageImpl::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
-  StdioFileSystem fs;
+  GoogleTimer timer;
+  StdioFileSystem fs(&timer);
   GoogleString filename;
   bool ok = TempFileForImage(&fs, StringPiece(), &filename);
   if (ok) {
