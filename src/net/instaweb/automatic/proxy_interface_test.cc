@@ -1672,6 +1672,9 @@ TEST_F(ProxyInterfaceTest, SplitHtmlWithLazyloadScriptFlushedEarly) {
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   custom_options->EnableFilter(RewriteOptions::kSplitHtml);
   custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
+  custom_options->set_critical_line_config(
+       "div[@id = \"container\"]/div[4],"
+       "img[3]:h1[@id = \"footer\"]");
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
   server_context()->set_url_namer(&url_namer);
@@ -1697,6 +1700,9 @@ TEST_F(ProxyInterfaceTest, SplitHtmlWithLazyloadScriptNotFlushedEarly) {
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   custom_options->EnableFilter(RewriteOptions::kSplitHtml);
+  custom_options->set_critical_line_config(
+       "div[@id = \"container\"]/div[4],"
+       "img[3]:h1[@id = \"footer\"]");
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
   server_context()->set_url_namer(&url_namer);

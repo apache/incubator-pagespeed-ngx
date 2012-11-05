@@ -131,19 +131,6 @@ void SplitHtmlFilter::EndDocument() {
     HtmlWriterFilter::EndDocument();
   }
 
-  WriteString(StrCat("<script type=\"text/javascript\">"
-      "pagespeed.num_low_res_images_inlined=",
-      IntegerToString(num_low_res_images_inlined_),
-      ";</script>"));
-  StaticJavascriptManager* js_manager =
-      rewrite_driver_->server_context()->static_javascript_manager();
-  WriteString(StrCat("<script src=\"",
-                     GetBlinkJsUrl(options_, js_manager),
-                     "\" type=\"text/javascript\"></script>"));
-
-  WriteString(StrCat("<script type=\"text/javascript\">", kDeferJsSnippet,
-                     "</script>"));
-
   // Remove critical html since it should already have been sent out by now.
   element_json_stack_[0].second->removeMember(BlinkUtil::kInstanceHtml);
 
@@ -151,9 +138,6 @@ void SplitHtmlFilter::EndDocument() {
   json.append(*(element_json_stack_[0].second));
 
   ServeNonCriticalPanelContents(json[0]);
-  // TODO(rahulbansal): We are sending an extra close body and close html tag.
-  // Fix that.
-  WriteString("\n</body></html>\n");
   Cleanup();
 
   rewrite_driver_->UpdatePropertyValueInDomCohort(
@@ -166,15 +150,34 @@ void SplitHtmlFilter::WriteString(const StringPiece& str) {
 }
 
 void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
+  if (critical_line_info_.panels_size() == 0) {
+    return;
+  }
+
+  WriteString(StrCat("<script type=\"text/javascript\">"
+      "pagespeed.num_low_res_images_inlined=",
+      IntegerToString(num_low_res_images_inlined_),
+      ";</script>"));
+  StaticJavascriptManager* js_manager =
+      rewrite_driver_->server_context()->static_javascript_manager();
+  WriteString(StrCat("<script src=\"",
+                     GetBlinkJsUrl(options_, js_manager),
+                     "\" type=\"text/javascript\"></script>"));
+  WriteString(StrCat("<script type=\"text/javascript\">", kDeferJsSnippet,
+                     "</script>"));
   WriteString("<script>pagespeed.panelLoaderInit();</script>");
   WriteString("<script>pagespeed.panelLoader.invokedFromSplit();</script>");
   WriteString("<script>pagespeed.panelLoader.loadCriticalData({});</script>");
+
   GoogleString non_critical_json = fast_writer_.write(json);
   BlinkUtil::StripTrailingNewline(&non_critical_json);
   WriteString("<script>pagespeed.panelLoader.bufferNonCriticalData(");
   BlinkUtil::EscapeString(&non_critical_json);
   WriteString(non_critical_json);
   WriteString(");</script>");
+  // TODO(rahulbansal): We are sending an extra close body and close html tag.
+  // Fix that.
+  WriteString("\n</body></html>\n");
   HtmlWriterFilter::Flush();
 }
 
@@ -323,11 +326,17 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
               lazyload_js, "</script>");
   }
 
-  if (!send_lazyload_script_) {
-    StrAppend(&defer_js_with_blink, kPagespeedFunc);
+  if (critical_line_info_.panels_size() == 0) {
+    GoogleString defer_js = JsDeferDisabledFilter::GetDeferJsSnippet(
+        options_, js_manager);
+    StrAppend(&defer_js_with_blink, "<script type=\"text/javascript\">",
+              defer_js, "</script>");
+  } else {
+    if (!send_lazyload_script_) {
+      StrAppend(&defer_js_with_blink, kPagespeedFunc);
+    }
+    StrAppend(&defer_js_with_blink, kSplitInit);
   }
-  StrAppend(&defer_js_with_blink, kSplitInit);
-
   if (include_head) {
     StrAppend(&defer_js_with_blink, "</head>");
   }

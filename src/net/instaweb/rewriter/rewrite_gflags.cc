@@ -233,12 +233,6 @@ DEFINE_bool(apply_blink_if_no_families, false,
             "prioritize visible content rewriter on all URLs (with default "
             "cache time and no non-cacheables).");
 
-// This flag is deprecated.
-// TODO(rahulbansal): Remove this flag.
-DEFINE_bool(use_full_url_in_blink_families, true,
-            "Consider the prioritize_visible_content_families_ url_patterns to "
-            "represent full URLs and not URL paths.");
-
 DEFINE_string(blocking_rewrite_key,
               net_instaweb::RewriteOptions::kDefaultBlockingRewriteKey,
               "Enables rewrites to finish before the response is sent to "

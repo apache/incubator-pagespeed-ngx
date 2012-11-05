@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -279,6 +280,18 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyDisabled) {
 
   // SuppressPreheadFilter should not have populated the flush_early_proto.
   EXPECT_EQ("", rewrite_driver()->flush_early_info()->pre_head());
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpaths) {
+  options_->ForceEnableFilter(RewriteOptions::kLazyloadImages);
+  rewrite_driver_->set_is_lazyload_script_flushed(true);
+  GoogleString defer_js = JsDeferDisabledFilter::GetDeferJsSnippet(
+      options_, rewrite_driver_->server_context()->static_javascript_manager());
+  Parse("split_with_lazyload", kHtmlInputForLazyload);
+  EXPECT_EQ(
+      StrCat("<html><head>"
+          "<script type=\"text/javascript\">", defer_js, "</script>",
+          "</head><body></body></html>"), output_);
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithLazyLoad) {
