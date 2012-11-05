@@ -153,9 +153,8 @@ class UrlResourceFetchCallback : public AsyncFetch {
 
   bool Fetch(UrlAsyncFetcher* fetcher, MessageHandler* handler) {
     message_handler_ = handler;
-    GoogleString lock_name =
-        StrCat(server_context_->lock_hasher()->Hash(url()), ".lock");
-    lock_.reset(server_context_->lock_manager()->CreateNamedLock(lock_name));
+    lock_.reset(server_context_->MakeInputLock(url()));
+    GoogleString lock_name(lock_->name());
     int64 lock_timeout = fetcher->timeout_ms();
     if (lock_timeout == UrlAsyncFetcher::kUnspecifiedTimeout) {
       // Even if the fetcher never explicitly times out requests, they probably
@@ -172,7 +171,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
         message_handler_->Message(
             kInfo, "%s is already being fetched (lock %s)",
             url().c_str(), lock_name.c_str());
-        DoneInternal(false);
+        DoneInternal(true /* lock_failure */, false /* resource_ok */);
         delete this;
         return false;
       }
@@ -288,7 +287,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
       lock_->Unlock();
       lock_.reset(NULL);
     }
-    DoneInternal(success);
+    DoneInternal(false /* lock_failure */, success /* resource_ok */);
     delete this;
   }
 
@@ -328,7 +327,7 @@ class UrlResourceFetchCallback : public AsyncFetch {
   void set_no_cache_ok(bool x) { no_cache_ok_ = x; }
 
  protected:
-  virtual void DoneInternal(bool success) {
+  virtual void DoneInternal(bool lock_failure, bool resource_ok) {
   }
 
   ServerContext* server_context_;
@@ -381,12 +380,14 @@ class FreshenFetchCallback : public UrlResourceFetchCallback {
         rewrite_options->implicit_cache_ttl_ms());
   }
 
-  virtual void DoneInternal(bool success) {
+  virtual void DoneInternal(bool lock_failure, bool resource_ok) {
     if (callback_ != NULL) {
-      success &= CheckAndUpdateInputInfo(
-          *response_headers(), http_value_, *rewrite_options_,
-          *rewrite_driver_->server_context(), callback_);
-      callback_->Done(success);
+      if (!lock_failure) {
+        resource_ok &= CheckAndUpdateInputInfo(
+            *response_headers(), http_value_, *rewrite_options_,
+            *rewrite_driver_->server_context(), callback_);
+      }
+      callback_->Done(lock_failure, resource_ok);
     }
     rewrite_driver_->decrement_async_events_count();
   }
@@ -441,7 +442,7 @@ class FreshenHttpCacheCallback : public OptionsAwareHTTPCacheCallback {
         bool success = (find_result == HTTPCache::kFound) &&
             CheckAndUpdateInputInfo(*response_headers(), *http_value(),
                                     *options_, *manager_, callback_);
-        callback_->Done(success);
+        callback_->Done(true, success);
       }
       driver_->decrement_async_events_count();
     }
@@ -527,8 +528,8 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
         resource->rewrite_options()->implicit_cache_ttl_ms());
   }
 
-  virtual void DoneInternal(bool success) {
-    if (success) {
+  virtual void DoneInternal(bool lock_failure, bool resource_ok) {
+    if (!lock_failure && resource_ok) {
       // Because we've authorized the Fetcher to directly populate the
       // ResponseHeaders in resource_->response_headers_, we must explicitly
       // propagate the content-type to the resource_->type_.
@@ -543,7 +544,7 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
       response_headers()->Clear();
     }
 
-    callback_->Done(success);
+    callback_->Done(lock_failure, resource_ok);
   }
 
   virtual bool EnableThreaded() const { return callback_->EnableThreaded(); }
@@ -577,7 +578,7 @@ void UrlInputResource::LoadAndCallback(NotCacheablePolicy no_cache_policy,
   CHECK(rewrite_driver_ != NULL)
       << "Must provide a RewriteDriver for resources that will get fetched.";
   if (loaded()) {
-    callback->Done(true);
+    callback->Done(true, true);
   } else {
     UrlReadAsyncFetchCallback* cb =
         new UrlReadAsyncFetchCallback(callback, this);

@@ -95,12 +95,12 @@ class FreshenMetadataUpdateManager {
 
   ~FreshenMetadataUpdateManager() {}
 
-  void Done(bool success) {
+  void Done(bool lock_failure, bool resource_ok) {
     bool should_cleanup = false;
     {
       ScopedMutex lock(mutex_.get());
       --num_pending_freshens_;
-      if (!success) {
+      if (!lock_failure && !resource_ok) {
         should_delete_cache_key_ = true;
       }
       should_cleanup = ShouldCleanup();
@@ -578,8 +578,8 @@ class RewriteContext::ResourceFetchCallback : public Resource::AsyncCallback {
   }
 
   virtual ~ResourceFetchCallback() {}
-  virtual void Done(bool success) {
-    delegate_.Done(success);
+  virtual void Done(bool lock_failure, bool resource_ok) {
+    delegate_.Done(!lock_failure && resource_ok);
     delete this;
   }
 
@@ -644,11 +644,11 @@ class RewriteContext::ResourceRevalidateCallback
   virtual ~ResourceRevalidateCallback() {
   }
 
-  virtual void Done(bool success) {
+  virtual void Done(bool lock_failure, bool resource_ok) {
     RewriteDriver* rewrite_driver = rewrite_context_->Driver();
     rewrite_driver->AddRewriteTask(
         MakeFunction(rewrite_context_, &RewriteContext::ResourceRevalidateDone,
-                     input_info_, success));
+                     input_info_, !lock_failure && resource_ok));
     delete this;
   }
 
@@ -679,8 +679,8 @@ class RewriteContext::RewriteFreshenCallback
     return manager_->GetInputInfo(partition_index_, input_index_);
   }
 
-  virtual void Done(bool success) {
-    manager_->Done(success);
+  virtual void Done(bool lock_failure, bool resource_ok) {
+    manager_->Done(lock_failure, resource_ok);
     delete this;
   }
 

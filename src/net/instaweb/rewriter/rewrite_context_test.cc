@@ -55,6 +55,7 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -2703,6 +2704,32 @@ TEST_F(RewriteContextTest, TestFreshenForMultipleResourceRewrites) {
   SetResponseWithDefaultHeaders(kPath2, kContentTypeCss, kDataNew1,
                                 kTtlMs2 / Timer::kSecondMs);
   mock_timer()->AdvanceMs(kTtlMs2 / 2 - 3 * Timer::kMinuteMs);
+
+  // Grab a lock for the resource that we are trying to freshen, preventing
+  // that flow from working.
+  scoped_ptr<NamedLock> lock(server_context()->MakeInputLock(
+      StrCat(kTestDomain, kPath2)));
+  ASSERT_TRUE(lock->TryLock());
+  ValidateExpected("freshen",
+                   StrCat(CssLinkHref("first.css"), CssLinkHref("second.css")),
+                   CssLinkHref(combined_url));
+
+  // We do the cache lookups before acquiring the lock.  Based on the TTL in
+  // the resource, we decide we want to freshen, we attempt to grab the lock
+  // to initiate a new fetch, but fail.  No fetch is made, metadata cache is
+  // not cleared.  Nothing is inserted into the cache.
+  EXPECT_EQ(0, combining_filter_->num_rewrites());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits()) << "metadata&soon-to-expire second.css";
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, lru_cache()->num_deletes());
+  lock->Unlock();
+
+  ClearStats();
   ValidateExpected("freshen",
                    StrCat(CssLinkHref("first.css"), CssLinkHref("second.css")),
                    CssLinkHref(combined_url));

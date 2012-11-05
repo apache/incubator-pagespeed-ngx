@@ -785,9 +785,9 @@ class BlockingResourceCallback : public Resource::AsyncCallback {
         success_(false) {
   }
   virtual ~BlockingResourceCallback() {}
-  virtual void Done(bool success) {
+  virtual void Done(bool lock_failure, bool resource_ok) {
     done_ = true;
-    success_ = success;
+    success_ = !lock_failure && resource_ok;
   }
   bool done() const { return done_; }
   bool success() const { return success_; }
@@ -803,8 +803,8 @@ class DeferredResourceCallback : public Resource::AsyncCallback {
       : Resource::AsyncCallback(resource) {
   }
   virtual ~DeferredResourceCallback() {}
-  virtual void Done(bool success) {
-    CHECK(success);
+  virtual void Done(bool lock_failure, bool resource_ok) {
+    CHECK(!lock_failure && resource_ok);
     delete this;
   }
 };

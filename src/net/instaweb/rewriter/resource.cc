@@ -127,7 +127,7 @@ void Resource::DetermineContentType() {
 void Resource::LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
                                AsyncCallback* callback,
                                MessageHandler* message_handler) {
-  callback->Done(Load(message_handler));
+  callback->Done(false /* lock_failure */, Load(message_handler));
 }
 
 Resource::AsyncCallback::~AsyncCallback() {
@@ -150,7 +150,7 @@ void Resource::LinkFallbackValue(HTTPValue* value) {
 void Resource::Freshen(FreshenCallback* callback, MessageHandler* handler) {
   // We don't need Freshining for data urls or output resources.
   if (callback != NULL) {
-    callback->Done(false);
+    callback->Done(false /* lock_failure */, false /* resource_ok */);
   }
 }
 

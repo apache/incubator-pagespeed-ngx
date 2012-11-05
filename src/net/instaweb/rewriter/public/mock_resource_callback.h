@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_MOCK_RESOURCE_CALLBACK_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_MOCK_RESOURCE_CALLBACK_H_
 
+#include "base/logging.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/basictypes.h"
 
@@ -30,8 +31,9 @@ class MockResourceCallback : public Resource::AsyncCallback {
       : Resource::AsyncCallback(resource) {}
   virtual ~MockResourceCallback();
 
-  virtual void Done(bool success) {
-    success_ = success;
+  virtual void Done(bool lock_failure, bool resource_ok) {
+    CHECK(!lock_failure);
+    success_ = resource_ok;
     done_ = true;
   }
 

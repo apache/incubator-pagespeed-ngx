@@ -153,7 +153,7 @@ class Resource : public RefCounted<Resource> {
     explicit AsyncCallback(const ResourcePtr& resource) : resource_(resource) {}
 
     virtual ~AsyncCallback();
-    virtual void Done(bool success) = 0;
+    virtual void Done(bool lock_ok, bool resource_ok) = 0;
 
     const ResourcePtr& resource() { return resource_; }
 
@@ -178,9 +178,9 @@ class Resource : public RefCounted<Resource> {
     // to be updated based on the response fetched while freshening.
     virtual InputInfo* input_info() { return NULL; }
 
-    // This is called with success = true only if the hash of the fetched
+    // This is called with resource_ok = true only if the hash of the fetched
     // response is the same as the hash in input_info()->input_content_hash().
-    virtual void Done(bool success) {
+    virtual void Done(bool lock_failure, bool resource_ok) {
       delete this;
     }
 

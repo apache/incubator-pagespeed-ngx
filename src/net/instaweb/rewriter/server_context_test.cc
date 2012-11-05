@@ -118,7 +118,8 @@ class VerifyContentsCallback : public Resource::AsyncCallback {
       contents_(contents),
       called_(false) {
   }
-  virtual void Done(bool success) {
+  virtual void Done(bool lock_failure, bool resource_ok) {
+    EXPECT_FALSE(lock_failure);
     EXPECT_EQ(0, contents_.compare(resource()->contents().as_string()));
     called_ = true;
   }

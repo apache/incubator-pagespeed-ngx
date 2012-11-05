@@ -288,6 +288,9 @@ class ServerContext {
   // when creation_lock is reset or destructed.
   NamedLock* MakeCreationLock(const GoogleString& name);
 
+  // Makes a lock used for fetching and optimizing an input resource.
+  NamedLock* MakeInputLock(const GoogleString& name);
+
   // Attempt to obtain a named lock without blocking.  Return true if we do so.
   bool TryLockForCreation(NamedLock* creation_lock);
 

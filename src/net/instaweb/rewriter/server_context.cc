@@ -543,13 +543,21 @@ ResourceManagerHttpCallback::~ResourceManagerHttpCallback() {
 void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
   ResourcePtr resource(resource_callback_->resource());
   MessageHandler* handler = server_context_->message_handler();
+
+  // Note, we pass lock_failure==false to the resource callbacks
+  // when we are taking action based on the cache.  We haven't locked,
+  // but we didn't fail-to-lock.  Resource callbacks need to know if
+  // the lock failed, because they will delete expired cache metadata
+  // if they have the lock, or if the lock was not needed, but they
+  // should not delete it if they fail to lock.
   switch (find_result) {
     case HTTPCache::kFound:
       resource->Link(http_value(), handler);
       resource->response_headers()->CopyFrom(*response_headers());
       resource->DetermineContentType();
       server_context_->RefreshIfImminentlyExpiring(resource.get(), handler);
-      resource_callback_->Done(true);
+      resource_callback_->Done(false /* lock_failure */,
+                               true /* resource_ok */);
       break;
     case HTTPCache::kRecentFetchFailed:
       // TODO(jmarantz): in this path, should we try to fetch again
@@ -562,7 +570,8 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
       // The "good" news is that if the admin is willing to crank up
       // logging to 'info' then http_cache.cc will log the
       // 'remembered' failure.
-      resource_callback_->Done(false);
+      resource_callback_->Done(false /* lock_failure */,
+                               false /* resource_ok */);
       break;
     case HTTPCache::kRecentFetchNotCacheable:
       switch (not_cacheable_policy_) {
@@ -571,11 +580,13 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
                                     resource_callback_, handler);
           break;
         case Resource::kReportFailureIfNotCacheable:
-          resource_callback_->Done(false);
+          resource_callback_->Done(false /* lock_failure */,
+                                   false /* resource_ok */);
           break;
         default:
           LOG(DFATAL) << "Unexpected not_cacheable_policy_!";
-          resource_callback_->Done(false);
+          resource_callback_->Done(false /* lock_failure */,
+                                   false /* resource_ok */);
           break;
       }
       break;
@@ -603,7 +614,7 @@ void ServerContext::ReadAsync(
   ResourcePtr resource = callback->resource();
   if (resource->loaded()) {
     RefreshIfImminentlyExpiring(resource.get(), message_handler_);
-    callback->Done(true);
+    callback->Done(false /* lock_failure */, true /* resource_ok */);
   } else if (resource->IsCacheableTypeOfResource()) {
     ResourceManagerHttpCallback* resource_manager_callback =
         new ResourceManagerHttpCallback(not_cacheable_policy, callback, this);
@@ -614,6 +625,13 @@ void ServerContext::ReadAsync(
 
 NamedLock* ServerContext::MakeCreationLock(const GoogleString& name) {
   const char kLockSuffix[] = ".outputlock";
+
+  GoogleString lock_name = StrCat(lock_hasher_.Hash(name), kLockSuffix);
+  return lock_manager_->CreateNamedLock(lock_name);
+}
+
+NamedLock* ServerContext::MakeInputLock(const GoogleString& name) {
+  const char kLockSuffix[] = ".lock";
 
   GoogleString lock_name = StrCat(lock_hasher_.Hash(name), kLockSuffix);
   return lock_manager_->CreateNamedLock(lock_name);
