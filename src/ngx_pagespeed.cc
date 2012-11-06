@@ -756,6 +756,29 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   // resources are included.  Pagespeed adds cache control headers for
   // resources instead of using the last modified header.
   ngx_http_clear_last_modified(r);
+
+  // Don't cache html.  See mod_instaweb:instaweb_fix_headers_filter.
+  // Based on ngx_http_add_cache_control.
+  if (r->headers_out.cache_control.elts == NULL) {
+    ngx_int_t rc = ngx_array_init(&r->headers_out.cache_control, r->pool,
+                                  1, sizeof(ngx_table_elt_t *));
+    if (rc != NGX_OK) {
+      return NGX_ERROR;
+    }
+  }
+  ngx_table_elt_t** cache_control_headers = static_cast<ngx_table_elt_t**>(
+      ngx_array_push(&r->headers_out.cache_control));
+  if (cache_control_headers == NULL) {
+    return NGX_ERROR;
+  }
+  cache_control_headers[0] = static_cast<ngx_table_elt_t*>(
+      ngx_list_push(&r->headers_out.headers));
+  if (cache_control_headers[0] == NULL) {
+    return NGX_ERROR;
+  }
+  cache_control_headers[0]->hash = 1;
+  ngx_str_set(&cache_control_headers[0]->key, "Cache-Control");
+  ngx_str_set(&cache_control_headers[0]->value, "max-age=0, no-cache");
   
   r->filter_need_in_memory = 1;
   

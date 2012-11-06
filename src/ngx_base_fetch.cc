@@ -18,9 +18,9 @@
 
 #include "ngx_base_fetch.h"
 #include "ngx_pagespeed.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/http/public/response_headers.h"
 
 namespace net_instaweb {
 
@@ -60,9 +60,7 @@ void NgxBaseFetch::PopulateHeaders() {
     response_headers()->Add(key, value);
   }
 
-  // For some reason content_type is not included in
-  // request_->headers_out.headers, which means I don't fully understand how
-  // headers_out works, but manually copying over content type works.
+  // content_type is not included in request_->headers_out.headers
   StringPiece content_type = ngx_http_pagespeed_str_to_string_piece(
       &request_->headers_out.content_type);
   response_headers()->Add(HttpAttributes::kContentType, content_type);
