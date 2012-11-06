@@ -32,7 +32,7 @@ class NgxUrlAsyncFetcher : public UrlPollableAsyncFetcher {
         int64 timeout_ms, MessageHandler *handler);
     NgxUrlAsyncFetcher(NgxUrlAsyncFetcher *parent, const char* proxy);
 
-    virtual ~NgxUrlAsyncFetcher();
+    ~NgxUrlAsyncFetcher();
 
     // create pool, add the total timeout timer
     int Init(); 
