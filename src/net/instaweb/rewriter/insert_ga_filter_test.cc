@@ -53,19 +53,22 @@ const char kHtmlInput[] =
 const char kHtmlOutputFormat[] =
     "<head><script type=\"text/javascript\">"
     "%s</script>\n<title>Something</title>\n"
+    "</head><body> Hello World!"
     "<script type=\"text/javascript\">%s</script>"
-    "</head><body> Hello World!</body>";
+    "</body>";
 
 
 GoogleString GenerateExpectedHtml(GoogleString domain_name,
                                   GoogleString furious_vars,
                                   GoogleString speed_tracking,
                                   GoogleString url_prefix) {
-  GoogleString furious_snippet = StringPrintf(kGAFuriousSnippet, kGaId,
-                                              domain_name.c_str(),
+  GoogleString furious_snippet = StringPrintf(kGAFuriousSnippet,
                                               speed_tracking.c_str(),
                                               furious_vars.c_str());
-  GoogleString analytics_js = StringPrintf(kGAJsSnippet, url_prefix.c_str());
+  GoogleString analytics_js = StringPrintf(kGAJsSnippet,
+                                           kGaId,
+                                           domain_name.c_str(),
+                                           url_prefix.c_str());
   GoogleString output = StringPrintf(kHtmlOutputFormat, furious_snippet.c_str(),
                                      analytics_js.c_str());
   return output;
@@ -116,8 +119,9 @@ TEST_F(InsertGAFilterTest, Furious) {
 
 const char kHtmlInputWithGASnippetFormat[] =
     "<head>\n<title>Something</title>\n"
+    "</head><body> Hello World!"
     "<script type=\"text/javascript\">%s</script>"
-    "</head><body> Hello World!</body>";
+    "</body>";
 
 TEST_F(InsertGAFilterTest, FuriousNoDouble) {
   NullMessageHandler handler;
@@ -135,17 +139,15 @@ TEST_F(InsertGAFilterTest, FuriousNoDouble) {
   rewrite_driver()->AddFilters();
 
   // Input already has a GA js snippet.
-  GoogleString set_account_js =
-      StringPrintf("_gaq.push(['_setAccount', '%s']);", kGaId);
-  GoogleString analytics_js = StrCat(set_account_js,
-      StringPrintf(kGAJsSnippet, "http://www"));
+  GoogleString analytics_js =
+      StringPrintf(kGAJsSnippet, kGaId, "test.com", "http://www");
   GoogleString input = StringPrintf(kHtmlInputWithGASnippetFormat,
                                      analytics_js.c_str());
   GoogleString variable_value = StringPrintf(
       "_gaq.push(['_setCustomVar', 1, 'FuriousState', '%s']);",
       options->ToExperimentString().c_str());
-  GoogleString furious_snippet = StringPrintf(kGAFuriousSnippet, kGaId,
-                                              "test.com", kGASpeedTracking,
+  GoogleString furious_snippet = StringPrintf(kGAFuriousSnippet,
+                                              kGASpeedTracking,
                                               variable_value.c_str());
   // The output should still have the original GA snippet as well as an inserted
   // Furious snippet.
@@ -155,22 +157,25 @@ TEST_F(InsertGAFilterTest, FuriousNoDouble) {
   ValidateExpected("variable_added", input, output);
 }
 
-TEST_F(InsertGAFilterTest, ManyHeads) {
+TEST_F(InsertGAFilterTest, ManyHeadsAndBodies) {
   // Make sure we only add the GA snippet in one place.
   rewrite_driver()->AddFilters();
-  const char* kHeadsFmt = "<head>%s</head><head></head><head></head></head>";
-  GoogleString input = StringPrintf(kHeadsFmt, "");
-  GoogleString furious_snippet = StringPrintf(kGAFuriousSnippet, kGaId,
-                                              "test.com", kGASpeedTracking,
+  const char* kHeadsFmt = "<head>%s</head><head></head><head></head></head>"
+      "<body>%s</body><body></body>";
+  GoogleString input = StringPrintf(kHeadsFmt, "", "");
+  GoogleString furious_snippet = StringPrintf(kGAFuriousSnippet,
+                                              kGASpeedTracking,
                                               "");
-  GoogleString analytics_js = StringPrintf(kGAJsSnippet, "http://www");
+  GoogleString analytics_js = StringPrintf(kGAJsSnippet, kGaId, "test.com",
+                                           "http://www");
 
   GoogleString output = StringPrintf(kHeadsFmt,
                                      StrCat("<script type=\"text/javascript\">",
-                                            furious_snippet, "</script>",
-                                            "<script type=\"text/javascript\">",
+                                            furious_snippet,
+                                            "</script>").c_str(),
+                                     StrCat("<script type=\"text/javascript\">",
                                             analytics_js, "</script>").c_str());
-  ValidateExpected("many_heads", input, output);
+  ValidateExpected("many_heads_and_bodies", input, output);
 }
 
 }  // namespace

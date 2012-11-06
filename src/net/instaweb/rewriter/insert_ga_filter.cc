@@ -46,15 +46,15 @@ namespace net_instaweb {
 // Google Analytics snippet for setting furious-experiment related variables.
 extern const char kGAFuriousSnippet[] =
     "var _gaq = _gaq || [];"
-    "_gaq.push(['_setAccount', '%s']);"  // %s is the GA account number.
-    "_gaq.push(['_setDomainName', '%s']);"  // %s is the domain name
-    "_gaq.push(['_setAllowLinker', true]);"
     "%s"  // %s is the optional snippet to increase site speed tracking.
     "%s";  // %s is the Furious Snippet for experiments.
 
 // Google Analytics async snippet along with the _trackPageView call.
 extern const char kGAJsSnippet[] =
     "var _gaq = _gaq || [];"
+    "_gaq.push(['_setAccount', '%s']);"  // %s is the GA account number.
+    "_gaq.push(['_setDomainName', '%s']);"  // %s is the domain name
+    "_gaq.push(['_setAllowLinker', true]);"
     "_gaq.push(['_trackPageview']);"
     "(function() {"
     "var ga = document.createElement('script'); ga.type = 'text/javascript';"
@@ -114,8 +114,6 @@ void InsertGAFilter::StartElementImpl(HtmlElement* element) {
   if (!added_furious_snippet_) {
     if (element->keyword() == HtmlName::kHead) {
       added_furious_snippet_ = true;
-      // Domain for this html page.
-      GoogleString domain = driver_->google_url().Host().as_string();
       // This will be empty if we're not running furious.
       GoogleString furious = ConstructFuriousSnippet();
       // Increase the percentage of traffic for which we track page load time.
@@ -124,7 +122,7 @@ void InsertGAFilter::StartElementImpl(HtmlElement* element) {
         speed_snippet = kGASpeedTracking;
       }
       GoogleString snippet_text = StringPrintf(
-          kGAFuriousSnippet, ga_id_.c_str(), domain.c_str(),
+          kGAFuriousSnippet,
           speed_snippet.c_str(), furious.c_str());
       AddScriptNode(element, snippet_text, true);
     }
@@ -139,6 +137,8 @@ void InsertGAFilter::StartElementImpl(HtmlElement* element) {
 // This may not be exact, but should be a pretty good guess.
 // TODO(nforman): Find out if there is a canonical way of determining
 // if a script is a GA snippet.
+// TODO(anupama): If the existing GA snippet does not have a _trackPagview
+// call, we may not get meaningful results. See if this case needs to be fixed.
 bool InsertGAFilter::FoundSnippetInBuffer() const {
   return
       (buffer_.find(ga_id_) != GoogleString::npos &&
@@ -191,13 +191,18 @@ GoogleString InsertGAFilter::MakeFullFuriousSnippet() const {
   return furious;
 }
 
-// Handle the end of a head tag.
+// Handle the end of a body tag.
 // If we've already inserted any GA snippet or if we found a GA
 // snippet in the original page, don't do anything.
 // If we haven't found anything, and haven't inserted anything yet,
 // insert the GA js snippet.
-void InsertGAFilter::HandleEndHead(HtmlElement* head) {
-  // There is a chance (e.g. if there are two heads), that we have
+// Caveat: Analytics js should ideally be placed in <head> for accurate
+// collection of data (e.g. pageviews etc.). We place it at the end of the
+// <body> tag so that we won't add duplicate analytics js code for any page.
+// For pages which don't already have analytics js, this might result in some
+// data being lost.
+void InsertGAFilter::HandleEndBody(HtmlElement* body) {
+  // There is a chance (e.g. if there are two body tags), that we have
   // already inserted the snippet.  In that case, don't do it again.
   if (added_analytics_js_ || found_snippet_) {
     return;
@@ -206,12 +211,15 @@ void InsertGAFilter::HandleEndHead(HtmlElement* head) {
   // No snippets have been found, and we haven't added any snippets
   // yet, so add one now.
 
+  // Domain for this html page.
+  GoogleString domain = driver_->google_url().Host().as_string();
   // HTTP vs. HTTPS - these are usually determined on the fly by js
   // in the ga snippet, but it's faster to determine it here.
   const char* kUrlPrefix = driver_->google_url().SchemeIs("https") ?
       "https://ssl" : "http://www";
-  GoogleString js_text = StringPrintf(kGAJsSnippet, kUrlPrefix);
-  AddScriptNode(head, js_text, false);
+  GoogleString js_text = StringPrintf(kGAJsSnippet, ga_id_.c_str(),
+                                      domain.c_str(), kUrlPrefix);
+  AddScriptNode(body, js_text, false);
   added_analytics_js_ = true;
   inserted_ga_snippets_count_->Add(1);
   return;
@@ -219,7 +227,7 @@ void InsertGAFilter::HandleEndHead(HtmlElement* head) {
 
 // Handle the end of a script tag.
 // Look for a GA snippet in the script and record the findings so that we can
-// optionally add the analytics js at the end of the head if no GA snippet is
+// optionally add the analytics js at the end of the body if no GA snippet is
 // present on the page.
 void InsertGAFilter::HandleEndScript(HtmlElement* script) {
   // There shouldn't be any "nested" script elements, but just
@@ -228,10 +236,8 @@ void InsertGAFilter::HandleEndScript(HtmlElement* script) {
   // The buffer should also be empty in that case.
   if (script == script_element_ && !found_snippet_) {
     if (FoundSnippetInBuffer()) {
-      // TODO(anupama): Handle the case where the existing analytics snippet is
-      // present in the <body> section, by storing this information in pcache.
-      // Currently, we will only detect existing analytics snippet in the first
-      // <head> section.
+      // TODO(anupama): Handle the case where an analytics snippet is
+      // present on the page, by storing this information in pcache.
       found_snippet_ = true;
     }
     script_element_ = NULL;
@@ -244,8 +250,8 @@ void InsertGAFilter::EndElementImpl(HtmlElement* element) {
     case HtmlName::kScript:
       HandleEndScript(element);
       break;
-    case HtmlName::kHead:
-      HandleEndHead(element);
+    case HtmlName::kBody:
+      HandleEndBody(element);
       break;
     default:
       break;

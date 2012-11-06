@@ -96,9 +96,6 @@ class CachePutFetch : public SharedAsyncFetch {
       saved_headers_.CopyFrom(*headers);
     }
 
-    // Set is_original_resource_cacheable.
-    base_fetch()->logging_info()->set_is_original_resource_cacheable(
-        cacheable_);
     base_fetch()->HeadersComplete();
   }
 
@@ -131,6 +128,9 @@ class CachePutFetch : public SharedAsyncFetch {
       }
       // Finalize the headers.
       cache_value_writer_.SetHeaders(&saved_headers_);
+    } else {
+      // Set is_original_resource_cacheable.
+      base_fetch()->logging_info()->set_is_original_resource_cacheable(false);
     }
 
     // Finish fetch.
@@ -351,6 +351,8 @@ void CacheUrlAsyncFetcher::Fetch(
   // TODO(mmohabey): If the url is in cache, then use it for serving the head
   // request.
   if (base_fetch->request_headers()->method() != RequestHeaders::kGet) {
+    // Set is_original_resource_cacheable.
+    base_fetch->logging_info()->set_is_original_resource_cacheable(false);
     // Without this if there is URL which responds both on GET
     // and POST. If GET comes first, and POST next then the cached
     // entry will be reused. POST is allowed to invalidate GET response

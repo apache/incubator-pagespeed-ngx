@@ -63,8 +63,8 @@ class InsertGAFilter : public CommonFilter {
   // Construct a stand-alone GA snippet to send back Furious info.
   GoogleString MakeFullFuriousSnippet() const;
 
-  // If appropriate, insert the GA snippet at the end of the head element.
-  void HandleEndHead(HtmlElement* head);
+  // If appropriate, insert the GA snippet at the end of the body element.
+  void HandleEndBody(HtmlElement* body);
 
   // Adds a script node with text as its contents either as a child of the
   // current_element or immediately after current element.
