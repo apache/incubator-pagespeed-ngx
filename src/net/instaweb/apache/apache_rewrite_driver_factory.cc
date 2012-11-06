@@ -46,6 +46,7 @@
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_writer.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/rate_controller.h"
 #include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -780,7 +781,7 @@ void ApacheRewriteDriverFactory::Initialize() {
 void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
   RewriteDriverFactory::InitStats(statistics);
   SerfUrlAsyncFetcher::InitStats(statistics);
-  RateControllingUrlAsyncFetcher::InitStats(statistics);
+  RateController::InitStats(statistics);
   ApacheResourceManager::InitStats(statistics);
   AprMemCache::InitStats(statistics);
   CacheStats::InitStats(ApacheCache::kFileCache, statistics);

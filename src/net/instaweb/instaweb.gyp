@@ -559,6 +559,7 @@
         'http/inflating_fetch.cc',
         'http/log_record.cc',
         'http/meta_data.cc',
+        'http/rate_controller.cc',
         'http/rate_controlling_url_async_fetcher.cc',
         'http/sync_fetcher_adapter.cc',
         'http/sync_fetcher_adapter_callback.cc',
