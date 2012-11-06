@@ -32,6 +32,9 @@ vars = {
   "libpagespeed_revision": "@head",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
 
+  "modspdy_src": "http://mod-spdy.googlecode.com/svn/trunk/src",
+  "modspdy_revision": "@387",
+
   "serf_src": "http://serf.googlecode.com/svn/tags/1.1.0",
   "serf_revision": "@head",
 
@@ -197,6 +200,8 @@ deps = {
 
   # Serf
   "src/third_party/serf/src": Var("serf_src") + Var("serf_revision"),
+
+  "src/third_party/mod_spdy/src": Var("modspdy_src") + Var("modspdy_revision"),
 
   # We check libwebp out of Chromium repo to get the .gyp file.
   "src/third_party/libwebp":
