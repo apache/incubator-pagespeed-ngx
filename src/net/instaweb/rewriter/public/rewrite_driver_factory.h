@@ -349,12 +349,16 @@ class RewriteDriverFactory {
   // filename_prefix()
   virtual StringPiece LockFilePrefix();
 
+  // Initializes the StaticJavascriptManager.
+  virtual void InitStaticJavascriptManager(
+      StaticJavascriptManager* static_js_manager) {}
+
+ private:
   // Creates a StaticJavascriptManager instance. Default implementation creates
   // an instance that disables serving of filter javascript via gstatic
   // (gstatic.com is the domain google uses for serving static content).
-  virtual StaticJavascriptManager* DefaultStaticJavascriptManager();
+  StaticJavascriptManager* DefaultStaticJavascriptManager();
 
- private:
   void SetupSlurpDirectories();
   void Init();  // helper-method for constructors.
 

@@ -41,6 +41,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -265,7 +266,7 @@ bool handle_as_resource(ApacheResourceManager* manager,
 void write_handler_response(const StringPiece& output,
                             request_rec* request,
                             ContentType content_type,
-                            const char* cache_control) {
+                            const StringPiece& cache_control) {
   ResponseHeaders response_headers;
   response_headers.SetStatusAndReason(HttpStatus::kOK);
   response_headers.set_major_version(1);
@@ -375,6 +376,27 @@ void WritePre(StringPiece str, Writer* writer, MessageHandler* handler) {
   writer->Write("<pre>\n", handler);
   writer->Write(str, handler);
   writer->Write("</pre>\n", handler);
+}
+
+apr_status_t instaweb_static_handler(request_rec* request,
+                                     ApacheResourceManager* server_context) {
+  StaticJavascriptManager* static_javascript_manager =
+      server_context->static_javascript_manager();
+  StringPiece request_uri_path = request->parsed_uri.path;
+  // Strip out the common prefix url before sending to StaticJavascriptManager.
+  StringPiece file_name =
+      request_uri_path.substr(
+          strlen(ApacheRewriteDriverFactory::kStaticJavaScriptPrefix));
+  StringPiece file_contents;
+  StringPiece cache_header;
+  if (static_javascript_manager->GetJsSnippet(file_name, &file_contents,
+                                              &cache_header)) {
+    write_handler_response(file_contents, request, kContentTypeJavascript,
+                           cache_header);
+  } else {
+    instaweb_404_handler(request->parsed_uri.path, request);
+  }
+  return OK;
 }
 
 apr_status_t instaweb_console_handler(
@@ -540,26 +562,28 @@ apr_status_t instaweb_handler(request_rec* request) {
   ApacheConfig* config = manager->config();
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   ApacheMessageHandler* message_handler = factory->apache_message_handler();
+  StringPiece request_handler_str = request->handler;
+  StringPiece request_uri_path = request->parsed_uri.path;
 
   log_resource_referral(request, factory);
 
   // mod_pagespeed_statistics or mod_pagespeed_global_statistics.
-  if (strcmp(request->handler, kStatisticsHandler) == 0 ||
-      strcmp(request->handler, kGlobalStatisticsHandler) == 0) {
+  if (request_handler_str == kStatisticsHandler ||
+      request_handler_str == kGlobalStatisticsHandler) {
     ret = instaweb_statistics_handler(request, manager, factory,
                                       message_handler);
 
-  } else if (strcmp(request->handler, kRefererStatisticsHandler) == 0) {
+  } else if (request_handler_str == kRefererStatisticsHandler) {
     GoogleString output;
     StringWriter writer(&output);
     factory->DumpRefererStatistics(&writer);
     write_handler_response(output, request);
     ret = OK;
 
-  } else if (strcmp(request->handler, kConsoleHandler) == 0) {
+  } else if (request_handler_str == kConsoleHandler) {
     ret = instaweb_console_handler(request, config, message_handler);
 
-  } else if (strcmp(request->handler, kMessageHandler) == 0) {
+  } else if (request_handler_str == kMessageHandler) {
     // Request for page /mod_pagespeed_message.
     GoogleString output;
     StringWriter writer(&output);
@@ -574,11 +598,11 @@ apr_status_t instaweb_handler(request_rec* request) {
     write_handler_response(output, request);
     ret = OK;
 
-  } else if (strcmp(request->handler, kBeaconHandler) == 0) {
+  } else if (request_handler_str == kBeaconHandler) {
     manager->HandleBeacon(request->unparsed_uri);
     ret = HTTP_NO_CONTENT;
 
-  } else if (strcmp(request->handler, kLogRequestHeadersHandler) == 0) {
+  } else if (request_handler_str == kLogRequestHeadersHandler) {
     // For testing ModPagespeedCustomFetchHeader.
     GoogleString output;
     StringWriter writer(&output);
@@ -588,6 +612,10 @@ apr_status_t instaweb_handler(request_rec* request) {
 
     write_handler_response(output, request, kContentTypeJavascript, "public");
     ret = OK;
+
+  } else if (request_uri_path.starts_with(
+      ApacheRewriteDriverFactory::kStaticJavaScriptPrefix)) {
+    ret = instaweb_static_handler(request, manager);
 
   } else if (url != NULL) {
     // Only handle GET request

@@ -27,6 +27,8 @@ if [ -z $APACHE_DOC_ROOT ]; then
   APACHE_DOC_ROOT=/usr/local/apache2/htdocs/
 fi
 
+PSA_JS_LIBRARY_URL_PREFIX="mod_pagespeed_static"
+
 # Run General system tests.
 this_dir=$(dirname $0)
 source "$this_dir/system_test.sh" || exit 1

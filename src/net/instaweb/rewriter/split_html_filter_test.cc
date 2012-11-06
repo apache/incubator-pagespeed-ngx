@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
@@ -285,13 +286,16 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyDisabled) {
 TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpaths) {
   options_->ForceEnableFilter(RewriteOptions::kLazyloadImages);
   rewrite_driver_->set_is_lazyload_script_flushed(true);
-  GoogleString defer_js = JsDeferDisabledFilter::GetDeferJsSnippet(
-      options_, rewrite_driver_->server_context()->static_javascript_manager());
+  StaticJavascriptManager* js_manager =
+      rewrite_driver_->server_context()->static_javascript_manager();
   Parse("split_with_lazyload", kHtmlInputForLazyload);
-  EXPECT_EQ(
-      StrCat("<html><head>"
-          "<script type=\"text/javascript\">", defer_js, "</script>",
-          "</head><body></body></html>"), output_);
+  EXPECT_EQ(StrCat("<html><head>"
+                   "<script type=\"text/javascript\" src=\"",
+                   js_manager->GetDeferJsUrl(options_),
+                   "\"></script><script type=\"text/javascript\">",
+                   JsDeferDisabledFilter::kSuffix,
+                   "</script>",
+                   "</head><body></body></html>"), output_);
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithLazyLoad) {

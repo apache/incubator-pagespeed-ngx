@@ -79,6 +79,7 @@ HTTPS_EXAMPLE_ROOT=https://$HTTPS_HOST/mod_pagespeed_example
 
 # These are the root URLs for rewritten resources; by default, no change.
 REWRITTEN_ROOT=${REWRITTEN_ROOT:-$EXAMPLE_ROOT}
+PROXY_DOMAIN=${PROXY_DOMAIN:-$HOSTNAME}
 
 # Setup wget proxy information
 export http_proxy=$3

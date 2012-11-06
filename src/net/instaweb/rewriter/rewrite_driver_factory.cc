@@ -254,6 +254,7 @@ UserAgentMatcher* RewriteDriverFactory::user_agent_matcher() {
 StaticJavascriptManager* RewriteDriverFactory::static_javascript_manager() {
   if (static_javascript_manager_ == NULL) {
     static_javascript_manager_.reset(DefaultStaticJavascriptManager());
+    InitStaticJavascriptManager(static_javascript_manager_.get());
   }
   return static_javascript_manager_.get();
 }
@@ -294,7 +295,7 @@ UserAgentMatcher* RewriteDriverFactory::DefaultUserAgentMatcher() {
 
 StaticJavascriptManager*
     RewriteDriverFactory::DefaultStaticJavascriptManager() {
-  return new StaticJavascriptManager(url_namer(), false, "");
+  return new StaticJavascriptManager(url_namer(), hasher(), message_handler());
 }
 
 CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {

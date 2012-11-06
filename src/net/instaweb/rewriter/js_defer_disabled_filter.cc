@@ -85,14 +85,26 @@ void JsDeferDisabledFilter::EndElement(HtmlElement* element) {
 
 void JsDeferDisabledFilter::InsertJsDeferCode(HtmlElement* element) {
   if (!rewrite_driver_->is_defer_javascript_script_flushed()) {
+    StaticJavascriptManager* static_js_manager =
+        rewrite_driver_->server_context()->static_javascript_manager();
+    const RewriteOptions* options = rewrite_driver_->options();
+    // Insert script node with deferJs code as outlined.
+    HtmlElement* defer_js_url_node =
+        rewrite_driver_->NewElement(element, HtmlName::kScript);
+    rewrite_driver_->AddAttribute(defer_js_url_node, HtmlName::kType,
+                                  "text/javascript");
+    rewrite_driver_->AddAttribute(defer_js_url_node, HtmlName::kSrc,
+                                  static_js_manager->GetDeferJsUrl(options));
+    rewrite_driver_->AppendChild(element, defer_js_url_node);
+
+    // Insert additional snippet needed for deferJs instantiation.
     HtmlElement* script_node =
         rewrite_driver_->NewElement(element, HtmlName::kScript);
     rewrite_driver_->AppendChild(element, script_node);
-    StaticJavascriptManager* static_js_manager =
-        rewrite_driver_->server_context()->static_javascript_manager();
-    GoogleString defer_js = GetDeferJsSnippet(
-        rewrite_driver_->options(), static_js_manager);
-    static_js_manager->AddJsToElement(defer_js, script_node, rewrite_driver_);
+
+    static_js_manager->AddJsToElement(JsDeferDisabledFilter::kSuffix,
+                                      script_node, rewrite_driver_);
+    rewrite_driver_->set_is_defer_javascript_script_flushed(true);
   }
   script_written_ = true;
 }
@@ -109,15 +121,6 @@ void JsDeferDisabledFilter::EndDocument() {
   rewrite_driver_->UpdatePropertyValueInDomCohort(
       kIsJsDeferScriptInsertedPropertyName,
       script_written_ ? "1" : "0");
-}
-
-GoogleString JsDeferDisabledFilter::GetDeferJsSnippet(
-      const RewriteOptions* options,
-      StaticJavascriptManager* static_js_manager) {
-  StringPiece defer_js_script =
-      static_js_manager->GetJsSnippet(
-          StaticJavascriptManager::kDeferJs, options);
-  return StrCat(defer_js_script, JsDeferDisabledFilter::kSuffix);
 }
 
 }  // namespace net_instaweb

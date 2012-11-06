@@ -84,10 +84,10 @@ namespace net_instaweb {
 // Reproduce MPS issue 488 emulating memcached with LRUCache. We use the
 // 2 server contexts to emulate different servers, each with their own
 // filesystem and with a shared http/metadata cache.
-class SharedCacheTest : public RewriteContextTest {
+class SharedCacheTest : public RewriteContextTestBase {
  protected:
   virtual void SetUp() {
-    RewriteContextTest::SetUp();
+    RewriteContextTestBase::SetUp();
 
     options()->file_load_policy()->Associate(kTestDomain, "/test/");
     other_options()->file_load_policy()->Associate(kTestDomain, "/test/");

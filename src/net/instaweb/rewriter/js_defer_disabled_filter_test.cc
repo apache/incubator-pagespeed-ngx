@@ -24,11 +24,15 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
+const char * kDeferJsCodeNonGStatic = "<script type=\"text/javascript\" "
+    "src=\"/psajs/js_defer.0.js\"></script>";
 
 class JsDeferDisabledFilterTest : public RewriteTestBase {
  protected:
@@ -54,9 +58,6 @@ class JsDeferDisabledFilterTest : public RewriteTestBase {
 
 TEST_F(JsDeferDisabledFilterTest, DeferScript) {
   InitJsDeferDisabledFilter(false);
-  StringPiece defer_js_code =
-      server_context()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kDeferJs, options());
   ValidateExpected("defer_script",
       "<head>"
       "<script type='text/psajs' "
@@ -68,9 +69,9 @@ TEST_F(JsDeferDisabledFilterTest, DeferScript) {
              "<script type='text/psajs' "
              "src='http://www.google.com/javascript/ajax_apis.js'></script>"
              "<script type='text/psajs'"
-             "> func();</script>"
+             "> func();</script>",
+             kDeferJsCodeNonGStatic,
              "<script type=\"text/javascript\">",
-             defer_js_code,
              JsDeferDisabledFilter::kSuffix,
              "</script></head><body>Hello, world!"
              "</body>"));
@@ -78,9 +79,6 @@ TEST_F(JsDeferDisabledFilterTest, DeferScript) {
 
 TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
   InitJsDeferDisabledFilter(false);
-  StringPiece defer_js_code =
-      server_context()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kDeferJs, options());
   ValidateExpected("defer_script_multi_body",
       "<head>"
       "<script type='text/psajs' "
@@ -91,9 +89,9 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
       StrCat("<head>"
              "<script type='text/psajs' "
              "src='http://www.google.com/javascript/ajax_apis.js'></script>"
-             "<script type='text/psajs'> func(); </script>"
+             "<script type='text/psajs'> func(); </script>",
+             kDeferJsCodeNonGStatic,
              "<script type=\"text/javascript\">",
-             defer_js_code,
              JsDeferDisabledFilter::kSuffix,
              "</script></head><body>Hello, world!"
              "</body><body><script type='text/psajs'> func2(); "
@@ -102,15 +100,12 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
 
 TEST_F(JsDeferDisabledFilterTest, DeferScriptNoHead) {
   InitJsDeferDisabledFilter(false);
-  StringPiece defer_js_code =
-      server_context()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kDeferJs, options());
   ValidateExpected("defer_script_no_head",
       "<body>Hello, world!</body><body>"
       "<script type='text/psajs'> func2(); </script></body>",
-      StrCat("<head>"
+      StrCat("<head>",
+             kDeferJsCodeNonGStatic,
              "<script type=\"text/javascript\">",
-             defer_js_code,
              JsDeferDisabledFilter::kSuffix,
              "</script></head><body>Hello, world!"
              "</body><body><script type='text/psajs'> func2(); "
@@ -121,8 +116,8 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptOptimized) {
   InitJsDeferDisabledFilter(false);
   Parse("optimized",
         "<body><script type='text/psajs' src='foo.js'></script></body>");
-  EXPECT_EQ(GoogleString::npos, output_buffer_.find("/*"))
-      << "There should be no comments in the optimized code";
+  EXPECT_NE(GoogleString::npos, output_buffer_.find("js_defer.0.js"))
+      << "js_defer.js should have been included";
 }
 
 TEST_F(JsDeferDisabledFilterTest, DeferScriptDebug) {
@@ -130,8 +125,8 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptDebug) {
   Parse("optimized",
         "<head></head><body><script type='text/psajs' src='foo.js'>"
         "</script></body>");
-  EXPECT_NE(GoogleString::npos, output_buffer_.find("/*"))
-      << "There should still be some comments in the debug code";
+  EXPECT_NE(GoogleString::npos, output_buffer_.find("js_defer_debug.0.js"))
+      << "js_defer_debug.js should have been included";
 }
 
 TEST_F(JsDeferDisabledFilterTest, InvalidUserAgent) {
@@ -145,6 +140,46 @@ TEST_F(JsDeferDisabledFilterTest, InvalidUserAgent) {
       "</head><body>Hello, world!</body>";
 
   ValidateNoChanges("defer_script", script);
+}
+
+TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromGStatic) {
+  UrlNamer url_namer;
+  StaticJavascriptManager js_manager(&url_namer, server_context()->hasher(),
+                                     server_context()->message_handler());
+  js_manager.set_serve_js_from_gstatic(true);
+  js_manager.set_gstatic_defer_js_hash("1");
+
+  server_context()->set_static_javascript_manager(&js_manager);
+
+  InitJsDeferDisabledFilter(false);
+  ValidateExpected(
+      "defer_script_url",
+      "<body>Hello, world!</body><body>"
+      "<script type='text/psajs'> func2(); </script></body>",
+      StrCat("<head>"
+             "<script type=\"text/javascript\" "
+             "src=\"http://www.gstatic.com/psa/static/1-js_defer.js\"></script>"
+             "<script type=\"text/javascript\">",
+             JsDeferDisabledFilter::kSuffix,
+             "</script></head><body>Hello, world!"
+             "</body><body><script type='text/psajs'> func2(); "
+             "</script></body>"));
+}
+
+TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromNonGStatic) {
+  InitJsDeferDisabledFilter(false);
+
+  ValidateExpected(
+      "defer_script_url",
+      "<body>Hello, world!</body><body>"
+      "<script type='text/psajs'> func2(); </script></body>",
+      StrCat("<head>",
+             kDeferJsCodeNonGStatic,
+             "<script type=\"text/javascript\">",
+             JsDeferDisabledFilter::kSuffix,
+             "</script></head><body>Hello, world!"
+             "</body><body><script type='text/psajs'> func2(); "
+             "</script></body>"));
 }
 
 }  // namespace net_instaweb

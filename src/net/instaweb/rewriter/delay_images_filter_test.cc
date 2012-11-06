@@ -50,6 +50,7 @@ const char kHeadHtmlWithDeferJsTemplate[] =
     "<head><script type=\"text/javascript\" pagespeed_no_defer=\"\">"
     "%s"
     "</script>"
+    "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>"
     "<script type=\"text/javascript\">"
     "%s"
     "</script>"
@@ -142,8 +143,7 @@ class DelayImagesFilterTest : public RewriteTestBase {
   }
 
   GoogleString GetDeferJsCode() {
-    return GetJsCode(StaticJavascriptManager::kDeferJs,
-                     JsDeferDisabledFilter::kSuffix);
+    return JsDeferDisabledFilter::kSuffix;
   }
 
   GoogleString GetDelayImagesCode() {

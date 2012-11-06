@@ -52,6 +52,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/split_html_filter.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -311,7 +312,7 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     "window.mod_pagespeed_num_resources_prefetched = 3</script>"
     "<script type=\"text/javascript\">%s</script>"
     "%s"
-    "<script type=\"text/javascript\">%s</script>"
+    "%s"
     "</head><head>%s"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
@@ -1187,6 +1188,16 @@ class ProxyInterfaceTest : public RewriteTestBase {
                                    insert_dns_prefetch, false, true);
   }
 
+  GoogleString GetDeferJsCode() {
+    return StrCat("<script src=\"",
+                  server_context()->static_javascript_manager()->GetDeferJsUrl(
+                      options_),
+                  "\" type=\"text/javascript\"></script>"
+                  "<script type=\"text/javascript\">",
+                  JsDeferDisabledFilter::kSuffix,
+                  "</script>");
+  }
+
   GoogleString FlushEarlyRewrittenHtml(
       UserAgentMatcher::PrefetchMechanism value,
       bool defer_js_enabled, bool insert_dns_prefetch,
@@ -1227,9 +1238,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
           StrCat("<script type=\"text/javascript\">",
                  JsDisableFilter::GetJsDisableScriptSnippet(options_),
                  "</script>").c_str(),
-          JsDeferDisabledFilter::GetDeferJsSnippet(
-              options_,
-              server_context()->static_javascript_manager()).c_str(),
+          GetDeferJsCode().c_str(),
           cookie_script.data(),
           rewritten_css_url_1.data(), rewritten_css_url_2.data(),
           rewritten_js_url_1.data(), rewritten_js_url_2.data(),

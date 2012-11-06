@@ -55,9 +55,6 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
   // JsDeferDisableFilter will be no op for the request if ShouldApply returns
   // false.
   static bool ShouldApply(RewriteDriver* driver);
-  static GoogleString GetDeferJsSnippet(
-      const RewriteOptions* options,
-      StaticJavascriptManager* static_js_manager);
 
  private:
   void InsertJsDeferCode(HtmlElement* element);

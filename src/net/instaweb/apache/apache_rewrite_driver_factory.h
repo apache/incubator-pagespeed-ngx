@@ -67,6 +67,7 @@ class Writer;
 class ApacheRewriteDriverFactory : public RewriteDriverFactory {
  public:
   static const char kMemcached[];
+  static const char kStaticJavaScriptPrefix[];
 
   ApacheRewriteDriverFactory(server_rec* server, const StringPiece& version);
   virtual ~ApacheRewriteDriverFactory();
@@ -317,6 +318,10 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // Release all the resources. It also calls the base class ShutDown to release
   // the base class resources.
   virtual void ShutDown();
+
+  // Initializes the StaticJavascriptManager.
+  virtual void InitStaticJavascriptManager(
+      StaticJavascriptManager* static_js_manager);
 
  private:
   // Updates num_rewrite_threads_ and num_expensive_rewrite_threads_

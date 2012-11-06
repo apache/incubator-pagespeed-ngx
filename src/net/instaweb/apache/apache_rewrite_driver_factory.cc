@@ -56,6 +56,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/async_cache.h"
 #include "net/instaweb/util/public/cache_batcher.h"
@@ -94,6 +95,8 @@ const size_t kRefererStatisticsAverageUrlLength = 64;
 }  // namespace
 
 const char ApacheRewriteDriverFactory::kMemcached[] = "memcached";
+const char ApacheRewriteDriverFactory::kStaticJavaScriptPrefix[] =
+    "/mod_pagespeed_static/";
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     server_rec* server, const StringPiece& version)
@@ -349,6 +352,11 @@ void ApacheRewriteDriverFactory::SetupCaches(
   if (pcache->GetCohort(BeaconCriticalImagesFinder::kBeaconCohort) == NULL) {
     pcache->AddCohort(BeaconCriticalImagesFinder::kBeaconCohort);
   }
+}
+
+void ApacheRewriteDriverFactory::InitStaticJavascriptManager(
+    StaticJavascriptManager* static_js_manager) {
+  static_js_manager->set_library_url_prefix(kStaticJavaScriptPrefix);
 }
 
 NamedLockManager* ApacheRewriteDriverFactory::DefaultLockManager() {

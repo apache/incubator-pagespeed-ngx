@@ -41,6 +41,10 @@ class StaticJavascriptManagerTest : public RewriteTestBase {
  protected:
   StaticJavascriptManagerTest() {
     url_namer_.set_proxy_domain("http://proxy-domain");
+    manager_.reset(
+        new StaticJavascriptManager(&url_namer_,
+                                    server_context()->hasher(),
+                                    server_context()->message_handler()));
   }
 
   virtual void SetUp() {
@@ -68,50 +72,74 @@ class StaticJavascriptManagerTest : public RewriteTestBase {
     DISALLOW_COPY_AND_ASSIGN(AddStaticJsBeforeBr);
   };
 
+  scoped_ptr<StaticJavascriptManager> manager_;
   UrlNamer url_namer_;
 };
 
 TEST_F(StaticJavascriptManagerTest, TestBlinkHandler) {
-  StaticJavascriptManager manager(&url_namer_, false, "");
   const char blink_url[] = "http://proxy-domain/psajs/blink.js";
-  EXPECT_STREQ(blink_url, manager.GetBlinkJsUrl(options_));
+  EXPECT_STREQ(blink_url, manager_->GetBlinkJsUrl(options_));
 }
 
 TEST_F(StaticJavascriptManagerTest, TestBlinkGstatic) {
-  StaticJavascriptManager manager(&url_namer_, true, "1");
-  const char blink_url[] = "http://www.gstatic.com/psa/static/1-blink.js";
-  EXPECT_STREQ(blink_url, manager.GetBlinkJsUrl(options_));
+  manager_->set_serve_js_from_gstatic(true);
+  manager_->set_gstatic_blink_hash("1");
+  const char blink_url[] =
+      "http://www.gstatic.com/psa/static/1-blink.js";
+  EXPECT_STREQ(blink_url, manager_->GetBlinkJsUrl(options_));
 }
 
 TEST_F(StaticJavascriptManagerTest, TestBlinkDebug) {
-  StaticJavascriptManager manager(&url_namer_, true, "1");
+  manager_->set_serve_js_from_gstatic(true);
+  manager_->set_gstatic_blink_hash("1");
   options_->EnableFilter(RewriteOptions::kDebug);
   const char blink_url[] = "http://proxy-domain/psajs/blink.js";
-  EXPECT_STREQ(blink_url, manager.GetBlinkJsUrl(options_));
+  EXPECT_STREQ(blink_url, manager_->GetBlinkJsUrl(options_));
+}
+
+TEST_F(StaticJavascriptManagerTest, TestDeferJsGstatic) {
+  manager_->set_serve_js_from_gstatic(true);
+  manager_->set_gstatic_defer_js_hash("1");
+  const char defer_js_url[] =
+      "http://www.gstatic.com/psa/static/1-js_defer.js";
+  EXPECT_STREQ(defer_js_url, manager_->GetDeferJsUrl(options_));
+}
+
+TEST_F(StaticJavascriptManagerTest, TestdeferJsDebug) {
+  manager_->set_serve_js_from_gstatic(true);
+  manager_->set_gstatic_defer_js_hash("1");
+  options_->EnableFilter(RewriteOptions::kDebug);
+  const char defer_js_debug_url[] =
+      "http://proxy-domain/psajs/js_defer_debug.0.js";
+  EXPECT_STREQ(defer_js_debug_url, manager_->GetDeferJsUrl(options_));
+}
+
+TEST_F(StaticJavascriptManagerTest, TestdeferJsNonGStatic) {
+  const char defer_js_url[] =
+      "http://proxy-domain/psajs/js_defer.0.js";
+  EXPECT_STREQ(defer_js_url, manager_->GetDeferJsUrl(options_));
 }
 
 TEST_F(StaticJavascriptManagerTest, TestJsDebug) {
-  StaticJavascriptManager manager(&url_namer_, true, "1");
   options_->EnableFilter(RewriteOptions::kDebug);
   for (int i = 0;
        i < static_cast<int>(StaticJavascriptManager::kEndOfModules);
        ++i) {
     StaticJavascriptManager::JsModule module =
         static_cast<StaticJavascriptManager::JsModule>(i);
-    GoogleString script(manager.GetJsSnippet(module, options_));
+    GoogleString script(manager_->GetJsSnippet(module, options_));
     EXPECT_NE(GoogleString::npos, script.find("/*"))
         << "There should be some comments in the debug code";
   }
 }
 
 TEST_F(StaticJavascriptManagerTest, TestJsOpt) {
-  StaticJavascriptManager manager(&url_namer_, true, "1");
   for (int i = 0;
        i < static_cast<int>(StaticJavascriptManager::kEndOfModules);
        ++i) {
     StaticJavascriptManager::JsModule module =
         static_cast<StaticJavascriptManager::JsModule>(i);
-    GoogleString script(manager.GetJsSnippet(module, options_));
+    GoogleString script(manager_->GetJsSnippet(module, options_));
     EXPECT_EQ(GoogleString::npos, script.find("/*"))
         << "There should be no comments in the compiled code";
   }

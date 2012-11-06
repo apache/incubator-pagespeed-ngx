@@ -522,7 +522,7 @@ echo run_wget_with_args $URL
 check run_wget_with_args $URL
 check grep -q pagespeed.deferJs $FETCHED
 check grep -q text/psajs $FETCHED
-check_not grep '/\*' $FETCHED
+check grep -q /js_defer $FETCHED
 check grep -q "ModPagespeed=noscript" $FETCHED
 
 # Checks that defer_javascript,debug injects 'pagespeed.deferJs' from
@@ -534,8 +534,36 @@ FETCHED=$OUTDIR/$FILE
 check run_wget_with_args "$URL"
 check grep -q pagespeed.deferJs $FETCHED
 check grep -q text/psajs $FETCHED
-check grep -q '/\*' $FETCHED
+check grep -q /js_defer_debug $FETCHED
+DEFERJSURL=`grep js_defer $FETCHED | sed 's/^.*js_defer/js_defer/;s/\.js.*$/\.js/g;'`
 check grep -q "ModPagespeed=noscript" $FETCHED
+
+# Extract out the DeferJs url from the HTML above and fetch it.
+echo TEST: Fetch the deferJs url with hash.
+echo run_wget_with_args $DEFERJSURL
+run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/$DEFERJSURL
+check fgrep "200 OK" $WGET_OUTPUT
+check fgrep "Cache-Control: max-age=31536000" $WGET_OUTPUT
+
+# Checks that we return 404 for static file request without hash.
+echo TEST: Access to js_defer.js without hash returns 404.
+echo run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.js
+run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.js
+check fgrep "404 Not Found" $WGET_OUTPUT
+
+# Checks that outlined js_defer.js is served correctly.
+echo TEST: serve js_defer.0.js
+echo run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.0.js
+run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.0.js
+check fgrep "200 OK" $WGET_OUTPUT
+check fgrep "Cache-Control: max-age=300,private" $WGET_OUTPUT
+
+# Checks that outlined js_defer_debug.js is  served correctly.
+echo TEST: serve js_defer_debug.0.js
+echo run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer_debug.0.js
+run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer_debug.0.js
+check fgrep "200 OK" $WGET_OUTPUT
+check fgrep "Cache-Control: max-age=300,private" $WGET_OUTPUT
 
 # Checks that lazyload_images injects compiled javascript from
 # lazyload_images.js.

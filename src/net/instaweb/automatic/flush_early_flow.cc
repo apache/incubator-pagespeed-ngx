@@ -44,6 +44,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -478,8 +479,8 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
   if (should_flush_early_js_defer_script_) {
     // Flush defer_javascript script content.
     WriteScript(JsDisableFilter::GetJsDisableScriptSnippet(driver_->options()));
-    WriteScript(JsDeferDisabledFilter::GetDeferJsSnippet(
-        driver_->options(), static_js_manager));
+    WriteExternalScript(static_js_manager->GetDeferJsUrl(driver_->options()));
+    WriteScript(JsDeferDisabledFilter::kSuffix);
   }
 
   if (max_preconnect_attempts > 0 &&
