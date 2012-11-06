@@ -75,8 +75,9 @@ class FileSystemTest : public testing::Test {
 
   // Calculate on-disk usage of contents by returning size rounded up to nearest
   // default block size.
-  int FileBlockSize(StringPiece contents) const {
-    return ((contents.size() + kBlockSize - 1) / kBlockSize) * kBlockSize;
+  int FileBlockSize(StringPiece contents, int64 default_file_size) const {
+    return ((contents.size() + kBlockSize - 1) / kBlockSize) * kBlockSize +
+        default_file_size;
   }
 
   // Return the size of directories in the file system. This can vary depending

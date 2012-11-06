@@ -89,7 +89,8 @@ void CssRewriteTestBase::ValidateWithStats(
       EXPECT_EQ(0, num_fallback_rewrites_->Get()) << id;
       EXPECT_EQ(0, num_parse_failures_->Get()) << id;
       EXPECT_EQ(0, num_rewrites_dropped_->Get()) << id;
-      EXPECT_EQ(css_input.size() - expected_css_output.size(),
+      EXPECT_EQ(static_cast<int>(css_input.size()) -
+                static_cast<int>(expected_css_output.size()),
                 total_bytes_saved_->Get()) << id;
       EXPECT_EQ(css_input.size(), total_original_bytes_->Get()) << id;
       EXPECT_EQ(1, num_uses_->Get()) << id;

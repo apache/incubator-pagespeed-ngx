@@ -41,6 +41,14 @@ class StdioFileSystemTest : public FileSystemTest {
     // different FSs.
     EXPECT_TRUE(
         stdio_file_system_.Size(test_tmpdir(), &default_dir_size_, &handler_));
+
+    // We also need to know how many blocks an empty file consumes. On ext3,
+    // empty files are observed to consume 1 block (4K), while 1 byte files
+    // consume 2 blocks. On ext4, empty files consume 0 blocks, and 1 byte files
+    // consume 1 block.
+    GoogleString tmpfile = test_tmpdir() + "/testfile";
+    EXPECT_TRUE(file_system()->WriteFile(tmpfile.c_str(), "", &handler_));
+    EXPECT_TRUE(file_system()->Size(tmpfile, &default_file_size_, &handler_));
   }
   virtual ~StdioFileSystemTest() {}
 
@@ -62,7 +70,7 @@ class StdioFileSystemTest : public FileSystemTest {
   // Disk based file systems should return the number of disk blocks allocated
   // for a file, not the size of the contents.
   virtual int FileSize(StringPiece contents) const {
-    return FileBlockSize(contents);
+    return FileBlockSize(contents, default_file_size_);
   }
 
   virtual int DefaultDirSize() const {
@@ -92,6 +100,7 @@ class StdioFileSystemTest : public FileSystemTest {
   GoogleTimer timer_;
   StdioFileSystem stdio_file_system_;
   int64 default_dir_size_;
+  int64 default_file_size_;
 
   DISALLOW_COPY_AND_ASSIGN(StdioFileSystemTest);
 };

@@ -45,6 +45,23 @@ class AprFileSystemTest : public FileSystemTest {
     apr_pool_create(&pool_, NULL);
     thread_system_.reset(ThreadSystem::CreateThreadSystem());
     file_system_.reset(new AprFileSystem(pool_, thread_system_.get()));
+
+    // Create the temp directory, so we are not dependent on test order
+    // to make it.
+    file_system()->RecursivelyMakeDir(test_tmpdir(), &handler_);
+
+    // Also compute the "small" directory size. This seems to be different on
+    // different FSs.
+    EXPECT_TRUE(
+        file_system()->Size(test_tmpdir(), &default_dir_size_, &handler_));
+
+    // We also need to know how many blocks an empty file consumes. On ext3,
+    // empty files are observed to consume 1 block (4K), while 1 byte files
+    // consume 2 blocks. On ext4, empty files consume 0 blocks, and 1 byte files
+    // consume 1 block.
+    GoogleString tmpfile = test_tmpdir() + "/testfile";
+    EXPECT_TRUE(file_system()->WriteFile(tmpfile.c_str(), "", &handler_));
+    EXPECT_TRUE(file_system()->Size(tmpfile, &default_file_size_, &handler_));
   }
 
   virtual void TearDown() {
@@ -56,11 +73,11 @@ class AprFileSystemTest : public FileSystemTest {
   // not the number of bytes in file. Return size rounded up to nearest default
   // block size to represent file size in tests.
   virtual int FileSize(StringPiece contents) const {
-    return FileBlockSize(contents);
+    return FileBlockSize(contents, default_file_size_);
   }
 
   virtual int DefaultDirSize() const {
-    return 4096;
+    return default_dir_size_;
   }
 
   void MyDeleteFileRecursively(const GoogleString& filename,
@@ -117,6 +134,8 @@ class AprFileSystemTest : public FileSystemTest {
   apr_pool_t* pool_;
 
  private:
+  int64 default_dir_size_;
+  int64 default_file_size_;
   DISALLOW_COPY_AND_ASSIGN(AprFileSystemTest);
 };
 

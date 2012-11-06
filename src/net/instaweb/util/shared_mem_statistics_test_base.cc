@@ -600,8 +600,8 @@ TEST_F(SharedMemStatisticsTestBase, TestParseDataFromReader) {
   FileSystem::InputFile* log_file =
       file_system->OpenInputFile(file_name.c_str(), &handler_);
   GoogleString output;
-  int64 start_time = 1300000000000;
-  int64 end_time = 1400000000000;
+  int64 start_time = 1300000000000LL;
+  int64 end_time = 1400000000000LL;
   int64 granularity_ms = 2;
   ConsoleStatisticsLogfileReader reader(log_file, start_time, end_time,
                                         granularity_ms, &handler_);
@@ -627,10 +627,10 @@ TEST_F(SharedMemStatisticsTestBase, TestParseDataFromReader) {
 TEST_F(SharedMemStatisticsTestBase, TestNextDataBlock) {
   GoogleString histogram_data =
       CreateHistogramDataResponse("Html Time us Histogram", true);
-  int64 start_time = 1300000000000;  // Randomly chosen times.
-  int64 end_time = 1400000000000;
+  int64 start_time = 1300000000000LL;  // Randomly chosen times.
+  int64 end_time = 1400000000000LL;
   int64 granularity_ms = 5;
-  int64 initial_timestamp = 1342567288560;
+  int64 initial_timestamp = 1342567288560LL;
   // Add two working cases.
   GoogleString input = "timestamp: " +
                        Integer64ToString(initial_timestamp) + "\n";
@@ -818,7 +818,7 @@ TEST_F(SharedMemStatisticsTestBase, TestPrintJSONResponse) {
 
   // Populate timestamp data.
   std::vector<int64> list_of_timestamps;
-  int64 starting_timestamp = 1342567288580;
+  int64 starting_timestamp = 1342567288580LL;
   for (int i = 0; i < 5; ++i) {
     list_of_timestamps.push_back(starting_timestamp + i*5);
   }
