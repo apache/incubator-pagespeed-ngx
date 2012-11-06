@@ -619,6 +619,11 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   // resources are modified to have an etag-like hash in the url.
   ngx_http_clear_etag(r);
 
+  // An page may change without the underlying file changing, because of how
+  // resources are included.  Pagespeed adds cache control headers for resources
+  // instead of using the last modified header.
+  ngx_http_clear_last_modified(r);
+
   r->filter_need_in_memory = 1;
 
   if (r->err_status == 0) {
