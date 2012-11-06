@@ -194,6 +194,20 @@ function check_not_from() {
   echo "$text" | "$@" && print_failure_info_and_exit "$text"
 }
 
+# Check for the existence of a single file matching the pattern
+# in $1.  If it does not exist, print an error.  If it does exist,
+# check that its size meets constraint identified with $2 $3, e.g.
+#   check_file_size "$OUTDIR/xPuzzle*" -le 60000
+function check_file_size() {
+  pattern="$1"
+  op="$2"
+  value="$3"
+  SIZE=$(stat -c %s $pattern) || print_failure_info_and_exit \
+      "$pattern not found"
+  [ "$SIZE" "$op" "$value" ] || print_failure_info_and_exit \
+      "$pattern : $SIZE $op $value"
+}
+
 # In a pipeline a failed check or check_not will not halt the script on error.
 # Instead of:
 #   echo foo | check grep foo

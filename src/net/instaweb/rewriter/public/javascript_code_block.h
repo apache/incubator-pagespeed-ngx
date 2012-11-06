@@ -116,14 +116,14 @@ class JavascriptCodeBlock {
 
   // Rewrites the javascript code and returns whether that
   // successfully made it smaller.
-  bool ProfitableToRewrite() {
+  bool ProfitableToRewrite() const {
     RewriteIfNecessary();
     return (output_code_.size() < original_code_.size());
   }
 
   // Returns the current (maximally-rewritten) contents of the
   // code block.
-  const StringPiece Rewritten() {
+  const StringPiece Rewritten() const {
     RewriteIfNecessary();
     return output_code_;
   }
@@ -131,7 +131,7 @@ class JavascriptCodeBlock {
   // Returns the rewritten contents as a mutable GoogleString* suitable for
   // swap() (but owned by the code block).  This should only be used if
   // ProfitableToRewrite() holds.
-  GoogleString* RewrittenString() {
+  GoogleString* RewrittenString() const {
     RewriteIfNecessary();
     DCHECK(rewritten_code_.size() < original_code_.size());
     return &rewritten_code_;
@@ -141,7 +141,7 @@ class JavascriptCodeBlock {
   // URL?  If so, return that canonical URL (storage owned by the underlying
   // config object passed in at construction), otherwise return an empty
   // StringPiece.
-  StringPiece ComputeJavascriptLibrary();
+  StringPiece ComputeJavascriptLibrary() const;
 
   // Converts a regular string to what can be used in Javascript directly. Note
   // that output also contains starting and ending quotes, to facilitate
@@ -165,27 +165,37 @@ class JavascriptCodeBlock {
     return url_hash;
   }
 
+  // Get message id passed in at creation time, for external diagnostics.
+  const GoogleString& message_id() const {
+    return message_id_;
+  }
+
  protected:
-  void Rewrite();
+  // Note that Rewrite must mutate lazily-initialized mutable state only.
+  void Rewrite() const;
 
   JavascriptRewriteConfig* config_;
   const GoogleString message_id_;  // ID to stick at begining of message.
   MessageHandler* handler_;
   const GoogleString original_code_;
-  // Note that output_code_ points to either original_code_ or
-  // to rewritten_code_ depending upon the results of processing
-  // (ie it's an indirection to locally-owned data).
-  StringPiece output_code_;
-  bool rewritten_;
-  GoogleString rewritten_code_;
 
  private:
-  void RewriteIfNecessary() {
+  void RewriteIfNecessary() const {
     if (!rewritten_) {
       Rewrite();
       rewritten_ = true;
     }
   }
+
+  // All of the subsequent fields are lazily initialized / mutated, with
+  // rewritten_ used as the flag indicating whether they're valid or not.
+  mutable bool rewritten_;
+
+  // Note that output_code_ points to either original_code_ or
+  // to rewritten_code_ depending upon the results of processing
+  // (ie it's an indirection to locally-owned data).
+  mutable StringPiece output_code_;
+  mutable GoogleString rewritten_code_;
 
   DISALLOW_COPY_AND_ASSIGN(JavascriptCodeBlock);
 };

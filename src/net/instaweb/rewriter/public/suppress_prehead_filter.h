@@ -22,7 +22,6 @@
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/null_writer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/split_writer.h"
@@ -61,17 +60,20 @@ class SuppressPreheadFilter : public HtmlWriterFilter {
   static void UpdateFetchLatencyInFlushEarlyProto(int64 latency,
                                                   RewriteDriver*driver);
 
+  // If X-UA-Compatible meta tag is set then convert that to response header.
+  bool ExtractAndUpdateXUACompatible(HtmlElement* element);
+
   bool seen_first_head_;
+  bool has_charset_;
+  bool has_x_ua_compatible_;
+
   HtmlElement* noscript_element_;
   RewriteDriver* driver_;
   GoogleString pre_head_;  // The html text till the <head>
   GoogleString charset_;
   // Writer for writing to the response buffer.
   Writer* original_writer_;
-  // The writer before we saw the meta tag.
-  Writer* pre_meta_tag_writer_;
   StringWriter pre_head_writer_;  // Writer to write the pre_head_.
-  NullWriter null_writer_;
   // Writer to write both the pre_head string and to the response buffer.
   scoped_ptr<SplitWriter> pre_head_and_response_writer_;
   ResponseHeaders response_headers_;

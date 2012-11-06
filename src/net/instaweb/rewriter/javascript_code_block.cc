@@ -72,12 +72,12 @@ JavascriptCodeBlock::JavascriptCodeBlock(
       message_id_(message_id.data(), message_id.size()),
       handler_(handler),
       original_code_(original_code.data(), original_code.size()),
-      output_code_(original_code_),
-      rewritten_(false) { }
+      rewritten_(false),
+      output_code_(original_code_) { }
 
 JavascriptCodeBlock::~JavascriptCodeBlock() { }
 
-StringPiece JavascriptCodeBlock::ComputeJavascriptLibrary() {
+StringPiece JavascriptCodeBlock::ComputeJavascriptLibrary() const {
   // We always RewriteIfNecessary just to provide a degree of
   // predictability to the rewrite flow.
   // TODO(jmaessen): when we compute minified version and find
@@ -113,7 +113,7 @@ bool JavascriptCodeBlock::UnsafeToRename(const StringPiece& script) {
            != StringPiece::npos;
 }
 
-void JavascriptCodeBlock::Rewrite() {
+void JavascriptCodeBlock::Rewrite() const {
   // We minify for two reasons: because the user wants minified js code (in
   // which case output_code_ should point to the minified code when we're done),
   // or because we're trying to identify a javascript library.  Bail if we're

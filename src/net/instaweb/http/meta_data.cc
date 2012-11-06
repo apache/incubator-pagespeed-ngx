@@ -67,6 +67,7 @@ const char HttpAttributes::kXPsaBlockingRewrite[] = "X-PSA-Blocking-Rewrite";
 const char HttpAttributes::kXPsaOptimizeForSpdy[] = "X-PSA-Optimize-For-SPDY";
 const char HttpAttributes::kXPsaLoadShed[] = "X-Psa-Load-Shed";
 const char HttpAttributes::kXRequestedWith[] = "X-Requested-With";
+const char HttpAttributes::kXUACompatible[] = "X-UA-Compatible";
 
 
 const char* HttpStatus::GetReasonPhrase(HttpStatus::Code rc) {

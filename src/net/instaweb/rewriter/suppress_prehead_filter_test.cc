@@ -80,16 +80,20 @@ class SuppressPreheadFilterTest : public RewriteTestBase {
   }
 
   void VerifyCharset(GoogleString content_type) {
+    VerifyHeader(HttpAttributes::kContentType, content_type);
+  }
+
+  void VerifyHeader(const StringPiece& name, const StringPiece& value) {
     FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
     HttpResponseHeaders headers = flush_early_info->response_headers();
     GoogleString val;
     for (int i = 0; i < headers.header_size(); ++i) {
-      if (headers.header(i).name().compare(HttpAttributes::kContentType) == 0) {
+      if (name.compare(headers.header(i).name()) == 0) {
         val = headers.header(i).value();
         break;
       }
     }
-    EXPECT_STREQ(val, content_type);
+    EXPECT_STREQ(val, value);
   }
 
   void CallUpdateFetchLatencyInFlushEarlyProto(double latency) {
@@ -178,6 +182,8 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyMetaTags) {
       "<!DOCTYPE html>"
       "<html>"
       "<head>"
+      "<meta http-equiv=\"X-UA-Compatible\" content=\"IE=EmulateIE7\"/>"
+      "<meta http-equiv=\"X-UA-Compatible\" content=\"junk\"/>"
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
       "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
       "<meta charset=\"UTF-8\">"
@@ -185,6 +191,8 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyMetaTags) {
       "<body></body></html>";
   const char html_without_prehead[] =
       "<head>"
+      "<meta http-equiv=\"X-UA-Compatible\" content=\"IE=EmulateIE7\"/>"
+      "<meta http-equiv=\"X-UA-Compatible\" content=\"junk\"/>"
       "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
       "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
       "<meta charset=\"UTF-8\">"
@@ -195,6 +203,7 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyMetaTags) {
   EXPECT_EQ(html_input, output_);
 
   VerifyCharset("text/html;charset=utf-8");
+  VerifyHeader(HttpAttributes::kXUACompatible, "IE=EmulateIE7");
 
   // pre head is suppressed if the dummy head was flushed early.
   output_.clear();

@@ -299,20 +299,20 @@ check [ $num_apos -eq 0 ]    # no apostrophes
 test_filter trim_urls makes urls relative
 check run_wget_with_args $URL
 check_not grep "mod_pagespeed_example" $FETCHED  # base dir, shouldn't find
-check [ $(stat -c %s $FETCHED) -lt 153 ]  # down from 157
+check_file_size $FETCHED -lt 153  # down from 157
 
 test_filter rewrite_css minifies CSS and saves bytes.
 fetch_until $URL 'grep -c comment' 0
 check run_wget_with_args $URL
-check [ $(stat -c %s $FETCHED) -lt 680 ]  # down from 689
+check_file_size $FETCHED -lt 680  # down from 689
 
 test_filter rewrite_images inlines, compresses, and resizes.
 fetch_until $URL 'grep -c data:image/png' 1  # inlined
 
 # Wait until other 2 images optimized
 fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2
-check [ "$(stat -c %s $OUTDIR/xBikeCrashIcn*)" -lt 25000 ]      # re-encoded
-check [ "$(stat -c %s $OUTDIR/*256x192*Puzzle*)"  -lt 24126  ]  # resized
+check_file_size "$OUTDIR/xBikeCrashIcn*" -lt 25000      # re-encoded
+check_file_size "$OUTDIR/*256x192*Puzzle*" -lt 24126    # resized
 URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
 IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
 check [ x"$IMG_URL" != x ]
@@ -417,7 +417,7 @@ test_filter rewrite_javascript minifies JavaScript and saves bytes.
 fetch_until $URL 'grep -c src.*/rewrite_javascript\.js\.pagespeed\.jm\.' 2
 check run_wget_with_args $URL
 check_not grep -R "removed" $OUTDIR          # Comments, should not find any.
-check [ "$(stat -c %s $FETCHED)" -lt 1560 ]  # Net savings
+check_file_size $FETCHED -lt 1560            # Net savings
 check grep -q preserved $FETCHED             # Preserves certain comments.
 # Rewritten JS is cache-extended.
 check grep -qi "Cache-control: max-age=31536000" $WGET_OUTPUT

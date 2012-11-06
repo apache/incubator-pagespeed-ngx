@@ -203,8 +203,8 @@ test_filter rewrite_images inlines, compresses, and resizes.
 fetch_until $URL 'grep -c data:image/png' 1  # inlined
 fetch_until $URL 'grep -c .pagespeed.ic' 2   # other 2 images optimized
 check run_wget_with_args $URL
-check [ "$(stat -c %s $OUTDIR/xBikeCrashIcn*)" -lt 25000 ]      # re-encoded
-check [ "$(stat -c %s $OUTDIR/*256x192*Puzzle*)"  -lt 24126  ]  # resized
+check_file_size "$OUTDIR/xBikeCrashIcn*" -lt 25000     # re-encoded
+check_file_size "$OUTDIR/*256x192*Puzzle*" -lt 24126   # resized
 URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
 IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
 check [ x"$IMG_URL" != x ]
@@ -242,7 +242,7 @@ IMG_REWRITE=$TEST_ROOT"/image_rewriting/rewrite_images.html"
 REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
 URL=$REWRITE_URL"&"$IMAGES_QUALITY"=75"
 fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
-check [ "$(stat -c %s $OUTDIR/*256x192*Puzzle*)" -le 8155  ]  # resized
+check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8155   # resized
 
 echo TEST: quality of jpeg output images
 rm -rf $OUTDIR
@@ -251,7 +251,7 @@ IMG_REWRITE=$TEST_ROOT"/jpeg_rewriting/rewrite_images.html"
 REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
 URL=$REWRITE_URL",recompress_jpeg&"$IMAGES_QUALITY"=85&"$JPEG_QUALITY"=70"
 fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
-check [ "$(stat -c %s $OUTDIR/*256x192*Puzzle*)" -le 7564  ]  # resized
+check_file_size "$OUTDIR/*256x192*Puzzle*" -le 7564   # resized
 
 echo TEST: quality of webp output images
 rm -rf $OUTDIR
@@ -260,7 +260,7 @@ IMG_REWRITE=$TEST_ROOT"/webp_rewriting/rewrite_images.html"
 REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
 URL=$REWRITE_URL",convert_jpeg_to_webp&"$IMAGES_QUALITY"=75&"$WEBP_QUALITY"=65"
 check run_wget_with_args --header 'X-PSA-Blocking-Rewrite: psatest' $URL
-check [ "$(stat -c %s $OUTDIR/*webp*)" -le 1784  ]  # resized, optimized to webp
+check_file_size "$OUTDIR/*webp*" -le 1784   # resized, optimized to webp
 
 # Depends upon "Header append Vary User-Agent" and ModPagespeedRespectVary.
 echo TEST: respect vary user-agent

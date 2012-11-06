@@ -100,56 +100,43 @@ class JavascriptFilter::Context : public SingleRewriteContext {
 
   RewriteResult RewriteJavascript(
       const ResourcePtr& input, const OutputResourcePtr& output) {
-    MessageHandler* message_handler = FindServerContext()->message_handler();
-    StringPiece script = input->contents();
-    JavascriptCodeBlock code_block(script, config_, input->url(),
-                                   message_handler);
-    // Consider whether this is a known javascript library.
-    StringPiece library_url = code_block.ComputeJavascriptLibrary();
-    if (!library_url.empty()) {
-      // We expect canonical urls to be protocol relative, and so we use the
-      // base to provide a protocol when one is missing (while still permitting
-      // absolute canonical urls when they are required).
-      GoogleUrl library_gurl(Driver()->base_url(), library_url);
-      message_handler->Message(
-          kInfo, "Script %s is %s", input->url().c_str(),
-          library_gurl.UncheckedSpec().as_string().c_str());
-      if (library_gurl.is_valid()) {
-        // We remember the canonical url in the CachedResult in the metadata
-        // cache, but don't actually write any kind of resource corresponding to
-        // the rewritten file (since we don't need it).  This means we'll end up
-        // with a CachedResult with a url() set, but none of the output resource
-        // metadata such as a hash().  We set canonicalize_url to signal the
-        // Render() method below to handle this case.  If necessary logic can
-        // move up to RewriteContext::Propagate(...), but this ought to be
-        // sufficient for a single filter-specific path.
-        CachedResult* cached = output->EnsureCachedResultCreated();
-        cached->set_optimizable(true);
-        cached->set_url(library_gurl.Spec().data(),
-                        library_gurl.Spec().size());
-        cached->set_canonicalize_url(true);
-        return kRewriteOk;
-      }
+    ServerContext* server_context = FindServerContext();
+    MessageHandler* message_handler = server_context->message_handler();
+    JavascriptCodeBlock code_block(
+        input->contents(), config_, input->url(), message_handler);
+    // Check whether this code should, for various reasons, not be rewritten.
+    if (PossiblyRewriteToLibrary(code_block, server_context, output)) {
+      // Code was a library, so we will use the canonical url rather than create
+      // an optimized version.
+      return kRewriteFailed;
+    }
+    if (!config_->minify()) {
+      return kRewriteFailed;
     }
     if (!code_block.ProfitableToRewrite()) {
-      // Rewriting happened but wasn't useful; as we return false base class
-      // will remember this for later so we don't attempt to rewrite twice.
-      message_handler->Message(kInfo, "Script %s didn't shrink.",
-                               input->url().c_str());
+      // Optimization happened but wasn't useful; the base class will remember
+      // this for later so we don't attempt to rewrite twice.
+      server_context->message_handler()->Message(
+          kInfo, "Script %s didn't shrink.", code_block.message_id().c_str());
       return kRewriteFailed;
     }
-    if (!WriteExternalScriptTo(input, code_block.Rewritten(), output)) {
+    // Code block was optimized, so write out the new version.
+    if (!WriteExternalScriptTo(
+            input, code_block.Rewritten(), server_context, output)) {
       return kRewriteFailed;
     }
+    // We only check and rule out introspective javascript *after* writing the
+    // minified script because we might be performing AJAX rewriting, in which
+    // case we'll rewrite without changing the url and can ignore introspection.
+    // TODO(jmaessen): Figure out how to distinguish AJAX rewrites so that we
+    // don't need the special control flow (and url_relocatable field in
+    // cached_result and its treatment in rewrite_context).
     if (Options()->avoid_renaming_introspective_javascript() &&
-        JavascriptCodeBlock::UnsafeToRename(script)) {
-      message_handler->Message(kInfo, "Script %s is unsafe to replace.",
-                               input->url().c_str());
-
-      // This is a 1-1 rewrite, so there should be exactly one output partition.
-      CHECK_EQ(1, num_output_partitions());
-      CachedResult* partition = output_partition(0);
-      partition->set_url_relocatable(false);
+        JavascriptCodeBlock::UnsafeToRename(code_block.Rewritten())) {
+      CachedResult* result = output->EnsureCachedResultCreated();
+      result->set_url_relocatable(false);
+      message_handler->Message(
+          kInfo, "Script %s is unsafe to replace.", input->url().c_str());
     }
     return kRewriteOk;
   }
@@ -165,26 +152,24 @@ class JavascriptFilter::Context : public SingleRewriteContext {
 
   virtual void Render() {
     CleanupWhitespaceScriptBody(Driver(), this, body_node_);
-    // Update stats.
-    DCHECK_EQ(1, num_slots());
-    if (slot(0)->was_optimized()) {
-      config_->num_uses()->Add(1);
-      if (Driver()->log_record() != NULL) {
-        Driver()->log_record()->LogAppliedRewriter(id());
-      }
-    }
     if (num_output_partitions() != 1) {
       return;
     }
     CachedResult* result = output_partition(0);
-    if (result->canonicalize_url()) {
-      // Library url in result->url(), does not need to be created from
-      // OutputResource by output_slot->Render().  Just update the url and
-      // disable the later render step.  This permits us to patch in a library
-      // url that doesn't correspond to the OutputResource naming scheme.
-      ResourceSlot* output_slot = slot(0).get();
-      output_slot->DirectSetUrl(result->url());
-      output_slot->set_disable_rendering(true);
+    ResourceSlot* output_slot = slot(0).get();
+    if (!result->optimizable()) {
+      if (result->canonicalize_url()) {
+        // Use the canonical library url and disable the later render step.
+        // This permits us to patch in a library url that doesn't correspond to
+        // the OutputResource naming scheme.
+        output_slot->DirectSetUrl(result->url());
+      }
+      return;
+    }
+    // The url or script content is changing, so log that fact.
+    config_->num_uses()->Add(1);
+    if (Driver()->log_record() != NULL) {
+      Driver()->log_record()->LogAppliedRewriter(id());
     }
   }
 
@@ -198,11 +183,11 @@ class JavascriptFilter::Context : public SingleRewriteContext {
   // Returns true on success, reports failures itself.
   bool WriteExternalScriptTo(
       const ResourcePtr script_resource,
-      const StringPiece& script_out, const OutputResourcePtr& script_dest) {
+      const StringPiece& script_out, ServerContext* server_context,
+      const OutputResourcePtr& script_dest) {
     bool ok = false;
-    ServerContext* resource_manager = FindServerContext();
-    MessageHandler* message_handler = resource_manager->message_handler();
-    resource_manager->MergeNonCachingResponseHeaders(
+    MessageHandler* message_handler = server_context->message_handler();
+    server_context->MergeNonCachingResponseHeaders(
         script_resource, script_dest);
     // Try to preserve original content type to avoid breaking upstream proxies
     // and the like.
@@ -211,12 +196,12 @@ class JavascriptFilter::Context : public SingleRewriteContext {
         content_type->type() != ContentType::kJavascript) {
       content_type = &kContentTypeJavascript;
     }
-    if (resource_manager->Write(ResourceVector(1, script_resource),
-                                script_out,
-                                content_type,
-                                script_resource->charset(),
-                                script_dest.get(),
-                                message_handler)) {
+    if (server_context->Write(ResourceVector(1, script_resource),
+                              script_out,
+                              content_type,
+                              script_resource->charset(),
+                              script_dest.get(),
+                              message_handler)) {
       ok = true;
       message_handler->Message(kInfo, "Rewrite script %s to %s",
                                script_resource->url().c_str(),
@@ -225,8 +210,43 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     return ok;
   }
 
-  JavascriptRewriteConfig* config_;
+  // Decide if given code block is a JS library, and if so set up CachedResult
+  // to reflect this fact.
+  bool PossiblyRewriteToLibrary(
+      const JavascriptCodeBlock& code_block, ServerContext* server_context,
+      const OutputResourcePtr& output) {
+    StringPiece library_url = code_block.ComputeJavascriptLibrary();
+    if (library_url.empty()) {
+      return false;
+    }
+    // We expect canonical urls to be protocol relative, and so we use the base
+    // to provide a protocol when one is missing (while still permitting
+    // absolute canonical urls when they are required).
+    GoogleUrl library_gurl(Driver()->base_url(), library_url);
+    server_context->message_handler()->Message(
+        kInfo, "Script %s is %s", code_block.message_id().c_str(),
+        library_gurl.UncheckedSpec().as_string().c_str());
+    if (!library_gurl.is_valid()) {
+      return false;
+    }
+    // We remember the canonical url in the CachedResult in the metadata cache,
+    // but don't actually write any kind of resource corresponding to the
+    // rewritten file (since we don't need it).  This means we'll end up with a
+    // CachedResult with a url() set, but none of the output resource metadata
+    // such as a hash().  We set canonicalize_url to signal the Render() method
+    // below to handle this case.  If it's useful for another filter, the logic
+    // here can move up to RewriteContext::Propagate(...), but this ought to be
+    // sufficient for a single filter-specific path.
+    CachedResult* cached = output->EnsureCachedResultCreated();
+    cached->set_url(library_gurl.Spec().data(),
+                    library_gurl.Spec().size());
+    cached->set_canonicalize_url(true);
+    ResourceSlotPtr output_slot = slot(0);
+    output_slot->set_disable_further_processing(true);
+    return true;
+  }
 
+  JavascriptRewriteConfig* config_;
   // The node containing the body of the script tag, or NULL.
   HtmlCharactersNode* body_node_;
 };
@@ -280,8 +300,8 @@ void JavascriptFilter::RewriteInlineScript() {
     // First buffer up script data and minify it.
     GoogleString* script = body_node_->mutable_contents();
     MessageHandler* message_handler = driver_->message_handler();
-    JavascriptCodeBlock code_block(*script, config_.get(), driver_->UrlLine(),
-                                   message_handler);
+    const JavascriptCodeBlock code_block(
+        *script, config_.get(), driver_->UrlLine(), message_handler);
     StringPiece library_url = code_block.ComputeJavascriptLibrary();
     if (!library_url.empty()) {
       // TODO(jmaessen): outline and use canonical url.
@@ -371,12 +391,18 @@ void JavascriptFilter::IEDirective(HtmlIEDirectiveNode* directive) {
 
 RewriteContext* JavascriptFilter::MakeRewriteContext() {
   InitializeConfigIfNecessary();
+  // A resource fetch.  This means a client has requested minified content;
+  // we'll fail the request (serving the existing content) if minification is
+  // disabled for this resource (eg because we've recognized it as a library).
+  // This usually happens because the underlying JS content or rewrite
+  // configuration changed since the client fetched a rewritten page.
   return new Context(driver_, NULL, config_.get(), NULL /* no body node */);
 }
 
 RewriteContext* JavascriptFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
   InitializeConfigIfNecessary();
+  // A nested rewrite, should work just like an HTML rewrite does.
   Context* context = new Context(NULL /* driver */, parent, config_.get(),
                                  NULL /* no body node */);
   context->AddSlot(slot);
