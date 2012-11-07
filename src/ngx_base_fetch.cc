@@ -248,9 +248,14 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
     // Populate the shortcuts to commonly used headers.
     if (STR_EQ_LITERAL(name, "Date")) {
       headers_out->date = header;
-    } else if (STR_EQ_LITERAL(name, "Etag")) {
+    }
+#if (nginx_version >= 1003003)
+    // Pre 1.3.3 doesn't have an etag shortcut in the header.
+    else if (STR_EQ_LITERAL(name, "Etag")) {
       headers_out->etag = header;
-    } else if (STR_EQ_LITERAL(name, "Expires")) {
+    }
+#endif
+    else if (STR_EQ_LITERAL(name, "Expires")) {
       headers_out->expires = header;
     } else if (STR_EQ_LITERAL(name, "Last-Modified")) {
       headers_out->last_modified = header;
