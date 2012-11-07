@@ -22,12 +22,6 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/http/public/response_headers.h"
 
-// s1: ngx_str_t, s2: string literal
-// true if they're equal, false otherwise
-#define STR_EQ_LITERAL(s1, s2)          \
-    ((s1).len == (sizeof(s2)-1) &&      \
-     ngx_strncmp((s1).data, (s2), (sizeof(s2)-1)) == 0)
-
 namespace net_instaweb {
 
 NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd)
