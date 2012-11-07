@@ -76,11 +76,44 @@ following comment in the source:
 
 ### Testing
 
-There is an example html file in:
+The generic Pagespeed system test is ported, but doesn't pass yet.  To run it
+you need to first build and configure nginx.  Set it up something like:
 
-    test/www/test.html
+    ...
+    http {
+      pagespeed on;
+      # this can be anywhere
+      pagespeed_cache /path/to/ngx_pagespeed_cache;
+     
+      # These gzip options are needed for tests that assume that pagespeed
+      # always enables gzip.  Which it does in apache, but not in nginx.
+      gzip on;
+      gzip_vary on;
+      gzip_http_version 1.0;
 
-If you fetch it through nginx with ngx_pagespeed enabled you should see it
-rewritten to look like the html in:
+      ...
 
-    test/expected/test.html
+      server {
+        listen 8050;
+        server_name localhost;
+        root /path/to/mod_pagespeed/src/install;
+        index index.html;
+        ...
+      }
+    }
+
+Then run the test, using the port you set up with `listen` in the configuration
+file:
+
+    /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
+
+This should print out a lot of lines like:
+
+    TEST: Make sure 404s aren't rewritten
+          check_not fgrep /mod_pagespeed_beacon /dev/fd/63
+
+and then eventually:
+
+    FAIL.
+
+along with a failing test because ngx_pagespeed is not yet complete.
