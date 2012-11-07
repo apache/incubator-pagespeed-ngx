@@ -728,7 +728,7 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   return NGX_AGAIN;
 }
 
-#if (nginx_version < 1003003)
+#ifndef ngx_http_clear_etag
 // ngx_http_clear_etag(r) and the shortcut r->headers_out.etag were added in
 // 1.3.3.  Provide our own implementation if it's not present.
 static void
@@ -754,6 +754,7 @@ ngx_http_clear_etag(ngx_http_request_t* r) {
     }
   }
 }
+#define ngx_http_clear_etag(r) ngx_http_clear_etag(r)
 #endif
 
 static ngx_int_t
