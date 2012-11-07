@@ -93,9 +93,11 @@ class ResourceSlot : public RefCounted<ResourceSlot> {
   bool should_delete_element() const { return should_delete_element_; }
 
   // Returns true if any of the contexts touching this slot optimized it
-  // successfully. This in particular includes the case where a
-  // call to RewriteContext::Rewrite() on a partition containing this
-  // slot returned kRewriteOk.
+  // successfully. This in particular includes the case where a call to
+  // RewriteContext::Rewrite() on a partition containing this slot returned
+  // kRewriteOk.  Note in particular that was_optimized() does not tell you
+  // whether *your* filter optimized the slot!  For this you should check
+  // output_partition(n)->optimizable().
   bool was_optimized() const { return was_optimized_; }
 
   // Marks the slot as having been optimized.
