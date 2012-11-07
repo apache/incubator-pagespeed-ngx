@@ -25,6 +25,11 @@ extern "C" {
 
 #include "net/instaweb/util/public/string_util.h"
 
-StringPiece ngx_http_pagespeed_str_to_string_piece(ngx_str_t* s);
+StringPiece ngx_http_pagespeed_str_to_string_piece(ngx_str_t s);
+// s1: ngx_str_t, s2: string literal
+// true if they're equal, false otherwise
+#define STR_EQ_LITERAL(s1, s2)          \
+    ((s1).len == (sizeof(s2)-1) &&      \
+     ngx_strncmp((s1).data, (s2), (sizeof(s2)-1)) == 0)
 
 #endif  // NGX_PAGESPEED_H_
