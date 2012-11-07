@@ -22,6 +22,12 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/http/public/response_headers.h"
 
+// s1: ngx_str_t, s2: string literal
+// true if they're equal, false otherwise
+#define STR_EQ_LITERAL(s1, s2)          \
+    ((s1).len == (sizeof(s2)-1) &&      \
+     ngx_strncmp((s1).data, (s2), (sizeof(s2)-1)) == 0)
+
 namespace net_instaweb {
 
 NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd)
@@ -53,9 +59,8 @@ void NgxBaseFetch::PopulateHeaders() {
       i = 0;
     }
 
-    StringPiece key = ngx_http_pagespeed_str_to_string_piece(&header[i].key);
-    StringPiece value = ngx_http_pagespeed_str_to_string_piece(
-        &header[i].value);
+    StringPiece key = ngx_http_pagespeed_str_to_string_piece(header[i].key);
+    StringPiece value = ngx_http_pagespeed_str_to_string_piece(header[i].value);
 
     response_headers()->Add(key, value);
   }
@@ -64,7 +69,7 @@ void NgxBaseFetch::PopulateHeaders() {
   // request_->headers_out.headers, which means I don't fully understand how
   // headers_out works, but manually copying over content type works.
   StringPiece content_type = ngx_http_pagespeed_str_to_string_piece(
-      &request_->headers_out.content_type);
+      request_->headers_out.content_type);
   response_headers()->Add(HttpAttributes::kContentType, content_type);
 }
 
@@ -195,8 +200,11 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
 
   ngx_int_t i;
   for (i = 0 ; i < pagespeed_headers->NumAttributes() ; i++) {
-    StringPiece name(pagespeed_headers->Name(i));
-    StringPiece value(pagespeed_headers->Value(i));
+    ngx_str_t name, value;
+    name.len = pagespeed_headers->Name(i).length();
+    name.data = (u_char*)pagespeed_headers->Name(i).data();
+    value.len = pagespeed_headers->Value(i).length();
+    value.data = (u_char*)pagespeed_headers->Value(i).data();
 
     // TODO(jefftk): If we're setting a cache control header we'd like to
     // prevent any downstream code from changing it.  Specifically, if we're
@@ -207,26 +215,23 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
     // net/instaweb/apache/header_util:AddResponseHeadersToRequest
 
     // Make copies of name and value to put into headers_out.
-    u_char* value_s = static_cast<u_char*>(
-        ngx_palloc(request_->pool, value.size()));
+
+    u_char* value_s = ngx_pstrdup(request_->pool, &value);
     if (value_s == NULL) {
       return NGX_ERROR;
     }
-    ngx_memcpy(value_s, value.data(), value.size());
 
-    if (name == HttpAttributes::kContentType) {
+    if (STR_EQ_LITERAL(name, "Content-Type")) {
       // Unlike all the other headers, content_type is just a string.
       headers_out->content_type.data = value_s;
-      headers_out->content_type.len = value.size();
+      headers_out->content_type.len = value.len;
       continue;
     }
 
-    u_char* name_s = static_cast<u_char*>(
-        ngx_palloc(request_->pool, name.size()));
+    u_char* name_s = ngx_pstrdup(request_->pool, &name);
     if (name_s == NULL) {
       return NGX_ERROR;
     }
-    ngx_memcpy(name_s, name.data(), name.size());
 
     ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(
         ngx_list_push(&headers_out->headers));
@@ -235,23 +240,23 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
     }
 
     header->hash = 1;  // TODO(jefftk): should this be a real hash?
-    header->key.len = name.size();
+    header->key.len = name.len;
     header->key.data = name_s;
-    header->value.len = value.size();
+    header->value.len = value.len;
     header->value.data = value_s;
 
     // Populate the shortcuts to commonly used headers.
-    if (name == HttpAttributes::kDate) {
+    if (STR_EQ_LITERAL(name, "Date")) {
       headers_out->date = header;
-    } else if (name == HttpAttributes::kEtag) {
+    } else if (STR_EQ_LITERAL(name, "Etag")) {
       headers_out->etag = header;
-    } else if (name == HttpAttributes::kExpires) {
+    } else if (STR_EQ_LITERAL(name, "Expires")) {
       headers_out->expires = header;
-    } else if (name == HttpAttributes::kLastModified) {
+    } else if (STR_EQ_LITERAL(name, "Last-Modified")) {
       headers_out->last_modified = header;
-    } else if (name == HttpAttributes::kLocation) {
+    } else if (STR_EQ_LITERAL(name, "Location")) {
       headers_out->location = header;
-    } else if (name == HttpAttributes::kServer) {
+    } else if (STR_EQ_LITERAL(name, "Server")) {
       headers_out->server = header;
     }
   }

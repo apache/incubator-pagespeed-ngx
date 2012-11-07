@@ -25,6 +25,6 @@ extern "C" {
 
 #include "net/instaweb/util/public/string_util.h"
 
-StringPiece ngx_http_pagespeed_str_to_string_piece(ngx_str_t* s);
+StringPiece ngx_http_pagespeed_str_to_string_piece(ngx_str_t s);
 
 #endif  // NGX_PAGESPEED_H_

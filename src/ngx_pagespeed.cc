@@ -152,8 +152,14 @@ static ngx_command_t ngx_http_pagespeed_commands[] = {
 };
 
 StringPiece
-ngx_http_pagespeed_str_to_string_piece(ngx_str_t* s) {
-  return StringPiece(reinterpret_cast<char*>(s->data), s->len);
+ngx_http_pagespeed_str_to_string_piece(ngx_str_t s) {
+  return StringPiece(reinterpret_cast<char*>(s.data), s.len);
+}
+
+ngx_str_t
+ngx_http_pagespeed_string_piece_to_str(StringPiece sp) {
+  ngx_str_t s = { (ngx_uint_t)sp.size(), (u_char*)sp.data() };
+  return s;
 }
 
 static void*
@@ -263,7 +269,7 @@ ngx_http_pagespeed_determine_url(ngx_http_request_t* r) {
   }
 
   StringPiece host =
-      ngx_http_pagespeed_str_to_string_piece(&r->headers_in.server);
+      ngx_http_pagespeed_str_to_string_piece(r->headers_in.server);
   if (host.size() == 0) {
     // If host is unspecified, perhaps because of a pure HTTP 1.0 "GET /path",
     // fall back to server IP address.  Based on ngx_http_variable_server_addr.
@@ -275,12 +281,12 @@ ngx_http_pagespeed_determine_url(ngx_http_request_t* r) {
     if (rc != NGX_OK) {
       s.len = 0;
     }
-    host = ngx_http_pagespeed_str_to_string_piece(&s);
+    host = ngx_http_pagespeed_str_to_string_piece(s);
   }
 
   return net_instaweb::StrCat(
       is_https ? "https://" : "http://", host, port_string,
-      ngx_http_pagespeed_str_to_string_piece(&r->unparsed_uri));
+      ngx_http_pagespeed_str_to_string_piece(r->unparsed_uri));
 }
 
 // Get the context for this request.  ngx_http_pagespeed_create_request_context
@@ -306,7 +312,7 @@ ngx_http_pagespeed_initialize_server_context(
 
   cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
   cfg->driver_factory->set_filename_prefix(
-      ngx_http_pagespeed_str_to_string_piece(&cfg->cache_dir));
+      ngx_http_pagespeed_str_to_string_piece(cfg->cache_dir));
   cfg->server_context = cfg->driver_factory->CreateServerContext();
   cfg->proxy_fetch_factory =
       new net_instaweb::ProxyFetchFactory(cfg->server_context);
@@ -737,8 +743,7 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   // pagespeed.  Check the content type header and find out.
   const net_instaweb::ContentType* content_type = 
       net_instaweb::MimeTypeToContentType(
-          ngx_http_pagespeed_str_to_string_piece(
-              &r->headers_out.content_type));
+          ngx_http_pagespeed_str_to_string_piece(r->headers_out.content_type));
   if (content_type == NULL || !content_type->IsHtmlLike()) {
     // Unknown or otherwise non-html content type: skip it.
     CHECK(ctx == NULL);
