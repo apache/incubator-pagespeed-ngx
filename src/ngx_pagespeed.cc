@@ -590,6 +590,10 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // on the proxy fetch below.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(r, file_descriptors[1]);
 
+  // These are the options we use unless there are custom ones for this request.
+  net_instaweb::RewriteOptions* global_options =
+      ctx->cfg->server_context->global_options();
+
   // Stripping ModPagespeed query params before the property cache lookup to
   // make cache key consistent for both lookup and storing in cache.
   //
@@ -612,7 +616,8 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // Will be NULL if there aren't custom options..
   net_instaweb::RewriteOptions* custom_options = query_options_success.first;
 
-  if (custom_options && !custom_options->enabled()) {
+  if ((custom_options && !custom_options->enabled()) ||
+      (!custom_options && !global_options->enabled())) {
     ngx_http_pagespeed_release_request_context(ctx);
     return NGX_DECLINED;
   }
@@ -623,8 +628,6 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // If the global options say we're running furious (the experiment framework)
   // then clone them into custom_options so we can manipulate custom options
   // without affecting the global options.
-  net_instaweb::RewriteOptions* global_options =
-      ctx->cfg->server_context->global_options();
   if (global_options->running_furious()) {
     custom_options = global_options->Clone();
     custom_options->set_need_to_store_experiment_data(
