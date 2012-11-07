@@ -750,7 +750,9 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   ngx_http_clear_content_length(r);
   
   // Pagespeed html doesn't need etags: it should never be cached.
+#if (nginx_version >= 1003003)
   ngx_http_clear_etag(r);
+#endif
   
   // An page may change without the underlying file changing, because of how
   // resources are included.  Pagespeed adds cache control headers for
@@ -766,19 +768,19 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
       return NGX_ERROR;
     }
   }
-  ngx_table_elt_t** cache_control_headers = static_cast<ngx_table_elt_t**>(
+  ngx_table_elt_t* cache_control_header = static_cast<ngx_table_elt_t*>(
       ngx_array_push(&r->headers_out.cache_control));
-  if (cache_control_headers == NULL) {
+  if (cache_control_header == NULL) {
     return NGX_ERROR;
   }
-  cache_control_headers[0] = static_cast<ngx_table_elt_t*>(
+  cache_control_header = static_cast<ngx_table_elt_t*>(
       ngx_list_push(&r->headers_out.headers));
-  if (cache_control_headers[0] == NULL) {
+  if (cache_control_header == NULL) {
     return NGX_ERROR;
   }
-  cache_control_headers[0]->hash = 1;
-  ngx_str_set(&cache_control_headers[0]->key, "Cache-Control");
-  ngx_str_set(&cache_control_headers[0]->value, "max-age=0, no-cache");
+  cache_control_header->hash = 1;
+  ngx_str_set(&cache_control_header->key, "Cache-Control");
+  ngx_str_set(&cache_control_header->value, "max-age=0, no-cache");
   
   r->filter_need_in_memory = 1;
   
