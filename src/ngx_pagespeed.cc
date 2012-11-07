@@ -616,6 +616,8 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // Will be NULL if there aren't custom options..
   net_instaweb::RewriteOptions* custom_options = query_options_success.first;
 
+  // If we have custom options then run if they say pagespeed is enabled.
+  // Otherwise check the global options.
   if ((custom_options && !custom_options->enabled()) ||
       (!custom_options && !global_options->enabled())) {
     ngx_http_pagespeed_release_request_context(ctx);
