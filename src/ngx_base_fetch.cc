@@ -239,7 +239,7 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
       return NGX_ERROR;
     }
 
-    header->hash = 1;  // TODO(jefftk): should this be a real hash?
+    header->hash = 1;  // Include this header in the output.
     header->key.len = name.len;
     header->key.data = name_s;
     header->value.len = value.len;
