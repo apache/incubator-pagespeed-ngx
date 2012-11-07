@@ -73,6 +73,7 @@ To confirm that the module is loaded, fetch a page and check that you see the
 `X-Page-Speed` header:
 
     $ curl -s -D- 'http://localhost:8050/some_page/' | grep X-Page-Speed
+    X-Page-Speed: 0.10.0.0
 
 Looking at the source of a few pages you should see various changes, like urls
 being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
