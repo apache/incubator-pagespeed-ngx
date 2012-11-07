@@ -70,9 +70,12 @@ In your nginx.conf, add to the main or server block:
     error_log logs/error.log debug;
 
 To confirm that the module is loaded, fetch a page and check that you see the
-following comment in the source:
+`X-Page-Speed` header:
 
-    <!-- Processed through ngx_pagespeed using PSOL version 0.10.0.0 -->
+    $ curl -s -D- 'http://localhost:8050/some_page/' | grep X-Page-Speed
+
+Looking at the source of a few pages you should see various changes, like urls
+being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 
 ### Testing
 
