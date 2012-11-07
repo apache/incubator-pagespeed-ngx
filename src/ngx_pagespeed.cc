@@ -206,7 +206,7 @@ ngx_http_pagespeed_release_request_context(void* data) {
   // before then we need to tell it to delete itself.
   //
   // If this is a resource fetch then proxy_fetch was never initialized.
-  if (ctx->proxy_fetch != NULL) {    
+  if (ctx->proxy_fetch != NULL) {
     ctx->proxy_fetch->Done(false /* failure */);
   }
 
@@ -395,7 +395,7 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
       return rc;
     }
   }
-  
+
   return done ? NGX_OK : NGX_AGAIN;
 }
 
@@ -472,7 +472,7 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
 
   if (rc == NGX_AGAIN) {
     // Request needs more work by pagespeed.
-    rc = ngx_handle_read_event(ev, 0);    
+    rc = ngx_handle_read_event(ev, 0);
     CHECK(rc == NGX_OK);
   } else if (rc == NGX_OK) {
     // Pagespeed is done.  Stop watching the pipe.  If we still have data to
@@ -541,7 +541,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "invalid url");
 
     // Let nginx deal with the error however it wants; we will see a NULL ctx in
-    // the body filter or content handler and do nothing.    
+    // the body filter or content handler and do nothing.
     return is_resource_fetch ? NGX_DECLINED : NGX_OK;
   }
 
@@ -633,7 +633,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
           custom_options);
     }
     driver->set_log_record(ctx->base_fetch->log_record());
-    
+
     // TODO(jefftk): FlushEarlyFlow would go here.
 
     // Will call StartParse etc.  The rewrite driver will take care of deleting
@@ -669,7 +669,7 @@ ngx_http_pagespeed_send_to_pagespeed(
   int last_buf = 0;
   for (cur = in; cur != NULL; cur = cur->next) {
     last_buf = cur->buf->last_buf;
-    
+
     // Buffers are not really the last buffer until they've been through
     // pagespeed.
     cur->buf->last_buf = 0;
@@ -722,11 +722,40 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   if (in != NULL) {
     // Send all input data to the proxy fetch.
     ngx_http_pagespeed_send_to_pagespeed(r, ctx, in);
-  }  
+  }
 
   ngx_http_pagespeed_set_buffered(r, true);
   return NGX_AGAIN;
 }
+
+#ifndef ngx_http_clear_etag
+// ngx_http_clear_etag(r) and the shortcut r->headers_out.etag were added in
+// 1.3.3.  Provide our own implementation if it's not present.
+static void
+ngx_http_clear_etag(ngx_http_request_t* r) {
+  // Standard nginx idiom for iterating over a list.  See ngx_list.h
+  ngx_uint_t i;
+  ngx_list_part_t* part = &r->headers_out.headers.part;
+  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
+
+  for (i = 0 ; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+
+      part = part->next;
+      header = static_cast<ngx_table_elt_t*>(part->elts);
+      i = 0;
+    }
+
+    if (STR_EQ_LITERAL(header[i].key, "Etag")) {
+      header[i].hash = 0;  // Don't include this header.
+    }
+  }
+}
+#define ngx_http_clear_etag(r) ngx_http_clear_etag(r)
+#endif
 
 static ngx_int_t
 ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
@@ -741,7 +770,7 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
 
   // We don't know what this is, but we only want to send html through to
   // pagespeed.  Check the content type header and find out.
-  const net_instaweb::ContentType* content_type = 
+  const net_instaweb::ContentType* content_type =
       net_instaweb::MimeTypeToContentType(
           ngx_http_pagespeed_str_to_string_piece(r->headers_out.content_type));
   if (content_type == NULL || !content_type->IsHtmlLike()) {
@@ -753,17 +782,40 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
   // and calculate on the fly.
   ngx_http_clear_content_length(r);
-  
+
   // Pagespeed html doesn't need etags: it should never be cached.
   ngx_http_clear_etag(r);
-  
+
   // An page may change without the underlying file changing, because of how
   // resources are included.  Pagespeed adds cache control headers for
   // resources instead of using the last modified header.
   ngx_http_clear_last_modified(r);
-  
+
+  // Don't cache html.  See mod_instaweb:instaweb_fix_headers_filter.
+  // Based on ngx_http_add_cache_control.
+  if (r->headers_out.cache_control.elts == NULL) {
+    ngx_int_t rc = ngx_array_init(&r->headers_out.cache_control, r->pool,
+                                  1, sizeof(ngx_table_elt_t *));
+    if (rc != NGX_OK) {
+      return NGX_ERROR;
+    }
+  }
+  ngx_table_elt_t** cache_control_headers = static_cast<ngx_table_elt_t**>(
+      ngx_array_push(&r->headers_out.cache_control));
+  if (cache_control_headers == NULL) {
+    return NGX_ERROR;
+  }
+  cache_control_headers[0] = static_cast<ngx_table_elt_t*>(
+      ngx_list_push(&r->headers_out.headers));
+  if (cache_control_headers[0] == NULL) {
+    return NGX_ERROR;
+  }
+  cache_control_headers[0]->hash = 1;
+  ngx_str_set(&cache_control_headers[0]->key, "Cache-Control");
+  ngx_str_set(&cache_control_headers[0]->value, "max-age=0, no-cache");
+
   r->filter_need_in_memory = 1;
-  
+
   if (r->err_status == 0) {
     int rc = ngx_http_pagespeed_create_request_context(
         r, false /* not a resource fetch */);
