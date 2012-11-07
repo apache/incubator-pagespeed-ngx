@@ -97,8 +97,13 @@ DEFINE_int32(image_max_rewrites_at_once,
              "Maximum number of images that will be rewritten simultaneously.");
 DEFINE_bool(ajax_rewriting_enabled, false, "Boolean to indicate whether ajax "
             "rewriting is enabled.");
+DEFINE_bool(image_preserve_urls, false, "Boolean to indicate whether image"
+            "URLs should be preserved.");
+DEFINE_bool(css_preserve_urls, false, "Boolean to indicate whether CSS URLS"
+            "should be preserved.");
+DEFINE_bool(js_preserve_urls, false, "Boolean to indicate whether JavaScript"
+            "URLs should be preserved.");
 DEFINE_bool(log_rewrite_timing, false, "Log time taken by rewrite filters.");
-
 DEFINE_int64(max_html_cache_time_ms,
              net_instaweb::RewriteOptions::kDefaultMaxHtmlCacheTimeMs,
              "Default Cache-Control TTL for HTML. "
@@ -458,6 +463,15 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_inline_preview_images_experimental")) {
     options->set_enable_inline_preview_images_experimental(
         FLAGS_enable_inline_preview_images_experimental);
+  }
+  if (WasExplicitlySet("image_preserve_urls")) {
+    options->set_image_preserve_urls(FLAGS_image_preserve_urls);
+  }
+  if (WasExplicitlySet("css_preserve_urls")) {
+    options->set_css_preserve_urls(FLAGS_css_preserve_urls);
+  }
+  if (WasExplicitlySet("js_preserve_urls")) {
+    options->set_js_preserve_urls(FLAGS_js_preserve_urls);
   }
   if (WasExplicitlySet("avoid_renaming_introspective_javascript")) {
     options->set_avoid_renaming_introspective_javascript(

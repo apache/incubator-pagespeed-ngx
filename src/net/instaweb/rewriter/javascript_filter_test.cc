@@ -229,6 +229,18 @@ TEST_F(JavascriptFilterTest, IdentifyLibraryTwice) {
   EXPECT_EQ(0, minification_failures_->Get());
 }
 
+TEST_F(JavascriptFilterTest, JsPreserveURLsOnTest) {
+  // Make sure that when in conservative mode URL stays the same.
+  RegisterLibrary();
+  options()->EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
+  options()->set_js_preserve_urls(true);
+  rewrite_driver()->AddFilters();
+  InitTest(100);
+  ValidateExpected("js_urls_preserved",
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(kOrigJsName));
+}
+
 TEST_F(JavascriptFilterTest, IdentifyLibraryNoMinification) {
   // Don't enable kRewriteJavascript.  This should still identify the library.
   RegisterLibrary();

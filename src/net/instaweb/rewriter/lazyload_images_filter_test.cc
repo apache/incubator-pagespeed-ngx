@@ -282,6 +282,19 @@ TEST_F(LazyloadImagesFilterTest, NoHeadTag) {
              "</body>"));
 }
 
+TEST_F(LazyloadImagesFilterTest, LazyloadImagesPreserveURLsOn) {
+  // Make sure that we do not lazyload images when preserve urls is off.
+  // This is a modification of the NoHeadTag test.
+  options()->set_image_preserve_urls(true);
+  options()->set_support_noscript_enabled(false);
+  AddFilter(RewriteOptions::kLazyloadImages);
+
+  ValidateNoChanges("lazyload_images",
+      "<body>"
+      "<img src=\"1.jpg\"/>"
+      "</body>");
+}
+
 TEST_F(LazyloadImagesFilterTest, CustomImageUrl) {
   GoogleString blank_image_url = "http://blank.com/1.gif";
   options()->set_lazyload_images_blank_url(blank_image_url);

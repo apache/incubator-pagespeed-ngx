@@ -199,6 +199,72 @@ TEST_F(CacheExtenderTest, ExtendUnhealthy) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
+class CacheExtenderTestPreserveURLs : public CacheExtenderTest {
+ public:
+  virtual void SetUp() {}
+
+  // This function should only be called once, as it sets the filters
+  // and options.
+  void TestExtend(bool img_extend, bool css_extend, bool js_extend) {
+    if (!img_extend) {
+      options()->set_image_preserve_urls(true);
+    }
+    if (!css_extend) {
+      options()->set_css_preserve_urls(true);
+    }
+    if (!js_extend) {
+      options()->set_js_preserve_urls(true);
+    }
+    CacheExtenderTest::SetUp();
+    LoggingInfo logging_info;
+    LogRecord log_record(&logging_info);
+    rewrite_driver()->set_log_record(&log_record);
+    InitTest(kShortTtlSec);
+
+    GoogleString expected_img_html = "b.jpg";
+    GoogleString expected_css_html = kCssFile;
+    GoogleString expected_js_html = "c.js";
+
+    if (img_extend) {
+      expected_img_html = Encode(kTestDomain, "ce", "0", "b.jpg", "jpg");
+    }
+    if (css_extend) {
+      expected_css_html = Encode(kCssPath, "ce", "0", kCssTail, "css");
+    }
+    if (js_extend) {
+      expected_js_html = Encode(kTestDomain, "ce", "0", "c.js", "js");
+    }
+    ValidateExpected(
+        "do_extend",
+        GenerateHtml(kCssFile, "b.jpg", "c.js"),
+        GenerateHtml(expected_css_html, expected_img_html, expected_js_html));
+  }
+};
+
+TEST_F(CacheExtenderTestPreserveURLs, CacheExtenderPreserveImageURLsOn) {
+  TestExtend(false,  // img_extend
+             true,   // css_extend
+             true);  // js_extend
+}
+
+TEST_F(CacheExtenderTestPreserveURLs, CacheExtenderPreserveCssURLsOn) {
+  TestExtend(true,   // img_extend
+             false,  // css_extend
+             true);  // js_extend
+}
+
+TEST_F(CacheExtenderTestPreserveURLs, CacheExtenderPreserveJsURLsOn) {
+  TestExtend(true,    // img_extend
+             true,    // css_extend
+             false);  // js_extend
+}
+
+TEST_F(CacheExtenderTestPreserveURLs, CacheExtenderPreserveAllURLsOn) {
+  TestExtend(false,   // img_extend
+             false,   // css_extend
+             false);  // js_extend
+}
+
 TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascript) {
   LoggingInfo logging_info;
   LogRecord log_record(&logging_info);

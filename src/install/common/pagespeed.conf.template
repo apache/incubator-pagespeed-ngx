@@ -99,7 +99,6 @@
     # ModPagespeedNumRewriteThreads 4
     # ModPagespeedNumExpensiveRewriteThreads 4
 
-
     # Settings for image optimization:
     #
     # Jpeg recompression quality (0 to 100, -1 strips metadata):

@@ -306,6 +306,21 @@ TEST_F(JsCombineFilterTest, CombineJs) {
                 "dzsx6RqvJJ", false, kTestDomain);
 }
 
+class JsCombineFilterCustomOptions : public JsCombineFilterTest {
+ protected:
+  // Derived classes should set their options and then call
+  // JsCombineFilterTest::SetUp().
+  virtual void SetUp() {}
+};
+
+TEST_F(JsCombineFilterCustomOptions, CombineJsPreserveURLsOn) {
+  options()->set_js_preserve_urls(true);
+  JsCombineFilterTest::SetUp();
+  ValidateNoChanges("combine_js_preserve_urls_on",
+                    StrCat("<script src=", kJsUrl1, "></script>",
+                           "<script src=", kJsUrl2, "></script>"));
+}
+
 // When cache is unhealthy, don't rewrite URLs in HTML.
 TEST_F(JsCombineFilterTest, CombineJsUnhealthy) {
   lru_cache()->set_is_healthy(false);

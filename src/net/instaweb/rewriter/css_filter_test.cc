@@ -166,6 +166,20 @@ TEST_F(CssFilterTest, RewriteCss404) {
   ValidateNoChanges("404", "<link rel=stylesheet href='404.css'>");
 }
 
+class CssFilterTestCustomOptions : public CssFilterTest {
+ protected:
+  // Derived classes should add their options and then call
+  // CssFilterTest::SetUp.
+  virtual void SetUp() {}
+};
+
+TEST_F(CssFilterTestCustomOptions, CssPreserveURLs) {
+  options()->set_css_preserve_urls(true);
+  CssFilterTest::SetUp();
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kInputStyle, 100);
+  ValidateNoChanges("css_preserve_urls_on", "<link rel=StyleSheet href=a.css>");
+}
+
 TEST_F(CssFilterTest, LinkHrefCaseInsensitive) {
   // Make sure we check rel value case insensitively.
   // http://code.google.com/p/modpagespeed/issues/detail?id=354

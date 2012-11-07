@@ -72,7 +72,7 @@ class CssCombineFilterTest : public RewriteTestBase {
                   const StringPiece& debug_text,
                   bool is_barrier) {
     CombineCssWithNames(id, barrier_text, debug_text, is_barrier,
-                        "a.css", "b.css");
+                        "a.css", "b.css", true);
   }
 
   // Synthesizes an HTML css link element, with no media tag.
@@ -112,7 +112,8 @@ class CssCombineFilterTest : public RewriteTestBase {
                            const StringPiece& debug_text,
                            bool is_barrier,
                            const char* a_css_name,
-                           const char* b_css_name) {
+                           const char* b_css_name,
+                           bool expect_combine) {
     LoggingInfo logging_info;
     LogRecord log_record(&logging_info);
     rewrite_driver()->set_log_record(&log_record);
@@ -171,6 +172,10 @@ class CssCombineFilterTest : public RewriteTestBase {
       expected_file_count_reduction = orig_file_count_reduction + 2;
     }
 
+    if (!expect_combine) {
+      expected_file_count_reduction = 0;
+    }
+
     EXPECT_EQ(expected_file_count_reduction, css_file_count_reduction->Get());
     if (expected_file_count_reduction > 0) {
       EXPECT_STREQ("cc", logging_info.applied_rewriters());
@@ -195,31 +200,35 @@ class CssCombineFilterTest : public RewriteTestBase {
     if (!debug_text.empty()) {
       StrAppend(&expected_output, "<!--css_combine: flush-->");
     }
-    EXPECT_EQ(expected_output, output_buffer_);
+    if (expect_combine) {
+      EXPECT_EQ(expected_output, output_buffer_);
 
-    // Fetch the combination to make sure we can serve the result from above.
-    ExpectStringAsyncFetch expect_callback(true);
-    rewrite_driver()->FetchResource(combine_url, &expect_callback);
-    rewrite_driver()->WaitForCompletion();
-    EXPECT_EQ(HttpStatus::kOK,
-              expect_callback.response_headers()->status_code()) << combine_url;
-    EXPECT_EQ(expected_combination, expect_callback.buffer());
+      // Fetch the combination to make sure we can serve the result from above.
+      ExpectStringAsyncFetch expect_callback(true);
+      rewrite_driver()->FetchResource(combine_url, &expect_callback);
+      rewrite_driver()->WaitForCompletion();
+      EXPECT_EQ(HttpStatus::kOK,
+                expect_callback.response_headers()->status_code())
+          << combine_url;
+      EXPECT_EQ(expected_combination, expect_callback.buffer());
 
-    // Now try to fetch from another server (other_rewrite_driver()) that
-    // does not already have the combination cached.
-    // TODO(sligocki): This has too much shared state with the first server.
-    // See RewriteImage for details.
-    ExpectStringAsyncFetch other_expect_callback(true);
-    message_handler_.Message(kInfo, "Now with serving.");
-    file_system()->Enable();
-    other_rewrite_driver()->FetchResource(combine_url, &other_expect_callback);
-    other_rewrite_driver()->WaitForCompletion();
-    EXPECT_EQ(HttpStatus::kOK,
-              other_expect_callback.response_headers()->status_code());
-    EXPECT_EQ(expected_combination, other_expect_callback.buffer());
+      // Now try to fetch from another server (other_rewrite_driver()) that
+      // does not already have the combination cached.
+      // TODO(sligocki): This has too much shared state with the first server.
+      // See RewriteImage for details.
+      ExpectStringAsyncFetch other_expect_callback(true);
+      message_handler_.Message(kInfo, "Now with serving.");
+      file_system()->Enable();
+      other_rewrite_driver()->FetchResource(combine_url,
+                                            &other_expect_callback);
+      other_rewrite_driver()->WaitForCompletion();
+      EXPECT_EQ(HttpStatus::kOK,
+                other_expect_callback.response_headers()->status_code());
+      EXPECT_EQ(expected_combination, other_expect_callback.buffer());
 
-    // Try to fetch from an independent server.
-    ServeResourceFromManyContexts(combine_url, expected_combination);
+      // Try to fetch from an independent server.
+      ServeResourceFromManyContexts(combine_url, expected_combination);
+    }
   }
 
   // Test what happens when CSS combine can't find a previously-rewritten
@@ -457,6 +466,22 @@ TEST_F(CssCombineFilterTest, CombineCssMD5) {
   CombineCss("combine_css_md5", "", "", false);
 }
 
+class CssCombineFilterCustomOptions : public CssCombineFilterTest {
+ protected:
+  // Derived classes need to set custom options and explicitly call
+  // CssCombineFilterTest::SetUp();
+  virtual void SetUp() {}
+};
+
+
+TEST_F(CssCombineFilterCustomOptions, CssPreserveURLs) {
+  options()->set_css_preserve_urls(true);
+  CssCombineFilterTest::SetUp();
+  SetHtmlMimetype();
+  CombineCssWithNames("combine_css_no_hash", "", "", false, "a.css", "b.css",
+                      false);
+}
+
 // Make sure that if we re-parse the same html twice we do not
 // end up recomputing the CSS (and writing to cache) again
 TEST_F(CssCombineFilterTest, CombineCssRecombine) {
@@ -475,7 +500,8 @@ TEST_F(CssCombineFilterTest, CombineCssRecombine) {
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=39
 TEST_F(CssCombineFilterTest, DealWithParams) {
   SetHtmlMimetype();
-  CombineCssWithNames("with_params", "", "", false, "a.css?U", "b.css?rev=138");
+  CombineCssWithNames("with_params", "", "", false, "a.css?U", "b.css?rev=138",
+                      true);
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?q=css&id=252

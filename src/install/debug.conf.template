@@ -562,6 +562,7 @@ NameVirtualHost *:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedCssImageInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssOutlineMinBytes 2000
+#ALL_DIRECTIVES ModPagespeedCssPreserveURLs off
 #ALL_DIRECTIVES ModPagespeedDisableFilters strip_scripts
 #ALL_DIRECTIVES ModPagespeedDisallow bar
 #ALL_DIRECTIVES ModPagespeedDomain http://example.com
@@ -584,6 +585,7 @@ NameVirtualHost *:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedImageLimitResizeAreaPercent 80
 #ALL_DIRECTIVES ModPagespeedImageMaxRewritesAtOnce 5
 #ALL_DIRECTIVES ModPagespeedImageRecompressionQuality 75
+#ALL_DIRECTIVES ModPagespeedImagePreserveURLs false
 #ALL_DIRECTIVES ModPagespeedImgInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedImgMaxRewritesAtOnce 5
 #ALL_DIRECTIVES ModPagespeedIncreaseSpeedTracking true
@@ -591,6 +593,7 @@ NameVirtualHost *:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedJpegRecompressionQuality 80
 #ALL_DIRECTIVES ModPagespeedJsInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedJsOutlineMinBytes 2000
+#ALL_DIRECTIVES ModPagespeedJsPreserveURLS off
 #ALL_DIRECTIVES ModPagespeedLRUCacheByteLimit 1000
 #ALL_DIRECTIVES ModPagespeedLRUCacheKbPerProcess 1
 #ALL_DIRECTIVES ModPagespeedListOutstandingUrlsOnError on

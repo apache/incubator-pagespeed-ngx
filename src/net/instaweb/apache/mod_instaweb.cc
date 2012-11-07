@@ -136,6 +136,7 @@ const char kModPagespeedCssImageInlineMaxBytes[] =
     "ModPagespeedCssImageInlineMaxBytes";
 const char kModPagespeedCssInlineMaxBytes[] = "ModPagespeedCssInlineMaxBytes";
 const char kModPagespeedCssOutlineMinBytes[] = "ModPagespeedCssOutlineMinBytes";
+const char kModPagespeedCssPreserveURLs[] = "ModPagespeedCssPreserveURLs";
 const char kModPagespeedCustomFetchHeader[] = "ModPagespeedCustomFetchHeader";
 const char kModPagespeedDangerPermitFetchFromUnknownHosts[] =
     "ModPagespeedDangerPermitFetchFromUnknownHosts";
@@ -172,6 +173,7 @@ const char kModPagespeedImageMaxRewritesAtOnce[] =
     "ModPagespeedImageMaxRewritesAtOnce";
 const char kModPagespeedImageRecompressionQuality[] =
     "ModPagespeedImageRecompressionQuality";
+const char kModPagespeedImagePreserveURLs[] = "ModPagespeedImagePreserveURLs";
 const char kModPagespeedInheritVHostConfig[] = "ModPagespeedInheritVHostConfig";
 const char kModPagespeedInstallCrashHandler[] =
     "ModPagespeedInstallCrashHandler";
@@ -182,6 +184,7 @@ const char kModPagespeedWebpRecompressionQuality[] =
 
 const char kModPagespeedJsInlineMaxBytes[] = "ModPagespeedJsInlineMaxBytes";
 const char kModPagespeedJsOutlineMinBytes[] = "ModPagespeedJsOutlineMinBytes";
+const char kModPagespeedJsPreserveURLs[] = "ModPagespeedJsPreserveURLs";
 const char kModPagespeedLRUCacheByteLimit[] = "ModPagespeedLRUCacheByteLimit";
 const char kModPagespeedLRUCacheKbPerProcess[] =
     "ModPagespeedLRUCacheKbPerProcess";
@@ -1646,6 +1649,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Number of bytes below which stylesheets will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedCssOutlineMinBytes,
         "Number of bytes above which inline CSS resources will be outlined."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedCssPreserveURLs,
+        "Disable the rewriting of CSS URLs."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDisableFilters,
         "Comma-separated list of disabled filters"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedDisallow,
@@ -1682,11 +1687,17 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJpegRecompressionQuality,
         "Set quality parameter for recompressing jpeg images [-1,100], 100 "
         "refers to best quality, -1 disables lossy compression."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedImagePreserveURLs,
+        "Disable the rewriting of image URLs."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedImgInlineMaxBytes,
+        "DEPRECATED, use ModPagespeedImageInlineMaxBytes."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJsInlineMaxBytes,
         "Number of bytes below which javascript will be inlined."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJsOutlineMinBytes,
         "Number of bytes above which inline Javascript resources will"
         "be outlined."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedJsPreserveURLs,
+        "Disable the rewriting of Javascript URLs."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedListOutstandingUrlsOnError,
         "Adds an error message into the log for every URL fetch in "
         "flight when the HTTP stack encounters a system error, e.g. "

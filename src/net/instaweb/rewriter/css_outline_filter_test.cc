@@ -136,6 +136,23 @@ TEST_F(CssOutlineFilterTest, OutlineStyleMD5) {
   OutlineStyle("outline_styles_md5");
 }
 
+class CssOutlineFilterTestCustomOptions : public CssOutlineFilterTest {
+ protected:
+  // Derived classes should set their options and then call
+  // CssOutlineFilterTest::SetUp().
+  virtual void SetUp() {}
+};
+
+TEST_F(CssOutlineFilterTestCustomOptions, CssOutlinePreserveURLsOn) {
+  options()->set_css_preserve_urls(true);
+  options()->set_css_outline_min_bytes(0);
+  CssOutlineFilterTest::SetUp();
+  const char kStyleText[] = "background_blue { background-color: blue; }\n"
+                            "foreground_yellow { color: yellow; }\n";
+  TestOutlineCss("http://outline_style.test/outline_styles_md5.html", "",
+                 kStyleText, false, "", "");
+}
+
 
 TEST_F(CssOutlineFilterTest, NoAbsolutifySameDir) {
   const GoogleString css = "body { background-image: url('bg.png'); }";

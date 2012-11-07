@@ -150,6 +150,22 @@ TEST_F(JsOutlineFilterTest, UrlNotTooLong) {
   OutlineScript("url_not_too_long", true);
 }
 
+TEST_F(JsOutlineFilterTest, JsPreserveURL) {
+  options()->set_js_outline_min_bytes(0);
+  options()->EnableFilter(RewriteOptions::kOutlineJavascript);
+  options()->set_js_preserve_urls(true);
+  rewrite_driver()->AddFilters();
+  OutlineScript("url_not_too_long", false);
+}
+
+TEST_F(JsOutlineFilterTest, JsPreserveURLOff) {
+  options()->set_js_outline_min_bytes(0);
+  options()->EnableFilter(RewriteOptions::kOutlineJavascript);
+  options()->set_js_preserve_urls(false);
+  rewrite_driver()->AddFilters();
+  OutlineScript("url_not_too_long", true);
+}
+
 // But if we set max_url_size too small, it will fail cleanly.
 TEST_F(JsOutlineFilterTest, UrlTooLong) {
   options()->set_max_url_size(0);

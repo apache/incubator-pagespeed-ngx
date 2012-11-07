@@ -144,6 +144,25 @@ TEST_F(JsInlineFilterTest, DoInlineJavascriptSimpleHtml) {
                        true);
 }
 
+class JsInlineFilterTestCustomOptions : public JsInlineFilterTest {
+ protected:
+  virtual void SetUp() {}
+};
+
+TEST_F(JsInlineFilterTestCustomOptions, InlineJsPreserveURLSOn) {
+  // Make sure that we don't inline when preserve urls is on.
+  options()->set_js_preserve_urls(true);
+  JsInlineFilterTest::SetUp();
+  SetHtmlMimetype();
+
+  // Simple case:
+  TestInlineJavascript("http://www.example.com/index.html",
+                       "http://www.example.com/script.js",
+                       "",
+                       "function id(x) { return x; }\n",
+                       false);
+}
+
 TEST_F(JsInlineFilterTest, DoInlineJavascriptSimpleXhtml) {
   SetXhtmlMimetype();
 

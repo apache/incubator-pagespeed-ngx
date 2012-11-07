@@ -172,6 +172,7 @@ class RewriteOptions {
     kCssImageInlineMaxBytes,
     kCssInlineMaxBytes,
     kCssOutlineMinBytes,
+    kCssPreserveURLs,
     kDefaultCacheHtml,
     kDomainRewriteHyperlinks,
     kDomainShardCount,
@@ -196,6 +197,7 @@ class RewriteOptions {
     kImageLimitOptimizedPercent,
     kImageLimitResizeAreaPercent,
     kImageMaxRewritesAtOnce,
+    kImagePreserveURLs,
     kImageRetainColorProfile,
     kImageRetainColorSampling,
     kImageRetainExifData,
@@ -208,6 +210,7 @@ class RewriteOptions {
     kJsInlineMaxBytes,
     kJsOutlineMinBytes,
     kLazyloadImagesBlankUrl,
+    kJsPreserveURLs,
     kLazyloadImagesAfterOnload,
     kInlineOnlyCriticalImages,
     kLogRewriteTiming,
@@ -1206,6 +1209,27 @@ class RewriteOptions {
   }
   int64 critical_images_cache_expiration_time_ms() const {
     return critical_images_cache_expiration_time_ms_.value();
+  }
+
+  bool css_preserve_urls() const {
+    return css_preserve_urls_.value();
+  }
+  void set_css_preserve_urls(bool x) {
+    set_option(x, &css_preserve_urls_);
+  }
+
+  bool image_preserve_urls() const {
+    return image_preserve_urls_.value();
+  }
+  void set_image_preserve_urls(bool x) {
+    set_option(x, &image_preserve_urls_);
+  }
+
+  bool js_preserve_urls() const {
+    return js_preserve_urls_.value();
+  }
+  void set_js_preserve_urls(bool x) {
+    set_option(x, &js_preserve_urls_);
   }
 
   bool image_retain_color_profile() const {
@@ -2321,6 +2345,12 @@ class RewriteOptions {
   Option<int64> css_image_inline_max_bytes_;
   Option<int64> css_inline_max_bytes_;
   Option<int64> css_outline_min_bytes_;
+
+  // Preserve URL options
+  Option<bool> css_preserve_urls_;
+  Option<bool> js_preserve_urls_;
+  Option<bool> image_preserve_urls_;
+
   Option<int64> image_inline_max_bytes_;
   Option<int64> js_inline_max_bytes_;
   Option<int64> js_outline_min_bytes_;

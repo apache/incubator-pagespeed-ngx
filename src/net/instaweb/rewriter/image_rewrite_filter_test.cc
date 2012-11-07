@@ -554,6 +554,18 @@ TEST_F(ImageRewriteTest, PngToWebp) {
                     "", " width=\"100\" height=\"100\"", true, false);
 }
 
+TEST_F(ImageRewriteTest, ImageRewritePreserveURLsOn) {
+  // Make sure that the image URL stays the same.
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->set_image_preserve_urls(true);
+  rewrite_driver()->AddFilters();
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
+                    "",       // initial_dims,
+                    "",       // final_dims,
+                    false,   // expect_rewritten
+                    false);  // expect_inline
+}
+
 TEST_F(ImageRewriteTest, ResizeTest) {
   // Make sure we resize images, but don't optimize them in place.
   options()->EnableFilter(RewriteOptions::kResizeImages);

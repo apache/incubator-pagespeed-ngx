@@ -197,6 +197,36 @@ test_filter remove_comments retains appropriate comments.
 check run_wget_with_args $URL
 check grep -q retained $FETCHED        # RetainComment directive
 
+# Make sure that when in PreserveURLs mode that we don't rewrite URLs. This is
+# non-exhaustive, the unit tests should cover the rest.
+# Note: We block with psatest here because this is a negative test.  We wouldn't
+# otherwise know how many wget attempts should be made.
+WGET_ARGS="--header=X-PSA-Blocking-Rewrite:psatest"
+echo TEST: PreserveURLs on prevents URL rewriting
+FILE=preserveurls/on/preserveurls.html
+URL=$TEST_ROOT/$FILE
+FETCHED=$OUTDIR/preserveurls.html
+check run_wget_with_args $URL
+unset WGET_ARGS
+check_not_from "$FETCHED" fgrep -q \.pagespeed\.
+
+# When PreserveURLs is off do a quick check to make sure that normal rewriting
+# occurs.  This is not exhaustive, the unit tests should cover the rest.
+echo TEST: PreserveURLs off causes URL rewriting
+FILE=preserveurls/off/preserveurls.html
+URL=$TEST_ROOT/$FILE
+FETCHED=$OUTDIR/preserveurls.html
+# Check that style.css was inlined.
+fetch_until $URL 'grep -c #9370db' 1
+# Check that introspection.js was inlined.
+fetch_until $URL 'grep -c script_tags' 1
+# Check that the image was optimized.
+fetch_until $URL 'grep -c BikeCrashIcn\.png\.pagespeed\.' 2
+
+# TODO(jkarlin): When ajax rewriting is in MPS check that it works with
+# MPS.
+
+
 # TODO(sligocki): This test needs to be run before below tests.
 # Remove once below tests are moved to system_test.sh.
 test_filter rewrite_images inlines, compresses, and resizes.

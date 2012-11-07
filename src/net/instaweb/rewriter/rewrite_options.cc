@@ -636,6 +636,12 @@ void RewriteOptions::AddProperties() {
   add_option(false, &RewriteOptions::respect_x_forwarded_proto_, "rxfp",
              kRespectXForwardedProto);
   add_option(false, &RewriteOptions::flush_html_, "fh", kFlushHtml);
+  add_option(false, &RewriteOptions::css_preserve_urls_, "cpu",
+             kCssPreserveURLs);
+  add_option(false, &RewriteOptions::image_preserve_urls_, "ipu",
+             kImagePreserveURLs);
+  add_option(false, &RewriteOptions::js_preserve_urls_, "jpu",
+             kJsPreserveURLs);
   add_option(true, &RewriteOptions::serve_stale_if_fetch_error_, "ss",
              kServeStaleIfFetchError);
   add_option(false,

@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 
 #include "base/scoped_ptr.h"
+#include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -58,6 +59,7 @@ class JsDeferDisabledFilterTest : public RewriteTestBase {
 
 TEST_F(JsDeferDisabledFilterTest, DeferScript) {
   InitJsDeferDisabledFilter(false);
+
   ValidateExpected("defer_script",
       "<head>"
       "<script type='text/psajs' "
@@ -75,6 +77,20 @@ TEST_F(JsDeferDisabledFilterTest, DeferScript) {
              JsDeferDisabledFilter::kSuffix,
              "</script></head><body>Hello, world!"
              "</body>"));
+}
+
+TEST_F(JsDeferDisabledFilterTest, JsDeferPreserveURLsOn) {
+  // Make sure that we don't defer when preserve urls is on.
+  options()->set_js_preserve_urls(true);
+  options()->set_support_noscript_enabled(false);
+  AddFilter(RewriteOptions::kDeferJavascript);
+  GoogleString before = "<head>"
+      "<script type='text/psajs' "
+      "src='http://www.google.com/javascript/ajax_apis.js'></script>"
+      "<script type='text/psajs'"
+      "> func();</script>"
+      "</head><body>Hello, world!</body>";
+  ValidateNoChanges("js_defer_preserve_urls_on", before);
 }
 
 TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {

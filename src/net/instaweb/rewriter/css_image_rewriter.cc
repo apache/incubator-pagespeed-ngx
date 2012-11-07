@@ -73,11 +73,12 @@ bool CssImageRewriter::FlatteningEnabled() const {
 bool CssImageRewriter::RewritesEnabled(
     int64 image_inline_max_bytes) const {
   const RewriteOptions* options = driver_->options();
-  return (image_inline_max_bytes > 0 ||
-          options->ImageOptimizationEnabled() ||
-          options->Enabled(RewriteOptions::kLeftTrimUrls) ||
-          options->Enabled(RewriteOptions::kExtendCacheImages) ||
-          options->Enabled(RewriteOptions::kSpriteImages));
+  return ((image_inline_max_bytes > 0 ||
+           options->ImageOptimizationEnabled() ||
+           options->Enabled(RewriteOptions::kLeftTrimUrls) ||
+           options->Enabled(RewriteOptions::kExtendCacheImages) ||
+           options->Enabled(RewriteOptions::kSpriteImages)) &&
+          !options->image_preserve_urls());
 }
 
 void CssImageRewriter::RewriteImport(
@@ -164,6 +165,7 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
     }
   }
 
+  // TODO(jkarlin): We need a separate flag for CssImagePreserveURLs.
   bool is_enabled = RewritesEnabled(image_inline_max_bytes);
 
   if (is_enabled) {

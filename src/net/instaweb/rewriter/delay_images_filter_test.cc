@@ -223,6 +223,26 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
               GoogleString::npos);
 }
 
+TEST_F(DelayImagesFilterTest, DelayImagesPreserveURLsOn) {
+  // Make sure that we don't delay images when preserve urls is on.
+  options()->set_image_preserve_urls(true);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
+                       kContentTypeJpeg, 100);
+  const char kInputHtml[] =
+      "<html><head></head><body>"
+      "<img src=\"http://test.com/1.jpeg\"/>"
+      "</body></html>";
+
+  // We'll add the noscript code but the image URL shouldn't change.
+  GoogleString output_html = StrCat(
+      "<html><head></head><body>",
+      GetNoscript(),
+      "<img src=\"http://test.com/1.jpeg\"/></body></html>");
+
+  MatchOutputAndCountBytes(kInputHtml, output_html);
+}
+
 TEST_F(DelayImagesFilterTest, DelayImageWithDeferJavascriptDisabled) {
   options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);

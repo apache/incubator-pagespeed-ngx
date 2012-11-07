@@ -39,6 +39,7 @@ struct OptionName {
 "CssImageInlineMaxBytes",                RewriteOptions::kCssImageInlineMaxBytes
 "CssInlineMaxBytes",                     RewriteOptions::kCssInlineMaxBytes
 "CssOutlineMinBytes",                    RewriteOptions::kCssOutlineMinBytes
+"CssPreserveURLs",                       RewriteOptions::kCssPreserveURLs
 "DefaultCacheHtml",                      RewriteOptions::kDefaultCacheHtml
 "DomainShardCount",                      RewriteOptions::kDomainShardCount
 "EnableBlinkCriticalLine",               RewriteOptions::kEnableBlinkCriticalLine
@@ -59,6 +60,7 @@ struct OptionName {
 "ImageLimitOptimizedPercent",            RewriteOptions::kImageLimitOptimizedPercent
 "ImageLimitResizeAreaPercent",           RewriteOptions::kImageLimitResizeAreaPercent
 "ImageMaxRewritesAtOnce",                RewriteOptions::kImageMaxRewritesAtOnce
+"ImagePreserveURLs",                     RewriteOptions::kImagePreserveURLs
 "ImageRetainColorProfile",               RewriteOptions::kImageRetainColorProfile
 "ImageRetainColorSampling",              RewriteOptions::kImageRetainColorSampling
 "ImageRetainExifData",                   RewriteOptions::kImageRetainExifData
@@ -72,6 +74,7 @@ struct OptionName {
 "JsInlineMaxBytes",                      RewriteOptions::kJsInlineMaxBytes
 "JsOutlineMinBytes",                     RewriteOptions::kJsOutlineMinBytes
 "LazyloadImagesBlankUrl",                RewriteOptions::kLazyloadImagesBlankUrl
+"JsPreserveURLs",                        RewriteOptions::kJsPreserveURLs
 "LazyloadImagesAfterOnload",             RewriteOptions::kLazyloadImagesAfterOnload
 "InlineOnlyCriticalImages",              RewriteOptions::kInlineOnlyCriticalImages
 "LogRewriteTiming",                      RewriteOptions::kLogRewriteTiming

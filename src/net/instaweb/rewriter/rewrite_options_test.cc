@@ -664,7 +664,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(114, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(117, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AjaxRewritingEnabled",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAjaxRewritingEnabled));
@@ -710,6 +710,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("CssOutlineMinBytes",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kCssOutlineMinBytes));
+  EXPECT_STREQ("CssPreserveURLs",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kCssPreserveURLs));
   EXPECT_STREQ("DefaultCacheHtml",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kDefaultCacheHtml));
@@ -788,6 +791,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ImageRecompressionQuality",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageRecompressionQuality));
+  EXPECT_STREQ("ImagePreserveURLs",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kImagePreserveURLs));
   EXPECT_STREQ("ImageWebpRecompressionQuality",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageWebpRecompressionQuality));
@@ -806,6 +812,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("LazyloadImagesBlankUrl",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kLazyloadImagesBlankUrl));
+  EXPECT_STREQ("JsPreserveURLs",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kJsPreserveURLs));
   EXPECT_STREQ("LazyloadImagesAfterOnload",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kLazyloadImagesAfterOnload));
@@ -1097,6 +1106,17 @@ TEST_F(RewriteOptionsTest, FuriousSpecTest) {
   EXPECT_EQ(26, options_.num_furious_experiments());
   // Object to adding a 27th.
   EXPECT_FALSE(options_.AddFuriousSpec("id=200;percent=1;default", &handler));
+}
+
+TEST_F(RewriteOptionsTest, PreserveURLDefaults) {
+  // This test serves as a warning. If you enable preserve URLs by default then
+  // many unit tests will fail due to filters being omitted from the HTML path.
+  // Further, preserve_urls is not explicitly tested for the 'false' case, it is
+  // assumed to be tested by the normal unit tests since the default value is
+  // false.
+  EXPECT_FALSE(options_.image_preserve_urls());
+  EXPECT_FALSE(options_.css_preserve_urls());
+  EXPECT_FALSE(options_.js_preserve_urls());
 }
 
 TEST_F(RewriteOptionsTest, FuriousPrintTest) {
