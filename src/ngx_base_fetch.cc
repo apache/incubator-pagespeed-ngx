@@ -27,19 +27,39 @@ namespace net_instaweb {
 NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd)
     : request_(r), done_called_(false), last_buf_sent_(false),
       pipe_fd_(pipe_fd) {
+  PopulateRequestHeaders();
 }
 
 NgxBaseFetch::~NgxBaseFetch() { }
 
-void NgxBaseFetch::PopulateHeaders() {
+void NgxBaseFetch::PopulateRequestHeaders() {
+  CopyHeadersFromTable<RequestHeaders>(&request_->headers_in.headers,
+                                       request_headers());
+}
+
+void NgxBaseFetch::PopulateResponseHeaders() {
+  CopyHeadersFromTable<ResponseHeaders>(&request_->headers_out.headers,
+                                        response_headers());
+
+  // Manually copy over the content type because it's not included in
+  // request_->headers_out.headers.
+  response_headers()->Add(
+      HttpAttributes::kContentType,
+      ngx_http_pagespeed_str_to_string_piece(
+          &request_->headers_out.content_type));
+}
+
+template<class HeadersT>
+void NgxBaseFetch::CopyHeadersFromTable(ngx_list_t* headers_from,
+                                        HeadersT* headers_to) {
   // http_version is the version number of protocol; 1.1 = 1001. See
-  // NGX_HTTP_VERSION_* in ngx_http_request.h
-  response_headers()->set_major_version(request_->http_version / 1000);
-  response_headers()->set_minor_version(request_->http_version % 1000);
+  // NGX_HTTP_VERSION_* in ngx_http_request.h 
+  headers_to->set_major_version(request_->http_version / 1000);
+  headers_to->set_minor_version(request_->http_version % 1000);
 
   // Standard nginx idiom for iterating over a list.  See ngx_list.h
   ngx_uint_t i;
-  ngx_list_part_t* part = &request_->headers_out.headers.part;
+  ngx_list_part_t* part = &headers_from->part;
   ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
 
   for (i = 0 ; /* void */; i++) {
@@ -57,15 +77,8 @@ void NgxBaseFetch::PopulateHeaders() {
     StringPiece value = ngx_http_pagespeed_str_to_string_piece(
         &header[i].value);
 
-    response_headers()->Add(key, value);
+    headers_to->Add(key, value);
   }
-
-  // For some reason content_type is not included in
-  // request_->headers_out.headers, which means I don't fully understand how
-  // headers_out works, but manually copying over content type works.
-  StringPiece content_type = ngx_http_pagespeed_str_to_string_piece(
-      &request_->headers_out.content_type);
-  response_headers()->Add(HttpAttributes::kContentType, content_type);
 }
 
 bool NgxBaseFetch::HandleWrite(const StringPiece& sp,

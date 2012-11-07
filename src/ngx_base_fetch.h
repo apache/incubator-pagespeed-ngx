@@ -37,6 +37,7 @@ extern "C" {
 }
 
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -46,8 +47,11 @@ class NgxBaseFetch : public AsyncFetch {
   NgxBaseFetch(ngx_http_request_t* r, int pipe_fd);
   virtual ~NgxBaseFetch();
 
+  // Copies the request headers out of request_->headers_in->headers.
+  void PopulateRequestHeaders();
+
   // Copies the response headers out of request_->headers_out->headers.
-  void PopulateHeaders();
+  void PopulateResponseHeaders();
 
   // Puts a chain in link_ptr if we have any output data buffered.  Returns
   // NGX_OK on success, NGX_ERROR on errors.  If there's no data to send, sends
@@ -70,6 +74,11 @@ class NgxBaseFetch : public AsyncFetch {
   virtual bool HandleFlush(MessageHandler* handler);
   virtual void HandleHeadersComplete();
   virtual void HandleDone(bool success);
+
+  
+  // Helper method for PopulateRequestHeaders and PopulateResponseHeaders.
+  template<class HeadersT>
+  void CopyHeadersFromTable(ngx_list_t* headers_from, HeadersT* headers_to);
 
   // Indicate to nginx that we would like it to call
   // CollectAccumulatedWrites().
