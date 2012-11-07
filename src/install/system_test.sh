@@ -90,7 +90,7 @@ echo "Image gets rewritten by default."
 # TODO(sligocki): Remove this fetch_until. The blocking rewrite header below
 # should take care of this on the first load, unfortunately that currently
 # fails in PSS :/ (Note: it works in MPS tests).
-$WGET_ARGS=""
+WGET_ARGS=""
 fetch_until $URL 'fgrep -c BikeCrashIcn.png.pagespeed.ic' 1
 OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest" $URL)
 check_from "$OUT" fgrep -q "BikeCrashIcn.png.pagespeed.ic"
