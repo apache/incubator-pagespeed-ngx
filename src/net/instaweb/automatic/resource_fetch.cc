@@ -84,7 +84,9 @@ void ResourceFetch::StartWithDriver(
       url, cleanup_mode, driver, manager->timer(),
       manager->message_handler(), async_fetch);
 
-  driver->FetchResource(url.Spec(), resource_fetch);
+  if (!driver->FetchResource(url.Spec(), resource_fetch)) {
+    resource_fetch->Done(false);
+  }
 }
 
 void ResourceFetch::Start(const GoogleUrl& url,

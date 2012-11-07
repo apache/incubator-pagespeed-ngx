@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
@@ -76,6 +77,40 @@ TEST_F(ResourceFetchTest, BlockingFetch) {
   callback->Release();
 
   EXPECT_EQ(kMinimizedCssContent, buffer);
+}
+
+TEST_F(ResourceFetchTest, BlockingFetchOfInvalidUrl) {
+  // Fetch stuff.
+  GoogleString buffer;
+  StringWriter writer(&buffer);
+  SyncFetcherAdapterCallback* callback =
+      new SyncFetcherAdapterCallback(server_context()->thread_system(),
+                                     &writer);
+  RewriteOptions* custom_options =
+      server_context()->global_options()->Clone();
+  RewriteDriver* custom_driver =
+      server_context()->NewCustomRewriteDriver(custom_options);
+
+  // Encode an URL then invalidate it by removing the hash. This will cause
+  // RewriteDriver::DecodeOutputResourceNameHelper to reject it, which will
+  // cause RewriteDriver::FetchResource to fail to handle it, which will cause
+  // StartWithDriver and then BlockingFetch to exit early.
+  GoogleUrl url(Encode(kTestDomain, "cf", "deadbeef", "a.css", "css"));
+  GoogleString url_str;
+  url.Spec().CopyToString(&url_str);
+  GlobalReplaceSubstring(".deadbeef.", "..", &url_str);
+  url.Reset(url_str);
+
+  // Prior to StartWithDriver checking if the fetch was actually initiated,
+  // the call to BlockingFetch would block forever; now it returns immediately.
+  EXPECT_FALSE(
+      ResourceFetch::BlockingFetch(
+          url, server_context(), custom_driver, callback));
+  EXPECT_TRUE(callback->done());
+  EXPECT_FALSE(callback->success());
+  callback->Release();
+
+  EXPECT_EQ("", buffer);
 }
 
 }  // namespace
