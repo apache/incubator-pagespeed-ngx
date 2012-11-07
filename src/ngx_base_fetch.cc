@@ -177,7 +177,7 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
   if (done_called_) {
     tail_link->buf->last_buf = true;
     last_buf_sent_ = true;
-  }  
+  }
 
   return NGX_OK;
 }
@@ -204,12 +204,12 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
   const ResponseHeaders* pagespeed_headers = response_headers();
   Unlock();
 
-  headers_out->status = NGX_HTTP_OK;
+  headers_out->status = pagespeed_headers->status_code();
 
   ngx_int_t i;
   for (i = 0 ; i < pagespeed_headers->NumAttributes() ; i++) {
-    const GoogleString& name = pagespeed_headers->Name(i);
-    const GoogleString& value = pagespeed_headers->Value(i);
+    StringPiece name(pagespeed_headers->Name(i));
+    StringPiece value(pagespeed_headers->Value(i));
 
     // TODO(jefftk): If we're setting a cache control header we'd like to
     // prevent any downstream code from changing it.  Specifically, if we're
@@ -219,8 +219,54 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
     // shouldn't apply to our generated resources.  See Apache code in
     // net/instaweb/apache/header_util:AddResponseHeadersToRequest
 
-    // TODO(jefftk): actually copy headers over
-    fprintf(stderr, "Would set header '%s: %s'\n", name.c_str(), value.c_str());
+    // Make copies of name and value to put into headers_out.
+    u_char* value_s = static_cast<u_char*>(
+        ngx_palloc(request_->pool, value.size()));
+    if (value_s == NULL) {
+      return NGX_ERROR;
+    }
+    ngx_memcpy(value_s, value.data(), value.size());
+
+    if (name == HttpAttributes::kContentType) {
+      // Unlike all the other headers, content_type is just a string.
+      headers_out->content_type.data = value_s;
+      headers_out->content_type.len = value.size();
+      continue;
+    }
+
+    u_char* name_s = static_cast<u_char*>(
+        ngx_palloc(request_->pool, name.size()));
+    if (name_s == NULL) {
+      return NGX_ERROR;
+    }
+    ngx_memcpy(name_s, name.data(), name.size());
+
+    ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(
+        ngx_list_push(&headers_out->headers));
+    if (header == NULL) {
+      return NGX_ERROR;
+    }
+
+    header->hash = 1;  // TODO(jefftk): should this be a real hash?
+    header->key.len = name.size();
+    header->key.data = name_s;
+    header->value.len = value.size();
+    header->value.data = value_s;
+
+    // Populate the shortcuts to commonly used headers.
+    if (name == HttpAttributes::kDate) {
+      headers_out->date = header;
+    } else if (name == HttpAttributes::kEtag) {
+      headers_out->etag = header;
+    } else if (name == HttpAttributes::kExpires) {
+      headers_out->expires = header;
+    } else if (name == HttpAttributes::kLastModified) {
+      headers_out->last_modified = header;
+    } else if (name == HttpAttributes::kLocation) {
+      headers_out->location = header;
+    } else if (name == HttpAttributes::kServer) {
+      headers_out->server = header;
+    }
   }
 
   return NGX_OK;

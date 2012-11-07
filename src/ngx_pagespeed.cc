@@ -74,7 +74,6 @@ typedef struct {
   int pipe_fd;
   ngx_connection_t* pagespeed_connection;
   ngx_http_request_t* r;
-  const net_instaweb::ContentType* content_type;
   bool is_resource_fetch;
   bool sent_headers;
   bool write_pending;
@@ -726,19 +725,6 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed filter \"%V\"", &r->uri);
 
-  if (ctx->content_type == NULL) {
-    // We don't know what type of resource this is, but we only want to send
-    // html through to pagespeed.  Check the content type header and find out.
-    ctx->content_type = net_instaweb::MimeTypeToContentType(
-        ngx_http_pagespeed_str_to_string_piece(
-            &r->headers_out.content_type));
-    if (ctx->content_type == NULL || !ctx->content_type->IsHtmlLike()) {
-      // Unknown or otherwise non-html content type: skip it.
-      ngx_http_set_ctx(r, NULL, ngx_pagespeed);
-      return ngx_http_next_body_filter(r, in);
-    }
-  }
-
   if (!ctx->data_received) {
     // This is the first set of buffers we've got for this request.
     ctx->data_received = true;
@@ -765,24 +751,36 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
 
   if (ctx != NULL) {
     // ctx will already exist iff this is a pagespeed resource.  Do nothing.
+    CHECK(ctx->is_resource_fetch);
+    return ngx_http_next_header_filter(r);
+  }
+
+  // We don't know what this is, but we only want to send html through to
+  // pagespeed.  Check the content type header and find out.
+  const net_instaweb::ContentType* content_type = 
+      net_instaweb::MimeTypeToContentType(
+          ngx_http_pagespeed_str_to_string_piece(
+              &r->headers_out.content_type));
+  if (content_type == NULL || !content_type->IsHtmlLike()) {
+    // Unknown or otherwise non-html content type: skip it.
+    CHECK(ctx == NULL);
     return ngx_http_next_header_filter(r);
   }
 
   // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
   // and calculate on the fly.
   ngx_http_clear_content_length(r);
-
-  // Pagespeed doesn't need etags: html is always not to be cached while
-  // resources are modified to have an etag-like hash in the url.
+  
+  // Pagespeed html doesn't need etags: it should never be cached.
   ngx_http_clear_etag(r);
-
+  
   // An page may change without the underlying file changing, because of how
-  // resources are included.  Pagespeed adds cache control headers for resources
-  // instead of using the last modified header.
+  // resources are included.  Pagespeed adds cache control headers for
+  // resources instead of using the last modified header.
   ngx_http_clear_last_modified(r);
-
+  
   r->filter_need_in_memory = 1;
-
+  
   if (r->err_status == 0) {
     int rc = ngx_http_pagespeed_create_request_context(
         r, false /* not a resource fetch */);
