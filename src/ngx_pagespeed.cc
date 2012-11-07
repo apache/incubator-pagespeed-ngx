@@ -616,14 +616,6 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // Will be NULL if there aren't custom options..
   net_instaweb::RewriteOptions* custom_options = query_options_success.first;
 
-  // If we have custom options then run if they say pagespeed is enabled.
-  // Otherwise check the global options.
-  if ((custom_options && !custom_options->enabled()) ||
-      (!custom_options && !global_options->enabled())) {
-    ngx_http_pagespeed_release_request_context(ctx);
-    return NGX_DECLINED;
-  }
-
   // This code is based off of ProxyInterface::ProxyRequestCallback and
   // ProxyFetchFactory::StartNewProxyFetch
 
@@ -635,6 +627,14 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
     custom_options->set_need_to_store_experiment_data(
         ctx->cfg->server_context->furious_matcher()->ClassifyIntoExperiment(
             *ctx->base_fetch->request_headers(), custom_options));
+  }
+
+  // If we have custom options then run if they say pagespeed is enabled.
+  // Otherwise check the global options.
+  if ((custom_options && !custom_options->enabled()) ||
+      (!custom_options && !global_options->enabled())) {
+    ngx_http_pagespeed_release_request_context(ctx);
+    return NGX_DECLINED;
   }
 
   // TODO(jefftk): port ProxyInterface::InitiatePropertyCacheLookup so that we
