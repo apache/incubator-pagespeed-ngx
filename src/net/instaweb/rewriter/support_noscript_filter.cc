@@ -98,7 +98,7 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
           filter_enabled = rewrite_driver_->UserAgentSupportsImageInlining();
           break;
         case RewriteOptions::kFlushSubresources:
-          filter_enabled = rewrite_driver_->UserAgentSupportsFlushEarly();
+          filter_enabled = rewrite_driver_->SupportsFlushEarly();
           break;
         default:
           break;

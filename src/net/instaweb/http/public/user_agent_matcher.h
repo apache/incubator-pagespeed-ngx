@@ -77,6 +77,7 @@ class UserAgentMatcher {
   // true if the browser support DNS prefetch using rel=prefetch.
   // Refer: http://blogs.msdn.com/b/ie/archive/2011/03/17/internet-explorer-9-network-performance-improvements.aspx NOLINT
   bool SupportsDnsPrefetchUsingRelPrefetch(const StringPiece& user_agent) const;
+  bool SupportsDnsPrefetch(const StringPiece& user_agent) const;
 
   virtual bool IsMobileUserAgent(const StringPiece& user_agent) const;
   virtual bool IsMobileRequest(
@@ -92,6 +93,7 @@ class UserAgentMatcher {
   FastWildcardGroup supports_prefetch_link_rel_subresource_;
   FastWildcardGroup supports_prefetch_image_tag_;
   FastWildcardGroup supports_prefetch_link_script_tag_;
+  FastWildcardGroup supports_dns_prefetch_;
 
   DISALLOW_COPY_AND_ASSIGN(UserAgentMatcher);
 };

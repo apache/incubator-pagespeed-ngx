@@ -28,7 +28,6 @@
 #include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
-#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/js/public/js_minify.h"
@@ -121,16 +120,6 @@ const char FlushEarlyFlow::kFlushEarlyRewriteLatencyMs[] =
 // If this is called then the content type must be html.
 // TODO(nikhilmadan): Disable flush early if the response code isn't
 // consistently a 200.
-bool FlushEarlyFlow::CanFlushEarly(const GoogleString& url,
-                                   const AsyncFetch* async_fetch,
-                                   const RewriteDriver* driver) {
-  const RewriteOptions* options = driver->options();
-  return (options != NULL && options->enabled() &&
-          options->Enabled(RewriteOptions::kFlushSubresources) &&
-          async_fetch->request_headers()->method() == RequestHeaders::kGet &&
-          driver->UserAgentSupportsFlushEarly() &&
-          options->IsAllowed(url));
-}
 
 // AsyncFetch that manages the parallelization of FlushEarlyFlow with the
 // ProxyFetch flow. Note that this fetch is passed to ProxyFetch as the

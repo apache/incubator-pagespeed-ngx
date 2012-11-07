@@ -228,6 +228,28 @@ TEST_F(UserAgentMatcherTest, DoesntSupportWebp) {
       UserAgentStrings::kSafariUserAgent));
 }
 
+TEST_F(UserAgentMatcherTest, SupportsDnsPrefetch) {
+  EXPECT_TRUE(user_agent_matcher_.SupportsDnsPrefetch(
+      UserAgentStrings::kChromeUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsDnsPrefetch(
+      UserAgentStrings::kIe9UserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsDnsPrefetch(
+      UserAgentStrings::kFirefox5UserAgent));
+}
+
+TEST_F(UserAgentMatcherTest, DoesntSupportDnsPrefetch) {
+  EXPECT_FALSE(user_agent_matcher_.SupportsDnsPrefetch(
+      UserAgentStrings::kFirefox1UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsDnsPrefetch(
+      UserAgentStrings::kIe6UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsDnsPrefetch(
+      UserAgentStrings::kIe7UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsDnsPrefetch(
+      UserAgentStrings::kIe8UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsDnsPrefetch(
+      UserAgentStrings::kSafariUserAgent));
+}
+
 TEST_F(UserAgentMatcherTest, SupportsDnsPrefetchUsingRelPrefetch) {
   EXPECT_FALSE(user_agent_matcher_.SupportsDnsPrefetchUsingRelPrefetch(
       UserAgentStrings::kIe6UserAgent));

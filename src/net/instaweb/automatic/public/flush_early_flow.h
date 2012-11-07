@@ -59,11 +59,6 @@ class FlushEarlyFlow {
 
   virtual ~FlushEarlyFlow();
 
-  // Checks whether the request can be flushed early.
-  static bool CanFlushEarly(const GoogleString& url,
-                            const AsyncFetch* async_fetch,
-                            const RewriteDriver* driver);
-
  private:
   class FlushEarlyAsyncFetch;
   // Flushes some response for this request before receiving the fetch response

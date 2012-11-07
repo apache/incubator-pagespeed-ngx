@@ -156,7 +156,7 @@ TEST_F(InsertDnsPrefetchFilterTest, StoreDomainsInBody) {
 }
 
 TEST_F(InsertDnsPrefetchFilterTest,
-       DisableInsertDnsPrefetchForUserAgentNotSupportingFlushEarly) {
+       DisableInsertDnsPrefetchForUserAgentsNotSupported) {
   rewrite_driver()->set_user_agent("");
   GoogleString html =
       "<head></head>"

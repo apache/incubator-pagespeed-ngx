@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -68,6 +69,7 @@ void InsertDnsPrefetchFilter::Clear() {
   domains_in_head_.clear();
   domains_in_body_.clear();
   dns_prefetch_domains_.clear();
+  user_agent_supports_dns_prefetch_ = false;
 }
 
 // Read the information related to DNS prefetch tags from the property cache
@@ -76,6 +78,9 @@ void InsertDnsPrefetchFilter::Clear() {
 // by pre-inserting it into domains_in_head_.
 void InsertDnsPrefetchFilter::StartDocumentImpl() {
   Clear();
+  user_agent_supports_dns_prefetch_ =
+      driver()->server_context()->user_agent_matcher().SupportsDnsPrefetch(
+          driver()->user_agent());
 }
 
 // Write the information about domains gathered in this rewrite into the
@@ -85,9 +90,6 @@ void InsertDnsPrefetchFilter::StartDocumentImpl() {
 void InsertDnsPrefetchFilter::EndDocument() {
   if (driver()->flushing_early()) {
     // Don't update to property cache if we are flushing early.
-    return;
-  }
-  if (!driver()->UserAgentSupportsFlushEarly()) {
     return;
   }
   FlushEarlyInfo* flush_early_info = driver()->flush_early_info();
@@ -116,9 +118,6 @@ void InsertDnsPrefetchFilter::EndDocument() {
 void InsertDnsPrefetchFilter::StartElementImpl(HtmlElement* element) {
   if (driver()->flushing_early()) {
     // Don't collect domains if we are flushing early.
-    return;
-  }
-  if (!driver()->UserAgentSupportsFlushEarly()) {
     return;
   }
   if (element->keyword() == HtmlName::kHead) {
@@ -174,7 +173,7 @@ void InsertDnsPrefetchFilter::StartElementImpl(HtmlElement* element) {
 // At the end of the first HEAD, insert the DNS prefetch tags if the list of
 // domains is stable.
 void InsertDnsPrefetchFilter::EndElementImpl(HtmlElement* element) {
-  if (!driver()->UserAgentSupportsFlushEarly()) {
+  if (!user_agent_supports_dns_prefetch_) {
     return;
   }
   if (element->keyword() == HtmlName::kHead) {

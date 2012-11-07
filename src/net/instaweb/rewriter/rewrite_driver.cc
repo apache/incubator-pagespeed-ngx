@@ -204,7 +204,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       user_agent_supports_js_defer_(kNotSet),
       user_agent_supports_webp_(kNotSet),
       is_mobile_user_agent_(kNotSet),
-      user_agent_supports_flush_early_(kNotSet),
+      supports_flush_early_(kNotSet),
       should_skip_parsing_(kNotSet),
       using_spdy_(false),
       response_headers_(NULL),
@@ -325,7 +325,7 @@ void RewriteDriver::Clear() {
 
   client_state_.reset(NULL);
   is_mobile_user_agent_ = kNotSet;
-  user_agent_supports_flush_early_ = kNotSet;
+  supports_flush_early_ = kNotSet;
   should_skip_parsing_ = kNotSet;
   pending_async_events_ = 0;
   user_agent_is_bot_ = kNotSet;
@@ -777,13 +777,16 @@ bool RewriteDriver::IsMobileUserAgent() const {
   return (is_mobile_user_agent_ == kTrue);
 }
 
-bool RewriteDriver::UserAgentSupportsFlushEarly() const {
-  if (user_agent_supports_flush_early_ == kNotSet) {
-    user_agent_supports_flush_early_ =
-        (user_agent_matcher().GetPrefetchMechanism(user_agent())
-          != UserAgentMatcher::kPrefetchNotSupported) ? kTrue : kFalse;
+bool RewriteDriver::SupportsFlushEarly() const {
+  if (supports_flush_early_ == kNotSet) {
+    supports_flush_early_ =
+        (options_->Enabled(RewriteOptions::kFlushSubresources) &&
+        request_headers_ != NULL &&
+        request_headers_->method() == RequestHeaders::kGet &&
+        user_agent_matcher().GetPrefetchMechanism(user_agent())
+            != UserAgentMatcher::kPrefetchNotSupported) ? kTrue : kFalse;
   }
-  return (user_agent_supports_flush_early_ == kTrue);
+  return (supports_flush_early_ == kTrue);
 }
 
 void RewriteDriver::AddFilters() {
@@ -1929,11 +1932,7 @@ void RewriteDriver::DeregisterForPartitionKey(const GoogleString& partition_key,
 }
 
 void RewriteDriver::WriteDomCohortIntoPropertyCache() {
-  bool flush_subresources_rewriter_enabled =
-      options()->Enabled(RewriteOptions::kFlushSubresources) &&
-      UserAgentSupportsFlushEarly();
-  if (flush_subresources_rewriter_enabled &&
-      collect_subresources_filter_ != NULL) {
+  if (collect_subresources_filter_ != NULL) {
     collect_subresources_filter_->AddSubresourcesToFlushEarlyInfo(
         flush_early_info());
   }
@@ -2548,10 +2547,7 @@ FlushEarlyInfo* RewriteDriver::flush_early_info() {
 }
 
 void RewriteDriver::SaveOriginalHeaders(const ResponseHeaders& headers) {
-  if (options()->Enabled(RewriteOptions::kFlushSubresources) &&
-      UserAgentSupportsFlushEarly()) {
-    headers.GetSanitizedProto(flush_early_info()->mutable_response_headers());
-  }
+  headers.GetSanitizedProto(flush_early_info()->mutable_response_headers());
 }
 
 FlushEarlyRenderInfo* RewriteDriver::flush_early_render_info() const {

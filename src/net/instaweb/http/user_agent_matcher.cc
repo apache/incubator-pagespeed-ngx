@@ -111,6 +111,27 @@ const char* kWebpBlacklist[] = {
   "*Opera?11.0*",
 };
 
+// TODO(rahulbansal): We haven't added Safari here since it supports dns
+// prefetch only from 5.0.1 which causes the wildcard to be a bit messy.
+const char* kInsertDnsPrefetchWhitelist[] = {
+  "*Chrome/*",
+  "*Firefox/*",
+  "*MSIE *",
+  "*Wget*",
+  // The following user agents are used only for internal testing
+  "prefetch_image_tag",
+};
+
+const char* kInsertDnsPrefetchBlacklist[] = {
+  "*Firefox/1.*",
+  "*Firefox/2.*",
+  "*Firefox/3.*",
+  "*MSIE 5.*",
+  "*MSIE 6.*",
+  "*MSIE 7.*",
+  "*MSIE 8.*",
+};
+
 // Only a few user agents are supported at this point.
 // This is currently used only by kResizeMobileImages to deliver low resolution
 // images to mobile devices. We treat ipads like desktops as they have big
@@ -180,6 +201,12 @@ UserAgentMatcher::UserAgentMatcher() {
   for (int i = 0, n = arraysize(kSupportsPrefetchLinkScriptTag); i < n; ++i) {
     supports_prefetch_link_script_tag_.Allow(kSupportsPrefetchLinkScriptTag[i]);
   }
+  for (int i = 0, n = arraysize(kInsertDnsPrefetchWhitelist); i < n; ++i) {
+    supports_dns_prefetch_.Allow(kInsertDnsPrefetchWhitelist[i]);
+  }
+  for (int i = 0, n = arraysize(kInsertDnsPrefetchBlacklist); i < n; ++i) {
+    supports_dns_prefetch_.Disallow(kInsertDnsPrefetchBlacklist[i]);
+  }
 }
 
 UserAgentMatcher::~UserAgentMatcher() {
@@ -239,6 +266,11 @@ UserAgentMatcher::GetPrefetchMechanism(const StringPiece& user_agent) const {
     return kPrefetchLinkScriptTag;
   }
   return kPrefetchNotSupported;
+}
+
+bool UserAgentMatcher::SupportsDnsPrefetch(
+    const StringPiece& user_agent) const {
+  return supports_dns_prefetch_.Match(user_agent, false);
 }
 
 bool UserAgentMatcher::SupportsJsDefer(const StringPiece& user_agent) const {

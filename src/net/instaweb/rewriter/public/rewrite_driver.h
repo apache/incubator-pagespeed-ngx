@@ -246,7 +246,8 @@ class RewriteDriver : public HtmlParse {
   bool UserAgentSupportsJsDefer() const;
   bool UserAgentSupportsWebp() const;
   bool IsMobileUserAgent() const;
-  bool UserAgentSupportsFlushEarly() const;
+  // Whether flush early flow is supported for this request.
+  bool SupportsFlushEarly() const;
 
   // Adds the filters from the options, specified by name in enabled_filters.
   // This must be called explicitly after object construction to provide an
@@ -1142,7 +1143,7 @@ class RewriteDriver : public HtmlParse {
   mutable LazyBool user_agent_supports_js_defer_;
   mutable LazyBool user_agent_supports_webp_;
   mutable LazyBool is_mobile_user_agent_;
-  mutable LazyBool user_agent_supports_flush_early_;
+  mutable LazyBool supports_flush_early_;
 
   LazyBool should_skip_parsing_;
 

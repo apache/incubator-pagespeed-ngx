@@ -63,6 +63,8 @@ const char kFirefoxUserAgent[] =
 const char kFirefox1UserAgent[] =
     "Mozilla/5.0 (X11; U; Linux i686; en-US; rv:1.8.0.7) "
     "Gecko/20060909 Firefox/1.5.0.7 MG (Novarra-Vision/6.1)";
+const char kFirefox5UserAgent[] =
+    "Mozilla/5.0 (X11; U; Linux i586; de; rv:5.0) Gecko/20100101 Firefox/5.0";
 const char kIe6UserAgent[] =
     "Mozilla/5.0 (Windows; U; MSIE 6.0; Windows NT 5.1; SV1;"
     " .NET CLR 2.0.50727)";
