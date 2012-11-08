@@ -620,7 +620,10 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // If the global options say we're running furious (the experiment framework)
   // then clone them into custom_options so we can manipulate custom options
   // without affecting the global options.
-  if (global_options->running_furious()) {
+  //
+  // If custom_options were set above in GetQueryOptions() don't run furious.
+  // We don't want experiments to be contaminated with unexpected settings.
+  if (custom_options == NULL && global_options->running_furious()) {
     custom_options = global_options->Clone();
     custom_options->set_need_to_store_experiment_data(
         ctx->cfg->server_context->furious_matcher()->ClassifyIntoExperiment(
