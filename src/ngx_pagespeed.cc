@@ -156,12 +156,6 @@ ngx_http_pagespeed_str_to_string_piece(ngx_str_t s) {
   return StringPiece(reinterpret_cast<char*>(s.data), s.len);
 }
 
-ngx_str_t
-ngx_http_pagespeed_string_piece_to_str(StringPiece sp) {
-  ngx_str_t s = { (ngx_uint_t)sp.size(), (u_char*)sp.data() };
-  return s;
-}
-
 static void*
 ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
   ngx_http_pagespeed_srv_conf_t* conf;
