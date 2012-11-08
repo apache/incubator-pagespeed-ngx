@@ -197,9 +197,9 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
 
     ngx_str_t name, value;
     name.len = name_gs.length();
-    name.data = (u_char*)name_gs.data();
+    name.data = reinterpret_cast<u_char*>(const_cast<char*>(name_gs.data()));
     value.len = value_gs.length();
-    value.data = (u_char*)value_gs.data();
+    value.data = reinterpret_cast<u_char*>(const_cast<char*>(value_gs.data()));
 
     // TODO(jefftk): If we're setting a cache control header we'd like to
     // prevent any downstream code from changing it.  Specifically, if we're
