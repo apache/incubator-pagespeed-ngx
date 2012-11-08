@@ -85,6 +85,9 @@ class NgxUrlAsyncFetcher : public UrlPollableAsyncFetcher {
 
     ngx_event_t* timeout_;
     ngx_pool_t* pool_;
+    ngx_log_t* log_;
+    ngx_resolver_t* resolver_;
+    ngx_msec_t resolver_timeout_;
 
     DISALLOW_COPY_AND_ASSIGN(NgxUrlAsyncFetcher);
 };
