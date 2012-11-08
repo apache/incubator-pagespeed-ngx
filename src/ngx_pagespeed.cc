@@ -729,32 +729,13 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
 }
 
 #ifndef ngx_http_clear_etag
-// ngx_http_clear_etag(r) and the shortcut r->headers_out.etag were added in
-// 1.3.3.  Provide our own implementation if it's not present.
-static void
-ngx_http_clear_etag(ngx_http_request_t* r) {
-  // Standard nginx idiom for iterating over a list.  See ngx_list.h
-  ngx_uint_t i;
-  ngx_list_part_t* part = &r->headers_out.headers.part;
-  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
-
-  for (i = 0 ; /* void */; i++) {
-    if (i >= part->nelts) {
-      if (part->next == NULL) {
-        break;
-      }
-
-      part = part->next;
-      header = static_cast<ngx_table_elt_t*>(part->elts);
-      i = 0;
-    }
-
-    if (STR_EQ_LITERAL(header[i].key, "Etag")) {
-      header[i].hash = 0;  // Don't include this header.
-    }
+// The ngx_http_clear_etag(r) macro was added in 1.3.3.  Provide our own
+// implementation if it's not present.
+#define ngx_http_clear_etag(r)       \
+  if (r->headers_out.etag) {         \
+    r->headers_out.etag->hash = 0;   \
+    r->headers_out.etag = NULL;      \
   }
-}
-#define ngx_http_clear_etag(r) ngx_http_clear_etag(r)
 #endif
 
 static ngx_int_t
