@@ -192,11 +192,14 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
 
   ngx_int_t i;
   for (i = 0 ; i < pagespeed_headers->NumAttributes() ; i++) {
+    const GoogleString& name_gs = pagespeed_headers->Name(i);
+    const GoogleString& value_gs = pagespeed_headers->Value(i);
+
     ngx_str_t name, value;
-    name.len = pagespeed_headers->Name(i).length();
-    name.data = (u_char*)pagespeed_headers->Name(i).data();
-    value.len = pagespeed_headers->Value(i).length();
-    value.data = (u_char*)pagespeed_headers->Value(i).data();
+    name.len = name_gs.length();
+    name.data = (u_char*)name_gs.data();
+    value.len = value_gs.length();
+    value.data = (u_char*)value_gs.data();
 
     // TODO(jefftk): If we're setting a cache control header we'd like to
     // prevent any downstream code from changing it.  Specifically, if we're
