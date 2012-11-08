@@ -56,7 +56,9 @@ apache_vm_system_tests :
 	$(MAKE) apache_debug_vhost_only_test
 	$(MAKE) apache_debug_global_off_test
 	$(MAKE) apache_debug_shared_mem_lock_sanity_test
-	$(MAKE) apache_debug_stats_logging_test
+	# The stats logging test is disabled as it has permission issues
+	# when package building (issue 559).
+	# $(MAKE) apache_debug_stats_logging_test
 	$(MAKE) apache_debug_all_directives_test
 	$(MAKE) apache_install_conf
 # 'apache_install_conf' should always be last, to leave your debug
@@ -104,7 +106,7 @@ TEST_ROOT = $(APACHE_SERVER)/mod_pagespeed_test
 apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	@echo '***' System-test with cold cache
 	$(MAKE) stop
-	rm -rf $(MOD_PAGESPEED_CACHE)
+	rm -rf $(MOD_PAGESPEED_CACHE)/*
 	$(MAKE) start
 	CACHE_FLUSH_TEST=on \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
@@ -367,7 +369,13 @@ apache_debug_shared_mem_lock_sanity_test : shared_mem_lock_test_prepare \
 
 shared_mem_lock_test_prepare :
 	$(eval OPT_SLURP_TEST="SHARED_MEM_LOCK_TEST=1")
+	$(MAKE) stop
+	# "Directory not empty" failures were observed here, so add sleep to
+	# wait for pending cache-writes to finish.
+	sleep 2
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
+	$(MAKE) start
+	sleep 2
 
 # Test that all directives are accepted by the options parser.
 apache_debug_all_directives_test :

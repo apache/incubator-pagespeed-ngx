@@ -272,7 +272,11 @@ IMG_REWRITE=$TEST_ROOT"/image_rewriting/rewrite_images.html"
 REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
 URL=$REWRITE_URL"&"$IMAGES_QUALITY"=75"
 fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
-check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8155   # resized
+# This filter produces different images on 32 vs 64 bit builds. On 32 bit, the
+# size is 8157B, while on 64 it is 8155B. Initial investigation showed no
+# visible differences between the generated images.
+# TODO(jmaessen) Verify that this behavior is expected.
+check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8157   # resized
 
 echo TEST: quality of jpeg output images
 rm -rf $OUTDIR
