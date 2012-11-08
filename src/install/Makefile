@@ -469,7 +469,7 @@ test :
 # Each test is on it's own line for better diff/merge support.
 apache_install_conf :
 	$(MAKE) staging_except_module \
-	    $(OPT_REWRITE_TEST)
+	    $(OPT_REWRITE_TEST) \
 	    $(OPT_PROXY_TEST) \
 	    $(OPT_SLURP_TEST) \
 	    $(OPT_MEMCACHED_TEST) \

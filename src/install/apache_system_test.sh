@@ -491,9 +491,10 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
 
   echo TEST: add_instrumentation has added unload handler with \
       ModPagespeedReportUnloadTime enabled in APACHE_SECONDARY_PORT.
-  http_proxy=$SECONDARY_HOSTNAME $WGET -O $WGET_OUTPUT \
-      $SECONDARY_TEST_ROOT/add_instrumentation.html\
-?ModPagespeedFilters=add_instrumentation
+  URL="$SECONDARY_TEST_ROOT/add_instrumentation.html\
+?ModPagespeedFilters=add_instrumentation"
+  echo http_proxy=$SECONDARY_HOSTNAME $WGET -O $WGET_OUTPUT $URL
+  http_proxy=$SECONDARY_HOSTNAME $WGET -O $WGET_OUTPUT $URL
   check [ $(grep -c "<script" $WGET_OUTPUT) = 3 ]
   check [ $(grep -c 'ets=unload' $WGET_OUTPUT) = 1 ]
 
