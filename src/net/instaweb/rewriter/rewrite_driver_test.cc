@@ -80,6 +80,12 @@ class RewriteDriverTest : public RewriteTestBase {
     return rewrite_driver()->base_url().Spec().as_string();
   }
 
+  // A helper to call ComputeCurrentFlushWindowRewriteDelayMs() that allows
+  // us to keep it private.
+  int64 GetFlushTimeout() {
+    return rewrite_driver()->ComputeCurrentFlushWindowRewriteDelayMs();
+  }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverTest);
 };
@@ -532,6 +538,44 @@ TEST_F(RewriteDriverTest, TestCacheUseOnTheFly) {
   EXPECT_TRUE(TryFetchResource(cache_extended_url));
   EXPECT_EQ(cold_num_inserts, lru_cache()->num_inserts());
   EXPECT_EQ(1, lru_cache()->num_identical_reinserts());
+}
+
+// Verifies that the computed rewrite delay agrees with expectations
+// depending on the configuration of constituent delay variables.
+TEST_F(RewriteDriverTest, TestComputeCurrentFlushWindowRewriteDelayMs) {
+  rewrite_driver()->set_rewrite_deadline_ms(1000);
+
+  // "Start" a parse to configure the start time in the driver.
+  ASSERT_TRUE(rewrite_driver()->StartParseId("http://site.com/",
+                                             "compute_flush_window_test",
+                                             kContentTypeHtml));
+
+  // The per-page deadline is initially unconfigured.
+  EXPECT_EQ(1000, GetFlushTimeout());
+
+  // If the per-page deadline is less than the per-flush window timeout,
+  // the per-page deadline is returned.
+  rewrite_driver()->set_max_page_processing_delay_ms(500);
+  EXPECT_EQ(500, GetFlushTimeout());
+
+  // If the per-page deadline exceeds the per-flush window timeout, the flush
+  // timeout is returned.
+  rewrite_driver()->set_max_page_processing_delay_ms(1750);
+  EXPECT_EQ(1000, GetFlushTimeout());
+
+  // If we advance mock time to leave less than a flush window timeout remaining
+  // against the page deadline, the appropriate page deadline difference is
+  // returned.
+  mock_timer()->SetTimeUs((start_time_ms() + 1000) * Timer::kMsUs);
+  EXPECT_EQ(750, GetFlushTimeout());  // 1750 - 1000
+
+  // If we advance mock time beyond the per-page limit, a value of 1 is
+  // returned. (This is required since values <= 0 are interpreted by internal
+  // timeout functions as unlimited.)
+  mock_timer()->SetTimeUs((start_time_ms() + 2000) * Timer::kMsUs);
+  EXPECT_EQ(1, GetFlushTimeout());
+
+  rewrite_driver()->FinishParse();
 }
 
 // Extension of above with cache invalidation.

@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
+#include <algorithm>
 #include <cstdarg>
 #include <list>
 #include <map>
@@ -183,6 +184,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       fetch_detached_(false),
       detached_fetch_main_path_complete_(false),
       detached_fetch_detached_path_complete_(false),
+      parsing_(false),
       waiting_(kNoWait),
       fully_rewrite_on_flush_(false),
       cleanup_on_fetch_complete_(false),
@@ -209,6 +211,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       using_spdy_(false),
       response_headers_(NULL),
       request_headers_(NULL),
+      max_page_processing_delay_ms_(-1),
       pending_rewrites_(0),
       possibly_quick_rewrites_(0),
       pending_async_events_(0),
@@ -328,6 +331,7 @@ void RewriteDriver::Clear() {
   supports_flush_early_ = kNotSet;
   should_skip_parsing_ = kNotSet;
   pending_async_events_ = 0;
+  max_page_processing_delay_ms_ = -1;
   user_agent_is_bot_ = kNotSet;
   request_headers_ = NULL;
   response_headers_ = NULL;
@@ -342,6 +346,7 @@ void RewriteDriver::Clear() {
   refs_before_base_ = false;
   containing_charset_.clear();
   detached_fetch_detached_path_complete_ = false;
+  parsing_ = false;
   detached_fetch_main_path_complete_ = false;
   client_id_.clear();
   fully_rewrite_on_flush_ = false;
@@ -584,10 +589,31 @@ void RewriteDriver::FlushAsync(Function* callback) {
     if (fully_rewrite_on_flush_) {
       CheckForCompletionAsync(kWaitForCompletion, -1, flush_async_done);
     } else {
-      CheckForCompletionAsync(kWaitForCachedRender, rewrite_deadline_ms_,
-                              flush_async_done);
+      int64 deadline = ComputeCurrentFlushWindowRewriteDelayMs();
+      CheckForCompletionAsync(kWaitForCachedRender, deadline, flush_async_done);
     }
   }
+}
+
+int64 RewriteDriver::ComputeCurrentFlushWindowRewriteDelayMs() {
+  int64 deadline = rewrite_deadline_ms_;
+  // If we've configured a max processing delay for the entire page, enforce
+  // that limit here.
+  if (max_page_processing_delay_ms_ > 0) {
+    int64 ms_since_start =
+        server_context_->timer()->NowMs() - start_time_ms_;
+    int64 ms_remaining = max_page_processing_delay_ms_ - ms_since_start;
+    // If the deadline for the current flush window (deadline) is less
+    // than the overall time remaining (ms_remaining), we enforce the
+    // per-flush window deadline. Otherwise, we wait for the overall
+    // page deadline.
+    //
+    // In any case, we require a minimum value of 1 millisecond since
+    // a value <= 0 implies an unlimited wait.
+    deadline =
+        std::max(std::min(ms_remaining, deadline), static_cast<int64>(1));
+  }
+  return deadline;
 }
 
 void RewriteDriver::QueueFlushAsyncDone(int num_rewrites, Function* callback) {
