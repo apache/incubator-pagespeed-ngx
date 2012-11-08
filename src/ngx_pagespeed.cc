@@ -718,8 +718,8 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
 }
 
 #ifndef ngx_http_clear_etag
-// The ngx_http_clear_etag(r) macro was added in 1.3.3.  Provide our own
-// implementation if it's not present.
+// The ngx_http_clear_etag(r) macro was added in 1.3.3.  Backport it if it's not
+// present.
 #define ngx_http_clear_etag(r)       \
   if (r->headers_out.etag) {         \
     r->headers_out.etag->hash = 0;   \
