@@ -588,6 +588,10 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // on the proxy fetch below.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(r, file_descriptors[1]);
 
+  // These are the options we use unless there are custom ones for this request.
+  net_instaweb::RewriteOptions* global_options =
+      ctx->cfg->server_context->global_options();
+
   // Stripping ModPagespeed query params before the property cache lookup to
   // make cache key consistent for both lookup and storing in cache.
   //
@@ -616,13 +620,19 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // If the global options say we're running furious (the experiment framework)
   // then clone them into custom_options so we can manipulate custom options
   // without affecting the global options.
-  net_instaweb::RewriteOptions* global_options =
-      ctx->cfg->server_context->global_options();
   if (global_options->running_furious()) {
     custom_options = global_options->Clone();
     custom_options->set_need_to_store_experiment_data(
         ctx->cfg->server_context->furious_matcher()->ClassifyIntoExperiment(
             *ctx->base_fetch->request_headers(), custom_options));
+  }
+
+  // If we have custom options then run if they say pagespeed is enabled.
+  // Otherwise check the global options.
+  if ((custom_options && !custom_options->enabled()) ||
+      (!custom_options && !global_options->enabled())) {
+    ngx_http_pagespeed_release_request_context(ctx);
+    return NGX_DECLINED;
   }
 
   // TODO(jefftk): port ProxyInterface::InitiatePropertyCacheLookup so that we
@@ -763,7 +773,33 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
 
   if (ctx != NULL) {
     // ctx will already exist iff this is a pagespeed resource.  Do nothing.
+    CHECK(ctx->is_resource_fetch);
     return ngx_http_next_header_filter(r);
+  }
+
+  if (r->err_status != 0) {
+    return ngx_http_next_header_filter(r);
+  }
+
+  // We don't know what this request is, but we only want to send html through
+  // to pagespeed.  Check the content type header and find out.
+  const net_instaweb::ContentType* content_type = 
+      net_instaweb::MimeTypeToContentType(
+          ngx_http_pagespeed_str_to_string_piece(
+              &r->headers_out.content_type));
+  if (content_type == NULL || !content_type->IsHtmlLike()) {
+    // Unknown or otherwise non-html content type: skip it.
+    return ngx_http_next_header_filter(r);
+  }
+
+  int rc = ngx_http_pagespeed_create_request_context(
+      r, false /* not a resource fetch */);
+  if (rc == NGX_DECLINED) {
+    // ModPagespeed=off
+    return ngx_http_next_header_filter(r);
+  } else if (rc != NGX_OK) {
+    ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+    return rc;
   }
 
   // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
@@ -780,15 +816,6 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   ngx_http_clear_last_modified(r);
 
   r->filter_need_in_memory = 1;
-
-  if (r->err_status == 0) {
-    int rc = ngx_http_pagespeed_create_request_context(
-        r, false /* not a resource fetch */);
-    if (rc != NGX_OK) {
-      ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-      return rc;
-    }
-  }
 
   // Set the "X-Page-Speed: VERSION" header.
   ngx_table_elt_t* x_pagespeed = static_cast<ngx_table_elt_t*>(
