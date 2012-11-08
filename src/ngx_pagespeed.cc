@@ -317,9 +317,7 @@ ngx_http_pagespeed_initialize_server_context(
   // resource urls because we don't yet have a handler in place for them.
   net_instaweb::RewriteOptions* global_options =
       cfg->server_context->global_options();
-  global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kPassThrough);
-  global_options->EnableFiltersByCommaSeparatedList(
-      "extend_cache", cfg->handler);
+  global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kCoreFilters);
 }
 
 // Returns:
