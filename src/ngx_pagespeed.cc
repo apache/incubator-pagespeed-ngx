@@ -306,9 +306,7 @@ ngx_http_pagespeed_initialize_server_context(
   cfg->proxy_fetch_factory =
       new net_instaweb::ProxyFetchFactory(cfg->server_context);
 
-  // Turn on some filters so we can see if this is working.  These filters are
-  // chosen to make sub-resource fetches but not create any *.pagespeed.*
-  // resource urls because we don't yet have a handler in place for them.
+  // Turn on some filters so we can see if this is working.
   net_instaweb::RewriteOptions* global_options =
       cfg->server_context->global_options();
   global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kCoreFilters);
