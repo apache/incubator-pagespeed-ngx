@@ -35,6 +35,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   virtual MessageHandler* DefaultMessageHandler();
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
+  virtual NamedLockManager* DefaultLockManager();
   virtual void SetupCaches(ServerContext* resource_manager);
   virtual Statistics* statistics();
 
