@@ -57,7 +57,7 @@ pagespeed_include="$mod_pagespeed_dir
                    $mod_pagespeed_dir/third_party/aprutil/gen/arch/$os_name/$arch_name/include/"
 ngx_feature_path="$pagespeed_include"
 pagespeed_automatic_dir="$mod_pagespeed_dir/net/instaweb/automatic"
-pagespeed_libs="-lstdc++ $pagespeed_automatic_dir/pagespeed_automatic.a -lrt"
+pagespeed_libs="-lstdc++ $pagespeed_automatic_dir/pagespeed_automatic.a -lrt -pthread"
 ngx_feature_libs="$pagespeed_libs"
 ngx_feature_test="
     GoogleString output_buffer;
