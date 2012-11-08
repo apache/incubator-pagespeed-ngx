@@ -140,125 +140,117 @@ void send_out_headers_and_body(request_rec* request,
 }
 
 
-// Determines whether the url can be handled as a mod_pagespeed resource,
-// and handles it, returning true.  A 'true' routine means that this
-// method believed the URL was a mod_pagespeed resource -- it does not
-// imply that it was handled successfully.  That information will be
-// in the status code in the response headers.
-bool handle_as_resource(ApacheResourceManager* manager,
+// Handles *gurl as a mod_pagespeed resource.  Success status is written to
+// the status code in the response headers.
+void handle_as_resource(ApacheResourceManager* manager,
                         request_rec* request,
+                        GoogleUrl* gurl,
                         const GoogleString& url) {
-  GoogleUrl gurl(url);
-  bool is_ps_url = manager->IsPagespeedResource(gurl);
-  if (is_ps_url) {
-    MessageHandler* message_handler = manager->message_handler();
-    message_handler->Message(kInfo, "Fetching resource %s...", url.c_str());
+  MessageHandler* message_handler = manager->message_handler();
+  message_handler->Message(kInfo, "Fetching resource %s...", url.c_str());
 
-    GoogleString output;  // TODO(jmarantz): Quit buffering resource output.
-    StringWriter writer(&output);
+  GoogleString output;  // TODO(jmarantz): Quit buffering resource output.
+  StringWriter writer(&output);
 
-    SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
-        manager->thread_system(), &writer);
+  SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
+      manager->thread_system(), &writer);
 
-    // Filter limited request headers into backend fetch.
-    // TODO(sligocki): Put this filtering in ResourceFetch and instead use:
-    // ApacheRequestToRequestHeaders(*request, callback->request_headers());
-    for (int i = 0, n = arraysize(RewriteDriver::kPassThroughRequestAttributes);
-         i < n; ++i) {
-      const char* value = apr_table_get(
-          request->headers_in,
-          RewriteDriver::kPassThroughRequestAttributes[i]);
-      if (value != NULL) {
-        callback->request_headers()->Add(
-            RewriteDriver::kPassThroughRequestAttributes[i], value);
-      }
+  // Filter limited request headers into backend fetch.
+  // TODO(sligocki): Put this filtering in ResourceFetch and instead use:
+  // ApacheRequestToRequestHeaders(*request, callback->request_headers());
+  for (int i = 0, n = arraysize(RewriteDriver::kPassThroughRequestAttributes);
+       i < n; ++i) {
+    const char* value = apr_table_get(
+        request->headers_in,
+        RewriteDriver::kPassThroughRequestAttributes[i]);
+    if (value != NULL) {
+      callback->request_headers()->Add(
+          RewriteDriver::kPassThroughRequestAttributes[i], value);
     }
-
-    bool using_spdy = ApacheRewriteDriverFactory::TreatRequestAsSpdy(request);
-    RewriteOptions* global_options = manager->global_options();
-    if (using_spdy && (manager->SpdyConfig() != NULL)) {
-      global_options = manager->SpdyConfig();
-    }
-
-    // Set directory specific options.  These will be the options for the
-    // directory the resource is in, which under some configurations will be
-    // different from the options for the directory that the referencing html is
-    // in.  This can lead to us using different options here when regenerating
-    // the resource than would be used if the resource were generated as part of
-    // a rewrite kicked off by a request for the referencing html file.  This is
-    // hard to fix, so instead we're documenting that you must make sure the
-    // configuration for your resources matches the configuration for your html
-    // files.
-    RewriteOptions* custom_options = NULL;
-    ApacheConfig* directory_options = static_cast<ApacheConfig*>
-        ap_get_module_config(request->per_dir_config, &pagespeed_module);
-    if ((directory_options != NULL) && directory_options->modified()) {
-      custom_options = manager->apache_factory()->NewRewriteOptions();
-      custom_options->Merge(*global_options);
-      custom_options->Merge(*directory_options);
-    }
-
-    // TODO(sligocki): Move inside PSOL.
-    // Merge in query-param or header-based options.
-    // Note: We do not generally get response headers in the resource flow,
-    // so NULL is passed in instead.
-    ServerContext::OptionsBoolPair query_options_success =
-        manager->GetQueryOptions(&gurl, callback->request_headers(), NULL);
-    if (!query_options_success.second) {
-      message_handler->Message(kWarning, "Invalid ModPagespeed query params "
-                               "or headers for request %s. Serving with "
-                               "default options.", url.c_str());
-    }
-    if (query_options_success.first != NULL) {
-      if (custom_options == NULL) {
-        custom_options = manager->apache_factory()->NewRewriteOptions();
-        custom_options->Merge(*global_options);
-      }
-      custom_options->Merge(*query_options_success.first);
-      delete query_options_success.first;
-      // Don't run any experiments if we're handling a customized request.
-      custom_options->set_running_furious_experiment(false);
-    }
-
-    RewriteDriverPool* driver_pool = NULL;
-    if (custom_options == NULL) {
-      if (using_spdy && (manager->SpdyConfig() != NULL)) {
-        driver_pool = manager->spdy_driver_pool();
-      } else {
-        driver_pool = manager->standard_rewrite_driver_pool();
-      }
-    }
-    RewriteDriver* driver = ResourceFetch::GetDriver(
-        gurl, custom_options, driver_pool, using_spdy, manager);
-
-    // Insert proxy fetchers to add custom fetch headers or apply
-    // routing policy.
-    manager->apache_factory()->ApplySessionFetchers(manager, driver, request);
-
-    if (ResourceFetch::BlockingFetch(gurl, manager, driver, callback)) {
-      ResponseHeaders* response_headers = callback->response_headers();
-      // TODO(sligocki): Check that this is already done in ResourceFetch
-      // and remove redundant setting here.
-      response_headers->SetDate(manager->timer()->NowMs());
-      // ResourceFetch adds X-Page-Speed header, old mod_pagespeed code
-      // did not. For now, we remove that header for consistency.
-      // TODO(sligocki): Consistently use X- headers in MPS and PSOL.
-      // I think it would be good to change X-Mod-Pagespeed -> X-Page-Speed
-      // and use that for all HTML and resource requests.
-      response_headers->RemoveAll(kPageSpeedHeader);
-      message_handler->Message(kInfo, "Fetch succeeded for %s, status=%d",
-                               url.c_str(), response_headers->status_code());
-      send_out_headers_and_body(request, *response_headers, output);
-    } else {
-      RewriteStats* stats = manager->rewrite_stats();
-      stats->resource_404_count()->Add(1);
-      instaweb_404_handler(url, request);
-    }
-
-    callback->Release();
   }
 
-  return is_ps_url;
+  bool using_spdy = ApacheRewriteDriverFactory::TreatRequestAsSpdy(request);
+  RewriteOptions* global_options = manager->global_options();
+  if (using_spdy && (manager->SpdyConfig() != NULL)) {
+    global_options = manager->SpdyConfig();
+  }
+
+  // Set directory specific options.  These will be the options for the
+  // directory the resource is in, which under some configurations will be
+  // different from the options for the directory that the referencing html is
+  // in.  This can lead to us using different options here when regenerating
+  // the resource than would be used if the resource were generated as part of
+  // a rewrite kicked off by a request for the referencing html file.  This is
+  // hard to fix, so instead we're documenting that you must make sure the
+  // configuration for your resources matches the configuration for your html
+  // files.
+  RewriteOptions* custom_options = NULL;
+  ApacheConfig* directory_options = static_cast<ApacheConfig*>
+      ap_get_module_config(request->per_dir_config, &pagespeed_module);
+  if ((directory_options != NULL) && directory_options->modified()) {
+    custom_options = manager->apache_factory()->NewRewriteOptions();
+    custom_options->Merge(*global_options);
+    custom_options->Merge(*directory_options);
+  }
+
+  // TODO(sligocki): Move inside PSOL.
+  // Merge in query-param or header-based options.
+  // Note: We do not generally get response headers in the resource flow,
+  // so NULL is passed in instead.
+  ServerContext::OptionsBoolPair query_options_success =
+      manager->GetQueryOptions(gurl, callback->request_headers(), NULL);
+  if (!query_options_success.second) {
+    message_handler->Message(kWarning, "Invalid ModPagespeed query params "
+                             "or headers for request %s. Serving with "
+                             "default options.", url.c_str());
+  }
+  if (query_options_success.first != NULL) {
+    if (custom_options == NULL) {
+      custom_options = manager->apache_factory()->NewRewriteOptions();
+      custom_options->Merge(*global_options);
+    }
+    custom_options->Merge(*query_options_success.first);
+    delete query_options_success.first;
+    // Don't run any experiments if we're handling a customized request.
+    custom_options->set_running_furious_experiment(false);
+  }
+
+  RewriteDriverPool* driver_pool = NULL;
+  if (custom_options == NULL) {
+    if (using_spdy && (manager->SpdyConfig() != NULL)) {
+      driver_pool = manager->spdy_driver_pool();
+    } else {
+      driver_pool = manager->standard_rewrite_driver_pool();
+    }
+  }
+  RewriteDriver* driver = ResourceFetch::GetDriver(
+      *gurl, custom_options, driver_pool, using_spdy, manager);
+
+  // Insert proxy fetchers to add custom fetch headers or apply
+  // routing policy.
+  manager->apache_factory()->ApplySessionFetchers(manager, driver, request);
+
+  if (ResourceFetch::BlockingFetch(*gurl, manager, driver, callback)) {
+    ResponseHeaders* response_headers = callback->response_headers();
+    // TODO(sligocki): Check that this is already done in ResourceFetch
+    // and remove redundant setting here.
+    response_headers->SetDate(manager->timer()->NowMs());
+    // ResourceFetch adds X-Page-Speed header, old mod_pagespeed code
+    // did not. For now, we remove that header for consistency.
+    // TODO(sligocki): Consistently use X- headers in MPS and PSOL.
+    // I think it would be good to change X-Mod-Pagespeed -> X-Page-Speed
+    // and use that for all HTML and resource requests.
+    response_headers->RemoveAll(kPageSpeedHeader);
+    message_handler->Message(kInfo, "Fetch succeeded for %s, status=%d",
+                             url.c_str(), response_headers->status_code());
+    send_out_headers_and_body(request, *response_headers, output);
+  } else {
+    RewriteStats* stats = manager->rewrite_stats();
+    stats->resource_404_count()->Add(1);
+    instaweb_404_handler(url, request);
+  }
+
+  callback->Release();
 }
 
 // Write response headers and send out headers and output, including the option
@@ -378,8 +370,8 @@ void WritePre(StringPiece str, Writer* writer, MessageHandler* handler) {
   writer->Write("</pre>\n", handler);
 }
 
-apr_status_t instaweb_static_handler(request_rec* request,
-                                     ApacheResourceManager* server_context) {
+void instaweb_static_handler(request_rec* request,
+                             ApacheResourceManager* server_context) {
   StaticJavascriptManager* static_javascript_manager =
       server_context->static_javascript_manager();
   StringPiece request_uri_path = request->parsed_uri.path;
@@ -396,7 +388,6 @@ apr_status_t instaweb_static_handler(request_rec* request,
   } else {
     instaweb_404_handler(request->parsed_uri.path, request);
   }
-  return OK;
 }
 
 apr_status_t instaweb_console_handler(
@@ -563,7 +554,6 @@ apr_status_t instaweb_handler(request_rec* request) {
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   ApacheMessageHandler* message_handler = factory->apache_message_handler();
   StringPiece request_handler_str = request->handler;
-  StringPiece request_uri_path = request->parsed_uri.path;
 
   log_resource_referral(request, factory);
 
@@ -612,20 +602,24 @@ apr_status_t instaweb_handler(request_rec* request) {
 
     write_handler_response(output, request, kContentTypeJavascript, "public");
     ret = OK;
-
-  } else if (request_uri_path.starts_with(
-      ApacheRewriteDriverFactory::kStaticJavaScriptPrefix)) {
-    ret = instaweb_static_handler(request, manager);
-
   } else if (url != NULL) {
     // Only handle GET request
     if (request->method_number != M_GET) {
       ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                     "Not GET request: %d.", request->method_number);
-    } else if (handle_as_resource(manager, request, url)) {
-      ret = OK;
+    } else {
+      GoogleUrl gurl(url);
+      if (gurl.is_valid()) {
+        if (manager->IsPagespeedResource(gurl)) {
+          handle_as_resource(manager, request, &gurl, url);
+          ret = OK;
+        } else if (gurl.PathSansLeaf() ==
+                   ApacheRewriteDriverFactory::kStaticJavaScriptPrefix) {
+          instaweb_static_handler(request, manager);
+          ret = OK;
+        }
+      }
     }
-
   } else if (config->slurping_enabled() || config->test_proxy()) {
     SlurpUrl(manager, request);
     if (request->status == HTTP_NOT_FOUND) {
@@ -702,7 +696,9 @@ apr_status_t save_url_hook(request_rec *request) {
     StringPiece leaf = gurl.LeafSansQuery();
     if (leaf == kStatisticsHandler || leaf == kConsoleHandler ||
         leaf == kGlobalStatisticsHandler || leaf == kBeaconHandler ||
-        leaf == kMessageHandler || leaf == kRefererStatisticsHandler) {
+        leaf == kMessageHandler || leaf == kRefererStatisticsHandler ||
+        (gurl.PathSansLeaf() ==
+         ApacheRewriteDriverFactory::kStaticJavaScriptPrefix)) {
       bypass_mod_rewrite = true;
     } else {
       if (manager->IsPagespeedResource(gurl)) {

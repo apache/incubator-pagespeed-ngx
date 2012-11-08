@@ -297,27 +297,26 @@ class RewriteDriver : public HtmlParse {
   Writer* writer() const { return writer_; }
 
   // Initiates an async fetch for a rewritten resource with the specified name.
-  // If url matches the pattern of what the driver is authorized to serve,
-  // then true is returned and the caller must listen on the callback for
-  // the completion of the request.
+  // If resource matches the pattern of what the driver is authorized to serve,
+  // then true is returned and the caller must listen on the callback for the
+  // completion of the request.
   //
-  // If the driver is not authorized to serve the resource for any of the
-  // following reasons, false is returned and the callback will -not- be
-  // called - the request should be passed to another handler.
-  // * The URL is invalid or it does not match the general pagespeed pattern.
-  // * The filter id in the URL does not map to a known filter.
-  // * The filter for the id in the URL doesn't recognize the format of the URL.
+  // If the pattern does not match, then false is returned, and the request
+  // should be passed to another handler, and the callback will *not* be
+  // called.  In other words there are four outcomes for this routine:
   //
-  // In other words there are three outcomes for this routine:
   //   1. the request was handled immediately and the callback called
   //      before the method returns.  true is returned.
   //   2. the request looks good but was queued because some other resource
   //      fetch is needed to satisfy it.  true is returned.
-  //   3. the request does not look like it belongs to Instaweb.  The callback
+  //   3. the request looks like one it belongs to Instaweb, but the resource
+  //      could not be decoded.  The callback is called immediately with
+  //      'false', but true is returned.
+  //   4. the request does not look like it belongs to Instaweb.  The callback
   //      will not be called, and false will be returned.
   //
-  // In even other words, if this routine returns 'false' then the callback
-  // will not be called.  If the callback -is- called, then this should be the
+  // In other words, if this routine returns 'false' then the callback
+  // will not be called.  If the callback is called, then this should be the
   // 'final word' on this request, whether it was called with success=true or
   // success=false.
   bool FetchResource(const StringPiece& url, AsyncFetch* fetch);
