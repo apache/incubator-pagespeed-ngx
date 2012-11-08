@@ -151,11 +151,6 @@ static ngx_command_t ngx_http_pagespeed_commands[] = {
   ngx_null_command
 };
 
-StringPiece
-ngx_http_pagespeed_str_to_string_piece(ngx_str_t s) {
-  return StringPiece(reinterpret_cast<char*>(s.data), s.len);
-}
-
 static void*
 ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
   ngx_http_pagespeed_srv_conf_t* conf;
