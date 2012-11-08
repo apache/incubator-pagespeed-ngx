@@ -779,6 +779,10 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
     return ngx_http_next_header_filter(r);
   }
 
+  if (r->err_status != 0) {
+    return ngx_http_next_header_filter(r);
+  }
+
   // We don't know what this request is, but we only want to send html through
   // to pagespeed.  Check the content type header and find out.
   const net_instaweb::ContentType* content_type = 
@@ -787,11 +791,6 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
               &r->headers_out.content_type));
   if (content_type == NULL || !content_type->IsHtmlLike()) {
     // Unknown or otherwise non-html content type: skip it.
-    CHECK(ctx == NULL);
-    return ngx_http_next_header_filter(r);
-  }
-
-  if (r->err_status != 0) {
     return ngx_http_next_header_filter(r);
   }
 
