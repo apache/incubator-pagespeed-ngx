@@ -24,10 +24,13 @@
 
 namespace net_instaweb {
 
+class NgxRewriteOptions;
+
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
-  NgxRewriteDriverFactory();
+  explicit NgxRewriteDriverFactory(NgxRewriteOptions* options);
   virtual ~NgxRewriteDriverFactory();
+  virtual RewriteOptions* NewRewriteOptions();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
@@ -41,7 +44,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
  private:
   SimpleStats simple_stats_;
   Timer* timer_;
-  
+  NgxRewriteOptions* options_;
+
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

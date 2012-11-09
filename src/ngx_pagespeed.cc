@@ -34,6 +34,8 @@ extern "C" {
 #include <unistd.h>
 
 #include "ngx_rewrite_driver_factory.h"
+#include "ngx_server_context.h"
+#include "ngx_rewrite_options.h"
 #include "ngx_base_fetch.h"
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
@@ -58,10 +60,10 @@ extern ngx_module_t ngx_pagespeed;
   ngx_conf_log_error(NGX_LOG_DEBUG, cf, 0, args)
 
 typedef struct {
-  ngx_flag_t active;
   ngx_str_t cache_dir;
   net_instaweb::NgxRewriteDriverFactory* driver_factory;
-  net_instaweb::ServerContext* server_context;
+  net_instaweb::NgxServerContext* server_context;
+  net_instaweb::NgxRewriteOptions* options;
   net_instaweb::ProxyFetchFactory* proxy_fetch_factory;
   net_instaweb::MessageHandler* handler;
 } ngx_http_pagespeed_srv_conf_t;
@@ -133,13 +135,16 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r);
 static ngx_int_t
 ngx_http_pagespeed_init(ngx_conf_t* cf);
 
+static char*
+ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
+
 static ngx_command_t ngx_http_pagespeed_commands[] = {
   { ngx_string("pagespeed"),
-    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-    // TODO(jefftk): replace this callback with an initialization callback.
-    ngx_conf_set_flag_slot,
+    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1|
+    NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
+    ngx_http_pagespeed_configure,
     NGX_HTTP_SRV_CONF_OFFSET,
-    offsetof(ngx_http_pagespeed_srv_conf_t, active),
+    0,
     NULL },
   { ngx_string("pagespeed_cache"),
     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
@@ -151,6 +156,36 @@ static ngx_command_t ngx_http_pagespeed_commands[] = {
   ngx_null_command
 };
 
+#define NGX_PAGESPEED_MAX_ARGS 10
+static char*
+ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
+  ngx_http_pagespeed_srv_conf_t* cfg =
+      static_cast<ngx_http_pagespeed_srv_conf_t*>(
+          ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
+
+  if (cfg->options == NULL) {
+    net_instaweb::NgxRewriteOptions::Initialize();
+    cfg->options = new net_instaweb::NgxRewriteOptions();
+  }
+
+  // args[0] is always "pagespeed"; ignore it.
+  ngx_uint_t n_args = cf->args->nelts - 1;
+
+  CHECK(n_args <= NGX_PAGESPEED_MAX_ARGS);
+  StringPiece args[NGX_PAGESPEED_MAX_ARGS];
+
+  ngx_str_t* value = static_cast<ngx_str_t*>(cf->args->elts);
+  ngx_uint_t i;
+  for (i = 0 ; i < n_args ; i++) {
+    args[i] = ngx_http_pagespeed_str_to_string_piece(value[i+1]);
+  }
+
+  const char* status = cfg->options->ParseAndSetOptions(args, n_args);
+
+  // nginx expects us to return a string literal but doesn't mark it const.
+  return const_cast<char*>(status);
+}
+
 static void*
 ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
   ngx_http_pagespeed_srv_conf_t* conf;
@@ -160,7 +195,6 @@ ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
   if (conf == NULL) {
     return NGX_CONF_ERROR;
   }
-  conf->active = NGX_CONF_UNSET;
 
   // set by ngx_pcalloc():
   //   conf->cache_dir = { 0, NULL };
@@ -177,9 +211,15 @@ ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   ngx_http_pagespeed_srv_conf_t* conf =
       static_cast<ngx_http_pagespeed_srv_conf_t*>(child);
 
-  ngx_conf_merge_value(conf->active, prev->active, 0);  // Default off.
   ngx_conf_merge_str_value(conf->cache_dir, prev->cache_dir, "");
 
+  if (prev->options == NULL) {
+    // Nothing to do.
+  } else if (conf->options == NULL && prev->options != NULL) {
+    conf->options = prev->options->Clone();
+  } else {  // Both non-null.
+    conf->options->Merge(*prev->options);
+  }
   return NGX_CONF_OK;
 }
 
@@ -297,19 +337,15 @@ ngx_http_pagespeed_initialize_server_context(
   // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
   // we're done with it.
 
+  CHECK(cfg->options != NULL);
   cfg->handler = new net_instaweb::GoogleMessageHandler();
-
-  cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
+  cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory(cfg->options);
   cfg->driver_factory->set_filename_prefix(
       ngx_http_pagespeed_str_to_string_piece(cfg->cache_dir));
-  cfg->server_context = cfg->driver_factory->CreateServerContext();
+  cfg->server_context = new net_instaweb::NgxServerContext(cfg->driver_factory);
+  cfg->driver_factory->InitServerContext(cfg->server_context);
   cfg->proxy_fetch_factory =
       new net_instaweb::ProxyFetchFactory(cfg->server_context);
-
-  // Turn on some filters so we can see if this is working.
-  net_instaweb::RewriteOptions* global_options =
-      cfg->server_context->global_options();
-  global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kCoreFilters);
 }
 
 // Returns:
@@ -871,11 +907,13 @@ ngx_http_pagespeed_content_handler(ngx_http_request_t* r) {
 
 static ngx_int_t
 ngx_http_pagespeed_init(ngx_conf_t* cf) {
-  ngx_http_pagespeed_srv_conf_t* pagespeed_config;
-  pagespeed_config = static_cast<ngx_http_pagespeed_srv_conf_t*>(
-    ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
+  ngx_http_pagespeed_srv_conf_t* cfg =
+      static_cast<ngx_http_pagespeed_srv_conf_t*>(
+          ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
 
-  if (pagespeed_config->active) {
+  // Options will be set iff there is a "pagespeed" configuration option set in
+  // the config file.
+  if (cfg->options != NULL) {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_pagespeed_header_filter;
 

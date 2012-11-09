@@ -17,6 +17,7 @@
 // Author: jefftk@google.com (Jeff Kaufman)
 
 #include "ngx_rewrite_driver_factory.h"
+#include "ngx_rewrite_options.h"
 
 #include <cstdio>
 
@@ -50,7 +51,8 @@ class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
 
-NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
+NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* options)
+    : options_(options) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SetStatistics(&simple_stats_);
   timer_ = DefaultTimer();
@@ -58,6 +60,10 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
+}
+
+RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
+  return options_->Clone();
 }
 
 Hasher* NgxRewriteDriverFactory::NewHasher() {
