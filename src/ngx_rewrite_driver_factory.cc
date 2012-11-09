@@ -38,6 +38,10 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
 
+//XXX: discuss the proper way to to this:
+#include "net/instaweb/apache/apr_thread_compatible_pool.cc"
+#include "net/instaweb/apache/serf_url_async_fetcher.cc"
+
 namespace net_instaweb {
 
 class CacheInterface;
@@ -49,11 +53,15 @@ class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
+//class SerfUrlAsyncFetcher;
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
   RewriteDriverFactory::InitStats(&simple_stats_);
+  SerfUrlAsyncFetcher::InitStats(&simple_stats_); 
   SetStatistics(&simple_stats_);
   timer_ = DefaultTimer();
+  apr_initialize();
+  apr_pool_create(&pool_,NULL);
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
@@ -69,7 +77,16 @@ UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
 }
 
 UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
-  return new FakeUrlAsyncFetcher(ComputeUrlFetcher());
+  net_instaweb::UrlAsyncFetcher* fetcher = new net_instaweb::SerfUrlAsyncFetcher(
+      // "127.0.0.1:80",
+      "",
+      pool_,
+      thread_system(),
+      statistics(),
+      timer(),
+      2500,
+      message_handler());
+  return fetcher;
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
