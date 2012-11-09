@@ -74,7 +74,6 @@ typedef struct {
   int pipe_fd;
   ngx_connection_t* pagespeed_connection;
   ngx_http_request_t* r;
-  const net_instaweb::ContentType* content_type;
   bool is_resource_fetch;
   bool sent_headers;
   bool write_pending;
@@ -152,11 +151,6 @@ static ngx_command_t ngx_http_pagespeed_commands[] = {
   ngx_null_command
 };
 
-StringPiece
-ngx_http_pagespeed_str_to_string_piece(ngx_str_t* s) {
-  return StringPiece(reinterpret_cast<char*>(s->data), s->len);
-}
-
 static void*
 ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
   ngx_http_pagespeed_srv_conf_t* conf;
@@ -201,7 +195,7 @@ ngx_http_pagespeed_release_request_context(void* data) {
   // before then we need to tell it to delete itself.
   //
   // If this is a resource fetch then proxy_fetch was never initialized.
-  if (ctx->proxy_fetch != NULL) {    
+  if (ctx->proxy_fetch != NULL) {
     ctx->proxy_fetch->Done(false /* failure */);
   }
 
@@ -264,7 +258,7 @@ ngx_http_pagespeed_determine_url(ngx_http_request_t* r) {
   }
 
   StringPiece host =
-      ngx_http_pagespeed_str_to_string_piece(&r->headers_in.server);
+      ngx_http_pagespeed_str_to_string_piece(r->headers_in.server);
   if (host.size() == 0) {
     // If host is unspecified, perhaps because of a pure HTTP 1.0 "GET /path",
     // fall back to server IP address.  Based on ngx_http_variable_server_addr.
@@ -276,12 +270,12 @@ ngx_http_pagespeed_determine_url(ngx_http_request_t* r) {
     if (rc != NGX_OK) {
       s.len = 0;
     }
-    host = ngx_http_pagespeed_str_to_string_piece(&s);
+    host = ngx_http_pagespeed_str_to_string_piece(s);
   }
 
   return net_instaweb::StrCat(
       is_https ? "https://" : "http://", host, port_string,
-      ngx_http_pagespeed_str_to_string_piece(&r->unparsed_uri));
+      ngx_http_pagespeed_str_to_string_piece(r->unparsed_uri));
 }
 
 // Get the context for this request.  ngx_http_pagespeed_create_request_context
@@ -307,7 +301,7 @@ ngx_http_pagespeed_initialize_server_context(
 
   cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
   cfg->driver_factory->set_filename_prefix(
-      ngx_http_pagespeed_str_to_string_piece(&cfg->cache_dir));
+      ngx_http_pagespeed_str_to_string_piece(cfg->cache_dir));
   cfg->server_context = cfg->driver_factory->CreateServerContext();
   cfg->proxy_fetch_factory =
       new net_instaweb::ProxyFetchFactory(cfg->server_context);
@@ -317,9 +311,7 @@ ngx_http_pagespeed_initialize_server_context(
   // resource urls because we don't yet have a handler in place for them.
   net_instaweb::RewriteOptions* global_options =
       cfg->server_context->global_options();
-  global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kPassThrough);
-  global_options->EnableFiltersByCommaSeparatedList(
-      "extend_cache", cfg->handler);
+  global_options->SetRewriteLevel(net_instaweb::RewriteOptions::kCoreFilters);
 }
 
 // Returns:
@@ -390,7 +382,7 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
       return rc;
     }
   }
-  
+
   return done ? NGX_OK : NGX_AGAIN;
 }
 
@@ -467,7 +459,7 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
 
   if (rc == NGX_AGAIN) {
     // Request needs more work by pagespeed.
-    rc = ngx_handle_read_event(ev, 0);    
+    rc = ngx_handle_read_event(ev, 0);
     CHECK(rc == NGX_OK);
   } else if (rc == NGX_OK) {
     // Pagespeed is done.  Stop watching the pipe.  If we still have data to
@@ -536,7 +528,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "invalid url");
 
     // Let nginx deal with the error however it wants; we will see a NULL ctx in
-    // the body filter or content handler and do nothing.    
+    // the body filter or content handler and do nothing.
     return is_resource_fetch ? NGX_DECLINED : NGX_OK;
   }
 
@@ -590,6 +582,10 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // on the proxy fetch below.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(r, file_descriptors[1]);
 
+  // These are the options we use unless there are custom ones for this request.
+  net_instaweb::RewriteOptions* global_options =
+      ctx->cfg->server_context->global_options();
+
   // Stripping ModPagespeed query params before the property cache lookup to
   // make cache key consistent for both lookup and storing in cache.
   //
@@ -618,13 +614,22 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // If the global options say we're running furious (the experiment framework)
   // then clone them into custom_options so we can manipulate custom options
   // without affecting the global options.
-  net_instaweb::RewriteOptions* global_options =
-      ctx->cfg->server_context->global_options();
-  if (global_options->running_furious()) {
+  //
+  // If custom_options were set above in GetQueryOptions() don't run furious.
+  // We don't want experiments to be contaminated with unexpected settings.
+  if (custom_options == NULL && global_options->running_furious()) {
     custom_options = global_options->Clone();
     custom_options->set_need_to_store_experiment_data(
         ctx->cfg->server_context->furious_matcher()->ClassifyIntoExperiment(
             *ctx->base_fetch->request_headers(), custom_options));
+  }
+
+  // If we have custom options then run if they say pagespeed is enabled.
+  // Otherwise check the global options.
+  if ((custom_options && !custom_options->enabled()) ||
+      (!custom_options && !global_options->enabled())) {
+    ngx_http_pagespeed_release_request_context(ctx);
+    return NGX_DECLINED;
   }
 
   // TODO(jefftk): port ProxyInterface::InitiatePropertyCacheLookup so that we
@@ -649,7 +654,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
           custom_options);
     }
     driver->set_log_record(ctx->base_fetch->log_record());
-    
+
     // TODO(jefftk): FlushEarlyFlow would go here.
 
     // Will call StartParse etc.  The rewrite driver will take care of deleting
@@ -685,7 +690,7 @@ ngx_http_pagespeed_send_to_pagespeed(
   int last_buf = 0;
   for (cur = in; cur != NULL; cur = cur->next) {
     last_buf = cur->buf->last_buf;
-    
+
     // Buffers are not really the last buffer until they've been through
     // pagespeed.
     cur->buf->last_buf = 0;
@@ -726,19 +731,6 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed filter \"%V\"", &r->uri);
 
-  if (ctx->content_type == NULL) {
-    // We don't know what type of resource this is, but we only want to send
-    // html through to pagespeed.  Check the content type header and find out.
-    ctx->content_type = net_instaweb::MimeTypeToContentType(
-        ngx_http_pagespeed_str_to_string_piece(
-            &r->headers_out.content_type));
-    if (ctx->content_type == NULL || !ctx->content_type->IsHtmlLike()) {
-      // Unknown or otherwise non-html content type: skip it.
-      ngx_http_set_ctx(r, NULL, ngx_pagespeed);
-      return ngx_http_next_body_filter(r, in);
-    }
-  }
-
   if (!ctx->data_received) {
     // This is the first set of buffers we've got for this request.
     ctx->data_received = true;
@@ -752,11 +744,21 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   if (in != NULL) {
     // Send all input data to the proxy fetch.
     ngx_http_pagespeed_send_to_pagespeed(r, ctx, in);
-  }  
+  }
 
   ngx_http_pagespeed_set_buffered(r, true);
   return NGX_AGAIN;
 }
+
+#ifndef ngx_http_clear_etag
+// The ngx_http_clear_etag(r) macro was added in 1.3.3.  Backport it if it's not
+// present.
+#define ngx_http_clear_etag(r)       \
+  if (r->headers_out.etag) {         \
+    r->headers_out.etag->hash = 0;   \
+    r->headers_out.etag = NULL;      \
+  }
+#endif
 
 static ngx_int_t
 ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
@@ -765,32 +767,70 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
 
   if (ctx != NULL) {
     // ctx will already exist iff this is a pagespeed resource.  Do nothing.
+    CHECK(ctx->is_resource_fetch);
     return ngx_http_next_header_filter(r);
+  }
+
+  if (r->err_status != 0) {
+    return ngx_http_next_header_filter(r);
+  }
+
+  // We don't know what this request is, but we only want to send html through
+  // to pagespeed.  Check the content type header and find out.
+  const net_instaweb::ContentType* content_type = 
+      net_instaweb::MimeTypeToContentType(
+          ngx_http_pagespeed_str_to_string_piece(r->headers_out.content_type));
+  if (content_type == NULL || !content_type->IsHtmlLike()) {
+    // Unknown or otherwise non-html content type: skip it.
+    return ngx_http_next_header_filter(r);
+  }
+
+  int rc = ngx_http_pagespeed_create_request_context(
+      r, false /* not a resource fetch */);
+  if (rc == NGX_DECLINED) {
+    // ModPagespeed=off
+    return ngx_http_next_header_filter(r);
+  } else if (rc != NGX_OK) {
+    ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+    return rc;
   }
 
   // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
   // and calculate on the fly.
   ngx_http_clear_content_length(r);
 
-  // Pagespeed doesn't need etags: html is always not to be cached while
-  // resources are modified to have an etag-like hash in the url.
+  // Pagespeed html doesn't need etags: it should never be cached.
   ngx_http_clear_etag(r);
 
   // An page may change without the underlying file changing, because of how
-  // resources are included.  Pagespeed adds cache control headers for resources
-  // instead of using the last modified header.
+  // resources are included.  Pagespeed adds cache control headers for
+  // resources instead of using the last modified header.
   ngx_http_clear_last_modified(r);
 
-  r->filter_need_in_memory = 1;
-
-  if (r->err_status == 0) {
-    int rc = ngx_http_pagespeed_create_request_context(
-        r, false /* not a resource fetch */);
+  // Don't cache html.  See mod_instaweb:instaweb_fix_headers_filter.
+  // Based on ngx_http_add_cache_control.
+  if (r->headers_out.cache_control.elts == NULL) {
+    ngx_int_t rc = ngx_array_init(&r->headers_out.cache_control, r->pool,
+                                  1, sizeof(ngx_table_elt_t *));
     if (rc != NGX_OK) {
-      ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-      return rc;
+      return NGX_ERROR;
     }
   }
+  ngx_table_elt_t** cache_control_headers = static_cast<ngx_table_elt_t**>(
+      ngx_array_push(&r->headers_out.cache_control));
+  if (cache_control_headers == NULL) {
+    return NGX_ERROR;
+  }
+  cache_control_headers[0] = static_cast<ngx_table_elt_t*>(
+      ngx_list_push(&r->headers_out.headers));
+  if (cache_control_headers[0] == NULL) {
+    return NGX_ERROR;
+  }
+  cache_control_headers[0]->hash = 1;
+  ngx_str_set(&cache_control_headers[0]->key, "Cache-Control");
+  ngx_str_set(&cache_control_headers[0]->value, "max-age=0, no-cache");
+
+  r->filter_need_in_memory = 1;
 
   // Set the "X-Page-Speed: VERSION" header.
   ngx_table_elt_t* x_pagespeed = static_cast<ngx_table_elt_t*>(

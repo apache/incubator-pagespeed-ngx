@@ -18,9 +18,9 @@
 
 #include "ngx_base_fetch.h"
 #include "ngx_pagespeed.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/http/public/response_headers.h"
 
 namespace net_instaweb {
 
@@ -46,7 +46,7 @@ void NgxBaseFetch::PopulateResponseHeaders() {
   response_headers()->Add(
       HttpAttributes::kContentType,
       ngx_http_pagespeed_str_to_string_piece(
-          &request_->headers_out.content_type));
+          request_->headers_out.content_type));
 }
 
 template<class HeadersT>
@@ -73,9 +73,8 @@ void NgxBaseFetch::CopyHeadersFromTable(ngx_list_t* headers_from,
       i = 0;
     }
 
-    StringPiece key = ngx_http_pagespeed_str_to_string_piece(&header[i].key);
-    StringPiece value = ngx_http_pagespeed_str_to_string_piece(
-        &header[i].value);
+    StringPiece key = ngx_http_pagespeed_str_to_string_piece(header[i].key);
+    StringPiece value = ngx_http_pagespeed_str_to_string_piece(header[i].value);
 
     headers_to->Add(key, value);
   }
@@ -177,7 +176,7 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
   if (done_called_) {
     tail_link->buf->last_buf = true;
     last_buf_sent_ = true;
-  }  
+  }
 
   return NGX_OK;
 }
@@ -204,12 +203,18 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
   const ResponseHeaders* pagespeed_headers = response_headers();
   Unlock();
 
-  headers_out->status = NGX_HTTP_OK;
+  headers_out->status = pagespeed_headers->status_code();
 
   ngx_int_t i;
   for (i = 0 ; i < pagespeed_headers->NumAttributes() ; i++) {
-    const GoogleString& name = pagespeed_headers->Name(i);
-    const GoogleString& value = pagespeed_headers->Value(i);
+    const GoogleString& name_gs = pagespeed_headers->Name(i);
+    const GoogleString& value_gs = pagespeed_headers->Value(i);
+
+    ngx_str_t name, value;
+    name.len = name_gs.length();
+    name.data = reinterpret_cast<u_char*>(const_cast<char*>(name_gs.data()));
+    value.len = value_gs.length();
+    value.data = reinterpret_cast<u_char*>(const_cast<char*>(value_gs.data()));
 
     // TODO(jefftk): If we're setting a cache control header we'd like to
     // prevent any downstream code from changing it.  Specifically, if we're
@@ -219,8 +224,51 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
     // shouldn't apply to our generated resources.  See Apache code in
     // net/instaweb/apache/header_util:AddResponseHeadersToRequest
 
-    // TODO(jefftk): actually copy headers over
-    fprintf(stderr, "Would set header '%s: %s'\n", name.c_str(), value.c_str());
+    // Make copies of name and value to put into headers_out.
+
+    u_char* value_s = ngx_pstrdup(request_->pool, &value);
+    if (value_s == NULL) {
+      return NGX_ERROR;
+    }
+
+    if (STR_EQ_LITERAL(name, "Content-Type")) {
+      // Unlike all the other headers, content_type is just a string.
+      headers_out->content_type.data = value_s;
+      headers_out->content_type.len = value.len;
+      continue;
+    }
+
+    u_char* name_s = ngx_pstrdup(request_->pool, &name);
+    if (name_s == NULL) {
+      return NGX_ERROR;
+    }
+
+    ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(
+        ngx_list_push(&headers_out->headers));
+    if (header == NULL) {
+      return NGX_ERROR;
+    }
+
+    header->hash = 1;  // Include this header in the output.
+    header->key.len = name.len;
+    header->key.data = name_s;
+    header->value.len = value.len;
+    header->value.data = value_s;
+
+    // Populate the shortcuts to commonly used headers.
+    if (STR_EQ_LITERAL(name, "Date")) {
+      headers_out->date = header;
+    } else if (STR_EQ_LITERAL(name, "Etag")) {
+      headers_out->etag = header;
+    } else if (STR_EQ_LITERAL(name, "Expires")) {
+      headers_out->expires = header;
+    } else if (STR_EQ_LITERAL(name, "Last-Modified")) {
+      headers_out->last_modified = header;
+    } else if (STR_EQ_LITERAL(name, "Location")) {
+      headers_out->location = header;
+    } else if (STR_EQ_LITERAL(name, "Server")) {
+      headers_out->server = header;
+    }
   }
 
   return NGX_OK;
