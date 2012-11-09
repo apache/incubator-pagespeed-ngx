@@ -67,6 +67,7 @@
         'htmlparse/html_name_test.cc',
         'htmlparse/html_parse_test.cc',
         'http/bot_checker_test.cc',
+        'http/cache_url_async_fetcher_test.cc',
         'http/content_type_test.cc',
         'http/fetcher_test.cc',
         'http/headers_cookie_util_test.cc',

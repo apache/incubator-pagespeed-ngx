@@ -58,7 +58,7 @@ const char kHtmlInput[] =
     "<div id=\"container\" class>"
       "<h2 Id=\"beforeItems\">Header 2.</h2>"
       "<div class=\"another item here\">"
-         "<img src=\"image1\"/>"
+         "<img alt=\"alt1\" src=\"image1\"/>"
          "<img src=\"image2\"/>"
       "</div>"
       "<div class=\"item\">"
@@ -72,7 +72,7 @@ const char kTextContent[] =
     "Title."
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
-    "Header.Header 2.Paragraph text.";
+    "Header.Header 2.image1image2image3Paragraph text.";
 
 }  // namespace
 

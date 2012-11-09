@@ -44,8 +44,16 @@ void ComputeVisibleTextFilter::StartDocument() {
 
 void ComputeVisibleTextFilter::StartElement(HtmlElement* element) {
   // Overridden to suppress emitting the bytes.
+  //
+  // We retain meta tags and src attribute of img tags.
   if (element->keyword() == HtmlName::kMeta) {
     HtmlWriterFilter::StartElement(element);
+  } else if (element->keyword() == HtmlName::kImg) {
+    const char* src_value = element->EscapedAttributeValue(HtmlName::kSrc);
+    if (src_value != NULL) {
+      writer_.Write(src_value,
+                    rewrite_driver_->server_context()->message_handler());
+    }
   }
 }
 
