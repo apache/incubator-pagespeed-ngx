@@ -136,6 +136,6 @@ work in ngx_pagespeed after a small adjustment: replace '"ModPagespeed"' with
 
     ngx_pagespeed.conf:
       pagespeed EnableFilters collapse_whitespace,add_instrumentation;
-      pagespeed RunExperiment on
+      pagespeed RunExperiment on;
       pagespeed ExperimentSpec "id=3;percent=50;default";
       pagespeed ExperimentSpec "id=4;percent=50";
