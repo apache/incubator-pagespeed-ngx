@@ -31,6 +31,10 @@ class NgxServerContext : public ServerContext {
  public:
   NgxServerContext(NgxRewriteDriverFactory* factory);
   virtual ~NgxServerContext();
+
+  // Call only when you need an NgxRewriteOptions.  If you don't need
+  // nginx-specific behavior, call global_options() instead which doesn't
+  // downcast.
   NgxRewriteOptions* config();
 
  private:
