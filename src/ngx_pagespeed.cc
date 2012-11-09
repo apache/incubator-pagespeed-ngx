@@ -182,6 +182,9 @@ ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
 
   const char* status = cfg->options->ParseAndSetOptions(args, n_args);
 
+  fprintf(stderr, "set enabled=%s\n",
+          cfg->options->enabled() ? "true" : "false");
+
   // nginx expects us to return a string literal but doesn't mark it const.
   return const_cast<char*>(status);
 }
@@ -333,11 +336,16 @@ ngx_http_pagespeed_get_request_context(ngx_http_request_t* r) {
 static void
 ngx_http_pagespeed_initialize_server_context(
     ngx_http_pagespeed_srv_conf_t* cfg) {
+  fprintf(stderr, "ngx_http_pagespeed_initialize_server_context\n");
   net_instaweb::NgxRewriteDriverFactory::Initialize();
   // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
   // we're done with it.
 
   CHECK(cfg->options != NULL);
+
+  fprintf(stderr, "ngx_http_pagespeed_initialize_server_context: enabled=%s\n",
+          cfg->options->enabled() ? "true" : "false");
+
   cfg->handler = new net_instaweb::GoogleMessageHandler();
   cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
   cfg->driver_factory->set_filename_prefix(
@@ -347,6 +355,10 @@ ngx_http_pagespeed_initialize_server_context(
   cfg->driver_factory->InitServerContext(cfg->server_context);
   cfg->proxy_fetch_factory =
       new net_instaweb::ProxyFetchFactory(cfg->server_context);
+
+  fprintf(stderr, "ngx_http_pagespeed_initialize_server_context:"
+          " really enabled=%s\n",
+          cfg->server_context->global_options()->enabled() ? "true" : "false");
 }
 
 // Returns:
@@ -547,6 +559,7 @@ ngx_http_pagespeed_create_connection(ngx_http_pagespeed_request_ctx_t* ctx) {
 static ngx_int_t
 ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
                                           bool is_resource_fetch) {
+  fprintf(stderr, "ngx_http_pagespeed_create_request_context\n");
   ngx_http_pagespeed_srv_conf_t* cfg =
       static_cast<ngx_http_pagespeed_srv_conf_t*>(
           ngx_http_get_module_srv_conf(r, ngx_pagespeed));
