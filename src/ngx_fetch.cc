@@ -129,29 +129,8 @@ namespace net_instaweb {
     ngx_resolve_name_done(resolver_ctx);
     // resolver_ctx_ = NULL;
 
-    struct sockaddr_in sin;
-    sin.sin_family = AF_INET;
-    sin.sin_port = htons(fetch->url_.port);
-    sin.sin_addr.s_addr = resolver_ctx->addrs[0];
 
-    ngx_peer_connection_t pc;
-    ngx_memzero(&pc, sizeof(ngx_peer_connection_t));
-    pc.sockaddr = (struct sockaddr *) &sin;
-    pc.socklen = sizeof(struct sockaddr_in);
-    pc.name = &fetch->url_.host;
-
-    // just return NGX_OK
-    pc.get = ngx_event_get_peer;
-    pc.rcvbuf = -1;
-    pc.local = NULL;
-    pc.log = fetch->fetcher_->log_;
-
-    if (ngx_event_connect_peer(&pc) != NGX_OK) {
-      fetch->Cancel();
-      return;
-    }
-
-    if (fetch->InitRquest(&pc) != NGX_OK) {
+    if (fetch->InitRquest() != NGX_OK) {
       // TODO : LOG;
       fetch->Cancel();
     }
@@ -159,9 +138,48 @@ namespace net_instaweb {
     return;
   }
 
-  int NgxFetch::InitRquest(ngx_peer_connection_t* pc) {
-    connection_ = pc->connection;
+  int NgxFetch::Connect() {
+    struct sockaddr_in sin;
+    sin.sin_family = AF_INET;
+    sin.sin_port = htons(url_.port);
+    sin.sin_addr.s_addr = resolver_ctx_->addrs[0];
+
+    ngx_peer_connection_t pc;
+    ngx_memzero(&pc, sizeof(ngx_peer_connection_t));
+    pc.sockaddr = (struct sockaddr *) &sin;
+    pc.socklen = sizeof(struct sockaddr_in);
+    pc.name = &url_.host;
+
+    // just return NGX_OK
+    pc.get = ngx_event_get_peer;
+    pc.rcvbuf = -1;
+    pc.local = NULL;
+    pc.log = fetcher_->log_;
+
+    int rc = ngx_event_connect_peer(&pc);
+    connection_ = pc.connection;
+    connection_->write->handler = NgxFetchWrite;
+    connection_->read->handler = NgxFetchRead;
     connection_->data = this;
+
+    if (ngx_handle_write_event(connection_->write, 0) != NGX_OK) {
+      return NGX_ERROR;
+    }
+
+    //TODO set write timeout when rc == NGX_AGAIN
+    return rc;
+  }
+
+  int NgxFetch::InitRquest() {
+
+    in_ = static_cast<ngx_buf_t *>(ngx_calloc_buf(pool_));
+    if (in_ == NULL) { return NGX_ERROR; }
+    // 4096 or size of memory page
+    in_->start = static_cast<u_char*>(ngx_palloc(pool_, 4096));
+    if (in_->start == NULL) { return NGX_ERROR; }
+    in_->pos = in_->start;
+    in_->last = in_->start + 4096;
+
     out_ = static_cast<ngx_buf_t *>(ngx_calloc_buf(pool_));
     if (out_ == NULL) {
       return NGX_ERROR;
@@ -206,23 +224,31 @@ namespace net_instaweb {
     *(out_->last++) = CR;
     *(out_->last++) = LF;
 
+    int rc = Connect();
+    if (rc == NGX_AGAIN) {
+      return NGX_OK;
+    } else if (rc < NGX_OK) {
+      return rc;
+    }
+
     while (out_->pos < out_->last) {
       int n = connection_->send(connection_, out_->pos, out_->last - out_->pos);
       if (n >= 0) {
         out_->pos += n;
       } else if (n == NGX_AGAIN) {
         if (ngx_handle_write_event(connection_->write, 0) != NGX_OK) {
-          return NGX_ERROR;
+          return NGX_OK;
         }
 
         return NGX_OK;
       } else {
-        // TODO: try again when send failed;
+        // TODO: try again when send failed ?
         connection_->error = 1;
         return NGX_ERROR;
       }
     }
-    return NGX_OK;
+
+    return ngx_handle_read_event(connection_->read, 0);
   }
 
   void NgxFetch::NgxFetchWrite(ngx_event_t* wev) {
@@ -239,12 +265,21 @@ namespace net_instaweb {
       } else if (n == NGX_AGAIN) {
         // add send timeout, 10 only used for test
         // ngx_add_timer(c->write, 10);
+        if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
+          // write event can not be hook
+          fetch->Cancel();
+        }
         return;
       } else {
         c->error = 1;
         fetch->Cancel();
         return;
       }
+    }
+
+    if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
+      c->error = 1;
+      fetch->Cancel();
     }
 
     return;

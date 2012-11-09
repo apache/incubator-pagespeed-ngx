@@ -46,7 +46,8 @@ namespace net_instaweb {
        // show the bytes received
       MessageHandler* message_handler();
 
-      int InitRquest(ngx_peer_connection_t *pc);
+      int InitRquest();
+      int Connect();
 
     private:
 
@@ -84,6 +85,7 @@ namespace net_instaweb {
 
       ngx_log_t* log_;
       ngx_buf_t* out_;
+      ngx_buf_t* in_;
       ngx_pool_t* pool_;
       ngx_event_t* timeout_event_;
       ngx_connection_t* connection_;
