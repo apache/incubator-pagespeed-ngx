@@ -21,6 +21,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/simple_stats.h"
+#include "apr_pools.h"
 
 namespace net_instaweb {
 
@@ -41,7 +42,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
  private:
   SimpleStats simple_stats_;
   Timer* timer_;
-  
+  apr_pool_t* pool_;
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 
