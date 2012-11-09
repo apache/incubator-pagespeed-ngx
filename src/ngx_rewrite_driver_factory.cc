@@ -37,6 +37,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
+#include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/write_through_cache.h"
@@ -63,6 +64,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
+  slow_worker_->ShutDown();
 }
 
 Hasher* NgxRewriteDriverFactory::NewHasher() {
@@ -101,26 +103,25 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   // TODO(jefftk): make LRUCache size configurable.
-  LRUCache* lru_cache = new LRUCache(10 * 1000 * 1000);
-  // oschaaf: is wrapping the lru_cache still necessary?
+  LRUCache* lru_cache = new LRUCache(10 * 1000 * 1000);  
   CacheInterface* cache = new ThreadsafeCache(
       lru_cache, thread_system()->NewMutex());
+
   // TODO(oschaaf): more configuration
   FileCache::CachePolicy* policy = new FileCache::CachePolicy(
       timer(),
       hasher(),
-      6000,
-      10 * 1024 * 1014,
-      10000);
+      6000, //clean interval ms
+      10 * 1024 * 1014, //clean size kb
+      10000); //clean inode limit
 
   FileCache* file_cache = new FileCache("/tmp/ngx_pagespeed_cache",
                                         file_system(), NULL,
                                         filename_encoder(), policy,
                                         message_handler());
 
-  // oschaaf: need to setup the background worker for the filesystem
-  // cache
-  
+  slow_worker_.reset(new SlowWorker(thread_system()));
+
   WriteThroughHTTPCache* write_through_http_cache = new WriteThroughHTTPCache(
       cache, file_cache, timer(), hasher(), statistics());
   write_through_http_cache->set_cache1_limit(1024*128);
