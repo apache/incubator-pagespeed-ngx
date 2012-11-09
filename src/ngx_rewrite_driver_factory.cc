@@ -97,13 +97,13 @@ Timer* NgxRewriteDriverFactory::DefaultTimer() {
 
 NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
   return new FileSystemLockManager(
-      file_system(), "/tmp/ngx_pagespeed_cache/",
+      file_system(), filename_prefix().as_string(),
       scheduler(), message_handler());
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   // TODO(jefftk): make LRUCache size configurable.
-  LRUCache* lru_cache = new LRUCache(10 * 1000 * 1000);  
+  LRUCache* lru_cache = new LRUCache(10 * 1000 * 1000);
   CacheInterface* cache = new ThreadsafeCache(
       lru_cache, thread_system()->NewMutex());
 
@@ -115,7 +115,7 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
       10 * 1024 * 1014, //clean size kb
       10000); //clean inode limit
 
-  FileCache* file_cache = new FileCache("/tmp/ngx_pagespeed_cache",
+  FileCache* file_cache = new FileCache(filename_prefix().as_string(),
                                         file_system(), NULL,
                                         filename_encoder(), policy,
                                         message_handler());
