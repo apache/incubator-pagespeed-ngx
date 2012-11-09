@@ -51,8 +51,7 @@ class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
 
-NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* options)
-    : options_(options) {
+NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SetStatistics(&simple_stats_);
   timer_ = DefaultTimer();
@@ -60,10 +59,6 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* options)
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
-}
-
-RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
-  return options_->Clone();
 }
 
 Hasher* NgxRewriteDriverFactory::NewHasher() {

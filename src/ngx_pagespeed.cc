@@ -339,10 +339,11 @@ ngx_http_pagespeed_initialize_server_context(
 
   CHECK(cfg->options != NULL);
   cfg->handler = new net_instaweb::GoogleMessageHandler();
-  cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory(cfg->options);
+  cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
   cfg->driver_factory->set_filename_prefix(
       ngx_http_pagespeed_str_to_string_piece(cfg->cache_dir));
   cfg->server_context = new net_instaweb::NgxServerContext(cfg->driver_factory);
+  cfg->server_context->reset_global_options(cfg->options);
   cfg->driver_factory->InitServerContext(cfg->server_context);
   cfg->proxy_fetch_factory =
       new net_instaweb::ProxyFetchFactory(cfg->server_context);
