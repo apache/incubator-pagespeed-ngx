@@ -106,8 +106,13 @@ class DomainLawyer {
   // if the input URL is not valid.  It succeeds even if there is no
   // mapping done.  You must compare 'in' to 'out' to determine if
   // mapping was done.
-  bool MapOrigin(const StringPiece& in, GoogleString* out) const;
-  bool MapOriginUrl(const GoogleUrl& gurl, GoogleString* out) const;
+  //
+  // *is_proxy is set to true if the origin-domain was established via
+  // AddProxyDomainMapping.
+  bool MapOrigin(const StringPiece& in, GoogleString* out,
+                 bool* is_proxy) const;
+  bool MapOriginUrl(const GoogleUrl& gurl, GoogleString* out,
+                    bool* is_proxy) const;
 
   // The methods below this comment are intended only to be run only
   // at configuration time.
@@ -150,9 +155,38 @@ class DomainLawyer {
   //
   // This routine can be called multiple times for the same to_domain.  If
   // the 'from' domains overlap due to wildcards, this will not be detected.
+  //
+  // It is invalid to use the same origin_domain in AddProxyDomainMapping
+  // and as the to_domain of AddOriginDomainMapping.  The latter requires
+  // a Host: request-header on fetches, whereas the former will not get one.
   bool AddOriginDomainMapping(const StringPiece& to_domain,
                               const StringPiece& comma_separated_from_domains,
                               MessageHandler* handler);
+
+  // Adds a mapping to enable proxying & optimizing resources hosted
+  // on a domain we do not control, going back to the origin to
+  // fetch them.
+  //
+  // Wildcards may not be used in the proxy_domain or origin_domain.
+  //
+  // Subdirectories should normally be used in both the proxy_domain and
+  // origin_domain.  This is a not a strict requirement.  If you fully
+  // control the entire origin domain and are dedicating a proxy domain
+  // for the sole use of that origin domain then subdirectories are not needed.
+  //
+  // The proxy_domain must be running mod_pagespeed and configured
+  // consistently.  The resources will be referenced from this domain
+  // in CSS and HTML files.
+  //
+  // The origin_domain does not need to run mod_pagespeed; it is used
+  // to fetch the resources.
+  //
+  // It is invalid to use the same origin_domain in AddProxyDomainMapping
+  // and to_domain of AddOriginDomainMapping.  The latter requires
+  // a overriding the Host: request-header on fetches.
+  bool AddProxyDomainMapping(const StringPiece& proxy_domain,
+                             const StringPiece& origin_domain,
+                             MessageHandler* handler);
 
   // Adds domain mappings that handle fetches on both http and https for the
   // given from_domain.  No wildcards may be used in either domain, and both
@@ -263,6 +297,7 @@ class DomainLawyer {
   Domain* AddDomainHelper(const StringPiece& domain_name,
                           bool warn_on_duplicate,
                           bool authorize,
+                          bool is_proxy,
                           MessageHandler* handler);
   Domain* CloneAndAdd(const Domain* src);
 

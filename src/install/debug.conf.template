@@ -142,35 +142,45 @@ ModPagespeedEnableFilters add_instrumentation
 # scope we test to make sure the options we claim are really settable in
 # .htaccess.  Note that <Directory> and .htaccess are enforced the same way.
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/htaccess_test" >
-ModPagespeed on
-ModPagespeedAllow *
-ModPagespeedAvoidRenamingIntrospectiveJavascript on
-ModPagespeedBeaconUrl foo
-ModPagespeedCombineAcrossPaths off
-ModPagespeedCssFlattenMaxBytes 100
-ModPagespeedCssImageInlineMaxBytes 100
-ModPagespeedCssInlineMaxBytes 100
-ModPagespeedCssOutlineMinBytes 10000
-ModPagespeedDisableFilters rewrite_images
-ModPagespeedDisallow *bad*
-ModPagespeedDomain example.com
-ModPagespeedEnableFilters extend_cache
-ModPagespeedImageInlineMaxBytes 100
-ModPagespeedImageLimitOptimizedPercent 50
-ModPagespeedImageLimitResizeAreaPercent 50
-ModPagespeedJpegRecompressionQuality 85
-ModPagespeedJsInlineMaxBytes 100
-ModPagespeedJsOutlineMinBytes 10000
-ModPagespeedLowercaseHtmlNames on
-ModPagespeedMapOriginDomain localhost example.com
-ModPagespeedMapRewriteDomain cdn.com example.com
-ModPagespeedMaxHtmlParseBytes 100000
-ModPagespeedMaxInlinedPreviewImagesIndex 10
-ModPagespeedMinImageSizeLowResolutionBytes 100
-ModPagespeedModifyCachingHeaders off
-ModPagespeedRetainComment *ad_tag*
-ModPagespeedRewriteLevel PassThrough
+  ModPagespeed on
+  ModPagespeedAllow *
+  ModPagespeedAvoidRenamingIntrospectiveJavascript on
+  ModPagespeedBeaconUrl foo
+  ModPagespeedCombineAcrossPaths off
+  ModPagespeedCssFlattenMaxBytes 100
+  ModPagespeedCssImageInlineMaxBytes 100
+  ModPagespeedCssInlineMaxBytes 100
+  ModPagespeedCssOutlineMinBytes 10000
+  ModPagespeedDisableFilters rewrite_images
+  ModPagespeedDisallow *bad*
+  ModPagespeedDomain example.com
+  ModPagespeedEnableFilters extend_cache
+  ModPagespeedImageInlineMaxBytes 100
+  ModPagespeedImageLimitOptimizedPercent 50
+  ModPagespeedImageLimitResizeAreaPercent 50
+  ModPagespeedJpegRecompressionQuality 85
+  ModPagespeedJsInlineMaxBytes 100
+  ModPagespeedJsOutlineMinBytes 10000
+  ModPagespeedLowercaseHtmlNames on
+  ModPagespeedMapOriginDomain localhost example.com
+  ModPagespeedMapRewriteDomain cdn.com example.com
+  ModPagespeedMaxHtmlParseBytes 100000
+  ModPagespeedMaxInlinedPreviewImagesIndex 10
+  ModPagespeedMinImageSizeLowResolutionBytes 100
+  ModPagespeedModifyCachingHeaders off
+  ModPagespeedRetainComment *ad_tag*
+  ModPagespeedRewriteLevel PassThrough
 </Directory>
+
+# Establish a proxy mapping where the current server proxies an image
+# stored on ref.pssdemos.com.  We use ref.pssdemos.com rather than
+# modpagespeed.com so that we use a single html file both for:
+#   1. a demo of the feature on modpagespeed.com.  It would
+#      be confusing to demo a Proxying when the origin was the
+#      same as the proxy.
+#   2. A system-test of the feature to be run with our usual testing.
+ModPagespeedMapProxyDomain @@APACHE_DOMAIN@@/pss_images \
+                           http://ref.pssdemos.com/filter/images
 
 # This is needed for the server-side includes test in
 # apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
@@ -489,6 +499,8 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeed on
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/_secondary/"
 
+  ModPagespeedMapProxyDomain secondary.example.com/pss_images \
+                             http://ref.pssdemos.com/filter/images
   # This is the same memcached instance as the root configuration,
   # but with a different file-cache path.
 #MEMCACHED  ModPagespeedMemcachedServers localhost:6765

@@ -1769,7 +1769,8 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
       // test will need fixing to always map the origin.
       if (url.SchemeIs("https") && !url_async_fetcher_->SupportsHttps()) {
         GoogleString mapped_url;
-        options()->domain_lawyer()->MapOriginUrl(url, &mapped_url);
+        bool is_proxy = false;
+        options()->domain_lawyer()->MapOriginUrl(url, &mapped_url, &is_proxy);
         GoogleUrl mapped_gurl(mapped_url);
         if (!mapped_gurl.SchemeIs("http")) {
           message_handler()->Message(

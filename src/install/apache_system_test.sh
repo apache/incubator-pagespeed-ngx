@@ -488,6 +488,40 @@ else
   # check [ $(grep -c '^Content-Length: [0-9]'          $FETCHED) = 1 ]
 fi
 
+echo TEST: ModPagespeedMapProxyDomain
+URL=$EXAMPLE_ROOT/proxy_external_resource.html
+echo Rewrite HTML with reference to a proxyable image.
+fetch_until -save -recursive $URL \
+    'grep -c pss_images/xPuzzle\.jpg\.pagespeed\.ic' 1
+check_file_size "$OUTDIR/xPuzzle*" -lt 60000
+
+# To make sure that we can reconstruct the proxied content by going back
+# to the origin, we must avoid hitting the output cache.
+# Note that cache-flushing does not affect the cache of rewritten resources;
+# only input-resources and metadata.  To avoid hitting that cache and force
+# us to rewrite the resource from origin, we grab this resource from a
+# virtual host attached to a different cache.
+if [ "$SECONDARY_HOSTNAME" != "" ]; then
+  # With the proper hash, we'll get a long cache lifetime.
+  SECONDARY_HOST="http://secondary.example.com/pss_images"
+  PROXIED_IMAGE="$SECONDARY_HOST/$(basename $OUTDIR/xPuzzle*)"
+  WGET_ARGS="--save-headers"
+
+  echo $PROXIED_IMAGE expecting one year cache.
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $PROXIED_IMAGE \
+      "grep -c max-age=31536000" 1
+
+  # With the wrong hash, we'll get a short cache lifetime (and also no output
+  # cache hit.
+  WRONG_HASH="0"
+  PROXIED_IMAGE="$SECONDARY_HOST/xPuzzle.jpg.pagespeed.ic.$WRONG_HASH.jpg"
+  echo Fetching $PROXIED_IMAGE expecting short private cache.
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $PROXIED_IMAGE \
+      "grep -c max-age=300,private" 1
+
+  WGET_ARGS=""
+fi
+
 # TODO(sligocki): TEST: ModPagespeedMaxSegmentLength
 
 if [ "$CACHE_FLUSH_TEST" = "on" ]; then

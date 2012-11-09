@@ -22,7 +22,6 @@
 
 #include <cerrno>
 #include <cstddef>
-#include <cstring>
 #include <set>
 #include <utility>
 
@@ -199,6 +198,7 @@ const char kModPagespeedLoadFromFileRuleMatch[] =
 const char kModPagespeedLogRewriteTiming[] = "ModPagespeedLogRewriteTiming";
 const char kModPagespeedLowercaseHtmlNames[] = "ModPagespeedLowercaseHtmlNames";
 const char kModPagespeedMapOriginDomain[] = "ModPagespeedMapOriginDomain";
+const char kModPagespeedMapProxyDomain[] = "ModPagespeedMapProxyDomain";
 const char kModPagespeedMapRewriteDomain[] = "ModPagespeedMapRewriteDomain";
 const char kModPagespeedMaxHtmlParseBytes[] = "ModPagespeedMaxHtmlParseBytes";
 const char kModPagespeedMaxImageSizeLowResolutionBytes[] =
@@ -918,7 +918,7 @@ int pagespeed_modify_request(request_rec* r) {
   // Detect local requests from us.
   const char* ua = apr_table_get(r->headers_in, HttpAttributes::kUserAgent);
   if (ua != NULL &&
-      std::strstr(ua, " mod_pagespeed/" MOD_PAGESPEED_VERSION_STRING) != NULL) {
+      strstr(ua, " mod_pagespeed/" MOD_PAGESPEED_VERSION_STRING) != NULL) {
 #ifdef MPS_APACHE_24
     apr_sockaddr_t* client_addr = c->client_addr;
 #else
@@ -1511,6 +1511,9 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
   } else if (StringCaseEqual(directive, kModPagespeedMapOriginDomain)) {
     options->domain_lawyer()->AddOriginDomainMapping(
         arg1, arg2, manager->message_handler());
+  } else if (StringCaseEqual(directive, kModPagespeedMapProxyDomain)) {
+    options->domain_lawyer()->AddProxyDomainMapping(
+        arg1, arg2, manager->message_handler());
   } else if (StringCaseEqual(directive, kModPagespeedShardDomain)) {
     options->domain_lawyer()->AddShard(arg1, arg2, manager->message_handler());
   } else if (StringCaseEqual(directive, kModPagespeedCustomFetchHeader)) {
@@ -1848,6 +1851,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "custom_header_name custom_header_value"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,
         "to_domain from_domain[,from_domain]*"),
+  APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapProxyDomain,
+        "proxy_domain origin_domain"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapRewriteDomain,
         "to_domain from_domain[,from_domain]*"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedShardDomain,
