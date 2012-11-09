@@ -59,15 +59,20 @@ void ApacheRequestToRequestHeaders(const request_rec& request,
 }
 
 void ApacheRequestToResponseHeaders(const request_rec& request,
-                                    ResponseHeaders* response_headers) {
-  response_headers->set_status_code(request.status);
+                                    ResponseHeaders* headers,
+                                    ResponseHeaders* err_headers) {
+  headers->set_status_code(request.status);
   if (request.proto_num >= 1000) {
     // proto_num is the version number of protocol; 1.1 = 1001
-    response_headers->set_major_version(request.proto_num / 1000);
-    response_headers->set_minor_version(request.proto_num % 1000);
+    headers->set_major_version(request.proto_num / 1000);
+    headers->set_minor_version(request.proto_num % 1000);
   }
-  apr_table_do(AddResponseAttributeCallback, response_headers,
+  apr_table_do(AddResponseAttributeCallback, headers,
                request.headers_out, NULL);
+  if (err_headers != NULL) {
+    apr_table_do(AddResponseAttributeCallback, err_headers,
+                 request.err_headers_out, NULL);
+  }
 }
 
 void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
@@ -76,11 +81,12 @@ void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
   // proto_num is the version number of protocol; 1.1 = 1001
   request->proto_num = response_headers.major_version() * 1000 +
                        response_headers.minor_version();
-  AddResponseHeadersToRequest(response_headers, request);
+  AddResponseHeadersToRequest(&response_headers, NULL, request);
 }
 
-void AddResponseHeadersToRequest(const ResponseHeaders& response_headers,
-                                 request_rec* request) {
+void AddResponseHeadersToRequestHelper(const ResponseHeaders& response_headers,
+                                       request_rec* request,
+                                       apr_table_t* table) {
   for (int i = 0, n = response_headers.NumAttributes(); i < n; ++i) {
     const GoogleString& name = response_headers.Name(i);
     const GoogleString& value = response_headers.Value(i);
@@ -95,10 +101,25 @@ void AddResponseHeadersToRequest(const ResponseHeaders& response_headers,
       }
       // apr_table_add makes copies of both head key and value, so we do not
       // have to duplicate them.
-      apr_table_add(request->headers_out, name.c_str(), value.c_str());
+      apr_table_add(table, name.c_str(), value.c_str());
     }
   }
 }
+
+void AddResponseHeadersToRequest(const ResponseHeaders* headers,
+                                 const ResponseHeaders* err_headers,
+                                 request_rec* request) {
+  DCHECK(headers != NULL || err_headers != NULL);
+  DCHECK(headers != err_headers);
+  if (headers != NULL) {
+    AddResponseHeadersToRequestHelper(*headers, request, request->headers_out);
+  }
+  if (err_headers != NULL) {
+    AddResponseHeadersToRequestHelper(*err_headers, request,
+                                      request->err_headers_out);
+  }
+}
+
 
 void DisableDownstreamHeaderFilters(request_rec* request) {
   // Prevent downstream filters from corrupting our headers.
@@ -125,6 +146,8 @@ void PrintHeaders(request_rec* request) {
   apr_table_do(PrintAttributeCallback, NULL, request->headers_in, NULL);
   fprintf(stdout, "Output headers:\n");
   apr_table_do(PrintAttributeCallback, NULL, request->headers_out, NULL);
+  fprintf(stdout, "Err_Output headers:\n");
+  apr_table_do(PrintAttributeCallback, NULL, request->err_headers_out, NULL);
   fflush(stdout);
 }
 

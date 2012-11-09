@@ -338,7 +338,7 @@ apr_bucket* rewrite_html(InstawebContext* context, request_rec* request,
   if (!context->sent_headers()) {
     ResponseHeaders* headers = context->response_headers();
     apr_table_clear(request->headers_out);
-    AddResponseHeadersToRequest(*headers, request);
+    AddResponseHeadersToRequest(headers, NULL, request);
     headers->Clear();
     context->set_sent_headers(true);
   }
@@ -527,7 +527,14 @@ InstawebContext* build_context_for_request(request_rec* request) {
     // (instead of stripping them here) params before content generation.
     GoogleUrl gurl(absolute_url);
     ApacheRequestToRequestHeaders(*request, request_headers.get());
-    ApacheRequestToResponseHeaders(*request, &response_headers);
+
+    // Copy headers_out and err_headers_out into response_headers.
+    // Note that err_headers_out will come after the headers_out in the list of
+    // headers. Because of this, err_headers_out will effectively override
+    // headers_out when we call GetQueryOptions as it applies the header options
+    // in order.
+    ApacheRequestToResponseHeaders(*request, &response_headers,
+                                   &response_headers);
     int num_response_attributes = response_headers.NumAttributes();
     ServerContext::OptionsBoolPair query_options_success =
         manager->GetQueryOptions(&gurl, request_headers.get(),
@@ -566,8 +573,40 @@ InstawebContext* build_context_for_request(request_rec* request) {
       // them.
       DCHECK(response_headers.NumAttributes() <= num_response_attributes);
       if (response_headers.NumAttributes() < num_response_attributes) {
-        apr_table_clear(request->headers_out);
-        AddResponseHeadersToRequest(response_headers, request);
+        // Something was stripped, but we don't know if it came from
+        // headers_out or err_headers_out.  We need to treat them separately.
+        if (apr_is_empty_table(request->err_headers_out)) {
+          // We know that response_headers were all from request->headers_out
+          apr_table_clear(request->headers_out);
+          AddResponseHeadersToRequest(&response_headers, NULL, request);
+        } else if (apr_is_empty_table(request->headers_out)) {
+          // We know that response_headers were all from err_headers_out
+          apr_table_clear(request->err_headers_out);
+          AddResponseHeadersToRequest(NULL, &response_headers, request);
+
+        } else {
+          // We don't know which table changed, so scan them individually and
+          // write them both back. This should be a rare case and could be
+          // optimized a bit if we find that we're spending time here.
+          ResponseHeaders tmp_err_resp_headers, tmp_resp_headers;
+          RewriteOptions unused_opts1, unused_opts2;
+
+          ApacheRequestToResponseHeaders(*request, &tmp_resp_headers,
+                                         &tmp_err_resp_headers);
+
+          // Use ScanHeader's parsing logic to find and strip the ModPagespeed
+          // options from the headers.
+          RewriteQuery::ScanHeader(&tmp_err_resp_headers, &unused_opts1,
+                                   factory->message_handler());
+          RewriteQuery::ScanHeader(&tmp_resp_headers, &unused_opts2,
+                                   factory->message_handler());
+
+          // Write the stripped headers back to the Apache record.
+          apr_table_clear(request->err_headers_out);
+          apr_table_clear(request->headers_out);
+          AddResponseHeadersToRequest(&tmp_resp_headers, &tmp_err_resp_headers,
+                                      request);
+        }
       }
     }
   }

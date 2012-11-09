@@ -28,16 +28,28 @@ class ResponseHeaders;
 void ApacheRequestToRequestHeaders(const request_rec& request,
                                    RequestHeaders* request_headers);
 
+// Converts Apache header structure (request.headers_out) into ResponseHeaders
+// headers. If err_headers is not NULL then request.err_headers_out is copied
+// into it. In the event that headers == err_headers, the headers from
+// request.err_headers_out will be appended to the list of headers, but no
+// merging occurs.
 void ApacheRequestToResponseHeaders(const request_rec& request,
-                                    ResponseHeaders* response_headers);
+                                    ResponseHeaders* headers,
+                                    ResponseHeaders* err_headers);
 
-// Converts ResponseHeaders into an Apache request.
+
+
+// Converts ResponseHeaders into an Apache request's headers_out table.
 void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
                                     request_rec* request);
 
-// Adds the name/value pairs in response_headers to the request's
-// response headers.
-void AddResponseHeadersToRequest(const ResponseHeaders& response_headers,
+// Converts ResponseHeaders (headers and err_headers) into Apache request
+// headers (headers_out and err_headers_out respectively). Either headers or
+// err_headers may be NULL but both cannot be. Unlike in
+// ApacheRequestToResponseHeaders it does not make sense for headers to equal
+// err_headers since it will result in duplicate headers being written.
+void AddResponseHeadersToRequest(const ResponseHeaders* headers,
+                                 const ResponseHeaders* err_headers,
                                  request_rec* request);
 
 // Remove downstream filters that might corrupt our caching headers.

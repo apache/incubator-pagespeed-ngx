@@ -252,6 +252,10 @@ ModPagespeedCustomFetchHeader x-other False
 
 ModPagespeedRespectXForwardedProto on
 
+<Location ~ "/mod_pagespeed_test/response_headers.html*">
+  SetHandler mod_pagespeed_response_options_handler
+</Location>
+
 #SPELING # Enable mod_speling to ensure that we don't regress Issue 194
 #SPELING <IfModule !speling_module>
 #SPELING   LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so

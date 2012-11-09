@@ -71,7 +71,6 @@ class RewriteQuery {
                      scoped_ptr<RewriteOptions>* options,
                      MessageHandler* handler);
 
- private:
   // Performs the request and response header scanning for Scan(). If any
   // "ModPagespeed" options are found in the headers they are stripped.
   // Returns kNoneFound if no options found.  Returns kSuccess and
@@ -85,6 +84,7 @@ class RewriteQuery {
                            RewriteOptions* options,
                            MessageHandler* handler);
 
+ private:
   static bool MayHaveCustomOptions(const QueryParams& params,
                                    const RequestHeaders* req_headers,
                                    const ResponseHeaders* resp_headers);

@@ -78,6 +78,8 @@ const char kRefererStatisticsHandler[] = "mod_pagespeed_referer_statistics";
 const char kMessageHandler[] = "mod_pagespeed_message";
 const char kBeaconHandler[] = "mod_pagespeed_beacon";
 const char kLogRequestHeadersHandler[] = "mod_pagespeed_log_request_headers";
+const char kGenerateResponseWithOptionsHandler[] =
+    "mod_pagespeed_response_options_handler";
 const char kResourceUrlNote[] = "mod_pagespeed_resource";
 const char kResourceUrlNo[] = "<NO>";
 const char kResourceUrlYes[] = "<YES>";
@@ -627,6 +629,27 @@ apr_status_t instaweb_handler(request_rec* request) {
       stats->slurp_404_count()->Add(1);
     }
     ret = OK;
+  } else if (strcmp(request->handler, kGenerateResponseWithOptionsHandler) == 0
+             && request->uri != NULL) {
+    // This handler is only needed for apache_system_test. It adds headers to
+    // headers_out and/or err_headers_out to test handling of parameters in
+    // those resources.
+    if (strstr(request->parsed_uri.query, "headers_out") != NULL) {
+      apr_table_add(request->headers_out, "ModPagespeed", "off");
+    } else if (strstr(request->parsed_uri.query, "headers_errout") != NULL) {
+      apr_table_add(request->err_headers_out, "ModPagespeed", "off");
+    } else if (strstr(request->parsed_uri.query, "headers_override") != NULL) {
+      apr_table_add(request->headers_out, "ModPagespeed", "off");
+      apr_table_add(request->headers_out, "ModPagespeedFilters",
+                    "-remove_comments");
+      apr_table_add(request->err_headers_out, "ModPagespeed", "on");
+      apr_table_add(request->err_headers_out, "ModPagespeedFilters",
+                    "+remove_comments");
+    } else if (strstr(request->parsed_uri.query, "headers_combine") != NULL) {
+      apr_table_add(request->headers_out, "ModPagespeed", "on");
+      apr_table_add(request->err_headers_out, "ModPagespeedFilters",
+                    "+remove_comments");
+    }
   }
   return ret;
 }

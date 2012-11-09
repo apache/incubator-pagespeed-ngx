@@ -234,7 +234,7 @@ void InstawebContext::Finish() {
 
 void InstawebContext::PopulateHeaders(request_rec* request) {
   if (!populated_headers_) {
-    ApacheRequestToResponseHeaders(*request, &response_headers_);
+    ApacheRequestToResponseHeaders(*request, &response_headers_, NULL);
     populated_headers_ = true;
   }
 }
@@ -429,7 +429,7 @@ void InstawebContext::SetFuriousStateAndCookie(request_rec* request,
     int furious_value = options->furious_id();
     server_context_->furious_matcher()->StoreExperimentData(
         furious_value, url, timer.NowMs(), &resp_headers);
-    AddResponseHeadersToRequest(resp_headers, request);
+    AddResponseHeadersToRequest(&resp_headers, NULL, request);
   }
 }
 

@@ -457,10 +457,10 @@ deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos, opt_prefetch) {
     }
     this.addUrl(src, script, opt_pos);
   } else {
-    var str = script.innerHTML || script.textContent || script.data;
-    if (str) {
-      this.addStr(str, script, opt_pos);
-    }
+    // ||'ed with empty string to make sure the the value of str is not
+    // undefined or null.
+    var str = script.innerHTML || script.textContent || script.data || "";
+    this.addStr(str, script, opt_pos);
   }
 };
 

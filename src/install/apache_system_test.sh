@@ -128,27 +128,70 @@ check $WGET -q "$EXAMPLE_ROOT/?ModPagespeed=off" \
 check $WGET -q "$EXAMPLE_ROOT/index.html?ModPagespeed=off" -O $OUTDIR/index.html
 check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
-# TODO(jkarlin): bring back the test by handling err_headers_out in MPS.
-#echo TEST: Request Headers affect MPS options
-#rm -rf $OUTDIR
-#mkdir -p $OUTDIR
-#check $WGET -q -S -O - \
-#  "$TEST_ROOT/response_header_mps_off.php" > $OUTDIR/result_off 2>&1
-#check $WGET -q -S -O - \
-#  "$TEST_ROOT/response_header_mps_on.php" > $OUTDIR/result_on 2>&1
-#if grep -q '<?php' $OUTDIR/result_off; then
-#  echo "*** Skipped because PHP is not installed. If you'd like to enable this"
-#  echo "*** test please run: sudo apt-get install php5-common php5"
-#else
-#  echo ' TEST: ModPagespeed: off header was stripped'
-#  check_not fgrep 'ModPagespeed: off' $OUTDIR/result_off
-#
-#  echo ' TEST: Verify that ModPagespeed was off (check for inserted javascript)'
-#  check_not fgrep '<script' $OUTDIR/result_off
-#
-#  echo ' TEST: Verify that ModPagespeed was on for result_on'
-#  check fgrep '<script' $OUTDIR/result_on
-#fi
+echo TEST: Request Headers affect MPS options
+
+# Get the special file response_headers.html and test the result.
+# This file has Apache request_t headers_out and err_headers_out modified
+# according to the query parameter.  The modification happens in
+# instaweb_handler when the handler == kGenerateResponseWithOptionsHandler.
+# Possible query flags include: headers_out, headers_errout, headers_override,
+# and headers_combine.
+function response_header_test() {
+    query=$1
+    mps_on=$2
+    comments_removed=$3
+    rm -rf $OUTDIR
+    mkdir -p $OUTDIR
+
+    # Get the file
+    check $WGET -q -S -O - \
+      "$TEST_ROOT/response_headers.html?$query" >& $OUTDIR/header_out
+
+    # Make sure that any MPS option headers were stripped
+    check_not grep -q ^ModPagespeed: $OUTDIR/header_out
+
+    # Verify if MPS is on or off
+    if [ $mps_on = "no" ]; then
+      # Verify that ModPagespeed was off
+      check_not fgrep -q 'X-Mod-Pagespeed:' $OUTDIR/header_out
+      check_not fgrep -q '<script' $OUTDIR/header_out
+    else
+      # Verify that ModPagespeed was on
+      check fgrep -q 'X-Mod-Pagespeed:' $OUTDIR/header_out
+      check fgrep -q '<script' $OUTDIR/header_out
+    fi
+
+    # Verify if comments were stripped
+    if [ $comments_removed = "no" ]; then
+      # Verify that comments were not removed
+      check fgrep -q '<!--' $OUTDIR/header_out
+    else
+      # Verify that comments were removed
+      check_not fgrep -q '<!--' $OUTDIR/header_out
+    fi
+}
+
+# headers_out =     MPS: off
+# err_headers_out =
+response_header_test headers_out no no
+
+# headers_out =
+# err_headers_out = MPS: on
+response_header_test headers_errout no no
+
+# Note: The next two tests will break if remove_comments gets into the
+# CoreFilter set.
+
+# headers_out     = MPS: off, Filters: -remove_comments
+# err_headers_out = MPS: on,  Filters: +remove_comments
+# err_headers should is processed after headers_out, and so it should override
+# but disabling a filter trumps enabling one. The overriding is described in
+# the code for build_context_for_request.
+response_header_test headers_override yes no
+
+# headers_out     = MPS: on
+# err_headers_out = Filters: +remove_comments
+response_header_test headers_combine yes yes
 
 echo "TEST: Respect X-Forwarded-Proto when told to"
 FETCHED=$OUTDIR/x_forwarded_proto
