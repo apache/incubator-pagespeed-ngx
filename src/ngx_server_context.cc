@@ -16,8 +16,6 @@
 
 // Author: jefftk@google.com (Jeff Kaufman)
 
-// Manage pagespeed state across requests.  Compare to ApacheResourceManager.
-
 #include "ngx_server_context.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_rewrite_driver_factory.h"

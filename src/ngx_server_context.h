@@ -16,6 +16,8 @@
 
 // Author: jefftk@google.com (Jeff Kaufman)
 
+// Manage pagespeed state across requests.  Compare to ApacheResourceManager.
+
 #ifndef NGX_SERVER_CONTEXT_H_
 #define NGX_SERVER_CONTEXT_H_
 
