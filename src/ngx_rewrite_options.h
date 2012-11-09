@@ -27,6 +27,7 @@ namespace net_instaweb {
 
 class NgxRewriteOptions : public RewriteOptions {
  public:
+  // Used by class_name() and DynamicCast() to provide error checking.
   static const char kClassName[];
 
   // See rewrite_options::Initialize and ::Terminate
