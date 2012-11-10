@@ -68,6 +68,7 @@ const char kChefGifFile[] = "IronChef2.gif";
 const char kCuppaTPngFile[] = "CuppaT.png";
 const char kCuppaOPngFile[] = "CuppaO.png";
 const char kLargePngFile[] = "Large.png";
+const char kSmallDataFile[] = "small-data.png";
 
 // A callback for HTTP cache that stores body and string representation
 // of headers into given strings.
@@ -1300,6 +1301,28 @@ TEST_F(ImageRewriteTest, InlinableCssImagesInsertedIntoPropertyCache) {
   for (int i = 0; i < urls.size(); ++i) {
     EXPECT_EQ(1, expected_urls.count(urls[i].as_string()));
   }
+}
+
+TEST_F(ImageRewriteTest, RewritesDroppedDueToNoSavingNoResizeTest) {
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  rewrite_driver()->AddFilters();
+  const char kOriginalDims[] = " width=65 height=70";
+  TestSingleRewrite(kCuppaOPngFile, kContentTypePng, kContentTypePng,
+                    kOriginalDims, kOriginalDims, false, false);
+  Variable* rewrites_drops = statistics()->GetVariable(
+      net_instaweb::ImageRewriteFilter::kImageRewritesDroppedNoSavingNoResize);
+  EXPECT_EQ(1, rewrites_drops->Get());
+}
+
+TEST_F(ImageRewriteTest, RewritesDroppedDueToMIMETypeUnknownTest) {
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  rewrite_driver()->AddFilters();
+  const char kOriginalDims[] = " width=10 height=10";
+  TestSingleRewrite(kSmallDataFile, kContentTypePng, kContentTypePng,
+                    kOriginalDims, kOriginalDims, false, false);
+  Variable* rewrites_drops = statistics()->GetVariable(
+      net_instaweb::ImageRewriteFilter::kImageRewritesDroppedMIMETypeUnknown);
+  EXPECT_EQ(1, rewrites_drops->Get());
 }
 
 }  // namespace

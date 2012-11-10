@@ -111,6 +111,21 @@ class ImageRewriteFilter : public RewriteFilter {
   // load (too many concurrent rewrites)
   static const char kImageRewritesDroppedDueToLoad[];
 
+  // # of images not rewritten because the image MIME type is unknown.
+  static const char kImageRewritesDroppedMIMETypeUnknown[];
+
+  // # of images not rewritten because the server fails to write the merged
+  // html files.
+  static const char kImageRewritesDroppedServerWriteFail[];
+
+  // # of images not rewritten because the rewriting does not reduce the
+  // data size by a certain threshold. The image is resized in this case.
+  static const char kImageRewritesDroppedNoSavingResize[];
+
+  // # of images not rewritten because the rewriting does not reduce the
+  // data size by a certain threshold. The image is not resized in this case.
+  static const char kImageRewritesDroppedNoSavingNoResize[];
+
   // The property cache property name used to store URLs discovered when
   // image_inlining_identify_and_cache_without_rewriting() is set in the
   // RewriteOptions.
@@ -190,6 +205,17 @@ class ImageRewriteFilter : public RewriteFilter {
   // the rewrite failed, recompression wasn't effective enough, the image
   // couldn't be resized because it had an alpha-channel, etc.
   Variable* image_rewrites_dropped_intentionally_;
+  // # of images not rewritten because the image MIME type is unknown.
+  Variable* image_rewrites_dropped_mime_type_unknown_;
+  // # of images not rewritten because the server fails to write the merged
+  // html files.
+  Variable* image_rewrites_dropped_server_write_fail_;
+  // # of images not rewritten because the rewriting does not reduce the
+  // data size by a certain threshold. The image is resized in this case.
+  Variable* image_rewrites_dropped_nosaving_resize_;
+  // # of images not rewritten because the rewriting does not reduce the
+  // data size by a certain threshold. The image is not resized in this case.
+  Variable* image_rewrites_dropped_nosaving_noresize_;
   // # of images not rewritten because of load.
   TimedVariable* image_rewrites_dropped_due_to_load_;
   // # of bytes saved from image rewriting (Note: This is computed at
