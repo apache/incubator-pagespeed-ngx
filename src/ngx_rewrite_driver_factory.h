@@ -33,6 +33,7 @@ class NgxServerContext;
 class AprMemCache;
 class NgxCache;
 class NgxRewriteOptions;
+class AprMemCache;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
