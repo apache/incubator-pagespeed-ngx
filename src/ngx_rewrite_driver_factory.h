@@ -28,6 +28,8 @@ namespace net_instaweb {
 
 class SlowWorker;
 class StaticJavaScriptManager;
+class NgxServerContext;
+class AprMemCache;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
@@ -53,6 +55,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
       StaticJavascriptManager* static_js_manager);
 
   SlowWorker* slow_worker() { return slow_worker_.get(); }
+  // Create a new AprMemCache from the given hostname[:port] specification.
+  AprMemCache* NewAprMemCache(const GoogleString& spec);
 
  private:
   SimpleStats simple_stats_;

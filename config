@@ -89,6 +89,11 @@ ngx_feature_test="
 if [ $ngx_found = yes ]; then
   ps_src="$ngx_addon_dir/src"
   ngx_addon_name=ngx_pagespeed
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/../../mod_pagespeed/src/net/instaweb/apache/apr_thread_compatible_pool.cc"
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/../../mod_pagespeed/src/net/instaweb/apache/serf_url_async_fetcher.cc"
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/../../mod_pagespeed/src/net/instaweb/apache/apr_mem_cache.cc"
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/../../mod_pagespeed/src/net/instaweb/util/key_value_codec.cc"
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/../../mod_pagespeed/src/third_party/aprutil/apr_memcache2.c"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_pagespeed.cc"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_rewrite_driver_factory.cc"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_rewrite_options.cc"
@@ -97,9 +102,9 @@ if [ $ngx_found = yes ]; then
   HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
   CORE_LIBS="$CORE_LIBS 
              $pagespeed_libs
-             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/serf/libserf.a
-             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/apr/libapr.a
-             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/aprutil/libaprutil.a"
+             $mod_pagespeed_dir/out/Release/obj.target/third_party/serf/libserf.a
+             $mod_pagespeed_dir/out/Release/obj.target/third_party/aprutil/libaprutil.a
+             $mod_pagespeed_dir/out/Release/obj.target/third_party/apr/libapr.a"
   CORE_INCS="$CORE_INCS $pagespeed_include"
 else
   cat << END
