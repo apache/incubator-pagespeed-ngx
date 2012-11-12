@@ -77,16 +77,7 @@ UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
 }
 
 UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
-  net_instaweb::UrlAsyncFetcher* fetcher = new net_instaweb::SerfUrlAsyncFetcher(
-      // "127.0.0.1:80",
-      "",
-      pool_,
-      thread_system(),
-      statistics(),
-      timer(),
-      2500,
-      message_handler());
-  return fetcher;
+  return new FakeUrlAsyncFetcher(ComputeUrlFetcher());
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
