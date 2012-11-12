@@ -1,5 +1,5 @@
 /**
- * Copyright 2010 Google Inc.
+ * Copyright 2012 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,13 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#ifndef UTIL_GTL_STL_UTIL_H_
-#define UTIL_GTL_STL_UTIL_H_
+#ifndef BASE_SCOPED_PTR_H_
+#define BASE_SCOPED_PTR_H_
 
-#if defined(CHROMIUM_REVISION) && CHROMIUM_REVISION >= 93110
-#include "base/stl_util.h"
-#else
-#include "base/stl_util-inl.h"
-#endif
+#include "base/memory/scoped_ptr.h"
 
-#endif  // UTIL_GTL_STL_UTIL_H_
+#endif  // BASE_SCOPED_PTR_H_
