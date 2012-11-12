@@ -127,11 +127,8 @@ THIS_BAD_URL=$BAD_RESOURCE_URL?ModPagespeedFilters=add_instrumentation
 check_not fgrep "/mod_pagespeed_beacon" <($CURL --silent $THIS_BAD_URL)
 
 # Checks that we can correctly identify a known library url.
-#
-# TODO(jmarantz): this test failed for me in multiple clients.  jmaessen
-# needs to debug.
-#test_filter canonicalize_javascript_libraries finds library urls
-#fetch_until $URL 'fgrep -c http://www.modpagespeed.com/rewrite_javascript.js' 1
+test_filter canonicalize_javascript_libraries finds library urls
+fetch_until $URL 'fgrep -c http://www.modpagespeed.com/rewrite_javascript.js' 1
 
 test_filter collapse_whitespace removes whitespace, but not from pre tags.
 check run_wget_with_args $URL

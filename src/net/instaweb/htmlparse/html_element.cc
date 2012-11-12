@@ -183,7 +183,7 @@ void HtmlElement::Attribute::CopyValue(const StringPiece& src,
   if (src.data() == NULL) {
     // This case indicates attribute without value <tag attr>, as opposed
     // to data()=="", which implies an empty value <tag attr=>.
-    dst->reset(NULL);
+    dst->reset();
   } else {
     char* buf = new char[src.size() + 1];
     memcpy(buf, src.data(), src.size());
@@ -230,7 +230,7 @@ void HtmlElement::Attribute::SetEscapedValue(const StringPiece& escaped_value) {
         << "Setting escaped value from substring of unescaped value.";
   }
 
-  decoded_value_.reset(NULL);
+  decoded_value_.reset();
   decoding_error_ = false;
   decoded_value_computed_ = false;
 
