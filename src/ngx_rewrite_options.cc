@@ -69,11 +69,6 @@ void NgxRewriteOptions::Terminate() {
 
 bool NgxRewriteOptions::IsDirective(StringPiece config_directive,
                                     StringPiece compare_directive) {
-  // Remove initial "ModPagespeed" if there is one.
-  StringPiece mod_pagespeed("ModPagespeed");
-  if (StringCaseStartsWith(config_directive, mod_pagespeed)) {
-    config_directive.remove_prefix(mod_pagespeed.size());
-  }
   return StringCaseEqual(config_directive, compare_directive);
 }
 
@@ -90,9 +85,17 @@ NgxRewriteOptions::ParseAndSetOptions(StringPiece* args, int n_args) {
   }
   fprintf(stderr, ")\n");
 
-  if (IsDirective(args[0], "on")) {
+  StringPiece directive = args[0];
+
+  // Remove initial "ModPagespeed" if there is one.
+  StringPiece mod_pagespeed("ModPagespeed");
+  if (StringCaseStartsWith(directive, mod_pagespeed)) {
+    directive.remove_prefix(mod_pagespeed.size());
+  }
+
+  if (IsDirective(directive, "on")) {
     set_enabled(true);
-  } else if (IsDirective(args[0], "off")) {
+  } else if (IsDirective(directive, "off")) {
     set_enabled(false);
   }  // Many more IsDirective() calls go here.
   else {
