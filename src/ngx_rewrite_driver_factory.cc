@@ -37,6 +37,12 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/threadsafe_cache.h"
+#include "net/instaweb/util/public/slow_worker.h"
+#include "net/instaweb/util/public/file_cache.h"
+#include "net/instaweb/util/public/file_system_lock_manager.h"
+#include "net/instaweb/util/public/write_through_cache.h"
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/write_through_http_cache.h"
 
 //XXX: discuss the proper way to to this:
 #include "net/instaweb/apache/apr_thread_compatible_pool.cc"
@@ -66,6 +72,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
+  slow_worker_->ShutDown();
 }
 
 Hasher* NgxRewriteDriverFactory::NewHasher() {
@@ -96,15 +103,44 @@ Timer* NgxRewriteDriverFactory::DefaultTimer() {
   return new GoogleTimer;
 }
 
-void NgxRewriteDriverFactory::SetupCaches(ServerContext* resource_manager) {
+NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
+  return new FileSystemLockManager(
+      file_system(), filename_prefix().as_string(),
+      scheduler(), message_handler());
+}
+
+void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   // TODO(jefftk): make LRUCache size configurable.
   LRUCache* lru_cache = new LRUCache(10 * 1000 * 1000);
   CacheInterface* cache = new ThreadsafeCache(
       lru_cache, thread_system()->NewMutex());
-  HTTPCache* http_cache = new HTTPCache(cache, timer(), hasher(), statistics());
-  resource_manager->set_http_cache(http_cache);
-  resource_manager->set_metadata_cache(cache);
-  resource_manager->MakePropertyCaches(cache);
+
+  // TODO(oschaaf): more configuration
+  FileCache::CachePolicy* policy = new FileCache::CachePolicy(
+      timer(),
+      hasher(),
+      6000, //clean interval ms
+      10 * 1024 * 1014, //clean size kb
+      10000); //clean inode limit
+
+  FileCache* file_cache = new FileCache(filename_prefix().as_string(),
+                                        file_system(), NULL,
+                                        filename_encoder(), policy,
+                                        message_handler());
+
+  slow_worker_.reset(new SlowWorker(thread_system()));
+
+  WriteThroughHTTPCache* write_through_http_cache = new WriteThroughHTTPCache(
+      cache, file_cache, timer(), hasher(), statistics());
+  write_through_http_cache->set_cache1_limit(1024*128);
+  server_context->set_http_cache(write_through_http_cache);
+
+  WriteThroughCache* write_through_cache = new WriteThroughCache(
+      cache, file_cache);
+  write_through_cache->set_cache1_limit(1024*128);
+  server_context->set_metadata_cache(write_through_cache);
+  server_context->MakePropertyCaches(file_cache);
+  server_context->set_enable_property_cache(true);
 }
 
 Statistics* NgxRewriteDriverFactory::statistics() {
