@@ -67,17 +67,16 @@ void NgxRewriteOptions::Terminate() {
   }
 }
 
-// s1: StringPiece, s2: string literal
-// true if they're equal ignoring case, false otherwise
-#define STRP_CEQ_LITERAL(s1, s2)             \
-    ((s1).size() == (sizeof(s2)-1) &&        \
-     ngx_strncasecmp((u_char*)((s1).data()), \
-                     (u_char*)(s2),          \
-                     (sizeof(s2)-1)) == 0)
+bool NgxRewriteOptions::IsDirective(StringPiece config_directive,
+                                    StringPiece compare_directive) {
+  // Remove initial "ModPagespeed" if there is one.
+  StringPiece mod_pagespeed("ModPagespeed");
+  if (StringCaseStartsWith(config_directive, mod_pagespeed)) {
+    config_directive.remove_prefix(mod_pagespeed.size());
+  }
+  return StringCaseEqual(config_directive, compare_directive);
+}
 
-// WARNING: leaky macro.  Assumes that the directive to process is args[0].
-// This simplifies ParseAndSetOptions a lot, but is a little tricky.
-#define DIRECTIVE_IS(x) STRP_CEQ_LITERAL(args[0], (x))
 const char*
 NgxRewriteOptions::ParseAndSetOptions(StringPiece* args, int n_args) {
   CHECK(n_args >= 1);
@@ -91,11 +90,11 @@ NgxRewriteOptions::ParseAndSetOptions(StringPiece* args, int n_args) {
   }
   fprintf(stderr, ")\n");
 
-  if (DIRECTIVE_IS("on")) {
+  if (IsDirective(args[0], "on")) {
     set_enabled(true);
-  } else if (DIRECTIVE_IS("off")) {
+  } else if (IsDirective(args[0], "off")) {
     set_enabled(false);
-  }  // Many more DIRECTIVE_IS statements go here.
+  }  // Many more IsDirective() calls go here.
   else {
     return "unknown option";
   }

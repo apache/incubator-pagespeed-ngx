@@ -76,6 +76,14 @@ class NgxRewriteOptions : public RewriteOptions {
     AddProperty(default_value, offset, id, option_enum, ngx_properties_);
   }
 
+  // Helper for ParseAndSetOptions.  Returns whether the two directives equal,
+  // ignoring case.  If the config directive starts with 'ModPagespeed', that's
+  // ignored.
+  //    IsDirective("ab", "aB") -> true
+  //    IsDirective("ModPagespeedA", "a") -> true
+  //    IsDirective("modpagespeedA", "a") -> true
+  bool IsDirective(StringPiece config_directive, StringPiece compare_directive);
+
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteOptions);
 };
 
