@@ -62,6 +62,10 @@ class NgxRewriteOptions : public RewriteOptions {
  private:
   // Keeps the properties added by this subclass.  These are merged into
   // RewriteOptions::all_properties_ during Initialize().
+  //
+  // RewriteOptions uses static initialization to reduce memory usage and
+  // construction time.  All NgxRewriteOptions instances will have the same
+  // Properties, so we can build the list when we initialize the first one.
   static Properties* ngx_properties_;
   static void AddProperties();
   void Init();
