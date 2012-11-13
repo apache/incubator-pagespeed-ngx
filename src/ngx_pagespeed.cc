@@ -257,7 +257,13 @@ ngx_http_pagespeed_release_request_context(void* data) {
   // race condition here?
   delete ctx->base_fetch;
 
-  // Don't close the pipe if it was never opened or already closed.
+  // Close the connection, delete the events attached with it, and free it to
+  // Nginx's connection pool
+  if (ctx->pagespeed_connection != NULL) {
+    ngx_close_connection(ctx->pagespeed_connection);
+    ctx->pipe_fd = -1;
+  }
+
   if (ctx->pipe_fd != -1) {
     close(ctx->pipe_fd);
   }
@@ -611,12 +617,11 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   ctx->pipe_fd = file_descriptors[0];
   ctx->is_resource_fetch = is_resource_fetch;
   ctx->write_pending = false;
+  ctx->pagespeed_connection = NULL;
 
   rc = ngx_http_pagespeed_create_connection(ctx);
   if (rc != NGX_OK) {
-    close(file_descriptors[0]);
     close(file_descriptors[1]);
-    ctx->pipe_fd = -1;
 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                   "ngx_http_pagespeed_create_request_context: "
