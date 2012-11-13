@@ -662,8 +662,19 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
 
   }
 
-  // Will be NULL if there aren't custom options..
+  // Will be NULL if there aren't any options set with query params or in
+  // headers.
   net_instaweb::RewriteOptions* custom_options = query_options_success.first;
+
+  if (custom_options != NULL) {
+    // We need to combine the custom options with the global options, but
+    // because merging is order dependent we can't just do a simple:
+    //   custom_options->Merge(global_options);
+    net_instaweb::RewriteOptions* query_options = custom_options;
+    custom_options = global_options->Clone();
+    custom_options->Merge(*query_options);
+    delete query_options;
+  }
 
   // This code is based off of ProxyInterface::ProxyRequestCallback and
   // ProxyFetchFactory::StartNewProxyFetch
