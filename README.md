@@ -86,9 +86,18 @@ you need to first build and configure nginx.  Set it up something like:
     ...
     http {
       pagespeed on;
+
+      // TODO(jefftk): this should be the default.
+      pagespeed RewriteLevel CoreFilters;
+
       # This can be anywhere on your filesystem.
       pagespeed FileCachePath /path/to/ngx_pagespeed_cache;
-     
+
+      # For testing that the Library command works.
+      pagespeed Library 43 1o978_K0_L
+                http://www.modpagespeed.com/rewrite_javascript.js;
+
+
       # These gzip options are needed for tests that assume that pagespeed
       # always enables gzip.  Which it does in apache, but not in nginx.
       gzip on;
