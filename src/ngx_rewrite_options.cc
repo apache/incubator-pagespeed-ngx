@@ -113,7 +113,7 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions1(
   // FileCachePath needs error checking.
   if (IsDirective(directive, "FileCachePath")) {
     if (!StringCaseStartsWith(arg, "/")) {
-      *msg = StrCat(directive, " must start with a slash");
+      *msg = "must start with a slash";
       return RewriteOptions::kOptionValueInvalid;
     } else {
       set_file_cache_path(arg.as_string());
@@ -160,14 +160,14 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions1(
     int slot;
     bool ok = StringToInt(arg.as_string().c_str(), &slot);
     if (!ok || slot < 1 || slot > 5) {
-      *msg = StrCat(directive, " must be an integer between 1 and 5");
+      *msg = "must be an integer between 1 and 5";
       return RewriteOptions::kOptionValueInvalid;
     }
     set_furious_ga_slot(slot);
   } else if (IsDirective(directive, "ExperimentSpec")) {
     bool ok = AddFuriousSpec(arg, handler);
     if (!ok) {
-      *msg = StrCat(directive, ": '", arg, "' not a valid experiment spec.");
+      *msg = "not a valid experiment spec";
       return RewriteOptions::kOptionValueInvalid;
     }
   } else if (IsDirective(directive, "RetainComment")) {
@@ -205,7 +205,7 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions2(
     semantic_type::Category category;
     bool ok = semantic_type::ParseCategory(arg3, &category);
     if (!ok) {
-      *msg = StrCat(directive, ": Invalid resource category '", arg3, "'");
+      *msg = "Invalid resource category";
       return RewriteOptions::kOptionValueInvalid;
     }
     AddUrlValuedAttribute(arg1, arg2, category);
@@ -213,13 +213,13 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions2(
     int64 bytes;
     bool ok = StringToInt64(arg1.as_string().c_str(), &bytes);
     if (!ok || bytes < 0) {
-      *msg = StrCat(directive, ": Size must be a positive 64-bit integer");
+      *msg = "Size must be a positive 64-bit integer";
       return RewriteOptions::kOptionValueInvalid;
     }
     ok = RegisterLibrary(bytes, arg2, arg3);
     if (!ok) {
-      *msg = StrCat(directive, ": Format is size md5 url; bad md5 '", arg2,
-                    "' or URL '", arg3, "'");
+      *msg = "Format is size md5 url; bad md5 or URL";
+      return RewriteOptions::kOptionValueInvalid;
     }    
   } else {
     return RewriteOptions::kOptionNameUnknown;
@@ -271,7 +271,12 @@ NgxRewriteOptions::ParseAndSetOptions(
     case RewriteOptions::kOptionNameUnknown:
       return "unknown option";
     case RewriteOptions::kOptionValueInvalid: {
-      char* s = ngx_http_string_piece_to_pool_string(pool, msg);
+      GoogleString full_directive = "\"";
+      for (int i = 0 ; i < n_args ; i++) {
+        full_directive = StrCat(full_directive, i == 0 ? "" : " ", args[i]);
+      }
+      char* s = ngx_http_string_piece_to_pool_string(
+          pool, StrCat(full_directive, "\": ", msg));
       if (s == NULL) {
         return "failed to allocate memory";
       }
