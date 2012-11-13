@@ -27,7 +27,6 @@
 namespace net_instaweb {
 
 class SlowWorker;
-class NgxServerContext;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
