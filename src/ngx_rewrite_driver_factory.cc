@@ -17,6 +17,7 @@
 // Author: jefftk@google.com (Jeff Kaufman)
 
 #include "ngx_rewrite_driver_factory.h"
+#include "ngx_rewrite_options.h"
 
 #include <cstdio>
 

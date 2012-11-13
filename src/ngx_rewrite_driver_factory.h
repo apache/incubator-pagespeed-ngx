@@ -50,6 +50,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   Timer* timer_;
   apr_pool_t* pool_;
   scoped_ptr<SlowWorker> slow_worker_;
+
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

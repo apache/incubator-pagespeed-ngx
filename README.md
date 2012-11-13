@@ -121,3 +121,21 @@ and then eventually:
     FAIL.
 
 along with a failing test because ngx_pagespeed is not yet complete.
+
+## Configuration
+
+Once configuration is complete, any mod_pagespeed configuration directive should
+work in ngx_pagespeed after a small adjustment: replace '"ModPagespeed"' with
+'"pagespeed "':
+
+    mod_pagespeed.conf:
+      ModPagespeedEnableFilters collapse_whitespace,add_instrumentation
+      ModPagespeedRunExperiment on
+      ModPagespeedExperimentSpec id=3;percent=50;default
+      ModPagespeedExperimentSpec id=4;percent=50
+
+    ngx_pagespeed.conf:
+      pagespeed EnableFilters collapse_whitespace,add_instrumentation;
+      pagespeed RunExperiment on;
+      pagespeed ExperimentSpec "id=3;percent=50;default";
+      pagespeed ExperimentSpec "id=4;percent=50";
