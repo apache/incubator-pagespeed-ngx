@@ -27,9 +27,6 @@ namespace net_instaweb {
 
 class NgxRewriteOptions : public RewriteOptions {
  public:
-  // Used by class_name() and DynamicCast() to provide error checking.
-  static const char kClassName[];
-
   // See rewrite_options::Initialize and ::Terminate
   static void Initialize();
   static void Terminate();
@@ -60,6 +57,9 @@ class NgxRewriteOptions : public RewriteOptions {
   virtual const char* class_name() const;
 
  private:
+  // Used by class_name() and DynamicCast() to provide error checking.
+  static const char kClassName[];
+
   // Keeps the properties added by this subclass.  These are merged into
   // RewriteOptions::all_properties_ during Initialize().
   //

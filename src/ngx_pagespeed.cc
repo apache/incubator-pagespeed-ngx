@@ -81,6 +81,7 @@ typedef struct {
   bool write_pending;
 } ngx_http_pagespeed_request_ctx_t;
 
+// TODO(jefftk): switch all these static functions to an anonymous namespace.
 static ngx_int_t
 ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
@@ -171,6 +172,8 @@ ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   // args[0] is always "pagespeed"; ignore it.
   ngx_uint_t n_args = cf->args->nelts - 1;
 
+  // In ngx_http_pagespeed_commands we only register 'pagespeed' as taking up to
+  // five arguments, so this check should never fire.
   CHECK(n_args <= NGX_PAGESPEED_MAX_ARGS);
   StringPiece args[NGX_PAGESPEED_MAX_ARGS];
 
@@ -181,9 +184,6 @@ ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   }
 
   const char* status = cfg->options->ParseAndSetOptions(args, n_args);
-
-  fprintf(stderr, "set enabled=%s\n",
-          cfg->options->enabled() ? "true" : "false");
 
   // nginx expects us to return a string literal but doesn't mark it const.
   return const_cast<char*>(status);
@@ -207,6 +207,14 @@ ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
   return conf;
 }
 
+// nginx has hierarchical configuration.  It maintains configurations at many
+// levels.  At various points it needs to merge configurations from different
+// levels, and then it calls this.  First it creates the configuration at the
+// new level, parsing any pagespeed directives, then it merges in the
+// configuration from the level above.  This function should merge the parent
+// configuration (prev) into the child (conf).  It's only more complex than
+// conf->options->Merge() because of the cases where the parent or child didn't
+// have any pagespeed directives.
 static char*
 ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   ngx_http_pagespeed_srv_conf_t* prev =
@@ -336,15 +344,11 @@ ngx_http_pagespeed_get_request_context(ngx_http_request_t* r) {
 static void
 ngx_http_pagespeed_initialize_server_context(
     ngx_http_pagespeed_srv_conf_t* cfg) {
-  fprintf(stderr, "ngx_http_pagespeed_initialize_server_context\n");
   net_instaweb::NgxRewriteDriverFactory::Initialize();
   // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
   // we're done with it.
 
   CHECK(cfg->options != NULL);
-
-  fprintf(stderr, "ngx_http_pagespeed_initialize_server_context: enabled=%s\n",
-          cfg->options->enabled() ? "true" : "false");
 
   cfg->handler = new net_instaweb::GoogleMessageHandler();
   cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
@@ -355,10 +359,6 @@ ngx_http_pagespeed_initialize_server_context(
   cfg->driver_factory->InitServerContext(cfg->server_context);
   cfg->proxy_fetch_factory =
       new net_instaweb::ProxyFetchFactory(cfg->server_context);
-
-  fprintf(stderr, "ngx_http_pagespeed_initialize_server_context:"
-          " really enabled=%s\n",
-          cfg->server_context->global_options()->enabled() ? "true" : "false");
 }
 
 // Returns:
@@ -559,7 +559,6 @@ ngx_http_pagespeed_create_connection(ngx_http_pagespeed_request_ctx_t* ctx) {
 static ngx_int_t
 ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
                                           bool is_resource_fetch) {
-  fprintf(stderr, "ngx_http_pagespeed_create_request_context\n");
   ngx_http_pagespeed_srv_conf_t* cfg =
       static_cast<ngx_http_pagespeed_srv_conf_t*>(
           ngx_http_get_module_srv_conf(r, ngx_pagespeed));
@@ -925,8 +924,11 @@ ngx_http_pagespeed_init(ngx_conf_t* cf) {
       static_cast<ngx_http_pagespeed_srv_conf_t*>(
           ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
 
-  // Options will be set iff there is a "pagespeed" configuration option set in
-  // the config file.
+  // Only put register pagespeed code to run if there was a "pagespeed"
+  // configuration option set in the config file.  With "pagespeed off" we
+  // consider every request and choose not to do anything, while with no
+  // "pagespeed" directives we won't have any effect after nginx is done loading
+  // its configuration.
   if (cfg->options != NULL) {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_pagespeed_header_filter;
