@@ -27,9 +27,9 @@
 #ifndef NET_INSTAWEB_AUTOMATIC_PUBLIC_PROXY_INTERFACE_H_
 #define NET_INSTAWEB_AUTOMATIC_PUBLIC_PROXY_INTERFACE_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

@@ -17,9 +17,8 @@
 
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
 
-#include <set>                          // for _Rb_tree_const_iterator, etc
+#include <set>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -29,6 +28,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

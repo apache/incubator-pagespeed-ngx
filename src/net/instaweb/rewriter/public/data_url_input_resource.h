@@ -20,12 +20,12 @@
 // pages, but we generate these urls as a result of image inlining and
 // this confuses subsequent filters in certain cases.
 
-#include "base/scoped_ptr.h"
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/data_url.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

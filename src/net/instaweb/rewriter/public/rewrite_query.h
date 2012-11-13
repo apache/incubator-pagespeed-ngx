@@ -15,7 +15,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_QUERY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_QUERY_H_
 
-#include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

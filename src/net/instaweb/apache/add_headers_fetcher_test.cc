@@ -20,13 +20,13 @@
 //
 #include "net/instaweb/apache/add_headers_fetcher.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 
 namespace net_instaweb {
 

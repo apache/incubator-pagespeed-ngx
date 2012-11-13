@@ -22,7 +22,6 @@
 #include <utility>
 
 #include "base/logging.h"               // for CHECK, etc
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -48,6 +47,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_work_bound.h"
 #include "net/instaweb/util/public/string.h"

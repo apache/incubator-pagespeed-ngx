@@ -18,11 +18,11 @@
 
 #include "net/instaweb/util/public/hashed_referer_statistics_test_base.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hashed_referer_statistics.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"

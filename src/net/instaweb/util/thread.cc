@@ -20,7 +20,7 @@
 // ThreadImpl.
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
 

@@ -24,12 +24,12 @@
 #include <deque>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/waveform.h"

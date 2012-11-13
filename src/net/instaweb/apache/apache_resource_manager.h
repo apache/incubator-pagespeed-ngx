@@ -17,10 +17,10 @@
 #ifndef NET_INSTAWEB_APACHE_APACHE_RESOURCE_MANAGER_H_
 #define NET_INSTAWEB_APACHE_APACHE_RESOURCE_MANAGER_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

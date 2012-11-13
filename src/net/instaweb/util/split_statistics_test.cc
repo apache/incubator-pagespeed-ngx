@@ -18,12 +18,12 @@
 
 #include "net/instaweb/util/public/split_statistics.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/inprocess_shared_mem.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"

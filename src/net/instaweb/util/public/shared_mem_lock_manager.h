@@ -20,9 +20,10 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SHARED_MEM_LOCK_MANAGER_H_
 
 #include <cstddef>
-#include "base/scoped_ptr.h"
+
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

@@ -23,8 +23,6 @@
 #include <set>
 #include <utility>  // for std::pair
 
-#include "base/scoped_ptr.h"            // for scoped_ptr
-
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
@@ -36,6 +34,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"               // for StrCat
 

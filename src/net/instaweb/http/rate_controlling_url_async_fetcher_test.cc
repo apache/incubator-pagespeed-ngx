@@ -20,7 +20,6 @@
 
 #include <vector>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -31,6 +30,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"

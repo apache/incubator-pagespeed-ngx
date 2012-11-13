@@ -26,7 +26,6 @@
 #include <utility>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/loopback_route_fetcher.h"
@@ -53,6 +52,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

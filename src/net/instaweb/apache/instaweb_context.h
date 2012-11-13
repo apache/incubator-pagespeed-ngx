@@ -18,12 +18,12 @@
 #ifndef NET_INSTAWEB_APACHE_INSTAWEB_CONTEXT_H_
 #define NET_INSTAWEB_APACHE_INSTAWEB_CONTEXT_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"

@@ -21,9 +21,9 @@
 #include "net/instaweb/util/public/thread_synchronizer.h"
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/condvar.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"

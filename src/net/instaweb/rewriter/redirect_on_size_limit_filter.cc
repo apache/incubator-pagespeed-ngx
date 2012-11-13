@@ -17,7 +17,6 @@
 
 #include "net/instaweb/rewriter/public/redirect_on_size_limit_filter.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -25,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

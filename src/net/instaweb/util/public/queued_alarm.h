@@ -17,11 +17,11 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_QUEUED_ALARM_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_QUEUED_ALARM_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 
 namespace net_instaweb {
 

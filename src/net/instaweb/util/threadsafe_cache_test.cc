@@ -20,13 +20,13 @@
 
 #include "net/instaweb/util/public/threadsafe_cache.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/cache_test_base.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/thread.h"

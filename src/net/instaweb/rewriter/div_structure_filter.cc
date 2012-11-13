@@ -18,10 +18,10 @@
 
 #include "net/instaweb/rewriter/public/div_structure_filter.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 

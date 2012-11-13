@@ -18,11 +18,10 @@
 
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 
-#include "base/scoped_ptr.h"
-
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "testing/base/public/gunit.h"

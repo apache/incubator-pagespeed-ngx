@@ -17,10 +17,10 @@
 #include "net/instaweb/http/public/request_headers.h"
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/http.pb.h"  // for HttpRequestHeaders
 #include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_multi_map.h"
 #include "net/instaweb/util/public/string_util.h"

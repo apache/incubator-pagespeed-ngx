@@ -22,7 +22,6 @@
 #include <cstddef>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -43,6 +42,7 @@
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"

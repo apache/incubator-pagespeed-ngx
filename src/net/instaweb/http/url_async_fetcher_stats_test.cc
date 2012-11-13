@@ -17,7 +17,6 @@
 
 #include "net/instaweb/http/public/url_async_fetcher_stats.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
@@ -30,6 +29,7 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_mutex.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"

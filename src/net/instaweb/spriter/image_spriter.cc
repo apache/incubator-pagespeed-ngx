@@ -18,10 +18,10 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/spriter/image_library_interface.h"
 #include "net/instaweb/spriter/public/image_spriter.h"
 #include "net/instaweb/spriter/public/image_spriter.pb.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/stl_util.h"
 
 namespace net_instaweb {

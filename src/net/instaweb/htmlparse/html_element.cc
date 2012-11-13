@@ -21,10 +21,10 @@
 #include <cstdio>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

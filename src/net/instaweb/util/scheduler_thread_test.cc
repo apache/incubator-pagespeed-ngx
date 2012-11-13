@@ -18,12 +18,12 @@
 
 #include "net/instaweb/util/public/scheduler_thread.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/scheduler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
 

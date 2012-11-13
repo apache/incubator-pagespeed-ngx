@@ -19,10 +19,10 @@
 
 #include "net/instaweb/util/public/queued_worker.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {

@@ -19,9 +19,9 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_RATE_CONTROLLING_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_RATE_CONTROLLING_URL_ASYNC_FETCHER_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {

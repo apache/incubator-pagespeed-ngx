@@ -22,11 +22,11 @@
 #include <set>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/null_mutex.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 
 namespace net_instaweb {
 

@@ -14,10 +14,10 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"

@@ -19,13 +19,13 @@
 
 #include <set>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
 #include "net/instaweb/util/public/string.h"

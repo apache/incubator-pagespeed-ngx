@@ -25,7 +25,6 @@
 #include <utility>
 #include <vector>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -35,6 +34,7 @@
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

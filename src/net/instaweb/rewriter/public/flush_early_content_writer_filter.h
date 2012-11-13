@@ -20,12 +20,12 @@
 
 #include <list>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/null_writer.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

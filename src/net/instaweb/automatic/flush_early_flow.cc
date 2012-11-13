@@ -22,7 +22,6 @@
 #include <set>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
@@ -49,6 +48,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"

@@ -21,11 +21,12 @@
 #include "net/instaweb/util/public/delay_cache.h"
 
 #include <cstddef>
-#include "base/scoped_ptr.h"
+
 #include "net/instaweb/util/cache_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/worker_test_base.h"

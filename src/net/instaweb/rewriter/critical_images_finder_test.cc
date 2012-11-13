@@ -19,11 +19,11 @@
 
 #include <map>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 
 namespace net_instaweb {
 

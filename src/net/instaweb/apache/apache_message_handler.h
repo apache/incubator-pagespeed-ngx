@@ -18,10 +18,11 @@
 #define NET_INSTAWEB_APACHE_APACHE_MESSAGE_HANDLER_H_
 
 #include <cstdarg>
-#include "base/scoped_ptr.h"
+
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

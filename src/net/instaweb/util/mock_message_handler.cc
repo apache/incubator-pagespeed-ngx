@@ -22,10 +22,10 @@
 #include <map>
 #include <utility>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {

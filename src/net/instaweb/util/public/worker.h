@@ -22,8 +22,8 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_WORKER_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_WORKER_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 
 namespace net_instaweb {
 

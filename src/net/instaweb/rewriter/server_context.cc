@@ -23,7 +23,6 @@
 #include <set>
 
 #include "base/logging.h"               // for operator<<, etc
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -57,6 +56,7 @@
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"          // for STLDeleteElements
 #include "net/instaweb/util/public/string.h"

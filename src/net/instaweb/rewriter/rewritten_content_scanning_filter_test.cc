@@ -18,13 +18,13 @@
 
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"

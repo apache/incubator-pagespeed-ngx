@@ -18,9 +18,10 @@
 #define NET_INSTAWEB_APACHE_APR_FILE_SYSTEM_H_
 
 #include "apr.h"
-#include "base/scoped_ptr.h"
+
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 
 struct apr_finfo_t;

@@ -18,7 +18,6 @@
 #include "net/instaweb/rewriter/public/insert_dns_prefetch_filter.h"
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
@@ -27,6 +26,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"

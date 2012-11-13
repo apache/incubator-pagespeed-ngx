@@ -21,9 +21,9 @@
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/fast_wildcard_group.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

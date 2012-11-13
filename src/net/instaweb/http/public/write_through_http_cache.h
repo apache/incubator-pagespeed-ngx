@@ -20,9 +20,10 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_WRITE_THROUGH_HTTP_CACHE_H_
 
 #include <cstddef>
-#include "base/scoped_ptr.h"
+
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {

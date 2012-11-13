@@ -16,7 +16,6 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "base/scoped_ptr.h"  // for scoped_ptr
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -50,6 +49,7 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/scoped_ptr.h"  // for scoped_ptr
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"

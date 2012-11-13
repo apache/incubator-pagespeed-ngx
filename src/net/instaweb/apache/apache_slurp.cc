@@ -40,7 +40,6 @@
 // For now use wget when slurping additional files.
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -56,6 +55,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"

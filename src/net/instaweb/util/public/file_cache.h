@@ -20,8 +20,8 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_FILE_CACHE_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {

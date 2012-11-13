@@ -20,10 +20,11 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_SHARED_DYNAMIC_STRING_MAP_H_
 
 #include <cstddef>
-#include "base/scoped_ptr.h"
+
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

@@ -19,7 +19,6 @@
 // Unit-test the html reader/writer to ensure that a few tricky
 // constructs come through without corruption.
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/html_testing_peer.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
@@ -34,6 +33,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

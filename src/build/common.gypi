@@ -14,6 +14,9 @@
 
 {
   'variables': {
+    # This should normally be passed in by gclient's hooks
+    'chromium_revision%': 90205,
+
     # Make sure we link statically so everything gets linked into a
     # single shared object.
     'library': 'static_library',
@@ -78,6 +81,12 @@
           ['<(gcc_version) != <(gcc_devel_version)', {
           'cflags!': ['-Werror']
           }],
+          # -W[no-]unused-but-set-variable is only there since gcc-4.6, so
+          # don't add it on earlier versions.
+          # TODO(morlovich): Upstream, but how high?
+          ['<(gcc_version) < 46', {
+            'cflags!': ['-Wno-unused-but-set-variable']
+          }],
         ],
         'cflags': [
           # Our dependency on OpenCV need us to turn on exceptions.
@@ -87,6 +96,11 @@
           '-fasynchronous-unwind-tables',
           # We'd like to add '-Wtype-limits', but this does not work on
           # earlier versions of g++ on supported operating systems.
+        ],
+        # Newer Chromium build adds -Wsign-compare which we have some difficulty
+        # with. Remove it for now.
+        'cflags_cc!': [
+          '-Wsign-compare'
         ],
         'cflags_cc': [
           '-frtti',  # Hardy's g++ 4.2 <trl/function> uses typeid
@@ -111,6 +125,8 @@
         },
       }],
     ],
+
+    'defines': [ 'CHROMIUM_REVISION=<(chromium_revision)', ],
 
     # We don't want -std=gnu++0x (enabled by some versions of libpagespeed)
     # since it can cause binary compatibility problems; see issue 453.

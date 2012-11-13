@@ -27,12 +27,12 @@
 #include <set>
 #include <vector>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

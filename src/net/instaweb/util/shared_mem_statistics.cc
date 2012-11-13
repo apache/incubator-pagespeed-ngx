@@ -21,7 +21,6 @@
 #include <limits>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -29,6 +28,7 @@
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_mutex.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"

@@ -21,9 +21,9 @@
 
 #include <set>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {

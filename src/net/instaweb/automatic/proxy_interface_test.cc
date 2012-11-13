@@ -22,7 +22,6 @@
 
 #include <cstddef>
 
-#include "base/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -71,6 +70,7 @@
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"

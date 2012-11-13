@@ -18,7 +18,8 @@ vars = {
   # sync means that we will end up linking different versions of code
   # that may be incompatible with each other, which can lead to bugs.
   "chromium_trunk": "http://src.chromium.org/svn/trunk",
-  "chromium_revision": "@90205",
+  "chromium_revision_num": "90205",
+  # Next target is: 161115
   "chromium_deps_root": "src/third_party/chromium_deps",
 
   # We use libwebp from the chromium trunk (to get the .gyp file), but we need a
@@ -91,7 +92,7 @@ deps = {
   # Fetch dependent DEPS so we can sync our other dependencies relative
   # to them.
   Var("chromium_deps_root"):
-    File(Var("chromium_trunk") + "/src/DEPS" + Var("chromium_revision")),
+    File(Var("chromium_trunk") + "/src/DEPS@" + Var("chromium_revision_num")),
 
   Var("libpagespeed_deps_root"):
     File(Var("libpagespeed_trunk") + "/src/DEPS" +
@@ -105,6 +106,8 @@ deps = {
     Var("libpagespeed_trunk") + "/src/build/temp_gyp" +
       Var("libpagespeed_revision"),
 
+  # Re-enable once chromium_revision = 161115
+  # "src/build/ios": From(Var("libpagespeed_deps_root")),
   "src/build/internal": From(Var("libpagespeed_deps_root")),
   "src/build/linux": From(Var("libpagespeed_deps_root")),
   "src/build/mac": From(Var("libpagespeed_deps_root")),
@@ -147,12 +150,12 @@ deps = {
 
   "src/third_party/chromium/src/build": From(Var("libpagespeed_deps_root")),
   "src/third_party/chromium/src/chrome/tools/build":
-    File(Var("chromium_trunk") + "/src/chrome/tools/build/version.py" +
-         Var("chromium_revision")),
+    File(Var("chromium_trunk") + "/src/chrome/tools/build/version.py@" +
+         Var("chromium_revision_num")),
 
   "src/third_party/chromium/src/net/base":
-     Var("chromium_trunk") + "/src/net/base" +
-     Var("chromium_revision"),
+     Var("chromium_trunk") + "/src/net/base@" +
+     Var("chromium_revision_num"),
 
   "src/third_party/gflags/src": Var("gflags_root") + Var("gflags_revision"),
   "src/third_party/google-sparsehash/src":
@@ -163,7 +166,8 @@ deps = {
      Var("libpagespeed_revision")),
 
   "src/third_party/libpagespeed/src/build/internal":
-    Var("chromium_trunk") + "/src/build/internal" + Var("chromium_revision"),
+    Var("chromium_trunk") + "/src/build/internal@" +
+    Var("chromium_revision_num"),
 
   "src/third_party/libpagespeed/src/pagespeed/core":
     (Var("libpagespeed_trunk") + "/src/pagespeed/core" +
@@ -211,13 +215,12 @@ deps = {
      Var("chromium_trunk") + "/src/third_party/libwebp" +
      Var("chromium_webp_revision"),
 
-  "src/tools/data_pack": From(Var("libpagespeed_deps_root")),
+  # Re-enable once chromium_revision = 161115
+  # "src/tools/clang":From(Var("libpagespeed_deps_root")),
   "src/tools/grit": From(Var("libpagespeed_deps_root")),
   "src/tools/gyp": Var("gyp_src") + Var("gyp_revision"),
 
-  "src/third_party/modp_b64":
-    Var("chromium_trunk") + "/src/third_party/modp_b64" +
-      Var("chromium_revision"),
+  "src/third_party/modp_b64": From(Var("libpagespeed_deps_root")),
 
   "src/third_party/domain_registry_provider/src":
     From(Var("libpagespeed_deps_root")),
@@ -262,6 +265,7 @@ hooks = [
   {
     # A change to a .gyp, .gypi, or to GYP itself should run the generator.
     "pattern": ".",
-    "action": ["python", "src/build/gyp_chromium"],
+    "action": ["python", "src/build/gyp_chromium",
+               "-Dchromium_revision=" + Var("chromium_revision_num")],
   },
 ]

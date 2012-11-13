@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -55,6 +54,7 @@
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"

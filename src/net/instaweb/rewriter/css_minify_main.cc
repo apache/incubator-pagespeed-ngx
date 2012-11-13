@@ -20,13 +20,13 @@
 #include <cstdlib>
 #include <vector>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/util/public/file_message_handler.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
 #include "net/instaweb/util/public/gflags.h"
 #include "net/instaweb/util/public/google_timer.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"

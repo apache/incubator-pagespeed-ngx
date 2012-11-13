@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/blink_filter.h"
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
@@ -32,6 +31,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/thread_system.h"

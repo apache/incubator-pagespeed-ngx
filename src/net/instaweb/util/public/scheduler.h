@@ -19,11 +19,11 @@
 
 #include <set>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {

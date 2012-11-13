@@ -23,12 +23,12 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_JS_COMBINE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_JS_COMBINE_FILTER_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/url_multipart_encoder.h"
 

@@ -21,7 +21,6 @@
 
 #include <algorithm>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/image_data_lookup.h"
@@ -33,6 +32,7 @@
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "pagespeed/image_compression/jpeg_optimizer_test_helper.h"

@@ -21,7 +21,6 @@
 
 #include <unistd.h>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/cache_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -31,6 +30,7 @@
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"

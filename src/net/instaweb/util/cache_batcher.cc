@@ -18,11 +18,11 @@
 
 #include "net/instaweb/util/public/cache_batcher.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/delegating_cache_callback.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"

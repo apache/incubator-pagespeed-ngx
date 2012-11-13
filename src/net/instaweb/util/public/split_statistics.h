@@ -25,8 +25,8 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_SPLIT_STATISTICS_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_SPLIT_STATISTICS_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/statistics_template.h"
 #include "net/instaweb/util/public/string_util.h"        // for StringPiece

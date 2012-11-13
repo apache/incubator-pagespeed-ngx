@@ -20,7 +20,6 @@
 
 #include <vector>
 
-#include "base/scoped_ptr.h"
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -59,6 +58,7 @@
 #include "net/instaweb/util/public/mock_time_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stdio_file_system.h"

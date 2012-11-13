@@ -19,11 +19,12 @@
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 
 #include <cstddef>
-#include "base/scoped_ptr.h"
+
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/circular_buffer.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"

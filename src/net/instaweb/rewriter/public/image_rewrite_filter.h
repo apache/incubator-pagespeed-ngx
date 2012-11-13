@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
@@ -30,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

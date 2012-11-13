@@ -17,10 +17,10 @@
 
 #include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {

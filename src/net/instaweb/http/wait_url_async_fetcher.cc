@@ -19,12 +19,13 @@
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 
 #include <vector>
+
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 

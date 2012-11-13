@@ -22,12 +22,12 @@
 #include <map>
 #include <vector>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/json.h"
 #include "net/instaweb/util/public/json_writer.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

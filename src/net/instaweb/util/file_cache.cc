@@ -20,7 +20,7 @@
 
 #include <algorithm>
 #include <vector>
-#include "base/scoped_ptr.h"
+
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -29,6 +29,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/string.h"

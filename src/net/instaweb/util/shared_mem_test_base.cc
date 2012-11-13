@@ -17,12 +17,13 @@
 #include "net/instaweb/util/public/shared_mem_test_base.h"
 
 #include <cstddef>
-#include "base/scoped_ptr.h"
+
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 
 namespace net_instaweb {
 

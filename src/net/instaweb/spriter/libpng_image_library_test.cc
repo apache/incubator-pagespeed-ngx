@@ -15,9 +15,9 @@
  */
 // Author: abliss@google.com (Adam Bliss)
 
-#include "base/scoped_ptr.h"
-#include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/spriter/libpng_image_library.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace {

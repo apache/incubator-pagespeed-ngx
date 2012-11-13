@@ -23,12 +23,12 @@
 #include "apr_file_io.h"
 #include "apr_pools.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/thread_system.h"

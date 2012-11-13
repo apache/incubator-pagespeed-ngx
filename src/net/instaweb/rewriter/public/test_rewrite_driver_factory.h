@@ -21,9 +21,9 @@
 
 #include <vector>
 
-#include "base/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"        // for StringPiece

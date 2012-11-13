@@ -18,10 +18,10 @@
 
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/thread_system.h"

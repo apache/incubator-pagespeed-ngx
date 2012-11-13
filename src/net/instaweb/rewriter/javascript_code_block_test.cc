@@ -17,11 +17,11 @@
 
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"

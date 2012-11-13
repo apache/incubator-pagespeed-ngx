@@ -17,7 +17,6 @@
 
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -25,6 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"

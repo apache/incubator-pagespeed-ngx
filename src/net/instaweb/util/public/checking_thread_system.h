@@ -21,10 +21,10 @@
 
 #include "net/instaweb/util/public/thread_system.h"
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 
 namespace net_instaweb {
 

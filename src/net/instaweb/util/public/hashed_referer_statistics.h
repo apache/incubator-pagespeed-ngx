@@ -20,9 +20,10 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_HASHED_REFERER_STATISTICS_H_
 
 #include <cstddef>
-#include "base/scoped_ptr.h"
+
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

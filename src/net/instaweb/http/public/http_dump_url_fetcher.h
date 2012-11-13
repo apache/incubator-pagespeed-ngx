@@ -19,10 +19,10 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_HTTP_DUMP_URL_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_DUMP_URL_FETCHER_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 

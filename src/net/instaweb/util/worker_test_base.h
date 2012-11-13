@@ -19,11 +19,11 @@
 // subclasses, such as runtime creation and various closures.
 
 #include "base/logging.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 #ifndef NET_INSTAWEB_UTIL_WORKER_TEST_BASE_H_

@@ -22,11 +22,11 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/image_test_base.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {

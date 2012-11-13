@@ -17,11 +17,11 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_SHARED_CIRCULAR_BUFFER_TEST_BASE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_SHARED_CIRCULAR_BUFFER_TEST_BASE_H_
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
 #include "net/instaweb/util/public/string_util.h"
 

@@ -22,10 +22,10 @@
 #include <set>
 #include <vector>
 
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
