@@ -2116,8 +2116,7 @@ TEST_F(ProxyInterfaceTest, HeadRequest) {
 
   set_text = "<html></html>";
 
-  mock_url_fetcher_.SetResponse("http://www.example.com/", set_headers,
-                                set_text);
+  mock_url_fetcher_.SetResponse(url, set_headers, set_text);
   FetchFromProxy(url, request_headers, true, &get_text, &get_headers);
 
   // Headers and body are correct for a Get request.
@@ -2131,9 +2130,16 @@ TEST_F(ProxyInterfaceTest, HeadRequest) {
             "HeadersComplete: 1\r\n\r\n", get_headers.ToString());
   EXPECT_EQ(set_text, get_text);
 
+  // Remove from the cache so we can actually test a HEAD fetch.
+  http_cache()->Delete(url);
+
+  ClearStats();
+
   // Headers and body are correct for a Head request.
   request_headers.set_method(RequestHeaders::kHead);
   FetchFromProxy(url, request_headers, true, &get_text, &get_headers);
+
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
 
   EXPECT_EQ("HTTP/1.0 200 OK\r\n"
             "Content-Type: text/html\r\n"

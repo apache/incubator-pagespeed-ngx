@@ -20,6 +20,7 @@
 #include "net/instaweb/util/public/stdio_file_system.h"
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/file_system_test.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_timer.h"
@@ -177,7 +178,9 @@ TEST_F(StdioFileSystemTest, TestListContents) {
 }
 
 TEST_F(StdioFileSystemTest, TestAtime) {
-  TestAtime();
+  if (!RunningOnValgrind()) {
+    TestAtime();
+  }
 }
 
 TEST_F(StdioFileSystemTest, TestMtime) {

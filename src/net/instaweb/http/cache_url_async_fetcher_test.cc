@@ -312,7 +312,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
       EXPECT_EQ(implicit_cache_ttl_ms_,
                 fetch_response_headers.implicit_cache_ttl_ms());
     }
-    EXPECT_EQ(is_original_resource_cacheable, is_cacheable);
+    EXPECT_EQ(is_original_resource_cacheable, is_cacheable) << url;
     if (fetch_type == kFallbackFetch) {
       EXPECT_STREQ(
           FallbackSharedAsyncFetch::kStaleWarningHeaderValue,
@@ -331,13 +331,13 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
       const StringPiece& url, const StringPiece& expected_body) {
     RequestHeaders request_headers;
     ExpectNoCacheWithRequestHeadersAndIsOriginalCacheable(
-        url, expected_body, request_headers, true);
+        url, expected_body, request_headers, true, true);
   }
 
   void ExpectNoCache(const StringPiece& url, const StringPiece& expected_body) {
     RequestHeaders request_headers;
     ExpectNoCacheWithRequestHeadersAndIsOriginalCacheable(
-        url, expected_body, request_headers, false);
+        url, expected_body, request_headers, false, true);
   }
 
 
@@ -345,21 +345,23 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
                                        const StringPiece& expected_body,
                                        const RequestHeaders& request_headers) {
     ExpectNoCacheWithRequestHeadersAndIsOriginalCacheable(
-        url, expected_body, request_headers, false);
+        url, expected_body, request_headers, false, true);
   }
 
   void ExpectNoCacheWithRequestHeadersAndIsOriginalCacheable(
       const StringPiece& url,
       const StringPiece& expected_body,
       const RequestHeaders& request_headers,
-      bool is_original_cacheable) {
+      bool is_original_cacheable,
+      bool is_servable_from_cache) {
     ClearStats();
     FetchAndValidate(url, request_headers, true, HttpStatus::kOK,
                      expected_body, kBackendFetch, is_original_cacheable);
     // First fetch misses initial cache lookup ...
     EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
     EXPECT_EQ(0, http_cache_->cache_hits()->Get());
-    EXPECT_EQ(1, http_cache_->cache_misses()->Get());
+    EXPECT_EQ(is_servable_from_cache ? 1 : 0,
+              http_cache_->cache_misses()->Get());
     // ... succeeds at fetch ...
     EXPECT_EQ(1, counting_fetcher_.fetch_count());
     // ... but isn't inserted into the cache, because it's not cacheable.
@@ -372,9 +374,26 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
     // same thing should happen as first fetch.
     EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
     EXPECT_EQ(0, http_cache_->cache_hits()->Get());
-    EXPECT_EQ(1, http_cache_->cache_misses()->Get());
+    EXPECT_EQ(is_servable_from_cache ? 1 : 0,
+              http_cache_->cache_misses()->Get());
     EXPECT_EQ(1, counting_fetcher_.fetch_count());
     EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
+  }
+
+  void ExpectNoCacheWithMethodAndIsServable(const StringPiece& url,
+                                            const StringPiece& expected_body,
+                                            RequestHeaders::Method method,
+                                            bool servable_from_cache) {
+    RequestHeaders request_header;
+    request_header.set_method(method);
+    ExpectNoCacheWithRequestHeadersAndIsOriginalCacheable(
+        url, expected_body, request_header, false, servable_from_cache);
+  }
+
+  void ExpectNoCacheWithMethod(const StringPiece& url,
+                               const StringPiece& expected_body,
+                               RequestHeaders::Method method) {
+    ExpectNoCacheWithMethodAndIsServable(url, expected_body, method, false);
   }
 
   void ExpectCache(const StringPiece& url, const StringPiece& expected_body) {
@@ -1269,6 +1288,118 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheVaryForHtml) {
   ExpectNoCacheWithRequestHeaders(vary_url_, vary_body_,
                                   request_headers_with_cookies);
   lru_cache_.Clear();
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, HeadServedFromCache) {
+  ClearStats();
+
+  // Issue a HEAD request.
+  RequestHeaders head_request;
+  head_request.set_method(RequestHeaders::kHead);
+  FetchAndValidate(cache_url_, head_request, true, HttpStatus::kOK,
+                   "", kBackendFetch, false);
+  // First fetch misses initial cache lookup ...
+  EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
+  EXPECT_EQ(0, http_cache_->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache_->cache_misses()->Get());
+  // ... succeeds at fetch ...
+  EXPECT_EQ(1, counting_fetcher_.fetch_count());
+  // ... but should not be inserted into the cache ...
+  EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
+  EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
+
+  ClearStats();
+  // Issue another HEAD request.
+  FetchAndValidate(cache_url_, head_request, true, HttpStatus::kOK,
+                   "", kBackendFetch, false);
+  // Second fetch should miss again ...
+  EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
+  EXPECT_EQ(0, http_cache_->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache_->cache_misses()->Get());
+  EXPECT_EQ(1, counting_fetcher_.fetch_count());
+  EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
+  EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
+
+  ClearStats();
+  // Now issue a GET.
+  FetchAndValidate(cache_url_, RequestHeaders(), true, HttpStatus::kOK,
+                   cache_body_, kBackendFetch, true);
+  // Should miss the cache.
+  EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
+  EXPECT_EQ(0, http_cache_->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache_->cache_misses()->Get());
+  // ... succeeds at fetch ...
+  EXPECT_EQ(1, counting_fetcher_.fetch_count());
+  // ... and inserts result into cache.
+  EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
+  EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
+
+  ClearStats();
+  // Issue the HEAD request again, this time it should be served from cache.
+  FetchAndValidate(cache_url_, head_request, true, HttpStatus::kOK,
+                   "", kBackendFetch, false);
+  EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
+  EXPECT_EQ(1, http_cache_->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache_->cache_misses()->Get());
+  EXPECT_EQ(0, counting_fetcher_.fetch_count());
+  EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
+  EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
+
+  ClearStats();
+  // Replay the GET and ensure the HEAD request has not affected its cache
+  // value.
+  FetchAndValidate(cache_url_, RequestHeaders(), true, HttpStatus::kOK,
+                   cache_body_, kBackendFetch, true);
+  EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
+  EXPECT_EQ(1, http_cache_->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache_->cache_misses()->Get());
+  EXPECT_EQ(0, counting_fetcher_.fetch_count());
+  EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
+  EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, OPTIONS) {
+  ExpectNoCacheWithMethod(cache_url_, cache_body_, RequestHeaders::kOptions);
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, GET) {
+  // This is already tested above, but leave in for completeness.
+  RequestHeaders request_header;
+  request_header.set_method(RequestHeaders::kGet);
+  ExpectCacheWithRequestHeaders(cache_url_, cache_body_, request_header);
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, HEAD) {
+  ExpectNoCacheWithMethodAndIsServable(
+      cache_url_, "", RequestHeaders::kHead, true);
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, POST) {
+  ExpectNoCacheWithMethod(cache_url_, cache_body_, RequestHeaders::kPost);
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, PUT) {
+  ExpectNoCacheWithMethod(cache_url_, cache_body_, RequestHeaders::kPut);
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, DELETE) {
+  ExpectNoCacheWithMethod(cache_url_, cache_body_, RequestHeaders::kDelete);
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, TRACE) {
+  ExpectNoCacheWithMethod(cache_url_, cache_body_, RequestHeaders::kTrace);
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, CONNECT) {
+  ExpectNoCacheWithMethod(cache_url_, cache_body_, RequestHeaders::kConnect);
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, PATCH) {
+  ExpectNoCacheWithMethod(cache_url_, cache_body_, RequestHeaders::kPatch);
+}
+
+TEST_F(CacheUrlAsyncFetcherTest, ERROR) {
+  ExpectNoCacheWithMethod(cache_url_, cache_body_, RequestHeaders::kError);
 }
 
 }  // namespace

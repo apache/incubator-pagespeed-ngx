@@ -115,7 +115,12 @@ class CachePutFetch : public SharedAsyncFetch {
   }
 
   virtual void HandleDone(bool success) {
-    if (success && cacheable_ && cache_value_writer_.has_buffered()) {
+    DCHECK_EQ(request_headers()->method(), RequestHeaders::kGet);
+    const bool insert_into_cache = (success &&
+                                    cacheable_ &&
+                                    cache_value_writer_.has_buffered());
+
+    if (insert_into_cache) {
       // The X-Original-Content-Length header will have been added after
       // HandleHeadersComplete(), so extract its value and add it to the
       // saved headers.
@@ -136,7 +141,7 @@ class CachePutFetch : public SharedAsyncFetch {
     // Finish fetch.
     base_fetch()->Done(success);
     // Add result to cache.
-    if (success && cacheable_ && cache_value_writer_.has_buffered()) {
+    if (insert_into_cache) {
       cache_->Put(url_, &cache_value_, handler_);
     }
     delete this;
@@ -202,7 +207,10 @@ class CacheFindCallback : public HTTPCache::Callback {
           response_headers()->Clear();
           response_headers()->SetStatusAndReason(HttpStatus::kNotModified);
           base_fetch_->HeadersComplete();
-        } else {
+        } else if (base_fetch_->request_headers()->method() !=
+                   RequestHeaders::kHead) {
+          DCHECK_EQ(base_fetch_->request_headers()->method(),
+                    RequestHeaders::kGet);
           base_fetch_->HeadersComplete();
 
           StringPiece contents;
@@ -234,38 +242,49 @@ class CacheFindCallback : public HTTPCache::Callback {
         }
       case HTTPCache::kNotFound: {
         VLOG(1) << "Did not find in cache: " << url_;
-        // If fallback_http_value() is populated, use it in case the fetch
-        // fails. Note that this is only populated if the response in cache is
-        // stale.
         AsyncFetch* base_fetch = base_fetch_;
-        if (serve_stale_if_fetch_error_) {
-          FallbackSharedAsyncFetch* fallback_fetch =
-              new FallbackSharedAsyncFetch(
-                  base_fetch_, fallback_http_value(), handler_);
-          fallback_fetch->set_fallback_responses_served(
-              fallback_responses_served_);
-          base_fetch = fallback_fetch;
+        if (request_headers()->method() == RequestHeaders::kGet) {
+          // Only cache GET results as they can be used for HEAD requests, but
+          // not vice versa.
+          // TODO(gee): It is possible to cache HEAD results as well, but we
+          // must add code to ensure we do not serve GET requests using HEAD
+          // responses.
+          if (serve_stale_if_fetch_error_) {
+            // If fallback_http_value() is populated, use it in case the fetch
+            // fails. Note that this is only populated if the response in cache
+            // is stale.
+            FallbackSharedAsyncFetch* fallback_fetch =
+                new FallbackSharedAsyncFetch(
+                    base_fetch_, fallback_http_value(), handler_);
+            fallback_fetch->set_fallback_responses_served(
+                fallback_responses_served_);
+            base_fetch = fallback_fetch;
+          }
+
+          CachePutFetch* put_fetch = new CachePutFetch(
+              url_, base_fetch, respect_vary_, default_cache_html_, cache_,
+              backend_first_byte_latency_, handler_);
+          DCHECK_EQ(response_headers(), base_fetch_->response_headers());
+
+          // Remove any Etags added by us before sending the request out.
+          const char* etag = request_headers()->Lookup1(
+              HttpAttributes::kIfNoneMatch);
+          if (etag != NULL &&
+              StringCaseStartsWith(etag, HTTPCache::kEtagPrefix)) {
+            put_fetch->request_headers()->RemoveAll(
+                HttpAttributes::kIfNoneMatch);
+          }
+
+          ConditionalSharedAsyncFetch* conditional_fetch =
+              new ConditionalSharedAsyncFetch(
+                  put_fetch, fallback_http_value(), handler_);
+          conditional_fetch->set_num_conditional_refreshes(
+              num_conditional_refreshes_);
+
+          base_fetch = conditional_fetch;
         }
-        CachePutFetch* put_fetch = new CachePutFetch(
-            url_, base_fetch, respect_vary_, default_cache_html_, cache_,
-            backend_first_byte_latency_, handler_);
-        DCHECK_EQ(response_headers(), base_fetch_->response_headers());
 
-        // Remove any Etags added by us before sending the request out.
-        const char* etag = request_headers()->Lookup1(
-            HttpAttributes::kIfNoneMatch);
-        if (etag != NULL &&
-            StringCaseStartsWith(etag, HTTPCache::kEtagPrefix)) {
-          put_fetch->request_headers()->RemoveAll(HttpAttributes::kIfNoneMatch);
-        }
-
-        ConditionalSharedAsyncFetch* conditional_fetch =
-            new ConditionalSharedAsyncFetch(
-                put_fetch, fallback_http_value(), handler_);
-        conditional_fetch->set_num_conditional_refreshes(
-            num_conditional_refreshes_);
-
-        fetcher_->Fetch(url_, handler_, conditional_fetch);
+        fetcher_->Fetch(url_, handler_, base_fetch);
         break;
       }
     }
@@ -347,28 +366,32 @@ CacheUrlAsyncFetcher::~CacheUrlAsyncFetcher() {
 
 void CacheUrlAsyncFetcher::Fetch(
     const GoogleString& url, MessageHandler* handler, AsyncFetch* base_fetch) {
+  switch (base_fetch->request_headers()->method()) {
+    case RequestHeaders::kHead:
+      // HEAD is identical to GET, with the body trimmed.  Even though we are
+      // able to respond to HEAD requests with a cached value from a GET
+      // response, at this point we do not allow caching of HEAD responses from
+      // the origin, so mark the "original" resource as uncacheable.
+      base_fetch->logging_info()->set_is_original_resource_cacheable(false);
+      // Fall through.
+    case RequestHeaders::kGet:
+      {
+        CacheFindCallback* find_callback =
+            new CacheFindCallback(url, base_fetch, this, handler);
+        http_cache_->Find(url, handler, find_callback);
+      }
+      return;
 
-  // TODO(mmohabey): If the url is in cache, then use it for serving the head
-  // request.
-  if (base_fetch->request_headers()->method() != RequestHeaders::kGet) {
-    // Set is_original_resource_cacheable.
-    base_fetch->logging_info()->set_is_original_resource_cacheable(false);
-    // Without this if there is URL which responds both on GET
-    // and POST. If GET comes first, and POST next then the cached
-    // entry will be reused. POST is allowed to invalidate GET response
-    // in cache, but not use the value in cache. For now just bypassing
-    // cache for non GET requests.
-    fetcher_->Fetch(url, handler, base_fetch);
-    return;
+    default:
+      // POST may not be idempotent and thus we must not serve a cached value
+      // from a prior request.
+      // TODO(gee): What about the other methods?
+      break;
   }
 
-  CacheFindCallback* find_callback =
-      new CacheFindCallback(url, base_fetch, this, handler);
-
-  http_cache_->Find(url, handler, find_callback);
-  // Cache interface does not tell us if the request was immediately resolved,
-  // so we must say that it wasn't.
-  return;
+  // Original resource not cacheable.
+  base_fetch->logging_info()->set_is_original_resource_cacheable(false);
+  fetcher_->Fetch(url, handler, base_fetch);
 }
 
 }  // namespace net_instaweb
