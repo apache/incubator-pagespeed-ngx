@@ -43,6 +43,9 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   virtual NamedLockManager* DefaultLockManager();
   virtual void SetupCaches(ServerContext* resource_manager);
   virtual Statistics* statistics();
+  // Create a new RewriteOptions.  In this implementation it will be an
+  // NgxRewriteOptions.
+  virtual RewriteOptions* NewRewriteOptions();
 
   SlowWorker* slow_worker() { return slow_worker_.get(); }
 

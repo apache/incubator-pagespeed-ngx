@@ -159,4 +159,8 @@ Statistics* NgxRewriteDriverFactory::statistics() {
   return &simple_stats_;
 }
 
+RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
+  return new NgxRewriteOptions();
+}
+
 }  // namespace net_instaweb
