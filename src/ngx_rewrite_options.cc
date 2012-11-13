@@ -22,8 +22,12 @@ extern "C" {
   #include <ngx_http.h>
 }
 
+
 #include "ngx_rewrite_options.h"
+#include "ngx_pagespeed.h"
 #include "net/instaweb/public/version.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -42,6 +46,24 @@ void NgxRewriteOptions::Init() {
 }
 
 void NgxRewriteOptions::AddProperties() {
+  add_ngx_option("", &NgxRewriteOptions::file_cache_path_, "nfcp",
+                 RewriteOptions::kFileCachePath);
+  add_ngx_option(Timer::kHourMs,
+                 &NgxRewriteOptions::file_cache_clean_interval_ms_,
+                 "nfcci", RewriteOptions::kFileCacheCleanIntervalMs);
+  add_ngx_option(100 * 1024,  // 100MB
+                 &NgxRewriteOptions::file_cache_clean_size_kb_, "nfc",
+                 RewriteOptions::kFileCacheCleanSizeKb);
+  add_ngx_option(500000,
+                 &NgxRewriteOptions::file_cache_clean_inode_limit_, "nfcl",
+                 RewriteOptions::kFileCacheCleanInodeLimit);
+  add_ngx_option(16384,  //16MB
+                 &NgxRewriteOptions::lru_cache_byte_limit_, "nlcb",
+                 RewriteOptions::kLruCacheByteLimit);
+  add_ngx_option(1024,  // 1MB
+                 &NgxRewriteOptions::lru_cache_kb_per_process_, "nlcp",
+                 RewriteOptions::kLruCacheKbPerProcess);
+
   MergeSubclassProperties(ngx_properties_);
   NgxRewriteOptions config;
   config.InitializeSignaturesAndDefaults();
@@ -72,8 +94,143 @@ bool NgxRewriteOptions::IsDirective(StringPiece config_directive,
   return StringCaseEqual(config_directive, compare_directive);
 }
 
+RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions0(
+    StringPiece directive, GoogleString* msg, MessageHandler* handler) {
+  if (IsDirective(directive, "on")) {
+    set_enabled(true);
+  } else if (IsDirective(directive, "off")) {
+    set_enabled(false);
+  } else {
+    return RewriteOptions::kOptionNameUnknown;
+  }
+  return RewriteOptions::kOptionOk;
+}
+
+RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions1(
+    StringPiece directive, StringPiece arg,
+    GoogleString* msg, MessageHandler* handler) {
+
+  // FileCachePath needs error checking.
+  if (IsDirective(directive, "FileCachePath")) {
+    if (!StringCaseStartsWith(arg, "/")) {
+      *msg = StrCat(directive, " must start with a slash");
+      return RewriteOptions::kOptionValueInvalid;
+    } else {
+      set_file_cache_path(arg.as_string());
+    }
+  }
+
+  RewriteOptions::OptionSettingResult result =
+      SetOptionFromName(directive, arg.as_string(), msg);
+  if (result != RewriteOptions::kOptionNameUnknown) {
+    return result;
+  }
+
+  if (IsDirective(directive, "Allow")) {
+    Allow(arg);
+  } else if (IsDirective(directive, "DangerPermitFetchFromUnknownHosts")) {
+    // TODO(jefftk): port this.
+    *msg = "not supported";
+    return RewriteOptions::kOptionValueInvalid;
+  } else if (IsDirective(directive, "DisableFilters")) {
+    bool ok = DisableFiltersByCommaSeparatedList(arg, handler);
+    if (!ok) {
+      *msg = "Failed to disable some filters.";
+      return RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (IsDirective(directive, "Disallow")) {
+    Disallow(arg);
+  } else if (IsDirective(directive, "Domain")) {
+    domain_lawyer()->AddDomain(arg, handler);
+  } else if (IsDirective(directive, "EnableFilters")) {
+    bool ok = EnableFiltersByCommaSeparatedList(arg, handler);
+    if (!ok) {
+      *msg = "Failed to enable some filters.";
+      return RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (IsDirective(directive, "FetchWithGzip")) {
+    // TODO(jefftk): port this.
+    *msg = "not supported";
+    return RewriteOptions::kOptionValueInvalid;
+  } else if (IsDirective(directive, "ForceCaching")) {
+    // TODO(jefftk): port this.
+    *msg = "not supported";
+    return RewriteOptions::kOptionValueInvalid;
+  } else if (IsDirective(directive, "ExperimentVariable")) {
+    int slot;
+    bool ok = StringToInt(arg.as_string().c_str(), &slot);
+    if (!ok || slot < 1 || slot > 5) {
+      *msg = StrCat(directive, " must be an integer between 1 and 5");
+      return RewriteOptions::kOptionValueInvalid;
+    }
+    set_furious_ga_slot(slot);
+  } else if (IsDirective(directive, "ExperimentSpec")) {
+    bool ok = AddFuriousSpec(arg, handler);
+    if (!ok) {
+      *msg = StrCat(directive, ": '", arg, "' not a valid experiment spec.");
+      return RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (IsDirective(directive, "RetainComment")) {
+    RetainComment(arg);
+  } else if (IsDirective(directive, "BlockingRewriteKey")) {
+    set_blocking_rewrite_key(arg);
+  } else {
+    return RewriteOptions::kOptionNameUnknown;
+  }
+
+  return RewriteOptions::kOptionOk;
+}
+
+RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions2(
+    StringPiece directive, StringPiece arg1, StringPiece arg2,
+    GoogleString* msg, MessageHandler* handler) {
+  if (IsDirective(directive, "MapRewriteDomain")) {
+    domain_lawyer()->AddRewriteDomainMapping(arg1, arg2, handler);
+  } else if (IsDirective(directive, "MapOriginDomain")) {
+    domain_lawyer()->AddOriginDomainMapping(arg1, arg2, handler);
+  } else if (IsDirective(directive, "ShardDomain")) {
+    domain_lawyer()->AddShard(arg1, arg2, handler);
+  } else if (IsDirective(directive, "CustomFetchHeader")) {
+    AddCustomFetchHeader(arg1, arg2);
+  } else {
+    return RewriteOptions::kOptionNameUnknown;
+  }
+  return RewriteOptions::kOptionOk;
+}
+
+RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions2(
+    StringPiece directive, StringPiece arg1, StringPiece arg2, StringPiece arg3,
+    GoogleString* msg, MessageHandler* handler) {
+  if (IsDirective(directive, "UrlValuedAttribute")) {
+    semantic_type::Category category;
+    bool ok = semantic_type::ParseCategory(arg3, &category);
+    if (!ok) {
+      *msg = StrCat(directive, ": Invalid resource category '", arg3, "'");
+      return RewriteOptions::kOptionValueInvalid;
+    }
+    AddUrlValuedAttribute(arg1, arg2, category);
+  } else if (IsDirective(directive, "Library")) {
+    int64 bytes;
+    bool ok = StringToInt64(arg1.as_string().c_str(), &bytes);
+    if (!ok || bytes < 0) {
+      *msg = StrCat(directive, ": Size must be a positive 64-bit integer");
+      return RewriteOptions::kOptionValueInvalid;
+    }
+    ok = RegisterLibrary(bytes, arg2, arg3);
+    if (!ok) {
+      *msg = StrCat(directive, ": Format is size md5 url; bad md5 '", arg2,
+                    "' or URL '", arg3, "'");
+    }    
+  } else {
+    return RewriteOptions::kOptionNameUnknown;
+  }
+  return RewriteOptions::kOptionOk;
+}
+
+// Very similar to apache/mod_instaweb::ParseDirective.
 const char*
-NgxRewriteOptions::ParseAndSetOptions(StringPiece* args, int n_args) {
+NgxRewriteOptions::ParseAndSetOptions(
+    StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler) {
   CHECK(n_args >= 1);
 
   int i;
@@ -93,16 +250,37 @@ NgxRewriteOptions::ParseAndSetOptions(StringPiece* args, int n_args) {
     directive.remove_prefix(mod_pagespeed.size());
   }
 
-  if (IsDirective(directive, "on")) {
-    set_enabled(true);
-  } else if (IsDirective(directive, "off")) {
-    set_enabled(false);
-  }  // Many more IsDirective() calls go here.
-  else {
+  GoogleString msg;
+  OptionSettingResult result;
+  if (n_args == 1) {
+    result = ParseAndSetOptions0(directive, &msg, handler);
+  } else if (n_args == 2) {
+    result = ParseAndSetOptions1(directive, args[1], &msg, handler);
+  } else if (n_args == 3) {
+    result = ParseAndSetOptions2(directive, args[1], args[2], &msg, handler);
+  } else if (n_args == 4) {
+    result = ParseAndSetOptions2(
+        directive, args[1], args[2], args[3], &msg, handler);
+  } else {
     return "unknown option";
   }
 
-  return NGX_CONF_OK;
+  switch (result) {
+    case RewriteOptions::kOptionOk:
+      return NGX_CONF_OK;
+    case RewriteOptions::kOptionNameUnknown:
+      return "unknown option";
+    case RewriteOptions::kOptionValueInvalid: {
+      char* s = ngx_http_string_piece_to_pool_string(pool, msg);
+      if (s == NULL) {
+        return "failed to allocate memory";
+      }
+      return s;
+    }
+  }
+
+  CHECK(false);
+  return NULL;
 }
 
 NgxRewriteOptions* NgxRewriteOptions::Clone() const {

@@ -21,6 +21,12 @@
 #ifndef NGX_REWRITE_OPTIONS_H_
 #define NGX_REWRITE_OPTIONS_H_
 
+extern "C" {
+  #include <ngx_config.h>
+  #include <ngx_core.h>
+  #include <ngx_http.h>
+}
+
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
 namespace net_instaweb {
@@ -43,7 +49,10 @@ class NgxRewriteOptions : public RewriteOptions {
   //   ["ShardDomain", "example.com", "s1.example.com,s2.example.com"]
   // Apply the directive, returning NGX_CONF_OK on success or an error message
   // on failure.
-  const char* ParseAndSetOptions(StringPiece* args, int n_args);
+  //
+  // pool is a memory pool for allocating error strings.
+  const char* ParseAndSetOptions(
+      StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler);
 
   // Make an identical copy of these options and return it.
   virtual NgxRewriteOptions* Clone() const;
@@ -56,9 +65,66 @@ class NgxRewriteOptions : public RewriteOptions {
   // Name of the actual type of this instance as a poor man's RTTI.
   virtual const char* class_name() const;
 
+  const GoogleString& file_cache_path() const {
+    return file_cache_path_.value();
+  }
+  void set_file_cache_path(GoogleString x) {
+    set_option(x, &file_cache_path_);
+  }
+  int64 file_cache_clean_interval_ms() const {
+    return file_cache_clean_interval_ms_.value();
+  }
+  void set_file_cache_clean_interval_ms(int64 x) {
+    set_option(x, &file_cache_clean_interval_ms_);
+  }
+  int64 file_cache_clean_size_kb() const {
+    return file_cache_clean_size_kb_.value();
+  }
+  void set_file_cache_clean_size_kb(int64 x) {
+    set_option(x, &file_cache_clean_size_kb_);
+  }
+  int64 file_cache_clean_inode_limit() const {
+    return file_cache_clean_inode_limit_.value();
+  }
+  void set_file_cache_clean_inode_limit(int64 x) {
+    set_option(x, &file_cache_clean_inode_limit_);
+  }
+  int64 lru_cache_byte_limit() const {
+    return lru_cache_byte_limit_.value();
+  }
+  void set_lru_cache_byte_limit(int64 x) {
+    set_option(x, &lru_cache_byte_limit_);
+  }
+  int64 lru_cache_kb_per_process() const {
+    return lru_cache_kb_per_process_.value();
+  }
+  void set_lru_cache_kb_per_process(int64 x) {
+    set_option(x, &lru_cache_kb_per_process_);
+  }
+
  private:
   // Used by class_name() and DynamicCast() to provide error checking.
   static const char kClassName[];
+
+  // Helper methods for ParseAndSetOptions().  Each can:
+  //  - return kOptionNameUnknown and not set error:
+  //    - directive not handled; continue on with other possible
+  //      interpretations.
+  //  - return kOptionOk and not set error:
+  //    - directive handled, all's well.
+  //  - return kOptionValueInvalid and set error:
+  //    - directive handled with an error; return the error to the user.
+  OptionSettingResult ParseAndSetOptions0(
+      StringPiece directive, GoogleString* msg, MessageHandler* handler);
+  OptionSettingResult ParseAndSetOptions1(
+      StringPiece directive, StringPiece arg,
+      GoogleString* msg, MessageHandler* handler);
+  OptionSettingResult ParseAndSetOptions2(
+      StringPiece directive, StringPiece arg1, StringPiece arg2,
+      GoogleString* msg, MessageHandler* handler);
+  OptionSettingResult ParseAndSetOptions2(
+      StringPiece directive, StringPiece arg1, StringPiece arg2, 
+      StringPiece arg3, GoogleString* msg, MessageHandler* handler);
 
   // Keeps the properties added by this subclass.  These are merged into
   // RewriteOptions::all_properties_ during Initialize().
@@ -83,6 +149,13 @@ class NgxRewriteOptions : public RewriteOptions {
   // Helper for ParseAndSetOptions.  Returns whether the two directives equal,
   // ignoring case.
   bool IsDirective(StringPiece config_directive, StringPiece compare_directive);
+
+  Option<GoogleString> file_cache_path_;
+  Option<int64> file_cache_clean_inode_limit_;
+  Option<int64> file_cache_clean_interval_ms_;
+  Option<int64> file_cache_clean_size_kb_;
+  Option<int64> lru_cache_byte_limit_;
+  Option<int64> lru_cache_kb_per_process_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteOptions);
 };

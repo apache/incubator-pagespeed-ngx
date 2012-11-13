@@ -59,8 +59,12 @@ extern ngx_module_t ngx_pagespeed;
 #define CDBG(cf, args...)                                     \
   ngx_conf_log_error(NGX_LOG_DEBUG, cf, 0, args)
 
+StringPiece
+ngx_http_pagespeed_str_to_string_piece(ngx_str_t s) {
+  return StringPiece(reinterpret_cast<char*>(s.data), s.len);
+}
+
 typedef struct {
-  ngx_str_t cache_dir;
   net_instaweb::NgxRewriteDriverFactory* driver_factory;
   net_instaweb::NgxServerContext* server_context;
   net_instaweb::NgxRewriteOptions* options;
@@ -147,15 +151,22 @@ static ngx_command_t ngx_http_pagespeed_commands[] = {
     NGX_HTTP_SRV_CONF_OFFSET,
     0,
     NULL },
-  { ngx_string("pagespeed_cache"),
-    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-    ngx_conf_set_str_slot,
-    NGX_HTTP_SRV_CONF_OFFSET,
-    offsetof(ngx_http_pagespeed_srv_conf_t, cache_dir),
-    NULL },
 
   ngx_null_command
 };
+
+char*
+ngx_http_string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
+  // Need space for the final null.
+  ngx_uint_t n = sp.size() + 1;
+  char* s = static_cast<char*>(ngx_palloc(pool, n));
+  if (s == NULL) {
+    return NULL;
+  }
+  sp.copy(s, n /* max to copy */);
+  s[n-1] = '\0';  // Null terminate it.
+  return s;
+}
 
 #define NGX_PAGESPEED_MAX_ARGS 10
 static char*
@@ -167,6 +178,7 @@ ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   if (cfg->options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
     cfg->options = new net_instaweb::NgxRewriteOptions();
+    cfg->handler = new net_instaweb::GoogleMessageHandler();
   }
 
   // args[0] is always "pagespeed"; ignore it.
@@ -183,7 +195,8 @@ ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
     args[i] = ngx_http_pagespeed_str_to_string_piece(value[i+1]);
   }
 
-  const char* status = cfg->options->ParseAndSetOptions(args, n_args);
+  const char* status = cfg->options->ParseAndSetOptions(
+      args, n_args, cf->pool, cfg->handler);
 
   // nginx expects us to return a string literal but doesn't mark it const.
   return const_cast<char*>(status);
@@ -200,7 +213,6 @@ ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
   }
 
   // set by ngx_pcalloc():
-  //   conf->cache_dir = { 0, NULL };
   //   conf->driver_factory = NULL;
   //   conf->server_context = NULL;
 
@@ -221,8 +233,6 @@ ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
       static_cast<ngx_http_pagespeed_srv_conf_t*>(parent);
   ngx_http_pagespeed_srv_conf_t* conf =
       static_cast<ngx_http_pagespeed_srv_conf_t*>(child);
-
-  ngx_conf_merge_str_value(conf->cache_dir, prev->cache_dir, "");
 
   if (prev->options == NULL) {
     // Nothing to do.
@@ -352,8 +362,7 @@ ngx_http_pagespeed_initialize_server_context(
 
   cfg->handler = new net_instaweb::GoogleMessageHandler();
   cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
-  cfg->driver_factory->set_filename_prefix(
-      ngx_http_pagespeed_str_to_string_piece(cfg->cache_dir));
+  cfg->driver_factory->set_filename_prefix(cfg->options->file_cache_path());
   cfg->server_context = new net_instaweb::NgxServerContext(cfg->driver_factory);
   cfg->server_context->reset_global_options(cfg->options);
   cfg->driver_factory->InitServerContext(cfg->server_context);
@@ -559,6 +568,7 @@ ngx_http_pagespeed_create_connection(ngx_http_pagespeed_request_ctx_t* ctx) {
 static ngx_int_t
 ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
                                           bool is_resource_fetch) {
+  fprintf(stderr, "ngx_http_pagespeed_create_request_context\n");
   ngx_http_pagespeed_srv_conf_t* cfg =
       static_cast<ngx_http_pagespeed_srv_conf_t*>(
           ngx_http_get_module_srv_conf(r, ngx_pagespeed));

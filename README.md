@@ -86,8 +86,8 @@ you need to first build and configure nginx.  Set it up something like:
     ...
     http {
       pagespeed on;
-      # this can be anywhere
-      pagespeed_cache /path/to/ngx_pagespeed_cache;
+      # This can be anywhere on your filesystem.
+      pagespeed FileCachePath /path/to/ngx_pagespeed_cache;
      
       # These gzip options are needed for tests that assume that pagespeed
       # always enables gzip.  Which it does in apache, but not in nginx.
