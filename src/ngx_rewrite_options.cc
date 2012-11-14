@@ -276,10 +276,10 @@ NgxRewriteOptions::ParseAndSetOptions(
     case RewriteOptions::kOptionValueInvalid: {
       GoogleString full_directive = "\"";
       for (int i = 0 ; i < n_args ; i++) {
-        full_directive = StrCat(full_directive, i == 0 ? "" : " ", args[i]);
+        StrAppend(&full_directive, i == 0 ? "" : " ", args[i]);
       }
-      char* s = ngx_http_string_piece_to_pool_string(
-          pool, StrCat(full_directive, "\": ", msg));
+      StrAppend(&full_directive, "\": ", msg);
+      char* s = ngx_http_string_piece_to_pool_string(pool, full_directive);
       if (s == NULL) {
         return "failed to allocate memory";
       }
