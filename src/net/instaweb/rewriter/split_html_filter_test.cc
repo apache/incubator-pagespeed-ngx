@@ -139,6 +139,7 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     rewrite_driver()->SetWriter(&writer_);
     SplitHtmlFilter* filter = new SplitHtmlFilter(rewrite_driver());
     html_writer_filter_.reset(filter);
+    html_writer_filter_->set_writer(&writer_);
     rewrite_driver()->AddFilter(html_writer_filter_.get());
 
     response_headers_.set_status_code(HttpStatus::kOK);
@@ -346,6 +347,15 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithScriptsFlushedEarly) {
           "<script>pagespeed.panelLoader.bufferNonCriticalData({});"
           "</script>\n"
           "</body></html>\n"), output_);
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlWithUnsupportedUserAgent) {
+  options_->set_critical_line_config(
+      "div[@id = \"container\"]/div[4],"
+      "img[3]:h1[@id = \"footer\"]");
+  rewrite_driver()->set_user_agent("BlackListUserAgent");
+  Parse("split_with_options", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  EXPECT_EQ(StrCat(kHtmlInputPart1, kHtmlInputPart2), output_);
 }
 
 }  // namespace

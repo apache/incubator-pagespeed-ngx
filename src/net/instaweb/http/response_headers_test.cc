@@ -1371,4 +1371,39 @@ TEST_F(ResponseHeadersTest, GetCookieString) {
                cookie_str);
 }
 
+TEST_F(ResponseHeadersTest, HasCookie) {
+  response_headers_.SetStatusAndReason(HttpStatus::kOK);
+  response_headers_.SetDate(MockTimer::kApr_5_2010_ms);
+  response_headers_.Add(HttpAttributes::kSetCookie, "CG=US:CA:Mountain+View");
+  response_headers_.Add(HttpAttributes::kSetCookie, "UA=chrome");
+  response_headers_.Add(HttpAttributes::kSetCookie, "UA=ie");
+  response_headers_.Add(HttpAttributes::kSetCookie, "UA=");
+  response_headers_.Add(HttpAttributes::kSetCookie, "path=/");
+
+  StringPieceVector values;
+  EXPECT_FALSE(response_headers_.HasCookie("HttpOnly", NULL));
+  EXPECT_TRUE(response_headers_.HasCookie("UA", &values));
+  EXPECT_EQ(3, values.size());
+  EXPECT_EQ("chrome", values[0]);
+  EXPECT_EQ("ie", values[1]);
+  EXPECT_EQ("", values[2]);
+
+  response_headers_.Add(HttpAttributes::kSetCookie, "JSESSIONID=123; HttpOnly");
+  EXPECT_TRUE(response_headers_.HasCookie("HttpOnly", NULL));
+
+  response_headers_.RemoveAll(HttpAttributes::kSetCookie);
+  values.clear();
+  EXPECT_FALSE(response_headers_.HasCookie("HttpOnly", NULL));
+
+  response_headers_.Add(HttpAttributes::kSetCookie,
+                        "ID=ABC; HttpOnly; UA=chrome; UA=ie; UA=");
+  EXPECT_TRUE(response_headers_.HasCookie("HttpOnly", &values));
+  EXPECT_EQ(0, values.size());
+  EXPECT_TRUE(response_headers_.HasCookie("UA", &values));
+  EXPECT_EQ(3, values.size());
+  EXPECT_EQ("chrome", values[0]);
+  EXPECT_EQ("ie", values[1]);
+  EXPECT_EQ("", values[2]);
+}
+
 }  // namespace net_instaweb

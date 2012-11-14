@@ -72,8 +72,6 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   virtual void StartElement(HtmlElement* element);
   virtual void EndElement(HtmlElement* element);
 
-  static bool ShouldApply(RewriteDriver* driver);
-
   static const GoogleString& GetBlinkJsUrl(
       const RewriteOptions* options,
       StaticJavascriptManager* static_js_manager);
@@ -145,6 +143,14 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   void ComputePanels(const CriticalLineInfo& critical_line_info,
                      PanelIdToSpecMap* panel_id_to_spec);
 
+  void InvokeBaseHtmlFilterStartDocument();
+
+  void InvokeBaseHtmlFilterStartElement(HtmlElement* element);
+
+  void InvokeBaseHtmlFilterEndElement(HtmlElement* element);
+
+  void InvokeBaseHtmlFilterEndDocument();
+
   RewriteDriver* rewrite_driver_;
   const RewriteOptions* options_;
   PanelIdToSpecMap panel_id_to_spec_;
@@ -160,6 +166,7 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   StringPiece url_;
   bool script_written_;
   bool flush_head_enabled_;
+  bool disable_filter_;
   bool send_lazyload_script_;
   int num_low_res_images_inlined_;
   HtmlElement* current_panel_parent_element_;

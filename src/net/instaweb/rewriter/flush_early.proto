@@ -35,7 +35,7 @@ message FlushEarlyResource {
 
 // FlushEarlyInfo stores various information for flushing a request early i.e.
 // before receiving a response form the origin server.
-// NextId: 12
+// NextId: 13
 message FlushEarlyInfo {
   // ResponseHeaders proto from previous response which is used for subsequent
   // response for the same html url.
@@ -74,6 +74,9 @@ message FlushEarlyInfo {
 
   // Stores the average fetch latency in milliseconds.
   optional double average_fetch_latency_ms = 11;
+
+  // Whether the server response has http_only_cookie.
+  optional bool http_only_cookie_present = 12;
 }
 
 // FlushEarlyRenderInfo stores information for flushing a request early i.e.

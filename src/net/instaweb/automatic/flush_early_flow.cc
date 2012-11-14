@@ -115,7 +115,6 @@ const char FlushEarlyFlow::kNumResourcesFlushedEarly[] =
 const char FlushEarlyFlow::kFlushEarlyRewriteLatencyMs[] =
     "flush_early_rewrite_latency_ms";
 
-// TODO(mmohabey): If the cookie is HttpOnly then do not enter FlushEarlyFlow.
 // TODO(mmohabey): Do not flush early if the html is cacheable.
 // If this is called then the content type must be html.
 // TODO(nikhilmadan): Disable flush early if the response code isn't
@@ -332,7 +331,8 @@ void FlushEarlyFlow::FlushEarly() {
       ArrayInputStream value(property_value->value().data(),
                              property_value->value().size());
       flush_early_info.ParseFromZeroCopyStream(&value);
-      if (flush_early_info.has_resource_html() &&
+      if (!flush_early_info.http_only_cookie_present() &&
+          flush_early_info.has_resource_html() &&
           !flush_early_info.resource_html().empty() &&
           flush_early_info.response_headers().status_code() ==
           HttpStatus::kOK) {

@@ -891,4 +891,41 @@ bool ResponseHeaders::GetCookieString(GoogleString* cookie_str) const {
   return true;
 }
 
+bool ResponseHeaders::HasCookie(StringPiece name,
+                                StringPieceVector* values) const {
+  bool has_cookie = false;
+  ConstStringStarVector cookies;
+  if (Lookup(HttpAttributes::kSetCookie, &cookies)) {
+    // Iterate through the cookies.
+    for (int i = 0, n = cookies.size(); i < n; ++i) {
+      StringPieceVector cookie_pairs;
+      // Get the vector of name-value pairs of cookies.
+      SplitStringPieceToVector(*cookies[i], ";", &cookie_pairs, true);
+      for (int j = 0, npairs = cookie_pairs.size(); j < npairs; ++j) {
+        StringPiece::size_type index = cookie_pairs[j].find('=');
+        if (index == StringPiece::npos) {
+          StringPiece cookie_attribute = cookie_pairs[j];
+          TrimWhitespace(&cookie_attribute);
+          if (StringCaseEqual(cookie_attribute, name)) {
+            has_cookie = true;
+          }
+        } else {
+          StringPiece cookie_attribute = cookie_pairs[j].substr(0, index);
+          StringPiece cookie_value = cookie_pairs[j].substr(index + 1,
+              cookie_pairs[j].size() - index - 1);
+          TrimWhitespace(&cookie_attribute);
+          if (StringCaseEqual(cookie_attribute, name)) {
+            has_cookie = true;
+            if (values != NULL) {
+              TrimWhitespace(&cookie_value);
+              values->push_back(cookie_value);
+            }
+          }
+        }
+      }
+    }
+  }
+  return has_cookie;
+}
+
 }  // namespace net_instaweb

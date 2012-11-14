@@ -83,6 +83,13 @@ SplitHtmlFilter::~SplitHtmlFilter() {
 }
 
 void SplitHtmlFilter::StartDocument() {
+  flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
+  disable_filter_ = !rewrite_driver_->UserAgentSupportsJsDefer();
+  if (disable_filter_) {
+    InvokeBaseHtmlFilterStartDocument();
+    return;
+  }
+
   panel_id_to_spec_.clear();
   xpath_map_.clear();
   element_json_stack_.clear();
@@ -95,7 +102,6 @@ void SplitHtmlFilter::StartDocument() {
   current_panel_id_.clear();
   url_ = rewrite_driver_->google_url().Spec();
   script_written_ = false;
-  flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
   send_lazyload_script_ = false;
   num_low_res_images_inlined_ = 0;
   current_panel_parent_element_ = NULL;
@@ -107,12 +113,7 @@ void SplitHtmlFilter::StartDocument() {
   set_writer(original_writer_);
   ReadCriticalLineConfig();
 
-  // TODO(rahulbansal): Refactor this pattern.
-  if (flush_head_enabled_) {
-    SuppressPreheadFilter::StartDocument();
-  } else {
-    HtmlWriterFilter::StartDocument();
-  }
+  InvokeBaseHtmlFilterStartDocument();
 }
 
 void SplitHtmlFilter::Cleanup() {
@@ -123,12 +124,10 @@ void SplitHtmlFilter::Cleanup() {
 }
 
 void SplitHtmlFilter::EndDocument() {
-  HtmlWriterFilter::Flush();
+  InvokeBaseHtmlFilterEndDocument();
 
-  if (flush_head_enabled_) {
-    SuppressPreheadFilter::EndDocument();
-  } else {
-    HtmlWriterFilter::EndDocument();
+  if (disable_filter_) {
+    return;
   }
 
   // Remove critical html since it should already have been sent out by now.
@@ -349,6 +348,11 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
 }
 
 void SplitHtmlFilter::StartElement(HtmlElement* element) {
+  if (disable_filter_) {
+    InvokeBaseHtmlFilterStartElement(element);
+    return;
+  }
+
   if (!num_children_stack_.empty()) {
     num_children_stack_.back()++;;
     num_children_stack_.push_back(0);
@@ -393,15 +397,16 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
         onload->SetValue(overridden_onload);
       }
     }
-    if (flush_head_enabled_) {
-      SuppressPreheadFilter::StartElement(element);
-    } else {
-      HtmlWriterFilter::StartElement(element);
-    }
+    InvokeBaseHtmlFilterStartElement(element);
   }
 }
 
 void SplitHtmlFilter::EndElement(HtmlElement* element) {
+  if (disable_filter_) {
+    InvokeBaseHtmlFilterEndElement(element);
+    return;
+  }
+
   if (!num_children_stack_.empty()) {
     num_children_stack_.pop_back();
   }
@@ -419,11 +424,7 @@ void SplitHtmlFilter::EndElement(HtmlElement* element) {
     // Suppress these bytes since they belong to a panel.
     HtmlWriterFilter::EndElement(element);
   } else {
-    if (flush_head_enabled_) {
-      SuppressPreheadFilter::EndElement(element);
-    } else {
-      HtmlWriterFilter::EndElement(element);
-    }
+    InvokeBaseHtmlFilterEndElement(element);
   }
 }
 
@@ -527,16 +528,43 @@ bool SplitHtmlFilter::ElementMatchesXpath(
   return false;
 }
 
-// TODO(rahulbansal): Disable this filter if user agent doesn't support
-// DeferJavascript.
-bool SplitHtmlFilter::ShouldApply(RewriteDriver* driver) {
-  return JsDeferDisabledFilter::ShouldApply(driver);
-}
-
 const GoogleString& SplitHtmlFilter::GetBlinkJsUrl(
       const RewriteOptions* options,
       StaticJavascriptManager* static_js_manager) {
   return static_js_manager->GetBlinkJsUrl(options);
+}
+
+// TODO(rahulbansal): Refactor this pattern.
+void SplitHtmlFilter::InvokeBaseHtmlFilterStartDocument() {
+  if (flush_head_enabled_) {
+    SuppressPreheadFilter::StartDocument();
+  } else {
+    HtmlWriterFilter::StartDocument();
+  }
+}
+
+void SplitHtmlFilter::InvokeBaseHtmlFilterStartElement(HtmlElement* element) {
+  if (flush_head_enabled_) {
+    SuppressPreheadFilter::StartElement(element);
+  } else {
+    HtmlWriterFilter::StartElement(element);
+  }
+}
+
+void SplitHtmlFilter::InvokeBaseHtmlFilterEndElement(HtmlElement* element) {
+  if (flush_head_enabled_) {
+    SuppressPreheadFilter::EndElement(element);
+  } else {
+    HtmlWriterFilter::EndElement(element);
+  }
+}
+
+void SplitHtmlFilter::InvokeBaseHtmlFilterEndDocument() {
+  if (flush_head_enabled_) {
+    SuppressPreheadFilter::EndDocument();
+  } else {
+    HtmlWriterFilter::EndDocument();
+  }
 }
 
 }  // namespace net_instaweb

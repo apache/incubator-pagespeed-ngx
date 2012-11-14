@@ -133,6 +133,10 @@ void SuppressPreheadFilter::EndDocument() {
   }
 
   driver_->flush_early_info()->set_pre_head(pre_head_);
+  // See the description of the HttpOnly cookie in
+  // http://tools.ietf.org/html/rfc6265#section-4.1.2.6
+  driver_->flush_early_info()->set_http_only_cookie_present(
+      response_headers_.HasCookie("HttpOnly", NULL));
   if (!has_charset_) {
     FlushEarlyInfoFinder* finder =
         driver_->server_context()->flush_early_info_finder();

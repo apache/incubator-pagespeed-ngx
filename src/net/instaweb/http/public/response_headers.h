@@ -277,6 +277,16 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   // format.
   bool GetCookieString(GoogleString* cookie_str) const;
 
+  // Returns true in the response headers have a cookie attribute with the given
+  // name. values gives the associated values.
+  // name=value results in "value" in values.
+  // name=      results in "" in values.
+  // name       results in nothing being added to values.
+  // The return value is true in all the above cases.
+  // It is a limitation of this API that a cookie value of "name=value;name" is
+  // indistinguishable from a cookie value of "name=value".
+  bool HasCookie(StringPiece name, StringPieceVector* values) const;
+
  private:
   // Parse the original and fresh content types, and add a new header based
   // on the two of them, giving preference to the original.
