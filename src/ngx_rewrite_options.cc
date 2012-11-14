@@ -198,7 +198,7 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions2(
   return RewriteOptions::kOptionOk;
 }
 
-RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions2(
+RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions3(
     StringPiece directive, StringPiece arg1, StringPiece arg2, StringPiece arg3,
     GoogleString* msg, MessageHandler* handler) {
   if (IsDirective(directive, "UrlValuedAttribute")) {
@@ -259,7 +259,7 @@ NgxRewriteOptions::ParseAndSetOptions(
   } else if (n_args == 3) {
     result = ParseAndSetOptions2(directive, args[1], args[2], &msg, handler);
   } else if (n_args == 4) {
-    result = ParseAndSetOptions2(
+    result = ParseAndSetOptions3(
         directive, args[1], args[2], args[3], &msg, handler);
   } else {
     return "unknown option";

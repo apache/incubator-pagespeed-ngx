@@ -128,7 +128,7 @@ class NgxRewriteOptions : public RewriteOptions {
   OptionSettingResult ParseAndSetOptions2(
       StringPiece directive, StringPiece arg1, StringPiece arg2,
       GoogleString* msg, MessageHandler* handler);
-  OptionSettingResult ParseAndSetOptions2(
+  OptionSettingResult ParseAndSetOptions3(
       StringPiece directive, StringPiece arg1, StringPiece arg2, 
       StringPiece arg3, GoogleString* msg, MessageHandler* handler);
 
