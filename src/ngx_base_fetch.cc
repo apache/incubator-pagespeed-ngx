@@ -235,6 +235,10 @@ ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
       // Unlike all the other headers, content_type is just a string.
       headers_out->content_type.data = value_s;
       headers_out->content_type.len = value.len;
+      headers_out->content_type_len = value.len;
+      // In ngx_http_test_content_type() nginx will allocate and calculate
+      // content_type_lowcase if we leave it as null.
+      headers_out->content_type_lowcase = NULL;
       continue;
     }
 
