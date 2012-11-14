@@ -44,6 +44,12 @@ class MessageHandler;
 Variable::~Variable() {
 }
 
+int64 Variable::SetReturningPreviousValue(int64 value) {
+  int64 previous_value = Get();
+  Set(value);
+  return previous_value;
+}
+
 ConsoleStatisticsLogger::~ConsoleStatisticsLogger() {
 }
 

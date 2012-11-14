@@ -649,6 +649,9 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
   fetch_until $URL "grep -c $COLOR1" 1
 
+  # TODO(jmarantz): we can change this test to be more exacting now, since
+  # to address Issue 568, we should only get one cache-flush bump every time
+  # we touch the file.
   NUM_FLUSHES=$($WGET_DUMP $STATISTICS_URL | grep cache_flush_count \
     | cut -d: -f2)
   NUM_NEW_FLUSHES=$(expr $NUM_FLUSHES - $NUM_INITIAL_FLUSHES)

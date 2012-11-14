@@ -97,6 +97,22 @@ int64 SharedMemVariable::GetLockHeld() const {
   return *value_ptr_;
 }
 
+int64 SharedMemVariable::SetReturningPreviousValue(int64 new_value) {
+  int64 previous_value = -1;
+  if (mutex_.get() != NULL) {
+    {
+      ScopedMutex hold_lock(mutex_.get());
+      previous_value = *value_ptr_;
+      *value_ptr_ = new_value;
+    }
+    // The variable was changed, so dump statistics if past the update interval.
+    if (logger_ != NULL) {
+      logger_->UpdateAndDumpIfRequired();
+    }
+  }
+  return previous_value;
+}
+
 void SharedMemVariable::Set(int64 new_value) {
   if (mutex_.get() != NULL) {
     {

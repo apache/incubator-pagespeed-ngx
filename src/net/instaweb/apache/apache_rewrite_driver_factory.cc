@@ -77,6 +77,7 @@
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -91,6 +92,7 @@ namespace {
 
 const size_t kRefererStatisticsNumberOfPages = 1024;
 const size_t kRefererStatisticsAverageUrlLength = 64;
+const char kShutdownCount[] = "child_shutdown_count";
 
 }  // namespace
 
@@ -693,7 +695,9 @@ void ApacheRewriteDriverFactory::StopCacheActivity() {
 
 void ApacheRewriteDriverFactory::ShutDown() {
   if (!is_root_process_) {
-    message_handler()->Message(kError, "Shutting down mod_pagespeed child");
+    Variable* child_shutdown_count = statistics()->GetVariable(kShutdownCount);
+    child_shutdown_count->Add(1);
+    message_handler()->Message(kInfo, "Shutting down mod_pagespeed child");
   }
   StopCacheActivity();
 
@@ -795,6 +799,7 @@ void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
   CacheStats::InitStats(ApacheCache::kFileCache, statistics);
   CacheStats::InitStats(ApacheCache::kLruCache, statistics);
   CacheStats::InitStats(kMemcached, statistics);
+  statistics->AddVariable(kShutdownCount);
 }
 
 void ApacheRewriteDriverFactory::Terminate() {

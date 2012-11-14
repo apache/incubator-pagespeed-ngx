@@ -258,6 +258,17 @@ void SharedMemStatisticsTestBase::TestAdd() {
   EXPECT_EQ(result, dump);
 }
 
+void SharedMemStatisticsTestBase::TestSetReturningPrevious() {
+  ParentInit();
+
+  Variable* v1 = stats_->GetVariable(kVar1);
+  EXPECT_EQ(0, v1->Get());
+  EXPECT_EQ(0, v1->SetReturningPreviousValue(5));
+  EXPECT_EQ(5, v1->SetReturningPreviousValue(-3));
+  EXPECT_EQ(-3, v1->SetReturningPreviousValue(10));
+  EXPECT_EQ(10, v1->Get());
+}
+
 void SharedMemStatisticsTestBase::TestAddChild() {
   scoped_ptr<SharedMemStatistics> stats(ChildInit());
   stats->Init(false, &handler_);

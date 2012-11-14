@@ -44,6 +44,7 @@ namespace net_instaweb {
 namespace {
 
 const char kCacheFlushCount[] = "cache_flush_count";
+const char kCacheFlushTimestampMs[] = "cache_flush_timestamp_ms";
 
 // Statistics histogram names.
 const char kHtmlRewriteTimeUsHistogram[] = "Html Time us Histogram";
@@ -83,7 +84,8 @@ ApacheResourceManager::ApacheResourceManager(
       html_rewrite_time_us_histogram_(NULL),
       cache_flush_mutex_(thread_system()->NewMutex()),
       last_cache_flush_check_sec_(0),
-      cache_flush_count_(NULL) {  // Lazy-initialized under mutex.
+      cache_flush_count_(NULL),           // Lazy-initialized under mutex.
+      cache_flush_timestamp_ms_(NULL) {   // Lazy-initialized under mutex.
   config()->set_description(hostname_identifier_);
   // We may need the message handler for error messages very early, before
   // we get to InitResourceManager in ChildInit().
@@ -104,6 +106,7 @@ ApacheResourceManager::~ApacheResourceManager() {
 
 void ApacheResourceManager::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheFlushCount);
+  statistics->AddVariable(kCacheFlushTimestampMs);
   Histogram* html_rewrite_time_us_histogram =
       statistics->AddHistogram(kHtmlRewriteTimeUsHistogram);
   // We set the boundary at 2 seconds which is about 2 orders of magnitude
@@ -273,6 +276,8 @@ void ApacheResourceManager::PollFilesystemForCacheFlush() {
       }
       if (cache_flush_count_ == NULL) {
         cache_flush_count_ = statistics()->GetVariable(kCacheFlushCount);
+        cache_flush_timestamp_ms_ = statistics()->GetVariable(
+            kCacheFlushTimestampMs);
       }
     }
 
@@ -304,11 +309,18 @@ void ApacheResourceManager::PollFilesystemForCacheFlush() {
               timestamp_ms, lock_hasher()) || flushed;
         }
 
-        if (flushed) {
-          cache_flush_count_->Add(1);
-          message_handler()->Message(
-              kWarning, "Cache Flush %d",
-              static_cast<int>(cache_flush_count_->Get()));
+        // Apache's multiple child processes each must independently
+        // discover a fresh cache.flush and update the options. However,
+        // as shown in
+        //     http://code.google.com/p/modpagespeed/issues/detail?id=568
+        // we should only bump the flush-count and print a warning to
+        // the log once per new timestamp.
+        if (flushed &&
+            (timestamp_ms !=
+             cache_flush_timestamp_ms_->SetReturningPreviousValue(
+                 timestamp_ms))) {
+          int count = cache_flush_count_->Add(1);
+          message_handler()->Message(kWarning, "Cache Flush %d", count);
         }
       }
     }

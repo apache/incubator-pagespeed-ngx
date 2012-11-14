@@ -45,4 +45,13 @@ TEST_F(SimpleStatsTest, TestTimedVariable) {
   EXPECT_EQ(1, tv->Get(TimedVariable::START));
 }
 
+TEST_F(SimpleStatsTest, TestSetReturningPrevious) {
+  SimpleStats ss;
+  Variable* var = ss.AddVariable("c0");
+  EXPECT_EQ(0, var->SetReturningPreviousValue(5));
+  EXPECT_EQ(5, var->SetReturningPreviousValue(-3));
+  EXPECT_EQ(-3, var->SetReturningPreviousValue(10));
+  EXPECT_EQ(10, var->Get());
+}
+
 }  // namespace net_instaweb

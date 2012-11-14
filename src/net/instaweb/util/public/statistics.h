@@ -37,6 +37,17 @@ class Writer;
 class Variable {
  public:
   virtual ~Variable();
+
+  // Sets the specified value, returning the previous value.  This can be
+  // used to by two competing threads/processes to deterimine which thread
+  // modified the value first.  The default implementation is non-atomic,
+  // but implementations can override to provide an atomic version.
+  //
+  // Non-atomic implementations may result in multiple concurrent updates
+  // each returning the old value.  In an atomic implementation, only one
+  // concurrent update will return the old value.
+  virtual int64 SetReturningPreviousValue(int64 value);
+
   virtual void Set(int64 value) = 0;
   virtual int64 Get() const = 0;
   // Return some name representing the variable, provided that the specific

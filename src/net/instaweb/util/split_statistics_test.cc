@@ -185,6 +185,14 @@ TEST_F(SplitStatisticsTest, Set) {
   EXPECT_EQ(41, local_b_->GetVariable(kVarA)->Get());
 }
 
+TEST_F(SplitStatisticsTest, TestSetReturningPrevious) {
+  Variable* var = global_->GetVariable(kVarA);
+  EXPECT_EQ(0, var->SetReturningPreviousValue(5));
+  EXPECT_EQ(5, var->SetReturningPreviousValue(-3));
+  EXPECT_EQ(-3, var->SetReturningPreviousValue(10));
+  EXPECT_EQ(10, var->Get());
+}
+
 TEST_F(SplitStatisticsTest, HistoOps) {
   Histogram* global_h = global_->GetHistogram(kHist);
   ASSERT_TRUE(global_h != NULL);

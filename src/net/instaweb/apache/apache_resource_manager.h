@@ -179,6 +179,7 @@ class ApacheResourceManager : public ServerContext {
   int64 last_cache_flush_check_sec_;  // seconds since 1970
 
   Variable* cache_flush_count_;
+  Variable* cache_flush_timestamp_ms_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheResourceManager);
 };

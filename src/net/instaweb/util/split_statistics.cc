@@ -38,6 +38,11 @@ void SplitVariable::Set(int64 value) {
   rw_->Set(value);
 }
 
+int64 SplitVariable::SetReturningPreviousValue(int64 value) {
+  w_->Set(value);
+  return rw_->SetReturningPreviousValue(value);
+}
+
 int64 SplitVariable::Get() const {
   return rw_->Get();
 }
