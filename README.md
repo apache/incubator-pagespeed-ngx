@@ -102,7 +102,22 @@ you need to first build and configure nginx.  Set it up something like:
       # always enables gzip.  Which it does in apache, but not in nginx.
       gzip on;
       gzip_vary on;
-      gzip_types *;
+
+      # Turn on gzip for all content types that should benefit from it.
+      gzip_types application/ecmascript;
+      gzip_types application/javascript;
+      gzip_types application/json;
+      gzip_types application/pdf;
+      gzip_types application/postscript;
+      gzip_types application/x-javascript;
+      gzip_types image/svg+xml;
+      gzip_types text/css;
+      gzip_types text/csv;
+      # "gzip_types text/html" is assumed.
+      gzip_types text/javascript;
+      gzip_types text/plain;
+      gzip_types text/xml;
+
       gzip_http_version 1.0;
 
       ...
