@@ -26,10 +26,13 @@
 
 namespace net_instaweb {
 
+class AbstractSharedMem;
 class SlowWorker;
 class StaticJavaScriptManager;
 class NgxServerContext;
 class AprMemCache;
+class NgxCache;
+class NgxRewriteOptions;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
@@ -54,16 +57,30 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   virtual void InitStaticJavascriptManager(
       StaticJavascriptManager* static_js_manager);
 
+  AbstractSharedMem* shared_mem_runtime() const {
+    return shared_mem_runtime_.get();
+  }
+
   SlowWorker* slow_worker() { return slow_worker_.get(); }
+
   // Create a new AprMemCache from the given hostname[:port] specification.
   AprMemCache* NewAprMemCache(const GoogleString& spec);
 
+  // Finds a Cache for the file_cache_path in the config.  If none exists,
+  // creates one, using all the other parameters in the ApacheConfig.
+  // Currently, no checking is done that the other parameters (e.g. cache
+  // size, cleanup interval, etc.) are consistent.
+  NgxCache* GetCache(NgxRewriteOptions* config);
+  
  private:
   SimpleStats simple_stats_;
   Timer* timer_;
   apr_pool_t* pool_;
   scoped_ptr<SlowWorker> slow_worker_;
-
+  scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
+  typedef std::map<GoogleString, NgxCache*> PathCacheMap;
+  PathCacheMap path_cache_map_;
+  
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

@@ -47,6 +47,8 @@
 #include "net/instaweb/apache/apr_thread_compatible_pool.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/apache/apr_mem_cache.h"
+#include "net/instaweb/util/public/null_shared_mem.h"
+#include "ngx_cache.h"
 
 namespace net_instaweb {
 
@@ -69,6 +71,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
   apr_pool_create(&pool_,NULL);
 
   InitializeDefaultOptions();
+  //shared_mem_runtime_(new NullSharedMem());
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
@@ -127,6 +130,8 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   NgxRewriteOptions* options = NgxRewriteOptions::DynamicCast(
       server_context->global_options());
 
+  NgxCache* ngx_cache = GetCache(options);
+  (void)ngx_cache;
   LRUCache* lru_cache = new LRUCache(
       options->lru_cache_kb_per_process() * 1024);
   CacheInterface* cache = new ThreadsafeCache(
@@ -170,6 +175,17 @@ RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
 void NgxRewriteDriverFactory::InitStaticJavascriptManager(
     StaticJavascriptManager* static_js_manager) {
   static_js_manager->set_library_url_prefix(kStaticJavaScriptPrefix);
+}
+
+NgxCache* NgxRewriteDriverFactory::GetCache(NgxRewriteOptions* options) {
+  const GoogleString& path = options->file_cache_path();
+  std::pair<PathCacheMap::iterator, bool> result = path_cache_map_.insert(
+      PathCacheMap::value_type(path, static_cast<NgxCache*>(NULL)));
+  PathCacheMap::iterator iter = result.first;
+  if (result.second) {
+    iter->second = new NgxCache(path, *options, this);
+  }
+  return iter->second;
 }
 
 AprMemCache* NgxRewriteDriverFactory::NewAprMemCache(

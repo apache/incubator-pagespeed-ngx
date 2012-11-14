@@ -107,7 +107,13 @@ class NgxRewriteOptions : public RewriteOptions {
   void set_lru_cache_kb_per_process(int64 x) {
     set_option(x, &lru_cache_kb_per_process_);
   }
-
+  bool use_shared_mem_locking() const {
+    return use_shared_mem_locking_.value();
+  }
+  void set_use_shared_mem_locking(bool x) {
+    set_option(x, &use_shared_mem_locking_);
+  }
+  
  private:
   // Used by class_name() and DynamicCast() to provide error checking.
   static const char kClassName[];
@@ -168,7 +174,8 @@ class NgxRewriteOptions : public RewriteOptions {
   Option<int64> file_cache_clean_size_kb_;
   Option<int64> lru_cache_byte_limit_;
   Option<int64> lru_cache_kb_per_process_;
-
+  Option<bool> use_shared_mem_locking_;
+  
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteOptions);
 };
 
