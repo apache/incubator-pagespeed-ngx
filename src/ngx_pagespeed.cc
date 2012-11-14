@@ -64,6 +64,19 @@ ngx_http_pagespeed_str_to_string_piece(ngx_str_t s) {
   return StringPiece(reinterpret_cast<char*>(s.data), s.len);
 }
 
+char*
+ngx_http_string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
+  // Need space for the final null.
+  ngx_uint_t buffer_size = sp.size() + 1;
+  char* s = static_cast<char*>(ngx_palloc(pool, buffer_size));
+  if (s == NULL) {
+    return NULL;
+  }
+  sp.copy(s, buffer_size /* max to copy */);
+  s[buffer_size-1] = '\0';  // Null terminate it.
+  return s;
+}
+
 typedef struct {
   net_instaweb::NgxRewriteDriverFactory* driver_factory;
   net_instaweb::NgxServerContext* server_context;
@@ -155,19 +168,6 @@ ngx_command_t ngx_http_pagespeed_commands[] = {
 
   ngx_null_command
 };
-
-char*
-ngx_http_string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
-  // Need space for the final null.
-  ngx_uint_t buffer_size = sp.size() + 1;
-  char* s = static_cast<char*>(ngx_palloc(pool, buffer_size));
-  if (s == NULL) {
-    return NULL;
-  }
-  sp.copy(s, buffer_size /* max to copy */);
-  s[buffer_size-1] = '\0';  // Null terminate it.
-  return s;
-}
 
 #define NGX_PAGESPEED_MAX_ARGS 10
 char*
