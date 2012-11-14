@@ -48,6 +48,14 @@
     # ModPagespeedEnableFilters rewrite_javascript,rewrite_css
     # ModPagespeedEnableFilters collapse_whitespace,elide_attributes
 
+    # Explicitly forbids the enabling of specific filters using either query
+    # parameters or request headers. This is useful, for example, when we do
+    # not want the filter to run for performance or security reasons. This
+    # directive contains a comma-separated list of filter names, and can be
+    # repeated.
+    #
+    # ModPagespeedForbidFilters rewrite_images
+
     # ModPagespeedDomain
     # authorizes rewriting of JS, CSS, and Image files found in this
     # domain. By default only resources with the same origin as the

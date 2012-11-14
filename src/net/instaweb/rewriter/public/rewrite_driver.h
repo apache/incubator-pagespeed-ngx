@@ -305,6 +305,7 @@ class RewriteDriver : public HtmlParse {
   // * The URL is invalid or it does not match the general pagespeed pattern.
   // * The filter id in the URL does not map to a known filter.
   // * The filter for the id in the URL doesn't recognize the format of the URL.
+  // * The filter for the id in the URL is forbidden.
   //
   // In other words there are three outcomes for this routine:
   //   1. the request was handled immediately and the callback called

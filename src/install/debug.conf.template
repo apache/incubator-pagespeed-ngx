@@ -563,6 +563,21 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedEnableFilters rewrite_css,rewrite_images
 </VirtualHost>
 
+# Sets up a virtual host where we can specify forbidden filters without
+# affecting any other hosts.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName forbidden.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/"
+  # Start with all core filters enabled ...
+  ModPagespeedRewriteLevel CoreFilters
+  # ... then forbid these filters ...
+  ModPagespeedForbidFilters remove_quotes,remove_comments,collapse_whitespace
+  ModPagespeedForbidFilters rewrite_css,resize_images
+  # ... and disable but not forbid this one (to ensure we retain its URL).
+  ModPagespeedDisableFilters inline_css
+</VirtualHost>
+
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
 #ALL_DIRECTIVES ModPagespeedAllow foo
 #ALL_DIRECTIVES ModPagespeedAnalyticsID 1234
@@ -594,6 +609,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedFileCacheInodeLimit 10000
 #ALL_DIRECTIVES ModPagespeedFileCachePath /tmp/cache/
 #ALL_DIRECTIVES ModPagespeedFileCacheSizeKb 1000
+#ALL_DIRECTIVES ModPagespeedForbidFilters rewrite_images
 #ALL_DIRECTIVES ModPagespeedForceCaching off
 #ALL_DIRECTIVES ModPagespeedHashRefererStatistics false
 #ALL_DIRECTIVES ModPagespeedImageInlineMaxBytes 2000

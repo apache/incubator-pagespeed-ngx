@@ -829,6 +829,12 @@ class RewriteOptions {
   bool DisableFiltersByCommaSeparatedList(const StringPiece& filters,
                                           MessageHandler* handler);
 
+  // Adds a set of filters to the forbidden set.  Returns false if any
+  // of the filter names are invalid, but all the valid ones will be
+  // added anyway.
+  bool ForbidFiltersByCommaSeparatedList(const StringPiece& filters,
+                                         MessageHandler* handler);
+
   // Explicitly disable all filters which are not *currently* explicitly enabled
   //
   // Note: Do not call EnableFilter(...) for this options object after calling
@@ -839,14 +845,17 @@ class RewriteOptions {
   void DisableAllFiltersNotExplicitlyEnabled();
 
   // Adds the filter to the list of enabled filters. However, if the filter
-  // is also present in the list of disabled filters, that takes precedence.
+  // is also present in either the list of disabled or forbidden filters,
+  // that takes precedence and it is not enabled.
   void EnableFilter(Filter filter);
   // Guarantees that a filter would be enabled even if it is present in the list
-  // of disabled filters by removing it from disabled filter list.
+  // of disabled filters by removing it from disabled & forbidden filter lists.
   void ForceEnableFilter(Filter filter);
   void DisableFilter(Filter filter);
+  void ForbidFilter(Filter filter);
   void EnableFilters(const FilterSet& filter_set);
   void DisableFilters(const FilterSet& filter_set);
+  void ForbidFilters(const FilterSet& filter_set);
   // Clear all explicitly enabled and disabled filters. Some filters may still
   // be enabled by the rewrite level and HtmlWriterFilter will be enabled.
   void ClearFilters();
@@ -856,6 +865,7 @@ class RewriteOptions {
   void EnableExtendCacheFilters();
 
   bool Enabled(Filter filter) const;
+  bool Forbidden(StringPiece filter_id) const;
 
   // Returns the set of enabled filters that require JavaScript for execution.
   void GetEnabledFiltersRequiringScriptExecution(FilterSet* filter_set) const;
@@ -1561,7 +1571,8 @@ class RewriteOptions {
   }
 
   // Merge src into 'this'.  Generally, options that are explicitly
-  // set in src will override those explicitly set in 'this', although
+  // set in src will override those explicitly set in 'this' (except that
+  // filters forbidden in 'this' cannot be enabled by 'src'), although
   // option Merge implementations can be redefined by specific Option
   // class implementations (e.g. OptionInt64MergeWithMax).  One
   // semantic subject to interpretation is when a core-filter is
@@ -2325,6 +2336,7 @@ class RewriteOptions {
   bool frozen_;
   FilterSet enabled_filters_;
   FilterSet disabled_filters_;
+  FilterSet forbidden_filters_;
 
   // Note: using the template class Option here saves a lot of repeated
   // and error-prone merging code.  However, it is not space efficient as

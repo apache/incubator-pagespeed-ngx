@@ -479,6 +479,30 @@ TEST_F(RewriteOptionsTest, DisableAllFiltersOverrideFilterLevel) {
   EXPECT_TRUE(OnlyEnabled(RewriteOptions::kAddHead));
 }
 
+TEST_F(RewriteOptionsTest, ForbidFilter) {
+  // Forbid a core filter: this will disable it.
+  options_.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  options_.ForbidFilter(RewriteOptions::kExtendCacheCss);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheCss));
+  EXPECT_TRUE(options_.Forbidden(
+      RewriteOptions::FilterId(RewriteOptions::kExtendCacheCss)));
+
+  // Forbid a filter, then try to merge in an enablement: it won't take.
+  // At the same time, merge in a new "forbiddenment": it will take.
+  RewriteOptions one, two;
+  one.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  one.ForbidFilter(RewriteOptions::kExtendCacheCss);
+  two.SetRewriteLevel(RewriteOptions::kCoreFilters);
+  two.ForbidFilter(RewriteOptions::kFlattenCssImports);
+  one.Merge(two);
+  EXPECT_FALSE(one.Enabled(RewriteOptions::kExtendCacheCss));
+  EXPECT_FALSE(one.Enabled(RewriteOptions::kFlattenCssImports));
+  EXPECT_TRUE(one.Forbidden(
+      RewriteOptions::FilterId(RewriteOptions::kExtendCacheCss)));
+  EXPECT_TRUE(one.Forbidden(
+      RewriteOptions::FilterId(RewriteOptions::kFlattenCssImports)));
+}
+
 TEST_F(RewriteOptionsTest, AllDoesNotImplyStripScrips) {
   options_.SetRewriteLevel(RewriteOptions::kAllFilters);
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kCombineCss));

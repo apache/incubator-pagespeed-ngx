@@ -155,6 +155,7 @@ const char kModPagespeedFileCacheInodeLimit[] =
     "ModPagespeedFileCacheInodeLimit";
 const char kModPagespeedFileCachePath[] = "ModPagespeedFileCachePath";
 const char kModPagespeedFileCacheSizeKb[] = "ModPagespeedFileCacheSizeKb";
+const char kModPagespeedForbidFilters[] = "ModPagespeedForbidFilters";
 const char kModPagespeedForceCaching[] = "ModPagespeedForceCaching";
 const char kModPagespeedFuriousSlot[] = "ModPagespeedExperimentVariable";
 const char kModPagespeedFuriousSpec[] = "ModPagespeedExperimentSpec";
@@ -1321,6 +1322,10 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
       ret = ParseBoolOption(
           factory, cmd, &ApacheRewriteDriverFactory::set_fetch_with_gzip, arg);
     }
+  } else if (StringCaseEqual(directive, kModPagespeedForbidFilters)) {
+    if (!options->ForbidFiltersByCommaSeparatedList(arg, handler)) {
+      ret = "Failed to forbid some filters.";
+    }
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
@@ -1705,6 +1710,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "to resource tags."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedEnableFilters,
         "Comma-separated list of enabled filters"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedForbidFilters,
+        "Comma-separated list of forbidden filters"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousSlot,
          "Specify the custom variable slot with which to run experiments."
          "Defaults to 1."),

@@ -1289,8 +1289,17 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   // up with an invalid decoded base URL, which ultimately leads to inability
   // to rewrite the URL.
   if (url_namer->ProxyMode()) {
-    if (!url_namer->IsProxyEncoded(gurl) ||
-        !url_namer->Decode(gurl, NULL, &decoded_url)) {
+    if (!url_namer->IsProxyEncoded(gurl)) {
+      message_handler()->Message(kInfo,
+                                 "Decoding of resource name %s failed because "
+                                 "it is not proxy encoded.",
+                                 gurl.spec_c_str());
+      return false;
+    } else if (!url_namer->Decode(gurl, NULL, &decoded_url)) {
+      message_handler()->Message(kInfo,
+                                 "Decoding of resource name %s failed because "
+                                 " the URL namer cannot decode it.",
+                                 gurl.spec_c_str());
       return false;
     }
     GoogleUrl decoded_gurl(decoded_url);
@@ -1307,9 +1316,9 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   // in the rewrite drivers. Also figure out the filter's preferred
   // resource kind.
   StringPiece id = namer_out->id();
+  GoogleString id_str(id.data(), id.size());
   *kind_out = kRewrittenResource;
-  StringFilterMap::const_iterator p = resource_filter_map_.find(
-      GoogleString(id.data(), id.size()));
+  StringFilterMap::const_iterator p = resource_filter_map_.find(id_str);
   if (p != resource_filter_map_.end()) {
     *filter_out = p->second;
     if ((*filter_out)->ComputeOnTheFly()) {
@@ -1326,6 +1335,10 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
     *kind_out = kOutlinedResource;
     *filter_out = NULL;
   } else {
+    message_handler()->Message(kInfo,
+                               "Decoding of resource name %s failed because "
+                               " there is no filter with id %s.",
+                               gurl.spec_c_str(), id_str.c_str());
     return false;
   }
 
@@ -1334,9 +1347,22 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
   if (*filter_out != NULL) {
     ResourceContext resource_context;
     if (!(*filter_out)->encoder()->Decode(
-        namer_out->name(), urls, &resource_context, message_handler())) {
+            namer_out->name(), urls, &resource_context, message_handler())) {
+      message_handler()->Message(kInfo,
+                                 "Decoding of resource name %s failed because "
+                                 " filter %s cannot decode the URL.",
+                                 gurl.spec_c_str(), (*filter_out)->Name());
       return false;
     }
+  }
+
+  // Check if the id string's filter is forbidden and reject the URL if so.
+  if (options()->Forbidden(id_str)) {
+    message_handler()->Message(kInfo,
+                               "Decoding of resource name %s failed because "
+                               " filter_id %s is forbidden.",
+                               gurl.spec_c_str(), id_str.c_str());
+    return false;
   }
 
   return true;
