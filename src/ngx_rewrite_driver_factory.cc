@@ -69,6 +69,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
   timer_ = DefaultTimer();
   apr_initialize();
   apr_pool_create(&pool_,NULL);
+
+  InitializeDefaultOptions();
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {

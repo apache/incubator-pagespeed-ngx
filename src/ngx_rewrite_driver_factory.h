@@ -45,9 +45,6 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Create a new RewriteOptions.  In this implementation it will be an
   // NgxRewriteOptions.
   virtual RewriteOptions* NewRewriteOptions();
-  virtual RewriteOptions* NewRewriteOptionsForQuery() {
-    return NewRewriteOptions();
-  }
 
   SlowWorker* slow_worker() { return slow_worker_.get(); }
 

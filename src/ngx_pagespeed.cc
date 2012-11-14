@@ -364,7 +364,14 @@ ngx_http_pagespeed_initialize_server_context(
   cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
   cfg->driver_factory->set_filename_prefix(cfg->options->file_cache_path());
   cfg->server_context = new net_instaweb::NgxServerContext(cfg->driver_factory);
-  cfg->server_context->reset_global_options(cfg->options);
+
+  // The server context sets some options when we call global_options().  So let
+  // it do that, then merge in options we got from parsing the config file.
+  // Once we do that we're done with cfg->options.
+  cfg->server_context->global_options()->Merge(*cfg->options);
+  delete cfg->options;
+  cfg->options = NULL;
+
   cfg->driver_factory->InitServerContext(cfg->server_context);
   cfg->proxy_fetch_factory =
       new net_instaweb::ProxyFetchFactory(cfg->server_context);
