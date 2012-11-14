@@ -158,13 +158,13 @@ static ngx_command_t ngx_http_pagespeed_commands[] = {
 char*
 ngx_http_string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
   // Need space for the final null.
-  ngx_uint_t n = sp.size() + 1;
-  char* s = static_cast<char*>(ngx_palloc(pool, n));
+  ngx_uint_t buffer_size = sp.size() + 1;
+  char* s = static_cast<char*>(ngx_palloc(pool, buffer_size));
   if (s == NULL) {
     return NULL;
   }
-  sp.copy(s, n /* max to copy */);
-  s[n-1] = '\0';  // Null terminate it.
+  sp.copy(s, buffer_size /* max to copy */);
+  s[buffer_size-1] = '\0';  // Null terminate it.
   return s;
 }
 
