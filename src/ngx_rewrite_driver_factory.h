@@ -34,11 +34,14 @@ class AprMemCache;
 class NgxCache;
 class NgxRewriteOptions;
 class AprMemCache;
+class CacheInterface;
+class AsyncCache;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
   static const char kStaticJavaScriptPrefix[];
-
+  static const char kMemcached[];
+  
   NgxRewriteDriverFactory();
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
@@ -64,16 +67,33 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
 
   SlowWorker* slow_worker() { return slow_worker_.get(); }
 
-  // Create a new AprMemCache from the given hostname[:port] specification.
-  AprMemCache* NewAprMemCache(const GoogleString& spec);
-
+  // Initializes all the statistics objects created transitively by
+  // NgxRewriteDriverFactory, including apache-specific and
+  // platform-independent statistics.
+  //static void InitStats(Statistics* statistics);
+  
   // Finds a Cache for the file_cache_path in the config.  If none exists,
   // creates one, using all the other parameters in the ApacheConfig.
   // Currently, no checking is done that the other parameters (e.g. cache
   // size, cleanup interval, etc.) are consistent.
   NgxCache* GetCache(NgxRewriteOptions* config);
   
- private:
+  // Create a new AprMemCache from the given hostname[:port] specification.
+  AprMemCache* NewAprMemCache(const GoogleString& spec);
+
+  // Makes a memcached-based cache if the configuration contains a
+  // memcached server specification.  The l2_cache passed in is used
+  // to handle puts/gets for huge (>1M) values.  NULL is returned if
+  // memcached is not specified for this server.
+  //
+  // If a non-null CacheInterface* is returned, its ownership is transferred
+  // to the caller and must be freed on destruction.
+  CacheInterface* GetMemcached(NgxRewriteOptions* options, CacheInterface* l2_cache);
+
+  // Returns the filesystem metadata cache for the given config's specification
+  // (if it has one). NULL is returned if no cache is specified.
+  CacheInterface* GetFilesystemMetadataCache(NgxRewriteOptions* config);
+private:
   SimpleStats simple_stats_;
   Timer* timer_;
   apr_pool_t* pool_;
@@ -81,6 +101,27 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
   typedef std::map<GoogleString, NgxCache*> PathCacheMap;
   PathCacheMap path_cache_map_;
+
+  // memcache connections are expensive.  Just allocate one per
+  // distinct server-list.  At the moment there is no consistency
+  // checking for other parameters.  Note that each memcached
+  // interface share the thread allocation, based on the
+  // ModPagespeedMemcachedThreads settings first encountered for
+  // a particular server-set.
+  //
+  // The QueuedWorkerPool for async cache-gets is shared among all
+  // memcached connections.
+  //
+  // The CacheInterface* value in the MemcacheMap now includes,
+  // depending on options, instances of CacheBatcher, AsyncCache,
+  // and CacheStats.  Explicit lists of AprMemCache instances and
+  // AsyncCache objects are also included, as they require extra
+  // treatment during startup and shutdown.
+  typedef std::map<GoogleString, CacheInterface*> MemcachedMap;
+  MemcachedMap memcached_map_;
+  scoped_ptr<QueuedWorkerPool> memcached_pool_;
+  std::vector<AprMemCache*> memcache_servers_;
+  std::vector<AsyncCache*> async_caches_;
   
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };

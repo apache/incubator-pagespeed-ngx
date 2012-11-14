@@ -113,7 +113,18 @@ class NgxRewriteOptions : public RewriteOptions {
   void set_use_shared_mem_locking(bool x) {
     set_option(x, &use_shared_mem_locking_);
   }
-  
+  const GoogleString& memcached_servers() const {
+    return memcached_servers_.value();
+  }
+  void set_memcached_servers(GoogleString x) {
+    set_option(x, &memcached_servers_);
+  }
+  int memcached_threads() const {
+    return memcached_threads_.value();
+  }
+  void set_memcached_threads(int x) {
+    set_option(x, &memcached_threads_);
+  }
  private:
   // Used by class_name() and DynamicCast() to provide error checking.
   static const char kClassName[];
@@ -175,6 +186,10 @@ class NgxRewriteOptions : public RewriteOptions {
   Option<int64> lru_cache_byte_limit_;
   Option<int64> lru_cache_kb_per_process_;
   Option<bool> use_shared_mem_locking_;
+  Option<int> memcached_threads_;
+  // comma-separated list of host[:port].  See AprMemCache::AprMemCache
+  // for code that parses it.
+  Option<GoogleString> memcached_servers_;
   
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteOptions);
 };
