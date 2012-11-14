@@ -17,6 +17,10 @@
 // Author: jefftk@google.com (Jeff Kaufman)
 
 // Manage configuration for pagespeed.  Compare to ApacheConfig.
+//
+// TODO(jefftk): Much of the code here is copied from ApacheConfig, and is very
+// similar.  It may be worth it to create an OriginRewriteOptions that both
+// NgxRewriteOptions and ApacheConfig inherit from.
 
 #ifndef NGX_REWRITE_OPTIONS_H_
 #define NGX_REWRITE_OPTIONS_H_
@@ -65,6 +69,8 @@ class NgxRewriteOptions : public RewriteOptions {
   // Name of the actual type of this instance as a poor man's RTTI.
   virtual const char* class_name() const;
 
+  // TODO(jefftk): All these caching-related getters and setters could move to
+  // an OriginRewriteOptions.
   const GoogleString& file_cache_path() const {
     return file_cache_path_.value();
   }

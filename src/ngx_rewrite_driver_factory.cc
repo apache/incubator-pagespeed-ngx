@@ -122,6 +122,9 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
+  // TODO(jefftk): see the ngx_rewrite_options.h note on OriginRewriteOptions;
+  // this would move to OriginRewriteOptions.
+
   NgxRewriteOptions* options = NgxRewriteOptions::DynamicCast(
       server_context->global_options());
 

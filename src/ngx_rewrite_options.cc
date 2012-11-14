@@ -46,6 +46,8 @@ void NgxRewriteOptions::Init() {
 }
 
 void NgxRewriteOptions::AddProperties() {
+  // TODO(jefftk): All these caching-related properties could move to an
+  // OriginRewriteOptions.
   add_ngx_option("", &NgxRewriteOptions::file_cache_path_, "nfcp",
                  RewriteOptions::kFileCachePath);
   add_ngx_option(Timer::kHourMs,
@@ -228,6 +230,7 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions3(
 }
 
 // Very similar to apache/mod_instaweb::ParseDirective.
+// TODO(jefftk): Move argument parsing to OriginRewriteOptions.
 const char*
 NgxRewriteOptions::ParseAndSetOptions(
     StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler) {
