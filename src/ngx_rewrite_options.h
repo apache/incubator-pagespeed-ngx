@@ -107,13 +107,19 @@ class NgxRewriteOptions : public RewriteOptions {
   static const char kClassName[];
 
   // Helper methods for ParseAndSetOptions().  Each can:
-  //  - return kOptionNameUnknown and not set error:
+  //  - return kOptionNameUnknown and not set msg:
   //    - directive not handled; continue on with other possible
   //      interpretations.
-  //  - return kOptionOk and not set error:
+  //  - return kOptionOk and not set msg:
   //    - directive handled, all's well.
-  //  - return kOptionValueInvalid and set error:
+  //  - return kOptionValueInvalid and set msg:
   //    - directive handled with an error; return the error to the user.
+  //
+  // msg will be shown to the user on kOptionValueInvalid.  While it would be
+  // nice to always use msg and never use the MessageHandler, some option
+  // parsing code in RewriteOptions expects to write to a MessageHandler.  If
+  // that happens we put a summary on msg so the user sees something, and the
+  // detailed message goes to their log via handler.
   OptionSettingResult ParseAndSetOptions0(
       StringPiece directive, GoogleString* msg, MessageHandler* handler);
   OptionSettingResult ParseAndSetOptions1(
