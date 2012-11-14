@@ -72,7 +72,9 @@ class Writer;
 
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
-NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
+NgxRewriteDriverFactory::NgxRewriteDriverFactory() :
+  shared_mem_runtime_(new NullSharedMem()),
+  cache_hasher_(20) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
@@ -83,7 +85,6 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
   timer_ = DefaultTimer();
   apr_initialize();
   apr_pool_create(&pool_,NULL);
-  shared_mem_runtime_.reset(new NullSharedMem());
   InitializeDefaultOptions();
 }
 
@@ -161,6 +162,7 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   CacheInterface* l2_cache = ngx_cache->l2_cache();
   CacheInterface* memcached = GetMemcached(options, l2_cache);
   if (memcached != NULL) {
+    l1_cache = NULL;
     l2_cache = memcached;
     server_context->set_owned_cache(memcached);
     server_context->set_filesystem_metadata_cache(
@@ -230,7 +232,7 @@ AprMemCache* NgxRewriteDriverFactory::NewAprMemCache(
   //TODO(oschaaf):
   //ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
   //thread_limit += num_rewrite_threads() + num_expensive_rewrite_threads();
-  return new AprMemCache(spec, thread_limit+8, NewHasher(), statistics(),
+  return new AprMemCache(spec, thread_limit+8, &cache_hasher_, statistics(),
                          timer(), message_handler());
 }
 
@@ -247,13 +249,8 @@ CacheInterface* NgxRewriteDriverFactory::GetMemcached(
     std::pair<MemcachedMap::iterator, bool> result = memcached_map_.insert(
         MemcachedMap::value_type(server_spec, memcached));
     if (result.second) {
-      //XXX
-      fprintf(stderr,"setting up memcached server %s\n",server_spec.c_str());
+      fprintf(stderr,"setting up memcached server [%s]\n",server_spec.c_str());
       AprMemCache* mem_cache = NewAprMemCache(server_spec);
-      
-      bool connected = mem_cache->Connect();
-      fprintf(stderr,
-              "connected to memcached backend: %s\n", connected ? "true": "false");
      
       memcache_servers_.push_back(mem_cache);
 
@@ -285,6 +282,12 @@ CacheInterface* NgxRewriteDriverFactory::GetMemcached(
       }
       memcached = batcher;
       result.first->second = memcached;
+ 
+      // TODO(oschaaf): should not connect to memcached here
+      bool connected = mem_cache->Connect();
+      fprintf(stderr,
+              "connected to memcached backend: %s\n", connected ? "true": "false");
+      
     } else {
       memcached = result.first->second;
     }

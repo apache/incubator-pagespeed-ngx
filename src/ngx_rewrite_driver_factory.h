@@ -21,6 +21,7 @@
 
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "apr_pools.h"
 
@@ -101,7 +102,8 @@ private:
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
   typedef std::map<GoogleString, NgxCache*> PathCacheMap;
   PathCacheMap path_cache_map_;
-
+  MD5Hasher cache_hasher_;
+  
   // memcache connections are expensive.  Just allocate one per
   // distinct server-list.  At the moment there is no consistency
   // checking for other parameters.  Note that each memcached
