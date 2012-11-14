@@ -102,6 +102,7 @@ you need to first build and configure nginx.  Set it up something like:
       # always enables gzip.  Which it does in apache, but not in nginx.
       gzip on;
       gzip_vary on;
+      gzip_types *;
       gzip_http_version 1.0;
 
       ...
