@@ -25,28 +25,27 @@ class Variable;
 class NgxUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   public:
     // add timeout event
-    NgxUrlAsyncFetcher(const char* proxy, ngx_pool_t* pool,
-        int64 timeout_ms, MessageHandler *handler);
-    // log used by creating pool_
-    NgxUrlAsyncFetcher(const char* proxy, ngx_log_t* log,
-        int64 timeout_ms, MessageHandler *handler);
+    NgxUrlAsyncFetcher(const char* proxy, ngx_pool_t* pool, int64 timeout,
+        int64 resolver_timeout, int64 fetch_timeout, ngx_resolver_t* resolver,
+        MessageHandler* handler);
+    NgxUrlAsyncFetcher(const char* proxy, ngx_log_t* log, int64 timeout,
+        int64 resolver_timeout, int64 fetch_timeout, ngx_resolver_t* resolver,
+        MessageHandler* handler);
     NgxUrlAsyncFetcher(NgxUrlAsyncFetcher *parent, const char* proxy);
 
     ~NgxUrlAsyncFetcher();
 
     // create pool, add the total timeout timer
-    int Init(); 
+    bool Init(); 
     
-    bool SetupProxy(const char* proxy);
-
     // shut down all the fetchers.
     virtual void ShutDown(); 
 
     virtual bool SupportsHttps();
 
-    virtual void Fetch(const GoogleString& url,
+    virtual bool Fetch(const GoogleString& url,
                        MessageHandler* message_handler,
-                       AsyncFetch *callback);
+                       AsyncFetch* callback);
 
     bool StartFetch(NgxFetch* fetch);
     void FetchComplete(NgxFetch* fetch);
@@ -54,43 +53,55 @@ class NgxUrlAsyncFetcher : public UrlPollableAsyncFetcher {
     void PrintActiveFetches(MessageHandler* handler) const;
     
     // change the origin content legnth or not
-    bool track_original_content_length(); 
-    void set_track_original_content_length(bool);
+    bool track_original_content_length() {
+      return track_original_content_length_;
+    }
+    void set_track_original_content_length(bool x) {
+      track_original_content_length_ = x;
+    }
  
     // vector
     typedef Pool<NgxFetch> NgxFetchPool;
 
-    virtual bool AnyPendingFetches();
+    virtual bool AnyPendingFetches() {
+      return !active_fetches_.empty();
+    }
     // number of active fetches
-    int ApproximateNumActiveFetches();
+    int ApproximateNumActiveFetches() {
+      return active_fetches_.size();
+    }
 
     void CancelActiveFetches();
     // just remove the error fetches
-    void CleanupFetchesWithErrors();
+    //void CleanupFetchesWithErrors();
 
     bool shutdown() const {return shutdown_; }
     void set_shutdown(bool s) {shutdown_ = s; }
 
   private:
+    static void TimeoutHandler(ngx_event_t* tev);
     friend class NgxFetch;
 
     NgxFetchPool completed_fetches_;
     NgxFetchPool active_fetches_;
+    ngx_url_t url_;
 
     int fetchers_count_;
     bool shutdown_;
     bool track_original_content_length_;
     int64 byte_count_;
+    int64 timeout_;
     MessageHandler* message_handler_;
 
-    ngx_event_t* timeout_;
+    ngx_event_t* timeout_event_;
     ngx_pool_t* pool_;
     ngx_log_t* log_;
     ngx_resolver_t* resolver_;
-    ngx_msec_t resolver_timeout_;
+    int64 resolver_timeout_;
+    int64 fetch_timeout_;
 
     DISALLOW_COPY_AND_ASSIGN(NgxUrlAsyncFetcher);
 };
-}
+} // net_instaweb
 
 #endif

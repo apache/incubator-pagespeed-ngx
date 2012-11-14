@@ -5,6 +5,8 @@ extern "C" {
   #include <ngx_config.h>
   #include <ngx_core.h>
   #include <ngx_http.h>
+
+  typedef bool (*response_handler_pt)(ngx_connection_t* c);
 }
 
 #include "ngx_url_async_fetcher.h"
@@ -17,6 +19,7 @@ extern "C" {
 #include "net/instaweb/http/public/response_headers_parser.h"
 
 namespace net_instaweb {
+  class NgxStatusLine;
   class NgxUrlAsyncFetcher;
   class NgxFetch : public PoolElement<NgxFetch> {
     public:
@@ -39,18 +42,30 @@ namespace net_instaweb {
 
       // show the bytes received
       size_t bytes_received();
+      void bytes_received_add(int64 x);
       int64 fetch_start_ms();
       void set_fetch_start_ms(int64 start_ms);
       int64 fetch_end_ms();
       void set_fetch_end_ms(int64 end_ms);
        // show the bytes received
       MessageHandler* message_handler();
+      NgxUrlAsyncFetcher* get_fetcher() {
+        return fetcher_;
+      }
+
+      AsyncFetch* get_async_fetch() {
+        return async_fetch_;
+      }
 
       int InitRquest();
       int Connect();
+      void set_response_handler(response_handler_pt handler) {
+        response_handler = handler;
+      }
 
     private:
 
+      response_handler_pt response_handler;
       // functions used in event callback
 
       bool ParseUrl();
@@ -64,6 +79,11 @@ namespace net_instaweb {
 
       // handler of read event
       static void NgxFetchRead(ngx_event_t* rev);
+      static bool NgxFetchHandleStatusLine(ngx_connection_t* c);
+      // handle header 
+      static bool NgxFetchHandleHeader(ngx_connection_t* c);
+      // handle body
+      static bool NgxFetchHandleBody(ngx_connection_t* c);
 
       // cancel the fetch;
       static void NgxFetchTimeout(ngx_event_t* tev);
@@ -77,6 +97,7 @@ namespace net_instaweb {
       NgxUrlAsyncFetcher* fetcher_;
       AsyncFetch* async_fetch_;
       ResponseHeadersParser parser_;
+      NgxStatusLine* status_line_;
       MessageHandler* message_handler_;
       size_t bytes_received_;
       int64 fetch_start_ms_;
