@@ -37,20 +37,25 @@
 APACHE_ROOT = /etc/httpd
 
 # The installation directory for modules (mod*.so)
-APACHE_MODULES = $(APACHE_ROOT)/modules
+APACHE_MODULES        = $(APACHE_ROOT)/modules
 
 # The root directory Apache uses for serving files.
-APACHE_DOC_ROOT = /var/www
+APACHE_DOC_ROOT       = /var/www
 # The domain Apache is serving from
-#APACHE_DOMAIN = localhost:8080  # For test-server.
-APACHE_DOMAIN = localhost
-APACHE_HTTPS_DOMAIN = localhost
+#APACHE_DOMAIN        = localhost:8080  # For test-server.
+APACHE_DOMAIN         = localhost
+APACHE_HTTPS_DOMAIN   = localhost
 APACHE_SECONDARY_PORT = 8084
 
-APACHE_CONTROL_PROGRAM = /etc/init.d/httpd
-APACHE_START = $(APACHE_CONTROL_PROGRAM) start
-APACHE_STOP = $(APACHE_CONTROL_PROGRAM) graceful-stop || \
-	      $(APACHE_CONTROL_PROGRAM) stop
+# These are set via command-line when run via 'ubuntu.sh', 'centos.sh',
+# or 'opensuse.sh'.  However during development we use this Makefile
+# directly, so we set defaults from an Ubuntu version on our dev
+# boxes (whose Apache lacks 'graceful-stop').
+APACHE_CONTROL_PROGRAM   = /etc/init.d/httpd
+APACHE_START             = $(APACHE_CONTROL_PROGRAM) start
+APACHE_STOP_COMMAND      = stop
+APACHE_PIDFILE           = /var/run/apache2.pid
+APACHE_PROGRAM           = /usr/sbin/apache2
 
 # A temp directory to stage generated configuration files.  This must be
 # writable by the user, and readable by root.
@@ -97,7 +102,7 @@ echo_vars :
 	@echo "   APACHE_MODULES=$(APACHE_MODULES)"
 	@echo "   APACHE_ROOT=$(APACHE_ROOT)"
 	@echo "   APACHE_START=$(APACHE_START)"
-	@echo "   APACHE_STOP=$(APACHE_STOP)"
+	@echo "   APACHE_STOP_COMMAND=$(APACHE_STOP_COMMAND)"
 	@echo "   MOD_PAGESPEED_CACHE=$(MOD_PAGESPEED_CACHE)"
 	@echo "   MODS_ENABLED_DIR=$(MODS_ENABLED_DIR)"
 	@echo "   MODS_AVAILABLE_DIR=$(MODS_AVAILABLE_DIR)"
@@ -442,12 +447,14 @@ flush_disk_cache :
 start :
 	sudo $(APACHE_START)
 stop :
-	sudo $(APACHE_STOP)
+	sudo ./stop_apache.sh $(APACHE_CONTROL_PROGRAM) \
+			      $(APACHE_PIDFILE) \
+			      $(APACHE_PROGRAM) \
+			      $(APACHE_STOP_COMMAND)
 
 # To run a complete iteration, stopping Apache, reconfiguring
 # it, and and restarting it, you can run 'make restart [args...]
-restart : staging
-	sudo $(APACHE_STOP)
+restart : stop
 	$(MAKE) staging
 	sudo $(MAKE) install \
 	    APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \

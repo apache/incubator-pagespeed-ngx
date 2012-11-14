@@ -339,6 +339,10 @@ class Parser {
   // the end of the document.
   UnicodeText ParseStringOrIdent();
 
+  // Same as ParseString, but returns a Value object containing that string,
+  // which has bytes_in_original_buffer set.
+  template<char delim> Value* ParseStringValue();
+
   // ParseNumber parses a number and an optional unit, consuming to
   // the end of the number or unit and returning a Value*.
   // Real numbers and integers are specified in decimal notation

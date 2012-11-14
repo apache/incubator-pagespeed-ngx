@@ -26,6 +26,7 @@
 #include "base/logging.h"
 #include "base/macros.h"
 #include "base/scoped_ptr.h"
+#include "strings/stringpiece.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/identifier.h"
 #include "webutil/css/string.h"
@@ -134,6 +135,14 @@ class Value {
   const Identifier& GetIdentifier() const;     // IDENT: identifier.
   const HtmlColor&   GetColorValue() const;    // COLOR: the color value
 
+  // Note: May be invalid UTF8.
+  StringPiece bytes_in_original_buffer() const {
+    return bytes_in_original_buffer_;
+  }
+  void set_bytes_in_original_buffer(const StringPiece& bytes) {
+    bytes.CopyToString(&bytes_in_original_buffer_);
+  }
+
  private:
   ValueType type_;  // indicates the type of value.  Always valid.
   double num_;            // for NUMBER (integer values are stored as doubles)
@@ -142,6 +151,9 @@ class Value {
   UnicodeText str_;    // for NUMBER (OTHER unit_), URI, STRING, FUNCTION
   scoped_ptr<FunctionParameters> params_;  // FUNCTION and RECT params
   HtmlColor color_;           // COLOR
+
+  // Verbatim bytes parsed for the declaration. Only stored for some Values.
+  string bytes_in_original_buffer_;
 
   // kDimensionUnitText stores the name of each unit (see TextFromUnit)
   static const char* const kDimensionUnitText[];

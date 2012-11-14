@@ -355,7 +355,10 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@import url(http://www.example.com) ;",
     "@media a,b{a{color:red}}",
     "@charset \"foobar\";",
+    // Unescaped string: Odd chars: \(\)\,\"\'
     "a{content:\"Odd chars: \\(\\)\\,\\\"\\\'\"}",
+    // Unescaped string: Unicode: \A0\A0
+    "a{content:\"Unicode: \\A0\\A0\"}",
     "img{clip:rect(0px,60px,200px,0px)}",
     // CSS3-style pseudo-elements.
     "p.normal::selection{background:#c00;color:#fff}",
@@ -698,8 +701,9 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "#foo{z-index:1.234567890123457e+29}" },
 
     // Parse and serialize "\n" correctly as "n" and "\A " correctly as newline.
+    // But leave the original string without messing with escaping.
     { "a { content: \"Special chars: \\n\\r\\t\\A \\D \\9\" }",
-      "a{content:\"Special chars: nrt\\A \\D \\9 \"}" },
+      "a{content:\"Special chars: \\n\\r\\t\\A \\D \\9\"}" },
 
     // Test some interesting combinations of @media.
     {
@@ -758,7 +762,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "-moz-border-radius:3px;"
       "filter:progid:DXImageTransform.Microsoft.Blur(pixelradius=5);"
       "*opacity:1;*top:-2px;*left:-5px;*right:5px;*bottom:4px;-ms-filter:"
-      "\"progid:DXImageTransform.Microsoft.Blur\\(pixelradius=5\\)\";"
+      "\"progid:DXImageTransform.Microsoft.Blur(pixelradius=5)\";"
       "opacity:1\\0/;top:-4px\\0/;left:-6px\\0/;right:5px\\0/;bottom:4px\\0/}"},
 
     // Alexa-100 with parse errors (illegal syntax or CSS3).
