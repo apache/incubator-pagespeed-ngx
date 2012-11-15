@@ -45,7 +45,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/write_through_http_cache.h"
 
-//XXX: discuss the proper way to to this:
+// TODO(oschaaf): discuss the proper way to to this.
 #include "net/instaweb/apache/apr_thread_compatible_pool.cc"
 #include "net/instaweb/apache/serf_url_async_fetcher.cc"
 
@@ -60,7 +60,6 @@ class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
-//class SerfUrlAsyncFetcher;
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
   RewriteDriverFactory::InitStats(&simple_stats_);
@@ -87,15 +86,15 @@ UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
 }
 
 UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
-  net_instaweb::UrlAsyncFetcher* fetcher = new net_instaweb::SerfUrlAsyncFetcher(
-      // "127.0.0.1:80",
-      "",
-      pool_,
-      thread_system(),
-      statistics(),
-      timer(),
-      2500,
-      message_handler());
+  net_instaweb::UrlAsyncFetcher* fetcher =
+      new net_instaweb::SerfUrlAsyncFetcher(
+          "",
+          pool_,
+          thread_system(),
+          statistics(),
+          timer(),
+          2500,
+          message_handler());
   return fetcher;
 }
 
