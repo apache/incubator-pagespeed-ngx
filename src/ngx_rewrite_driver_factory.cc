@@ -162,6 +162,7 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   CacheInterface* l2_cache = ngx_cache->l2_cache();
   CacheInterface* memcached = GetMemcached(options, l2_cache);
   if (memcached != NULL) {
+    // XXX(oschaaf): remove when done
     l1_cache = NULL;
     l2_cache = memcached;
     server_context->set_owned_cache(memcached);
@@ -190,10 +191,10 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
         l1_cache, l2_cache);
     write_through_cache->set_cache1_limit(options->lru_cache_byte_limit());
     server_context->set_metadata_cache(write_through_cache);
-
     server_context->MakePropertyCaches(l2_cache);
   }
 
+  // TODO(oschaaf): 
   server_context->set_enable_property_cache(true);
   //server_context->set_enable_property_cache(enable_property_cache());
   //PropertyCache* pcache = server_context->page_property_cache();
@@ -228,11 +229,11 @@ NgxCache* NgxRewriteDriverFactory::GetCache(NgxRewriteOptions* options) {
 
 AprMemCache* NgxRewriteDriverFactory::NewAprMemCache(
     const GoogleString& spec) {
-  int thread_limit=1;
-  //TODO(oschaaf):
+  // TODO(oschaaf): determine a sensible limit
+  int thread_limit=2;
   //ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
   //thread_limit += num_rewrite_threads() + num_expensive_rewrite_threads();
-  return new AprMemCache(spec, thread_limit+8, &cache_hasher_, statistics(),
+  return new AprMemCache(spec, thread_limit, &cache_hasher_, statistics(),
                          timer(), message_handler());
 }
 
