@@ -133,7 +133,7 @@ void FlushEarlyContentWriterFilter::EndDocument() {
     ResourceInfo* js_resource_info = *it;
     if (time_consumed_ms_ + js_resource_info->time_to_download_ <
         max_available_time_ms_) {
-      FlushResources(js_resource_info->url_.c_str(),
+      FlushResources(js_resource_info->url_,
                      js_resource_info->time_to_download_,
                      js_resource_info->is_pagespeed_resource_,
                      semantic_type::kScript);

@@ -161,7 +161,7 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
         if (decoded_url.size() == 1) {
           // There will be only 1 url as combiners are off and this should be
           // modified once they are enabled.
-          AppendToHtml(decoded_url.at(0).c_str(), category, element);
+          AppendToHtml(decoded_url.at(0), category, element);
         }
       } else {
         AppendToHtml(gurl.Spec(), category, element);
@@ -180,11 +180,11 @@ void CollectFlushEarlyContentFilter::AppendToHtml(
     StrAppend(&resource_html_, "<link ");
     AppendAttribute(HtmlName::kType, element);
     AppendAttribute(HtmlName::kRel, element);
-    StrAppend(&resource_html_, "href=\"", escaped_url.c_str(), "\"/>");
+    StrAppend(&resource_html_, "href=\"", escaped_url, "\"/>");
   } else if (category == semantic_type::kScript) {
     StrAppend(&resource_html_, "<script ");
     AppendAttribute(HtmlName::kType, element);
-    StrAppend(&resource_html_, "src=\"", escaped_url.c_str(), "\"></script>");
+    StrAppend(&resource_html_, "src=\"", escaped_url, "\"></script>");
   }
 }
 

@@ -85,7 +85,7 @@ class StdioFileSystemTest : public FileSystemTest {
     if (stdio_file_system_.IsDir(filename.c_str(), &handler_).is_true()) {
       // Remove everything inside first.
       StringVector files;
-      stdio_file_system_.ListContents(filename.c_str(), &files, &handler_);
+      stdio_file_system_.ListContents(filename, &files, &handler_);
       for (int i = 0; i < files.size(); ++i) {
         ASSERT_TRUE(HasPrefixString(files[i], "/"));
         DeleteRecursivelyImpl(files[i]);

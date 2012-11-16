@@ -83,14 +83,14 @@ fetch_until $TEST_ROOT/bot_test.html 'grep -c \.pagespeed\.' 2
 # but do an additional regression test that tries harder to get a cache miss.
 if fgrep -q "# ModPagespeedStatistics off" $APACHE_DEBUG_PAGESPEED_CONF; then
   echo TEST: 404s are served and properly recorded.
-  NUM_404=$($WGET_DUMP $STATISTICS_URL | grep resource_404_count | cut -d: -f2)
-  NUM_404=$(($NUM_404+1))
-  FETCHED=$OUTDIR/stats
-  check fgrep -q "404 Not Found" <($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
-  $WGET_DUMP $STATISTICS_URL > $FETCHED
-  check egrep -q "^resource_404_count: *$NUM_404$" $FETCHED
+  NUM_404=$(scrape_stat resource_404_count)
+  WGET_ERROR=$($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
+  check_from "$WGET_ERROR" fgrep -q "404 Not Found"
 
-  # Non-local access to statistics fails.
+  # Check that the stat got bumped.
+  check [ $(expr $(scrape_stat resource_404_count) - $NUM_404) -eq 1 ]
+
+  echo TEST: Non-local access to statistics fails.
   MACHINE_NAME=$(hostname)
   ALT_STAT_URL=$(echo $STATISTICS_URL | sed s#localhost#$MACHINE_NAME#)
 
@@ -627,8 +627,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   # Track how many flushes were noticed by Apache processes up till
   # this point in time.  Note that each Apache process/vhost
   # separately detects the 'flush'.
-  NUM_INITIAL_FLUSHES=$($WGET_DUMP $STATISTICS_URL | grep cache_flush_count \
-    | cut -d: -f2)
+  NUM_INITIAL_FLUSHES=$(scrape_stat cache_flush_count)
 
   # Now change the file to $COLOR1.
   echo echo ".class myclass { color: $COLOR1; }" ">" $CSS_FILE
@@ -652,8 +651,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   # TODO(jmarantz): we can change this test to be more exacting now, since
   # to address Issue 568, we should only get one cache-flush bump every time
   # we touch the file.
-  NUM_FLUSHES=$($WGET_DUMP $STATISTICS_URL | grep cache_flush_count \
-    | cut -d: -f2)
+  NUM_FLUSHES=$(scrape_stat cache_flush_count)
   NUM_NEW_FLUSHES=$(expr $NUM_FLUSHES - $NUM_INITIAL_FLUSHES)
   echo NUM_NEW_FLUSHES = $NUM_FLUSHES - $NUM_INITIAL_FLUSHES = $NUM_NEW_FLUSHES
   check [ $NUM_NEW_FLUSHES -ge 1 ]

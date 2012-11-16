@@ -1276,8 +1276,7 @@ TEST_F(CssCombineFilterTest, AlternateStylesheets) {
       "<link rel='stylesheet' href='a.css'>"
       "<link rel='stylesheet' href='b.css'>",
       StringPrintf("<link rel='stylesheet' href='%s'/>", Encode(
-          kTestDomain, "cc", "0", MultiUrl("a.css", "b.css"), "css").c_str()
-                   ).c_str());
+          kTestDomain, "cc", "0", MultiUrl("a.css", "b.css"), "css").c_str()));
 
   // Make sure we accept mixed case for the keyword.
   ValidateExpected(
@@ -1285,8 +1284,7 @@ TEST_F(CssCombineFilterTest, AlternateStylesheets) {
       "<link rel=' StyleSheet' href='a.css'>"
       "<link rel='styleSHEET  ' href='b.css'>",
       StringPrintf("<link rel=' StyleSheet' href='%s'/>", Encode(
-          kTestDomain, "cc", "0", MultiUrl("a.css", "b.css"), "css").c_str()
-                   ).c_str());
+          kTestDomain, "cc", "0", MultiUrl("a.css", "b.css"), "css").c_str()));
 
   // Preferred CSS links are not because we don't want to combine styles with
   // different titles.

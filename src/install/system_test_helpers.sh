@@ -293,7 +293,7 @@ function fetch_until() {
   while test -t; do
     $WGET_HERE $REQUESTURL
     if [ $($COMMAND < "$FETCH_FILE") = "$RESULT" ]; then
-      /bin/echo ".";
+      echo "."
       if [ $save = 0 ]; then
         if [ $recursive -eq 1 ]; then
           rm -rf $OUTDIR
@@ -314,7 +314,7 @@ function fetch_until() {
     else
       rm -f "$FETCH_FILE"
     fi
-    /bin/echo -n "."
+    echo -n "."
     sleep 0.1
   done;
 }
@@ -358,4 +358,9 @@ function test_resource_ext_corruption() {
 
   # Fetch normal again; ensure rewritten url for RESOURCE doesn't contain broken
   check_not fgrep "broken" <($WGET_DUMP $WGET_ARGS $URL)
+}
+
+# Scrapes the specified statistic, returning the statistic value.
+function scrape_stat {
+  $WGET_DUMP $STATISTICS_URL | grep "^$1\:" | cut -d: -f2
 }
