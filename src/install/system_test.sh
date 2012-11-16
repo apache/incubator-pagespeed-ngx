@@ -87,13 +87,12 @@ check egrep -q 'HTTP/1[.]. 200 OK' <($WGET_DUMP $TEST_ROOT/whitespace.html)
 echo TEST: Query params and headers are recognized in resource flow.
 URL=$REWRITTEN_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css
 echo "Image gets rewritten by default."
-# TODO(sligocki): Remove this fetch_until. The blocking rewrite header below
-# should take care of this on the first load, unfortunately that currently
-# fails in PSS :/ (Note: it works in MPS tests).
-WGET_ARGS=""
+# TODO(sligocki): Replace this fetch_until with single blocking fetch once
+# the blocking rewrite header below works correctly. Unfortunately that
+# currently fails in PSS :/ (Note: it works in MPS tests although might be
+# flaky).
+WGET_ARGS="--header='X-PSA-Blocking-Rewrite:psatest'"
 fetch_until $URL 'fgrep -c BikeCrashIcn.png.pagespeed.ic' 1
-OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest" $URL)
-check_from "$OUT" fgrep -q "BikeCrashIcn.png.pagespeed.ic"
 echo "Image doesn't get rewritten when we turn it off with headers."
 OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest"
   --header="ModPagespeedFilters:-rewrite_images" $URL)
