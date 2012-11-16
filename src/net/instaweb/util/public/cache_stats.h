@@ -56,7 +56,6 @@ class CacheStats : public CacheInterface {
   virtual void Delete(const GoogleString& key);
   virtual const char* Name() const { return name_.c_str(); }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
-  virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
 
   virtual bool IsHealthy() const {
     return !shutdown_.value() && cache_->IsHealthy();

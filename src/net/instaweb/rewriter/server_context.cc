@@ -1064,7 +1064,7 @@ PropertyCache* ServerContext::MakePropertyCache(
 }
 
 AbstractClientState* RewriteDriverFactory::NewClientState() {
-  return new ClientState;
+  return new ClientState();
 }
 
 void ServerContext::set_blink_critical_line_data_finder(

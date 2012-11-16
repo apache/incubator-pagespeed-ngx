@@ -85,7 +85,6 @@ class CacheBatcher : public CacheInterface {
   // Note: CacheBatcher cannot do any batching if given a blocking cache,
   // however it is still functional so pass on the bit.
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
-  virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
 
   int last_batch_size() const { return last_batch_size_; }  // for testing
   void set_max_queue_size(size_t n) { max_queue_size_ = n; }

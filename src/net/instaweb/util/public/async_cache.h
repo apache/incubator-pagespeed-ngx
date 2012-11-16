@@ -69,7 +69,6 @@ class AsyncCache : public CacheInterface {
   virtual void MultiGet(MultiGetRequest* request);
   virtual const char* Name() const { return name_.c_str(); }
   virtual bool IsBlocking() const { return false; }
-  virtual bool IsMachineLocal() const { return cache_->IsMachineLocal(); }
 
   // Prevent the AsyncCache from issuing any more Gets.  Any subsequent
   // Gets will have their callback invoked immediately with kNotFound.

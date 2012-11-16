@@ -56,11 +56,6 @@ class FallbackCache : public CacheInterface {
     return (small_object_cache_->IsBlocking() &&
             large_object_cache_->IsBlocking());
   }
-  virtual bool IsMachineLocal() const {
-    // We can fulfill our guarantee only if both caches are machine local.
-    return (small_object_cache_->IsMachineLocal() &&
-            large_object_cache_->IsMachineLocal());
-  }
 
   virtual bool IsHealthy() const {
     return (small_object_cache_->IsHealthy() &&

@@ -61,10 +61,6 @@ class WriteThroughCache : public CacheInterface {
     // We can fulfill our guarantee only if both caches block.
     return cache1_->IsBlocking() && cache2_->IsBlocking();
   }
-  virtual bool IsMachineLocal() const {
-    // We can fulfill our guarantee only if both caches are machine local.
-    return cache1_->IsMachineLocal() && cache2_->IsMachineLocal();
-  }
 
   virtual bool IsHealthy() const {
     return cache1_->IsHealthy() && cache2_->IsHealthy();

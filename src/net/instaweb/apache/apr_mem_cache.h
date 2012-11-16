@@ -97,7 +97,6 @@ class AprMemCache : public CacheInterface {
 
   virtual const char* Name() const { return "AprMemCache"; }
   virtual bool IsBlocking() const { return true; }
-  virtual bool IsMachineLocal() const { return is_machine_local_; }
 
   // Records in statistics that a system error occurred, helping it detect
   // when it's unhealthy if they are too frequent.

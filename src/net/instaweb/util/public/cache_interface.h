@@ -161,11 +161,6 @@ class CacheInterface {
   // returning from Get and MultiGet.
   virtual bool IsBlocking() const = 0;
 
-  // Returns true if this cache is local to the server's machine. For the
-  // currently intended use of this method, it would be better to say deny
-  // locality if not sure/determinable.
-  virtual bool IsMachineLocal() const = 0;
-
   // Returns true if the cache is in a healthy state.  Memory and
   // file-based caches can simply return 'true'.  But for server-based
   // caches, it is handy to be able to query to see whether it is in a

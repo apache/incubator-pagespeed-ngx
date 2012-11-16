@@ -88,7 +88,6 @@ class LRUCache : public CacheInterface {
 
   virtual const char* Name() const { return "LRUCache"; }
   virtual bool IsBlocking() const { return true; }
-  virtual bool IsMachineLocal() const { return true; }
   virtual bool IsHealthy() const { return is_healthy_; }
   virtual void ShutDown() { set_is_healthy(false); }
 

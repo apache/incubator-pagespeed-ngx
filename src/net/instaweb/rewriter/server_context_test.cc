@@ -1469,7 +1469,6 @@ class ThreadAlternatingCache : public CacheInterface {
 
   virtual const char* Name() const { return "ThreadAlternatingCache"; }
   virtual bool IsBlocking() const { return false; }
-  virtual bool IsMachineLocal() const { return backend_->IsMachineLocal(); }
   virtual bool IsHealthy() const { return backend_->IsHealthy(); }
   virtual void ShutDown() { backend_->ShutDown(); }
 
