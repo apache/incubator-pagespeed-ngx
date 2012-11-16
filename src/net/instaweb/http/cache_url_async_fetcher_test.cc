@@ -465,6 +465,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_;
 
   NullMessageHandler handler_;
+  RequestHeaders empty_request_headers_;
 
   const GoogleString cache_url_;
   const GoogleString cache_https_html_url_;
@@ -496,7 +497,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
 
 TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
   ClearStats();
-  FetchAndValidate(cache_url_, RequestHeaders(), true, HttpStatus::kOK,
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    cache_body_, kBackendFetch, true);
   // First fetch misses initial cache lookup ...
   EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
@@ -509,7 +510,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
   EXPECT_EQ(0, cache_fetcher_->fallback_responses_served()->Get());
 
   ClearStats();
-  FetchAndValidate(cache_url_, RequestHeaders(), true, HttpStatus::kOK,
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    cache_body_, kBackendFetch, true);
   // Second fetch hits initial cache lookup ...
   EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
@@ -525,8 +526,8 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
 
   timer_.AdvanceMs(2 * ttl_ms_);
   ClearStats();
-  FetchAndValidate(cache_url_, RequestHeaders(), false, HttpStatus::kNotFound,
-                   "", kBackendFetch, false);
+  FetchAndValidate(cache_url_, empty_request_headers_, false,
+                   HttpStatus::kNotFound, "", kBackendFetch, false);
   // Cache entry is stale, so we must fetch again. However, the fetch fails.
   // Since the fetcher returns a 404 which is not a server error, we don't
   // return stale content.
@@ -542,7 +543,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
   mock_fetcher_.Enable();
 
   ClearStats();
-  FetchAndValidate(cache_url_, RequestHeaders(), true, HttpStatus::kOK,
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    cache_body_, kBackendFetch, true);
   // Cache entry is stale, so we must fetch again. This time the fetch succeeds.
   EXPECT_EQ(1, http_cache_->cache_expirations()->Get());
@@ -559,7 +560,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
   bad_headers.set_first_line(1, 1, 500, "Internal Server Error");
   bad_headers.SetDate(timer_.NowMs());
   mock_fetcher_.SetResponse(cache_url_, bad_headers, bad_body_);
-  FetchAndValidate(cache_url_, RequestHeaders(), true, HttpStatus::kOK,
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    cache_body_, kFallbackFetch, false);
   // Since a fallback is present in cache, we don't serve out the 500 and
   // instead serve out the stale response.
@@ -573,7 +574,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
   ClearStats();
   // Disable serving of stale content if the fetch fails.
   cache_fetcher_->set_serve_stale_if_fetch_error(false);
-  FetchAndValidate(cache_url_, RequestHeaders(), true,
+  FetchAndValidate(cache_url_, empty_request_headers_, true,
                    HttpStatus::kInternalServerError, bad_body_,
                    kBackendFetch, false);
   // Since serving of stale content is disabled, we serve out the 500 instead
@@ -591,7 +592,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrl) {
   // Clear the LRU cache so that no fallback is available any more.
   lru_cache_.Clear();
   ClearStats();
-  FetchAndValidate(cache_url_, RequestHeaders(), true,
+  FetchAndValidate(cache_url_, empty_request_headers_, true,
                    HttpStatus::kInternalServerError, bad_body_,
                    kBackendFetch, false);
   // The fallback response is no longer available, hence we serve out the 500.
@@ -636,7 +637,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CachingWithHttpsHtmlCachingDisabled) {
 
 TEST_F(CacheUrlAsyncFetcherTest, CacheableUrlCacheInvalidation) {
   ClearStats();
-  FetchAndValidate(cache_url_, RequestHeaders(), true, HttpStatus::kOK,
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    cache_body_, kBackendFetch, true);
   // First fetch misses initial cache lookup ...
   EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
@@ -648,7 +649,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrlCacheInvalidation) {
   EXPECT_EQ(1, http_cache_->cache_inserts()->Get());
 
   ClearStats();
-  FetchAndValidate(cache_url_, RequestHeaders(), true, HttpStatus::kOK,
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    cache_body_, kBackendFetch, true);
   // Second fetch hits initial cache lookup ...
   EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
@@ -661,7 +662,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrlCacheInvalidation) {
   ClearStats();
   // Invalidate cache and fetch.
   cache_result_valid_ = false;
-  FetchAndValidate(cache_url_, RequestHeaders(), true, HttpStatus::kOK,
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    cache_body_, kBackendFetch, true);
   // Cache entry is invalid, so we must fetch again.
   EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
@@ -673,7 +674,7 @@ TEST_F(CacheUrlAsyncFetcherTest, CacheableUrlCacheInvalidation) {
 
 TEST_F(CacheUrlAsyncFetcherTest, NonCacheableUrl) {
   ClearStats();
-  FetchAndValidate(nocache_url_, RequestHeaders(), true, HttpStatus::kOK,
+  FetchAndValidate(nocache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    nocache_body_, kBackendFetch, false);
   // First fetch misses initial cache lookup ...
   EXPECT_EQ(0, http_cache_->cache_hits()->Get());
@@ -685,7 +686,7 @@ TEST_F(CacheUrlAsyncFetcherTest, NonCacheableUrl) {
 
   // Same thing happens second time.
   ClearStats();
-  FetchAndValidate(nocache_url_, RequestHeaders(), true, HttpStatus::kOK,
+  FetchAndValidate(nocache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    nocache_body_, kBackendFetch, false);
   EXPECT_EQ(0, http_cache_->cache_hits()->Get());
   EXPECT_EQ(1, http_cache_->cache_misses()->Get());
@@ -1064,8 +1065,8 @@ TEST_F(CacheUrlAsyncFetcherTest, FetchFailedNoIgnore) {
   cache_fetcher_->set_ignore_recent_fetch_failed(kBackendFetch);
 
   ClearStats();
-  FetchAndValidate(bad_url_, RequestHeaders(), true, HttpStatus::kNotFound,
-                   bad_body_, kBackendFetch, false);
+  FetchAndValidate(bad_url_, empty_request_headers_, true,
+                   HttpStatus::kNotFound, bad_body_, kBackendFetch, false);
   EXPECT_EQ(0, http_cache_->cache_hits()->Get());
   EXPECT_EQ(1, http_cache_->cache_misses()->Get());
   EXPECT_EQ(1, counting_fetcher_.fetch_count());
@@ -1076,8 +1077,8 @@ TEST_F(CacheUrlAsyncFetcherTest, FetchFailedNoIgnore) {
 
   // bad_url_, is not fetched the second time.
   ClearStats();
-  FetchAndValidate(bad_url_, RequestHeaders(), false, HttpStatus::kNotFound,
-                   "", kBackendFetch, true);
+  FetchAndValidate(bad_url_, empty_request_headers_, false,
+                   HttpStatus::kNotFound, "", kBackendFetch, true);
   EXPECT_EQ(0, counting_fetcher_.fetch_count());
   EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
 }
@@ -1086,8 +1087,8 @@ TEST_F(CacheUrlAsyncFetcherTest, FetchFailedIgnore) {
   cache_fetcher_->set_ignore_recent_fetch_failed(true);
 
   ClearStats();
-  FetchAndValidate(bad_url_, RequestHeaders(), true, HttpStatus::kNotFound,
-                   bad_body_, kBackendFetch, false);
+  FetchAndValidate(bad_url_, empty_request_headers_, true,
+                   HttpStatus::kNotFound, bad_body_, kBackendFetch, false);
   EXPECT_EQ(0, http_cache_->cache_hits()->Get());
   EXPECT_EQ(1, http_cache_->cache_misses()->Get());
   EXPECT_EQ(1, counting_fetcher_.fetch_count());
@@ -1098,8 +1099,8 @@ TEST_F(CacheUrlAsyncFetcherTest, FetchFailedIgnore) {
 
   // bad_url_, is fetched again the second time.
   ClearStats();
-  FetchAndValidate(bad_url_, RequestHeaders(), true, HttpStatus::kNotFound,
-                   bad_body_, kBackendFetch, false);
+  FetchAndValidate(bad_url_, empty_request_headers_, true,
+                   HttpStatus::kNotFound, bad_body_, kBackendFetch, false);
   EXPECT_EQ(1, counting_fetcher_.fetch_count());
   EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
 }
@@ -1322,7 +1323,7 @@ TEST_F(CacheUrlAsyncFetcherTest, HeadServedFromCache) {
 
   ClearStats();
   // Now issue a GET.
-  FetchAndValidate(cache_url_, RequestHeaders(), true, HttpStatus::kOK,
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    cache_body_, kBackendFetch, true);
   // Should miss the cache.
   EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
@@ -1348,7 +1349,7 @@ TEST_F(CacheUrlAsyncFetcherTest, HeadServedFromCache) {
   ClearStats();
   // Replay the GET and ensure the HEAD request has not affected its cache
   // value.
-  FetchAndValidate(cache_url_, RequestHeaders(), true, HttpStatus::kOK,
+  FetchAndValidate(cache_url_, empty_request_headers_, true, HttpStatus::kOK,
                    cache_body_, kBackendFetch, true);
   EXPECT_EQ(0, http_cache_->cache_expirations()->Get());
   EXPECT_EQ(1, http_cache_->cache_hits()->Get());

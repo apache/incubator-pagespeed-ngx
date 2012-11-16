@@ -77,8 +77,8 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
       kUnrelatedTags,
-      "<img src=\"abc.jpg\" onload=\"pagespeed.deferJs.addOnloadListeners(this,"
-      " function() {foo1();foo2();});\">"
+      "<img src=\"abc.jpg\" onload=\"this.setAttribute('pagespeed_onload',"
+      "'foo1();foo2();');\">"
       "<script pagespeed_orig_src=\"blah2\" random=\"false\""
       " type=\"text/psajs\" orig_index=\"1\">hi2</script>"
       "</body>");

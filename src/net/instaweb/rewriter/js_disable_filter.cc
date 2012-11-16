@@ -143,10 +143,10 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
     // For now let us assume it is JS, which is the case in majority.
     // TODO(ksimbili): Try fixing not adding non-Js code, if we can.
     GoogleString deferred_onload = StrCat(
-        "pagespeed.deferJs.addOnloadListeners(this, function() {",
-        onload->DecodedValueOrNull(),
-        "});");
-    onload->SetValue(deferred_onload);
+        "this.setAttribute('pagespeed_onload','",
+        onload->escaped_value(),
+        "');");
+    onload->SetEscapedValue(deferred_onload);
   }
 }
 

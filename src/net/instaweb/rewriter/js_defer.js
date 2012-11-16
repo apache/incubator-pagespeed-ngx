@@ -335,6 +335,12 @@ deferJsNs.DeferJs.PSA_CURRENT_NODE = 'psa_current_node';
 deferJsNs.DeferJs.PSA_SCRIPT_TYPE = 'text/psajs';
 
 /**
+ * Name of the deferred onload attribute.
+ * @const {string}
+ */
+deferJsNs.DeferJs.PAGESPEED_ONLOAD = 'pagespeed_onload';
+
+/**
  * Add to defer_logs if logs are enabled.
  * @param {string} line line to be added to log.
  * @param {Error} opt_exception optional exception to pass to log.
@@ -700,6 +706,12 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
  * Fires 'onload' event.
  */
 deferJsNs.DeferJs.prototype.fireOnload = function() {
+  // Add all the elements whose onloads are deferred.
+  // Note, by the time we come here, all the images, iframes etc all should have
+  // been loaded. Because main page onload gets triggered when all it's
+  // resources are loaded.So we can blindly trigger all those onloads.
+  this.addDeferredOnloadListeners();
+
   this.fireEvent(deferJsNs.DeferJs.EVENT.LOAD);
 
   // Clean up psanode elements from the DOM.
@@ -1148,20 +1160,27 @@ deferJsNs.DeferJs.prototype.writeHtml = function(html) {
 
 /**
  * Adds page onload event listeners to our own list and called them later.
- * @param {!Element} elem Element on which listener to be called.
- * @param {!Function} func onload listener.
  */
-deferJsNs.DeferJs.prototype.addOnloadListeners = function(elem, func) {
-  this.log('onload: ' + func.toString());
-  if (this.state_ == deferJsNs.DeferJs.STATES.SCRIPTS_DONE) {
-    func.call(elem);
-    return;
+deferJsNs.DeferJs.prototype.addDeferredOnloadListeners = function() {
+  var onloadDeferredElements;
+  if (document.querySelectorAll) {
+    onloadDeferredElements = document.querySelectorAll(
+        '[' + deferJsNs.DeferJs.PAGESPEED_ONLOAD + ']');
   }
+  for (var i = 0; i < onloadDeferredElements.length; i++) {
+    var elem = onloadDeferredElements.item(i);
+    var handlerStr = elem.getAttribute(deferJsNs.DeferJs.PAGESPEED_ONLOAD);
+    var functionStr = 'var psaFunc=function() {' + handlerStr + '};';
+    // Define a function with the string above.
+    window['eval'].call(window, functionStr);
+    if (typeof window['psaFunc'] != 'function') {
+      this.log('Function is not defined', new Error(''));
+      continue;
+    }
 
-  psaAddEventListener(elem, 'onload', func);
+    psaAddEventListener(elem, 'onload', window['psaFunc']);
+  }
 };
-deferJsNs.DeferJs.prototype['addOnloadListeners'] =
-    deferJsNs.DeferJs.prototype.addOnloadListeners;
 
 /**
  * Adds functions that run as the first thing in run().
@@ -1253,7 +1272,7 @@ deferJsNs.DeferJs.prototype.restoreAddEventListeners = function() {
 
 /**
  * Registers an event with the element.
- * @param {!(Window|Element|Document)} elem Element which is registering for the
+ * @param {!(Window|Node|Document)} elem Element which is registering for the
  * event.
  * @param {!string} eventName Name of the event.
  * @param {(Function|EventListener|function())} func Event handler.
