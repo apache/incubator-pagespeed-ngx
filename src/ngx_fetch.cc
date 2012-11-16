@@ -402,8 +402,6 @@ done:
     }
 
     ngx_resolve_name_done(resolver_ctx);
-    // resolver_ctx_ = NULL;
-
 
     if (fetch->InitRquest() != NGX_OK) {
       // TODO : LOG;
@@ -479,7 +477,7 @@ done:
     pc.socklen = sizeof(struct sockaddr_in);
     pc.name = &url_.host;
 
-    // just return NGX_OK
+    // get callback is dump function, it just returns NGX_OK
     pc.get = ngx_event_get_peer;
     pc.rcvbuf = -1;
     pc.local = NULL;
@@ -495,7 +493,7 @@ done:
       return NGX_ERROR;
     }
 
-      //TODO set write timeout when rc == NGX_AGAIN
+      //TODO: set write timeout when rc == NGX_AGAIN
       return rc;
   }
 
@@ -511,10 +509,10 @@ done:
       if (n >= 0) {
       out->pos += n;
       } else if (n == NGX_AGAIN) {
-      // add send timeout, 10 only used for test
-      // ngx_add_timer(c->write, 10);
+        // add send timeout, 10 only used for test
+        // ngx_add_timer(c->write, 10);
         if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
-          // write event can not be hook
+          // write event can not be hooked
           fetch->CallbackDone(false);
         }
         return;
@@ -566,10 +564,8 @@ done:
 
     // there is a timer for every fetch, read or write timer is need??
     if (rev->active) {
-    // 10 is right;
+    // is 10 OK?
       ngx_add_timer(rev, 10);
-    } else if (rev->timer_set) {
-      ngx_del_timer(rev);
     }
   }
 

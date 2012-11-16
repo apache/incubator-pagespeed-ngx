@@ -19,10 +19,14 @@
 #ifndef NGX_REWRITE_DRIVER_FACTORY_H_
 #define NGX_REWRITE_DRIVER_FACTORY_H_
 
+#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/simple_stats.h"
+#include "apr_pools.h"
 
 namespace net_instaweb {
+
+class SlowWorker;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
@@ -35,13 +39,21 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   virtual MessageHandler* DefaultMessageHandler();
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
+  virtual NamedLockManager* DefaultLockManager();
   virtual void SetupCaches(ServerContext* resource_manager);
   virtual Statistics* statistics();
+  // Create a new RewriteOptions.  In this implementation it will be an
+  // NgxRewriteOptions.
+  virtual RewriteOptions* NewRewriteOptions();
+
+  SlowWorker* slow_worker() { return slow_worker_.get(); }
 
  private:
   SimpleStats simple_stats_;
   Timer* timer_;
-  
+  apr_pool_t* pool_;
+  scoped_ptr<SlowWorker> slow_worker_;
+
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

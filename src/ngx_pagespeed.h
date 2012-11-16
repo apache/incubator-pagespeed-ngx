@@ -25,6 +25,18 @@ extern "C" {
 
 #include "net/instaweb/util/public/string_util.h"
 
-StringPiece ngx_http_pagespeed_str_to_string_piece(ngx_str_t* s);
+StringPiece
+ngx_http_pagespeed_str_to_string_piece(ngx_str_t s);
+
+// s1: ngx_str_t, s2: string literal
+// true if they're equal, false otherwise
+#define STR_EQ_LITERAL(s1, s2)          \
+    ((s1).len == (sizeof(s2)-1) &&      \
+     ngx_strncmp((s1).data, (s2), (sizeof(s2)-1)) == 0)
+
+// Allocate memory out of the pool for the string piece, and copy the contents
+// over.  Returns NULL if we can't get memory.
+char*
+ngx_http_string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
 
 #endif  // NGX_PAGESPEED_H_
