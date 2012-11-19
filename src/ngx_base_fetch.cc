@@ -49,6 +49,9 @@ void NgxBaseFetch::PopulateResponseHeaders() {
       HttpAttributes::kContentType,
       ngx_http_pagespeed_str_to_string_piece(
           request_->headers_out.content_type));
+
+  //TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
+  response_headers()->ComputeCaching();
 }
 
 template<class HeadersT>
