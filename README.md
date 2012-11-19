@@ -127,6 +127,11 @@ you need to first build and configure nginx.  Set it up something like:
         server_name localhost;
         root /path/to/mod_pagespeed/src/install;
         index index.html;
+
+        location /mod_pagespeed_test/no_cache/ {
+          add_header Cache-Control no-cache;
+        }
+
         ...
       }
     }
