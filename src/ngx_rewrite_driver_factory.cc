@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -76,6 +77,9 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   slow_worker_->ShutDown();
 }
+
+const char NgxRewriteDriverFactory::kStaticJavaScriptPrefix[] =
+    "/ngx_pagespeed_static/";
 
 Hasher* NgxRewriteDriverFactory::NewHasher() {
   return new MD5Hasher;
@@ -165,6 +169,11 @@ Statistics* NgxRewriteDriverFactory::statistics() {
 
 RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
   return new NgxRewriteOptions();
+}
+
+void NgxRewriteDriverFactory::InitStaticJavascriptManager(
+    StaticJavascriptManager* static_js_manager) {
+  static_js_manager->set_library_url_prefix(kStaticJavaScriptPrefix);
 }
 
 }  // namespace net_instaweb

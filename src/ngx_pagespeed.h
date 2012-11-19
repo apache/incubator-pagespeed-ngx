@@ -25,6 +25,14 @@ extern "C" {
 
 #include "net/instaweb/util/public/string_util.h"
 
+// Allocate chain links and buffers from the supplied pool, and copy over the
+// data from the string piece.  If the string piece is empty, return
+// NGX_DECLINED immediately unless send_last_buf.
+ngx_int_t
+ngx_http_pagespeed_string_piece_to_buffer_chain(
+    ngx_pool_t* pool, StringPiece sp, ngx_chain_t** link_ptr,
+    bool send_last_buf);
+
 StringPiece
 ngx_http_pagespeed_str_to_string_piece(ngx_str_t s);
 

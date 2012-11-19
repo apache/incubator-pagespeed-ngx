@@ -27,9 +27,12 @@
 namespace net_instaweb {
 
 class SlowWorker;
+class StaticJavaScriptManager;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
+  static const char kStaticJavaScriptPrefix[];
+
   NgxRewriteDriverFactory();
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
@@ -45,6 +48,9 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Create a new RewriteOptions.  In this implementation it will be an
   // NgxRewriteOptions.
   virtual RewriteOptions* NewRewriteOptions();
+  // Initializes the StaticJavascriptManager.
+  virtual void InitStaticJavascriptManager(
+      StaticJavascriptManager* static_js_manager);
 
   SlowWorker* slow_worker() { return slow_worker_.get(); }
 
