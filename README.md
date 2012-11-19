@@ -132,6 +132,14 @@ you need to first build and configure nginx.  Set it up something like:
           add_header Cache-Control no-cache;
         }
 
+        location /mod_pagespeed_test/compressed/ {
+          add_header Cache-Control max-age=600;
+          add_header Content-Encoding gzip;
+          types {
+            text/javascript custom_ext;
+          }
+        }
+
         ...
       }
     }
