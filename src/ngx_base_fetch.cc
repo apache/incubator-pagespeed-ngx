@@ -41,6 +41,8 @@ void NgxBaseFetch::PopulateResponseHeaders() {
   CopyHeadersFromTable<ResponseHeaders>(&request_->headers_out.headers,
                                         response_headers());
 
+  response_headers()->set_status_code(request_->headers_out.status);
+
   // Manually copy over the content type because it's not included in
   // request_->headers_out.headers.
   response_headers()->Add(
