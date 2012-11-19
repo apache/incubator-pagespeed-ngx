@@ -1342,12 +1342,16 @@ apr_memcache2_multgetp(apr_memcache2_t *mc,
         }
     }
 
+    int ahc = apr_hash_count(server_queries) > 0;
+    pollfds=0;
+    rv = 0;
     /* create polling structures */
-    pollfds = apr_pcalloc(temp_pool, apr_hash_count(server_queries) * sizeof(apr_pollfd_t));
-
-    rv = apr_pollset_create(&pollset, apr_hash_count(server_queries), temp_pool, 0);
-
-    if (rv != APR_SUCCESS) {
+    if (ahc>0) {
+      pollfds = apr_pcalloc(temp_pool, apr_hash_count(server_queries) * sizeof(apr_pollfd_t));
+      rv = apr_pollset_create(&pollset, apr_hash_count(server_queries), temp_pool, 0);
+    }
+    
+    if (ahc > 0 && rv != APR_SUCCESS) {
         query_hash_index = apr_hash_first(temp_pool, server_queries);
 
         while (query_hash_index) {
