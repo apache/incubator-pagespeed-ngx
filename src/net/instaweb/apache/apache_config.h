@@ -216,6 +216,10 @@ class ApacheConfig : public RewriteOptions {
     return slurping_enabled() && slurp_read_only();
   }
 
+  bool experimental_fetch_from_mod_spdy() const {
+    return experimental_fetch_from_mod_spdy_.value();
+  }
+
   // Make an identical copy of these options and return it.
   virtual ApacheConfig* Clone() const;
 
@@ -320,6 +324,7 @@ class ApacheConfig : public RewriteOptions {
   Option<bool> use_shared_mem_locking_;
   Option<bool> slurp_read_only_;
   Option<bool> rate_limit_background_fetches_;
+  Option<bool> experimental_fetch_from_mod_spdy_;
 
   Option<int> memcached_threads_;
 

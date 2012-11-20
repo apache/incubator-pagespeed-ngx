@@ -35,6 +35,7 @@
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -139,6 +140,8 @@ const char kModPagespeedCssPreserveURLs[] = "ModPagespeedCssPreserveURLs";
 const char kModPagespeedCustomFetchHeader[] = "ModPagespeedCustomFetchHeader";
 const char kModPagespeedDangerPermitFetchFromUnknownHosts[] =
     "ModPagespeedDangerPermitFetchFromUnknownHosts";
+const char kModPagespeedExperimentalFetchFromModSpdy[] =
+    "ModPagespeedExperimentalFetchFromModSpdy";
 const char kModPagespeedDisableFilters[] = "ModPagespeedDisableFilters";
 const char kModPagespeedDisableForBots[] = "ModPagespeedDisableForBots";
 const char kModPagespeedDisallow[] = "ModPagespeedDisallow";
@@ -1059,6 +1062,8 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
       NULL,                          // predecessors
       NULL,                          // successors
       APR_HOOK_MIDDLE);              // position
+
+  ModSpdyFetcher::Initialize();
 }
 
 apr_status_t pagespeed_child_exit(void* data) {
@@ -1814,6 +1819,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedDangerPermitFetchFromUnknownHosts,
         "Disable security checks that prohibit fetching from hostnames "
         "mod_pagespeed does not know about"),
+  APACHE_CONFIG_OPTION(kModPagespeedExperimentalFetchFromModSpdy,
+        "Under construction. Do not use"),
   APACHE_CONFIG_OPTION(kModPagespeedFetcherTimeoutMs,
         "Set internal fetcher timeout in milliseconds"),
   APACHE_CONFIG_OPTION(kModPagespeedFetchProxy, "Set the fetch proxy"),

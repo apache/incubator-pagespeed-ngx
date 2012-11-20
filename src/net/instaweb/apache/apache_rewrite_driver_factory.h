@@ -277,6 +277,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // a) Adds custom headers when configured in RewriteOptions.
   // b) Route requests directly to this very server when they are not
   //    configured to be external.
+  // c) Route requests to mod_spdy's slave connection code if configured to.
   void ApplySessionFetchers(ApacheResourceManager* manager,
                             RewriteDriver* driver, request_rec* req);
 

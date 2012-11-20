@@ -40,6 +40,7 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/loopback_route_fetcher.h"
+#include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -849,6 +850,14 @@ void ApacheRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
 
 void ApacheRewriteDriverFactory::ApplySessionFetchers(
     ApacheResourceManager* manager, RewriteDriver* driver, request_rec* req) {
+  const ApacheConfig* conf = ApacheConfig::DynamicCast(driver->options());
+  CHECK(conf != NULL);
+
+  if (conf->experimental_fetch_from_mod_spdy() &&
+      ModSpdyFetcher::ShouldUseOn(req)) {
+    driver->SetSessionFetcher(new ModSpdyFetcher(req, driver));
+  }
+
   if (driver->options()->num_custom_fetch_headers() > 0) {
     driver->SetSessionFetcher(new AddHeadersFetcher(driver->options(),
                                                     driver->async_fetcher()));

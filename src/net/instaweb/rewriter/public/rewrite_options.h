@@ -250,6 +250,7 @@ class RewriteOptions {
     kCacheFlushFilename,
     kCacheFlushPollIntervalSec,
     kCollectRefererStatistics,
+    kExperimentalFetchFromModSpdy,
     kFetcherProxy,
     kFetcherTimeOutMs,
     kFileCacheCleanInodeLimit,

@@ -112,6 +112,7 @@ struct OptionName {
 "CacheFlushPollIntervalSec",             RewriteOptions::kCacheFlushPollIntervalSec
 "CollectRefererStatistics",              RewriteOptions::kCollectRefererStatistics
 "DomainRewriteHyperlinks",               RewriteOptions::kDomainRewriteHyperlinks
+"ExperimentalFetchFromModSpdy",          RewriteOptions::kExperimentalFetchFromModSpdy
 "FetchProxy",                            RewriteOptions::kFetcherProxy
 "FetcherTimeOutMs",                      RewriteOptions::kFetcherTimeOutMs
 "FileCacheCleanIntervalMs",              RewriteOptions::kFileCacheCleanIntervalMs

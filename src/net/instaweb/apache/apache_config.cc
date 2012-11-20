@@ -119,6 +119,8 @@ void ApacheConfig::AddProperties() {
   add_option(kDefaultCacheFlushIntervalSec,
              &ApacheConfig::cache_flush_poll_interval_sec_, "acfpi",
              RewriteOptions::kCacheFlushPollIntervalSec);
+  add_option(false, &ApacheConfig::experimental_fetch_from_mod_spdy_, "effms",
+             RewriteOptions::kExperimentalFetchFromModSpdy);
 
   MergeSubclassProperties(apache_properties_);
   ApacheConfig config;

@@ -688,7 +688,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(117, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(118, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AjaxRewritingEnabled",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAjaxRewritingEnabled));
@@ -928,6 +928,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("CollectRefererStatistics",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kCollectRefererStatistics));
+  EXPECT_STREQ("ExperimentalFetchFromModSpdy",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kExperimentalFetchFromModSpdy));
   EXPECT_STREQ("FetchProxy",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kFetcherProxy));
