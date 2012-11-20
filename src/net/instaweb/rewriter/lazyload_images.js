@@ -263,12 +263,12 @@ pagespeed.LazyloadImages.prototype.loadIfVisible = function(element) {
         element.removeAttribute('onload');
         element.removeAttribute('pagespeed_lazy_src');
         element.removeAttribute('pagespeed_lazy_replaced_functions');
-        // Set the src back to the original.
-        element.src = data_src;
         // If there was a next sibling, insert element before it.
         if (parent_node) {
           parent_node.insertBefore(element, next_sibling);
         }
+        // Set the src back to the original.
+        element.src = data_src;
       } else {
         context.deferred_.push(element);
       }
