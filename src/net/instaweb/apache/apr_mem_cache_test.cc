@@ -67,25 +67,32 @@ class AprMemCacheTest : public CacheTestBase {
     atexit(apr_terminate);
   }
 
+  // Establishes a connection to a memcached instance; either one
+  // on localhost:$MEMCACHED_PORT or, if non-empty, the one in
+  // server_spec_.
   bool ConnectToMemcached(bool use_md5_hasher) {
     // See install/run_program_with_memcached.sh where this environment
     // variable is established during development testing flows.
-    const char* kPortString = getenv("MEMCACHED_PORT");
-    if (kPortString == NULL) {
-      LOG(ERROR) << "AprMemCache tests are skipped because env var "
-                 << "$MEMCACHED_PORT is not set.  Set that to the port "
-                 << "number where memcached is running to enable the "
-                 << "tests.  See install/run_program_with_memcached.sh";
-      // Does not fail the test.
-      return false;
+    if (server_spec_.empty()) {
+      const char* kPortString = getenv("MEMCACHED_PORT");
+      if (kPortString == NULL) {
+        LOG(ERROR) << "AprMemCache tests are skipped because env var "
+                   << "$MEMCACHED_PORT is not set.  Set that to the port "
+                   << "number where memcached is running to enable the "
+                   << "tests.  See install/run_program_with_memcached.sh";
+        // Does not fail the test.
+        return false;
+      }
+      server_spec_ = StrCat("localhost:", kPortString);
     }
-
-    GoogleString servers = StrCat("localhost:", kPortString);
     Hasher* hasher = &mock_hasher_;
     if (use_md5_hasher) {
       hasher = &md5_hasher_;
     }
-    servers_.reset(new AprMemCache(servers, 5, hasher, &statistics_, &timer_,
+    servers_.reset(new AprMemCache(server_spec_, 5, hasher, &statistics_,
+                                   &timer_, &handler_));
+    cache_.reset(new FallbackCache(servers_.get(), lru_cache_.get(),
+                                   kTestValueSizeThreshold,
                                    &handler_));
 
     // apr_memcache actually lazy-connects to memcached, it seems, so
@@ -93,17 +100,9 @@ class AprMemCacheTest : public CacheTestBase {
     // make sure memcached is actually up, we have to make an API
     // call, such as GetStatus.
     GoogleString buf;
-    if (!servers_->Connect() || !servers_->GetStatus(&buf)) {
-      // $MEMCACHED_PORT was specified, but did not work, so fail the test.
-      EXPECT_TRUE(false) << "please start 'memcached -p " << kPortString << "'";
-      return false;
-    }
-
-    cache_.reset(new FallbackCache(servers_.get(), lru_cache_.get(),
-                                   kTestValueSizeThreshold,
-                                   &handler_));
-    return true;
+    return servers_->Connect() && servers_->GetStatus(&buf);
   }
+
   virtual CacheInterface* Cache() { return cache_.get(); }
 
   GoogleMessageHandler handler_;
@@ -114,13 +113,13 @@ class AprMemCacheTest : public CacheTestBase {
   scoped_ptr<LRUCache> lru_cache_;
   scoped_ptr<AprMemCache> servers_;
   scoped_ptr<FallbackCache> cache_;
+  GoogleString server_spec_;
 };
 
 // Simple flow of putting in an item, getting it, deleting it.
 TEST_F(AprMemCacheTest, PutGetDelete) {
-  if (!ConnectToMemcached(true)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
 
   CheckPut("Name", "Value");
   CheckGet("Name", "Value");
@@ -135,17 +134,28 @@ TEST_F(AprMemCacheTest, PutGetDelete) {
 }
 
 TEST_F(AprMemCacheTest, MultiGet) {
-  if (!ConnectToMemcached(true)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
   TestMultiGet();
   EXPECT_EQ(0, lru_cache_->size_bytes()) << "fallback not used.";
 }
 
+TEST_F(AprMemCacheTest, MultiGetWithoutServer) {
+  server_spec_ = "localhost:99999";
+  ASSERT_FALSE(ConnectToMemcached(true)) << "localhost:99999 should not exist";
+
+  Callback* n0 = AddCallback();
+  Callback* not_found = AddCallback();
+  Callback* n1 = AddCallback();
+  IssueMultiGet(n0, "n0", not_found, "not_found", n1, "n1");
+  WaitAndCheckNotFound(n0);
+  WaitAndCheckNotFound(not_found);
+  WaitAndCheckNotFound(n1);
+}
+
 TEST_F(AprMemCacheTest, BasicInvalid) {
-  if (!ConnectToMemcached(true)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
 
   // Check that we honor callback veto on validity.
   CheckPut("nameA", "valueA");
@@ -159,9 +169,8 @@ TEST_F(AprMemCacheTest, BasicInvalid) {
 }
 
 TEST_F(AprMemCacheTest, SizeTest) {
-  if (!ConnectToMemcached(true)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
 
   for (int x = 0; x < 10; ++x) {
     for (int i = kJustUnderThreshold/2; i < kJustUnderThreshold - 10; ++i) {
@@ -175,9 +184,9 @@ TEST_F(AprMemCacheTest, SizeTest) {
 }
 
 TEST_F(AprMemCacheTest, StatsTest) {
-  if (!ConnectToMemcached(true)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
+
   GoogleString buf;
   ASSERT_TRUE(servers_->GetStatus(&buf));
   EXPECT_TRUE(buf.find("memcached server localhost:") != GoogleString::npos);
@@ -189,9 +198,9 @@ TEST_F(AprMemCacheTest, StatsTest) {
 }
 
 TEST_F(AprMemCacheTest, HashCollision) {
-  if (!ConnectToMemcached(false)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(false))
+      << "Please start memcached on " << server_spec_;
+
   CheckPut("N1", "V1");
   CheckGet("N1", "V1");
 
@@ -205,9 +214,8 @@ TEST_F(AprMemCacheTest, HashCollision) {
 }
 
 TEST_F(AprMemCacheTest, JustUnderThreshold) {
-  if (!ConnectToMemcached(true)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
   const GoogleString kValue(kJustUnderThreshold, 'a');
   const char kKey[] = "just_under_threshold";
   CheckPut(kKey, kValue);
@@ -218,9 +226,8 @@ TEST_F(AprMemCacheTest, JustUnderThreshold) {
 // Basic operation with huge values, only one of which will fit
 // in the fallback cache at a time.
 TEST_F(AprMemCacheTest, HugeValue) {
-  if (!ConnectToMemcached(true)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
   const GoogleString kValue(kHugeWriteSize, 'a');
   const char kKey1[] = "large1";
   CheckPut(kKey1, kValue);
@@ -243,9 +250,8 @@ TEST_F(AprMemCacheTest, HugeValue) {
 }
 
 TEST_F(AprMemCacheTest, LargeValueMultiGet) {
-  if (!ConnectToMemcached(true)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
   const GoogleString kLargeValue1(kLargeWriteSize, 'a');
   const char kKey1[] = "large1";
   CheckPut(kKey1, kLargeValue1);
@@ -274,9 +280,8 @@ TEST_F(AprMemCacheTest, LargeValueMultiGet) {
 }
 
 TEST_F(AprMemCacheTest, MultiServerFallback) {
-  if (!ConnectToMemcached(true)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
 
   // Make another connection to the same memcached, but with a different
   // fallback cache.
@@ -302,9 +307,8 @@ TEST_F(AprMemCacheTest, MultiServerFallback) {
 }
 
 TEST_F(AprMemCacheTest, KeyOver64kDropped) {
-  if (!ConnectToMemcached(true)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
 
   // We set our testing byte thresholds too low to trigger the case where
   // the key-value encoding fails, so make an alternate fallback cache
@@ -331,9 +335,9 @@ TEST_F(AprMemCacheTest, KeyOver64kDropped) {
 // Note: we do not expect to see ridiculously large keys; we are just
 // testing for corner cases here.
 TEST_F(AprMemCacheTest, LargeKeyOverThreshold) {
-  if (!ConnectToMemcached(true)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
+
   const GoogleString kKey(kLargeWriteSize, 'a');
   const char kValue[] = "value";
   CheckPut(kKey, kValue);
@@ -342,9 +346,8 @@ TEST_F(AprMemCacheTest, LargeKeyOverThreshold) {
 }
 
 TEST_F(AprMemCacheTest, HealthCheck) {
-  if (!ConnectToMemcached(true)) {
-    return;
-  }
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
 
   const int kNumIters = 5;  // Arbitrary number of repetitions.
   for (int i = 0; i < kNumIters; ++i) {

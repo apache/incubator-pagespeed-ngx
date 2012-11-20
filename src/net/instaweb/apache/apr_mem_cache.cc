@@ -236,6 +236,7 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
   apr_status_t status = apr_memcache2_multgetp(memcached_, temp_pool, data_pool,
                                                hash_table);
   apr_pool_destroy(temp_pool);
+  bool error_recorded = false;
   if (status == APR_SUCCESS) {
     for (int i = 0, n = request->size(); i < n; ++i) {
       CacheInterface::KeyCallback* key_callback = &(*request)[i];
@@ -254,7 +255,11 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
                                               "MultiGet", callback);
       } else {
         if (status != APR_NOTFOUND) {
-          RecordError();
+          if (!error_recorded) {
+            // Only count 1 error towards threshold on MultiGet failure.
+            error_recorded = true;
+            RecordError();
+          }
           char buf[kStackBufferSize];
           apr_strerror(status, buf, sizeof(buf));
           message_handler_->Message(
@@ -267,9 +272,17 @@ void AprMemCache::MultiGet(MultiGetRequest* request) {
         ValidateAndReportResult(key, CacheInterface::kNotFound, callback);
       }
     }
+    delete request;
+  } else {
+    RecordError();
+    char buf[kStackBufferSize];
+    apr_strerror(status, buf, sizeof(buf));
+    message_handler_->Message(
+        kError, "AprMemCache::MultiGet error: %s (%d) on %d keys",
+        buf, status, static_cast<int>(request->size()));
+    ReportMultiGetNotFound(request);
   }
   apr_pool_destroy(data_pool);
-  delete request;
 }
 
 void AprMemCache::PutHelper(const GoogleString& key,

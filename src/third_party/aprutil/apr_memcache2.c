@@ -835,6 +835,22 @@ apr_memcache2_replace(apr_memcache2_t *mc,
 
 }
 
+/*
+ * Parses a decimal size from size_str, returning the value in *size.
+ * Returns 1 if parsing was successful, 0 if parsing failed.
+ */
+static int parse_size(const char *size_str, apr_size_t *size) {
+    char *endptr = NULL;
+    long size_as_long = strtol(size_str, &endptr, 10);
+    if ((endptr == NULL) || (endptr == size_str) || (size_as_long < 0) ||
+        ((*endptr != '\0') && (*endptr != '\r') && (*endptr != ' ') &&
+         (*endptr != '\n'))) {
+        return 0;
+    }
+    *size = size_as_long;
+    return 1;
+}
+
 APU_DECLARE(apr_status_t)
 apr_memcache2_getp(apr_memcache2_t *mc,
                   apr_pool_t *p,
@@ -881,11 +897,9 @@ apr_memcache2_getp(apr_memcache2_t *mc,
     if (strncmp(MS_VALUE, conn->buffer, MS_VALUE_LEN) == 0) {
         char *flags;
         char *length;
-        char *start;
         char *last;
         apr_size_t len = 0;
 
-        start = conn->buffer;
         flags = apr_strtok(conn->buffer, " ", &last);
         flags = apr_strtok(NULL, " ", &last);
         flags = apr_strtok(NULL, " ", &last);
@@ -895,11 +909,7 @@ apr_memcache2_getp(apr_memcache2_t *mc,
         }
 
         length = apr_strtok(NULL, " ", &last);
-        if (length) {
-            len = atoi(length);
-        }
-
-        if (len < 0)  {
+        if (length && !parse_size(length, &len)) {
             *new_length = 0;
             *baton = NULL;
         }
@@ -1254,6 +1264,7 @@ apr_memcache2_multgetp(apr_memcache2_t *mc,
     apr_uint32_t hash;
     apr_size_t written;
     apr_size_t klen;
+    apr_size_t server_count;
 
     apr_memcache2_value_t* value;
     apr_hash_index_t* value_hash_index;
@@ -1341,9 +1352,13 @@ apr_memcache2_multgetp(apr_memcache2_t *mc,
     }
 
     /* create polling structures */
-    pollfds = apr_pcalloc(temp_pool, apr_hash_count(server_queries) * sizeof(apr_pollfd_t));
+    server_count = apr_hash_count(server_queries);
+    if (server_count == 0) {
+        return APR_EGENERAL;
+    }
+    pollfds = apr_pcalloc(temp_pool, server_count * sizeof(apr_pollfd_t));
 
-    rv = apr_pollset_create(&pollset, apr_hash_count(server_queries), temp_pool, 0);
+    rv = apr_pollset_create(&pollset, server_count, temp_pool, 0);
 
     if (rv != APR_SUCCESS) {
         query_hash_index = apr_hash_first(temp_pool, server_queries);
@@ -1422,27 +1437,22 @@ apr_memcache2_multgetp(apr_memcache2_t *mc,
                char *key;
                char *flags;
                char *length;
-               char *start;
                char *last;
                char *data;
                apr_size_t len = 0;
+               int length_ok = 1;
 
-               start = conn->buffer;
                key = apr_strtok(conn->buffer, " ", &last); /* just the VALUE, ignore */
                key = apr_strtok(NULL, " ", &last);
                flags = apr_strtok(NULL, " ", &last);
 
 
                length = apr_strtok(NULL, " ", &last);
-               if (length) {
-                   len = atoi(length);
-               }
-
+               length_ok = (length == NULL) || parse_size(length, &len);
                value = apr_hash_get(values, key, strlen(key));
 
-
                if (value) {
-                   if (len >= 0)  {
+                   if (length_ok) {
                        apr_bucket_brigade *bbb;
                        apr_bucket *e;
 
