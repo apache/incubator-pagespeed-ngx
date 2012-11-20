@@ -158,10 +158,13 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     CachedResult* result = output_partition(0);
     ResourceSlot* output_slot = slot(0).get();
     if (!result->optimizable()) {
-      if (result->canonicalize_url()) {
+      if (result->canonicalize_url() && output_slot->CanDirectSetUrl()) {
         // Use the canonical library url and disable the later render step.
         // This permits us to patch in a library url that doesn't correspond to
         // the OutputResource naming scheme.
+        // Note that we can't direct set the url during AJAX rewriting, but we
+        // have computed and cached the library match for any subsequent visit
+        // to the page.
         output_slot->DirectSetUrl(result->url());
       }
       return;

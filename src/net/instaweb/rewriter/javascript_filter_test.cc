@@ -362,6 +362,31 @@ TEST_F(JavascriptFilterTest, ServeRewrittenLibrary) {
                    GenerateHtml(kLibraryUrl));
 }
 
+TEST_F(JavascriptFilterTest, IdentifyAjaxLibrary) {
+  // If ajax rewriting is enabled, we won't minify a library when it is fetched,
+  // but it will still be replaced on the containing page.
+  RegisterLibrary();
+  options()->set_ajax_rewriting_enabled(true);
+  options()->EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
+  rewrite_driver_->AddFilters();
+  InitTest(100);
+  GoogleString url = StrCat(kTestDomain, kOrigJsName);
+  // Do resource fetch for js; this will cause it to be filtered in the
+  // background.
+  GoogleString content;
+  EXPECT_TRUE(FetchResourceUrl(url, &content));
+  EXPECT_EQ(kJsData, content);
+  // A second resource fetch for the js will still obtain the unminified
+  // content, since we don't save the minified version for identified libraries.
+  content.clear();
+  EXPECT_TRUE(FetchResourceUrl(url, &content));
+  EXPECT_EQ(kJsData, content);
+  // But rewriting the page will see the js url.
+  ValidateExpected("IdentifyAjaxLibrary",
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(kLibraryUrl));
+}
+
 TEST_F(JavascriptFilterTest, InvalidInputMimetype) {
   InitFilters();
   // Make sure we can rewrite properly even when input has corrupt mimetype.

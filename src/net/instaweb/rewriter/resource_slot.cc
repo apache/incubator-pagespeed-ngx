@@ -37,7 +37,7 @@ void ResourceSlot::SetResource(const ResourcePtr& resource) {
 
 void ResourceSlot::DirectSetUrl(const StringPiece& url) {
   LOG(DFATAL) << "Trying to direct-set a URL on a slot that does not "
-                 "support it";
+      "support it: " << LocationString();
 }
 
 RewriteContext* ResourceSlot::LastContext() const {
