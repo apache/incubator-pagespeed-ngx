@@ -1066,10 +1066,10 @@ ngx_int_t ngx_http_pagespeed_static_handler(ngx_http_request_t* r) {
       strlen(net_instaweb::NgxRewriteDriverFactory::kStaticJavaScriptPrefix));
   StringPiece file_contents;
   StringPiece cache_header;
-  bool ok = cfg->server_context->static_javascript_manager()->GetJsSnippet(
+  bool found = cfg->server_context->static_javascript_manager()->GetJsSnippet(
       file_name, &file_contents, &cache_header);
-  if (!ok) {
-    return NGX_ERROR;
+  if (!found) {
+    return NGX_DECLINED;
   }
 
   // Set and send headers.
