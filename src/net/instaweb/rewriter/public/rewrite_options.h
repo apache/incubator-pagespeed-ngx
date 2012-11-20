@@ -458,6 +458,7 @@ class RewriteOptions {
   static const int64 kDefaultMaxHtmlCacheTimeMs;
   static const int64 kDefaultMaxHtmlParseBytes;
   static const int64 kDefaultMaxImageBytesForWebpInCss;
+  static const int64 kDefaultMetadataInputErrorsCacheTtlMs;
   static const int64 kDefaultMinResourceCacheTimeToRewriteMs;
   static const int64 kDefaultCacheInvalidationTimestamp;
   static const int64 kDefaultIdleFlushTimeMs;
@@ -1268,6 +1269,13 @@ class RewriteOptions {
   }
   int64 metadata_cache_staleness_threshold_ms() const {
     return metadata_cache_staleness_threshold_ms_.value();
+  }
+
+  void set_metadata_input_errors_cache_ttl_ms(int64 x) {
+    set_option(x, &metadata_input_errors_cache_ttl_ms_);
+  }
+  int64 metadata_input_errors_cache_ttl_ms() const {
+    return metadata_input_errors_cache_ttl_ms_.value();
   }
 
   const BeaconUrl& beacon_url() const { return beacon_url_.value(); }
@@ -2507,6 +2515,9 @@ class RewriteOptions {
   // The maximum time beyond expiry for which a metadata cache entry may be
   // used.
   Option<int64> metadata_cache_staleness_threshold_ms_;
+
+  // The metadata cache ttl for input resources which are 4xx errors.
+  Option<int64> metadata_input_errors_cache_ttl_ms_;
 
   // The number of milliseconds of cache TTL we assign to resources that
   // are "likely cacheable" (e.g. images, js, css, not html) and have no

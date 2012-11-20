@@ -22,7 +22,7 @@ package net_instaweb;
 
 
 // This proto stores all information related to latency.
-// Next id for TimingInfo : 7
+// Next id for TimingInfo : 9
 message TimingInfo  {
   // Local cache lookup time in ms.
   optional int64 cache1_ms = 1;
@@ -36,6 +36,12 @@ message TimingInfo  {
   optional int64 time_to_first_byte_ms = 5;
   // Absolute time when the request started, in ms since 1970.
   optional int64 request_start_ms = 6;
+  // Time from the start of the request to when parsing begins. Note that this
+  // is only set for HTML requests that are parsed.
+  optional int64 time_to_start_parse_ms = 7;
+  // Time from the start of the request to when the fetch is triggered. Note
+  // that this is only set for requests that require a fetch.
+  optional int64 time_to_start_fetch_ms = 8;
 }
 
 // This proto stores all Blink related information.

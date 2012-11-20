@@ -366,6 +366,9 @@ class ProxyFetch : public SharedAsyncFetch {
   // decide it is HTML.
   bool started_parse_;
 
+  // Has a call to RewriteDriver::ParseText been made yet.
+  bool parse_text_called_;
+
   // Tracks whether Done() has been called.
   bool done_called_;
 

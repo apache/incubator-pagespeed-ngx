@@ -292,6 +292,11 @@ DEFINE_int64(max_html_parse_bytes,
              "The maximum number of bytes in a html that we parse before "
              "redirecting to a page with no rewriting.");
 
+DEFINE_int64(
+    metadata_input_errors_cache_ttl_ms,
+    net_instaweb::RewriteOptions::kDefaultMetadataInputErrorsCacheTtlMs,
+    "The metadata cache ttl for input resources which are 4xx errors.");
+
 namespace net_instaweb {
 
 namespace {
@@ -367,6 +372,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("max_html_cache_time_ms")) {
     options->set_max_html_cache_time_ms(FLAGS_max_html_cache_time_ms);
+  }
+  if (WasExplicitlySet("metadata_input_errors_cache_ttl_ms")) {
+    options->set_metadata_input_errors_cache_ttl_ms(
+        FLAGS_metadata_input_errors_cache_ttl_ms);
   }
   if (WasExplicitlySet("min_resource_cache_time_to_rewrite_ms")) {
     options->set_min_resource_cache_time_to_rewrite_ms(

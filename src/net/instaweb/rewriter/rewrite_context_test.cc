@@ -1870,6 +1870,58 @@ TEST_F(RewriteContextTest, ReconstructChainedWrongHash) {
       << headers.ToString();
 }
 
+TEST_F(RewriteContextTest, NestedRewriteWith404) {
+  ResponseHeaders default_css_header;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  int64 now_ms = http_cache()->timer()->NowMs();
+  default_css_header.SetDateAndCaching(now_ms, 3 * kOriginTtlMs);
+  default_css_header.ComputeCaching();
+  SetFetchResponse(StrCat(kTestDomain, "x.css"), default_css_header,
+                   "a.css\n404.css\n");
+  SetFetchResponse404("404.css");
+  options()->set_implicit_cache_ttl_ms(kOriginTtlMs / 4);
+  options()->set_metadata_input_errors_cache_ttl_ms(kOriginTtlMs / 2);
+
+  const GoogleString kRewrittenUrl = Encode(
+      kTestDomain, NestedFilter::kFilterId, "0", "x.css", "css");
+  InitNestedFilter(NestedFilter::kExpectNestedRewritesSucceed);
+  nested_filter_->set_check_nested_rewrite_result(false);
+  InitResources();
+  ValidateExpected("async3", CssLinkHref("x.css"), CssLinkHref(kRewrittenUrl));
+
+  // Cache misses for the 3 resources, and 3 metadata lookups. We insert the 6
+  // items above, and the rewritten resource into cache.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(6, lru_cache()->num_misses());
+  EXPECT_EQ(7, lru_cache()->num_inserts());
+  EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+  ClearStats();
+
+  mock_timer()->AdvanceMs(kOriginTtlMs / 4);
+  ValidateExpected("async3", CssLinkHref("x.css"), CssLinkHref(kRewrittenUrl));
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+
+  ClearStats();
+  mock_timer()->AdvanceMs(kOriginTtlMs / 4);
+
+  SetupWaitFetcher();
+  ValidateNoChanges("async3", CssLinkHref("x.css"));
+  CallFetcherCallbacks();
+  // metadata (3). x.css and 404.css in the HTTP cache.
+  EXPECT_EQ(5, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  // Inserts in both metadata cache and HTTP cache for x.css and 404.css.
+  EXPECT_EQ(4, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_expirations()->Get());
+  ClearStats();
+}
+
 TEST_F(RewriteContextTest, NestedLogging) {
   ResponseHeaders default_css_header;
   SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);

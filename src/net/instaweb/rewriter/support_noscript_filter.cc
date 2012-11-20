@@ -90,6 +90,7 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
         case RewriteOptions::kDeferIframe:
         case RewriteOptions::kDeferJavascript:
         case RewriteOptions::kDetectReflowWithDeferJavascript:
+        case RewriteOptions::kSplitHtml:
           filter_enabled = rewrite_driver_->UserAgentSupportsJsDefer();
           break;
         case RewriteOptions::kDelayImages:

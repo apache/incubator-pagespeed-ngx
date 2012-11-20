@@ -107,6 +107,8 @@ const int64 RewriteOptions::kDefaultCacheInvalidationTimestamp = -1;
 const int64 RewriteOptions::kDefaultFlushBufferLimitBytes = 100 * 1024;
 const int64 RewriteOptions::kDefaultIdleFlushTimeMs = 10;
 const int64 RewriteOptions::kDefaultImplicitCacheTtlMs = 5 * Timer::kMinuteMs;
+const int64 RewriteOptions::kDefaultMetadataInputErrorsCacheTtlMs =
+    5 * Timer::kMinuteMs;
 
 const int64 RewriteOptions::kDefaultPrioritizeVisibleContentCacheTimeMs =
     30 * Timer::kMinuteMs;  // 30 mins.
@@ -269,6 +271,7 @@ const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
   RewriteOptions::kFlushSubresources,
   RewriteOptions::kLazyloadImages,
   RewriteOptions::kLocalStorageCache,
+  RewriteOptions::kSplitHtml,
   // We do not include kPrioritizeVisibleContent since we do not want to attach
   // SupportNoscriptFilter in the case of blink pcache miss pass-through, since
   // this response will not have any custom script inserted.
@@ -771,6 +774,8 @@ void RewriteOptions::AddProperties() {
   add_option("", &RewriteOptions::pre_connect_url_, "pcu");
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &RewriteOptions::metadata_cache_staleness_threshold_ms_, "mcst");
+  add_option(kDefaultMetadataInputErrorsCacheTtlMs,
+             &RewriteOptions::metadata_input_errors_cache_ttl_ms_, "mect");
   add_option(false,
              &RewriteOptions::RewriteOptions::apply_blink_if_no_families_,
              "abnf");

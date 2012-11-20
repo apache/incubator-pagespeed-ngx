@@ -185,6 +185,7 @@ class NestedFilter : public RewriteFilter {
                UpperCaseRewriter* upper_rewriter, bool expected_nested_result)
       : RewriteFilter(driver), upper_filter_(upper_filter),
         upper_rewriter_(upper_rewriter), chain_(false),
+        check_nested_rewrite_result_(true),
         expected_nested_rewrite_result_(expected_nested_result) {
     ClearStats();
   }
@@ -207,6 +208,10 @@ class NestedFilter : public RewriteFilter {
 
   void set_expected_nested_rewrite_result(bool x) {
     expected_nested_rewrite_result_ = x;
+  }
+
+  void set_check_nested_rewrite_result(bool x) {
+    check_nested_rewrite_result_ = x;
   }
 
  protected:
@@ -262,6 +267,8 @@ class NestedFilter : public RewriteFilter {
   UpperCaseRewriter* upper_rewriter_;
   bool chain_;
 
+  // Whether to check the result of the nested rewrites.
+  bool check_nested_rewrite_result_;
   // Whether we expect nested rewrites to be successful.
   bool expected_nested_rewrite_result_;
 

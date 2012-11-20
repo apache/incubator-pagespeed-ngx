@@ -116,9 +116,11 @@ void NestedFilter::Context::Harvest() {
   RewriteResult result = kRewriteFailed;
   GoogleString new_content;
 
-  for (int i = 0, n = nested_slots_.size(); i < n; ++i) {
-    EXPECT_EQ(filter_->expected_nested_rewrite_result(),
-              nested_slots_[i]->was_optimized());
+  if (filter_->check_nested_rewrite_result_) {
+    for (int i = 0, n = nested_slots_.size(); i < n; ++i) {
+      EXPECT_EQ(filter_->expected_nested_rewrite_result(),
+                nested_slots_[i]->was_optimized());
+    }
   }
 
   CHECK_EQ(1, num_slots());

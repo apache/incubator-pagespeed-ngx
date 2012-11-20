@@ -84,6 +84,8 @@ class UserAgentMatcher {
       const StringPiece& user_agent,
       const RequestHeaders* request_headers) const;
 
+  virtual bool SupportsSplitHtml(const StringPiece& user_agent) const;
+
  private:
   FastWildcardGroup supports_image_inlining_;
   FastWildcardGroup blink_desktop_whitelist_;

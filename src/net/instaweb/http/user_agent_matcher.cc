@@ -301,4 +301,8 @@ bool UserAgentMatcher::SupportsDnsPrefetchUsingRelPrefetch(
   return IsIe9(user_agent);
 }
 
+bool UserAgentMatcher::SupportsSplitHtml(const StringPiece& user_agent) const {
+  return SupportsJsDefer(user_agent);
+}
+
 }  // namespace net_instaweb

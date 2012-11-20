@@ -64,6 +64,15 @@ class Resource : public RefCounted<Resource> {
     kReportFailureIfNotCacheable,
   };
 
+  // This enumerates different states of the fetched response.
+  enum FetchResponseStatus {
+    kFetchStatusNotSet,
+    kFetchStatusOK,
+    kFetchStatusUncacheable,
+    kFetchStatus4xxError,
+    kFetchStatusOther,
+  };
+
   Resource(ServerContext* resource_manager, const ContentType* type);
 
   // Common methods across all deriviations
@@ -206,6 +215,14 @@ class Resource : public RefCounted<Resource> {
   void set_is_background_fetch(bool x) { is_background_fetch_ = x; }
   bool is_background_fetch() const { return is_background_fetch_; }
 
+  FetchResponseStatus fetch_response_status() {
+    return fetch_response_status_;
+  }
+
+  void set_fetch_response_status(FetchResponseStatus x) {
+    fetch_response_status_ = x;
+  }
+
  protected:
   virtual ~Resource();
   REFCOUNT_FRIEND_DECLARATION(Resource);
@@ -240,6 +257,9 @@ class Resource : public RefCounted<Resource> {
   HTTPValue fallback_value_;
 
  private:
+  // The status of the fetched response.
+  FetchResponseStatus fetch_response_status_;
+
   // Indicates whether we are trying to load the resource for a background
   // rewrite or to serve a user request.
   // Note that by default, we assume that every fetch is triggered in the

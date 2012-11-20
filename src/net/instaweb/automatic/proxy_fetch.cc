@@ -23,6 +23,8 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -374,6 +376,7 @@ ProxyFetch::ProxyFetch(
       cross_domain_(cross_domain),
       claims_html_(false),
       started_parse_(false),
+      parse_text_called_(false),
       done_called_(false),
       property_cache_callback_(property_cache_callback),
       original_content_fetch_(original_content_fetch),
@@ -887,6 +890,15 @@ void ProxyFetch::ExecuteQueued() {
       // below is done.
       waiting_for_flush_to_finish_ = true;
     }
+  }
+
+  if (!parse_text_called_) {
+    TimingInfo* timing_info = logging_info()->mutable_timing_info();
+    if (timing_info->has_request_start_ms()) {
+      timing_info->set_time_to_start_parse_ms(
+          server_context_->timer()->NowMs() - timing_info->request_start_ms());
+    }
+    parse_text_called_ = true;
   }
 
   // Collect all text received from the fetcher

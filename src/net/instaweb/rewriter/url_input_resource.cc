@@ -530,11 +530,24 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
 
   virtual void DoneInternal(bool lock_failure, bool resource_ok) {
     if (!lock_failure && resource_ok) {
+      resource_->set_fetch_response_status(Resource::kFetchStatusOK);
       // Because we've authorized the Fetcher to directly populate the
       // ResponseHeaders in resource_->response_headers_, we must explicitly
       // propagate the content-type to the resource_->type_.
       resource_->DetermineContentType();
     } else {
+      // Record the type of the fetched response before clearing the response
+      // headers.
+      int status_code = response_headers()->status_code();
+      if (status_code >= 400 && status_code < 500) {
+        resource_->set_fetch_response_status(Resource::kFetchStatus4xxError);
+      } else if (status_code == HttpStatus::kOK &&
+                 !response_headers()->IsProxyCacheable()) {
+        resource_->set_fetch_response_status(Resource::kFetchStatusUncacheable);
+      } else {
+        resource_->set_fetch_response_status(Resource::kFetchStatusOther);
+      }
+
       // It's possible that the fetcher has read some of the headers into
       // our response_headers (perhaps even a 200) before it called Done(false)
       // or before we decided inside AddToCache() that we don't want to deal

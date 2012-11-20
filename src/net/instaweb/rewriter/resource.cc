@@ -44,6 +44,7 @@ const int64 kNotCacheable = 0;
 Resource::Resource(ServerContext* resource_manager, const ContentType* type)
     : server_context_(resource_manager),
       type_(type),
+      fetch_response_status_(kFetchStatusNotSet),
       is_background_fetch_(true) {
 }
 

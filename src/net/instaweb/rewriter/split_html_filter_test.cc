@@ -20,6 +20,7 @@
 
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
@@ -136,6 +137,8 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     options_->DisableFilter(RewriteOptions::kHtmlWriterFilter);
     RewriteTestBase::SetUp();
 
+    rewrite_driver()->set_request_headers(&request_headers_);
+    rewrite_driver()->set_user_agent("");
     rewrite_driver()->SetWriter(&writer_);
     SplitHtmlFilter* filter = new SplitHtmlFilter(rewrite_driver());
     html_writer_filter_.reset(filter);
@@ -152,6 +155,7 @@ class SplitHtmlFilterTest : public RewriteTestBase {
 
  private:
   StringWriter writer_;
+  RequestHeaders request_headers_;
   ResponseHeaders response_headers_;
   SplitHtmlFilter* split_html_filter_;
 };

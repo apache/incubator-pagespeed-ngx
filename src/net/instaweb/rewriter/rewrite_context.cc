@@ -1197,11 +1197,27 @@ void RewriteContext::SetPartitionKey() {
 }
 
 void RewriteContext::AddRecheckDependency() {
+  int64 ttl_ms = Options()->implicit_cache_ttl_ms();
+  if (num_slots() == 1) {
+    ResourcePtr resource(slot(0)->resource());
+    switch (resource->fetch_response_status()) {
+      case Resource::kFetchStatusNotSet:
+      case Resource::kFetchStatusOK:
+      case Resource::kFetchStatusOther:
+        break;
+      case Resource::kFetchStatus4xxError:
+        ttl_ms = Driver()->options()->metadata_input_errors_cache_ttl_ms();
+        break;
+      case Resource::kFetchStatusUncacheable:
+        ttl_ms = FindServerContext()->http_cache()->
+            remember_not_cacheable_ttl_seconds() * Timer::kSecondMs;
+        break;
+    }
+  }
   int64 now_ms = FindServerContext()->timer()->NowMs();
   InputInfo* force_recheck = partitions_->add_other_dependency();
   force_recheck->set_type(InputInfo::CACHED);
-  force_recheck->set_expiration_time_ms(
-      now_ms + Options()->implicit_cache_ttl_ms());
+  force_recheck->set_expiration_time_ms(now_ms + ttl_ms);
 }
 
 void RewriteContext::OutputCacheDone(CacheLookupResult* cache_result) {

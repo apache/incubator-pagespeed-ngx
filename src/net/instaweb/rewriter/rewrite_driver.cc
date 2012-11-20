@@ -207,6 +207,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       user_agent_supports_webp_(kNotSet),
       is_mobile_user_agent_(kNotSet),
       supports_flush_early_(kNotSet),
+      user_agent_supports_split_html_(kNotSet),
       should_skip_parsing_(kNotSet),
       using_spdy_(false),
       response_headers_(NULL),
@@ -323,6 +324,7 @@ void RewriteDriver::Clear() {
   user_agent_supports_image_inlining_ = kNotSet;
   user_agent_supports_js_defer_ = kNotSet;
   user_agent_supports_webp_ = kNotSet;
+  user_agent_supports_split_html_ = kNotSet;
   xhtml_mimetype_computed_ = false;
   xhtml_status_ = kXhtmlUnknown;
 
@@ -793,6 +795,15 @@ bool RewriteDriver::UserAgentSupportsWebp() const {
         user_agent_matcher().SupportsWebp(user_agent_) ? kTrue : kFalse;
   }
   return (user_agent_supports_webp_ == kTrue);
+}
+
+bool RewriteDriver::UserAgentSupportsSplitHtml() const {
+  if (user_agent_supports_split_html_ == kNotSet) {
+    user_agent_supports_split_html_ =
+        user_agent_matcher().SupportsSplitHtml(user_agent_) ?
+        kTrue : kFalse;
+  }
+  return (user_agent_supports_split_html_ == kTrue);
 }
 
 bool RewriteDriver::IsMobileUserAgent() const {

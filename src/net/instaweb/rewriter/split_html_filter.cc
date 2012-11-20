@@ -84,7 +84,7 @@ SplitHtmlFilter::~SplitHtmlFilter() {
 
 void SplitHtmlFilter::StartDocument() {
   flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
-  disable_filter_ = !rewrite_driver_->UserAgentSupportsJsDefer();
+  disable_filter_ = !rewrite_driver_->UserAgentSupportsSplitHtml();
   if (disable_filter_) {
     InvokeBaseHtmlFilterStartDocument();
     return;
@@ -523,7 +523,7 @@ bool SplitHtmlFilter::ElementMatchesXpath(
   }
 
   if (j < 0 && k < 0) {
-      return true;
+    return true;
   }
   return false;
 }

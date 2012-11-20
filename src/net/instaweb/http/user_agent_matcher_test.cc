@@ -261,4 +261,29 @@ TEST_F(UserAgentMatcherTest, SupportsDnsPrefetchUsingRelPrefetch) {
       UserAgentStrings::kIe9UserAgent));
 }
 
+TEST_F(UserAgentMatcherTest, SplitHtmlRelated) {
+  EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kIe9UserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kChromeUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kFirefoxUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kSafariUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kAndroidChrome21UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kIe6UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kIe8UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kFirefox1UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kNokiaUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kOpera5UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kPSPUserAgent));
+}
+
 }  // namespace net_instaweb
