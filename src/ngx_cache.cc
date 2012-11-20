@@ -32,9 +32,10 @@ namespace net_instaweb {
 const char NgxCache::kFileCache[] = "file_cache";
 const char NgxCache::kLruCache[] = "lru_cache";
 
-// The NgxCache encapsulates a cache-sharing model where a user specifies
-// a file-cache path per virtual-host.  With each file-cache object we keep
-// a locking mechanism and an optional per-process LRUCache.
+// TODO(oschaaf): refactor this to share as much as possible
+// with apache_cache.cc
+// The NgxCache shares a file cache per path, with an optional
+// LRU Cache
 NgxCache::NgxCache(const StringPiece& path,
                          const NgxRewriteOptions& config,
                          NgxRewriteDriverFactory* factory)

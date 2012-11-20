@@ -25,6 +25,10 @@
 #include "net/instaweb/util/public/simple_stats.h"
 #include "apr_pools.h"
 
+// TODO (oschaaf):
+// We should reparent ApacheRewriteDriverFactory and NgxRewriteDriverFactory
+// to a new class OriginRewriteDriverFactory & factor out as much as possible.
+
 namespace net_instaweb {
 
 class AbstractSharedMem;
