@@ -42,4 +42,6 @@ if [ ! -e "$SYSTEM_TEST_FILE" ] ; then
   exit 2
 fi
 
+PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
+
 source $SYSTEM_TEST_FILE
