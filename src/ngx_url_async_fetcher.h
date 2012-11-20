@@ -52,7 +52,7 @@ class NgxUrlAsyncFetcher : public UrlPollableAsyncFetcher {
 
     void PrintActiveFetches(MessageHandler* handler) const;
     
-    // change the origin content legnth or not
+    // change the original content legnth or not
     bool track_original_content_length() {
       return track_original_content_length_;
     }
@@ -72,7 +72,8 @@ class NgxUrlAsyncFetcher : public UrlPollableAsyncFetcher {
     }
 
     void CancelActiveFetches();
-    // just remove the error fetches
+
+    // remove the error fetches
     //void CleanupFetchesWithErrors();
 
     bool shutdown() const {return shutdown_; }

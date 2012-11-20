@@ -70,17 +70,102 @@ In your nginx.conf, add to the main or server block:
     error_log logs/error.log debug;
 
 To confirm that the module is loaded, fetch a page and check that you see the
-following comment in the source:
+`X-Page-Speed` header:
 
-    <!-- Processed through ngx_pagespeed using PSOL version 0.10.0.0 -->
+    $ curl -s -D- 'http://localhost:8050/some_page/' | grep X-Page-Speed
+    X-Page-Speed: 0.10.0.0
+
+Looking at the source of a few pages you should see various changes, like urls
+being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 
 ### Testing
 
-There is an example html file in:
+The generic Pagespeed system test is ported, but doesn't pass yet.  To run it
+you need to first build and configure nginx.  Set it up something like:
 
-    test/www/test.html
+    ...
+    http {
+      pagespeed on;
 
-If you fetch it through nginx with ngx_pagespeed enabled you should see it
-rewritten to look like the html in:
+      // TODO(jefftk): this should be the default.
+      pagespeed RewriteLevel CoreFilters;
 
-    test/expected/test.html
+      # This can be anywhere on your filesystem.
+      pagespeed FileCachePath /path/to/ngx_pagespeed_cache;
+
+      # For testing that the Library command works.
+      pagespeed Library 43 1o978_K0_L
+                http://www.modpagespeed.com/rewrite_javascript.js;
+
+
+      # These gzip options are needed for tests that assume that pagespeed
+      # always enables gzip.  Which it does in apache, but not in nginx.
+      gzip on;
+      gzip_vary on;
+
+      # Turn on gzip for all content types that should benefit from it.
+      gzip_types application/ecmascript;
+      gzip_types application/javascript;
+      gzip_types application/json;
+      gzip_types application/pdf;
+      gzip_types application/postscript;
+      gzip_types application/x-javascript;
+      gzip_types image/svg+xml;
+      gzip_types text/css;
+      gzip_types text/csv;
+      # "gzip_types text/html" is assumed.
+      gzip_types text/javascript;
+      gzip_types text/plain;
+      gzip_types text/xml;
+
+      gzip_http_version 1.0;
+
+      ...
+
+      server {
+        listen 8050;
+        server_name localhost;
+        root /path/to/mod_pagespeed/src/install;
+        index index.html;
+
+        location /mod_pagespeed_test/no_cache/ {
+          add_header Cache-Control no-cache;
+        }
+
+        ...
+      }
+    }
+
+Then run the test, using the port you set up with `listen` in the configuration
+file:
+
+    /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
+
+This should print out a lot of lines like:
+
+    TEST: Make sure 404s aren't rewritten
+          check_not fgrep /mod_pagespeed_beacon /dev/fd/63
+
+and then eventually:
+
+    FAIL.
+
+along with a failing test because ngx_pagespeed is not yet complete.
+
+## Configuration
+
+Once configuration is complete, any mod_pagespeed configuration directive should
+work in ngx_pagespeed after a small adjustment: replace '"ModPagespeed"' with
+'"pagespeed "':
+
+    mod_pagespeed.conf:
+      ModPagespeedEnableFilters collapse_whitespace,add_instrumentation
+      ModPagespeedRunExperiment on
+      ModPagespeedExperimentSpec id=3;percent=50;default
+      ModPagespeedExperimentSpec id=4;percent=50
+
+    ngx_pagespeed.conf:
+      pagespeed EnableFilters collapse_whitespace,add_instrumentation;
+      pagespeed RunExperiment on;
+      pagespeed ExperimentSpec "id=3;percent=50;default";
+      pagespeed ExperimentSpec "id=4;percent=50";

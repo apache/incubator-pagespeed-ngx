@@ -97,7 +97,6 @@ namespace net_instaweb {
     resolver_ = parent->resolver_;
   }
 
-
   NgxUrlAsyncFetcher::~NgxUrlAsyncFetcher() {
     CancelActiveFetches();
     completed_fetches_.DeleteAll();
@@ -118,7 +117,7 @@ namespace net_instaweb {
       pool_ = ngx_create_pool(4096, log_);
       if (pool_ == NULL) {
         ngx_log_error(NGX_LOG_ERR, log_, 0,
-            "NgxUrlAsyncFetcher::Init create pool faild");
+            "NgxUrlAsyncFetcher::Init create pool failed");
         return false;
       }
     }
@@ -177,7 +176,7 @@ namespace net_instaweb {
       active_fetches_.Add(fetch);
       fetchers_count_++;
     } else {
-      //Statr fetch failed
+      //Start fetch failed
       fetch->CallbackDone(false);
     }
     return started;

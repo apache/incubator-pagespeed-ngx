@@ -23,10 +23,15 @@ ngx_feature_incs="
 #include \"net/instaweb/util/public/string_writer.h\"
 #include \"net/instaweb/util/public/null_message_handler.h\"
 "
+# TODO(oschaaf): include apr/apr-util in a portable manner
 pagespeed_include="$mod_pagespeed_dir
                    $mod_pagespeed_dir/third_party/chromium/src/
                    $mod_pagespeed_dir/third_party/protobuf/src/
-                   $mod_pagespeed_dir/out/Release/obj/gen/"
+                   $mod_pagespeed_dir/out/Release/obj/gen/
+                   $mod_pagespeed_dir/third_party/apr/src/include/
+                   $mod_pagespeed_dir/third_party/apr/gen/arch/linux/x64/include/
+                   $mod_pagespeed_dir/third_party/aprutil/src/include/
+                   $mod_pagespeed_dir/third_party/aprutil/gen/arch/linux/x64/include/"
 ngx_feature_path="$pagespeed_include"
 pagespeed_automatic_dir="$mod_pagespeed_dir/net/instaweb/automatic"
 pagespeed_libs="-lstdc++ $pagespeed_automatic_dir/pagespeed_automatic.a -lrt"
@@ -57,11 +62,17 @@ if [ $ngx_found = yes ]; then
   ngx_addon_name=ngx_pagespeed
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_pagespeed.cc"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_rewrite_driver_factory.cc"
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_rewrite_options.cc"
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_server_context.cc"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_base_fetch.cc"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_url_async_fetcher.cc"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_fetch.cc"
   HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
-  CORE_LIBS="$CORE_LIBS $pagespeed_libs"
+  CORE_LIBS="$CORE_LIBS 
+             $pagespeed_libs
+             $mod_pagespeed_dir/out/Release/obj.target/third_party/serf/libserf.a
+             $mod_pagespeed_dir/out/Release/obj.target/third_party/apr/libapr.a
+             $mod_pagespeed_dir/out/Release/obj.target/third_party/aprutil/libaprutil.a"
   CORE_INCS="$CORE_INCS $pagespeed_include"
 else
   cat << END

@@ -85,7 +85,7 @@ namespace net_instaweb {
       // handle body
       static bool NgxFetchHandleBody(ngx_connection_t* c);
 
-      // cancel the fetch;
+      // cancel the fetch when timeout;
       static void NgxFetchTimeout(ngx_event_t* tev);
 
       // add pagespeed user-agent
