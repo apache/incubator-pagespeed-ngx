@@ -94,92 +94,19 @@ bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
 }
 
 ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
-  if ((last_buf_sent_ || !done_called_) && buffer_.length() == 0) {
-    // Nothing to send.  But if done_called_ then we can't short circuit because
-    // we need to set last_buf unless last_buf_sent_.
-    return NGX_DECLINED;
-  }
+  // TODO(jefftk): if done_called_ && last_buf_sent_, should we just short
+  // circuit (return NGX_OK) here?
 
-  // Below, *link_ptr will be NULL if we're starting the chain, and the head
-  // chain link.
-  *link_ptr = NULL;
-
-  // If non-null, the current last link in the chain.
-  ngx_chain_t* tail_link = NULL;
-
-  // How far into buffer_ we're currently working on.
-  ngx_uint_t offset;
-
-  // TODO(jefftk): look up the nginx buffer size properly.
-  ngx_uint_t max_buffer_size = 8192;  // 8k
-  for (offset = 0 ;
-       offset < buffer_.length() ||
-           // If the pagespeed buffer is empty but Done() has been called we
-           // need to pass through an empty buffer to nginx to communicate
-           // last_buf.  Otherwise we shouldn't generate empty buffers.
-           (offset == 0 && buffer_.length() == 0);
-       offset += max_buffer_size) {
-
-    // Prepare a new nginx buffer to put our buffered writes into.
-    ngx_buf_t* b = static_cast<ngx_buf_t*>(ngx_calloc_buf(request_->pool));
-    if (b == NULL) {
-      return NGX_ERROR;
-    }
-
-    if (buffer_.length() == 0) {
-      CHECK(offset == 0);
-      b->pos = b->start = b->end = b->last = NULL;
-      // The purpose of this buffer is just to pass along last_buf.
-      b->sync = 1;
-    } else {
-      CHECK(buffer_.length() > offset);
-      ngx_uint_t b_size = buffer_.length() - offset;
-      if (b_size > max_buffer_size) {
-        b_size = max_buffer_size;
-      }
-
-      b->start = b->pos = static_cast<u_char*>(
-          ngx_palloc(request_->pool, b_size));
-      if (b->pos == NULL) {
-        return NGX_ERROR;
-      }
-
-      // Copy our writes over.  We're copying from buffer_[offset] up to
-      // buffer_[offset + b_size] into b which has size b_size.
-      buffer_.copy(reinterpret_cast<char*>(b->pos), b_size, offset);
-      b->last = b->end = b->pos + b_size;
-
-      b->temporary = 1;  // Identify this buffer as in-memory and mutable.
-    }
-
-    // Prepare a chain link.
-    ngx_chain_t* cl = static_cast<ngx_chain_t*>(
-        ngx_alloc_chain_link(request_->pool));
-    if (cl == NULL) {
-      return NGX_ERROR;
-    }
-
-    cl->buf = b;
-    cl->next = NULL;
-
-    if (*link_ptr == NULL) {
-      // This is the first link in the returned chain.
-      *link_ptr = cl;
-    } else {
-      // Link us into the chain.
-      CHECK(tail_link != NULL);
-      tail_link->next = cl;
-    }
-
-    tail_link = cl;
+  int rc = ngx_http_pagespeed_string_piece_to_buffer_chain(
+      request_->pool, buffer_, link_ptr, done_called_ /* send_last_buf */);
+  if (rc != NGX_OK) {
+    return rc;
   }
 
   // Done with buffer contents now.
   buffer_.clear();
 
-  CHECK(tail_link != NULL);
   if (done_called_) {
-    tail_link->buf->last_buf = true;
     last_buf_sent_ = true;
   }
 
