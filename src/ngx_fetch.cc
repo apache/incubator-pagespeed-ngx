@@ -27,225 +27,6 @@
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
-  typedef enum {
-    sw_start = 0,
-    sw_H,
-    sw_HT,
-    sw_HTT,
-    sw_HTTP,
-    sw_first_major_digit,
-    sw_major_digit,
-    sw_first_minor_digit,
-    sw_minor_digit,
-    sw_status,
-    sw_space_after_status,
-    sw_status_text,
-    sw_almost_done
-  } parse_state_t;
-
-  class NgxStatusLine {
-    public:
-      NgxStatusLine();
-      ~NgxStatusLine() {}
-      bool status_line_completed() const { return status_line_completed_; }
-      int ParseStatusLine(char* data, size_t len);
-      int get_code() const { return code_;}
-      int get_major_version() const { return major_version_;}
-      int get_minor_version() const { return minor_version_;}
-
-    private:
-      int state_;
-      int major_version_;
-      int minor_version_;
-      int code_;
-      bool status_line_completed_;
-
-      DISALLOW_COPY_AND_ASSIGN(NgxStatusLine);
-  };
-
-  NgxStatusLine::NgxStatusLine()
-  : state_(0),
-    major_version_(0),
-    code_(0),
-    status_line_completed_(false) {
-  }
-
-  int NgxStatusLine::ParseStatusLine(char* data, size_t len) {
-    char *p, *last, ch;
-    parse_state_t state;
-
-    state = static_cast<parse_state_t>(state_);
-    last = data + len;
-    p = data;
-
-    for (p = data; p < last; p++) {
-      ch = *p;
-
-      switch (state) {
-
-      /* "HTTP/" */
-      case sw_start:
-        switch (ch) {
-        case 'H':
-          state = sw_H;
-          break;
-        default:
-          return NGX_ERROR;
-        }
-        break;
-
-      case sw_H:
-        switch (ch) {
-        case 'T':
-          state = sw_HT;
-          break;
-        default:
-          return NGX_ERROR;
-        }
-        break;
-
-      case sw_HT:
-        switch (ch) {
-        case 'T':
-          state = sw_HTT;
-          break;
-        default:
-          return NGX_ERROR;
-        }
-        break;
-
-      case sw_HTT:
-        switch (ch) {
-        case 'P':
-          state = sw_HTTP;
-          break;
-        default:
-          return NGX_ERROR;
-        }
-        break;
-
-      case sw_HTTP:
-        switch (ch) {
-        case '/':
-          state = sw_first_major_digit;
-          break;
-        default:
-          return NGX_ERROR;
-        }
-        break;
-
-      /* the first digit of major HTTP version */
-      case sw_first_major_digit:
-        if (ch < '1' || ch > '9') {
-          return NGX_ERROR;
-        }
-
-        state = sw_major_digit;
-        major_version_ = major_version_ * 10 + ch - '0';
-        break;
-
-      /* the major HTTP version or dot */
-      case sw_major_digit:
-        if (ch == '.') {
-          state = sw_first_minor_digit;
-          break;
-        }
-
-        if (ch < '0' || ch > '9') {
-          return NGX_ERROR;
-        }
-        major_version_ = major_version_ * 10 + ch - '0';
-        break;
-
-      /* the first digit of minor HTTP version */
-      case sw_first_minor_digit:
-        if (ch < '0' || ch > '9') {
-          return NGX_ERROR;
-        }
-
-        state = sw_minor_digit;
-        minor_version_ = minor_version_ * 10 + ch - '0';
-        break;
-
-      /* the minor HTTP version or the end of the request line */
-      case sw_minor_digit:
-        if (ch == ' ') {
-          state = sw_status;
-          break;
-        }
-
-        if (ch < '0' || ch > '9') {
-          return NGX_ERROR;
-        }
-
-        minor_version_ = minor_version_ * 10 + ch - '0';
-
-        break;
-
-      /* HTTP status code */
-      case sw_status:
-        if (ch == ' ') {
-          break;
-        }
-
-        if (ch < '0' || ch > '9') {
-          return NGX_ERROR;
-        }
-
-        code_ = code_ * 10 + ch - '0';
-        break;
-
-      /* space or end of line */
-      case sw_space_after_status:
-        switch (ch) {
-        case ' ':
-          state = sw_status_text;
-          break;
-        case '.':          /* IIS may send 403.1, 403.2, etc */
-          state = sw_status_text;
-          break;
-        case CR:
-          state = sw_almost_done;
-          break;
-        case LF:
-          goto done;
-        default:
-          return NGX_ERROR;
-        }
-        break;
-
-      /* any text until end of line */
-      case sw_status_text:
-        switch (ch) {
-        case CR:
-          state = sw_almost_done;
-
-          break;
-        case LF:
-          goto done;
-        }
-        break;
-
-      /* end of status line */
-      case sw_almost_done:
-        switch (ch) {
-        case LF:
-          goto done;
-        default:
-          return NGX_ERROR;
-        }
-      }
-    }
-
-    state_ = state;
-    return static_cast<int>(len);
-done:
-    p++;
-    status_line_completed_ = true;
-
-    return (last - p);
-  }
-
   NgxFetch::NgxFetch(const GoogleString& url,
     AsyncFetch* async_fetch,
     MessageHandler* message_handler,
@@ -259,7 +40,6 @@ done:
     fetch_start_ms_(0),
     fetch_end_ms_(0) {
     ngx_memzero(&url_, sizeof(ngx_url_t));
-    status_line_ = new NgxStatusLine();
     log_ = NULL;
     pool_ = NULL;
     timeout_event_ = NULL;
@@ -278,10 +58,10 @@ done:
     if (pool_ != NULL) {
       ngx_destroy_pool(pool_);
     }
-
-    delete status_line_;
   }
 
+  // this function call by NgxUrlAsyncFetcher::StartFetch
+  // ParseUrl and init a fetch
   bool NgxFetch::Start(NgxUrlAsyncFetcher* fetcher) {
     fetcher_ = fetcher;
     if (!ParseUrl()) {
@@ -297,6 +77,7 @@ done:
     return true;
   }
 
+  // init pool, timeout event and hook dns resolver handler
   bool NgxFetch::Init() {
     //TODO: log when return false;
 
@@ -310,7 +91,12 @@ done:
 
     ngx_event_add_timer(timeout_event_, static_cast<ngx_msec_t> (timeout_ms_));
     ParseUrl();
-
+    r_ = static_cast<ngx_http_request_t *>(ngx_pcalloc(pool_,
+                                           sizeof(ngx_http_request_t)));
+    if (r_ == NULL) { return false; }
+    status_ = static_cast<ngx_http_status_t*>(ngx_pcalloc(pool_,
+                                              sizeof(ngx_http_status_t)));
+    if (status_ == NULL) { return false;}
     ngx_resolver_ctx_t temp;
     temp.name.data = url_.host.data;
     temp.name.len = url_.host.len;
@@ -335,6 +121,7 @@ done:
 
   const char* NgxFetch::str_url() { return str_url_.c_str(); }
 
+  // cancel a fetch, delete timeout event and close the connection
   void NgxFetch::Cancel() {
     if (timeout_event_) {
       if (timeout_event_->timer_set) {
@@ -348,6 +135,7 @@ done:
     CallbackDone(false);
   }
 
+  // this function called only once. the fetch with error when success eq false
   void NgxFetch::CallbackDone(bool success) {
     if (async_fetch_ == NULL) {
       LOG(FATAL) << "BUG: Serf callback called more than once on same fetch "
@@ -394,6 +182,7 @@ done:
     return false;
   }
 
+  // init a request when resolver has beed done.
   void NgxFetch::NgxFetchResolveDone(ngx_resolver_ctx_t* resolver_ctx) {
     NgxFetch* fetch = static_cast<NgxFetch*>(resolver_ctx->data);
     if (resolver_ctx->state != NGX_OK) {
@@ -411,6 +200,7 @@ done:
     return;
   }
 
+  // prepare send data for this fetch, and hook write event.
   int NgxFetch::InitRquest() {
     in_ = ngx_create_temp_buf(pool_, 4096);
     if (in_ == NULL) {
@@ -493,10 +283,12 @@ done:
       return NGX_ERROR;
     }
 
-      //TODO: set write timeout when rc == NGX_AGAIN
-      return rc;
+    //TODO: set write timeout when rc == NGX_AGAIN
+    return rc;
   }
 
+  // when send completly,hook read event,and set response handler.
+  // TODO(jummin) add write timeout when writer return NGX_AGAIN.
   void NgxFetch::NgxFetchWrite(ngx_event_t* wev) {
     ngx_connection_t* c = static_cast<ngx_connection_t*>(wev->data);
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
@@ -507,7 +299,7 @@ done:
     while (out->pos < out->last) {
       int n = c->send(c, out->pos, out->last - out->pos);
       if (n >= 0) {
-      out->pos += n;
+        out->pos += n;
       } else if (n == NGX_AGAIN) {
         // add send timeout, 10 only used for test
         // ngx_add_timer(c->write, 10);
@@ -531,6 +323,7 @@ done:
     return;
   }
 
+  // add read timeout when connection isn't ready to recv
   void NgxFetch::NgxFetchRead(ngx_event_t* rev) {
     ngx_connection_t* c = static_cast<ngx_connection_t*>(rev->data);
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
@@ -569,32 +362,29 @@ done:
     }
   }
 
+  // parse statusline "HTTP/1.1 200 OK\r\n"
   bool NgxFetch::NgxFetchHandleStatusLine(ngx_connection_t* c) {
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
-    size_t size = fetch->in_->last - fetch->in_->pos;
-    char* data = reinterpret_cast<char*>(fetch->in_->pos);
-    int n = fetch->status_line_->ParseStatusLine(data, size);
-    if (n < 0) {
+    // nginx version befor 1.1.4,ngx_http_parse_status_line didn't 
+    // save http_version.so ensure version > 1.1.4
+    ngx_int_t n = ngx_http_parse_status_line(fetch->r_, fetch->in_,
+                                             fetch->status_);
+    if (n == NGX_ERROR) { // parse status line error
       return false;
+    } else if (n == NGX_AGAIN) { // not completed
+      return true;
     }
-
-    if (fetch->status_line_->status_line_completed()) {
-      fetch->in_->pos += n;
-      ResponseHeaders* response_headers =
-        fetch->async_fetch_->response_headers();
-      response_headers->SetStatusAndReason(
-          static_cast<HttpStatus::Code>(fetch->status_line_->get_code()));
-      response_headers->set_major_version(
-          fetch->status_line_->get_major_version());
-      response_headers->set_minor_version(
-          fetch->status_line_->get_minor_version());
-      fetch->set_response_handler(NgxFetchHandleHeader);
-      return fetch->response_handler(c);
-    }
-
-    return true;
+    ResponseHeaders* response_headers =
+      fetch->async_fetch_->response_headers();
+    response_headers->SetStatusAndReason(
+        static_cast<HttpStatus::Code>(fetch->get_code()));
+    response_headers->set_major_version(fetch->get_major_version());
+    response_headers->set_minor_version(fetch->get_minor_version());
+    fetch->set_response_handler(NgxFetchHandleHeader);
+    return fetch->response_handler(c);
   }
 
+  // parse httpheaders,
   bool NgxFetch::NgxFetchHandleHeader(ngx_connection_t* c) {
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
     char* data = reinterpret_cast<char*>(fetch->in_->pos);

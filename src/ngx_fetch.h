@@ -19,7 +19,6 @@ extern "C" {
 #include "net/instaweb/http/public/response_headers_parser.h"
 
 namespace net_instaweb {
-  class NgxStatusLine;
   class NgxUrlAsyncFetcher;
   class NgxFetch : public PoolElement<NgxFetch> {
     public:
@@ -63,6 +62,18 @@ namespace net_instaweb {
         response_handler = handler;
       }
 
+      int get_major_version() {
+        return static_cast<int>(status_->http_version / 1000);
+      }
+
+      int get_minor_version() {
+        return static_cast<int>(status_->http_version % 1000);
+      }
+
+      int get_code() {
+        return static_cast<int>(status_->code);
+      }
+
     private:
 
       response_handler_pt response_handler;
@@ -97,7 +108,6 @@ namespace net_instaweb {
       NgxUrlAsyncFetcher* fetcher_;
       AsyncFetch* async_fetch_;
       ResponseHeadersParser parser_;
-      NgxStatusLine* status_line_;
       MessageHandler* message_handler_;
       size_t bytes_received_;
       int64 fetch_start_ms_;
@@ -108,6 +118,8 @@ namespace net_instaweb {
       ngx_buf_t* out_;
       ngx_buf_t* in_;
       ngx_pool_t* pool_;
+      ngx_http_request_t* r_;
+      ngx_http_status_t* status_;
       ngx_event_t* timeout_event_;
       ngx_connection_t* connection_;
       ngx_resolver_ctx_t* resolver_ctx_;
