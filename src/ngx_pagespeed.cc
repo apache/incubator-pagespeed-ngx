@@ -328,22 +328,35 @@ ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
 // levels, and then it calls this.  First it creates the configuration at the
 // new level, parsing any pagespeed directives, then it merges in the
 // configuration from the level above.  This function should merge the parent
-// configuration (prev) into the child (conf).  It's only more complex than
-// conf->options->Merge() because of the cases where the parent or child didn't
-// have any pagespeed directives.
+// configuration into the child.  It's more complex than options->Merge() both
+// because of the cases where the parent or child didn't have any pagespeed
+// directives and because merging is order-dependent in the opposite way we'd
+// like.
 char*
 ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
-  ngx_http_pagespeed_srv_conf_t* prev =
+  ngx_http_pagespeed_srv_conf_t* parent_conf =
       static_cast<ngx_http_pagespeed_srv_conf_t*>(parent);
-  ngx_http_pagespeed_srv_conf_t* conf =
+  ngx_http_pagespeed_srv_conf_t* child_conf =
       static_cast<ngx_http_pagespeed_srv_conf_t*>(child);
 
-  if (prev->options == NULL) {
+  if (parent_conf->options == NULL) {
     // Nothing to do.
-  } else if (conf->options == NULL && prev->options != NULL) {
-    conf->options = prev->options->Clone();
+  } else if (child_conf->options == NULL && parent_conf->options != NULL) {
+    child_conf->options = parent_conf->options->Clone();
   } else {  // Both non-null.
-    conf->options->Merge(*prev->options);
+    // Unfortunately, merging configuration options is order dependent.  We'd
+    // like to just do child_conf->options->Merge(*parent_conf->options)
+    // but then if we had:
+    //    pagespeed RewriteLevel PassThrough
+    //    server {
+    //       pagespeed RewriteLevel CoreFilters
+    //    }
+    // it would always be stuck on PassThrough.
+    net_instaweb::NgxRewriteOptions* child_specific_options =
+        child_conf->options;
+    child_conf->options = parent_conf->options->Clone();
+    child_conf->options->Merge(*child_specific_options);
+    delete child_specific_options;
   }
   return NGX_CONF_OK;
 }
