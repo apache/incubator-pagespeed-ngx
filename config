@@ -47,10 +47,16 @@ else
    exit 1
 fi
 
+if [ "$NGX_DEBUG" = "YES" ]; then
+    buildtype=Debug
+else
+    buildtype=Release
+fi
+
 pagespeed_include="$mod_pagespeed_dir
                    $mod_pagespeed_dir/third_party/chromium/src/
                    $mod_pagespeed_dir/third_party/protobuf/src/
-                   $mod_pagespeed_dir/out/Release/obj/gen/
+                   $mod_pagespeed_dir/out/$buildtype/obj/gen/
                    $mod_pagespeed_dir/third_party/apr/src/include/
                    $mod_pagespeed_dir/third_party/apr/gen/arch/$os_name/$arch_name/include/
                    $mod_pagespeed_dir/third_party/aprutil/src/include/
@@ -91,9 +97,9 @@ if [ $ngx_found = yes ]; then
   HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
   CORE_LIBS="$CORE_LIBS 
              $pagespeed_libs
-             $mod_pagespeed_dir/out/Release/obj.target/third_party/serf/libserf.a
-             $mod_pagespeed_dir/out/Release/obj.target/third_party/apr/libapr.a
-             $mod_pagespeed_dir/out/Release/obj.target/third_party/aprutil/libaprutil.a"
+             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/serf/libserf.a
+             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/apr/libapr.a
+             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/aprutil/libaprutil.a"
   CORE_INCS="$CORE_INCS $pagespeed_include"
 else
   cat << END
