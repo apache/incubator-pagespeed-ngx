@@ -75,10 +75,13 @@ void LoopbackRouteFetcher::Fetch(const GoogleString& original_url,
     }
 
     GoogleUrl base;
-    if (own_port_ == 80) {
-      base.Reset("http://127.0.0.1/");
+    StringPiece scheme = parsed_url.Scheme();
+    if ((own_port_ == 80 && scheme == "http") ||
+        (own_port_ == 443 && scheme == "https")) {
+      base.Reset(StrCat(scheme, "://127.0.0.1/"));
     } else {
-      base.Reset(StrCat("http://127.0.0.1:", IntegerToString(own_port_), "/"));
+      base.Reset(
+          StrCat(scheme, "://127.0.0.1:", IntegerToString(own_port_), "/"));
     }
 
     GoogleString rel;

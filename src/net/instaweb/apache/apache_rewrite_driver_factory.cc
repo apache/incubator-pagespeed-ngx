@@ -852,6 +852,28 @@ void ApacheRewriteDriverFactory::ApplySessionFetchers(
     ApacheResourceManager* manager, RewriteDriver* driver, request_rec* req) {
   const ApacheConfig* conf = ApacheConfig::DynamicCast(driver->options());
   CHECK(conf != NULL);
+  // Note that these fetchers are applied in the opposite order of how they are
+  // added: the last one added here is the first one applied and vice versa.
+  //
+  // Currently, we want AddHeadersFetcher running first, then perhaps
+  // ModSpdyFetcher and then LoopbackRouteFetcher (and then Serf).
+  //
+  // We want AddHeadersFetcher to run before the ModSpdyFetcher since we
+  // want any headers it adds to be visible.
+  //
+  // We want ModSpdyFetcher to run before LoopbackRouteFetcher as it needs
+  // to know the request hostname, which LoopbackRouteFetcher could potentially
+  // rewrite to 127.0.0.1; and it's OK without the rewriting since it will
+  // always talk to the local machine anyway.
+  if (!disable_loopback_routing_ &&
+      !manager->config()->slurping_enabled() &&
+      !manager->config()->test_proxy()) {
+    // Note the port here is our port, not from the request, since
+    // LoopbackRouteFetcher may decide we should be talking to ourselves.
+    driver->SetSessionFetcher(new LoopbackRouteFetcher(
+        driver->options(), req->connection->local_addr->port,
+        driver->async_fetcher()));
+  }
 
   if (conf->experimental_fetch_from_mod_spdy() &&
       ModSpdyFetcher::ShouldUseOn(req)) {
@@ -861,16 +883,6 @@ void ApacheRewriteDriverFactory::ApplySessionFetchers(
   if (driver->options()->num_custom_fetch_headers() > 0) {
     driver->SetSessionFetcher(new AddHeadersFetcher(driver->options(),
                                                     driver->async_fetcher()));
-  }
-
-  if (!disable_loopback_routing_ &&
-      !manager->config()->slurping_enabled() &&
-      !manager->config()->test_proxy()) {
-    // Note the port here is our port, not from the request, since
-    // LoopbackRouteFetcher may decide we should be talking to ourselves.
-    driver->SetSessionFetcher(new LoopbackRouteFetcher(
-        driver->options(), req->connection->local_addr->port,
-        driver->async_fetcher()));
   }
 }
 

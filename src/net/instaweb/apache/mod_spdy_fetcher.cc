@@ -114,6 +114,17 @@ apr_status_t MpsToApacheFilter(ap_filter_t* filter,
 
   size_t bytes_read = 0;
   size_t bytes_available = in.size() - context->pos;
+
+  // Synthesize an EOS bucket if needed.
+  if ((bytes_read == bytes_available) &&
+      (context->in_body || context->request_headers->message_body().empty())) {
+    APR_BRIGADE_INSERT_TAIL(brigade, apr_bucket_eos_create(
+        brigade->bucket_alloc));
+    filter->ctx = NULL;
+    delete context;
+    return APR_SUCCESS;
+  }
+
   const char* bytes = in.data() + context->pos;
   // Byte read ops.
   if (mode == AP_MODE_READBYTES || mode == AP_MODE_SPECULATIVE ||
@@ -145,18 +156,9 @@ apr_status_t MpsToApacheFilter(ap_filter_t* filter,
         bytes, bytes_read, brigade->bucket_alloc));
   }
 
-  // May also need to synthesize an EOS bucket.
-  if ((bytes_read == bytes_available) &&
-      (context->in_body || context->request_headers->message_body().empty())) {
-    APR_BRIGADE_INSERT_TAIL(brigade, apr_bucket_eos_create(
-        brigade->bucket_alloc));
-    filter->ctx = NULL;
-    delete context;
-  } else {
-    // Advance position on non-speculative reads.
-    if (mode != AP_MODE_SPECULATIVE) {
-      context->pos += bytes_read;
-    }
+  // Advance position on non-speculative reads.
+  if (mode != AP_MODE_SPECULATIVE) {
+    context->pos += bytes_read;
   }
   return APR_SUCCESS;
 }
@@ -307,7 +309,12 @@ ModSpdyFetcher::~ModSpdyFetcher() {
 bool ModSpdyFetcher::ShouldUseOn(request_rec* req) {
   // We want to get involved for all HTTPS resources, so that any resources
   // we generate for SPDY clients can also be served to HTTPS clients safely.
-  return mod_ssl_is_https(req->connection);
+  //
+  // It's not sufficient to just check is_https, however, since in case the
+  // top-level connection is SPDY, this will be a slave connection that will
+  // have mod_ssl off.
+  return mod_ssl_is_https(req->connection) ||
+         (mod_spdy_get_spdy_version(req->connection) != 0);
 }
 
 void ModSpdyFetcher::Fetch(const GoogleString& url,
