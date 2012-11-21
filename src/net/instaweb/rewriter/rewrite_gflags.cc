@@ -97,6 +97,9 @@ DEFINE_int32(image_max_rewrites_at_once,
              "Maximum number of images that will be rewritten simultaneously.");
 DEFINE_bool(ajax_rewriting_enabled, false, "Boolean to indicate whether ajax "
             "rewriting is enabled.");
+DEFINE_bool(in_place_wait_for_optimized, false, "Indicates whether in-place "
+            "resource optimization should wait to optimize the resource before "
+            "responding.");
 DEFINE_bool(image_preserve_urls, false, "Boolean to indicate whether image"
             "URLs should be preserved.");
 DEFINE_bool(css_preserve_urls, false, "Boolean to indicate whether CSS URLS"
@@ -543,6 +546,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   // disabled by default because of potential conflicts with Apache, we are
   // forcing this to be set in the default options.
   options->set_ajax_rewriting_enabled(FLAGS_ajax_rewriting_enabled);
+
+  if (WasExplicitlySet("in_place_wait_for_optimized")) {
+    options->set_in_place_wait_for_optimized(FLAGS_in_place_wait_for_optimized);
+  }
 
   MessageHandler* handler = factory->message_handler();
 

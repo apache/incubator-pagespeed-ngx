@@ -2241,6 +2241,11 @@ void RewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
   headers->ComputeCaching();
 }
 
+bool RewriteContext::FetchContextDetached() {
+  DCHECK(fetch_.get() != NULL);
+  return fetch_->detached();
+}
+
 bool RewriteContext::AbsolutifyIfNeeded(const StringPiece& input_contents,
                                         Writer* writer,
                                         MessageHandler* handler) {

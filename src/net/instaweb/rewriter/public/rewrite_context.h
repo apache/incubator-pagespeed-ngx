@@ -419,6 +419,9 @@ class RewriteContext {
   // Note that the following must only be called in the fetch flow.
   AsyncFetch* async_fetch();
 
+  // Is fetch_ detached? Only call this in the fetch flow.
+  bool FetchContextDetached();
+
   // The message handler for the fetch.
   MessageHandler* fetch_message_handler();
 

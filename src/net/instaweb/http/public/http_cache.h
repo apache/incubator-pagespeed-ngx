@@ -73,6 +73,8 @@ class HTTPCache {
     kRecentFetchNotCacheable,
   };
 
+  virtual void set_hasher(Hasher* hasher) { hasher_ = hasher; }
+
   // Class to handle an asynchronous cache lookup response.
   //
   // TODO(jmarantz): consider inheriting from AsyncFetch with an implementation

@@ -207,6 +207,7 @@ class RewriteOptions {
     kImageWebpRecompressionQuality,
     kImplicitCacheTtlMs,
     kIncreaseSpeedTracking,
+    kInPlaceWaitForOptimized,
     kJsInlineMaxBytes,
     kJsOutlineMinBytes,
     kLazyloadImagesBlankUrl,
@@ -1113,6 +1114,14 @@ class RewriteOptions {
 
   bool ajax_rewriting_enabled() const {
     return ajax_rewriting_enabled_.value();
+  }
+
+  void set_in_place_wait_for_optimized(bool x) {
+    set_option(x, &in_place_wait_for_optimized_);
+  }
+
+  bool in_place_wait_for_optimized() const {
+    return in_place_wait_for_optimized_.value();
   }
 
   void set_combine_across_paths(bool x) {
@@ -2426,7 +2435,9 @@ class RewriteOptions {
   Option<int> domain_shard_count_;
 
   Option<bool> enabled_;
-  Option<bool> ajax_rewriting_enabled_;  // Should ajax rewriting be enabled?
+  Option<bool> ajax_rewriting_enabled_;   // Should ajax rewriting be enabled?
+  // Optimize before responding in in-place flow?
+  Option<bool> in_place_wait_for_optimized_;
   Option<bool> combine_across_paths_;
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?
   Option<bool> lowercase_html_names_;

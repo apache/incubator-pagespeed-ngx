@@ -151,7 +151,22 @@ bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
         response_headers->ComputeCaching();
 
         if (!(response->body().empty() && omit_empty_writes_)) {
-          response_writer->Write(response->body(), message_handler);
+          if (!split_writes_) {
+            // Normal case.
+            response_writer->Write(response->body(), message_handler);
+          } else {
+            // This is used to test Ajax's RecordingFetch's cache recovery.
+            int mid = response->body().size() / 2;
+            StringPiece body = response->body();
+            StringPiece head = body.substr(0, mid);
+            StringPiece tail = body.substr(mid, StringPiece::npos);
+            if (!(head.empty() && omit_empty_writes_)) {
+              response_writer->Write(head, message_handler);
+            }
+            if (!(tail.empty() && omit_empty_writes_)) {
+              response_writer->Write(tail, message_handler);
+            }
+          }
         }
       }
     } else {

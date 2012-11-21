@@ -38,12 +38,17 @@
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/proto_util.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
 class MessageHandler;
+
+// Names for Statistics variables.
+const char AjaxRewriteContext::kInPlaceOversizedOptStream[] =
+    "in_place_oversized_opt_stream";
 
 AjaxRewriteResourceSlot::AjaxRewriteResourceSlot(const ResourcePtr& resource)
     : ResourceSlot(resource) {}
@@ -63,20 +68,29 @@ RecordingFetch::RecordingFetch(AsyncFetch* async_fetch,
       resource_(resource),
       context_(context),
       can_ajax_rewrite_(false),
+      streaming_(true),
       cache_value_writer_(&cache_value_,
-                          context_->FindServerContext()->http_cache()) {}
+                          context_->FindServerContext()->http_cache()) {
+  Statistics* stats = context->FindServerContext()->statistics();
+  in_place_oversized_opt_stream_ =
+      stats->GetVariable(AjaxRewriteContext::kInPlaceOversizedOptStream);
+}
 
 RecordingFetch::~RecordingFetch() {}
 
 void RecordingFetch::HandleHeadersComplete() {
   can_ajax_rewrite_ = CanAjaxRewrite();
+  streaming_ = ShouldStream();
   if (can_ajax_rewrite_) {
     // Save the headers, and wait to finalize them in HandleDone().
     saved_headers_.CopyFrom(*response_headers());
+    if (streaming_) {
+      base_fetch()->HeadersComplete();
+    }
   } else {
     FreeDriver();
+    base_fetch()->HeadersComplete();
   }
-  base_fetch()->HeadersComplete();
 }
 
 void RecordingFetch::FreeDriver() {
@@ -85,14 +99,36 @@ void RecordingFetch::FreeDriver() {
   context_->driver_->FetchComplete();
 }
 
+bool RecordingFetch::ShouldStream() {
+  return !can_ajax_rewrite_
+      || !context_->Options()->in_place_wait_for_optimized();
+}
+
 bool RecordingFetch::HandleWrite(const StringPiece& content,
                                  MessageHandler* handler) {
-  bool result = base_fetch()->Write(content, handler);
+  bool result = true;
+  if (streaming_) {
+    result = base_fetch()->Write(content, handler);
+  }
   if (can_ajax_rewrite_) {
-    result &= cache_value_writer_.Write(content, handler);
-    if (!cache_value_writer_.has_buffered()) {
+    if (cache_value_writer_.CanCacheContent(content)) {
+      result &= cache_value_writer_.Write(content, handler);
+      DCHECK(cache_value_writer_.has_buffered());
+    } else {
       // Cannot ajax rewrite a resource which is too big to fit in cache.
+      // TODO(jkarlin): Do we make note that the resource was too big so that
+      // we don't try to cache it later? Test and fix if not.
       can_ajax_rewrite_ = false;
+      if (!streaming_) {
+        // We need to start streaming now so write out what we've cached so far.
+        streaming_ = true;
+        in_place_oversized_opt_stream_->Add(1);
+        base_fetch()->HeadersComplete();
+        StringPiece cache_contents;
+        cache_value_.ExtractContents(&cache_contents);
+        base_fetch()->Write(cache_contents, handler);
+        base_fetch()->Write(content, handler);
+      }
       FreeDriver();
     }
   }
@@ -100,7 +136,10 @@ bool RecordingFetch::HandleWrite(const StringPiece& content,
 }
 
 bool RecordingFetch::HandleFlush(MessageHandler* handler) {
-  return base_fetch()->Flush(handler);
+  if (streaming_) {
+    return base_fetch()->Flush(handler);
+  }
+  return true;
 }
 
 void RecordingFetch::HandleDone(bool success) {
@@ -119,13 +158,19 @@ void RecordingFetch::HandleDone(bool success) {
     cache_value_writer_.SetHeaders(&saved_headers_);
   }
 
-  base_fetch()->Done(success);
+  if (streaming_) {
+    base_fetch()->Done(success);
+  }
 
   if (success && can_ajax_rewrite_) {
     resource_->Link(&cache_value_, handler_);
-    context_->DetachFetch();
+    if (streaming_) {
+      context_->DetachFetch();
+    }
     context_->StartFetchReconstructionParent();
-    context_->driver_->FetchComplete();
+    if (streaming_) {
+      context_->driver_->FetchComplete();
+    }
   }
   delete this;
 }
@@ -162,6 +207,10 @@ AjaxRewriteContext::AjaxRewriteContext(RewriteDriver* driver,
 
 AjaxRewriteContext::~AjaxRewriteContext() {}
 
+void AjaxRewriteContext::InitStats(Statistics* statistics) {
+  statistics->AddVariable(kInPlaceOversizedOptStream);
+}
+
 void AjaxRewriteContext::Harvest() {
   if (num_nested() == 1) {
     RewriteContext* nested_context = nested(0);
@@ -181,6 +230,30 @@ void AjaxRewriteContext::Harvest() {
           // since freshens only update the partitions and not the other
           // dependencies.
           partitions()->clear_other_dependency();
+        }
+        if (!FetchContextDetached() &&
+             Options()->in_place_wait_for_optimized()) {
+          // If we're waiting for the optimized version before responding,
+          // prepare the output here. Most of this is translated from
+          // RewriteContext::FetchContext::FetchDone
+          output_resource_->response_headers()->CopyFrom(
+              *(input_resource_->response_headers()));
+          Writer* writer = output_resource_->BeginWrite(
+              driver_->message_handler());
+          writer->Write(nested_resource->contents(),
+                        driver_->message_handler());
+          output_resource_->EndWrite(driver_->message_handler());
+
+          is_rewritten_ = true;
+          // EndWrite updated the hash in output_resource_.
+          output_resource_->full_name().hash().CopyToString(&rewritten_hash_);
+          FixFetchFallbackHeaders(output_resource_->response_headers());
+
+          // Use the most conservative Cache-Control considering the input.
+          // TODO(jkarlin): Is ApplyInputCacheControl needed here?
+          ResourceVector rv(1, input_resource_);
+          FindServerContext()->ApplyInputCacheControl(
+              rv, output_resource_->response_headers());
         }
         RewriteDone(kRewriteOk, 0);
         return;
@@ -299,6 +372,8 @@ RewriteFilter* AjaxRewriteContext::GetRewriteFilter(
 
 void AjaxRewriteContext::RewriteSingle(const ResourcePtr& input,
                                        const OutputResourcePtr& output) {
+  input_resource_ = input;
+  output_resource_ = output;
   input->DetermineContentType();
   if (input->IsValidAndCacheable() && input->type() != NULL) {
     const ContentType* type = input->type();

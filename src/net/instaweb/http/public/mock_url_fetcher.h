@@ -40,7 +40,7 @@ class MockUrlFetcher : public UrlFetcher {
   MockUrlFetcher() : enabled_(true), fail_on_unexpected_(true),
                      update_date_headers_(false), omit_empty_writes_(false),
                      fail_after_headers_(false), verify_host_header_(false),
-                     timer_(NULL) {}
+                     split_writes_(false), timer_(NULL) {}
   virtual ~MockUrlFetcher();
 
   void SetResponse(const StringPiece& url,
@@ -111,6 +111,11 @@ class MockUrlFetcher : public UrlFetcher {
 
   void set_timer(MockTimer* timer) { timer_ = timer; }
 
+  // If true then each time the fetcher writes it will split the write in half
+  // and write each half separately. This is needed to test that Ajax's
+  // RecordingFetch caches writes properly and recovers from failure.
+  void set_split_writes(bool val) { split_writes_ = val; }
+
  private:
   class HttpResponse {
    public:
@@ -150,7 +155,7 @@ class MockUrlFetcher : public UrlFetcher {
   bool omit_empty_writes_;    // Should we call ->Write with length 0?
   bool fail_after_headers_;   // Should we call Done(false) after headers?
   bool verify_host_header_;   // Should we verify the Host: header?
-
+  bool split_writes_;         // Should we turn one write into multiple?
   MockTimer* timer_;  // Timer to use for updating header dates.
 
   DISALLOW_COPY_AND_ASSIGN(MockUrlFetcher);

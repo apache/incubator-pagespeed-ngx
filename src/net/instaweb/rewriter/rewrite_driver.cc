@@ -712,6 +712,7 @@ void RewriteDriver::Initialize() {
 
 void RewriteDriver::InitStats(Statistics* statistics) {
   AddInstrumentationFilter::InitStats(statistics);
+  AjaxRewriteContext::InitStats(statistics);
   CacheExtender::InitStats(statistics);
   CssCombineFilter::InitStats(statistics);
   CssFilter::InitStats(statistics);

@@ -59,6 +59,12 @@ class WriteThroughHTTPCache : public HTTPCache {
   // Implements HTTPCache::set_force_caching().
   virtual void set_force_caching(bool force);
 
+  // Implements HttpCache::set_hasher().
+  virtual void set_hasher(Hasher* hasher) {
+    cache1_->set_hasher(hasher);
+    cache2_->set_hasher(hasher);
+  }
+
   // Implements HTTPCache::set_disable_html_caching_on_https().
   virtual void set_disable_html_caching_on_https(bool x);
 

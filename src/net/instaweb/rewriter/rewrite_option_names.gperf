@@ -70,6 +70,7 @@ struct OptionName {
 "ImageWebpRecompressionQuality",         RewriteOptions::kImageWebpRecompressionQuality
 "ImplicitCacheTtlMs",                    RewriteOptions::kImplicitCacheTtlMs
 "IncreaseSpeedTracking",                 RewriteOptions::kIncreaseSpeedTracking
+"InPlaceWaitForOptimized",               RewriteOptions::kInPlaceWaitForOptimized
 "JpegRecompressionQuality",              RewriteOptions::kImageJpegRecompressionQuality
 "JsInlineMaxBytes",                      RewriteOptions::kJsInlineMaxBytes
 "JsOutlineMinBytes",                     RewriteOptions::kJsOutlineMinBytes

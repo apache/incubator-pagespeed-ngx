@@ -68,8 +68,12 @@ class AjaxRewriteResourceSlot : public ResourceSlot {
 // Context that is used for an ajax rewrite.
 class AjaxRewriteContext : public SingleRewriteContext {
  public:
-  AjaxRewriteContext(RewriteDriver* driver, const StringPiece& url);
+  // Stats variable name to keep track of how often in-place falls back to
+  // stream (due to a large resource) when Options->in_place_wait_for_optimized
+  // is true.
+  static const char kInPlaceOversizedOptStream[];
 
+  AjaxRewriteContext(RewriteDriver* driver, const StringPiece& url);
   virtual ~AjaxRewriteContext();
 
   // Implements SingleRewriteContext::RewriteSingle().
@@ -85,6 +89,8 @@ class AjaxRewriteContext : public SingleRewriteContext {
                                GoogleUrlStarVector* url_vector);
   // Implements RewriteContext::StartFetchReconstruction().
   virtual void StartFetchReconstruction();
+
+  static void InitStats(Statistics* statistics);
 
  private:
   friend class RecordingFetch;
@@ -112,6 +118,10 @@ class AjaxRewriteContext : public SingleRewriteContext {
   // The hash of the rewritten resource. Note that this should only be used if
   // is_rewritten_ is true. This may be empty.
   GoogleString rewritten_hash_;
+
+  // Information needed for nested rewrites.
+  ResourcePtr input_resource_;
+  OutputResourcePtr output_resource_;
 
   scoped_ptr<UrlAsyncFetcher> cache_fetcher_;
 
@@ -143,15 +153,20 @@ class RecordingFetch : public SharedAsyncFetch {
 
   bool CanAjaxRewrite();
 
+  // By default RecordingFetch streams back the original content to the browser.
+  // If this returns false then the RecordingFetch should cache the original
+  // content but not stream it.
+  bool ShouldStream();
+
   MessageHandler* handler_;
   ResourcePtr resource_;
   AjaxRewriteContext* context_;
   bool can_ajax_rewrite_;
-
+  bool streaming_;
   HTTPValue cache_value_;
   HTTPValueWriter cache_value_writer_;
   ResponseHeaders saved_headers_;
-
+  Variable* in_place_oversized_opt_stream_;
   DISALLOW_COPY_AND_ASSIGN(RecordingFetch);
 };
 

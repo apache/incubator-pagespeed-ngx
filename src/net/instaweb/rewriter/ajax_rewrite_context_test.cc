@@ -48,48 +48,101 @@ class MessageHandler;
 
 namespace {
 
-// Mock rewriter that appends colon followed by rewriter id to the input
-// string. These are used since we need to use specific image / js / css
-// rewriters with a specific id, but don't want to test their entire
-// functionality.
-class FakeRewriter : public SimpleTextFilter::Rewriter {
+// A filter that that appends ':id' to the input contents and counts the number
+// of rewrites it has performed. It also has the ability to simulate a long
+// rewrite to test exceeding the rewrite deadline.
+class FakeFilter : public RewriteFilter {
  public:
-  explicit FakeRewriter(const char* id)
-      : id_(id), num_rewrites_(0), enabled_(true) {}
+  class Context : public SingleRewriteContext {
+   public:
+    Context(FakeFilter* filter, RewriteDriver* driver,
+            RewriteContext* parent)
+        : SingleRewriteContext(driver, parent, NULL), filter_(filter) {}
+    virtual ~Context() {}
 
-  // Stats.
+    void RewriteSingle(const ResourcePtr& input,
+                       const OutputResourcePtr& output) {
+      if (filter_->exceed_deadline()) {
+        int64 wakeup_us = Driver()->scheduler()->timer()->NowUs() +
+            1000 * (Driver()->rewrite_deadline_ms() * 2);
+        Function* closure = MakeFunction(this, &Context::DoRewriteSingle,
+                                         input, output);
+        Driver()->scheduler()->AddAlarm(wakeup_us, closure);
+      } else {
+        DoRewriteSingle(input, output);
+      }
+    }
+
+    void DoRewriteSingle(const ResourcePtr input,
+                         OutputResourcePtr output) {
+      RewriteResult result = kRewriteFailed;
+      GoogleString rewritten;
+      ServerContext* resource_manager = FindServerContext();
+
+      if (filter_->enabled()) {
+        // TODO(jkarlin): Writing to the filter from a context is not thread
+        // safe.
+        filter_->IncRewrites();
+        StrAppend(&rewritten, input->contents(), ":", filter_->id());
+        MessageHandler* message_handler = resource_manager->message_handler();
+        const ContentType* output_type = input->type();
+        if (output_type == NULL) {
+          output_type = &kContentTypeText;
+        }
+        ResourceVector rv = ResourceVector(1, input);
+        if (resource_manager->Write(rv, rewritten, output_type,
+                                    input->charset(), output.get(),
+                                    message_handler)) {
+          result = kRewriteOk;
+        }
+      }
+
+      RewriteDone(result, 0);
+    }
+    virtual const char* id() const { return filter_->id(); }
+    virtual OutputResourceKind kind() const { return filter_->kind(); }
+
+   private:
+    FakeFilter* filter_;
+  };
+
+  FakeFilter(const char* id, RewriteDriver* rewrite_driver)
+      : RewriteFilter(rewrite_driver), id_(id), exceed_deadline_(false),
+        enabled_(true), num_rewrites_(0) {}
+
+  virtual ~FakeFilter() {}
+
+  virtual void StartDocumentImpl() {}
+  virtual void EndElementImpl(HtmlElement* element) {}
+  virtual void StartElementImpl(HtmlElement* element) {}
+  virtual RewriteContext* MakeRewriteContext() {
+    return new FakeFilter::Context(this, driver_, NULL);
+  }
+  virtual RewriteContext* MakeNestedRewriteContext(RewriteContext* parent,
+                                           const ResourceSlotPtr& slot) {
+    RewriteContext* context = new FakeFilter::Context(this, NULL, parent);
+    context->AddSlot(slot);
+    return context;
+  }
   int num_rewrites() const { return num_rewrites_; }
   void ClearStats() { num_rewrites_ = 0; }
   void set_enabled(bool x) { enabled_ = x; }
+  bool enabled() { return enabled_; }
+  bool exceed_deadline() { return exceed_deadline_; }
+  void set_exceed_deadline(bool x) { exceed_deadline_ = x; }
+  void IncRewrites() { ++num_rewrites_; }
 
  protected:
-  REFCOUNT_FRIEND_DECLARATION(FakeRewriter);
-  virtual ~FakeRewriter() {}
-
-  virtual bool RewriteText(const StringPiece& url, const StringPiece& in,
-                           GoogleString* out,
-                           ServerContext* resource_manager) {
-    if (enabled_) {
-      ++num_rewrites_;
-      StrAppend(out, in, ":", id_);
-      return true;
-    }
-    return false;
-  }
-  virtual HtmlElement::Attribute* FindResourceAttribute(HtmlElement* element) {
-    return NULL;
-  }
-  virtual OutputResourceKind kind() const { return kRewrittenResource; }
   virtual const char* id() const { return id_; }
-  virtual const char* name() const { return "MockFilter"; }
+  virtual OutputResourceKind kind() const { return kRewrittenResource; }
+  virtual const char* Name() const { return "MockFilter"; }
+  virtual bool ComputeOnTheFly() const { return false; }
 
  private:
-  OutputResourceKind kind_;
   const char* id_;
-  int num_rewrites_;
+  bool exceed_deadline_;
   bool enabled_;
-
-  DISALLOW_COPY_AND_ASSIGN(FakeRewriter);
+  int num_rewrites_;
 };
 
 class FakeFetch : public AsyncFetch {
@@ -148,11 +201,11 @@ class AjaxRewriteContextTest : public RewriteTestBase {
             "http://www.example.com/cacheable.jpg.pagespeed.ic.0.jpg"),
         cache_body_("good"), nocache_body_("bad"), bad_body_("ugly"),
         ttl_ms_(Timer::kHourMs), etag_("W/\"PSA-aj-0\""),
-        original_etag_("original_etag") {}
+        original_etag_("original_etag"),
+        exceed_deadline_(false) {}
 
-  virtual void SetUp() {
+  virtual void Init() {
     mock_timer()->SetTimeUs(start_time_ms() * Timer::kMsUs);
-    RewriteTestBase::SetUp();
     mock_url_fetcher()->set_fail_on_unexpected(false);
 
     // Set fetcher result and headers.
@@ -180,17 +233,16 @@ class AjaxRewriteContextTest : public RewriteTestBase {
     bad_headers.SetDate(start_time_ms());
     mock_url_fetcher()->SetResponse(bad_url_, bad_headers, bad_body_);
 
-    img_filter_ = new FakeRewriter(RewriteOptions::kImageCompressionId);
-    js_filter_ = new FakeRewriter(RewriteOptions::kJavascriptMinId);
-    css_filter_ = new FakeRewriter(RewriteOptions::kCssFilterId);
+    img_filter_ = new FakeFilter(RewriteOptions::kImageCompressionId,
+                                 rewrite_driver());
+    js_filter_ = new FakeFilter(RewriteOptions::kJavascriptMinId,
+                                rewrite_driver());
+    css_filter_ = new FakeFilter(RewriteOptions::kCssFilterId,
+                                 rewrite_driver());
 
-    rewrite_driver()->AppendRewriteFilter(
-        new SimpleTextFilter(img_filter_, rewrite_driver()));
-    rewrite_driver()->AppendRewriteFilter(
-        new SimpleTextFilter(js_filter_, rewrite_driver()));
-    rewrite_driver()->AppendRewriteFilter(
-        new SimpleTextFilter(css_filter_, rewrite_driver()));
-    rewrite_driver()->AddFilters();
+    rewrite_driver()->AppendRewriteFilter(img_filter_);
+    rewrite_driver()->AppendRewriteFilter(js_filter_);
+    rewrite_driver()->AppendRewriteFilter(css_filter_);
 
     options()->ClearSignatureForTesting();
     AddRecompressImageFilters();
@@ -200,6 +252,9 @@ class AjaxRewriteContextTest : public RewriteTestBase {
     server_context()->ComputeSignature(options());
     // Clear stats since we may have added something to the cache.
     ClearStats();
+
+    oversized_stream_ = statistics()->GetVariable(
+        AjaxRewriteContext::kInPlaceOversizedOptStream);
   }
 
   void AddResponse(const GoogleString& url, const ContentType& content_type,
@@ -241,12 +296,24 @@ class AjaxRewriteContextTest : public RewriteTestBase {
                              int64 expected_ttl,
                              const char* etag,
                              int64 date_ms) {
+    js_filter_->set_exceed_deadline(exceed_deadline_);
+    img_filter_->set_exceed_deadline(exceed_deadline_);
+    css_filter_->set_exceed_deadline(exceed_deadline_);
+
     WorkerTestBase::SyncPoint sync(server_context()->thread_system());
     FakeFetch mock_fetch(&sync, &response_headers_);
     mock_fetch.set_request_headers(&request_headers_);
 
     rewrite_driver()->Clear();
     rewrite_driver()->FetchResource(url, &mock_fetch);
+    // If we're testing if the rewrite takes too long, we need to push
+    // time forward here.
+    if (exceed_deadline()) {
+      rewrite_driver()->BoundedWaitFor(
+          RewriteDriver::kWaitForCompletion,
+          rewrite_driver()->rewrite_deadline_ms() * 2);
+    }
+
     sync.Wait();
     rewrite_driver()->WaitForShutDown();
     mock_scheduler()->AwaitQuiescence();  // needed for cache puts to finish.
@@ -321,9 +388,12 @@ class AjaxRewriteContextTest : public RewriteTestBase {
     EXPECT_EQ(0, css_filter_->num_rewrites());
   }
 
-  FakeRewriter* img_filter_;
-  FakeRewriter* js_filter_;
-  FakeRewriter* css_filter_;
+  bool exceed_deadline() { return exceed_deadline_; }
+  void set_exceed_deadline(bool x) { exceed_deadline_ = x; }
+
+  FakeFilter* img_filter_;
+  FakeFilter* js_filter_;
+  FakeFilter* css_filter_;
 
   RequestHeaders request_headers_;
   ResponseHeaders response_headers_;
@@ -335,7 +405,6 @@ class AjaxRewriteContextTest : public RewriteTestBase {
   const GoogleString cache_webp_url_;
   const GoogleString cache_js_url_;
   const GoogleString cache_css_url_;
-
   const GoogleString nocache_html_url_;
   const GoogleString cache_js_no_max_age_url_;
   const GoogleString bad_url_;
@@ -348,10 +417,14 @@ class AjaxRewriteContextTest : public RewriteTestBase {
   const int ttl_ms_;
   const char* etag_;
   const char* original_etag_;
+  bool exceed_deadline_;
+
+  Variable* oversized_stream_;
 };
 
 TEST_F(AjaxRewriteContextTest, CacheableHtmlUrlNoRewriting) {
   // All these entries find no ajax rewrite metadata and no rewriting happens.
+  Init();
   FetchAndCheckResponse(cache_html_url_, cache_body_, true, ttl_ms_,
                         original_etag_, start_time_ms());
   // First fetch misses initial cache lookup, succeeds at fetch and inserts
@@ -399,7 +472,203 @@ TEST_F(AjaxRewriteContextTest, CacheableHtmlUrlNoRewriting) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
+TEST_F(AjaxRewriteContextTest, WaitForOptimizedFirstRequest) {
+  // By setting this flag we should get an optimized response on the first
+  // request unless we hit a rewrite timeout but in this test it will complete
+  // in time.
+  options()->set_in_place_wait_for_optimized(true);
+  Init();
+
+  // The optimized content from the fake rewriter has ":ic" appended to original
+  // content.
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
+                        start_time_ms());
+
+  // First fetch misses initial cache lookup, succeeds at fetch and inserts
+  // result into cache. Also, the resource gets rewritten and the rewritten
+  // resource gets inserted into cache. The optimized version should be
+  // returned.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());  // rewritten + original
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_inserts());
+  EXPECT_EQ(1, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(0, oversized_stream_->Get());
+
+  ResetHeadersAndStats();
+  mock_timer()->SetTimeMs((start_time_ms() + ttl_ms_/2));
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
+                        start_time_ms() + ttl_ms_/2);
+  // Second fetch hits the metadata cache and the rewritten resource is
+  // served out.
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(0, oversized_stream_->Get());
+}
+
+TEST_F(AjaxRewriteContextTest, WaitForOptimizeWithDisabledFilter) {
+  // Wait for optimized but if the resource fails to optimize we should get
+  // back the original resource.
+  options()->set_in_place_wait_for_optimized(true);
+  // We'll also test that the hash values we get are legitimate and not
+  // hard-coded 0s
+  UseMd5Hasher();
+
+  Init();
+
+  // Turn off optimization. The filter will still run but return false in
+  // rewrite.
+  img_filter_->set_enabled(false);
+  FetchAndCheckResponse(cache_jpg_url_, cache_body_, true, ttl_ms_,
+                        NULL, start_time_ms());
+
+  // First fetch misses initial cache lookup, succeeds at fetch and inserts
+  // result into cache. Failure to rewrite means original should be returned.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());  // original only
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(0, oversized_stream_->Get());
+
+  ResetHeadersAndStats();
+  // The second time we get the cached original, which should have an md5'd
+  // etag.
+  GoogleString expected_etag = StrCat("W/\"PSA-", hasher()->Hash(cache_body_),
+                                      "\"");
+  FetchAndCheckResponse(cache_jpg_url_, cache_body_, true, ttl_ms_,
+                        expected_etag.c_str(), start_time_ms());
+  // Second fetch hits the metadata cache, sees that the rewrite failed and
+  // fetches and serves the original resource from cache.
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(0, oversized_stream_->Get());
+}
+
+TEST_F(AjaxRewriteContextTest, WaitForOptimizeTimeout) {
+  // Confirm that rewrite deadlines cause the original resource to be returned
+  // (but caches the optimized) even if in_place_wait_for_optimize is on.
+  options()->set_in_place_wait_for_optimized(true);
+  Init();
+
+  // Tells the optimizing filter to slow down.
+  exceed_deadline_ = true;
+
+  FetchAndCheckResponse(cache_jpg_url_, cache_body_, true, ttl_ms_,
+                        NULL, start_time_ms());
+  // First fetch misses initial cache lookup, succeeds at fetch and inserts
+  // result into cache. Rewrite succeeds but is slow so original returned.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());  // rewritten + original
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_inserts());
+  EXPECT_EQ(1, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(0, oversized_stream_->Get());
+
+  ResetHeadersAndStats();
+  mock_timer()->SetTimeMs((start_time_ms() + ttl_ms_/2));
+
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
+                        start_time_ms() + ttl_ms_/2);
+  // Second fetch hits the metadata cache and the rewritten resource is served
+  // out.
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(0, oversized_stream_->Get());
+}
+
+TEST_F(AjaxRewriteContextTest, WaitForOptimizeResourceTooBig) {
+  // Wait for optimized but if it's larger than the RecordingFetch can handle
+  // make sure we piece together the original resource properly.
+  options()->set_in_place_wait_for_optimized(true);
+
+  Init();
+
+  // To make this more interesting there should be something in the cache to
+  // recover when we fail.  Let's split the url_fetch from 'good' into 'go' and
+  // 'od' writes.
+  mock_url_fetcher()->set_split_writes(true);
+
+  // By setting cache max to 2, the second write ('od') will cause an overflow.
+  // Test that we recover.
+  http_cache()->set_max_cacheable_response_content_length(2);
+
+  FetchAndCheckResponse(cache_jpg_url_, cache_body_, true, ttl_ms_,
+                        NULL, start_time_ms());
+
+  // First fetch misses initial cache lookup, succeeds at fetch but resource too
+  // big for cache.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());  // rewritten + original
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(1, oversized_stream_->Get());
+
+  ResetHeadersAndStats();
+  FetchAndCheckResponse(cache_jpg_url_, cache_body_, true, ttl_ms_,
+                        NULL, start_time_ms());
+  // Second fetch should also completely miss because the first fetch was too
+  // big to stuff in the cache.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());  // rewritten + original
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(1, oversized_stream_->Get());
+}
+
 TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
+  Init();
   FetchAndCheckResponse(cache_jpg_url_, cache_body_, true, ttl_ms_, NULL,
                         start_time_ms());
 
@@ -562,10 +831,12 @@ TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
 }
 
 TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingSucceeds) {
+  Init();
   ExpectAjaxImageSuccessFlow(cache_png_url_);
 }
 
 TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingSucceedsWithShards) {
+  Init();
   const char kShard1[] = "http://s1.example.com/";
   const char kShard2[] = "http://s2.example.com/";
 
@@ -576,15 +847,18 @@ TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingSucceedsWithShards) {
 }
 
 TEST_F(AjaxRewriteContextTest, CacheableiGifUrlRewritingSucceeds) {
+  Init();
   ExpectAjaxImageSuccessFlow(cache_gif_url_);
 }
 
 TEST_F(AjaxRewriteContextTest, CacheableWebpUrlRewritingSucceeds) {
+  Init();
   ExpectAjaxImageSuccessFlow(cache_webp_url_);
 }
 
 TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingFails) {
   // Setup the image filter to fail at rewriting.
+  Init();
   img_filter_->set_enabled(false);
   FetchAndCheckResponse(cache_png_url_, cache_body_, true, ttl_ms_,
                         original_etag_, start_time_ms());
@@ -621,6 +895,7 @@ TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingFails) {
 }
 
 TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingSucceeds) {
+  Init();
   FetchAndCheckResponse(cache_js_url_, cache_body_, true, ttl_ms_, NULL,
                         start_time_ms());
 
@@ -675,6 +950,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingSucceeds) {
 }
 
 TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
+  Init();
   options()->ClearSignatureForTesting();
   options()->set_metadata_cache_staleness_threshold_ms(ttl_ms_);
   server_context()->ComputeSignature(options());
@@ -737,12 +1013,14 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
 }
 
 TEST_F(AjaxRewriteContextTest, CacheableJsUrlModifiedImplicitCacheTtl) {
+  Init();
   response_headers_.set_implicit_cache_ttl_ms(500 * Timer::kSecondMs);
   FetchAndCheckResponse(cache_js_no_max_age_url_, cache_body_, true,
                         500 * Timer::kSecondMs, NULL, start_time_ms());
 }
 
 TEST_F(AjaxRewriteContextTest, CacheableCssUrlIfCssRewritingDisabled) {
+  Init();
   options()->ClearSignatureForTesting();
   options()->DisableFilter(RewriteOptions::kRewriteCss);
   server_context()->ComputeSignature(options());
@@ -786,6 +1064,7 @@ TEST_F(AjaxRewriteContextTest, CacheableCssUrlIfCssRewritingDisabled) {
 }
 
 TEST_F(AjaxRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
+  Init();
   FetchAndCheckResponse(cache_css_url_, cache_body_, true, ttl_ms_, NULL,
                         start_time_ms());
 
@@ -840,6 +1119,7 @@ TEST_F(AjaxRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
 }
 
 TEST_F(AjaxRewriteContextTest, NonCacheableUrlNoRewriting) {
+  Init();
   FetchAndCheckResponse(nocache_html_url_, nocache_body_, true, 0, NULL,
                         mock_timer()->NowMs());
   // First fetch misses initial cache lookup, succeeds at fetch and we don't
@@ -858,6 +1138,7 @@ TEST_F(AjaxRewriteContextTest, NonCacheableUrlNoRewriting) {
 }
 
 TEST_F(AjaxRewriteContextTest, BadUrlNoRewriting) {
+  Init();
   FetchAndCheckResponse(bad_url_, bad_body_, true, 0, NULL, start_time_ms());
   // First fetch misses initial cache lookup, succeeds at fetch and we don't
   // insert into cache because it's not cacheable. Don't attempt to rewrite
@@ -875,6 +1156,7 @@ TEST_F(AjaxRewriteContextTest, BadUrlNoRewriting) {
 }
 
 TEST_F(AjaxRewriteContextTest, FetchFailedNoRewriting) {
+  Init();
   FetchAndCheckResponse("http://www.notincache.com", "", false, 0, NULL,
                         start_time_ms());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());

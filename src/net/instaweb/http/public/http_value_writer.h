@@ -49,6 +49,10 @@ class HTTPValueWriter {
   // headers.
   bool CheckCanCacheElseClear(ResponseHeaders* headers);
 
+  // Checks if we can write the string to the HttpValue without going over
+  // limits.
+  bool CanCacheContent(const StringPiece& str) const;
+
  private:
   HTTPValue* value_;
   HTTPCache* cache_;

@@ -357,7 +357,9 @@ class RewriteTestBase : public RewriteOptionsTestBase {
 
   void UseMd5Hasher() {
     server_context_->set_hasher(&md5_hasher_);
+    server_context_->http_cache()->set_hasher(&md5_hasher_);
     other_server_context_->set_hasher(&md5_hasher_);
+    other_server_context_->http_cache()->set_hasher(&md5_hasher_);
   }
 
 

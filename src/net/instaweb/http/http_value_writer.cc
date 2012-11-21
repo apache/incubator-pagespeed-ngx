@@ -53,4 +53,8 @@ bool HTTPValueWriter::CheckCanCacheElseClear(ResponseHeaders* headers) {
   return has_buffered_;
 }
 
+bool HTTPValueWriter::CanCacheContent(const StringPiece& str) const {
+  return cache_->IsCacheableBodySize(str.size() + value_->contents_size());
+}
+
 }  // namespace net_instaweb
