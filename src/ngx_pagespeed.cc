@@ -175,10 +175,10 @@ typedef struct {
   net_instaweb::NgxRewriteOptions* options;
   net_instaweb::ProxyFetchFactory* proxy_fetch_factory;
   net_instaweb::MessageHandler* handler;
-} ngx_http_pagespeed_srv_conf_t;
+} ngx_http_pagespeed_loc_conf_t;
 
 typedef struct {
-  ngx_http_pagespeed_srv_conf_t* cfg;
+  ngx_http_pagespeed_loc_conf_t* cfg;
   net_instaweb::ProxyFetch* proxy_fetch;
   net_instaweb::NgxBaseFetch* base_fetch;
   bool data_received;
@@ -196,10 +196,10 @@ ngx_int_t
 ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
 void*
-ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf);
+ngx_http_pagespeed_create_loc_conf(ngx_conf_t* cf);
 
 char*
-ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child);
+ngx_http_pagespeed_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child);
 
 void
 ngx_http_pagespeed_release_request_context(void* data);
@@ -215,7 +215,7 @@ ngx_http_pagespeed_get_request_context(ngx_http_request_t* r);
 
 void
 ngx_http_pagespeed_initialize_server_context(
-    ngx_http_pagespeed_srv_conf_t* cfg);
+    ngx_http_pagespeed_loc_conf_t* cfg);
 
 ngx_int_t
 ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
@@ -262,10 +262,10 @@ ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
 ngx_command_t ngx_http_pagespeed_commands[] = {
   { ngx_string("pagespeed"),
-    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1|
-    NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
+    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|
+    NGX_CONF_TAKE1|NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
     ngx_http_pagespeed_configure,
-    NGX_HTTP_SRV_CONF_OFFSET,
+    NGX_HTTP_LOC_CONF_OFFSET,
     0,
     NULL },
 
@@ -275,9 +275,9 @@ ngx_command_t ngx_http_pagespeed_commands[] = {
 #define NGX_PAGESPEED_MAX_ARGS 10
 char*
 ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
-  ngx_http_pagespeed_srv_conf_t* cfg =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
-          ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
+  ngx_http_pagespeed_loc_conf_t* cfg =
+      static_cast<ngx_http_pagespeed_loc_conf_t*>(
+          ngx_http_conf_get_module_loc_conf(cf, ngx_pagespeed));
 
   if (cfg->options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
@@ -307,11 +307,11 @@ ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
 }
 
 void*
-ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
-  ngx_http_pagespeed_srv_conf_t* conf;
+ngx_http_pagespeed_create_loc_conf(ngx_conf_t* cf) {
+  ngx_http_pagespeed_loc_conf_t* conf;
 
-  conf = static_cast<ngx_http_pagespeed_srv_conf_t*>(
-      ngx_pcalloc(cf->pool, sizeof(ngx_http_pagespeed_srv_conf_t)));
+  conf = static_cast<ngx_http_pagespeed_loc_conf_t*>(
+      ngx_pcalloc(cf->pool, sizeof(ngx_http_pagespeed_loc_conf_t)));
   if (conf == NULL) {
     return NGX_CONF_ERROR;
   }
@@ -328,22 +328,35 @@ ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
 // levels, and then it calls this.  First it creates the configuration at the
 // new level, parsing any pagespeed directives, then it merges in the
 // configuration from the level above.  This function should merge the parent
-// configuration (prev) into the child (conf).  It's only more complex than
-// conf->options->Merge() because of the cases where the parent or child didn't
-// have any pagespeed directives.
+// configuration into the child.  It's more complex than options->Merge() both
+// because of the cases where the parent or child didn't have any pagespeed
+// directives and because merging is order-dependent in the opposite way we'd
+// like.
 char*
-ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
-  ngx_http_pagespeed_srv_conf_t* prev =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(parent);
-  ngx_http_pagespeed_srv_conf_t* conf =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(child);
+ngx_http_pagespeed_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
+  ngx_http_pagespeed_loc_conf_t* parent_conf =
+      static_cast<ngx_http_pagespeed_loc_conf_t*>(parent);
+  ngx_http_pagespeed_loc_conf_t* child_conf =
+      static_cast<ngx_http_pagespeed_loc_conf_t*>(child);
 
-  if (prev->options == NULL) {
+  if (parent_conf->options == NULL) {
     // Nothing to do.
-  } else if (conf->options == NULL && prev->options != NULL) {
-    conf->options = prev->options->Clone();
+  } else if (child_conf->options == NULL && parent_conf->options != NULL) {
+    child_conf->options = parent_conf->options->Clone();
   } else {  // Both non-null.
-    conf->options->Merge(*prev->options);
+    // Unfortunately, merging configuration options is order dependent.  We'd
+    // like to just do child_conf->options->Merge(*parent_conf->options)
+    // but then if we had:
+    //    pagespeed RewriteLevel PassThrough
+    //    location /pagespeed/ {
+    //       pagespeed RewriteLevel CoreFilters
+    //    }
+    // it would always be stuck on PassThrough.
+    net_instaweb::NgxRewriteOptions* child_specific_options =
+        child_conf->options;
+    child_conf->options = parent_conf->options->Clone();
+    child_conf->options->Merge(*child_specific_options);
+    delete child_specific_options;
   }
   return NGX_CONF_OK;
 }
@@ -457,13 +470,13 @@ ngx_http_pagespeed_get_request_context(ngx_http_request_t* r) {
       ngx_http_get_module_ctx(r, ngx_pagespeed));
 }
 
-// Initialize the ngx_http_pagespeed_srv_conf_t by allocating and configuring
+// Initialize the ngx_http_pagespeed_loc_conf_t by allocating and configuring
 // the long-lived objects it contains.
 // TODO(jefftk): This shouldn't be done on the first request but instead
 // when we're done processing the configuration.
 void
 ngx_http_pagespeed_initialize_server_context(
-    ngx_http_pagespeed_srv_conf_t* cfg) {
+    ngx_http_pagespeed_loc_conf_t* cfg) {
   net_instaweb::NgxRewriteDriverFactory::Initialize();
   // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
   // we're done with it.
@@ -686,12 +699,12 @@ CreateRequestContext::Response
 ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
                                           bool is_resource_fetch) {
   fprintf(stderr, "ngx_http_pagespeed_create_request_context\n");
-  ngx_http_pagespeed_srv_conf_t* cfg =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
-          ngx_http_get_module_srv_conf(r, ngx_pagespeed));
+  ngx_http_pagespeed_loc_conf_t* cfg =
+      static_cast<ngx_http_pagespeed_loc_conf_t*>(
+          ngx_http_get_module_loc_conf(r, ngx_pagespeed));
 
   if (cfg->driver_factory == NULL) {
-    // This is the first request handled by this server block.
+    // This is the first request handled by this location block.
     ngx_http_pagespeed_initialize_server_context(cfg);
   }
 
@@ -1052,9 +1065,9 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
 }
 
 ngx_int_t ngx_http_pagespeed_static_handler(ngx_http_request_t* r) {
-  ngx_http_pagespeed_srv_conf_t* cfg =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
-          ngx_http_get_module_srv_conf(r, ngx_pagespeed));
+  ngx_http_pagespeed_loc_conf_t* cfg =
+      static_cast<ngx_http_pagespeed_loc_conf_t*>(
+          ngx_http_get_module_loc_conf(r, ngx_pagespeed));
   CHECK(cfg != NULL);
   CHECK(cfg->server_context != NULL);
 
@@ -1140,9 +1153,9 @@ ngx_http_pagespeed_content_handler(ngx_http_request_t* r) {
 
 ngx_int_t
 ngx_http_pagespeed_init(ngx_conf_t* cf) {
-  ngx_http_pagespeed_srv_conf_t* cfg =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
-          ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
+  ngx_http_pagespeed_loc_conf_t* cfg =
+      static_cast<ngx_http_pagespeed_loc_conf_t*>(
+          ngx_http_conf_get_module_loc_conf(cf, ngx_pagespeed));
 
   // Only put register pagespeed code to run if there was a "pagespeed"
   // configuration option set in the config file.  With "pagespeed off" we
@@ -1176,11 +1189,11 @@ ngx_http_module_t ngx_http_pagespeed_module = {
   NULL,  // create main configuration
   NULL,  // init main configuration
 
-  ngx_http_pagespeed_create_srv_conf,  // create server configuration
-  ngx_http_pagespeed_merge_srv_conf,  // merge server configuration
+  NULL,  // create server configuration
+  NULL,  // merge server configuration
 
-  NULL,  // create location configuration
-  NULL  // merge location configuration
+  ngx_http_pagespeed_create_loc_conf,  // create location configuration
+  ngx_http_pagespeed_merge_loc_conf  // merge location configuration
 };
 
 }  // namespace
