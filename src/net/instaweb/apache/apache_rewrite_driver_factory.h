@@ -39,7 +39,7 @@ class AbstractSharedMem;
 class ApacheCache;
 class ApacheConfig;
 class ApacheMessageHandler;
-class ApacheResourceManager;
+class ApacheServerContext;
 class AprMemCache;
 class AsyncCache;
 class CacheInterface;
@@ -136,7 +136,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
       const StringPiece& name, const bool logging,
       const int64 logging_interval_ms, const GoogleString& logging_file);
 
-  ApacheResourceManager* MakeApacheResourceManager(server_rec* server);
+  ApacheServerContext* MakeApacheResourceManager(server_rec* server);
 
   // Makes fetches from PSA to origin-server request
   // accept-encoding:gzip, even when used in a context when we want
@@ -251,9 +251,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   SerfUrlAsyncFetcher* GetSerfFetcher(ApacheConfig* config);
 
   // Notification of apache tearing down a context (vhost or top-level)
-  // corresponding to given ApacheResourceManager. Returns true if it was
+  // corresponding to given ApacheServerContext. Returns true if it was
   // the last context.
-  bool PoolDestroyed(ApacheResourceManager* rm);
+  bool PoolDestroyed(ApacheServerContext* rm);
 
   // Create a new RewriteOptions.  In this implementation it will be an
   // ApacheConfig.
@@ -278,7 +278,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // b) Route requests directly to this very server when they are not
   //    configured to be external.
   // c) Route requests to mod_spdy's slave connection code if configured to.
-  void ApplySessionFetchers(ApacheResourceManager* manager,
+  void ApplySessionFetchers(ApacheServerContext* manager,
                             RewriteDriver* driver, request_rec* req);
 
   // Returns true if we should handle request as SPDY.
@@ -373,7 +373,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // so that ApacheRewriteDriverFactory::ChildInit can iterate over all
   // the managers that need to be ChildInit'd, and so that we can free
   // the managers in the Root process that were never ChildInit'd.
-  typedef std::set<ApacheResourceManager*> ApacheResourceManagerSet;
+  typedef std::set<ApacheServerContext*> ApacheResourceManagerSet;
   ApacheResourceManagerSet uninitialized_managers_;
 
   // If true, we'll have a separate statistics object for each vhost

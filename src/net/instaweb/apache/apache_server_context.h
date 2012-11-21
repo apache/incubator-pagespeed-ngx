@@ -14,8 +14,8 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_APACHE_APACHE_RESOURCE_MANAGER_H_
-#define NET_INSTAWEB_APACHE_APACHE_RESOURCE_MANAGER_H_
+#ifndef NET_INSTAWEB_APACHE_APACHE_SERVER_CONTEXT_H_
+#define NET_INSTAWEB_APACHE_APACHE_SERVER_CONTEXT_H_
 
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -38,18 +38,18 @@ class Statistics;
 class UrlAsyncFetcherStats;
 class Variable;
 
-// Creates an Apache-specific ResourceManager.  This differs from base class
+// Creates an Apache-specific ServerContext.  This differs from base class
 // that it incorporates by adding per-VirtualHost configuration, including:
 //    - file-cache path & limits
 //    - default RewriteOptions.
 // Additionally, there are startup semantics for apache's prefork model
 // that require a phased initialization.
-class ApacheResourceManager : public ServerContext {
+class ApacheServerContext : public ServerContext {
  public:
-  ApacheResourceManager(ApacheRewriteDriverFactory* factory,
-                        server_rec* server,
-                        const StringPiece& version);
-  virtual ~ApacheResourceManager();
+  ApacheServerContext(ApacheRewriteDriverFactory* factory,
+                      server_rec* server,
+                      const StringPiece& version);
+  virtual ~ApacheServerContext();
 
   GoogleString hostname_identifier() { return hostname_identifier_; }
   ApacheRewriteDriverFactory* apache_factory() { return apache_factory_; }
@@ -99,7 +99,7 @@ class ApacheResourceManager : public ServerContext {
   // It will also compute signatures when done.
   void CollapseConfigOverlaysAndComputeSignatures();
 
-  // Initialize this ResourceManager to have its own statistics domain.
+  // Initialize this ServerContext to have its own statistics domain.
   // Must be called after global_statistics has been created and had
   // ::Initialize called on it.
   void CreateLocalStatistics(Statistics* global_statistics);
@@ -110,7 +110,7 @@ class ApacheResourceManager : public ServerContext {
   bool initialized() const { return initialized_; }
 
   // Called on notification from Apache on child exit. Returns true
-  // if this is the last ResourceManager that exists.
+  // if this is the last ServerContext that exists.
   bool PoolDestroyed();
 
   // Poll; if we haven't checked the timestamp of
@@ -181,9 +181,9 @@ class ApacheResourceManager : public ServerContext {
   Variable* cache_flush_count_;
   Variable* cache_flush_timestamp_ms_;
 
-  DISALLOW_COPY_AND_ASSIGN(ApacheResourceManager);
+  DISALLOW_COPY_AND_ASSIGN(ApacheServerContext);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APACHE_RESOURCE_MANAGER_H_
+#endif  // NET_INSTAWEB_APACHE_APACHE_SERVER_CONTEXT_H_

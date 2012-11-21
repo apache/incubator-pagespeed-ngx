@@ -34,7 +34,7 @@
 #include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_message_handler.h"
-#include "net/instaweb/apache/apache_resource_manager.h"
+#include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/apache_thread_system.h"
 #include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_timer.h"
@@ -609,7 +609,7 @@ void ApacheRewriteDriverFactory::RootInit() {
   ParentOrChildInit();
   for (ApacheResourceManagerSet::iterator p = uninitialized_managers_.begin(),
            e = uninitialized_managers_.end(); p != e; ++p) {
-    ApacheResourceManager* resource_manager = *p;
+    ApacheServerContext* resource_manager = *p;
 
     // Determine the set of caches needed based on the unique
     // file_cache_path()s in the manager configurations.  We ignore
@@ -643,7 +643,7 @@ void ApacheRewriteDriverFactory::ChildInit() {
   }
   for (ApacheResourceManagerSet::iterator p = uninitialized_managers_.begin(),
            e = uninitialized_managers_.end(); p != e; ++p) {
-    ApacheResourceManager* resource_manager = *p;
+    ApacheServerContext* resource_manager = *p;
     resource_manager->ChildInit();
   }
   uninitialized_managers_.clear();
@@ -795,7 +795,7 @@ void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
   RewriteDriverFactory::InitStats(statistics);
   SerfUrlAsyncFetcher::InitStats(statistics);
   RateController::InitStats(statistics);
-  ApacheResourceManager::InitStats(statistics);
+  ApacheServerContext::InitStats(statistics);
   AprMemCache::InitStats(statistics);
   CacheStats::InitStats(ApacheCache::kFileCache, statistics);
   CacheStats::InitStats(ApacheCache::kLruCache, statistics);
@@ -808,14 +808,14 @@ void ApacheRewriteDriverFactory::Terminate() {
   ApacheConfig::Terminate();
 }
 
-ApacheResourceManager* ApacheRewriteDriverFactory::MakeApacheResourceManager(
+ApacheServerContext* ApacheRewriteDriverFactory::MakeApacheResourceManager(
     server_rec* server) {
-  ApacheResourceManager* rm = new ApacheResourceManager(this, server, version_);
+  ApacheServerContext* rm = new ApacheServerContext(this, server, version_);
   uninitialized_managers_.insert(rm);
   return rm;
 }
 
-bool ApacheRewriteDriverFactory::PoolDestroyed(ApacheResourceManager* rm) {
+bool ApacheRewriteDriverFactory::PoolDestroyed(ApacheServerContext* rm) {
   if (uninitialized_managers_.erase(rm) == 1) {
     delete rm;
   }
@@ -849,7 +849,7 @@ void ApacheRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
 }
 
 void ApacheRewriteDriverFactory::ApplySessionFetchers(
-    ApacheResourceManager* manager, RewriteDriver* driver, request_rec* req) {
+    ApacheServerContext* manager, RewriteDriver* driver, request_rec* req) {
   const ApacheConfig* conf = ApacheConfig::DynamicCast(driver->options());
   CHECK(conf != NULL);
   // Note that these fetchers are applied in the opposite order of how they are

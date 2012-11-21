@@ -36,7 +36,7 @@
 
 namespace net_instaweb {
 
-class ApacheResourceManager;
+class ApacheServerContext;
 class GzipInflater;
 class RequestHeaders;
 class RewriteDriver;
@@ -83,7 +83,7 @@ class InstawebContext {
   InstawebContext(request_rec* request,
                   RequestHeaders* request_headers,
                   const ContentType& content_type,
-                  ApacheResourceManager* manager,
+                  ApacheServerContext* server_context,
                   const GoogleString& base_url,
                   bool using_spdy,
                   bool use_custom_options,
@@ -96,7 +96,7 @@ class InstawebContext {
 
   apr_bucket_brigade* bucket_brigade() const { return bucket_brigade_; }
   ContentEncoding content_encoding() const { return  content_encoding_; }
-  ApacheResourceManager* manager() { return server_context_; }
+  ApacheServerContext* apache_server_context() { return server_context_; }
   const GoogleString& output() { return output_; }
   bool empty() const { return output_.empty(); }
   void clear() { output_.clear(); }  // TODO(jmarantz): needed?
@@ -111,10 +111,10 @@ class InstawebContext {
   // Populated response_headers_ with the request's headers_out table.
   void PopulateHeaders(request_rec* request);
 
-  // Looks up the manager from the server rec.
+  // Looks up the apache server context from the server rec.
   // TODO(jmarantz): Is there a better place to put this?  It needs to
   // be used by both mod_instaweb.cc and instaweb_handler.cc.
-  static ApacheResourceManager* ManagerFromServerRec(server_rec* server);
+  static ApacheServerContext* ServerContextFromServerRec(server_rec* server);
 
   // Returns a fetchable URI from a request, using the request pool.
   static const char* MakeRequestUrl(const RewriteOptions& options,
@@ -141,7 +141,7 @@ class InstawebContext {
   ContentEncoding content_encoding_;
   const ContentType content_type_;
 
-  ApacheResourceManager* server_context_;
+  ApacheServerContext* server_context_;
   RewriteDriver* rewrite_driver_;
   StringWriter string_writer_;
   scoped_ptr<GzipInflater> inflater_;

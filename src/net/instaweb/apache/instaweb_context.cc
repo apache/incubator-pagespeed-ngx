@@ -18,8 +18,8 @@
 #include "net/instaweb/apache/instaweb_context.h"
 
 #include "base/logging.h"
-#include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/apache/header_util.h"
@@ -81,14 +81,14 @@ void PropertyCallback::BlockUntilDone() {
 InstawebContext::InstawebContext(request_rec* request,
                                  RequestHeaders* request_headers,
                                  const ContentType& content_type,
-                                 ApacheResourceManager* manager,
+                                 ApacheServerContext* server_context,
                                  const GoogleString& absolute_url,
                                  bool using_spdy,
                                  bool use_custom_options,
                                  const RewriteOptions& options)
     : content_encoding_(kNone),
       content_type_(content_type),
-      server_context_(manager),
+      server_context_(server_context),
       string_writer_(&output_),
       inflater_(NULL),
       absolute_url_(absolute_url),
@@ -133,7 +133,7 @@ InstawebContext::InstawebContext(request_rec* request,
   // Setup fetchers to direct most fetches to localhost or to add
   // any custom fetch headers, if necessary.
   server_context_->apache_factory()->ApplySessionFetchers(
-      manager, rewrite_driver_, request);
+      server_context, rewrite_driver_, request);
 
   rewrite_driver_->EnableBlockingRewrite(request_headers);
 
@@ -319,9 +319,9 @@ PropertyCallback* InstawebContext::InitiatePropertyCacheLookup() {
   return property_callback;
 }
 
-ApacheResourceManager* InstawebContext::ManagerFromServerRec(
+ApacheServerContext* InstawebContext::ServerContextFromServerRec(
     server_rec* server) {
-  return static_cast<ApacheResourceManager*>
+  return static_cast<ApacheServerContext*>
       ap_get_module_config(server->module_config, &pagespeed_module);
 }
 

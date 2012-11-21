@@ -21,11 +21,11 @@ struct request_rec;
 
 namespace net_instaweb {
 
-class ApacheResourceManager;
+class ApacheServerContext;
 
 // Loads the URL based on the fetchers and other infrastructure in the
 // factory.
-void SlurpUrl(ApacheResourceManager* manager, request_rec* r);
+void SlurpUrl(ApacheServerContext* manager, request_rec* r);
 
 }  // namespace net_instaweb
 

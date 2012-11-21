@@ -14,7 +14,7 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/apache/apache_resource_manager.h"
+#include "net/instaweb/apache/apache_server_context.h"
 
 #include "httpd.h"
 #include "base/logging.h"
@@ -53,7 +53,7 @@ const char kLocalFetcherStatsPrefix[] = "http";
 
 class SpdyOptionsRewriteDriverPool : public RewriteDriverPool {
  public:
-  explicit SpdyOptionsRewriteDriverPool(ApacheResourceManager* context)
+  explicit SpdyOptionsRewriteDriverPool(ApacheServerContext* context)
       : apache_server_context_(context) {
   }
 
@@ -63,12 +63,12 @@ class SpdyOptionsRewriteDriverPool : public RewriteDriverPool {
   }
 
  private:
-  ApacheResourceManager* apache_server_context_;
+  ApacheServerContext* apache_server_context_;
 };
 
 }  // namespace
 
-ApacheResourceManager::ApacheResourceManager(
+ApacheServerContext::ApacheServerContext(
     ApacheRewriteDriverFactory* factory,
     server_rec* server,
     const StringPiece& version)
@@ -101,10 +101,10 @@ ApacheResourceManager::ApacheResourceManager(
   set_response_headers_finalized(false);
 }
 
-ApacheResourceManager::~ApacheResourceManager() {
+ApacheServerContext::~ApacheServerContext() {
 }
 
-void ApacheResourceManager::InitStats(Statistics* statistics) {
+void ApacheServerContext::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheFlushCount);
   statistics->AddVariable(kCacheFlushTimestampMs);
   Histogram* html_rewrite_time_us_histogram =
@@ -116,7 +116,7 @@ void ApacheResourceManager::InitStats(Statistics* statistics) {
   UrlAsyncFetcherStats::InitStats(kLocalFetcherStatsPrefix, statistics);
 }
 
-bool ApacheResourceManager::InitFileCachePath() {
+bool ApacheServerContext::InitFileCachePath() {
   GoogleString file_cache_path = config()->file_cache_path();
   if (file_system()->IsDir(file_cache_path.c_str(),
                            message_handler()).is_true()) {
@@ -130,11 +130,11 @@ bool ApacheResourceManager::InitFileCachePath() {
   return ok;
 }
 
-ApacheConfig* ApacheResourceManager::config() {
+ApacheConfig* ApacheServerContext::config() {
   return ApacheConfig::DynamicCast(global_options());
 }
 
-ApacheConfig* ApacheResourceManager::SpdyConfigOverlay() {
+ApacheConfig* ApacheServerContext::SpdyConfigOverlay() {
   if (spdy_config_overlay_.get() == NULL) {
     spdy_config_overlay_.reset(new ApacheConfig());
     // We want to copy any implicit rewrite level from the parent,
@@ -146,7 +146,7 @@ ApacheConfig* ApacheResourceManager::SpdyConfigOverlay() {
   return spdy_config_overlay_.get();
 }
 
-ApacheConfig* ApacheResourceManager::NonSpdyConfigOverlay() {
+ApacheConfig* ApacheServerContext::NonSpdyConfigOverlay() {
   if (non_spdy_config_overlay_.get() == NULL) {
     non_spdy_config_overlay_.reset(new ApacheConfig());
     // See ::SpdyConfigOverlay for explanation.
@@ -155,7 +155,7 @@ ApacheConfig* ApacheResourceManager::NonSpdyConfigOverlay() {
   return non_spdy_config_overlay_.get();
 }
 
-void ApacheResourceManager::CollapseConfigOverlaysAndComputeSignatures() {
+void ApacheServerContext::CollapseConfigOverlaysAndComputeSignatures() {
   if (spdy_config_overlay_.get() != NULL ||
       non_spdy_config_overlay_.get() != NULL) {
     // We need separate SPDY/non-SPDY configs if we have any
@@ -183,7 +183,7 @@ void ApacheResourceManager::CollapseConfigOverlaysAndComputeSignatures() {
   }
 }
 
-void ApacheResourceManager::CreateLocalStatistics(
+void ApacheServerContext::CreateLocalStatistics(
     Statistics* global_statistics) {
   local_statistics_ =
       apache_factory_->AllocateAndInitSharedMemStatistics(
@@ -198,7 +198,7 @@ void ApacheResourceManager::CreateLocalStatistics(
   ApacheRewriteDriverFactory::InitStats(split_statistics_.get());
 }
 
-void ApacheResourceManager::ChildInit() {
+void ApacheServerContext::ChildInit() {
   DCHECK(!initialized_);
   if (!initialized_) {
     initialized_ = true;
@@ -251,7 +251,7 @@ void ApacheResourceManager::ChildInit() {
   }
 }
 
-bool ApacheResourceManager::PoolDestroyed() {
+bool ApacheServerContext::PoolDestroyed() {
   ShutDownDrivers();
   return apache_factory_->PoolDestroyed(this);
 }
@@ -261,7 +261,7 @@ bool ApacheResourceManager::PoolDestroyed() {
 // http://yourhost.com:port/flushcache.  We still have to write the file
 // so that all child processes see the flush, and so the flush persists
 // across server restart.
-void ApacheResourceManager::PollFilesystemForCacheFlush() {
+void ApacheServerContext::PollFilesystemForCacheFlush() {
   int64 cache_flush_poll_interval_sec =
       config()->cache_flush_poll_interval_sec();
   if (cache_flush_poll_interval_sec > 0) {
@@ -327,7 +327,7 @@ void ApacheResourceManager::PollFilesystemForCacheFlush() {
   }
 }
 
-void ApacheResourceManager::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
+void ApacheServerContext::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
   if (html_rewrite_time_us_histogram_ != NULL) {
     html_rewrite_time_us_histogram_->Add(rewrite_time_us);
   }

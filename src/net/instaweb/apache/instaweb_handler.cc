@@ -23,7 +23,7 @@
 
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_message_handler.h"
-#include "net/instaweb/apache/apache_resource_manager.h"
+#include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apache_slurp.h"
 #include "net/instaweb/apache/apr_timer.h"
@@ -144,7 +144,7 @@ void send_out_headers_and_body(request_rec* request,
 
 // Handles *gurl as a mod_pagespeed resource.  Success status is written to
 // the status code in the response headers.
-void handle_as_resource(ApacheResourceManager* manager,
+void handle_as_resource(ApacheServerContext* manager,
                         request_rec* request,
                         GoogleUrl* gurl,
                         const GoogleString& url) {
@@ -373,7 +373,7 @@ void WritePre(StringPiece str, Writer* writer, MessageHandler* handler) {
 }
 
 void instaweb_static_handler(request_rec* request,
-                             ApacheResourceManager* server_context) {
+                             ApacheServerContext* server_context) {
   StaticJavascriptManager* static_javascript_manager =
       server_context->static_javascript_manager();
   StringPiece request_uri_path = request->parsed_uri.path;
@@ -427,7 +427,7 @@ apr_status_t instaweb_console_handler(
 }
 
 apr_status_t instaweb_statistics_handler(
-    request_rec* request, ApacheResourceManager* server_context,
+    request_rec* request, ApacheServerContext* server_context,
     ApacheRewriteDriverFactory* factory, MessageHandler* message_handler) {
   bool general_stats_request =
       (strcmp(request->handler, kStatisticsHandler) == 0);
@@ -550,8 +550,8 @@ apr_status_t instaweb_statistics_handler(
 apr_status_t instaweb_handler(request_rec* request) {
   apr_status_t ret = DECLINED;
   const char* url = get_instaweb_resource_url(request);
-  ApacheResourceManager* manager =
-      InstawebContext::ManagerFromServerRec(request->server);
+  ApacheServerContext* manager =
+      InstawebContext::ServerContextFromServerRec(request->server);
   ApacheConfig* config = manager->config();
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   ApacheMessageHandler* message_handler = factory->apache_message_handler();
@@ -703,8 +703,8 @@ apr_status_t instaweb_handler(request_rec* request) {
 // Additionally we store whether or not this request is a pagespeed
 // resource or not in kResourceUrlNote.
 apr_status_t save_url_hook(request_rec *request) {
-  ApacheResourceManager* manager =
-      InstawebContext::ManagerFromServerRec(request->server);
+  ApacheServerContext* manager =
+      InstawebContext::ServerContextFromServerRec(request->server);
   // This call to MakeRequestUrl() not only returns the url but also
   // saves it for future use so that if another module changes the
   // url in the request, we still have the original one.

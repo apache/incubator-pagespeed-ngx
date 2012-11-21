@@ -40,7 +40,7 @@
 // For now use wget when slurping additional files.
 
 #include "base/logging.h"
-#include "net/instaweb/apache/apache_resource_manager.h"
+#include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -300,7 +300,7 @@ class StrippingFetch : public StringAsyncFetch {
 
 }  // namespace
 
-void SlurpUrl(ApacheResourceManager* manager, request_rec* r) {
+void SlurpUrl(ApacheServerContext* manager, request_rec* r) {
   const char* url =
       InstawebContext::MakeRequestUrl(*manager->global_options(), r);
   GoogleString stripped_url = RemoveModPageSpeedQueryParams(

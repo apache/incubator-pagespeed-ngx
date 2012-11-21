@@ -33,8 +33,8 @@
 #include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/mod_instaweb.h"
-#include "net/instaweb/apache/apache_resource_manager.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -400,11 +400,11 @@ class ApacheProcessContext {
 };
 ApacheProcessContext apache_process_context;
 
-typedef void (ApacheResourceManager::*AddTimeFn)(int64 delta);
+typedef void (ApacheServerContext::*AddTimeFn)(int64 delta);
 
 class ScopedTimer {
  public:
-  ScopedTimer(ApacheResourceManager* manager, AddTimeFn add_time_fn)
+  ScopedTimer(ApacheServerContext* manager, AddTimeFn add_time_fn)
       : manager_(manager),
         add_time_fn_(add_time_fn),
         start_time_us_(timer_.NowUs()) {
@@ -416,7 +416,7 @@ class ScopedTimer {
   }
 
  private:
-  ApacheResourceManager* manager_;
+  ApacheServerContext* manager_;
   AddTimeFn add_time_fn_;
   AprTimer timer_;
   int64 start_time_us_;
@@ -428,8 +428,8 @@ class ScopedTimer {
 InstawebContext* build_context_for_request(request_rec* request) {
   ApacheConfig* directory_options = static_cast<ApacheConfig*>
       ap_get_module_config(request->per_dir_config, &pagespeed_module);
-  ApacheResourceManager* manager =
-      InstawebContext::ManagerFromServerRec(request->server);
+  ApacheServerContext* manager =
+      InstawebContext::ServerContextFromServerRec(request->server);
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   scoped_ptr<RewriteOptions> custom_options;
 
@@ -761,8 +761,8 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
     filter->ctx = context;
   }
 
-  ApacheResourceManager* manager = context->manager();
-  ScopedTimer timer(manager, &ApacheResourceManager::AddHtmlRewriteTimeUs);
+  ApacheServerContext* manager = context->apache_server_context();
+  ScopedTimer timer(manager, &ApacheServerContext::AddHtmlRewriteTimeUs);
 
   apr_status_t return_code = APR_SUCCESS;
   while (!APR_BRIGADE_EMPTY(bb)) {
@@ -811,8 +811,8 @@ void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
   ApacheRewriteDriverFactory* factory = apache_process_context.factory(server);
   factory->ChildInit();
   for (; server != NULL; server = server->next) {
-    ApacheResourceManager* resource_manager =
-        InstawebContext::ManagerFromServerRec(server);
+    ApacheServerContext* resource_manager =
+        InstawebContext::ServerContextFromServerRec(server);
     DCHECK(resource_manager != NULL);
     DCHECK(resource_manager->initialized());
   }
@@ -876,11 +876,11 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
   // statistics enabled, if found, do the static initialization of
   // statistics to establish global memory segments.
   Statistics* statistics = NULL;
-  std::set<ApacheResourceManager*> managers_covered_;
+  std::set<ApacheServerContext*> managers_covered_;
   for (server_rec* server = server_list; server != NULL;
        server = server->next) {
-    ApacheResourceManager* manager =
-        InstawebContext::ManagerFromServerRec(server);
+    ApacheServerContext* manager =
+        InstawebContext::ServerContextFromServerRec(server);
     if (managers_covered_.insert(manager).second) {
       CHECK(manager);
       manager->CollapseConfigOverlaysAndComputeSignatures();
@@ -1067,7 +1067,7 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
 }
 
 apr_status_t pagespeed_child_exit(void* data) {
-  ApacheResourceManager* manager = static_cast<ApacheResourceManager*>(data);
+  ApacheServerContext* manager = static_cast<ApacheServerContext*>(data);
   if (manager->PoolDestroyed()) {
       // When the last manager is destroyed, it's important that we also clean
       // up the factory, so we don't end up with dangling pointers in case
@@ -1078,8 +1078,8 @@ apr_status_t pagespeed_child_exit(void* data) {
 }
 
 void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
-  ApacheResourceManager* manager =
-      InstawebContext::ManagerFromServerRec(server);
+  ApacheServerContext* manager =
+      InstawebContext::ServerContextFromServerRec(server);
   if (manager == NULL) {
     ApacheRewriteDriverFactory* factory = apache_process_context.factory(
         server);
@@ -1182,8 +1182,8 @@ static const char* CmdOptions(const cmd_parms* cmd, void* data,
     if (cmd->directive->data != NULL) {
       config = static_cast<ApacheConfig*>(cmd->directive->data);
     } else {
-      ApacheResourceManager* manager =
-          InstawebContext::ManagerFromServerRec(cmd->server);
+      ApacheServerContext* manager =
+          InstawebContext::ServerContextFromServerRec(cmd->server);
       config = manager->config();
     }
   } else {
@@ -1233,8 +1233,8 @@ static char* CheckGlobalOption(const cmd_parms* cmd,
 // Callback function that parses a single-argument directive.  This is called
 // by the Apache config parser.
 static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
-  ApacheResourceManager* manager =
-      InstawebContext::ManagerFromServerRec(cmd->server);
+  ApacheServerContext* manager =
+      InstawebContext::ServerContextFromServerRec(cmd->server);
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   MessageHandler* handler = factory->message_handler();
   StringPiece directive(cmd->directive->directive);
@@ -1429,7 +1429,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
 // pointers to the overlay ApacheConfig's we will use once Apache actually
 // bothers calling our ParseDirective* methods. Returns NULL if OK, error string
 // on error.
-static const char* ProcessParsedScope(ApacheResourceManager* server_context,
+static const char* ProcessParsedScope(ApacheServerContext* server_context,
                                       ap_directive_t* root, bool for_spdy) {
   for (ap_directive_t* cur = root; cur != NULL; cur = cur->next) {
     StringPiece directive(cur->directive);
@@ -1465,8 +1465,8 @@ static const char* ProcessParsedScope(ApacheResourceManager* server_context,
 static const char* ParseScope(cmd_parms* cmd, ap_directive_t** mconfig,
                               const char* arg) {
   StringPiece mode(arg);
-  ApacheResourceManager* server_context =
-      InstawebContext::ManagerFromServerRec(cmd->server);
+  ApacheServerContext* server_context =
+      InstawebContext::ServerContextFromServerRec(cmd->server);
 
   bool for_spdy = false;
   if (StringCaseEqual(mode, "spdy>")) {
@@ -1513,8 +1513,8 @@ static const char* ParseScope(cmd_parms* cmd, ap_directive_t** mconfig,
 // by the Apache config parser.
 static const char* ParseDirective2(cmd_parms* cmd, void* data,
                                    const char* arg1, const char* arg2) {
-  ApacheResourceManager* manager =
-      InstawebContext::ManagerFromServerRec(cmd->server);
+  ApacheServerContext* manager =
+      InstawebContext::ServerContextFromServerRec(cmd->server);
 
   ApacheConfig* config;
   const char* ret = CmdOptions(cmd, data, &config);
@@ -1984,10 +1984,10 @@ void* merge_dir_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
 }
 
 void* merge_server_config(apr_pool_t* pool, void* base_conf, void* new_conf) {
-  ApacheResourceManager* global_context =
-      static_cast<ApacheResourceManager*>(base_conf);
-  ApacheResourceManager* vhost_context =
-      static_cast<ApacheResourceManager*>(new_conf);
+  ApacheServerContext* global_context =
+      static_cast<ApacheServerContext*>(base_conf);
+  ApacheServerContext* vhost_context =
+      static_cast<ApacheServerContext*>(new_conf);
   if (global_context->apache_factory()->inherit_vhost_config()) {
     scoped_ptr<ApacheConfig> merged_config(global_context->config()->Clone());
     merged_config->Merge(*vhost_context->config());
