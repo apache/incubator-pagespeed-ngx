@@ -197,6 +197,10 @@ DEFINE_bool(enable_inline_preview_images_experimental, false,
 DEFINE_bool(flush_more_resources_early_if_time_permits, false,
             "Flush more resources if origin is slow to respond.");
 
+DEFINE_bool(flush_more_resources_in_ie_and_firefox, false,
+            "Flush more resources if origin is slow to respond in IE and "
+            "Firefox.");
+
 DEFINE_bool(avoid_renaming_introspective_javascript, false,
             "Don't combine, inline, cache extend, or otherwise modify "
             "javascript in ways that require changing the URL if we see "
@@ -468,6 +472,11 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("flush_more_resources_early_if_time_permits")) {
     options->set_flush_more_resources_early_if_time_permits(
         FLAGS_flush_more_resources_early_if_time_permits);
+  }
+  // TODO(pulkitg): Remove this flag when this feature gets stabilized.
+  if (WasExplicitlySet("flush_more_resources_in_ie_and_firefox")) {
+    options->set_flush_more_resources_in_ie_and_firefox(
+        FLAGS_flush_more_resources_in_ie_and_firefox);
   }
   if (WasExplicitlySet("enable_inline_preview_images_experimental")) {
     options->set_enable_inline_preview_images_experimental(

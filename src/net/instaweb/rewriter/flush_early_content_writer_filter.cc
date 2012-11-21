@@ -125,6 +125,8 @@ void FlushEarlyContentWriterFilter::StartDocument() {
     max_available_time_ms_ = flush_early_info->average_fetch_latency_ms();
   }
   time_consumed_ms_ = kDnsTimeMs + kTimeToConnectMs + kTtfbMs;
+  defer_javascript_enabled_ =
+      driver_->options()->Enabled(RewriteOptions::kDeferJavascript);
 }
 
 void FlushEarlyContentWriterFilter::EndDocument() {
@@ -141,6 +143,9 @@ void FlushEarlyContentWriterFilter::EndDocument() {
   }
   if (insert_close_script_) {
     WriteToOriginalWriter("})()</script>");
+  }
+  if (!flush_early_content_.empty()) {
+    WriteToOriginalWriter(flush_early_content_);
   }
   if (num_resources_flushed_ > 0) {
     num_resources_flushed_early_->IncBy(num_resources_flushed_);
@@ -175,8 +180,7 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
     }
 
     if (category == semantic_type::kScript &&
-        (driver_->options()->Enabled(RewriteOptions::kDeferJavascript) ||
-         in_body_)) {
+        (defer_javascript_enabled_ || in_body_)) {
       // Don't flush javascript resources if defer_javascript is enabled.
       // TOOD(nikhilmadan): Check if the User-Agent supports defer_javascript.
       if (driver_->options()->flush_more_resources_early_if_time_permits() &&
@@ -189,10 +193,21 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
           if (gurl.is_valid()) {
             bool is_pagespeed_resource =
                 driver_->server_context()->IsPagespeedResource(gurl);
-            if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag &&
+            // Scripts can be flushed for kPrefetchLinkScriptTag prefetch
+            // mechanism only if defer_javascript is disabled and
+            // flush_more_resources_in_ie_and_firefox is enabled.
+            bool can_flush_js_for_prefetch_link_script_tag =
+                prefetch_mechanism_ ==
+                    UserAgentMatcher::kPrefetchLinkScriptTag &&
+                driver_->options()->flush_more_resources_in_ie_and_firefox() &&
+                !defer_javascript_enabled_;
+            if ((prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag ||
+                 can_flush_js_for_prefetch_link_script_tag) &&
                 IsFlushable(gurl, is_pagespeed_resource) && size > 0) {
               // TODO(pulkitg): Add size of private resources also.
-              // TODO(pulkitg): Add support for other prefetch mechanisms.
+              // TODO(pulkitg): Add a mechanism to flush javascript if
+              // defer_javascript is enabled and prefetch mechanism is
+              // kPrefetchLinkScriptTag.
               int64 time_to_download =
                   size / (kConnectionSpeedBytesPerMs * kGzipMultiplier);
               ResourceInfo* js_info = new ResourceInfo(
@@ -218,7 +233,9 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
         if (category == semantic_type::kImage) {
           time_to_download = size / kConnectionSpeedBytesPerMs;
           call_flush_resources =
-              prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag &&
+              (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag ||
+               prefetch_mechanism_ ==
+                   UserAgentMatcher::kPrefetchLinkScriptTag) &&
               size > 0 &&
               max_available_time_ms_ > time_consumed_ms_ + time_to_download;
         } else {
@@ -260,6 +277,8 @@ void FlushEarlyContentWriterFilter::Clear() {
   time_consumed_ms_ = 0;
   max_available_time_ms_ = 0;
   STLDeleteElements(&js_resources_info_);
+  defer_javascript_enabled_ = false;
+  flush_early_content_.clear();
 }
 
 bool FlushEarlyContentWriterFilter::IsFlushable(
@@ -301,11 +320,20 @@ void FlushEarlyContentWriterFilter::FlushResources(
   } else if (prefetch_mechanism_ ==
              UserAgentMatcher::kPrefetchLinkScriptTag) {
     if (category == semantic_type::kScript) {
+      StrAppend(&flush_early_content_,
+                StringPrintf(kPrefetchScriptTagHtml, url.as_string().c_str()));
+    } else if (category == semantic_type::kStylesheet) {
+      StrAppend(&flush_early_content_,
+                StringPrintf(kPrefetchLinkTagHtml, url.as_string().c_str()));
+    } else if (category == semantic_type::kImage &&
+        driver_->options()->flush_more_resources_in_ie_and_firefox()) {
+      if (!insert_close_script_) {
+        WriteToOriginalWriter("<script type=\"text/javascript\">"
+                              "(function(){");
+        insert_close_script_ = true;
+      }
       WriteToOriginalWriter(
-          StringPrintf(kPrefetchScriptTagHtml, url.as_string().c_str()));
-    } else {
-      WriteToOriginalWriter(
-          StringPrintf(kPrefetchLinkTagHtml, url.as_string().c_str()));
+          StringPrintf(kPrefetchImageTagHtml, url.as_string().c_str()));
     }
   }
 }

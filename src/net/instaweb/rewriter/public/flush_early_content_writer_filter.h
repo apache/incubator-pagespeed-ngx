@@ -92,6 +92,8 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   int64 max_available_time_ms_;
   typedef std::list<ResourceInfo*> ResourceInfoList;
   ResourceInfoList js_resources_info_;
+  bool defer_javascript_enabled_;
+  GoogleString flush_early_content_;
 
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyContentWriterFilter);
 };

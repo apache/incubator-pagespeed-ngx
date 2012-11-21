@@ -650,6 +650,9 @@ void RewriteOptions::AddProperties() {
   add_option(false,
              &RewriteOptions::flush_more_resources_early_if_time_permits_,
              "fretp", kFlushMoreResourcesEarlyIfTimePermits);
+  add_option(false,
+             &RewriteOptions::flush_more_resources_in_ie_and_firefox_,
+             "fmrief");
   add_option(false, &RewriteOptions::enable_defer_js_experimental_, "edje",
              kEnableDeferJsExperimental);
   add_option(true, &RewriteOptions::enable_flush_subresources_experimental_,

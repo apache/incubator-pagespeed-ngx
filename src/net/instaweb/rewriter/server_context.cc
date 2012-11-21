@@ -44,6 +44,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/cache_interface.h"
@@ -1017,6 +1018,8 @@ RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
     custom_options->DisableFilter(RewriteOptions::kDeferJavascript);
     custom_options->DisableFilter(RewriteOptions::kLocalStorageCache);
   }
+
+  url_namer()->ConfigureCustomOptions(*request_headers, custom_options.get());
 
   return custom_options.release();
 }

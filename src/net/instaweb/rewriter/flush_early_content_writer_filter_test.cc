@@ -45,6 +45,7 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
     options()->EnableFilter(RewriteOptions::kFlushSubresources);
     options()->set_enable_flush_subresources_experimental(true);
     options()->set_flush_more_resources_early_if_time_permits(true);
+    options()->set_flush_more_resources_in_ie_and_firefox(true);
     RewriteTestBase::SetUp();
     rewrite_driver()->set_flushing_early(true);
     rewrite_driver()->SetWriter(&writer_);
@@ -119,15 +120,18 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   Clear();
   rewrite_driver()->set_user_agent("prefetch_link_script_tag");
   html_output =
+      "<script type=\"text/javascript\">(function(){new Image().src=\""
+      "http://www.test.com/e.jpg.pagespeed.ce.0.jpg\";})()</script>"
+      "<link rel=\"dns-prefetch\" href=\"//test.com\">"
+      "<link rel=\"prefetch\" href=\"//test1.com\">"
       "<script type=\"psa_prefetch\" src="
       "\"http://www.test.com/c.js.pagespeed.jm.0.js\"></script>\n"
       "<link rel=\"stylesheet\" href=\"d.css.pagespeed.cf.0.css\" "
       "media=\"print\" disabled=\"true\"/>\n"
-      "<link rel=\"dns-prefetch\" href=\"//test.com\">"
-      "<link rel=\"prefetch\" href=\"//test1.com\">"
+      "<script type=\"psa_prefetch\" src=\"d.js.pagespeed.ce.0.js\"></script>\n"
       "<script type='text/javascript'>"
       "window.mod_pagespeed_prefetch_start = Number(new Date());"
-      "window.mod_pagespeed_num_resources_prefetched = 2</script>";
+      "window.mod_pagespeed_num_resources_prefetched = 4</script>";
 
   Parse("prefetch_link_script_tag", html_input);
   EXPECT_EQ(html_output, output_);
@@ -175,6 +179,24 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
       "window.mod_pagespeed_num_resources_prefetched = 4</script>";
 
   Parse("defer_javasript", html_input);
+  EXPECT_EQ(html_output, output_);
+
+  // Set the User-Agent to prefetch_link_script_tag with defer_javascript
+  // enabled.
+  Clear();
+  rewrite_driver()->set_user_agent("prefetch_link_script_tag");
+  html_output =
+      "<script type=\"text/javascript\">(function(){new Image().src=\""
+      "http://www.test.com/e.jpg.pagespeed.ce.0.jpg\";})()</script>"
+      "<link rel=\"dns-prefetch\" href=\"//test.com\">"
+      "<link rel=\"prefetch\" href=\"//test1.com\">"
+      "<link rel=\"stylesheet\" href=\"d.css.pagespeed.cf.0.css\" "
+      "media=\"print\" disabled=\"true\"/>\n"
+      "<script type='text/javascript'>"
+      "window.mod_pagespeed_prefetch_start = Number(new Date());"
+      "window.mod_pagespeed_num_resources_prefetched = 2</script>";
+
+  Parse("prefetch_link_script_tag", html_input);
   EXPECT_EQ(html_output, output_);
 }
 

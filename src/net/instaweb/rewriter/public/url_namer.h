@@ -100,6 +100,10 @@ class UrlNamer {
                               bool* success,
                               Function* func, MessageHandler* handler);
 
+  // Configure custom options. Note that options may be NULL.
+  virtual void ConfigureCustomOptions(const RequestHeaders& request_headers,
+                                      RewriteOptions* options) const {}
+
   // Determines whether the naming policy incorporates proxying resources
   // using a central proxy domain.
   virtual bool ProxyMode() const { return false; }

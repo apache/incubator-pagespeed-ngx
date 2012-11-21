@@ -1349,6 +1349,13 @@ class RewriteOptions {
     return flush_more_resources_early_if_time_permits_.value();
   }
 
+  void set_flush_more_resources_in_ie_and_firefox(bool x) {
+    set_option(x, &flush_more_resources_in_ie_and_firefox_);
+  }
+  bool flush_more_resources_in_ie_and_firefox() const {
+    return flush_more_resources_in_ie_and_firefox_.value();
+  }
+
   void set_enable_defer_js_experimental(bool x) {
     set_option(x, &enable_defer_js_experimental_);
   }
@@ -2478,6 +2485,9 @@ class RewriteOptions {
 
   // Flush more resources if origin is slow to respond.
   Option<bool> flush_more_resources_early_if_time_permits_;
+
+  // Flush more resources in IE and Firefox.
+  Option<bool> flush_more_resources_in_ie_and_firefox_;
 
   // Enables experimental code in defer js.
   Option<bool> enable_defer_js_experimental_;
