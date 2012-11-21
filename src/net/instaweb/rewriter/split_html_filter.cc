@@ -48,9 +48,6 @@
 
 namespace net_instaweb {
 
-const char SplitHtmlFilter::kRenderCohort[] = "render";
-const char SplitHtmlFilter::kCriticalLineInfoPropertyName[] =
-    "critical_line_info";
 const char SplitHtmlFilter::kDeferJsSnippet[] =
     "pagespeed.deferInit();";
 const char SplitHtmlFilter::kSplitInit[] =
@@ -98,7 +95,6 @@ void SplitHtmlFilter::StartDocument() {
   json_writer_.reset(new JsonWriter(rewrite_driver_->writer(),
                                     &element_json_stack_));
   original_writer_ = rewrite_driver_->writer();
-  critical_line_info_.Clear();
   current_panel_id_.clear();
   url_ = rewrite_driver_->google_url().Spec();
   script_written_ = false;
@@ -111,7 +107,7 @@ void SplitHtmlFilter::StartDocument() {
   // StartPanelInstance sets the json writer. For the base panel, we don't want
   // the writer to be set.
   set_writer(original_writer_);
-  ReadCriticalLineConfig();
+  ProcessCriticalLineConfig();
 
   InvokeBaseHtmlFilterStartDocument();
 }
@@ -149,7 +145,7 @@ void SplitHtmlFilter::WriteString(const StringPiece& str) {
 }
 
 void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
-  if (critical_line_info_.panels_size() == 0) {
+  if (critical_line_info_ == NULL || critical_line_info_->panels_size() == 0) {
     return;
   }
 
@@ -180,41 +176,32 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
   HtmlWriterFilter::Flush();
 }
 
-void SplitHtmlFilter::ReadCriticalLineConfig() {
-  PropertyCache* page_property_cache =
-      rewrite_driver_->server_context()->page_property_cache();
+void SplitHtmlFilter::ProcessCriticalLineConfig() {
   const GoogleString& critical_line_config_from_options =
        options_->critical_line_config();
-  if (!critical_line_config_from_options.empty()) {
+  if (rewrite_driver_->critical_line_info() == NULL &&
+      !critical_line_config_from_options.empty()) {
+    CriticalLineInfo* critical_line_info = new CriticalLineInfo;
     StringPieceVector xpaths;
     SplitStringPieceToVector(critical_line_config_from_options, ",",
                              &xpaths, true);
     for (int i = 0, n = xpaths.size(); i < n; i++) {
       StringPieceVector xpath_pair;
       SplitStringPieceToVector(xpaths[i], ":", &xpath_pair, true);
-      Panel* panel = critical_line_info_.add_panels();
+      Panel* panel = critical_line_info->add_panels();
       panel->set_start_xpath(xpath_pair[0].data(), xpath_pair[0].length());
       if (xpath_pair.size() == 2) {
         panel->set_end_marker_xpath(
             xpath_pair[1].data(), xpath_pair[1].length());
       }
     }
-  } else if (page_property_cache != NULL && page_property_cache->enabled() &&
-             rewrite_driver_->property_page() != NULL) {
-    const PropertyCache::Cohort* cohort =
-        page_property_cache->GetCohort(kRenderCohort);
-    if (cohort != NULL) {
-      PropertyValue* property_value = rewrite_driver_->property_page()->
-          GetProperty(cohort, kCriticalLineInfoPropertyName);
-      if (property_value != NULL) {
-        ArrayInputStream input(property_value->value().data(),
-                               property_value->value().size());
-        critical_line_info_.ParseFromZeroCopyStream(&input);
-      }
-    }
+    rewrite_driver_->set_critical_line_info(critical_line_info);
   }
-  ComputePanels(critical_line_info_, &panel_id_to_spec_);
-  PopulateXpathMap();
+  critical_line_info_ = rewrite_driver_->critical_line_info();
+  if (critical_line_info_ != NULL) {
+    ComputePanels(*critical_line_info_, &panel_id_to_spec_);
+    PopulateXpathMap(*critical_line_info_);
+  }
 }
 
 void SplitHtmlFilter::ComputePanels(
@@ -228,9 +215,10 @@ void SplitHtmlFilter::ComputePanels(
   }
 }
 
-void SplitHtmlFilter::PopulateXpathMap() {
-  for (int i = 0; i < critical_line_info_.panels_size(); ++i) {
-    const Panel& panel = critical_line_info_.panels(i);
+void SplitHtmlFilter::PopulateXpathMap(
+    const CriticalLineInfo& critical_line_info) {
+  for (int i = 0; i < critical_line_info.panels_size(); ++i) {
+    const Panel& panel = critical_line_info.panels(i);
     PopulateXpathMap(panel.start_xpath());
     if (panel.has_end_marker_xpath()) {
       PopulateXpathMap(panel.end_marker_xpath());
@@ -325,7 +313,7 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
               lazyload_js, "</script>");
   }
 
-  if (critical_line_info_.panels_size() == 0) {
+  if (critical_line_info_ == NULL) {
     StrAppend(&defer_js_with_blink, "<script type=\"text/javascript\" src=\"",
               js_manager->GetDeferJsUrl(options_),
               "\"></script><script type=\"text/javascript\">",
@@ -437,8 +425,11 @@ void SplitHtmlFilter::AppendJsonData(Json::Value* dictionary,
 }
 
 GoogleString SplitHtmlFilter::MatchPanelIdForElement(HtmlElement* element) {
-  for (int i = 0; i < critical_line_info_.panels_size(); i++) {
-    const Panel& panel = critical_line_info_.panels(i);
+  if (critical_line_info_ == NULL) {
+    return "";
+  }
+  for (int i = 0; i < critical_line_info_->panels_size(); i++) {
+    const Panel& panel = critical_line_info_->panels(i);
     if (ElementMatchesXpath(element, *(xpath_map_[panel.start_xpath()]))) {
       return StrCat(BlinkUtil::kPanelId, ".", IntegerToString(i));
     }

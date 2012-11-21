@@ -55,6 +55,7 @@ class AsyncFetch;
 class CacheUrlAsyncFetcher;
 class CollectSubresourcesFilter;
 class CommonFilter;
+class CriticalLineInfo;
 class DomainRewriteFilter;
 class FileSystem;
 class FlushEarlyInfo;
@@ -811,6 +812,13 @@ class RewriteDriver : public HtmlParse {
   void set_unowned_property_page(PropertyPage* page);
 
   // Used by ImageRewriteFilter for identifying critical images.
+  const CriticalLineInfo* critical_line_info() const;
+
+  // Inserts the critical images present on the requested html page. It takes
+  // the ownership of critical_line_info.
+  void set_critical_line_info(CriticalLineInfo* critical_line_info);
+
+  // Used by ImageRewriteFilter for identifying critical images.
   const StringSet* critical_images() const {
     return critical_images_.get();
   }
@@ -1286,6 +1294,8 @@ class RewriteDriver : public HtmlParse {
 
   // Boolean value which tells whether property page is owned by driver or not.
   bool owns_property_page_;
+
+  scoped_ptr<CriticalLineInfo> critical_line_info_;
 
   // Stores all the critical images for the current URL.
   scoped_ptr<StringSet> critical_images_;

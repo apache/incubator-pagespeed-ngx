@@ -39,6 +39,7 @@ struct XpathUnit {
   int child_number;
 };
 
+class CriticalLineInfo;
 class HtmlElement;
 class RewriteDriver;
 class RewriteOptions;
@@ -57,8 +58,6 @@ typedef std::map<GoogleString, XpathUnits*> XpathMap;
 // EndDocument. It directly writes to the http request.
 class SplitHtmlFilter : public SuppressPreheadFilter {
  public:
-  static const char kRenderCohort[];
-  static const char kCriticalLineInfoPropertyName[];
   static const char kDeferJsSnippet[];
   static const char kSplitInit[];
   static const char kPagespeedFunc[];
@@ -113,11 +112,11 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   // to panel_id
   bool IsEndMarkerForCurrentPanel(HtmlElement* element);
 
-  // Reads critical line config from property cache.
-  void ReadCriticalLineConfig();
+  // Processes the critical line config.
+  void ProcessCriticalLineConfig();
 
   // Populates the xpath map for all panels.
-  void PopulateXpathMap();
+  void PopulateXpathMap(const CriticalLineInfo& critical_line_info);
 
   // Populates the xpath map for a particular xpath string.
   void PopulateXpathMap(const GoogleString& xpath);
@@ -161,7 +160,7 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   Json::FastWriter fast_writer_;
   scoped_ptr<JsonWriter> json_writer_;
   Writer* original_writer_;
-  CriticalLineInfo critical_line_info_;
+  const CriticalLineInfo* critical_line_info_;  // Owned by rewrite_driver_.
   GoogleString current_panel_id_;
   StringPiece url_;
   bool script_written_;

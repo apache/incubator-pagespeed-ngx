@@ -2630,6 +2630,15 @@ void RewriteDriver::SaveOriginalHeaders(const ResponseHeaders& headers) {
   headers.GetSanitizedProto(flush_early_info()->mutable_response_headers());
 }
 
+const CriticalLineInfo* RewriteDriver::critical_line_info() const {
+  return critical_line_info_.get();
+}
+
+void RewriteDriver::set_critical_line_info(
+    CriticalLineInfo* critical_line_info) {
+  critical_line_info_.reset(critical_line_info);
+}
+
 FlushEarlyRenderInfo* RewriteDriver::flush_early_render_info() const {
   return flush_early_render_info_.get();
 }

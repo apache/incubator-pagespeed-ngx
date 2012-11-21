@@ -1105,6 +1105,7 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_blink_critical_line_data_pb',
+        'instaweb_critical_line_info_pb',
         'instaweb_http',
         'instaweb_flush_early_pb',
         'instaweb_rewriter',

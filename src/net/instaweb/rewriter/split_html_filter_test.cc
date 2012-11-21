@@ -34,7 +34,6 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -112,18 +111,6 @@ const char kSplitHtmlSuffix[] =
 
 const char kHtmlInputForLazyload[] = "<html><head></head><body></body></html>";
 
-class MockPage : public PropertyPage {
- public:
-  MockPage(AbstractMutex* mutex, const StringPiece& key)
-      : PropertyPage(mutex, key) {}
-  virtual ~MockPage() {}
-  virtual void Done(bool valid) {}
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(MockPage);
-};
-
-
 class SplitHtmlFilterTest : public RewriteTestBase {
  public:
   SplitHtmlFilterTest(): writer_(&output_) {}
@@ -160,32 +147,15 @@ class SplitHtmlFilterTest : public RewriteTestBase {
   SplitHtmlFilter* split_html_filter_;
 };
 
-TEST_F(SplitHtmlFilterTest, SplitHtmlWithPropertyCache) {
-  PropertyCache* property_cache = server_context_->page_property_cache();
-  property_cache->set_enabled(true);
-  property_cache->AddCohort(SplitHtmlFilter::kRenderCohort);
-  property_cache->AddCohort(RewriteDriver::kDomCohort);
-
-  MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
-                                kRequestUrl);
-  rewrite_driver()->set_property_page(page);
-  property_cache->Read(page);
-
-  CriticalLineInfo config;
-  Panel* panel = config.add_panels();
+TEST_F(SplitHtmlFilterTest, SplitHtmlWithDriverHavingCriticalLineInfo) {
+  CriticalLineInfo* config = new CriticalLineInfo;
+  Panel* panel = config->add_panels();
   panel->set_start_xpath("div[@id = \"container\"]/div[4]");
-  panel = config.add_panels();
+  panel = config->add_panels();
   panel->set_start_xpath("img[3]");
   panel->set_end_marker_xpath("h1[@id = \"footer\"]");
+  rewrite_driver()->set_critical_line_info(config);
 
-  GoogleString buf;
-  config.SerializeToString(&buf);
-  const PropertyCache::Cohort* cohort =
-      property_cache->GetCohort(SplitHtmlFilter::kRenderCohort);
-  PropertyValue* property_value = page->GetProperty(
-      cohort, SplitHtmlFilter::kCriticalLineInfoPropertyName);
-  property_cache->UpdateValue(buf, property_value);
-  property_cache->WriteCohort(cohort, page);
   Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kPagespeedFunc,
                    SplitHtmlFilter::kSplitInit, kSplitHtmlMiddle,
