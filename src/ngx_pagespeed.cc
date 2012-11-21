@@ -578,7 +578,7 @@ ngx_http_pagespeed_writer(ngx_http_request_t* r)
       return;
     }
 
-    int rc = ngx_http_output_filter(r, NULL);
+    int rc = ngx_http_next_body_filter(r, NULL);
 
     ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http pagespeed writer output filter: %d, \"%V?%V\"",
