@@ -77,8 +77,22 @@ class HtmlFilter {
   // Flush() is called after all other handlers during a HttpParse::Flush().
   virtual void Flush() = 0;
 
+  // Invoked by rewrite driver where all filters should determine whether
+  // they are enabled for this request.
+  virtual void DetermineEnabled() = 0;
+
+  // Intended to be called from DetermineEnabled implementations in filters.
+  // Returns whether a filter is enabled.
+  bool is_enabled() const { return is_enabled_; }
+
   // The name of this filter -- used for logging and debugging.
   virtual const char* Name() const = 0;
+
+ protected:
+  void set_is_enabled(bool is_enabled) { is_enabled_ = is_enabled; }
+
+ private:
+  bool is_enabled_;
 };
 
 }  // namespace net_instaweb

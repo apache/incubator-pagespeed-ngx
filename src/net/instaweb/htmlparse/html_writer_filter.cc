@@ -242,4 +242,8 @@ void HtmlWriterFilter::Flush() {
   }
 }
 
+void HtmlWriterFilter::DetermineEnabled() {
+  set_is_enabled(true);
+}
+
 }  // namespace net_instaweb

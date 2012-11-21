@@ -942,7 +942,7 @@ class Bool {
 // Class simply keeps track of which handlers have been called.
 class HandlerCalledFilter : public HtmlFilter {
  public:
-  HandlerCalledFilter() { }
+  HandlerCalledFilter() : enabled_value_(true) {}
 
   virtual void StartDocument() { called_start_document_ = true; }
   virtual void EndDocument() { called_end_document_ = true;}
@@ -964,6 +964,14 @@ class HandlerCalledFilter : public HtmlFilter {
     called_directive_ = true;
   }
   virtual void Flush() { called_flush_ = true; }
+
+  virtual void DetermineEnabled() {
+    set_is_enabled(enabled_value_);
+  }
+
+  void SetEnabled(bool enabled_value) {
+    enabled_value_  = enabled_value;
+  }
   virtual const char* Name() const { return "HandlerCalled"; }
 
   Bool called_start_document_;
@@ -978,6 +986,8 @@ class HandlerCalledFilter : public HtmlFilter {
   Bool called_flush_;
 
  private:
+  bool enabled_value_;
+
   DISALLOW_COPY_AND_ASSIGN(HandlerCalledFilter);
 };
 
@@ -1001,6 +1011,27 @@ class HandlerCalledTest : public HtmlParseTest {
 
 // Check that StartDocument and EndDocument were called for filters.
 TEST_F(HandlerCalledTest, StartEndDocumentCalled) {
+  Parse("start_end_document_called", "");
+  EXPECT_TRUE(handler_called_filter_.called_start_document_.Test());
+  EXPECT_TRUE(handler_called_filter_.called_end_document_.Test());
+  EXPECT_TRUE(first_event_listener_->called_start_document_.Test());
+  EXPECT_TRUE(first_event_listener_->called_end_document_.Test());
+  EXPECT_TRUE(second_event_listener_->called_start_document_.Test());
+  EXPECT_TRUE(second_event_listener_->called_end_document_.Test());
+}
+
+// Check that StartDocument and EndDocument were called for filters.
+TEST_F(HandlerCalledTest, StartEndDocumentWithFilterDisabled) {
+  handler_called_filter_.SetEnabled(false);
+  Parse("start_end_document_called", "");
+  EXPECT_FALSE(handler_called_filter_.called_start_document_.Test());
+  EXPECT_FALSE(handler_called_filter_.called_end_document_.Test());
+  EXPECT_TRUE(first_event_listener_->called_start_document_.Test());
+  EXPECT_TRUE(first_event_listener_->called_end_document_.Test());
+  EXPECT_TRUE(second_event_listener_->called_start_document_.Test());
+  EXPECT_TRUE(second_event_listener_->called_end_document_.Test());
+
+  handler_called_filter_.SetEnabled(true);
   Parse("start_end_document_called", "");
   EXPECT_TRUE(handler_called_filter_.called_start_document_.Test());
   EXPECT_TRUE(handler_called_filter_.called_end_document_.Test());

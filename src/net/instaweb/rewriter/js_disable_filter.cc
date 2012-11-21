@@ -44,17 +44,19 @@ JsDisableFilter::JsDisableFilter(RewriteDriver* driver)
     : rewrite_driver_(driver),
       script_tag_scanner_(driver),
       index_(0),
-      defer_js_experimental_script_written_(false),
-      defer_js_enabled_(false) {
+      defer_js_experimental_script_written_(false) {
 }
 
 JsDisableFilter::~JsDisableFilter() {
 }
 
+void JsDisableFilter::DetermineEnabled() {
+  set_is_enabled(JsDeferDisabledFilter::ShouldApply(rewrite_driver_));
+}
+
 void JsDisableFilter::StartDocument() {
   index_ = 0;
   defer_js_experimental_script_written_ = false;
-  defer_js_enabled_ = JsDeferDisabledFilter::ShouldApply(rewrite_driver_);
 }
 
 void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
@@ -90,14 +92,11 @@ void JsDisableFilter::InsertMetaTagForIE(HtmlElement* element) {
   rewrite_driver_->AddAttribute(meta_tag, HtmlName::kHttpEquiv,
                                 "X-UA-Compatible");
   rewrite_driver_->AddAttribute(meta_tag, HtmlName::kContent, "IE=edge");
+  // TODO(ksimbili): Correct this node to be at the start of the head always.
   rewrite_driver_->AppendChild(element, meta_tag);
 }
 
 void JsDisableFilter::StartElement(HtmlElement* element) {
-  if (!defer_js_enabled_) {
-    return;
-  }
-
   if (element->keyword() == HtmlName::kBody &&
       !defer_js_experimental_script_written_) {
     HtmlElement* head_node =
@@ -151,7 +150,7 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
 }
 
 void JsDisableFilter::EndElement(HtmlElement* element) {
-  if (defer_js_enabled_ && element->keyword() == HtmlName::kHead &&
+  if (element->keyword() == HtmlName::kHead &&
       !defer_js_experimental_script_written_) {
     InsertJsDeferExperimentalScript(element);
     InsertMetaTagForIE(element);
@@ -159,7 +158,7 @@ void JsDisableFilter::EndElement(HtmlElement* element) {
 }
 
 void JsDisableFilter::EndDocument() {
-  if (defer_js_enabled_ && !defer_js_experimental_script_written_) {
+  if (!defer_js_experimental_script_written_) {
     rewrite_driver_->InfoHere("Experimental flag code is not written");
   }
 }

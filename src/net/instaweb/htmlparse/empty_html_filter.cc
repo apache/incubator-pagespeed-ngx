@@ -63,4 +63,8 @@ void EmptyHtmlFilter::Directive(HtmlDirectiveNode* directive) {
 void EmptyHtmlFilter::Flush() {
 }
 
+void EmptyHtmlFilter::DetermineEnabled() {
+  set_is_enabled(true);
+}
+
 }  // namespace net_instaweb

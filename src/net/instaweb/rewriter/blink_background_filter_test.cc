@@ -19,11 +19,7 @@
 #include "net/instaweb/rewriter/public/blink_background_filter.h"
 
 #include "net/instaweb/rewriter/public/blink_util.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
-#include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -47,15 +43,6 @@ const char kHtmlInput[] =
       "</div>"
      "</div>"
     "</body></html>";
-
-const char kBlinkUrlHandler[] = "/psajs/blink.js";
-const char kBlinkUrlGstatic[] = "http://www.gstatic.com/psa/static/1-blink.js";
-const char kPsaHeadScriptNodesStart[] =
-    "<script type=\"text/javascript\" pagespeed_no_defer=\"\" src=\"";
-
-const char kPsaHeadScriptNodesEnd[] =
-    "\"></script>"
-    "<script type=\"text/javascript\" pagespeed_no_defer=\"\">pagespeed.deferInit();</script>";
 
 }  // namespace
 
@@ -82,13 +69,9 @@ class BlinkBackgroundFilterTest : public RewriteTestBase {
   virtual bool AddHtmlTags() const { return false; }
 
  protected:
-  GoogleString GetExpectedOutput(const StringPiece blink_js) {
-    GoogleString psa_head_script_nodes = StrCat(
-        kPsaHeadScriptNodesStart, blink_js, kPsaHeadScriptNodesEnd);
+  GoogleString GetExpectedOutput() {
     return StrCat(
-        "<html><head>",
-        psa_head_script_nodes,
-        "</head><body>",
+        "<html><body>",
         BlinkUtil::kStartBodyMarker,
         "<div id=\"header\"> This is the header </div>"
         "<div id=\"container\" class>"
@@ -107,18 +90,7 @@ class BlinkBackgroundFilterTest : public RewriteTestBase {
 
 TEST_F(BlinkBackgroundFilterTest, StripNonCacheable) {
   ValidateExpectedUrl(kRequestUrl, kHtmlInput,
-                      GetExpectedOutput(kBlinkUrlHandler));
-}
-
-TEST_F(BlinkBackgroundFilterTest, TestGstatic) {
-  UrlNamer url_namer;
-  StaticJavascriptManager js_manager(&url_namer, server_context()->hasher(),
-                                     server_context()->message_handler());
-  js_manager.set_serve_js_from_gstatic(true);
-  js_manager.set_gstatic_blink_hash("1");
-  server_context()->set_static_javascript_manager(&js_manager);
-  ValidateExpectedUrl(kRequestUrl, kHtmlInput,
-                      GetExpectedOutput(kBlinkUrlGstatic));
+                      GetExpectedOutput());
 }
 
 }  // namespace net_instaweb

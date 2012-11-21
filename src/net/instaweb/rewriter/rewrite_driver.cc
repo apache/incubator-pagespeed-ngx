@@ -543,12 +543,16 @@ void RewriteDriver::FlushAsync(Function* callback) {
   for (FilterList::iterator it = early_pre_render_filters_.begin();
       it != early_pre_render_filters_.end(); ++it) {
     HtmlFilter* filter = *it;
-    ApplyFilter(filter);
+    if (filter->is_enabled()) {
+      ApplyFilter(filter);
+    }
   }
   for (FilterList::iterator it = pre_render_filters_.begin();
       it != pre_render_filters_.end(); ++it) {
     HtmlFilter* filter = *it;
-    ApplyFilter(filter);
+    if (filter->is_enabled()) {
+      ApplyFilter(filter);
+    }
   }
 
   // Note that no actual resource Rewriting can occur until this point
@@ -1839,6 +1843,18 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
                                  const ContentType& content_type) {
   start_time_ms_ = server_context_->timer()->NowMs();
   set_log_rewrite_timing(options()->log_rewrite_timing());
+
+  for (FilterList::iterator it = early_pre_render_filters_.begin();
+      it != early_pre_render_filters_.end(); ++it) {
+    (*it)->DetermineEnabled();
+  }
+  for (FilterList::iterator it = pre_render_filters_.begin();
+      it != pre_render_filters_.end(); ++it) {
+    (*it)->DetermineEnabled();
+  }
+  // DetermineEnabled on post render filters is invoked in
+  // HtmlParse::StartParseId
+
   bool ret = HtmlParse::StartParseId(url, id, content_type);
   {
     ScopedMutex lock(rewrite_mutex());

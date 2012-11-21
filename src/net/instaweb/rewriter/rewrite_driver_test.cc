@@ -1014,7 +1014,59 @@ class ResponseHeadersCheckingFilter : public EmptyHtmlFilter {
   bool flush_occurred_;
 };
 
+class DetermineEnabledCheckingFilter : public EmptyHtmlFilter {
+ public:
+  DetermineEnabledCheckingFilter() :
+    start_document_called_(false),
+    enabled_value_(false) {}
+
+  virtual void StartDocument() {
+    start_document_called_ = true;
+  }
+
+  virtual void DetermineEnabled() {
+    set_is_enabled(enabled_value_);
+  }
+
+  void SetEnabled(bool enabled_value) {
+    enabled_value_ = enabled_value;
+  }
+
+  bool start_document_called() {
+    return start_document_called_;
+  }
+
+  virtual const char* Name() const { return "DetermineEnabledCheckingFilter"; }
+
+ private:
+  bool start_document_called_;
+  bool enabled_value_;
+};
+
 }  // namespace
+
+TEST_F(RewriteDriverTest, DetermineEnabledTest) {
+  RewriteDriver* driver = rewrite_driver();
+  DetermineEnabledCheckingFilter* filter =
+      new DetermineEnabledCheckingFilter();
+  driver->AddOwnedEarlyPreRenderFilter(filter);
+  driver->StartParse("http://example.com/index.html");
+  rewrite_driver()->ParseText("<div>");
+  driver->Flush();
+  EXPECT_FALSE(filter->start_document_called());
+  rewrite_driver()->ParseText("</div>");
+  driver->FinishParse();
+
+  filter = new DetermineEnabledCheckingFilter();
+  filter->SetEnabled(true);
+  driver->AddOwnedEarlyPreRenderFilter(filter);
+  driver->StartParse("http://example.com/index.html");
+  rewrite_driver()->ParseText("<div>");
+  driver->Flush();
+  EXPECT_TRUE(filter->start_document_called());
+  rewrite_driver()->ParseText("</div>");
+  driver->FinishParse();
+}
 
 // Tests that we access driver->response_headers() before/after Flush(),
 // and driver->mutable_response_headers() at only before Flush().

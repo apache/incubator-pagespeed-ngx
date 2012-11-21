@@ -25,7 +25,6 @@
 
 namespace net_instaweb {
 
-class HtmlElement;
 class RewriteDriver;
 class RewriteOptions;
 
@@ -35,20 +34,13 @@ class BlinkBackgroundFilter : public EmptyHtmlFilter {
   explicit BlinkBackgroundFilter(RewriteDriver* rewrite_driver);
   virtual ~BlinkBackgroundFilter();
 
-  virtual void StartDocument();
   virtual void StartElement(HtmlElement* element);
-  virtual void EndElement(HtmlElement* element);
   virtual const char* Name() const { return "ProcessBlinkInBackgroundFilter"; }
 
  private:
   RewriteDriver* rewrite_driver_;
   const RewriteOptions* rewrite_options_;
   ScriptTagScanner script_tag_scanner_;
-  bool script_written_;
-
-  // Inserts blink js and defer js init code into the head element. If no head
-  // tag in the page, it inserts one before body tag.
-  void InsertBlinkJavascript(HtmlElement* element);
 
   DISALLOW_COPY_AND_ASSIGN(BlinkBackgroundFilter);
 };

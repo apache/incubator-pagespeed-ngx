@@ -387,6 +387,9 @@ class HtmlParse {
 
   virtual void ParseTextInternal(const char* content, int size);
 
+  // Allow filters to determine whether they are enabled for this request.
+  void DetermineEnabledFilters(FilterVector* filters) const;
+
  private:
   void ApplyFilterHelper(HtmlFilter* filter);
   HtmlEventListIterator Last();  // Last element in queue

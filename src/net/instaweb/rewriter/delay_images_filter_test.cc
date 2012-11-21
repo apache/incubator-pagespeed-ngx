@@ -50,11 +50,13 @@ const char kHeadHtmlWithDeferJsTemplate[] =
     "<head><script type=\"text/javascript\" pagespeed_no_defer=\"\">"
     "%s"
     "</script>"
+    "</head>";
+
+const char kDeferJsTemplate[] =
     "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>"
     "<script type=\"text/javascript\">"
     "%s"
-    "</script>"
-    "</head>";
+    "</script>";
 
 const char kLazyloadTemplate[] =
     "<script type=\"text/javascript\">"
@@ -86,6 +88,7 @@ class DelayImagesFilterTest : public RewriteTestBase {
     SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
   }
 
+  virtual bool AddHtmlTags() const { return false; }
   // Match rewritten html content and return its byte count.
   int MatchOutputAndCountBytes(const GoogleString& html_input,
                                const GoogleString& expected) {
@@ -119,8 +122,11 @@ class DelayImagesFilterTest : public RewriteTestBase {
 
   GoogleString GetHeadHtmlWithDeferJs() {
     return StringPrintf(kHeadHtmlWithDeferJsTemplate,
-                        JsDisableFilter::kDisableJsExperimental,
-                        GetDeferJsCode().c_str());
+                        JsDisableFilter::kDisableJsExperimental);
+  }
+
+  GoogleString GetDeferJs() {
+    return StringPrintf(kDeferJsTemplate, GetDeferJsCode().c_str());
   }
 
   GoogleString GetHtmlWithLazyload() {
@@ -132,10 +138,6 @@ class DelayImagesFilterTest : public RewriteTestBase {
   GoogleString GetInlineScript() {
     return StringPrintf(kInlineScriptTemplate,
                         GetDelayImagesInlineCode().c_str());
-  }
-
-  GoogleString GetDeferJs() {
-    return StringPrintf(kScriptTemplate, GetDeferJsCode().c_str());
   }
 
   GoogleString GetDelayImages() {
@@ -217,7 +219,7 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>"
              "<script type=\"text/javascript\">"
              "\npagespeed.delayImages.replaceWithHighRes();\n</script>"
-             "</body>"));
+             "</body>", GetDeferJs()));
   EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_));
   EXPECT_TRUE(logging_info.applied_rewriters().find("di") !=
               GoogleString::npos);
@@ -311,7 +313,7 @@ TEST_F(DelayImagesFilterTest, DelayImageWithLazyLoadDisabled) {
       GetNoscript(),
       StrCat("<img pagespeed_high_res_src=\"http://test.com/1.webp\" ",
              "src=\"", kSampleWebpData, "\"/>"),
-      GetDelayImages(), "</body>");
+      GetDelayImages(), "</body>", GetDeferJs());
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -335,7 +337,7 @@ TEST_F(DelayImagesFilterTest, DelayWebPImage) {
       StrCat(GetInlineScript(),
              GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(), "</body>"));
+             GetDelayImages(), "</body>", GetDeferJs()));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -356,7 +358,7 @@ TEST_F(DelayImagesFilterTest, DelayJpegImage) {
       StrCat(GetInlineScript(),
              GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(), "</body>"));
+             GetDelayImages(), "</body>", GetDeferJs()));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -378,7 +380,7 @@ TEST_F(DelayImagesFilterTest, DelayJpegImageOnInputElement) {
       StrCat(GetInlineScript(),
              GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(), "</body>"));
+             GetDelayImages(), "</body>", GetDeferJs()));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -410,8 +412,7 @@ TEST_F(DelayImagesFilterTest, TestMinImageSizeLowResolutionBytesFlag) {
       StrCat(GetInlineScript(),
              GenerateAddLowResString("http://test.com/1.jpeg", kSampleJpegData),
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(),
-             "</body>"));
+             GetDelayImages(), "</body>", GetDeferJs()));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -442,9 +443,9 @@ TEST_F(DelayImagesFilterTest, TestMaxImageSizeLowResolutionBytesFlag) {
              GetDelayImages(),
              GetHtmlWithLazyload(),
              GenerateRewrittenImageTag("http://test.com/1.jpeg"),
-              "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
-              "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
-             "</body>"));
+             "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+             "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
+             "</body>", GetDeferJs()));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -472,9 +473,9 @@ TEST_F(DelayImagesFilterTest, TestMaxInlinedPreviewImagesIndexFlag) {
              GetDelayImages(),
              GetHtmlWithLazyload(),
              GenerateRewrittenImageTag("http://test.com/1.webp"),
-              "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
-              "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
-             "</body>"));
+             "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+             "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
+             "</body>", GetDeferJs()));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -500,7 +501,7 @@ TEST_F(DelayImagesFilterTest, DelayMultipleSameImage) {
       StrCat(GetInlineScript(),
              GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>",
-             GetDelayImages(), "</body>"));
+             GetDelayImages(), "</body>", GetDeferJs()));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -535,7 +536,7 @@ TEST_F(DelayImagesFilterTest, MultipleBodyTags) {
   GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
       "<body>",
       GetNoscript(),
-      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>",
+      "<img pagespeed_high_res_src=\"http://test.com/1.webp\"/>"
       "</body>",
       StrCat(GetInlineScript(),
              GenerateAddLowResString("http://test.com/1.webp", kSampleWebpData),
@@ -547,7 +548,7 @@ TEST_F(DelayImagesFilterTest, MultipleBodyTags) {
              "\npagespeed.delayImagesInline.replaceWithLowRes();\n</script>"
              "<script type=\"text/javascript\">"
              "\npagespeed.delayImages.replaceWithHighRes();\n</script>"
-             "</body>"));
+             "</body>", GetDeferJs()));
   MatchOutputAndCountBytes(input_html, output_html);
 }
 

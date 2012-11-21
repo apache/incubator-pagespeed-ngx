@@ -20,7 +20,7 @@
 
 namespace net_instaweb {
 
-HtmlFilter::HtmlFilter() {
+HtmlFilter::HtmlFilter() : is_enabled_(true) {
 }
 
 HtmlFilter::~HtmlFilter() {

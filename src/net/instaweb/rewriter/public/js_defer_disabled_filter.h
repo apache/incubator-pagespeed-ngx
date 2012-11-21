@@ -44,9 +44,8 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
   virtual ~JsDeferDisabledFilter();
 
   virtual void StartDocument();
-  virtual void StartElement(HtmlElement* element);
-  virtual void EndElement(HtmlElement* element);
   virtual void EndDocument();
+  virtual void DetermineEnabled();
   virtual const char* Name() const { return "JsDeferDisabledFilter"; }
 
   static void InitStats(Statistics* statistics);
@@ -57,14 +56,9 @@ class JsDeferDisabledFilter : public EmptyHtmlFilter {
   static bool ShouldApply(RewriteDriver* driver);
 
  private:
-  void InsertJsDeferCode(HtmlElement* element);
+  void InsertJsDeferCode();
 
   RewriteDriver* rewrite_driver_;
-
-  // The script that will be inlined at the end of BODY.
-  bool script_written_;
-  bool defer_js_enabled_;
-  bool debug_;
 
   DISALLOW_COPY_AND_ASSIGN(JsDeferDisabledFilter);
 };

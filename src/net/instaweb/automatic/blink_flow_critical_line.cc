@@ -49,6 +49,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/charset_util.h"
@@ -65,7 +66,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class StaticJavascriptManager;
 
 const char BlinkFlowCriticalLine::kBackgroundComputationDone[] =
     "BackgroundComputation:Done";
@@ -848,20 +848,26 @@ void BlinkFlowCriticalLine::SendLazyloadImagesJs() {
 void BlinkFlowCriticalLine::SendCriticalHtml(
     const GoogleString& critical_html) {
   WriteString(critical_html);
-  WriteString("<script>pagespeed.panelLoaderInit();</script>");
+  StaticJavascriptManager* static_js_manager =
+      manager_->static_javascript_manager();
+  WriteString("<script type=\"text/javascript\" src=\"");
+  WriteString(static_js_manager->GetBlinkJsUrl(options_));
+  WriteString("\"></script>");
+  WriteString("<script type=\"text/javascript\">");
+  WriteString("\npagespeed.deferInit();");
+  WriteString("\npagespeed.panelLoaderInit();");
   const char* user_ip = base_fetch_->request_headers()->Lookup1(
       HttpAttributes::kXForwardedFor);
   if (user_ip != NULL && manager_->factory()->IsDebugClient(user_ip) &&
       options_->enable_blink_debug_dashboard()) {
-    WriteString("<script>pagespeed.panelLoader.setRequestFromInternalIp();"
-                "</script>");
+    WriteString("\npagespeed.panelLoader.setRequestFromInternalIp();");
   }
   if (!options_->enable_blink_debug_dashboard()) {
-    WriteString("<script>"
-                "pagespeed.panelLoader.setCsiTimingsReportingEnabled(false);"
-                "</script>");
+    WriteString(
+        "\npagespeed.panelLoader.setCsiTimingsReportingEnabled(false);");
   }
-  WriteString("<script>pagespeed.panelLoader.loadCriticalData({});</script>");
+  WriteString("\npagespeed.panelLoader.loadCriticalData({});");
+  WriteString("</script>");
   Flush();
 }
 

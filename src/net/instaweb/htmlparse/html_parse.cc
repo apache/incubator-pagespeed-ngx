@@ -194,6 +194,9 @@ void HtmlParse::AddElement(HtmlElement* element, int line_number) {
 
 bool HtmlParse::StartParseId(const StringPiece& url, const StringPiece& id,
                              const ContentType& content_type) {
+  for (int i = 0, n = filters_.size(); i < n; ++i) {
+    filters_[i]->DetermineEnabled();
+  }
   url.CopyToString(&url_);
   GoogleUrl gurl(url);
   url_valid_ = gurl.is_valid();
@@ -388,7 +391,9 @@ void HtmlParse::Flush() {
 
     for (int i = 0, n = filters_.size(); i < n; ++i) {
       HtmlFilter* filter = filters_[i];
-      ApplyFilter(filter);
+      if (filter->is_enabled()) {
+        ApplyFilter(filter);
+      }
     }
     ClearEvents();
   }
