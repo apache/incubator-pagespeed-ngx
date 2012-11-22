@@ -76,8 +76,8 @@ class NgxUrlAsyncFetcher : public UrlPollableAsyncFetcher {
     // remove the error fetches
     //void CleanupFetchesWithErrors();
 
-    bool shutdown() const {return shutdown_; }
-    void set_shutdown(bool s) {shutdown_ = s; }
+    bool shutdown() const { return shutdown_; }
+    void set_shutdown(bool s) { shutdown_ = s; }
 
   private:
     static void TimeoutHandler(ngx_event_t* tev);
