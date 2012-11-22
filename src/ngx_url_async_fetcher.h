@@ -1,3 +1,21 @@
+/*
+ * Copyright 2012 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Author: x.dinic@gmail.com(Junmin Xiong)
+
 #ifndef NET_INSTAWEB_NGX_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_NGX_URL_ASYNC_FETCHER_H_
 
@@ -25,13 +43,13 @@ class Variable;
 class NgxUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   public:
     // add timeout event
-    NgxUrlAsyncFetcher(const char* proxy, ngx_pool_t* pool, int64 timeout,
+    NgxUrlAsyncFetcher(char* proxy, ngx_pool_t* pool, int64 timeout,
         int64 resolver_timeout, int64 fetch_timeout, ngx_resolver_t* resolver,
         MessageHandler* handler);
-    NgxUrlAsyncFetcher(const char* proxy, ngx_log_t* log, int64 timeout,
+    NgxUrlAsyncFetcher(char* proxy, ngx_log_t* log, int64 timeout,
         int64 resolver_timeout, int64 fetch_timeout, ngx_resolver_t* resolver,
         MessageHandler* handler);
-    NgxUrlAsyncFetcher(NgxUrlAsyncFetcher *parent, const char* proxy);
+    NgxUrlAsyncFetcher(NgxUrlAsyncFetcher *parent, char* proxy);
 
     ~NgxUrlAsyncFetcher();
 

@@ -1,3 +1,25 @@
+/*
+ * Copyright 2012 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Author: x.dinic@gmail.com (Junmin Xiong)
+// Fetch resources through asynchronous,it run in a nginx event loop
+//  - resolver event would be hook when started a NgxFetch
+//  - when NgxFetchResolveDone is called NgxFetch compled resolver,then 
+//    connect, create a "reuqest", hooked write and read event.
+//  - write, read and handler response in a event loop.
 
 #include "ngx_fetch.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -39,7 +61,7 @@ namespace net_instaweb {
     bytes_received_(0),
     fetch_start_ms_(0),
     fetch_end_ms_(0) {
-    ngx_memzero(&url_, sizeof(ngx_url_t));
+    ngx_memzero(&url_, sizeof(url_));
     log_ = NULL;
     pool_ = NULL;
     timeout_event_ = NULL;
@@ -256,7 +278,7 @@ namespace net_instaweb {
     sin.sin_addr.s_addr = resolver_ctx_->addrs[0];
 
     ngx_peer_connection_t pc;
-    ngx_memzero(&pc, sizeof(ngx_peer_connection_t));
+    ngx_memzero(&pc, sizeof(pc));
     pc.sockaddr = (struct sockaddr *) &sin;
     pc.socklen = sizeof(struct sockaddr_in);
     pc.name = &url_.host;

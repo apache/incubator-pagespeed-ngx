@@ -1,3 +1,21 @@
+/*
+ * Copyright 2012 Google Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// Author: x.dinic@gmail.com (Junmin Xiong)
+
 extern "C" {
  #include <ngx_http.h>
  #include <ngx_core.h>
@@ -30,7 +48,7 @@ extern "C" {
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
-  NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(const char* proxy,
+  NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(char* proxy,
                                          ngx_pool_t* pool,
                                          int64 timeout, // timer for fetcher
                                          int64 resolver_timeout, // timer for resolver
@@ -46,14 +64,14 @@ namespace net_instaweb {
       resolver_timeout_(resolver_timeout),
       fetch_timeout_(fetch_timeout) {
     ngx_memzero(&url_, sizeof(ngx_url_t));
-    url_.url.data = (u_char*)proxy;
+    url_.url.data = reinterpret_cast<u_char*>(proxy);
     url_.url.len = ngx_strlen(proxy);
     pool_ = pool;
     log_ = pool->log;
     resolver_ = resolver;
   }
 
-  NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(const char* proxy,
+  NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(char* proxy,
                                          ngx_log_t* log,
                                          int64 timeout,
                                          int64 resolver_timeout,
@@ -70,7 +88,7 @@ namespace net_instaweb {
       fetch_timeout_(fetch_timeout) {
     ngx_memzero(&url_, sizeof(ngx_url_t));
     if (proxy != NULL && *proxy != '\0') {
-      url_.url.data = (u_char*)proxy;
+      url_.url.data = reinterpret_cast<u_char*>(proxy);
       url_.url.len = ngx_strlen(proxy);
     }
     log_ = log;
@@ -78,7 +96,7 @@ namespace net_instaweb {
   }
 
   NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(NgxUrlAsyncFetcher* parent,
-                                         const char* proxy)
+                                         char* proxy)
     : fetchers_count_(parent->fetchers_count_),
       shutdown_(false),
       track_original_content_length_(parent->track_original_content_length_),
@@ -89,7 +107,7 @@ namespace net_instaweb {
       fetch_timeout_(parent->fetch_timeout_) {
     ngx_memzero(&url_, sizeof(ngx_url_t));
     if (proxy != NULL && *proxy != '\0') {
-      url_.url.data = (u_char*)proxy;
+      url_.url.data = reinterpret_cast<u_char*>(proxy);
       url_.url.len = ngx_strlen(proxy);
     }
     pool_ = parent->pool_;
