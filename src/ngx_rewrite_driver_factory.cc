@@ -194,13 +194,9 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
     server_context->MakePropertyCaches(l2_cache);
   }
 
-  // TODO(oschaaf): 
+  // TODO(oschaaf): see the property cache setup in the apache rewrite
+  // driver factory
   server_context->set_enable_property_cache(true);
-  //server_context->set_enable_property_cache(enable_property_cache());
-  //PropertyCache* pcache = server_context->page_property_cache();
-  //if (pcache->GetCohort(BeaconCriticalImagesFinder::kBeaconCohort) == NULL) {
-  //  pcache->AddCohort(BeaconCriticalImagesFinder::kBeaconCohort);
-  //}
 }
 
 Statistics* NgxRewriteDriverFactory::statistics() {
@@ -231,8 +227,6 @@ AprMemCache* NgxRewriteDriverFactory::NewAprMemCache(
     const GoogleString& spec) {
   // TODO(oschaaf): determine a sensible limit
   int thread_limit=2;
-  //ap_mpm_query(AP_MPMQ_HARD_LIMIT_THREADS, &thread_limit);
-  //thread_limit += num_rewrite_threads() + num_expensive_rewrite_threads();
   return new AprMemCache(spec, thread_limit, &cache_hasher_, statistics(),
                          timer(), message_handler());
 }
@@ -268,14 +262,16 @@ CacheInterface* NgxRewriteDriverFactory::GetMemcached(
         async_caches_.push_back(async_cache);
         memcached = async_cache;
       } else {
+        message_handler()->Message(kWarning,
+          "Running memcached synchronously, this may hurt performance");
         memcached = mem_cache;
       }
 
       // Put the batcher above the stats so that the stats sees the MultiGets
       // and can show us the histogram of how they are sized.
-      #if CACHE_STATISTICS
+#if CACHE_STATISTICS
       memcached = new CacheStats(kMemcached, memcached, timer(), statistics());
-      #endif
+#endif
       CacheBatcher* batcher = new CacheBatcher(
           memcached, thread_system()->NewMutex(), statistics());
       if (num_threads != 0) {

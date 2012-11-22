@@ -1,4 +1,4 @@
-// Copyright 2011 Google Inc.
+// Copyright 2012 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,53 +23,52 @@
 
 namespace net_instaweb {
 
-  class NgxRewriteOptions;
-  class NgxRewriteDriverFactory;
-  class CacheInterface;
-  class FileCache;
-  class FileSystemLockManager;
-  class MessageHandler;
-  class NamedLockManager;
-  class SharedMemLockManager;
+class NgxRewriteOptions;
+class NgxRewriteDriverFactory;
+class CacheInterface;
+class FileCache;
+class FileSystemLockManager;
+class MessageHandler;
+class NamedLockManager;
+class SharedMemLockManager;
 
-  // The NgxCache encapsulates a cache-sharing model where a user specifies
-  // a file-cache path per virtual-host.  With each file-cache object we keep
-  // a locking mechanism and an optional per-process LRUCache.
-  class NgxCache {
+// The NgxCache encapsulates a cache-sharing model where a user specifies
+// a file-cache path per virtual-host.  With each file-cache object we keep
+// a locking mechanism and an optional per-process LRUCache.
+class NgxCache {
  public:
-    static const char kFileCache[];
-    static const char kLruCache[];
+  static const char kFileCache[];
+  static const char kLruCache[];
 
-    NgxCache(const StringPiece& path,
-                const NgxRewriteOptions& config,
-                NgxRewriteDriverFactory* factory);
-    ~NgxCache();
-    CacheInterface* l1_cache() { return l1_cache_.get(); }
-    CacheInterface* l2_cache() { return l2_cache_.get(); }
-    NamedLockManager* lock_manager() { return lock_manager_; }
+  NgxCache(const StringPiece& path,
+              const NgxRewriteOptions& config,
+              NgxRewriteDriverFactory* factory);
+  ~NgxCache();
+  CacheInterface* l1_cache() { return l1_cache_.get(); }
+  CacheInterface* l2_cache() { return l2_cache_.get(); }
+  NamedLockManager* lock_manager() { return lock_manager_; }
 
-    void RootInit();
-    void ChildInit();
-    void GlobalCleanup(MessageHandler* handler);  // only called in root process
+  void RootInit();
+  void ChildInit();
+  void GlobalCleanup(MessageHandler* handler);  // only called in root process
 
  private:
-    void FallBackToFileBasedLocking();
+  void FallBackToFileBasedLocking();
 
-    GoogleString path_;
+  GoogleString path_;
+  NgxRewriteDriverFactory* factory_;
+  scoped_ptr<SharedMemLockManager> shared_mem_lock_manager_;
+  scoped_ptr<FileSystemLockManager> file_system_lock_manager_;
+  NamedLockManager* lock_manager_;
+  FileCache* file_cache_;  // owned by l2 cache
+  scoped_ptr<CacheInterface> l1_cache_;
+  scoped_ptr<CacheInterface> l2_cache_;
+};
 
-    NgxRewriteDriverFactory* factory_;
-    scoped_ptr<SharedMemLockManager> shared_mem_lock_manager_;
-    scoped_ptr<FileSystemLockManager> file_system_lock_manager_;
-    NamedLockManager* lock_manager_;
-    FileCache* file_cache_;  // owned by l2 cache
-    scoped_ptr<CacheInterface> l1_cache_;
-    scoped_ptr<CacheInterface> l2_cache_;
-  };
-
-  // CACHE_STATISTICS is #ifdef'd to facilitate experiments with whether
-  // tracking the detailed stats & histograms has a QPS impact.  Set it
-  // to 0 to turn it off.
-  #define CACHE_STATISTICS 1
+// CACHE_STATISTICS is #ifdef'd to facilitate experiments with whether
+// tracking the detailed stats & histograms has a QPS impact.  Set it
+// to 0 to turn it off.
+#define CACHE_STATISTICS 1
 
 }  // namespace net_instaweb
 

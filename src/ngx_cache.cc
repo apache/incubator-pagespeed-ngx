@@ -1,4 +1,4 @@
-// Copyright 2011 Google Inc.
+// Copyright 2012 Google Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -86,26 +86,7 @@ NgxCache::NgxCache(const StringPiece& path,
 NgxCache::~NgxCache() {
 }
 
-void NgxCache::RootInit() {
-  factory_->message_handler()->Message(
-      kInfo, "Initializing shared memory for path: %s.", path_.c_str());
-  if ((shared_mem_lock_manager_.get() != NULL) &&
-      !shared_mem_lock_manager_->Initialize()) {
-    FallBackToFileBasedLocking();
-  }
-}
-
-void NgxCache::ChildInit() {
-  factory_->message_handler()->Message(
-      kInfo, "Reusing shared memory for path: %s.", path_.c_str());
-  if ((shared_mem_lock_manager_.get() != NULL) &&
-         !shared_mem_lock_manager_->Attach()) {
-    FallBackToFileBasedLocking();
-  }
-  if (file_cache_ != NULL) {
-    file_cache_->set_worker(factory_->slow_worker());
-  }
-}
+// TODO(oschaaf): see rootinit/childinit from ApacheCache.cc
 
 void NgxCache::FallBackToFileBasedLocking() {
   if ((shared_mem_lock_manager_.get() != NULL) || (lock_manager_ == NULL)) {
