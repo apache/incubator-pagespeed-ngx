@@ -163,6 +163,7 @@ class RewriteOptions {
     kBeaconUrl,
     kBlinkDesktopUserAgent,
     kBlinkMaxHtmlSizeRewritable,
+    kBlinkNonCacheablesForAllFamilies,
     kCacheInvalidationTimestamp,
     kClientDomainRewrite,
     kCombineAcrossPaths,
@@ -1442,6 +1443,14 @@ class RewriteOptions {
     return override_blink_cache_time_ms_.value();
   }
 
+  void set_blink_non_cacheables_for_all_families(const StringPiece& p) {
+    set_option(GoogleString(p.data(), p.size()),
+               &blink_non_cacheables_for_all_families_);
+  }
+  const GoogleString& blink_non_cacheables_for_all_families() const {
+    return blink_non_cacheables_for_all_families_.value();
+  }
+
   const GoogleString& blocking_rewrite_key() const {
     return blocking_rewrite_key_.value();
   }
@@ -2591,6 +2600,9 @@ class RewriteOptions {
   Option<bool> enable_lazyload_in_blink_;
   // Override cache-time for cacheable resources in blink.
   Option<int64> override_blink_cache_time_ms_;
+  // Non-cacheables to be used for all families in
+  // prioritize_visible_content_families_.
+  Option<GoogleString> blink_non_cacheables_for_all_families_;
   // Specification for critical line.
   Option<GoogleString> critical_line_config_;
 

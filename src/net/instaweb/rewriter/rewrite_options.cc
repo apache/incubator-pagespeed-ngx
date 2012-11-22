@@ -240,10 +240,11 @@ const RewriteOptions::Filter kTestFilterSet[] = {
 const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kCanonicalizeJavascriptLibraries,
   RewriteOptions::kComputePanelJson,  // internal, enabled conditionally
-  RewriteOptions::kComputeVisibleText,
+  RewriteOptions::kComputeVisibleText,  // internal, enabled conditionally
   RewriteOptions::kDeferIframe,
   RewriteOptions::kDeferJavascript,
-  RewriteOptions::kDetectReflowWithDeferJavascript,
+  RewriteOptions::kDetectReflowWithDeferJavascript,  // internal,
+                                                     // enabled conditionally
   RewriteOptions::kDeterministicJs,   // used for measurement
   RewriteOptions::kDisableJavascript,
   RewriteOptions::kDivStructure,
@@ -787,6 +788,8 @@ void RewriteOptions::AddProperties() {
   add_option(true, &RewriteOptions::enable_blink_debug_dashboard_, "ebdd");
   add_option(kDefaultOverrideBlinkCacheTimeMs,
              &RewriteOptions::override_blink_cache_time_ms_, "obctm");
+  add_option("", &RewriteOptions::blink_non_cacheables_for_all_families_,
+             "bncfaf", kBlinkNonCacheablesForAllFamilies);
   add_option(kDefaultBlinkHtmlChangeDetectionTimeMs,
              &RewriteOptions::blink_html_change_detection_time_ms_, "bhcdt");
   add_option(false, &RewriteOptions::override_ie_document_mode_, "oidm");
@@ -1484,10 +1487,19 @@ GoogleString RewriteOptions::GetBlinkNonCacheableElementsFor(
     const GoogleUrl& gurl) const {
   const PrioritizeVisibleContentFamily* family =
       FindPrioritizeVisibleContentFamily(gurl.Spec());
-  if (family != NULL) {
-    return family->non_cacheable_elements;
+  if (family == NULL || family->non_cacheable_elements.empty()) {
+    // If no family or family has empty non-cacheables then return the all
+    // families value.
+    return blink_non_cacheables_for_all_families_.value();
   }
-  return "";
+  const GoogleString& non_cacheables_for_all_families =
+      blink_non_cacheables_for_all_families_.value();
+  if (non_cacheables_for_all_families.empty()) {
+    return family->non_cacheable_elements;
+  } else {
+    return StrCat(family->non_cacheable_elements, ",",
+                  non_cacheables_for_all_families);
+  }
 }
 
 const RewriteOptions::PrioritizeVisibleContentFamily*
