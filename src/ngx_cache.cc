@@ -37,8 +37,8 @@ const char NgxCache::kLruCache[] = "lru_cache";
 // The NgxCache shares a file cache per path, with an optional
 // LRU Cache
 NgxCache::NgxCache(const StringPiece& path,
-                         const NgxRewriteOptions& config,
-                         NgxRewriteDriverFactory* factory)
+                   const NgxRewriteOptions& config,
+                   NgxRewriteDriverFactory* factory)
     : path_(path.data(), path.size()),
       factory_(factory),
       lock_manager_(NULL),
@@ -72,14 +72,15 @@ NgxCache::NgxCache(const StringPiece& path,
     // is naturally thread-safe because it's got no writable member variables.
     // And surrounding that slower-running class with a mutex would likely
     // cause contention.
-        ThreadsafeCache* ts_cache =
-            new ThreadsafeCache(lru_cache, factory->thread_system()->NewMutex());
-        #if CACHE_STATISTICS
-        l1_cache_.reset(new CacheStats(kLruCache, ts_cache, factory->timer(),
-                                       factory->statistics()));
-        #else
-        l1_cache_.reset(ts_cache);
-        #endif
+    ThreadsafeCache* ts_cache =
+        new ThreadsafeCache(lru_cache, factory->thread_system()->NewMutex());
+    // TODO(oschaaf): Non-portable (though most major compilers accept it).
+#if CACHE_STATISTICS
+    l1_cache_.reset(new CacheStats(kLruCache, ts_cache, factory->timer(),
+                                   factory->statistics()));
+#else
+    l1_cache_.reset(ts_cache);
+#endif
   }
 }
 

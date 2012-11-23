@@ -90,9 +90,11 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory() :
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
+  timer_ = NULL;
   slow_worker_->ShutDown();
   apr_pool_destroy(pool_);
-
+  pool_ = NULL;
+  
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
     NgxCache* cache = p->second;
@@ -226,7 +228,7 @@ NgxCache* NgxRewriteDriverFactory::GetCache(NgxRewriteOptions* options) {
 AprMemCache* NgxRewriteDriverFactory::NewAprMemCache(
     const GoogleString& spec) {
   // TODO(oschaaf): determine a sensible limit
-  int thread_limit=2;
+  int thread_limit = 2;
   return new AprMemCache(spec, thread_limit, &cache_hasher_, statistics(),
                          timer(), message_handler());
 }
@@ -310,6 +312,7 @@ CacheInterface* NgxRewriteDriverFactory::GetFilesystemMetadataCache(
   // obvious map) because the map's entries are wrapped in an AsyncCache, and
   // the filesystem metadata cache requires a blocking cache (like memcached).
   // Note that if we have a server spec we *know* it's in the searched vector.
+  // We perform a linear scan assuming that the searched set will be small
   DCHECK_EQ(options->memcached_servers().empty(), memcache_servers_.empty());
   const GoogleString& server_spec = options->memcached_servers();
   for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {

@@ -277,6 +277,9 @@ char*
 ngx_http_pagespeed_loc_configure(
     ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
+void
+ngx_http_pagespeed_ignore_sigpipe();
+
 ngx_command_t ngx_http_pagespeed_commands[] = {
   { ngx_string("pagespeed"),
     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1|
@@ -296,6 +299,15 @@ ngx_command_t ngx_http_pagespeed_commands[] = {
 
   ngx_null_command
 };
+
+void
+ngx_http_pagespeed_ignore_sigpipe() {
+  struct sigaction act;
+  act.sa_handler = SIG_IGN;
+  sigemptyset (&act.sa_mask);
+  act.sa_flags = 0;
+  sigaction (SIGPIPE, &act, NULL);
+}
 
 #define NGX_PAGESPEED_MAX_ARGS 10
 char*
