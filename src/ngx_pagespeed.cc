@@ -303,6 +303,7 @@ ngx_command_t ngx_http_pagespeed_commands[] = {
 void
 ngx_http_pagespeed_ignore_sigpipe() {
   struct sigaction act;
+  ngx_memzero(&act, sizeof(act));
   act.sa_handler = SIG_IGN;
   sigemptyset (&act.sa_mask);
   act.sa_flags = 0;
