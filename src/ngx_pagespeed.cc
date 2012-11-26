@@ -171,7 +171,6 @@ ngx_http_pagespeed_string_piece_to_buffer_chain(
 }
 
 typedef struct {
-  // Left null until we get
   net_instaweb::NgxRewriteDriverFactory* driver_factory;
 } ngx_http_pagespeed_main_conf_t;
 
@@ -353,6 +352,12 @@ ngx_http_pagespeed_loc_configure(
   ngx_http_pagespeed_loc_conf_t* cfg_l =
       static_cast<ngx_http_pagespeed_loc_conf_t*>(
           ngx_http_conf_get_module_loc_conf(cf, ngx_pagespeed));
+
+  // TODO(jefftk): pass something to configure() to tell it that this option was
+  // set in a location block so it can be more strict.  Not all options can be
+  // set in location blocks.  (For now we'll allow them, which in practice means
+  // they'll be ignored because they're read from the config before
+  // location-specific options are applied.)
   return ngx_http_pagespeed_configure(cf, &cfg_l->options, cfg_l->handler);
 }
 
