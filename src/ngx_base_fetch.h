@@ -33,7 +33,6 @@
 #define NGX_BASE_FETCH_H_
 
 extern "C" {
-#include <pthread.h>
 #include <ngx_http.h>
 }
 
@@ -93,15 +92,21 @@ class NgxBaseFetch : public AsyncFetch {
   // buffer_.
   ngx_int_t CopyBufferToNginx(ngx_chain_t** link_ptr);
 
-  void Lock();
-  void Unlock();
+  // Acquire this lock before manipulating buffer_.
+  // TODO(jefftk): Actually implement this.  Possibly with ngx_shmtx_lock and
+  // ngx_shmtx_unlock.
+  void Lock() {
+    fprintf(stderr, "Would lock buffer_\n");
+  }
+  void Unlock() {
+    fprintf(stderr, "Would unlock buffer_\n");
+  }
 
   ngx_http_request_t* request_;
   GoogleString buffer_;
   bool done_called_;
   bool last_buf_sent_;
   int pipe_fd_;
-  pthread_mutex_t mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };
