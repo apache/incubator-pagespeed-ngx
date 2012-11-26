@@ -567,6 +567,17 @@ TEST_F(ImageRewriteTest, ImageRewritePreserveURLsOn) {
                     false);  // expect_inline
 }
 
+TEST_F(ImageRewriteTest, ImageRewriteNoTransformAttribute) {
+  // Make sure that the image stays the same and that the attribute is stripped.
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  rewrite_driver()->AddFilters();
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
+                    "pagespeed_no_transform",       // initial attributes
+                    "",                             // final attributes
+                    false,   // expect_rewritten
+                    false);  // expect_inline
+}
+
 TEST_F(ImageRewriteTest, ResizeTest) {
   // Make sure we resize images, but don't optimize them in place.
   options()->EnableFilter(RewriteOptions::kResizeImages);

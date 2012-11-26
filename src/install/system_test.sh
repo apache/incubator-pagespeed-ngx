@@ -305,11 +305,19 @@ fetch_until $URL 'grep -c comment' 0
 check run_wget_with_args $URL
 check_file_size $FETCHED -lt 680  # down from 689
 
-test_filter rewrite_images inlines, compresses, and resizes.
+test_filter rewrite_images [system_test] inlines, compresses, and resizes.
 fetch_until $URL 'grep -c data:image/png' 1  # inlined
 
-# Wait until other 2 images optimized
+# Wait until two other images are optimized.
 fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2
+
+# Verify with a blocking fetch that pagespeed_no_transform worked and was
+# stripped.
+fetch_until $URL 'grep -c "images/disclosure_open_plus.png"' 1 \
+  '--header=X-PSA-Blocking-Rewrite:psatest'
+fetch_until $URL 'grep -c "pagespeed_no_transform"' 0 \
+  '--header=X-PSA-Blocking-Rewrite:psatest'
+
 check_file_size "$OUTDIR/xBikeCrashIcn*" -lt 25000      # re-encoded
 check_file_size "$OUTDIR/*256x192*Puzzle*" -lt 24126    # resized
 URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"

@@ -163,6 +163,7 @@ class HtmlName {
     kPagespeedLscHash,
     kPagespeedLscUrl,
     kPagespeedNoDefer,
+    kPagespeedNoTransform,
     kPagespeedOrigSrc,
     kPagespeedOrigType,
     kPagespeedSize,

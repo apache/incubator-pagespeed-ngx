@@ -1105,6 +1105,14 @@ void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
       category != semantic_type::kImage) {
     return;
   }
+
+  // Don't rewrite if there is a pagespeed_no_transform attribute.
+  if (element->FindAttribute(HtmlName::kPagespeedNoTransform)) {
+    // Remove the attribute
+    element->DeleteAttribute(HtmlName::kPagespeedNoTransform);
+    return;
+  }
+
   // Ask the LSC filter to work out how to handle this element. A return
   // value of true means we don't have to rewrite it so can skip that.
   // The state is carried forward to after we initiate rewriting since
