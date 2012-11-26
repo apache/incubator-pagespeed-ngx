@@ -136,7 +136,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
       const StringPiece& name, const bool logging,
       const int64 logging_interval_ms, const GoogleString& logging_file);
 
-  ApacheServerContext* MakeApacheResourceManager(server_rec* server);
+  ApacheServerContext* MakeApacheServerContext(server_rec* server);
 
   // Makes fetches from PSA to origin-server request
   // accept-encoding:gzip, even when used in a context when we want
@@ -366,15 +366,15 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // writes to the same shared memory which is owned by the factory.
   ApacheMessageHandler* apache_html_parse_message_handler_;
 
-  // Once ResourceManagers are initialized via
-  // RewriteDriverFactory::InitResourceManager, they will be
+  // Once ServerContexts are initialized via
+  // RewriteDriverFactory::InitServerContext, they will be
   // managed by the RewriteDriverFactory.  But in the root Apache process
-  // the ResourceManagers will never be initialized.  We track these here
+  // the ServerContexts will never be initialized.  We track these here
   // so that ApacheRewriteDriverFactory::ChildInit can iterate over all
   // the managers that need to be ChildInit'd, and so that we can free
   // the managers in the Root process that were never ChildInit'd.
-  typedef std::set<ApacheServerContext*> ApacheResourceManagerSet;
-  ApacheResourceManagerSet uninitialized_managers_;
+  typedef std::set<ApacheServerContext*> ApacheServerContextSet;
+  ApacheServerContextSet uninitialized_managers_;
 
   // If true, we'll have a separate statistics object for each vhost
   // (along with a global aggregate), rather than just a single object

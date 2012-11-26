@@ -1085,7 +1085,7 @@ void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
   if (manager == NULL) {
     ApacheRewriteDriverFactory* factory = apache_process_context.factory(
         server);
-    manager = factory->MakeApacheResourceManager(server);
+    manager = factory->MakeApacheServerContext(server);
     apr_pool_cleanup_register(pool, manager, pagespeed_child_exit,
                               apr_pool_cleanup_null);
   }

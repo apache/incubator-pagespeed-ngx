@@ -611,7 +611,7 @@ void ApacheRewriteDriverFactory::ParentOrChildInit() {
 
 void ApacheRewriteDriverFactory::RootInit() {
   ParentOrChildInit();
-  for (ApacheResourceManagerSet::iterator p = uninitialized_managers_.begin(),
+  for (ApacheServerContextSet::iterator p = uninitialized_managers_.begin(),
            e = uninitialized_managers_.end(); p != e; ++p) {
     ApacheServerContext* resource_manager = *p;
 
@@ -645,7 +645,7 @@ void ApacheRewriteDriverFactory::ChildInit() {
     ApacheCache* cache = p->second;
     cache->ChildInit();
   }
-  for (ApacheResourceManagerSet::iterator p = uninitialized_managers_.begin(),
+  for (ApacheServerContextSet::iterator p = uninitialized_managers_.begin(),
            e = uninitialized_managers_.end(); p != e; ++p) {
     ApacheServerContext* resource_manager = *p;
     resource_manager->ChildInit();
@@ -731,7 +731,7 @@ void ApacheRewriteDriverFactory::ShutDown() {
   memcached_pool_.reset(NULL);
 
   // Reset SharedCircularBuffer to NULL, so that any shutdown warnings
-  // (e.g. in ResourceManager::ShutDownDrivers) don't reference
+  // (e.g. in ServerContext::ShutDownDrivers) don't reference
   // deleted objects as the base-class is deleted.
   apache_message_handler_->set_buffer(NULL);
   apache_html_parse_message_handler_->set_buffer(NULL);
@@ -812,7 +812,7 @@ void ApacheRewriteDriverFactory::Terminate() {
   ApacheConfig::Terminate();
 }
 
-ApacheServerContext* ApacheRewriteDriverFactory::MakeApacheResourceManager(
+ApacheServerContext* ApacheRewriteDriverFactory::MakeApacheServerContext(
     server_rec* server) {
   ApacheServerContext* rm = new ApacheServerContext(this, server, version_);
   uninitialized_managers_.insert(rm);
@@ -824,11 +824,11 @@ bool ApacheRewriteDriverFactory::PoolDestroyed(ApacheServerContext* rm) {
     delete rm;
   }
 
-  // Returns true if all the ResourceManagers known by the factory and its
+  // Returns true if all the ServerContexts known by the factory and its
   // superclass are finished.  Then it's time to destroy the factory.  Note
-  // that ApacheRewriteDriverFactory keeps track of ResourceManagers that
+  // that ApacheRewriteDriverFactory keeps track of ServerContexts that
   // are partially constructed.  RewriteDriverFactory keeps track of
-  // ResourceManagers that are already serving requests.  We need to clean
+  // ServerContexts that are already serving requests.  We need to clean
   // all of them out before we can terminate the driver.
   bool no_active_resource_managers = TerminateServerContext(rm);
   return (no_active_resource_managers && uninitialized_managers_.empty());

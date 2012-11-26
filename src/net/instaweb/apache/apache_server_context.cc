@@ -88,7 +88,7 @@ ApacheServerContext::ApacheServerContext(
       cache_flush_timestamp_ms_(NULL) {   // Lazy-initialized under mutex.
   config()->set_description(hostname_identifier_);
   // We may need the message handler for error messages very early, before
-  // we get to InitResourceManager in ChildInit().
+  // we get to InitServerContext in ChildInit().
   set_message_handler(apache_factory_->message_handler());
 
   // Currently, mod_pagespeed always runs upstream of mod_headers when used as
@@ -212,9 +212,9 @@ void ApacheServerContext::ChildInit() {
       // Readjust the SHM stuff for the new process
       local_statistics_->Init(false, message_handler());
 
-      // Create local stats for the ResourceManager, and fill in its
+      // Create local stats for the ServerContext, and fill in its
       // statistics() and rewrite_stats() using them; if we didn't do this here
-      // they would get set to the factory's by the InitResourceManager call
+      // they would get set to the factory's by the InitServerContext call
       // below.
       set_statistics(split_statistics_.get());
       local_rewrite_stats_.reset(new RewriteStats(
