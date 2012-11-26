@@ -204,6 +204,8 @@ const char kModPagespeedLowercaseHtmlNames[] = "ModPagespeedLowercaseHtmlNames";
 const char kModPagespeedMapOriginDomain[] = "ModPagespeedMapOriginDomain";
 const char kModPagespeedMapProxyDomain[] = "ModPagespeedMapProxyDomain";
 const char kModPagespeedMapRewriteDomain[] = "ModPagespeedMapRewriteDomain";
+const char kModPagespeedMaxCacheableContentLength[] =
+    "ModPagespeedMaxCacheableContentLength";
 const char kModPagespeedMaxHtmlParseBytes[] = "ModPagespeedMaxHtmlParseBytes";
 const char kModPagespeedMaxImageSizeLowResolutionBytes[] =
     "ModPagespeedMaxImageSizeLowResolutionBytes";
@@ -1851,6 +1853,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "in-memory LRU cache"),
   APACHE_CONFIG_OPTION(kModPagespeedLRUCacheKbPerProcess,
         "Set the total size, in KB, of the per-process in-memory LRU cache"),
+  APACHE_CONFIG_OPTION(kModPagespeedMaxCacheableContentLength,
+        "Maximum length of a cacheable response content."),
   APACHE_CONFIG_OPTION(kModPagespeedMemcachedServers,
         "Comma-separated list of servers e.g. host1:port1,host2:port2"),
   APACHE_CONFIG_OPTION(kModPagespeedMemcachedThreads,

@@ -146,6 +146,10 @@ const int64 RewriteOptions::kDefaultImageResolutionLimitBytes = 32*1024*1024;
 // use source image quality parameters.
 const int64 RewriteOptions::kDefaultImageWebpRecompressQuality = -1;
 
+// Setting the maximum length for the cacheable response content to -1
+// indicates that there is no size limit.
+const int64 RewriteOptions::kDefaultMaxCacheableResponseContentLength = -1;
+
 // See http://code.google.com/p/modpagespeed/issues/detail?id=9.  By
 // default, Apache evidently limits each URL path segment (between /)
 // to about 256 characters.  This is not a fundamental URL limitation
@@ -594,6 +598,9 @@ void RewriteOptions::AddProperties() {
   add_option(kDefaultProgressiveJpegMinBytes,
              &RewriteOptions::progressive_jpeg_min_bytes_,
              "jp", kProgressiveJpegMinBytes);
+  add_option(kDefaultMaxCacheableResponseContentLength,
+             &RewriteOptions::max_cacheable_response_content_length_, "rcl",
+             kMaxCacheableResponseContentLength);
   add_option(kDefaultMaxHtmlCacheTimeMs,
              &RewriteOptions::max_html_cache_time_ms_, "hc",
              kMaxHtmlCacheTimeMs);

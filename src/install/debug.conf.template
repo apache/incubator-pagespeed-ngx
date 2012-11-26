@@ -578,6 +578,19 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedDisableFilters inline_css
 </VirtualHost>
 
+# Sets up a logical home-page server on
+# max_cacheable_content_length.example.com.  This server is only used to test
+# ModPagespeedMaxCacheableContentLength, i.e.,
+# max_cacheable_response_content_length.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName max_cacheable_content_length.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters rewrite_javascript
+  ModPagespeedMaxCacheableContentLength 85
+</VirtualHost>
+
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
 #ALL_DIRECTIVES ModPagespeedAllow foo
 #ALL_DIRECTIVES ModPagespeedAnalyticsID 1234

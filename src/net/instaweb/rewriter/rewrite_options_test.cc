@@ -688,7 +688,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(120, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(121, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AjaxRewritingEnabled",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAjaxRewritingEnabled));
@@ -857,6 +857,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("LowercaseHtmlNames",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kLowercaseHtmlNames));
+  EXPECT_STREQ("MaxCacheableContentLength",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kMaxCacheableResponseContentLength));
   EXPECT_STREQ("MaxHtmlCacheTimeMs",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kMaxHtmlCacheTimeMs));
@@ -1477,3 +1480,4 @@ TEST_F(RewriteOptionsTest, FilterLookupMethods) {
 }
 
 }  // namespace net_instaweb
+

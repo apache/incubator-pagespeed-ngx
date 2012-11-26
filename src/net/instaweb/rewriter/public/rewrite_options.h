@@ -217,6 +217,7 @@ class RewriteOptions {
     kInlineOnlyCriticalImages,
     kLogRewriteTiming,
     kLowercaseHtmlNames,
+    kMaxCacheableResponseContentLength,
     kMaxCombinedJsBytes,
     kMaxHtmlCacheTimeMs,
     kMaxHtmlParseBytes,
@@ -458,6 +459,7 @@ class RewriteOptions {
   static const int64 kDefaultJsInlineMaxBytes;
   static const int64 kDefaultJsOutlineMinBytes;
   static const int64 kDefaultProgressiveJpegMinBytes;
+  static const int64 kDefaultMaxCacheableResponseContentLength;
   static const int64 kDefaultMaxHtmlCacheTimeMs;
   static const int64 kDefaultMaxHtmlParseBytes;
   static const int64 kDefaultMaxImageBytesForWebpInCss;
@@ -982,6 +984,12 @@ class RewriteOptions {
   }
   void set_max_image_bytes_for_webp_in_css(int64 x) {
     set_option(x, &max_image_bytes_for_webp_in_css_);
+  }
+  int64 max_cacheable_response_content_length() const {
+    return max_cacheable_response_content_length_.value();
+  }
+  void set_max_cacheable_response_content_length(int64 x) {
+    set_option(x, &max_cacheable_response_content_length_);
   }
   int64 min_resource_cache_time_to_rewrite_ms() const {
     return min_resource_cache_time_to_rewrite_ms_.value();
@@ -2554,6 +2562,9 @@ class RewriteOptions {
   // are "likely cacheable" (e.g. images, js, css, not html) and have no
   // explicit cache ttl or expiration date.
   Option<int64> implicit_cache_ttl_ms_;
+
+  // Maximum length (in bytes) of response content.
+  Option<int64> max_cacheable_response_content_length_;
 
   // Option for the prioritize_visible_content filter.
   //

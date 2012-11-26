@@ -984,6 +984,21 @@ if [ x$SECONDARY_HOSTNAME != x ]; then
   fi
 fi
 
+# Test max_cacheable_response_content_length.  There are two Javascript files
+# in the html file.  The smaller Javascript file should be rewritten while
+# the larger one shouldn't.
+if [ "$SECONDARY_HOSTNAME" != "" ]; then
+  echo "TEST: Maximum length of cacheable response content."
+  HOST_NAME="http://max_cacheable_content_length.example.com"
+  DIR_NAME="mod_pagespeed_test/max_cacheable_content_length"
+  HTML_NAME="test_max_cacheable_content_length.html"
+  URL=$HOST_NAME/$DIR_NAME/$HTML_NAME
+  RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header \
+      'X-PSA-Blocking-Rewrite: psatest' $URL)
+  check_from     "$RESPONSE_OUT" fgrep -qi small.js.pagespeed.
+  check_not_from "$RESPONSE_OUT" fgrep -qi large.js.pagespeed.
+fi
+
 # TODO(matterbury): Uncomment these lines then the test is fixed.
 :<< COMMENTING_BLOCK
 echo "TEST: <ModPagespeedIf> application"

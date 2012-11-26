@@ -81,6 +81,7 @@ struct OptionName {
 "InlineOnlyCriticalImages",              RewriteOptions::kInlineOnlyCriticalImages
 "LogRewriteTiming",                      RewriteOptions::kLogRewriteTiming
 "LowercaseHtmlNames",                    RewriteOptions::kLowercaseHtmlNames
+"MaxCacheableContentLength",             RewriteOptions::kMaxCacheableResponseContentLength
 "MaxHtmlCacheTimeMs",                    RewriteOptions::kMaxHtmlCacheTimeMs
 "MaxHtmlParseBytes",                     RewriteOptions::kMaxHtmlParseBytes
 "MaxImageBytesForWebpInCss",             RewriteOptions::kMaxImageBytesForWebpInCss

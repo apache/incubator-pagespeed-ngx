@@ -331,8 +331,10 @@ void ApacheRewriteDriverFactory::SetupCaches(
   //
   // Note that a user can disable the L1 cache by setting its byte-count
   // to 0, in which case we don't build the write-through mechanisms.
+  int64 max_content_length = config->max_cacheable_response_content_length();
   if (l1_cache == NULL) {
     HTTPCache* http_cache = new HTTPCache(l2_cache, timer(), hasher(), stats);
+    http_cache->set_max_cacheable_response_content_length(max_content_length);
     resource_manager->set_http_cache(http_cache);
     resource_manager->set_metadata_cache(new CacheCopy(l2_cache));
     resource_manager->MakePropertyCaches(l2_cache);
@@ -340,6 +342,8 @@ void ApacheRewriteDriverFactory::SetupCaches(
     WriteThroughHTTPCache* write_through_http_cache = new WriteThroughHTTPCache(
         l1_cache, l2_cache, timer(), hasher(), stats);
     write_through_http_cache->set_cache1_limit(config->lru_cache_byte_limit());
+    write_through_http_cache->set_max_cacheable_response_content_length(
+        max_content_length);
     resource_manager->set_http_cache(write_through_http_cache);
 
     WriteThroughCache* write_through_cache = new WriteThroughCache(

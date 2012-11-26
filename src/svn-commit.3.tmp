@@ -1,0 +1,23 @@
+Add maximum cacheable response content length.
+
+--This line, and those below, will be ignored--
+
+M    net/instaweb/htmlparse/html_name.gperf
+M    net/instaweb/htmlparse/public/html_name.h
+M    net/instaweb/rewriter/public/rewrite_options.h
+M    net/instaweb/rewriter/rewrite_options_test.cc
+M    net/instaweb/rewriter/rewrite_option_names.gperf
+M    net/instaweb/rewriter/image_rewrite_filter.cc
+M    net/instaweb/rewriter/rewrite_options.cc
+M    net/instaweb/rewriter/image_rewrite_filter_test.cc
+M    net/instaweb/apache/mod_instaweb.cc
+M    net/instaweb/apache/apache_rewrite_driver_factory.cc
+_M   install
+M    install/mod_pagespeed_example/rewrite_images.html
+M    install/debug.conf.template
+A    install/mod_pagespeed_test/max_cacheable_content_length
+A    install/mod_pagespeed_test/max_cacheable_content_length/small.js
+A    install/mod_pagespeed_test/max_cacheable_content_length/large.js
+A    install/mod_pagespeed_test/max_cacheable_content_length/test_max_cacheable_content_length.html
+M    install/system_test.sh
+M    install/apache_system_test.sh
