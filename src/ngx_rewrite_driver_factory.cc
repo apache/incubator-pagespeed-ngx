@@ -41,7 +41,6 @@
 #include "net/instaweb/util/public/threadsafe_cache.h"
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/file_cache.h"
-#include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/write_through_http_cache.h"
@@ -119,9 +118,7 @@ Timer* NgxRewriteDriverFactory::DefaultTimer() {
 }
 
 NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
-  return new FileSystemLockManager(
-      file_system(), filename_prefix().as_string(),
-      scheduler(), message_handler());
+  return NULL;
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {

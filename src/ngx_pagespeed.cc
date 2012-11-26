@@ -47,6 +47,7 @@ extern "C" {
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/automatic/public/resource_fetch.h"
 
@@ -170,15 +171,23 @@ ngx_http_pagespeed_string_piece_to_buffer_chain(
 }
 
 typedef struct {
+  // Left null until we get
   net_instaweb::NgxRewriteDriverFactory* driver_factory;
+} ngx_http_pagespeed_main_conf_t;
+
+typedef struct {
   net_instaweb::NgxServerContext* server_context;
-  net_instaweb::NgxRewriteOptions* options;
   net_instaweb::ProxyFetchFactory* proxy_fetch_factory;
+  net_instaweb::NgxRewriteOptions* options;
   net_instaweb::MessageHandler* handler;
 } ngx_http_pagespeed_srv_conf_t;
 
 typedef struct {
-  ngx_http_pagespeed_srv_conf_t* cfg;
+  net_instaweb::NgxRewriteOptions* options;
+  net_instaweb::MessageHandler* handler;
+} ngx_http_pagespeed_loc_conf_t;
+
+typedef struct {
   net_instaweb::ProxyFetch* proxy_fetch;
   net_instaweb::NgxBaseFetch* base_fetch;
   bool data_received;
@@ -196,10 +205,22 @@ ngx_int_t
 ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
 void*
+ngx_http_pagespeed_create_main_conf(ngx_conf_t* cf);
+
+char*
+ngx_http_pagespeed_init_main_conf(ngx_conf_t* cf, void* parent, void* child);
+
+void*
 ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf);
 
 char*
 ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child);
+
+void*
+ngx_http_pagespeed_create_loc_conf(ngx_conf_t* cf);
+
+char*
+ngx_http_pagespeed_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child);
 
 void
 ngx_http_pagespeed_release_request_context(void* data);
@@ -212,10 +233,6 @@ ngx_http_pagespeed_determine_url(ngx_http_request_t* r);
 
 ngx_http_pagespeed_request_ctx_t*
 ngx_http_pagespeed_get_request_context(ngx_http_request_t* r);
-
-void
-ngx_http_pagespeed_initialize_server_context(
-    ngx_http_pagespeed_srv_conf_t* cfg);
 
 ngx_int_t
 ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
@@ -246,6 +263,7 @@ void
 ngx_http_pagespeed_send_to_pagespeed(
     ngx_http_request_t* r,
     ngx_http_pagespeed_request_ctx_t* ctx,
+    ngx_http_pagespeed_srv_conf_t* cfg_s,
     ngx_chain_t* in);
 
 ngx_int_t
@@ -258,13 +276,26 @@ ngx_int_t
 ngx_http_pagespeed_init(ngx_conf_t* cf);
 
 char*
-ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
+ngx_http_pagespeed_srv_configure(
+    ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
+
+char*
+ngx_http_pagespeed_loc_configure(
+    ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
 ngx_command_t ngx_http_pagespeed_commands[] = {
   { ngx_string("pagespeed"),
     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1|
     NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
-    ngx_http_pagespeed_configure,
+    ngx_http_pagespeed_srv_configure,
+    NGX_HTTP_SRV_CONF_OFFSET,
+    0,
+    NULL },
+
+  { ngx_string("pagespeed"),
+    NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1|
+    NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
+    ngx_http_pagespeed_loc_configure,
     NGX_HTTP_SRV_CONF_OFFSET,
     0,
     NULL },
@@ -274,16 +305,17 @@ ngx_command_t ngx_http_pagespeed_commands[] = {
 
 #define NGX_PAGESPEED_MAX_ARGS 10
 char*
-ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
-  ngx_http_pagespeed_srv_conf_t* cfg =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
-          ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
+ngx_http_pagespeed_configure(
+    ngx_conf_t* cf,
+    net_instaweb::NgxRewriteOptions** options,
+    net_instaweb::MessageHandler* handler) {
 
-  if (cfg->options == NULL) {
+  if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
-    cfg->options = new net_instaweb::NgxRewriteOptions();
-    cfg->handler = new net_instaweb::GoogleMessageHandler();
+    *options = new net_instaweb::NgxRewriteOptions();
   }
+
+  CHECK(handler != NULL);
 
   // args[0] is always "pagespeed"; ignore it.
   ngx_uint_t n_args = cf->args->nelts - 1;
@@ -299,28 +331,65 @@ ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
     args[i] = ngx_http_pagespeed_str_to_string_piece(value[i+1]);
   }
 
-  const char* status = cfg->options->ParseAndSetOptions(
-      args, n_args, cf->pool, cfg->handler);
+  const char* status = (*options)->ParseAndSetOptions(
+      args, n_args, cf->pool, handler);
 
   // nginx expects us to return a string literal but doesn't mark it const.
   return const_cast<char*>(status);
 }
 
-void*
-ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
-  ngx_http_pagespeed_srv_conf_t* conf;
+char*
+ngx_http_pagespeed_srv_configure(
+    ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
+  ngx_http_pagespeed_srv_conf_t* cfg_s =
+      static_cast<ngx_http_pagespeed_srv_conf_t*>(
+          ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
+  return ngx_http_pagespeed_configure(cf, &cfg_s->options, cfg_s->handler);
+}
 
-  conf = static_cast<ngx_http_pagespeed_srv_conf_t*>(
-      ngx_pcalloc(cf->pool, sizeof(ngx_http_pagespeed_srv_conf_t)));
-  if (conf == NULL) {
+char*
+ngx_http_pagespeed_loc_configure(
+    ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
+  ngx_http_pagespeed_loc_conf_t* cfg_l =
+      static_cast<ngx_http_pagespeed_loc_conf_t*>(
+          ngx_http_conf_get_module_loc_conf(cf, ngx_pagespeed));
+  return ngx_http_pagespeed_configure(cf, &cfg_l->options, cfg_l->handler);
+}
+
+void*
+ngx_http_pagespeed_create_main_conf(ngx_conf_t* cf) {
+  ngx_http_pagespeed_main_conf_t* cfg_m =
+      static_cast<ngx_http_pagespeed_main_conf_t*>(
+          ngx_pcalloc(cf->pool, sizeof(ngx_http_pagespeed_main_conf_t)));
+  if (cfg_m == NULL) {
     return NGX_CONF_ERROR;
   }
 
-  // set by ngx_pcalloc():
-  //   conf->driver_factory = NULL;
-  //   conf->server_context = NULL;
+  return cfg_m;
+}
 
-  return conf;
+void*
+ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
+  ngx_http_pagespeed_srv_conf_t* cfg_s =
+      static_cast<ngx_http_pagespeed_srv_conf_t*>(
+          ngx_pcalloc(cf->pool, sizeof(ngx_http_pagespeed_srv_conf_t)));
+  if (cfg_s == NULL) {
+    return NGX_CONF_ERROR;
+  }
+
+  cfg_s->handler = new net_instaweb::GoogleMessageHandler();
+  return cfg_s;
+}
+void*
+ngx_http_pagespeed_create_loc_conf(ngx_conf_t* cf) {
+  ngx_http_pagespeed_loc_conf_t* cfg_l =
+      static_cast<ngx_http_pagespeed_loc_conf_t*>(
+          ngx_pcalloc(cf->pool, sizeof(ngx_http_pagespeed_loc_conf_t)));
+  if (cfg_l == NULL) {
+    return NGX_CONF_ERROR;
+  }
+  cfg_l->handler = new net_instaweb::GoogleMessageHandler();
+  return cfg_l;
 }
 
 // nginx has hierarchical configuration.  It maintains configurations at many
@@ -332,32 +401,93 @@ ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
 // because of the cases where the parent or child didn't have any pagespeed
 // directives and because merging is order-dependent in the opposite way we'd
 // like.
-char*
-ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
-  ngx_http_pagespeed_srv_conf_t* parent_conf =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(parent);
-  ngx_http_pagespeed_srv_conf_t* child_conf =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(child);
-
-  if (parent_conf->options == NULL) {
+void ngx_http_pagespeed_merge_options(
+    net_instaweb::NgxRewriteOptions** parent_options,
+    net_instaweb::NgxRewriteOptions** child_options) {
+  if (*parent_options == NULL) {
     // Nothing to do.
-  } else if (child_conf->options == NULL && parent_conf->options != NULL) {
-    child_conf->options = parent_conf->options->Clone();
+  } else if (*child_options == NULL && *parent_options != NULL) {
+    *child_options = (*parent_options)->Clone();
   } else {  // Both non-null.
     // Unfortunately, merging configuration options is order dependent.  We'd
-    // like to just do child_conf->options->Merge(*parent_conf->options)
+    // like to just do (*child_options)->Merge(**parent_options)
     // but then if we had:
     //    pagespeed RewriteLevel PassThrough
     //    server {
     //       pagespeed RewriteLevel CoreFilters
     //    }
     // it would always be stuck on PassThrough.
-    net_instaweb::NgxRewriteOptions* child_specific_options =
-        child_conf->options;
-    child_conf->options = parent_conf->options->Clone();
-    child_conf->options->Merge(*child_specific_options);
+    net_instaweb::NgxRewriteOptions* child_specific_options = *child_options;
+    *child_options = (*parent_options)->Clone();
+    (*child_options)->Merge(*child_specific_options);
     delete child_specific_options;
   }
+}
+
+// Called exactly once per server block to merge the main configuration with the
+// configuration for this server.
+char*
+ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
+  ngx_http_pagespeed_srv_conf_t* parent_cfg_s =
+      static_cast<ngx_http_pagespeed_srv_conf_t*>(parent);
+  ngx_http_pagespeed_srv_conf_t* cfg_s =
+      static_cast<ngx_http_pagespeed_srv_conf_t*>(child);
+
+  ngx_http_pagespeed_merge_options(&parent_cfg_s->options, &cfg_s->options);
+
+  if (cfg_s->options == NULL) {
+    return NGX_CONF_OK;  // No pagespeed options; don't do anything.
+  }
+
+  ngx_http_pagespeed_main_conf_t* cfg_m =
+      static_cast<ngx_http_pagespeed_main_conf_t*>(
+          ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
+
+  // We initialize the driver factory here and not in init_main_conf because if
+  // there are no server blocks with pagespeed configuration directives then we
+  // don't want it initialized.
+  if (cfg_m->driver_factory == NULL) {
+    net_instaweb::NgxRewriteDriverFactory::Initialize();
+    // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
+    // we're done with it.  That never happens, though, because this is the
+    // top-level config and so sticks around as long as we're running.
+
+    cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
+  }
+
+  cfg_s->server_context = new net_instaweb::NgxServerContext(
+      cfg_m->driver_factory);
+
+  // The server context sets some options when we call global_options().  So let
+  // it do that, then merge in options we got from parsing the config file.
+  // Once we do that we're done with cfg_s->options.
+  cfg_s->server_context->global_options()->Merge(*cfg_s->options);
+  delete cfg_s->options;
+  cfg_s->options = NULL;
+
+  StringPiece filename_prefix =
+      cfg_s->server_context->config()->file_cache_path();
+  cfg_s->server_context->set_lock_manager(
+      new net_instaweb::FileSystemLockManager(
+          cfg_m->driver_factory->file_system(),
+          filename_prefix.as_string(),
+          cfg_m->driver_factory->scheduler(),
+          cfg_m->driver_factory->message_handler()));
+
+  cfg_m->driver_factory->InitServerContext(cfg_s->server_context);
+
+  cfg_s->proxy_fetch_factory =
+      new net_instaweb::ProxyFetchFactory(cfg_s->server_context);
+
+  return NGX_CONF_OK;
+}
+
+char*
+ngx_http_pagespeed_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
+  ngx_http_pagespeed_merge_options(
+      &(static_cast<ngx_http_pagespeed_loc_conf_t*>(parent)->options),
+      &(static_cast<ngx_http_pagespeed_loc_conf_t*>(child)->options));
+
   return NGX_CONF_OK;
 }
 
@@ -468,36 +598,6 @@ ngx_http_pagespeed_request_ctx_t*
 ngx_http_pagespeed_get_request_context(ngx_http_request_t* r) {
   return static_cast<ngx_http_pagespeed_request_ctx_t*>(
       ngx_http_get_module_ctx(r, ngx_pagespeed));
-}
-
-// Initialize the ngx_http_pagespeed_srv_conf_t by allocating and configuring
-// the long-lived objects it contains.
-// TODO(jefftk): This shouldn't be done on the first request but instead
-// when we're done processing the configuration.
-void
-ngx_http_pagespeed_initialize_server_context(
-    ngx_http_pagespeed_srv_conf_t* cfg) {
-  net_instaweb::NgxRewriteDriverFactory::Initialize();
-  // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
-  // we're done with it.
-
-  CHECK(cfg->options != NULL);
-
-  cfg->handler = new net_instaweb::GoogleMessageHandler();
-  cfg->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
-  cfg->driver_factory->set_filename_prefix(cfg->options->file_cache_path());
-  cfg->server_context = new net_instaweb::NgxServerContext(cfg->driver_factory);
-
-  // The server context sets some options when we call global_options().  So let
-  // it do that, then merge in options we got from parsing the config file.
-  // Once we do that we're done with cfg->options.
-  cfg->server_context->global_options()->Merge(*cfg->options);
-  delete cfg->options;
-  cfg->options = NULL;
-
-  cfg->driver_factory->InitServerContext(cfg->server_context);
-  cfg->proxy_fetch_factory =
-      new net_instaweb::ProxyFetchFactory(cfg->server_context);
 }
 
 // Returns:
@@ -694,19 +794,122 @@ ngx_http_pagespeed_create_connection(ngx_http_pagespeed_request_ctx_t* ctx) {
   return NGX_OK;
 }
 
+// Populate cfg_* with configuration information for this
+// request.  Thin wrappers around ngx_http_get_module_*_conf and cast.
+ngx_http_pagespeed_srv_conf_t*
+ngx_http_pagespeed_get_srv_config(ngx_http_request_t* r) {
+  return static_cast<ngx_http_pagespeed_srv_conf_t*>(
+      ngx_http_get_module_srv_conf(r, ngx_pagespeed));
+}
+ngx_http_pagespeed_loc_conf_t*
+ngx_http_pagespeed_get_loc_config(ngx_http_request_t* r) {
+  return static_cast<ngx_http_pagespeed_loc_conf_t*>(
+      ngx_http_get_module_loc_conf(r, ngx_pagespeed));
+}
+
+// Wrapper around GetQueryOptions()
+ngx_int_t
+ngx_http_pagespeed_determine_request_options(
+    ngx_http_request_t* r,
+    ngx_http_pagespeed_request_ctx_t* ctx,
+    ngx_http_pagespeed_srv_conf_t* cfg_s,
+    net_instaweb::GoogleUrl* url,
+    net_instaweb::RewriteOptions** request_options) {
+  // Stripping ModPagespeed query params before the property cache lookup to
+  // make cache key consistent for both lookup and storing in cache.
+  //
+  // Sets option from request headers and url.
+  net_instaweb::ServerContext::OptionsBoolPair query_options_success =
+      cfg_s->server_context->GetQueryOptions(
+          url, ctx->base_fetch->request_headers(), NULL);
+  bool get_query_options_success = query_options_success.second;
+  if (!get_query_options_success) {
+    // Failed to parse query params or request headers.
+    // TODO(jefftk): send a helpful error message to the visitor.
+    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                  "ngx_http_pagespeed_create_request_context: "
+                  "parsing headers or query params failed.");
+    return NGX_ERROR;
+  }
+
+  // Will be NULL if there aren't any options set with query params or in
+  // headers.
+  *request_options = query_options_success.first;
+
+  return NGX_OK;
+}
+
+// There are many sources of options:
+//  - the request (query parameters and headers)
+//  - location block
+//  - global server options
+//  - experiment framework
+// Consider them all, returning appropriate options for this request, of which
+// the caller takes ownership.  If the only applicable options are global,
+// set options to NULL so we can use server_context->global_options().
+ngx_int_t
+ngx_http_pagespeed_determine_options(
+    ngx_http_request_t* r,
+    ngx_http_pagespeed_request_ctx_t* ctx,
+    net_instaweb::RewriteOptions** options,
+    net_instaweb::GoogleUrl* url) {
+  ngx_int_t rc;
+
+  ngx_http_pagespeed_srv_conf_t* cfg_s = ngx_http_pagespeed_get_srv_config(r);
+  ngx_http_pagespeed_loc_conf_t* cfg_l = ngx_http_pagespeed_get_loc_config(r);
+
+  // Global options for this server.  Never null.
+  net_instaweb::RewriteOptions* global_options =
+      cfg_s->server_context->global_options();
+
+  // Directory-specific options, usually null.
+  net_instaweb::RewriteOptions* directory_options = cfg_l->options;
+
+  // Directory-specific options, may be null
+  net_instaweb::RewriteOptions* request_options;
+  rc = ngx_http_pagespeed_determine_request_options(
+      r, ctx, cfg_s, url, &request_options);
+  if (rc != NGX_OK) {
+    return rc;
+  }
+
+  // If we don't have any directory or request options and we're not running an
+  // experiment, options=NULL to indicate that the global options are valid.
+  if (directory_options == NULL && request_options == NULL &&
+      !global_options->running_furious()) {
+    *options = NULL;
+    return NGX_OK;
+  }
+
+  // Combine options from the various sources.
+  *options = global_options->Clone();
+  if (directory_options != NULL) {
+    (*options)->Merge(*directory_options);
+  }
+  if (request_options != NULL) {
+    (*options)->Merge(*request_options);
+  }
+
+  // Set options for this side of the experiment, if we're running one.  If
+  // there are request options then ignore the experiment because we don't want
+  // experiments to be contaminated with unexpected settings.
+  if (request_options == NULL && (*options)->running_furious()) {
+    (*options)->set_need_to_store_experiment_data(
+        cfg_s->server_context->furious_matcher()->ClassifyIntoExperiment(
+            *ctx->base_fetch->request_headers(), *options));
+  }
+
+  return NGX_OK;
+}
+
+
 // Set us up for processing a request.
 CreateRequestContext::Response
 ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
                                           bool is_resource_fetch) {
   fprintf(stderr, "ngx_http_pagespeed_create_request_context\n");
-  ngx_http_pagespeed_srv_conf_t* cfg =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
-          ngx_http_get_module_srv_conf(r, ngx_pagespeed));
 
-  if (cfg->driver_factory == NULL) {
-    // This is the first request handled by this server block.
-    ngx_http_pagespeed_initialize_server_context(cfg);
-  }
+  ngx_http_pagespeed_srv_conf_t* cfg_s = ngx_http_pagespeed_get_srv_config(r);
 
   GoogleString url_string = ngx_http_pagespeed_determine_url(r);
   net_instaweb::GoogleUrl url(url_string);
@@ -719,7 +922,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
     return CreateRequestContext::kInvalidUrl;
   }
 
-  if (is_resource_fetch && !cfg->server_context->IsPagespeedResource(url)) {
+  if (is_resource_fetch && !cfg_s->server_context->IsPagespeedResource(url)) {
     if (url.PathSansLeaf() ==
         net_instaweb::NgxRewriteDriverFactory::kStaticJavaScriptPrefix) {
       return CreateRequestContext::kStaticContent;
@@ -751,7 +954,6 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
 
   ngx_http_pagespeed_request_ctx_t* ctx =
       new ngx_http_pagespeed_request_ctx_t();
-  ctx->cfg = cfg;
   ctx->r = r;
   ctx->pipe_fd = file_descriptors[0];
   ctx->is_resource_fetch = is_resource_fetch;
@@ -773,63 +975,25 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // on the proxy fetch below.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(r, file_descriptors[1]);
 
-  // These are the options we use unless there are custom ones for this request.
-  net_instaweb::RewriteOptions* global_options =
-      ctx->cfg->server_context->global_options();
-
-  // Stripping ModPagespeed query params before the property cache lookup to
-  // make cache key consistent for both lookup and storing in cache.
-  //
-  // Sets option from request headers and url.
-  net_instaweb::ServerContext::OptionsBoolPair query_options_success =
-      ctx->cfg->server_context->GetQueryOptions(
-          &url, ctx->base_fetch->request_headers(), NULL);
-  bool get_query_options_success = query_options_success.second;
-  if (!get_query_options_success) {
-    // Failed to parse query params or request headers.
-    // TODO(jefftk): send a helpful error message to the visitor.
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "ngx_http_pagespeed_create_request_context: "
-                  "parsing headers or query params failed.");
+  // If null, that means use global options.
+  net_instaweb::RewriteOptions* custom_options;
+  rc = ngx_http_pagespeed_determine_options(r, ctx, &custom_options, &url);
+  if (rc == NGX_ERROR) {
     ngx_http_pagespeed_release_request_context(ctx);
     return CreateRequestContext::kError;
-
+  } else {
+    CHECK (rc == NGX_OK);
   }
 
-  // Will be NULL if there aren't any options set with query params or in
-  // headers.
-  net_instaweb::RewriteOptions* custom_options = query_options_success.first;
-
-  if (custom_options != NULL) {
-    // We need to combine the custom options with the global options, but
-    // because merging is order dependent we can't just do a simple:
-    //   custom_options->Merge(global_options);
-    net_instaweb::RewriteOptions* query_options = custom_options;
-    custom_options = global_options->Clone();
-    custom_options->Merge(*query_options);
-    delete query_options;
+  net_instaweb::RewriteOptions* options;
+  if (custom_options == NULL) {
+    options = cfg_s->server_context->global_options();
+  } else {
+    options = custom_options;
   }
 
-  // This code is based off of ProxyInterface::ProxyRequestCallback and
-  // ProxyFetchFactory::StartNewProxyFetch
-
-  // If the global options say we're running furious (the experiment framework)
-  // then clone them into custom_options so we can manipulate custom options
-  // without affecting the global options.
-  //
-  // If custom_options were set above in GetQueryOptions() don't run furious.
-  // We don't want experiments to be contaminated with unexpected settings.
-  if (custom_options == NULL && global_options->running_furious()) {
-    custom_options = global_options->Clone();
-    custom_options->set_need_to_store_experiment_data(
-        ctx->cfg->server_context->furious_matcher()->ClassifyIntoExperiment(
-            *ctx->base_fetch->request_headers(), custom_options));
-  }
-
-  // If we have custom options then run if they say pagespeed is enabled.
-  // Otherwise check the global options.
-  if ((custom_options && !custom_options->enabled()) ||
-      (!custom_options && !global_options->enabled())) {
+  // Run iff pagespeed is enabled.
+  if (!options->enabled()) {
     ngx_http_pagespeed_release_request_context(ctx);
     return CreateRequestContext::kPagespeedDisabled;
   }
@@ -842,17 +1006,17 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
     // ProxyInterface::ProxyRequestCallback
     net_instaweb::ResourceFetch::Start(
         url, custom_options /* null if there aren't custom options */,
-        false /* using_spdy */, ctx->cfg->server_context, ctx->base_fetch);
+        false /* using_spdy */, cfg_s->server_context, ctx->base_fetch);
   } else {
     // If we don't have custom options we can use NewRewriteDriver which reuses
     // rewrite drivers and so is faster because there's no wait to construct
     // them.  Otherwise we have to build a new one every time.
     net_instaweb::RewriteDriver* driver;
     if (custom_options == NULL) {
-      driver = ctx->cfg->server_context->NewRewriteDriver();
+      driver = cfg_s->server_context->NewRewriteDriver();
     } else {
       // NewCustomRewriteDriver takes ownership of custom_options.
-      driver = ctx->cfg->server_context->NewCustomRewriteDriver(
+      driver = cfg_s->server_context->NewCustomRewriteDriver(
           custom_options);
     }
     driver->set_log_record(ctx->base_fetch->log_record());
@@ -861,7 +1025,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
 
     // Will call StartParse etc.  The rewrite driver will take care of deleting
     // itself if necessary.
-    ctx->proxy_fetch = ctx->cfg->proxy_fetch_factory->CreateNewProxyFetch(
+    ctx->proxy_fetch = cfg_s->proxy_fetch_factory->CreateNewProxyFetch(
         url_string, ctx->base_fetch, driver,
         NULL /* property_callback */,
         NULL /* original_content_fetch */);
@@ -886,6 +1050,7 @@ void
 ngx_http_pagespeed_send_to_pagespeed(
     ngx_http_request_t* r,
     ngx_http_pagespeed_request_ctx_t* ctx,
+    ngx_http_pagespeed_srv_conf_t* cfg_s,
     ngx_chain_t* in) {
 
   ngx_chain_t* cur;
@@ -900,7 +1065,7 @@ ngx_http_pagespeed_send_to_pagespeed(
     CHECK(ctx->proxy_fetch != NULL);
     ctx->proxy_fetch->Write(StringPiece(reinterpret_cast<char*>(cur->buf->pos),
                                         cur->buf->last - cur->buf->pos),
-                            ctx->cfg->handler);
+                            cfg_s->handler);
 
     // We're done with buffers as we pass them through, so mark them as sent as
     // we go.
@@ -912,15 +1077,20 @@ ngx_http_pagespeed_send_to_pagespeed(
     ctx->proxy_fetch = NULL;  // ProxyFetch deletes itself on Done().
   } else {
     // TODO(jefftk): Decide whether Flush() is warranted here.
-    ctx->proxy_fetch->Flush(ctx->cfg->handler);
+    ctx->proxy_fetch->Flush(cfg_s->handler);
   }
 }
 
 ngx_int_t
 ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
+  ngx_http_pagespeed_srv_conf_t* cfg_s = ngx_http_pagespeed_get_srv_config(r);
+  if (cfg_s->server_context == NULL) {
+    // Pagespeed is on for some server block but not this one.
+    return ngx_http_next_body_filter(r, in);
+  }
+
   ngx_http_pagespeed_request_ctx_t* ctx =
       ngx_http_pagespeed_get_request_context(r);
-
   if (ctx == NULL) {
     // ctx is null iff we've decided to pass through this request unchanged.
     return ngx_http_next_body_filter(r, in);
@@ -945,7 +1115,7 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
 
   if (in != NULL) {
     // Send all input data to the proxy fetch.
-    ngx_http_pagespeed_send_to_pagespeed(r, ctx, in);
+    ngx_http_pagespeed_send_to_pagespeed(r, ctx, cfg_s, in);
   }
 
   ngx_http_pagespeed_set_buffered(r, true);
@@ -994,6 +1164,12 @@ ngx_http_pagespeed_set_cache_control(
 
 ngx_int_t
 ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
+  ngx_http_pagespeed_srv_conf_t* cfg_s = ngx_http_pagespeed_get_srv_config(r);
+  if (cfg_s->server_context == NULL) {
+    // Pagespeed is on for some server block but not this one.
+    return ngx_http_next_header_filter(r);
+  }
+
   ngx_http_pagespeed_request_ctx_t* ctx =
       ngx_http_pagespeed_get_request_context(r);
 
@@ -1065,11 +1241,7 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
 }
 
 ngx_int_t ngx_http_pagespeed_static_handler(ngx_http_request_t* r) {
-  ngx_http_pagespeed_srv_conf_t* cfg =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
-          ngx_http_get_module_srv_conf(r, ngx_pagespeed));
-  CHECK(cfg != NULL);
-  CHECK(cfg->server_context != NULL);
+  ngx_http_pagespeed_srv_conf_t* cfg_s = ngx_http_pagespeed_get_srv_config(r);
 
   StringPiece request_uri_path = ngx_http_pagespeed_str_to_string_piece(r->uri);
 
@@ -1079,7 +1251,7 @@ ngx_int_t ngx_http_pagespeed_static_handler(ngx_http_request_t* r) {
       strlen(net_instaweb::NgxRewriteDriverFactory::kStaticJavaScriptPrefix));
   StringPiece file_contents;
   StringPiece cache_header;
-  bool found = cfg->server_context->static_javascript_manager()->GetJsSnippet(
+  bool found = cfg_s->server_context->static_javascript_manager()->GetJsSnippet(
       file_name, &file_contents, &cache_header);
   if (!found) {
     return NGX_DECLINED;
@@ -1122,6 +1294,12 @@ ngx_int_t ngx_http_pagespeed_static_handler(ngx_http_request_t* r) {
 // and for static content like /ngx_pagespeed_static/js_defer.q1EBmcgYOC.js
 ngx_int_t
 ngx_http_pagespeed_content_handler(ngx_http_request_t* r) {
+  ngx_http_pagespeed_srv_conf_t* cfg_s = ngx_http_pagespeed_get_srv_config(r);
+  if (cfg_s->server_context == NULL) {
+    // Pagespeed is on for some server block but not this one.
+    return NGX_DECLINED;
+  }
+
   // TODO(jefftk): return NGX_DECLINED for non-get non-head requests.
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
@@ -1153,16 +1331,23 @@ ngx_http_pagespeed_content_handler(ngx_http_request_t* r) {
 
 ngx_int_t
 ngx_http_pagespeed_init(ngx_conf_t* cf) {
-  ngx_http_pagespeed_srv_conf_t* cfg =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
-          ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
 
   // Only put register pagespeed code to run if there was a "pagespeed"
   // configuration option set in the config file.  With "pagespeed off" we
   // consider every request and choose not to do anything, while with no
   // "pagespeed" directives we won't have any effect after nginx is done loading
   // its configuration.
-  if (cfg->options != NULL) {
+
+  ngx_http_pagespeed_main_conf_t* cfg_m =
+      static_cast<ngx_http_pagespeed_main_conf_t*>(
+          ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
+
+  // The driver factory is on the main config and is non-NULL iff there is a
+  // pagespeed configuration option in the main config or a server block.  Note
+  // that if any server block has pagespeed 'on' then our header filter, body
+  // filter, and content handler will run in every server block.  This is ok,
+  // because they will notice that the server context is NULL and do nothing.
+  if (cfg_m->driver_factory != NULL) {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ngx_http_pagespeed_header_filter;
 
@@ -1186,14 +1371,14 @@ ngx_http_module_t ngx_http_pagespeed_module = {
   NULL,  // preconfiguration
   ngx_http_pagespeed_init,  // postconfiguration
 
-  NULL,  // create main configuration
-  NULL,  // init main configuration
+  ngx_http_pagespeed_create_main_conf,
+  NULL,  // initialize main configuration
 
-  ngx_http_pagespeed_create_srv_conf,  // create server configuration
-  ngx_http_pagespeed_merge_srv_conf,  // merge server configuration
+  ngx_http_pagespeed_create_srv_conf,
+  ngx_http_pagespeed_merge_srv_conf,
 
-  NULL,  // create location configuration
-  NULL  // merge location configuration
+  ngx_http_pagespeed_create_loc_conf,
+  ngx_http_pagespeed_merge_loc_conf
 };
 
 }  // namespace
