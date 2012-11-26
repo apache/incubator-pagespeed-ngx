@@ -53,6 +53,10 @@ const char kAndroidChrome21UserAgent[] =  // webp fixed (string is a hack)
     "Mozilla/5.0 (Linux; Android 4.1.4; Galaxy Nexus Build/IMM76B) "
     "AppleWebKit/535.19 (KHTML, like Gecko) Chrome/21.0.1025.133 Mobile "
     "Safari/535.19";
+const char kIPhoneChrome21UserAgent[] =  // no webp on iOS
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 6_0_1 like Mac OS X; en-us) "
+    "AppleWebKit/534.46.0 (KHTML, like Gecko) CriOS/21.0.1180.82 "
+    "Mobile/10A523 Safari/7534.48.3";
 const char kOpera1101UserAgent[] =  // Not webp capable
     "Opera/9.80 (Windows NT 5.2; U; ru) Presto/2.7.62 Version/11.01";
 const char kOpera1110UserAgent[] =  // webp capable

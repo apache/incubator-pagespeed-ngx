@@ -226,6 +226,8 @@ TEST_F(UserAgentMatcherTest, DoesntSupportWebp) {
       UserAgentStrings::kPSPUserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsWebp(
       UserAgentStrings::kSafariUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebp(
+      UserAgentStrings::kIPhoneChrome21UserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, SupportsDnsPrefetch) {
