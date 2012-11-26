@@ -27,10 +27,21 @@ namespace net_instaweb {
 NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd)
     : request_(r), done_called_(false), last_buf_sent_(false),
       pipe_fd_(pipe_fd) {
+  if (pthread_mutex_init(&mutex_, NULL)) CHECK(0);
   PopulateRequestHeaders();
 }
 
-NgxBaseFetch::~NgxBaseFetch() { }
+NgxBaseFetch::~NgxBaseFetch() {
+  pthread_mutex_destroy(&mutex_);
+}
+
+void NgxBaseFetch::Lock() {
+  pthread_mutex_lock(&mutex_);
+}
+
+void NgxBaseFetch::Unlock() {
+  pthread_mutex_unlock(&mutex_);
+}
 
 void NgxBaseFetch::PopulateRequestHeaders() {
   CopyHeadersFromTable<RequestHeaders>(&request_->headers_in.headers,
