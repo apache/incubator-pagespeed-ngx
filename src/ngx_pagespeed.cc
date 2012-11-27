@@ -172,6 +172,7 @@ ngx_http_pagespeed_string_piece_to_buffer_chain(
 
 typedef struct {
   net_instaweb::NgxRewriteDriverFactory* driver_factory;
+  net_instaweb::MessageHandler* handler;
 } ngx_http_pagespeed_main_conf_t;
 
 typedef struct {
@@ -203,17 +204,8 @@ namespace {
 ngx_int_t
 ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
-void*
-ngx_http_pagespeed_create_main_conf(ngx_conf_t* cf);
-
-void*
-ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf);
-
 char*
 ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child);
-
-void*
-ngx_http_pagespeed_create_loc_conf(ngx_conf_t* cf);
 
 char*
 ngx_http_pagespeed_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child);
@@ -356,40 +348,30 @@ ngx_http_pagespeed_loc_configure(
   return ngx_http_pagespeed_configure(cf, &cfg_l->options, cfg_l->handler);
 }
 
+template <typename ConfT>
 void*
-ngx_http_pagespeed_create_main_conf(ngx_conf_t* cf) {
-  ngx_http_pagespeed_main_conf_t* cfg_m =
-      static_cast<ngx_http_pagespeed_main_conf_t*>(
-          ngx_pcalloc(cf->pool, sizeof(ngx_http_pagespeed_main_conf_t)));
-  if (cfg_m == NULL) {
+ngx_http_pagespeed_create_conf(ngx_conf_t* cf) {
+  ConfT* cfg = static_cast<ConfT*>(ngx_pcalloc(cf->pool, sizeof(ConfT)));
+  if (cfg == NULL) {
     return NGX_CONF_ERROR;
   }
+  cfg->handler = new net_instaweb::GoogleMessageHandler();
+  return cfg;
+}
 
-  return cfg_m;
+void*
+ngx_http_pagespeed_create_main_conf(ngx_conf_t* cf) {
+  return ngx_http_pagespeed_create_conf<ngx_http_pagespeed_main_conf_t>(cf);
 }
 
 void*
 ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
-  ngx_http_pagespeed_srv_conf_t* cfg_s =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
-          ngx_pcalloc(cf->pool, sizeof(ngx_http_pagespeed_srv_conf_t)));
-  if (cfg_s == NULL) {
-    return NGX_CONF_ERROR;
-  }
-
-  cfg_s->handler = new net_instaweb::GoogleMessageHandler();
-  return cfg_s;
+  return ngx_http_pagespeed_create_conf<ngx_http_pagespeed_srv_conf_t>(cf);
 }
+
 void*
 ngx_http_pagespeed_create_loc_conf(ngx_conf_t* cf) {
-  ngx_http_pagespeed_loc_conf_t* cfg_l =
-      static_cast<ngx_http_pagespeed_loc_conf_t*>(
-          ngx_pcalloc(cf->pool, sizeof(ngx_http_pagespeed_loc_conf_t)));
-  if (cfg_l == NULL) {
-    return NGX_CONF_ERROR;
-  }
-  cfg_l->handler = new net_instaweb::GoogleMessageHandler();
-  return cfg_l;
+  return ngx_http_pagespeed_create_conf<ngx_http_pagespeed_loc_conf_t>(cf);
 }
 
 // nginx has hierarchical configuration.  It maintains configurations at many
@@ -1404,13 +1386,13 @@ ngx_http_module_t ngx_http_pagespeed_module = {
   NULL,  // preconfiguration
   ngx_http_pagespeed_init,  // postconfiguration
 
-  ngx_http_pagespeed_create_main_conf,
+  ngx_http_pagespeed_create_conf<ngx_http_pagespeed_main_conf_t>,
   NULL,  // initialize main configuration
 
-  ngx_http_pagespeed_create_srv_conf,
+  ngx_http_pagespeed_create_conf<ngx_http_pagespeed_srv_conf_t>,
   ngx_http_pagespeed_merge_srv_conf,
 
-  ngx_http_pagespeed_create_loc_conf,
+  ngx_http_pagespeed_create_conf<ngx_http_pagespeed_loc_conf_t>,
   ngx_http_pagespeed_merge_loc_conf
 };
 
