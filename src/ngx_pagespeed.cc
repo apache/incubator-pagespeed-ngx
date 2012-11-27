@@ -311,8 +311,6 @@ ngx_http_pagespeed_configure(
     *options = new net_instaweb::NgxRewriteOptions();
   }
 
-  CHECK(handler != NULL);
-
   // args[0] is always "pagespeed"; ignore it.
   ngx_uint_t n_args = cf->args->nelts - 1;
 
