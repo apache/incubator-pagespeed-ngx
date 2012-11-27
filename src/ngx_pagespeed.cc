@@ -176,6 +176,12 @@ typedef struct {
 } ngx_http_pagespeed_main_conf_t;
 
 typedef struct {
+  // If pagespeed is configured in some server block but not this one our
+  // per-request code will be invoked but server context will be null.  In those
+  // cases we neet to short circuit, not changing anything.  Currently our
+  // header filter, body filter, and content handler all do this, but if anyone
+  // adds another way for nginx to give us a request to process we need to check
+  // there as well.
   net_instaweb::NgxServerContext* server_context;
   net_instaweb::ProxyFetchFactory* proxy_fetch_factory;
   net_instaweb::NgxRewriteOptions* options;
