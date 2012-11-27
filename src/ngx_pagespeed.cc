@@ -818,7 +818,7 @@ ngx_http_pagespeed_get_loc_config(ngx_http_request_t* r) {
 }
 
 // Wrapper around GetQueryOptions()
-ngx_int_t
+bool
 ngx_http_pagespeed_determine_request_options(
     ngx_http_request_t* r,
     ngx_http_pagespeed_request_ctx_t* ctx,
@@ -839,14 +839,14 @@ ngx_http_pagespeed_determine_request_options(
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                   "ngx_http_pagespeed_create_request_context: "
                   "parsing headers or query params failed.");
-    return NGX_ERROR;
+    return false;
   }
 
   // Will be NULL if there aren't any options set with query params or in
   // headers.
   *request_options = query_options_success.first;
 
-  return NGX_OK;
+  return true;
 }
 
 // There are many sources of options:
@@ -857,13 +857,12 @@ ngx_http_pagespeed_determine_request_options(
 // Consider them all, returning appropriate options for this request, of which
 // the caller takes ownership.  If the only applicable options are global,
 // set options to NULL so we can use server_context->global_options().
-ngx_int_t
+bool
 ngx_http_pagespeed_determine_options(
     ngx_http_request_t* r,
     ngx_http_pagespeed_request_ctx_t* ctx,
     net_instaweb::RewriteOptions** options,
     net_instaweb::GoogleUrl* url) {
-  ngx_int_t rc;
 
   ngx_http_pagespeed_srv_conf_t* cfg_s = ngx_http_pagespeed_get_srv_config(r);
   ngx_http_pagespeed_loc_conf_t* cfg_l = ngx_http_pagespeed_get_loc_config(r);
@@ -879,11 +878,11 @@ ngx_http_pagespeed_determine_options(
   // Request-specific options, nearly always null.  If set they need to be
   // rebased on the directory options or the global options.
   net_instaweb::RewriteOptions* request_options;
-  rc = ngx_http_pagespeed_determine_request_options(
+  bool ok = ngx_http_pagespeed_determine_request_options(
       r, ctx, cfg_s, url, &request_options);
-  if (rc != NGX_OK) {
+  if (!ok) {
     *options = NULL;
-    return rc;
+    return false;
   }
 
   // Because the caller takes memory ownership of any options we return, the
@@ -892,7 +891,7 @@ ngx_http_pagespeed_determine_options(
   if (directory_options == NULL && request_options == NULL &&
       !global_options->running_furious()) {
     *options = NULL;
-    return NGX_OK;
+    return true;
   }
 
   // Start with directory options if we have them, otherwise request options.
@@ -914,7 +913,7 @@ ngx_http_pagespeed_determine_options(
             *ctx->base_fetch->request_headers(), *options));
   }
 
-  return NGX_OK;
+  return true;
 }
 
 
@@ -992,12 +991,10 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
 
   // If null, that means use global options.
   net_instaweb::RewriteOptions* custom_options;
-  rc = ngx_http_pagespeed_determine_options(r, ctx, &custom_options, &url);
-  if (rc == NGX_ERROR) {
+  bool ok = ngx_http_pagespeed_determine_options(r, ctx, &custom_options, &url);
+  if (!ok) {
     ngx_http_pagespeed_release_request_context(ctx);
     return CreateRequestContext::kError;
-  } else {
-    CHECK (rc == NGX_OK);
   }
 
   net_instaweb::RewriteOptions* options;
