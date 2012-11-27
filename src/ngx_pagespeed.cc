@@ -45,10 +45,10 @@ extern "C" {
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/automatic/public/resource_fetch.h"
 
 extern ngx_module_t ngx_pagespeed;
