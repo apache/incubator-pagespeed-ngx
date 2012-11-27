@@ -406,7 +406,7 @@ void ngx_http_pagespeed_merge_options(
     net_instaweb::NgxRewriteOptions** child_options) {
   if (parent_options == NULL) {
     // Nothing to do.
-  } else if (*child_options == NULL && parent_options != NULL) {
+  } else if (*child_options == NULL) {
     *child_options = parent_options->Clone();
   } else {  // Both non-null.
     // Unfortunately, merging configuration options is order dependent.  We'd
