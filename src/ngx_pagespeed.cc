@@ -206,9 +206,6 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 void*
 ngx_http_pagespeed_create_main_conf(ngx_conf_t* cf);
 
-char*
-ngx_http_pagespeed_init_main_conf(ngx_conf_t* cf, void* parent, void* child);
-
 void*
 ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf);
 
