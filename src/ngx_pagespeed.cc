@@ -1020,8 +1020,14 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   switch (ngx_http_pagespeed_create_request_context(
       r, false /* not a resource fetch */)) {
     case CreateRequestContext::kError:
+      // TODO(oschaaf): don't finalize, nginx will do that for us.
+      // can we put a check in place that we cleaned up
+      // properly after ourselves somewhere?
+      return NGX_ERROR;
     case CreateRequestContext::kNotUnderstood:
-      ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+      // This should only happen when ctx->is_resource_fetch is true,
+      // in which case we can not get here.
+      CHECK(false);
       return NGX_ERROR;
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kStaticContent:
