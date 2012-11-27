@@ -443,9 +443,9 @@ ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
       static_cast<ngx_http_pagespeed_main_conf_t*>(
           ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
 
-  // We initialize the driver factory here and not in init_main_conf because if
-  // there are no server blocks with pagespeed configuration directives then we
-  // don't want it initialized.
+  // We initialize the driver factory here and not in an init_main_conf function
+  // because if there are no server blocks with pagespeed configuration
+  // directives then we don't want it initialized.
   if (cfg_m->driver_factory == NULL) {
     net_instaweb::NgxRewriteDriverFactory::Initialize();
     // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
