@@ -60,13 +60,15 @@ extern ngx_module_t ngx_pagespeed;
 #define CDBG(cf, args...)                                     \
   ngx_conf_log_error(NGX_LOG_DEBUG, cf, 0, args)
 
+namespace ngx_psol {
+
 StringPiece
-ngx_http_pagespeed_str_to_string_piece(ngx_str_t s) {
+str_to_string_piece(ngx_str_t s) {
   return StringPiece(reinterpret_cast<char*>(s.data), s.len);
 }
 
 char*
-ngx_http_string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
+string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
   // Need space for the final null.
   ngx_uint_t buffer_size = sp.size() + 1;
   char* s = static_cast<char*>(ngx_palloc(pool, buffer_size));
@@ -79,7 +81,7 @@ ngx_http_string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp) {
 }
 
 ngx_int_t
-ngx_http_pagespeed_string_piece_to_buffer_chain(
+string_piece_to_buffer_chain(
     ngx_pool_t* pool, StringPiece sp, ngx_chain_t** link_ptr,
     bool send_last_buf) {
 
@@ -214,12 +216,10 @@ ps_request_ctx_t*
 ps_get_request_context(ngx_http_request_t* r);
 
 void
-ps_initialize_server_context(
-    ps_srv_conf_t* cfg);
+ps_initialize_server_context(ps_srv_conf_t* cfg);
 
 ngx_int_t
-ps_update(ps_request_ctx_t* ctx,
-                          ngx_event_t* ev);
+ps_update(ps_request_ctx_t* ctx, ngx_event_t* ev);
 
 void
 ps_connection_read_handler(ngx_event_t* ev);
@@ -293,7 +293,7 @@ ps_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ngx_str_t* value = static_cast<ngx_str_t*>(cf->args->elts);
   ngx_uint_t i;
   for (i = 0 ; i < n_args ; i++) {
-    args[i] = ngx_http_pagespeed_str_to_string_piece(value[i+1]);
+    args[i] = str_to_string_piece(value[i+1]);
   }
 
   const char* status = cfg->options->ParseAndSetOptions(
@@ -435,8 +435,7 @@ ps_determine_url(ngx_http_request_t* r) {
         ":", net_instaweb::IntegerToString(port));
   }
 
-  StringPiece host =
-      ngx_http_pagespeed_str_to_string_piece(r->headers_in.server);
+  StringPiece host = str_to_string_piece(r->headers_in.server);
   if (host.size() == 0) {
     // If host is unspecified, perhaps because of a pure HTTP 1.0 "GET /path",
     // fall back to server IP address.  Based on ngx_http_variable_server_addr.
@@ -448,12 +447,12 @@ ps_determine_url(ngx_http_request_t* r) {
     if (rc != NGX_OK) {
       s.len = 0;
     }
-    host =  ngx_http_pagespeed_str_to_string_piece(s);
+    host =  str_to_string_piece(s);
   }
 
   return net_instaweb::StrCat(
       is_https ? "https://" : "http://", host, port_string,
-       ngx_http_pagespeed_str_to_string_piece(r->unparsed_uri));
+      str_to_string_piece(r->unparsed_uri));
 }
 
 // Get the context for this request.  ps_create_request_context
@@ -997,7 +996,7 @@ ps_header_filter(ngx_http_request_t* r) {
   // to pagespeed.  Check the content type header and find out.
   const net_instaweb::ContentType* content_type =
       net_instaweb::MimeTypeToContentType(
-           ngx_http_pagespeed_str_to_string_piece(r->headers_out.content_type));
+          str_to_string_piece(r->headers_out.content_type));
   if (content_type == NULL || !content_type->IsHtmlLike()) {
     // Unknown or otherwise non-html content type: skip it.
     return ngx_http_next_header_filter(r);
@@ -1062,7 +1061,7 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   CHECK(cfg != NULL);
   CHECK(cfg->server_context != NULL);
 
-  StringPiece request_uri_path = ngx_http_pagespeed_str_to_string_piece(r->uri);
+  StringPiece request_uri_path = str_to_string_piece(r->uri);
 
   // Strip out the common prefix url before sending to
   // StaticJavascriptManager.
@@ -1088,8 +1087,7 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   r->headers_out.content_type_lowcase = r->headers_out.content_type.data;
 
   // Cache control
-  char* cache_control_s = ngx_http_string_piece_to_pool_string(
-      r->pool, cache_header);
+  char* cache_control_s = string_piece_to_pool_string(r->pool, cache_header);
   if (cache_control_s == NULL) {
     return NGX_ERROR;
   }
@@ -1099,7 +1097,7 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
 
   // Send the body.
   ngx_chain_t* out;
-  ngx_int_t rc = ngx_http_pagespeed_string_piece_to_buffer_chain(
+  ngx_int_t rc = string_piece_to_buffer_chain(
       r->pool, file_contents, &out, true /* send_last_buf */);
   if (rc == NGX_ERROR) {
     return NGX_ERROR;
@@ -1188,10 +1186,12 @@ ngx_http_module_t ps_module = {
 
 }  // namespace
 
+}  // namespace ngx_psol
+
 ngx_module_t ngx_pagespeed = {
   NGX_MODULE_V1,
-  &ps_module,
-  ps_commands,
+  &ngx_psol::ps_module,
+  ngx_psol::ps_commands,
   NGX_HTTP_MODULE,
   NULL,
   NULL,

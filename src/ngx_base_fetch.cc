@@ -58,10 +58,9 @@ void NgxBaseFetch::PopulateResponseHeaders() {
   // request_->headers_out.headers.
   response_headers()->Add(
       HttpAttributes::kContentType,
-      ngx_http_pagespeed_str_to_string_piece(
-          request_->headers_out.content_type));
+      ngx_psol::str_to_string_piece(request_->headers_out.content_type));
 
-  //TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
+  // TODO(oschaaf): ComputeCaching should be called in setupforhtml()?
   response_headers()->ComputeCaching();
 }
 
@@ -89,8 +88,8 @@ void NgxBaseFetch::CopyHeadersFromTable(ngx_list_t* headers_from,
       i = 0;
     }
 
-    StringPiece key = ngx_http_pagespeed_str_to_string_piece(header[i].key);
-    StringPiece value = ngx_http_pagespeed_str_to_string_piece(header[i].value);
+    StringPiece key = ngx_psol::str_to_string_piece(header[i].key);
+    StringPiece value = ngx_psol::str_to_string_piece(header[i].value);
 
     headers_to->Add(key, value);
   }
@@ -108,7 +107,7 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
   // TODO(jefftk): if done_called_ && last_buf_sent_, should we just short
   // circuit (return NGX_OK) here?
 
-  int rc = ngx_http_pagespeed_string_piece_to_buffer_chain(
+  int rc = ngx_psol::string_piece_to_buffer_chain(
       request_->pool, buffer_, link_ptr, done_called_ /* send_last_buf */);
   if (rc != NGX_OK) {
     return rc;
