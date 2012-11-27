@@ -2131,6 +2131,10 @@ TEST_F(BlinkFlowCriticalLineTest,
       BlinkFlowCriticalLine::kNumBlinkHtmlMatches)->Get());
   EXPECT_EQ(0, statistics()->FindVariable(
       BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
+  EXPECT_EQ(0, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
+  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK, false,
+                  "http://test.com/flaky.html");
 
   // Cache hit case. Origin gives 404. Diff should not trigger.
   SetBlinkCriticalLineData(true, "", "");
@@ -2143,6 +2147,10 @@ TEST_F(BlinkFlowCriticalLineTest,
       BlinkFlowCriticalLine::kNumBlinkHtmlMatches)->Get());
   EXPECT_EQ(0, statistics()->FindVariable(
       BlinkFlowCriticalLine::kNumBlinkHtmlMismatches)->Get());
+  EXPECT_EQ(1, statistics()->FindVariable(
+      BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
+  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, false,
+                  "http://test.com/flaky.html");
 }
 
 }  // namespace net_instaweb

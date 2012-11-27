@@ -207,24 +207,25 @@ class CriticalLineFetch : public AsyncFetch {
     num_blink_shared_fetches_completed_->IncBy(1);
     if (non_ok_status_code_ || !success || !claims_html_ || !probable_html_ ||
         content_length_over_threshold_) {
-      if (content_length_over_threshold_) {
-        blink_info_->set_blink_request_flow(
-            BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD);
-      } else if (non_ok_status_code_ || !success) {
-        blink_info_->set_blink_request_flow(
-            BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK);
-      } else if (!claims_html_ || !probable_html_) {
-        blink_info_->set_blink_request_flow(
-            BlinkInfo::BLINK_CACHE_MISS_FOUND_RESOURCE);
-      }
-      if ((options_->enable_blink_html_change_detection() ||
-           options_->enable_blink_html_change_detection_logging()) &&
-          blink_critical_line_data_ != NULL) {
+      if (blink_critical_line_data_ != NULL) {
+        // This means it is a cache hit case.  Currently it also means diff is
+        // enabled (possibly in logging mode), since CriticalLineFetch is
+        // attached in cache hit case only when diff is enabled.
         // Calling Finish since the deletion of this object needs to be
         // synchronized with HandleDone call in AsyncFetchWithHeadersInhibited,
         // since that class refers to this object.
         Finish();
       } else {
+        if (content_length_over_threshold_) {
+          blink_info_->set_blink_request_flow(
+              BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD);
+        } else if (non_ok_status_code_ || !success) {
+          blink_info_->set_blink_request_flow(
+              BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK);
+        } else if (!claims_html_ || !probable_html_) {
+          blink_info_->set_blink_request_flow(
+              BlinkInfo::BLINK_CACHE_MISS_FOUND_RESOURCE);
+        }
         delete this;
       }
       return;
