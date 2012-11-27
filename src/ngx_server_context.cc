@@ -29,10 +29,7 @@ NgxServerContext::NgxServerContext(NgxRewriteDriverFactory* factory) :
 }
 
 NgxServerContext::~NgxServerContext() {
-  NamedLockManager* named_lock_manager = lock_manager();
-  if (named_lock_manager != NULL) {
-    delete named_lock_manager;
-  }
+  delete lock_manager();
 }
 
 NgxRewriteOptions* NgxServerContext::config() {
