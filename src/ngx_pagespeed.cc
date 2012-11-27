@@ -691,57 +691,57 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
 void
 ngx_http_pagespeed_writer(ngx_http_request_t* r)
 {
-    ngx_connection_t* c = r->connection;
-    ngx_event_t* wev = c->write;
-
-    ngx_log_debug2(NGX_LOG_DEBUG_HTTP, wev->log, 0,
-                   "http pagespeed writer handler: \"%V?%V\"",
-                   &r->uri, &r->args);
-
-    if (wev->timedout) {
-      ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
-                    "client timed out");
-      c->timedout = 1;
-
-      ngx_http_finalize_request(r, NGX_HTTP_REQUEST_TIME_OUT);
-      return;
-    }
-
-    int rc = ngx_http_next_body_filter(r, NULL);
-
-    ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
-                   "http pagespeed writer output filter: %d, \"%V?%V\"",
-                   rc, &r->uri, &r->args);
-
-    if (rc == NGX_AGAIN) {
-      return;
-    }
-
-    r->write_event_handler = ngx_http_request_empty_handler;
-
-    ngx_http_finalize_request(r, rc);
+  ngx_connection_t* c = r->connection;
+  ngx_event_t* wev = c->write;
+  
+  ngx_log_debug2(NGX_LOG_DEBUG_HTTP, wev->log, 0,
+                 "http pagespeed writer handler: \"%V?%V\"",
+                 &r->uri, &r->args);
+  
+  if (wev->timedout) {
+    ngx_log_error(NGX_LOG_INFO, c->log, NGX_ETIMEDOUT,
+                  "client timed out");
+    c->timedout = 1;
+    
+    ngx_http_finalize_request(r, NGX_HTTP_REQUEST_TIME_OUT);
+    return;
+  }
+  
+  int rc = ngx_http_next_body_filter(r, NULL);
+  
+  ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
+                 "http pagespeed writer output filter: %d, \"%V?%V\"",
+                 rc, &r->uri, &r->args);
+  
+  if (rc == NGX_AGAIN) {
+    return;
+  }
+  
+  r->write_event_handler = ngx_http_request_empty_handler;
+  
+  ngx_http_finalize_request(r, rc);
 }
 
 ngx_int_t
 ngx_http_set_pagespeed_write_handler(ngx_http_request_t *r)
 {
-    r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
-
-    r->read_event_handler = ngx_http_request_empty_handler;
-    r->write_event_handler = ngx_http_pagespeed_writer;
-
-    ngx_event_t* wev = r->connection->write;
-
-    ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
-        ngx_http_get_module_loc_conf(r, ngx_http_core_module));
-
-    ngx_add_timer(wev, clcf->send_timeout);
-
-    if (ngx_handle_write_event(wev, clcf->send_lowat) != NGX_OK) {
-      return NGX_ERROR;
-    }
-
-    return NGX_OK;
+  r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
+  
+  r->read_event_handler = ngx_http_request_empty_handler;
+  r->write_event_handler = ngx_http_pagespeed_writer;
+  
+  ngx_event_t* wev = r->connection->write;
+  
+  ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
+      ngx_http_get_module_loc_conf(r, ngx_http_core_module));
+  
+  ngx_add_timer(wev, clcf->send_timeout);
+  
+  if (ngx_handle_write_event(wev, clcf->send_lowat) != NGX_OK) {
+    return NGX_ERROR;
+  }
+  
+  return NGX_OK;
 }
 
 void
