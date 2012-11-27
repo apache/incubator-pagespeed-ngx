@@ -1004,7 +1004,6 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
     options = custom_options;
   }
 
-  // Run iff pagespeed is enabled.
   if (!options->enabled()) {
     ngx_http_pagespeed_release_request_context(ctx);
     return CreateRequestContext::kPagespeedDisabled;
