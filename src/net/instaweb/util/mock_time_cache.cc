@@ -24,9 +24,10 @@
 #include "net/instaweb/util/public/mock_time_cache.h"
 
 #include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -45,8 +46,10 @@ class MockTimeCache::DelayCallback : public CacheInterface::Callback {
   }
 
   virtual void Done(KeyState state) {
-    parent_->timer()->AddAlarm(
-        parent_->timer()->NowUs() + parent_->delay_us(),
+    Scheduler* scheduler = parent_->scheduler();
+    int64 wakeup_time_us = scheduler->timer()->NowUs() + parent_->delay_us();
+    scheduler->AddAlarm(
+        wakeup_time_us,
         new MemberFunction1<CacheInterface::Callback, CacheInterface::KeyState>(
             &CacheInterface::Callback::DelegatedDone, orig_callback_, state));
     delete this;
@@ -59,8 +62,8 @@ class MockTimeCache::DelayCallback : public CacheInterface::Callback {
   DISALLOW_COPY_AND_ASSIGN(DelayCallback);
 };
 
-MockTimeCache::MockTimeCache(MockTimer* timer, CacheInterface* cache)
-    : timer_(timer),
+MockTimeCache::MockTimeCache(Scheduler* scheduler, CacheInterface* cache)
+    : scheduler_(scheduler),
       cache_(cache),
       delay_us_(0),
       name_(StrCat("MockTimeCache using ", cache_->Name())) {}

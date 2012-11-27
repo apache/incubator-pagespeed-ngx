@@ -637,7 +637,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
 
     server_context()->set_url_namer(fake_url_namer_.get());
 
-    mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+    SetTimeMs(MockTimer::kApr_5_2010_ms);
     mock_url_fetcher_.set_fail_on_unexpected(false);
 
     response_headers_.SetStatusAndReason(HttpStatus::kOK);
@@ -1547,7 +1547,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkUrlCacheInvalidation) {
   // Invalidate the cache for some URL other than 'text.html'.
   options_->ClearSignatureForTesting();
   options_->AddUrlCacheInvalidationEntry(
-      AbsolutifyUrl("foo.bar"), mock_timer()->NowMs(), true);
+      AbsolutifyUrl("foo.bar"), timer()->NowMs(), true);
   server_context()->ComputeSignature(options_.get());
 
   // Property cache hit.
@@ -1570,7 +1570,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkUrlCacheInvalidation) {
   // Invalidate the cache.
   options_->ClearSignatureForTesting();
   options_->AddUrlCacheInvalidationEntry(
-      AbsolutifyUrl("text.html"), mock_timer()->NowMs(), true);
+      AbsolutifyUrl("text.html"), timer()->NowMs(), true);
   server_context()->ComputeSignature(options_.get());
 
   SetBlinkCriticalLineData();

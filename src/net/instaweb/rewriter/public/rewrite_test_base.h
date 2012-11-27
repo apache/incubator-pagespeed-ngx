@@ -39,6 +39,8 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+// We need to include mock_timer.h to allow upcast to Timer*.
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -148,7 +150,11 @@ class RewriteTestBase : public RewriteOptionsTestBase {
 
   ResourcePtr CreateResource(const StringPiece& base, const StringPiece& url);
 
-  MockTimer* mock_timer() { return factory_->mock_timer(); }
+  // Returns the main factory Timer*, which can be used for calling NowUs and
+  // NowMs.  To set the time, use (Advance|Set)Time(Ms|Us), which wake up any
+  // scheduler alarms.  See also AdjustTimeUsWithoutWakingAlarms which should
+  // be used with extreme care.
+  Timer* timer() { return factory()->mock_timer(); }
 
   // Append default headers to the given string.
   void AppendDefaultHeaders(const ContentType& content_type,
@@ -397,7 +403,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
     mock_url_fetcher()->set_fail_on_unexpected(fail);
   }
   void FetcherUpdateDateHeaders() {
-    mock_url_fetcher()->set_timer(mock_timer());
+    mock_url_fetcher()->set_timer(timer());
     mock_url_fetcher()->set_update_date_headers(true);
   }
   void ClearFetcherResponses() { mock_url_fetcher()->Clear(); }
@@ -537,6 +543,16 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // Set the "active" server to that specified; the active server is used for
   // rewriting and serving pages.
   void SetActiveServer(ActiveServerFlag server_to_use);
+
+  // Advances time forward using the mock scheduler.  Note that time is not
+  // advanced directly in the mock_timer; the scheduler must be used.
+  void AdvanceTimeUs(int64 delay_ms);
+  void AdvanceTimeMs(int64 delay_ms) { AdvanceTimeUs(delay_ms * Timer::kMsUs); }
+  void SetTimeUs(int64 time_us);
+  void SetTimeMs(int64 time_ms) { SetTimeUs(time_ms * Timer::kMsUs); }
+
+  // Adjusts time ignoring any scheduler callbacks.  Use with caution.
+  void AdjustTimeUsWithoutWakingAlarms(int64 time_us);
 
   // The mock fetcher & stats are global across all Factories used in the tests.
   MockUrlFetcher mock_url_fetcher_;

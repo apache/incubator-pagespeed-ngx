@@ -106,7 +106,7 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
 
   virtual void SetupCaches(ServerContext* server_context) {
     server_context->set_http_cache(
-        new HTTPCache(cache1_, mock_timer(), hasher(), statistics()));
+        new HTTPCache(cache1_, timer(), hasher(), statistics()));
     if (use_write_through_cache_) {
       server_context->set_metadata_cache(new WriteThroughCache(cache1_,
                                                                cache2_));
@@ -259,7 +259,7 @@ TEST_F(TwoLevelCacheTest, BothCachesInSameState) {
   // corrected.   See url_input_resource.cc, AddToCache().  The http cache will
   // miss, but we'll re-insert.  We won't need to do any more rewrites because
   // the data did not actually change.
-  mock_timer()->AdvanceMs(2 * kOriginTtlMs);
+  AdvanceTimeMs(2 * kOriginTtlMs);
   rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("trimmable", input_html, output_html);
   EXPECT_EQ(2, cache1_->num_hits());     // 1 expired hit, 1 valid hit.
@@ -337,8 +337,8 @@ TEST_F(TwoLevelCacheTest, BothCachesInDifferentState) {
   EXPECT_EQ(1, logging_info_->metadata_cache_info().num_hits());
   ClearStats();
 
-  mock_timer()->AdvanceMs(2 * kOriginTtlMs);
-  other_factory_->mock_timer()->AdvanceMs(2 * kOriginTtlMs);
+  AdvanceTimeMs(2 * kOriginTtlMs);
+  other_factory_->AdvanceTimeMs(2 * kOriginTtlMs);
 
   // The third time we request this URL through the other_rewrite_driver (which
   // has cache2 as metadata cache) so that we have a fresh value in cache2 which

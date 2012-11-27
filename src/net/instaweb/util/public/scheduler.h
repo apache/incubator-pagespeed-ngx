@@ -25,6 +25,12 @@
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/timer.h"
+
+// TODO(jmarantz): The Scheduler should cancel all outstanding operations
+// on destruction.  Deploying this requires further analysis of shutdown
+// ordering.
+#define SCHEDULER_CANCEL_OUTSTANDING_ALARMS_ON_DESTRUCTION 0
 
 namespace net_instaweb {
 
@@ -66,13 +72,18 @@ class Scheduler {
 
   // Wait at most timeout_ms, or until Signal() is called.  mutex() must be held
   // when calling BlockingTimedWait.
-  void BlockingTimedWait(int64 timeout_ms);
+  void BlockingTimedWaitMs(int64 timeout_ms) {
+    BlockingTimedWaitUs(timeout_ms * Timer::kMsUs);
+  }
+  void BlockingTimedWaitUs(int64 timeout_us);
 
   // Non-blocking invocation of callback either when Signal() is called, or
   // after timeout_ms have passed.  Ownership of callback passes to the
   // scheduler, which deallocates it after invocation.  mutex() must be held on
   // the initial call, and is locked for the duration of callback.  Note that
   // callback may be invoked in a different thread from the calling thread.
+  //
+  // TODO(jmarantz): rename method to have units.
   void TimedWait(int64 timeout_ms, Function* callback);
 
   // Signal threads in BlockingTimedWait and invoke TimedWait callbacks.
@@ -92,6 +103,8 @@ class Scheduler {
   // itself and the callback when it is run or cancelled.  NOTE in particular
   // that calls to CancelAlarm must ensure the callback has not been invoked
   // yet.  This is why the scheduler mutex must be held for CancelAlarm.
+  //
+  // TODO(jmarantz): rename method to have units.
   Alarm* AddAlarm(int64 wakeup_time_us, Function* callback);
 
   // Cancels an alarm, calling the Cancel() method and deleting the alarm
@@ -114,6 +127,8 @@ class Scheduler {
   // and handle alarms then before relinquishing control.  Idle no longer than
   // timeout_us.  Passing in timeout_us=0 will run without blocking.
   // mutex() must be held.
+  //
+  // TODO(jmarantz): rename method to have units.
   void ProcessAlarms(int64 timeout_us);
 
   // Obtain the timer that the scheduler is using internally.  Important if you
@@ -152,6 +167,7 @@ class Scheduler {
   typedef std::set<Alarm*, CompareAlarms> AlarmSet;
 
   int64 RunAlarms(bool* ran_alarms);
+  // TODO(jmarantz): rename method to have units.
   void AddAlarmMutexHeld(int64 wakeup_time_us, Alarm* alarm);
   void CancelWaiting(Alarm* alarm);
   bool NoPendingAlarms();

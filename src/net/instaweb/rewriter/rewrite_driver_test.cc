@@ -297,7 +297,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithInvalidation) {
   // Set cache invalidation timestamp (to now, so that response date header is
   // in the "past") and load. Should get inserted again.
   ClearStats();
-  int64 now_ms = mock_timer()->NowMs();
+  int64 now_ms = timer()->NowMs();
   options()->ClearSignatureForTesting();
   options()->set_cache_invalidation_timestamp(now_ms);
   options()->ComputeSignature(hasher());
@@ -336,7 +336,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithUrlPatternAllInvalidation) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   ClearStats();
-  int64 now_ms = mock_timer()->NowMs();
+  int64 now_ms = timer()->NowMs();
   options()->ClearSignatureForTesting();
   // Set cache invalidation (to now) for all URLs with "a.css" and also
   // invalidate all metadata (the last 'false' argument below).
@@ -377,7 +377,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithUrlPatternOnlyInvalidation) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   ClearStats();
-  int64 now_ms = mock_timer()->NowMs();
+  int64 now_ms = timer()->NowMs();
   options()->ClearSignatureForTesting();
   // Set cache invalidation (to now) for all URLs with "a.css". Does not
   // invalidate any metadata (the last 'true' argument below).
@@ -418,7 +418,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithRewrittenUrlAllInvalidation) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   ClearStats();
-  int64 now_ms = mock_timer()->NowMs();
+  int64 now_ms = timer()->NowMs();
   options()->ClearSignatureForTesting();
   // Set a URL cache invalidation entry for output URL.  Original input URL is
   // not affected.  Also invalidate all metadata (the last 'false' argument
@@ -459,7 +459,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithRewrittenUrlOnlyInvalidation) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   ClearStats();
-  int64 now_ms = mock_timer()->NowMs();
+  int64 now_ms = timer()->NowMs();
   options()->ClearSignatureForTesting();
   // Set cache invalidation (to now) for output URL.  Original input URL is not
   // affected.  Does not invalidate any metadata (the last 'true' argument
@@ -499,7 +499,7 @@ TEST_F(RewriteDriverTest, TestCacheUseWithOriginalUrlInvalidation) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
   ClearStats();
-  int64 now_ms = mock_timer()->NowMs();
+  int64 now_ms = timer()->NowMs();
   options()->ClearSignatureForTesting();
   // Set cache invalidation (to now) for input URL.  Rewritten output URL is not
   // affected.  So there will be no cache inserts or reinserts.
@@ -566,13 +566,13 @@ TEST_F(RewriteDriverTest, TestComputeCurrentFlushWindowRewriteDelayMs) {
   // If we advance mock time to leave less than a flush window timeout remaining
   // against the page deadline, the appropriate page deadline difference is
   // returned.
-  mock_timer()->SetTimeUs((start_time_ms() + 1000) * Timer::kMsUs);
+  SetTimeMs(start_time_ms() + 1000);
   EXPECT_EQ(750, GetFlushTimeout());  // 1750 - 1000
 
   // If we advance mock time beyond the per-page limit, a value of 1 is
   // returned. (This is required since values <= 0 are interpreted by internal
   // timeout functions as unlimited.)
-  mock_timer()->SetTimeUs((start_time_ms() + 2000) * Timer::kMsUs);
+  SetTimeMs(start_time_ms() + 2000);
   EXPECT_EQ(1, GetFlushTimeout());
 
   rewrite_driver()->FinishParse();
@@ -606,7 +606,7 @@ TEST_F(RewriteDriverTest, TestCacheUseOnTheFlyWithInvalidation) {
   // Set cache invalidation timestamp (to now, so that response date header is
   // in the "past") and load.
   ClearStats();
-  int64 now_ms = mock_timer()->NowMs();
+  int64 now_ms = timer()->NowMs();
   options()->ClearSignatureForTesting();
   options()->set_cache_invalidation_timestamp(now_ms);
   options()->ComputeSignature(hasher());
@@ -815,7 +815,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   EXPECT_EQ(kResourceContents1, resource2->contents());
 
   // Advance timer and check that the resource loads updated.
-  mock_timer()->AdvanceMs(10 * Timer::kYearMs);
+  AdvanceTimeMs(10 * Timer::kYearMs);
 
   // Check that the resource loads updated.
   ResourcePtr resource3(

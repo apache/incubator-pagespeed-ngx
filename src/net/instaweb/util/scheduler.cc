@@ -207,6 +207,15 @@ Scheduler::Scheduler(ThreadSystem* thread_system, Timer* timer)
 }
 
 Scheduler::~Scheduler() {
+#if SCHEDULER_CANCEL_OUTSTANDING_ALARMS_ON_DESTRUCTION
+  ScopedMutex lock(mutex_.get());
+  while (!outstanding_alarms_.empty()) {
+    AlarmSet::iterator p = outstanding_alarms_.begin();
+    Alarm* alarm = *p;
+    outstanding_alarms_.erase(p);
+    alarm->CancelAlarm();
+  }
+#endif
 }
 
 ThreadSystem::CondvarCapableMutex* Scheduler::mutex() {
@@ -215,10 +224,10 @@ ThreadSystem::CondvarCapableMutex* Scheduler::mutex() {
 
 void Scheduler::DCheckLocked() { mutex_->DCheckLocked(); }
 
-void Scheduler::BlockingTimedWait(int64 timeout_ms) {
+void Scheduler::BlockingTimedWaitUs(int64 timeout_us) {
   mutex_->DCheckLocked();
   int64 now_us = timer_->NowUs();
-  int64 wakeup_time_us = now_us + timeout_ms * Timer::kMsUs;
+  int64 wakeup_time_us = now_us + timeout_us;
   // We block until signal_count_ changes or we time out.
   int64 original_signal_count = signal_count_;
   bool timed_out = false;

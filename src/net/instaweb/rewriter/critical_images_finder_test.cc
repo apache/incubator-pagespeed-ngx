@@ -192,8 +192,7 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   rewrite_driver()->set_critical_images(NULL);
   rewrite_driver()->set_css_critical_images(NULL);
   // Advance past expiry, so that the pages expire.
-  mock_timer()->AdvanceMs(
-      2 * options()->critical_images_cache_expiration_time_ms());
+  AdvanceTimeMs(2 * options()->critical_images_cache_expiration_time_ms());
   rewrite_driver()->set_updated_critical_images(false);
   finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
   CheckCriticalImageFinderStats(0, 1, 0);

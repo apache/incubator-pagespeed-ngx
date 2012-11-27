@@ -867,7 +867,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
 
     proxy_interface_.reset(
         new ProxyInterface("localhost", 80, server_context(), statistics()));
-    start_time_ms_ = mock_timer()->NowMs();
+    start_time_ms_ = timer()->NowMs();
 
     SetResponseWithDefaultHeaders(kImageFilenameLackingExt, kContentTypeJpeg,
                                   "image data", 300);
@@ -2506,7 +2506,7 @@ TEST_F(ProxyInterfaceTest, CachedIfAuthorizedAndPublic) {
 TEST_F(ProxyInterfaceTest, ImplicitCachingHeadersForCss) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
-  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
   headers.SetDate(MockTimer::kApr_5_2010_ms);
   headers.SetStatusAndReason(HttpStatus::kOK);
@@ -2555,7 +2555,7 @@ TEST_F(ProxyInterfaceTest, CacheableSize) {
   // max_cacheable_response_content_length.
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
-  mock_timer()->SetTimeMs(MockTimer::kApr_5_2010_ms);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
   headers.SetStatusAndReason(HttpStatus::kOK);
   headers.SetDateAndCaching(MockTimer::kApr_5_2010_ms, 300 * Timer::kSecondMs);
@@ -2618,7 +2618,7 @@ TEST_F(ProxyInterfaceTest, CacheableSizeAjax) {
   // Test to check that we are not caching responses which have content length >
   // max_cacheable_response_content_length in Ajax flow.
   ResponseHeaders headers;
-  mock_timer()->SetTimeMs(MockTimer::kApr_5_2010_ms);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
   headers.SetDate(MockTimer::kApr_5_2010_ms);
   headers.SetStatusAndReason(HttpStatus::kOK);
@@ -2672,7 +2672,7 @@ TEST_F(ProxyInterfaceTest, CacheableSizeResource) {
 TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
-  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
   headers.SetDate(MockTimer::kApr_5_2010_ms);
   headers.SetStatusAndReason(HttpStatus::kOK);
@@ -2742,7 +2742,7 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   // Invalidate the cache.
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
-  custom_options->set_cache_invalidation_timestamp(mock_timer()->NowMs());
+  custom_options->set_cache_invalidation_timestamp(timer()->NowMs());
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
   server_context()->set_url_namer(&url_namer);
@@ -2772,7 +2772,7 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
 TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
-  mock_timer()->SetTimeMs(MockTimer::kApr_5_2010_ms);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
   headers.SetStatusAndReason(HttpStatus::kOK);
   headers.SetDateAndCaching(MockTimer::kApr_5_2010_ms, 300 * Timer::kSecondMs);
@@ -2843,7 +2843,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   scoped_ptr<RewriteOptions> custom_options_1(
       server_context()->global_options()->Clone());
   custom_options_1->AddUrlCacheInvalidationEntry(
-      AbsolutifyUrl("foo.bar"), mock_timer()->NowMs(), true);
+      AbsolutifyUrl("foo.bar"), timer()->NowMs(), true);
   ProxyUrlNamer url_namer_1;
   url_namer_1.set_options(custom_options_1.get());
   server_context()->set_url_namer(&url_namer_1);
@@ -2875,7 +2875,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   // matter in this test since there is nothing cached in metadata or property
   // caches.
   custom_options_2->AddUrlCacheInvalidationEntry(
-      AbsolutifyUrl("text.html"), mock_timer()->NowMs(), true);
+      AbsolutifyUrl("text.html"), timer()->NowMs(), true);
   ProxyUrlNamer url_namer_2;
   url_namer_2.set_options(custom_options_2.get());
   server_context()->set_url_namer(&url_namer_2);
@@ -2906,7 +2906,7 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
   headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
-  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   headers.SetDate(MockTimer::kApr_5_2010_ms);
   headers.SetStatusAndReason(HttpStatus::kOK);
   headers.ComputeCaching();
@@ -2951,7 +2951,7 @@ TEST_F(ProxyInterfaceTest, ModifiedImplicitCachingHeadersForCss) {
 
   ResponseHeaders headers;
   const char kContent[] = "A very compelling article";
-  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
   headers.SetStatusAndReason(HttpStatus::kOK);
   // Do not call ComputeCaching before calling SetFetchResponse because it will
@@ -3205,7 +3205,7 @@ TEST_F(ProxyInterfaceTest, LastModifiedMatch) {
 
 TEST_F(ProxyInterfaceTest, AjaxRewritingForCss) {
   ResponseHeaders headers;
-  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
   headers.SetDate(MockTimer::kApr_5_2010_ms);
   headers.SetStatusAndReason(HttpStatus::kOK);
@@ -3254,7 +3254,7 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingForCss) {
 
   ClearStats();
   // Advance close to expiry.
-  mock_timer()->AdvanceUs(270 * Timer::kSecondUs);
+  AdvanceTimeUs(270 * Timer::kSecondUs);
   // The rewrite is complete and the optimized version is served. A freshen is
   // triggered to refresh the original CSS file.
   text.clear();
@@ -3306,7 +3306,7 @@ TEST_F(ProxyInterfaceTest, NoAjaxRewritingWhenAuthorizationSent) {
   // We should not do ajax rewriting when sending over an authorization
   // header if the original isn't cache-control: public.
   ResponseHeaders headers;
-  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
   headers.SetDate(MockTimer::kApr_5_2010_ms);
   headers.SetStatusAndReason(HttpStatus::kOK);
@@ -3334,7 +3334,7 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingWhenAuthorizationButPublic) {
   // We should do ajax rewriting when sending over an authorization
   // header if the original is cache-control: public.
   ResponseHeaders headers;
-  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
   headers.SetDate(MockTimer::kApr_5_2010_ms);
   headers.SetStatusAndReason(HttpStatus::kOK);
@@ -3381,7 +3381,7 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingDisabledByGlobalDisable) {
 
 TEST_F(ProxyInterfaceTest, AjaxRewritingSkippedIfBlacklisted) {
   ResponseHeaders headers;
-  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
   headers.SetDate(MockTimer::kApr_5_2010_ms);
   headers.SetStatusAndReason(HttpStatus::kOK);
@@ -3433,7 +3433,7 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingBlacklistReject) {
   RejectBlacklisted();
 
   ResponseHeaders headers;
-  mock_timer()->SetTimeUs(MockTimer::kApr_5_2010_ms * Timer::kMsUs);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   headers.Add(HttpAttributes::kContentType, kContentTypeCss.mime_type());
   headers.SetDate(MockTimer::kApr_5_2010_ms);
   headers.SetStatusAndReason(HttpStatus::kOK);
@@ -3682,8 +3682,8 @@ TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {
   custom_options->EnableFilter(RewriteOptions::kExtendCacheImages);
   custom_options->EnableFilter(RewriteOptions::kExtendCacheScripts);
   custom_options->EnableFilter(RewriteOptions::kExtendCachePdfs);
-  custom_options->set_cache_invalidation_timestamp(mock_timer()->NowMs());
-  mock_timer()->AdvanceUs(Timer::kMsUs);
+  custom_options->set_cache_invalidation_timestamp(timer()->NowMs());
+  AdvanceTimeUs(Timer::kMsUs);
 
   // Inject the custom options into the flow via a custom URL namer.
   ProxyUrlNamer url_namer;

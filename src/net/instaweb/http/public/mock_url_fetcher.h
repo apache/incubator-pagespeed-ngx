@@ -109,7 +109,7 @@ class MockUrlFetcher : public UrlFetcher {
   // header is present, and matches the host/port of the requested URL.
   void set_verify_host_header(bool x) { verify_host_header_ = x; }
 
-  void set_timer(MockTimer* timer) { timer_ = timer; }
+  void set_timer(Timer* timer) { timer_ = timer; }
 
   // If true then each time the fetcher writes it will split the write in half
   // and write each half separately. This is needed to test that Ajax's
@@ -156,7 +156,7 @@ class MockUrlFetcher : public UrlFetcher {
   bool fail_after_headers_;   // Should we call Done(false) after headers?
   bool verify_host_header_;   // Should we verify the Host: header?
   bool split_writes_;         // Should we turn one write into multiple?
-  MockTimer* timer_;  // Timer to use for updating header dates.
+  Timer* timer_;              // Timer to use for updating header dates.
 
   DISALLOW_COPY_AND_ASSIGN(MockUrlFetcher);
 };

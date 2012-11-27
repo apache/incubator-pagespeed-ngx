@@ -208,7 +208,7 @@ class SharedCacheTest : public RewriteContextTestBase {
                         int64 delta_ms) {
     // Advance time for the given factory then write new contents to the
     // test file in the given filesystem.
-    factory->mock_timer()->AdvanceMs(delta_ms);
+    factory->AdvanceTimeMs(delta_ms);
     EXPECT_TRUE(filesystem->WriteFile(kFilename, kNewContents,
                                       message_handler()));
     int64 mtime1, mtime2;

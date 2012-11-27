@@ -161,7 +161,7 @@ TEST_F(ResourceUpdateTest, TestExpire404) {
   // be ready to optimize at that point.
   // "And thus Moses wandered the desert for only 20 years, because of a
   // limitation in the implementation of time_t."
-  mock_timer()->AdvanceMs(20 * Timer::kYearMs);
+  AdvanceTimeMs(20 * Timer::kYearMs);
   SetResponseWithDefaultHeaders(kOriginalUrl, kContentTypeCss, " init ", 100);
   EXPECT_EQ("init", RewriteSingleResource("200"));
 }
@@ -183,7 +183,7 @@ TEST_F(ResourceUpdateTest, OnTheFly) {
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 2) Advance time, but not so far that resources have expired.
-  mock_timer()->AdvanceMs(ttl_ms / 2);
+  AdvanceTimeMs(ttl_ms / 2);
   ClearStats();
   // Rewrite should be the same.
   EXPECT_EQ("init", RewriteSingleResource("advance_time"));
@@ -202,7 +202,7 @@ TEST_F(ResourceUpdateTest, OnTheFly) {
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 4) Advance time so that old cached input resource expires.
-  mock_timer()->AdvanceMs(ttl_ms);
+  AdvanceTimeMs(ttl_ms);
   ClearStats();
   // Rewrite should now use new resource.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
@@ -224,7 +224,7 @@ TEST_F(ResourceUpdateTest, Rewritten) {
   response_headers.Add(HttpAttributes::kContentType,
                        kContentTypeCss.mime_type());
   response_headers.Add(HttpAttributes::kEtag, "original");
-  response_headers.SetDateAndCaching(mock_timer()->NowMs(), ttl_ms);
+  response_headers.SetDateAndCaching(timer()->NowMs(), ttl_ms);
   response_headers.ComputeCaching();
   mock_url_fetcher()->SetConditionalResponse(
       "http://test.com/a.css", -1, "original", response_headers, " init ");
@@ -237,7 +237,7 @@ TEST_F(ResourceUpdateTest, Rewritten) {
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 2) Advance time, but not so far that resources have expired.
-  mock_timer()->AdvanceMs(ttl_ms / 2);
+  AdvanceTimeMs(ttl_ms / 2);
   ClearStats();
   // Rewrite should be the same.
   EXPECT_EQ("init", RewriteSingleResource("advance_time"));
@@ -260,7 +260,7 @@ TEST_F(ResourceUpdateTest, Rewritten) {
   EXPECT_EQ(0, file_system()->num_input_file_opens());
 
   // 4) Advance time so that old cached input resource expires.
-  mock_timer()->AdvanceMs(ttl_ms);
+  AdvanceTimeMs(ttl_ms);
   ClearStats();
   // Rewrite should now use new resource.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
@@ -271,7 +271,7 @@ TEST_F(ResourceUpdateTest, Rewritten) {
 
   // 5) Advance time so that the new input resource expires and is conditionally
   // refreshed.
-  mock_timer()->AdvanceMs(2 * ttl_ms);
+  AdvanceTimeMs(2 * ttl_ms);
   ClearStats();
   // Rewrite should now use new resource.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
@@ -302,7 +302,7 @@ TEST_F(ResourceUpdateTest, LoadFromFileOnTheFly) {
 
   // 2) Advance time, but not so far that resources would have expired if
   // they were loaded by UrlFetch.
-  mock_timer()->AdvanceMs(ttl_ms / 2);
+  AdvanceTimeMs(ttl_ms / 2);
   ClearStats();
   // Rewrite should be the same.
   EXPECT_EQ("init", RewriteSingleResource("advance_time"));
@@ -322,7 +322,7 @@ TEST_F(ResourceUpdateTest, LoadFromFileOnTheFly) {
   EXPECT_EQ(2, file_system()->num_input_file_opens());
 
   // 4) Advance time so that old cached input resource expires.
-  mock_timer()->AdvanceMs(ttl_ms);
+  AdvanceTimeMs(ttl_ms);
   ClearStats();
   // Rewrite should now use new resource.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
@@ -347,7 +347,7 @@ TEST_F(ResourceUpdateTest, LoadFromFileRewritten) {
 
   // 2) Advance time, but not so far that resources would have expired if
   // they were loaded by UrlFetch.
-  mock_timer()->AdvanceMs(ttl_ms / 2);
+  AdvanceTimeMs(ttl_ms / 2);
   ClearStats();
   // Rewrite should be the same.
   EXPECT_EQ("init", RewriteSingleResource("advance_time"));
@@ -365,7 +365,7 @@ TEST_F(ResourceUpdateTest, LoadFromFileRewritten) {
   EXPECT_EQ(1, file_system()->num_input_file_opens());
 
   // 4) Advance time so that old cached input resource expires.
-  mock_timer()->AdvanceMs(ttl_ms);
+  AdvanceTimeMs(ttl_ms);
   ClearStats();
   // Rewrite should now use new resource.
   EXPECT_EQ("new", RewriteSingleResource("updated_content"));
@@ -403,7 +403,7 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   ClearStats();
 
   // 2) Advance time, but not so far that any resources have expired.
-  mock_timer()->AdvanceMs(kShortTtlMs / 2);
+  AdvanceTimeMs(kShortTtlMs / 2);
   // Rewrite should be the same.
   EXPECT_EQ(" a1  b1  c1  d1 ", CombineResources("advance_time"));
   EXPECT_EQ(0, combining_filter_->num_rewrites());
@@ -429,7 +429,7 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   ClearStats();
 
   // 4) Advance time so that short-cached input expires.
-  mock_timer()->AdvanceMs(kShortTtlMs);
+  AdvanceTimeMs(kShortTtlMs);
   // All but long TTL UrlInputResource should be updated.
   EXPECT_EQ(" a1  b2  c2  d2 ", CombineResources("short_updated"));
   EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
@@ -441,7 +441,7 @@ TEST_F(CombineResourceUpdateTest, CombineDifferentTTLs) {
   ClearStats();
 
   // 5) Advance time so that all inputs have expired and been updated.
-  mock_timer()->AdvanceMs(kLongTtlMs);
+  AdvanceTimeMs(kLongTtlMs);
   // Rewrite should now use all new resources.
   EXPECT_EQ(" a2  b2  c2  d2 ", CombineResources("all_updated"));
   EXPECT_EQ(1, combining_filter_->num_rewrites());  // Because inputs updated.
@@ -476,7 +476,7 @@ TEST_F(ResourceUpdateTest, NestedTestExpireNested404) {
 
   // Now move forward two decades, and upload a new version. We should
   // be ready to optimize at that point, but input should not be expired.
-  mock_timer()->AdvanceMs(2 * kDecadeMs);
+  AdvanceTimeMs(2 * kDecadeMs);
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, " lowercase ", 100);
   ReconfigureNestedFilter(NestedFilter::kExpectNestedRewritesSucceed);
   const GoogleString kFullOutUrl =
@@ -532,7 +532,7 @@ TEST_F(ResourceUpdateTest, NestedDifferentTTLs) {
   ClearStats();
 
   // 2) Advance time, but not so far that any resources have expired.
-  mock_timer()->AdvanceMs(kShortTtlMs / 2);
+  AdvanceTimeMs(kShortTtlMs / 2);
   // Rewrite should be the same.
   result_vector = RewriteNestedResources("advance_time");
   ASSERT_EQ(3, result_vector.size());
@@ -577,7 +577,7 @@ TEST_F(ResourceUpdateTest, NestedDifferentTTLs) {
   ClearStats();
 
   // 4) Advance time so that short-cached input expires.
-  mock_timer()->AdvanceMs(kShortTtlMs);
+  AdvanceTimeMs(kShortTtlMs);
   // All but long TTL UrlInputResource should be updated.
   result_vector = RewriteNestedResources("short_updated");
   ASSERT_EQ(3, result_vector.size());
@@ -594,7 +594,7 @@ TEST_F(ResourceUpdateTest, NestedDifferentTTLs) {
   ClearStats();
 
   // 5) Advance time so that all inputs have expired and been updated.
-  mock_timer()->AdvanceMs(kLongTtlMs);
+  AdvanceTimeMs(kLongTtlMs);
   // Rewrite should now use all new resources.
   result_vector = RewriteNestedResources("short_updated");
   ASSERT_EQ(3, result_vector.size());

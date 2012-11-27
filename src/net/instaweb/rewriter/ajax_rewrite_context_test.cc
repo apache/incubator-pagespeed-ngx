@@ -205,7 +205,7 @@ class AjaxRewriteContextTest : public RewriteTestBase {
         exceed_deadline_(false) {}
 
   virtual void Init() {
-    mock_timer()->SetTimeUs(start_time_ms() * Timer::kMsUs);
+    SetTimeMs(start_time_ms());
     mock_url_fetcher()->set_fail_on_unexpected(false);
 
     // Set fetcher result and headers.
@@ -353,7 +353,7 @@ class AjaxRewriteContextTest : public RewriteTestBase {
     EXPECT_EQ(0, css_filter_->num_rewrites());
 
     ResetHeadersAndStats();
-    mock_timer()->SetTimeUs((start_time_ms() + ttl_ms_/2) * Timer::kMsUs);
+    SetTimeMs(start_time_ms() + ttl_ms_/2);
     FetchAndCheckResponse(url, "good:ic", true, ttl_ms_/2, etag_,
                           start_time_ms() + ttl_ms_/2);
     // Second fetch hits the metadata cache and the rewritten resource is
@@ -369,10 +369,10 @@ class AjaxRewriteContextTest : public RewriteTestBase {
     EXPECT_EQ(0, js_filter_->num_rewrites());
     EXPECT_EQ(0, css_filter_->num_rewrites());
 
-    mock_timer()->AdvanceMs(2 * ttl_ms_);
+    AdvanceTimeMs(2 * ttl_ms_);
     ResetHeadersAndStats();
     FetchAndCheckResponse(url, cache_body_, true, ttl_ms_,
-                          original_etag_, mock_timer()->NowMs());
+                          original_etag_, timer()->NowMs());
     // The metadata and cache entry is stale now. Fetch the content and serve
     // out the original. The background rewrite work then revalidates
     // the response and updates metadata.
@@ -455,7 +455,7 @@ TEST_F(AjaxRewriteContextTest, CacheableHtmlUrlNoRewriting) {
   EXPECT_EQ(0, js_filter_->num_rewrites());
   EXPECT_EQ(0, css_filter_->num_rewrites());
 
-  mock_timer()->AdvanceMs(2 * ttl_ms_);
+  AdvanceTimeMs(2 * ttl_ms_);
   ResetHeadersAndStats();
   FetchAndCheckResponse(cache_html_url_, cache_body_, true, ttl_ms_,
                         original_etag_, start_time_ms() + 2 * ttl_ms_);
@@ -501,7 +501,7 @@ TEST_F(AjaxRewriteContextTest, WaitForOptimizedFirstRequest) {
   EXPECT_EQ(0, oversized_stream_->Get());
 
   ResetHeadersAndStats();
-  mock_timer()->SetTimeMs((start_time_ms() + ttl_ms_/2));
+  SetTimeMs((start_time_ms() + ttl_ms_/2));
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   // Second fetch hits the metadata cache and the rewritten resource is
@@ -597,7 +597,7 @@ TEST_F(AjaxRewriteContextTest, WaitForOptimizeTimeout) {
   EXPECT_EQ(0, oversized_stream_->Get());
 
   ResetHeadersAndStats();
-  mock_timer()->SetTimeMs((start_time_ms() + ttl_ms_/2));
+  SetTimeMs((start_time_ms() + ttl_ms_/2));
 
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
@@ -687,7 +687,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 
   ResetHeadersAndStats();
-  mock_timer()->SetTimeUs((start_time_ms() + ttl_ms_/2) * Timer::kMsUs);
+  SetTimeMs((start_time_ms() + ttl_ms_/2));
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   // Second fetch hits the metadata cache and the rewritten resource is served
@@ -772,7 +772,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   FetcherUpdateDateHeaders();
   ResetHeadersAndStats();
   int64 time_ms = start_time_ms() + ttl_ms_ - 2 * Timer::kMinuteMs;
-  mock_timer()->SetTimeUs(time_ms * Timer::kMsUs);
+  SetTimeMs(time_ms);
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, 2 * Timer::kMinuteMs,
                         etag_, time_ms);
   // This fetch hits the metadata cache and the rewritten resource is served
@@ -792,7 +792,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   mock_url_fetcher()->set_update_date_headers(false);
 
   ResetHeadersAndStats();
-  mock_timer()->SetTimeUs((start_time_ms() + ttl_ms_ * 5/4) * Timer::kMsUs);
+  SetTimeMs((start_time_ms() + ttl_ms_ * 5/4));
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true,
                         ttl_ms_ * 3/4 - 2 * Timer::kMinuteMs, etag_,
                         start_time_ms() + ttl_ms_ * 5/4);
@@ -810,10 +810,10 @@ TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   EXPECT_EQ(0, js_filter_->num_rewrites());
   EXPECT_EQ(0, css_filter_->num_rewrites());
 
-  mock_timer()->AdvanceMs(2 * ttl_ms_);
+  AdvanceTimeMs(2 * ttl_ms_);
   ResetHeadersAndStats();
   FetchAndCheckResponse(cache_jpg_url_, cache_body_, true, ttl_ms_, NULL,
-                        mock_timer()->NowMs());
+                        timer()->NowMs());
   // The metadata and cache entry is stale now. Fetch the content and serve out
   // the original. We will however notice that the contents did not
   // actually change and update the metadata cache promptly, without
@@ -914,7 +914,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingSucceeds) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 
   ResetHeadersAndStats();
-  mock_timer()->SetTimeUs((start_time_ms() + ttl_ms_/2) * Timer::kMsUs);
+  SetTimeMs(start_time_ms() + ttl_ms_/2);
   FetchAndCheckResponse(cache_js_url_, "good:jm", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   // Second fetch hits the metadata cache and the rewritten resource is served
@@ -930,10 +930,10 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingSucceeds) {
   EXPECT_EQ(0, js_filter_->num_rewrites());
   EXPECT_EQ(0, css_filter_->num_rewrites());
 
-  mock_timer()->AdvanceMs(2 * ttl_ms_);
+  AdvanceTimeMs(2 * ttl_ms_);
   ResetHeadersAndStats();
   FetchAndCheckResponse(cache_js_url_, cache_body_, true, ttl_ms_, NULL,
-                        mock_timer()->NowMs());
+                        timer()->NowMs());
   // The metadata and cache entry is stale now. Fetch the content and serve it
   // out without rewriting. The background rewrite will then revalidate
   // a previous rewrite's result and reuse it.
@@ -973,7 +973,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 
   ResetHeadersAndStats();
-  mock_timer()->SetTimeUs((start_time_ms() + ttl_ms_/2) * Timer::kMsUs);
+  SetTimeMs(start_time_ms() + ttl_ms_/2);
   FetchAndCheckResponse(cache_js_url_, "good:jm", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   // Second fetch hits the metadata cache and the rewritten resource is served
@@ -991,7 +991,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
   EXPECT_EQ(0, js_filter_->num_rewrites());
   EXPECT_EQ(0, css_filter_->num_rewrites());
 
-  mock_timer()->SetTimeUs((start_time_ms() + (3 * ttl_ms_) / 2) * Timer::kMsUs);
+  SetTimeMs(start_time_ms() + (3 * ttl_ms_) / 2);
   ResetHeadersAndStats();
   FetchAndCheckResponse(cache_js_url_, "good:jm", true,
                         ResponseHeaders::kImplicitCacheTtlMs, etag_,
@@ -1083,7 +1083,7 @@ TEST_F(AjaxRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
   EXPECT_EQ(1, css_filter_->num_rewrites());
 
   ResetHeadersAndStats();
-  mock_timer()->SetTimeUs((start_time_ms() + ttl_ms_/2) * Timer::kMsUs);
+  SetTimeMs(start_time_ms() + ttl_ms_/2);
   FetchAndCheckResponse(cache_css_url_, "good:cf", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   // Second fetch hits the metadata cache and the rewritten resource is served
@@ -1099,10 +1099,10 @@ TEST_F(AjaxRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
   EXPECT_EQ(0, js_filter_->num_rewrites());
   EXPECT_EQ(0, css_filter_->num_rewrites());
 
-  mock_timer()->AdvanceMs(2 * ttl_ms_);
+  AdvanceTimeMs(2 * ttl_ms_);
   ResetHeadersAndStats();
   FetchAndCheckResponse(cache_css_url_, cache_body_, true, ttl_ms_, NULL,
-                        mock_timer()->NowMs());
+                        timer()->NowMs());
   // The metadata and cache entry is stale now. Fetch the content and serve it
   // out without rewriting. The background rewrite attempt will end up reusing
   // the old result due to revalidation, however.
@@ -1121,7 +1121,7 @@ TEST_F(AjaxRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
 TEST_F(AjaxRewriteContextTest, NonCacheableUrlNoRewriting) {
   Init();
   FetchAndCheckResponse(nocache_html_url_, nocache_body_, true, 0, NULL,
-                        mock_timer()->NowMs());
+                        timer()->NowMs());
   // First fetch misses initial cache lookup, succeeds at fetch and we don't
   // insert into cache because it's not cacheable. Don't attempt to rewrite
   // this since its not cacheable.

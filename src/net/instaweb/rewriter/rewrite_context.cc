@@ -722,16 +722,19 @@ class RewriteContext::FetchContext {
     RewriteDriver* driver = rewrite_context_->Driver();
     Timer* timer = rewrite_context_->FindServerContext()->timer();
 
-    // Startup an alarm which will cause us to return unrewritten content
-    // rather than hold up the fetch too long on firing. We use a longer
-    // deadline here than for rendering because we are being asked for the
-    // rewritten version, so the tradeoff is shifted a bit more towards
-    // rewriting.
-    deadline_alarm_ =
-        new QueuedAlarm(
-            driver->scheduler(), driver->rewrite_worker(),
-            timer->NowUs() + 2 * driver->rewrite_deadline_ms() * Timer::kMsUs,
-            MakeFunction(this, &FetchContext::HandleDeadline));
+    // Negative rewrite deadline means unlimited.
+    if (driver->rewrite_deadline_ms() >= 0) {
+      // Startup an alarm which will cause us to return unrewritten content
+      // rather than hold up the fetch too long on firing. We use a longer
+      // deadline here than for rendering because we are being asked for the
+      // rewritten version, so the tradeoff is shifted a bit more towards
+      // rewriting.
+      deadline_alarm_ =
+          new QueuedAlarm(
+              driver->scheduler(), driver->rewrite_worker(),
+              timer->NowUs() + 2 * driver->rewrite_deadline_ms() * Timer::kMsUs,
+              MakeFunction(this, &FetchContext::HandleDeadline));
+    }
   }
 
   // Must be invoked from main rewrite thread.

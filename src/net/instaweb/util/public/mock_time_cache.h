@@ -16,7 +16,7 @@
 
 // Author: morlovich@google.com (Maksim Orlovich)
 //
-// Contains MockTimeCache, which lets one inject MockTimer-simulated
+// Contains MockTimeCache, which lets one inject Scheduler-simulated
 // delays before callback invocations of a cache object.
 //
 // Note: DelayCache also supports delayed callbacks, but each key's
@@ -33,14 +33,14 @@
 
 namespace net_instaweb {
 
+class Scheduler;
 class SharedString;
-class MockTimer;
 
 // See file comment
 class MockTimeCache : public CacheInterface {
  public:
   // Note: takes ownership of nothing.
-  MockTimeCache(MockTimer* timer, CacheInterface* cache);
+  MockTimeCache(Scheduler* scheduler, CacheInterface* cache);
   virtual ~MockTimeCache();
 
   // Reimplementations of CacheInterface methods.
@@ -54,7 +54,7 @@ class MockTimeCache : public CacheInterface {
   void set_delay_us(int64 delay_us) { delay_us_ = delay_us; }
   int64 delay_us() const { return delay_us_; }
 
-  MockTimer* timer() { return timer_; }
+  Scheduler* scheduler() { return scheduler_; }
 
   virtual const char* Name() const { return name_.c_str(); }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
@@ -64,7 +64,7 @@ class MockTimeCache : public CacheInterface {
  private:
   class DelayCallback;
 
-  MockTimer* timer_;
+  Scheduler* scheduler_;
   CacheInterface* cache_;
   int64 delay_us_;
   GoogleString name_;

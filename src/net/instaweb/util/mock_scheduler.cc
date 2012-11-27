@@ -18,6 +18,7 @@
 
 #include "net/instaweb/util/public/mock_scheduler.h"
 
+#include "base/logging.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/mock_timer.h"
@@ -74,6 +75,29 @@ void MockScheduler::RegisterWorker(QueuedWorkerPool::Sequence* w) {
 void MockScheduler::UnregisterWorker(QueuedWorkerPool::Sequence* w) {
   ScopedMutex lock(mutex());
   workers_.erase(w);
+}
+
+void MockScheduler::AdvanceTimeUs(int64 timeout_us) {
+  ScopedMutex lock(mutex());
+  SetTimeUsMutexHeld(timer_->NowUs() + timeout_us);
+}
+
+void MockScheduler::SetTimeUsMutexHeld(int64 time_us) {
+  // BlockingTimedWaitUs does not guarantee that it will wait all
+  // the way until a timeout occurs, so we loop.
+  while (timer_->NowUs() < time_us) {
+    BlockingTimedWaitUs(time_us - timer_->NowUs());
+  }
+}
+
+void MockScheduler::SetTimeUs(int64 time_us) {
+  CHECK_LE(timer_->NowUs(), time_us)
+      << "Time cannot go backward in the scheduler: "
+      << "delta=" << timer_->NowUs() - time_us;
+  {
+    ScopedMutex lock(mutex());
+    SetTimeUsMutexHeld(time_us);
+  }
 }
 
 }  // namespace net_instaweb

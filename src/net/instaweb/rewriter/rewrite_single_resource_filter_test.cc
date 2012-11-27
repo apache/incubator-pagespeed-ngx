@@ -422,7 +422,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheExpire) {
   EXPECT_EQ(1, filter_->num_rewrites_called());
 
   // Next fetch should be still in there.
-  mock_timer()->AdvanceMs(TtlMs() / 2);
+  AdvanceTimeMs(TtlMs() / 2);
   ValidateExpected("initial.2", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
 
@@ -431,7 +431,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheExpire) {
   // reuse_by_content_hash is off in this run, so we must rewrite again.
   // See CacheExpireWithReuseEnabled for expiration behavior but with
   // reuse enabled.
-  mock_timer()->AdvanceMs(TtlMs() * 2);
+  AdvanceTimeMs(TtlMs() * 2);
   ValidateExpected("expire", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());
 }
@@ -443,7 +443,7 @@ TEST_P(RewriteSingleResourceFilterTest, CacheExpireWithReuseEnabled) {
 
   // Everything expires out of the cache but has the same content hash,
   // so no more rewrites should be needed.
-  mock_timer()->AdvanceMs(TtlMs() * 2);
+  AdvanceTimeMs(TtlMs() * 2);
   ValidateExpected("expire", in_tag_, out_tag_);
   EXPECT_EQ(1, filter_->num_rewrites_called());  // no second rewrite.
 }

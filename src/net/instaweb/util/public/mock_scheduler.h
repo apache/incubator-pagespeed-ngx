@@ -46,10 +46,23 @@ class MockScheduler : public Scheduler {
   // Blocks until all work in registered workers is done.
   void AwaitQuiescence();
 
+  // Similar to BlockingTimedWaitUs but takes the lock for convenience.
+  // Must be called without mutex held.
+  void AdvanceTimeMs(int64 timeout_ms) {
+    AdvanceTimeUs(timeout_ms * Timer::kMsUs);
+  }
+  void AdvanceTimeUs(int64 timeout_us);
+
+  // Sets the current absolute time using absolute numbers.
+  // Must be called without mutex held.
+  void SetTimeUs(int64 time_us);
+
  protected:
   virtual void AwaitWakeupUntilUs(int64 wakeup_time_us);
 
  private:
+  inline void SetTimeUsMutexHeld(int64 time_us);
+
   MockTimer* timer_;
   QueuedWorkerPool::SequenceSet workers_;
 

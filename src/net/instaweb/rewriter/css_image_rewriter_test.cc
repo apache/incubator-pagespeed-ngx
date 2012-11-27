@@ -411,7 +411,7 @@ TEST_F(CssImageRewriterTest, InlineImages) {
 
   // Read original image file and create data url for comparison purposes.
   GoogleString contents;
-  StdioFileSystem stdio_file_system(mock_timer());
+  StdioFileSystem stdio_file_system(timer());
   GoogleString filename = StrCat(GTestSrcDir(), kTestData, kCuppaPngFile);
   ASSERT_TRUE(stdio_file_system.ReadFile(
       filename.c_str(), &contents, message_handler()));
@@ -447,7 +447,7 @@ TEST_F(CssImageRewriterTest, InlineImagesFallback) {
 
   // Read original image file and create data url for comparison purposes.
   GoogleString contents;
-  StdioFileSystem stdio_file_system(mock_timer());
+  StdioFileSystem stdio_file_system(timer());
   GoogleString filename = StrCat(GTestSrcDir(), kTestData, kCuppaPngFile);
   ASSERT_TRUE(stdio_file_system.ReadFile(
       filename.c_str(), &contents, message_handler()));
@@ -485,7 +485,7 @@ TEST_F(CssImageRewriterTest, InlineImageOnlyInOutlineCss) {
 
   // Read original image file and create data url for comparison purposes.
   GoogleString contents;
-  StdioFileSystem stdio_file_system(mock_timer());
+  StdioFileSystem stdio_file_system(timer());
   GoogleString filename = StrCat(GTestSrcDir(), kTestData, kCuppaPngFile);
   ASSERT_TRUE(stdio_file_system.ReadFile(
       filename.c_str(), &contents, message_handler()));

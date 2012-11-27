@@ -23,10 +23,10 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"        // for StringPiece
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -166,6 +166,9 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
     return add_platform_specific_decoding_passes_;
   }
 
+  // Advances the mock scheduler by delta_ms.
+  void AdvanceTimeMs(int64 delta_ms);
+
  protected:
   virtual Hasher* NewHasher();
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
@@ -183,7 +186,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
 
  private:
   MockTimer* mock_timer_;  // owned by base class timer_.
-  MockScheduler* mock_scheduler_;  // owned by base class scheduler_;
+  MockScheduler* mock_scheduler_;  // owned by RewriteDriverFactory::scheduler_.
   DelayCache* delay_cache_;
   scoped_ptr<ThreadsafeCache> threadsafe_cache_;
   LRUCache* lru_cache_;

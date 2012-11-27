@@ -21,12 +21,15 @@
 #include "net/instaweb/util/public/mock_time_cache.h"
 
 #include <cstddef>
+
 #include "net/instaweb/util/cache_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 namespace {
@@ -40,13 +43,23 @@ const int64 kStartTime = 3456;
 class MockTimeCacheTest : public CacheTestBase {
  protected:
   MockTimeCacheTest()
-      : timer_(kStartTime), lru_cache_(kMaxSize), cache_(&timer_, &lru_cache_) {
+      : timer_(kStartTime),
+        thread_system_(ThreadSystem::CreateThreadSystem()),
+        scheduler_(thread_system_.get(), &timer_),
+        lru_cache_(kMaxSize),
+        cache_(&scheduler_, &lru_cache_) {
   }
 
   virtual CacheInterface* Cache() { return &cache_; }
 
+  void AdvanceTimeUs(int64 interval_us) {
+    scheduler_.AdvanceTimeUs(interval_us);
+  }
+
  protected:
   MockTimer timer_;
+  scoped_ptr<ThreadSystem> thread_system_;
+  MockScheduler scheduler_;
   LRUCache lru_cache_;
   MockTimeCache cache_;
 
@@ -78,11 +91,11 @@ TEST_F(MockTimeCacheTest, DelayOps) {
   EXPECT_FALSE(result.called());
 
   // Move halfways to completion; should still have not been called.
-  timer_.AdvanceUs(kDelayUs / 2);
+  AdvanceTimeUs(kDelayUs / 2);
   EXPECT_FALSE(result.called());
 
   // Now after it expires, it should be OK.
-  timer_.AdvanceUs(kDelayUs / 2 + 1);
+  AdvanceTimeUs(kDelayUs / 2 + 1);
   EXPECT_TRUE(result.called());
   EXPECT_EQ(CacheInterface::kAvailable, result.state());
   EXPECT_EQ("Value", result.value()->Value());
@@ -91,9 +104,9 @@ TEST_F(MockTimeCacheTest, DelayOps) {
   cache_.Delete("Name");
   cache_.Get("Name", result.Reset());
   EXPECT_FALSE(result.called());
-  timer_.AdvanceUs(kDelayUs / 2);
+  AdvanceTimeUs(kDelayUs / 2);
   EXPECT_FALSE(result.called());
-  timer_.AdvanceUs(kDelayUs / 2 + 1);
+  AdvanceTimeUs(kDelayUs / 2 + 1);
   EXPECT_TRUE(result.called());
   EXPECT_EQ(CacheInterface::kNotFound, result.state());
 }

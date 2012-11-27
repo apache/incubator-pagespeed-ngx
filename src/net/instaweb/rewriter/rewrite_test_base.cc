@@ -55,6 +55,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_time_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -205,13 +206,14 @@ ResourcePtr RewriteTestBase::CreateResource(const StringPiece& base,
 void RewriteTestBase::PopulateDefaultHeaders(
     const ContentType& content_type, int64 original_content_length,
     ResponseHeaders* headers) {
-  int64 time = mock_timer()->NowUs();
-  // Reset mock timer so synthetic headers match original.
-  mock_timer()->SetTimeUs(start_time_ms() * Timer::kMsUs);
+  int64 time = timer()->NowUs();
+  // Reset mock timer so synthetic headers match original.  This temporarily
+  // fakes out the mock_scheduler, but we will repair the damage below.
+  AdjustTimeUsWithoutWakingAlarms(start_time_ms() * Timer::kMsUs);
   server_context_->SetDefaultLongCacheHeaders(&content_type, headers);
   // Then set it back.  Note that no alarms should fire at this point
   // because alarms work on absolute time.
-  mock_timer()->SetTimeUs(time);
+  AdjustTimeUsWithoutWakingAlarms(time);
   if (original_content_length > 0) {
     headers->SetOriginalContentLength(original_content_length);
   }
@@ -373,7 +375,7 @@ void RewriteTestBase::AddFileToMockFetcher(
   // physical filesystem for anything else, use file_system_ which can be
   // abstracted as a MemFileSystem instead.
   GoogleString contents;
-  StdioFileSystem stdio_file_system(mock_timer());
+  StdioFileSystem stdio_file_system(timer());
   GoogleString filename_str = StrCat(GTestSrcDir(), kTestData, filename);
   ASSERT_TRUE(stdio_file_system.ReadFile(
       filename_str.c_str(), &contents, message_handler()));
@@ -903,6 +905,18 @@ void RewriteTestBase::SetActiveServer(ActiveServerFlag server_to_use) {
       html_parse()->AddFilter(other_html_writer_filter_.get());
     }
   }
+}
+
+void RewriteTestBase::AdvanceTimeUs(int64 delay_us) {
+  mock_scheduler()->AdvanceTimeUs(delay_us);
+}
+
+void RewriteTestBase::SetTimeUs(int64 time_us) {
+  mock_scheduler()->SetTimeUs(time_us);
+}
+
+void RewriteTestBase::AdjustTimeUsWithoutWakingAlarms(int64 time_us) {
+  factory_->mock_timer()->SetTimeUs(time_us);
 }
 
 // Logging at the INFO level slows down tests, adds to the noise, and

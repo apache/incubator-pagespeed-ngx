@@ -748,7 +748,7 @@ TEST_F(ServerContextTest, TestRemember404) {
   ResponseHeaders headers_out;
   EXPECT_EQ(HTTPCache::kRecentFetchFailed, HttpBlockingFind(
       "http://example.com/404", http_cache(), &value_out, &headers_out));
-  mock_timer()->AdvanceMs(150 * Timer::kSecondMs);
+  AdvanceTimeMs(150 * Timer::kSecondMs);
 
   EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFind(
       "http://example.com/404", http_cache(), &value_out, &headers_out));
@@ -772,7 +772,7 @@ TEST_F(ServerContextTest, TestRememberDropped) {
   EXPECT_EQ(HTTPCache::kRecentFetchFailed, HttpBlockingFind(
       "http://example.com/404", http_cache(), &value_out, &headers_out));
 
-  mock_timer()->AdvanceMs(11 * Timer::kSecondMs);
+  AdvanceTimeMs(11 * Timer::kSecondMs);
   EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFind(
       "http://example.com/404", http_cache(), &value_out, &headers_out));
 }
@@ -1060,7 +1060,7 @@ TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
   // This is because we do not proactively initiate refreshes for all resources;
   // only the ones that are actually asked for on a regular basis.  So a
   // completely inactive site will not see its resources freshened.
-  mock_timer()->AdvanceMs((max_age_sec + 1) * Timer::kSecondMs);
+  AdvanceTimeMs((max_age_sec + 1) * Timer::kSecondMs);
   expirations_->Clear();
   StartRead();
   EXPECT_EQ(1, expirations_->Get());
@@ -1070,10 +1070,10 @@ TEST_F(ResourceFreshenTest, TestFreshenImminentlyExpiringResources) {
 
   // But if we have just a little bit of traffic then when we get a request
   // for a soon-to-expire resource it will auto-freshen.
-  mock_timer()->AdvanceMs((1 + (max_age_sec * 4) / 5) * Timer::kSecondMs);
+  AdvanceTimeMs((1 + (max_age_sec * 4) / 5) * Timer::kSecondMs);
   EXPECT_TRUE(ResourceIsCached());
   CallFetcherCallbacks();  // freshens cache.
-  mock_timer()->AdvanceMs((max_age_sec / 5) * Timer::kSecondMs);
+  AdvanceTimeMs((max_age_sec / 5) * Timer::kSecondMs);
   EXPECT_TRUE(ResourceIsCached());  // Yay, no cache misses after 301 seconds
   EXPECT_EQ(0, expirations_->Get());
 }
@@ -1099,7 +1099,7 @@ TEST_F(ResourceFreshenTest, NoFreshenOfForcedCachedResources) {
   // either, because the cache expiration time is irrelevant -- we are
   // forcing caching so we consider the resource to always be fresh.
   // So even after an hour we should have no expirations.
-  mock_timer()->AdvanceMs(1 * Timer::kHourMs);
+  AdvanceTimeMs(1 * Timer::kHourMs);
   EXPECT_TRUE(ResourceIsCached());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
@@ -1124,14 +1124,14 @@ TEST_F(ResourceFreshenTest, NoFreshenOfShortLivedResources) {
   // There should be no extra fetches required because our cache is
   // still active.  We shouldn't have needed an extra fetch to freshen,
   // either.
-  mock_timer()->AdvanceMs((max_age_sec - 1) * Timer::kSecondMs);
+  AdvanceTimeMs((max_age_sec - 1) * Timer::kSecondMs);
   EXPECT_TRUE(ResourceIsCached());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, expirations_->Get());
 
   // Now let the resource expire.  We'll need another fetch since we did not
   // freshen.
-  mock_timer()->AdvanceMs(2 * Timer::kSecondMs);
+  AdvanceTimeMs(2 * Timer::kSecondMs);
   EXPECT_TRUE(ResourceIsCached());
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, expirations_->Get());
@@ -1498,7 +1498,7 @@ class ResourceManagerTestThreadedCache : public ServerContextTest {
             mock_scheduler(),
             new ThreadsafeCache(cache_backend_, threads_->NewMutex()),
             new QueuedWorkerPool(2, threads_.get()))),
-        http_cache_(new HTTPCache(cache_.get(), mock_timer(), hasher(),
+        http_cache_(new HTTPCache(cache_.get(), timer(), hasher(),
                                   statistics())) {
   }
 
@@ -1561,7 +1561,7 @@ TEST_F(ResourceManagerTestThreadedCache, RepeatedFetches) {
     // hence the combination; while the minified version of A is still OK.
     // Further, make sure that B will simply not be available, so we will not
     // include it in combinations here and below.
-    mock_timer()->AdvanceMs(2 * Timer::kSecondMs);
+    AdvanceTimeMs(2 * Timer::kSecondMs);
     SetFetchResponse404(b_url);
 
     // Here we will be rewriting the combination with its input

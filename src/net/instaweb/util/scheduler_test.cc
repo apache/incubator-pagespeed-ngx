@@ -102,7 +102,7 @@ TEST_F(SchedulerTest, AlarmsGetRun) {
   }
   {
     ScopedMutex lock(scheduler_.mutex());
-    scheduler_.BlockingTimedWait(55);  // Never signaled, should time out.
+    scheduler_.BlockingTimedWaitMs(55);  // Never signaled, should time out.
   }
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(3, counter);
@@ -120,7 +120,7 @@ TEST_F(SchedulerTest, MidpointBlock) {
   scheduler_.AddAlarm(start_us + 3 * Timer::kMsUs, new CountFunction(&counter));
   {
     ScopedMutex lock(scheduler_.mutex());
-    scheduler_.BlockingTimedWait(4);  // Never signaled, should time out.
+    scheduler_.BlockingTimedWaitMs(4);  // Never signaled, should time out.
   }
   int64 mid_us = timer_.NowUs();
   EXPECT_LT(start_us + 4 * Timer::kMsUs, mid_us);
@@ -162,7 +162,7 @@ TEST_F(SchedulerTest, MidpointCancellation) {
                           new CountFunction(&counter));
   {
     ScopedMutex lock(scheduler_.mutex());
-    scheduler_.BlockingTimedWait(4);  // Never signaled, should time out.
+    scheduler_.BlockingTimedWaitMs(4);  // Never signaled, should time out.
   }
   int64 mid_us = timer_.NowUs();
   EXPECT_LT(start_us + 4 * Timer::kMsUs, mid_us);
@@ -204,7 +204,7 @@ TEST_F(SchedulerTest, TimedWaitExpire) {
     scheduler_.TimedWait(2, new CountFunction(&counter));
     scheduler_.TimedWait(4, new CountFunction(&counter));
     scheduler_.TimedWait(3, new CountFunction(&counter));
-    scheduler_.BlockingTimedWait(5);
+    scheduler_.BlockingTimedWaitMs(5);
   }
   int64 end_us = timer_.NowUs();
   EXPECT_EQ(3, counter);
@@ -239,7 +239,7 @@ TEST_F(SchedulerTest, TimedWaitMidpointSignal) {
     scheduler_.TimedWait(3, new CountFunction(&counter));
     scheduler_.TimedWait(2, new CountFunction(&counter));
     scheduler_.TimedWait(Timer::kYearMs, new CountFunction(&counter));
-    scheduler_.BlockingTimedWait(4);  // Will time out
+    scheduler_.BlockingTimedWaitMs(4);  // Will time out
     EXPECT_EQ(2, counter);
     scheduler_.Signal();
   }

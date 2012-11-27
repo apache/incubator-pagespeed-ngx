@@ -182,10 +182,11 @@ void TestRewriteDriverFactory::SetupCaches(ServerContext* resource_manager) {
   // DelayCache and ThreadsafeCache.
   DCHECK(lru_cache_ == NULL);
   lru_cache_ = new LRUCache(kCacheSize);
-  mock_time_cache_.reset(new MockTimeCache(mock_timer_, lru_cache_));
   threadsafe_cache_.reset(
       new ThreadsafeCache(lru_cache_, thread_system()->NewMutex()));
-  delay_cache_ = new DelayCache(threadsafe_cache_.get(), thread_system());
+  mock_time_cache_.reset(new MockTimeCache(scheduler(),
+                                           threadsafe_cache_.get()));
+  delay_cache_ = new DelayCache(mock_time_cache_.get(), thread_system());
   HTTPCache* http_cache = new HTTPCache(delay_cache_, timer(),
                                         hasher(), statistics());
   resource_manager->set_http_cache(http_cache);
@@ -262,6 +263,10 @@ void TestRewriteDriverFactory::ApplyPlatformSpecificConfiguration(
   for (std::size_t i = 0; i < platform_config_vector_.size(); i++) {
     platform_config_vector_[i]->Done(driver);
   }
+}
+
+void TestRewriteDriverFactory::AdvanceTimeMs(int64 delta_ms) {
+  mock_scheduler_->AdvanceTimeMs(delta_ms);
 }
 
 TestRewriteDriverFactory::CreateFilterCallback::~CreateFilterCallback() {
