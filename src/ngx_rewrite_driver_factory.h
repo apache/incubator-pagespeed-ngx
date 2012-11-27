@@ -19,6 +19,12 @@
 #ifndef NGX_REWRITE_DRIVER_FACTORY_H_
 #define NGX_REWRITE_DRIVER_FACTORY_H_
 
+extern "C" {
+  #include <ngx_config.h>
+  #include <ngx_core.h>
+  #include <ngx_http.h>
+}
+
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/simple_stats.h"
@@ -27,10 +33,14 @@
 namespace net_instaweb {
 
 class SlowWorker;
+class StaticJavaScriptManager;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
+  static const char kStaticJavaScriptPrefix[];
+
   NgxRewriteDriverFactory();
+  NgxRewriteDriverFactory(ngx_log_t* log, ngx_resolver_t* resolver);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -45,6 +55,9 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Create a new RewriteOptions.  In this implementation it will be an
   // NgxRewriteOptions.
   virtual RewriteOptions* NewRewriteOptions();
+  // Initializes the StaticJavascriptManager.
+  virtual void InitStaticJavascriptManager(
+      StaticJavascriptManager* static_js_manager);
 
   SlowWorker* slow_worker() { return slow_worker_.get(); }
 
@@ -52,6 +65,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   SimpleStats simple_stats_;
   Timer* timer_;
   apr_pool_t* pool_;
+  ngx_log_t* log_;
+  ngx_resolver_t* resolver_;
   scoped_ptr<SlowWorker> slow_worker_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);

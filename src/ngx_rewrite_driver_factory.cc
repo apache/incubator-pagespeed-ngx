@@ -16,8 +16,15 @@
 
 // Author: jefftk@google.com (Jeff Kaufman)
 
+extern "C" {
+  #include <ngx_config.h>
+  #include <ngx_core.h>
+  #include <ngx_http.h>
+}
+
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
+#include "ngx_url_async_fetcher.h"
 
 #include <cstdio>
 
@@ -28,6 +35,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -60,6 +68,7 @@ class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
+class NgxUrlAsyncFetcher;
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
   RewriteDriverFactory::InitStats(&simple_stats_);
@@ -72,29 +81,49 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory() {
   InitializeDefaultOptions();
 }
 
+NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_log_t* log,
+    ngx_resolver_t* resolver) {
+  RewriteDriverFactory::InitStats(&simple_stats_);
+  SerfUrlAsyncFetcher::InitStats(&simple_stats_);
+  SetStatistics(&simple_stats_);
+  timer_ = DefaultTimer();
+  log_ = log;
+  resolver_ = resolver;
+
+  InitializeDefaultOptions();
+}
+
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   slow_worker_->ShutDown();
 }
+
+const char NgxRewriteDriverFactory::kStaticJavaScriptPrefix[] =
+    "/ngx_pagespeed_static/";
 
 Hasher* NgxRewriteDriverFactory::NewHasher() {
   return new MD5Hasher;
 }
 
 UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
-  return new WgetUrlFetcher;
+  //return new WgetUrlFetcher;
+  return NULL;
 }
 
 UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
-  net_instaweb::UrlAsyncFetcher* fetcher =
-      new net_instaweb::SerfUrlAsyncFetcher(
-          "",
-          pool_,
-          thread_system(),
-          statistics(),
-          timer(),
-          2500,
+  net_instaweb::NgxUrlAsyncFetcher* fetcher = 
+      new net_instaweb::NgxUrlAsyncFetcher(
+          "", // proxy
+          log_,
+          60 * 1000, // fetcher timeout 60s
+          10 * 1000, // resolver timeout 10s
+          20 * 1000, // fetche timeout 20s
+          resolver_,
           message_handler());
+  if (!fetcher->Init()) {
+    delete fetcher;
+    return NULL;
+  }
   return fetcher;
 }
 
@@ -165,6 +194,11 @@ Statistics* NgxRewriteDriverFactory::statistics() {
 
 RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
   return new NgxRewriteOptions();
+}
+
+void NgxRewriteDriverFactory::InitStaticJavascriptManager(
+    StaticJavascriptManager* static_js_manager) {
+  //static_js_manager->set_library_url_prefix(kStaticJavaScriptPrefix);
 }
 
 }  // namespace net_instaweb

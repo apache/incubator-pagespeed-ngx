@@ -128,8 +128,21 @@ you need to first build and configure nginx.  Set it up something like:
         root /path/to/mod_pagespeed/src/install;
         index index.html;
 
+        add_header Cache-Control "public, max-age=600";
+
+        # Disable parsing if the size of the HTML exceeds 50kB.
+        pagespeed MaxHtmlParseBytes 50000;
+
         location /mod_pagespeed_test/no_cache/ {
           add_header Cache-Control no-cache;
+        }
+
+        location /mod_pagespeed_test/compressed/ {
+          add_header Cache-Control max-age=600;
+          add_header Content-Encoding gzip;
+          types {
+            text/javascript custom_ext;
+          }
         }
 
         ...

@@ -48,7 +48,7 @@ extern "C" {
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
-  NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(char* proxy,
+  NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(const char* proxy,
                                          ngx_pool_t* pool,
                                          int64 timeout, // timer for fetcher
                                          int64 resolver_timeout, // timer for resolver
@@ -64,14 +64,14 @@ namespace net_instaweb {
       resolver_timeout_(resolver_timeout),
       fetch_timeout_(fetch_timeout) {
     ngx_memzero(&url_, sizeof(ngx_url_t));
-    url_.url.data = reinterpret_cast<u_char*>(proxy);
+    url_.url.data = (u_char*)(proxy);
     url_.url.len = ngx_strlen(proxy);
     pool_ = pool;
     log_ = pool->log;
     resolver_ = resolver;
   }
 
-  NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(char* proxy,
+  NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(const char* proxy,
                                          ngx_log_t* log,
                                          int64 timeout,
                                          int64 resolver_timeout,
@@ -88,7 +88,7 @@ namespace net_instaweb {
       fetch_timeout_(fetch_timeout) {
     ngx_memzero(&url_, sizeof(ngx_url_t));
     if (proxy != NULL && *proxy != '\0') {
-      url_.url.data = reinterpret_cast<u_char*>(proxy);
+      url_.url.data = (u_char *)(proxy);
       url_.url.len = ngx_strlen(proxy);
     }
     log_ = log;
@@ -179,13 +179,13 @@ namespace net_instaweb {
     shutdown_ = true;
   }
 
-  bool NgxUrlAsyncFetcher::Fetch(const GoogleString& url,
+  void NgxUrlAsyncFetcher::Fetch(const GoogleString& url,
                                  MessageHandler* message_handler,
                                  AsyncFetch* async_fetch) {
     async_fetch = EnableInflation(async_fetch);
     NgxFetch* fetch = new NgxFetch(url, async_fetch,
           message_handler, fetch_timeout_);
-    return StartFetch(fetch);
+    StartFetch(fetch);
   }
 
   bool NgxUrlAsyncFetcher::StartFetch(NgxFetch* fetch) {

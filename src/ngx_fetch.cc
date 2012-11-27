@@ -84,11 +84,7 @@ namespace net_instaweb {
   // ParseUrl and init a fetch
   bool NgxFetch::Start(NgxUrlAsyncFetcher* fetcher) {
     fetcher_ = fetcher;
-    if (!ParseUrl()) {
-      Cancel();
-      return false;
-    }
-
+    
     if (!Init()) {
       Cancel();
       return false;
@@ -104,6 +100,10 @@ namespace net_instaweb {
     pool_ = ngx_create_pool(12288, log_);
     if (pool_ == NULL) { return false; }
 
+    if (!ParseUrl()) {
+      Cancel();
+      return false;
+    }
     timeout_event_ = static_cast<ngx_event_t *>(ngx_pcalloc(pool_, sizeof(ngx_event_t)));
     if (timeout_event_ == NULL) { return false; }
     timeout_event_->data = this;
@@ -129,7 +129,6 @@ namespace net_instaweb {
     resolver_ctx_->name.len = url_.host.len;
     resolver_ctx_->type = NGX_RESOLVE_A;
     resolver_ctx_->handler = NgxFetchResolveDone;
-    resolver_ctx_->data = NULL;
     resolver_ctx_->timeout = fetcher_->resolver_timeout_;
 
     if (ngx_resolve_name(resolver_ctx_) != NGX_OK) {
@@ -194,6 +193,26 @@ namespace net_instaweb {
       return false;
     }
     str_url_.copy(reinterpret_cast<char*>(url_.url.data), str_url_.length(), 0);
+    size_t add;
+    u_short port;
+    if (ngx_strncasecmp(url_.url.data, (u_char*)"http://", 7) == 0) {
+      add = 7;
+      port = 80;
+
+    } else if (ngx_strncasecmp(url_.url.data, (u_char*)"https://", 8) == 0) {
+      add = 8;
+      port = 443;
+
+    } else { // not https or http
+      return false;
+    }
+
+    url_.url.data += add;
+    url_.url.len -= add;
+    url_.default_port = port;
+    url_.no_resolve = 1;
+    url_.uri_part = 1;
+
     if (ngx_parse_url(pool_, &url_) == NGX_OK) {
       return true;
     }
@@ -273,6 +292,7 @@ namespace net_instaweb {
 
   int NgxFetch::Connect() {
     struct sockaddr_in sin;
+    ngx_memzero(&sin, sizeof(sin));
     sin.sin_family = AF_INET;
     sin.sin_port = htons(url_.port);
     sin.sin_addr.s_addr = resolver_ctx_->addrs[0];
@@ -285,9 +305,9 @@ namespace net_instaweb {
 
     // get callback is dump function, it just returns NGX_OK
     pc.get = ngx_event_get_peer;
-    pc.rcvbuf = -1;
-    pc.local = NULL;
+    pc.log_error = NGX_ERROR_ERR;
     pc.log = fetcher_->log_;
+    pc.rcvbuf = -1;
 
     int rc = ngx_event_connect_peer(&pc);
     connection_ = pc.connection;

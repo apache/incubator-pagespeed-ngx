@@ -40,13 +40,13 @@ class Statistics;
 class NgxFetch;
 class Variable;
 
-class NgxUrlAsyncFetcher : public UrlPollableAsyncFetcher {
+class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
   public:
     // add timeout event
-    NgxUrlAsyncFetcher(char* proxy, ngx_pool_t* pool, int64 timeout,
+    NgxUrlAsyncFetcher(const char* proxy, ngx_pool_t* pool, int64 timeout,
         int64 resolver_timeout, int64 fetch_timeout, ngx_resolver_t* resolver,
         MessageHandler* handler);
-    NgxUrlAsyncFetcher(char* proxy, ngx_log_t* log, int64 timeout,
+    NgxUrlAsyncFetcher(const char* proxy, ngx_log_t* log, int64 timeout,
         int64 resolver_timeout, int64 fetch_timeout, ngx_resolver_t* resolver,
         MessageHandler* handler);
     NgxUrlAsyncFetcher(NgxUrlAsyncFetcher *parent, char* proxy);
@@ -59,9 +59,9 @@ class NgxUrlAsyncFetcher : public UrlPollableAsyncFetcher {
     // shut down all the fetchers.
     virtual void ShutDown(); 
 
-    virtual bool SupportsHttps();
+    virtual bool SupportsHttps() const { return false; }
 
-    virtual bool Fetch(const GoogleString& url,
+    virtual void Fetch(const GoogleString& url,
                        MessageHandler* message_handler,
                        AsyncFetch* callback);
 

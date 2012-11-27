@@ -23,18 +23,47 @@ ngx_feature_incs="
 #include \"net/instaweb/util/public/string_writer.h\"
 #include \"net/instaweb/util/public/null_message_handler.h\"
 "
-# TODO(oschaaf): include apr/apr-util in a portable manner
+
+os_name='unknown_os'
+arch_name='unknown_arch'
+uname_os=`uname`
+uname_arch=`uname -m`
+
+if [ $uname_os = 'Linux' ]; then
+   os_name='linux'
+elif [ $uname_os = 'Darwin' ]; then
+   os_name='mac'
+else
+   echo "OS not supported: $uname_os"
+   exit 1
+fi
+
+if [ $uname_arch = 'x86_64' ]; then
+   arch_name='x64'
+elif [ $uname_arch = 'x86_32' ]; then
+   arch_name='ia32'
+else
+   echo "Architecture not supported: $uname_arch"
+   exit 1
+fi
+
+if [ "$NGX_DEBUG" = "YES" ]; then
+    buildtype=Debug
+else
+    buildtype=Release
+fi
+
 pagespeed_include="$mod_pagespeed_dir
                    $mod_pagespeed_dir/third_party/chromium/src/
                    $mod_pagespeed_dir/third_party/protobuf/src/
-                   $mod_pagespeed_dir/out/Release/obj/gen/
+                   $mod_pagespeed_dir/out/$buildtype/obj/gen/
                    $mod_pagespeed_dir/third_party/apr/src/include/
-                   $mod_pagespeed_dir/third_party/apr/gen/arch/linux/x64/include/
+                   $mod_pagespeed_dir/third_party/apr/gen/arch/$os_name/$arch_name/include/
                    $mod_pagespeed_dir/third_party/aprutil/src/include/
-                   $mod_pagespeed_dir/third_party/aprutil/gen/arch/linux/x64/include/"
+                   $mod_pagespeed_dir/third_party/aprutil/gen/arch/$os_name/$arch_name/include/"
 ngx_feature_path="$pagespeed_include"
 pagespeed_automatic_dir="$mod_pagespeed_dir/net/instaweb/automatic"
-pagespeed_libs="-lstdc++ $pagespeed_automatic_dir/pagespeed_automatic.a -lrt"
+pagespeed_libs="-lstdc++ $pagespeed_automatic_dir/pagespeed_automatic.a -lrt -pthread"
 ngx_feature_libs="$pagespeed_libs"
 ngx_feature_test="
     GoogleString output_buffer;
@@ -70,9 +99,9 @@ if [ $ngx_found = yes ]; then
   HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
   CORE_LIBS="$CORE_LIBS 
              $pagespeed_libs
-             $mod_pagespeed_dir/out/Release/obj.target/third_party/serf/libserf.a
-             $mod_pagespeed_dir/out/Release/obj.target/third_party/apr/libapr.a
-             $mod_pagespeed_dir/out/Release/obj.target/third_party/aprutil/libaprutil.a"
+             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/serf/libserf.a
+             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/apr/libapr.a
+             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/aprutil/libaprutil.a"
   CORE_INCS="$CORE_INCS $pagespeed_include"
 else
   cat << END
