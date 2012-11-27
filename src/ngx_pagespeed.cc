@@ -870,7 +870,7 @@ ngx_http_pagespeed_determine_options(
   // Directory-specific options, usually null.
   net_instaweb::RewriteOptions* directory_options = cfg_l->options;
 
-  // Directory-specific options, may be null
+  // Request-specific options, nearly always null.
   net_instaweb::RewriteOptions* request_options;
   rc = ngx_http_pagespeed_determine_request_options(
       r, ctx, cfg_s, url, &request_options);
