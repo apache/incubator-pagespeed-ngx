@@ -407,15 +407,15 @@ ngx_http_pagespeed_create_loc_conf(ngx_conf_t* cf) {
 // directives and because merging is order-dependent in the opposite way we'd
 // like.
 void ngx_http_pagespeed_merge_options(
-    net_instaweb::NgxRewriteOptions** parent_options,
+    net_instaweb::NgxRewriteOptions* parent_options,
     net_instaweb::NgxRewriteOptions** child_options) {
-  if (*parent_options == NULL) {
+  if (parent_options == NULL) {
     // Nothing to do.
-  } else if (*child_options == NULL && *parent_options != NULL) {
-    *child_options = (*parent_options)->Clone();
+  } else if (*child_options == NULL && parent_options != NULL) {
+    *child_options = parent_options->Clone();
   } else {  // Both non-null.
     // Unfortunately, merging configuration options is order dependent.  We'd
-    // like to just do (*child_options)->Merge(**parent_options)
+    // like to just do (*child_options)->Merge(*parent_options)
     // but then if we had:
     //    pagespeed RewriteLevel PassThrough
     //    server {
@@ -423,7 +423,7 @@ void ngx_http_pagespeed_merge_options(
     //    }
     // it would always be stuck on PassThrough.
     net_instaweb::NgxRewriteOptions* child_specific_options = *child_options;
-    *child_options = (*parent_options)->Clone();
+    *child_options = parent_options->Clone();
     (*child_options)->Merge(*child_specific_options);
     delete child_specific_options;
   }
@@ -438,7 +438,7 @@ ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   ngx_http_pagespeed_srv_conf_t* cfg_s =
       static_cast<ngx_http_pagespeed_srv_conf_t*>(child);
 
-  ngx_http_pagespeed_merge_options(&parent_cfg_s->options, &cfg_s->options);
+  ngx_http_pagespeed_merge_options(parent_cfg_s->options, &cfg_s->options);
 
   if (cfg_s->options == NULL) {
     return NGX_CONF_OK;  // No pagespeed options; don't do anything.
@@ -489,9 +489,37 @@ ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 
 char*
 ngx_http_pagespeed_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
+  ngx_http_pagespeed_loc_conf_t* parent_cfg_l =
+      static_cast<ngx_http_pagespeed_loc_conf_t*>(parent);
+
+  // The variant of the pagespeed directive that is acceptable in location
+  // blocks is only acceptable in location blocks, so we should never be merging
+  // in options from a server or main block.
+  CHECK(parent_cfg_l->options == NULL);
+
+  ngx_http_pagespeed_loc_conf_t* cfg_l =
+      static_cast<ngx_http_pagespeed_loc_conf_t*>(child);
+  if (cfg_l->options == NULL) {
+    // No directory specific options.
+    return NGX_CONF_OK;
+  }
+
+  ngx_http_pagespeed_srv_conf_t* cfg_s =
+      static_cast<ngx_http_pagespeed_srv_conf_t*>(
+          ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
+
+  if (cfg_s->server_context == NULL) {
+    // Pagespeed options cannot be defined only in location blocks.  There must
+    // be at least a single "pagespeed off" in the main block or a server
+    // block.
+    return NGX_CONF_OK;
+  }
+
+  // If we get here we have parent options ("global options") from cfg_s, child
+  // options ("directory specific options") from cfg_l, and no options from
+  // parent_cfg_l.  Rebase the directory specific options on the global options.
   ngx_http_pagespeed_merge_options(
-      &(static_cast<ngx_http_pagespeed_loc_conf_t*>(parent)->options),
-      &(static_cast<ngx_http_pagespeed_loc_conf_t*>(child)->options));
+      cfg_s->server_context->config(), &cfg_l->options);
 
   return NGX_CONF_OK;
 }
@@ -867,38 +895,43 @@ ngx_http_pagespeed_determine_options(
   net_instaweb::RewriteOptions* global_options =
       cfg_s->server_context->global_options();
 
-  // Directory-specific options, usually null.
+  // Directory-specific options, usually null.  They've already been rebased off
+  // of the global options as part of the configuration process.
   net_instaweb::RewriteOptions* directory_options = cfg_l->options;
 
-  // Request-specific options, nearly always null.
+  // Request-specific options, nearly always null.  If set they need to be
+  // rebased on the directory options or the global options.
   net_instaweb::RewriteOptions* request_options;
   rc = ngx_http_pagespeed_determine_request_options(
       r, ctx, cfg_s, url, &request_options);
   if (rc != NGX_OK) {
+    *options = NULL;
     return rc;
   }
 
-  // If we don't have any directory or request options and we're not running an
-  // experiment, options=NULL to indicate that the global options are valid.
+  // Because the caller takes memory ownership of any options we return, the
+  // only situation in which we can avoid allocating a new RewriteOptions is if
+  // the global options are ok as are.
   if (directory_options == NULL && request_options == NULL &&
       !global_options->running_furious()) {
     *options = NULL;
     return NGX_OK;
   }
 
-  // Combine options from the various sources.
-  *options = global_options->Clone();
+  // Start with directory options if we have them, otherwise request options.
   if (directory_options != NULL) {
-    (*options)->Merge(*directory_options);
-  }
-  if (request_options != NULL) {
-    (*options)->Merge(*request_options);
+    *options = directory_options->Clone();
+  } else {
+    *options = global_options->Clone();
   }
 
-  // Set options for this side of the experiment, if we're running one.  If
-  // there are request options then ignore the experiment because we don't want
-  // experiments to be contaminated with unexpected settings.
-  if (request_options == NULL && (*options)->running_furious()) {
+  // Modify our options in response to request options or experiment settings,
+  // if we need to.  If there are request options then ignore the experiment
+  // because we don't want experiments to be contaminated with unexpected
+  // settings.
+  if (request_options != NULL) {
+    (*options)->Merge(*request_options);
+  } else if ((*options)->running_furious()) {
     (*options)->set_need_to_store_experiment_data(
         cfg_s->server_context->furious_matcher()->ClassifyIntoExperiment(
             *ctx->base_fetch->request_headers(), *options));
