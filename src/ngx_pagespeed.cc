@@ -169,16 +169,18 @@ ngx_http_pagespeed_string_piece_to_buffer_chain(
   return NGX_OK;
 }
 
+namespace {
+
 typedef struct {
   net_instaweb::NgxRewriteDriverFactory* driver_factory;
   net_instaweb::NgxServerContext* server_context;
   net_instaweb::NgxRewriteOptions* options;
   net_instaweb::ProxyFetchFactory* proxy_fetch_factory;
   net_instaweb::MessageHandler* handler;
-} ngx_http_pagespeed_srv_conf_t;
+} ps_srv_conf_t;
 
 typedef struct {
-  ngx_http_pagespeed_srv_conf_t* cfg;
+  ps_srv_conf_t* cfg;
   net_instaweb::ProxyFetch* proxy_fetch;
   net_instaweb::NgxBaseFetch* base_fetch;
   bool data_received;
@@ -188,44 +190,42 @@ typedef struct {
   bool is_resource_fetch;
   bool sent_headers;
   bool write_pending;
-} ngx_http_pagespeed_request_ctx_t;
-
-namespace {
+} ps_request_ctx_t;
 
 ngx_int_t
-ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
+ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
 void*
-ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf);
+ps_create_srv_conf(ngx_conf_t* cf);
 
 char*
-ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child);
+ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child);
 
 void
-ngx_http_pagespeed_release_request_context(void* data);
+ps_release_request_context(void* data);
 
 void
-ngx_http_pagespeed_set_buffered(ngx_http_request_t* r, bool on);
+ps_set_buffered(ngx_http_request_t* r, bool on);
 
 GoogleString
-ngx_http_pagespeed_determine_url(ngx_http_request_t* r);
+ps_determine_url(ngx_http_request_t* r);
 
-ngx_http_pagespeed_request_ctx_t*
-ngx_http_pagespeed_get_request_context(ngx_http_request_t* r);
+ps_request_ctx_t*
+ps_get_request_context(ngx_http_request_t* r);
 
 void
-ngx_http_pagespeed_initialize_server_context(
-    ngx_http_pagespeed_srv_conf_t* cfg);
+ps_initialize_server_context(
+    ps_srv_conf_t* cfg);
 
 ngx_int_t
-ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
+ps_update(ps_request_ctx_t* ctx,
                           ngx_event_t* ev);
 
 void
-ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev);
+ps_connection_read_handler(ngx_event_t* ev);
 
 ngx_int_t
-ngx_http_pagespeed_create_connection(ngx_http_pagespeed_request_ctx_t* ctx);
+ps_create_connection(ps_request_ctx_t* ctx);
 
 namespace CreateRequestContext {
 enum Response {
@@ -239,32 +239,30 @@ enum Response {
 } // namespace CreateRequestContext
 
 CreateRequestContext::Response
-ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
-                                          bool is_resource_fetch);
+ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch);
 
 void
-ngx_http_pagespeed_send_to_pagespeed(
-    ngx_http_request_t* r,
-    ngx_http_pagespeed_request_ctx_t* ctx,
-    ngx_chain_t* in);
+ps_send_to_pagespeed(ngx_http_request_t* r,
+                     ps_request_ctx_t* ctx,
+                     ngx_chain_t* in);
 
 ngx_int_t
-ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
+ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
 ngx_int_t
-ngx_http_pagespeed_header_filter(ngx_http_request_t* r);
+ps_header_filter(ngx_http_request_t* r);
 
 ngx_int_t
-ngx_http_pagespeed_init(ngx_conf_t* cf);
+ps_init(ngx_conf_t* cf);
 
 char*
-ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
+ps_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
-ngx_command_t ngx_http_pagespeed_commands[] = {
+ngx_command_t ps_commands[] = {
   { ngx_string("pagespeed"),
     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1|
     NGX_CONF_TAKE2|NGX_CONF_TAKE3|NGX_CONF_TAKE4|NGX_CONF_TAKE5,
-    ngx_http_pagespeed_configure,
+    ps_configure,
     NGX_HTTP_SRV_CONF_OFFSET,
     0,
     NULL },
@@ -274,10 +272,9 @@ ngx_command_t ngx_http_pagespeed_commands[] = {
 
 #define NGX_PAGESPEED_MAX_ARGS 10
 char*
-ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
-  ngx_http_pagespeed_srv_conf_t* cfg =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
-          ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
+ps_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
+  ps_srv_conf_t* cfg = static_cast<ps_srv_conf_t*>(
+      ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
 
   if (cfg->options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
@@ -288,7 +285,7 @@ ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   // args[0] is always "pagespeed"; ignore it.
   ngx_uint_t n_args = cf->args->nelts - 1;
 
-  // In ngx_http_pagespeed_commands we only register 'pagespeed' as taking up to
+  // In ps_commands we only register 'pagespeed' as taking up to
   // five arguments, so this check should never fire.
   CHECK(n_args <= NGX_PAGESPEED_MAX_ARGS);
   StringPiece args[NGX_PAGESPEED_MAX_ARGS];
@@ -307,11 +304,11 @@ ngx_http_pagespeed_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
 }
 
 void*
-ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
-  ngx_http_pagespeed_srv_conf_t* conf;
+ps_create_srv_conf(ngx_conf_t* cf) {
+  ps_srv_conf_t* conf;
 
-  conf = static_cast<ngx_http_pagespeed_srv_conf_t*>(
-      ngx_pcalloc(cf->pool, sizeof(ngx_http_pagespeed_srv_conf_t)));
+  conf = static_cast<ps_srv_conf_t*>(
+      ngx_pcalloc(cf->pool, sizeof(ps_srv_conf_t)));
   if (conf == NULL) {
     return NGX_CONF_ERROR;
   }
@@ -333,11 +330,9 @@ ngx_http_pagespeed_create_srv_conf(ngx_conf_t* cf) {
 // directives and because merging is order-dependent in the opposite way we'd
 // like.
 char*
-ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
-  ngx_http_pagespeed_srv_conf_t* parent_conf =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(parent);
-  ngx_http_pagespeed_srv_conf_t* child_conf =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(child);
+ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
+  ps_srv_conf_t* parent_conf = static_cast<ps_srv_conf_t*>(parent);
+  ps_srv_conf_t* child_conf = static_cast<ps_srv_conf_t*>(child);
 
   if (parent_conf->options == NULL) {
     // Nothing to do.
@@ -365,9 +360,8 @@ ngx_http_output_header_filter_pt ngx_http_next_header_filter;
 ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
 void
-ngx_http_pagespeed_release_request_context(void* data) {
-  ngx_http_pagespeed_request_ctx_t* ctx =
-      static_cast<ngx_http_pagespeed_request_ctx_t*>(data);
+ps_release_request_context(void* data) {
+  ps_request_ctx_t* ctx = static_cast<ps_request_ctx_t*>(data);
 
   // proxy_fetch deleted itself if we called Done(), but if an error happened
   // before then we need to tell it to delete itself.
@@ -401,7 +395,7 @@ ngx_http_pagespeed_release_request_context(void* data) {
 // Tell nginx whether we have network activity we're waiting for so that it sets
 // a write handler.  See src/http/ngx_http_request.c:2083.
 void
-ngx_http_pagespeed_set_buffered(ngx_http_request_t* r, bool on) {
+ps_set_buffered(ngx_http_request_t* r, bool on) {
   if (on) {
     r->buffered |= NGX_HTTP_SSI_BUFFERED;
   } else {
@@ -410,7 +404,7 @@ ngx_http_pagespeed_set_buffered(ngx_http_request_t* r, bool on) {
 }
 
 GoogleString
-ngx_http_pagespeed_determine_url(ngx_http_request_t* r) {
+ps_determine_url(ngx_http_request_t* r) {
   // Based on ngx_http_variable_scheme.
   bool is_https = false;
 #if (NGX_HTTP_SSL)
@@ -454,29 +448,28 @@ ngx_http_pagespeed_determine_url(ngx_http_request_t* r) {
     if (rc != NGX_OK) {
       s.len = 0;
     }
-    host = ngx_http_pagespeed_str_to_string_piece(s);
+    host =  ngx_http_pagespeed_str_to_string_piece(s);
   }
 
   return net_instaweb::StrCat(
       is_https ? "https://" : "http://", host, port_string,
-      ngx_http_pagespeed_str_to_string_piece(r->unparsed_uri));
+       ngx_http_pagespeed_str_to_string_piece(r->unparsed_uri));
 }
 
-// Get the context for this request.  ngx_http_pagespeed_create_request_context
+// Get the context for this request.  ps_create_request_context
 // should already have been called to create it.
-ngx_http_pagespeed_request_ctx_t*
-ngx_http_pagespeed_get_request_context(ngx_http_request_t* r) {
-  return static_cast<ngx_http_pagespeed_request_ctx_t*>(
+ps_request_ctx_t*
+ps_get_request_context(ngx_http_request_t* r) {
+  return static_cast<ps_request_ctx_t*>(
       ngx_http_get_module_ctx(r, ngx_pagespeed));
 }
 
-// Initialize the ngx_http_pagespeed_srv_conf_t by allocating and configuring
+// Initialize the ps_srv_conf_t by allocating and configuring
 // the long-lived objects it contains.
 // TODO(jefftk): This shouldn't be done on the first request but instead
 // when we're done processing the configuration.
 void
-ngx_http_pagespeed_initialize_server_context(
-    ngx_http_pagespeed_srv_conf_t* cfg) {
+ps_initialize_server_context(ps_srv_conf_t* cfg) {
   net_instaweb::NgxRewriteDriverFactory::Initialize();
   // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
   // we're done with it.
@@ -505,8 +498,7 @@ ngx_http_pagespeed_initialize_server_context(
 //   NGX_AGAIN: pagespeed still working, needs to be called again later
 //   NGX_ERROR: error
 ngx_int_t
-ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
-                          ngx_event_t* ev) {
+ps_update(ps_request_ctx_t* ctx, ngx_event_t* ev) {
   bool done;
   int rc;
   char chr;
@@ -522,7 +514,7 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
       PDBG(ctx, "no data to read from pagespeed yet");
       return NGX_AGAIN;
     } else {
-      perror("ngx_http_pagespeed_connection_read_handler");
+      perror("ps_connection_read_handler");
       return NGX_ERROR;
     }
   } else {
@@ -573,7 +565,7 @@ ngx_http_pagespeed_update(ngx_http_pagespeed_request_ctx_t* ctx,
 }
 
 void
-ngx_http_pagespeed_writer(ngx_http_request_t* r)
+ps_writer(ngx_http_request_t* r)
 {
     ngx_connection_t* c = r->connection;
     ngx_event_t* wev = c->write;
@@ -612,7 +604,7 @@ ngx_http_set_pagespeed_write_handler(ngx_http_request_t *r)
     r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
     r->read_event_handler = ngx_http_request_empty_handler;
-    r->write_event_handler = ngx_http_pagespeed_writer;
+    r->write_event_handler = ps_writer;
 
     ngx_event_t* wev = r->connection->write;
 
@@ -629,17 +621,17 @@ ngx_http_set_pagespeed_write_handler(ngx_http_request_t *r)
 }
 
 void
-ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
+ps_connection_read_handler(ngx_event_t* ev) {
   CHECK(ev != NULL);
 
   ngx_connection_t* c = static_cast<ngx_connection_t*>(ev->data);
   CHECK(c != NULL);
 
-  ngx_http_pagespeed_request_ctx_t* ctx =
-      static_cast<ngx_http_pagespeed_request_ctx_t*>(c->data);
+  ps_request_ctx_t* ctx =
+      static_cast<ps_request_ctx_t*>(c->data);
   CHECK(ctx != NULL);
 
-  int rc = ngx_http_pagespeed_update(ctx, ev);
+  int rc = ps_update(ctx, ev);
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, ev->log, 0,
                  "http pagespeed connection read handler rc: %d", rc);
 
@@ -651,7 +643,7 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
     // Pagespeed is done.  Stop watching the pipe.  If we still have data to
     // write, set a write handler so we can get called back to make our write.
     ngx_del_event(ev, NGX_READ_EVENT, 0);
-    ngx_http_pagespeed_set_buffered(ctx->r, false);
+    ps_set_buffered(ctx->r, false);
     if (ctx->write_pending) {
       if (ngx_http_set_pagespeed_write_handler(ctx->r) != NGX_OK) {
         ngx_http_finalize_request(ctx->r, NGX_HTTP_INTERNAL_SERVER_ERROR);
@@ -667,7 +659,7 @@ ngx_http_pagespeed_connection_read_handler(ngx_event_t* ev) {
 }
 
 ngx_int_t
-ngx_http_pagespeed_create_connection(ngx_http_pagespeed_request_ctx_t* ctx) {
+ps_create_connection(ps_request_ctx_t* ctx) {
   ngx_connection_t* c = ngx_get_connection(
       ctx->pipe_fd, ctx->r->connection->log);
   if (c == NULL) {
@@ -688,7 +680,7 @@ ngx_http_pagespeed_create_connection(ngx_http_pagespeed_request_ctx_t* ctx) {
 
   // Tell nginx to monitor this pipe and call us back when there's data.
   c->data = ctx;
-  c->read->handler = ngx_http_pagespeed_connection_read_handler;
+  c->read->handler = ps_connection_read_handler;
   ngx_add_event(c->read, NGX_READ_EVENT, 0);
 
   return NGX_OK;
@@ -696,19 +688,18 @@ ngx_http_pagespeed_create_connection(ngx_http_pagespeed_request_ctx_t* ctx) {
 
 // Set us up for processing a request.
 CreateRequestContext::Response
-ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
-                                          bool is_resource_fetch) {
-  fprintf(stderr, "ngx_http_pagespeed_create_request_context\n");
-  ngx_http_pagespeed_srv_conf_t* cfg =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
+ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
+  fprintf(stderr, "ps_create_request_context\n");
+  ps_srv_conf_t* cfg =
+      static_cast<ps_srv_conf_t*>(
           ngx_http_get_module_srv_conf(r, ngx_pagespeed));
 
   if (cfg->driver_factory == NULL) {
     // This is the first request handled by this server block.
-    ngx_http_pagespeed_initialize_server_context(cfg);
+    ps_initialize_server_context(cfg);
   }
 
-  GoogleString url_string = ngx_http_pagespeed_determine_url(r);
+  GoogleString url_string = ps_determine_url(r);
   net_instaweb::GoogleUrl url(url_string);
 
   if (!url.is_valid()) {
@@ -749,8 +740,8 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
     return CreateRequestContext::kError;
   }
 
-  ngx_http_pagespeed_request_ctx_t* ctx =
-      new ngx_http_pagespeed_request_ctx_t();
+  ps_request_ctx_t* ctx =
+      new ps_request_ctx_t();
   ctx->cfg = cfg;
   ctx->r = r;
   ctx->pipe_fd = file_descriptors[0];
@@ -758,14 +749,14 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   ctx->write_pending = false;
   ctx->pagespeed_connection = NULL;
 
-  rc = ngx_http_pagespeed_create_connection(ctx);
+  rc = ps_create_connection(ctx);
   if (rc != NGX_OK) {
     close(file_descriptors[1]);
 
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "ngx_http_pagespeed_create_request_context: "
+                  "ps_create_request_context: "
                   "no pagespeed connection.");
-    ngx_http_pagespeed_release_request_context(ctx);
+    ps_release_request_context(ctx);
     return CreateRequestContext::kError;
   }
 
@@ -789,9 +780,9 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
     // Failed to parse query params or request headers.
     // TODO(jefftk): send a helpful error message to the visitor.
     ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                  "ngx_http_pagespeed_create_request_context: "
+                  "ps_create_request_context: "
                   "parsing headers or query params failed.");
-    ngx_http_pagespeed_release_request_context(ctx);
+    ps_release_request_context(ctx);
     return CreateRequestContext::kError;
 
   }
@@ -830,7 +821,7 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // Otherwise check the global options.
   if ((custom_options && !custom_options->enabled()) ||
       (!custom_options && !global_options->enabled())) {
-    ngx_http_pagespeed_release_request_context(ctx);
+    ps_release_request_context(ctx);
     return CreateRequestContext::kPagespeedDisabled;
   }
 
@@ -870,10 +861,10 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
   // Set up a cleanup handler on the request.
   ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
   if (cleanup == NULL) {
-    ngx_http_pagespeed_release_request_context(ctx);
+    ps_release_request_context(ctx);
     return CreateRequestContext::kError;
   }
-  cleanup->handler = ngx_http_pagespeed_release_request_context;
+  cleanup->handler = ps_release_request_context;
   cleanup->data = ctx;
   ngx_http_set_ctx(r, ctx, ngx_pagespeed);
 
@@ -883,11 +874,9 @@ ngx_http_pagespeed_create_request_context(ngx_http_request_t* r,
 // Send each buffer in the chain to the proxy_fetch for optimization.
 // Eventually it will make it's way, optimized, to base_fetch.
 void
-ngx_http_pagespeed_send_to_pagespeed(
-    ngx_http_request_t* r,
-    ngx_http_pagespeed_request_ctx_t* ctx,
-    ngx_chain_t* in) {
-
+ps_send_to_pagespeed(ngx_http_request_t* r,
+                     ps_request_ctx_t* ctx,
+                     ngx_chain_t* in) {
   ngx_chain_t* cur;
   int last_buf = 0;
   for (cur = in; cur != NULL; cur = cur->next) {
@@ -917,9 +906,8 @@ ngx_http_pagespeed_send_to_pagespeed(
 }
 
 ngx_int_t
-ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
-  ngx_http_pagespeed_request_ctx_t* ctx =
-      ngx_http_pagespeed_get_request_context(r);
+ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
 
   if (ctx == NULL) {
     // ctx is null iff we've decided to pass through this request unchanged.
@@ -945,10 +933,10 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
 
   if (in != NULL) {
     // Send all input data to the proxy fetch.
-    ngx_http_pagespeed_send_to_pagespeed(r, ctx, in);
+    ps_send_to_pagespeed(r, ctx, in);
   }
 
-  ngx_http_pagespeed_set_buffered(r, true);
+  ps_set_buffered(r, true);
   return NGX_AGAIN;
 }
 
@@ -964,8 +952,7 @@ ngx_http_pagespeed_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
 
 // Based on ngx_http_add_cache_control.
 ngx_int_t
-ngx_http_pagespeed_set_cache_control(
-    ngx_http_request_t* r, char* cache_control) {
+ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
   if (r->headers_out.cache_control.elts == NULL) {
     ngx_int_t rc = ngx_array_init(&r->headers_out.cache_control, r->pool,
                                   1, sizeof(ngx_table_elt_t *));
@@ -993,9 +980,8 @@ ngx_http_pagespeed_set_cache_control(
 }
 
 ngx_int_t
-ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
-  ngx_http_pagespeed_request_ctx_t* ctx =
-      ngx_http_pagespeed_get_request_context(r);
+ps_header_filter(ngx_http_request_t* r) {
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
 
   if (ctx != NULL) {
     // ctx will already exist iff this is a pagespeed resource.  Do nothing.
@@ -1011,13 +997,13 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   // to pagespeed.  Check the content type header and find out.
   const net_instaweb::ContentType* content_type =
       net_instaweb::MimeTypeToContentType(
-          ngx_http_pagespeed_str_to_string_piece(r->headers_out.content_type));
+           ngx_http_pagespeed_str_to_string_piece(r->headers_out.content_type));
   if (content_type == NULL || !content_type->IsHtmlLike()) {
     // Unknown or otherwise non-html content type: skip it.
     return ngx_http_next_header_filter(r);
   }
 
-  switch (ngx_http_pagespeed_create_request_context(
+  switch (ps_create_request_context(
       r, false /* not a resource fetch */)) {
     case CreateRequestContext::kError:
       // TODO(oschaaf): don't finalize, nginx will do that for us.
@@ -1050,8 +1036,7 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   ngx_http_clear_last_modified(r);
 
   // Don't cache html.  See mod_instaweb:instaweb_fix_headers_filter.
-  ngx_http_pagespeed_set_cache_control(
-      r, const_cast<char*>("max-age=0, no-cache"));
+  ps_set_cache_control(r, const_cast<char*>("max-age=0, no-cache"));
 
   r->filter_need_in_memory = 1;
 
@@ -1070,9 +1055,9 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
   return ngx_http_next_header_filter(r);
 }
 
-ngx_int_t ngx_http_pagespeed_static_handler(ngx_http_request_t* r) {
-  ngx_http_pagespeed_srv_conf_t* cfg =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
+ngx_int_t ps_static_handler(ngx_http_request_t* r) {
+  ps_srv_conf_t* cfg =
+      static_cast<ps_srv_conf_t*>(
           ngx_http_get_module_srv_conf(r, ngx_pagespeed));
   CHECK(cfg != NULL);
   CHECK(cfg->server_context != NULL);
@@ -1108,7 +1093,7 @@ ngx_int_t ngx_http_pagespeed_static_handler(ngx_http_request_t* r) {
   if (cache_control_s == NULL) {
     return NGX_ERROR;
   }
-  ngx_http_pagespeed_set_cache_control(r, cache_control_s);
+  ps_set_cache_control(r, cache_control_s);
 
   ngx_http_send_header(r);
 
@@ -1127,13 +1112,13 @@ ngx_int_t ngx_http_pagespeed_static_handler(ngx_http_request_t* r) {
 // Handle requests for resources like example.css.pagespeed.ce.LyfcM6Wulf.css
 // and for static content like /ngx_pagespeed_static/js_defer.q1EBmcgYOC.js
 ngx_int_t
-ngx_http_pagespeed_content_handler(ngx_http_request_t* r) {
+ps_content_handler(ngx_http_request_t* r) {
   // TODO(jefftk): return NGX_DECLINED for non-get non-head requests.
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed handler \"%V\"", &r->uri);
 
-  switch (ngx_http_pagespeed_create_request_context(
+  switch (ps_create_request_context(
       r, true /* is a resource fetch */)) {
     case CreateRequestContext::kError:
       return NGX_ERROR;
@@ -1142,13 +1127,13 @@ ngx_http_pagespeed_content_handler(ngx_http_request_t* r) {
     case CreateRequestContext::kInvalidUrl:
       return NGX_DECLINED;
     case CreateRequestContext::kStaticContent:
-      return ngx_http_pagespeed_static_handler(r);
+      return ps_static_handler(r);
     case CreateRequestContext::kOk:
       break;
   }
 
-  ngx_http_pagespeed_request_ctx_t* ctx =
-      ngx_http_pagespeed_get_request_context(r);
+  ps_request_ctx_t* ctx =
+      ps_get_request_context(r);
   CHECK(ctx != NULL);
 
   // Tell nginx we're still working on this one.
@@ -1158,10 +1143,9 @@ ngx_http_pagespeed_content_handler(ngx_http_request_t* r) {
 }
 
 ngx_int_t
-ngx_http_pagespeed_init(ngx_conf_t* cf) {
-  ngx_http_pagespeed_srv_conf_t* cfg =
-      static_cast<ngx_http_pagespeed_srv_conf_t*>(
-          ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
+ps_init(ngx_conf_t* cf) {
+  ps_srv_conf_t* cfg = static_cast<ps_srv_conf_t*>(
+      ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
 
   // Only put register pagespeed code to run if there was a "pagespeed"
   // configuration option set in the config file.  With "pagespeed off" we
@@ -1170,10 +1154,10 @@ ngx_http_pagespeed_init(ngx_conf_t* cf) {
   // its configuration.
   if (cfg->options != NULL) {
     ngx_http_next_header_filter = ngx_http_top_header_filter;
-    ngx_http_top_header_filter = ngx_http_pagespeed_header_filter;
+    ngx_http_top_header_filter = ps_header_filter;
 
     ngx_http_next_body_filter = ngx_http_top_body_filter;
-    ngx_http_top_body_filter = ngx_http_pagespeed_body_filter;
+    ngx_http_top_body_filter = ps_body_filter;
 
     ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
         ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module));
@@ -1182,21 +1166,21 @@ ngx_http_pagespeed_init(ngx_conf_t* cf) {
     if (h == NULL) {
       return NGX_ERROR;
     }
-    *h = ngx_http_pagespeed_content_handler;
+    *h = ps_content_handler;
   }
 
   return NGX_OK;
 }
 
-ngx_http_module_t ngx_http_pagespeed_module = {
+ngx_http_module_t ps_module = {
   NULL,  // preconfiguration
-  ngx_http_pagespeed_init,  // postconfiguration
+  ps_init,  // postconfiguration
 
   NULL,  // create main configuration
   NULL,  // init main configuration
 
-  ngx_http_pagespeed_create_srv_conf,  // create server configuration
-  ngx_http_pagespeed_merge_srv_conf,  // merge server configuration
+  ps_create_srv_conf,  // create server configuration
+  ps_merge_srv_conf,  // merge server configuration
 
   NULL,  // create location configuration
   NULL  // merge location configuration
@@ -1206,8 +1190,8 @@ ngx_http_module_t ngx_http_pagespeed_module = {
 
 ngx_module_t ngx_pagespeed = {
   NGX_MODULE_V1,
-  &ngx_http_pagespeed_module,
-  ngx_http_pagespeed_commands,
+  &ps_module,
+  ps_commands,
   NGX_HTTP_MODULE,
   NULL,
   NULL,
@@ -1218,4 +1202,3 @@ ngx_module_t ngx_pagespeed = {
   NULL,
   NGX_MODULE_V1_PADDING
 };
-
