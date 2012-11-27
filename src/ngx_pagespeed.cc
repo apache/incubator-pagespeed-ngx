@@ -1025,8 +1025,9 @@ ngx_http_pagespeed_header_filter(ngx_http_request_t* r) {
       // properly after ourselves somewhere?
       return NGX_ERROR;
     case CreateRequestContext::kNotUnderstood:
-      CHECK(!"This should only happen when ctx->is_resource_fetch is true"
-            ", in which case we can not get here");
+      // This should only happen when ctx->is_resource_fetch is true,
+      // in which case we can not get here.
+      CHECK(false);
       return NGX_ERROR;
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kStaticContent:
