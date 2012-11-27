@@ -24,6 +24,7 @@
 namespace net_instaweb {
 
 class RewriteDriver;
+class Statistics;
 
 // Support critical (above the fold) image detection through a javascript beacon
 // on the client.
@@ -32,7 +33,7 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
  public:
   static const char kBeaconCohort[];
 
-  BeaconCriticalImagesFinder();
+  explicit BeaconCriticalImagesFinder(Statistics* stats);
   virtual ~BeaconCriticalImagesFinder();
 
   virtual bool IsMeaningful() const {

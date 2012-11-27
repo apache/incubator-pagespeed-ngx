@@ -107,8 +107,9 @@ class HTTPCacheStringCallback : public OptionsAwareHTTPCacheCallback {
 // can return useful information for testing this filter.
 class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
  public:
-  MeaningfulCriticalImagesFinder()
-      : compute_calls_(0) {}
+  explicit MeaningfulCriticalImagesFinder(Statistics* stats)
+      : CriticalImagesFinder(stats),
+        compute_calls_(0) {}
   virtual ~MeaningfulCriticalImagesFinder() {}
   virtual bool IsMeaningful() const {
     return true;
@@ -900,7 +901,8 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
 TEST_F(ImageRewriteTest, InlineCriticalOnly) {
   StringSet* critical_images = new StringSet;
   rewrite_driver()->set_critical_images(critical_images);
-  MeaningfulCriticalImagesFinder* finder = new MeaningfulCriticalImagesFinder;
+  MeaningfulCriticalImagesFinder* finder =
+      new MeaningfulCriticalImagesFinder(statistics());
   server_context()->set_critical_images_finder(finder);
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
@@ -916,7 +918,8 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
 }
 
 TEST_F(ImageRewriteTest, ComputeCriticalImages) {
-  MeaningfulCriticalImagesFinder* finder = new MeaningfulCriticalImagesFinder;
+  MeaningfulCriticalImagesFinder* finder =
+      new MeaningfulCriticalImagesFinder(statistics());
   server_context()->set_critical_images_finder(finder);
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);

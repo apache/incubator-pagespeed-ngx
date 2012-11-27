@@ -299,7 +299,7 @@ StaticJavascriptManager*
 }
 
 CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
-  return new BeaconCriticalImagesFinder();
+  return new BeaconCriticalImagesFinder(statistics());
 }
 
 FlushEarlyInfoFinder* RewriteDriverFactory::DefaultFlushEarlyInfoFinder() {
@@ -564,6 +564,7 @@ void RewriteDriverFactory::InitStats(Statistics* statistics) {
   HTTPCache::InitStats(statistics);
   RewriteDriver::InitStats(statistics);
   RewriteStats::InitStats(statistics);
+  CriticalImagesFinder::InitStats(statistics);
   CacheBatcher::InitStats(statistics);
 }
 

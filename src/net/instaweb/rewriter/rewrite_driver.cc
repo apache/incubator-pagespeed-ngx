@@ -232,6 +232,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       client_state_(NULL),
       property_page_(NULL),
       owns_property_page_(false),
+      updated_critical_images_(false),
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0),
@@ -363,6 +364,10 @@ void RewriteDriver::Clear() {
   can_rewrite_resources_ = true;
   log_record_ = NULL;
   start_time_ms_ = 0;
+
+  critical_images_.reset(NULL);
+  css_critical_images_.reset(NULL);
+  updated_critical_images_ = false;
 
   if (owns_property_page_) {
     delete property_page_;

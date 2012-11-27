@@ -27,14 +27,23 @@ namespace net_instaweb {
 
 class PropertyCache;
 class PropertyPage;
+class PropertyValue;
 class RewriteDriver;
+class Statistics;
+class Variable;
 
 // Finds critical images i.e. images which are above the fold for a given url.
 // This information may be used by DelayImagesFilter.
 class CriticalImagesFinder {
  public:
-  CriticalImagesFinder();
+  static const char kCriticalImagesValidCount[];
+  static const char kCriticalImagesExpiredCount[];
+  static const char kCriticalImagesNotFoundCount[];
+
+  explicit CriticalImagesFinder(Statistics* stats);
   virtual ~CriticalImagesFinder();
+
+  static void InitStats(Statistics* statistics);
 
   // Checks whether IsCriticalImage will return meaningful results about
   // critical images. Users of IsCriticalImage should check this function and
@@ -83,6 +92,19 @@ class CriticalImagesFinder {
  private:
   static const char kCriticalImagesPropertyName[];
   static const char kCssCriticalImagesPropertyName[];
+
+  // Extracts and returns the critical images from the given property_value,
+  // after checking if the property value is still valid using the provided TTL.
+  // It also updates stats variables if track_stats is true.
+  StringSet* ExtractCriticalImagesSet(
+    const PropertyValue* property_value,
+    const PropertyCache* page_property_cache,
+    int64 cache_ttl_ms,
+    bool track_stats);
+
+  Variable* critical_images_valid_count_;
+  Variable* critical_images_expired_count_;
+  Variable* critical_images_not_found_count_;
 
   friend class CriticalImagesFinderTestBase;
   DISALLOW_COPY_AND_ASSIGN(CriticalImagesFinder);

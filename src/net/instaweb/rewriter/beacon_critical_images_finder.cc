@@ -22,8 +22,8 @@ namespace net_instaweb {
 const char BeaconCriticalImagesFinder::kBeaconCohort[] = "beacon_cohort";
 
 // Note: This class is not yet implemented.
-BeaconCriticalImagesFinder::BeaconCriticalImagesFinder() {
-}
+BeaconCriticalImagesFinder::BeaconCriticalImagesFinder(Statistics* stats)
+    : CriticalImagesFinder(stats) {}
 
 BeaconCriticalImagesFinder::~BeaconCriticalImagesFinder() {
 }

@@ -722,7 +722,8 @@ class BackgroundFetchCheckingAsyncFetch : public SharedAsyncFetch {
 
 class FakeCriticalImagesFinder : public CriticalImagesFinder {
  public:
-  FakeCriticalImagesFinder() {}
+  explicit FakeCriticalImagesFinder(Statistics* stats)
+      : CriticalImagesFinder(stats) {}
   ~FakeCriticalImagesFinder() {}
 
   virtual bool IsMeaningful() const { return true; }
@@ -829,7 +830,8 @@ class ProxyInterfaceTest : public RewriteTestBase {
   static const int kHtmlCacheTimeSec = 5000;
 
   ProxyInterfaceTest()
-      : fake_critical_images_finder_(new FakeCriticalImagesFinder()),
+      : fake_critical_images_finder_(
+          new FakeCriticalImagesFinder(statistics())),
         max_age_300_("max-age=300"),
         request_start_time_ms_(-1),
         callback_done_value_(false) {

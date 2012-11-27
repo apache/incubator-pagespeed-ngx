@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace {
@@ -40,6 +41,15 @@ const char CriticalImagesFinder::kCriticalImagesPropertyName[] =
 
 const char CriticalImagesFinder::kCssCriticalImagesPropertyName[] =
     "css_critical_images";
+
+const char CriticalImagesFinder::kCriticalImagesValidCount[] =
+    "critical_images_valid_count";
+
+const char CriticalImagesFinder::kCriticalImagesExpiredCount[] =
+    "critical_images_expired_count";
+
+const char CriticalImagesFinder::kCriticalImagesNotFoundCount[] =
+    "critical_images_not_found_count";
 
 namespace {
 // Append the image url separator to each critical image to enable storing the
@@ -60,38 +70,24 @@ void FormatSetForPropertyCache(const StringSet& critical_images,
   }
 }
 
-// Extract the critical images stored for the given property_value in the
-// property page. Returned StringSet will owned by the caller.
-StringSet* ExtractCriticalImagesSet(const PropertyValue* property_value,
-                                    const PropertyCache* page_property_cache,
-                                    int64 cache_expiration_ms) {
-  // Check if the cache value exists and is not expired.
-  if (property_value->has_value() &&
-      !page_property_cache->IsExpired(property_value, cache_expiration_ms)) {
-    StringPieceVector critical_images_vector;
-    // Get the critical images from the property value. The fourth parameter
-    // (true) causes empty strings to be omitted from the resulting
-    // vector. kImageUrlSeparator is expected when the critical image set is
-    // empty, because the property cache does not store empty values.
-    SplitStringPieceToVector(property_value->value(), kImageUrlSeparator,
-                             &critical_images_vector, true);
-    StringSet* critical_images(new StringSet);  // Owned by RewriteDriver.
-    StringPieceVector::iterator it;
-    for (it = critical_images_vector.begin();
-         it != critical_images_vector.end();
-         ++it) {
-      critical_images->insert(it->as_string());
-    }
-    return critical_images;
-  }
-  return NULL;
-}
 }  // namespace
 
-CriticalImagesFinder::CriticalImagesFinder() {
+CriticalImagesFinder::CriticalImagesFinder(Statistics* statistics) {
+  critical_images_valid_count_ = statistics->GetVariable(
+      kCriticalImagesValidCount);
+  critical_images_expired_count_ = statistics->GetVariable(
+      kCriticalImagesExpiredCount);
+  critical_images_not_found_count_ = statistics->GetVariable(
+      kCriticalImagesNotFoundCount);
 }
 
 CriticalImagesFinder::~CriticalImagesFinder() {
+}
+
+void CriticalImagesFinder::InitStats(Statistics* statistics) {
+  statistics->AddVariable(kCriticalImagesValidCount);
+  statistics->AddVariable(kCriticalImagesExpiredCount);
+  statistics->AddVariable(kCriticalImagesNotFoundCount);
 }
 
 bool CriticalImagesFinder::IsCriticalImage(
@@ -107,10 +103,10 @@ bool CriticalImagesFinder::IsCriticalImage(
 // between requests.
 void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
     RewriteDriver* driver) {
-  if (driver->critical_images() != NULL &&
-      driver->css_critical_images() != NULL) {
+  if (driver->updated_critical_images()) {
     return;
   }
+  driver->set_updated_critical_images(true);
   PropertyCache* page_property_cache =
       driver->server_context()->page_property_cache();
   const PropertyCache::Cohort* cohort =
@@ -121,17 +117,16 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
       PropertyValue* property_value = page->GetProperty(
           cohort, kCriticalImagesPropertyName);
       driver->set_critical_images(ExtractCriticalImagesSet(
-          property_value,
-          page_property_cache,
-          driver->options()->critical_images_cache_expiration_time_ms()));
+          property_value, page_property_cache,
+          driver->options()->critical_images_cache_expiration_time_ms(), true));
     }
     if (driver->css_critical_images() == NULL) {
       PropertyValue* property_value = page->GetProperty(
           cohort, kCssCriticalImagesPropertyName);
       driver->set_css_critical_images(ExtractCriticalImagesSet(
-          property_value,
-          page_property_cache,
-          driver->options()->critical_images_cache_expiration_time_ms()));
+          property_value, page_property_cache,
+          driver->options()->critical_images_cache_expiration_time_ms(),
+          false));
     }
   }
 }
@@ -186,6 +181,45 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
     }
   }
   return false;
+}
+
+// Extract the critical images stored for the given property_value in the
+// property page. Returned StringSet will owned by the caller.
+StringSet* CriticalImagesFinder::ExtractCriticalImagesSet(
+    const PropertyValue* property_value,
+    const PropertyCache* page_property_cache,
+    int64 cache_ttl_ms,
+    bool track_stats) {
+  // Check if the cache value exists and is not expired.
+  if (property_value->has_value()) {
+    bool is_valid =
+        !page_property_cache->IsExpired(property_value, cache_ttl_ms);
+    if (is_valid) {
+      StringPieceVector critical_images_vector;
+      // Get the critical images from the property value. The fourth parameter
+      // (true) causes empty strings to be omitted from the resulting
+      // vector. kImageUrlSeparator is expected when the critical image set is
+      // empty, because the property cache does not store empty values.
+      SplitStringPieceToVector(property_value->value(), kImageUrlSeparator,
+                               &critical_images_vector, true);
+      StringSet* critical_images(new StringSet);  // Owned by RewriteDriver.
+      StringPieceVector::iterator it;
+      for (it = critical_images_vector.begin();
+           it != critical_images_vector.end();
+           ++it) {
+        critical_images->insert(it->as_string());
+      }
+      if (track_stats) {
+        critical_images_valid_count_->Add(1);
+      }
+      return critical_images;
+    } else if (track_stats) {
+      critical_images_expired_count_->Add(1);
+    }
+  } else if (track_stats) {
+    critical_images_not_found_count_->Add(1);
+  }
+  return NULL;
 }
 
 }  // namespace net_instaweb

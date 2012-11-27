@@ -29,12 +29,15 @@
 
 namespace net_instaweb {
 
+class Statistics;
+
 // By default, CriticalImagesFinder does not return meaningful results. However,
 // this test manually manages the critical image set, so CriticalImagesFinder
 // can return useful information for testing this filter.
 class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
  public:
-  MeaningfulCriticalImagesFinder() {}
+  explicit MeaningfulCriticalImagesFinder(Statistics* stats)
+      : CriticalImagesFinder(stats) {}
   virtual ~MeaningfulCriticalImagesFinder() {}
   virtual bool IsMeaningful() const {
     return true;
@@ -191,7 +194,7 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
 
   rewrite_driver()->set_critical_images(critical_images);
   server_context()->set_critical_images_finder(
-      new MeaningfulCriticalImagesFinder());
+      new MeaningfulCriticalImagesFinder(statistics()));
 
   GoogleString rewritten_url = Encode(
       "http://test.com/", "ce", "HASH", "critical4.jpg", "jpg");

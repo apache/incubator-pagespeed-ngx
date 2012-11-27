@@ -22,14 +22,19 @@
 #include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/statistics.h"
 
 namespace net_instaweb {
 
 // Provide stub implementation of abstract base class for testing purposes.
 class CriticalImagesFinderMock : public CriticalImagesFinder {
  public:
+  explicit CriticalImagesFinderMock(Statistics* stats)
+      : CriticalImagesFinder(stats) {}
+
   // Provide stub instantions for pure virtual functions
   virtual void ComputeCriticalImages(StringPiece url,
                                      RewriteDriver* driver,
@@ -57,7 +62,16 @@ class CriticalImagesFinderTest : public CriticalImagesFinderTestBase {
  protected:
   virtual void SetUp() {
     CriticalImagesFinderTestBase::SetUp();
-    finder_.reset(new CriticalImagesFinderMock());
+    finder_.reset(new CriticalImagesFinderMock(statistics()));
+  }
+
+  void CheckCriticalImageFinderStats(int hits, int expiries, int not_found) {
+    EXPECT_EQ(hits, statistics()->GetVariable(
+        CriticalImagesFinder::kCriticalImagesValidCount)->Get());
+    EXPECT_EQ(expiries, statistics()->GetVariable(
+        CriticalImagesFinder::kCriticalImagesExpiredCount)->Get());
+    EXPECT_EQ(not_found, statistics()->GetVariable(
+        CriticalImagesFinder::kCriticalImagesNotFoundCount)->Get());
   }
 
  private:
@@ -134,6 +148,17 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   critical_images_set->insert("imageB.jpeg");
   StringSet* css_critical_images_set = new StringSet;
   css_critical_images_set->insert("imageD.jpeg");
+
+  finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
+  CheckCriticalImageFinderStats(0, 0, 1);
+  ClearStats();
+
+  // Call update again without resetting updated_critical_images. The stats do
+  // not get updated.
+  finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
+  CheckCriticalImageFinderStats(0, 0, 0);
+  ClearStats();
+
   EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(
       rewrite_driver(), critical_images_set, css_critical_images_set));
   EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
@@ -142,7 +167,11 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   // critical_images() is NULL because there is no previous call to
   // GetCriticalImages()
   EXPECT_TRUE(rewrite_driver()->critical_images() == NULL);
+  rewrite_driver()->set_updated_critical_images(false);
   finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
+  CheckCriticalImageFinderStats(1, 0, 0);
+  ClearStats();
+
   // GetCriticalImages() upates critical_images set in RewriteDriver().
   const StringSet* critical_images = rewrite_driver()->critical_images();
   EXPECT_TRUE(critical_images != NULL);
@@ -159,6 +188,15 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
       css_critical_images->find("imageD.jpeg") != css_critical_images->end());
   EXPECT_TRUE(
       css_critical_images->find("imageA.jpeg") == css_critical_images->end());
+
+  rewrite_driver()->set_critical_images(NULL);
+  rewrite_driver()->set_css_critical_images(NULL);
+  // Advance past expiry, so that the pages expire.
+  mock_timer()->AdvanceMs(
+      2 * options()->critical_images_cache_expiration_time_ms());
+  rewrite_driver()->set_updated_critical_images(false);
+  finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
+  CheckCriticalImageFinderStats(0, 1, 0);
 }
 
 }  // namespace net_instaweb
