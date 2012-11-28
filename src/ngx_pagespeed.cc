@@ -277,6 +277,9 @@ char*
 ngx_http_pagespeed_loc_configure(
     ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
+void
+ngx_http_pagespeed_ignore_sigpipe();
+
 ngx_command_t ngx_http_pagespeed_commands[] = {
   { ngx_string("pagespeed"),
     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1|
@@ -296,6 +299,16 @@ ngx_command_t ngx_http_pagespeed_commands[] = {
 
   ngx_null_command
 };
+
+void
+ngx_http_pagespeed_ignore_sigpipe() {
+  struct sigaction act;
+  ngx_memzero(&act, sizeof(act));
+  act.sa_handler = SIG_IGN;
+  sigemptyset (&act.sa_mask);
+  act.sa_flags = 0;
+  sigaction (SIGPIPE, &act, NULL);
+}
 
 #define NGX_PAGESPEED_MAX_ARGS 10
 char*
@@ -435,6 +448,11 @@ ngx_http_pagespeed_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   // because if there are no server blocks with pagespeed configuration
   // directives then we don't want it initialized.
   if (cfg_m->driver_factory == NULL) {
+    // TODO(oschaaf): this ignores sigpipe messages from memcached.
+    // however, it would be better to not have those signals generated
+    // in the first place, as suppressing them this way may interfere
+    // with other modules that actually are interested in these signals
+    ngx_http_pagespeed_ignore_sigpipe();
     net_instaweb::NgxRewriteDriverFactory::Initialize();
     // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
     // we're done with it.  That never happens, though, because this is the
