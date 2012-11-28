@@ -104,11 +104,7 @@ bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
 }
 
 ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
-  fprintf(stderr, "NgxBaseFetch::CopyBufferToNginx\n");
-  fprintf(stderr, "  done_called=%s\n", done_called_ ? "true" : "false");
-  fprintf(stderr, "  last_buf_sent=%s\n", last_buf_sent_ ? "true" : "false");
   if (done_called_ && last_buf_sent_) {
-    fprintf(stderr, "NgxBaseFetch::CopyBufferToNginx short circuit\n");
     return NGX_DECLINED;
   }
 
@@ -118,33 +114,13 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
     return rc;
   }
 
-  fprintf(stderr, "\nBuffer: '%s'\n", buffer_.c_str());
-
-  fprintf(stderr, "Generated buffer chain:\n");
-
-  int i;
-  ngx_chain_t* c;
-  for (c = *link_ptr, i= 0; c != NULL; c = c->next, i++) {
-    fprintf(stderr, "  Link %d\n", i);
-    fprintf(stderr, "    last_buf=%s\n", c->buf->last_buf ? "true" : "false");
-    fprintf(stderr, "    contents='");
-
-    u_char* chr;
-    for (chr = c->buf->pos ; chr < c->buf->end ; chr++) {
-      fprintf(stderr, "%c", *chr);
-    }
-    
-    fprintf(stderr, "'\n\n");
-  }
-
   // Done with buffer contents now.
   buffer_.clear();
 
   if (done_called_) {
-    fprintf(stderr, "  last_buf_sent <- true\n");
     last_buf_sent_ = true;
   }
-  fprintf(stderr, "NgxBaseFetch::CopyBufferToNginx Done\n");
+
   return NGX_OK;
 }
 
@@ -152,8 +128,6 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
 // and Done() such that we're sending an empty buffer with last_buf set, which I
 // think nginx will reject.
 ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
-  fprintf(stderr, "NgxBaseFetch::CollectAccumulatedWrites\n");
-
   Lock();
   ngx_int_t rc = CopyBufferToNginx(link_ptr);
   Unlock();
