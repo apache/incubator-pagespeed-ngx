@@ -58,6 +58,27 @@ class ImageOomTest : public ImageTestBase {
     ImageTestBase::TearDown();
   }
 
+  static void SetUpTestCase() {
+    // Unfortunately, RLIMIT_AS affects automatic stack growth, so if the
+    // malloc packages somehow gets us close to the cap for VmSize, we may
+    // crash trying to call a stack-hogging function like printf.
+    // (And RLIMIT_DATA is unuseable since it doesn't affect mmap()).
+    //
+    // To workaround, we force stack growth in advance.
+    ForceStackGrowth();
+  }
+
+  static void ForceStackGrowth() {
+    // Touch a large chunk of memory to force the kernel to allocate
+    // pages for the stack. We want something like 128K since OpenCV
+    // uses a 64K buffer itself.
+    const int kExtraStackSize = 128 * 1024;
+    char buf[kExtraStackSize];
+    for (int i = 0; i < kExtraStackSize; ++i) {
+      const_cast<volatile char*>(buf)[i] = i;
+    }
+  }
+
  private:
   rlimit old_mem_limit_;
 };
