@@ -25,16 +25,17 @@ extern "C" {
 
 #include "net/instaweb/util/public/string_util.h"
 
+namespace ngx_psol {
+
 // Allocate chain links and buffers from the supplied pool, and copy over the
 // data from the string piece.  If the string piece is empty, return
 // NGX_DECLINED immediately unless send_last_buf.
 ngx_int_t
-ngx_http_pagespeed_string_piece_to_buffer_chain(
-    ngx_pool_t* pool, StringPiece sp, ngx_chain_t** link_ptr,
-    bool send_last_buf);
+string_piece_to_buffer_chain(ngx_pool_t* pool, StringPiece sp,
+                             ngx_chain_t** link_ptr, bool send_last_buf);
 
 StringPiece
-ngx_http_pagespeed_str_to_string_piece(ngx_str_t s);
+str_to_string_piece(ngx_str_t s);
 
 // s1: ngx_str_t, s2: string literal
 // true if they're equal, false otherwise
@@ -45,6 +46,8 @@ ngx_http_pagespeed_str_to_string_piece(ngx_str_t s);
 // Allocate memory out of the pool for the string piece, and copy the contents
 // over.  Returns NULL if we can't get memory.
 char*
-ngx_http_string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
+string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
+
+}  // namespace ngx_psol
 
 #endif  // NGX_PAGESPEED_H_

@@ -279,7 +279,7 @@ NgxRewriteOptions::ParseAndSetOptions(
         StrAppend(&full_directive, i == 0 ? "" : " ", args[i]);
       }
       StrAppend(&full_directive, "\": ", msg);
-      char* s = ngx_http_string_piece_to_pool_string(pool, full_directive);
+      char* s = ngx_psol::string_piece_to_pool_string(pool, full_directive);
       if (s == NULL) {
         return "failed to allocate memory";
       }
