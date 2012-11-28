@@ -165,6 +165,21 @@ and then eventually:
 
 along with a failing test because ngx_pagespeed is not yet complete.
 
+#### Testing with memcached
+
+Start an memcached server:
+
+    memcached -p 11213
+
+To the configuration above add to the main or server block:
+
+    pagespeed MemcachedServers "localhost:11213";
+    pagespeed MemcachedThreads 1;
+
+Then run the system test:
+
+    /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
+
 ## Configuration
 
 Once configuration is complete, any mod_pagespeed configuration directive should

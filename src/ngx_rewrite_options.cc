@@ -65,6 +65,12 @@ void NgxRewriteOptions::AddProperties() {
   add_ngx_option(1024,  // 1MB
                  &NgxRewriteOptions::lru_cache_kb_per_process_, "nlcp",
                  RewriteOptions::kLruCacheKbPerProcess);
+  add_ngx_option("", &NgxRewriteOptions::memcached_servers_, "ams",
+                 RewriteOptions::kMemcachedServers);
+  add_ngx_option(1, &NgxRewriteOptions::memcached_threads_, "amt",
+                 RewriteOptions::kMemcachedThreads);
+  add_ngx_option(false, &NgxRewriteOptions::use_shared_mem_locking_, "ausml",
+                 RewriteOptions::kUseSharedMemLocking);
 
   MergeSubclassProperties(ngx_properties_);
   NgxRewriteOptions config;
