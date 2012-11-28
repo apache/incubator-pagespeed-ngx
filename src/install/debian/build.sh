@@ -92,6 +92,25 @@ do_package() {
   echo "Packaging ${HOST_ARCH}..."
   PREDEPENDS="$COMMON_PREDEPS"
   DEPENDS="${COMMON_DEPS}"
+
+  # Generate Conflicts: and Replaces: headers for the other channel to get
+  # dpkg to seamlessly switch channels on -i
+  case $CHANNEL in
+  stable )
+    CONFLICTS=mod-pagespeed-beta
+    ;;
+  beta )
+    CONFLICTS=mod-pagespeed-stable
+    ;;
+  * )
+    echo
+    echo "ERROR: '$CHANNEL' is not a valid channel type."
+    echo
+    exit 1
+    ;;
+  esac
+  REPLACES="${CONFLICTS}"
+
   gen_changelog
   process_template "${SCRIPTDIR}/control.template" "${DEB_CONTROL}"
   export DEB_HOST_ARCH="${HOST_ARCH}"
@@ -125,9 +144,6 @@ verify_channel() {
   case $CHANNEL in
     stable )
       CHANNEL=stable
-      ;;
-    unstable|dev|alpha )
-      CHANNEL=unstable
       ;;
     testing|beta )
       CHANNEL=beta
