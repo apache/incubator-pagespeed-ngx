@@ -47,6 +47,9 @@ TEST_F(ContentTypeTest, TestExtensions) {
   EXPECT_EQ(ContentType::kXml,        ExtToType(".xml"));
   EXPECT_EQ(ContentType::kPng,        ExtToType(".png"));
   EXPECT_EQ(ContentType::kGif,        ExtToType(".gif"));
+  EXPECT_EQ(ContentType::kVideo,      ExtToType(".mp4"));
+  EXPECT_EQ(ContentType::kVideo,      ExtToType(".mpg"));
+  EXPECT_EQ(ContentType::kVideo,      ExtToType(".3gp"));
 }
 
 TEST_F(ContentTypeTest, TestMimeType) {
@@ -68,6 +71,11 @@ TEST_F(ContentTypeTest, TestMimeType) {
   EXPECT_EQ(ContentType::kXml,        MimeToType("text/xml"));
   EXPECT_EQ(ContentType::kPng,        MimeToType("image/png"));
   EXPECT_EQ(ContentType::kGif,        MimeToType("image/gif"));
+
+  EXPECT_EQ(ContentType::kVideo,      MimeToType("video/3gpp"));
+  EXPECT_EQ(ContentType::kVideo,      MimeToType("video/mpeg"));
+  EXPECT_EQ(ContentType::kVideo,      MimeToType("video/x-flv"));
+  EXPECT_EQ(ContentType::kVideo,      MimeToType("video/ogg"));
 }
 
 }  // namespace net_instaweb

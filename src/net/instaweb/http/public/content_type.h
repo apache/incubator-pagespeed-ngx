@@ -44,6 +44,7 @@ struct ContentType {
     kWebp,
     kJson,
     kPdf,
+    kVideo,
     kOther,  // Used to specify a new local ContentType in one test file.
   };
 
@@ -70,6 +71,9 @@ struct ContentType {
 
   // Return true iff this content type is Image.
   bool IsImage() const;
+
+  // Return true iff this content type is Video.
+  bool IsVideo() const;
 
   // These fields should be private; we leave them public only so we can use
   // struct literals in content_type.cc.  Other code should use the above

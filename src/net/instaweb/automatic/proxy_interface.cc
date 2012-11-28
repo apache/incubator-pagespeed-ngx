@@ -93,6 +93,7 @@ bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
     case ContentType::kPdf:
     case ContentType::kOther:
     case ContentType::kJson:
+    case ContentType::kVideo:
       return false;
   }
   LOG(DFATAL) << "URL " << url.Spec() << ": unexpected type:" << type->type()
@@ -235,7 +236,7 @@ void ProxyInterface::Fetch(const GoogleString& requested_url_string,
                            MessageHandler* handler,
                            AsyncFetch* async_fetch) {
   const GoogleUrl requested_url(requested_url_string);
-  bool is_get_or_head =
+  const bool is_get_or_head =
       (async_fetch->request_headers()->method() == RequestHeaders::kGet) ||
       (async_fetch->request_headers()->method() == RequestHeaders::kHead);
 

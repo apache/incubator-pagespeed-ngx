@@ -54,6 +54,12 @@ const ContentType kTypes[] = {
   {"image/jpeg",               ".jpeg", ContentType::kJpeg},
   {"text/html",                ".htm",  ContentType::kHtml},
   {"application/xml",          ".xml",  ContentType::kXml},  // RFC 3023
+
+  {"video/mpeg",                ".mpg",  ContentType::kVideo},  // RFC 2045
+  {"video/mp4",                 ".mp4",  ContentType::kVideo},  // RFC 4337
+  {"video/3gpp",                ".3gp", ContentType::kVideo},
+  {"video/x-flv",               ".flv", ContentType::kVideo},
+  {"video/ogg",                 ".ogg", ContentType::kVideo},  // RFC 5334
 };
 const int kNumTypes = arraysize(kTypes);
 
@@ -121,6 +127,10 @@ bool ContentType::IsImage() const {
     default:
       return false;
   }
+}
+
+bool ContentType::IsVideo() const {
+  return type_ == kVideo;
 }
 
 const ContentType* NameExtensionToContentType(const StringPiece& name) {
