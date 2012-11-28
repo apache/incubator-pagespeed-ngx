@@ -104,8 +104,9 @@ bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
 }
 
 ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
-  // TODO(jefftk): if done_called_ && last_buf_sent_, should we just short
-  // circuit (return NGX_OK) here?
+  if (done_called_ && last_buf_sent_) {
+    return NGX_DECLINED;
+  }
 
   int rc = ngx_psol::string_piece_to_buffer_chain(
       request_->pool, buffer_, link_ptr, done_called_ /* send_last_buf */);
