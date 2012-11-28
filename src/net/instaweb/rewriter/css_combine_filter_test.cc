@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
+#include "net/instaweb/rewriter/public/debug_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -198,7 +199,11 @@ class CssCombineFilterTest : public RewriteTestBase {
         "  ", (is_barrier ? Link("c.css") : ""), "\n"
         "</body>\n")));
     if (!debug_text.empty()) {
-      StrAppend(&expected_output, "<!--css_combine: flush-->");
+      StrAppend(&expected_output,
+                "<!--css_combine: end_document-->"
+                "<!--",
+                DebugFilter::FormatEndDocumentMessage(0, 0, 0, 0, 0),
+                "-->");
     }
     if (expect_combine) {
       EXPECT_EQ(expected_output, output_buffer_);

@@ -1007,6 +1007,7 @@
         'rewriter/css_outline_filter.cc',
         'rewriter/css_tag_scanner.cc',
         'rewriter/data_url_input_resource.cc',
+        'rewriter/debug_filter.cc',
         'rewriter/defer_iframe_filter.cc',
         'rewriter/delay_images_filter.cc',
         'rewriter/detect_reflow_js_defer_filter.cc',

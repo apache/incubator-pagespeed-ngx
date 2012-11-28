@@ -330,7 +330,8 @@ class CssCombineFilter::Context : public RewriteContext {
 // make this convention consistent and fix all code.
 CssCombineFilter::CssCombineFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
-      css_tag_scanner_(driver_) {
+      css_tag_scanner_(driver_),
+      end_document_found_(false) {
 }
 
 CssCombineFilter::~CssCombineFilter() {
@@ -342,6 +343,11 @@ void CssCombineFilter::InitStats(Statistics* statistics) {
 
 void CssCombineFilter::StartDocumentImpl() {
   context_.reset(MakeContext());
+  end_document_found_ = false;
+}
+
+void CssCombineFilter::EndDocument() {
+  end_document_found_ = true;
 }
 
 void CssCombineFilter::StartElementImpl(HtmlElement* element) {
@@ -405,7 +411,9 @@ void CssCombineFilter::IEDirective(HtmlIEDirectiveNode* directive) {
 }
 
 void CssCombineFilter::Flush() {
-  NextCombination("css_combine: flush");
+  NextCombination(end_document_found_
+                  ? "css_combine: end_document"
+                  : "css_combine: flush");
 }
 
 bool CssCombineFilter::CssCombiner::WritePiece(

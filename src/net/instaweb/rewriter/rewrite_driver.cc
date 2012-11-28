@@ -62,6 +62,7 @@
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/defer_iframe_filter.h"
+#include "net/instaweb/rewriter/public/debug_filter.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/detect_reflow_js_defer_filter.h"
 #include "net/instaweb/rewriter/public/deterministic_js_filter.h"
@@ -239,6 +240,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       num_flushed_early_pagespeed_resources_(0),
       num_bytes_in_(0),
       collect_subresources_filter_(NULL),
+      debug_filter_(NULL),
       serve_blink_non_critical_(false),
       is_blink_request_(false),
       can_rewrite_resources_(true),
@@ -535,6 +537,9 @@ void RewriteDriver::Flush() {
 }
 
 void RewriteDriver::FlushAsync(Function* callback) {
+  if (debug_filter_ != NULL) {
+    debug_filter_->StartRender();
+  }
   {
     ScopedMutex lock(inhibits_mutex_.get());
     DCHECK(!flush_in_progress_);
@@ -566,7 +571,7 @@ void RewriteDriver::FlushAsync(Function* callback) {
   int num_rewrites = rewrites_.size();
   DCHECK_EQ(pending_rewrites_, num_rewrites);
 
-  // Copy  all of the RewriteContext* into the initiated_rewrites_ set
+  // Copy all of the RewriteContext* into the initiated_rewrites_ set
   // *before* initiating them, as we are doing this before we lock.
   // The RewriteThread can start mutating the initiated_rewrites_
   // set as soon as one is initiated.
@@ -1158,6 +1163,11 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kCollapseWhitespace)) {
     // Remove excess whitespace in HTML.
     AddOwnedPostRenderFilter(new CollapseWhitespaceFilter(this));
+  }
+
+  if (rewrite_options->Enabled(RewriteOptions::kDebug)) {
+    debug_filter_ = new DebugFilter(this);
+    AddOwnedPostRenderFilter(debug_filter_);
   }
 
   // NOTE(abliss): Adding a new filter?  Does it export any statistics?  If it
@@ -1861,6 +1871,10 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
   // DetermineEnabled on post render filters is invoked in
   // HtmlParse::StartParseId
 
+  if (debug_filter_ != NULL) {
+    debug_filter_->InitParse();
+  }
+
   bool ret = HtmlParse::StartParseId(url, id, content_type);
   {
     ScopedMutex lock(rewrite_mutex());
@@ -1883,6 +1897,10 @@ void RewriteDriver::ParseTextInternal(const char* content, int size) {
   num_bytes_in_ += size;
   if (ShouldSkipParsing()) {
     writer()->Write(content, message_handler());
+  } else if (debug_filter_ != NULL) {
+    debug_filter_->StartParse();
+    HtmlParse::ParseTextInternal(content, size);
+    debug_filter_->EndParse();
   } else {
     HtmlParse::ParseTextInternal(content, size);
   }

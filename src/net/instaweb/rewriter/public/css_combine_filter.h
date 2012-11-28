@@ -47,6 +47,7 @@ class CssCombineFilter : public RewriteFilter {
   static void InitStats(Statistics* statistics);
 
   virtual void StartDocumentImpl();
+  virtual void EndDocument();
   virtual void StartElementImpl(HtmlElement* element);
   virtual void EndElementImpl(HtmlElement* element) {}
   virtual void Flush();
@@ -70,6 +71,7 @@ class CssCombineFilter : public RewriteFilter {
   CssTagScanner css_tag_scanner_;
   scoped_ptr<Context> context_;
   UrlMultipartEncoder multipart_encoder_;
+  bool end_document_found_;
 
   DISALLOW_COPY_AND_ASSIGN(CssCombineFilter);
 };

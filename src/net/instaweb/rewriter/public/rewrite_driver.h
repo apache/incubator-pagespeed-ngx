@@ -56,6 +56,7 @@ class CacheUrlAsyncFetcher;
 class CollectSubresourcesFilter;
 class CommonFilter;
 class CriticalLineInfo;
+class DebugFilter;
 class DomainRewriteFilter;
 class FileSystem;
 class FlushEarlyInfo;
@@ -1324,9 +1325,9 @@ class RewriteDriver : public HtmlParse {
   int num_bytes_in_;
 
   CollectSubresourcesFilter* collect_subresources_filter_;
+  DebugFilter* debug_filter_;
 
   scoped_ptr<FlushEarlyInfo> flush_early_info_;
-
   scoped_ptr<FlushEarlyRenderInfo> flush_early_render_info_;
 
   // When non-cacheable panels are absent, non-critical content is already
