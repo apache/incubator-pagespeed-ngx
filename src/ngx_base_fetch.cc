@@ -275,7 +275,10 @@ bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
 }
 
 void NgxBaseFetch::HandleDone(bool success) {
+  Lock();
   done_called_ = true;
+  Unlock();
+
   close(pipe_fd_);  // Indicates to nginx that we're done with the rewrite.
   pipe_fd_ = -1;
 }
