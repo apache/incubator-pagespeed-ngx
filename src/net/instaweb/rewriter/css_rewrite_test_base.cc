@@ -28,6 +28,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -258,8 +259,17 @@ void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
   if (FlagSet(flags, kExpectSuccess) || FlagSet(flags, kExpectFallback)) {
     GoogleString actual_output;
     // TODO(sligocki): This will only work with mock_hasher.
-    EXPECT_TRUE(FetchResourceUrl(expected_new_url, &actual_output)) << css_url;
+    ResponseHeaders headers_out;
+    EXPECT_TRUE(FetchResourceUrl(expected_new_url, &actual_output,
+                                 &headers_out)) << css_url;
     EXPECT_EQ(expected_css_output, actual_output) << css_url;
+
+    // Non-fallback CSS should have very long caching headers
+    if (!FlagSet(flags, kExpectFallback)) {
+      EXPECT_TRUE(headers_out.IsCacheable());
+      EXPECT_TRUE(headers_out.IsProxyCacheable());
+      EXPECT_LE(Timer::kYearMs, headers_out.cache_ttl_ms());
+    }
 
     // Serve from new context.
     if (!FlagSet(flags, kNoOtherContexts)) {
