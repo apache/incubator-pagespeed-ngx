@@ -45,7 +45,9 @@ class UsageDataReporter {
   // Reports all useful response data.
   virtual void ReportResponseData(const GoogleUrl& url, int32 response_code,
                                   const ContentType* content_type,
-                                  int64 time_taken) {}
+                                  int64 time_taken,
+                                  const GoogleString& ip,
+                                  const GoogleString& user_agent) {}
 
   // Report a warning.
   virtual void ReportWarning(const GoogleUrl& url, int32 warning_code,

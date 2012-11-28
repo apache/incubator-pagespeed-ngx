@@ -44,8 +44,8 @@ pagespeed.LocalStorageCache = function() {
  * @param {*} obj is an object of the form '<expiry> <hash> <inline-data>'.
  */
 pagespeed.LocalStorageCache.prototype.hasExpired = function(obj) {
-  var expiry = obj.substring(0, obj.indexOf(' '));
-  return (expiry != '' && expiry >= Date.now());
+  var expiry = parseInt(obj.substring(0, obj.indexOf(' ')), 10);
+  return (!isNaN(expiry) && expiry <= Date.now());
 };
 
 pagespeed.LocalStorageCache.prototype['hasExpired'] =
@@ -86,7 +86,7 @@ pagespeed.LocalStorageCache.prototype['replaceLastScript'] =
  * @param {string} url is the URL of the CSS to inline.
  */
 pagespeed.LocalStorageCache.prototype.inlineCss = function(url) {
-  var obj = window.localStorage.getItem(url);
+  var obj = window.localStorage.getItem('pagespeed_lsc_url:' + url);
   var newNode = document.createElement(obj ? 'style' : 'link');
   if (obj && !this.hasExpired(obj)) {
     newNode.type = 'text/css';
@@ -107,7 +107,7 @@ pagespeed.LocalStorageCache.prototype['inlineCss'] =
  * @param {string} url is the URL of the image to inline.
  */
 pagespeed.LocalStorageCache.prototype.inlineImg = function(url) {
-  var obj = window.localStorage.getItem(url);
+  var obj = window.localStorage.getItem('pagespeed_lsc_url:' + url);
   var newNode = document.createElement('img');
   if (obj && !this.hasExpired(obj)) {
     newNode.src = this.getData(obj);
@@ -143,16 +143,16 @@ pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName,
     var hash = element.getAttribute('pagespeed_lsc_hash');
     if (hash) {
       var url = element.getAttribute('pagespeed_lsc_url');
+      var urlkey = 'pagespeed_lsc_url:' + url;
       var expiry = element.getAttribute('pagespeed_lsc_expiry');
       var millis = (expiry ? (new Date(expiry)).getTime() : '');
       var data = dataFunc(element);
       if (!data) {
         // img.src is set to a data URI on the repeat view but is missing
         // thereafter, and we must not forget it once we have it.
-        data = this.getData(window.localStorage.getItem(url));
+        data = this.getData(window.localStorage.getItem(urlkey));
       }
-      window.localStorage.setItem('pagespeed_lsc_url:' + url,
-                                  millis + ' ' + hash + ' ' + data);
+      window.localStorage.setItem(urlkey, millis + ' ' + hash + ' ' + data);
       this.regenerate_cookie_ = true;
     }
   }
@@ -180,16 +180,16 @@ pagespeed.LocalStorageCache.prototype.generateCookie_ = function() {
     var deadUns = [];
     var goodUns = [];
     var minExpiry = 0;
-    var currentTime = (new Date()).getTime();
+    var currentTime = Date.now();
     // Process every local storage object of ours.
     for (var i = 0, n = window.localStorage.length; i < n; ++i) {
       var key = window.localStorage.key(i);
       if (key.indexOf('pagespeed_lsc_url:')) continue;  // Not one of ours.
       var obj = window.localStorage.getItem(key);
       var pos1 = obj.indexOf(' ');
-      var expiry = obj.substring(0, pos1);
-      if (expiry) {
-        if (expiry >= currentTime) {
+      var expiry = parseInt(obj.substring(0, pos1), 10);
+      if (!isNaN(expiry)) {
+        if (expiry <= currentTime) {
           deadUns.push(key);
           continue;
         } else if (expiry < minExpiry || minExpiry == 0) {
@@ -232,7 +232,7 @@ pagespeed.addHandler = function(elem, ev, func) {
       if (oldHandler) {
         oldHandler.call(this);
       }
-    }
+    };
   }
 };
 
