@@ -32,12 +32,14 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/base_trace_context.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -245,6 +247,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       is_blink_request_(false),
       can_rewrite_resources_(true),
       log_record_(NULL),
+      request_context_(NULL),
       start_time_ms_(0)
       // NOTE:  Be sure to clear per-request member vars in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
@@ -365,6 +368,7 @@ void RewriteDriver::Clear() {
   is_blink_request_ = false;
   can_rewrite_resources_ = true;
   log_record_ = NULL;
+  request_context_.reset(NULL);
   start_time_ms_ = 0;
 
   critical_images_.reset(NULL);
@@ -784,6 +788,24 @@ void RewriteDriver::SetResourceManager(ServerContext* resource_manager) {
   // These filters are needed to rewrite and trim urls in modified CSS files.
   domain_rewriter_.reset(new DomainRewriteFilter(this, statistics()));
   url_trim_filter_.reset(new UrlLeftTrimFilter(this, statistics()));
+}
+
+BaseTraceContext* RewriteDriver::trace_context() {
+  return request_context_.get() == NULL ? NULL :
+      request_context_->trace_context();
+}
+
+void RewriteDriver::TracePrintf(const char* fmt, ...) {
+  if (trace_context() == NULL) {
+    return;
+  }
+  if (!trace_context()->tracing_enabled()) {
+    return;
+  }
+  va_list argp;
+  va_start(argp, fmt);
+  trace_context()->TracePrintf(fmt, argp);
+  va_end(argp);
 }
 
 bool RewriteDriver::UserAgentSupportsImageInlining() const {

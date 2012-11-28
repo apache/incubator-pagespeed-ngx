@@ -55,8 +55,8 @@ class MockProxyFetch : public ProxyFetch {
   ~MockProxyFetch() { }
 
   void PropertyCacheComplete(
-      ProxyFetchPropertyCallbackCollector *callback_collector,
-      bool success) {
+      bool success,
+      ProxyFetchPropertyCallbackCollector* callback_collector) {
     complete_ = true;
   }
 

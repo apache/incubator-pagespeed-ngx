@@ -298,7 +298,7 @@ void ProxyFetchPropertyCallbackCollector::Done(
       do_delete = detached_;
     }
     if (fetch != NULL) {
-      fetch->PropertyCacheComplete(this, success);  // deletes this.
+      fetch->PropertyCacheComplete(success_, this);  // deletes this.
     } else if (do_delete) {
       delete this;
       sync->Signal(ProxyFetch::kCollectorDelete);
@@ -317,7 +317,7 @@ void ProxyFetchPropertyCallbackCollector::ConnectProxyFetch(
     ready = done_;
   }
   if (ready) {
-    proxy_fetch->PropertyCacheComplete(this, success_);  // deletes this.
+    proxy_fetch->PropertyCacheComplete(success_, this);  // deletes this.
   }
 }
 
@@ -632,8 +632,7 @@ void ProxyFetch::ScheduleQueueExecutionIfNeeded() {
 }
 
 void ProxyFetch::PropertyCacheComplete(
-    ProxyFetchPropertyCallbackCollector *callback_collector,
-    bool success) {
+    bool success, ProxyFetchPropertyCallbackCollector* callback_collector) {
   ScopedMutex lock(mutex_.get());
 
   if (driver_ == NULL) {

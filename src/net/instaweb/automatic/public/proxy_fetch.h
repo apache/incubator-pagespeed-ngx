@@ -138,7 +138,6 @@ class ProxyFetchPropertyCallback : public PropertyPage {
   CacheType cache_type_;
   ProxyFetchPropertyCallbackCollector* collector_;
   GoogleString url_;
-  const RewriteOptions* options_;
   DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallback);
 };
 
@@ -276,7 +275,7 @@ class ProxyFetch : public SharedAsyncFetch {
   // Called by ProxyFetchPropertyCallbackCollector when all property-cache
   // fetches are complete.  This function takes ownership of collector.
   virtual void PropertyCacheComplete(
-      ProxyFetchPropertyCallbackCollector* collector, bool success);
+      bool success, ProxyFetchPropertyCallbackCollector* collector);
 
   // Returns the AbstractClientState object carried by the property cache
   // callback collector, if any. Returns NULL if no AbstractClientState

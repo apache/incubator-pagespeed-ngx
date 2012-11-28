@@ -29,6 +29,7 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -62,6 +63,7 @@ class FileSystem;
 class FlushEarlyInfo;
 class FlushEarlyRenderInfo;
 class Function;
+class BaseTraceContext;
 class HtmlEvent;
 class HtmlFilter;
 class HtmlWriterFilter;
@@ -82,8 +84,7 @@ class UrlLeftTrimFilter;
 class UserAgentMatcher;
 class Writer;
 
-// TODO(jmarantz): rename this class to RequestContext.  This extends
-// class HtmlParse (which should renamed HtmlContext) by providing
+// This extends class HtmlParse (which should renamed HtmlContext) by providing
 // context for rewriting resources (css, js, images).
 class RewriteDriver : public HtmlParse {
  public:
@@ -206,6 +207,19 @@ class RewriteDriver : public HtmlParse {
   // Returns true if the request we're rewriting was made using SPDY.
   bool using_spdy() const { return using_spdy_; }
   void set_using_spdy(bool x) { using_spdy_ = x; }
+
+  RequestContextPtr request_context() { return request_context_; }
+  void set_request_context(const RequestContextPtr& x) {
+    request_context_.reset(x);
+  }
+
+  // Convenience method to return the trace context from the request_context()
+  // if both are configured and NULL otherwise.
+  BaseTraceContext* trace_context();
+
+  // Convenience method to issue a trace annotation if tracing is enabled.
+  // If tracing is disabled, this function is a no-op.
+  void TracePrintf(const char* fmt, ...);
 
   // Return a mutable pointer to the response headers that filters can update
   // before the first flush.  Returns NULL after Flush has occurred.
@@ -1342,6 +1356,12 @@ class RewriteDriver : public HtmlParse {
   // may be NULL and accessing it beyond the base fetch's lifespan is unsafe.
   // Reset to NULL in Cleanup()
   LogRecord* log_record_;
+
+  // Additional request context that may outlive this RewriteDriver. (Thus,
+  // the context is reference counted.)
+  // TODO(piatek): Merge this with log_record_ and track them similarly since
+  //               they have the same flow.
+  RequestContextPtr request_context_;
 
   // Start time for HTML requests. Used for statistics reporting.
   int64 start_time_ms_;

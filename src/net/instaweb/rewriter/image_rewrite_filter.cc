@@ -24,6 +24,7 @@
 #include "base/logging.h"               // for CHECK, etc
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/base_trace_context.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -370,6 +371,7 @@ bool ResizeImageIfNecessary(
 RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       Context* rewrite_context, const ResourcePtr& input_resource,
       const OutputResourcePtr& result) {
+  driver_->TracePrintf("Image rewrite start");
   MessageHandler* message_handler = driver_->message_handler();
   StringVector urls;
   ResourceContext context;
@@ -554,6 +556,10 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   // All other conditions were updated in other code paths above.
   if (rewrite_result == kRewriteFailed) {
     image_rewrites_dropped_intentionally_->Add(1);
+  } else {
+    driver_->TracePrintf("Image rewrite success (%u -> %u)",
+                         static_cast<unsigned>(image->input_size()),
+                         static_cast<unsigned>(image->output_size()));
   }
 
   return rewrite_result;

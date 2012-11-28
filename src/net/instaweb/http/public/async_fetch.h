@@ -24,6 +24,7 @@
 
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -152,6 +153,12 @@ class AsyncFetch : public Writer {
   // c1 is cache 1, c2 is cache 2, hf is headers fetch.
   GoogleString LoggingString();
 
+  // Returns the request context associated with this fetch, if any, or
+  // NULL if no request context exists.
+  virtual RequestContextPtr request_context() {
+    return RequestContextPtr(NULL);
+  }
+
  protected:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler) = 0;
   virtual bool HandleFlush(MessageHandler* handler) = 0;
@@ -265,6 +272,10 @@ class SharedAsyncFetch : public AsyncFetch {
 
   AsyncFetch* base_fetch() { return base_fetch_; }
   const AsyncFetch* base_fetch() const { return base_fetch_; }
+
+  virtual RequestContextPtr request_context() {
+    return base_fetch_->request_context();
+  }
 
  protected:
   virtual void HandleDone(bool success) {

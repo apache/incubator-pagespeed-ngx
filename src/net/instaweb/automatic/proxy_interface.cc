@@ -488,6 +488,7 @@ void ProxyInterface::ProxyRequestCallback(
         driver = server_context_->NewCustomRewriteDriver(options);
       }
       driver->set_log_record(async_fetch->log_record());
+      driver->set_request_context(async_fetch->request_context());
 
       // TODO(mmohabey): Remove duplicate setting of user agent and
       // request headers for different flows.

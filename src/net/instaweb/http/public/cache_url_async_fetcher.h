@@ -50,6 +50,7 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
         fetcher_(fetcher),
         backend_first_byte_latency_(NULL),
         fallback_responses_served_(NULL),
+        num_conditional_refreshes_(NULL),
         respect_vary_(false),
         ignore_recent_fetch_failed_(false),
         serve_stale_if_fetch_error_(false),
