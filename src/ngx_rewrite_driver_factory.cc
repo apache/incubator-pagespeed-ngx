@@ -94,7 +94,7 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   slow_worker_->ShutDown();
   apr_pool_destroy(pool_);
   pool_ = NULL;
-  
+
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
     NgxCache* cache = p->second;
@@ -248,7 +248,7 @@ CacheInterface* NgxRewriteDriverFactory::GetMemcached(
     if (result.second) {
       fprintf(stderr,"setting up memcached server [%s]\n",server_spec.c_str());
       AprMemCache* mem_cache = NewAprMemCache(server_spec);
-     
+
       memcache_servers_.push_back(mem_cache);
 
       int num_threads = options->memcached_threads();
@@ -281,12 +281,12 @@ CacheInterface* NgxRewriteDriverFactory::GetMemcached(
       }
       memcached = batcher;
       result.first->second = memcached;
- 
+
       // TODO(oschaaf): should not connect to memcached here
       bool connected = mem_cache->Connect();
       fprintf(stderr,
               "connected to memcached backend: %s\n", connected ? "true": "false");
-      
+
     } else {
       memcached = result.first->second;
     }

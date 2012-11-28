@@ -46,7 +46,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
   static const char kStaticJavaScriptPrefix[];
   static const char kMemcached[];
-  
+
   NgxRewriteDriverFactory();
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
@@ -72,17 +72,12 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
 
   SlowWorker* slow_worker() { return slow_worker_.get(); }
 
-  // Initializes all the statistics objects created transitively by
-  // NgxRewriteDriverFactory, including apache-specific and
-  // platform-independent statistics.
-  //static void InitStats(Statistics* statistics);
-  
   // Finds a Cache for the file_cache_path in the config.  If none exists,
   // creates one, using all the other parameters in the ApacheConfig.
   // Currently, no checking is done that the other parameters (e.g. cache
   // size, cleanup interval, etc.) are consistent.
   NgxCache* GetCache(NgxRewriteOptions* config);
-  
+
   // Create a new AprMemCache from the given hostname[:port] specification.
   AprMemCache* NewAprMemCache(const GoogleString& spec);
 
@@ -107,7 +102,7 @@ private:
   typedef std::map<GoogleString, NgxCache*> PathCacheMap;
   PathCacheMap path_cache_map_;
   MD5Hasher cache_hasher_;
-  
+
   // memcache connections are expensive.  Just allocate one per
   // distinct server-list.  At the moment there is no consistency
   // checking for other parameters.  Note that each memcached
@@ -128,7 +123,7 @@ private:
   scoped_ptr<QueuedWorkerPool> memcached_pool_;
   std::vector<AprMemCache*> memcache_servers_;
   std::vector<AsyncCache*> async_caches_;
-  
+
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

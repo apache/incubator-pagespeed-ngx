@@ -190,7 +190,7 @@ class NgxRewriteOptions : public RewriteOptions {
   // comma-separated list of host[:port].  See AprMemCache::AprMemCache
   // for code that parses it.
   Option<GoogleString> memcached_servers_;
-  
+
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteOptions);
 };
 
