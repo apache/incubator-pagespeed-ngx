@@ -68,7 +68,7 @@ template<class HeadersT>
 void NgxBaseFetch::CopyHeadersFromTable(ngx_list_t* headers_from,
                                         HeadersT* headers_to) {
   // http_version is the version number of protocol; 1.1 = 1001. See
-  // NGX_HTTP_VERSION_* in ngx_http_request.h 
+  // NGX_HTTP_VERSION_* in ngx_http_request.h
   headers_to->set_major_version(request_->http_version / 1000);
   headers_to->set_minor_version(request_->http_version % 1000);
 
@@ -249,6 +249,8 @@ bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
 }
 
 void NgxBaseFetch::HandleDone(bool success) {
+  // TODO(jefftk): it's possible that instead of locking here we can just modify
+  // CopyBufferToNginx to only read done_called_ once.
   Lock();
   done_called_ = true;
   Unlock();
