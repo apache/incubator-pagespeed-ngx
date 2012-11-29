@@ -68,7 +68,7 @@ template<class HeadersT>
 void NgxBaseFetch::CopyHeadersFromTable(ngx_list_t* headers_from,
                                         HeadersT* headers_to) {
   // http_version is the version number of protocol; 1.1 = 1001. See
-  // NGX_HTTP_VERSION_* in ngx_http_request.h 
+  // NGX_HTTP_VERSION_* in ngx_http_request.h
   headers_to->set_major_version(request_->http_version / 1000);
   headers_to->set_minor_version(request_->http_version % 1000);
 
@@ -104,8 +104,9 @@ bool NgxBaseFetch::HandleWrite(const StringPiece& sp,
 }
 
 ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
-  // TODO(jefftk): if done_called_ && last_buf_sent_, should we just short
-  // circuit (return NGX_OK) here?
+  if (done_called_ && last_buf_sent_) {
+    return NGX_DECLINED;
+  }
 
   int rc = ngx_psol::string_piece_to_buffer_chain(
       request_->pool, buffer_, link_ptr, done_called_ /* send_last_buf */);
@@ -248,7 +249,12 @@ bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
 }
 
 void NgxBaseFetch::HandleDone(bool success) {
+  // TODO(jefftk): it's possible that instead of locking here we can just modify
+  // CopyBufferToNginx to only read done_called_ once.
+  Lock();
   done_called_ = true;
+  Unlock();
+
   close(pipe_fd_);  // Indicates to nginx that we're done with the rewrite.
   pipe_fd_ = -1;
 }
