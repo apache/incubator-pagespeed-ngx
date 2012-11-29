@@ -1003,6 +1003,10 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
     return CreateRequestContext::kError;
   }
 
+  // ps_determine_options modified url, removing any ModPagespeedFoo=Bar query
+  // parameters.  Keep url_string in sync with url.
+  url.Spec().CopyToString(&url_string);
+
   net_instaweb::RewriteOptions* options;
   if (custom_options == NULL) {
     options = cfg_s->server_context->global_options();
