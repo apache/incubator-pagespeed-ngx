@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_STATIC_JAVASCRIPT_MANAGER_H_
 
 #include <map>
+#include <utility>
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -49,6 +50,7 @@ class StaticJavascriptManager {
   static const char kJsExtension[];
 
   enum JsModule {
+    kAddInstrumentationJs,
     kClientDomainRewriter,
     kDeferIframe,
     kDeferJs,

@@ -24,9 +24,10 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -44,71 +45,11 @@ const char kHeadScript[] =
     "window.mod_pagespeed_start = Number(new Date());"
     "</script>";
 
-// The javascript tag to insert at the bottom of head.  Formatting args:
-//     1. %s : CDATA hack opener or "".
-//     2. %s : the custom beacon url, by default "./mod_pagespeed_beacon?ets=".
-//     3. %s : kUnloadTag.
-//     4. %s : time taken to fetch the headers of the html document.
-//     5. %s : time taken to fetch the complete resource from origin.
-//     6. %s : experiment id.
-//     7. %s : URL of HTML.
-//     8. %s : CDATA hack closer or "".
-//
-//  Then our timing info, e.g. "unload:123", will be appended.
-const char kUnloadScriptFormat[] =
-    "<script type='text/javascript'>%s"
-    "(function(){function g(){"
-    "if(window.mod_pagespeed_loaded) {return;}"
-    "var ifr=0;"
-    "if(window.parent != window){ifr=1}"
-    "new Image().src='%s%s'+"
-    "(Number(new Date())-window.mod_pagespeed_start)+'&ifr='+ifr+'"
-    "%s%s%s&url='+encodeURIComponent('%s');};"
-    "var f=window.addEventListener;if(f){f('beforeunload',g,false);}else{"
-    "f=window.attachEvent;if(f){f('onbeforeunload',g);}}"
-    "})();%s</script>";
-
-// The javascript tag to insert at the bottom of document.  The same formatting
-// args are used for kUnloadScriptFormat.
-//
-// Then our timing info, e.g. "load:123", will be appended.
-const char kTailScriptFormat[] =
-    "<script type='text/javascript'>%s"
-    "(function(){function g(){var ifr=0;var rpi='';"
-    "if(window.mod_pagespeed_prefetch_start){"
-    "rpi+='&nrp='+window.mod_pagespeed_num_resources_prefetched;"
-    "rpi+='&htmlAt=';"
-    "rpi+=(window.mod_pagespeed_start-window.mod_pagespeed_prefetch_start);}"
-    "if(window.parent != window){ifr=1}"
-    "new Image().src='%s%s'+"
-    "(Number(new Date())-window.mod_pagespeed_start)+'&ifr='+ifr+'"
-    "'+rpi+'"
-    "%s%s%s&url='+encodeURIComponent('%s');"
-    "window.mod_pagespeed_loaded=true;};"
-    "var f=window.addEventListener;if(f){f('load',g,false);}else{"
-    "f=window.attachEvent;if(f){f('onload',g);}}"
-    "})();%s</script>";
-
-// In mod_pagespeed, the output_filter gets run prior to mod_headers,
-// so we may not know the correct mimetype at the time we run.
-//
-// So we should use this hack from
-//     http://stackoverflow.com/questions/2375217
-//     should-i-use-or-for-closing-a-cdata-section-into-xhtml
-//
-//   <script type="text/javascript">//<![CDATA[
-//     INSTRUMENTATION CODE
-//   //]]></script>
-//
-// The %s format elements after <script> and before </script> are the
-// hooks that allow us to insert the cdata hacks.
-const char kCdataHackOpen[] = "//<![CDATA[\n";
-const char kCdataHackClose[] = "\n//]]>";
-
 }  // namespace
 
 // Timing tag for total page load time.  Also embedded in kTailScriptFormat
 // above via the second %s.
+// TODO(jud): These values would be better set to "load" and "beforeunload".
 const char AddInstrumentationFilter::kLoadTag[] = "load:";
 const char AddInstrumentationFilter::kUnloadTag[] = "unload:";
 
@@ -159,23 +100,30 @@ void AddInstrumentationFilter::EndElement(HtmlElement* element) {
     // assured by add_head_filter.
     CHECK(found_head_) << "Reached end of document without finding <head>."
         "  Please turn on the add_head filter.";
-    AddScriptNode(element, kTailScriptFormat, kLoadTag);
+    GoogleString event = kLoadTag;
+    AddScriptNode(element, kLoadTag);
     added_tail_script_ = true;
   } else if (found_head_ && element->keyword() == HtmlName::kHead &&
              driver_->options()->report_unload_time() &&
              !added_unload_script_) {
-    AddScriptNode(element, kUnloadScriptFormat, kUnloadTag);
+    AddScriptNode(element, kUnloadTag);
     added_unload_script_ = true;
   }
 }
 
 void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
-                                             const GoogleString& script_format,
-                                             const GoogleString& tag_name) {
-  GoogleString html_url;
-  EscapeToJsStringLiteral(driver_->google_url().Spec(),
-                          false, /* no quotes */
-                          &html_url);
+                                             const GoogleString& event) {
+  GoogleString js;
+  StaticJavascriptManager* static_js_manager =
+      driver_->server_context()->static_javascript_manager();
+  // Only add the static JS once.
+  if (!added_tail_script_ && !added_unload_script_) {
+    js = static_js_manager->GetJsSnippet(
+        StaticJavascriptManager::kAddInstrumentationJs, driver_->options());
+  }
+
+  GoogleString js_event = (event == kLoadTag) ? "load" : "beforeunload";
+
   const RewriteOptions::BeaconUrl& beacons = driver_->options()->beacon_url();
   const GoogleString* beacon_url =
       driver_->IsHttps() ? &beacons.https : &beacons.http;
@@ -184,10 +132,10 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
     int furious_state = driver_->options()->furious_id();
     if (furious_state != furious::kFuriousNotSet &&
         furious_state != furious::kFuriousNoExperiment) {
-      expt_id_param = StringPrintf("&exptid=%d",
-                                   driver_->options()->furious_id());
+      expt_id_param = IntegerToString(driver_->options()->furious_id());
     }
   }
+
   GoogleString headers_fetch_time;
   GoogleString fetch_time;
   LogRecord* log_record = driver_->log_record();
@@ -197,35 +145,33 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
           log_record->logging_info()->timing_info().header_fetch_ms();
       // If time taken to fetch the http header is not set, then the response
       // came from cache.
-      headers_fetch_time = StrCat(
-          "&hft=",
-          Integer64ToString(header_fetch_ms));
+      headers_fetch_time = Integer64ToString(header_fetch_ms);
     }
     if (log_record->logging_info()->timing_info().has_fetch_ms()) {
       int64 fetch_ms = log_record->logging_info()->timing_info().fetch_ms();
       // If time taken to fetch the resource is not set, then the response
       // came from cache.
-      fetch_time = StrCat("&ft=", Integer64ToString(fetch_ms));
+      fetch_time = Integer64ToString(fetch_ms);
     }
   }
-  GoogleString tail_script = StringPrintf(
-      script_format.c_str(),
-      use_cdata_hack_ ? kCdataHackOpen : "",
-      beacon_url->c_str(), tag_name.c_str(),
-      headers_fetch_time.c_str(), fetch_time.c_str(),
-      expt_id_param.c_str(),
-      html_url.c_str(),
-      use_cdata_hack_ ? kCdataHackClose: "");
-  if (driver_->MimeTypeXhtmlStatus() == RewriteDriver::kIsXhtml) {
-    // We shouldn't escape ampersands if we're using CDATA, but we will only use
-    // CDATA if the response headers aren't finalized while we will only have
-    // have MimeTypeXhtmlStatus as Xhtml if they are.
-    CHECK(!use_cdata_hack_);
-    GlobalReplaceSubstring("&", "&amp;", &tail_script);
-  }
-  HtmlCharactersNode* script =
-      driver_->NewCharactersNode(element, tail_script);
+
+  GoogleString html_url;
+  EscapeToJsStringLiteral(driver_->google_url().Spec(),
+                          false, /* no quotes */
+                          &html_url);
+
+  GoogleString init_js = "\npagespeed.addInstrumentationInit(";
+  StrAppend(&init_js, "'", *beacon_url, "', ");
+  StrAppend(&init_js, "'", js_event, "', ");
+  StrAppend(&init_js, "'", headers_fetch_time, "', ");
+  StrAppend(&init_js, "'", fetch_time, "', ");
+  StrAppend(&init_js, "'", expt_id_param, "', ");
+  StrAppend(&init_js, "'", html_url, "');");
+
+  StrAppend(&js, init_js);
+  HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
   driver_->InsertElementBeforeCurrent(script);
+  static_js_manager->AddJsToElement(js, script, driver_);
 }
 
 }  // namespace net_instaweb

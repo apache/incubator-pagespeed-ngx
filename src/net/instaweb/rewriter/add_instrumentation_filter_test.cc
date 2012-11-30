@@ -18,14 +18,14 @@
 
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 
-#include <cstddef>
-
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/public/escaping.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -53,44 +53,8 @@ class AddInstrumentationFilterTest : public RewriteTestBase {
   void RunInjection() {
     options()->set_report_unload_time(report_unload_time_);
     rewrite_driver()->AddFilters();
-    GoogleString url =
-        StrCat((https_mode_ ? "https://example.com/" : kTestDomain),
-               "index.html?a&b");
-    ParseUrl(url, "<head></head><head></head><body></body><body></body>");
-    EXPECT_EQ(https_mode_,
-              output_buffer_.find("https://example.com/beacon?") !=
-              GoogleString::npos);
-    EXPECT_EQ(https_mode_,
-              output_buffer_.find("http://example.com/beacon?") ==
-              GoogleString::npos);
-    size_t index = output_buffer_.find("ets=load");
-    EXPECT_TRUE(index != GoogleString::npos);
-    EXPECT_FALSE(
-        output_buffer_.find("ets=load", index + 8) != GoogleString::npos);
-    size_t unload_index = output_buffer_.find("ets=unload");
-    EXPECT_EQ(report_unload_time_,
-              unload_index != GoogleString::npos);
-    // Whether report unload time is enabled or not, it should not be present
-    // second time.
-    if (unload_index!=GoogleString::npos) {
-      EXPECT_FALSE(output_buffer_.find("ets=unload", unload_index + 10) !=
-                  GoogleString::npos);
-    }
-
-    // All of the ampersands should be suffixed with "amp;" if that's what
-    // we are looking for.
-    int amp_count = 0;
-    for (int i = 0, n = output_buffer_.size(); i < n; ++i) {
-      if (output_buffer_[i] == '&') {
-        ++amp_count;
-        EXPECT_EQ(xhtml_mode_, output_buffer_.substr(i, 5) == "&amp;");
-      }
-    }
-    EXPECT_LT(0, amp_count);
-    EXPECT_EQ(cdata_mode_,
-              output_buffer_.find("//<![CDATA[\n") != GoogleString::npos);
-    EXPECT_EQ(cdata_mode_,
-              output_buffer_.find("\n//]]>") != GoogleString::npos);
+    ParseUrl(GetTestUrl(),
+             "<head></head><head></head><body></body><body></body>");
     EXPECT_EQ(1, statistics()->GetVariable(
         AddInstrumentationFilter::kInstrumentationScriptAddedCount)->Get());
   }
@@ -109,6 +73,28 @@ class AddInstrumentationFilterTest : public RewriteTestBase {
     https_mode_ = true;
   }
 
+  GoogleString GetTestUrl() {
+    return StrCat((https_mode_ ? "https://example.com/" : kTestDomain),
+                  "index.html?a&b");
+  }
+
+  GoogleString CreateInitString(StringPiece beacon_url,
+                                StringPiece event,
+                                StringPiece headers_fetch_time,
+                                StringPiece fetch_time,
+                                StringPiece expt_id_param) {
+    GoogleString url;
+    EscapeToJsStringLiteral(rewrite_driver()->google_url().Spec(), false, &url);
+    GoogleString str = "pagespeed.addInstrumentationInit(";
+    StrAppend(&str, "'", beacon_url, "', ");
+    StrAppend(&str, "'", event, "', ");
+    StrAppend(&str, "'", headers_fetch_time, "', ");
+    StrAppend(&str, "'", fetch_time, "', ");
+    StrAppend(&str, "'", expt_id_param, "', ");
+    StrAppend(&str, "'", url, "');");
+    return str;
+  }
+
   bool report_unload_time_;
   bool xhtml_mode_;
   bool cdata_mode_;
@@ -117,70 +103,21 @@ class AddInstrumentationFilterTest : public RewriteTestBase {
 
 TEST_F(AddInstrumentationFilterTest, ScriptInjection) {
   RunInjection();
+  EXPECT_TRUE(output_buffer_.find(
+      CreateInitString(
+          options()->beacon_url().http, "load",
+          "", "", "")) !=
+              GoogleString::npos);
 }
 
 TEST_F(AddInstrumentationFilterTest, ScriptInjectionWithNavigation) {
   report_unload_time_ = true;
   RunInjection();
-}
-
-// Note that the DOCTYPE is not signficiant in terms of how the browser
-// interprets ampersands in script tags, so we test here that we do not
-// expect &amp;.
-TEST_F(AddInstrumentationFilterTest, ScriptInjectionXhtmlDoctype) {
-  SetDoctype(kXhtmlDtd);
-  RunInjection();
-}
-
-// Same story here: the doctype is ignored and we do not get "&amp;".
-TEST_F(AddInstrumentationFilterTest,
-       TestScriptInjectionWithNavigationXhtmlDoctype) {
-  SetDoctype(kXhtmlDtd);
-  report_unload_time_ = true;
-  RunInjection();
-}
-
-// With Mimetype, we expect "&amp;".
-TEST_F(AddInstrumentationFilterTest, ScriptInjectionXhtmlMimetype) {
-  SetMimetypeToXhtml();
-  RunInjection();
-}
-
-// With Mimetype, we expect "&amp;".
-TEST_F(AddInstrumentationFilterTest,
-       TestScriptInjectionWithNavigationXhtmlMimetype) {
-  SetMimetypeToXhtml();
-  report_unload_time_ = true;
-  RunInjection();
-}
-
-// In mod_pagespeed, we cannot currently rely on the content-type
-// being set properly prior to running our output filter.
-TEST_F(AddInstrumentationFilterTest, ScriptInjectionCdata) {
-  DoNotRelyOnContentType();
-  RunInjection();
-}
-
-TEST_F(AddInstrumentationFilterTest, ScriptInjectionWithNavigationCdata) {
-  DoNotRelyOnContentType();
-  report_unload_time_ = true;
-  RunInjection();
-}
-
-// In mod_pagespeed, we cannot currently rely on the content-type
-// being set properly prior to running our output filter.
-TEST_F(AddInstrumentationFilterTest, ScriptInjectionCdataMime) {
-  DoNotRelyOnContentType();
-  SetMimetypeToXhtml();
-  RunInjection();
-}
-
-TEST_F(AddInstrumentationFilterTest,
-       TestScriptInjectionWithNavigationCdataMime) {
-  DoNotRelyOnContentType();
-  SetMimetypeToXhtml();
-  report_unload_time_ = true;
-  RunInjection();
+  EXPECT_TRUE(output_buffer_.find(
+      CreateInitString(
+          options()->beacon_url().http, "beforeunload",
+          "", "", "")) !=
+              GoogleString::npos);
 }
 
 // Test an https fetch.
@@ -188,6 +125,11 @@ TEST_F(AddInstrumentationFilterTest,
        TestScriptInjectionWithHttps) {
   AssumeHttps();
   RunInjection();
+  EXPECT_TRUE(output_buffer_.find(
+      CreateInitString(
+          options()->beacon_url().https, "load",
+          "", "", "")) !=
+              GoogleString::npos);
 }
 
 // Test an https fetch, reporting unload and using Xhtml
@@ -197,6 +139,11 @@ TEST_F(AddInstrumentationFilterTest,
   AssumeHttps();
   report_unload_time_ = true;
   RunInjection();
+  EXPECT_TRUE(output_buffer_.find(
+      CreateInitString(
+          options()->beacon_url().https, "beforeunload",
+          "", "", "")) !=
+              GoogleString::npos);
 }
 
 // Test that experiment id reporting is done correctly.
@@ -209,22 +156,11 @@ TEST_F(AddInstrumentationFilterTest,
                             &handler);
   options()->SetFuriousState(2);
   RunInjection();
-  EXPECT_TRUE(output_buffer_.find("&exptid=2") != GoogleString::npos);
-}
-
-// Test that we're escaping ampersands in Xhtml.
-TEST_F(AddInstrumentationFilterTest,
-       TestFuriousExperimentIdReportingXhtml) {
-  NullMessageHandler handler;
-  options()->set_running_furious_experiment(true);
-  options()->AddFuriousSpec("id=2;percent=100", &handler);
-  options()->SetFuriousState(2);
-  SetMimetypeToXhtml();
-  RunInjection();
-  EXPECT_TRUE(output_buffer_.find("&amp;exptid=2") != GoogleString::npos);
-  EXPECT_TRUE(output_buffer_.find("hft") == GoogleString::npos);
-  EXPECT_TRUE(output_buffer_.find("&amp;ft") == GoogleString::npos);
-  EXPECT_TRUE(output_buffer_.find("&ft") == GoogleString::npos);
+  EXPECT_TRUE(output_buffer_.find(
+      CreateInitString(
+          options()->beacon_url().http, "load",
+          "", "", "2")) !=
+              GoogleString::npos);
 }
 
 // Test that headers fetch timing reporting is done correctly.
@@ -236,16 +172,11 @@ TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
   log_record.logging_info()->mutable_timing_info()->set_fetch_ms(500);
   rewrite_driver()->set_log_record(&log_record);
   RunInjection();
-  EXPECT_TRUE(output_buffer_.find("&hft=200") != GoogleString::npos);
-  EXPECT_TRUE(output_buffer_.find("&ft") != GoogleString::npos);
-}
-
-// Test that flush subresources count and time for origin html is reported.
-TEST_F(AddInstrumentationFilterTest, TestFlushEarlyInformation) {
-  NullMessageHandler handler;
-  RunInjection();
-  EXPECT_TRUE(output_buffer_.find("&nrp=") != GoogleString::npos);
-  EXPECT_TRUE(output_buffer_.find("&htmlAt=") != GoogleString::npos);
+  EXPECT_TRUE(output_buffer_.find(
+      CreateInitString(
+          options()->beacon_url().http, "load",
+          "200", "500", "")) !=
+              GoogleString::npos);
 }
 
 

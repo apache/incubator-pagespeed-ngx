@@ -46,6 +46,34 @@
       ],
     },
     {
+      'target_name': 'instaweb_add_instrumentation_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/rewriter',
+        'var_name': 'add_instrumentation',
+      },
+      'sources': [
+        'rewriter/add_instrumentation.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
+      'target_name': 'instaweb_add_instrumentation_opt_data2c',
+      'variables': {
+        'instaweb_data2c_subdir': 'net/instaweb/rewriter',
+        'instaweb_js_subdir': 'net/instaweb/genfiles/rewriter',
+        'var_name': 'add_instrumentation_opt',
+      },
+      'sources': [
+        'genfiles/rewriter/add_instrumentation_opt.js',
+      ],
+      'includes': [
+        'data2c.gypi',
+      ]
+    },
+    {
       'target_name': 'instaweb_client_domain_rewriter_data2c',
       'variables': {
         'instaweb_data2c_subdir': 'net/instaweb/rewriter',
@@ -956,6 +984,8 @@
       'target_name': 'instaweb_rewriter',
       'type': '<(library)',
       'dependencies': [
+        'instaweb_add_instrumentation_data2c',
+        'instaweb_add_instrumentation_opt_data2c',
         'instaweb_client_domain_rewriter_data2c',
         'instaweb_client_domain_rewriter_opt_data2c',
         'instaweb_core.gyp:instaweb_rewriter_html',

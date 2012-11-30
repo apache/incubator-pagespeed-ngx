@@ -39,9 +39,9 @@ check_not fgrep '_GFURIOUS=' <(
   $WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
 
 echo TEST: The beacon should include the experiment id.
-check grep 'mod_pagespeed_beacon.*exptid=2' <(
+check grep "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon?ets=', 'load', '', '', '2', 'http://localhost:8080/mod_pagespeed_example/extend_cache.html');" <(
   $WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
-check grep 'mod_pagespeed_beacon.*exptid=7' <(
+check grep "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon?ets=', 'load', '', '', '7', 'http://localhost:8080/mod_pagespeed_example/extend_cache.html');" <(
   $WGET_DUMP --header='Cookie: _GFURIOUS=7' $EXTEND_CACHE)
 
 echo TEST: The no-experiment group beacon should not include an experiment id.

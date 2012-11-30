@@ -585,7 +585,8 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   echo http_proxy=$SECONDARY_HOSTNAME $WGET -O $WGET_OUTPUT $URL
   http_proxy=$SECONDARY_HOSTNAME $WGET -O $WGET_OUTPUT $URL
   check [ $(grep -c "<script" $WGET_OUTPUT) = 3 ]
-  check [ $(grep -c 'ets=unload' $WGET_OUTPUT) = 1 ]
+  check [ $(grep -c "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon?ets=', 'beforeunload', '', '', '', 'http://secondary.example.com/mod_pagespeed_test/add_instrumentation.html');" $WGET_OUTPUT) = 1 ]
+  check [ $(grep -c "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon?ets=', 'load', '', '', '', 'http://secondary.example.com/mod_pagespeed_test/add_instrumentation.html');" $WGET_OUTPUT) = 1 ]
 
   if [ "$NO_VHOST_MERGE" = "on" ]; then
     echo TEST: When ModPagespeedMaxHtmlParseBytes is not set, we do not insert \

@@ -23,6 +23,8 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -31,10 +33,11 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
+extern const char* JS_add_instrumentation;
+extern const char* JS_add_instrumentation_opt;
 extern const char* JS_client_domain_rewriter;
 extern const char* JS_client_domain_rewriter_opt;
 extern const char* JS_defer_iframe;
@@ -169,6 +172,8 @@ void StaticJavascriptManager::InitializeFileNameToJsStringMap() {
 void StaticJavascriptManager::InitializeJsStrings() {
   // Initialize compiled javascript strings.
   opt_js_vector_.resize(static_cast<int>(kEndOfModules));
+  opt_js_vector_[static_cast<int>(kAddInstrumentationJs)] =
+      JS_add_instrumentation_opt;
   opt_js_vector_[static_cast<int>(kClientDomainRewriter)] =
       JS_client_domain_rewriter_opt;
   opt_js_vector_[static_cast<int>(kDeferIframe)] = JS_defer_iframe_opt;
@@ -187,6 +192,8 @@ void StaticJavascriptManager::InitializeJsStrings() {
       JS_local_storage_cache_opt;
   // Initialize cleartext javascript strings.
   debug_js_vector_.resize(static_cast<int>(kEndOfModules));
+  debug_js_vector_[static_cast<int>(kAddInstrumentationJs)] =
+      JS_add_instrumentation;
   debug_js_vector_[static_cast<int>(kClientDomainRewriter)] =
       JS_client_domain_rewriter;
   debug_js_vector_[static_cast<int>(kDeferIframe)] = JS_defer_iframe;

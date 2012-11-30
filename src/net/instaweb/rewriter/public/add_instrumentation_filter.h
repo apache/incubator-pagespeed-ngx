@@ -58,8 +58,7 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
  private:
   // Adds a script node to given element using the specified format and
   // tag name.
-  void AddScriptNode(HtmlElement* element, const GoogleString& script_format,
-                     const GoogleString& tag_name);
+  void AddScriptNode(HtmlElement* element, const GoogleString& tag_name);
 
   RewriteDriver* driver_;
   bool found_head_;
