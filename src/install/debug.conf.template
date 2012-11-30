@@ -182,6 +182,17 @@ ModPagespeedEnableFilters add_instrumentation
 ModPagespeedMapProxyDomain @@APACHE_DOMAIN@@/pss_images \
                            http://ref.pssdemos.com/filter/images
 
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/forbid_all_disabled/disabled" >
+    # Prevent the enabling of these filters for files in this directory
+    # -and- all subdirectories (they can't override it, deliberately).
+    ModPagespeedForbidAllDisabledFilters true
+    ModPagespeedDisableFilters remove_quotes,remove_comments
+    ModPagespeedDisableFilters collapse_whitespace
+    # Enable this, which was disabled in ../.htaccess, to test that we can
+    # enable something already disabled at the same time as we forbid all.
+    ModPagespeedEnableFilters inline_css
+</Directory>
+
 # This is needed for the server-side includes test in
 # apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
 <IfModule !include_module>
@@ -625,6 +636,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedFileCacheInodeLimit 10000
 #ALL_DIRECTIVES ModPagespeedFileCachePath /tmp/cache/
 #ALL_DIRECTIVES ModPagespeedFileCacheSizeKb 1000
+#ALL_DIRECTIVES ModPagespeedForbidAllDisabledFilters true
 #ALL_DIRECTIVES ModPagespeedForbidFilters rewrite_images
 #ALL_DIRECTIVES ModPagespeedForceCaching off
 #ALL_DIRECTIVES ModPagespeedHashRefererStatistics false

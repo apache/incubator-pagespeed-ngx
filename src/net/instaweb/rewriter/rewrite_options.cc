@@ -632,6 +632,8 @@ void RewriteOptions::AddProperties() {
              "uss", kMaxUrlSegmentSize);
   add_option(kDefaultMaxUrlSize, &RewriteOptions::max_url_size_, "us",
              kMaxUrlSize);
+  add_option(false, &RewriteOptions::forbid_all_disabled_filters_, "fadf",
+             kForbidAllDisabledFilters);
   add_option(true, &RewriteOptions::enabled_, "e", kEnabled);
   add_option(false, &RewriteOptions::ajax_rewriting_enabled_, "ar",
              kAjaxRewritingEnabled);
@@ -1433,8 +1435,12 @@ bool RewriteOptions::Enabled(Filter filter) const {
 }
 
 bool RewriteOptions::Forbidden(StringPiece filter_id) const {
+  // It's forbidden if it's expressly forbidden or if it's disabled and all
+  //  disabled filters are forbidden.
   RewriteOptions::Filter filter = RewriteOptions::LookupFilterById(filter_id);
-  return (forbidden_filters_.find(filter) != forbidden_filters_.end());
+  return (forbidden_filters_.find(filter) != forbidden_filters_.end() ||
+          (forbid_all_disabled_filters() &&
+           disabled_filters_.find(filter) != disabled_filters_.end()));
 }
 
 int64 RewriteOptions::ImageInlineMaxBytes() const {
@@ -1554,16 +1560,29 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   DCHECK_EQ(initialized_options_, src.initialized_options_);
   DCHECK_EQ(initialized_options_, all_options_.size());
   modified_ |= src.modified_;
-  for (FilterSet::const_iterator p = src.enabled_filters_.begin(),
-           e = src.enabled_filters_.end(); p != e; ++p) {
-    Filter filter = *p;
-    // A filter forbidden in 'this' cannot be enabled by 'src',
-    // but otherwise enabling in 'src' trumps disabling in 'this'.
-    if (forbidden_filters_.find(filter) == forbidden_filters_.end()) {
-      disabled_filters_.erase(filter);
-      enabled_filters_.insert(filter);
-    } else {
-      LOG(WARNING) << "Filter is forbidden: " << FilterName(filter);
+
+  // If this.forbid_all_disabled_filters() is true
+  // but src.forbid_all_disabled_filters() is false,
+  // the default merging logic will set it false in the result, but we need
+  // to toggle the value: once it's set it has to stay set.
+  bool new_forbid_all_disabled = (forbid_all_disabled_filters() ||
+                                  src.forbid_all_disabled_filters());
+
+  // If ForbidAllDisabledFilters is turned on, it means no-one can enable a
+  // filter that isn't already enabled, meaning the filters enabled in 'src'
+  // cannot be enabled in 'this'.
+  if (!forbid_all_disabled_filters()) {
+    for (FilterSet::const_iterator p = src.enabled_filters_.begin(),
+             e = src.enabled_filters_.end(); p != e; ++p) {
+      Filter filter = *p;
+      // A filter forbidden in 'this' cannot be enabled by 'src',
+      // but otherwise enabling in 'src' trumps disabling in 'this'.
+      if (forbidden_filters_.find(filter) == forbidden_filters_.end()) {
+        disabled_filters_.erase(filter);
+        enabled_filters_.insert(filter);
+      } else {
+        LOG(WARNING) << "Filter is forbidden: " << FilterName(filter);
+      }
     }
   }
 
@@ -1668,6 +1687,14 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
       prioritize_visible_content_families_.push_back(
           src.prioritize_visible_content_families_[i]->Clone());
     }
+  }
+
+  // If either side has forbidden all disabled filters then the result must
+  // too. This is required to prevent subdirectories from turning it off when
+  // a parent directory has turned it on (by mod_instaweb.cc/merge_dir_config).
+  if (forbid_all_disabled_filters_.was_set() ||
+      src.forbid_all_disabled_filters_.was_set()) {
+    set_forbid_all_disabled_filters(new_forbid_all_disabled);
   }
 }
 

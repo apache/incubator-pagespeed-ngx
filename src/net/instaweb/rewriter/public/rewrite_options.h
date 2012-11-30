@@ -190,6 +190,7 @@ class RewriteOptions {
     kFlushBufferLimitBytes,
     kFlushHtml,
     kFlushMoreResourcesEarlyIfTimePermits,
+    kForbidAllDisabledFilters,
     kFuriousSlot,
     kIdleFlushTimeMs,
     kImageInlineMaxBytes,
@@ -1571,6 +1572,13 @@ class RewriteOptions {
     return critical_line_config_.value();
   }
 
+  void set_forbid_all_disabled_filters(bool x) {
+    set_option(x, &forbid_all_disabled_filters_);
+  }
+  bool forbid_all_disabled_filters() const {
+    return forbid_all_disabled_filters_.value();
+  }
+
   bool reject_blacklisted() const { return reject_blacklisted_.value(); }
   void set_reject_blacklisted(bool x) {
     set_option(x, &reject_blacklisted_);
@@ -2614,6 +2622,12 @@ class RewriteOptions {
   Option<GoogleString> blink_non_cacheables_for_all_families_;
   // Specification for critical line.
   Option<GoogleString> critical_line_config_;
+  // Forbid turning on of any disabled (not enabled) filters either via query
+  // parameters or request headers or .htaccess for Directory. Note that this
+  // is a latch so that setting it at some directory level forces it on for
+  // that and all lower levels, as otherwise someone could just create a
+  // sub-directory and enable it in a .htaccess in there.
+  Option<bool> forbid_all_disabled_filters_;
   // Enables aggressive rewriters for mobile user agents.
   Option<bool> enable_aggressive_rewriters_for_mobile_;
 

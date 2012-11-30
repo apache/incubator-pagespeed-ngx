@@ -158,6 +158,8 @@ const char kModPagespeedFileCacheInodeLimit[] =
     "ModPagespeedFileCacheInodeLimit";
 const char kModPagespeedFileCachePath[] = "ModPagespeedFileCachePath";
 const char kModPagespeedFileCacheSizeKb[] = "ModPagespeedFileCacheSizeKb";
+const char kModPagespeedForbidAllDisabledFilters[] =
+    "ModPagespeedForbidAllDisabledFilters";
 const char kModPagespeedForbidFilters[] = "ModPagespeedForbidFilters";
 const char kModPagespeedForceCaching[] = "ModPagespeedForceCaching";
 const char kModPagespeedFuriousSlot[] = "ModPagespeedExperimentVariable";
@@ -1717,6 +1719,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "to resource tags."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedEnableFilters,
         "Comma-separated list of enabled filters"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedForbidAllDisabledFilters,
+        "Prevents the use of disabled filters"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedForbidFilters,
         "Comma-separated list of forbidden filters"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousSlot,

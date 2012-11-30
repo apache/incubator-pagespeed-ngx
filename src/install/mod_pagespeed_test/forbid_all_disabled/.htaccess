@@ -1,0 +1,10 @@
+# Enable these in this directory since they're not in the core set. They are
+# disabled and forbidden in the pagespeed.conf file for the 'disabled'
+# directory and its subdirectories, in particular 'cheat' where we try to
+# circumvent the forbidden setting.
+
+ModPagespeedForbidAllDisabledFilters false
+ModPagespeedRewriteLevel CoreFilters
+ModPagespeedDisableFilters inline_css
+ModPagespeedEnableFilters remove_quotes,remove_comments
+ModPagespeedEnableFilters collapse_whitespace

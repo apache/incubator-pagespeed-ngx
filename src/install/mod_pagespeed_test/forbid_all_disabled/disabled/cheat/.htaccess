@@ -1,0 +1,6 @@
+# These should have no effect because the Directory entry for our parent
+# directory turns on forbid-all and disables the filters.
+ModPagespeedForbidAllDisabledFilters false
+ModPagespeedRewriteLevel CoreFilters
+ModPagespeedEnableFilters remove_quotes,remove_comments
+ModPagespeedEnableFilters collapse_whitespace

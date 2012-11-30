@@ -688,7 +688,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(121, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(122, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AjaxRewritingEnabled",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAjaxRewritingEnabled));
@@ -785,6 +785,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("FlushMoreResourcesEarlyIfTimePermits",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits));
+  EXPECT_STREQ("ForbidAllDisabledFilters",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kForbidAllDisabledFilters));
   EXPECT_STREQ("IdleFlushTimeMs",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kIdleFlushTimeMs));
@@ -1480,4 +1483,3 @@ TEST_F(RewriteOptionsTest, FilterLookupMethods) {
 }
 
 }  // namespace net_instaweb
-

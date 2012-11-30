@@ -55,6 +55,7 @@ struct OptionName {
 "FlushBufferLimitBytes",                 RewriteOptions::kFlushBufferLimitBytes
 "FlushHtml",                             RewriteOptions::kFlushHtml
 "FlushMoreResourcesEarlyIfTimePermits",  RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits
+"ForbidAllDisabledFilters",              RewriteOptions::kForbidAllDisabledFilters
 "IdleFlushTimeMs",                       RewriteOptions::kIdleFlushTimeMs
 "ImageInlineMaxBytes",                   RewriteOptions::kImageInlineMaxBytes
 "ImageJpegNumProgressiveScans",          RewriteOptions::kImageJpegNumProgressiveScans
