@@ -41,8 +41,8 @@ const int64 kNotCacheable = 0;
 
 }  // namespace
 
-Resource::Resource(ServerContext* resource_manager, const ContentType* type)
-    : server_context_(resource_manager),
+Resource::Resource(ServerContext* server_context, const ContentType* type)
+    : server_context_(server_context),
       type_(type),
       fetch_response_status_(kFetchStatusNotSet),
       is_background_fetch_(true) {

@@ -39,13 +39,13 @@ class MockProxyFetch : public ProxyFetch {
  public:
   MockProxyFetch(AsyncFetch* async_fetch,
                  ProxyFetchFactory* factory,
-                 ServerContext* resource_manager)
+                 ServerContext* server_context)
       : ProxyFetch("http://www.google.com", false,
                    NULL,  // callback
                    async_fetch,
                    NULL,  // no original content fetch
-                   resource_manager->NewRewriteDriver(),
-                   resource_manager,
+                   server_context->NewRewriteDriver(),
+                   server_context,
                    NULL,  // timer
                    factory),
         complete_(false) {

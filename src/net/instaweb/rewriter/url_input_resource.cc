@@ -132,10 +132,10 @@ UrlInputResource::~UrlInputResource() {
 // Shared fetch callback, used by both Load and LoadAndCallback
 class UrlResourceFetchCallback : public AsyncFetch {
  public:
-  UrlResourceFetchCallback(ServerContext* resource_manager,
+  UrlResourceFetchCallback(ServerContext* server_context,
                            const RewriteOptions* rewrite_options,
                            HTTPValue* fallback_value)
-      : server_context_(resource_manager),
+      : server_context_(server_context),
         rewrite_options_(rewrite_options),
         message_handler_(NULL),
         success_(false),
@@ -364,12 +364,12 @@ class UrlResourceFetchCallback : public AsyncFetch {
 class FreshenFetchCallback : public UrlResourceFetchCallback {
  public:
   FreshenFetchCallback(const GoogleString& url, HTTPCache* http_cache,
-                       ServerContext* resource_manager,
+                       ServerContext* server_context,
                        RewriteDriver* rewrite_driver,
                        const RewriteOptions* rewrite_options,
                        HTTPValue* fallback_value,
                        Resource::FreshenCallback* callback)
-      : UrlResourceFetchCallback(resource_manager, rewrite_options,
+      : UrlResourceFetchCallback(server_context, rewrite_options,
                                  fallback_value),
         url_(url),
         http_cache_(http_cache),

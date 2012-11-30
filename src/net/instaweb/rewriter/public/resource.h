@@ -73,7 +73,7 @@ class Resource : public RefCounted<Resource> {
     kFetchStatusOther,
   };
 
-  Resource(ServerContext* resource_manager, const ContentType* type);
+  Resource(ServerContext* server_context, const ContentType* type);
 
   // Common methods across all deriviations
   ServerContext* server_context() const { return server_context_; }

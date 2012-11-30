@@ -54,7 +54,7 @@ class OutputResource : public Resource {
   // The 'options' argument can be NULL.  This is done in the Fetch path because
   // that field is only used for domain sharding, and during the fetch, further
   // domain makes no sense.
-  OutputResource(ServerContext* resource_manager,
+  OutputResource(ServerContext* server_context,
                  const StringPiece& resolved_base,
                  const StringPiece& unmapped_base, /* aka source domain */
                  const StringPiece& original_base, /* aka cnamed domain */

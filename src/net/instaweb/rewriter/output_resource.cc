@@ -69,14 +69,14 @@ class SyncCallback : public CacheInterface::Callback {
 
 }  // namespace
 
-OutputResource::OutputResource(ServerContext* resource_manager,
+OutputResource::OutputResource(ServerContext* server_context,
                                const StringPiece& resolved_base,
                                const StringPiece& unmapped_base,
                                const StringPiece& original_base,
                                const ResourceNamer& full_name,
                                const RewriteOptions* options,
                                OutputResourceKind kind)
-    : Resource(resource_manager, NULL /* no type yet*/),
+    : Resource(server_context, NULL /* no type yet*/),
       writing_complete_(false),
       cached_result_owned_(false),
       cached_result_(NULL),

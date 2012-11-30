@@ -191,10 +191,10 @@ void ProxyFetchPropertyCallback::Done(bool success) {
 }
 
 ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
-    ServerContext* resource_manager, const StringPiece& url,
+    ServerContext* server_context, const StringPiece& url,
     const RewriteOptions* options)
-    : mutex_(resource_manager->thread_system()->NewMutex()),
-      server_context_(resource_manager),
+    : mutex_(server_context->thread_system()->NewMutex()),
+      server_context_(server_context),
       url_(url.data(), url.size()),
       detached_(false),
       done_(false),

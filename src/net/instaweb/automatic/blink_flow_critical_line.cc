@@ -107,13 +107,13 @@ const char kTimeToBlinkDataLookUpDone[] = "BLINK_DATA_LOOK_UP_DONE";
 class CriticalLineFetch : public AsyncFetch {
  public:
   CriticalLineFetch(const GoogleString& url,
-                    ServerContext* resource_manager,
+                    ServerContext* server_context,
                     RewriteOptions* options,
                     RewriteDriver* rewrite_driver,
                     LogRecord* log_record,
                     BlinkCriticalLineData* blink_critical_line_data)
       : url_(url),
-        server_context_(resource_manager),
+        server_context_(server_context),
         options_(options),
         rewrite_driver_(rewrite_driver),
         log_record_(log_record),
@@ -124,13 +124,13 @@ class CriticalLineFetch : public AsyncFetch {
         content_length_over_threshold_(false),
         non_ok_status_code_(false),
         blink_html_change_mutex_(
-            resource_manager->thread_system()->NewMutex()),
+            server_context->thread_system()->NewMutex()),
         finish_(false) {
     // Makes rewrite_driver live longer as ProxyFetch may called Cleanup()
     // on the rewrite_driver even if ComputeBlinkCriticalLineData() has not yet
     // been triggered.
     rewrite_driver_->increment_async_events_count();
-    Statistics* stats = resource_manager->statistics();
+    Statistics* stats = server_context->statistics();
     num_blink_html_cache_misses_ = stats->GetTimedVariable(
         BlinkFlowCriticalLine::kNumBlinkHtmlCacheMisses);
     num_compute_blink_critical_line_data_calls_ = stats->GetTimedVariable(
@@ -544,10 +544,10 @@ class AsyncFetchWithHeadersInhibited : public AsyncFetchUsingWriter {
 class UpdateResponseCodeSharedAyncFetch : public SharedAsyncFetch {
  public:
   UpdateResponseCodeSharedAyncFetch(AsyncFetch* base_fetch,
-                                    ServerContext* resource_manager,
+                                    ServerContext* server_context,
                                     RewriteDriver* rewrite_driver)
       : SharedAsyncFetch(base_fetch),
-        server_context_(resource_manager),
+        server_context_(server_context),
         rewrite_driver_(rewrite_driver),
         updated_response_code_(false) {
     rewrite_driver_->increment_async_events_count();

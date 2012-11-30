@@ -268,14 +268,14 @@ void RewriteTestBase::ServeResourceFromNewContext(
   TestRewriteDriverFactory::InitStats(&stats);
   new_factory->SetUseTestUrlNamer(factory_->use_test_url_namer());
   new_factory->SetStatistics(&stats);
-  ServerContext* new_resource_manager = new_factory->CreateServerContext();
+  ServerContext* new_server_context = new_factory->CreateServerContext();
   if (new_rms_url_namer != NULL) {
-    new_resource_manager->set_url_namer(new_rms_url_namer);
+    new_server_context->set_url_namer(new_rms_url_namer);
   }
-  new_resource_manager->set_hasher(server_context_->hasher());
+  new_server_context->set_hasher(server_context_->hasher());
   RewriteOptions* new_options = options_->Clone();
   server_context_->ComputeSignature(new_options);
-  RewriteDriver* new_rewrite_driver = MakeDriver(new_resource_manager,
+  RewriteDriver* new_rewrite_driver = MakeDriver(new_server_context,
                                                  new_options);
   new_factory->SetupWaitFetcher();
 
@@ -286,7 +286,7 @@ void RewriteTestBase::ServeResourceFromNewContext(
   HTTPValue value;
   ResponseHeaders response_headers;
   EXPECT_EQ(HTTPCache::kNotFound, HttpBlockingFind(
-      resource_url, new_resource_manager->http_cache(), &value,
+      resource_url, new_server_context->http_cache(), &value,
       &response_headers));
   // Initiate fetch.
   EXPECT_EQ(true, new_rewrite_driver->FetchResource(
@@ -700,7 +700,7 @@ void RewriteTestBase::SetUseManagedRewriteDrivers(
 }
 
 RewriteDriver* RewriteTestBase::MakeDriver(
-    ServerContext* resource_manager, RewriteOptions* options) {
+    ServerContext* server_context, RewriteOptions* options) {
   // We use unmanaged drivers rather than NewCustomDriver here so
   // that _test.cc files can add options after the driver was created
   // and before the filters are added.
@@ -709,11 +709,11 @@ RewriteDriver* RewriteTestBase::MakeDriver(
   // standard flow.
   RewriteDriver* rd;
   if (!use_managed_rewrite_drivers_) {
-    rd = resource_manager->NewUnmanagedRewriteDriver(
+    rd = server_context->NewUnmanagedRewriteDriver(
         NULL /* custom options, so no pool*/, options);
     rd->set_externally_managed(true);
   } else {
-    rd = resource_manager->NewCustomRewriteDriver(options);
+    rd = server_context->NewCustomRewriteDriver(options);
   }
   // As we are using mock time, we need to set a consistent deadline here,
   // as otherwise when running under Valgrind some tests will finish

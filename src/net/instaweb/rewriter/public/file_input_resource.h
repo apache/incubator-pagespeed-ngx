@@ -37,12 +37,12 @@ class ServerContext;
 
 class FileInputResource : public Resource {
  public:
-  FileInputResource(ServerContext* resource_manager,
+  FileInputResource(ServerContext* server_context,
                     const RewriteOptions* options,
                     const ContentType* type,
                     const StringPiece& url,
                     const StringPiece& filename)
-      : Resource(resource_manager, type),
+      : Resource(server_context, type),
         url_(url.data(), url.size()),
         filename_(filename.data(), filename.size()),
         rewrite_options_(options) {

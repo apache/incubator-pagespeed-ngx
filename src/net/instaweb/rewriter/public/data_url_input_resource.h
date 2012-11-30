@@ -85,13 +85,13 @@ class DataUrlInputResource : public Resource {
                        Encoding encoding,
                        const ContentType* type,
                        const StringPiece& encoded_contents,
-                       ServerContext* resource_manager)
-      : Resource(resource_manager, type),
+                       ServerContext* server_context)
+      : Resource(server_context, type),
         url_(url),
         encoding_(encoding),
         encoded_contents_(encoded_contents) {
     // Make sure we auto-load.
-    Load(resource_manager->message_handler());
+    Load(server_context->message_handler());
   }
 
   scoped_ptr<const GoogleString> url_;

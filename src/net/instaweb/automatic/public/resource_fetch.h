@@ -53,7 +53,7 @@ class ResourceFetch : public SharedAsyncFetch {
                     // it is not so much an option as request-specific info
                     // similar to User-Agent (also not an option).
                     bool using_spdy,
-                    ServerContext* resource_manager,
+                    ServerContext* server_context,
                     AsyncFetch* async_fetch);
 
   // Fetch a pagespeed resource in a blocking fashion. Response will be
@@ -67,7 +67,7 @@ class ResourceFetch : public SharedAsyncFetch {
   // Returns true iff the fetch succeeded and thus response headers and
   // contents were sent to async_fetch.
   static bool BlockingFetch(const GoogleUrl& url,
-                            ServerContext* resource_manager,
+                            ServerContext* server_context,
                             RewriteDriver* driver,
                             SyncFetcherAdapterCallback* async_fetch);
 
