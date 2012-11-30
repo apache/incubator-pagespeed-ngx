@@ -17,6 +17,8 @@
 // Copyright 2007 Google Inc. All Rights Reserved.
 // Author: yian@google.com (Yi-An Huang)
 
+#include "webutil/css/tostring.h"
+
 #include <string>
 
 #include "base/scoped_ptr.h"
@@ -55,7 +57,7 @@ TEST_F(ToStringTest, declarations) {
                    "color: #abcdef; "
                    "content: \"text\"; "
                    "top: 1; right: 2px !important; "
-                   "background-image: url(link\\(a\\,b\\,\\\"c\\\"\\).html)");
+                   "background-image: url(link\\(a,b,\\\"c\\\"\\).html)");
   TESTDECLARATIONS("content: counter(); clip: rect(auto 1px 2em auto)");
   TESTDECLARATIONS("font-family: arial,serif,\"Courier New\"");
 
@@ -103,6 +105,11 @@ TEST_F(ToStringTest, MediaQueries) {
                  "@import url(\"a.css\") not screen;\n"
                  "@import url(\"b.css\") (color) and (max-width: 38px);\n"
                  "@media only print and (color) { .a {right: 1} }\n");
+}
+
+TEST_F(ToStringTest, EscapeIdentifier) {
+  // We should escape all special chars, but not UTF8.
+  EXPECT_EQ("\\*Hello\\,\\ दुनिया\\!", Css::EscapeIdentifier("*Hello, दुनिया!"));
 }
 
 }  // namespace

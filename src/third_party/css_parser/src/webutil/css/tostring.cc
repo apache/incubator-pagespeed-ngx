@@ -17,6 +17,8 @@
 // Copyright 2007 Google Inc. All Rights Reserved.
 // Author: yian@google.com (Yi-An Huang)
 
+#include "webutil/css/tostring.h"
+
 #include <string>
 #include <vector>
 
@@ -25,41 +27,126 @@
 #include "strings/strutil.h"
 #include "webutil/css/parser.h"
 #include "webutil/css/string.h"
+#include "webutil/css/string_util.h"
+
+class UnicodeText;
 
 namespace Css {
 
-// Escape [(), \t\r\n\\'"]
+namespace {
+
+bool IsIdentSafe(char c) {
+  return ((c >= 'A' && c <= 'Z') ||
+          (c >= 'a' && c <= 'z') ||
+          (c >= '0' && c <= '9') ||
+          c == '-' || c == '_' ||
+          !IsAscii(c));
+}
+
+// Escape [() \t\r\n\\'"].  Also escape , for non-URLs.  Escaping , in
+// URLs causes IE8 to interpret the backslash as a forward slash.
 // Based on CEscape/CEscapeString from strings/strutil.cc.
-static string CSSEscapeString(const StringPiece& src) {
-  const int dest_length = src.size() * 2 + 1;  // Maximum possible expansion
-  scoped_array<char> dest(new char[dest_length]);
+string GeneralEscape(StringPiece src, bool in_url) {
+  string dest;
+  dest.reserve(src.size());  // Minimum possible expansion
 
   const char* src_end = src.data() + src.size();
-  int used = 0;
 
   for (const char* p = src.data(); p < src_end; p++) {
     switch (*p) {
       // Note: CSS does not use standard \n, \r and \t escapes.
       // Generic hex escapes are used instead.
+      // See: http://www.w3.org/TR/CSS2/syndata.html#strings
+      //
+      // Note: Hex escapes in CSS must end in space.
+      // See: http://www.w3.org/TR/CSS2/syndata.html#characters
       case '\n':
-        dest[used++] = '\\'; dest[used++] = 'A'; dest[used++] = ' '; break;
+        dest += "\\A ";
+        break;
       case '\r':
-        dest[used++] = '\\'; dest[used++] = 'D'; dest[used++] = ' '; break;
+        dest += "\\D ";
+        break;
       case '\t':
-        dest[used++] = '\\'; dest[used++] = '9'; dest[used++] = ' '; break;
-      case '\"': case '\'': case '\\': case ',': case '(': case ')':
-          dest[used++] = '\\';
-          dest[used++] = *p;
+        dest += "\\9 ";
+        break;
+      case ',':
+        if (in_url) {
+          dest.push_back(*p);
           break;
-      default: dest[used++] = *p; break;
+        }
+        // fall through -- we are escaping commas for non-URLs.
+      case '\"': case '\'': case '\\': case '(': case ')':
+        dest.push_back('\\');
+        dest.push_back(*p);
+          break;
+      default:
+        dest.push_back(*p);
+        break;
     }
   }
 
-  return string(dest.get(), used);
+  return dest;
 }
 
-static string CSSEscapeString(const UnicodeText& src) {
-  return CSSEscapeString(StringPiece(src.utf8_data(), src.utf8_length()));
+}  // namespace
+
+string EscapeString(StringPiece src) {
+  return GeneralEscape(src, false /* in_url */);
+}
+
+string EscapeString(const UnicodeText& src) {
+  return EscapeString(StringPiece(src.utf8_data(), src.utf8_length()));
+}
+
+string EscapeUrl(StringPiece src) {
+  return GeneralEscape(src, true /* in_url */);
+}
+
+string EscapeUrl(const UnicodeText& src) {
+  return EscapeUrl(StringPiece(src.utf8_data(), src.utf8_length()));
+}
+
+string EscapeIdentifier(StringPiece src) {
+  string dest;
+  dest.reserve(src.size());  // Minimum possible expansion
+
+  for (int i = 0, n = src.size(); i < n; ++i) {
+    switch (src[i]) {
+      // Note: CSS does not use standard \n, \r, \f and \t escapes.
+      // Generic hex escapes are used instead.
+      // See: http://www.w3.org/TR/CSS2/syndata.html#strings
+      //
+      // Note: Hex escapes in CSS must end in space.
+      // See: http://www.w3.org/TR/CSS2/syndata.html#characters
+      case '\n':
+        dest += "\\A ";
+        break;
+      case '\r':
+        dest += "\\D ";
+        break;
+      case '\f':
+        dest += "\\C ";
+        break;
+      case '\t':
+        dest += "\\9 ";
+        break;
+      default:
+        if (IsIdentSafe(src[i])) {
+          dest.push_back(src[i]);
+        } else {
+          // Everything else can be escaped safely with \.
+          dest.push_back('\\');
+          dest.push_back(src[i]);
+        }
+    }
+  }
+
+  return dest;
+}
+
+string EscapeIdentifier(const UnicodeText& text) {
+  // TODO(sligocki): Should we Unicode escape all non-ASCII symbols?
+  return EscapeIdentifier(StringPiece(text.utf8_data(), text.utf8_length()));
 }
 
 template <typename Container>
@@ -91,10 +178,10 @@ string Value::ToString() const {
                           GetDimensionUnitText().c_str());
     case URI:
       return StringPrintf("url(%s)",
-                          CSSEscapeString(GetStringValue()).c_str());
+                          Css::EscapeUrl(GetStringValue()).c_str());
     case FUNCTION:
       return StringPrintf("%s(%s)",
-                          CSSEscapeString(GetFunctionName()).c_str(),
+                          Css::EscapeIdentifier(GetFunctionName()).c_str(),
                           GetParametersWithSeparators()->ToString().c_str());
     case RECT:
       return StringPrintf("rect(%s)",
@@ -106,9 +193,9 @@ string Value::ToString() const {
         return "bad";
     case STRING:
       return StringPrintf("\"%s\"",
-                          CSSEscapeString(GetStringValue()).c_str());
+                          Css::EscapeString(GetStringValue()).c_str());
     case IDENT:
-      return CSSEscapeString(GetIdentifierText());
+      return Css::EscapeIdentifier(GetIdentifierText());
     case UNKNOWN:
       return "UNKNOWN";
     case DEFAULT:
@@ -144,50 +231,50 @@ string FunctionParameters::ToString() const {
 string SimpleSelector::ToString() const {
   switch (type()) {
     case ELEMENT_TYPE:
-      return UnicodeTextToUTF8(element_text());
+      return Css::EscapeIdentifier(element_text());
     case UNIVERSAL:
       return "*";
     case EXIST_ATTRIBUTE:
       return StringPrintf("[%s]",
-                          CSSEscapeString(attribute()).c_str());
+                          Css::EscapeIdentifier(attribute()).c_str());
     case EXACT_ATTRIBUTE:
       return StringPrintf("[%s=%s]",
-                          CSSEscapeString(attribute()).c_str(),
-                          CSSEscapeString(value()).c_str());
+                          Css::EscapeIdentifier(attribute()).c_str(),
+                          Css::EscapeIdentifier(value()).c_str());
     case ONE_OF_ATTRIBUTE:
       return StringPrintf("[%s~=%s]",
-                          CSSEscapeString(attribute()).c_str(),
-                          CSSEscapeString(value()).c_str());
+                          Css::EscapeIdentifier(attribute()).c_str(),
+                          Css::EscapeIdentifier(value()).c_str());
     case BEGIN_HYPHEN_ATTRIBUTE:
       return StringPrintf("[%s|=%s]",
-                          CSSEscapeString(attribute()).c_str(),
-                          CSSEscapeString(value()).c_str());
+                          Css::EscapeIdentifier(attribute()).c_str(),
+                          Css::EscapeIdentifier(value()).c_str());
     case SUBSTRING_ATTRIBUTE:
       return StringPrintf("[%s*=%s]",
-                          CSSEscapeString(attribute()).c_str(),
-                          CSSEscapeString(value()).c_str());
+                          Css::EscapeIdentifier(attribute()).c_str(),
+                          Css::EscapeIdentifier(value()).c_str());
     case BEGIN_WITH_ATTRIBUTE:
       return StringPrintf("[%s^=%s]",
-                          CSSEscapeString(attribute()).c_str(),
-                          CSSEscapeString(value()).c_str());
+                          Css::EscapeIdentifier(attribute()).c_str(),
+                          Css::EscapeIdentifier(value()).c_str());
     case END_WITH_ATTRIBUTE:
       return StringPrintf("[%s$=%s]",
-                          CSSEscapeString(attribute()).c_str(),
-                          CSSEscapeString(value()).c_str());
+                          Css::EscapeIdentifier(attribute()).c_str(),
+                          Css::EscapeIdentifier(value()).c_str());
     case CLASS:
       return StringPrintf(".%s",
-                          CSSEscapeString(value()).c_str());
+                          Css::EscapeIdentifier(value()).c_str());
     case ID:
       return StringPrintf("#%s",
-                          CSSEscapeString(value()).c_str());
+                          Css::EscapeIdentifier(value()).c_str());
     case PSEUDOCLASS:
       return StringPrintf("%s%s",
                           // pseudoclass_separator() is either ":" or "::".
                           UnicodeTextToUTF8(pseudoclass_separator()).c_str(),
-                          CSSEscapeString(pseudoclass()).c_str());
+                          Css::EscapeIdentifier(pseudoclass()).c_str());
     case LANG:
       return StringPrintf(":lang(%s)",
-                          CSSEscapeString(lang()).c_str());
+                          Css::EscapeIdentifier(lang()).c_str());
     default:
       LOG(FATAL) << "Invalid type";
   }
@@ -275,10 +362,12 @@ string UnparsedRegion::ToString() const {
 
 string MediaExpression::ToString() const {
   string result = "(";
-  result += CSSEscapeString(name());
+  result += Css::EscapeIdentifier(name());
   if (has_value()) {
     result += ": ";
-    result += CSSEscapeString(value());
+    // Note: While this is not a string, it is a mixture of text that should
+    // be escaped in roughly the same way.
+    result += Css::EscapeString(value());
   }
   result += ")";
   return result;
@@ -297,7 +386,7 @@ string MediaQuery::ToString() const {
       break;
   }
 
-  result += CSSEscapeString(media_type());
+  result += Css::EscapeIdentifier(media_type());
   if (!media_type().empty() && !expressions().empty()) {
     result += " and ";
   }
@@ -329,14 +418,15 @@ string Ruleset::ToString() const {
 string Charsets::ToString() const {
   string result;
   for (const_iterator iter = begin(); iter != end(); ++iter) {
-    result += StringPrintf("@charset \"%s\";", CSSEscapeString(*iter).c_str());
+    result += StringPrintf("@charset \"%s\";",
+                           Css::EscapeString(*iter).c_str());
   }
   return result;
 }
 
 string Import::ToString() const {
   return StringPrintf("@import url(\"%s\") %s;",
-                      CSSEscapeString(link()).c_str(),
+                      Css::EscapeUrl(link()).c_str(),
                       media_queries().ToString().c_str());
 }
 
@@ -349,4 +439,4 @@ string Stylesheet::ToString() const {
   return result;
 }
 
-}  // namespace
+}  // namespace Css

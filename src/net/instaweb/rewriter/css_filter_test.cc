@@ -372,6 +372,10 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{filter:progid:DXImageTransform.Microsoft.Alpha(Opacity=80)}",
     // Make sure we keep "\," distinguished from ",".
     "body{font-family:font\\,1,font\\,2}",
+    // Distinguish \. from ., etc.
+    // http://code.google.com/p/modpagespeed/issues/detail?id=574
+    "#MyForm\\.myfield{property:value}",
+    "\\*{color:red}",
     // Found in the wild:
     "a{width:overflow:hidden}",
     // IE hack: \9
@@ -761,8 +765,8 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "z-index:1;top:-1px;left:-2px;right:-2px;bottom:-2px;opacity:0.4;"
       "-moz-border-radius:3px;"
       "filter:progid:DXImageTransform.Microsoft.Blur(pixelradius=5);"
-      "*opacity:1;*top:-2px;*left:-5px;*right:5px;*bottom:4px;-ms-filter:"
-      "\"progid:DXImageTransform.Microsoft.Blur(pixelradius=5)\";"
+      "*opacity:1;*top:-2px;*left:-5px;*right:5px;*bottom:4px;"
+      "-ms-filter:\"progid:DXImageTransform.Microsoft.Blur(pixelradius=5)\";"
       "opacity:1\\0/;top:-4px\\0/;left:-6px\\0/;right:5px\\0/;bottom:4px\\0/}"},
 
     // Alexa-100 with parse errors (illegal syntax or CSS3).
@@ -1054,6 +1058,15 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "@media screen and (color){.b{color:green}}"
       "@media not screen{.c{color:#00f}}"
       "@media only screen{.d{color:#0ff}}" },
+
+    // TODO(sligocki): Output should be identical to input.
+    // We should escape : in Properties and ; in Values.
+    { "#MyForm\\.myfield{property\\:more:value\\;more}",
+      "#MyForm\\.myfield{property:more:value;more}" },
+
+    // http://code.google.com/p/modpagespeed/issues/detail?id=575
+    { "[class^=\"icon-\"],[class*=\" icon-\"] { color: red }",
+      "[class^=icon-],[class*=\\ icon-]{color:red}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

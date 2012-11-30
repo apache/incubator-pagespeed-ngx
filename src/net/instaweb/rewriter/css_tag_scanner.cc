@@ -22,7 +22,6 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/domain_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
@@ -30,6 +29,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
+#include "webutil/css/tostring.h"
 
 namespace {
 const char kTextCss[] = "text/css";
@@ -321,8 +321,7 @@ bool CssTagScanner::TransformUrls(
           if (is_quoted) {
             ok = ok && writer->Write(StringPiece(&quote, 1), handler);
           }
-          ok = ok && writer->Write(
-              CssMinify::EscapeString(transformed, true /*in_url*/), handler);
+          ok = ok && writer->Write(Css::EscapeUrl(transformed), handler);
           if (have_term_quote) {
             ok = ok && writer->Write(StringPiece(&quote, 1), handler);
           }

@@ -34,19 +34,11 @@
 #include "webutil/css/parser.h"
 #include "webutil/css/property.h"
 #include "webutil/css/selector.h"
+#include "webutil/css/tostring.h"
 #include "webutil/css/value.h"
 #include "webutil/html/htmlcolor.h"
 
 namespace net_instaweb {
-
-namespace {
-
-GoogleString CSSEscapeString(const UnicodeText& src) {
-  return CssMinify::EscapeString(
-      StringPiece(src.utf8_data(), src.utf8_length()), false);
-}
-
-}  // namespace
 
 bool CssMinify::Stylesheet(const Css::Stylesheet& stylesheet,
                            Writer* writer,
@@ -176,51 +168,6 @@ bool CssMinify::AbsolutifyUrls(Css::Stylesheet* stylesheet,
   return result;
 }
 
-// Escape [() \t\r\n\\'"].  Also escape , for non-URLs.  Escaping , in
-// URLs causes IE8 to interpret the backslash as a forward slash.
-//
-GoogleString CssMinify::EscapeString(const StringPiece& src, bool in_url) {
-  GoogleString dest;
-  dest.reserve(src.size());  // Minimum possible expansion
-
-  const char* src_end = src.data() + src.size();
-
-  for (const char* p = src.data(); p < src_end; p++) {
-    switch (*p) {
-      // Note: CSS does not use standard \n, \r and \t escapes.
-      // Generic hex escapes are used instead.
-      // See: http://www.w3.org/TR/CSS2/syndata.html#strings
-      //
-      // Note: Hex escapes in CSS must end in space.
-      // See: http://www.w3.org/TR/CSS2/syndata.html#characters
-      case '\n':
-        dest += "\\A ";
-        break;
-      case '\r':
-        dest += "\\D ";
-        break;
-      case '\t':
-        dest += "\\9 ";
-        break;
-      case ',':
-        if (in_url) {
-          dest.push_back(*p);
-          break;
-        }
-        // fall through -- we are escaping commas for non-URLs.
-      case '\"': case '\'': case '\\': case '(': case ')':
-        dest.push_back('\\');
-        dest.push_back(*p);
-          break;
-      default:
-        dest.push_back(*p);
-        break;
-    }
-  }
-
-  return dest;
-}
-
 CssMinify::CssMinify(Writer* writer, MessageHandler* handler)
     : writer_(writer), handler_(handler), ok_(true) {
 }
@@ -237,7 +184,7 @@ void CssMinify::Write(const StringPiece& str) {
 
 void CssMinify::WriteURL(const UnicodeText& url) {
   StringPiece string_url(url.utf8_data(), url.utf8_length());
-  Write(EscapeString(string_url, true));
+  Write(Css::EscapeUrl(string_url));
 }
 
 // Write out minified version of each element of vector using supplied function
@@ -300,7 +247,7 @@ void CssMinify::Minify(const Css::Charsets& charsets) {
   for (Css::Charsets::const_iterator iter = charsets.begin();
        iter != charsets.end(); ++iter) {
     Write("@charset \"");
-    Write(CSSEscapeString(*iter));
+    Write(Css::EscapeString(*iter));
     Write("\";");
   }
 }
@@ -325,7 +272,7 @@ void CssMinify::Minify(const Css::MediaQuery& media_query) {
       break;
   }
 
-  Write(CSSEscapeString(media_query.media_type()));
+  Write(Css::EscapeIdentifier(media_query.media_type()));
   if (!media_query.media_type().empty() && !media_query.expressions().empty()) {
     Write(" and ");
   }
@@ -334,10 +281,12 @@ void CssMinify::Minify(const Css::MediaQuery& media_query) {
 
 void CssMinify::Minify(const Css::MediaExpression& expression) {
   Write("(");
-  Write(CSSEscapeString(expression.name()));
+  Write(Css::EscapeIdentifier(expression.name()));
   if (expression.has_value()) {
     Write(":");
-    Write(CSSEscapeString(expression.value()));
+    // Note: expression.value() is not a string, but it is not an identifier
+    // either. For example, we don't want to escape space in 20 < width < 300.
+    Write(Css::EscapeString(expression.value()));
   }
   Write(")");
 }
@@ -398,8 +347,8 @@ void CssMinify::Minify(const Css::SimpleSelectors& sselectors, bool isfirst) {
 }
 
 void CssMinify::Minify(const Css::SimpleSelector& sselector) {
-  // SimpleSelector::ToString is already basically minified.
-  Write(EscapeString(sselector.ToString(), false));
+  // SimpleSelector::ToString is already basically minified (and is escaped).
+  Write(sselector.ToString());
 }
 
 namespace {
@@ -440,7 +389,10 @@ void CssMinify::Minify(const Css::Declaration& declaration) {
   if (declaration.prop() == Css::Property::UNPARSEABLE) {
     Write(declaration.bytes_in_original_buffer());
   } else {
-    Write(EscapeString(declaration.prop_text(), false));
+    // TODO(sligocki): This should use EscapeIdentifier(). However, currently
+    // we don't because we don't want naively parsed properties like
+    // *width converted to \*width.
+    Write(Css::EscapeString(declaration.prop_text()));
     Write(":");
     switch (declaration.prop()) {
       case Css::Property::FONT_FAMILY:
@@ -473,11 +425,15 @@ void CssMinify::Minify(const Css::Declaration& declaration) {
 void CssMinify::Minify(const Css::Value& value) {
   switch (value.GetLexicalUnitType()) {
     case Css::Value::NUMBER: {
+      GoogleString unit = value.GetDimensionUnitText();
+      // Unit can be either "%" or an identifier.
+      if (unit != "%") {
+        unit = Css::EscapeIdentifier(unit);
+      }
       // TODO(sligocki): Minify number
       // TODO(sligocki): Check that exponential notation is appropriate.
       // TODO(sligocki): Distinguish integers from float and print differently.
-      // We use .16 to get most precission without getting rounding artifacts.
-      GoogleString unit = EscapeString(value.GetDimensionUnitText(), false);
+      // We use .16 to get most precision without getting rounding artifacts.
       Write(StringPrintf("%.16g%s", value.GetFloatValue(), unit.c_str()));
       break;
     }
@@ -487,7 +443,11 @@ void CssMinify::Minify(const Css::Value& value) {
       Write(")");
       break;
     case Css::Value::FUNCTION:
-      Write(CSSEscapeString(value.GetFunctionName()));
+      // TODO(sligocki): It seems like we should use Css::EscapeIdentifier()
+      // here, but we don't want to escape things like:
+      //   progid:DXImageTransform.Microsoft.Blur(pixelradius=5)
+      // that are (naively) parsed as identifiers.
+      Write(Css::EscapeString(value.GetFunctionName()));
       Write("(");
       Minify(*value.GetParametersWithSeparators());
       Write(")");
@@ -508,7 +468,10 @@ void CssMinify::Minify(const Css::Value& value) {
       Write(value.bytes_in_original_buffer());
       break;
     case Css::Value::IDENT:
-      Write(CSSEscapeString(value.GetIdentifierText()));
+      // TODO(sligocki): Seems like we should use Css::EscapeIdentifier here,
+      // but some non-identifiers are naively stored here (like "foo=bar")
+      // and we don't want to escape them.
+      Write(Css::EscapeString(value.GetIdentifierText()));
       break;
     case Css::Value::UNKNOWN:
       handler_->Message(kError, "Unknown attribute");

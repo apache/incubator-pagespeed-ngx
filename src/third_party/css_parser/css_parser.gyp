@@ -97,6 +97,7 @@
         '<(css_parser_root)/webutil/css/string_util.cc',
         '<(css_parser_root)/webutil/css/string_util.h',
         '<(css_parser_root)/webutil/css/tostring.cc',
+        '<(css_parser_root)/webutil/css/tostring.h',
         '<(css_parser_root)/webutil/css/util.cc',
         '<(css_parser_root)/webutil/css/util.h',
         '<(css_parser_root)/webutil/css/value.cc',

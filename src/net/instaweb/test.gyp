@@ -352,13 +352,15 @@
       'target_name': 'mod_pagespeed_speed_test',
       'type': 'executable',
       'dependencies': [
-        'test_infrastructure',
-        '<(DEPTH)/third_party/re2/re2.gyp:re2_bench_util',
         'instaweb.gyp:instaweb_util_pthread',
         'instaweb_core.gyp:instaweb_util_core',
+        'test_infrastructure',
+        '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
+        '<(DEPTH)/third_party/re2/re2.gyp:re2_bench_util',
       ],
       'include_dirs': [
         '<(DEPTH)',
+        '<(DEPTH)/third_party/css_parser/src',
       ],
       'sources': [
         'htmlparse/html_parse_speed_test.cc',

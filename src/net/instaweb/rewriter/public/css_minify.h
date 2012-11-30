@@ -80,10 +80,6 @@ class CssMinify {
                              RewriteDriver* driver,
                              MessageHandler* handler);
 
-  // Escape [() \t\r\n\\'"].  Also escape , for non-URLs.  Escaping , in
-  // URLs causes IE8 to interpret the backslash as a forward slash.
-  static GoogleString EscapeString(const StringPiece& src, bool in_url);
-
  private:
   CssMinify(Writer* writer, MessageHandler* handler);
   ~CssMinify();

@@ -59,11 +59,6 @@ const uint64 Parser::kAtRuleError;
 
 const int Parser::kMaxErrorsRemembered;
 
-// Using isascii with signed chars is unfortunately undefined.
-static inline bool IsAscii(char c) {
-  return isascii(static_cast<unsigned char>(c));
-}
-
 class Tracer {  // in opt mode, do nothing.
  public:
   Tracer(const char* name, const Parser* parser) { }
