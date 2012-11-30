@@ -54,7 +54,7 @@ class DebugFilterTest : public RewriteTestBase {
   }
 
   void ExtractFlushMessagesFromOutput(StringPiece code_to_erase,
-                                      StringVector* flush_messages) {
+                                      StringPieceVector* flush_messages) {
     // Test we got the flush buffers we expect.
     //
     // output_buffer_ now contains something like:
@@ -67,7 +67,8 @@ class DebugFilterTest : public RewriteTestBase {
     SplitStringUsingSubstr(output_buffer_, "<!--", flush_messages);
   }
 
-  void ParseAndMaybeFlushTwice(bool do_flush, StringVector* flush_messages) {
+  void ParseAndMaybeFlushTwice(bool do_flush,
+                               StringPieceVector* flush_messages) {
     const char kHtmlToken[] = "<token>";
     rewrite_driver()->StartParse(kTestDomain);
     AdvanceTimeUs(1);
@@ -108,7 +109,7 @@ class DebugFilterTest : public RewriteTestBase {
     // First, rewrite the HTML with no cache delays.
     InitiateScriptRewrite();
     rewrite_driver()->FinishParse();
-    StringVector flush_messages;  // TODO(jmarantz): should be StringPieceVector
+    StringPieceVector flush_messages;
     ExtractFlushMessagesFromOutput(OptScriptHtml(), &flush_messages);
     ASSERT_EQ(1, flush_messages.size());
     EXPECT_EQ(DebugFilter::FormatEndDocumentMessage(0, 0, 0, 0, 0),
@@ -133,7 +134,7 @@ class DebugFilterTest : public RewriteTestBase {
 // Note that our "HTML" is just "<token>", so that we can easily split the
 // output and examine each flush-buffer individually.
 TEST_F(DebugFilterTest, TwoFlushes) {
-  StringVector flush_messages;  // TODO(jmarantz): should be StringPieceVector
+  StringPieceVector flush_messages;
   ParseAndMaybeFlushTwice(true, &flush_messages);
 
   // Note that we get no parse-time or flush time in this test.  I don't know
@@ -161,7 +162,7 @@ TEST_F(DebugFilterTest, TwoFlushes) {
 // be the same, but there will be no Flush messages; not even one at the
 // end.
 TEST_F(DebugFilterTest, ZeroFlushes) {
-  StringVector flush_messages;  // TODO(jmarantz): should be StringPieceVector
+  StringPieceVector flush_messages;
   ParseAndMaybeFlushTwice(false, &flush_messages);
 
   // The totals are identical to DebugFilterTest.TwoFlushes, but there are
@@ -182,7 +183,7 @@ TEST_F(DebugFilterTest, FlushWithDelayedCache) {
   // followed by the summary data for the rewrite at EndDocument.
   rewrite_driver()->Flush();
   rewrite_driver()->FinishParse();
-  StringVector flush_messages;
+  StringPieceVector flush_messages;
   ExtractFlushMessagesFromOutput(OptScriptHtml(), &flush_messages);
   ASSERT_EQ(3, flush_messages.size());
   EXPECT_EQ(DebugFilter::FormatFlushMessage(0, 0, delay_us, 0),
@@ -202,7 +203,7 @@ TEST_F(DebugFilterTest, EndWithDelayedCache) {
   // since there's only one, the report is dropped as everything is in the
   // EndDocument.
   rewrite_driver()->FinishParse();
-  StringVector flush_messages;
+  StringPieceVector flush_messages;
   ExtractFlushMessagesFromOutput(OptScriptHtml(), &flush_messages);
   ASSERT_EQ(1, flush_messages.size());
   EXPECT_EQ(DebugFilter::FormatEndDocumentMessage(0, 0, delay_us, 0, 0),

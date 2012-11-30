@@ -89,18 +89,18 @@ void SplitStringPieceToVector(const StringPiece& sp,
   }
 }
 
-void SplitStringUsingSubstr(const GoogleString& full,
-                            const GoogleString& substr,
-                            StringVector* result) {
-  GoogleString::size_type begin_index = 0;
+void SplitStringUsingSubstr(const StringPiece& full,
+                            const StringPiece& substr,
+                            StringPieceVector* result) {
+  StringPiece::size_type begin_index = 0;
   while (true) {
-    const GoogleString::size_type end_index = full.find(substr, begin_index);
-    if (end_index == GoogleString::npos) {
-      const GoogleString term = full.substr(begin_index);
+    const StringPiece::size_type end_index = full.find(substr, begin_index);
+    if (end_index == StringPiece::npos) {
+      const StringPiece term = full.substr(begin_index);
       result->push_back(term);
       return;
     }
-    const GoogleString term = full.substr(begin_index, end_index - begin_index);
+    const StringPiece term = full.substr(begin_index, end_index - begin_index);
     if (!term.empty()) {
       result->push_back(term);
     }

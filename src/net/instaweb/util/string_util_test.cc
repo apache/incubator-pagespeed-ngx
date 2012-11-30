@@ -456,7 +456,7 @@ TEST(BasicUtilsTest, CEscape) {
 }
 
 TEST(BasicUtilsTest, SplitStringUsingSubstr1) {
-  StringVector components;
+  StringPieceVector components;
   net_instaweb::SplitStringUsingSubstr(
       "word1abword2abword3", "ab", &components);
   EXPECT_EQ(3, components.size());
@@ -466,7 +466,7 @@ TEST(BasicUtilsTest, SplitStringUsingSubstr1) {
 }
 
 TEST(BasicUtilsTest, SplitStringUsingSubstr2) {
-  StringVector components;
+  StringPieceVector components;
   net_instaweb::SplitStringUsingSubstr("word1ababword3", "ab", &components);
   EXPECT_EQ(2, components.size());
   EXPECT_EQ("word1", components[0]);
@@ -474,7 +474,7 @@ TEST(BasicUtilsTest, SplitStringUsingSubstr2) {
 }
 
 TEST(BasicUtilsTest, SplitStringUsingSubstr3) {
-  StringVector components;
+  StringPieceVector components;
   net_instaweb::SplitStringUsingSubstr("abaaac", "aa", &components);
   EXPECT_EQ(2, components.size());
   EXPECT_EQ("ab", components[0]);

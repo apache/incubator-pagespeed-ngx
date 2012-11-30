@@ -334,10 +334,9 @@ class CriticalLineFetch : public AsyncFetch {
   void CompleteFinishParseForHtmlChangeDriver() {
     StringPiece output;
     value_.ExtractContents(&output);
-    StringVector result;
-    GoogleString output_string = output.as_string();
+    StringPieceVector result;
     net_instaweb::SplitStringUsingSubstr(
-        output_string, BlinkUtil::kComputeVisibleTextFilterOutputEndMarker,
+        output, BlinkUtil::kComputeVisibleTextFilterOutputEndMarker,
         &result);
     if (result.size() == 2) {
       computed_hash_smart_diff_ = server_context_->hasher()->Hash(result[0]);

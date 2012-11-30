@@ -132,9 +132,9 @@ void SplitStringPieceToVector(const StringPiece& sp,
 
 // Splits string 'full' using substr by searching it incrementally from
 // left. Empty tokens are removed from the final result.
-void SplitStringUsingSubstr(const GoogleString& full,
-                            const GoogleString& substr,
-                            StringVector* result);
+void SplitStringUsingSubstr(const StringPiece& full,
+                            const StringPiece& substr,
+                            StringPieceVector* result);
 
 void BackslashEscape(const StringPiece& src,
                      const StringPiece& to_escape,

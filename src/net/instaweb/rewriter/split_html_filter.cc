@@ -479,16 +479,17 @@ bool SplitHtmlFilter::ParseXpath(const GoogleString& xpath,
                                  std::vector<XpathUnit>* xpath_units) {
   static const char* kXpathWithChildNumber = "(\\w+)(\\[(\\d+)\\])";
   static const char* kXpathWithId = "(\\w+)(\\[@(\\w+)\\s*=\\s*\"(.*)\"\\])";
-  std::vector<GoogleString> list;
+  StringPieceVector list;
   net_instaweb::SplitStringUsingSubstr(xpath, "/", &list);
   for (int j = 0, n = list.size(); j < n; j++) {
     XpathUnit unit;
     GoogleString str;
-    if (!RE2::FullMatch(list[j], kXpathWithChildNumber,
-                       &unit.tag_name, &str, &unit.child_number)) {
+    StringPiece match = list[j];
+    if (!RE2::FullMatch(StringPieceToRe2(match), kXpathWithChildNumber,
+                        &unit.tag_name, &str, &unit.child_number)) {
       GoogleString str1;
-      RE2::FullMatch(list[j], kXpathWithId, &unit.tag_name, &str,
-                     &str1, &unit.attribute_value);
+      RE2::FullMatch(StringPieceToRe2(match), kXpathWithId, &unit.tag_name,
+                     &str, &str1, &unit.attribute_value);
     }
     xpath_units->push_back(unit);
   }
