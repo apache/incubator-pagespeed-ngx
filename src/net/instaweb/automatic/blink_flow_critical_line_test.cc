@@ -1994,13 +1994,13 @@ TEST_F(BlinkFlowCriticalLineTest, TestNoFixedUserAgentForDesktop) {
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
 }
 
-TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileUserAgent) {
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileWhiteListUserAgent) {
   GoogleString text;
   GoogleString user_agent;
   ResponseHeaders response_headers;
   RequestHeaders request_headers;
   options_->ClearSignatureForTesting();
-  options_->set_enable_blink_for_mobile_devices(true);
+  options_->set_enable_aggressive_rewriters_for_mobile(true);
   server_context()->ComputeSignature(options_.get());
   request_headers.Add(HttpAttributes::kUserAgent,
                       UserAgentStrings::kIPhone4Safari);  // Mobile Request.
@@ -2017,6 +2017,29 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileUserAgent) {
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_STREQ(kHtmlInput, text);
   EXPECT_EQ(1, statistics()->FindVariable(
+      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileBlackListUserAgent) {
+  GoogleString text;
+  GoogleString user_agent;
+  ResponseHeaders response_headers;
+  RequestHeaders request_headers;
+  options_->ClearSignatureForTesting();
+  options_->set_enable_aggressive_rewriters_for_mobile(true);
+  server_context()->ComputeSignature(options_.get());
+  request_headers.Add(HttpAttributes::kUserAgent,
+                      "BlackBerry8800/4.2.0 Profile/MIDP-2.0");  // Mobile.
+  FetchFromProxy("plain.html", true, request_headers, &text,
+                 &response_headers, &user_agent, false);
+  EXPECT_EQ(BlinkInfo::BLINK_MOBILE,
+            logging_info_.blink_info().blink_user_agent());
+  EXPECT_STREQ(kHtmlInput, text);
+  // No fetch for background computation is triggered here.
+  // Only original html is fetched from fetcher.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  // No blink flow should have happened.
+  EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
 }
 

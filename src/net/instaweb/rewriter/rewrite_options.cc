@@ -745,8 +745,6 @@ void RewriteOptions::AddProperties() {
              kXModPagespeedHeaderValue);
   add_option(false, &RewriteOptions::avoid_renaming_introspective_javascript_,
              "aris", kAvoidRenamingIntrospectiveJavascript);
-  add_option(false, &RewriteOptions::enable_blink_for_mobile_devices_, "ebmd",
-             kEnableBlinkForMobileDevices);
   add_option(false,
              &RewriteOptions::use_fixed_user_agent_for_blink_cache_misses_,
              "ufua", kUseFixedUserAgentForBlinkCacheMisses);
@@ -802,6 +800,8 @@ void RewriteOptions::AddProperties() {
   add_option(false, &RewriteOptions::override_ie_document_mode_, "oidm");
   add_option(false, &RewriteOptions::use_smart_diff_in_blink_, "usdb",
              RewriteOptions::kUseSmartDiffInBlink);
+  add_option(false, &RewriteOptions::enable_aggressive_rewriters_for_mobile_,
+             "earm", RewriteOptions::kEnableAggressiveRewritersForMobile);
 
   //
   // Recently sriharis@ excluded a variety of options from

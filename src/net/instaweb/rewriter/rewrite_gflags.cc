@@ -304,6 +304,10 @@ DEFINE_int64(
     net_instaweb::RewriteOptions::kDefaultMetadataInputErrorsCacheTtlMs,
     "The metadata cache ttl for input resources which are 4xx errors.");
 
+DEFINE_bool(enable_aggressive_rewriters_for_mobile, false,
+            "If true then aggressive rewriters will be turned on for "
+            "mobile user agents.");
+
 namespace net_instaweb {
 
 namespace {
@@ -540,6 +544,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("max_html_parse_bytes")) {
     options->set_max_html_parse_bytes(FLAGS_max_html_parse_bytes);
+  }
+  if (WasExplicitlySet("enable_aggressive_rewriters_for_mobile")) {
+    options->set_enable_aggressive_rewriters_for_mobile(
+        FLAGS_enable_aggressive_rewriters_for_mobile);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

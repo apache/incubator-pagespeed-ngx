@@ -35,7 +35,8 @@ class UserAgentMatcher {
   enum BlinkRequestType {
     kBlinkWhiteListForDesktop,
     kBlinkBlackListForDesktop,
-    kBlinkMobile,
+    kBlinkWhiteListForMobile,
+    kDoesNotSupportBlinkForMobile,
     kNullOrEmpty,
     kDoesNotSupportBlink,
   };
@@ -69,7 +70,7 @@ class UserAgentMatcher {
   // Returns the supported prefetch mechanism depending upon the user agent.
   PrefetchMechanism GetPrefetchMechanism(const StringPiece& user_agent) const;
 
-  bool SupportsJsDefer(const StringPiece& user_agent) const;
+  bool SupportsJsDefer(const StringPiece& user_agent, bool allow_mobile) const;
   bool SupportsWebp(const StringPiece& user_agent) const;
 
   // IE9 does not implement <link rel=dns-prefetch ...>. Instead it does DNS
@@ -84,12 +85,14 @@ class UserAgentMatcher {
       const StringPiece& user_agent,
       const RequestHeaders* request_headers) const;
 
-  virtual bool SupportsSplitHtml(const StringPiece& user_agent) const;
+  virtual bool SupportsSplitHtml(const StringPiece& user_agent,
+                                 bool allow_mobile) const;
 
  private:
   FastWildcardGroup supports_image_inlining_;
   FastWildcardGroup blink_desktop_whitelist_;
   FastWildcardGroup blink_desktop_blacklist_;
+  FastWildcardGroup blink_mobile_whitelist_;
   FastWildcardGroup supports_webp_;
   FastWildcardGroup mobile_user_agents_;
   FastWildcardGroup supports_prefetch_link_rel_subresource_;

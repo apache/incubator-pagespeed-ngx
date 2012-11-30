@@ -177,9 +177,9 @@ class RewriteOptions {
     kDefaultCacheHtml,
     kDomainRewriteHyperlinks,
     kDomainShardCount,
+    kEnableAggressiveRewritersForMobile,
     kEnableBlinkCriticalLine,
     kEnableBlinkDashboard,
-    kEnableBlinkForMobileDevices,
     kEnabled,
     kEnableBlinkHtmlChangeDetection,
     kEnableBlinkHtmlChangeDetectionLogging,
@@ -1529,13 +1529,6 @@ class RewriteOptions {
     return avoid_renaming_introspective_javascript_.value();
   }
 
-  void set_enable_blink_for_mobile_devices(bool x) {
-    set_option(x, &enable_blink_for_mobile_devices_);
-  }
-  bool enable_blink_for_mobile_devices() const {
-    return enable_blink_for_mobile_devices_.value();
-  }
-
   void set_use_fixed_user_agent_for_blink_cache_misses(bool x) {
     set_option(x, &use_fixed_user_agent_for_blink_cache_misses_);
   }
@@ -1610,6 +1603,13 @@ class RewriteOptions {
   }
   const GoogleString& pre_connect_url() const {
     return pre_connect_url_.value();
+  }
+
+  void set_enable_aggressive_rewriters_for_mobile(bool x) {
+    set_option(x, &enable_aggressive_rewriters_for_mobile_);
+  }
+  bool enable_aggressive_rewriters_for_mobile() const {
+    return enable_aggressive_rewriters_for_mobile_.value();
   }
 
   // Merge src into 'this'.  Generally, options that are explicitly
@@ -2577,8 +2577,6 @@ class RewriteOptions {
 
   Option<GoogleString> ga_id_;
 
-  // Whether to apply prioritize_visible_content for mobile user agents.
-  Option<bool> enable_blink_for_mobile_devices_;
   // Whether to use a fixed user agent for prioritize_visible_content filter
   // in case of cache miss.
   Option<bool> use_fixed_user_agent_for_blink_cache_misses_;
@@ -2616,6 +2614,8 @@ class RewriteOptions {
   Option<GoogleString> blink_non_cacheables_for_all_families_;
   // Specification for critical line.
   Option<GoogleString> critical_line_config_;
+  // Enables aggressive rewriters for mobile user agents.
+  Option<bool> enable_aggressive_rewriters_for_mobile_;
 
   // If this is true (it defaults to false) ProxyInterface frontend will
   // reject requests where PSA is not enabled or URL is blacklisted with

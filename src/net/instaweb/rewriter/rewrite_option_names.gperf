@@ -43,8 +43,8 @@ struct OptionName {
 "CssPreserveURLs",                       RewriteOptions::kCssPreserveURLs
 "DefaultCacheHtml",                      RewriteOptions::kDefaultCacheHtml
 "DomainShardCount",                      RewriteOptions::kDomainShardCount
+"EnableAggressiveRewritersForMobile",    RewriteOptions::kEnableAggressiveRewritersForMobile
 "EnableBlinkCriticalLine",               RewriteOptions::kEnableBlinkCriticalLine
-"EnableBlinkForMobileDevices",           RewriteOptions::kEnableBlinkForMobileDevices
 "EnableBlinkHtmlChangeDetection",        RewriteOptions::kEnableBlinkHtmlChangeDetection
 "EnableBlinkHtmlChangeDetectionLogging", RewriteOptions::kEnableBlinkHtmlChangeDetectionLogging
 "EnableDeferJsExperimental",             RewriteOptions::kEnableDeferJsExperimental

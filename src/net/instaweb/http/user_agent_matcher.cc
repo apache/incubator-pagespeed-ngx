@@ -74,6 +74,9 @@ const char* kPanelSupportDesktopBlacklist[] = {
   "*MSIE 7.*",
   "*MSIE 8.*",
 };
+const char* kPanelSupportMobileWhitelist[] = {
+  "*AppleWebKit/*",
+};
 // For webp rewriting, we whitelist Android, Chrome and Opera, but blacklist
 // older versions of the browsers that are not webp capable.  As other browsers
 // roll out webp support we will need to update this list to include them.
@@ -180,6 +183,9 @@ UserAgentMatcher::UserAgentMatcher() {
   for (int i = 0, n = arraysize(kPanelSupportDesktopBlacklist); i < n; ++i) {
     blink_desktop_blacklist_.Allow(kPanelSupportDesktopBlacklist[i]);
   }
+  for (int i = 0, n = arraysize(kPanelSupportMobileWhitelist); i < n; ++i) {
+    blink_mobile_whitelist_.Allow(kPanelSupportMobileWhitelist[i]);
+  }
   // Do the same for webp support.
   for (int i = 0, n = arraysize(kWebpWhitelist); i < n; ++i) {
     supports_webp_.Allow(kWebpWhitelist[i]);
@@ -242,10 +248,10 @@ UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(
     return kNullOrEmpty;
   }
   if (IsMobileRequest(user_agent, request_headers)) {
-    // TODO(srihari):  When blink supports mobile, we need to add a mobile
-    // whitelist check here.
-    // Please note that we don't have a mobile whitelist check here yet.
-    return kBlinkMobile;
+    if (blink_mobile_whitelist_.Match(user_agent, false)) {
+      return kBlinkWhiteListForMobile;
+    }
+    return kDoesNotSupportBlinkForMobile;
   }
   if (blink_desktop_blacklist_.Match(user_agent, false)) {
     return kBlinkBlackListForDesktop;
@@ -273,8 +279,12 @@ bool UserAgentMatcher::SupportsDnsPrefetch(
   return supports_dns_prefetch_.Match(user_agent, false);
 }
 
-bool UserAgentMatcher::SupportsJsDefer(const StringPiece& user_agent) const {
-  // TODO(ksimbili): Have js_defer it's own wildcard group.
+bool UserAgentMatcher::SupportsJsDefer(const StringPiece& user_agent,
+                                       bool allow_mobile) const {
+  // TODO(ksimbili): Use IsMobileRequest?
+  if (IsMobileUserAgent(user_agent)) {
+    return allow_mobile && blink_mobile_whitelist_.Match(user_agent, false);
+  }
   return user_agent.empty() ||
       (blink_desktop_whitelist_.Match(user_agent, false) &&
        !blink_desktop_blacklist_.Match(user_agent, false));
@@ -301,8 +311,9 @@ bool UserAgentMatcher::SupportsDnsPrefetchUsingRelPrefetch(
   return IsIe9(user_agent);
 }
 
-bool UserAgentMatcher::SupportsSplitHtml(const StringPiece& user_agent) const {
-  return SupportsJsDefer(user_agent);
+bool UserAgentMatcher::SupportsSplitHtml(const StringPiece& user_agent,
+                                         bool allow_mobile) const {
+  return SupportsJsDefer(user_agent, allow_mobile);
 }
 
 }  // namespace net_instaweb

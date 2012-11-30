@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 
+#include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -137,6 +138,45 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptDebug) {
 TEST_F(JsDeferDisabledFilterTest, InvalidUserAgent) {
   InitJsDeferDisabledFilter(false);
   rewrite_driver()->set_user_agent("BlackListUserAgent");
+  const char script[] = "<head>"
+      "<script type='text/psajs' "
+      "src='http://www.google.com/javascript/ajax_apis.js'></script>"
+      "<script type='text/psajs'"
+      "> func();</script>"
+      "</head><body>Hello, world!</body>";
+
+  ValidateNoChanges("defer_script", script);
+}
+
+TEST_F(JsDeferDisabledFilterTest, AllowMobileUserAgent) {
+  InitJsDeferDisabledFilter(false);
+  options_->ClearSignatureForTesting();
+  options_->set_enable_aggressive_rewriters_for_mobile(true);
+  rewrite_driver()->set_user_agent(UserAgentStrings::kIPhone4Safari);
+  const char script[] = "<head>"
+      "<script type='text/psajs' "
+      "src='http://www.google.com/javascript/ajax_apis.js'></script>"
+      "<script type='text/psajs'"
+      "> func();</script>"
+      "</head><body>Hello, world!</body>";
+
+  GoogleString expected = StrCat("<head>"
+      "<script type='text/psajs' "
+      "src='http://www.google.com/javascript/ajax_apis.js'></script>"
+      "<script type='text/psajs'"
+      "> func();</script></head><body>"
+      "Hello, world!</body>"
+      "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>"
+      "<script type=\"text/javascript\">",
+      JsDeferDisabledFilter::kSuffix,
+      "</script>");
+
+  ValidateExpected("defer_script", script, expected);
+}
+
+TEST_F(JsDeferDisabledFilterTest, DisAllowMobileUserAgent) {
+  InitJsDeferDisabledFilter(false);
+  rewrite_driver()->set_user_agent(UserAgentStrings::kIPhone4Safari);
   const char script[] = "<head>"
       "<script type='text/psajs' "
       "src='http://www.google.com/javascript/ajax_apis.js'></script>"

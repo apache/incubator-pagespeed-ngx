@@ -819,8 +819,9 @@ bool RewriteDriver::UserAgentSupportsImageInlining() const {
 
 bool RewriteDriver::UserAgentSupportsJsDefer() const {
   if (user_agent_supports_js_defer_ == kNotSet) {
+    bool allow_mobile = options()->enable_aggressive_rewriters_for_mobile();
     user_agent_supports_js_defer_ =
-        user_agent_matcher().SupportsJsDefer(user_agent_) ?
+        user_agent_matcher().SupportsJsDefer(user_agent_, allow_mobile) ?
         kTrue : kFalse;
   }
   return (user_agent_supports_js_defer_ == kTrue);
@@ -836,8 +837,9 @@ bool RewriteDriver::UserAgentSupportsWebp() const {
 
 bool RewriteDriver::UserAgentSupportsSplitHtml() const {
   if (user_agent_supports_split_html_ == kNotSet) {
+    bool allow_mobile = options()->enable_aggressive_rewriters_for_mobile();
     user_agent_supports_split_html_ =
-        user_agent_matcher().SupportsSplitHtml(user_agent_) ?
+        user_agent_matcher().SupportsSplitHtml(user_agent_, allow_mobile) ?
         kTrue : kFalse;
   }
   return (user_agent_supports_split_html_ == kTrue);

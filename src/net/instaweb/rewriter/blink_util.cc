@@ -80,10 +80,14 @@ bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
     case UserAgentMatcher::kBlinkBlackListForDesktop:
       blink_info->set_blink_user_agent(BlinkInfo::BLINK_DESKTOP_BLACKLIST);
       return false;
-    case UserAgentMatcher::kBlinkMobile:
-      blink_info->set_blink_user_agent(BlinkInfo::BLINK_MOBILE);
-      // Is mobile request allowed?
-      return (options->enable_blink_for_mobile_devices()) ? true : false;
+    case UserAgentMatcher::kBlinkWhiteListForMobile:
+      if (options->enable_aggressive_rewriters_for_mobile()) {
+        blink_info->set_blink_user_agent(BlinkInfo::BLINK_MOBILE);
+        return true;
+      }
+    case UserAgentMatcher::kDoesNotSupportBlinkForMobile:
+        blink_info->set_blink_user_agent(BlinkInfo::BLINK_MOBILE);
+        return false;
     case UserAgentMatcher::kNullOrEmpty:
       blink_info->set_blink_user_agent(BlinkInfo::NULL_OR_EMPTY);
       return false;

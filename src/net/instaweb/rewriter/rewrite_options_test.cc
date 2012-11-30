@@ -752,12 +752,12 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("PropagateBlinkCacheDeletes",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kPropagateBlinkCacheDeletes));
+  EXPECT_STREQ("EnableAggressiveRewritersForMobile",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kEnableAggressiveRewritersForMobile));
   EXPECT_STREQ("EnableBlinkCriticalLine",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableBlinkCriticalLine));
-  EXPECT_STREQ("EnableBlinkForMobileDevices",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kEnableBlinkForMobileDevices));
   EXPECT_STREQ("EnableBlinkHtmlChangeDetection",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableBlinkHtmlChangeDetection));

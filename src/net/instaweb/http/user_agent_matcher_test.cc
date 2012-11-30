@@ -154,28 +154,46 @@ TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
 
 TEST_F(UserAgentMatcherTest, SupportsJsDefer) {
   EXPECT_TRUE(user_agent_matcher_.SupportsJsDefer(
-      UserAgentStrings::kIe9UserAgent));
+      UserAgentStrings::kIe9UserAgent, false));
   EXPECT_TRUE(user_agent_matcher_.SupportsJsDefer(
-      UserAgentStrings::kChromeUserAgent));
+      UserAgentStrings::kChromeUserAgent, false));
   EXPECT_TRUE(user_agent_matcher_.SupportsJsDefer(
-      UserAgentStrings::kFirefoxUserAgent));
+      UserAgentStrings::kFirefoxUserAgent, false));
   EXPECT_TRUE(user_agent_matcher_.SupportsJsDefer(
-      UserAgentStrings::kSafariUserAgent));
+      UserAgentStrings::kSafariUserAgent, false));
+}
+
+TEST_F(UserAgentMatcherTest, SupportsJsDeferAllowMobile) {
+  EXPECT_TRUE(user_agent_matcher_.SupportsJsDefer(
+      UserAgentStrings::kAndroidHCUserAgent, true));
+  EXPECT_TRUE(user_agent_matcher_.SupportsJsDefer(
+      UserAgentStrings::kIPhone4Safari, true));
+  // Desktop is also supported.
+  EXPECT_TRUE(user_agent_matcher_.SupportsJsDefer(
+      UserAgentStrings::kChromeUserAgent, true));
 }
 
 TEST_F(UserAgentMatcherTest, NotSupportsJsDefer) {
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(
-      UserAgentStrings::kIe6UserAgent));
+      UserAgentStrings::kIe6UserAgent, false));
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(
-      UserAgentStrings::kIe8UserAgent));
+      UserAgentStrings::kIe8UserAgent, false));
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(
-      UserAgentStrings::kFirefox1UserAgent));
+      UserAgentStrings::kFirefox1UserAgent, false));
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(
-      UserAgentStrings::kNokiaUserAgent));
+      UserAgentStrings::kNokiaUserAgent, false));
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(
-      UserAgentStrings::kOpera5UserAgent));
+      UserAgentStrings::kOpera5UserAgent, false));
   EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(
-      UserAgentStrings::kPSPUserAgent));
+      UserAgentStrings::kPSPUserAgent, false));
+  // Mobile is not supported too.
+  EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(
+      UserAgentStrings::kIPhone4Safari, false));
+}
+
+TEST_F(UserAgentMatcherTest, NotSupportsJsDeferAllowMobile) {
+  EXPECT_FALSE(user_agent_matcher_.SupportsJsDefer(
+      UserAgentStrings::kOperaMobi9, true));
 }
 
 TEST_F(UserAgentMatcherTest, SupportsWebp) {
@@ -265,27 +283,29 @@ TEST_F(UserAgentMatcherTest, SupportsDnsPrefetchUsingRelPrefetch) {
 
 TEST_F(UserAgentMatcherTest, SplitHtmlRelated) {
   EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
-      UserAgentStrings::kIe9UserAgent));
+      UserAgentStrings::kIe9UserAgent, false));
   EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
-      UserAgentStrings::kChromeUserAgent));
+      UserAgentStrings::kChromeUserAgent, false));
   EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
-      UserAgentStrings::kFirefoxUserAgent));
+      UserAgentStrings::kFirefoxUserAgent, false));
   EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
-      UserAgentStrings::kSafariUserAgent));
+      UserAgentStrings::kSafariUserAgent, false));
+  EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
+      UserAgentStrings::kAndroidChrome21UserAgent, false));
   EXPECT_TRUE(user_agent_matcher_.SupportsSplitHtml(
-      UserAgentStrings::kAndroidChrome21UserAgent));
+      UserAgentStrings::kAndroidChrome21UserAgent, true));
   EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
-      UserAgentStrings::kIe6UserAgent));
+      UserAgentStrings::kIe6UserAgent, false));
   EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
-      UserAgentStrings::kIe8UserAgent));
+      UserAgentStrings::kIe8UserAgent, false));
   EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
-      UserAgentStrings::kFirefox1UserAgent));
+      UserAgentStrings::kFirefox1UserAgent, false));
   EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
-      UserAgentStrings::kNokiaUserAgent));
+      UserAgentStrings::kNokiaUserAgent, false));
   EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
-      UserAgentStrings::kOpera5UserAgent));
+      UserAgentStrings::kOpera5UserAgent, false));
   EXPECT_FALSE(user_agent_matcher_.SupportsSplitHtml(
-      UserAgentStrings::kPSPUserAgent));
+      UserAgentStrings::kPSPUserAgent, false));
 }
 
 }  // namespace net_instaweb
