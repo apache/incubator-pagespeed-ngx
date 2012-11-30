@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
 
-#include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
@@ -30,13 +29,16 @@
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/simple_text_filter.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
-#include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/worker_test_base.h"
@@ -44,6 +46,7 @@
 
 namespace net_instaweb {
 
+class HtmlElement;
 class MessageHandler;
 
 namespace {
@@ -493,7 +496,7 @@ TEST_F(AjaxRewriteContextTest, WaitForOptimizedFirstRequest) {
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(2, http_cache()->cache_inserts()->Get());  // rewritten + original
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(4, lru_cache()->num_inserts());
   EXPECT_EQ(1, img_filter_->num_rewrites());
   EXPECT_EQ(0, js_filter_->num_rewrites());
@@ -542,7 +545,7 @@ TEST_F(AjaxRewriteContextTest, WaitForOptimizeWithDisabledFilter) {
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(1, http_cache()->cache_inserts()->Get());  // original only
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(3, lru_cache()->num_inserts());
   EXPECT_EQ(0, img_filter_->num_rewrites());
   EXPECT_EQ(0, js_filter_->num_rewrites());
@@ -589,7 +592,7 @@ TEST_F(AjaxRewriteContextTest, WaitForOptimizeTimeout) {
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(2, http_cache()->cache_inserts()->Get());  // rewritten + original
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(4, lru_cache()->num_inserts());
   EXPECT_EQ(1, img_filter_->num_rewrites());
   EXPECT_EQ(0, js_filter_->num_rewrites());

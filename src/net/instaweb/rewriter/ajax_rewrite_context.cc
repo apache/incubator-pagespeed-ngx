@@ -30,7 +30,9 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -41,6 +43,7 @@
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/public/writer.h"  // for Writer
 
 namespace net_instaweb {
 
@@ -383,12 +386,20 @@ void AjaxRewriteContext::RewriteSingle(const ResourcePtr& input,
           new AjaxRewriteResourceSlot(slot(0)->resource()));
       RewriteContext* context = filter->MakeNestedRewriteContext(
           this, ajax_slot);
+
       if (context != NULL) {
         AddNestedContext(context);
         if (!is_rewritten_ && !rewritten_hash_.empty()) {
           // The ajax metadata was found but the rewritten resource is not.
           // Hence, make the nested rewrite skip the metadata and force a
           // rewrite.
+          context->set_force_rewrite(true);
+        } else if (Options()->in_place_wait_for_optimized()) {
+          // The nested rewrite might just return a URL and not the content
+          // unless we set this. This would happen if another rewriter just
+          // wrote the optimized version to cache (race condition).
+          // TODO(jkarlin): Instead of forcing a rewrite we could check the
+          // cache.
           context->set_force_rewrite(true);
         }
         StartNestedTasks();
