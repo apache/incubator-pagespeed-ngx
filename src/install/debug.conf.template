@@ -392,7 +392,7 @@ ModPagespeedRespectXForwardedProto on
 #SLURP # This is used for Slurp testing.  The initial slurp testing
 #SLURP # uses a slurp test dir pre-populated from source control,
 #SLURP # via a read-only slurp setup on port 8080.  We also test slurp
-#SLURP # writing via an origin server on port 8081, and s slurp server
+#SLURP # writing via an origin server on port 8081, and a slurp server
 #SLURP # on 8082 with slurping read-only off.
 #SLURP Listen 8081
 #SLURP Listen 8082
@@ -413,6 +413,9 @@ ModPagespeedRespectXForwardedProto on
 #SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt2/"
 #SLURP   ModPagespeedSlurpDirectory @@TMP_SLURP_DIR@@
 #SLURP   ModPagespeedSlurpReadOnly off
+#SLURP   ModPagespeedDomain *
+#SLURP   ModPagespeedMaxHtmlParseBytes 1000000
+#SLURP   ModPagespeedSlurpFlushLimit     10000
 #SLURP </VirtualHost>
 
 #SHARED_MEM_LOCKS ModPagespeedSharedMemoryLocks on
