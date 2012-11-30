@@ -27,8 +27,9 @@ AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 # rewritten before being flushed to the client.
 ModPagespeedBlockingRewriteKey psatest
 
-# Disable parsing if the size of the HTML exceeds 50kB.
-ModPagespeedMaxHtmlParseBytes 50000
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/max_html_parse_size" >
+  ModPagespeedMaxHtmlParseBytes 5000
+</Directory>
 
 #PER_VHOST_STATS ModPagespeedUsePerVHostStatistics on
 #PER_VHOST_STATS <Location /mod_pagespeed_global_statistics>

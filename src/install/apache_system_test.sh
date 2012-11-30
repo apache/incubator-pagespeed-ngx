@@ -1062,6 +1062,18 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   check_not_from "$RESPONSE_OUT" fgrep -qi large.js.pagespeed.
 fi
 
+# Test that for large HTML, we bail out of parsing and insert a script
+# redirecting to ?ModPagespeed=off.
+# For this test, it doesn't really matter which filter we enable as long as we
+# parse the page
+echo TEST: Bail out of parsing and insert redirect for large files.
+FILE=max_html_parse_size/large_file.html
+URL=$TEST_ROOT/$FILE
+WGET_EC="$WGET_DUMP $WGET_ARGS"
+echo $WGET_EC $URL
+LARGE_OUT=$($WGET_EC $URL)
+check_from "$LARGE_OUT" grep 'window.location=".*?ModPagespeed=off"'
+
 # TODO(matterbury): Uncomment these lines then the test is fixed.
 :<< COMMENTING_BLOCK
 echo "TEST: <ModPagespeedIf> application"
