@@ -4,6 +4,35 @@
 # Author: jefftk@google.com (Jeff Kaufman)
 #
 # Set up variables and functions for use by various system tests.
+#
+# Scripts using this file (callers) should 'source' or '.' it so that an error
+# detected in a function here can exit the caller.  Callers should preface tests
+# with:
+#   start_test <test name>
+# A test should use check, check_from, fetch_until, and other functions defined
+# below, as appropriate.  A test should not directly call exit on failure.
+#
+# Callers should leave argument parsing to this script.
+#
+# Callers should invoke system_test_trailer after no more tests are left so that
+# expected failures can be logged.
+#
+# If command line args are wrong, exit with status code 2.
+# If no tests fail, don't call exit and instead return control to the caller.
+# If a test fails:
+#  - If it's listed in PAGESPEED_EXPECTED_FAILURES, log the name of the failing
+#    test, to display when system_test_trailer is called, at which point exit
+#    with status code 1.
+#  - Otherwise, exit immediately with status code 1.
+#
+# The format of PAGESPEED_EXPECTED_FAILURES is '~' separated test names.
+# For example:
+#   PAGESPEED_EXPECTED_FAILURES="convert_meta_tags~extend_cache"
+# or:
+#    PAGESPEED_EXPECTED_FAILURES="
+#       ~compression is enabled for rewritten JS.~
+#       ~convert_meta_tags~
+#       ~regression test with same filtered input twice in combination"
 
 # Catch potential misuse of this script.
 if [ "$(basename $0)" == "system_test_helpers.sh" ] ; then
@@ -20,6 +49,11 @@ if [ $# -lt 1 -o $# -gt 3 ]; then
 fi;
 
 TEMPDIR=${TEMPDIR-/tmp/mod_pagespeed_test.$USER}
+FAILURES="${TEMPDIR}/failures"
+rm "$FAILURES"
+
+# Make this easier to process so we're always looking for '~target~'.
+PAGESPEED_EXPECTED_FAILURES="~${PAGESPEED_EXPECTED_FAILURES=}~"
 
 # If the user has specified an alternate WGET as an environment variable, then
 # use that, otherwise use the one in the path.
@@ -98,6 +132,13 @@ OUTDIR=$TEMPDIR/fetched_directory
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
 
+
+CURRENT_TEST="pre tests"
+function start_test() {
+  CURRENT_TEST="$@"
+  echo "TEST: $CURRENT_TEST"
+}
+
 # Wget is used three different ways.  The first way is nonrecursive and dumps a
 # single page (with headers) to standard out.  This is useful for grepping for a
 # single expected string that's the result of a first-pass rewrite:
@@ -141,17 +182,32 @@ function run_wget_with_args() {
   $WGET_PREREQ $WGET_ARGS "$@"
 }
 
-# Print a message like:
+# Should be called at the end of any system test using this script.  While most
+# errors will be reported immediately and will make us exit with status 1, tests
+# listed in PAGESPEED_EXPECTED_FAILURES will let us continue.  This prints out
+# failure information for these tests, if appropriate.
+function system_test_trailer() {
+  if [ -e $FAILURES ] ; then
+    echo Failing Tests:
+    sed 's/^/  /' $FAILURES
+    echo "FAIL."
+    exit 1
+  fi
+  echo "PASS."
+}
+
+# By default, print a message like:
 #   failure at line 374
 #   FAIL
-# and then exit with return value 1.
+# and then exit with return value 1.  If PAGESPEED_EXPECTED_FAILURES contains
+# the name of the current test, log to $FAILURES and return without exiting.
 #
 # If the shell does not support the 'caller' builtin, skip the line number info.
 #
 # Assumes it's being called from a failure-reporting function and that the
 # actual failure the user is interested in is our caller's caller.  If it
-# weren't for this, fail and print_failure_info_and_exit could be the same.
-function print_failure_info_and_exit() {
+# weren't for this, fail and handle_failure could be the same.
+function handle_failure() {
   if type caller > /dev/null 2>&1 ; then
     # "caller 1" is our caller's caller.
     echo "     failure at line $(caller 1 | sed 's/ .*//')" 1>&2
@@ -159,15 +215,23 @@ function print_failure_info_and_exit() {
   if [ $# -eq 1 ]; then
     echo FAILed Input: "$1"
   fi
-  echo FAIL.
-  exit 1;
+  echo "in '$CURRENT_TEST'"
+  if [ "$PAGESPEED_EXPECTED_FAILURES" != \
+       "${PAGESPEED_EXPECTED_FAILURES/~"${CURRENT_TEST}"~/}" ] ; then
+    # We expected this test to fail.
+    echo $CURRENT_TEST >> $FAILURES
+    echo "Continuing after expected failure..."
+  else
+    echo FAIL.
+    exit 1;
+  fi
 }
 
 # Call with a command and its args.  Echos the command, then tries to eval it.
 # If it returns false, fail the tests.
 function check() {
   echo "     check" "$@"
-  "$@" || print_failure_info_and_exit
+  "$@" || handle_failure
 }
 
 # Like check, but the first argument is text to pipe into the command given in
@@ -176,13 +240,13 @@ function check_from() {
   text="$1"
   shift
   echo "     check" "$@"
-  echo "$text" | "$@" || print_failure_info_and_exit "$text"
+  echo "$text" | "$@" || handle_failure "$text"
 }
 
 # Same as check(), but expects command to fail.
 function check_not() {
   echo "     check_not" "$@"
-  "$@" && print_failure_info_and_exit
+  "$@" && handle_failure
 }
 
 # Like check_not, but the first argument is text to pipe into the
@@ -191,7 +255,7 @@ function check_not_from() {
   text="$1"
   shift
   echo "     check_not" "$@"
-  echo "$text" | "$@" && print_failure_info_and_exit "$text"
+  echo "$text" | "$@" && handle_failure "$text"
 }
 
 # Check for the existence of a single file matching the pattern
@@ -202,9 +266,9 @@ function check_file_size() {
   pattern="$1"
   op="$2"
   value="$3"
-  SIZE=$(stat -c %s $pattern) || print_failure_info_and_exit \
+  SIZE=$(stat -c %s $pattern) || handle_failure \
       "$pattern not found"
-  [ "$SIZE" "$op" "$value" ] || print_failure_info_and_exit \
+  [ "$SIZE" "$op" "$value" ] || handle_failure \
       "$pattern : $SIZE $op $value"
 }
 
@@ -219,7 +283,7 @@ function check_file_size() {
 # Or, even better, because it can print the failing input on failure:
 #   check_from "foo" grep foo
 function fail() {
-  print_failure_info_and_exit
+  handle_failure
 }
 
 function check_stat() {
@@ -238,7 +302,7 @@ function check_stat() {
     EXPECTED_VAL=$((${OLD_VAL} + ${EXPECTED_DIFF}))
     echo -n "Mismatched counter value : ${COUNTER_NAME} : "
     echo "Expected=${EXPECTED_VAL} Actual=${NEW_VAL}";
-    print_failure_info_and_exit
+    handle_failure
   fi
 }
 
@@ -306,7 +370,8 @@ function fetch_until() {
     if [ $(date +%s) -gt $STOP ]; then
       echo ""
       echo "*** $WGET_HERE output in $FETCH_FILE"
-      print_failure_info_and_exit
+      handle_failure
+      return
     fi
     if [ $recursive -eq 1 ]; then
       rm -rf $OUTDIR
@@ -328,7 +393,7 @@ function test_filter() {
   FILTER_NAME=$1;
   shift;
   FILTER_DESCRIPTION=$@
-  echo TEST: $FILTER_NAME $FILTER_DESCRIPTION
+  start_test $FILTER_NAME $FILTER_DESCRIPTION
   # Filename is the name of the first filter only.
   FILE=${FILTER_NAME%%,*}.html
   if [ $filter_spec_method = "query_params" ]; then

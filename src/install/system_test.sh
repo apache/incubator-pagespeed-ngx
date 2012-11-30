@@ -5,9 +5,13 @@
 # Generic system test, which should work on any implementation of
 # Page Speed Automatic (not just the Apache module).
 #
-# Exits with status 0 if all tests pass.
-# Exits with status 1 immediately if any test fails.
-# Exits with status 2 if command line args are wrong.
+# See system_test_helpers.sh for usage.
+#
+# The shell script sourcing this one is expected to be implementation specific
+# and have its own additional system tests that it runs.  After it finishes,
+# the sourcing script should call system_test_trailer.  That will print the
+# names of any failing tests and exit with status 1 if there are any.
+#
 
 # We need to know the directory this file is located in.  Unfortunately,
 # if we're 'source'd from a script in a different directory $(dirname $0) gives
@@ -17,7 +21,7 @@ source "$this_dir/system_test_helpers.sh" || exit 1
 
 # General system tests
 
-echo TEST: Page Speed Automatic is running and writes the expected header.
+start_test Page Speed Automatic is running and writes the expected header.
 echo $WGET_DUMP $EXAMPLE_ROOT/combine_css.html
 
 HTTP_FILE=$OUTDIR/http_file
@@ -62,29 +66,29 @@ check_not fgrep -i "X-Frame-Options" $HTTP_FILE
 # rewriting, it is not deterministic whether inline css gets
 # rewritten.  That's not what this is trying to test, so we use
 # ?ModPagespeed=off.
-echo TEST: directory is mapped to index.html.
+start_test directory is mapped to index.html.
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
 check $WGET -q $EXAMPLE_ROOT/?ModPagespeed=off -O $OUTDIR/mod_pagespeed_example
 check $WGET -q $EXAMPLE_ROOT/index.html?ModPagespeed=off -O $OUTDIR/index.html
 check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
-echo TEST: compression is enabled for HTML.
+start_test compression is enabled for HTML.
 check fgrep -qi 'Content-Encoding: gzip' <(
   $WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' $EXAMPLE_ROOT/ 2>&1)
 
-echo TEST: X-Mod-Pagespeed header added when ModPagespeed=on
+start_test X-Mod-Pagespeed header added when ModPagespeed=on
 check egrep -q 'X-Mod-Pagespeed|X-Page-Speed' <(
   $WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=on)
 
-echo TEST: X-Mod-Pagespeed header not added when ModPagespeed=off
+start_test X-Mod-Pagespeed header not added when ModPagespeed=off
 check_not egrep 'X-Mod-Pagespeed|X-Page-Speed' <(
   $WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=off)
 
-echo TEST: We behave sanely on whitespace served as HTML
+start_test We behave sanely on whitespace served as HTML
 check egrep -q 'HTTP/1[.]. 200 OK' <($WGET_DUMP $TEST_ROOT/whitespace.html)
 
-echo TEST: Query params and headers are recognized in resource flow.
+start_test Query params and headers are recognized in resource flow.
 URL=$REWRITTEN_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css
 echo "Image gets rewritten by default."
 # TODO(sligocki): Replace this fetch_until with single blocking fetch once
@@ -110,7 +114,7 @@ check run_wget_with_args $URL
 # See: http://superuser.com/questions/339522
 check [ $(fgrep -o '<script' $FETCHED | wc -l) -eq 2 ]
 
-echo "TEST: We don't add_instrumentation if URL params tell us not to"
+start_test "We don't add_instrumentation if URL params tell us not to"
 FILE=add_instrumentation.html?ModPagespeedFilters=
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
@@ -118,7 +122,7 @@ check run_wget_with_args $URL
 check [ $(fgrep -o '<script' $FETCHED | wc -l) -eq 0 ]
 
 # http://code.google.com/p/modpagespeed/issues/detail?id=170
-echo "TEST: Make sure 404s aren't rewritten"
+start_test "Make sure 404s aren't rewritten"
 # Note: We run this in the add_instrumentation section because that is the
 # easiest to detect which changes every page
 THIS_BAD_URL=$BAD_RESOURCE_URL?ModPagespeedFilters=add_instrumentation
@@ -138,7 +142,7 @@ fetch_until $URL 'fgrep -c text/css' 1
 check run_wget_with_args $URL
 #test_resource_ext_corruption $URL $combine_css_filename
 
-echo TEST: combine_css without hash field should 404
+start_test combine_css without hash field should 404
 echo run_wget_with_args $REWRITTEN_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
 run_wget_with_args $REWRITTEN_ROOT/styles/yellow.css+blue.css.pagespeed.cc..css
 check fgrep "404 Not Found" $WGET_OUTPUT
@@ -146,7 +150,7 @@ check fgrep "404 Not Found" $WGET_OUTPUT
 # Note: this large URL can only be processed by Apache if
 # ap_hook_map_to_storage is called to bypass the default
 # handler that maps URLs to filenames.
-echo TEST: Fetch large css_combine URL
+start_test Fetch large css_combine URL
 LARGE_URL="$REWRITTEN_ROOT/styles/yellow.css+blue.css+big.css+\
 bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
 big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
@@ -169,7 +173,7 @@ test_filter combine_javascript combines 2 JS files into 1.
 fetch_until $URL 'fgrep -c src=' 1
 check run_wget_with_args $URL
 
-echo TEST: combine_javascript with long URL still works
+start_test combine_javascript with long URL still works
 URL=$TEST_ROOT/combine_js_very_many.html?ModPagespeedFilters=combine_javascript
 fetch_until $URL 'fgrep -c src=' 4
 
@@ -189,24 +193,24 @@ check run_wget_with_args $URL
 echo about to test resource ext corruption...
 #test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 
-echo TEST: Attempt to fetch cache-extended image without hash should 404
+start_test Attempt to fetch cache-extended image without hash should 404
 run_wget_with_args $REWRITTEN_ROOT/images/Puzzle.jpg.pagespeed.ce..jpg
 check fgrep "404 Not Found" $WGET_OUTPUT
 
-echo TEST: Cache-extended image should respond 304 to an If-Modified-Since.
+start_test Cache-extended image should respond 304 to an If-Modified-Since.
 URL=$REWRITTEN_ROOT/images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
 DATE=$(date -R)
 run_wget_with_args --header "If-Modified-Since: $DATE" $URL
 check fgrep "304 Not Modified" $WGET_OUTPUT
 
-echo TEST: Legacy format URLs should still work.
+start_test Legacy format URLs should still work.
 URL=$REWRITTEN_ROOT/images/ce.0123456789abcdef0123456789abcdef.Puzzle,j.jpg
 # Note: Wget request is HTTP/1.0, so some servers respond back with
 # HTTP/1.0 and some respond back 1.1.
 $WGET_DUMP $URL > $FETCHED
 check egrep -q 'HTTP/1[.]. 200 OK' $FETCHED
 
-echo TEST: Filters do not rewrite blacklisted JavaScript files.
+start_test Filters do not rewrite blacklisted JavaScript files.
 URL=$TEST_ROOT/blacklist/blacklist.html?ModPagespeedFilters=extend_cache,rewrite_javascript,trim_urls
 FETCHED=$OUTDIR/blacklist.html
 fetch_until $URL 'grep -c .js.pagespeed.' 4
@@ -227,25 +231,25 @@ check grep "<script src=\".*another_normal\.js\.pagespeed\..*\.js\">" $FETCHED >
 rm -f $JS_TMP
 
 WGET_ARGS=""
-echo TEST: move_css_above_scripts works.
+start_test move_css_above_scripts works.
 URL=$EXAMPLE_ROOT/move_css_above_scripts.html?ModPagespeedFilters=move_css_above_scripts
 $WGET_DUMP $URL > $FETCHED
 # Link moved before script.
 check grep -q "styles/all_styles.css\"><script" $FETCHED
 
-echo TEST: move_css_above_scripts off.
+start_test move_css_above_scripts off.
 URL=$EXAMPLE_ROOT/move_css_above_scripts.html?ModPagespeedFilters=
 $WGET_DUMP $URL > $FETCHED
 # Link not moved before script.
 check_not grep "styles/all_styles.css\"><script" $FETCHED
 
-echo TEST: move_css_to_head does what it says on the tin.
+start_test move_css_to_head does what it says on the tin.
 URL=$EXAMPLE_ROOT/move_css_to_head.html?ModPagespeedFilters=move_css_to_head
 $WGET_DUMP $URL > $FETCHED
 # Link moved to head.
 check grep -q "styles/all_styles.css\"></head>" $FETCHED
 
-echo TEST: move_css_to_head off.
+start_test move_css_to_head off.
 URL=$EXAMPLE_ROOT/move_css_to_head.html?ModPagespeedFilters=
 $WGET_DUMP $URL > $FETCHED
 # Link not moved to head.
@@ -266,7 +270,7 @@ test_filter outline_javascript outlines large scripts, but not small ones.
 check run_wget_with_args $URL
 check egrep -q '<script.*large.*src=' $FETCHED       # outlined
 check egrep -q '<script.*small.*var hello' $FETCHED  # not outlined
-echo TEST: compression is enabled for rewritten JS.
+start_test compression is enabled for rewritten JS.
 JS_URL=$(egrep -o http://.*.pagespeed.*.js $FETCHED)
 echo "JS_URL=\$\(egrep -o http://.*[.]pagespeed.*[.]js $FETCHED\)=\"$JS_URL\""
 JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
@@ -323,37 +327,38 @@ check_file_size "$OUTDIR/*256x192*Puzzle*" -lt 24126    # resized
 URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
 IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
 check [ x"$IMG_URL" != x ]
-echo TEST: headers for rewritten image "$IMG_URL"
+start_test headers for rewritten image
+echo "$IMG_URL"
 IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $IMG_URL 2>&1)
 check_from "$IMG_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
 # Make sure we have some valid headers.
 check_from "$IMG_HEADERS" fgrep -qi 'Content-Type: image/jpeg'
 # Make sure the response was not gzipped.
-echo TEST: Images are not gzipped.
+start_test Images are not gzipped.
 check_not_from "$IMG_HEADERS" fgrep -i 'Content-Encoding: gzip'
 # Make sure there is no vary-encoding
-echo TEST: Vary is not set for images.
+start_test Vary is not set for images.
 check_not_from "$IMG_HEADERS" fgrep -i 'Vary: Accept-Encoding'
 # Make sure there is an etag
-echo TEST: Etags is present.
+start_test Etags is present.
 check_from "$IMG_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
 # TODO(sligocki): Allow setting arbitrary headers in static_server.
 # Make sure an extra header is propagated from input resource to output
 # resource.  X-Extra-Header is added in debug.conf.template.
-#echo TEST: Extra header is present
+#start_test Extra header is present
 #check fgrep -qi 'X-Extra-Header' <(echo "$IMG_HEADERS")
 # Make sure there is a last-modified tag
-echo TEST: Last-modified is present.
+start_test Last-modified is present.
 check fgrep -qi 'Last-Modified' <(echo "$IMG_HEADERS")
 
 BAD_IMG_URL=$REWRITTEN_ROOT/images/xBadName.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
-echo "TEST: rewrite_images fails broken image \"$BAD_IMG_URL\"."
+start_test rewrite_images fails broken image
 echo run_wget_with_args $BAD_IMG_URL
 run_wget_with_args $BAD_IMG_URL  # fails
 check grep "404 Not Found" $WGET_OUTPUT
 
-echo "TEST: rewrite_images doesn't 500 on unoptomizable image."
+start_test "rewrite_images doesn't 500 on unoptomizable image."
 IMG_URL=$REWRITTEN_ROOT/images/xOptPuzzle.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
 run_wget_with_args $IMG_URL
 check egrep "HTTP/1[.]. 200 OK" $WGET_OUTPUT
@@ -361,7 +366,7 @@ check egrep "HTTP/1[.]. 200 OK" $WGET_OUTPUT
 # These have to run after image_rewrite tests. Otherwise it causes some images
 # to be loaded into memory before they should be.
 WGET_ARGS=""
-echo TEST: rewrite_css,extend_cache extends cache of images in CSS.
+start_test rewrite_css,extend_cache extends cache of images in CSS.
 FILE=rewrite_css_images.html?ModPagespeedFilters=rewrite_css,extend_cache
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
@@ -369,7 +374,7 @@ fetch_until $URL 'grep -c Cuppa.png.pagespeed.ce.' 1  # image cache extended
 fetch_until $URL 'grep -c rewrite_css_images.css.pagespeed.cf.' 1
 check run_wget_with_args $URL
 
-echo TEST: fallback_rewrite_css_urls works.
+start_test fallback_rewrite_css_urls works.
 FILE=fallback_rewrite_css_urls.html?\
 ModPagespeedFilters=fallback_rewrite_css_urls,rewrite_css,extend_cache
 URL=$EXAMPLE_ROOT/$FILE
@@ -381,14 +386,14 @@ check run_wget_with_args $URL
 check grep -q "body { background" $FETCHED
 
 # Rewrite images in styles.
-echo TEST: rewrite_images,rewrite_css,rewrite_style_attributes_with_url optimizes images in style.
+start_test rewrite_images,rewrite_css,rewrite_style_attributes_with_url optimizes images in style.
 FILE=rewrite_style_attributes.html?ModPagespeedFilters=rewrite_images,rewrite_css,rewrite_style_attributes_with_url
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 fetch_until $URL 'grep -c BikeCrashIcn.png.pagespeed.ic.' 1
 check run_wget_with_args $URL
 
-echo TEST: rewrite_css,rewrite_images rewrites images in CSS.
+start_test rewrite_css,rewrite_images rewrites images in CSS.
 FILE=rewrite_css_images.html?ModPagespeedFilters=rewrite_css,rewrite_images
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
@@ -396,7 +401,7 @@ fetch_until $URL 'grep -c url.data:image/png;base64,' 1  # image inlined
 fetch_until $URL 'grep -c rewrite_css_images.css.pagespeed.cf.' 1
 check run_wget_with_args $URL
 
-echo TEST: inline_css,rewrite_css,sprite_images sprites images in CSS.
+start_test inline_css,rewrite_css,sprite_images sprites images in CSS.
 FILE=sprite_images.html?ModPagespeedFilters=inline_css,rewrite_css,sprite_images
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
@@ -404,7 +409,7 @@ echo $WGET_DUMP $URL
 fetch_until $URL \
 'grep -c Cuppa.png.*BikeCrashIcn.png.*IronChef2.gif.*.pagespeed.is.*.png' 1
 
-echo TEST: rewrite_css,sprite_images sprites images in CSS.
+start_test rewrite_css,sprite_images sprites images in CSS.
 FILE=sprite_images.html?ModPagespeedFilters=rewrite_css,sprite_images
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
@@ -432,12 +437,12 @@ check grep -qi "Expires:" $WGET_OUTPUT
 
 # Error path for fetch of outlined resources that are not in cache leaked
 # at one point of development.
-echo TEST: regression test for RewriteDriver leak
+start_test regression test for RewriteDriver leak
 $WGET -O /dev/null -o /dev/null $TEST_ROOT/_.pagespeed.jo.3tPymVdi9b.js
 
 # Combination rewrite in which the same URL occurred twice used to
 # lead to a large delay due to overly late lock release.
-echo TEST: regression test with same filtered input twice in combination
+start_test regression test with same filtered input twice in combination
 PAGE=_,Mco.0.css+_,Mco.0.css.pagespeed.cc.0.css
 URL=$TEST_ROOT/$PAGE?ModPagespeedFilters=combine_css,outline_css
 echo $WGET -O /dev/null -o /dev/null --tries=1 --read-timeout=3 $URL
@@ -453,7 +458,7 @@ if [ -n "$HTTPS_HOST" ]; then
   URL="$HTTPS_EXAMPLE_ROOT/combine_css.html"
   fetch_until $URL 'grep -c css+' 1 --no-check-certificate
 
-  echo TEST: https is working.
+  start_test https is working.
   echo $WGET_DUMP_HTTPS $URL
   HTML_HEADERS=$($WGET_DUMP_HTTPS $URL)
 
@@ -517,7 +522,7 @@ run_wget_with_args $URL
 check fgrep -q "'Hello'" $OUTDIR/hello.js.pagespeed.jm.0.js
 check fgrep -q "no-cache" $WGET_OUTPUT
 
-echo TEST: ?ModPagespeed=noscript inserts canonical href link
+start_test ?ModPagespeed=noscript inserts canonical href link
 check egrep -q \
   "link rel=\"canonical\" href=\"$EXAMPLE_ROOT/defer_javascript.html\"" <(
   $WGET_DUMP $EXAMPLE_ROOT/defer_javascript.html?ModPagespeed=noscript)
@@ -546,27 +551,27 @@ DEFERJSURL=`grep js_defer $FETCHED | sed 's/^.*js_defer/js_defer/;s/\.js.*$/\.js
 check grep -q "ModPagespeed=noscript" $FETCHED
 
 # Extract out the DeferJs url from the HTML above and fetch it.
-echo TEST: Fetch the deferJs url with hash.
+start_test Fetch the deferJs url with hash.
 echo run_wget_with_args $DEFERJSURL
 run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/$DEFERJSURL
 check fgrep "200 OK" $WGET_OUTPUT
 check fgrep "Cache-Control: max-age=31536000" $WGET_OUTPUT
 
 # Checks that we return 404 for static file request without hash.
-echo TEST: Access to js_defer.js without hash returns 404.
+start_test Access to js_defer.js without hash returns 404.
 echo run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.js
 run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.js
 check fgrep "404 Not Found" $WGET_OUTPUT
 
 # Checks that outlined js_defer.js is served correctly.
-echo TEST: serve js_defer.0.js
+start_test serve js_defer.0.js
 echo run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.0.js
 run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer.0.js
 check fgrep "200 OK" $WGET_OUTPUT
 check fgrep "Cache-Control: max-age=300,private" $WGET_OUTPUT
 
 # Checks that outlined js_defer_debug.js is  served correctly.
-echo TEST: serve js_defer_debug.0.js
+start_test serve js_defer_debug.0.js
 echo run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer_debug.0.js
 run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/js_defer_debug.0.js
 check fgrep "200 OK" $WGET_OUTPUT
@@ -710,7 +715,7 @@ check_not grep "yellow.background-color:" $FETCHED
 test_filter extend_cache_pdfs PDF cache extension
 WGET_EC="$WGET_DUMP $WGET_ARGS"
 
-echo TEST: Html is rewritten with cache-extended PDFs.
+start_test Html is rewritten with cache-extended PDFs.
 fetch_until $URL 'fgrep -c .pagespeed.' 3
 
 check grep 'a href="http://.*pagespeed.*\.pdf' <($WGET_EC $URL)
@@ -718,7 +723,7 @@ check grep 'embed src="http://.*pagespeed.*\.pdf' <($WGET_EC $URL)
 check fgrep '<a href="example.notpdf">' <($WGET_EC $URL)
 check grep 'a href="http://.*pagespeed.*\.pdf?a=b' <($WGET_EC $URL)
 
-echo TEST: Cache-extended PDFs load and have the right mime type.
+start_test Cache-extended PDFs load and have the right mime type.
 PDF_CE_URL="$($WGET_EC $URL | \
               grep -o 'http://.*pagespeed.[^\"]*\.pdf' | head -n 1)"
 echo Extracted cache-extended url $PDF_CE_URL
@@ -730,5 +735,3 @@ rm -rf $OUTDIR
 # TODO(jefftk): Find out what test breaks without the next two lines and fix it.
 filter_spec_method="query_params"
 test_filter '' Null Filter
-
-echo "PASS."

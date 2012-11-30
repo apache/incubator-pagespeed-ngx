@@ -3,14 +3,10 @@
 # Copyright 2012 Google Inc. All Rights Reserved.
 # Author: jefftk@google.com (Jeff Kaufman)
 #
-# Runs all Apache-specific experiment framework (furious) tests.
+# Test that ModPagespeedUrlValuedAttribute is respected.
 #
-# Exits with status 0 if all tests pass.
-# Exits with status 1 immediately if any test fails.
-# Exits with status 2 if command line args are wrong.
-#
-# Argument 1 should be the host:port of the Apache server to talk to.
-#
+# See system_test_helpers.sh for usage.
+
 this_dir=$(dirname $0)
 source "$this_dir/system_test_helpers.sh" || exit 1
 
@@ -19,12 +15,12 @@ REWRITE_DOMAINS="$TEST/rewrite_domains.html"
 UVA_EXTEND_CACHE="$TEST/url_valued_attribute_extend_cache.html"
 UVA_EXTEND_CACHE="${UVA_EXTEND_CACHE}?ModPagespeedFilters=+left_trim_urls"
 
-echo TEST: Rewrite domains in dynamically defined url-valued attributes.
+start_test Rewrite domains in dynamically defined url-valued attributes.
 check [ 5 = $($WGET_DUMP $REWRITE_DOMAINS | fgrep -c http://dst.example.com) ]
 check [ 1 = $($WGET_DUMP $REWRITE_DOMAINS |
   fgrep -c '<hr src=http://src.example.com/hr-image>') ]
 
-echo TEST: Additional url-valued attributes are fully respected.
+start_test Additional url-valued attributes are fully respected.
 
 # There are five resources that should be optimized
 fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.' 5
@@ -38,4 +34,4 @@ fetch_until $UVA_EXTEND_CACHE 'fgrep -c ../mod_pa' 1
 # There are five images that should be optimized.
 fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.ic' 5
 
-echo "PASS."
+system_test_trailer

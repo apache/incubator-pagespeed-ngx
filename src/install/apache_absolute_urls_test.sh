@@ -5,16 +5,12 @@
 #
 # Tests requests for encoded absolute urls are not respected.
 #
-# Exits with status 0 if all tests pass.
-# Exits with status 1 immediately if any test fails.
-# Exits with status 2 if command line args are wrong.
-#
-# Argument 1 should be the host:port of the Apache server to talk to.
-#
+# See system_test_helpers.sh for usage.
+
 this_dir=$(dirname $0)
 source "$this_dir/system_test_helpers.sh" || exit 1
 
-echo TEST: Encoded absolute urls are not respected.
+start_test Encoded absolute urls are not respected.
 
 # Monitor the Apache log; tail -F will catch log rotations.
 ABSOLUTE_URLS_LOG_PATH=/tmp/instaweb_apache_absolute_urls_log.$$
@@ -44,4 +40,4 @@ wait $TAIL_PID 2> /dev/null
 
 check [ $REJECTIONS -eq 1 ]
 
-echo "PASS."
+system_test_trailer
