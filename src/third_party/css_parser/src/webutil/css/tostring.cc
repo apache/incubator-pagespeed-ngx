@@ -238,29 +238,34 @@ string SimpleSelector::ToString() const {
       return StringPrintf("[%s]",
                           Css::EscapeIdentifier(attribute()).c_str());
     case EXACT_ATTRIBUTE:
-      return StringPrintf("[%s=%s]",
+      // TODO(sligocki): Maybe print value out as identifier if that's smaller.
+      // The value here (and below) can be either a string or identifier.
+      // We currently always print it as a string because that is easier and
+      // more failsafe (note for example that [height="1"] would need to be
+      // converted to [height=\49 ] to remain an identifier :/).
+      return StringPrintf("[%s=\"%s\"]",
                           Css::EscapeIdentifier(attribute()).c_str(),
-                          Css::EscapeIdentifier(value()).c_str());
+                          Css::EscapeString(value()).c_str());
     case ONE_OF_ATTRIBUTE:
-      return StringPrintf("[%s~=%s]",
+      return StringPrintf("[%s~=\"%s\"]",
                           Css::EscapeIdentifier(attribute()).c_str(),
-                          Css::EscapeIdentifier(value()).c_str());
+                          Css::EscapeString(value()).c_str());
     case BEGIN_HYPHEN_ATTRIBUTE:
-      return StringPrintf("[%s|=%s]",
+      return StringPrintf("[%s|=\"%s\"]",
                           Css::EscapeIdentifier(attribute()).c_str(),
-                          Css::EscapeIdentifier(value()).c_str());
+                          Css::EscapeString(value()).c_str());
     case SUBSTRING_ATTRIBUTE:
-      return StringPrintf("[%s*=%s]",
+      return StringPrintf("[%s*=\"%s\"]",
                           Css::EscapeIdentifier(attribute()).c_str(),
-                          Css::EscapeIdentifier(value()).c_str());
+                          Css::EscapeString(value()).c_str());
     case BEGIN_WITH_ATTRIBUTE:
-      return StringPrintf("[%s^=%s]",
+      return StringPrintf("[%s^=\"%s\"]",
                           Css::EscapeIdentifier(attribute()).c_str(),
-                          Css::EscapeIdentifier(value()).c_str());
+                          Css::EscapeString(value()).c_str());
     case END_WITH_ATTRIBUTE:
-      return StringPrintf("[%s$=%s]",
+      return StringPrintf("[%s$=\"%s\"]",
                           Css::EscapeIdentifier(attribute()).c_str(),
-                          Css::EscapeIdentifier(value()).c_str());
+                          Css::EscapeString(value()).c_str());
     case CLASS:
       return StringPrintf(".%s",
                           Css::EscapeIdentifier(value()).c_str());

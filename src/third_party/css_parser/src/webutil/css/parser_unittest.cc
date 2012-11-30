@@ -1516,7 +1516,7 @@ TEST_F(ParserTest, SelectorError) {
   Parser p4("div[too=many=equals] { color: red; }");
   stylesheet.reset(p4.ParseStylesheet());
   EXPECT_EQ(Parser::kSelectorError, p4.errors_seen_mask());
-  EXPECT_EQ("/* AUTHOR */\n\n\ndiv[too=many] {color: #ff0000}\n",
+  EXPECT_EQ("/* AUTHOR */\n\n\ndiv[too=\"many\"] {color: #ff0000}\n",
             stylesheet->ToString());
 }
 

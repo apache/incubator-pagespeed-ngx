@@ -1066,7 +1066,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 
     // http://code.google.com/p/modpagespeed/issues/detail?id=575
     { "[class^=\"icon-\"],[class*=\" icon-\"] { color: red }",
-      "[class^=icon-],[class*=\\ icon-]{color:red}" },
+      "[class^=\"icon-\"],[class*=\" icon-\"]{color:red}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

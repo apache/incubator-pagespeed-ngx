@@ -74,7 +74,11 @@ TEST_F(ToStringTest, selectors) {
   TESTSTYLESHEET("/* AUTHOR */\n\n\n"
                  "a, *, b#id, c.class, :hover:focus {top: 1}\n");
   TESTSTYLESHEET("/* AUTHOR */\n\n\n"
-                 "table[width], [disable=no], [x~=y], [lang|=fr] {top: 1}\n");
+                 "table[width], [disable=\"no\"], [x~=\"y\"], [lang|=\"fr\"] "
+                 "{top: 1}\n");
+  TESTSTYLESHEET("/* AUTHOR */\n\n\n"
+                 "img[height=\"1\"] {display: block}\n"
+                 "[class^=\"icon-\"],[class*=\" icon-\"] {color: red}\n");
   TESTSTYLESHEET("/* AUTHOR */\n\n\n"
                  "a > b, a + b, a b + c > d > e f {top: 1}\n");
 }
