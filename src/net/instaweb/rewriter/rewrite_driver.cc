@@ -215,6 +215,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       using_spdy_(false),
       response_headers_(NULL),
       request_headers_(NULL),
+      status_code_(HttpStatus::kUnknownStatusCode),
       max_page_processing_delay_ms_(-1),
       pending_rewrites_(0),
       possibly_quick_rewrites_(0),
@@ -343,6 +344,7 @@ void RewriteDriver::Clear() {
   user_agent_is_bot_ = kNotSet;
   request_headers_ = NULL;
   response_headers_ = NULL;
+  status_code_ = 0;
   fetch_detached_ = false;
   flush_requested_ = false;
   flush_occurred_ = false;
@@ -714,6 +716,8 @@ const char* RewriteDriver::kPassThroughRequestAttributes[5] = {
 
 const char RewriteDriver::kDomCohort[] = "dom";
 const char RewriteDriver::kSubresourcesPropertyName[] = "subresources";
+const char RewriteDriver::kStatusCodePropertyName[] = "status_code";
+
 const char RewriteDriver::kLastRequestTimestamp[] = "last_request_timestamp";
 const char RewriteDriver::kParseSizeLimitExceeded[] =
     "parse_size_limit_exceeded";
@@ -1881,6 +1885,9 @@ void RewriteDriver::ReadAsync(Resource::AsyncCallback* callback,
 
 bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
                                  const ContentType& content_type) {
+  if (response_headers_ != NULL) {
+    status_code_ = response_headers_->status_code();
+  }
   start_time_ms_ = server_context_->timer()->NowMs();
   set_log_rewrite_timing(options()->log_rewrite_timing());
 
@@ -2074,6 +2081,11 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
       UpdatePropertyValueInDomCohort(
           kLastRequestTimestamp,
           Integer64ToString(server_context()->timer()->NowMs()));
+      // Update the status code of the last request.
+      if (status_code_ != HttpStatus::kUnknownStatusCode) {
+        UpdatePropertyValueInDomCohort(kStatusCodePropertyName,
+                                       IntegerToString(status_code_));
+      }
       if (options()->max_html_parse_bytes() > 0) {
         // Update whether the page exceeded the html parse size limit.
         UpdatePropertyValueInDomCohort(
@@ -2081,11 +2093,9 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
             num_bytes_in_ > options()->max_html_parse_bytes() ? "1" : "0");
       }
       if (flush_early_info_.get() != NULL) {
-        PropertyValue* subresources_property_value = page->GetProperty(
-            dom_cohort, RewriteDriver::kSubresourcesPropertyName);
         GoogleString value;
         flush_early_info_->SerializeToString(&value);
-        pcache->UpdateValue(value, subresources_property_value);
+        UpdatePropertyValueInDomCohort(kSubresourcesPropertyName, value);
       }
       // Page cannot be cleared yet because other cohorts may still need to be
       // written.

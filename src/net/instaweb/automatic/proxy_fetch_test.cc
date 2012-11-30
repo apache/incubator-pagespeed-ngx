@@ -182,7 +182,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, EmptyCollectorTest) {
   scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
   collector.reset(MakeCollector());
   // This should not fail
-  collector->Detach();
+  collector->Detach(HttpStatus::kUnknownStatusCode);
 }
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeDetach) {
@@ -209,7 +209,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeDetach) {
       ProxyFetchPropertyCallback::kClientPropertyCache));
 
   // This should not fail - will also delete the collector.
-  collector->Detach();
+  collector->Detach(HttpStatus::kUnknownStatusCode);
 }
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, UrlInvalidDoneBeforeDetach) {
@@ -238,7 +238,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, UrlInvalidDoneBeforeDetach) {
       ProxyFetchPropertyCallback::kClientPropertyCache));
 
   // This should not fail - will also delete the collector.
-  collector->Detach();
+  collector->Detach(HttpStatus::kUnknownStatusCode);
 }
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, DetachBeforeDone) {
@@ -252,7 +252,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DetachBeforeDone) {
   EXPECT_TRUE(callback->IsCacheValid(1L));
 
   // Will not delete the collector since we did not call Done yet.
-  collector->Detach();
+  collector->Detach(HttpStatus::kUnknownStatusCode);
 
   // This call is after Detach (but before callback->Done).
   // ProxyFetchPropertyCallbackCollector::IsCacheValid returns false if

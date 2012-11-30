@@ -1915,7 +1915,8 @@ TEST_F(BlinkFlowCriticalLineTest, Non200StatusCode) {
   // in property cache.
   EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
+  // There is an insert for status code in dom cohort.
+  EXPECT_EQ(1, lru_cache()->num_inserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
@@ -1925,11 +1926,11 @@ TEST_F(BlinkFlowCriticalLineTest, Non200StatusCode) {
   response_headers.Clear();
 
   FetchFromProxyWaitForBackground("404.html", true, &text, &response_headers);
-  // Cache lookup for original plain text, BlinkCriticalLineData and Dom Cohort
-  // in property cache. Nothing get cached.
-  EXPECT_EQ(3, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
+  // Cache lookup for original plain text, BlinkCriticalLineData in property
+  // cache. The hit and the insert is for the status code property.
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_inserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 
   EXPECT_EQ(1, statistics()->FindVariable(

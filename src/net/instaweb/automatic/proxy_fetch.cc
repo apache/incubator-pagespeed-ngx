@@ -41,6 +41,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/queued_alarm.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
@@ -108,7 +109,7 @@ ProxyFetch* ProxyFetchFactory::CreateNewProxyFetch(
             HttpStatus::kForbidden);
         driver->Cleanup();
         if (property_callback != NULL) {
-          property_callback->Detach();
+          property_callback->Detach(HttpStatus::kForbidden);
         }
         async_fetch->Done(false);
         if (original_content_fetch != NULL) {
@@ -321,7 +322,7 @@ void ProxyFetchPropertyCallbackCollector::ConnectProxyFetch(
   }
 }
 
-void ProxyFetchPropertyCallbackCollector::Detach() {
+void ProxyFetchPropertyCallbackCollector::Detach(int status_code) {
   bool do_delete = false;
   scoped_ptr<std::vector<Function*> > post_lookup_task_vector;
   {
@@ -335,6 +336,26 @@ void ProxyFetchPropertyCallbackCollector::Detach() {
   if (post_lookup_task_vector.get() != NULL) {
     for (int i = 0, n = post_lookup_task_vector->size(); i < n; ++i) {
       (*post_lookup_task_vector.get())[i]->CallCancel();
+    }
+  }
+  // If we have not transferred the ownership of PagePropertyCache to
+  // ProxyFetch yet, and we have the status code, then write the status_code in
+  // PropertyCache.
+  PropertyPage* page =
+      property_pages_[ProxyFetchPropertyCallback::kPagePropertyCache];
+  PropertyCache* pcache = server_context_->page_property_cache();
+  if (pcache != NULL && page != NULL &&
+      status_code != HttpStatus::kUnknownStatusCode) {
+    const PropertyCache::Cohort* dom = pcache->GetCohort(
+        RewriteDriver::kDomCohort);
+    if (dom != NULL) {
+      PropertyValue* value = page->GetProperty(
+          dom, RewriteDriver::kStatusCodePropertyName);
+      pcache->UpdateValue(IntegerToString(status_code), value);
+      pcache->WriteCohort(dom, page);
+    } else {
+      server_context_->message_handler()->Message(
+          kInfo, "dom cohort is not available for url %s.", url_.c_str());
     }
   }
   if (do_delete) {
@@ -949,7 +970,15 @@ void ProxyFetch::Finish(bool success) {
   // that case we never attached the collector to us, so when it's done it won't
   // access us, which is good since we self-delete at the end of this method.
   if (detach_callback != NULL) {
-    detach_callback->Detach();
+    // Set the status code only for html responses or errors in property cache.
+    bool is_response_ok = response_headers()->status_code() == HttpStatus::kOK;
+    bool not_html = html_detector_.already_decided() &&
+        !html_detector_.probable_html();
+    int status_code = HttpStatus::kUnknownStatusCode;
+    if (!is_response_ok || (claims_html_ && !not_html)) {
+      status_code = response_headers()->status_code();
+    }
+    detach_callback->Detach(status_code);
   }
 
   if (driver_ != NULL) {

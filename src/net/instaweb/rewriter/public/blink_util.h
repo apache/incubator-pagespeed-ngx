@@ -53,6 +53,7 @@ const char kStartBodyMarker[] = "<!--GooglePanel **** Start body ****-->";
 const char kEndBodyTag[] = "</body>";
 const char kLayoutMarker[] = "<!--GooglePanel **** Layout end ****-->";
 const char kJsonCachePrefix[] = "json:";
+// TODO(mmohabey): Use RewriteDriver::kStatusCodePropertyName here.
 const char kBlinkResponseCodePropertyName[] = "blink_last_response_code";
 const char kXpath[] = "xpath";
 // TODO(rahulbansal): Use these constants everywhere in the code from here.

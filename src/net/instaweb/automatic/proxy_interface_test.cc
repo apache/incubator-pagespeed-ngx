@@ -463,6 +463,16 @@ const char kFlushEarlyRewrittenHtmlLinkRelSubresourceWithDeferJs[] =
     "</body>"
     "</html>";
 
+class MockPage : public PropertyPage {
+ public:
+  MockPage(AbstractMutex* mutex, const StringPiece& key)
+      : PropertyPage(mutex, key) {}
+  virtual ~MockPage() {}
+  virtual void Done(bool valid) {}
+ private:
+  DISALLOW_COPY_AND_ASSIGN(MockPage);
+};
+
 // Like ExpectStringAsyncFetch but for asynchronous invocation -- it lets
 // one specify a WorkerTestBase::SyncPoint to help block until completion.
 class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
@@ -1094,6 +1104,19 @@ class ProxyInterfaceTest : public RewriteTestBase {
       EXPECT_EQ(1, lru_cache()->num_inserts());  // http-cache
       EXPECT_EQ(2, lru_cache()->num_misses());   // http-cache & prop-cache
     }
+  }
+
+  int GetStatusCodeInPropertyCache(const GoogleString& url) {
+    PropertyCache* pcache = page_property_cache();
+    MockPage page(factory_->thread_system()->NewMutex(), url);
+    const PropertyCache::Cohort* cohort = pcache->GetCohort(
+        RewriteDriver::kDomCohort);
+    PropertyValue* value;
+    pcache->Read(&page);
+    value = page.GetProperty(cohort, RewriteDriver::kStatusCodePropertyName);
+    int status_code;
+    EXPECT_TRUE(StringToInt(value->value().as_string(), &status_code));
+    return status_code;
   }
 
   void TestOptionsUsedInCacheKey() {
@@ -4380,6 +4403,36 @@ TEST_F(ProxyInterfaceTest, DomCohortWritten) {
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(1, lru_cache()->num_misses());  // http-cache only.
+}
+
+TEST_F(ProxyInterfaceTest, StatusCodePropertyWritten) {
+  DisableAjax();
+
+  GoogleString text_out;
+  ResponseHeaders headers_out;
+
+  // Status code 404 gets written when page is not available.
+  SetFetchResponse404(kPageUrl);
+  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
+  EXPECT_EQ(HttpStatus::kNotFound,
+            GetStatusCodeInPropertyCache(StrCat(kTestDomain, kPageUrl)));
+
+  // Status code 200 gets written when page is available.
+  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml,
+                                "<html></html>", kHtmlCacheTimeSec);
+  lru_cache()->Clear();
+  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
+  EXPECT_EQ(HttpStatus::kOK,
+            GetStatusCodeInPropertyCache(StrCat(kTestDomain, kPageUrl)));
+  // Status code 301 gets written when it is a permanent redirect.
+  headers_out.Clear();
+  text_out.clear();
+  headers_out.SetStatusAndReason(HttpStatus::kMovedPermanently);
+  SetFetchResponse(StrCat(kTestDomain, kPageUrl), headers_out, text_out);
+  lru_cache()->Clear();
+  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
+  EXPECT_EQ(HttpStatus::kMovedPermanently,
+            GetStatusCodeInPropertyCache(StrCat(kTestDomain, kPageUrl)));
 }
 
 TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfHtmlEndsWithTxt) {

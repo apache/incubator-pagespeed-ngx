@@ -154,6 +154,10 @@ class RewriteDriver : public HtmlParse {
   // associted with the HTML page.
   static const char kSubresourcesPropertyName[];
 
+  // Key for storage of information regarding the status codes of previous
+  // responses.
+  static const char kStatusCodePropertyName[];
+
   RewriteDriver(MessageHandler* message_handler,
                 FileSystem* file_system,
                 UrlAsyncFetcher* url_async_fetcher);
@@ -1199,6 +1203,7 @@ class RewriteDriver : public HtmlParse {
 
   ResponseHeaders* response_headers_;
   const RequestHeaders* request_headers_;
+  int status_code_;  // Status code of response for this request.
 
   // This group of rewrite-context-related variables is accessed
   // only in the main thread of RewriteDriver (aka the HTML thread).

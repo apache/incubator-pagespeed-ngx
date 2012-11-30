@@ -515,7 +515,7 @@ void ProxyInterface::ProxyRequestCallback(
   if (property_callback.get() != NULL) {
     // If management of the callback was not transferred to proxy fetch,
     // then we must detach it so it deletes itself when complete.
-    property_callback.release()->Detach();
+    property_callback.release()->Detach(HttpStatus::kUnknownStatusCode);
   }
 }
 

@@ -164,8 +164,10 @@ class ProxyFetchPropertyCallbackCollector {
   // If for any reason we decide *not* to initiate a ProxyFetch for a
   // request, then we need to 'detach' this request so that we can
   // delete it once it completes, rather than waiting for a
-  // ProxyFetch to be inserted.
-  void Detach();
+  // ProxyFetch to be inserted. The status code of the response is passed from
+  // ProxyFetch to the Collector. In case the status code is unknown then pass
+  // RewriteDriver::kStatusCodeUnknown.
+  void Detach(int status_code);
 
   // Returns the collected PropertyPage with the corresponding cache_type.
   // Ownership of the object is transferred to the caller.

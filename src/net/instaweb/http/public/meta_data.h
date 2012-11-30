@@ -153,6 +153,9 @@ enum Code {
   kRememberNotCacheableStatusCode = 10002,
   // This includes all 200 status code responses that are not cacheable.
   kRememberNotCacheableAnd200StatusCode = 10003,
+  // Status code used when the actual status code of the response is unknown at
+  // the time of ProxyFetchPropertyCallbackCollector::Detach().
+  kUnknownStatusCode = 10004,
 };
 
 // Transform a status code into the equivalent reason phrase.
