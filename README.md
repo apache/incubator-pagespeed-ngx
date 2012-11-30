@@ -175,8 +175,8 @@ Each of these failed tests is a known issue:
     https://github.com/pagespeed/ngx_pagespeed/issues/55)
  - [convert_meta_tags](https://github.com/pagespeed/ngx_pagespeed/issues/56)
 
-If it fails with some other error, that's a problem, and it would be helpful to
-you [submit a bug](https://github.com/pagespeed/ngx_pagespeed/issues/new).
+If it fails with some other error, that's a problem, and it would be helpful for
+you to [submit a bug](https://github.com/pagespeed/ngx_pagespeed/issues/new).
 
 #### Testing with memcached
 
