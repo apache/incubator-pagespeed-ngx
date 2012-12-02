@@ -24,7 +24,6 @@
 #include "base/logging.h"               // for CHECK, etc
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
-#include "net/instaweb/http/public/base_trace_context.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -302,10 +301,12 @@ bool ResizeImageIfNecessary(
   ImageDim image_dim;
   image->Dimensions(&image_dim);
   // Here we are computing the size of the image as described by the html on the
-  // page. If we succeed in doing so, that will be the desired image size.
-  // Otherwise we may fill in desired_image_dims later based on actual image
-  // size.
+  // page or as desired by mobile screen resolutions. If we succeed in doing so,
+  // that will be the desired image size. Otherwise we may fill in
+  // desired_image_dims later based on actual image size.
   ImageDim* desired_dim = context->mutable_desired_image_dims();
+  ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
+      image_dim, driver, desired_dim);
   const ImageDim* post_resize_dim = &image_dim;
   if (options->Enabled(RewriteOptions::kResizeImages) &&
       ImageUrlEncoder::HasValidDimension(*desired_dim) &&
@@ -1178,6 +1179,45 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContext(
                                  false /*not css */, kNotCriticalIndex);
   context->AddSlot(slot);
   return context;
+}
+
+bool ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
+    const ImageDim& image_dim, RewriteDriver* driver, ImageDim* desired_dim) {
+  const RewriteOptions* options = driver->options();
+  int screen_width = 0;
+  int screen_height = 0;
+  bool updated = false;
+  // Get the desired dimensions for mobile screen if image squashing could make
+  // the image size even smaller and there is no desired dimensions detected.
+  // This is mainly for the data reduction purpose of mobile devices.
+  // Note that squashing may break the layout of a web page if the page depends
+  // on the original image size.
+  // TODO(bolian): Consider squash images in the HTML path if dimensions are
+  // present. But should also override the existing dimensions in the markup.
+  if (options->Enabled(RewriteOptions::kResizeImages) &&
+      options->Enabled(RewriteOptions::kSquashImagesForMobileScreen) &&
+      driver->IsMobileUserAgent() &&
+      ImageUrlEncoder::HasValidDimensions(image_dim) &&
+      driver->GetScreenResolution(&screen_width, &screen_height) &&
+      (image_dim.width() > screen_width ||
+       image_dim.height() > screen_height) &&
+      !desired_dim->has_width() &&
+      !desired_dim->has_height()) {
+    // We want to have one of the desired image dimensions the same as the
+    // corresponding dimension of the screen and the other no larger than that
+    // of the screen.
+    const double width_ratio =
+        static_cast<double>(screen_width) / image_dim.width();
+    const double height_ratio =
+        static_cast<double>(screen_height) / image_dim.height();
+    if (width_ratio <= height_ratio) {
+      desired_dim->set_width(screen_width);
+    } else {
+      desired_dim->set_height(screen_height);
+    }
+    updated = true;
+  }
+  return updated;
 }
 
 }  // namespace net_instaweb

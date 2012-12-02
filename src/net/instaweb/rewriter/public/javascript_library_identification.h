@@ -35,6 +35,8 @@ class JavascriptLibraryIdentification {
  public:
   typedef uint64 SizeInBytes;
 
+  static const int kNumHashChars = (126 + 5) / 6;  // >=126 bits in base64
+
   JavascriptLibraryIdentification() { }
   ~JavascriptLibraryIdentification();
 

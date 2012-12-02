@@ -101,6 +101,11 @@ class ImageRewriteFilter : public RewriteFilter {
   virtual RewriteContext* MakeNestedRewriteContext(RewriteContext* parent,
                                                    const ResourceSlotPtr& slot);
 
+  // Update desired image dimensions if necessary. Returns true if it is
+  // updated.
+  static bool UpdateDesiredImageDimsIfNecessary(
+      const ImageDim& image_dim, RewriteDriver* driver, ImageDim* desired_dim);
+
   // name for statistic used to bound rewriting work.
   static const char kImageOngoingRewrites[];
 

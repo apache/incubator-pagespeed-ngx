@@ -91,6 +91,7 @@ struct FilterMap {
 "rewrite_style_attributes_with_url", RewriteOptions::kRewriteStyleAttributesWithUrl
 "split_html",                        RewriteOptions::kSplitHtml
 "sprite_images",                     RewriteOptions::kSpriteImages
+"squash_images_for_mobile_screen",   RewriteOptions::kSquashImagesForMobileScreen
 "strip_image_color_profile",         RewriteOptions::kStripImageColorProfile
 "strip_image_meta_data",             RewriteOptions::kStripImageMetaData
 "strip_scripts",                     RewriteOptions::kStripScripts

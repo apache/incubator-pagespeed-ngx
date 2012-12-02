@@ -43,6 +43,13 @@ const char JavascriptRewriteConfig::kTotalOriginalBytes[] =
     "javascript_total_original_bytes";
 const char JavascriptRewriteConfig::kMinifyUses[] = "javascript_minify_uses";
 
+const char JavascriptRewriteConfig::kJSMinificationDisabled[] =
+    "javascript_minification_disabled";
+const char JavascriptRewriteConfig::kJSDidNotShrink[] =
+    "javascript_did_not_shrink";
+const char JavascriptRewriteConfig::kJSFailedToWrite[] =
+    "javascript_failed_to_write";
+
 JavascriptRewriteConfig::JavascriptRewriteConfig(
     Statistics* stats, bool minify,
     const JavascriptLibraryIdentification* identification)
@@ -54,6 +61,11 @@ JavascriptRewriteConfig::JavascriptRewriteConfig(
   total_bytes_saved_ = stats->GetVariable(kTotalBytesSaved);
   total_original_bytes_ = stats->GetVariable(kTotalOriginalBytes);
   num_uses_ = stats->GetVariable(kMinifyUses);
+
+  // Failure variables.
+  minification_disabled_ = stats->GetVariable(kJSMinificationDisabled);
+  did_not_shrink_ = stats->GetVariable(kJSDidNotShrink);
+  failed_to_write_ = stats->GetVariable(kJSFailedToWrite);
 }
 
 void JavascriptRewriteConfig::InitStats(Statistics* statistics) {
@@ -63,6 +75,10 @@ void JavascriptRewriteConfig::InitStats(Statistics* statistics) {
   statistics->AddVariable(kTotalBytesSaved);
   statistics->AddVariable(kTotalOriginalBytes);
   statistics->AddVariable(kMinifyUses);
+
+  statistics->AddVariable(kJSMinificationDisabled);
+  statistics->AddVariable(kJSDidNotShrink);
+  statistics->AddVariable(kJSFailedToWrite);
 }
 
 JavascriptCodeBlock::JavascriptCodeBlock(

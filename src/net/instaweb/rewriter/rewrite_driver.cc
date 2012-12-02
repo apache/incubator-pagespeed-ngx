@@ -29,6 +29,7 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/html_event.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/async_fetch.h"
@@ -45,6 +46,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
@@ -54,6 +56,8 @@
 #include "net/instaweb/rewriter/public/blink_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
+#include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
+#include "net/instaweb/rewriter/public/collect_subresources_filter.h"
 #include "net/instaweb/rewriter/public/compute_visible_text_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
@@ -63,8 +67,8 @@
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
-#include "net/instaweb/rewriter/public/defer_iframe_filter.h"
 #include "net/instaweb/rewriter/public/debug_filter.h"
+#include "net/instaweb/rewriter/public/defer_iframe_filter.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/detect_reflow_js_defer_filter.h"
 #include "net/instaweb/rewriter/public/deterministic_js_filter.h"
@@ -74,11 +78,8 @@
 #include "net/instaweb/rewriter/public/elide_attributes_filter.h"
 #include "net/instaweb/rewriter/public/file_input_resource.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
-#include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/flush_html_filter.h"
-#include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
-#include "net/instaweb/rewriter/public/collect_subresources_filter.h"
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 #include "net/instaweb/rewriter/public/handle_noscript_redirect_filter.h"
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
@@ -101,7 +102,6 @@
 #include "net/instaweb/rewriter/public/redirect_on_size_limit_filter.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
@@ -111,10 +111,12 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/rewriter/public/strip_non_cacheable_filter.h"
 #include "net/instaweb/rewriter/public/strip_scripts_filter.h"
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
+#include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 #include "net/instaweb/rewriter/public/url_input_resource.h"
 #include "net/instaweb/rewriter/public/url_left_trim_filter.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -212,6 +214,9 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       supports_flush_early_(kNotSet),
       user_agent_supports_split_html_(kNotSet),
       should_skip_parsing_(kNotSet),
+      is_screen_resolution_set_(kNotSet),
+      user_agent_screen_resolution_width_(0),
+      user_agent_screen_resolution_height_(0),
       using_spdy_(false),
       response_headers_(NULL),
       request_headers_(NULL),
@@ -337,6 +342,7 @@ void RewriteDriver::Clear() {
 
   client_state_.reset(NULL);
   is_mobile_user_agent_ = kNotSet;
+  is_screen_resolution_set_ = kNotSet;
   supports_flush_early_ = kNotSet;
   should_skip_parsing_ = kNotSet;
   pending_async_events_ = 0;
@@ -855,6 +861,26 @@ bool RewriteDriver::IsMobileUserAgent() const {
         user_agent_matcher().IsMobileUserAgent(user_agent_) ? kTrue : kFalse;
   }
   return (is_mobile_user_agent_ == kTrue);
+}
+
+// TODO(bolian): improve logic for inferring dimensions from user-agent.
+// Use fixed screen size (display area of Galaxy Nexus) for all mobile user
+// agents for now.
+bool RewriteDriver::GetScreenResolution(int* width, int* height) {
+  if (is_screen_resolution_set_ == kNotSet && IsMobileUserAgent()) {
+    SetScreenResolution(720, 1184);
+  }
+  if (is_screen_resolution_set_ == kTrue) {
+    *width = user_agent_screen_resolution_width_;
+    *height = user_agent_screen_resolution_height_;
+  }
+  return (is_screen_resolution_set_ == kTrue);
+}
+
+void RewriteDriver::SetScreenResolution(int width, int height) {
+  is_screen_resolution_set_ = kTrue;
+  user_agent_screen_resolution_width_ = width;
+  user_agent_screen_resolution_height_ = height;
 }
 
 bool RewriteDriver::SupportsFlushEarly() const {

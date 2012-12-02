@@ -35,11 +35,11 @@
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
@@ -472,6 +472,84 @@ class ImageRewriteTest : public RewriteTestBase {
     rewrite_driver()->AddFilters();
     TestSingleRewrite(kBikePngFile, kContentTypePng, expected_type,
                       "", width_height_tags, expect_rewritten, false);
+  }
+
+  void TestSquashImagesForMobileScreen(RewriteDriver* driver) {
+    const int screen_width = 100;
+    const int screen_height = 80;
+    rewrite_driver()->SetScreenResolution(screen_width, screen_height);
+
+    ImageDim desired_dim;
+    ImageDim image_dim;
+
+    // Both image dims are less than screen.
+    image_dim.set_width(screen_width - 1);
+    image_dim.set_height(screen_height - 1);
+    EXPECT_FALSE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
+        image_dim, driver, &desired_dim));
+
+    // Image height is larger than screen height but image width is less than
+    // screen width.
+    image_dim.set_width(screen_width - 1);
+    image_dim.set_height(screen_height * 2);
+    EXPECT_TRUE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
+        image_dim, driver, &desired_dim));
+    EXPECT_FALSE(desired_dim.has_width());
+    EXPECT_EQ(screen_height, desired_dim.height());
+    desired_dim.clear_height();
+    desired_dim.clear_width();
+
+    // Image height is less than screen height but image width is larger than
+    // screen width.
+    image_dim.set_width(screen_width * 2);
+    image_dim.set_height(screen_height - 1);
+    EXPECT_TRUE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
+        image_dim, driver, &desired_dim));
+    EXPECT_EQ(screen_width, desired_dim.width());
+    EXPECT_FALSE(desired_dim.has_height());
+    desired_dim.clear_height();
+    desired_dim.clear_width();
+
+    // Both image dims are larger than screen and screen/image width ratio is
+    // is larger than height ratio.
+    image_dim.set_width(screen_width * 2);
+    image_dim.set_height(screen_height * 3);
+    EXPECT_TRUE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
+        image_dim, driver, &desired_dim));
+    EXPECT_FALSE(desired_dim.has_width());
+    EXPECT_EQ(screen_height, desired_dim.height());
+    desired_dim.clear_height();
+    desired_dim.clear_width();
+
+    // Both image dims are larger than screen and screen/image height ratio is
+    // is larger than width ratio.
+    image_dim.set_width(screen_width * 3);
+    image_dim.set_height(screen_height * 2);
+    EXPECT_TRUE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
+        image_dim, driver, &desired_dim));
+    EXPECT_EQ(screen_width, desired_dim.width());
+    EXPECT_FALSE(desired_dim.has_height());
+
+    // Keep image dims unchanged and larger than screen from now on and
+    // update desired_dim.
+    image_dim.set_width(screen_width * 3);
+    image_dim.set_height(screen_height * 2);
+
+    // If a desired dim is present, no squashing.
+    desired_dim.set_width(screen_width);
+    desired_dim.clear_height();
+    EXPECT_FALSE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
+        image_dim, driver, &desired_dim));
+
+    desired_dim.clear_width();
+    desired_dim.set_height(screen_height);
+    EXPECT_FALSE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
+        image_dim, driver, &desired_dim));
+
+    desired_dim.set_width(screen_width);
+    desired_dim.set_height(screen_height);
+    EXPECT_FALSE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
+        image_dim, driver, &desired_dim));
   }
 };
 
@@ -1337,6 +1415,34 @@ TEST_F(ImageRewriteTest, RewritesDroppedDueToMIMETypeUnknownTest) {
   Variable* rewrites_drops = statistics()->GetVariable(
       net_instaweb::ImageRewriteFilter::kImageRewritesDroppedMIMETypeUnknown);
   EXPECT_EQ(1, rewrites_drops->Get());
+}
+
+TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
+  // Make sure squash_images_for_mobile_screen works for mobile user agent
+  // (we test Android and iPhone specifically here) and no-op for desktop user
+  // agent (using Safari as example).
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kSquashImagesForMobileScreen);
+  rewrite_driver()->AddFilters();
+
+  rewrite_driver()->set_user_agent("Android 4");
+  TestSquashImagesForMobileScreen(rewrite_driver());
+
+  rewrite_driver()->set_user_agent(
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/537.13+ "
+      "(KHTML, like Gecko) Version/5.1.7 Safari/534.57.2");
+  rewrite_driver()->SetScreenResolution(100, 80);
+  ImageDim desired_dim;
+  ImageDim image_dim;
+  // Both image dims are larger than screen but no update since not mobile.
+  image_dim.set_width(300);
+  image_dim.set_height(160);
+  EXPECT_FALSE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
+      image_dim, rewrite_driver(), &desired_dim));
+
+  rewrite_driver()->set_user_agent("iPhone OS");
+  TestSquashImagesForMobileScreen(rewrite_driver());
 }
 
 }  // namespace

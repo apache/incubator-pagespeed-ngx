@@ -18,6 +18,7 @@
 #include <cstdio>
 #include <cstdlib>
 
+#include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_message_handler.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -83,7 +84,7 @@ bool JSMinifyMain(int argc, char** argv) {
   }
   FileSystem::OutputFile* stdout = file_system.Stdout();
   if (FLAGS_print_size_and_hash) {
-    MD5Hasher hasher;
+    MD5Hasher hasher(JavascriptLibraryIdentification::kNumHashChars);
     uint64 size = stripped.size();
     bool ret = stdout->Write(Integer64ToString(size), &handler);
     ret &= stdout->Write(" ", &handler);

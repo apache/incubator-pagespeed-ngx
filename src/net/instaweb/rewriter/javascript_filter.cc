@@ -108,9 +108,12 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     if (PossiblyRewriteToLibrary(code_block, server_context, output)) {
       // Code was a library, so we will use the canonical url rather than create
       // an optimized version.
+      // libraries_identified is incremented internally in
+      // PossiblyRewriteToLibrary, so there's no specific failure metric here.
       return kRewriteFailed;
     }
     if (!config_->minify()) {
+      config_->minification_disabled()->Add(1);
       return kRewriteFailed;
     }
     if (!code_block.ProfitableToRewrite()) {
@@ -118,11 +121,13 @@ class JavascriptFilter::Context : public SingleRewriteContext {
       // this for later so we don't attempt to rewrite twice.
       server_context->message_handler()->Message(
           kInfo, "Script %s didn't shrink.", code_block.message_id().c_str());
+      config_->did_not_shrink()->Add(1);
       return kRewriteFailed;
     }
     // Code block was optimized, so write out the new version.
     if (!WriteExternalScriptTo(
             input, code_block.Rewritten(), server_context, output)) {
+      config_->failed_to_write()->Add(1);
       return kRewriteFailed;
     }
     // We only check and rule out introspective javascript *after* writing the

@@ -206,6 +206,7 @@ class RewriteDriver : public HtmlParse {
     user_agent_supports_webp_ = kNotSet;
     is_mobile_user_agent_ = kNotSet;
     user_agent_supports_split_html_ = kNotSet;
+    is_screen_resolution_set_ = kNotSet;
   }
 
   // Returns true if the request we're rewriting was made using SPDY.
@@ -265,6 +266,8 @@ class RewriteDriver : public HtmlParse {
   bool UserAgentSupportsJsDefer() const;
   bool UserAgentSupportsWebp() const;
   bool IsMobileUserAgent() const;
+  bool GetScreenResolution(int* width, int* height);
+  void SetScreenResolution(int width, int height);
   // Whether flush early flow is supported for this request.
   bool SupportsFlushEarly() const;
   bool UserAgentSupportsSplitHtml() const;
@@ -1195,6 +1198,10 @@ class RewriteDriver : public HtmlParse {
   mutable LazyBool user_agent_supports_split_html_;
 
   LazyBool should_skip_parsing_;
+
+  LazyBool is_screen_resolution_set_;
+  int user_agent_screen_resolution_width_;
+  int user_agent_screen_resolution_height_;
 
   // If true, request is known to have been made using SPDY.
   bool using_spdy_;

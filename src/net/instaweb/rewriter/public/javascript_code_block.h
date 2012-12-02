@@ -61,6 +61,10 @@ class JavascriptRewriteConfig {
   Variable* total_original_bytes() { return total_original_bytes_; }
   Variable* num_uses() { return num_uses_; }
 
+  Variable* minification_disabled() { return minification_disabled_; }
+  Variable* did_not_shrink() { return did_not_shrink_; }
+  Variable* failed_to_write() { return failed_to_write_; }
+
   // Statistics names.
   static const char kBlocksMinified[];
   static const char kLibrariesIdentified[];
@@ -68,6 +72,11 @@ class JavascriptRewriteConfig {
   static const char kTotalBytesSaved[];
   static const char kTotalOriginalBytes[];
   static const char kMinifyUses[];
+
+  // Those are JS rewrite failure type statistics.
+  static const char kJSMinificationDisabled[];
+  static const char kJSDidNotShrink[];
+  static const char kJSFailedToWrite[];
 
  private:
   bool minify_;
@@ -90,6 +99,14 @@ class JavascriptRewriteConfig {
   // # of uses of the minified JS (updating <script> src= attributes or
   // contents).
   Variable* num_uses_;
+
+  // Failure metrics.
+  // Number of scripts we didn't rewrite JS because minification was disabled.
+  Variable* minification_disabled_;
+  // Number of scripts we didn't rewrite since JS didn't shrink.
+  Variable* did_not_shrink_;
+  // Number of scipts we failed to write out.
+  Variable* failed_to_write_;
 
   DISALLOW_COPY_AND_ASSIGN(JavascriptRewriteConfig);
 };

@@ -142,6 +142,7 @@ class RewriteOptions {
     kServeNonCacheableNonCritical,
     kSplitHtml,
     kSpriteImages,
+    kSquashImagesForMobileScreen,
     kStripImageColorProfile,
     kStripImageMetaData,
     kStripNonCacheable,
