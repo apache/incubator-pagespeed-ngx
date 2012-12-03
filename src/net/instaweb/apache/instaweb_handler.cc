@@ -502,20 +502,35 @@ apr_status_t instaweb_statistics_handler(
                                             granularity_ms, &writer,
                                             message_handler);
   } else {
-    writer.Write(global_stats_request ?
-                     "Global Statistics" : "VHost-Specific Statistics",
-                 message_handler);
-    // Write <pre></pre> for Dump to keep good format.
-    writer.Write("<pre>", message_handler);
-    statistics->Dump(&writer, message_handler);
-    writer.Write("</pre>", message_handler);
-    statistics->RenderHistograms(&writer, message_handler);
+    // Generate some navigational links to the right to help
+    // our users get to other modes.
+    writer.Write(
+        "<div style='float:right'>View "
+        "<a href='?config'>Configuration</a>, "
+        "<a href='?spdy_config'>SPDY Configuration</a>, "
+        "<a href='?'>Statistics</a> "
+        "(<a href='?memcached'>with memcached Stats</a>). "
+        "</div>",
+        message_handler);
 
-    if (params.Has("memcached")) {
-      GoogleString memcached_stats;
-      factory->PrintMemCacheStats(&memcached_stats);
-      if (!memcached_stats.empty()) {
-        WritePre(memcached_stats, &writer, message_handler);
+    // Only print stats or configuration, not both.
+    if (!print_normal_config && !print_spdy_config) {
+      writer.Write(global_stats_request ?
+                       "Global Statistics" : "VHost-Specific Statistics",
+                   message_handler);
+
+      // Write <pre></pre> for Dump to keep good format.
+      writer.Write("<pre>", message_handler);
+      statistics->Dump(&writer, message_handler);
+      writer.Write("</pre>", message_handler);
+      statistics->RenderHistograms(&writer, message_handler);
+
+      if (params.Has("memcached")) {
+        GoogleString memcached_stats;
+        factory->PrintMemCacheStats(&memcached_stats);
+        if (!memcached_stats.empty()) {
+          WritePre(memcached_stats, &writer, message_handler);
+        }
       }
     }
 

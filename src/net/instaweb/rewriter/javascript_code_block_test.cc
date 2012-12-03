@@ -156,10 +156,12 @@ class JsCodeBlockTest : public testing::Test {
   }
 
   void RegisterLibrariesIn(JavascriptLibraryIdentification* libs) {
-    MD5Hasher md5;
+    MD5Hasher md5(JavascriptLibraryIdentification::kNumHashChars);
     GoogleString after_md5 = md5.Hash(kAfterCompilation);
     EXPECT_TRUE(libs->RegisterLibrary(STATIC_STRLEN(kAfterCompilation),
                                       after_md5, kLibraryUrl));
+    EXPECT_EQ(JavascriptLibraryIdentification::kNumHashChars,
+              after_md5.size());
   }
 
   void RegisterLibraries() {
@@ -309,7 +311,7 @@ TEST_F(JsCodeBlockTest, LibrarySignature) {
   RegisterLibraries();
   GoogleString signature;
   libraries_.AppendSignature(&signature);
-  MD5Hasher md5;
+  MD5Hasher md5(JavascriptLibraryIdentification::kNumHashChars);
   GoogleString after_md5 = md5.Hash(kAfterCompilation);
   GoogleString expected_signature =
       StrCat("S:", Integer64ToString(STATIC_STRLEN(kAfterCompilation)),

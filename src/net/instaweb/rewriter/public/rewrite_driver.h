@@ -688,13 +688,13 @@ class RewriteDriver : public HtmlParse {
   // We expect to this method to be called on the Rewrite thread.
   void DeleteRewriteContext(RewriteContext* rewrite_context);
 
-  // Explicitly sets the number of milliseconds to wait for Rewrites
-  // to complete while HTML parsing, overriding a default value which
-  // is dependent on whether the system is compiled for debug or
-  // release, or whether it's been detected as running on valgrind
-  // at runtime.
-  void set_rewrite_deadline_ms(int x) { rewrite_deadline_ms_ = x; }
-  int rewrite_deadline_ms() { return rewrite_deadline_ms_; }
+  // Explicitly sets the number of milliseconds to wait for Rewrites to complete
+  // while HTML parsing, overriding a default value which is dependent on
+  // whether the system is compiled for debug or release, or whether it's been
+  // detected as running on valgrind at runtime. Note that this delegates to
+  // options_, so make sure that options_ is not locked when calling this.
+  void set_rewrite_deadline_ms(int x) { options_->set_rewrite_deadline_ms(x); }
+  int rewrite_deadline_ms() { return options_->rewrite_deadline_ms(); }
 
   // Sets a maximum amount of time to process a page across all flush
   // windows; i.e., the entire lifecycle of this driver during a given pageload.
@@ -1216,10 +1216,6 @@ class RewriteDriver : public HtmlParse {
   // only in the main thread of RewriteDriver (aka the HTML thread).
   typedef std::vector<RewriteContext*> RewriteContextVector;
   RewriteContextVector rewrites_;  // ordered list of rewrites to initiate
-
-  // The interval to wait for async rewrites to complete before flushing
-  // content.
-  int rewrite_deadline_ms_;
 
   // The maximum amount of time to wait for page processing across all flush
   // windows. A negative value implies no limit.

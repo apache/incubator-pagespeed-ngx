@@ -715,10 +715,6 @@ RewriteDriver* RewriteTestBase::MakeDriver(
   } else {
     rd = server_context->NewCustomRewriteDriver(options);
   }
-  // As we are using mock time, we need to set a consistent deadline here,
-  // as otherwise when running under Valgrind some tests will finish
-  // with different HTML headers than expected.
-  rd->set_rewrite_deadline_ms(20);
   return rd;
 }
 
