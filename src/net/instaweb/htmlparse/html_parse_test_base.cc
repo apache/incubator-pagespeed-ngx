@@ -43,23 +43,27 @@ void HtmlParseTestBaseNoAlloc::ParseUrl(const StringPiece& url,
   html_parse()->FinishParse();
 }
 
-void HtmlParseTestBaseNoAlloc::ValidateExpected(const StringPiece& case_id,
+bool HtmlParseTestBaseNoAlloc::ValidateExpected(const StringPiece& case_id,
                                                 const GoogleString& html_input,
                                                 const GoogleString& expected) {
   Parse(case_id, html_input);
   GoogleString xbody = doctype_string_ + AddHtmlBody(expected);
   EXPECT_EQ(xbody, output_buffer_) << "Test id:" << case_id;
+  bool success = (xbody == output_buffer_);
   output_buffer_.clear();
+  return success;
 }
 
-void HtmlParseTestBaseNoAlloc::ValidateExpectedUrl(
+bool HtmlParseTestBaseNoAlloc::ValidateExpectedUrl(
     const StringPiece& url,
     const GoogleString& html_input,
     const GoogleString& expected) {
   ParseUrl(url, html_input);
   GoogleString xbody = doctype_string_ + AddHtmlBody(expected);
   EXPECT_EQ(xbody, output_buffer_) << "Test url:" << url;
+  bool success = (xbody == output_buffer_);
   output_buffer_.clear();
+  return success;
 }
 
 void HtmlParseTestBaseNoAlloc::ValidateExpectedFail(

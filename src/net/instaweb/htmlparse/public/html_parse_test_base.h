@@ -122,12 +122,13 @@ class HtmlParseTestBaseNoAlloc : public testing::Test {
 
   // Validate that the output HTML serializes as specified in
   // 'expected', which might not be identical to the input.
-  void ValidateExpected(const StringPiece& case_id,
+  // Also, returns true if result came out as expected.
+  bool ValidateExpected(const StringPiece& case_id,
                         const GoogleString& html_input,
                         const GoogleString& expected);
 
   // Same as ValidateExpected, but with an explicit URL rather than an id.
-  void ValidateExpectedUrl(const StringPiece& url,
+  bool ValidateExpectedUrl(const StringPiece& url,
                            const GoogleString& html_input,
                            const GoogleString& expected);
 

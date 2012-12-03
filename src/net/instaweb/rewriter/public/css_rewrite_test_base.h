@@ -127,7 +127,7 @@ class CssRewriteTestBase : public RewriteTestBase {
   }
 
   // Check that inline CSS gets rewritten correctly.
-  void ValidateRewriteInlineCss(const StringPiece& id,
+  bool ValidateRewriteInlineCss(const StringPiece& id,
                                 const StringPiece& css_input,
                                 const StringPiece& expected_css_output,
                                 int flags);
@@ -166,10 +166,12 @@ class CssRewriteTestBase : public RewriteTestBase {
                        const GoogleString& css_input,
                        const GoogleString& gold_output,
                        int flags) {
-    ValidateRewriteInlineCss(StrCat(id, "-inline"),
-                             css_input, gold_output, flags);
-    ValidateRewriteExternalCss(StrCat(id, "-external"),
-                               css_input, gold_output, flags);
+    if (ValidateRewriteInlineCss(StrCat(id, "-inline"),
+                                 css_input, gold_output, flags)) {
+      // Don't run for external CSS unless inline succeeds.
+      ValidateRewriteExternalCss(StrCat(id, "-external"),
+                                 css_input, gold_output, flags);
+    }
   }
 
   void ValidateFailParse(const StringPiece& id, const GoogleString& css_input) {
@@ -180,7 +182,7 @@ class CssRewriteTestBase : public RewriteTestBase {
   void ResetStats();
 
   // Validate HTML rewrite as well as checking statistics.
-  void ValidateWithStats(
+  bool ValidateWithStats(
       const StringPiece& id,
       const GoogleString& html_input, const GoogleString& expected_html_output,
       const StringPiece& css_input, const StringPiece& expected_css_output,

@@ -21,6 +21,7 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -35,7 +36,7 @@ namespace net_instaweb {
 CssRewriteTestBase::~CssRewriteTestBase() {}
 
 // Check that inline CSS gets rewritten correctly.
-void CssRewriteTestBase::ValidateRewriteInlineCss(
+bool CssRewriteTestBase::ValidateRewriteInlineCss(
     const StringPiece& id,
     const StringPiece& css_input,
     const StringPiece& expected_css_output,
@@ -53,8 +54,8 @@ void CssRewriteTestBase::ValidateRewriteInlineCss(
   GoogleString html_input  = StrCat(prefix, css_input, suffix);
   GoogleString html_output = StrCat(prefix, expected_css_output, suffix);
 
-  ValidateWithStats(id, html_input, html_output,
-                    css_input, expected_css_output, flags);
+  return ValidateWithStats(id, html_input, html_output,
+                           css_input, expected_css_output, flags);
 }
 
 void CssRewriteTestBase::ResetStats() {
@@ -73,7 +74,7 @@ void CssRewriteTestBase::ResetStats() {
   num_flatten_imports_complex_queries_->Set(0);
 }
 
-void CssRewriteTestBase::ValidateWithStats(
+bool CssRewriteTestBase::ValidateWithStats(
     const StringPiece& id,
     const GoogleString& html_input, const GoogleString& expected_html_output,
     const StringPiece& css_input, const StringPiece& expected_css_output,
@@ -81,10 +82,10 @@ void CssRewriteTestBase::ValidateWithStats(
   ResetStats();
 
   // Rewrite
-  ValidateExpected(id, html_input, expected_html_output);
+  bool success = ValidateExpected(id, html_input, expected_html_output);
 
   // Check stats
-  if (!FlagSet(flags, kNoStatCheck)) {
+  if (success && !FlagSet(flags, kNoStatCheck)) {
     if (FlagSet(flags, kExpectSuccess)) {
       EXPECT_EQ(1, num_blocks_rewritten_->Get()) << id;
       EXPECT_EQ(0, num_fallback_rewrites_->Get()) << id;
@@ -140,6 +141,10 @@ void CssRewriteTestBase::ValidateWithStats(
             num_flatten_imports_recursion_->Get()) << id;
   EXPECT_EQ(FlagSet(flags, kFlattenImportsComplexQueries) ? 1 : 0,
             num_flatten_imports_complex_queries_->Get()) << id;
+
+  // TODO(sligocki): This success value does not reflect failures in the
+  // stats checks. Perhaps it should.
+  return success;
 }
 
 GoogleString CssRewriteTestBase::ExpectedRewrittenUrl(
