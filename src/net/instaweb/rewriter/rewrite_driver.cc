@@ -1684,7 +1684,15 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
     SetBaseUrlForFetch(url);
     fetch_queued_ = true;
     AjaxRewriteContext* context = new AjaxRewriteContext(this, url);
-    context->Fetch(output_resource, async_fetch, message_handler());
+    if (!context->Fetch(output_resource, async_fetch, message_handler())) {
+      // RewriteContext::Fetch can fail if the input URLs are undecodeable
+      // or unfetchable. There is no decoding in this case, but unfetchability
+      // is possible if we're given an https URL but have a fetcher that
+      // can't do it. In that case, the only thing we can do is fail
+      // and cleanup.
+      async_fetch->Done(false);
+      FetchComplete();
+    }
   }
   return handled;
 }
