@@ -11,4 +11,5 @@ exec make \
     APACHE_ROOT=/etc/httpd \
     APACHE_STOP_COMMAND=graceful \
     APACHE_USER=apache \
+    BINDIR=/usr/local/bin \
     $*

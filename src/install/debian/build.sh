@@ -45,7 +45,9 @@ gen_substvars() {
 prep_staging_debian() {
   prep_staging_common
   install -m 755 -d "${STAGEDIR}/DEBIAN" \
-    "${STAGEDIR}/etc/cron.daily"
+    "${STAGEDIR}/etc/cron.daily" \
+    "${STAGEDIR}/etc/apache2/conf.d" \
+    "${STAGEDIR}/usr/bin"
 }
 
 # Put the package contents in the staging area.
@@ -73,7 +75,12 @@ stage_install_debian() {
   chmod 644 "${STAGEDIR}${APACHE_CONFDIR}/pagespeed.load"
   process_template "${BUILDDIR}/install/common/pagespeed.conf.template" \
     "${STAGEDIR}${APACHE_CONFDIR}/pagespeed.conf"
+  install -m 755 "${BUILDDIR}/js_minify" \
+    "${STAGEDIR}/usr/bin/pagespeed_js_minify"
   chmod 644 "${STAGEDIR}${APACHE_CONFDIR}/pagespeed.conf"
+  install -m 644 \
+    "${BUILDDIR}/../../net/instaweb/genfiles/conf/pagespeed_libraries.conf" \
+    "${STAGEDIR}${APACHE_CONF_D_DIR}/pagespeed_libraries.conf"
 }
 
 # Build the deb file within a fakeroot.
@@ -244,6 +251,7 @@ COMMON_PREDEPS="dpkg (>= 1.14.0)"
 
 APACHE_MODULEDIR="/usr/lib/apache2/modules"
 APACHE_CONFDIR="/etc/apache2/mods-available"
+APACHE_CONF_D_DIR="/etc/apache2/conf.d"
 MOD_PAGESPEED_CACHE="/var/cache/mod_pagespeed"
 APACHE_USER="www-data"
 COMMENT_OUT_DEFLATE=

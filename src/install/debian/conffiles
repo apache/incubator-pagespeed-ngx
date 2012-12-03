@@ -1,2 +1,3 @@
 /etc/apache2/mods-available/pagespeed.load
 /etc/apache2/mods-available/pagespeed.conf
+/etc/apache2/conf.d/pagespeed_libraries.conf

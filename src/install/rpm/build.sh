@@ -18,7 +18,7 @@ gen_spec() {
 # Setup the installation directory hierachy in the package staging area.
 prep_staging_rpm() {
   prep_staging_common
-  install -m 755 -d "${STAGEDIR}/etc/cron.daily"
+  install -m 755 -d "${STAGEDIR}/etc/cron.daily" "${STAGEDIR}/usr/bin"
 }
 
 # Put the package contents in the staging area.
@@ -39,7 +39,12 @@ stage_install_rpm() {
     "${BUILDDIR}/install/common/pagespeed.conf"
   cat "${BUILDDIR}/install/common/pagespeed.conf" >> \
     "${STAGEDIR}${APACHE_CONFDIR}/pagespeed.conf"
+  install -m 755 "${BUILDDIR}/js_minify" \
+    "${STAGEDIR}/usr/bin/pagespeed_js_minify"
   chmod 644 "${STAGEDIR}${APACHE_CONFDIR}/pagespeed.conf"
+  install -m 644 \
+    "${BUILDDIR}/../../net/instaweb/genfiles/conf/pagespeed_libraries.conf" \
+    "${STAGEDIR}${APACHE_CONFDIR}/pagespeed_libraries.conf"
 }
 
 # Actually generate the package file.

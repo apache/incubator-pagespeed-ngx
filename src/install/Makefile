@@ -9,8 +9,8 @@
 #     CentOS 				/etc/httpd/conf.d/*.conf
 #     Custom Apache build from source	/usr/local/apache2/conf/extra/
 #
-# In the case of the custom Apache build, you must also
-# edit /usr/local/apache2/conf # to add "Include conf/extra/pagespeed.conf"
+# In the case of the custom Apache build, you must also edit
+# /usr/local/apache2/conf to add "Include conf/extra/pagespeed.conf"
 #
 # The goal of this Makefile is to help generate basic default
 # configuration files that can then be edited to tune the HTML
@@ -57,19 +57,23 @@ APACHE_STOP_COMMAND      = stop
 APACHE_PIDFILE           = /var/run/apache2.pid
 APACHE_PROGRAM           = /usr/sbin/apache2
 
+# The installation directory for executables
+BINDIR = /usr/bin
+
 # A temp directory to stage generated configuration files.  This must be
 # writable by the user, and readable by root.
 STAGING_DIR = /tmp/mod_pagespeed.install
 
 # The mod_pagespeed module is specified relative to the install directory,
 # which is src/install.
-MOD_PAGESPEED_ROOT = ..
+MOD_PAGESPEED_ROOT = $(shell dirname $PWD)
 PAGESPEED_MODULE = $(MOD_PAGESPEED_ROOT)/out/Release/libmod_pagespeed.so
 PAGESPEED_MODULE_24 = $(MOD_PAGESPEED_ROOT)/out/Release/libmod_pagespeed_ap24.so
+PAGESPEED_JS_MINIFY = $(MOD_PAGESPEED_ROOT)/out/Release/js_minify
 
 # On systems dervied from the NCSA configuration files by Rob McCool,
 # you enable a module by writing its .conf file into
-# $(APACHE_ROOT)/mods-enabled/pagespeed.conf, and a single Load command into
+# $(APACHE_ROOT)/mods-available/pagespeed.conf, and a single Load command into
 # $(APACHE_ROOT)/mods-enabled/pagespeed.conf.  So if that exists, then we'll
 # try to automate that.
 MODS_ENABLED_DIR = $(shell if [ -d $(APACHE_ROOT)/mods-enabled ]; then \
@@ -121,13 +125,17 @@ echo_vars :
 #
 # In other distributions, such as CentOS, there is an 'Include DIR/*.conf',
 # but there is no implicit loading of modules, so we write our Load line
-# directly into our config file
+# directly into our config file.
+
+# In either case, independent configuration files go here (this directory
+# is read by both distributions on startup after the modules load).
+APACHE_CONF_D = $(APACHE_ROOT)/conf.d
 
 ifeq ($(MODS_ENABLED_DIR),)
 
 # This is a CentOS-like installation, where there is no explicit .load
 # file, and we instead pre-pend the LoadModule command to the .conf file.
-APACHE_CONF = $(APACHE_ROOT)/conf.d
+APACHE_CONF = $(APACHE_CONF_D)
 CONF_SOURCES = $(STAGING_DIR)/pagespeed.load $(STAGING_DIR)/pagespeed.conf
 
 else
@@ -136,7 +144,9 @@ else
 # separately into a mods-enabled directory, and the .conf file is loaded
 # independently.
 MODS_ENABLED_INSTALL_COMMANDS = \
-	cp $(STAGING_DIR)/pagespeed.load $(MODS_ENABLED_DIR) ; \
+	rm -f $(MODS_ENABLED_DIR)/pagespeed.load ; \
+	cp -f $(STAGING_DIR)/pagespeed.load $(MODS_AVAILABLE_DIR) ; \
+	cd $(MODS_ENABLED_DIR) && ln -s ../mods_available/pagespeed.load ; \
 	rm -f $(MODS_ENABLED_DIR)/headers.load ; \
 	cd $(MODS_ENABLED_DIR) && ln -s ../mods-available/headers.load ; \
 	rm -f $(MODS_ENABLED_DIR)/deflate.load ; \
@@ -402,22 +412,29 @@ setup_staging_dir :
 	rm -rf $(STAGING_DIR)
 	mkdir -p $(STAGING_DIR)
 
+LIBRARY_CONF_SOURCE = \
+    $(MOD_PAGESPEED_ROOT)/net/instaweb/genfiles/conf/pagespeed_libraries.conf
+
 # Generate a configuration file and copy it to the staging area.
 # Also copy the example tree, and the built Apache module
 staging_except_module : setup_staging_dir $(CONF_TEMPLATES)
 	cat common/pagespeed.load.template | \
 	    sed s~@@APACHE_MODULEDIR@@~$(APACHE_MODULES)~ | \
 	    sed s/@@COMMENT_OUT_DEFLATE@@// > $(STAGING_DIR)/pagespeed.load
+	cp -f $(LIBRARY_CONF_SOURCE) $(STAGING_DIR)/pagespeed_libraries.conf
 	$(MODS_ENABLED_STAGING_COMMANDS)
 	cp -rp mod_pagespeed_example mod_pagespeed_test $(STAGING_DIR)
 
 staging : staging_except_module
 	cp $(PAGESPEED_MODULE) $(STAGING_DIR)/mod_pagespeed.so
 	cp $(PAGESPEED_MODULE_24) $(STAGING_DIR)/mod_pagespeed_ap24.so
+	cp $(PAGESPEED_JS_MINIFY) $(STAGING_DIR)/pagespeed_js_minify
 
 install_except_module : mod_pagespeed_file_root
 	$(MODS_ENABLED_INSTALL_COMMANDS)
 	cat $(CONF_SOURCES) > $(APACHE_CONF)/pagespeed.conf
+	cp -f $(STAGING_DIR)/pagespeed_libraries.conf \
+	      $(APACHE_CONF_D)/pagespeed_libraries.conf
 	rm -rf $(APACHE_DOC_ROOT)/mod_pagespeed_example \
 	       $(APACHE_DOC_ROOT)/mod_pagespeed_test
 	cp -r $(STAGING_DIR)/mod_pagespeed_example \
@@ -430,6 +447,7 @@ install_except_module : mod_pagespeed_file_root
 install : install_except_module
 	cp $(STAGING_DIR)/mod_pagespeed.so $(APACHE_MODULES)
 	cp $(STAGING_DIR)/mod_pagespeed_ap24.so $(APACHE_MODULES)
+	cp $(STAGING_DIR)/pagespeed_js_minify $(BINDIR)
 
 mod_pagespeed_file_root :
 	mkdir -p $(MOD_PAGESPEED_CACHE)

@@ -16,4 +16,5 @@ exec make \
     APACHE_ROOT=/etc/apache2 \
     APACHE_STOP_COMMAND=stop-graceful \
     APACHE_USER=wwwrun \
+    BINDIR=/usr/local/bin \
     $*

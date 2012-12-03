@@ -70,7 +70,9 @@ rm -rf "$RPM_BUILD_ROOT"
 @@APACHE_MODULEDIR@@/mod_pagespeed.so
 @@APACHE_MODULEDIR@@/mod_pagespeed_ap24.so
 %config(noreplace) @@APACHE_CONFDIR@@/pagespeed.conf
+%config(noreplace) @@APACHE_CONFDIR@@/pagespeed_libraries.conf
 /etc/cron.daily/mod-pagespeed
+/usr/bin/pagespeed_js_minify
 %attr(-, @@APACHE_USER@@, @@APACHE_USER@@) @@MOD_PAGESPEED_CACHE@@
 
 #------------------------------------------------------------------------------
