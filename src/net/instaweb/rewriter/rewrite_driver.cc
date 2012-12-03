@@ -124,7 +124,6 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -145,13 +144,6 @@ class RewriteDriverPool;
 
 namespace {
 
-// TODO(jmarantz): make these changeable from the Factory based on the
-// requirements of the testing system and the platform.  This might
-// also want to change based on how many Flushes there are, as each
-// Flush can potentially add this much more latency.
-const int kDebugWaitForRewriteMsPerFlush = 20;
-const int kOptWaitForRewriteMsPerFlush = 10;
-const int kValgrindWaitForRewriteMsPerFlush = 1000;
 const int kTestTimeoutMs = 10000;
 
 // Implementation of RemoveCommentsFilter::OptionsInterface that wraps
@@ -257,19 +249,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       start_time_ms_(0)
       // NOTE:  Be sure to clear per-request member vars in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
-  // Set up default values for the amount of time an HTML rewrite will wait for
-  // Rewrites to complete, based on whether compiled for debug or running on
-  // valgrind.  Note that unit-tests can explicitly override this value via
-  // set_rewrite_deadline_ms().
-  if (RunningOnValgrind()) {
-    rewrite_deadline_ms_ = kValgrindWaitForRewriteMsPerFlush;
-  } else {
-#ifdef NDEBUG
-    rewrite_deadline_ms_ = kOptWaitForRewriteMsPerFlush;
-#else
-    rewrite_deadline_ms_ = kDebugWaitForRewriteMsPerFlush;
-#endif
-  }
   // The Scan filter always goes first so it can find base-tags.
   early_pre_render_filters_.push_back(&scan_filter_);
 }
@@ -624,7 +603,7 @@ void RewriteDriver::FlushAsync(Function* callback) {
 }
 
 int64 RewriteDriver::ComputeCurrentFlushWindowRewriteDelayMs() {
-  int64 deadline = rewrite_deadline_ms_;
+  int64 deadline = rewrite_deadline_ms();
   // If we've configured a max processing delay for the entire page, enforce
   // that limit here.
   if (max_page_processing_delay_ms_ > 0) {

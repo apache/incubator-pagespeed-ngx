@@ -106,6 +106,10 @@ DEFINE_bool(css_preserve_urls, false, "Boolean to indicate whether CSS URLS"
             "should be preserved.");
 DEFINE_bool(js_preserve_urls, false, "Boolean to indicate whether JavaScript"
             "URLs should be preserved.");
+DEFINE_int32(rewrite_deadline_per_flush_ms,
+             net_instaweb::RewriteOptions::kDefaultRewriteDeadlineMs,
+             "Deadline to rewrite a resource before putting the rewrite in the "
+             "background and returning the original resource.");
 DEFINE_bool(log_rewrite_timing, false, "Log time taken by rewrite filters.");
 DEFINE_int64(max_html_cache_time_ms,
              net_instaweb::RewriteOptions::kDefaultMaxHtmlCacheTimeMs,
@@ -497,6 +501,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("js_preserve_urls")) {
     options->set_js_preserve_urls(FLAGS_js_preserve_urls);
+  }
+  if (WasExplicitlySet("rewrite_deadline_per_flush_ms")) {
+    options->set_rewrite_deadline_ms(FLAGS_rewrite_deadline_per_flush_ms);
   }
   if (WasExplicitlySet("avoid_renaming_introspective_javascript")) {
     options->set_avoid_renaming_introspective_javascript(

@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -157,6 +158,13 @@ const int64 RewriteOptions::kDefaultMaxCacheableResponseContentLength = -1;
 // of hooking map_to_storage to skip the directory-mapping phase in
 // Apache.  See http://code.google.com/p/modpagespeed/issues/detail?id=176
 const int RewriteOptions::kDefaultMaxUrlSegmentSize = 1024;
+
+#ifdef NDEBUG
+const int RewriteOptions::kDefaultRewriteDeadlineMs = 10;
+#else
+const int RewriteOptions::kDefaultRewriteDeadlineMs = 20;
+#endif
+const int kValgrindWaitForRewriteMs = 1000;
 
 const char RewriteOptions::kDefaultBeaconUrl[] = "/mod_pagespeed_beacon?ets=";
 
@@ -564,6 +572,14 @@ RewriteOptions::RewriteOptions()
   // destructor I suppose, but we defer it till ComputeSignature.
 #endif
 
+  // TODO(jmarantz): make rewrite_deadline changeable from the Factory based on
+  // the requirements of the testing system and the platform. This might also
+  // want to change based on how many Flushes there are, as each Flush can
+  // potentially add this much more latency.
+  if (RunningOnValgrind()) {
+    set_rewrite_deadline_ms(kValgrindWaitForRewriteMs);
+  }
+
   InitializeOptions(properties_);
 
   // Enable HtmlWriterFilter by default.
@@ -636,6 +652,8 @@ void RewriteOptions::AddProperties() {
              kMaxUrlSize);
   add_option(false, &RewriteOptions::forbid_all_disabled_filters_, "fadf",
              kForbidAllDisabledFilters);
+  add_option(kDefaultRewriteDeadlineMs, &RewriteOptions::rewrite_deadline_ms_,
+             "rdm", kRewriteDeadlineMs);
   add_option(true, &RewriteOptions::enabled_, "e", kEnabled);
   add_option(false, &RewriteOptions::ajax_rewriting_enabled_, "ar",
              kAjaxRewritingEnabled);

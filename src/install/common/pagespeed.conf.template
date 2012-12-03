@@ -56,6 +56,19 @@
     #
     # ModPagespeedForbidFilters rewrite_images
 
+    # How long mod_pagespeed will wait to return an optimized resource
+    # (per flush window) on first request before giving up and returning the
+    # original (unoptimized) resource. After this deadline is exceeded the
+    # original resource is returned and the optimization is pushed to the
+    # background to be completed for future requests. Increasing this value will
+    # increase page latency, but might reduce load time (for instance on a
+    # bandwidth-constrained link where it's worth waiting for image
+    # compression to complete). If the value is less than or equal to zero
+    # mod_pagespeed will wait indefinitely for the rewrite to complete before
+    # returning.
+    #
+    # ModPagespeedRewriteDeadlinePerFlushMs 10
+
     # ModPagespeedDomain
     # authorizes rewriting of JS, CSS, and Image files found in this
     # domain. By default only resources with the same origin as the
