@@ -117,6 +117,29 @@ class PropertyCacheTest : public testing::Test {
     return property_cache_.IsStable(property);
   }
 
+  // Performs a Read transaction and returns whether the value was considered
+  // stable with num_writes_unchanged.
+  bool ReadTestRecentlyConstant(const GoogleString& key,
+                                int num_writes_unchanged) {
+    MockPage page(thread_system_->NewMutex(), kCacheKey1);
+    property_cache_.Read(&page);
+    PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
+    return property->IsRecentlyConstant(num_writes_unchanged);
+  }
+
+  // Performs a Read/Modify/Write transaction and returns whether the value was
+  // considered stable with num_writes_unchanged.
+  bool ReadWriteTestRecentlyConstant(const GoogleString& key,
+                                      const GoogleString& value,
+                                      int num_writes_unchanged) {
+    MockPage page(thread_system_->NewMutex(), kCacheKey1);
+    property_cache_.Read(&page);
+    PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
+    property_cache_.UpdateValue(value, property);
+    property_cache_.WriteCohort(cohort_, &page);
+    return property->IsRecentlyConstant(num_writes_unchanged);
+  }
+
   LRUCache lru_cache_;
   MockTimer timer_;
   scoped_ptr<ThreadSystem> thread_system_;
@@ -181,6 +204,57 @@ TEST_F(PropertyCacheTest, TrackStability) {
   }
   EXPECT_TRUE(ReadWriteTestStable(kCacheKey1, "Final", "Final"))
       << " stable again";
+}
+
+TEST_F(PropertyCacheTest, IsIndexOfLeastSetBitSmallerTest) {
+  uint64 i = 1;
+  EXPECT_FALSE(PropertyValue::IsIndexOfLeastSetBitSmaller(i, 0));
+  EXPECT_FALSE(PropertyValue::IsIndexOfLeastSetBitSmaller(i<<1, 0));
+  EXPECT_TRUE(PropertyValue::IsIndexOfLeastSetBitSmaller(i<<1, 3));
+  EXPECT_TRUE(PropertyValue::IsIndexOfLeastSetBitSmaller(i<<44, 60));
+
+  i = 1;
+  // Index of least set bit is 64.
+  EXPECT_FALSE(PropertyValue::IsIndexOfLeastSetBitSmaller(i<<63, 64));
+
+  // There is no bit set.
+  EXPECT_TRUE(PropertyValue::IsIndexOfLeastSetBitSmaller(i<<1, 64));
+}
+
+TEST_F(PropertyCacheTest, TestIsRecentlyConstant) {
+  // Nothing written to property_cache so constant.
+  EXPECT_TRUE(ReadTestRecentlyConstant(kCacheKey1, 1));
+  EXPECT_TRUE(ReadTestRecentlyConstant(kCacheKey1, 2));
+
+  // value1 written once.
+  EXPECT_TRUE(ReadWriteTestRecentlyConstant(kCacheKey1, "value1", 1));
+  EXPECT_TRUE(ReadTestRecentlyConstant(kCacheKey1, 2));
+
+  // value1 written twice.
+  EXPECT_TRUE(ReadWriteTestRecentlyConstant(kCacheKey1, "value1", 2));
+  EXPECT_TRUE(ReadTestRecentlyConstant(kCacheKey1, 3));
+
+  // value1 written thrice.
+  EXPECT_TRUE(ReadWriteTestRecentlyConstant(kCacheKey1, "value1", 3));
+  // A new value is written.
+  EXPECT_FALSE(ReadWriteTestRecentlyConstant(kCacheKey1, "value2", 2));
+
+  // value2 written twice.
+  EXPECT_TRUE(ReadWriteTestRecentlyConstant(kCacheKey1, "value2", 2));
+  EXPECT_FALSE(ReadWriteTestRecentlyConstant(kCacheKey1, "value2", 4));
+
+  // Write same value 44 times.
+  for (int i = 0; i < 44; ++i) {
+    ReadWriteTestRecentlyConstant(kCacheKey1, "value3", 45);
+  }
+  EXPECT_TRUE(ReadTestRecentlyConstant(kCacheKey1, 44));
+  EXPECT_FALSE(ReadTestRecentlyConstant(kCacheKey1, 46));
+
+  // Write same value for 20 more times.
+  for (int i = 0; i < 21; ++i) {
+    EXPECT_FALSE(ReadWriteTestRecentlyConstant(kCacheKey1, "value3", 65));
+  }
+  EXPECT_TRUE(ReadTestRecentlyConstant(kCacheKey1, 64));
 }
 
 TEST_F(PropertyCacheTest, DropOldWrites) {

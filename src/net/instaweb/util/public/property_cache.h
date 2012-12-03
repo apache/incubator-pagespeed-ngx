@@ -128,6 +128,14 @@ class PropertyValue {
   // cannot be relied upon for making optimization decisions.
   bool IsStable(int stable_hit_per_thousand_threshold) const;
 
+  // Returns true if the value has not changed for last num_writes_unchanged
+  // writes and false otherwise.
+  bool IsRecentlyConstant(int num_writes_unchanged) const;
+
+  // Returns true if the index of least set bit for value is less than given
+  // index. The results are undefined when index is > 64.
+  static bool IsIndexOfLeastSetBitSmaller(uint64 value, int index);
+
  private:
   friend class PropertyCache;
   friend class PropertyPage;

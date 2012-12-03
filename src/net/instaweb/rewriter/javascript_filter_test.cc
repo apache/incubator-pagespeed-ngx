@@ -24,7 +24,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
-#include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -104,12 +103,11 @@ class JavascriptFilterTest : public RewriteTestBase {
   }
 
   void RegisterLibrary() {
-    MD5Hasher hasher(JavascriptLibraryIdentification::kNumHashChars);
+    MD5Hasher hasher;
     GoogleString hash = hasher.Hash(kJsMinData);
     EXPECT_TRUE(
         options()->RegisterLibrary(
             STATIC_STRLEN(kJsMinData), hash, kLibraryUrl));
-    EXPECT_EQ(JavascriptLibraryIdentification::kNumHashChars, hash.size());
   }
 
   // Generate HTML loading a single script with the specified URL.

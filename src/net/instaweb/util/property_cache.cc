@@ -321,6 +321,29 @@ bool PropertyValue::IsStable(int mutations_per_1000_threshold) const {
   return (changes_per_1000_writes < mutations_per_1000_threshold);
 }
 
+bool PropertyValue::IsRecentlyConstant(int num_writes_unchanged) const {
+  int num_pcache_writes = proto_->num_writes();
+  if (num_writes_unchanged > 64) {
+    // We track at most 64 writes in update_mask.
+    return false;
+  }
+  // If we have not seen num_writes_unchanged writes then just check whether all
+  // the writes were for the same value.
+  if (num_writes_unchanged > num_pcache_writes) {
+    num_writes_unchanged = num_pcache_writes;
+  }
+  uint64 update_mask =  proto_->update_mask();
+  // Check if the index of least set bit for update_mask is >=
+  // num_writes_unchanged. OR all writes are for the same value.
+  return !IsIndexOfLeastSetBitSmaller(update_mask, num_writes_unchanged) ||
+      (update_mask == 0);
+}
+
+bool PropertyValue::IsIndexOfLeastSetBitSmaller(uint64 value, int index) {
+  uint64 check_mask = static_cast<uint64>(1) << std::max(index - 1, 0);
+  return ((value & ~(value - 1)) < check_mask);
+}
+
 void PropertyCache::WriteCohort(const PropertyCache::Cohort* cohort,
                                 PropertyPage* page) const {
   if (enabled_) {

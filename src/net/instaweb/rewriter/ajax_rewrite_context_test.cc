@@ -21,7 +21,6 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
-#include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
@@ -33,7 +32,6 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
-#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -1174,15 +1172,6 @@ TEST_F(AjaxRewriteContextTest, FetchFailedNoRewriting) {
   EXPECT_EQ(0, img_filter_->num_rewrites());
   EXPECT_EQ(0, js_filter_->num_rewrites());
   EXPECT_EQ(0, css_filter_->num_rewrites());
-}
-
-TEST_F(AjaxRewriteContextTest, HandleResourceCreationFailure) {
-  // Regression test. Trying to in-place optimize https resources with
-  // a fetcher that didn't support https would fail to invoke the callbacks
-  // and leak the rewrite driver.
-  Init();
-  factory()->mock_url_async_fetcher()->set_fetcher_supports_https(false);
-  FetchAndCheckResponse("https://www.example.com", "", false, 0, NULL, 0);
 }
 
 }  // namespace

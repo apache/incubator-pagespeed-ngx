@@ -28,8 +28,6 @@
 
 namespace net_instaweb {
 
-const int JavascriptLibraryIdentification::kNumHashChars;
-
 JavascriptLibraryIdentification::~JavascriptLibraryIdentification() { }
 
 bool JavascriptLibraryIdentification::RegisterLibrary(
@@ -66,7 +64,7 @@ StringPiece JavascriptLibraryIdentification::Find(
   if (bytes_entry != libraries_.end()) {
     // Size match found, compute the hash and look up against all
     // appropriately-sized entries.
-    MD5Hasher hasher(kNumHashChars);
+    MD5Hasher hasher;
     GoogleString hash = hasher.Hash(minified_code);
     const MD5ToUrlMap& md5_map = bytes_entry->second;
     MD5ToUrlMap::const_iterator url_entry = md5_map.find(hash);

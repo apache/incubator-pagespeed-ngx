@@ -688,7 +688,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(123, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(122, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AjaxRewritingEnabled",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAjaxRewritingEnabled));
@@ -911,9 +911,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("RespectXForwardedProto",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kRespectXForwardedProto));
-  EXPECT_STREQ("RewriteDeadlinePerFlushMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRewriteDeadlineMs));
   EXPECT_STREQ("RewriteLevel",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kRewriteLevel));
@@ -1171,13 +1168,6 @@ TEST_F(RewriteOptionsTest, PreserveURLDefaults) {
   EXPECT_FALSE(options_.image_preserve_urls());
   EXPECT_FALSE(options_.css_preserve_urls());
   EXPECT_FALSE(options_.js_preserve_urls());
-}
-
-TEST_F(RewriteOptionsTest, RewriteDeadlineTest) {
-  EXPECT_EQ(RewriteOptions::kDefaultRewriteDeadlineMs,
-            options_.rewrite_deadline_ms());
-  options_.set_rewrite_deadline_ms(40);
-  EXPECT_EQ(40, options_.rewrite_deadline_ms());
 }
 
 TEST_F(RewriteOptionsTest, FuriousPrintTest) {

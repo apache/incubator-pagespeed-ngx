@@ -25,8 +25,6 @@
 #include <set>
 #include <utility>
 
-#include "apr_pools.h"
-
 #include "base/logging.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/header_util.h"
@@ -58,7 +56,7 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "util_filter.h"
+
 // Note: a very useful reference is this file, which demos many Apache module
 // options:
 //    http://svn.apache.org/repos/asf/httpd/httpd/trunk/modules/examples/mod_example_hooks.c
@@ -236,8 +234,6 @@ const char kModPagespeedRespectVary[] = "ModPagespeedRespectVary";
 const char kModPagespeedRespectXForwardedProto[] =
     "ModPagespeedRespectXForwardedProto";
 const char kModPagespeedRetainComment[] = "ModPagespeedRetainComment";
-const char kModPagespeedRewriteDeadlinePerFlushMs[] =
-    "ModPagespeedRewriteDeadlinePerFlushMs";
 const char kModPagespeedRewriteLevel[] = "ModPagespeedRewriteLevel";
 const char kModPagespeedRunFurious[] = "ModPagespeedRunExperiment";
 const char kModPagespeedShardDomain[] = "ModPagespeedShardDomain";
@@ -1795,9 +1791,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRetainComment,
         "Retain HTML comments matching wildcard, even with remove_comments "
         "enabled"),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedRewriteDeadlinePerFlushMs,
-        "Time to wait for resource optimization (per flush window) before"
-        "falling back to the original resource for the request."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRewriteLevel,
         "Base level of rewriting (PassThrough, CoreFilters)"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedRunFurious,
