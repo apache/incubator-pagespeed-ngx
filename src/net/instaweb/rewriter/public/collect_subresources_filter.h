@@ -61,6 +61,8 @@ class CollectSubresourcesFilter : public RewriteFilter {
   void CreateSubresourceContext(StringPiece url,
                                 HtmlElement* elt,
                                 HtmlElement::Attribute* attr);
+  // Enable writing of the property cache DOM cohort in the RewriteDriver.
+  virtual bool UsesPropertyCacheDomCohort() const { return true; }
 
   class Context;
 

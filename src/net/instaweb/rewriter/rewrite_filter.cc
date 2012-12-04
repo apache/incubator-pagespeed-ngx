@@ -58,6 +58,13 @@ ResourcePtr RewriteFilter::CreateInputResourceFromOutputResource(
   return input_resource;
 }
 
+void RewriteFilter::DetermineEnabled() {
+  set_is_enabled(true);
+  if (UsesPropertyCacheDomCohort()) {
+    driver_->set_write_property_cache_dom_cohort(true);
+  }
+}
+
 const UrlSegmentEncoder* RewriteFilter::encoder() const {
   return driver_->default_encoder();
 }

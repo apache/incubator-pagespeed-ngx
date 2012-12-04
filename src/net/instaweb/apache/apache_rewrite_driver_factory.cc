@@ -132,7 +132,7 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       apache_html_parse_message_handler_(new ApacheMessageHandler(
           server_rec_, version_, timer(), thread_system()->NewMutex())),
       use_per_vhost_statistics_(false),
-      enable_property_cache_(false),
+      enable_property_cache_(true),
       inherit_vhost_config_(false),
       disable_loopback_routing_(false),
       install_crash_handler_(false),
@@ -361,6 +361,9 @@ void ApacheRewriteDriverFactory::SetupCaches(
   PropertyCache* pcache = resource_manager->page_property_cache();
   if (pcache->GetCohort(BeaconCriticalImagesFinder::kBeaconCohort) == NULL) {
     pcache->AddCohort(BeaconCriticalImagesFinder::kBeaconCohort);
+  }
+  if (pcache->GetCohort(RewriteDriver::kDomCohort) == NULL) {
+    pcache->AddCohort(RewriteDriver::kDomCohort);
   }
 }
 

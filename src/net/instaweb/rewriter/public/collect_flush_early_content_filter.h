@@ -65,6 +65,8 @@ class CollectFlushEarlyContentFilter : public RewriteFilter {
   void AppendToHtml(StringPiece url, semantic_type::Category category,
                     HtmlElement* element);
   void AppendAttribute(HtmlName::Keyword keyword, HtmlElement* element);
+  // Enable writing of the property cache DOM cohort in the RewriteDriver.
+  virtual bool UsesPropertyCacheDomCohort() const { return true; }
 
   // It will be false if there is no resource to flush early.
   bool found_resource_;

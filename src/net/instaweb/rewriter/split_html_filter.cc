@@ -73,7 +73,8 @@ SplitHtmlFilter::SplitHtmlFilter(RewriteDriver* rewrite_driver)
     : SuppressPreheadFilter(rewrite_driver),
       rewrite_driver_(rewrite_driver),
       options_(rewrite_driver->options()),
-      current_panel_parent_element_(NULL) {
+      current_panel_parent_element_(NULL),
+      static_js_manager_(NULL) {
 }
 
 SplitHtmlFilter::~SplitHtmlFilter() {
@@ -82,6 +83,8 @@ SplitHtmlFilter::~SplitHtmlFilter() {
 void SplitHtmlFilter::StartDocument() {
   flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
   disable_filter_ = !rewrite_driver_->UserAgentSupportsSplitHtml();
+  static_js_manager_ =
+      rewrite_driver_->server_context()->static_javascript_manager();
   if (disable_filter_) {
     InvokeBaseHtmlFilterStartDocument();
     return;
@@ -146,6 +149,11 @@ void SplitHtmlFilter::WriteString(const StringPiece& str) {
 
 void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
   if (critical_line_info_ == NULL || critical_line_info_->panels_size() == 0) {
+    WriteString(StrCat("<script type=\"text/javascript\" src=\"",
+                       static_js_manager_->GetDeferJsUrl(options_),
+                       "\"></script><script type=\"text/javascript\">",
+                       JsDeferDisabledFilter::kSuffix,
+                       "</script>"));
     return;
   }
 
@@ -153,10 +161,8 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
       "pagespeed.num_low_res_images_inlined=",
       IntegerToString(num_low_res_images_inlined_),
       ";</script>"));
-  StaticJavascriptManager* js_manager =
-      rewrite_driver_->server_context()->static_javascript_manager();
   WriteString(StrCat("<script src=\"",
-                     GetBlinkJsUrl(options_, js_manager),
+                     GetBlinkJsUrl(options_, static_js_manager_),
                      "\" type=\"text/javascript\"></script>"));
   WriteString(StrCat("<script type=\"text/javascript\">", kDeferJsSnippet,
                      "</script>"));
@@ -296,9 +302,6 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
     StrAppend(&defer_js_with_blink, "<head>");
   }
 
-  StaticJavascriptManager* js_manager =
-      rewrite_driver_->server_context()->static_javascript_manager();
-
   // TODO(rahulbansal): It is sub-optimal to send lazyload script in the head.
   // Figure out a better way to do it.
   send_lazyload_script_ =
@@ -308,18 +311,12 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
   if (send_lazyload_script_ &&
       !rewrite_driver_->is_lazyload_script_flushed()) {
     GoogleString lazyload_js = LazyloadImagesFilter::GetLazyloadJsSnippet(
-        options_, js_manager);
+        options_, static_js_manager_);
     StrAppend(&defer_js_with_blink, "<script type=\"text/javascript\">",
               lazyload_js, "</script>");
   }
 
-  if (critical_line_info_ == NULL) {
-    StrAppend(&defer_js_with_blink, "<script type=\"text/javascript\" src=\"",
-              js_manager->GetDeferJsUrl(options_),
-              "\"></script><script type=\"text/javascript\">",
-              JsDeferDisabledFilter::kSuffix,
-              "</script>");
-  } else {
+  if (critical_line_info_ != NULL) {
     if (!send_lazyload_script_) {
       StrAppend(&defer_js_with_blink, kPagespeedFunc);
     }

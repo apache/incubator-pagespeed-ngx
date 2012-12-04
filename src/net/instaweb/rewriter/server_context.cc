@@ -213,7 +213,7 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       statistics_(NULL),
       store_outputs_in_file_system_(false),
       response_headers_finalized_(true),
-      enable_property_cache_(false),
+      enable_property_cache_(true),
       lock_manager_(NULL),
       message_handler_(NULL),
       available_rewrite_drivers_(new GlobalOptionsRewriteDriverPool(this)),

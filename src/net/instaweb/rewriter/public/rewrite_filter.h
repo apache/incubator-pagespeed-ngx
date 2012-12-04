@@ -42,6 +42,12 @@ class RewriteFilter : public CommonFilter {
 
   virtual const char* id() const = 0;
 
+  // Override DetermineEnabled so that filters that use the DOM cohort of the
+  // property cache can enable writing of it in the RewriterDriver. Filters
+  // inheriting from RewriteDriver that use the DOM cohort should override
+  // UsePropertyCacheDomCohort to return true.
+  virtual void DetermineEnabled();
+
   // Create an input resource by decoding output_resource using the
   // filter's. Assures legality by explicitly permission-checking the result.
   ResourcePtr CreateInputResourceFromOutputResource(
@@ -110,6 +116,12 @@ class RewriteFilter : public CommonFilter {
   virtual void LogFilterModifiedContent();
 
  private:
+  // Filters should override this and return true if they write to the property
+  // cache DOM cohort. This is so that the cohort is only written if a filter is
+  // enabled that actually makes use of it to prevent filling the cache with a
+  // large amount of useless entries.
+  virtual bool UsesPropertyCacheDomCohort() const { return false; }
+
   DISALLOW_COPY_AND_ASSIGN(RewriteFilter);
 };
 

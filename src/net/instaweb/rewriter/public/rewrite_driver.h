@@ -213,6 +213,13 @@ class RewriteDriver : public HtmlParse {
   bool using_spdy() const { return using_spdy_; }
   void set_using_spdy(bool x) { using_spdy_ = x; }
 
+  bool write_property_cache_dom_cohort() const {
+    return write_property_cache_dom_cohort_;
+  }
+  void set_write_property_cache_dom_cohort(bool x) {
+    write_property_cache_dom_cohort_ = x;
+  }
+
   RequestContextPtr request_context() { return request_context_; }
   void set_request_context(const RequestContextPtr& x) {
     request_context_.reset(x);
@@ -1064,9 +1071,15 @@ class RewriteDriver : public HtmlParse {
                                       GoogleString* url_base,
                                       StringVector* urls) const;
 
-  // When HTML parsing is complete, we have learned all we can about
-  // the DOM, so immediately write anything required into that Cohort
-  // into the page property cache.
+  // When HTML parsing is complete, we have learned all we can about the DOM, so
+  // immediately write anything required into that Cohort into the page property
+  // cache. Writes to this cohort are predicated so that they only occur if a
+  // filter that actually makes use of it is enabled. This prevents filling the
+  // cache with unnecessary entries. To enable writing, a filter should override
+  // DetermineEnabled to call
+  // RewriteDriver::set_write_property_cache_dom_cohort(true), or in the case of
+  // a RewriteFilter, should override
+  // RewriteFilter::UsesPropertyCacheDomCohort() to return true.
   void WriteDomCohortIntoPropertyCache();
 
   // When HTML parsing is complete, write back client state, if it exists,
@@ -1159,6 +1172,11 @@ class RewriteDriver : public HtmlParse {
 
   // Set to true if RewriteDriver can be released.
   bool release_driver_;
+
+  // Tracks whether any filter that uses the dom cohort of the property cache is
+  // enabled. Writes to the property cache for this cohort are predicated on
+  // this.
+  bool write_property_cache_dom_cohort_;
 
   scoped_ptr<AbstractMutex> inhibits_mutex_;
   typedef std::set <const HtmlElement*> ConstHtmlElementSet;

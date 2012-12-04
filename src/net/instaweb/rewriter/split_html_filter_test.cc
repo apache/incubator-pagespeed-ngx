@@ -264,13 +264,12 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpaths) {
   StaticJavascriptManager* js_manager =
       rewrite_driver_->server_context()->static_javascript_manager();
   Parse("split_with_lazyload", kHtmlInputForLazyload);
-  EXPECT_EQ(StrCat("<html><head>"
+  EXPECT_EQ(StrCat("<html><head></head><body></body></html>"
                    "<script type=\"text/javascript\" src=\"",
                    js_manager->GetDeferJsUrl(options_),
                    "\"></script><script type=\"text/javascript\">",
                    JsDeferDisabledFilter::kSuffix,
-                   "</script>",
-                   "</head><body></body></html>"), output_);
+                   "</script>"), output_);
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithLazyLoad) {

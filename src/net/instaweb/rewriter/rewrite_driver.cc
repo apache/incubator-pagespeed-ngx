@@ -192,6 +192,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       is_lazyload_script_flushed_(false),
       is_defer_javascript_script_flushed_(false),
       release_driver_(false),
+      write_property_cache_dom_cohort_(false),
       inhibits_mutex_(NULL),
       finish_parse_on_hold_(NULL),
       inhibiting_event_(NULL),
@@ -289,6 +290,7 @@ void RewriteDriver::Clear() {
   WriteDomCohortIntoPropertyCache();
   cleanup_on_fetch_complete_ = false;
   release_driver_ = false;
+  write_property_cache_dom_cohort_ = false;
   base_url_.Clear();
   DCHECK(!base_url_.is_valid());
   decoded_base_url_.Clear();
@@ -1905,12 +1907,14 @@ bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
   set_log_rewrite_timing(options()->log_rewrite_timing());
 
   for (FilterList::iterator it = early_pre_render_filters_.begin();
-      it != early_pre_render_filters_.end(); ++it) {
-    (*it)->DetermineEnabled();
+       it != early_pre_render_filters_.end(); ++it) {
+    HtmlFilter* filter = *it;
+    filter->DetermineEnabled();
   }
   for (FilterList::iterator it = pre_render_filters_.begin();
-      it != pre_render_filters_.end(); ++it) {
-    (*it)->DetermineEnabled();
+       it != pre_render_filters_.end(); ++it) {
+    HtmlFilter* filter = *it;
+    filter->DetermineEnabled();
   }
   // DetermineEnabled on post render filters is invoked in
   // HtmlParse::StartParseId
@@ -2080,6 +2084,14 @@ void RewriteDriver::DeregisterForPartitionKey(const GoogleString& partition_key,
 }
 
 void RewriteDriver::WriteDomCohortIntoPropertyCache() {
+  // Only update the property cache if there is a filter or option enabled that
+  // actually makes use of it.
+  if (!(write_property_cache_dom_cohort_ ||
+        options()->max_html_parse_bytes() > 0 ||
+        options()->enable_blink_critical_line())) {
+    return;
+  }
+
   if (collect_subresources_filter_ != NULL) {
     collect_subresources_filter_->AddSubresourcesToFlushEarlyInfo(
         flush_early_info());

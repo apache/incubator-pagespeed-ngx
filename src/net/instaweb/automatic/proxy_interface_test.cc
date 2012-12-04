@@ -1390,6 +1390,16 @@ class ProxyInterfaceTest : public RewriteTestBase {
     }
   }
 
+  // This function is primarily meant to enable writes to the dom cohort of the
+  // property cache. Writes to this cohort are predicated on a filter that uses
+  // that cohort being enabled, which includes the insert dns prefetch filter.
+  void EnableDomCohortWritesWithDnsPrefetch() {
+    RewriteOptions* options = server_context()->global_options();
+    options->ClearSignatureForTesting();
+    options->EnableFilter(RewriteOptions::kInsertDnsPrefetch);
+    server_context()->ComputeSignature(options);
+  }
+
   scoped_ptr<ProxyInterface> proxy_interface_;
   scoped_ptr<BackgroundFetchCheckingUrlAsyncFetcher> background_fetch_fetcher_;
   scoped_ptr<LatencyUrlAsyncFetcher> latency_fetcher_;
@@ -4337,6 +4347,7 @@ TEST_F(ProxyInterfaceTest, NoStore) {
 TEST_F(ProxyInterfaceTest, PropCacheFilter) {
   CreateFilterCallback create_filter_callback;
   factory()->AddCreateFilterCallback(&create_filter_callback);
+  EnableDomCohortWritesWithDnsPrefetch();
 
   SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml,
                                 "<div><p></p></div>", 0);
@@ -4394,6 +4405,15 @@ TEST_F(ProxyInterfaceTest, DomCohortWritten) {
   GoogleString text_out;
   ResponseHeaders headers_out;
 
+  // No writes should occur if no filter that uses the dom cohort is enabled.
+  FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(2, lru_cache()->num_misses());  // property-cache + http-cache
+
+  // Enable a filter that uses the dom cohort and make sure property cache is
+  // updated.
+  ClearStats();
+  EnableDomCohortWritesWithDnsPrefetch();
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ(1, lru_cache()->num_inserts());
   EXPECT_EQ(2, lru_cache()->num_misses());  // property-cache + http-cache
@@ -4407,6 +4427,7 @@ TEST_F(ProxyInterfaceTest, DomCohortWritten) {
 
 TEST_F(ProxyInterfaceTest, StatusCodePropertyWritten) {
   DisableAjax();
+  EnableDomCohortWritesWithDnsPrefetch();
 
   GoogleString text_out;
   ResponseHeaders headers_out;
@@ -4522,6 +4543,7 @@ TEST_F(ProxyInterfaceTest, ThreadedHtml) {
   // Tests rewriting HTML resource where property-cache lookup is delivered
   // in a separate thread.
   DisableAjax();
+  EnableDomCohortWritesWithDnsPrefetch();
   ThreadSynchronizer* sync = server_context()->thread_synchronizer();
   sync->EnableForPrefix(ProxyFetch::kCollectorPrefix);
   TestPropertyCache(kPageUrl, true, true, true);
@@ -4532,6 +4554,7 @@ TEST_F(ProxyInterfaceTest, ThreadedHtmlFetcherFailure) {
   // in a separate thread, but the HTML lookup fails after emitting the
   // body.
   DisableAjax();
+  EnableDomCohortWritesWithDnsPrefetch();
   mock_url_fetcher()->SetResponseFailure(AbsolutifyUrl(kPageUrl));
   TestPropertyCache(kPageUrl, true, true, false);
 }
@@ -4541,6 +4564,7 @@ TEST_F(ProxyInterfaceTest, HtmlFetcherFailure) {
   // delivered in a blocking fashion, and the HTML lookup fails after
   // emitting the body.
   DisableAjax();
+  EnableDomCohortWritesWithDnsPrefetch();
   mock_url_fetcher()->SetResponseFailure(AbsolutifyUrl(kPageUrl));
   TestPropertyCache(kPageUrl, false, false, false);
 }
@@ -4568,6 +4592,7 @@ TEST_F(ProxyInterfaceTest, HeadersSetupRace) {
   options->set_flush_html(true);
   server_context()->ComputeSignature(options);
   DisableAjax();
+  EnableDomCohortWritesWithDnsPrefetch();
   ThreadSynchronizer* sync = server_context()->thread_synchronizer();
   sync->EnableForPrefix(ProxyFetch::kHeadersSetupRacePrefix);
   ThreadSystem* thread_system = server_context()->thread_system();
@@ -4736,6 +4761,7 @@ TEST_F(ProxyInterfaceTest, UrlAttributeTest) {
 TEST_F(ProxyInterfaceTest, ClientStateTest) {
   CreateFilterCallback create_filter_callback;
   factory()->AddCreateFilterCallback(&create_filter_callback);
+  EnableDomCohortWritesWithDnsPrefetch();
 
   SetResponseWithDefaultHeaders("page.html", kContentTypeHtml,
                                 "<div><p></p></div>", 0);

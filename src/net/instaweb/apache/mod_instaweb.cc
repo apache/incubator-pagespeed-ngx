@@ -66,13 +66,13 @@
 // The httpd header must be after the pagepseed_server_context.h. Otherwise,
 // the compiler will complain
 // "strtoul_is_not_a_portable_function_use_strtol_instead".
-#include "ap_release.h"
-#include "apr_strings.h"
-#include "apr_timer.h"
-#include "httpd.h"
-#include "http_config.h"
-#include "http_protocol.h"
-#include "http_request.h"
+#include "ap_release.h"                                              // NOLINT
+#include "apr_strings.h"                                             // NOLINT
+#include "apr_timer.h"                                               // NOLINT
+#include "http_config.h"                                             // NOLINT
+#include "http_protocol.h"                                           // NOLINT
+#include "http_request.h"                                            // NOLINT
+#include "httpd.h"                                                   // NOLINT
 
 // This include-file is order-dependent; it must come after the above apache
 // includes, and not be in abc-order with the net/instaweb/... includes.
@@ -265,8 +265,6 @@ const char kModPagespeedUrlPrefix[] = "ModPagespeedUrlPrefix";
 const char kModPagespeedUrlValuedAttribute[] = "ModPagespeedUrlValuedAttribute";
 const char kModPagespeedUsePerVHostStatistics[] =
     "ModPagespeedUsePerVHostStatistics";
-const char kModPagespeedEnablePropertyCache[] =
-    "ModPagespeedEnablePropertyCache";
 const char kModPagespeedSpeedTracking[] = "ModPagespeedIncreaseSpeedTracking";
 const char kModPagespeedXHeaderValue[] = "ModPagespeedXHeaderValue";
 
@@ -1428,10 +1426,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
           factory, cmd,
           &ApacheRewriteDriverFactory::set_use_per_vhost_statistics, arg);
     }
-  } else if (StringCaseEqual(directive, kModPagespeedEnablePropertyCache)) {
-    ret = ParseBoolOption(
-        factory, cmd, &ApacheRewriteDriverFactory::set_enable_property_cache,
-        arg);
   } else {
     ret = apr_pstrcat(cmd->pool, "Unknown directive ",
                       directive.as_string().c_str(), NULL);
@@ -1919,8 +1913,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "No longer used."),
   APACHE_CONFIG_OPTION(kModPagespeedUsePerVHostStatistics,
         "If true, keep track of statistics per VHost and not just globally"),
-  APACHE_CONFIG_OPTION(kModPagespeedEnablePropertyCache,
-        "If true, enable the property cache"),
   APACHE_CONFIG_OPTION(kModPagespeedXHeaderValue,
         "Set the value for the X-Mod-Pagespeed HTTP header"),
 

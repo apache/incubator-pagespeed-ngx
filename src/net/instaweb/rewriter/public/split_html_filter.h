@@ -22,7 +22,6 @@
 #include <map>
 #include <vector>
 
-#include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/json.h"
@@ -41,6 +40,7 @@ struct XpathUnit {
 
 class CriticalLineInfo;
 class HtmlElement;
+class Panel;
 class RewriteDriver;
 class RewriteOptions;
 class StaticJavascriptManager;
@@ -169,6 +169,7 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   bool send_lazyload_script_;
   int num_low_res_images_inlined_;
   HtmlElement* current_panel_parent_element_;
+  StaticJavascriptManager* static_js_manager_;  // Owned by rewrite_driver_.
 
   DISALLOW_COPY_AND_ASSIGN(SplitHtmlFilter);
 };

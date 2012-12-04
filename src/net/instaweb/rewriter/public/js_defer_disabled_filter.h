@@ -21,14 +21,10 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
-#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
 class RewriteDriver;
-class RewriteOptions;
-class HtmlElement;
-class StaticJavascriptManager;
 class Statistics;
 
 // Implements deferring of javascripts into post onload.

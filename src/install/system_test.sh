@@ -729,6 +729,13 @@ PDF_CE_URL="$($WGET_EC $URL | \
 echo Extracted cache-extended url $PDF_CE_URL
 check grep -a 'Content-Type: application/pdf' <($WGET_EC $PDF_CE_URL)
 
+# Test DNS prefetching. DNS prefetching is dependent on user agent, but is
+# enabled for Wget UAs, allowing this test to work with our default wget params.
+test_filter insert_dns_prefetch
+URL=$EXAMPLE_ROOT/insert_dns_prefetch.html
+fetch_until $URL 'fgrep -c //ref.pssdemos.com' 2
+fetch_until $URL 'fgrep -c //ajax.googleapis.com' 2
+
 # Cleanup
 rm -rf $OUTDIR
 

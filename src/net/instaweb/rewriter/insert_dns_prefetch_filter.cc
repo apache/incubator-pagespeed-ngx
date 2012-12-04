@@ -63,6 +63,11 @@ InsertDnsPrefetchFilter::InsertDnsPrefetchFilter(RewriteDriver* driver)
 InsertDnsPrefetchFilter::~InsertDnsPrefetchFilter() {
 }
 
+void InsertDnsPrefetchFilter::DetermineEnabled() {
+  set_is_enabled(true);
+  driver_->set_write_property_cache_dom_cohort(true);
+}
+
 void InsertDnsPrefetchFilter::Clear() {
   dns_prefetch_inserted_ = false;
   in_head_ = false;
