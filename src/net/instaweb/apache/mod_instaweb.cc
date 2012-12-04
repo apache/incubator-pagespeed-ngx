@@ -218,6 +218,7 @@ const char kModPagespeedMaxInlinedPreviewImagesIndex[] =
 const char kModPagespeedMaxSegmentLength[] = "ModPagespeedMaxSegmentLength";
 const char kModPagespeedMemcachedServers[] = "ModPagespeedMemcachedServers";
 const char kModPagespeedMemcachedThreads[] = "ModPagespeedMemcachedThreads";
+const char kModPagespeedMemcachedTimeoutUs[] = "ModPagespeedMemcachedTimeoutUs";
 const char kModPagespeedMessageBufferSize[] = "ModPagespeedMessageBufferSize";
 const char kModPagespeedMinImageSizeLowResolutionBytes[] =
     "ModPagespeedMinImageSizeLowResolutionBytes";
@@ -1877,6 +1878,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Comma-separated list of servers e.g. host1:port1,host2:port2"),
   APACHE_CONFIG_OPTION(kModPagespeedMemcachedThreads,
         "Number of background threads to use to run memcached fetches"),
+  APACHE_CONFIG_OPTION(kModPagespeedMemcachedTimeoutUs,
+        "Maximum time in microseconds to allow for memcached transactions"),
   APACHE_CONFIG_OPTION(kModPagespeedMessageBufferSize,
         "Set the size of buffer used for /mod_pagespeed_message."),
   APACHE_CONFIG_OPTION(kModPagespeedNumRewriteThreads,

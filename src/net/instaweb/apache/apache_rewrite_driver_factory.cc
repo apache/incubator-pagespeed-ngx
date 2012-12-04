@@ -224,6 +224,9 @@ CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
         MemcachedMap::value_type(server_spec, memcached));
     if (result.second) {
       AprMemCache* mem_cache = NewAprMemCache(server_spec);
+      if (config->has_memcached_timeout_us()) {
+        mem_cache->set_timeout_us(config->memcached_timeout_us());
+      }
       memcache_servers_.push_back(mem_cache);
 
       int num_threads = config->memcached_threads();

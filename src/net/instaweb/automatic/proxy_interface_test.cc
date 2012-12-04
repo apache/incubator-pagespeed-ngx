@@ -4506,6 +4506,18 @@ TEST_F(ProxyInterfaceTest, PropCacheNoWritesIfNonHtmlThreadedCache) {
   TestPropertyCache(kImageFilenameLackingExt, true, true, true);
 }
 
+TEST_F(ProxyInterfaceTest, StatusCodeUpdateRace) {
+  // Tests rewriting a file that turns out to be a jpeg, but lacks an
+  // extension, where the property-cache lookup is delivered in a
+  // separate thread. Use sync points to ensure that Done() deletes the
+  // collector just after the Detach() critical block is executed.
+  DisableAjax();
+  ThreadSynchronizer* sync = server_context()->thread_synchronizer();
+  sync->EnableForPrefix(ProxyFetch::kCollectorDetach);
+  sync->EnableForPrefix(ProxyFetch::kCollectorDoneDelete);
+  TestPropertyCache(kImageFilenameLackingExt, false, true, true);
+}
+
 TEST_F(ProxyInterfaceTest, ThreadedHtml) {
   // Tests rewriting HTML resource where property-cache lookup is delivered
   // in a separate thread.

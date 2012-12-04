@@ -116,6 +116,10 @@ class AprMemCache : public CacheInterface {
   virtual void PutWithKeyInValue(const GoogleString& key,
                                  SharedString* key_and_value);
 
+  // Sets the I/O timeout in microseconds.  This should be called at
+  // setup time and not while there are operations in flight.
+  void set_timeout_us(int timeout_us);
+
  private:
   void DecodeValueMatchingKeyAndCallCallback(
       const GoogleString& key, const char* data, size_t data_len,
@@ -131,6 +135,7 @@ class AprMemCache : public CacheInterface {
   GoogleString server_spec_;
   bool valid_server_spec_;
   int thread_limit_;
+  int timeout_us_;
   apr_pool_t* pool_;
   apr_memcache2_t* memcached_;
   std::vector<apr_memcache2_server_t*> servers_;

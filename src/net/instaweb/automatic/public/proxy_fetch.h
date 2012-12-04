@@ -29,6 +29,7 @@
 
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -167,7 +168,7 @@ class ProxyFetchPropertyCallbackCollector {
   // ProxyFetch to be inserted. The status code of the response is passed from
   // ProxyFetch to the Collector. In case the status code is unknown then pass
   // RewriteDriver::kStatusCodeUnknown.
-  void Detach(int status_code);
+  void Detach(HttpStatus::Code status_code);
 
   // Returns the collected PropertyPage with the corresponding cache_type.
   // Ownership of the object is transferred to the caller.
@@ -198,6 +199,9 @@ class ProxyFetchPropertyCallbackCollector {
   // Called by a ProxyFetchPropertyCallback when the former is complete.
   void Done(ProxyFetchPropertyCallback* callback, bool success);
 
+  // Updates the status code of response in property cache.
+  void UpdateStatusCodeInPropertyCache();
+
  private:
   std::set<ProxyFetchPropertyCallback*> pending_callbacks_;
   std::map<ProxyFetchPropertyCallback::CacheType, PropertyPage*>
@@ -212,6 +216,7 @@ class ProxyFetchPropertyCallbackCollector {
   // protected by mutex_.
   scoped_ptr<std::vector<Function*> > post_lookup_task_vector_;
   const RewriteOptions* options_;  // protected by mutex_;
+  HttpStatus::Code status_code_;  // status_code_ of the response.
 
   DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallbackCollector);
 };
@@ -244,6 +249,8 @@ class ProxyFetch : public SharedAsyncFetch {
   static const char kCollectorPrefix[];
   static const char kCollectorReady[];
   static const char kCollectorDelete[];
+  static const char kCollectorDetach[];
+  static const char kCollectorDoneDelete[];
 
   // These strings identify sync-points for introducing races between
   // PropertyCache lookup completion and HeadersComplete.

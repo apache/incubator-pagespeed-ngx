@@ -171,6 +171,15 @@ class ApacheConfig : public RewriteOptions {
   void set_memcached_threads(int x) {
     set_option(x, &memcached_threads_);
   }
+  int memcached_timeout_us() const {
+    return memcached_timeout_us_.value();
+  }
+  bool has_memcached_timeout_us() const {
+    return memcached_timeout_us_.was_set();
+  }
+  void set_memcached_timeout_us(int x) {
+    set_option(x, &memcached_timeout_us_);
+  }
   const GoogleString& slurp_directory() const {
     return slurp_directory_.value();
   }
@@ -327,6 +336,7 @@ class ApacheConfig : public RewriteOptions {
   Option<bool> experimental_fetch_from_mod_spdy_;
 
   Option<int> memcached_threads_;
+  Option<int> memcached_timeout_us_;
 
   Option<int64> file_cache_clean_inode_limit_;
   Option<int64> file_cache_clean_interval_ms_;

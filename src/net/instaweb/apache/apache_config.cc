@@ -70,6 +70,8 @@ void ApacheConfig::AddProperties() {
              RewriteOptions::kMemcachedServers);
   add_option(1, &ApacheConfig::memcached_threads_, "amt",
              RewriteOptions::kMemcachedThreads);
+  add_option(0, &ApacheConfig::memcached_timeout_us_, "amo",
+             RewriteOptions::kMemcachedTimeoutUs);
   add_option("", &ApacheConfig::slurp_directory_, "asd",
              RewriteOptions::kSlurpDirectory);
   add_option("", &ApacheConfig::statistics_logging_file_, "aslf",

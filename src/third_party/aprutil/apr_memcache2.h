@@ -108,6 +108,7 @@ struct apr_memcache2_t
     apr_memcache2_hash_func hash_func;
     void *server_baton;
     apr_memcache2_server_func server_func;
+    apr_uint32_t timeout_microseconds;
 };
 
 /** Returned Data from a multiple get */
@@ -436,6 +437,15 @@ APU_DECLARE(apr_status_t) apr_memcache2_stats(apr_memcache2_server_t *ms,
                                              apr_pool_t *p,
                                              apr_memcache2_stats_t **stats);
 
+/**
+ * Set the maximum number of microseconds to wait for
+ * servers to respond before declaring them unhealthy
+ * @param mc                      client to use
+ * @param timeout_microseconds    Timeout in microseconds
+ */
+APU_DECLARE(void) apr_memcache2_set_timeout_microseconds(
+    apr_memcache2_t *mc,
+    apr_int32_t timeout_microseconds);
 
 /** @} */
 

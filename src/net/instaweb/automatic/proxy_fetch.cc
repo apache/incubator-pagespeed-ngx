@@ -54,6 +54,8 @@ const char ProxyFetch::kCollectorDone[] = "Collector:Done";
 const char ProxyFetch::kCollectorPrefix[] = "Collector:";
 const char ProxyFetch::kCollectorReady[] = "Collector:Ready";
 const char ProxyFetch::kCollectorDelete[] = "Collector:Delete";
+const char ProxyFetch::kCollectorDetach[] = "CollectorDetach";
+const char ProxyFetch::kCollectorDoneDelete[] = "CollectorDoneDelete";
 
 const char ProxyFetch::kHeadersSetupRaceAlarmQueued[] =
     "HeadersSetupRace:AlarmQueued";
@@ -202,7 +204,8 @@ ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
       success_(true),
       proxy_fetch_(NULL),
       post_lookup_task_vector_(new std::vector<Function*>),
-      options_(options) {
+      options_(options),
+      status_code_(HttpStatus::kUnknownStatusCode) {
 }
 
 ProxyFetchPropertyCallbackCollector::~ProxyFetchPropertyCallbackCollector() {
@@ -286,6 +289,7 @@ void ProxyFetchPropertyCallbackCollector::Done(
   if (call_post) {
     ThreadSynchronizer* sync = resource_manager->thread_synchronizer();
     sync->Signal(ProxyFetch::kCollectorReady);
+    sync->Wait(ProxyFetch::kCollectorDetach);
     sync->Wait(ProxyFetch::kCollectorDone);
     if (post_lookup_task_vector.get() != NULL) {
       for (int i = 0, n = post_lookup_task_vector->size(); i < n; ++i) {
@@ -301,8 +305,10 @@ void ProxyFetchPropertyCallbackCollector::Done(
     if (fetch != NULL) {
       fetch->PropertyCacheComplete(success_, this);  // deletes this.
     } else if (do_delete) {
+      UpdateStatusCodeInPropertyCache();
       delete this;
       sync->Signal(ProxyFetch::kCollectorDelete);
+      sync->Signal(ProxyFetch::kCollectorDoneDelete);
     }
   }
 }
@@ -322,7 +328,30 @@ void ProxyFetchPropertyCallbackCollector::ConnectProxyFetch(
   }
 }
 
-void ProxyFetchPropertyCallbackCollector::Detach(int status_code) {
+void ProxyFetchPropertyCallbackCollector::UpdateStatusCodeInPropertyCache() {
+  // If we have not transferred the ownership of PagePropertyCache to
+  // ProxyFetch yet, and we have the status code, then write the status_code in
+  // PropertyCache.
+  PropertyPage* page =
+      property_pages_[ProxyFetchPropertyCallback::kPagePropertyCache];
+  PropertyCache* pcache = server_context_->page_property_cache();
+  if (pcache != NULL && page != NULL &&
+      status_code_ != HttpStatus::kUnknownStatusCode) {
+    const PropertyCache::Cohort* dom = pcache->GetCohort(
+        RewriteDriver::kDomCohort);
+    if (dom != NULL) {
+      PropertyValue* value = page->GetProperty(
+          dom, RewriteDriver::kStatusCodePropertyName);
+      pcache->UpdateValue(IntegerToString(status_code_), value);
+      pcache->WriteCohort(dom, page);
+    } else {
+      server_context_->message_handler()->Message(
+          kInfo, "dom cohort is not available for url %s.", url_.c_str());
+    }
+  }
+}
+
+void ProxyFetchPropertyCallbackCollector::Detach(HttpStatus::Code status_code) {
   bool do_delete = false;
   scoped_ptr<std::vector<Function*> > post_lookup_task_vector;
   {
@@ -332,34 +361,18 @@ void ProxyFetchPropertyCallbackCollector::Detach(int status_code) {
     detached_ = true;
     do_delete = done_;
     post_lookup_task_vector.reset(post_lookup_task_vector_.release());
+    status_code_ = status_code;
   }
   if (post_lookup_task_vector.get() != NULL) {
     for (int i = 0, n = post_lookup_task_vector->size(); i < n; ++i) {
       (*post_lookup_task_vector.get())[i]->CallCancel();
     }
   }
-  // If we have not transferred the ownership of PagePropertyCache to
-  // ProxyFetch yet, and we have the status code, then write the status_code in
-  // PropertyCache.
-  PropertyPage* page =
-      property_pages_[ProxyFetchPropertyCallback::kPagePropertyCache];
-  PropertyCache* pcache = server_context_->page_property_cache();
-  if (pcache != NULL && page != NULL &&
-      status_code != HttpStatus::kUnknownStatusCode) {
-    const PropertyCache::Cohort* dom = pcache->GetCohort(
-        RewriteDriver::kDomCohort);
-    if (dom != NULL) {
-      PropertyValue* value = page->GetProperty(
-          dom, RewriteDriver::kStatusCodePropertyName);
-      pcache->UpdateValue(IntegerToString(status_code), value);
-      pcache->WriteCohort(dom, page);
-    } else {
-      server_context_->message_handler()->Message(
-          kInfo, "dom cohort is not available for url %s.", url_.c_str());
-    }
-  }
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+  sync->Signal(ProxyFetch::kCollectorDetach);
+  sync->Wait(ProxyFetch::kCollectorDoneDelete);
   if (do_delete) {
-    ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+    UpdateStatusCodeInPropertyCache();
     delete this;
     sync->Signal(ProxyFetch::kCollectorDelete);
   }
@@ -974,9 +987,10 @@ void ProxyFetch::Finish(bool success) {
     bool is_response_ok = response_headers()->status_code() == HttpStatus::kOK;
     bool not_html = html_detector_.already_decided() &&
         !html_detector_.probable_html();
-    int status_code = HttpStatus::kUnknownStatusCode;
+    HttpStatus::Code status_code = HttpStatus::kUnknownStatusCode;
     if (!is_response_ok || (claims_html_ && !not_html)) {
-      status_code = response_headers()->status_code();
+      status_code = static_cast<HttpStatus::Code>(
+          response_headers()->status_code());
     }
     detach_callback->Detach(status_code);
   }

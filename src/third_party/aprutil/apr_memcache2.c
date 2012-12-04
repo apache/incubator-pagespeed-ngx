@@ -118,6 +118,7 @@ struct cache_server_query_t {
     apr_int32_t query_vec_count;
 };
 
+/* Default I/O timeout in microseconds. */
 #define MULT_GET_TIMEOUT 50000
 
 static apr_status_t mark_server_dead(apr_memcache2_server_t *ms,
@@ -333,7 +334,8 @@ static apr_status_t poll_server_releasing_connection_on_failure(
     apr_memcache2_conn_t *conn) {
     apr_int32_t queries_recvd;
     const apr_pollfd_t* activefds;
-    apr_status_t rv = apr_pollset_poll(conn->pollset, MULT_GET_TIMEOUT,
+    apr_status_t rv = apr_pollset_poll(conn->pollset,
+                                       ms->memcache->timeout_microseconds,
                                        &queries_recvd, &activefds);
     if (rv == APR_SUCCESS) {
         assert(queries_recvd == 1);
@@ -552,6 +554,7 @@ APU_DECLARE(apr_status_t) apr_memcache2_create(apr_pool_t *p,
     mc->hash_baton = NULL;
     mc->server_func = NULL;
     mc->server_baton = NULL;
+    mc->timeout_microseconds = MULT_GET_TIMEOUT;
     *memcache = mc;
     return rv;
 }
@@ -1411,7 +1414,8 @@ apr_memcache2_multgetp(apr_memcache2_t *mc,
     }
 
     while (queries_sent) {
-        rv = apr_pollset_poll(pollset, MULT_GET_TIMEOUT, &queries_recvd, &activefds);
+        rv = apr_pollset_poll(pollset, mc->timeout_microseconds, &queries_recvd,
+                              &activefds);
 
         if (rv != APR_SUCCESS) {
             /* timeout */
@@ -1789,4 +1793,10 @@ apr_memcache2_stats(apr_memcache2_server_t *ms,
     }
 
     return rv;
+}
+
+void apr_memcache2_set_timeout_microseconds(
+    apr_memcache2_t *mc,
+    apr_int32_t timeout_microseconds) {
+    mc->timeout_microseconds = timeout_microseconds;
 }

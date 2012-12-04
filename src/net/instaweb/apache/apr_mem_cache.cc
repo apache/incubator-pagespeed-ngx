@@ -57,6 +57,8 @@ const char kErrorBurstSize[] = "memcache_error_burst_size";
 // do not multiply by 1M.
 const int kDefaultServerTtlUs = 600*1000*1000;
 
+const int kTimeoutUnset = -1;
+
 }  // namespace
 
 AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
@@ -64,6 +66,7 @@ AprMemCache::AprMemCache(const StringPiece& servers, int thread_limit,
                          Timer* timer, MessageHandler* handler)
     : valid_server_spec_(false),
       thread_limit_(thread_limit),
+      timeout_us_(kTimeoutUnset),
       pool_(NULL),
       memcached_(NULL),
       hasher_(hasher),
@@ -146,6 +149,9 @@ bool AprMemCache::Connect() {
             hosts_[i].c_str(), ports_[i], buf, status);
         success = false;
       } else {
+        if (timeout_us_ != kTimeoutUnset) {
+          apr_memcache2_set_timeout_microseconds(memcached_, timeout_us_);
+        }
         servers_.push_back(server);
       }
     }
@@ -469,6 +475,13 @@ bool AprMemCache::IsHealthy() const {
 
 void AprMemCache::ShutDown() {
   shutdown_.set_value(true);
+}
+
+void AprMemCache::set_timeout_us(int timeout_us) {
+  timeout_us_ = timeout_us;
+  if ((memcached_ != NULL) && (timeout_us != kTimeoutUnset)) {
+    apr_memcache2_set_timeout_microseconds(memcached_, timeout_us);
+  }
 }
 
 }  // namespace net_instaweb

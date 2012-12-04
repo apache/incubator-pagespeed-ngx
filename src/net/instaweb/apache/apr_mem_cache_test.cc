@@ -363,4 +363,21 @@ TEST_F(AprMemCacheTest, HealthCheck) {
   EXPECT_TRUE(servers_->IsHealthy());
 }
 
+// Tests that a very low timeout out value causes a simple Get to fail.
+// Warning: if this turns out to be flaky then just delete it; it will
+// have served its purpose.
+TEST_F(AprMemCacheTest, OneMicrosecond) {
+  ASSERT_TRUE(ConnectToMemcached(true))
+      << "Please start memcached on " << server_spec_;
+
+  // With the default timeout, do a Put, which will work.
+  CheckPut("Name", "Value");
+  CheckGet("Name", "Value");
+
+  // Set the timeout insanely low and now watch the fetch fail.
+  servers_->set_timeout_us(1);
+  CheckNotFound("Name");
+  EXPECT_EQ(1, statistics_.GetVariable("memcache_timeouts")->Get());
+}
+
 }  // namespace net_instaweb

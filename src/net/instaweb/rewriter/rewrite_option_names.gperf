@@ -94,6 +94,7 @@ struct OptionName {
 "MaxUrlSize",                            RewriteOptions::kMaxUrlSize
 "MemcachedServers",                      RewriteOptions::kMemcachedServers
 "MemcachedThreads",                      RewriteOptions::kMemcachedThreads
+"MemcachedTimeoutUs",                    RewriteOptions::kMemcachedTimeoutUs
 "MinImageSizeLowResolutionBytes",        RewriteOptions::kMinImageSizeLowResolutionBytes
 "MinResourceCacheTimeToRewriteMs",       RewriteOptions::kMinResourceCacheTimeToRewriteMs
 "ModifyCachingHeaders",                  RewriteOptions::kModifyCachingHeaders
