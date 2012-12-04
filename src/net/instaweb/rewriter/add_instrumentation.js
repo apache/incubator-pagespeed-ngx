@@ -29,31 +29,59 @@ var pagespeed = window['pagespeed'];
 
 /**
  * @constructor
- * @param {string} beaconUrl Url of beacon.
+ * @param {string} beaconUrlPrefix The prefix portion of the beacon url.
  * @param {string} event Event to trigger on, either 'load' or 'beforeunload'.
  * @param {string} headerFetchTime Time to fetch header.
  * @param {string} originFetchTime Time to fetch origin.
  * @param {string} experimentId Id of current experiment.
  * @param {string} htmlUrl Url of the page the beacon is being inserted on.
  */
-pagespeed.AddInstrumentation = function(beaconUrl, event, headerFetchTime,
+pagespeed.AddInstrumentation = function(beaconUrlPrefix, event, headerFetchTime,
                                         originFetchTime, experimentId,
                                         htmlUrl) {
-  this.beaconUrl_ = beaconUrl;
+  this.beaconUrlPrefix_ = beaconUrlPrefix;
   this.event_ = event;
   this.headerFetchTime_ = headerFetchTime;
   this.originFetchTime_ = originFetchTime;
   this.experimentId_ = experimentId;
   this.htmlUrl_ = htmlUrl;
+
+  /**
+   * @type {string} Generated beacon url (created purely for ease of webdriver
+   *     testing.
+    */
+  this.beaconUrl = '';
 };
+
+pagespeed['beaconUrl'] = pagespeed.beaconUrl;
 
 /**
  * Create beacon URL and send request to server.
  */
 pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
-  var url = this.beaconUrl_;
+  var url = this.beaconUrlPrefix_;
+
+  var oldStartTime = window['mod_pagespeed_start'];
+  var currentTime = Number(new Date());
+  var traditionalPLT = (currentTime - oldStartTime);
+
   url += (this.event_ == 'load') ? 'load:' : 'unload:';
-  url += Number(new Date() - window['mod_pagespeed_start']);
+  url += traditionalPLT;
+
+  // We use navigation timing api for getting accurate start time. This api is
+  // available in Internet Explorer 9+, Google Chrome 6+ and Firefox 7+.
+  // If not present, we set the start time to when the rendering started.
+  // TODO(satyanarayana): Remove the oldStartTime usages once
+  // devconsole code has been updated to use the new "rload" param value.
+  url += '&r' + this.event_ + '=';
+  var newStartTime = oldStartTime;
+  if (window['performance']) {
+    var timingApi = window['performance']['timing'];
+    newStartTime = timingApi['navigationStart'];
+    url += (timingApi['loadEventStart'] - newStartTime);
+  } else {
+   url += traditionalPLT;
+  }
 
   if (this.event_ == 'beforeunload' && window['mod_pagespeed_loaded']) {
     return;
@@ -61,15 +89,26 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
   url += (window.parent != window) ? '&ifr=1' : '&ifr=0';
   if (this.event_ == 'load') {
     window['mod_pagespeed_loaded'] = true;
-    if (window['mod_pagespeed_num_resources_prefetched']) {
-      url += '&nrp=' + window['mod_pagespeed_num_resources_prefetched'];
+    var numPrefetchedResources =
+        window['mod_pagespeed_num_resources_prefetched'];
+    if (numPrefetchedResources) {
+      url += '&nrp=' + numPrefetchedResources;
     }
-    if (window['mod_pagespeed_prefetch_start']) {
-      url += '&htmlAt=' + (window['mod_pagespeed_start'] -
-                           window['mod_pagespeed_prefetch_start']);
+    var prefetchStartTime = window['mod_pagespeed_prefetch_start'];
+    if (prefetchStartTime) {
+      url += '&htmlAt=' + (newStartTime - prefetchStartTime);
     }
   }
 
+  if (pagespeed['panelLoader']) {
+    var bcsi = pagespeed['panelLoader']['getCsiTimings']()['time'];
+    url += '&b_cdr=' + bcsi['CRITICAL_DATA_RECEIVED'] +
+           '&b_cii=' + bcsi['CRITICAL_IMAGES_INLINED'] +
+           '&b_cilrl=' + bcsi['CRITICAL_IMAGES_LOW_RES_LOADED'] +
+           '&b_cihrl=' + bcsi['CRITICAL_IMAGES_HIGH_RES_LOADED'] +
+           '&b_ncdl=' + bcsi['NON_CACHEABLE_DATA_LOADED'] +
+           '&b_ncl=' + bcsi['NON_CRITICAL_LOADED'];
+  }
   if (this.headerFetchTime_ != '') {
     url += '&hft=' + this.headerFetchTime_;
   }
@@ -81,6 +120,7 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
   }
   url += '&url=' + encodeURIComponent(this.htmlUrl_);
 
+  pagespeed['beaconUrl'] = url;
   new Image().src = url;
 };
 
