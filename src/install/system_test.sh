@@ -98,11 +98,11 @@ echo "Image gets rewritten by default."
 WGET_ARGS="--header='X-PSA-Blocking-Rewrite:psatest'"
 fetch_until $URL 'fgrep -c BikeCrashIcn.png.pagespeed.ic' 1
 echo "Image doesn't get rewritten when we turn it off with headers."
-OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest"
+OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest" \
   --header="ModPagespeedFilters:-rewrite_images" $URL)
 check_not_from "$OUT" fgrep -q "BikeCrashIcn.png.pagespeed.ic"
 echo "Image doesn't get rewritten when we turn it off with query params."
-OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest"
+OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest" \
   $URL?ModPagespeedFilters=-rewrite_images)
 check_not_from "$OUT" fgrep -q "BikeCrashIcn.png.pagespeed.ic"
 
