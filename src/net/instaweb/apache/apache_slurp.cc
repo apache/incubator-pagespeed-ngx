@@ -141,7 +141,13 @@ class ApacheWriter : public Writer {
     }
     response_headers->RemoveAll(HttpAttributes::kTransferEncoding);
     response_headers->RemoveAll(HttpAttributes::kContentLength);
-    ResponseHeadersToApacheRequest(*response_headers, request_);
+
+    // We always disable downstream header filters when sending out
+    // pagespeed resources, since we've captured them from the origin
+    // in the fetch we did to write the slurp.
+    ResponseHeadersToApacheRequest(*response_headers,
+                                   true,  // disable downstream headers filters.
+                                   request_);
     if (content_type != NULL) {
       ap_set_content_type(request_, content_type);
     }

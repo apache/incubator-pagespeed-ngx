@@ -18,6 +18,7 @@
 
 #include <cstdio>
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -76,15 +77,18 @@ void ApacheRequestToResponseHeaders(const request_rec& request,
 }
 
 void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
+                                    bool ok_to_disable_downstream_headers,
                                     request_rec* request) {
   request->status = response_headers.status_code();
   // proto_num is the version number of protocol; 1.1 = 1001
   request->proto_num = response_headers.major_version() * 1000 +
                        response_headers.minor_version();
-  AddResponseHeadersToRequest(&response_headers, NULL, request);
+  AddResponseHeadersToRequest(&response_headers, NULL,
+                              ok_to_disable_downstream_headers, request);
 }
 
 void AddResponseHeadersToRequestHelper(const ResponseHeaders& response_headers,
+                                       bool ok_to_disable_downstream_headers,
                                        request_rec* request,
                                        apr_table_t* table) {
   for (int i = 0, n = response_headers.NumAttributes(); i < n; ++i) {
@@ -96,7 +100,8 @@ void AddResponseHeadersToRequestHelper(const ResponseHeaders& response_headers,
       char* ptr = apr_pstrdup(request->pool, value.c_str());
       ap_set_content_type(request, ptr);
     } else {
-      if (StringCaseEqual(name, HttpAttributes::kCacheControl)) {
+      if (ok_to_disable_downstream_headers &&
+          StringCaseEqual(name, HttpAttributes::kCacheControl)) {
         DisableDownstreamHeaderFilters(request);
       }
       // apr_table_add makes copies of both head key and value, so we do not
@@ -108,14 +113,19 @@ void AddResponseHeadersToRequestHelper(const ResponseHeaders& response_headers,
 
 void AddResponseHeadersToRequest(const ResponseHeaders* headers,
                                  const ResponseHeaders* err_headers,
+                                 bool ok_to_disable_downstream_headers,
                                  request_rec* request) {
   DCHECK(headers != NULL || err_headers != NULL);
   DCHECK(headers != err_headers);
   if (headers != NULL) {
-    AddResponseHeadersToRequestHelper(*headers, request, request->headers_out);
+    AddResponseHeadersToRequestHelper(*headers,
+                                      ok_to_disable_downstream_headers,
+                                      request, request->headers_out);
   }
   if (err_headers != NULL) {
-    AddResponseHeadersToRequestHelper(*err_headers, request,
+    AddResponseHeadersToRequestHelper(*err_headers,
+                                      ok_to_disable_downstream_headers,
+                                      request,
                                       request->err_headers_out);
   }
 }

@@ -128,7 +128,11 @@ void instaweb_404_handler(const GoogleString& url, request_rec* request) {
 void send_out_headers_and_body(request_rec* request,
                                const ResponseHeaders& response_headers,
                                const GoogleString& output) {
-  ResponseHeadersToApacheRequest(response_headers, request);
+  // We always disable downstream header filters when sending out
+  // pagespeed resources, since we've captured them in the origin fetch.
+  ResponseHeadersToApacheRequest(response_headers,
+                                 true,  // Disable downstream header filters.
+                                 request);
   if (response_headers.status_code() == HttpStatus::kOK &&
       IsCompressibleContentType(request->content_type)) {
     // Make sure compression is enabled for this response.

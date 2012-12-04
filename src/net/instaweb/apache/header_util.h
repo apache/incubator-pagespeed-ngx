@@ -41,6 +41,7 @@ void ApacheRequestToResponseHeaders(const request_rec& request,
 
 // Converts ResponseHeaders into an Apache request's headers_out table.
 void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
+                                    bool ok_to_disable_downstream_headers,
                                     request_rec* request);
 
 // Converts ResponseHeaders (headers and err_headers) into Apache request
@@ -50,6 +51,7 @@ void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
 // err_headers since it will result in duplicate headers being written.
 void AddResponseHeadersToRequest(const ResponseHeaders* headers,
                                  const ResponseHeaders* err_headers,
+                                 bool ok_to_disable_downstream_headers,
                                  request_rec* request);
 
 // Remove downstream filters that might corrupt our caching headers.

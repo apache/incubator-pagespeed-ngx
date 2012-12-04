@@ -33,6 +33,11 @@
 // apache_rewrite_driver_factory.h. Otherwise, the compiler will
 // complain "strtoul_is_not_a_portable_function_use_strtol_instead".
 #include "httpd.h"
+#include "apr_pools.h"
+
+struct apr_bucket_brigade;
+struct request_rec;
+struct server_rec;
 
 namespace net_instaweb {
 
@@ -120,6 +125,8 @@ class InstawebContext {
   static const char* MakeRequestUrl(const RewriteOptions& options,
                                     request_rec* request);
 
+  bool modify_caching_headers() const { return  modify_caching_headers_; }
+
  private:
   void ComputeContentEncoding(request_rec* request);
 
@@ -152,6 +159,7 @@ class InstawebContext {
   bool started_parse_;
   bool sent_headers_;
   bool populated_headers_;
+  bool modify_caching_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(InstawebContext);
 };

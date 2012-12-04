@@ -95,7 +95,8 @@ InstawebContext::InstawebContext(request_rec* request,
       request_headers_(request_headers),
       started_parse_(false),
       sent_headers_(false),
-      populated_headers_(false) {
+      populated_headers_(false),
+      modify_caching_headers_(true) {
   if (options.running_furious()) {
     // Furious requires custom options because it has to make changes based on
     // what ExperimentSpec the user should be seeing.
@@ -122,6 +123,8 @@ InstawebContext::InstawebContext(request_rec* request,
   } else {
     rewrite_driver_ = server_context_->NewRewriteDriver();
   }
+  modify_caching_headers_ =
+      rewrite_driver_->options()->modify_caching_headers();
 
   // Begin the property cache lookup. This should be as early as possible since
   // it may be asynchronous (in the case of memcached).
@@ -429,7 +432,8 @@ void InstawebContext::SetFuriousStateAndCookie(request_rec* request,
     int furious_value = options->furious_id();
     server_context_->furious_matcher()->StoreExperimentData(
         furious_value, url, timer.NowMs(), &resp_headers);
-    AddResponseHeadersToRequest(&resp_headers, NULL, request);
+    AddResponseHeadersToRequest(&resp_headers, NULL,
+                                options->modify_caching_headers(), request);
   }
 }
 

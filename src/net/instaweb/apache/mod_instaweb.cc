@@ -350,7 +350,9 @@ apr_bucket* rewrite_html(InstawebContext* context, request_rec* request,
   if (!context->sent_headers()) {
     ResponseHeaders* headers = context->response_headers();
     apr_table_clear(request->headers_out);
-    AddResponseHeadersToRequest(headers, NULL, request);
+    AddResponseHeadersToRequest(headers, NULL,
+                                context->modify_caching_headers(),
+                                request);
     headers->Clear();
     context->set_sent_headers(true);
   }
@@ -590,11 +592,15 @@ InstawebContext* build_context_for_request(request_rec* request) {
         if (apr_is_empty_table(request->err_headers_out)) {
           // We know that response_headers were all from request->headers_out
           apr_table_clear(request->headers_out);
-          AddResponseHeadersToRequest(&response_headers, NULL, request);
+          AddResponseHeadersToRequest(&response_headers, NULL,
+                                      options->modify_caching_headers(),
+                                      request);
         } else if (apr_is_empty_table(request->headers_out)) {
           // We know that response_headers were all from err_headers_out
           apr_table_clear(request->err_headers_out);
-          AddResponseHeadersToRequest(NULL, &response_headers, request);
+          AddResponseHeadersToRequest(NULL, &response_headers,
+                                      options->modify_caching_headers(),
+                                      request);
 
         } else {
           // We don't know which table changed, so scan them individually and
@@ -617,6 +623,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
           apr_table_clear(request->err_headers_out);
           apr_table_clear(request->headers_out);
           AddResponseHeadersToRequest(&tmp_resp_headers, &tmp_err_resp_headers,
+                                      options->modify_caching_headers(),
                                       request);
         }
       }
