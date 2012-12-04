@@ -51,6 +51,7 @@ extern const char kGAFuriousSnippet[] =
 
 // Google Analytics async snippet along with the _trackPageView call.
 extern const char kGAJsSnippet[] =
+    "if (window.parent == window) {"
     "var _gaq = _gaq || [];"
     "_gaq.push(['_setAccount', '%s']);"  // %s is the GA account number.
     "_gaq.push(['_setDomainName', '%s']);"  // %s is the domain name
@@ -62,7 +63,8 @@ extern const char kGAJsSnippet[] =
     "ga.src = '%s.google-analytics.com/ga.js';"  // %s is the scheme and www/ssl
     "var s = document.getElementsByTagName('script')[0];"
     "s.parentNode.insertBefore(ga, s);"
-    "})();";
+    "})();"
+    "}";
 
 // Set the sample rate to 100%.
 // TODO(nforman): Allow this to be configurable through RewriteOptions.

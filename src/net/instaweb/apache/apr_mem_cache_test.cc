@@ -103,6 +103,27 @@ class AprMemCacheTest : public CacheTestBase {
     return servers_->Connect() && servers_->GetStatus(&buf);
   }
 
+  // Attempts to initialize the connection to memcached.  It reports a
+  // test failure if there is a memcached configuration specified in
+  // server_spec_ or via $MEMCACHED_PORT, but we fail to connect to it.
+  //
+  // Consider three scenarios:
+  //
+  //   Scenario                                Test-status     Return-value
+  //   --------------------------------------------------------------------
+  //   server_spec_ empty                      OK              false
+  //   server_spec_ non-empty, memcached ok    OK              true
+  //   server_spec_ non-empty, memcached fail  FAILURE         false
+  //
+  // This helps developers ensure that the memcached interface works, without
+  // requiring people who build & run tests to start up memcached.
+  bool InitMemcachedOrSkip(bool use_md5_hasher) {
+    bool initialized = ConnectToMemcached(use_md5_hasher);
+    EXPECT_TRUE(initialized || server_spec_.empty())
+        << "Please start memcached on " << server_spec_;
+    return initialized;
+  }
+
   virtual CacheInterface* Cache() { return cache_.get(); }
 
   GoogleMessageHandler handler_;
@@ -118,8 +139,9 @@ class AprMemCacheTest : public CacheTestBase {
 
 // Simple flow of putting in an item, getting it, deleting it.
 TEST_F(AprMemCacheTest, PutGetDelete) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
 
   CheckPut("Name", "Value");
   CheckGet("Name", "Value");
@@ -134,8 +156,9 @@ TEST_F(AprMemCacheTest, PutGetDelete) {
 }
 
 TEST_F(AprMemCacheTest, MultiGet) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
   TestMultiGet();
   EXPECT_EQ(0, lru_cache_->size_bytes()) << "fallback not used.";
 }
@@ -154,8 +177,9 @@ TEST_F(AprMemCacheTest, MultiGetWithoutServer) {
 }
 
 TEST_F(AprMemCacheTest, BasicInvalid) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
 
   // Check that we honor callback veto on validity.
   CheckPut("nameA", "valueA");
@@ -169,8 +193,9 @@ TEST_F(AprMemCacheTest, BasicInvalid) {
 }
 
 TEST_F(AprMemCacheTest, SizeTest) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
 
   for (int x = 0; x < 10; ++x) {
     for (int i = kJustUnderThreshold/2; i < kJustUnderThreshold - 10; ++i) {
@@ -184,8 +209,9 @@ TEST_F(AprMemCacheTest, SizeTest) {
 }
 
 TEST_F(AprMemCacheTest, StatsTest) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
 
   GoogleString buf;
   ASSERT_TRUE(servers_->GetStatus(&buf));
@@ -198,9 +224,9 @@ TEST_F(AprMemCacheTest, StatsTest) {
 }
 
 TEST_F(AprMemCacheTest, HashCollision) {
-  ASSERT_TRUE(ConnectToMemcached(false))
-      << "Please start memcached on " << server_spec_;
-
+  if (!InitMemcachedOrSkip(false)) {
+    return;
+  }
   CheckPut("N1", "V1");
   CheckGet("N1", "V1");
 
@@ -214,8 +240,9 @@ TEST_F(AprMemCacheTest, HashCollision) {
 }
 
 TEST_F(AprMemCacheTest, JustUnderThreshold) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
   const GoogleString kValue(kJustUnderThreshold, 'a');
   const char kKey[] = "just_under_threshold";
   CheckPut(kKey, kValue);
@@ -226,8 +253,9 @@ TEST_F(AprMemCacheTest, JustUnderThreshold) {
 // Basic operation with huge values, only one of which will fit
 // in the fallback cache at a time.
 TEST_F(AprMemCacheTest, HugeValue) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
   const GoogleString kValue(kHugeWriteSize, 'a');
   const char kKey1[] = "large1";
   CheckPut(kKey1, kValue);
@@ -250,8 +278,9 @@ TEST_F(AprMemCacheTest, HugeValue) {
 }
 
 TEST_F(AprMemCacheTest, LargeValueMultiGet) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
   const GoogleString kLargeValue1(kLargeWriteSize, 'a');
   const char kKey1[] = "large1";
   CheckPut(kKey1, kLargeValue1);
@@ -280,8 +309,9 @@ TEST_F(AprMemCacheTest, LargeValueMultiGet) {
 }
 
 TEST_F(AprMemCacheTest, MultiServerFallback) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
 
   // Make another connection to the same memcached, but with a different
   // fallback cache.
@@ -307,8 +337,9 @@ TEST_F(AprMemCacheTest, MultiServerFallback) {
 }
 
 TEST_F(AprMemCacheTest, KeyOver64kDropped) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
 
   // We set our testing byte thresholds too low to trigger the case where
   // the key-value encoding fails, so make an alternate fallback cache
@@ -335,8 +366,9 @@ TEST_F(AprMemCacheTest, KeyOver64kDropped) {
 // Note: we do not expect to see ridiculously large keys; we are just
 // testing for corner cases here.
 TEST_F(AprMemCacheTest, LargeKeyOverThreshold) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
 
   const GoogleString kKey(kLargeWriteSize, 'a');
   const char kValue[] = "value";
@@ -346,8 +378,9 @@ TEST_F(AprMemCacheTest, LargeKeyOverThreshold) {
 }
 
 TEST_F(AprMemCacheTest, HealthCheck) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
 
   const int kNumIters = 5;  // Arbitrary number of repetitions.
   for (int i = 0; i < kNumIters; ++i) {
