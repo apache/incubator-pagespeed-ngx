@@ -580,4 +580,4 @@ APACHE_HTTPS_PORT=
 APACHE_DEBUG_PAGESPEED_CONF=$(APACHE_CONF)/pagespeed.conf
 INSTALL_DATA_DIR=.
 
-include tests.mk
+include Makefile.tests
