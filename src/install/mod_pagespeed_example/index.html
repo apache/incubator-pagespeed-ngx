@@ -431,6 +431,28 @@
 
 <tr class="filter_row">
   <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-insert-dns-prefetch.html">
+      insert_dns_prefetch
+    </a>
+  </td>
+  <td class="desc">
+    Injects &lt;link rel="dns-prefetch" href="//www.example.com"&gt; tags in the
+    HEAD to enable the browser to do DNS prefetching.
+  </td>
+  <td class="before">
+    <a href="insert_dns_prefetch.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="insert_dns_prefetch.html?ModPagespeed=on&amp;ModPagespeedFilters=insert_dns_prefetch">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr class="filter_row">
+  <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-insert-ga">
       insert_ga
     </a>
