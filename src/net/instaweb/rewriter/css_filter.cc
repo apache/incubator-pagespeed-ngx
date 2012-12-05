@@ -23,7 +23,6 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -303,23 +302,8 @@ bool CssFilter::Context::RewriteCssText(const GoogleUrl& css_base_gurl,
   // much content as possible from the original document.
   Css::Parser parser(in_text);
   parser.set_preservation_mode(true);
-  // If we think this is XHTML, turn off quirks-mode so that we don't "fix"
-  // things we shouldn't.
-  // TODO(sligocki): We might want to turn off quirks mode in general to get
-  // a consistent and conservative parse.
-  //
-  // Note: this use of doctype().IsXhtml is correct: we are interested in
-  // quirks-mode for CSS parsing, not XML vs HTML parsing here.
-  //
-  //  We're in strict mode if:
-  //   1. We're using HTML syntax and have a valid doctype --- in particular
-  //      valid HTML4.01 doctypes, valid XHTML ones, or the HTML5+ one, but I
-  //      think the spec accepts a few more.
-  //   2. We're using XML syntax.  See http://dvcs.w3.org/hg/domcore/raw-file/
-  //      tip/Overview.html#concept-document-quirks for more detail.
-  if (has_parent() || driver_->doctype().IsXhtml()) {
-    parser.set_quirks_mode(false);
-  }
+  // We avoid quirks-mode so that we do not "fix" something we shouldn't have.
+  parser.set_quirks_mode(false);
   // Create a stylesheet even if given declarations so that we don't need
   // two versions of everything, though they do need to handle a stylesheet
   // with no selectors in it, which they currently do.
@@ -376,10 +360,8 @@ void CssFilter::Context::RewriteCssFromRoot(const StringPiece& contents,
                                             Css::Stylesheet* stylesheet) {
   DCHECK_EQ(in_text_size_, in_text_size);
 
-  // Note: this use of doctype().IsXhtml is correct: we are interested in
-  // quirks-mode for CSS parsing, not XML vs HTML parsing here.
-  hierarchy_.InitializeRoot(css_base_gurl_, css_trim_gurl_, contents,
-                            driver_->doctype().IsXhtml(), has_unparseables,
+  hierarchy_.InitializeRoot(css_base_gurl_, css_trim_gurl_,
+                            contents, has_unparseables,
                             driver_->options()->css_flatten_max_bytes(),
                             stylesheet, driver_->message_handler());
 
@@ -622,16 +604,7 @@ bool CssFilter::Context::Partition(OutputPartitions* partitions,
 }
 
 GoogleString CssFilter::Context::CacheKeySuffix() const {
-  // TODO(morlovich): Make the quirks bit part of the actual output resource
-  // name; as ignoring it on the fetch path is unsafe.
-  // TODO(nikhilmadan): For ajax rewrites, be conservative and assume its XHTML.
-  // Is this right?
-  //
-  // Note: this use of doctype().IsXhtml is correct: we are interested in
-  // quirks-mode for CSS parsing, not XML vs HTML parsing here.
-  GoogleString suffix = (has_parent() || driver_->doctype().IsXhtml())
-      ? "X" : "h";
-
+  GoogleString suffix;
   if (rewrite_inline_element_ != NULL) {
     // Incorporate the base path of the HTML as part of the key --- it
     // matters for inline CSS since resources are resolved against

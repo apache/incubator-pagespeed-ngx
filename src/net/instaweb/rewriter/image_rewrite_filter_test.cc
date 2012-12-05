@@ -16,6 +16,8 @@
 
 // Author: jmaessen@google.com (Jan Maessen)
 
+#include "net/instaweb/rewriter/public/image_rewrite_filter.h"
+
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
@@ -33,7 +35,6 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/image.h"
-#include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -48,8 +49,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
-#include "net/instaweb/util/public/scoped_ptr.h"  // for scoped_ptr
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -896,10 +896,15 @@ TEST_F(ImageRewriteTest, ResizeStyleTest) {
   TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
                     kMoreMixedDims, kMoreMixedDims, true, false);
 
-  const char kUnparsableDims[] =
+  const char kNonPixelDims[] =
       " style=\"width:256cm;height:192cm;\"";
     TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
-                      kUnparsableDims, kUnparsableDims, false, false);
+                      kNonPixelDims, kNonPixelDims, false, false);
+
+  const char kNoDims[] =
+      " style=\"width:256;height:192;\"";
+    TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
+                      kNoDims, kNoDims, false, false);
 }
 
 TEST_F(ImageRewriteTest, ResizeWithPxInHtml) {

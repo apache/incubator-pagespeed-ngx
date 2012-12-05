@@ -73,7 +73,6 @@ class CssHierarchy {
   void InitializeRoot(const GoogleUrl& css_base_url,
                       const GoogleUrl& css_trim_url,
                       const StringPiece input_contents,
-                      bool is_xhtml,
                       bool has_unparseables,
                       int64 flattened_result_limit,
                       Css::Stylesheet* stylesheet,
@@ -253,7 +252,6 @@ class CssHierarchy {
   // from the input text form by Parse, mutated by RollUpContents and
   // RollUpStylesheets - see their description for details.
   scoped_ptr<Css::Stylesheet> stylesheet_;
-  bool is_xhtml_;
 
   // The charset for this CSS as specified by HTTP headers, or a charset
   // attribute, or an @charset rule, or inherited from the parent.

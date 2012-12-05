@@ -1067,6 +1067,22 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=575
     { "[class^=\"icon-\"],[class*=\" icon-\"] { color: red }",
       "[class^=\"icon-\"],[class*=\" icon-\"]{color:red}" },
+
+    // Don't "fix" quirks-mode colors.
+    // Note: DECAFB is not converted to a more correct #decafb.
+    { "body { color: DECAFB }", "body{color:DECAFB}" },
+
+    { "#post_content, #post_content p{\n"
+      " font-family:Helvetica;\n"
+      " font-size:16px;\n"
+      " color:333;\n"
+      " line-height:24px;\n"
+      " margin-bottom:15px;\n"
+      "}",
+
+      // Note: 333 is not converted to a more correct #333.
+      "#post_content,#post_content p{font-family:Helvetica;font-size:16px;"
+      "color:333;line-height:24px;margin-bottom:15px}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
@@ -1130,22 +1146,19 @@ TEST_F(CssFilterTest, RemoveComments) {
                   " /* This comment will be removed. */ ", "", kExpectSuccess);
 }
 
-TEST_F(CssFilterTest, NoQuirksModeForXhtml) {
-  const char quirky_css[]     = "body {color:DECAFB}";
-  const char normalized_css[] = "body{color:#decafb}";
-  const char no_quirks_css[]  = "body{color:DECAFB}";
+TEST_F(CssFilterTest, NoQuirksModeFixes) {
+  const char in_css[]  = "body {color:DECAFB}";
+  const char out_css[] = "body{color:DECAFB}";
 
-  // By default we parse the CSS with quirks-mode enabled and "fix" the CSS.
-  ValidateRewrite("quirks_mode", quirky_css, normalized_css, kExpectSuccess);
+  // Test that we don't parse the CSS in quirks-mode in HTML.
+  ValidateRewrite("quirks_html", in_css, out_css, kExpectSuccess);
 
-  // But when in XHTML mode, we don't allow CSS quirks.
+  // Test that the same thing happens in XHTML.
   SetDoctype(kXhtmlDtd);
-  ValidateRewrite("no_quirks_mode", quirky_css, no_quirks_css,
-                  kExpectSuccess | kNoOtherContexts);
-  // NOTE: We must set kNoOtherContexts, because this change depends upon the
-  // rewriter knowing that the original resource was found in an XHTML page
-  // which we don't know if we are recieving a Fetch request and don't have
-  // the resource. This could cause issues :/
+  ValidateRewrite("quirks_xhtml", in_css, out_css,
+                  kExpectSuccess | kNoStatCheck);
+  // Note: We must use kNoStatCheck, because this will use the cached result
+  // from the HTML case and thus not record accurate savings.
 }
 
 // http://code.google.com/p/modpagespeed/issues/detail?id=324

@@ -47,7 +47,6 @@ namespace net_instaweb {
 CssHierarchy::CssHierarchy(CssFilter* filter)
     : filter_(filter),
       parent_(NULL),
-      is_xhtml_(false),
       flattening_succeeded_(true),
       unparseable_detected_(false),
       flattened_result_limit_(0),
@@ -61,7 +60,6 @@ CssHierarchy::~CssHierarchy() {
 void CssHierarchy::InitializeRoot(const GoogleUrl& css_base_url,
                                   const GoogleUrl& css_trim_url,
                                   const StringPiece input_contents,
-                                  bool is_xhtml,
                                   bool has_unparseables,
                                   int64 flattened_result_limit,
                                   Css::Stylesheet* stylesheet,
@@ -70,7 +68,6 @@ void CssHierarchy::InitializeRoot(const GoogleUrl& css_base_url,
   css_trim_url_.Reset(css_trim_url);
   input_contents_ = input_contents;
   stylesheet_.reset(stylesheet);
-  is_xhtml_ = is_xhtml;
   unparseable_detected_ = has_unparseables;
   flattened_result_limit_ = flattened_result_limit;
   message_handler_ = message_handler;
@@ -83,7 +80,6 @@ void CssHierarchy::InitializeNested(const CssHierarchy& parent,
   parent_ = &parent;
   // These are invariant and propagate from our parent.
   css_trim_url_.Reset(parent.css_trim_url());
-  is_xhtml_ = parent.is_xhtml_;
   flattened_result_limit_ = parent.flattened_result_limit_;
   message_handler_ = parent.message_handler_;
 }
@@ -185,9 +181,7 @@ bool CssHierarchy::Parse() {
   if (stylesheet_.get() == NULL) {
     Css::Parser parser(input_contents_);
     parser.set_preservation_mode(true);
-    if (is_xhtml_) {
-      parser.set_quirks_mode(false);
-    }
+    parser.set_quirks_mode(false);
     Css::Stylesheet* stylesheet = parser.ParseRawStylesheet();
     // Any parser error is bad news but unparseable sections are OK because
     // any problem with an @import results in the error mask bit kImportError

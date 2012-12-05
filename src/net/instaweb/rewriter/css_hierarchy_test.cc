@@ -87,7 +87,7 @@ class CssHierarchyTest : public RewriteOptionsTestBase<RewriteOptions> {
   void InitializeFlatRoot(CssHierarchy* top) {
     InitializeCss("", "");
     top->InitializeRoot(top_url_, top_url_, flat_top_css_,
-                        false /* is_xhtml */, false /* has_unparseables */,
+                        false /* has_unparseables */,
                         0 /* flattened_result_limit */, NULL /* stylesheet */,
                         message_handler());
   }
@@ -96,7 +96,7 @@ class CssHierarchyTest : public RewriteOptionsTestBase<RewriteOptions> {
   void InitializeNestedRoot(CssHierarchy* top) {
     InitializeCss("", "");
     top->InitializeRoot(top_url_, top_url_, nested_top_css_,
-                        false /* is_xhtml */, false /* has_unparseables */,
+                        false /* has_unparseables */,
                         0 /* flattened_result_limit */, NULL /* stylesheet */,
                         message_handler());
   }
@@ -107,7 +107,7 @@ class CssHierarchyTest : public RewriteOptionsTestBase<RewriteOptions> {
                                      const StringPiece child_media) {
     InitializeCss(top_media, child_media);
     top->InitializeRoot(top_url_, top_url_, nested_top_css_,
-                        false /* is_xhtml */, false /* has_unparseables */,
+                        false /* has_unparseables */,
                         0 /* flattened_result_limit */, NULL /* stylesheet */,
                         message_handler());
   }
@@ -422,7 +422,7 @@ TEST_F(CssHierarchyTest, FailOnDirectRecursion) {
   CssHierarchy top(NULL);
   GoogleString recursive_import = StrCat("@import '", top_url().Spec(), "' ;");
   top.InitializeRoot(top_url(), top_url(), recursive_import,
-                     false /* is_xhtml */, false /* has_unparseables */,
+                     false /* has_unparseables */,
                      0 /* flattened_result_limit */, NULL /* stylesheet */,
                      message_handler());
 
@@ -495,7 +495,7 @@ TEST_F(CssHierarchyTest, UnparseableSection) {
                                         "url(", top_url().Spec(), ") }");
   CssHierarchy top(NULL);
   top.InitializeRoot(top_url(), top_url(), unparseable_css,
-                     false /* is_xhtml */, false /* has_unparseables */,
+                     false /* has_unparseables */,
                      0 /* flattened_result_limit */, NULL /* stylesheet */,
                      message_handler());
 
