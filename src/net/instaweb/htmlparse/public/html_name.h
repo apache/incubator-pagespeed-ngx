@@ -132,6 +132,7 @@ class HtmlName {
     kLoop,
     kManifest,
     kMark,
+    kMarquee,
     kMedia,
     kMenu,
     kMeta,

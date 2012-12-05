@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -121,8 +122,6 @@ class SplitHtmlFilterTest : public RewriteTestBase {
   virtual bool AddHtmlTags() const { return false; }
 
  protected:
-  static const char blink_js_url_[];
-
   virtual void SetUp() {
     delete options_;
     options_ = new RewriteOptions();
@@ -144,6 +143,9 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     response_headers_.SetDateAndCaching(MockTimer::kApr_5_2010_ms, 0);
     rewrite_driver_->set_response_headers_ptr(&response_headers_);
     output_.clear();
+    StaticJavascriptManager* js_manager =
+        rewrite_driver_->server_context()->static_javascript_manager();
+    blink_js_url_ = js_manager->GetBlinkJsUrl(options_).c_str();
   }
 
   void VerifyAppliedRewriters(GoogleString expected_rewriters) {
@@ -151,6 +153,7 @@ class SplitHtmlFilterTest : public RewriteTestBase {
   }
 
   GoogleString output_;
+  const char* blink_js_url_;
 
  private:
   StringWriter writer_;
@@ -160,9 +163,6 @@ class SplitHtmlFilterTest : public RewriteTestBase {
   scoped_ptr<LoggingInfo> logging_info_;
   scoped_ptr<LogRecord> log_record_;
 };
-
-// TODO(bharathbhushan): Get this from the js manager.
-const char SplitHtmlFilterTest::blink_js_url_[] = "/psajs/blink.js";
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithDriverHavingCriticalLineInfo) {
   CriticalLineInfo* config = new CriticalLineInfo;

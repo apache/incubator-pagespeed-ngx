@@ -725,14 +725,11 @@ class RewriteContext::FetchContext {
     // Negative rewrite deadline means unlimited.
     if (driver->rewrite_deadline_ms() >= 0) {
       // Startup an alarm which will cause us to return unrewritten content
-      // rather than hold up the fetch too long on firing. We use a longer
-      // deadline here than for rendering because we are being asked for the
-      // rewritten version, so the tradeoff is shifted a bit more towards
-      // rewriting.
+      // rather than hold up the fetch too long on firing.
       deadline_alarm_ =
           new QueuedAlarm(
               driver->scheduler(), driver->rewrite_worker(),
-              timer->NowUs() + 2 * driver->rewrite_deadline_ms() * Timer::kMsUs,
+              timer->NowUs() + (driver->rewrite_deadline_ms() * Timer::kMsUs),
               MakeFunction(this, &FetchContext::HandleDeadline));
     }
   }

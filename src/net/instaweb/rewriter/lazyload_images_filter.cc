@@ -96,7 +96,8 @@ void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
     return;
   }
   if (skip_rewrite_ == NULL) {
-    if (element->keyword() == HtmlName::kNoembed) {
+    if (element->keyword() == HtmlName::kNoembed ||
+        element->keyword() == HtmlName::kMarquee) {
       skip_rewrite_ = element;
       return;
     }

@@ -353,6 +353,7 @@ void ProxyFetchPropertyCallbackCollector::UpdateStatusCodeInPropertyCache() {
 
 void ProxyFetchPropertyCallbackCollector::Detach(HttpStatus::Code status_code) {
   bool do_delete = false;
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
   scoped_ptr<std::vector<Function*> > post_lookup_task_vector;
   {
     ScopedMutex lock(mutex_.get());
@@ -363,12 +364,13 @@ void ProxyFetchPropertyCallbackCollector::Detach(HttpStatus::Code status_code) {
     post_lookup_task_vector.reset(post_lookup_task_vector_.release());
     status_code_ = status_code;
   }
+  // Do not access class variables below this as the object might be deleted by
+  // Done() in a different thread.
   if (post_lookup_task_vector.get() != NULL) {
     for (int i = 0, n = post_lookup_task_vector->size(); i < n; ++i) {
       (*post_lookup_task_vector.get())[i]->CallCancel();
     }
   }
-  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
   sync->Signal(ProxyFetch::kCollectorDetach);
   sync->Wait(ProxyFetch::kCollectorDoneDelete);
   if (do_delete) {

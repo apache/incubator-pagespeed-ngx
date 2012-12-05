@@ -109,7 +109,8 @@ DEFINE_bool(js_preserve_urls, false, "Boolean to indicate whether JavaScript"
 DEFINE_int32(rewrite_deadline_per_flush_ms,
              net_instaweb::RewriteOptions::kDefaultRewriteDeadlineMs,
              "Deadline to rewrite a resource before putting the rewrite in the "
-             "background and returning the original resource.");
+             "background and returning the original resource. A value of -1 "
+             "will result in waiting for all rewrites to complete.");
 DEFINE_bool(log_rewrite_timing, false, "Log time taken by rewrite filters.");
 DEFINE_int64(max_html_cache_time_ms,
              net_instaweb::RewriteOptions::kDefaultMaxHtmlCacheTimeMs,

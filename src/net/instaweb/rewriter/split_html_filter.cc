@@ -63,17 +63,17 @@ const char SplitHtmlFilter::kPagespeedFunc[] =
 
 // TODO(rahulbansal): We are sending an extra close body and close html tag.
 // Fix that.
-// TODO(bharathbhushan): Use one script node for all these statements.
 const char SplitHtmlFilter::kSplitSuffixJsFormatString[] =
     "<script type=\"text/javascript\">"
     "pagespeed.num_low_res_images_inlined=%d;</script>"
-    "<script src=\"%s\" type=\"text/javascript\"></script>"
-    "<script type=\"text/javascript\">pagespeed.deferInit();</script>"
-    "<script>pagespeed.panelLoaderInit();</script>"
-    "<script>pagespeed.panelLoader.invokedFromSplit();</script>"
-    "<script>pagespeed.panelLoader.loadCriticalData({});</script>"
-    "<script>pagespeed.panelLoader.bufferNonCriticalData(%s);</script>\n"
-    "</body></html>\n";
+    "<script type=\"text/javascript\" src=\"%s\"></script>"
+    "<script type=\"text/javascript\">"
+      "pagespeed.deferInit();"
+      "pagespeed.panelLoaderInit();"
+      "pagespeed.panelLoader.invokedFromSplit();"
+      "pagespeed.panelLoader.loadCriticalData({});"
+      "pagespeed.panelLoader.bufferNonCriticalData(%s);"
+    "</script>\n</body></html>\n";
 
 // At StartElement, if element is panel instance push a new json to capture
 // contents of instance to the json stack.
