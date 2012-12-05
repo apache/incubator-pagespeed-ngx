@@ -74,19 +74,20 @@ check $WGET -q $EXAMPLE_ROOT/index.html?ModPagespeed=off -O $OUTDIR/index.html
 check diff $OUTDIR/index.html $OUTDIR/mod_pagespeed_example
 
 start_test compression is enabled for HTML.
-check fgrep -qi 'Content-Encoding: gzip' <(
-  $WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' $EXAMPLE_ROOT/ 2>&1)
+OUT=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' $EXAMPLE_ROOT/ 2>&1)
+check_from "$OUT" fgrep -qi 'Content-Encoding: gzip'
 
 start_test X-Mod-Pagespeed header added when ModPagespeed=on
-check egrep -q 'X-Mod-Pagespeed|X-Page-Speed' <(
-  $WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=on)
+OUT=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=on)
+check_from "$OUT" egrep -q 'X-Mod-Pagespeed|X-Page-Speed'
 
 start_test X-Mod-Pagespeed header not added when ModPagespeed=off
-check_not egrep 'X-Mod-Pagespeed|X-Page-Speed' <(
-  $WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=off)
+OUT=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html?ModPagespeed=off)
+check_not_from "$OUT" egrep 'X-Mod-Pagespeed|X-Page-Speed'
 
 start_test We behave sanely on whitespace served as HTML
-check egrep -q 'HTTP/1[.]. 200 OK' <($WGET_DUMP $TEST_ROOT/whitespace.html)
+OUT=$($WGET_DUMP $TEST_ROOT/whitespace.html)
+check_from "$OUT" egrep -q 'HTTP/1[.]. 200 OK'
 
 start_test Query params and headers are recognized in resource flow.
 URL=$REWRITTEN_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css
@@ -127,7 +128,8 @@ start_test "Make sure 404s aren't rewritten"
 # easiest to detect which changes every page
 THIS_BAD_URL=$BAD_RESOURCE_URL?ModPagespeedFilters=add_instrumentation
 # We use curl, because wget does not save 404 contents
-check_not fgrep "/mod_pagespeed_beacon" <($CURL --silent $THIS_BAD_URL)
+OUT=$($CURL --silent $THIS_BAD_URL)
+check_not_from "$OUT" fgrep "/mod_pagespeed_beacon"
 
 # Checks that we can correctly identify a known library url.
 test_filter canonicalize_javascript_libraries finds library urls
@@ -163,8 +165,8 @@ big.css+bold.css+yellow.css+blue.css+big.css+bold.css+yellow.css+blue.css+\
 big.css+bold.css+yellow.css+blue.css+big.css+\
 bold.css.pagespeed.cc.46IlzLf_NK.css"
 echo "$WGET --save-headers -q -O - $LARGE_URL | head -1 | egrep \"HTTP/1[.]. 200 OK\""
-check egrep -q "HTTP/1[.]. 200 OK" <(
-  $WGET --save-headers -q -O - $LARGE_URL | head -1)
+OUT=$($WGET --save-headers -q -O - $LARGE_URL | head -1)
+check_from "$OUT" egrep -q "HTTP/1[.]. 200 OK"
 LARGE_URL_LINE_COUNT=$($WGET -q -O - $LARGE_URL | wc -l)
 echo Checking that response body is at least 900 lines -- it should be 954
 check [ $LARGE_URL_LINE_COUNT -gt 900 ]
@@ -277,7 +279,7 @@ JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $JS_URL 2>&1)
 check_from "$JS_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
 check_from "$JS_HEADERS" fgrep -qi 'Content-Encoding: gzip'
-#check fgrep -qi 'Vary: Accept-Encoding' <(echo $JS_HEADERS)
+#check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
 check_from "$JS_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
 check_from "$JS_HEADERS" fgrep -qi 'Last-Modified:'
 
@@ -347,10 +349,10 @@ check_from "$IMG_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
 # Make sure an extra header is propagated from input resource to output
 # resource.  X-Extra-Header is added in debug.conf.template.
 #start_test Extra header is present
-#check fgrep -qi 'X-Extra-Header' <(echo "$IMG_HEADERS")
+#check_from "$IMG_HEADERS" fgrep -qi 'X-Extra-Header'
 # Make sure there is a last-modified tag
 start_test Last-modified is present.
-check fgrep -qi 'Last-Modified' <(echo "$IMG_HEADERS")
+check_from "$IMG_HEADERS" fgrep -qi 'Last-Modified'
 
 BAD_IMG_URL=$REWRITTEN_ROOT/images/xBadName.jpg.pagespeed.ic.Zi7KMNYwzD.jpg
 start_test rewrite_images fails broken image
@@ -463,7 +465,7 @@ if [ -n "$HTTPS_HOST" ]; then
   HTML_HEADERS=$($WGET_DUMP_HTTPS $URL)
 
   echo Checking for X-Mod-Pagespeed header
-  check egrep -q 'X-Mod-Pagespeed|X-Page-Speed' <(echo $HTML_HEADERS)
+  check_from "$HTML_HEADERS" egrep -q 'X-Mod-Pagespeed|X-Page-Speed'
 
   echo Checking for combined CSS URL
   EXPECTED='href="styles/yellow\.css+blue\.css+big\.css+bold\.css'
@@ -523,9 +525,9 @@ check fgrep -q "'Hello'" $OUTDIR/hello.js.pagespeed.jm.0.js
 check fgrep -q "no-cache" $WGET_OUTPUT
 
 start_test ?ModPagespeed=noscript inserts canonical href link
-check egrep -q \
-  "link rel=\"canonical\" href=\"$EXAMPLE_ROOT/defer_javascript.html\"" <(
-  $WGET_DUMP $EXAMPLE_ROOT/defer_javascript.html?ModPagespeed=noscript)
+OUT=$($WGET_DUMP $EXAMPLE_ROOT/defer_javascript.html?ModPagespeed=noscript)
+check_from "$OUT" egrep -q \
+  "link rel=\"canonical\" href=\"$EXAMPLE_ROOT/defer_javascript.html\""
 
 # Checks that defer_javascript injects 'pagespeed.deferJs' from defer_js.js,
 # but strips the comments.
@@ -718,16 +720,21 @@ WGET_EC="$WGET_DUMP $WGET_ARGS"
 start_test Html is rewritten with cache-extended PDFs.
 fetch_until $URL 'fgrep -c .pagespeed.' 3
 
-check grep 'a href="http://.*pagespeed.*\.pdf' <($WGET_EC $URL)
-check grep 'embed src="http://.*pagespeed.*\.pdf' <($WGET_EC $URL)
-check fgrep '<a href="example.notpdf">' <($WGET_EC $URL)
-check grep 'a href="http://.*pagespeed.*\.pdf?a=b' <($WGET_EC $URL)
+OUT=$($WGET_EC $URL)
+check_from "$OUT" grep 'a href="http://.*pagespeed.*\.pdf'
+OUT=$($WGET_EC $URL)
+check_from "$OUT" grep 'embed src="http://.*pagespeed.*\.pdf'
+OUT=$($WGET_EC $URL)
+check_from "$OUT" fgrep '<a href="example.notpdf">'
+OUT=$($WGET_EC $URL)
+check_from "$OUT" grep 'a href="http://.*pagespeed.*\.pdf?a=b'
 
 start_test Cache-extended PDFs load and have the right mime type.
 PDF_CE_URL="$($WGET_EC $URL | \
               grep -o 'http://.*pagespeed.[^\"]*\.pdf' | head -n 1)"
 echo Extracted cache-extended url $PDF_CE_URL
-check grep -a 'Content-Type: application/pdf' <($WGET_EC $PDF_CE_URL)
+OUT=$($WGET_EC $PDF_CE_URL)
+check_from "$OUT" grep -a 'Content-Type: application/pdf'
 
 # Test DNS prefetching. DNS prefetching is dependent on user agent, but is
 # enabled for Wget UAs, allowing this test to work with our default wget params.

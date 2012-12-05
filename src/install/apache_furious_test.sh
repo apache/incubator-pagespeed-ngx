@@ -25,28 +25,30 @@ start_test mod_pagespeed_example must have a .htaccess file.
 check test -f $EXAMPLE_FILE_DIR/.htaccess
 
 start_test _GFURIOUS cookie is set.
-check fgrep "_GFURIOUS=" <($WGET_DUMP $EXTEND_CACHE)
+OUT=$($WGET_DUMP $EXTEND_CACHE)
+check_from "$OUT" fgrep "_GFURIOUS="
 
 start_test mod_pagespeed_test must not have a .htaccess file.
 check_not test -f $TEST_ROOT_FILE_DIR/.htaccess
 
 start_test ModPagespeedFilters query param should disable experiments.
-check_not fgrep '_GFURIOUS=' <(
-  $WGET_DUMP '$EXTEND_CACHE?ModPagespeed=on&ModPagespeedFilters=rewrite_css')
+OUT=$($WGET_DUMP '$EXTEND_CACHE?ModPagespeed=on&ModPagespeedFilters=rewrite_css')
+check_not_from "$OUT" fgrep '_GFURIOUS='
 
 start_test If the user is already assigned, no need to assign them again.
-check_not fgrep '_GFURIOUS=' <(
-  $WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
+OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
+check_not_from "$OUT" fgrep '_GFURIOUS='
+
 
 start_test The beacon should include the experiment id.
-check grep "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon?ets=', 'load', '', '', '2', 'http://localhost:8080/mod_pagespeed_example/extend_cache.html');" <(
-  $WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
-check grep "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon?ets=', 'load', '', '', '7', 'http://localhost:8080/mod_pagespeed_example/extend_cache.html');" <(
-  $WGET_DUMP --header='Cookie: _GFURIOUS=7' $EXTEND_CACHE)
+OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
+check_from "$OUT" grep "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon?ets=', 'load', '', '', '2', 'http://localhost:8080/mod_pagespeed_example/extend_cache.html');"
+OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=7' $EXTEND_CACHE)
+check_from "$OUT" grep "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon?ets=', 'load', '', '', '7', 'http://localhost:8080/mod_pagespeed_example/extend_cache.html');"
 
 start_test The no-experiment group beacon should not include an experiment id.
-check_not grep 'mod_pagespeed_beacon.*exptid' <(
-  $WGET_DUMP --header='Cookie: _GFURIOUS=0' $EXTEND_CACHE)
+OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=0' $EXTEND_CACHE)
+check_not_from "$OUT" grep 'mod_pagespeed_beacon.*exptid'
 
 # We expect id=7 to be index=a and id=2 to be index=b because that's the
 # order they're defined in the config file.
@@ -55,10 +57,10 @@ WGET_ARGS="--header 'Cookie:_GFURIOUS=7'" fetch_until $EXTEND_CACHE \
   "fgrep -c .pagespeed.a.ic." 1
 WGET_ARGS="--header 'Cookie:_GFURIOUS=2'" fetch_until $EXTEND_CACHE \
   "fgrep -c .pagespeed.b.ic." 1
-check fgrep ".pagespeed.a.ic." <(
-  $WGET_DUMP --header='Cookie: _GFURIOUS=7' $EXTEND_CACHE)
-check fgrep ".pagespeed.b.ic." <(
-  $WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
+OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=7' $EXTEND_CACHE)
+check_from "$OUT" fgrep ".pagespeed.a.ic."
+OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
+check_from "$OUT" fgrep ".pagespeed.b.ic."
 
 start_test Images are different when the url specifies different experiments.
 # While the images are the same, image B should be smaller because in the config

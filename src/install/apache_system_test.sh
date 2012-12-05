@@ -65,8 +65,9 @@ fi
 # General system tests
 
 start_test Check for correct default X-Mod-Pagespeed header format.
-check egrep -q '^X-Mod-Pagespeed: [0-9]+[.][0-9]+[.][0-9]+[.][0-9]+-[0-9]+' <(
-  $WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
+OUT=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
+check_from "$OUT" egrep -q \
+  '^X-Mod-Pagespeed: [0-9]+[.][0-9]+[.][0-9]+[.][0-9]+-[0-9]+'
 
 start_test mod_pagespeed is running in Apache and writes the expected header.
 echo $WGET_DUMP $EXAMPLE_ROOT/combine_css.html
@@ -99,18 +100,19 @@ if fgrep -q "# ModPagespeedStatistics off" $APACHE_DEBUG_PAGESPEED_CONF; then
 
 else
   start_test 404s are served.  Statistics are disabled so not checking them.
-  check fgrep -q "404 Not Found" <($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
+  OUT=$($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
+  check_from "$OUT" fgrep -q "404 Not Found"
 
   start_test 404s properly on uncached invalid resource.
-  check fgrep -q "404 Not Found" <(
-    $WGET -O /dev/null $BAD_RND_RESOURCE_URL 2>&1)
+  OUT=$($WGET -O /dev/null $BAD_RND_RESOURCE_URL 2>&1)
+  check_from "$OUT" fgrep -q "404 Not Found"
 fi
 
 
 # Test /mod_pagespeed_message exists.
 start_test Check if /mod_pagespeed_message page exists.
-check fgrep "HTTP/1.1 200 OK" <(
-  $WGET --save-headers -q -O - $MESSAGE_URL | head -1)
+OUT=$($WGET --save-headers -q -O - $MESSAGE_URL | head -1)
+check_from "$OUT" fgrep "HTTP/1.1 200 OK"
 
 # Note: There is a similar test in system_test.sh
 #
@@ -292,25 +294,25 @@ echo IMG_URL="$IMG_URL"
 IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
   $IMG_URL 2>&1)
 echo "IMG_HEADERS=\"$IMG_HEADERS\""
-check egrep -qi 'HTTP/1[.]. 200 OK' <(echo $IMG_HEADERS)
+check_from "$IMG_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
 # Make sure we have some valid headers.
-check fgrep -qi 'Content-Type: image/jpeg' <(echo "$IMG_HEADERS")
+check_from "$IMG_HEADERS" fgrep -qi 'Content-Type: image/jpeg'
 # Make sure the response was not gzipped.
 start_test Images are not gzipped.
-check_not fgrep -i 'Content-Encoding: gzip' <(echo "$IMG_HEADERS")
+check_not_from "$IMG_HEADERS" fgrep -i 'Content-Encoding: gzip'
 # Make sure there is no vary-encoding
 start_test Vary is not set for images.
-check_not fgrep -i 'Vary: Accept-Encoding' <(echo "$IMG_HEADERS")
+check_not_from "$IMG_HEADERS" fgrep -i 'Vary: Accept-Encoding'
 # Make sure there is an etag
 start_test Etags is present.
-check fgrep -qi 'Etag: W/"0"' <(echo "$IMG_HEADERS")
+check_from "$IMG_HEADERS" fgrep -qi 'Etag: W/"0"'
 # Make sure an extra header is propagated from input resource to output
 # resource.  X-Extra-Header is added in debug.conf.template.
 start_test Extra header is present
-check fgrep -qi 'X-Extra-Header' <(echo "$IMG_HEADERS")
+check_from "$IMG_HEADERS" fgrep -qi 'X-Extra-Header'
 # Make sure there is a last-modified tag
 start_test Last-modified is present.
-check fgrep -qi 'Last-Modified' <(echo "$IMG_HEADERS")
+check_from "$IMG_HEADERS" fgrep -qi 'Last-Modified'
 
 IMAGES_QUALITY="ModPagespeedImageRecompressionQuality"
 JPEG_QUALITY="ModPagespeedJpegRecompressionQuality"
@@ -350,7 +352,8 @@ check_file_size "$OUTDIR/*webp*" -le 1784   # resized, optimized to webp
 start_test respect vary user-agent
 URL=$TEST_ROOT/vary/index.html?ModPagespeedFilters=inline_css
 echo $WGET_DUMP $URL
-check_not fgrep "<style>" <($WGET_DUMP $URL)
+OUT=$($WGET_DUMP $URL)
+check_not_from "$OUT" fgrep "<style>"
 
 start_test ModPagespeedShardDomain directive in .htaccess file
 rm -rf $OUTDIR
@@ -399,23 +402,24 @@ start_test Custom headers remain on HTML, but cache should be disabled.
 URL=$TEST_ROOT/rewrite_compressed_js.html
 echo $WGET_DUMP $URL
 HTML_HEADERS=$($WGET_DUMP $URL)
-check egrep -q "X-Extra-Header: 1" <(echo $HTML_HEADERS)
+check_from "$HTML_HEADERS" egrep -q "X-Extra-Header: 1"
 # The extra header should only be added once, not twice.
-check_not egrep -q "X-Extra-Header: 1, 1" <(echo $HTML_HEADERS)
-check egrep -q 'Cache-Control: max-age=0, no-cache' <(echo $HTML_HEADERS)
+check_not_from "$HTML_HEADERS" egrep -q "X-Extra-Header: 1, 1"
+check_from "$HTML_HEADERS" egrep -q 'Cache-Control: max-age=0, no-cache'
 
 start_test Custom headers remain on resources, but cache should be 1 year.
 URL="$TEST_ROOT/compressed/hello_js.custom_ext.pagespeed.ce.HdziXmtLIV.txt"
 echo $WGET_DUMP $URL
 RESOURCE_HEADERS=$($WGET_DUMP $URL)
-check egrep -q 'X-Extra-Header: 1' <(echo $RESOURCE_HEADERS)
+check_from "$RESOURCE_HEADERS"  egrep -q 'X-Extra-Header: 1'
 # The extra header should only be added once, not twice.
-check_not egrep -q 'X-Extra-Header: 1, 1' <(echo $RESOURCE_HEADERS)
-check egrep -q 'Cache-Control: max-age=31536000' <(echo $RESOURCE_HEADERS)
+check_not_from "$RESOURCE_HEADERS"  egrep -q 'X-Extra-Header: 1, 1'
+check_from "$RESOURCE_HEADERS"  egrep -q 'Cache-Control: max-age=31536000'
 
 start_test ModPagespeedModifyCachingHeaders
 URL=$TEST_ROOT/retain_cache_control/index.html
-check grep -q "Cache-Control: private, max-age=3000" <($WGET_DUMP $URL)
+OUT=$($WGET_DUMP $URL)
+check_from "$OUT" grep -q "Cache-Control: private, max-age=3000"
 
 test_filter combine_javascript combines 2 JS files into 1.
 start_test combine_javascript with long URL still works
@@ -828,12 +832,12 @@ blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
   FORBIDDEN_IMAGES_ROOT=$FORBIDDEN_EXAMPLE_ROOT/images
   # .ce. is allowed
   ALLOWED="$FORBIDDEN_STYLES_ROOT/all_styles.css.pagespeed.ce.n7OstQtwiS.css"
-  check fgrep -q "200 OK" <(http_proxy=$SECONDARY_HOSTNAME \
-    $WGET -O /dev/null $ALLOWED 2>&1)
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET -O /dev/null $ALLOWED 2>&1)
+  check_from "$OUT" fgrep -q "200 OK"
   # .cf. is forbidden
   FORBIDDEN=$FORBIDDEN_STYLES_ROOT/I.all_styles.css.pagespeed.cf.UH8L-zY4b4.css
-  check fgrep -q "404 Not Found" <(http_proxy=$SECONDARY_HOSTNAME \
-    $WGET -O /dev/null $FORBIDDEN 2>&1)
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET -O /dev/null $FORBIDDEN 2>&1)
+  check_from "$OUT" fgrep -q "404 Not Found"
   # The image will be optimized but NOT resized to the much smaller size,
   # so it will be >200k (optimized) rather than <20k (resized).
   # Use a blocking fetch to force all -allowed- rewriting to be done.
@@ -861,8 +865,10 @@ check_from "$WGET_OUT" grep "$X_OTHER_HEADER"
 start_test Send custom fetch headers on resource subfetches.
 URL=$TEST_ROOT/custom_fetch_headers.html?ModPagespeedFilters=inline_javascript
 fetch_until $URL 'grep -c header=value' 1
-check grep "$PLAIN_HEADER" <($WGET_DUMP $URL)
-check grep "$X_OTHER_HEADER" <($WGET_DUMP $URL)
+OUT=$($WGET_DUMP $URL)
+check_from "$OUT" grep "$PLAIN_HEADER"
+OUT=$($WGET_DUMP $URL)
+check_from "$OUT" grep "$X_OTHER_HEADER"
 
 # Check that statistics logging was functional during these tests
 # if it was enabled.
@@ -918,24 +924,24 @@ readonly SPDY_CONFIG_URL=$STATISTICS_URL?spdy_config
 
 echo $WGET_DUMP $CONFIG_URL
 CONFIG=$($WGET_DUMP $CONFIG_URL)
-check egrep -q "Configuration:" <(echo $CONFIG)
-check_not egrep -q "SPDY-specific configuration:" <(echo $CONFIG)
+check_from "$CONFIG" egrep -q "Configuration:"
+check_not_from "$CONFIG" egrep -q "SPDY-specific configuration:"
 # Regular config should have a shard line:
-check egrep -q "http://nonspdy.example.com/ Auth Shards:{http:" <(echo $CONFIG)
-check egrep -q "//s1.example.com/, http://s2.example.com/}" <(echo $CONFIG)
+check_from "$CONFIG" egrep -q "http://nonspdy.example.com/ Auth Shards:{http:"
+check_from "$CONFIG" egrep -q "//s1.example.com/, http://s2.example.com/}"
 # And "combine CSS" on.
-check egrep -q "Combine Css" <(echo $CONFIG)
+check_from "$CONFIG" egrep -q "Combine Css"
 
 echo $WGET_DUMP $SPDY_CONFIG_URL
 SPDY_CONFIG=$($WGET_DUMP $SPDY_CONFIG_URL)
-check_not egrep -q "Configuration:" <(echo $SPDY_CONFIG)
-check egrep -q "SPDY-specific configuration:" <(echo $SPDY_CONFIG)
+check_not_from "$SPDY_CONFIG" egrep -q "Configuration:"
+check_from "$SPDY_CONFIG" egrep -q "SPDY-specific configuration:"
 
 # SPDY config should have neither shards, nor combine CSS.
-check_not egrep -q "http://nonspdy.example.com" <(echo $SPDY_CONFIG)
-check_not egrep -q "s1.example.com" <(echo $SPDY_CONFIG)
-check_not egrep -q "s2.example.com" <(echo $SPDY_CONFIG)
-check_not egrep -q "Combine Css" <(echo $SPDY_CONFIG)
+check_not_from "$SPDY_CONFIG" egrep -q "http://nonspdy.example.com"
+check_not_from "$SPDY_CONFIG" egrep -q "s1.example.com"
+check_not_from "$SPDY_CONFIG" egrep -q "s2.example.com"
+check_not_from "$SPDY_CONFIG" egrep -q "Combine Css"
 
 # Test ModPagespeedForbidAllDisabledFilters, which is set in pagespeed.conf
 # for /mod_pagespeed_test/forbid_all_disabled/disabled/ where we've disabled
@@ -1011,38 +1017,37 @@ if [ x$SECONDARY_HOSTNAME != x ]; then
     start_test Config with VHost inheritance off
     echo $WGET_DUMP $SECONDARY_CONFIG_URL
     SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
-    check egrep -q "Configuration:" <(echo $SECONDARY_CONFIG)
-    check_not egrep -q "SPDY-specific configuration:" <(echo $SECONDARY_CONFIG)
+    check_from "$SECONDARY_CONFIG" egrep -q "Configuration:"
+    check_not_from "$SECONDARY_CONFIG" egrep -q "SPDY-specific configuration:"
     # No inherit, no sharding.
-    check_not egrep -q "http://nonspdy.example.com/" <(echo $SECONDARY_CONFIG)
+    check_not_from "$SECONDARY_CONFIG" egrep -q "http://nonspdy.example.com/"
 
     # Should not inherit the blocking rewrite key.
-    check_not egrep -q "blrw" <(echo $SECONDARY_CONFIG)
+    check_not_from "$SECONDARY_CONFIG" egrep -q "blrw"
 
     echo $WGET_DUMP $SECONDARY_SPDY_CONFIG_URL
     SECONDARY_SPDY_CONFIG=$($WGET_DUMP $SECONDARY_SPDY_CONFIG_URL)
-    check_not egrep -q "Configuration:" <(echo $SECONDARY_SPDY_CONFIG)
-    check egrep -q "SPDY-specific configuration missing" \
-        <(echo $SECONDARY_SPDY_CONFIG)
+    check_not_from "$SECONDARY_SPDY_CONFIG" egrep -q "Configuration:"
+    check_from "$SECONDARY_SPDY_CONFIG" \
+      egrep -q "SPDY-specific configuration missing"
   else
     start_test Config with VHost inheritance on
     echo $WGET_DUMP $SECONDARY_CONFIG_URL
     SECONDARY_CONFIG=$($WGET_DUMP $SECONDARY_CONFIG_URL)
-    check egrep -q "Configuration:" <(echo $SECONDARY_CONFIG)
-    check_not egrep -q "SPDY-specific configuration:" <(echo $SECONDARY_CONFIG)
+    check_from "$SECONDARY_CONFIG" egrep -q "Configuration:"
+    check_not_from "$SECONDARY_CONFIG" egrep -q "SPDY-specific configuration:"
     # Sharding is applied in this host, thanks to global inherit flag.
-    check egrep -q "http://nonspdy.example.com/" <(echo $SECONDARY_CONFIG)
+    check_from "$SECONDARY_CONFIG" egrep -q "http://nonspdy.example.com/"
 
     # We should also inherit the blocking rewrite key.
-    check egrep -q "blrw[[:space:]]+psatest" <(echo $SECONDARY_CONFIG)
+    check_from "$SECONDARY_CONFIG" egrep -q "blrw[[:space:]]+psatest"
 
     echo $WGET_DUMP $SECONDARY_SPDY_CONFIG_URL
     SECONDARY_SPDY_CONFIG=$($WGET_DUMP $SECONDARY_SPDY_CONFIG_URL)
-    check_not egrep -q "Configuration:" <(echo $SECONDARY_SPDY_CONFIG)
-    check egrep -q "SPDY-specific configuration:" \
-        <(echo $SECONDARY_SPDY_CONFIG)
+    check_not_from "$SECONDARY_SPDY_CONFIG" egrep -q "Configuration:"
+    check_from "$SECONDARY_SPDY_CONFIG" egrep -q "SPDY-specific configuration:"
     # Disabling of combine CSS should get inherited.
-    check_not egrep -q "Combine Css" <(echo $SECONDARY_SPDY_CONFIG)
+    check_not_from "$SECONDARY_SPDY_CONFIG" egrep -q "Combine Css"
   fi
 fi
 
@@ -1090,7 +1095,7 @@ start_test ModPagespeedIf application
 # Without SPDY, we should combine things
 OUT=$($WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest' \
     $EXAMPLE_ROOT/combine_css.html)
-check egrep -q ',Mcc' <(echo $OUT)
+check_from "$OUT" egrep -q ',Mcc'
 
 # Despite combine_css being disabled in <ModPagespeedIf>, we still
 # expect it with SPDY since it's turned on in mod_pagespeed_example/.htaccess.

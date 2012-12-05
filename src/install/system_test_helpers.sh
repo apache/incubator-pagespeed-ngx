@@ -278,9 +278,8 @@ function check_file_size() {
 # You need:
 #   echo foo | grep foo || fail
 # If you can legibly rewrite the code not to need a pipeline at all, however,
-# check is better because it can print the problem test:
-#   check grep foo <(echo foo)
-# Or, even better, because it can print the failing input on failure:
+# check_from is better because it can print the problem test and the failing
+# input on failure:
 #   check_from "foo" grep foo
 function fail() {
   handle_failure
@@ -415,14 +414,16 @@ function test_resource_ext_corruption() {
 
   # Make sure the resource is actually there, that the test isn't broken
   echo checking that wgetting $URL finds $RESOURCE ...
-  check fgrep -qi $RESOURCE <($WGET_DUMP $WGET_ARGS $URL)
+  OUT=$($WGET_DUMP $WGET_ARGS $URL)
+  check_from "$OUT" fgrep -qi $RESOURCE
 
   # Now fetch the broken version. This should succeed anyway, as we now
   # ignore the noise.
   check $WGET_PREREQ $WGET_ARGS "$RESOURCE"broken
 
   # Fetch normal again; ensure rewritten url for RESOURCE doesn't contain broken
-  check_not fgrep "broken" <($WGET_DUMP $WGET_ARGS $URL)
+  OUT=$($WGET_DUMP $WGET_ARGS $URL)
+  check_not_from "$OUT" fgrep "broken"
 }
 
 # Scrapes the specified statistic, returning the statistic value.

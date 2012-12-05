@@ -15,11 +15,11 @@ EXAMPLE="$1/mod_pagespeed_example"
 EXTEND_CACHE="$EXAMPLE/extend_cache.html"
 
 start_test Analytics javascript is not added for any group.
-check_not fgrep 'Experiment:' <(
-  $WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
-check_not fgrep 'Experiment:' <(
-  $WGET_DUMP --header='Cookie: _GFURIOUS=7' $EXTEND_CACHE)
-check_not fgrep 'Experiment:' <(
-  $WGET_DUMP --header='Cookie: _GFURIOUS=0' $EXTEND_CACHE)
+OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
+check_not_from "$OUT" fgrep 'Experiment:'
+OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=7' $EXTEND_CACHE)
+check_not_from "$OUT" fgrep 'Experiment:'
+OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=0' $EXTEND_CACHE)
+check_not_from "$OUT" fgrep 'Experiment:'
 
 system_test_trailer
