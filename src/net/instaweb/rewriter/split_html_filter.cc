@@ -23,13 +23,13 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
-#include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -37,8 +37,6 @@
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/json_writer.h"
-#include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -48,8 +46,6 @@
 
 namespace net_instaweb {
 
-const char SplitHtmlFilter::kDeferJsSnippet[] =
-    "pagespeed.deferInit();";
 const char SplitHtmlFilter::kSplitInit[] =
     "<script type=\"text/javascript\">"
     "pagespeed.splitOnload = function() {"
@@ -64,6 +60,20 @@ const char SplitHtmlFilter::kPagespeedFunc[] =
     "<script type=\"text/javascript\">"
     "window[\"pagespeed\"] = window[\"pagespeed\"] || {};"
     "var pagespeed = window[\"pagespeed\"];</script>";
+
+// TODO(rahulbansal): We are sending an extra close body and close html tag.
+// Fix that.
+// TODO(bharathbhushan): Use one script node for all these statements.
+const char SplitHtmlFilter::kSplitSuffixJsFormatString[] =
+    "<script type=\"text/javascript\">"
+    "pagespeed.num_low_res_images_inlined=%d;</script>"
+    "<script src=\"%s\" type=\"text/javascript\"></script>"
+    "<script type=\"text/javascript\">pagespeed.deferInit();</script>"
+    "<script>pagespeed.panelLoaderInit();</script>"
+    "<script>pagespeed.panelLoader.invokedFromSplit();</script>"
+    "<script>pagespeed.panelLoader.loadCriticalData({});</script>"
+    "<script>pagespeed.panelLoader.bufferNonCriticalData(%s);</script>\n"
+    "</body></html>\n";
 
 // At StartElement, if element is panel instance push a new json to capture
 // contents of instance to the json stack.
@@ -148,37 +158,17 @@ void SplitHtmlFilter::WriteString(const StringPiece& str) {
 }
 
 void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
-  if (critical_line_info_ == NULL || critical_line_info_->panels_size() == 0) {
-    WriteString(StrCat("<script type=\"text/javascript\" src=\"",
-                       static_js_manager_->GetDeferJsUrl(options_),
-                       "\"></script><script type=\"text/javascript\">",
-                       JsDeferDisabledFilter::kSuffix,
-                       "</script>"));
-    return;
-  }
-
-  WriteString(StrCat("<script type=\"text/javascript\">"
-      "pagespeed.num_low_res_images_inlined=",
-      IntegerToString(num_low_res_images_inlined_),
-      ";</script>"));
-  WriteString(StrCat("<script src=\"",
-                     GetBlinkJsUrl(options_, static_js_manager_),
-                     "\" type=\"text/javascript\"></script>"));
-  WriteString(StrCat("<script type=\"text/javascript\">", kDeferJsSnippet,
-                     "</script>"));
-  WriteString("<script>pagespeed.panelLoaderInit();</script>");
-  WriteString("<script>pagespeed.panelLoader.invokedFromSplit();</script>");
-  WriteString("<script>pagespeed.panelLoader.loadCriticalData({});</script>");
-
   GoogleString non_critical_json = fast_writer_.write(json);
   BlinkUtil::StripTrailingNewline(&non_critical_json);
-  WriteString("<script>pagespeed.panelLoader.bufferNonCriticalData(");
   BlinkUtil::EscapeString(&non_critical_json);
-  WriteString(non_critical_json);
-  WriteString(");</script>");
-  // TODO(rahulbansal): We are sending an extra close body and close html tag.
-  // Fix that.
-  WriteString("\n</body></html>\n");
+  WriteString(StringPrintf(kSplitSuffixJsFormatString,
+                           num_low_res_images_inlined_,
+                           GetBlinkJsUrl(options_, static_js_manager_).c_str(),
+                           non_critical_json.c_str()));
+  if (rewrite_driver_->log_record() != NULL && !json.empty()) {
+    rewrite_driver_->log_record()->LogAppliedRewriter(
+        RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
+  }
   HtmlWriterFilter::Flush();
 }
 
@@ -316,12 +306,10 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
               lazyload_js, "</script>");
   }
 
-  if (critical_line_info_ != NULL) {
-    if (!send_lazyload_script_) {
-      StrAppend(&defer_js_with_blink, kPagespeedFunc);
-    }
-    StrAppend(&defer_js_with_blink, kSplitInit);
+  if (!send_lazyload_script_) {
+    StrAppend(&defer_js_with_blink, kPagespeedFunc);
   }
+  StrAppend(&defer_js_with_blink, kSplitInit);
   if (include_head) {
     StrAppend(&defer_js_with_blink, "</head>");
   }

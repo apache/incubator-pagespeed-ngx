@@ -1477,6 +1477,51 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestPrefetch) {
   VerifyCharset(&headers);
 }
 
+TEST_F(ProxyInterfaceTest, FlushEarlyFlowStatusCodeUnstable) {
+  // Test that the flush early flow is not triggered when the status code is
+  // unstable.
+  SetupForFlushEarlyFlow(true);
+  GoogleString text;
+  RequestHeaders request_headers;
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          "prefetch_link_rel_subresource");
+  ResponseHeaders headers;
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+  // Fetch the url again. This time FlushEarlyFlow should be triggered.
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_EQ(FlushEarlyRewrittenHtml(
+      UserAgentMatcher::kPrefetchLinkRelSubresource, false, false),
+      text);
+
+  SetFetchResponse404(kTestDomain);
+  // Fetch again so that 404 is populated in repsonse headers
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+  // Fetch the url again. This time FlushEarlyFlow should not be triggered as
+  // the status code is not stable.
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_EQ(HttpStatus::kNotFound, headers.status_code());
+
+  // Delete the 404 form cache and again set up for 200 response.
+  lru_cache()->Delete(kTestDomain);
+  SetupForFlushEarlyFlow(true);
+
+  // Flush early flow is again not triggered as the status code is not
+  // stable for property_cache_http_status_stability_threshold number of
+  // requests.
+  for (int i = 0, n = server_context()->global_options()->
+       property_cache_http_status_stability_threshold(); i < n; ++i) {
+    FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+    EXPECT_TRUE(text.find("link rel=\"subresource\"") == GoogleString::npos);
+  }
+  // Fetch the url again. This time FlushEarlyFlow should be triggered.
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_EQ(FlushEarlyRewrittenHtml(
+      UserAgentMatcher::kPrefetchLinkRelSubresource, false, false),
+      text);
+}
+
 TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestImageTag) {
   SetupForFlushEarlyFlow(false);
   GoogleString text;

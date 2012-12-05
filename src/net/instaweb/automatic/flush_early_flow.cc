@@ -114,6 +114,8 @@ const char FlushEarlyFlow::kNumResourcesFlushedEarly[] =
     "num_resources_flushed_early";
 const char FlushEarlyFlow::kFlushEarlyRewriteLatencyMs[] =
     "flush_early_rewrite_latency_ms";
+const char FlushEarlyFlow::kNumFlushEarlyHttpStatusCodeDeemedUnstable[] =
+    "num_flush_early_http_status_code_deemed_unstable";
 
 // TODO(mmohabey): Do not flush early if the html is cacheable.
 // If this is called then the content type must be html.
@@ -271,6 +273,8 @@ void FlushEarlyFlow::InitStats(Statistics* stats) {
   stats->AddTimedVariable(
       FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly,
       ServerContext::kStatisticsGroup);
+  stats->AddTimedVariable(kNumFlushEarlyHttpStatusCodeDeemedUnstable,
+                          ServerContext::kStatisticsGroup);
   stats->AddHistogram(kFlushEarlyRewriteLatencyMs)->EnableNegativeBuckets();
 }
 
@@ -300,6 +304,8 @@ FlushEarlyFlow::FlushEarlyFlow(
       kNumRequestsFlushedEarly);
   num_resources_flushed_early_ = stats->GetTimedVariable(
       FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly);
+  num_flush_early_http_status_code_deemed_unstable_ = stats->GetTimedVariable(
+      kNumFlushEarlyHttpStatusCodeDeemedUnstable);
   flush_early_rewrite_latency_ms_ = stats->GetHistogram(
       kFlushEarlyRewriteLatencyMs);
   driver_->increment_async_events_count();
@@ -310,6 +316,7 @@ FlushEarlyFlow::~FlushEarlyFlow() {
 }
 
 void FlushEarlyFlow::FlushEarly() {
+  const RewriteOptions* options = driver_->options();
   const PropertyCache::Cohort* cohort = manager_->page_property_cache()->
       GetCohort(RewriteDriver::kDomCohort);
   PropertyPage* page =
@@ -324,6 +331,20 @@ void FlushEarlyFlow::FlushEarly() {
       StringToInt(num_rewritten_resources_property_value->value().data(),
                   &num_rewritten_resources_);
     }
+    PropertyValue* status_code_property_value = page->GetProperty(
+        cohort, RewriteDriver::kStatusCodePropertyName);
+
+    // We do not trigger flush early flow if the status code of the response is
+    // not constant for property_cache_http_status_stability_threshold previous
+    // requests.
+    bool status_code_property_value_recently_constant =
+        !status_code_property_value->has_value() ||
+        status_code_property_value->IsRecentlyConstant(
+            options->property_cache_http_status_stability_threshold());
+    if (!status_code_property_value_recently_constant) {
+      num_flush_early_http_status_code_deemed_unstable_->IncBy(1);
+    }
+
     PropertyValue* property_value = page->GetProperty(
         cohort, RewriteDriver::kSubresourcesPropertyName);
     if (property_value != NULL && property_value->has_value()) {
@@ -335,9 +356,9 @@ void FlushEarlyFlow::FlushEarly() {
           flush_early_info.has_resource_html() &&
           !flush_early_info.resource_html().empty() &&
           flush_early_info.response_headers().status_code() ==
-          HttpStatus::kOK) {
+          HttpStatus::kOK && status_code_property_value_recently_constant) {
         // If the flush early info has non-empty resource html, we flush early.
-        DCHECK(driver_->options()->enable_flush_subresources_experimental());
+        DCHECK(options->enable_flush_subresources_experimental());
 
         // Check whether to flush lazyload and js_defer script snippets early.
         PropertyValue* lazyload_property_value = page->GetProperty(
@@ -345,7 +366,7 @@ void FlushEarlyFlow::FlushEarly() {
             LazyloadImagesFilter::kIsLazyloadScriptInsertedPropertyName);
         if (lazyload_property_value->has_value() &&
             StringCaseEqual(lazyload_property_value->value(), "1") &&
-            driver_->options()->Enabled(RewriteOptions::kLazyloadImages) &&
+            options->Enabled(RewriteOptions::kLazyloadImages) &&
             LazyloadImagesFilter::ShouldApply(driver_)) {
           driver_->set_is_lazyload_script_flushed(true);
           should_flush_early_lazyload_script_ = true;
@@ -355,10 +376,10 @@ void FlushEarlyFlow::FlushEarly() {
         PropertyValue* defer_js_property_value = page->GetProperty(
             cohort,
             JsDeferDisabledFilter::kIsJsDeferScriptInsertedPropertyName);
-        if (!driver_->options()->Enabled(RewriteOptions::kSplitHtml) &&
+        if (!options->Enabled(RewriteOptions::kSplitHtml) &&
             defer_js_property_value->has_value() &&
             StringCaseEqual(defer_js_property_value->value(), "1") &&
-            driver_->options()->Enabled(RewriteOptions::kDeferJavascript) &&
+            options->Enabled(RewriteOptions::kDeferJavascript) &&
             JsDeferDisabledFilter::ShouldApply(driver_)) {
           driver_->set_is_defer_javascript_script_flushed(true);
           should_flush_early_js_defer_script_ = true;
@@ -422,7 +443,8 @@ void FlushEarlyFlow::FlushEarly() {
             MakeFunction(this, &FlushEarlyFlow::FlushEarlyRewriteDone, now_ms,
                          new_driver));
         return;
-      } else {
+      } else if (!options->enable_flush_subresources_experimental()) {
+        // TODO(mmohabey): Remove non experimental flow.
         GenerateDummyHeadAndCountResources(flush_early_info);
         if (flush_early_info.response_headers().status_code() ==
             HttpStatus::kOK && num_resources_flushed_ > 0) {

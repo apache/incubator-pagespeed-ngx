@@ -85,6 +85,8 @@ class JavascriptFilterTest : public RewriteTestBase {
         JavascriptRewriteConfig::kTotalOriginalBytes);
     num_uses_ = statistics()->GetVariable(
         JavascriptRewriteConfig::kMinifyUses);
+    did_not_shrink_ = statistics()->GetVariable(
+        JavascriptRewriteConfig::kJSDidNotShrink);
   }
 
   void InitFilters() {
@@ -94,8 +96,8 @@ class JavascriptFilterTest : public RewriteTestBase {
   }
 
   void InitTest(int64 ttl) {
-    SetResponseWithDefaultHeaders(kOrigJsName, kContentTypeJavascript,
-                                  kJsData, ttl);
+    SetResponseWithDefaultHeaders(
+        kOrigJsName, kContentTypeJavascript, kJsData, ttl);
   }
 
   void InitFiltersAndTest(int64 ttl) {
@@ -151,6 +153,7 @@ class JavascriptFilterTest : public RewriteTestBase {
   Variable* blocks_minified_;
   Variable* libraries_identified_;
   Variable* minification_failures_;
+  Variable* did_not_shrink_;
   Variable* total_bytes_saved_;
   Variable* total_original_bytes_;
   Variable* num_uses_;
@@ -447,6 +450,21 @@ TEST_F(JavascriptFilterTest, InlineJavascript) {
   EXPECT_EQ(1, num_uses_->Get());
 }
 
+TEST_F(JavascriptFilterTest, NoMinificationInlineJS) {
+  // Test no minification of a simple inline script.
+  InitFiltersAndTest(100);
+  const char kSmallJS[] = "alert('hello');";
+  ValidateExpected("inline javascript",
+                   StringPrintf(kInlineJs, kSmallJS),
+                   StringPrintf(kInlineJs, kSmallJS));
+
+  // There was no minification error, so 1 here.
+  EXPECT_EQ(1, blocks_minified_->Get());
+  EXPECT_EQ(1, did_not_shrink_->Get());
+  // No failures though.
+  EXPECT_EQ(0, minification_failures_->Get());
+}
+
 TEST_F(JavascriptFilterTest, StripInlineWhitespace) {
   // Make sure we strip inline whitespace when minifying external scripts.
   InitFiltersAndTest(100);
@@ -574,6 +592,7 @@ TEST_F(JavascriptFilterTest, MinificationFailure) {
   EXPECT_EQ(0, blocks_minified_->Get());
   EXPECT_EQ(1, minification_failures_->Get());
   EXPECT_EQ(0, num_uses_->Get());
+  EXPECT_EQ(1, did_not_shrink_->Get());
 }
 
 TEST_F(JavascriptFilterTest, ReuseRewrite) {

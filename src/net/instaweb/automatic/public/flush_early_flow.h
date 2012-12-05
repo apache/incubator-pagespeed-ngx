@@ -47,6 +47,7 @@ class FlushEarlyFlow {
   static const char kNumRequestsFlushedEarly[];
   static const char kNumResourcesFlushedEarly[];
   static const char kFlushEarlyRewriteLatencyMs[];
+  static const char kNumFlushEarlyHttpStatusCodeDeemedUnstable[];
 
   static void Start(
       const GoogleString& url,
@@ -120,6 +121,7 @@ class FlushEarlyFlow {
 
   TimedVariable* num_requests_flushed_early_;
   TimedVariable* num_resources_flushed_early_;
+  TimedVariable* num_flush_early_http_status_code_deemed_unstable_;
   Histogram* flush_early_rewrite_latency_ms_;
 
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyFlow);

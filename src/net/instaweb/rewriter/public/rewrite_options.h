@@ -532,6 +532,8 @@ class RewriteOptions {
 
   static const char kRejectedRequestUrlKeyName[];
 
+  static const int kDefaultPropertyCacheHttpStatusStabilityThreshold;
+
   // This class is a separate subset of options for running a furious
   // experiment.
   // These options can be specified by a spec string that looks like:
@@ -1623,6 +1625,12 @@ class RewriteOptions {
   const GoogleString& pre_connect_url() const {
     return pre_connect_url_.value();
   }
+  void set_property_cache_http_status_stability_threshold(int x) {
+    set_option(x, &property_cache_http_status_stability_threshold_);
+  }
+  int property_cache_http_status_stability_threshold() const {
+    return property_cache_http_status_stability_threshold_.value();
+  }
 
   void set_enable_aggressive_rewriters_for_mobile(bool x) {
     set_option(x, &enable_aggressive_rewriters_for_mobile_);
@@ -2663,6 +2671,9 @@ class RewriteOptions {
 
   // Url to which pre connect requests will be sent.
   Option<GoogleString> pre_connect_url_;
+  // The number of requests for which the status code should remain same so that
+  // we consider it to be stable.
+  Option<int> property_cache_http_status_stability_threshold_;
 
   // The cache TTL with which to override the urls matching the
   // override_caching_ WildCardGroup. Note that we do not override the cache TTL

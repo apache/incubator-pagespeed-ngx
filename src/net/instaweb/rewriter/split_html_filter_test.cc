@@ -19,27 +19,22 @@
 #include "net/instaweb/rewriter/public/split_html_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
-#include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
-#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
-
-class AbstractMutex;
 
 namespace {
 
@@ -97,17 +92,25 @@ const char kSplitHtmlMiddle[] =
     "</h1>"
     "</body></html>";
 
-const char kSplitHtmlSuffix[] =
-    "<script src=\"/psajs/blink.js\" type=\"text/javascript\"></script>"
-    "<script type=\"text/javascript\">pagespeed.deferInit();</script>"
-    "<script>pagespeed.panelLoaderInit();</script>"
-    "<script>pagespeed.panelLoader.invokedFromSplit();</script>"
-    "<script>pagespeed.panelLoader.loadCriticalData({});</script>"
-    "<script>pagespeed.panelLoader.bufferNonCriticalData({"
-       "\"panel-id.0\":[{\"instance_html\":\"__psa_lt;div id=\\\"inspiration\\\" panel-id=\\\"panel-id.0\\\"__psa_gt;__psa_lt;img src=\\\"image11\\\"__psa_gt;__psa_lt;/div__psa_gt;__psa_lt;h3 id=\\\"afterInspirations\\\" panel-id=\\\"panel-id.0\\\"__psa_gt; This is after Inspirations __psa_lt;/h3__psa_gt;\"}],"
-       "\"panel-id.1\":[{\"instance_html\":\"__psa_lt;img id=\\\"image\\\" src=\\\"image_panel.1\\\" panel-id=\\\"panel-id.1\\\"__psa_gt;\"}]});"
-    "</script>\n"
-    "</body></html>\n";
+const char kSplitHtmlMiddleWithoutPanelStubs[] =
+    "</head>\n"
+    "<body>\n"
+    "<div id=\"header\"> This is the header </div>"
+    "<div id=\"container\" class>"
+      "<h2 id=\"beforeItems\"> This is before Items </h2>"
+      "<div id=\"item\">"
+         "<img src=\"image1\" pagespeed_high_res_src=\"image1_high_res\""
+           " onload=\"pagespeed.splitOnload();func\">"
+         "<img src=\"image2\" pagespeed_high_res_src=\"image2_high_res\">"
+      "</div>"
+      "<span id=\"between\"> This is in between </span>"
+      "<div id=\"inspiration\">"
+         "<img src=\"image11\">"
+      "</div>";
+
+const char kSplitHtmlBelowTheFoldData[] =
+       "{\"panel-id.0\":[{\"instance_html\":\"__psa_lt;div id=\\\"inspiration\\\" panel-id=\\\"panel-id.0\\\"__psa_gt;__psa_lt;img src=\\\"image11\\\"__psa_gt;__psa_lt;/div__psa_gt;__psa_lt;h3 id=\\\"afterInspirations\\\" panel-id=\\\"panel-id.0\\\"__psa_gt; This is after Inspirations __psa_lt;/h3__psa_gt;\"}],"
+       "\"panel-id.1\":[{\"instance_html\":\"__psa_lt;img id=\\\"image\\\" src=\\\"image_panel.1\\\" panel-id=\\\"panel-id.1\\\"__psa_gt;\"}]}";
 
 const char kHtmlInputForLazyload[] = "<html><head></head><body></body></html>";
 
@@ -118,6 +121,8 @@ class SplitHtmlFilterTest : public RewriteTestBase {
   virtual bool AddHtmlTags() const { return false; }
 
  protected:
+  static const char blink_js_url_[];
+
   virtual void SetUp() {
     delete options_;
     options_ = new RewriteOptions();
@@ -127,6 +132,9 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     rewrite_driver()->set_request_headers(&request_headers_);
     rewrite_driver()->set_user_agent("");
     rewrite_driver()->SetWriter(&writer_);
+    logging_info_.reset(new LoggingInfo);
+    log_record_.reset(new LogRecord(logging_info_.get()));
+    rewrite_driver()->set_log_record(log_record_.get());
     SplitHtmlFilter* filter = new SplitHtmlFilter(rewrite_driver());
     html_writer_filter_.reset(filter);
     html_writer_filter_->set_writer(&writer_);
@@ -138,6 +146,10 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     output_.clear();
   }
 
+  void VerifyAppliedRewriters(GoogleString expected_rewriters) {
+    EXPECT_STREQ(expected_rewriters, logging_info_->applied_rewriters());
+  }
+
   GoogleString output_;
 
  private:
@@ -145,7 +157,12 @@ class SplitHtmlFilterTest : public RewriteTestBase {
   RequestHeaders request_headers_;
   ResponseHeaders response_headers_;
   SplitHtmlFilter* split_html_filter_;
+  scoped_ptr<LoggingInfo> logging_info_;
+  scoped_ptr<LogRecord> log_record_;
 };
+
+// TODO(bharathbhushan): Get this from the js manager.
+const char SplitHtmlFilterTest::blink_js_url_[] = "/psajs/blink.js";
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithDriverHavingCriticalLineInfo) {
   CriticalLineInfo* config = new CriticalLineInfo;
@@ -157,11 +174,14 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithDriverHavingCriticalLineInfo) {
   rewrite_driver()->set_critical_line_info(config);
 
   Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                                   1, blink_js_url_,
+                                   kSplitHtmlBelowTheFoldData));
   EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kPagespeedFunc,
                    SplitHtmlFilter::kSplitInit, kSplitHtmlMiddle,
-                   "<script type=\"text/javascript\">"
-                   "pagespeed.num_low_res_images_inlined=1;</script>",
-                   kSplitHtmlSuffix), output_);
+                   suffix), output_);
+  VerifyAppliedRewriters(
+      RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithOptions) {
@@ -169,11 +189,14 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithOptions) {
       "div[@id = \"container\"]/div[4],"
       "img[3]:h1[@id = \"footer\"]");
   Parse("split_with_options", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                                   1, blink_js_url_,
+                                   kSplitHtmlBelowTheFoldData));
   EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kPagespeedFunc,
                    SplitHtmlFilter::kSplitInit, kSplitHtmlMiddle,
-                   "<script type=\"text/javascript\">"
-                   "pagespeed.num_low_res_images_inlined=1;</script>",
-                   kSplitHtmlSuffix), output_);
+                   suffix), output_);
+  VerifyAppliedRewriters(
+      RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushes) {
@@ -185,11 +208,14 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushes) {
   html_parse()->Flush();
   html_parse()->ParseText(kHtmlInputPart2);
   html_parse()->FinishParse();
+  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                                   1, blink_js_url_,
+                                   kSplitHtmlBelowTheFoldData));
   EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kPagespeedFunc,
                      SplitHtmlFilter::kSplitInit, kSplitHtmlMiddle,
-                     "<script type=\"text/javascript\">"
-                     "pagespeed.num_low_res_images_inlined=1;</script>",
-                     kSplitHtmlSuffix), output_);
+                     suffix), output_);
+  VerifyAppliedRewriters(
+      RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
 }
 
 TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
@@ -206,25 +232,19 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
         "<script src=\"b.js\"></script>"
       "</head>"
       "<body></body></html>";
+  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                                   0, blink_js_url_, "{}"));
   GoogleString post_head_output = StrCat(
       "<head>"
       "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
       "<script src=\"b.js\"></script>",
       SplitHtmlFilter::kPagespeedFunc, SplitHtmlFilter::kSplitInit,
-      "</head><body></body></html>"
-      "<script type=\"text/javascript\">"
-      "pagespeed.num_low_res_images_inlined=0;</script>"
-      "<script src=\"/psajs/blink.js\" type=\"text/javascript\"></script>"
-      "<script type=\"text/javascript\">pagespeed.deferInit();</script>"
-      "<script>pagespeed.panelLoaderInit();</script>"
-      "<script>pagespeed.panelLoader.invokedFromSplit();</script>"
-      "<script>pagespeed.panelLoader.loadCriticalData({});</script>"
-      "<script>pagespeed.panelLoader.bufferNonCriticalData({});"
-      "</script>\n</body></html>\n");
+      "</head><body></body></html>", suffix);
   GoogleString html_input = StrCat(pre_head_input, post_head_input);
 
   Parse("not_flushed_early", html_input);
   EXPECT_EQ(StrCat(pre_head_input, post_head_output), output_);
+  VerifyAppliedRewriters("");
 
   // SuppressPreheadFilter should have populated the flush_early_proto with the
   // appropriate pre head information.
@@ -236,6 +256,7 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
   rewrite_driver()->set_flushed_early(true);
   Parse("flushed_early", html_input);
   EXPECT_EQ(post_head_output, output_);
+  VerifyAppliedRewriters("");
 }
 
 TEST_F(SplitHtmlFilterTest, FlushEarlyDisabled) {
@@ -256,20 +277,34 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyDisabled) {
 
   // SuppressPreheadFilter should not have populated the flush_early_proto.
   EXPECT_EQ("", rewrite_driver()->flush_early_info()->pre_head());
+  VerifyAppliedRewriters("");
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpaths) {
+  CriticalLineInfo* info = new CriticalLineInfo;
+  rewrite_driver()->set_critical_line_info(info);
+  options_->set_critical_line_config("");
+  Parse("split_without_xpaths", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString expected_output(kSplitHtmlPrefix);
+  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                                   1, blink_js_url_, "{}"));
+  StrAppend(&expected_output, SplitHtmlFilter::kPagespeedFunc,
+            SplitHtmlFilter::kSplitInit,
+            kSplitHtmlMiddleWithoutPanelStubs,
+            kHtmlInputPart2, suffix);
+  EXPECT_EQ(expected_output, output_);
+  VerifyAppliedRewriters("");
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsWithLazyload) {
   options_->ForceEnableFilter(RewriteOptions::kLazyloadImages);
   rewrite_driver_->set_is_lazyload_script_flushed(true);
-  StaticJavascriptManager* js_manager =
-      rewrite_driver_->server_context()->static_javascript_manager();
   Parse("split_with_lazyload", kHtmlInputForLazyload);
-  EXPECT_EQ(StrCat("<html><head></head><body></body></html>"
-                   "<script type=\"text/javascript\" src=\"",
-                   js_manager->GetDeferJsUrl(options_),
-                   "\"></script><script type=\"text/javascript\">",
-                   JsDeferDisabledFilter::kSuffix,
-                   "</script>"), output_);
+  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                                   0, blink_js_url_, "{}"));
+  EXPECT_EQ(StrCat("<html><head>", SplitHtmlFilter::kSplitInit,
+                   "</head><body></body></html>", suffix), output_);
+  VerifyAppliedRewriters("");
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithLazyLoad) {
@@ -280,22 +315,12 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithLazyLoad) {
       "//div[@id = \"container\"]/div[4],"
       "//img[3]://h1[@id = \"footer\"]");
   Parse("split_with_lazyload", kHtmlInputForLazyload);
-  EXPECT_EQ(
-      StrCat("<html><head>"
-          "<script type=\"text/javascript\">", lazyload_js, "</script>",
-          SplitHtmlFilter::kSplitInit,
-          "</head><body></body></html>",
-          "<script type=\"text/javascript\">"
-          "pagespeed.num_low_res_images_inlined=0;</script>"
-          "<script src=\"/psajs/blink.js\" type=\"text/javascript\">"
-          "</script>"
-          "<script type=\"text/javascript\">pagespeed.deferInit();</script>"
-          "<script>pagespeed.panelLoaderInit();</script>"
-          "<script>pagespeed.panelLoader.invokedFromSplit();</script>"
-          "<script>pagespeed.panelLoader.loadCriticalData({});</script>"
-          "<script>pagespeed.panelLoader.bufferNonCriticalData({});"
-          "</script>\n"
-          "</body></html>\n"), output_);
+  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                                   0, blink_js_url_, "{}"));
+  EXPECT_EQ(StrCat("<html><head>", "<script type=\"text/javascript\">",
+                   lazyload_js, "</script>", SplitHtmlFilter::kSplitInit,
+                   "</head><body></body></html>", suffix), output_);
+  VerifyAppliedRewriters("");
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithScriptsFlushedEarly) {
@@ -306,20 +331,11 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithScriptsFlushedEarly) {
       "//div[@id = \"container\"]/div[4],"
       "//img[3]://h1[@id = \"footer\"]");
   Parse("split_with_scripts_flushed_early", kHtmlInputForLazyload);
-  EXPECT_EQ(
-      StrCat("<html><head>",
-          SplitHtmlFilter::kSplitInit,
-          "</head><body></body></html>",
-          "<script type=\"text/javascript\">"
-          "pagespeed.num_low_res_images_inlined=0;</script>"
-          "<script src=\"/psajs/blink.js\" type=\"text/javascript\"></script>"
-          "<script type=\"text/javascript\">pagespeed.deferInit();</script>"
-          "<script>pagespeed.panelLoaderInit();</script>"
-          "<script>pagespeed.panelLoader.invokedFromSplit();</script>"
-          "<script>pagespeed.panelLoader.loadCriticalData({});</script>"
-          "<script>pagespeed.panelLoader.bufferNonCriticalData({});"
-          "</script>\n"
-          "</body></html>\n"), output_);
+  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                                   0, blink_js_url_, "{}"));
+  EXPECT_EQ(StrCat("<html><head>", SplitHtmlFilter::kSplitInit,
+                   "</head><body></body></html>", suffix), output_);
+  VerifyAppliedRewriters("");
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithUnsupportedUserAgent) {
@@ -329,6 +345,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithUnsupportedUserAgent) {
   rewrite_driver()->set_user_agent("BlackListUserAgent");
   Parse("split_with_options", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   EXPECT_EQ(StrCat(kHtmlInputPart1, kHtmlInputPart2), output_);
+  VerifyAppliedRewriters("");
 }
 
 }  // namespace

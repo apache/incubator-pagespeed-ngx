@@ -192,6 +192,12 @@ DEFINE_int64(implicit_cache_ttl_ms,
              "that are likely cacheable (e.g. images, js, css, not html) and "
              "have no explicit cache ttl or expiration date.");
 
+DEFINE_int32(property_cache_http_status_stability_threshold,
+             net_instaweb::RewriteOptions::
+             kDefaultPropertyCacheHttpStatusStabilityThreshold,
+             "The number of requests for which the status code should remain "
+             "same so that we consider it to be stable.");
+
 DEFINE_bool(enable_defer_js_experimental, false,
             "Enables experimental defer js.");
 
@@ -555,6 +561,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_aggressive_rewriters_for_mobile")) {
     options->set_enable_aggressive_rewriters_for_mobile(
         FLAGS_enable_aggressive_rewriters_for_mobile);
+  }
+  if (WasExplicitlySet("property_cache_http_status_stability_threshold")) {
+    options->set_property_cache_http_status_stability_threshold(
+        FLAGS_property_cache_http_status_stability_threshold);
   }
 
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been

@@ -166,6 +166,8 @@ const int RewriteOptions::kDefaultRewriteDeadlineMs = 20;
 #endif
 const int kValgrindWaitForRewriteMs = 1000;
 
+const int RewriteOptions::kDefaultPropertyCacheHttpStatusStabilityThreshold = 5;
+
 const char RewriteOptions::kDefaultBeaconUrl[] = "/mod_pagespeed_beacon?ets=";
 
 const int RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex = 5;
@@ -805,6 +807,9 @@ void RewriteOptions::AddProperties() {
   add_option(false, &RewriteOptions::enable_lazyload_in_blink_, "elib",
              kEnableLazyloadInBlink);
   add_option("", &RewriteOptions::pre_connect_url_, "pcu");
+  add_option(kDefaultPropertyCacheHttpStatusStabilityThreshold,
+             &RewriteOptions::property_cache_http_status_stability_threshold_,
+             "pchsst");
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &RewriteOptions::metadata_cache_staleness_threshold_ms_, "mcst");
   add_option(kDefaultMetadataInputErrorsCacheTtlMs,

@@ -333,6 +333,8 @@ void JavascriptFilter::RewriteInlineScript() {
       }
       config_->num_uses()->Add(1);
       LogFilterModifiedContent();
+    } else {
+      config_->did_not_shrink()->Add(1);
     }
   }
 }
@@ -340,7 +342,7 @@ void JavascriptFilter::RewriteInlineScript() {
 // External script; minify and replace with rewritten version (also external).
 void JavascriptFilter::RewriteExternalScript() {
   const StringPiece script_url(script_src_->DecodedValueOrNull());
-  ResourcePtr resource = CreateInputResource(script_url);
+    ResourcePtr resource = CreateInputResource(script_url);
   if (resource.get() != NULL) {
     ResourceSlotPtr slot(
         driver_->GetSlot(resource, script_in_progress_, script_src_));

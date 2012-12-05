@@ -61,6 +61,7 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   static const char kDeferJsSnippet[];
   static const char kSplitInit[];
   static const char kPagespeedFunc[];
+  static const char kSplitSuffixJsFormatString[];
 
   explicit SplitHtmlFilter(RewriteDriver* rewrite_driver);
   virtual ~SplitHtmlFilter();
