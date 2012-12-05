@@ -66,7 +66,7 @@ STAGING_DIR = /tmp/mod_pagespeed.install
 
 # The mod_pagespeed module is specified relative to the install directory,
 # which is src/install.
-MOD_PAGESPEED_ROOT = $(shell dirname $PWD)
+MOD_PAGESPEED_ROOT = $(shell dirname `pwd`)
 PAGESPEED_MODULE = $(MOD_PAGESPEED_ROOT)/out/Release/libmod_pagespeed.so
 PAGESPEED_MODULE_24 = $(MOD_PAGESPEED_ROOT)/out/Release/libmod_pagespeed_ap24.so
 PAGESPEED_JS_MINIFY = $(MOD_PAGESPEED_ROOT)/out/Release/js_minify
