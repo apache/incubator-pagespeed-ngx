@@ -248,6 +248,35 @@ TEST_F(UserAgentMatcherTest, DoesntSupportWebp) {
       UserAgentStrings::kIPhoneChrome21UserAgent));
 }
 
+TEST_F(UserAgentMatcherTest, IsAndroidUserAgentTest) {
+  EXPECT_TRUE(user_agent_matcher_.IsAndroidUserAgent(
+      UserAgentStrings::kAndroidHCUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.IsAndroidUserAgent(
+      UserAgentStrings::kIe6UserAgent));
+}
+
+TEST_F(UserAgentMatcherTest, ChromeBuildNumberTest) {
+  int major = -1;
+  int minor = -1;
+  int build = -1;
+  int patch = -1;
+  EXPECT_TRUE(user_agent_matcher_.GetChromeBuildNumber(
+      UserAgentStrings::kChrome9UserAgent, &major, &minor, &build, &patch));
+  EXPECT_EQ(major, 9);
+  EXPECT_EQ(minor, 0);
+  EXPECT_EQ(build, 597);
+  EXPECT_EQ(patch, 19);
+
+  EXPECT_FALSE(user_agent_matcher_.GetChromeBuildNumber(
+      UserAgentStrings::kAndroidHCUserAgent, &major, &minor, &build, &patch));
+  EXPECT_FALSE(user_agent_matcher_.GetChromeBuildNumber(
+      UserAgentStrings::kChromeUserAgent, &major, &minor, &build, &patch));
+  EXPECT_FALSE(user_agent_matcher_.GetChromeBuildNumber(
+      "Chrome/10.0", &major, &minor, &build, &patch));
+  EXPECT_FALSE(user_agent_matcher_.GetChromeBuildNumber(
+      "Chrome/10.0.1.", &major, &minor, &build, &patch));
+}
+
 TEST_F(UserAgentMatcherTest, SupportsDnsPrefetch) {
   EXPECT_TRUE(user_agent_matcher_.SupportsDnsPrefetch(
       UserAgentStrings::kChromeUserAgent));

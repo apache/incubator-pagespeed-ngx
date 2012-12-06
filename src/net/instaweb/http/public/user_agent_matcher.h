@@ -16,6 +16,7 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_USER_AGENT_MATCHER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/fast_wildcard_group.h"
 
@@ -85,6 +86,13 @@ class UserAgentMatcher {
       const StringPiece& user_agent,
       const RequestHeaders* request_headers) const;
 
+  virtual bool IsAndroidUserAgent(const StringPiece& user_agent) const;
+
+  // Returns false if this is not a Chrome user agent, or parsing the
+  // string build number fails.
+  virtual bool GetChromeBuildNumber(const StringPiece& user_agent, int* major,
+                                    int* minor, int* build, int* patch) const;
+
   virtual bool SupportsSplitHtml(const StringPiece& user_agent,
                                  bool allow_mobile) const;
 
@@ -99,6 +107,8 @@ class UserAgentMatcher {
   FastWildcardGroup supports_prefetch_image_tag_;
   FastWildcardGroup supports_prefetch_link_script_tag_;
   FastWildcardGroup supports_dns_prefetch_;
+
+  const RE2 chrome_version_pattern_;
 
   DISALLOW_COPY_AND_ASSIGN(UserAgentMatcher);
 };

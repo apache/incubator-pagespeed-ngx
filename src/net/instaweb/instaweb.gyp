@@ -570,6 +570,7 @@
         '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
         '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
+        '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
       'sources': [
         # TODO(sligocki): Move http/ files to instaweb_http.

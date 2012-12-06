@@ -167,9 +167,11 @@ const char* kSupportsPrefetchLinkScriptTag[] = {
   "prefetch_link_script_tag",
 };
 
+const char* kChromeVersionPattern = "Chrome/(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)";
 }  // namespace
 
-UserAgentMatcher::UserAgentMatcher() {
+UserAgentMatcher::UserAgentMatcher()
+    : chrome_version_pattern_(kChromeVersionPattern) {
   // Initialize FastWildcardGroup for image inlining whitelist & blacklist.
   for (int i = 0, n = arraysize(kImageInliningWhitelist); i < n; ++i) {
     supports_image_inlining_.Allow(kImageInliningWhitelist[i]);
@@ -304,6 +306,17 @@ bool UserAgentMatcher::IsMobileRequest(
     const StringPiece& user_agent,
     const RequestHeaders* request_headers) const {
   return IsMobileUserAgent(user_agent);
+}
+
+bool UserAgentMatcher::IsAndroidUserAgent(const StringPiece& user_agent) const {
+  return user_agent.find("Android") != GoogleString::npos;
+}
+
+bool UserAgentMatcher::GetChromeBuildNumber(const StringPiece& user_agent,
+                                            int* major, int* minor, int* build,
+                                            int* patch) const {
+  return RE2::PartialMatch(StringPieceToRe2(user_agent),
+                           chrome_version_pattern_, major, minor, build, patch);
 }
 
 bool UserAgentMatcher::SupportsDnsPrefetchUsingRelPrefetch(
