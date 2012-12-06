@@ -105,8 +105,7 @@ if [ $ngx_found = yes ]; then
              $pagespeed_libs
              $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/serf/libserf.a
              $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/aprutil/libaprutil.a
-             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/apr/libapr.a
-             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/domain_registry_provider/src/domain_registry/libassert_lib.a"
+             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/apr/libapr.a"
   CORE_INCS="$CORE_INCS $pagespeed_include"
 else
   cat << END
