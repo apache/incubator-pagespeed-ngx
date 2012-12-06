@@ -65,6 +65,12 @@ void NgxRewriteOptions::AddProperties() {
   add_ngx_option(1024,  // 1MB
                  &NgxRewriteOptions::lru_cache_kb_per_process_, "nlcp",
                  RewriteOptions::kLruCacheKbPerProcess);
+  add_ngx_option("", &NgxRewriteOptions::memcached_servers_, "ams",
+                 RewriteOptions::kMemcachedServers);
+  add_ngx_option(1, &NgxRewriteOptions::memcached_threads_, "amt",
+                 RewriteOptions::kMemcachedThreads);
+  add_ngx_option(false, &NgxRewriteOptions::use_shared_mem_locking_, "ausml",
+                 RewriteOptions::kUseSharedMemLocking);
 
   MergeSubclassProperties(ngx_properties_);
   NgxRewriteOptions config;
@@ -279,7 +285,7 @@ NgxRewriteOptions::ParseAndSetOptions(
         StrAppend(&full_directive, i == 0 ? "" : " ", args[i]);
       }
       StrAppend(&full_directive, "\": ", msg);
-      char* s = ngx_http_string_piece_to_pool_string(pool, full_directive);
+      char* s = ngx_psol::string_piece_to_pool_string(pool, full_directive);
       if (s == NULL) {
         return "failed to allocate memory";
       }

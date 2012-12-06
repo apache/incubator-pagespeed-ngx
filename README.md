@@ -3,10 +3,10 @@
 This is the [nginx](http://nginx.org/) port of
 [mod_pagespeed](https://developers.google.com/speed/pagespeed/mod).
 
-**ngx_pagespeed is a work in progress**, and is not yet functional ([current
-status](https://github.com/pagespeed/ngx_pagespeed/wiki/Status)). If you are
-interested in test-driving the module, or contributing to the project, please
-follow the instructions below. For feedback, questions, and to follow the
+**ngx_pagespeed is a work in progress**, and is not yet ready for production use
+([current status](https://github.com/pagespeed/ngx_pagespeed/wiki/Status)). If
+you are interested in test-driving the module, or contributing to the project,
+please follow the instructions below. For feedback, questions, and to follow the
 progress of the project:
 
 - [ngx-pagespeed-discuss Google Group](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss)
@@ -80,8 +80,8 @@ being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 
 ### Testing
 
-The generic Pagespeed system test is ported, but doesn't pass yet.  To run it
-you need to first build and configure nginx.  Set it up something like:
+The generic Pagespeed system test is ported, and all but three tests pass.  To
+run it you need to first build and configure nginx.  Set it up something like:
 
     ...
     http {
@@ -96,7 +96,6 @@ you need to first build and configure nginx.  Set it up something like:
       # For testing that the Library command works.
       pagespeed Library 43 1o978_K0_L
                 http://www.modpagespeed.com/rewrite_javascript.js;
-
 
       # These gzip options are needed for tests that assume that pagespeed
       # always enables gzip.  Which it does in apache, but not in nginx.
@@ -161,9 +160,38 @@ This should print out a lot of lines like:
 
 and then eventually:
 
+    Failing Tests:
+      compression is enabled for rewritten JS.
+      regression test with same filtered input twice in combination
+      convert_meta_tags
     FAIL.
 
-along with a failing test because ngx_pagespeed is not yet complete.
+Each of these failed tests is a known issue:
+ - [compression is enabled for rewritten JS.](
+    https://github.com/pagespeed/ngx_pagespeed/issues/70)
+   - If you're running a version of nginx without etag support (pre-1.3.3) you
+     won't see this issue, which is fine.
+ - [regression test with same filtered input twice in combination](
+    https://github.com/pagespeed/ngx_pagespeed/issues/55)
+ - [convert_meta_tags](https://github.com/pagespeed/ngx_pagespeed/issues/56)
+
+If it fails with some other error, that's a problem, and it would be helpful for
+you to [submit a bug](https://github.com/pagespeed/ngx_pagespeed/issues/new).
+
+#### Testing with memcached
+
+Start an memcached server:
+
+    memcached -p 11213
+
+To the configuration above add to the main or server block:
+
+    pagespeed MemcachedServers "localhost:11213";
+    pagespeed MemcachedThreads 1;
+
+Then run the system test:
+
+    /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
 
 ## Configuration
 
