@@ -399,9 +399,21 @@ TEST_F(AprMemCacheTest, HealthCheck) {
 // Tests that a very low timeout out value causes a simple Get to fail.
 // Warning: if this turns out to be flaky then just delete it; it will
 // have served its purpose.
+//
+// Update 12/9/12: this test is flaky on slow machines.  This test should
+// only be run interactively to check on timeout behavior.  To run it,
+// set environemnt variable (APR_MEMCACHE_TIMEOUT_TEST).
 TEST_F(AprMemCacheTest, OneMicrosecond) {
-  ASSERT_TRUE(ConnectToMemcached(true))
-      << "Please start memcached on " << server_spec_;
+  if (getenv("APR_MEMCACHE_TIMEOUT_TEST") == NULL) {
+    LOG(WARNING)
+        << "Skipping flaky test AprMemCacheTest.OneMicrosecond, set "
+        << "$APR_MEMCACHE_TIMEOUT_TEST to run it";
+    return;
+  }
+
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
 
   // With the default timeout, do a Put, which will work.
   CheckPut("Name", "Value");
