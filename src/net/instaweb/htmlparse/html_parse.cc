@@ -98,6 +98,7 @@ void HtmlParse::CheckParentFromAddEvent(HtmlEvent* event) {
   if (node != NULL) {
     message_handler_->Check(lexer_->Parent() == node->parent(),
                             "lexer_->Parent() != node->parent()");
+    DCHECK_EQ(lexer_->Parent(), node->parent()) << url_;
   }
 }
 
@@ -1008,7 +1009,7 @@ void HtmlParse::InsertComment(const StringPiece& sp) {
       }
     }
   } else {
-    AddEvent(new HtmlCommentEvent(NewCommentNode(NULL, sp), 0));
+    AddEvent(new HtmlCommentEvent(NewCommentNode(lexer_->Parent(), sp), 0));
   }
 }
 

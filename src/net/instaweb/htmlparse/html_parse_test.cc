@@ -1531,6 +1531,26 @@ TEST_F(HtmlParseTestNoBody, InsertCommentFromEmpty) {
   EXPECT_EQ("<!--hello-->", output_buffer_);
 }
 
+TEST_F(HtmlParseTestNoBody, InsertCommentFromFlushInLargeCharactersBlock) {
+  SetupWriter();
+  html_parse_.StartParse("http://test.com/blank_flush.html");
+  html_parse_.ParseText("<style>bytes:");
+  html_parse_.Flush();
+  html_parse_.ParseText(":more:");
+  html_parse_.Flush();
+  html_parse_.ParseText(":still more:");
+  html_parse_.InsertComment("FLUSH");
+  html_parse_.Flush();
+  html_parse_.ParseText(":final bytes:</style>");
+  html_parse_.FinishParse();
+
+  // Note that the large comment block gets buffered by the Lexer and doesn't
+  // actually get Flushed until we finally see the </style>, so FLUSH comment
+  // gets inserted *before* all the bytes in the characters blocks.
+  EXPECT_EQ("<style><!--FLUSH-->bytes::more::still more::final bytes:</style>",
+            output_buffer_);
+}
+
 // Unit tests for attribute manipulation.
 // Goal is to make sure we don't (eg) read deallocated storage
 // while manipulating attribute values.
