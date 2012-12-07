@@ -227,6 +227,18 @@ class ParserTest : public testing::Test {
         break;
     }
   }
+
+  const char* SkipPast(char delim, StringPiece input_text) {
+    Parser p(input_text);
+    EXPECT_TRUE(p.SkipPastDelimiter(delim)) << input_text;
+    return p.in_;  // Note: This is a pointer into the buffer owned by caller.
+  }
+
+  void FailureSkipPast(char delim, StringPiece input_text) {
+    Parser p(input_text);
+    EXPECT_FALSE(p.SkipPastDelimiter(delim)) << input_text;
+    EXPECT_TRUE(p.Done());
+  }
 };
 
 
@@ -2049,4 +2061,40 @@ TEST_F(ParserTest, EOFOther) {
   TrapEOF("'foo'", PARSE_CHARSET);
 }
 
-}  // namespace
+// Check that SkipPastDelimiter() correctly respects matching delimiters.
+TEST_F(ParserTest, SkipPastDelimiter) {
+  EXPECT_STREQ("6789",    SkipPast('5', "123456789"));
+  EXPECT_STREQ(" 1, bar", SkipPast(',', "foo(a, b), 1, bar"));
+  EXPECT_STREQ(" bar }",  SkipPast('}', "foo: 'end brace: }'; } bar }"));
+  EXPECT_STREQ(" h1 { color: blue}\n",
+               SkipPast('}',
+                        "@three-dee {\n"
+                        "  @background-lighting {n"
+                        "    azimuth: 30deg;\n"
+                        "    elevation: 190deg;\n"
+                        "  }\n"
+                        "  h1 { color: red}\n"
+                        "}\n"
+                        "} h1 { color: blue}\n"));
+  // Make sure we match malformed strings correctly.
+  EXPECT_STREQ("\nfoo4: bar4\n",
+               SkipPast('}',
+                        "foo1: 'bar1}'\n"
+                        "foo2: 'bar2}\n"  // Notice missing closing '
+                        "foo3: bar3}\n"  // Actual closing }
+                        "foo4: bar4\n"));
+  // Make sure we match delimiters correct. Correct matching is specified
+  // by the letters in the comment below. Two symbols with the same letter
+  // above them should be matched. '-' mark closing delimiters that do not
+  // match any opening ones. '*' marks the actual matching '}'.
+  //                                 ABC--CB-D-E----EDA-*---
+  EXPECT_STREQ("\"}", SkipPast('}', "(([))])}{)'})\"'}))}\"}"));
+
+  FailureSkipPast('5', "abcdef");
+  // Make sure we fail when a string is closed by EOF.
+  FailureSkipPast('}', "'}");
+  // Pattern:           ABC--CB-D-E----EDA--F----
+  FailureSkipPast('}', "(([))])}{)'})\"'}))\"}'[]");
+}
+
+}  // namespace Css

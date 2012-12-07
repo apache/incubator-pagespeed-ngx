@@ -226,17 +226,12 @@ class Parser {
   void SkipComment();
 
   // Skips following characters until delimiter delim or end is seen, delim is
-  // consumed if found. Be smart enough not to stop at character delim in
-  // comments.  Returns whether delim is actually seen.
-  bool SkipPastDelimiter(char delim);
-
-  // Like SkipPastDelimiter, except it does not return after having skipped over
-  // unmatched parentheses ()[]{} and quoted strings.
+  // consumed if found. Smart enough to skip over matches inside comments,
+  // quoted strings or balanced parentheses ()[]{}.
   // For example, if in_ = "foo(a, b), 1, bar"
-  //   SkipPastDelimeter(',') will result in in_ = " b), 1, bar".
-  //   SkipPastDelimiterWithMatching(',') will result in in_ = " 1, bar".
+  //   SkipPastDelimiter(',') will result in in_ = " 1, bar".
   // Returns true if it found delim before end of file.
-  bool SkipPastDelimiterWithMatching(char delim);
+  bool SkipPastDelimiter(char delim);
 
   // Skip until next "any" token (value which can be parsed by ParseAny).
   //
@@ -547,7 +542,9 @@ class Parser {
   UnicodeText ParseCharset();
 
   // Skip until the end of the at-rule. Used for at-rules that we do not
-  // recognize.
+  // recognize. Return value is whether or not the at-rule was closed correctly.
+  // Returns true if at-rule is correctly closed (by ; or end of block),
+  // false if EOF was reached first.
   //
   // From http://www.w3.org/TR/CSS2/syndata.html#parsing-errors:
   //
@@ -556,11 +553,12 @@ class Parser {
   //   block that contains the invalid at-keyword, or up to and including the
   //   next semicolon (;), or up to and including the next block ({...}),
   //   whichever comes first.
-  void SkipToAtRuleEnd();
+  bool SkipToAtRuleEnd();
 
   // Starting at '{', SkipBlock consumes to the matching '}', respecting
-  // nested blocks.  We discard the result.
-  void SkipBlock();
+  // nested blocks.  We discard the result. Returns true if matching '}' was
+  // found, false if EOF was reached first.
+  bool SkipBlock();
 
   // Current position in document (bytes from beginning).
   int CurrentOffset() const { return in_ - begin_; }
@@ -909,6 +907,6 @@ class Stylesheet {
   DISALLOW_COPY_AND_ASSIGN(Stylesheet);
 };
 
-}  // namespace
+}  // namespace Css
 
 #endif  // WEBUTIL_CSS_PARSER_H__

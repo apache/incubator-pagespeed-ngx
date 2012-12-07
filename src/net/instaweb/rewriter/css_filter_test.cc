@@ -417,7 +417,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // Unexpected @-statements
     "@keyframes wiggle { 0% { transform: rotate(6deg); } }",
     "@font-face { font-family: 'Ubuntu'; font-style: normal }",
-    "@foobar {",
 
     // Things from Alexa-100 that we get parsing errors for. Most are illegal
     // syntax/typos. Some are CSS3 constructs.
@@ -456,9 +455,13 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{progid:DXImageTransform.Microsoft.AlphaImageLoader"
     "(src=/images/lb/internet_e) }",
     "a{progid:DXImageTransform.Microsoft.AlphaImageLoader"
-    "(src=\"/images/lb/internet_e)\" }",
+    "(src=\"/images/lb/internet_e\") }",
     "a{progid:DXImageTransform.Microsoft.AlphaImageLoader"
-    "(src='/images/lb/internet_e)' }",
+    "(src='/images/lb/internet_e') }",
+
+    // Mismatched {}s that are acceptable because they do not fail to close {s,
+    // but instead have stray }s that would not be parsed as closing previous {s
+    "a[}]{color:red}",
   };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
@@ -473,8 +476,30 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "@import url(styles.css), url(other.css); a { color: red; }",
     "@import \"styles.css\"...; a { color: red; }",
 
-    // Bad @-rule syntax.
+    // Should fail, mismatched {}s.
+    "{",
+    "}",
+    "}{",
+    "a { color: red; }}}",
+    // Mismatch in unparseable at-rule.
+    "@foobar {",
     "@foobar }",
+    // Unclosed at-rule that will break the first statement in the next CSS
+    // file if combined.
+    "@foobar ",
+    // Mismatch in unparseable selector.
+    "a[{] { color: red; }",
+    "a {",
+    "a }",
+    // Mismatch in unparseable declaration.
+    "a { *color{: red; }",
+    "a { *color}: red; }",
+    "a { filter: progid:DXImageTransform.Microsoft.AlphaImageLoader"
+    "(src=/images/{lb/internet_e); }",
+    // Missing end }s.
+    "a { color: red",
+    "a { color: red;\n .foo { margin: 10px; }",
+    "a { color: red;\n h1 { margin: 10px; }",
 
     // Things from Alexa-100 that we get parsing errors for. Most are illegal
     // syntax/typos. Some are CSS3 constructs.
@@ -483,13 +508,12 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // Typos
     // Note: These fail because of the if (Done()) return NULL call in
     // ParseRuleset
+    // Should fail (at least we should make sure CssCombineFilter does not
+    // combine them, since they do not contain full statements).
+    "a",
     "a { color: red }\n */",
     "a { color: red }\n // Comment",
     "a { color: red } .foo",
-
-    // Should fail (bad syntax):
-    "}}",
-    "a { color: red; }}}",
   };
 
   for (int i = 0; i < arraysize(fail_examples); ++i) {

@@ -1267,6 +1267,18 @@ TEST_F(CssCombineFilterTest, NoCombineParseErrors) {
                                         CssLinkHref("b.css")));
 }
 
+TEST_F(CssCombineFilterTest, NoCombineParseErrorsAtRule) {
+  // Notice: This CSS file does not close its { and thus will break the
+  // next stylesheet if they are combined, changing the page.
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
+                                "@foobar { color: red", 100);
+  SetResponseWithDefaultHeaders("b.css", kContentTypeCss,
+                                "h2 { color: blue; }", 100);
+
+  ValidateNoChanges("bad_parse", StrCat(CssLinkHref("a.css"),
+                                        CssLinkHref("b.css")));
+}
+
 // See: http://www.alistapart.com/articles/alternate/
 //  and http://www.w3.org/TR/html4/present/styles.html#h-14.3.1
 TEST_F(CssCombineFilterTest, AlternateStylesheets) {

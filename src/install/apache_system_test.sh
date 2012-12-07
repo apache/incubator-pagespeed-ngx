@@ -854,6 +854,7 @@ blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
   check_from "$CCONTROL" grep -w private
 fi
 
+WGET_ARGS=""
 start_test Send custom fetch headers on resource re-fetches.
 PLAIN_HEADER="header=value"
 X_OTHER_HEADER="x-other=False"

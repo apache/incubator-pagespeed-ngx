@@ -76,10 +76,9 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
 
   bool CleanParse(const StringPiece& contents) {
     Css::Parser parser(contents);
-    // Note: We do not turn on preservation_mode because that could pass through
-    // verbatim text that will break other CSS files combined with this one.
-    // TODO(sligocki): Be less conservative here and actually scan verbatim
-    // text for bad constructs (Ex: contains "{").
+    parser.set_preservation_mode(true);
+    // Among other issues, quirks-mode allows unbalanced {}s in some cases.
+    parser.set_quirks_mode(false);
     // TODO(sligocki): Do parsing on low-priority worker thread.
     scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
     return (parser.errors_seen_mask() == Css::Parser::kNoError);

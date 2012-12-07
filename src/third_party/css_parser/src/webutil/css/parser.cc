@@ -206,30 +206,18 @@ void Parser::SkipComment() {
 bool Parser::SkipPastDelimiter(char delim) {
   SkipSpace();
   while (in_ < end_ && *in_ != delim) {
-    ++in_;
-    SkipSpace();  // Skips comments too.
-  }
-
-  if (Done()) return false;
-  ++in_;
-  return true;
-}
-
-bool Parser::SkipPastDelimiterWithMatching(char delim) {
-  SkipSpace();
-  while (in_ < end_ && *in_ != delim) {
     switch (*in_) {
       case '(':
         ++in_;
-        SkipPastDelimiterWithMatching(')');
+        SkipPastDelimiter(')');
         break;
       case '[':
         ++in_;
-        SkipPastDelimiterWithMatching(']');
+        SkipPastDelimiter(']');
         break;
       case '{':
         ++in_;
-        SkipPastDelimiterWithMatching('}');
+        SkipPastDelimiter('}');
         break;
       case '\'':
         // Ignore results.
@@ -2072,11 +2060,11 @@ MediaQuery* Parser::ParseMediaQuery() {
             }
             const char* begin = in_;
             // TODO(sligocki): Actually parse value?
-            if (SkipPastDelimiterWithMatching(')')) {
+            if (SkipPastDelimiter(')')) {
               const char* end = in_ - 1;
               UnicodeText value;
-              // Note: If SkipPastDelimiterWithMatching() returns true, then
-              // it has always runs ++in_ at the end. So this is safe.
+              // Note: If SkipPastDelimiter() returns true, then
+              // it has always run ++in_ at the end. So this is safe.
               CHECK_LE(begin, end);
               value.CopyUTF8(begin, end - begin);
               query->add_expression(new MediaExpression(name, value));
@@ -2219,9 +2207,10 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
     string ident_string(ident.utf8_data(), ident.utf8_length());
     ReportParsingError(kAtRuleError, StringPrintf(
         "Cannot parse unknown @-statement: %s", ident_string.c_str()));
-    SkipToAtRuleEnd();
-
-    if (preservation_mode_) {
+    // We can only preserve the @-rule if it is correctly terminated. If it
+    // is not (because we reach EOF before it terminates) we must preserve
+    // the error.
+    if (SkipToAtRuleEnd() && preservation_mode_) {
       // Add a place-holder with verbatim text because we failed to parse
       // this @-rule correctly. This is saved so that it can be
       // serialized back out in case it was actually meaningful even though
@@ -2245,7 +2234,7 @@ void Parser::ParseAtRule(Stylesheet* stylesheet) {
 //   block that contains the invalid at-keyword, or up to and including the
 //   next semicolon (;), or up to and including the next block ({...}),
 //   whichever comes first.
-void Parser::SkipToAtRuleEnd() {
+bool Parser::SkipToAtRuleEnd() {
   Tracer trace(__func__, this);
 
   while (in_ < end_) {
@@ -2253,24 +2242,28 @@ void Parser::SkipToAtRuleEnd() {
       // "up to the end of the block that contains the invalid at-keyword"
       case '}':
         // Note: Do not advance in_, so that caller will see closing '}'.
-        return;
+        return true;
       // "up to and including the next semicolon (;)"
       case ';':
         ++in_;
-        return;
+        return true;
       // "up to and including the next block ({...})"
       case '{':
-        SkipBlock();
-        return;
+        return SkipBlock();
       // Skip over all other chars.
       default:
         ++in_;
         break;
     }
   }
+
+  // Reached EOF before syntactically closing @-rule.
+  return false;
 }
 
-void Parser::SkipBlock() {
+// TODO(sligocki): Combine this function with SkipPastDelimiter(). For example,
+// the current function does not deal with () or [] correctly.
+bool Parser::SkipBlock() {
   Tracer trace(__func__, this);
 
   ReportParsingError(kBlockError, "Ignoring {} block.");
@@ -2296,7 +2289,8 @@ void Parser::SkipBlock() {
         in_++;
         depth--;
         if (depth == 0)
-          return;
+          // We successfully reached the end of the block.
+          return true;
         break;
       default:
         // Ignore whatever there is to parse.
@@ -2305,6 +2299,9 @@ void Parser::SkipBlock() {
     }
     SkipSpace();
   }
+
+  // We reached EOF before the end of the block. It is unclosed.
+  return false;
 }
 
 Stylesheet* Parser::ParseRawStylesheet() {
@@ -2385,4 +2382,4 @@ Rulesets::~Rulesets() { STLDeleteElements(this); }
 Charsets::~Charsets() {}
 Imports::~Imports() { STLDeleteElements(this); }
 
-}  // namespace
+}  // namespace Css
