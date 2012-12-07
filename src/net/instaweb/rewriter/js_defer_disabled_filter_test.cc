@@ -76,10 +76,7 @@ TEST_F(JsDeferDisabledFilterTest, DeferScript) {
              "> func();</script>"
              "</head><body>Hello, world!"
              "</body></html>",
-             kDeferJsCodeNonGStatic,
-             "<script type=\"text/javascript\">",
-             JsDeferDisabledFilter::kSuffix,
-             "</script>"));
+             kDeferJsCodeNonGStatic));
 }
 
 TEST_F(JsDeferDisabledFilterTest, JsDeferPreserveURLsOn) {
@@ -112,10 +109,7 @@ TEST_F(JsDeferDisabledFilterTest, DeferScriptMultiBody) {
              "</head><body>Hello, world!"
              "</body><body><script type='text/psajs'> func2(); "
              "</script></body></html>",
-             kDeferJsCodeNonGStatic,
-             "<script type=\"text/javascript\">",
-             JsDeferDisabledFilter::kSuffix,
-             "</script>"));
+             kDeferJsCodeNonGStatic));
 }
 
 TEST_F(JsDeferDisabledFilterTest, DeferScriptOptimized) {
@@ -160,16 +154,14 @@ TEST_F(JsDeferDisabledFilterTest, AllowMobileUserAgent) {
       "> func();</script>"
       "</head><body>Hello, world!</body>";
 
-  GoogleString expected = StrCat("<head>"
+  GoogleString expected = "<head>"
       "<script type='text/psajs' "
       "src='http://www.google.com/javascript/ajax_apis.js'></script>"
       "<script type='text/psajs'"
       "> func();</script></head><body>"
       "Hello, world!</body>"
-      "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>"
-      "<script type=\"text/javascript\">",
-      JsDeferDisabledFilter::kSuffix,
-      "</script>");
+      "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\">"
+      "</script>";
 
   ValidateExpected("defer_script", script, expected);
 }
@@ -201,14 +193,12 @@ TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromGStatic) {
       "defer_script_url",
       "<html><body>Hello, world!</body><body>"
       "<script type='text/psajs'> func2(); </script></body></html>",
-      StrCat("<html><body>Hello, world!"
-             "</body><body><script type='text/psajs'> func2(); "
-             "</script></body></html>"
-             "<script type=\"text/javascript\" "
-             "src=\"http://www.gstatic.com/psa/static/1-js_defer.js\"></script>"
-             "<script type=\"text/javascript\">",
-             JsDeferDisabledFilter::kSuffix,
-             "</script>"));
+      "<html><body>Hello, world!"
+      "</body><body><script type='text/psajs'> func2(); "
+      "</script></body></html>"
+      "<script type=\"text/javascript\" "
+      "src=\"http://www.gstatic.com/psa/static/1-js_defer.js\">"
+      "</script>");
 }
 
 TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromNonGStatic) {
@@ -221,10 +211,7 @@ TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromNonGStatic) {
       StrCat("<html><body>Hello, world!",
              "</body><body><script type='text/psajs'> func2(); "
              "</script></body></html>",
-             kDeferJsCodeNonGStatic,
-             "<script type=\"text/javascript\">",
-             JsDeferDisabledFilter::kSuffix,
-             "</script>"));
+             kDeferJsCodeNonGStatic));
 }
 
 }  // namespace net_instaweb

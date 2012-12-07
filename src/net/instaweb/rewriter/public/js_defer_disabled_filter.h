@@ -33,13 +33,9 @@ class Statistics;
 // tag to defer them to be executed at onload of window.
 class JsDeferDisabledFilter : public EmptyHtmlFilter {
  public:
-  static const char kSuffix[];
-  static const char kIsJsDeferScriptInsertedPropertyName[];
-
   explicit JsDeferDisabledFilter(RewriteDriver* driver);
   virtual ~JsDeferDisabledFilter();
 
-  virtual void StartDocument();
   virtual void EndDocument();
   virtual void DetermineEnabled();
   virtual const char* Name() const { return "JsDeferDisabledFilter"; }

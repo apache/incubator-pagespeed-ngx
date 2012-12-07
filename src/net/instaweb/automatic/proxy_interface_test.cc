@@ -387,7 +387,6 @@ const char kRewrittenSplitHtmlWithLazyloadScriptFlushedEarly[] =
     "</script><script type=\"text/javascript\" src=\"/psajs/blink.js\">"
     "</script>"
     "<script type=\"text/javascript\">"
-      "pagespeed.deferInit();"
       "pagespeed.panelLoaderInit();"
       "pagespeed.panelLoader.invokedFromSplit();"
       "pagespeed.panelLoader.loadCriticalData({});"
@@ -1218,10 +1217,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
     return StrCat("<script src=\"",
                   server_context()->static_javascript_manager()->GetDeferJsUrl(
                       options_),
-                  "\" type=\"text/javascript\"></script>"
-                  "<script type=\"text/javascript\">",
-                  JsDeferDisabledFilter::kSuffix,
-                  "</script>");
+                  "\" type=\"text/javascript\"></script>");
   }
 
   GoogleString FlushEarlyRewrittenHtml(

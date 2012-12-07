@@ -534,7 +534,6 @@ check_from "$OUT" egrep -q \
 test_filter defer_javascript optimize mode
 echo run_wget_with_args $URL
 check run_wget_with_args $URL
-check grep -q pagespeed.deferJs $FETCHED
 check grep -q text/psajs $FETCHED
 check grep -q /js_defer $FETCHED
 check grep -q "ModPagespeed=noscript" $FETCHED
@@ -546,7 +545,6 @@ FILE=defer_javascript.html?ModPagespeedFilters=$FILTER_NAME
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 check run_wget_with_args "$URL"
-check grep -q pagespeed.deferJs $FETCHED
 check grep -q text/psajs $FETCHED
 check grep -q /js_defer_debug $FETCHED
 DEFERJSURL=`grep js_defer $FETCHED | sed 's/^.*js_defer/js_defer/;s/\.js.*$/\.js/g;'`

@@ -1387,7 +1387,7 @@ pagespeed['addOnload'] = deferJsNs.addOnload;
 
 /**
  * Runs the function when event is triggered.
- * @param {Window|Element} elem Element to attach handler.
+ * @param {HTMLDocument|Window|Element} elem Element to attach handler.
  * @param {!string} eventName Name of the event.
  * @param {!function()} func New onload handler.
  */
@@ -1482,8 +1482,27 @@ deferJsNs.deferInit = function() {
         window.localStorage['defer_js_experimental'];
   }
 
-  var temp = new deferJsNs.DeferJs();
-  temp.noDeferCreateElementOverride();
-  pagespeed['deferJs'] = temp;
+  pagespeed.deferJs = new deferJsNs.DeferJs();
+  pagespeed.deferJs.noDeferCreateElementOverride();
+  pagespeed['deferJs'] = pagespeed.deferJs;
 };
-pagespeed['deferInit'] = deferJsNs.deferInit;
+
+deferJsNs.deferInit();
+
+/**
+ * Indicates if deferJs started executing.
+ * @type {boolean}
+ */
+pagespeed.deferJsStarted = false;
+
+/**
+ * Starts deferJs execution.
+ */
+deferJsNs.startDeferJs = function() {
+  if (pagespeed.deferJsStarted || pagespeed['panelLoader']) return;
+  pagespeed.deferJsStarted = true;
+  pagespeed.deferJs.registerScriptTags();
+  pagespeed.deferJs.execute();
+};
+deferJsNs.addHandler(document, 'DOMContentLoaded', deferJsNs.startDeferJs);
+deferJsNs.addOnload(window, deferJsNs.startDeferJs);

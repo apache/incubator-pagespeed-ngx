@@ -251,7 +251,6 @@ const char kBlinkOutputCommon[] =
     "critical_html"
     "<script type=\"text/javascript\" src=\"/psajs/blink.js\"></script>"
     "<script type=\"text/javascript\">"
-    "\npagespeed.deferInit();"
     "\npagespeed.panelLoaderInit();"
     "\npagespeed.panelLoader.setRequestFromInternalIp();"
     "\npagespeed.panelLoader.loadCriticalData({});</script>"

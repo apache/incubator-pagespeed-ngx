@@ -58,7 +58,6 @@ typedef std::map<GoogleString, XpathUnits*> XpathMap;
 // EndDocument. It directly writes to the http request.
 class SplitHtmlFilter : public SuppressPreheadFilter {
  public:
-  static const char kDeferJsSnippet[];
   static const char kSplitInit[];
   static const char kPagespeedFunc[];
   static const char kSplitSuffixJsFormatString[];

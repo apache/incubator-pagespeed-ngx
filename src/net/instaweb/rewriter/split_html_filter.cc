@@ -68,7 +68,6 @@ const char SplitHtmlFilter::kSplitSuffixJsFormatString[] =
     "pagespeed.num_low_res_images_inlined=%d;</script>"
     "<script type=\"text/javascript\" src=\"%s\"></script>"
     "<script type=\"text/javascript\">"
-      "pagespeed.deferInit();"
       "pagespeed.panelLoaderInit();"
       "pagespeed.panelLoader.invokedFromSplit();"
       "pagespeed.panelLoader.loadCriticalData({});"

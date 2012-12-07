@@ -53,10 +53,7 @@ const char kHeadHtmlWithDeferJsTemplate[] =
     "</head>";
 
 const char kDeferJsTemplate[] =
-    "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>"
-    "<script type=\"text/javascript\">"
-    "%s"
-    "</script>";
+    "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>";
 
 const char kLazyloadTemplate[] =
     "<script type=\"text/javascript\">"
@@ -126,7 +123,7 @@ class DelayImagesFilterTest : public RewriteTestBase {
   }
 
   GoogleString GetDeferJs() {
-    return StringPrintf(kDeferJsTemplate, GetDeferJsCode().c_str());
+    return kDeferJsTemplate;
   }
 
   GoogleString GetHtmlWithLazyload() {
@@ -142,10 +139,6 @@ class DelayImagesFilterTest : public RewriteTestBase {
 
   GoogleString GetDelayImages() {
     return StringPrintf(kScriptTemplate, GetDelayImagesCode().c_str());
-  }
-
-  GoogleString GetDeferJsCode() {
-    return JsDeferDisabledFilter::kSuffix;
   }
 
   GoogleString GetDelayImagesCode() {

@@ -373,12 +373,7 @@ void FlushEarlyFlow::FlushEarly() {
         }
 
         // We don't flush defer js here since blink js contains defer js.
-        PropertyValue* defer_js_property_value = page->GetProperty(
-            cohort,
-            JsDeferDisabledFilter::kIsJsDeferScriptInsertedPropertyName);
         if (!options->Enabled(RewriteOptions::kSplitHtml) &&
-            defer_js_property_value->has_value() &&
-            StringCaseEqual(defer_js_property_value->value(), "1") &&
             options->Enabled(RewriteOptions::kDeferJavascript) &&
             JsDeferDisabledFilter::ShouldApply(driver_)) {
           driver_->set_is_defer_javascript_script_flushed(true);
@@ -491,7 +486,6 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
     // Flush defer_javascript script content.
     WriteScript(JsDisableFilter::GetJsDisableScriptSnippet(driver_->options()));
     WriteExternalScript(static_js_manager->GetDeferJsUrl(driver_->options()));
-    WriteScript(JsDeferDisabledFilter::kSuffix);
   }
 
   if (max_preconnect_attempts > 0 &&

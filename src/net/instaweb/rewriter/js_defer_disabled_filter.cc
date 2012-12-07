@@ -33,21 +33,6 @@
 
 namespace net_instaweb {
 
-const char JsDeferDisabledFilter::kSuffix[] =
-      "\npagespeed.deferInit();\n"
-      "pagespeed.deferJsStarted = false;\n"
-      "var startDeferJs = function() {\n"
-      "  if (pagespeed.deferJsStarted) return;\n"
-      "  pagespeed.deferJsStarted = true;\n"
-      "  pagespeed.deferJs.registerScriptTags();\n"
-      "  pagespeed.deferJs.execute();\n"
-      "}\n"
-      "pagespeed.addHandler(document, 'DOMContentLoaded', startDeferJs);\n"
-      "pagespeed.addOnload(window, startDeferJs);\n";
-
-const char JsDeferDisabledFilter::kIsJsDeferScriptInsertedPropertyName[] =
-    "is_js_defer_script_inserted";
-
 JsDeferDisabledFilter::JsDeferDisabledFilter(RewriteDriver* driver)
     : rewrite_driver_(driver) {
 }
@@ -60,9 +45,6 @@ void JsDeferDisabledFilter::DetermineEnabled() {
 
 bool JsDeferDisabledFilter::ShouldApply(RewriteDriver* driver) {
   return driver->UserAgentSupportsJsDefer() && !driver->flushing_early();
-}
-
-void JsDeferDisabledFilter::StartDocument() {
 }
 
 void JsDeferDisabledFilter::InsertJsDeferCode() {
@@ -79,13 +61,6 @@ void JsDeferDisabledFilter::InsertJsDeferCode() {
                                   static_js_manager->GetDeferJsUrl(options));
     rewrite_driver_->InsertElementAfterCurrent(defer_js_url_node);
 
-    // Insert additional snippet needed for deferJs instantiation.
-    HtmlElement* script_node =
-        rewrite_driver_->NewElement(NULL, HtmlName::kScript);
-    rewrite_driver_->InsertElementAfterElement(defer_js_url_node, script_node);
-
-    static_js_manager->AddJsToElement(JsDeferDisabledFilter::kSuffix,
-                                      script_node, rewrite_driver_);
     rewrite_driver_->set_is_defer_javascript_script_flushed(true);
   }
 }
@@ -96,8 +71,6 @@ void JsDeferDisabledFilter::EndDocument() {
   }
 
   InsertJsDeferCode();
-  rewrite_driver_->UpdatePropertyValueInDomCohort(
-      kIsJsDeferScriptInsertedPropertyName, "1");
 }
 
 }  // namespace net_instaweb

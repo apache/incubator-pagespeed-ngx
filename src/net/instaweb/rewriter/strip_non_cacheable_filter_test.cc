@@ -66,8 +66,7 @@ const char kPsaHeadScriptNodesStart[] =
     "<script type=\"text/javascript\" pagespeed_no_defer=\"\" src=\"";
 
 const char kPsaHeadScriptNodesEnd[] =
-    "\"></script>"
-    "<script type=\"text/javascript\" pagespeed_no_defer=\"\">pagespeed.deferInit();</script>";
+    "\"></script>";
 
 }  // namespace
 

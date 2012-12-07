@@ -854,7 +854,6 @@ void BlinkFlowCriticalLine::SendCriticalHtml(
   WriteString(static_js_manager->GetBlinkJsUrl(options_));
   WriteString("\"></script>");
   WriteString("<script type=\"text/javascript\">");
-  WriteString("\npagespeed.deferInit();");
   WriteString("\npagespeed.panelLoaderInit();");
   const char* user_ip = base_fetch_->request_headers()->Lookup1(
       HttpAttributes::kXForwardedFor);
