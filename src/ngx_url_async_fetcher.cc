@@ -66,6 +66,8 @@ namespace net_instaweb {
     url_.url.len = ngx_strlen(proxy);
     pool_ = pool;
     log_ = pool->log;
+    command_connection_ = NULL;
+    pipe_fd_ = 0;
     resolver_ = resolver;
   }
 
@@ -89,6 +91,8 @@ namespace net_instaweb {
     }
     log_ = log;
     pool_ = NULL;
+    command_connection_ = NULL;
+    pipe_fd_ = 0;
     resolver_ = resolver;
   }
 
@@ -109,6 +113,8 @@ namespace net_instaweb {
     pool_ = parent->pool_;
     log_ = parent->log_;
     resolver_ = parent->resolver_;
+    command_connection_ = NULL;
+    pipe_fd_ = 0;
   }
 
   NgxUrlAsyncFetcher::~NgxUrlAsyncFetcher() {
@@ -136,17 +142,41 @@ namespace net_instaweb {
       }
     }
 
-    timeout_event_ = static_cast<ngx_event_t*>(
-        ngx_pcalloc(pool_, sizeof(ngx_event_t)));
-    if (timeout_event_ == NULL) {
-      ngx_log_error(NGX_LOG_ERR, log_, 0,
-          "NgxUrlAsyncFetcher::Init calloc timeout_event_ failed");
+    int pipe_fds[2];
+    int rc = pipe(pipe_fds);
+    if (rc != 0) {
+      ngx_log_error(NGX_LOG_ERR, log_, 0, "pipe() failed");
+      return false;
+    }
+    if (ngx_nonblocking(pipe_fds[0]) == -1) {
+      ngx_log_error(NGX_LOG_ERR, log_, 0, "nonblocking pipe[0] failed");
       return false;
     }
 
-    ngx_add_timer(timeout_event_, static_cast<ngx_msec_t>(timeout_));
-    timeout_event_->handler = TimeoutHandler;
-    timeout_event_->data = this;
+    if (ngx_nonblocking(pipe_fds[1]) == -1) {
+      ngx_log_error(NGX_LOG_ERR, log_, 0, "nonblocking pipe[1] failed");
+      return false;
+    }
+
+    pipe_fd_ = pipe_fds[0];
+    command_connection_ = ngx_get_connection(pipe_fds[1], log_);
+    if (command_connection_ == NULL) {
+      close(pipe_fds[1]);
+      close(pipe_fds[0]);
+      return false;
+    }
+
+    command_connection_->recv = ngx_recv;
+    command_connection_->send = ngx_send;
+    command_connection_->recv_chain = ngx_recv_chain;
+    command_connection_->send_chain = ngx_send_chain;
+    command_connection_->log = log_;
+    command_connection_->read->log = log_;
+    command_connection_->write->log = log_;
+    command_connection_->data = this;
+    command_connection_->read->handler = CommandHandler;
+    ngx_add_event(command_connection_->read, NGX_READ_EVENT, 0);
+
     if (url_.url.len == 0) {
       return true;
     }
@@ -158,21 +188,9 @@ namespace net_instaweb {
     return true;
   }
 
-  void NgxUrlAsyncFetcher::TimeoutHandler(ngx_event_t* tev) {
-    NgxUrlAsyncFetcher* fetcher = static_cast<NgxUrlAsyncFetcher*>(tev->data);
-    fetcher->ShutDown();
-  }
-
   void NgxUrlAsyncFetcher::ShutDown() {
-    for (NgxFetchPool::const_iterator p = active_fetches_.begin(),
-            e = active_fetches_.end(); p != e; ++p) {
-      NgxFetch* fetch = *p;
-      fetch->CallbackDone(false);
-    }
-    if (timeout_event_->timer_set) {
-      ngx_del_timer(timeout_event_);
-    }
-    shutdown_ = true;
+      shutdown_ = true;
+      SendCmd('S');
   }
 
   void NgxUrlAsyncFetcher::Fetch(const GoogleString& url,
@@ -181,7 +199,82 @@ namespace net_instaweb {
     async_fetch = EnableInflation(async_fetch);
     NgxFetch* fetch = new NgxFetch(url, async_fetch,
           message_handler, fetch_timeout_);
-    StartFetch(fetch);
+    pending_fetches_.Add(fetch);
+    SendCmd('F');
+  }
+  // send command to nginx main thread
+  // 'F' : start a fetch
+  // 'S' : shutdown fetcher
+  bool NgxUrlAsyncFetcher::SendCmd(const char command) {
+    int rc;
+    while (true) {
+      rc = write(pipe_fd_, &command, 1);
+      if (rc == 1) {
+        return true;
+      } else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+      } else {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void NgxUrlAsyncFetcher::CommandHandler(ngx_event_t *cmdev) {
+    char command;
+    int rc;
+    ngx_connection_t* c = static_cast<ngx_connection_t*>(cmdev->data);
+    NgxUrlAsyncFetcher* fetcher = static_cast<NgxUrlAsyncFetcher*>(c->data);
+    do {
+      rc = read(fetcher->pipe_fd_, &command, 1);
+    } while (rc == -1 && errno == EINTR);
+
+    CHECK(rc == -1 || rc == 0 || rc == 1);
+
+    if (rc == -1 || rc == 0) {
+      // EAGAIN
+      return;
+    }
+
+    NgxFetchPool::const_iterator p, e;
+    NgxFetch* fetch;
+    switch (command) {
+      case 'F':
+        if (!fetcher->pending_fetches_.empty()) {
+          for (p = fetcher->active_fetches_.begin(),
+              e = fetcher->pending_fetches_.end(); p != e; p++) {
+            fetch = *p;
+            fetcher->StartFetch(fetch);
+          }
+          fetcher->pending_fetches_.DeleteAll();
+        }
+        CHECK(ngx_handle_read_event(cmdev, 0) == NGX_OK);
+        break;
+
+      case 'S':
+        if (!fetcher->pending_fetches_.empty()) {
+          fetcher->pending_fetches_.DeleteAll();
+        }
+
+        if (!fetcher->completed_fetches_.empty()) {
+          fetcher->completed_fetches_.DeleteAll();
+        }
+
+        if (!fetcher->active_fetches_.empty()) {
+          for (p = fetcher->active_fetches_.begin(),
+               e = fetcher->active_fetches_.end(); p != e; p++) {
+            fetch = *p;
+            fetch->CallbackDone(false);
+          }
+          fetcher->active_fetches_.DeleteAll();
+        }
+        CHECK(ngx_del_event(cmdev, NGX_READ_EVENT, 0) == NGX_OK);
+        break;
+
+      default:
+        break;
+    }
+
+    return;
   }
 
   bool NgxUrlAsyncFetcher::StartFetch(NgxFetch* fetch) {
