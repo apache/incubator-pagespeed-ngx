@@ -453,10 +453,10 @@ ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
     // we're done with it.  That never happens, though, because this is the
     // top-level config and so sticks around as long as we're running.
 
-    ngx_http_core_loc_conf_t *clcf = static_cast<ngx_http_core_loc_conf_t*>(
+    ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
         ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module));
-    cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
-        cf->log, clcf->resolver);
+    cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(cf->log,
+        clcf->resolver);
   }
 
   cfg_s->server_context = new net_instaweb::NgxServerContext(

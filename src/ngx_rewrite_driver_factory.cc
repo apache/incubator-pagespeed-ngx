@@ -16,12 +16,6 @@
 
 // Author: jefftk@google.com (Jeff Kaufman)
 
-extern "C" {
-  #include <ngx_config.h>
-  #include <ngx_core.h>
-  #include <ngx_http.h>
-}
-
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_url_async_fetcher.h"
@@ -76,11 +70,11 @@ class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
-class NgxUrlAsyncFetcher;
 
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
-NgxRewriteDriverFactory::NgxRewriteDriverFactory() :
+NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_log_t* log,
+    ngx_resolver_t* resolver) :
   shared_mem_runtime_(new NullSharedMem()),
   cache_hasher_(20) {
   RewriteDriverFactory::InitStats(&simple_stats_);
@@ -93,18 +87,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory() :
   timer_ = DefaultTimer();
   apr_initialize();
   apr_pool_create(&pool_,NULL);
-  InitializeDefaultOptions();
-}
-
-NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_log_t* log,
-    ngx_resolver_t* resolver) {
-  RewriteDriverFactory::InitStats(&simple_stats_);
-  SerfUrlAsyncFetcher::InitStats(&simple_stats_);
-  SetStatistics(&simple_stats_);
-  timer_ = DefaultTimer();
   log_ = log;
   resolver_ = resolver;
-
   InitializeDefaultOptions();
 }
 
@@ -141,19 +125,24 @@ UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
 }
 
 UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
-  net_instaweb::NgxUrlAsyncFetcher* fetcher = 
-      new net_instaweb::NgxUrlAsyncFetcher(
-          "", // proxy
-          log_,
-          60 * 1000, // fetcher timeout 60s
-          10 * 1000, // resolver timeout 10s
-          20 * 1000, // fetche timeout 20s
-          resolver_,
-          message_handler());
-  if (!fetcher->Init()) {
-    delete fetcher;
-    return NULL;
-  }
+//  net_instaweb::UrlAsyncFetcher* fetcher =
+//      new net_instaweb::SerfUrlAsyncFetcher(
+//          "",
+//          pool_,
+//          thread_system(),
+//          statistics(),
+//          timer(),
+//          2500,
+//          message_handler());
+//  return fetcher;
+  net_instaweb::UrlAsyncFetcher* fetcher =
+    new net_instaweb::NgxUrlAsyncFetcher(
+        "",
+        log_,
+        10000,
+        10000,
+        resolver_,
+        message_handler());
   return fetcher;
 }
 

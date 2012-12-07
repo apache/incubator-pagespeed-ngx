@@ -20,9 +20,9 @@
 #define NGX_REWRITE_DRIVER_FACTORY_H_
 
 extern "C" {
-  #include <ngx_config.h>
-  #include <ngx_core.h>
-  #include <ngx_http.h>
+#include <ngx_core.h>
+#include <ngx_http.h>
+#include <ngx_config.h>
 }
 
 #include "base/scoped_ptr.h"
@@ -53,7 +53,6 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   static const char kStaticJavaScriptPrefix[];
   static const char kMemcached[];
 
-  NgxRewriteDriverFactory();
   NgxRewriteDriverFactory(ngx_log_t* log, ngx_resolver_t* resolver);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
@@ -104,8 +103,6 @@ private:
   SimpleStats simple_stats_;
   Timer* timer_;
   apr_pool_t* pool_;
-  ngx_log_t* log_;
-  ngx_resolver_t* resolver_;
   scoped_ptr<SlowWorker> slow_worker_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
   typedef std::map<GoogleString, NgxCache*> PathCacheMap;
@@ -133,6 +130,8 @@ private:
   std::vector<AprMemCache*> memcache_servers_;
   std::vector<AsyncCache*> async_caches_;
 
+  ngx_log_t* log_;
+  ngx_resolver_t* resolver_;
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

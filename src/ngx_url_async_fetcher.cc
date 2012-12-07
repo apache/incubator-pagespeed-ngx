@@ -50,7 +50,6 @@ extern "C" {
 namespace net_instaweb {
   NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(const char* proxy,
                                          ngx_pool_t* pool,
-                                         int64 timeout, // timer for fetcher
                                          int64 resolver_timeout, // timer for resolver
                                          int64 fetch_timeout, // timer for fetch
                                          ngx_resolver_t* resolver,
@@ -59,7 +58,6 @@ namespace net_instaweb {
       shutdown_(false),
       track_original_content_length_(false),
       byte_count_(0),
-      timeout_(timeout),
       message_handler_(handler),
       resolver_timeout_(resolver_timeout),
       fetch_timeout_(fetch_timeout) {
@@ -73,7 +71,6 @@ namespace net_instaweb {
 
   NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(const char* proxy,
                                          ngx_log_t* log,
-                                         int64 timeout,
                                          int64 resolver_timeout,
                                          int64 fetch_timeout,
                                          ngx_resolver_t* resolver,
@@ -82,11 +79,10 @@ namespace net_instaweb {
       shutdown_(false),
       track_original_content_length_(false),
       byte_count_(0),
-      timeout_(timeout),
       message_handler_(handler),
       resolver_timeout_(resolver_timeout),
       fetch_timeout_(fetch_timeout) {
-    ngx_memzero(&url_, sizeof(ngx_url_t));
+    ngx_memzero(&url_, sizeof(url_));
     if (proxy != NULL && *proxy != '\0') {
       url_.url.data = (u_char *)(proxy);
       url_.url.len = ngx_strlen(proxy);
@@ -102,7 +98,6 @@ namespace net_instaweb {
       shutdown_(false),
       track_original_content_length_(parent->track_original_content_length_),
       byte_count_(parent->byte_count_),
-      timeout_(parent->timeout_),
       message_handler_(parent->message_handler_),
       resolver_timeout_(parent->resolver_timeout_),
       fetch_timeout_(parent->fetch_timeout_) {

@@ -43,10 +43,10 @@ class Variable;
 class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
   public:
     // add timeout event
-    NgxUrlAsyncFetcher(const char* proxy, ngx_pool_t* pool, int64 timeout,
+    NgxUrlAsyncFetcher(const char* proxy, ngx_pool_t* pool,
         int64 resolver_timeout, int64 fetch_timeout, ngx_resolver_t* resolver,
         MessageHandler* handler);
-    NgxUrlAsyncFetcher(const char* proxy, ngx_log_t* log, int64 timeout,
+    NgxUrlAsyncFetcher(const char* proxy, ngx_log_t* log,
         int64 resolver_timeout, int64 fetch_timeout, ngx_resolver_t* resolver,
         MessageHandler* handler);
     NgxUrlAsyncFetcher(NgxUrlAsyncFetcher *parent, char* proxy);
