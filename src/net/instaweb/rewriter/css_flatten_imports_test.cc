@@ -378,13 +378,11 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   ValidateRewriteExternalCss("flatten_invalid_css_media",
                              kInvalidMediaCss, kInvalidMediaCss,
                              kExpectFailure);
-  EXPECT_EQ(1, num_parse_failures_->Get());
 
   const char kInvalidImportCss[] = "@import styles.css; a { color:red }";
   ValidateRewriteExternalCss("flatten_invalid_css_import",
                              kInvalidImportCss, kInvalidImportCss,
                              kExpectFailure);
-  EXPECT_EQ(1, num_parse_failures_->Get());
 
   // This gets a parse error but thanks to the idea of "unparseable sections"
   // in the CSS parser it's not treated as an error as such and the "bad" text
@@ -398,7 +396,6 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   ValidateRewriteExternalCss("flatten_unparseable_css_rule",
                              kUnparseableCss, kFlattenedInvalidCss,
                              kExpectSuccess | kNoClearFetcher);
-  EXPECT_EQ(0, num_parse_failures_->Get());
 
   // This gets a non-recoverable parse error because of mismatched {}s.
   // We do not want to recover from these types of parse errors because
@@ -410,19 +407,23 @@ TEST_F(CssFlattenImportsTest, FlattenInvalidCSS) {
   ValidateRewriteExternalCss("no_flatten_error_css_rule",
                              kErrorCss, kErrorCss,
                              kExpectFailure | kNoClearFetcher);
-  EXPECT_EQ(1, num_parse_failures_->Get());
 
   // Make sure we don't flatten if the @imported CSS has a non-recoverable
   // parse error.
-  // TODO(sligocki): Get working.
-  // SetResponseWithDefaultHeaders("error.css", kContentTypeCss,
-  //                               "a {{ color: red }", 100);
-  // const char kImportErrorCss[] =
-  //     "@import url(error.css); body { color: #000 }";
-  // ValidateRewriteExternalCss("no_flatten_error_in_import",
-  //                            kImportErrorCss, kImportErrorCss,
-  //                            kExpectFailure | kNoClearFetcher);
-  // EXPECT_EQ(1, num_parse_failures_->Get());
+  SetResponseWithDefaultHeaders("error.css", kContentTypeCss,
+                                "a {{ color: red }", 100);
+  const char kImportErrorCss[] =
+      "@import url(error.css); body { color: #000 }";
+  const char kRewrittenImportErrorCss[] =
+      "@import url(error.css) ;body{color:#000}";
+  // Note: Rewrite succeeds, but flatten fails.
+  ValidateRewriteExternalCss("no_flatten_error_in_import",
+                             kImportErrorCss, kRewrittenImportErrorCss,
+                             kExpectSuccess | kFlattenImportsMinifyFailed |
+                             kNoClearFetcher);
+  // Note that this is not run as ValidateRerwite(), because that would re-use
+  // the rewritten value and thus not increment kFlattenImportsMinifyFailed
+  // the second time.
 }
 
 TEST_F(CssFlattenImportsTest, FlattenEmptyMedia) {
