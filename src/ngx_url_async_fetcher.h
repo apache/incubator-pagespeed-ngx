@@ -65,8 +65,6 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
                        MessageHandler* message_handler,
                        AsyncFetch* callback);
 
-    bool SendCmd(const char command);
-    static void CommandHandler(ngx_event_t* cmdev);
     bool StartFetch(NgxFetch* fetch);
     void FetchComplete(NgxFetch* fetch);
 
@@ -105,19 +103,18 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
 
     NgxFetchPool completed_fetches_;
     NgxFetchPool active_fetches_;
-    NgxFetchPool pending_fetches_;
     ngx_url_t url_;
 
     int fetchers_count_;
     bool shutdown_;
     bool track_original_content_length_;
     int64 byte_count_;
+    int64 timeout_;
     MessageHandler* message_handler_;
 
+    ngx_event_t* timeout_event_;
     ngx_pool_t* pool_;
     ngx_log_t* log_;
-    ngx_connection_t* command_connection_;
-    int pipe_fd_;
     ngx_resolver_t* resolver_;
     int64 resolver_timeout_;
     int64 fetch_timeout_;

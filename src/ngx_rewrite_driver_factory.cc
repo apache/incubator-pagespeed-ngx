@@ -347,6 +347,7 @@ CacheInterface* NgxRewriteDriverFactory::GetFilesystemMetadataCache(
   }
 
   return NULL;
+>>>>>>> master
 }
 
 }  // namespace net_instaweb
