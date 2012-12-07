@@ -215,6 +215,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
   RewriteOptions::kAddHead,
   RewriteOptions::kCombineCss,
   RewriteOptions::kConvertGifToPng,
+  RewriteOptions::kConvertJpegToProgressive,
   RewriteOptions::kConvertMetaTags,
   RewriteOptions::kConvertPngToJpeg,
   RewriteOptions::kExtendCacheCss,
@@ -242,6 +243,7 @@ const RewriteOptions::Filter kCoreFilterSet[] = {
 // this is managed in the c++ switch statement.
 const RewriteOptions::Filter kTestFilterSet[] = {
   RewriteOptions::kConvertJpegToWebp,
+  RewriteOptions::kDebug,
   RewriteOptions::kInsertGA,
   RewriteOptions::kInsertImageDimensions,
   RewriteOptions::kLeftTrimUrls,

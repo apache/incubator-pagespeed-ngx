@@ -1197,12 +1197,12 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
                                       &handler));
   options_.SetFuriousState(-7);
   // This should be the core filters.
-  EXPECT_EQ("ah,cc,gp,mc,pj,ec,ei,es,fc,if,hw,ci,ii,il,ji,js,rj,rp,rw,"
+  EXPECT_EQ("ah,cc,gp,jp,mc,pj,ec,ei,es,fc,if,hw,ci,ii,il,ji,js,rj,rp,rw,"
             "ri,cf,jm,cu,cp,md,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("", options_.ToExperimentString());
   options_.SetFuriousState(1);
-  EXPECT_EQ("Experiment: 1; ah,ai,cc,gp,mc,pj,ec,ei,es,fc,if,hw,ci,ii,"
+  EXPECT_EQ("Experiment: 1; ah,ai,cc,gp,jp,mc,pj,ec,ei,es,fc,if,hw,ci,ii,"
             "il,ji,ig,js,rj,rp,rw,ri,cf,jm,cu,cp,md,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 1", options_.ToExperimentString());

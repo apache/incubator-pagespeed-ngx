@@ -511,9 +511,10 @@ IMG_NON_CUSTOM="$EXAMPLE_ROOT/images/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
 IMG_CUSTOM="$TEST_ROOT/custom_options/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
 
 # Identical images, but in the .htaccess file in the custom_options directory we
-# additionally enable convert_jpeg_to_progressive which gives a smaller file.
-fetch_until $IMG_NON_CUSTOM 'wc -c' 231192
-fetch_until $IMG_CUSTOM 'wc -c' 216942
+# additionally disable core-filter convert_jpeg_to_progressive which gives a
+# larger file.
+fetch_until $IMG_NON_CUSTOM 'wc -c' 216942
+fetch_until $IMG_CUSTOM 'wc -c' 231192
 
 # Test our handling of headers when a FLUSH event occurs.
 # Skip if PHP is not installed to cater for admins who don't want it installed.
