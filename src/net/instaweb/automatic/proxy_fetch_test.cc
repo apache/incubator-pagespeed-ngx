@@ -284,7 +284,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeSetProxyFetch) {
       &async_fetch, &factory, server_context_);
 
   // Should not be complete since SetProxyFetch() called first.
-  EXPECT_EQ(false, mock_proxy_fetch->complete());
+  EXPECT_FALSE(mock_proxy_fetch->complete());
 
   // Collector should now have a page property.
   scoped_ptr<PropertyPage> page;
@@ -298,7 +298,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeSetProxyFetch) {
 
   collector.get()->ConnectProxyFetch(mock_proxy_fetch);
   // Should be complete since SetProxyFetch() called after Done().
-  EXPECT_EQ(true, mock_proxy_fetch->complete());
+  EXPECT_TRUE(mock_proxy_fetch->complete());
 
   // Needed for cleanup.
   mock_proxy_fetch->Done(true);
@@ -323,7 +323,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, SetProxyFetchBeforeDone) {
 
   collector.get()->ConnectProxyFetch(mock_proxy_fetch);
   // Should not be complete since SetProxyFetch() called first.
-  EXPECT_EQ(false, mock_proxy_fetch->complete());
+  EXPECT_FALSE(mock_proxy_fetch->complete());
 
   EXPECT_TRUE(callback->IsCacheValid(1L));
 
@@ -341,7 +341,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, SetProxyFetchBeforeDone) {
       ProxyFetchPropertyCallback::kClientPropertyCache));
 
   // Should be complete since Done() called.
-  EXPECT_EQ(true, mock_proxy_fetch->complete());
+  EXPECT_TRUE(mock_proxy_fetch->complete());
 
   // Needed for cleanup.
   mock_proxy_fetch->Done(true);
@@ -365,13 +365,13 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, BothCallbacksComplete) {
 
   collector.get()->ConnectProxyFetch(mock_proxy_fetch);
   // Should not be complete since SetProxyFetch() called first.
-  EXPECT_EQ(false, mock_proxy_fetch->complete());
+  EXPECT_FALSE(mock_proxy_fetch->complete());
 
   // Now invoke the page callback.
   page_callback->Done(true);
 
   // Should not be complete since both callbacks not yet done.
-  EXPECT_EQ(false, mock_proxy_fetch->complete());
+  EXPECT_FALSE(mock_proxy_fetch->complete());
 
   // Collector should now have a page property.
   scoped_ptr<PropertyPage> page;
@@ -387,7 +387,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, BothCallbacksComplete) {
   client_callback->Done(true);
 
   // Should be complete since both callbacks are done.
-  EXPECT_EQ(true, mock_proxy_fetch->complete());
+  EXPECT_TRUE(mock_proxy_fetch->complete());
 
   // Collector should now have a client property.
   page.reset(collector.get()->GetPropertyPage(

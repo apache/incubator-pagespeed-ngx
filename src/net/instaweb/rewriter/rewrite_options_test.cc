@@ -628,7 +628,7 @@ void RewriteOptionsTest::TestSetOptionFromName(bool test_log_variant) {
               "false",
               &handler);
   // Default is true
-  EXPECT_EQ(false, options_.combine_across_paths());
+  EXPECT_FALSE(options_.combine_across_paths());
 
   TestNameSet(RewriteOptions::kOptionOk,
               test_log_variant,
