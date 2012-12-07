@@ -865,11 +865,8 @@ check_from "$WGET_OUT" grep "$X_OTHER_HEADER"
 
 start_test Send custom fetch headers on resource subfetches.
 URL=$TEST_ROOT/custom_fetch_headers.html?ModPagespeedFilters=inline_javascript
-fetch_until $URL 'grep -c header=value' 1
-OUT=$($WGET_DUMP $URL)
-check_from "$OUT" grep "$PLAIN_HEADER"
-OUT=$($WGET_DUMP $URL)
-check_from "$OUT" grep "$X_OTHER_HEADER"
+fetch_until -save $URL 'grep -c header=value' 1
+check_from "$(cat $FETCH_FILE)" grep "$X_OTHER_HEADER"
 
 # Check that statistics logging was functional during these tests
 # if it was enabled.
