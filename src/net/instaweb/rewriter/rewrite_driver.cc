@@ -2124,7 +2124,12 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
       }
       // Page cannot be cleared yet because other cohorts may still need to be
       // written.
-      pcache->WriteCohort(dom_cohort, page);
+      // TODO(jud): Is this the best place to check for shutting down? It might
+      // make more sense for this check to be done at the property cache or
+      // lower level.
+      if (!server_context()->shutting_down()) {
+        pcache->WriteCohort(dom_cohort, page);
+      }
     }
   }
 }
