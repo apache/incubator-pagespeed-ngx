@@ -100,6 +100,8 @@ if [ $ngx_found = yes ]; then
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_server_context.cc"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_base_fetch.cc"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_cache.cc"
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_url_async_fetcher.cc"
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_fetch.cc"
   HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
   CORE_LIBS="$CORE_LIBS 
              $pagespeed_libs

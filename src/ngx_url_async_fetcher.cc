@@ -92,6 +92,7 @@ namespace net_instaweb {
       url_.url.len = ngx_strlen(proxy);
     }
     log_ = log;
+    pool_ = NULL;
     resolver_ = resolver;
   }
 
