@@ -72,9 +72,10 @@ class Writer;
 
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
-NgxRewriteDriverFactory::NgxRewriteDriverFactory() :
+NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
   shared_mem_runtime_(new NullSharedMem()),
-  cache_hasher_(20) {
+  cache_hasher_(20),
+  main_conf_(main_conf) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
@@ -120,9 +121,14 @@ UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
 }
 
 UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
+  const char* fetcher_proxy = "";
+  if (main_conf_ != NULL) {
+    fetcher_proxy = main_conf_->fetcher_proxy().c_str();
+  }
+
   net_instaweb::UrlAsyncFetcher* fetcher =
       new net_instaweb::SerfUrlAsyncFetcher(
-          "",
+          fetcher_proxy,
           pool_,
           thread_system(),
           statistics(),
