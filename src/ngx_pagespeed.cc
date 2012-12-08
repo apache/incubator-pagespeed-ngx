@@ -1387,6 +1387,19 @@ ps_init(ngx_conf_t* cf) {
   return NGX_OK;
 }
 
+void 
+ps_exit_process(ngx_cycle_t *cycle) {
+  ps_main_conf_t* cfg_m = (ps_main_conf_t*)ngx_http_cycle_get_module_main_conf(
+          cycle, ngx_pagespeed);
+  if (cfg_m != NULL)
+  {
+    cfg_m->driver_factory->ShutDown();
+    cfg_m->driver_factory = NULL;    
+    fprintf(stdout, "driver factory was shutdown!\r\n");
+    return;
+  }
+}
+
 ngx_http_module_t ps_module = {
   NULL,  // preconfiguration
   ps_init,  // postconfiguration
@@ -1415,7 +1428,7 @@ ngx_module_t ngx_pagespeed = {
   NULL,
   NULL,
   NULL,
-  NULL,
+  ngx_psol::ps_exit_process,
   NULL,
   NGX_MODULE_V1_PADDING
 };
