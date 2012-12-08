@@ -335,4 +335,33 @@ CacheInterface* NgxRewriteDriverFactory::GetFilesystemMetadataCache(
   return NULL;
 }
 
+void NgxRewriteDriverFactory::ShutDown() {
+  StopCacheActivity();
+
+  // Next, we shutdown the fetchers before killing the workers in
+  // RewriteDriverFactory::ShutDown; this is so any rewrite jobs in progress
+  // can quickly wrap up.
+  /*
+  for (FetcherMap::iterator p = fetcher_map_.begin(), e = fetcher_map_.end();
+       p != e; ++p) {
+    UrlAsyncFetcher* fetcher = p->second;
+    fetcher->ShutDown();
+    defer_cleanup(new Deleter<UrlAsyncFetcher>(fetcher));
+  }
+  fetcher_map_.clear();
+  */
+  RewriteDriverFactory::ShutDown();
+
+  // Take down any memcached threads.  Note that this may block
+  // waiting for any wedged operations to terminate, possibly
+  // requiring kill -9 to restart Apache if memcached is permanently
+  // hung.  In pracice, the patches made in
+  // src/third_party/aprutil/apr_memcache2.c make that very unlikely.
+  //
+  // The alternative scenario of exiting with pending I/O will often
+  // crash and always leak memory.  Note that if memcached crashes, as
+  // opposed to hanging, it will probably not appear wedged.
+  memcached_pool_.reset(NULL);
+}
+
 }  // namespace net_instaweb

@@ -67,7 +67,10 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Initializes the StaticJavascriptManager.
   virtual void InitStaticJavascriptManager(
       StaticJavascriptManager* static_js_manager);
-
+  // Release all the resources. It also calls the base class ShutDown to
+  // release the base class resources.
+  virtual void ShutDown();
+  
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
   }
