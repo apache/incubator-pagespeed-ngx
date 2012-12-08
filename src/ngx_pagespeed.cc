@@ -1393,9 +1393,10 @@ ps_exit_process(ngx_cycle_t *cycle) {
           cycle, ngx_pagespeed);
   if (cfg_m != NULL)
   {
-    cfg_m->driver_factory->ShutDown();
-    cfg_m->driver_factory = NULL;    
-    fprintf(stdout, "driver factory was shutdown!\r\n");
+    delete cfg_m->driver_factory;
+    cfg_m->driver_factory = NULL;
+    net_instaweb::NgxRewriteDriverFactory::Terminate();
+    net_instaweb::NgxRewriteOptions::Terminate();
     return;
   }
 }

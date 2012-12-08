@@ -92,10 +92,15 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
-  slow_worker_->ShutDown();
+  //slow_worker_->ShutDown();
+  
+  // We free all the resources before destroying the pool, because some of the
+  // resource uses the sub-pool and will need that pool to be around to
+  // clean up properly.
+  ShutDown();
   apr_pool_destroy(pool_);
   pool_ = NULL;
-
+  
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
     NgxCache* cache = p->second;
