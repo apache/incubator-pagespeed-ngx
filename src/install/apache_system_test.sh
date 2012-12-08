@@ -328,7 +328,7 @@ fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimiz
 # size is 8157B, while on 64 it is 8155B. Initial investigation showed no
 # visible differences between the generated images.
 # TODO(jmaessen) Verify that this behavior is expected.
-check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8157   # resized
+check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8251   # resized
 
 start_test quality of jpeg output images
 rm -rf $OUTDIR
@@ -337,7 +337,7 @@ IMG_REWRITE=$TEST_ROOT"/jpeg_rewriting/rewrite_images.html"
 REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
 URL=$REWRITE_URL",recompress_jpeg&"$IMAGES_QUALITY"=85&"$JPEG_QUALITY"=70"
 fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
-check_file_size "$OUTDIR/*256x192*Puzzle*" -le 7564   # resized
+check_file_size "$OUTDIR/*256x192*Puzzle*" -le 7673   # resized
 
 start_test quality of webp output images
 rm -rf $OUTDIR
@@ -784,7 +784,7 @@ blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
   WGET_ARGS=""
   DIR="mod_pagespeed_test/map_css_embedded"
   URL="http://www.example.com/$DIR/issue494.html"
-  MAPPED_CSS="$DIR/I.styles.css.pagespeed.cf.OOyfQ_LoNP.css"
+  MAPPED_CSS="$DIR/I.styles.css.pagespeed.cf.w9O-kBfMWw.css"
   http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
       "grep -c cdn.example.com/$MAPPED_CSS" 1
 

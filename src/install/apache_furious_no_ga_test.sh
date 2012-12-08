@@ -16,10 +16,10 @@ EXTEND_CACHE="$EXAMPLE/extend_cache.html"
 
 start_test Analytics javascript is not added for any group.
 OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
-check_not_from "$OUT" fgrep 'Experiment:'
+check_not_from "$OUT" fgrep -q 'Experiment:'
 OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=7' $EXTEND_CACHE)
-check_not_from "$OUT" fgrep 'Experiment:'
+check_not_from "$OUT" fgrep -q 'Experiment:'
 OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=0' $EXTEND_CACHE)
-check_not_from "$OUT" fgrep 'Experiment:'
+check_not_from "$OUT" fgrep -q 'Experiment:'
 
 system_test_trailer

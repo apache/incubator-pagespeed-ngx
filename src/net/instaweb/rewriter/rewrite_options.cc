@@ -540,6 +540,7 @@ bool RewriteOptions::ImageOptimizationEnabled() const {
           this->Enabled(RewriteOptions::kRecompressPng) ||
           this->Enabled(RewriteOptions::kRecompressWebp) ||
           this->Enabled(RewriteOptions::kConvertGifToPng) ||
+          this->Enabled(RewriteOptions::kConvertJpegToProgressive) ||
           this->Enabled(RewriteOptions::kConvertPngToJpeg) ||
           this->Enabled(RewriteOptions::kConvertJpegToWebp));
 }
@@ -1287,6 +1288,7 @@ bool RewriteOptions::AddByNameToFilterSet(
     // if that happens!
     if (option == "rewrite_images") {
       set->insert(kConvertGifToPng);
+      set->insert(kConvertJpegToProgressive);
       set->insert(kInlineImages);
       set->insert(kJpegSubsampling);
       set->insert(kRecompressJpeg);
@@ -1297,6 +1299,7 @@ bool RewriteOptions::AddByNameToFilterSet(
       set->insert(kStripImageColorProfile);
     } else if (option == "recompress_images") {
       set->insert(kConvertGifToPng);
+      set->insert(kConvertJpegToProgressive);
       set->insert(kJpegSubsampling);
       set->insert(kRecompressJpeg);
       set->insert(kRecompressPng);

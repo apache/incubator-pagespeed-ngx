@@ -184,6 +184,7 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
   // TODO(jmaessen): add kConvertJpegToWebp here when it becomes part of
   // rewrite_images.
   s.insert(RewriteOptions::kConvertGifToPng);
+  s.insert(RewriteOptions::kConvertJpegToProgressive);
   s.insert(RewriteOptions::kInlineImages);
   s.insert(RewriteOptions::kJpegSubsampling);
   s.insert(RewriteOptions::kRecompressJpeg);
@@ -206,6 +207,7 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
 TEST_F(RewriteOptionsTest, CompoundFlagRecompressImages) {
   FilterSet s;
   s.insert(RewriteOptions::kConvertGifToPng);
+  s.insert(RewriteOptions::kConvertJpegToProgressive);
   s.insert(RewriteOptions::kJpegSubsampling);
   s.insert(RewriteOptions::kRecompressJpeg);
   s.insert(RewriteOptions::kRecompressPng);

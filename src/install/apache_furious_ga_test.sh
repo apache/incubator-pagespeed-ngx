@@ -16,12 +16,12 @@ EXTEND_CACHE="$EXAMPLE/extend_cache.html"
 
 start_test Analytics javascript is added for the experimental group.
 OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=2' $EXTEND_CACHE)
-check_from "$OUT" fgrep 'Experiment: 2'
+check_from "$OUT" fgrep -q 'Experiment: 2'
 OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=7' $EXTEND_CACHE)
-check_from "$OUT" fgrep 'Experiment: 7'
+check_from "$OUT" fgrep -q 'Experiment: 7'
 
 start_test Analytics javascript is not added for the no-experiment group.
 OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=0' $EXTEND_CACHE)
-check_not_from fgrep 'Experiment:'
+check_not_from "$OUT" fgrep -q 'Experiment:'
 
 system_test_trailer

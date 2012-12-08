@@ -1,10 +1,10 @@
 Info: img_tag_identification.html:23: Shrinking image `http://file.name/BikeCrashIcn.png' (26548 bytes) to `http://file.name/xBikeCrashIcn.png.pagespeed.ic.0.png' (21420 bytes)
 Info: img_tag_identification.html:32: Recompressing image `http://file.name/extensionless_gif' (42 -> 95 bytes) doesn't save space; dropped.
 Info: img_tag_identification.html:35: Recompressing image `http://file.name/o.gif' (43 -> 95 bytes) doesn't save space; dropped.
-Info: img_tag_identification.html:36: Shrinking image `http://file.name/Puzzle.jpg' (241260 bytes) to `http://file.name/1023x766xPuzzle.jpg.pagespeed.ic.0.jpg' (231192 bytes)
+Info: img_tag_identification.html:36: Shrinking image `http://file.name/Puzzle.jpg' (241260 bytes) to `http://file.name/1023x766xPuzzle.jpg.pagespeed.ic.0.jpg' (216942 bytes)
 Info: img_tag_identification.html:37: Resized image `http://file.name/Puzzle.jpg' from 1023x766 to 256x192
-Info: img_tag_identification.html:37: Shrinking image `http://file.name/Puzzle.jpg' (241260 bytes) to `http://file.name/256x192xPuzzle.jpg.pagespeed.ic.0.jpg' (18650 bytes)
-Info: img_tag_identification.html:38: Shrinking image `http://file.name/Puzzle-low-quality.jpg' (11352 bytes) to `http://file.name/256x192xPuzzle-low-quality.jpg.pagespeed.ic.0.jpg' (5448 bytes)
+Info: img_tag_identification.html:37: Shrinking image `http://file.name/Puzzle.jpg' (241260 bytes) to `http://file.name/256x192xPuzzle.jpg.pagespeed.ic.0.jpg' (17775 bytes)
+Info: img_tag_identification.html:38: Shrinking image `http://file.name/Puzzle-low-quality.jpg' (11352 bytes) to `http://file.name/256x192xPuzzle-low-quality.jpg.pagespeed.ic.0.jpg' (5674 bytes)
 Info: img_tag_identification.html:39: Recompressing image `http://file.name/o.gif' (43 -> 95 bytes) doesn't save space; dropped.
 Info: img_tag_identification.html:40: Recompressing image `http://file.name/o.gif' (43 -> 95 bytes) doesn't save space; dropped.
 Info: img_tag_identification.html:43: Recompressing image `http://file.name/another-blank.gif' (35 -> 82 bytes) doesn't save space; dropped.
