@@ -88,7 +88,7 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
   // TODO(oschaaf): The slow worker startup call got lost in the
-  // memcached commit, restore that. For now, remove the shutdown,
+  // memcached commit, restore that. For now, remove the worker shutdown,
   // as that will crash the nginx worker during process exit
 
   ShutDown();
@@ -209,7 +209,6 @@ Statistics* NgxRewriteDriverFactory::statistics() {
 }
 
 RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
-  // TODO(oschaaf): seems these do not get deleted
   return new NgxRewriteOptions();
 }
 

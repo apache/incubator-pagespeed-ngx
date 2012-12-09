@@ -910,6 +910,7 @@ ps_determine_request_options(
 
   // Will be NULL if there aren't any options set with query params or in
   // headers.
+  // TODO(oschaaf): seems the acquired options here are never deleted
   *request_options = query_options_success.first;
 
   return true;
