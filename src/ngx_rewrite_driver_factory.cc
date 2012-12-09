@@ -211,6 +211,7 @@ Statistics* NgxRewriteDriverFactory::statistics() {
 }
 
 RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
+  // TODO(oschaaf): seems these do not get deleted
   return new NgxRewriteOptions();
 }
 

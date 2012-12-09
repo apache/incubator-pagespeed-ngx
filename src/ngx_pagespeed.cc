@@ -320,6 +320,7 @@ ps_configure(ngx_conf_t* cf,
              net_instaweb::MessageHandler* handler) {
   if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
+    //TODO (oschaaf): these should be deleted on process exit
     *options = new net_instaweb::NgxRewriteOptions();
   }
 
@@ -364,6 +365,37 @@ ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   return ps_configure(cf, &cfg_l->options, cfg_l->handler);
 }
 
+void
+ps_cleanup_loc_conf(void* data) {
+  ps_loc_conf_t* cfg_l = (ps_loc_conf_t*)data;
+  delete cfg_l->handler;
+  cfg_l->handler = NULL;
+}
+
+void
+ps_cleanup_srv_conf(void* data) {
+  ps_srv_conf_t* cfg_s = (ps_srv_conf_t*)data;
+  if (cfg_s->proxy_fetch_factory != NULL) {
+    delete cfg_s->proxy_fetch_factory;
+    cfg_s->proxy_fetch_factory = NULL;
+  }
+  delete cfg_s->handler;
+  cfg_s->handler = NULL;
+}
+
+void
+ps_cleanup_main_conf(void* data) {
+  ps_main_conf_t* cfg_m = (ps_main_conf_t*)data;
+  if (cfg_m->driver_factory != NULL) {
+    delete cfg_m->driver_factory;
+    cfg_m->driver_factory = NULL;
+  }
+  delete cfg_m->handler;
+  cfg_m->handler = NULL;
+  net_instaweb::NgxRewriteDriverFactory::Terminate();
+  net_instaweb::NgxRewriteOptions::Terminate();  
+}
+
 template <typename ConfT>
 void*
 ps_create_conf(ngx_conf_t* cf) {
@@ -375,19 +407,37 @@ ps_create_conf(ngx_conf_t* cf) {
   return cfg;
 }
 
+void
+ps_set_cleanup_handler(ngx_conf_t* cf, void (func)(void*), void* data) {
+  ngx_pool_cleanup_t* cleanup_m = ngx_pool_cleanup_add(cf->pool, 0); 
+  if (cleanup_m == NULL) {
+     ngx_conf_log_error(
+         NGX_LOG_ERR, cf, 0, "failed to register a cleanup handler");
+  } else {
+     cleanup_m->handler = func;
+     cleanup_m->data = data;
+  }  
+}
+
 void*
 ps_create_main_conf(ngx_conf_t* cf) {
-  return ps_create_conf<ps_main_conf_t>(cf);
+  ps_main_conf_t* cfg_m = (ps_main_conf_t*)ps_create_conf<ps_main_conf_t>(cf);
+  ps_set_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
+  return cfg_m;
 }
 
 void*
 ps_create_srv_conf(ngx_conf_t* cf) {
-  return ps_create_conf<ps_srv_conf_t>(cf);
+  ps_srv_conf_t* cfg_s = (ps_srv_conf_t*)ps_create_conf<ps_srv_conf_t>(cf);
+  ps_set_cleanup_handler(cf, ps_cleanup_srv_conf, cfg_s);
+  return cfg_s;
 }
 
 void*
 ps_create_loc_conf(ngx_conf_t* cf) {
-  return ps_create_conf<ps_loc_conf_t>(cf);
+  ps_loc_conf_t* cfg_l = (ps_loc_conf_t*)ps_create_conf<ps_loc_conf_t>(cf);
+  ps_set_cleanup_handler(cf, ps_cleanup_loc_conf, cfg_l);
+  return cfg_l;
 }
 
 // nginx has hierarchical configuration.  It maintains configurations at many
@@ -421,35 +471,6 @@ void ps_merge_options(net_instaweb::NgxRewriteOptions* parent_options,
   }
 }
 
-void
-ps_cleanup_loc_conf(void* data) {
-  ps_loc_conf_t* cfg_l = (ps_loc_conf_t*)data;
-  delete cfg_l->handler;
-  cfg_l->handler = NULL;
-}
-
-void
-ps_cleanup_srv_conf(void* data) {
-  ps_srv_conf_t* cfg_s = (ps_srv_conf_t*)data;
-  delete cfg_s->handler;
-  cfg_s->handler = NULL;
-  if (cfg_s->proxy_fetch_factory != NULL) {
-    delete cfg_s->proxy_fetch_factory;
-    cfg_s->proxy_fetch_factory = NULL;
-  }
-}
-
-void
-ps_cleanup_main_conf(void* data) {
-  ps_main_conf_t* cfg_m = (ps_main_conf_t*)data;
-  delete cfg_m->driver_factory;
-  cfg_m->driver_factory = NULL;
-  delete cfg_m->handler;
-  cfg_m->handler = NULL;
-  net_instaweb::NgxRewriteDriverFactory::Terminate();
-  net_instaweb::NgxRewriteOptions::Terminate();  
-}
-
 // Called exactly once per server block to merge the main configuration with the
 // configuration for this server.
 char*
@@ -460,14 +481,6 @@ ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
       static_cast<ps_srv_conf_t*>(child);
 
   ps_merge_options(parent_cfg_s->options, &cfg_s->options);
-
-  ngx_pool_cleanup_t* cleanup_s = ngx_pool_cleanup_add(cf->pool, 0);
-  if (cleanup_s == NULL) {
-    CDBG(cf, "failed to register a cleanup handler for server config");
-  } else { 
-    cleanup_s->handler = ps_cleanup_srv_conf;
-    cleanup_s->data = cfg_s;
-  }
   
   if (cfg_s->options == NULL) {
     return NGX_CONF_OK;  // No pagespeed options; don't do anything.
@@ -492,14 +505,6 @@ ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 
     cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
         parent_cfg_s->options);
-
-    ngx_pool_cleanup_t* cleanup_m = ngx_pool_cleanup_add(cf->pool, 0);
-    if (cleanup_m == NULL) {
-      CDBG(cf, "failed to register a cleanup handler for main config");
-    } else {
-      cleanup_m->handler = ps_cleanup_main_conf;
-      cleanup_m->data = cfg_m;
-    }
   }
 
   cfg_s->server_context = new net_instaweb::NgxServerContext(
@@ -539,14 +544,6 @@ ps_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
   CHECK(parent_cfg_l->options == NULL);
 
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(child);
-
-  ngx_pool_cleanup_t* cleanup_l = ngx_pool_cleanup_add(cf->pool, 0);
-  if (cleanup_l == NULL) {
-    CDBG(cf, "failed to register a cleanup handler for location config");
-  } else { 
-    cleanup_l->handler = ps_cleanup_loc_conf;
-    cleanup_l->data = cfg_l;
-  }
 
   if (cfg_l->options == NULL) {
     // No directory specific options.
@@ -1412,7 +1409,6 @@ ps_init(ngx_conf_t* cf) {
   // consider every request and choose not to do anything, while with no
   // "pagespeed" directives we won't have any effect after nginx is done loading
   // its configuration.
-
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
 
@@ -1445,13 +1441,13 @@ ngx_http_module_t ps_module = {
   NULL,  // preconfiguration
   ps_init,  // postconfiguration
 
-  ps_create_conf<ps_main_conf_t>,
+  ps_create_main_conf,
   NULL,  // initialize main configuration
 
-  ps_create_conf<ps_srv_conf_t>,
+  ps_create_srv_conf,
   ps_merge_srv_conf,
 
-  ps_create_conf<ps_loc_conf_t>,
+  ps_create_loc_conf,
   ps_merge_loc_conf
 };
 
