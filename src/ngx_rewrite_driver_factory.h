@@ -102,7 +102,6 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
 private:
   SimpleStats simple_stats_;
   Timer* timer_;
-  apr_pool_t* pool_;
   scoped_ptr<SlowWorker> slow_worker_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
   typedef std::map<GoogleString, NgxCache*> PathCacheMap;
@@ -130,8 +129,6 @@ private:
   scoped_ptr<QueuedWorkerPool> memcached_pool_;
   std::vector<AprMemCache*> memcache_servers_;
   std::vector<AsyncCache*> async_caches_;
-  typedef std::map<GoogleString, UrlAsyncFetcher*> FetcherMap;
-  FetcherMap fetcher_map_;
   
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };

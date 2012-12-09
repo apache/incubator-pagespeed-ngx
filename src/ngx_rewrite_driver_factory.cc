@@ -85,7 +85,6 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
   SetStatistics(&simple_stats_);
   timer_ = DefaultTimer();
   apr_initialize();
-  apr_pool_create(&pool_,NULL);
   InitializeDefaultOptions();
 }
 
@@ -97,8 +96,6 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   // resource uses the sub-pool and will need that pool to be around to
   // clean up properly.
   ShutDown();
-  apr_pool_destroy(pool_);
-  pool_ = NULL;
   
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
@@ -130,22 +127,15 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
     fetcher_proxy = main_conf_->fetcher_proxy().c_str();
   }
 
-  std::pair<FetcherMap::iterator, bool> result = fetcher_map_.insert(
-      std::make_pair(fetcher_proxy, static_cast<UrlAsyncFetcher*>(NULL)));
-  FetcherMap::iterator iter = result.first;
-  if (result.second) {
-    UrlAsyncFetcher* fetcher = new SerfUrlAsyncFetcher(
-          fetcher_proxy,
-          NULL,
-          thread_system(),
-          statistics(),
-          timer(),
-          2500,
-          message_handler());
-    iter->second = fetcher;
-  }
-  return iter->second;
-  }
+  return new SerfUrlAsyncFetcher(
+      fetcher_proxy,
+      NULL,
+      thread_system(),
+      statistics(),
+      timer(),
+      2500,
+      message_handler());
+}
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
   return new GoogleMessageHandler;
@@ -354,22 +344,8 @@ void NgxRewriteDriverFactory::StopCacheActivity() {
 }
 
 void NgxRewriteDriverFactory::ShutDown() {
-  StopCacheActivity();
-
-  // Next, we shutdown the fetchers before killing the workers in
-  // RewriteDriverFactory::ShutDown; this is so any rewrite jobs in progress
-  // can quickly wrap up.
-  for (FetcherMap::iterator p = fetcher_map_.begin(), e = fetcher_map_.end();
-       p != e; ++p) {
-    UrlAsyncFetcher* fetcher = p->second;
-    fetcher->ShutDown();
-    // TODO(oschaaf): crashes, but should be executed?
-    //defer_cleanup(new Deleter<SerfUrlAsyncFetcher>((SerfUrlAsyncFetcher*)fetcher));
-  }
-  fetcher_map_.clear();
-  
   RewriteDriverFactory::ShutDown();
-
+  
   // Take down any memcached threads.
   memcached_pool_.reset(NULL);
 }
