@@ -47,6 +47,7 @@ class NgxRewriteOptions;
 class AprMemCache;
 class CacheInterface;
 class AsyncCache;
+class NgxUrlAsyncFetcher;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
@@ -71,6 +72,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Initializes the StaticJavascriptManager.
   virtual void InitStaticJavascriptManager(
       StaticJavascriptManager* static_js_manager);
+  bool InitNgxUrlAsyncFecther();
 
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
@@ -130,6 +132,7 @@ private:
   std::vector<AprMemCache*> memcache_servers_;
   std::vector<AsyncCache*> async_caches_;
 
+  NgxUrlAsyncFetcher* ngx_url_async_fetcher_;
   ngx_log_t* log_;
   ngx_resolver_t* resolver_;
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);

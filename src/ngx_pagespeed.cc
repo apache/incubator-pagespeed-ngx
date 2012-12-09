@@ -274,6 +274,9 @@ ps_header_filter(ngx_http_request_t* r);
 ngx_int_t
 ps_init(ngx_conf_t* cf);
 
+ngx_int_t
+ps_init_process(ngx_cycle_t* cycle);
+
 char*
 ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf);
 
@@ -1389,6 +1392,16 @@ ps_init(ngx_conf_t* cf) {
   return NGX_OK;
 }
 
+ngx_int_t
+ps_init_process(ngx_cycle_t* cycle) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
+  if (cfg_m->driver_factory != NULL) {
+    return cfg_m->driver_factory->InitNgxUrlAsyncFecther();
+  }
+  return true;
+}
+
 ngx_http_module_t ps_module = {
   NULL,  // preconfiguration
   ps_init,  // postconfiguration
@@ -1414,7 +1427,7 @@ ngx_module_t ngx_pagespeed = {
   NGX_HTTP_MODULE,
   NULL,
   NULL,
-  NULL,
+  ngx_psol::ps_init_process,
   NULL,
   NULL,
   NULL,
