@@ -1397,9 +1397,11 @@ ps_init_process(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
   if (cfg_m->driver_factory != NULL) {
-    return cfg_m->driver_factory->InitNgxUrlAsyncFecther();
+    if (cfg_m->driver_factory->InitNgxUrlAsyncFecther()) {
+      return NGX_OK;
+    }
   }
-  return true;
+  return NGX_OK;
 }
 
 ngx_http_module_t ps_module = {
