@@ -93,7 +93,6 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
   //slow_worker_->ShutDown();
-  
   // We free all the resources before destroying the pool, because some of the
   // resource uses the sub-pool and will need that pool to be around to
   // clean up properly.
@@ -131,17 +130,22 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
     fetcher_proxy = main_conf_->fetcher_proxy().c_str();
   }
 
-  net_instaweb::UrlAsyncFetcher* fetcher =
-      new net_instaweb::SerfUrlAsyncFetcher(
+  std::pair<FetcherMap::iterator, bool> result = fetcher_map_.insert(
+      std::make_pair(fetcher_proxy, static_cast<UrlAsyncFetcher*>(NULL)));
+  FetcherMap::iterator iter = result.first;
+  if (result.second) {
+    UrlAsyncFetcher* fetcher = new SerfUrlAsyncFetcher(
           fetcher_proxy,
-          pool_,
+          NULL,
           thread_system(),
           statistics(),
           timer(),
           2500,
           message_handler());
-  return fetcher;
-}
+    iter->second = fetcher;
+  }
+  return iter->second;
+  }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
   return new GoogleMessageHandler;
@@ -335,32 +339,38 @@ CacheInterface* NgxRewriteDriverFactory::GetFilesystemMetadataCache(
   return NULL;
 }
 
+void NgxRewriteDriverFactory::StopCacheActivity() {
+  RewriteDriverFactory::StopCacheActivity();
+
+  // Iterate through the map of CacheInterface* objects constructed for
+  // the memcached.  Note that these are not typically AprMemCache* objects,
+  // but instead are a hierarchy of CacheStats*, CacheBatcher*, AsyncCache*,
+  // and AprMemCache*, all of which must be stopped.
+  for (MemcachedMap::iterator p = memcached_map_.begin(),
+           e = memcached_map_.end(); p != e; ++p) {
+    CacheInterface* cache = p->second;
+    cache->ShutDown();
+  }
+}
+
 void NgxRewriteDriverFactory::ShutDown() {
   StopCacheActivity();
 
   // Next, we shutdown the fetchers before killing the workers in
   // RewriteDriverFactory::ShutDown; this is so any rewrite jobs in progress
   // can quickly wrap up.
-  /*
   for (FetcherMap::iterator p = fetcher_map_.begin(), e = fetcher_map_.end();
        p != e; ++p) {
     UrlAsyncFetcher* fetcher = p->second;
     fetcher->ShutDown();
-    defer_cleanup(new Deleter<UrlAsyncFetcher>(fetcher));
+    // TODO(oschaaf): crashes, but should be executed?
+    //defer_cleanup(new Deleter<SerfUrlAsyncFetcher>((SerfUrlAsyncFetcher*)fetcher));
   }
   fetcher_map_.clear();
-  */
+  
   RewriteDriverFactory::ShutDown();
 
-  // Take down any memcached threads.  Note that this may block
-  // waiting for any wedged operations to terminate, possibly
-  // requiring kill -9 to restart Apache if memcached is permanently
-  // hung.  In pracice, the patches made in
-  // src/third_party/aprutil/apr_memcache2.c make that very unlikely.
-  //
-  // The alternative scenario of exiting with pending I/O will often
-  // crash and always leak memory.  Note that if memcached crashes, as
-  // opposed to hanging, it will probably not appear wedged.
+  // Take down any memcached threads.
   memcached_pool_.reset(NULL);
 }
 

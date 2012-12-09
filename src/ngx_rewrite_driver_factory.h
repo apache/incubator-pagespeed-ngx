@@ -70,6 +70,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Release all the resources. It also calls the base class ShutDown to
   // release the base class resources.
   virtual void ShutDown();
+  virtual void StopCacheActivity();
   
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
@@ -129,7 +130,9 @@ private:
   scoped_ptr<QueuedWorkerPool> memcached_pool_;
   std::vector<AprMemCache*> memcache_servers_;
   std::vector<AsyncCache*> async_caches_;
-
+  typedef std::map<GoogleString, UrlAsyncFetcher*> FetcherMap;
+  FetcherMap fetcher_map_;
+  
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

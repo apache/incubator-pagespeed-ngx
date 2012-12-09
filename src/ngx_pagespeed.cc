@@ -371,6 +371,8 @@ ps_create_conf(ngx_conf_t* cf) {
   if (cfg == NULL) {
     return NGX_CONF_ERROR;
   }
+  // TODO(oschaaf): should be deleted on process exit
+  // currently we only delete the message handler from the main config
   cfg->handler = new net_instaweb::GoogleMessageHandler();
   return cfg;
 }
@@ -1395,6 +1397,8 @@ ps_exit_process(ngx_cycle_t *cycle) {
   {
     delete cfg_m->driver_factory;
     cfg_m->driver_factory = NULL;
+    delete cfg_m->handler;
+    cfg_m->handler = NULL;
     net_instaweb::NgxRewriteDriverFactory::Terminate();
     net_instaweb::NgxRewriteOptions::Terminate();
     return;
