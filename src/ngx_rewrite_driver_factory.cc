@@ -91,9 +91,6 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   // memcached commit, restore that. For now, remove the shutdown,
   // as that will crash the nginx worker during process exit
 
-  // We free all the resources before destroying the pool, because some of the
-  // resource uses the sub-pool and will need that pool to be around to
-  // clean up properly.
   ShutDown();
   
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
