@@ -126,14 +126,16 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
     fetcher_proxy = main_conf_->fetcher_proxy().c_str();
   }
 
-  return new SerfUrlAsyncFetcher(
-      fetcher_proxy,
-      NULL,
-      thread_system(),
-      statistics(),
-      timer(),
-      2500,
-      message_handler());
+  net_instaweb::UrlAsyncFetcher* fetcher =
+      new net_instaweb::SerfUrlAsyncFetcher(
+          fetcher_proxy,
+          NULL,
+          thread_system(),
+          statistics(),
+          timer(),
+          2500,
+          message_handler());
+  return fetcher;
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
