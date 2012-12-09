@@ -54,9 +54,6 @@
 #include "net/instaweb/util/public/cache_batcher.h"
 #include "net/instaweb/util/public/fallback_cache.h"
 #include "ngx_cache.h"
-#include "net/instaweb/apache/apr_thread_compatible_pool.h"
-#include "net/instaweb/apache/serf_url_async_fetcher.h"
-#include "net/instaweb/apache/apr_mem_cache.h"
 
 namespace net_instaweb {
 
@@ -84,14 +81,16 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
   CacheStats::InitStats(kMemcached, &simple_stats_);
   SetStatistics(&simple_stats_);
   timer_ = DefaultTimer();
-  apr_initialize();
   InitializeDefaultOptions();
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
-  //slow_worker_->ShutDown();
+  // TODO(oschaaf): The slow worker startup call got lost in the
+  // memcached commit, restore that. For now, remove the shutdown,
+  // as that will crash the nginx worker during process exit
+
   // We free all the resources before destroying the pool, because some of the
   // resource uses the sub-pool and will need that pool to be around to
   // clean up properly.
