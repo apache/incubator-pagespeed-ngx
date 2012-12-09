@@ -463,11 +463,11 @@ ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 
   ngx_pool_cleanup_t* cleanup_s = ngx_pool_cleanup_add(cf->pool, 0);
   if (cleanup_s == NULL) {
-    // TODO(oschaaf): cleanup allocatet, return error
+    CDBG(cf, "failed to register a cleanup handler for server config");
+  } else { 
+    cleanup_s->handler = ps_cleanup_srv_conf;
+    cleanup_s->data = cfg_s;
   }
-  cleanup_s->handler = ps_cleanup_srv_conf;
-  cleanup_s->data = cfg_s;
-
   
   if (cfg_s->options == NULL) {
     return NGX_CONF_OK;  // No pagespeed options; don't do anything.
@@ -495,10 +495,11 @@ ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 
     ngx_pool_cleanup_t* cleanup_m = ngx_pool_cleanup_add(cf->pool, 0);
     if (cleanup_m == NULL) {
-      // TODO(oschaaf): cleanup allocatet, return error
+      CDBG(cf, "failed to register a cleanup handler for main config");
+    } else {
+      cleanup_m->handler = ps_cleanup_main_conf;
+      cleanup_m->data = cfg_m;
     }
-    cleanup_m->handler = ps_cleanup_main_conf;
-    cleanup_m->data = cfg_m;
   }
 
   cfg_s->server_context = new net_instaweb::NgxServerContext(
@@ -541,10 +542,11 @@ ps_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
 
   ngx_pool_cleanup_t* cleanup_l = ngx_pool_cleanup_add(cf->pool, 0);
   if (cleanup_l == NULL) {
-    // TODO(oschaaf): cleanup allocatet, return error
+    CDBG(cf, "failed to register a cleanup handler for location config");
+  } else { 
+    cleanup_l->handler = ps_cleanup_loc_conf;
+    cleanup_l->data = cfg_l;
   }
-  cleanup_l->handler = ps_cleanup_loc_conf;
-  cleanup_l->data = cfg_l;
 
   if (cfg_l->options == NULL) {
     // No directory specific options.
