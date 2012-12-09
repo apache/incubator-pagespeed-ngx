@@ -408,7 +408,7 @@ ps_create_conf(ngx_conf_t* cf) {
 }
 
 void
-ps_set_cleanup_handler(ngx_conf_t* cf, void (func)(void*), void* data) {
+ps_set_conf_cleanup_handler(ngx_conf_t* cf, void (func)(void*), void* data) {
   ngx_pool_cleanup_t* cleanup_m = ngx_pool_cleanup_add(cf->pool, 0); 
   if (cleanup_m == NULL) {
      ngx_conf_log_error(
@@ -422,21 +422,21 @@ ps_set_cleanup_handler(ngx_conf_t* cf, void (func)(void*), void* data) {
 void*
 ps_create_main_conf(ngx_conf_t* cf) {
   ps_main_conf_t* cfg_m = (ps_main_conf_t*)ps_create_conf<ps_main_conf_t>(cf);
-  ps_set_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
+  ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
 }
 
 void*
 ps_create_srv_conf(ngx_conf_t* cf) {
   ps_srv_conf_t* cfg_s = (ps_srv_conf_t*)ps_create_conf<ps_srv_conf_t>(cf);
-  ps_set_cleanup_handler(cf, ps_cleanup_srv_conf, cfg_s);
+  ps_set_conf_cleanup_handler(cf, ps_cleanup_srv_conf, cfg_s);
   return cfg_s;
 }
 
 void*
 ps_create_loc_conf(ngx_conf_t* cf) {
   ps_loc_conf_t* cfg_l = (ps_loc_conf_t*)ps_create_conf<ps_loc_conf_t>(cf);
-  ps_set_cleanup_handler(cf, ps_cleanup_loc_conf, cfg_l);
+  ps_set_conf_cleanup_handler(cf, ps_cleanup_loc_conf, cfg_l);
   return cfg_l;
 }
 
