@@ -367,14 +367,14 @@ ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
 
 void
 ps_cleanup_loc_conf(void* data) {
-  ps_loc_conf_t* cfg_l = (ps_loc_conf_t*)data;
+  ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(data);
   delete cfg_l->handler;
   cfg_l->handler = NULL;
 }
 
 void
 ps_cleanup_srv_conf(void* data) {
-  ps_srv_conf_t* cfg_s = (ps_srv_conf_t*)data;
+  ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(data);
   if (cfg_s->proxy_fetch_factory != NULL) {
     delete cfg_s->proxy_fetch_factory;
     cfg_s->proxy_fetch_factory = NULL;
@@ -385,7 +385,7 @@ ps_cleanup_srv_conf(void* data) {
 
 void
 ps_cleanup_main_conf(void* data) {
-  ps_main_conf_t* cfg_m = (ps_main_conf_t*)data;
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(data);
   if (cfg_m->driver_factory != NULL) {
     delete cfg_m->driver_factory;
     cfg_m->driver_factory = NULL;
@@ -421,21 +421,24 @@ ps_set_conf_cleanup_handler(ngx_conf_t* cf, void (func)(void*), void* data) {
 
 void*
 ps_create_main_conf(ngx_conf_t* cf) {
-  ps_main_conf_t* cfg_m = (ps_main_conf_t*)ps_create_conf<ps_main_conf_t>(cf);
+  ps_main_conf_t* cfg_m =
+      static_cast<ps_main_conf_t*>(ps_create_conf<ps_main_conf_t>(cf));
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
 }
 
 void*
 ps_create_srv_conf(ngx_conf_t* cf) {
-  ps_srv_conf_t* cfg_s = (ps_srv_conf_t*)ps_create_conf<ps_srv_conf_t>(cf);
+  ps_srv_conf_t* cfg_s =
+      static_cast<ps_srv_conf_t*>(ps_create_conf<ps_srv_conf_t>(cf));
   ps_set_conf_cleanup_handler(cf, ps_cleanup_srv_conf, cfg_s);
   return cfg_s;
 }
 
 void*
 ps_create_loc_conf(ngx_conf_t* cf) {
-  ps_loc_conf_t* cfg_l = (ps_loc_conf_t*)ps_create_conf<ps_loc_conf_t>(cf);
+  ps_loc_conf_t* cfg_l =
+      static_cast<ps_loc_conf_t*>(ps_create_conf<ps_loc_conf_t>(cf));
   ps_set_conf_cleanup_handler(cf, ps_cleanup_loc_conf, cfg_l);
   return cfg_l;
 }
