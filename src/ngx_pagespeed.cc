@@ -481,7 +481,7 @@ ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
       static_cast<ps_srv_conf_t*>(child);
 
   ps_merge_options(parent_cfg_s->options, &cfg_s->options);
-  
+
   if (cfg_s->options == NULL) {
     return NGX_CONF_OK;  // No pagespeed options; don't do anything.
   }
@@ -544,7 +544,6 @@ ps_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
   CHECK(parent_cfg_l->options == NULL);
 
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(child);
-
   if (cfg_l->options == NULL) {
     // No directory specific options.
     return NGX_CONF_OK;
@@ -1409,6 +1408,7 @@ ps_init(ngx_conf_t* cf) {
   // consider every request and choose not to do anything, while with no
   // "pagespeed" directives we won't have any effect after nginx is done loading
   // its configuration.
+
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
 
