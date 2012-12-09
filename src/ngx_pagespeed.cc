@@ -371,8 +371,6 @@ ps_create_conf(ngx_conf_t* cf) {
   if (cfg == NULL) {
     return NGX_CONF_ERROR;
   }
-  // TODO(oschaaf): should be deleted on process exit
-  // currently we only delete the message handler from the main config
   cfg->handler = new net_instaweb::GoogleMessageHandler();
   return cfg;
 }
@@ -435,8 +433,10 @@ ps_cleanup_srv_conf(void* data) {
   ps_srv_conf_t* cfg_s = (ps_srv_conf_t*)data;
   delete cfg_s->handler;
   cfg_s->handler = NULL;
-  delete cfg_s->proxy_fetch_factory;
-  cfg_s->proxy_fetch_factory = NULL;
+  if (cfg_s->proxy_fetch_factory != NULL) {
+    delete cfg_s->proxy_fetch_factory;
+    cfg_s->proxy_fetch_factory = NULL;
+  }
 }
 
 void
