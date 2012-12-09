@@ -423,6 +423,33 @@ void ps_merge_options(net_instaweb::NgxRewriteOptions* parent_options,
   }
 }
 
+void
+ps_cleanup_loc_conf(void* data) {
+  ps_loc_conf_t* cfg_l = (ps_loc_conf_t*)data;
+  delete cfg_l->handler;
+  cfg_l->handler = NULL;
+}
+
+void
+ps_cleanup_srv_conf(void* data) {
+  ps_srv_conf_t* cfg_s = (ps_srv_conf_t*)data;
+  delete cfg_s->handler;
+  cfg_s->handler = NULL;
+  delete cfg_s->proxy_fetch_factory;
+  cfg_s->proxy_fetch_factory = NULL;
+}
+
+void
+ps_cleanup_main_conf(void* data) {
+  ps_main_conf_t* cfg_m = (ps_main_conf_t*)data;
+  delete cfg_m->driver_factory;
+  cfg_m->driver_factory = NULL;
+  delete cfg_m->handler;
+  cfg_m->handler = NULL;
+  net_instaweb::NgxRewriteDriverFactory::Terminate();
+  net_instaweb::NgxRewriteOptions::Terminate();  
+}
+
 // Called exactly once per server block to merge the main configuration with the
 // configuration for this server.
 char*
@@ -434,6 +461,14 @@ ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 
   ps_merge_options(parent_cfg_s->options, &cfg_s->options);
 
+  ngx_pool_cleanup_t* cleanup_s = ngx_pool_cleanup_add(cf->pool, 0);
+  if (cleanup_s == NULL) {
+    // TODO(oschaaf): cleanup allocatet, return error
+  }
+  cleanup_s->handler = ps_cleanup_srv_conf;
+  cleanup_s->data = cfg_s;
+
+  
   if (cfg_s->options == NULL) {
     return NGX_CONF_OK;  // No pagespeed options; don't do anything.
   }
@@ -457,6 +492,13 @@ ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 
     cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
         parent_cfg_s->options);
+
+    ngx_pool_cleanup_t* cleanup_m = ngx_pool_cleanup_add(cf->pool, 0);
+    if (cleanup_m == NULL) {
+      // TODO(oschaaf): cleanup allocatet, return error
+    }
+    cleanup_m->handler = ps_cleanup_main_conf;
+    cleanup_m->data = cfg_m;
   }
 
   cfg_s->server_context = new net_instaweb::NgxServerContext(
@@ -496,6 +538,14 @@ ps_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
   CHECK(parent_cfg_l->options == NULL);
 
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(child);
+
+  ngx_pool_cleanup_t* cleanup_l = ngx_pool_cleanup_add(cf->pool, 0);
+  if (cleanup_l == NULL) {
+    // TODO(oschaaf): cleanup allocatet, return error
+  }
+  cleanup_l->handler = ps_cleanup_loc_conf;
+  cleanup_l->data = cfg_l;
+
   if (cfg_l->options == NULL) {
     // No directory specific options.
     return NGX_CONF_OK;
@@ -1389,22 +1439,6 @@ ps_init(ngx_conf_t* cf) {
   return NGX_OK;
 }
 
-void 
-ps_exit_process(ngx_cycle_t *cycle) {
-  ps_main_conf_t* cfg_m = (ps_main_conf_t*)ngx_http_cycle_get_module_main_conf(
-          cycle, ngx_pagespeed);
-  if (cfg_m != NULL)
-  {
-    delete cfg_m->driver_factory;
-    cfg_m->driver_factory = NULL;
-    delete cfg_m->handler;
-    cfg_m->handler = NULL;
-    net_instaweb::NgxRewriteDriverFactory::Terminate();
-    net_instaweb::NgxRewriteOptions::Terminate();
-    return;
-  }
-}
-
 ngx_http_module_t ps_module = {
   NULL,  // preconfiguration
   ps_init,  // postconfiguration
@@ -1433,7 +1467,7 @@ ngx_module_t ngx_pagespeed = {
   NULL,
   NULL,
   NULL,
-  ngx_psol::ps_exit_process,
+  NULL,
   NULL,
   NGX_MODULE_V1_PADDING
 };
