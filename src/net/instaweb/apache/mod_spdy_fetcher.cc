@@ -27,10 +27,12 @@
 #include "util_filter.h"
 
 #include <algorithm>
+#include <cstddef>
 
-#include "net/instaweb/apache/header_util.h"
+#include "base/logging.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/instaweb_context.h"
+#include "net/instaweb/apache/mod_spdy_fetch_controller.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_response_parser.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -39,6 +41,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+
+struct spdy_slave_connection;
 
 namespace net_instaweb {
 
@@ -51,19 +55,24 @@ struct MpsToApacheFilterContext {
   MpsToApacheFilterContext(const GoogleString url,
                            AsyncFetch* in_fetch,
                            MessageHandler* in_handler)
-      : target_fetch(in_fetch),
-        handler(in_handler),
+      : handler(in_handler),
         request_headers(in_fetch->request_headers()),
+        message_body(request_headers->message_body()),
         pos(0),
         in_body(false) {
     StringWriter writer(&request_str);
     request_headers->WriteAsHttp(url, &writer, handler);
   }
 
-  AsyncFetch* target_fetch;
   MessageHandler* handler;
   const RequestHeaders* request_headers;
   GoogleString request_str;  // request line + headers
+
+  // We have to copy the message body since the AsyncFetch might actually
+  // be deleted by ::Done while our filter is still active. This is not worth
+  // optimizing since we do not actually use POST with our fetcher under
+  // normal conditions with MPS.
+  GoogleString message_body;
   size_t pos;
   bool in_body;
 };
@@ -103,7 +112,7 @@ apr_status_t MpsToApacheFilter(ap_filter_t* filter,
   // Which string are we going to be reading from? (We don't actually
   // attempt to read from more than one).
   const GoogleString& in = context->in_body ?
-                               context->request_headers->message_body() :
+                               context->message_body :
                                context->request_str;
 
 
@@ -290,9 +299,11 @@ void ModSpdyFetcher::Initialize() {
       AP_FTYPE_NETWORK);          // filter type
 }
 
-ModSpdyFetcher::ModSpdyFetcher(request_rec* req,
+ModSpdyFetcher::ModSpdyFetcher(ModSpdyFetchController* controller,
+                               request_rec* req,
                                RewriteDriver* driver)
-    : fallback_fetcher_(driver->async_fetcher()) {
+    : controller_(controller),
+      fallback_fetcher_(driver->async_fetcher()) {
   GoogleUrl url(InstawebContext::MakeRequestUrl(*driver->options(), req));
   if (url.is_valid()) {
     url.Origin().CopyToString(&own_origin_);
@@ -326,32 +337,36 @@ void ModSpdyFetcher::Fetch(const GoogleString& url,
   if (connection_factory_ != NULL &&
       parsed_url.is_valid() && !own_origin_.empty() &&
       parsed_url.Origin() == own_origin_) {
-    // These will normally be deleted by their filter functions
-    // (but we do cleanup if something went wrong)
-    MpsToApacheFilterContext* in_context =
-        new MpsToApacheFilterContext(
-            url, fetch, message_handler);
-    ApacheToMpsFilterContext* out_context =
-        new ApacheToMpsFilterContext(fetch, message_handler);
-    spdy_slave_connection* slave_connection =
-        mod_spdy_create_slave_connection(
-            connection_factory_,
-            mps_to_apache_filter_handle, in_context,
-            apache_to_mps_filter_handle, out_context);
-    if (slave_connection != NULL) {
-      // TODO(morlovich): This is very, very, wrong, as it blocks where it
-      // shouldn't. This work should instead be done in a separate thread,
-      // with some due intelligence put into priorities and load shedding.
-      mod_spdy_run_slave_connection(slave_connection);
-      mod_spdy_destroy_slave_connection(slave_connection);
-      return;
-    } else {
-      delete in_context;
-      delete out_context;
-    }
+    controller_->ScheduleBlockingFetch(this, url, message_handler, fetch);
+  } else {
+    fallback_fetcher_->Fetch(url, message_handler, fetch);
   }
+}
 
-  fallback_fetcher_->Fetch(url, message_handler, fetch);
+void ModSpdyFetcher::BlockingFetch(
+    const GoogleString& url, MessageHandler* message_handler,
+    AsyncFetch* fetch) {
+  // These will normally be deleted by their filter functions
+  // (but we do cleanup if something went wrong)
+  MpsToApacheFilterContext* in_context =
+      new MpsToApacheFilterContext(
+          url, fetch, message_handler);
+  ApacheToMpsFilterContext* out_context =
+      new ApacheToMpsFilterContext(fetch, message_handler);
+  spdy_slave_connection* slave_connection =
+      mod_spdy_create_slave_connection(
+          connection_factory_,
+          mps_to_apache_filter_handle, in_context,
+          apache_to_mps_filter_handle, out_context);
+  if (slave_connection != NULL) {
+    mod_spdy_run_slave_connection(slave_connection);
+    mod_spdy_destroy_slave_connection(slave_connection);
+    return;
+  } else {
+    delete in_context;
+    delete out_context;
+    fallback_fetcher_->Fetch(url, message_handler, fetch);
+  }
 }
 
 }  // namespace net_instaweb

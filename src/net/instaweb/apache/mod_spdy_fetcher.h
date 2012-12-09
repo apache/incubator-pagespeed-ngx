@@ -24,20 +24,22 @@
 
 #include "net/instaweb/http/public/url_async_fetcher.h"
 
-#include "apr_pools.h"
 #include "httpd.h"
 
 
 #include "net/instaweb/apache/interface_mod_spdy.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
+
+struct request_rec;
+struct spdy_slave_connection_factory;
 
 namespace net_instaweb {
 
 class AsyncFetch;
 class MessageHandler;
-class RequestHeaders;
-class ResponseHeaders;
+class ModSpdyFetchController;
 class RewriteDriver;
-class Writer;
 
 class ModSpdyFetcher : public UrlAsyncFetcher {
  public:
@@ -45,7 +47,8 @@ class ModSpdyFetcher : public UrlAsyncFetcher {
   // This must be from within a register hooks implementation.
   static void Initialize();
 
-  ModSpdyFetcher(request_rec* req, RewriteDriver* driver);
+  ModSpdyFetcher(ModSpdyFetchController* controller,
+                 request_rec* req, RewriteDriver* driver);
   virtual ~ModSpdyFetcher();
 
   virtual void Fetch(const GoogleString& url,
@@ -60,6 +63,15 @@ class ModSpdyFetcher : public UrlAsyncFetcher {
   // and give a good story on session fetchers and fetcher shutdowns in general.
 
  private:
+  friend class ModSpdyFetchController;
+
+  // The actual implementation of fetching code, normally called by
+  // ModSpdyFetchController.
+  void BlockingFetch(const GoogleString& url,
+                     MessageHandler* message_handler,
+                     AsyncFetch* fetch);
+
+  ModSpdyFetchController* controller_;
   spdy_slave_connection_factory* connection_factory_;
   UrlAsyncFetcher* fallback_fetcher_;
   GoogleString own_origin_;  // empty if we couldn't figure it out.

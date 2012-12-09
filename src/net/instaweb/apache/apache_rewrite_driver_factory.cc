@@ -40,6 +40,7 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/loopback_route_fetcher.h"
+#include "net/instaweb/apache/mod_spdy_fetch_controller.h"
 #include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
@@ -424,6 +425,7 @@ void ApacheRewriteDriverFactory::AutoDetectThreadCounts() {
 
   if (threads > 1) {
     // Apply defaults for threaded.
+    max_mod_spdy_fetch_threads_ = 8;  // TODO(morlovich): Base on MPM's count?
     if (num_rewrite_threads_ <= 0) {
       num_rewrite_threads_ = 4;
     }
@@ -437,6 +439,10 @@ void ApacheRewriteDriverFactory::AutoDetectThreadCounts() {
 
   } else {
     // Apply defaults for non-threaded.
+
+    // If using mod_spdy_fetcher we roughly want one thread for non-background,
+    // fetches one for background ones.
+    max_mod_spdy_fetch_threads_ = 2;
     if (num_rewrite_threads_ <= 0) {
       num_rewrite_threads_ = 1;
     }
@@ -665,6 +671,10 @@ void ApacheRewriteDriverFactory::ChildInit() {
       abort();  // TODO(jmarantz): is there a better way to exit?
     }
   }
+
+  mod_spdy_fetch_controller_.reset(
+      new ModSpdyFetchController(max_mod_spdy_fetch_threads_, thread_system(),
+                                 statistics()));
 }
 
 void ApacheRewriteDriverFactory::DumpRefererStatistics(Writer* writer) {
@@ -887,7 +897,8 @@ void ApacheRewriteDriverFactory::ApplySessionFetchers(
 
   if (conf->experimental_fetch_from_mod_spdy() &&
       ModSpdyFetcher::ShouldUseOn(req)) {
-    driver->SetSessionFetcher(new ModSpdyFetcher(req, driver));
+    driver->SetSessionFetcher(
+        new ModSpdyFetcher(mod_spdy_fetch_controller_.get(), req, driver));
   }
 
   if (driver->options()->num_custom_fetch_headers() > 0) {

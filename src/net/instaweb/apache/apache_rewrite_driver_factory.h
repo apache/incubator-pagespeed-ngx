@@ -46,6 +46,7 @@ class CacheInterface;
 class FileSystem;
 class Hasher;
 class MessageHandler;
+class ModSpdyFetchController;
 class NamedLockManager;
 class QueuedWorkerPool;
 class RewriteDriver;
@@ -56,6 +57,7 @@ class SharedCircularBuffer;
 class SharedMemRefererStatistics;
 class SharedMemStatistics;
 class SlowWorker;
+class StaticJavascriptManager;
 class Statistics;
 class Timer;
 class UrlAsyncFetcher;
@@ -401,6 +403,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   int num_rewrite_threads_;
   int num_expensive_rewrite_threads_;
 
+  int max_mod_spdy_fetch_threads_;
+
   // Size of shared circular buffer for displaying Info messages in
   // /mod_pagespeed_messages.
   int message_buffer_size_;
@@ -446,6 +450,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   typedef std::map<GoogleString, SerfUrlAsyncFetcher*> SerfFetcherMap;
   SerfFetcherMap serf_fetcher_map_;
   MD5Hasher cache_hasher_;
+
+  // Helps coordinate direct-to-mod_spdy fetches.
+  scoped_ptr<ModSpdyFetchController> mod_spdy_fetch_controller_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };
