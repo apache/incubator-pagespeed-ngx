@@ -89,6 +89,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_log_t* log,
   apr_pool_create(&pool_,NULL);
   log_ = log;
   resolver_ = resolver;
+  ngx_url_async_fetcher_ = NULL;
   InitializeDefaultOptions();
 }
 
@@ -120,22 +121,11 @@ Hasher* NgxRewriteDriverFactory::NewHasher() {
 }
 
 UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
-  //return new WgetUrlFetcher;
   return NULL;
 }
 
 UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
-//  net_instaweb::UrlAsyncFetcher* fetcher =
-//      new net_instaweb::SerfUrlAsyncFetcher(
-//          "",
-//          pool_,
-//          thread_system(),
-//          statistics(),
-//          timer(),
-//          2500,
-//          message_handler());
-//  return fetcher;
-  net_instaweb::UrlAsyncFetcher* fetcher =
+  net_instaweb::NgxUrlAsyncFetcher* fetcher =
     new net_instaweb::NgxUrlAsyncFetcher(
         "",
         log_,
@@ -143,6 +133,7 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
         10000,
         resolver_,
         message_handler());
+  ngx_url_async_fetcher_ = fetcher;
   return fetcher;
 }
 
@@ -336,6 +327,13 @@ CacheInterface* NgxRewriteDriverFactory::GetFilesystemMetadataCache(
   }
 
   return NULL;
+}
+
+bool NgxRewriteDriverFactory::InitNgxUrlAsyncFecther() {
+  if (ngx_url_async_fetcher_ == NULL) {
+    return true;
+  }
+  return ngx_url_async_fetcher_->Init();
 }
 
 }  // namespace net_instaweb
