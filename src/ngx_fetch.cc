@@ -15,11 +15,6 @@
  */
 
 // Author: x.dinic@gmail.com (Junmin Xiong)
-// Fetch resources through asynchronous,it run in a nginx event loop
-//  - resolver event would be hook when started a NgxFetch
-//  - when NgxFetchResolveDone is called NgxFetch compled resolver,then 
-//    connect, create a "reuqest", hooked write and read event.
-//  - write, read and handler response in a event loop.
 
 #include "ngx_fetch.h"
 #include "net/instaweb/util/public/basictypes.h"

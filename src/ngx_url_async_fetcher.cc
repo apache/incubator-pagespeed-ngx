@@ -132,6 +132,8 @@ namespace net_instaweb {
     }
   }
 
+  // Create the pool for fetcher, create the pipe, add the read event for main
+  // thread
   bool NgxUrlAsyncFetcher::Init() {
     if (pool_ == NULL) {
       pool_ = ngx_create_pool(4096, log_);

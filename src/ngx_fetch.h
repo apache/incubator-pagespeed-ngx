@@ -15,6 +15,13 @@
  */
 
 // Author: x.dinic@gmail.com (Junmin Xiong)
+//
+//  - The fetch started by the main thread.
+//  - resolver event would be hook when started a NgxFetch
+//  - when NgxFetchResolveDone is called NgxFetch compled resolver,then 
+//    connect, create a "reuqest", hooked write and read event.
+//  - write, read and handler response in a event loop.
+
 
 #ifndef NET_INSTAWEB_NGX_FETCHER_H_
 #define NET_INSTAWEB_NGX_FETCHER_H_
