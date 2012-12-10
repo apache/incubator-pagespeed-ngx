@@ -1652,19 +1652,27 @@ TEST_F(ParserTest, VerbatimDeclarations) {
 
 TEST_F(ParserTest, CssHacks) {
   Parser p("*border: 0px");
+  p.set_preservation_mode(false);
   scoped_ptr<Declarations> declarations(p.ParseDeclarations());
-  EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
-  ASSERT_EQ(1, declarations->size());
-  EXPECT_EQ(Property::OTHER, declarations->at(0)->prop());
-  EXPECT_EQ("*border", declarations->at(0)->prop_text());
-  EXPECT_EQ("*border: 0px", declarations->ToString());
+  EXPECT_EQ(Parser::kDeclarationError, p.errors_seen_mask());
 
-  Parser p2("width: 1px; _width: 3px;");
+  Parser p2("*border: 0px");
+  p2.set_preservation_mode(true);
   declarations.reset(p2.ParseDeclarations());
-  EXPECT_EQ(Parser::kNoError, p.errors_seen_mask());
+  EXPECT_EQ(Parser::kNoError, p2.errors_seen_mask());
+  ASSERT_EQ(1, declarations->size());
+  // * is not a valid identifier char, so we don't parse it into prop_text.
+  EXPECT_EQ(Property::UNPARSEABLE, declarations->at(0)->prop());
+  EXPECT_EQ("/* Unparsed declaration: */ *border: 0px",
+            declarations->ToString());
+
+  Parser p3("width: 1px; _width: 3px;");
+  declarations.reset(p3.ParseDeclarations());
+  EXPECT_EQ(Parser::kNoError, p3.errors_seen_mask());
   ASSERT_EQ(2, declarations->size());
   EXPECT_EQ(Property::WIDTH, declarations->at(0)->prop());
   EXPECT_EQ(Property::OTHER, declarations->at(1)->prop());
+  // _ is a valid identifier char, so we do parse it into prop_text.
   EXPECT_EQ("_width", declarations->at(1)->prop_text());
   EXPECT_EQ("width: 1px; _width: 3px", declarations->ToString());
 }

@@ -345,8 +345,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{-moz-border-radius-topleft:0}",  // Browser-specific (-moz)
     ".ds{display:-moz-inline-box}",
     "a{background:none}",  // CSS Parser used to expand this.
-    // http://code.google.com/p/modpagespeed/issues/detail?id=5
-    "a{font-family:trebuchet ms}",  // Keep space between trebuchet and ms.
     // http://code.google.com/p/modpagespeed/issues/detail?id=121
     "a{color:inherit}",
     // Added for code coverage.
@@ -376,6 +374,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // http://code.google.com/p/modpagespeed/issues/detail?id=574
     "#MyForm\\.myfield{property:value}",
     "\\*{color:red}",
+    "a{property\\:more:value\\;more}"
     // Found in the wild:
     "a{width:overflow:hidden}",
     // IE hack: \9
@@ -417,6 +416,9 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // Unexpected @-statements
     "@keyframes wiggle { 0% { transform: rotate(6deg); } }",
     "@font-face { font-family: 'Ubuntu'; font-style: normal }",
+
+    // Invalid font declaration.
+    "a{font: menu foobar }",
 
     // Things from Alexa-100 that we get parsing errors for. Most are illegal
     // syntax/typos. Some are CSS3 constructs.
@@ -647,6 +649,17 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "-moz-transform:scale(0.5);-webkit-transform:scale(0.5);"
       "-moz-transform:translate(3em,0);-webkit-transform:translate(3em,0)}" },
 
+    // http://code.google.com/p/modpagespeed/issues/detail?id=5
+    // Keep space between trebuchet and ms.
+    // TODO(sligocki): Print as font-family:"trebuchet ms" instead.
+    // According to the CSS spec:
+    //   To avoid mistakes in escaping, it is recommended to quote font
+    //   family names that contain white space, digits, or punctuation
+    //   characters other than hyphens.
+    // It also seems more likely that a bad browser would be more likely
+    // to fail to read the escaped space than a proper string.
+    { "a { font-family: trebuchet ms; }", "a{font-family:trebuchet\\ ms}" },
+
     // http://code.google.com/p/modpagespeed/issues/detail?id=121
     { "body { font: 2em sans-serif; }", "body{font:2em sans-serif}" },
     { "body { font: 0.75em sans-serif; }", "body{font:0.75em sans-serif}" },
@@ -676,7 +689,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // Star/Underscore hack
     // See: http://developer.yahoo.com/yui/compressor/css.html
     { "a { *padding-bottom: 0px; }",
-      "a{*padding-bottom:0px}" },
+      "a{*padding-bottom: 0px}" },
 
     { "#element { width: 1px; _width: 3px; }",
       "#element{width:1px;_width:3px}" },
@@ -1082,11 +1095,6 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "@media screen and (color){.b{color:green}}"
       "@media not screen{.c{color:#00f}}"
       "@media only screen{.d{color:#0ff}}" },
-
-    // TODO(sligocki): Output should be identical to input.
-    // We should escape : in Properties and ; in Values.
-    { "#MyForm\\.myfield{property\\:more:value\\;more}",
-      "#MyForm\\.myfield{property:more:value;more}" },
 
     // http://code.google.com/p/modpagespeed/issues/detail?id=575
     { "[class^=\"icon-\"],[class*=\" icon-\"] { color: red }",

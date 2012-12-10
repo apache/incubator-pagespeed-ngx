@@ -389,10 +389,7 @@ void CssMinify::Minify(const Css::Declaration& declaration) {
   if (declaration.prop() == Css::Property::UNPARSEABLE) {
     Write(declaration.bytes_in_original_buffer());
   } else {
-    // TODO(sligocki): This should use EscapeIdentifier(). However, currently
-    // we don't because we don't want naively parsed properties like
-    // *width converted to \*width.
-    Write(Css::EscapeString(declaration.prop_text()));
+    Write(Css::EscapeIdentifier(declaration.prop_text()));
     Write(":");
     switch (declaration.prop()) {
       case Css::Property::FONT_FAMILY:
@@ -443,11 +440,7 @@ void CssMinify::Minify(const Css::Value& value) {
       Write(")");
       break;
     case Css::Value::FUNCTION:
-      // TODO(sligocki): It seems like we should use Css::EscapeIdentifier()
-      // here, but we don't want to escape things like:
-      //   progid:DXImageTransform.Microsoft.Blur(pixelradius=5)
-      // that are (naively) parsed as identifiers.
-      Write(Css::EscapeString(value.GetFunctionName()));
+      Write(Css::EscapeIdentifier(value.GetFunctionName()));
       Write("(");
       Minify(*value.GetParametersWithSeparators());
       Write(")");
@@ -468,10 +461,7 @@ void CssMinify::Minify(const Css::Value& value) {
       Write(value.bytes_in_original_buffer());
       break;
     case Css::Value::IDENT:
-      // TODO(sligocki): Seems like we should use Css::EscapeIdentifier here,
-      // but some non-identifiers are naively stored here (like "foo=bar")
-      // and we don't want to escape them.
-      Write(Css::EscapeString(value.GetIdentifierText()));
+      Write(Css::EscapeIdentifier(value.GetIdentifierText()));
       break;
     case Css::Value::UNKNOWN:
       handler_->Message(kError, "Unknown attribute");

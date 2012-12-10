@@ -273,11 +273,7 @@ class Parser {
   // This method does not skip spaces like most other methods do, because it
   // may be used to identify things like "import" in "@import", which is
   // different from "@ import".
-  //
-  // You may supply a string of additional allowed_chars. For example,
-  // there are many IE proprietary declarations whose values contain ':'
-  // Ex: filter:progid:DXImageTransform.Microsoft.Alpha(Opacity=80)
-  UnicodeText ParseIdent(const StringPiece& allowed_chars = "");
+  UnicodeText ParseIdent();
 
   // Starting at \, parse the escape and return the corresponding
   // unicode codepoint.  If the \ is the last character in the
@@ -428,13 +424,13 @@ class Parser {
   // in the latter case.  We call this instead of ParseAny() after
   // color, background-color, and background properties to accomodate bad CSS.
   // If no value is found, ParseAnyExpectingColor returns NULL.
-  Value* ParseAnyExpectingColor(const StringPiece& allowed_chars = "");
+  Value* ParseAnyExpectingColor();
 
   // ParseAny() parses a css value and consumes it.  It does not skip
   // leading or trailing whitespace.
   // If no value is found, ParseAny returns NULL and make sure at least one
   // character is consumed (to make progress).
-  Value* ParseAny(const StringPiece& allowed_chars = "");
+  Value* ParseAny();
 
   // Parse a list of values for the given property.
   // We parse until we see a !, ;, or } delimiter. However, if there are any

@@ -299,15 +299,14 @@ static bool StartsIdent(char c) {
           || !IsAscii(c));
 }
 
-UnicodeText Parser::ParseIdent(const StringPiece& allowed_chars) {
+UnicodeText Parser::ParseIdent() {
   Tracer trace(__func__, this);
   UnicodeText s;
   while (in_ < end_) {
     if ((*in_ >= 'A' && *in_ <= 'Z')
         || (*in_ >= 'a' && *in_ <= 'z')
         || (*in_ >= '0' && *in_ <= '9')
-        || *in_ == '-' || *in_ == '_'
-        || allowed_chars.find(*in_) != allowed_chars.npos) {
+        || *in_ == '-' || *in_ == '_') {
       s.push_back(*in_);
       in_++;
     } else if (!IsAscii(*in_)) {
@@ -612,9 +611,7 @@ FunctionParameters* Parser::ParseFunction() {
         in_++;
         break;
       default: {
-        // TODO(sligocki): Should we parse Opacity=80 as a single value?
-        const StringPiece allowed_chars("=");
-        scoped_ptr<Value> val(ParseAny(allowed_chars));
+        scoped_ptr<Value> val(ParseAny());
         if (!val.get()) {
           ReportParsingError(kFunctionError,
                              "Cannot parse parameter in function");
@@ -739,7 +736,7 @@ Value* Parser::ParseUrl() {
   return NULL;
 }
 
-Value* Parser::ParseAnyExpectingColor(const StringPiece& allowed_chars) {
+Value* Parser::ParseAnyExpectingColor() {
   Tracer trace(__func__, this);
   Value* toret = NULL;
 
@@ -753,13 +750,13 @@ Value* Parser::ParseAnyExpectingColor(const StringPiece& allowed_chars) {
     toret = new Value(c);
   } else {
     in_ = oldin;  // no valid color.  rollback.
-    toret = ParseAny(allowed_chars);
+    toret = ParseAny();
   }
   return toret;
 }
 
 // Parses a CSS value.  Could be just about anything.
-Value* Parser::ParseAny(const StringPiece& allowed_chars) {
+Value* Parser::ParseAny() {
   Tracer trace(__func__, this);
   Value* toret = NULL;
 
@@ -816,7 +813,7 @@ Value* Parser::ParseAny(const StringPiece& allowed_chars) {
       }
       // fail through
     default: {
-      UnicodeText id = ParseIdent(allowed_chars);
+      UnicodeText id = ParseIdent();
       if (id.empty()) {
         toret = NULL;
       } else if (!Done() && *in_ == '(') {
@@ -905,10 +902,9 @@ Values* Parser::ParseValues(Property::Prop prop) {
   // TODO(sligocki): According to the spec, if we cannot parse one of the
   // values, we must ignore the whole declaration.
   while (SkipToNextAny()) {
-    const StringPiece allowed_chars(":.");
     scoped_ptr<Value> v(expecting_color ?
-                        ParseAnyExpectingColor(allowed_chars) :
-                        ParseAny(allowed_chars));
+                        ParseAnyExpectingColor() :
+                        ParseAny());
 
 if (v.get()) {
       values->push_back(v.release());
@@ -1184,8 +1180,10 @@ Values* Parser::ParseFont() {
       case Identifier::INHERIT:
         // These special identifiers must be the only one in a declaration.
         // Fail if there are others.
-        // TODO(sligocki): We should probably raise an error here.
-        if (SkipToNextAny()) return NULL;
+        if (SkipToNextAny()) {
+          ReportParsingError(kValueError, "Font has incorrect values.");
+          return NULL;
+        }
         // If everything is good, push these out.
         values->push_back(v.release());
         return values.release();
@@ -1417,28 +1415,11 @@ Declarations* Parser::ParseRawDeclarations() {
       case '}':
         return declarations;
       default: {
-        UnicodeText id;
-        // While not allowed by the CSS spec, there is a common hack
-        // placing * before idents selectively allowing them to be parsed
-        // on some IE versions.
-        // See: http://en.wikipedia.org/wiki/CSS_filter#Star_hack
-        if (*in_ == '*') {
-          id.CopyUTF8("*", 1);
-          in_++;
-          UnicodeText rest = ParseIdent();
-          if (rest.empty()) {
-            ReportParsingError(kDeclarationError, "Ignoring * property");
-            ignore_this_decl = true;
-            break;
-          }
-          id.append(rest);
-        } else {
-          id = ParseIdent();
-          if (id.empty()) {
-            ReportParsingError(kDeclarationError, "Ignoring empty property");
-            ignore_this_decl = true;
-            break;
-          }
+        UnicodeText id = ParseIdent();
+        if (id.empty()) {
+          ReportParsingError(kDeclarationError, "Ignoring empty property");
+          ignore_this_decl = true;
+          break;
         }
         Property prop(id);
         SkipSpace();
