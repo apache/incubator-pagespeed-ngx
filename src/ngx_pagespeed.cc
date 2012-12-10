@@ -416,7 +416,7 @@ ps_set_conf_cleanup_handler(ngx_conf_t* cf, void (func)(void*), void* data) {
   } else {
      cleanup_m->handler = func;
      cleanup_m->data = data;
-  }  
+  }
 }
 
 void*
