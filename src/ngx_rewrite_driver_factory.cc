@@ -54,6 +54,9 @@
 #include "net/instaweb/util/public/cache_batcher.h"
 #include "net/instaweb/util/public/fallback_cache.h"
 #include "ngx_cache.h"
+#include "net/instaweb/apache/apr_thread_compatible_pool.h"
+#include "net/instaweb/apache/serf_url_async_fetcher.h"
+#include "net/instaweb/apache/apr_mem_cache.h"
 
 namespace net_instaweb {
 
