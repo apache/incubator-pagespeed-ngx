@@ -15,11 +15,14 @@
  */
 
 // Author: x.dinic@gmail.com (Junmin Xiong)
-// Fetch resources through asynchronous,it run in a nginx event loop
-//  - resolver event would be hook when started a NgxFetch
-//  - when NgxFetchResolveDone is called NgxFetch compled resolver,then 
-//    connect, create a "reuqest", hooked write and read event.
-//  - write, read and handler response in a event loop.
+//
+//  - The fetch started by the main thread.
+//  - Resolver event would be hooked when started a NgxFetch. It could
+//    lookup the IP of the domain asynchronously from the DNS server.
+//  - When NgxFetchResolveDone is called, It will create the request and the
+//    connection. Add the write and read event to the epoll structure.
+//  - The read handler parses the response. Add the reponse to the buffer at
+//    last.
 
 #include "ngx_fetch.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -80,8 +83,7 @@ namespace net_instaweb {
     }
   }
 
-  // this function call by NgxUrlAsyncFetcher::StartFetch
-  // ParseUrl and init a fetch
+  // This function is call by NgxUrlAsyncFetcher::StartFetch.
   bool NgxFetch::Start(NgxUrlAsyncFetcher* fetcher) {
     fetcher_ = fetcher;
     
@@ -93,7 +95,8 @@ namespace net_instaweb {
     return true;
   }
 
-  // init pool, timeout event and hook dns resolver handler
+  // Do all the intialized work for this fetch. It create the pool,
+  // parse the url, add the timeout event and hook the DNS resolver handler.
   bool NgxFetch::Init() {
     //TODO: log when return false;
 
@@ -139,7 +142,7 @@ namespace net_instaweb {
 
   const char* NgxFetch::str_url() { return str_url_.c_str(); }
 
-  // cancel a fetch, delete timeout event and close the connection
+  // Cancel this fetch, delete timeout event and close the connection
   void NgxFetch::Cancel() {
     if (timeout_event_ != NULL && timeout_event_->timer_set) {
       ngx_del_timer(timeout_event_);
@@ -151,7 +154,8 @@ namespace net_instaweb {
     CallbackDone(false);
   }
 
-  // this function called only once. the fetch with error when success eq false
+  // This function should be called only once. The only argument is sucess or
+  // not.
   void NgxFetch::CallbackDone(bool success) {
     if (async_fetch_ == NULL) {
       LOG(FATAL) << "BUG: Serf callback called more than once on same fetch "
@@ -220,7 +224,7 @@ namespace net_instaweb {
     return false;
   }
 
-  // init a request when resolver has beed done.
+  // Issue a request after resolver has beed done.
   void NgxFetch::NgxFetchResolveDone(ngx_resolver_ctx_t* resolver_ctx) {
     NgxFetch* fetch = static_cast<NgxFetch*>(resolver_ctx->data);
     if (resolver_ctx->state != NGX_OK) {
@@ -231,12 +235,12 @@ namespace net_instaweb {
     ngx_resolve_name_done(resolver_ctx);
 
     if (fetch->InitRquest() != NGX_OK) {
-      // TODO : LOG;
+      // TODO (junmin): LOG
       fetch->Cancel();
     }
   }
 
-  // prepare send data for this fetch, and hook write event.
+  // prepare the send data for this fetch, and hook write event.
   int NgxFetch::InitRquest() {
     in_ = ngx_create_temp_buf(pool_, 4096);
     if (in_ == NULL) {
@@ -319,28 +323,28 @@ namespace net_instaweb {
       return NGX_ERROR;
     }
 
-    //TODO: set write timeout when rc == NGX_AGAIN
+    //TODO(junmin): set write timeout when rc == NGX_AGAIN
     return rc;
   }
 
-  // when send completly,hook read event,and set response handler.
-  // TODO(jummin) add write timeout when writer return NGX_AGAIN.
+  // When the fetch sends the request completely, it will hook the read event,
+  // and prepare to parse the response.
+  // TODO(jummin): add write timeout when writer return NGX_AGAIN.
   void NgxFetch::NgxFetchWrite(ngx_event_t* wev) {
     ngx_connection_t* c = static_cast<ngx_connection_t*>(wev->data);
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
     ngx_buf_t* out = fetch->out_;
 
-    // TODO: set write event timeout
+    // TODO(junmin): set write event timeout
 
     while (out->pos < out->last) {
       int n = c->send(c, out->pos, out->last - out->pos);
       if (n >= 0) {
         out->pos += n;
       } else if (n == NGX_AGAIN) {
-        // add send timeout, 10 only used for test
+        // add send timeout, 10 milliseconds is used for test
         // ngx_add_timer(c->write, 10);
         if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
-          // write event can not be hooked
           fetch->CallbackDone(false);
         }
         return;
@@ -359,7 +363,6 @@ namespace net_instaweb {
     return;
   }
 
-  // add read timeout when connection isn't ready to recv
   void NgxFetch::NgxFetchRead(ngx_event_t* rev) {
     ngx_connection_t* c = static_cast<ngx_connection_t*>(rev->data);
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
@@ -391,18 +394,18 @@ namespace net_instaweb {
       fetch->Cancel();
     }
 
-    // there is a timer for every fetch, read or write timer is needed??
+    // Add the read timeout when connection isn't ready
     if (rev->active) {
-    // is 10 OK?
+      // is 10 OK?
       ngx_add_timer(rev, 10);
     }
   }
 
-  // parse statusline "HTTP/1.1 200 OK\r\n"
+  // Parse the status line: "HTTP/1.1 200 OK\r\n"
   bool NgxFetch::NgxFetchHandleStatusLine(ngx_connection_t* c) {
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
-    // nginx version befor 1.1.4,ngx_http_parse_status_line didn't 
-    // save http_version.so ensure version > 1.1.4
+    // This function only works after Nginx-1.1.4. Before nginx-1.1.4,
+    // ngx_http_parse_status_line didn't save http_version.
     ngx_int_t n = ngx_http_parse_status_line(fetch->r_, fetch->in_,
                                              fetch->status_);
     if (n == NGX_ERROR) { // parse status line error
@@ -420,7 +423,7 @@ namespace net_instaweb {
     return fetch->response_handler(c);
   }
 
-  // parse httpheaders,
+  // Parse the HTTP headers
   bool NgxFetch::NgxFetchHandleHeader(ngx_connection_t* c) {
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
     char* data = reinterpret_cast<char*>(fetch->in_->pos);
@@ -445,6 +448,7 @@ namespace net_instaweb {
     return true;
   }
 
+  // Read the response body
   bool NgxFetch::NgxFetchHandleBody(ngx_connection_t* c) {
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
     char* data = reinterpret_cast<char*>(fetch->in_->pos);

@@ -20,6 +20,7 @@ extern "C" {
  #include <ngx_http.h>
  #include <ngx_core.h>
 }
+
 #include "ngx_url_async_fetcher.h"
 #include "ngx_fetch.h"
 
@@ -124,6 +125,7 @@ namespace net_instaweb {
     ngx_destroy_pool(pool_);
   }
 
+  // If there are still active requests, cancel them.
   void NgxUrlAsyncFetcher::CancelActiveFetches() {
     for (NgxFetchPool::const_iterator p = active_fetches_.begin(),
         e = active_fetches_.end(); p != e; ++p) {
@@ -132,6 +134,8 @@ namespace net_instaweb {
     }
   }
 
+  // Create the pool for fetcher, create the pipe, add the read event for main
+  // thread. It should be called in the worker process.
   bool NgxUrlAsyncFetcher::Init() {
     if (pool_ == NULL) {
       pool_ = ngx_create_pool(4096, log_);
@@ -193,6 +197,8 @@ namespace net_instaweb {
       SendCmd('S');
   }
 
+  // It's called in the Fetcher thread. All the fetches are started at
+  // this function. It will notify the main thread to start the fetch job.
   void NgxUrlAsyncFetcher::Fetch(const GoogleString& url,
                                  MessageHandler* message_handler,
                                  AsyncFetch* async_fetch) {
@@ -202,9 +208,10 @@ namespace net_instaweb {
     pending_fetches_.Add(fetch);
     SendCmd('F');
   }
+
   // send command to nginx main thread
   // 'F' : start a fetch
-  // 'S' : shutdown fetcher
+  // 'S' : shutdown the fetcher
   bool NgxUrlAsyncFetcher::SendCmd(const char command) {
     int rc;
     while (true) {
@@ -212,6 +219,7 @@ namespace net_instaweb {
       if (rc == 1) {
         return true;
       } else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+        // TODO(junmin): It's rare. But it need be fixed.
       } else {
         return false;
       }
@@ -219,6 +227,8 @@ namespace net_instaweb {
     return true;
   }
 
+  // This is the read event which is called in the main thread.
+  // It will do the real work. Add the work event and start the fetch.
   void NgxUrlAsyncFetcher::CommandHandler(ngx_event_t *cmdev) {
     char command;
     int rc;
@@ -238,6 +248,8 @@ namespace net_instaweb {
     NgxFetchPool::const_iterator p, e;
     NgxFetch* fetch;
     switch (command) {
+      // All the new fetches are appended in the pending_fetches.
+      // Start all these fetches.
       case 'F':
         if (!fetcher->pending_fetches_.empty()) {
           for (p = fetcher->active_fetches_.begin(),
@@ -250,6 +262,7 @@ namespace net_instaweb {
         CHECK(ngx_handle_read_event(cmdev, 0) == NGX_OK);
         break;
 
+      // Shutdown all the fetches.
       case 'S':
         if (!fetcher->pending_fetches_.empty()) {
           fetcher->pending_fetches_.DeleteAll();
@@ -283,8 +296,9 @@ namespace net_instaweb {
       active_fetches_.Add(fetch);
       fetchers_count_++;
     } else {
-      //Start fetch failed
+      LOG(WARNING) << "Fetch failed to start: " << fetch->str_url();
       fetch->CallbackDone(false);
+      delete fetch;
     }
     return started;
   }
@@ -294,7 +308,7 @@ namespace net_instaweb {
     completed_fetches_.Add(fetch);
     fetch->message_handler()->Message(kInfo, "Fetch complete:%s",
                     fetch->str_url());
-    //count time_duration_ms_
+    // TODO(junmin): count the time_duration_ms_
     byte_count_ += fetch->bytes_received();
     fetchers_count_--;
   }

@@ -15,6 +15,9 @@
  */
 
 // Author: x.dinic@gmail.com (Junmin Xiong)
+//
+//  The fetch is started by the main thread. It will fetch the remote resource
+//  from the specific url asynchronously.
 
 #ifndef NET_INSTAWEB_NGX_FETCHER_H_
 #define NET_INSTAWEB_NGX_FETCHER_H_
@@ -46,25 +49,24 @@ namespace net_instaweb {
                int64 timeout_ms);
       ~NgxFetch();
 
-      // add the connnection, parse url, connect, add write event, 
-      bool Init();
-      // add read event, init fetcher_
+      // Start the fetch
       bool Start(NgxUrlAsyncFetcher* fetcher);
-      // completed url, for logging
+      // Do the init work and start the resolver work.
+      bool Init();
+      // Show the completed url, for logging purpose
       const char* str_url();
-      // timeout or cancel by force
+      // It's timeout or canceled by force
       void Cancel();
-      // finish this task
+      // This task is done.
       void CallbackDone(bool success);
 
-      // show the bytes received
+      // Show the bytes received
       size_t bytes_received();
       void bytes_received_add(int64 x);
       int64 fetch_start_ms();
       void set_fetch_start_ms(int64 start_ms);
       int64 fetch_end_ms();
       void set_fetch_end_ms(int64 end_ms);
-       // show the bytes received
       MessageHandler* message_handler();
       NgxUrlAsyncFetcher* get_fetcher() {
         return fetcher_;
@@ -74,7 +76,9 @@ namespace net_instaweb {
         return async_fetch_;
       }
 
+      // Prepare the request and write it. 
       int InitRquest();
+      // Create the connection with remote server.
       int Connect();
       void set_response_handler(response_handler_pt handler) {
         response_handler = handler;
@@ -95,29 +99,28 @@ namespace net_instaweb {
     private:
 
       response_handler_pt response_handler;
-      // functions used in event callback
 
       bool ParseUrl();
       
+      // Only the Static functions could be used in callbacks.
       static void NgxFetchResolveDone(ngx_resolver_ctx_t* ctx);
       
-      // create request, connect
-
-      // handler of write event
+      // Write the request
       static void NgxFetchWrite(ngx_event_t* wev);
 
-      // handler of read event
+      // Wait for the response
       static void NgxFetchRead(ngx_event_t* rev);
+      // Read and parse the first status line
       static bool NgxFetchHandleStatusLine(ngx_connection_t* c);
-      // handle header 
+      // Read and parse the HTTP headers
       static bool NgxFetchHandleHeader(ngx_connection_t* c);
-      // handle body
+      // Read the response body
       static bool NgxFetchHandleBody(ngx_connection_t* c);
 
-      // cancel the fetch when timeout;
+      // Cancel the fetch when it's timeout
       static void NgxFetchTimeout(ngx_event_t* tev);
 
-      // add pagespeed user-agent
+      // Add the pagespeed User-Agent
       void FixUserAgent();
       void FixHost();
 
