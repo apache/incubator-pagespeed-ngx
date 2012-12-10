@@ -129,8 +129,8 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
     new net_instaweb::NgxUrlAsyncFetcher(
         "",
         log_,
-        60000,
-        60000,
+        60000000,
+        60000000,
         resolver_,
         message_handler());
   ngx_url_async_fetcher_ = fetcher;

@@ -63,7 +63,9 @@ namespace net_instaweb {
     message_handler_(message_handler),
     bytes_received_(0),
     fetch_start_ms_(0),
-    fetch_end_ms_(0) {
+    fetch_end_ms_(0),
+    done_(false),
+    content_length_(0) {
     ngx_memzero(&url_, sizeof(url_));
     log_ = NULL;
     pool_ = NULL;
@@ -111,7 +113,7 @@ namespace net_instaweb {
     timeout_event_->handler = NgxFetchTimeout;
     timeout_event_->log = log_;
 
-    ngx_event_add_timer(timeout_event_, static_cast<ngx_msec_t> (timeout_ms_));
+    ngx_add_timer(timeout_event_, 600000);
     r_ = static_cast<ngx_http_request_t *>(ngx_pcalloc(pool_,
                                            sizeof(ngx_http_request_t)));
     if (r_ == NULL) { return false; }
@@ -282,6 +284,7 @@ namespace net_instaweb {
     *(out_->last++) = CR;
     *(out_->last++) = LF;
 
+    response_handler = NgxFetchHandleStatusLine;
     int rc = Connect();
     if (rc == NGX_AGAIN) {
       return NGX_OK;
@@ -370,6 +373,14 @@ namespace net_instaweb {
     for (;;) {
       int n = c->recv(c, fetch->in_->start, fetch->in_->end - fetch->in_->start);
       if (n == NGX_AGAIN) {
+        if (fetch->done_) {
+          if (rev->timer_set) {
+            ngx_event_del_timer(rev);
+          }
+          ngx_del_event(rev, NGX_READ_EVENT, 0);
+          fetch->CallbackDone(true);
+          return;
+        }
         break;
       }
 
@@ -433,10 +444,11 @@ namespace net_instaweb {
     if (n > size) {
       return false;
     } else if (fetch->parser_.headers_complete()) {
+      int64 content_length;
+      fetch->async_fetch_->response_headers()->FindContentLength(
+          &content_length);
+      fetch->content_length_ = content_length;
       if (fetch->fetcher_->track_original_content_length()) {
-        int64 content_length;
-        fetch->async_fetch_->response_headers()->FindContentLength(
-            &content_length);
         fetch->async_fetch_->response_headers()->SetOriginalContentLength(
             content_length);
       }
@@ -458,8 +470,15 @@ namespace net_instaweb {
     }
 
     fetch->bytes_received_add(static_cast<int64>(size));
-    return fetch->async_fetch_->Write(StringPiece(data, size),
-        fetch->message_handler());
+    if (fetch->async_fetch_->Write(StringPiece(data, size),
+        fetch->message_handler())) {
+      fetch->content_length_ -= size;
+      if (fetch->content_length_ <= 0) {
+        fetch->done_ = true;
+      }
+      return true;
+    }
+    return false;
   }
 
   void NgxFetch::NgxFetchTimeout(ngx_event_t* tev) {

@@ -134,6 +134,8 @@ namespace net_instaweb {
       int64 fetch_start_ms_;
       int64 fetch_end_ms_;
       int64 timeout_ms_;
+      bool done_;
+      int64 content_length_;
 
       ngx_log_t* log_;
       ngx_buf_t* out_;

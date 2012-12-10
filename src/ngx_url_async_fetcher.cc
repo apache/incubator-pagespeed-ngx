@@ -304,8 +304,8 @@ namespace net_instaweb {
   }
 
   void NgxUrlAsyncFetcher::FetchComplete(NgxFetch* fetch) {
-    active_fetches_.Remove(fetch);
-    completed_fetches_.Add(fetch);
+    //active_fetches_.Remove(fetch);
+    //completed_fetches_.Add(fetch);
     fetch->message_handler()->Message(kInfo, "Fetch complete:%s",
                     fetch->str_url());
     // TODO(junmin): count the time_duration_ms_
