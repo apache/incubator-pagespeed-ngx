@@ -169,6 +169,8 @@ SimpleStats* HTTPCacheTest::simple_stats_ = NULL;
 
 // Simple flow of putting in an item, getting it.
 TEST_F(HTTPCacheTest, PutGet) {
+  simple_stats_->Clear();
+
   ResponseHeaders meta_data_in, meta_data_out;
   InitHeaders(&meta_data_in, "max-age=300");
   http_cache_.Put(kUrl, &meta_data_in, "content", &message_handler_);
@@ -187,7 +189,9 @@ TEST_F(HTTPCacheTest, PutGet) {
   EXPECT_EQ(GoogleString("value"), *(values[0]));
   EXPECT_EQ("content", contents);
   EXPECT_EQ(1, GetStat(HTTPCache::kCacheHits));
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheFallbacks));
 
+  simple_stats_->Clear();
   Callback callback;
   // Now advance time 301 seconds and the we should no longer
   // be able to fetch this resource out of the cache.
@@ -210,8 +214,10 @@ TEST_F(HTTPCacheTest, PutGet) {
   ASSERT_TRUE(fallback_value->ExtractContents(&contents));
   ASSERT_STREQ("value", meta_data_out.Lookup1("name"));
   EXPECT_EQ("content", contents);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheFallbacks));
 
   // Try again but with the cache invalidated.
+  simple_stats_->Clear();
   Callback callback2;
   callback2.cache_valid_ = false;
   found = FindWithCallback(kUrl, &value, &meta_data_out, &message_handler_,
@@ -221,6 +227,7 @@ TEST_F(HTTPCacheTest, PutGet) {
   // The fallback is empty since the entry has been invalidated.
   fallback_value = callback2.fallback_http_value();
   ASSERT_TRUE(fallback_value->Empty());
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheFallbacks));
 }
 
 TEST_F(HTTPCacheTest, PutGetForInvalidUrl) {
@@ -532,6 +539,7 @@ TEST_F(HTTPCacheTest, IsFresh) {
   EXPECT_TRUE(value.ExtractContents(&contents));
   EXPECT_STREQ(kDataIn, contents);
   EXPECT_TRUE(callback.fallback_http_value()->Empty());
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheFallbacks));
 
   callback.Reset();
   value.Clear();
@@ -543,9 +551,12 @@ TEST_F(HTTPCacheTest, IsFresh) {
   EXPECT_TRUE(value.Empty());
   EXPECT_TRUE(callback.fallback_http_value()->ExtractContents(&contents));
   EXPECT_STREQ(kDataIn, contents);
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheFallbacks));
 }
 
 TEST_F(HTTPCacheTest, OverrideCacheTtlMs) {
+  simple_stats_->Clear();
+
   // First test overriding works for a publicly cacheable response if the
   // override TTL is larger than the original one.
   const char kDataIn[] = "content";
@@ -562,11 +573,13 @@ TEST_F(HTTPCacheTest, OverrideCacheTtlMs) {
   EXPECT_TRUE(value.ExtractContents(&contents));
   EXPECT_STREQ(kDataIn, contents);
   EXPECT_TRUE(callback.fallback_http_value()->Empty());
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheFallbacks));
   EXPECT_STREQ("max-age=400",
                meta_data_out.Lookup1(HttpAttributes::kCacheControl));
 
   // Now, test that overriding has no effect if the override TTL is less than
   // the original one.
+  simple_stats_->Clear();
   callback.Reset();
   value.Clear();
   callback.override_cache_ttl_ms_ = 200 * 1000;
@@ -576,10 +589,12 @@ TEST_F(HTTPCacheTest, OverrideCacheTtlMs) {
   EXPECT_TRUE(value.ExtractContents(&contents));
   EXPECT_STREQ(kDataIn, contents);
   EXPECT_TRUE(callback.fallback_http_value()->Empty());
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheFallbacks));
   EXPECT_STREQ("max-age=300",
                meta_data_out.Lookup1(HttpAttributes::kCacheControl));
 
   // Now, test that overriding works for Cache-Control: private responses.
+  simple_stats_->Clear();
   callback.Reset();
   value.Clear();
   meta_data_in.Clear();
@@ -592,11 +607,13 @@ TEST_F(HTTPCacheTest, OverrideCacheTtlMs) {
   EXPECT_TRUE(value.ExtractContents(&contents));
   EXPECT_STREQ(kDataIn, contents);
   EXPECT_TRUE(callback.fallback_http_value()->Empty());
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheFallbacks));
   EXPECT_STREQ("max-age=400",
                meta_data_out.Lookup1(HttpAttributes::kCacheControl));
 
   // Now advance the time by 310 seconds and set override cache TTL to 300
   // seconds. The lookup fails.
+  simple_stats_->Clear();
   mock_timer_.AdvanceMs(310 * 1000);
   callback.Reset();
   value.Clear();
@@ -605,9 +622,11 @@ TEST_F(HTTPCacheTest, OverrideCacheTtlMs) {
   EXPECT_EQ(HTTPCache::kNotFound,
             FindWithCallback(kUrl, &value, &meta_data_out, &message_handler_,
                              &callback));
+  EXPECT_EQ(1, GetStat(HTTPCache::kCacheFallbacks));
 
   // Set the override cache TTL to 400 seconds. The lookup succeeds and the
   // Cache-Control header is updated.
+  simple_stats_->Clear();
   callback.Reset();
   value.Clear();
   meta_data_in.Clear();
@@ -618,6 +637,7 @@ TEST_F(HTTPCacheTest, OverrideCacheTtlMs) {
   EXPECT_TRUE(value.ExtractContents(&contents));
   EXPECT_STREQ(kDataIn, contents);
   EXPECT_TRUE(callback.fallback_http_value()->Empty());
+  EXPECT_EQ(0, GetStat(HTTPCache::kCacheFallbacks));
   EXPECT_STREQ("max-age=400",
                meta_data_out.Lookup1(HttpAttributes::kCacheControl));
 }

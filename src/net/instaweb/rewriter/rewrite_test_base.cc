@@ -238,16 +238,14 @@ void RewriteTestBase::AppendDefaultHeaders(
 
 void RewriteTestBase::ServeResourceFromManyContexts(
     const GoogleString& resource_url,
-    const StringPiece& expected_content,
-    UrlNamer* new_rms_url_namer) {
+    const StringPiece& expected_content) {
   // TODO(sligocki): Serve the resource under several contexts. For example:
   //   1) With output-resource cached,
   //   2) With output-resource not cached, but in a file,
   //   3) With output-resource unavailable, but input-resource cached,
   //   4) With output-resource unavailable and input-resource not cached,
   //      but still fetchable,
-  ServeResourceFromNewContext(resource_url, expected_content,
-                              new_rms_url_namer);
+  ServeResourceFromNewContext(resource_url, expected_content);
   //   5) With nothing available (failure).
 }
 
@@ -259,9 +257,7 @@ TestRewriteDriverFactory* RewriteTestBase::MakeTestFactory() {
 // been constructed.
 void RewriteTestBase::ServeResourceFromNewContext(
     const GoogleString& resource_url,
-    const StringPiece& expected_content,
-    UrlNamer* new_rms_url_namer) {
-
+    const StringPiece& expected_content) {
   // New objects for the new server.
   SimpleStats stats;
   scoped_ptr<TestRewriteDriverFactory> new_factory(MakeTestFactory());
@@ -269,9 +265,6 @@ void RewriteTestBase::ServeResourceFromNewContext(
   new_factory->SetUseTestUrlNamer(factory_->use_test_url_namer());
   new_factory->SetStatistics(&stats);
   ServerContext* new_server_context = new_factory->CreateServerContext();
-  if (new_rms_url_namer != NULL) {
-    new_server_context->set_url_namer(new_rms_url_namer);
-  }
   new_server_context->set_hasher(server_context_->hasher());
   RewriteOptions* new_options = options_->Clone();
   server_context_->ComputeSignature(new_options);

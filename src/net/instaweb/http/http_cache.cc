@@ -60,6 +60,7 @@ const int64 kCacheSizeUnlimited = -1;
 const char HTTPCache::kCacheTimeUs[] = "cache_time_us";
 const char HTTPCache::kCacheHits[] = "cache_hits";
 const char HTTPCache::kCacheMisses[] = "cache_misses";
+const char HTTPCache::kCacheFallbacks[] = "cache_fallbacks";
 const char HTTPCache::kCacheExpirations[] = "cache_expirations";
 const char HTTPCache::kCacheInserts[] = "cache_inserts";
 const char HTTPCache::kCacheDeletes[] = "cache_deletes";
@@ -78,6 +79,7 @@ HTTPCache::HTTPCache(CacheInterface* cache, Timer* timer, Hasher* hasher,
       cache_time_us_(stats->GetVariable(kCacheTimeUs)),
       cache_hits_(stats->GetVariable(kCacheHits)),
       cache_misses_(stats->GetVariable(kCacheMisses)),
+      cache_fallbacks_(stats->GetVariable(kCacheFallbacks)),
       cache_expirations_(stats->GetVariable(kCacheExpirations)),
       cache_inserts_(stats->GetVariable(kCacheInserts)),
       cache_deletes_(stats->GetVariable(kCacheDeletes)),
@@ -221,7 +223,9 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     }
 
     int64 elapsed_us = std::max(static_cast<int64>(0), now_us - start_us_);
-    http_cache_->UpdateStats(result, elapsed_us);
+    http_cache_->UpdateStats(result,
+                             !callback_->fallback_http_value()->Empty(),
+                             elapsed_us);
     callback_->SetTimingMs(elapsed_us/1000);
     if (result != HTTPCache::kFound) {
       headers->Clear();
@@ -281,12 +285,17 @@ class SynchronizingCallback : public HTTPCache::Callback {
 
 }  // namespace
 
-void HTTPCache::UpdateStats(FindResult result, int64 delta_us) {
+void HTTPCache::UpdateStats(
+    FindResult result, bool has_fallback, int64 delta_us) {
   cache_time_us_->Add(delta_us);
   if (result == kFound) {
     cache_hits_->Add(1);
+    DCHECK(!has_fallback);
   } else {
     cache_misses_->Add(1);
+    if (has_fallback) {
+      cache_fallbacks_->Add(1);
+    }
   }
 }
 
@@ -476,6 +485,7 @@ void HTTPCache::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCacheTimeUs);
   statistics->AddVariable(kCacheHits);
   statistics->AddVariable(kCacheMisses);
+  statistics->AddVariable(kCacheFallbacks);
   statistics->AddVariable(kCacheExpirations);
   statistics->AddVariable(kCacheInserts);
   statistics->AddVariable(kCacheDeletes);

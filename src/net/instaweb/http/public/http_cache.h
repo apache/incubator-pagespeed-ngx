@@ -48,6 +48,7 @@ class HTTPCache {
   static const char kCacheTimeUs[];
   static const char kCacheHits[];
   static const char kCacheMisses[];
+  static const char kCacheFallbacks[];
   static const char kCacheExpirations[];
   static const char kCacheInserts[];
   static const char kCacheDeletes[];
@@ -244,6 +245,7 @@ class HTTPCache {
   Variable* cache_time_us()     { return cache_time_us_; }
   Variable* cache_hits()        { return cache_hits_; }
   Variable* cache_misses()      { return cache_misses_; }
+  Variable* cache_fallbacks()   { return cache_fallbacks_; }
   Variable* cache_expirations() { return cache_expirations_; }
   Variable* cache_inserts()     { return cache_inserts_; }
   Variable* cache_deletes()     { return cache_deletes_; }
@@ -308,7 +310,7 @@ class HTTPCache {
   HTTPValue* ApplyHeaderChangesForPut(
       const GoogleString& key, int64 start_us, const StringPiece* content,
       ResponseHeaders* headers, HTTPValue* value, MessageHandler* handler);
-  void UpdateStats(FindResult result, int64 delta_us);
+  void UpdateStats(FindResult result, bool has_fallback, int64 delta_us);
   void RememberFetchFailedorNotCacheableHelper(
       const GoogleString& key, MessageHandler* handler, HttpStatus::Code code,
       int64 ttl_sec);
@@ -322,6 +324,7 @@ class HTTPCache {
   Variable* cache_time_us_;
   Variable* cache_hits_;
   Variable* cache_misses_;
+  Variable* cache_fallbacks_;
   Variable* cache_expirations_;
   Variable* cache_inserts_;
   Variable* cache_deletes_;

@@ -44,6 +44,7 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 
@@ -57,12 +58,10 @@ class HtmlWriterFilter;
 class LRUCache;
 class MessageHandler;
 class MockScheduler;
-class MockTimer;
 class PropertyCache;
 class ResourceNamer;
 class RewriteFilter;
 class Statistics;
-class UrlNamer;
 class WaitUrlAsyncFetcher;
 struct ContentType;
 
@@ -167,15 +166,13 @@ class RewriteTestBase : public RewriteOptionsTestBase {
                             GoogleString* text);
 
   void ServeResourceFromManyContexts(const GoogleString& resource_url,
-                                     const StringPiece& expected_content,
-                                     UrlNamer* new_rms_url_namer = NULL);
+                                     const StringPiece& expected_content);
 
   // Test that a resource can be served from an new server that has not already
   // constructed it.
   void ServeResourceFromNewContext(
       const GoogleString& resource_url,
-      const StringPiece& expected_content,
-      UrlNamer* new_rms_url_namer = NULL);
+      const StringPiece& expected_content);
 
   // This definition is required by HtmlParseTestBase which defines this as
   // pure abstract, so that the test subclass can define how it instantiates

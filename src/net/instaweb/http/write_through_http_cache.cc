@@ -44,28 +44,38 @@ class FallbackCacheCallback: public HTTPCache::Callback {
 
   FallbackCacheCallback(const GoogleString& key,
                         WriteThroughHTTPCache* write_through_http_cache,
+                        HTTPCache* cache1,
                         HTTPCache::Callback* client_callback,
                         UpdateCache1HandlerFunction function)
       : key_(key),
         write_through_http_cache_(write_through_http_cache),
+        cache1_(cache1),
         client_callback_(client_callback),
         function_(function) {}
 
   virtual ~FallbackCacheCallback() {}
 
   virtual void Done(HTTPCache::FindResult find_result) {
+    HTTPValue* client_fallback = client_callback_->fallback_http_value();
+    const bool has_cache1_fallback = !client_fallback->Empty();
     if (find_result != HTTPCache::kNotFound) {
       client_callback_->http_value()->Link(http_value());
       client_callback_->response_headers()->CopyFrom(*response_headers());
       // Clear the fallback_http_value() in client_callback_ since we found a
       // fresh response.
-      client_callback_->fallback_http_value()->Clear();
+      client_fallback->Clear();
       // Insert the response into cache1.
       (write_through_http_cache_->*function_)(key_, http_value());
+      if (has_cache1_fallback) {
+        cache1_->cache_fallbacks()->Add(-1);
+      }
     } else if (!fallback_http_value()->Empty()) {
       // We assume that the fallback value in the L2 cache is always fresher
       // than or as fresh as the fallback value in the L1 cache.
-      HTTPValue* client_fallback = client_callback_->fallback_http_value();
+      if (has_cache1_fallback) {
+        // Both caches had a fallback value, make sure we don't double count.
+        cache1_->cache_fallbacks()->Add(-1);
+      }
       client_fallback->Clear();
       client_fallback->Link(fallback_http_value());
     }
@@ -94,6 +104,7 @@ class FallbackCacheCallback: public HTTPCache::Callback {
  private:
   GoogleString key_;
   WriteThroughHTTPCache* write_through_http_cache_;
+  HTTPCache* cache1_;
   HTTPCache::Callback* client_callback_;
   UpdateCache1HandlerFunction function_;
 };
@@ -199,7 +210,7 @@ void WriteThroughHTTPCache::Find(const GoogleString& key,
                                  MessageHandler* handler,
                                  Callback* callback) {
   FallbackCacheCallback* fallback_cache_callback = new FallbackCacheCallback(
-      key, this, callback, &WriteThroughHTTPCache::PutInCache1);
+      key, this, cache1_.get(), callback, &WriteThroughHTTPCache::PutInCache1);
   Cache1Callback* cache1_callback = new Cache1Callback(
       key, cache2_.get(), handler, callback, fallback_cache_callback);
   cache1_->Find(key, handler, cache1_callback);
