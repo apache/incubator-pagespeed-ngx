@@ -137,6 +137,7 @@ namespace net_instaweb {
   // Create the pool for fetcher, create the pipe, add the read event for main
   // thread. It should be called in the worker process.
   bool NgxUrlAsyncFetcher::Init() {
+    log_ = ngx_cycle->log;
     if (pool_ == NULL) {
       pool_ = ngx_create_pool(4096, log_);
       if (pool_ == NULL) {
@@ -162,8 +163,8 @@ namespace net_instaweb {
       return false;
     }
 
-    pipe_fd_ = pipe_fds[0];
-    command_connection_ = ngx_get_connection(pipe_fds[1], log_);
+    pipe_fd_ = pipe_fds[1];
+    command_connection_ = ngx_get_connection(pipe_fds[0], log_);
     if (command_connection_ == NULL) {
       close(pipe_fds[1]);
       close(pipe_fds[0]);
@@ -235,7 +236,7 @@ namespace net_instaweb {
     ngx_connection_t* c = static_cast<ngx_connection_t*>(cmdev->data);
     NgxUrlAsyncFetcher* fetcher = static_cast<NgxUrlAsyncFetcher*>(c->data);
     do {
-      rc = read(fetcher->pipe_fd_, &command, 1);
+      rc = read(c->fd, &command, 1);
     } while (rc == -1 && errno == EINTR);
 
     CHECK(rc == -1 || rc == 0 || rc == 1);
@@ -245,19 +246,18 @@ namespace net_instaweb {
       return;
     }
 
-    NgxFetchPool::const_iterator p, e;
-    NgxFetch* fetch;
     switch (command) {
       // All the new fetches are appended in the pending_fetches.
       // Start all these fetches.
       case 'F':
         if (!fetcher->pending_fetches_.empty()) {
-          for (p = fetcher->active_fetches_.begin(),
+          for (Pool<NgxFetch>::iterator p = fetcher->pending_fetches_.begin(),
               e = fetcher->pending_fetches_.end(); p != e; p++) {
-            fetch = *p;
+            NgxFetch* fetch = *p;
             fetcher->StartFetch(fetch);
+            fetcher->pending_fetches_.Remove(fetch);
           }
-          fetcher->pending_fetches_.DeleteAll();
+          //fetcher->pending_fetches_.DeleteAll();
         }
         CHECK(ngx_handle_read_event(cmdev, 0) == NGX_OK);
         break;
@@ -273,9 +273,9 @@ namespace net_instaweb {
         }
 
         if (!fetcher->active_fetches_.empty()) {
-          for (p = fetcher->active_fetches_.begin(),
+          for (Pool<NgxFetch>::iterator p = fetcher->active_fetches_.begin(),
                e = fetcher->active_fetches_.end(); p != e; p++) {
-            fetch = *p;
+            NgxFetch* fetch = *p;
             fetch->CallbackDone(false);
           }
           fetcher->active_fetches_.DeleteAll();

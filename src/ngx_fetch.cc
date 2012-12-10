@@ -86,7 +86,7 @@ namespace net_instaweb {
   // This function is call by NgxUrlAsyncFetcher::StartFetch.
   bool NgxFetch::Start(NgxUrlAsyncFetcher* fetcher) {
     fetcher_ = fetcher;
-    
+    log_ = ngx_cycle->log;
     if (!Init()) {
       Cancel();
       return false;
@@ -98,8 +98,6 @@ namespace net_instaweb {
   // Do all the intialized work for this fetch. It create the pool,
   // parse the url, add the timeout event and hook the DNS resolver handler.
   bool NgxFetch::Init() {
-    //TODO: log when return false;
-
     pool_ = ngx_create_pool(12288, log_);
     if (pool_ == NULL) { return false; }
 
@@ -111,6 +109,7 @@ namespace net_instaweb {
     if (timeout_event_ == NULL) { return false; }
     timeout_event_->data = this;
     timeout_event_->handler = NgxFetchTimeout;
+    timeout_event_->log = log_;
 
     ngx_event_add_timer(timeout_event_, static_cast<ngx_msec_t> (timeout_ms_));
     r_ = static_cast<ngx_http_request_t *>(ngx_pcalloc(pool_,
@@ -252,7 +251,7 @@ namespace net_instaweb {
     RequestHeaders* request_headers = async_fetch_->request_headers();
     ConstStringStarVector v;
     size_t size = 0;
-    size = sizeof("GET ") - 1 + url_.uri.len + sizeof("HTTP/1.1\r\n") - 1;
+    size = sizeof("GET ") - 1 + url_.uri.len + sizeof(" HTTP/1.1\r\n") - 1;
     for (int i = 0; i < request_headers->NumAttributes(); i++) {
 
       // name: value\r\n
@@ -268,7 +267,7 @@ namespace net_instaweb {
 
     out_->last = ngx_cpymem(out_->last, "GET ", 4);
     out_->last = ngx_cpymem(out_->last, url_.uri.data, url_.uri.len);
-    out_->last = ngx_cpymem(out_->last, "HTTP/1.1\r\n", 10);
+    out_->last = ngx_cpymem(out_->last, " HTTP/1.1\r\n", 11);
 
     for (int i = 0; i < request_headers->NumAttributes(); i++) {
       const GoogleString& name = request_headers->Name(i);
@@ -319,9 +318,10 @@ namespace net_instaweb {
     connection_->read->handler = NgxFetchRead;
     connection_->data = this;
 
-    if (ngx_handle_write_event(connection_->write, 0) != NGX_OK) {
-      return NGX_ERROR;
-    }
+    //if (ngx_handle_write_event(connection_->write, 0) != NGX_OK) {
+    //if (ngx_add_event(connection_->write, NGX_WRITE_EVENT, 0) != NGX_OK) {
+    //  return NGX_ERROR;
+    //}
 
     //TODO(junmin): set write timeout when rc == NGX_AGAIN
     return rc;
@@ -495,7 +495,7 @@ namespace net_instaweb {
       request_headers->RemoveAll(HttpAttributes::kUserAgent);
     }
     if (user_agent.empty()) {
-      user_agent += "NgxFetch";
+      user_agent += "mod_pagespeed";
     }
     request_headers->Add(HttpAttributes::kUserAgent, user_agent);
   }
