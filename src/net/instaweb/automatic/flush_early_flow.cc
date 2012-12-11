@@ -106,8 +106,6 @@ void InitFlushEarlyDriverWithPropertyCacheValues(
 
 }  // namespace
 
-class StaticJavascriptManager;
-
 const char FlushEarlyFlow::kNumRequestsFlushedEarly[] =
     "num_requests_flushed_early";
 const char FlushEarlyFlow::kNumResourcesFlushedEarly[] =
@@ -525,7 +523,9 @@ void FlushEarlyFlow::GenerateResponseHeaders(
   ResponseHeaders* response_headers = base_fetch_->response_headers();
   response_headers->UpdateFromProto(flush_early_info.response_headers());
   // TODO(mmohabey): Add this header only when debug filter is on.
-  response_headers->Add(kPsaRewriterHeader, kFlushSubresourcesFilter);
+  response_headers->Add(
+      kPsaRewriterHeader,
+      RewriteOptions::FilterId(RewriteOptions::kFlushSubresources));
   response_headers->SetDateAndCaching(manager_->timer()->NowMs(), 0,
                                       ", private, no-cache");
   response_headers->ComputeCaching();
