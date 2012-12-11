@@ -111,6 +111,23 @@ TEST_F(RefCountedPtrTest, Upcast) {
   EXPECT_EQ(base->index(), derived->index());
 }
 
+TEST_F(RefCountedPtrTest, AssignUpcast) {
+  RefCountedPtr<DerivedA> derived(new DerivedA);
+  PolymorphicPtr base;
+  base = derived;
+  EXPECT_FALSE(derived.unique());
+  EXPECT_FALSE(base.unique());
+  EXPECT_EQ(base->index(), derived->index());
+}
+
+TEST_F(RefCountedPtrTest, ExplicitDowncast) {
+  PolymorphicPtr base(new DerivedB);
+  RefCountedPtr<DerivedB> derived = base.StaticCast<DerivedB>();
+  EXPECT_FALSE(derived.unique());
+  EXPECT_FALSE(base.unique());
+  EXPECT_EQ(base->index(), derived->index());
+}
+
 // It is not possible to use RefCountedUpcast to perform a downcast.
 // To prove that to yourself, uncomment this and compile:
 //
