@@ -65,8 +65,7 @@ namespace net_instaweb {
     fetch_start_ms_(0),
     fetch_end_ms_(0),
     done_(false),
-    content_length_(0),
-    started_(false) {
+    content_length_(0) {
     ngx_memzero(&url_, sizeof(url_));
     log_ = NULL;
     pool_ = NULL;
@@ -75,7 +74,6 @@ namespace net_instaweb {
   }
 
   NgxFetch::~NgxFetch() {
-    ngx_log_error(NGX_LOG_ERR, log_, 0, "NgxFetch delete");
     if (timeout_event_ && timeout_event_->timer_set) {
         ngx_del_timer(timeout_event_);
     }
@@ -91,9 +89,8 @@ namespace net_instaweb {
   bool NgxFetch::Start(NgxUrlAsyncFetcher* fetcher) {
     fetcher_ = fetcher;
     log_ = ngx_cycle->log;
-    started_ = true;
     if (!Init()) {
-      Cancel();
+      CallbackDone(false);
       return false;
     }
 
@@ -107,34 +104,27 @@ namespace net_instaweb {
     if (pool_ == NULL) { return false; }
 
     if (!ParseUrl()) {
-      Cancel();
+      CallbackDone(false);
       return false;
     }
-    timeout_event_ = static_cast<ngx_event_t *>(ngx_pcalloc(pool_, sizeof(ngx_event_t)));
+    timeout_event_ = static_cast<ngx_event_t *>(
+        ngx_pcalloc(pool_, sizeof(ngx_event_t)));
     if (timeout_event_ == NULL) { return false; }
     timeout_event_->data = this;
     timeout_event_->handler = NgxFetchTimeout;
     timeout_event_->log = log_;
 
-    //ngx_add_timer(timeout_event_, 1000);
+    ngx_add_timer(timeout_event_, fetcher_->fetch_timeout_);
     r_ = static_cast<ngx_http_request_t *>(ngx_pcalloc(pool_,
                                            sizeof(ngx_http_request_t)));
     if (r_ == NULL) { return false; }
     status_ = static_cast<ngx_http_status_t*>(ngx_pcalloc(pool_,
                                               sizeof(ngx_http_status_t)));
     if (status_ == NULL) { return false;}
-    //ngx_resolver_ctx_t temp;
-    //temp.name.data = url_.host.data;
-    //temp.name.len = url_.host.len;
-    resolver_ctx_ = static_cast<ngx_resolver_ctx_t*>(
-        ngx_pcalloc(pool_, sizeof(ngx_resolver_ctx_t)));
-    if (resolver_ctx_ == NULL) {
-      return false;
-    }
-
-    resolver_ctx_->name.data = url_.host.data;
-    resolver_ctx_->name.len = url_.host.len;
-    resolver_ctx_ = ngx_resolve_start(fetcher_->resolver_, resolver_ctx_);
+    ngx_resolver_ctx_t temp;
+    temp.name.data = url_.host.data;
+    temp.name.len = url_.host.len;
+    resolver_ctx_ = ngx_resolve_start(fetcher_->resolver_, &temp);
     if (resolver_ctx_ == NULL || resolver_ctx_ == NGX_NO_RESOLVER) {
       return false;
     }
@@ -154,43 +144,36 @@ namespace net_instaweb {
 
   const char* NgxFetch::str_url() { return str_url_.c_str(); }
 
-  // Cancel this fetch, delete timeout event and close the connection
-  void NgxFetch::Cancel() {
-    ngx_log_error(NGX_LOG_ERR, log_, 0, "Cancle");
-    if (timeout_event_ != NULL && timeout_event_->timer_set) {
-      ngx_del_timer(timeout_event_);
-    }
-    if (connection_) {
-      ngx_close_connection(connection_);
-    }
-
-    CallbackDone(false);
-  }
-
   // This function should be called only once. The only argument is sucess or
   // not.
   void NgxFetch::CallbackDone(bool success) {
     if (async_fetch_ == NULL) {
-      LOG(FATAL) << "BUG: Serf callback called more than once on same fetch "
+      LOG(FATAL) << "BUG: NgxFetch callback called more than once on same fetch"
         << str_url_.c_str() << "(" << this << ").Please report this"
         << "at https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss";
       return;
     }
 
-    if (fetcher_->track_original_content_length()
-        && async_fetch_->response_headers()->Has(
-          HttpAttributes::kXOriginalContentLength)) {
-      async_fetch_->extra_response_headers()->SetOriginalContentLength(
-          bytes_received_);
-    }
-
-    ngx_log_error(NGX_LOG_ERR,  ngx_cycle->log, 0, "CallbackDone %c",success);
     if (timeout_event_->timer_set) {
       ngx_del_timer(timeout_event_);
     }
-    fetcher_->FetchComplete(this);
+    ngx_close_connection(connection_);
+
     async_fetch_->Done(success);
     async_fetch_ = NULL;
+    if (fetcher_ != NULL) {
+      if (fetcher_->track_original_content_length()
+          && async_fetch_->response_headers()->Has(
+            HttpAttributes::kXOriginalContentLength)) {
+        async_fetch_->extra_response_headers()->SetOriginalContentLength(
+            bytes_received_);
+      }
+      if (timeout_event_->timer_set) {
+        ngx_del_timer(timeout_event_);
+      }
+      fetcher_->FetchComplete(this);
+    }
+    delete this;
   }
 
   size_t NgxFetch::bytes_received() { return bytes_received_; }
@@ -224,9 +207,6 @@ namespace net_instaweb {
     } else if (ngx_strncasecmp(url_.url.data, (u_char*)"https://", 8) == 0) {
       add = 8;
       port = 443;
-
-    } else { // not https or http
-      return false;
     }
 
     url_.url.data += add;
@@ -238,7 +218,6 @@ namespace net_instaweb {
     if (ngx_parse_url(pool_, &url_) == NGX_OK) {
       return true;
     }
-
     return false;
   }
 
@@ -246,7 +225,7 @@ namespace net_instaweb {
   void NgxFetch::NgxFetchResolveDone(ngx_resolver_ctx_t* resolver_ctx) {
     NgxFetch* fetch = static_cast<NgxFetch*>(resolver_ctx->data);
     if (resolver_ctx->state != NGX_OK) {
-      fetch->Cancel();
+      fetch->CallbackDone(false);
       return;
     }
     ngx_memzero(&fetch->sin_, sizeof(fetch->sin_));
@@ -256,7 +235,7 @@ namespace net_instaweb {
     ngx_resolve_name_done(resolver_ctx);
     if (fetch->InitRquest() != NGX_OK) {
       // TODO (junmin): LOG
-      fetch->Cancel();
+      fetch->CallbackDone(false);
     }
   }
 
@@ -269,9 +248,6 @@ namespace net_instaweb {
 
     FixUserAgent();
     FixHost();
-    if (async_fetch_ == NULL) {
-      ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "InitRquest async_fetch_ == NULL");
-    }
     RequestHeaders* request_headers = async_fetch_->request_headers();
     ConstStringStarVector v;
     size_t size = 0;
@@ -391,11 +367,8 @@ namespace net_instaweb {
     for (;;) {
       int n = c->recv(c, fetch->in_->start, fetch->in_->end - fetch->in_->start);
       if (n == NGX_AGAIN) {
-        if (fetch->done_) {
-          if (rev->timer_set) {
-            ngx_event_del_timer(rev);
-          }
-          ngx_del_event(rev, NGX_READ_EVENT, 0);
+        // rev->timeout == 1 if reponse send by chunk
+        if (fetch->done_ || rev->timedout) {
           fetch->CallbackDone(true);
           return;
         }
@@ -410,7 +383,7 @@ namespace net_instaweb {
         fetch->in_->pos = fetch->in_->start;
         fetch->in_->last = fetch->in_->start + n;
         if (!fetch->response_handler(c)) {
-          fetch->Cancel();
+          fetch->CallbackDone(false);
         }
       }
 
@@ -420,13 +393,13 @@ namespace net_instaweb {
     }
 
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
-      fetch->Cancel();
+      fetch->CallbackDone(false);
     }
 
     // Add the read timeout when connection isn't ready
     if (rev->active) {
       // is 10 OK?
-      //ngx_add_timer(rev, 100000);
+      ngx_add_timer(rev, 10000);
     }
   }
 
@@ -434,9 +407,6 @@ namespace net_instaweb {
   bool NgxFetch::NgxFetchHandleStatusLine(ngx_connection_t* c) {
     
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
-    if (fetch->async_fetch_ == NULL) {
-      ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "NgxFetchHandleStatusLine async_fetch_ == NULL");
-    }
     // This function only works after Nginx-1.1.4. Before nginx-1.1.4,
     // ngx_http_parse_status_line didn't save http_version.
     ngx_int_t n = ngx_http_parse_status_line(fetch->r_, fetch->in_,
@@ -463,9 +433,6 @@ namespace net_instaweb {
     size_t size = fetch->in_->last - fetch->in_->pos;
     size_t n = fetch->parser_.ParseChunk(StringPiece(data, size),
         fetch->message_handler_);
-    if (fetch->async_fetch_ == NULL) {
-      ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "NgxFetchHandleHeader async_fetch_ == NULL");
-    }
     if (n > size) {
       return false;
     } else if (fetch->parser_.headers_complete()) {
@@ -495,9 +462,6 @@ namespace net_instaweb {
     }
 
     fetch->bytes_received_add(static_cast<int64>(size));
-    if (fetch->async_fetch_ == NULL) {
-      ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "NgxFetchHandleBody async_fetch_ == NULL");
-    }
     if (fetch->async_fetch_->Write(StringPiece(data, size),
         fetch->message_handler())) {
       fetch->content_length_ -= size;
@@ -514,13 +478,10 @@ namespace net_instaweb {
     if (tev->timer_set) {
       ngx_del_timer(tev);
     }
-    fetch->Cancel();
+    fetch->CallbackDone(false);
   }
 
   void NgxFetch::FixHost() {
-    if (async_fetch_ == NULL) {
-      ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "FixHost async_fetch_ == NULL");
-    }
     RequestHeaders* request_headers = async_fetch_->request_headers();
     request_headers->RemoveAll(HttpAttributes::kHost);
 
@@ -531,9 +492,6 @@ namespace net_instaweb {
   void NgxFetch::FixUserAgent() {
     GoogleString user_agent;
     ConstStringStarVector v;
-    if (async_fetch_ == NULL) {
-      ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0, "FixUserAgent async_fetch_ == NULL");
-    }
     RequestHeaders* request_headers = async_fetch_->request_headers();
     if (request_headers->Lookup(HttpAttributes::kUserAgent, &v)) {
       for(int i = 0, n = v.size(); i < n; i++) {

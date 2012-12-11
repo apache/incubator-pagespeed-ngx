@@ -54,7 +54,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   static const char kStaticJavaScriptPrefix[];
   static const char kMemcached[];
 
-  NgxRewriteDriverFactory(ngx_log_t* log, ngx_resolver_t* resolver);
+  NgxRewriteDriverFactory(ngx_log_t* log, ngx_msec_t resolver_timeout,
+      ngx_resolver_t* resolver);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -134,6 +135,7 @@ private:
 
   NgxUrlAsyncFetcher* ngx_url_async_fetcher_;
   ngx_log_t* log_;
+  ngx_msec_t resolver_timeout_;
   ngx_resolver_t* resolver_;
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };

@@ -49,11 +49,11 @@ class Variable;
 class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
   public:
     NgxUrlAsyncFetcher(const char* proxy, ngx_pool_t* pool,
-        int64 resolver_timeout, int64 fetch_timeout, ngx_resolver_t* resolver,
-         MessageHandler* handler);
+        ngx_msec_t resolver_timeout, ngx_msec_t fetch_timeout,
+        ngx_resolver_t* resolver, MessageHandler* handler);
     NgxUrlAsyncFetcher(const char* proxy, ngx_log_t* log,
-        int64 resolver_timeout, int64 fetch_timeout, ngx_resolver_t* resolver,
-        ThreadSystem* thread_system,MessageHandler* handler);
+        ngx_msec_t resolver_timeout, ngx_msec_t fetch_timeout,
+        ngx_resolver_t* resolver, ThreadSystem* thread_system,MessageHandler* handler);
     NgxUrlAsyncFetcher(NgxUrlAsyncFetcher *parent, char* proxy);
 
     ~NgxUrlAsyncFetcher();
@@ -118,7 +118,6 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
     static void TimeoutHandler(ngx_event_t* tev);
     friend class NgxFetch;
 
-    NgxFetchPool completed_fetches_;
     NgxFetchPool active_fetches_;
     NgxFetchPool pending_fetches_;
     ngx_url_t url_;
@@ -136,8 +135,8 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
     ngx_connection_t* command_connection_; // the command pipe
     int pipe_fd_; // the write pipe end
     ngx_resolver_t* resolver_;
-    int64 resolver_timeout_;
-    int64 fetch_timeout_;
+    ngx_msec_t resolver_timeout_;
+    ngx_msec_t fetch_timeout_;
 
     DISALLOW_COPY_AND_ASSIGN(NgxUrlAsyncFetcher);
 };

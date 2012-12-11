@@ -55,8 +55,6 @@ namespace net_instaweb {
       bool Init();
       // Show the completed url, for logging purpose
       const char* str_url();
-      // It's timeout or canceled by force
-      void Cancel();
       // This task is done.
       void CallbackDone(bool success);
 
@@ -95,12 +93,8 @@ namespace net_instaweb {
       int get_code() {
         return static_cast<int>(status_->code);
       }
-      bool get_started() {
-        return started_;
-      }
 
     private:
-
       response_handler_pt response_handler;
 
       bool ParseUrl();
@@ -141,7 +135,6 @@ namespace net_instaweb {
       int64 content_length_;
 
       struct sockaddr_in sin_;
-      bool started_;
       ngx_log_t* log_;
       ngx_buf_t* out_;
       ngx_buf_t* in_;

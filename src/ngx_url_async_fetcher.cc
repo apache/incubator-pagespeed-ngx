@@ -51,17 +51,17 @@ extern "C" {
 namespace net_instaweb {
   NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(const char* proxy,
                                          ngx_pool_t* pool,
-                                         int64 resolver_timeout, // timer for resolver
-                                         int64 fetch_timeout, // timer for fetch
+                                         ngx_msec_t resolver_timeout, // timer for resolver
+                                         ngx_msec_t fetch_timeout, // timer for fetch
                                          ngx_resolver_t* resolver,
                                          MessageHandler* handler)
     : fetchers_count_(0),
       shutdown_(false),
       track_original_content_length_(false),
       byte_count_(0),
-      message_handler_(handler),
-      resolver_timeout_(resolver_timeout),
-      fetch_timeout_(fetch_timeout) {
+      message_handler_(handler) {
+    resolver_timeout_ = resolver_timeout;
+    fetch_timeout_ = fetch_timeout;
     ngx_memzero(&url_, sizeof(ngx_url_t));
     url_.url.data = (u_char*)(proxy);
     url_.url.len = ngx_strlen(proxy);
@@ -74,8 +74,8 @@ namespace net_instaweb {
 
   NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(const char* proxy,
                                          ngx_log_t* log,
-                                         int64 resolver_timeout,
-                                         int64 fetch_timeout,
+                                         ngx_msec_t resolver_timeout,
+                                         ngx_msec_t fetch_timeout,
                                          ngx_resolver_t* resolver,
                                          ThreadSystem* thread_system,
                                          MessageHandler* handler)
@@ -84,9 +84,9 @@ namespace net_instaweb {
       track_original_content_length_(false),
       byte_count_(0),
       thread_system_(thread_system),
-      message_handler_(handler),
-      resolver_timeout_(resolver_timeout),
-      fetch_timeout_(fetch_timeout) {
+      message_handler_(handler) {
+    resolver_timeout_ = resolver_timeout;
+    fetch_timeout_ = fetch_timeout;
     ngx_memzero(&url_, sizeof(url_));
     if (proxy != NULL && *proxy != '\0') {
       url_.url.data = (u_char *)(proxy);
@@ -96,7 +96,7 @@ namespace net_instaweb {
     log_ = log;
     pool_ = NULL;
     command_connection_ = NULL;
-    pipe_fd_ = 0;
+    pipe_fd_ = -1;
     resolver_ = resolver;
   }
 
@@ -118,14 +118,15 @@ namespace net_instaweb {
     log_ = parent->log_;
     resolver_ = parent->resolver_;
     command_connection_ = NULL;
-    pipe_fd_ = 0;
+    pipe_fd_ = -1;
   }
 
   NgxUrlAsyncFetcher::~NgxUrlAsyncFetcher() {
     CancelActiveFetches();
-    completed_fetches_.DeleteAll();
     active_fetches_.DeleteAll();
     ngx_destroy_pool(pool_);
+    ngx_close_connection(command_connection_);
+    close(pipe_fd_);
   }
 
   // If there are still active requests, cancel them.
@@ -259,13 +260,9 @@ namespace net_instaweb {
           for (Pool<NgxFetch>::iterator p = fetcher->pending_fetches_.begin(),
               e = fetcher->pending_fetches_.end(); p != e; p++) {
             NgxFetch* fetch = *p;
-            if (fetch->get_started()) {
-              continue;
-            }
             fetcher->StartFetch(fetch);
-    //        fetcher->pending_fetches_.Remove(fetch);
           }
-          //fetcher->pending_fetches_.clear();
+          fetcher->pending_fetches_.Clear();
         }
         CHECK(ngx_handle_read_event(cmdev, 0) == NGX_OK);
         break;
@@ -276,17 +273,13 @@ namespace net_instaweb {
           fetcher->pending_fetches_.DeleteAll();
         }
 
-        if (!fetcher->completed_fetches_.empty()) {
-          fetcher->completed_fetches_.DeleteAll();
-        }
-
         if (!fetcher->active_fetches_.empty()) {
           for (Pool<NgxFetch>::iterator p = fetcher->active_fetches_.begin(),
                e = fetcher->active_fetches_.end(); p != e; p++) {
             NgxFetch* fetch = *p;
             fetch->CallbackDone(false);
           }
-          fetcher->active_fetches_.DeleteAll();
+          fetcher->active_fetches_.Clear();
         }
         CHECK(ngx_del_event(cmdev, NGX_READ_EVENT, 0) == NGX_OK);
         break;
@@ -306,17 +299,13 @@ namespace net_instaweb {
     } else {
       LOG(WARNING) << "Fetch failed to start: " << fetch->str_url();
       fetch->CallbackDone(false);
-      ;delete fetch;
     }
     return started;
   }
 
   void NgxUrlAsyncFetcher::FetchComplete(NgxFetch* fetch) {
-    //active_fetches_.Remove(fetch);
-    //completed_fetches_.Add(fetch);
     fetch->message_handler()->Message(kInfo, "Fetch complete:%s",
                     fetch->str_url());
-    // TODO(junmin): count the time_duration_ms_
     byte_count_ += fetch->bytes_received();
     fetchers_count_--;
   }

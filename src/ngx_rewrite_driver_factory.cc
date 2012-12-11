@@ -74,7 +74,7 @@ class Writer;
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_log_t* log,
-    ngx_resolver_t* resolver) :
+    ngx_msec_t resolver_timeout, ngx_resolver_t* resolver) :
   shared_mem_runtime_(new NullSharedMem()),
   cache_hasher_(20) {
   RewriteDriverFactory::InitStats(&simple_stats_);
@@ -88,6 +88,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_log_t* log,
   apr_initialize();
   apr_pool_create(&pool_,NULL);
   log_ = log;
+  resolver_timeout_ = resolver_timeout_;
   resolver_ = resolver;
   ngx_url_async_fetcher_ = NULL;
   InitializeDefaultOptions();
@@ -129,8 +130,8 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
     new net_instaweb::NgxUrlAsyncFetcher(
         "",
         log_,
-        60000000,
-        60000000,
+        resolver_timeout_,
+        60000,
         resolver_,
         thread_system(),
         message_handler());
