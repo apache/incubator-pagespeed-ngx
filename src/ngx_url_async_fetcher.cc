@@ -209,6 +209,7 @@ namespace net_instaweb {
     async_fetch = EnableInflation(async_fetch);
     NgxFetch* fetch = new NgxFetch(url, async_fetch,
           message_handler, fetch_timeout_);
+    ScopedMutex lock(mutex_);
     pending_fetches_.Add(fetch);
     SendCmd('F');
   }
@@ -249,6 +250,7 @@ namespace net_instaweb {
       return;
     }
 
+    ScopedMutex lock(fetcher->mutex_); 
     switch (command) {
       // All the new fetches are appended in the pending_fetches.
       // Start all these fetches.
@@ -257,10 +259,13 @@ namespace net_instaweb {
           for (Pool<NgxFetch>::iterator p = fetcher->pending_fetches_.begin(),
               e = fetcher->pending_fetches_.end(); p != e; p++) {
             NgxFetch* fetch = *p;
+            if (fetch->get_started()) {
+              continue;
+            }
             fetcher->StartFetch(fetch);
-            fetcher->pending_fetches_.Remove(fetch);
+    //        fetcher->pending_fetches_.Remove(fetch);
           }
-          //fetcher->pending_fetches_.DeleteAll();
+          //fetcher->pending_fetches_.clear();
         }
         CHECK(ngx_handle_read_event(cmdev, 0) == NGX_OK);
         break;

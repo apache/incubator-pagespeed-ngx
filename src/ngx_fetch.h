@@ -95,6 +95,9 @@ namespace net_instaweb {
       int get_code() {
         return static_cast<int>(status_->code);
       }
+      bool get_started() {
+        return started_;
+      }
 
     private:
 
@@ -138,6 +141,7 @@ namespace net_instaweb {
       int64 content_length_;
 
       struct sockaddr_in sin_;
+      bool started_;
       ngx_log_t* log_;
       ngx_buf_t* out_;
       ngx_buf_t* in_;

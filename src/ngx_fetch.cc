@@ -65,7 +65,8 @@ namespace net_instaweb {
     fetch_start_ms_(0),
     fetch_end_ms_(0),
     done_(false),
-    content_length_(0) {
+    content_length_(0),
+    started_(false) {
     ngx_memzero(&url_, sizeof(url_));
     log_ = NULL;
     pool_ = NULL;
@@ -90,6 +91,7 @@ namespace net_instaweb {
   bool NgxFetch::Start(NgxUrlAsyncFetcher* fetcher) {
     fetcher_ = fetcher;
     log_ = ngx_cycle->log;
+    started_ = true;
     if (!Init()) {
       Cancel();
       return false;
@@ -114,7 +116,7 @@ namespace net_instaweb {
     timeout_event_->handler = NgxFetchTimeout;
     timeout_event_->log = log_;
 
-    ngx_add_timer(timeout_event_, 6000);
+    //ngx_add_timer(timeout_event_, 1000);
     r_ = static_cast<ngx_http_request_t *>(ngx_pcalloc(pool_,
                                            sizeof(ngx_http_request_t)));
     if (r_ == NULL) { return false; }
@@ -182,7 +184,10 @@ namespace net_instaweb {
           bytes_received_);
     }
 
-    ngx_log_error(NGX_LOG_ERR,  ngx_cycle->log, 0, "CallbackDone");
+    ngx_log_error(NGX_LOG_ERR,  ngx_cycle->log, 0, "CallbackDone %c",success);
+    if (timeout_event_->timer_set) {
+      ngx_del_timer(timeout_event_);
+    }
     fetcher_->FetchComplete(this);
     async_fetch_->Done(success);
     async_fetch_ = NULL;
@@ -257,7 +262,6 @@ namespace net_instaweb {
 
   // prepare the send data for this fetch, and hook write event.
   int NgxFetch::InitRquest() {
-    ScopedMutex lock(fetcher_->mutex_);
     in_ = ngx_create_temp_buf(pool_, 4096);
     if (in_ == NULL) {
       return NGX_ERROR;
@@ -422,7 +426,7 @@ namespace net_instaweb {
     // Add the read timeout when connection isn't ready
     if (rev->active) {
       // is 10 OK?
-      ngx_add_timer(rev, 10);
+      //ngx_add_timer(rev, 100000);
     }
   }
 
