@@ -65,12 +65,12 @@ void ResourceFetch::ApplyFuriousOptions(const ServerContext* server_context,
 RewriteDriver* ResourceFetch::GetDriver(
     const GoogleUrl& url, RewriteOptions* custom_options,
     RewriteDriverPool* driver_pool, bool using_spdy,
-    ServerContext* server_context) {
+    ServerContext* server_context, const RequestContextPtr& request_ctx) {
   DCHECK((custom_options != NULL) ^ (driver_pool != NULL));
   ApplyFuriousOptions(server_context, url, driver_pool, &custom_options);
   RewriteDriver* driver = (custom_options == NULL)
-      ? server_context->NewRewriteDriverFromPool(driver_pool)
-      : server_context->NewCustomRewriteDriver(custom_options);
+      ? server_context->NewRewriteDriverFromPool(driver_pool, request_ctx)
+      : server_context->NewCustomRewriteDriver(custom_options, request_ctx);
   // Note: this is reset in RewriteDriver::clear().
   driver->set_using_spdy(using_spdy);
   return driver;
@@ -98,7 +98,7 @@ void ResourceFetch::Start(const GoogleUrl& url,
       url, custom_options,
       (custom_options != NULL) ?
           NULL : server_context->standard_rewrite_driver_pool(),
-      using_spdy, server_context);
+      using_spdy, server_context, async_fetch->request_context());
   StartWithDriver(url, kAutoCleanupDriver,
                   server_context, driver, async_fetch);
 }

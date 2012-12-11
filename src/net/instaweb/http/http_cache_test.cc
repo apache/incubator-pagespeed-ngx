@@ -56,7 +56,7 @@ class HTTPCacheTest : public testing::Test {
   // that are blocking in nature (e.g. in-memory LRU or blocking file-system).
   class Callback : public HTTPCache::Callback {
    public:
-    Callback() { Reset(); }
+    Callback() : HTTPCache::Callback(RequestContextPtr(NULL)) { Reset(); }
     Callback* Reset() {
       called_ = false;
       result_ = HTTPCache::kNotFound;

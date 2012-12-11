@@ -22,12 +22,36 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 
 namespace net_instaweb {
+
+AsyncFetch::AsyncFetch()
+    : request_headers_(NULL),
+      response_headers_(NULL),
+      extra_response_headers_(NULL),
+      request_ctx_(NULL),
+      owns_request_headers_(false),
+      owns_response_headers_(false),
+      owns_extra_response_headers_(false),
+      headers_complete_(false) {
+}
+
+AsyncFetch::AsyncFetch(const RequestContextPtr& request_ctx)
+    : request_headers_(NULL),
+      response_headers_(NULL),
+      extra_response_headers_(NULL),
+      request_ctx_(request_ctx),
+      owns_request_headers_(false),
+      owns_response_headers_(false),
+      owns_extra_response_headers_(false),
+      headers_complete_(false) {
+}
 
 AsyncFetch::~AsyncFetch() {
   if (owns_response_headers_) {
@@ -39,9 +63,11 @@ AsyncFetch::~AsyncFetch() {
   if (owns_request_headers_) {
     delete request_headers_;
   }
-  if (owns_log_record_) {
-    delete log_record_;
-  }
+}
+
+LogRecord* AsyncFetch::log_record() {
+  CHECK(request_context().get() != NULL);
+  return request_context()->log_record();
 }
 
 bool AsyncFetch::Write(const StringPiece& sp, MessageHandler* handler) {
@@ -150,56 +176,27 @@ void AsyncFetch::set_extra_response_headers(ResponseHeaders* headers) {
   owns_extra_response_headers_ = false;
 }
 
-LoggingInfo* AsyncFetch::logging_info() {
-  return log_record()->logging_info();
-}
-
-LogRecord* AsyncFetch::log_record() {
-  if (log_record_ == NULL) {
-    log_record_ = new LogRecord();
-    owns_log_record_ = true;
-  }
-  return log_record_;
-}
-
-void AsyncFetch::set_log_record(LogRecord* log_record) {
-  DCHECK(!owns_log_record_);
-  if (owns_log_record_) {
-    delete log_record_;
-  }
-  log_record_ = log_record;
-  owns_log_record_ = false;
-}
-
-void AsyncFetch::set_owned_log_record(LogRecord* log_record) {
-  if (owns_log_record_) {
-    delete log_record_;
-  }
-  log_record_ = log_record;
-  owns_log_record_ = true;
-}
-
 GoogleString AsyncFetch::LoggingString() {
+  ScopedMutex lock(log_record()->mutex());
   GoogleString logging_info_str;
-  if (logging_info() != NULL) {
-    if (logging_info()->has_timing_info()) {
-      const TimingInfo timing_info = logging_info()->timing_info();
-      if (timing_info.has_cache1_ms()) {
-        StrAppend(&logging_info_str, "c1:",
-                  Integer64ToString(timing_info.cache1_ms()), ";");
-      }
-      if (timing_info.has_cache2_ms()) {
-        StrAppend(&logging_info_str, "c2:",
-                  Integer64ToString(timing_info.cache2_ms()), ";");
-      }
-      if (timing_info.has_header_fetch_ms()) {
-        StrAppend(&logging_info_str, "hf:",
-                  Integer64ToString(timing_info.header_fetch_ms()), ";");
-      }
-      if (timing_info.has_fetch_ms()) {
-        StrAppend(&logging_info_str, "f:",
-                  Integer64ToString(timing_info.fetch_ms()), ";");
-      }
+  if (log_record()->logging_info()->has_timing_info()) {
+    const TimingInfo timing_info =
+        log_record()->logging_info()->timing_info();
+    if (timing_info.has_cache1_ms()) {
+      StrAppend(&logging_info_str, "c1:",
+                Integer64ToString(timing_info.cache1_ms()), ";");
+    }
+    if (timing_info.has_cache2_ms()) {
+      StrAppend(&logging_info_str, "c2:",
+                Integer64ToString(timing_info.cache2_ms()), ";");
+    }
+    if (timing_info.has_header_fetch_ms()) {
+      StrAppend(&logging_info_str, "hf:",
+                Integer64ToString(timing_info.header_fetch_ms()), ";");
+    }
+    if (timing_info.has_fetch_ms()) {
+      StrAppend(&logging_info_str, "f:",
+                Integer64ToString(timing_info.fetch_ms()), ";");
     }
   }
   return logging_info_str;
@@ -221,11 +218,11 @@ AsyncFetchUsingWriter::~AsyncFetchUsingWriter() {
 }
 
 SharedAsyncFetch::SharedAsyncFetch(AsyncFetch* base_fetch)
-    : base_fetch_(base_fetch) {
+    : AsyncFetch(base_fetch->request_context()),
+      base_fetch_(base_fetch) {
   set_response_headers(base_fetch->response_headers());
   set_extra_response_headers(base_fetch->extra_response_headers());
   set_request_headers(base_fetch->request_headers());
-  set_log_record(base_fetch->log_record());
 }
 
 SharedAsyncFetch::~SharedAsyncFetch() {

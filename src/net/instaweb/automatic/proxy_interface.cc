@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
@@ -478,17 +479,24 @@ void ProxyInterface::ProxyRequestCallback(
                                    property_callback.release());
     } else {
       RewriteDriver* driver = NULL;
+
+      // The fetch we're working from may have a NULL request context, which
+      // isn't suitable for initializing a new rewrite driver. If that's
+      // the case, create a new request context.
+      RequestContextPtr request_ctx = async_fetch->request_context();
+      if (request_ctx.get() == NULL) {
+        request_ctx.reset(
+            new RequestContext(server_context_->thread_system()->NewMutex()));
+      }
       // Starting property cache lookup after the furious state is set.
       property_callback.reset(InitiatePropertyCacheLookup(
           is_resource_fetch, *request_url, options, async_fetch));
       if (options == NULL) {
-        driver = server_context_->NewRewriteDriver();
+        driver = server_context_->NewRewriteDriver(request_ctx);
       } else {
         // NewCustomRewriteDriver takes ownership of custom_options_.
-        driver = server_context_->NewCustomRewriteDriver(options);
+        driver = server_context_->NewCustomRewriteDriver(options, request_ctx);
       }
-      driver->set_log_record(async_fetch->log_record());
-      driver->set_request_context(async_fetch->request_context());
 
       // TODO(mmohabey): Remove duplicate setting of user agent and
       // request headers for different flows.

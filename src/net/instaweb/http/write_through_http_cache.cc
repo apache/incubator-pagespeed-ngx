@@ -22,7 +22,7 @@
 
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -47,7 +47,8 @@ class FallbackCacheCallback: public HTTPCache::Callback {
                         HTTPCache* cache1,
                         HTTPCache::Callback* client_callback,
                         UpdateCache1HandlerFunction function)
-      : key_(key),
+      : HTTPCache::Callback(client_callback->request_context()),
+        key_(key),
         write_through_http_cache_(write_through_http_cache),
         cache1_(cache1),
         client_callback_(client_callback),
@@ -93,12 +94,12 @@ class FallbackCacheCallback: public HTTPCache::Callback {
   }
 
   virtual void SetTimingMs(int64 timing_value_ms) {
-    client_callback_->logging_info()->mutable_timing_info()->set_cache2_ms(
-        timing_value_ms);
-  }
-
-  virtual LoggingInfo* logging_info() {
-    return client_callback_->logging_info();
+    if (request_context().get() != NULL) {
+      ScopedMutex lock(log_record()->mutex());
+      TimingInfo* timing_info =
+          log_record()->logging_info()->mutable_timing_info();
+      timing_info->set_cache2_ms(timing_value_ms);
+    }
   }
 
  private:
@@ -118,7 +119,8 @@ class Cache1Callback: public HTTPCache::Callback {
                  MessageHandler* handler,
                  HTTPCache::Callback* client_callback,
                  HTTPCache::Callback* fallback_cache_callback)
-      : key_(key),
+      : HTTPCache::Callback(client_callback->request_context()),
+        key_(key),
         fallback_cache_(fallback_cache),
         handler_(handler),
         client_callback_(client_callback),
@@ -153,12 +155,12 @@ class Cache1Callback: public HTTPCache::Callback {
   }
 
   virtual void SetTimingMs(int64 timing_value_ms) {
-    client_callback_->logging_info()->mutable_timing_info()->set_cache1_ms(
-          timing_value_ms);
-  }
-
-  virtual LoggingInfo* logging_info() {
-    return client_callback_->logging_info();
+    if (request_context().get() != NULL) {
+      ScopedMutex lock(log_record()->mutex());
+      TimingInfo* timing_info =
+          log_record()->logging_info()->mutable_timing_info();
+      timing_info->set_cache1_ms(timing_value_ms);
+    }
   }
 
  private:

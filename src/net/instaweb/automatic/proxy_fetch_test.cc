@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -44,7 +45,8 @@ class MockProxyFetch : public ProxyFetch {
                    NULL,  // callback
                    async_fetch,
                    NULL,  // no original content fetch
-                   server_context->NewRewriteDriver(),
+                   server_context->NewRewriteDriver(
+                       async_fetch->request_context()),
                    server_context,
                    NULL,  // timer
                    factory),
@@ -151,7 +153,8 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
     collector.reset(MakeCollector());
     ProxyFetchPropertyCallback* page_callback = AddCallback(
         collector.get(), ProxyFetchPropertyCallback::kPagePropertyCache);
-    ExpectStringAsyncFetch async_fetch(true);
+    ExpectStringAsyncFetch async_fetch(true,
+                                       RequestContext::NewTestRequestContext());
     ProxyFetchFactory factory(server_context_);
     MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
         &async_fetch, &factory, server_context_);
@@ -278,7 +281,8 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeSetProxyFetch) {
   callback->Done(true);
 
   // Construct mock ProxyFetch to test SetProxyFetch().
-  ExpectStringAsyncFetch async_fetch(true);
+  ExpectStringAsyncFetch async_fetch(true,
+                                     RequestContext::NewTestRequestContext());
   ProxyFetchFactory factory(server_context_);
   MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
       &async_fetch, &factory, server_context_);
@@ -312,7 +316,8 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, SetProxyFetchBeforeDone) {
       collector.get(), ProxyFetchPropertyCallback::kPagePropertyCache);
 
   // Construct mock ProxyFetch to test SetProxyFetch().
-  ExpectStringAsyncFetch async_fetch(true);
+  ExpectStringAsyncFetch async_fetch(true,
+                                     RequestContext::NewTestRequestContext());
   ProxyFetchFactory factory(server_context_);
   MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
       &async_fetch, &factory, server_context_);
@@ -358,7 +363,8 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, BothCallbacksComplete) {
       collector.get(), ProxyFetchPropertyCallback::kClientPropertyCache);
 
   // Construct mock ProxyFetch to test SetProxyFetch().
-  ExpectStringAsyncFetch async_fetch(true);
+  ExpectStringAsyncFetch async_fetch(true,
+                                     RequestContext::NewTestRequestContext());
   ProxyFetchFactory factory(server_context_);
   MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
       &async_fetch, &factory, server_context_);

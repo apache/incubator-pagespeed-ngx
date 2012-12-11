@@ -22,6 +22,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
@@ -160,9 +161,6 @@ class JavascriptFilterTest : public RewriteTestBase {
 };
 
 TEST_F(JavascriptFilterTest, DoRewrite) {
-  LoggingInfo logging_info;
-  LogRecord log_record(&logging_info);
-  rewrite_driver()->set_log_record(&log_record);
   InitFiltersAndTest(100);
   ValidateExpected("do_rewrite",
                    GenerateHtml(kOrigJsName),
@@ -174,18 +172,15 @@ TEST_F(JavascriptFilterTest, DoRewrite) {
             total_bytes_saved_->Get());
   EXPECT_EQ(STATIC_STRLEN(kJsData), total_original_bytes_->Get());
   EXPECT_EQ(1, num_uses_->Get());
-  EXPECT_STREQ("jm", logging_info.applied_rewriters());
+  EXPECT_STREQ("jm", logging_info()->applied_rewriters());
 }
 
 TEST_F(JavascriptFilterTest, DoRewriteUnhealthy) {
   lru_cache()->set_is_healthy(false);
 
-  LoggingInfo logging_info;
-  LogRecord log_record(&logging_info);
-  rewrite_driver()->set_log_record(&log_record);
   InitFiltersAndTest(100);
   ValidateNoChanges("do_rewrite", GenerateHtml(kOrigJsName));
-  EXPECT_STREQ("", logging_info.applied_rewriters());
+  EXPECT_STREQ("", logging_info()->applied_rewriters());
 }
 
 TEST_F(JavascriptFilterTest, RewriteAlreadyCachedProperly) {

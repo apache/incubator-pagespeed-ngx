@@ -309,7 +309,7 @@ class AjaxRewriteContextTest : public RewriteTestBase {
     FakeFetch mock_fetch(&sync, &response_headers_);
     mock_fetch.set_request_headers(&request_headers_);
 
-    rewrite_driver()->Clear();
+    ClearRewriteDriver();
     rewrite_driver()->FetchResource(url, &mock_fetch);
     // If we're testing if the rewrite takes too long, we need to push
     // time forward here.

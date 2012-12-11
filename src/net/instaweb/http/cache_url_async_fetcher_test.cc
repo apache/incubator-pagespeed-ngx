@@ -26,7 +26,7 @@
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -52,11 +52,13 @@ class MockFetch : public AsyncFetch {
             bool* done,
             bool* success,
             bool* is_origin_cacheable)
-      : content_(content),
+      : AsyncFetch(RequestContext::NewTestRequestContext()),
+        content_(content),
         done_(done),
         success_(success),
         is_origin_cacheable_(is_origin_cacheable),
-        cache_result_valid_(true) {}
+        cache_result_valid_(true) {
+  }
 
   virtual ~MockFetch() {}
 
@@ -77,9 +79,13 @@ class MockFetch : public AsyncFetch {
 
   // Fetch complete.
   virtual void HandleDone(bool success) {
-    *is_origin_cacheable_ = logging_info()->is_original_resource_cacheable();
-    *success_ = success;
-    *done_ = true;
+    {
+      ScopedMutex lock(log_record()->mutex());
+      *is_origin_cacheable_ = log_record()->logging_info()->
+          is_original_resource_cacheable();
+      *success_ = success;
+      *done_ = true;
+    }
     delete this;
   }
 
@@ -108,7 +114,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   // that are blocking in nature (e.g. in-memory LRU or blocking file-system).
   class Callback : public HTTPCache::Callback {
    public:
-    Callback() { Reset(); }
+    Callback() : HTTPCache::Callback(RequestContextPtr(NULL)) { Reset(); }
     Callback* Reset() {
       called_ = false;
       result_ = HTTPCache::kNotFound;

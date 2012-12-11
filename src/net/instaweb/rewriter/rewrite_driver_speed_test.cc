@@ -22,11 +22,14 @@
 // BM_RewriteDriverConstruction      29809      29572      23333
 
 #include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/benchmark.h"
+
+using net_instaweb::RequestContext;
 
 namespace net_instaweb { class RewriteDriver; }
 
@@ -41,7 +44,8 @@ static void BM_RewriteDriverConstruction(int iters) {
     net_instaweb::RewriteOptions* options = new net_instaweb::RewriteOptions;
     options->SetRewriteLevel(net_instaweb::RewriteOptions::kAllFilters);
     net_instaweb::RewriteDriver* driver =
-        resource_manager->NewCustomRewriteDriver(options);
+        resource_manager->NewCustomRewriteDriver(
+            options, RequestContext::NewTestRequestContext());
     resource_manager->ReleaseRewriteDriver(driver);
   }
   net_instaweb::RewriteDriverFactory::Terminate();

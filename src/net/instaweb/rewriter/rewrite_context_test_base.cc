@@ -20,6 +20,20 @@
 // interaction with various subsystems.
 
 #include "net/instaweb/rewriter/public/rewrite_context_test_base.h"
+
+#include "base/logging.h"
+#include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/output_resource.h"
+#include "net/instaweb/rewriter/public/rewrite_result.h"
+#include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/stl_util.h"
 
 namespace net_instaweb {
@@ -296,7 +310,6 @@ void RewriteContextTestBase::SetUp() {
   other_trim_filter_ = NULL;
   combining_filter_ = NULL;
   nested_filter_ = NULL;
-  logging_info_ = log_record_.logging_info();
 
   RewriteTestBase::SetUp();
 
@@ -434,7 +447,6 @@ void RewriteContextTestBase::ClearStats() {
   if (nested_filter_ != NULL) {
     nested_filter_->ClearStats();
   }
-  log_record_.logging_info()->Clear();
 }
 
 }  // namespace net_instaweb

@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -33,8 +34,8 @@
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/simple_stats.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace {
@@ -53,7 +54,8 @@ class MessageHandler;
 class FakeHttpCacheCallback : public HTTPCache::Callback {
  public:
   FakeHttpCacheCallback()
-      : called_(false),
+      : HTTPCache::Callback(RequestContextPtr(NULL)),
+        called_(false),
         result_(HTTPCache::kNotFound),
         first_call_cache_valid_(true),
         first_cache_valid_(true),

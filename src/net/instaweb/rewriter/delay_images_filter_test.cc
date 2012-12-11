@@ -17,6 +17,7 @@
 // Author: pulkitg@google.com (Pulkit Goyal)
 
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
@@ -29,6 +30,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/wildcard.h"
@@ -165,16 +167,13 @@ class DelayImagesFilterTest : public RewriteTestBase {
   }
 
   void SetupUserAgentTest(StringPiece user_agent) {
-    rewrite_driver()->Clear();
+    ClearRewriteDriver();
     rewrite_driver()->set_user_agent(user_agent);
     SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
   }
 };
 
 TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
-  LoggingInfo logging_info;
-  LogRecord log_record(&logging_info);
-  rewrite_driver()->set_log_record(&log_record);
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
   options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);
@@ -194,7 +193,7 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
   html_parse()->Flush();
   html_parse()->ParseText(flush2);
   html_parse()->FinishParse();
-  log_record.Finalize();
+  rewrite_driver()->log_record()->Finalize();
 
   GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
       StrCat("<body>",
@@ -214,7 +213,7 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
              "\npagespeed.delayImages.replaceWithHighRes();\n</script>"
              "</body>", GetDeferJs()));
   EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_));
-  EXPECT_TRUE(logging_info.applied_rewriters().find("di") !=
+  EXPECT_TRUE(logging_info()->applied_rewriters().find("di") !=
               GoogleString::npos);
 }
 

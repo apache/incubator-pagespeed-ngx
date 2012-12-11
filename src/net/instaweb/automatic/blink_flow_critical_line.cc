@@ -36,7 +36,10 @@
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
@@ -57,6 +60,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
@@ -110,14 +114,12 @@ class CriticalLineFetch : public AsyncFetch {
                     ServerContext* server_context,
                     RewriteOptions* options,
                     RewriteDriver* rewrite_driver,
-                    LogRecord* log_record,
                     BlinkCriticalLineData* blink_critical_line_data)
-      : url_(url),
+      : AsyncFetch(rewrite_driver->request_context()),
+        url_(url),
         server_context_(server_context),
         options_(options),
         rewrite_driver_(rewrite_driver),
-        log_record_(log_record),
-        blink_info_(log_record_->logging_info()->mutable_blink_info()),
         blink_critical_line_data_(blink_critical_line_data),
         claims_html_(false),
         probable_html_(false),
@@ -150,7 +152,7 @@ class CriticalLineFetch : public AsyncFetch {
   }
 
   virtual ~CriticalLineFetch() {
-    log_record_->WriteLogForBlink("");
+    log_record()->WriteLogForBlink("");
     rewrite_driver_->decrement_async_events_count();
     ThreadSynchronizer* sync = server_context_->thread_synchronizer();
     sync->Signal(BlinkFlowCriticalLine::kBackgroundComputationDone);
@@ -217,13 +219,13 @@ class CriticalLineFetch : public AsyncFetch {
         Finish();
       } else {
         if (content_length_over_threshold_) {
-          blink_info_->set_blink_request_flow(
+          log_record()->SetBlinkRequestFlow(
               BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD);
         } else if (non_ok_status_code_ || !success) {
-          blink_info_->set_blink_request_flow(
+          log_record()->SetBlinkRequestFlow(
               BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK);
         } else if (!claims_html_ || !probable_html_) {
-          blink_info_->set_blink_request_flow(
+          log_record()->SetBlinkRequestFlow(
               BlinkInfo::BLINK_CACHE_MISS_FOUND_RESOURCE);
         }
         delete this;
@@ -231,7 +233,7 @@ class CriticalLineFetch : public AsyncFetch {
       return;
     }
     if (blink_critical_line_data_ == NULL) {
-      blink_info_->set_blink_request_flow(
+      log_record()->SetBlinkRequestFlow(
           BlinkInfo::BLINK_CACHE_MISS_TRIGGERED_REWRITE);
     }
     if (rewrite_driver_->options()->
@@ -258,7 +260,7 @@ class CriticalLineFetch : public AsyncFetch {
     options->ForceEnableFilter(RewriteOptions::kComputeVisibleText);
     server_context_->ComputeSignature(options);
     html_change_detection_driver_ =
-        server_context_->NewCustomRewriteDriver(options);
+        server_context_->NewCustomRewriteDriver(options, request_context());
     html_change_detection_driver_->set_is_blink_request(true);
     value_.Clear();
     html_change_detection_driver_->SetWriter(&value_);
@@ -276,7 +278,8 @@ class CriticalLineFetch : public AsyncFetch {
   void CreateCriticalLineComputationDriverAndRewrite() {
     num_blink_html_cache_misses_->IncBy(1);
     critical_line_computation_driver_ =
-        server_context_->NewCustomRewriteDriver(options_.release());
+        server_context_->NewCustomRewriteDriver(
+            options_.release(), request_context());
     critical_line_computation_driver_->set_is_blink_request(true);
     // Wait for all rewrites to complete. This is important because fully
     // rewritten html is used to compute BlinkCriticalLineData.
@@ -346,20 +349,25 @@ class CriticalLineFetch : public AsyncFetch {
       CreateCriticalLineComputationDriverAndRewrite();
       return;
     }
-    if (computed_hash_ != blink_critical_line_data_->hash()) {
-      blink_info_->set_html_match(false);
-      num_blink_html_mismatches_->IncBy(1);
-    } else {
-      blink_info_->set_html_match(true);
-      num_blink_html_matches_->IncBy(1);
-    }
-    if (computed_hash_smart_diff_ !=
-        blink_critical_line_data_->hash_smart_diff()) {
-      blink_info_->set_html_smart_diff_match(false);
-      num_blink_html_smart_diff_mismatches_->IncBy(1);
-    } else {
-      blink_info_->set_html_smart_diff_match(true);
-      num_blink_html_smart_diff_matches_->IncBy(1);
+    {
+      ScopedMutex lock(log_record()->mutex());
+      BlinkInfo* blink_info =
+          log_record()->logging_info()->mutable_blink_info();
+      if (computed_hash_ != blink_critical_line_data_->hash()) {
+        blink_info->set_html_match(false);
+        num_blink_html_mismatches_->IncBy(1);
+      } else {
+        blink_info->set_html_match(true);
+        num_blink_html_matches_->IncBy(1);
+      }
+      if (computed_hash_smart_diff_ !=
+          blink_critical_line_data_->hash_smart_diff()) {
+        blink_info->set_html_smart_diff_match(false);
+        num_blink_html_smart_diff_mismatches_->IncBy(1);
+      } else {
+        blink_info->set_html_smart_diff_match(true);
+        num_blink_html_smart_diff_matches_->IncBy(1);
+      }
     }
     Finish();
   }
@@ -467,8 +475,6 @@ class CriticalLineFetch : public AsyncFetch {
   // RewriteDriver used to parse the buffered html content.
   RewriteDriver* critical_line_computation_driver_;
   RewriteDriver* html_change_detection_driver_;
-  scoped_ptr<LogRecord> log_record_;
-  BlinkInfo* blink_info_;
   scoped_ptr<BlinkCriticalLineData> blink_critical_line_data_;
   Function* complete_finish_parse_critical_line_driver_fn_;
   Function* complete_finish_parse_html_change_driver_fn_;
@@ -508,7 +514,7 @@ class AsyncFetchWithHeadersInhibited : public AsyncFetchUsingWriter {
       AsyncFetch* fetch,
       CriticalLineFetch* critical_line_fetch,
       RewriteOptions* options)
-      : AsyncFetchUsingWriter(fetch),
+      : AsyncFetchUsingWriter(fetch->request_context(), fetch),
         base_fetch_(fetch),
         critical_line_fetch_(critical_line_fetch),
         enable_blink_html_change_detection_(
@@ -611,11 +617,17 @@ void BlinkFlowCriticalLine::Start(
 }
 
 void BlinkFlowCriticalLine::SetStartRequestTimings() {
-  TimingInfo timing_info = base_fetch_->logging_info()->timing_info();
-  if (timing_info.has_request_start_ms()) {
-    request_start_time_ms_ = timing_info.request_start_ms();
-  } else {
-    request_start_time_ms_ = manager_->timer()->NowMs();
+  {
+    // TODO(marq): refactor this and the identical code in
+    // BlinkFlow::InitiateJsonLookup()
+    ScopedMutex lock(base_fetch_->log_record()->mutex());
+    TimingInfo timing_info =
+        base_fetch_->log_record()->logging_info()->timing_info();
+    if (timing_info.has_request_start_ms()) {
+      request_start_time_ms_ = timing_info.request_start_ms();
+    } else {
+      request_start_time_ms_ = manager_->timer()->NowMs();
+    }
   }
 }
 
@@ -660,8 +672,6 @@ BlinkFlowCriticalLine::BlinkFlowCriticalLine(
     : url_(url),
       google_url_(url),
       base_fetch_(base_fetch),
-      log_record_(manager->NewLogRecord()),
-      blink_info_(log_record_->logging_info()->mutable_blink_info()),
       options_(options),
       factory_(factory),
       manager_(manager),
@@ -677,9 +687,13 @@ BlinkFlowCriticalLine::BlinkFlowCriticalLine(
       kNumBlinkSharedFetchesStarted);
   const char* request_event_id = base_fetch_->request_headers()->Lookup1(
       HttpAttributes::kXGoogleRequestEventId);
-  blink_info_->set_url(url_);
-  if (request_event_id != NULL) {
-    blink_info_->set_request_event_id_time_usec(request_event_id);
+  {
+    ScopedMutex lock(log_record()->mutex());
+    BlinkInfo* blink_info = log_record()->logging_info()->mutable_blink_info();
+    blink_info->set_url(url_);
+    if (request_event_id != NULL) {
+      blink_info->set_request_event_id_time_usec(request_event_id);
+    }
   }
 }
 
@@ -705,8 +719,7 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
   }
   if (options_->passthrough_blink_for_last_invalid_response_code() &&
         IsLastResponseCodeInvalid(page)) {
-    blink_info_->set_blink_request_flow(
-        BlinkInfo::FOUND_LAST_STATUS_CODE_NON_OK);
+    log_record()->SetBlinkRequestFlow(BlinkInfo::FOUND_LAST_STATUS_CODE_NON_OK);
   }
   BlinkCriticalLineDataMiss();
 }
@@ -734,6 +747,10 @@ bool BlinkFlowCriticalLine::IsLastResponseCodeInvalid(PropertyPage* page) {
   return true;
 }
 
+LogRecord* BlinkFlowCriticalLine::log_record() {
+  return base_fetch_->request_context()->log_record();
+}
+
 void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
   num_blink_html_cache_hits_->IncBy(1);
 
@@ -745,11 +762,11 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
       end_body_pos == StringPiece::npos) {
     LOG(WARNING) << "Marker not found for url " << url_;
     VLOG(1) << "Critical html without marker is " << critical_html;
-    blink_info_->set_blink_request_flow(BlinkInfo::FOUND_MALFORMED_HTML);
+    log_record()->SetBlinkRequestFlow(BlinkInfo::FOUND_MALFORMED_HTML);
     BlinkCriticalLineDataMiss();
     return;
   }
-  blink_info_->set_blink_request_flow(BlinkInfo::BLINK_CACHE_HIT);
+  log_record()->SetBlinkRequestFlow(BlinkInfo::BLINK_CACHE_HIT);
   GoogleUrl* url_with_psa_off = google_url_.CopyAndAddQueryParam(
       RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue);
   const int start_body_marker_length = strlen(BlinkUtil::kStartBodyMarker);
@@ -929,7 +946,8 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     // Don't lazyload images which are present in non-cacheable html.
     options_->DisableFilter(RewriteOptions::kLazyloadImages);
     manager_->ComputeSignature(options_);
-    driver = manager_->NewCustomRewriteDriver(options_);
+    driver = manager_->NewCustomRewriteDriver(
+        options_, base_fetch_->request_context());
 
     // Remove any headers that can lead to a 304, since blink can't handle 304s.
     base_fetch_->request_headers()->RemoveAll(HttpAttributes::kIfNoneMatch);
@@ -945,7 +963,7 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
       options->ForceEnableFilter(RewriteOptions::kProcessBlinkInBackground);
       options->DisableFilter(RewriteOptions::kServeNonCacheableNonCritical);
       secondary_fetch = new CriticalLineFetch(url_, manager_, options, driver,
-          log_record_, blink_critical_line_data);
+          blink_critical_line_data);
     }
     fetch = new AsyncFetchWithHeadersInhibited(
         base_fetch_, secondary_fetch, options_);
@@ -956,10 +974,11 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     options->ForceEnableFilter(RewriteOptions::kProcessBlinkInBackground);
     fetch = base_fetch_;
     manager_->ComputeSignature(options_);
-    driver = manager_->NewCustomRewriteDriver(options_);
+    driver = manager_->NewCustomRewriteDriver(
+        options_, base_fetch_->request_context());
     num_blink_shared_fetches_started_->IncBy(1);
-    secondary_fetch = new CriticalLineFetch(url_, manager_, options, driver,
-        log_record_, NULL);
+    secondary_fetch =
+        new CriticalLineFetch(url_, manager_, options, driver, NULL);
 
     // Setting a fixed user-agent for fetching content from origin server.
     if (options->use_fixed_user_agent_for_blink_cache_misses()) {
@@ -974,10 +993,11 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     // harness where we can vary the response (status code) for the url being
     // fetched.
     manager_->ComputeSignature(options_);
-    driver = manager_->NewCustomRewriteDriver(options_);
+    driver = manager_->NewCustomRewriteDriver(
+        options_, base_fetch_->request_context());
     if (options_->passthrough_blink_for_last_invalid_response_code()) {
-      fetch = new UpdateResponseCodeSharedAyncFetch(base_fetch_, manager_,
-                                                    driver);
+      fetch =
+          new UpdateResponseCodeSharedAyncFetch(base_fetch_, manager_, driver);
     } else {
       fetch = base_fetch_;
     }
@@ -985,11 +1005,12 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
   driver->set_is_blink_request(true);  // Mark this as a blink request.
   driver->set_serve_blink_non_critical(serve_non_critical);
   if (secondary_fetch == NULL) {
-    log_record_->WriteLogForBlink(
+    // TODO(marq): Consider instead implementing an UpdateBlinkInfo method
+    // on LogRecord, and then calling that followed by WriteLog, to make the
+    // operations being performed clearer.
+    log_record()->WriteLogForBlink(
         fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent));
-    delete log_record_;
   }  // else, logging will be done by secondary_fetch.
-  driver->set_log_record(base_fetch_->log_record());
   factory_->StartNewProxyFetch(
       url_, fetch, driver, property_callback_, secondary_fetch);
   delete this;

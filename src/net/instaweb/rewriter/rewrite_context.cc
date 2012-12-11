@@ -33,6 +33,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -527,7 +528,8 @@ class RewriteContext::HTTPCacheCallback : public OptionsAwareHTTPCacheCallback {
       HTTPCache::FindResult, HTTPCache::Callback* data);
 
   HTTPCacheCallback(RewriteContext* rc, HTTPCacheResultHandlerFunction function)
-      : OptionsAwareHTTPCacheCallback(rc->Options()),
+      : OptionsAwareHTTPCacheCallback(rc->Options(),
+                                      rc->Driver()->request_context()),
         rewrite_context_(rc),
         function_(function) {}
   virtual ~HTTPCacheCallback() {}
@@ -597,7 +599,8 @@ class RewriteContext::ResourceReconstructCallback
   // Takes ownership of the driver (e.g. will call Cleanup)
   ResourceReconstructCallback(RewriteDriver* driver, RewriteContext* rc,
                               const OutputResourcePtr& resource, int slot_index)
-      : AsyncFetchUsingWriter(resource->BeginWrite(driver->message_handler())),
+      : AsyncFetchUsingWriter(driver->request_context(),
+                              resource->BeginWrite(driver->message_handler())),
         driver_(driver),
         delegate_(rc, ResourcePtr(resource), slot_index),
         resource_(resource) {
@@ -1110,19 +1113,19 @@ void RewriteContext::LogMetadataCacheInfo(bool cache_ok, bool can_revalidate) {
     // We do not log nested rewrites.
     return;
   }
-  LogRecord* log_record = Driver()->log_record();
-  if (log_record == NULL) {
-    return;
-  }
-  MetadataCacheInfo* metadata_log_info =
-      log_record->logging_info()->mutable_metadata_cache_info();
-  if (cache_ok) {
-    metadata_log_info->set_num_hits(metadata_log_info->num_hits() + 1);
-  } else if (can_revalidate) {
-    metadata_log_info->set_num_revalidates(
-        metadata_log_info->num_revalidates() + 1);
-  } else {
-    metadata_log_info->set_num_misses(metadata_log_info->num_misses() + 1);
+  {
+    LogRecord* log_record = Driver()->log_record();
+    ScopedMutex lock(log_record->mutex());
+    MetadataCacheInfo* metadata_log_info =
+        log_record->logging_info()->mutable_metadata_cache_info();
+    if (cache_ok) {
+      metadata_log_info->set_num_hits(metadata_log_info->num_hits() + 1);
+    } else if (can_revalidate) {
+      metadata_log_info->set_num_revalidates(
+          metadata_log_info->num_revalidates() + 1);
+    } else {
+      metadata_log_info->set_num_misses(metadata_log_info->num_misses() + 1);
+    }
   }
 }
 
@@ -1313,6 +1316,7 @@ void RewriteContext::OutputCacheRevalidate(
     ResourcePtr resource = slots_[input_info->index()]->resource();
     FindServerContext()->ReadAsync(
         Resource::kReportFailureIfNotCacheable,
+        Driver()->request_context(),
         new ResourceRevalidateCallback(this, resource, input_info));
   }
 }
@@ -1427,8 +1431,9 @@ void RewriteContext::FetchInputs() {
             noncache_policy = Resource::kLoadEvenIfNotCacheable;
           }
         }
-        FindServerContext()->ReadAsync(noncache_policy,
-                             new ResourceFetchCallback(this, resource, i));
+        FindServerContext()->ReadAsync(
+            noncache_policy, Driver()->request_context(),
+            new ResourceFetchCallback(this, resource, i));
       }
     }
   }

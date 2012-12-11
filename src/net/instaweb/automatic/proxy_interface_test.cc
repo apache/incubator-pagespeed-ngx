@@ -31,10 +31,12 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
@@ -46,9 +48,9 @@
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
@@ -72,8 +74,8 @@
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/time_util.h"
@@ -481,20 +483,18 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
                               bool log_flush,
                               GoogleString* buffer,
                               ResponseHeaders* response_headers,
-                              LoggingInfo* logging_info,
                               bool* done_value,
                               WorkerTestBase::SyncPoint* notify,
-                              ThreadSynchronizer* sync)
-      : ExpectStringAsyncFetch(expect_success),
+                              ThreadSynchronizer* sync,
+                              const RequestContextPtr& request_context)
+      : ExpectStringAsyncFetch(expect_success, request_context),
         buffer_(buffer),
         done_value_(done_value),
-        logging_info_(logging_info),
         notify_(notify),
         sync_(sync),
         log_flush_(log_flush) {
     buffer->clear();
     response_headers->Clear();
-    logging_info->Clear();
     *done_value = false;
     set_response_headers(response_headers);
   }
@@ -510,7 +510,6 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
   virtual void HandleDone(bool success) {
     *buffer_ = buffer();
     *done_value_ = success;
-    logging_info_->CopyFrom(*logging_info());
     ExpectStringAsyncFetch::HandleDone(success);
     WorkerTestBase::SyncPoint* notify = notify_;
     delete this;
@@ -527,7 +526,6 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
  private:
   GoogleString* buffer_;
   bool* done_value_;
-  LoggingInfo* logging_info_;
   WorkerTestBase::SyncPoint* notify_;
   ThreadSynchronizer* sync_;
   bool log_flush_;
@@ -904,7 +902,6 @@ class ProxyInterfaceTest : public RewriteTestBase {
                          false /* log_flush*/, headers_out);
     WaitForFetch();
     *string_out = callback_buffer_;
-    logging_info_.CopyFrom(callback_logging_info_);
   }
 
   // TODO(jmarantz): eliminate this interface as it's annoying to have
@@ -927,7 +924,6 @@ class ProxyInterfaceTest : public RewriteTestBase {
                          true /* log_flush*/, &response_headers);
     WaitForFetch();
     *string_out = callback_buffer_;
-    logging_info_.CopyFrom(callback_logging_info_);
   }
 
   // Initiates a fetch using the proxy interface, without waiting for it to
@@ -942,9 +938,9 @@ class ProxyInterfaceTest : public RewriteTestBase {
         server_context()->thread_system()));
     AsyncFetch* fetch = new AsyncExpectStringAsyncFetch(
         expect_success, log_flush, &callback_buffer_,
-        &callback_response_headers_, &callback_logging_info_,
-        &callback_done_value_, sync_.get(),
-        server_context()->thread_synchronizer());
+        &callback_response_headers_, &callback_done_value_, sync_.get(),
+        server_context()->thread_synchronizer(),
+        rewrite_driver()->request_context());
     fetch->set_response_headers(headers_out);
     fetch->request_headers()->CopyFrom(request_headers);
     proxy_interface_->Fetch(AbsolutifyUrl(url), message_handler(), fetch);
@@ -1236,7 +1232,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
                                              "jm", "0", "2.js", "js");
     GoogleString combined_js_url = Encode(
         kTestDomain, "jc", "0",
-        "1.js.pagespeed.jm.0.jsX2.js.pagespeed.jm.0.js", "js");;
+        "1.js.pagespeed.jm.0.jsX2.js.pagespeed.jm.0.js", "js");
     GoogleString rewritten_img_url_1 = Encode(kTestDomain,
                                               "ce", "0", "1.jpg", "jpg");
     GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
@@ -1405,7 +1401,6 @@ class ProxyInterfaceTest : public RewriteTestBase {
   GoogleString start_time_string_;
   GoogleString start_time_plus_300s_string_;
   GoogleString old_time_string_;
-  LoggingInfo logging_info_;
   const GoogleString max_age_300_;
   int64 request_start_time_ms_;
 
@@ -1413,7 +1408,6 @@ class ProxyInterfaceTest : public RewriteTestBase {
   ResponseHeaders callback_response_headers_;
   GoogleString callback_buffer_;
   bool callback_done_value_;
-  LoggingInfo callback_logging_info_;
 
  private:
   friend class FilterCallback;
@@ -1470,7 +1464,7 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestPrefetch) {
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkRelSubresource, false, false),
       text);
-  EXPECT_STREQ("cf,ei,jm", logging_info_.applied_rewriters());
+  EXPECT_STREQ("cf,ei,jm", logging_info()->applied_rewriters());
   VerifyCharset(&headers);
 }
 
@@ -2173,12 +2167,12 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   FetchFromProxy(url, request_headers, true, &text, &headers);
   CheckBackgroundFetch(headers, false);
   CheckNumBackgroundFetches(0);
-  const TimingInfo timing_info_ = logging_info_.timing_info();
-  ASSERT_TRUE(timing_info_.has_cache1_ms());
-  EXPECT_EQ(timing_info_.cache1_ms(), 0);
-  EXPECT_FALSE(timing_info_.has_cache2_ms());
-  EXPECT_FALSE(timing_info_.has_header_fetch_ms());
-  EXPECT_FALSE(timing_info_.has_fetch_ms());
+  const TimingInfo timing_info = logging_info()->timing_info();
+  ASSERT_TRUE(timing_info.has_cache1_ms());
+  EXPECT_EQ(timing_info.cache1_ms(), 0);
+  EXPECT_FALSE(timing_info.has_cache2_ms());
+  EXPECT_FALSE(timing_info.has_header_fetch_ms());
+  EXPECT_FALSE(timing_info.has_fetch_ms());
 }
 
 TEST_F(ProxyInterfaceTest, HeadRequest) {
@@ -3581,7 +3575,7 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
             headers.CacheExpirationTimeMs());
   EXPECT_EQ(NULL, headers.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ(NULL, headers.Lookup1(HttpAttributes::kLastModified));
-  EXPECT_STREQ("cf", logging_info_.applied_rewriters());
+  EXPECT_STREQ("cf", logging_info()->applied_rewriters());
 
   // Fetch the rewritten resource as well.
   text.clear();
@@ -3600,6 +3594,24 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
   headers.ComputeCaching();
   EXPECT_LE(start_time_ms_ + Timer::kYearMs, headers.CacheExpirationTimeMs());
   EXPECT_EQ(kMinimizedCssContent, text);
+}
+
+TEST_F(ProxyInterfaceTest, LogChainedResourceRewrites) {
+  GoogleString text;
+  ResponseHeaders headers;
+
+  SetResponseWithDefaultHeaders("1.js", kContentTypeJavascript, "var wxyz=1;",
+                                kHtmlCacheTimeSec * 2);
+  SetResponseWithDefaultHeaders("2.js", kContentTypeJavascript, "var abcd=2;",
+                                kHtmlCacheTimeSec * 2);
+
+  GoogleString combined_js_url = Encode(
+      kTestDomain, "jc", "0",
+      "1.js.pagespeed.jm.0.jsX2.js.pagespeed.jm.0.js", "js");
+  combined_js_url[combined_js_url.find('X')] = '+';
+
+  FetchFromProxy(combined_js_url, true, &text, &headers);
+  EXPECT_STREQ("jc,jm", logging_info()->applied_rewriters());
 }
 
 TEST_F(ProxyInterfaceTest, FlushHugeHtml) {
@@ -3718,6 +3730,7 @@ TEST_F(ProxyInterfaceTest, ReconstructResource) {
   CheckBackgroundFetch(headers, false);
   EXPECT_LE(start_time_ms_ + Timer::kYearMs, headers.CacheExpirationTimeMs());
   EXPECT_EQ(kMinimizedCssContent, text);
+  EXPECT_STREQ("cf", logging_info()->applied_rewriters());
 }
 
 TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {

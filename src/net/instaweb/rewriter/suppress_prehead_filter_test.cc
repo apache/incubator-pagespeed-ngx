@@ -19,6 +19,7 @@
 
 #include "net/instaweb/http/http.pb.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
@@ -29,6 +30,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -149,10 +151,7 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
       "</head>"
       "<body></body></html>";
   GoogleString html_input = StrCat(pre_head_input, post_head_input);
-  scoped_ptr<LogRecord> log_record(new LogRecord);
-  rewrite_driver_->set_log_record(log_record.get());
-  rewrite_driver_->log_record()->logging_info()
-      ->mutable_timing_info()->set_header_fetch_ms(100);
+  logging_info()->mutable_timing_info()->set_header_fetch_ms(100);
   rewrite_driver_->flush_early_info()->set_last_n_fetch_latencies("96,98");
   rewrite_driver_->flush_early_info()->set_average_fetch_latency_ms(97);
 
@@ -167,7 +166,6 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppress) {
             rewrite_driver_->flush_early_info()->last_n_fetch_latencies());
   EXPECT_EQ(98,
             rewrite_driver_->flush_early_info()->average_fetch_latency_ms());
-  rewrite_driver_->set_log_record(NULL);
 
   // pre head is suppressed if the dummy head was flushed early.
   output_.clear();

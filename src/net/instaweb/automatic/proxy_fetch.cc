@@ -24,8 +24,9 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
@@ -928,10 +929,15 @@ void ProxyFetch::ExecuteQueued() {
   }
 
   if (!parse_text_called_) {
-    TimingInfo* timing_info = logging_info()->mutable_timing_info();
-    if (timing_info->has_request_start_ms()) {
-      timing_info->set_time_to_start_parse_ms(
-          server_context_->timer()->NowMs() - timing_info->request_start_ms());
+    if (request_context().get() != NULL) {
+      ScopedMutex lock(log_record()->mutex());
+      TimingInfo* timing_info =
+          log_record()->logging_info()->mutable_timing_info();
+      if (timing_info->has_request_start_ms()) {
+        timing_info->set_time_to_start_parse_ms(
+            server_context_->timer()->NowMs() -
+                timing_info->request_start_ms());
+      }
     }
     parse_text_called_ = true;
   }

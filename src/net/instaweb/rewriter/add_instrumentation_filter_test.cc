@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -28,6 +29,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -166,11 +168,8 @@ TEST_F(AddInstrumentationFilterTest,
 // Test that headers fetch timing reporting is done correctly.
 TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
   NullMessageHandler handler;
-  LoggingInfo logging_info;
-  LogRecord log_record(&logging_info);
-  log_record.logging_info()->mutable_timing_info()->set_header_fetch_ms(200);
-  log_record.logging_info()->mutable_timing_info()->set_fetch_ms(500);
-  rewrite_driver()->set_log_record(&log_record);
+  logging_info()->mutable_timing_info()->set_header_fetch_ms(200);
+  logging_info()->mutable_timing_info()->set_fetch_ms(500);
   RunInjection();
   EXPECT_TRUE(output_buffer_.find(
       CreateInitString(

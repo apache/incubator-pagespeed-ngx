@@ -21,6 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
@@ -28,6 +29,7 @@
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace {
@@ -124,12 +126,19 @@ void SuppressPreheadFilter::Clear() {
 }
 
 void SuppressPreheadFilter::EndDocument() {
-  LogRecord* log_record = driver_->log_record();
-  if (!driver_->flushing_early() && log_record != NULL &&
-      log_record->logging_info()->timing_info().has_header_fetch_ms()) {
-    UpdateFetchLatencyInFlushEarlyProto(
-        log_record->logging_info()->timing_info().header_fetch_ms(),
-        driver_);
+  int64 header_fetch_ms = -1;
+  {
+    LogRecord* log_record = driver_->log_record();
+    ScopedMutex lock(log_record->mutex());
+    if (!driver_->flushing_early() &&
+        log_record->logging_info()->timing_info().has_header_fetch_ms()) {
+      header_fetch_ms =
+          log_record->logging_info()->timing_info().header_fetch_ms();
+    }
+  }
+
+  if (header_fetch_ms >= 0) {
+    UpdateFetchLatencyInFlushEarlyProto(header_fetch_ms, driver_);
   }
 
   driver_->flush_early_info()->set_pre_head(pre_head_);
@@ -152,6 +161,8 @@ void SuppressPreheadFilter::EndDocument() {
   driver_->SaveOriginalHeaders(response_headers_);
 }
 
+// TODO(marq): Make this a regular method instead of a static method, and have
+// it inspect driver_ instead of passing it as a parameter.
 void SuppressPreheadFilter::UpdateFetchLatencyInFlushEarlyProto(
     int64 latency, RewriteDriver* driver) {
   double average_fetch_latency = latency;

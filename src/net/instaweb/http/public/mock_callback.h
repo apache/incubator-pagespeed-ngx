@@ -22,6 +22,7 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_MOCK_CALLBACK_H_
 
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 
@@ -34,6 +35,9 @@ class ExpectStringAsyncFetch : public StringAsyncFetch {
  public:
   explicit ExpectStringAsyncFetch(bool expect_success)
       : expect_success_(expect_success) {}
+  ExpectStringAsyncFetch(bool expect_success,
+                         const RequestContextPtr& request_context)
+      : StringAsyncFetch(request_context), expect_success_(expect_success) {}
   virtual ~ExpectStringAsyncFetch() {
     EXPECT_TRUE(done());
   }

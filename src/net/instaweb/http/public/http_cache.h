@@ -21,14 +21,14 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
@@ -83,11 +83,10 @@ class HTTPCache {
   // this would impact callers.
   class Callback {
    public:
-    Callback()
+    explicit Callback(const RequestContextPtr& request_ctx)
         : response_headers_(NULL),
           owns_response_headers_(false),
-          logging_info_(NULL),
-          owns_logging_info_(false) {
+          request_ctx_(request_ctx) {
     }
     virtual ~Callback();
     virtual void Done(FindResult find_result) = 0;
@@ -140,11 +139,9 @@ class HTTPCache {
     }
     HTTPValue* fallback_http_value() { return &fallback_http_value_; }
 
-    // Sets the LoggingInfo to the specified pointer.  The caller must
-    // guarantee that the pointed-to LoggingInfo remains valid as long as the
-    // HTTPCache is running.
-    void set_logging_info(LoggingInfo* logging_info);
-    virtual LoggingInfo* logging_info();
+    LogRecord* log_record();
+    const RequestContextPtr& request_context() { return request_ctx_; }
+
     virtual void SetTimingMs(int64 timing_value_ms);
 
    private:
@@ -154,8 +151,7 @@ class HTTPCache {
     HTTPValue fallback_http_value_;
     ResponseHeaders* response_headers_;
     bool owns_response_headers_;
-    LoggingInfo* logging_info_;
-    bool owns_logging_info_;
+    RequestContextPtr request_ctx_;
 
     DISALLOW_COPY_AND_ASSIGN(Callback);
   };

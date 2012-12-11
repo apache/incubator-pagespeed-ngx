@@ -20,35 +20,107 @@
 
 #include <set>
 
+#include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-LogRecord::LogRecord() : logging_info_(new LoggingInfo),
-    owns_logging_info_(true) {
+LogRecord::LogRecord(AbstractMutex* mutex) : finalized_(false), mutex_(mutex) {
+  InitLogging();
 }
 
-LogRecord::LogRecord(LoggingInfo* logging_info)
-    : logging_info_(logging_info), owns_logging_info_(false) {
+// Non-initializing constructor for subclasses to invoke.
+LogRecord::LogRecord()
+    : logging_info_(NULL),
+      finalized_(false),
+      mutex_(NULL) {
+}
+
+void LogRecord::InitLogging() {
+  logging_info_.reset(new LoggingInfo);
 }
 
 LogRecord::~LogRecord() {
-  if (owns_logging_info_) {
-    delete logging_info_;
-  }
+  // Wait until nobody else has locked before destruction.
+  ScopedMutex lock(mutex_.get());
+}
+
+void LogRecord::set_mutex(AbstractMutex* m) {
+  CHECK(mutex_.get() == NULL);
+  mutex_.reset(m);
+}
+
+LoggingInfo* LogRecord::logging_info() {
+  mutex_->DCheckLocked();
+  return logging_info_.get();
 }
 
 void LogRecord::LogAppliedRewriter(const char* rewriter_id) {
-  applied_rewriters_.insert(rewriter_id);
+  ScopedMutex lock(mutex_.get());
+  LogAppliedRewriterImpl(rewriter_id);
+}
+
+void LogRecord::LogAppliedRewriterImpl(const char* rewriter_id) {
+  mutex_->DCheckLocked();
+  if (!finalized()) {
+    applied_rewriters_.insert(rewriter_id);
+  }
 }
 
 void LogRecord::Finalize() {
-  logging_info()->set_applied_rewriters(ConcatenatedRewriterString());
+  ScopedMutex lock(mutex_.get());
+  FinalizeImpl();
 }
 
-void LogRecord::WriteLogForBlink(const GoogleString& user_agent) {
-  // no-op.
+void LogRecord::FinalizeImpl() {
+  mutex_->DCheckLocked();
+  if (!finalized()) {
+    logging_info()->set_applied_rewriters(ConcatenatedRewriterString());
+    finalized_ = true;
+  }
+}
+
+void LogRecord::SetBlinkRequestFlow(int flow) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->mutable_blink_info()->set_blink_request_flow(
+      static_cast<BlinkInfo::BlinkRequestFlow>(flow));
+}
+
+void LogRecord::SetIsOriginalResourceCacheable(bool cacheable) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->set_is_original_resource_cacheable(cacheable);
+}
+
+void LogRecord::SetTimingRequestStartMs(int64 ms) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->mutable_timing_info()->set_request_start_ms(ms);
+}
+
+void LogRecord::SetTimingFetchMs(int64 ms) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->mutable_timing_info()->set_fetch_ms(ms);
+}
+
+bool LogRecord::WriteLog() {
+  ScopedMutex lock(mutex_.get());
+  return WriteLogImpl();
+}
+
+bool LogRecord::WriteLogForBlink(const GoogleString& user_agent) {
+  ScopedMutex lock(mutex_.get());
+  return WriteLogForBlinkImpl(user_agent);
+}
+
+bool LogRecord::WriteLogWhileLocked() {
+  mutex_->DCheckLocked();
+  return WriteLogImpl();
+}
+
+bool LogRecord::WriteLogForBlinkWhileLocked(const GoogleString& user_agent) {
+  mutex_->DCheckLocked();
+  return WriteLogForBlinkImpl(user_agent);
 }
 
 GoogleString LogRecord::ConcatenatedRewriterString() {

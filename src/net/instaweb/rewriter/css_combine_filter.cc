@@ -119,7 +119,7 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
 
   void AddFileCountReduction(int num_files) {
     css_file_count_reduction_->Add(num_files);
-    if (num_files >= 1 && rewrite_driver_->log_record() != NULL) {
+    if (num_files >= 1) {
       rewrite_driver_->log_record()->LogAppliedRewriter(
           RewriteOptions::FilterId(RewriteOptions::kCombineCss));
     }

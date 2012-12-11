@@ -197,7 +197,7 @@ void CacheExtender::Context::Render() {
     // Log applied rewriter id. Here, we care only about non-nested
     // cache extensions, and that too, those occurring in synchronous
     // flows only.
-    if (driver_ != NULL && driver_->log_record() != NULL) {
+    if (driver_ != NULL) {
       if (slot(0)->resource().get() != NULL &&
           slot(0)->resource()->type() != NULL) {
         const char* filter_id = id();

@@ -19,7 +19,7 @@
 #include "net/instaweb/rewriter/public/split_html_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
-#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -131,9 +131,6 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     rewrite_driver()->set_request_headers(&request_headers_);
     rewrite_driver()->set_user_agent("");
     rewrite_driver()->SetWriter(&writer_);
-    logging_info_.reset(new LoggingInfo);
-    log_record_.reset(new LogRecord(logging_info_.get()));
-    rewrite_driver()->set_log_record(log_record_.get());
     SplitHtmlFilter* filter = new SplitHtmlFilter(rewrite_driver());
     html_writer_filter_.reset(filter);
     html_writer_filter_->set_writer(&writer_);
@@ -148,8 +145,11 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     blink_js_url_ = js_manager->GetBlinkJsUrl(options_).c_str();
   }
 
+  // TODO(marq): This looks reusable enough to go into RewriteTestBase. Perhaps
+  // it should also know the rewriter-under-test's ID so there's less
+  // boilerplate?
   void VerifyAppliedRewriters(GoogleString expected_rewriters) {
-    EXPECT_STREQ(expected_rewriters, logging_info_->applied_rewriters());
+    EXPECT_STREQ(expected_rewriters, logging_info()->applied_rewriters());
   }
 
   GoogleString output_;
@@ -160,8 +160,6 @@ class SplitHtmlFilterTest : public RewriteTestBase {
   RequestHeaders request_headers_;
   ResponseHeaders response_headers_;
   SplitHtmlFilter* split_html_filter_;
-  scoped_ptr<LoggingInfo> logging_info_;
-  scoped_ptr<LogRecord> log_record_;
 };
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithDriverHavingCriticalLineInfo) {

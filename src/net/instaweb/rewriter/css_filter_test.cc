@@ -21,6 +21,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/css_rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -203,14 +204,11 @@ TEST_F(CssFilterTest, UrlTooLong) {
 
 // Make sure we can deal with 0 character nodes between open and close of style.
 TEST_F(CssFilterTest, RewriteEmptyCssTest) {
-  LoggingInfo logging_info;
-  LogRecord log_record(&logging_info);
-  rewrite_driver()->set_log_record(&log_record);
   // Note: We must check stats ourselves because, for technical reasons,
   // empty inline styles are not treated as being rewritten at all.
   ValidateRewriteInlineCss("rewrite_empty_css-inline", "", "",
                            kExpectSuccess | kNoStatCheck);
-  EXPECT_STREQ("", logging_info.applied_rewriters());
+  EXPECT_STREQ("", logging_info()->applied_rewriters());
   EXPECT_EQ(0, num_blocks_rewritten_->Get());
   EXPECT_EQ(0, total_bytes_saved_->Get());
   EXPECT_EQ(0, num_parse_failures_->Get());
@@ -224,16 +222,22 @@ TEST_F(CssFilterTest, RewriteEmptyCssTest) {
 // Make sure we do not recompute external CSS when re-processing an already
 // handled page.
 TEST_F(CssFilterTest, RewriteRepeated) {
-  LoggingInfo logging_info;
-  LogRecord log_record(&logging_info);
-  rewrite_driver()->set_log_record(&log_record);
+  // ValidateRewriteExternalCssUrl calls FetchResourceUrl, which resets
+  // the request context on rewrite_driver_. So we can test changes to the log
+  // record, we keep a (ref counted) pointer to the request context before
+  // running the validate.
+  // TODO(marq): Make this not necessary by folding log validation into
+  // ValidateWithStats().
+  RequestContextPtr rctx = rewrite_driver()->request_context();
   ValidateRewriteExternalCss("rep", " div { } ", "div{}", kExpectSuccess);
   int inserts_before = lru_cache()->num_inserts();
   EXPECT_EQ(1, num_blocks_rewritten_->Get());  // for factory_
   EXPECT_EQ(1, num_uses_->Get());
-  EXPECT_STREQ("cf", logging_info.applied_rewriters());
+  EXPECT_STREQ("cf", rctx->log_record()->logging_info()->applied_rewriters());
 
   ResetStats();
+
+  rctx.reset(rewrite_driver()->request_context());
   ValidateRewriteExternalCss("rep", " div { } ", "div{}",
                              kExpectSuccess | kNoStatCheck);
   int inserts_after = lru_cache()->num_inserts();
@@ -241,7 +245,7 @@ TEST_F(CssFilterTest, RewriteRepeated) {
   EXPECT_EQ(inserts_before, inserts_after);
   EXPECT_EQ(0, num_blocks_rewritten_->Get());
   EXPECT_EQ(1, num_uses_->Get());
-  EXPECT_STREQ("cf", logging_info.applied_rewriters());
+  EXPECT_STREQ("cf", rctx->log_record()->logging_info()->applied_rewriters());
 }
 
 // Make sure we do not reparse external CSS when we know it already has
@@ -1585,10 +1589,6 @@ TEST_F(CssFilterTest, FlushInInlineCss) {
 }
 
 TEST_F(CssFilterTest, InlineCssWithExternalUrlAndDelayCache) {
-  LoggingInfo logging_info;
-  LogRecord log_record(&logging_info);
-  rewrite_driver()->set_log_record(&log_record);
-
   GoogleString img_url = StrCat(kTestDomain, "a.jpg");
   AddFileToMockFetcher(img_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
   options()->ClearSignatureForTesting();
@@ -1613,7 +1613,7 @@ TEST_F(CssFilterTest, InlineCssWithExternalUrlAndDelayCache) {
             "</body></html>", output_buffer_);
   // There was previously a bug where we were logging this as a successful
   // application of the css filter. Make sure that this case isn't logged.
-  EXPECT_STREQ("", logging_info.applied_rewriters());
+  EXPECT_STREQ("", logging_info()->applied_rewriters());
 }
 
 TEST_F(CssFilterTest, FlushInEndTag) {

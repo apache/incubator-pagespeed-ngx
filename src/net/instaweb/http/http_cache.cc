@@ -22,7 +22,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -226,6 +226,7 @@ class HTTPCacheCallback : public CacheInterface::Callback {
     http_cache_->UpdateStats(result,
                              !callback_->fallback_http_value()->Empty(),
                              elapsed_us);
+
     callback_->SetTimingMs(elapsed_us/1000);
     if (result != HTTPCache::kFound) {
       headers->Clear();
@@ -251,39 +252,6 @@ void HTTPCache::Find(const GoogleString& key, MessageHandler* handler,
   HTTPCacheCallback* cb = new HTTPCacheCallback(key, handler, callback, this);
   cache_->Get(key, cb);
 }
-
-namespace {
-
-// TODO(jmarantz): remove this class once all blocking usages of
-// HTTPCache are remove in favor of non-blocking usages.
-class SynchronizingCallback : public HTTPCache::Callback {
- public:
-  SynchronizingCallback()
-      : called_(false),
-        result_(HTTPCache::kNotFound) {
-  }
-  bool called() const { return called_; }
-  HTTPCache::FindResult result() const { return result_; }
-
-  virtual void Done(HTTPCache::FindResult result) {
-    result_ = result;
-    called_ = true;
-  }
-
-  virtual bool IsCacheValid(const GoogleString& key,
-                            const ResponseHeaders& headers) {
-    // We don't support custom invalidation policy on the legacy sync path.
-    return true;
-  }
-
- private:
-  bool called_;
-  HTTPCache::FindResult result_;
-
-  DISALLOW_COPY_AND_ASSIGN(SynchronizingCallback);
-};
-
-}  // namespace
 
 void HTTPCache::UpdateStats(
     FindResult result, bool has_fallback, int64 delta_us) {
@@ -495,30 +463,18 @@ HTTPCache::Callback::~Callback() {
   if (owns_response_headers_) {
     delete response_headers_;
   }
-  if (owns_logging_info_) {
-    delete logging_info_;
-  }
+}
+
+LogRecord* HTTPCache::Callback::log_record() {
+  return request_context()->log_record();
 }
 
 void HTTPCache::Callback::SetTimingMs(int64 timing_value_ms) {
-  logging_info()->mutable_timing_info()->set_cache1_ms(timing_value_ms);
-}
-
-void HTTPCache::Callback::set_logging_info(LoggingInfo* logging_info) {
-  DCHECK(!owns_logging_info_);
-  if (owns_logging_info_) {
-    delete logging_info_;
+  if (request_context().get() != NULL) {
+    ScopedMutex lock(log_record()->mutex());
+    log_record()->logging_info()->mutable_timing_info()->
+        set_cache1_ms(timing_value_ms);
   }
-  logging_info_ = logging_info;
-  owns_logging_info_ = false;
-}
-
-LoggingInfo* HTTPCache::Callback::logging_info() {
-  if (logging_info_ == NULL) {
-    logging_info_ = new LoggingInfo;
-    owns_logging_info_ = true;
-  }
-  return logging_info_;
 }
 
 }  // namespace net_instaweb

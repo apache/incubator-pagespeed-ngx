@@ -25,6 +25,7 @@
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -102,6 +103,8 @@ InstawebContext::InstawebContext(request_rec* request,
     // what ExperimentSpec the user should be seeing.
     use_custom_options = true;
   }
+  RequestContextPtr request_context(
+      new RequestContext(server_context_->thread_system()->NewMutex()));
   if (use_custom_options) {
     // TODO(jmarantz): this is a temporary hack until we sort out better
     // memory management of RewriteOptions.  This will drag on performance.
@@ -116,12 +119,13 @@ InstawebContext::InstawebContext(request_rec* request,
       SetFuriousStateAndCookie(request, custom_options);
     }
     server_context_->ComputeSignature(custom_options);
-    rewrite_driver_ = server_context_->NewCustomRewriteDriver(custom_options);
+    rewrite_driver_ = server_context_->NewCustomRewriteDriver(
+        custom_options, request_context);
   } else if (using_spdy && (server_context_->SpdyConfig() != NULL)) {
     rewrite_driver_ = server_context_->NewRewriteDriverFromPool(
-        server_context_->spdy_driver_pool());
+        server_context_->spdy_driver_pool(), request_context);
   } else {
-    rewrite_driver_ = server_context_->NewRewriteDriver();
+    rewrite_driver_ = server_context_->NewRewriteDriver(request_context);
   }
   modify_caching_headers_ =
       rewrite_driver_->options()->modify_caching_headers();

@@ -27,35 +27,21 @@
 #include <utility>
 #include <vector>
 
-#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/http_cache.h"  // for HTTPCache
-#include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
-#include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
-#include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr, etc
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_combiner.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/simple_text_filter.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_scheduler.h"
-#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -64,9 +50,14 @@
 #include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/worker_test_base.h"
 
+
 namespace net_instaweb {
 
+class CachedResult;
 class MessageHandler;
+class MockScheduler;
+class OutputPartitions;
+class OutputResource;
 class TestRewriteDriverFactory;
 class UrlSegmentEncoder;
 
@@ -467,8 +458,6 @@ class RewriteContextTestBase : public RewriteTestBase {
   TrimWhitespaceRewriter* other_trim_filter_;
   CombiningFilter* combining_filter_;
   NestedFilter* nested_filter_;
-  LogRecord log_record_;
-  const LoggingInfo* logging_info_;
 };
 
 }  // namespace net_instaweb

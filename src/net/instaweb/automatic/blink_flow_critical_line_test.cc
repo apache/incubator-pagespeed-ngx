@@ -26,9 +26,12 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
@@ -302,8 +305,11 @@ const char kNoScriptTextUrl[] =
 class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
  public:
   AsyncExpectStringAsyncFetch(bool expect_success,
-                              WorkerTestBase::SyncPoint* notify)
-      : ExpectStringAsyncFetch(expect_success), notify_(notify) {}
+                              WorkerTestBase::SyncPoint* notify,
+                              const RequestContextPtr& request_context)
+      : ExpectStringAsyncFetch(expect_success, request_context),
+        notify_(notify) {
+  }
 
   virtual ~AsyncExpectStringAsyncFetch() {}
 
@@ -466,16 +472,7 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
     resource_manager->set_enable_property_cache(true);
   }
 
-  LogRecord* NewLogRecord() {
-    logging_info_.reset(new LoggingInfo());
-    return new LogRecord(logging_info_.get());
-  }
-
-  LoggingInfo* logging_info() { return logging_info_.get(); }
-
  private:
-  scoped_ptr<LoggingInfo> logging_info_;
-
   BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder(
       PropertyCache* pcache) {
     return new FakeBlinkCriticalLineDataFinder();
@@ -852,9 +849,10 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
                                   ResponseHeaders* headers_out,
                                   GoogleString* user_agent_out) {
     WorkerTestBase::SyncPoint sync(server_context()->thread_system());
-    AsyncExpectStringAsyncFetch callback(expect_success, &sync);
-    TimingInfo timing_info = callback.logging_info()->timing_info();
-    timing_info.set_request_start_ms(server_context()->timer()->NowMs());
+    AsyncExpectStringAsyncFetch callback(
+        expect_success, &sync, rewrite_driver()->request_context());
+    rewrite_driver()->log_record()->SetTimingRequestStartMs(
+        server_context()->timer()->NowMs());
     callback.set_response_headers(headers_out);
     callback.request_headers()->CopyFrom(request_headers);
     proxy_interface_->Fetch(AbsolutifyUrl(url), message_handler(), &callback);
@@ -869,9 +867,6 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
       user_agent_out->assign(
           callback.request_headers()->Lookup1(HttpAttributes::kUserAgent));
     }
-    if (callback.logging_info() != NULL) {
-      logging_info_.CopyFrom(*(callback.logging_info()));
-    }
   }
 
   void FetchFromProxyWithDelayCache(
@@ -881,7 +876,8 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
       GoogleString* string_out,
       ResponseHeaders* headers_out) {
     WorkerTestBase::SyncPoint sync(server_context()->thread_system());
-    AsyncExpectStringAsyncFetch callback(expect_success, &sync);
+    AsyncExpectStringAsyncFetch callback(
+        expect_success, &sync, rewrite_driver()->request_context());
     callback.set_response_headers(headers_out);
     callback.request_headers()->CopyFrom(request_headers);
     proxy_interface->Fetch(AbsolutifyUrl(url), message_handler(), &callback);
@@ -905,9 +901,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
 
   // Verifies the fields of BlinkInfo proto being logged.
   BlinkInfo* VerifyBlinkInfo(int blink_request_flow, const char* url) {
-    CustomRewriteDriverFactory* factory =
-        static_cast<CustomRewriteDriverFactory*>(server_context()->factory());
-    BlinkInfo* blink_info = factory->logging_info()->mutable_blink_info();
+    BlinkInfo* blink_info = logging_info()->mutable_blink_info();
     EXPECT_EQ(blink_request_flow, blink_info->blink_request_flow());
     EXPECT_EQ("1345815119391831", blink_info->request_event_id_time_usec());
     EXPECT_STREQ(url, blink_info->url());
@@ -1130,7 +1124,6 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
   GoogleString blink_output_with_lazy_load_;
   FakeBlinkCriticalLineDataFinder* fake_blink_critical_line_data_finder_;
   MeaningfulFlushEarlyInfoFinder* flush_early_info_finder_;
-  LoggingInfo logging_info_;
   const GoogleString blink_output_;
   const GoogleString blink_output_with_extra_non_cacheable_;
   const GoogleString blink_output_with_cacheable_panels_no_cookies_;
@@ -1428,7 +1421,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   FetchFromProxyWaitForBackground("minifiable_text.html", true, &text,
                                   &response_headers);
   EXPECT_EQ(BlinkInfo::BLINK_DESKTOP_WHITELIST,
-            logging_info_.blink_info().blink_user_agent());
+            logging_info()-> blink_info().blink_user_agent());
   ConstStringStarVector values;
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
   EXPECT_EQ(1, values.size());
@@ -1455,7 +1448,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   ConstStringStarVector psa_rewriter_header_values;
   EXPECT_FALSE(response_headers.Lookup(kPsaRewriterHeader,
                                        &psa_rewriter_header_values));
-  EXPECT_STREQ("jm", logging_info_.applied_rewriters());
+  EXPECT_STREQ("jm", logging_info()->applied_rewriters());
   EXPECT_EQ(1, statistics()->FindVariable(
       BlinkFlowCriticalLine::kNumBlinkSharedFetchesStarted)->Get());
   EXPECT_EQ(1, statistics()->FindVariable(
@@ -1703,7 +1696,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithBlacklistUrls) {
   FetchFromProxy("blacklist.html", true, request_headers, &text,
                  &response_headers, false);
   // unassigned user agent
-  EXPECT_EQ(BlinkInfo::NOT_SET, logging_info_.blink_info().blink_user_agent());
+  EXPECT_EQ(BlinkInfo::NOT_SET,
+            logging_info()-> blink_info().blink_user_agent());
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_STREQ(kHtmlInput, text);
@@ -1751,7 +1745,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithBlacklistUserAgents) {
   FetchFromProxy("plain.html", true, request_headers, &text,
                  &response_headers, false);
   EXPECT_EQ(BlinkInfo::BLINK_DESKTOP_BLACKLIST,
-            logging_info_.blink_info().blink_user_agent());
+            logging_info()->blink_info().blink_user_agent());
   EXPECT_STREQ(kHtmlInput, text);
   // No fetch for background computation is triggered here.
   // Only original html is fetched from fetcher.
@@ -1944,7 +1938,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkBlacklistUserAgent) {
   FetchFromProxy("noblink_text.html", true, request_headers, &text,
                  &response_headers, false);
   EXPECT_EQ(BlinkInfo::NOT_SUPPORT_BLINK,
-            logging_info_.blink_info().blink_user_agent());
+            logging_info()->blink_info().blink_user_agent());
   ConstStringStarVector values;
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
   EXPECT_STREQ("max-age=0", *(values[0]));
@@ -2007,7 +2001,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileWhiteListUserAgent) {
   FetchFromProxyWaitForBackground("text.html", true, request_headers, &text,
                                   &response_headers, &user_agent, true);
   EXPECT_EQ(BlinkInfo::BLINK_MOBILE,
-            logging_info_.blink_info().blink_user_agent());
+            logging_info()->blink_info().blink_user_agent());
   ConstStringStarVector values;
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
   EXPECT_STREQ("max-age=0", *(values[0]));
@@ -2033,7 +2027,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileBlackListUserAgent) {
   FetchFromProxy("plain.html", true, request_headers, &text,
                  &response_headers, &user_agent, false);
   EXPECT_EQ(BlinkInfo::BLINK_MOBILE,
-            logging_info_.blink_info().blink_user_agent());
+            logging_info()->blink_info().blink_user_agent());
   EXPECT_STREQ(kHtmlInput, text);
   // No fetch for background computation is triggered here.
   // Only original html is fetched from fetcher.
@@ -2051,7 +2045,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestNullUserAgentAndEmptyUserAgent) {
   FetchFromProxy("noblink_text.html", true, request_headers, &text,
                  &response_headers, false);
   EXPECT_EQ(BlinkInfo::NULL_OR_EMPTY,
-            logging_info_.blink_info().blink_user_agent());
+            logging_info()->blink_info().blink_user_agent());
   EXPECT_STREQ(noblink_output_, text);
   EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
@@ -2060,7 +2054,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestNullUserAgentAndEmptyUserAgent) {
   FetchFromProxy("noblink_text.html", true, request_headers, &text,
                  &response_headers, false);
   EXPECT_EQ(BlinkInfo::NULL_OR_EMPTY,
-            logging_info_.blink_info().blink_user_agent());
+            logging_info()->blink_info().blink_user_agent());
   EXPECT_STREQ(noblink_output_, text);
   EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());

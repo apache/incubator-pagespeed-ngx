@@ -23,6 +23,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -115,9 +116,6 @@ class CssCombineFilterTest : public RewriteTestBase {
                            const char* a_css_name,
                            const char* b_css_name,
                            bool expect_combine) {
-    LoggingInfo logging_info;
-    LogRecord log_record(&logging_info);
-    rewrite_driver()->set_log_record(&log_record);
     // URLs and content for HTML document and resources.
     CHECK_EQ(StringPiece::npos, id.find("/"));
     GoogleString html_url = StrCat(kDomain, id, ".html");
@@ -179,7 +177,7 @@ class CssCombineFilterTest : public RewriteTestBase {
 
     EXPECT_EQ(expected_file_count_reduction, css_file_count_reduction->Get());
     if (expected_file_count_reduction > 0) {
-      EXPECT_STREQ("cc", logging_info.applied_rewriters());
+      EXPECT_STREQ("cc", logging_info()->applied_rewriters());
     }
 
     GoogleString expected_output(AddHtmlBody(StrCat(

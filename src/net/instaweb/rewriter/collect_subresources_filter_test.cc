@@ -178,7 +178,9 @@ TEST_F(CollectSubresourcesFilterTest, CollectSubresourcesFilter) {
   EXPECT_EQ(CSS, flush_early_info->subresource(2).content_type());
   // Calling Parse once more so that we hit only Render without hitting
   // RewriteSingle.
-  rewrite_driver()->Clear();
+
+  ClearRewriteDriver();
+
   Parse("flushed_early", html_ip);
   flush_early_info = rewrite_driver()->flush_early_info();
   collect_subresources_filter()->AddSubresourcesToFlushEarlyInfo(
@@ -201,7 +203,8 @@ TEST_F(CollectSubresourcesFilterTest, HtmlHasRewrittenUrl) {
   collect_subresources_filter()->AddSubresourcesToFlushEarlyInfo(
       flush_early_info);
   EXPECT_EQ(1, flush_early_info->subresource_size());
-  rewrite_driver()->Clear();
+  ClearRewriteDriver();
+
   Parse("flushed_early", html_ip);
   flush_early_info = rewrite_driver()->flush_early_info();
   collect_subresources_filter()->AddSubresourcesToFlushEarlyInfo(

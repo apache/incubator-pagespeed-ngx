@@ -735,7 +735,7 @@ TEST_F(RewriteDriverTest, MultipleDomains) {
                                    hasher()->Hash(kCss), "b.css", "css");
 
   EXPECT_TRUE(TryFetchResource(rewritten1));
-  rewrite_driver()->Clear();
+  ClearRewriteDriver();
   EXPECT_TRUE(TryFetchResource(rewritten2));
 }
 
@@ -757,6 +757,7 @@ TEST_F(RewriteDriverTest, ResourceCharset) {
     MockResourceCallback mock_callback(resource);
     EXPECT_TRUE(resource.get() != NULL);
     server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
+                                rewrite_driver()->request_context(),
                                 &mock_callback);
     EXPECT_TRUE(mock_callback.done());
     EXPECT_TRUE(mock_callback.success());
@@ -795,6 +796,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   MockResourceCallback mock_callback(resource);
   EXPECT_TRUE(resource.get() != NULL);
   server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
+                              rewrite_driver()->request_context(),
                               &mock_callback);
   EXPECT_TRUE(mock_callback.done());
   EXPECT_TRUE(mock_callback.success());
@@ -809,6 +811,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   MockResourceCallback mock_callback2(resource2);
   EXPECT_TRUE(resource2.get() != NULL);
   server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
+                              rewrite_driver()->request_context(),
                               &mock_callback2);
   EXPECT_TRUE(mock_callback2.done());
   EXPECT_TRUE(mock_callback2.success());
@@ -823,6 +826,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromTheWeb) {
   MockResourceCallback mock_callback3(resource3);
   EXPECT_TRUE(resource3.get() != NULL);
   server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
+                              rewrite_driver()->request_context(),
                               &mock_callback3);
   EXPECT_TRUE(mock_callback3.done());
   EXPECT_EQ(kResourceContents2, resource3->contents());
@@ -856,6 +860,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
   EXPECT_EQ(&kContentTypeCss, resource->type());
   MockResourceCallback mock_callback(resource);
   server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
+                              rewrite_driver()->request_context(),
                               &mock_callback);
   EXPECT_TRUE(mock_callback.done());
   EXPECT_TRUE(mock_callback.success());
@@ -871,6 +876,7 @@ TEST_F(RewriteDriverTest, LoadResourcesFromFiles) {
   EXPECT_EQ(&kContentTypeCss, resource2->type());
   MockResourceCallback mock_callback2(resource2);
   server_context()->ReadAsync(Resource::kReportFailureIfNotCacheable,
+                              rewrite_driver()->request_context(),
                               &mock_callback2);
   EXPECT_TRUE(mock_callback2.done());
   EXPECT_TRUE(mock_callback2.success());

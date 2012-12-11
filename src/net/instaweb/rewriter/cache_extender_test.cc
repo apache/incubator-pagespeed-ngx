@@ -21,6 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
@@ -135,9 +136,6 @@ class CacheExtenderTest : public RewriteTestBase {
   }
 
   void TestExtendFromHtml() {
-    LoggingInfo logging_info;
-    LogRecord log_record(&logging_info);
-    rewrite_driver()->set_log_record(&log_record);
     InitTest(kShortTtlSec);
     for (int i = 0; i < 3; i++) {
       const GoogleString input_html = GenerateHtml(kCssFile, "b.jpg", "c.js");
@@ -150,12 +148,12 @@ class CacheExtenderTest : public RewriteTestBase {
                          Encode(kTestDomain, "ce", "0", "c.js", "js")));
         EXPECT_EQ((i + 1) * 3, num_cache_extended_->Get())
             << "Number of cache extended resources is wrong";
-        EXPECT_STREQ("ec,ei,es", logging_info.applied_rewriters());
+        EXPECT_STREQ("ec,ei,es", logging_info()->applied_rewriters());
       } else {
         ValidateNoChanges("unhealthy", input_html);
         EXPECT_EQ(0, num_cache_extended_->Get())
             << "Number of cache extended resources is wrong";
-        EXPECT_STREQ("", logging_info.applied_rewriters());
+        EXPECT_STREQ("", logging_info()->applied_rewriters());
       }
     }
   }
@@ -216,9 +214,6 @@ class CacheExtenderTestPreserveURLs : public CacheExtenderTest {
       options()->set_js_preserve_urls(true);
     }
     CacheExtenderTest::SetUp();
-    LoggingInfo logging_info;
-    LogRecord log_record(&logging_info);
-    rewrite_driver()->set_log_record(&log_record);
     InitTest(kShortTtlSec);
 
     GoogleString expected_img_html = "b.jpg";
@@ -266,9 +261,6 @@ TEST_F(CacheExtenderTestPreserveURLs, CacheExtenderPreserveAllURLsOn) {
 }
 
 TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascript) {
-  LoggingInfo logging_info;
-  LogRecord log_record(&logging_info);
-  rewrite_driver()->set_log_record(&log_record);
   options()->ClearSignatureForTesting();
   options()->set_avoid_renaming_introspective_javascript(true);
   InitTest(kShortTtlSec);
@@ -279,7 +271,7 @@ TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascript) {
       StringPrintf(kJsTemplate, "introspective.js"));
   EXPECT_EQ(0, num_cache_extended_->Get())
       << "Number of cache extended resources is wrong";
-  EXPECT_STREQ("", logging_info.applied_rewriters());
+  EXPECT_STREQ("", logging_info()->applied_rewriters());
 }
 
 TEST_F(CacheExtenderTest, DoExtendIntrospectiveJavascriptByDefault) {
@@ -304,9 +296,6 @@ TEST_F(CacheExtenderTest, DoExtendLinkRelCaseInsensitive) {
 }
 
 TEST_F(CacheExtenderTest, DoExtendForImagesOnly) {
-  LoggingInfo logging_info;
-  LogRecord log_record(&logging_info);
-  rewrite_driver()->set_log_record(&log_record);
   AddFilter(RewriteOptions::kExtendCacheImages);
   SetResponseWithDefaultHeaders(kCssFile, kContentTypeCss,
                                 kCssData, kShortTtlSec);
@@ -324,7 +313,7 @@ TEST_F(CacheExtenderTest, DoExtendForImagesOnly) {
                      "c.js"));
     EXPECT_EQ((i + 1), num_cache_extended_->Get())
         << "Number of cache extended resources is wrong";
-    EXPECT_STREQ("ei", logging_info.applied_rewriters());
+    EXPECT_STREQ("ei", logging_info()->applied_rewriters());
   }
 }
 
@@ -408,9 +397,6 @@ TEST_F(CacheExtenderTest, ExtendIfOriginMappedHttps) {
 }
 
 TEST_F(CacheExtenderTest, ExtendIfRewritten) {
-  LoggingInfo logging_info;
-  LogRecord log_record(&logging_info);
-  rewrite_driver()->set_log_record(&log_record);
   InitTest(kLongTtlSec);  // cached for a long time to begin with
 
   EXPECT_TRUE(options()->domain_lawyer()->AddRewriteDomainMapping(
@@ -424,7 +410,7 @@ TEST_F(CacheExtenderTest, ExtendIfRewritten) {
                        Encode("http://cdn.com/", "ce", "0", "c.js", "js")));
   EXPECT_EQ(3, num_cache_extended_->Get())
       << "Number of cache extended resources is wrong";
-  EXPECT_STREQ("ec,ei,es", logging_info.applied_rewriters());
+  EXPECT_STREQ("ec,ei,es", logging_info()->applied_rewriters());
 }
 
 TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritten) {

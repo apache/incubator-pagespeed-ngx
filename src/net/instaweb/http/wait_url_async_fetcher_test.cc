@@ -60,12 +60,12 @@ TEST_F(WaitUrlAsyncFetcherTest, FetcherWaits) {
   wait_fetcher()->Fetch(kUrl, &handler, &callback);
 
   // Nothing gets set ...
-  EXPECT_EQ(false, callback.done());
+  EXPECT_FALSE(callback.done());
   EXPECT_EQ("", callback.buffer());
 
   // ... until we CallCallbacks.
   wait_fetcher()->CallCallbacks();
-  EXPECT_EQ(true, callback.done());
+  EXPECT_TRUE(callback.done());
   EXPECT_EQ(kBody, callback.buffer());
 }
 
@@ -76,19 +76,19 @@ TEST_F(WaitUrlAsyncFetcherTest, PassThrough) {
   wait_fetcher()->Fetch(kUrl, &handler, &callback);
 
   // Nothing gets set ...
-  EXPECT_EQ(false, callback.done());
+  EXPECT_FALSE(callback.done());
   EXPECT_EQ("", callback.buffer());
 
   // Now switch to pass-through mode.  This causes the callback to get called.
   bool prev_mode = wait_fetcher()->SetPassThroughMode(true);
   EXPECT_FALSE(prev_mode);
-  EXPECT_EQ(true, callback.done());
+  EXPECT_TRUE(callback.done());
   EXPECT_EQ(kBody, callback.buffer());
 
   // Now fetches happen instantly.
   ExpectStringAsyncFetch callback2(true);
   wait_fetcher()->Fetch(kUrl, &handler, &callback2);
-  EXPECT_EQ(true, callback2.done());
+  EXPECT_TRUE(callback2.done());
   EXPECT_EQ(kBody, callback2.buffer());
 }
 

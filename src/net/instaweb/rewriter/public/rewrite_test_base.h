@@ -407,6 +407,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
 
   virtual void ClearStats();
 
+  // Calls Clear() on the rewrite driver and does any other necessary
+  // clean-up so the driver is okay for a test to reuse.
+  void ClearRewriteDriver();
+
   MockUrlFetcher* mock_url_fetcher() {
     return &mock_url_fetcher_;
   }
@@ -550,6 +554,12 @@ class RewriteTestBase : public RewriteOptionsTestBase {
 
   // Adjusts time ignoring any scheduler callbacks.  Use with caution.
   void AdjustTimeUsWithoutWakingAlarms(int64 time_us);
+
+  // Convenience method to pull the logging info proto out of the current
+  // request context's log record. The request context owns the log record, and
+  // if the log record has a non-NULL mutex, it will need to be locked
+  // for this call.
+  LoggingInfo* logging_info();
 
   // The mock fetcher & stats are global across all Factories used in the tests.
   MockUrlFetcher mock_url_fetcher_;

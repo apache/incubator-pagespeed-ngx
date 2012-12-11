@@ -33,6 +33,7 @@
 #include "net/instaweb/automatic/public/resource_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
@@ -52,6 +53,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 
@@ -229,8 +231,11 @@ void handle_as_resource(ApacheServerContext* manager,
       driver_pool = manager->standard_rewrite_driver_pool();
     }
   }
+  RequestContextPtr request_context(
+      new RequestContext(manager->thread_system()->NewMutex()));
   RewriteDriver* driver = ResourceFetch::GetDriver(
-      *gurl, custom_options, driver_pool, using_spdy, manager);
+      *gurl, custom_options, driver_pool, using_spdy, manager,
+      request_context);
 
   // Insert proxy fetchers to add custom fetch headers or apply
   // routing policy.

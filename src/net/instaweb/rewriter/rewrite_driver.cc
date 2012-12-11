@@ -38,6 +38,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -245,13 +246,23 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       serve_blink_non_critical_(false),
       is_blink_request_(false),
       can_rewrite_resources_(true),
-      log_record_(NULL),
       request_context_(NULL),
-      start_time_ms_(0)
+      start_time_ms_(0),
+      is_nested_(false)
       // NOTE:  Be sure to clear per-request member vars in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // The Scan filter always goes first so it can find base-tags.
   early_pre_render_filters_.push_back(&scan_filter_);
+}
+
+void RewriteDriver::set_request_context(const RequestContextPtr& x) {
+  CHECK(x.get() != NULL);
+  request_context_.reset(x);
+}
+
+LogRecord* RewriteDriver::log_record() {
+  CHECK(request_context_.get() != NULL);
+  return request_context_->log_record();
 }
 
 RewriteDriver::~RewriteDriver() {
@@ -278,10 +289,12 @@ RewriteDriver* RewriteDriver::Clone() {
   if (pool == NULL) {
     RewriteOptions* options_copy = options()->Clone();
     server_context_->ComputeSignature(options_copy);
-    result = server_context_->NewCustomRewriteDriver(options_copy);
+    result =
+        server_context_->NewCustomRewriteDriver(options_copy, request_context_);
   } else {
-    result = server_context_->NewRewriteDriverFromPool(pool);
+    result = server_context_->NewRewriteDriverFromPool(pool, request_context_);
   }
+  result->set_is_nested(true);
   return result;
 }
 
@@ -356,9 +369,9 @@ void RewriteDriver::Clear() {
   serve_blink_non_critical_ = false;
   is_blink_request_ = false;
   can_rewrite_resources_ = true;
-  log_record_ = NULL;
   request_context_.reset(NULL);
   start_time_ms_ = 0;
+  is_nested_ = false;
 
   critical_images_.reset(NULL);
   css_critical_images_.reset(NULL);
@@ -1536,7 +1549,8 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
                 const OutputResourcePtr& output_resource,
                 AsyncFetch* async_fetch,
                 MessageHandler* handler)
-      : OptionsAwareHTTPCacheCallback(driver->options()),
+      : OptionsAwareHTTPCacheCallback(driver->options(),
+                                      async_fetch->request_context()),
         driver_(driver),
         filter_(filter),
         output_resource_(output_resource),
@@ -1623,10 +1637,6 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
     }
   }
 
-  virtual LoggingInfo* logging_info() {
-    return async_fetch_->logging_info();
-  }
-
  private:
   RewriteDriver* driver_;
   RewriteFilter* filter_;
@@ -1654,6 +1664,11 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
 
   if (output_resource.get() != NULL) {
     handled = true;
+    if (filter != NULL) {
+      // TODO(marq): This is a gross generalization. Remove this and properly
+      // log the application of each rewrite filter.
+      filter->LogFilterModifiedContent();
+    }
     FetchOutputResource(output_resource, filter, async_fetch);
   } else if (options()->ajax_rewriting_enabled()) {
     // This is an ajax resource.
@@ -1895,7 +1910,9 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
 void RewriteDriver::ReadAsync(Resource::AsyncCallback* callback,
                               MessageHandler* handler) {
   // TODO(jmarantz): fix call-sites and eliminate this wrapper.
-  server_context_->ReadAsync(Resource::kReportFailureIfNotCacheable, callback);
+  server_context_->ReadAsync(Resource::kReportFailureIfNotCacheable,
+                             request_context(),
+                             callback);
 }
 
 bool RewriteDriver::StartParseId(const StringPiece& url, const StringPiece& id,
@@ -2141,11 +2158,13 @@ void RewriteDriver::WriteClientStateIntoPropertyCache() {
 }
 
 void RewriteDriver::FinalizeFilterLogging() {
-  if (log_record_ != NULL) {
-    log_record_->logging_info()->set_furious_id(options()->furious_id());
-    log_record_->Finalize();
+  {
+    ScopedMutex lock(log_record()->mutex());
+    log_record()->logging_info()->set_furious_id(options()->furious_id());
   }
-  log_record_ = NULL;
+  if (!is_nested_) {
+    log_record()->Finalize();
+  }
 }
 
 void RewriteDriver::UpdatePropertyValueInDomCohort(StringPiece property_name,
@@ -2551,8 +2570,8 @@ void RewriteDriver::AddLowPriorityRewriteTask(Function* task) {
 }
 
 OptionsAwareHTTPCacheCallback::OptionsAwareHTTPCacheCallback(
-    const RewriteOptions* rewrite_options)
-    : rewrite_options_(rewrite_options) {}
+    const RewriteOptions* rewrite_options, const RequestContextPtr& request_ctx)
+    : HTTPCache::Callback(request_ctx), rewrite_options_(rewrite_options) {}
 
 OptionsAwareHTTPCacheCallback::~OptionsAwareHTTPCacheCallback() {}
 

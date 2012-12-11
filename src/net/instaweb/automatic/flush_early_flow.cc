@@ -130,7 +130,8 @@ const char FlushEarlyFlow::kNumFlushEarlyHttpStatusCodeDeemedUnstable[] =
 class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
  public:
   FlushEarlyAsyncFetch(AsyncFetch* fetch, AbstractMutex* mutex)
-      : base_fetch_(fetch),
+      : AsyncFetch(fetch->request_context()),
+        base_fetch_(fetch),
         mutex_(mutex),
         flush_early_flow_done_(false),
         flushed_early_(false),
@@ -140,7 +141,6 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
         done_value_(false),
         flush_handler_(NULL) {
     set_request_headers(fetch->request_headers());
-    set_log_record(fetch->log_record());
   }
 
   // Indicates that the flush early flow is complete.

@@ -24,7 +24,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/logging_proto.h"
-#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -134,8 +134,10 @@ class CachePutFetch : public SharedAsyncFetch {
       // Finalize the headers.
       cache_value_writer_.SetHeaders(&saved_headers_);
     } else {
-      // Set is_original_resource_cacheable.
-      base_fetch()->logging_info()->set_is_original_resource_cacheable(false);
+      if (base_fetch()->request_context().get() != NULL) {
+        // Set is_original_resource_cacheable.
+        base_fetch()->log_record()->SetIsOriginalResourceCacheable(false);
+      }
     }
 
     // Finish fetch.
@@ -170,7 +172,8 @@ class CacheFindCallback : public HTTPCache::Callback {
                     AsyncFetch* base_fetch,
                     CacheUrlAsyncFetcher* owner,
                     MessageHandler* handler)
-      : url_(url),
+      : HTTPCache::Callback(base_fetch->request_context()),
+        url_(url),
         base_fetch_(base_fetch),
         cache_(owner->http_cache()),
         fetcher_(owner->fetcher()),
@@ -190,10 +193,6 @@ class CacheFindCallback : public HTTPCache::Callback {
     set_response_headers(base_fetch->response_headers());
   }
   virtual ~CacheFindCallback() {}
-
-  virtual LoggingInfo* logging_info() {
-    return base_fetch_->logging_info();
-  }
 
   virtual void Done(HTTPCache::FindResult find_result) {
     switch (find_result) {
@@ -372,7 +371,7 @@ void CacheUrlAsyncFetcher::Fetch(
       // able to respond to HEAD requests with a cached value from a GET
       // response, at this point we do not allow caching of HEAD responses from
       // the origin, so mark the "original" resource as uncacheable.
-      base_fetch->logging_info()->set_is_original_resource_cacheable(false);
+      base_fetch->log_record()->SetIsOriginalResourceCacheable(false);
       // Fall through.
     case RequestHeaders::kGet:
       {
@@ -390,7 +389,7 @@ void CacheUrlAsyncFetcher::Fetch(
   }
 
   // Original resource not cacheable.
-  base_fetch->logging_info()->set_is_original_resource_cacheable(false);
+  base_fetch->log_record()->SetIsOriginalResourceCacheable(false);
   fetcher_->Fetch(url, handler, base_fetch);
 }
 

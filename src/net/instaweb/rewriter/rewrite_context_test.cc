@@ -27,7 +27,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
-#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -39,7 +39,6 @@
 #include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr, etc
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_context_test_base.h"
-#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -49,7 +48,6 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
@@ -121,31 +119,29 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   GoogleString input_html(CssLinkHref("a.css"));
   GoogleString output_html(CssLinkHref(
       Encode(kTestDomain, "tw", "0", "a.css", "css")));
-  rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("trimmable", input_html, output_html);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());  // 2 because it's kOnTheFlyResource
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
-  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_misses());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_hits());
+  EXPECT_EQ(1, logging_info()->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_hits());
   ClearStats();
 
   // The second time we request this URL, we should find no additional
   // cache inserts or fetches.  The rewrite should complete using a
   // single cache hit for the metadata.  No cache misses will occur.
-  rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("trimmable", input_html, output_html);
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_misses());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
-  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_hits());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(1, logging_info()->metadata_cache_info().num_hits());
   ClearStats();
 
   // The third time we request this URL, we've advanced time so that the origin
@@ -154,30 +150,29 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   // miss, but we'll re-insert.  We won't need to do any more rewrites because
   // the data did not actually change.
   AdvanceTimeMs(2 * kOriginTtlMs);
-  rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("trimmable", input_html, output_html);
   EXPECT_EQ(2, lru_cache()->num_hits());     // 1 expired hit, 1 valid hit.
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());  // re-inserts after expiration.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, http_cache()->cache_expirations()->Get());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_misses());
-  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_revalidates());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_hits());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_misses());
+  EXPECT_EQ(1, logging_info()->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_hits());
   ClearStats();
 
   // The fourth time we request this URL, the cache is in good shape despite
   // the expired date header from the origin.
-  rewrite_driver()->set_log_record(&log_record_);
+
   ValidateExpected("trimmable", input_html, output_html);
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_misses());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
-  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_hits());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(1, logging_info()->metadata_cache_info().num_hits());
   ClearStats();
 }
 
@@ -191,16 +186,15 @@ TEST_F(RewriteContextTest, UnhealthyCacheNoHtmlRewrites) {
   // flow, though if we need to handle a request for a .pagespeed. url
   // then we'll have to do fetches for that.
   GoogleString input_html(CssLinkHref("a.css"));
-  rewrite_driver()->set_log_record(&log_record_);
   ValidateNoChanges("trimmable", input_html);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_misses());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_hits());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_hits());
 }
 
 
@@ -671,7 +665,6 @@ TEST_F(RewriteContextTest, TrimRepeatedOptimizableDelayed) {
                     StrCat(CssLinkHref("a.css"), CssLinkHref("a.css")));
 
   CallFetcherCallbacks();
-
   // Second time we get both rewritten right.
   ValidateExpected(
       "trimmable2_now",
@@ -1934,7 +1927,6 @@ TEST_F(RewriteContextTest, NestedLogging) {
       kTestDomain, NestedFilter::kFilterId, "0", "x.css", "css");
   InitNestedFilter(NestedFilter::kExpectNestedRewritesSucceed);
   InitResources();
-  rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("async3", CssLinkHref("x.css"), CssLinkHref(kRewrittenUrl));
 
   EXPECT_EQ(0, lru_cache()->num_hits());
@@ -1943,9 +1935,9 @@ TEST_F(RewriteContextTest, NestedLogging) {
   EXPECT_EQ(3, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
   // The following would be 3 if we also logged for nested rewrites.
-  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_misses());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_hits());
+  EXPECT_EQ(1, logging_info()->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_hits());
   ClearStats();
 
   GoogleString rewritten_contents;
@@ -1955,10 +1947,9 @@ TEST_F(RewriteContextTest, NestedLogging) {
             rewritten_contents);
   // HTTP cache hit for rewritten URL.
   EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_hits());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_hits());
   ClearStats();
 
-  rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("async3", CssLinkHref("x.css"), CssLinkHref(kRewrittenUrl));
   // Completes with a single hit for meta-data.
   EXPECT_EQ(1, lru_cache()->num_hits());
@@ -1966,13 +1957,12 @@ TEST_F(RewriteContextTest, NestedLogging) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_misses());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
-  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_hits());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(1, logging_info()->metadata_cache_info().num_hits());
   ClearStats();
 
   AdvanceTimeMs(2 * kOriginTtlMs);
-  rewrite_driver()->set_log_record(&log_record_);
   ValidateExpected("async3", CssLinkHref("x.css"), CssLinkHref(kRewrittenUrl));
   // Expired meta-data (3).  expired HTTP cache for a.css and b.css, fresh in
   // HTTP cache for x.css.
@@ -1984,9 +1974,9 @@ TEST_F(RewriteContextTest, NestedLogging) {
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(2, http_cache()->cache_expirations()->Get());
   // We log only for x.css metadata miss.
-  EXPECT_EQ(1, logging_info_->metadata_cache_info().num_misses());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_revalidates());
-  EXPECT_EQ(0, logging_info_->metadata_cache_info().num_hits());
+  EXPECT_EQ(1, logging_info()->metadata_cache_info().num_misses());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_revalidates());
+  EXPECT_EQ(0, logging_info()->metadata_cache_info().num_hits());
   ClearStats();
 }
 
@@ -2310,7 +2300,8 @@ TEST_F(RewriteContextTest, LoadSheddingTest) {
     GoogleString file_name = IntegerToString(i);
     GoogleString* out = new GoogleString;
     StringAsyncFetch* fetch = new StringAsyncFetch(out);
-    RewriteDriver* driver = server_context()->NewRewriteDriver();
+    RewriteDriver* driver = server_context()->NewRewriteDriver(
+        RequestContext::NewTestRequestContext());
     GoogleString out_url =
         Encode(kTestDomain, "cf", "0", file_name, "css");
     driver->FetchResource(out_url, fetch);

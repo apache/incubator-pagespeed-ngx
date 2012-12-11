@@ -26,12 +26,14 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -68,29 +70,32 @@ bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
   UserAgentMatcher::BlinkRequestType request_type =
       user_agent_matcher.GetBlinkRequestType(
           user_agent, async_fetch->request_headers());
-  BlinkInfo* blink_info =
-      async_fetch->log_record()->logging_info()->mutable_blink_info();
-  switch (request_type) {
-    case UserAgentMatcher::kBlinkWhiteListForDesktop:
-      blink_info->set_blink_user_agent(BlinkInfo::BLINK_DESKTOP_WHITELIST);
-      return true;
-    case UserAgentMatcher::kDoesNotSupportBlink:
-      blink_info->set_blink_user_agent(BlinkInfo::NOT_SUPPORT_BLINK);
-      return false;
-    case UserAgentMatcher::kBlinkBlackListForDesktop:
-      blink_info->set_blink_user_agent(BlinkInfo::BLINK_DESKTOP_BLACKLIST);
-      return false;
-    case UserAgentMatcher::kBlinkWhiteListForMobile:
-      if (options->enable_aggressive_rewriters_for_mobile()) {
-        blink_info->set_blink_user_agent(BlinkInfo::BLINK_MOBILE);
+  {
+    ScopedMutex lock(async_fetch->log_record()->mutex());
+    BlinkInfo* blink_info =
+        async_fetch->log_record()->logging_info()->mutable_blink_info();
+    switch (request_type) {
+      case UserAgentMatcher::kBlinkWhiteListForDesktop:
+        blink_info->set_blink_user_agent(BlinkInfo::BLINK_DESKTOP_WHITELIST);
         return true;
-      }
-    case UserAgentMatcher::kDoesNotSupportBlinkForMobile:
+      case UserAgentMatcher::kDoesNotSupportBlink:
+        blink_info->set_blink_user_agent(BlinkInfo::NOT_SUPPORT_BLINK);
+        return false;
+      case UserAgentMatcher::kBlinkBlackListForDesktop:
+        blink_info->set_blink_user_agent(BlinkInfo::BLINK_DESKTOP_BLACKLIST);
+        return false;
+      case UserAgentMatcher::kBlinkWhiteListForMobile:
+        if (options->enable_aggressive_rewriters_for_mobile()) {
+          blink_info->set_blink_user_agent(BlinkInfo::BLINK_MOBILE);
+          return true;
+        }
+      case UserAgentMatcher::kDoesNotSupportBlinkForMobile:
         blink_info->set_blink_user_agent(BlinkInfo::BLINK_MOBILE);
         return false;
-    case UserAgentMatcher::kNullOrEmpty:
-      blink_info->set_blink_user_agent(BlinkInfo::NULL_OR_EMPTY);
-      return false;
+      case UserAgentMatcher::kNullOrEmpty:
+        blink_info->set_blink_user_agent(BlinkInfo::NULL_OR_EMPTY);
+        return false;
+    }
   }
   return false;
 }
