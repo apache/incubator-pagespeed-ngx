@@ -300,14 +300,7 @@ void ApacheServerContext::PollFilesystemForCacheFlush() {
                                &null_handler)) {
         int64 timestamp_ms = cache_flush_timestamp_sec * Timer::kSecondMs;
 
-        bool flushed = global_options()->UpdateCacheInvalidationTimestampMs(
-                           timestamp_ms, lock_hasher());
-        if (SpdyConfig() != NULL) {
-          // We need to make sure to update the invalidation timestamp in the
-          // SPDY configuration as well, so it also gets any cache flushes.
-          flushed = SpdyConfig()->UpdateCacheInvalidationTimestampMs(
-              timestamp_ms, lock_hasher()) || flushed;
-        }
+        bool flushed = UpdateCacheFlushTimestampMs(timestamp_ms);
 
         // Apache's multiple child processes each must independently
         // discover a fresh cache.flush and update the options. However,
@@ -323,8 +316,31 @@ void ApacheServerContext::PollFilesystemForCacheFlush() {
           message_handler()->Message(kWarning, "Cache Flush %d", count);
         }
       }
+    } else {
+      // Check on every request whether another child process has updated the
+      // statistic.
+      int64 timestamp_ms = cache_flush_timestamp_ms_->Get();
+
+      // Do the difference-check first because that involves only a
+      // reader-lock, so we have zero contention risk when the cache is not
+      // being flushed.
+      if (global_options()->cache_invalidation_timestamp() < timestamp_ms) {
+        UpdateCacheFlushTimestampMs(timestamp_ms);
+      }
     }
   }
+}
+
+bool ApacheServerContext::UpdateCacheFlushTimestampMs(int64 timestamp_ms) {
+  bool flushed = global_options()->UpdateCacheInvalidationTimestampMs(
+      timestamp_ms, lock_hasher());
+  if (SpdyConfig() != NULL) {
+    // We need to make sure to update the invalidation timestamp in the
+    // SPDY configuration as well, so it also gets any cache flushes.
+    flushed = SpdyConfig()->UpdateCacheInvalidationTimestampMs(
+        timestamp_ms, lock_hasher()) || flushed;
+  }
+  return flushed;
 }
 
 void ApacheServerContext::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
