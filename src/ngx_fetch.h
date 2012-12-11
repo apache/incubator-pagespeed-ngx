@@ -137,6 +137,7 @@ namespace net_instaweb {
       bool done_;
       int64 content_length_;
 
+      struct sockaddr_in sin_;
       ngx_log_t* log_;
       ngx_buf_t* out_;
       ngx_buf_t* in_;

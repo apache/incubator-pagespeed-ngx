@@ -77,11 +77,13 @@ namespace net_instaweb {
                                          int64 resolver_timeout,
                                          int64 fetch_timeout,
                                          ngx_resolver_t* resolver,
+                                         ThreadSystem* thread_system,
                                          MessageHandler* handler)
     : fetchers_count_(0),
       shutdown_(false),
       track_original_content_length_(false),
       byte_count_(0),
+      thread_system_(thread_system),
       message_handler_(handler),
       resolver_timeout_(resolver_timeout),
       fetch_timeout_(fetch_timeout) {
@@ -90,6 +92,7 @@ namespace net_instaweb {
       url_.url.data = (u_char *)(proxy);
       url_.url.len = ngx_strlen(proxy);
     }
+    mutex_ = thread_system->NewMutex();
     log_ = log;
     pool_ = NULL;
     command_connection_ = NULL;
@@ -298,7 +301,7 @@ namespace net_instaweb {
     } else {
       LOG(WARNING) << "Fetch failed to start: " << fetch->str_url();
       fetch->CallbackDone(false);
-      delete fetch;
+      ;delete fetch;
     }
     return started;
   }

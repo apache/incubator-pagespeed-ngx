@@ -50,10 +50,10 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
   public:
     NgxUrlAsyncFetcher(const char* proxy, ngx_pool_t* pool,
         int64 resolver_timeout, int64 fetch_timeout, ngx_resolver_t* resolver,
-        MessageHandler* handler);
+         MessageHandler* handler);
     NgxUrlAsyncFetcher(const char* proxy, ngx_log_t* log,
         int64 resolver_timeout, int64 fetch_timeout, ngx_resolver_t* resolver,
-        MessageHandler* handler);
+        ThreadSystem* thread_system,MessageHandler* handler);
     NgxUrlAsyncFetcher(NgxUrlAsyncFetcher *parent, char* proxy);
 
     ~NgxUrlAsyncFetcher();
@@ -127,7 +127,9 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
     bool shutdown_;
     bool track_original_content_length_;
     int64 byte_count_;
+    ThreadSystem* thread_system_;
     MessageHandler* message_handler_;
+    ThreadSystem::CondvarCapableMutex* mutex_;
 
     ngx_pool_t* pool_;
     ngx_log_t* log_;

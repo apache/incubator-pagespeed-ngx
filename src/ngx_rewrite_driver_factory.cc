@@ -132,6 +132,7 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
         60000000,
         60000000,
         resolver_,
+        thread_system(),
         message_handler());
   ngx_url_async_fetcher_ = fetcher;
   return fetcher;
