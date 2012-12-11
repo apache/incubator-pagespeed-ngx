@@ -1365,6 +1365,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkCacheMissHitFlushSubresources) {
 
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkCacheMissFuriousSetCookie) {
   options_->ClearSignatureForTesting();
+  options_->set_furious_cookie_duration_ms(1000);
+  SetTimeMs(MockTimer::kApr_5_2010_ms);
   InitializeFuriousSpec();
   server_context()->ComputeSignature(options_.get());
   GoogleString text;
@@ -1376,6 +1378,9 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkCacheMissFuriousSetCookie) {
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
   EXPECT_EQ(2, values.size());
   EXPECT_STREQ("_GFURIOUS=3", (*(values[1])).substr(0, 11));
+  GoogleString expires_str;
+  ConvertTimeToString(MockTimer::kApr_5_2010_ms + 1000, &expires_str);
+  EXPECT_NE(GoogleString::npos, ((*(values[1])).find(expires_str)));
   VerifyNonBlinkResponse(&response_headers);
 }
 

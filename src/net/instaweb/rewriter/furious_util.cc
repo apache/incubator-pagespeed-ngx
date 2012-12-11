@@ -65,14 +65,14 @@ void RemoveFuriousCookie(RequestHeaders* headers) {
 void SetFuriousCookie(ResponseHeaders* headers,
                       int state,
                       const StringPiece& url,
-                      int64 now_ms) {
+                      int64 expiration_time_ms) {
   GoogleUrl request_url(url);
   // If we can't parse this url, don't try to set headers on the response.
   if (!request_url.is_valid()) {
     return;
   }
   GoogleString expires;
-  ConvertTimeToString(now_ms + Timer::kWeekMs, &expires);
+  ConvertTimeToString(expiration_time_ms, &expires);
   StringPiece host = request_url.Host();
   if (host.length() == 0) {
     return;

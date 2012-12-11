@@ -111,6 +111,11 @@ DEFINE_int32(rewrite_deadline_per_flush_ms,
              "Deadline to rewrite a resource before putting the rewrite in the "
              "background and returning the original resource. A value of -1 "
              "will result in waiting for all rewrites to complete.");
+DEFINE_int32(
+    furious_cookie_duration_ms,
+    net_instaweb::RewriteOptions::kDefaultFuriousCookieDurationMs,
+    "Duration after which the furious cookie used for A/B experiments "
+    "should expire on the user's browser.");
 DEFINE_bool(log_rewrite_timing, false, "Log time taken by rewrite filters.");
 DEFINE_int64(max_html_cache_time_ms,
              net_instaweb::RewriteOptions::kDefaultMaxHtmlCacheTimeMs,
@@ -164,9 +169,9 @@ DEFINE_int64(max_image_size_low_resolution_bytes,
     net_instaweb::RewriteOptions::kDefaultMaxImageSizeLowResolutionBytes,
     "Maximum image size below which low res image is generated.");
 
-DEFINE_int64(critical_images_cache_expiration_time_ms,
-    net_instaweb::RewriteOptions::kDefaultCriticalImagesCacheExpirationMs,
-    "Critical images ajax metadata cache expiration time in msec.");
+DEFINE_int64(finder_properties_cache_expiration_time_ms,
+    net_instaweb::RewriteOptions::kDefaultFinderPropertiesCacheExpirationTimeMs,
+    "Cache expiration time for properties of finders in msec.");
 
 DEFINE_int64(
     metadata_cache_staleness_threshold_ms,
@@ -453,9 +458,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("max_combined_js_bytes")) {
     options->set_max_combined_js_bytes(FLAGS_max_combined_js_bytes);
   }
-  if (WasExplicitlySet("critical_images_cache_expiration_time_ms")) {
-    options->set_critical_images_cache_expiration_time_ms(
-        FLAGS_critical_images_cache_expiration_time_ms);
+  if (WasExplicitlySet("finder_properties_cache_expiration_time_ms")) {
+    options->set_finder_properties_cache_expiration_time_ms(
+        FLAGS_finder_properties_cache_expiration_time_ms);
   }
   if (WasExplicitlySet("metadata_cache_staleness_threshold_ms")) {
     options->set_metadata_cache_staleness_threshold_ms(
@@ -511,6 +516,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("rewrite_deadline_per_flush_ms")) {
     options->set_rewrite_deadline_ms(FLAGS_rewrite_deadline_per_flush_ms);
+  }
+  if (WasExplicitlySet("furious_cookie_duration_ms")) {
+    options->set_furious_cookie_duration_ms(
+        FLAGS_furious_cookie_duration_ms);
   }
   if (WasExplicitlySet("avoid_renaming_introspective_javascript")) {
     options->set_avoid_renaming_introspective_javascript(

@@ -352,12 +352,24 @@ TEST_F(PropertyCacheTest, Expiration) {
 
     // Initially it's not expired.
     EXPECT_FALSE(property_cache_.IsExpired(property, Timer::kMinuteMs));
+    EXPECT_FALSE(property_cache_.IsImminentlyExpiring(
+        property, Timer::kMinuteMs));
     timer_.AdvanceMs(30 * Timer::kSecondMs);
     EXPECT_FALSE(property_cache_.IsExpired(property, Timer::kMinuteMs));
-    timer_.AdvanceMs(30 * Timer::kSecondMs);
+    EXPECT_FALSE(property_cache_.IsImminentlyExpiring(
+        property, Timer::kMinuteMs));
+    timer_.AdvanceMs(20 * Timer::kSecondMs);
     EXPECT_FALSE(property_cache_.IsExpired(property, Timer::kMinuteMs));
+    EXPECT_TRUE(property_cache_.IsImminentlyExpiring(
+        property, Timer::kMinuteMs));
+    timer_.AdvanceMs(10 * Timer::kSecondMs);
+    EXPECT_FALSE(property_cache_.IsExpired(property, Timer::kMinuteMs));
+    EXPECT_TRUE(property_cache_.IsImminentlyExpiring(
+        property, Timer::kMinuteMs));
     timer_.AdvanceMs(1 * Timer::kSecondMs);
     EXPECT_TRUE(property_cache_.IsExpired(property, Timer::kMinuteMs));
+    EXPECT_TRUE(property_cache_.IsImminentlyExpiring(
+        property, Timer::kMinuteMs));
   }
 }
 

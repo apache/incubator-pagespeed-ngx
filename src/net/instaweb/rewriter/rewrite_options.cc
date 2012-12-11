@@ -177,8 +177,10 @@ const int64 RewriteOptions::kDefaultMaxImageSizeLowResolutionBytes =
 
 // Setting the limit on combined js resource to -1 will bypass the size check.
 const int64 RewriteOptions::kDefaultMaxCombinedJsBytes = -1;
-const int64 RewriteOptions::kDefaultCriticalImagesCacheExpirationMs =
-    Timer::kHourMs;
+const int64 RewriteOptions::kDefaultFuriousCookieDurationMs =
+    Timer::kWeekMs;
+const int64 RewriteOptions::kDefaultFinderPropertiesCacheExpirationTimeMs =
+    2 * Timer::kHourMs;
 const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
 const int RewriteOptions::kDefaultFuriousTrafficPercent = 50;
 const int RewriteOptions::kDefaultFuriousSlot = 1;
@@ -743,9 +745,12 @@ void RewriteOptions::AddProperties() {
   add_option(kDefaultMaxImageSizeLowResolutionBytes,
              &RewriteOptions::max_image_size_low_resolution_bytes_, "xislr",
              kMaxImageSizeLowResolutionBytes);
-  add_option(kDefaultCriticalImagesCacheExpirationMs,
-             &RewriteOptions::critical_images_cache_expiration_time_ms_, "cice",
-             kCriticalImagesCacheExpirationTimeMs);
+  add_option(kDefaultFinderPropertiesCacheExpirationTimeMs,
+             &RewriteOptions::finder_properties_cache_expiration_time_ms_,
+             "fpce", kFinderPropertiesCacheExpirationTimeMs);
+  add_option(kDefaultFuriousCookieDurationMs,
+             &RewriteOptions::furious_cookie_duration_ms_, "fcd",
+             kFuriousCookieDurationMs);
   add_option(kDefaultImageJpegNumProgressiveScans,
              &RewriteOptions::image_jpeg_num_progressive_scans_, "ijps",
              kImageJpegNumProgressiveScans);

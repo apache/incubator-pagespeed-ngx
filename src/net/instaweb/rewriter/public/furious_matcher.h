@@ -50,9 +50,9 @@ class FuriousMatcher {
   // Stores the client/session -> experiment mapping for the domain indicated
   // by url. The experiment id is indicated by state. The default
   // implementation stores this in a cookie in the response headers, setting it
-  // to expire one week from now_ms.
+  // to expire at expiration_time_ms (specified as ms since the epoch).
   virtual void StoreExperimentData(int state, const StringPiece& url,
-                                   int64 now_ms, ResponseHeaders* headers);
+      int64 expiration_time_ms, ResponseHeaders* headers);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FuriousMatcher);

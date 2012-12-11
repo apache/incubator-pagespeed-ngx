@@ -29,7 +29,7 @@ BeaconCriticalImagesFinder::~BeaconCriticalImagesFinder() {
 }
 
 void BeaconCriticalImagesFinder::ComputeCriticalImages(
-    StringPiece url, RewriteDriver* driver, bool must_compute) {
+    StringPiece url, RewriteDriver* driver) {
 }
 
 }  // namespace net_instaweb

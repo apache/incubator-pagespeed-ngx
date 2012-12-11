@@ -690,7 +690,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(124, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(125, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AjaxRewritingEnabled",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAjaxRewritingEnabled));
@@ -721,9 +721,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ClientDomainRewrite",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kClientDomainRewrite));
-  EXPECT_STREQ("CriticalImagesCacheExpirationTimeMs",
+  EXPECT_STREQ("FinderPropertiesCacheExpirationTimeMs",
                RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCriticalImagesCacheExpirationTimeMs));
+                   RewriteOptions::kFinderPropertiesCacheExpirationTimeMs));
   EXPECT_STREQ("CriticalLineConfig",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kCriticalLineConfig));
@@ -1026,6 +1026,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("UseSmartDiffInBlink",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kUseSmartDiffInBlink));
+  EXPECT_STREQ("FuriousCookieDurationMs",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kFuriousCookieDurationMs));
 }
 
 TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {

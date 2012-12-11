@@ -487,7 +487,9 @@ bool ProxyFetch::StartParse() {
       Options()->running_furious()) {
     int furious_value = Options()->furious_id();
     server_context_->furious_matcher()->StoreExperimentData(
-        furious_value, url_, server_context_->timer()->NowMs(),
+        furious_value, url_,
+        server_context_->timer()->NowMs() +
+            Options()->furious_cookie_duration_ms(),
         response_headers());
   }
   driver_->set_response_headers_ptr(response_headers());

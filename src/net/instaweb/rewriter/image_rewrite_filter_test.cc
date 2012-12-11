@@ -118,8 +118,7 @@ class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
     return true;
   }
   virtual void ComputeCriticalImages(StringPiece url,
-                                     RewriteDriver* driver,
-                                     bool must_compute) {
+                                     RewriteDriver* driver) {
     ++compute_calls_;
   }
   int num_compute_calls() { return compute_calls_; }

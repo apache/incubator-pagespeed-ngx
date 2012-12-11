@@ -30,7 +30,13 @@ bool FuriousMatcher::ClassifyIntoExperiment(
     const RequestHeaders& headers, RewriteOptions* options) {
   int furious_value = furious::kFuriousNotSet;
   bool need_cookie = false;
-  if (!furious::GetFuriousCookieState(headers, &furious_value)) {
+  if (!furious::GetFuriousCookieState(headers, &furious_value) ||
+      (furious_value != furious::kFuriousNoExperiment &&
+       options->GetFuriousSpec(furious_value) == NULL)) {
+    // TODO(anupama): We currently do not handle "No-Experiment"
+    // (_GFURIOUS=0) cookies well because we do not know whether these are
+    // stale or new. Implement the grouping approach suggested in
+    // http://b/6831327 for fixing this.
     furious_value = furious::DetermineFuriousState(options);
     need_cookie = true;
   }
@@ -39,8 +45,9 @@ bool FuriousMatcher::ClassifyIntoExperiment(
 }
 
 void FuriousMatcher::StoreExperimentData(
-    int state, const StringPiece& url, int64 now_ms, ResponseHeaders* headers) {
-  furious::SetFuriousCookie(headers, state, url, now_ms);
+    int state, const StringPiece& url, int64 expiration_time_ms,
+    ResponseHeaders* headers) {
+  furious::SetFuriousCookie(headers, state, url, expiration_time_ms);
 }
 
 

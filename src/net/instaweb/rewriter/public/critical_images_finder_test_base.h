@@ -48,6 +48,9 @@ class CriticalImagesFinderTestBase : public RewriteTestBase {
 
   virtual void SetUp();
 
+  // Resets the state of the driver.
+  void ResetDriver();
+
   const PropertyValue* GetCriticalImagesUpdatedValue();
   const PropertyValue* GetCssCriticalImagesUpdatedValue();
 

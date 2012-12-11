@@ -435,7 +435,9 @@ void InstawebContext::SetFuriousStateAndCookie(request_rec* request,
     const char* url = apr_table_get(request->notes, kPagespeedOriginalUrl);
     int furious_value = options->furious_id();
     server_context_->furious_matcher()->StoreExperimentData(
-        furious_value, url, timer.NowMs(), &resp_headers);
+        furious_value, url,
+        timer.NowMs() + options->furious_cookie_duration_ms(),
+        &resp_headers);
     AddResponseHeadersToRequest(&resp_headers, NULL,
                                 options->modify_caching_headers(), request);
   }

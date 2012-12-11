@@ -802,7 +802,9 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
       options_->running_furious()) {
     int furious_value = options_->furious_id();
     manager_->furious_matcher()->StoreExperimentData(
-        furious_value, url_, manager_->timer()->NowMs(),
+        furious_value, url_,
+        manager_->timer()->NowMs() +
+            options_->furious_cookie_duration_ms(),
         response_headers);
   }
 

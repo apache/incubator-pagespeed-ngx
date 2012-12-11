@@ -142,8 +142,7 @@ TEST_F(FuriousUtilTest, DetermineFuriousState) {
 TEST_F(FuriousUtilTest, SetFuriousCookie) {
   ResponseHeaders resp_headers;
   GoogleString url = "http://www.test.com/stuff/some_page.html";
-  int64 now = 0;
-  SetFuriousCookie(&resp_headers, 1, url, now);
+  SetFuriousCookie(&resp_headers, 1, url, Timer::kWeekMs);
   EXPECT_TRUE(resp_headers.Has(HttpAttributes::kSetCookie));
   ConstStringStarVector v;
   EXPECT_TRUE(resp_headers.Lookup(HttpAttributes::kSetCookie, &v));

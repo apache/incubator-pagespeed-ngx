@@ -81,10 +81,39 @@ TEST_F(FuriousMatcherTest, ClassifyIntoExperiment) {
   EXPECT_TRUE(resp_headers.Lookup(HttpAttributes::kSetCookie, &v));
   ASSERT_EQ(1, v.size());
   GoogleString expires;
-  ConvertTimeToString(Timer::kWeekMs, &expires);
+  ConvertTimeToString(0, &expires);
   GoogleString expected = StringPrintf(
       "_GFURIOUS=1; Expires=%s; Domain=.www.test.com; Path=/", expires.c_str());
   EXPECT_EQ(expected, *v[0]);
+}
+
+TEST_F(FuriousMatcherTest, ClassifyIntoExperimentStaleCookie) {
+  RequestHeaders req_headers;
+  RewriteOptions options;
+  options.set_running_furious_experiment(true);
+  NullMessageHandler handler;
+  ASSERT_TRUE(options.AddFuriousSpec("id=1;percent=100", &handler));
+
+  // Test that a new cookie is set when the incoming cookie has an invalid id.
+  req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=4");
+  bool need_cookie =
+      furious_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  ASSERT_TRUE(need_cookie);
+}
+
+TEST_F(FuriousMatcherTest, ClassifyIntoExperimentNoExptCookie) {
+  RequestHeaders req_headers;
+  RewriteOptions options;
+  options.set_running_furious_experiment(true);
+  NullMessageHandler handler;
+  ASSERT_TRUE(options.AddFuriousSpec("id=1;percent=100", &handler));
+
+  // Test that a new cookie is not assigned when the incoming cookie has the
+  // no-expt cookie.
+  req_headers.Add(HttpAttributes::kCookie, "_GFURIOUS=0");
+  bool need_cookie =
+      furious_matcher_.ClassifyIntoExperiment(req_headers, &options);
+  ASSERT_FALSE(need_cookie);
 }
 
 }  // namespace net_instaweb

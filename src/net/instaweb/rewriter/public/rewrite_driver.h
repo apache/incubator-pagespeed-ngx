@@ -955,6 +955,17 @@ class RewriteDriver : public HtmlParse {
   // Sets the is_nested property on the driver.
   void set_is_nested(bool n) { is_nested_ = n; }
 
+  // Sets must compute finder properties to true. Note that this value is
+  // sticky. Once it is set to true for a given request, it remains true till
+  // the driver is reset.
+  void enable_must_compute_finder_properties() {
+    must_compute_finder_properties_ = true;
+  }
+
+  bool must_compute_finder_properties() {
+    return must_compute_finder_properties_;
+  }
+
  private:
   friend class RewriteDriverTest;
   friend class RewriteTestBase;
@@ -1379,6 +1390,9 @@ class RewriteDriver : public HtmlParse {
   // Is this a blink request?
   bool is_blink_request_;
   bool can_rewrite_resources_;
+
+  // Indicates whether we must properties of any of the finders.
+  bool must_compute_finder_properties_;
 
   // Additional request context that may outlive this RewriteDriver. (Thus,
   // the context is reference counted.)

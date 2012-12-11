@@ -40,6 +40,9 @@ namespace {
 
 const int kDefaultMutationsPer1000WritesThreshold = 300;
 
+// Refresh elements at 80% of expiry.
+const int64 kRefreshExpirePercent = 80;
+
 // http://stackoverflow.com/questions/109023/
 // best-algorithm-to-count-the-number-of-set-bits-in-a-32-bit-integer
 //
@@ -362,6 +365,11 @@ bool PropertyCache::IsExpired(const PropertyValue* property_value,
   DCHECK(property_value->has_value());
   int64 expiration_time_ms = property_value->write_timestamp_ms() + ttl_ms;
   return timer_->NowMs() > expiration_time_ms;
+}
+
+bool PropertyCache::IsImminentlyExpiring(const PropertyValue* property_value,
+                                         int64 ttl_ms) const {
+  return IsExpired(property_value, (ttl_ms * kRefreshExpirePercent) / 100);
 }
 
 const PropertyCache::Cohort* PropertyCache::AddCohort(

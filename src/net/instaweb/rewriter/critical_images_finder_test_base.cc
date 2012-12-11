@@ -29,6 +29,11 @@ const char CriticalImagesFinderTestBase::kRequestUrl[] = "http://www.test.com";
 
 void CriticalImagesFinderTestBase::SetUp() {
   RewriteTestBase::SetUp();
+  ResetDriver();
+}
+
+void CriticalImagesFinderTestBase::ResetDriver() {
+  rewrite_driver()->Clear();
   PropertyCache* pcache = server_context_->page_property_cache();
   MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
                                 kRequestUrl);

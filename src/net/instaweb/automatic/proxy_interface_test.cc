@@ -745,8 +745,7 @@ class FakeCriticalImagesFinder : public CriticalImagesFinder {
   }
 
   virtual void ComputeCriticalImages(StringPiece url,
-                                     RewriteDriver* driver,
-                                     bool must_compute) {
+                                     RewriteDriver* driver) {
     // Do Nothing
   }
 
