@@ -36,9 +36,7 @@ class CacheCopy : public CacheInterface {
  public:
   // Does *not* take ownership of the cache passed in.
   explicit CacheCopy(CacheInterface* cache)
-      : cache_(cache),
-        name_(StrCat("Copy of ", cache_->Name())) {
-  }
+      : cache_(cache) {}
   virtual ~CacheCopy();
 
   virtual void Get(const GoogleString& key, Callback* callback) {
@@ -48,7 +46,7 @@ class CacheCopy : public CacheInterface {
     cache_->Put(key, value);
   }
   virtual void Delete(const GoogleString& key) { cache_->Delete(key); }
-  virtual const char* Name() const { return name_.c_str(); }
+  virtual const char* Name() const { return cache_->Name(); }
   virtual void MultiGet(MultiGetRequest* request) { cache_->MultiGet(request); }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
   virtual bool IsHealthy() const { return cache_->IsHealthy(); }
@@ -56,7 +54,6 @@ class CacheCopy : public CacheInterface {
 
  private:
   CacheInterface* cache_;
-  GoogleString name_;
 
   DISALLOW_COPY_AND_ASSIGN(CacheCopy);
 };
