@@ -12,10 +12,7 @@
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
 #                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
 #                       OPT_FURIOUS_GA_TEST, OPT_FURIOUS_NO_GA_TEST,
-#                       OPT_URL_ATTRIBUTES_TEST, OPT_XHEADER_TEST,
-#                       OPT_DOMAIN_HYPERLINKS_TEST, OPT_ABSOLUTE_URLS_TEST,
-#                       OPT_PER_VHOST_STATS_TEST,
-#                       OPT_DOMAIN_RESOURCE_TAGS_TEST, OPT_ALL_DIRECTIVES_TEST)
+#                       OPT_PER_VHOST_STATS_TEST, OPT_ALL_DIRECTIVES_TEST)
 #  stop, start  (to stop and start Apache)
 #  apache_debug_restart
 #  apache_debug_stop
@@ -48,11 +45,6 @@ apache_vm_system_tests :
 	$(MAKE) apache_debug_speling_test
 	$(MAKE) apache_debug_gzip_test
 	$(MAKE) apache_debug_furious_test
-	$(MAKE) apache_debug_url_attribute_test
-	$(MAKE) apache_debug_xheader_test
-	$(MAKE) apache_debug_rewrite_hyperlinks_test
-	$(MAKE) apache_debug_client_domain_rewrite_test
-	$(MAKE) apache_debug_rewrite_resource_tags_test
 	$(MAKE) apache_debug_vhost_only_test
 	$(MAKE) apache_debug_global_off_test
 	$(MAKE) apache_debug_shared_mem_lock_sanity_test
@@ -236,91 +228,6 @@ furious_ga_test_prepare :
 furious_no_ga_test_prepare :
 	$(eval OPT_FURIOUS_NO_GA_TEST="FURIOUS_NO_GA_TEST=1")
 	rm -rf $(MOD_PAGESPEED_CACHE)/*
-
-# This test checks that the ModPagespeedXHeaderValue directive works.
-apache_debug_xheader_test : xheader_test_prepare apache_install_conf \
-    apache_debug_restart
-	@echo Testing ModPagespeedXHeaderValue directive:
-	$(WGET_NO_PROXY) -q -O - --save-headers $(EXAMPLE) \
-	  | egrep "^X-Mod-Pagespeed:|^X-Page-Speed:"
-	value=`$(WGET_NO_PROXY) -q -O - --save-headers '$(EXAMPLE)' \
-	  | egrep "^X-Mod-Pagespeed:|^X-Page-Speed:" \
-	  | sed -e 's/^X-Mod-Pagespeed: *//' \
-	  | sed -e 's/^X-Page-Speed: *//' \
-	  | tr -d '\r'`; \
-	test "$$value" = "UNSPECIFIED VERSION"
-
-xheader_test_prepare :
-	$(eval OPT_XHEADER_TEST="XHEADER_TEST=1")
-	rm -rf $(MOD_PAGESPEED_CACHE)/*
-
-rewrite_hyperlinks_test_prepare :
-	$(eval OPT_DOMAIN_HYPERLINKS_TEST="DOMAIN_HYPERLINKS_TEST=1")
-	rm -rf $(MOD_PAGESPEED_CACHE)/*
-
-# This test checks that the ModPagespeedDomainRewriteHyperlinks directive
-# can turn on.  See mod_pagespeed_test/rewrite_domains.html: it has
-# one <img> URL, one <form> URL, and one <a> url, all referencing
-# src.example.com.  They should all be rewritten to dst.example.com.
-apache_debug_rewrite_hyperlinks_test : rewrite_hyperlinks_test_prepare \
-    apache_install_conf apache_debug_restart
-	@echo Testing ModPagespeedRewriteHyperlinks on directive:
-	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
-	  | grep -c http://dst\.example\.com`; \
-	test $$matches -eq 3
-
-client_domain_rewrite_test_prepare :
-	$(eval OPT_CLIENT_DOMAIN_REWRITE_TEST="CLIENT_DOMAIN_REWRITE_TEST=1")
-	rm -rf $(MOD_PAGESPEED_CACHE)/*
-
-# This test checks that the ModPagespeedClientDomainRewrite directive
-# can turn on.
-apache_debug_client_domain_rewrite_test : client_domain_rewrite_test_prepare \
-    apache_install_conf apache_debug_restart
-	@echo Testing ModPagespeedClientDomainRewrite on directive:
-	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
-	  | grep -c pagespeed\.clientDomainRewriterInit`; \
-	test $$matches -eq 1
-
-# Test to make sure dynamically defined url-valued attributes are rewritten by
-# rewrite_domains.  See mod_pagespeed_test/rewrite_domains.html: in addition to
-# having one <img> URL, one <form> URL, and one <a> url it also has one <span
-# src=...> URL, one <hr imgsrc=...> URL, and one <hr src=...> URL, all
-# referencing src.example.com.  The first three should be rewritten because of
-# hardcoded rules, the span.src and hr.imgsrc should be rewritten because of
-# ModPagespeedUrlValuedAttribute directives, and the hr.src should be left
-# unmodified.  The rewritten ones should all be rewritten to dst.example.com.
-apache_debug_url_attribute_test : url_attribute_test_prepare \
-    apache_install_conf apache_debug_restart
-	$(INSTALL_DATA_DIR)/apache_url_valued_attribute_test.sh $(APACHE_SERVER)
-
-url_attribute_test_prepare :
-	$(eval OPT_URL_ATTRIBUTE_TEST="URL_ATTRIBUTE_TEST=1")
-	rm -rf $(MOD_PAGESPEED_CACHE)/*
-
-# Test to make sure we don't fetch encoded absolute urls.
-apache_debug_absolute_urls_test : absolute_urls_test_prepare \
-    apache_install_conf apache_debug_restart
-	$(INSTALL_DATA_DIR)/apache_absolute_urls_test.sh $(APACHE_SERVER)
-
-absolute_urls_test_prepare :
-	$(eval OPT_ABSOLUTE_URLS_TEST="ABSOLUTE_URLS_TEST=1")
-	rm -rf $(MOD_PAGESPEED_CACHE)/*
-
-rewrite_resource_tags_test_prepare :
-	$(eval OPT_DOMAIN_RESOURCE_TAGS_TEST="DOMAIN_RESOURCE_TAGS_TEST=1")
-	rm -rf $(MOD_PAGESPEED_CACHE)/*
-
-# This test checks that the ModPagespeedDomainRewriteHyperlinks directive
-# can turn on.  See mod_pagespeed_test/rewrite_domains.html: it has
-# one <img> URL, one <form> URL, and one <a> url, all referencing
-# src.example.com.  Only the <img> url should be rewritten.
-apache_debug_rewrite_resource_tags_test : rewrite_resource_tags_test_prepare \
-    apache_install_conf apache_debug_restart
-	@echo Testing ModPagespeedRewriteHyperlinks off directive:
-	matches=`$(WGET_NO_PROXY) -q -O - $(TEST_ROOT)/rewrite_domains.html \
-	  | grep -c http://dst\.example\.com`; \
-	test $$matches -eq 1
 
 # Test to make sure we don't crash if we're off for global but on for vhosts.
 # We use the stress test config as a base for that, as it has the vhosts all

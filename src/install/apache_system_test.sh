@@ -1050,10 +1050,10 @@ if [ x$SECONDARY_HOSTNAME != x ]; then
   fi
 fi
 
-# Test max_cacheable_response_content_length.  There are two Javascript files
-# in the html file.  The smaller Javascript file should be rewritten while
-# the larger one shouldn't.
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
+  # Test max_cacheable_response_content_length.  There are two Javascript files
+  # in the html file.  The smaller Javascript file should be rewritten while
+  # the larger one shouldn't.
   start_test Maximum length of cacheable response content.
   HOST_NAME="http://max_cacheable_content_length.example.com"
   DIR_NAME="mod_pagespeed_test/max_cacheable_content_length"
@@ -1063,6 +1063,119 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
       'X-PSA-Blocking-Rewrite: psatest' $URL)
   check_from     "$RESPONSE_OUT" fgrep -qi small.js.pagespeed.
   check_not_from "$RESPONSE_OUT" fgrep -qi large.js.pagespeed.
+
+  # This test checks that the ModPagespeedXHeaderValue directive works.
+  start_test ModPagespeedXHeaderValue directive
+
+  RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      http://xheader.example.com/mod_pagespeed_example)
+  check_from "$RESPONSE_OUT" fgrep -q "X-Mod-Pagespeed: UNSPECIFIED VERSION"
+
+  # This test checks that the ModPagespeedDomainRewriteHyperlinks directive
+  # can turn off.  See mod_pagespeed_test/rewrite_domains.html: it has
+  # one <img> URL, one <form> URL, and one <a> url, all referencing
+  # src.example.com.  Only the <img> url should be rewritten.
+  start_test ModPagespeedRewriteHyperlinks off directive
+  HOST_NAME="http://domain_hyperlinks_off.example.com"
+  RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      $HOST_NAME/mod_pagespeed_test/rewrite_domains.html)
+  MATCHES=$(echo "$RESPONSE_OUT" | fgrep -c http://dst.example.com)
+  check [ $MATCHES -eq 1 ]
+
+  # This test checks that the ModPagespeedDomainRewriteHyperlinks directive
+  # can turn on.  See mod_pagespeed_test/rewrite_domains.html: it has
+  # one <img> URL, one <form> URL, and one <a> url, all referencing
+  # src.example.com.  They should all be rewritten to dst.example.com.
+  start_test ModPagespeedRewriteHyperlinks on directive
+  HOST_NAME="http://domain_hyperlinks_on.example.com"
+  RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      $HOST_NAME/mod_pagespeed_test/rewrite_domains.html)
+  MATCHES=$(echo "$RESPONSE_OUT" | fgrep -c http://dst.example.com)
+  check [ $MATCHES -eq 3 ]
+
+  # Test to make sure dynamically defined url-valued attributes are rewritten by
+  # rewrite_domains.  See mod_pagespeed_test/rewrite_domains.html: in addition
+  # to having one <img> URL, one <form> URL, and one <a> url it also has one
+  # <span src=...> URL, one <hr imgsrc=...> URL, and one <hr src=...> URL, all
+  # referencing src.example.com.  The first three should be rewritten because of
+  # hardcoded rules, the span.src and hr.imgsrc should be rewritten because of
+  # ModPagespeedUrlValuedAttribute directives, and the hr.src should be left
+  # unmodified.  The rewritten ones should all be rewritten to dst.example.com.
+  HOST_NAME="http://url_attribute.example.com"
+  TEST="$HOST_NAME/mod_pagespeed_test"
+  REWRITE_DOMAINS="$TEST/rewrite_domains.html"
+  UVA_EXTEND_CACHE="$TEST/url_valued_attribute_extend_cache.html"
+  UVA_EXTEND_CACHE="${UVA_EXTEND_CACHE}?ModPagespeedFilters=+left_trim_urls"
+
+  start_test Rewrite domains in dynamically defined url-valued attributes.
+
+  RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $REWRITE_DOMAINS)
+  MATCHES=$(echo "$RESPONSE_OUT" | fgrep -c http://dst.example.com)
+  check [ $MATCHES -eq 5 ]
+  MATCHES=$(echo "$RESPONSE_OUT" | \
+      fgrep -c '<hr src=http://src.example.com/hr-image>')
+  check [ $MATCHES -eq 1 ]
+
+  start_test Additional url-valued attributes are fully respected.
+
+  # There are five resources that should be optimized
+  http_proxy=$SECONDARY_HOSTNAME \
+      fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.' 5
+
+  # Make sure <custom d=...> isn't modified at all, but that everything else is
+  # recognized as a url and rewritten from ../foo to /foo.  This means that only
+  # one reference to ../mod_pagespeed should remain, <custom d=...>.
+  http_proxy=$SECONDARY_HOSTNAME \
+      fetch_until $UVA_EXTEND_CACHE 'grep -c d=.[.][.]/mod_pa' 1
+  http_proxy=$SECONDARY_HOSTNAME \
+      fetch_until $UVA_EXTEND_CACHE 'fgrep -c ../mod_pa' 1
+
+  # There are five images that should be optimized.
+  http_proxy=$SECONDARY_HOSTNAME \
+      fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.ic' 5
+
+  # This test checks that the ModPagespeedClientDomainRewrite directive
+  # can turn on.
+  start_test ModPagespeedClientDomainRewrite on directive
+  HOST_NAME="http://client_domain_rewrite.example.com"
+  RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      $HOST_NAME/mod_pagespeed_test/rewrite_domains.html)
+  MATCHES=$(echo "$RESPONSE_OUT" | grep -c pagespeed\.clientDomainRewriterInit)
+  check [ $MATCHES -eq 1 ]
+
+  if [ -n "$APACHE_LOG" ]; then
+    start_test Encoded absolute urls are not respected
+    HOST_NAME="http://absolute_urls.example.com"
+
+    # Monitor the Apache log; tail -F will catch log rotations.
+    ABSOLUTE_URLS_LOG_PATH=/tmp/instaweb_apache_absolute_urls_log.$$
+    echo APACHE_LOG = $APACHE_LOG
+    tail --sleep-interval=0.1 -F $APACHE_LOG > $ABSOLUTE_URLS_LOG_PATH &
+    TAIL_PID=$!
+
+    # should fail; the example.com isn't us.
+    http_proxy=$SECONDARY_HOSTNAME check_not $WGET_DUMP \
+        "$HOST_NAME/,hexample.com.pagespeed.jm.0.js"
+
+    REJECTED="Rejected absolute url reference"
+
+    # Wait up to 10 seconds for failure.
+    for i in {1..100}; do
+      REJECTIONS=$(fgrep -c "$REJECTED" $ABSOLUTE_URLS_LOG_PATH)
+      if [ $REJECTIONS -ge 1 ]; then
+        break;
+      fi;
+      /bin/echo -n "."
+      sleep 0.1
+    done;
+    /bin/echo "."
+
+    # Kill the log monitor silently.
+    kill $TAIL_PID
+    wait $TAIL_PID 2> /dev/null
+
+    check [ $REJECTIONS -eq 1 ]
+  fi
 fi
 
 # Test handling of large HTML files. We first test with a cold cache, and verify

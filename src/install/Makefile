@@ -282,60 +282,12 @@ else
   FURIOUS_NO_GA_TEST_SED_PATTERN=^\#FURIOUS_NO_GA.*\n
 endif
 
-ifeq ($(URL_ATTRIBUTE_TEST),1)
-  # remove prefix
-  URL_ATTRIBUTE_TEST_SED_PATTERN=^\#URL_ATTRIBUTE
-else
-  # remove whole line
-  URL_ATTRIBUTE_TEST_SED_PATTERN=^\#URL_ATTRIBUTE.*\n
-endif
-
-ifeq ($(ABSOLUTE_URLS_TEST),1)
-  # remove prefix
-  ABSOLUTE_URLS_TEST_SED_PATTERN=^\#ABSOLUTE_URLS
-else
-  # remove whole line
-  ABSOLUTE_URLS_TEST_SED_PATTERN=^\#ABSOLUTE_URLS.*\n
-endif
-
 ifeq ($(HTTPS_TEST),1)
   # remove prefix
   HTTPS_TEST_SED_PATTERN=^\#HTTPS
 else
   # remove whole line
   HTTPS_TEST_SED_PATTERN=^\#HTTPS.*\n
-endif
-
-ifeq ($(XHEADER_TEST),1)
-  # remove prefix
-  XHEADER_TEST_SED_PATTERN=^\#XHEADER
-else
-  # remove whole line
-  XHEADER_TEST_SED_PATTERN=^\#XHEADER.*\n
-endif
-
-ifeq ($(CLIENT_DOMAIN_REWRITE_TEST),1)
-  # remove prefix
-  CLIENT_DOMAIN_REWRITE_TEST_SED_PATTERN=^\#CLIENT_DOMAIN_REWRITE
-else
-  # remove whole line
-  CLIENT_DOMAIN_REWRITE_TEST_SED_PATTERN=^\#CLIENT_DOMAIN_REWRITE.*\n
-endif
-
-ifeq ($(DOMAIN_HYPERLINKS_TEST),1)
-  # remove prefix
-  DOMAIN_HYPERLINKS_TEST_SED_PATTERN=^\#DOMAIN_HYPERLINKS
-else
-  # remove whole line
-  DOMAIN_HYPERLINKS_TEST_SED_PATTERN=^\#DOMAIN_HYPERLINKS.*\n
-endif
-
-ifeq ($(DOMAIN_RESOURCE_TAGS_TEST),1)
-  # remove prefix
-  DOMAIN_RESOURCE_TAGS_TEST_SED_PATTERN=^\#DOMAIN_RESOURCE_TAGS
-else
-  # remove whole line
-  DOMAIN_RESOURCE_TAGS_TEST_SED_PATTERN=^\#DOMAIN_RESOURCE_TAGS.*\n
 endif
 
 ifeq ($(ALL_DIRECTIVES_TEST),1)
@@ -389,12 +341,6 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(HTTPS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(FURIOUS_GA_TEST_SED_PATTERN)@@" \
 	    -e "s@$(FURIOUS_NO_GA_TEST_SED_PATTERN)@@" \
-	    -e "s@$(URL_ATTRIBUTE_TEST_SED_PATTERN)@@" \
-	    -e "s@$(ABSOLUTE_URLS_TEST_SED_PATTERN)@@" \
-	    -e "s@$(XHEADER_TEST_SED_PATTERN)@@" \
-	    -e "s@$(CLIENT_DOMAIN_REWRITE_TEST_SED_PATTERN)@@" \
-	    -e "s@$(DOMAIN_HYPERLINKS_TEST_SED_PATTERN)@@" \
-	    -e "s@$(DOMAIN_RESOURCE_TAGS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(ALL_DIRECTIVES_TEST_SED_PATTERN)@@" \
 	    -e "s@$(PER_VHOST_STATS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(STATS_LOGGING_TEST_SED_PATTERN)@@" \
@@ -507,13 +453,7 @@ apache_install_conf :
 	    $(OPT_GZIP_TEST) \
 	    $(OPT_FURIOUS_GA_TEST) \
 	    $(OPT_FURIOUS_NO_GA_TEST) \
-	    $(OPT_XHEADER_TEST) \
-	    $(OPT_CLIENT_DOMAIN_REWRITE_TEST) \
-	    $(OPT_DOMAIN_HYPERLINKS_TEST) \
-	    $(OPT_DOMAIN_RESOURCE_TAGS_TEST) \
 	    $(OPT_ALL_DIRECTIVES_TEST) \
-	    $(OPT_URL_ATTRIBUTE_TEST) \
-	    $(OPT_ABSOLUTE_URLS_TEST) \
 	    $(OPT_PER_VHOST_STATS_TEST) \
 	    $(OPT_STATS_LOGGING_TEST)
 	$(MAKE) install_except_module \
@@ -530,13 +470,7 @@ apache_install_conf :
 	    $(OPT_GZIP_TEST) \
 	    $(OPT_FURIOUS_GA_TEST) \
 	    $(OPT_FURIOUS_NO_GA_TEST) \
-	    $(OPT_XHEADER_TEST) \
-	    $(OPT_CLIENT_DOMAIN_REWRITE_TEST) \
-	    $(OPT_DOMAIN_HYPERLINKS_TEST) \
-	    $(OPT_DOMAIN_RESOURCE_TAGS_TEST) \
 	    $(OPT_ALL_DIRECTIVES_TEST) \
-	    $(OPT_URL_ATTRIBUTE_TEST) \
-	    $(OPT_ABSOLUTE_URLS_TEST) \
 	    $(OPT_PER_VHOST_STATS_TEST) \
 	    $(OPT_STATS_LOGGING_TEST)
 
