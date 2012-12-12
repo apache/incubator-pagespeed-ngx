@@ -84,18 +84,18 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
   CacheStats::InitStats(kMemcached, &simple_stats_);
   SetStatistics(&simple_stats_);
   timer_ = DefaultTimer();
-  apr_initialize();
-  apr_pool_create(&pool_,NULL);
   InitializeDefaultOptions();
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
-  slow_worker_->ShutDown();
-  apr_pool_destroy(pool_);
-  pool_ = NULL;
+  // TODO(oschaaf): The slow worker startup call got lost in the
+  // memcached commit, restore that. For now, remove the worker shutdown,
+  // as that will crash the nginx worker during process exit
 
+  ShutDown();
+  
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
     NgxCache* cache = p->second;
@@ -129,7 +129,7 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   net_instaweb::UrlAsyncFetcher* fetcher =
       new net_instaweb::SerfUrlAsyncFetcher(
           fetcher_proxy,
-          pool_,
+          NULL,
           thread_system(),
           statistics(),
           timer(),
@@ -328,6 +328,28 @@ CacheInterface* NgxRewriteDriverFactory::GetFilesystemMetadataCache(
   }
 
   return NULL;
+}
+
+void NgxRewriteDriverFactory::StopCacheActivity() {
+  RewriteDriverFactory::StopCacheActivity();
+
+  // Iterate through the map of CacheInterface* objects constructed for
+  // the memcached.  Note that these are not typically AprMemCache* objects,
+  // but instead are a hierarchy of CacheStats*, CacheBatcher*, AsyncCache*,
+  // and AprMemCache*, all of which must be stopped.
+  for (MemcachedMap::iterator p = memcached_map_.begin(),
+           e = memcached_map_.end(); p != e; ++p) {
+    CacheInterface* cache = p->second;
+    cache->ShutDown();
+  }
+}
+
+void NgxRewriteDriverFactory::ShutDown() {
+  RewriteDriverFactory::ShutDown();
+  
+  // Take down any memcached threads.
+  // TODO(oschaaf): should be refactored with the Apache shutdown code
+  memcached_pool_.reset(NULL);
 }
 
 }  // namespace net_instaweb

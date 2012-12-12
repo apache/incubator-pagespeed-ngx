@@ -320,6 +320,7 @@ ps_configure(ngx_conf_t* cf,
              net_instaweb::MessageHandler* handler) {
   if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
+    // TODO(oschaaf): these should be deleted on process exit
     *options = new net_instaweb::NgxRewriteOptions();
   }
 
@@ -364,30 +365,88 @@ ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   return ps_configure(cf, &cfg_l->options, cfg_l->handler);
 }
 
+void
+ps_cleanup_loc_conf(void* data) {
+  ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(data);
+  delete cfg_l->handler;
+  cfg_l->handler = NULL;
+}
+
+void
+ps_cleanup_srv_conf(void* data) {
+  ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(data);
+  if (cfg_s->proxy_fetch_factory != NULL) {
+    delete cfg_s->proxy_fetch_factory;
+    cfg_s->proxy_fetch_factory = NULL;
+  }
+  delete cfg_s->handler;
+  cfg_s->handler = NULL;
+}
+
+void
+ps_cleanup_main_conf(void* data) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(data);
+  if (cfg_m->driver_factory != NULL) {
+    delete cfg_m->driver_factory;
+    cfg_m->driver_factory = NULL;
+  }
+  delete cfg_m->handler;
+  cfg_m->handler = NULL;
+  net_instaweb::NgxRewriteDriverFactory::Terminate();
+  net_instaweb::NgxRewriteOptions::Terminate();  
+}
+
 template <typename ConfT>
-void*
+ConfT*
 ps_create_conf(ngx_conf_t* cf) {
   ConfT* cfg = static_cast<ConfT*>(ngx_pcalloc(cf->pool, sizeof(ConfT)));
   if (cfg == NULL) {
-    return NGX_CONF_ERROR;
+    return NULL;
   }
   cfg->handler = new net_instaweb::GoogleMessageHandler();
   return cfg;
 }
 
+void
+ps_set_conf_cleanup_handler(ngx_conf_t* cf, void (func)(void*), void* data) {
+  ngx_pool_cleanup_t* cleanup_m = ngx_pool_cleanup_add(cf->pool, 0); 
+  if (cleanup_m == NULL) {
+     ngx_conf_log_error(
+         NGX_LOG_ERR, cf, 0, "failed to register a cleanup handler");
+  } else {
+     cleanup_m->handler = func;
+     cleanup_m->data = data;
+  }
+}
+
 void*
 ps_create_main_conf(ngx_conf_t* cf) {
-  return ps_create_conf<ps_main_conf_t>(cf);
+  ps_main_conf_t* cfg_m = ps_create_conf<ps_main_conf_t>(cf);
+  if (cfg_m == NULL) {
+    return NGX_CONF_ERROR;
+  }
+  ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
+  return cfg_m;
 }
 
 void*
 ps_create_srv_conf(ngx_conf_t* cf) {
-  return ps_create_conf<ps_srv_conf_t>(cf);
+  ps_srv_conf_t* cfg_s = ps_create_conf<ps_srv_conf_t>(cf);
+  if (cfg_s == NULL) {
+    return NGX_CONF_ERROR;
+  }
+  ps_set_conf_cleanup_handler(cf, ps_cleanup_srv_conf, cfg_s);
+  return cfg_s;
 }
 
 void*
 ps_create_loc_conf(ngx_conf_t* cf) {
-  return ps_create_conf<ps_loc_conf_t>(cf);
+  ps_loc_conf_t* cfg_l = ps_create_conf<ps_loc_conf_t>(cf);
+  if (cfg_l == NULL) {
+    return NGX_CONF_ERROR;
+  }
+  ps_set_conf_cleanup_handler(cf, ps_cleanup_loc_conf, cfg_l);
+  return cfg_l;
 }
 
 // nginx has hierarchical configuration.  It maintains configurations at many
@@ -857,6 +916,7 @@ ps_determine_request_options(
 
   // Will be NULL if there aren't any options set with query params or in
   // headers.
+  // TODO(oschaaf): seems the acquired options here are never deleted
   *request_options = query_options_success.first;
 
   return true;
@@ -1391,13 +1451,13 @@ ngx_http_module_t ps_module = {
   NULL,  // preconfiguration
   ps_init,  // postconfiguration
 
-  ps_create_conf<ps_main_conf_t>,
+  ps_create_main_conf,
   NULL,  // initialize main configuration
 
-  ps_create_conf<ps_srv_conf_t>,
+  ps_create_srv_conf,
   ps_merge_srv_conf,
 
-  ps_create_conf<ps_loc_conf_t>,
+  ps_create_loc_conf,
   ps_merge_loc_conf
 };
 
