@@ -575,7 +575,6 @@
       'sources': [
         # TODO(sligocki): Move http/ files to instaweb_http.
         'http/async_fetch.cc',
-        'http/base_trace_context.cc',
         'http/cache_url_async_fetcher.cc',
         'http/external_url_fetcher.cc',
         'http/fake_url_async_fetcher.cc',
@@ -649,6 +648,7 @@
         'util/queued_worker.cc',
         'util/queued_worker_pool.cc',
         'util/ref_counted.cc',
+        'util/request_trace.cc',
         'util/rolling_hash.cc',
         'util/scheduler.cc',
         'util/scheduler_based_abstract_lock.cc',

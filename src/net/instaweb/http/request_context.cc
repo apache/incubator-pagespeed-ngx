@@ -19,7 +19,7 @@
 #include "net/instaweb/http/public/request_context.h"
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/base_trace_context.h"
+#include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/util/public/null_mutex.h"
 
@@ -42,7 +42,7 @@ RequestContextPtr RequestContext::NewTestRequestContext() {
   return RequestContextPtr(new RequestContext(new NullMutex));
 }
 
-void RequestContext::set_trace_context(BaseTraceContext* x) {
+void RequestContext::set_trace_context(RequestTrace* x) {
   trace_context_.reset(x);
 }
 

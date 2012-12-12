@@ -63,7 +63,7 @@ class FileSystem;
 class FlushEarlyInfo;
 class FlushEarlyRenderInfo;
 class Function;
-class BaseTraceContext;
+class RequestTrace;
 class HtmlEvent;
 class HtmlFilter;
 class HtmlWriterFilter;
@@ -226,7 +226,7 @@ class RewriteDriver : public HtmlParse {
 
   // Convenience method to return the trace context from the request_context()
   // if both are configured and NULL otherwise.
-  BaseTraceContext* trace_context();
+  RequestTrace* trace_context();
 
   // Convenience method to issue a trace annotation if tracing is enabled.
   // If tracing is disabled, this function is a no-op.

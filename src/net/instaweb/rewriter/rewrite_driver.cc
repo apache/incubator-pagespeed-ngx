@@ -33,7 +33,6 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/base_trace_context.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -123,6 +122,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/function.h"
@@ -796,7 +796,7 @@ void RewriteDriver::SetResourceManager(ServerContext* resource_manager) {
   url_trim_filter_.reset(new UrlLeftTrimFilter(this, statistics()));
 }
 
-BaseTraceContext* RewriteDriver::trace_context() {
+RequestTrace* RewriteDriver::trace_context() {
   return request_context_.get() == NULL ? NULL :
       request_context_->trace_context();
 }

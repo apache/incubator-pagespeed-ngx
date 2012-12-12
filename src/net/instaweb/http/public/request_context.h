@@ -26,9 +26,9 @@
 namespace net_instaweb {
 
 class AbstractMutex;
-class BaseTraceContext;
 class LogRecord;
 class RequestContext;
+class RequestTrace;
 
 typedef RefCountedPtr<RequestContext> RequestContextPtr;
 
@@ -51,8 +51,8 @@ class RequestContext : public RefCounted<RequestContext> {
   static RequestContextPtr NewTestRequestContext();
 
   // The trace context. Takes ownership of the given context.
-  BaseTraceContext* trace_context() { return trace_context_.get(); }
-  void set_trace_context(BaseTraceContext* x);
+  RequestTrace* trace_context() { return trace_context_.get(); }
+  void set_trace_context(RequestTrace* x);
 
   // The log record for the this request, created when the request context is.
   LogRecord* log_record();
@@ -75,7 +75,7 @@ class RequestContext : public RefCounted<RequestContext> {
   scoped_ptr<LogRecord> log_record_;
 
   // Logs tracing events.
-  scoped_ptr<BaseTraceContext> trace_context_;
+  scoped_ptr<RequestTrace> trace_context_;
 
   DISALLOW_COPY_AND_ASSIGN(RequestContext);
 };
