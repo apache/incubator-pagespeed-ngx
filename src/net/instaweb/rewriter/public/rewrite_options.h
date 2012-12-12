@@ -1792,7 +1792,6 @@ class RewriteOptions {
 
   // Returns the computed signature.
   const GoogleString& signature() const {
-    DCHECK(frozen_);
     // We take a reader-lock because we may be looking at the
     // global_options signature concurrent with updating it if someone
     // flushes cache.  Note that the default mutex implementation is
@@ -1801,6 +1800,7 @@ class RewriteOptions {
     // don't expect contention here because we take a reader-lock and the
     // only time we Write is if someone flushes the cache.
     ThreadSystem::ScopedReader lock(cache_invalidation_timestamp_.mutex());
+    DCHECK(frozen_);
     return signature_;
   }
 
