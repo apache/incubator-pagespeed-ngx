@@ -181,8 +181,11 @@ void RecordingFetch::HandleDone(bool success) {
 bool RecordingFetch::CanAjaxRewrite() {
   const ContentType* type = response_headers()->DetermineContentType();
   if (type == NULL) {
+    VLOG(2) << "CanAjaxRewrite false, since Content-Type is not defined. Url: "
+            << resource_->url();
     return false;
   }
+
   // Note that this only checks the length, not the caching headers; the
   // latter are checked in IsAlreadyExpired.
   if (!cache_value_writer_.CheckCanCacheElseClear(response_headers())) {
@@ -195,6 +198,8 @@ bool RecordingFetch::CanAjaxRewrite() {
         request_headers(), *response_headers())) {
       return true;
     }
+    VLOG(2) << "CanAjaxRewrite false, since J/I/C resource is not cacheable."
+            << " Url: " << resource_->url();
   }
   return false;
 }
@@ -216,51 +221,49 @@ void AjaxRewriteContext::InitStats(Statistics* statistics) {
 
 void AjaxRewriteContext::Harvest() {
   if (num_nested() == 1) {
-    RewriteContext* nested_context = nested(0);
-    if (nested_context->num_slots() == 1) {
+    RewriteContext* const nested_context = nested(0);
+    if (nested_context->num_slots() == 1 && num_output_partitions() == 1 &&
+        nested_context->slot(0)->was_optimized()) {
       ResourcePtr nested_resource = nested_context->slot(0)->resource();
-      if (nested_context->slot(0)->was_optimized() &&
-          num_output_partitions() == 1) {
-        CachedResult* partition = output_partition(0);
-        VLOG(1) << "Ajax rewrite succeeded for " << url_
-                << " and the rewritten resource is "
-                << nested_resource->url();
-        partition->set_url(nested_resource->url());
-        partition->set_optimizable(true);
-        if (partitions()->other_dependency_size() == 1) {
-          // If there is only one other dependency, then the InputInfo is
-          // already covered in the first partition. We're clearing this here
-          // since freshens only update the partitions and not the other
-          // dependencies.
-          partitions()->clear_other_dependency();
-        }
-        if (!FetchContextDetached() &&
-             Options()->in_place_wait_for_optimized()) {
-          // If we're waiting for the optimized version before responding,
-          // prepare the output here. Most of this is translated from
-          // RewriteContext::FetchContext::FetchDone
-          output_resource_->response_headers()->CopyFrom(
-              *(input_resource_->response_headers()));
-          Writer* writer = output_resource_->BeginWrite(
-              driver_->message_handler());
-          writer->Write(nested_resource->contents(),
-                        driver_->message_handler());
-          output_resource_->EndWrite(driver_->message_handler());
-
-          is_rewritten_ = true;
-          // EndWrite updated the hash in output_resource_.
-          output_resource_->full_name().hash().CopyToString(&rewritten_hash_);
-          FixFetchFallbackHeaders(output_resource_->response_headers());
-
-          // Use the most conservative Cache-Control considering the input.
-          // TODO(jkarlin): Is ApplyInputCacheControl needed here?
-          ResourceVector rv(1, input_resource_);
-          FindServerContext()->ApplyInputCacheControl(
-              rv, output_resource_->response_headers());
-        }
-        RewriteDone(kRewriteOk, 0);
-        return;
+      CachedResult* partition = output_partition(0);
+      VLOG(1) << "Ajax rewrite succeeded for " << url_
+              << " and the rewritten resource is "
+              << nested_resource->url();
+      partition->set_url(nested_resource->url());
+      partition->set_optimizable(true);
+      if (partitions()->other_dependency_size() == 1) {
+        // If there is only one other dependency, then the InputInfo is
+        // already covered in the first partition. We're clearing this here
+        // since freshens only update the partitions and not the other
+        // dependencies.
+        partitions()->clear_other_dependency();
       }
+      if (!FetchContextDetached() &&
+          Options()->in_place_wait_for_optimized()) {
+        // If we're waiting for the optimized version before responding,
+        // prepare the output here. Most of this is translated from
+        // RewriteContext::FetchContext::FetchDone
+        output_resource_->response_headers()->CopyFrom(
+            *(input_resource_->response_headers()));
+        Writer* writer = output_resource_->BeginWrite(
+            driver_->message_handler());
+        writer->Write(nested_resource->contents(),
+                      driver_->message_handler());
+        output_resource_->EndWrite(driver_->message_handler());
+
+        is_rewritten_ = true;
+        // EndWrite updated the hash in output_resource_.
+        output_resource_->full_name().hash().CopyToString(&rewritten_hash_);
+        FixFetchFallbackHeaders(output_resource_->response_headers());
+
+        // Use the most conservative Cache-Control considering the input.
+        // TODO(jkarlin): Is ApplyInputCacheControl needed here?
+        ResourceVector rv(1, input_resource_);
+        FindServerContext()->ApplyInputCacheControl(
+            rv, output_resource_->response_headers());
+      }
+      RewriteDone(kRewriteOk, 0);
+      return;
     }
   }
   VLOG(1) << "Ajax rewrite failed for " << url_;

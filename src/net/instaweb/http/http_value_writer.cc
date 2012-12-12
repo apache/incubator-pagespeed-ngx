@@ -35,7 +35,7 @@ bool HTTPValueWriter::Write(const StringPiece& str, MessageHandler* handler) {
   if (has_buffered_ &&
       cache_->IsCacheableBodySize(str.size() + value_->contents_size())) {
     // IsCacheableContentLength is only able to detect if a response is
-    // of cacheable size when the response has content tye header. If we
+    // of cacheable size when the response has content type header. If we
     // receive the response chunked, then we need to buffer up before
     // discovering if the response is uncacheable.
     return value_->Write(str, handler);
