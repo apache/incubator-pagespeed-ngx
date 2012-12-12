@@ -21,7 +21,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -34,6 +33,7 @@ namespace net_instaweb {
 
 class CacheInterface;
 class Hasher;
+class LogRecord;
 class MessageHandler;
 class RequestHeaders;
 class Statistics;

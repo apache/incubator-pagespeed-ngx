@@ -24,7 +24,9 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/rewrite_context_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -35,9 +37,9 @@
 #include "net/instaweb/util/public/cache_copy.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/write_through_cache.h"
 
 namespace net_instaweb {

@@ -18,7 +18,9 @@
 
 #include "net/instaweb/http/public/request_context.h"
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/base_trace_context.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/util/public/null_mutex.h"
 
 namespace net_instaweb {

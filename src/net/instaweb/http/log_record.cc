@@ -20,6 +20,7 @@
 
 #include <set>
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/string.h"

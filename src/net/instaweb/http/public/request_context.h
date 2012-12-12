@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_REQUEST_CONTEXT_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_REQUEST_CONTEXT_H_
 
-#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -28,6 +27,7 @@ namespace net_instaweb {
 
 class AbstractMutex;
 class BaseTraceContext;
+class LogRecord;
 class RequestContext;
 
 typedef RefCountedPtr<RequestContext> RequestContextPtr;
