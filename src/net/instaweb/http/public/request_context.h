@@ -29,6 +29,7 @@ class AbstractMutex;
 class LogRecord;
 class RequestContext;
 class RequestTrace;
+class ThreadSystem;
 
 typedef RefCountedPtr<RequestContext> RequestContextPtr;
 
@@ -48,7 +49,7 @@ class RequestContext : public RefCounted<RequestContext> {
 
   // TODO(marq): Move this test context factory to a test-specific file.
   // Makes a request context for running tests.
-  static RequestContextPtr NewTestRequestContext();
+  static RequestContextPtr NewTestRequestContext(ThreadSystem* thread_system);
 
   // The trace context. Takes ownership of the given context.
   RequestTrace* trace_context() { return trace_context_.get(); }

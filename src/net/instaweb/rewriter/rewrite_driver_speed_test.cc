@@ -45,7 +45,8 @@ static void BM_RewriteDriverConstruction(int iters) {
     options->SetRewriteLevel(net_instaweb::RewriteOptions::kAllFilters);
     net_instaweb::RewriteDriver* driver =
         resource_manager->NewCustomRewriteDriver(
-            options, RequestContext::NewTestRequestContext());
+            options, RequestContext::NewTestRequestContext(
+                         factory.thread_system()));
     resource_manager->ReleaseRewriteDriver(driver);
   }
   net_instaweb::RewriteDriverFactory::Terminate();

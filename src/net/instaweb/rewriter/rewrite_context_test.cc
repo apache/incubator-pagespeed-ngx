@@ -2301,7 +2301,8 @@ TEST_F(RewriteContextTest, LoadSheddingTest) {
     GoogleString* out = new GoogleString;
     StringAsyncFetch* fetch = new StringAsyncFetch(out);
     RewriteDriver* driver = server_context()->NewRewriteDriver(
-        RequestContext::NewTestRequestContext());
+        RequestContext::NewTestRequestContext(
+            server_context()->thread_system()));
     GoogleString out_url =
         Encode(kTestDomain, "cf", "0", file_name, "css");
     driver->FetchResource(out_url, fetch);

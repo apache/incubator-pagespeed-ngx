@@ -61,6 +61,10 @@ class CheckingThreadSystem : public ThreadSystem {
     virtual void Unlock();
     // This implementation of DCheckLocked CHECK-fails if lock is not held.
     virtual void DCheckLocked();
+
+    // This implementation of DCheckUnlocked CHECK-fails if lock is held.
+    virtual void DCheckUnlocked();
+
     // The condvars provided perform lock checking for ....Wait operations.
     virtual ThreadSystem::Condvar* NewCondvar();
 

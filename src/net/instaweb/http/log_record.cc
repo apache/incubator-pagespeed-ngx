@@ -44,8 +44,7 @@ void LogRecord::InitLogging() {
 }
 
 LogRecord::~LogRecord() {
-  // Wait until nobody else has locked before destruction.
-  ScopedMutex lock(mutex_.get());
+  mutex_->DCheckUnlocked();
 }
 
 void LogRecord::set_mutex(AbstractMutex* m) {
@@ -54,7 +53,6 @@ void LogRecord::set_mutex(AbstractMutex* m) {
 }
 
 LoggingInfo* LogRecord::logging_info() {
-  mutex_->DCheckLocked();
   return logging_info_.get();
 }
 

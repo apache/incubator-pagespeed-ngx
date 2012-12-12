@@ -72,6 +72,10 @@ void CheckingThreadSystem::Mutex::DCheckLocked() {
   CHECK(locked_.value()) << "Lock should have been held.";
 }
 
+void CheckingThreadSystem::Mutex::DCheckUnlocked() {
+  CHECK(!locked_.value()) << "Lock should not have been held.";
+}
+
 void CheckingThreadSystem::Mutex::DropLockControl() {
   DCheckLocked();
   locked_.set_value(false);

@@ -691,7 +691,8 @@ void RewriteTestBase::SetupWaitFetcher() {
 void RewriteTestBase::CallFetcherCallbacks() {
   factory_->CallFetcherCallbacksForDriver(rewrite_driver_);
   // This calls Clear() on the driver, so give it a new request context.
-  rewrite_driver_->set_request_context(RequestContext::NewTestRequestContext());
+  rewrite_driver_->set_request_context(
+      RequestContext::NewTestRequestContext(factory_->thread_system()));
 }
 
 void RewriteTestBase::SetUseManagedRewriteDrivers(
@@ -711,11 +712,12 @@ RewriteDriver* RewriteTestBase::MakeDriver(
   if (!use_managed_rewrite_drivers_) {
     rd = server_context->NewUnmanagedRewriteDriver(
         NULL /* custom options, so no pool*/, options,
-        RequestContext::NewTestRequestContext());
+        RequestContext::NewTestRequestContext(factory_->thread_system()));
     rd->set_externally_managed(true);
   } else {
     rd = server_context->NewCustomRewriteDriver(
-        options, RequestContext::NewTestRequestContext());
+        options, RequestContext::NewTestRequestContext(
+                     factory_->thread_system()));
   }
 
   return rd;
@@ -764,13 +766,13 @@ void RewriteTestBase::ClearStats() {
   counting_url_async_fetcher()->Clear();
   file_system()->ClearStats();
   rewrite_driver()->set_request_context(
-      RequestContext::NewTestRequestContext());
+      RequestContext::NewTestRequestContext(factory_->thread_system()));
 }
 
 void RewriteTestBase::ClearRewriteDriver() {
   rewrite_driver()->Clear();
   rewrite_driver()->set_request_context(
-      RequestContext::NewTestRequestContext());
+      RequestContext::NewTestRequestContext(factory_->thread_system()));
 }
 
 void RewriteTestBase::SetCacheDelayUs(int64 delay_us) {
@@ -861,7 +863,8 @@ void RewriteTestBase::InitiateResourceRead(
 HTTPCache::FindResult RewriteTestBase::HttpBlockingFind(
     const GoogleString& key, HTTPCache* http_cache, HTTPValue* value_out,
     ResponseHeaders* headers) {
-  HttpCallback callback(RequestContext::NewTestRequestContext());
+  HttpCallback callback(
+      RequestContext::NewTestRequestContext(factory_->thread_system()));
   callback.set_response_headers(headers);
   http_cache->Find(key, message_handler(), &callback);
   CHECK(callback.done());
@@ -930,10 +933,6 @@ void RewriteTestBase::AdjustTimeUsWithoutWakingAlarms(int64 time_us) {
 
 LoggingInfo* RewriteTestBase::logging_info() {
   CHECK(rewrite_driver()->request_context().get() != NULL);
-  // Note that if for whatever reason the test has created a request context
-  // with a real logging mutex (and not the NullMutex that
-  // NewTestRequestContext supplies), this will fail the CHECK for the mutex
-  // lock on logging_info().
   return rewrite_driver()->request_context()->log_record()->logging_info();
 }
 

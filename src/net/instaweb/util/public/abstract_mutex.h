@@ -36,6 +36,9 @@ class AbstractMutex {
   // Optionally checks that lock is held (for invariant checking purposes).
   // Default implementation does no checking.
   virtual void DCheckLocked();
+  // Optionally checks that lock is not held (for invariant checking purposes).
+  // Default implementation does no checking.
+  virtual void DCheckUnlocked();
 };
 
 // Helper class for lexically scoped mutexing.

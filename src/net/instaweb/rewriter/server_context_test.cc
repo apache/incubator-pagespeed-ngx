@@ -644,7 +644,7 @@ TEST_F(ServerContextTest, TestPlatformSpecificConfiguration) {
 
   factory()->AddPlatformSpecificConfigurationCallback(&normal_callback);
   RewriteDriver* normal_driver = server_context()->NewRewriteDriver(
-      RequestContext::NewTestRequestContext());
+      RequestContext::NewTestRequestContext(server_context()->thread_system()));
   EXPECT_EQ(normal_driver, rec_normal_driver);
   factory()->ClearPlatformSpecificConfigurationCallback();
   normal_driver->Cleanup();
@@ -652,7 +652,9 @@ TEST_F(ServerContextTest, TestPlatformSpecificConfiguration) {
   factory()->AddPlatformSpecificConfigurationCallback(&custom_callback);
   RewriteDriver* custom_driver =
       server_context()->NewCustomRewriteDriver(
-          new RewriteOptions(), RequestContext::NewTestRequestContext());
+          new RewriteOptions(),
+          RequestContext::NewTestRequestContext(
+              server_context()->thread_system()));
   EXPECT_EQ(custom_driver, rec_custom_driver);
   custom_driver->Cleanup();
 }
@@ -1304,7 +1306,7 @@ TEST_F(ServerContextTest, ShutDownAssumptions) {
   // interleaving of operations are safe. Since they are pretty unlikely
   // in practice, this test exercises them.
   RewriteDriver* driver = server_context()->NewRewriteDriver(
-      RequestContext::NewTestRequestContext());
+      RequestContext::NewTestRequestContext(server_context()->thread_system()));
   EnableRewriteDriverCleanupMode(true);
   driver->WaitForShutDown();
   driver->WaitForShutDown();

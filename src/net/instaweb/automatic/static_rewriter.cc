@@ -138,7 +138,7 @@ bool StaticRewriter::ParseText(const StringPiece& url,
                                const StringPiece& output_dir,
                                Writer* writer) {
   RewriteDriver* driver = server_context_->NewRewriteDriver(
-      RequestContext::NewTestRequestContext());
+      RequestContext::NewTestRequestContext(server_context_->thread_system()));
 
   // For this simple file transformation utility we always want to perform
   // any optimizations we can, so we wait until everything is done rather

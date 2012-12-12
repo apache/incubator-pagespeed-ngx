@@ -153,8 +153,8 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
     collector.reset(MakeCollector());
     ProxyFetchPropertyCallback* page_callback = AddCallback(
         collector.get(), ProxyFetchPropertyCallback::kPagePropertyCache);
-    ExpectStringAsyncFetch async_fetch(true,
-                                       RequestContext::NewTestRequestContext());
+    ExpectStringAsyncFetch async_fetch(
+        true, RequestContext::NewTestRequestContext(thread_system_.get()));
     ProxyFetchFactory factory(server_context_);
     MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
         &async_fetch, &factory, server_context_);
@@ -281,8 +281,8 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeSetProxyFetch) {
   callback->Done(true);
 
   // Construct mock ProxyFetch to test SetProxyFetch().
-  ExpectStringAsyncFetch async_fetch(true,
-                                     RequestContext::NewTestRequestContext());
+  ExpectStringAsyncFetch async_fetch(
+      true, RequestContext::NewTestRequestContext(thread_system_.get()));
   ProxyFetchFactory factory(server_context_);
   MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
       &async_fetch, &factory, server_context_);
@@ -316,8 +316,8 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, SetProxyFetchBeforeDone) {
       collector.get(), ProxyFetchPropertyCallback::kPagePropertyCache);
 
   // Construct mock ProxyFetch to test SetProxyFetch().
-  ExpectStringAsyncFetch async_fetch(true,
-                                     RequestContext::NewTestRequestContext());
+  ExpectStringAsyncFetch async_fetch(
+      true, RequestContext::NewTestRequestContext(thread_system_.get()));
   ProxyFetchFactory factory(server_context_);
   MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
       &async_fetch, &factory, server_context_);
@@ -363,8 +363,8 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, BothCallbacksComplete) {
       collector.get(), ProxyFetchPropertyCallback::kClientPropertyCache);
 
   // Construct mock ProxyFetch to test SetProxyFetch().
-  ExpectStringAsyncFetch async_fetch(true,
-                                     RequestContext::NewTestRequestContext());
+  ExpectStringAsyncFetch async_fetch(
+      true, RequestContext::NewTestRequestContext(thread_system_.get()));
   ProxyFetchFactory factory(server_context_);
   MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
       &async_fetch, &factory, server_context_);

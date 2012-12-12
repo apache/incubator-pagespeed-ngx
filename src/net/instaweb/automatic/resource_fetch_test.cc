@@ -68,7 +68,9 @@ TEST_F(ResourceFetchTest, BlockingFetch) {
       server_context()->global_options()->Clone();
   RewriteDriver* custom_driver =
       server_context()->NewCustomRewriteDriver(
-          custom_options, RequestContext::NewTestRequestContext());
+          custom_options,
+          RequestContext::NewTestRequestContext(
+              server_context()->thread_system()));
 
   GoogleUrl url(Encode(kTestDomain, "cf", "0", "a.css", "css"));
   EXPECT_TRUE(
@@ -89,7 +91,9 @@ TEST_F(ResourceFetchTest, BlockingFetchOfInvalidUrl) {
       server_context()->global_options()->Clone();
   RewriteDriver* custom_driver =
       server_context()->NewCustomRewriteDriver(
-          custom_options, RequestContext::NewTestRequestContext());
+          custom_options,
+          RequestContext::NewTestRequestContext(
+              server_context()->thread_system()));
   SyncFetcherAdapterCallback* callback =
       new SyncFetcherAdapterCallback(server_context()->thread_system(),
                                      &writer);

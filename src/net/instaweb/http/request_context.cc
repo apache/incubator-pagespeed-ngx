@@ -19,9 +19,9 @@
 #include "net/instaweb/http/public/request_context.h"
 
 #include "base/logging.h"
-#include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/util/public/null_mutex.h"
+#include "net/instaweb/util/public/request_trace.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -38,8 +38,9 @@ RequestContext::RequestContext()
 RequestContext::~RequestContext() {
 }
 
-RequestContextPtr RequestContext::NewTestRequestContext() {
-  return RequestContextPtr(new RequestContext(new NullMutex));
+RequestContextPtr RequestContext::NewTestRequestContext(
+    ThreadSystem* thread_system) {
+  return RequestContextPtr(new RequestContext(thread_system->NewMutex()));
 }
 
 void RequestContext::set_trace_context(RequestTrace* x) {
