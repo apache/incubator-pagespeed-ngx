@@ -26,7 +26,7 @@ namespace net_instaweb {
 
 NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd)
     : request_(r), done_called_(false), last_buf_sent_(false),
-      pipe_fd_(pipe_fd) {
+      pipe_fd_(pipe_fd), delete_when_done_(false) {
   if (pthread_mutex_init(&mutex_, NULL)) CHECK(0);
   PopulateRequestHeaders();
 }
@@ -248,15 +248,40 @@ bool NgxBaseFetch::HandleFlush(MessageHandler* handler) {
   return true;
 }
 
+void NgxBaseFetch::DeleteWhenDone() {
+  bool delete_self = false;
+
+  Lock();
+  if (done_called_) {
+    delete_self = true;
+  } else {
+    delete_when_done_ = true;
+  }
+  Unlock();
+
+  if (delete_self) {
+    delete this;
+  }
+}
+
 void NgxBaseFetch::HandleDone(bool success) {
+  bool delete_self = false;
+
   // TODO(jefftk): it's possible that instead of locking here we can just modify
   // CopyBufferToNginx to only read done_called_ once.
   Lock();
   done_called_ = true;
+  if (delete_when_done_) {
+    delete_self = true;
+  }
   Unlock();
 
   close(pipe_fd_);  // Indicates to nginx that we're done with the rewrite.
   pipe_fd_ = -1;
+
+  if (delete_self) {
+    delete this;
+  }
 }
 
 }  // namespace net_instaweb

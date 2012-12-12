@@ -70,13 +70,23 @@ class NgxBaseFetch : public AsyncFetch {
   // time for resource fetches.  Not called at all for proxy fetches.
   ngx_int_t CollectHeaders(ngx_http_headers_out_t* headers_out);
 
+  // If HandleDone() has already been called then delete ourself.  Otherwise
+  // make a note that when HandleDone() is called we should do so.
+  //
+  // Under normal circumstances the proxy fetch calls HandleDone() which
+  // notifies nginx via pipe.  Then nginx can delete us after it calls
+  // CollectAccumulatedWrites().  If there's some reason to abort, though, nginx
+  // will tell the proxy fetch to abort and tell us to delete ourselves when the
+  // proxy fetch is finished with us (when HandleDone() is called).  In both of
+  // these cases, nginx should call DeleteWhenDone().
+  void DeleteWhenDone();
+
  private:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
   virtual bool HandleFlush(MessageHandler* handler);
   virtual void HandleHeadersComplete();
   virtual void HandleDone(bool success);
 
-  
   // Helper method for PopulateRequestHeaders and PopulateResponseHeaders.
   template<class HeadersT>
   void CopyHeadersFromTable(ngx_list_t* headers_from, HeadersT* headers_to);
@@ -101,6 +111,7 @@ class NgxBaseFetch : public AsyncFetch {
   bool done_called_;
   bool last_buf_sent_;
   int pipe_fd_;
+  bool delete_when_done_;
   pthread_mutex_t mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
