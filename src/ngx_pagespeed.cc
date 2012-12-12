@@ -459,7 +459,7 @@ ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
     ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
         ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module));
     cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
-        clcf->resolver_timeout, clcf->resolver);
+        clcf->resolver_timeout, clcf->resolver, parent_cfg_s->options);
   }
 
   cfg_s->server_context = new net_instaweb::NgxServerContext(

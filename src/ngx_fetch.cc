@@ -153,10 +153,12 @@ namespace net_instaweb {
       return;
     }
 
-    if (timeout_event_->timer_set) {
+    if (timeout_event_ && timeout_event_->timer_set) {
       ngx_del_timer(timeout_event_);
     }
-    ngx_close_connection(connection_);
+    if (connection_) {
+      ngx_close_connection(connection_);
+    }
 
     async_fetch_->Done(success);
     async_fetch_ = NULL;
@@ -169,7 +171,7 @@ namespace net_instaweb {
       }
       fetcher_->FetchComplete(this);
     }
-    delete this;
+    //delete this;
   }
 
   size_t NgxFetch::bytes_received() { return bytes_received_; }
