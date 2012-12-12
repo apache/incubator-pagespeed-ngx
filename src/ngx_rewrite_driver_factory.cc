@@ -338,4 +338,11 @@ bool NgxRewriteDriverFactory::InitNgxUrlAsyncFecther() {
   return ngx_url_async_fetcher_->Init();
 }
 
+bool NgxRewriteDriverFactory::HasResolver() {
+  if (ngx_url_async_fetcher_ != NULL && resolver_ == NULL) {
+    return false;
+  }
+  return true;
+}
+
 }  // namespace net_instaweb

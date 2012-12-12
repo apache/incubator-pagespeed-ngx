@@ -92,7 +92,7 @@ namespace net_instaweb {
       url_.url.data = (u_char *)(proxy);
       url_.url.len = ngx_strlen(proxy);
     }
-    mutex_ = thread_system->NewMutex();
+    mutex_ = thread_system_->NewMutex();
     log_ = log;
     pool_ = NULL;
     command_connection_ = NULL;

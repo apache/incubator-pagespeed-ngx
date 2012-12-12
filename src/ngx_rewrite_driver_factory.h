@@ -73,7 +73,10 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Initializes the StaticJavascriptManager.
   virtual void InitStaticJavascriptManager(
       StaticJavascriptManager* static_js_manager);
+  // Initalizes the NgxUrlAsyncFetcher.
   bool InitNgxUrlAsyncFecther();
+  // Check resolver configed or not.
+  bool HasResolver();
 
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
