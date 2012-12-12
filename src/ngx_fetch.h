@@ -46,13 +46,12 @@ namespace net_instaweb {
       NgxFetch(const GoogleString& url,
                AsyncFetch* async_fetch,
                MessageHandler* message_handler,
-               int64 timeout_ms);
+               ngx_msec_t timeout_ms,
+               ngx_log_t* log);
       ~NgxFetch();
 
       // Start the fetch
       bool Start(NgxUrlAsyncFetcher* fetcher);
-      // Do the initialized work and start the resolver work.
-      bool Init();
       // Show the completed url, for logging purpose
       const char* str_url();
       // This fetch task is done. Call the done of async_fetch.
@@ -67,22 +66,6 @@ namespace net_instaweb {
       int64 fetch_end_ms();
       void set_fetch_end_ms(int64 end_ms);
       MessageHandler* message_handler();
-      NgxUrlAsyncFetcher* get_fetcher() {
-        return fetcher_;
-      }
-
-      AsyncFetch* get_async_fetch() {
-        return async_fetch_;
-      }
-
-      // Prepare the request and write it to remote server. 
-      int InitRquest();
-      // Create the connection with remote server.
-      int Connect();
-      void set_response_handler(response_handler_pt handler) {
-        response_handler = handler;
-      }
-
       int get_major_version() {
         return static_cast<int>(status_->http_version / 1000);
       }
@@ -97,9 +80,16 @@ namespace net_instaweb {
 
     private:
       response_handler_pt response_handler;
-
+      // Do the initialized work and start the resolver work.
+      bool Init();
       bool ParseUrl();
-      
+      // Prepare the request and write it to remote server. 
+      int InitRquest();
+      // Create the connection with remote server.
+      int Connect();
+      void set_response_handler(response_handler_pt handler) {
+        response_handler = handler;
+      }
       // Only the Static functions could be used in callbacks.
       static void NgxFetchResolveDone(ngx_resolver_ctx_t* ctx);
       

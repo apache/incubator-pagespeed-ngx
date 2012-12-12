@@ -55,7 +55,8 @@ namespace net_instaweb {
   NgxFetch::NgxFetch(const GoogleString& url,
     AsyncFetch* async_fetch,
     MessageHandler* message_handler,
-    int64 timeout_ms)
+    ngx_msec_t timeout_ms,
+    ngx_log_t* log)
   : str_url_(url),
     fetcher_(NULL),
     async_fetch_(async_fetch),
@@ -67,7 +68,7 @@ namespace net_instaweb {
     done_(false),
     content_length_(0) {
     ngx_memzero(&url_, sizeof(url_));
-    log_ = NULL;
+    log_ = log;
     pool_ = NULL;
     timeout_event_ = NULL;
     connection_ = NULL;
@@ -88,7 +89,6 @@ namespace net_instaweb {
   // This function is call by NgxUrlAsyncFetcher::StartFetch.
   bool NgxFetch::Start(NgxUrlAsyncFetcher* fetcher) {
     fetcher_ = fetcher;
-    log_ = ngx_cycle->log;
     if (!Init()) {
       CallbackDone(false);
       return false;

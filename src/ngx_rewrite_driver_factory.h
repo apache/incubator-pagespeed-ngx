@@ -54,7 +54,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   static const char kStaticJavaScriptPrefix[];
   static const char kMemcached[];
 
-  NgxRewriteDriverFactory(ngx_log_t* log, ngx_msec_t resolver_timeout,
+  NgxRewriteDriverFactory(ngx_msec_t resolver_timeout,
       ngx_resolver_t* resolver);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();

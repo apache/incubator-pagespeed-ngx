@@ -73,7 +73,7 @@ class Writer;
 
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
-NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_log_t* log,
+NgxRewriteDriverFactory::NgxRewriteDriverFactory(
     ngx_msec_t resolver_timeout, ngx_resolver_t* resolver) :
   shared_mem_runtime_(new NullSharedMem()),
   cache_hasher_(20) {
@@ -87,7 +87,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_log_t* log,
   timer_ = DefaultTimer();
   apr_initialize();
   apr_pool_create(&pool_,NULL);
-  log_ = log;
+  log_ = NULL;
   resolver_timeout_ = resolver_timeout_;
   resolver_ = resolver;
   ngx_url_async_fetcher_ = NULL;
@@ -335,6 +335,7 @@ bool NgxRewriteDriverFactory::InitNgxUrlAsyncFecther() {
   if (ngx_url_async_fetcher_ == NULL) {
     return true;
   }
+  log_ = ngx_cycle->log;
   return ngx_url_async_fetcher_->Init();
 }
 
