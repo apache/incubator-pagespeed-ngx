@@ -114,11 +114,13 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
     bool shutdown() const { return shutdown_; }
     void set_shutdown(bool s) { shutdown_ = s; }
 
+
   private:
     static void TimeoutHandler(ngx_event_t* tev);
     friend class NgxFetch;
 
     NgxFetchPool active_fetches_;
+    // Add the pending task to this list
     NgxFetchPool pending_fetches_;
     ngx_url_t url_;
 
@@ -128,6 +130,8 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
     int64 byte_count_;
     ThreadSystem* thread_system_;
     MessageHandler* message_handler_;
+    // Protect the member variable in this class
+    // active_fetches, pending_fetches
     ThreadSystem::CondvarCapableMutex* mutex_;
 
     ngx_pool_t* pool_;

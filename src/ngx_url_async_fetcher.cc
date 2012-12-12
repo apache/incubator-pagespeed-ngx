@@ -92,7 +92,7 @@ namespace net_instaweb {
       url_.url.data = (u_char *)(proxy);
       url_.url.len = ngx_strlen(proxy);
     }
-    mutex_ = thread_system->NewMutex();
+    mutex_ = thread_system_->NewMutex();
     log_ = log;
     pool_ = NULL;
     command_connection_ = NULL;
@@ -161,7 +161,6 @@ namespace net_instaweb {
       ngx_log_error(NGX_LOG_ERR, log_, 0, "nonblocking pipe[0] failed");
       return false;
     }
-
     if (ngx_nonblocking(pipe_fds[1]) == -1) {
       ngx_log_error(NGX_LOG_ERR, log_, 0, "nonblocking pipe[1] failed");
       return false;
@@ -291,6 +290,8 @@ namespace net_instaweb {
     return;
   }
 
+  // It's locked in the CommandHandler.
+  // Don't need add the mutex here.
   bool NgxUrlAsyncFetcher::StartFetch(NgxFetch* fetch) {
     bool started = !shutdown_ && fetch->Start(this);
     if (started) {

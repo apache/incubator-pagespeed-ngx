@@ -17,7 +17,7 @@
 // Author: x.dinic@gmail.com (Junmin Xiong)
 //
 //  - The fetch started by the main thread.
-//  - Resolver event would be hooked when started a NgxFetch. It could
+//  - Resolver event would be hooked when a NgxFetch starting. It could
 //    lookup the IP of the domain asynchronously from the DNS server.
 //  - When NgxFetchResolveDone is called, It will create the request and the
 //    connection. Add the write and read event to the epoll structure.
@@ -97,14 +97,13 @@ namespace net_instaweb {
     return true;
   }
 
-  // Do all the intialized work for this fetch. It create the pool,
+  // Do all the intialized work for this fetch. It creates the pool,
   // parse the url, add the timeout event and hook the DNS resolver handler.
   bool NgxFetch::Init() {
     pool_ = ngx_create_pool(12288, log_);
     if (pool_ == NULL) { return false; }
 
     if (!ParseUrl()) {
-      CallbackDone(false);
       return false;
     }
     timeout_event_ = static_cast<ngx_event_t *>(
@@ -207,6 +206,9 @@ namespace net_instaweb {
     } else if (ngx_strncasecmp(url_.url.data, (u_char*)"https://", 8) == 0) {
       add = 8;
       port = 443;
+    } else {
+      add = 0;
+      port = 80;
     }
 
     url_.url.data += add;
@@ -267,7 +269,8 @@ namespace net_instaweb {
 
     out_->last = ngx_cpymem(out_->last, "GET ", 4);
     out_->last = ngx_cpymem(out_->last, url_.uri.data, url_.uri.len);
-    out_->last = ngx_cpymem(out_->last, " HTTP/1.1\r\n", 11);
+    //
+    out_->last = ngx_cpymem(out_->last, " HTTP/1.0\r\n", 11);
 
     for (int i = 0; i < request_headers->NumAttributes(); i++) {
       const GoogleString& name = request_headers->Name(i);
@@ -295,8 +298,6 @@ namespace net_instaweb {
   }
 
   int NgxFetch::Connect() {
-    
-
     ngx_peer_connection_t pc;
     ngx_memzero(&pc, sizeof(pc));
     pc.sockaddr = (struct sockaddr *) &sin_;
@@ -315,12 +316,7 @@ namespace net_instaweb {
     connection_->read->handler = NgxFetchRead;
     connection_->data = this;
 
-    //if (ngx_handle_write_event(connection_->write, 0) != NGX_OK) {
-    //if (ngx_add_event(connection_->write, NGX_WRITE_EVENT, 0) != NGX_OK) {
-    //  return NGX_ERROR;
-    //}
-
-    //TODO(junmin): set write timeout when rc == NGX_AGAIN
+    //TODO(junmin): set connect timeout when rc == NGX_AGAIN
     return rc;
   }
 
