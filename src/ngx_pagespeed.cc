@@ -320,7 +320,7 @@ ps_configure(ngx_conf_t* cf,
              net_instaweb::MessageHandler* handler) {
   if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
-    //TODO (oschaaf): these should be deleted on process exit
+    // TODO(oschaaf): these should be deleted on process exit
     *options = new net_instaweb::NgxRewriteOptions();
   }
 
