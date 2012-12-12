@@ -348,6 +348,7 @@ void NgxRewriteDriverFactory::ShutDown() {
   RewriteDriverFactory::ShutDown();
   
   // Take down any memcached threads.
+  // TODO(oschaaf): should be refactored with the Apache shutdown code
   memcached_pool_.reset(NULL);
 }
 
