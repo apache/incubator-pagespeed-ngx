@@ -51,11 +51,12 @@ namespace net_instaweb {
 
       // Start the fetch
       bool Start(NgxUrlAsyncFetcher* fetcher);
-      // Do the init work and start the resolver work.
+      // Do the initialized work and start the resolver work.
       bool Init();
       // Show the completed url, for logging purpose
       const char* str_url();
-      // This task is done.
+      // This fetch task is done. Call the done of async_fetch.
+      // It will copy the buffer to cache.
       void CallbackDone(bool success);
 
       // Show the bytes received
@@ -74,7 +75,7 @@ namespace net_instaweb {
         return async_fetch_;
       }
 
-      // Prepare the request and write it. 
+      // Prepare the request and write it to remote server. 
       int InitRquest();
       // Create the connection with remote server.
       int Connect();

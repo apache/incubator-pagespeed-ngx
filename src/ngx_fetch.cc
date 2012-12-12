@@ -17,7 +17,7 @@
 // Author: x.dinic@gmail.com (Junmin Xiong)
 //
 //  - The fetch started by the main thread.
-//  - Resolver event would be hooked when started a NgxFetch. It could
+//  - Resolver event would be hooked when a NgxFetch starting. It could
 //    lookup the IP of the domain asynchronously from the DNS server.
 //  - When NgxFetchResolveDone is called, It will create the request and the
 //    connection. Add the write and read event to the epoll structure.
@@ -97,14 +97,13 @@ namespace net_instaweb {
     return true;
   }
 
-  // Do all the intialized work for this fetch. It create the pool,
+  // Do all the intialized work for this fetch. It creates the pool,
   // parse the url, add the timeout event and hook the DNS resolver handler.
   bool NgxFetch::Init() {
     pool_ = ngx_create_pool(12288, log_);
     if (pool_ == NULL) { return false; }
 
     if (!ParseUrl()) {
-      CallbackDone(false);
       return false;
     }
     timeout_event_ = static_cast<ngx_event_t *>(
@@ -168,9 +167,6 @@ namespace net_instaweb {
         async_fetch_->extra_response_headers()->SetOriginalContentLength(
             bytes_received_);
       }
-      if (timeout_event_->timer_set) {
-        ngx_del_timer(timeout_event_);
-      }
       fetcher_->FetchComplete(this);
     }
     delete this;
@@ -207,6 +203,9 @@ namespace net_instaweb {
     } else if (ngx_strncasecmp(url_.url.data, (u_char*)"https://", 8) == 0) {
       add = 8;
       port = 443;
+    } else {
+      add = 0;
+      port = 80;
     }
 
     url_.url.data += add;
@@ -267,7 +266,8 @@ namespace net_instaweb {
 
     out_->last = ngx_cpymem(out_->last, "GET ", 4);
     out_->last = ngx_cpymem(out_->last, url_.uri.data, url_.uri.len);
-    out_->last = ngx_cpymem(out_->last, " HTTP/1.1\r\n", 11);
+    //
+    out_->last = ngx_cpymem(out_->last, " HTTP/1.0\r\n", 11);
 
     for (int i = 0; i < request_headers->NumAttributes(); i++) {
       const GoogleString& name = request_headers->Name(i);
@@ -295,8 +295,6 @@ namespace net_instaweb {
   }
 
   int NgxFetch::Connect() {
-    
-
     ngx_peer_connection_t pc;
     ngx_memzero(&pc, sizeof(pc));
     pc.sockaddr = (struct sockaddr *) &sin_;
@@ -315,32 +313,23 @@ namespace net_instaweb {
     connection_->read->handler = NgxFetchRead;
     connection_->data = this;
 
-    //if (ngx_handle_write_event(connection_->write, 0) != NGX_OK) {
-    //if (ngx_add_event(connection_->write, NGX_WRITE_EVENT, 0) != NGX_OK) {
-    //  return NGX_ERROR;
-    //}
-
-    //TODO(junmin): set write timeout when rc == NGX_AGAIN
+    //TODO(junmin): set connect timeout when rc == NGX_AGAIN
     return rc;
   }
 
   // When the fetch sends the request completely, it will hook the read event,
   // and prepare to parse the response.
-  // TODO(jummin): add write timeout when writer return NGX_AGAIN.
   void NgxFetch::NgxFetchWrite(ngx_event_t* wev) {
     ngx_connection_t* c = static_cast<ngx_connection_t*>(wev->data);
     NgxFetch* fetch = static_cast<NgxFetch*>(c->data);
     ngx_buf_t* out = fetch->out_;
-
-    // TODO(junmin): set write event timeout
 
     while (out->pos < out->last) {
       int n = c->send(c, out->pos, out->last - out->pos);
       if (n >= 0) {
         out->pos += n;
       } else if (n == NGX_AGAIN) {
-        // add send timeout, 10 milliseconds is used for test
-        // ngx_add_timer(c->write, 10);
+        // TODO(junmin): set write event timeout
         if (ngx_handle_write_event(c->write, 0) != NGX_OK) {
           fetch->CallbackDone(false);
         }
@@ -367,23 +356,24 @@ namespace net_instaweb {
     for (;;) {
       int n = c->recv(c, fetch->in_->start, fetch->in_->end - fetch->in_->start);
       if (n == NGX_AGAIN) {
-        // rev->timeout == 1 if reponse send by chunk
-        if (fetch->done_ || rev->timedout) {
-          fetch->CallbackDone(true);
-          return;
-        }
         break;
       }
 
       if (n == 0) {
-        //connection is closed
-        fetch->CallbackDone(true);
+        // connection is closed prematurely by remote server
+        fetch->CallbackDone(false);
         return;
       } else if (n > 0) {
         fetch->in_->pos = fetch->in_->start;
         fetch->in_->last = fetch->in_->start + n;
         if (!fetch->response_handler(c)) {
           fetch->CallbackDone(false);
+          return;
+        }
+
+        if (fetch->done_) {
+          fetch->CallbackDone(true);
+          return;
         }
       }
 
@@ -392,15 +382,16 @@ namespace net_instaweb {
       }
     }
 
+    if (fetch->done_) {
+      fetch->CallbackDone(true);
+      return;
+    }
+
     if (ngx_handle_read_event(rev, 0) != NGX_OK) {
       fetch->CallbackDone(false);
     }
 
-    // Add the read timeout when connection isn't ready
-    if (rev->active) {
-      // is 10 OK?
-      ngx_add_timer(rev, 10000);
-    }
+    // TODO(junmin): set read event timeout
   }
 
   // Parse the status line: "HTTP/1.1 200 OK\r\n"
@@ -475,9 +466,6 @@ namespace net_instaweb {
 
   void NgxFetch::NgxFetchTimeout(ngx_event_t* tev) {
     NgxFetch* fetch = static_cast<NgxFetch*>(tev->data);
-    if (tev->timer_set) {
-      ngx_del_timer(tev);
-    }
     fetch->CallbackDone(false);
   }
 
