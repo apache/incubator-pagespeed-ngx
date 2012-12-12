@@ -125,6 +125,12 @@ class NgxRewriteOptions : public RewriteOptions {
   void set_memcached_threads(int x) {
     set_option(x, &memcached_threads_);
   }
+  const GoogleString& fetcher_proxy() const {
+    return fetcher_proxy_.value();
+  }
+  void set_fetcher_proxy(GoogleString x) {
+    set_option(x, &fetcher_proxy_);
+  }
  private:
   // Used by class_name() and DynamicCast() to provide error checking.
   static const char kClassName[];
@@ -179,6 +185,8 @@ class NgxRewriteOptions : public RewriteOptions {
   // ignoring case.
   bool IsDirective(StringPiece config_directive, StringPiece compare_directive);
 
+  // TODO(jefftk): support fetch proxy in server and location blocks.
+  Option<GoogleString> fetcher_proxy_;
   Option<GoogleString> file_cache_path_;
   Option<int64> file_cache_clean_inode_limit_;
   Option<int64> file_cache_clean_interval_ms_;

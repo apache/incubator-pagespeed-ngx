@@ -453,7 +453,8 @@ ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
     // we're done with it.  That never happens, though, because this is the
     // top-level config and so sticks around as long as we're running.
 
-    cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
+    cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
+        parent_cfg_s->options);
   }
 
   cfg_s->server_context = new net_instaweb::NgxServerContext(
