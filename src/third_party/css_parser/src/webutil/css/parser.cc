@@ -204,43 +204,53 @@ void Parser::SkipComment() {
 // skips until delim is seen or end-of-stream. returns if delim is actually
 // seen.
 bool Parser::SkipPastDelimiter(char delim) {
+  // Stack of delims to look for. It starts just looking for top delim,
+  // but if ({[ are encountered, their respective closing delims are added
+  // to the stack.
+  string delim_stack;
+  delim_stack.push_back(delim);
+
   SkipSpace();
-  while (in_ < end_ && *in_ != delim) {
-    switch (*in_) {
-      case '(':
-        ++in_;
-        SkipPastDelimiter(')');
-        break;
-      case '[':
-        ++in_;
-        SkipPastDelimiter(']');
-        break;
-      case '{':
-        ++in_;
-        SkipPastDelimiter('}');
-        break;
-      case '\'':
-        // Ignore results.
-        ParseString<'\''>();
-        break;
-      case '"':
-        // Ignore results.
-        ParseString<'"'>();
-        break;
-      default:
-        ++in_;
-        break;
+  while (in_ < end_) {
+    if (*in_ == delim_stack[delim_stack.size() - 1]) {
+      ++in_;
+      delim_stack.erase(delim_stack.size() - 1);
+      if (delim_stack.empty()) {
+        // Found original delim.
+        return true;
+      }
+    } else {
+      switch (*in_) {
+        case '(':
+          ++in_;
+          delim_stack.push_back(')');
+          break;
+        case '[':
+          ++in_;
+          delim_stack.push_back(']');
+          break;
+        case '{':
+          ++in_;
+          delim_stack.push_back('}');
+          break;
+        case '\'':
+          // Ignore results.
+          ParseString<'\''>();
+          break;
+        case '"':
+          // Ignore results.
+          ParseString<'"'>();
+          break;
+        default:
+          ++in_;
+          break;
+      }
     }
     SkipSpace();  // Skips comments too.
   }
 
-  if (Done()) {
-    return false;
-  } else {
-    DCHECK_EQ(delim, *in_);
-    ++in_;
-    return true;
-  }
+  DCHECK(Done());
+  return false;
 }
 
 // returns true if there might be a token to read

@@ -30,7 +30,7 @@
 namespace Css {
 
 class ParserTest : public testing::Test {
- protected:
+ public:
   // Accessor for private method.
   Value* ParseAny(Parser* p) {
     return p->ParseAny();
@@ -2103,6 +2103,15 @@ TEST_F(ParserTest, SkipPastDelimiter) {
   FailureSkipPast('}', "'}");
   // Pattern:           ABC--CB-D-E----EDA--F----
   FailureSkipPast('}', "(([))])}{)'})\"'}))\"}'[]");
+}
+
+// Make sure we don't allow SkipPastDelimiter to recurse arbitrarily deep
+// and fill the stack with stack frames.
+// See b/7733984
+TEST_F(ParserTest, SkipPastDelimiterRecusiveDepth) {
+  string bad(1000000, '{');
+  FailureSkipPast('}', bad);
+
 }
 
 }  // namespace Css
