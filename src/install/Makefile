@@ -498,7 +498,7 @@ enable_ports_and_file_access :
 	for dir in $(MOD_PAGESPEED_CACHE) \
 	           $(MOD_PAGESPEED_CACHE)-alt; do \
 	  mkdir $$dir; \
-	  chown $(APACHE_USER) $dir; \
+	  chown $(APACHE_USER) $$dir; \
 	  chcon -R -t httpd_sys_content_t $$dir; \
 	done
 
