@@ -33,6 +33,7 @@
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/scheduler_thread.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
@@ -73,9 +74,10 @@ class Writer;
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
-  shared_mem_runtime_(new NullSharedMem()),
-  cache_hasher_(20),
-  main_conf_(main_conf) {
+    shared_mem_runtime_(new NullSharedMem()),
+    cache_hasher_(20),
+    main_conf_(main_conf),
+    threads_started_(false) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
@@ -155,6 +157,7 @@ Timer* NgxRewriteDriverFactory::DefaultTimer() {
 }
 
 NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
+  CHECK(false);
   return NULL;
 }
 
@@ -328,6 +331,17 @@ CacheInterface* NgxRewriteDriverFactory::GetFilesystemMetadataCache(
   }
 
   return NULL;
+}
+
+void NgxRewriteDriverFactory::StartThreads() {
+  if (threads_started_) {
+    return;
+  }
+  SchedulerThread* thread = new SchedulerThread(thread_system(), scheduler());
+  bool ok = thread->Start();
+  CHECK(ok) << "Unable to start scheduler thread";
+  defer_cleanup(thread->MakeDeleter());
+  threads_started_ = true;
 }
 
 }  // namespace net_instaweb
