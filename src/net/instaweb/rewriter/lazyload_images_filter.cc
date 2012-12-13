@@ -163,6 +163,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
       StringPiece url(src->DecodedValueOrNull());
       if (!url.empty() && !url.starts_with(kData) &&
           element->FindAttribute(HtmlName::kOnload) == NULL &&
+          element->FindAttribute(HtmlName::kDataSrc) == NULL &&
           element->FindAttribute(HtmlName::kPagespeedLazySrc) == NULL &&
           !element->DeleteAttribute(HtmlName::kPagespeedNoDefer)) {
         // Lazily load the image if it has a src, does not have an onload /

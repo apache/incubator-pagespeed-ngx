@@ -127,6 +127,7 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
       "</marquee>"
       "<img src=\"1.jpg\" />"
       "<img src=\"1.jpg\" pagespeed_no_defer/>"
+      "<img src=\"1.jpg\" data-src=\"2.jpg\"/>"
       "<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>"
       "<img src=\"2's.jpg\" height=\"300\" width=\"123\" />"
       "<input src=\"12.jpg\"type=\"image\" />"
@@ -147,7 +148,8 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
              "</marquee>",
              GetLazyloadScriptHtml(),
              GenerateRewrittenImageTag("img", "1.jpg", ""),
-             "<img src=\"1.jpg\"/>",
+             "<img src=\"1.jpg\"/>"
+             "<img src=\"1.jpg\" data-src=\"2.jpg\"/>",
              StrCat("<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
                     GenerateRewrittenImageTag("img", "2's.jpg",
                                               "height=\"300\" width=\"123\" "),

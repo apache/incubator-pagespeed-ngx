@@ -72,6 +72,7 @@ class HtmlName {
     kContent,
     kControls,
     kData,
+    kDataSrc,
     kDd,
     kDeclare,
     kDefaultchecked,

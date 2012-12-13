@@ -59,6 +59,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "content",                HtmlName::kContent
 "controls",               HtmlName::kControls
 "data",                   HtmlName::kData
+"data-src",               HtmlName::kDataSrc
 "dd",                     HtmlName::kDd
 "declare",                HtmlName::kDeclare
 "defaultchecked",         HtmlName::kDefaultchecked
