@@ -146,7 +146,7 @@ else
 MODS_ENABLED_INSTALL_COMMANDS = \
 	rm -f $(MODS_ENABLED_DIR)/pagespeed.load ; \
 	cp -f $(STAGING_DIR)/pagespeed.load $(MODS_AVAILABLE_DIR) ; \
-	cd $(MODS_ENABLED_DIR) && ln -s ../mods_available/pagespeed.load ; \
+	cd $(MODS_ENABLED_DIR) && ln -s ../mods-available/pagespeed.load ; \
 	rm -f $(MODS_ENABLED_DIR)/headers.load ; \
 	cd $(MODS_ENABLED_DIR) && ln -s ../mods-available/headers.load ; \
 	rm -f $(MODS_ENABLED_DIR)/deflate.load ; \
