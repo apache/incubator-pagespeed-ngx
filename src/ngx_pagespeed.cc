@@ -538,7 +538,7 @@ ps_release_request_context(void* data) {
   // then HandleDone() hasn't been called yet and we need the base fetch to wait
   // for that and then delete itself.
   if (ctx->base_fetch != NULL) {
-    ctx->base_fetch->DeleteWhenDone();
+    ctx->base_fetch->Release();
     ctx->base_fetch = NULL;
   }
 
