@@ -16,7 +16,9 @@
 
 // Author: x.dinic@gmail.com(Junmin Xiong)
 //
-// Fetch the resources asynchronously in Nginx. The fetcher runs in a thread.
+// Fetch the resources asynchronously in Nginx. The fetcher is called in
+// the rewrite thread.
+//
 // It can communicate with Nginx by pipe. One pipe for one fetcher.
 // When new url fetch comes, Fetcher will add it to the pending queue and
 // notify the Nginx thread to start the Fetch event. All the events are hooked
@@ -71,7 +73,7 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
                        MessageHandler* message_handler,
                        AsyncFetch* callback);
 
-    // send the command from the fetcher thread to main thread
+    // send the command from the current thread to main thread
     bool SendCmd(const char command);
     // the read handler in the main thread
     static void CommandHandler(ngx_event_t* cmdev);
