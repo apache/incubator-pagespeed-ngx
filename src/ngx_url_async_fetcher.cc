@@ -201,7 +201,7 @@ namespace net_instaweb {
       SendCmd('S');
   }
 
-  // It's called in the Fetcher thread. All the fetches are started at
+  // It's called in the rewrite thread. All the fetches are started at
   // this function. It will notify the main thread to start the fetch job.
   void NgxUrlAsyncFetcher::Fetch(const GoogleString& url,
                                  MessageHandler* message_handler,
