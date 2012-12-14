@@ -125,7 +125,6 @@ void RewriteTestBase::Init() {
   other_factory_->SetStatistics(statistics_.get());
   server_context_ = factory_->CreateServerContext();
   other_server_context_ = other_factory_->CreateServerContext();
-  other_rewrite_driver_ = MakeDriver(other_server_context_, other_options_);
   active_server_ = kPrimary;
 }
 
@@ -137,11 +136,13 @@ RewriteTestBase::~RewriteTestBase() {
 void RewriteTestBase::SetUp() {
   HtmlParseTestBaseNoAlloc::SetUp();
   rewrite_driver_ = MakeDriver(server_context_, options_);
+  other_rewrite_driver_ = MakeDriver(other_server_context_, other_options_);
 }
 
 void RewriteTestBase::TearDown() {
   if (use_managed_rewrite_drivers_) {
     factory_->ShutDown();
+    other_factory_->ShutDown();
   } else {
     rewrite_driver_->WaitForShutDown();
 
@@ -151,11 +152,12 @@ void RewriteTestBase::TearDown() {
     factory_->ShutDown();
     rewrite_driver_->Clear();
     delete rewrite_driver_;
+
+    other_rewrite_driver_->WaitForShutDown();
+    other_factory_->ShutDown();
+    other_rewrite_driver_->Clear();
+    delete other_rewrite_driver_;
   }
-  other_rewrite_driver_->WaitForShutDown();
-  other_factory_->ShutDown();
-  other_rewrite_driver_->Clear();
-  delete other_rewrite_driver_;
   HtmlParseTestBaseNoAlloc::TearDown();
 }
 
