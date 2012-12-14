@@ -69,6 +69,13 @@ In your nginx.conf, add to the main or server block:
     pagespeed_cache /path/to/cache/dir;
     error_log logs/error.log debug;
 
+In every server block where pagespeed is enabled add:
+
+    # This is a temporary workaround that ensures requests for pagespeed
+    # optimized resources go to the pagespeed handler.
+    location ~ "\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+" { }
+    location ~ "^/ngx_pagespeed_static/" { }
+
 To confirm that the module is loaded, fetch a page and check that you see the
 `X-Page-Speed` header:
 
