@@ -1326,9 +1326,10 @@ void RewriteDriver::SetSessionFetcher(UrlAsyncFetcher* f) {
   owned_url_async_fetchers_.push_back(f);
 }
 
-CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
+CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
+    UrlAsyncFetcher* base_fetcher) {
   CacheUrlAsyncFetcher* cache_fetcher = new CacheUrlAsyncFetcher(
-      server_context_->http_cache(), url_async_fetcher_);
+      server_context_->http_cache(), base_fetcher);
   cache_fetcher->set_respect_vary(options()->respect_vary());
   cache_fetcher->set_ignore_recent_fetch_failed(true);
   cache_fetcher->set_default_cache_html(options()->default_cache_html());
@@ -1341,6 +1342,14 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
   cache_fetcher->set_serve_stale_if_fetch_error(
       options()->serve_stale_if_fetch_error());
   return cache_fetcher;
+}
+
+CacheUrlAsyncFetcher* RewriteDriver::CreateCacheFetcher() {
+  return CreateCustomCacheFetcher(url_async_fetcher_);
+}
+
+CacheUrlAsyncFetcher* RewriteDriver::CreateCacheOnlyFetcher() {
+  return CreateCustomCacheFetcher(NULL);
 }
 
 bool RewriteDriver::DecodeOutputResourceNameHelper(
@@ -1688,24 +1697,35 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
   } else if (options()->ajax_rewriting_enabled()) {
     // This is an ajax resource.
     handled = true;
-    StringPiece base = gurl.AllExceptLeaf();
-    ResourceNamer namer;
-    output_resource.reset(new OutputResource(server_context_, base, base,
-        base, namer, options(), kRewrittenResource));
-    SetBaseUrlForFetch(url);
-    fetch_queued_ = true;
-    AjaxRewriteContext* context = new AjaxRewriteContext(this, url);
-    if (!context->Fetch(output_resource, async_fetch, message_handler())) {
-      // RewriteContext::Fetch can fail if the input URLs are undecodeable
-      // or unfetchable. There is no decoding in this case, but unfetchability
-      // is possible if we're given an https URL but have a fetcher that
-      // can't do it. In that case, the only thing we can do is fail
-      // and cleanup.
-      async_fetch->Done(false);
-      FetchComplete();
-    }
+    bool perform_http_fetch = true;
+    // TODO(sligocki): Get rid of this fallback and make all callers call
+    // FetchInPlaceResource when that is what they want.
+    FetchInPlaceResource(gurl, perform_http_fetch, async_fetch);
   }
   return handled;
+}
+
+void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
+                                         bool perform_http_fetch,
+                                         AsyncFetch* async_fetch) {
+  CHECK(gurl.is_valid()) << "Invalid URL " << gurl.spec_c_str();
+  StringPiece base = gurl.AllExceptLeaf();
+  ResourceNamer namer;
+  OutputResourcePtr output_resource(new OutputResource(
+      server_context_, base, base, base, namer, options(), kRewrittenResource));
+  SetBaseUrlForFetch(gurl.Spec());
+  fetch_queued_ = true;
+  AjaxRewriteContext* context = new AjaxRewriteContext(this, gurl.Spec());
+  context->set_perform_http_fetch(perform_http_fetch);
+  if (!context->Fetch(output_resource, async_fetch, message_handler())) {
+    // RewriteContext::Fetch can fail if the input URLs are undecodeable
+    // or unfetchable. There is no decoding in this case, but unfetchability
+    // is possible if we're given an https URL but have a fetcher that
+    // can't do it. In that case, the only thing we can do is fail
+    // and cleanup.
+    async_fetch->Done(false);
+    FetchComplete();
+  }
 }
 
 bool RewriteDriver::FetchOutputResource(

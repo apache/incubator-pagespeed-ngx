@@ -209,7 +209,8 @@ AjaxRewriteContext::AjaxRewriteContext(RewriteDriver* driver,
     : SingleRewriteContext(driver, NULL, NULL),
       driver_(driver),
       url_(url.data(), url.size()),
-      is_rewritten_(true) {
+      is_rewritten_(true),
+      perform_http_fetch_(true) {
   set_notify_driver_on_fetch_done(true);
 }
 
@@ -438,7 +439,11 @@ void AjaxRewriteContext::StartFetchReconstruction() {
     is_rewritten_ = false;
     RecordingFetch* fetch = new RecordingFetch(
         async_fetch(), resource, this, fetch_message_handler());
-    cache_fetcher_.reset(driver_->CreateCacheFetcher());
+    if (perform_http_fetch_) {
+      cache_fetcher_.reset(driver_->CreateCacheFetcher());
+    } else {
+      cache_fetcher_.reset(driver_->CreateCacheOnlyFetcher());
+    }
     cache_fetcher_->Fetch(url_, fetch_message_handler(), fetch);
   } else {
     LOG(ERROR) << "Expected one resource slot, but found " << num_slots()

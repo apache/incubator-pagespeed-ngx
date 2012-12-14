@@ -19,11 +19,12 @@
 #define NET_INSTAWEB_APACHE_SERF_URL_ASYNC_FETCHER_H_
 
 #include <vector>
+
+#include "net/instaweb/http/public/url_pollable_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/pool.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/http/public/url_pollable_async_fetcher.h"
 
 struct apr_pool_t;
 struct serf_context_t;

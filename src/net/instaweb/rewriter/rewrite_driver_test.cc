@@ -24,6 +24,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
@@ -34,11 +35,11 @@
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
-#include "net/instaweb/rewriter/public/resource.h"  // for ResourcePtr, etc
-#include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
@@ -50,6 +51,7 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/scheduler.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -1136,6 +1138,78 @@ TEST_F(RewriteDriverTest, SetSessionFetcherTest) {
   EXPECT_TRUE(FetchResourceUrl(url, &output, &response_headers));
   EXPECT_STREQ(kFetcher1Css, output);
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+}
+
+class InPlaceTest : public RewriteTestBase {
+ protected:
+  InPlaceTest() {}
+  virtual ~InPlaceTest() {}
+
+  bool FetchInPlaceResource(const StringPiece& url,
+                            bool perform_http_fetch,
+                            GoogleString* content,
+                            ResponseHeaders* response) {
+    GoogleUrl gurl(url);
+    content->clear();
+    StringAsyncFetch async_fetch(content);
+    async_fetch.set_response_headers(response);
+    rewrite_driver_->FetchInPlaceResource(gurl, perform_http_fetch,
+                                          &async_fetch);
+
+    // Make sure we let the rewrite complete, and also wait for the driver to be
+    // idle so we can reuse it safely.
+    rewrite_driver_->WaitForShutDown();
+    rewrite_driver_->Clear();
+
+    EXPECT_TRUE(async_fetch.done());
+    return async_fetch.done() && async_fetch.success();
+  }
+
+  bool TryFetchInPlaceResource(const StringPiece& url,
+                               bool perform_http_fetch) {
+    GoogleString contents;
+    ResponseHeaders response;
+    return FetchInPlaceResource(url, perform_http_fetch, &contents, &response);
+  }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(InPlaceTest);
+};
+
+TEST_F(InPlaceTest, FetchInPlaceResource) {
+  AddFilter(RewriteOptions::kRewriteCss);
+
+  GoogleString url = "http://example.com/foo.css";
+  SetResponseWithDefaultHeaders(url, kContentTypeCss,
+                                ".a { color: red; }", 100);
+
+  // This will fail because cache is empty and we are not allowing HTTP fetch.
+  bool perform_http_fetch = false;
+  EXPECT_FALSE(TryFetchInPlaceResource(url, perform_http_fetch));
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  // Now we allow HTTP fetches and we expect success.
+  perform_http_fetch = true;
+  EXPECT_TRUE(TryFetchInPlaceResource(url, perform_http_fetch));
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  // We insert both original and rewritten resources.
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
+
+  // Now that we've loaded the resource into cache, we expect success.
+  perform_http_fetch = false;
+  EXPECT_TRUE(TryFetchInPlaceResource(url, perform_http_fetch));
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  ClearStats();
 }
 
 class RewriteDriverInhibitTest : public RewriteDriverTest {

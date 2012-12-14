@@ -43,7 +43,9 @@ class InputInfo;
 class MessageHandler;
 class RewriteDriver;
 class RewriteFilter;
+class Statistics;
 class UrlAsyncFetcher;
+class Variable;
 
 // A resource-slot created for an ajax rewrite. This has an empty render method.
 // Note that this class is usually used as a RefCountedPtr and gets deleted when
@@ -92,6 +94,9 @@ class AjaxRewriteContext : public SingleRewriteContext {
 
   static void InitStats(Statistics* statistics);
 
+  bool perform_http_fetch() const { return perform_http_fetch_; }
+  void set_perform_http_fetch(bool x) { perform_http_fetch_ = x; }
+
  private:
   friend class RecordingFetch;
   // Implements RewriteContext::Harvest().
@@ -124,6 +129,9 @@ class AjaxRewriteContext : public SingleRewriteContext {
   OutputResourcePtr output_resource_;
 
   scoped_ptr<UrlAsyncFetcher> cache_fetcher_;
+
+  // Should we fetch the contents if cache lookup fails?
+  bool perform_http_fetch_;
 
   DISALLOW_COPY_AND_ASSIGN(AjaxRewriteContext);
 };

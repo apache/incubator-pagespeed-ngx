@@ -93,6 +93,7 @@ if fgrep -q "# ModPagespeedStatistics off" $APACHE_DEBUG_PAGESPEED_CONF; then
   MACHINE_NAME=$(hostname)
   ALT_STAT_URL=$(echo $STATISTICS_URL | sed s#localhost#$MACHINE_NAME#)
 
+  echo "wget $ALT_STAT_URL >& $TEMPDIR/alt_stat_url.$$"
   wget $ALT_STAT_URL >& "$TEMPDIR/alt_stat_url.$$"
   check [ $? = 8 ]
   rm -f "$TEMPDIR/alt_stat_url.$$"
@@ -775,7 +776,7 @@ ModPagespeedFilters=rewrite_images"
     $WGET_DUMP $STATISTICS_URL > $NEWSTATS
     check_stat $OLDSTATS $NEWSTATS image_rewrites 1
     check_stat $OLDSTATS $NEWSTATS cache_hits 0
-    check_stat $OLDSTATS $NEWSTATS cache_misses 1
+    check_stat $OLDSTATS $NEWSTATS cache_misses 2
     check_stat $OLDSTATS $NEWSTATS cache_inserts 2
     check_stat $OLDSTATS $NEWSTATS num_rewrites_executed 1
 

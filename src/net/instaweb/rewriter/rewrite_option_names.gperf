@@ -25,13 +25,13 @@ struct OptionName {
   net_instaweb::RewriteOptions::OptionEnum option_enum;
 };
 %%
-"AjaxRewritingEnabled",                  RewriteOptions::kAjaxRewritingEnabled
 "AlwaysRewriteCss",                      RewriteOptions::kAlwaysRewriteCss
 "AnalyticsID",                           RewriteOptions::kAnalyticsID
 "AvoidRenamingIntrospectiveJavascript",  RewriteOptions::kAvoidRenamingIntrospectiveJavascript
 "BeaconUrl",                             RewriteOptions::kBeaconUrl
 "BlinkMaxHtmlSizeRewritable",            RewriteOptions::kBlinkMaxHtmlSizeRewritable
 "BlinkNonCacheablesForAllFamilies",      RewriteOptions::kBlinkNonCacheablesForAllFamilies
+"CacheSmallImagesUnrewritten",           RewriteOptions::kCacheSmallImagesUnrewritten
 "ClientDomainRewrite",                   RewriteOptions::kClientDomainRewrite
 "CombineAcrossPaths",                    RewriteOptions::kCombineAcrossPaths
 "FinderPropertiesCacheExpirationTimeMs", RewriteOptions::kFinderPropertiesCacheExpirationTimeMs,
@@ -64,23 +64,23 @@ struct OptionName {
 "ImageLimitResizeAreaPercent",           RewriteOptions::kImageLimitResizeAreaPercent
 "ImageMaxRewritesAtOnce",                RewriteOptions::kImageMaxRewritesAtOnce
 "ImagePreserveURLs",                     RewriteOptions::kImagePreserveURLs
+"ImageRecompressionQuality",             RewriteOptions::kImageRecompressionQuality
+"ImageResolutionLimitBytes",             RewriteOptions::kImageResolutionLimitBytes
 "ImageRetainColorProfile",               RewriteOptions::kImageRetainColorProfile
 "ImageRetainColorSampling",              RewriteOptions::kImageRetainColorSampling
 "ImageRetainExifData",                   RewriteOptions::kImageRetainExifData
-"ImageRecompressionQuality",             RewriteOptions::kImageRecompressionQuality
-"CacheSmallImagesUnrewritten",           RewriteOptions::kCacheSmallImagesUnrewritten
-"ImageResolutionLimitBytes",             RewriteOptions::kImageResolutionLimitBytes
 "ImageWebpRecompressionQuality",         RewriteOptions::kImageWebpRecompressionQuality
 "ImplicitCacheTtlMs",                    RewriteOptions::kImplicitCacheTtlMs
-"IncreaseSpeedTracking",                 RewriteOptions::kIncreaseSpeedTracking
+"InPlaceResourceOptimization",           RewriteOptions::kInPlaceResourceOptimization
 "InPlaceWaitForOptimized",               RewriteOptions::kInPlaceWaitForOptimized
+"IncreaseSpeedTracking",                 RewriteOptions::kIncreaseSpeedTracking
+"InlineOnlyCriticalImages",              RewriteOptions::kInlineOnlyCriticalImages
 "JpegRecompressionQuality",              RewriteOptions::kImageJpegRecompressionQuality
 "JsInlineMaxBytes",                      RewriteOptions::kJsInlineMaxBytes
 "JsOutlineMinBytes",                     RewriteOptions::kJsOutlineMinBytes
-"LazyloadImagesBlankUrl",                RewriteOptions::kLazyloadImagesBlankUrl
 "JsPreserveURLs",                        RewriteOptions::kJsPreserveURLs
 "LazyloadImagesAfterOnload",             RewriteOptions::kLazyloadImagesAfterOnload
-"InlineOnlyCriticalImages",              RewriteOptions::kInlineOnlyCriticalImages
+"LazyloadImagesBlankUrl",                RewriteOptions::kLazyloadImagesBlankUrl
 "LogRewriteTiming",                      RewriteOptions::kLogRewriteTiming
 "LowercaseHtmlNames",                    RewriteOptions::kLowercaseHtmlNames
 "MaxCacheableContentLength",             RewriteOptions::kMaxCacheableResponseContentLength
@@ -137,10 +137,10 @@ struct OptionName {
 "SlurpReadOnly",                         RewriteOptions::kSlurpReadOnly
 "Statistics",                            RewriteOptions::kStatisticsEnabled
 "StatisticsLogging",                     RewriteOptions::kStatisticsLoggingEnabled
-"StatisticsLoggingFile",                 RewriteOptions::kStatisticsLoggingFile
-"StatisticsLoggingIntervalMs",           RewriteOptions::kStatisticsLoggingIntervalMs
 "StatisticsLoggingChartsCSS",            RewriteOptions::kStatisticsLoggingChartsCSS
 "StatisticsLoggingChartsJS",             RewriteOptions::kStatisticsLoggingChartsJS
+"StatisticsLoggingFile",                 RewriteOptions::kStatisticsLoggingFile
+"StatisticsLoggingIntervalMs",           RewriteOptions::kStatisticsLoggingIntervalMs
 "TestProxy",                             RewriteOptions::kTestProxy
 "UseFixedUserAgentForBlinkCacheMisses",  RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses
 "UseSmartDiffInBlink",                   RewriteOptions::kUseSmartDiffInBlink

@@ -262,6 +262,8 @@ ModPagespeedCustomFetchHeader x-other False
   SetHandler mod_pagespeed_log_request_headers
 </Location>
 
+ModPagespeedInPlaceResourceOptimization on
+
 ModPagespeedRespectXForwardedProto on
 
 <Location ~ "/mod_pagespeed_test/response_headers.html*">
@@ -684,8 +686,10 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedImageMaxRewritesAtOnce 5
 #ALL_DIRECTIVES ModPagespeedImageRecompressionQuality 75
 #ALL_DIRECTIVES ModPagespeedImagePreserveURLs false
+#ALL_DIRECTIVES ModPagespeedImageWebpRecompressionQuality 85
 #ALL_DIRECTIVES ModPagespeedImgInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedImgMaxRewritesAtOnce 5
+#ALL_DIRECTIVES ModPagespeedInPlaceResourceOptimization on
 #ALL_DIRECTIVES ModPagespeedIncreaseSpeedTracking true
 #ALL_DIRECTIVES ModPagespeedInstallCrashHandler off
 #ALL_DIRECTIVES ModPagespeedJpegRecompressionQuality 80
@@ -729,13 +733,12 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedSlurpReadOnly true
 #ALL_DIRECTIVES ModPagespeedStatistics true
 #ALL_DIRECTIVES ModPagespeedStatisticsLogging true
-#ALL_DIRECTIVES ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
-#ALL_DIRECTIVES ModPagespeedStatisticsLoggingIntervalMs 3000
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingChartsCSS "example.com/css.css"
 #ALL_DIRECTIVES ModPagespeedStatisticsLoggingChartsJS "example.com/js.js"
+#ALL_DIRECTIVES ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
+#ALL_DIRECTIVES ModPagespeedStatisticsLoggingIntervalMs 3000
 #ALL_DIRECTIVES ModPagespeedSupportNoScriptEnabled true
 #ALL_DIRECTIVES ModPagespeedTestProxy off
 #ALL_DIRECTIVES ModPagespeedUrlValuedAttribute span src Hyperlink
 #ALL_DIRECTIVES ModPagespeedUsePerVHostStatistics on
-#ALL_DIRECTIVES ModPagespeedImageWebpRecompressionQuality 85
 #ALL_DIRECTIVES ModPagespeedXHeaderValue "test"

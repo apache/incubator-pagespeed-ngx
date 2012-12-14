@@ -20,12 +20,17 @@
 #ifndef NET_INSTAWEB_APACHE_INSTAWEB_HANDLER_H_
 #define NET_INSTAWEB_APACHE_INSTAWEB_HANDLER_H_
 
+#include "apr_pools.h"  // for apr_status_t
 // The httpd header must be after the instaweb_context.h. Otherwise,
 // the compiler will complain
 // "strtoul_is_not_a_portable_function_use_strtol_instead".
 #include "httpd.h"
 
 namespace net_instaweb {
+
+// Was this request made by mod_pagespeed itself? If so, we should not try to
+// handle it, just let Apache deal with it like normal.
+bool is_pagespeed_subrequest(request_rec* request);
 
 // Handle mod_pagespeed-specific requests. Handles both .pagespeed. rewritten
 // resources and /mod_pagespeed_statistics, /mod_pagespeed_beacon, etc.

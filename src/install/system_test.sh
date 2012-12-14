@@ -107,6 +107,36 @@ OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest" \
   $URL?ModPagespeedFilters=-rewrite_images)
 check_not_from "$OUT" fgrep -q "BikeCrashIcn.png.pagespeed.ic"
 
+start_test In-place resource optimization
+FETCHED=$OUTDIR/ipro
+URL=$EXAMPLE_ROOT/images/pagespeed_logo.png
+# Size between original image size and rewritten image size (in bytes).
+# Used to figure out whether the returned image was rewritten or not.
+THRESHOLD_SIZE=13000
+
+# Fetch HTML page which references image, this will ensure rewritten version
+# ends up in cache.
+# TODO(sligocki): Remove this once we have rewriting in the IPRO flow itself.
+fetch_until $EXAMPLE_ROOT/ 'grep -c pagespeed_logo.png.pagespeed' 1
+
+# Check that we compress the image (with IPRO).
+# Note: This requests $URL until it's size is less than $THRESHOLD_SIZE.
+fetch_until -save $URL "wc -c" $THRESHOLD_SIZE "--save-headers" "-lt"
+check_file_size $FETCH_UNTIL_OUTFILE -lt $THRESHOLD_SIZE
+# Check that resource is served with small Cache-Control header (since
+# we cannot cache-extend resources served under the original URL).
+# Note: tr -d '\r' is needed because HTTP spec requires lines to end in \r\n,
+# but sed does not treat that as $.
+check [ "$(tr -d '\r' < $FETCH_UNTIL_OUTFILE | \
+           sed -n 's/Cache-Control: max-age=\([0-9]*\)$/\1/p')" \
+        -lt 1000 ]
+rm -f $FETCH_UNTIL_OUTFILE
+
+# Check that the original image is greater than threshold to begin with.
+check $WGET_DUMP -O $FETCHED $URL?ModPagespeed=off
+check_file_size $FETCHED -gt $THRESHOLD_SIZE
+
+
 # Individual filter tests, in alphabetical order
 
 test_filter add_instrumentation adds 2 script tags
@@ -409,7 +439,7 @@ URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 echo $WGET_DUMP $URL
 fetch_until $URL \
-'grep -c Cuppa.png.*BikeCrashIcn.png.*IronChef2.gif.*.pagespeed.is.*.png' 1
+  'grep -c Cuppa.png.*BikeCrashIcn.png.*IronChef2.gif.*.pagespeed.is.*.png' 1
 
 start_test rewrite_css,sprite_images sprites images in CSS.
 FILE=sprite_images.html?ModPagespeedFilters=rewrite_css,sprite_images
@@ -458,7 +488,7 @@ WGET_ARGS=""
 # Simple test that https is working.
 if [ -n "$HTTPS_HOST" ]; then
   URL="$HTTPS_EXAMPLE_ROOT/combine_css.html"
-  fetch_until $URL 'grep -c css+' 1 --no-check-certificate
+  fetch_until $URL 'fgrep -c css+' 1 --no-check-certificate
 
   start_test https is working.
   echo $WGET_DUMP_HTTPS $URL

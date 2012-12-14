@@ -284,7 +284,11 @@ class CacheFindCallback : public HTTPCache::Callback {
           base_fetch = conditional_fetch;
         }
 
-        fetcher_->Fetch(url_, handler_, base_fetch);
+        if (fetcher_ != NULL) {
+          fetcher_->Fetch(url_, handler_, base_fetch);
+        } else {
+          base_fetch->Done(false);
+        }
         break;
       }
     }
@@ -391,7 +395,11 @@ void CacheUrlAsyncFetcher::Fetch(
 
   // Original resource not cacheable.
   base_fetch->log_record()->SetIsOriginalResourceCacheable(false);
-  fetcher_->Fetch(url, handler, base_fetch);
+  if (fetcher_ != NULL) {
+    fetcher_->Fetch(url, handler, base_fetch);
+  } else {
+    base_fetch->Done(false);
+  }
 }
 
 }  // namespace net_instaweb

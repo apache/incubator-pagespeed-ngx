@@ -27,16 +27,24 @@ namespace {
 // (with flag --no-js-randomness). We use the same time of day for slurping,
 // validation and measurement in order to maintain consistency.
 static const double kChromiumTimeOfDay = 1204251968254LL;
+
 const char kModPagespeedHeader[] = "X-Mod-Pagespeed";
 const char kPageSpeedHeader[] = "X-Page-Speed";
+
+// String added to all subrequests (with version string).
+const char kModPagespeedSubrequestUserAgent[] = "mod_pagespeed";
+
 const char kWPTUserAgentIdentifier[] = "PTST";
+
 // The name of the header used to specify the rewriters that were
 // applied to the current request.
 const char kPsaRewriterHeader[] = "X-PSA-Rewriter";
+
 // The name of the header that pubilshers can use to send the time when the
 // cacheable content on the page was last modified.  This is used by
 // prioritize_visible_content filter to invalidate its cache.
 const char kPsaLastModified[] = "X-PSA-Last-Modified";
+
 // Noscript element that redirects to ModPagespeed=noscript.  This is applied
 // when a filter that inserts custom javascript is enabled.
 const char kNoScriptRedirectFormatter[] =
@@ -44,10 +52,12 @@ const char kNoScriptRedirectFormatter[] =
     "<style><!--table,div,span,font,p{display:none} --></style>"
     "<div style=\"display:block\">Please click <a href=\"%s\">here</a> "
     "if you are not redirected within a few seconds.</div></noscript>";
+
 // Link tag to be inserted on noscript redirect so that original URL is
 // considered canonical.
 const char kLinkRelCanonicalFormatter[] =
     "<link rel=\"canonical\" href=\"%s\"/>";
+
 }  // namespace
 
 #endif  // NET_INSTAWEB_PUBLIC_GLOBAL_CONSTANTS_H_

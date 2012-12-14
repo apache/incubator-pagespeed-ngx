@@ -662,8 +662,8 @@ void RewriteOptions::AddProperties() {
   add_option(kDefaultRewriteDeadlineMs, &RewriteOptions::rewrite_deadline_ms_,
              "rdm", kRewriteDeadlineMs);
   add_option(true, &RewriteOptions::enabled_, "e", kEnabled);
-  add_option(false, &RewriteOptions::ajax_rewriting_enabled_, "ar",
-             kAjaxRewritingEnabled);
+  add_option(false, &RewriteOptions::ajax_rewriting_enabled_, "ipro",
+             kInPlaceResourceOptimization);
   add_option(false, &RewriteOptions::in_place_wait_for_optimized_, "ipwo",
              kInPlaceWaitForOptimized);
   add_option(true, &RewriteOptions::combine_across_paths_, "cp",

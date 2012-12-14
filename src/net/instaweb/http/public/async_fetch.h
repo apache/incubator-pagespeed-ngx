@@ -127,7 +127,6 @@ class AsyncFetch : public Writer {
 
   bool headers_complete() const { return headers_complete_; }
 
-
   // Returns logging information in a string eg. c1:0;c2:2;hf:45;.
   // c1 is cache 1, c2 is cache 2, hf is headers fetch.
   GoogleString LoggingString();

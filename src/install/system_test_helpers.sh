@@ -263,13 +263,13 @@ function check_not_from() {
 # check that its size meets constraint identified with $2 $3, e.g.
 #   check_file_size "$OUTDIR/xPuzzle*" -le 60000
 function check_file_size() {
-  pattern="$1"
+  filename_pattern="$1"
   op="$2"
-  value="$3"
-  SIZE=$(stat -c %s $pattern) || handle_failure \
-      "$pattern not found"
-  [ "$SIZE" "$op" "$value" ] || handle_failure \
-      "$pattern : $SIZE $op $value"
+  expected_value="$3"
+  SIZE=$(stat -c %s $filename_pattern) || handle_failure \
+      "$filename_pattern not found"
+  [ "$SIZE" "$op" "$expected_value" ] || handle_failure \
+      "$filename_pattern : $SIZE $op $expected_value"
 }
 
 # In a pipeline a failed check or check_not will not halt the script on error.
@@ -312,7 +312,7 @@ FETCH_UNTIL_OUTFILE="$TEMPDIR/fetch_until_output.$$"
 # passed, in which case we return 1.
 #
 # Usage:
-#    fetch_until [-save] [-recursive] REQUESTURL COMMAND RESULT [WGET_ARGS]
+#    fetch_until [-save] [-recursive] REQUESTURL COMMAND RESULT [WGET_ARGS] [OP]
 #
 # If "-save" is specified as the first argument, then the output from $COMMAND
 # is retained in $FETCH_UNTIL_OUTFILE.
@@ -336,6 +336,7 @@ function fetch_until() {
   COMMAND=$2
   RESULT=$3
   FETCH_UNTIL_WGET_ARGS="$WGET_ARGS $4"
+  OP=${5:-=}  # Default to =
 
   if [ $recursive -eq 1 ]; then
     FETCH_FILE="$OUTDIR/$(basename $REQUESTURL)"
@@ -346,16 +347,16 @@ function fetch_until() {
   fi
 
 
-  TIMEOUT=10
+  TIMEOUT=100
   START=$(date +%s)
   STOP=$((START+$TIMEOUT))
   WGET_HERE="$WGET -q $FETCH_UNTIL_WGET_ARGS"
   echo -n "      Fetching $REQUESTURL $FETCH_UNTIL_WGET_ARGS"
-  echo " until \$($COMMAND) = $RESULT"
+  echo " until \$($COMMAND) $OP $RESULT"
   echo "$WGET_HERE $REQUESTURL and checking with $COMMAND"
   while test -t; do
     $WGET_HERE $REQUESTURL
-    if [ $($COMMAND < "$FETCH_FILE") = "$RESULT" ]; then
+    if [ $($COMMAND < "$FETCH_FILE") "$OP" "$RESULT" ]; then
       echo "."
       if [ $save = 0 ]; then
         if [ $recursive -eq 1 ]; then
@@ -368,11 +369,14 @@ function fetch_until() {
     fi
     if [ $(date +%s) -gt $STOP ]; then
       echo ""
-      echo "*** $WGET_HERE output in $FETCH_FILE"
+      echo "TIMEOUT: $WGET_HERE $REQUESTURL output in $FETCH_FILE"
       handle_failure
       return
     fi
     if [ $recursive -eq 1 ]; then
+      # Recursive wget does not clear it's previous results, instead we need
+      # to delete those files manually each time we fail to find what we
+      # were looking for.
       rm -rf $OUTDIR
       mkdir $OUTDIR
     else

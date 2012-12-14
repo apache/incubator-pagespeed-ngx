@@ -63,7 +63,6 @@ class FileSystem;
 class FlushEarlyInfo;
 class FlushEarlyRenderInfo;
 class Function;
-class RequestTrace;
 class HtmlEvent;
 class HtmlFilter;
 class HtmlWriterFilter;
@@ -71,6 +70,7 @@ class LogRecord;
 class MessageHandler;
 class PropertyPage;
 class RequestHeaders;
+class RequestTrace;
 class ResourceContext;
 class ResourceNamer;
 class ResponseHeaders;
@@ -352,6 +352,20 @@ class RewriteDriver : public HtmlParse {
   // success=false.
   bool FetchResource(const StringPiece& url, AsyncFetch* fetch);
 
+  // Initiates an In-Place Resource Optimization (IPRO) fetch (A resource which
+  // is served under the original URL, but is still able to be rewritten).
+  //
+  // perform_http_fetch indicates whether or not an HTTP fetch should be done
+  // to get the resource if a cache lookup fails. Proxy implementations will
+  // want to set this to true because there is no other way to get the content.
+  // However, origin implementations will want to set this to false so that
+  // they can fall back to locally serving the contents.
+  //
+  // async_fetch->Done(false) will be called if perform_http_fetch is false
+  // and the resource could not be found in HTTP cache.
+  void FetchInPlaceResource(const GoogleUrl& gurl, bool perform_http_fetch,
+                            AsyncFetch* async_fetch);
+
   // See FetchResource.  There are two differences:
   //   1. It takes an OutputResource instead of a URL.
   //   2. It returns whether a fetch was queued or not.  This is safe
@@ -395,6 +409,8 @@ class RewriteDriver : public HtmlParse {
   // Creates a cache fetcher that uses the driver's fetcher and its options.
   // Note: this means the driver's fetcher must survive as long as this does.
   CacheUrlAsyncFetcher* CreateCacheFetcher();
+  // Returns a cache fetcher that does not fall back to an actual fetcher.
+  CacheUrlAsyncFetcher* CreateCacheOnlyFetcher();
 
   ServerContext* server_context() const { return server_context_; }
   Statistics* statistics() const;
@@ -1100,6 +1116,9 @@ class RewriteDriver : public HtmlParse {
   void WriteClientStateIntoPropertyCache();
 
   void FinalizeFilterLogging();
+
+  // Used by CreateCacheFetcher() and CreateCacheOnlyFetcher().
+  CacheUrlAsyncFetcher* CreateCustomCacheFetcher(UrlAsyncFetcher* base_fetcher);
 
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base

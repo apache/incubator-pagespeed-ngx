@@ -36,10 +36,13 @@ class Variable;
 //
 // This fetcher will asynchronously check the cache. If the url
 // is found in cache and is still valid, the fetch's callback will be
-// called right away. Otherwise an async fetch will be performed in
-// the fetcher, the result of which will be written into the cache.
-// In case the fetch fails and there is a stale response in the cache, we serve
-// the stale response.
+// called right away. Otherwise (if fetcher != NULL) an async fetch
+// will be performed in the fetcher, the result of which will be written
+// into the cache. In case the fetch fails and there is a stale response
+// in the cache, we serve the stale response.
+//
+// If fetcher == NULL, this will only perform a cache lookup and then call
+// the callback immediately.
 //
 // TODO(sligocki): In order to use this for fetching resources for rewriting
 // we'd need to integrate resource locking in this class. Do we want that?

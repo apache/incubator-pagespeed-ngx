@@ -36,6 +36,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/response_headers_parser.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -454,12 +455,11 @@ class SerfFetch : public PoolElement<SerfFetch> {
     if (user_agent.empty()) {
       user_agent += "Serf/" SERF_VERSION_STRING;
     }
-    // WARNING: mod_instaweb.cc depends on this specific format.
-    // If you edit, edit mod_pagespeed.cc as well.
-    StringPiece version(" mod_pagespeed/" MOD_PAGESPEED_VERSION_STRING "-"
-                        LASTCHANGE_STRING);
+    GoogleString version = StrCat(
+        " ", kModPagespeedSubrequestUserAgent,
+        "/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING);
     if (!StringPiece(user_agent).ends_with(version)) {
-      user_agent.append(version.data(), version.size());
+      user_agent += version;
     }
     request_headers->Add(HttpAttributes::kUserAgent, user_agent);
   }
