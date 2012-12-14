@@ -33,6 +33,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/public/gtest.h"
 
@@ -50,6 +51,11 @@ const char FetcherTest::kHeaderName[] = "header-name";
 const char FetcherTest::kHeaderValue[] = "header value";
 
 SimpleStats* FetcherTest::statistics_ = NULL;
+
+FetcherTest::FetcherTest()
+    : mock_async_fetcher_(&mock_fetcher_),
+      thread_system_(ThreadSystem::CreateThreadSystem()) {
+}
 
 void FetcherTest::ValidateMockFetcherResponse(
     bool success, bool check_error_message,
@@ -95,11 +101,12 @@ int FetcherTest::CountFetchesAsync(const StringPiece& url, bool expect_success,
   CHECK(async_fetcher() != NULL);
   *callback_called = false;
   int starting_fetches = mock_fetcher_.num_fetches();
-  CheckCallback* fetch = new CheckCallback(expect_success, callback_called);
+  CheckCallback* fetch = new CheckCallback(
+      RequestContext::NewTestRequestContext(thread_system_.get()),
+      expect_success, callback_called);
   async_fetcher()->Fetch(url.as_string(), &message_handler_, fetch);
   return mock_fetcher_.num_fetches() - starting_fetches;
 }
-
 
 void FetcherTest::ValidateOutput(const GoogleString& content,
                                  const ResponseHeaders& response_headers) {

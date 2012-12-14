@@ -257,7 +257,20 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
 }
 
 void RewriteDriver::set_request_context(const RequestContextPtr& x) {
-  CHECK(x.get() != NULL);
+  // Ideally, we would have a CHECK(x.get() != NULL) here, since all "real"
+  // RewriteDrivers should have a valid request context.
+  //
+  // However, one use-case currently prevent this --
+  // ServerContext::InitWorkersAndDecodingDriver() creates a new driver
+  // to decode options. This creation, via NewUnmanagedRewriteDriver(), invokes
+  // this method with the provided request context, which really should be NULL
+  // because it is not associated with a request.
+  //
+  // In lieu of the significant refactor required to move option decoding out
+  // of RewriteDriver or synthesizing a context, we allow NULL here, and opt
+  // to instead CHECK aggressively on code paths that really should have a
+  // request context; i.e., those necessarily associated with page serving
+  // rather than option decoding.
   request_context_.reset(x);
 }
 

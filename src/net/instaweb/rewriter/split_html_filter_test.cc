@@ -152,6 +152,14 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     EXPECT_STREQ(expected_rewriters, logging_info()->applied_rewriters());
   }
 
+  void VerifyJsonSize(int64 expected_size) {
+    int64 actual_size = 0;
+    if (logging_info()->has_split_html_info()) {
+      actual_size = logging_info()->split_html_info().json_size();
+    }
+    EXPECT_EQ(expected_size, actual_size);
+  }
+
   GoogleString output_;
   const char* blink_js_url_;
 
@@ -180,6 +188,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithDriverHavingCriticalLineInfo) {
                    suffix), output_);
   VerifyAppliedRewriters(
       RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
+  VerifyJsonSize(strlen(kSplitHtmlBelowTheFoldData));
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithOptions) {
@@ -195,6 +204,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithOptions) {
                    suffix), output_);
   VerifyAppliedRewriters(
       RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
+  VerifyJsonSize(strlen(kSplitHtmlBelowTheFoldData));
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushes) {
@@ -214,6 +224,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushes) {
                      suffix), output_);
   VerifyAppliedRewriters(
       RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
+  VerifyJsonSize(strlen(kSplitHtmlBelowTheFoldData));
 }
 
 TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
@@ -243,6 +254,7 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
   Parse("not_flushed_early", html_input);
   EXPECT_EQ(StrCat(pre_head_input, post_head_output), output_);
   VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
 
   // SuppressPreheadFilter should have populated the flush_early_proto with the
   // appropriate pre head information.
@@ -255,6 +267,7 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
   Parse("flushed_early", html_input);
   EXPECT_EQ(post_head_output, output_);
   VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
 }
 
 TEST_F(SplitHtmlFilterTest, FlushEarlyDisabled) {
@@ -276,6 +289,7 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyDisabled) {
   // SuppressPreheadFilter should not have populated the flush_early_proto.
   EXPECT_EQ("", rewrite_driver()->flush_early_info()->pre_head());
   VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpaths) {
@@ -292,6 +306,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpaths) {
             kHtmlInputPart2, suffix);
   EXPECT_EQ(expected_output, output_);
   VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsWithLazyload) {
@@ -303,6 +318,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsWithLazyload) {
   EXPECT_EQ(StrCat("<html><head>", SplitHtmlFilter::kSplitInit,
                    "</head><body></body></html>", suffix), output_);
   VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithLazyLoad) {
@@ -319,6 +335,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithLazyLoad) {
                    lazyload_js, "</script>", SplitHtmlFilter::kSplitInit,
                    "</head><body></body></html>", suffix), output_);
   VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithScriptsFlushedEarly) {
@@ -334,6 +351,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithScriptsFlushedEarly) {
   EXPECT_EQ(StrCat("<html><head>", SplitHtmlFilter::kSplitInit,
                    "</head><body></body></html>", suffix), output_);
   VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
 }
 
 TEST_F(SplitHtmlFilterTest, SplitHtmlWithUnsupportedUserAgent) {
@@ -344,6 +362,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithUnsupportedUserAgent) {
   Parse("split_with_options", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   EXPECT_EQ(StrCat(kHtmlInputPart1, kHtmlInputPart2), output_);
   VerifyAppliedRewriters("");
+  VerifyJsonSize(0);
 }
 
 }  // namespace

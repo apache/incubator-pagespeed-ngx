@@ -654,6 +654,7 @@ CssFilter::CssFilter(RewriteDriver* driver,
                      ImageCombineFilter* image_combiner)
     : RewriteFilter(driver),
       in_style_element_(false),
+      style_element_(NULL),
       cache_extender_(cache_extender),
       image_rewrite_filter_(image_rewriter),
       image_combiner_(image_combiner) {

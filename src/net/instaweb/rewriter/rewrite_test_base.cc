@@ -706,8 +706,7 @@ RewriteDriver* RewriteTestBase::MakeDriver(
   // that _test.cc files can add options after the driver was created
   // and before the filters are added.
   //
-  // TODO(jmarantz): change call-sites to make this use a more
-  // standard flow.
+  // TODO(jmarantz): Change call-sites to make this use a more standard flow.
   RewriteDriver* rd;
   if (!use_managed_rewrite_drivers_) {
     rd = server_context->NewUnmanagedRewriteDriver(

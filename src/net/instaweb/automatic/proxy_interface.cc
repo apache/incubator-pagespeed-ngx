@@ -479,15 +479,9 @@ void ProxyInterface::ProxyRequestCallback(
                                    property_callback.release());
     } else {
       RewriteDriver* driver = NULL;
-
-      // The fetch we're working from may have a NULL request context, which
-      // isn't suitable for initializing a new rewrite driver. If that's
-      // the case, create a new request context.
       RequestContextPtr request_ctx = async_fetch->request_context();
-      if (request_ctx.get() == NULL) {
-        request_ctx.reset(
-            new RequestContext(server_context_->thread_system()->NewMutex()));
-      }
+      DCHECK(request_ctx.get() != NULL) << "Async fetch must have a request"
+                                        << "context but does not.";
       // Starting property cache lookup after the furious state is set.
       property_callback.reset(InitiatePropertyCacheLookup(
           is_resource_fetch, *request_url, options, async_fetch));

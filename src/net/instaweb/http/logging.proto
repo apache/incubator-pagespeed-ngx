@@ -91,6 +91,13 @@ message MetadataCacheInfo {
   optional int32 num_misses = 3;
 }
 
+// This proto stores all information related to split_html.
+// Next id for SplitHtmlInfo : 2
+message SplitHtmlInfo {
+  // Total size of below-the-fold JSON.
+  optional int64 json_size = 1;
+}
+
 // This proto stores all information which we would like to log.
 // Next id for LoggingInfo: 7
 message LoggingInfo {
@@ -107,4 +114,6 @@ message LoggingInfo {
   optional bool is_original_resource_cacheable = 5 [ default = true ];
   // Furious ID used for this request.
   optional int32 furious_id = 6;
+  // All information related to split_html.
+  optional SplitHtmlInfo split_html_info = 7;
 }

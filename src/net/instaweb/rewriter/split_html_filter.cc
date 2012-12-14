@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -167,6 +168,8 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
   if (rewrite_driver_->log_record() != NULL && !json.empty()) {
     rewrite_driver_->log_record()->LogAppliedRewriter(
         RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
+    rewrite_driver_->log_record()->logging_info()->mutable_split_html_info()
+        ->set_json_size(non_critical_json.size());
   }
   HtmlWriterFilter::Flush();
 }

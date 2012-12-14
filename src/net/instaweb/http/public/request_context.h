@@ -48,11 +48,11 @@ class RequestContext : public RefCounted<RequestContext> {
   explicit RequestContext(AbstractMutex* logging_mutex);
 
   // TODO(marq): Move this test context factory to a test-specific file.
-  // Makes a request context for running tests.
+  //             Makes a request context for running tests.
   static RequestContextPtr NewTestRequestContext(ThreadSystem* thread_system);
 
-  // The trace context. Takes ownership of the given context.
   RequestTrace* trace_context() { return trace_context_.get(); }
+  // Takes ownership of the given context.
   void set_trace_context(RequestTrace* x);
 
   // The log record for the this request, created when the request context is.
@@ -72,7 +72,7 @@ class RequestContext : public RefCounted<RequestContext> {
   REFCOUNT_FRIEND_DECLARATION(RequestContext);
 
  private:
-  // Always non-NULL
+  // Always non-NULL.
   scoped_ptr<LogRecord> log_record_;
 
   // Logs tracing events.

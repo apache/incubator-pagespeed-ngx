@@ -272,8 +272,7 @@ void ServerContext::InitWorkersAndDecodingDriver() {
   low_priority_rewrite_workers_ = factory_->WorkerPool(
       RewriteDriverFactory::kLowPriorityRewriteWorkers);
   decoding_driver_.reset(NewUnmanagedRewriteDriver(
-      NULL, global_options()->Clone(),
-      RequestContextPtr(new RequestContext(thread_system()->NewMutex()))));
+      NULL, global_options()->Clone(), RequestContextPtr(NULL)));
   // Apply platform configuration mutation for consistency's sake.
   factory_->ApplyPlatformSpecificConfiguration(decoding_driver_.get());
   // Inserts platform-specific rewriters into the resource_filter_map_, so that

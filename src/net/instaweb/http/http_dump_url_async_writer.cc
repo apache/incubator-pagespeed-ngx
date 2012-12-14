@@ -18,6 +18,7 @@
 
 #include "net/instaweb/http/public/http_dump_url_async_writer.h"
 
+#include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
@@ -30,6 +31,7 @@
 #include "net/instaweb/util/public/file_writer.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -39,10 +41,13 @@ class HttpDumpUrlAsyncWriter::DumpFetch : public StringAsyncFetch {
  public:
   DumpFetch(const GoogleString& url, MessageHandler* handler,
             AsyncFetch* base_fetch, const GoogleString& filename,
-            UrlFetcher* dump_fetcher, FileSystem* file_system)
-      : url_(url), handler_(handler), base_fetch_(base_fetch),
+            UrlFetcher* dump_fetcher, FileSystem* file_system,
+            const RequestContextPtr& request_context)
+      : StringAsyncFetch(request_context),
+        url_(url), handler_(handler), base_fetch_(base_fetch),
         filename_(filename), dump_fetcher_(dump_fetcher),
         file_system_(file_system) {
+    DCHECK(request_context.get() != NULL);
   }
 
   void StartFetch(const bool accept_gzip, UrlAsyncFetcher* base_fetcher) {
@@ -134,7 +139,8 @@ void HttpDumpUrlAsyncWriter::Fetch(const GoogleString& url,
     base_fetch->Done(success);
   } else {
     DumpFetch* fetch = new DumpFetch(url, handler, base_fetch, filename,
-                                     &dump_fetcher_, file_system_);
+                                     &dump_fetcher_, file_system_,
+                                     base_fetch->request_context());
     fetch->StartFetch(accept_gzip_, base_fetcher_);
   }
 }

@@ -119,7 +119,7 @@ class RewriteContext {
 
   // Returns true if this context is chained to some predecessors, and
   // must therefore be started by a predecessor and not RewriteDriver.
-  bool chained() const { return chained_ != 0; }
+  bool chained() const { return chained_; }
 
   // Resource slots must be added to a Rewrite before Initiate() can
   // be called.  Starting the rewrite sets in motion a sequence
