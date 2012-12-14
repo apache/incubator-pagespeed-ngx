@@ -208,7 +208,7 @@ namespace net_instaweb {
                                  AsyncFetch* async_fetch) {
     async_fetch = EnableInflation(async_fetch);
     NgxFetch* fetch = new NgxFetch(url, async_fetch,
-          message_handler, fetch_timeout_);
+          message_handler, fetch_timeout_, log_);
     ScopedMutex lock(mutex_);
     pending_fetches_.Add(fetch);
     SendCmd('F');

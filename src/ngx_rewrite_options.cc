@@ -71,6 +71,8 @@ void NgxRewriteOptions::AddProperties() {
                  RewriteOptions::kMemcachedThreads);
   add_ngx_option(false, &NgxRewriteOptions::use_shared_mem_locking_, "ausml",
                  RewriteOptions::kUseSharedMemLocking);
+  add_ngx_option("", &NgxRewriteOptions::fetcher_proxy_, "afp",
+                 RewriteOptions::kFetcherProxy);
 
   MergeSubclassProperties(ngx_properties_);
   NgxRewriteOptions config;

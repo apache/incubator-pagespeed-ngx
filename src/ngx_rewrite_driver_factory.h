@@ -54,8 +54,11 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   static const char kStaticJavaScriptPrefix[];
   static const char kMemcached[];
 
-  NgxRewriteDriverFactory(ngx_log_t* log, ngx_msec_t resolver_timeout,
-      ngx_resolver_t* resolver);
+  // main_conf will have only options set in the main block.  It may be NULL,
+  // and we do not take ownership.
+  NgxRewriteDriverFactory(ngx_msec_t resolver_timeout,
+      ngx_resolver_t* resolver,
+      NgxRewriteOptions* main_conf);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -73,7 +76,10 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Initializes the StaticJavascriptManager.
   virtual void InitStaticJavascriptManager(
       StaticJavascriptManager* static_js_manager);
+  // Initalizes the NgxUrlAsyncFetcher.
   bool InitNgxUrlAsyncFecther();
+  // Check resolver configed or not.
+  bool HasResolver();
 
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
@@ -111,6 +117,7 @@ private:
   typedef std::map<GoogleString, NgxCache*> PathCacheMap;
   PathCacheMap path_cache_map_;
   MD5Hasher cache_hasher_;
+  NgxRewriteOptions* main_conf_;
 
   // memcache connections are expensive.  Just allocate one per
   // distinct server-list.  At the moment there is no consistency

@@ -73,10 +73,12 @@ class Writer;
 
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
-NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_log_t* log,
-    ngx_msec_t resolver_timeout, ngx_resolver_t* resolver) :
+NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_msec_t resolver_timeout,
+    ngx_resolver_t* resolver,
+    NgxRewriteOptions* main_conf) :
   shared_mem_runtime_(new NullSharedMem()),
-  cache_hasher_(20) {
+  cache_hasher_(20),
+  main_conf_(main_conf) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
@@ -87,8 +89,9 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_log_t* log,
   timer_ = DefaultTimer();
   apr_initialize();
   apr_pool_create(&pool_,NULL);
-  log_ = log;
-  resolver_timeout_ = resolver_timeout_;
+  log_ = NULL;
+  resolver_timeout_ = resolver_timeout == NGX_CONF_UNSET_MSEC ?
+    1000 : resolver_timeout;
   resolver_ = resolver;
   ngx_url_async_fetcher_ = NULL;
   InitializeDefaultOptions();
@@ -335,7 +338,15 @@ bool NgxRewriteDriverFactory::InitNgxUrlAsyncFecther() {
   if (ngx_url_async_fetcher_ == NULL) {
     return true;
   }
+  log_ = ngx_cycle->log;
   return ngx_url_async_fetcher_->Init();
+}
+
+bool NgxRewriteDriverFactory::HasResolver() {
+  if (ngx_url_async_fetcher_ != NULL && resolver_ == NULL) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace net_instaweb

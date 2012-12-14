@@ -458,8 +458,8 @@ ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 
     ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
         ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module));
-    cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(clcf->error_log,
-        clcf->resolver_timeout, clcf->resolver);
+    cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
+        clcf->resolver_timeout, clcf->resolver, parent_cfg_s->options);
   }
 
   cfg_s->server_context = new net_instaweb::NgxServerContext(
@@ -1373,6 +1373,10 @@ ps_init(ngx_conf_t* cf) {
   // filter, and content handler will run in every server block.  This is ok,
   // because they will notice that the server context is NULL and do nothing.
   if (cfg_m->driver_factory != NULL) {
+    if (!cfg_m->driver_factory->HasResolver()) {
+      ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "resolver wasn't configed");
+      return NGX_ERROR;
+    }
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ps_header_filter;
 
@@ -1400,6 +1404,7 @@ ps_init_process(ngx_cycle_t* cycle) {
     if (cfg_m->driver_factory->InitNgxUrlAsyncFecther()) {
       return NGX_OK;
     }
+    return NGX_ERROR;
   }
   return NGX_OK;
 }
