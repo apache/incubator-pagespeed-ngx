@@ -995,7 +995,8 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
     return CreateRequestContext::kError;
   }
 
-  // Handles its own deletion once we call DeleteWhenDone() on it.
+  // Handles its own deletion.  We need to call Release() when we're done with
+  // it, and call Done() on the associated proxy fetch.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(r, file_descriptors[1]);
 
   // If null, that means use global options.
