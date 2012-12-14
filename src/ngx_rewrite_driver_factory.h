@@ -95,6 +95,11 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Returns the filesystem metadata cache for the given config's specification
   // (if it has one). NULL is returned if no cache is specified.
   CacheInterface* GetFilesystemMetadataCache(NgxRewriteOptions* config);
+
+  // Starts pagespeed threads if they've not been started already.  Must be
+  // called after the caller has finished any forking it intends to do.
+  void StartThreads();
+
 private:
   SimpleStats simple_stats_;
   Timer* timer_;
@@ -126,6 +131,7 @@ private:
   scoped_ptr<QueuedWorkerPool> memcached_pool_;
   std::vector<AprMemCache*> memcache_servers_;
   std::vector<AsyncCache*> async_caches_;
+  bool threads_started_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };

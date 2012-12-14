@@ -819,6 +819,11 @@ ps_create_connection(ps_request_ctx_t* ctx) {
 
 // Populate cfg_* with configuration information for this
 // request.  Thin wrappers around ngx_http_get_module_*_conf and cast.
+ps_main_conf_t*
+ps_get_main_config(ngx_http_request_t* r) {
+  return static_cast<ps_main_conf_t*>(
+      ngx_http_get_module_main_conf(r, ngx_pagespeed));
+}
 ps_srv_conf_t*
 ps_get_srv_config(ngx_http_request_t* r) {
   return static_cast<ps_srv_conf_t*>(
@@ -931,6 +936,10 @@ ps_determine_options(ngx_http_request_t* r,
 // Set us up for processing a request.
 CreateRequestContext::Response
 ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
+  // TODO(jefftk): figure out how to call this only right after we fork the
+  // child process, not on every request.
+  ps_get_main_config(r)->driver_factory->StartThreads();
+
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
 
   GoogleString url_string = ps_determine_url(r);
