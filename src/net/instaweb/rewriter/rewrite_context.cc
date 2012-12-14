@@ -1803,7 +1803,9 @@ void RewriteContext::StartRewriteForFetch() {
   bool ok_to_rewrite = true;
   for (int i = 0, n = slots_.size(); i < n; ++i) {
     ResourcePtr resource(slot(i)->resource());
-    if (resource->loaded() && resource->HttpStatusOk()) {
+    if (resource->loaded() && resource->HttpStatusOk() &&
+        !resource->response_headers()->HasValue(HttpAttributes::kCacheControl,
+                                                "no-transform")) {
       bool on_the_fly = (kind() == kOnTheFlyResource);
       Resource::HashHint hash_hint = on_the_fly ?
           Resource::kOmitInputHash : Resource::kIncludeInputHash;

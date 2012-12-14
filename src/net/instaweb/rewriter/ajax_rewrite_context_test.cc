@@ -191,9 +191,14 @@ class FakeFetch : public AsyncFetch {
 
 class AjaxRewriteContextTest : public RewriteTestBase {
  protected:
+  static const bool kWriteToCache = true;
+  static const bool kNoWriteToCache = false;
+  static const bool kNoTransform = true;
+  static const bool kTransform = false;
   AjaxRewriteContextTest()
       : cache_html_url_("http://www.example.com/cacheable.html"),
         cache_jpg_url_("http://www.example.com/cacheable.jpg"),
+        cache_jpg_notransform_url_("http://www.example.com/notransform.jpg"),
         cache_png_url_("http://www.example.com/cacheable.png"),
         cache_gif_url_("http://www.example.com/cacheable.gif"),
         cache_webp_url_("http://www.example.com/cacheable.webp"),
@@ -215,23 +220,26 @@ class AjaxRewriteContextTest : public RewriteTestBase {
 
     // Set fetcher result and headers.
     AddResponse(cache_html_url_, kContentTypeHtml, cache_body_, start_time_ms(),
-                ttl_ms_, original_etag_, false);
+                ttl_ms_, original_etag_, kNoWriteToCache, kTransform);
     AddResponse(cache_jpg_url_, kContentTypeJpeg, cache_body_, start_time_ms(),
-                ttl_ms_, "", false);
+                ttl_ms_, "", kNoWriteToCache, kTransform);
+    AddResponse(cache_jpg_notransform_url_, kContentTypeJpeg, cache_body_,
+                start_time_ms(), ttl_ms_, "", kNoWriteToCache, kNoTransform);
     AddResponse(cache_png_url_, kContentTypePng, cache_body_, start_time_ms(),
-                ttl_ms_, original_etag_, true);
+                ttl_ms_, original_etag_, kWriteToCache, kTransform);
     AddResponse(cache_gif_url_, kContentTypeGif, cache_body_, start_time_ms(),
-                ttl_ms_, original_etag_, true);
+                ttl_ms_, original_etag_, kWriteToCache, kTransform);
     AddResponse(cache_webp_url_, kContentTypeWebp, cache_body_, start_time_ms(),
-                ttl_ms_, original_etag_, true);
+                ttl_ms_, original_etag_, kWriteToCache, kTransform);
     AddResponse(cache_js_url_, kContentTypeJavascript, cache_body_,
-                start_time_ms(), ttl_ms_, "", false);
+                start_time_ms(), ttl_ms_, "", kNoWriteToCache, kTransform);
     AddResponse(cache_css_url_, kContentTypeCss, cache_body_, start_time_ms(),
-                ttl_ms_, "", false);
+                ttl_ms_, "", kNoWriteToCache, kTransform);
     AddResponse(nocache_html_url_, kContentTypeHtml, nocache_body_,
-                start_time_ms(), -1, "", false);
+                start_time_ms(), -1, "", kNoWriteToCache, kTransform);
     AddResponse(cache_js_no_max_age_url_, kContentTypeJavascript, cache_body_,
-                start_time_ms(), 0, "", false);
+                start_time_ms(), 0, "", kNoWriteToCache, kTransform);
+
 
     ResponseHeaders bad_headers;
     bad_headers.set_first_line(1, 1, 404, "Not Found");
@@ -264,7 +272,8 @@ class AjaxRewriteContextTest : public RewriteTestBase {
 
   void AddResponse(const GoogleString& url, const ContentType& content_type,
                    const GoogleString& body, int64 now_ms, int64 ttl_ms,
-                   const GoogleString& etag, bool write_to_cache) {
+                   const GoogleString& etag, bool write_to_cache,
+                   bool no_transform) {
     ResponseHeaders response_headers;
     SetDefaultHeaders(content_type, &response_headers);
     if (ttl_ms > 0) {
@@ -276,6 +285,9 @@ class AjaxRewriteContextTest : public RewriteTestBase {
       } else {
         response_headers.Replace(HttpAttributes::kCacheControl, "public");
       }
+    }
+    if (no_transform) {
+      response_headers.Replace(HttpAttributes::kCacheControl, "no-transform");
     }
     if (!etag.empty()) {
       response_headers.Add(HttpAttributes::kEtag, etag);
@@ -405,6 +417,7 @@ class AjaxRewriteContextTest : public RewriteTestBase {
 
   const GoogleString cache_html_url_;
   const GoogleString cache_jpg_url_;
+  const GoogleString cache_jpg_notransform_url_;
   const GoogleString cache_png_url_;
   const GoogleString cache_gif_url_;
   const GoogleString cache_webp_url_;
@@ -574,6 +587,51 @@ TEST_F(AjaxRewriteContextTest, WaitForOptimizeWithDisabledFilter) {
   EXPECT_EQ(0, js_filter_->num_rewrites());
   EXPECT_EQ(0, css_filter_->num_rewrites());
   EXPECT_EQ(0, oversized_stream_->Get());
+}
+
+TEST_F(AjaxRewriteContextTest, WaitForOptimizeNoTransform) {
+  // Confirm that when cache-control:no-transform is present in the response
+  // headers that the in-place optimizer does not optimize the resource.
+  options()->set_in_place_wait_for_optimized(true);
+  Init();
+
+  // Don't rewrite since it's no-transform.
+  FetchAndCheckResponse(cache_jpg_notransform_url_, cache_body_, true,
+                        ttl_ms_, NULL, start_time_ms());
+  // First fetch misses initial cache lookup, succeeds at fetch and inserts
+  // into cache.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // original resource + aj metadata
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  EXPECT_TRUE(response_headers_.HasValue(HttpAttributes::kCacheControl,
+                                         "no-transform"));
+
+  ResetHeadersAndStats();
+
+  // Don't rewrite since it's no-transform.
+  FetchAndCheckResponse(cache_jpg_notransform_url_, cache_body_, true,
+                        ttl_ms_, "W/\"PSA-0\"", start_time_ms());
+  // The second fetch should return the cached original after seeing that it
+  // can't be rewritten.
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
 TEST_F(AjaxRewriteContextTest, WaitForOptimizeTimeout) {

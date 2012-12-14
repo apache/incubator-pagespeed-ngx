@@ -1027,6 +1027,31 @@ TEST_F(RewriteContextTest, CacheTtlOverridingForPrivateResources) {
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
 };
 
+// Make sure that cache-control: no-transform is honored.
+TEST_F(RewriteContextTest, HonorNoTransform) {
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+  GoogleString content;
+  ResponseHeaders headers;
+  EXPECT_TRUE(FetchResource(kTestDomain, TrimWhitespaceRewriter::kFilterId,
+                            "a_no_transform.css", "css", &content, &headers));
+  EXPECT_EQ(" a ", content);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  // Lookup the output resource twice, input resource once, and metadata once.
+  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_inserts());  // meta data & original
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  ClearStats();
+  EXPECT_TRUE(FetchResource(kTestDomain, TrimWhitespaceRewriter::kFilterId,
+                            "a_no_transform.css", "css", &content, &headers));
+  EXPECT_EQ(" a ", content);
+  EXPECT_EQ(2, lru_cache()->num_hits());     // meta data & original
+  EXPECT_EQ(2, lru_cache()->num_misses());   // output resource twice
+  EXPECT_EQ(0, lru_cache()->num_inserts());  // name mapping & original
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+}
+
 // Verifies that we can rewrite uncacheable resources without caching them.
 TEST_F(RewriteContextTest, FetchUncacheableWithRewritesInLineOfServing) {
   InitTrimFiltersSync(kOnTheFlyResource);

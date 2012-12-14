@@ -209,7 +209,8 @@ bool CombiningFilter::Context::Partition(OutputPartitions* partitions,
   for (int i = 0, n = num_slots(); i < n; ++i) {
     slot(i)->resource()->AddInputInfoToPartition(
         Resource::kIncludeInputHash, i, partition);
-    if (!combiner_.AddResourceNoFetch(slot(i)->resource(), handler).value) {
+    if (!slot(i)->resource()->IsSafeToRewrite() ||
+        !combiner_.AddResourceNoFetch(slot(i)->resource(), handler).value) {
       return false;
     }
   }
@@ -371,6 +372,20 @@ void RewriteContextTestBase::InitResourcesToDomain(const char* domain) {
 
   SetFetchResponse(StrCat(domain, "a_no_cache.css"),
                    no_cache_css_header,
+                   " a ");
+
+  // trimmable, no-transform
+  ResponseHeaders no_transform_css_header;
+  now_ms = http_cache()->timer()->NowMs();
+  no_transform_css_header.set_major_version(1);
+  no_transform_css_header.set_minor_version(1);
+  no_transform_css_header.SetStatusAndReason(HttpStatus::kOK);
+  no_transform_css_header.SetDateAndCaching(now_ms, kOriginTtlMs,
+                                            ",no-transform");
+  no_transform_css_header.ComputeCaching();
+
+  SetFetchResponse(StrCat(domain, "a_no_transform.css"),
+                   no_transform_css_header,
                    " a ");
 
   // trimmable, no-cache, no-store

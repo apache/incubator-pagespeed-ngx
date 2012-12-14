@@ -78,11 +78,13 @@ class Resource : public RefCounted<Resource> {
   // Common methods across all deriviations
   ServerContext* server_context() const { return server_context_; }
 
-  // Answers question: Are we allowed to rewrite the contents now?
-  //
   // Checks if the contents are loaded and valid and also if the resource is
-  // up-to-date and cacheable enought to be rewritten by us right now.
+  // up-to-date and cacheable by a proxy like us.
   virtual bool IsValidAndCacheable() const;
+
+  // Answers question: Are we allowed to rewrite the contents now?
+  // Checks if valid and cacheable and if it has a no-transform header.
+  bool IsSafeToRewrite() const;
 
   // TODO(sligocki): Do we need these or can we just use IsValidAndCacheable
   // everywhere?

@@ -60,6 +60,12 @@ bool Resource::IsValidAndCacheable() const {
               NULL, response_headers_));
 }
 
+bool Resource::IsSafeToRewrite() const {
+  return (IsValidAndCacheable() &&
+         !response_headers_.HasValue(HttpAttributes::kCacheControl,
+                                     "no-transform"));
+}
+
 GoogleString Resource::ContentsHash() const {
   DCHECK(IsValidAndCacheable());
   return server_context_->contents_hasher()->Hash(contents());

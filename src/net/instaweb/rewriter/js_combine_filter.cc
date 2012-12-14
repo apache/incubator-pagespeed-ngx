@@ -244,7 +244,7 @@ class JsCombineFilter::Context : public RewriteContext {
     for (int i = 0, n = num_slots(); i < n; ++i) {
       bool add_input = false;
       ResourcePtr resource(slot(i)->resource());
-      if (resource->IsValidAndCacheable()) {
+      if (resource->IsSafeToRewrite()) {
         combiner_.set_resources_attribute_charset(elements_charsets_[i]);
         if (combiner_.AddResourceNoFetch(resource, handler).value) {
           add_input = true;

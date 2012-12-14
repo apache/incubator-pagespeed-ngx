@@ -994,7 +994,7 @@ class ImageCombineFilter::Context : public RewriteContext {
       SpriteFuture* future = sprite_slot->future();
       GoogleString resource_url = resource->url();
       if (no_sprite->find(resource_url) == no_sprite->end()) {
-        if (!resource->IsValidAndCacheable()) {
+        if (!resource->IsSafeToRewrite()) {
           no_sprite->insert(resource_url);
         } else {
           // Register the resource with the library and then check

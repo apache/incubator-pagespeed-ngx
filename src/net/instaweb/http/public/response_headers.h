@@ -128,6 +128,10 @@ class ResponseHeaders : public Headers<HttpResponseHeaders> {
   void SetDateAndCaching(int64 date_ms, int64 ttl_ms) {
     SetDateAndCaching(date_ms, ttl_ms, "");
   }
+  // Returns Cache-Control header values that we might need to preserve. This
+  // function is meant to be used with SetDateAndCaching. It currently looks for
+  // and returns no-transform and no-store if found.
+  GoogleString CacheControlValuesToPreserve();
 
   // Set a time-based header, converting ms since epoch to a string.
   void SetTimeHeader(const StringPiece& header, int64 time_ms);

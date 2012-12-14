@@ -405,6 +405,7 @@ void ResponseHeaders::SetDateAndCaching(
   // Note: We set both Expires and Cache-Control headers so that legacy
   // HTTP/1.0 browsers and proxies correctly cache these resources.
   SetTimeHeader(HttpAttributes::kExpires, date_ms + ttl_ms);
+
   Replace(HttpAttributes::kCacheControl,
           StrCat("max-age=", Integer64ToString(ttl_ms / Timer::kSecondMs),
                  cache_control_suffix));
@@ -628,13 +629,24 @@ void ResponseHeaders::ComputeCaching() {
       DCHECK(has_date);
       DCHECK(cache_ttl_ms == implicit_cache_ttl_ms());
       proto_->set_is_implicitly_cacheable(true);
-      SetDateAndCaching(date, cache_ttl_ms);
+      SetDateAndCaching(date, cache_ttl_ms, CacheControlValuesToPreserve());
     }
   } else {
     proto_->set_expiration_time_ms(0);
     proto_->set_proxy_cacheable(false);
   }
   cache_fields_dirty_ = false;
+}
+
+GoogleString ResponseHeaders::CacheControlValuesToPreserve() {
+  GoogleString to_preserve;
+  if (HasValue(HttpAttributes::kCacheControl, "no-transform")) {
+    to_preserve = ", no-transform";
+  }
+  if (HasValue(HttpAttributes::kCacheControl, "no-store")) {
+    to_preserve += ", no-store";
+  }
+  return to_preserve;
 }
 
 GoogleString ResponseHeaders::ToString() const {

@@ -1190,6 +1190,43 @@ TEST_F(ImageRewriteTest, Rewrite404) {
   ValidateNoChanges("404", "<img src='404.jpg'>");
 }
 
+TEST_F(ImageRewriteTest, HonorNoTransform) {
+  // If cache-control: no-transform then we should serve the original URL
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  rewrite_driver()->AddFilters();
+
+  GoogleString url = StrCat(kTestDomain, "notransform.png");
+  AddFileToMockFetcher(url, kBikePngFile, kContentTypePng, 100);
+  AddToResponse(url, HttpAttributes::kCacheControl, "no-transform");
+
+  ValidateNoChanges("NoTransform1", StrCat("<img src=", url, ">"));
+  // Validate twice in case changes in cache from the first request alter the
+  // second.
+  ValidateNoChanges("NoTransform2", StrCat("<img src=", url, ">"));
+}
+
+TEST_F(ImageRewriteTest, YesTransform) {
+  // Replicates above test but without no-transform to show that it works.
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  rewrite_driver()->AddFilters();
+
+  GoogleString url = StrCat(kTestDomain, "notransform.png");
+  AddFileToMockFetcher(url, kBikePngFile,
+                       kContentTypePng, 100);
+  ValidateExpected("YesTransform", StrCat("<img src=", url, ">"),
+                   StrCat("<img src=",
+                          Encode("http://test.com/", "ic", "0",
+                                 "notransform.png", "png"),
+                          ">"));
+  // Validate twice in case changes in cache from the first request alter the
+  // second.
+  ValidateExpected("YesTransform", StrCat("<img src=", url, ">"),
+                   StrCat("<img src=",
+                          Encode("http://test.com/", "ic", "0",
+                                 "notransform.png", "png"),
+                          ">"));
+}
+
 TEST_F(ImageRewriteTest, NoExtensionCorruption) {
   TestCorruptUrl("%22", true /* append %22 */);
 }
