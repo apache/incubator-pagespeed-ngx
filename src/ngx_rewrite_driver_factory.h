@@ -67,6 +67,10 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Initializes the StaticJavascriptManager.
   virtual void InitStaticJavascriptManager(
       StaticJavascriptManager* static_js_manager);
+  // Release all the resources. It also calls the base class ShutDown to
+  // release the base class resources.
+  virtual void ShutDown();
+  virtual void StopCacheActivity();
 
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
@@ -98,7 +102,6 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
 private:
   SimpleStats simple_stats_;
   Timer* timer_;
-  apr_pool_t* pool_;
   scoped_ptr<SlowWorker> slow_worker_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
   typedef std::map<GoogleString, NgxCache*> PathCacheMap;
