@@ -834,7 +834,9 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       driver_->UserAgentSupportsImageInlining() && !image_inlined &&
       options->NeedLowResImages() &&
       cached->has_low_resolution_inlined_data() &&
-      IsCriticalImage(src_value)) {
+      IsCriticalImage(src_value) &&
+      (element->keyword() == HtmlName::kImg ||
+       element->keyword() == HtmlName::kInput)) {
     int max_preview_image_index =
         driver_->options()->max_inlined_preview_images_index();
     if (max_preview_image_index < 0 || image_index < max_preview_image_index) {
