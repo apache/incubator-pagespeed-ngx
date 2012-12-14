@@ -34,32 +34,32 @@ as a build time dependency, and to do that you have to first build the pagespeed
 optimization library.
 
 First build mod_pagespeed against trunk, following these instructions through
-the end of the "Compile" step:
+the end of the "Compile" step, and making sure that when you run `gclient sync`
+you run it against "trunk" and not "latest-beta":
 https://developers.google.com/speed/docs/mod_pagespeed/build_from_source
-
-When you run `gclient sync`, be sure to run it against
-http://modpagespeed.googlecode.com/svn/trunk/src
 
 Then build the pagespeed optimization library:
 
-    $ cd /where/you/built/mod_pagespeed/src/net/instaweb/automatic
+    $ cd ~/mod_pagespeed/src/net/instaweb/automatic
     $ make all
 
-Then move the mod_pagespeed directory to a parallel directory to your
-ngx_pagespeed checkout:
+Then check out ngx_pagespeed:
 
-    $ cd /path/to/ngx_pagespeed
-    $ mv /where/you/built/mod_pagespeed /path/to/mod_pagespeed
+    $ cd ~
+    $ git clone https://github.com/pagespeed/ngx_pagespeed.git
 
-Now build nginx:
+Now download and build nginx:
 
-    $ cd /path/to/nginx
-    $ auto/configure --with-debug --add-module=/path/to/ngx_pagespeed
+    # check http://nginx.org/en/download.html for the latest version
+    $ wget http://nginx.org/download/nginx-1.2.6.tar.gz
+    $ tar -xvzf nginx-1.2.6.tar.gz
+    $ cd nginx-1.2.6/src/
+    $ ./configure --with-debug --add-module=$HOME/ngx_pagespeed
     $ make install
 
-While ngx_pagespeed doesn't need to be anywhere specific in relation to nginx,
-the mod_pagespeed directory and the ngx_pagespeed directory must have the same
-parent.
+(This assumes you put everything in your home directory; if not, change paths
+appropriately.  The only restriction is that the `mod_pagespeed` and
+`ngx_pagespeed` directories need to have the same parent.)
 
 ## How to use
 
