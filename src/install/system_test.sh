@@ -746,23 +746,19 @@ test_filter extend_cache_pdfs PDF cache extension
 WGET_EC="$WGET_DUMP $WGET_ARGS"
 
 start_test Html is rewritten with cache-extended PDFs.
-fetch_until $URL 'fgrep -c .pagespeed.' 3
-
-OUT=$($WGET_EC $URL)
-check_from "$OUT" grep 'a href="http://.*pagespeed.*\.pdf'
-OUT=$($WGET_EC $URL)
-check_from "$OUT" grep 'embed src="http://.*pagespeed.*\.pdf'
-OUT=$($WGET_EC $URL)
-check_from "$OUT" fgrep '<a href="example.notpdf">'
-OUT=$($WGET_EC $URL)
-check_from "$OUT" grep 'a href="http://.*pagespeed.*\.pdf?a=b'
+fetch_until -save $URL 'fgrep -c .pagespeed.' 3
+check grep -q 'a href="http://.*pagespeed.*\.pdf' $FETCH_UNTIL_OUTFILE
+check grep -q 'embed src="http://.*pagespeed.*\.pdf' $FETCH_UNTIL_OUTFILE
+check fgrep -q '<a href="example.notpdf">' $FETCH_UNTIL_OUTFILE
+check grep -q 'a href="http://.*pagespeed.*\.pdf?a=b' $FETCH_UNTIL_OUTFILE
 
 start_test Cache-extended PDFs load and have the right mime type.
-PDF_CE_URL="$($WGET_EC $URL | \
-              grep -o 'http://.*pagespeed.[^\"]*\.pdf' | head -n 1)"
+PDF_CE_URL="$(grep -o 'http://.*pagespeed.[^\"]*\.pdf' $FETCH_UNTIL_OUTFILE | \
+              head -n 1)"
 echo Extracted cache-extended url $PDF_CE_URL
 OUT=$($WGET_EC $PDF_CE_URL)
-check_from "$OUT" grep -a 'Content-Type: application/pdf'
+check_from "$OUT" grep -aq 'Content-Type: application/pdf'
+rm -f $FETCH_UNTIL_OUTFILE
 
 # Test DNS prefetching. DNS prefetching is dependent on user agent, but is
 # enabled for Wget UAs, allowing this test to work with our default wget params.
