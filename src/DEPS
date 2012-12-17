@@ -30,7 +30,7 @@ vars = {
   "chromium_webp_revision": "@161115",
 
   "libpagespeed_svn_root": "http://page-speed.googlecode.com/svn",
-  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.12.8.0",
+  "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/tags/lib-1.12.16.0",
   "libpagespeed_revision": "@head",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
 
