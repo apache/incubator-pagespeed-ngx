@@ -74,6 +74,7 @@ class JsDisableFilter : public EmptyHtmlFilter {
   ScriptTagScanner script_tag_scanner_;
   int index_;
   bool defer_js_experimental_script_written_;
+  bool ie_meta_tag_written_;
 
   DISALLOW_COPY_AND_ASSIGN(JsDisableFilter);
 };

@@ -416,7 +416,7 @@ deferJsNs.DeferJs.prototype.createIdVars = function() {
  * Downloads all the queued Js files to prefetch without executing them.
  */
 deferJsNs.DeferJs.prototype.prefetchQueuedScripts = function() {
-  if (this.prefetchScriptsHtml_ && this.isExperimentalMode()) {
+  if (this.prefetchScriptsHtml_) {
     var iframe = document.createElement('iframe');
     iframe.setAttribute('class', 'psa_prefetch_container');
     iframe.style.display = 'none';

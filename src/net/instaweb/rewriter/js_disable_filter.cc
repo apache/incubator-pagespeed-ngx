@@ -44,7 +44,8 @@ JsDisableFilter::JsDisableFilter(RewriteDriver* driver)
     : rewrite_driver_(driver),
       script_tag_scanner_(driver),
       index_(0),
-      defer_js_experimental_script_written_(false) {
+      defer_js_experimental_script_written_(false),
+      ie_meta_tag_written_(false) {
 }
 
 JsDisableFilter::~JsDisableFilter() {
@@ -57,6 +58,7 @@ void JsDisableFilter::DetermineEnabled() {
 void JsDisableFilter::StartDocument() {
   index_ = 0;
   defer_js_experimental_script_written_ = false;
+  ie_meta_tag_written_ = false;
 }
 
 void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
@@ -79,8 +81,11 @@ void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
 }
 
 void JsDisableFilter::InsertMetaTagForIE(HtmlElement* element) {
-  if (!rewrite_driver_->options()->override_ie_document_mode() ||
-      !rewrite_driver_->user_agent_matcher().IsIe(
+  if (ie_meta_tag_written_) {
+    return;
+  }
+  ie_meta_tag_written_ = true;
+  if (!rewrite_driver_->user_agent_matcher().IsIe(
           rewrite_driver_->user_agent())) {
     return;
   }
@@ -92,11 +97,13 @@ void JsDisableFilter::InsertMetaTagForIE(HtmlElement* element) {
   rewrite_driver_->AddAttribute(meta_tag, HtmlName::kHttpEquiv,
                                 "X-UA-Compatible");
   rewrite_driver_->AddAttribute(meta_tag, HtmlName::kContent, "IE=edge");
-  // TODO(ksimbili): Correct this node to be at the start of the head always.
-  rewrite_driver_->AppendChild(element, meta_tag);
+  rewrite_driver_->PrependChild(element, meta_tag);
 }
 
 void JsDisableFilter::StartElement(HtmlElement* element) {
+  if (element->keyword() == HtmlName::kHead && !ie_meta_tag_written_) {
+    InsertMetaTagForIE(element);
+  }
   if (element->keyword() == HtmlName::kBody &&
       !defer_js_experimental_script_written_) {
     HtmlElement* head_node =
@@ -153,7 +160,6 @@ void JsDisableFilter::EndElement(HtmlElement* element) {
   if (element->keyword() == HtmlName::kHead &&
       !defer_js_experimental_script_written_) {
     InsertJsDeferExperimentalScript(element);
-    InsertMetaTagForIE(element);
   }
 }
 
