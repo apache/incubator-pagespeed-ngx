@@ -591,12 +591,15 @@ ps_release_request_context(void* data) {
     ctx->proxy_fetch->Done(false /* failure */);
   }
 
-  // BaseFetch doesn't delete itself in HandleDone() because we still need to
-  // recieve notification via pipe and call CollectAccumulatedWrites.
-  // TODO(jefftk): If we close the proxy_fetch above and not in the normal flow,
-  // can this delete base_fetch while proxy_fetch still needs it? Is there a
-  // race condition here?
-  delete ctx->base_fetch;
+  // In the normal flow BaseFetch doesn't delete itself in HandleDone() because
+  // we still need to receive notification via pipe and call
+  // CollectAccumulatedWrites.  If there's an error and we're cleaning up early
+  // then HandleDone() hasn't been called yet and we need the base fetch to wait
+  // for that and then delete itself.
+  if (ctx->base_fetch != NULL) {
+    ctx->base_fetch->Release();
+    ctx->base_fetch = NULL;
+  }
 
   // Close the connection, delete the events attached with it, and free it to
   // Nginx's connection pool
@@ -1052,8 +1055,8 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
     return CreateRequestContext::kError;
   }
 
-  // Deletes itself when HandleDone is called, which happens when we call Done()
-  // on the proxy fetch below.
+  // Handles its own deletion.  We need to call Release() when we're done with
+  // it, and call Done() on the associated proxy fetch.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(r, file_descriptors[1]);
 
   // If null, that means use global options.
