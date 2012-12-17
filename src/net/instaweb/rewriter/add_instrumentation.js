@@ -65,6 +65,9 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
   var currentTime = Number(new Date());
   var traditionalPLT = (currentTime - oldStartTime);
 
+  // Handle a beacon url that already has query params.
+  url += (url.indexOf('?') == -1) ? '?' : '&';
+  url += 'ets=';
   url += (this.event_ == 'load') ? 'load:' : 'unload:';
   url += traditionalPLT;
 

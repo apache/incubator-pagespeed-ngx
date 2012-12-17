@@ -650,7 +650,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedAllow foo
 #ALL_DIRECTIVES ModPagespeedAnalyticsID 1234
 #ALL_DIRECTIVES ModPagespeedAvoidRenamingIntrospectiveJavascript true
-#ALL_DIRECTIVES ModPagespeedBeaconUrl "http://example.com/beacon?ets="
+#ALL_DIRECTIVES ModPagespeedBeaconUrl "http://example.com/beacon"
 #ALL_DIRECTIVES ModPagespeedBlockingRewriteKey test
 #ALL_DIRECTIVES ModPagespeedCacheFlushFilename /tmp/cache.flush
 #ALL_DIRECTIVES ModPagespeedCacheFlushPollIntervalSec 10

@@ -62,7 +62,6 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
 
   RewriteDriver* driver_;
   bool found_head_;
-  bool use_cdata_hack_;
   bool added_tail_script_;
   bool added_unload_script_;
 

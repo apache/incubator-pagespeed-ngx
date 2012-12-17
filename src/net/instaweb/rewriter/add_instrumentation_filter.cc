@@ -61,8 +61,6 @@ const char AddInstrumentationFilter::kInstrumentationScriptAddedCount[] =
 AddInstrumentationFilter::AddInstrumentationFilter(RewriteDriver* driver)
     : driver_(driver),
       found_head_(false),
-      use_cdata_hack_(
-          !driver_->server_context()->response_headers_finalized()),
       added_tail_script_(false),
       added_unload_script_(false) {
   Statistics* stats = driver->server_context()->statistics();

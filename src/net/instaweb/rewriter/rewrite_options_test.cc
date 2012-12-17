@@ -1500,4 +1500,33 @@ TEST_F(RewriteOptionsTest, FilterLookupMethods) {
             RewriteOptions::LookupFilterById(NULL));
 }
 
+TEST_F(RewriteOptionsTest, ParseBeaconUrl) {
+  RewriteOptions::BeaconUrl beacon_url;
+  GoogleString url = "www.example.com";
+  GoogleString url2 = "www.example.net";
+
+  EXPECT_FALSE(RewriteOptions::ParseBeaconUrl("", &beacon_url));
+  EXPECT_FALSE(RewriteOptions::ParseBeaconUrl("a b c", &beacon_url));
+
+  EXPECT_TRUE(RewriteOptions::ParseBeaconUrl("http://" + url, &beacon_url));
+  EXPECT_STREQ("http://" + url, beacon_url.http);
+  EXPECT_STREQ("https://" + url, beacon_url.https);
+
+  EXPECT_TRUE(RewriteOptions::ParseBeaconUrl("https://" + url, &beacon_url));
+  EXPECT_STREQ("https://" + url, beacon_url.http);
+  EXPECT_STREQ("https://" + url, beacon_url.https);
+
+  EXPECT_TRUE(RewriteOptions::ParseBeaconUrl(
+      "http://" + url + " " + "https://" + url2, &beacon_url));
+  EXPECT_STREQ("http://" + url, beacon_url.http);
+  EXPECT_STREQ("https://" + url2, beacon_url.https);
+
+  // Verify that ets parameters get stripped from the beacon_url
+  EXPECT_TRUE(RewriteOptions::ParseBeaconUrl("http://" + url + "?ets=" + " " +
+                                             "https://"+ url2 + "?foo=bar&ets=",
+                                             &beacon_url));
+  EXPECT_STREQ("http://" + url, beacon_url.http);
+  EXPECT_STREQ("https://" + url2 + "?foo=bar", beacon_url.https);
+}
+
 }  // namespace net_instaweb

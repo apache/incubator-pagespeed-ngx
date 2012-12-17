@@ -168,7 +168,7 @@ const int kValgrindWaitForRewriteMs = 1000;
 
 const int RewriteOptions::kDefaultPropertyCacheHttpStatusStabilityThreshold = 5;
 
-const char RewriteOptions::kDefaultBeaconUrl[] = "/mod_pagespeed_beacon?ets=";
+const char RewriteOptions::kDefaultBeaconUrl[] = "/mod_pagespeed_beacon";
 
 const int RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex = 5;
 const int64 RewriteOptions::kDefaultMinImageSizeLowResolutionBytes = 1 * 1024;
@@ -473,6 +473,15 @@ bool IsInSet(const RewriteOptions::Filter* filters, int num,
   return std::binary_search(filters, end, filter);
 }
 
+// Strip the "ets=" query param from then end of the beacon URLs.
+void StripBeaconUrlQueryParam(GoogleString* url) {
+  if (StringPiece(*url).ends_with("ets=")) {
+    // Strip the ? or & in front of ets= as well.
+    int chars_to_strip = STATIC_STRLEN("ets=") + 1;
+    url->resize(url->size() - chars_to_strip);
+  }
+}
+
 }  // namespace
 
 const char* RewriteOptions::FilterName(Filter filter) {
@@ -526,14 +535,18 @@ bool RewriteOptions::ParseBeaconUrl(const StringPiece& in, BeaconUrl* out) {
   urls[0].CopyToString(&out->http);
   if (urls.size() == 2) {
     urls[1].CopyToString(&out->https);
-    return true;
-  }
-  if (urls[0].starts_with("http:")) {
+  } else if (urls[0].starts_with("http:")) {
     out->https.clear();
     StrAppend(&out->https, "https:", urls[0].substr(STATIC_STRLEN("http:")));
   } else {
     urls[0].CopyToString(&out->https);
   }
+
+  // We used to require that the query param end with "ets=", but no longer
+  // do, so strip it if it's present.
+  StripBeaconUrlQueryParam(&out->http);
+  StripBeaconUrlQueryParam(&out->https);
+
   return true;
 }
 

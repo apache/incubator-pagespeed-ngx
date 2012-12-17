@@ -38,7 +38,7 @@ class AddInstrumentationFilterTest : public RewriteTestBase {
   AddInstrumentationFilterTest() {}
 
   virtual void SetUp() {
-    options()->set_beacon_url("http://example.com/beacon?org=xxx&ets=");
+    options()->set_beacon_url("http://example.com/beacon?org=xxx");
     AddInstrumentationFilter::InitStats(statistics());
     options()->EnableFilter(RewriteOptions::kAddInstrumentation);
     RewriteTestBase::SetUp();
