@@ -825,7 +825,8 @@ class HttpCallback : public HTTPCache::Callback {
  public:
   explicit HttpCallback(const RequestContextPtr& request_context)
       : HTTPCache::Callback(request_context),
-        done_(false) {}
+        done_(false),
+        result_(HTTPCache::kNotFound) {}
   virtual ~HttpCallback() {}
   virtual bool IsCacheValid(const GoogleString& key,
                             const ResponseHeaders& headers) {

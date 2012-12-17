@@ -39,7 +39,7 @@ const char kFalse[] = "false";
 const char kData[] = "data:";
 const char kJquerySlider[] = "jquery.sexyslider";
 const char kDfcg[] = "dfcg";
-const char kNivoSlider[] = "nivoSlider";
+const char kNivo[] = "nivo";
 
 }  // namespace
 
@@ -109,7 +109,7 @@ void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
     if (class_attribute != NULL) {
       StringPiece class_value(class_attribute->DecodedValueOrNull());
       if (class_value.find(kDfcg) != StringPiece::npos ||
-          class_value.find(kNivoSlider) != StringPiece::npos) {
+          class_value.find(kNivo) != StringPiece::npos) {
         skip_rewrite_ = element;
         return;
       }
