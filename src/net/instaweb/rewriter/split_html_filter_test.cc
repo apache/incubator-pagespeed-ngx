@@ -115,6 +115,19 @@ const char kSplitHtmlBelowTheFoldData[] =
 
 const char kHtmlInputForLazyload[] = "<html><head></head><body></body></html>";
 
+const char kHtmlInputForIgnoreScript[] =
+    "<html><body>%s<h1></h1>%s<h1></h1></body></html>";
+
+const char kHtmlExpectedOutputForIgnoreScript1[] =
+    "<html><head>%s</head><body>%s<h1></h1>%s"
+    "<!--GooglePanel begin panel-id.0--><!--GooglePanel end panel-id.0-->"
+    "</body></html>%s";
+
+const char kHtmlExpectedOutputForIgnoreScript2[] =
+    "<html><head>%s</head><body>%s"
+    "<!--GooglePanel begin panel-id.0--><!--GooglePanel end panel-id.0-->"
+    "</body></html>%s";
+
 class SplitHtmlFilterTest : public RewriteTestBase {
  public:
   SplitHtmlFilterTest(): writer_(&output_) {}
@@ -363,6 +376,111 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithUnsupportedUserAgent) {
   EXPECT_EQ(StrCat(kHtmlInputPart1, kHtmlInputPart2), output_);
   VerifyAppliedRewriters("");
   VerifyJsonSize(0);
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript1) {
+  options_->set_critical_line_config("h1[2]");
+  GoogleString expected_output_suffix(
+      StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                   0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
+                   "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
+                   "__psa_lt;/h1__psa_gt;\"}]}"));
+  GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
+                                  SplitHtmlFilter::kSplitInit));
+
+  GoogleString input(StringPrintf(kHtmlInputForIgnoreScript, "", ""));
+  Parse("split_ignore_script1", input.c_str());
+  EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript1,
+                         head_script.c_str(), "", "",
+                         expected_output_suffix.c_str()).c_str(), output_);
+  VerifyAppliedRewriters("sh");
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript2) {
+  options_->set_critical_line_config("h1[2]");
+  GoogleString expected_output_suffix(
+      StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                   0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
+                   "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
+                   "__psa_lt;/h1__psa_gt;\"}]}"));
+  GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
+                                  SplitHtmlFilter::kSplitInit));
+
+  GoogleString input = StringPrintf(kHtmlInputForIgnoreScript, "",
+                                    "<script></script><noscript></noscript>");
+  Parse("split_ignore_script2", input.c_str());
+  EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript1,
+                         head_script.c_str(), "",
+                         "<script></script><noscript></noscript>",
+                         expected_output_suffix.c_str()).c_str(), output_);
+  VerifyAppliedRewriters("sh");
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript3) {
+  options_->set_critical_line_config("h1[2]");
+  GoogleString expected_output_suffix(
+      StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                   0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
+                   "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
+                   "__psa_lt;/h1__psa_gt;\"}]}"));
+  GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
+                                  SplitHtmlFilter::kSplitInit));
+
+  GoogleString input = StringPrintf(kHtmlInputForIgnoreScript,
+                                    "<script></script><noscript></noscript>",
+                                    "<script></script><noscript></noscript>");
+  Parse("split_ignore_script3", input.c_str());
+  EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript1,
+                         head_script.c_str(),
+                         "<script></script><noscript></noscript>",
+                         "<script></script><noscript></noscript>",
+                         expected_output_suffix.c_str()).c_str(), output_);
+  VerifyAppliedRewriters("sh");
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript4) {
+  options_->set_critical_line_config("h1[1]");
+  GoogleString expected_output_suffix(
+      StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                   0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
+                   "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
+                   "__psa_lt;/h1__psa_gt;"
+                   "__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
+                   "__psa_lt;/h1__psa_gt;\"}]}"));
+  GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
+                                  SplitHtmlFilter::kSplitInit));
+
+  GoogleString input = StringPrintf(kHtmlInputForIgnoreScript, "", "");
+  Parse("split_ignore_script4", input.c_str());
+  EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript2,
+                         head_script.c_str(), "",
+                         expected_output_suffix.c_str()).c_str(), output_);
+  VerifyAppliedRewriters("sh");
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript5) {
+  options_->set_critical_line_config("h1[1]");
+  GoogleString expected_output_suffix(
+      StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                   0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
+                   "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
+                   "__psa_lt;/h1__psa_gt;"
+                   "__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
+                   "__psa_lt;/h1__psa_gt;\"}]}"));
+  GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
+                                  SplitHtmlFilter::kSplitInit));
+
+  GoogleString input = StringPrintf(
+      kHtmlInputForIgnoreScript,
+      "<script></script><noscript></noscript>"
+      "<style></style><link href=\"http://a.com/\">", "");
+  Parse("split_ignore_script5", input.c_str());
+  EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript2,
+                         head_script.c_str(),
+                         "<script></script><noscript></noscript>"
+                         "<style></style><link href=\"http://a.com/\">",
+                         expected_output_suffix.c_str()).c_str(), output_);
+  VerifyAppliedRewriters("sh");
 }
 
 }  // namespace

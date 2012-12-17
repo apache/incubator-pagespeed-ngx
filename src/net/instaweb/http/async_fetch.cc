@@ -127,6 +127,11 @@ void AsyncFetch::set_request_headers(RequestHeaders* headers) {
   owns_request_headers_ = false;
 }
 
+void AsyncFetch::SetRequestHeadersTakingOwnership(RequestHeaders* headers) {
+  set_request_headers(headers);
+  owns_request_headers_ = true;
+}
+
 RequestHeaders* AsyncFetch::request_headers() {
   // TODO(jmarantz): Consider DCHECKing that only const reads occur
   // after headers_complete_.

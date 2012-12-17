@@ -97,6 +97,9 @@ class AsyncFetch : public Writer {
   // Does not take ownership of headers.
   void set_request_headers(RequestHeaders* headers);
 
+  // Same as above, but takes ownership.
+  void SetRequestHeadersTakingOwnership(RequestHeaders* headers);
+
   // Returns the request_headers as a const pointer: it is required
   // that the RequestHeaders be pre-initialized via non-const
   // request_headers() or via set_request_headers before calling this.
