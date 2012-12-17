@@ -69,7 +69,9 @@ class UserAgentMatcher {
       const char* user_agent, const RequestHeaders* request_headers) const;
 
   // Returns the supported prefetch mechanism depending upon the user agent.
-  PrefetchMechanism GetPrefetchMechanism(const StringPiece& user_agent) const;
+  PrefetchMechanism GetPrefetchMechanism(
+      const StringPiece& user_agent,
+      const RequestHeaders* request_headers) const;
 
   bool SupportsJsDefer(const StringPiece& user_agent, bool allow_mobile) const;
   bool SupportsWebp(const StringPiece& user_agent) const;

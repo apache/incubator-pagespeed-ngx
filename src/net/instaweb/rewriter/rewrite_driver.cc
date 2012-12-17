@@ -898,8 +898,9 @@ bool RewriteDriver::SupportsFlushEarly() const {
         (options_->Enabled(RewriteOptions::kFlushSubresources) &&
         request_headers_ != NULL &&
         request_headers_->method() == RequestHeaders::kGet &&
-        user_agent_matcher().GetPrefetchMechanism(user_agent())
-            != UserAgentMatcher::kPrefetchNotSupported) ? kTrue : kFalse;
+        user_agent_matcher().GetPrefetchMechanism(user_agent(),
+            request_headers_) != UserAgentMatcher::kPrefetchNotSupported)
+            ? kTrue : kFalse;
   }
   return (supports_flush_early_ == kTrue);
 }

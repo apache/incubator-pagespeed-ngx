@@ -17,6 +17,7 @@
 
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -47,6 +48,7 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
     options()->set_flush_more_resources_early_if_time_permits(true);
     options()->set_flush_more_resources_in_ie_and_firefox(true);
     RewriteTestBase::SetUp();
+    rewrite_driver()->set_request_headers(&request_headers_);
     rewrite_driver()->set_flushing_early(true);
     rewrite_driver()->SetWriter(&writer_);
     server_context()->set_flush_early_info_finder(
@@ -56,6 +58,7 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
   virtual void Clear() {
     ClearRewriteDriver();
     rewrite_driver_->flush_early_info()->set_average_fetch_latency_ms(190);
+    rewrite_driver()->set_request_headers(&request_headers_);
     output_.clear();
   }
 
@@ -64,6 +67,7 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
  private:
   scoped_ptr<FlushEarlyContentWriterFilter> filter_;
   StringWriter writer_;
+  RequestHeaders request_headers_;
 
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyContentWriterFilterTest);
 };

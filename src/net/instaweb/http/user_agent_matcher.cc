@@ -264,8 +264,12 @@ UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(
   return kDoesNotSupportBlink;
 }
 
-UserAgentMatcher::PrefetchMechanism
-UserAgentMatcher::GetPrefetchMechanism(const StringPiece& user_agent) const {
+UserAgentMatcher::PrefetchMechanism UserAgentMatcher::GetPrefetchMechanism(
+    const StringPiece& user_agent,
+    const RequestHeaders* request_headers) const {
+  if (IsMobileRequest(user_agent, request_headers)) {
+    return kPrefetchNotSupported;
+  }
   if (supports_prefetch_link_rel_subresource_.Match(user_agent, false)) {
     return kPrefetchLinkRelSubresource;
   } else if (supports_prefetch_image_tag_.Match(user_agent, false)) {

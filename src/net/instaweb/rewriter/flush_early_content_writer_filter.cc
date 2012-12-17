@@ -102,7 +102,7 @@ void FlushEarlyContentWriterFilter::StartDocument() {
   original_writer_ = driver_->writer();
   set_writer(&null_writer_);
   prefetch_mechanism_ = driver_->user_agent_matcher().GetPrefetchMechanism(
-      driver_->user_agent());
+      driver_->user_agent(), driver_->request_headers());
   current_element_ = NULL;
   FlushEarlyInfoFinder* finder =
       driver_->server_context()->flush_early_info_finder();

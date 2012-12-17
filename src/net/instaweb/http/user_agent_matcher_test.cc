@@ -130,26 +130,36 @@ TEST_F(UserAgentMatcherTest, DoesNotSupportBlink) {
 }
 
 TEST_F(UserAgentMatcherTest, PrefetchMechanism) {
+  const RequestHeaders headers;
   EXPECT_EQ(UserAgentMatcher::kPrefetchImageTag,
             user_agent_matcher_.GetPrefetchMechanism(
-                "prefetch_image_tag"));
+                "prefetch_image_tag", &headers));
   EXPECT_EQ(UserAgentMatcher::kPrefetchLinkScriptTag,
             user_agent_matcher_.GetPrefetchMechanism(
-                UserAgentStrings::kIe9UserAgent));
+                UserAgentStrings::kIe9UserAgent, &headers));
   EXPECT_EQ(UserAgentMatcher::kPrefetchLinkRelSubresource,
             user_agent_matcher_.GetPrefetchMechanism(
-                "prefetch_link_rel_subresource"));
+                "prefetch_link_rel_subresource", &headers));
   EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
             user_agent_matcher_.GetPrefetchMechanism(
-                UserAgentStrings::kSafariUserAgent));
+                UserAgentStrings::kSafariUserAgent, &headers));
   EXPECT_EQ(UserAgentMatcher::kPrefetchLinkScriptTag,
             user_agent_matcher_.GetPrefetchMechanism(
-                "prefetch_link_script_tag"));
+                "prefetch_link_script_tag", &headers));
   EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
             user_agent_matcher_.GetPrefetchMechanism(
-                NULL));
+                NULL, &headers));
   EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
-            user_agent_matcher_.GetPrefetchMechanism(""));
+            user_agent_matcher_.GetPrefetchMechanism("", &headers));
+  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
+            user_agent_matcher_.GetPrefetchMechanism(
+                UserAgentStrings::kAndroidICSUserAgent, &headers));
+  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
+            user_agent_matcher_.GetPrefetchMechanism(
+                UserAgentStrings::kIPhoneUserAgent, &headers));
+  EXPECT_EQ(UserAgentMatcher::kPrefetchNotSupported,
+            user_agent_matcher_.GetPrefetchMechanism(
+                UserAgentStrings::kIPadUserAgent, &headers));
 }
 
 TEST_F(UserAgentMatcherTest, SupportsJsDefer) {
