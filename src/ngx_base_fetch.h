@@ -45,7 +45,8 @@ namespace net_instaweb {
 
 class NgxBaseFetch : public AsyncFetch {
  public:
-  NgxBaseFetch(ngx_http_request_t* r, int pipe_fd);
+  NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
+               const RequestContextPtr& request_ctx);
   virtual ~NgxBaseFetch();
 
   // Copies the request headers out of request_->headers_in->headers.

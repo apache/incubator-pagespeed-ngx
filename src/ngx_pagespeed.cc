@@ -39,6 +39,7 @@ extern "C" {
 #include "ngx_base_fetch.h"
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -1054,7 +1055,10 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
 
   // Deletes itself when HandleDone is called, which happens when we call Done()
   // on the proxy fetch below.
-  ctx->base_fetch = new net_instaweb::NgxBaseFetch(r, file_descriptors[1]);
+  ctx->base_fetch = new net_instaweb::NgxBaseFetch(
+      r, file_descriptors[1],
+      net_instaweb::RequestContextPtr(new net_instaweb::RequestContext(
+          cfg_s->server_context->thread_system()->NewMutex())));
 
   // If null, that means use global options.
   net_instaweb::RewriteOptions* custom_options;
@@ -1094,13 +1098,15 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
     // rewrite drivers and so is faster because there's no wait to construct
     // them.  Otherwise we have to build a new one every time.
     net_instaweb::RewriteDriver* driver;
+
     if (custom_options == NULL) {
-      driver = cfg_s->server_context->NewRewriteDriver();
+      driver = cfg_s->server_context->NewRewriteDriver(
+          ctx->base_fetch->request_context());
     } else {
       // NewCustomRewriteDriver takes ownership of custom_options.
-      driver = cfg_s->server_context->NewCustomRewriteDriver(custom_options);
+      driver = cfg_s->server_context->NewCustomRewriteDriver(
+          custom_options, ctx->base_fetch->request_context());
     }
-    driver->set_log_record(ctx->base_fetch->log_record());
 
     // TODO(jefftk): FlushEarlyFlow would go here.
 
