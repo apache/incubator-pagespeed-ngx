@@ -60,6 +60,7 @@ class JavascriptRewriteConfig {
   Variable* total_bytes_saved() { return total_bytes_saved_; }
   Variable* total_original_bytes() { return total_original_bytes_; }
   Variable* num_uses() { return num_uses_; }
+  Variable* num_reducing_uses() { return num_reducing_minifications_; }
 
   Variable* minification_disabled() { return minification_disabled_; }
   Variable* did_not_shrink() { return did_not_shrink_; }
@@ -72,6 +73,7 @@ class JavascriptRewriteConfig {
   static const char kTotalBytesSaved[];
   static const char kTotalOriginalBytes[];
   static const char kMinifyUses[];
+  static const char kNumReducingMinifications[];
 
   // Those are JS rewrite failure type statistics.
   static const char kJSMinificationDisabled[];
@@ -84,7 +86,9 @@ class JavascriptRewriteConfig {
   const JavascriptLibraryIdentification* library_identification_;
 
   // Statistics
-  // # of JS blocks (JS files and <script> blocks) successfully minified.
+  // # of JS blocks (JS files and <script> blocks) successfully minified:
+  // parsed, analyzed and serialized, not necessarily made smaller;
+  // num_reducing_minifications_ is counting those.
   Variable* blocks_minified_;
   // # of JS blocks that were identified as redirectable a known URL.
   Variable* libraries_identified_;
@@ -99,6 +103,8 @@ class JavascriptRewriteConfig {
   // # of uses of the minified JS (updating <script> src= attributes or
   // contents).
   Variable* num_uses_;
+  // Number of times we have successfully reduced the size of JS block.
+  Variable* num_reducing_minifications_;
 
   // Failure metrics.
   // Number of scripts we didn't rewrite JS because minification was disabled.

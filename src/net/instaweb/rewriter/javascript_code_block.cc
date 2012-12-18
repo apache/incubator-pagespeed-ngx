@@ -42,6 +42,9 @@ const char JavascriptRewriteConfig::kTotalBytesSaved[] =
 const char JavascriptRewriteConfig::kTotalOriginalBytes[] =
     "javascript_total_original_bytes";
 const char JavascriptRewriteConfig::kMinifyUses[] = "javascript_minify_uses";
+const char JavascriptRewriteConfig::kNumReducingMinifications[] =
+    "javascript_reducing_minifications";
+
 
 const char JavascriptRewriteConfig::kJSMinificationDisabled[] =
     "javascript_minification_disabled";
@@ -54,18 +57,18 @@ JavascriptRewriteConfig::JavascriptRewriteConfig(
     Statistics* stats, bool minify,
     const JavascriptLibraryIdentification* identification)
     : minify_(minify),
-      library_identification_(identification) {
-  blocks_minified_ = stats->GetVariable(kBlocksMinified);
-  libraries_identified_ = stats->GetVariable(kLibrariesIdentified);
-  minification_failures_ = stats->GetVariable(kMinificationFailures);
-  total_bytes_saved_ = stats->GetVariable(kTotalBytesSaved);
-  total_original_bytes_ = stats->GetVariable(kTotalOriginalBytes);
-  num_uses_ = stats->GetVariable(kMinifyUses);
-
-  // Failure variables.
-  minification_disabled_ = stats->GetVariable(kJSMinificationDisabled);
-  did_not_shrink_ = stats->GetVariable(kJSDidNotShrink);
-  failed_to_write_ = stats->GetVariable(kJSFailedToWrite);
+      library_identification_(identification),
+      blocks_minified_(stats->GetVariable(kBlocksMinified)),
+      libraries_identified_(stats->GetVariable(kLibrariesIdentified)),
+      minification_failures_(stats->GetVariable(kMinificationFailures)),
+      total_bytes_saved_(stats->GetVariable(kTotalBytesSaved)),
+      total_original_bytes_(stats->GetVariable(kTotalOriginalBytes)),
+      num_uses_(stats->GetVariable(kMinifyUses)),
+      num_reducing_minifications_(
+          stats->GetVariable(kNumReducingMinifications)),
+      minification_disabled_(stats->GetVariable(kJSMinificationDisabled)),
+      did_not_shrink_(stats->GetVariable(kJSDidNotShrink)),
+      failed_to_write_(stats->GetVariable(kJSFailedToWrite)) {
 }
 
 void JavascriptRewriteConfig::InitStats(Statistics* statistics) {
@@ -75,6 +78,7 @@ void JavascriptRewriteConfig::InitStats(Statistics* statistics) {
   statistics->AddVariable(kTotalBytesSaved);
   statistics->AddVariable(kTotalOriginalBytes);
   statistics->AddVariable(kMinifyUses);
+  statistics->AddVariable(kNumReducingMinifications);
 
   statistics->AddVariable(kJSMinificationDisabled);
   statistics->AddVariable(kJSDidNotShrink);
@@ -148,10 +152,15 @@ void JavascriptCodeBlock::Rewrite() const {
   // Minification succeeded.  Update stats based on whether
   // minified code will be served back to the user or is just being
   // used for library identification.
+  // The fact that it succeeded doesn't imply that it actually saved anything;
+  // we increment num_reducing_uses when there were actual savings.
   config_->blocks_minified()->Add(1);
   if (config_->minify()) {
     config_->total_original_bytes()->Add(original_code_.size());
-    size_t savings = original_code_.size() - rewritten_code_.size();
+    const size_t savings = original_code_.size() - rewritten_code_.size();
+    if (savings > 0) {
+      config_->num_reducing_uses()->Add(1);
+    }
     config_->total_bytes_saved()->Add(savings);
     output_code_ = rewritten_code_;
   }
