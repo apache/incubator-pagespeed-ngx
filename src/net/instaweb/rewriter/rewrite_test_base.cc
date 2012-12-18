@@ -697,13 +697,16 @@ void RewriteTestBase::SetupWaitFetcher() {
 void RewriteTestBase::CallFetcherCallbacks() {
   factory_->CallFetcherCallbacksForDriver(rewrite_driver_);
   // This calls Clear() on the driver, so give it a new request context.
-  rewrite_driver_->set_request_context(
-      RequestContext::NewTestRequestContext(factory_->thread_system()));
+  rewrite_driver_->set_request_context(CreateRequestContext());
 }
 
 void RewriteTestBase::SetUseManagedRewriteDrivers(
     bool use_managed_rewrite_drivers) {
   use_managed_rewrite_drivers_ = use_managed_rewrite_drivers;
+}
+
+RequestContextPtr RewriteTestBase::CreateRequestContext() {
+  return RequestContext::NewTestRequestContext(factory_->thread_system());
 }
 
 RewriteDriver* RewriteTestBase::MakeDriver(
@@ -717,12 +720,11 @@ RewriteDriver* RewriteTestBase::MakeDriver(
   if (!use_managed_rewrite_drivers_) {
     rd = server_context->NewUnmanagedRewriteDriver(
         NULL /* custom options, so no pool*/, options,
-        RequestContext::NewTestRequestContext(factory_->thread_system()));
+        CreateRequestContext());
     rd->set_externally_managed(true);
   } else {
-    rd = server_context->NewCustomRewriteDriver(
-        options, RequestContext::NewTestRequestContext(
-                     factory_->thread_system()));
+    rd = server_context->NewCustomRewriteDriver(options,
+                                                CreateRequestContext());
   }
 
   return rd;
@@ -770,14 +772,12 @@ void RewriteTestBase::ClearStats() {
   }
   counting_url_async_fetcher()->Clear();
   file_system()->ClearStats();
-  rewrite_driver()->set_request_context(
-      RequestContext::NewTestRequestContext(factory_->thread_system()));
+  rewrite_driver()->set_request_context(CreateRequestContext());
 }
 
 void RewriteTestBase::ClearRewriteDriver() {
   rewrite_driver()->Clear();
-  rewrite_driver()->set_request_context(
-      RequestContext::NewTestRequestContext(factory_->thread_system()));
+  rewrite_driver()->set_request_context(CreateRequestContext());
 }
 
 void RewriteTestBase::SetCacheDelayUs(int64 delay_us) {
@@ -869,8 +869,7 @@ void RewriteTestBase::InitiateResourceRead(
 HTTPCache::FindResult RewriteTestBase::HttpBlockingFind(
     const GoogleString& key, HTTPCache* http_cache, HTTPValue* value_out,
     ResponseHeaders* headers) {
-  HttpCallback callback(
-      RequestContext::NewTestRequestContext(factory_->thread_system()));
+  HttpCallback callback(CreateRequestContext());
   callback.set_response_headers(headers);
   http_cache->Find(key, message_handler(), &callback);
   CHECK(callback.done());

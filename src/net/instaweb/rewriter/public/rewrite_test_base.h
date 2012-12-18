@@ -531,6 +531,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
  protected:
   void Init();
 
+  // Override this if the test fixture needs to use a different RequestContext
+  // subclass.
+  virtual RequestContextPtr CreateRequestContext();
+
   // Calls callbacks on given wait fetcher, making sure to properly synchronize
   // with async rewrite flows given driver.
   void CallFetcherCallbacksForDriver(WaitUrlAsyncFetcher* fetcher,
