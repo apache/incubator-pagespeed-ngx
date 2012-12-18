@@ -42,6 +42,8 @@
 #include "base/logging.h"
 #include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/fake_url_async_fetcher.h"
+#include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -312,7 +314,20 @@ void SlurpUrl(ApacheServerContext* manager, request_rec* r) {
   GoogleString stripped_url = RemoveModPageSpeedQueryParams(
       url, r->parsed_uri.query);
 
+  // Figure out if we should be using a slurp fetcher rather than the default
+  // system fetcher.
   UrlAsyncFetcher* fetcher = manager->DefaultSystemFetcher();
+  scoped_ptr<HttpDumpUrlFetcher> sync_fetcher;
+  scoped_ptr<FakeUrlAsyncFetcher> adapter_fetcher;
+
+  ApacheConfig* config = manager->config();
+  if (config->test_proxy() && !config->test_proxy_slurp().empty()) {
+    sync_fetcher.reset(new HttpDumpUrlFetcher(
+        config->test_proxy_slurp(), manager->file_system(), manager->timer()));
+    adapter_fetcher.reset(new FakeUrlAsyncFetcher(sync_fetcher.get()));
+    fetcher = adapter_fetcher.get();
+  }
+
   MessageHandler* handler = manager->message_handler();
   StrippingFetch fetch(stripped_url, manager->config()->domain_lawyer(),
                        fetcher, manager->thread_system(), handler);

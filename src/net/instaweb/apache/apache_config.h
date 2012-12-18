@@ -207,13 +207,25 @@ class ApacheConfig : public RewriteOptions {
     return cache_flush_filename_.value();
   }
 
-  // Controls whether we act as a rewriting proxy, fetching
-  // URLs from origin without managing a slurp dump.
+  // If this is set to true, we'll turn on our fallback proxy-like behavior
+  // on non-.pagespeed. URLs without changing the main fetcher from Serf
+  // (the way the slurp options would).
   bool test_proxy() const {
     return test_proxy_.value();
   }
   void set_test_proxy(bool x) {
     set_option(x, &test_proxy_);
+  }
+
+  // This configures the fetcher we use for fallback handling if test_proxy()
+  // is on:
+  //  - If this is empty, we use the usual mod_pagespeed fetcher
+  //    (e.g. Serf)
+  //  - If it's non-empty, the fallback URLs will be fetched from the given
+  //    slurp directory. mod_pagespeed resource fetches, however, will still
+  //    use the usual fetcher (e.g. Serf).
+  GoogleString test_proxy_slurp() const {
+    return test_proxy_slurp_.value();
   }
 
   // Helper functions
@@ -322,6 +334,7 @@ class ApacheConfig : public RewriteOptions {
   Option<GoogleString> statistics_logging_charts_css_;
   Option<GoogleString> statistics_logging_charts_js_;
   Option<GoogleString> cache_flush_filename_;
+  Option<GoogleString> test_proxy_slurp_;
 
   ApacheOption<RefererStatisticsOutputLevel> referer_statistics_output_level_;
 

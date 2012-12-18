@@ -92,6 +92,8 @@ void ApacheConfig::AddProperties() {
              RewriteOptions::kStatisticsLoggingEnabled);
   add_option(false, &ApacheConfig::test_proxy_, "atp",
              RewriteOptions::kTestProxy);
+  add_option("", &ApacheConfig::test_proxy_slurp_, "atps",
+             RewriteOptions::kTestProxySlurp);
   add_option(false, &ApacheConfig::use_shared_mem_locking_, "ausml",
              RewriteOptions::kUseSharedMemLocking);
   add_option(false, &ApacheConfig::slurp_read_only_, "asro",

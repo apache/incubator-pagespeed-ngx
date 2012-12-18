@@ -259,6 +259,7 @@ const char kModPagespeedStatisticsLoggingChartsCSS[] =
 const char kModPagespeedStatisticsLoggingChartsJS[] =
     "ModPagespeedStatisticsLoggingChartsJS";
 const char kModPagespeedTestProxy[] = "ModPagespeedTestProxy";
+const char kModPagespeedTestProxySlurp[] = "ModPagespeedTestProxySlurp";
 const char kModPagespeedTrackOriginalContentLength[] =
     "ModPagespeedTrackOriginalContentLength";
 const char kModPagespeedUrlPrefix[] = "ModPagespeedUrlPrefix";
@@ -1907,7 +1908,11 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedStatisticsLoggingChartsJS,
         "Where to find an offline copy of the Google Charts Tools API JS."),
   APACHE_CONFIG_OPTION(kModPagespeedTestProxy,
-        "Act as a proxy without maintaining a slurp dump."),
+        "Direct non-mod_pagespeed URLs to a fetcher, acting as a simple "
+        "proxy. Meant for test use only"),
+  APACHE_CONFIG_OPTION(kModPagespeedTestProxySlurp,
+        "If set, the fetcher used by the TestProxy mode will be a "
+        "readonly slurp fetcher from the given directory"),
   APACHE_CONFIG_OPTION(kModPagespeedTrackOriginalContentLength,
         "Add X-Original-Content-Length headers to rewritten resources"),
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "No longer used."),

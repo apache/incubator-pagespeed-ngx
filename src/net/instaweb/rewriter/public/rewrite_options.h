@@ -285,6 +285,7 @@ class RewriteOptions {
     kStatisticsLoggingChartsCSS,
     kStatisticsLoggingChartsJS,
     kTestProxy,
+    kTestProxySlurp,
     kUseSharedMemLocking,
 
     // This is always the last option.

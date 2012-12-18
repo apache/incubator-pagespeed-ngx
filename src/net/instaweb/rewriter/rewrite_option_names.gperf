@@ -142,6 +142,7 @@ struct OptionName {
 "StatisticsLoggingFile",                 RewriteOptions::kStatisticsLoggingFile
 "StatisticsLoggingIntervalMs",           RewriteOptions::kStatisticsLoggingIntervalMs
 "TestProxy",                             RewriteOptions::kTestProxy
+"TestProxySlurp",                        RewriteOptions::kTestProxySlurp
 "UseFixedUserAgentForBlinkCacheMisses",  RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses
 "UseSmartDiffInBlink",                   RewriteOptions::kUseSmartDiffInBlink
 %%
