@@ -838,6 +838,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
   ProxyInterfaceTest()
       : fake_critical_images_finder_(
           new FakeCriticalImagesFinder(statistics())),
+        start_time_ms_(0),
         max_age_300_("max-age=300"),
         request_start_time_ms_(-1),
         callback_done_value_(false) {
@@ -1115,7 +1116,9 @@ class ProxyInterfaceTest : public RewriteTestBase {
 
   void TestOptionsUsedInCacheKey() {
     GoogleUrl gurl("http://www.test.com/");
-    StringAsyncFetch callback;
+    StringAsyncFetch callback(
+        RequestContext::NewTestRequestContext(
+            server_context()->thread_system()));
     scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
         proxy_interface_->InitiatePropertyCacheLookup(
         false, gurl, options(), &callback));

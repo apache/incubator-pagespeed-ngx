@@ -39,6 +39,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hostname_util.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -310,6 +311,12 @@ ProxyFetchPropertyCallbackCollector*
     const GoogleUrl& request_url,
     RewriteOptions* options,
     AsyncFetch* async_fetch) {
+  DCHECK(async_fetch->request_context().get() != NULL);
+  if (async_fetch->request_context()->trace_context() != NULL) {
+    async_fetch->request_context()->trace_context()->TracePrintf(
+        "PropertyCache lookup start");
+  }
+
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       new ProxyFetchPropertyCallbackCollector(
           server_context_, request_url.Spec(), options));

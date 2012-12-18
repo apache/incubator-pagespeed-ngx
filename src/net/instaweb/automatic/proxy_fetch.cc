@@ -667,6 +667,7 @@ void ProxyFetch::ScheduleQueueExecutionIfNeeded() {
 
 void ProxyFetch::PropertyCacheComplete(
     bool success, ProxyFetchPropertyCallbackCollector* callback_collector) {
+  driver_->TracePrintf("PropertyCache lookup completed");
   ScopedMutex lock(mutex_.get());
 
   if (driver_ == NULL) {

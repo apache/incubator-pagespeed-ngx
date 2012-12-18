@@ -559,6 +559,8 @@ void RewriteDriver::Flush() {
 }
 
 void RewriteDriver::FlushAsync(Function* callback) {
+  DCHECK(request_context_.get() != NULL);
+  TracePrintf("RewriteDriver::FlushAsync()");
   if (debug_filter_ != NULL) {
     debug_filter_->StartRender();
   }
@@ -660,6 +662,8 @@ void RewriteDriver::QueueFlushAsyncDone(int num_rewrites, Function* callback) {
 }
 
 void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
+  DCHECK(request_context_.get() != NULL);
+  TracePrintf("RewriteDriver::FlushAsyncDone()");
   ScopedMutex lock(rewrite_mutex());
   DCHECK_EQ(0, possibly_quick_rewrites_);
   int completed_rewrites = num_rewrites - pending_rewrites_;
