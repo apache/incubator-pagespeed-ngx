@@ -34,9 +34,10 @@
       'use_system_libs%': 0,
     },
 
-    # Which version development is usually done with. This version will
+    # Which versions development is usually done with. These version will
     # get -Werror
     'gcc_devel_version%': '44',
+    'gcc_devel_version2%': '46',
 
     # This variable is required to build a recent webp gyp given an older
     # surrounding Chromium checkout.
@@ -78,14 +79,23 @@
         # is generally done with, to avoid breaking things for users with
         # something older or newer (which produces different warnings).
         'conditions': [
-          ['<(gcc_version) != <(gcc_devel_version)', {
+          ['<(gcc_version) != <(gcc_devel_version) and '
+           '<(gcc_version) != <(gcc_devel_version2)', {
           'cflags!': ['-Werror']
           }],
-          # -W[no-]unused-but-set-variable is only there since gcc-4.6, so
-          # don't add it on earlier versions.
+          # Newer Chromium common.gypi adds -Wno-unused-but-set-variable
+          # (unconditionally). This is wrong for gcc < 4.6, since the flag
+          # was added in 4.6, but very much needed for >= 4.6 since
+          # otherwise ICU headers don't build with -Werror.
+          #
+          # At the moment, we need to support both building with gcc < 4.6
+          # and building with old Chromium --- so we remove the flag for
+          # < 4.6 gcc, and add it for newer versions.
           # TODO(morlovich): Upstream, but how high?
           ['<(gcc_version) < 46', {
             'cflags!': ['-Wno-unused-but-set-variable']
+          }, {
+            'cflags+': ['-Wno-unused-but-set-variable']
           }],
         ],
         'cflags': [
