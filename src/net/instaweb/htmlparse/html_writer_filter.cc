@@ -22,6 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -188,7 +189,7 @@ void HtmlWriterFilter::EndElement(HtmlElement* element) {
         EmitBytes("/>");
         break;
       }
-      // fall through
+      FALLTHROUGH_INTENDED;
     case HtmlElement::EXPLICIT_CLOSE:
       EmitBytes("</");
       EmitName(element->name());

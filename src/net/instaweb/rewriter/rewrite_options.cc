@@ -1467,7 +1467,7 @@ bool RewriteOptions::Enabled(Filter filter) const {
       if (IsInSet(kTestFilterSet, arraysize(kTestFilterSet), filter)) {
         return true;
       }
-      // fall through
+      FALLTHROUGH_INTENDED;
     case kCoreFilters:
       if (IsInSet(kCoreFilterSet, arraysize(kCoreFilterSet), filter)) {
         return true;
