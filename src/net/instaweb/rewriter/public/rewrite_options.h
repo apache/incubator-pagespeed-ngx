@@ -125,6 +125,7 @@ class RewriteOptions {
     kOutlineCss,
     kOutlineJavascript,
     kPedantic,
+    kConvertToWebpLossless,
     kPrioritizeVisibleContent,
     kProcessBlinkInBackground,
     kRecompressJpeg,
@@ -693,7 +694,7 @@ class RewriteOptions {
 
   // Checks if either of the optimizing rewrite options are ON and it includes
   // kRecompressJPeg, kRecompressPng, kRecompressWebp, kConvertGifToPng,
-  // kConvertJpegToWebp and kConvertPngToJpeg.
+  // kConvertJpegToWebp, kConvertPngToJpeg, and kConvertToWebpLossless.
   bool ImageOptimizationEnabled() const;
 
   RewriteOptions();

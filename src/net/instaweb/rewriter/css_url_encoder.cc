@@ -34,7 +34,10 @@ void CssUrlEncoder::Encode(const StringVector& urls,
   DCHECK(data != NULL) << "null data passed to CssUrlEncoder::Encode";
   DCHECK_EQ(1U, urls.size());
   if (data != NULL) {
-    if (data->attempt_webp()) {
+    if (data->libwebp_level() ==
+         ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA) {
+      rewritten_url->append("V.");
+    } else if (data->libwebp_level() == ResourceContext::LIBWEBP_LOSSY_ONLY) {
       rewritten_url->append("W.");
     } else if (data->inline_images()) {
       rewritten_url->append("I.");
@@ -61,15 +64,19 @@ bool CssUrlEncoder::Decode(const StringPiece& encoded,
   }
   switch (encoded[0]) {
     case 'A':
-      data->set_attempt_webp(false);
+      data->set_libwebp_level(ResourceContext::LIBWEBP_NONE);
       data->set_inline_images(false);
       break;
+    case 'V':
+      data->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA);
+      data->set_inline_images(true);
+      break;
     case 'W':
-      data->set_attempt_webp(true);
+      data->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
       data->set_inline_images(true);
       break;
     case 'I':
-      data->set_attempt_webp(false);
+      data->set_libwebp_level(ResourceContext::LIBWEBP_NONE);
       data->set_inline_images(true);
       break;
   }

@@ -29,7 +29,6 @@
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
@@ -938,6 +937,22 @@ TEST_F(CssRecompressImagesInStyleAttributes, RecompressAndWebpAndStyleEnabled) {
 }
 
 TEST_F(CssRecompressImagesInStyleAttributes,
+       RecompressAndWebpLosslessAndStyleEnabled) {
+  AddFileToMockFetcher(StrCat(kTestDomain, "foo.jpg"), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
+  options()->set_image_jpeg_recompress_quality(85);
+  rewrite_driver()->set_user_agent("webp-la");
+  rewrite_driver()->AddFilters();
+  ValidateExpected("webp-lossless",
+      "<div style=\"background-image:url(foo.jpg)\"/>",
+      "<div style=\"background-image:url("
+      "http://test.com/vfoo.jpg.pagespeed.ic.0.webp)\"/>");
+}
+
+TEST_F(CssRecompressImagesInStyleAttributes,
        RecompressAndWebpAndStyleEnabledWithMaxCssSize) {
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.jpg"), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
@@ -952,6 +967,23 @@ TEST_F(CssRecompressImagesInStyleAttributes,
       "<div style=\"background-image:url(foo.jpg)\"/>",
       "<div style=\"background-image:url("
       "http://test.com/wfoo.jpg.pagespeed.ic.0.jpg)\"/>");
+}
+
+TEST_F(CssRecompressImagesInStyleAttributes,
+       RecompressAndWebpLosslessAndStyleEnabledWithMaxCssSize) {
+  AddFileToMockFetcher(StrCat(kTestDomain, "foo.jpg"), kPuzzleJpgFile,
+                       kContentTypeJpeg, 100);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+  options()->EnableFilter(RewriteOptions::kRewriteStyleAttributesWithUrl);
+  options()->set_image_jpeg_recompress_quality(85);
+  options()->set_max_image_bytes_for_webp_in_css(1);
+  rewrite_driver()->set_user_agent("webp-la");
+  rewrite_driver()->AddFilters();
+  ValidateExpected("webp-lossless",
+      "<div style=\"background-image:url(foo.jpg)\"/>",
+      "<div style=\"background-image:url("
+      "http://test.com/vfoo.jpg.pagespeed.ic.0.jpg)\"/>");
 }
 
 }  // namespace

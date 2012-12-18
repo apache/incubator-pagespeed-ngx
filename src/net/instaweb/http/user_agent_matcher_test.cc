@@ -21,6 +21,11 @@
 
 namespace net_instaweb {
 
+namespace UserAgentStrings {
+const char kTestingWebp[] = "webp";
+const char kTestingWebpLosslessAlpha[] = "webp-la";
+}
+
 class UserAgentMatcherTest : public testing::Test {
  protected:
   UserAgentMatcher user_agent_matcher_;
@@ -208,6 +213,11 @@ TEST_F(UserAgentMatcherTest, NotSupportsJsDeferAllowMobile) {
 
 TEST_F(UserAgentMatcherTest, SupportsWebp) {
   EXPECT_TRUE(user_agent_matcher_.SupportsWebp(
+      UserAgentStrings::kTestingWebp));
+  EXPECT_TRUE(user_agent_matcher_.SupportsWebp(
+      UserAgentStrings::kTestingWebpLosslessAlpha));
+
+  EXPECT_TRUE(user_agent_matcher_.SupportsWebp(
       UserAgentStrings::kAndroidICSUserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsWebp(
       UserAgentStrings::kChrome12UserAgent));
@@ -306,6 +316,61 @@ TEST_F(UserAgentMatcherTest, DoesntSupportDnsPrefetch) {
   EXPECT_FALSE(user_agent_matcher_.SupportsDnsPrefetch(
       UserAgentStrings::kIe8UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsDnsPrefetch(
+      UserAgentStrings::kSafariUserAgent));
+}
+
+TEST_F(UserAgentMatcherTest, SupportsWebpLosslessAlpha) {
+  EXPECT_TRUE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kTestingWebpLosslessAlpha));
+}
+
+TEST_F(UserAgentMatcherTest, DoesntSupportWebpLosslessAlpha) {
+  // The most interesting tests here are the recent but slightly older versions
+  // of Chrome and Opera that can't display webp.
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kTestingWebp));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kAndroidICSUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kChrome12UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kChrome18UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kOpera1110UserAgent));
+
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kAndroidHCUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kChromeUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kChrome9UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kChrome15UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kOpera1101UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kFirefoxUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kFirefox1UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kIe6UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kIe7UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kIe8UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kIe9UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kIPhoneUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kNokiaUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kOpera5UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kOpera8UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
+      UserAgentStrings::kPSPUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsWebpLosslessAlpha(
       UserAgentStrings::kSafariUserAgent));
 }
 

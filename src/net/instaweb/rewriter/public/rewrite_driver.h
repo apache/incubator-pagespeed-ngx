@@ -205,6 +205,7 @@ class RewriteDriver : public HtmlParse {
     user_agent_supports_image_inlining_ = kNotSet;
     user_agent_supports_js_defer_ = kNotSet;
     user_agent_supports_webp_ = kNotSet;
+    user_agent_supports_webp_lossless_alpha_ = kNotSet;
     is_mobile_user_agent_ = kNotSet;
     user_agent_supports_split_html_ = kNotSet;
     is_screen_resolution_set_ = kNotSet;
@@ -271,6 +272,7 @@ class RewriteDriver : public HtmlParse {
   bool UserAgentSupportsImageInlining() const;
   bool UserAgentSupportsJsDefer() const;
   bool UserAgentSupportsWebp() const;
+  bool UserAgentSupportsWebpLosslessAlpha() const;
   bool IsMobileUserAgent() const;
   bool GetScreenResolution(int* width, int* height);
   void SetScreenResolution(int width, int height);
@@ -1243,6 +1245,7 @@ class RewriteDriver : public HtmlParse {
   mutable LazyBool user_agent_supports_image_inlining_;
   mutable LazyBool user_agent_supports_js_defer_;
   mutable LazyBool user_agent_supports_webp_;
+  mutable LazyBool user_agent_supports_webp_lossless_alpha_;
   mutable LazyBool is_mobile_user_agent_;
   mutable LazyBool supports_flush_early_;
   mutable LazyBool user_agent_supports_split_html_;

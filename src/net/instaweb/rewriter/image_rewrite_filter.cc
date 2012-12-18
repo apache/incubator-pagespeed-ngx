@@ -122,6 +122,25 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   DISALLOW_COPY_AND_ASSIGN(Context);
 };
 
+void SetWebpCompressionOptions(
+    const ResourceContext& resource_context,
+    const RewriteOptions& options,
+    const StringPiece& url,
+    Image::CompressionOptions* image_options) {
+  if (resource_context.libwebp_level() == ResourceContext::LIBWEBP_NONE) {
+    image_options->preferred_webp = Image::WEBP_NONE;
+  } else if (resource_context.libwebp_level() ==
+             ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA) {
+    if (options.Enabled(RewriteOptions::kConvertToWebpLossless)) {
+      image_options->preferred_webp = Image::WEBP_LOSSLESS;
+    } else {
+      image_options->preferred_webp = Image::WEBP_LOSSY;
+    }
+  } else {
+    image_options->preferred_webp = Image::WEBP_LOSSY;
+  }
+}
+
 void ImageRewriteFilter::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
@@ -252,8 +271,13 @@ Image::CompressionOptions* ImageOptionsForLoadedResource(
   // greater than max_image_bytes_in_css_for_webp. This is because webp does not
   // support progressive which causes a perceptible delay in the loading of
   // large background images.
-  image_options->webp_preferred = context.attempt_webp() &&
-      (!is_css || input_size <= options->max_image_bytes_for_webp_in_css());
+  if ((context.libwebp_level() != ResourceContext::LIBWEBP_NONE) &&
+      // TODO(vchudnov): Consider whether we want to treat CSS images
+      // differently.
+      (!is_css || input_size <= options->max_image_bytes_for_webp_in_css())) {
+    SetWebpCompressionOptions(context, *options, input_resource->url(),
+                              image_options);
+  }
   image_options->jpeg_quality = options->image_recompress_quality();
   if (options->image_jpeg_recompress_quality() != -1) {
     // if jpeg quality is explicitly set, it takes precedence over generic image
@@ -271,6 +295,8 @@ Image::CompressionOptions* ImageOptionsForLoadedResource(
       options->Enabled(RewriteOptions::kConvertPngToJpeg);
   image_options->convert_gif_to_png =
       options->Enabled(RewriteOptions::kConvertGifToPng);
+  image_options->convert_jpeg_to_webp =
+      options->Enabled(RewriteOptions::kConvertJpegToWebp);
   image_options->recompress_jpeg =
       options->Enabled(RewriteOptions::kRecompressJpeg);
   image_options->recompress_png =
@@ -500,7 +526,12 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
         image_size <= options->max_image_size_low_resolution_bytes()) {
       Image::CompressionOptions* image_options =
           new Image::CompressionOptions();
-      image_options->webp_preferred = false;
+      // Note that preferred_webp may be further refined in
+      // SetTransformToLowRes below.
+      SetAttemptWebp(input_resource->url(), &context);
+      SetWebpCompressionOptions(context, *options, input_resource->url(),
+                                image_options);
+
       image_options->jpeg_quality = options->image_recompress_quality();
       if (options->image_jpeg_recompress_quality() != -1) {
         // if jpeg quality is explicitly set, it takes precedence over
@@ -577,8 +608,6 @@ void ImageRewriteFilter::ResizeLowQualityImage(
     const RewriteOptions* options = driver_->options();
     Image::CompressionOptions* image_options =
         new Image::CompressionOptions();
-    // TODO(bolian): Use webp format for supported user agents.
-    image_options->webp_preferred = false;
     image_options->jpeg_quality = options->image_recompress_quality();
     if (options->image_jpeg_recompress_quality() != -1) {
       // if jpeg quality is explicitly set, it takes precedence over
@@ -708,26 +737,15 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   }
 }
 
-void ImageRewriteFilter::SetAttemptWebp(StringPiece url,
+void ImageRewriteFilter::SetAttemptWebp(const StringPiece& url,
                                         ResourceContext* resource_context) {
-  const RewriteOptions* options = driver_->options();
-  resource_context->set_attempt_webp(false);
-  if (options->Enabled(RewriteOptions::kConvertJpegToWebp) &&
-      driver_->UserAgentSupportsWebp() &&
-      (options->Enabled(RewriteOptions::kConvertPngToJpeg) ||
-       !(url.ends_with(".png") || url.ends_with(".gif")))) {
-    // Note that we guess content type based on extension above. This avoids
-    // the common case where we rewrite a .png twice, once for webp capable
-    // browsers and once for non-webp browsers, even though neither rewrite uses
-    // webp code paths at all. We only consider webp as a candidate image
-    // format if we might have a jpg.
-    // TODO(jmaessen): if we instead set up the ResourceContext mapping
-    // explicitly from within the filter, we can imagine doing so after we know
-    // the content type of the image. But that involves throwing away quite a
-    // bit of the plumbing that is otherwise provided for us by
-    // SingleRewriteContext.
-    resource_context->set_attempt_webp(true);
+  ResourceContext::LibWebpLevel libwebp_level = ResourceContext::LIBWEBP_NONE;
+  if (driver_->UserAgentSupportsWebpLosslessAlpha()) {
+    libwebp_level = ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
+  } else if (driver_->UserAgentSupportsWebp()) {
+    libwebp_level = ResourceContext::LIBWEBP_LOSSY_ONLY;
   }
+  resource_context->set_libwebp_level(libwebp_level);
 }
 
 bool ImageRewriteFilter::FinishRewriteCssImageUrl(
@@ -1158,9 +1176,10 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
   if (parent_context != NULL) {
     cloned_context->CopyFrom(*parent_context);
   }
-  if (cloned_context->attempt_webp()) {
+
+  if (cloned_context->libwebp_level() != ResourceContext::LIBWEBP_NONE) {
     // CopyFrom parent_context is not sufficient because parent_context checks
-    // only UserAgentSupportsWebp while setting attempt_webp but while
+    // only UserAgentSupportsWebp when creating the context, but while
     // rewriting the image, rewrite options should also be checked.
     GoogleString url = slot->resource()->url();
     SetAttemptWebp(url, cloned_context);

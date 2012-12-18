@@ -54,14 +54,21 @@ class Image {
     IMAGE_WEBP,  // Update kImageTypeEnd if you add something after this.
   };
 
+  enum PreferredWebp {
+    WEBP_NONE = 0,
+    WEBP_LOSSY,
+    WEBP_LOSSLESS
+  };
+
   struct CompressionOptions {
     CompressionOptions()
-        : webp_preferred(false),
+        : preferred_webp(WEBP_NONE),
           webp_quality(RewriteOptions::kDefaultImagesRecompressQuality),
           jpeg_quality(RewriteOptions::kDefaultImagesRecompressQuality),
           progressive_jpeg(false),
-          convert_png_to_jpeg(false),
           convert_gif_to_png(false),
+          convert_png_to_jpeg(false),
+          convert_jpeg_to_webp(false),
           recompress_jpeg(false),
           recompress_png(false),
           recompress_webp(false),
@@ -70,12 +77,13 @@ class Image {
           retain_exif_data(false),
           jpeg_num_progressive_scans(
               RewriteOptions::kDefaultImageJpegNumProgressiveScans) {}
-    bool webp_preferred;
+    PreferredWebp preferred_webp;
     int64 webp_quality;
     int64 jpeg_quality;
     bool progressive_jpeg;
-    bool convert_png_to_jpeg;
     bool convert_gif_to_png;
+    bool convert_png_to_jpeg;
+    bool convert_jpeg_to_webp;
     bool recompress_jpeg;
     bool recompress_png;
     bool recompress_webp;
@@ -157,6 +165,9 @@ class Image {
   // If output_useful is true, the decoded version might be written out
   // directly to user, so it may be worthwhile to make it efficient.
   virtual bool EnsureLoaded(bool output_useful) = 0;
+
+  // Returns the image URL.
+  virtual const GoogleString& url() = 0;
 
  protected:
   explicit Image(const StringPiece& original_contents);

@@ -46,7 +46,11 @@ Image* ImageTestBase::ImageFromString(
     const GoogleString& contents, bool progressive) {
   net_instaweb::Image::CompressionOptions* image_options =
       new net_instaweb::Image::CompressionOptions();
-  image_options->webp_preferred = output_type == Image::IMAGE_WEBP;
+  // TODO(vchudnov): Modify to allow
+  // WEBP_LOSSY_LOSSLESS_ALPHA. Perhaps we should define
+  // Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA?
+  image_options->preferred_webp = (output_type == Image::IMAGE_WEBP) ?
+      Image::WEBP_LOSSY : Image::WEBP_NONE;
   image_options->jpeg_quality = -1;
   image_options->progressive_jpeg = progressive;
   image_options->convert_png_to_jpeg =  output_type == Image::IMAGE_JPEG;

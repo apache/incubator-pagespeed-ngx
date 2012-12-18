@@ -163,6 +163,7 @@ void RewriteTestBase::TearDown() {
 
 // Adds rewrite filters related to recompress images.
 void RewriteTestBase::AddRecompressImageFilters() {
+  // TODO(vchudnov): Consider adding kConvertToWebpLossless.
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   options()->EnableFilter(RewriteOptions::kRecompressWebp);
@@ -661,7 +662,10 @@ GoogleString RewriteTestBase::EncodeCssName(const StringPiece& name,
   CssUrlEncoder encoder;
   ResourceContext resource_context;
   resource_context.set_inline_images(can_inline);
-  resource_context.set_attempt_webp(supports_webp);
+  if (supports_webp) {
+    // TODO(vchudnov): Deal with webp lossless.
+    resource_context.set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
+  }
   StringVector urls;
   GoogleString encoded_url;
   name.CopyToString(StringVectorAdd(&urls));

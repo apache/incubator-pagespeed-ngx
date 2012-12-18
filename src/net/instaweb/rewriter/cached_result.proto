@@ -199,7 +199,15 @@ message OutputPartitions {
 // additional information should add it as optional fields here.
 message ResourceContext {
   optional ImageDim desired_image_dims = 1;
-  optional bool attempt_webp = 2 [ default = false ];
+  optional bool attempt_webp = 2 [ default = false, deprecated = true ];
   optional bool inline_images = 3 [ default = true ];
   optional bool mobile_user_agent = 4 [ default = false ];
+
+  enum LibWebpLevel {
+    LIBWEBP_NONE = 0;
+    LIBWEBP_LOSSY_ONLY = 1;
+    LIBWEBP_LOSSY_LOSSLESS_ALPHA = 2;
+  }
+
+  optional LibWebpLevel libwebp_level = 5 [default = LIBWEBP_NONE];
 }

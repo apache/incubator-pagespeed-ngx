@@ -413,6 +413,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "jo", "Outline Javascript" },
   { RewriteOptions::kPedantic,
     "pc", "Add pedantic types" },
+  { RewriteOptions::kConvertToWebpLossless,
+    "ws", "When converting images to WebP, prefer lossless conversions" },
   { RewriteOptions::kPrioritizeVisibleContent,
     "pv", "Prioritize Visible Content" },
   { RewriteOptions::kProcessBlinkInBackground,
@@ -557,7 +559,8 @@ bool RewriteOptions::ImageOptimizationEnabled() const {
           this->Enabled(RewriteOptions::kConvertGifToPng) ||
           this->Enabled(RewriteOptions::kConvertJpegToProgressive) ||
           this->Enabled(RewriteOptions::kConvertPngToJpeg) ||
-          this->Enabled(RewriteOptions::kConvertJpegToWebp));
+          this->Enabled(RewriteOptions::kConvertJpegToWebp) ||
+          this->Enabled(RewriteOptions::kConvertToWebpLossless));
 }
 
 RewriteOptions::RewriteOptions()

@@ -40,6 +40,7 @@ struct FilterMap {
 "convert_jpeg_to_webp",              RewriteOptions::kConvertJpegToWebp
 "convert_meta_tags",                 RewriteOptions::kConvertMetaTags
 "convert_png_to_jpeg",               RewriteOptions::kConvertPngToJpeg
+"convert_to_webp_lossless",          RewriteOptions::kConvertToWebpLossless
 "debug",                             RewriteOptions::kDebug
 "defer_iframe",                      RewriteOptions::kDeferIframe
 "defer_javascript",                  RewriteOptions::kDeferJavascript

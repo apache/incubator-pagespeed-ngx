@@ -939,7 +939,15 @@ CssFilter::Context* CssFilter::MakeContext(RewriteDriver* driver,
   ResourceContext* resource_context = new ResourceContext;
   resource_context->set_inline_images(
       driver_->UserAgentSupportsImageInlining());
-  resource_context->set_attempt_webp(driver_->UserAgentSupportsWebp());
+  if (driver_->UserAgentSupportsWebpLosslessAlpha()) {
+    resource_context->set_libwebp_level(
+        ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA);
+  } else if (driver_->UserAgentSupportsWebp()) {
+    resource_context->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
+  } else {
+    resource_context->set_libwebp_level(ResourceContext::LIBWEBP_NONE);
+  }
+
   return new Context(this, driver, parent, cache_extender_,
                      image_rewrite_filter_, image_combiner_, resource_context);
 }

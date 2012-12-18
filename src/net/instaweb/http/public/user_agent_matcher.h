@@ -75,6 +75,7 @@ class UserAgentMatcher {
 
   bool SupportsJsDefer(const StringPiece& user_agent, bool allow_mobile) const;
   bool SupportsWebp(const StringPiece& user_agent) const;
+  bool SupportsWebpLosslessAlpha(const StringPiece& user_agent) const;
 
   // IE9 does not implement <link rel=dns-prefetch ...>. Instead it does DNS
   // preresolution when it sees <link rel=prefetch ...>. This method returns
@@ -104,6 +105,7 @@ class UserAgentMatcher {
   FastWildcardGroup blink_desktop_blacklist_;
   FastWildcardGroup blink_mobile_whitelist_;
   FastWildcardGroup supports_webp_;
+  FastWildcardGroup supports_webp_lossless_alpha_;
   FastWildcardGroup mobile_user_agents_;
   FastWildcardGroup supports_prefetch_link_rel_subresource_;
   FastWildcardGroup supports_prefetch_image_tag_;

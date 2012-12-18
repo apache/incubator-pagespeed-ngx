@@ -28,13 +28,16 @@ namespace net_instaweb {
 namespace {
 
 const char kCodeSeparator = 'x';
-const char kCodeWebp = 'w';
+const char kCodeWebpLossy = 'w';
+const char kCodeWebpLossyLosslessAlpha = 'v';
 const char kCodeMobileUserAgent = 'm';
 const char kMissingDimension = 'N';
 
 bool IsValidCode(char code) {
-  return (code == kCodeSeparator) || (code == kCodeWebp) ||
-      (code == kCodeMobileUserAgent);
+  return ((code == kCodeSeparator) ||
+          (code == kCodeWebpLossy) ||
+          (code == kCodeWebpLossyLosslessAlpha) ||
+          (code == kCodeMobileUserAgent));
 }
 
 // Decodes a single dimension (either N or an integer), removing it from *in and
@@ -93,10 +96,16 @@ void ImageUrlEncoder::Encode(const StringVector& urls,
     if (data->mobile_user_agent()) {
       rewritten_url->push_back(kCodeMobileUserAgent);
     }
-    if (data->attempt_webp()) {
-      rewritten_url->push_back(kCodeWebp);
-    } else {
-      rewritten_url->push_back(kCodeSeparator);
+    switch (data->libwebp_level()) {
+      case ResourceContext::LIBWEBP_LOSSY_ONLY:
+        rewritten_url->push_back(kCodeWebpLossy);
+        break;
+      case ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA:
+        rewritten_url->push_back(kCodeWebpLossyLosslessAlpha);
+        break;
+      default:
+        rewritten_url->push_back(kCodeSeparator);
+        break;
     }
   }
   UrlEscaper::EncodeToUrlSegment(urls[0], rewritten_url);
@@ -174,18 +183,33 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
   remaining.remove_prefix(1);
   if (terminator == kCodeMobileUserAgent) {
     data->set_mobile_user_agent(true);
-    // There must be a final kCodeWebp or kCodeSeparator. Otherwise, invalid.
+    // There must be a final kCodeWebpLossy,
+    // kCodeWebpLossyLosslessAlpha, or kCodeSeparator. Otherwise,
+    // invalid.
     // Check and strip it.
     if (remaining.empty()) {
       return false;
     }
     terminator = remaining[0];
-    if (terminator != kCodeWebp && terminator != kCodeSeparator) {
+    if (terminator != kCodeWebpLossy &&
+        terminator != kCodeWebpLossyLosslessAlpha &&
+        terminator != kCodeSeparator) {
       return false;
     }
     remaining.remove_prefix(1);
   }
-  data->set_attempt_webp(terminator == kCodeWebp);
+
+  switch (terminator) {
+    case kCodeWebpLossy:
+      data->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
+      break;
+    case kCodeWebpLossyLosslessAlpha:
+      data->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA);
+      break;
+    default:
+      data->set_libwebp_level(ResourceContext::LIBWEBP_NONE);
+      break;
+  }
 
   GoogleString* url = StringVectorAdd(urls);
   if (UrlEscaper::DecodeFromUrlSegment(remaining, url)) {

@@ -1215,8 +1215,8 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   // This should be all non-dangerous filters.
   EXPECT_EQ("Experiment: 7; ab,ah,ai,cw,fe,cc,ch,jc,gp,jp,jw,mc,pj,db,di,"
             "ea,ec,ei,ep,es,fc,if,fs,hn,hw,ci,ii,il,ji,idp,ig,id,js,tu,ls,"
-            "ga,cj,cm,co,jo,pc,pv,rj,rp,rw,rc,rq,ri,rm,cf,rd,jm,cs,cu,is,sq,cp,"
-            "md,css:2048,im:2048,js:2048;",
+            "ga,cj,cm,co,jo,pc,ws,pv,rj,rp,rw,rc,rq,ri,rm,cf,rd,jm,cs,cu,is,sq,"
+            "cp,md,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 7", options_.ToExperimentString());
   options_.SetFuriousState(2);
@@ -1405,6 +1405,11 @@ TEST_F(RewriteOptionsTest, ImageOptimizableCheck) {
   options_.EnableFilter(RewriteOptions::kConvertPngToJpeg);
   EXPECT_TRUE(options_.ImageOptimizationEnabled());
   options_.DisableFilter(RewriteOptions::kConvertPngToJpeg);
+  EXPECT_FALSE(options_.ImageOptimizationEnabled());
+
+  options_.EnableFilter(RewriteOptions::kConvertToWebpLossless);
+  EXPECT_TRUE(options_.ImageOptimizationEnabled());
+  options_.DisableFilter(RewriteOptions::kConvertToWebpLossless);
   EXPECT_FALSE(options_.ImageOptimizationEnabled());
 }
 

@@ -37,8 +37,8 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -122,7 +122,6 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/function.h"
@@ -130,6 +129,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
+#include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -204,6 +204,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       user_agent_supports_image_inlining_(kNotSet),
       user_agent_supports_js_defer_(kNotSet),
       user_agent_supports_webp_(kNotSet),
+      user_agent_supports_webp_lossless_alpha_(kNotSet),
       is_mobile_user_agent_(kNotSet),
       supports_flush_early_(kNotSet),
       user_agent_supports_split_html_(kNotSet),
@@ -852,6 +853,15 @@ bool RewriteDriver::UserAgentSupportsWebp() const {
         user_agent_matcher().SupportsWebp(user_agent_) ? kTrue : kFalse;
   }
   return (user_agent_supports_webp_ == kTrue);
+}
+
+bool RewriteDriver::UserAgentSupportsWebpLosslessAlpha() const {
+  if (user_agent_supports_webp_lossless_alpha_ == kNotSet) {
+    user_agent_supports_webp_lossless_alpha_ =
+        user_agent_matcher().SupportsWebpLosslessAlpha(user_agent_) ?
+        kTrue : kFalse;
+  }
+  return (user_agent_supports_webp_lossless_alpha_ == kTrue);
 }
 
 bool RewriteDriver::UserAgentSupportsSplitHtml() const {

@@ -569,13 +569,11 @@ class Library : public spriter::ImageLibraryInterface {
 
     net_instaweb::Image::CompressionOptions* image_options =
         new net_instaweb::Image::CompressionOptions();
-    image_options->webp_preferred = false;  // Not working with jpg/webp at all.
     // TODO(satyanarayana): Use appropriate quality param for spriting.
     image_options->jpeg_quality =
         RewriteOptions::kDefaultImageJpegRecompressQuality;
     // TODO(nikhilmadan): Use appropriate progressive setting for spriting.
     image_options->progressive_jpeg = false;
-    image_options->convert_png_to_jpeg = false;
 
     scoped_ptr<net_instaweb::Image> image(net_instaweb::NewImage(
         resource->contents(), resource->url(), tmp_dir_, image_options,

@@ -28,7 +28,6 @@
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/webp_optimizer.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -110,6 +109,7 @@ class ImageImpl : public Image {
   virtual bool DrawImage(Image* image, int x, int y);
   virtual bool EnsureLoaded(bool output_useful);
   virtual void SetTransformToLowRes();
+  virtual const GoogleString& url() { return url_; }
 
  private:
   // byte buffer type most convenient for working with given OpenCV version
@@ -163,6 +163,17 @@ class ImageImpl : public Image {
                         GoogleString* filename);
 #endif
 
+  // Optimizes the png image_data, readable via png_reader.
+  bool OptimizePng(
+      const pagespeed::image_compression::PngReaderInterface& png_reader,
+      const GoogleString& image_data);
+
+  // Converts image_data, readable via png_reader, to a jpeg if
+  // possible or a png if not, using the settings in options_.
+  bool OptimizePngOrConvertToJpeg(
+      const pagespeed::image_compression::PngReaderInterface& png_reader,
+      const GoogleString& image_data);
+
   const GoogleString file_prefix_;
   MessageHandler* handler_;
   IplImage* opencv_image_;        // Lazily filled on OpenCV load.
@@ -177,7 +188,12 @@ class ImageImpl : public Image {
 };
 
 void ImageImpl::SetTransformToLowRes() {
+  // TODO(vchudnov): Deprecate low_quality_enabled_.
   low_quality_enabled_ = true;
+  // TODO(vchudnov): All these settings should probably be tunable.
+  if (options_->preferred_webp != WEBP_NONE) {
+    options_->preferred_webp = WEBP_LOSSY;
+  }
   options_->webp_quality = 10;
   options_->jpeg_quality = 10;
 }
@@ -725,6 +741,14 @@ bool ImageImpl::ComputeOutputContents() {
       }
     }
     // Take image contents and re-compress them.
+    // The basic logic is this:
+    // * low_quality_enabled_ acts as though convert_gif_to_png and
+    //   convert_png_to_webp were both set for this image.
+    // * We compute the intended final end state of all the
+    //   convert_X_to_Y options, and try to convert to the final
+    //   option in one shot. If that fails, we back off by each of the stages.
+    // * We return as soon as any applicable conversion succeeds. We
+    //   do not compare the sizes of alternative conversions.
     if (ok) {
       // If we can't optimize the image, we'll fail.
       ok = false;
@@ -735,6 +759,7 @@ bool ImageImpl::ComputeOutputContents() {
       // args rather than const string&.  We would save lots of string-copying
       // if we made that change.
       GoogleString string_for_image(contents.data(), contents.size());
+      scoped_ptr<pagespeed::image_compression::PngReaderInterface> png_reader;
       switch (image_type()) {
         case IMAGE_UNKNOWN:
           break;
@@ -744,23 +769,19 @@ bool ImageImpl::ComputeOutputContents() {
                                         options_->webp_quality,
                                         &output_contents_);
           }
-            // TODO(pulkitg): Convert a webp image to jpeg image if
-            // web_preferred_ is false.
+          // TODO(pulkitg): Convert a webp image to jpeg image if
+          // web_preferred_ is false.
           break;
         case IMAGE_JPEG:
-          if (options_->webp_preferred && !low_quality_enabled_) {
-            // Right now we just compute the webp, and assume that it'll be
-            // smaller than the equivalent re-compressed jpg.  Doing jpg
-            // recompression *as well* and picking the smaller file is very
-            // expensive for what's likely to be minimal gain.  We fall back
-            // to jpg reoptimization if webp fails.
+          if (options_->convert_jpeg_to_webp &&
+              (options_->preferred_webp != WEBP_NONE)) {
             ok = OptimizeWebp(string_for_image, options_->webp_quality,
                               &output_contents_);
             if (!ok) {
               handler_->Warning(url_.c_str(), 0, "Failed to create webp!");
             }
           }
-          if (ok) {  // && webp_preferred, which is implied.
+          if (ok) {
             image_type_ = IMAGE_WEBP;
           } else if (resized || options_->recompress_jpeg) {
             JpegCompressionOptions jpeg_options;
@@ -769,44 +790,80 @@ bool ImageImpl::ComputeOutputContents() {
                 string_for_image, &output_contents_, jpeg_options);
           }
           break;
-        case IMAGE_PNG: {
-          pagespeed::image_compression::PngReader png_reader;
-
-          if ((options_->convert_png_to_jpeg || low_quality_enabled_) &&
-              options_->jpeg_quality > 0) {
-            bool is_png;
-            JpegCompressionOptions jpeg_options;
-            ConvertToJpegOptions(*options_.get(), &jpeg_options);
-            ok = ImageConverter::OptimizePngOrConvertToJpeg(
-                png_reader, string_for_image, jpeg_options,
-                &output_contents_, &is_png);
-            if (ok && !is_png) {
-              image_type_ = IMAGE_JPEG;
+        case IMAGE_PNG:
+          png_reader.reset(new pagespeed::image_compression::PngReader);
+          if ((options_->convert_png_to_jpeg || low_quality_enabled_)) {
+            if (options_->convert_jpeg_to_webp) {
+              // TODO(vchudnov): Implement the webp_conversion:
+              // ok = ConvertPngToWebpIfPossible(*png_reader.get(),
+              //                                 string_for_image);
             }
-          } else if (resized || options_->recompress_png) {
-            pagespeed::image_compression::PngReader png_reader;
-            ok = PngOptimizer::OptimizePngBestCompression
-                (png_reader, string_for_image, &output_contents_);
+            if (!ok && options_->jpeg_quality > 0) {
+              ok = OptimizePngOrConvertToJpeg(*png_reader.get(),
+                                              string_for_image);
+            };
+          }
+          if (!ok && (resized || options_->recompress_png)) {
+            ok = OptimizePng(*png_reader.get(), string_for_image);
           }
           break;
-        }
-        case IMAGE_GIF: {
-          if (!low_quality_enabled_ && options_->convert_gif_to_png) {
-            pagespeed::image_compression::GifReader gif_reader;
-            ok = PngOptimizer::OptimizePngBestCompression(gif_reader,
-                                                          string_for_image,
-                                                          &output_contents_);
-            if (ok) {
-              image_type_ = IMAGE_PNG;
+        case IMAGE_GIF:
+          png_reader.reset(new pagespeed::image_compression::GifReader);
+          if (options_->convert_gif_to_png || low_quality_enabled_) {
+            if (options_->convert_png_to_jpeg || low_quality_enabled_) {
+              if (options_->convert_jpeg_to_webp) {
+                // TODO(vchudnov): Implement the webp conversion:
+                // ok = ConvertPngToWebpIfPossible(*png_reader.get(),
+                //                                 string_for_image);
+              }
+              if (!ok) {
+                // TODO(vchudnov): Implement the gif-to-jpeg
+                // conversion (requires expanding gif colormap)
+                // ok = OptimizePngOrConvertToJpeg(*png_reader.get(),
+                //                                 string_for_image);
+              }
+            }
+            if (!ok) {
+              ok = OptimizePng(*png_reader.get(), string_for_image);
             }
           }
           break;
-        }
       }
     }
     output_valid_ = ok;
   }
   return output_valid_;
+}
+
+bool ImageImpl::OptimizePng(
+    const pagespeed::image_compression::PngReaderInterface& png_reader,
+    const GoogleString& image_data) {
+  bool ok = PngOptimizer::OptimizePngBestCompression(png_reader,
+                                                     image_data,
+                                                     &output_contents_);
+  if (ok) {
+    image_type_ = IMAGE_PNG;
+  }
+  return ok;
+}
+
+bool ImageImpl::OptimizePngOrConvertToJpeg(
+    const pagespeed::image_compression::PngReaderInterface& png_reader,
+    const GoogleString& image_data) {
+  bool is_png;
+  JpegCompressionOptions jpeg_options;
+  ConvertToJpegOptions(*options_.get(), &jpeg_options);
+  bool ok = ImageConverter::OptimizePngOrConvertToJpeg(
+      png_reader, image_data, jpeg_options,
+      &output_contents_, &is_png);
+  if (ok) {
+    if (is_png) {
+      image_type_ = IMAGE_PNG;
+    } else {
+      image_type_ = IMAGE_JPEG;
+    }
+  }
+  return ok;
 }
 
 // Converts gif into a png in output_contents_ as quickly as possible;

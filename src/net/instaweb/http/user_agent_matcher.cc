@@ -40,6 +40,7 @@ const char* kImageInliningWhitelist[] = {
   // The following user agents are used only for internal testing
   "google command line rewriter",
   "webp",
+  "webp-la",
   "prefetch_link_rel_subresource",
   "prefetch_image_tag",
   "prefetch_link_script_tag",
@@ -85,8 +86,9 @@ const char* kWebpWhitelist[] = {
   "*Chrome/*",
   "*Opera/9.80*Version/??.*",
   "*Opera???.*",
-  // User agent used only for internal testing
+  // User agents used only for internal testing.
   "webp",
+  "webp-la",  // webp with lossless and alpha encoding.
 };
 const char* kWebpBlacklist[] = {
   "*Android 0.*",
@@ -112,6 +114,21 @@ const char* kWebpBlacklist[] = {
   "*Opera?10.*",
   "*Opera/9.80*Version/11.0*",
   "*Opera?11.0*",
+};
+
+const char* kWebpLosslessAlphaWhitelist[] = {
+  "*Chrome/??.*",
+  "*Chrome/???.*",
+  // User agent used only for internal testing.
+  "webp-la",
+};
+
+const char* kWebpLosslessAlphaBlacklist[] = {
+  "*Chrome/?.*",
+  "*Chrome/1?.*",
+  "*Chrome/20.*",
+  "*Chrome/21.*",
+  "*Chrome/22.*",
 };
 
 // TODO(rahulbansal): We haven't added Safari here since it supports dns
@@ -188,6 +205,7 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kPanelSupportMobileWhitelist); i < n; ++i) {
     blink_mobile_whitelist_.Allow(kPanelSupportMobileWhitelist[i]);
   }
+
   // Do the same for webp support.
   for (int i = 0, n = arraysize(kWebpWhitelist); i < n; ++i) {
     supports_webp_.Allow(kWebpWhitelist[i]);
@@ -195,6 +213,13 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kWebpBlacklist); i < n; ++i) {
     supports_webp_.Disallow(kWebpBlacklist[i]);
   }
+  for (int i = 0, n = arraysize(kWebpLosslessAlphaWhitelist); i < n; ++i) {
+    supports_webp_lossless_alpha_.Allow(kWebpLosslessAlphaWhitelist[i]);
+  }
+  for (int i = 0, n = arraysize(kWebpLosslessAlphaBlacklist); i < n; ++i) {
+    supports_webp_lossless_alpha_.Disallow(kWebpLosslessAlphaBlacklist[i]);
+  }
+
   for (int i = 0, n = arraysize(kMobileUserAgentWhitelist); i < n; ++i) {
     mobile_user_agents_.Allow(kMobileUserAgentWhitelist[i]);
   }
@@ -300,6 +325,11 @@ bool UserAgentMatcher::SupportsWebp(const StringPiece& user_agent) const {
   // TODO(jmaessen): this is a stub for regression testing purposes.
   // Put in real detection without treading on fengfei's toes.
   return supports_webp_.Match(user_agent, false);
+}
+
+bool UserAgentMatcher::SupportsWebpLosslessAlpha(
+    const StringPiece& user_agent) const {
+  return supports_webp_lossless_alpha_.Match(user_agent, false);
 }
 
 bool UserAgentMatcher::IsMobileUserAgent(const StringPiece& user_agent) const {
