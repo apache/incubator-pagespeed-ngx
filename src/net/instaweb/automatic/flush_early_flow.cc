@@ -404,8 +404,6 @@ void FlushEarlyFlow::FlushEarly() {
         // needed by filters from here. Also, we may need the pre-head to detect
         // the encoding of the page.
         base_fetch_->Write(flush_early_info.pre_head(), handler_);
-        base_fetch_->Write("<head>", handler_);
-        base_fetch_->Flush(handler_);
 
         // Parse and rewrite the flush early HTML.
         new_driver->ParseText(flush_early_info.pre_head());
@@ -498,7 +496,6 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
     }
   }
   flush_early_driver->decrement_async_events_count();
-  base_fetch_->Write("</head>", handler_);
   base_fetch_->Flush(handler_);
   flush_early_rewrite_latency_ms_->Add(
       manager_->timer()->NowMs() - start_time_ms);
@@ -535,7 +532,6 @@ void FlushEarlyFlow::GenerateResponseHeaders(
 void FlushEarlyFlow::GenerateDummyHeadAndCountResources(
     const FlushEarlyInfo& flush_early_info) {
   Write(flush_early_info.pre_head());
-  Write("<head>");
   GoogleString head_string, script, minified_script;
   bool has_script = false;
   switch (manager_->user_agent_matcher().GetPrefetchMechanism(
@@ -580,7 +576,6 @@ void FlushEarlyFlow::GenerateDummyHeadAndCountResources(
   }
   Write(StringPrintf(FlushEarlyContentWriterFilter::kPrefetchStartTimeScript,
                      num_resources_flushed_));
-  Write("</head>");
 }
 
 GoogleString FlushEarlyFlow::GetHeadString(

@@ -247,17 +247,15 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
       "div[@id = \"container\"]/div[4],"
       "img[3]:h1[@id = \"footer\"]");
 
-  GoogleString pre_head_input = "<!DOCTYPE html><html>";
+  GoogleString pre_head_input = "<!DOCTYPE html><html><head>";
   GoogleString post_head_input =
-      "<head>"
-        "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
-        "<script src=\"b.js\"></script>"
+      "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
+      "<script src=\"b.js\"></script>"
       "</head>"
       "<body></body></html>";
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                                    0, blink_js_url_, "{}"));
   GoogleString post_head_output = StrCat(
-      "<head>"
       "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
       "<script src=\"b.js\"></script>",
       SplitHtmlFilter::kPagespeedFunc, SplitHtmlFilter::kSplitInit,

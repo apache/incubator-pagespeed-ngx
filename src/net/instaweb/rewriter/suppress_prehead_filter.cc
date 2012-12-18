@@ -82,18 +82,21 @@ void SuppressPreheadFilter::StartDocument() {
 // <html><noscript><head></head></noscript></html>. This will break the page if
 // FlushSubresources filter is applied.
 void SuppressPreheadFilter::StartElement(HtmlElement* element) {
+  HtmlWriterFilter::StartElement(element);
   if (noscript_element_ == NULL && element->keyword() == HtmlName::kNoscript) {
     noscript_element_ = element;  // Record top-level <noscript>
   } else if (element->keyword() == HtmlName::kHead && !seen_first_head_ &&
              noscript_element_ == NULL) {
     // If first <head> is seen then do not suppress the bytes.
     seen_first_head_ = true;
+    // If HtmlWriterFilter is holding off any bytes due to
+    // HtmlElement::BRIEF_CLOSE then emit that.
+    HtmlWriterFilter::TerminateLazyCloseElement();
     set_writer(original_writer_);
     if (driver_->flushed_early()) {
       SendCookies(element);
     }
   }
-  HtmlWriterFilter::StartElement(element);
 }
 
 void SuppressPreheadFilter::EndElement(HtmlElement* element) {

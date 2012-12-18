@@ -742,15 +742,13 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
 
   void VerifyFlushSubresourcesResponse(GoogleString text,
                                        bool is_applied_expected) {
-    // If FlushSubresources Filter is applied then the response has 2 head tags.
+    // If FlushSubresources Filter is applied then the response has
+    // rel="subresource".
     bool is_applied = false;
-    const char head[] = "<head>";
-    int head_position1 = text.find(head);
-    if (head_position1 != GoogleString::npos) {
-      if (text.find(head, head_position1 + strlen(head)) !=
-          GoogleString::npos) {
-        is_applied = true;
-      }
+    const char pattern[] = "rel=\"subresource\"";
+    int pattern_position = text.find(pattern);
+    if (pattern_position != GoogleString::npos) {
+      is_applied = true;
     }
     EXPECT_EQ(is_applied_expected, is_applied);
   }
@@ -1316,7 +1314,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkFlushSubresources) {
   request_headers.Replace(HttpAttributes::kUserAgent,
                           "prefetch_link_rel_subresource");
   ResponseHeaders response_headers;
-  FetchFromProxy("http://test.com/flush_subresources.html", true,
+  FetchFromProxy("http://test.com/flush_subresources.html"
+                 "?ModPagespeedFilters=+extend_cache_css,-inline_css", true,
                  request_headers, &text, &response_headers, NULL, false);
   VerifyNonBlinkResponse(&response_headers);
   EXPECT_EQ(1, flush_early_info_finder_->num_compute_calls());
@@ -1324,10 +1323,11 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkFlushSubresources) {
   // Requesting again.
   flush_early_info_finder_->Clear();
   response_headers.Clear();
-  FetchFromProxy("http://test.com/flush_subresources.html", true,
+  FetchFromProxy("http://test.com/flush_subresources.html"
+                 "?ModPagespeedFilters=+extend_cache_css,-inline_css", true,
                  request_headers, &text, &response_headers, NULL, false);
   VerifyFlushSubresourcesResponse(text, true);
-  // Since 2 rewrite drivers are crested in flush early flow so compute is
+  // Since 2 rewrite drivers are created in flush early flow so compute is
   // called twice.
   EXPECT_EQ(2, flush_early_info_finder_->num_compute_calls());
 }

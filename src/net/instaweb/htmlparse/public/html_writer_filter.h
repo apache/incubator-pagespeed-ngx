@@ -66,6 +66,9 @@ class HtmlWriterFilter : public HtmlFilter {
 
   Writer* writer() { return writer_; }
 
+  // Terminates the current lazy close element if it is not already terminated.
+  void TerminateLazyCloseElement();
+
  private:
   void EmitBytes(const StringPiece& str);
 

@@ -49,7 +49,7 @@ void HtmlWriterFilter::Clear() {
   write_errors_ = 0;
 }
 
-void HtmlWriterFilter::EmitBytes(const StringPiece& str) {
+void HtmlWriterFilter::TerminateLazyCloseElement() {
   if (lazy_close_element_ != NULL) {
     lazy_close_element_ = NULL;
     if (!writer_->Write(">", html_parse_->message_handler())) {
@@ -57,6 +57,10 @@ void HtmlWriterFilter::EmitBytes(const StringPiece& str) {
     }
     ++column_;
   }
+}
+
+void HtmlWriterFilter::EmitBytes(const StringPiece& str) {
+  TerminateLazyCloseElement();
 
   // Search backward from the end for the last occurrence of a newline.
   column_ += str.size();  // if there are no newlines, bump up column counter.
