@@ -35,7 +35,60 @@ namespace Css {
 
 namespace {
 
+// Is this char safe to be emitted un-escaped in an unquoted URL?
+bool IsUrlSafe(char c) {
+  // From http://www.w3.org/TR/css3-syntax/#tokenization :
+  //   urlchar  ::=  [#x9#x21#x23-#x26#x27-#x7E] | nonascii | escape
+  // This appears to be a typo and should be:
+  //   urlchar  ::=  [#x9#x21#x23-#x26#x28-#x7E] | nonascii | escape
+  // Specifically, allowed chars are TAB (#x9) + all printable ASCII chars
+  // except for SPACE (#x20), " (#x22) and ' (#x27) + all non-ascii and
+  // backslash-escaped chars.
+  if (c >= 0x21 && c <= 0x7e) {
+    switch (c) {
+      // SPACE, " and ' specifically disallowed.
+      case ' ': case '"': case '\'':
+      // Backslash clearly needs to be escaped.
+      case '\\':
+      // Parentheses generally need to be matched correctly, so we escape
+      // them too, just to be safe.
+      case '(': case ')': case '{': case '}': case '[': case ']':
+        return false;
+      default:
+        // All other printable chars are allowed.
+        return true;
+    }
+  } else if (!IsAscii(c)) {
+    // Non-ASCII chars are allowed.
+    return true;
+  }
+  // Everything else is not allowed.
+  // Note: TAB (\t, #x9) is technically safe in unquoted URLs, but we escape it.
+  return false;
+}
+
+// Is this char safe to be emitted un-escaped in a string?
+bool IsStringSafe(char c) {
+  // From http://www.w3.org/TR/css3-syntax/#tokenization :
+  //   string     ::=  '"' (stringchar | "'")* '"' | "'" (stringchar | '"')* "'"
+  //   stringchar ::=  urlchar | #x20 | '\' nl
+
+  // We could allow ' or " through unescaped depending on what delimiter this
+  // string used, but for now we just escape both of them.
+  // '\' nl is ignored in strings, so the only difference between strings and
+  // URLs is that SPACE is allowed unescaped in strings.
+  return (c == ' ' || IsUrlSafe(c));
+}
+
+// Is this char safe to be emitted un-escaped in an identifier?
+// Note: This is not technically valid for the first ident char, which cannot
+// be a digit. (Likewise if the first char is a hyphen, the second cannot be
+// a digit.)
 bool IsIdentSafe(char c) {
+  // From http://www.w3.org/TR/css3-syntax/#tokenization :
+  //   ident    ::=  '-'? nmstart nmchar*
+  //   nmstart  ::=  [a-zA-Z] | '_' | nonascii | escape
+  //   nmchar   ::=  [a-zA-Z0-9] | '-' | '_' | nonascii | escape
   return ((c >= 'A' && c <= 'Z') ||
           (c >= 'a' && c <= 'z') ||
           (c >= '0' && c <= '9') ||
@@ -43,55 +96,61 @@ bool IsIdentSafe(char c) {
           !IsAscii(c));
 }
 
-// Escape [() \t\r\n\\'"].  Also escape , for non-URLs.  Escaping , in
-// URLs causes IE8 to interpret the backslash as a forward slash.
-// Based on CEscape/CEscapeString from strings/strutil.cc.
-string GeneralEscape(StringPiece src, bool in_url) {
-  string dest;
-  dest.reserve(src.size());  // Minimum possible expansion
+// Escape an ASCII char and append it to dest.
+void AppendEscapedAsciiChar(char c, string* dest) {
+  // From http://www.w3.org/TR/CSS21/syndata.html#tokenization :
+  //   escape  {unicode}|\\[^\n\r\f0-9a-f]
 
-  const char* src_end = src.data() + src.size();
-
-  for (const char* p = src.data(); p < src_end; p++) {
-    switch (*p) {
-      // Note: CSS does not use standard \n, \r and \t escapes.
-      // Generic hex escapes are used instead.
-      // See: http://www.w3.org/TR/CSS2/syndata.html#strings
-      //
-      // Note: Hex escapes in CSS must end in space.
-      // See: http://www.w3.org/TR/CSS2/syndata.html#characters
-      case '\n':
-        dest += "\\A ";
-        break;
-      case '\r':
-        dest += "\\D ";
-        break;
-      case '\t':
-        dest += "\\9 ";
-        break;
-      case ',':
-        if (in_url) {
-          dest.push_back(*p);
-          break;
-        }
-        // fall through -- we are escaping commas for non-URLs.
-      case '\"': case '\'': case '\\': case '(': case ')':
-        dest.push_back('\\');
-        dest.push_back(*p);
-          break;
-      default:
-        dest.push_back(*p);
-        break;
-    }
+  DCHECK(IsAscii(c)) << "AppendEscapedAsciiChar called on non-ASCII char " << c;
+  switch (c) {
+    // Note: CSS does not use standard \n, \r and \f escapes and they cannot
+    // be specified by simply preceding them with a backslash.
+    // Generic hex escapes are used instead.
+    // See: http://www.w3.org/TR/CSS2/syndata.html#strings
+    //
+    // Note: Hex escapes in CSS must end in space.
+    // See: http://www.w3.org/TR/CSS2/syndata.html#characters
+    case '\n':
+      *dest += "\\A ";
+      break;
+    case '\r':
+      *dest += "\\D ";
+      break;
+    case '\f':
+      *dest += "\\C ";
+      break;
+    // \t is not specifically disallowed by the spec, but we escape it anyway
+    // because it seems safer to be conservative and tabs should be pretty
+    // uncommon in CSS.
+    case '\t':
+      *dest += "\\9 ";
+      break;
+    default:
+      // All other ASCII chars can just be escaped with a backslash.
+      // TODO(sligocki): Actually [0-9a-fA-F] also cannot be escaped this way
+      // because of ambiguity with Unicode escapes. Fix.
+      dest->push_back('\\');
+      dest->push_back(c);
+      break;
   }
-
-  return dest;
 }
 
 }  // namespace
 
 string EscapeString(StringPiece src) {
-  return GeneralEscape(src, false /* in_url */);
+  string dest;
+  dest.reserve(src.size());  // Minimum possible expansion
+
+  for (int i = 0, n = src.size(); i < n; ++i) {
+    if (IsStringSafe(src[i])) {
+      // Safe to be appended un-escaped.
+      dest.push_back(src[i]);
+    } else {
+      AppendEscapedAsciiChar(src[i], &dest);
+    }
+  }
+
+  return dest;
 }
 
 string EscapeString(const UnicodeText& src) {
@@ -99,7 +158,19 @@ string EscapeString(const UnicodeText& src) {
 }
 
 string EscapeUrl(StringPiece src) {
-  return GeneralEscape(src, true /* in_url */);
+  string dest;
+  dest.reserve(src.size());  // Minimum possible expansion
+
+  for (int i = 0, n = src.size(); i < n; ++i) {
+    if (IsUrlSafe(src[i])) {
+      // Safe to be appended un-escaped.
+      dest.push_back(src[i]);
+    } else {
+      AppendEscapedAsciiChar(src[i], &dest);
+    }
+  }
+
+  return dest;
 }
 
 string EscapeUrl(const UnicodeText& src) {
@@ -110,34 +181,14 @@ string EscapeIdentifier(StringPiece src) {
   string dest;
   dest.reserve(src.size());  // Minimum possible expansion
 
+  // TODO(sligocki): Identifiers cannot start with a digit ([0-9]). We need
+  // to escape it if src starts with a digit.
   for (int i = 0, n = src.size(); i < n; ++i) {
-    switch (src[i]) {
-      // Note: CSS does not use standard \n, \r, \f and \t escapes.
-      // Generic hex escapes are used instead.
-      // See: http://www.w3.org/TR/CSS2/syndata.html#strings
-      //
-      // Note: Hex escapes in CSS must end in space.
-      // See: http://www.w3.org/TR/CSS2/syndata.html#characters
-      case '\n':
-        dest += "\\A ";
-        break;
-      case '\r':
-        dest += "\\D ";
-        break;
-      case '\f':
-        dest += "\\C ";
-        break;
-      case '\t':
-        dest += "\\9 ";
-        break;
-      default:
-        if (IsIdentSafe(src[i])) {
-          dest.push_back(src[i]);
-        } else {
-          // Everything else can be escaped safely with \.
-          dest.push_back('\\');
-          dest.push_back(src[i]);
-        }
+    if (IsIdentSafe(src[i])) {
+      // Safe to be appended un-escaped.
+      dest.push_back(src[i]);
+    } else {
+      AppendEscapedAsciiChar(src[i], &dest);
     }
   }
 

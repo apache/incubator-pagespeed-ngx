@@ -131,7 +131,7 @@ TEST_F(CssImageRewriterTest, MinifyImagesEmbeddedSpace) {
       "  background-image: url('foo bar.png');\n"
       "}\n";
   static const char css_after[] =
-      "body{background-image:url(foo bar.png)}";
+      "body{background-image:url(foo\\ bar.png)}";
 
   ValidateRewrite("minify", css_before, css_after,
                   kExpectSuccess | kNoClearFetcher);

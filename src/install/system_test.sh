@@ -460,7 +460,7 @@ test_filter rewrite_javascript minifies JavaScript and saves bytes.
 # External scripts rewritten.
 fetch_until $URL 'grep -c src.*/rewrite_javascript\.js\.pagespeed\.jm\.' 2
 check run_wget_with_args $URL
-check_not grep -R "removed" $OUTDIR          # Comments, should not find any.
+check_not grep "removed" $OUTDIR/*.pagespeed.jm.*   # No comments should remain.
 check_file_size $FETCHED -lt 1560            # Net savings
 check grep -q preserved $FETCHED             # Preserves certain comments.
 # Rewritten JS is cache-extended.

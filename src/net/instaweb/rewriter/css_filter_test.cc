@@ -1123,6 +1123,17 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       // Note: 333 is not converted to a more correct #333.
       "#post_content,#post_content p{font-family:Helvetica;font-size:16px;"
       "color:333;line-height:24px;margin-bottom:15px}" },
+
+    // Properly deal with space in URL.
+    { "#ac { background:url(\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgA"
+      "AAG4AAAAfCAA AAAAjTqdDAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZS\") no-repeat; }",
+
+      // Note we unquote the url() and escape the space with a backslash.
+      // It's fine if we choose a different strategy in the future. We just
+      // need to make sure that the space is not left verbatim in the
+      // unquoted url().
+      "#ac{background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgA"
+      "AAG4AAAAfCAA\\ AAAAjTqdDAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZS) no-repeat}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
