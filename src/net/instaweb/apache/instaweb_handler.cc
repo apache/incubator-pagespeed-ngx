@@ -96,8 +96,9 @@ const char kResourceUrlYes[] = "<YES>";
 // timeout or want run the fetch asynchronously as well.
 class SelfOwnedStringAsyncFetch : public StringAsyncFetch {
  public:
-  explicit SelfOwnedStringAsyncFetch(AbstractMutex* mutex)
-      : StringAsyncFetch(), mutex_(mutex), detached_(false) {}
+  SelfOwnedStringAsyncFetch(const RequestContextPtr& request_context,
+                            AbstractMutex* mutex)
+      : StringAsyncFetch(request_context), mutex_(mutex), detached_(false) {}
   virtual ~SelfOwnedStringAsyncFetch() {}
 
   // Call when you no longer want to the results to be saved. It will either
@@ -326,7 +327,7 @@ bool handle_as_inplace(GoogleUrl* gurl,
                            url.c_str());
 
   SelfOwnedStringAsyncFetch* fetch = new SelfOwnedStringAsyncFetch(
-      server_context->thread_system()->NewMutex());
+      request_context, server_context->thread_system()->NewMutex());
   bool perform_http_fetch = false;
   driver->FetchInPlaceResource(*gurl, perform_http_fetch, fetch);
 

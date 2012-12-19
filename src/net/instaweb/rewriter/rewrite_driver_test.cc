@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -63,11 +64,6 @@ class RewriteFilter;
 class RewriteDriverTest : public RewriteTestBase {
  protected:
   RewriteDriverTest() {}
-
-  // TODO(matterbury): Delete this method as it should be redundant.
-  virtual void SetUp() {
-    RewriteTestBase::SetUp();
-  }
 
   bool CanDecodeUrl(const StringPiece& url) {
     GoogleUrl gurl(url);
@@ -1151,7 +1147,8 @@ class InPlaceTest : public RewriteTestBase {
                             ResponseHeaders* response) {
     GoogleUrl gurl(url);
     content->clear();
-    StringAsyncFetch async_fetch(content);
+    StringAsyncFetch async_fetch(RequestContext::NewTestRequestContext(
+        server_context()->thread_system()), content);
     async_fetch.set_response_headers(response);
     rewrite_driver_->FetchInPlaceResource(gurl, perform_http_fetch,
                                           &async_fetch);

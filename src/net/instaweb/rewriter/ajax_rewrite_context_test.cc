@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -152,8 +153,11 @@ class FakeFilter : public RewriteFilter {
 
 class FakeFetch : public AsyncFetch {
  public:
-  FakeFetch(WorkerTestBase::SyncPoint* sync, ResponseHeaders* response_headers)
-      : done_(false),
+  FakeFetch(const RequestContextPtr& request_context,
+            WorkerTestBase::SyncPoint* sync,
+            ResponseHeaders* response_headers)
+      : AsyncFetch(request_context),
+        done_(false),
         success_(false),
         sync_(sync) {
     set_response_headers(response_headers);
@@ -318,7 +322,8 @@ class AjaxRewriteContextTest : public RewriteTestBase {
     css_filter_->set_exceed_deadline(exceed_deadline_);
 
     WorkerTestBase::SyncPoint sync(server_context()->thread_system());
-    FakeFetch mock_fetch(&sync, &response_headers_);
+    FakeFetch mock_fetch(RequestContext::NewTestRequestContext(
+        server_context()->thread_system()), &sync, &response_headers_);
     mock_fetch.set_request_headers(&request_headers_);
 
     ClearRewriteDriver();
