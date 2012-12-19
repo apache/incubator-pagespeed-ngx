@@ -23,6 +23,7 @@
 
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/image_testing_peer.h"
 #include "net/instaweb/rewriter/public/image_data_lookup.h"
 #include "net/instaweb/rewriter/public/image_test_base.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
@@ -107,7 +108,7 @@ class ImageTest : public ImageTestBase {
     EXPECT_EQ("xZZ", EncodeUrlAndDimensions(kNoWebpNoMobile, "ZZ", image_dim));
   }
 
-  void CheckImageFromFile(const char* filename,
+  bool CheckImageFromFile(const char* filename,
                           Image::Type input_type,
                           Image::Type output_type,
                           int min_bytes_to_type,
@@ -123,6 +124,7 @@ class ImageTest : public ImageTestBase {
       options_->convert_jpeg_to_webp = false;
     }
     bool progressive = options_->progressive_jpeg;
+    int jpeg_quality = options_->jpeg_quality;
     GoogleString contents;
     ImagePtr image(ReadFromFileWithOptions(
         filename, &contents, options_.release()));
@@ -138,9 +140,11 @@ class ImageTest : public ImageTestBase {
     // Construct data url, then decode it and check for match.
     CachedResult cached;
     GoogleString data_url;
-    ASSERT_NE(Image::IMAGE_UNKNOWN, image->image_type());
+    EXPECT_NE(Image::IMAGE_UNKNOWN, image->image_type());
     StringPiece image_contents = image->Contents();
 
+    progressive &= ImageTestingPeer::ShouldConvertToProgressive(jpeg_quality,
+                                                                image.get());
     if (progressive) {
       EXPECT_STREQ(kProgressiveHeader, image_contents.substr(
           kProgressiveHeaderStartIndex, strlen(kProgressiveHeader)));
@@ -179,6 +183,7 @@ class ImageTest : public ImageTestBase {
     GoogleString junk(contents, 0, min_bytes_to_type - 1);
     CheckInvalid(filename, junk, Image::IMAGE_UNKNOWN, Image::IMAGE_UNKNOWN,
                  progressive);
+    return progressive;
   }
 
   GoogleString EncodeUrlAndDimensions(
@@ -306,15 +311,29 @@ TEST_F(ImageTest, PngToJpegTest) {
       26548, true);
 }
 
-TEST_F(ImageTest, PngToProgressiveJpegTest) {
+TEST_F(ImageTest, TooSmallToConvertPngToProgressiveJpegTest) {
   options_->progressive_jpeg = true;
   options_->jpeg_quality = 85;
-  CheckImageFromFile(
+  bool progressive = CheckImageFromFile(
       kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_JPEG,
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
       26548, true);
+  EXPECT_FALSE(progressive);
+}
+
+TEST_F(ImageTest, PngToProgressiveJpegTest) {
+  options_->progressive_jpeg = true;
+  options_->jpeg_quality = 85;
+  options_->progressive_jpeg_min_bytes = 100;  // default is 10k.
+  bool progressive = CheckImageFromFile(
+      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_JPEG,
+      ImageHeaders::kPngHeaderLength,
+      ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
+      100, 100,
+      26548, true);
+  EXPECT_TRUE(progressive);
 }
 
 TEST_F(ImageTest, GifTest) {

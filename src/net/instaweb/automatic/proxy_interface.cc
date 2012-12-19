@@ -96,6 +96,7 @@ bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
     case ContentType::kOther:
     case ContentType::kJson:
     case ContentType::kVideo:
+    case ContentType::kOctetStream:
       return false;
   }
   LOG(DFATAL) << "URL " << url.Spec() << ": unexpected type:" << type->type()

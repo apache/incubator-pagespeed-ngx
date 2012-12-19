@@ -364,6 +364,17 @@ void RewriteTestBase::SetFetchResponse404(
   SetFetchResponse(name, response_headers, StringPiece());
 }
 
+bool RewriteTestBase::LoadFile(const StringPiece& filename,
+                               GoogleString* contents) {
+  // We need to load a file from the testdata directory. Don't use this
+  // physical filesystem for anything else, use file_system_ which can be
+  // abstracted as a MemFileSystem instead.
+  StdioFileSystem stdio_file_system(timer());
+  GoogleString filename_str = StrCat(GTestSrcDir(), kTestData, filename);
+  return stdio_file_system.ReadFile(
+      filename_str.c_str(), contents, message_handler());
+}
+
 void RewriteTestBase::AddFileToMockFetcher(
     const StringPiece& url,
     const StringPiece& filename,
@@ -371,14 +382,8 @@ void RewriteTestBase::AddFileToMockFetcher(
     int64 ttl_sec) {
   // TODO(sligocki): There's probably a lot of wasteful copying here.
 
-  // We need to load a file from the testdata directory. Don't use this
-  // physical filesystem for anything else, use file_system_ which can be
-  // abstracted as a MemFileSystem instead.
   GoogleString contents;
-  StdioFileSystem stdio_file_system(timer());
-  GoogleString filename_str = StrCat(GTestSrcDir(), kTestData, filename);
-  ASSERT_TRUE(stdio_file_system.ReadFile(
-      filename_str.c_str(), &contents, message_handler()));
+  ASSERT_TRUE(LoadFile(filename, &contents));
   SetResponseWithDefaultHeaders(url, content_type, contents, ttl_sec);
 }
 

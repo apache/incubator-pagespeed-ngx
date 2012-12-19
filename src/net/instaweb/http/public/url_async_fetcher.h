@@ -19,6 +19,9 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_URL_ASYNC_FETCHER_H_
 
+#include <set>
+
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -73,7 +76,12 @@ class UrlAsyncFetcher {
 
   // Returns a new InflatingFetch to handle auto-inflating the
   // response if needed.
-  AsyncFetch* EnableInflation(AsyncFetch* fetch) const;
+  // Use inflation_content_type_blacklist cautiously, it may cause resources to
+  // be corrupted if you use it with anything other than the IPRO path.
+  AsyncFetch* EnableInflation(
+      AsyncFetch* fetch,
+      const std::set<ContentType::Type>* inflation_content_type_blacklist)
+          const;
 
  protected:
   // Put this in protected to make sure nobody constructs this class except

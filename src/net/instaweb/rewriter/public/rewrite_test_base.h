@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 // We need to include rewrite_driver.h due to covariant return of html_parse()
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -383,6 +384,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
                                      const ContentType& content_type,
                                      const StringPiece& content,
                                      int64 ttl_sec);
+
+  // Load a test file (from testdata/) into 'contents', returning false on
+  // failure.
+  bool LoadFile(const StringPiece& filename, GoogleString* contents);
 
   // Add the contents of a file to mock fetcher (with default headers).
   void AddFileToMockFetcher(const StringPiece& url,

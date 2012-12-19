@@ -44,25 +44,51 @@ class InflatingFetch : public SharedAsyncFetch {
   explicit InflatingFetch(AsyncFetch* fetch);
   virtual ~InflatingFetch();
 
+  // Use this one cautiously, since it may cause resources to be corrupted
+  // if you use it with anything other than the IPRO path.
+  void set_inflation_content_type_blacklist(
+      const std::set<ContentType::Type>& bypass_set) {
+    inflation_content_type_blacklist_ = bypass_set;
+  }
+
   // Adds accept-encoding:gzip to the request headers sent to the
   // origin.  The data is inflated as we Write it.  If deflate
   // or gzip was already in the request then this has no effect.
   void EnableGzipFromBackend();
 
  protected:
+  // If inflation is required, inflates and passes bytes to the linked fetch,
+  // otherwise just passes bytes.
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
+
+  // Analyzes headers and depending on the request settings and flags will
+  // either setup inflater or not.
   virtual void HandleHeadersComplete();
   virtual void HandleDone(bool success);
   virtual void Reset();
 
  private:
   void InitInflater(GzipInflater::InflateType, const StringPiece& value);
+
+  // If this returns true, it means that we should not inflate incoming data and
+  // pass it to the caller as is, since that is what caller requested.
   bool IsCompressionAllowedInRequest();
 
   scoped_ptr<GzipInflater> inflater_;
+
+  // Caching gate inside IsCompressionAllowedInRequest().
   bool request_checked_for_accept_encoding_;
+
+  // Will be set to true if accepted encoding included gzip and/or deflate.
   bool compression_desired_;
+
+  // Whether any kind of error happened to the inflater. Once set to true, never
+  // gets reset.
   bool inflate_failure_;
+
+  // Set of content types that will not be inflated.
+  std::set<ContentType::Type> inflation_content_type_blacklist_;
+
   DISALLOW_COPY_AND_ASSIGN(InflatingFetch);
 };
 

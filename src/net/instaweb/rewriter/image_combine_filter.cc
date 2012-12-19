@@ -575,7 +575,7 @@ class Library : public spriter::ImageLibraryInterface {
     // TODO(nikhilmadan): Use appropriate progressive setting for spriting.
     image_options->progressive_jpeg = false;
 
-    scoped_ptr<net_instaweb::Image> image(net_instaweb::NewImage(
+    scoped_ptr<net_instaweb::Image> image(NewImage(
         resource->contents(), resource->url(), tmp_dir_, image_options,
         handler_));
 

@@ -91,6 +91,70 @@ const int64 kMaxJpegQuality = 100;
 
 }  // namespace ImageHeaders
 
+namespace {
+
+// To estimate the number of bytes from the number of pixels, we divide
+// by a magic ratio.  The 'correct' ratio is of course dependent on the
+// image itself, but we are ignoring that so we can make a fast judgement.
+// It is also dependent on a variety of image optimization settings, but
+// for now we will assume the 'rewrite_images' bucket is on, and vary only
+// on the jpeg compression level.
+//
+// Consider a testcase from our system tests, which resizes
+// mod_pagespeed_example/images/Puzzle.jpg to 256x192, or 49152
+// pixels, using compression level 75.  Our default byte threshold for
+// jpeg progressive conversion is 10240 (rewrite_options.cc).
+// Converting to progressive in this case makes the image slightly
+// larger (8251 bytes vs 8157 bytes), so we'd like this to be the
+// threshold where we decide *not* to convert to progressive.
+// Dividing 49152 by 5 (multiplying by 0.2) gets us just under our
+// default 10k byte threshold.
+//
+// Making this number smaller will break apache_system_test.sh with this
+// failure:
+//     failure at line 353
+// FAILed Input: /tmp/.../fetched_directory/*256x192*Puzzle* : 8251 -le 8157
+// in 'quality of jpeg output images with generic quality flag'
+// FAIL.
+//
+// A first attempt at computing that ratio is based on an analysis of Puzzle.jpg
+// at various compression ratios.  Sized to 256x192, or 49152 pixels:
+//
+// compression level    size(no progressive)  no_progressive/49152
+// 50,                  5891,                 0.1239217122
+// 55,                  6186,                 0.1299615486
+// 60,                  6661,                 0.138788298
+// 65,                  7068,                 0.1467195606
+// 70,                  7811,                 0.1611197005
+// 75,                  8402,                 0.1728746669
+// 80,                  9800,                 0.1976280565
+// 85,                  11001,                0.220020749
+// 90,                  15021,                0.2933279089
+// 95,                  19078,                0.3703545493
+// 100,                 19074,                0.3704283796
+//
+// At compression level 100, byte-sizes are almost identical to compression 95
+// so we throw this data-point out.
+//
+// Plotting this data in a graph the data is non-linear.  Experimenting in a
+// spreadsheet we get decent visual linearity by transforming the somewhat
+// arbitrary compression ratio with the formula (1 / (110 - compression_level)).
+// Drawing a line through the data-points at compression levels 50 and 95, we
+// get a slope of 4.92865674 and an intercept of 0.04177743.  Double-checking,
+// this fits the other data-points we have reasonably well, except for the
+// one at compression_level 100.
+const double JpegPixelToByteRatio(int compression_level) {
+  if ((compression_level > 95) || (compression_level < 0)) {
+    compression_level = 95;
+  }
+  double kSlope = 4.92865674;
+  double kIntercept = 0.04177743;
+  double ratio = kSlope / (110.0 - compression_level) + kIntercept;
+  return ratio;
+}
+
+}  // namespace
+
 // TODO(jmaessen): Put ImageImpl into private namespace.
 
 class ImageImpl : public Image {
@@ -108,6 +172,8 @@ class ImageImpl : public Image {
   virtual bool ResizeTo(const ImageDim& new_dim);
   virtual bool DrawImage(Image* image, int x, int y);
   virtual bool EnsureLoaded(bool output_useful);
+  virtual bool ShouldConvertToProgressive(int64 quality) const;
+  virtual void SetResizedDimensions(const ImageDim& dims) { dims_ = dims; }
   virtual void SetTransformToLowRes();
   virtual const GoogleString& url() { return url_; }
 
@@ -181,6 +247,7 @@ class ImageImpl : public Image {
   bool changed_;
   const GoogleString url_;
   ImageDim dims_;
+  ImageDim resized_dimensions_;
   scoped_ptr<Image::CompressionOptions> options_;
   bool low_quality_enabled_;
 
@@ -207,7 +274,7 @@ Image::Image(const StringPiece& original_contents)
 ImageImpl::ImageImpl(const StringPiece& original_contents,
                      const GoogleString& url,
                      const StringPiece& file_prefix,
-                     Image::CompressionOptions* options,
+                     CompressionOptions* options,
                      MessageHandler* handler)
     : Image(original_contents),
       file_prefix_(file_prefix.data(), file_prefix.size()),
@@ -235,14 +302,13 @@ Image::Image(Type type)
 
 ImageImpl::ImageImpl(int width, int height, Type type,
                      const StringPiece& tmp_dir, MessageHandler* handler,
-                     Image::CompressionOptions* options)
+                     CompressionOptions* options)
     : Image(type),
       file_prefix_(tmp_dir.data(), tmp_dir.size()),
       handler_(handler),
       opencv_image_(NULL),
       opencv_load_possible_(true),
       changed_(false),
-      url_(),
       low_quality_enabled_(false) {
   options_.reset(options);
   dims_.set_width(width);
@@ -582,15 +648,17 @@ bool ImageImpl::LoadOpenCvEmpty() {
       ok = true;
     } catch (cv::Exception& e) {
       handler_->Message(
+          kError,
 #ifdef USE_OPENCV_2_1
-          kError, "OpenCv exception in LoadOpenCvEmpty: %s", e.what());
+          "OpenCv exception in LoadOpenCvEmpty: %s", e.what()
 #else
           // No .what() on cv::Exception in OpenCv 2.0
-          kError, "OpenCv exception in LoadOpenCvEmpty");
+          "OpenCv exception in LoadOpenCvEmpty"
 #endif
-    }
+                        );  // NOLINT
   }
-  return ok;
+}
+return ok;
 }
 
 #ifdef USE_OPENCV_2_1
@@ -625,8 +693,8 @@ bool ImageImpl::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
 // so we need to write image data out and read it back in.
 
 bool ImageImpl::TempFileForImage(FileSystem* fs,
-                             const StringPiece& contents,
-                             GoogleString* filename) {
+                                 const StringPiece& contents,
+                                 GoogleString* filename) {
   GoogleString tmp_filename;
   bool ok = fs->WriteTempFile(file_prefix_, contents, &tmp_filename, handler_);
   if (ok) {
@@ -709,6 +777,7 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
       changed_ = true;
       output_valid_ = false;
       output_contents_.clear();
+      resized_dimensions_ = new_dim;
     }
   }
   return changed_;
@@ -891,9 +960,9 @@ void ImageImpl::ConvertToJpegOptions(const Image::CompressionOptions& options,
       original_contents_.as_string());
   jpeg_options->retain_color_profile = options.retain_color_profile;
   jpeg_options->retain_exif_data = options.retain_exif_data;
-  jpeg_options->progressive = options.progressive_jpeg;
   int64 output_quality = std::min(ImageHeaders::kMaxJpegQuality,
                                   options.jpeg_quality);
+
   if (options.jpeg_quality > 0) {
     // If the source image is JPEG we want to fallback to lossless if the input
     // quality is less than the quality we want to set for final compression and
@@ -913,8 +982,37 @@ void ImageImpl::ConvertToJpegOptions(const Image::CompressionOptions& options,
         jpeg_options->lossy_options.color_sampling =
             pagespeed::image_compression::RETAIN;
       }
+    } else {
+      output_quality = input_quality;
     }
   }
+
+  jpeg_options->progressive = options.progressive_jpeg &&
+      ShouldConvertToProgressive(output_quality);
+}
+
+bool ImageImpl::ShouldConvertToProgressive(int64 quality) const {
+  bool progressive = false;
+
+  if (static_cast<int64>(original_contents_.size()) >=
+      options_->progressive_jpeg_min_bytes) {
+    progressive = true;
+    const ImageDim* expected_dimensions = &dims_;
+    if (ImageUrlEncoder::HasValidDimensions(resized_dimensions_)) {
+      expected_dimensions = &resized_dimensions_;
+    }
+    if (ImageUrlEncoder::HasValidDimensions(*expected_dimensions)) {
+      int64 estimated_output_pixels =
+          static_cast<int64>(expected_dimensions->width()) *
+          static_cast<int64>(expected_dimensions->height());
+      double ratio = JpegPixelToByteRatio(quality);
+      int64 estimated_output_bytes = estimated_output_pixels * ratio;
+      if (estimated_output_bytes < options_->progressive_jpeg_min_bytes) {
+        progressive = false;
+      }
+    }
+  }
+  return progressive;
 }
 
 StringPiece Image::Contents() {

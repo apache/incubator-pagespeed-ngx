@@ -103,8 +103,27 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Update desired image dimensions if necessary. Returns true if it is
   // updated.
-  static bool UpdateDesiredImageDimsIfNecessary(
-      const ImageDim& image_dim, RewriteDriver* driver, ImageDim* desired_dim);
+  bool UpdateDesiredImageDimsIfNecessary(const ImageDim& image_dim,
+                                         ImageDim* desired_dim);
+
+  // Determines whether an image should be resized based on the current options.
+  //
+  // Returns the dimensions to resize to in *desired_dimensions.
+  bool ShouldResize(const ResourceContext& context,
+                    Image* image,
+                    ImageDim* desired_dimensions);
+
+  // Resize image if necessary, returning true if this resizing succeeds and
+  // false if it's unnecessary or fails.
+  bool ResizeImageIfNecessary(
+      const RewriteContext* rewrite_context, const GoogleString& url,
+      ResourceContext* context, Image* image, CachedResult* cached);
+
+  // Allocate and initialize CompressionOptions object based on RewriteOptions
+  // and ResourceContext.
+  Image::CompressionOptions* ImageOptionsForLoadedResource(
+      const ResourceContext& context, const ResourcePtr& input_resource,
+      bool is_css);
 
   // name for statistic used to bound rewriting work.
   static const char kImageOngoingRewrites[];

@@ -501,6 +501,10 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
   virtual ~AsyncExpectStringAsyncFetch() {}
 
   virtual void HandleHeadersComplete() {
+    // Make sure we have cleaned the headers in ProxyInterface.
+    EXPECT_FALSE(
+        request_headers()->Has(HttpAttributes::kAcceptEncoding));
+
     sync_->Wait(ProxyFetch::kHeadersSetupRaceWait);
     response_headers()->Add("HeadersComplete", "1");  // Dirties caching info.
     sync_->Signal(ProxyFetch::kHeadersSetupRaceFlush);
@@ -599,7 +603,8 @@ class MockFilter : public EmptyHtmlFilter {
   explicit MockFilter(RewriteDriver* driver)
       : driver_(driver),
         num_elements_(0),
-        num_elements_property_(NULL) {
+        num_elements_property_(NULL),
+        client_state_(NULL) {
   }
 
   virtual void StartDocument() {

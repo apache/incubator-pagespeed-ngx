@@ -33,12 +33,18 @@ UrlAsyncFetcher::~UrlAsyncFetcher() {
 void UrlAsyncFetcher::ShutDown() {
 }
 
-AsyncFetch* UrlAsyncFetcher::EnableInflation(AsyncFetch* fetch) const {
+AsyncFetch* UrlAsyncFetcher::EnableInflation(
+    AsyncFetch* fetch,
+    const std::set<ContentType::Type>* inflation_content_type_blacklist) const {
   InflatingFetch* inflating_fetch = new InflatingFetch(fetch);
   if (fetch_with_gzip_) {
     inflating_fetch->EnableGzipFromBackend();
   }
+  if (inflation_content_type_blacklist != NULL) {
+    inflating_fetch->set_inflation_content_type_blacklist(
+        *inflation_content_type_blacklist);
+  }
   return inflating_fetch;
 }
 
-}  // namespace instaweb
+}  // namespace net_instaweb

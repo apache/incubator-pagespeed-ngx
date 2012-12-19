@@ -18,6 +18,7 @@
 
 #include "net/instaweb/http/public/content_type.h"
 
+#include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -43,6 +44,7 @@ const ContentType kTypes[] = {
   {"image/webp",                    ".webp", ContentType::kWebp},
   {"application/json",              ".json", ContentType::kJson},
   {"application/pdf",               ".pdf",  ContentType::kPdf},  // RFC 3778
+  {"application/octet-stream",      ".bin",  ContentType::kOctetStream },
 
   // Synonyms; Note that the canonical types are referenced by index
   // in the named references declared below.
@@ -55,11 +57,12 @@ const ContentType kTypes[] = {
   {"text/html",                ".htm",  ContentType::kHtml},
   {"application/xml",          ".xml",  ContentType::kXml},  // RFC 3023
 
-  {"video/mpeg",                ".mpg",  ContentType::kVideo},  // RFC 2045
-  {"video/mp4",                 ".mp4",  ContentType::kVideo},  // RFC 4337
+  {"video/mpeg",                ".mpg", ContentType::kVideo},  // RFC 2045
+  {"video/mp4",                 ".mp4", ContentType::kVideo},  // RFC 4337
   {"video/3gpp",                ".3gp", ContentType::kVideo},
   {"video/x-flv",               ".flv", ContentType::kVideo},
   {"video/ogg",                 ".ogg", ContentType::kVideo},  // RFC 5334
+  {"binary/octet-stream",       ".bin", ContentType::kOctetStream },
 };
 const int kNumTypes = arraysize(kTypes);
 
@@ -82,6 +85,8 @@ const ContentType& kContentTypeWebp = kTypes[11];
 const ContentType& kContentTypeJson = kTypes[12];
 
 const ContentType& kContentTypePdf = kTypes[13];
+
+const ContentType& kBinaryOctetStream = kTypes[14];
 
 int ContentType::MaxProducedExtensionLength() {
   return 4;  // .jpeg or .webp
@@ -212,6 +217,28 @@ bool ParseContentType(const StringPiece& content_type_str,
   }
 
   return !mime_type->empty() || !charset->empty();
+}
+
+void MimeTypeListToContentTypeSet(
+    const GoogleString& in,
+    std::set<ContentType::Type>* out) {
+  CHECK(out != NULL) << "'out' is a required parameter.";
+  out->clear();
+  if (in.empty()) {
+    return;
+  }
+  StringPieceVector strings;
+  SplitStringPieceToVector(in, ",", &strings, true /* omit_empty */);
+  for (StringPieceVector::const_iterator i = strings.begin(), e = strings.end();
+           i != e; ++i) {
+    const ContentType* ct = MimeTypeToContentType(*i);
+    if (ct == NULL) {
+      LOG(WARNING) << "'" << *i << "' is not a recognized mime-type.";
+    } else {
+      VLOG(1) << "Adding '" << *i << "' to the content-type set.";
+      out->insert(ct->type_);
+    }
+  }
 }
 
 }  // namespace net_instaweb

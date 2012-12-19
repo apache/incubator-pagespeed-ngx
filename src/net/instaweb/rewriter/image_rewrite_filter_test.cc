@@ -34,6 +34,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/image_testing_peer.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -64,11 +65,11 @@ namespace {
 
 // Filenames of resource files.
 const char kBikePngFile[] = "BikeCrashIcn.png";
-const char kPuzzleJpgFile[] = "Puzzle.jpg";
 const char kChefGifFile[] = "IronChef2.gif";
-const char kCuppaTPngFile[] = "CuppaT.png";
 const char kCuppaOPngFile[] = "CuppaO.png";
+const char kCuppaTPngFile[] = "CuppaT.png";
 const char kLargePngFile[] = "Large.png";
+const char kPuzzleJpgFile[] = "Puzzle.jpg";
 const char kSmallDataFile[] = "small-data.png";
 
 // A callback for HTTP cache that stores body and string representation
@@ -484,15 +485,16 @@ class ImageRewriteTest : public RewriteTestBase {
     // Both image dims are less than screen.
     image_dim.set_width(screen_width - 1);
     image_dim.set_height(screen_height - 1);
-    EXPECT_FALSE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
-        image_dim, driver, &desired_dim));
+    ImageRewriteFilter image_rewrite_filter(rewrite_driver());
+    EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
+        image_dim, &desired_dim));
 
     // Image height is larger than screen height but image width is less than
     // screen width.
     image_dim.set_width(screen_width - 1);
     image_dim.set_height(screen_height * 2);
-    EXPECT_TRUE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
-        image_dim, driver, &desired_dim));
+    EXPECT_TRUE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
+        image_dim, &desired_dim));
     EXPECT_FALSE(desired_dim.has_width());
     EXPECT_EQ(screen_height, desired_dim.height());
     desired_dim.clear_height();
@@ -502,8 +504,8 @@ class ImageRewriteTest : public RewriteTestBase {
     // screen width.
     image_dim.set_width(screen_width * 2);
     image_dim.set_height(screen_height - 1);
-    EXPECT_TRUE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
-        image_dim, driver, &desired_dim));
+    EXPECT_TRUE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
+        image_dim, &desired_dim));
     EXPECT_EQ(screen_width, desired_dim.width());
     EXPECT_FALSE(desired_dim.has_height());
     desired_dim.clear_height();
@@ -513,8 +515,8 @@ class ImageRewriteTest : public RewriteTestBase {
     // is larger than height ratio.
     image_dim.set_width(screen_width * 2);
     image_dim.set_height(screen_height * 3);
-    EXPECT_TRUE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
-        image_dim, driver, &desired_dim));
+    EXPECT_TRUE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
+        image_dim, &desired_dim));
     EXPECT_FALSE(desired_dim.has_width());
     EXPECT_EQ(screen_height, desired_dim.height());
     desired_dim.clear_height();
@@ -524,8 +526,8 @@ class ImageRewriteTest : public RewriteTestBase {
     // is larger than width ratio.
     image_dim.set_width(screen_width * 3);
     image_dim.set_height(screen_height * 2);
-    EXPECT_TRUE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
-        image_dim, driver, &desired_dim));
+    EXPECT_TRUE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
+        image_dim, &desired_dim));
     EXPECT_EQ(screen_width, desired_dim.width());
     EXPECT_FALSE(desired_dim.has_height());
 
@@ -537,18 +539,18 @@ class ImageRewriteTest : public RewriteTestBase {
     // If a desired dim is present, no squashing.
     desired_dim.set_width(screen_width);
     desired_dim.clear_height();
-    EXPECT_FALSE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
-        image_dim, driver, &desired_dim));
+    EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
+        image_dim, &desired_dim));
 
     desired_dim.clear_width();
     desired_dim.set_height(screen_height);
-    EXPECT_FALSE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
-        image_dim, driver, &desired_dim));
+    EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
+        image_dim, &desired_dim));
 
     desired_dim.set_width(screen_width);
     desired_dim.set_height(screen_height);
-    EXPECT_FALSE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
-        image_dim, driver, &desired_dim));
+    EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
+        image_dim, &desired_dim));
   }
 };
 
@@ -1479,11 +1481,50 @@ TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
   // Both image dims are larger than screen but no update since not mobile.
   image_dim.set_width(300);
   image_dim.set_height(160);
-  EXPECT_FALSE(ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
-      image_dim, rewrite_driver(), &desired_dim));
+  ImageRewriteFilter image_rewrite_filter(rewrite_driver());
+  EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
+      image_dim, &desired_dim));
 
   rewrite_driver()->set_user_agent("iPhone OS");
   TestSquashImagesForMobileScreen(rewrite_driver());
+}
+
+TEST_F(ImageRewriteTest, ProgressiveJpegThresholds) {
+  GoogleString image_data;
+  ASSERT_TRUE(LoadFile(kPuzzleJpgFile, &image_data));
+  Image::CompressionOptions* options = new Image::CompressionOptions;
+  options->recompress_jpeg = true;
+  scoped_ptr<Image> image(NewImage(image_data, kPuzzleJpgFile, "",
+                                   options, message_handler()));
+
+  // Since we haven't established a size, resizing won't happen.
+  ImageDim dims;
+  EXPECT_TRUE(ImageTestingPeer::ShouldConvertToProgressive(-1, image.get()));
+
+  // Now provide a context, resizing the image to 10x10.  Of course
+  // we should not convert that to progressive, because post-resizing
+  // the image will be tiny.
+  dims.set_width(10);
+  dims.set_height(10);
+  ImageTestingPeer::SetResizedDimensions(dims, image.get());
+  EXPECT_FALSE(ImageTestingPeer::ShouldConvertToProgressive(-1, image.get()));
+
+  // At 256x192, we are close to the tipping point, and whether we should
+  // convert to progressive or not is dependent on the compression
+  // level.
+  dims.set_width(256);
+  dims.set_height(192);
+  ImageTestingPeer::SetResizedDimensions(dims, image.get());
+  EXPECT_TRUE(ImageTestingPeer::ShouldConvertToProgressive(-1, image.get()));
+
+  // Setting compression to 90.  The quality level is high, and our model
+  // says we'll wind up with an image >10204 bytes, which is still
+  // large enough to convert to progressive.
+  EXPECT_TRUE(ImageTestingPeer::ShouldConvertToProgressive(90, image.get()));
+
+  // Now set the compression to 75, which shrinks our image to <10k so
+  // we should stop converting to progressive.
+  EXPECT_FALSE(ImageTestingPeer::ShouldConvertToProgressive(75, image.get()));
 }
 
 }  // namespace

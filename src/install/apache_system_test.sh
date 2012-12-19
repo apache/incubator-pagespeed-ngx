@@ -347,7 +347,12 @@ fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimiz
 # size is 8157B, while on 64 it is 8155B. Initial investigation showed no
 # visible differences between the generated images.
 # TODO(jmaessen) Verify that this behavior is expected.
-check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8251   # resized
+#
+# Note that if this test fails with 8251 it means that you have managed to get
+# progressive jpeg conversion turned on in this testcase, which makes the output
+# larger.  The threshold factor kJpegPixelToByteRatio in image_rewrite_filter.cc
+# is tuned to avoid that.
+check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8157   # resized
 
 start_test quality of jpeg output images
 rm -rf $OUTDIR
@@ -356,7 +361,12 @@ IMG_REWRITE=$TEST_ROOT"/jpeg_rewriting/rewrite_images.html"
 REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
 URL=$REWRITE_URL",recompress_jpeg&"$IMAGES_QUALITY"=85&"$JPEG_QUALITY"=70"
 fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images optimized
-check_file_size "$OUTDIR/*256x192*Puzzle*" -le 7673   # resized
+#
+# If this this test fails because the image size is 7673 bytes it means
+# that image_rewrite_filter.cc decided it was a good idea to convert to
+# progressive jpeg, and in this case it's not.  See the not above on
+# kJpegPixelToByteRatio.
+check_file_size "$OUTDIR/*256x192*Puzzle*" -le 7564   # resized
 
 start_test quality of webp output images
 rm -rf $OUTDIR

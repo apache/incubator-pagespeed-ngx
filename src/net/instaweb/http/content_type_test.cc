@@ -76,6 +76,61 @@ TEST_F(ContentTypeTest, TestMimeType) {
   EXPECT_EQ(ContentType::kVideo,      MimeToType("video/mpeg"));
   EXPECT_EQ(ContentType::kVideo,      MimeToType("video/x-flv"));
   EXPECT_EQ(ContentType::kVideo,      MimeToType("video/ogg"));
+
+  EXPECT_EQ(ContentType::kOctetStream, MimeToType("application/octet-stream"));
+  EXPECT_EQ(ContentType::kOctetStream, MimeToType("binary/octet-stream"));
 }
 
+// Checks that empty string is parsed correctly and results in empty set and
+// nothing is crashing.
+TEST(MimeTypeListToContentTypeSetTest, EmptyTest) {
+  GoogleString s;
+  std::set<ContentType::Type> out;
+  out.insert(ContentType::kVideo);
+  MimeTypeListToContentTypeSet(s, &out);
+  EXPECT_TRUE(out.empty());
+}
+
+// Next two tests check the good cases, where string is correctly formed and set
+// should be correctly populated.
+// Single entry.
+TEST(MimeTypeListToContentTypeSetTest, OkTestSingle) {
+  GoogleString s = "image/gif";
+  std::set<ContentType::Type> out;
+  out.insert(ContentType::kVideo);
+
+  MimeTypeListToContentTypeSet(s, &out);
+  EXPECT_EQ(1, out.size());
+  EXPECT_EQ(1, out.count(ContentType::kGif));
+}
+
+// Multiple entries.
+TEST(MimeTypeListToContentTypeSetTest, OkTestMultiple) {
+  GoogleString s = "image/gif,image/jpeg,binary/octet-stream,image/jpeg";
+  std::set<ContentType::Type> out;
+  out.insert(ContentType::kVideo);
+
+  MimeTypeListToContentTypeSet(s, &out);
+  EXPECT_EQ(3, out.size());
+  EXPECT_EQ(1, out.count(ContentType::kOctetStream));
+  EXPECT_EQ(1, out.count(ContentType::kJpeg));
+  EXPECT_EQ(1, out.count(ContentType::kGif));
+}
+
+// Tests malformed string and string with bad mime-types.
+TEST(MimeTypeListToContentTypeSetTest, TestBadString) {
+  GoogleString s = "image/gif,,,,,";
+  std::set<ContentType::Type> out;
+  out.insert(ContentType::kVideo);
+
+  MimeTypeListToContentTypeSet(s, &out);
+  EXPECT_EQ(1, out.size());
+  EXPECT_EQ(1, out.count(ContentType::kGif));
+
+  s = "apple,orange,turnip,,,,image/jpeg,";
+
+  MimeTypeListToContentTypeSet(s, &out);
+  EXPECT_EQ(1, out.size());
+  EXPECT_EQ(1, out.count(ContentType::kJpeg));
+}
 }  // namespace net_instaweb

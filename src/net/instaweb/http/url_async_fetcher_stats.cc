@@ -124,7 +124,7 @@ bool UrlAsyncFetcherStats::SupportsHttps() const {
 void UrlAsyncFetcherStats::Fetch(const GoogleString& url,
                                  MessageHandler* message_handler,
                                  AsyncFetch* fetch) {
-  fetch = EnableInflation(fetch);
+  fetch = EnableInflation(fetch, NULL /* inflation_content_type_blacklist */);
   base_fetcher_->Fetch(url, message_handler, new StatsAsyncFetch(this, fetch));
 }
 

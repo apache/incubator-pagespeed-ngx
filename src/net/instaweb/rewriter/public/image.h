@@ -65,6 +65,8 @@ class Image {
         : preferred_webp(WEBP_NONE),
           webp_quality(RewriteOptions::kDefaultImagesRecompressQuality),
           jpeg_quality(RewriteOptions::kDefaultImagesRecompressQuality),
+          progressive_jpeg_min_bytes(
+              RewriteOptions::kDefaultProgressiveJpegMinBytes),
           progressive_jpeg(false),
           convert_gif_to_png(false),
           convert_png_to_jpeg(false),
@@ -80,6 +82,7 @@ class Image {
     PreferredWebp preferred_webp;
     int64 webp_quality;
     int64 jpeg_quality;
+    int64 progressive_jpeg_min_bytes;
     bool progressive_jpeg;
     bool convert_gif_to_png;
     bool convert_png_to_jpeg;
@@ -177,12 +180,21 @@ class Image {
   virtual void ComputeImageType() = 0;
   virtual bool ComputeOutputContents() = 0;
 
+  // Inject desired resized dimensions directly for testing.
+  virtual void SetResizedDimensions(const ImageDim& dim) = 0;
+
+  // Determines whether it's a good idea to convert this image to progressive
+  // jpeg.
+  virtual bool ShouldConvertToProgressive(int64 quality) const = 0;
+
+
   Type image_type_;  // Lazily initialized, initially IMAGE_UNKNOWN.
   const StringPiece original_contents_;
   GoogleString output_contents_;  // Lazily filled.
   bool output_valid_;             // Indicates output_contents_ now correct.
 
  private:
+  friend class ImageTestingPeer;
   friend class ImageTest;
 
   DISALLOW_COPY_AND_ASSIGN(Image);
@@ -201,6 +213,12 @@ class Image {
 // The jpeg_quality flag indicates what quality to use while recompressing jpeg
 // images. Quality value of 75 is used as default for web images by most of the
 // image libraries. Recommended setting for this is 85.
+//
+// The options should be set via Image::SetOptions after construction, before
+// the image is used for anything but determining its natural dimension size.
+//
+// TODO(jmarantz): It would seem natural to fold the ImageOptions into the
+// Image object itself.
 Image* NewImage(const StringPiece& original_contents,
                 const GoogleString& url,
                 const StringPiece& file_prefix,
