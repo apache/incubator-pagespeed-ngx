@@ -3,11 +3,10 @@
 This is the [nginx](http://nginx.org/) port of
 [mod_pagespeed](https://developers.google.com/speed/pagespeed/mod).
 
-**ngx_pagespeed is a work in progress**, and is not yet ready for production use
-([current status](https://github.com/pagespeed/ngx_pagespeed/wiki/Status)). If
-you are interested in test-driving the module, or contributing to the project,
-please follow the instructions below. For feedback, questions, and to follow the
-progress of the project:
+**ngx_pagespeed is a work in progress**, and is only ready for production use if
+you really like to live on the edge. If you are interested in test-driving the
+module, or contributing to the project, see below. For feedback, questions, and
+to follow the progress of the project:
 
 - [ngx-pagespeed-discuss Google Group](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss)
 
@@ -16,7 +15,7 @@ progress of the project:
 The goal of ngx_pagespeed is to speed up your site and reduce page load time by
 automatically applying web performance best practices to pages and associated
 assets (CSS, JavaScript, images) without requiring that you modify your existing
-content or workflow. Features will include:
+content or workflow. Features include:
 
 - Image optimization: stripping meta-data, dynamic resizing, recompression
 - CSS & JavaScript minification, concatenation, inlining, and outlining
@@ -25,13 +24,12 @@ content or workflow. Features will include:
 - HTML rewriting
 - Cache lifetime extension
 - and [more](https://developers.google.com/speed/docs/mod_pagespeed/config_filters)
-
+  - Note: not all mod_pagespeed features work in ngx_pagespeed yet.
 
 ## How to build
 
-nginx does not support dynamic loading of modules. You need to add ngx_pagespeed
-as a build time dependency, and to do that you have to first build the pagespeed
-optimization library.
+Because nginx does not support dynamic loading of modules, you need to add
+ngx_pagespeed as a build-time dependency.
 
 First build mod_pagespeed against trunk, following these instructions through
 the end of the "Compile" step, and making sure that when you run `gclient sync`
@@ -43,14 +41,14 @@ Then build the pagespeed optimization library:
     $ cd ~/mod_pagespeed/src/net/instaweb/automatic
     $ make all
 
-Then check out ngx_pagespeed:
+Check out ngx_pagespeed:
 
     $ cd ~
     $ git clone https://github.com/pagespeed/ngx_pagespeed.git
 
-Now download and build nginx:
+Download and build nginx:
 
-    # check http://nginx.org/en/download.html for the latest version
+    $ # check http://nginx.org/en/download.html for the latest version
     $ wget http://nginx.org/download/nginx-1.2.6.tar.gz
     $ tar -xvzf nginx-1.2.6.tar.gz
     $ cd nginx-1.2.6/src/
@@ -59,11 +57,12 @@ Now download and build nginx:
 
 (This assumes you put everything in your home directory; if not, change paths
 appropriately.  The only restriction is that the `mod_pagespeed` and
-`ngx_pagespeed` directories need to have the same parent.)
+`ngx_pagespeed` directories need to have the same parent so that ngx_pagespeed
+can find the pagespeed optimization library.)
 
 ## How to use
 
-In your nginx.conf, add to the main or server block:
+In your `nginx.conf`, add to the main or server block:
 
     pagespeed on;
     pagespeed RewriteLevel CoreFilters;
