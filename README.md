@@ -66,8 +66,9 @@ appropriately.  The only restriction is that the `mod_pagespeed` and
 In your nginx.conf, add to the main or server block:
 
     pagespeed on;
-    pagespeed_cache /path/to/cache/dir;
-    error_log logs/error.log debug;
+    # needs to be writable by nginx
+    pagespeed FileCachePath /var/ngx_pagespeed_cache;
+    pagespeed RewriteLevel CoreFilters;
 
 In every server block where pagespeed is enabled add:
 
@@ -82,8 +83,8 @@ To confirm that the module is loaded, fetch a page and check that you see the
     $ curl -s -D- 'http://localhost:8050/some_page/' | grep X-Page-Speed
     X-Page-Speed: 0.10.0.0
 
-Looking at the source of a few pages you should see various changes, like urls
-being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
+Looking at the source of a few pages you should see various changes, such as
+urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 
 ### Testing
 
@@ -169,8 +170,9 @@ and then eventually:
 
     Failing Tests:
       compression is enabled for rewritten JS.
-      regression test with same filtered input twice in combination
       convert_meta_tags
+      insert_dns_prefetch
+      insert_dns_prefetch
     FAIL.
 
 Each of these failed tests is a known issue:
@@ -178,9 +180,8 @@ Each of these failed tests is a known issue:
     https://github.com/pagespeed/ngx_pagespeed/issues/70)
    - If you're running a version of nginx without etag support (pre-1.3.3) you
      won't see this issue, which is fine.
- - [regression test with same filtered input twice in combination](
-    https://github.com/pagespeed/ngx_pagespeed/issues/55)
  - [convert_meta_tags](https://github.com/pagespeed/ngx_pagespeed/issues/56)
+ - [insert_dns_prefetch](https://github.com/pagespeed/ngx_pagespeed/issues/114)
 
 If it fails with some other error, that's a problem, and it would be helpful for
 you to [submit a bug](https://github.com/pagespeed/ngx_pagespeed/issues/new).
@@ -202,9 +203,8 @@ Then run the system test:
 
 ## Configuration
 
-Once configuration is complete, any mod_pagespeed configuration directive should
-work in ngx_pagespeed after a small adjustment: replace '"ModPagespeed"' with
-'"pagespeed "':
+Most mod_pagespeed configuration directives work in ngx_pagespeed after a small
+adjustment: replace '"ModPagespeed"' with '"pagespeed "':
 
     mod_pagespeed.conf:
       ModPagespeedEnableFilters collapse_whitespace,add_instrumentation
