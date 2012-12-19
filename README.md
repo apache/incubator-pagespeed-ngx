@@ -66,9 +66,10 @@ appropriately.  The only restriction is that the `mod_pagespeed` and
 In your nginx.conf, add to the main or server block:
 
     pagespeed on;
-    # needs to be writable by nginx
-    pagespeed FileCachePath /var/ngx_pagespeed_cache;
     pagespeed RewriteLevel CoreFilters;
+
+    # needs to exist and be writable by nginx
+    pagespeed FileCachePath /var/ngx_pagespeed_cache;
 
 In every server block where pagespeed is enabled add:
 
@@ -81,7 +82,7 @@ To confirm that the module is loaded, fetch a page and check that you see the
 `X-Page-Speed` header:
 
     $ curl -s -D- 'http://localhost:8050/some_page/' | grep X-Page-Speed
-    X-Page-Speed: 0.10.0.0
+    X-Page-Speed: 1.1.0.0
 
 Looking at the source of a few pages you should see various changes, such as
 urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
