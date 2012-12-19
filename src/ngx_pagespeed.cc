@@ -879,6 +879,11 @@ ps_create_connection(ps_request_ctx_t* ctx) {
 
 // Populate cfg_* with configuration information for this
 // request.  Thin wrappers around ngx_http_get_module_*_conf and cast.
+ps_main_conf_t*
+ps_get_main_config(ngx_http_request_t* r) {
+  return static_cast<ps_main_conf_t*>(
+      ngx_http_get_module_main_conf(r, ngx_pagespeed));
+}
 ps_srv_conf_t*
 ps_get_srv_config(ngx_http_request_t* r) {
   return static_cast<ps_srv_conf_t*>(
@@ -1467,6 +1472,18 @@ ngx_http_module_t ps_module = {
   ps_merge_loc_conf
 };
 
+// Called when nginx forks worker processes.  No threads should be started
+// before this.
+ngx_int_t
+ps_init_process(ngx_cycle_t* cycle) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
+  if (cfg_m->driver_factory != NULL) {
+    cfg_m->driver_factory->StartThreads();
+  }
+  return NGX_OK;
+}
+
 }  // namespace
 
 }  // namespace ngx_psol
@@ -1478,7 +1495,7 @@ ngx_module_t ngx_pagespeed = {
   NGX_HTTP_MODULE,
   NULL,
   NULL,
-  NULL,
+  ngx_psol::ps_init_process,
   NULL,
   NULL,
   NULL,
