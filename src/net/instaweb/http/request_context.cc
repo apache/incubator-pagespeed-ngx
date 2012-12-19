@@ -36,6 +36,11 @@ RequestContext::RequestContext()
 }
 
 RequestContext::~RequestContext() {
+  // Please do not add non-diagnostic functionality here.
+  //
+  // RequestContexts are reference counted, and doing work in the dtor will
+  // result in actions being taken at unpredictable times, leading to difficult
+  // to diagnose performance and correctness bugs.
 }
 
 RequestContextPtr RequestContext::NewTestRequestContext(
