@@ -54,9 +54,6 @@
 #include "net/instaweb/util/public/cache_batcher.h"
 #include "net/instaweb/util/public/fallback_cache.h"
 #include "ngx_cache.h"
-#include "net/instaweb/apache/apr_thread_compatible_pool.h"
-#include "net/instaweb/apache/serf_url_async_fetcher.h"
-#include "net/instaweb/apache/apr_mem_cache.h"
 
 namespace net_instaweb {
 
@@ -90,10 +87,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
-  // TODO(oschaaf): The slow worker startup call got lost in the
-  // memcached commit, restore that. For now, remove the worker shutdown,
-  // as that will crash the nginx worker during process exit
-
+  slow_worker_->ShutDown();
   ShutDown();
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
@@ -159,6 +153,8 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
+  slow_worker_.reset(new SlowWorker(thread_system()));
+
   // TODO(jefftk): see the ngx_rewrite_options.h note on OriginRewriteOptions;
   // this would move to OriginRewriteOptions.
 
@@ -170,8 +166,6 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   CacheInterface* l2_cache = ngx_cache->l2_cache();
   CacheInterface* memcached = GetMemcached(options, l2_cache);
   if (memcached != NULL) {
-    // XXX(oschaaf): remove when done
-    l1_cache = NULL;
     l2_cache = memcached;
     server_context->set_owned_cache(memcached);
     server_context->set_filesystem_metadata_cache(
@@ -179,9 +173,6 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   }
   Statistics* stats = server_context->statistics();
 
-  // TODO(jmarantz): consider moving ownership of the L1 cache into the
-  // factory, rather than having one per vhost.
-  //
   // Note that a user can disable the L1 cache by setting its byte-count
   // to 0, in which case we don't build the write-through mechanisms.
   if (l1_cache == NULL) {
@@ -252,7 +243,6 @@ CacheInterface* NgxRewriteDriverFactory::GetMemcached(
     std::pair<MemcachedMap::iterator, bool> result = memcached_map_.insert(
         MemcachedMap::value_type(server_spec, memcached));
     if (result.second) {
-      fprintf(stderr,"setting up memcached server [%s]\n",server_spec.c_str());
       AprMemCache* mem_cache = NewAprMemCache(server_spec);
 
       memcache_servers_.push_back(mem_cache);
@@ -288,11 +278,11 @@ CacheInterface* NgxRewriteDriverFactory::GetMemcached(
       memcached = batcher;
       result.first->second = memcached;
 
-      // TODO(oschaaf): should not connect to memcached here
       bool connected = mem_cache->Connect();
-      fprintf(stderr,
-              "connected to memcached backend: %s\n", connected ? "true": "false");
-
+      if (!connected) {
+        message_handler()->Message(kError, "Failed to attach memcached, abort");
+        abort();
+      }
     } else {
       memcached = result.first->second;
     }

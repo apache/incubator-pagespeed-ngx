@@ -51,7 +51,9 @@ NgxCache::NgxCache(const StringPiece& path,
   } else {
     FallBackToFileBasedLocking();
   }
-
+  
+  // TODO(jefftk): see the ngx_rewrite_options.h note on OriginRewriteOptions;
+  // this would move to OriginRewriteOptions.
   FileCache::CachePolicy* policy = new FileCache::CachePolicy(
       factory->timer(),
       factory->hasher(),
