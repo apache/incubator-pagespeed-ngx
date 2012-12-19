@@ -2013,9 +2013,16 @@ MediaQuery* Parser::ParseMediaQuery() {
     id = ParseIdent();
   }
 
+  // Do we need to find an 'and' before the next media expression? This is
+  // always true unless there was no explicit media type, ex: "@media (color)".
+  bool need_and = false;
+  // Have we seen an 'and' token since last media expression or media type.
+  bool found_and = false;
+
   // Set media type (optional).
   if (!id.empty()) {
     query->set_media_type(id);
+    need_and = true;
   }
 
   bool done = false;
@@ -2028,6 +2035,13 @@ MediaQuery* Parser::ParseMediaQuery() {
         done = true;
         break;
       case '(': {  // CSS3 media expression. Ex: (max-width:290px)
+        if (need_and != found_and) {
+          ReportParsingError(kMediaError,
+                             "Missing or extra 'and' in media query");
+        }
+        // Reset
+        need_and = true;
+        found_and = false;
         in_++;
         SkipSpace();
         UnicodeText name = ParseIdent();
@@ -2074,7 +2088,26 @@ MediaQuery* Parser::ParseMediaQuery() {
       default: {
         // Ignore "and" between media expressions. All other things are errors.
         UnicodeText ident = ParseIdent();
-        if (!StringCaseEquals(ident, "and")) {
+        if (StringCaseEquals(ident, "and")) {
+          if (found_and) {
+            ReportParsingError(kMediaError, "Multiple 'and' tokens in a row.");
+          } else if (!Done() && *in_ == '(') {
+            // TODO(sligocki): Instead of special-casing "and(" let's lex the
+            // content first in general (say with a NextToken() function).
+
+            // This @media query is technically invalid because CSS is
+            // defined to be lexed context-free first and defines the
+            // flex primitive:
+            //   FUNCTION {ident}\(
+            // Thus "and(color)" will be parsed as a function instead of an
+            // identifier followed by a media expression.
+            // See: b/7694757 and
+            //   http://lists.w3.org/Archives/Public/www-style/2012Dec/0263.html
+            ReportParsingError(kMediaError,
+                               "Space required between 'and' and '(' tokens.");
+          }
+          found_and = true;
+        } else {
           if (ident.empty()) {
             ReportParsingError(kMediaError, StringPrintf(
                 "Unexpected char in media query: %c", *in_));
@@ -2089,6 +2122,10 @@ MediaQuery* Parser::ParseMediaQuery() {
       }
     }
     SkipSpace();
+  }
+
+  if (found_and) {
+    ReportParsingError(kMediaError, "Unexpected trailing 'and' token.");
   }
 
   // If there is no media type or expressions. For example, we want to treat

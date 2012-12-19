@@ -511,6 +511,9 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a { color: red;\n .foo { margin: 10px; }",
     "a { color: red;\n h1 { margin: 10px; }",
 
+    // Don't "fix" by adding space between 'and' and '('.
+    "@media only screen and(min-resolution:240dpi){ .bar{ background: red; }}",
+
     // Things from Alexa-100 that we get parsing errors for. Most are illegal
     // syntax/typos. Some are CSS3 constructs.
 
@@ -1146,6 +1149,21 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     "}}",
     "@foobar this is totally wrong CSS syntax }",
     "@media (color) and screen { .a { color: red; } }",
+
+    // Do not "fix" by putting a space between 'and' and '('.
+    "@media only screen and(-webkit-min-device-pixel-ratio:1.5),"
+    "only screen and(min--moz-device-pixel-ratio:1.5),"
+    "only screen and(min-resolution:240dpi){"
+    ".ui-icon-plus,.ui-icon-minus,.ui-icon-delete,.ui-icon-arrow-r,"
+    ".ui-icon-arrow-l,.ui-icon-arrow-u,.ui-icon-arrow-d,.ui-icon-check,"
+    ".ui-icon-gear,.ui-icon-refresh,.ui-icon-forward,.ui-icon-back,"
+    ".ui-icon-grid,.ui-icon-star,.ui-icon-alert,.ui-icon-info,.ui-icon-home,"
+    ".ui-icon-search,.ui-icon-searchfield:after,.ui-icon-checkbox-off,"
+    ".ui-icon-checkbox-on,.ui-icon-radio-off,.ui-icon-radio-on{"
+    "background-image:url(images/icons-36-white.png);"
+    "-moz-background-size:776px 18px;-o-background-size:776px 18px;"
+    "-webkit-background-size:776px 18px;background-size:776px 18px;}"
+    ".ui-icon-alt{background-image:url(images/icons-36-black.png);}}",
   };
 
   for (int i = 0; i < arraysize(parse_fail_examples); ++i) {

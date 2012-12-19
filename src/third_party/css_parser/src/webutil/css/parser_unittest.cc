@@ -1919,6 +1919,58 @@ TEST_F(ParserTest, MediaQueries) {
       s->ruleset(3).media_query(0).expression(0).value()));
 }
 
+// Test that we do not "fix" malformed @media queries.
+TEST_F(ParserTest, InvalidMediaQueries) {
+  scoped_ptr<Parser> p;
+  scoped_ptr<Stylesheet> s;
+
+  // This @media query is technically invalid because CSS is defined to
+  // be lexed context-free first and defines the flex primitive:
+  //   FUNCTION {ident}\(
+  // Thus "and(color)" will be parsed as a function instead of an identifier
+  // followed by a media expression.
+  // See: b/7694757 and
+  //      http://lists.w3.org/Archives/Public/www-style/2012Dec/0263.html
+  p.reset(new Parser("@media all and(color) { a { color: red; } }"));
+  s.reset(p->ParseStylesheet());
+  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+
+  // Missing "and" between "all" and "(color)".
+  p.reset(new Parser("@media all (color) { a { color: red; } }"));
+  s.reset(p->ParseStylesheet());
+  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+
+  // Missing "and" and space between "all" and "(color)".
+  p.reset(new Parser("@media all(color) { a { color: red; } }"));
+  s.reset(p->ParseStylesheet());
+  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+
+  // Too many "and"s.
+  p.reset(new Parser("@media all and and (color) { a { color: red; } }"));
+  s.reset(p->ParseStylesheet());
+  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+
+  // Too many "and"s and missing space.
+  p.reset(new Parser("@media all and and(color) { a { color: red; } }"));
+  s.reset(p->ParseStylesheet());
+  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+
+  // Trailing "and".
+  p.reset(new Parser("@media all and { a { color: red; } }"));
+  s.reset(p->ParseStylesheet());
+  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+
+  // Starting "and".
+  p.reset(new Parser("@media and (color) { a { color: red; } }"));
+  s.reset(p->ParseStylesheet());
+  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+
+  // Starting "and" and no space.
+  p.reset(new Parser("@media and(color) { a { color: red; } }"));
+  s.reset(p->ParseStylesheet());
+  EXPECT_EQ(Parser::kMediaError, p->errors_seen_mask());
+}
+
 TEST_F(ParserTest, ExtractCharset) {
   scoped_ptr<Parser> parser;
   UnicodeText charset;
