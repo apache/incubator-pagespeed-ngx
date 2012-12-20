@@ -34,6 +34,8 @@
 #       ~convert_meta_tags~
 #       ~regression test with same filtered input twice in combination"
 
+set -u  # Disallow referencing undefined variables.
+
 # Catch potential misuse of this script.
 if [ "$(basename $0)" == "system_test_helpers.sh" ] ; then
   echo "ERROR: This file must be loaded with source."
@@ -57,7 +59,8 @@ PAGESPEED_EXPECTED_FAILURES="~${PAGESPEED_EXPECTED_FAILURES=}~"
 
 # If the user has specified an alternate WGET as an environment variable, then
 # use that, otherwise use the one in the path.
-if [ "$WGET" == "" ]; then
+# Note: ${WGET:-} syntax is used to avoid breaking "set -u".
+if [ "${WGET:-}" == "" ]; then
   WGET=wget
 else
   echo WGET = $WGET
@@ -70,7 +73,7 @@ if [ $? != 0 ]; then
 fi
 
 # Ditto for curl.
-if [ "$CURL" == "" ]; then
+if [ "${CURL:-}" == "" ]; then
   CURL=curl
 else
   echo CURL = $CURL
@@ -103,12 +106,12 @@ MESSAGE_URL=http://$HOSTNAME/mod_pagespeed_message
 # invocation it is set to the newly-chosen TEST_ROOT.  This permits us to call
 # this from other test scripts that use different host prefixes for rewritten
 # content.
-REWRITTEN_TEST_ROOT=$TEST_ROOT
+REWRITTEN_TEST_ROOT=${TEST_ROOT:-}
 TEST_ROOT=http://$HOSTNAME/mod_pagespeed_test
 REWRITTEN_TEST_ROOT=${REWRITTEN_TEST_ROOT:-$TEST_ROOT}
 
 # This sets up similar naming for https requests.
-HTTPS_HOST=$2
+HTTPS_HOST=${2:-}
 HTTPS_EXAMPLE_ROOT=https://$HTTPS_HOST/mod_pagespeed_example
 
 # These are the root URLs for rewritten resources; by default, no change.
@@ -116,9 +119,9 @@ REWRITTEN_ROOT=${REWRITTEN_ROOT:-$EXAMPLE_ROOT}
 PROXY_DOMAIN=${PROXY_DOMAIN:-$HOSTNAME}
 
 # Setup wget proxy information
-export http_proxy=$3
-export https_proxy=$3
-export ftp_proxy=$3
+export http_proxy=${3:-}
+export https_proxy=${3:-}
+export ftp_proxy=${3:-}
 export no_proxy=""
 
 # Version timestamped with nanoseconds, making it extremely unlikely to hit.
@@ -305,7 +308,7 @@ function check_stat() {
   fi
 }
 
-FETCH_UNTIL_OUTFILE="$TEMPDIR/fetch_until_output.$$"
+FETCH_UNTIL_OUTFILE="$OUTDIR/fetch_until_output.$$"
 
 # Continuously fetches URL and pipes the output to COMMAND.  Loops until
 # COMMAND outputs RESULT, in which case we return 0, or until 10 seconds have
@@ -335,7 +338,7 @@ function fetch_until() {
   REQUESTURL=$1
   COMMAND=$2
   RESULT=$3
-  FETCH_UNTIL_WGET_ARGS="$WGET_ARGS $4"
+  FETCH_UNTIL_WGET_ARGS="$WGET_ARGS ${4:-}"
   OP=${5:-=}  # Default to =
 
   if [ $recursive -eq 1 ]; then
@@ -343,7 +346,8 @@ function fetch_until() {
     FETCH_UNTIL_WGET_ARGS="$FETCH_UNTIL_WGET_ARGS $PREREQ_ARGS"
   else
     FETCH_FILE="$FETCH_UNTIL_OUTFILE"
-    FETCH_UNTIL_WGET_ARGS="$FETCH_UNTIL_WGET_ARGS -O $FETCH_FILE"
+    FETCH_UNTIL_WGET_ARGS="$FETCH_UNTIL_WGET_ARGS -o $WGET_OUTPUT \
+                                                  -O $FETCH_FILE"
   fi
 
 
@@ -355,10 +359,14 @@ function fetch_until() {
   echo " until \$($COMMAND) $OP $RESULT"
   echo "$WGET_HERE $REQUESTURL and checking with $COMMAND"
   while test -t; do
+    # Clean out OUTDIR so that wget doesn't create .1 files.
+    rm -rf $OUTDIR
+    mkdir $OUTDIR
+
     $WGET_HERE $REQUESTURL
     if [ $($COMMAND < "$FETCH_FILE") "$OP" "$RESULT" ]; then
       echo "."
-      if [ $save = 0 ]; then
+      if [ $save -eq 0 ]; then
         if [ $recursive -eq 1 ]; then
           rm -rf $OUTDIR
         else
@@ -372,15 +380,6 @@ function fetch_until() {
       echo "TIMEOUT: $WGET_HERE $REQUESTURL output in $FETCH_FILE"
       handle_failure
       return
-    fi
-    if [ $recursive -eq 1 ]; then
-      # Recursive wget does not clear it's previous results, instead we need
-      # to delete those files manually each time we fail to find what we
-      # were looking for.
-      rm -rf $OUTDIR
-      mkdir $OUTDIR
-    else
-      rm -f "$FETCH_FILE"
     fi
     echo -n "."
     sleep 0.1

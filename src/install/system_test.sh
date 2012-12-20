@@ -122,15 +122,15 @@ fetch_until $EXAMPLE_ROOT/ 'grep -c pagespeed_logo.png.pagespeed' 1
 # Check that we compress the image (with IPRO).
 # Note: This requests $URL until it's size is less than $THRESHOLD_SIZE.
 fetch_until -save $URL "wc -c" $THRESHOLD_SIZE "--save-headers" "-lt"
-check_file_size $FETCH_UNTIL_OUTFILE -lt $THRESHOLD_SIZE
+check_file_size $FETCH_FILE -lt $THRESHOLD_SIZE
 # Check that resource is served with small Cache-Control header (since
 # we cannot cache-extend resources served under the original URL).
 # Note: tr -d '\r' is needed because HTTP spec requires lines to end in \r\n,
 # but sed does not treat that as $.
-check [ "$(tr -d '\r' < $FETCH_UNTIL_OUTFILE | \
+echo sed -n 's/Cache-Control: max-age=\([0-9]*\)$/\1/p' $FETCH_FILE
+check [ "$(tr -d '\r' < $FETCH_FILE | \
            sed -n 's/Cache-Control: max-age=\([0-9]*\)$/\1/p')" \
         -lt 1000 ]
-rm -f $FETCH_UNTIL_OUTFILE
 
 # Check that the original image is greater than threshold to begin with.
 check $WGET_DUMP -O $FETCHED $URL?ModPagespeed=off
@@ -248,6 +248,8 @@ FETCHED=$OUTDIR/blacklist.html
 fetch_until $URL 'grep -c .js.pagespeed.' 4
 $WGET_DUMP $URL > $FETCHED
 JS_TMP="$TEMPDIR/js_grep.$$"
+# Note: These commands are redirecting the output from check into $JS_TMP.
+# Since $JS_TMP is never used, that's probably fine, but odd.
 check grep "<script src=\".*normal\.js\.pagespeed\..*\.js\">" $FETCHED  > $JS_TMP
 check grep "<script src=\"js_tinyMCE\.js\"></script>" $FETCHED >> $JS_TMP
 check grep "<script src=\"tiny_mce\.js\"></script>" $FETCHED >> $JS_TMP
@@ -337,15 +339,12 @@ check_not grep "mod_pagespeed_example" $FETCHED  # base dir, shouldn't find
 check_file_size $FETCHED -lt 153  # down from 157
 
 test_filter rewrite_css minifies CSS and saves bytes.
-fetch_until $URL 'grep -c comment' 0
-check run_wget_with_args $URL
-check_file_size $FETCHED -lt 680  # down from 689
+fetch_until -save $URL 'grep -c comment' 0
+check_file_size $FETCH_FILE -lt 680  # down from 689
 
 test_filter rewrite_images [system_test] inlines, compresses, and resizes.
-fetch_until $URL 'grep -c data:image/png' 1  # inlined
-
-# Wait until two other images are optimized.
-fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2
+fetch_until $URL 'grep -c data:image/png' 1  # Images inlined.
+fetch_until $URL 'grep -c .pagespeed.ic' 2  # Images rewritten.
 
 # Verify with a blocking fetch that pagespeed_no_transform worked and was
 # stripped.
@@ -354,6 +353,10 @@ fetch_until $URL 'grep -c "images/disclosure_open_plus.png"' 1 \
 fetch_until $URL 'grep -c "pagespeed_no_transform"' 0 \
   '--header=X-PSA-Blocking-Rewrite:psatest'
 
+# Save successfully rewritten contents.
+# Note: We cannot do this above because the intervening fetch_untils will
+# clean up $OUTDIR.
+fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2
 check_file_size "$OUTDIR/xBikeCrashIcn*" -lt 25000      # re-encoded
 check_file_size "$OUTDIR/*256x192*Puzzle*" -lt 24126    # resized
 URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
@@ -412,10 +415,9 @@ ModPagespeedFilters=fallback_rewrite_css_urls,rewrite_css,extend_cache
 URL=$EXAMPLE_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
 fetch_until $URL 'grep -c Cuppa.png.pagespeed.ce.' 1  # image cache extended
-fetch_until $URL 'grep -c fallback_rewrite_css_urls.css.pagespeed.cf.' 1
-check run_wget_with_args $URL
+fetch_until -save $URL 'grep -c fallback_rewrite_css_urls.css.pagespeed.cf.' 1
 # Test this was fallback flow -> no minification.
-check grep -q "body { background" $FETCHED
+check grep -q "body { background" $FETCH_FILE
 
 # Rewrite images in styles.
 start_test rewrite_images,rewrite_css,rewrite_style_attributes_with_url optimizes images in style.
@@ -458,11 +460,11 @@ check [ $(grep -c "ic.pagespeed.is" "$SPRITE_CSS_OUT") -gt 0 ]
 
 test_filter rewrite_javascript minifies JavaScript and saves bytes.
 # External scripts rewritten.
-fetch_until $URL 'grep -c src.*/rewrite_javascript\.js\.pagespeed\.jm\.' 2
-check run_wget_with_args $URL
-check_not grep "removed" $OUTDIR/*.pagespeed.jm.*   # No comments should remain.
-check_file_size $FETCHED -lt 1560            # Net savings
-check grep -q preserved $FETCHED             # Preserves certain comments.
+fetch_until -save -recursive \
+  $URL 'grep -c src.*/rewrite_javascript\.js\.pagespeed\.jm\.' 2
+check_not grep "removed" $OUTDIR/*.pagespeed.jm.*  # No comments should remain.
+check_file_size $FETCH_FILE -lt 1560               # Net savings
+check grep -q preserved $FETCH_FILE                # Preserves certain comments.
 # Rewritten JS is cache-extended.
 check grep -qi "Cache-control: max-age=31536000" $WGET_OUTPUT
 check grep -qi "Expires:" $WGET_OUTPUT
@@ -747,18 +749,16 @@ WGET_EC="$WGET_DUMP $WGET_ARGS"
 
 start_test Html is rewritten with cache-extended PDFs.
 fetch_until -save $URL 'fgrep -c .pagespeed.' 3
-check grep -q 'a href="http://.*pagespeed.*\.pdf' $FETCH_UNTIL_OUTFILE
-check grep -q 'embed src="http://.*pagespeed.*\.pdf' $FETCH_UNTIL_OUTFILE
-check fgrep -q '<a href="example.notpdf">' $FETCH_UNTIL_OUTFILE
-check grep -q 'a href="http://.*pagespeed.*\.pdf?a=b' $FETCH_UNTIL_OUTFILE
+check grep -q 'a href="http://.*pagespeed.*\.pdf' $FETCH_FILE
+check grep -q 'embed src="http://.*pagespeed.*\.pdf' $FETCH_FILE
+check fgrep -q '<a href="example.notpdf">' $FETCH_FILE
+check grep -q 'a href="http://.*pagespeed.*\.pdf?a=b' $FETCH_FILE
 
 start_test Cache-extended PDFs load and have the right mime type.
-PDF_CE_URL="$(grep -o 'http://.*pagespeed.[^\"]*\.pdf' $FETCH_UNTIL_OUTFILE | \
-              head -n 1)"
+PDF_CE_URL="$(grep -o 'http://.*pagespeed.[^\"]*\.pdf' $FETCH_FILE | head -n 1)"
 echo Extracted cache-extended url $PDF_CE_URL
 OUT=$($WGET_EC $PDF_CE_URL)
 check_from "$OUT" grep -aq 'Content-Type: application/pdf'
-rm -f $FETCH_UNTIL_OUTFILE
 
 # Test DNS prefetching. DNS prefetching is dependent on user agent, but is
 # enabled for Wget UAs, allowing this test to work with our default wget params.
