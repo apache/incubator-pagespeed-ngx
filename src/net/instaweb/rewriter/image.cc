@@ -269,7 +269,8 @@ Image::Image(const StringPiece& original_contents)
     : image_type_(IMAGE_UNKNOWN),
       original_contents_(original_contents),
       output_contents_(),
-      output_valid_(false) { }
+      output_valid_(false),
+      rewrite_attempted_(false) { }
 
 ImageImpl::ImageImpl(const StringPiece& original_contents,
                      const GoogleString& url,
@@ -298,7 +299,8 @@ Image::Image(Type type)
     : image_type_(type),
       original_contents_(),
       output_contents_(),
-      output_valid_(false) { }
+      output_valid_(false),
+      rewrite_attempted_(false) { }
 
 ImageImpl::ImageImpl(int width, int height, Type type,
                      const StringPiece& tmp_dir, MessageHandler* handler,
@@ -776,6 +778,7 @@ bool ImageImpl::ResizeTo(const ImageDim& new_dim) {
       opencv_image_ = rescaled_image;
       changed_ = true;
       output_valid_ = false;
+      rewrite_attempted_ = false;
       output_contents_.clear();
       resized_dimensions_ = new_dim;
     }
@@ -787,6 +790,7 @@ void ImageImpl::UndoChange() {
   if (changed_) {
     CleanOpenCv();
     output_valid_ = false;
+    rewrite_attempted_ = false;
     output_contents_.clear();
     image_type_ = IMAGE_UNKNOWN;
     changed_ = false;
@@ -795,6 +799,10 @@ void ImageImpl::UndoChange() {
 
 // Performs image optimization and output
 bool ImageImpl::ComputeOutputContents() {
+  if (rewrite_attempted_) {
+    return output_valid_;
+  }
+  rewrite_attempted_ = true;
   if (!output_valid_) {
     bool ok = true;
     OpenCvBuffer opencv_contents;

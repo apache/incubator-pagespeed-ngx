@@ -192,6 +192,7 @@ class Image {
   const StringPiece original_contents_;
   GoogleString output_contents_;  // Lazily filled.
   bool output_valid_;             // Indicates output_contents_ now correct.
+  bool rewrite_attempted_;        // Indicates if we tried rewriting for this.
 
  private:
   friend class ImageTestingPeer;
