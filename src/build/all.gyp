@@ -21,6 +21,7 @@
       'dependencies': [
         'mod_pagespeed',
         'test',
+        'js_minify',
         'pagespeed_automatic',
       ],},
     {
@@ -58,6 +59,13 @@
         '../net/instaweb/test.gyp:mod_pagespeed_speed_test',
         'install.gyp:*',
       ]
+    },
+    {
+      'target_name': 'js_minify',
+      'type': 'none',
+      'dependencies': [
+        '../net/instaweb/instaweb.gyp:js_minify',
+      ],
     },
   ],
 }

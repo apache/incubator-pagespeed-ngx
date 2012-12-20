@@ -97,12 +97,11 @@ class FallbackCacheCallback: public HTTPCache::Callback {
   }
 
   virtual void SetTimingMs(int64 timing_value_ms) {
-    if (request_context().get() != NULL) {
-      ScopedMutex lock(log_record()->mutex());
-      TimingInfo* timing_info =
-          log_record()->logging_info()->mutable_timing_info();
-      timing_info->set_cache2_ms(timing_value_ms);
-    }
+    DCHECK(request_context().get() != NULL);
+    ScopedMutex lock(log_record()->mutex());
+    TimingInfo* timing_info =
+        log_record()->logging_info()->mutable_timing_info();
+    timing_info->set_cache2_ms(timing_value_ms);
   }
 
  private:
@@ -158,12 +157,11 @@ class Cache1Callback: public HTTPCache::Callback {
   }
 
   virtual void SetTimingMs(int64 timing_value_ms) {
-    if (request_context().get() != NULL) {
-      ScopedMutex lock(log_record()->mutex());
-      TimingInfo* timing_info =
-          log_record()->logging_info()->mutable_timing_info();
-      timing_info->set_cache1_ms(timing_value_ms);
-    }
+    DCHECK(request_context().get() != NULL);
+    ScopedMutex lock(log_record()->mutex());
+    TimingInfo* timing_info =
+        log_record()->logging_info()->mutable_timing_info();
+    timing_info->set_cache1_ms(timing_value_ms);
   }
 
  private:
