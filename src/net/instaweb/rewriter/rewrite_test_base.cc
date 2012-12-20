@@ -280,7 +280,7 @@ void RewriteTestBase::ServeResourceFromNewContext(
   new_factory->SetupWaitFetcher();
 
   // TODO(sligocki): We should set default request headers.
-  ExpectStringAsyncFetch response_contents(true);
+  ExpectStringAsyncFetch response_contents(true, CreateRequestContext());
 
   // Check that we don't already have it in cache.
   HTTPValue value;

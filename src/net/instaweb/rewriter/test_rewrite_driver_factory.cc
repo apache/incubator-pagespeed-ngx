@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_fetcher.h"  // for UrlFetcher
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -84,12 +85,14 @@ class ProxyUrlFetcher : public UrlFetcher {
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* response_writer,
-                                 MessageHandler* message_handler) {
+                                 MessageHandler* message_handler,
+                                 const RequestContextPtr& request_context) {
     return fetcher_->StreamingFetchUrl(url,
                                        request_headers,
                                        response_headers,
                                        response_writer,
-                                       message_handler);
+                                       message_handler,
+                                       request_context);
   }
 
  private:
@@ -107,6 +110,7 @@ TestRewriteDriverFactory::TestRewriteDriverFactory(
     const StringPiece& temp_dir, MockUrlFetcher* mock_fetcher)
   : mock_timer_(NULL),
     mock_scheduler_(NULL),
+    delay_cache_(NULL),
     lru_cache_(NULL),
     proxy_url_fetcher_(NULL),
     mock_url_fetcher_(mock_fetcher),

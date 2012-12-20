@@ -18,9 +18,21 @@
 
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 
+#include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/url_fetcher.h"
+
 namespace net_instaweb {
 
 FakeUrlAsyncFetcher::~FakeUrlAsyncFetcher() {
+}
+
+void FakeUrlAsyncFetcher::Fetch(const GoogleString& url,
+                                MessageHandler* message_handler,
+                                AsyncFetch* fetch) {
+  bool ret = url_fetcher_->StreamingFetchUrl(
+      url, *fetch->request_headers(), fetch->response_headers(), fetch,
+      message_handler, fetch->request_context());
+  fetch->Done(ret);
 }
 
 }  // namespace instaweb

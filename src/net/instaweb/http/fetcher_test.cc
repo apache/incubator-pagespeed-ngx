@@ -89,7 +89,7 @@ int FetcherTest::CountFetchesSync(
   ResponseHeaders response_headers;
   bool success = fetcher->StreamingFetchUrl(
       url.as_string(), request_headers, &response_headers, &content_writer,
-      &message_handler_);
+      &message_handler_, RequestContextPtr(NULL));
   EXPECT_EQ(expect_success, success);
   ValidateMockFetcherResponse(success, check_error_message, content,
                               response_headers);
@@ -134,7 +134,8 @@ bool FetcherTest::MockFetcher::StreamingFetchUrl(
     const RequestHeaders& request_headers,
     ResponseHeaders* response_headers,
     Writer* writer,
-    MessageHandler* message_handler) {
+    MessageHandler* message_handler,
+    const RequestContextPtr& unused_request_context) {
   bool ret = false;
   if (url == kGoodUrl) {
     ret = Populate("max-age=300", response_headers, writer,
@@ -173,7 +174,7 @@ void FetcherTest::MockAsyncFetcher::Fetch(const GoogleString& url,
                                           AsyncFetch* fetch) {
   bool status = url_fetcher_->StreamingFetchUrl(
       url, *fetch->request_headers(), fetch->response_headers(), fetch,
-      handler);
+      handler, fetch->request_context());
   deferred_callbacks_.push_back(std::make_pair(status, fetch));
 }
 

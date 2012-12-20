@@ -78,7 +78,8 @@ bool ExternalUrlFetcher::StreamingFetchUrl(
     const RequestHeaders& request_headers,
     ResponseHeaders* response_headers,
     Writer* writer,
-    MessageHandler* handler) {
+    MessageHandler* handler,
+    const RequestContextPtr& unused_request_context) {
 
   // Use default user-agent if none is set in headers.
   ConstStringStarVector values;

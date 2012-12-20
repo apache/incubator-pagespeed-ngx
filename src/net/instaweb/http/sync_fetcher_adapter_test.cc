@@ -154,7 +154,8 @@ class SyncFetcherAdapterTest : public testing::Test {
                                       request_headers,
                                       &out_headers_,
                                       response_writer,
-                                      &handler_);
+                                      &handler_,
+                                      RequestContextPtr(NULL));
   }
 
   void TestSuccessfulFetch(UrlPollableAsyncFetcher* async_fetcher) {

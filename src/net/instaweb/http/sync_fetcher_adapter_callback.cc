@@ -76,8 +76,10 @@ class ProtectedWriter : public Writer {
 }  // namespace
 
 SyncFetcherAdapterCallback::SyncFetcherAdapterCallback(
-    ThreadSystem* thread_system, Writer* writer)
-    : mutex_(thread_system->NewMutex()),
+    ThreadSystem* thread_system, Writer* writer,
+    const RequestContextPtr& request_context)
+    : AsyncFetch(request_context),
+      mutex_(thread_system->NewMutex()),
       done_(false),
       success_(false),
       released_(false),

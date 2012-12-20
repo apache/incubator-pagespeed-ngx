@@ -275,7 +275,7 @@ void handle_as_pagespeed_resource(GoogleUrl* gurl,
   StringWriter writer(&output);
 
   SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
-      server_context->thread_system(), &writer);
+      server_context->thread_system(), &writer, request_context);
   callback->SetRequestHeadersTakingOwnership(request_headers);
 
   // Insert proxy fetchers to add custom fetch headers or apply

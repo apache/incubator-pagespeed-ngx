@@ -45,9 +45,9 @@ SyncFetcherAdapter::~SyncFetcherAdapter() {
 bool SyncFetcherAdapter::StreamingFetchUrl(
     const GoogleString& url, const RequestHeaders& request_headers,
     ResponseHeaders* response_headers, Writer* fetched_content_writer,
-    MessageHandler* message_handler) {
+    MessageHandler* message_handler, const RequestContextPtr& request_context) {
   SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
-      thread_system_, fetched_content_writer);
+      thread_system_, fetched_content_writer, request_context);
   callback->set_response_headers(response_headers);
   async_fetcher_->Fetch(url, message_handler, callback);
 

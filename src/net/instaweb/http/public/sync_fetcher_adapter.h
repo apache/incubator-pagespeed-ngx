@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// This permits the use of any UrlPollableAsyncFetcher as a synchronous fetcher
+// This permits the use of any UrlPollableAsyncFetcher as a synchronous fetcher.
 
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_SYNC_FETCHER_ADAPTER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_SYNC_FETCHER_ADAPTER_H_
 
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -34,7 +35,7 @@ class Writer;
 class SyncFetcherAdapter : public UrlFetcher {
  public:
   // Note: the passed in async fetcher should use a timeout similar to
-  // fetcher_timeout_ms (or none at all)
+  // fetcher_timeout_ms (or none at all).
   SyncFetcherAdapter(Timer* timer,
                      int64 fetcher_timeout_ms,
                      UrlPollableAsyncFetcher* async_fetcher,
@@ -44,7 +45,8 @@ class SyncFetcherAdapter : public UrlFetcher {
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* fetched_content_writer,
-                                 MessageHandler* message_handler);
+                                 MessageHandler* message_handler,
+                                 const RequestContextPtr& request_context);
 
  private:
   Timer* timer_;

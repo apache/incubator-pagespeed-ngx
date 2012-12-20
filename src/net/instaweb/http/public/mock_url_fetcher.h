@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_MOCK_URL_FETCHER_H_
 
 #include <map>
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -29,8 +30,8 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class MockTimer;
 class RequestHeaders;
+class Timer;
 class Writer;
 
 // Simple UrlFetcher meant for tests, you can set responses for individual URLs.
@@ -67,7 +68,8 @@ class MockUrlFetcher : public UrlFetcher {
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* response_writer,
-                                 MessageHandler* message_handler);
+                                 MessageHandler* message_handler,
+                                 const RequestContextPtr& request_context);
 
   // Indicates that the specified URL should respond with headers and data,
   // but still return a 'false' status.  This is similar to a live fetcher

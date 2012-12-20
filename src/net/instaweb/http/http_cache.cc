@@ -472,11 +472,10 @@ LogRecord* HTTPCache::Callback::log_record() {
 }
 
 void HTTPCache::Callback::SetTimingMs(int64 timing_value_ms) {
-  if (request_context().get() != NULL) {
-    ScopedMutex lock(log_record()->mutex());
-    log_record()->logging_info()->mutable_timing_info()->
-        set_cache1_ms(timing_value_ms);
-  }
+  DCHECK(request_context().get() != NULL);
+  ScopedMutex lock(log_record()->mutex());
+  log_record()->logging_info()->mutable_timing_info()->
+      set_cache1_ms(timing_value_ms);
 }
 
 }  // namespace net_instaweb

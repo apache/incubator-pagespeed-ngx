@@ -52,12 +52,12 @@ namespace {
 
 class MockFetch : public AsyncFetch {
  public:
-  MockFetch(ThreadSystem* threads,
+  MockFetch(const RequestContextPtr& ctx,
             GoogleString* content,
             bool* done,
             bool* success,
             bool* is_origin_cacheable)
-      : AsyncFetch(RequestContext::NewTestRequestContext(threads)),
+      : AsyncFetch(ctx),
         content_(content),
         done_(done),
         success_(success),
@@ -119,7 +119,10 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   // that are blocking in nature (e.g. in-memory LRU or blocking file-system).
   class Callback : public HTTPCache::Callback {
    public:
-    Callback() : HTTPCache::Callback(RequestContextPtr(NULL)) { Reset(); }
+    explicit Callback(const RequestContextPtr& ctx)
+        : HTTPCache::Callback(ctx) {
+      Reset();
+    }
     Callback* Reset() {
       called_ = false;
       result_ = HTTPCache::kNotFound;
@@ -266,14 +269,16 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
   HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
                              ResponseHeaders* headers,
                              MessageHandler* handler) {
-    Callback callback;
+    Callback callback(
+        RequestContext::NewTestRequestContext(thread_system_.get()));
     return FindWithCallback(key, value, headers, handler, &callback);
   }
 
   HTTPCache::FindResult Find(const GoogleString& key, HTTPValue* value,
                              ResponseHeaders* headers,
                              MessageHandler* handler, bool cache_valid) {
-    Callback callback;
+    Callback callback(
+        RequestContext::NewTestRequestContext(thread_system_.get()));
     callback.cache_valid_ = cache_valid;
     return FindWithCallback(key, value, headers, handler, &callback);
   }
@@ -308,8 +313,8 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
     ResponseHeaders fetch_response_headers;
     fetch_response_headers.set_implicit_cache_ttl_ms(implicit_cache_ttl_ms_);
     MockFetch* fetch = new MockFetch(
-        thread_system_.get(), &fetch_content, &fetch_done, &fetch_success,
-        &is_cacheable);
+        RequestContext::NewTestRequestContext(thread_system_.get()),
+        &fetch_content, &fetch_done, &fetch_success, &is_cacheable);
     fetch->set_cache_result_valid(cache_result_valid_);
     fetch->request_headers()->CopyFrom(request_headers);
     fetch->set_response_headers(&fetch_response_headers);

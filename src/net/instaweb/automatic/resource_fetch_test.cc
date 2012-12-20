@@ -22,7 +22,6 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/http/public/wait_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -62,15 +61,15 @@ TEST_F(ResourceFetchTest, BlockingFetch) {
   GoogleString buffer;
   StringWriter writer(&buffer);
   SyncFetcherAdapterCallback* callback =
-      new SyncFetcherAdapterCallback(server_context()->thread_system(),
-                                     &writer);
+      new SyncFetcherAdapterCallback(
+          server_context()->thread_system(), &writer,
+          CreateRequestContext());
   RewriteOptions* custom_options =
       server_context()->global_options()->Clone();
   RewriteDriver* custom_driver =
       server_context()->NewCustomRewriteDriver(
           custom_options,
-          RequestContext::NewTestRequestContext(
-              server_context()->thread_system()));
+          CreateRequestContext());
 
   GoogleUrl url(Encode(kTestDomain, "cf", "0", "a.css", "css"));
   EXPECT_TRUE(
@@ -91,12 +90,10 @@ TEST_F(ResourceFetchTest, BlockingFetchOfInvalidUrl) {
       server_context()->global_options()->Clone();
   RewriteDriver* custom_driver =
       server_context()->NewCustomRewriteDriver(
-          custom_options,
-          RequestContext::NewTestRequestContext(
-              server_context()->thread_system()));
+          custom_options, CreateRequestContext());
   SyncFetcherAdapterCallback* callback =
-      new SyncFetcherAdapterCallback(server_context()->thread_system(),
-                                     &writer);
+      new SyncFetcherAdapterCallback(
+          server_context()->thread_system(), &writer, CreateRequestContext());
 
   // Encode an URL then invalidate it by removing the hash. This will cause
   // RewriteDriver::DecodeOutputResourceNameHelper to reject it, which will

@@ -27,6 +27,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_URL_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_URL_FETCHER_H_
 
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -46,7 +47,8 @@ class UrlFetcher {
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* response_writer,
-                                 MessageHandler* message_handler) = 0;
+                                 MessageHandler* message_handler,
+                                 const RequestContextPtr& request_context) = 0;
 };
 
 }  // namespace net_instaweb

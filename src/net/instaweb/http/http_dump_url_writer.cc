@@ -43,7 +43,7 @@ HttpDumpUrlWriter::~HttpDumpUrlWriter() {
 bool HttpDumpUrlWriter::StreamingFetchUrl(
     const GoogleString& url, const RequestHeaders& request_headers,
     ResponseHeaders* response_headers, Writer* response_writer,
-    MessageHandler* handler) {
+    MessageHandler* handler, const RequestContextPtr& request_context) {
   bool ret = true;
   GoogleString filename;
 
@@ -74,7 +74,7 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(
     }
     ret = base_fetcher_->StreamingFetchUrl(url, compress_headers,
                                            &compressed_response, &string_writer,
-                                           handler);
+                                           handler, request_context);
     compressed_response.Replace(HttpAttributes::kContentLength,
                                 IntegerToString(contents.size()));
     // TODO(jmarantz): http://tools.ietf.org/html/rfc2616#section-13.5.1
@@ -140,7 +140,8 @@ bool HttpDumpUrlWriter::StreamingFetchUrl(
   // ourselves.  Thus the problem of inflating gzipped requests for requesters
   // that want cleartext only is solved only in that file.
   return ret && dump_fetcher_.StreamingFetchUrl(
-      url, request_headers, response_headers, response_writer, handler);
+      url, request_headers, response_headers, response_writer, handler,
+      request_context);
 }
 
 }  // namespace net_instaweb

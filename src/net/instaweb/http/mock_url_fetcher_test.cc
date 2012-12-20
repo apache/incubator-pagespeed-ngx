@@ -26,8 +26,10 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
+#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -38,13 +40,15 @@ namespace {
 // Class for encapuslating objects needed to execute fetches.
 class MockFetchContainer {
  public:
-  MockFetchContainer(UrlFetcher* fetcher)
-      : fetcher_(fetcher), response_writer_(&response_body_) {}
+  MockFetchContainer(UrlFetcher* fetcher, ThreadSystem* thread_system)
+      : fetcher_(fetcher),
+        response_writer_(&response_body_),
+        thread_system_(thread_system) {}
 
   bool Fetch(const GoogleString& url) {
-    return fetcher_->StreamingFetchUrl(url, request_headers_,
-                                       &response_headers_, &response_writer_,
-                                       &handler_);
+    return fetcher_->StreamingFetchUrl(
+        url, request_headers_, &response_headers_, &response_writer_, &handler_,
+        RequestContext::NewTestRequestContext(thread_system_));
   }
 
   UrlFetcher* fetcher_;
@@ -53,6 +57,7 @@ class MockFetchContainer {
   GoogleString response_body_;
   StringWriter response_writer_;
   GoogleMessageHandler handler_;
+  ThreadSystem* thread_system_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockFetchContainer);
@@ -60,25 +65,26 @@ class MockFetchContainer {
 
 class MockUrlFetcherTest : public ::testing::Test {
  protected:
-  MockUrlFetcherTest() {
+  MockUrlFetcherTest() : thread_system_(ThreadSystem::CreateThreadSystem()) {
     fetcher_.set_fail_on_unexpected(false);
   }
 
   void TestResponse(const GoogleString& url,
                     const ResponseHeaders& expected_header,
                     const GoogleString& expected_body) {
-    MockFetchContainer fetch(&fetcher_);
+    MockFetchContainer fetch(&fetcher_, thread_system_.get());
     EXPECT_TRUE(fetch.Fetch(url));
     EXPECT_EQ(expected_header.ToString(), fetch.response_headers_.ToString());
     EXPECT_EQ(expected_body, fetch.response_body_);
   }
 
   void TestFetchFail(const GoogleString& url) {
-    MockFetchContainer fetch(&fetcher_);
+    MockFetchContainer fetch(&fetcher_, thread_system_.get());
     EXPECT_FALSE(fetch.Fetch(url));
   }
 
   MockUrlFetcher fetcher_;
+  scoped_ptr<ThreadSystem> thread_system_;
 };
 
 TEST_F(MockUrlFetcherTest, GetsCorrectMappedResponse) {
@@ -150,7 +156,7 @@ TEST_F(MockUrlFetcherTest, ConditionalFetchTest) {
 
   // Also normal for conditional GET with old time.
   {
-    MockFetchContainer fetch(&fetcher_);
+    MockFetchContainer fetch(&fetcher_, thread_system_.get());
     fetch.request_headers_.Add(HttpAttributes::kIfModifiedSince,
                                old_time_string);
     EXPECT_TRUE(fetch.Fetch(url));
@@ -160,7 +166,7 @@ TEST_F(MockUrlFetcherTest, ConditionalFetchTest) {
 
   // But conditional GET with current time gets 304 Not Modified response.
   {
-    MockFetchContainer fetch(&fetcher_);
+    MockFetchContainer fetch(&fetcher_, thread_system_.get());
     fetch.request_headers_.Add(HttpAttributes::kIfModifiedSince,
                                now_string);
     EXPECT_TRUE(fetch.Fetch(url));
@@ -169,7 +175,7 @@ TEST_F(MockUrlFetcherTest, ConditionalFetchTest) {
 
   // Future time also gets 304 Not Modified.
   {
-    MockFetchContainer fetch(&fetcher_);
+    MockFetchContainer fetch(&fetcher_, thread_system_.get());
     fetch.request_headers_.Add(HttpAttributes::kIfModifiedSince,
                                new_time_string);
     EXPECT_TRUE(fetch.Fetch(url));
@@ -191,7 +197,7 @@ TEST_F(MockUrlFetcherTest, ConditionalFetchWithEtagsTest) {
 
   // Also normal for conditional GET with wrong etag.
   {
-    MockFetchContainer fetch(&fetcher_);
+    MockFetchContainer fetch(&fetcher_, thread_system_.get());
     fetch.request_headers_.Add(HttpAttributes::kIfNoneMatch, "blah");
     EXPECT_TRUE(fetch.Fetch(url));
     EXPECT_EQ(header.ToString(), fetch.response_headers_.ToString());
@@ -200,7 +206,7 @@ TEST_F(MockUrlFetcherTest, ConditionalFetchWithEtagsTest) {
 
   // But conditional GET with correct etag gets 304 Not Modified response.
   {
-    MockFetchContainer fetch(&fetcher_);
+    MockFetchContainer fetch(&fetcher_, thread_system_.get());
     fetch.request_headers_.Add(HttpAttributes::kIfNoneMatch, etag);
     EXPECT_TRUE(fetch.Fetch(url));
     EXPECT_EQ(HttpStatus::kNotModified, fetch.response_headers_.status_code());
@@ -224,7 +230,7 @@ TEST_F(MockUrlFetcherTest, UpdateHeaderDates) {
 
   // Fetch it at current time.
   {
-    MockFetchContainer fetch(&fetcher_);
+    MockFetchContainer fetch(&fetcher_, thread_system_.get());
     EXPECT_TRUE(fetch.Fetch(url));
     // Check that response header's expiration time is set correctly.
     EXPECT_EQ(timer.NowMs() + ttl_ms,
@@ -234,7 +240,7 @@ TEST_F(MockUrlFetcherTest, UpdateHeaderDates) {
   // Fetch it at current time.
   timer.AdvanceMs(1 * Timer::kYearMs);  // Arbitrary time > 5min (max-age).
   {
-    MockFetchContainer fetch(&fetcher_);
+    MockFetchContainer fetch(&fetcher_, thread_system_.get());
     EXPECT_TRUE(fetch.Fetch(url));
     // Check that response header's expiration time is set correctly.
     EXPECT_EQ(timer.NowMs() + ttl_ms,
@@ -248,7 +254,7 @@ TEST_F(MockUrlFetcherTest, FailAfterBody) {
   RequestHeaders request_headres;
   fetcher_.SetResponse(kUrl, response_headers, "hello");
   fetcher_.SetResponseFailure(kUrl);
-  MockFetchContainer fetch(&fetcher_);
+  MockFetchContainer fetch(&fetcher_, thread_system_.get());
   EXPECT_FALSE(fetch.Fetch(kUrl));
   EXPECT_EQ("hello", fetch.response_body_);
 }

@@ -75,7 +75,7 @@ TEST_F(HttpDumpUrlFetcherTest, TestReadWithGzip) {
   request.Add(HttpAttributes::kAcceptEncoding, HttpAttributes::kGzip);
   ASSERT_TRUE(http_dump_fetcher_.StreamingFetchUrl(
       "http://www.google.com", request, &response, &content_writer_,
-      &message_handler_));
+      &message_handler_, RequestContextPtr(NULL)));
   ConstStringStarVector v;
   ASSERT_TRUE(response.Lookup(HttpAttributes::kContentEncoding, &v));
   ASSERT_EQ(1, v.size());
@@ -92,7 +92,7 @@ TEST_F(HttpDumpUrlFetcherTest, TestReadUncompressedFromGzippedDump) {
   ResponseHeaders response;
   ASSERT_TRUE(http_dump_fetcher_.StreamingFetchUrl(
       "http://www.google.com", request, &response, &content_writer_,
-      &message_handler_));
+      &message_handler_, RequestContextPtr(NULL)));
   ConstStringStarVector v;
   if (response.Lookup(HttpAttributes::kContentEncoding, &v)) {
     ASSERT_EQ(1, v.size());
@@ -145,7 +145,7 @@ TEST_F(HttpDumpUrlFetcherTest, TestDateAdjustment) {
   CheckDateHeaderWriter check_date(&mock_timer_, &response);
   EXPECT_TRUE(http_dump_fetcher_.StreamingFetchUrl(
       "http://www.google.com", request, &response, &check_date,
-      &message_handler_));
+      &message_handler_, RequestContextPtr(NULL)));
   EXPECT_TRUE(check_date.write_called());
 }
 

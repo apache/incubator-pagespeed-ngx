@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_HTTP_DUMP_URL_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_DUMP_URL_FETCHER_H_
 
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -75,7 +76,8 @@ class HttpDumpUrlFetcher : public UrlFetcher {
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* fetched_content_writer,
-                                 MessageHandler* message_handler);
+                                 MessageHandler* message_handler,
+                                 const RequestContextPtr& request_context);
 
   // Parse file into response_headers and response_writer as if it were bytes
   // off the wire.

@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/debug_filter.h"
@@ -206,7 +207,7 @@ class CssCombineFilterTest : public RewriteTestBase {
       EXPECT_EQ(expected_output, output_buffer_);
 
       // Fetch the combination to make sure we can serve the result from above.
-      ExpectStringAsyncFetch expect_callback(true);
+      ExpectStringAsyncFetch expect_callback(true, CreateRequestContext());
       rewrite_driver()->FetchResource(combine_url, &expect_callback);
       rewrite_driver()->WaitForCompletion();
       EXPECT_EQ(HttpStatus::kOK,
@@ -218,7 +219,8 @@ class CssCombineFilterTest : public RewriteTestBase {
       // does not already have the combination cached.
       // TODO(sligocki): This has too much shared state with the first server.
       // See RewriteImage for details.
-      ExpectStringAsyncFetch other_expect_callback(true);
+      ExpectStringAsyncFetch other_expect_callback(true,
+                                                   CreateRequestContext());
       message_handler_.Message(kInfo, "Now with serving.");
       file_system()->Enable();
       other_rewrite_driver()->FetchResource(combine_url,
@@ -255,7 +257,9 @@ class CssCombineFilterTest : public RewriteTestBase {
     GoogleString kABCUrl = Encode(kDomain, "cc", "0",
                                   MultiUrl("a.css", "bbb.css", "c.css"),
                                   "css");
-    ExpectStringAsyncFetch expect_callback(true);
+    ExpectStringAsyncFetch expect_callback(
+        true, RequestContext::NewTestRequestContext(
+            server_context()->thread_system()));
 
     // NOTE: This first fetch used to return status 0 because response_headers
     // weren't initialized by the first resource fetch (but were cached
@@ -279,7 +283,9 @@ class CssCombineFilterTest : public RewriteTestBase {
     // an entirely non-existent resource appears to test a strict superset of
     // filter code paths when compared with returning a 404 for the resource.
     SetFetchFailOnUnexpected(false);
-    ExpectStringAsyncFetch fail_callback(false);
+    ExpectStringAsyncFetch fail_callback(
+        false, RequestContext::NewTestRequestContext(
+            server_context()->thread_system()));
     EXPECT_TRUE(
         rewrite_driver()->FetchResource(kABCUrl, &fail_callback));
     rewrite_driver()->WaitForCompletion();

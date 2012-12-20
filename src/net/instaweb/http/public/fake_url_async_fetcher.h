@@ -22,15 +22,15 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_FAKE_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_FAKE_URL_ASYNC_FETCHER_H_
 
-#include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/url_pollable_async_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
+class AsyncFetch;
 class MessageHandler;
+class UrlFetcher;
 
 // Constructs an async fetcher using a synchronous fetcher, blocking
 // on a fetch and then the 'done' callback directly.  It's also
@@ -50,12 +50,7 @@ class FakeUrlAsyncFetcher : public UrlPollableAsyncFetcher {
 
   virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
-                     AsyncFetch* fetch) {
-    bool ret = url_fetcher_->StreamingFetchUrl(
-        url, *fetch->request_headers(), fetch->response_headers(), fetch,
-        message_handler);
-    fetch->Done(ret);
-  }
+                     AsyncFetch* fetch);
 
   // Since the underlying fetcher is blocking, there can never be
   // any outstanding fetches.

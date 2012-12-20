@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_HTTP_DUMP_URL_WRITER_H_
 
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -55,7 +56,8 @@ class HttpDumpUrlWriter : public UrlFetcher {
                                  const RequestHeaders& request_headers,
                                  ResponseHeaders* response_headers,
                                  Writer* response_writer,
-                                 MessageHandler* message_handler);
+                                 MessageHandler* message_handler,
+                                 const RequestContextPtr& request_context);
 
   // Controls whether we will request and save gzipped content to the
   // file system.  Note that http_dump_url_fetcher will inflate on

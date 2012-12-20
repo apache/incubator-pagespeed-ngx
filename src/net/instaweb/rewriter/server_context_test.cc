@@ -149,14 +149,15 @@ class ServerContextTest : public RewriteTestBase {
   }
 
   GoogleString GetOutputResourceWithoutLock(const OutputResourcePtr& resource) {
-    StringAsyncFetch fetch;
+    StringAsyncFetch fetch(RequestContext::NewTestRequestContext(
+        server_context()->thread_system()));
     EXPECT_TRUE(FetchExtantOutputResourceHelper(resource, &fetch));
     EXPECT_FALSE(resource->has_lock());
     return fetch.buffer();
   }
 
   GoogleString GetOutputResourceWithLock(const OutputResourcePtr& resource) {
-    StringAsyncFetch fetch;
+    StringAsyncFetch fetch(CreateRequestContext());
     EXPECT_TRUE(FetchExtantOutputResourceHelper(resource, &fetch));
     EXPECT_TRUE(resource->has_lock());
     return fetch.buffer();
@@ -165,7 +166,7 @@ class ServerContextTest : public RewriteTestBase {
   // Returns whether there was an existing copy of data for the resource.
   // If not, makes sure the resource is wrapped.
   bool TryFetchExtantOutputResourceOrLock(const OutputResourcePtr& resource) {
-    StringAsyncFetch dummy_fetch;
+    StringAsyncFetch dummy_fetch(CreateRequestContext());
     return FetchExtantOutputResourceHelper(resource, &dummy_fetch);
   }
 
@@ -1305,8 +1306,8 @@ TEST_F(ServerContextTest, ShutDownAssumptions) {
   // The code in ResourceManager::ShutDownWorkers assumes that some potential
   // interleaving of operations are safe. Since they are pretty unlikely
   // in practice, this test exercises them.
-  RewriteDriver* driver = server_context()->NewRewriteDriver(
-      RequestContext::NewTestRequestContext(server_context()->thread_system()));
+  RewriteDriver* driver =
+      server_context()->NewRewriteDriver(CreateRequestContext());
   EnableRewriteDriverCleanupMode(true);
   driver->WaitForShutDown();
   driver->WaitForShutDown();

@@ -73,7 +73,8 @@ class FetcherTest : public testing::Test {
                                    const RequestHeaders& request_headers,
                                    ResponseHeaders* response_headers,
                                    Writer* response_writer,
-                                   MessageHandler* message_handler);
+                                   MessageHandler* message_handler,
+                                   const RequestContextPtr& request_context);
 
     int num_fetches() const { return num_fetches_; }
 

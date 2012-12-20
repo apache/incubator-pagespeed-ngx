@@ -93,7 +93,8 @@ class HttpDumpUrlAsyncWriter::DumpFetch : public StringAsyncFetch {
       // Let dump fetcher fetch the actual response so that it can decompress.
       success = dump_fetcher_->StreamingFetchUrl(
           url_, *base_fetch_->request_headers(),
-          base_fetch_->response_headers(), base_fetch_, handler_);
+          base_fetch_->response_headers(), base_fetch_, handler_,
+          base_fetch_->request_context());
     } else if (response_headers()->status_code() != 0) {
       // We are not going to be able to read the response from the file
       // system so we better pass the error message through.
@@ -135,7 +136,7 @@ void HttpDumpUrlAsyncWriter::Fetch(const GoogleString& url,
   if (file_system_->Exists(filename.c_str(), handler).is_true()) {
     bool success = dump_fetcher_.StreamingFetchUrl(
         url, *base_fetch->request_headers(), base_fetch->response_headers(),
-        base_fetch, handler);
+        base_fetch, handler, base_fetch->request_context());
     base_fetch->Done(success);
   } else {
     DumpFetch* fetch = new DumpFetch(url, handler, base_fetch, filename,

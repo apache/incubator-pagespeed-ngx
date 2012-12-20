@@ -2311,7 +2311,7 @@ TEST_F(RewriteContextTest, LoadSheddingTest) {
                                      "0", "a.css", "css");
 
   GoogleString out_combine;
-  StringAsyncFetch async_fetch(&out_combine);
+  StringAsyncFetch async_fetch(CreateRequestContext(), &out_combine);
   rewrite_driver()->FetchResource(combined_url, &async_fetch);
   rewrite_reached.Wait();
 
@@ -2324,10 +2324,11 @@ TEST_F(RewriteContextTest, LoadSheddingTest) {
   for (int i = 0; i < 2 * kThresh; ++i) {
     GoogleString file_name = IntegerToString(i);
     GoogleString* out = new GoogleString;
-    StringAsyncFetch* fetch = new StringAsyncFetch(out);
-    RewriteDriver* driver = server_context()->NewRewriteDriver(
+    RequestContextPtr ctx =
         RequestContext::NewTestRequestContext(
-            server_context()->thread_system()));
+            server_context()->thread_system());
+    StringAsyncFetch* fetch = new StringAsyncFetch(ctx, out);
+    RewriteDriver* driver = server_context()->NewRewriteDriver(ctx);
     GoogleString out_url =
         Encode(kTestDomain, "cf", "0", file_name, "css");
     driver->FetchResource(out_url, fetch);

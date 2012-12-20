@@ -217,7 +217,7 @@ class ImageRewriteTest : public RewriteTestBase {
     EXPECT_STREQ(expect_headers, rewritten_headers);
 
     // Also fetch the resource to ensure it can be created dynamically
-    ExpectStringAsyncFetch expect_callback(true);
+    ExpectStringAsyncFetch expect_callback(true, CreateRequestContext());
     lru_cache()->Clear();
 
     EXPECT_TRUE(rewrite_driver()->FetchResource(src_string, &expect_callback));
@@ -443,7 +443,7 @@ class ImageRewriteTest : public RewriteTestBase {
     options()->EnableFilter(RewriteOptions::kResizeImages);
     rewrite_driver()->AddFilters();
     // Perform resource fetch
-    ExpectStringAsyncFetch expect_callback(true);
+    ExpectStringAsyncFetch expect_callback(true, CreateRequestContext());
     EXPECT_TRUE(rewrite_driver()->FetchResource(fetch_url, &expect_callback));
     rewrite_driver()->WaitForCompletion();
     EXPECT_EQ(HttpStatus::kOK,
@@ -1464,7 +1464,8 @@ TEST_F(ImageRewriteTest, InlinableCssImagesInsertedIntoPropertyCache) {
   // Parse the CSS and ensure contents are unchanged.
   GoogleString out_css_url = Encode(kTestDomain, "cf", "0", kCssFile, "css");
   GoogleString out_css;
-  StringAsyncFetch async_fetch(&out_css);
+  StringAsyncFetch async_fetch(RequestContext::NewTestRequestContext(
+      server_context()->thread_system()), &out_css);
   ResponseHeaders response;
   async_fetch.set_response_headers(&response);
   EXPECT_TRUE(rewrite_driver_->FetchResource(out_css_url, &async_fetch));

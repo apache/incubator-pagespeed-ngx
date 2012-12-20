@@ -42,7 +42,7 @@ class WaitUrlAsyncFetcher::DelayedFetch {
   void FetchNow() {
     bool status = base_fetcher_->StreamingFetchUrl(
         url_, *base_fetch_->request_headers(), base_fetch_->response_headers(),
-        base_fetch_, handler_);
+        base_fetch_, handler_, base_fetch_->request_context());
     base_fetch_->Done(status);
   }
 

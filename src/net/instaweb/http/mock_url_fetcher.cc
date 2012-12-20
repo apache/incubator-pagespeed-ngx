@@ -27,11 +27,11 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
@@ -97,11 +97,11 @@ void MockUrlFetcher::RemoveResponse(const StringPiece& url) {
   }
 }
 
-bool MockUrlFetcher::StreamingFetchUrl(const GoogleString& url,
-                                       const RequestHeaders& request_headers,
-                                       ResponseHeaders* response_headers,
-                                       Writer* response_writer,
-                                       MessageHandler* message_handler) {
+bool MockUrlFetcher::StreamingFetchUrl(
+    const GoogleString& url, const RequestHeaders& request_headers,
+    ResponseHeaders* response_headers, Writer* response_writer,
+    MessageHandler* message_handler,
+    const RequestContextPtr& unused_request_context) {
   bool ret = false;
   if (enabled_) {
     // Verify that the url and Host: header match.
