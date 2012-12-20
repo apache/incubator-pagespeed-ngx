@@ -73,12 +73,11 @@ bool CssImageRewriter::FlatteningEnabled() const {
 bool CssImageRewriter::RewritesEnabled(
     int64 image_inline_max_bytes) const {
   const RewriteOptions* options = driver_->options();
-  return ((image_inline_max_bytes > 0 ||
-           options->ImageOptimizationEnabled() ||
-           options->Enabled(RewriteOptions::kLeftTrimUrls) ||
-           options->Enabled(RewriteOptions::kExtendCacheImages) ||
-           options->Enabled(RewriteOptions::kSpriteImages)) &&
-          !options->image_preserve_urls());
+  return (image_inline_max_bytes > 0 ||
+          options->ImageOptimizationEnabled() ||
+          options->Enabled(RewriteOptions::kLeftTrimUrls) ||
+          options->Enabled(RewriteOptions::kExtendCacheImages) ||
+          options->Enabled(RewriteOptions::kSpriteImages));
 }
 
 void CssImageRewriter::RewriteImport(
@@ -108,6 +107,9 @@ void CssImageRewriter::RewriteImage(int64 image_inline_max_bytes,
 
   CssResourceSlotPtr slot(
       root_context_->slot_factory()->GetSlot(resource, values, value_index));
+  if (driver_->options()->image_preserve_urls()) {
+    slot->set_disable_rendering(true);
+  }
 
   RewriteSlot(ResourceSlotPtr(slot), image_inline_max_bytes, parent);
 
@@ -165,7 +167,8 @@ bool CssImageRewriter::RewriteCss(int64 image_inline_max_bytes,
     }
   }
 
-  // TODO(jkarlin): We need a separate flag for CssImagePreserveURLs.
+  // TODO(jkarlin): We need a separate flag for CssImagePreserveURLs in case the
+  // user is willing to change image URLs in CSS but not in HTML.
   bool is_enabled = RewritesEnabled(image_inline_max_bytes);
 
   if (is_enabled) {

@@ -881,6 +881,10 @@ CssFilter::Context* CssFilter::StartRewriting(const ResourceSlotPtr& slot) {
   DCHECK(driver_->can_rewrite_resources());
   CssFilter::Context* rewriter = MakeContext(driver_, NULL);
   rewriter->AddSlot(slot);
+  // Don't render if we're preserving URLs
+  if (driver_->options()->css_preserve_urls()) {
+    slot->set_disable_rendering(true);
+  }
   if (!driver_->InitiateRewrite(rewriter)) {
     rewriter = NULL;
   }

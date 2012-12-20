@@ -22,6 +22,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
@@ -229,15 +230,37 @@ TEST_F(JavascriptFilterTest, IdentifyLibraryTwice) {
 }
 
 TEST_F(JavascriptFilterTest, JsPreserveURLsOnTest) {
-  // Make sure that when in conservative mode URL stays the same.
+  // Make sure that when in conservative mode the URL stays the same.
   RegisterLibrary();
+  options()->EnableFilter(RewriteOptions::kRewriteJavascript);
   options()->EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
   options()->set_js_preserve_urls(true);
   rewrite_driver()->AddFilters();
+  EXPECT_EQ(true, options()->Enabled(RewriteOptions::kRewriteJavascript));
+  // Verify that preserve had a chance to forbid some filters.
+  EXPECT_EQ(false, options()->Enabled(
+      RewriteOptions::kCanonicalizeJavascriptLibraries));
   InitTest(100);
+  // Make sure the URL doesn't change.
   ValidateExpected("js_urls_preserved",
                    GenerateHtml(kOrigJsName),
                    GenerateHtml(kOrigJsName));
+
+  // We should have optimized the JS even though we didn't render the URL.
+  ClearStats();
+  GoogleString out_js_url = Encode(kTestDomain, "jm", "0", kRewrittenJsName,
+                                   "js");
+  GoogleString out_js;
+  EXPECT_TRUE(FetchResourceUrl(out_js_url, &out_js));
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, static_cast<int>(lru_cache()->num_hits()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
+
+  // Was the JS minified?
+  EXPECT_EQ(kJsMinData, out_js);
 }
 
 TEST_F(JavascriptFilterTest, IdentifyLibraryNoMinification) {

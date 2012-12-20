@@ -290,8 +290,8 @@ function check_stat() {
   NEW_STATS_FILE=$2
   COUNTER_NAME=$3
   EXPECTED_DIFF=$4
-  OLD_VAL=$(grep -w ${COUNTER_NAME} ${OLD_STATS_FILE} | cut -d: -f2)
-  NEW_VAL=$(grep -w ${COUNTER_NAME} ${NEW_STATS_FILE} | cut -d: -f2)
+  OLD_VAL=$(grep -w ${COUNTER_NAME} ${OLD_STATS_FILE} | awk '{print $2}')
+  NEW_VAL=$(grep -w ${COUNTER_NAME} ${NEW_STATS_FILE} | awk '{print $2}')
 
   if [ $((${NEW_VAL} - ${OLD_VAL})) = ${EXPECTED_DIFF} ]; then
     return;
@@ -432,5 +432,5 @@ function test_resource_ext_corruption() {
 
 # Scrapes the specified statistic, returning the statistic value.
 function scrape_stat {
-  $WGET_DUMP $STATISTICS_URL | grep "^$1\:" | cut -d: -f2
+  $WGET_DUMP $STATISTICS_URL | egrep "^$1:? " | awk '{print $2}'
 }

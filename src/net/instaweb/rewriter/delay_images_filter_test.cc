@@ -226,13 +226,7 @@ TEST_F(DelayImagesFilterTest, DelayImagesPreserveURLsOn) {
       "<img src=\"http://test.com/1.jpeg\"/>"
       "</body></html>";
 
-  // We'll add the noscript code but the image URL shouldn't change.
-  GoogleString output_html = StrCat(
-      "<html><head></head><body>",
-      GetNoscript(),
-      "<img src=\"http://test.com/1.jpeg\"/></body></html>");
-
-  MatchOutputAndCountBytes(kInputHtml, output_html);
+  MatchOutputAndCountBytes(kInputHtml, kInputHtml);
 }
 
 TEST_F(DelayImagesFilterTest, DelayImageWithDeferJavascriptDisabled) {

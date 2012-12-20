@@ -1851,6 +1851,8 @@ class RewriteOptions {
     const char* filter_name;
   };
 
+
+
  protected:
   // Type-specific class of Property.  This subclass of PropertyBase
   // knows what sort of value the Option will hold, and so we can put
@@ -2141,6 +2143,9 @@ class RewriteOptions {
   // list for fast merging and setting-by-option-name.
   static void MergeSubclassProperties(Properties* properties);
 
+  // Forbid filters that PreserveUrls is incompatible with.
+  void ForbidFiltersForPreserveUrl();
+
   // Populates all_options_, based on the passed-in index, which
   // should correspond to the property index calculated after
   // sorting all_properties_.  This enables us to sort the all_properties_
@@ -2162,7 +2167,6 @@ class RewriteOptions {
   // Marks the config as modified.
   void Modify();
 
- protected:
   // Sets the global default value for 'x_header_value'.  Note that setting
   // this Option reaches through to the underlying property and sets the
   // default value there, and in fact does *not affect the value of the
@@ -2309,6 +2313,9 @@ class RewriteOptions {
   static bool AddCommaSeparatedListToFilterSet(
       const StringPiece& filters, FilterSet* set, MessageHandler* handler);
   static Filter LookupFilter(const StringPiece& filter_name);
+  // Fix any option conflicts (e.g., if two options are mutually exclusive, then
+  // disable one.)
+  void ResolveConflicts();
   // Initialize the option-enum to option-name array for fast lookups by
   // OptionEnum.
   static void InitOptionEnumToNameArray();
@@ -2318,7 +2325,6 @@ class RewriteOptions {
   // PrioritizeVisibleContentFamily that it matches, else returns NULL.
   const PrioritizeVisibleContentFamily* FindPrioritizeVisibleContentFamily(
       const StringPiece str) const;
-
   // These static methods are used by Option<T>::SetFromString to set
   // Option<T>::value_ from a string representation of it.
   static bool ParseFromString(const GoogleString& value_string, bool* value) {

@@ -461,6 +461,36 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "ss", "Strip Scripts" },
 };
 
+const RewriteOptions::Filter kImagePreserveUrlForbiddenFilters[] = {
+    // TODO(jkarlin): Remove kResizeImages from the forbid list and allow image
+    // squashing prefetching in HTML path (but don't allow resizing based on
+    // HTML attributes.
+  RewriteOptions::kDelayImages,
+  RewriteOptions::kExtendCacheImages,
+  RewriteOptions::kInlineImages,
+  RewriteOptions::kLazyloadImages,
+  RewriteOptions::kResizeImages,
+  RewriteOptions::kSpriteImages
+};
+
+const RewriteOptions::Filter kJsPreserveUrlForbiddenFilters[] = {
+  RewriteOptions::kCanonicalizeJavascriptLibraries,
+  RewriteOptions::kCombineJavascript,
+  RewriteOptions::kDeferJavascript,
+  RewriteOptions::kExtendCacheScripts,
+  RewriteOptions::kInlineJavascript,
+  RewriteOptions::kOutlineJavascript
+};
+
+const RewriteOptions::Filter kCssPreserveUrlForbiddenFilters[] = {
+  RewriteOptions::kCombineCss,
+  RewriteOptions::kExtendCacheCss,
+  RewriteOptions::kInlineCss,
+  RewriteOptions::kInlineImportToLink,
+  RewriteOptions::kLeftTrimUrls,
+  RewriteOptions::kOutlineCss
+};
+
 #ifndef NDEBUG
 void CheckFilterSetOrdering(const RewriteOptions::Filter* filters, int num) {
   for (int i = 1; i < num; ++i) {
@@ -1805,11 +1835,37 @@ GoogleString RewriteOptions::OptionSignature(const BeaconUrl& beacon_url,
   return hasher->Hash(ToString(beacon_url));
 }
 
+void RewriteOptions::ForbidFiltersForPreserveUrl() {
+  if (image_preserve_urls()) {
+    for (int i = 0, n = arraysize(kImagePreserveUrlForbiddenFilters); i < n;
+         ++i) {
+      ForbidFilter(kImagePreserveUrlForbiddenFilters[i]);
+    }
+  }
+  if (js_preserve_urls()) {
+    for (int i = 0, n = arraysize(kJsPreserveUrlForbiddenFilters); i < n;
+         ++i) {
+      ForbidFilter(kJsPreserveUrlForbiddenFilters[i]);
+    }
+  }
+  if (css_preserve_urls()) {
+    for (int i = 0, n = arraysize(kCssPreserveUrlForbiddenFilters); i < n;
+         ++i) {
+      ForbidFilter(kCssPreserveUrlForbiddenFilters[i]);
+    }
+  }
+}
+
+void RewriteOptions::ResolveConflicts() {
+  DCHECK(!frozen_);
+  ForbidFiltersForPreserveUrl();
+}
+
 void RewriteOptions::ComputeSignature(const Hasher* hasher) {
   if (frozen_) {
     return;
   }
-
+  ResolveConflicts();
 #ifndef NDEBUG
   if (!options_uniqueness_checked_) {
     options_uniqueness_checked_ = true;

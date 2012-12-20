@@ -638,13 +638,61 @@ TEST_F(ImageRewriteTest, PngToWebp) {
 TEST_F(ImageRewriteTest, ImageRewritePreserveURLsOn) {
   // Make sure that the image URL stays the same.
   options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
   options()->set_image_preserve_urls(true);
   rewrite_driver()->AddFilters();
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
-                    "",       // initial_dims,
-                    "",       // final_dims,
+                    " width=10 height=10",  // initial_dims,
+                    " width=10 height=10",  // final_dims,
                     false,   // expect_rewritten
                     false);  // expect_inline
+  // The URL wasn't changed but the image should have been compressed and cached
+  // anyway (prefetching for IPRO).
+  ClearStats();
+  GoogleString out_png_url(Encode(kTestDomain, "ic", "0", kBikePngFile, "png"));
+  GoogleString out_png;
+  EXPECT_TRUE(FetchResourceUrl(out_png_url, &out_png));
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, static_cast<int>(lru_cache()->num_hits()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
+
+  // Make sure that we didn't resize (original image is 100x100).
+  scoped_ptr<Image> image(
+      NewImage(out_png, out_png_url, server_context_->filename_prefix(),
+               new Image::CompressionOptions(), &message_handler_));
+  ImageDim image_dim;
+  image->Dimensions(&image_dim);
+  EXPECT_EQ(100, image_dim.width());
+  EXPECT_EQ(100, image_dim.height());
+}
+
+TEST_F(ImageRewriteTest, ImageRewriteInlinePreserveURLs) {
+  // Willing to inline large files.
+  options()->set_image_inline_max_bytes(1000000);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  options()->set_image_preserve_urls(true);
+  rewrite_driver()->AddFilters();
+  const char kResizedDims[] = " width=48 height=64";
+  // File would be inlined without preserve urls, make sure it's not!
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    kResizedDims, kResizedDims, false, false);
+  // The optimized file should be in the cache now.
+  ClearStats();
+  GoogleString out_gif_url = Encode(kTestDomain, "ic", "0", kChefGifFile,
+                                    "png");
+  GoogleString out_gif;
+  EXPECT_TRUE(FetchResourceUrl(out_gif_url, &out_gif));
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, static_cast<int>(lru_cache()->num_hits()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
 }
 
 TEST_F(ImageRewriteTest, ImageRewriteNoTransformAttribute) {

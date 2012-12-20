@@ -21,6 +21,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -178,11 +179,31 @@ class CssFilterTestCustomOptions : public CssFilterTest {
   virtual void SetUp() {}
 };
 
-TEST_F(CssFilterTestCustomOptions, CssPreserveURLs) {
+TEST_F(CssFilterTestCustomOptions, CssPreserveUrls) {
+  options()->EnableFilter(RewriteOptions::kInlineCss);
   options()->set_css_preserve_urls(true);
   CssFilterTest::SetUp();
+  // Verify that preserve had a chance to forbid some filters.
+  EXPECT_EQ(false, options()->Enabled(RewriteOptions::kInlineCss));
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kInputStyle, 100);
+
+  // The URL shouldn't change.
   ValidateNoChanges("css_preserve_urls_on", "<link rel=StyleSheet href=a.css>");
+
+  // We should have the optimized CSS even though we didn't render the URL.
+  ClearStats();
+  GoogleString out_css_url = Encode(kTestDomain, "cf", "0", "a.css", "css");
+  GoogleString out_css;
+  EXPECT_TRUE(FetchResourceUrl(out_css_url, &out_css));
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, static_cast<int>(lru_cache()->num_hits()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
+
+  // Was the CSS minified?
+  EXPECT_EQ(kOutputStyle, out_css);
 }
 
 TEST_F(CssFilterTest, LinkHrefCaseInsensitive) {

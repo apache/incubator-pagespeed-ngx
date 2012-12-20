@@ -721,6 +721,8 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   scoped_ptr<ResourceContext> resource_context(new ResourceContext);
   const RewriteOptions* options = driver_->options();
 
+  // Note that if RewriteOptions::image_preserve_urls() is true then
+  // kResizeImages will be forbidden.
   if (options->Enabled(RewriteOptions::kResizeImages)) {
     GetDimensions(element, resource_context->mutable_desired_image_dims());
   }
@@ -751,6 +753,9 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
                                    false /*not css */, image_counter_++);
     ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
     context->AddSlot(slot);
+    if (driver_->options()->image_preserve_urls()) {
+      slot->set_disable_rendering(true);
+    }
     driver_->InitiateRewrite(context);
   }
 }

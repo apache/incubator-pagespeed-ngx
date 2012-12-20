@@ -980,23 +980,20 @@ void RewriteDriver::AddPreRenderFilters() {
     // Experimental filter that blindly strips all scripts from a page.
     AppendOwnedPreRenderFilter(new StripScriptsFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink) &&
-      !rewrite_options->css_preserve_urls()) {
+  if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink)) {
     // If we're converting simple embedded CSS @imports into a href link
     // then we need to do that before any other CSS processing.
     AppendOwnedPreRenderFilter(new CssInlineImportToLinkFilter(this,
                                                                statistics()));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kOutlineCss) &&
-      !rewrite_options->css_preserve_urls()) {
+  if (rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
     // Cut out inlined styles and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
     CHECK(server_context_ != NULL);
     CssOutlineFilter* css_outline_filter = new CssOutlineFilter(this);
     AppendOwnedPreRenderFilter(css_outline_filter);
   }
-  if (rewrite_options->Enabled(RewriteOptions::kOutlineJavascript) &&
-      !rewrite_options->js_preserve_urls()) {
+  if (rewrite_options->Enabled(RewriteOptions::kOutlineJavascript)) {
     // Cut out inlined scripts and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
     CHECK(server_context_ != NULL);
@@ -1010,15 +1007,13 @@ void RewriteDriver::AddPreRenderFilters() {
     AppendOwnedPreRenderFilter(new CssMoveToHeadFilter(this));
   }
   if (!flush_subresources_enabled &&
-      rewrite_options->Enabled(RewriteOptions::kCombineCss) &&
-      !rewrite_options->css_preserve_urls()) {
+      rewrite_options->Enabled(RewriteOptions::kCombineCss)) {
     // Combine external CSS resources after we've outlined them.
     // CSS files in html document.  This can only be called
     // once and requires a resource_manager to be set.
     EnableRewriteFilter(RewriteOptions::kCssCombinerId);
   }
-  if (rewrite_options->Enabled(RewriteOptions::kRewriteCss) &&
-      !rewrite_options->css_preserve_urls()) {
+  if (rewrite_options->Enabled(RewriteOptions::kRewriteCss)) {
     EnableRewriteFilter(RewriteOptions::kCssFilterId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync)) {
@@ -1033,46 +1028,41 @@ void RewriteDriver::AddPreRenderFilters() {
     // Like MakeGoogleAnalyticsAsync, InsertGA should be before js rewriting.
     AppendOwnedPreRenderFilter(new InsertGAFilter(this));
   }
-  if ((rewrite_options->Enabled(RewriteOptions::kRewriteJavascript) ||
-       rewrite_options->Enabled(
-           RewriteOptions::kCanonicalizeJavascriptLibraries)) &&
-      !rewrite_options->js_preserve_urls()) {
+  if (rewrite_options->Enabled(RewriteOptions::kRewriteJavascript) ||
+      rewrite_options->Enabled(
+          RewriteOptions::kCanonicalizeJavascriptLibraries)) {
     // Rewrite (minify etc.) JavaScript code to reduce time to first
     // interaction.
     EnableRewriteFilter(RewriteOptions::kJavascriptMinId);
   }
   if (!flush_subresources_enabled &&
-      rewrite_options->Enabled(RewriteOptions::kCombineJavascript) &&
-      !rewrite_options->js_preserve_urls()) {
+      rewrite_options->Enabled(RewriteOptions::kCombineJavascript)) {
     // Combine external JS resources. Done after minification and analytics
     // detection, as it converts script sources into string literals, making
     // them opaque to analysis.
     EnableRewriteFilter(RewriteOptions::kJavascriptCombinerId);
   }
-  if (rewrite_options->Enabled(RewriteOptions::kInlineCss) &&
-      !rewrite_options->css_preserve_urls()) {
+  if (rewrite_options->Enabled(RewriteOptions::kInlineCss)) {
     // Inline small CSS files.  Give CssCombineFilter and CSS minification a
     // chance to run before we decide what counts as "small".
     CHECK(server_context_ != NULL);
     AppendOwnedPreRenderFilter(new CssInlineFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kInlineJavascript) &&
-      !rewrite_options->js_preserve_urls()) {
+  if (rewrite_options->Enabled(RewriteOptions::kInlineJavascript)) {
     // Inline small Javascript files.  Give JS minification a chance to run
     // before we decide what counts as "small".
     CHECK(server_context_ != NULL);
     AppendOwnedPreRenderFilter(new JsInlineFilter(this));
   }
-  if ((rewrite_options->Enabled(RewriteOptions::kConvertJpegToProgressive) ||
-       rewrite_options->ImageOptimizationEnabled() ||
-       rewrite_options->Enabled(RewriteOptions::kResizeImages) ||
-       rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
-       rewrite_options->Enabled(RewriteOptions::kInsertImageDimensions) ||
-       rewrite_options->Enabled(RewriteOptions::kJpegSubsampling) ||
-       rewrite_options->Enabled(RewriteOptions::kStripImageColorProfile) ||
-       rewrite_options->Enabled(RewriteOptions::kStripImageMetaData) ||
-       rewrite_options->NeedLowResImages()) &&
-      !rewrite_options->image_preserve_urls()) {
+  if (rewrite_options->Enabled(RewriteOptions::kConvertJpegToProgressive) ||
+      rewrite_options->ImageOptimizationEnabled() ||
+      rewrite_options->Enabled(RewriteOptions::kResizeImages) ||
+      rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
+      rewrite_options->Enabled(RewriteOptions::kInsertImageDimensions) ||
+      rewrite_options->Enabled(RewriteOptions::kJpegSubsampling) ||
+      rewrite_options->Enabled(RewriteOptions::kStripImageColorProfile) ||
+      rewrite_options->Enabled(RewriteOptions::kStripImageMetaData) ||
+      rewrite_options->NeedLowResImages()) {
     EnableRewriteFilter(RewriteOptions::kImageCompressionId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveComments)) {
@@ -1092,8 +1082,7 @@ void RewriteDriver::AddPreRenderFilters() {
     // Extend the cache lifetime of resources.
     EnableRewriteFilter(RewriteOptions::kCacheExtenderId);
   }
-  if (rewrite_options->Enabled(RewriteOptions::kSpriteImages) &&
-      !rewrite_options->image_preserve_urls()) {
+  if (rewrite_options->Enabled(RewriteOptions::kSpriteImages)) {
     EnableRewriteFilter(RewriteOptions::kImageCombineId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kLocalStorageCache)) {
@@ -1155,8 +1144,7 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kSplitHtml)) {
     AddOwnedPostRenderFilter(new DeferIframeFilter(this));
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
-  } else if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript) &&
-             !rewrite_options->js_preserve_urls()) {
+  } else if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
     // Defers javascript download and execution to post onload. This filter
     // should be applied before JsDisableFilter and JsDeferFilter.
     // kDeferIframe filter should never be turned on when either defer_js
@@ -1188,15 +1176,13 @@ void RewriteDriver::AddPostRenderFilters() {
     AddOwnedPostRenderFilter(new DeferIframeFilter(this));
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kDelayImages) &&
-      !rewrite_options->image_preserve_urls()) {
+  if (rewrite_options->Enabled(RewriteOptions::kDelayImages)) {
     // kInsertImageDimensions should be enabled to avoid drastic reflows.
     AddOwnedPostRenderFilter(new DelayImagesFilter(this));
   }
   // TODO(nikhilmadan): Should we disable this for bots?
   // LazyLoadImagesFilter should be applied after DelayImagesFilter.
-  if (rewrite_options->Enabled(RewriteOptions::kLazyloadImages) &&
-      !rewrite_options->image_preserve_urls()) {
+  if (rewrite_options->Enabled(RewriteOptions::kLazyloadImages)) {
     AddOwnedPostRenderFilter(new LazyloadImagesFilter(this));
   }
   if (rewrite_options->support_noscript_enabled()) {
@@ -2593,13 +2579,11 @@ void RewriteDriver::InitiateFetch(RewriteContext* rewrite_context) {
 }
 
 bool RewriteDriver::MayCacheExtendCss() const {
-  return options()->Enabled(RewriteOptions::kExtendCacheCss) &&
-      !options()->css_preserve_urls();
+  return options()->Enabled(RewriteOptions::kExtendCacheCss);
 }
 
 bool RewriteDriver::MayCacheExtendImages() const {
-  return options()->Enabled(RewriteOptions::kExtendCacheImages) &&
-      !options()->image_preserve_urls();
+  return options()->Enabled(RewriteOptions::kExtendCacheImages);
 }
 
 bool RewriteDriver::MayCacheExtendPdfs() const {
@@ -2607,8 +2591,7 @@ bool RewriteDriver::MayCacheExtendPdfs() const {
 }
 
 bool RewriteDriver::MayCacheExtendScripts() const {
-  return options()->Enabled(RewriteOptions::kExtendCacheScripts) &&
-      !options()->js_preserve_urls();
+  return options()->Enabled(RewriteOptions::kExtendCacheScripts);
 }
 
 void RewriteDriver::AddRewriteTask(Function* task) {
