@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "base/macros.h"
 #include "base/scoped_ptr.h"
 #include "strings/strutil.h"
 #include "third_party/utf/utf.h"
@@ -821,7 +822,7 @@ Value* Parser::ParseAny() {
         toret = ParseNumber();
         break;
       }
-      // fail through
+      FALLTHROUGH_INTENDED;
     default: {
       UnicodeText id = ParseIdent();
       if (id.empty()) {
@@ -1583,7 +1584,7 @@ SimpleSelector* Parser::ParseAttributeSelector() {
         in_++;
         if (Done() || *in_ != '=')
           break;
-        // fall through
+        FALLTHROUGH_INTENDED;
       case '=': {
         in_++;
         UnicodeText value = ParseStringOrIdent();
