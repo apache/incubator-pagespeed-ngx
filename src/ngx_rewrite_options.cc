@@ -198,6 +198,8 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions2(
     domain_lawyer()->AddRewriteDomainMapping(arg1, arg2, handler);
   } else if (IsDirective(directive, "MapOriginDomain")) {
     domain_lawyer()->AddOriginDomainMapping(arg1, arg2, handler);
+  } else if (IsDirective(directive, "MapProxyDomain")) {
+    domain_lawyer()->AddProxyDomainMapping(arg1, arg2, handler);
   } else if (IsDirective(directive, "ShardDomain")) {
     domain_lawyer()->AddShard(arg1, arg2, handler);
   } else if (IsDirective(directive, "CustomFetchHeader")) {
