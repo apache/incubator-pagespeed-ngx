@@ -30,7 +30,6 @@
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/time_util.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 

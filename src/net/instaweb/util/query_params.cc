@@ -43,9 +43,9 @@ GoogleString QueryParams::ToString() const {
   const char* prefix="";
   for (int i = 0; i < size(); ++i) {
     if (value(i) == NULL) {
-      str += StrCat(prefix, name(i));
+      StrAppend(&str, prefix, name(i));
     } else {
-      str += StrCat(prefix, name(i), "=", *(value(i)));
+      StrAppend(&str, prefix, name(i), "=", *(value(i)));
     }
     prefix = "&";
   }

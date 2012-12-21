@@ -452,7 +452,7 @@ HtmlEvent* HtmlParse::SplitQueueOnFirstEventInSet(
 }
 
 HtmlEvent* HtmlParse::GetEndElementEvent(const HtmlElement* element) {
-  DCHECK (element != NULL);
+  DCHECK(element != NULL);
   if (element->end() == queue_.end()) {
     return NULL;
   } else {

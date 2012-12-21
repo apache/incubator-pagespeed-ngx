@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
-#include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"

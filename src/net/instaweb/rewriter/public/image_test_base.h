@@ -17,6 +17,9 @@
 
 // Some common routines and constants for tests dealing with Images
 
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_TEST_BASE_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_TEST_BASE_H_
+
 #include "net/instaweb/rewriter/public/image.h"
 
 #include "net/instaweb/util/public/basictypes.h"
@@ -74,3 +77,5 @@ class ImageTestBase : public testing::Test {
 };
 
 }  // namespace net_instaweb
+
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_TEST_BASE_H_

@@ -153,14 +153,13 @@ const char* kInsertDnsPrefetchBlacklist[] = {
 };
 
 // Only a few user agents are supported at this point.
-// This is currently used only by kResizeMobileImages to deliver low resolution
-// images to mobile devices. We treat ipads like desktops as they have big
-// enough screen (relative to phones). But we treat android tablets like
-// phones. If we could distinguish android tablets from phones easily using
-// user agent string we would do so for the same reason we do so for ipads.
+// This is currently used only by kResizeMobileImages and
+// kSquashImagesForMobileScreento deliver smaller images to mobile devices.
+// We treat tablets like desktops as they have big enough screen (relative
+// to phones).
 // TODO(bolian): Add more mobile user agents.
 const char* kMobileUserAgentWhitelist[] = {
-  "*Android*",
+  "*Android*Mobile Safari*",
   "*iPhone OS*",
   "*BlackBerry88*",
 };

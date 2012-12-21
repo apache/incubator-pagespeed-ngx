@@ -165,7 +165,7 @@ class GoogleUrl {
 
  private:
   // Returned by *Position methods when that position is not well-defined.
-  const static size_t npos;
+  static const size_t npos;
 
   explicit GoogleUrl(const GURL& gurl);
 

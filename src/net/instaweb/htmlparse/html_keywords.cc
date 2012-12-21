@@ -789,4 +789,4 @@ void HtmlKeywords::InitOptionallyClosedKeywords() {
   PrepareForBinarySearch(&optionally_closed_);
 }
 
-}  // namespace
+}  // namespace net_instaweb

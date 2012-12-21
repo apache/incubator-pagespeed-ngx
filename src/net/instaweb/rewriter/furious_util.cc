@@ -28,7 +28,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/time_util.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 namespace furious {

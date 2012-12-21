@@ -196,6 +196,6 @@ void ClearVectorIfContainsMediaAll(StringVector* media) {
   }
 }
 
-}  // css_util
+}  // namespace css_util
 
-}  // net_instaweb
+}  // namespace net_instaweb

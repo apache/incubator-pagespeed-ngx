@@ -22,6 +22,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 

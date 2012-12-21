@@ -35,4 +35,4 @@ void FakeUrlAsyncFetcher::Fetch(const GoogleString& url,
   fetch->Done(ret);
 }
 
-}  // namespace instaweb
+}  // namespace net_instaweb

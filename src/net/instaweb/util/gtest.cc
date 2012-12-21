@@ -18,7 +18,6 @@
 //
 
 #include "net/instaweb/util/public/gtest.h"
-//#include "net/instaweb/util/public/gflags.h"
 #include "net/instaweb/util/public/string.h"
 #include <dirent.h>
 #include <sys/stat.h>

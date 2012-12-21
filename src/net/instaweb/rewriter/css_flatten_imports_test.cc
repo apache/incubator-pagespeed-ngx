@@ -759,9 +759,9 @@ TEST_F(CssFlattenImportsTest, FlattenNestedMedia) {
       ".background_green{background-color:#0f0}"
       ".foreground_rose{color:rose}";
   const GoogleString kPrintContents = StrCat(
-      "@import url(screen.css) screen;", // discarded because print != screen
+      "@import url(screen.css) screen;",  // discarded because print != screen
       kPrintCss,
-      "@media all{",                     // subsetted to print
+      "@media all{",                      // subsetted to print
       kPrintAllCss,
       "}");
   SetResponseWithDefaultHeaders(kPrintFilename, kContentTypeCss,

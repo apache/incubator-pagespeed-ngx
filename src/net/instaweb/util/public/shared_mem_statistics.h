@@ -231,8 +231,8 @@ class SharedMemHistogram : public Histogram {
   size_t AllocationSize(AbstractSharedMem* shm_runtime) {
     // Shared memory space should include a mutex, HistogramBody and the storage
     // for the actual buckets.
-    return shm_runtime->SharedMutexSize() +  sizeof(HistogramBody)
-        + sizeof(double) * NumBuckets();
+    return shm_runtime->SharedMutexSize() + sizeof(HistogramBody) +
+        sizeof(double) * NumBuckets();
   }
 
  protected:

@@ -83,7 +83,7 @@ class ToggleThread : public ThreadSystem::Thread {
   ThreadSystem::Condvar* notify_false_;
 };
 
-} // namespace
+}  // namespace
 
 ThreadSystemTestBase::ThreadSystemTestBase(ThreadSystem* thread_system)
     : ok_flag_(false),

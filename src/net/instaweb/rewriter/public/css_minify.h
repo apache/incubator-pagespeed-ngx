@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_MINIFY_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace Css {
@@ -39,7 +38,7 @@ class Declarations;
 class Value;
 class FunctionParameters;
 class UnparsedRegion;
-}
+}  // namespace Css
 
 class UnicodeText;
 

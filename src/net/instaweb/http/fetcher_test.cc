@@ -197,4 +197,4 @@ void FetcherTest::TearDownTestCase() {
   statistics_ = NULL;
 }
 
-}  // namespace net_isntaweb
+}  // namespace net_instaweb

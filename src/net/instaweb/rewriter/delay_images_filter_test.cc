@@ -34,6 +34,9 @@
 #include "net/instaweb/util/public/wildcard.h"
 
 namespace {
+const char kAndroidMobileUserAgent1[] = "Android 3.1 Mobile Safari";
+const char kAndroidMobileUserAgent2[] = "Android 4 Mobile Safari";
+
 const char kSampleJpgFile[] = "Sample.jpg";
 const char kSampleWebpFile[] = "Sample_webp.webp";
 const char kLargeJpgFile[] = "Puzzle.jpg";
@@ -559,14 +562,14 @@ TEST_F(DelayImagesFilterTest, ResizeForResolution) {
   SetupUserAgentTest("Safari");
   int byte_count_desktop1 = MatchOutputAndCountBytes(input_html, output_html);
 
-  SetupUserAgentTest("Android 3.1");
+  SetupUserAgentTest(kAndroidMobileUserAgent1);
   int byte_count_android1 = MatchOutputAndCountBytes(input_html, output_html);
   EXPECT_LT(byte_count_android1, byte_count_desktop1);
 
   SetupUserAgentTest("MSIE 8.0");
   int byte_count_desktop2 = MatchOutputAndCountBytes(input_html, output_html);
 
-  SetupUserAgentTest("Android 4");
+  SetupUserAgentTest(kAndroidMobileUserAgent2);
   int byte_count_android2 = MatchOutputAndCountBytes(input_html, output_html);
   EXPECT_EQ(byte_count_android1, byte_count_android2);
   EXPECT_EQ(byte_count_desktop1, byte_count_desktop2);
@@ -595,7 +598,7 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionWithSmallImage) {
 
   // No low quality data for an image smaller than kDelayImageWidthForMobile
   // (in image_rewrite_filter.cc).
-  rewrite_driver()->set_user_agent("Android 3.1");
+  rewrite_driver()->set_user_agent(kAndroidMobileUserAgent1);
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -618,7 +621,7 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionNegative) {
   // outputs will have the same size.
   SetupUserAgentTest("Safari");
   int byte_count_desktop = MatchOutputAndCountBytes(input_html, output_html);
-  SetupUserAgentTest("Android 3.1");
+  SetupUserAgentTest(kAndroidMobileUserAgent1);
   int byte_count_mobile = MatchOutputAndCountBytes(input_html, output_html);
   EXPECT_EQ(byte_count_mobile, byte_count_desktop);
 }

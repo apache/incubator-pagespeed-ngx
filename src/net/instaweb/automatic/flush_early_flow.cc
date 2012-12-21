@@ -490,7 +490,7 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
     for (int index = 0; index < max_preconnect_attempts; ++index) {
       GoogleString url =
           StrCat(flush_early_driver->options()->pre_connect_url(),
-                 "?id=",IntegerToString(index));
+                 "?id=", IntegerToString(index));
       base_fetch_->Write(StringPrintf("<link rel=\"stylesheet\" href=\"%s\"/>",
                                       url.c_str()), handler_);
     }

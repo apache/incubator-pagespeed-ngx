@@ -33,7 +33,7 @@ namespace {
 // Helper that snapshots the state of a z_stream structure.
 struct ZlibSnapshot {
  public:
-  ZlibSnapshot(z_stream* zlib)
+  explicit ZlibSnapshot(z_stream* zlib)
       : total_out(zlib->total_out),
         total_in(zlib->total_in),
         avail_in(zlib->avail_in),

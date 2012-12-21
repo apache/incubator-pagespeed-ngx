@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_RE2_H_
 
 #include "net/instaweb/util/public/string_util.h"
+
 #include "third_party/re2/src/re2/re2.h"
 
 using re2::RE2;

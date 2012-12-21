@@ -16,8 +16,8 @@
 
 // Author: matterbury@google.com (Matt Atterbury)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_TEST_URL_NAMER_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_TEST_URL_NAMER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_TEST_URL_NAMER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_TEST_URL_NAMER_H_
 
 #include "net/instaweb/rewriter/public/url_namer.h"
 
@@ -82,4 +82,4 @@ class TestUrlNamer : public UrlNamer {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_TEST_URL_NAMER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_TEST_URL_NAMER_H_

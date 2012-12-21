@@ -45,7 +45,6 @@ class Writer;
 // decompress or de-chunk them.
 class HttpDumpUrlFetcher : public UrlFetcher {
  public:
-
   // When the slurped data is gzipped, but request headers are made
   // that don't include 'gzip' in an Accept-Encodings header, then
   // this fetcher inflates the gzipped output as it streams.  It

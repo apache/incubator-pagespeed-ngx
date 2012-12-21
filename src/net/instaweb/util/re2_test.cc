@@ -30,4 +30,4 @@ TEST_F(Re2Test, FullMatch) {
   EXPECT_TRUE(RE2::FullMatch("helo", "h.*o"));
 }
 
-}  // namespace
+}  // namespace net_instaweb

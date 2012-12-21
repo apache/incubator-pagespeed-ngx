@@ -31,8 +31,6 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_PTR_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_PTR_H_
 
-#include "net/instaweb/util/public/basictypes.h"
-
 #include "base/memory/ref_counted.h"
 
 namespace net_instaweb {

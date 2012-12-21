@@ -144,16 +144,16 @@ class GoogleAnalyticsFilter : public EmptyHtmlFilter {
   void ResetFilter();
 
   bool MatchSyncLoad(StringPiece contents,
-                     GoogleString::size_type &pos,
-                     GoogleString::size_type &len) const;
+                     GoogleString::size_type* pos,
+                     GoogleString::size_type* len) const;
   bool MatchSyncInit(StringPiece contents,
                      GoogleString::size_type start_pos,
-                     GoogleString::size_type &pos,
-                     GoogleString::size_type &len) const;
+                     GoogleString::size_type* pos,
+                     GoogleString::size_type* len) const;
   bool MatchUnhandledCalls(StringPiece contents,
                            GoogleString::size_type start_pos) const;
   void FindRewritableScripts();
-  void GetSyncToAsyncScript(GoogleString *buffer) const;
+  void GetSyncToAsyncScript(GoogleString* buffer) const;
   bool RewriteAsAsync();
 
   bool is_load_found_;

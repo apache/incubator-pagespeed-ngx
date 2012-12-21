@@ -30,6 +30,9 @@ const char kAndroidHCUserAgent[] =
 const char kAndroidICSUserAgent[] =
     "Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; Galaxy Nexus Build/ICL27) "
     "AppleWebKit/534.30 (KHTML, like Gecko) Version/4.0 Mobile Safari/534.30";
+const char kAndroidNexusSUserAgent[] =
+    "Mozilla/5.0 (Linux; U; Android 2.3.3; en-gb; Nexus S Build/GRI20)"
+    "AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1";
 const char kChromeUserAgent[] =
     "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) "
     "AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.A.B.C Safari/525.13";
@@ -106,6 +109,9 @@ const char kIPadUserAgent[] =
     "Mozilla/5.0 (iPad; U; CPU OS 3_2 like Mac OS X; en-us) "
     "AppleWebKit/531.21.10 (KHTML, like Gecko) Version/4.0.4 "
     "Mobile/7B334b Safari/531.21.10";
+const char kNexus7ChromeUserAgent[] =
+    "Mozilla/5.0 (Linux; Android 4.2; Nexus 7 Build/JOP32C) AppleWebKit/535.19"
+    "(KHTML, like Gecko) Chrome/18.0.1025.166 Safari/535.19";
 const char kAcceptHeaderValueNonMobile[] = "text/html";
 const char kAcceptHeaderValueMobile[] =
     "text/html,application/vnd.wap.xhtml+xml";

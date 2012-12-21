@@ -779,8 +779,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "a{content:\"Special chars: \\n\\r\\t\\A \\D \\9\"}" },
 
     // Test some interesting combinations of @media.
-    {
-      "@media screen {"
+    { "@media screen {"
       "  body { counter-reset:section }"
       "  h1 { counter-reset:subsection }"
       "}"

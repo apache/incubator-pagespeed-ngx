@@ -49,6 +49,7 @@ class HtmlEvent {
   void DebugPrint();
 
   int line_number() const { return line_number_; }
+
  private:
   int line_number_;
 

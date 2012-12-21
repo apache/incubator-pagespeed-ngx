@@ -87,7 +87,6 @@ bool Decode(SharedString* key_value, GoogleString* key, SharedString* value) {
 int GetValueSizeFromKeyAndKeyValue(StringPiece key,
                                    const SharedString& key_and_value) {
   return key_and_value.size() - key.size() - kKeySizeOverheadBytes;
-
 }
 
 }  // namespace key_value_codec

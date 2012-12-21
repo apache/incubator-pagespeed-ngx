@@ -106,4 +106,4 @@ bool DocType::Parse(const StringPiece& directive,
   return true;
 }
 
-}  // net_instaweb
+}  // namespace net_instaweb

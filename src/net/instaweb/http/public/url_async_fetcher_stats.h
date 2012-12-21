@@ -81,4 +81,4 @@ class UrlAsyncFetcherStats : public UrlAsyncFetcher {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_HTTP_PUBLIC_URL_ASYNC_FETCHER_H_
+#endif  // NET_INSTAWEB_HTTP_PUBLIC_URL_ASYNC_FETCHER_STATS_H_

@@ -184,6 +184,7 @@ class Scheduler::CondVarCallbackTimeout : public Scheduler::Alarm {
     callback_->CallRun();
     delete this;
   }
+
  private:
   Function* callback_;
   Scheduler* scheduler_;

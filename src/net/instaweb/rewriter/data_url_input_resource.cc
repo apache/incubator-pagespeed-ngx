@@ -65,4 +65,4 @@ bool DataUrlInputResource::IsCacheable() const {
   return false;
 }
 
-}
+}  // namespace net_instaweb

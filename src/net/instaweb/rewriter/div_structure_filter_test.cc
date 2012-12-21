@@ -35,8 +35,8 @@ class DivStructureFilterTest : public HtmlParseTestBase {
 
   virtual bool AddBody() const { return false; }
 
-  private:
-    DivStructureFilter div_structure_filter_;
+ private:
+  DivStructureFilter div_structure_filter_;
 };
 
 // TODO(jhoch): Make tests agnostic to query param value encoding.

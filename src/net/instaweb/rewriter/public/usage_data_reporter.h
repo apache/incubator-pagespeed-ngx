@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_USAGE_DATA_REPORTER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/json_writer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -165,9 +166,10 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
                            num_low_res_images_inlined_,
                            GetBlinkJsUrl(options_, static_js_manager_).c_str(),
                            non_critical_json.c_str()));
-  if (rewrite_driver_->log_record() != NULL && !json.empty()) {
+  if (!json.empty()) {
     rewrite_driver_->log_record()->LogAppliedRewriter(
         RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
+    ScopedMutex lock(rewrite_driver_->log_record()->mutex());
     rewrite_driver_->log_record()->logging_info()->mutable_split_html_info()
         ->set_json_size(non_critical_json.size());
   }

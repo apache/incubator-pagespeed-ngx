@@ -25,6 +25,7 @@
 
 namespace net_instaweb {
 
+class HtmlElement;
 class RewriteDriver;
 class RewriteOptions;
 

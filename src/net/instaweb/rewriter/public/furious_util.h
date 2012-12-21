@@ -79,4 +79,4 @@ int CookieStringToState(const StringPiece& cookie_str);
 
 }  // namespace net_instaweb
 
-#endif // NET_INSTAWEB_REWRITER_PUBLIC_FURIOUS_UTIL_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_FURIOUS_UTIL_H_

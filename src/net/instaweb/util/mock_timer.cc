@@ -18,13 +18,8 @@
 
 #include "net/instaweb/util/public/mock_timer.h"
 
-#include <cstddef>
-#include <set>
-
-#include "base/logging.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 

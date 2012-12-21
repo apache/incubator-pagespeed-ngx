@@ -112,7 +112,6 @@ TEST_F(CssUtilTest, TestAnyDimensions) {
                           "border-width:0px;width:30px;height:40px");
   extractor.reset(new StyleExtractor(img));
   EXPECT_TRUE(extractor->HasAnyDimensions());
-
 }
 
 TEST_F(CssUtilTest, VectorizeMediaAttribute) {
@@ -294,6 +293,6 @@ TEST_F(CssUtilTest, EliminateElementsNotIn) {
   EXPECT_TRUE(input_vector == intersect_vector);
 }
 
-} // css_util
+}  // namespace css_util
 
-} // net_instaweb
+}  // namespace net_instaweb

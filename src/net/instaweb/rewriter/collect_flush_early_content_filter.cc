@@ -113,7 +113,7 @@ void CollectFlushEarlyContentFilter::EndDocument() {
 
 void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
   if (noscript_element() != NULL) {
-    //Do nothing.
+    // Do nothing.
     return;
   }
   if (element->keyword() == HtmlName::kBody) {
@@ -165,7 +165,6 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
         }
       } else {
         AppendToHtml(gurl.Spec(), category, element);
-
       }
     }
   }

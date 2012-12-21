@@ -412,4 +412,24 @@ TEST_F(UserAgentMatcherTest, SplitHtmlRelated) {
       UserAgentStrings::kPSPUserAgent, false));
 }
 
+TEST_F(UserAgentMatcherTest, IsMobileUserAgent) {
+  EXPECT_TRUE(user_agent_matcher_.IsMobileUserAgent(
+      UserAgentStrings::kAndroidICSUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.IsMobileUserAgent(
+      UserAgentStrings::kAndroidNexusSUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.IsMobileUserAgent(
+      UserAgentStrings::kAndroidChrome21UserAgent));
+  EXPECT_TRUE(user_agent_matcher_.IsMobileUserAgent(
+      UserAgentStrings::kIPhoneChrome21UserAgent));
+  EXPECT_TRUE(user_agent_matcher_.IsMobileUserAgent(
+      UserAgentStrings::kIPhoneUserAgent));
+
+  EXPECT_FALSE(user_agent_matcher_.IsMobileUserAgent(
+      UserAgentStrings::kNexus7ChromeUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.IsMobileUserAgent(
+      UserAgentStrings::kIPadUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.IsMobileUserAgent(
+      UserAgentStrings::kSafariUserAgent));
+}
+
 }  // namespace net_instaweb

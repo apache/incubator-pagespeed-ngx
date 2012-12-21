@@ -594,7 +594,7 @@ void ResponseHeaders::ComputeCaching() {
     bool is_proxy_cacheable = computer->IsProxyCacheable();
     int64 cache_ttl_ms = implicit_cache_ttl_ms();
     if (computer->IsExplicitlyCacheable()) {
-      // TODO: Do we care about the return value.
+      // TODO(sligocki): Do we care about the return value.
       computer->GetFreshnessLifetimeMillis(&cache_ttl_ms);
     }
     if (force_caching_enabled &&

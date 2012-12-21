@@ -34,8 +34,6 @@
 
 namespace net_instaweb {
 
-class Timer;
-
 // Implements a simple scheduler that allows a thread to block until either time
 // expires, or a condition variable is signaled.  Also permits various alarms to
 // be scheduled; these are lightweight short-lived callbacks that must be safely

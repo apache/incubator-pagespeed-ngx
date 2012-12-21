@@ -305,8 +305,8 @@ void GoogleAnalyticsFilter::ResetFilter() {
 }
 
 bool GoogleAnalyticsFilter::MatchSyncLoad(StringPiece contents,
-                                          GoogleString::size_type &pos,
-                                          GoogleString::size_type &len) const {
+                                          GoogleString::size_type* pos,
+                                          GoogleString::size_type* len) const {
   GoogleString::size_type url_pos = contents.find(kGaJsUrlSuffix);
   if (url_pos != GoogleString::npos) {
     // In the common case, document.write is 56 characters before the url.
@@ -328,8 +328,8 @@ bool GoogleAnalyticsFilter::MatchSyncLoad(StringPiece contents,
           url_pos + StringPiece(kGaJsUrlSuffix).size());
       if (write_end_pos != GoogleString::npos) {
         write_end_pos += StringPiece(kGaJsDocumentWriteEnd).size();
-        pos = write_pos;
-        len = write_end_pos - write_pos;
+        *pos = write_pos;
+        *len = write_end_pos - write_pos;
         html_parse_->InfoHere("Found ga.js load: document.write");
         return true;
       }
@@ -340,8 +340,8 @@ bool GoogleAnalyticsFilter::MatchSyncLoad(StringPiece contents,
 
 bool GoogleAnalyticsFilter::MatchSyncInit(StringPiece contents,
                                           GoogleString::size_type start_pos,
-                                          GoogleString::size_type &pos,
-                                          GoogleString::size_type &len) const {
+                                          GoogleString::size_type* pos,
+                                          GoogleString::size_type* len) const {
   StringPiece tracker_method(kGaJsGetTracker);
   GoogleString::size_type tracker_method_pos = contents.find(
       tracker_method, start_pos);
@@ -351,8 +351,8 @@ bool GoogleAnalyticsFilter::MatchSyncInit(StringPiece contents,
   }
   if (tracker_method_pos != GoogleString::npos) {
     html_parse_->InfoHere("Found ga.js init: %s", tracker_method.data());
-    pos = tracker_method_pos;
-    len = tracker_method.size();
+    *pos = tracker_method_pos;
+    *len = tracker_method.size();
     return true;
   }
   return false;
@@ -402,14 +402,14 @@ void GoogleAnalyticsFilter::FindRewritableScripts() {
       if (!contents.empty()) {
         GoogleString::size_type start_pos = 0;
         GoogleString::size_type pos, len;
-        if (MatchSyncLoad(contents, pos, len)) {
+        if (MatchSyncLoad(contents, &pos, &len)) {
           is_load_found_ = true;
           script_editors_.push_back(new ScriptEditor(
               script_element_, script_characters_node_, pos, len,
               ScriptEditor::kGaJsDocWriteLoad));
           start_pos = pos + len;
         }
-        if (is_load_found_ && MatchSyncInit(contents, start_pos, pos, len)) {
+        if (is_load_found_ && MatchSyncInit(contents, start_pos, &pos, &len)) {
           is_init_found_ = true;
           script_editors_.push_back(new ScriptEditor(
               script_element_, script_characters_node_, pos, len,

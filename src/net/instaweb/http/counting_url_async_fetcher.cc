@@ -71,4 +71,4 @@ void CountingUrlAsyncFetcher::Clear() {
   failure_count_ = 0;
 }
 
-}  // namespace instaweb
+}  // namespace net_instaweb

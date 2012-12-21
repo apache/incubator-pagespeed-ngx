@@ -27,10 +27,10 @@
 namespace net_instaweb {
 
 namespace {
+
 // net::kMaximumSubdirectoryLength is defined in url_to_filename_encoder.cc, but
 // we cannot link it.
 const size_t kMaxLen = 128;
-}  // namespace
 
 // Note -- the exact behavior of the encoder is tested in
 // gfe/tools/loadtesting/spdy_testing/url_to_filename_encoder_test.cc
@@ -147,3 +147,5 @@ TEST_F(FilenameEncoderTest, CornerCasesNearMaxLenWithEscape) {
 }
 
 }  // namespace
+
+}  // namespace net_instaweb

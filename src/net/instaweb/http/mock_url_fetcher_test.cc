@@ -138,7 +138,7 @@ TEST_F(MockUrlFetcherTest, ConditionalFetchTest) {
   const char url[] = "http://www.example.com/successs.html";
   ResponseHeaders header;
   header.set_first_line(1, 1, 200, "OK");
-  // TODO: Perhaps set Last-Modified header...
+  // TODO(sligocki): Perhaps set Last-Modified header...
   const char body[] = "This website loaded :)";
 
   int64 old_time = 1000;

@@ -58,6 +58,7 @@ class ScriptTagScanner {
   // Keep in mind, however, that HTML5 browsers will ignore
   // kExecuteDefer and kExecuteAsync on elements without src=''
   int ExecutionMode(const HtmlElement* element) const;
+
  private:
   // Normalizes the input str by trimming whitespace and lowercasing.
   static GoogleString Normalized(const StringPiece& str);

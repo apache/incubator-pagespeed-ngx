@@ -69,6 +69,8 @@ class Arena {
     next_alloc_ += size;
 
     char* out = base + kAlign;
+    // Warning: the following line is very type-sensitive and can't
+    // easily be turned into a DCHECK_EQ as lint would like.
     DCHECK((reinterpret_cast<uintptr_t>(out) & (kAlign - 1)) == 0);
     return out;
   }

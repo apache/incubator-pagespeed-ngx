@@ -22,7 +22,7 @@
 #include "net/instaweb/util/public/string_util.h"
 namespace net_instaweb {
 
-// BOTs names are case sensitive. 
+// BOTs names are case sensitive.
 // We keep the exact BOT names in .gperf table.
 class BotChecker {
  public:

@@ -291,4 +291,4 @@ const uint64 kRollingHashCharTable[256] = {
     0x45186d635717d743ULL,
     0x3f375208bc7ce161ULL,
     0x768cd5d30f885c47ULL };
-}  // net_instaweb
+}  // namespace net_instaweb

@@ -24,7 +24,7 @@
 #include "net/instaweb/util/public/mock_time_cache.h"
 
 #include "net/instaweb/util/public/function.h"
-#include "net/instaweb/util/public/mock_scheduler.h"
+#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"

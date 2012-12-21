@@ -209,16 +209,16 @@ TEST_F(PropertyCacheTest, TrackStability) {
 TEST_F(PropertyCacheTest, IsIndexOfLeastSetBitSmallerTest) {
   uint64 i = 1;
   EXPECT_FALSE(PropertyValue::IsIndexOfLeastSetBitSmaller(i, 0));
-  EXPECT_FALSE(PropertyValue::IsIndexOfLeastSetBitSmaller(i<<1, 0));
-  EXPECT_TRUE(PropertyValue::IsIndexOfLeastSetBitSmaller(i<<1, 3));
-  EXPECT_TRUE(PropertyValue::IsIndexOfLeastSetBitSmaller(i<<44, 60));
+  EXPECT_FALSE(PropertyValue::IsIndexOfLeastSetBitSmaller(i << 1, 0));
+  EXPECT_TRUE(PropertyValue::IsIndexOfLeastSetBitSmaller(i << 1, 3));
+  EXPECT_TRUE(PropertyValue::IsIndexOfLeastSetBitSmaller(i << 44, 60));
 
   i = 1;
   // Index of least set bit is 64.
-  EXPECT_FALSE(PropertyValue::IsIndexOfLeastSetBitSmaller(i<<63, 64));
+  EXPECT_FALSE(PropertyValue::IsIndexOfLeastSetBitSmaller(i << 63, 64));
 
   // There is no bit set.
-  EXPECT_TRUE(PropertyValue::IsIndexOfLeastSetBitSmaller(i<<1, 64));
+  EXPECT_TRUE(PropertyValue::IsIndexOfLeastSetBitSmaller(i << 1, 64));
 }
 
 TEST_F(PropertyCacheTest, TestIsRecentlyConstant) {

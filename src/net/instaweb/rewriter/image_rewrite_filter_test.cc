@@ -1518,7 +1518,7 @@ TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
   options()->EnableFilter(RewriteOptions::kSquashImagesForMobileScreen);
   rewrite_driver()->AddFilters();
 
-  rewrite_driver()->set_user_agent("Android 4");
+  rewrite_driver()->set_user_agent("Android 4 Mobile Safari");
   TestSquashImagesForMobileScreen(rewrite_driver());
 
   rewrite_driver()->set_user_agent(

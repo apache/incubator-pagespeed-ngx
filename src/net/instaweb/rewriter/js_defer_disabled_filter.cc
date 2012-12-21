@@ -22,16 +22,15 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 
 namespace net_instaweb {
+
+class RewriteOptions;
 
 JsDeferDisabledFilter::JsDeferDisabledFilter(RewriteDriver* driver)
     : rewrite_driver_(driver) {

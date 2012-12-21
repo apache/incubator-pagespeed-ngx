@@ -183,7 +183,7 @@ void ResourceFetch::HandleHeadersComplete() {
 void ResourceFetch::HandleDone(bool success) {
   if (success) {
     LOG(INFO) << "Resource " << resource_url_.Spec()
-              << " : " << response_headers()->status_code() ;
+              << " : " << response_headers()->status_code();
   } else {
     // This is a fetcher failure, like connection refused, not just an error
     // status code.

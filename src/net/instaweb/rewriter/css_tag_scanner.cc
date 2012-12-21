@@ -125,7 +125,7 @@ inline bool EatLiteral(const StringPiece& expected, StringPiece* in) {
 }
 
 inline bool IsCssWhitespace(char c) {
- // As specified in CSS2.1,  G.2, production 's'
+  // As specified in CSS2.1,  G.2, production 's'
   return (c == ' ') || (c == '\t') || (c == '\r') || (c == '\n') || (c == '\f');
 }
 

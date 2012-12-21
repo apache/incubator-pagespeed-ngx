@@ -18,23 +18,15 @@
 
 #include "net/instaweb/rewriter/public/debug_filter.h"
 
-#include <vector>
-
-#include "base/logging.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/mock_callback.h"
-#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/mock_scheduler.h"
-#include "net/instaweb/util/public/mock_timer.h"
-#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 

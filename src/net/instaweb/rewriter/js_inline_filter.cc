@@ -27,7 +27,6 @@
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {

@@ -65,6 +65,6 @@ inline uint64 NextRollingHash(
   }
   return (start_hash_rotn ^ prev_rot1 ^ end_hash);
 }
-}  // net_instaweb
+}  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_ROLLING_HASH_H_
