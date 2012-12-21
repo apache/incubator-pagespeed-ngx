@@ -289,6 +289,15 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // 2) The header X-PSA-Optimize-For-SPDY is present, with any value.
   static bool TreatRequestAsSpdy(request_rec* req);
 
+  // Parses a comma-separated list of HTTPS options.  If successful, applies
+  // the options to the fetcher and returns true.  If the options were invalid,
+  // *error_message is populated and false is returned.
+  //
+  // It is *not* considered an error in this context to attempt to enable HTTPS
+  // when support is not compiled in.  However, an error message will be logged
+  // in the server log, and the option-setting will have no effect.
+  bool SetHttpsOptions(StringPiece directive, GoogleString* error_message);
+
  protected:
   virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
@@ -453,6 +462,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   // Helps coordinate direct-to-mod_spdy fetches.
   scoped_ptr<ModSpdyFetchController> mod_spdy_fetch_controller_;
+
+  GoogleString https_options_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };

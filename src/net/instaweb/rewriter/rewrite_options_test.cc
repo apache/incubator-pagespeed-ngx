@@ -690,7 +690,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(127, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(128, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AlwaysRewriteCss",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAlwaysRewriteCss));
@@ -948,6 +948,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ExperimentalFetchFromModSpdy",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kExperimentalFetchFromModSpdy));
+  EXPECT_EQ(StringPiece("FetchHttps"),
+            RewriteOptions::LookupOptionEnum(
+                RewriteOptions::kFetchHttps));
   EXPECT_STREQ("FetchProxy",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kFetcherProxy));

@@ -120,6 +120,7 @@ struct OptionName {
 "CollectRefererStatistics",              RewriteOptions::kCollectRefererStatistics
 "DomainRewriteHyperlinks",               RewriteOptions::kDomainRewriteHyperlinks
 "ExperimentalFetchFromModSpdy",          RewriteOptions::kExperimentalFetchFromModSpdy
+"FetchHttps",                            RewriteOptions::kFetchHttps
 "FetchProxy",                            RewriteOptions::kFetcherProxy
 "FetcherTimeOutMs",                      RewriteOptions::kFetcherTimeOutMs
 "FileCacheCleanIntervalMs",              RewriteOptions::kFileCacheCleanIntervalMs

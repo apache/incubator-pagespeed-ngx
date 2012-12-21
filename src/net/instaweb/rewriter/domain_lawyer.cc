@@ -550,7 +550,7 @@ bool DomainLawyer::MapOriginUrl(const GoogleUrl& gurl,
   bool ret = false;
   *is_proxy = false;
 
-  // We can map an origin TO http only, but FROM http or https.
+  // We can map an origin to/from http/https.
   if (gurl.is_valid()) {
     ret = true;
     gurl.Spec().CopyToString(out);
@@ -683,7 +683,7 @@ bool DomainLawyer::AddOriginDomainMapping(
   return MapDomainHelper(to_domain_name, comma_separated_from_domains,
                          &Domain::SetOriginDomain,
                          true /* allow_wildcards */,
-                         false /* allow_map_to_https */,
+                         true /* allow_map_to_https */,
                          false /* authorize */,
                          handler);
 }
@@ -695,7 +695,7 @@ bool DomainLawyer::AddProxyDomainMapping(
   return MapDomainHelper(origin_domain_name, proxy_domain_name,
                          &Domain::SetProxyDomain,
                          false /* allow_wildcards */,
-                         false /* allow_map_to_https */,
+                         true /* allow_map_to_https */,
                          true /* authorize */,
                          handler);
 }

@@ -56,6 +56,14 @@
 #define SERF_DEBUG(x)
 
 namespace {
+
+enum HttpsOptions {
+  kEnableHttps                          = 1 << 0,
+  kAllowSelfSigned                      = 1 << 1,
+  kAllowUnknownCertificateAuthority     = 1 << 2,
+  kAllowCertificateNotYetValid          = 1 << 3,
+};
+
 const char kFetchMethod[] = "GET";
 }  // namespace
 
@@ -83,6 +91,7 @@ const char SerfStats::kSerfFetchActiveCount[] =
     "serf_fetch_active_count";
 const char SerfStats::kSerfFetchTimeoutCount[] = "serf_fetch_timeout_count";
 const char SerfStats::kSerfFetchFailureCount[] = "serf_fetch_failure_count";
+const char SerfStats::kSerfFetchCertErrors[] = "serf_fetch_cert_errors";
 
 GoogleString GetAprErrorString(apr_status_t status) {
   char error_str[1024];
@@ -113,7 +122,10 @@ class SerfFetch : public PoolElement<SerfFetch> {
         connection_(NULL),
         bytes_received_(0),
         fetch_start_ms_(0),
-        fetch_end_ms_(0) {
+        fetch_end_ms_(0),
+        using_https_(false),
+        ssl_context_(NULL),
+        ssl_error_message_(NULL) {
   }
 
   ~SerfFetch() {
@@ -158,6 +170,10 @@ class SerfFetch : public PoolElement<SerfFetch> {
   //
   // This must be called while holding SerfUrlAsyncFetcher's mutex_.
   void CallCallback(bool success) {
+    if (ssl_error_message_ != NULL) {
+      success = false;
+    }
+
     if (async_fetch_ == NULL) {
       LOG(FATAL) << "BUG: Serf callback called more than once on same fetch "
                  << str_url() << " (" << this << ").  Please report this "
@@ -213,12 +229,54 @@ class SerfFetch : public PoolElement<SerfFetch> {
 
  private:
   // Static functions used in callbacks.
+
+  // The code under SERF_HTTPS_FETCHING was contributed by Devin Anderson
+  // (surfacepatterns@gmail.com).
+  //
+  // Note this must be ifdef'd because calling serf_bucket_ssl_decrypt_create
+  // requires ssl_buckets.c in the link.  ssl_buckets.c requires openssl.
+#if SERF_HTTPS_FETCHING
+  static apr_status_t SSLCertError(void *data, int failures,
+                                   const serf_ssl_certificate_t *cert) {
+    return static_cast<SerfFetch*>(data)->HandleSSLCertErrors(failures, 0);
+  }
+
+  static apr_status_t SSLCertChainError(
+      void *data, int failures, int error_depth,
+      const serf_ssl_certificate_t * const *certs,
+      apr_size_t certs_count) {
+    return static_cast<SerfFetch*>(data)->HandleSSLCertErrors(failures,
+                                                              error_depth);
+  }
+#endif
+
   static apr_status_t ConnectionSetup(
       apr_socket_t* socket, serf_bucket_t **read_bkt, serf_bucket_t **write_bkt,
       void* setup_baton, apr_pool_t* pool) {
-    // TODO(morlovich): the serf tests do SSL setup in their equivalent.
     SerfFetch* fetch = static_cast<SerfFetch*>(setup_baton);
     *read_bkt = serf_bucket_socket_create(socket, fetch->bucket_alloc_);
+#if SERF_HTTPS_FETCHING
+    if (fetch->using_https_) {
+      *read_bkt = serf_bucket_ssl_decrypt_create(*read_bkt,
+                                                 fetch->ssl_context_,
+                                                 fetch->bucket_alloc_);
+      if (fetch->ssl_context_ == NULL) {
+        fetch->ssl_context_ = serf_bucket_ssl_decrypt_context_get(*read_bkt);
+      }
+
+      serf_ssl_server_cert_callback_set(fetch->ssl_context_, SSLCertError,
+                                        fetch);
+
+      serf_ssl_server_cert_chain_callback_set(fetch->ssl_context_,
+                                              SSLCertError, SSLCertChainError,
+                                              fetch);
+
+      serf_ssl_set_hostname(fetch->ssl_context_, fetch->url_.hostinfo);
+      *write_bkt = serf_bucket_ssl_encrypt_create(*write_bkt,
+                                                  fetch->ssl_context_,
+                                                  fetch->bucket_alloc_);
+    }
+#endif
     return APR_SUCCESS;
   }
 
@@ -276,6 +334,55 @@ class SerfFetch : public PoolElement<SerfFetch> {
             APR_STATUS_IS_EOF(status) ||
             MoreDataAvailable(status));
   }
+
+#if SERF_HTTPS_FETCHING
+  // Called indicating whether SSL certificate errors have occurred detected.
+  // The function returns SUCCESS in all cases, but sets ssl_error_message_
+  // non-null for errors as a signal to ReadHeaders that we should not let
+  // any output thorugh.
+  //
+  // Interpretation of two of the error conditions is configuraable:
+  // 'allow_unknown_certificate_authority' and 'allow_self_signed'.
+  apr_status_t HandleSSLCertErrors(int errors, int failure_depth) {
+    // TODO(jmarantz): is there value in logging the errors and failure_depth
+    // formals here?
+
+    // Note that HandleSSLCertErrors can be called multiple times for
+    // a single request.  As far as I can tell, there is value in
+    // recording only one of these.  For now, I have set up the logic
+    // so only the last error will be printed lazilly, in ReadHeaders.
+    if (((errors & SERF_SSL_CERT_SELF_SIGNED) != 0) &&
+        !fetcher_->allow_self_signed()) {
+      ssl_error_message_ = "SSL certificate is self-signed";
+    } else if (((errors & SERF_SSL_CERT_UNKNOWNCA) != 0) &&
+               !fetcher_->allow_unknown_certificate_authority()) {
+      ssl_error_message_ =
+          "SSL certificate has an unknown certificate authority";
+    } else if (((errors & SERF_SSL_CERT_NOTYETVALID) != 0) &&
+               !fetcher_->allow_certificate_not_yet_valid()) {
+      ssl_error_message_ = "SSL certificate is not yet valid";
+    } else if (errors & SERF_SSL_CERT_EXPIRED) {
+      ssl_error_message_ = "SSL certificate is expired";
+    } else if (errors & SERF_SSL_CERT_UNKNOWN_FAILURE) {
+      ssl_error_message_ = "SSL certificate has an unknown error";
+    }
+    // Fall-through here implies success.
+
+    // TODO(jmarantz): I think the design of this system indicates
+    // that we should be returning APR_EGENERAL on failure.  However I
+    // have found that doesn't work properly, at least for
+    // SERF_SSL_CERT_SELF_SIGNED.  The request does not terminate
+    // quickly but instead times out.  Thus we return APR_SUCCESS
+    // but change the status_code to 404, report an error, and suppress
+    // the output.
+    //
+    // TODO(jmarantz): consider aiding diagnosibility with by changing the
+    // 404 to a 401 (Unauthorized) or 418 (I'm a teapot), or 459 (nginx
+    // internal cert error code).
+
+    return APR_SUCCESS;
+  }
+#endif
 
   // The handler MUST process data from the response bucket until the
   // bucket's read function states it would block (APR_STATUS_IS_EAGAIN).
@@ -385,13 +492,20 @@ class SerfFetch : public PoolElement<SerfFetch> {
     if (IsStatusOk(status) && (len > 0)) {
       if (parser_.ParseChunk(StringPiece(data, len), message_handler_)) {
         if (parser_.headers_complete()) {
+          ResponseHeaders* response_headers = async_fetch_->response_headers();
+          if (ssl_error_message_ != NULL) {
+            response_headers->set_status_code(HttpStatus::kNotFound);
+            message_handler_->Message(kInfo, "%s: %s", str_url_.c_str(),
+                                      ssl_error_message_);
+            fetcher_->cert_errors_->Add(1);
+            has_saved_byte_ = false;
+          }
+
           if (fetcher_->track_original_content_length()) {
             // Set X-Original-Content-Length, if Content-Length is available.
             int64 content_length;
-            if (async_fetch_->response_headers()->FindContentLength(
-                &content_length)) {
-              async_fetch_->response_headers()->SetOriginalContentLength(
-                  content_length);
+            if (response_headers->FindContentLength(&content_length)) {
+              response_headers->SetOriginalContentLength(content_length);
             }
           }
           // Stream the one byte read from ReadOneByteFromBody to writer.
@@ -529,10 +643,7 @@ class SerfFetch : public PoolElement<SerfFetch> {
     if (status != APR_SUCCESS) {
       return false;  // Failed to parse URL.
     }
-
-    // TODO(lsong): We do not handle HTTPS for now. HTTPS needs authentication
-    // verifying certificates, etc.
-    if (StringCaseEqual(url_.scheme, "https")) {
+    if (!fetcher_->allow_https() && StringCaseEqual(url_.scheme, "https")) {
       return false;
     }
     if (!url_.port) {
@@ -562,6 +673,11 @@ class SerfFetch : public PoolElement<SerfFetch> {
   size_t bytes_received_;
   int64 fetch_start_ms_;
   int64 fetch_end_ms_;
+
+  // Variables used for HTTPS connection handling
+  bool using_https_;
+  serf_ssl_context_t* ssl_context_;
+  const char* ssl_error_message_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfFetch);
 };
@@ -813,6 +929,9 @@ bool SerfFetch::Start(SerfUrlAsyncFetcher* fetcher) {
     return false;
   }
 
+  using_https_ = StringCaseEqual("https", url_.scheme);
+  DCHECK(fetcher->allow_https() || !using_https_);
+
   apr_status_t status = serf_connection_create2(&connection_,
                                                 fetcher_->serf_context(),
                                                 url_,
@@ -883,11 +1002,13 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
       cancel_count_(NULL),
       timeout_count_(NULL),
       failure_count_(NULL),
+      cert_errors_(NULL),
       timeout_ms_(timeout_ms),
       force_threaded_(false),
       shutdown_(false),
       list_outstanding_urls_on_error_(false),
       track_original_content_length_(false),
+      https_options_(0),
       message_handler_(message_handler) {
   CHECK(statistics != NULL);
   request_count_  =
@@ -899,6 +1020,7 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
   active_count_ = statistics->GetVariable(SerfStats::kSerfFetchActiveCount);
   timeout_count_ = statistics->GetVariable(SerfStats::kSerfFetchTimeoutCount);
   failure_count_ = statistics->GetVariable(SerfStats::kSerfFetchFailureCount);
+  cert_errors_ = statistics->GetVariable(SerfStats::kSerfFetchCertErrors);
   Init(pool, proxy);
   threaded_fetcher_ = new SerfThreadedFetcher(this, proxy);
 }
@@ -918,11 +1040,13 @@ SerfUrlAsyncFetcher::SerfUrlAsyncFetcher(SerfUrlAsyncFetcher* parent,
       cancel_count_(parent->cancel_count_),
       timeout_count_(parent->timeout_count_),
       failure_count_(parent->failure_count_),
+      cert_errors_(parent->cert_errors_),
       timeout_ms_(parent->timeout_ms()),
       force_threaded_(parent->force_threaded_),
       shutdown_(false),
       list_outstanding_urls_on_error_(parent->list_outstanding_urls_on_error_),
       track_original_content_length_(parent->track_original_content_length_),
+      https_options_(parent->https_options_),
       message_handler_(parent->message_handler_) {
   Init(parent->pool(), proxy);
 }
@@ -1219,6 +1343,7 @@ void SerfUrlAsyncFetcher::InitStats(Statistics* statistics) {
   statistics->AddVariable(SerfStats::kSerfFetchActiveCount);
   statistics->AddVariable(SerfStats::kSerfFetchTimeoutCount);
   statistics->AddVariable(SerfStats::kSerfFetchFailureCount);
+  statistics->AddVariable(SerfStats::kSerfFetchCertErrors);
 }
 
 void SerfUrlAsyncFetcher::set_list_outstanding_urls_on_error(bool x) {
@@ -1233,6 +1358,75 @@ void SerfUrlAsyncFetcher::set_track_original_content_length(bool x) {
   if (threaded_fetcher_ != NULL) {
     threaded_fetcher_->set_track_original_content_length(x);
   }
+}
+
+bool SerfUrlAsyncFetcher::ParseHttpsOptions(StringPiece directive,
+                                            uint32* options,
+                                            GoogleString* error_message) {
+  StringPieceVector keywords;
+  SplitStringPieceToVector(directive, ",", &keywords, true);
+  uint32 https_options = 0;
+  for (int i = 0, n = keywords.size(); i < n; ++i) {
+    StringPiece keyword = keywords[i];
+    if (keyword == "enable") {
+      https_options |= kEnableHttps;
+    } else if (keyword == "disable") {
+      https_options &= ~static_cast<uint32>(kEnableHttps);
+    } else if (keyword == "allow_self_signed") {
+      https_options |= kAllowSelfSigned;
+    } else if (keyword == "allow_unknown_certificate_authority") {
+      https_options |= kAllowUnknownCertificateAuthority;
+    } else if (keyword == "allow_certificate_not_yet_valid") {
+      https_options |= kAllowCertificateNotYetValid;
+    } else {
+      StrAppend(error_message,
+                "Invalid HTTPS keyword: ", keyword, ", legal options are: "
+                SERF_HTTPS_KEYWORDS);
+      return false;
+    }
+  }
+  *options = https_options;
+  return true;
+}
+
+bool SerfUrlAsyncFetcher::SetHttpsOptions(StringPiece directive) {
+  GoogleString error_message;
+  if (!ParseHttpsOptions(directive, &https_options_, &error_message)) {
+    message_handler_->Message(kError, "%s", error_message.c_str());
+    return false;
+  }
+
+#if !SERF_HTTPS_FETCHING
+  if (allow_https()) {
+    message_handler_->Message(kError, "HTTPS fetching has not been compiled "
+                              "into the binary, so it has not been enabled.");
+    https_options_ = 0;
+  }
+#endif
+  if (threaded_fetcher_ != NULL) {
+    threaded_fetcher_->set_https_options(https_options_);
+  }
+  return true;
+}
+
+bool SerfUrlAsyncFetcher::allow_https() const {
+  return ((https_options_ & kEnableHttps) != 0);
+}
+
+bool SerfUrlAsyncFetcher::allow_self_signed() const {
+  return ((https_options_ & kAllowSelfSigned) != 0);
+}
+
+bool SerfUrlAsyncFetcher::allow_unknown_certificate_authority() const {
+  return ((https_options_ & kAllowUnknownCertificateAuthority) != 0);
+}
+
+bool SerfUrlAsyncFetcher::allow_certificate_not_yet_valid() const {
+  return ((https_options_ & kAllowCertificateNotYetValid) != 0);
+}
+
+bool SerfUrlAsyncFetcher::SupportsHttps() const {
+  return allow_https();
 }
 
 }  // namespace net_instaweb

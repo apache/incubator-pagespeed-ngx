@@ -288,6 +288,18 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
               response_headers(kConnectionRefused)->status_code());
   }
 
+  void TestHttpsFails() {
+    StartFetches(kHttpsGoogleFavicon, kHttpsGoogleFavicon, false);
+    timer_->AdvanceMs(kTimerAdvanceMs);
+    ASSERT_EQ(1,
+              WaitTillDone(kHttpsGoogleFavicon, kHttpsGoogleFavicon, kMaxMs));
+    ASSERT_TRUE(fetches_[kHttpsGoogleFavicon]->IsDone());
+    ASSERT_TRUE(content_starts_[kHttpsGoogleFavicon].empty());
+    EXPECT_STREQ("", contents(kHttpsGoogleFavicon));
+    EXPECT_EQ(HttpStatus::kNotFound,
+              response_headers(kHttpsGoogleFavicon)->status_code());
+  }
+
   // Convenience getters.
   RequestHeaders* request_headers(int idx) {
     return fetches_[idx]->request_headers();
@@ -529,18 +541,40 @@ TEST_F(SerfUrlAsyncFetcherTest, Test204) {
             response_headers(kModpagespeedBeacon)->status_code());
 }
 
-TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFails) {
+TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsByDefault) {
+  TestHttpsFails();
+}
+
+#if SERF_HTTPS_FETCHING
+
+TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsForSelfSignedCert) {
+  serf_url_async_fetcher_->SetHttpsOptions("enable");
+  EXPECT_TRUE(serf_url_async_fetcher_->SupportsHttps());
+  TestHttpsFails();
+  EXPECT_EQ(1, statistics_.GetVariable(SerfStats::kSerfFetchCertErrors)->Get());
+}
+
+TEST_F(SerfUrlAsyncFetcherTest, TestHttpsSucceedsWhenEnabled) {
+  serf_url_async_fetcher_->SetHttpsOptions("enable,allow_self_signed");
+  EXPECT_TRUE(serf_url_async_fetcher_->SupportsHttps());
   StartFetches(kHttpsGoogleFavicon, kHttpsGoogleFavicon, false);
   timer_->AdvanceMs(kTimerAdvanceMs);
   ASSERT_EQ(WaitTillDone(kHttpsGoogleFavicon, kHttpsGoogleFavicon, kMaxMs), 1);
   ASSERT_TRUE(fetches_[kHttpsGoogleFavicon]->IsDone());
   ASSERT_TRUE(content_starts_[kHttpsGoogleFavicon].empty());
-  EXPECT_TRUE(contents(kHttpsGoogleFavicon).empty());
-
-  // TODO(jmarantz): Consider using a 500 error code for https support.
-  EXPECT_EQ(HttpStatus::kNotFound,
+  EXPECT_FALSE(contents(kHttpsGoogleFavicon).empty());
+  EXPECT_EQ(HttpStatus::kOK,
             response_headers(kHttpsGoogleFavicon)->status_code());
 }
+#else
+
+TEST_F(SerfUrlAsyncFetcherTest, TestHttpsFailsEvenWhenEnabled) {
+  serf_url_async_fetcher_->SetHttpsOptions("enable");  // ignored
+  EXPECT_FALSE(serf_url_async_fetcher_->SupportsHttps());
+  TestHttpsFails();
+}
+
+#endif
 
 TEST_F(SerfUrlAsyncFetcherTest, ConnectionRefusedNoDetail) {
   ConnectionRefusedTest(false);

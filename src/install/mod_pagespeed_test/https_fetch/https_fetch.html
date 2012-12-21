@@ -1,0 +1,17 @@
+<!--
+    This image should be proxy-mapped to localhost:PORT/mod_pagespeed_dot_com/...
+    and optimized fully by the local server.  The fact that modpagespeed.com is
+    running mod_pagespeed is not relevant in this example.  We are only hitting
+    modpagespeed.com because it is set up with a reasonable self-signed cert and
+    that works using the default https port 443.
+  -->
+<img
+   src="https://modpagespeed.com/do_not_modify/logo.e80d1c59a673f560785784fb1ac10959.gif"
+/>
+
+<!--
+    This image URL will be rewritten on modpagespeed.com assuming that it runs the
+    same current configuration as localhost.  This is only sensible because
+    modpagespeed.com is running mod_pagespeed.
+  -->
+<img src="https://modpagespeed.com/mod_pagespeed_example/images/Puzzle.jpg" />

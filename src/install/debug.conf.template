@@ -31,6 +31,16 @@ ModPagespeedBlockingRewriteKey psatest
   ModPagespeedMaxHtmlParseBytes 5000
 </Directory>
 
+# This will cause an error report in the startup log if mod_pagespeed is not
+# built with ssl, but otherwise will cause no trouble.
+ModPagespeedFetchHttps enable,allow_self_signed
+
+<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/https_fetch" >
+  ModPagespeedDomain https://modpagespeed.com
+  ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/modpagespeed_dot_com \
+                             https://modpagespeed.com/do_not_modify
+</Directory>
+
 #PER_VHOST_STATS ModPagespeedUsePerVHostStatistics on
 #PER_VHOST_STATS <Location /mod_pagespeed_global_statistics>
 #PER_VHOST_STATS    Order allow,deny

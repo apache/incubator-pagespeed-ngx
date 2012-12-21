@@ -24,7 +24,22 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/pool.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+
+// To enable HTTPS fetching with serf, we must link against OpenSSL,
+// which is a a large library with licensing restrictions not known to
+// be wholly inline with the Apache license.  To enable HTTPS fetching:
+//   1. Set SERF_HTTPS_FETCHING to 1 here
+//   2. Uncomment the references to openssl.gyp and ssl_buckets.c in
+//      src/third_party/serf/serf.gyp.
+//   3. Uncomment both references to openssl in src/DEPS.
+//
+// If this is enabled, then the HTTPS fetching can be tested with
+//    install/apache_https_fetch_test.sh
+#ifndef SERF_HTTPS_FETCHING
+#define SERF_HTTPS_FETCHING 0
+#endif
 
 struct apr_pool_t;
 struct serf_context_t;
@@ -47,7 +62,16 @@ struct SerfStats {
   static const char kSerfFetchActiveCount[];
   static const char kSerfFetchTimeoutCount[];
   static const char kSerfFetchFailureCount[];
+  static const char kSerfFetchCertErrors[];
 };
+
+// Identifies the set of HTML keywords.  This is used in error messages emitted
+// both from the config parser in this module, and in the directives table in
+// mod_instaweb.cc which must be statically constructed using a compile-time
+// concatenation.  Hence this must be a literal string and not a const char*.
+#define SERF_HTTPS_KEYWORDS \
+  "enable,disable,allow_self_signed," \
+  "allow_unknown_certificate_authority,allow_certificate_not_yet_valid"
 
 // TODO(sligocki): Serf does not seem to act appropriately in IPv6
 // environments, fix and test this.
@@ -57,6 +81,12 @@ struct SerfStats {
 //       connection to hang.
 class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
  public:
+  enum WaitChoice {
+    kThreadedOnly,
+    kMainlineOnly,
+    kThreadedAndMainline
+  };
+
   SerfUrlAsyncFetcher(const char* proxy, apr_pool_t* pool,
                       ThreadSystem* thread_system,
                       Statistics* statistics, Timer* timer, int64 timeout_ms,
@@ -70,19 +100,13 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   // (they will instead quickly call back to ->Done(false).
   virtual void ShutDown();
 
-  virtual bool SupportsHttps() const { return false; }
+  virtual bool SupportsHttps() const;
 
   virtual void Fetch(const GoogleString& url,
                      MessageHandler* message_handler,
                      AsyncFetch* callback);
 
   virtual int Poll(int64 max_wait_ms);
-
-  enum WaitChoice {
-    kThreadedOnly,
-    kMainlineOnly,
-    kThreadedAndMainline
-  };
 
   bool WaitForActiveFetches(int64 max_milliseconds,
                             MessageHandler* message_handler,
@@ -117,8 +141,37 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   }
   void set_track_original_content_length(bool x);
 
+  // Indicates that direct HTTPS fetching should be allowed, and how picky
+  // to be about certificates.  The directive is a comma separated list of
+  // these keywords:
+  //   enable
+  //   disable
+  //   allow_self_signed
+  //   allow_unknown_certificate_authority
+  //   allow_certificate_not_yet_valid
+  // Returns 'false' if the directive does not parse properly.
+  bool SetHttpsOptions(StringPiece directive);
+
+  // Validates the correctness of an https directive.  Exposed as a static
+  // method for early exit on mis-specified pagespeed.conf.
+  static bool ValidateHttpsOptions(StringPiece directive,
+                                   GoogleString* error_message) {
+    uint32 options;
+    return ParseHttpsOptions(directive, &options, error_message);
+  }
+
  protected:
   typedef Pool<SerfFetch> SerfFetchPool;
+
+  // Determines whether https is allowed in the current configuration.
+  inline bool allow_https() const;
+  inline bool allow_self_signed() const;
+  inline bool allow_unknown_certificate_authority() const;
+  inline bool allow_certificate_not_yet_valid() const;
+
+  void set_https_options(uint32 https_options) {
+    https_options_ = https_options;
+  }
 
   void Init(apr_pool_t* parent_pool, const char* proxy);
   bool SetupProxy(const char* proxy);
@@ -172,17 +225,22 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
  private:
   friend class SerfFetch;  // To access stats variables below.
 
+  static bool ParseHttpsOptions(StringPiece directive, uint32* options,
+                                GoogleString* error_message);
+
   Variable* request_count_;
   Variable* byte_count_;
   Variable* time_duration_ms_;
   Variable* cancel_count_;
   Variable* timeout_count_;
   Variable* failure_count_;
+  Variable* cert_errors_;
   const int64 timeout_ms_;
   bool force_threaded_;
   bool shutdown_;
   bool list_outstanding_urls_on_error_;
   bool track_original_content_length_;
+  uint32 https_options_;  // Composed of HttpsOptions ORed together.
   MessageHandler* message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcher);

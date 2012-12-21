@@ -265,22 +265,27 @@ TEST_F(DomainLawyerTest, ResourceFromHttpsPage) {
 TEST_F(DomainLawyerTest, MapHttpsAcrossHosts) {
   ASSERT_TRUE(AddOriginDomainMapping("http://insecure.nytimes.com",
                                      "https://secure.nytimes.com"));
-  ASSERT_FALSE(AddOriginDomainMapping("https://secure.nytimes.com",
-                                      "http://insecure.nytimes.com"));
+  ASSERT_TRUE(AddOriginDomainMapping("https://secure.nytimes.com",
+                                     "http://insecure.nytimes.com"));
   GoogleString mapped;
   ASSERT_TRUE(MapOrigin(
       "https://secure.nytimes.com/css/stylesheet.css", &mapped));
   EXPECT_STREQ("http://insecure.nytimes.com/css/stylesheet.css", mapped);
+  ASSERT_TRUE(MapOrigin(
+      "http://insecure.nytimes.com/css/stylesheet.css", &mapped));
+  EXPECT_EQ("https://secure.nytimes.com/css/stylesheet.css", mapped);
 }
 
 TEST_F(DomainLawyerTest, MapHttpsAcrossSchemes) {
   ASSERT_TRUE(AddOriginDomainMapping("http://nytimes.com",
                                      "https://nytimes.com"));
-  ASSERT_FALSE(AddOriginDomainMapping("https://nytimes.com",
-                                      "http://nytimes.com"));
+  ASSERT_TRUE(AddOriginDomainMapping("https://nytimes.com",
+                                     "http://nytimes.com"));
   GoogleString mapped;
   ASSERT_TRUE(MapOrigin("https://nytimes.com/css/stylesheet.css", &mapped));
   EXPECT_STREQ("http://nytimes.com/css/stylesheet.css", mapped);
+  ASSERT_TRUE(MapOrigin("http://nytimes.com/css/stylesheet.css", &mapped));
+  EXPECT_EQ("https://nytimes.com/css/stylesheet.css", mapped);
 }
 
 TEST_F(DomainLawyerTest, MapHttpsAcrossPorts) {
@@ -750,6 +755,37 @@ TEST_F(DomainLawyerTest, ProxyExternalResource) {
   EXPECT_FALSE(MapRequest(context_gurl, "http://external.com/evil/gifar.gif",
                           &mapped_domain_name, &resolved_request));
   EXPECT_FALSE(MapRequest(context_gurl, "http://external.com/gifar.gif",
+                          &mapped_domain_name, &resolved_request));
+}
+
+TEST_F(DomainLawyerTest, ProxyExternalResourceFromHttps) {
+  GoogleUrl context_gurl("http://origin.com/index.html");
+  ASSERT_TRUE(domain_lawyer_.AddProxyDomainMapping(
+      "http://origin.com/external", "https://external.com/static",
+      &message_handler_));
+
+  // Map proxy_this.png to a subdirectory in origin.com.
+  GoogleUrl resolved_request;
+  GoogleString mapped_domain_name;
+  const char kUrlToProxy[] =
+      "https://external.com/static/images/proxy_this.png";
+  ASSERT_TRUE(MapRequest(context_gurl, kUrlToProxy, &mapped_domain_name,
+                         &resolved_request));
+  EXPECT_STREQ("http://origin.com/external/", mapped_domain_name);
+  EXPECT_STREQ("http://origin.com/external/images/proxy_this.png",
+               resolved_request.Spec());
+
+  // But when we fetch this resource, we won't find it in external.com so we
+  // must map it back to origin.com/static.
+  GoogleString origin_url;
+  ASSERT_TRUE(MapProxy(resolved_request.Spec(), &origin_url));
+  EXPECT_EQ(kUrlToProxy, origin_url);
+
+  // Just because we enabled proxying from external.com/static, doesn't mean
+  // we want to proxy from external.com/evil or external.com.
+  EXPECT_FALSE(MapRequest(context_gurl, "https://external.com/evil/gifar.gif",
+                          &mapped_domain_name, &resolved_request));
+  EXPECT_FALSE(MapRequest(context_gurl, "https://external.com/gifar.gif",
                           &mapped_domain_name, &resolved_request));
 }
 

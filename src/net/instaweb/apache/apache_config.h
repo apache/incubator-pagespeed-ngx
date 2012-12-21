@@ -328,6 +328,7 @@ class ApacheConfig : public RewriteOptions {
 
   // comma-separated list of host[:port].  See AprMemCache::AprMemCache
   // for code that parses it.
+  Option<GoogleString> fetch_https_;
   Option<GoogleString> memcached_servers_;
   Option<GoogleString> slurp_directory_;
   Option<GoogleString> statistics_logging_file_;
@@ -340,11 +341,11 @@ class ApacheConfig : public RewriteOptions {
 
   Option<bool> collect_referer_statistics_;
   Option<bool> hash_referer_statistics_;
+  Option<bool> slurp_read_only_;
   Option<bool> statistics_enabled_;
   Option<bool> statistics_logging_enabled_;
   Option<bool> test_proxy_;
   Option<bool> use_shared_mem_locking_;
-  Option<bool> slurp_read_only_;
   Option<bool> rate_limit_background_fetches_;
   Option<bool> experimental_fetch_from_mod_spdy_;
 

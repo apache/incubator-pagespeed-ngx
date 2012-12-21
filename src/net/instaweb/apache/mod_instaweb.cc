@@ -38,6 +38,7 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/mod_spdy_fetcher.h"
+#include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -151,6 +152,7 @@ const char kModPagespeedDomain[] = "ModPagespeedDomain";
 const char kModPagespeedDomainRewriteHyperlinks[] =
     "ModPagespeedDomainRewriteHyperlinks";
 const char kModPagespeedEnableFilters[] = "ModPagespeedEnableFilters";
+const char kModPagespeedFetchHttps[] = "ModPagespeedFetchHttps";
 const char kModPagespeedFetchProxy[] = "ModPagespeedFetchProxy";
 const char kModPagespeedFetcherTimeoutMs[] = "ModPagespeedFetcherTimeOutMs";
 const char kModPagespeedFetchWithGzip[] = "ModPagespeedFetchWithGzip";
@@ -1333,6 +1335,16 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     if (!options->EnableFiltersByCommaSeparatedList(arg, handler)) {
       ret = "Failed to enable some filters.";
     }
+  } else if (StringCaseEqual(directive, kModPagespeedFetchHttps)) {
+    ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
+    if (ret == NULL) {
+      GoogleString error_message;
+      if (!factory->SetHttpsOptions(arg, &error_message)) {
+        ret = apr_pstrcat(cmd->pool, "Invalid argument '", arg, "' to ",
+                          cmd->directive->directive, ": ",
+                          error_message.c_str(), NULL);
+      }
+    }
   } else if (StringCaseEqual(directive, kModPagespeedFetchWithGzip)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
@@ -1839,6 +1851,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Under construction. Do not use"),
   APACHE_CONFIG_OPTION(kModPagespeedFetcherTimeoutMs,
         "Set internal fetcher timeout in milliseconds"),
+  APACHE_CONFIG_OPTION(kModPagespeedFetchHttps,
+        "Controls direct fetching of HTTPS resources.  Value is "
+        "comma-separated list of keywords: " SERF_HTTPS_KEYWORDS),
   APACHE_CONFIG_OPTION(kModPagespeedFetchProxy, "Set the fetch proxy"),
   APACHE_CONFIG_OPTION(kModPagespeedFetchWithGzip,
                        "Request http content from origin servers using gzip"),

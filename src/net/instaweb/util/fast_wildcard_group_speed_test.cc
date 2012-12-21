@@ -17,6 +17,7 @@
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
 #include "base/logging.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/benchmark.h"
 #include "net/instaweb/util/public/fast_wildcard_group.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -43,34 +44,48 @@ class UrlBlacklistTest {
     switch (size) {
       case 14:
         Disallow("*js_tinyMCE*");  // js_tinyMCE.js
+        FALLTHROUGH_INTENDED;
       case 13:
         Disallow("*tiny_mce*");
+        FALLTHROUGH_INTENDED;
       case 12:
         Disallow("*tinymce*");
+        FALLTHROUGH_INTENDED;
       case 11:
         Disallow("*scriptaculous.js*");
+        FALLTHROUGH_INTENDED;
       case 10:
         Disallow("*connect.facebook.net/*");
+        FALLTHROUGH_INTENDED;
       case 9:
         Disallow("*ckeditor*");
+        FALLTHROUGH_INTENDED;
       case 8:
         Disallow("*//ajax.googleapis.com/ajax/libs/*");
+        FALLTHROUGH_INTENDED;
       case 7:
         Disallow("*//pagead2.googlesyndication.com/pagead/show_ads.js*");
+        FALLTHROUGH_INTENDED;
       case 6:
         Disallow("*//partner.googleadservices.com/gampad/google_service.js*");
+        FALLTHROUGH_INTENDED;
       case 5:
         Disallow("*//platform.twitter.com/widgets.js*");
+        FALLTHROUGH_INTENDED;
       case 4:
         Disallow("*//s7.addthis.com/js/250/addthis_widget.js*");
+        FALLTHROUGH_INTENDED;
       case 3:
         Disallow("*//www.google.com/coop/cse/brand*");
+        FALLTHROUGH_INTENDED;
       case 2:
         Disallow("*//www.google-analytics.com/urchin.js*");
+        FALLTHROUGH_INTENDED;
       case 1:
         Disallow("*//www.googleadservices.com/pagead/conversion.js*");
+        FALLTHROUGH_INTENDED;
       default:
-        {}  // Fall through
+        FALLTHROUGH_INTENDED;
     }
   }
   ~UrlBlacklistTest() { }

@@ -541,9 +541,16 @@ SerfUrlAsyncFetcher* ApacheRewriteDriverFactory::GetSerfFetcher(
     serf->set_list_outstanding_urls_on_error(list_outstanding_urls_on_error_);
     serf->set_fetch_with_gzip(fetch_with_gzip_);
     serf->set_track_original_content_length(track_original_content_length_);
+    serf->SetHttpsOptions(https_options_);
     iter->second = serf;
   }
   return iter->second;
+}
+
+bool ApacheRewriteDriverFactory::SetHttpsOptions(StringPiece directive,
+                                                 GoogleString* error_message) {
+  directive.CopyToString(&https_options_);
+  return SerfUrlAsyncFetcher::ValidateHttpsOptions(directive, error_message);
 }
 
 // TODO(jmarantz): make this per-vhost.

@@ -1916,21 +1916,19 @@ ResourcePtr RewriteDriver::CreateInputResourceUnchecked(const GoogleUrl& url) {
       // If the scheme is https and the fetcher doesn't support https, map
       // the URL to what will ultimately be fetched to see if that will be
       // http, in which case the fetcher will be able to handle it.
-      // TODO(matterbury): If/when we support origin mapping TO https this
-      // test will need fixing to always map the origin.
-      if (url.SchemeIs("https") && !url_async_fetcher_->SupportsHttps()) {
-        GoogleString mapped_url;
-        bool is_proxy = false;
-        options()->domain_lawyer()->MapOriginUrl(url, &mapped_url, &is_proxy);
-        GoogleUrl mapped_gurl(mapped_url);
-        if (!mapped_gurl.SchemeIs("http")) {
-          message_handler()->Message(
-              kInfo, "Cannot fetch url '%s': as https is not supported",
-              url.spec_c_str());
-          return resource;
-        }
+      GoogleString mapped_url;
+      bool is_proxy = false;
+      options()->domain_lawyer()->MapOriginUrl(url, &mapped_url, &is_proxy);
+      GoogleUrl mapped_gurl(mapped_url);
+      if (mapped_gurl.SchemeIs("http") ||
+          (mapped_gurl.SchemeIs("https") &&
+           url_async_fetcher_->SupportsHttps())) {
+        resource.reset(new UrlInputResource(this, options(), type, url_string));
+      } else {
+        message_handler()->Message(
+            kInfo, "Cannot fetch url '%s': as %s is not supported",
+            url.spec_c_str(), mapped_gurl.Scheme().as_string().c_str());
       }
-      resource.reset(new UrlInputResource(this, options(), type, url_string));
     }
   } else {
     // Note: Valid user-content can leave us here.

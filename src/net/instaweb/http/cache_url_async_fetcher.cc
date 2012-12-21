@@ -235,7 +235,7 @@ class CacheFindCallback : public HTTPCache::Callback {
           // we will refetch the resource as we would for kNotFound.
           //
           // For example, we should do this for fetches that are being proxied.
-          // fall through
+          FALLTHROUGH_INTENDED;
         }
       case HTTPCache::kNotFound: {
         VLOG(1) << "Did not find in cache: " << url_;
@@ -374,7 +374,7 @@ void CacheUrlAsyncFetcher::Fetch(
       // response, at this point we do not allow caching of HEAD responses from
       // the origin, so mark the "original" resource as uncacheable.
       base_fetch->log_record()->SetIsOriginalResourceCacheable(false);
-      // Fall through.
+      FALLTHROUGH_INTENDED;
     case RequestHeaders::kGet:
       {
         CacheFindCallback* find_callback =

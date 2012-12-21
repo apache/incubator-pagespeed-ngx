@@ -184,7 +184,7 @@ TEST_F(CssFilterTestCustomOptions, CssPreserveUrls) {
   options()->set_css_preserve_urls(true);
   CssFilterTest::SetUp();
   // Verify that preserve had a chance to forbid some filters.
-  EXPECT_EQ(false, options()->Enabled(RewriteOptions::kInlineCss));
+  EXPECT_FALSE(options()->Enabled(RewriteOptions::kInlineCss));
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kInputStyle, 100);
 
   // The URL shouldn't change.
