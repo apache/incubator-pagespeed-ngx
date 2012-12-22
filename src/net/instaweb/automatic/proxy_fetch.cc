@@ -927,15 +927,14 @@ void ProxyFetch::ExecuteQueued() {
   }
 
   if (!parse_text_called_) {
-    if (request_context().get() != NULL) {
-      ScopedMutex lock(log_record()->mutex());
-      TimingInfo* timing_info =
-          log_record()->logging_info()->mutable_timing_info();
-      if (timing_info->has_request_start_ms()) {
-        timing_info->set_time_to_start_parse_ms(
-            server_context_->timer()->NowMs() -
-                timing_info->request_start_ms());
-      }
+    DCHECK(request_context().get() != NULL);
+    ScopedMutex lock(log_record()->mutex());
+    TimingInfo* timing_info =
+        log_record()->logging_info()->mutable_timing_info();
+    if (timing_info->has_request_start_ms()) {
+      timing_info->set_time_to_start_parse_ms(
+          server_context_->timer()->NowMs() -
+              timing_info->request_start_ms());
     }
     parse_text_called_ = true;
   }
