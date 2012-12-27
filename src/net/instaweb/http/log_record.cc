@@ -108,24 +108,14 @@ void LogRecord::SetTimingFetchMs(int64 ms) {
   logging_info()->mutable_timing_info()->set_fetch_ms(ms);
 }
 
+void LogRecord::SetBlinkInfo(const GoogleString& user_agent) {
+  ScopedMutex lock(mutex_.get());
+  SetBlinkInfoImpl(user_agent);
+}
+
 bool LogRecord::WriteLog() {
   ScopedMutex lock(mutex_.get());
   return WriteLogImpl();
-}
-
-bool LogRecord::WriteLogForBlink(const GoogleString& user_agent) {
-  ScopedMutex lock(mutex_.get());
-  return WriteLogForBlinkImpl(user_agent);
-}
-
-bool LogRecord::WriteLogWhileLocked() {
-  mutex_->DCheckLocked();
-  return WriteLogImpl();
-}
-
-bool LogRecord::WriteLogForBlinkWhileLocked(const GoogleString& user_agent) {
-  mutex_->DCheckLocked();
-  return WriteLogForBlinkImpl(user_agent);
 }
 
 GoogleString LogRecord::ConcatenatedRewriterString() {
