@@ -381,7 +381,9 @@ class FlakyFakeUrlNamer : public FakeUrlNamer {
 class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
  public:
   FakeBlinkCriticalLineDataFinder()
-      : num_compute_calls_(0), pcache_(NULL) {}
+      : expect_diff_update_mismatch_(false),
+        num_compute_calls_(0),
+        pcache_(NULL) {}
 
   void set_property_cache(PropertyCache* pcache) { pcache_ = pcache; }
 
@@ -444,11 +446,22 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
     pcache_->WriteCohort(cohort, page);
   }
 
+  virtual bool UpdateDiffInfo(
+      bool is_diff, int64 now_ms, RewriteDriver* rewrite_driver) {
+    EXPECT_EQ(expect_diff_update_mismatch_, is_diff);
+    return false;
+  }
+
+  void set_expect_diff_update_mismatch(bool expect_diff_update_mismatch) {
+    expect_diff_update_mismatch_ = expect_diff_update_mismatch;
+  }
+
   int num_compute_calls() { return num_compute_calls_; }
 
   GoogleString& html_content() { return html_content_; }
 
  private:
+  bool expect_diff_update_mismatch_;
   int num_compute_calls_;
   PropertyCache* pcache_;
   GoogleString html_content_;
@@ -997,6 +1010,8 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
 
     // Hashes not set. Results in mismatches.
     SetBlinkCriticalLineData(true, "", "");
+    fake_blink_critical_line_data_finder_->set_expect_diff_update_mismatch(
+        true);
     FetchFromProxyWaitForBackground(
         "text.html", true, &text, &response_headers);
 
@@ -1021,6 +1036,8 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     ClearStats();
     // Hashes set. No mismatches.
     SetBlinkCriticalLineData(true, "5SmNjVuPwO", "iWAZTRzhFW");
+    fake_blink_critical_line_data_finder_->set_expect_diff_update_mismatch(
+        false);
 
     FetchFromProxyWaitForBackground(
         "text.html", true, &text, &response_headers);
@@ -1071,6 +1088,8 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     SetFetchResponse("http://test.com/text.html", response_headers_,
                      kHtmlInputWithExtraAttribute);
     SetBlinkCriticalLineData(true, "5SmNjVuPwO", "iWAZTRzhFW");
+    fake_blink_critical_line_data_finder_->set_expect_diff_update_mismatch(
+        !use_smart_diff);
     FetchFromProxyWaitForBackground(
         "text.html", true, &text, &response_headers);
 

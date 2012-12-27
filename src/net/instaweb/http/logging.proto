@@ -45,7 +45,7 @@ message TimingInfo  {
 }
 
 // This proto stores all Blink related information.
-// Next id for BlinkInfo : 7
+// Next id for BlinkInfo : 8
 message BlinkInfo {
   enum BlinkRequestFlow {
     BLINK_CACHE_HIT = 1;
@@ -81,6 +81,9 @@ message BlinkInfo {
 
   // Tracks whether html change detection smart_diff found a match or not.
   optional bool html_smart_diff_match = 6;
+
+  // Tracks whether we hit the #mismatches threshold for blacklisting.
+  optional bool mismatch_blacklist_threshold_exceeded = 7;
 }
 
 // This proto stores information related to metadata cache lookups.

@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_BLINK_CRITICAL_LINE_DATA_FINDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_BLINK_CRITICAL_LINE_DATA_FINDER_H_
 
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -53,6 +54,9 @@ class BlinkCriticalLineDataFinder {
       RewriteDriver* driver);
 
   virtual void PropagateCacheDeletes(const GoogleString& key);
+
+  virtual bool UpdateDiffInfo(
+      bool is_diff, int64 now_ms, RewriteDriver* rewrite_driver);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BlinkCriticalLineDataFinder);

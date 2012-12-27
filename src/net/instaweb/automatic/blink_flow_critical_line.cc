@@ -417,24 +417,27 @@ class CriticalLineFetch : public AsyncFetch {
           (computed_hash_ !=
               blink_critical_line_data_->hash());
     }
+    int64 now_ms = server_context_->timer()->NowMs();
+    PropertyPage* page = rewrite_driver_->property_page();
+    PropertyCache* property_cache =
+        rewrite_driver_->server_context()->page_property_cache();
+    const PropertyCache::Cohort* cohort =
+        property_cache->GetCohort(BlinkUtil::kBlinkCohort);
+    bool diff_info_updated =
+        server_context_->blink_critical_line_data_finder()->UpdateDiffInfo(
+            recompute_critical_line, now_ms, rewrite_driver_);
     if (options_->enable_blink_html_change_detection() &&
         recompute_critical_line) {
       num_blink_html_mismatches_cache_deletes_->IncBy(1);
-      const PropertyCache::Cohort* cohort =
-          rewrite_driver_->server_context()->page_property_cache()->
-              GetCohort(BlinkUtil::kBlinkCohort);
-      PropertyPage* page = rewrite_driver_->property_page();
       if (options_->propagate_blink_cache_deletes()) {
         const GoogleString cache_key =
-            rewrite_driver_->server_context()->page_property_cache()
-                ->CacheKey(page->key(), cohort);
+            property_cache->CacheKey(page->key(), cohort);
         server_context_->blink_critical_line_data_finder()->
             PropagateCacheDeletes(cache_key);
       }
       page->DeleteProperty(
           cohort, BlinkUtil::kBlinkCriticalLineDataPropertyName);
-      rewrite_driver_->server_context()->
-          page_property_cache()->WriteCohort(cohort, page);
+      property_cache->WriteCohort(cohort, page);
       CreateCriticalLineComputationDriverAndRewrite();
     } else if (options_->enable_blink_html_change_detection() ||
                computed_hash_ != blink_critical_line_data_->hash() ||
@@ -442,12 +445,10 @@ class CriticalLineFetch : public AsyncFetch {
                blink_critical_line_data_->hash_smart_diff()) {
       blink_critical_line_data_->set_hash(computed_hash_);
       blink_critical_line_data_->set_hash_smart_diff(computed_hash_smart_diff_);
-      blink_critical_line_data_->set_last_diff_timestamp_ms(
-          server_context_->timer()->NowMs());
+      // TODO(sriharis):  Get rid of the following field since we now always run
+      // with propagate.
+      blink_critical_line_data_->set_last_diff_timestamp_ms(now_ms);
       // TODO(rahulbansal): Move the code to write to pcache to blink_util.cc
-      PropertyCache* property_cache =
-          rewrite_driver_->server_context()->page_property_cache();
-      PropertyPage* page = rewrite_driver_->property_page();
       const PropertyCache::Cohort* cohort = property_cache->GetCohort(
           BlinkUtil::kBlinkCohort);
       GoogleString buf;
@@ -458,6 +459,9 @@ class CriticalLineFetch : public AsyncFetch {
       property_cache->WriteCohort(cohort, page);
       delete this;
     } else {
+      if (diff_info_updated) {
+        property_cache->WriteCohort(cohort, page);
+      }
       delete this;
     }
   }
