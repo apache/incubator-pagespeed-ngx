@@ -392,6 +392,7 @@ void RewriteDriver::Clear() {
   critical_images_.reset(NULL);
   css_critical_images_.reset(NULL);
   updated_critical_images_ = false;
+  critical_line_info_.reset(NULL);
 
   if (owns_property_page_) {
     delete property_page_;
