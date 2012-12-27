@@ -93,9 +93,9 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_PROPERTY_CACHE_H_
 
 #include <map>
-#include <set>
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -103,9 +103,9 @@
 namespace net_instaweb {
 
 class AbstractMutex;
-class CacheInterface;
 class PropertyValueProtobuf;
 class PropertyPage;
+class Statistics;
 class ThreadSystem;
 class Timer;
 
@@ -180,17 +180,28 @@ class PropertyCache {
   // same expected frequency.  The PropertyCache object keeps track of
   // the known set of Cohorts but does not actually keep any data for
   // them.  The data only arrives when we do a lookup.
-  //
-  // Note: if you add any new methods, consider using containment
-  // rather than inheritance as GoogleString lacks a virtual dtor.
-  //
-  // Note that the PropertyCache::Cohort is just a predefined label
-  // used for organizing properties.  The Cohort object doesn't
-  // contain any data itself.
-  class Cohort : public GoogleString {};
+  // Each cohort uses a different CacheInterface so that we can track cache
+  // metrics on a per cohort basis.
+  class Cohort {
+   public:
+    // Takes ownership of the cache.
+    Cohort(StringPiece name, CacheInterface* cache)
+        : cache_(cache) {
+      name.CopyToString(&name_);
+    }
+    const GoogleString& name() const { return name_; }
+    CacheInterface* cache() const { return cache_.get(); }
+
+   private:
+    scoped_ptr<CacheInterface> cache_;
+    GoogleString name_;
+
+    DISALLOW_COPY_AND_ASSIGN(Cohort);
+  };
 
   PropertyCache(const GoogleString& cache_key_prefix,
-                CacheInterface* cache, Timer* timer, ThreadSystem* threads);
+                CacheInterface* cache, Timer* timer,
+                Statistics* stats, ThreadSystem* threads);
   ~PropertyCache();
 
   // Reads the all the PropertyValues in all the known Cohorts from
@@ -234,7 +245,8 @@ class PropertyCache {
     mutations_per_1000_writes_threshold_ = x;
   }
 
-  // Establishes a new Cohort for this property cache.
+  // Establishes a new Cohort for this property cache. Note that you must call
+  // InitCohortStats prior to calling AddCohort.
   const Cohort* AddCohort(const StringPiece& cohort_name);
 
   // Returns the specified Cohort* or NULL if not found.  Cohorts must
@@ -258,17 +270,22 @@ class PropertyCache {
 
   const CacheInterface* cache_backend() const { return cache_; }
 
-  // TODO(jmarantz): add a some statistics tracking for stomps, stability, etc.
+  // Initialize stats for the specified cohort.
+  static void InitCohortStats(const GoogleString& cohort,
+                              Statistics* statistics);
+
+  // TODO(jmarantz): add some statistics tracking for stomps, stability, etc.
 
  private:
   GoogleString cache_key_prefix_;
   CacheInterface* cache_;
   Timer* timer_;
+  Statistics* stats_;
   ThreadSystem* thread_system_;
 
   int mutations_per_1000_writes_threshold_;
-  typedef std::set<Cohort> CohortSet;
-  CohortSet cohorts_;
+  typedef std::map<GoogleString, Cohort*> CohortMap;
+  CohortMap cohorts_;
 
   bool enabled_;
 

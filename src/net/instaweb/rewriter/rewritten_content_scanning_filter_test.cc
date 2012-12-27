@@ -59,8 +59,8 @@ class RewrittenContentScanningFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
     rewrite_driver()->AddOwnedPostRenderFilter(
         new RewrittenContentScanningFilter(rewrite_driver_));
-    server_context()->page_property_cache()->AddCohort(
-        RewriteDriver::kDomCohort);
+    SetupCohort(server_context()->page_property_cache(),
+                RewriteDriver::kDomCohort);
     server_context()->page_property_cache()->set_enabled(true);
     MockPage* page = new MockPage(factory_->thread_system()->NewMutex());
     rewrite_driver()->set_property_page(page);

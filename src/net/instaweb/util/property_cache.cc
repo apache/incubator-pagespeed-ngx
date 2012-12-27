@@ -24,9 +24,11 @@
 #include "base/logging.h"
 #include "net/instaweb/util/property_cache.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/cache_copy.h"
+#include "net/instaweb/util/public/cache_stats.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/shared_string.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
@@ -60,6 +62,10 @@ inline uint32 NumberOfSetBits32(uint32 i) {
 inline int NumberOfSetBits64(uint64 i) {
   return (NumberOfSetBits32(static_cast<uint32>(i)) +
           NumberOfSetBits32(static_cast<uint32>(i >> 32)));
+}
+
+GoogleString GetStatsPrefix(const GoogleString& cohort_name) {
+  return StrCat("pcache-cohorts-", cohort_name);
 }
 
 }  // namespace
@@ -104,10 +110,11 @@ class PropertyPage::CallbackCollector {
 
 PropertyCache::PropertyCache(const GoogleString& cache_key_prefix,
                              CacheInterface* cache, Timer* timer,
-                             ThreadSystem* threads)
+                             Statistics* stats, ThreadSystem* threads)
     : cache_key_prefix_(cache_key_prefix),
       cache_(cache),
       timer_(timer),
+      stats_(stats),
       thread_system_(threads),
       mutations_per_1000_writes_threshold_(
           kDefaultMutationsPer1000WritesThreshold),
@@ -115,6 +122,7 @@ PropertyCache::PropertyCache(const GoogleString& cache_key_prefix,
 }
 
 PropertyCache::~PropertyCache() {
+  STLDeleteValues(&cohorts_);
 }
 
 // Helper class to receive low-level cache callbacks, decode them
@@ -291,7 +299,7 @@ int64 PropertyValue::write_timestamp_ms() const {
 
 GoogleString PropertyCache::CacheKey(const StringPiece& key,
                                      const Cohort* cohort) const {
-  return StrCat(cache_key_prefix_, key, "@", *cohort);
+  return StrCat(cache_key_prefix_, key, "@", cohort->name());
 }
 
 void PropertyCache::Read(PropertyPage* page) const {
@@ -299,12 +307,12 @@ void PropertyCache::Read(PropertyPage* page) const {
     PropertyPage::CallbackCollector* collector =
         new PropertyPage::CallbackCollector(
             page, cohorts_.size(), thread_system_->NewMutex());
-    for (CohortSet::const_iterator p = cohorts_.begin(), e = cohorts_.end();
+    for (CohortMap::const_iterator p = cohorts_.begin(), e = cohorts_.end();
          p != e; ++p) {
-      const Cohort& cohort = *p;
-      const GoogleString cache_key = CacheKey(page->key(), &cohort);
-      cache_->Get(cache_key,
-                  new CacheInterfaceCallback(page, &cohort, collector));
+      const Cohort* cohort = p->second;
+      const GoogleString cache_key = CacheKey(page->key(), cohort);
+      cohort->cache()->Get(
+          cache_key, new CacheInterfaceCallback(page, cohort, collector));
     }
   } else {
     page->CallDone(false);
@@ -350,12 +358,12 @@ bool PropertyValue::IsIndexOfLeastSetBitSmaller(uint64 value, int index) {
 void PropertyCache::WriteCohort(const PropertyCache::Cohort* cohort,
                                 PropertyPage* page) const {
   if (enabled_) {
-    DCHECK(GetCohort(*cohort) == cohort);
+    DCHECK(GetCohort(cohort->name()) == cohort);
     GoogleString value;
     if (page->EncodeCacheEntry(cohort, &value) ||
         page->HasPropertyValueDeleted(cohort)) {
       const GoogleString cache_key = CacheKey(page->key(), cohort);
-      cache_->PutSwappingString(cache_key, &value);
+      cohort->cache()->PutSwappingString(cache_key, &value);
     }
   }
 }
@@ -374,27 +382,35 @@ bool PropertyCache::IsImminentlyExpiring(const PropertyValue* property_value,
 
 const PropertyCache::Cohort* PropertyCache::AddCohort(
     const StringPiece& cohort_name) {
-  Cohort cohort_prototype;
-  cohort_name.CopyToString(&cohort_prototype);
-  std::pair<CohortSet::iterator, bool> insertion = cohorts_.insert(
-      cohort_prototype);
-  const Cohort& cohort = *insertion.first;
-  return &cohort;
+  GoogleString cohort_string;
+  cohort_name.CopyToString(&cohort_string);
+  std::pair<CohortMap::iterator, bool> insertions = cohorts_.insert(
+      make_pair(cohort_string, static_cast<Cohort*>(NULL)));
+  if (insertions.second) {
+    // Create a new CacheStats for every cohort so that we can track cache
+    // statistics independently for every cohort.
+    CacheInterface* cache = new CacheStats(
+        GetStatsPrefix(cohort_string), new CacheCopy(cache_), timer_, stats_);
+    insertions.first->second = new Cohort(cohort_name, cache);
+  }
+  return insertions.first->second;
 }
 
 const PropertyCache::Cohort* PropertyCache::GetCohort(
     const StringPiece& cohort_name) const {
-  // Since cohorts_ is a set<Cohort>, which is not the same C++ type as
-  // a StringSet, we must actually construct a Cohort as a prototype in
-  // order to look one up.
-  Cohort cohort_prototype;
-  cohort_name.CopyToString(&cohort_prototype);
-  CohortSet::const_iterator p = cohorts_.find(cohort_prototype);
+  GoogleString cohort_string;
+  cohort_name.CopyToString(&cohort_string);
+  CohortMap::const_iterator p = cohorts_.find(cohort_string);
   if (p == cohorts_.end()) {
     return NULL;
   }
-  const Cohort& cohort = *p;
-  return &cohort;
+  const Cohort* cohort = p->second;
+  return cohort;
+}
+
+void PropertyCache::InitCohortStats(const GoogleString& cohort,
+                                    Statistics* statistics) {
+  CacheStats::InitStats(GetStatsPrefix(cohort), statistics);
 }
 
 PropertyPage::~PropertyPage() {

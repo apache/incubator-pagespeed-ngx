@@ -151,7 +151,7 @@ class ImageRewriteTest : public RewriteTestBase {
   virtual void SetUp() {
     PropertyCache* pcache = page_property_cache();
     server_context_->set_enable_property_cache(true);
-    pcache->AddCohort(RewriteDriver::kDomCohort);
+    SetupCohort(pcache, RewriteDriver::kDomCohort);
     RewriteTestBase::SetUp();
     MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
                                   kTestDomain);

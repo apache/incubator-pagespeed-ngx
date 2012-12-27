@@ -955,7 +955,7 @@ TEST_F(ServerContextTest, TestHandleBeacon) {
 TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
   PropertyCache* property_cache = server_context()->page_property_cache();
   property_cache->set_enabled(true);
-  property_cache->AddCohort(BeaconCriticalImagesFinder::kBeaconCohort);
+  SetupCohort(property_cache, BeaconCriticalImagesFinder::kBeaconCohort);
   const PropertyCache::Cohort* cohort = property_cache->GetCohort(
       BeaconCriticalImagesFinder::kBeaconCohort);
   MockPage page(factory_->thread_system()->NewMutex(), kUrlPrefix);

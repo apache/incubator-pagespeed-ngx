@@ -478,10 +478,10 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
 
   virtual void SetupCaches(ServerContext* resource_manager) {
     TestRewriteDriverFactory::SetupCaches(resource_manager);
-    resource_manager->page_property_cache()->AddCohort(
-        RewriteDriver::kDomCohort);
-    resource_manager->page_property_cache()->AddCohort(
-        BlinkCriticalLineDataFinder::kBlinkCohort);
+    SetupCohort(resource_manager->page_property_cache(),
+                RewriteDriver::kDomCohort);
+    SetupCohort(resource_manager->page_property_cache(),
+                BlinkCriticalLineDataFinder::kBlinkCohort);
     resource_manager->set_enable_property_cache(true);
   }
 

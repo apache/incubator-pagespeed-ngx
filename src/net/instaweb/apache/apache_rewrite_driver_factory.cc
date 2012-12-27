@@ -827,6 +827,9 @@ void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
   CacheStats::InitStats(ApacheCache::kFileCache, statistics);
   CacheStats::InitStats(ApacheCache::kLruCache, statistics);
   CacheStats::InitStats(kMemcached, statistics);
+  PropertyCache::InitCohortStats(BeaconCriticalImagesFinder::kBeaconCohort,
+                                 statistics);
+  PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
   statistics->AddVariable(kShutdownCount);
 }
 

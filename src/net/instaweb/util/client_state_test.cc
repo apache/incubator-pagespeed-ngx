@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -53,11 +54,14 @@ class ClientStateTest : public testing::Test {
       : timer_(MockTimer::kApr_5_2010_ms),
         lru_cache_(kMaxCacheSizeBytes),
         thread_system_(ThreadSystem::CreateThreadSystem()),
-        property_cache_("test/", &lru_cache_, &timer_, thread_system_.get()) {
+        property_cache_("test/", &lru_cache_, &timer_, &stats_,
+                        thread_system_.get()) {
+    PropertyCache::InitCohortStats(ClientState::kClientStateCohort, &stats_);
     cohort_ = property_cache_.AddCohort(ClientState::kClientStateCohort);
   }
 
   MockTimer timer_;
+  SimpleStats stats_;
   ClientState client_state_;
   LRUCache lru_cache_;
   scoped_ptr<ThreadSystem> thread_system_;

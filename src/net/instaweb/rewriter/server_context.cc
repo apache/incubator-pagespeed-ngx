@@ -1070,9 +1070,9 @@ void ServerContext::MakePropertyCaches(CacheInterface* backend_cache) {
 }
 
 PropertyCache* ServerContext::MakePropertyCache(
-    const GoogleString& cache_key_prefix, CacheInterface *cache) const {
+    const GoogleString& cache_key_prefix, CacheInterface* cache) const {
   PropertyCache* pcache = new PropertyCache(
-      cache_key_prefix, cache, timer(), thread_system_);
+      cache_key_prefix, cache, timer(), statistics(), thread_system_);
   pcache->set_enabled(enable_property_cache_);
   return pcache;
 }

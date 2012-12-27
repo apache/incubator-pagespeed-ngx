@@ -43,6 +43,7 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/mock_time_cache.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"  // for StrCat, etc
@@ -277,6 +278,12 @@ void TestRewriteDriverFactory::ApplyPlatformSpecificConfiguration(
 
 void TestRewriteDriverFactory::AdvanceTimeMs(int64 delta_ms) {
   mock_scheduler_->AdvanceTimeMs(delta_ms);
+}
+
+void TestRewriteDriverFactory::SetupCohort(PropertyCache* cache,
+                                           const GoogleString& cohort_name) {
+  PropertyCache::InitCohortStats(cohort_name, statistics());
+  cache->AddCohort(cohort_name);
 }
 
 TestRewriteDriverFactory::CreateFilterCallback::~CreateFilterCallback() {

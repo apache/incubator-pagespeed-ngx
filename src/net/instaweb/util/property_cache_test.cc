@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -49,7 +50,10 @@ class PropertyCacheTest : public testing::Test {
       : lru_cache_(kMaxCacheSize),
         timer_(MockTimer::kApr_5_2010_ms),
         thread_system_(ThreadSystem::CreateThreadSystem()),
-        property_cache_("test/", &lru_cache_, &timer_, thread_system_.get()) {
+        property_cache_("test/", &lru_cache_, &timer_, &stats_,
+                        thread_system_.get()) {
+    PropertyCache::InitCohortStats(kCohortName1, &stats_);
+    PropertyCache::InitCohortStats(kCohortName2, &stats_);
     cohort_ = property_cache_.AddCohort(kCohortName1);
   }
 
@@ -142,6 +146,7 @@ class PropertyCacheTest : public testing::Test {
 
   LRUCache lru_cache_;
   MockTimer timer_;
+  SimpleStats stats_;
   scoped_ptr<ThreadSystem> thread_system_;
   PropertyCache property_cache_;
   const PropertyCache::Cohort* cohort_;
@@ -265,7 +270,7 @@ TEST_F(PropertyCacheTest, DropOldWrites) {
   // Now imagine we are on a second server, which is trying to write
   // an older value into the same physical cache.  Make sure we don't let it.
   MockTimer timer2(MockTimer::kApr_5_2010_ms - 100);
-  PropertyCache property_cache2("test/", &lru_cache_, &timer2,
+  PropertyCache property_cache2("test/", &lru_cache_, &timer2, &stats_,
                                 thread_system_.get());
   property_cache2.AddCohort(kCohortName1);
   const PropertyCache::Cohort* cohort2 = property_cache2.GetCohort(
@@ -511,7 +516,8 @@ TEST_F(PropertyCacheTest, DeleteProperty) {
     EXPECT_FALSE(property->has_value());
 
     // Unknown Cohort. No crashes.
-    scoped_ptr<PropertyCache::Cohort> unknown_cohort(new PropertyCache::Cohort);
+    scoped_ptr<PropertyCache::Cohort> unknown_cohort(
+        new PropertyCache::Cohort("unknown_cohort", NULL));
     page.DeleteProperty(cohort_, kPropertyName2);
     EXPECT_TRUE(page.valid());
   }

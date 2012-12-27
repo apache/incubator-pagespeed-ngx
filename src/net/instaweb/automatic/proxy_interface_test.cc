@@ -874,9 +874,9 @@ class ProxyInterfaceTest : public RewriteTestBase {
   virtual void SetUp() {
     RewriteOptions* options = server_context()->global_options();
     server_context_->set_enable_property_cache(true);
-    page_property_cache()->AddCohort(RewriteDriver::kDomCohort);
-    server_context_->client_property_cache()->AddCohort(
-        ClientState::kClientStateCohort);
+    SetupCohort(page_property_cache(), RewriteDriver::kDomCohort);
+    SetupCohort(server_context_->client_property_cache(),
+                ClientState::kClientStateCohort);
     options->ClearSignatureForTesting();
     options->EnableFilter(RewriteOptions::kRewriteCss);
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);

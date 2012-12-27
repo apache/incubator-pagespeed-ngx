@@ -533,6 +533,11 @@ class RewriteTestBase : public RewriteOptionsTestBase {
       StringPiece expected_contents,
       int64 expected_expiration_ms);
 
+  // Setup statistics for the given cohort and add it to the give PropertyCache.
+  void SetupCohort(PropertyCache* cache, const GoogleString& cohort) {
+    factory()->SetupCohort(cache, cohort);
+  }
+
  protected:
   void Init();
 

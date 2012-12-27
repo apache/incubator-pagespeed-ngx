@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/usage_data_reporter.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_batcher.h"
+#include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/filename_encoder.h"
@@ -46,6 +47,7 @@
 #include "net/instaweb/util/public/hostname_util.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -566,6 +568,7 @@ void RewriteDriverFactory::InitStats(Statistics* statistics) {
   RewriteStats::InitStats(statistics);
   CriticalImagesFinder::InitStats(statistics);
   CacheBatcher::InitStats(statistics);
+  PropertyCache::InitCohortStats(ClientState::kClientStateCohort, statistics);
 }
 
 void RewriteDriverFactory::Initialize() {

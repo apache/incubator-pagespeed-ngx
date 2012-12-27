@@ -126,8 +126,8 @@ class BlinkFilterTest : public RewriteTestBase {
   void PopulatePropertyCache() {
     PropertyCache* property_cache = page_property_cache();
     property_cache->set_enabled(true);
-    property_cache->AddCohort(BlinkFilter::kBlinkCohort);
-    property_cache->AddCohort(RewriteDriver::kDomCohort);
+    SetupCohort(property_cache, BlinkFilter::kBlinkCohort);
+    SetupCohort(property_cache, RewriteDriver::kDomCohort);
 
     MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
                                   kRequestUrl);
