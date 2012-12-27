@@ -40,11 +40,13 @@
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
@@ -114,6 +116,9 @@ const char FlushEarlyFlow::kFlushEarlyRewriteLatencyMs[] =
     "flush_early_rewrite_latency_ms";
 const char FlushEarlyFlow::kNumFlushEarlyHttpStatusCodeDeemedUnstable[] =
     "num_flush_early_http_status_code_deemed_unstable";
+const char FlushEarlyFlow::kRedirectPageJs[] =
+    "<script type=\"text/javascript\">window.location.replace(\"%s\")"
+    "</script>";
 
 // TODO(mmohabey): Do not flush early if the html is cacheable.
 // If this is called then the content type must be html.
@@ -129,17 +134,21 @@ const char FlushEarlyFlow::kNumFlushEarlyHttpStatusCodeDeemedUnstable[] =
 // from ProxyFetch, after which it starts streaming bytes from ProxyFetch.
 class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
  public:
-  FlushEarlyAsyncFetch(AsyncFetch* fetch, AbstractMutex* mutex)
+  FlushEarlyAsyncFetch(AsyncFetch* fetch, AbstractMutex* mutex,
+                       MessageHandler* message_handler,
+                       const GoogleString& url)
       : AsyncFetch(fetch->request_context()),
         base_fetch_(fetch),
         mutex_(mutex),
+        message_handler_(message_handler),
+        url_(url),
         flush_early_flow_done_(false),
         flushed_early_(false),
         headers_complete_called_(false),
         flush_called_(false),
         done_called_(false),
         done_value_(false),
-        flush_handler_(NULL) {
+        non_ok_status_code_(false) {
     set_request_headers(fetch->request_headers());
   }
 
@@ -153,15 +162,18 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
       if (!flushed_early && headers_complete_called_) {
         base_fetch_->response_headers()->CopyFrom(*response_headers());
       }
-      // Write out all the buffered content and call Flush and Done if it were
-      // called earlier.
-      if (!buffered_content_.empty()) {
-        base_fetch_->Write(buffered_content_, NULL);
-        buffered_content_.clear();
-      }
-      if (flush_called_) {
-        DCHECK(flush_handler_ != NULL);
-        base_fetch_->Flush(flush_handler_);
+      if (flushed_early && non_ok_status_code_) {
+        SendRedirectToPsaOff();
+      } else {
+        // Write out all the buffered content and call Flush and Done if it were
+        // called earlier.
+        if (!buffered_content_.empty()) {
+          base_fetch_->Write(buffered_content_, message_handler_);
+          buffered_content_.clear();
+        }
+        if (flush_called_) {
+          base_fetch_->Flush(message_handler_);
+        }
       }
       if (done_called_) {
         base_fetch_->Done(done_value_);
@@ -182,6 +194,12 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   virtual void HandleHeadersComplete() {
     {
       ScopedMutex lock(mutex_.get());
+      non_ok_status_code_ =
+          (response_headers()->status_code() != HttpStatus::kOK);
+      if (flushed_early_ && non_ok_status_code_) {
+        SendRedirectToPsaOff();
+        return;
+      }
       if (!flush_early_flow_done_ || flushed_early_) {
         headers_complete_called_ = true;
         return;
@@ -195,6 +213,9 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler) {
     {
       ScopedMutex lock(mutex_.get());
+      if (flushed_early_ && non_ok_status_code_) {
+        return true;
+      }
       if (!flush_early_flow_done_) {
         buffered_content_.append(sp.data(), sp.size());
         return true;
@@ -208,9 +229,11 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   virtual bool HandleFlush(MessageHandler* handler) {
     {
       ScopedMutex lock(mutex_.get());
+      if (flushed_early_ && non_ok_status_code_) {
+        return true;
+      }
       if (!flush_early_flow_done_) {
         flush_called_ = true;
-        flush_handler_ = handler;
         return true;
       }
     }
@@ -232,8 +255,22 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
     delete this;
   }
 
+  void SendRedirectToPsaOff() {
+    GoogleUrl gurl(url_);
+    scoped_ptr<GoogleUrl> url_with_psa_off(gurl.CopyAndAddQueryParam(
+        RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue));
+    GoogleString escaped_url;
+    HtmlKeywords::Escape(url_with_psa_off->Spec(), &escaped_url);
+    base_fetch_->Write(StringPrintf(kRedirectPageJs, escaped_url.c_str()),
+                       message_handler_);
+    base_fetch_->Write("</head><body></body></html>", message_handler_);
+    base_fetch_->Flush(message_handler_);
+  }
+
   AsyncFetch* base_fetch_;
   scoped_ptr<AbstractMutex> mutex_;
+  MessageHandler* message_handler_;
+  GoogleString url_;
   GoogleString buffered_content_;
   bool flush_early_flow_done_;
   bool flushed_early_;
@@ -241,7 +278,7 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   bool flush_called_;
   bool done_called_;
   bool done_value_;
-  MessageHandler* flush_handler_;
+  bool non_ok_status_code_;
 
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyAsyncFetch);
 };
@@ -253,7 +290,8 @@ void FlushEarlyFlow::Start(
     ProxyFetchFactory* factory,
     ProxyFetchPropertyCallbackCollector* property_cache_callback) {
   FlushEarlyAsyncFetch* flush_early_fetch = new FlushEarlyAsyncFetch(
-      *base_fetch, driver->server_context()->thread_system()->NewMutex());
+      *base_fetch, driver->server_context()->thread_system()->NewMutex(),
+      driver->server_context()->message_handler(), url);
   FlushEarlyFlow* flow = new FlushEarlyFlow(
       url, *base_fetch, flush_early_fetch, driver, factory,
       property_cache_callback);

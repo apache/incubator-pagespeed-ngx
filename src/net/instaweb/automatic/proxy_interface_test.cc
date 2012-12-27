@@ -268,6 +268,22 @@ const char kFlushEarlyRewrittenHtmlLinkRelSubresource[] =
     " href=\"http://www.domain3.com/3.css\">"
     "</body>"
     "</html>";
+const char kFlushEarlyRewrittenHtmlWithScriptPsaOff[] =
+    "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+    "<html>"
+    "<head>"
+    "<link rel=\"subresource\" href=\"%s\"/>\n"
+    "<link rel=\"subresource\" href=\"%s\"/>\n"
+    "<link rel=\"subresource\" href=\"%s\"/>\n"
+    "<link rel=\"subresource\" href=\"%s\"/>\n"
+    "<link rel=\"subresource\" href=\"%s\"/>\n"
+    "<script type='text/javascript'>"
+    "window.mod_pagespeed_prefetch_start = Number(new Date());"
+    "window.mod_pagespeed_num_resources_prefetched = 5</script>"
+    "<script type=\"text/javascript\">"
+    "window.location.replace(\"http://test.com/?ModPagespeed=noscript\")"
+    "</script>"
+    "</head><body></body></html>";
 const char kFlushEarlyRewrittenHtmlLinkScript[] =
     "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
     "<html>"
@@ -1212,7 +1228,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
       UserAgentMatcher::PrefetchMechanism value,
       bool defer_js_enabled, bool insert_dns_prefetch) {
     return FlushEarlyRewrittenHtml(value, defer_js_enabled,
-                                   insert_dns_prefetch, false, true);
+                                   insert_dns_prefetch, false, true, false);
   }
 
   GoogleString GetDeferJsCode() {
@@ -1225,7 +1241,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
   GoogleString FlushEarlyRewrittenHtml(
       UserAgentMatcher::PrefetchMechanism value,
       bool defer_js_enabled, bool insert_dns_prefetch,
-      bool split_html_enabled, bool lazyload_enabled) {
+      bool split_html_enabled, bool lazyload_enabled, bool redirect_psa_off) {
     GoogleString rewritten_css_url_1 = Encode(kTestDomain,
                                               "cf", "0", "1.css", "css");
     GoogleString rewritten_css_url_2 = Encode(kTestDomain,
@@ -1316,6 +1332,12 @@ class ProxyInterfaceTest : public RewriteTestBase {
           rewritten_img_url_1.data(),
           StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
                        redirect_url.c_str()).c_str(),
+          rewritten_css_url_3.data());
+    } else if (redirect_psa_off) {
+      return StringPrintf(
+          kFlushEarlyRewrittenHtmlWithScriptPsaOff,
+          rewritten_css_url_1.data(), rewritten_css_url_2.data(),
+          rewritten_js_url_1.data(), rewritten_js_url_2.data(),
           rewritten_css_url_3.data());
     } else {
       GoogleString output_format;
@@ -1492,8 +1514,12 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowStatusCodeUnstable) {
       text);
 
   SetFetchResponse404(kTestDomain);
-  // Fetch again so that 404 is populated in repsonse headers
+  // Fetch again so that 404 is populated in response headers.
+  // It should redirect to ModPagespeed=noscript in this case.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  EXPECT_EQ(FlushEarlyRewrittenHtml(
+      UserAgentMatcher::kPrefetchLinkRelSubresource, false, false, false,
+      false, true), text);
 
   // Fetch the url again. This time FlushEarlyFlow should not be triggered as
   // the status code is not stable.
@@ -1517,6 +1543,18 @@ TEST_F(ProxyInterfaceTest, FlushEarlyFlowStatusCodeUnstable) {
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkRelSubresource, false, false),
       text);
+
+  // Fetch again so that 404 is populated in response headers.
+  // It should redirect to ModPagespeed=noscript in this case.
+  // This case simulates the scenario when fetch finishes before the flush
+  // early flow is done.
+  SetFetchResponse404(kTestDomain);
+  TestPropertyCacheWithHeadersAndOutput(
+       kTestDomain, true, true, true, false, false, false,
+       request_headers, &headers, &text);
+  EXPECT_EQ(FlushEarlyRewrittenHtml(
+      UserAgentMatcher::kPrefetchLinkRelSubresource, false, false, false,
+      false, true), text);
 }
 
 TEST_F(ProxyInterfaceTest, FlushEarlyFlowTestImageTag) {
@@ -1777,8 +1815,8 @@ TEST_F(ProxyInterfaceTest, SplitHtmlWithLazyloadScriptFlushedEarly) {
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkScriptTag, false, false, true, true),
-      text);
+      UserAgentMatcher::kPrefetchLinkScriptTag, false, false, true, true,
+      false), text);
 }
 
 TEST_F(ProxyInterfaceTest, SplitHtmlWithLazyloadScriptNotFlushedEarly) {
@@ -1805,8 +1843,8 @@ TEST_F(ProxyInterfaceTest, SplitHtmlWithLazyloadScriptNotFlushedEarly) {
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkScriptTag, false, false, true, false),
-      text);
+      UserAgentMatcher::kPrefetchLinkScriptTag, false, false, true, false,
+      false), text);
 }
 
 TEST_F(ProxyInterfaceTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
