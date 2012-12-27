@@ -80,18 +80,12 @@ class LogRecord  {
   void SetIsOriginalResourceCacheable(bool cacheable);
   void SetTimingRequestStartMs(int64 ms);
   void SetTimingFetchMs(int64 ms);
+  // Override SetBlinkInfoImpl if necessary.
+  void SetBlinkInfo(const GoogleString& user_agent);
 
   // Mutex-guarded log-writing operations. Derived classes should override
   // *Impl methods. Returns false if the log write attempt failed.
   bool WriteLog();
-  // Update the log record with Blink-specific information, then write the
-  // log as if WriteLog() was called.
-  bool WriteLogForBlink(const GoogleString& user_agent);
-
-  // If log-writing needs to occur in the context of an existing lock,
-  // these methods may be used. Returns false if write attempt failed.
-  bool WriteLogWhileLocked();
-  bool WriteLogForBlinkWhileLocked(const GoogleString& user_agent);
 
   // Return the mutex associated with this instance. Calling code should
   // guard reads and writes of LogRecords
@@ -115,14 +109,11 @@ class LogRecord  {
   virtual void LogAppliedRewriterImpl(const char* rewriter_id);
   // Implements finalization.
   virtual void FinalizeImpl();
+  // Implements setting Blink-specific log information; base impl is a no-op.
+  virtual void SetBlinkInfoImpl(const GoogleString& user_agent) {}
   // Implements writing a log, base implementation is a no-op. Returns false if
   // writing failed.
   virtual bool WriteLogImpl() { return true; }
-  // Implements writing the Blink log, base implementation is a no-op. Returns
-  // false if writing failed.
-  virtual bool WriteLogForBlinkImpl(const GoogleString& user_agent) {
-    return true;
-  }
 
   // True if Finalize() has been called. mutex_ guards this.
   bool finalized() { return finalized_; }

@@ -151,7 +151,10 @@ class CriticalLineFetch : public AsyncFetch {
   }
 
   virtual ~CriticalLineFetch() {
-    log_record()->WriteLogForBlink("");
+    log_record()->SetBlinkInfo("");
+    if (!log_record()->WriteLog()) {
+      LOG(WARNING) <<  "Blink GWS Logging failed for " << url_;
+    }
     rewrite_driver_->decrement_async_events_count();
     ThreadSynchronizer* sync = server_context_->thread_synchronizer();
     sync->Signal(BlinkFlowCriticalLine::kBackgroundComputationDone);
@@ -1006,11 +1009,11 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
   driver->set_is_blink_request(true);  // Mark this as a blink request.
   driver->set_serve_blink_non_critical(serve_non_critical);
   if (secondary_fetch == NULL) {
-    // TODO(marq): Consider instead implementing an UpdateBlinkInfo method
-    // on LogRecord, and then calling that followed by WriteLog, to make the
-    // operations being performed clearer.
-    log_record()->WriteLogForBlink(
+    log_record()->SetBlinkInfo(
         fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent));
+    if (!log_record()->WriteLog()) {
+      LOG(ERROR) <<  "Blink GWS Logging failed for " << url_;
+    }
   }  // else, logging will be done by secondary_fetch.
   factory_->StartNewProxyFetch(
       url_, fetch, driver, property_callback_, secondary_fetch);
