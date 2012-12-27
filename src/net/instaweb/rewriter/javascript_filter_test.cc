@@ -236,9 +236,9 @@ TEST_F(JavascriptFilterTest, JsPreserveURLsOnTest) {
   options()->EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
   options()->set_js_preserve_urls(true);
   rewrite_driver()->AddFilters();
-  EXPECT_EQ(true, options()->Enabled(RewriteOptions::kRewriteJavascript));
+  EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascript));
   // Verify that preserve had a chance to forbid some filters.
-  EXPECT_EQ(false, options()->Enabled(
+  EXPECT_FALSE(options()->Enabled(
       RewriteOptions::kCanonicalizeJavascriptLibraries));
   InitTest(100);
   // Make sure the URL doesn't change.

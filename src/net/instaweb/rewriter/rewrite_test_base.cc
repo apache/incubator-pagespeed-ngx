@@ -289,7 +289,7 @@ void RewriteTestBase::ServeResourceFromNewContext(
       resource_url, new_server_context->http_cache(), &value,
       &response_headers));
   // Initiate fetch.
-  EXPECT_EQ(true, new_rewrite_driver->FetchResource(
+  EXPECT_TRUE(new_rewrite_driver->FetchResource(
       resource_url, &response_contents));
 
   // Content should not be set until we call the callback.
@@ -298,7 +298,7 @@ void RewriteTestBase::ServeResourceFromNewContext(
 
   // After we call the callback, it should be correct.
   new_factory->CallFetcherCallbacksForDriver(new_rewrite_driver);
-  EXPECT_EQ(true, response_contents.done());
+  EXPECT_TRUE(response_contents.done());
   EXPECT_STREQ(expected_content, response_contents.buffer());
 
   // Check that stats say we took the construct resource path.

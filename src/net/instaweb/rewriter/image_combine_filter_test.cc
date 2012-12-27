@@ -352,7 +352,7 @@ TEST_F(CssImageCombineTest, ServeFiles) {
       Encode(kTestDomain, "is", "0",
              MultiUrl(kCuppaPngFile, kBikePngFile), "png");
   GoogleString output;
-  EXPECT_EQ(true, FetchResourceUrl(sprite_str, &output));
+  EXPECT_TRUE(FetchResourceUrl(sprite_str, &output));
   ServeResourceFromManyContexts(sprite_str, output);
 }
 
