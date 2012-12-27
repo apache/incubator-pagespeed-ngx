@@ -1716,6 +1716,17 @@ class RewriteOptions {
     return retain_comments_.Match(comment, false);
   }
 
+  // Adds a new class name for which lazyload should be disabled.
+  void DisableLazyloadForClassName(const StringPiece& class_name) {
+    Modify();
+    lazyload_enabled_classes_.Disallow(class_name);
+  }
+
+  // Checks if lazyload images is enabled for the specified class.
+  bool IsLazyloadEnabledForClassName(const StringPiece& class_name) const {
+    return lazyload_enabled_classes_.Match(class_name, true);
+  }
+
   void set_override_caching_ttl_ms(int64 x) {
     set_option(x, &override_caching_ttl_ms_);
   }
@@ -1851,8 +1862,6 @@ class RewriteOptions {
     const char* filter_id;
     const char* filter_name;
   };
-
-
 
  protected:
   // Type-specific class of Property.  This subclass of PropertyBase
@@ -2750,6 +2759,7 @@ class RewriteOptions {
 
   FastWildcardGroup allow_resources_;
   FastWildcardGroup retain_comments_;
+  FastWildcardGroup lazyload_enabled_classes_;
 
   // Using StringPiece here is safe since all entries in this map have static
   // strings as the key.

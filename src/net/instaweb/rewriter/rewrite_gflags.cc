@@ -324,6 +324,10 @@ DEFINE_bool(enable_aggressive_rewriters_for_mobile, false,
             "If true then aggressive rewriters will be turned on for "
             "mobile user agents.");
 
+DEFINE_string(lazyload_disabled_classes, "",
+              "A comma separated list of classes for which the lazyload images "
+              "filter is disabled.");
+
 namespace net_instaweb {
 
 namespace {
@@ -571,6 +575,17 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_aggressive_rewriters_for_mobile")) {
     options->set_enable_aggressive_rewriters_for_mobile(
         FLAGS_enable_aggressive_rewriters_for_mobile);
+  }
+  if (WasExplicitlySet("lazyload_disabled_classes")) {
+    GoogleString lazyload_disabled_classes_string(
+        FLAGS_lazyload_disabled_classes);
+    LowerString(&lazyload_disabled_classes_string);
+    StringPieceVector lazyload_disabled_classes;
+    SplitStringPieceToVector(lazyload_disabled_classes_string, ",",
+                             &lazyload_disabled_classes, true);
+    for (int i = 0, n = lazyload_disabled_classes.size(); i < n; ++i) {
+      options->DisableLazyloadForClassName(lazyload_disabled_classes[i]);
+    }
   }
   if (WasExplicitlySet("property_cache_http_status_stability_threshold")) {
     options->set_property_cache_http_status_stability_threshold(

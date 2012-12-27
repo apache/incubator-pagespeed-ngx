@@ -334,10 +334,21 @@ TEST_F(LazyloadImagesFilterTest, DfcgClass) {
 TEST_F(LazyloadImagesFilterTest, NivoClass) {
   InitLazyloadImagesFilter(false);
   GoogleString input_html = "<body>"
-      "<div class=\"nivo_slider\">"
+      "<div class=\"nivo_sl\">"
       "<img src=\"1.jpg\"/>"
       "</div>"
       "<img class=\"nivo\" src=\"1.jpg\"/>"
+      "</body>";
+  ValidateNoChanges("lazyload_images", input_html);
+}
+
+TEST_F(LazyloadImagesFilterTest, ClassContainsSlider) {
+  InitLazyloadImagesFilter(false);
+  GoogleString input_html = "<body>"
+      "<div class=\"SliderName2\">"
+      "<img src=\"1.jpg\"/>"
+      "</div>"
+      "<img class=\"my_sLiDer\" src=\"1.jpg\"/>"
       "</body>";
   ValidateNoChanges("lazyload_images", input_html);
 }

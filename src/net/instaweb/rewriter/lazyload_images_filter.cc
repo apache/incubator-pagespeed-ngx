@@ -38,8 +38,6 @@ const char kTrue[] = "true";
 const char kFalse[] = "false";
 const char kData[] = "data:";
 const char kJquerySlider[] = "jquery.sexyslider";
-const char kDfcg[] = "dfcg";
-const char kNivo[] = "nivo";
 
 }  // namespace
 
@@ -108,10 +106,15 @@ void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
         HtmlName::kClass);
     if (class_attribute != NULL) {
       StringPiece class_value(class_attribute->DecodedValueOrNull());
-      if (class_value.find(kDfcg) != StringPiece::npos ||
-          class_value.find(kNivo) != StringPiece::npos) {
-        skip_rewrite_ = element;
-        return;
+      if (!class_value.empty()) {
+        GoogleString class_string;
+        class_value.CopyToString(&class_string);
+        LowerString(&class_string);
+        if (!driver()->options()->IsLazyloadEnabledForClassName(
+            class_string)) {
+          skip_rewrite_ = element;
+          return;
+        }
       }
     }
   }

@@ -637,6 +637,10 @@ RewriteOptions::RewriteOptions()
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
+
+  DisableLazyloadForClassName("*dfcg*");
+  DisableLazyloadForClassName("*nivo*");
+  DisableLazyloadForClassName("*slider*");
 }
 
 // static
@@ -1732,6 +1736,7 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   file_load_policy_.Merge(src.file_load_policy_);
   allow_resources_.AppendFrom(src.allow_resources_);
   retain_comments_.AppendFrom(src.retain_comments_);
+  lazyload_enabled_classes_.AppendFrom(src.lazyload_enabled_classes_);
   javascript_library_identification_.Merge(
       src.javascript_library_identification_);
   override_caching_wildcard_.AppendFrom(src.override_caching_wildcard_);
@@ -1902,6 +1907,7 @@ void RewriteOptions::ComputeSignature(const Hasher* hasher) {
   StrAppend(&signature_, domain_lawyer_.Signature(), "_");
   StrAppend(&signature_, "AR:", allow_resources_.Signature(), "_");
   StrAppend(&signature_, "RC:", retain_comments_.Signature(), "_");
+  StrAppend(&signature_, "LDC:", lazyload_enabled_classes_.Signature(), "_");
   StrAppend(&signature_, "UCI:");
   for (int i = 0, n = url_cache_invalidation_entries_.size(); i < n; ++i) {
     const UrlCacheInvalidationEntry& entry =
