@@ -275,6 +275,10 @@ class CssFilter::Context : public SingleRewriteContext {
   virtual GoogleString CacheKeySuffix() const;
   virtual const UrlSegmentEncoder* encoder() const;
 
+  // Implements UserAgentCacheKey method of RewriteContext.
+  virtual GoogleString UserAgentCacheKey(
+      const ResourceContext* resource_context) const;
+
  private:
   bool RewriteCssText(const GoogleUrl& css_base_gurl,
                       const GoogleUrl& css_trim_gurl,

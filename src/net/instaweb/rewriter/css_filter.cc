@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/css_url_counter.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
+#include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -601,6 +602,15 @@ bool CssFilter::Context::Partition(OutputPartitions* partitions,
     outputs->push_back(OutputResourcePtr(NULL));
     return true;
   }
+}
+
+GoogleString CssFilter::Context::UserAgentCacheKey(
+    const ResourceContext* resource_context) const {
+  if (resource_context != NULL && !has_parent()) {
+    // CSS cache-key is sensitive to whether the UA supports webp or not.
+    return ImageUrlEncoder::CacheKeyFromResourceContext(*resource_context);
+  }
+  return "";
 }
 
 GoogleString CssFilter::Context::CacheKeySuffix() const {

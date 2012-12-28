@@ -1165,7 +1165,9 @@ void RewriteContext::SetPartitionKey() {
     urls.push_back("");
     GoogleString encoding;
     encoder()->Encode(urls, resource_context_.get(), &encoding);
-    suffix = StrCat(encoding, "@", suffix);
+    StrAppend(&suffix, encoding, "@",
+              UserAgentCacheKey(resource_context_.get()), "_",
+              CacheKeySuffix());
 
     url = slot(0)->resource()->url();
     if (StringPiece(url).starts_with("data:")) {
@@ -1990,6 +1992,9 @@ bool RewriteContext::DecodeFetchUrls(
   StringPiece original_base_sans_leaf(original_base.AllExceptLeaf());
   bool check_for_multiple_rewrites =
       (original_base_sans_leaf != decoded_base.AllExceptLeaf());
+  if (resource_context_ != NULL) {
+    EncodeUserAgentIntoResourceContext(resource_context_.get());
+  }
   StringVector urls;
   if (encoder()->Decode(output_resource->name(), &urls, resource_context_.get(),
                         message_handler)) {

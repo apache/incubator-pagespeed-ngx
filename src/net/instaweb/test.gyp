@@ -138,6 +138,7 @@
         'rewriter/image_rewrite_filter_test.cc',
         'rewriter/image_test.cc',
         'rewriter/image_test_base.cc',
+        'rewriter/image_url_encoder_test.cc',
         'rewriter/insert_dns_prefetch_filter_test.cc',
         'rewriter/insert_ga_filter_test.cc',
         'rewriter/javascript_code_block_test.cc',

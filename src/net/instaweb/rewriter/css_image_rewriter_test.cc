@@ -965,7 +965,7 @@ TEST_F(CssRecompressImagesInStyleAttributes, RecompressAndWebpAndStyleEnabled) {
   ValidateExpected("webp",
       "<div style=\"background-image:url(foo.jpg)\"/>",
       "<div style=\"background-image:url("
-      "http://test.com/wfoo.jpg.pagespeed.ic.0.webp)\"/>");
+      "http://test.com/xfoo.jpg.pagespeed.ic.0.webp)\"/>");
 }
 
 TEST_F(CssRecompressImagesInStyleAttributes,
@@ -981,7 +981,7 @@ TEST_F(CssRecompressImagesInStyleAttributes,
   ValidateExpected("webp-lossless",
       "<div style=\"background-image:url(foo.jpg)\"/>",
       "<div style=\"background-image:url("
-      "http://test.com/vfoo.jpg.pagespeed.ic.0.webp)\"/>");
+      "http://test.com/xfoo.jpg.pagespeed.ic.0.webp)\"/>");
 }
 
 TEST_F(CssRecompressImagesInStyleAttributes,
@@ -998,7 +998,7 @@ TEST_F(CssRecompressImagesInStyleAttributes,
   ValidateExpected("webp",
       "<div style=\"background-image:url(foo.jpg)\"/>",
       "<div style=\"background-image:url("
-      "http://test.com/wfoo.jpg.pagespeed.ic.0.jpg)\"/>");
+      "http://test.com/xfoo.jpg.pagespeed.ic.0.jpg)\"/>");
 }
 
 TEST_F(CssRecompressImagesInStyleAttributes,
@@ -1015,7 +1015,7 @@ TEST_F(CssRecompressImagesInStyleAttributes,
   ValidateExpected("webp-lossless",
       "<div style=\"background-image:url(foo.jpg)\"/>",
       "<div style=\"background-image:url("
-      "http://test.com/vfoo.jpg.pagespeed.ic.0.jpg)\"/>");
+      "http://test.com/xfoo.jpg.pagespeed.ic.0.jpg)\"/>");
 }
 
 }  // namespace

@@ -111,6 +111,14 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
   virtual const UrlSegmentEncoder* encoder() const;
 
+  // Implements UserAgentCacheKey method of RewriteContext.
+  virtual GoogleString UserAgentCacheKey(
+      const ResourceContext* resource_context) const;
+
+  // Implements EncodeUserAgentIntoResourceContext of RewriteContext.
+  virtual void EncodeUserAgentIntoResourceContext(
+      ResourceContext* context);
+
  private:
   friend class ImageRewriteFilter;
 
@@ -186,6 +194,20 @@ void ImageRewriteFilter::Context::Render() {
 
 const UrlSegmentEncoder* ImageRewriteFilter::Context::encoder() const {
   return filter_->encoder();
+}
+
+GoogleString ImageRewriteFilter::Context::UserAgentCacheKey(
+    const ResourceContext* resource_context) const {
+  if (resource_context != NULL && !has_parent()) {
+    // cache-key is sensitive to whether the UA supports webp or not.
+    return ImageUrlEncoder::CacheKeyFromResourceContext(*resource_context);
+  }
+  return "";
+}
+
+void ImageRewriteFilter::Context::EncodeUserAgentIntoResourceContext(
+    ResourceContext* context) {
+  ImageUrlEncoder::SetWebpAndMobileUserAgent(*Driver(), context);
 }
 
 ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
@@ -421,11 +443,15 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   MessageHandler* message_handler = driver_->message_handler();
   StringVector urls;
   ResourceContext context;
+  const RewriteOptions* options = driver_->options();
+
+  // Set webp and mobile from the UA, but allow legacy URLs to
+  // override them in the decoder.
+  ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver_, &context);
+
   if (!encoder_.Decode(result->name(), &urls, &context, message_handler)) {
     return kRewriteFailed;
   }
-
-  const RewriteOptions* options = driver_->options();
 
   Image::CompressionOptions* image_options =
       ImageOptionsForLoadedResource(context, input_resource,
@@ -546,7 +572,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
           new Image::CompressionOptions();
       // Note that preferred_webp may be further refined in
       // SetTransformToLowRes below.
-      SetAttemptWebp(input_resource->url(), &context);
+      ImageUrlEncoder::SetLibWebpLevel(*driver_, &context);
       SetWebpCompressionOptions(context, *options, input_resource->url(),
                                 image_options);
 
@@ -727,13 +753,8 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     GetDimensions(element, resource_context->mutable_desired_image_dims());
   }
   StringPiece url(src->DecodedValueOrNull());
-  SetAttemptWebp(url, resource_context.get());
 
-  if (options->NeedLowResImages() &&
-      options->Enabled(RewriteOptions::kResizeMobileImages) &&
-      driver_->IsMobileUserAgent()) {
-    resource_context->set_mobile_user_agent(true);
-  }
+  ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver_, resource_context.get());
 
   ResourcePtr input_resource = CreateInputResource(src->DecodedValueOrNull());
   if (input_resource.get() != NULL) {
@@ -758,17 +779,6 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     }
     driver_->InitiateRewrite(context);
   }
-}
-
-void ImageRewriteFilter::SetAttemptWebp(const StringPiece& url,
-                                        ResourceContext* resource_context) {
-  ResourceContext::LibWebpLevel libwebp_level = ResourceContext::LIBWEBP_NONE;
-  if (driver_->UserAgentSupportsWebpLosslessAlpha()) {
-    libwebp_level = ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
-  } else if (driver_->UserAgentSupportsWebp()) {
-    libwebp_level = ResourceContext::LIBWEBP_LOSSY_ONLY;
-  }
-  resource_context->set_libwebp_level(libwebp_level);
 }
 
 bool ImageRewriteFilter::FinishRewriteCssImageUrl(
@@ -1205,7 +1215,7 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
     // only UserAgentSupportsWebp when creating the context, but while
     // rewriting the image, rewrite options should also be checked.
     GoogleString url = slot->resource()->url();
-    SetAttemptWebp(url, cloned_context);
+    ImageUrlEncoder::SetLibWebpLevel(*driver_, cloned_context);
   }
   Context* context = new Context(css_image_inline_max_bytes,
                                  this, NULL /* driver*/, parent,

@@ -428,6 +428,20 @@ class RewriteContext {
   // Indicates whether we are serving a stale rewrite.
   bool stale_rewrite() const { return stale_rewrite_; }
 
+  // Indicates user agent capabilities that must be stored in the cache key.
+  //
+  // Note that the context may be NULL as it may not be set before this. Since
+  // it isn't going to be modified in the method, ResourceContext is passed
+  // as a const pointer.
+  virtual GoogleString UserAgentCacheKey(
+      const ResourceContext* context) const {
+    return "";
+  }
+
+  // Encodes User Agent into the ResourceContext.
+  virtual void EncodeUserAgentIntoResourceContext(ResourceContext* context) {
+  }
+
  private:
   struct CacheLookupResult;
   class OutputCacheCallback;

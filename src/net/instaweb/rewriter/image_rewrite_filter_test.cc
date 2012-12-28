@@ -49,6 +49,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/md5_hasher.h"  // for MD5Hasher
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -56,6 +57,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/timer.h"  // for Timer, etc
 
 namespace net_instaweb {
 
@@ -228,9 +230,10 @@ class ImageRewriteTest : public RewriteTestBase {
     EXPECT_STREQ(rewritten_image, expect_callback.buffer());
     EXPECT_STREQ(rewritten_headers,
                  expect_callback.response_headers()->ToString());
-
     // Try to fetch from an independent server.
-    ServeResourceFromManyContexts(src_string, rewritten_image);
+    ServeResourceFromManyContextsWithUA(
+        src_string, rewritten_image,
+        rewrite_driver()->user_agent());
 
     // Check that filter application was logged.
     EXPECT_STREQ("ic", logging_info()->applied_rewriters());
@@ -1574,6 +1577,64 @@ TEST_F(ImageRewriteTest, ProgressiveJpegThresholds) {
   // Now set the compression to 75, which shrinks our image to <10k so
   // we should stop converting to progressive.
   EXPECT_FALSE(ImageTestingPeer::ShouldConvertToProgressive(75, image.get()));
+}
+
+TEST_F(ImageRewriteTest, CacheControlHeaderCheckForNonWebpUA) {
+    GoogleString initial_image_url = StrCat(kTestDomain, kPuzzleJpgFile);
+    const GoogleString kHtmlInput =
+        StrCat("<img src='", initial_image_url.c_str(), "'>");
+    options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+    AddRecompressImageFilters();
+    rewrite_driver()->AddFilters();
+    rewrite_driver()->set_user_agent("webp");
+
+    GoogleString page_url = StrCat(kTestDomain, "test.html");
+    // Store image contents into fetcher.
+    AddFileToMockFetcher(initial_image_url, kPuzzleJpgFile,
+                         kContentTypeJpeg, 100);
+    ParseUrl(page_url, kHtmlInput);
+
+    StringVector image_urls;
+    CollectImgSrcs(initial_image_url, output_buffer_, &image_urls);
+    EXPECT_EQ(1, image_urls.size());
+    const GoogleUrl image_gurl(image_urls[0]);
+    EXPECT_TRUE(image_gurl.LeafSansQuery().ends_with("webp"));
+    const GoogleString& src_string = image_urls[0];
+
+    ExpectStringAsyncFetch expect_callback(true, CreateRequestContext());
+    EXPECT_TRUE(rewrite_driver()->FetchResource(src_string, &expect_callback));
+    rewrite_driver()->WaitForCompletion();
+
+    ResponseHeaders* response_headers = expect_callback.response_headers();
+    EXPECT_TRUE(response_headers->IsProxyCacheable());
+    EXPECT_EQ(Timer::kYearMs,
+              response_headers->CacheExpirationTimeMs() - timer()->NowMs());
+    // Set a non-webp UA.
+    rewrite_driver()->set_user_agent("");
+
+    GoogleString new_image_url =  StrCat(kTestDomain, kPuzzleJpgFile);
+    page_url = StrCat(kTestDomain, "test.html");
+    ParseUrl(page_url, kHtmlInput);
+
+    CollectImgSrcs(new_image_url, output_buffer_, &image_urls);
+    EXPECT_EQ(2, image_urls.size());
+    const GoogleString& rewritten_url = image_urls[1];
+    const GoogleUrl rewritten_gurl(rewritten_url);
+    EXPECT_TRUE(rewritten_gurl.LeafSansQuery().ends_with("jpg"));
+
+    GoogleString content;
+    ResponseHeaders response;
+    MD5Hasher hasher;
+    GoogleString new_hash = hasher.Hash(output_buffer_);
+    // Fetch a new rewritten url with a new hash so as to get a short cache
+    // time.
+    const GoogleString rewritten_url_new =
+        StrCat("http://test.com/x", kPuzzleJpgFile, ".pagespeed.ic.",
+               new_hash, ".jpg");
+    ASSERT_TRUE(FetchResourceUrl(rewritten_url_new, &content, &response));
+    EXPECT_FALSE(response.IsProxyCacheable());
+    EXPECT_EQ(5 * Timer::kMinuteMs,
+              response.CacheExpirationTimeMs() - timer()->NowMs());
 }
 
 }  // namespace

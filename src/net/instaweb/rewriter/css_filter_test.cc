@@ -1407,7 +1407,7 @@ TEST_F(CssFilterTest, DontAbsolutifyEmptyUrl) {
 TEST_F(CssFilterTest, WebpRewriting) {
   const char css_input[] = "body{background:url(a.jpg)}";
   const char css_output[] =
-      "body{background:url(http://test.com/wa.jpg.pagespeed.ic.0.webp)}";
+      "body{background:url(http://test.com/xa.jpg.pagespeed.ic.0.webp)}";
   AddFileToMockFetcher(StrCat(kTestDomain, "a.jpg"), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
   options()->ClearSignatureForTesting();
@@ -1432,10 +1432,11 @@ TEST_F(CssFilterTest, WebpRewriting) {
 }
 
 TEST_F(CssFilterTest, NoWebpRewritingFromJpgIfDisabled) {
-  // Note that the image URL still reflects the UA's webp capability.
+  // Note that the image URL doesn't reflect the UA's webp capability with the
+  // new Non-Legacy Encoding.
   const char css_input[] = "body{background:url(a.jpg)}";
   const char css_output[] =
-      "body{background:url(http://test.com/wa.jpg.pagespeed.ic.0.jpg)}";
+      "body{background:url(http://test.com/xa.jpg.pagespeed.ic.0.jpg)}";
   AddFileToMockFetcher(StrCat(kTestDomain, "a.jpg"), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
   options()->ClearSignatureForTesting();
@@ -1461,10 +1462,11 @@ TEST_F(CssFilterTest, NoWebpRewritingFromJpgIfDisabled) {
 }
 
 TEST_F(CssFilterTest, NoWebpLaRewritingFromJpgIfDisabled) {
-  // Note that the image URL still reflects the UA's webp capability.
+  // Note that the image URL doesn't reflect the UA's webp capability with the
+  // new Non-Legacy Encoding.
   const char css_input[] = "body{background:url(a.jpg)}";
   const char css_output[] =
-      "body{background:url(http://test.com/va.jpg.pagespeed.ic.0.jpg)}";
+      "body{background:url(http://test.com/xa.jpg.pagespeed.ic.0.jpg)}";
   AddFileToMockFetcher(StrCat(kTestDomain, "a.jpg"), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
   options()->ClearSignatureForTesting();
@@ -1490,10 +1492,11 @@ TEST_F(CssFilterTest, NoWebpLaRewritingFromJpgIfDisabled) {
 }
 
 TEST_F(CssFilterTest, NoWebpRewritingFromPngIfDisabled) {
-  // Note that the image URL still reflects the UA's webp capability.
+  // Note that the image URL doesn't reflect the UA's webp capability with the
+  // new Non-Legacy Encoding.
   const char css_input[] = "body{background:url(a.png)}";
   const char css_output[] =
-      "body{background:url(http://test.com/wa.png.pagespeed.ic.0.png)}";
+      "body{background:url(http://test.com/xa.png.pagespeed.ic.0.png)}";
   AddFileToMockFetcher(StrCat(kTestDomain, "a.png"), kBikePngFile,
                        kContentTypePng, 100);
   options()->ClearSignatureForTesting();
@@ -1523,7 +1526,7 @@ TEST_F(CssFilterTest, NoWebpLaRewritingFromPngIfDisabled) {
   // Note that the image URL still reflects the UA's webp capability.
   const char css_input[] = "body{background:url(a.png)}";
   const char css_output[] =
-      "body{background:url(http://test.com/va.png.pagespeed.ic.0.png)}";
+      "body{background:url(http://test.com/xa.png.pagespeed.ic.0.png)}";
   AddFileToMockFetcher(StrCat(kTestDomain, "a.png"), kBikePngFile,
                        kContentTypePng, 100);
   options()->ClearSignatureForTesting();

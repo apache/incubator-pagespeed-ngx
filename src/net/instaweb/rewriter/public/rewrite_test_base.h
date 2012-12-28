@@ -170,6 +170,11 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   void ServeResourceFromManyContexts(const GoogleString& resource_url,
                                      const StringPiece& expected_content);
 
+  void ServeResourceFromManyContextsWithUA(
+      const GoogleString& resource_url,
+      const StringPiece& expected_content,
+      const StringPiece& user_agent);
+
   // Test that a resource can be served from an new server that has not already
   // constructed it.
   void ServeResourceFromNewContext(
@@ -576,6 +581,11 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // for this call.
   LoggingInfo* logging_info();
 
+  // Sets current_user_agent_
+  void SetCurrentUserAgent(const StringPiece& user_agent) {
+    current_user_agent_ = user_agent;
+  }
+
   // The mock fetcher & stats are global across all Factories used in the tests.
   MockUrlFetcher mock_url_fetcher_;
   scoped_ptr<Statistics> statistics_;
@@ -594,7 +604,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   scoped_ptr<HtmlWriterFilter> other_html_writer_filter_;
   ActiveServerFlag active_server_;
   bool use_managed_rewrite_drivers_;
-
+  StringPiece current_user_agent_;
   MD5Hasher md5_hasher_;
 
   RewriteOptions* options_;  // owned by rewrite_driver_.

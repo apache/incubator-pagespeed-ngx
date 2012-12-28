@@ -214,11 +214,6 @@ class ImageRewriteFilter : public RewriteFilter {
   // true if a PropertyValue was written.
   bool StoreUrlInPropertyCache(const StringPiece& url);
 
-  // Sets resource_context.libwebp_level to indicate the level of webp
-  // support in the user agent..
-  void SetAttemptWebp(const StringPiece& url,
-                      ResourceContext* resource_context);
-
   scoped_ptr<WorkBound> work_bound_;
 
   // Statistics

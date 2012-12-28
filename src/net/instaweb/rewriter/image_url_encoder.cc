@@ -19,6 +19,8 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_escaper.h"
@@ -28,10 +30,15 @@ namespace net_instaweb {
 namespace {
 
 const char kCodeSeparator = 'x';
-const char kCodeWebpLossy = 'w';
-const char kCodeWebpLossyLosslessAlpha = 'v';
-const char kCodeMobileUserAgent = 'm';
+const char kCodeWebpLossy = 'w';               // for decoding legacy URLs.
+const char kCodeWebpLossyLosslessAlpha = 'v';  // for decoding legacy URLs.
+const char kCodeMobileUserAgent = 'm';         // for decoding legacy URLs.
 const char kMissingDimension = 'N';
+
+// Constants for UserAgent cache key enteries.
+const char kWebpLossyUserAgentKey[] = "w";
+const char kWebpLossyLossLessAlphaUserAgentKey[] = "v";
+const char kMobileUserAgentKey[] = "m";
 
 bool IsValidCode(char code) {
   return ((code == kCodeSeparator) ||
@@ -93,21 +100,9 @@ void ImageUrlEncoder::Encode(const StringVector& urls,
                   StringPiece(&kMissingDimension, 1));
       }
     }
-    if (data->mobile_user_agent()) {
-      rewritten_url->push_back(kCodeMobileUserAgent);
-    }
-    switch (data->libwebp_level()) {
-      case ResourceContext::LIBWEBP_LOSSY_ONLY:
-        rewritten_url->push_back(kCodeWebpLossy);
-        break;
-      case ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA:
-        rewritten_url->push_back(kCodeWebpLossyLosslessAlpha);
-        break;
-      default:
-        rewritten_url->push_back(kCodeSeparator);
-        break;
-    }
+    rewritten_url->push_back(kCodeSeparator);
   }
+
   UrlEscaper::EncodeToUrlSegment(urls[0], rewritten_url);
 }
 
@@ -181,6 +176,8 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
   }
   // Remove the terminator
   remaining.remove_prefix(1);
+
+  // Set mobile user agent & set webp only if its a legacy encoding.
   if (terminator == kCodeMobileUserAgent) {
     data->set_mobile_user_agent(true);
     // There must be a final kCodeWebpLossy,
@@ -198,17 +195,20 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
     }
     remaining.remove_prefix(1);
   }
-
-  switch (terminator) {
-    case kCodeWebpLossy:
-      data->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
-      break;
-    case kCodeWebpLossyLosslessAlpha:
-      data->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA);
-      break;
-    default:
-      data->set_libwebp_level(ResourceContext::LIBWEBP_NONE);
-      break;
+  // Following terminator check is for Legacy Url Encoding.
+  // If it's a legacy "x" encoding, we don't overwrite the libwebp_level.
+  // Example: if a webp-capable UA requested a legacy "x"-encoded url, we would
+  // wind up with a ResourceContext specifying a different webp-version of the
+  // original resourcem, but at least it's safe to send that to the UA,
+  // since we know it can handle it.
+  //
+  // In case it doesn't hit either of the following two conditions,
+  // the libwebp level is taken as the one set previously. This will happen
+  // mostly when the url is a Non-Legacy encoded one.
+  if (terminator == kCodeWebpLossy) {
+    data->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
+  } else if (terminator == kCodeWebpLossyLosslessAlpha) {
+    data->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA);
   }
 
   GoogleString* url = StringVectorAdd(urls);
@@ -218,6 +218,53 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
     urls->pop_back();
     return false;
   }
+}
+
+void ImageUrlEncoder::SetLibWebpLevel(const RewriteDriver& driver,
+                                      ResourceContext* resource_context) {
+  ResourceContext::LibWebpLevel libwebp_level = ResourceContext::LIBWEBP_NONE;
+  if (driver.UserAgentSupportsWebpLosslessAlpha()) {
+    libwebp_level = ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
+  } else if (driver.UserAgentSupportsWebp()) {
+    libwebp_level = ResourceContext::LIBWEBP_LOSSY_ONLY;
+  }
+  resource_context->set_libwebp_level(libwebp_level);
+}
+
+void ImageUrlEncoder::SetWebpAndMobileUserAgent(
+    const RewriteDriver& driver,
+    ResourceContext* context) {
+  const RewriteOptions* options = driver.options();
+  if (context == NULL) {
+    return;
+  }
+
+  // TODO(poojatandon): Do enabled checks before Setting the Webp Level, since
+  // it avoids writing two metadata cache keys for same output.
+  SetLibWebpLevel(driver, context);
+
+  if (options->NeedLowResImages() &&
+      options->Enabled(RewriteOptions::kResizeMobileImages) &&
+      driver.IsMobileUserAgent()) {
+    context->set_mobile_user_agent(true);
+  }
+}
+
+GoogleString ImageUrlEncoder::CacheKeyFromResourceContext(
+    const ResourceContext& resource_context) {
+  GoogleString user_agent_cache_key = "";
+  if (resource_context.libwebp_level() ==
+      ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA) {
+    StrAppend(&user_agent_cache_key, kWebpLossyLossLessAlphaUserAgentKey);
+  }
+  if (resource_context.libwebp_level() ==
+      ResourceContext::LIBWEBP_LOSSY_ONLY) {
+    StrAppend(&user_agent_cache_key, kWebpLossyUserAgentKey);
+  }
+  if (resource_context.mobile_user_agent()) {
+    StrAppend(&user_agent_cache_key, kMobileUserAgentKey);
+  }
+  return user_agent_cache_key;
 }
 
 }  // namespace net_instaweb

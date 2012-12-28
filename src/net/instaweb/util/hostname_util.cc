@@ -19,12 +19,18 @@
 #include "net/instaweb/util/public/hostname_util.h"
 
 #include <limits.h>
-#include <unistd.h>
-// Including <bits/> files is a really bad idea for portability.
+// The following break portability.
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+
+// MacOS does not defined HOST_NAME_MAX so fall back to the POSIX value.
+// We are supposed to use sysconf(_SC_HOST_NAME_MAX) but we use this value
+// to size an automatic array and we can't portably use variables for that.
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
+#endif
 
 namespace net_instaweb {
 

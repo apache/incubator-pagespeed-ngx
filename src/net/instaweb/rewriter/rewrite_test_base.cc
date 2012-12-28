@@ -246,12 +246,20 @@ void RewriteTestBase::AppendDefaultHeaders(
 void RewriteTestBase::ServeResourceFromManyContexts(
     const GoogleString& resource_url,
     const StringPiece& expected_content) {
+  ServeResourceFromNewContext(resource_url, expected_content);
+}
+
+void RewriteTestBase::ServeResourceFromManyContextsWithUA(
+    const GoogleString& resource_url,
+    const StringPiece& expected_content,
+    const StringPiece& user_agent) {
   // TODO(sligocki): Serve the resource under several contexts. For example:
   //   1) With output-resource cached,
   //   2) With output-resource not cached, but in a file,
   //   3) With output-resource unavailable, but input-resource cached,
   //   4) With output-resource unavailable and input-resource not cached,
   //      but still fetchable,
+  SetCurrentUserAgent(user_agent);
   ServeResourceFromNewContext(resource_url, expected_content);
   //   5) With nothing available (failure).
 }
@@ -277,6 +285,8 @@ void RewriteTestBase::ServeResourceFromNewContext(
   server_context_->ComputeSignature(new_options);
   RewriteDriver* new_rewrite_driver = MakeDriver(new_server_context,
                                                  new_options);
+  new_rewrite_driver->set_user_agent(current_user_agent_);
+
   new_factory->SetupWaitFetcher();
 
   // TODO(sligocki): We should set default request headers.
