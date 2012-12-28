@@ -201,6 +201,7 @@ typedef struct {
 typedef struct {
   net_instaweb::ProxyFetch* proxy_fetch;
   net_instaweb::NgxBaseFetch* base_fetch;
+  net_instaweb::RewriteDriver* driver;
   bool data_received;
   int pipe_fd;
   ngx_connection_t* pagespeed_connection;
@@ -1105,14 +1106,13 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
     // If we don't have custom options we can use NewRewriteDriver which reuses
     // rewrite drivers and so is faster because there's no wait to construct
     // them.  Otherwise we have to build a new one every time.
-    net_instaweb::RewriteDriver* driver;
 
     if (custom_options == NULL) {
-      driver = cfg_s->server_context->NewRewriteDriver(
+      ctx->driver = cfg_s->server_context->NewRewriteDriver(
           ctx->base_fetch->request_context());
     } else {
       // NewCustomRewriteDriver takes ownership of custom_options.
-      driver = cfg_s->server_context->NewCustomRewriteDriver(
+      ctx->driver = cfg_s->server_context->NewCustomRewriteDriver(
           custom_options, ctx->base_fetch->request_context());
     }
 
@@ -1121,7 +1121,7 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
     // Will call StartParse etc.  The rewrite driver will take care of deleting
     // itself if necessary.
     ctx->proxy_fetch = cfg_s->proxy_fetch_factory->CreateNewProxyFetch(
-        url_string, ctx->base_fetch, driver,
+        url_string, ctx->base_fetch, ctx->driver,
         NULL /* property_callback */,
         NULL /* original_content_fetch */);
   }
@@ -1303,6 +1303,9 @@ ps_header_filter(ngx_http_request_t* r) {
     case CreateRequestContext::kOk:
       break;
   }
+  ctx = ps_get_request_context(r);
+  CHECK(ctx->driver != NULL);  // Not a resource fetch, so driver is defined.
+  const net_instaweb::RewriteOptions* options = ctx->driver->options();
 
   // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
   // and calculate on the fly.
@@ -1331,7 +1334,11 @@ ps_header_filter(ngx_http_request_t* r) {
   x_pagespeed->hash = 1;
 
   ngx_str_set(&x_pagespeed->key, kPageSpeedHeader);
-  ngx_str_set(&x_pagespeed->value, MOD_PAGESPEED_VERSION_STRING);
+  // It's safe to use c_str here because once we're handling requests the
+  // rewrite options are frozen and won't change out from under us.
+  x_pagespeed->value.data = reinterpret_cast<u_char*>(const_cast<char*>(
+      options->x_header_value().c_str()));
+  x_pagespeed->value.len = options->x_header_value().size();
 
   return ngx_http_next_header_filter(r);
 }
@@ -1415,8 +1422,7 @@ ps_content_handler(ngx_http_request_t* r) {
       break;
   }
 
-  ps_request_ctx_t* ctx =
-      ps_get_request_context(r);
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
   CHECK(ctx != NULL);
 
   // Tell nginx we're still working on this one.
