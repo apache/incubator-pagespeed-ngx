@@ -1334,8 +1334,10 @@ ps_header_filter(ngx_http_request_t* r) {
   x_pagespeed->hash = 1;
 
   ngx_str_set(&x_pagespeed->key, kPageSpeedHeader);
-  x_pagespeed->value.data = reinterpret_cast<u_char*>(
-      string_piece_to_pool_string(r->pool, options->x_header_value()));
+  // It's safe to use c_str here because once we're handling requests the
+  // rewrite options are frozen and won't change out from under us.
+  x_pagespeed->value.data = reinterpret_cast<u_char*>(const_cast<char*>(
+      options->x_header_value().c_str()));
   x_pagespeed->value.len = options->x_header_value().size();
 
   return ngx_http_next_header_filter(r);
