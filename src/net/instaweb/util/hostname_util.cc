@@ -21,16 +21,21 @@
 #include <limits.h>
 // The following break portability.
 
-#include "base/logging.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
-
+// Windows doesn't use <unistd.h> nor does it define HOST_NAME_MAX.
+#if defined(WIN32)
+#include <windows.h>
+#include <winsock2.h>
+#define HOST_NAME_MAX (MAX_COMPUTERNAME_LENGTH+1)
 // MacOS does not defined HOST_NAME_MAX so fall back to the POSIX value.
 // We are supposed to use sysconf(_SC_HOST_NAME_MAX) but we use this value
 // to size an automatic array and we can't portably use variables for that.
-#ifndef HOST_NAME_MAX
+#elif !defined(HOST_NAME_MAX)
 #define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
 #endif
+
+#include "base/logging.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
