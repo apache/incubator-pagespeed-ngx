@@ -56,8 +56,18 @@ ${if "text" in location:}$${location['text']}$${:end-if}$
 </Location>
 ${:end-for}$
 
-==========================================
+${for server in servers:}$
+    <VirtualHost ${val_or_default(server,"address","*")}$:${server["port"]}$>
+    DocumentRoot ${server["root"]}$"
+    ${if "server_name" in server:}$ServerName ${server["server_name"]}$${:end-if}$
+    ModPagespeed on
+    </VirtualHost>
+${:end-for}$
 
+
+
+#==========================================
+#original pagespeed.debug.conf
 
 
 
@@ -322,15 +332,6 @@ ModPagespeedRespectXForwardedProto on
 #COVERAGE        SetHandler mod_pagespeed_message
 #COVERAGE   </Location>
 #COVERAGE </VirtualHost>
-
-
-
-${for server in servers:}$
-    <VirtualHost ${val_or_default(server,"address","*")}$:${server["port"]}$>
-    DocumentRoot ${server["root"]}$"
-    ModPagespeed on
-    </VirtualHost>
-${:end-for}$
 
 
 #PROXY # This is used for ProxyPass testing.

@@ -175,6 +175,7 @@
             EnableFilters: "extend_cache,rewrite_images"
 	 },
 	 root: "@@APACHE_DOC_ROOT@@",
+	 #server_name: "localhost",
          memcachedtest: defaults.memcachedtest.addresses,
        }
    ],
