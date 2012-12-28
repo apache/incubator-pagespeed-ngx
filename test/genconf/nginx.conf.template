@@ -1,0 +1,93 @@
+${
+def val_or_default(dict, key, rep):
+    if not key in dict:
+       emit(rep)
+    else:
+	emit(dict[key])
+
+def emit_pagespeed_directive(prefix, directive, val):
+    if isinstance(val, list):
+       for index, item in enumerate(val):
+       	   emit_pagespeed_directive(prefix, directive, item)
+    else:
+#fixme
+        emit(prefix + "pagespeed ")
+    	emit(directive)
+    	emit(" ")
+    	emit(val)
+    	emit(";\n")
+
+pagespeed = config["pagespeed"]
+pagespeed_if = config["pagespeed_if"]
+servers = config["servers"]
+directories = config["directories"]
+locations = config["locations"]
+}$
+
+http {
+  gzip on;
+  gzip_vary on;
+
+  gzip_types application/ecmascript;
+  gzip_types application/javascript;
+  gzip_types application/json;
+  gzip_types application/pdf;
+  gzip_types application/postscript;
+  gzip_types application/x-javascript;
+  gzip_types image/svg+xml;
+  gzip_types text/css;
+  gzip_types text/csv;
+  gzip_types text/javascript;
+  gzip_types text/plain;
+  gzip_types text/xml;
+  gzip_http_version 1.0;
+
+${for option in pagespeed:
+  emit_pagespeed_directive("  ", option, pagespeed[option])}$
+
+# not implemented yet in nginx
+   pagespeed_if {
+${for condition in pagespeed_if.keys():}$
+   ${condition}$ {
+${
+pagespeed=pagespeed_if[condition]
+for option in pagespeed:
+    emit_pagespeed_directive("      ",option, pagespeed[option])
+}$   }
+${:end-for}$
+   }
+
+${for server in servers:}$
+server { 
+   #todo -> lookup listen format (interface?)
+   listen ${val_or_default(server,"address","*")}$:${server["port"]}$;
+   ${if "server_name" in server:}$server_name ${server["server_name"]}$;${:end-if}$
+   root ${server["root"]}$;
+   index @TODO
+}
+${:end-for}$
+
+
+
+#  server {
+#    listen 8050;
+#    server_name localhost;
+#    root /path/to/mod_pagespeed/src/install;
+#    index index.html;
+#    add_header Cache-Control "public, max-age=600";
+#    pagespeed MaxHtmlParseBytes 50000;
+#
+#    location /mod_pagespeed_test/no_cache/ {
+#      add_header Cache-Control no-cache;
+#    }
+#
+#    location /mod_pagespeed_test/compressed/ {
+#      add_header Cache-Control max-age=600;
+#      add_header Content-Encoding gzip;
+#      types {
+#        text/javascript custom_ext;
+#      }
+#    }
+#  }
+
+}

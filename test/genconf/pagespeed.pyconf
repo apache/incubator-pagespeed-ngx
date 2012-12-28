@@ -1,0 +1,181 @@
+{
+   defaults: { 
+      port: 80
+   },
+   pagespeed: {
+      "BlockingRewriteKey": "psatest",
+      "FetchHttps": "enable,allow_self_signed",
+      "EnableFilters": "add_instrumentation",
+#MEMCACHED	   "MemcachedServers":"localhost:6765",
+#MEMCACHED	   "LRUCacheKbPerProcess": 0,
+#PER_VHOST_STATS   "UsePerVHostStatistics": "on",
+#PER_VHOST_STATS   "FetchWithGzip": "on",
+#STATS_LOGGING	   "Statistics":"on",
+#STATS_LOGGING	   "StatisticsLogging":"on",
+#STATS_LOGGING     "StatisticsLoggingFile":"@@MOD_PAGESPEED_STATS_LOG@@",
+#STATS_LOGGING	   "StatisticsLoggingIntervalMs":10,
+#ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
+#ALL_DIRECTIVES "Allow":"foo",
+#ALL_DIRECTIVES "AnalyticsID":1234,
+#ALL_DIRECTIVES "AvoidRenamingIntrospectiveJavascript":true,
+#ALL_DIRECTIVES "BeaconUrl": "http://example.com/beacon",
+#ALL_DIRECTIVES "BlockingRewriteKey": "test",
+#ALL_DIRECTIVES "CacheFlushFilename": "/tmp/cache.flush",
+#ALL_DIRECTIVES "CacheFlushPollIntervalSec": 10,
+#ALL_DIRECTIVES "ClientDomainRewrite": false,
+#ALL_DIRECTIVES "CollectRefererStatistics": false,
+#ALL_DIRECTIVES "CombineAcrossPaths": true,
+#ALL_DIRECTIVES "CssFlattenMaxBytes": 2000,
+#ALL_DIRECTIVES "CssImageInlineMaxBytes": 2000,
+#ALL_DIRECTIVES "CssInlineMaxBytes": 2000,
+#ALL_DIRECTIVES "CssOutlineMinBytes": 2000,
+#ALL_DIRECTIVES "CssPreserveURLs": "off",
+#ALL_DIRECTIVES "DisableFilters": "strip_scripts",
+#ALL_DIRECTIVES "Disallow": "bar",
+#ALL_DIRECTIVES "Domain": "http://example.com",
+#ALL_DIRECTIVES "DomainRewriteHyperlinks": true,
+#ALL_DIRECTIVES "EnableFilters": "extend_cache",
+#ALL_DIRECTIVES "ExperimentSpec": '"id=8;percent=10"',
+#ALL_DIRECTIVES "ExperimentVariable": 3,
+#ALL_DIRECTIVES "FetchProxy": "localhost:4321",
+#ALL_DIRECTIVES "FetchWithGzip": "on",
+#ALL_DIRECTIVES "FetcherTimeOutMs": 1000,
+#ALL_DIRECTIVES "FileCacheCleanIntervalMs": 3600000,
+#ALL_DIRECTIVES "FileCacheInodeLimit": 10000,
+#ALL_DIRECTIVES "FileCachePath": "/tmp/cache/",
+#ALL_DIRECTIVES "FileCacheSizeKb": 1000,
+#ALL_DIRECTIVES "ForbidAllDisabledFilters": true,
+#ALL_DIRECTIVES "ForbidFilters": "rewrite_images",
+#ALL_DIRECTIVES "ForceCaching": "off",
+#ALL_DIRECTIVES "HashRefererStatistics": false,
+#ALL_DIRECTIVES "ImageInlineMaxBytes": 2000,
+#ALL_DIRECTIVES "ImageLimitOptimizedPercent": 80,
+#ALL_DIRECTIVES "ImageLimitResizeAreaPercent": 80,
+#ALL_DIRECTIVES "ImageMaxRewritesAtOnce": 5,
+#ALL_DIRECTIVES "ImageRecompressionQuality": 75,
+#ALL_DIRECTIVES "ImagePreserveURLs": false,
+#ALL_DIRECTIVES "ImageWebpRecompressionQuality": 85,
+#ALL_DIRECTIVES "ImgInlineMaxBytes": 2000,
+#ALL_DIRECTIVES "ImgMaxRewritesAtOnce": 5,
+#ALL_DIRECTIVES "InPlaceResourceOptimization": "on",
+#ALL_DIRECTIVES "IncreaseSpeedTracking": true,
+#ALL_DIRECTIVES "InstallCrashHandler": "off",
+#ALL_DIRECTIVES "JpegRecompressionQuality": 80,
+#ALL_DIRECTIVES "JsInlineMaxBytes": 2000,
+#ALL_DIRECTIVES "JsOutlineMinBytes": 2000,
+#ALL_DIRECTIVES "JsPreserveURLS": "off",
+#ALL_DIRECTIVES "LRUCacheByteLimit": 1000,
+#ALL_DIRECTIVES "LRUCacheKbPerProcess": 1,
+#ALL_DIRECTIVES "ListOutstandingUrlsOnError": on,
+#ALL_DIRECTIVES "LoadFromFile": "http://example.com/ /var/html/example/",
+#ALL_DIRECTIVES "LoadFromFileMatch": '"^http://example.com/" /var/html/example/',
+#ALL_DIRECTIVES "LoadFromFileRule": "allow /var/html/example/",
+#ALL_DIRECTIVES "LoadFromFileRuleMatch": "Disallow \.php.css$",
+#ALL_DIRECTIVES "LogRewriteTiming": false,
+#ALL_DIRECTIVES "LowercaseHtmlNames": true,
+#ALL_DIRECTIVES "MapOriginDomain": "example.com localhost",
+#ALL_DIRECTIVES "MapRewriteDomain": "example.com static.example.com",
+#ALL_DIRECTIVES "MaxImageSizeLowResolutionBytes": 1000,
+#ALL_DIRECTIVES "MaxInlinedPreviewImagesIndex": 80,
+#ALL_DIRECTIVES "MaxSegmentLength": 100,
+#ALL_DIRECTIVES "MemcachedServers": "localhost:6765",
+#ALL_DIRECTIVES "MemcachedThreads": 1,
+#ALL_DIRECTIVES "MessageBufferSize": 100,
+#ALL_DIRECTIVES "MinImageSizeLowResolutionBytes": 2000,
+#ALL_DIRECTIVES "ModifyCachingHeaders": true,
+#ALL_DIRECTIVES "NumExpensiveRewriteThreads": 2,
+#ALL_DIRECTIVES "NumRewriteThreads": 4,
+#ALL_DIRECTIVES "RateLimitBackgroundFetches": true,
+#ALL_DIRECTIVES "RefererStatisticsOutputLevel": "simple",
+#ALL_DIRECTIVES "ReportUnloadTime": true,
+#ALL_DIRECTIVES "RespectVary": true,
+#ALL_DIRECTIVES "RespectXForwardedProto": "off",
+#ALL_DIRECTIVES "RetainComment": '"special"',
+#ALL_DIRECTIVES "RewriteDeadlinePerFlushMs": 10,
+#ALL_DIRECTIVES "RewriteLevel": "CoreFilters",
+#ALL_DIRECTIVES "RunExperiment": true,
+#ALL_DIRECTIVES "ShardDomain": "example.com 1.example.com,2.example.com",
+#ALL_DIRECTIVES "SharedMemoryLocks": true,
+#ALL_DIRECTIVES "SlurpDirectory": "/tmp/slurp/",
+#ALL_DIRECTIVES "SlurpFlushLimit": 5,
+#ALL_DIRECTIVES "SlurpReadOnly": true,
+#ALL_DIRECTIVES "Statistics": true,
+#ALL_DIRECTIVES "StatisticsLogging": true,
+#ALL_DIRECTIVES "StatisticsLoggingChartsCSS": '"example.com/css.css"',
+#ALL_DIRECTIVES "StatisticsLoggingChartsJS": '"example.com/js.js"',
+#ALL_DIRECTIVES "StatisticsLoggingFile": '"@@MOD_PAGESPEED_STATS_LOG@@"',
+#ALL_DIRECTIVES "StatisticsLoggingIntervalMs": 3000,
+#ALL_DIRECTIVES "SupportNoScriptEnabled": true,
+#ALL_DIRECTIVES "TestProxy": "off",
+#ALL_DIRECTIVES "UrlValuedAttribute": "span src Hyperlink",
+#ALL_DIRECTIVES "UsePerVHostStatistics": "on",
+#ALL_DIRECTIVES "XHeaderValue": '"test"',
+
+   },
+   pagespeed_if: {
+      "spdy":  {
+         "DisableFilters": ["combine_css","rewrite_css","extend_cache","rewrite_images"]
+      },
+      "!spdy": {
+         "ShardDomain":"nonspdy.example.com s1.example.com,s2.example.com"
+      }
+   },
+   directories: [
+      {
+	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/max_html_parse_size",
+	pagespeed: {
+		   "HtmlMaxParseBytes": 5000,
+		   }
+      },
+      {
+	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/https_fetch",
+	pagespeed: {
+		   "Domain": "http://modpagespeed.com",
+		   "MapProxyDomain": "http://@@APACHE_DOMAIN@@/modpagespeed_dot_com https://modpagespeed.com/do_not_modify",
+		   }
+      },
+      {
+	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_example",
+	text: """@@FIXME
+  <IfModule headers_module>
+    <FilesMatch "\.(html|htm)$">
+      Header unset Etag
+      Header set Cache-control "max-age=0, no-cache"
+    </FilesMatch>
+    <FilesMatch "\.(jpg|jpeg|gif|png|js|css)$">
+      Header unset Etag
+      Header set Cache-control "public, max-age=600"
+    </FilesMatch>
+  </IfModule>""",
+      },
+      {
+	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/shard",
+	pagespeed: { 
+	   "ShardDomain": '"@@APACHE_DOMAIN@@" shard1,shard2',
+	   "RewriteLevel": "PassThrough",
+	   "EnableFilters": "extend_cache",
+	}
+      }
+   ],
+   locations: [
+#PER_VHOST_STATS      {
+#PER_VHOST_STATS	path: "/mod_pagespeed_global_statistics",
+#PER_VHOST_STATS	text: """@@FIXME
+#PER_VHOST_STATS    Order allow,deny
+#PER_VHOST_STATS    Allow from localhost
+#PER_VHOST_STATS    Allow from 127.0.0.1
+#PER_VHOST_STATS    SetHandler mod_pagespeed_global_statistics"""
+#PER_VHOST_STATS      },
+   ],
+   servers: [
+       { 
+         port: defaults.port,
+         pagespeed: {
+            MaxInlineBytes: 5000,
+            EnableFilters: "extend_cache,rewrite_images"
+	 },
+	 root: "@@APACHE_DOC_ROOT@@",
+         memcachedtest: defaults.memcachedtest.addresses,
+       }
+   ],
+}
