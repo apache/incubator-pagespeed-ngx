@@ -1,0 +1,87 @@
+${
+from util import *
+
+set_writer(emit)
+
+def write_servers_open_item(server,level):
+    emit(indent("<VirtualHost ", level))
+    emit(server["address"])
+    emit(":")
+    emit(server["port"])
+    emit(">\n")
+    emit(indent("DocumentRoot " + server["root"] + "\n", level+1));
+    if "server_name" in server:
+        emit(indent("ServerName " + server["server_name"] + "\n", level+1));
+
+def write_servers_close_item(server,level):
+    emit(indent("</VirtualHost>\n",level))
+
+def write_directories_open_item(server,level):
+    emit(indent("<Directory " + server["path"] + ">\n",level))
+    if "text" in server:
+       emit(server["text"])
+
+def write_directories_close_item(server,level):
+    emit(indent("</Directory>\n",level))
+
+def write_locations_open_item(server,level):
+    emit(indent("<Directory>\n",level))
+
+def write_locations_close_item(server,level):
+    emit(indent("</Directory>\n",level))
+
+def write_pagespeed_open(ps,level):
+    for key in ps:
+    	emit(indent("ModPagespeed" + key + " " + repr(ps[key]),level) + "\n")
+    return 1
+
+def write_pagespeed_if_open(ps,level):
+    for key in ps:
+    	emit(indent("<ModPagespeedIf " + key,level) + ">\n")
+	val = ps[key]
+	write_pagespeed_open(val, level+1)
+    return 1
+
+def write_pagespeed_if_close(ps,level):
+    emit(indent("</ModPagespeedIf>\n",level))
+
+def write_listen_open(ps, level):
+    for val in ps:
+        emit(indent("Listen " + str(val) + "\n", level))
+    return 1 
+
+
+def write_name_virtual_hosts_open(ps, level):
+    for val in ps:
+        emit(indent("NameVirtualHost " + val["address"] + ":" + str(val["port"]) + "\n", level))
+
+    return 1
+
+key_to_writer = {
+    "defaults_open": write_void,
+    "defaults_close": write_void,
+    "servers_open": write_void,
+    "servers_close": write_void,
+    "servers_open_item": write_servers_open_item,
+    "servers_close_item": write_servers_close_item,
+    "directories_open": write_void,
+    "directories_close": write_void,
+    "directories_open_item": write_directories_open_item,
+    "directories_close_item": write_directories_close_item,
+    "locations_open": write_void,
+    "locations_close": write_void,
+    "locations_open_item": write_locations_open_item,
+    "locations_close_item": write_locations_close_item,
+    "pagespeed_open": write_pagespeed_open, 
+    "pagespeed_close": write_void, 
+    "pagespeed_if_open": write_pagespeed_if_open, 
+    "pagespeed_if_close": write_pagespeed_if_close,
+    "listen_open": write_listen_open,
+    "listen_close": write_void,
+    "name_virtual_hosts_open": write_name_virtual_hosts_open,
+    "name_virtual_hosts_close": write_void,
+}
+
+write_cfg(key_to_writer, config)
+
+}$
