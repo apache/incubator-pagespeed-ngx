@@ -192,7 +192,7 @@ StringSet* CriticalImagesFinder::ExtractCriticalImagesSet(
       driver->options()->finder_properties_cache_expiration_time_ms();
   // Check if the cache value exists and is not expired.
   if (property_value->has_value()) {
-    bool is_valid =
+    const bool is_valid =
         !page_property_cache->IsExpired(property_value, cache_ttl_ms);
     if (is_valid) {
       StringPieceVector critical_images_vector;
@@ -213,8 +213,9 @@ StringSet* CriticalImagesFinder::ExtractCriticalImagesSet(
         critical_images_valid_count_->Add(1);
       }
       // Force a computation if the value is imminently expiry.
-      if (page_property_cache->IsImminentlyExpiring(
-          property_value, cache_ttl_ms)) {
+      if (page_property_cache->IsExpired(
+          property_value,
+          driver->options()->finder_properties_cache_refresh_time_ms())) {
         driver->enable_must_compute_finder_properties();
       }
       return critical_images;

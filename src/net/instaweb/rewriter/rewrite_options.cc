@@ -181,6 +181,8 @@ const int64 RewriteOptions::kDefaultFuriousCookieDurationMs =
     Timer::kWeekMs;
 const int64 RewriteOptions::kDefaultFinderPropertiesCacheExpirationTimeMs =
     2 * Timer::kHourMs;
+const int64 RewriteOptions::kDefaultFinderPropertiesCacheRefreshTimeMs =
+    (3 * Timer::kHourMs) / 2;
 const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
 const int RewriteOptions::kDefaultFuriousTrafficPercent = 50;
 const int RewriteOptions::kDefaultFuriousSlot = 1;
@@ -798,6 +800,9 @@ void RewriteOptions::AddProperties() {
   add_option(kDefaultFinderPropertiesCacheExpirationTimeMs,
              &RewriteOptions::finder_properties_cache_expiration_time_ms_,
              "fpce", kFinderPropertiesCacheExpirationTimeMs);
+  add_option(kDefaultFinderPropertiesCacheRefreshTimeMs,
+             &RewriteOptions::finder_properties_cache_refresh_time_ms_,
+             "fpcr", kFinderPropertiesCacheRefreshTimeMs);
   add_option(kDefaultFuriousCookieDurationMs,
              &RewriteOptions::furious_cookie_duration_ms_, "fcd",
              kFuriousCookieDurationMs);

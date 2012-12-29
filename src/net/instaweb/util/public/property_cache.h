@@ -233,10 +233,6 @@ class PropertyCache {
   // available at read-time, so for now we just use that.
   bool IsExpired(const PropertyValue* property_value, int64 ttl_ms) const;
 
-  // Determines whether the value is expiring soon, and needs to be refreshed.
-  bool IsImminentlyExpiring(const PropertyValue* property_value,
-                            int64 ttl_ms) const;
-
   // Updates the value of a property, tracking stability & discarding
   // writes when the existing data is more up-to-date.
   void UpdateValue(const StringPiece& value, PropertyValue* property) const;

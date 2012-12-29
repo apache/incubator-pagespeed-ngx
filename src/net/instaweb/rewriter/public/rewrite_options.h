@@ -170,6 +170,7 @@ class RewriteOptions {
     kClientDomainRewrite,
     kCombineAcrossPaths,
     kFinderPropertiesCacheExpirationTimeMs,
+    kFinderPropertiesCacheRefreshTimeMs,
     kCriticalLineConfig,
     kCssFlattenMaxBytes,
     kCssImageInlineMaxBytes,
@@ -517,6 +518,8 @@ class RewriteOptions {
   static const int64 kDefaultMaxImageSizeLowResolutionBytes;
   // Default cache expiration value for finder properties in pcache.
   static const int64 kDefaultFinderPropertiesCacheExpirationTimeMs;
+  // Default cache refresh value for finder properties in pcache.
+  static const int64 kDefaultFinderPropertiesCacheRefreshTimeMs;
 
   // Default duration after which the furious experiment cookie will expire
   // on the user's browser.
@@ -1271,6 +1274,12 @@ class RewriteOptions {
     return finder_properties_cache_expiration_time_ms_.value();
   }
 
+  void set_finder_properties_cache_refresh_time_ms(int64 x) {
+    set_option(x, &finder_properties_cache_refresh_time_ms_);
+  }
+  int64 finder_properties_cache_refresh_time_ms() const {
+    return finder_properties_cache_refresh_time_ms_.value();
+  }
   bool css_preserve_urls() const {
     return css_preserve_urls_.value();
   }
@@ -2611,6 +2620,10 @@ class RewriteOptions {
   // Cache expiration time in msec for properties of finders.
   Option<int64> finder_properties_cache_expiration_time_ms_;
 
+  // Cache refresh time in msec for properties of finders. The properties are
+  // refreshed when their age is larger than the specified value. However, the
+  // property will be used until finder_properties_cache_expiration_time_ms_.
+  Option<int64> finder_properties_cache_refresh_time_ms_;
   // Duration after which the furious experiment cookie will expire on the
   // user's browser (in msec).
   Option<int64> furious_cookie_duration_ms_;
