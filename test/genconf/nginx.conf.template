@@ -1,29 +1,14 @@
 ${
-def val_or_default(dict, key, rep):
-    if not key in dict:
-       emit(rep)
-    else:
-	emit(dict[key])
+from util import *
 
-def emit_pagespeed_directive(prefix, directive, val):
-    if isinstance(val, list):
-       for index, item in enumerate(val):
-       	   emit_pagespeed_directive(prefix, directive, item)
-    else:
-#fixme
-        emit(prefix + "pagespeed ")
-    	emit(directive)
-    	emit(" ")
-    	emit(val)
-    	emit(";\n")
+set_writer(emit)
 
 pagespeed = config["pagespeed"]
 pagespeed_if = config["pagespeed_if"]
 servers = config["servers"]
 directories = config["directories"]
 locations = config["locations"]
-}$
-
+}$# nginx translation of debug conf	
 http {
   gzip on;
   gzip_vary on;
@@ -60,7 +45,7 @@ ${:end-for}$
 ${for server in servers:}$
 server { 
    #todo -> lookup listen format (interface?)
-   listen ${val_or_default(server,"address","*")}$:${server["port"]}$;
+   listen ${emit_val_or_default(server,"address","*")}$:${server["port"]}$;
    ${if "server_name" in server:}$server_name ${server["server_name"]}$;${:end-if}$
    root ${server["root"]}$;
    index @TODO

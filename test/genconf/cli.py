@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# configuration generator for mod_pagespeed
+
 
 import sys
 from genconf import execute_template
@@ -18,23 +20,27 @@ conditions = {
 }
 
 placeholders = { 
-  "APACHE_DOC_ROOT" : "/drives/c/test/" 
+  "APACHE_CACHE" : "/tmp/psolcache/" ,
+  "APACHE_DOC_ROOT" : "/drives/c/test/" ,
+  "APACHE_SECONDARY_PORT": 8081,
 }
 
-output_format = "nginx"
+output_format = ""
 mode = ""
 
 if len(sys.argv) == 3:
     output_format = sys.argv[1]
     mode = sys.argv[2]
 
-print("mode:" + mode);
-print("format: " + output_format
-)
-if not (output_format == "apache" or output_format =="nginx" or output_format == "iis"):
+
+#print("mode:" + mode);
+#print("format: " + output_format)
+conditions[mode]=1
+if not (output_format == "apache" or output_format =="nginx" or output_format == "iis" or output_format == "apache2"):
     exit_with_help_message()
 
 template = output_format + ".conf.template"
-text = execute_template("pagespeed.pyconf", conditions, placeholders, template)
+#text = execute_template("pagespeed.pyconf", conditions, placeholders, template)
+text = execute_template("debug.conf.template", conditions, placeholders, template)
 
 print text

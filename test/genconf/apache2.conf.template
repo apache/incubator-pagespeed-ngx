@@ -25,14 +25,16 @@ def write_directories_close_item(server,level):
     emit(indent("</Directory>\n",level))
 
 def write_locations_open_item(server,level):
-    emit(indent("<Directory>\n",level))
+    emit(indent("<Location " + server["path"]  + ">\n",level))
+    if "text" in server:
+       emit(server["text"])
 
 def write_locations_close_item(server,level):
-    emit(indent("</Directory>\n",level))
+    emit(indent("</Location>\n",level))
 
 def write_pagespeed_open(ps,level):
     for key in ps:
-    	emit(indent("ModPagespeed" + key + " " + repr(ps[key]),level) + "\n")
+    	emit(indent("ModPagespeed" + key + " " + str(ps[key]),level) + "\n")
     return 1
 
 def write_pagespeed_if_open(ps,level):
@@ -82,6 +84,6 @@ key_to_writer = {
     "name_virtual_hosts_close": write_void,
 }
 
-write_cfg(key_to_writer, config)
-
+}$# apache configuration, generated with mode [@TODO@]
+${write_cfg(key_to_writer, config)
 }$

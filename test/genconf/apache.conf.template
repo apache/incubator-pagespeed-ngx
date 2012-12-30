@@ -1,21 +1,7 @@
 ${
-def val_or_default(dict, key, rep):
-    if not key in dict:
-       emit(rep)
-    else:
-	emit(dict[key])
+from util import *
 
-def emit_pagespeed_directive(directive, val):
-    if isinstance(val, list):
-       for index, item in enumerate(val):
-       	   emit_pagespeed_directive(directive, item)
-    else:
-#fixme
-        emit("ModPagespeed")
-    	emit(directive)
-    	emit(" ")
-    	emit(val)
-    	emit("\n")
+set_writer(emit)
 
 pagespeed = config["pagespeed"]
 pagespeed_if = config["pagespeed_if"]

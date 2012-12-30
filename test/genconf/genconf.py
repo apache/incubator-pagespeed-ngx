@@ -1,15 +1,11 @@
-#!/usr/bin/python
-# configuration generator for mod_pagespeed
-
+from collections import OrderedDict
+import compiler
 from compiler.ast import Const
 from compiler.ast import Dict
 from compiler.ast import List
 from compiler.ast import Node
 import re
-import compiler
-from collections import OrderedDict
 from templite import Templite
-
 
 def parse_python_struct(file_contents):
   ast = compiler.parse(file_contents)
@@ -82,7 +78,7 @@ def fill_placeholders(placeholders, match):
     #re-insert the placeholder
     return '@@' + placeholder + '@@'
   else:
-    return placeholders[placeholder]
+    return str(placeholders[placeholder])
 
 
 def pre_process_text(cfg, conditions, placeholders):
