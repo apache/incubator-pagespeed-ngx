@@ -20,9 +20,10 @@ conditions = {
 }
 
 placeholders = { 
-  "APACHE_CACHE" : "/tmp/psolcache/" ,
-  "APACHE_DOC_ROOT" : "/drives/c/test/" ,
-  "APACHE_SECONDARY_PORT": 8081,
+    "APACHE_SECONDARY_PORT":8083,
+    "APACHE_DOMAIN": "apache.domain",
+    "APACHE_DOC_ROOT": "/var/www",
+    "MOD_PAGESPEED_CACHE":"/tmp/psol_cache",
 }
 
 output_format = ""
@@ -36,7 +37,8 @@ if len(sys.argv) == 3:
 #print("mode:" + mode);
 #print("format: " + output_format)
 conditions[mode]=1
-if not (output_format == "apache" or output_format =="nginx" or output_format == "iis" or output_format == "apache2"):
+if not (output_format == "apache" or output_format =="nginx" or output_format == "iis" or output_format == "apache2"
+        or output_format == "nginx2"):
     exit_with_help_message()
 
 template = output_format + ".conf.template"

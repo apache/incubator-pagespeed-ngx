@@ -274,7 +274,7 @@ directories: [
         }
     },
     { 
-        path: "@@APACHE_DOC_ROOT/@@",
+        path: "@@APACHE_DOC_ROOT@@/",
 ##    # This is enabled to make sure we don't crash mod_negotiation.
 ##    Options +MultiViews
 
@@ -390,9 +390,9 @@ locations: [
   	##SetHandler mod_pagespeed_log_request_headers
     },
     {
-        path: "/mod_pagespeed_test/response_headers.html*"
+        wildcard_path: "/mod_pagespeed_test/response_headers.html*",
 ## TODO: retain regex location
-##<Location ~ "">
+##<Location ~ "/mod_pagespeed_test/response_headers.html*">
 ##  SetHandler mod_pagespeed_response_options_handler
 ##</Location>
 

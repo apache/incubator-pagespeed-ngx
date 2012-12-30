@@ -2,6 +2,8 @@
    defaults: { 
       port: 80
    },
+# TODO(oschaaf): Listen can probably specify interface(s) as well
+# TODO(oschaaf): check https?
    listen: [
        defaults.port,
        @@APACHE_SECONDARY_PORT@@,
