@@ -66,6 +66,8 @@ def replace_comments(conditions, s):
   condition = s.group(1)
   config = s.group(2)
 
+  # TODO(oschaaf): handle comments
+  # TODO(oschaaf): remove debugging 1==1
   if condition in conditions:
     return config
   else:

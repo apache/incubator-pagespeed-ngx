@@ -89,118 +89,119 @@ InPlaceResourceOptimization: "on",
 RespectXForwardedProto: "on",
 
 
-#STATS_LOGGING ModPagespeedStatistics on
-#STATS_LOGGING ModPagespeedStatisticsLogging on
-#STATS_LOGGING ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
-#STATS_LOGGING ModPagespeedStatisticsLoggingIntervalMs 10
+#STATS_LOGGING Statistics: "on",
+#STATS_LOGGING StatisticsLogging: "on",
+#STATS_LOGGING StatisticsLoggingFile: "\"@@MOD_PAGESPEED_STATS_LOG@@\"",
+#STATS_LOGGING StatisticsLoggingIntervalMs: 10,
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
-#ALL_DIRECTIVES ModPagespeedAllow foo
-#ALL_DIRECTIVES ModPagespeedAnalyticsID 1234
-#ALL_DIRECTIVES ModPagespeedAvoidRenamingIntrospectiveJavascript true
-#ALL_DIRECTIVES ModPagespeedBeaconUrl "http://example.com/beacon"
-#ALL_DIRECTIVES ModPagespeedBlockingRewriteKey test
-#ALL_DIRECTIVES ModPagespeedCacheFlushFilename /tmp/cache.flush
-#ALL_DIRECTIVES ModPagespeedCacheFlushPollIntervalSec 10
-#ALL_DIRECTIVES ModPagespeedClientDomainRewrite false
-#ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
-#ALL_DIRECTIVES ModPagespeedCombineAcrossPaths true
-#ALL_DIRECTIVES ModPagespeedCssFlattenMaxBytes 2000
-#ALL_DIRECTIVES ModPagespeedCssImageInlineMaxBytes 2000
-#ALL_DIRECTIVES ModPagespeedCssInlineMaxBytes 2000
-#ALL_DIRECTIVES ModPagespeedCssOutlineMinBytes 2000
-#ALL_DIRECTIVES ModPagespeedCssPreserveURLs off
-#ALL_DIRECTIVES ModPagespeedDisableFilters strip_scripts
-#ALL_DIRECTIVES ModPagespeedDisallow bar
-#ALL_DIRECTIVES ModPagespeedDomain http://example.com
-#ALL_DIRECTIVES ModPagespeedDomainRewriteHyperlinks true
-#ALL_DIRECTIVES ModPagespeedEnableFilters extend_cache
-#ALL_DIRECTIVES ModPagespeedExperimentSpec "id=8;percent=10"
-#ALL_DIRECTIVES ModPagespeedExperimentVariable 3
-#ALL_DIRECTIVES ModPagespeedFetchProxy localhost:4321
-#ALL_DIRECTIVES ModPagespeedFetchWithGzip on
-#ALL_DIRECTIVES ModPagespeedFetcherTimeOutMs 1000
-#ALL_DIRECTIVES ModPagespeedFileCacheCleanIntervalMs 3600000
-#ALL_DIRECTIVES ModPagespeedFileCacheInodeLimit 10000
-#ALL_DIRECTIVES ModPagespeedFileCachePath /tmp/cache/
-#ALL_DIRECTIVES ModPagespeedFileCacheSizeKb 1000
-#ALL_DIRECTIVES ModPagespeedForbidAllDisabledFilters true
-#ALL_DIRECTIVES ModPagespeedForbidFilters rewrite_images
-#ALL_DIRECTIVES ModPagespeedForceCaching off
-#ALL_DIRECTIVES ModPagespeedHashRefererStatistics false
-#ALL_DIRECTIVES ModPagespeedImageInlineMaxBytes 2000
-#ALL_DIRECTIVES ModPagespeedImageLimitOptimizedPercent 80
-#ALL_DIRECTIVES ModPagespeedImageLimitResizeAreaPercent 80
-#ALL_DIRECTIVES ModPagespeedImageMaxRewritesAtOnce 5
-#ALL_DIRECTIVES ModPagespeedImageRecompressionQuality 75
-#ALL_DIRECTIVES ModPagespeedImagePreserveURLs false
-#ALL_DIRECTIVES ModPagespeedImageWebpRecompressionQuality 85
-#ALL_DIRECTIVES ModPagespeedImgInlineMaxBytes 2000
-#ALL_DIRECTIVES ModPagespeedImgMaxRewritesAtOnce 5
-#ALL_DIRECTIVES ModPagespeedInPlaceResourceOptimization on
-#ALL_DIRECTIVES ModPagespeedIncreaseSpeedTracking true
-#ALL_DIRECTIVES ModPagespeedInstallCrashHandler off
-#ALL_DIRECTIVES ModPagespeedJpegRecompressionQuality 80
-#ALL_DIRECTIVES ModPagespeedJsInlineMaxBytes 2000
-#ALL_DIRECTIVES ModPagespeedJsOutlineMinBytes 2000
-#ALL_DIRECTIVES ModPagespeedJsPreserveURLS off
-#ALL_DIRECTIVES ModPagespeedLRUCacheByteLimit 1000
-#ALL_DIRECTIVES ModPagespeedLRUCacheKbPerProcess 1
-#ALL_DIRECTIVES ModPagespeedListOutstandingUrlsOnError on
-#ALL_DIRECTIVES ModPagespeedLoadFromFile http://example.com/ /var/html/example/
-#ALL_DIRECTIVES ModPagespeedLoadFromFileMatch "^http://example.com/" /var/html/example/
-#ALL_DIRECTIVES ModPagespeedLoadFromFileRule allow /var/html/example/
-#ALL_DIRECTIVES ModPagespeedLoadFromFileRuleMatch Disallow \.php.css$
-#ALL_DIRECTIVES ModPagespeedLogRewriteTiming false
-#ALL_DIRECTIVES ModPagespeedLowercaseHtmlNames true
-#ALL_DIRECTIVES ModPagespeedMapOriginDomain example.com localhost
-#ALL_DIRECTIVES ModPagespeedMapRewriteDomain example.com static.example.com
-#ALL_DIRECTIVES ModPagespeedMaxImageSizeLowResolutionBytes 1000
-#ALL_DIRECTIVES ModPagespeedMaxInlinedPreviewImagesIndex 80
-#ALL_DIRECTIVES ModPagespeedMaxSegmentLength 100
-#ALL_DIRECTIVES ModPagespeedMemcachedServers localhost:6765
-#ALL_DIRECTIVES ModPagespeedMemcachedThreads 1
-#ALL_DIRECTIVES ModPagespeedMessageBufferSize 100
-#ALL_DIRECTIVES ModPagespeedMinImageSizeLowResolutionBytes 2000
-#ALL_DIRECTIVES ModPagespeedModifyCachingHeaders true
-#ALL_DIRECTIVES ModPagespeedNumExpensiveRewriteThreads 2
-#ALL_DIRECTIVES ModPagespeedNumRewriteThreads 4
-#ALL_DIRECTIVES ModPagespeedRateLimitBackgroundFetches true
-#ALL_DIRECTIVES ModPagespeedRefererStatisticsOutputLevel simple
-#ALL_DIRECTIVES ModPagespeedReportUnloadTime true
-#ALL_DIRECTIVES ModPagespeedRespectVary true
-#ALL_DIRECTIVES ModPagespeedRespectXForwardedProto off
-#ALL_DIRECTIVES ModPagespeedRetainComment "special"
-#ALL_DIRECTIVES ModPagespeedRewriteDeadlinePerFlushMs 10
-#ALL_DIRECTIVES ModPagespeedRewriteLevel CoreFilters
-#ALL_DIRECTIVES ModPagespeedRunExperiment true
-#ALL_DIRECTIVES ModPagespeedShardDomain example.com 1.example.com,2.example.com
-#ALL_DIRECTIVES ModPagespeedSharedMemoryLocks true
-#ALL_DIRECTIVES ModPagespeedSlurpDirectory /tmp/slurp/
-#ALL_DIRECTIVES ModPagespeedSlurpFlushLimit 5
-#ALL_DIRECTIVES ModPagespeedSlurpReadOnly true
-#ALL_DIRECTIVES ModPagespeedStatistics true
-#ALL_DIRECTIVES ModPagespeedStatisticsLogging true
-#ALL_DIRECTIVES ModPagespeedStatisticsLoggingChartsCSS "example.com/css.css"
-#ALL_DIRECTIVES ModPagespeedStatisticsLoggingChartsJS "example.com/js.js"
-#ALL_DIRECTIVES ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
-#ALL_DIRECTIVES ModPagespeedStatisticsLoggingIntervalMs 3000
-#ALL_DIRECTIVES ModPagespeedSupportNoScriptEnabled true
-#ALL_DIRECTIVES ModPagespeedTestProxy off
-#ALL_DIRECTIVES ModPagespeedUrlValuedAttribute span src Hyperlink
-#ALL_DIRECTIVES ModPagespeedUsePerVHostStatistics on
-#ALL_DIRECTIVES ModPagespeedXHeaderValue "test"
+#ALL_DIRECTIVES Allow: "foo",
+#ALL_DIRECTIVES AnalyticsID: 1234,
+#ALL_DIRECTIVES AvoidRenamingIntrospectiveJavascript: "true",
+#ALL_DIRECTIVES BeaconUrl: "\"http://example.com/beacon\"",
+#ALL_DIRECTIVES BlockingRewriteKey: "test",
+#ALL_DIRECTIVES CacheFlushFilename: "/tmp/cache.flush",
+#ALL_DIRECTIVES CacheFlushPollInterevalSec: 10,
+#ALL_DIRECTIVES ClientDomainRewrite: "false",
+#ALL_DIRECTIVES CollectRefererStatistics: "false",
+#ALL_DIRECTIVES CombineAcrossPaths: "true",
+#ALL_DIRECTIVES CssFlattenMaxBytes: 2000,
+#ALL_DIRECTIVES CssImageInlineMaxBytes: 2000,
+#ALL_DIRECTIVES CssInlineMaxBytes: 2000,
+#ALL_DIRECTIVES CssOutlineMinBytes: 2000,
+#ALL_DIRECTIVES CssPreserveURLs: "off",
+#ALL_DIRECTIVES DisableFilters: "strip_scripts",
+#ALL_DIRECTIVES Disallow: "bar",
+#ALL_DIRECTIVES Domain: "http://example.com",
+#ALL_DIRECTIVES DomainRewriteHyperlinks: "true",
+#ALL_DIRECTIVES EnableFilters: "extend_cache",
+#ALL_DIRECTIVES ExperimentSpec: "\"id=8;percent=10\"",
+#ALL_DIRECTIVES ExperimentVariable: 3,
+#ALL_DIRECTIVES FetchProxy: "localhost:4321",
+#ALL_DIRECTIVES FetchWithGzip: "on",
+#ALL_DIRECTIVES FetcherTimeOutMs: 1000,
+#ALL_DIRECTIVES FileCacheCleanIntervalMs: 3600000,
+#ALL_DIRECTIVES FileCacheInodeLimit: 10000,
+#ALL_DIRECTIVES FileCachePath: "/tmp/cache/",
+#ALL_DIRECTIVES FileCacheSizeKb: 1000,
+#ALL_DIRECTIVES ForbidAllDisabledFilters: true,
+#ALL_DIRECTIVES ForbidFilters: "rewrite_images",
+#ALL_DIRECTIVES ForceCaching: "off",
+#ALL_DIRECTIVES HashRefererStatistics: "false",
+#ALL_DIRECTIVES ImageInlineMaxBytes: 2000,
+#ALL_DIRECTIVES ImageLimitOptimizedPercent: 80,
+#ALL_DIRECTIVES ImageLimitResizeAreaPercent: 80,
+#ALL_DIRECTIVES ImageMaxRewritesAtOnce: 5,
+#ALL_DIRECTIVES ImageRecompressionQuality: 75,
+#ALL_DIRECTIVES ImagePreserveURLs: "false",
+#ALL_DIRECTIVES ImageWebpRecompressionQuality: 85,
+#ALL_DIRECTIVES ImgInlineMaxBytes: 2000,
+#ALL_DIRECTIVES ImgMaxRewritesAtOnce: 5,
+#ALL_DIRECTIVES InPlaceResourceOptimization: "on",
+#ALL_DIRECTIVES IncreaseSpeedTracking: "true",
+#ALL_DIRECTIVES InstallCrashHandler: "off",
+#ALL_DIRECTIVES JpegRecompressionQuality: 80,
+#ALL_DIRECTIVES JsInlineMaxBytes: 2000,
+#ALL_DIRECTIVES JsOutlineMinBytes: 2000,
+#ALL_DIRECTIVES JsPreserveURLS: "off",
+#ALL_DIRECTIVES LRUCacheByteLimit: 1000,
+#ALL_DIRECTIVES LRUCacheKbPerProcess: 1,
+#ALL_DIRECTIVES ListOutstandingUrlsOnError: "on",
+#ALL_DIRECTIVES LoadFromFile: "http://example.com/ /var/html/example/",
+#ALL_DIRECTIVES LoadFromFileMatch: "\"^http://example.com/\" /var/html/example/",
+#ALL_DIRECTIVES LoadFromFileRule: "allow /var/html/example/",
+#ALL_DIRECTIVES LoadFromFileRuleMatch: "Disallow \.php.css$",
+#ALL_DIRECTIVES LogRewriteTiming: "false",
+#ALL_DIRECTIVES LowercaseHtmlNames: "true",
+## TODO(oschaaf): TYPE in localhost? probably doesn't mattor
+#ALL_DIRECTIVES MapOriginDomain: "example.com localhlost",
+#ALL_DIRECTIVES MapRewriteDomain: "example.com static.example.com",
+#ALL_DIRECTIVES MaxImageSizeLowResolutionBytes: 1000,
+#ALL_DIRECTIVES MaxInlinedPreviewImagesIndex: 80,
+#ALL_DIRECTIVES MaxSegmentLength: 100,
+#ALL_DIRECTIVES MemcachedServers: "localhost:6765",
+#ALL_DIRECTIVES MemcachedThreads: 1,
+#ALL_DIRECTIVES MessageBufferSize: 100,
+#ALL_DIRECTIVES MinImageSizeLowResolutionBytes: 2000,
+#ALL_DIRECTIVES ModifyCachingHeaders: "true",
+#ALL_DIRECTIVES NumExpensiveRewriteThreads: 2,
+#ALL_DIRECTIVES NumRewriteThreads: 4,
+#ALL_DIRECTIVES RateLimitBackgroundFetches: "true",
+#ALL_DIRECTIVES RefererStatisticsOutputLevel: "simple",
+#ALL_DIRECTIVES ReportUnloadTime: "true",
+#ALL_DIRECTIVES RespectVary: "true",
+#ALL_DIRECTIVES RespectXForwardedProto: "off",
+#ALL_DIRECTIVES RetainComment: "\"special\"",
+#ALL_DIRECTIVES RewriteDeadlinePerFlushMs: 10,
+#ALL_DIRECTIVES RewriteLevel: "CoreFilters",
+#ALL_DIRECTIVES RunExperiment: "true",
+#ALL_DIRECTIVES ShardDomain: "example.com 1.example.com,2.example.com",
+#ALL_DIRECTIVES SharedMemoryLocks: "true",
+#ALL_DIRECTIVES SlurpDirectory: "/tmp/slurp/",
+#ALL_DIRECTIVES SlurpFlushLimit: 5,
+#ALL_DIRECTIVES SlurpReadOnly: "true",
+#ALL_DIRECTIVES Statistics: "true",
+#ALL_DIRECTIVES StatisticsLogging: "true",
+#ALL_DIRECTIVES StatisticsLoggingChartsCSS: "\"example.com/css.css\"",
+#ALL_DIRECTIVES StatisticsLoggingChartsJS: "\"example.com/js.js\"",
+#ALL_DIRECTIVES StatisticsLoggingFile: "\"@@MOD_PAGESPEED_STATS_LOG@@\"",
+#ALL_DIRECTIVES StatisticsLoggingIntervalMs: 3000,
+#ALL_DIRECTIVES SupportNoScriptEnabled: "true",
+#ALL_DIRECTIVES TestProxy: "off",
+#ALL_DIRECTIVES UrlValuedAttribute: "span src Hyperlink",
+#ALL_DIRECTIVES UsePerVHostStatistics: "on",
+#ALL_DIRECTIVES XHeaderValue: "\"test\"",
 
 #PER_VHOST_STATS UsePerVHostStatistics: "on",
 
 # Do testing using memcached in lieu of the file cache.
-#MEMCACHED ModPagespeedMemcachedServers localhost:6765
+#MEMCACHED MemcachedServers: "localhost:6765",
 
 # When testing memcached in system tests, let's make sure we are really
 # hitting it and not servicing the lookups in-memory.  Note that we will
 # cover having a non-zero lru-cache with  memcached in load tests.
-#MEMCACHED ModPagespeedLRUCacheKbPerProcess 0
-#GZIP ModPagespeedFetchWithGzip on
+#MEMCACHED LRUCacheKbPerProcess: 0,
+#GZIP FetchWithGzip: "on",
 #PER_VHOST_STATS # Make sure we behave OK with this on, too.
 #PER_VHOST_STATS FetchWithGzip: "on",
 }, #pagespeed:
