@@ -14,6 +14,8 @@ def write_servers_open_item(server,level):
     emit(indent("root " + server["root"] + ";\n", level+1));
     if "server_name" in server:
         emit(indent("server_name " + server["server_name"] + ";\n", level+1));
+    if "pagespeed_status" in server:
+        emit(indent("pagespeed " + server["pagespeed_status"] + ";\n", level+1));
 
 def write_servers_close_item(server,level):
     emit(indent("}\n",level))

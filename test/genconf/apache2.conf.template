@@ -12,6 +12,8 @@ def write_servers_open_item(server,level):
     emit(indent("DocumentRoot " + server["root"] + "\n", level+1));
     if "server_name" in server:
         emit(indent("ServerName " + server["server_name"] + "\n", level+1));
+    if "pagespeed_status" in server:
+        emit(indent("ModPagespeed " + server["pagespeed_status"] + "\n", level+1));
 
 def write_servers_close_item(server,level):
     emit(indent("</VirtualHost>\n",level))
@@ -28,7 +30,7 @@ def write_locations_open_item(server,level):
     if "path" in server:
         emit(indent("<Location " + server["path"]  + ">\n",level))
     elif "wildcard_path" in server:
-        emit(indent("<Location ~ \"" + server["regex_path"]  + "\">\n",level))
+        emit(indent("<Location ~ \"" + server["wildcard_path"]  + "\">\n",level))
 
     if "text" in server:
        emit(server["text"])

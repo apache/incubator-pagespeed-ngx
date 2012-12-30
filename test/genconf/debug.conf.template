@@ -443,7 +443,7 @@ locations: [
 #COVERAGE # from the other one, which plays back slurps
 #COVERAGE Listen 8081
 #COVERAGE <VirtualHost *:8080>
-#COVERAGE   ModPagespeed on
+#COVERAGE   pagespeed: "on",
 #COVERAGE   # Proxy using SERF
 #COVERAGE   ModPagespeedTestProxy on
 #COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
@@ -485,7 +485,7 @@ locations: [
 #COVERAGE </VirtualHost>
 #COVERAGE
 #COVERAGE <VirtualHost *:8081>
-#COVERAGE   ModPagespeed on
+#COVERAGE   pagespeed_status: "on",
 #COVERAGE
 #COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@-alt/"
 #COVERAGE   ModPagespeedRewriteLevel PassThrough
@@ -515,7 +515,7 @@ locations: [
 #PROXY   #ErrorLog   "@@MOD_PAGESPEED_CACHE@@/logs/error_log"
 #PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@/logs/access_log" common
 #PROXY
-#PROXY   ModPagespeed on
+#PROXY   pagespeed_status: "on",
 #PROXY
 #PROXY   ModPagespeedFileCachePath         "@@MOD_PAGESPEED_CACHE@@/"
 #PROXY
@@ -534,7 +534,7 @@ locations: [
 #PROXY   #ErrorLog   "@@MOD_PAGESPEED_CACHE@@-alt/logs/error_log"
 #PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@-alt/logs/access_log" common
 #PROXY
-#PROXY   ModPagespeed off
+#PROXY   pagespeed_status: "off",
 #PROXY   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt/"
 #PROXY   ModPagespeedRewriteLevel PassThrough
 #PROXY </VirtualHost>
@@ -555,7 +555,7 @@ locations: [
 #SLURP   # Host at 8081 sees into mod_pagespeed_examples directory.
 #SLURP   DocumentRoot  "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
 #SLURP
-#SLURP   ModPagespeed off
+#SLURP   pagespeed_status: "off",
 #SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt/"
 #SLURP   ModPagespeedRewriteLevel PassThrough
 #SLURP </VirtualHost>
@@ -631,8 +631,7 @@ servers: [
     	port: @@APACHE_SECONDARY_PORT@@,
     	server_name: "secondary.example.com",
     	root: "@@APACHE_DOC_ROOT@@",
-	## TODO(oschaaf):
-	##  ModPagespeed on
+	pagespeed_status: "on",
     	pagespeed: { 
 	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/_secondary/\"",
 	    MapProxyDomain: "secondary.example.com/pss_images http://ref.pssdemos.com/filter/images",
