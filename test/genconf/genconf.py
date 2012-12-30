@@ -54,7 +54,7 @@ def ast_node_to_dict(node, dest=None, lookup={}, parent_key=""):
     return node.getChildren()[0]
   elif isinstance(node, Node):
     flattened = flatten_attribute(node)
-    val = "#LOOKUP_FAILED [" + flattened + "]!"
+    val = "#LOOKUP_FAILED [" + str(flattened) + "]!"
     if flattened in lookup:
       val = lookup[flattened]
       lookup[parent_key] = val

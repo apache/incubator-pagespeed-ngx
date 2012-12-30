@@ -11,7 +11,8 @@ def write_servers_open_item(server,level):
     emit(":")
     emit(server["port"])
     emit(";\n")
-    emit(indent("root " + server["root"] + ";\n", level+1));
+    if "root" in server:
+        emit(indent("root " + server["root"] + ";\n", level+1));
     if "server_name" in server:
         emit(indent("server_name " + server["server_name"] + ";\n", level+1));
     if "pagespeed_status" in server:

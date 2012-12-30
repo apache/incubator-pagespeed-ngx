@@ -14,6 +14,7 @@
 # default then we can eliminate this line.
 ##AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 
+## TODO(oschaaf): this could go in an 'enable server-side-includes' directive
 # This is needed for the server-side includes test in
 # apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
 ##<IfModule !include_module>
@@ -204,6 +205,20 @@ RespectXForwardedProto: "on",
 #GZIP FetchWithGzip: "on",
 #PER_VHOST_STATS # Make sure we behave OK with this on, too.
 #PER_VHOST_STATS FetchWithGzip: "on",
+
+# Globally set the message-buffer size during load-tests.
+#
+# TODO(jmarantz): add a test-path where we set this in a VirtualHost and
+# make sure the right error message comes out.
+#COVERAGE # Don't want global slurp inheriting into :8080
+#COVERAGE InheritVHostConfig: "off",
+#COVERAGE MessageBufferSize: 100000,
+#COVERAGE
+#COVERAGE # We want backtraces to be dumped during the load test, as
+#COVERAGE # one of its purposes is to discover crash bugs.
+#COVERAGE InstallCrashHandler: "on",
+#COVERAGE
+
 }, #pagespeed:
 
 # Test coverage for <ModPagespeedIf>
@@ -392,7 +407,7 @@ locations: [
     },
     {
         wildcard_path: "/mod_pagespeed_test/response_headers.html*",
-## TODO: retain regex location
+## TODO: retain wildcard location
 ##<Location ~ "/mod_pagespeed_test/response_headers.html*">
 ##  SetHandler mod_pagespeed_response_options_handler
 ##</Location>
@@ -406,100 +421,30 @@ locations: [
 #PER_VHOST_STATS    ## Allow from 127.0.0.1
 #PER_VHOST_STATS    ## SetHandler mod_pagespeed_global_statistics
 #PER_VHOST_STATS    }
-], #locations
-
-#SPELING # Enable mod_speling to ensure that we don't regress Issue 194
-#SPELING <IfModule !speling_module>
-#SPELING   LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so
-#SPELING </IfModule>
-#SPELING CheckSpelling on
-
-#GZIP SetOutputFilter DEFLATE
 
 #STRESS # These lines are only needed for the stress test.
-#STRESS <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/cgi" >
-#STRESS   Options +ExecCGI
-#STRESS </Directory>
-#STRESS AddHandler cgi-script .cgi
-#STRESS <IfVersion >= 2.4.2>
-#STRESS   <IfModule !slotmem_shm_module>
-#STRESS     LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
-#STRESS   </IfModule>
-#STRESS </IfVersion>
+#STRESS    {
+#STRESS        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/cgi",
+#STRESS        ##Options +ExecCGI
+#STRESS    },
 
-# Globally set the message-buffer size during load-tests.
-#
-# TODO(jmarantz): add a test-path where we set this in a VirtualHost and
-# make sure the right error message comes out.
-#COVERAGE # Don't want global slurp inheriting into :8080
-#COVERAGE ModPagespeedInheritVHostConfig off
-#COVERAGE ModPagespeedMessageBufferSize 100000
-#COVERAGE
-#COVERAGE # We want backtraces to be dumped during the load test, as
-#COVERAGE # one of its purposes is to discover crash bugs.
-#COVERAGE ModPagespeedInstallCrashHandler on
-#COVERAGE
-#COVERAGE # These lines are used for large-scale code coverage testing.
-#COVERAGE # We use 2 servers for it, one doing rewriting and fetching
-#COVERAGE # from the other one, which plays back slurps
-#COVERAGE Listen 8081
-#COVERAGE <VirtualHost *:8080>
-#COVERAGE   pagespeed: "on",
-#COVERAGE   # Proxy using SERF
-#COVERAGE   ModPagespeedTestProxy on
-#COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
-#COVERAGE
-#MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:6765
-#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-#COVERAGE   ModPagespeedRewriteLevel AllFilters
-#COVERAGE   ModPagespeedEnableFilters elide_attributes
-#COVERAGE   ModPagespeedDomain *
-#COVERAGE   ModPagespeedFileCacheSizeKb          102400
-#COVERAGE   ModPagespeedFileCacheCleanIntervalMs 3600000
-#COVERAGE   ModPagespeedLRUCacheKbPerProcess     1024
-#COVERAGE   ModPagespeedLRUCacheByteLimit        16384
-#COVERAGE   ModPagespeedCssFlattenMaxBytes       2048
-#COVERAGE   ModPagespeedCssInlineMaxBytes        2048
-#COVERAGE   ModPagespeedCssImageInlineMaxBytes   2048
-#COVERAGE   ModPagespeedImageInlineMaxBytes      2048
-#COVERAGE   ModPagespeedJsInlineMaxBytes         2048
-#COVERAGE   ModPagespeedCssOutlineMinBytes       3000
-#COVERAGE   ModPagespeedJsOutlineMinBytes        3000
-#COVERAGE   ModPagespeedImageMaxRewritesAtOnce      8
-#COVERAGE   ModPagespeedSlurpFlushLimit          8192
-#COVERAGE   ModPagespeedJpegRecompressionQuality   -1
-#COVERAGE   ModPagespeedImageLimitOptimizedPercent  100
-#COVERAGE   ModPagespeedImageLimitResizeAreaPercent 100
-#COVERAGE   <Location /mod_pagespeed_beacon>
-#COVERAGE       SetHandler mod_pagespeed_beacon
-#COVERAGE   </Location>
-#COVERAGE   <Location /mod_pagespeed_statistics>
-#COVERAGE       Order allow,deny
-#COVERAGE       Allow from localhost
-#COVERAGE       SetHandler mod_pagespeed_statistics
-#COVERAGE   </Location>
-#COVERAGE    <Location /mod_pagespeed_message>
-#COVERAGE        Allow from localhost
-#COVERAGE        Allow from 127.0.0.1
-#COVERAGE        SetHandler mod_pagespeed_message
-#COVERAGE    </Location>
-#COVERAGE </VirtualHost>
-#COVERAGE
-#COVERAGE <VirtualHost *:8081>
-#COVERAGE   pagespeed_status: "on",
-#COVERAGE
-#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@-alt/"
-#COVERAGE   ModPagespeedRewriteLevel PassThrough
-#COVERAGE
-#COVERAGE   # ModPagespeedSlurpDirectory ...
-#COVERAGE   # ModPagespeedSlurpReadOnly on
-#COVERAGE
-#COVERAGE   <Location /mod_pagespeed_message>
-#COVERAGE        Allow from localhost
-#COVERAGE        Allow from 127.0.0.1
-#COVERAGE        SetHandler mod_pagespeed_message
-#COVERAGE   </Location>
-#COVERAGE </VirtualHost>
+], #locations
+
+#STRESS ##AddHandler cgi-script .cgi
+#STRESS ##<IfVersion >= 2.4.2>
+#STRESS ##  <IfModule !slotmem_shm_module>
+#STRESS ##    LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
+#STRESS ##  </IfModule>
+#STRESS ##</IfVersion>
+
+#SPELING # Enable mod_speling to ensure that we don't regress Issue 194
+#SPELING ##<IfModule !speling_module>
+#SPELING ##  LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so
+#SPELING ##</IfModule>
+#SPELING ##CheckSpelling on
+
+## TODO(oschaaf): this could go in an 'enable_gzip' directive
+## GZIP SetOutputFilter DEFLATE
 
 
 #PROXY # This is used for ProxyPass testing.
@@ -619,6 +564,7 @@ locations: [
 
 listen: [
     @@APACHE_SECONDARY_PORT@@,
+#COVERAGE 8081,
 ],
 name_virtual_hosts: [
     {
@@ -818,5 +764,78 @@ servers: [
   	      Domain: "http://example.com",
         }
     },
+#COVERAGE    # These lines are used for large-scale code coverage testing.
+#COVERAGE    # We use 2 servers for it, one doing rewriting and fetching
+#COVERAGE    # from the other one, which plays back slurps
+#COVERAGE    {
+#COVERAGE        address: "*",
+#COVERAGE        port: 8080,
+#COVERAGE        pagespeed_status: "on",
+#COVERAGE        # Proxy using SERF
+#COVERAGE        pagespeed: {
+#COVERAGE            TestProxy: "on",
+#COVERAGE   	     FetchProxy: "\"127.0.0.1:8081\"",
+#COVERAGE
+#MEMCACHE_COVERAGE   MemcachedServers: "localhost:6765",
+#COVERAGE   	     FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+#COVERAGE   	     RewriteLevel: "AllFilters",
+#COVERAGE   	     EnableFilters: "elide_attributes",
+#COVERAGE   	     Domain: "*",
+#COVERAGE   	     FileCacheSizeKb: 102400,
+#COVERAGE   	     FileCacheCleanIntervalMs: 3600000,
+#COVERAGE   	     LRUCacheKbPerProcess:     1024,
+#COVERAGE   	     LRUCacheByteLimit:        16384,
+#COVERAGE   	     CssFlattenMaxBytes:       2048,
+#COVERAGE   	     CssInlineMaxBytes:        2048,
+#COVERAGE   	     CssImageInlineMaxBytes:   2048,
+#COVERAGE   	     ImageInlineMaxBytes:      2048,
+#COVERAGE   	     JsInlineMaxBytes:         2048,
+#COVERAGE   	     CssOutlineMinBytes:       3000,
+#COVERAGE   	     JsOutlineMinBytes:        3000,
+#COVERAGE   	     ImageMaxRewritesAtOnce:      8,
+#COVERAGE   	     SlurpFlushLimit:          8192,
+#COVERAGE   	     JpegRecompressionQuality:   -1,
+#COVERAGE   	     ImageLimitOptimizedPercent:  100,
+#COVERAGE   	     ImageLimitResizeAreaPercent: 100,
+#COVERAGE        }, #pagespeed
+#COVERAGE       locations: [
+#COVERAGE           {
+#COVERAGE               path: "/mod_pagespeed_beacon",
+#COVERAGE               ##SetHandler mod_pagespeed_beacon
+#COVERAGE           },
+#COVERAGE           {
+#COVERAGE               path: "/mod_pagespeed_statistics",
+#COVERAGE               ##Order allow,deny
+#COVERAGE               ##Allow from localhost
+#COVERAGE               ##SetHandler mod_pagespeed_statistics
+#COVERAGE           },
+#COVERAGE           {
+#COVERAGE               path: "/mod_pagespeed_message",
+#COVERAGE               ##Allow from localhost
+#COVERAGE               ##Allow from 127.0.0.1
+#COVERAGE               ##SetHandler mod_pagespeed_message
+#COVERAGE           },
+#COVERAGE       ],
+#COVERAGE    }, #server/virtual host
+#COVERAGE    {
+#COVERAGE        address: "*",
+#COVERAGE        port: 8081,
+#COVERAGE        pagespeed_status: "on",
+#COVERAGE        pagespeed: {
+#COVERAGE            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt/\"",
+#COVERAGE            RewriteLevel: "PassThrough",
+#COVERAGE           # oschaaf: these where commented in the original config
+#COVERAGE           # SlurpDirectory: "...",
+#COVERAGE           # SlurpReadOnly: "on",
+#COVERAGE        },
+#COVERAGE        locations: [
+#COVERAGE            {
+#COVERAGE		path: "/mod_pagespeed_message",
+#COVERAGE        	##Allow from localhost
+#COVERAGE        	##Allow from 127.0.0.1
+#COVERAGE        	##SetHandler mod_pagespeed_message
+#COVERAGE            },
+#COVERAGE        ]
+#COVERAGE    }, #server/virtual host
 ] #servers
 } #configuration
