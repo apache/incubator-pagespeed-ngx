@@ -4,6 +4,9 @@ from util import *
 
 set_writer(emit)
 
+# TODO(oschaaf): nginx does not inherit locations and directories from the top level
+# move these declarations from the root to the virtualhost/server declarations
+
 def write_servers_open_item(server,level):
     emit(indent("server{  ", level))
     emit("\n")
@@ -113,7 +116,27 @@ key_to_writer = {
     "name_virtual_hosts_close": write_void,
 }
 
+def prepare_configuration(config):
+    # nginx doesn't have a top level configuration
+    # for locations and directories (no directories at all AFAICT)
+    # we 'inherit' those sections here by explicitly 
+    # copying these directives to every server defined
+    # after that, we delete them from the root configuration
+    move = ["locations", "directories"]
+    servers = config["servers"]
+    for m in move:
+    	for server in servers:
+	    if not m in server: 
+	       server[m] = []
+	    server[m].extend(config[m])
+	del config[m]
+
+prepare_configuration(config)
+
 }$# nginx configuration, generated with mode [@TODO@]
+
+
+
 http {
 ${write_cfg(key_to_writer, config, 1)}$
 } #http
