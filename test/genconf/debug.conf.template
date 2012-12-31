@@ -46,179 +46,178 @@
 ##Header set Cache-Control "max-age=600"
 
 pagespeed: {
-# If X-PSA-Blocking-Rewrite request header is present and its value matches the
-# value of ModPagespeedBlockingRewriteKey below, the response will be fully
-# rewritten before being flushed to the client.
-BlockingRewriteKey: "psatest",
-# This will cause an error report in the startup log if mod_pagespeed is not
-# built with ssl, but otherwise will cause no trouble.
-FetchHttps: "enable,allow_self_signed",
+    # If X-PSA-Blocking-Rewrite request header is present and its value matches the
+    # value of ModPagespeedBlockingRewriteKey below, the response will be fully
+    # rewritten before being flushed to the client.
+    BlockingRewriteKey: "psatest",
+    # This will cause an error report in the startup log if mod_pagespeed is not
+    # built with ssl, but otherwise will cause no trouble.
+    FetchHttps: "enable,allow_self_signed",
 
-# add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
-EnableFilters: "add_instrumentation",
+    # add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
+    EnableFilters: "add_instrumentation",
 
-# For regression test of connection failing.
-Domain: "modpagespeed.com:1023",
+    # For regression test of connection failing.
+    Domain: "modpagespeed.com:1023",
 
-# Test LoadFromFile mapping by mapping one dir to another.
-LoadFromFile: "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/", 
-LoadFromFileMatch: "^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\\1/",
-LoadFromFileRule: "Disallow \"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/\"",
-FromFileRuleMatch: "Disallow \.ssp.css$",
-LoadFromFileRuleMatch: "Allow exception\.ssp\.css$",
+    # Test LoadFromFile mapping by mapping one dir to another.
+    LoadFromFile: "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/", 
+    LoadFromFileMatch: "^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\\1/",
+    LoadFromFileRule: "Disallow \"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/\"",
+    FromFileRuleMatch: "Disallow \.ssp.css$",
+    LoadFromFileRuleMatch: "Allow exception\.ssp\.css$",
 
-# Print out detail about connection-refused errors.  We don't negative-test
-# this here cause it's a hassle; we just depend on the unit-tests for that.
-ListOutstandingUrlsOnError: "on",
+    # Print out detail about connection-refused errors.  We don't negative-test
+    # this here cause it's a hassle; we just depend on the unit-tests for that.
+    ListOutstandingUrlsOnError: "on",
 
-AvoidRenamingIntrospectiveJavascript: "off",
+    AvoidRenamingIntrospectiveJavascript: "off",
 
-# Establish a proxy mapping where the current server proxies an image
-# stored on ref.pssdemos.com.  We use ref.pssdemos.com rather than
-# modpagespeed.com so that we use a single html file both for:
-#   1. a demo of the feature on modpagespeed.com.  It would
-#      be confusing to demo a Proxying when the origin was the
-#      same as the proxy.
-#   2. A system-test of the feature to be run with our usual testing.
-MapProxyDomain: "@@APACHE_DOMAIN@@/pss_images http://ref.pssdemos.com/filter/images",
+    # Establish a proxy mapping where the current server proxies an image
+    # stored on ref.pssdemos.com.  We use ref.pssdemos.com rather than
+    # modpagespeed.com so that we use a single html file both for:
+    #   1. a demo of the feature on modpagespeed.com.  It would
+    #      be confusing to demo a Proxying when the origin was the
+    #      same as the proxy.
+    #   2. A system-test of the feature to be run with our usual testing.
+    MapProxyDomain: "@@APACHE_DOMAIN@@/pss_images http://ref.pssdemos.com/filter/images",
 
-# These will be sent to the origin domain when fetching subresources.
-CustomFetchHeader: "header value",
-CustomFetchHeader: "x-other False",
+    # These will be sent to the origin domain when fetching subresources.
+    CustomFetchHeader: "header value",
+    CustomFetchHeader: "x-other False",
 
-InPlaceResourceOptimization: "on",
-RespectXForwardedProto: "on",
+    InPlaceResourceOptimization: "on",
+    RespectXForwardedProto: "on",
 
 
-#STATS_LOGGING Statistics: "on",
-#STATS_LOGGING StatisticsLogging: "on",
-#STATS_LOGGING StatisticsLoggingFile: "\"@@MOD_PAGESPEED_STATS_LOG@@\"",
-#STATS_LOGGING StatisticsLoggingIntervalMs: 10,
+    #STATS_LOGGING Statistics: "on",
+    #STATS_LOGGING StatisticsLogging: "on",
+    #STATS_LOGGING StatisticsLoggingFile: "\"@@MOD_PAGESPEED_STATS_LOG@@\"",
+    #STATS_LOGGING StatisticsLoggingIntervalMs: 10,
 
-#ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
-#ALL_DIRECTIVES Allow: "foo",
-#ALL_DIRECTIVES AnalyticsID: 1234,
-#ALL_DIRECTIVES AvoidRenamingIntrospectiveJavascript: "true",
-#ALL_DIRECTIVES BeaconUrl: "\"http://example.com/beacon\"",
-#ALL_DIRECTIVES BlockingRewriteKey: "test",
-#ALL_DIRECTIVES CacheFlushFilename: "/tmp/cache.flush",
-#ALL_DIRECTIVES CacheFlushPollInterevalSec: 10,
-#ALL_DIRECTIVES ClientDomainRewrite: "false",
-#ALL_DIRECTIVES CollectRefererStatistics: "false",
-#ALL_DIRECTIVES CombineAcrossPaths: "true",
-#ALL_DIRECTIVES CssFlattenMaxBytes: 2000,
-#ALL_DIRECTIVES CssImageInlineMaxBytes: 2000,
-#ALL_DIRECTIVES CssInlineMaxBytes: 2000,
-#ALL_DIRECTIVES CssOutlineMinBytes: 2000,
-#ALL_DIRECTIVES CssPreserveURLs: "off",
-#ALL_DIRECTIVES DisableFilters: "strip_scripts",
-#ALL_DIRECTIVES Disallow: "bar",
-#ALL_DIRECTIVES Domain: "http://example.com",
-#ALL_DIRECTIVES DomainRewriteHyperlinks: "true",
-#ALL_DIRECTIVES EnableFilters: "extend_cache",
-#ALL_DIRECTIVES ExperimentSpec: "\"id=8;percent=10\"",
-#ALL_DIRECTIVES ExperimentVariable: 3,
-#ALL_DIRECTIVES FetchProxy: "localhost:4321",
-#ALL_DIRECTIVES FetchWithGzip: "on",
-#ALL_DIRECTIVES FetcherTimeOutMs: 1000,
-#ALL_DIRECTIVES FileCacheCleanIntervalMs: 3600000,
-#ALL_DIRECTIVES FileCacheInodeLimit: 10000,
-#ALL_DIRECTIVES FileCachePath: "/tmp/cache/",
-#ALL_DIRECTIVES FileCacheSizeKb: 1000,
-#ALL_DIRECTIVES ForbidAllDisabledFilters: true,
-#ALL_DIRECTIVES ForbidFilters: "rewrite_images",
-#ALL_DIRECTIVES ForceCaching: "off",
-#ALL_DIRECTIVES HashRefererStatistics: "false",
-#ALL_DIRECTIVES ImageInlineMaxBytes: 2000,
-#ALL_DIRECTIVES ImageLimitOptimizedPercent: 80,
-#ALL_DIRECTIVES ImageLimitResizeAreaPercent: 80,
-#ALL_DIRECTIVES ImageMaxRewritesAtOnce: 5,
-#ALL_DIRECTIVES ImageRecompressionQuality: 75,
-#ALL_DIRECTIVES ImagePreserveURLs: "false",
-#ALL_DIRECTIVES ImageWebpRecompressionQuality: 85,
-#ALL_DIRECTIVES ImgInlineMaxBytes: 2000,
-#ALL_DIRECTIVES ImgMaxRewritesAtOnce: 5,
-#ALL_DIRECTIVES InPlaceResourceOptimization: "on",
-#ALL_DIRECTIVES IncreaseSpeedTracking: "true",
-#ALL_DIRECTIVES InstallCrashHandler: "off",
-#ALL_DIRECTIVES JpegRecompressionQuality: 80,
-#ALL_DIRECTIVES JsInlineMaxBytes: 2000,
-#ALL_DIRECTIVES JsOutlineMinBytes: 2000,
-#ALL_DIRECTIVES JsPreserveURLS: "off",
-#ALL_DIRECTIVES LRUCacheByteLimit: 1000,
-#ALL_DIRECTIVES LRUCacheKbPerProcess: 1,
-#ALL_DIRECTIVES ListOutstandingUrlsOnError: "on",
-#ALL_DIRECTIVES LoadFromFile: "http://example.com/ /var/html/example/",
-#ALL_DIRECTIVES LoadFromFileMatch: "\"^http://example.com/\" /var/html/example/",
-#ALL_DIRECTIVES LoadFromFileRule: "allow /var/html/example/",
-#ALL_DIRECTIVES LoadFromFileRuleMatch: "Disallow \.php.css$",
-#ALL_DIRECTIVES LogRewriteTiming: "false",
-#ALL_DIRECTIVES LowercaseHtmlNames: "true",
-## TODO(oschaaf): TYPE in localhost? probably doesn't mattor
-#ALL_DIRECTIVES MapOriginDomain: "example.com localhlost",
-#ALL_DIRECTIVES MapRewriteDomain: "example.com static.example.com",
-#ALL_DIRECTIVES MaxImageSizeLowResolutionBytes: 1000,
-#ALL_DIRECTIVES MaxInlinedPreviewImagesIndex: 80,
-#ALL_DIRECTIVES MaxSegmentLength: 100,
-#ALL_DIRECTIVES MemcachedServers: "localhost:6765",
-#ALL_DIRECTIVES MemcachedThreads: 1,
-#ALL_DIRECTIVES MessageBufferSize: 100,
-#ALL_DIRECTIVES MinImageSizeLowResolutionBytes: 2000,
-#ALL_DIRECTIVES ModifyCachingHeaders: "true",
-#ALL_DIRECTIVES NumExpensiveRewriteThreads: 2,
-#ALL_DIRECTIVES NumRewriteThreads: 4,
-#ALL_DIRECTIVES RateLimitBackgroundFetches: "true",
-#ALL_DIRECTIVES RefererStatisticsOutputLevel: "simple",
-#ALL_DIRECTIVES ReportUnloadTime: "true",
-#ALL_DIRECTIVES RespectVary: "true",
-#ALL_DIRECTIVES RespectXForwardedProto: "off",
-#ALL_DIRECTIVES RetainComment: "\"special\"",
-#ALL_DIRECTIVES RewriteDeadlinePerFlushMs: 10,
-#ALL_DIRECTIVES RewriteLevel: "CoreFilters",
-#ALL_DIRECTIVES RunExperiment: "true",
-#ALL_DIRECTIVES ShardDomain: "example.com 1.example.com,2.example.com",
-#ALL_DIRECTIVES SharedMemoryLocks: "true",
-#ALL_DIRECTIVES SlurpDirectory: "/tmp/slurp/",
-#ALL_DIRECTIVES SlurpFlushLimit: 5,
-#ALL_DIRECTIVES SlurpReadOnly: "true",
-#ALL_DIRECTIVES Statistics: "true",
-#ALL_DIRECTIVES StatisticsLogging: "true",
-#ALL_DIRECTIVES StatisticsLoggingChartsCSS: "\"example.com/css.css\"",
-#ALL_DIRECTIVES StatisticsLoggingChartsJS: "\"example.com/js.js\"",
-#ALL_DIRECTIVES StatisticsLoggingFile: "\"@@MOD_PAGESPEED_STATS_LOG@@\"",
-#ALL_DIRECTIVES StatisticsLoggingIntervalMs: 3000,
-#ALL_DIRECTIVES SupportNoScriptEnabled: "true",
-#ALL_DIRECTIVES TestProxy: "off",
-#ALL_DIRECTIVES UrlValuedAttribute: "span src Hyperlink",
-#ALL_DIRECTIVES UsePerVHostStatistics: "on",
-#ALL_DIRECTIVES XHeaderValue: "\"test\"",
+    #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
+    #ALL_DIRECTIVES Allow: "foo",
+    #ALL_DIRECTIVES AnalyticsID: 1234,
+    #ALL_DIRECTIVES AvoidRenamingIntrospectiveJavascript: "true",
+    #ALL_DIRECTIVES BeaconUrl: "\"http://example.com/beacon\"",
+    #ALL_DIRECTIVES BlockingRewriteKey: "test",
+    #ALL_DIRECTIVES CacheFlushFilename: "/tmp/cache.flush",
+    #ALL_DIRECTIVES CacheFlushPollInterevalSec: 10,
+    #ALL_DIRECTIVES ClientDomainRewrite: "false",
+    #ALL_DIRECTIVES CollectRefererStatistics: "false",
+    #ALL_DIRECTIVES CombineAcrossPaths: "true",
+    #ALL_DIRECTIVES CssFlattenMaxBytes: 2000,
+    #ALL_DIRECTIVES CssImageInlineMaxBytes: 2000,
+    #ALL_DIRECTIVES CssInlineMaxBytes: 2000,
+    #ALL_DIRECTIVES CssOutlineMinBytes: 2000,
+    #ALL_DIRECTIVES CssPreserveURLs: "off",
+    #ALL_DIRECTIVES DisableFilters: "strip_scripts",
+    #ALL_DIRECTIVES Disallow: "bar",
+    #ALL_DIRECTIVES Domain: "http://example.com",
+    #ALL_DIRECTIVES DomainRewriteHyperlinks: "true",
+    #ALL_DIRECTIVES EnableFilters: "extend_cache",
+    #ALL_DIRECTIVES ExperimentSpec: "\"id=8;percent=10\"",
+    #ALL_DIRECTIVES ExperimentVariable: 3,
+    #ALL_DIRECTIVES FetchProxy: "localhost:4321",
+    #ALL_DIRECTIVES FetchWithGzip: "on",
+    #ALL_DIRECTIVES FetcherTimeOutMs: 1000,
+    #ALL_DIRECTIVES FileCacheCleanIntervalMs: 3600000,
+    #ALL_DIRECTIVES FileCacheInodeLimit: 10000,
+    #ALL_DIRECTIVES FileCachePath: "/tmp/cache/",
+    #ALL_DIRECTIVES FileCacheSizeKb: 1000,
+    #ALL_DIRECTIVES ForbidAllDisabledFilters: true,
+    #ALL_DIRECTIVES ForbidFilters: "rewrite_images",
+    #ALL_DIRECTIVES ForceCaching: "off",
+    #ALL_DIRECTIVES HashRefererStatistics: "false",
+    #ALL_DIRECTIVES ImageInlineMaxBytes: 2000,
+    #ALL_DIRECTIVES ImageLimitOptimizedPercent: 80,
+    #ALL_DIRECTIVES ImageLimitResizeAreaPercent: 80,
+    #ALL_DIRECTIVES ImageMaxRewritesAtOnce: 5,
+    #ALL_DIRECTIVES ImageRecompressionQuality: 75,
+    #ALL_DIRECTIVES ImagePreserveURLs: "false",
+    #ALL_DIRECTIVES ImageWebpRecompressionQuality: 85,
+    #ALL_DIRECTIVES ImgInlineMaxBytes: 2000,
+    #ALL_DIRECTIVES ImgMaxRewritesAtOnce: 5,
+    #ALL_DIRECTIVES InPlaceResourceOptimization: "on",
+    #ALL_DIRECTIVES IncreaseSpeedTracking: "true",
+    #ALL_DIRECTIVES InstallCrashHandler: "off",
+    #ALL_DIRECTIVES JpegRecompressionQuality: 80,
+    #ALL_DIRECTIVES JsInlineMaxBytes: 2000,
+    #ALL_DIRECTIVES JsOutlineMinBytes: 2000,
+    #ALL_DIRECTIVES JsPreserveURLS: "off",
+    #ALL_DIRECTIVES LRUCacheByteLimit: 1000,
+    #ALL_DIRECTIVES LRUCacheKbPerProcess: 1,
+    #ALL_DIRECTIVES ListOutstandingUrlsOnError: "on",
+    #ALL_DIRECTIVES LoadFromFile: "http://example.com/ /var/html/example/",
+    #ALL_DIRECTIVES LoadFromFileMatch: "\"^http://example.com/\" /var/html/example/",
+    #ALL_DIRECTIVES LoadFromFileRule: "allow /var/html/example/",
+    #ALL_DIRECTIVES LoadFromFileRuleMatch: "Disallow \.php.css$",
+    #ALL_DIRECTIVES LogRewriteTiming: "false",
+    #ALL_DIRECTIVES LowercaseHtmlNames: "true",
+    ## TODO(oschaaf): typo in localhost? probably doesn't matter
+    #ALL_DIRECTIVES MapOriginDomain: "example.com localhlost",
+    #ALL_DIRECTIVES MapRewriteDomain: "example.com static.example.com",
+    #ALL_DIRECTIVES MaxImageSizeLowResolutionBytes: 1000,
+    #ALL_DIRECTIVES MaxInlinedPreviewImagesIndex: 80,
+    #ALL_DIRECTIVES MaxSegmentLength: 100,
+    #ALL_DIRECTIVES MemcachedServers: "localhost:6765",
+    #ALL_DIRECTIVES MemcachedThreads: 1,
+    #ALL_DIRECTIVES MessageBufferSize: 100,
+    #ALL_DIRECTIVES MinImageSizeLowResolutionBytes: 2000,
+    #ALL_DIRECTIVES ModifyCachingHeaders: "true",
+    #ALL_DIRECTIVES NumExpensiveRewriteThreads: 2,
+    #ALL_DIRECTIVES NumRewriteThreads: 4,
+    #ALL_DIRECTIVES RateLimitBackgroundFetches: "true",
+    #ALL_DIRECTIVES RefererStatisticsOutputLevel: "simple",
+    #ALL_DIRECTIVES ReportUnloadTime: "true",
+    #ALL_DIRECTIVES RespectVary: "true",
+    #ALL_DIRECTIVES RespectXForwardedProto: "off",
+    #ALL_DIRECTIVES RetainComment: "\"special\"",
+    #ALL_DIRECTIVES RewriteDeadlinePerFlushMs: 10,
+    #ALL_DIRECTIVES RewriteLevel: "CoreFilters",
+    #ALL_DIRECTIVES RunExperiment: "true",
+    #ALL_DIRECTIVES ShardDomain: "example.com 1.example.com,2.example.com",
+    #ALL_DIRECTIVES SharedMemoryLocks: "true",
+    #ALL_DIRECTIVES SlurpDirectory: "/tmp/slurp/",
+    #ALL_DIRECTIVES SlurpFlushLimit: 5,
+    #ALL_DIRECTIVES SlurpReadOnly: "true",
+    #ALL_DIRECTIVES Statistics: "true",
+    #ALL_DIRECTIVES StatisticsLogging: "true",
+    #ALL_DIRECTIVES StatisticsLoggingChartsCSS: "\"example.com/css.css\"",
+    #ALL_DIRECTIVES StatisticsLoggingChartsJS: "\"example.com/js.js\"",
+    #ALL_DIRECTIVES StatisticsLoggingFile: "\"@@MOD_PAGESPEED_STATS_LOG@@\"",
+    #ALL_DIRECTIVES StatisticsLoggingIntervalMs: 3000,
+    #ALL_DIRECTIVES SupportNoScriptEnabled: "true",
+    #ALL_DIRECTIVES TestProxy: "off",
+    #ALL_DIRECTIVES UrlValuedAttribute: "span src Hyperlink",
+    #ALL_DIRECTIVES UsePerVHostStatistics: "on",
+    #ALL_DIRECTIVES XHeaderValue: "\"test\"",
 
-#PER_VHOST_STATS UsePerVHostStatistics: "on",
+    #PER_VHOST_STATS UsePerVHostStatistics: "on",
 
-# Do testing using memcached in lieu of the file cache.
-#MEMCACHED MemcachedServers: "localhost:6765",
+    # Do testing using memcached in lieu of the file cache.
+    #MEMCACHED MemcachedServers: "localhost:6765",
 
-# When testing memcached in system tests, let's make sure we are really
-# hitting it and not servicing the lookups in-memory.  Note that we will
-# cover having a non-zero lru-cache with  memcached in load tests.
-#MEMCACHED LRUCacheKbPerProcess: 0,
-#GZIP FetchWithGzip: "on",
-#PER_VHOST_STATS # Make sure we behave OK with this on, too.
-#PER_VHOST_STATS FetchWithGzip: "on",
+    # When testing memcached in system tests, let's make sure we are really
+    # hitting it and not servicing the lookups in-memory.  Note that we will
+    # cover having a non-zero lru-cache with  memcached in load tests.
+    #MEMCACHED LRUCacheKbPerProcess: 0,
+    #GZIP FetchWithGzip: "on",
+    #PER_VHOST_STATS # Make sure we behave OK with this on, too.
+    #PER_VHOST_STATS FetchWithGzip: "on",
 
-# Globally set the message-buffer size during load-tests.
-#
-# TODO(jmarantz): add a test-path where we set this in a VirtualHost and
-# make sure the right error message comes out.
-#COVERAGE # Don't want global slurp inheriting into :8080
-#COVERAGE InheritVHostConfig: "off",
-#COVERAGE MessageBufferSize: 100000,
-#COVERAGE
-#COVERAGE # We want backtraces to be dumped during the load test, as
-#COVERAGE # one of its purposes is to discover crash bugs.
-#COVERAGE InstallCrashHandler: "on",
-#COVERAGE
-
+    # Globally set the message-buffer size during load-tests.
+    #
+    # TODO(jmarantz): add a test-path where we set this in a VirtualHost and
+    # make sure the right error message comes out.
+    #COVERAGE # Don't want global slurp inheriting into :8080
+    #COVERAGE InheritVHostConfig: "off",
+    #COVERAGE MessageBufferSize: 100000,
+    #COVERAGE
+    #COVERAGE # We want backtraces to be dumped during the load test, as
+    #COVERAGE # one of its purposes is to discover crash bugs.
+    #COVERAGE InstallCrashHandler: "on",
+    #COVERAGE
 }, #pagespeed:
 
 # Test coverage for <ModPagespeedIf>
@@ -356,8 +355,8 @@ directories: [
     # .htaccess.  Note that <Directory> and .htaccess are enforced the same way.
     {
         path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/htaccess_test",
+	pagespeed_status: "on",
 	pagespeed: {
-##	    ModPagespeed: "on",
   	    Allow: "*",
   	    voidRenamingIntrospectiveJavascript: "on",
   	    BeaconUrl: "foo",
@@ -564,7 +563,7 @@ locations: [
 
 listen: [
     @@APACHE_SECONDARY_PORT@@,
-#COVERAGE 8081,
+    #COVERAGE 8081,
 ],
 name_virtual_hosts: [
     {
@@ -816,7 +815,7 @@ servers: [
 #COVERAGE               ##SetHandler mod_pagespeed_message
 #COVERAGE           },
 #COVERAGE       ],
-#COVERAGE    }, #server/virtual host
+#COVERAGE    },#server
 #COVERAGE    {
 #COVERAGE        address: "*",
 #COVERAGE        port: 8081,
@@ -836,6 +835,6 @@ servers: [
 #COVERAGE        	##SetHandler mod_pagespeed_message
 #COVERAGE            },
 #COVERAGE        ]
-#COVERAGE    }, #server/virtual host
+#COVERAGE    }, #server
 ] #servers
 } #configuration

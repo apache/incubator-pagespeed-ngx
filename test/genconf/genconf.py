@@ -62,6 +62,7 @@ def ast_node_to_dict(node, dest=None, lookup={}, parent_key=""):
   return dest
 
 
+# TODO(oschaaf): replace_comments needs a rewrite.
 def replace_comments(conditions, s):
   condition = s.group(1)
   config = s.group(2)
@@ -84,7 +85,7 @@ def fill_placeholders(placeholders, match):
 
 
 def pre_process_text(cfg, conditions, placeholders):
-  re_conditional_lines = r'^#([^ \s\t]*)([^\r\n]*\r?\n?)$'
+  re_conditional_lines = r'^[ \t]*#([^ \s\t]*)([^\r\n]*\r?\n?)$'
   cfg = re.sub(re_conditional_lines,lambda x: replace_comments(conditions,x),cfg, flags=re.MULTILINE)
   re_placeholders = r'@@([^\s]*)@@'  
   cfg = re.sub(re_placeholders,lambda x: fill_placeholders(placeholders,x),cfg)
