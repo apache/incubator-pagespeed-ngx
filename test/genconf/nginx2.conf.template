@@ -75,14 +75,16 @@ def write_pagespeed_if_close(ps,level):
     emit(indent("}\n",level))
 
 def write_listen_open(ps, level):
-    for val in ps:
-        emit(indent("Listen " + str(val) + "\n", level))
+    # TODO(oschaaf): we don't have to indicate this globally in nginx?
+    #for val in ps:
+    #    emit(indent("Listen " + str(val) + "\n", level))
     return 1 
 
 
 def write_name_virtual_hosts_open(ps, level):
-    for val in ps:
-        emit(indent("NameVirtualHost " + val["address"] + ":" + str(val["port"]) + "\n", level))
+    # TODO(oschaaf): no-op in nginx?
+    #for val in ps:
+    #    emit(indent("NameVirtualHost " + val["address"] + ":" + str(val["port"]) + "\n", level))
 
     return 1
 
