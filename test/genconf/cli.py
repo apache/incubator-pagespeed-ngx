@@ -42,7 +42,6 @@ if not (output_format == "apache" or output_format =="nginx" or output_format ==
     exit_with_help_message()
 
 template = output_format + ".conf.template"
-#text = execute_template("pagespeed.pyconf", conditions, placeholders, template)
-text = execute_template("debug.conf.template", conditions, placeholders, template)
+text = execute_template("pagespeed.debug.pyconf", conditions, placeholders, template)
 
 print text
