@@ -202,6 +202,7 @@ pagespeed: {
     # hitting it and not servicing the lookups in-memory.  Note that we will
     # cover having a non-zero lru-cache with  memcached in load tests.
     #MEMCACHED LRUCacheKbPerProcess: 0,
+
     #GZIP FetchWithGzip: "on",
     #PER_VHOST_STATS # Make sure we behave OK with this on, too.
     #PER_VHOST_STATS FetchWithGzip: "on",
@@ -218,6 +219,25 @@ pagespeed: {
     #COVERAGE # one of its purposes is to discover crash bugs.
     #COVERAGE InstallCrashHandler: "on",
     #COVERAGE
+
+    #SHARED_MEM_LOCKS SharedMemoryLocks: "on",
+
+    #FURIOUS_GA # This is used for testing the Furious experiment framework.
+    #FURIOUS_GA RunExperiment: "on",
+    #FURIOUS_GA AnalyticsID: "\"123-45-6734\"",
+    #FURIOUS_GA ExperimentVariable: 2,
+    #FURIOUS_GA ExperimentSpec: ["\"id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50\"",
+    #FURIOUS_GA                  "\"id=2;enable=recompress_images;percent=50\""],
+
+    #FURIOUS_NO_GA # This is used for testing the Furious experiment framework still
+    #FURIOUS_NO_GA # works when no analytics ID is specified.  It should assign
+    #FURIOUS_NO_GA # users to experiments and use appropriate experimental options,
+    #FURIOUS_NO_GA # but not report back to Google Analytics.  The instrumentation
+    #FURIOUS_NO_GA # beacon, however, will still contain the experiment id.
+    #FURIOUS_NO_GA RunExperiment: "on",
+    #FURIOUS_NO_GA ExperimentVariable: 2,
+    #FURIOUS_NO_GA ExperimentSpec: ["\"id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50\"",
+    #FURIOUS_NO_GA                 "\"id=2;enable=recompress_images;percent=50\""],
 }, #pagespeed:
 
 # Test coverage for <ModPagespeedIf>
@@ -445,76 +465,6 @@ locations: [
 ## TODO(oschaaf): this could go in an 'enable_gzip' directive
 ## GZIP SetOutputFilter DEFLATE
 
-
-#PROXY # This is used for ProxyPass testing.
-#PROXY #   See: http://code.google.com/p/modpagespeed/issues/detail?id=74
-#PROXY # We use 2 servers for it, one doing rewriting and fetching
-#PROXY # from the other one which does not have mod_pagespeed enabled.
-#PROXY Listen 8081
-#PROXY <VirtualHost *:8080>
-#PROXY   # Host at 8080 should have no relevant content.
-#PROXY   DocumentRoot  /tmp/
-#PROXY
-#PROXY   # Turn these declarations back on during testing if you are
-#PROXY   # having trouble distinguishing which server is saying what.
-#PROXY   #ErrorLog   "@@MOD_PAGESPEED_CACHE@@/logs/error_log"
-#PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@/logs/access_log" common
-#PROXY
-#PROXY   pagespeed_status: "on",
-#PROXY
-#PROXY   ModPagespeedFileCachePath         "@@MOD_PAGESPEED_CACHE@@/"
-#PROXY
-#PROXY   ModPagespeedRewriteLevel PassThrough
-#PROXY   ModPagespeedEnableFilters extend_cache
-#PROXY   ModPagespeedDomain *
-#PROXY
-#PROXY   # Proxy through to 8081.
-#PROXY   ProxyPass / http://localhost:8081/
-#PROXY </VirtualHost>
-#PROXY
-#PROXY <VirtualHost *:8081>
-#PROXY   # Host at 8081 sees into mod_pagespeed_examples directory.
-#PROXY   DocumentRoot  "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
-#PROXY
-#PROXY   #ErrorLog   "@@MOD_PAGESPEED_CACHE@@-alt/logs/error_log"
-#PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@-alt/logs/access_log" common
-#PROXY
-#PROXY   pagespeed_status: "off",
-#PROXY   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt/"
-#PROXY   ModPagespeedRewriteLevel PassThrough
-#PROXY </VirtualHost>
-
-#SLURP # This is used for Slurp testing.  The initial slurp testing
-#SLURP # uses a slurp test dir pre-populated from source control,
-#SLURP # via a read-only slurp setup on port 8080.  We also test slurp
-#SLURP # writing via an origin server on port 8081, and a slurp server
-#SLURP # on 8082 with slurping read-only off.
-#SLURP Listen 8081
-#SLURP Listen 8082
-#SLURP <VirtualHost *:8080>
-#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@/"
-#SLURP   ModPagespeedSlurpDirectory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/slurp"
-#SLURP   ModPagespeedSlurpReadOnly on
-#SLURP </VirtualHost>
-#SLURP <VirtualHost *:8081>
-#SLURP   # Host at 8081 sees into mod_pagespeed_examples directory.
-#SLURP   DocumentRoot  "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
-#SLURP
-#SLURP   pagespeed_status: "off",
-#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt/"
-#SLURP   ModPagespeedRewriteLevel PassThrough
-#SLURP </VirtualHost>
-#SLURP <VirtualHost *:8082>
-#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt2/"
-#SLURP   ModPagespeedSlurpDirectory @@TMP_SLURP_DIR@@
-#SLURP   ModPagespeedSlurpReadOnly off
-#SLURP   ModPagespeedDomain *
-#SLURP   ModPagespeedMaxHtmlParseBytes 1000000
-#SLURP   ModPagespeedSlurpFlushLimit     10000
-#SLURP </VirtualHost>
-
-#SHARED_MEM_LOCKS ModPagespeedSharedMemoryLocks on
-
 #HTTPS # This is used for testing https requests.
 #HTTPS <IfVersion >= 2.4>
 #HTTPS   <IfModule !socache_shmcb_module>
@@ -533,22 +483,6 @@ locations: [
 #HTTPS SSLRandomSeed connect builtin
 #HTTPS ModPagespeedMapOriginDomain http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@
 
-#FURIOUS_GA # This is used for testing the Furious experiment framework.
-#FURIOUS_GA ModPagespeedRunExperiment on
-#FURIOUS_GA ModPagespeedAnalyticsID "123-45-6734"
-#FURIOUS_GA ModPagespeedExperimentVariable 2
-#FURIOUS_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
-#FURIOUS_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
-
-#FURIOUS_NO_GA # This is used for testing the Furious experiment framework still
-#FURIOUS_NO_GA # works when no analytics ID is specified.  It should assign
-#FURIOUS_NO_GA # users to experiments and use appropriate experimental options,
-#FURIOUS_NO_GA # but not report back to Google Analytics.  The instrumentation
-#FURIOUS_NO_GA # beacon, however, will still contain the experiment id.
-#FURIOUS_NO_GA ModPagespeedRunExperiment on
-#FURIOUS_NO_GA ModPagespeedExperimentVariable 2
-#FURIOUS_NO_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
-#FURIOUS_NO_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
 
 ## Another VirtualHost can be enabled by default as it does no harm.  This can
 ## be used for testing alternate configuration settings in system tests without
@@ -564,6 +498,9 @@ locations: [
 listen: [
     @@APACHE_SECONDARY_PORT@@,
     #COVERAGE 8081,
+    #PROXY 8081,
+    #SLURP 8081,
+    #SLURP 8082,
 ],
 name_virtual_hosts: [
     {
@@ -774,7 +711,6 @@ servers: [
 #COVERAGE        pagespeed: {
 #COVERAGE            TestProxy: "on",
 #COVERAGE   	     FetchProxy: "\"127.0.0.1:8081\"",
-#COVERAGE
 #MEMCACHE_COVERAGE   MemcachedServers: "localhost:6765",
 #COVERAGE   	     FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
 #COVERAGE   	     RewriteLevel: "AllFilters",
@@ -836,5 +772,85 @@ servers: [
 #COVERAGE            },
 #COVERAGE        ]
 #COVERAGE    }, #server
+
+#PROXY    # This is used for ProxyPass testing.
+#PROXY    #   See: http://code.google.com/p/modpagespeed/issues/detail?id=74
+#PROXY    # We use 2 servers for it, one doing rewriting and fetching
+#PROXY    # from the other one which does not have mod_pagespeed enabled.
+#PROXY    {
+#PROXY        address: "*",
+#PROXY        port: 8080,
+#PROXY        # Host at 8080 should have no relevant content.
+#PROXY        root: "/tmp/",
+#PROXY        # Turn these declarations back on during testing if you are
+#PROXY        # having trouble distinguishing which server is saying what.
+#PROXY        #ErrorLog   "@@MOD_PAGESPEED_CACHE@@/logs/error_log"
+#PROXY        #CustomLog  "@@MOD_PAGESPEED_CACHE@@/logs/access_log" common
+#PROXY
+#PROXY	      pagespeed_status: "on",
+#PROXY	      pagespeed: { 
+#PROXY	          FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+#PROXY	          RewriteLevel: "PassThrough",
+#PROXY            EnableFilters: "extend_cache",
+#PROXY            Domain: "*",
+#PROXY	      }
+#PROXY	      # Proxy through to 8081.
+## TODO(oschaaf): this one looks tricky for nginx
+#PROXY        ##ProxyPass / http://localhost:8081/
+#PROXY    },
+#PROXY    {
+#PROXY        address: "*",
+#PROXY        port: 8081,
+#PROXY        # Host at 8081 sees into mod_pagespeed_examples directory.
+#PROXY        root:  "\"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/\"",
+#PROXY
+#PROXY   ##ErrorLog   "@@MOD_PAGESPEED_CACHE@@-alt/logs/error_log"
+#PROXY   ##CustomLog  "@@MOD_PAGESPEED_CACHE@@-alt/logs/access_log" common
+#PROXY
+#PROXY	      pagespeed_status: "off",
+#PROXY        pagespeed: {
+#PROXY            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt/\"",
+#PROXY            RewriteLevel: "PassThrough",
+#PROXY        },
+#PROXY    },
+
+#SLURP    # This is used for Slurp testing.  The initial slurp testing
+#SLURP 	  # uses a slurp test dir pre-populated from source control,
+#SLURP 	  # via a read-only slurp setup on port 8080.  We also test slurp
+#SLURP 	  # writing via an origin server on port 8081, and a slurp server
+#SLURP 	  # on 8082 with slurping read-only off.
+#SLURP    {
+#SLURP        address: "*",
+#SLURP        port: 8080,
+#SLURP        pagespeed: {
+#SLURP            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+#SLURP            SlurpDirectory: "\"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/slurp\"",
+#SLURP            SlurpReadOnly: "on",
+#SLURP        },
+#SLURP    },
+#SLURP    {
+#SLURP        address: "*",
+#SLURP        port: 8081,
+#SLURP        # Host at 8081 sees into mod_pagespeed_examples directory.
+#SLURP        root:  "\"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/\"",
+#SLURP        pagespeed_status: "off",
+	      ## TODO(oschaaf): pagespeed is disabled, why are these options set?
+#SLURP        pagespeed: {
+#SLURP            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt/\"",
+#SLURP            RewriteLevel: "PassThrough",
+#SLURP        },
+#SLURP    },
+#SLURP    {
+#SLURP        address: "*",
+#SLURP        port: 8082,
+#SLURP        pagespeed: {
+#SLURP            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt2/\"",
+#SLURP            SlurpDirectory: "@@TMP_SLURP_DIR@@",
+#SLURP            SlurpReadOnly: "off",
+#SLURP            Domain: "*",
+#SLURP            MaxHtmlParseBytes: 1000000,
+#SLURP            SlurpFlushLimit: 10000,
+#SLURP        },
+#SLURP    },
 ] #servers
 } #configuration
