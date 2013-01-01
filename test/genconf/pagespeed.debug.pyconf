@@ -1,3 +1,12 @@
+# TODO(oschaaf): IfModule,LoadModule - https,gzip,rewrite,ssi,headers,slotmem
+# gzip,headers,ssi,https all could be generic as most webservers support them
+# for nginx however, loading/enabling of these modules is done at 
+# compile time, and not here. So loadmodule cannot be ported?
+# speling, 
+# TODO(oschaaf): AddOutputFilter, AddOutputFilterByType
+# TODO: handle webserver specifics. handle the fact that not all tests
+# / modes can be supported on every webserver
+
 {
 # Port map:
 # 8080 -- master configuration.
@@ -32,6 +41,40 @@
 ##<IfModule !headers_module>
 ##  LoadModule headers_module  @@APACHE_MODULES@@/mod_headers.so
 ##</IfModule>
+
+#STRESS ##AddHandler cgi-script .cgi
+#STRESS ##<IfVersion >= 2.4.2>
+#STRESS ##  <IfModule !slotmem_shm_module>
+#STRESS ##    LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
+#STRESS ##  </IfModule>
+#STRESS ##</IfVersion>
+
+#SPELING # Enable mod_speling to ensure that we don't regress Issue 194
+#SPELING ##<IfModule !speling_module>
+#SPELING ##  LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so
+#SPELING ##</IfModule>
+#SPELING ##CheckSpelling on
+
+#HTTPS # This is used for testing https requests.
+#HTTPS ## <IfVersion >= 2.4>
+#HTTPS ##  <IfModule !socache_shmcb_module>
+#HTTPS ##   LoadModule socache_shmcb_module @@APACHE_MODULES@@/mod_socache_shmcb.so
+#HTTPS ##  </IfModule>
+#HTTPS ##  <IfModule !slotmem_shm_module>
+#HTTPS ##    LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
+#HTTPS ##  </IfModule>
+#HTTPS ##</IfVersion>
+
+#HTTPS ## Include conf/extra/httpd-ssl.conf
+#HTTPS ## <IfModule !ssl_module>
+#HTTPS ##  LoadModule ssl_module @@APACHE_MODULES@@/mod_ssl.so
+#HTTPS ## </IfModule>
+#HTTPS ## SSLRandomSeed startup builtin
+#HTTPS ## SSLRandomSeed connect builtin
+#HTTPS ## ModPagespeedMapOriginDomain http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@
+
+## TODO(oschaaf): this could go in an 'enable_gzip' directive
+## GZIP SetOutputFilter DEFLATE
 
 # Helps tests that extra headers supplied by the apache conf
 # survive single-resource rewrites
@@ -88,7 +131,6 @@ pagespeed: {
 
     InPlaceResourceOptimization: "on",
     RespectXForwardedProto: "on",
-
 
     #STATS_LOGGING Statistics: "on",
     #STATS_LOGGING StatisticsLogging: "on",
@@ -244,11 +286,11 @@ pagespeed: {
 pagespeed_if:{
     spdy: {
         # A setting one might want...
-  	DisableFilters: "combine_css",
+  	DisableFilters: ["combine_css",
   	# Settings that doesn't make much sense, but which we want for tests.
-  	DisableFilters: "rewrite_css",
- 	DisableFilters: "extend_cache",
-  	DisableFilters: "rewrite_images",
+                         "rewrite_css",
+ 	                 "extend_cache",
+  	                 "rewrite_images"],
     },
     "!spdy": { 
       ShardDomain: "nonspdy.example.com s1.example.com,s2.example.com",
@@ -448,40 +490,6 @@ locations: [
 #STRESS    },
 
 ], #locations
-
-#STRESS ##AddHandler cgi-script .cgi
-#STRESS ##<IfVersion >= 2.4.2>
-#STRESS ##  <IfModule !slotmem_shm_module>
-#STRESS ##    LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
-#STRESS ##  </IfModule>
-#STRESS ##</IfVersion>
-
-#SPELING # Enable mod_speling to ensure that we don't regress Issue 194
-#SPELING ##<IfModule !speling_module>
-#SPELING ##  LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so
-#SPELING ##</IfModule>
-#SPELING ##CheckSpelling on
-
-## TODO(oschaaf): this could go in an 'enable_gzip' directive
-## GZIP SetOutputFilter DEFLATE
-
-#HTTPS # This is used for testing https requests.
-#HTTPS <IfVersion >= 2.4>
-#HTTPS   <IfModule !socache_shmcb_module>
-#HTTPS     LoadModule socache_shmcb_module @@APACHE_MODULES@@/mod_socache_shmcb.so
-#HTTPS   </IfModule>
-#HTTPS   <IfModule !slotmem_shm_module>
-#HTTPS     LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
-#HTTPS   </IfModule>
-#HTTPS </IfVersion>
-
-#HTTPS Include conf/extra/httpd-ssl.conf
-#HTTPS <IfModule !ssl_module>
-#HTTPS   LoadModule ssl_module @@APACHE_MODULES@@/mod_ssl.so
-#HTTPS </IfModule>
-#HTTPS SSLRandomSeed startup builtin
-#HTTPS SSLRandomSeed connect builtin
-#HTTPS ModPagespeedMapOriginDomain http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@
 
 
 ## Another VirtualHost can be enabled by default as it does no harm.  This can

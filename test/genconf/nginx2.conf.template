@@ -53,7 +53,7 @@ def write_pagespeed_open(ps,level):
     for key in ps:
     	val = ps[key]
 	# in pagespeed.debug.conf, the same pagespeed directive can occur multiple times
-	# that is represented as an array, which we need to loop in that case
+	# our pyconf represents that as an array, which we need to loop in that case
     	if isinstance(val,list) and not isinstance(val,str):
        	   for item in val: 
 	       emit(indent("pagespeed " + key + " " + str(item),level) + ";\n")
@@ -64,7 +64,6 @@ def write_pagespeed_open(ps,level):
 
 def write_pagespeed_if_open(ps,level):
     emit(indent("#these are not implemented yet for nginx\n", level))
-
     emit(indent("pagespeed_if { \n", level))
 
     for key in ps:
