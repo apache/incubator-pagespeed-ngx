@@ -50,14 +50,14 @@ def write_pagespeed_open(ps,level):
 	else:
 	    emit(indent("ModPagespeed" + key + " " + str(val),level) + "\n")
 
-    return 1
+    return True
 
 def write_pagespeed_if_open(ps,level):
     for key in ps:
     	emit(indent("<ModPagespeedIf " + key,level) + ">\n")
 	val = ps[key]
 	write_pagespeed_open(val, level+1)
-    return 1
+    return True
 
 def write_pagespeed_if_close(ps,level):
     emit(indent("</ModPagespeedIf>\n",level))
@@ -65,14 +65,62 @@ def write_pagespeed_if_close(ps,level):
 def write_listen_open(ps, level):
     for val in ps:
         emit(indent("Listen " + str(val) + "\n", level))
-    return 1 
+    return True
 
 
 def write_name_virtual_hosts_open(ps, level):
     for val in ps:
         emit(indent("NameVirtualHost " + val["address"] + ":" + str(val["port"]) + "\n", level))
 
-    return 1
+    return True
+
+
+# oschaaf(TODO): we could track which modules we have loaded here, 
+# to prevent writing multiple ifload's for the same module.
+def required_modules_open(ps,level):
+    module_path_prefix = "@@APACHE_MODULES@@/mod_"
+    for module_name in ps:
+    	load_module = indent("LoadModule " + module_name + "_module " + module_path_prefix + module_name + ".so\n", level+1)
+	
+	if module_name in ["headers","rewrite"]:
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
+        elif module_name == "include":
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
+            emit(indent("AddType text/html .shtml\n",level))	
+            emit(indent("AddOutputFilter INCLUDES .shtml\n",level))	
+	elif module_name == "ssl":
+            emit(indent("Include conf/extra/httpd-ssl.conf\n",level));
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
+	    emit(indent("SSLRandomSeed startup builtin\n",level))
+            emit(indent("SSLRandomSeed connect builtin\n",level))
+        elif module_name == "socache_shmcb":
+            emit(indent("<IfVersion >= 2.4>\n",level));
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level+1))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level+1))
+            emit(indent("</IfVersion>\n",level));
+        elif module_name == "slotmem_shm":
+            emit(indent("<IfVersion >= 2.4>\n",level));
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level+1))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level+1))
+            emit(indent("</IfVersion>\n",level));
+        elif module_name == "speling":
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
+            emit(indent("CheckSpelling on\n",level))	
+        elif module_name == "gzip":
+            emit(indent("SetOutputFilter DEFLATE\n",level))
+        elif module_name == "cgi-script":
+            emit(indent("AddHandler cgi-script .cgi\n",level))
+    return True
 
 key_to_writer = {
     "defaults_open": write_void,
@@ -97,6 +145,7 @@ key_to_writer = {
     "listen_close": write_void,
     "name_virtual_hosts_open": write_name_virtual_hosts_open,
     "name_virtual_hosts_close": write_void,
+    "required_modules_open": required_modules_open,
 }
 
 }$# apache configuration, generated with mode [@TODO@]

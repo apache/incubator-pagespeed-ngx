@@ -23,58 +23,23 @@
 # default then we can eliminate this line.
 ##AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 
-## TODO(oschaaf): this could go in an 'enable server-side-includes' directive
+required_modules: [
 # This is needed for the server-side includes test in
 # apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
-##<IfModule !include_module>
-##  LoadModule include_module @@APACHE_MODULES@@/mod_include.so
-##</IfModule>
-##AddType text/html .shtml
-##AddOutputFilter INCLUDES .shtml
-
-# For the mod_rewrite test in apache_system_test.sh
-##<IfModule !rewrite_module>
-##  LoadModule rewrite_module  @@APACHE_MODULES@@/mod_rewrite.so
-##</IfModule>
-
+    "include",
 # For the vary: handling test
-##<IfModule !headers_module>
-##  LoadModule headers_module  @@APACHE_MODULES@@/mod_headers.so
-##</IfModule>
-
-#STRESS ##AddHandler cgi-script .cgi
-#STRESS ##<IfVersion >= 2.4.2>
-#STRESS ##  <IfModule !slotmem_shm_module>
-#STRESS ##    LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
-#STRESS ##  </IfModule>
-#STRESS ##</IfVersion>
-
+    "headers",
+# For the mod_rewrite test in apache_system_test.sh
+    "rewrite",
+#STRESS "slotmem_shm",
 #SPELING # Enable mod_speling to ensure that we don't regress Issue 194
-#SPELING ##<IfModule !speling_module>
-#SPELING ##  LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so
-#SPELING ##</IfModule>
-#SPELING ##CheckSpelling on
-
-#HTTPS # This is used for testing https requests.
-#HTTPS ## <IfVersion >= 2.4>
-#HTTPS ##  <IfModule !socache_shmcb_module>
-#HTTPS ##   LoadModule socache_shmcb_module @@APACHE_MODULES@@/mod_socache_shmcb.so
-#HTTPS ##  </IfModule>
-#HTTPS ##  <IfModule !slotmem_shm_module>
-#HTTPS ##    LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
-#HTTPS ##  </IfModule>
-#HTTPS ##</IfVersion>
-
-#HTTPS ## Include conf/extra/httpd-ssl.conf
-#HTTPS ## <IfModule !ssl_module>
-#HTTPS ##  LoadModule ssl_module @@APACHE_MODULES@@/mod_ssl.so
-#HTTPS ## </IfModule>
-#HTTPS ## SSLRandomSeed startup builtin
-#HTTPS ## SSLRandomSeed connect builtin
-#HTTPS ## ModPagespeedMapOriginDomain http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@
-
-## TODO(oschaaf): this could go in an 'enable_gzip' directive
-## GZIP SetOutputFilter DEFLATE
+#SPELING "speling",
+#HTTPS "ssl",
+#HTTPS "socache_shmcb",
+#HTTPS "slotmem_shm",
+#GZIP "gzip",
+#STRESS "cgi-script",
+],
 
 # Helps tests that extra headers supplied by the apache conf
 # survive single-resource rewrites
@@ -280,6 +245,8 @@ pagespeed: {
     #FURIOUS_NO_GA ExperimentVariable: 2,
     #FURIOUS_NO_GA ExperimentSpec: ["\"id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50\"",
     #FURIOUS_NO_GA                 "\"id=2;enable=recompress_images;percent=50\""],
+    #HTTPS MapOriginDomain: "http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@",
+
 }, #pagespeed:
 
 # Test coverage for <ModPagespeedIf>
