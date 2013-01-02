@@ -100,6 +100,13 @@ DEFINE_bool(ajax_rewriting_enabled, false, "Boolean to indicate whether ajax "
 DEFINE_bool(in_place_wait_for_optimized, false, "Indicates whether in-place "
             "resource optimization should wait to optimize the resource before "
             "responding.");
+DEFINE_int32(in_place_rewrite_deadline_ms,
+             net_instaweb::RewriteOptions::kDefaultRewriteDeadlineMs,
+             "Deadline for rewriting a resource on the in-place serving path. "
+             "(--in_place_wait_for_optimized must be set for this to apply.) "
+             "After this interval passes, the original unoptimized resource "
+             "will be served to clients. A value of -1 will wait indefinitely "
+             "for each in-place rewrite to complete.");
 DEFINE_bool(image_preserve_urls, false, "Boolean to indicate whether image"
             "URLs should be preserved.");
 DEFINE_bool(css_preserve_urls, false, "Boolean to indicate whether CSS URLS"
@@ -599,6 +606,11 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
 
   if (WasExplicitlySet("in_place_wait_for_optimized")) {
     options->set_in_place_wait_for_optimized(FLAGS_in_place_wait_for_optimized);
+  }
+
+  if (WasExplicitlySet("in_place_rewrite_deadline_ms")) {
+    options->set_in_place_rewrite_deadline_ms(
+        FLAGS_in_place_rewrite_deadline_ms);
   }
 
   MessageHandler* handler = factory->message_handler();

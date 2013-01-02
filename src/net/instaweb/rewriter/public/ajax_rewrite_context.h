@@ -97,6 +97,8 @@ class AjaxRewriteContext : public SingleRewriteContext {
   bool perform_http_fetch() const { return perform_http_fetch_; }
   void set_perform_http_fetch(bool x) { perform_http_fetch_ = x; }
 
+  virtual int64 GetRewriteDeadlineAlarmMs() const;
+
  private:
   friend class RecordingFetch;
   // Implements RewriteContext::Harvest().

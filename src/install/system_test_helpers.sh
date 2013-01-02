@@ -14,14 +14,14 @@
 #
 # Callers should leave argument parsing to this script.
 #
-# Callers should invoke system_test_trailer after no more tests are left so that
+# Callers should invoke check_failures_and_exit after no more tests are left so that
 # expected failures can be logged.
 #
 # If command line args are wrong, exit with status code 2.
-# If no tests fail, don't call exit and instead return control to the caller.
+# If no tests fail, it will exit the shell-script with status 0.
 # If a test fails:
 #  - If it's listed in PAGESPEED_EXPECTED_FAILURES, log the name of the failing
-#    test, to display when system_test_trailer is called, at which point exit
+#    test, to display when check_failures_and_exit is called, at which point exit
 #    with status code 1.
 #  - Otherwise, exit immediately with status code 1.
 #
@@ -52,7 +52,7 @@ fi;
 
 TEMPDIR=${TEMPDIR-/tmp/mod_pagespeed_test.$USER}
 FAILURES="${TEMPDIR}/failures"
-rm "$FAILURES"
+rm -f "$FAILURES"
 
 # Make this easier to process so we're always looking for '~target~'.
 PAGESPEED_EXPECTED_FAILURES="~${PAGESPEED_EXPECTED_FAILURES=}~"
@@ -189,7 +189,9 @@ function run_wget_with_args() {
 # errors will be reported immediately and will make us exit with status 1, tests
 # listed in PAGESPEED_EXPECTED_FAILURES will let us continue.  This prints out
 # failure information for these tests, if appropriate.
-function system_test_trailer() {
+#
+# This function always exits the scripts with status 0 or 1.
+function check_failures_and_exit() {
   if [ -e $FAILURES ] ; then
     echo Failing Tests:
     sed 's/^/  /' $FAILURES
@@ -197,6 +199,7 @@ function system_test_trailer() {
     exit 1
   fi
   echo "PASS."
+  exit 0
 }
 
 # By default, print a message like:

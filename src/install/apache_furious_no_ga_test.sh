@@ -22,4 +22,4 @@ check_not_from "$OUT" fgrep -q 'Experiment:'
 OUT=$($WGET_DUMP --header='Cookie: _GFURIOUS=0' $EXTEND_CACHE)
 check_not_from "$OUT" fgrep -q 'Experiment:'
 
-system_test_trailer
+check_failures_and_exit

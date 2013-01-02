@@ -208,6 +208,7 @@ class HtmlName {
     kTh,
     kThead,
     kTime,
+    kTitle,
     kTr,
     kTrack,
     kType,

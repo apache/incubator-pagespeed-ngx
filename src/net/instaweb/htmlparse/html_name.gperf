@@ -195,6 +195,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "th",                     HtmlName::kTh
 "thead",                  HtmlName::kThead
 "time",                   HtmlName::kTime
+"title",                  HtmlName::kTitle
 "tr",                     HtmlName::kTr
 "track",                  HtmlName::kTrack
 "type",                   HtmlName::kType

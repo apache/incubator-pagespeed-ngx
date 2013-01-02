@@ -608,7 +608,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
 ?ModPagespeedFilters=add_instrumentation"
   echo http_proxy=$SECONDARY_HOSTNAME $WGET -O $WGET_OUTPUT $URL
   http_proxy=$SECONDARY_HOSTNAME $WGET -O $WGET_OUTPUT $URL
-  check [ $(grep -c "<script" $WGET_OUTPUT) = 3 ]
+  check [ $(grep -o "<script" $WGET_OUTPUT|wc -l) = 3 ]
   check [ $(grep -c "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon', 'beforeunload', '', '', '', 'http://secondary.example.com/mod_pagespeed_test/add_instrumentation.html');" $WGET_OUTPUT) = 1 ]
   check [ $(grep -c "pagespeed.addInstrumentationInit('/mod_pagespeed_beacon', 'load', '', '', '', 'http://secondary.example.com/mod_pagespeed_test/add_instrumentation.html');" $WGET_OUTPUT) = 1 ]
 
@@ -1255,4 +1255,4 @@ COMMENTING_BLOCK
 # Cleanup
 rm -rf $OUTDIR
 
-system_test_trailer
+check_failures_and_exit

@@ -690,7 +690,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(129, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(130, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AlwaysRewriteCss",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAlwaysRewriteCss));
@@ -832,6 +832,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("InPlaceResourceOptimization",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kInPlaceResourceOptimization));
+  EXPECT_STREQ("InPlaceRewriteDeadlineMs",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kInPlaceRewriteDeadlineMs));
   EXPECT_STREQ("InPlaceWaitForOptimized",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kInPlaceWaitForOptimized));

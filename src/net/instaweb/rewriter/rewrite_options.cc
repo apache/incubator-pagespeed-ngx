@@ -718,6 +718,9 @@ void RewriteOptions::AddProperties() {
              kInPlaceResourceOptimization);
   add_option(false, &RewriteOptions::in_place_wait_for_optimized_, "ipwo",
              kInPlaceWaitForOptimized);
+  add_option(kDefaultRewriteDeadlineMs,
+             &RewriteOptions::in_place_rewrite_deadline_ms_, "iprdm",
+             kInPlaceRewriteDeadlineMs);
   add_option(true, &RewriteOptions::combine_across_paths_, "cp",
              kCombineAcrossPaths);
   add_option(false, &RewriteOptions::log_rewrite_timing_, "lr",

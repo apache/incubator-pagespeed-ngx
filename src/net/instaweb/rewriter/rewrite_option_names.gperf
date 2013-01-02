@@ -72,6 +72,7 @@ struct OptionName {
 "ImageWebpRecompressionQuality",         RewriteOptions::kImageWebpRecompressionQuality
 "ImplicitCacheTtlMs",                    RewriteOptions::kImplicitCacheTtlMs
 "InPlaceResourceOptimization",           RewriteOptions::kInPlaceResourceOptimization
+"InPlaceRewriteDeadlineMs",              RewriteOptions::kInPlaceRewriteDeadlineMs
 "InPlaceWaitForOptimized",               RewriteOptions::kInPlaceWaitForOptimized
 "IncreaseSpeedTracking",                 RewriteOptions::kIncreaseSpeedTracking
 "InlineOnlyCriticalImages",              RewriteOptions::kInlineOnlyCriticalImages

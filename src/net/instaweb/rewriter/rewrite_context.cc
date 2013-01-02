@@ -726,13 +726,14 @@ class RewriteContext::FetchContext {
     Timer* timer = rewrite_context_->FindServerContext()->timer();
 
     // Negative rewrite deadline means unlimited.
-    if (driver->rewrite_deadline_ms() >= 0) {
+    int deadline_ms = rewrite_context_->GetRewriteDeadlineAlarmMs();
+    if (deadline_ms >= 0) {
       // Startup an alarm which will cause us to return unrewritten content
       // rather than hold up the fetch too long on firing.
       deadline_alarm_ =
           new QueuedAlarm(
               driver->scheduler(), driver->rewrite_worker(),
-              timer->NowUs() + (driver->rewrite_deadline_ms() * Timer::kMsUs),
+              timer->NowUs() + (deadline_ms * Timer::kMsUs),
               MakeFunction(this, &FetchContext::HandleDeadline));
     }
   }
@@ -2272,6 +2273,10 @@ AsyncFetch* RewriteContext::async_fetch() {
 MessageHandler* RewriteContext::fetch_message_handler() {
   DCHECK(fetch_.get() != NULL);
   return fetch_->handler();
+}
+
+int64 RewriteContext::GetRewriteDeadlineAlarmMs() const {
+  return Driver()->rewrite_deadline_ms();
 }
 
 }  // namespace net_instaweb

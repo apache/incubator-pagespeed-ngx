@@ -214,6 +214,7 @@ class RewriteOptions {
     kImplicitCacheTtlMs,
     kInPlaceResourceOptimization,
     kInPlaceWaitForOptimized,
+    kInPlaceRewriteDeadlineMs,
     kIncreaseSpeedTracking,
     kInlineOnlyCriticalImages,
     kJsInlineMaxBytes,
@@ -1157,6 +1158,14 @@ class RewriteOptions {
 
   bool in_place_wait_for_optimized() const {
     return in_place_wait_for_optimized_.value();
+  }
+
+  void set_in_place_rewrite_deadline_ms(int x) {
+    set_option(x, &in_place_rewrite_deadline_ms_);
+  }
+
+  int in_place_rewrite_deadline_ms() const {
+    return in_place_rewrite_deadline_ms_.value();
   }
 
   void set_combine_across_paths(bool x) {
@@ -2524,6 +2533,9 @@ class RewriteOptions {
   Option<bool> ajax_rewriting_enabled_;   // Should ajax rewriting be enabled?
   // Optimize before responding in in-place flow?
   Option<bool> in_place_wait_for_optimized_;
+  // Interval to delay serving on the IPRO path while waiting for optimizations.
+  // After this interval, the unoptimized resource will be served.
+  Option<int> in_place_rewrite_deadline_ms_;
   Option<bool> combine_across_paths_;
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?
   Option<bool> lowercase_html_names_;

@@ -61,6 +61,7 @@ const char AddInstrumentationFilter::kInstrumentationScriptAddedCount[] =
 AddInstrumentationFilter::AddInstrumentationFilter(RewriteDriver* driver)
     : driver_(driver),
       found_head_(false),
+      added_head_script_(false),
       added_tail_script_(false),
       added_unload_script_(false) {
   Statistics* stats = driver->server_context()->statistics();
@@ -76,21 +77,35 @@ void AddInstrumentationFilter::InitStats(Statistics* statistics) {
 
 void AddInstrumentationFilter::StartDocument() {
   found_head_ = false;
+  added_head_script_ = false;
   added_tail_script_ = false;
   added_unload_script_ = false;
 }
 
+void AddInstrumentationFilter::AddHeadScript(HtmlElement* element) {
+  // IE doesn't like tags other than title or meta at the start of the
+  // head. The MSDN page says:
+  //   The X-UA-Compatible header isn't case sensitive; however, it must appear
+  //   in the header of the webpage (the HEAD section) before all other elements
+  //   except for the title element and other meta elements.
+  // Reference: http://msdn.microsoft.com/en-us/library/jj676915(v=vs.85).aspx
+  if (element->keyword() != HtmlName::kTitle &&
+      element->keyword() != HtmlName::kMeta) {
+    added_head_script_ = true;
+    // TODO(abliss): add an actual element instead, so other filters can
+    // rewrite this JS
+    HtmlCharactersNode* script = driver_->NewCharactersNode(NULL, kHeadScript);
+    driver_->InsertElementBeforeCurrent(script);
+    instrumentation_script_added_count_->Add(1);
+  }
+}
+
 void AddInstrumentationFilter::StartElement(HtmlElement* element) {
-  if (!found_head_) {
-    if (element->keyword() == HtmlName::kHead) {
-      found_head_ = true;
-      // TODO(abliss): add an actual element instead, so other filters can
-      // rewrite this JS
-      HtmlCharactersNode* script =
-          driver_->NewCharactersNode(element, kHeadScript);
-      driver_->InsertElementAfterCurrent(script);
-      instrumentation_script_added_count_->Add(1);
-    }
+  if (found_head_ && !added_head_script_) {
+    AddHeadScript(element);
+  }
+  if (!found_head_ && element->keyword() == HtmlName::kHead) {
+    found_head_ = true;
   }
 }
 
@@ -100,14 +115,17 @@ void AddInstrumentationFilter::EndElement(HtmlElement* element) {
     // assured by add_head_filter.
     CHECK(found_head_) << "Reached end of document without finding <head>."
         "  Please turn on the add_head filter.";
-    GoogleString event = kLoadTag;
     AddScriptNode(element, kLoadTag);
     added_tail_script_ = true;
-  } else if (found_head_ && element->keyword() == HtmlName::kHead &&
-             driver_->options()->report_unload_time() &&
-             !added_unload_script_) {
-    AddScriptNode(element, kUnloadTag);
-    added_unload_script_ = true;
+  } else if (found_head_ && element->keyword() == HtmlName::kHead) {
+    if (!added_head_script_) {
+      AddHeadScript(element);
+    }
+    if (driver_->options()->report_unload_time() &&
+        !added_unload_script_) {
+      AddScriptNode(element, kUnloadTag);
+      added_unload_script_ = true;
+    }
   }
 }
 

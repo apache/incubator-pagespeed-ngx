@@ -428,6 +428,11 @@ class RewriteContext {
   // Indicates whether we are serving a stale rewrite.
   bool stale_rewrite() const { return stale_rewrite_; }
 
+  // Returns an interval in milliseconds to wait when configuring the deadline
+  // alarm in FetchContext::SetupDeadlineAlarm(). Subclasses may configure the
+  // deadline based on rewrite type, e.g., IPRO vs. HTML-path.
+  virtual int64 GetRewriteDeadlineAlarmMs() const;
+
   // Indicates user agent capabilities that must be stored in the cache key.
   //
   // Note that the context may be NULL as it may not be set before this. Since

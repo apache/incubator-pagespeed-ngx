@@ -9,7 +9,7 @@
 #
 # The shell script sourcing this one is expected to be implementation specific
 # and have its own additional system tests that it runs.  After it finishes,
-# the sourcing script should call system_test_trailer.  That will print the
+# the sourcing script should call check_failures_and_exit.  That will print the
 # names of any failing tests and exit with status 1 if there are any.
 #
 

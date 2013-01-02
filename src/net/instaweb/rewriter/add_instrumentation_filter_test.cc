@@ -177,4 +177,13 @@ TEST_F(AddInstrumentationFilterTest, TestHeadersFetchTimingReporting) {
 }
 
 
+// Test that head script is inserted after title and meta tags.
+TEST_F(AddInstrumentationFilterTest, TestScriptAfterTitleAndMeta) {
+  rewrite_driver()->AddFilters();
+  ParseUrl(GetTestUrl(),
+           "<head><meta name='abc' /><title></title></head><body></body>");
+  EXPECT_TRUE(output_buffer_.find(
+      "<head><meta name='abc' /><title></title><script"));
+}
+
 }  // namespace net_instaweb

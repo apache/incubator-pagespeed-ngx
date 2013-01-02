@@ -70,7 +70,7 @@ class FakeFilter : public RewriteFilter {
                        const OutputResourcePtr& output) {
       if (filter_->exceed_deadline()) {
         int64 wakeup_us = Driver()->scheduler()->timer()->NowUs() +
-            1000 * (Driver()->rewrite_deadline_ms() * 2);
+            (1000 * GetRewriteDeadlineAlarmMs());
         Function* closure = MakeFunction(this, &Context::DoRewriteSingle,
                                          input, output);
         Driver()->scheduler()->AddAlarm(wakeup_us, closure);
@@ -124,8 +124,8 @@ class FakeFilter : public RewriteFilter {
   virtual RewriteContext* MakeRewriteContext() {
     return new FakeFilter::Context(this, driver_, NULL);
   }
-  virtual RewriteContext* MakeNestedRewriteContext(RewriteContext* parent,
-                                           const ResourceSlotPtr& slot) {
+  virtual RewriteContext* MakeNestedRewriteContext(
+      RewriteContext* parent, const ResourceSlotPtr& slot) {
     RewriteContext* context = new FakeFilter::Context(this, NULL, parent);
     context->AddSlot(slot);
     return context;
@@ -200,7 +200,10 @@ class AjaxRewriteContextTest : public RewriteTestBase {
   static const bool kNoTransform = true;
   static const bool kTransform = false;
   AjaxRewriteContextTest()
-      : cache_html_url_("http://www.example.com/cacheable.html"),
+      : img_filter_(NULL),
+        js_filter_(NULL),
+        css_filter_(NULL),
+        cache_html_url_("http://www.example.com/cacheable.html"),
         cache_jpg_url_("http://www.example.com/cacheable.jpg"),
         cache_jpg_notransform_url_("http://www.example.com/notransform.jpg"),
         cache_png_url_("http://www.example.com/cacheable.png"),
@@ -216,7 +219,8 @@ class AjaxRewriteContextTest : public RewriteTestBase {
         cache_body_("good"), nocache_body_("bad"), bad_body_("ugly"),
         ttl_ms_(Timer::kHourMs), etag_("W/\"PSA-aj-0\""),
         original_etag_("original_etag"),
-        exceed_deadline_(false) {}
+        exceed_deadline_(false),
+        oversized_stream_(NULL) {}
 
   virtual void Init() {
     SetTimeMs(start_time_ms());
@@ -333,7 +337,7 @@ class AjaxRewriteContextTest : public RewriteTestBase {
     if (exceed_deadline()) {
       rewrite_driver()->BoundedWaitFor(
           RewriteDriver::kWaitForCompletion,
-          rewrite_driver()->rewrite_deadline_ms() * 2);
+          rewrite_driver()->rewrite_deadline_ms());
     }
 
     sync.Wait();

@@ -220,6 +220,13 @@ void AjaxRewriteContext::InitStats(Statistics* statistics) {
   statistics->AddVariable(kInPlaceOversizedOptStream);
 }
 
+int64 AjaxRewriteContext::GetRewriteDeadlineAlarmMs() const {
+  if (Options()->in_place_wait_for_optimized()) {
+    return Driver()->options()->in_place_rewrite_deadline_ms();
+  }
+  return RewriteContext::GetRewriteDeadlineAlarmMs();
+}
+
 void AjaxRewriteContext::Harvest() {
   if (num_nested() == 1) {
     RewriteContext* const nested_context = nested(0);
