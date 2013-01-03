@@ -66,6 +66,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
@@ -479,16 +480,6 @@ const char kFlushEarlyRewrittenHtmlLinkRelSubresourceWithDeferJs[] =
     " href=\"http://www.domain3.com/3.css\">"
     "</body>"
     "</html>";
-
-class MockPage : public PropertyPage {
- public:
-  MockPage(AbstractMutex* mutex, const StringPiece& key)
-      : PropertyPage(mutex, key) {}
-  virtual ~MockPage() {}
-  virtual void Done(bool valid) {}
- private:
-  DISALLOW_COPY_AND_ASSIGN(MockPage);
-};
 
 // Like ExpectStringAsyncFetch but for asynchronous invocation -- it lets
 // one specify a WorkerTestBase::SyncPoint to help block until completion.
@@ -1124,12 +1115,12 @@ class ProxyInterfaceTest : public RewriteTestBase {
 
   int GetStatusCodeInPropertyCache(const GoogleString& url) {
     PropertyCache* pcache = page_property_cache();
-    MockPage page(factory_->thread_system()->NewMutex(), url);
+    scoped_ptr<MockPropertyPage> page(NewMockPage(url));
     const PropertyCache::Cohort* cohort = pcache->GetCohort(
         RewriteDriver::kDomCohort);
     PropertyValue* value;
-    pcache->Read(&page);
-    value = page.GetProperty(cohort, RewriteDriver::kStatusCodePropertyName);
+    pcache->Read(page.get());
+    value = page->GetProperty(cohort, RewriteDriver::kStatusCodePropertyName);
     int status_code;
     EXPECT_TRUE(StringToInt(value->value().as_string(), &status_code));
     return status_code;
@@ -2216,6 +2207,11 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   EXPECT_FALSE(timing_info.has_cache2_ms());
   EXPECT_FALSE(timing_info.has_header_fetch_ms());
   EXPECT_FALSE(timing_info.has_fetch_ms());
+
+  const PropertyPageInfo& page_info = logging_info()->property_page_info();
+  EXPECT_EQ(1, page_info.cohort_info_size());
+  const PropertyCohortInfo& cohort_info = page_info.cohort_info(0);
+  EXPECT_EQ("dom", cohort_info.name());
 }
 
 TEST_F(ProxyInterfaceTest, HeadRequest) {

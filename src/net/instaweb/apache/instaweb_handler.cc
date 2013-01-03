@@ -785,7 +785,9 @@ apr_status_t instaweb_handler(request_rec* request) {
     ret = OK;
 
   } else if (request_handler_str == kBeaconHandler) {
-    server_context->HandleBeacon(request->unparsed_uri);
+    RequestContextPtr request_context(
+        new RequestContext(server_context->thread_system()->NewMutex()));
+    server_context->HandleBeacon(request->unparsed_uri, request_context);
     ret = HTTP_NO_CONTENT;
 
   } else if (request_handler_str == kLogRequestHeadersHandler) {

@@ -62,6 +62,27 @@ LoggingInfo* LogRecord::logging_info() {
   return logging_info_.get();
 }
 
+int LogRecord::AddPropertyCohortInfo(const GoogleString& cohort) {
+  ScopedMutex lock(mutex_.get());
+  PropertyCohortInfo* cohort_info =
+      logging_info()->mutable_property_page_info()->add_cohort_info();
+  cohort_info->set_name(cohort);
+  return logging_info()->property_page_info().cohort_info_size() - 1;
+}
+
+void LogRecord::AddFoundPropertyToCohortInfo(
+    int index, const GoogleString& property) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->mutable_property_page_info()->mutable_cohort_info(index)->
+      add_properties_found(property);
+}
+
+void LogRecord::SetCacheStatusForCohortInfo(int index, bool found) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->mutable_property_page_info()->mutable_cohort_info(index)->
+      set_is_cache_hit(found);
+}
+
 void LogRecord::LogAppliedRewriter(const char* rewriter_id) {
   ScopedMutex lock(mutex_.get());
   LogAppliedRewriterImpl(rewriter_id);

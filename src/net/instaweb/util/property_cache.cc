@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/util/property_cache.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_copy.h"
@@ -128,9 +129,11 @@ PropertyCache::~PropertyCache() {
 class PropertyCache::CacheInterfaceCallback : public CacheInterface::Callback {
  public:
   CacheInterfaceCallback(PropertyPage* page, const Cohort* cohort,
+                         PropertyPage::PropertyMapStruct* pmap_struct,
                          PropertyPage::CallbackCollector* collector)
       : page_(page),
         cohort_(cohort),
+        pmap_struct_(pmap_struct),
         collector_(collector) {
   }
   virtual ~CacheInterfaceCallback() {}
@@ -166,6 +169,8 @@ class PropertyCache::CacheInterfaceCallback : public CacheInterface::Callback {
         }
       }
     }
+    page_->log_record()->SetCacheStatusForCohortInfo(
+        pmap_struct_->cohort_index, valid);
     collector_->Done(valid);
     delete this;
   }
@@ -173,6 +178,7 @@ class PropertyCache::CacheInterfaceCallback : public CacheInterface::Callback {
  private:
   PropertyPage* page_;
   const Cohort* cohort_;
+  PropertyPage::PropertyMapStruct* pmap_struct_;
   PropertyPage::CallbackCollector* collector_;
 };
 
@@ -180,19 +186,16 @@ void PropertyPage::AddValueFromProtobuf(
     const PropertyCache::Cohort* cohort,
     const PropertyValueProtobuf& pcache_value) {
   ScopedMutex lock(mutex_.get());
-  CohortDataMap::const_iterator p = cohort_data_map_.find(cohort);
-  PropertyMapStruct* pmap_struct = NULL;
-  if (p != cohort_data_map_.end()) {
-    pmap_struct = p->second;
-  } else {
-    pmap_struct = new PropertyMapStruct;
-    cohort_data_map_[cohort] = pmap_struct;
-  }
+  CohortDataMap::iterator cohort_itr = cohort_data_map_.find(cohort);
+  CHECK(cohort_itr != cohort_data_map_.end());
+  PropertyMapStruct* pmap_struct = cohort_itr->second;
   PropertyMap* pmap = &pmap_struct->pmap;
   PropertyValue* property = (*pmap)[pcache_value.name()];
   if (property == NULL) {
     property = new PropertyValue;
     (*pmap)[pcache_value.name()] = property;
+    log_record()->AddFoundPropertyToCohortInfo(
+        pmap_struct->cohort_index, pcache_value.name());
   }
   property->InitFromProtobuf(pcache_value);
 }
@@ -299,6 +302,18 @@ GoogleString PropertyCache::CacheKey(const StringPiece& key,
   return StrCat(cache_key_prefix_, key, "@", cohort->name());
 }
 
+void PropertyCache::SetupCohorts(PropertyPage* page) const {
+  for (CohortMap::const_iterator p = cohorts_.begin(), e = cohorts_.end();
+       p != e; ++p) {
+    const Cohort* cohort = p->second;
+    int cohort_index = page->log_record()->AddPropertyCohortInfo(
+        cohort->name());
+    PropertyPage::PropertyMapStruct* pmap_struct =
+        new PropertyPage::PropertyMapStruct(page->log_record(), cohort_index);
+    page->cohort_data_map_[cohort] = pmap_struct;
+  }
+}
+
 void PropertyCache::Read(PropertyPage* page) const {
   if (enabled_ && !cohorts_.empty()) {
     PropertyPage::CallbackCollector* collector =
@@ -307,9 +322,14 @@ void PropertyCache::Read(PropertyPage* page) const {
     for (CohortMap::const_iterator p = cohorts_.begin(), e = cohorts_.end();
          p != e; ++p) {
       const Cohort* cohort = p->second;
+      PropertyPage::CohortDataMap::iterator cohort_itr =
+          page->cohort_data_map_.find(cohort);
+      CHECK(cohort_itr != page->cohort_data_map_.end());
+      PropertyPage::PropertyMapStruct* pmap_struct = cohort_itr->second;
       const GoogleString cache_key = CacheKey(page->key(), cohort);
       cohort->cache()->Get(
-          cache_key, new CacheInterfaceCallback(page, cohort, collector));
+          cache_key,
+          new CacheInterfaceCallback(page, cohort, pmap_struct, collector));
     }
   } else {
     page->CallDone(false);
@@ -405,6 +425,17 @@ void PropertyCache::InitCohortStats(const GoogleString& cohort,
   CacheStats::InitStats(GetStatsPrefix(cohort), statistics);
 }
 
+PropertyPage::PropertyPage(AbstractMutex* mutex,
+                           const PropertyCache& property_cache,
+                           const StringPiece& key,
+                           const RequestContextPtr& request_context)
+      : mutex_(mutex),
+        key_(key.as_string()),
+        request_context_(request_context),
+        was_read_(false) {
+  property_cache.SetupCohorts(this);
+}
+
 PropertyPage::~PropertyPage() {
   while (!cohort_data_map_.empty()) {
     CohortDataMap::iterator p = cohort_data_map_.begin();
@@ -430,18 +461,10 @@ PropertyValue* PropertyPage::GetProperty(const PropertyCache::Cohort* cohort,
   DCHECK(was_read_);
   DCHECK(cohort != NULL);
   PropertyValue* property = NULL;
-  PropertyMapStruct* pmap_struct = NULL;
   GoogleString property_name_str(property_name.data(), property_name.size());
-  std::pair<CohortDataMap::iterator, bool> insertion = cohort_data_map_.insert(
-      CohortDataMap::value_type(cohort, pmap_struct));
-  if (insertion.second) {
-    // The insertion occured: mutate the returned iterator with a new map.
-    pmap_struct = new PropertyMapStruct;
-    insertion.first->second = pmap_struct;
-  } else {
-    // The entry was already in the cohort map, so pull out the pmap.
-    pmap_struct = insertion.first->second;
-  }
+  CohortDataMap::iterator cohort_itr = cohort_data_map_.find(cohort);
+  CHECK(cohort_itr != cohort_data_map_.end());
+  PropertyMapStruct* pmap_struct = cohort_itr->second;
   PropertyMap* pmap = &pmap_struct->pmap;
   property = (*pmap)[property_name_str];
   if (property == NULL) {

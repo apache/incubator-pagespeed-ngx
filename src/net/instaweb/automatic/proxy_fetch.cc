@@ -178,10 +178,12 @@ void ProxyFetchFactory::RegisterFinishedFetch(ProxyFetch* fetch) {
 }
 
 ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(
-    CacheType cache_type, const StringPiece& key,
+    CacheType cache_type,
+    const PropertyCache& property_cache,
+    const StringPiece& key,
     ProxyFetchPropertyCallbackCollector* collector,
     AbstractMutex* mutex)
-    : PropertyPage(mutex, key),
+    : PropertyPage(mutex, property_cache, key, collector->request_context()),
       cache_type_(cache_type),
       collector_(collector) {
 }
@@ -196,10 +198,11 @@ void ProxyFetchPropertyCallback::Done(bool success) {
 
 ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
     ServerContext* server_context, const StringPiece& url,
-    const RewriteOptions* options)
+    const RequestContextPtr& request_ctx, const RewriteOptions* options)
     : mutex_(server_context->thread_system()->NewMutex()),
       server_context_(server_context),
       url_(url.data(), url.size()),
+      request_context_(request_ctx),
       detached_(false),
       done_(false),
       success_(true),

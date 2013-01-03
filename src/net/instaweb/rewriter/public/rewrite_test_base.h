@@ -41,6 +41,7 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_property_page.h"
 // We need to include mock_timer.h to allow upcast to Timer*.
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -541,6 +542,22 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // Setup statistics for the given cohort and add it to the give PropertyCache.
   void SetupCohort(PropertyCache* cache, const GoogleString& cohort) {
     factory()->SetupCohort(cache, cohort);
+  }
+
+  // Returns a new mock property page for the page property cache.
+  MockPropertyPage* NewMockPage(const StringPiece& key) {
+    return new MockPropertyPage(
+        server_context_->thread_system(),
+        *server_context_->page_property_cache(),
+        key);
+  }
+
+  // Returns a new mock property page for the client property cache.
+  MockPropertyPage* NewMockClientPage(const StringPiece& key) {
+    return new MockPropertyPage(
+        server_context_->thread_system(),
+        *server_context_->client_property_cache(),
+        key);
   }
 
  protected:

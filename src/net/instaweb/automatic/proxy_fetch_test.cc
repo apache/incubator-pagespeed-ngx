@@ -93,7 +93,9 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
   ProxyFetchPropertyCallbackCollector* MakeCollector() {
     ProxyFetchPropertyCallbackCollector* collector =
         new ProxyFetchPropertyCallbackCollector(
-            server_context_, RewriteTestBase::kTestDomain, options());
+            server_context_, RewriteTestBase::kTestDomain,
+            RequestContext::NewTestRequestContext(thread_system_.get()),
+            options());
     // Collector should not contain any PropertyPages
     EXPECT_EQ(NULL, collector->GetPropertyPage(
         ProxyFetchPropertyCallback::kPagePropertyCache));
@@ -108,9 +110,13 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
       ProxyFetchPropertyCallbackCollector* collector,
       ProxyFetchPropertyCallback::CacheType cache_type) {
     AbstractMutex* mutex = thread_system_->NewMutex();
+    PropertyCache* property_cache =
+        (cache_type == ProxyFetchPropertyCallback::kPagePropertyCache) ?
+        page_property_cache() : server_context()->client_property_cache();
     ProxyFetchPropertyCallback* callback =
         new ProxyFetchPropertyCallback(
-            cache_type, RewriteTestBase::kTestDomain, collector, mutex);
+            cache_type, *property_cache, RewriteTestBase::kTestDomain,
+            collector, mutex);
     EXPECT_EQ(cache_type, callback->cache_type());
     collector->AddCallback(callback);
     return callback;

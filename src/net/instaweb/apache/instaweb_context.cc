@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -51,8 +52,10 @@ const int kRequestChainLimit = 5;
 
 PropertyCallback::PropertyCallback(RewriteDriver* driver,
                                    ThreadSystem* thread_system,
-                                   const StringPiece& key) :
-  PropertyPage(thread_system->NewMutex(), key),
+                                   const StringPiece& key)
+    : PropertyPage(thread_system->NewMutex(),
+                   *driver->server_context()->page_property_cache(), key,
+                   driver->request_context()),
   driver_(driver),
   done_(false),
   mutex_(thread_system->NewMutex()),

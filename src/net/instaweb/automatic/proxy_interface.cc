@@ -39,6 +39,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hostname_util.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -312,15 +313,15 @@ ProxyFetchPropertyCallbackCollector*
     const GoogleUrl& request_url,
     RewriteOptions* options,
     AsyncFetch* async_fetch) {
-  DCHECK(async_fetch->request_context().get() != NULL);
-  if (async_fetch->request_context()->trace_context() != NULL) {
-    async_fetch->request_context()->trace_context()->TracePrintf(
-        "PropertyCache lookup start");
+  RequestContextPtr request_ctx = async_fetch->request_context();
+  DCHECK(request_ctx.get() != NULL);
+  if (request_ctx->trace_context() != NULL) {
+    request_ctx->trace_context()->TracePrintf("PropertyCache lookup start");
   }
 
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       new ProxyFetchPropertyCallbackCollector(
-          server_context_, request_url.Spec(), options));
+          server_context_, request_url.Spec(), request_ctx, options));
   bool added_callback = false;
   ProxyFetchPropertyCallback* property_callback = NULL;
   PropertyCache* page_property_cache = NULL;
@@ -334,12 +335,13 @@ ProxyFetchPropertyCallbackCollector*
       server_context_->ComputeSignature(options);
       property_callback = new ProxyFetchPropertyCallback(
           ProxyFetchPropertyCallback::kPagePropertyCache,
+          *page_property_cache,
           StrCat(request_url.Spec(), "_", options->signature()),
           callback_collector.get(), mutex);
     } else {
       property_callback = new ProxyFetchPropertyCallback(
           ProxyFetchPropertyCallback::kPagePropertyCache,
-          request_url.Spec(),
+          *page_property_cache, request_url.Spec(),
           callback_collector.get(), mutex);
     }
     callback_collector->AddCallback(property_callback);
@@ -365,7 +367,7 @@ ProxyFetchPropertyCallbackCollector*
         ProxyFetchPropertyCallback* callback =
             new ProxyFetchPropertyCallback(
                 ProxyFetchPropertyCallback::kClientPropertyCache,
-                client_id,
+                *client_property_cache, client_id,
                 callback_collector.get(), mutex);
         callback_collector->AddCallback(callback);
         added_callback = true;

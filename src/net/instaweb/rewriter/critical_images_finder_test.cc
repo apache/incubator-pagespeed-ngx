@@ -61,6 +61,8 @@ class CriticalImagesFinderTest : public CriticalImagesFinderTestBase {
   virtual void SetUp() {
     CriticalImagesFinderTestBase::SetUp();
     finder_.reset(new CriticalImagesFinderMock(statistics()));
+    SetupCohort(page_property_cache(), finder()->GetCriticalImagesCohort());
+    ResetDriver();
   }
 
   void CheckCriticalImageFinderStats(int hits, int expiries, int not_found) {
@@ -77,7 +79,6 @@ class CriticalImagesFinderTest : public CriticalImagesFinderTestBase {
 };
 
 TEST_F(CriticalImagesFinderTest, UpdateCriticalImagesCacheEntrySuccess) {
-  SetupCohort(page_property_cache(), finder()->GetCriticalImagesCohort());
   // Include an actual value in the RPC result to induce a cache write.
   StringSet* critical_images_set = new StringSet;
   critical_images_set->insert("imageA.jpeg");
@@ -91,7 +92,6 @@ TEST_F(CriticalImagesFinderTest, UpdateCriticalImagesCacheEntrySuccess) {
 
 TEST_F(CriticalImagesFinderTest,
        UpdateCriticalImagesCacheEntrySuccessEmptySet) {
-  SetupCohort(page_property_cache(), finder()->GetCriticalImagesCohort());
   // Include an actual value in the RPC result to induce a cache write.
   StringSet* critical_images_set = new StringSet;
   StringSet* css_critical_images_set = new StringSet;
@@ -102,7 +102,6 @@ TEST_F(CriticalImagesFinderTest,
 }
 
 TEST_F(CriticalImagesFinderTest, UpdateCriticalImagesCacheEntrySetNULL) {
-  SetupCohort(page_property_cache(), finder()->GetCriticalImagesCohort());
   EXPECT_FALSE(CallUpdateCriticalImagesCacheEntry(
       rewrite_driver(), NULL, NULL));
   EXPECT_FALSE(GetCriticalImagesUpdatedValue()->has_value());
@@ -110,23 +109,9 @@ TEST_F(CriticalImagesFinderTest, UpdateCriticalImagesCacheEntrySetNULL) {
 }
 
 TEST_F(CriticalImagesFinderTest,
-       UpdateCriticalImagesCacheEntryCohortMissing) {
-  // No cache insert if render cohort is missing.
-  // Include an actual value in the RPC result to induce a cache write. We
-  // expect no writes, but not from a lack of results!
-  StringSet* critical_images_set = new StringSet;
-  StringSet* css_critical_images_set = new StringSet;
-  EXPECT_FALSE(CallUpdateCriticalImagesCacheEntry(
-      rewrite_driver(), critical_images_set, css_critical_images_set));
-  EXPECT_EQ(NULL, GetCriticalImagesUpdatedValue());
-  EXPECT_EQ(NULL, GetCssCriticalImagesUpdatedValue());
-}
-
-TEST_F(CriticalImagesFinderTest,
        UpdateCriticalImagesCacheEntryPropertyPageMissing) {
   // No cache insert if PropertyPage is not set in RewriteDriver.
   rewrite_driver()->set_property_page(NULL);
-  SetupCohort(page_property_cache(), finder()->GetCriticalImagesCohort());
   // Include an actual value in the RPC result to induce a cache write. We
   // expect no writes, but not from a lack of results!
   StringSet* critical_images_set = new StringSet;
@@ -139,8 +124,6 @@ TEST_F(CriticalImagesFinderTest,
 
 TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   // First it will insert the value in cache, then it retrieves critical images.
-  SetupCohort(page_property_cache(), finder()->GetCriticalImagesCohort());
-  ResetDriver();
   // Include an actual value in the RPC result to induce a cache write.
   StringSet* critical_images_set = new StringSet;
   critical_images_set->insert("imageA.jpeg");

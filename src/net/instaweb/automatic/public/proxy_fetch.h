@@ -30,6 +30,7 @@
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -124,6 +125,7 @@ class ProxyFetchPropertyCallback : public PropertyPage {
   };
 
   ProxyFetchPropertyCallback(CacheType cache_type,
+                             const PropertyCache& property_cache,
                              const StringPiece& key,
                              ProxyFetchPropertyCallbackCollector* collector,
                              AbstractMutex* mutex);
@@ -147,6 +149,7 @@ class ProxyFetchPropertyCallbackCollector {
  public:
   ProxyFetchPropertyCallbackCollector(ServerContext* manager,
                                       const StringPiece& url,
+                                      const RequestContextPtr& req_ctx,
                                       const RewriteOptions* options);
   virtual ~ProxyFetchPropertyCallbackCollector();
 
@@ -202,6 +205,8 @@ class ProxyFetchPropertyCallbackCollector {
   // Updates the status code of response in property cache.
   void UpdateStatusCodeInPropertyCache();
 
+  const RequestContextPtr& request_context() { return request_context_; }
+
  private:
   std::set<ProxyFetchPropertyCallback*> pending_callbacks_;
   std::map<ProxyFetchPropertyCallback::CacheType, PropertyPage*>
@@ -209,6 +214,7 @@ class ProxyFetchPropertyCallbackCollector {
   scoped_ptr<AbstractMutex> mutex_;
   ServerContext* server_context_;
   GoogleString url_;
+  RequestContextPtr request_context_;
   bool detached_;             // protected by mutex_.
   bool done_;                 // protected by mutex_.
   bool success_;              // protected by mutex_; accessed after quiescence.

@@ -311,7 +311,8 @@ class ServerContext {
   // variables.  Returns true if the url was parsed and handled correctly; in
   // this case a 204 No Content response should be sent.  Returns false if the
   // url could not be parsed; in this case the request should be declined.
-  bool HandleBeacon(const StringPiece& unparsed_url);
+  bool HandleBeacon(const StringPiece& unparsed_url,
+                    const RequestContextPtr& request_context);
 
   // Returns a pointer to the master global_options.  These are not used
   // directly in RewriteDrivers, but are Cloned into the drivers as they

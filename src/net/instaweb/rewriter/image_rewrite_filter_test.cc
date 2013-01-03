@@ -43,7 +43,6 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
@@ -51,17 +50,15 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"  // for MD5Hasher
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"  // for Timer, etc
 
 namespace net_instaweb {
-
-class AbstractMutex;
 
 namespace {
 
@@ -138,16 +135,6 @@ class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
 const char MeaningfulCriticalImagesFinder::kCriticalImagesCohort[] =
     "critical_images";
 
-class MockPage : public PropertyPage {
- public:
-  MockPage(AbstractMutex* mutex, const StringPiece& key)
-      : PropertyPage(mutex, key) {}
-  virtual ~MockPage() {}
-  virtual void Done(bool valid) {}
- private:
-  DISALLOW_COPY_AND_ASSIGN(MockPage);
-};
-
 class ImageRewriteTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
@@ -155,8 +142,7 @@ class ImageRewriteTest : public RewriteTestBase {
     server_context_->set_enable_property_cache(true);
     SetupCohort(pcache, RewriteDriver::kDomCohort);
     RewriteTestBase::SetUp();
-    MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
-                                  kTestDomain);
+    MockPropertyPage* page = NewMockPage(kTestDomain);
     pcache->set_enabled(true);
     rewrite_driver()->set_property_page(page);
     pcache->Read(page);

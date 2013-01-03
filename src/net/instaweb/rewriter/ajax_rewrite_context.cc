@@ -252,7 +252,7 @@ void AjaxRewriteContext::Harvest() {
         // prepare the output here. Most of this is translated from
         // RewriteContext::FetchContext::FetchDone
         output_resource_->response_headers()->CopyFrom(
-            *(input_resource_->response_headers()));
+            *(nested_resource->response_headers()));
         Writer* writer = output_resource_->BeginWrite(
             driver_->message_handler());
         writer->Write(nested_resource->contents(),

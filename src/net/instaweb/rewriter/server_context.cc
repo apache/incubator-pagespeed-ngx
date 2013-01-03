@@ -103,9 +103,12 @@ class BeaconPropertyCallback : public PropertyPage {
   BeaconPropertyCallback(
       ServerContext* server_context,
       const StringPiece& key,
+      const RequestContextPtr& request_context,
       StringSet* html_critical_images_set,
       StringSet* css_critical_images_set)
-      : PropertyPage(server_context->thread_system()->NewMutex(), key),
+      : PropertyPage(server_context->thread_system()->NewMutex(),
+                     *server_context->page_property_cache(), key,
+                     request_context),
         server_context_(server_context),
         html_critical_images_set_(html_critical_images_set),
         css_critical_images_set_(css_critical_images_set) {
@@ -672,7 +675,8 @@ void ServerContext::LockForCreation(NamedLock* creation_lock,
       new QueuedWorkerPool::Sequence::AddFunction(worker, callback));
 }
 
-bool ServerContext::HandleBeacon(const StringPiece& unparsed_url) {
+bool ServerContext::HandleBeacon(const StringPiece& unparsed_url,
+                                 const RequestContextPtr& request_context) {
   // The url HandleBeacon recieves is a relative url, so adding some dummy
   // host to make it complete url so that i can use GoogleUrl for parsing.
   GoogleUrl base("http://www.example.com");
@@ -760,7 +764,7 @@ bool ServerContext::HandleBeacon(const StringPiece& unparsed_url) {
     // BeaconPropertyCallback::Done(). Done() is called when the read completes.
     scoped_ptr<BeaconPropertyCallback> property_callback(
         new BeaconPropertyCallback(
-            this, url_query_param.AllExceptQuery(),
+            this, url_query_param.AllExceptQuery(), request_context,
             html_critical_images_set.release(),
             css_critical_images_set.release()));
     page_property_cache()->Read(property_callback.release());

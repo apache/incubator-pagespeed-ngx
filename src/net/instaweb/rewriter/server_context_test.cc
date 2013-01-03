@@ -57,6 +57,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
@@ -84,21 +85,6 @@ const size_t kUrlPrefixLength = STATIC_STRLEN(kUrlPrefix);
 }  // namespace
 
 namespace net_instaweb {
-
-namespace {
-
-class MockPage : public PropertyPage {
- public:
-  MockPage(AbstractMutex* mutex, const StringPiece& key)
-      : PropertyPage(mutex, key) {}
-  virtual ~MockPage() {}
-  virtual void Done(bool valid) {}
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(MockPage);
-};
-
-}  // namespace
 
 class HtmlElement;
 class SharedString;
@@ -930,26 +916,29 @@ TEST_F(ServerContextTest, TestOnTheFly) {
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconNoLoadParam) {
-  EXPECT_FALSE(server_context()->HandleBeacon("/index.html"));
+  EXPECT_FALSE(server_context()->HandleBeacon(
+      "/index.html", CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconInvalidLoadParam) {
-  EXPECT_FALSE(server_context()->HandleBeacon("/beacon?ets=asd"));
+  EXPECT_FALSE(server_context()->HandleBeacon(
+      "/beacon?ets=asd", CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconNoUrl) {
-  EXPECT_FALSE(server_context()->HandleBeacon("/beacon?ets=load:34"));
+  EXPECT_FALSE(server_context()->HandleBeacon(
+      "/beacon?ets=load:34", CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconInvalidUrl) {
   EXPECT_FALSE(server_context()->HandleBeacon(
-      "/beacon?url=%2f%2finvalidurl&ets=load:34"));
+      "/beacon?url=%2f%2finvalidurl&ets=load:34", CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeacon) {
   EXPECT_TRUE(server_context()->HandleBeacon(
       "/beacon?url=http%3A%2F%2Flocalhost%3A8080%2Findex.html"
-      "&ets=load:34"));
+      "&ets=load:34", CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
@@ -958,9 +947,9 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
   SetupCohort(property_cache, BeaconCriticalImagesFinder::kBeaconCohort);
   const PropertyCache::Cohort* cohort = property_cache->GetCohort(
       BeaconCriticalImagesFinder::kBeaconCohort);
-  MockPage page(factory_->thread_system()->NewMutex(), kUrlPrefix);
-  property_cache->Read(&page);
-  PropertyValue* property = page.GetProperty(cohort, "critical_images");
+  scoped_ptr<MockPropertyPage> page(NewMockPage(kUrlPrefix));
+  property_cache->Read(page.get());
+  PropertyValue* property = page->GetProperty(cohort, "critical_images");
   EXPECT_FALSE(property->has_value());
 
   GoogleString img1 = "http://www.example.com/img1.png";
@@ -971,26 +960,27 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
       HashString<CasePreserve, int>(img2.c_str(), img2.size()));
 
   EXPECT_TRUE(server_context()->HandleBeacon(
-      "/beacon?url=http%3A%2F%2Fwww.example.com&critimg=" + hash1));
-  property_cache->Read(&page);
-  property = page.GetProperty(cohort, "critical_images");
+      "/beacon?url=http%3A%2F%2Fwww.example.com&critimg=" + hash1,
+      CreateRequestContext()));
+  property_cache->Read(page.get());
+  property = page->GetProperty(cohort, "critical_images");
   EXPECT_TRUE(property->has_value());
   EXPECT_EQ(hash1, property->value());
 
   EXPECT_TRUE(server_context()->HandleBeacon(
       "/beacon?url=http%3A%2F%2Fwww.example.com&critimg=" + hash1 + "," +
-      hash2));
-  property_cache->Read(&page);
-  property = page.GetProperty(cohort, "critical_images");
+      hash2, CreateRequestContext()));
+  property_cache->Read(page.get());
+  property = page->GetProperty(cohort, "critical_images");
   EXPECT_TRUE(property->has_value());
   EXPECT_EQ(hash1 + "\n" + hash2, property->value());
 
   // Ensure duplicate critimgs only get inserted once.
   EXPECT_TRUE(server_context()->HandleBeacon(
       "/beacon?url=http%3A%2F%2Fwww.example.com&critimg=" + hash1 + "," +
-      hash1));
-  property_cache->Read(&page);
-  property = page.GetProperty(cohort, "critical_images");
+      hash1, CreateRequestContext()));
+  property_cache->Read(page.get());
+  property = page->GetProperty(cohort, "critical_images");
   EXPECT_TRUE(property->has_value());
   EXPECT_EQ(hash1, property->value());
 }

@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -32,8 +33,6 @@
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
-
-class AbstractMutex;
 
 namespace {
 
@@ -70,27 +69,6 @@ class ClientStateTest : public testing::Test {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ClientStateTest);
-};
-
-class MockPage : public PropertyPage {
- public:
-  MockPage(AbstractMutex* mutex, const StringPiece& key)
-      : PropertyPage(mutex, key),
-        called_(false),
-        valid_(false) {}
-  virtual ~MockPage() {}
-  virtual void Done(bool valid) {
-    called_ = true;
-    valid_ = valid;
-  }
-  bool called() const { return called_; }
-  bool valid() const { return valid_; }
-
- private:
-  bool called_;
-  bool valid_;
-
-  DISALLOW_COPY_AND_ASSIGN(MockPage);
 };
 
 TEST_F(ClientStateTest, TestBasicOperations) {
@@ -142,8 +120,8 @@ TEST_F(ClientStateTest, PropertyCacheWorks) {
   client_state_.client_id_ = client_id1;
 
   // Prime the PropertyCache with an initial read.
-  scoped_ptr<MockPage> page1(new MockPage(thread_system_->NewMutex(),
-                                          client_id1));
+  scoped_ptr<MockPropertyPage> page1(
+      new MockPropertyPage(thread_system_.get(), property_cache_, client_id1));
   property_cache_.Read(page1.get());
   PropertyValue* property = page1.get()->GetProperty(
       cohort_, ClientState::kClientStatePropertyValue);
@@ -159,7 +137,8 @@ TEST_F(ClientStateTest, PropertyCacheWorks) {
   EXPECT_TRUE(property->has_value());
 
   // Read it back and test that we got the right thing.
-  MockPage* page2 = new MockPage(thread_system_->NewMutex(), client_id1);
+  MockPropertyPage* page2 = new MockPropertyPage(
+      thread_system_.get(), property_cache_, client_id1);
   property_cache_.Read(page2);
   ClientState new_clientstate;
   new_clientstate.InitFromPropertyCache(
@@ -170,7 +149,8 @@ TEST_F(ClientStateTest, PropertyCacheWorks) {
   // when the pcache read fails. Still need to prime the PropertyCache with
   // an initial read.
   GoogleString client_id2 = "client_id2";
-  MockPage* page4 = new MockPage(thread_system_->NewMutex(), client_id2);
+  MockPropertyPage* page4 = new MockPropertyPage(
+      thread_system_.get(), property_cache_, client_id2);
   property_cache_.Read(page4);
   property = page4->GetProperty(
       cohort_, ClientState::kClientStatePropertyValue);

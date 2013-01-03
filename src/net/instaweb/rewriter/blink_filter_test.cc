@@ -26,19 +26,16 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
-
-class AbstractMutex;
 
 namespace {
 
@@ -85,17 +82,6 @@ const char kJsonExpectedOutput[] =
     "<script>pagespeed.panelLoader.bufferNonCriticalData(non_critical_json);</script>"
     "\n</body></html>\n";
 
-class MockPage : public PropertyPage {
- public:
-  MockPage(AbstractMutex* mutex, const StringPiece& key)
-      : PropertyPage(mutex, key) {}
-  virtual ~MockPage() {}
-  virtual void Done(bool valid) {}
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(MockPage);
-};
-
 }  // namespace
 
 class BlinkFilterTest : public RewriteTestBase {
@@ -129,8 +115,7 @@ class BlinkFilterTest : public RewriteTestBase {
     SetupCohort(property_cache, BlinkFilter::kBlinkCohort);
     SetupCohort(property_cache, RewriteDriver::kDomCohort);
 
-    MockPage* page = new MockPage(factory_->thread_system()->NewMutex(),
-                                  kRequestUrl);
+    MockPropertyPage* page = NewMockPage(kRequestUrl);
     rewrite_driver()->set_property_page(page);
     property_cache->Read(page);
   }

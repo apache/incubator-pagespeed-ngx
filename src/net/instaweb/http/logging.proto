@@ -101,8 +101,25 @@ message SplitHtmlInfo {
   optional int64 json_size = 1;
 }
 
+// This proto stores all information related to property cohorts.
+// Next is for PropertyCohortInfo: 4
+message PropertyCohortInfo {
+  // The name of the property cohort.
+  optional string name = 1;
+  // Whether the cohort was found in the cache
+  optional bool is_cache_hit = 2 [ default = false];
+  // The list of properties that were found in the cache.
+  repeated string properties_found = 3;
+}
+
+// This proto stores information related to property cache lookups.
+// Next id for PropertyPageInfo: 2
+message PropertyPageInfo {
+  repeated PropertyCohortInfo cohort_info = 1;
+}
+
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 7
+// Next id for LoggingInfo: 9
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -119,4 +136,6 @@ message LoggingInfo {
   optional int32 furious_id = 6;
   // All information related to split_html.
   optional SplitHtmlInfo split_html_info = 7;
+  // All information related to the pcache lookup.
+  optional PropertyPageInfo property_page_info = 8;
 }

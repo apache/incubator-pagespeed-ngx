@@ -91,9 +91,13 @@ class FakeFilter : public RewriteFilter {
         filter_->IncRewrites();
         StrAppend(&rewritten, input->contents(), ":", filter_->id());
         MessageHandler* message_handler = resource_manager->message_handler();
-        const ContentType* output_type = input->type();
-        if (output_type == NULL) {
-          output_type = &kContentTypeText;
+        // Set the output type here to make sure that the CachedResult url
+        // field has the correct extension for the type.
+        const ContentType* output_type = &kContentTypeText;
+        if (filter_->output_content_type() != NULL) {
+          output_type = filter_->output_content_type();
+        } else if (input->type() != NULL) {
+          output_type = input->type();
         }
         ResourceVector rv = ResourceVector(1, input);
         if (resource_manager->Write(rv, rewritten, output_type,
@@ -114,7 +118,7 @@ class FakeFilter : public RewriteFilter {
 
   FakeFilter(const char* id, RewriteDriver* rewrite_driver)
       : RewriteFilter(rewrite_driver), id_(id), exceed_deadline_(false),
-        enabled_(true), num_rewrites_(0) {}
+        enabled_(true), num_rewrites_(0), output_content_type_(NULL) {}
 
   virtual ~FakeFilter() {}
 
@@ -137,6 +141,10 @@ class FakeFilter : public RewriteFilter {
   bool exceed_deadline() { return exceed_deadline_; }
   void set_exceed_deadline(bool x) { exceed_deadline_ = x; }
   void IncRewrites() { ++num_rewrites_; }
+  void set_output_content_type(const ContentType* type) {
+    output_content_type_ = type;
+  }
+  const ContentType* output_content_type() { return output_content_type_; }
 
  protected:
   virtual const char* id() const { return id_; }
@@ -149,6 +157,7 @@ class FakeFilter : public RewriteFilter {
   bool exceed_deadline_;
   bool enabled_;
   int num_rewrites_;
+  const ContentType* output_content_type_;
 };
 
 class FakeFetch : public AsyncFetch {
@@ -1250,6 +1259,18 @@ TEST_F(AjaxRewriteContextTest, HandleResourceCreationFailure) {
   Init();
   factory()->mock_url_async_fetcher()->set_fetcher_supports_https(false);
   FetchAndCheckResponse("https://www.example.com", "", false, 0, NULL, 0);
+}
+
+TEST_F(AjaxRewriteContextTest, ResponseHeaderMimeTypeUpdate) {
+  options()->set_in_place_wait_for_optimized(true);
+  Init();
+  // We are going to rewrite a PNG image below. Assume it will be converted
+  // to a JPEG.
+  img_filter_->set_output_content_type(&kContentTypeJpeg);
+  FetchAndCheckResponse(cache_png_url_, "good:ic", true, ttl_ms_, etag_,
+                        start_time_ms());
+  EXPECT_STREQ(kContentTypeJpeg.mime_type(),
+               response_headers_.Lookup1(HttpAttributes::kContentType));
 }
 
 }  // namespace

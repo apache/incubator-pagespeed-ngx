@@ -94,8 +94,10 @@
 
 #include <map>
 
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -103,6 +105,7 @@
 namespace net_instaweb {
 
 class AbstractMutex;
+class LogRecord;
 class PropertyValueProtobuf;
 class PropertyPage;
 class Statistics;
@@ -208,6 +211,8 @@ class PropertyCache {
   // cache, calling PropertyPage::Done when done.  It is essential
   // that the Cohorts are established prior to calling this function.
   void Read(PropertyPage* property_page) const;
+
+  void SetupCohorts(PropertyPage* property_page) const;
 
   // Updates a Cohort of properties into the cache.  It is a
   // programming error (dcheck-fail) to Write a PropertyPage that
@@ -327,12 +332,16 @@ class PropertyPage {
 
   const GoogleString& key() const { return key_; }
 
+  LogRecord* log_record() {
+    return request_context_->log_record();
+  }
+
  protected:
   // The Page takes ownership of the mutex.
-  explicit PropertyPage(AbstractMutex* mutex, const StringPiece& key)
-      : mutex_(mutex),
-        key_(key.as_string()),
-        was_read_(false) {}
+  PropertyPage(AbstractMutex* mutex,
+               const PropertyCache& property_cache,
+               const StringPiece& key,
+               const RequestContextPtr& request_context);
 
   // Called immediatly after the underlying cache lookup is done, from
   // PropertyCache::CacheInterfaceCallback::Done().
@@ -366,17 +375,21 @@ class PropertyPage {
   typedef std::map<GoogleString, PropertyValue*> PropertyMap;
 
   struct PropertyMapStruct {
-    PropertyMapStruct() {
-      has_deleted_property = false;
-    }
+    PropertyMapStruct(LogRecord* log, int index)
+        : has_deleted_property(false),
+          log_record(log),
+          cohort_index(index) {}
     PropertyMap pmap;
     bool has_deleted_property;
+    LogRecord* log_record;
+    int cohort_index;
   };
   typedef std::map<const PropertyCache::Cohort*, PropertyMapStruct*>
       CohortDataMap;
   CohortDataMap cohort_data_map_;
   scoped_ptr<AbstractMutex> mutex_;
   GoogleString key_;
+  RequestContextPtr request_context_;
   bool was_read_;
 
   DISALLOW_COPY_AND_ASSIGN(PropertyPage);

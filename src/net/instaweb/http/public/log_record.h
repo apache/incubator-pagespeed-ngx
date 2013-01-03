@@ -73,6 +73,17 @@ class LogRecord  {
   // guard any reads and writes to this using mutex().
   virtual LoggingInfo* logging_info();
 
+  // Adds a new cohort info with the given cohort name and returns its index.
+  int AddPropertyCohortInfo(const GoogleString& cohort);
+
+  // Updates the cohort info at the specified index, to include the given
+  // property in the last of properties found in the cache.
+  void AddFoundPropertyToCohortInfo(int index, const GoogleString& property);
+
+  // Updates the cohort info at the specified index, to indicate whether it was
+  // a cache hit.
+  void SetCacheStatusForCohortInfo(int index, bool found);
+
   // Mutex-guarded log mutation convenience methods. The rule of thumb is that
   // if a single-field update to a logging proto occurs multiple times, it
   // should be factored out into a method on this class.
