@@ -198,7 +198,9 @@ const UrlSegmentEncoder* ImageRewriteFilter::Context::encoder() const {
 
 GoogleString ImageRewriteFilter::Context::UserAgentCacheKey(
     const ResourceContext* resource_context) const {
-  if (resource_context != NULL && !has_parent()) {
+  // We want to disable user agent related cache key suffix for IPRO for now.
+  bool is_ipro_path = has_parent() && !is_css_;
+  if (resource_context != NULL && !is_ipro_path) {
     // cache-key is sensitive to whether the UA supports webp or not.
     return ImageUrlEncoder::CacheKeyFromResourceContext(*resource_context);
   }
@@ -445,9 +447,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   ResourceContext context;
   const RewriteOptions* options = driver_->options();
 
-  // Set webp and mobile from the UA, but allow legacy URLs to
-  // override them in the decoder.
-  ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver_, &context);
+  context.CopyFrom(*rewrite_context->resource_context());
 
   if (!encoder_.Decode(result->name(), &urls, &context, message_handler)) {
     return kRewriteFailed;
@@ -570,9 +570,6 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
         image_size <= options->max_image_size_low_resolution_bytes()) {
       Image::CompressionOptions* image_options =
           new Image::CompressionOptions();
-      // Note that preferred_webp may be further refined in
-      // SetTransformToLowRes below.
-      ImageUrlEncoder::SetLibWebpLevel(*driver_, &context);
       SetWebpCompressionOptions(context, *options, input_resource->url(),
                                 image_options);
 
@@ -1192,9 +1189,11 @@ const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {
 }
 
 RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
+  ResourceContext* resource_context = new ResourceContext;
+  ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver_, resource_context);
   return new Context(0 /*No CSS inlining, it's html */,
                      this, driver_, NULL /*not nested */,
-                     new ResourceContext(), false /*not css */,
+                     resource_context, false /*not css */,
                      kNotCriticalIndex);
 }
 
@@ -1227,6 +1226,9 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
 
 RewriteContext* ImageRewriteFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
+  // This is used for IPRO path. We create a ResourceContext but do not
+  // call ImageUrlEncoder::SetWebpAndMobileUserAgent to set any context for
+  // browser capability.
   Context* context = new Context(0 /*No Css inling */, this, NULL /* driver */,
                                  parent, new ResourceContext,
                                  false /*not css */, kNotCriticalIndex);
