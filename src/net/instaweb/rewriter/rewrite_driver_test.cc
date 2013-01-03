@@ -31,6 +31,8 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/mock_resource_callback.h"
@@ -50,6 +52,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -1133,6 +1136,57 @@ TEST_F(RewriteDriverTest, SetSessionFetcherTest) {
   EXPECT_TRUE(FetchResourceUrl(url, &output, &response_headers));
   EXPECT_STREQ(kFetcher1Css, output);
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(RewriteDriverTest, GetScreenResolutionTest) {
+  rewrite_driver()->set_user_agent(UserAgentStrings::kAndroidICSUserAgent);
+  PropertyCache* dcache = server_context_->MakePropertyCache(
+      PropertyCache::kDevicePropertyCacheKeyPrefix, lru_cache());
+  PropertyCache::InitCohortStats(UserAgentMatcher::kDevicePropertiesCohort,
+        rewrite_driver()->statistics());
+  int width, height;
+  // No device property page.
+  EXPECT_FALSE(rewrite_driver()->GetScreenResolution(&width, &height));
+
+  // Property values not set, return defaults.
+  server_context_->set_device_property_cache(dcache);
+  server_context_->device_property_cache()->AddCohort(
+      UserAgentMatcher::kDevicePropertiesCohort);
+  server_context_->device_property_cache()->set_enabled(true);
+  MockPropertyPage* device_page(new MockPropertyPage(
+      server_context_->thread_system(),
+      *server_context_->device_property_cache(), "test_ua"));
+  rewrite_driver()->set_device_property_page(device_page);
+  server_context_->device_property_cache()->Read(device_page);
+  EXPECT_TRUE(rewrite_driver()->GetScreenResolution(&width, &height));
+  EXPECT_EQ(RewriteDriver::kDefaultMobileScreenWidth, width);
+  EXPECT_EQ(RewriteDriver::kDefaultMobileScreenHeight, height);
+
+  // Bad data in page, return defaults.
+  const PropertyCache::Cohort* device_cohort =
+      server_context_->device_property_cache()->GetCohort(
+      UserAgentMatcher::kDevicePropertiesCohort);
+  PropertyValue* width_pvalue = device_page->GetProperty(device_cohort,
+      UserAgentMatcher::kScreenWidth);
+  PropertyValue* height_pvalue = device_page->GetProperty(device_cohort,
+      UserAgentMatcher::kScreenHeight);
+  server_context_->device_property_cache()->UpdateValue("cat", width_pvalue);
+  server_context_->device_property_cache()->UpdateValue("200", height_pvalue);
+  server_context_->device_property_cache()->WriteCohort(
+      device_cohort, device_page);
+  server_context_->device_property_cache()->Read(device_page);
+  EXPECT_TRUE(rewrite_driver()->GetScreenResolution(&width, &height));
+  EXPECT_EQ(RewriteDriver::kDefaultMobileScreenWidth, width);
+  EXPECT_EQ(RewriteDriver::kDefaultMobileScreenHeight, height);
+
+  // Good data in page.
+  server_context_->device_property_cache()->UpdateValue("100", width_pvalue);
+  server_context_->device_property_cache()->WriteCohort(
+      device_cohort, device_page);
+  server_context_->device_property_cache()->Read(device_page);
+  EXPECT_TRUE(rewrite_driver()->GetScreenResolution(&width, &height));
+  EXPECT_EQ(100, width);
+  EXPECT_EQ(200, height);
 }
 
 class InPlaceTest : public RewriteTestBase {

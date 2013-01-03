@@ -158,6 +158,9 @@ class RewriteDriver : public HtmlParse {
   // responses.
   static const char kStatusCodePropertyName[];
 
+  static const int kDefaultMobileScreenWidth;
+  static const int kDefaultMobileScreenHeight;
+
   RewriteDriver(MessageHandler* message_handler,
                 FileSystem* file_system,
                 UrlAsyncFetcher* url_async_fetcher);
@@ -265,7 +268,7 @@ class RewriteDriver : public HtmlParse {
     return request_headers_;
   }
 
-  const UserAgentMatcher& user_agent_matcher() const {
+  UserAgentMatcher* user_agent_matcher() const {
     DCHECK(server_context() != NULL);
     return server_context()->user_agent_matcher();
   }
@@ -857,6 +860,10 @@ class RewriteDriver : public HtmlParse {
   // Does not take the ownership of the page.
   void set_unowned_property_page(PropertyPage* page);
 
+  PropertyPage* device_property_page() const { return device_property_page_; }
+  void set_device_property_page(PropertyPage* page);
+  void set_unowned_device_property_page(PropertyPage* page);
+
   // Used by ImageRewriteFilter for identifying critical images.
   const CriticalLineInfo* critical_line_info() const;
 
@@ -1373,6 +1380,13 @@ class RewriteDriver : public HtmlParse {
 
   // Boolean value which tells whether property page is owned by driver or not.
   bool owns_property_page_;
+
+  // Stores any cached properties associated with the current device.
+  PropertyPage* device_property_page_;
+
+  // Boolean value which tells whether device property page is owned by driver
+  // or not.
+  bool owns_device_property_page_;
 
   scoped_ptr<CriticalLineInfo> critical_line_info_;
 

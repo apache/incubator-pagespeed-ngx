@@ -236,6 +236,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       client_state_(NULL),
       property_page_(NULL),
       owns_property_page_(false),
+      device_property_page_(NULL),
+      owns_device_property_page_(false),
       updated_critical_images_(false),
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
@@ -400,6 +402,12 @@ void RewriteDriver::Clear() {
   property_page_ = NULL;
   owns_property_page_ = false;
 
+  if (owns_device_property_page_) {
+      delete device_property_page_;
+  }
+  device_property_page_ = NULL;
+  owns_device_property_page_ = false;
+
   // Reset to the default fetcher from any session fetcher
   // (as the request is over).
   url_async_fetcher_ = default_url_async_fetcher_;
@@ -536,7 +544,6 @@ void RewriteDriver::SplitQueueIfNecessary() {
   if (end_elements_inhibited_.empty()) {
     return;
   }
-
   ConstHtmlEventSet inhibited_events;
   // The end() for an element may become available at any time, so we have to
   // rebuild the list of inhibited events on each call.
@@ -743,6 +750,9 @@ const char RewriteDriver::kLastRequestTimestamp[] = "last_request_timestamp";
 const char RewriteDriver::kParseSizeLimitExceeded[] =
     "parse_size_limit_exceeded";
 
+const int RewriteDriver::kDefaultMobileScreenWidth = 720;
+const int RewriteDriver::kDefaultMobileScreenHeight = 1184;
+
 void RewriteDriver::Initialize() {
   if (RewriteOptions::Initialize()) {
     CssFilter::Initialize();
@@ -836,7 +846,7 @@ void RewriteDriver::TracePrintf(const char* fmt, ...) {
 bool RewriteDriver::UserAgentSupportsImageInlining() const {
   if (user_agent_supports_image_inlining_ == kNotSet) {
     user_agent_supports_image_inlining_ =
-        user_agent_matcher().SupportsImageInlining(user_agent_) ?
+        user_agent_matcher()->SupportsImageInlining(user_agent_) ?
         kTrue : kFalse;
   }
   return (user_agent_supports_image_inlining_ == kTrue);
@@ -846,7 +856,7 @@ bool RewriteDriver::UserAgentSupportsJsDefer() const {
   if (user_agent_supports_js_defer_ == kNotSet) {
     bool allow_mobile = options()->enable_aggressive_rewriters_for_mobile();
     user_agent_supports_js_defer_ =
-        user_agent_matcher().SupportsJsDefer(user_agent_, allow_mobile) ?
+        user_agent_matcher()->SupportsJsDefer(user_agent_, allow_mobile) ?
         kTrue : kFalse;
   }
   return (user_agent_supports_js_defer_ == kTrue);
@@ -855,7 +865,7 @@ bool RewriteDriver::UserAgentSupportsJsDefer() const {
 bool RewriteDriver::UserAgentSupportsWebp() const {
   if (user_agent_supports_webp_ == kNotSet) {
     user_agent_supports_webp_ =
-        user_agent_matcher().SupportsWebp(user_agent_) ? kTrue : kFalse;
+        user_agent_matcher()->SupportsWebp(user_agent_) ? kTrue : kFalse;
   }
   return (user_agent_supports_webp_ == kTrue);
 }
@@ -863,7 +873,7 @@ bool RewriteDriver::UserAgentSupportsWebp() const {
 bool RewriteDriver::UserAgentSupportsWebpLosslessAlpha() const {
   if (user_agent_supports_webp_lossless_alpha_ == kNotSet) {
     user_agent_supports_webp_lossless_alpha_ =
-        user_agent_matcher().SupportsWebpLosslessAlpha(user_agent_) ?
+        user_agent_matcher()->SupportsWebpLosslessAlpha(user_agent_) ?
         kTrue : kFalse;
   }
   return (user_agent_supports_webp_lossless_alpha_ == kTrue);
@@ -873,7 +883,7 @@ bool RewriteDriver::UserAgentSupportsSplitHtml() const {
   if (user_agent_supports_split_html_ == kNotSet) {
     bool allow_mobile = options()->enable_aggressive_rewriters_for_mobile();
     user_agent_supports_split_html_ =
-        user_agent_matcher().SupportsSplitHtml(user_agent_, allow_mobile) ?
+        user_agent_matcher()->SupportsSplitHtml(user_agent_, allow_mobile) ?
         kTrue : kFalse;
   }
   return (user_agent_supports_split_html_ == kTrue);
@@ -882,17 +892,46 @@ bool RewriteDriver::UserAgentSupportsSplitHtml() const {
 bool RewriteDriver::IsMobileUserAgent() const {
   if (is_mobile_user_agent_ == kNotSet) {
     is_mobile_user_agent_ =
-        user_agent_matcher().IsMobileUserAgent(user_agent_) ? kTrue : kFalse;
+        user_agent_matcher()->IsMobileUserAgent(user_agent_) ? kTrue : kFalse;
   }
   return (is_mobile_user_agent_ == kTrue);
 }
 
-// TODO(bolian): improve logic for inferring dimensions from user-agent.
-// Use fixed screen size (display area of Galaxy Nexus) for all mobile user
-// agents for now.
+// TODO(buettner): Consolidate the various *Supports* functions behind a common
+//                 API that uses the device_property_page object.
 bool RewriteDriver::GetScreenResolution(int* width, int* height) {
-  if (is_screen_resolution_set_ == kNotSet && IsMobileUserAgent()) {
-    SetScreenResolution(720, 1184);
+  if (is_screen_resolution_set_ == kNotSet) {
+    PropertyPage* device_page = device_property_page();
+    if (device_page != NULL) {
+      PropertyCache* cache = server_context_->device_property_cache();
+      const PropertyCache::Cohort* device_cohort = cache->GetCohort(
+          UserAgentMatcher::kDevicePropertiesCohort);
+      if (device_cohort != NULL) {
+        PropertyValue* width_pvalue = device_page->GetProperty(
+          device_cohort, UserAgentMatcher::kScreenWidth);
+        PropertyValue* height_pvalue = device_page->GetProperty(
+          device_cohort, UserAgentMatcher::kScreenHeight);
+        int w, h;
+        if (width_pvalue != NULL &&
+            width_pvalue->has_value() &&
+            StringToInt(width_pvalue->value().as_string(), &w) &&
+            height_pvalue != NULL &&
+            height_pvalue->has_value() &&
+            StringToInt(height_pvalue->value().as_string(), &h)) {
+          SetScreenResolution(w, h);
+        } else {
+          server_context()->user_agent_matcher()->
+              LookupDeviceProperties(user_agent_, device_property_page_);
+          // If resolution isn't set in device_cache, return default values.
+          // Don't update is_screen_resolution_set, so lookup will try again.
+          if (IsMobileUserAgent()) {
+            *width = kDefaultMobileScreenWidth;
+            *height = kDefaultMobileScreenHeight;
+            return true;
+          }
+        }
+      }
+    }
   }
   if (is_screen_resolution_set_ == kTrue) {
     *width = user_agent_screen_resolution_width_;
@@ -913,7 +952,7 @@ bool RewriteDriver::SupportsFlushEarly() const {
         (options_->Enabled(RewriteOptions::kFlushSubresources) &&
         request_headers_ != NULL &&
         request_headers_->method() == RequestHeaders::kGet &&
-        user_agent_matcher().GetPrefetchMechanism(user_agent(),
+        user_agent_matcher()->GetPrefetchMechanism(user_agent(),
             request_headers_) != UserAgentMatcher::kPrefetchNotSupported)
             ? kTrue : kFalse;
   }
@@ -2691,6 +2730,22 @@ void RewriteDriver::set_unowned_property_page(PropertyPage* page) {
   }
   property_page_ = page;
   owns_property_page_ = false;
+}
+
+void RewriteDriver::set_device_property_page(PropertyPage* page) {
+  if (owns_device_property_page_) {
+    delete device_property_page_;
+  }
+  device_property_page_ = page;
+  owns_device_property_page_ = true;
+}
+
+void RewriteDriver::set_unowned_device_property_page(PropertyPage* page) {
+  if (owns_device_property_page_) {
+    delete device_property_page_;
+  }
+  device_property_page_ = page;
+  owns_device_property_page_ = false;
 }
 
 void RewriteDriver::increment_num_inline_preview_images() {

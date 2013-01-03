@@ -121,7 +121,8 @@ class ProxyFetchPropertyCallback : public PropertyPage {
   // The cache type associated with this callback.
   enum CacheType {
     kPagePropertyCache,
-    kClientPropertyCache
+    kClientPropertyCache,
+    kDevicePropertyCache
   };
 
   ProxyFetchPropertyCallback(CacheType cache_type,

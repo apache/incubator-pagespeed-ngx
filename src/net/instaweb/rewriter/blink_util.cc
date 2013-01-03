@@ -66,9 +66,9 @@ bool IsAllIncludedIn(const StringPieceVector& spec_vector,
 bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
                                 const RewriteOptions* options,
                                 const char* user_agent,
-                                const UserAgentMatcher& user_agent_matcher) {
+                                UserAgentMatcher* user_agent_matcher) {
   UserAgentMatcher::BlinkRequestType request_type =
-      user_agent_matcher.GetBlinkRequestType(
+      user_agent_matcher->GetBlinkRequestType(
           user_agent, async_fetch->request_headers());
   {
     ScopedMutex lock(async_fetch->log_record()->mutex());
@@ -105,7 +105,7 @@ bool IsBlinkRequest(const GoogleUrl& url,
                     AsyncFetch* async_fetch,
                     const RewriteOptions* options,
                     const char* user_agent,
-                    const UserAgentMatcher& user_agent_matcher) {
+                    UserAgentMatcher* user_agent_matcher) {
   if (options != NULL &&
       // Is rewriting enabled?
       options->enabled() &&

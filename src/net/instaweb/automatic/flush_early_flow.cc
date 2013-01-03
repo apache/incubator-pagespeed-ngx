@@ -572,7 +572,7 @@ void FlushEarlyFlow::GenerateDummyHeadAndCountResources(
   Write(flush_early_info.pre_head());
   GoogleString head_string, script, minified_script;
   bool has_script = false;
-  switch (manager_->user_agent_matcher().GetPrefetchMechanism(
+  switch (manager_->user_agent_matcher()->GetPrefetchMechanism(
       driver_->user_agent().data(), driver_->request_headers())) {
     case UserAgentMatcher::kPrefetchNotSupported:
       LOG(DFATAL) << "Entered Flush Early Flow for a unsupported user agent";

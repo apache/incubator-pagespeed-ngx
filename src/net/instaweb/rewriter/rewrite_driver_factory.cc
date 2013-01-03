@@ -401,6 +401,8 @@ void RewriteDriverFactory::InitServerContext(
   }
   resource_manager->set_url_namer(url_namer());
   resource_manager->set_user_agent_matcher(user_agent_matcher());
+  resource_manager->user_agent_matcher()->set_device_cache(
+      resource_manager->device_property_cache());
   resource_manager->set_filename_encoder(filename_encoder());
   resource_manager->set_file_system(file_system());
   resource_manager->set_filename_prefix(filename_prefix_);

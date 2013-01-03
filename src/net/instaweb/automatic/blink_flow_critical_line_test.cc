@@ -512,7 +512,8 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
       bool is_resource_fetch,
       const GoogleUrl& request_url,
       RewriteOptions* options,
-      AsyncFetch* async_fetch) {
+      AsyncFetch* async_fetch,
+      bool* added_page_property_callback) {
     GoogleString key_base(request_url.Spec().as_string());
     if (options != NULL) {
       manager_->ComputeSignature(options);
@@ -523,6 +524,9 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
         pcache->GetCohort(BlinkCriticalLineDataFinder::kBlinkCohort);
     key_ = pcache->CacheKey(key_base, cohort);
     delay_cache_->DelayKey(key_);
+    if (added_page_property_callback != NULL) {
+      *added_page_property_callback = true;
+    }
     return ProxyInterface::InitiatePropertyCacheLookup(
         is_resource_fetch, request_url, options, async_fetch);
   }

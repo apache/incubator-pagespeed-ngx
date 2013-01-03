@@ -13,8 +13,10 @@
 // limitations under the License.
 
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/fast_wildcard_group.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -186,8 +188,13 @@ const char* kSupportsPrefetchLinkScriptTag[] = {
 const char* kChromeVersionPattern = "Chrome/(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)";
 }  // namespace
 
+const char UserAgentMatcher::kDevicePropertiesCohort[] = "deviceproperties";
+const char UserAgentMatcher::kScreenWidth[] = "screen_width";
+const char UserAgentMatcher::kScreenHeight[] = "screen_height";
+
 UserAgentMatcher::UserAgentMatcher()
-    : chrome_version_pattern_(kChromeVersionPattern) {
+    : device_cache_(NULL), device_page_(NULL),
+      chrome_version_pattern_(kChromeVersionPattern) {
   // Initialize FastWildcardGroup for image inlining whitelist & blacklist.
   for (int i = 0, n = arraysize(kImageInliningWhitelist); i < n; ++i) {
     supports_image_inlining_.Allow(kImageInliningWhitelist[i]);
@@ -360,6 +367,10 @@ bool UserAgentMatcher::SupportsDnsPrefetchUsingRelPrefetch(
 bool UserAgentMatcher::SupportsSplitHtml(const StringPiece& user_agent,
                                          bool allow_mobile) const {
   return SupportsJsDefer(user_agent, allow_mobile);
+}
+
+void UserAgentMatcher::LookupDeviceProperties(
+    const StringPiece& user_agent, PropertyPage* page) {
 }
 
 }  // namespace net_instaweb

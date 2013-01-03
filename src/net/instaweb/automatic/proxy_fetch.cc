@@ -676,12 +676,14 @@ void ProxyFetch::PropertyCacheComplete(
   if (driver_ == NULL) {
     LOG(DFATAL) << "Expected non-null driver.";
   } else {
-    // Set the property page and client state objects in the driver
+    // Set the page property, device property and client state objects
+    // in the driver.
     driver_->set_property_page(
         callback_collector->GetPropertyPage(
             ProxyFetchPropertyCallback::kPagePropertyCache));
-
-    // Set the client state in the driver.
+    driver_->set_device_property_page(
+        callback_collector->GetPropertyPage(
+            ProxyFetchPropertyCallback::kDevicePropertyCache));
     driver_->set_client_state(GetClientState(callback_collector));
   }
   // We have to set the callback to NULL to let ScheduleQueueExecutionIfNeeded

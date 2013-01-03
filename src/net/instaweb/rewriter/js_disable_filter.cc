@@ -85,7 +85,7 @@ void JsDisableFilter::InsertMetaTagForIE(HtmlElement* element) {
     return;
   }
   ie_meta_tag_written_ = true;
-  if (!rewrite_driver_->user_agent_matcher().IsIe(
+  if (!rewrite_driver_->user_agent_matcher()->IsIe(
           rewrite_driver_->user_agent())) {
     return;
   }

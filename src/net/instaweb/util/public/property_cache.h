@@ -176,6 +176,7 @@ class PropertyCache {
   // Property cache key prefixes.
   static const char kPagePropertyCacheKeyPrefix[];
   static const char kClientPropertyCacheKeyPrefix[];
+  static const char kDevicePropertyCacheKeyPrefix[];
 
   class CacheInterfaceCallback;
 

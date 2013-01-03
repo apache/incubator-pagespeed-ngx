@@ -66,14 +66,14 @@ const char kComputeVisibleTextFilterOutputEndMarker[] =
 bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
                                 const RewriteOptions* options,
                                 const char* user_agent,
-                                const UserAgentMatcher& user_agent_matcher);
+                                UserAgentMatcher* user_agent_matcher);
 
 // Checks whether the request for 'url' is a valid blink request.
 bool IsBlinkRequest(const GoogleUrl& url,
                     AsyncFetch* async_fetch,
                     const RewriteOptions* options,
                     const char* user_agent,
-                    const UserAgentMatcher& user_agent_matcher_);
+                    UserAgentMatcher* user_agent_matcher_);
 
 // Checks if blink critical line flow can be applied.
 bool ShouldApplyBlinkFlowCriticalLine(

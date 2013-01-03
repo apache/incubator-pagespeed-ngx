@@ -38,6 +38,7 @@ namespace net_instaweb {
 // Property cache key prefixes.
 const char PropertyCache::kPagePropertyCacheKeyPrefix[] = "prop_page/";
 const char PropertyCache::kClientPropertyCacheKeyPrefix[] = "prop_client/";
+const char PropertyCache::kDevicePropertyCacheKeyPrefix[] = "prop_device/";
 
 namespace {
 

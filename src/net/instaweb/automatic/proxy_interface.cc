@@ -312,24 +312,29 @@ ProxyFetchPropertyCallbackCollector*
     bool is_resource_fetch,
     const GoogleUrl& request_url,
     RewriteOptions* options,
-    AsyncFetch* async_fetch) {
+    AsyncFetch* async_fetch,
+    bool* added_page_property_callback) {
   RequestContextPtr request_ctx = async_fetch->request_context();
   DCHECK(request_ctx.get() != NULL);
   if (request_ctx->trace_context() != NULL) {
     request_ctx->trace_context()->TracePrintf("PropertyCache lookup start");
   }
-
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       new ProxyFetchPropertyCallbackCollector(
           server_context_, request_url.Spec(), request_ctx, options));
   bool added_callback = false;
   ProxyFetchPropertyCallback* property_callback = NULL;
-  PropertyCache* page_property_cache = NULL;
+  ProxyFetchPropertyCallback* client_callback = NULL;
+  ProxyFetchPropertyCallback* device_callback = NULL;
+  PropertyCache* page_property_cache = server_context_->page_property_cache();
+  PropertyCache* client_property_cache =
+      server_context_->client_property_cache();
+  PropertyCache* device_property_cache =
+      server_context_->device_property_cache();
   if (!is_resource_fetch &&
       server_context_->page_property_cache()->enabled() &&
       UrlMightHavePropertyCacheEntry(request_url) &&
       async_fetch->request_headers()->method() == RequestHeaders::kGet) {
-    page_property_cache = server_context_->page_property_cache();
     AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
     if (options != NULL) {
       server_context_->ComputeSignature(options);
@@ -346,13 +351,9 @@ ProxyFetchPropertyCallbackCollector*
     }
     callback_collector->AddCallback(property_callback);
     added_callback = true;
-
-    // Don't initiate the Read until the client_id lookup, if any, has had
-    // an opportunity to establish its callback.  Otherwise we race the
-    // completion of this pcache lookup against adding the client-cache
-    // lookup's callback.  Also this would cause the unit-test
-    // ProxyInterfaceTest.BothClientAndPropertyCache to hang on two
-    // Wait calls when the test only sets up one Signal.
+    if (added_page_property_callback != NULL) {
+      *added_page_property_callback = true;
+    }
   }
 
   // Initiate client property cache lookup.
@@ -360,24 +361,42 @@ ProxyFetchPropertyCallbackCollector*
     const char* client_id = async_fetch->request_headers()->Lookup1(
         HttpAttributes::kXGooglePagespeedClientId);
     if (client_id != NULL) {
-      PropertyCache* client_property_cache =
-          server_context_->client_property_cache();
       if (client_property_cache->enabled()) {
         AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
-        ProxyFetchPropertyCallback* callback =
-            new ProxyFetchPropertyCallback(
-                ProxyFetchPropertyCallback::kClientPropertyCache,
-                *client_property_cache, client_id,
-                callback_collector.get(), mutex);
-        callback_collector->AddCallback(callback);
+        client_callback = new ProxyFetchPropertyCallback(
+            ProxyFetchPropertyCallback::kClientPropertyCache,
+            *client_property_cache, client_id, callback_collector.get(), mutex);
+        callback_collector->AddCallback(client_callback);
         added_callback = true;
-        client_property_cache->Read(callback);
       }
     }
+
+    // Initiate device properties lookup.
+    const char* user_agent = async_fetch->request_headers()->Lookup1(
+        HttpAttributes::kUserAgent);
+    if (device_property_cache != NULL &&
+        device_property_cache->enabled() &&
+        user_agent != NULL) {
+      AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
+      device_callback = new ProxyFetchPropertyCallback(
+          ProxyFetchPropertyCallback::kDevicePropertyCache,
+          *device_property_cache, user_agent, callback_collector.get(), mutex);
+      callback_collector->AddCallback(device_callback);
+      added_callback = true;
+    }
   }
-  if (page_property_cache != NULL) {
+
+  // All callbacks need to be registered before Reads to avoid race.
+  if (property_callback != NULL) {
     page_property_cache->Read(property_callback);
   }
+  if (client_callback != NULL) {
+    client_property_cache->Read(client_callback);
+  }
+  if (device_callback != NULL) {
+    device_property_cache->Read(device_callback);
+  }
+
   if (!added_callback) {
     callback_collector.reset(NULL);
   }
@@ -461,12 +480,12 @@ void ProxyInterface::ProxyRequestCallback(
     bool apply_blink_critical_line =
         BlinkUtil::ShouldApplyBlinkFlowCriticalLine(server_context_,
                                                     options);
-    if (is_blink_request && apply_blink_critical_line) {
-      property_callback.reset(InitiatePropertyCacheLookup(
-          is_resource_fetch, *request_url, options, async_fetch));
-    }
-    if (is_blink_request && apply_blink_critical_line &&
-        property_callback.get() != NULL) {
+    bool page_callback_added = false;
+    property_callback.reset(InitiatePropertyCacheLookup(
+        is_resource_fetch, *request_url, options, async_fetch,
+        &page_callback_added));
+
+    if (is_blink_request && apply_blink_critical_line && page_callback_added) {
       // In blink flow, we have to modify RewriteOptions after the
       // property cache read is completed. Hence, we clear the signature to
       // unfreeze RewriteOptions, which was frozen during signature computation
@@ -492,9 +511,6 @@ void ProxyInterface::ProxyRequestCallback(
       RequestContextPtr request_ctx = async_fetch->request_context();
       DCHECK(request_ctx.get() != NULL) << "Async fetch must have a request"
                                         << "context but does not.";
-      // Starting property cache lookup after the furious state is set.
-      property_callback.reset(InitiatePropertyCacheLookup(
-          is_resource_fetch, *request_url, options, async_fetch));
       if (options == NULL) {
         driver = server_context_->NewRewriteDriver(request_ctx);
       } else {

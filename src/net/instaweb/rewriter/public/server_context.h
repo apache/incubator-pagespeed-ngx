@@ -33,6 +33,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -210,6 +211,12 @@ class ServerContext {
   PropertyCache* client_property_cache() const {
     return client_property_cache_.get();
   }
+  void set_device_property_cache(PropertyCache* cache) {
+    device_property_cache_.reset(cache);
+  }
+  PropertyCache* device_property_cache() const {
+    return device_property_cache_.get();
+  }
 
   // Cache for storing file system metadata. It must be private to a server,
   // preferably but not necessarily shared between its processes, and is
@@ -250,8 +257,8 @@ class ServerContext {
   }
   void set_flush_early_info_finder(FlushEarlyInfoFinder* finder);
 
-  const UserAgentMatcher& user_agent_matcher() const {
-    return *user_agent_matcher_;
+  UserAgentMatcher* user_agent_matcher() {
+    return user_agent_matcher_;
   }
   void set_user_agent_matcher(UserAgentMatcher* n) { user_agent_matcher_ = n; }
 
@@ -574,6 +581,7 @@ class ServerContext {
   scoped_ptr<HTTPCache> http_cache_;
   scoped_ptr<PropertyCache> page_property_cache_;
   scoped_ptr<PropertyCache> client_property_cache_;
+  scoped_ptr<PropertyCache> device_property_cache_;
   scoped_ptr<CacheInterface> filesystem_metadata_cache_;
   scoped_ptr<CacheInterface> metadata_cache_;
 

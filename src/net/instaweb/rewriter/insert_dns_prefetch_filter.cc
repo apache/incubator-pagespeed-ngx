@@ -84,7 +84,7 @@ void InsertDnsPrefetchFilter::Clear() {
 void InsertDnsPrefetchFilter::StartDocumentImpl() {
   Clear();
   user_agent_supports_dns_prefetch_ =
-      driver()->server_context()->user_agent_matcher().SupportsDnsPrefetch(
+      driver()->server_context()->user_agent_matcher()->SupportsDnsPrefetch(
           driver()->user_agent());
 }
 
@@ -190,7 +190,7 @@ void InsertDnsPrefetchFilter::EndElementImpl(HtmlElement* element) {
       const FlushEarlyInfo& flush_early_info = *(driver()->flush_early_info());
       if (IsDomainListStable(flush_early_info)) {
         const char* tag_to_insert =
-            driver()->user_agent_matcher().SupportsDnsPrefetchUsingRelPrefetch(
+            driver()->user_agent_matcher()->SupportsDnsPrefetchUsingRelPrefetch(
                 driver()->user_agent()) ? kRelPrefetch : kRelDnsPrefetch;
         protobuf::RepeatedPtrField<GoogleString>::const_iterator end =
             flush_early_info.dns_prefetch_domains().end();

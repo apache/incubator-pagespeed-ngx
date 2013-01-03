@@ -22,6 +22,8 @@
 
 namespace net_instaweb {
 
+class PropertyCache;
+class PropertyPage;
 class RequestHeaders;
 
 // This class contains various user agent based checks.  Currently all of these
@@ -49,6 +51,11 @@ class UserAgentMatcher {
     kPrefetchObjectTag,
     kPrefetchLinkScriptTag,
   };
+
+  // Cohort descriptors for PropertyCache lookups of device objects.
+  static const char kDevicePropertiesCohort[];
+  static const char kScreenWidth[];
+  static const char kScreenHeight[];
 
   UserAgentMatcher();
   virtual ~UserAgentMatcher();
@@ -99,6 +106,14 @@ class UserAgentMatcher {
   virtual bool SupportsSplitHtml(const StringPiece& user_agent,
                                  bool allow_mobile) const;
 
+  // Looks up device properties and stores them in device_property_cache_.
+  virtual void LookupDeviceProperties(const StringPiece& user_agent,
+      PropertyPage* page);
+  void set_device_cache(PropertyCache* cache) { device_cache_ = cache; }
+  PropertyCache* device_cache() const { return device_cache_; }
+  void set_device_page(PropertyPage* page) { device_page_ = page; }
+  PropertyPage* device_page() const { return device_page_; }
+
  private:
   FastWildcardGroup supports_image_inlining_;
   FastWildcardGroup blink_desktop_whitelist_;
@@ -111,6 +126,8 @@ class UserAgentMatcher {
   FastWildcardGroup supports_prefetch_image_tag_;
   FastWildcardGroup supports_prefetch_link_script_tag_;
   FastWildcardGroup supports_dns_prefetch_;
+  PropertyCache* device_cache_;
+  PropertyPage* device_page_;
 
   const RE2 chrome_version_pattern_;
 
