@@ -833,6 +833,9 @@ apr_status_t instaweb_handler(request_rec* request) {
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                       "Not rewriting non-GET request: %d.",
                       request->method_number);
+      } else if (!gurl.is_valid()) {
+        ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
+                      "Ignoring invalid URL: %s", gurl.spec_c_str());
       } else if (gurl.PathSansLeaf() ==
                  ApacheRewriteDriverFactory::kStaticJavaScriptPrefix) {
         instaweb_static_handler(request, server_context);
