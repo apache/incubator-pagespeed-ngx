@@ -28,6 +28,11 @@
 //    rewritten html.
 //  - When Done() is called the base fetch closes the pipe, which tells nginx to
 //    make a final call to CollectAccumulatedWrites().
+//
+// This class is referred two in two places: the proxy fetch and nginx's
+// request.  It must stay alive until both are finished.  The proxy fetch will
+// call Done() to indicate this; nginx will call Release().  Once both Done()
+// and Release() have been called this class will delete itself.
 
 #ifndef NGX_BASE_FETCH_H_
 #define NGX_BASE_FETCH_H_
@@ -45,7 +50,8 @@ namespace net_instaweb {
 
 class NgxBaseFetch : public AsyncFetch {
  public:
-  NgxBaseFetch(ngx_http_request_t* r, int pipe_fd);
+  NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
+               const RequestContextPtr& request_ctx);
   virtual ~NgxBaseFetch();
 
   // Copies the request headers out of request_->headers_in->headers.
@@ -70,13 +76,15 @@ class NgxBaseFetch : public AsyncFetch {
   // time for resource fetches.  Not called at all for proxy fetches.
   ngx_int_t CollectHeaders(ngx_http_headers_out_t* headers_out);
 
+  // Called by nginx when it's done with us.
+  void Release();
+
  private:
   virtual bool HandleWrite(const StringPiece& sp, MessageHandler* handler);
   virtual bool HandleFlush(MessageHandler* handler);
   virtual void HandleHeadersComplete();
   virtual void HandleDone(bool success);
 
-  
   // Helper method for PopulateRequestHeaders and PopulateResponseHeaders.
   template<class HeadersT>
   void CopyHeadersFromTable(ngx_list_t* headers_from, HeadersT* headers_to);
@@ -96,11 +104,18 @@ class NgxBaseFetch : public AsyncFetch {
   void Lock();
   void Unlock();
 
+  // Called by Done() and Release().  Decrements our reference count, and if
+  // it's zero we delete ourself.
+  void DecrefAndDeleteIfUnreferenced();
+
   ngx_http_request_t* request_;
   GoogleString buffer_;
   bool done_called_;
   bool last_buf_sent_;
   int pipe_fd_;
+  // How many active references there are to this fetch. Starts at two,
+  // decremented once when Done() is called and once when Release() is called.
+  bool references_;
   pthread_mutex_t mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);

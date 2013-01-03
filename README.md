@@ -3,11 +3,10 @@
 This is the [nginx](http://nginx.org/) port of
 [mod_pagespeed](https://developers.google.com/speed/pagespeed/mod).
 
-**ngx_pagespeed is a work in progress**, and is not yet ready for production use
-([current status](https://github.com/pagespeed/ngx_pagespeed/wiki/Status)). If
-you are interested in test-driving the module, or contributing to the project,
-please follow the instructions below. For feedback, questions, and to follow the
-progress of the project:
+**ngx_pagespeed is alpha**, and is only ready for production use if you really
+like to live on the edge. If you are interested in test-driving the module, or
+contributing to the project, see below. For feedback, questions, and to follow
+the progress of the project:
 
 - [ngx-pagespeed-discuss Google Group](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss)
 
@@ -16,7 +15,7 @@ progress of the project:
 The goal of ngx_pagespeed is to speed up your site and reduce page load time by
 automatically applying web performance best practices to pages and associated
 assets (CSS, JavaScript, images) without requiring that you modify your existing
-content or workflow. Features will include:
+content or workflow. Features include:
 
 - Image optimization: stripping meta-data, dynamic resizing, recompression
 - CSS & JavaScript minification, concatenation, inlining, and outlining
@@ -25,58 +24,67 @@ content or workflow. Features will include:
 - HTML rewriting
 - Cache lifetime extension
 - and [more](https://developers.google.com/speed/docs/mod_pagespeed/config_filters)
-
+  - Note: not all mod_pagespeed features work in ngx_pagespeed yet.
 
 ## How to build
 
-nginx does not support dynamic loading of modules. You need to add ngx_pagespeed
-as a build time dependency, and to do that you have to first build the pagespeed
-optimization library.
+Because nginx does not support dynamic loading of modules, you need to add
+ngx_pagespeed as a build-time dependency.
 
 First build mod_pagespeed against trunk, following these instructions through
-the end of the "Compile" step:
+the end of the "Compile" step, and making sure that when you run `gclient sync`
+you run it against "trunk" and not "latest-beta":
 https://developers.google.com/speed/docs/mod_pagespeed/build_from_source
-
-When you run `gclient sync`, be sure to run it against
-http://modpagespeed.googlecode.com/svn/trunk/src
 
 Then build the pagespeed optimization library:
 
-    $ cd /where/you/built/mod_pagespeed/src/net/instaweb/automatic
+    $ cd ~/mod_pagespeed/src/net/instaweb/automatic
     $ make all
 
-Then move the mod_pagespeed directory to a parallel directory to your
-ngx_pagespeed checkout:
+Check out ngx_pagespeed:
 
-    $ cd /path/to/ngx_pagespeed
-    $ mv /where/you/built/mod_pagespeed /path/to/mod_pagespeed
+    $ cd ~
+    $ git clone https://github.com/pagespeed/ngx_pagespeed.git
 
-Now build nginx:
+Download and build nginx:
 
-    $ cd /path/to/nginx
-    $ auto/configure --with-debug --add-module=/path/to/ngx_pagespeed
+    $ # check http://nginx.org/en/download.html for the latest version
+    $ wget http://nginx.org/download/nginx-1.2.6.tar.gz
+    $ tar -xvzf nginx-1.2.6.tar.gz
+    $ cd nginx-1.2.6/src/
+    $ ./configure --with-debug --add-module=$HOME/ngx_pagespeed
     $ make install
 
-While ngx_pagespeed doesn't need to be anywhere specific in relation to nginx,
-the mod_pagespeed directory and the ngx_pagespeed directory must have the same
-parent.
+(This assumes you put everything in your home directory; if not, change paths
+appropriately.  The only restriction is that the `mod_pagespeed` and
+`ngx_pagespeed` directories need to have the same parent so that ngx_pagespeed
+can find the pagespeed optimization library.)
 
 ## How to use
 
-In your nginx.conf, add to the main or server block:
+In your `nginx.conf`, add to the main or server block:
 
     pagespeed on;
-    pagespeed_cache /path/to/cache/dir;
-    error_log logs/error.log debug;
+    pagespeed RewriteLevel CoreFilters;
+
+    # needs to exist and be writable by nginx
+    pagespeed FileCachePath /var/ngx_pagespeed_cache;
+
+In every server block where pagespeed is enabled add:
+
+    # This is a temporary workaround that ensures requests for pagespeed
+    # optimized resources go to the pagespeed handler.
+    location ~ "\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+" { }
+    location ~ "^/ngx_pagespeed_static/" { }
 
 To confirm that the module is loaded, fetch a page and check that you see the
 `X-Page-Speed` header:
 
     $ curl -s -D- 'http://localhost:8050/some_page/' | grep X-Page-Speed
-    X-Page-Speed: 0.10.0.0
+    X-Page-Speed: 1.1.0.0
 
-Looking at the source of a few pages you should see various changes, like urls
-being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
+Looking at the source of a few pages you should see various changes, such as
+urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 
 ### Testing
 
@@ -162,8 +170,9 @@ and then eventually:
 
     Failing Tests:
       compression is enabled for rewritten JS.
-      regression test with same filtered input twice in combination
       convert_meta_tags
+      insert_dns_prefetch
+      insert_dns_prefetch
     FAIL.
 
 Each of these failed tests is a known issue:
@@ -171,9 +180,8 @@ Each of these failed tests is a known issue:
     https://github.com/pagespeed/ngx_pagespeed/issues/70)
    - If you're running a version of nginx without etag support (pre-1.3.3) you
      won't see this issue, which is fine.
- - [regression test with same filtered input twice in combination](
-    https://github.com/pagespeed/ngx_pagespeed/issues/55)
  - [convert_meta_tags](https://github.com/pagespeed/ngx_pagespeed/issues/56)
+ - [insert_dns_prefetch](https://github.com/pagespeed/ngx_pagespeed/issues/114)
 
 If it fails with some other error, that's a problem, and it would be helpful for
 you to [submit a bug](https://github.com/pagespeed/ngx_pagespeed/issues/new).
@@ -195,9 +203,8 @@ Then run the system test:
 
 ## Configuration
 
-Once configuration is complete, any mod_pagespeed configuration directive should
-work in ngx_pagespeed after a small adjustment: replace '"ModPagespeed"' with
-'"pagespeed "':
+Most mod_pagespeed configuration directives work in ngx_pagespeed after a small
+adjustment: replace '"ModPagespeed"' with '"pagespeed "':
 
     mod_pagespeed.conf:
       ModPagespeedEnableFilters collapse_whitespace,add_instrumentation

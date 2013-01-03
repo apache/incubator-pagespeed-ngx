@@ -80,6 +80,10 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   bool InitNgxUrlAsyncFecther();
   // Check resolver configed or not.
   bool HasResolver();
+  // Release all the resources. It also calls the base class ShutDown to
+  // release the base class resources.
+  virtual void ShutDown();
+  virtual void StopCacheActivity();
 
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
@@ -108,10 +112,14 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Returns the filesystem metadata cache for the given config's specification
   // (if it has one). NULL is returned if no cache is specified.
   CacheInterface* GetFilesystemMetadataCache(NgxRewriteOptions* config);
+
+  // Starts pagespeed threads if they've not been started already.  Must be
+  // called after the caller has finished any forking it intends to do.
+  void StartThreads();
+
 private:
   SimpleStats simple_stats_;
   Timer* timer_;
-  apr_pool_t* pool_;
   scoped_ptr<SlowWorker> slow_worker_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
   typedef std::map<GoogleString, NgxCache*> PathCacheMap;
@@ -139,6 +147,7 @@ private:
   scoped_ptr<QueuedWorkerPool> memcached_pool_;
   std::vector<AprMemCache*> memcache_servers_;
   std::vector<AsyncCache*> async_caches_;
+  bool threads_started_;
 
   NgxUrlAsyncFetcher* ngx_url_async_fetcher_;
   ngx_log_t* log_;

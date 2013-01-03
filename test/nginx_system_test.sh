@@ -47,7 +47,7 @@ PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 PAGESPEED_EXPECTED_FAILURES="
   ~compression is enabled for rewritten JS.~
   ~convert_meta_tags~
-  ~regression test with same filtered input twice in combination~
+  ~insert_dns_prefetch~
 "
 
 source $SYSTEM_TEST_FILE

@@ -39,6 +39,7 @@ extern "C" {
 #include "ngx_base_fetch.h"
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -200,6 +201,7 @@ typedef struct {
 typedef struct {
   net_instaweb::ProxyFetch* proxy_fetch;
   net_instaweb::NgxBaseFetch* base_fetch;
+  net_instaweb::RewriteDriver* driver;
   bool data_received;
   int pipe_fd;
   ngx_connection_t* pagespeed_connection;
@@ -323,6 +325,7 @@ ps_configure(ngx_conf_t* cf,
              net_instaweb::MessageHandler* handler) {
   if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
+    // TODO(oschaaf): these should be deleted on process exit
     *options = new net_instaweb::NgxRewriteOptions();
   }
 
@@ -367,30 +370,88 @@ ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   return ps_configure(cf, &cfg_l->options, cfg_l->handler);
 }
 
+void
+ps_cleanup_loc_conf(void* data) {
+  ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(data);
+  delete cfg_l->handler;
+  cfg_l->handler = NULL;
+}
+
+void
+ps_cleanup_srv_conf(void* data) {
+  ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(data);
+  if (cfg_s->proxy_fetch_factory != NULL) {
+    delete cfg_s->proxy_fetch_factory;
+    cfg_s->proxy_fetch_factory = NULL;
+  }
+  delete cfg_s->handler;
+  cfg_s->handler = NULL;
+}
+
+void
+ps_cleanup_main_conf(void* data) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(data);
+  if (cfg_m->driver_factory != NULL) {
+    delete cfg_m->driver_factory;
+    cfg_m->driver_factory = NULL;
+  }
+  delete cfg_m->handler;
+  cfg_m->handler = NULL;
+  net_instaweb::NgxRewriteDriverFactory::Terminate();
+  net_instaweb::NgxRewriteOptions::Terminate();
+}
+
 template <typename ConfT>
-void*
+ConfT*
 ps_create_conf(ngx_conf_t* cf) {
   ConfT* cfg = static_cast<ConfT*>(ngx_pcalloc(cf->pool, sizeof(ConfT)));
   if (cfg == NULL) {
-    return NGX_CONF_ERROR;
+    return NULL;
   }
   cfg->handler = new net_instaweb::GoogleMessageHandler();
   return cfg;
 }
 
+void
+ps_set_conf_cleanup_handler(ngx_conf_t* cf, void (func)(void*), void* data) {
+  ngx_pool_cleanup_t* cleanup_m = ngx_pool_cleanup_add(cf->pool, 0);
+  if (cleanup_m == NULL) {
+     ngx_conf_log_error(
+         NGX_LOG_ERR, cf, 0, "failed to register a cleanup handler");
+  } else {
+     cleanup_m->handler = func;
+     cleanup_m->data = data;
+  }
+}
+
 void*
 ps_create_main_conf(ngx_conf_t* cf) {
-  return ps_create_conf<ps_main_conf_t>(cf);
+  ps_main_conf_t* cfg_m = ps_create_conf<ps_main_conf_t>(cf);
+  if (cfg_m == NULL) {
+    return NGX_CONF_ERROR;
+  }
+  ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
+  return cfg_m;
 }
 
 void*
 ps_create_srv_conf(ngx_conf_t* cf) {
-  return ps_create_conf<ps_srv_conf_t>(cf);
+  ps_srv_conf_t* cfg_s = ps_create_conf<ps_srv_conf_t>(cf);
+  if (cfg_s == NULL) {
+    return NGX_CONF_ERROR;
+  }
+  ps_set_conf_cleanup_handler(cf, ps_cleanup_srv_conf, cfg_s);
+  return cfg_s;
 }
 
 void*
 ps_create_loc_conf(ngx_conf_t* cf) {
-  return ps_create_conf<ps_loc_conf_t>(cf);
+  ps_loc_conf_t* cfg_l = ps_create_conf<ps_loc_conf_t>(cf);
+  if (cfg_l == NULL) {
+    return NGX_CONF_ERROR;
+  }
+  ps_set_conf_cleanup_handler(cf, ps_cleanup_loc_conf, cfg_l);
+  return cfg_l;
 }
 
 // nginx has hierarchical configuration.  It maintains configurations at many
@@ -537,12 +598,15 @@ ps_release_request_context(void* data) {
     ctx->proxy_fetch->Done(false /* failure */);
   }
 
-  // BaseFetch doesn't delete itself in HandleDone() because we still need to
-  // recieve notification via pipe and call CollectAccumulatedWrites.
-  // TODO(jefftk): If we close the proxy_fetch above and not in the normal flow,
-  // can this delete base_fetch while proxy_fetch still needs it? Is there a
-  // race condition here?
-  delete ctx->base_fetch;
+  // In the normal flow BaseFetch doesn't delete itself in HandleDone() because
+  // we still need to receive notification via pipe and call
+  // CollectAccumulatedWrites.  If there's an error and we're cleaning up early
+  // then HandleDone() hasn't been called yet and we need the base fetch to wait
+  // for that and then delete itself.
+  if (ctx->base_fetch != NULL) {
+    ctx->base_fetch->Release();
+    ctx->base_fetch = NULL;
+  }
 
   // Close the connection, delete the events attached with it, and free it to
   // Nginx's connection pool
@@ -824,6 +888,11 @@ ps_create_connection(ps_request_ctx_t* ctx) {
 
 // Populate cfg_* with configuration information for this
 // request.  Thin wrappers around ngx_http_get_module_*_conf and cast.
+ps_main_conf_t*
+ps_get_main_config(ngx_http_request_t* r) {
+  return static_cast<ps_main_conf_t*>(
+      ngx_http_get_module_main_conf(r, ngx_pagespeed));
+}
 ps_srv_conf_t*
 ps_get_srv_config(ngx_http_request_t* r) {
   return static_cast<ps_srv_conf_t*>(
@@ -862,6 +931,7 @@ ps_determine_request_options(
 
   // Will be NULL if there aren't any options set with query params or in
   // headers.
+  // TODO(oschaaf): seems the acquired options here are never deleted
   *request_options = query_options_success.first;
 
   return true;
@@ -997,9 +1067,12 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
     return CreateRequestContext::kError;
   }
 
-  // Deletes itself when HandleDone is called, which happens when we call Done()
-  // on the proxy fetch below.
-  ctx->base_fetch = new net_instaweb::NgxBaseFetch(r, file_descriptors[1]);
+  // Handles its own deletion.  We need to call Release() when we're done with
+  // it, and call Done() on the associated proxy fetch.
+  ctx->base_fetch = new net_instaweb::NgxBaseFetch(
+      r, file_descriptors[1],
+      net_instaweb::RequestContextPtr(new net_instaweb::RequestContext(
+          cfg_s->server_context->thread_system()->NewMutex())));
 
   // If null, that means use global options.
   net_instaweb::RewriteOptions* custom_options;
@@ -1038,21 +1111,22 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
     // If we don't have custom options we can use NewRewriteDriver which reuses
     // rewrite drivers and so is faster because there's no wait to construct
     // them.  Otherwise we have to build a new one every time.
-    net_instaweb::RewriteDriver* driver;
+
     if (custom_options == NULL) {
-      driver = cfg_s->server_context->NewRewriteDriver();
+      ctx->driver = cfg_s->server_context->NewRewriteDriver(
+          ctx->base_fetch->request_context());
     } else {
       // NewCustomRewriteDriver takes ownership of custom_options.
-      driver = cfg_s->server_context->NewCustomRewriteDriver(custom_options);
+      ctx->driver = cfg_s->server_context->NewCustomRewriteDriver(
+          custom_options, ctx->base_fetch->request_context());
     }
-    driver->set_log_record(ctx->base_fetch->log_record());
 
     // TODO(jefftk): FlushEarlyFlow would go here.
 
     // Will call StartParse etc.  The rewrite driver will take care of deleting
     // itself if necessary.
     ctx->proxy_fetch = cfg_s->proxy_fetch_factory->CreateNewProxyFetch(
-        url_string, ctx->base_fetch, driver,
+        url_string, ctx->base_fetch, ctx->driver,
         NULL /* property_callback */,
         NULL /* original_content_fetch */);
   }
@@ -1234,6 +1308,9 @@ ps_header_filter(ngx_http_request_t* r) {
     case CreateRequestContext::kOk:
       break;
   }
+  ctx = ps_get_request_context(r);
+  CHECK(ctx->driver != NULL);  // Not a resource fetch, so driver is defined.
+  const net_instaweb::RewriteOptions* options = ctx->driver->options();
 
   // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
   // and calculate on the fly.
@@ -1262,7 +1339,11 @@ ps_header_filter(ngx_http_request_t* r) {
   x_pagespeed->hash = 1;
 
   ngx_str_set(&x_pagespeed->key, kPageSpeedHeader);
-  ngx_str_set(&x_pagespeed->value, MOD_PAGESPEED_VERSION_STRING);
+  // It's safe to use c_str here because once we're handling requests the
+  // rewrite options are frozen and won't change out from under us.
+  x_pagespeed->value.data = reinterpret_cast<u_char*>(const_cast<char*>(
+      options->x_header_value().c_str()));
+  x_pagespeed->value.len = options->x_header_value().size();
 
   return ngx_http_next_header_filter(r);
 }
@@ -1346,8 +1427,7 @@ ps_content_handler(ngx_http_request_t* r) {
       break;
   }
 
-  ps_request_ctx_t* ctx =
-      ps_get_request_context(r);
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
   CHECK(ctx != NULL);
 
   // Tell nginx we're still working on this one.
@@ -1396,32 +1476,34 @@ ps_init(ngx_conf_t* cf) {
   return NGX_OK;
 }
 
+ngx_http_module_t ps_module = {
+  NULL,  // preconfiguration
+  ps_init,  // postconfiguration
+
+  ps_create_main_conf,
+  NULL,  // initialize main configuration
+
+  ps_create_srv_conf,
+  ps_merge_srv_conf,
+
+  ps_create_loc_conf,
+  ps_merge_loc_conf
+};
+
+// Called when nginx forks worker processes.  No threads should be started
+// before this.
 ngx_int_t
 ps_init_process(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
   if (cfg_m->driver_factory != NULL) {
-    if (cfg_m->driver_factory->InitNgxUrlAsyncFecther()) {
+      if (cfg_m->driver_factory->InitNgxUrlAsyncFecther()) {
       return NGX_OK;
     }
-    return NGX_ERROR;
+    cfg_m->driver_factory->StartThreads();
   }
   return NGX_OK;
 }
-
-ngx_http_module_t ps_module = {
-  NULL,  // preconfiguration
-  ps_init,  // postconfiguration
-
-  ps_create_conf<ps_main_conf_t>,
-  NULL,  // initialize main configuration
-
-  ps_create_conf<ps_srv_conf_t>,
-  ps_merge_srv_conf,
-
-  ps_create_conf<ps_loc_conf_t>,
-  ps_merge_loc_conf
-};
 
 }  // namespace
 

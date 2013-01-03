@@ -16,8 +16,8 @@
 
 // Author: x.dinic@gmail.com (Junmin Xiong)
 //
-//  - The fetch started by the main thread.
-//  - Resolver event would be hooked when a NgxFetch starting. It could
+//  - The fetch is started by the main thread.
+//  - Resolver event was hooked when a NgxFetch starting. It could
 //    lookup the IP of the domain asynchronously from the DNS server.
 //  - When NgxFetchResolveDone is called, It will create the request and the
 //    connection. Add the write and read event to the epoll structure.
@@ -53,29 +53,29 @@
 
 namespace net_instaweb {
   NgxFetch::NgxFetch(const GoogleString& url,
-    AsyncFetch* async_fetch,
-    MessageHandler* message_handler,
-    ngx_msec_t timeout_ms,
-    ngx_log_t* log)
-  : str_url_(url),
-    fetcher_(NULL),
-    async_fetch_(async_fetch),
-    parser_(async_fetch->response_headers()),
-    message_handler_(message_handler),
-    bytes_received_(0),
-    fetch_start_ms_(0),
-    fetch_end_ms_(0),
-    done_(false),
-    content_length_(0) {
-    ngx_memzero(&url_, sizeof(url_));
-    log_ = log;
-    pool_ = NULL;
-    timeout_event_ = NULL;
-    connection_ = NULL;
+                     AsyncFetch* async_fetch,
+                     MessageHandler* message_handler,
+                     ngx_msec_t timeout_ms,
+                     ngx_log_t* log)
+      : str_url_(url),
+        fetcher_(NULL),
+        async_fetch_(async_fetch),
+        parser_(async_fetch->response_headers()),
+        message_handler_(message_handler),
+        bytes_received_(0),
+        fetch_start_ms_(0),
+        fetch_end_ms_(0),
+        done_(false),
+        content_length_(0) {
+            ngx_memzero(&url_, sizeof(url_));
+            log_ = log;
+            pool_ = NULL;
+            timeout_event_ = NULL;
+            connection_ = NULL;
   }
 
   NgxFetch::~NgxFetch() {
-    if (timeout_event_ && timeout_event_->timer_set) {
+    if (timeout_event_ != NULL && timeout_event_->timer_set) {
         ngx_del_timer(timeout_event_);
     }
     if (connection_ != NULL) {
@@ -86,7 +86,7 @@ namespace net_instaweb {
     }
   }
 
-  // This function is call by NgxUrlAsyncFetcher::StartFetch.
+  // This function is called by NgxUrlAsyncFetcher::StartFetch.
   bool NgxFetch::Start(NgxUrlAsyncFetcher* fetcher) {
     fetcher_ = fetcher;
     if (!Init()) {
@@ -101,25 +101,34 @@ namespace net_instaweb {
   // parse the url, add the timeout event and hook the DNS resolver handler.
   bool NgxFetch::Init() {
     pool_ = ngx_create_pool(12288, log_);
-    if (pool_ == NULL) { return false; }
+    if (pool_ == NULL) {
+        return false;
+    }
 
     if (!ParseUrl()) {
       return false;
     }
-    timeout_event_ = static_cast<ngx_event_t *>(
+
+    timeout_event_ = static_cast<ngx_event_t*>(
         ngx_pcalloc(pool_, sizeof(ngx_event_t)));
-    if (timeout_event_ == NULL) { return false; }
+    if (timeout_event_ == NULL) {
+        return false;
+    }
     timeout_event_->data = this;
     timeout_event_->handler = NgxFetchTimeout;
     timeout_event_->log = log_;
 
     ngx_add_timer(timeout_event_, fetcher_->fetch_timeout_);
-    r_ = static_cast<ngx_http_request_t *>(ngx_pcalloc(pool_,
+    r_ = static_cast<ngx_http_request_t*>(ngx_pcalloc(pool_,
                                            sizeof(ngx_http_request_t)));
-    if (r_ == NULL) { return false; }
+    if (r_ == NULL) {
+        return false;
+    }
     status_ = static_cast<ngx_http_status_t*>(ngx_pcalloc(pool_,
                                               sizeof(ngx_http_status_t)));
-    if (status_ == NULL) { return false;}
+    if (status_ == NULL) {
+        return false;
+    }
     ngx_resolver_ctx_t temp;
     temp.name.data = url_.host.data;
     temp.name.len = url_.host.len;
@@ -141,7 +150,9 @@ namespace net_instaweb {
     return true;
   }
 
-  const char* NgxFetch::str_url() { return str_url_.c_str(); }
+  const char* NgxFetch::str_url() {
+      return str_url_.c_str();
+  }
 
   // This function should be called only once. The only argument is sucess or
   // not.
@@ -174,20 +185,32 @@ namespace net_instaweb {
     //delete this;
   }
 
-  size_t NgxFetch::bytes_received() { return bytes_received_; }
-  void NgxFetch::bytes_received_add(int64 x) { bytes_received_ += x;}
+  size_t NgxFetch::bytes_received() {
+      return bytes_received_;
+  }
+  void NgxFetch::bytes_received_add(int64 x) {
+      bytes_received_ += x;
+  }
 
-  int64 NgxFetch::fetch_start_ms() { return fetch_start_ms_; }
+  int64 NgxFetch::fetch_start_ms() {
+      return fetch_start_ms_;
+  }
 
   void NgxFetch::set_fetch_start_ms(int64 start_ms) {
     fetch_start_ms_ = start_ms;
   }
 
-  int64 NgxFetch::fetch_end_ms() { return fetch_end_ms_; }
+  int64 NgxFetch::fetch_end_ms() {
+      return fetch_end_ms_;
+  }
 
-  void NgxFetch::set_fetch_end_ms(int64 end_ms) { fetch_end_ms_ = end_ms; }
+  void NgxFetch::set_fetch_end_ms(int64 end_ms) {
+      fetch_end_ms_ = end_ms;
+  }
 
-  MessageHandler* NgxFetch::message_handler() { return message_handler_; }
+  MessageHandler* NgxFetch::message_handler() {
+      return message_handler_;
+  }
 
   bool NgxFetch::ParseUrl() {
     url_.url.len = str_url_.length();
@@ -201,7 +224,6 @@ namespace net_instaweb {
     if (ngx_strncasecmp(url_.url.data, (u_char*)"http://", 7) == 0) {
       add = 7;
       port = 80;
-
     } else if (ngx_strncasecmp(url_.url.data, (u_char*)"https://", 8) == 0) {
       add = 8;
       port = 443;

@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/scheduler_thread.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
@@ -55,9 +56,6 @@
 #include "net/instaweb/util/public/cache_batcher.h"
 #include "net/instaweb/util/public/fallback_cache.h"
 #include "ngx_cache.h"
-#include "net/instaweb/apache/apr_thread_compatible_pool.h"
-#include "net/instaweb/apache/serf_url_async_fetcher.h"
-#include "net/instaweb/apache/apr_mem_cache.h"
 
 namespace net_instaweb {
 
@@ -78,7 +76,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_msec_t resolver_timeout,
     NgxRewriteOptions* main_conf) :
   shared_mem_runtime_(new NullSharedMem()),
   cache_hasher_(20),
-  main_conf_(main_conf) {
+  main_conf_(main_conf),
+  threads_started_(false) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
@@ -87,8 +86,6 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_msec_t resolver_timeout,
   CacheStats::InitStats(kMemcached, &simple_stats_);
   SetStatistics(&simple_stats_);
   timer_ = DefaultTimer();
-  apr_initialize();
-  apr_pool_create(&pool_,NULL);
   log_ = NULL;
   resolver_timeout_ = resolver_timeout == NGX_CONF_UNSET_MSEC ?
     1000 : resolver_timeout;
@@ -101,8 +98,7 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
   slow_worker_->ShutDown();
-  apr_pool_destroy(pool_);
-  pool_ = NULL;
+  ShutDown();
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
@@ -129,9 +125,13 @@ UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
 }
 
 UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
+ const char* fetcher_proxy = "";
+  if (main_conf_ != NULL) {
+    fetcher_proxy = main_conf_->fetcher_proxy().c_str();
+  }
   net_instaweb::NgxUrlAsyncFetcher* fetcher =
-    new net_instaweb::NgxUrlAsyncFetcher(
-        "",
+      new net_instaweb::NgxUrlAsyncFetcher(
+        fetcher_proxy,
         log_,
         resolver_timeout_,
         60000,
@@ -159,10 +159,13 @@ Timer* NgxRewriteDriverFactory::DefaultTimer() {
 }
 
 NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
+  CHECK(false);
   return NULL;
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
+  slow_worker_.reset(new SlowWorker(thread_system()));
+
   // TODO(jefftk): see the ngx_rewrite_options.h note on OriginRewriteOptions;
   // this would move to OriginRewriteOptions.
 
@@ -174,8 +177,6 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   CacheInterface* l2_cache = ngx_cache->l2_cache();
   CacheInterface* memcached = GetMemcached(options, l2_cache);
   if (memcached != NULL) {
-    // XXX(oschaaf): remove when done
-    l1_cache = NULL;
     l2_cache = memcached;
     server_context->set_owned_cache(memcached);
     server_context->set_filesystem_metadata_cache(
@@ -183,9 +184,6 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   }
   Statistics* stats = server_context->statistics();
 
-  // TODO(jmarantz): consider moving ownership of the L1 cache into the
-  // factory, rather than having one per vhost.
-  //
   // Note that a user can disable the L1 cache by setting its byte-count
   // to 0, in which case we don't build the write-through mechanisms.
   if (l1_cache == NULL) {
@@ -256,7 +254,6 @@ CacheInterface* NgxRewriteDriverFactory::GetMemcached(
     std::pair<MemcachedMap::iterator, bool> result = memcached_map_.insert(
         MemcachedMap::value_type(server_spec, memcached));
     if (result.second) {
-      fprintf(stderr,"setting up memcached server [%s]\n",server_spec.c_str());
       AprMemCache* mem_cache = NewAprMemCache(server_spec);
 
       memcache_servers_.push_back(mem_cache);
@@ -292,11 +289,11 @@ CacheInterface* NgxRewriteDriverFactory::GetMemcached(
       memcached = batcher;
       result.first->second = memcached;
 
-      // TODO(oschaaf): should not connect to memcached here
       bool connected = mem_cache->Connect();
-      fprintf(stderr,
-              "connected to memcached backend: %s\n", connected ? "true": "false");
-
+      if (!connected) {
+        message_handler()->Message(kError, "Failed to attach memcached, abort");
+        abort();
+      }
     } else {
       memcached = result.first->second;
     }
@@ -347,6 +344,41 @@ bool NgxRewriteDriverFactory::HasResolver() {
     return false;
   }
   return true;
+}
+
+void NgxRewriteDriverFactory::StopCacheActivity() {
+  RewriteDriverFactory::StopCacheActivity();
+
+  // Iterate through the map of CacheInterface* objects constructed for
+  // the memcached.  Note that these are not typically AprMemCache* objects,
+  // but instead are a hierarchy of CacheStats*, CacheBatcher*, AsyncCache*,
+  // and AprMemCache*, all of which must be stopped.
+  for (MemcachedMap::iterator p = memcached_map_.begin(),
+           e = memcached_map_.end(); p != e; ++p) {
+    CacheInterface* cache = p->second;
+    cache->ShutDown();
+  }
+}
+
+void NgxRewriteDriverFactory::ShutDown() {
+  RewriteDriverFactory::ShutDown();
+
+  // Take down any memcached threads.
+  // TODO(oschaaf): should be refactored with the Apache shutdown code
+  memcached_pool_.reset(NULL);
+}
+
+void NgxRewriteDriverFactory::StartThreads() {
+  if (threads_started_) {
+    return;
+  }
+  // TODO(jefftk): use a native nginx timer instead of running our own thread.
+  // See issue #111.
+  SchedulerThread* thread = new SchedulerThread(thread_system(), scheduler());
+  bool ok = thread->Start();
+  CHECK(ok) << "Unable to start scheduler thread";
+  defer_cleanup(thread->MakeDeleter());
+  threads_started_ = true;
 }
 
 }  // namespace net_instaweb
