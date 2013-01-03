@@ -144,7 +144,7 @@ DEFINE_string(shard_domain_map, "",
               "Semicolon-separated list of shard_domain maps. "
               "Each domain-map is of the form master=shard1,shard2,shard3");
 
-DEFINE_int32(lru_cache_size_bytes, 10 * 1000 * 1000, "LRU cache size");
+DEFINE_int64(lru_cache_size_bytes, 10 * 1024 * 1024, "LRU cache size");
 DEFINE_bool(force_caching, false,
             "Ignore caching headers and cache everything.");
 DEFINE_bool(flush_html, false, "Pass fetcher-generated flushes through HTML");
