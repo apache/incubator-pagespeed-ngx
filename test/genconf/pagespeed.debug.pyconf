@@ -41,17 +41,26 @@ required_modules: [
 #STRESS "cgi-script",
 ],
 
-# Helps tests that extra headers supplied by the apache conf
-# survive single-resource rewrites
-#
-# http://code.google.com/p/modpagespeed/issues/detail?id=324
-##Header append 'X-Extra-Header' '1'
-
-# However we should not allow user-specified cache-control on
-# rewritten HTML or resources.  This setting helps us make
-# sure that we strip any user-specified cache-control when
-# we rewrite HTML.  We test this in apache_system_test.sh.
-##Header set Cache-Control "max-age=600"
+headers: [
+    # Helps tests that extra headers supplied by the apache conf
+    # survive single-resource rewrites
+    #
+    # http://code.google.com/p/modpagespeed/issues/detail?id=324
+    {
+        action: "append",
+        name: "X-Extra-Header",
+        value: "1",
+    },
+    # However we should not allow user-specified cache-control on
+    # rewritten HTML or resources.  This setting helps us make
+    # sure that we strip any user-specified cache-control when
+    # we rewrite HTML.  We test this in apache_system_test.sh.
+    {
+        action: "set",
+        name: "Cache-Control",
+        value: "max-age=600",
+    },
+],
 
 pagespeed: {
     # If X-PSA-Blocking-Rewrite request header is present and its value matches the
@@ -341,22 +350,31 @@ directories: [
     	#Helps tests whether we successfully strip Connection:close
     	# results from the origin.
 ##    	Options +SymLinksIfOwnerMatch
-##    	Header append 'Connection' 'close'
+        headers: [{ action:"append", name:"Connection", value:"close"}],
     },
     {
 	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/compressed/",
-##    # Files in this directory are already compressed so always add
-##    # the right header.
-##    Header set Cache-control "max-age=600"
-##    Header append 'Content-Encoding' 'gzip'
-##    AddType text/javascript .custom_ext
+        # Files in this directory are already compressed so always add
+        # the right header.
+        headers: [
+            { 
+                action:"set", 
+                name:"Cache-Control", 
+                value:"max-age=600"
+            },
+            { 
+                action:"append", 
+                name:"Content-Encoding", 
+                value:"gzip"
+            },
+        ],
+##      AddType text/javascript .custom_ext
 	
     },
     {
 	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/no_cache/",
-##    # Files in this directory should be served uncacheable.
-##    Header set Cache-control "no-cache"
-
+        # Files in this directory should be served uncacheable.
+        headers: [{ action:"set", name:"Cache-control", value:"no-cache"}],
     },
     # Set jpeg Quality
     {

@@ -74,10 +74,20 @@ def write_name_virtual_hosts_open(ps, level):
 
     return True
 
+def write_headers_open(ps, level):
+    for val in ps:
+        action = val["action"]
+        header_name = val["name"]
+	header_value = val["value"]
+        # TODO(oschaaf): header name/value need to be quoted probably
+        emit(indent("Header " + action + " " + repr(header_name) + ' '  + repr(header_value)  + "\n", level))
+
+    return True
+    
 
 # oschaaf(TODO): we could track which modules we have loaded here, 
 # to prevent writing multiple ifload's for the same module.
-def required_modules_open(ps,level):
+def write_required_modules_open(ps,level):
     module_path_prefix = "@@APACHE_MODULES@@/mod_"
     for module_name in ps:
     	load_module = indent("LoadModule " + module_name + "_module " + module_path_prefix + module_name + ".so\n", level+1)
@@ -145,7 +155,8 @@ key_to_writer = {
     "listen_close": write_void,
     "name_virtual_hosts_open": write_name_virtual_hosts_open,
     "name_virtual_hosts_close": write_void,
-    "required_modules_open": required_modules_open,
+    "required_modules_open": write_required_modules_open,
+    "headers_open": write_headers_open,
 }
 
 }$# apache configuration, generated with mode [@TODO@]

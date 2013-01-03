@@ -90,6 +90,67 @@ def write_name_virtual_hosts_open(ps, level):
 
     return 1
 
+def map_header_action(action):
+    if action == "append":
+        return "add-header"
+    # TODO(oschaaf): nginx doesn't have a set header out of the box?
+    # currently, set gets translated to add-header
+    elif action =="set":
+        return "add-header"
+    else:
+	raise Exception("could not translate header action '" + action  + "' to nginx" )
+
+def write_headers_open(ps, level):
+    for val in ps:
+        generic_action = val["action"]
+	specific_action = map_header_action(generic_action)
+        header_name = val["name"]
+	header_value = val["value"]
+        # TODO(oschaaf): does the header value need to be quoted for nginx?
+        emit(indent(specific_action + " " + header_name + ' '  + header_value  + ";\n", level))
+
+    return True
+    
+
+# TODO(oschaaf): throw on unsuppored modules.
+def write_required_modules_open(ps,level):
+    for module_name in ps:
+
+        if module_name == "rewrite":
+            emit("")
+	elif module_name == "headers":
+            emit("")
+        elif module_name == "include":
+            emit("")
+	#elif module_name == "ssl":
+        #    emit("")
+        elif module_name == "gzip":
+            emit(indent("# These gzip options are needed for tests that assume that pagespeed\n",level))
+            emit(indent("# always enables gzip.  Which it does in apache, but not in nginx.\n",level))
+            emit(indent("gzip on;\n",level))
+            emit(indent("gzip_vary on;\n",level))
+            emit(indent("# Turn on gzip for all content types that should benefit from it.\n",level))
+            emit(indent("gzip_types application/ecmascript;\n",level))
+            emit(indent("gzip_types application/javascript;",level))
+            emit(indent("gzip_types application/json;\n",level))
+            emit(indent("gzip_types application/pdf;\n",level))
+            emit(indent("gzip_types application/postscript;\n",level))
+            emit(indent("gzip_types application/x-javascript;\n",level))
+            emit(indent("gzip_types image/svg+xml;\n",level))
+            emit(indent("gzip_types text/css;\n",level))
+            emit(indent("gzip_types text/csv;\n",level))
+            emit(indent("# \"gzip_types text/html\" is assumed.\n",level))
+            emit(indent("gzip_types text/javascript;\n",level))
+            emit(indent("gzip_types text/plain;\n",level))
+            emit(indent("gzip_types text/xml;\n",level))
+            emit(indent("gzip_http_version 1.0;\n",level))
+        #elif module_name == "cgi-script":
+        #    emit("")
+	else:
+            raise Exception("could not translate module '" + module_name + "' to nginx configuration")
+    return True
+
+
 key_to_writer = {
     "defaults_open": write_void,
     "defaults_close": write_void,
@@ -113,7 +174,10 @@ key_to_writer = {
     "listen_close": write_void,
     "name_virtual_hosts_open": write_name_virtual_hosts_open,
     "name_virtual_hosts_close": write_void,
+    "required_modules_open": write_required_modules_open,
+    "headers_open": write_headers_open,
 }
+
 
 def prepare_configuration(config):
     # nginx doesn't have a top level configuration
