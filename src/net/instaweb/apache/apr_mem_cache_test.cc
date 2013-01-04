@@ -403,7 +403,7 @@ TEST_F(AprMemCacheTest, HealthCheck) {
 // Update 12/9/12: this test is flaky on slow machines.  This test should
 // only be run interactively to check on timeout behavior.  To run it,
 // set environemnt variable (APR_MEMCACHE_TIMEOUT_TEST).
-TEST_F(AprMemCacheTest, OneMicrosecond) {
+TEST_F(AprMemCacheTest, OneMicrosecondGet) {
   if (getenv("APR_MEMCACHE_TIMEOUT_TEST") == NULL) {
     LOG(WARNING)
         << "Skipping flaky test AprMemCacheTest.OneMicrosecond, set "
@@ -422,6 +422,50 @@ TEST_F(AprMemCacheTest, OneMicrosecond) {
   // Set the timeout insanely low and now watch the fetch fail.
   servers_->set_timeout_us(1);
   CheckNotFound("Name");
+  EXPECT_EQ(1, statistics_.GetVariable("memcache_timeouts")->Get());
+}
+
+TEST_F(AprMemCacheTest, OneMicrosecondPut) {
+  if (getenv("APR_MEMCACHE_TIMEOUT_TEST") == NULL) {
+    LOG(WARNING)
+        << "Skipping flaky test AprMemCacheTest.OneMicrosecond, set "
+        << "$APR_MEMCACHE_TIMEOUT_TEST to run it";
+    return;
+  }
+
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
+
+  // With the default timeout, do a Put, which will work.
+  CheckPut("Name", "Value");
+  CheckGet("Name", "Value");
+
+  // Set the timeout insanely low and now watch the fetch fail.
+  servers_->set_timeout_us(1);
+  CheckPut("Name", "Value");
+  EXPECT_EQ(1, statistics_.GetVariable("memcache_timeouts")->Get());
+}
+
+TEST_F(AprMemCacheTest, OneMicrosecondDelete) {
+  if (getenv("APR_MEMCACHE_TIMEOUT_TEST") == NULL) {
+    LOG(WARNING)
+        << "Skipping flaky test AprMemCacheTest.OneMicrosecond, set "
+        << "$APR_MEMCACHE_TIMEOUT_TEST to run it";
+    return;
+  }
+
+  if (!InitMemcachedOrSkip(true)) {
+    return;
+  }
+
+  // With the default timeout, do a Put, which will work.
+  CheckPut("Name", "Value");
+  CheckGet("Name", "Value");
+
+  // Set the timeout insanely low and now watch the fetch fail.
+  servers_->set_timeout_us(1);
+  CheckDelete("Name");
   EXPECT_EQ(1, statistics_.GetVariable("memcache_timeouts")->Get());
 }
 
