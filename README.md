@@ -31,10 +31,18 @@ content or workflow. Features include:
 Because nginx does not support dynamic loading of modules, you need to add
 ngx_pagespeed as a build-time dependency.
 
-First build mod_pagespeed against trunk, following these instructions through
-the end of the "Compile" step, and making sure that when you run `gclient sync`
-you run it against "trunk" and not "latest-beta":
-https://developers.google.com/speed/docs/mod_pagespeed/build_from_source
+First build mod_pagespeed against the current revision we work at:
+
+    $ mkdir ~/mod_pagespeed
+    $ cd ~/mod_pagespeed
+    $ gclient config http://modpagespeed.googlecode.com/svn/trunk/src
+    $ gclient sync --force --jobs=1
+    $ svn up -r2338
+    $ gclient runhooks
+    $ make BUILDTYPE=Release mod_pagespeed_test pagespeed_automatic_test
+
+(See https://developers.google.com/speed/docs/mod_pagespeed/build_from_source if
+you run into trouble, or ask for help on the mailing list.)
 
 Then build the pagespeed optimization library:
 
