@@ -43,6 +43,7 @@ const size_t kMaxCacheSize = 100;
 const char kCohortName1[] = "cohort1";
 const char kCohortName2[] = "cohort2";
 const char kCacheKey1[] = "Key1";
+const char kCacheKey2[] = "Key2";
 const char kPropertyName1[] = "prop1";
 const char kPropertyName2[] = "prop2";
 
@@ -65,7 +66,7 @@ class PropertyCacheTest : public testing::Test {
   // Returns whether the value is considered Stable or not.  In general
   // we would expect this routine to return false.
   bool ReadWriteInitial(const GoogleString& key, const GoogleString& value) {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), property_cache_, key);
     property_cache_.Read(&page);
     PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
     EXPECT_FALSE(page.valid());
@@ -505,6 +506,31 @@ TEST_F(PropertyCacheTest, DeleteProperty) {
         new PropertyCache::Cohort("unknown_cohort", NULL));
     page.DeleteProperty(cohort_, kPropertyName2);
     EXPECT_TRUE(page.valid());
+  }
+}
+
+TEST_F(PropertyCacheTest, MultiRead) {
+  ReadWriteInitial(kCacheKey1, "Value1");
+  ReadWriteInitial(kCacheKey2, "Value2");
+  {
+    PropertyPageStarVector pages;
+    MockPropertyPage page1(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page2(thread_system_.get(), property_cache_, kCacheKey2);
+
+    pages.push_back(&page1);
+    pages.push_back(&page2);
+
+    property_cache_.MultiRead(&pages);
+    // Check for Page1.
+    EXPECT_TRUE(page1.valid());
+    EXPECT_TRUE(page1.called());
+    PropertyValue* property_page1 = page1.GetProperty(cohort_, kPropertyName1);
+    EXPECT_STREQ("Value1", property_page1->value());
+    // Check for Page2.
+    EXPECT_TRUE(page2.valid());
+    EXPECT_TRUE(page2.called());
+    PropertyValue* property_page2 = page2.GetProperty(cohort_, kPropertyName1);
+    EXPECT_STREQ("Value2", property_page2->value());
   }
 }
 

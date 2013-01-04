@@ -597,6 +597,27 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   WGET_ARGS=""
 fi
 
+# Test fetching a pagespeed URL via Apache running as a reverse proxy, with
+# mod_pagespeed loaded, but disabled for the proxied domain. As reported in
+# Issue 582 this used to fail with a 403 (Forbidden).
+if [ -n "${SECONDARY_HOSTNAME}" ]; then
+  start_test Reverse proxy a pagespeed URL.
+
+  PROXY_PATH="http://modpagespeed.com/styles"
+  ORIGINAL="${PROXY_PATH}/yellow.css"
+  FILTERED="${PROXY_PATH}/W.yellow.css.pagespeed.cf.KM5K8SbHQL.css"
+  WGET_ARGS="--save-headers"
+
+  # We should be able to fetch the original ...
+  echo  http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $ORIGINAL
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $ORIGINAL 2>&1)
+  check_from "$OUT" fgrep " 200 OK"
+  # ... AND the rewritten version.
+  echo  http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $FILTERED
+  OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $FILTERED 2>&1)
+  check_from "$OUT" fgrep " 200 OK"
+fi
+
 # TODO(sligocki): start_test ModPagespeedMaxSegmentLength
 
 if [ "$CACHE_FLUSH_TEST" = "on" ]; then

@@ -93,6 +93,7 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_PROPERTY_CACHE_H_
 
 #include <map>
+#include <vector>
 
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -111,6 +112,8 @@ class PropertyPage;
 class Statistics;
 class ThreadSystem;
 class Timer;
+
+typedef std::vector<PropertyPage*> PropertyPageStarVector;
 
 // Holds the value & stability-metadata for a property.
 class PropertyValue {
@@ -208,10 +211,15 @@ class PropertyCache {
                 Statistics* stats, ThreadSystem* threads);
   ~PropertyCache();
 
-  // Reads the all the PropertyValues in all the known Cohorts from
+  // Reads all the PropertyValues in all the known Cohorts from
   // cache, calling PropertyPage::Done when done.  It is essential
   // that the Cohorts are established prior to calling this function.
   void Read(PropertyPage* property_page) const;
+
+  // Reads PropertyValues for multiple pages, calling corresponding
+  // PropertyPage::Done as and when page read completes. It is essential
+  // that the Cohorts are established prior to calling this function.
+  void MultiRead(PropertyPageStarVector* property_page_list) const;
 
   void SetupCohorts(PropertyPage* property_page) const;
 

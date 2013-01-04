@@ -44,6 +44,15 @@ class UserAgentMatcher {
     kDoesNotSupportBlink,
   };
 
+  enum DeviceType {
+    kDesktop,
+    kTablet,
+    kMobile,
+    // This should always be the last type. This is used to mark the size of an
+    // array containing various DeviceTypes.
+    kEndOfDeviceType
+  };
+
   enum PrefetchMechanism {
     kPrefetchNotSupported,
     kPrefetchLinkRelSubresource,
@@ -79,6 +88,12 @@ class UserAgentMatcher {
   PrefetchMechanism GetPrefetchMechanism(
       const StringPiece& user_agent,
       const RequestHeaders* request_headers) const;
+
+  // Returns the DeviceType for the given user agent string.
+  DeviceType GetDeviceTypeForUA(const StringPiece& user_agent) const;
+
+  // Returns the suffix for the given device_type.
+  static StringPiece DeviceTypeSuffix(DeviceType device_type);
 
   bool SupportsJsDefer(const StringPiece& user_agent, bool allow_mobile) const;
   bool SupportsWebp(const StringPiece& user_agent) const;

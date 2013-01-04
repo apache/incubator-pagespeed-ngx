@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -37,6 +38,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/hostname_util.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -319,11 +321,15 @@ ProxyFetchPropertyCallbackCollector*
   if (request_ctx->trace_context() != NULL) {
     request_ctx->trace_context()->TracePrintf("PropertyCache lookup start");
   }
+  StringPiece user_agent =
+      async_fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent);
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       new ProxyFetchPropertyCallbackCollector(
-          server_context_, request_url.Spec(), request_ctx, options));
+          server_context_, request_url.Spec(), request_ctx, options,
+          user_agent));
   bool added_callback = false;
-  ProxyFetchPropertyCallback* property_callback = NULL;
+  PropertyPageStarVector property_callbacks;
+
   ProxyFetchPropertyCallback* client_callback = NULL;
   ProxyFetchPropertyCallback* device_callback = NULL;
   PropertyCache* page_property_cache = server_context_->page_property_cache();
@@ -335,21 +341,35 @@ ProxyFetchPropertyCallbackCollector*
       server_context_->page_property_cache()->enabled() &&
       UrlMightHavePropertyCacheEntry(request_url) &&
       async_fetch->request_headers()->method() == RequestHeaders::kGet) {
-    AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
+    GoogleString options_string_in_page_key = "";
     if (options != NULL) {
       server_context_->ComputeSignature(options);
-      property_callback = new ProxyFetchPropertyCallback(
-          ProxyFetchPropertyCallback::kPagePropertyCache,
-          *page_property_cache,
-          StrCat(request_url.Spec(), "_", options->signature()),
-          callback_collector.get(), mutex);
-    } else {
-      property_callback = new ProxyFetchPropertyCallback(
-          ProxyFetchPropertyCallback::kPagePropertyCache,
-          *page_property_cache, request_url.Spec(),
-          callback_collector.get(), mutex);
+      // TODO(ksimbili): Understand why we need the options signature.
+      const GoogleString& options_signature_hash =
+          server_context_->hasher()->Hash(options->signature());
+      options_string_in_page_key = StrCat("_", options_signature_hash);
     }
-    callback_collector->AddCallback(property_callback);
+    for (int i = 0;
+         i < static_cast<int>(UserAgentMatcher::kEndOfDeviceType);
+         ++i) {
+      UserAgentMatcher::DeviceType device_type =
+          static_cast<UserAgentMatcher::DeviceType>(i);
+      AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
+      const StringPiece& device_type_suffix =
+          UserAgentMatcher::DeviceTypeSuffix(device_type);
+      // TODO(ksimbili): Have a function in common place like server_context to
+      // return the key, given the needed parameters.
+      GoogleString page_key = StrCat(request_url.Spec(),
+                                     options_string_in_page_key,
+                                     device_type_suffix);
+      ProxyFetchPropertyCallback* property_callback =
+          new ProxyFetchPropertyCallback(
+              ProxyFetchPropertyCallback::kPagePropertyCache,
+              *page_property_cache,
+              page_key, device_type, callback_collector.get(), mutex);
+      property_callbacks.push_back(property_callback);
+      callback_collector->AddCallback(property_callback);
+    }
     added_callback = true;
     if (added_page_property_callback != NULL) {
       *added_page_property_callback = true;
@@ -365,7 +385,9 @@ ProxyFetchPropertyCallbackCollector*
         AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
         client_callback = new ProxyFetchPropertyCallback(
             ProxyFetchPropertyCallback::kClientPropertyCache,
-            *client_property_cache, client_id, callback_collector.get(), mutex);
+            *client_property_cache, client_id,
+            UserAgentMatcher::kEndOfDeviceType,
+            callback_collector.get(), mutex);
         callback_collector->AddCallback(client_callback);
         added_callback = true;
       }
@@ -380,15 +402,16 @@ ProxyFetchPropertyCallbackCollector*
       AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
       device_callback = new ProxyFetchPropertyCallback(
           ProxyFetchPropertyCallback::kDevicePropertyCache,
-          *device_property_cache, user_agent, callback_collector.get(), mutex);
+          *device_property_cache, user_agent,
+          UserAgentMatcher::kEndOfDeviceType, callback_collector.get(), mutex);
       callback_collector->AddCallback(device_callback);
       added_callback = true;
     }
   }
 
   // All callbacks need to be registered before Reads to avoid race.
-  if (property_callback != NULL) {
-    page_property_cache->Read(property_callback);
+  if (!property_callbacks.empty()) {
+    page_property_cache->MultiRead(&property_callbacks);
   }
   if (client_callback != NULL) {
     client_property_cache->Read(client_callback);

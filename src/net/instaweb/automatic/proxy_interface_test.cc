@@ -41,6 +41,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -64,6 +65,7 @@
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_property_page.h"
@@ -1052,7 +1054,10 @@ class ProxyInterfaceTest : public RewriteTestBase {
       const PropertyCache::Cohort* cohort =
           pcache->GetCohort(RewriteDriver::kDomCohort);
       delay_http_cache_key = AbsolutifyUrl(url);
-      delay_pcache_key = pcache->CacheKey(delay_http_cache_key, cohort);
+      delay_pcache_key = pcache->CacheKey(StrCat(
+          delay_http_cache_key,
+          UserAgentMatcher::DeviceTypeSuffix(UserAgentMatcher::kDesktop)),
+          cohort);
       delay_cache()->DelayKey(delay_pcache_key);
       if (thread_pcache) {
         delay_cache()->DelayKey(delay_http_cache_key);
@@ -1109,13 +1114,19 @@ class ProxyInterfaceTest : public RewriteTestBase {
 
     if (check_stats) {
       EXPECT_EQ(1, lru_cache()->num_inserts());  // http-cache
-      EXPECT_EQ(2, lru_cache()->num_misses());   // http-cache & prop-cache
+      // We expect 4 misses. 1 for http-cache and 3 for prop-cache which
+      // correspond to each different device type in
+      // UserAgentMatcher::DeviceType.
+      EXPECT_EQ(4, lru_cache()->num_misses());
     }
   }
 
   int GetStatusCodeInPropertyCache(const GoogleString& url) {
     PropertyCache* pcache = page_property_cache();
-    scoped_ptr<MockPropertyPage> page(NewMockPage(url));
+    StringPiece device_type_suffix =
+        UserAgentMatcher::DeviceTypeSuffix(UserAgentMatcher::kDesktop);
+    GoogleString cache_key = StrCat(url, device_type_suffix);
+    scoped_ptr<MockPropertyPage> page(NewMockPage(cache_key));
     const PropertyCache::Cohort* cohort = pcache->GetCohort(
         RewriteDriver::kDomCohort);
     PropertyValue* value;
@@ -1126,11 +1137,32 @@ class ProxyInterfaceTest : public RewriteTestBase {
     return status_code;
   }
 
-  void TestOptionsUsedInCacheKey() {
+  GoogleString GetDefaultUserAgentForDeviceType(
+      UserAgentMatcher::DeviceType device_type) {
+    switch (device_type) {
+      case UserAgentMatcher::kMobile:
+        return UserAgentStrings::kAndroidICSUserAgent;
+      case UserAgentMatcher::kTablet:
+        return UserAgentStrings::kIPadUserAgent;
+      case UserAgentMatcher::kDesktop:
+      case UserAgentMatcher::kEndOfDeviceType:
+      default:
+        return UserAgentStrings::kChromeUserAgent;
+    }
+  }
+
+  void TestOptionsAndDeviceTypeUsedInCacheKey(
+      UserAgentMatcher::DeviceType device_type) {
     GoogleUrl gurl("http://www.test.com/");
     StringAsyncFetch callback(
         RequestContext::NewTestRequestContext(
             server_context()->thread_system()));
+
+    const GoogleString& user_agent =
+        GetDefaultUserAgentForDeviceType(device_type);
+    RequestHeaders request_headers;
+    request_headers.Replace(HttpAttributes::kUserAgent, user_agent);
+    callback.set_request_headers(&request_headers);
     scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
         proxy_interface_->InitiatePropertyCacheLookup(
         false, gurl, options(), &callback));
@@ -1140,7 +1172,10 @@ class ProxyInterfaceTest : public RewriteTestBase {
         ProxyFetchPropertyCallback::kPagePropertyCache);
     EXPECT_NE(static_cast<PropertyPage*>(NULL), page);
     server_context()->ComputeSignature(options());
-    GoogleString expected = StrCat(gurl.Spec(), "_", options()->signature());
+    GoogleString expected = StrCat(
+        gurl.Spec(), "_",
+        server_context_->hasher()->Hash(options()->signature()),
+        UserAgentMatcher::DeviceTypeSuffix(device_type));
     EXPECT_EQ(expected, page->key());
   }
 
@@ -2209,7 +2244,8 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   EXPECT_FALSE(timing_info.has_fetch_ms());
 
   const PropertyPageInfo& page_info = logging_info()->property_page_info();
-  EXPECT_EQ(1, page_info.cohort_info_size());
+  // 3 for 3 device types.
+  EXPECT_EQ(3, page_info.cohort_info_size());
   const PropertyCohortInfo& cohort_info = page_info.cohort_info(0);
   EXPECT_EQ("dom", cohort_info.name());
 }
@@ -2678,9 +2714,9 @@ TEST_F(ProxyInterfaceTest, CacheableSize) {
   ResponseHeaders response_headers;
   FetchFromProxy("text.html", true, &text, &response_headers);
 
-  // One lookup for ajax metadata, one for the HTTP response and one for the
+  // One lookup for ajax metadata, one for the HTTP response and three for the
   // property cache entry. None are found.
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -2693,7 +2729,7 @@ TEST_F(ProxyInterfaceTest, CacheableSize) {
 
   // None are found as the size is bigger than
   // max_cacheable_response_content_length.
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
 
@@ -2704,7 +2740,7 @@ TEST_F(ProxyInterfaceTest, CacheableSize) {
   response_headers.Clear();
   FetchFromProxy("text.html", true, &text, &response_headers);
   // None are found.
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_inserts());
@@ -2719,7 +2755,7 @@ TEST_F(ProxyInterfaceTest, CacheableSize) {
   // max_cacheable_response_content_length.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, CacheableSizeAjax) {
@@ -2799,9 +2835,9 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
-  // One lookup for ajax metadata, one for the HTTP response and one for the
+  // One lookup for ajax metadata, one for the HTTP response and three for the
   // property cache entry. None are found.
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
 
@@ -2822,7 +2858,7 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   // ajax metadata.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_misses());
 
   // Change the response.
   SetFetchResponse(AbsolutifyUrl("text.html"), headers, "new");
@@ -2845,7 +2881,7 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   // ajax metadata.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_misses());
 
   // Invalidate the cache.
   scoped_ptr<RewriteOptions> custom_options(
@@ -2874,7 +2910,7 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
@@ -2898,9 +2934,9 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
-  // One lookup for ajax metadata, one for the HTTP response and one for the
+  // One lookup for ajax metadata, one for the HTTP response and three for the
   // property cache entry. None are found.
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
 
@@ -2921,7 +2957,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   // ajax metadata.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_misses());
 
   // Change the response.
   SetFetchResponse(AbsolutifyUrl("text.html"), headers, "new");
@@ -2944,7 +2980,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   // ajax metadata.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_misses());
 
 
   // Invalidate the cache for some URL other than 'text.html'.
@@ -2973,7 +3009,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   // ajax metadata.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_misses());
 
 
   // Invalidate the cache.
@@ -3007,7 +3043,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
@@ -3029,9 +3065,9 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
-  // Lookups for: (1) ajax metadata (2) HTTP response (3) Property cache.
+  // Lookups for: (1) ajax metadata (2) HTTP response (3) 3 Property cache.
   // None are found.
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
 
@@ -3044,9 +3080,9 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
-  // Lookups for: (1) ajax metadata (2) HTTP response (3) Property cache.
+  // Lookups for: (1) ajax metadata (2) HTTP response (3) 3 Property cache.
   // None are found.
-  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(5, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
 }
@@ -4502,7 +4538,7 @@ TEST_F(ProxyInterfaceTest, DomCohortWritten) {
   // No writes should occur if no filter that uses the dom cohort is enabled.
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(2, lru_cache()->num_misses());  // property-cache + http-cache
+  EXPECT_EQ(4, lru_cache()->num_misses());  // 3 property-cache + 1 http-cache
 
   // Enable a filter that uses the dom cohort and make sure property cache is
   // updated.
@@ -4510,7 +4546,7 @@ TEST_F(ProxyInterfaceTest, DomCohortWritten) {
   EnableDomCohortWritesWithDnsPrefetch();
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ(1, lru_cache()->num_inserts());
-  EXPECT_EQ(2, lru_cache()->num_misses());  // property-cache + http-cache
+  EXPECT_EQ(4, lru_cache()->num_misses());  // 3 property-cache + 1 http-cache
 
   ClearStats();
   server_context_->set_enable_property_cache(false);
@@ -4886,8 +4922,9 @@ TEST_F(ProxyInterfaceTest, ClientStateTest) {
             text_out);
 }
 
-TEST_F(ProxyInterfaceTest, TestOptionsUsedInCacheKey) {
-  TestOptionsUsedInCacheKey();
+TEST_F(ProxyInterfaceTest, TestOptionsAndDeviceTypeUsedInCacheKey) {
+  TestOptionsAndDeviceTypeUsedInCacheKey(UserAgentMatcher::kMobile);
+  TestOptionsAndDeviceTypeUsedInCacheKey(UserAgentMatcher::kDesktop);
 }
 
 TEST_F(ProxyInterfaceTest, BailOutOfParsing) {

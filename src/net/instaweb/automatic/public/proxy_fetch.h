@@ -30,7 +30,7 @@
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
-#include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -128,10 +128,13 @@ class ProxyFetchPropertyCallback : public PropertyPage {
   ProxyFetchPropertyCallback(CacheType cache_type,
                              const PropertyCache& property_cache,
                              const StringPiece& key,
+                             UserAgentMatcher::DeviceType device_type,
                              ProxyFetchPropertyCallbackCollector* collector,
                              AbstractMutex* mutex);
 
   CacheType cache_type() const { return cache_type_; }
+
+  UserAgentMatcher::DeviceType device_type() const { return device_type_; }
 
   // Delegates to collector_'s IsCacheValid.
   virtual bool IsCacheValid(int64 write_timestamp_ms) const;
@@ -140,6 +143,7 @@ class ProxyFetchPropertyCallback : public PropertyPage {
 
  private:
   CacheType cache_type_;
+  UserAgentMatcher::DeviceType device_type_;
   ProxyFetchPropertyCallbackCollector* collector_;
   GoogleString url_;
   DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallback);
@@ -151,7 +155,8 @@ class ProxyFetchPropertyCallbackCollector {
   ProxyFetchPropertyCallbackCollector(ServerContext* manager,
                                       const StringPiece& url,
                                       const RequestContextPtr& req_ctx,
-                                      const RewriteOptions* options);
+                                      const RewriteOptions* options,
+                                      const StringPiece& user_agent);
   virtual ~ProxyFetchPropertyCallbackCollector();
 
   // Add a callback to be handled by this collector.
@@ -208,14 +213,25 @@ class ProxyFetchPropertyCallbackCollector {
 
   const RequestContextPtr& request_context() { return request_context_; }
 
+
  private:
+  // Returns DeviceType from device property page.
+  UserAgentMatcher::DeviceType GetDeviceTypeFromDeviceCacheMutexHeld();
+
+  // Set the property page corresponding to device_type for kPagePropertyCache.
+  void SetPropertyPageForDeviceTypeMutexHeld(
+      UserAgentMatcher::DeviceType device_type);
+
   std::set<ProxyFetchPropertyCallback*> pending_callbacks_;
   std::map<ProxyFetchPropertyCallback::CacheType, PropertyPage*>
   property_pages_;
+  std::map<UserAgentMatcher::DeviceType, PropertyPage*>
+  property_pages_for_device_types_;
   scoped_ptr<AbstractMutex> mutex_;
   ServerContext* server_context_;
   GoogleString url_;
   RequestContextPtr request_context_;
+  GoogleString user_agent_;
   bool detached_;             // protected by mutex_.
   bool done_;                 // protected by mutex_.
   bool success_;              // protected by mutex_; accessed after quiescence.

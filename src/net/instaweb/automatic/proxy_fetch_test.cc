@@ -95,7 +95,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
         new ProxyFetchPropertyCallbackCollector(
             server_context_, RewriteTestBase::kTestDomain,
             RequestContext::NewTestRequestContext(thread_system_.get()),
-            options());
+            options(), NULL);
     // Collector should not contain any PropertyPages
     EXPECT_EQ(NULL, collector->GetPropertyPage(
         ProxyFetchPropertyCallback::kPagePropertyCache));
@@ -116,7 +116,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
     ProxyFetchPropertyCallback* callback =
         new ProxyFetchPropertyCallback(
             cache_type, *property_cache, RewriteTestBase::kTestDomain,
-            collector, mutex);
+            UserAgentMatcher::kDesktop, collector, mutex);
     EXPECT_EQ(cache_type, callback->cache_type());
     collector->AddCallback(callback);
     return callback;
@@ -385,13 +385,11 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, BothCallbacksComplete) {
   // Should not be complete since both callbacks not yet done.
   EXPECT_FALSE(mock_proxy_fetch->complete());
 
-  // Collector should now have a page property.
-  scoped_ptr<PropertyPage> page;
-  page.reset(collector.get()->GetPropertyPage(
+  // Collector should not have a page property.
+  EXPECT_EQ(NULL, collector.get()->GetPropertyPage(
       ProxyFetchPropertyCallback::kPagePropertyCache));
-  EXPECT_TRUE(NULL != page.get());
 
-  // ... but not a client property.
+  // ... no client property as well.
   EXPECT_EQ(NULL, collector.get()->GetPropertyPage(
       ProxyFetchPropertyCallback::kClientPropertyCache));
 
@@ -400,6 +398,12 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, BothCallbacksComplete) {
 
   // Should be complete since both callbacks are done.
   EXPECT_TRUE(mock_proxy_fetch->complete());
+
+  // Collector should now have a page property.
+  scoped_ptr<PropertyPage> page;
+  page.reset(collector.get()->GetPropertyPage(
+      ProxyFetchPropertyCallback::kPagePropertyCache));
+  EXPECT_TRUE(NULL != page.get());
 
   // Collector should now have a client property.
   page.reset(collector.get()->GetPropertyPage(

@@ -432,4 +432,13 @@ TEST_F(UserAgentMatcherTest, IsMobileUserAgent) {
       UserAgentStrings::kSafariUserAgent));
 }
 
+TEST_F(UserAgentMatcherTest, GetDeviceTypeForUA) {
+  EXPECT_EQ(UserAgentMatcher::kDesktop, user_agent_matcher_.GetDeviceTypeForUA(
+      UserAgentStrings::kIe9UserAgent));
+  EXPECT_EQ(UserAgentMatcher::kMobile, user_agent_matcher_.GetDeviceTypeForUA(
+      UserAgentStrings::kIPhone4Safari));
+  EXPECT_EQ(UserAgentMatcher::kDesktop, user_agent_matcher_.GetDeviceTypeForUA(
+      NULL));
+}
+
 }  // namespace net_instaweb

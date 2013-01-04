@@ -315,26 +315,36 @@ void PropertyCache::SetupCohorts(PropertyPage* page) const {
   }
 }
 
-void PropertyCache::Read(PropertyPage* page) const {
-  if (enabled_ && !cohorts_.empty()) {
-    PropertyPage::CallbackCollector* collector =
-        new PropertyPage::CallbackCollector(
-            page, cohorts_.size(), thread_system_->NewMutex());
-    for (CohortMap::const_iterator p = cohorts_.begin(), e = cohorts_.end();
-         p != e; ++p) {
-      const Cohort* cohort = p->second;
+void PropertyCache::MultiRead(PropertyPageStarVector* page_list) const {
+  for (PropertyPageStarVector::iterator it = page_list->begin();
+       it != page_list->end(); ++it) {
+    PropertyPage* page = *it;
+    if (enabled_ && !cohorts_.empty()) {
+      PropertyPage::CallbackCollector* collector =
+          new PropertyPage::CallbackCollector(
+              page, cohorts_.size(), thread_system_->NewMutex());
+      for (CohortMap::const_iterator p = cohorts_.begin(), e = cohorts_.end();
+           p != e; ++p) {
+        const Cohort* cohort = p->second;
       PropertyPage::CohortDataMap::iterator cohort_itr =
           page->cohort_data_map_.find(cohort);
       CHECK(cohort_itr != page->cohort_data_map_.end());
       PropertyPage::PropertyMapStruct* pmap_struct = cohort_itr->second;
-      const GoogleString cache_key = CacheKey(page->key(), cohort);
-      cohort->cache()->Get(
+        const GoogleString cache_key = CacheKey(page->key(), cohort);
+        cohort->cache()->Get(
           cache_key,
           new CacheInterfaceCallback(page, cohort, pmap_struct, collector));
+      }
+    } else {
+      page->CallDone(false);
     }
-  } else {
-    page->CallDone(false);
   }
+}
+
+void PropertyCache::Read(PropertyPage* page) const {
+  PropertyPageStarVector page_list;
+  page_list.push_back(page);
+  MultiRead(&page_list);
 }
 
 bool PropertyValue::IsStable(int mutations_per_1000_threshold) const {

@@ -181,10 +181,12 @@ ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(
     CacheType cache_type,
     const PropertyCache& property_cache,
     const StringPiece& key,
+    UserAgentMatcher::DeviceType device_type,
     ProxyFetchPropertyCallbackCollector* collector,
     AbstractMutex* mutex)
     : PropertyPage(mutex, property_cache, key, collector->request_context()),
       cache_type_(cache_type),
+      device_type_(device_type),
       collector_(collector) {
 }
 
@@ -198,11 +200,13 @@ void ProxyFetchPropertyCallback::Done(bool success) {
 
 ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
     ServerContext* server_context, const StringPiece& url,
-    const RequestContextPtr& request_ctx, const RewriteOptions* options)
+    const RequestContextPtr& request_ctx, const RewriteOptions* options,
+    const StringPiece& user_agent)
     : mutex_(server_context->thread_system()->NewMutex()),
       server_context_(server_context),
       url_(url.data(), url.size()),
       request_context_(request_ctx),
+      user_agent_(user_agent.data(), user_agent.size()),
       detached_(false),
       done_(false),
       success_(true),
@@ -220,6 +224,7 @@ ProxyFetchPropertyCallbackCollector::~ProxyFetchPropertyCallbackCollector() {
   }
   STLDeleteElements(&pending_callbacks_);
   STLDeleteValues(&property_pages_);
+  STLDeleteValues(&property_pages_for_device_types_);
 }
 
 void ProxyFetchPropertyCallbackCollector::AddCallback(
@@ -234,6 +239,21 @@ PropertyPage* ProxyFetchPropertyCallbackCollector::GetPropertyPage(
   PropertyPage* page = property_pages_[cache_type];
   property_pages_[cache_type] = NULL;
   return page;
+}
+
+UserAgentMatcher::DeviceType
+ProxyFetchPropertyCallbackCollector::GetDeviceTypeFromDeviceCacheMutexHeld() {
+  // TODO(ksimbili): Pass the property page from device cache.
+  const UserAgentMatcher* user_agent_matcher =
+      server_context_->user_agent_matcher();
+  return user_agent_matcher->GetDeviceTypeForUA(user_agent_.c_str());
+}
+
+void ProxyFetchPropertyCallbackCollector::SetPropertyPageForDeviceTypeMutexHeld(
+    UserAgentMatcher::DeviceType device_type) {
+  property_pages_[ProxyFetchPropertyCallback::kPagePropertyCache] =
+      property_pages_for_device_types_[device_type];
+  property_pages_for_device_types_[device_type] = NULL;
 }
 
 PropertyPage*
@@ -277,10 +297,17 @@ void ProxyFetchPropertyCallbackCollector::Done(
   {
     ScopedMutex lock(mutex_.get());
     pending_callbacks_.erase(callback);
-    property_pages_[callback->cache_type()] = callback;
+    if (callback->cache_type() ==
+        ProxyFetchPropertyCallback::kPagePropertyCache) {
+      property_pages_for_device_types_[callback->device_type()] = callback;
+    } else {
+      property_pages_[callback->cache_type()] = callback;
+    }
     success_ &= success;
 
     if (pending_callbacks_.empty()) {
+      SetPropertyPageForDeviceTypeMutexHeld(
+          GetDeviceTypeFromDeviceCacheMutexHeld());
       // There is a race where Detach() can be called immediately after we
       // release the lock below, and it (Detach) deletes 'this' (because we
       // just set done_ to true), which means we cannot rely on any data

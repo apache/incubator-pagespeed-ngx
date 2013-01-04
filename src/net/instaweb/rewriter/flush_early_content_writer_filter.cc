@@ -149,9 +149,9 @@ void FlushEarlyContentWriterFilter::EndDocument() {
   }
   if (num_resources_flushed_ > 0) {
     num_resources_flushed_early_->IncBy(num_resources_flushed_);
-    WriteToOriginalWriter(
-        StringPrintf(kPrefetchStartTimeScript, num_resources_flushed_));
   }
+  WriteToOriginalWriter(
+      StringPrintf(kPrefetchStartTimeScript, num_resources_flushed_));
   Clear();
 }
 

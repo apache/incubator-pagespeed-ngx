@@ -373,4 +373,32 @@ void UserAgentMatcher::LookupDeviceProperties(
     const StringPiece& user_agent, PropertyPage* page) {
 }
 
+UserAgentMatcher::DeviceType UserAgentMatcher::GetDeviceTypeForUA(
+    const StringPiece& user_agent) const {
+  // TODO(ksimbili): Pass in device property page once changes related to device
+  // property cache are submitted.
+  if (IsMobileUserAgent(user_agent)) {
+    return kMobile;
+  }
+  return kDesktop;
+}
+
+StringPiece UserAgentMatcher::DeviceTypeSuffix(DeviceType device_type) {
+  StringPiece device_type_suffix = "";
+  switch (device_type) {
+    case kMobile:
+      device_type_suffix = "@Mobile";
+      break;
+    case kTablet:
+      device_type_suffix = "@Tablet";
+      break;
+    case kDesktop:
+    case kEndOfDeviceType:
+    default:
+      device_type_suffix = "@Desktop";
+      break;
+  }
+  return device_type_suffix;
+}
+
 }  // namespace net_instaweb

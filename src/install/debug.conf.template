@@ -656,6 +656,20 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedDomain http://example.com
 </VirtualHost>
 
+# Proxy modpagespeed.com for testing Issue 582.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName modpagespeed.com
+
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/"
+
+  ModPagespeed off
+  ServerAlias www.modpagespeed.com
+
+  ProxyPass / http://modpagespeed.com/
+  ProxyPassReverse / http://modpagespeed.com/
+</VirtualHost>
+
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
 #ALL_DIRECTIVES ModPagespeedAllow foo
 #ALL_DIRECTIVES ModPagespeedAnalyticsID 1234

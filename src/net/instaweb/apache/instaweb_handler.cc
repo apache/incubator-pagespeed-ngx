@@ -951,7 +951,16 @@ apr_status_t save_url_hook(request_rec *request) {
 // Override core_map_to_storage for pagespeed resources.
 apr_status_t instaweb_map_to_storage(request_rec* request) {
   apr_status_t ret = DECLINED;
-  if (get_instaweb_resource_url(request) != NULL) {
+  if (request->proxyreq == PROXYREQ_REVERSE) {
+    // If Apache is acting as a reverse proxy for this request there is no
+    // point in walking the directory because it doesn't apply to this
+    // server's htdocs tree, it applies to the server we are proxying to.
+    // This can result in it raising a 403 because some path doesn't exist.
+    // Note that experimenting shows that it doesn't matter if we return OK
+    // or DECLINED here, at least with URLs that aren't overly long; also,
+    // we actually fetch the DECODED URL (no .pagespeed. etc) from the proxy
+    // server and we rewrite it ourselves.
+  } else if (get_instaweb_resource_url(request) != NULL) {
     // core_map_to_storage does at least two things:
     //  1) checks filename length limits
     //  2) determines directory specific options
