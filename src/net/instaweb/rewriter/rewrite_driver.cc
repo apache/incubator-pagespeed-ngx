@@ -827,7 +827,7 @@ void RewriteDriver::SetResourceManager(ServerContext* resource_manager) {
 
 RequestTrace* RewriteDriver::trace_context() {
   return request_context_.get() == NULL ? NULL :
-      request_context_->trace_context();
+      request_context_->root_trace_context();
 }
 
 void RewriteDriver::TracePrintf(const char* fmt, ...) {
@@ -839,7 +839,7 @@ void RewriteDriver::TracePrintf(const char* fmt, ...) {
   }
   va_list argp;
   va_start(argp, fmt);
-  trace_context()->TracePrintf(fmt, argp);
+  trace_context()->TraceVPrintf(fmt, argp);
   va_end(argp);
 }
 

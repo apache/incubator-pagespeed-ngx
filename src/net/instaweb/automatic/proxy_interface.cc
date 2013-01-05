@@ -318,8 +318,9 @@ ProxyFetchPropertyCallbackCollector*
     bool* added_page_property_callback) {
   RequestContextPtr request_ctx = async_fetch->request_context();
   DCHECK(request_ctx.get() != NULL);
-  if (request_ctx->trace_context() != NULL) {
-    request_ctx->trace_context()->TracePrintf("PropertyCache lookup start");
+  if (request_ctx->root_trace_context() != NULL) {
+    request_ctx->root_trace_context()->TracePrintf(
+        "PropertyCache lookup start");
   }
   StringPiece user_agent =
       async_fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent);

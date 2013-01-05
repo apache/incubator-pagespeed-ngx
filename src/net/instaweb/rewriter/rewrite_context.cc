@@ -24,6 +24,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 
+#include <cstdarg>
 #include <cstddef>                     // for size_t
 #include <algorithm>
 #include <utility>                      // for pair
@@ -36,6 +37,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -59,6 +61,7 @@
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/queued_alarm.h"
+#include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -953,7 +956,8 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     revalidate_ok_(true),
     notify_driver_on_fetch_done_(false),
     force_rewrite_(false),
-    stale_rewrite_(false) {
+    stale_rewrite_(false),
+    dependent_request_trace_(NULL) {
   partitions_.reset(new OutputPartitions);
 }
 
@@ -1677,6 +1681,10 @@ void RewriteContext::RewriteDone(RewriteResult result, int partition_index) {
 
 void RewriteContext::RewriteDoneImpl(RewriteResult result,
                                      int partition_index) {
+  DCHECK(Driver()->request_context().get() != NULL);
+  Driver()->request_context()->ReleaseDependentTraceContext(
+      dependent_request_trace_);
+  dependent_request_trace_ = NULL;
   if (result == kTooBusy) {
     MarkTooBusy();
   } else {
@@ -1778,6 +1786,35 @@ void RewriteContext::RenderPartitionOnDetach(int rewrite_index) {
 void RewriteContext::DetachSlots() {
   for (int i = 0, n = slots_.size(); i < n; ++i) {
     slot(i)->DetachContext(this);
+  }
+}
+
+void RewriteContext::AttachDependentRequestTrace(const StringPiece& label) {
+  DCHECK(dependent_request_trace_ == NULL);
+  RewriteDriver* driver = Driver();
+  DCHECK(driver->request_context().get() != NULL);
+  dependent_request_trace_ =
+      driver->request_context()->CreateDependentTraceContext(label);
+}
+
+void RewriteContext::TracePrintf(const char* fmt, ...) {
+  RewriteDriver* driver = Driver();
+  if (driver->trace_context() == NULL) {
+    return;
+  }
+  if (!driver->trace_context()->tracing_enabled()) {
+    return;
+  }
+  va_list argp;
+  va_start(argp, fmt);
+  GoogleString buf;
+  StringAppendV(&buf, fmt, argp);
+  va_end(argp);
+  // Log in the root trace.
+  driver->trace_context()->TracePrintf("%s", buf.c_str());
+  // Log to our context's request trace, if any.
+  if (dependent_request_trace_ != NULL) {
+    dependent_request_trace_->TracePrintf("%s", buf.c_str());
   }
 }
 

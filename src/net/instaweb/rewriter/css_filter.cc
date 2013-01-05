@@ -251,6 +251,7 @@ void CssFilter::Context::SetupExternalRewrite(const GoogleUrl& base_gurl,
 void CssFilter::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
+  AttachDependentRequestTrace("ProcessCSS");
   input_resource_ = input_resource;
   output_resource_ = output_resource;
   StringPiece input_contents = input_resource_->contents();
@@ -268,6 +269,7 @@ void CssFilter::Context::RewriteSingle(
   if (!StringPiece(input_resource_->url()).starts_with("data:")) {
     css_base_gurl_.Reset(input_resource_->url());
     css_trim_gurl_.Reset(output_resource_->UrlEvenIfHashNotSet());
+    TracePrintf("RewriteCss: %s", input_resource_->url().c_str());
   }
   in_text_size_ = input_contents.size();
   has_utf8_bom_ = StripUtf8Bom(&input_contents);

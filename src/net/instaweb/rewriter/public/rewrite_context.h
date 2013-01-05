@@ -44,6 +44,7 @@ class InputInfo;
 class MessageHandler;
 class NamedLock;
 class OutputPartitions;
+class RequestTrace;
 class ResourceContext;
 class ResponseHeaders;
 class RewriteDriver;
@@ -207,6 +208,19 @@ class RewriteContext {
  protected:
   typedef std::vector<InputInfo*> InputInfoStarVector;
   typedef std::vector<GoogleUrl*> GoogleUrlStarVector;
+
+  // Creates a new request trace associated with this context with a given
+  // |label|.
+  void AttachDependentRequestTrace(const StringPiece& label);
+
+  // Provides the dependent request trace associated with this context, if any.
+  // Note that this is distinct from the root user request trace, available
+  // in Driver().
+  RequestTrace* dependent_request_trace() { return dependent_request_trace_; }
+
+  // A convenience wrapper to log a trace annotation in both the request
+  // trace (if present) as well as the root user request trace (if present).
+  void TracePrintf(const char* fmt, ...);
 
   // The following methods are provided for the benefit of subclasses.
 
@@ -727,6 +741,10 @@ class RewriteContext {
   // Indicates that the current rewrite involves at least one resource which
   // is stale.
   bool stale_rewrite_;
+
+  // An optional request trace associated with this context. May be NULL.
+  // Always owned externally.
+  RequestTrace* dependent_request_trace_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };

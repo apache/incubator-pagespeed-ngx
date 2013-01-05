@@ -152,6 +152,7 @@ void SetWebpCompressionOptions(
 void ImageRewriteFilter::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
+  AttachDependentRequestTrace("ProcessImage");
   RewriteDone(
       filter_->RewriteLoadedResourceImpl(this, input_resource, output_resource),
       0);
@@ -441,7 +442,8 @@ bool ImageRewriteFilter::ShouldResize(const ResourceContext& context,
 RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       Context* rewrite_context, const ResourcePtr& input_resource,
       const OutputResourcePtr& result) {
-  driver_->TracePrintf("Image rewrite start");
+  rewrite_context->TracePrintf("Image rewrite: %s",
+                               input_resource->url().c_str());
   MessageHandler* message_handler = driver_->message_handler();
   StringVector urls;
   ResourceContext context;
@@ -629,9 +631,9 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   if (rewrite_result == kRewriteFailed) {
     image_rewrites_dropped_intentionally_->Add(1);
   } else {
-    driver_->TracePrintf("Image rewrite success (%u -> %u)",
-                         static_cast<unsigned>(image->input_size()),
-                         static_cast<unsigned>(image->output_size()));
+    rewrite_context->TracePrintf("Image rewrite success (%u -> %u)",
+                                 static_cast<unsigned>(image->input_size()),
+                                 static_cast<unsigned>(image->output_size()));
   }
 
   return rewrite_result;

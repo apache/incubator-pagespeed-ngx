@@ -152,6 +152,10 @@ class JavascriptFilter::Context : public SingleRewriteContext {
   // TODO(jmarantz): this should be done as a SimpleTextFilter.
   virtual void RewriteSingle(
       const ResourcePtr& input, const OutputResourcePtr& output) {
+    AttachDependentRequestTrace("ProcessJavascript");
+    if (!StringPiece(input->url()).starts_with("data:")) {
+      TracePrintf("RewriteJs: %s", input->url().c_str());
+    }
     RewriteDone(RewriteJavascript(input, output), 0);
   }
 

@@ -27,12 +27,12 @@ namespace net_instaweb {
 
 RequestContext::RequestContext(AbstractMutex* logging_mutex)
     : log_record_(new LogRecord(logging_mutex)),
-      trace_context_(NULL) {
+      root_trace_context_(NULL) {
 }
 
 RequestContext::RequestContext()
     : log_record_(NULL),
-      trace_context_(NULL) {
+      root_trace_context_(NULL) {
 }
 
 RequestContext::~RequestContext() {
@@ -48,8 +48,8 @@ RequestContextPtr RequestContext::NewTestRequestContext(
   return RequestContextPtr(new RequestContext(thread_system->NewMutex()));
 }
 
-void RequestContext::set_trace_context(RequestTrace* x) {
-  trace_context_.reset(x);
+void RequestContext::set_root_trace_context(RequestTrace* x) {
+  root_trace_context_.reset(x);
 }
 
 LogRecord* RequestContext::log_record() {
@@ -60,6 +60,12 @@ LogRecord* RequestContext::log_record() {
 void RequestContext::set_log_record(LogRecord* l) {
   CHECK(log_record_.get() == NULL);
   log_record_.reset(l);
+}
+
+void RequestContext::ReleaseDependentTraceContext(RequestTrace* t) {
+  if (t != NULL) {
+    delete t;
+  }
 }
 
 }  // namespace net_instaweb
