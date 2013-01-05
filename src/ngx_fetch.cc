@@ -97,8 +97,8 @@ namespace net_instaweb {
     return true;
   }
 
-  // Do all the intialized work for this fetch. It creates the pool,
-  // parse the url, add the timeout event and hook the DNS resolver handler.
+  // create the pool, parse the url, add the timeout event and
+  // hook the DNS resolver handler.
   bool NgxFetch::Init() {
     pool_ = ngx_create_pool(12288, log_);
     if (pool_ == NULL) {
@@ -182,7 +182,6 @@ namespace net_instaweb {
       }
       fetcher_->FetchComplete(this);
     }
-    //delete this;
   }
 
   size_t NgxFetch::bytes_received() {
@@ -219,21 +218,21 @@ namespace net_instaweb {
       return false;
     }
     str_url_.copy(reinterpret_cast<char*>(url_.url.data), str_url_.length(), 0);
-    size_t add;
+    size_t scheme_offset;
     u_short port;
     if (ngx_strncasecmp(url_.url.data, (u_char*)"http://", 7) == 0) {
-      add = 7;
+      scheme_offset = 7;
       port = 80;
     } else if (ngx_strncasecmp(url_.url.data, (u_char*)"https://", 8) == 0) {
-      add = 8;
+      scheme_offset = 8;
       port = 443;
     } else {
-      add = 0;
+      scheme_offset = 0;
       port = 80;
     }
 
-    url_.url.data += add;
-    url_.url.len -= add;
+    url_.url.data += scheme_offset;
+    url_.url.len -= scheme_offset;
     url_.default_port = port;
     url_.no_resolve = 1;
     url_.uri_part = 1;
@@ -290,7 +289,6 @@ namespace net_instaweb {
 
     out_->last = ngx_cpymem(out_->last, "GET ", 4);
     out_->last = ngx_cpymem(out_->last, url_.uri.data, url_.uri.len);
-    //
     out_->last = ngx_cpymem(out_->last, " HTTP/1.0\r\n", 11);
 
     for (int i = 0; i < request_headers->NumAttributes(); i++) {
