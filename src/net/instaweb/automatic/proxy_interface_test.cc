@@ -327,12 +327,11 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     "<link rel=\"stylesheet\" href=\"%s\" media=\"print\" disabled=\"true\"/>\n"
     "<link rel=\"stylesheet\" href=\"%s\" media=\"print\" disabled=\"true\"/>\n"
     "<link rel=\"stylesheet\" href=\"%s\" media=\"print\" disabled=\"true\"/>\n"
+    "<script type=\"psa_prefetch\" src=\"/psajs/js_defer.0.js\"></script>\n"
     "<script type='text/javascript'>"
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
-    "window.mod_pagespeed_num_resources_prefetched = 3</script>"
+    "window.mod_pagespeed_num_resources_prefetched = 4</script>"
     "<script type=\"text/javascript\">%s</script>"
-    "%s"
-    "%s"
     "%s"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
@@ -355,7 +354,7 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     " orig_index=\"2\"></script>"
     "<script pagespeed_orig_src=\"http://www.domain1.com/private.js\""
     " type=\"text/psajs\" orig_index=\"3\"></script>"
-    "</head>"
+    "%s</head>"
     "<body>%s"
     "Hello, mod_pagespeed!"
     "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
@@ -364,7 +363,7 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     "<link rel=\"stylesheet\" type=\"text/css\""
     " href=\"http://www.domain3.com/3.css\">"
     "</body>"
-    "</html>";
+    "</html>%s";
 const char kRewrittenSplitHtmlWithLazyloadScriptFlushedEarly[] =
     "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
     "<html>"
@@ -1258,10 +1257,10 @@ class ProxyInterfaceTest : public RewriteTestBase {
   }
 
   GoogleString GetDeferJsCode() {
-    return StrCat("<script src=\"",
+    return StrCat("<script type=\"text/javascript\" src=\"",
                   server_context()->static_javascript_manager()->GetDeferJsUrl(
                       options_),
-                  "\" type=\"text/javascript\"></script>");
+                  "\"></script>");
   }
 
   GoogleString FlushEarlyRewrittenHtml(
@@ -1301,17 +1300,17 @@ class ProxyInterfaceTest : public RewriteTestBase {
           LazyloadImagesFilter::GetLazyloadJsSnippet(
               options_,
               server_context()->static_javascript_manager()).c_str(),
-          StrCat("<script type=\"text/javascript\">",
-                 JsDisableFilter::GetJsDisableScriptSnippet(options_),
-                 "</script>").c_str(),
-          GetDeferJsCode().c_str(),
           cookie_script.data(),
           rewritten_css_url_1.data(), rewritten_css_url_2.data(),
           rewritten_js_url_1.data(), rewritten_js_url_2.data(),
           rewritten_img_url_1.data(),
+          StrCat("<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+                 JsDisableFilter::GetJsDisableScriptSnippet(options_),
+                 "</script>").c_str(),
           StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
-                                 redirect_url.c_str()).c_str(),
-          rewritten_css_url_3.data());
+                       redirect_url.c_str()).c_str(),
+          rewritten_css_url_3.data(),
+          GetDeferJsCode().c_str());
     } else if (value == UserAgentMatcher::kPrefetchLinkScriptTag &&
         split_html_enabled) {
       return StringPrintf(
@@ -1796,11 +1795,13 @@ TEST_F(ProxyInterfaceTest,
 }
 
 TEST_F(ProxyInterfaceTest, LazyloadAndDeferJsScriptFlushedEarly) {
+  latency_fetcher_->set_latency(600);
   SetupForFlushEarlyFlow(true);
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
   custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
+  custom_options->set_flush_more_resources_early_if_time_permits(true);
   ProxyUrlNamer url_namer;
   url_namer.set_options(custom_options.get());
   server_context()->set_url_namer(&url_namer);

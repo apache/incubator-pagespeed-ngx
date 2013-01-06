@@ -77,6 +77,8 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
       bool is_pagespeed_resource,
       semantic_type::Category category);
 
+  void TryFlushingDeferJavascriptEarly();
+
   RewriteDriver* driver_;
   TimedVariable* num_resources_flushed_early_;
   // Whether we need to insert a close script tag at EndDocument.

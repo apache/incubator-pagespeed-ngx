@@ -64,19 +64,17 @@ void JsDisableFilter::StartDocument() {
 void JsDisableFilter::InsertJsDeferExperimentalScript(HtmlElement* element) {
   // We are not adding this code in js_defer_disabled_filter to avoid
   // duplication of code for blink and critical line code.
-  if (!rewrite_driver_->is_defer_javascript_script_flushed()) {
-    HtmlElement* script_node =
-        rewrite_driver_->NewElement(element, HtmlName::kScript);
+  HtmlElement* script_node =
+      rewrite_driver_->NewElement(element, HtmlName::kScript);
 
-    rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
-                                  "text/javascript");
-    rewrite_driver_->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, "");
-    HtmlNode* script_code =
-        rewrite_driver_->NewCharactersNode(
-            script_node, GetJsDisableScriptSnippet(rewrite_driver_->options()));
-    rewrite_driver_->AppendChild(element, script_node);
-    rewrite_driver_->AppendChild(script_node, script_code);
-  }
+  rewrite_driver_->AddAttribute(script_node, HtmlName::kType,
+                                "text/javascript");
+  rewrite_driver_->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, "");
+  HtmlNode* script_code =
+      rewrite_driver_->NewCharactersNode(
+          script_node, GetJsDisableScriptSnippet(rewrite_driver_->options()));
+  rewrite_driver_->AppendChild(element, script_node);
+  rewrite_driver_->AppendChild(script_node, script_code);
   defer_js_experimental_script_written_ = true;
 }
 

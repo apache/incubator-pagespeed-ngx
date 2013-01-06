@@ -13,10 +13,8 @@
 // limitations under the License.
 
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/fast_wildcard_group.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -68,6 +66,8 @@ const char* kPanelSupportDesktopWhitelist[] = {
   "*MSIE *",
   "*Safari*",
   "*Wget*",
+  // The following user agents are used only for internal testing
+  "prefetch_link_script_tag",
 };
 const char* kPanelSupportDesktopBlacklist[] = {
   "*Firefox/1.*",

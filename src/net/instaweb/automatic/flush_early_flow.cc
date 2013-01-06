@@ -36,8 +36,6 @@
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
-#include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
-#include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
@@ -65,6 +63,7 @@ const char kPreloadScript[] = "function preload(x){"
     "obj.height=0;}";
 const char kScriptBlock[] =
     "<script type=\"text/javascript\">(function(){%s})()</script>";
+const char kJavascriptInline[] = "<script type=\"text/javascript\">%s</script>";
 
 const char kFlushSubresourcesFilter[] = "FlushSubresourcesFilter";
 
@@ -333,7 +332,6 @@ FlushEarlyFlow::FlushEarlyFlow(
       manager_(driver->server_context()),
       property_cache_callback_(property_cache_callback),
       should_flush_early_lazyload_script_(false),
-      should_flush_early_js_defer_script_(false),
       handler_(driver_->server_context()->message_handler()) {
   Statistics* stats = manager_->statistics();
   num_requests_flushed_early_ = stats->GetTimedVariable(
@@ -396,7 +394,7 @@ void FlushEarlyFlow::FlushEarly() {
         // If the flush early info has non-empty resource html, we flush early.
         DCHECK(options->enable_flush_subresources_experimental());
 
-        // Check whether to flush lazyload and js_defer script snippets early.
+        // Check whether to flush lazyload script snippets early.
         PropertyValue* lazyload_property_value = page->GetProperty(
             cohort,
             LazyloadImagesFilter::kIsLazyloadScriptInsertedPropertyName);
@@ -406,14 +404,6 @@ void FlushEarlyFlow::FlushEarly() {
             LazyloadImagesFilter::ShouldApply(driver_)) {
           driver_->set_is_lazyload_script_flushed(true);
           should_flush_early_lazyload_script_ = true;
-        }
-
-        // We don't flush defer js here since blink js contains defer js.
-        if (!options->Enabled(RewriteOptions::kSplitHtml) &&
-            options->Enabled(RewriteOptions::kDeferJavascript) &&
-            JsDeferDisabledFilter::ShouldApply(driver_)) {
-          driver_->set_is_defer_javascript_script_flushed(true);
-          should_flush_early_js_defer_script_ = true;
         }
 
         int64 now_ms = manager_->timer()->NowMs();
@@ -445,7 +435,6 @@ void FlushEarlyFlow::FlushEarly() {
 
         // Parse and rewrite the flush early HTML.
         new_driver->ParseText(flush_early_info.pre_head());
-        new_driver->ParseText("<head>");
         new_driver->ParseText(flush_early_info.resource_html());
 
         const StringSet* css_critical_images =
@@ -505,21 +494,17 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
       flush_early_driver->num_flushed_early_pagespeed_resources()) -
       flush_early_driver->num_flushed_early_pagespeed_resources();
 
-  StaticJavascriptManager* static_js_manager =
-        manager_->static_javascript_manager();
   if (should_flush_early_lazyload_script_) {
     // Flush Lazyload filter script content.
-    WriteScript(LazyloadImagesFilter::GetLazyloadJsSnippet(
-        driver_->options(), static_js_manager));
+    StaticJavascriptManager* static_js_manager =
+          manager_->static_javascript_manager();
+    GoogleString script_content = LazyloadImagesFilter::GetLazyloadJsSnippet(
+        driver_->options(), static_js_manager);
+    base_fetch_->Write(StringPrintf(kJavascriptInline,
+        script_content.c_str()), handler_);
     if (!driver_->options()->lazyload_images_blank_url().empty()) {
       --max_preconnect_attempts;
     }
-  }
-
-  if (should_flush_early_js_defer_script_) {
-    // Flush defer_javascript script content.
-    WriteScript(JsDisableFilter::GetJsDisableScriptSnippet(driver_->options()));
-    WriteExternalScript(static_js_manager->GetDeferJsUrl(driver_->options()));
   }
 
   if (max_preconnect_attempts > 0 &&
@@ -539,18 +524,6 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
       manager_->timer()->NowMs() - start_time_ms);
   flush_early_fetch_->set_flush_early_flow_done(true);
   delete this;
-}
-
-void FlushEarlyFlow::WriteScript(const GoogleString& script_content) {
-  base_fetch_->Write("<script type=\"text/javascript\">", handler_);
-  base_fetch_->Write(script_content, handler_);
-  base_fetch_->Write("</script>", handler_);
-}
-
-void FlushEarlyFlow::WriteExternalScript(const GoogleString& script_url) {
-  base_fetch_->Write("<script src=\"", handler_);
-  base_fetch_->Write(script_url, handler_);
-  base_fetch_->Write("\" type=\"text/javascript\"></script>", handler_);
 }
 
 void FlushEarlyFlow::GenerateResponseHeaders(

@@ -66,6 +66,14 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
     output_.clear();
   }
 
+  void EnableDeferJsAndSetFetchLatency(int latency) {
+    Clear();
+    options()->ClearSignatureForTesting();
+    options()->EnableFilter(RewriteOptions::kDeferJavascript);
+    server_context()->ComputeSignature(options());
+    rewrite_driver_->flush_early_info()->set_average_fetch_latency_ms(latency);
+  }
+
   GoogleString RewrittenOutputWithResources(const GoogleString& html_output,
                                             const int& number_of_resources) {
     return StrCat(html_output,
@@ -228,6 +236,34 @@ TEST_F(FlushEarlyContentWriterFilterTest, NoResourcesToFlush) {
 
   Parse("prefetch_image_tag", html_input);
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 0), output_);
+}
+
+TEST_F(FlushEarlyContentWriterFilterTest, FlushDeferJsEarlyIfTimePermits) {
+  GoogleString html_input =
+      "<!DOCTYPE html>"
+      "<html>"
+      "<head>"
+      "</head>"
+      "<body></body></html>";
+
+  // Set fetch latency to 0. DeferJs should not be flushed early.
+  EnableDeferJsAndSetFetchLatency(0);
+  // User-Agent: prefetch_link_script_tag.
+  output_.clear();
+  rewrite_driver()->set_user_agent("prefetch_link_script_tag");
+  Parse("prefetch_link_script_tag", html_input);
+  EXPECT_EQ(RewrittenOutputWithResources("", 0), output_);
+
+
+  // Set fetch latency to 200. DeferJs should be flushed early.
+  EnableDeferJsAndSetFetchLatency(200);
+  // User-Agent: prefetch_link_script_tag.
+  output_.clear();
+  rewrite_driver()->set_user_agent("prefetch_link_script_tag");
+  Parse("prefetch_link_script_tag", html_input);
+  EXPECT_EQ(RewrittenOutputWithResources(
+      "<script type=\"psa_prefetch\" src=\"/psajs/js_defer.0.js\"></script>\n",
+      1), output_);
 }
 
 TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources) {
