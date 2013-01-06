@@ -17,6 +17,8 @@
 # it here.  If we change pagespeed.conf.template to enable XHTML by
 # default then we can eliminate this line.
 
+## oschaaf(what do we do with allowoverride. there is no htaccess in nginx?)
+
 apache_literal: {
     value: "AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml\n"
 },
@@ -315,7 +317,6 @@ directories: [
       Header set Cache-control "public, max-age=600"
     </FilesMatch>
   </IfModule>
-## oschaaf(what do we do with allowoverride. there is no htaccess in nginx?)
   AllowOverride All
 """
 	 },
@@ -331,17 +332,18 @@ directories: [
     { 
         path: "@@APACHE_DOC_ROOT@@/",
     	apache_literal: { value: """# This is enabled to make sure we don't crash mod_negotiation.
-    Options +MultiViews
-"""
+    Options +MultiViews""",
         }
 
     },
     {
 	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/",
-##    	AllowOverride All
-##    	# Some versions of mod_rewrite will refuse to do any work if
-##    	# symlink handling is off.
-##    	Options +SymLinksIfOwnerMatch
+	apache_literal: { value: """
+    	AllowOverride All
+    	# Some versions of mod_rewrite will refuse to do any work if
+    	# symlink handling is off.
+    	Options +SymLinksIfOwnerMatch""",
+        }
     },
     {
 	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/close_connection/",
@@ -465,11 +467,14 @@ locations: [
 
 #PER_VHOST_STATS    {
 #PER_VHOST_STATS        path: "/mod_pagespeed_global_statistics",
-#PER_VHOST_STATS    ## Order allow,deny
-#PER_VHOST_STATS    ## Allow from localhost
-#PER_VHOST_STATS    ## Allow from 127.0.0.1
-#PER_VHOST_STATS    ## SetHandler mod_pagespeed_global_statistics
-#PER_VHOST_STATS    }
+#PER_VHOST_STATS        apache_literal: {
+#PER_VHOST_STATS            value: """
+#PER_VHOST_STATS        Order allow,deny
+#PER_VHOST_STATS        Allow from localhost
+#PER_VHOST_STATS        Allow from 127.0.0.1
+#PER_VHOST_STATS        SetHandler mod_pagespeed_global_statistics\n""",
+#PER_VHOST_STATS        }
+#PER_VHOST_STATS    },
 
 #STRESS # These lines are only needed for the stress test.
 #STRESS    {
