@@ -314,7 +314,10 @@ directories: [
       Header unset Etag
       Header set Cache-control "public, max-age=600"
     </FilesMatch>
-  </IfModule>"""
+  </IfModule>
+## oschaaf(what do we do with allowoverride. there is no htaccess in nginx?)
+  AllowOverride All
+"""
 	 },
     },
     {
@@ -332,12 +335,6 @@ directories: [
 """
         }
 
-    },
-## oschaaf(what do we do with allowoverride. there is no htaccess in nginx?)
-# Enable htaccess
-    { 
-        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/",
-##    	AllowOverride All
     },
     {
 	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/",
