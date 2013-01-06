@@ -35,7 +35,12 @@ def write_locations_open_item(server,level):
     elif "wildcard_path" in server:
         emit(indent("<Location ~ \"" + server["wildcard_path"]  + "\">\n",level))
 
+    if "proxy_pass" in server:
+        emit(indent("ProxyPass " + server["proxy_pass"] + "\n",level+1))
+    
+
     if "text" in server:
+       raise Exception("deprecated")
        emit(server["text"])
 
 def write_locations_close_item(server,level):
@@ -86,9 +91,6 @@ def write_headers_open(ps, level):
 
     return True
     
-
-# oschaaf(TODO): we could track which modules we have loaded here, 
-# to prevent writing multiple ifload's for the same module.
 def write_required_modules_open(ps,level):
     module_path_prefix = "@@APACHE_MODULES@@/mod_"
     for module_name in ps:

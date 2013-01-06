@@ -47,6 +47,10 @@ def write_locations_open_item(server,level,is_dir=0):
            emit(indent("directory = " + server["path"] + " {\n",level))
        else:
            emit(indent("location = " + server["path"] + " {\n",level))
+
+
+    if "proxy_pass" in server:
+        emit(indent("proxy_pass " + server["proxy_pass"] + ";\n",level+1))
            
 	
     elif "wildcard_path" in server:

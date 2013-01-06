@@ -793,10 +793,14 @@ servers: [
 #PROXY	          RewriteLevel: "PassThrough",
 #PROXY            EnableFilters: "extend_cache",
 #PROXY            Domain: "*",
-#PROXY	      }
+#PROXY	      },
 #PROXY	      # Proxy through to 8081.
-## TODO(oschaaf): this one looks tricky for nginx
-#PROXY        ##ProxyPass / http://localhost:8081/
+#PROXY        locations: [ 
+#PROXY            {
+#PROXY                path: "/",
+#PROXY                proxy_pass: "http://localhost:8081/",
+#PROXY            }
+#PROXY        ]
 #PROXY    },
 #PROXY    {
 #PROXY        address: "*",
