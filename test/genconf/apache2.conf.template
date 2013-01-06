@@ -28,6 +28,8 @@ def write_directories_close_item(server,level):
     emit(indent("</Directory>\n",level))
 
 def write_locations_open_item(server,level):
+    # TODO(oschaaf): this is not exactly true
+    # we need try_files here as well?
     if "path" in server:
         emit(indent("<Location " + server["path"]  + ">\n",level))
     elif "wildcard_path" in server:
@@ -132,6 +134,12 @@ def write_required_modules_open(ps,level):
             emit(indent("AddHandler cgi-script .cgi\n",level))
     return True
 
+def write_apache_literal_open(ps, level):
+    emit(ps["value"])
+
+def write_mime_types_open_item(ps,level):
+    emit(indent("AddType " + ps["extension"] + " " + ps["mime_type"] + " \n",level))
+
 key_to_writer = {
     "defaults_open": write_void,
     "defaults_close": write_void,
@@ -157,6 +165,9 @@ key_to_writer = {
     "name_virtual_hosts_close": write_void,
     "required_modules_open": write_required_modules_open,
     "headers_open": write_headers_open,
+    "mime_types_open": write_void,
+    "mime_types_open_item": write_mime_types_open_item,
+    "apache_literal_open": write_apache_literal_open,
 }
 
 }$# apache configuration, generated with mode [@TODO@]

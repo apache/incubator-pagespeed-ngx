@@ -1,8 +1,3 @@
-# TODO(oschaaf): IfModule,LoadModule - https,gzip,rewrite,ssi,headers,slotmem
-# gzip,headers,ssi,https all could be generic as most webservers support them
-# for nginx however, loading/enabling of these modules is done at 
-# compile time, and not here. So loadmodule cannot be ported?
-# speling, 
 # TODO(oschaaf): AddOutputFilter, AddOutputFilterByType
 # TODO: handle webserver specifics. handle the fact that not all tests
 # / modes can be supported on every webserver
@@ -21,8 +16,10 @@
 # add_instrumentation xhtml tests to work, though, we have to enable
 # it here.  If we change pagespeed.conf.template to enable XHTML by
 # default then we can eliminate this line.
-##AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
 
+apache_literal: {
+    value: "AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml\n"
+},
 required_modules: [
 # This is needed for the server-side includes test in
 # apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
@@ -291,32 +288,34 @@ directories: [
     # site, if it is to be optimized by mod_pagespeed.
     {
         path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_example",
-##  <IfModule headers_module>
-##    # To enable to show that mod_pagespeed to rewrites web pages, we must
-##    # turn off Etags for HTML files and eliminate caching altogether.
-##    # mod_pagespeed should rewrite HTML files each time they are served.
-##    # The first time mod_pagespeed sees an HTML file, it may not optimize
-##    # it fully.  It will optimize better after the second view.  Caching
-##    # defeats this behavior.
-##    <FilesMatch "\.(html|htm)$">
-##      Header unset Etag
-##      Header set Cache-control "max-age=0, no-cache"
-##    </FilesMatch>
+	apache_literal: 
+        {
+            value:"""<IfModule headers_module>
+    # To enable to show that mod_pagespeed to rewrites web pages, we must
+    # turn off Etags for HTML files and eliminate caching altogether.
+    # mod_pagespeed should rewrite HTML files each time they are served.
+    # The first time mod_pagespeed sees an HTML file, it may not optimize
+    # it fully.  It will optimize better after the second view.  Caching
+    # defeats this behavior.
+    <FilesMatch "\.(html|htm)$">
+      Header unset Etag
+      Header set Cache-control "max-age=0, no-cache"
+    </FilesMatch>
 
-##    # Images, styles, and javascript are all cache-extended for
-##    # a year by rewriting URLs to include a content hash.  mod_pagespeed
-##    # can only do this if the resources are cacheable in the first place.
-##    # The origin caching policy, set here to 10 minutes, dictates how
-##    # frequently mod_pagespeed must re-read the content files and recompute
-##    # the content-hash.  As long as the content doesn't actually change,
-##    # the content-hash will remain the same, and the resources stored
-##    # in browser caches will stay relevant.
-##    <FilesMatch "\.(jpg|jpeg|gif|png|js|css)$">
-##      Header unset Etag
-##      Header set Cache-control "public, max-age=600"
-##    </FilesMatch>
-##  </IfModule>
-        
+    # Images, styles, and javascript are all cache-extended for
+    # a year by rewriting URLs to include a content hash.  mod_pagespeed
+    # can only do this if the resources are cacheable in the first place.
+    # The origin caching policy, set here to 10 minutes, dictates how
+    # frequently mod_pagespeed must re-read the content files and recompute
+    # the content-hash.  As long as the content doesn't actually change,
+    # the content-hash will remain the same, and the resources stored
+    # in browser caches will stay relevant.
+    <FilesMatch "\.(jpg|jpeg|gif|png|js|css)$">
+      Header unset Etag
+      Header set Cache-control "public, max-age=600"
+    </FilesMatch>
+  </IfModule>"""
+	 },
     },
     {
         path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/shard",
@@ -328,10 +327,13 @@ directories: [
     },
     { 
         path: "@@APACHE_DOC_ROOT@@/",
-##    # This is enabled to make sure we don't crash mod_negotiation.
-##    Options +MultiViews
+    	apache_literal: { value: """# This is enabled to make sure we don't crash mod_negotiation.
+    Options +MultiViews
+"""
+        }
 
     },
+## oschaaf(what do we do with allowoverride. there is no htaccess in nginx?)
 # Enable htaccess
     { 
         path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/",
@@ -368,8 +370,12 @@ directories: [
                 value:"gzip"
             },
         ],
-##      AddType text/javascript .custom_ext
-	
+        mime_types: [
+            {
+                extension: ".custom_ext",
+                mime_type: "text/javascript",
+            },
+        ]
     },
     {
 	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/no_cache/",
@@ -456,7 +462,7 @@ locations: [
 ## TODO: retain wildcard location
 ##<Location ~ "/mod_pagespeed_test/response_headers.html*">
 ##  SetHandler mod_pagespeed_response_options_handler
-##</Location>
+#</Location>
 
     },
 
@@ -477,17 +483,6 @@ locations: [
 ], #locations
 
 
-## Another VirtualHost can be enabled by default as it does no harm.  This can
-## be used for testing alternate configuration settings in system tests without
-## restarting Apache.
-##
-## We use NameVirtualHost so we can have multiple VirtualHost
-## configurations sharing the same port.  Note that the port is
-## different depending on whether we are running system tests as root
-## or as a normal user.  Note that fetches must be done with
-##    http_proxy=SECONDARY_HOST:SECONDARY_PORT.
-
-
 listen: [
     @@APACHE_SECONDARY_PORT@@,
     #COVERAGE 8081,
@@ -495,6 +490,16 @@ listen: [
     #SLURP 8081,
     #SLURP 8082,
 ],
+# Another VirtualHost can be enabled by default as it does no harm.  This can
+# be used for testing alternate configuration settings in system tests without
+# restarting Apache.
+#
+# We use NameVirtualHost so we can have multiple VirtualHost
+# configurations sharing the same port.  Note that the port is
+# different depending on whether we are running system tests as root
+# or as a normal user.  Note that fetches must be done with
+#    http_proxy=SECONDARY_HOST:SECONDARY_PORT.
+## TODO(oschaaf): consider making this an apache literal.
 name_virtual_hosts: [
     {
         address: "localhost",

@@ -4,8 +4,19 @@ from util import *
 
 set_writer(emit)
 
-# TODO(oschaaf): nginx does not inherit locations and directories from the top level
-# move these declarations from the root to the virtualhost/server declarations
+# TODO(oschaaf): nginx doesn't have a directory directive in it's configuration
+# , the complete configuration is url based.
+# currently, the directories are written out as location directives, which won't work
+# another tricky point is that nginx will match only the first location, so we will 
+# need to make sure that the most specific locations are written first. that may be 
+# hard when regular expression matches are used
+
+# TODO(oschaaf): figure out the simplest way to define equal matching
+# between apache, nginx, and iis in locations/directories
+
+# TODO(oschaaf): in some configurations, multiple location/directory
+# directives are specified with the same path. we should merge these
+# into one (probably not here, but before executing the template)
 
 def write_servers_open_item(server,level):
     emit(indent("server{  ", level))
@@ -25,26 +36,23 @@ def write_servers_close_item(server,level):
     emit(indent("}\n",level))
 
 def write_directories_open_item(server,level):
-    write_locations_open_item(server,level)
-    if "text" in server:
-       emit(server["text"])
+    write_locations_open_item(server,level,1)
 
 def write_directories_close_item(server,level):
     emit(indent("}\n",level))
 
-# TODO(oschaaf): figure out how to define equal matching
-# between apache, nginx, and iis
-def write_locations_open_item(server,level):
+def write_locations_open_item(server,level,is_dir=0):
     if "path" in server:
-        emit(indent("location = " + server["path"] + " {\n",level))
+       if is_dir:
+           emit(indent("directory = " + server["path"] + " {\n",level))
+       else:
+           emit(indent("location = " + server["path"] + " {\n",level))
+           
 	
     elif "wildcard_path" in server:
         wp = server["wildcard_path"]
 	wp = string.replace(wp,"*",".*$")
         emit(indent("location ~* " + wp + " {\n",level))
-
-#    if "text" in server:
-#       emit(server["text"])
 
 def write_locations_close_item(server,level):
     emit(indent("}\n",level))
@@ -150,6 +158,15 @@ def write_required_modules_open(ps,level):
             raise Exception("could not translate module '" + module_name + "' to nginx configuration")
     return True
 
+def write_mime_types_open(ps,level):
+    emit(indent("types {\n",level))
+
+def write_mime_types_open_item(ps,level):
+    #the extension is stripped from it's leading '.'
+    emit(indent(ps["mime_type"] + " " + ps["extension"][1:] + ";\n",level))
+
+def write_mime_types_close(ps,level):
+    emit(indent("}\n",level))
 
 key_to_writer = {
     "defaults_open": write_void,
@@ -176,6 +193,9 @@ key_to_writer = {
     "name_virtual_hosts_close": write_void,
     "required_modules_open": write_required_modules_open,
     "headers_open": write_headers_open,
+    "mime_types_open": write_mime_types_open,
+    "mime_types_close": write_mime_types_close,
+    "mime_types_open_item": write_mime_types_open_item,
 }
 
 
