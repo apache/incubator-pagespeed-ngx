@@ -62,13 +62,11 @@ def ast_node_to_dict(node, dest=None, lookup={}, parent_key=""):
   return dest
 
 
-# TODO(oschaaf): replace_comments needs a rewrite.
 def replace_comments(conditions, s):
   condition = s.group(1)
   config = s.group(2)
 
   # TODO(oschaaf): handle comments
-  # TODO(oschaaf): remove debugging 1==1
   if condition in conditions:
     return config
   else:
@@ -93,6 +91,26 @@ def pre_process_text(cfg, conditions, placeholders):
   cfg = re.sub(re_empty_line, '', cfg, flags=re.MULTILINE)
   return cfg
 
+def execute_merges(config):
+  if "directories" in config:
+    directories = config["directories"]
+    paths = {}
+    for dir in directories:
+      if "path" in dir:
+        path = dir["path"]
+
+        #normalize path comparison w. regard to 
+        #ending in a forward slash or not
+        if path.endswith('/'):
+          path = path[:-1]     
+
+        if not path in paths:
+          paths[path] = dir
+        else:
+          prev_path = paths[path]
+          for key in dir:
+            prev_path[key] = dir[key]
+          directories.remove(dir)
 
 def execute_template(pyconf_path, conditions, placeholders, template_path):
   config_file = open(pyconf_path)
@@ -100,6 +118,7 @@ def execute_template(pyconf_path, conditions, placeholders, template_path):
   config_text = pre_process_text(config_text, conditions, placeholders)
   ast = parse_python_struct(config_text)
   config = ast_node_to_dict(ast)
+  execute_merges(config)
   template_file = open(template_path)
   template_text = template_file.read()
   template_text = pre_process_text(template_text, conditions, placeholders)
