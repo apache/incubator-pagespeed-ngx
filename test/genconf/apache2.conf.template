@@ -142,6 +142,17 @@ def write_apache_literal_open(ps, level):
 def write_mime_types_open_item(ps,level):
     emit(indent("AddType " + ps["extension"] + " " + ps["mime_type"] + " \n",level))
 
+def write_add_options_open(ps,level):
+    for item in ps:
+        emit(indent("Options +" + item + "\n",level))
+    return True
+
+def write_rewrite_rules_open(ps,level):
+    emit(indent("RewriteEngine on\n",level))    
+    for item in ps:
+        emit(indent("RewriteRule " + item["pattern"] + " " + item["substitution"] + "\n",level))
+    return True
+
 key_to_writer = {
     "defaults_open": write_void,
     "defaults_close": write_void,
@@ -170,6 +181,8 @@ key_to_writer = {
     "mime_types_open": write_void,
     "mime_types_open_item": write_mime_types_open_item,
     "apache_literal_open": write_apache_literal_open,
+    "add_options_open": write_add_options_open,
+    "rewrite_rules_open": write_rewrite_rules_open,
 }
 
 }$# apache configuration, generated with mode [@TODO@]

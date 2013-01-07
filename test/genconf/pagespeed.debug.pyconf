@@ -17,8 +17,6 @@
 # it here.  If we change pagespeed.conf.template to enable XHTML by
 # default then we can eliminate this line.
 
-## oschaaf(what do we do with allowoverride. there is no htaccess in nginx?)
-
 apache_literal: {
     value: "AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml\n"
 },
@@ -331,26 +329,22 @@ directories: [
     },
     { 
         path: "@@APACHE_DOC_ROOT@@/",
-    	apache_literal: { value: """# This is enabled to make sure we don't crash mod_negotiation.
-    Options +MultiViews""",
-        }
-
+        # This is enabled to make sure we don't crash mod_negotiation.
+    	add_options: ["MultiViews"],
     },
     {
 	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/",
-	apache_literal: { value: """
-    	AllowOverride All
-    	# Some versions of mod_rewrite will refuse to do any work if
-    	# symlink handling is off.
-    	Options +SymLinksIfOwnerMatch""",
-        }
+	apache_literal: { value: """    AllowOverride All\n"""},
+        # Some versions of mod_rewrite will refuse to do any work if
+        # symlink handling is off.
+    	add_options: ["SymLinksIfOwnerMatch"],
     },
     {
 	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/close_connection/",
-##  	AllowOverride All
-    	#Helps tests whether we successfully strip Connection:close
-    	# results from the origin.
-##    	Options +SymLinksIfOwnerMatch
+        apache_literal: { value: """    AllowOverride All\n"""},
+    	add_options: ["SymLinksIfOwnerMatch"],
+        # Helps tests whether we successfully strip Connection:close
+        # results from the origin.
         headers: [{ action:"append", name:"Connection", value:"close"}],
     },
     {
@@ -454,7 +448,7 @@ directories: [
 locations: [
     {
         path: "/mod_pagespeed_log_request_headers.js",
-  	##SetHandler mod_pagespeed_log_request_headers
+  	apache_literal: { value: "SetHandler mod_pagespeed_log_request_headers\n" },
     },
     {
         wildcard_path: "/mod_pagespeed_test/response_headers.html*",
@@ -479,7 +473,7 @@ locations: [
 #STRESS # These lines are only needed for the stress test.
 #STRESS    {
 #STRESS        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/cgi",
-#STRESS        ##Options +ExecCGI
+#STRESS        add_options: ["ExecCGI"],
 #STRESS    },
 
 ], #locations
@@ -530,18 +524,28 @@ servers: [
   	    # Helps testing whether the configuration of reporting 'unload' time works.
   	    ReportUnloadTime: "on",
 
+    	},#pagespeed
 #REWRITE   # These lines are only needed for the mod_rewrite test, where
 #REWRITE   # we are just trying to prove that we remove mod_rewrite from
 #REWRITE   # the request if the URL is going to be handled by mod_pagespeed.
 #REWRITE   # In the root install test, this mod_rewrite seems to only take
 #REWRITE   # effect in a vhost.  I haven't explored why that is because it
 #REWRITE   # doesn't affect the point of the test.
-##REWRITE   Options +Indexes
-##REWRITE   RewriteEngine on
-##REWRITE   RewriteRule (.*).jpg.pagespeed.(.*).jpg /broken.jpg
-##REWRITE   RewriteRule mod_pagespeed_statistics /broken
-##REWRITE   RewriteRule shortcut.html /mod_pagespeed_example/index.html
-    	},#pagespeed
+#REWRITE        add_options: ["Indexes"],
+#REWRITE        rewrite_rules: [
+#REWRITE            {
+#REWRITE                pattern: "(.*).jpg.pagespeed.(.*).jpg",
+#REWRITE                substitution: "/broken.jpg",
+#REWRITE            },
+#REWRITE            {
+#REWRITE                pattern: "mod_pagespeed_statistics",
+#REWRITE                substitution: "/broken",
+#REWRITE            },
+#REWRITE            {
+#REWRITE                pattern: "shortcut.html",
+#REWRITE                substitution: "/mod_pagespeed_example/index.html",
+#REWRITE            },
+#REWRITE        ],
     },#server
     # Sets up a logical home-page server on www.example.com
     {

@@ -156,7 +156,8 @@ def write_required_modules_open(ps,level):
             emit(indent("gzip_types text/plain;\n",level))
             emit(indent("gzip_types text/xml;\n",level))
             emit(indent("gzip_http_version 1.0;\n",level))
-        #elif module_name == "cgi-script":
+        ## TODO(oschaaf): cgi-script module
+	#elif module_name == "cgi-script":
         #    emit("")
 	else:
             raise Exception("could not translate module '" + module_name + "' to nginx configuration")
@@ -171,6 +172,25 @@ def write_mime_types_open_item(ps,level):
 
 def write_mime_types_close(ps,level):
     emit(indent("}\n",level))
+
+def write_add_options_open(ps,level):
+    for item in ps:
+        if item == "Indexes":
+            emit(indent("autoindex on;\n",level))
+        # TODO(oschaaf): not sure if a nginx counterpart of multiviews is possible
+	elif item == "MultiViews":
+            emit(indent("# TODO(oschaaf): +" + item + "\n",level))
+        # TODO(oschaaf): make sure we can ignore this in nginx
+	elif item == "SymLinksIfOwnerMatch":
+            pass;
+	else:
+            raise Exception("Option '" + item + "': no translation for nginx");
+    return True
+
+def write_rewrite_rules_open(ps,level):
+    for item in ps:
+        emit(indent("rewrite " + item["pattern"] + " " + item["substitution"] + ";\n",level))
+    return True
 
 key_to_writer = {
     "defaults_open": write_void,
@@ -200,10 +220,14 @@ key_to_writer = {
     "mime_types_open": write_mime_types_open,
     "mime_types_close": write_mime_types_close,
     "mime_types_open_item": write_mime_types_open_item,
+    "add_options_open": write_add_options_open,
+    "rewrite_rules_open": write_rewrite_rules_open,
 }
 
 
 def prepare_configuration(config):
+    # TODO(oschaaf): remove
+    return
     # nginx doesn't have a top level configuration
     # for locations and directories (no directories at all AFAICT)
     # we 'inherit' those sections here by explicitly 
