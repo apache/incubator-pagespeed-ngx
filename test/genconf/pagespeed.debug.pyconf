@@ -495,7 +495,6 @@ listen: [
 # different depending on whether we are running system tests as root
 # or as a normal user.  Note that fetches must be done with
 #    http_proxy=SECONDARY_HOST:SECONDARY_PORT.
-## TODO(oschaaf): consider making this an apache literal.
 name_virtual_hosts: [
     {
         address: "localhost",
@@ -675,7 +674,6 @@ servers: [
     	server_name: "url_attribute.example.com",
     	root: "@@APACHE_DOC_ROOT@@",
 	pagespeed: {  
-## TODO(oschaaf): urlvaluedattribute order->ask significance
   	    # This is used for testing dynamically defined url-valued
   	    # attributes
   	    UrlValuedAttribute: ["span src Hyperlink",

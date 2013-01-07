@@ -26,11 +26,18 @@ def write_servers_open_item(server,level):
     emit(server["port"])
     emit(";\n")
     if "root" in server:
-        emit(indent("root " + server["root"] + ";\n", level+1));
+        emit(indent("root " + server["root"] + ";\n", level+1))
     if "server_name" in server:
-        emit(indent("server_name " + server["server_name"] + ";\n", level+1));
+        emit(indent("server_name " + server["server_name"] + ";\n", level+1))
+
+    emit(indent("# This is a temporary workaround that ensures requests for pagespeed\n",level+1))
+    emit(indent("# optimized resources go to the pagespeed handler.\n",level+1))
+    emit(indent("location ~ \"\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+\" { }\n", level+1))
+    emit(indent("location ~ \"^/ngx_pagespeed_static/\" { }\n", level+1))
+
     if "pagespeed_status" in server:
-        emit(indent("pagespeed " + server["pagespeed_status"] + ";\n", level+1));
+        emit(indent("pagespeed " + server["pagespeed_status"] + ";\n", level+1))
+
 
 def write_servers_close_item(server,level):
     emit(indent("}\n",level))
@@ -226,8 +233,6 @@ key_to_writer = {
 
 
 def prepare_configuration(config):
-    # TODO(oschaaf): remove
-    return
     # nginx doesn't have a top level configuration
     # for locations and directories (no directories at all AFAICT)
     # we 'inherit' those sections here by explicitly 
@@ -245,8 +250,6 @@ def prepare_configuration(config):
 prepare_configuration(config)
 
 }$# nginx configuration, generated with mode [@TODO@]
-
-
 
 http {
 ${write_cfg(key_to_writer, config, 1)}$
