@@ -20,6 +20,7 @@
 
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/url_segment_encoder.h"
@@ -83,6 +84,10 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
   static void SetWebpAndMobileUserAgent(const RewriteDriver& driver,
                                         ResourceContext* context);
 
+  // Set context for screen resolution.
+  static void SetUserAgentScreenResolution(
+      RewriteDriver* driver, ResourceContext* context);
+
   // Helper function to generate Metadata cache key from ResourceContext.
   static GoogleString CacheKeyFromResourceContext(
       const ResourceContext& resource_context);
@@ -106,6 +111,16 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
   }
 
  private:
+  FRIEND_TEST(ImageRewriteTest, SquashImagesForMobileScreen);
+  FRIEND_TEST(ImageUrlEncoderTest, UserAgentScreenResolution);
+
+  // Returns true if screen width and height are normalized according to a
+  // predefined list of screen resolutions (see implementation header document
+  // for more details).
+  static bool GetNormalizedScreenResolution(
+      int screen_width, int screen_height, int* normalized_width,
+      int* normalized_height);
+
   DISALLOW_COPY_AND_ASSIGN(ImageUrlEncoder);
 };
 

@@ -135,6 +135,8 @@ class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
 const char MeaningfulCriticalImagesFinder::kCriticalImagesCohort[] =
     "critical_images";
 
+}  // namespace
+
 class ImageRewriteTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
@@ -463,9 +465,10 @@ class ImageRewriteTest : public RewriteTestBase {
                       "", width_height_tags, expect_rewritten, false);
   }
 
-  void TestSquashImagesForMobileScreen(RewriteDriver* driver) {
-    const int screen_width = 100;
-    const int screen_height = 80;
+  void TestSquashImagesForMobileScreen(
+      RewriteDriver* driver, int screen_width, int screen_height) {
+    EXPECT_LT(1, screen_width);
+    EXPECT_LT(1, screen_height);
     rewrite_driver()->SetScreenResolution(screen_width, screen_height);
 
     ImageDim desired_dim;
@@ -474,16 +477,20 @@ class ImageRewriteTest : public RewriteTestBase {
     // Both image dims are less than screen.
     image_dim.set_width(screen_width - 1);
     image_dim.set_height(screen_height - 1);
+
+    ResourceContext context;
     ImageRewriteFilter image_rewrite_filter(rewrite_driver());
+    image_rewrite_filter.EncodeUserAgentIntoResourceContext(&context);
+
     EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, &desired_dim));
+        image_dim, context, &desired_dim));
 
     // Image height is larger than screen height but image width is less than
     // screen width.
     image_dim.set_width(screen_width - 1);
     image_dim.set_height(screen_height * 2);
     EXPECT_TRUE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, &desired_dim));
+        image_dim, context, &desired_dim));
     EXPECT_FALSE(desired_dim.has_width());
     EXPECT_EQ(screen_height, desired_dim.height());
     desired_dim.clear_height();
@@ -494,7 +501,7 @@ class ImageRewriteTest : public RewriteTestBase {
     image_dim.set_width(screen_width * 2);
     image_dim.set_height(screen_height - 1);
     EXPECT_TRUE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, &desired_dim));
+        image_dim, context, &desired_dim));
     EXPECT_EQ(screen_width, desired_dim.width());
     EXPECT_FALSE(desired_dim.has_height());
     desired_dim.clear_height();
@@ -505,7 +512,7 @@ class ImageRewriteTest : public RewriteTestBase {
     image_dim.set_width(screen_width * 2);
     image_dim.set_height(screen_height * 3);
     EXPECT_TRUE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, &desired_dim));
+        image_dim, context, &desired_dim));
     EXPECT_FALSE(desired_dim.has_width());
     EXPECT_EQ(screen_height, desired_dim.height());
     desired_dim.clear_height();
@@ -516,7 +523,7 @@ class ImageRewriteTest : public RewriteTestBase {
     image_dim.set_width(screen_width * 3);
     image_dim.set_height(screen_height * 2);
     EXPECT_TRUE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, &desired_dim));
+        image_dim, context, &desired_dim));
     EXPECT_EQ(screen_width, desired_dim.width());
     EXPECT_FALSE(desired_dim.has_height());
 
@@ -529,17 +536,17 @@ class ImageRewriteTest : public RewriteTestBase {
     desired_dim.set_width(screen_width);
     desired_dim.clear_height();
     EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, &desired_dim));
+        image_dim, context, &desired_dim));
 
     desired_dim.clear_width();
     desired_dim.set_height(screen_height);
     EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, &desired_dim));
+        image_dim, context, &desired_dim));
 
     desired_dim.set_width(screen_width);
     desired_dim.set_height(screen_height);
     EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-        image_dim, &desired_dim));
+        image_dim, context, &desired_dim));
   }
 };
 
@@ -1507,24 +1514,34 @@ TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
   options()->EnableFilter(RewriteOptions::kSquashImagesForMobileScreen);
   rewrite_driver()->AddFilters();
 
+  int screen_width;
+  int screen_height;
+  ImageUrlEncoder::GetNormalizedScreenResolution(
+      100, 80, &screen_width, &screen_height);
   rewrite_driver()->set_user_agent("Android 4 Mobile Safari");
-  TestSquashImagesForMobileScreen(rewrite_driver());
+
+  TestSquashImagesForMobileScreen(
+      rewrite_driver(), screen_width, screen_height);
 
   rewrite_driver()->set_user_agent(
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/537.13+ "
       "(KHTML, like Gecko) Version/5.1.7 Safari/534.57.2");
-  rewrite_driver()->SetScreenResolution(100, 80);
+  rewrite_driver()->SetScreenResolution(screen_width, screen_height);
+
   ImageDim desired_dim;
   ImageDim image_dim;
   // Both image dims are larger than screen but no update since not mobile.
-  image_dim.set_width(300);
-  image_dim.set_height(160);
+  image_dim.set_width(screen_width + 100);
+  image_dim.set_height(screen_height + 100);
   ImageRewriteFilter image_rewrite_filter(rewrite_driver());
+  ResourceContext context;
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&context);
   EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
-      image_dim, &desired_dim));
+      image_dim, context, &desired_dim));
 
   rewrite_driver()->set_user_agent("iPhone OS");
-  TestSquashImagesForMobileScreen(rewrite_driver());
+  TestSquashImagesForMobileScreen(
+      rewrite_driver(), screen_width, screen_height);
 }
 
 TEST_F(ImageRewriteTest, ProgressiveJpegThresholds) {
@@ -1622,7 +1639,5 @@ TEST_F(ImageRewriteTest, CacheControlHeaderCheckForNonWebpUA) {
     EXPECT_EQ(5 * Timer::kMinuteMs,
               response.CacheExpirationTimeMs() - timer()->NowMs());
 }
-
-}  // namespace
 
 }  // namespace net_instaweb

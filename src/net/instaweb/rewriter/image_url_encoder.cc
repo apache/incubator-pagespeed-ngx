@@ -39,6 +39,7 @@ const char kMissingDimension = 'N';
 const char kWebpLossyUserAgentKey[] = "w";
 const char kWebpLossyLossLessAlphaUserAgentKey[] = "v";
 const char kMobileUserAgentKey[] = "m";
+const char kUserAgentScreenResolutionKey[] = "screen";
 
 bool IsValidCode(char code) {
   return ((code == kCodeSeparator) ||
@@ -72,6 +73,30 @@ uint32 DecodeDimension(StringPiece* in, bool* ok, bool* has_dimension) {
   }
   return result;
 }
+
+struct ScreenResolution {
+  int width;
+  int height;
+};
+
+// Used by kSquashImagesForMobileScreen as target screen resolution.
+// Keep the list small and in descending order of width.
+// We use normalized screen resolution to reduce cache fragmentation.
+static const ScreenResolution kNormalizedScreenResolutions[] = {
+    {1080, 1920},
+    {800, 1280},
+    {600, 1024},
+    {480, 800},
+};
+
+#ifndef NDEBUG
+void CheckScreenResolutionOrder() {
+  for (int i = 1, n = arraysize(kNormalizedScreenResolutions); i < n; ++i) {
+    DCHECK_LT(kNormalizedScreenResolutions[i].width,
+              kNormalizedScreenResolutions[i - 1].width);
+  }
+}
+#endif
 
 }  // namespace
 
@@ -250,6 +275,22 @@ void ImageUrlEncoder::SetWebpAndMobileUserAgent(
   }
 }
 
+void ImageUrlEncoder::SetUserAgentScreenResolution(
+    RewriteDriver* driver, ResourceContext* context) {
+  if (context == NULL) {
+    return;
+  }
+  int screen_width = 0;
+  int screen_height = 0;
+  if (driver->GetScreenResolution(&screen_width, &screen_height) &&
+      GetNormalizedScreenResolution(
+          screen_width, screen_height, &screen_width, &screen_height)) {
+    ImageDim *dims = context->mutable_user_agent_screen_resolution();
+    dims->set_width(screen_width);
+    dims->set_height(screen_height);
+  }
+}
+
 GoogleString ImageUrlEncoder::CacheKeyFromResourceContext(
     const ResourceContext& resource_context) {
   GoogleString user_agent_cache_key = "";
@@ -264,7 +305,42 @@ GoogleString ImageUrlEncoder::CacheKeyFromResourceContext(
   if (resource_context.mobile_user_agent()) {
     StrAppend(&user_agent_cache_key, kMobileUserAgentKey);
   }
+  if (resource_context.has_user_agent_screen_resolution() &&
+      resource_context.user_agent_screen_resolution().has_width() &&
+      resource_context.user_agent_screen_resolution().has_height()) {
+    StrAppend(
+        &user_agent_cache_key,
+        kUserAgentScreenResolutionKey,
+        IntegerToString(
+            resource_context.user_agent_screen_resolution().width()),
+        StringPiece(&kCodeSeparator, 1),
+        IntegerToString(
+            resource_context.user_agent_screen_resolution().height()));
+  }
   return user_agent_cache_key;
+}
+
+// Returns true if screen_width is less than any width in
+// kNormalizedScreenResolutions, in which case the normalized resolution with
+// the smallest width that is not less than screen_width will be returned.
+bool ImageUrlEncoder::GetNormalizedScreenResolution(
+    int screen_width, int screen_height, int* normalized_width,
+    int* normalized_height) {
+#ifndef NDEBUG
+  CheckScreenResolutionOrder();
+#endif
+
+  bool normalized = false;
+  for (int i = 0, n = arraysize(kNormalizedScreenResolutions); i < n; ++i) {
+    if (kNormalizedScreenResolutions[i].width >= screen_width) {
+      *normalized_width = kNormalizedScreenResolutions[i].width;
+      *normalized_height = kNormalizedScreenResolutions[i].height;
+      normalized = true;
+    } else {
+      break;
+    }
+  }
+  return normalized;
 }
 
 }  // namespace net_instaweb

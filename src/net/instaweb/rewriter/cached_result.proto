@@ -210,4 +210,6 @@ message ResourceContext {
   }
 
   optional LibWebpLevel libwebp_level = 5 [default = LIBWEBP_NONE];
+  // Device screen resolution derived from user agent.
+  optional ImageDim user_agent_screen_resolution = 6;
 }

@@ -31,6 +31,8 @@ const char kDimsUrl[] = "17x33x,hencoded.url,_with,_various.stuff";
 const char kNoDimsUrl[] = "x,hencoded.url,_with,_various.stuff";
 const char kActualUrl[] = "http://encoded.url/with/various.stuff";
 
+}  // namespace
+
 class ImageUrlEncoderTest : public ::testing::Test {
  protected:
   GoogleString EncodeUrlAndDimensions(const StringPiece& origin_url,
@@ -350,6 +352,28 @@ TEST_F(ImageUrlEncoderTest, HasHeightWebpLa) {
             EncodeUrlAndDimensions(origin_url, dim));
 }
 
+
+TEST_F(ImageUrlEncoderTest, UserAgentScreenResolution) {
+  const int screen_size = 100;
+  int width = 0;
+  int height = 0;
+  EXPECT_TRUE(ImageUrlEncoder::GetNormalizedScreenResolution(
+      screen_size, screen_size, &width, &height));
+  EXPECT_GT(width, screen_size);
+
+  ResourceContext context;
+  ImageDim *dims = context.mutable_user_agent_screen_resolution();
+  dims->set_width(width);
+  dims->set_height(height);
+
+  GoogleString cache_key =
+      ImageUrlEncoder::CacheKeyFromResourceContext(context);
+  GoogleString expected_key;
+  StrAppend(&expected_key, "screen", IntegerToString(width), "x",
+            IntegerToString(height));
+  EXPECT_EQ(expected_key, cache_key);
+}
+
 TEST_F(ImageUrlEncoderTest, BadFirst) {
   const char kBadFirst[] = "badx33x,hencoded.url,_with,_various.stuff";
   ExpectBadDim(kBadFirst);
@@ -516,5 +540,4 @@ TEST_F(ImageUrlEncoderTest, TruncatedBeforeSep) {
   ExpectBadDim(kTruncatedUrl);
 }
 
-}  // namespace
 }  // namespace net_instaweb

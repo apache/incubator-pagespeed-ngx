@@ -61,6 +61,8 @@ class ImageRewriteFilter : public RewriteFilter {
   virtual const char* Name() const { return "ImageRewrite"; }
   virtual const char* id() const { return RewriteOptions::kImageCompressionId; }
 
+  void EncodeUserAgentIntoResourceContext(ResourceContext* context) const;
+
   // Can we inline resource?  If so, encode its contents into the data_url,
   // otherwise leave data_url alone.
   bool TryInline(
@@ -103,8 +105,9 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Update desired image dimensions if necessary. Returns true if it is
   // updated.
-  bool UpdateDesiredImageDimsIfNecessary(const ImageDim& image_dim,
-                                         ImageDim* desired_dim);
+  bool UpdateDesiredImageDimsIfNecessary(
+      const ImageDim& image_dim, const ResourceContext& resource_context,
+      ImageDim* desired_dim);
 
   // Determines whether an image should be resized based on the current options.
   //
@@ -213,6 +216,8 @@ class ImageRewriteFilter : public RewriteFilter {
   // options()->image_inlining_identify_and_cache_without_rewriting(). Returns
   // true if a PropertyValue was written.
   bool StoreUrlInPropertyCache(const StringPiece& url);
+
+  bool SquashImagesForMobileScreenEnabled() const;
 
   scoped_ptr<WorkBound> work_bound_;
 

@@ -210,7 +210,7 @@ GoogleString ImageRewriteFilter::Context::UserAgentCacheKey(
 
 void ImageRewriteFilter::Context::EncodeUserAgentIntoResourceContext(
     ResourceContext* context) {
-  ImageUrlEncoder::SetWebpAndMobileUserAgent(*Driver(), context);
+  return filter_->EncodeUserAgentIntoResourceContext(context);
 }
 
 ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
@@ -396,7 +396,7 @@ bool ImageRewriteFilter::ShouldResize(const ResourceContext& context,
   ImageDim image_dim;
   image->Dimensions(&image_dim);
 
-  UpdateDesiredImageDimsIfNecessary(image_dim, desired_dim);
+  UpdateDesiredImageDimsIfNecessary(image_dim, context, desired_dim);
 
   if (options->Enabled(RewriteOptions::kResizeImages) &&
       ImageUrlEncoder::HasValidDimension(*desired_dim) &&
@@ -753,7 +753,7 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   }
   StringPiece url(src->DecodedValueOrNull());
 
-  ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver_, resource_context.get());
+  EncodeUserAgentIntoResourceContext(resource_context.get());
 
   ResourcePtr input_resource = CreateInputResource(src->DecodedValueOrNull());
   if (input_resource.get() != NULL) {
@@ -1190,9 +1190,17 @@ const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {
   return &encoder_;
 }
 
+void ImageRewriteFilter::EncodeUserAgentIntoResourceContext(
+    ResourceContext* context) const {
+  ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver_, context);
+  if (SquashImagesForMobileScreenEnabled()) {
+    ImageUrlEncoder::SetUserAgentScreenResolution(driver_, context);
+  }
+}
+
 RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
   ResourceContext* resource_context = new ResourceContext;
-  ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver_, resource_context);
+  EncodeUserAgentIntoResourceContext(resource_context);
   return new Context(0 /*No CSS inlining, it's html */,
                      this, driver_, NULL /*not nested */,
                      resource_context, false /*not css */,
@@ -1229,7 +1237,7 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
 RewriteContext* ImageRewriteFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
   // This is used for IPRO path. We create a ResourceContext but do not
-  // call ImageUrlEncoder::SetWebpAndMobileUserAgent to set any context for
+  // call EncodeUserAgentIntoResourceContext(...) to set any context for
   // browser capability.
   Context* context = new Context(0 /*No Css inling */, this, NULL /* driver */,
                                  parent, new ResourceContext,
@@ -1238,39 +1246,47 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContext(
   return context;
 }
 
-bool ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
-    const ImageDim& image_dim, ImageDim* desired_dim) {
+bool ImageRewriteFilter::SquashImagesForMobileScreenEnabled() const {
   const RewriteOptions* options = driver_->options();
-  int screen_width = 0;
-  int screen_height = 0;
+  return options->Enabled(RewriteOptions::kResizeImages) &&
+      options->Enabled(RewriteOptions::kSquashImagesForMobileScreen) &&
+      driver_->IsMobileUserAgent();
+}
+
+bool ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
+    const ImageDim& image_dim, const ResourceContext& resource_context,
+    ImageDim* desired_dim) {
   bool updated = false;
-  // Get the desired dimensions for mobile screen if image squashing could make
+  if (!resource_context.has_user_agent_screen_resolution()) {
+    return false;
+  }
+
+  const ImageDim& screen_dim = resource_context.user_agent_screen_resolution();
+
+  // Update the desired dimensions for screen if image squashing could make
   // the image size even smaller and there is no desired dimensions detected.
   // This is mainly for the data reduction purpose of mobile devices.
   // Note that squashing may break the layout of a web page if the page depends
   // on the original image size.
   // TODO(bolian): Consider squash images in the HTML path if dimensions are
   // present. But should also override the existing dimensions in the markup.
-  if (options->Enabled(RewriteOptions::kResizeImages) &&
-      options->Enabled(RewriteOptions::kSquashImagesForMobileScreen) &&
-      driver_->IsMobileUserAgent() &&
-      ImageUrlEncoder::HasValidDimensions(image_dim) &&
-      driver_->GetScreenResolution(&screen_width, &screen_height) &&
-      (image_dim.width() > screen_width ||
-       image_dim.height() > screen_height) &&
+  if (ImageUrlEncoder::HasValidDimensions(image_dim) &&
+      ImageUrlEncoder::HasValidDimensions(screen_dim) &&
+      (image_dim.width() > screen_dim.width() ||
+       image_dim.height() > screen_dim.height()) &&
       !desired_dim->has_width() &&
       !desired_dim->has_height()) {
     // We want to have one of the desired image dimensions the same as the
     // corresponding dimension of the screen and the other no larger than that
     // of the screen.
     const double width_ratio =
-        static_cast<double>(screen_width) / image_dim.width();
+        static_cast<double>(screen_dim.width()) / image_dim.width();
     const double height_ratio =
-        static_cast<double>(screen_height) / image_dim.height();
+        static_cast<double>(screen_dim.height()) / image_dim.height();
     if (width_ratio <= height_ratio) {
-      desired_dim->set_width(screen_width);
+      desired_dim->set_width(screen_dim.width());
     } else {
-      desired_dim->set_height(screen_height);
+      desired_dim->set_height(screen_dim.height());
     }
     updated = true;
   }
