@@ -53,7 +53,7 @@ class BlinkCriticalLineDataFinder {
       const ResponseHeaders* response_headers,
       RewriteDriver* driver);
 
-  virtual void PropagateCacheDeletes(const GoogleString& key);
+  virtual void PropagateCacheDeletes(const GoogleString& url, int furious_id);
 
   virtual bool UpdateDiffInfo(
       bool is_diff, int64 now_ms, RewriteDriver* rewrite_driver);

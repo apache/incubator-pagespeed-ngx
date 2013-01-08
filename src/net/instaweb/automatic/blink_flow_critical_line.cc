@@ -430,10 +430,8 @@ class CriticalLineFetch : public AsyncFetch {
         recompute_critical_line) {
       num_blink_html_mismatches_cache_deletes_->IncBy(1);
       if (options_->propagate_blink_cache_deletes()) {
-        const GoogleString cache_key =
-            property_cache->CacheKey(page->key(), cohort);
         server_context_->blink_critical_line_data_finder()->
-            PropagateCacheDeletes(cache_key);
+            PropagateCacheDeletes(url_, options_->furious_id());
       }
       page->DeleteProperty(
           cohort, BlinkUtil::kBlinkCriticalLineDataPropertyName);
