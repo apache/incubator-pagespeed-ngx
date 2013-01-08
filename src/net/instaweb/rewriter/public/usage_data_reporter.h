@@ -54,6 +54,10 @@ class UsageDataReporter {
   virtual void ReportWarning(const GoogleUrl& url, int32 warning_code,
                              const StringPiece& warning_message) {}
 
+  // Report bandwidth.
+  virtual void ReportBandwidth(int64 project_id, const GoogleUrl& url,
+                               int64 bandwidth) {}
+
  private:
   DISALLOW_COPY_AND_ASSIGN(UsageDataReporter);
 };

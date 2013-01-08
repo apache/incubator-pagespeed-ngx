@@ -423,6 +423,34 @@ TEST_F(CssImageRewriterTest, CssImagePreserveUrls) {
   EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
 }
 
+TEST_F(CssImageRewriterTest, CssImagePreserveUrlsNoPreemptiveRewrite) {
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->set_image_preserve_urls(true);
+  options()->set_in_place_preemptive_rewrite_css_images(false);
+  server_context()->ComputeSignature(options());
+  AddFileToMockFetcher(StrCat(kTestDomain, "foo.png"), kBikePngFile,
+                       kContentTypePng, 100);
+  static const char kCss[] =
+      "body {\n"
+      "  background-image: url(foo.png);\n"
+      "}\n";
+
+  const GoogleString kCssAfter =  "body{background-image:url(foo.png)}";
+  // The CSS should minify but the URL shouldn't change.
+  ValidateRewriteExternalCss("compress_preserve_css_images", kCss, kCssAfter,
+                             kExpectSuccess | kNoClearFetcher);
+
+  // We should not find a cache hit when requesting the image, indicating it
+  // has not been optimized, in contrast with the CssImagePreserveUrls test.
+  ClearStats();
+  GoogleString out_img_url = Encode(kTestDomain, "ic", "0", "foo.png", "png");
+  GoogleString out_img;
+  EXPECT_TRUE(FetchResourceUrl(out_img_url, &out_img));
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_hits()));
+}
+
 TEST_F(CssImageRewriterTest, InlineImages) {
   // Make sure we can inline images in any kind of CSS.
   options()->ClearSignatureForTesting();

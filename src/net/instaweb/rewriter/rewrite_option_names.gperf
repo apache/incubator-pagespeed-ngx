@@ -73,6 +73,7 @@ struct OptionName {
 "ImplicitCacheTtlMs",                    RewriteOptions::kImplicitCacheTtlMs
 "InPlaceResourceOptimization",           RewriteOptions::kInPlaceResourceOptimization
 "InPlaceRewriteDeadlineMs",              RewriteOptions::kInPlaceRewriteDeadlineMs
+"InPlacePreemptiveRewriteCssImages",     RewriteOptions::kInPlacePreemptiveRewriteCssImages
 "InPlaceWaitForOptimized",               RewriteOptions::kInPlaceWaitForOptimized
 "IncreaseSpeedTracking",                 RewriteOptions::kIncreaseSpeedTracking
 "InlineOnlyCriticalImages",              RewriteOptions::kInlineOnlyCriticalImages

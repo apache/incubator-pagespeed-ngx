@@ -107,6 +107,9 @@ DEFINE_int32(in_place_rewrite_deadline_ms,
              "After this interval passes, the original unoptimized resource "
              "will be served to clients. A value of -1 will wait indefinitely "
              "for each in-place rewrite to complete.");
+DEFINE_bool(in_place_preemptive_rewrite_css_images, true,
+            "If set, preemptive rewrite images in CSS files on the IPRO "
+            "serving path.");
 DEFINE_bool(image_preserve_urls, false, "Boolean to indicate whether image"
             "URLs should be preserved.");
 DEFINE_bool(css_preserve_urls, false, "Boolean to indicate whether CSS URLS"
@@ -179,6 +182,10 @@ DEFINE_int64(max_image_size_low_resolution_bytes,
 DEFINE_int64(finder_properties_cache_expiration_time_ms,
     net_instaweb::RewriteOptions::kDefaultFinderPropertiesCacheExpirationTimeMs,
     "Cache expiration time for properties of finders in msec.");
+
+DEFINE_int64(finder_properties_cache_refresh_time_ms,
+    net_instaweb::RewriteOptions::kFinderPropertiesCacheRefreshTimeMs,
+    "Cache refresh time for properties of finders in msec.");
 
 DEFINE_int64(
     metadata_cache_staleness_threshold_ms,
@@ -473,6 +480,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_finder_properties_cache_expiration_time_ms(
         FLAGS_finder_properties_cache_expiration_time_ms);
   }
+  if (WasExplicitlySet("finder_properties_cache_refresh_time_ms")) {
+    options->set_finder_properties_cache_refresh_time_ms(
+        FLAGS_finder_properties_cache_refresh_time_ms);
+  }
   if (WasExplicitlySet("metadata_cache_staleness_threshold_ms")) {
     options->set_metadata_cache_staleness_threshold_ms(
         FLAGS_metadata_cache_staleness_threshold_ms);
@@ -611,6 +622,11 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("in_place_rewrite_deadline_ms")) {
     options->set_in_place_rewrite_deadline_ms(
         FLAGS_in_place_rewrite_deadline_ms);
+  }
+
+  if (WasExplicitlySet("in_place_preemptive_rewrite_css_images")) {
+    options->set_in_place_preemptive_rewrite_css_images(
+        FLAGS_in_place_preemptive_rewrite_css_images);
   }
 
   MessageHandler* handler = factory->message_handler();

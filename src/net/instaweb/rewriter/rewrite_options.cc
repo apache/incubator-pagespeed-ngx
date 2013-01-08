@@ -721,6 +721,8 @@ void RewriteOptions::AddProperties() {
   add_option(kDefaultRewriteDeadlineMs,
              &RewriteOptions::in_place_rewrite_deadline_ms_, "iprdm",
              kInPlaceRewriteDeadlineMs);
+  add_option(true, &RewriteOptions::in_place_preemptive_rewrite_css_images_,
+             "ipprci", kInPlacePreemptiveRewriteCssImages);
   add_option(true, &RewriteOptions::combine_across_paths_, "cp",
              kCombineAcrossPaths);
   add_option(false, &RewriteOptions::log_rewrite_timing_, "lr",

@@ -126,11 +126,15 @@ void CssImageRewriter::RewriteSlot(const ResourceSlotPtr& slot,
                                    int64 image_inline_max_bytes,
                                    RewriteContext* parent) {
   const RewriteOptions* options = driver_->options();
-  if (options->ImageOptimizationEnabled() ||
-      image_inline_max_bytes > 0) {
-    parent->AddNestedContext(
-        image_rewriter_->MakeNestedRewriteContextForCss(image_inline_max_bytes,
-            parent, slot));
+  if (options->ImageOptimizationEnabled() || image_inline_max_bytes > 0) {
+    // If this isn't an IPRO rewrite or we've enabled preemptive IPRO CSS
+    // rewrites.
+    if (!slot->disable_rendering() ||
+        options->in_place_preemptive_rewrite_css_images()) {
+      parent->AddNestedContext(
+          image_rewriter_->MakeNestedRewriteContextForCss(
+              image_inline_max_bytes, parent, slot));
+    }
   }
 
   if (driver_->MayCacheExtendImages()) {
