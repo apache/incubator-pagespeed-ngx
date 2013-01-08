@@ -19,14 +19,10 @@
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/charset_util.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/url_segment_encoder.h"
 #include "util/utf8/public/unicodetext.h"
 #include "webutil/css/parser.h"
 
@@ -35,27 +31,6 @@ namespace net_instaweb {
 class RewriteContext;
 
 RewriteFilter::~RewriteFilter() {
-}
-
-ResourcePtr RewriteFilter::CreateInputResourceFromOutputResource(
-    OutputResource* output_resource) {
-  ResourcePtr input_resource;
-  StringVector urls;
-  ResourceContext data;
-  if (encoder()->Decode(output_resource->name(), &urls, &data,
-                        driver_->message_handler()) &&
-      (urls.size() == 1)) {
-    GoogleUrl base_gurl(output_resource->decoded_base());
-    GoogleUrl resource_url(base_gurl, urls[0]);
-    StringPiece output_base = output_resource->resolved_base();
-    if (output_base == driver_->base_url().AllExceptLeaf() ||
-        output_base == GoogleUrl(driver_->decoded_base()).AllExceptLeaf()) {
-      input_resource = driver_->CreateInputResource(resource_url);
-    } else if (driver_->MayRewriteUrl(base_gurl, resource_url)) {
-      input_resource = driver_->CreateInputResource(resource_url);
-    }
-  }
-  return input_resource;
 }
 
 void RewriteFilter::DetermineEnabled() {

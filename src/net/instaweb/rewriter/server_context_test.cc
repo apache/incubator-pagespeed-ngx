@@ -134,6 +134,25 @@ class ServerContextTest : public RewriteTestBase {
     return async_fetch->success();
   }
 
+  // Helper for testing of FetchOutputResource. Assumes that output_resource
+  // is to be handled by the filter with 2-letter code filter_id, and
+  // verifies result to match expect_success and expect_content.
+  void TestFetchOutputResource(const OutputResourcePtr& output_resource,
+                               const char* filter_id,
+                               bool expect_success,
+                               StringPiece expect_content) {
+    ASSERT_TRUE(output_resource.get());
+    RewriteFilter* filter = rewrite_driver()->FindFilter(filter_id);
+    ASSERT_TRUE(filter != NULL);
+    StringAsyncFetch fetch_result(CreateRequestContext());
+    EXPECT_TRUE(rewrite_driver()->FetchOutputResource(
+        output_resource, filter, &fetch_result));
+    rewrite_driver()->WaitForCompletion();
+    EXPECT_TRUE(fetch_result.done());
+    EXPECT_EQ(expect_success, fetch_result.success());
+    EXPECT_EQ(expect_content, fetch_result.buffer());
+  }
+
   GoogleString GetOutputResourceWithoutLock(const OutputResourcePtr& resource) {
     StringAsyncFetch fetch(RequestContext::NewTestRequestContext(
         server_context()->thread_system()));
@@ -493,47 +512,49 @@ TEST_F(ServerContextTest, TestNamed) {
 }
 
 TEST_F(ServerContextTest, TestOutputInputUrl) {
+  options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+  rewrite_driver()->AddFilters();
+
   GoogleString url = Encode("http://example.com/dir/123/",
                             RewriteOptions::kJavascriptMinId,
                             "0", "orig", "js");
+  SetResponseWithDefaultHeaders(
+      "http://example.com/dir/123/orig", kContentTypeJavascript,
+      "foo() /*comment */;", 100);
+
   OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
-  ASSERT_TRUE(output_resource.get());
-  RewriteFilter* filter = rewrite_driver()->FindFilter(
-      RewriteOptions::kJavascriptMinId);
-  ASSERT_TRUE(filter != NULL);
-  ResourcePtr input_resource(
-      filter->CreateInputResourceFromOutputResource(output_resource.get()));
-  EXPECT_EQ("http://example.com/dir/123/orig", input_resource->url());
+  TestFetchOutputResource(output_resource, RewriteOptions::kJavascriptMinId,
+                          true, "foo();");
 }
 
 TEST_F(ServerContextTest, TestOutputInputUrlEvil) {
+  options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+  rewrite_driver()->AddFilters();
+
   GoogleString url = MakeEvilUrl("example.com", "http://www.evil.com");
+  SetResponseWithDefaultHeaders(
+      "http://www.evil.com/", kContentTypeJavascript,
+      "foo() /*comment */;", 100);
+
   OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
-  ASSERT_TRUE(output_resource.get());
-  RewriteFilter* filter = rewrite_driver()->FindFilter(
-      RewriteOptions::kJavascriptMinId);
-  ASSERT_TRUE(filter != NULL);
-  ResourcePtr input_resource(
-      filter->CreateInputResourceFromOutputResource(output_resource.get()));
-  EXPECT_EQ(NULL, input_resource.get());
+  TestFetchOutputResource(output_resource, RewriteOptions::kJavascriptMinId,
+                          false, "");
 }
 
 TEST_F(ServerContextTest, TestOutputInputUrlBusy) {
   EXPECT_TRUE(options()->domain_lawyer()->AddOriginDomainMapping(
       "www.busy.com", "example.com", message_handler()));
+  options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+  rewrite_driver()->AddFilters();
 
   GoogleString url = MakeEvilUrl("example.com", "http://www.busy.com");
+  SetResponseWithDefaultHeaders(
+      "http://www.busy.com/", kContentTypeJavascript,
+      "foo() /*comment */;", 100);
+
   OutputResourcePtr output_resource(CreateOutputResourceForFetch(url));
-  ASSERT_TRUE(output_resource.get());
-  RewriteFilter* filter = rewrite_driver()->FindFilter(
-      RewriteOptions::kJavascriptMinId);
-  ASSERT_TRUE(filter != NULL);
-  ResourcePtr input_resource(
-      filter->CreateInputResourceFromOutputResource(output_resource.get()));
-  EXPECT_EQ(NULL, input_resource.get());
-  if (input_resource.get() != NULL) {
-    LOG(ERROR) << input_resource->url();
-  }
+  TestFetchOutputResource(output_resource, RewriteOptions::kJavascriptMinId,
+                          false, "");
 }
 
 // Check that we can origin-map a domain referenced from an HTML file

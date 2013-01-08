@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -28,7 +27,7 @@
 
 namespace net_instaweb {
 
-class OutputResource;
+class Resource;
 class RewriteContext;
 class RewriteDriver;
 class UrlSegmentEncoder;
@@ -47,11 +46,6 @@ class RewriteFilter : public CommonFilter {
   // inheriting from RewriteDriver that use the DOM cohort should override
   // UsePropertyCacheDomCohort to return true.
   virtual void DetermineEnabled();
-
-  // Create an input resource by decoding output_resource using the
-  // filter's. Assures legality by explicitly permission-checking the result.
-  ResourcePtr CreateInputResourceFromOutputResource(
-      OutputResource* output_resource);
 
   // All RewriteFilters define how they encode URLs and other
   // associated information needed for a rewrite into a URL.
