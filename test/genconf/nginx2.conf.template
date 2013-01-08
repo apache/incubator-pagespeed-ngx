@@ -231,7 +231,6 @@ key_to_writer = {
     "rewrite_rules_open": write_rewrite_rules_open,
 }
 
-
 def prepare_configuration(config):
     # nginx doesn't have a top level configuration
     # for locations and directories (no directories at all AFAICT)
