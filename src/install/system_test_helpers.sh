@@ -202,11 +202,18 @@ function check_failures_and_exit() {
   exit 0
 }
 
+# Did we expect the current test, as set by start_test, to fail?
+function is_expected_failure() {
+  # Does PAGESPEED_EXPECTED_FAILURES contain CURRENT_TEST?
+  test "$PAGESPEED_EXPECTED_FAILURES" != \
+       "${PAGESPEED_EXPECTED_FAILURES/~"${CURRENT_TEST}"~/}"
+}
+
 # By default, print a message like:
 #   failure at line 374
 #   FAIL
-# and then exit with return value 1.  If PAGESPEED_EXPECTED_FAILURES contains
-# the name of the current test, log to $FAILURES and return without exiting.
+# and then exit with return value 1.  If we expected this test to fail, log to
+# $FAILURES and return without exiting.
 #
 # If the shell does not support the 'caller' builtin, skip the line number info.
 #
@@ -222,9 +229,7 @@ function handle_failure() {
     echo FAILed Input: "$1"
   fi
   echo "in '$CURRENT_TEST'"
-  if [ "$PAGESPEED_EXPECTED_FAILURES" != \
-       "${PAGESPEED_EXPECTED_FAILURES/~"${CURRENT_TEST}"~/}" ] ; then
-    # We expected this test to fail.
+  if is_expected_failure ; then
     echo $CURRENT_TEST >> $FAILURES
     echo "Continuing after expected failure..."
   else
@@ -313,8 +318,8 @@ function check_stat() {
 
 FETCH_UNTIL_OUTFILE="$OUTDIR/fetch_until_output.$$"
 
-# Continuously fetches URL and pipes the output to COMMAND.  Loops until
-# COMMAND outputs RESULT, in which case we return 0, or until 10 seconds have
+# Continuously fetches URL and pipes the output to COMMAND.  Loops until COMMAND
+# outputs RESULT, in which case we return 0, or until TIMEOUT seconds have
 # passed, in which case we return 1.
 #
 # Usage:
@@ -353,8 +358,17 @@ function fetch_until() {
                                                   -O $FETCH_FILE"
   fi
 
+  # TIMEOUT is how long to keep trying, in seconds.
+  if is_expected_failure ; then
+    # For tests that we expect to fail, don't wait hoping for the right result.
+    TIMEOUT=0
+  else
+    # This is longer than PageSpeed should normally ever take to rewrite
+    # resources, but if it's running under Valgrind it might occasionally take a
+    # really long time.
+    TIMEOUT=100
+  fi
 
-  TIMEOUT=100
   START=$(date +%s)
   STOP=$((START+$TIMEOUT))
   WGET_HERE="$WGET -q $FETCH_UNTIL_WGET_ARGS"
