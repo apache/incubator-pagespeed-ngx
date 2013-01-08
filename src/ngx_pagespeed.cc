@@ -1063,7 +1063,9 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
   }
 
   // Handles its own deletion.  We need to call Release() when we're done with
-  // it, and call Done() on the associated proxy fetch.
+  // it, and call Done() on the associated parent (Proxy or Resource) fetch.  If
+  // we fail before creating the associated fetch then we need to call Done() on
+  // the BaseFetch ourselves.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(
       r, file_descriptors[1],
       net_instaweb::RequestContextPtr(new net_instaweb::RequestContext(
@@ -1073,6 +1075,7 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
   net_instaweb::RewriteOptions* custom_options;
   bool ok = ps_determine_options(r, ctx, &custom_options, &url);
   if (!ok) {
+    ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
     ps_release_request_context(ctx);
     return CreateRequestContext::kError;
   }
@@ -1089,6 +1092,7 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
   }
 
   if (!options->enabled()) {
+    ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
     ps_release_request_context(ctx);
     return CreateRequestContext::kPagespeedDisabled;
   }
