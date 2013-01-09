@@ -79,16 +79,18 @@ pagespeed: {
     Domain: "modpagespeed.com:1023",
 
     # Test LoadFromFile mapping by mapping one dir to another.
-    LoadFromFile: '"http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"', 
-    LoadFromFileMatch: '"^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\\1/"',
-    LoadFromFileRule: "Disallow \"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/\"",
+    ##nginx doesn't support LoadFromFile* yet
+    ##LoadFromFile: '"http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"', 
+    ##LoadFromFileMatch: '"^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\\1/"',
+    ##LoadFromFileRule: "Disallow \"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/\"",
     ##TODO: uncomment
     ##FromFileRuleMatch: "Disallow \.ssp.css$",
-    LoadFromFileRuleMatch: "Allow exception\.ssp\.css$",
+    ##LoadFromFileRuleMatch: "Allow exception\.ssp\.css$",
 
     # Print out detail about connection-refused errors.  We don't negative-test
     # this here cause it's a hassle; we just depend on the unit-tests for that.
-    ListOutstandingUrlsOnError: "on",
+    ## not supported on ningx yet:
+    ##ListOutstandingUrlsOnError: "on",
 
     AvoidRenamingIntrospectiveJavascript: "off",
 
@@ -113,105 +115,128 @@ pagespeed: {
     #STATS_LOGGING StatisticsLogging: "on",
     #STATS_LOGGING StatisticsLoggingFile: "\"@@MOD_PAGESPEED_STATS_LOG@@\"",
     #STATS_LOGGING StatisticsLoggingIntervalMs: 10,
-
-    #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
-    #ALL_DIRECTIVES Allow: "foo",
-    #ALL_DIRECTIVES AnalyticsID: 1234,
-    #ALL_DIRECTIVES AvoidRenamingIntrospectiveJavascript: "true",
-    #ALL_DIRECTIVES BeaconUrl: "\"http://example.com/beacon\"",
-    #ALL_DIRECTIVES BlockingRewriteKey: "test",
-    #ALL_DIRECTIVES CacheFlushFilename: "/tmp/cache.flush",
-    #ALL_DIRECTIVES CacheFlushPollInterevalSec: 10,
-    #ALL_DIRECTIVES ClientDomainRewrite: "false",
-    #ALL_DIRECTIVES CollectRefererStatistics: "false",
-    #ALL_DIRECTIVES CombineAcrossPaths: "true",
-    #ALL_DIRECTIVES CssFlattenMaxBytes: 2000,
-    #ALL_DIRECTIVES CssImageInlineMaxBytes: 2000,
-    #ALL_DIRECTIVES CssInlineMaxBytes: 2000,
-    #ALL_DIRECTIVES CssOutlineMinBytes: 2000,
-    #ALL_DIRECTIVES CssPreserveURLs: "off",
-    #ALL_DIRECTIVES DisableFilters: "strip_scripts",
-    #ALL_DIRECTIVES Disallow: "bar",
-    #ALL_DIRECTIVES Domain: "http://example.com",
-    #ALL_DIRECTIVES DomainRewriteHyperlinks: "true",
-    #ALL_DIRECTIVES EnableFilters: "extend_cache",
-    #ALL_DIRECTIVES ExperimentSpec: "\"id=8;percent=10\"",
-    #ALL_DIRECTIVES ExperimentVariable: 3,
-    #ALL_DIRECTIVES FetchProxy: "localhost:4321",
-    #ALL_DIRECTIVES FetchWithGzip: "on",
-    #ALL_DIRECTIVES FetcherTimeOutMs: 1000,
-    #ALL_DIRECTIVES FileCacheCleanIntervalMs: 3600000,
-    #ALL_DIRECTIVES FileCacheInodeLimit: 10000,
-    #ALL_DIRECTIVES FileCachePath: "/tmp/cache/",
-    #ALL_DIRECTIVES FileCacheSizeKb: 1000,
-    #ALL_DIRECTIVES ForbidAllDisabledFilters: true,
-    #ALL_DIRECTIVES ForbidFilters: "rewrite_images",
-    #ALL_DIRECTIVES ForceCaching: "off",
-    #ALL_DIRECTIVES HashRefererStatistics: "false",
-    #ALL_DIRECTIVES ImageInlineMaxBytes: 2000,
-    #ALL_DIRECTIVES ImageLimitOptimizedPercent: 80,
-    #ALL_DIRECTIVES ImageLimitResizeAreaPercent: 80,
-    #ALL_DIRECTIVES ImageMaxRewritesAtOnce: 5,
-    #ALL_DIRECTIVES ImageRecompressionQuality: 75,
-    #ALL_DIRECTIVES ImagePreserveURLs: "false",
-    #ALL_DIRECTIVES ImageWebpRecompressionQuality: 85,
-    #ALL_DIRECTIVES ImgInlineMaxBytes: 2000,
-    #ALL_DIRECTIVES ImgMaxRewritesAtOnce: 5,
-    #ALL_DIRECTIVES InPlaceResourceOptimization: "on",
-    #ALL_DIRECTIVES IncreaseSpeedTracking: "true",
-    #ALL_DIRECTIVES InstallCrashHandler: "off",
-    #ALL_DIRECTIVES JpegRecompressionQuality: 80,
-    #ALL_DIRECTIVES JsInlineMaxBytes: 2000,
-    #ALL_DIRECTIVES JsOutlineMinBytes: 2000,
-    #ALL_DIRECTIVES JsPreserveURLS: "off",
-    #ALL_DIRECTIVES LRUCacheByteLimit: 1000,
-    #ALL_DIRECTIVES LRUCacheKbPerProcess: 1,
-    #ALL_DIRECTIVES ListOutstandingUrlsOnError: "on",
-    #ALL_DIRECTIVES LoadFromFile: "http://example.com/ /var/html/example/",
-    #ALL_DIRECTIVES LoadFromFileMatch: "\"^http://example.com/\" /var/html/example/",
-    #ALL_DIRECTIVES LoadFromFileRule: "allow /var/html/example/",
-    #ALL_DIRECTIVES LoadFromFileRuleMatch: "Disallow \.php.css$",
-    #ALL_DIRECTIVES LogRewriteTiming: "false",
-    #ALL_DIRECTIVES LowercaseHtmlNames: "true",
+#ifdef ALL_DIRECTIVES
+    # Invoke all ModPagespeed* directives to make sure they work:
+    Allow: "foo",
+    AnalyticsID: 1234,
+    AvoidRenamingIntrospectiveJavascript: "true",
+    BeaconUrl: "\"http://example.com/beacon\"",
+    BlockingRewriteKey: "test",
+#ifndef nginx
+    CacheFlushFilename: "/tmp/cache.flush",
+    CacheFlushPollInterevalSec: 10,
+#endif
+    ClientDomainRewrite: "false",
+#ifndef nginx
+    CollectRefererStatistics: "false",
+#endif
+    CombineAcrossPaths: "true",
+    CssFlattenMaxBytes: 2000,
+    CssImageInlineMaxBytes: 2000,
+    CssInlineMaxBytes: 2000,
+    CssOutlineMinBytes: 2000,
+    CssPreserveURLs: "off",
+    DisableFilters: "strip_scripts",
+    Disallow: "bar",
+    Domain: "http://example.com",
+    DomainRewriteHyperlinks: "true",
+    EnableFilters: "extend_cache",
+    ExperimentSpec: "\"id=8;percent=10\"",
+    ExperimentVariable: 3,
+    FetchProxy: "localhost:4321",
+#ifndef nginx
+    FetchWithGzip: "on",
+    FetcherTimeOutMs: 1000,
+#endif
+    FileCacheCleanIntervalMs: 3600000,
+    FileCacheInodeLimit: 10000,
+    FileCachePath: "/tmp/cache/",
+    FileCacheSizeKb: 1000,
+#ifndef nginx
+    ForbidAllDisabledFilters: true,
+    ForbidFilters: "rewrite_images",
+    ForceCaching: "off",
+    HashRefererStatistics: "false",
+    ImageInlineMaxBytes: 2000,
+#endif
+    ImageLimitOptimizedPercent: 80,
+    ImageLimitResizeAreaPercent: 80,
+    ImageMaxRewritesAtOnce: 5,
+    ImageRecompressionQuality: 75,
+    ImagePreserveURLs: "false",
+    ImageWebpRecompressionQuality: 85,
+#ifndef nginx
+    ImgMaxRewritesAtOnce: 5,
+#endif
+    InPlaceResourceOptimization: "on",
+    IncreaseSpeedTracking: "true",
+#ifndef nginx
+    InstallCrashHandler: "off",
+#endif
+    JpegRecompressionQuality: 80,
+    JsInlineMaxBytes: 2000,
+    JsOutlineMinBytes: 2000,
+    JsPreserveURLS: "off",
+    LRUCacheByteLimit: 1000,
+    LRUCacheKbPerProcess: 1,
+#ifndef nginx
+    ListOutstandingUrlsOnError: "on",
+    LoadFromFile: "http://example.com/ /var/html/example/",
+    LoadFromFileMatch: "\"^http://example.com/\" /var/html/example/",
+    LoadFromFileRule: "allow /var/html/example/",
+    LoadFromFileRuleMatch: "Disallow \.php.css$",
+#endif
+    LogRewriteTiming: "false",
+    LowercaseHtmlNames: "true",
     ## TODO(oschaaf): typo in localhost? probably doesn't matter
-    #ALL_DIRECTIVES MapOriginDomain: "example.com localhlost",
-    #ALL_DIRECTIVES MapRewriteDomain: "example.com static.example.com",
-    #ALL_DIRECTIVES MaxImageSizeLowResolutionBytes: 1000,
-    #ALL_DIRECTIVES MaxInlinedPreviewImagesIndex: 80,
-    #ALL_DIRECTIVES MaxSegmentLength: 100,
-    #ALL_DIRECTIVES MemcachedServers: "localhost:6765",
-    #ALL_DIRECTIVES MemcachedThreads: 1,
-    #ALL_DIRECTIVES MessageBufferSize: 100,
-    #ALL_DIRECTIVES MinImageSizeLowResolutionBytes: 2000,
-    #ALL_DIRECTIVES ModifyCachingHeaders: "true",
-    #ALL_DIRECTIVES NumExpensiveRewriteThreads: 2,
-    #ALL_DIRECTIVES NumRewriteThreads: 4,
-    #ALL_DIRECTIVES RateLimitBackgroundFetches: "true",
-    #ALL_DIRECTIVES RefererStatisticsOutputLevel: "simple",
-    #ALL_DIRECTIVES ReportUnloadTime: "true",
-    #ALL_DIRECTIVES RespectVary: "true",
-    #ALL_DIRECTIVES RespectXForwardedProto: "off",
-    #ALL_DIRECTIVES RetainComment: "\"special\"",
-    #ALL_DIRECTIVES RewriteDeadlinePerFlushMs: 10,
-    #ALL_DIRECTIVES RewriteLevel: "CoreFilters",
-    #ALL_DIRECTIVES RunExperiment: "true",
-    #ALL_DIRECTIVES ShardDomain: "example.com 1.example.com,2.example.com",
-    #ALL_DIRECTIVES SharedMemoryLocks: "true",
-    #ALL_DIRECTIVES SlurpDirectory: "/tmp/slurp/",
-    #ALL_DIRECTIVES SlurpFlushLimit: 5,
-    #ALL_DIRECTIVES SlurpReadOnly: "true",
-    #ALL_DIRECTIVES Statistics: "true",
-    #ALL_DIRECTIVES StatisticsLogging: "true",
-    #ALL_DIRECTIVES StatisticsLoggingChartsCSS: "\"example.com/css.css\"",
-    #ALL_DIRECTIVES StatisticsLoggingChartsJS: "\"example.com/js.js\"",
-    #ALL_DIRECTIVES StatisticsLoggingFile: "\"@@MOD_PAGESPEED_STATS_LOG@@\"",
-    #ALL_DIRECTIVES StatisticsLoggingIntervalMs: 3000,
-    #ALL_DIRECTIVES SupportNoScriptEnabled: "true",
-    #ALL_DIRECTIVES TestProxy: "off",
-    #ALL_DIRECTIVES UrlValuedAttribute: "span src Hyperlink",
-    #ALL_DIRECTIVES UsePerVHostStatistics: "on",
-    #ALL_DIRECTIVES XHeaderValue: "\"test\"",
-
+    MapOriginDomain: "example.com localhlost",
+    MapRewriteDomain: "example.com static.example.com",
+    MaxImageSizeLowResolutionBytes: 1000,
+    MaxInlinedPreviewImagesIndex: 80,
+    MaxSegmentLength: 100,
+    MemcachedServers: "localhost:6765",
+    MemcachedThreads: 1,
+#ifndef nginx
+    MessageBufferSize: 100,
+#endif
+    MinImageSizeLowResolutionBytes: 2000,
+    ModifyCachingHeaders: "true",
+#ifndef nginx
+    NumExpensiveRewriteThreads: 2,
+    NumRewriteThreads: 4,
+    RateLimitBackgroundFetches: "true",
+    RefererStatisticsOutputLevel: "simple",
+#endif
+    ReportUnloadTime: "true",
+    RespectVary: "true",
+    RespectXForwardedProto: "off",
+    RetainComment: "\"special\"",
+    RewriteDeadlinePerFlushMs: 10,
+    RewriteLevel: "CoreFilters",
+    RunExperiment: "true",
+    ShardDomain: "example.com 1.example.com,2.example.com",
+    SharedMemoryLocks: "true",
+#ifndef nginx
+    SlurpDirectory: "/tmp/slurp/",
+    SlurpFlushLimit: 5,
+    SlurpReadOnly: "true",
+    Statistics: "true",
+    StatisticsLogging: "true",
+    StatisticsLoggingChartsCSS: "\"example.com/css.css\"",
+    StatisticsLoggingChartsJS: "\"example.com/js.js\"",
+    StatisticsLoggingFile: "\"@@MOD_PAGESPEED_STATS_LOG@@\"",
+    StatisticsLoggingIntervalMs: 3000,
+#endif
+    SupportNoScriptEnabled: "true",
+#ifndef nginx
+    TestProxy: "off",
+#endif
+    UrlValuedAttribute: "span src Hyperlink",
+#ifndef nginx
+    UsePerVHostStatistics: "on",
+#endif
+    XHeaderValue: "\"test\"",
+#endif #ALL_DIRECTIVES
     #PER_VHOST_STATS UsePerVHostStatistics: "on",
 
     # Do testing using memcached in lieu of the file cache.
@@ -522,8 +547,10 @@ servers: [
   	    # This is the same memcached instance as the root configuration,
   	    # but with a different file-cache path.
 #MEMCACHED  MemcachedServers: "localhost:6765",
-
+#ifndef nginx
+# TODO(oschaaf):
   	    CacheFlushFilename: "cache.flush",
+#endif
   	    # If you uncomment this, the test will fail, proving we can disable
   	    # cache-flush polling.
   	    # CacheFlushPollIntervalSec: 0,
@@ -532,6 +559,7 @@ servers: [
   	    ReportUnloadTime: "on",
 
     	},#pagespeed
+#ifdef REWRITE
 #REWRITE   # These lines are only needed for the mod_rewrite test, where
 #REWRITE   # we are just trying to prove that we remove mod_rewrite from
 #REWRITE   # the request if the URL is going to be handled by mod_pagespeed.
@@ -553,6 +581,7 @@ servers: [
 #REWRITE                substitution: "/mod_pagespeed_example/index.html",
 #REWRITE            },
 #REWRITE        ],
+#endif
     },#server
     # Sets up a logical home-page server on www.example.com
     {

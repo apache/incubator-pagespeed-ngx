@@ -3,601 +3,203 @@ from util import *
 
 set_writer(emit)
 
-pagespeed = config["pagespeed"]
-pagespeed_if = config["pagespeed_if"]
-servers = config["servers"]
-directories = config["directories"]
-locations = config["locations"]
+def write_servers_open_item(server,level):
+    emit(indent("<VirtualHost ", level))
+    emit(server["address"])
+    emit(":")
+    emit(server["port"])
+    emit(">\n")
+    if "root" in server:
+       emit(indent("DocumentRoot " + server["root"] + "\n", level+1));
+    if "server_name" in server:
+        emit(indent("ServerName " + server["server_name"] + "\n", level+1));
+    if "pagespeed_status" in server:
+        emit(indent("ModPagespeed " + server["pagespeed_status"] + "\n", level+1));
+
+def write_servers_close_item(server,level):
+    emit(indent("</VirtualHost>\n",level))
+
+def write_directories_open_item(server,level):
+    emit(indent("<Directory " + server["path"] + " >\n",level))
+    if "text" in server:
+       emit(server["text"])
+
+def write_directories_close_item(server,level):
+    emit(indent("</Directory>\n",level))
+
+def write_locations_open_item(server,level):
+    # TODO(oschaaf): this is not exactly true
+    # we need try_files here as well?
+    if "path" in server:
+        emit(indent("<Location " + server["path"]  + " >\n",level))
+    elif "wildcard_path" in server:
+        emit(indent("<Location ~ \"" + server["wildcard_path"]  + "\">\n",level))
+
+    if "proxy_pass" in server:
+        emit(indent("ProxyPass " + server["proxy_pass"] + "\n",level+1))
+    
+
+    if "text" in server:
+       raise Exception("deprecated")
+       emit(server["text"])
+
+def write_locations_close_item(server,level):
+    emit(indent("</Location>\n",level))
+
+def write_pagespeed_open(ps,level):
+    for key in ps:
+    	val = ps[key]
+	# in pagespeed.debug.conf, the same pagespeed directive can occur multiple times
+	# that is represented as an array, which we need to loop in that case
+    	if isinstance(val,list) and not isinstance(val,str):
+       	   for item in val: 
+	       emit(indent("ModPagespeed" + key + " " + str(item),level) + "\n")
+	else:
+	    emit(indent("ModPagespeed" + key + " " + str(val),level) + "\n")
+
+    return True
+
+def write_pagespeed_if_open(ps,level):
+    for key in ps:
+    	emit(indent("<ModPagespeedIf " + key,level) + ">\n")
+	val = ps[key]
+	write_pagespeed_open(val, level+1)
+    	emit(indent("</ModPagespeedIf>\n",level))
+    return True
+
+def write_pagespeed_if_close(ps,level):
+    pass
+
+def write_listen_open(ps, level):
+    for val in ps:
+        emit(indent("Listen " + str(val) + "\n", level))
+    return True
+
+
+def write_name_virtual_hosts_open(ps, level):
+    for val in ps:
+        emit(indent("NameVirtualHost " + val["address"] + ":" + str(val["port"]) + "\n", level))
+
+    return True
+
+def write_headers_open(ps, level):
+    for val in ps:
+        action = val["action"]
+        header_name = val["name"]
+	header_value = val["value"]
+        # TODO(oschaaf): header name/value need to be quoted probably
+        emit(indent("Header " + action + " " + repr(header_name) + ' '  + repr(header_value)  + "\n", level))
+
+    return True
+    
+def write_required_modules_open(ps,level):
+    module_path_prefix = "@@APACHE_MODULES@@/mod_"
+    for module_name in ps:
+    	load_module = indent("LoadModule " + module_name + "_module " + module_path_prefix + module_name + ".so\n", level+1)
+	
+	if module_name in ["headers","rewrite"]:
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
+        elif module_name == "include":
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
+            emit(indent("AddType text/html .shtml\n",level))	
+            emit(indent("AddOutputFilter INCLUDES .shtml\n",level))	
+	elif module_name == "ssl":
+            emit(indent("Include conf/extra/httpd-ssl.conf\n",level));
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
+	    emit(indent("SSLRandomSeed startup builtin\n",level))
+            emit(indent("SSLRandomSeed connect builtin\n",level))
+        elif module_name == "socache_shmcb":
+            emit(indent("<IfVersion >= 2.4>\n",level));
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level+1))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level+1))
+            emit(indent("</IfVersion>\n",level));
+        elif module_name == "slotmem_shm":
+            emit(indent("<IfVersion >= 2.4>\n",level));
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level+1))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level+1))
+            emit(indent("</IfVersion>\n",level));
+        elif module_name == "speling":
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
+            emit(indent("CheckSpelling on\n",level))	
+        elif module_name == "gzip":
+            emit(indent("SetOutputFilter DEFLATE\n",level))
+        elif module_name == "cgi-script":
+            emit(indent("AddHandler cgi-script .cgi\n",level))
+        elif module_name == "mime":
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
+        elif module_name == "pagespeed":
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
+        elif module_name == "proxy":
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
+        else: 
+            raise Exception("unknown module: " + module_name)
+    return True
+
+def write_apache_literal_open(ps, level):
+    emit(ps["value"])
+
+def write_mime_types_open_item(ps,level):
+    emit(indent("AddType " + ps["extension"] + " " + ps["mime_type"] + " \n",level))
+
+def write_add_options_open(ps,level):
+    for item in ps:
+        emit(indent("Options +" + item + "\n",level))
+    return True
+
+def write_rewrite_rules_open(ps,level):
+    emit(indent("RewriteEngine on\n",level))    
+    for item in ps:
+        emit(indent("RewriteRule " + item["pattern"] + " " + item["substitution"] + "\n",level))
+    return True
+
+key_to_writer = {
+    "defaults_open": write_void,
+    "defaults_close": write_void,
+    "servers_open": write_void,
+    "servers_close": write_void,
+    "servers_open_item": write_servers_open_item,
+    "servers_close_item": write_servers_close_item,
+    "directories_open": write_void,
+    "directories_close": write_void,
+    "directories_open_item": write_directories_open_item,
+    "directories_close_item": write_directories_close_item,
+    "locations_open": write_void,
+    "locations_close": write_void,
+    "locations_open_item": write_locations_open_item,
+    "locations_close_item": write_locations_close_item,
+    "pagespeed_open": write_pagespeed_open, 
+    "pagespeed_close": write_void, 
+    "pagespeed_if_open": write_pagespeed_if_open, 
+    "pagespeed_if_close": write_pagespeed_if_close,
+    "listen_open": write_listen_open,
+    "listen_close": write_void,
+    "name_virtual_hosts_open": write_name_virtual_hosts_open,
+    "name_virtual_hosts_close": write_void,
+    "required_modules_open": write_required_modules_open,
+    "headers_open": write_headers_open,
+    "mime_types_open": write_void,
+    "mime_types_open_item": write_mime_types_open_item,
+    "apache_literal_open": write_apache_literal_open,
+    "add_options_open": write_add_options_open,
+    "rewrite_rules_open": write_rewrite_rules_open,
+}
+
+}$# apache configuration, generated with mode [@TODO@]
+${write_cfg(key_to_writer, config)
 }$
-
-
-AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml
-
-${for option in pagespeed:
-      emit_pagespeed_directive(option, pagespeed[option])}$
-
-${for condition in pagespeed_if.keys():}$
-<ModPagespeedIf ${condition}$>
-${
-pagespeed=pagespeed_if[condition]
-for option in pagespeed:
-    emit_pagespeed_directive(option, pagespeed[option])
-}$</ModPagespeedIf>
-${:end-for}$
-
-${for directory in directories:}$
-<Directory "${directory['path']}$" >
-${
-if "pagespeed" in directory:
-   pagespeed = directory["pagespeed"]
-   for option in pagespeed:
-       emit_pagespeed_directive(option, pagespeed[option])}$
-${if "text" in directory:}$${directory['text']}$${:end-if}$
-</Directory>
-${:end-for}$
-
-${for location in locations:}$
-<Location "${location['path']}$" >
-${if "text" in location:}$${location['text']}$${:end-if}$
-</Location>
-${:end-for}$
-
-${for server in servers:}$
-    <VirtualHost ${val_or_default(server,"address","*")}$:${server["port"]}$>
-    DocumentRoot ${server["root"]}$"
-    ${if "server_name" in server:}$ServerName ${server["server_name"]}$${:end-if}$
-    ModPagespeed on
-    </VirtualHost>
-${:end-for}$
-
-
-
-#==========================================
-#original pagespeed.debug.conf
-
-
-
-<Directory "@@APACHE_DOC_ROOT@@/" >
-    # This is enabled to make sure we don't crash mod_negotiation.
-    Options +MultiViews
-</Directory>
-
-# Enable htaccess
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/" >
-    AllowOverride All
-</Directory>
-
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/" >
-    AllowOverride All
-    # Some versions of mod_rewrite will refuse to do any work if
-    # symlink handling is off.
-    Options +SymLinksIfOwnerMatch
-</Directory>
-
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/close_connection/" >
-    AllowOverride All
-    # Helps tests whether we successfully strip Connection:close
-    # results from the origin.
-    Options +SymLinksIfOwnerMatch
-    Header append 'Connection' 'close'
-</Directory>
-
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/compressed/" >
-    # Files in this directory are already compressed so always add
-    # the right header.
-    Header set Cache-control "max-age=600"
-    Header append 'Content-Encoding' 'gzip'
-    AddType text/javascript .custom_ext
-</Directory>
-
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/no_cache/" >
-    # Files in this directory should be served uncacheable.
-    Header set Cache-control "no-cache"
-</Directory>
-
-# Set jpeg Quality
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/jpeg_rewriting/" >
-    ModPagespeedJpegRecompressionQuality 70
-</Directory>
-
-# Set Generic Image Quality
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/webp_rewriting" >
-    ModPagespeedImageRecompressionQuality 75
-</Directory>
-
-# Set Webp Quality
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/image_rewriting" >
-    ModPagespeedImageWebpRecompressionQuality 65
-</Directory>
-
-# This Directory does not even exist, but by setting some options in that
-# scope we test to make sure the options we claim are really settable in
-# .htaccess.  Note that <Directory> and .htaccess are enforced the same way.
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/htaccess_test" >
-  ModPagespeed on
-  ModPagespeedAllow *
-  ModPagespeedAvoidRenamingIntrospectiveJavascript on
-  ModPagespeedBeaconUrl foo
-  ModPagespeedCombineAcrossPaths off
-  ModPagespeedCssFlattenMaxBytes 100
-  ModPagespeedCssImageInlineMaxBytes 100
-  ModPagespeedCssInlineMaxBytes 100
-  ModPagespeedCssOutlineMinBytes 10000
-  ModPagespeedDisableFilters rewrite_images
-  ModPagespeedDisallow *bad*
-  ModPagespeedDomain example.com
-  ModPagespeedEnableFilters extend_cache
-  ModPagespeedImageInlineMaxBytes 100
-  ModPagespeedImageLimitOptimizedPercent 50
-  ModPagespeedImageLimitResizeAreaPercent 50
-  ModPagespeedJpegRecompressionQuality 85
-  ModPagespeedJsInlineMaxBytes 100
-  ModPagespeedJsOutlineMinBytes 10000
-  ModPagespeedLowercaseHtmlNames on
-  ModPagespeedMapOriginDomain localhost example.com
-  ModPagespeedMapRewriteDomain cdn.com example.com
-  ModPagespeedMaxHtmlParseBytes 100000
-  ModPagespeedMaxInlinedPreviewImagesIndex 10
-  ModPagespeedMinImageSizeLowResolutionBytes 100
-  ModPagespeedModifyCachingHeaders off
-  ModPagespeedRetainComment *ad_tag*
-  ModPagespeedRewriteLevel PassThrough
-</Directory>
-
-# Establish a proxy mapping where the current server proxies an image
-# stored on ref.pssdemos.com.  We use ref.pssdemos.com rather than
-# modpagespeed.com so that we use a single html file both for:
-#   1. a demo of the feature on modpagespeed.com.  It would
-#      be confusing to demo a Proxying when the origin was the
-#      same as the proxy.
-#   2. A system-test of the feature to be run with our usual testing.
-ModPagespeedMapProxyDomain @@APACHE_DOMAIN@@/pss_images \
-                           http://ref.pssdemos.com/filter/images
-
-<Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/forbid_all_disabled/disabled" >
-    # Prevent the enabling of these filters for files in this directory
-    # -and- all subdirectories (they can't override it, deliberately).
-    ModPagespeedForbidAllDisabledFilters true
-    ModPagespeedDisableFilters remove_quotes,remove_comments
-    ModPagespeedDisableFilters collapse_whitespace
-    # Enable this, which was disabled in ../.htaccess, to test that we can
-    # enable something already disabled at the same time as we forbid all.
-    ModPagespeedEnableFilters inline_css
-</Directory>
-
-# This is needed for the server-side includes test in
-# apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
-<IfModule !include_module>
-  LoadModule include_module @@APACHE_MODULES@@/mod_include.so
-</IfModule>
-AddType text/html .shtml
-AddOutputFilter INCLUDES .shtml
-
-# For the mod_rewrite test in apache_system_test.sh
-<IfModule !rewrite_module>
-  LoadModule rewrite_module  @@APACHE_MODULES@@/mod_rewrite.so
-</IfModule>
-
-# For the vary: handling test
-<IfModule !headers_module>
-  LoadModule headers_module  @@APACHE_MODULES@@/mod_headers.so
-</IfModule>
-
-# Helps tests that extra headers supplied by the apache conf
-# survive single-resource rewrites
-#
-# http://code.google.com/p/modpagespeed/issues/detail?id=324
-Header append 'X-Extra-Header' '1'
-
-# However we should not allow user-specified cache-control on
-# rewritten HTML or resources.  This setting helps us make
-# sure that we strip any user-specified cache-control when
-# we rewrite HTML.  We test this in apache_system_test.sh.
-Header set Cache-Control "max-age=600"
-
-# For regression test of connection failing.
-ModPagespeedDomain modpagespeed.com:1023
-
-# Test LoadFromFile mapping by mapping one dir to another.
-ModPagespeedLoadFromFile "http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"
-ModPagespeedLoadFromFileMatch "^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\1/"
-ModPagespeedLoadFromFileRule Disallow "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/"
-ModPagespeedLoadFromFileRuleMatch Disallow \.ssp.css$
-ModPagespeedLoadFromFileRuleMatch Allow exception\.ssp\.css$
-
-# Print out detail about connection-refused errors.  We don't negative-test
-# this here cause it's a hassle; we just depend on the unit-tests for that.
-ModPagespeedListOutstandingUrlsOnError on
-ModPagespeedAvoidRenamingIntrospectiveJavascript off
-
-# These will be sent to the origin domain when fetching subresources.
-ModPagespeedCustomFetchHeader header value
-ModPagespeedCustomFetchHeader x-other False
-<Location /mod_pagespeed_log_request_headers.js>
-  SetHandler mod_pagespeed_log_request_headers
-</Location>
-
-ModPagespeedInPlaceResourceOptimization on
-
-ModPagespeedRespectXForwardedProto on
-
-<Location ~ "/mod_pagespeed_test/response_headers.html*">
-  SetHandler mod_pagespeed_response_options_handler
-</Location>
-
-#SPELING # Enable mod_speling to ensure that we don't regress Issue 194
-#SPELING <IfModule !speling_module>
-#SPELING   LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so
-#SPELING </IfModule>
-#SPELING CheckSpelling on
-
-#GZIP ModPagespeedFetchWithGzip on
-#GZIP SetOutputFilter DEFLATE
-
-#STRESS # These lines are only needed for the stress test.
-#STRESS <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/cgi" >
-#STRESS   Options +ExecCGI
-#STRESS </Directory>
-#STRESS AddHandler cgi-script .cgi
-#STRESS <IfVersion >= 2.4.2>
-#STRESS   <IfModule !slotmem_shm_module>
-#STRESS     LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
-#STRESS   </IfModule>
-#STRESS </IfVersion>
-
-# Globally set the message-buffer size during load-tests.
-#
-# TODO(jmarantz): add a test-path where we set this in a VirtualHost and
-# make sure the right error message comes out.
-#COVERAGE # Don't want global slurp inheriting into :8080
-#COVERAGE ModPagespeedInheritVHostConfig off
-#COVERAGE ModPagespeedMessageBufferSize 100000
-#COVERAGE
-#COVERAGE # We want backtraces to be dumped during the load test, as
-#COVERAGE # one of its purposes is to discover crash bugs.
-#COVERAGE ModPagespeedInstallCrashHandler on
-#COVERAGE
-#COVERAGE # These lines are used for large-scale code coverage testing.
-#COVERAGE # We use 2 servers for it, one doing rewriting and fetching
-#COVERAGE # from the other one, which plays back slurps
-#COVERAGE Listen 8081
-#COVERAGE <VirtualHost *:8080>
-#COVERAGE   ModPagespeed on
-#COVERAGE   # Proxy using SERF
-#COVERAGE   ModPagespeedTestProxy on
-#COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
-#COVERAGE
-#MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:6765
-#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-#COVERAGE   ModPagespeedRewriteLevel AllFilters
-#COVERAGE   ModPagespeedEnableFilters elide_attributes
-#COVERAGE   ModPagespeedDomain *
-#COVERAGE   ModPagespeedFileCacheSizeKb          102400
-#COVERAGE   ModPagespeedFileCacheCleanIntervalMs 3600000
-#COVERAGE   ModPagespeedLRUCacheKbPerProcess     1024
-#COVERAGE   ModPagespeedLRUCacheByteLimit        16384
-#COVERAGE   ModPagespeedCssFlattenMaxBytes       2048
-#COVERAGE   ModPagespeedCssInlineMaxBytes        2048
-#COVERAGE   ModPagespeedCssImageInlineMaxBytes   2048
-#COVERAGE   ModPagespeedImageInlineMaxBytes      2048
-#COVERAGE   ModPagespeedJsInlineMaxBytes         2048
-#COVERAGE   ModPagespeedCssOutlineMinBytes       3000
-#COVERAGE   ModPagespeedJsOutlineMinBytes        3000
-#COVERAGE   ModPagespeedImageMaxRewritesAtOnce      8
-#COVERAGE   ModPagespeedSlurpFlushLimit          8192
-#COVERAGE   ModPagespeedJpegRecompressionQuality   -1
-#COVERAGE   ModPagespeedImageLimitOptimizedPercent  100
-#COVERAGE   ModPagespeedImageLimitResizeAreaPercent 100
-#COVERAGE   <Location /mod_pagespeed_beacon>
-#COVERAGE       SetHandler mod_pagespeed_beacon
-#COVERAGE   </Location>
-#COVERAGE   <Location /mod_pagespeed_statistics>
-#COVERAGE       Order allow,deny
-#COVERAGE       Allow from localhost
-#COVERAGE       SetHandler mod_pagespeed_statistics
-#COVERAGE   </Location>
-#COVERAGE    <Location /mod_pagespeed_message>
-#COVERAGE        Allow from localhost
-#COVERAGE        Allow from 127.0.0.1
-#COVERAGE        SetHandler mod_pagespeed_message
-#COVERAGE    </Location>
-#COVERAGE </VirtualHost>
-#COVERAGE
-#COVERAGE <VirtualHost *:8081>
-#COVERAGE   ModPagespeed on
-#COVERAGE
-#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@-alt/"
-#COVERAGE   ModPagespeedRewriteLevel PassThrough
-#COVERAGE
-#COVERAGE   # ModPagespeedSlurpDirectory ...
-#COVERAGE   # ModPagespeedSlurpReadOnly on
-#COVERAGE
-#COVERAGE   <Location /mod_pagespeed_message>
-#COVERAGE        Allow from localhost
-#COVERAGE        Allow from 127.0.0.1
-#COVERAGE        SetHandler mod_pagespeed_message
-#COVERAGE   </Location>
-#COVERAGE </VirtualHost>
-
-
-#PROXY # This is used for ProxyPass testing.
-#PROXY #   See: http://code.google.com/p/modpagespeed/issues/detail?id=74
-#PROXY # We use 2 servers for it, one doing rewriting and fetching
-#PROXY # from the other one which does not have mod_pagespeed enabled.
-#PROXY Listen 8081
-#PROXY <VirtualHost *:8080>
-#PROXY   # Host at 8080 should have no relevant content.
-#PROXY   DocumentRoot  /tmp/
-#PROXY
-#PROXY   # Turn these declarations back on during testing if you are
-#PROXY   # having trouble distinguishing which server is saying what.
-#PROXY   #ErrorLog   "@@MOD_PAGESPEED_CACHE@@/logs/error_log"
-#PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@/logs/access_log" common
-#PROXY
-#PROXY   ModPagespeed on
-#PROXY
-#PROXY   ModPagespeedFileCachePath         "@@MOD_PAGESPEED_CACHE@@/"
-#PROXY
-#PROXY   ModPagespeedRewriteLevel PassThrough
-#PROXY   ModPagespeedEnableFilters extend_cache
-#PROXY   ModPagespeedDomain *
-#PROXY
-#PROXY   # Proxy through to 8081.
-#PROXY   ProxyPass / http://localhost:8081/
-#PROXY </VirtualHost>
-#PROXY
-#PROXY <VirtualHost *:8081>
-#PROXY   # Host at 8081 sees into mod_pagespeed_examples directory.
-#PROXY   DocumentRoot  "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
-#PROXY
-#PROXY   #ErrorLog   "@@MOD_PAGESPEED_CACHE@@-alt/logs/error_log"
-#PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@-alt/logs/access_log" common
-#PROXY
-#PROXY   ModPagespeed off
-#PROXY   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt/"
-#PROXY   ModPagespeedRewriteLevel PassThrough
-#PROXY </VirtualHost>
-
-#SLURP # This is used for Slurp testing.  The initial slurp testing
-#SLURP # uses a slurp test dir pre-populated from source control,
-#SLURP # via a read-only slurp setup on port 8080.  We also test slurp
-#SLURP # writing via an origin server on port 8081, and a slurp server
-#SLURP # on 8082 with slurping read-only off.
-#SLURP Listen 8081
-#SLURP Listen 8082
-#SLURP <VirtualHost *:8080>
-#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@/"
-#SLURP   ModPagespeedSlurpDirectory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/slurp"
-#SLURP   ModPagespeedSlurpReadOnly on
-#SLURP </VirtualHost>
-#SLURP <VirtualHost *:8081>
-#SLURP   # Host at 8081 sees into mod_pagespeed_examples directory.
-#SLURP   DocumentRoot  "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
-#SLURP
-#SLURP   ModPagespeed off
-#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt/"
-#SLURP   ModPagespeedRewriteLevel PassThrough
-#SLURP </VirtualHost>
-#SLURP <VirtualHost *:8082>
-#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt2/"
-#SLURP   ModPagespeedSlurpDirectory @@TMP_SLURP_DIR@@
-#SLURP   ModPagespeedSlurpReadOnly off
-#SLURP   ModPagespeedDomain *
-#SLURP   ModPagespeedMaxHtmlParseBytes 1000000
-#SLURP   ModPagespeedSlurpFlushLimit     10000
-#SLURP </VirtualHost>
-
-#SHARED_MEM_LOCKS ModPagespeedSharedMemoryLocks on
-
-#HTTPS # This is used for testing https requests.
-#HTTPS <IfVersion >= 2.4>
-#HTTPS   <IfModule !socache_shmcb_module>
-#HTTPS     LoadModule socache_shmcb_module @@APACHE_MODULES@@/mod_socache_shmcb.so
-#HTTPS   </IfModule>
-#HTTPS   <IfModule !slotmem_shm_module>
-#HTTPS     LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
-#HTTPS   </IfModule>
-#HTTPS </IfVersion>
-
-#HTTPS Include conf/extra/httpd-ssl.conf
-#HTTPS <IfModule !ssl_module>
-#HTTPS   LoadModule ssl_module @@APACHE_MODULES@@/mod_ssl.so
-#HTTPS </IfModule>
-#HTTPS SSLRandomSeed startup builtin
-#HTTPS SSLRandomSeed connect builtin
-#HTTPS ModPagespeedMapOriginDomain http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@
-
-#FURIOUS_GA # This is used for testing the Furious experiment framework.
-#FURIOUS_GA ModPagespeedRunExperiment on
-#FURIOUS_GA ModPagespeedAnalyticsID "123-45-6734"
-#FURIOUS_GA ModPagespeedExperimentVariable 2
-#FURIOUS_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
-#FURIOUS_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
-
-#FURIOUS_NO_GA # This is used for testing the Furious experiment framework still
-#FURIOUS_NO_GA # works when no analytics ID is specified.  It should assign
-#FURIOUS_NO_GA # users to experiments and use appropriate experimental options,
-#FURIOUS_NO_GA # but not report back to Google Analytics.  The instrumentation
-#FURIOUS_NO_GA # beacon, however, will still contain the experiment id.
-#FURIOUS_NO_GA ModPagespeedRunExperiment on
-#FURIOUS_NO_GA ModPagespeedExperimentVariable 2
-#FURIOUS_NO_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
-#FURIOUS_NO_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
-
-# Another VirtualHost can be enabled by default as it does no harm.  This can
-# be used for testing alternate configuration settings in system tests without
-# restarting Apache.
-#
-# We use NameVirtualHost so we can have multiple VirtualHost
-# configurations sharing the same port.  Note that the port is
-# different depending on whether we are running system tests as root
-# or as a normal user.  Note that fetches must be done with
-#    http_proxy=SECONDARY_HOST:SECONDARY_PORT.
-Listen @@APACHE_SECONDARY_PORT@@
-NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName secondary.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeed on
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/_secondary/"
-
-  ModPagespeedMapProxyDomain secondary.example.com/pss_images \
-                             http://ref.pssdemos.com/filter/images
-  # This is the same memcached instance as the root configuration,
-  # but with a different file-cache path.
-#MEMCACHED  ModPagespeedMemcachedServers localhost:6765
-
-  ModPagespeedCacheFlushFilename cache.flush
-  # If you uncomment this, the test will fail, proving we can disable
-  # cache-flush polling.
-  # ModPagespeedCacheFlushPollIntervalSec 0
-
-  # Helps testing whether the configuration of reporting 'unload' time works.
-  ModPagespeedReportUnloadTime on
-
-#REWRITE   # These lines are only needed for the mod_rewrite test, where
-#REWRITE   # we are just trying to prove that we remove mod_rewrite from
-#REWRITE   # the request if the URL is going to be handled by mod_pagespeed.
-#REWRITE   # In the root install test, this mod_rewrite seems to only take
-#REWRITE   # effect in a vhost.  I haven't explored why that is because it
-#REWRITE   # doesn't affect the point of the test.
-#REWRITE   Options +Indexes
-#REWRITE   RewriteEngine on
-#REWRITE   RewriteRule (.*).jpg.pagespeed.(.*).jpg /broken.jpg
-#REWRITE   RewriteRule mod_pagespeed_statistics /broken
-#REWRITE   RewriteRule shortcut.html /mod_pagespeed_example/index.html
-</VirtualHost>
-
-# Sets up a logical home-page server on www.example.com
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName www.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-  ModPagespeedLoadFromFile http://cdn.example.com @@APACHE_DOC_ROOT@@
-  ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
-  ModPagespeedRewriteLevel PassThrough
-  ModPagespeedEnableFilters rewrite_css,rewrite_images
-</VirtualHost>
-
-# Sets up a logical origin for CDNs to fetch content from, on origin.example.com.
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName origin.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-  ModPagespeedLoadFromFile http://cdn.example.com @@APACHE_DOC_ROOT@@
-  ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
-  ModPagespeedRewriteLevel PassThrough
-  ModPagespeedEnableFilters rewrite_css,rewrite_images
-</VirtualHost>
-
-# Sets up a logical cdn, which is where we tell browsers to fetch resources from.
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName cdn.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-  ModPagespeedLoadFromFile http://cdn.example.com @@APACHE_DOC_ROOT@@
-  ModPagespeedMapRewriteDomain cdn.example.com origin.example.com
-  ModPagespeedRewriteLevel PassThrough
-  ModPagespeedEnableFilters rewrite_css,rewrite_images
-</VirtualHost>
-
-# Sets up a virtual host where we can specify forbidden filters without
-# affecting any other hosts.
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName forbidden.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/"
-  # Start with all core filters enabled ...
-  ModPagespeedRewriteLevel CoreFilters
-  # ... then forbid these filters ...
-  ModPagespeedForbidFilters remove_quotes,remove_comments,collapse_whitespace
-  ModPagespeedForbidFilters rewrite_css,resize_images
-  # ... and disable but not forbid this one (to ensure we retain its URL).
-  ModPagespeedDisableFilters inline_css
-</VirtualHost>
-
-# Sets up a logical home-page server on
-# max_cacheable_content_length.example.com.  This server is only used to test
-# ModPagespeedMaxCacheableContentLength, i.e.,
-# max_cacheable_response_content_length.
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName max_cacheable_content_length.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-  ModPagespeedRewriteLevel PassThrough
-  ModPagespeedEnableFilters rewrite_javascript
-  ModPagespeedMaxCacheableContentLength 85
-</VirtualHost>
-
-# Set the value of the X-Mod-Pagespeed header
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName xheader.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-
-  ModPagespeedXHeaderValue "UNSPECIFIED VERSION"
-</VirtualHost>
-
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName domain_hyperlinks_on.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-
-  ModPagespeedDomainRewriteHyperlinks on
-  ModPagespeedMapRewriteDomain http://dst.example.com http://src.example.com
-  ModPagespeedEnableFilters rewrite_domains
-</VirtualHost>
-
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName domain_hyperlinks_off.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-
-  ModPagespeedDomainRewriteHyperlinks off
-  ModPagespeedMapRewriteDomain http://dst.example.com http://src.example.com
-  ModPagespeedEnableFilters rewrite_domains
-</VirtualHost>
-
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName client_domain_rewrite.example.com
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-
-  ModPagespeedMapRewriteDomain  http://client_domain_rewrite.example.com http://@@APACHE_DOMAIN@@
-  ModPagespeedClientDomainRewrite true
-  ModPagespeedEnableFilters rewrite_domains
-</VirtualHost>
-
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName url_attribute.example.com
-
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-
-  # This is used for testing dynamically defined url-valued
-  # attributes
-  ModPagespeedUrlValuedAttribute span src Hyperlink
-  ModPagespeedUrlValuedAttribute hr imgsrc Image
-  ModPagespeedDomainRewriteHyperlinks on
-  ModPagespeedMapRewriteDomain http://dst.example.com http://src.example.com
-  ModPagespeedEnableFilters rewrite_domains
-  ModPagespeedUrlValuedAttribute custom a Image
-  ModPagespeedUrlValuedAttribute custom b otherResource
-  ModPagespeedUrlValuedAttribute custom c hyperlink
-</VirtualHost>
-
-<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
-  ServerName absolute_urls.example.com
-
-  DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-
-  # This is used for testing that we don't load resources from
-  # absolute urls during resource reconstruction unless they're for
-  # our own hostname.  While ModPagespeedDomain should no longer
-  # have an effect on whether we load absolute urls, we need to
-  # include it to be sure we're failing because of the code under
-  # test and not because the domain lawyer is rejecting it.
-  ModPagespeedDomain http://example.com
-</VirtualHost>
-

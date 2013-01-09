@@ -1,78 +1,261 @@
 ${
+import string
 from util import *
 
 set_writer(emit)
 
-pagespeed = config["pagespeed"]
-pagespeed_if = config["pagespeed_if"]
-servers = config["servers"]
-directories = config["directories"]
-locations = config["locations"]
-}$# nginx translation of debug conf	
+# TODO(oschaaf): nginx doesn't have a directory directive in it's configuration
+# , the complete configuration is url based.
+# currently, the directories are written out as location directives, which won't work
+# another tricky point is that nginx will match only the first location, so we will 
+# need to make sure that the most specific locations are written first. that may be 
+# hard when regular expression matches are used
+
+# TODO(oschaaf): figure out the simplest way to define equal matching
+# between apache, nginx, and iis in locations/directories
+
+# TODO(oschaaf): in some configurations, multiple location/directory
+# directives are specified with the same path. we should merge these
+# into one (probably not here, but before executing the template)
+
+def write_servers_open_item(server,level):
+    emit(indent("server{  ", level))
+    emit("\n")
+    emit(indent("listen ",level+1) + server["address"])
+    emit(":")
+    emit(server["port"])
+    emit(";\n")
+    if "root" in server:
+        emit(indent("root " + server["root"] + ";\n", level+1))
+    if "server_name" in server:
+        emit(indent("server_name " + server["server_name"] + ";\n", level+1))
+
+    emit(indent("# This is a temporary workaround that ensures requests for pagespeed\n",level+1))
+    emit(indent("# optimized resources go to the pagespeed handler.\n",level+1))
+    emit(indent("location ~ \"\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+\" { }\n", level+1))
+    emit(indent("location ~ \"^/ngx_pagespeed_static/\" { }\n", level+1))
+
+    if "pagespeed_status" in server:
+        emit(indent("pagespeed " + server["pagespeed_status"] + ";\n", level+1))
+
+
+def write_servers_close_item(server,level):
+    emit(indent("}\n",level))
+
+def write_directories_open_item(server,level):
+    write_locations_open_item(server,level,1)
+
+def write_directories_close_item(server,level):
+    emit(indent("}\n",level))
+
+def write_locations_open_item(server,level,is_dir=0):
+    if "path" in server:
+       if is_dir:
+           emit(indent("directory = " + server["path"] + " {\n",level))
+       else:
+           emit(indent("location = " + server["path"] + " {\n",level))
+
+
+    if "proxy_pass" in server:
+        emit(indent("proxy_pass " + server["proxy_pass"] + ";\n",level+1))
+           
+	
+    elif "wildcard_path" in server:
+        wp = server["wildcard_path"]
+	wp = string.replace(wp,"*",".*$")
+        emit(indent("location ~* " + wp + " {\n",level))
+
+def write_locations_close_item(server,level):
+    emit(indent("}\n",level))
+
+def write_pagespeed_open(ps,level):
+    for key in ps:
+    	val = ps[key]
+	# in pagespeed.debug.conf, the same pagespeed directive can occur multiple times
+	# our pyconf represents that as an array, which we need to loop in that case
+    	if isinstance(val,list) and not isinstance(val,str):
+       	   for item in val: 
+	       emit(indent("pagespeed " + key + " " + str(item),level) + ";\n")
+	else:
+	    emit(indent("pagespeed " + key + " " + str(val),level) + ";\n")
+
+    return 1
+
+def write_pagespeed_if_open(ps,level):
+    emit(indent("#these are not implemented yet for nginx\n", level))
+    emit(indent("pagespeed_if { \n", level))
+
+    for key in ps:
+    	emit(indent(key + " { \n", level+1))
+	val = ps[key]
+	write_pagespeed_open(val, level+2)
+    	emit(indent("}\n", level+1))
+    return 1
+
+def write_pagespeed_if_close(ps,level):
+    emit(indent("}\n",level))
+
+def write_listen_open(ps, level):
+    # TODO(oschaaf): we don't have to indicate this globally in nginx?
+    #for val in ps:
+    #    emit(indent("Listen " + str(val) + "\n", level))
+    return 1 
+
+
+def write_name_virtual_hosts_open(ps, level):
+    # TODO(oschaaf): no-op in nginx?
+    #for val in ps:
+    #    emit(indent("NameVirtualHost " + val["address"] + ":" + str(val["port"]) + "\n", level))
+
+    return 1
+
+def map_header_action(action):
+    if action == "append":
+        return "add_header"
+    # TODO(oschaaf): nginx doesn't have a set header out of the box?
+    # currently, set gets translated to add-header
+    elif action =="set":
+        return "add_header"
+    else:
+	raise Exception("could not translate header action '" + action  + "' to nginx" )
+
+def write_headers_open(ps, level):
+    for val in ps:
+        generic_action = val["action"]
+	specific_action = map_header_action(generic_action)
+        header_name = val["name"]
+	header_value = val["value"]
+        # TODO(oschaaf): does the header value need to be quoted for nginx?
+        emit(indent(specific_action + " " + header_name + ' '  + header_value  + ";\n", level))
+
+    return True
+    
+
+# TODO(oschaaf): throw on unsuppored modules.
+def write_required_modules_open(ps,level):
+    for module_name in ps:
+
+        if module_name == "rewrite":
+            emit("")
+	elif module_name == "headers":
+            emit("")
+        elif module_name == "include":
+            emit("")
+	#elif module_name == "ssl":
+        #    emit("")
+        elif module_name == "gzip":
+            emit(indent("# These gzip options are needed for tests that assume that pagespeed\n",level))
+            emit(indent("# always enables gzip.  Which it does in apache, but not in nginx.\n",level))
+            emit(indent("gzip on;\n",level))
+            emit(indent("gzip_vary on;\n",level))
+            emit(indent("# Turn on gzip for all content types that should benefit from it.\n",level))
+            emit(indent("gzip_types application/ecmascript;\n",level))
+            emit(indent("gzip_types application/javascript;",level))
+            emit(indent("gzip_types application/json;\n",level))
+            emit(indent("gzip_types application/pdf;\n",level))
+            emit(indent("gzip_types application/postscript;\n",level))
+            emit(indent("gzip_types application/x-javascript;\n",level))
+            emit(indent("gzip_types image/svg+xml;\n",level))
+            emit(indent("gzip_types text/css;\n",level))
+            emit(indent("gzip_types text/csv;\n",level))
+            emit(indent("# \"gzip_types text/html\" is assumed.\n",level))
+            emit(indent("gzip_types text/javascript;\n",level))
+            emit(indent("gzip_types text/plain;\n",level))
+            emit(indent("gzip_types text/xml;\n",level))
+            emit(indent("gzip_http_version 1.0;\n",level))
+        ## TODO(oschaaf): cgi-script module
+	#elif module_name == "cgi-script":
+        #    emit("")
+        elif module_name == "mime":
+            emit("")
+        elif module_name == "pagespeed":
+            emit("")
+	else:
+            raise Exception("could not translate module '" + module_name + "' to nginx configuration")
+    return True
+
+def write_mime_types_open(ps,level):
+    emit(indent("types {\n",level))
+
+def write_mime_types_open_item(ps,level):
+    #the extension is stripped from it's leading '.'
+    emit(indent(ps["mime_type"] + " " + ps["extension"][1:] + ";\n",level))
+
+def write_mime_types_close(ps,level):
+    emit(indent("}\n",level))
+
+def write_add_options_open(ps,level):
+    for item in ps:
+        if item == "Indexes":
+            emit(indent("autoindex on;\n",level))
+        # TODO(oschaaf): not sure if a nginx counterpart of multiviews is possible
+	elif item == "MultiViews":
+            emit(indent("# TODO(oschaaf): +" + item + "\n",level))
+        # TODO(oschaaf): make sure we can ignore this in nginx
+	elif item == "SymLinksIfOwnerMatch":
+            pass;
+	else:
+            raise Exception("Option '" + item + "': no translation for nginx");
+    return True
+
+def write_rewrite_rules_open(ps,level):
+    for item in ps:
+        emit(indent("rewrite " + item["pattern"] + " " + item["substitution"] + ";\n",level))
+    return True
+
+key_to_writer = {
+    "defaults_open": write_void,
+    "defaults_close": write_void,
+    "servers_open": write_void,
+    "servers_close": write_void,
+    "servers_open_item": write_servers_open_item,
+    "servers_close_item": write_servers_close_item,
+    "directories_open": write_void,
+    "directories_close": write_void,
+    "directories_open_item": write_directories_open_item,
+    "directories_close_item": write_directories_close_item,
+    "locations_open": write_void,
+    "locations_close": write_void,
+    "locations_open_item": write_locations_open_item,
+    "locations_close_item": write_locations_close_item,
+    "pagespeed_open": write_pagespeed_open, 
+    "pagespeed_close": write_void, 
+#    "pagespeed_if_open": write_pagespeed_if_open, 
+#    "pagespeed_if_close": write_pagespeed_if_close,
+    "pagespeed_if_open": write_void, 
+    "pagespeed_if_close": write_void,
+    "listen_open": write_listen_open,
+    "listen_close": write_void,
+    "name_virtual_hosts_open": write_name_virtual_hosts_open,
+    "name_virtual_hosts_close": write_void,
+    "required_modules_open": write_required_modules_open,
+    "headers_open": write_headers_open,
+    "mime_types_open": write_mime_types_open,
+    "mime_types_close": write_mime_types_close,
+    "mime_types_open_item": write_mime_types_open_item,
+    "add_options_open": write_add_options_open,
+    "rewrite_rules_open": write_rewrite_rules_open,
+}
+
+def prepare_configuration(config):
+    # nginx doesn't have a top level configuration
+    # for locations and directories (no directories at all AFAICT)
+    # we 'inherit' those sections here by explicitly 
+    # copying these directives to every server defined
+    # after that, we delete them from the root configuration
+    move = ["locations", "directories"]
+    servers = config["servers"]
+    for m in move:
+    	for server in servers:
+	    if not m in server: 
+	       server[m] = []
+	    server[m].extend(config[m])
+	del config[m]
+
+prepare_configuration(config)
+
+}$# nginx configuration, generated with mode [@TODO@]
+
 http {
-  gzip on;
-  gzip_vary on;
-
-  gzip_types application/ecmascript;
-  gzip_types application/javascript;
-  gzip_types application/json;
-  gzip_types application/pdf;
-  gzip_types application/postscript;
-  gzip_types application/x-javascript;
-  gzip_types image/svg+xml;
-  gzip_types text/css;
-  gzip_types text/csv;
-  gzip_types text/javascript;
-  gzip_types text/plain;
-  gzip_types text/xml;
-  gzip_http_version 1.0;
-
-${for option in pagespeed:
-  emit_pagespeed_directive("  ", option, pagespeed[option])}$
-
-# not implemented yet in nginx
-   pagespeed_if {
-${for condition in pagespeed_if.keys():}$
-   ${condition}$ {
-${
-pagespeed=pagespeed_if[condition]
-for option in pagespeed:
-    emit_pagespeed_directive("      ",option, pagespeed[option])
-}$   }
-${:end-for}$
-   }
-
-${for server in servers:}$
-server { 
-   #todo -> lookup listen format (interface?)
-   listen ${emit_val_or_default(server,"address","*")}$:${server["port"]}$;
-   ${if "server_name" in server:}$server_name ${server["server_name"]}$;${:end-if}$
-   root ${server["root"]}$;
-   index @TODO
-}
-${:end-for}$
-
-
-
-#  server {
-#    listen 8050;
-#    server_name localhost;
-#    root /path/to/mod_pagespeed/src/install;
-#    index index.html;
-#    add_header Cache-Control "public, max-age=600";
-#    pagespeed MaxHtmlParseBytes 50000;
-#
-#    location /mod_pagespeed_test/no_cache/ {
-#      add_header Cache-Control no-cache;
-#    }
-#
-#    location /mod_pagespeed_test/compressed/ {
-#      add_header Cache-Control max-age=600;
-#      add_header Content-Encoding gzip;
-#      types {
-#        text/javascript custom_ext;
-#      }
-#    }
-#  }
-
-}
+${write_cfg(key_to_writer, config, 1)}$
+} #http

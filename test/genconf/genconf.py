@@ -111,6 +111,28 @@ def pre_process_text(cfg, conditions, placeholders):
     return cfg
 
 
+def process_ifdefs(cfg,conditions):
+    lines = cfg.split("\n")
+    ifstack = [True]
+    ret = []
+
+    for line in lines:
+        if line.startswith("#ifdef"):
+            condition = line[len("#ifdef"):].strip()
+            ifstack.append(condition in conditions)
+        if line.startswith("#ifndef "):
+            condition = line[len("#ifndef"):].strip()
+            ifstack.append(not condition in conditions)
+        elif line.startswith("#endif"):
+            ifstack.pop()
+        else:
+            # TODO(oschaaf): bound check
+            if not False in ifstack:
+                ret.append(line)
+
+    # TODO(oschaaf): ensure ifstack length equals 1 here
+    return "\n".join(ret)
+
 def execute_template(
     pyconf_path,
     conditions,
@@ -119,6 +141,7 @@ def execute_template(
     ):
     config_file = open(pyconf_path)
     config_text = config_file.read()
+    config_text = process_ifdefs(config_text, conditions)
     config_text = pre_process_text(config_text, conditions,
                                    placeholders)
     ast = parse_python_struct(config_text)
@@ -130,5 +153,3 @@ def execute_template(
     template = Templite(template_text)
     text = template.render(config=config)
     return text
-
-
