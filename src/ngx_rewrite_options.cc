@@ -223,7 +223,7 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions2(
     } else if (IsDirective(arg1, "Disallow")) {
       allow = false;
     } else {
-      *msg = "Argument 1 of must be either 'Allow' or 'Disallow'";
+      *msg = "Argument 1 must be either 'Allow' or 'Disallow'";
       return RewriteOptions::kOptionValueInvalid;
     }
     if (!file_load_policy()->AddRule(arg2.as_string().c_str(),
