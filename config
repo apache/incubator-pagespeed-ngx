@@ -42,6 +42,8 @@ if [ $uname_arch = 'x86_64' ]; then
    arch_name='x64'
 elif [ $uname_arch = 'x86_32' ]; then
    arch_name='ia32'
+elif [ $uname_arch = 'i686' ]; then
+   arch_name='ia32'
 else
    echo "Architecture not supported: $uname_arch"
    exit 1
