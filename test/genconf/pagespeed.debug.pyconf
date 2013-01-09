@@ -68,6 +68,7 @@ pagespeed: {
     # This will cause an error report in the startup log if mod_pagespeed is not
     # built with ssl, but otherwise will cause no trouble.
     FetchHttps: "enable,allow_self_signed",
+    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/_default/\"",
 
     # add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
     EnableFilters: "add_instrumentation",
