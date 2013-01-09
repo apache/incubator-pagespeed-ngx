@@ -230,23 +230,6 @@ Then run the system test:
 
     /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
 
-## Configuration
-
-Most mod_pagespeed configuration directives work in ngx_pagespeed after a small
-adjustment: replace '"ModPagespeed"' with '"pagespeed "':
-
-    mod_pagespeed.conf:
-      ModPagespeedEnableFilters collapse_whitespace,add_instrumentation
-      ModPagespeedRunExperiment on
-      ModPagespeedExperimentSpec id=3;percent=50;default
-      ModPagespeedExperimentSpec id=4;percent=50
-
-    ngx_pagespeed.conf:
-      pagespeed EnableFilters collapse_whitespace,add_instrumentation;
-      pagespeed RunExperiment on;
-      pagespeed ExperimentSpec "id=3;percent=50;default";
-      pagespeed ExperimentSpec "id=4;percent=50";
-
 #### Testing with valgrind
 
 To run nginx as a single process, which is much easier to debug with valgrind,
@@ -263,6 +246,23 @@ Because valgrind puts its results on stderr and there are a lot of them, it can
 be useful to log that:
 
     ERR_FILE=~/tmp.ngx_pagespeed.valgrind.$(date +%s).err ; valgrind --leak-check=full /path/to/nginx/sbin/nginx 2> $ERR_FILE ; echo $ERR_FILE
+
+## Configuration
+
+Most mod_pagespeed configuration directives work in ngx_pagespeed after a small
+adjustment: replace '"ModPagespeed"' with '"pagespeed "':
+
+    mod_pagespeed.conf:
+      ModPagespeedEnableFilters collapse_whitespace,add_instrumentation
+      ModPagespeedRunExperiment on
+      ModPagespeedExperimentSpec id=3;percent=50;default
+      ModPagespeedExperimentSpec id=4;percent=50
+
+    ngx_pagespeed.conf:
+      pagespeed EnableFilters collapse_whitespace,add_instrumentation;
+      pagespeed RunExperiment on;
+      pagespeed ExperimentSpec "id=3;percent=50;default";
+      pagespeed ExperimentSpec "id=4;percent=50";
 
 ## Preparing the binary distribution
 
