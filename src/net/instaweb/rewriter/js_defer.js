@@ -335,6 +335,24 @@ deferJsNs.DeferJs.PSA_CURRENT_NODE = 'psa_current_node';
 deferJsNs.DeferJs.PSA_SCRIPT_TYPE = 'text/psajs';
 
 /**
+ * Name of orig_type attribute in deferred script node.
+ * @const {string}
+ */
+deferJsNs.DeferJs.PSA_ORIG_TYPE = 'pagespeed_orig_type';
+
+/**
+ * Name of orig_src attribute in deferred script node.
+ * @const {string}
+ */
+deferJsNs.DeferJs.PSA_ORIG_SRC = 'pagespeed_orig_src';
+
+/**
+ * Name of orig_index attribute in deferred script node.
+ * @const {string}
+ */
+deferJsNs.DeferJs.PSA_ORIG_INDEX = 'orig_index';
+
+/**
  * Name of the deferred onload attribute.
  * @const {string}
  */
@@ -370,9 +388,11 @@ deferJsNs.DeferJs.prototype.submitTask = function(task, opt_pos) {
 
 /**
  * @param {string} str to be evaluated.
+ * @param {Element} opt_script_elem Script element to copy attributes into the
+ *     new script node.
  */
-deferJsNs.DeferJs.prototype.globalEval = function(str) {
-  var script = this.origCreateElement_.call(document, 'script');
+deferJsNs.DeferJs.prototype.globalEval = function(str, opt_script_elem) {
+  var script = this.cloneScriptNode(opt_script_elem);
   script.text = str;
   script.setAttribute('type', 'text/javascript');
   var currentElem = this.getCurrentDomLocation();
@@ -455,7 +475,7 @@ deferJsNs.DeferJs.prototype.attemptPrefetchOrQueue = function(url) {
  * @param {boolean} opt_prefetch Script file is prefetched if true.
  */
 deferJsNs.DeferJs.prototype.addNode = function(script, opt_pos, opt_prefetch) {
-  var src = script.getAttribute('pagespeed_orig_src') ||
+  var src = script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_SRC) ||
       script.getAttribute('src');
   if (src) {
     if (opt_prefetch) {
@@ -494,7 +514,7 @@ deferJsNs.DeferJs.prototype.addStr = function(str, script_elem, opt_pos) {
     var node = me.nextPsaJsNode();
     node.setAttribute(deferJsNs.DeferJs.PSA_CURRENT_NODE, '');
     try {
-      me.globalEval(str);
+      me.globalEval(str, script_elem);
     } catch (err) {
       me.log('Exception while evaluating.', err);
     }
@@ -504,6 +524,37 @@ deferJsNs.DeferJs.prototype.addStr = function(str, script_elem, opt_pos) {
   }, opt_pos);
 };
 deferJsNs.DeferJs.prototype['addStr'] = deferJsNs.DeferJs.prototype.addStr;
+
+/**
+ * Clones a Script Node. This is equivalent of 'cloneNode'.
+ * @param {Element} opt_script_elem Psa inserted script used for cloning the
+ *     new element.
+ * @return {Element} Script Element with all attributes copied from
+ *     opt_script_elem.
+ */
+deferJsNs.DeferJs.prototype.cloneScriptNode = function(opt_script_elem) {
+  var newScript = this.origCreateElement_.call(document, 'script');
+  if (opt_script_elem) {
+    // Copy attributes.
+    for (var a = opt_script_elem.attributes, n = a.length, i = n - 1;
+         i >= 0; --i) {
+      // Ignore 'type' and 'src' as they are set later.
+      // Ignore 'async' and 'defer', as our current.
+      // TODO(ksimbili): If a script has async then don't wait for it to load.
+      if (a[i].name != 'type' && a[i].name != 'src' &&
+          a[i].name != 'async' && a[i].name != 'defer' &&
+          a[i].name != deferJsNs.DeferJs.PSA_ORIG_TYPE &&
+          a[i].name != deferJsNs.DeferJs.PSA_ORIG_SRC &&
+          a[i].name != deferJsNs.DeferJs.PSA_ORIG_INDEX &&
+          a[i].name != deferJsNs.DeferJs.PSA_CURRENT_NODE &&
+          a[i].name != deferJsNs.DeferJs.PSA_NOT_PROCESSED) {
+        newScript.setAttribute(a[i].name, a[i].value);
+        opt_script_elem.removeAttribute(a[i].name);
+      }
+    }
+  }
+  return newScript;
+};
 
 /**
  * Defers execution of contents of 'url'.
@@ -517,7 +568,7 @@ deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
   this.submitTask(function() {
     me.removeNotProcessedAttributeTillNode(script_elem);
 
-    var script = me.origCreateElement_.call(document, 'script');
+    var script = me.cloneScriptNode(script_elem);
     script.setAttribute('type', 'text/javascript');
 
     var runNextHandler = function() {
@@ -853,6 +904,7 @@ deferJsNs.DeferJs.prototype.nodeListToArray = function(nodeList) {
  * SetUp needed before deferrred scripts execution.
  */
 deferJsNs.DeferJs.prototype.setUp = function() {
+  var me = this;
   if (this.firstIncrementalRun_) {
     // TODO(ksimbili): Remove this once context is not optional.
     // Place where document.write() happens if there is no context element
@@ -869,7 +921,10 @@ deferJsNs.DeferJs.prototype.setUp = function() {
       try {
         // Shadow document.readyState
         var propertyDescriptor = { configurable: true };
-        propertyDescriptor.get = function() { return 'loading';}
+        propertyDescriptor.get = function() {
+          return (me.state_ >= deferJsNs.DeferJs.STATES.SYNC_SCRIPTS_DONE) ?
+              'interactive' : 'loading';
+        };
         Object.defineProperty(document, 'readyState', propertyDescriptor);
       } catch (err) {
         this.log('Exception while overriding document.readyState.', err);
@@ -901,7 +956,6 @@ deferJsNs.DeferJs.prototype.setUp = function() {
   this.overrideAddEventListeners();
 
   // TODO(ksimbili): Restore the following functions to their original.
-  var me = this;
   document.writeln = function(x) {
     me.writeHtml(x + '\n');
   };
@@ -1082,9 +1136,9 @@ deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
     if (child.nodeName == 'SCRIPT') {
       if (this.isJSNode(child)) {
         scriptNodes.push(child);
-        child.setAttribute('pagespeed_orig_type', child.type);
+        child.setAttribute(deferJsNs.DeferJs.PSA_ORIG_TYPE, child.type);
         child.setAttribute('type', deferJsNs.DeferJs.PSA_SCRIPT_TYPE);
-        child.setAttribute('pagespeed_orig_src', child.src);
+        child.setAttribute(deferJsNs.DeferJs.PSA_ORIG_SRC, child.src);
         child.setAttribute('src', '');
         child.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, '');
       }
@@ -1357,14 +1411,17 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(opt_callback) {
     // TODO(ksimbili): Use orig_type
     if (script.getAttribute('type') == deferJsNs.DeferJs.PSA_SCRIPT_TYPE) {
       if (opt_callback) {
-        if (script.getAttribute('orig_index') == this.nextScriptIndexInHtml_) {
+        if (script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX) ==
+            this.nextScriptIndexInHtml_) {
           this.nextScriptIndexInHtml_++;
           this.addNode(script, undefined, !isFirstScript);
         }
       } else {
-        if (script.getAttribute('orig_index') < this.nextScriptIndexInHtml_) {
+        if (script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX) <
+            this.nextScriptIndexInHtml_) {
           this.log('Executing a script twice. Orig_Index: ' +
-                   script.getAttribute('orig_index'), new Error(''));
+                   script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX),
+                   new Error(''));
         }
         this.addNode(script, undefined, !isFirstScript);
       }
