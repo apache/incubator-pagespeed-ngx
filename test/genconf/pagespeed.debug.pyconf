@@ -80,11 +80,11 @@ pagespeed: {
 
     # Test LoadFromFile mapping by mapping one dir to another.
 
-#ifndef nginx
+#ifndef nginxz
     LoadFromFile: '"http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"', 
     LoadFromFileMatch: '"^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\\1/"',
     LoadFromFileRule: "Disallow \"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/\"",
-    FromFileRuleMatch: "Disallow \.ssp.css$",
+    LoadFromFileRuleMatch: "Disallow \.ssp.css$",
     LoadFromFileRuleMatch: "Allow exception\.ssp\.css$",
 #endif
 
