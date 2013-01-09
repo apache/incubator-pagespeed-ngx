@@ -926,7 +926,6 @@ ps_determine_request_options(
 
   // Will be NULL if there aren't any options set with query params or in
   // headers.
-  // TODO(oschaaf): seems the acquired options here are never deleted
   *request_options = query_options_success.first;
 
   return true;
@@ -988,6 +987,7 @@ ps_determine_options(ngx_http_request_t* r,
   // settings.
   if (request_options != NULL) {
     (*options)->Merge(*request_options);
+    delete request_options;
   } else if ((*options)->running_furious()) {
     (*options)->set_need_to_store_experiment_data(
         cfg_s->server_context->furious_matcher()->ClassifyIntoExperiment(
