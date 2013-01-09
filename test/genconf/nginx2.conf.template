@@ -111,11 +111,11 @@ def write_name_virtual_hosts_open(ps, level):
 
 def map_header_action(action):
     if action == "append":
-        return "add-header"
+        return "add_header"
     # TODO(oschaaf): nginx doesn't have a set header out of the box?
     # currently, set gets translated to add-header
     elif action =="set":
-        return "add-header"
+        return "add_header"
     else:
 	raise Exception("could not translate header action '" + action  + "' to nginx" )
 
@@ -166,6 +166,10 @@ def write_required_modules_open(ps,level):
         ## TODO(oschaaf): cgi-script module
 	#elif module_name == "cgi-script":
         #    emit("")
+        elif module_name == "mime":
+            emit("")
+        elif module_name == "pagespeed":
+            emit("")
 	else:
             raise Exception("could not translate module '" + module_name + "' to nginx configuration")
     return True

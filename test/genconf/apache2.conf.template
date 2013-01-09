@@ -143,6 +143,10 @@ def write_required_modules_open(ps,level):
  	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
             emit(load_module)
             emit(indent("</IfModule>\n",level))
+        elif module_name == "proxy":
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
         else: 
             raise Exception("unknown module: " + module_name)
     return True

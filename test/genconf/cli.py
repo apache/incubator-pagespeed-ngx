@@ -24,7 +24,7 @@ conditions = {}
 placeholders = {
     'APACHE_SECONDARY_PORT': 8083,
     'APACHE_DOMAIN': 'apache.domain',
-    'APACHE_DOC_ROOT': '/var/www',
+    'APACHE_DOC_ROOT': '/home/oschaaf/code/google/mod_pagespeed/src/install',
     'MOD_PAGESPEED_CACHE': '/tmp/psol_cache',
     'APACHE_MODULES': '/usr/lib/apache2/modules',
     }

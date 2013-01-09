@@ -38,6 +38,7 @@ required_modules: [
 #HTTPS "slotmem_shm",
 #GZIP "gzip",
 #STRESS "cgi-script",
+#PROXY "proxy",
 ],
 
 headers: [
@@ -67,7 +68,8 @@ pagespeed: {
     BlockingRewriteKey: "psatest",
     # This will cause an error report in the startup log if mod_pagespeed is not
     # built with ssl, but otherwise will cause no trouble.
-    FetchHttps: "enable,allow_self_signed",
+    ##FetchHttps: "enable,allow_self_signed",
+    ##TODO: this wasn't here:
     FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/_default/\"",
 
     # add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
@@ -80,6 +82,7 @@ pagespeed: {
     LoadFromFile: '"http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"', 
     LoadFromFileMatch: '"^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\\1/"',
     LoadFromFileRule: "Disallow \"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/\"",
+    ##TODO: uncomment
     ##FromFileRuleMatch: "Disallow \.ssp.css$",
     LoadFromFileRuleMatch: "Allow exception\.ssp\.css$",
 
@@ -102,7 +105,8 @@ pagespeed: {
     CustomFetchHeader: "header value",
     CustomFetchHeader: "x-other False",
 
-    InPlaceResourceOptimization: "on",
+    ##TODO: uncomment
+    ##InPlaceResourceOptimization: "on",
     RespectXForwardedProto: "on",
 
     #STATS_LOGGING Statistics: "on",
@@ -481,7 +485,9 @@ locations: [
 ], #locations
 
 
-listen: [
+listen: [ 
+    # oschaaf(TODO): where is 8080 enabled? this wasn't here
+    8080,
     @@APACHE_SECONDARY_PORT@@,
     #COVERAGE 8081,
     #PROXY 8081,

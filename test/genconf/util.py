@@ -32,8 +32,10 @@ def write_cfg(key_to_writer, config, level=0):
         else:
             if not isinstance(config[key], str) \
                 and not isinstance(config[key], int):
-                global_writer(indent('', level) + "no writer for '"
-                              + key + "'\n")
+                # TODO(oschaaf): 
+                if 1==0:
+                    global_writer(indent('', level) + "no writer for '"
+                                  + key + "'\n")
 
 
 def indent(txt, level):
