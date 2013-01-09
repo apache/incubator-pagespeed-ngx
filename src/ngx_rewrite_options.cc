@@ -216,8 +216,6 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions2(
     bool is_regexp = IsDirective(directive, "LoadFromFileRuleMatch");
     bool allow;
     // TODO(oschaaf): we should probably define consts for Allow/Disallow
-    // TODO(oschaaf): Allow and Disallow are all lowercase in mod_pagespeed
-    //                should we do that too?
     if (IsDirective(arg1, "Allow")) {
       allow = true;
     } else if (IsDirective(arg1, "Disallow")) {
