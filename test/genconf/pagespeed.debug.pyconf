@@ -60,7 +60,6 @@ headers: [
         value: "max-age=600",
     },
 ],
-
 pagespeed: {
     # If X-PSA-Blocking-Rewrite request header is present and its value matches the
     # value of ModPagespeedBlockingRewriteKey below, the response will be fully
@@ -631,6 +630,7 @@ servers: [
     	server_name: "xheader.example.com",
     	root: "@@APACHE_DOC_ROOT@@",
 	pagespeed: {  
+  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
 	    XHeaderValue: "\"UNSPECIFIED VERSION\""
         }
     },
@@ -663,7 +663,7 @@ servers: [
     	port: @@APACHE_SECONDARY_PORT@@,
     	server_name: "client_domain_rewrite.example.com",
     	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed: {  
+	pagespeed: {
   	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
  	    MapRewriteDomain: "http://client_domain_rewrite.example.com http://@@APACHE_DOMAIN@@",
   	    ClientDomainRewrite: "true",
@@ -676,6 +676,7 @@ servers: [
     	server_name: "url_attribute.example.com",
     	root: "@@APACHE_DOC_ROOT@@",
 	pagespeed: {  
+  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
   	    # This is used for testing dynamically defined url-valued
   	    # attributes
   	    UrlValuedAttribute: ["span src Hyperlink",
@@ -695,13 +696,13 @@ servers: [
     	root: "@@APACHE_DOC_ROOT@@",
 	pagespeed: {  
   	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-	      # This is used for testing that we don't load resources from
-  	      # absolute urls during resource reconstruction unless they're for
-  	      # our own hostname.  While ModPagespeedDomain should no longer
-  	      # have an effect on whether we load absolute urls, we need to
-  	      # include it to be sure we're failing because of the code under
-  	      # test and not because the domain lawyer is rejecting it.
-  	      Domain: "http://example.com",
+	    # This is used for testing that we don't load resources from
+  	    # absolute urls during resource reconstruction unless they're for
+  	    # our own hostname.  While ModPagespeedDomain should no longer
+  	    # have an effect on whether we load absolute urls, we need to
+  	    # include it to be sure we're failing because of the code under
+  	    # test and not because the domain lawyer is rejecting it.
+  	    Domain: "http://example.com",
         }
     },
 #COVERAGE    # These lines are used for large-scale code coverage testing.
