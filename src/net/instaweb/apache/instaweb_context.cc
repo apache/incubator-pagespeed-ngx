@@ -21,16 +21,17 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/apache/header_util.h"
+#include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -133,6 +134,10 @@ InstawebContext::InstawebContext(request_rec* request,
   modify_caching_headers_ =
       rewrite_driver_->options()->modify_caching_headers();
 
+  const char* user_agent = apr_table_get(request->headers_in,
+                                         HttpAttributes::kUserAgent);
+  rewrite_driver_->set_user_agent(user_agent);
+
   // Begin the property cache lookup. This should be as early as possible since
   // it may be asynchronous (in the case of memcached).
   // TODO(jud): It would be ideal to move this even earlier. As early as, say,
@@ -182,9 +187,6 @@ InstawebContext::InstawebContext(request_rec* request,
 
   rewrite_driver_->set_using_spdy(using_spdy);
 
-  const char* user_agent = apr_table_get(request->headers_in,
-                                         HttpAttributes::kUserAgent);
-  rewrite_driver_->set_user_agent(user_agent);
   // Make the entire request headers available to filters.
   rewrite_driver_->set_request_headers(request_headers_.get());
 
@@ -321,9 +323,18 @@ void InstawebContext::ComputeContentEncoding(request_rec* request) {
 PropertyCallback* InstawebContext::InitiatePropertyCacheLookup() {
   PropertyCallback* property_callback = NULL;
   if (server_context_->page_property_cache()->enabled()) {
+    const UserAgentMatcher* user_agent_matcher =
+        server_context_->user_agent_matcher();
+    UserAgentMatcher::DeviceType device_type =
+        user_agent_matcher->GetDeviceTypeForUA(rewrite_driver_->user_agent());
+    StringPiece device_type_suffix =
+        UserAgentMatcher::DeviceTypeSuffix(device_type);
+
+    GoogleString key = server_context_->GetPagePropertyCacheKey(
+        absolute_url_, rewrite_driver_->options(), device_type_suffix);
     property_callback = new PropertyCallback(rewrite_driver_,
                                              server_context_->thread_system(),
-                                             absolute_url_);
+                                             key);
     server_context_->page_property_cache()->Read(property_callback);
   }
   return property_callback;
