@@ -690,7 +690,10 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(131, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(132, RewriteOptions::kEndOfOptions);
+  EXPECT_STREQ("AddOptionsToUrls",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kAddOptionsToUrls));
   EXPECT_STREQ("AlwaysRewriteCss",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAlwaysRewriteCss));
@@ -1515,6 +1518,19 @@ TEST_F(RewriteOptionsTest, FilterLookupMethods) {
             RewriteOptions::LookupFilterById(""));
   EXPECT_EQ(RewriteOptions::kEndOfFilters,
             RewriteOptions::LookupFilterById(NULL));
+
+  EXPECT_EQ(RewriteOptions::kEndOfOptions,
+            RewriteOptions::LookupOptionEnumById("  "));
+  EXPECT_EQ(RewriteOptions::kAnalyticsID,
+            RewriteOptions::LookupOptionEnumById("ig"));
+  EXPECT_EQ(RewriteOptions::kImageJpegRecompressionQuality,
+            RewriteOptions::LookupOptionEnumById("iq"));
+  EXPECT_EQ(RewriteOptions::kEndOfOptions,
+            RewriteOptions::LookupOptionEnumById("junk"));
+  EXPECT_EQ(RewriteOptions::kEndOfOptions,
+            RewriteOptions::LookupOptionEnumById(""));
+  EXPECT_EQ(RewriteOptions::kEndOfOptions,
+            RewriteOptions::LookupOptionEnumById(NULL));
 }
 
 TEST_F(RewriteOptionsTest, ParseBeaconUrl) {
@@ -1544,6 +1560,34 @@ TEST_F(RewriteOptionsTest, ParseBeaconUrl) {
                                              &beacon_url));
   EXPECT_STREQ("http://" + url, beacon_url.http);
   EXPECT_STREQ("https://" + url2 + "?foo=bar", beacon_url.https);
+}
+
+TEST_F(RewriteOptionsTest, AccessOptionByIdAndEnum) {
+  const char* id = NULL;
+  GoogleString value;
+  bool was_set = false;
+  EXPECT_TRUE(options_.OptionValue(
+      RewriteOptions::kImageJpegRecompressionQuality, &id, &was_set, &value));
+  EXPECT_FALSE(was_set);
+  EXPECT_STREQ("iq", id);
+  const RewriteOptions::OptionEnum kBogusOptionEnum =
+      static_cast<RewriteOptions::OptionEnum>(-1);
+  EXPECT_EQ(RewriteOptions::kOptionNameUnknown,
+            options_.SetOptionFromEnum(kBogusOptionEnum, ""));
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.SetOptionFromEnum(
+                RewriteOptions::kImageJpegRecompressionQuality, "garbage"));
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.SetOptionFromEnum(
+                RewriteOptions::kImageJpegRecompressionQuality, "63"));
+  id = NULL;
+  EXPECT_TRUE(options_.OptionValue(
+      RewriteOptions::kImageJpegRecompressionQuality, &id, &was_set, &value));
+  EXPECT_TRUE(was_set);
+  EXPECT_STREQ("iq", id);
+  EXPECT_STREQ("63", value);
+
+  EXPECT_FALSE(options_.OptionValue(kBogusOptionEnum, &id, &was_set, &value));
 }
 
 }  // namespace net_instaweb

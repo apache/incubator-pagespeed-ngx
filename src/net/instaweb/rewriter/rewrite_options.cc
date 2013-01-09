@@ -210,6 +210,9 @@ const char* RewriteOptions::option_enum_to_name_array_[
 const RewriteOptions::FilterEnumToIdAndNameEntry*
     RewriteOptions::filter_id_to_enum_array_[RewriteOptions::kEndOfFilters];
 
+const RewriteOptions::PropertyBase**
+    RewriteOptions::option_id_to_property_array_ = NULL;
+
 RewriteOptions::Properties* RewriteOptions::properties_ = NULL;
 RewriteOptions::Properties* RewriteOptions::all_properties_ = NULL;
 
@@ -714,6 +717,8 @@ void RewriteOptions::AddProperties() {
   add_option(kDefaultRewriteDeadlineMs, &RewriteOptions::rewrite_deadline_ms_,
              "rdm", kRewriteDeadlineMs);
   add_option(true, &RewriteOptions::enabled_, "e", kEnabled);
+  add_option(false, &RewriteOptions::add_options_to_urls_, "aou",
+             kAddOptionsToUrls);
   add_option(false, &RewriteOptions::ajax_rewriting_enabled_, "ipro",
              kInPlaceResourceOptimization);
   add_option(false, &RewriteOptions::in_place_wait_for_optimized_, "ipwo",
@@ -1029,6 +1034,7 @@ bool RewriteOptions::Initialize() {
     InitOptionEnumToNameArray();
     InitFilterIdToEnumArray();
     all_properties_->Merge(properties_);
+    InitOptionIdToEnumArray();
     return true;
   }
   return false;
@@ -1058,9 +1064,36 @@ void RewriteOptions::InitFilterIdToEnumArray() {
             RewriteOptions::FilterEnumToIdAndNameEntryLessThanById);
 }
 
+struct RewriteOptions::OptionIdCompare {
+  bool operator()(const PropertyBase* a, StringPiece b) const {
+    return StringCaseCompare(a->id(), b) < 0;
+  }
+  bool operator()(StringPiece a, const PropertyBase* b) const {
+    return StringCaseCompare(a, b->id()) < 0;
+  }
+  bool operator()(const PropertyBase* a, const PropertyBase* b) const {
+    return StringCaseCompare(a->id(), b->id()) < 0;
+  }
+};
+
+void RewriteOptions::InitOptionIdToEnumArray() {
+  DCHECK(option_id_to_property_array_ == NULL);
+  option_id_to_property_array_ =
+      new const PropertyBase*[all_properties_->size()];
+  for (int i = 0, n = all_properties_->size(); i < n; ++i) {
+    option_id_to_property_array_[i] = all_properties_->property(i);
+  }
+  std::sort(option_id_to_property_array_,
+            option_id_to_property_array_ + all_properties_->size(),
+            OptionIdCompare());
+}
+
 bool RewriteOptions::Terminate() {
   if (Properties::Terminate(&properties_)) {
     Properties::Terminate(&all_properties_);
+    DCHECK(option_id_to_property_array_ != NULL);
+    delete [] option_id_to_property_array_;
+    option_id_to_property_array_ = NULL;
     return true;
   }
   return false;
@@ -1443,6 +1476,23 @@ RewriteOptions::Filter RewriteOptions::LookupFilterById(
   return (*it)->filter_enum;
 }
 
+RewriteOptions::OptionEnum RewriteOptions::LookupOptionEnumById(
+    const StringPiece& option_id) {
+  const PropertyBase** end =
+      option_id_to_property_array_ + all_properties_->size();
+  const PropertyBase** it = std::lower_bound(
+      option_id_to_property_array_, end, option_id, OptionIdCompare());
+
+  // We use lower_bound because it's O(log n) so relatively efficient, but
+  // we must double-check its result as it doesn't guarantee an exact match.
+  // Note that std::binary_search provides an exact match but only a bool
+  // result and not the actual object we were searching for.
+  if ((it == end) || (option_id != (*it)->id())) {
+    return kEndOfOptions;
+  }
+  return (*it)->option_enum();
+}
+
 bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set) {
   bool ret = true;
   for (RewriteOptions::OptionSet::const_iterator iter = option_set.begin();
@@ -1457,33 +1507,65 @@ bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set) {
   return ret;
 }
 
-
 RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
     const StringPiece& name, const GoogleString& value, GoogleString* msg) {
-  OptionEnum name_enum = LookupOption(name);
-  if (name_enum == kEndOfOptions) {
+  OptionEnum option_enum = LookupOption(name);
+  if (option_enum == kEndOfOptions) {
     // Not a mapped option.
     SStringPrintf(msg, "Option %s not mapped.", name.as_string().c_str());
     return kOptionNameUnknown;
   }
+  RewriteOptions::OptionSettingResult result = SetOptionFromEnum(
+      option_enum, value);
+  switch (result) {
+    case kOptionNameUnknown:
+      SStringPrintf(msg, "Option %s not found.", name.as_string().c_str());
+      break;
+    case kOptionValueInvalid:
+      SStringPrintf(msg, "Cannot set %s for option %s.", value.c_str(),
+                    name.as_string().c_str());
+      break;
+    default:
+      break;
+  }
+  return result;
+}
+
+RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromEnum(
+    OptionEnum option_enum, const GoogleString& value) {
   OptionBaseVector::iterator it = std::lower_bound(
-      all_options_.begin(), all_options_.end(), name_enum,
+      all_options_.begin(), all_options_.end(), option_enum,
       RewriteOptions::OptionEnumLessThanArg);
   if (it != all_options_.end()) {
     OptionBase* option = *it;
-    if (option->option_enum() == name_enum) {
+    if (option->option_enum() == option_enum) {
       if (!option->SetFromString(value)) {
-        SStringPrintf(msg, "Cannot set %s for option %s.", value.c_str(),
-                      name.as_string().c_str());
         return kOptionValueInvalid;
       } else {
         return kOptionOk;
       }
     }
   }
-  // No Option with name_enum in all_options_.
-  SStringPrintf(msg, "Option %s not found.", name.as_string().c_str());
   return kOptionNameUnknown;
+}
+
+bool RewriteOptions::OptionValue(OptionEnum option_enum,
+                                 const char** id,
+                                 bool* was_set,
+                                 GoogleString* value) const {
+  OptionBaseVector::const_iterator it = std::lower_bound(
+      all_options_.begin(), all_options_.end(), option_enum,
+      RewriteOptions::OptionEnumLessThanArg);
+  if (it != all_options_.end()) {
+    OptionBase* option = *it;
+    if (option->option_enum() == option_enum) {
+      *value = option->ToString();
+      *id = option->id();
+      *was_set = option->was_set();
+      return true;
+    }
+  }
+  return false;
 }
 
 bool RewriteOptions::SetOptionFromNameAndLog(const StringPiece& name,

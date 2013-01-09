@@ -25,6 +25,7 @@ struct OptionName {
   net_instaweb::RewriteOptions::OptionEnum option_enum;
 };
 %%
+"AddOptionsToUrls",                      RewriteOptions::kAddOptionsToUrls
 "AlwaysRewriteCss",                      RewriteOptions::kAlwaysRewriteCss
 "AnalyticsID",                           RewriteOptions::kAnalyticsID
 "AvoidRenamingIntrospectiveJavascript",  RewriteOptions::kAvoidRenamingIntrospectiveJavascript

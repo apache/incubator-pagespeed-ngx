@@ -158,6 +158,7 @@ class RewriteOptions {
   // kImageRetainExifData and kImageRetainColorSampling as they are now
   // converted to filters.
   enum OptionEnum {
+    kAddOptionsToUrls,
     kAlwaysRewriteCss,
     kAnalyticsID,
     kAvoidRenamingIntrospectiveJavascript,
@@ -692,6 +693,13 @@ class RewriteOptions {
     PropertyVector property_vector_;
   };
 
+  // Maps a filter's enum (kAddHead) to its id ("ah") and name ("Add Head").
+  struct FilterEnumToIdAndNameEntry {
+    RewriteOptions::Filter filter_enum;
+    const char* filter_id;
+    const char* filter_name;
+  };
+
   static bool ParseRewriteLevel(const StringPiece& in, RewriteLevel* out);
 
   // Parse a beacon url, or a pair of beacon urls (http https) separated by a
@@ -913,6 +921,20 @@ class RewriteOptions {
   // failure (wrong name or value), and writes the diagnostic into 'msg'.
   OptionSettingResult SetOptionFromName(
       const StringPiece& name, const GoogleString& value, GoogleString* msg);
+
+  // Given an option specified as an enum, set its value.
+  //
+  // TODO(jmarantz): Change the 'value' formal to a StringPiece.
+  OptionSettingResult SetOptionFromEnum(OptionEnum option_enum,
+                                        const GoogleString& value);
+
+  // Returns the id and value of the specified option-enum in *id and *value.
+  // Sets *was_set to true if this option has been altered from the default.
+  //
+  // If this option was not found, false is returned, and *id, *was_set, and
+  // *value will be left unassigned.
+  bool OptionValue(OptionEnum option_enum, const char** id,
+                   bool* was_set, GoogleString* value) const;
 
   // Set all of the options to their values specified in the option set.
   // Returns true if all options in the set were successful, false if not.
@@ -1144,6 +1166,14 @@ class RewriteOptions {
     set_option(x, &enabled_);
   }
   bool enabled() const { return enabled_.value(); }
+
+  void set_add_options_to_urls(bool x) {
+    set_option(x, &add_options_to_urls_);
+  }
+
+  bool add_options_to_urls() const {
+    return add_options_to_urls_.value();
+  }
 
   void set_ajax_rewriting_enabled(bool x) {
     set_option(x, &ajax_rewriting_enabled_);
@@ -1868,6 +1898,11 @@ class RewriteOptions {
   // Returns kEndOfFilters if the id isn't known.
   static Filter LookupFilterById(const StringPiece& filter_id);
 
+  // Looks up an option id and returns the corresponding enum, or kEndOfOptions
+  // if the id is not found.  Example, takes "ii" and returns
+  // kDefaultImageInlineMaxBytes.
+  static OptionEnum LookupOptionEnumById(const StringPiece& option_id);
+
   // Returns the option name corresponding to the option enum.
   static const char* LookupOptionEnum(OptionEnum option_enum) {
     return (option_enum < kEndOfOptions) ?
@@ -1881,13 +1916,6 @@ class RewriteOptions {
   const OptionBaseVector& all_options() const {
     return all_options_;
   }
-
-  // Maps a filter's enum (kAddHead) to its id ("ah") and name ("Add Head").
-  struct FilterEnumToIdAndNameEntry {
-    RewriteOptions::Filter filter_enum;
-    const char* filter_id;
-    const char* filter_name;
-  };
 
  protected:
   // Type-specific class of Property.  This subclass of PropertyBase
@@ -2233,6 +2261,8 @@ class RewriteOptions {
   Option<GoogleString> x_header_value_;
 
  private:
+  struct OptionIdCompare;
+
   static Properties* properties_;          // from RewriteOptions only
   static Properties* all_properties_;      // includes subclass properties
 
@@ -2357,6 +2387,7 @@ class RewriteOptions {
   static void InitOptionEnumToNameArray();
   // Initialize the Filter id to enum reverse array used for fast lookups.
   static void InitFilterIdToEnumArray();
+  static void InitOptionIdToEnumArray();
   // If str match a cacheable family pattern then returns the
   // PrioritizeVisibleContentFamily that it matches, else returns NULL.
   const PrioritizeVisibleContentFamily* FindPrioritizeVisibleContentFamily(
@@ -2538,6 +2569,11 @@ class RewriteOptions {
   Option<int> domain_shard_count_;
 
   Option<bool> enabled_;
+
+  // Encode relevant rewrite options as URL query-parameters so that resources
+  // can be reconstructed on servers without the same configuration file.
+  Option<bool> add_options_to_urls_;
+
   Option<bool> ajax_rewriting_enabled_;   // Should ajax rewriting be enabled?
   // Optimize before responding in in-place flow?
   Option<bool> in_place_wait_for_optimized_;
@@ -2761,9 +2797,16 @@ class RewriteOptions {
   // Array of option names indexed by corresponding OptionEnum.
   static const char* option_enum_to_name_array_[kEndOfOptions];
 
-  // Reverse map from filter id to corresponding Filter enum.
+  // Reverse map from filter id string to corresponding Filter enum.  Note
+  // that this is not indexed by filter enum; it's indexed alphabetically by id.
   static const FilterEnumToIdAndNameEntry* filter_id_to_enum_array_[
       kEndOfFilters];
+
+  // Reverse map from option id string to corresponding PropertyBase,
+  // from which it is possible to find the 2-4 letter id.  Note that
+  // this is not indexed by option enum; it's indexed alphabetically
+  // by id.
+  static const PropertyBase** option_id_to_property_array_;
 
   // When compiled for debug, we lazily check whether the all the Option<>
   // member variables in all_options have unique IDs.
