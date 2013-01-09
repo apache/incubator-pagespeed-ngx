@@ -26,7 +26,7 @@ placeholders = {
     'APACHE_DOMAIN': 'apache.domain',
     'APACHE_DOC_ROOT': '/var/www',
     'MOD_PAGESPEED_CACHE': '/tmp/psol_cache',
-    'APACHE_MODULES': '/usr/libexec/apache2',
+    'APACHE_MODULES': '/usr/lib/apache2/modules',
     }
 
 output_format = ''
