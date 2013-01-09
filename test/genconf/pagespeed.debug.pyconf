@@ -79,13 +79,14 @@ pagespeed: {
     Domain: "modpagespeed.com:1023",
 
     # Test LoadFromFile mapping by mapping one dir to another.
-    ##nginx doesn't support LoadFromFile* yet
-    ##LoadFromFile: '"http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"', 
-    ##LoadFromFileMatch: '"^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\\1/"',
-    ##LoadFromFileRule: "Disallow \"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/\"",
-    ##TODO: uncomment
-    ##FromFileRuleMatch: "Disallow \.ssp.css$",
-    ##LoadFromFileRuleMatch: "Allow exception\.ssp\.css$",
+
+#ifndef nginx
+    LoadFromFile: '"http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"', 
+    LoadFromFileMatch: '"^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\\1/"',
+    LoadFromFileRule: "Disallow \"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/\"",
+    FromFileRuleMatch: "Disallow \.ssp.css$",
+    LoadFromFileRuleMatch: "Allow exception\.ssp\.css$",
+#endif
 
     # Print out detail about connection-refused errors.  We don't negative-test
     # this here cause it's a hassle; we just depend on the unit-tests for that.
@@ -591,7 +592,9 @@ servers: [
     	root: "@@APACHE_DOC_ROOT@@",
 	pagespeed: {  
   	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+#ifndef nginx
   	    LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
+#endif
   	    MapRewriteDomain: "cdn.example.com origin.example.com",
   	    RewriteLevel: "PassThrough",
   	    EnableFilters: "rewrite_css,rewrite_images",
@@ -605,7 +608,9 @@ servers: [
     	root: "@@APACHE_DOC_ROOT@@",
 	pagespeed: {  
   	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+#ifndef nginx
   	    LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
+#endif
   	    MapRewriteDomain: "cdn.example.com origin.example.com",
   	    RewriteLevel: "PassThrough",
   	    EnableFilters: "rewrite_css,rewrite_images",
@@ -619,7 +624,9 @@ servers: [
     	root: "@@APACHE_DOC_ROOT@@",
 	pagespeed: {  
   	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+#ifndef nginx
   	    LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
+#endif
   	    MapRewriteDomain: "cdn.example.com origin.example.com",
   	    RewriteLevel: "PassThrough",
   	    EnableFilters: "rewrite_css,rewrite_images",
@@ -637,8 +644,11 @@ servers: [
   	    # Start with all core filters enabled ...
   	    RewriteLevel: "CoreFilters",
   	    # ... then forbid these filters ...
+#ifndef nginx
+
   	    ForbidFilters: ["remove_quotes,remove_comments,collapse_whitespace",
   	    		   "rewrite_css,resize_images"],
+#endif
   	    # ... and disable but not forbid this one (to ensure we retain its URL).
   	    DisableFilters: "inline_css",
         }

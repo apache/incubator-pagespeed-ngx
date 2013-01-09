@@ -51,7 +51,7 @@ def write_directories_close_item(server,level):
 def write_locations_open_item(server,level,is_dir=0):
     if "path" in server:
        if is_dir:
-           emit(indent("directory = " + server["path"] + " {\n",level))
+           emit(indent("location = " + server["path"] + " {\n",level))
        else:
            emit(indent("location = " + server["path"] + " {\n",level))
 
@@ -254,7 +254,14 @@ def prepare_configuration(config):
 
 prepare_configuration(config)
 
-}$# nginx configuration, generated with mode [@TODO@]
+}$# nginx configuration, generated using 'TODO (oschaaf): '
+daemon off;
+master_process off;
+error_log  logs/error.log  notice;
+
+events {
+    worker_connections  1024;
+}
 
 http {
 ${write_cfg(key_to_writer, config, 1)}$
