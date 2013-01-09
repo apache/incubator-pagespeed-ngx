@@ -83,14 +83,13 @@ class FakeFilter : public RewriteFilter {
                          OutputResourcePtr output) {
       RewriteResult result = kRewriteFailed;
       GoogleString rewritten;
-      ServerContext* resource_manager = FindServerContext();
 
       if (filter_->enabled()) {
         // TODO(jkarlin): Writing to the filter from a context is not thread
         // safe.
         filter_->IncRewrites();
         StrAppend(&rewritten, input->contents(), ":", filter_->id());
-        MessageHandler* message_handler = resource_manager->message_handler();
+
         // Set the output type here to make sure that the CachedResult url
         // field has the correct extension for the type.
         const ContentType* output_type = &kContentTypeText;
@@ -100,9 +99,8 @@ class FakeFilter : public RewriteFilter {
           output_type = input->type();
         }
         ResourceVector rv = ResourceVector(1, input);
-        if (resource_manager->Write(rv, rewritten, output_type,
-                                    input->charset(), output.get(),
-                                    message_handler)) {
+        if (Driver()->Write(rv, rewritten, output_type,
+                            input->charset(), output.get())) {
           result = kRewriteOk;
         }
       }

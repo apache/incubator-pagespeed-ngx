@@ -206,12 +206,11 @@ class JavascriptFilter::Context : public SingleRewriteContext {
         content_type->type() != ContentType::kJavascript) {
       content_type = &kContentTypeJavascript;
     }
-    if (server_context->Write(ResourceVector(1, script_resource),
-                              script_out,
-                              content_type,
-                              script_resource->charset(),
-                              script_dest.get(),
-                              message_handler)) {
+    if (Driver()->Write(ResourceVector(1, script_resource),
+                        script_out,
+                        content_type,
+                        script_resource->charset(),
+                        script_dest.get())) {
       ok = true;
       message_handler->Message(kInfo, "Rewrite script %s to %s",
                                script_resource->url().c_str(),

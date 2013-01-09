@@ -138,22 +138,6 @@ class ServerContext {
   }
   FuriousMatcher* furious_matcher() { return furious_matcher_.get(); }
 
-  // Writes the specified contents into the output resource, and marks it
-  // as optimized. 'inputs' described the input resources that were used
-  // to construct the output, and is used to determine whether the
-  // result can be safely cache extended and be marked publicly cacheable.
-  // 'content_type' and 'charset' specify the mimetype and encoding of
-  // the contents, and will help form the Content-Type header.
-  // 'charset' may be empty when not specified.
-  //
-  // Note that this does not escape charset.
-  //
-  // Callers should take care that dangerous types like 'text/html' do not
-  // sneak into content_type.
-  bool Write(const ResourceVector& inputs, const StringPiece& contents,
-             const ContentType* content_type, StringPiece charset,
-             OutputResource* output, MessageHandler* handler);
-
   // Computes the most restrictive Cache-Control intersection of the input
   // resources, and the provided headers, and sets that cache-control on the
   // provided headers.  Does nothing if all of the resources are fully
@@ -538,6 +522,11 @@ class ServerContext {
     hostname_ = x;
   }
 
+  // Adds an X-Original-Content-Length header to the response headers
+  // based on the size of the input resources.
+  void AddOriginalContentLengthHeader(const ResourceVector& inputs,
+                                      ResponseHeaders* headers);
+
  protected:
   // Takes ownership of the given pool, making sure to clean it up at the
   // appropriate spot during shutdown.
@@ -551,11 +540,6 @@ class ServerContext {
 
   // Must be called with rewrite_drivers_mutex_ held.
   void ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver);
-
-  // Adds an X-Original-Content-Length header to the response headers
-  // based on the size of the input resources.
-  void AddOriginalContentLengthHeader(const ResourceVector& inputs,
-                                      ResponseHeaders* headers);
 
   // These are normally owned by the RewriteDriverFactory that made 'this'.
   ThreadSystem* thread_system_;

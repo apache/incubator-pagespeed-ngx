@@ -520,12 +520,11 @@ void CssFilter::Context::Harvest() {
       ServerContext* manager = FindServerContext();
       manager->MergeNonCachingResponseHeaders(input_resource_,
                                               output_resource_);
-      ok = manager->Write(ResourceVector(1, input_resource_),
+      ok = driver_->Write(ResourceVector(1, input_resource_),
                           out_text,
                           &kContentTypeCss,
                           input_resource_->charset(),
-                          output_resource_.get(),
-                          driver_->message_handler());
+                          output_resource_.get());
     } else {
       output_partition(0)->set_inlined_data(out_text);
     }

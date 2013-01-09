@@ -114,9 +114,9 @@ bool JsOutlineFilter::WriteResource(const GoogleString& content,
   // We don't provide charset here since in generally we can just inherit
   // from the page.
   // TODO(morlovich) check for proper behavior in case of embedded BOM.
-  return server_context_->Write(
+  return driver_->Write(
       ResourceVector(), content, &kContentTypeJavascript, StringPiece(),
-      resource, handler);
+      resource);
 }
 
 // Create file with script content and remove that element from DOM.

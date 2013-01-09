@@ -143,17 +143,15 @@ void NestedFilter::Context::Harvest() {
     ResourcePtr resource(slot->resource());
     StrAppend(&new_content, resource->url(), "\n");
   }
-  ServerContext* resource_manager = FindServerContext();
-  MessageHandler* message_handler = resource_manager->message_handler();
+
   // Warning: this uses input's content-type for simplicity, but real
   // filters should not do that --- see comments in
   // CacheExtender::RewriteLoadedResource as to why.
-  if (resource_manager->Write(ResourceVector(1, slot(0)->resource()),
-                              new_content,
-                              slot(0)->resource()->type(),
-                              slot(0)->resource()->charset(),
-                              output(0).get(),
-                              message_handler)) {
+  if (Driver()->Write(ResourceVector(1, slot(0)->resource()),
+                      new_content,
+                      slot(0)->resource()->type(),
+                      slot(0)->resource()->charset(),
+                      output(0).get())) {
     result = kRewriteOk;
   }
   RewriteDone(result, 0);

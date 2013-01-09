@@ -30,8 +30,6 @@
 
 namespace net_instaweb {
 
-class MessageHandler;
-
 SimpleTextFilter::Rewriter::~Rewriter() {
 }
 
@@ -60,14 +58,13 @@ void SimpleTextFilter::Context::RewriteSingle(const ResourcePtr& input,
   ServerContext* resource_manager = FindServerContext();
   if (rewriter_->RewriteText(input->url(), input->contents(), &rewritten,
                              resource_manager))  {
-    MessageHandler* message_handler = resource_manager->message_handler();
     const ContentType* output_type = input->type();
     if (output_type == NULL) {
       output_type = &kContentTypeText;
     }
-    if (resource_manager->Write(
+    if (Driver()->Write(
             ResourceVector(1, input), rewritten, output_type, input->charset(),
-            output.get(), message_handler)) {
+            output.get())) {
       result = kRewriteOk;
     }
   }

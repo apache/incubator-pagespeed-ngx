@@ -253,9 +253,8 @@ class ServerContextTest : public RewriteTestBase {
     // Write some data
     ASSERT_TRUE(ResourceManagerTestingPeer::HasHash(output.get()));
     EXPECT_EQ(kRewrittenResource, output->kind());
-    EXPECT_TRUE(server_context()->Write(
-        ResourceVector(), contents, &kContentTypeText, "utf-8",
-        output.get(), message_handler()));
+    EXPECT_TRUE(rewrite_driver()->Write(
+        ResourceVector(), contents, &kContentTypeText, "utf-8", output.get()));
     EXPECT_TRUE(output->IsWritten());
     // Check that hash and ext are correct.
     EXPECT_EQ("0", output->hash());
@@ -591,9 +590,9 @@ TEST_F(ServerContextTest, TestMapRewriteAndOrigin) {
 
   // We need to 'Write' an output resource before we can determine its
   // URL.
-  server_context()->Write(
+  rewrite_driver()->Write(
       ResourceVector(), StringPiece(kStyleContent), &kContentTypeCss,
-      StringPiece(), output.get(), message_handler());
+      StringPiece(), output.get());
   EXPECT_EQ(Encode("http://cdn.com/", "ce", "0", "style.css", "css"),
             output->url());
 }
@@ -885,9 +884,9 @@ TEST_F(ServerContextTest, TestOutlined) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
-  server_context()->Write(
+  rewrite_driver()->Write(
       ResourceVector(), "", &kContentTypeCss, StringPiece(),
-      output_resource.get(), message_handler());
+      output_resource.get());
   EXPECT_EQ(NULL, output_resource->cached_result());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -926,9 +925,9 @@ TEST_F(ServerContextTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
-  server_context()->Write(
+  rewrite_driver()->Write(
       ResourceVector(), "", &kContentTypeCss, StringPiece(),
-      output_resource.get(), message_handler());
+      output_resource.get());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -1023,9 +1022,9 @@ TEST_F(ServerContextTest, TestNotGenerated) {
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 
-  server_context()->Write(
+  rewrite_driver()->Write(
       ResourceVector(), "", &kContentTypeCss, StringPiece(),
-      output_resource.get(), message_handler());
+      output_resource.get());
   EXPECT_TRUE(output_resource->cached_result() != NULL);
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -1175,12 +1174,11 @@ TEST_F(ResourceManagerShardedTest, TestNamed) {
           "orig.js",
           kRewrittenResource));
   ASSERT_TRUE(output_resource.get());
-  ASSERT_TRUE(server_context()->Write(ResourceVector(),
+  ASSERT_TRUE(rewrite_driver()->Write(ResourceVector(),
                                       "alert('hello');",
                                       &kContentTypeJavascript,
                                       StringPiece(),
-                                      output_resource.get(),
-                                      message_handler()));
+                                      output_resource.get()));
 
   // This always gets mapped to shard0 because we are using the mock
   // hasher for the content hash.  Note that the sharding sensitivity
@@ -1296,12 +1294,11 @@ TEST_F(ServerContextTest, WriteChecksInputVector) {
           private_400, kRewrittenResource));
 
 
-  server_context()->Write(ResourceVector(1, private_400),
+  rewrite_driver()->Write(ResourceVector(1, private_400),
                           "boo!",
                           &kContentTypeText,
                           "\"\\koi8-r\"",  // covers escaping behavior, too.
-                          output_resource.get(),
-                          message_handler());
+                          output_resource.get());
   ResponseHeaders* headers = output_resource->response_headers();
   EXPECT_FALSE(headers->HasValue(HttpAttributes::kCacheControl, "public"));
   EXPECT_TRUE(headers->HasValue(HttpAttributes::kCacheControl, "private"));

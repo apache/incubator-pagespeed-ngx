@@ -2216,7 +2216,7 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
       // TODO(jud): Is this the best place to check for shutting down? It might
       // make more sense for this check to be done at the property cache or
       // lower level.
-      if (!server_context()->shutting_down()) {
+      if (!server_context_->shutting_down()) {
         pcache->WriteCohort(dom_cohort, page);
       }
     }
@@ -2803,7 +2803,7 @@ RewriteDriver::XhtmlStatus RewriteDriver::MimeTypeXhtmlStatus() {
 FlushEarlyInfo* RewriteDriver::flush_early_info() {
   if (flush_early_info_.get() == NULL) {
     flush_early_info_.reset(new FlushEarlyInfo);
-    const PropertyCache::Cohort* cohort = server_context()
+    const PropertyCache::Cohort* cohort = server_context_
         ->page_property_cache()->GetCohort(RewriteDriver::kDomCohort);
     if (property_page() != NULL && cohort != NULL) {
       PropertyValue* property_value = property_page()->GetProperty(
@@ -2838,6 +2838,66 @@ FlushEarlyRenderInfo* RewriteDriver::flush_early_render_info() const {
 void RewriteDriver::set_flush_early_render_info(
     FlushEarlyRenderInfo* flush_early_render_info) {
   flush_early_render_info_.reset(flush_early_render_info);
+}
+
+bool RewriteDriver::Write(const ResourceVector& inputs,
+                          const StringPiece& contents,
+                          const ContentType* type,
+                          StringPiece charset,
+                          OutputResource* output) {
+  output->SetType(type);
+  output->set_charset(charset);
+  ResponseHeaders* meta_data = output->response_headers();
+  server_context_->SetDefaultLongCacheHeadersWithCharset(
+      type, charset, meta_data);
+  meta_data->SetStatusAndReason(HttpStatus::kOK);
+  server_context_->ApplyInputCacheControl(inputs, meta_data);
+  server_context_->AddOriginalContentLengthHeader(inputs, meta_data);
+
+  // The URL for any resource we will write includes the hash of contents,
+  // so it can can live, essentially, forever. So compute this hash,
+  // and cache the output using meta_data's default headers which are to cache
+  // forever.
+  MessageHandler* handler = message_handler();
+  Writer* writer = output->BeginWrite(handler);
+  bool ret = (writer != NULL);
+  if (ret) {
+    ret = writer->Write(contents, handler);
+    output->EndWrite(handler);
+
+    HTTPCache* http_cache = server_context_->http_cache();
+    if (output->kind() != kOnTheFlyResource &&
+        (http_cache->force_caching() || meta_data->IsProxyCacheable())) {
+      // This URL should already be mapped to the canonical rewrite domain,
+      // But we should store its unsharded form in the cache.
+      http_cache->Put(output->HttpCacheKey(), &output->value_, handler);
+    }
+
+    // If we're asked to, also save a debug dump
+    if (server_context_->store_outputs_in_file_system()) {
+      output->DumpToDisk(handler);
+    }
+
+    // If our URL is derived from some pre-existing URL (and not invented by
+    // us due to something like outlining), cache the mapping from original URL
+    // to the constructed one.
+    if (output->kind() != kOutlinedResource) {
+      CachedResult* cached = output->EnsureCachedResultCreated();
+      cached->set_optimizable(true);
+      GoogleString url = output->url();  // Note: output->url() will be sharded.
+
+      // TODO(jmarantz): optionally generate a query-string based on options and
+      // append it to the URL.
+      cached->mutable_url()->swap(url);
+    }
+  } else {
+    // Note that we've already gotten a "could not open file" message;
+    // this just serves to explain why and suggest a remedy.
+    handler->Message(kInfo, "Could not create output resource"
+                     " (bad filename prefix '%s'?)",
+                     server_context_->filename_prefix().as_string().c_str());
+  }
+  return ret;
 }
 
 }  // namespace net_instaweb

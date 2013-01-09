@@ -505,10 +505,9 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       SaveIfInlinable(image->Contents(), image->image_type(), cached);
 
       server_context_->MergeNonCachingResponseHeaders(input_resource, result);
-      if (server_context_->Write(
+      if (driver_->Write(
               ResourceVector(1, input_resource), image->Contents(), output_type,
-              StringPiece() /* no charset for images */, result.get(),
-              message_handler)) {
+              StringPiece() /* no charset for images */, result.get())) {
         driver_->InfoAt(
             rewrite_context,
             "Shrinking image `%s' (%u bytes) to `%s' (%u bytes)",

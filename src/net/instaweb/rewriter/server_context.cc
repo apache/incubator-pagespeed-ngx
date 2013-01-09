@@ -28,13 +28,11 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
-#include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -67,7 +65,6 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/url_to_filename_encoder.h"
-#include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
 
@@ -360,60 +357,6 @@ void ServerContext::SetContentType(const ContentType* content_type,
 
 void ServerContext::set_filename_prefix(const StringPiece& file_prefix) {
   file_prefix.CopyToString(&file_prefix_);
-}
-
-bool ServerContext::Write(const ResourceVector& inputs,
-                          const StringPiece& contents,
-                          const ContentType* type,
-                          StringPiece charset,
-                          OutputResource* output,
-                          MessageHandler* handler) {
-  output->SetType(type);
-  output->set_charset(charset);
-  ResponseHeaders* meta_data = output->response_headers();
-  SetDefaultLongCacheHeadersWithCharset(type, charset, meta_data);
-  meta_data->SetStatusAndReason(HttpStatus::kOK);
-  ApplyInputCacheControl(inputs, meta_data);
-  AddOriginalContentLengthHeader(inputs, meta_data);
-
-  // The URL for any resource we will write includes the hash of contents,
-  // so it can can live, essentially, forever. So compute this hash,
-  // and cache the output using meta_data's default headers which are to cache
-  // forever.
-  Writer* writer = output->BeginWrite(handler);
-  bool ret = (writer != NULL);
-  if (ret) {
-    ret = writer->Write(contents, handler);
-    output->EndWrite(handler);
-
-    if (output->kind() != kOnTheFlyResource &&
-        (http_cache_->force_caching() || meta_data->IsProxyCacheable())) {
-      // This URL should already be mapped to the canonical rewrite domain,
-      // But we should store its unsharded form in the cache.
-      http_cache_->Put(output->HttpCacheKey(), &output->value_, handler);
-    }
-
-    // If we're asked to, also save a debug dump
-    if (store_outputs_in_file_system_) {
-      output->DumpToDisk(handler);
-    }
-
-    // If our URL is derived from some pre-existing URL (and not invented by
-    // us due to something like outlining), cache the mapping from original URL
-    // to the constructed one.
-    if (output->kind() != kOutlinedResource) {
-      CachedResult* cached = output->EnsureCachedResultCreated();
-      cached->set_optimizable(true);
-      cached->set_url(output->url());  // Note: output->url() will be sharded.
-    }
-  } else {
-    // Note that we've already gotten a "could not open file" message;
-    // this just serves to explain why and suggest a remedy.
-    handler->Message(kInfo, "Could not create output resource"
-                     " (bad filename prefix '%s'?)",
-                     file_prefix_.c_str());
-  }
-  return ret;
 }
 
 void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,

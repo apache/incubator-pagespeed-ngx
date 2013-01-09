@@ -298,12 +298,11 @@ RewriteResult CacheExtender::RewriteLoadedResource(
 
   server_context_->MergeNonCachingResponseHeaders(
       input_resource, output_resource);
-  if (server_context_->Write(ResourceVector(1, input_resource),
-                               contents,
-                               output_type,
-                               input_resource->charset(),
-                               output_resource.get(),
-                               message_handler)) {
+  if (driver_->Write(ResourceVector(1, input_resource),
+                     contents,
+                     output_type,
+                     input_resource->charset(),
+                     output_resource.get())) {
     return kRewriteOk;
   } else {
     return kRewriteFailed;

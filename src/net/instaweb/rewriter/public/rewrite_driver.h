@@ -68,6 +68,7 @@ class HtmlFilter;
 class HtmlWriterFilter;
 class LogRecord;
 class MessageHandler;
+class OutputResource;
 class PropertyPage;
 class RequestHeaders;
 class RequestTrace;
@@ -983,6 +984,24 @@ class RewriteDriver : public HtmlParse {
   bool must_compute_finder_properties() {
     return must_compute_finder_properties_;
   }
+
+  // Writes the specified contents into the output resource, and marks it
+  // as optimized. 'inputs' described the input resources that were used
+  // to construct the output, and is used to determine whether the
+  // result can be safely cache extended and be marked publicly cacheable.
+  // 'content_type' and 'charset' specify the mimetype and encoding of
+  // the contents, and will help form the Content-Type header.
+  // 'charset' may be empty when not specified.
+  //
+  // Note that this does not escape charset.
+  //
+  // Callers should take care that dangerous types like 'text/html' do not
+  // sneak into content_type.
+  bool Write(const ResourceVector& inputs,
+             const StringPiece& contents,
+             const ContentType* type,
+             StringPiece charset,
+             OutputResource* output);
 
  private:
   friend class RewriteDriverTest;

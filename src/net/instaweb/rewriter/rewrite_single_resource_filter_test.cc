@@ -135,13 +135,12 @@ class TestRewriter : public RewriteFilter {
       return kTooBusy;
     }
 
-    bool ok = server_context_->Write(
+    bool ok = driver_->Write(
         ResourceVector(1, input_resource),
         StrCat(contents, contents),
         &kContentTypeText,
         StringPiece(),  // no explicit charset
-        output_resource.get(),
-        driver_->message_handler());
+        output_resource.get());
     return ok ? kRewriteOk : kRewriteFailed;
   }
 

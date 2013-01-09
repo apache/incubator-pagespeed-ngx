@@ -109,9 +109,8 @@ bool CssOutlineFilter::WriteResource(const StringPiece& content,
   // from the page.
   // TODO(morlovich) check for proper behavior in case of embedded BOM.
   // TODO(matterbury) but AFAICT you cannot have a BOM in a <style> tag.
-  return server_context_->Write(
-      ResourceVector(), content, &kContentTypeCss, StringPiece(),
-      resource, handler);
+  return driver_->Write(
+      ResourceVector(), content, &kContentTypeCss, StringPiece(), resource);
 }
 
 // Create file with style content and remove that element from DOM.

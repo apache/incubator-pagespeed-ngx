@@ -35,6 +35,7 @@ CommonFilter::CommonFilter(RewriteDriver* driver)
     : driver_(driver),
       server_context_(driver->server_context()),
       rewrite_options_(driver->options()),
+      noscript_element_(NULL),
       seen_base_(false) {
 }
 
