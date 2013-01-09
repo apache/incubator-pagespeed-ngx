@@ -247,6 +247,23 @@ adjustment: replace '"ModPagespeed"' with '"pagespeed "':
       pagespeed ExperimentSpec "id=3;percent=50;default";
       pagespeed ExperimentSpec "id=4;percent=50";
 
+#### Testing with valgrind
+
+To run nginx as a single process, which is much easier to debug with valgrind,
+put at the top of your config:
+
+    daemon off;
+    master_process off;
+
+Then run nginx with valgrind:
+
+    valgrind --leak-check=full /path/to/nginx/sbin/nginx
+
+Because valgrind puts its results on stderr and there are a lot of them, it can
+be useful to log that:
+
+    ERR_FILE=~/tmp.ngx_pagespeed.valgrind.$(date +%s).err ; valgrind --leak-check=full /path/to/nginx/sbin/nginx 2> $ERR_FILE ; echo $ERR_FILE
+
 ## Preparing the binary distribution
 
 If you just want to run ngx_pagespeed you don't need this.  This is
