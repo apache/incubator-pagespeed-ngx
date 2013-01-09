@@ -37,6 +37,7 @@ First build mod_pagespeed against the current revision we work at:
     $ cd ~/mod_pagespeed
     $ gclient config http://modpagespeed.googlecode.com/svn/trunk/src
     $ gclient sync --force --jobs=1
+    $ cd src/
     $ svn up -r2338
     $ gclient runhooks
     $ make BUILDTYPE=Release mod_pagespeed_test pagespeed_automatic_test
