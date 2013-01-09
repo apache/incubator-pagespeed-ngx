@@ -1073,6 +1073,7 @@
         'rewriter/pedantic_filter.cc',
         'rewriter/redirect_on_size_limit_filter.cc',
         'rewriter/resource_combiner.cc',
+        'rewriter/resource_fetch.cc',
         'rewriter/resource_slot.cc',
         'rewriter/resource_tag_scanner.cc',
         'rewriter/rewrite_context.cc',
@@ -1155,7 +1156,6 @@
         'automatic/html_detector.cc',
         'automatic/proxy_fetch.cc',
         'automatic/proxy_interface.cc',
-        'automatic/resource_fetch.cc',
       ],
     },
     {

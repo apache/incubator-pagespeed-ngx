@@ -18,7 +18,7 @@
 
 // Unit-tests for ResourceFetch
 
-#include "net/instaweb/automatic/public/resource_fetch.h"
+#include "net/instaweb/rewriter/public/resource_fetch.h"
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"

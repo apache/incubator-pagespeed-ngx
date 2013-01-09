@@ -16,7 +16,7 @@
 
 // Author: sligocki@google.com (Shawn Ligocki)
 
-#include "net/instaweb/automatic/public/resource_fetch.h"
+#include "net/instaweb/rewriter/public/resource_fetch.h"
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"

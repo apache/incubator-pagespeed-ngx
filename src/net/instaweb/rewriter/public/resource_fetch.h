@@ -20,8 +20,8 @@
 // changed extensively. Contact us at mod-pagespeed-discuss@googlegroups.com
 // if you are interested in using it.
 
-#ifndef NET_INSTAWEB_AUTOMATIC_PUBLIC_RESOURCE_FETCH_H_
-#define NET_INSTAWEB_AUTOMATIC_PUBLIC_RESOURCE_FETCH_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_FETCH_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_FETCH_H_
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -135,4 +135,4 @@ class ResourceFetch : public SharedAsyncFetch {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_AUTOMATIC_PUBLIC_RESOURCE_FETCH_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_RESOURCE_FETCH_H_

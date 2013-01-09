@@ -61,7 +61,7 @@
         'automatic/blink_flow_critical_line_test.cc',
         'automatic/proxy_fetch_test.cc',
         'automatic/proxy_interface_test.cc',
-        'automatic/resource_fetch_test.cc',
+
         'htmlparse/canonical_attributes_test.cc',
         'htmlparse/html_keywords_test.cc',
         'htmlparse/html_name_test.cc',
@@ -156,6 +156,7 @@
         'rewriter/redirect_on_size_limit_filter_test.cc',
         'rewriter/remove_comments_filter_test.cc',
         'rewriter/resource_combiner_test.cc',
+        'rewriter/resource_fetch_test.cc',
         'rewriter/resource_namer_test.cc',
         'rewriter/resource_slot_test.cc',
         'rewriter/resource_tag_scanner_test.cc',
