@@ -79,11 +79,15 @@ Download and build nginx:
     $ wget http://nginx.org/download/nginx-1.2.6.tar.gz
     $ tar -xvzf nginx-1.2.6.tar.gz
     $ cd nginx-1.2.6/src/
-    $ MOD_PAGESPEED_DIR="$HOME/mod_pagespeed/src" ./configure --with-debug --add-module=$HOME/ngx_pagespeed
+    $ MOD_PAGESPEED_DIR="$HOME/mod_pagespeed/src" ./configure --add-module=$HOME/ngx_pagespeed
     $ make install
 
 This assumes you put everything in your home directory; if not, change paths
 appropriately.
+
+For a debug build, remove the `BUILDTYPE=Release` option when running `make
+mod_pagespeed_test pagespeed_automatic_test` and add the flag `--with-debug` to
+`./configure --add-module=...`.
 
 ## How to use
 
