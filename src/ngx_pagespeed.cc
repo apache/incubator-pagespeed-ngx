@@ -322,7 +322,6 @@ ps_configure(ngx_conf_t* cf,
              net_instaweb::MessageHandler* handler) {
   if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
-    // TODO(oschaaf): these should be deleted on process exit
     *options = new net_instaweb::NgxRewriteOptions();
   }
 
@@ -372,6 +371,8 @@ ps_cleanup_loc_conf(void* data) {
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(data);
   delete cfg_l->handler;
   cfg_l->handler = NULL;
+  delete cfg_l->options;
+  cfg_l->options = NULL;
 }
 
 void
@@ -383,6 +384,8 @@ ps_cleanup_srv_conf(void* data) {
   }
   delete cfg_s->handler;
   cfg_s->handler = NULL;
+  delete cfg_s->options;
+  cfg_s->options = NULL;
 }
 
 void
