@@ -21,6 +21,8 @@ apache_literal: {
     value: "AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml\n"
 },
 required_modules: [
+    "mime",
+    "pagespeed",
 # This is needed for the server-side includes test in
 # apache_system_test.sh.  See mod_pagespeed_test/ssi/.htaccess as well.
     "include",

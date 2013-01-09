@@ -64,10 +64,11 @@ def write_pagespeed_if_open(ps,level):
     	emit(indent("<ModPagespeedIf " + key,level) + ">\n")
 	val = ps[key]
 	write_pagespeed_open(val, level+1)
+    	emit(indent("</ModPagespeedIf>\n",level))
     return True
 
 def write_pagespeed_if_close(ps,level):
-    emit(indent("</ModPagespeedIf>\n",level))
+    pass
 
 def write_listen_open(ps, level):
     for val in ps:
@@ -134,6 +135,12 @@ def write_required_modules_open(ps,level):
             emit(indent("SetOutputFilter DEFLATE\n",level))
         elif module_name == "cgi-script":
             emit(indent("AddHandler cgi-script .cgi\n",level))
+        elif module_name == "mime":
+ 	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit(load_module)
+            emit(indent("</IfModule>\n",level))
+        else: 
+            raise Exception("unknown module: " + module_name)
     return True
 
 def write_apache_literal_open(ps, level):
