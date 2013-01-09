@@ -56,7 +56,6 @@ class Hasher;
 class MessageHandler;
 class NamedLock;
 class NamedLockManager;
-class PropertyCache;
 class RequestHeaders;
 class ResponseHeaders;
 class RewriteDriver;
@@ -360,6 +359,12 @@ class ServerContext {
   RewriteOptions* GetCustomOptions(RequestHeaders* request_headers,
                                    RewriteOptions* domain_options,
                                    RewriteOptions* query_options);
+
+  // Returns the page property cache key to be used for the proxy interface
+  // flow.  options is expected to be frozen.
+  GoogleString GetPagePropertyCacheKey(const StringPiece& url,
+                                       const RewriteOptions* options,
+                                       const StringPiece& device_type_suffix);
 
   // Generates a new managed RewriteDriver using the RewriteOptions
   // managed by this class.  Each RewriteDriver is not thread-safe,

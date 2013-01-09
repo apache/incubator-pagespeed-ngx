@@ -38,7 +38,6 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/hostname_util.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -342,13 +341,8 @@ ProxyFetchPropertyCallbackCollector*
       server_context_->page_property_cache()->enabled() &&
       UrlMightHavePropertyCacheEntry(request_url) &&
       async_fetch->request_headers()->method() == RequestHeaders::kGet) {
-    GoogleString options_string_in_page_key = "";
     if (options != NULL) {
       server_context_->ComputeSignature(options);
-      // TODO(ksimbili): Understand why we need the options signature.
-      const GoogleString& options_signature_hash =
-          server_context_->hasher()->Hash(options->signature());
-      options_string_in_page_key = StrCat("_", options_signature_hash);
     }
     for (int i = 0;
          i < static_cast<int>(UserAgentMatcher::kEndOfDeviceType);
@@ -358,11 +352,8 @@ ProxyFetchPropertyCallbackCollector*
       AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
       const StringPiece& device_type_suffix =
           UserAgentMatcher::DeviceTypeSuffix(device_type);
-      // TODO(ksimbili): Have a function in common place like server_context to
-      // return the key, given the needed parameters.
-      GoogleString page_key = StrCat(request_url.Spec(),
-                                     options_string_in_page_key,
-                                     device_type_suffix);
+      GoogleString page_key = server_context_->GetPagePropertyCacheKey(
+          request_url.Spec(), options, device_type_suffix);
       ProxyFetchPropertyCallback* property_callback =
           new ProxyFetchPropertyCallback(
               ProxyFetchPropertyCallback::kPagePropertyCache,

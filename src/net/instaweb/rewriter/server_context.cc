@@ -28,7 +28,6 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
@@ -52,6 +51,7 @@
 #include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
@@ -1042,6 +1042,19 @@ RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
   url_namer()->ConfigureCustomOptions(*request_headers, custom_options.get());
 
   return custom_options.release();
+}
+
+GoogleString ServerContext::GetPagePropertyCacheKey(
+    const StringPiece& url, const RewriteOptions* options,
+    const StringPiece& device_type_suffix) {
+  // TODO(ksimbili): Understand why we need the options signature.
+  GoogleString options_signature_hash;
+  if (options != NULL) {
+    // Should we use lock_hasher() instead of hasher() below?
+    StrAppend(&options_signature_hash,
+              "_", hasher()->Hash(options->signature()));
+  }
+  return StrCat(url, options_signature_hash, device_type_suffix);
 }
 
 void ServerContext::ComputeSignature(RewriteOptions* rewrite_options) const {
