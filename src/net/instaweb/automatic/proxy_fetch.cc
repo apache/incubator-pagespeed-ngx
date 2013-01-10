@@ -810,6 +810,10 @@ bool ProxyFetch::HandleWrite(const StringPiece& str,
     }
   } else {
     // Pass other data (css, js, images) directly to http writer.
+    // ConnectProxyFetch so client/device results are used for all resources.
+    if (property_cache_callback_ != NULL) {
+      property_cache_callback_->ConnectProxyFetch(this);
+    }
     ret = base_fetch()->Write(str, message_handler);
   }
   return ret;

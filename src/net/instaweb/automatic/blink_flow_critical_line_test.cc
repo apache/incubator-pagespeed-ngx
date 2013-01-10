@@ -1897,7 +1897,7 @@ TEST_F(BlinkFlowCriticalLineTest, NonHtmlContent) {
   // 3 Misses for DomCohort(due to 3 device types).
   EXPECT_EQ(7, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(2, lru_cache()->num_inserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
@@ -1919,10 +1919,10 @@ TEST_F(BlinkFlowCriticalLineTest, NonHtmlContent) {
   FetchFromProxyNoWaitForBackground(
       "plain.html", true, &text, &response_headers);
   // 3 Misses for BlinkCriticalLineData(due to 3 device types),
-  // 3 Misses for DomCohort(due to 3 device types).
-  EXPECT_EQ(6, lru_cache()->num_misses());
-  EXPECT_EQ(1, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
+  // 2 Misses for DomCohort(due to 3 device types, Desktop already inserted).
+  EXPECT_EQ(5, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());

@@ -1386,8 +1386,10 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
  * as the context element to the script embedded inside them.
  * @param {function()} opt_callback Called when critical scripts are
  *     done executing.
+ * @param {number} opt_last_index till where its safe to run scripts.
  */
-deferJsNs.DeferJs.prototype.registerScriptTags = function(opt_callback) {
+deferJsNs.DeferJs.prototype.registerScriptTags =
+    function(opt_callback, opt_last_index) {
   if (this.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED) {
     return;
   }
@@ -1411,8 +1413,10 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(opt_callback) {
     // TODO(ksimbili): Use orig_type
     if (script.getAttribute('type') == deferJsNs.DeferJs.PSA_SCRIPT_TYPE) {
       if (opt_callback) {
-        if (script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX) ==
-            this.nextScriptIndexInHtml_) {
+        var scriptIndex =
+            script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX);
+        if (scriptIndex <= opt_last_index &&
+            scriptIndex == this.nextScriptIndexInHtml_) {
           this.nextScriptIndexInHtml_++;
           this.addNode(script, undefined, !isFirstScript);
         }
