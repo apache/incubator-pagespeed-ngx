@@ -233,11 +233,12 @@ TEST_F(UrlPartnershipTest, ResourcesFromMappedSameDomainsDifferentPaths) {
       "http://cdn.com/nytimes", "http://styles.com", &message_handler_);
   domain_lawyer()->AddDomain("http://cdn.com/notw", &message_handler_);
 
-  // We cannot combine these resources because they don't all map to the same
-  // domain+path [cdn.com/notw is authorized but != cdm.com/nytimes].
-  ASSERT_FALSE(AddUrls("http://cdn.com/notw/style.css",
+  // We can combine these because they're mapped to the same domain but
+  // different paths.
+  EXPECT_TRUE(AddUrls("http://cdn.com/notw/style.css",
                        "r/styles/style.css?appearance=reader/writer?",
                        "http://styles.com/external.css"));
+  EXPECT_EQ("http://cdn.com/", partnership_->ResolvedBase());
 }
 
 TEST_F(UrlPartnershipTest, ResourcesFromMappedSameDomainsSamePaths) {
@@ -264,11 +265,11 @@ TEST_F(UrlPartnershipTest, ResourcesFromMappedDifferentDomainsSamePaths) {
   domain_lawyer()->AddRewriteDomainMapping(
       "http://cdn.com/nypost", "http://money.com", &message_handler_);
 
-  // We cannot combine these resources because the relative one resolves
-  // to the nytimes domain/mapping, not the nypost domain/mapping.
-  ASSERT_FALSE(AddUrls("http://cdn.com/nypost/style.css",
+  // We can combine these because they all map to cdn.com.
+  ASSERT_TRUE(AddUrls("http://cdn.com/nypost/style.css",
                        "r/styles/style.css?appearance=reader/writer?",
                        "http://money.com/external.css"));
+  EXPECT_EQ("http://cdn.com/", partnership_->ResolvedBase());
 }
 
 TEST_F(UrlPartnershipTest, AllowDisallow) {

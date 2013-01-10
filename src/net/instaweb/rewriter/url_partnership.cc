@@ -80,10 +80,12 @@ bool UrlPartnership::AddUrl(const StringPiece& untrimmed_resource_url,
                                   &mapped_domain_name,
                                   handler)) {
       if (url_vector_.empty()) {
-        domain_.swap(mapped_domain_name);
+        domain_and_path_prefix_.swap(mapped_domain_name);
         ret = true;
       } else {
-        ret = (domain_ == mapped_domain_name);
+        GoogleUrl domain_url(domain_and_path_prefix_);
+        GoogleUrl mapped_url(mapped_domain_name);
+        ret = (domain_url.Origin() == mapped_url.Origin());
         if (ret && !rewrite_options_->combine_across_paths()) {
           ret = (ResolvedBase() == resolved_request->AllExceptLeaf());
         }

@@ -54,6 +54,7 @@ namespace net_instaweb {
 namespace {
 
 const char kDomain[] = "http://combine_css.test/";
+const char kProxyMapDomain[] = "http://proxy.test/";
 const char kYellow[] = ".yellow {background-color: yellow;}";
 const char kBlue[] = ".blue {color: blue;}\n";
 const char kACssBody[] = ".c1 {\n background-color: blue;\n}\n";
@@ -481,13 +482,97 @@ class CssCombineFilterCustomOptions : public CssCombineFilterTest {
   virtual void SetUp() {}
 };
 
-
 TEST_F(CssCombineFilterCustomOptions, CssPreserveURLs) {
   options()->set_css_preserve_urls(true);
   CssCombineFilterTest::SetUp();
   SetHtmlMimetype();
   CombineCssWithNames("combine_css_no_hash", "", "", false, "a.css", "b.css",
                       false);
+}
+
+// Tests Issue 600 in which CSS files in a MapProxyDomain were not combined with
+// local files but they should have been after mapping into the same domain.
+TEST_F(CssCombineFilterCustomOptions, CssCombineAcrossProxyDomains) {
+  // Proxy http://kProxyMapDomain/ onto http://kTestDomain/proxied/
+  DomainLawyer* lawyer = options()->domain_lawyer();
+  GoogleString proxy_target = StrCat(kTestDomain, "proxied/");
+  ASSERT_TRUE(lawyer->AddProxyDomainMapping(proxy_target,
+                                            kProxyMapDomain,
+                                            &message_handler_));
+  CssCombineFilterTest::SetUp();
+  SetHtmlMimetype();
+
+  // Create http://kTestDomain/a.css and http://kProxyMapDomain/b.css
+  GoogleString a_local_css_url = StrCat(kTestDomain, "a.css");
+  GoogleString b_proxy_css_url = StrCat(kProxyMapDomain, "b.css");
+  ResponseHeaders default_css_header;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(a_local_css_url, default_css_header, kACssBody);
+  SetFetchResponse(b_proxy_css_url, default_css_header, kBCssBody);
+
+  // Parse html that links to both css files.
+  GoogleString html_input(StrCat(
+      "<head>\n"
+      "  ", Link(a_local_css_url), "\n"
+      "  ", Link(b_proxy_css_url), "\n"
+      "</head>\n"));
+
+  ParseUrl(StrCat(kTestDomain, "base_url.html"), html_input);
+
+  // The two css files should be combined since they're now in the same domain.
+  StringVector css_urls;
+  CollectCssLinks("combine_css", output_buffer_, &css_urls);
+  ASSERT_EQ(1UL, css_urls.size());
+  // Encode doesn't allow a '/' as it expects a leaf so we have to add proxied/
+  // after the encoding occurs.
+  GoogleString encoded = Encode(kTestDomain, "cc", "0",
+                                MultiUrl("a.css", "b.css"), "css");
+  GlobalReplaceSubstring("b.css", "proxied,_b.css", &encoded);
+  EXPECT_STREQ(encoded, css_urls[0]);
+
+  // Make sure we can fetch the combined resource.
+  GoogleString output;
+  ResponseHeaders response_headers;
+  EXPECT_TRUE(FetchResourceUrl(css_urls[0], &output, &response_headers));
+  EXPECT_EQ(StrCat(kACssBody, kBCssBody), output);
+
+  // Now clear the cache and reconstruct it.
+  lru_cache()->Clear();
+  EXPECT_TRUE(FetchResourceUrl(css_urls[0], &output, &response_headers));
+  EXPECT_EQ(StrCat(kACssBody, kBCssBody), output);
+}
+
+// Dual to CssCombineAcrossProxyDomains to ensure that if no mapping occurs we
+// do not combine CSS files from different domains.
+TEST_F(CssCombineFilterCustomOptions, CssDoNotCombineAcrossNotProxiedDomains) {
+  // Proxy http://kProxyMapDomain/ onto http://kTestDomain/proxied/
+  CssCombineFilterTest::SetUp();
+  SetHtmlMimetype();
+
+  // Create http://kTestDomain/a.css and http://kProxyMapDomain/b.css
+  GoogleString a_local_css_url = StrCat(kTestDomain, "a.css");
+  GoogleString b_proxy_css_url = StrCat(kProxyMapDomain, "b.css");
+  ResponseHeaders default_css_header;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
+  SetFetchResponse(a_local_css_url, default_css_header, kACssBody);
+  SetFetchResponse(b_proxy_css_url, default_css_header, kBCssBody);
+
+  // Parse html that links to both css files.
+  GoogleString html_input(StrCat(
+      "<head>\n"
+      "  ", Link(a_local_css_url), "\n"
+      "  ", Link(b_proxy_css_url), "\n"
+      "</head>\n"));
+
+  ParseUrl(StrCat(kTestDomain, "base_url.html"), html_input);
+
+  // The two css files should not be combined since they're not mapped to the
+  // same domain.
+  StringVector css_urls;
+  CollectCssLinks("combine_css", output_buffer_, &css_urls);
+  ASSERT_EQ(2UL, css_urls.size());
+  EXPECT_STREQ(a_local_css_url, css_urls[0]);
+  EXPECT_STREQ(b_proxy_css_url, css_urls[1]);
 }
 
 // Make sure that if we re-parse the same html twice we do not
