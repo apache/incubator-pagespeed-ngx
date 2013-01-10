@@ -1390,6 +1390,20 @@ TEST_F(RewriteOptionsTest, ComputeSignatureOptionEffect) {
   EXPECT_NE(signature2, signature3);
 }
 
+TEST_F(RewriteOptionsTest, ComputeSignatureEmptyIdempotent) {
+  options_.ClearSignatureForTesting();
+  options_.DisallowTroublesomeResources();
+  options_.ComputeSignature(&hasher_);
+  GoogleString signature1 = options_.signature();
+  options_.ClearSignatureForTesting();
+
+  // Merging in empty RewriteOptions should not change the signature.
+  RewriteOptions options2;
+  options_.Merge(options2);
+  options_.ComputeSignature(&hasher_);
+  EXPECT_EQ(signature1, options_.signature());
+}
+
 TEST_F(RewriteOptionsTest, ImageOptimizableCheck) {
   options_.ClearFilters();
   options_.EnableFilter(RewriteOptions::kRecompressJpeg);

@@ -642,10 +642,6 @@ RewriteOptions::RewriteOptions()
 
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
-
-  DisableLazyloadForClassName("*dfcg*");
-  DisableLazyloadForClassName("*nivo*");
-  DisableLazyloadForClassName("*slider*");
 }
 
 // static
@@ -1196,6 +1192,10 @@ void RewriteOptions::DisallowTroublesomeResources() {
   // The following url pattern shows up often, but under too many different
   // unique urls:
   // Disallow("*//stats.wordpress.com/e-*");
+
+  DisableLazyloadForClassName("*dfcg*");
+  DisableLazyloadForClassName("*nivo*");
+  DisableLazyloadForClassName("*slider*");
 
   if (Enabled(kComputePanelJson)) {
     RetainComment(StrCat(kPanelCommentPrefix, "*"));

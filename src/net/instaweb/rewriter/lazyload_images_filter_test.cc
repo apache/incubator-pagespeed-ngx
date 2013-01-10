@@ -69,6 +69,7 @@ class LazyloadImagesFilterTest : public RewriteTestBase {
     if (debug) {
       options()->EnableFilter(RewriteOptions::kDebug);
     }
+    options()->DisallowTroublesomeResources();
     lazyload_images_filter_.reset(
         new LazyloadImagesFilter(rewrite_driver()));
     rewrite_driver()->AddFilter(lazyload_images_filter_.get());
