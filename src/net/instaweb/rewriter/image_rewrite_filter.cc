@@ -745,9 +745,10 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   scoped_ptr<ResourceContext> resource_context(new ResourceContext);
   const RewriteOptions* options = driver_->options();
 
-  // Note that if RewriteOptions::image_preserve_urls() is true then
-  // kResizeImages will be forbidden.
-  if (options->Enabled(RewriteOptions::kResizeImages)) {
+  // In case of RewriteOptions::image_preserve_urls() we do not want to use
+  // image dimension information from HTML/CSS.
+  if (options->Enabled(RewriteOptions::kResizeImages) &&
+      !driver_->options()->image_preserve_urls()) {
     GetDimensions(element, resource_context->mutable_desired_image_dims());
   }
   StringPiece url(src->DecodedValueOrNull());

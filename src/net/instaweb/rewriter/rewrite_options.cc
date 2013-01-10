@@ -474,7 +474,6 @@ const RewriteOptions::Filter kImagePreserveUrlForbiddenFilters[] = {
   RewriteOptions::kExtendCacheImages,
   RewriteOptions::kInlineImages,
   RewriteOptions::kLazyloadImages,
-  RewriteOptions::kResizeImages,
   RewriteOptions::kSpriteImages
 };
 
