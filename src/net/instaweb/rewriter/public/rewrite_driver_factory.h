@@ -68,7 +68,7 @@ class RewriteDriverFactory {
   // Helper for users of defer_cleanup; see below.
   template<class T> class Deleter;
 
-  enum WorkerPoolName {
+  enum WorkerPoolCategory {
     kHtmlWorkers,
     kRewriteWorkers,
     kLowPriorityRewriteWorkers,
@@ -156,7 +156,7 @@ class RewriteDriverFactory {
   // to forking threads, e.g. via ComputeUrlFetcher().
   Timer* timer();
   NamedLockManager* lock_manager();
-  QueuedWorkerPool* WorkerPool(WorkerPoolName pool);
+  QueuedWorkerPool* WorkerPool(WorkerPoolCategory pool);
   Scheduler* scheduler();
   UsageDataReporter* usage_data_reporter();
 
@@ -322,7 +322,8 @@ class RewriteDriverFactory {
   // Subclasses can override this to create an appropriately-sized thread
   // pool for their environment. The default implementation will always
   // make one with a single thread.
-  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolName name);
+  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolCategory pool,
+                                             StringPiece name);
 
   // Subclasses can override this method to request load-shedding to happen
   // if the low-priority work pool has too many inactive sequences queued up

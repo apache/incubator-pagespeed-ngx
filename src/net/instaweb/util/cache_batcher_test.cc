@@ -48,7 +48,8 @@ class CacheBatcherTest : public CacheTestBase {
     lru_cache_ = new LRUCache(kMaxSize);
     thread_system_.reset(ThreadSystem::CreateThreadSystem());
     timer_.reset(thread_system_->NewTimer());
-    pool_.reset(new QueuedWorkerPool(kMaxWorkers, thread_system_.get()));
+    pool_.reset(
+        new QueuedWorkerPool(kMaxWorkers, "cache", thread_system_.get()));
     ThreadsafeCache* threadsafe_cache = new ThreadsafeCache(
         lru_cache_, thread_system_->NewMutex());
     async_cache_.reset(new AsyncCache(threadsafe_cache, pool_.get()));

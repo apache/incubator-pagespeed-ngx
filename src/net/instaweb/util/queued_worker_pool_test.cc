@@ -32,7 +32,9 @@ namespace {
 class QueuedWorkerPoolTest: public WorkerTestBase {
  public:
   QueuedWorkerPoolTest()
-      : worker_(new QueuedWorkerPool(2, thread_runtime_.get())) {}
+      : worker_(new QueuedWorkerPool(2, "queued_worker_pool_test",
+                                     thread_runtime_.get())) {
+  }
 
  protected:
   scoped_ptr<QueuedWorkerPool> worker_;

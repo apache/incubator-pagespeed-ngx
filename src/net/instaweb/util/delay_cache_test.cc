@@ -111,7 +111,7 @@ TEST_F(DelayCacheTest, DelayOpsNotFound) {
 
 TEST_F(DelayCacheTest, DelayOpsFoundInSequence) {
   scoped_ptr<ThreadSystem> thread_system(ThreadSystem::CreateThreadSystem());
-  QueuedWorkerPool pool(1, thread_system.get());
+  QueuedWorkerPool pool(1, "test", thread_system.get());
   QueuedWorkerPool::Sequence* sequence = pool.NewSequence();
   WorkerTestBase::SyncPoint sync_point(thread_system.get());
 

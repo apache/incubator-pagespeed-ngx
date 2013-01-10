@@ -1061,7 +1061,7 @@ class ProxyInterfaceTest : public RewriteTestBase {
       if (thread_pcache) {
         delay_cache()->DelayKey(delay_http_cache_key);
         pool.reset(new QueuedWorkerPool(
-            1, server_context()->thread_system()));
+            1, "pcache", server_context()->thread_system()));
         sequence = pool->NewSequence();
       }
     }
@@ -4727,7 +4727,7 @@ TEST_F(ProxyInterfaceTest, HeadersSetupRace) {
   ThreadSynchronizer* sync = server_context()->thread_synchronizer();
   sync->EnableForPrefix(ProxyFetch::kHeadersSetupRacePrefix);
   ThreadSystem* thread_system = server_context()->thread_system();
-  QueuedWorkerPool pool(1, thread_system);
+  QueuedWorkerPool pool(1, "test", thread_system);
   QueuedWorkerPool::Sequence* sequence = pool.NewSequence();
   WorkerTestBase::SyncPoint sync_point(thread_system);
   sequence->Add(MakeFunction(static_cast<ProxyInterfaceTest*>(this),

@@ -26,8 +26,8 @@ namespace net_instaweb {
 
 class Function;
 
-QueuedWorker::QueuedWorker(ThreadSystem* runtime)
-    : Worker(runtime) {
+QueuedWorker::QueuedWorker(StringPiece thread_name, ThreadSystem* runtime)
+    : Worker(thread_name, runtime) {
 }
 
 QueuedWorker::~QueuedWorker() {

@@ -20,6 +20,7 @@
 
 #include "net/instaweb/util/public/abstract_mutex.h"  // for ScopedMutex, etc
 #include "net/instaweb/util/public/condvar.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread.h"
 
 namespace net_instaweb {
@@ -30,7 +31,7 @@ namespace {
 class SuccessThread : public ThreadSystem::Thread {
  public:
   explicit SuccessThread(ThreadSystemTestBase* owner)
-      : Thread(owner->thread_system(), ThreadSystem::kJoinable),
+      : Thread(owner->thread_system(), "success", ThreadSystem::kJoinable),
         owner_(owner) {}
 
   virtual void Run() {
@@ -48,7 +49,7 @@ class ToggleThread : public ThreadSystem::Thread {
                AbstractMutex* lock,
                ThreadSystem::Condvar* notify_true,
                ThreadSystem::Condvar* notify_false)
-      : Thread(owner->thread_system(), ThreadSystem::kDetached),
+      : Thread(owner->thread_system(), "toggle", ThreadSystem::kDetached),
         owner_(owner),
         lock_(lock),
         notify_true_(notify_true),

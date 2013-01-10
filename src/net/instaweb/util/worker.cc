@@ -39,14 +39,14 @@ namespace net_instaweb {
 // The actual thread that does the work.
 class Worker::WorkThread : public ThreadSystem::Thread {
  public:
-  WorkThread(Worker* owner, ThreadSystem* runtime)
-    : Thread(runtime, ThreadSystem::kJoinable),
-      owner_(owner),
-      mutex_(runtime->NewMutex()),
-      state_change_(mutex_->NewCondvar()),
-      current_task_(NULL),
-      exit_(false),
-      started_(false) {
+  WorkThread(Worker* owner, StringPiece thread_name, ThreadSystem* runtime)
+      : Thread(runtime, thread_name, ThreadSystem::kJoinable),
+        owner_(owner),
+        mutex_(runtime->NewMutex()),
+        state_change_(mutex_->NewCondvar()),
+        current_task_(NULL),
+        exit_(false),
+        started_(false) {
     quit_requested_.set_value(false);
   }
 
@@ -170,8 +170,8 @@ class Worker::WorkThread : public ThreadSystem::Thread {
   DISALLOW_COPY_AND_ASSIGN(WorkThread);
 };
 
-Worker::Worker(ThreadSystem* runtime)
-    : thread_(new WorkThread(this, runtime)),
+Worker::Worker(StringPiece thread_name, ThreadSystem* runtime)
+    : thread_(new WorkThread(this, thread_name, runtime)),
       queue_size_(NULL) {
 }
 

@@ -310,7 +310,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   virtual Timer* DefaultTimer();
   virtual void SetupCaches(ServerContext* resource_manager);
   virtual NamedLockManager* DefaultLockManager();
-  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolName name);
+  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolCategory pool,
+                                             StringPiece name);
 
   // Disable the Resource Manager's filesystem since we have a
   // write-through http_cache.

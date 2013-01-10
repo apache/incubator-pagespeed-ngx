@@ -236,6 +236,7 @@ CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
           // Note -- we will use the first value of ModPagespeedMemCacheThreads
           // that we see in a VirtualHost, ignoring later ones.
           memcached_pool_.reset(new QueuedWorkerPool(num_threads,
+                                                     "memcached",
                                                      thread_system()));
         }
         AsyncCache* async_cache = new AsyncCache(mem_cache,
@@ -389,18 +390,19 @@ UrlAsyncFetcher* ApacheRewriteDriverFactory::DefaultAsyncUrlFetcher() {
 }
 
 QueuedWorkerPool* ApacheRewriteDriverFactory::CreateWorkerPool(
-    WorkerPoolName name) {
-  switch (name) {
+    WorkerPoolCategory pool, StringPiece name) {
+  switch (pool) {
     case kHtmlWorkers:
       // In practice this is 0, as we don't use HTML threads in Apache.
-      return new QueuedWorkerPool(1, thread_system());
+      return new QueuedWorkerPool(1, name, thread_system());
     case kRewriteWorkers:
-      return new QueuedWorkerPool(num_rewrite_threads_, thread_system());
+      return new QueuedWorkerPool(num_rewrite_threads_, name, thread_system());
     case kLowPriorityRewriteWorkers:
       return new QueuedWorkerPool(num_expensive_rewrite_threads_,
+                                  name,
                                   thread_system());
     default:
-      return RewriteDriverFactory::CreateWorkerPool(name);
+      return RewriteDriverFactory::CreateWorkerPool(pool, name);
   }
 }
 
@@ -654,7 +656,7 @@ void ApacheRewriteDriverFactory::ChildInit() {
   apache_message_handler_->SetPidString(static_cast<int64>(getpid()));
   apache_html_parse_message_handler_->SetPidString(
       static_cast<int64>(getpid()));
-  slow_worker_.reset(new SlowWorker(thread_system()));
+  slow_worker_.reset(new SlowWorker("slow_work_thread", thread_system()));
   if (shared_mem_statistics_.get() != NULL) {
     shared_mem_statistics_->Init(false, message_handler());
   }

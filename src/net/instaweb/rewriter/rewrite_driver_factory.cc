@@ -318,8 +318,9 @@ UsageDataReporter* RewriteDriverFactory::DefaultUsageDataReporter() {
   return new UsageDataReporter;
 }
 
-QueuedWorkerPool* RewriteDriverFactory::CreateWorkerPool(WorkerPoolName pool) {
-  return new QueuedWorkerPool(1, thread_system());
+QueuedWorkerPool* RewriteDriverFactory::CreateWorkerPool(
+    WorkerPoolCategory pool, StringPiece name) {
+  return new QueuedWorkerPool(1, name, thread_system());
 }
 
 int RewriteDriverFactory::LowPriorityLoadSheddingThreshold() const {
@@ -337,9 +338,26 @@ NamedLockManager* RewriteDriverFactory::lock_manager() {
   return lock_manager_.get();
 }
 
-QueuedWorkerPool* RewriteDriverFactory::WorkerPool(WorkerPoolName pool) {
+QueuedWorkerPool* RewriteDriverFactory::WorkerPool(WorkerPoolCategory pool) {
   if (worker_pools_[pool] == NULL) {
-    worker_pools_[pool] = CreateWorkerPool(pool);
+    StringPiece name;
+    switch (pool) {
+      case kHtmlWorkers:
+        name = "html";
+        break;
+      case kRewriteWorkers:
+        name = "rewrite";
+        break;
+      case kLowPriorityRewriteWorkers:
+        name = "slow_rewrite";
+        break;
+      default:
+        LOG(DFATAL) << "Unhandled enum value " << pool;
+        name = "unknown_worker";
+        break;
+    }
+
+    worker_pools_[pool] = CreateWorkerPool(pool, name);
     worker_pools_[pool]->set_queue_size_stat(
         rewrite_stats()->thread_queue_depth(pool));
     if (pool == kLowPriorityRewriteWorkers) {

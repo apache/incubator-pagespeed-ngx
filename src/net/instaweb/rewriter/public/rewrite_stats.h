@@ -83,8 +83,8 @@ class RewriteStats {
   // Number of HTML pages rewritten.
   TimedVariable* total_rewrite_count() { return total_rewrite_count_; }
 
-  Waveform* thread_queue_depth(RewriteDriverFactory::WorkerPoolName name) {
-    return thread_queue_depths_[name];
+  Waveform* thread_queue_depth(RewriteDriverFactory::WorkerPoolCategory pool) {
+    return thread_queue_depths_[pool];
   }
 
   TimedVariable* num_rewrites_executed() { return num_rewrites_executed_; }

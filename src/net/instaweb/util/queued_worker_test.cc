@@ -30,7 +30,9 @@ namespace {
 
 class QueuedWorkerTest: public WorkerTestBase {
  public:
-  QueuedWorkerTest() : worker_(new QueuedWorker(thread_runtime_.get())) {}
+  QueuedWorkerTest()
+      : worker_(new QueuedWorker("queued_worker_test", thread_runtime_.get())) {
+  }
 
  protected:
   scoped_ptr<QueuedWorker> worker_;

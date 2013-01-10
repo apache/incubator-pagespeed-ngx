@@ -50,7 +50,7 @@ class CacheSpammer : public ThreadSystem::Thread {
                bool do_deletes,
                const char* value_pattern,
                int index)
-      : Thread(runtime, flags),
+      : Thread(runtime, "cache_spammer", flags),
         cache_(cache),
         expecting_evictions_(expecting_evictions),
         do_deletes_(do_deletes),

@@ -266,8 +266,7 @@ ServerContext::~ServerContext() {
 }
 
 void ServerContext::InitWorkersAndDecodingDriver() {
-  html_workers_ = factory_->WorkerPool(
-      RewriteDriverFactory::kHtmlWorkers);
+  html_workers_ = factory_->WorkerPool(RewriteDriverFactory::kHtmlWorkers);
   rewrite_workers_ = factory_->WorkerPool(
       RewriteDriverFactory::kRewriteWorkers);
   low_priority_rewrite_workers_ = factory_->WorkerPool(

@@ -45,13 +45,15 @@ const size_t kUnboundedQueue = 0;
 
 }  // namespace
 
-QueuedWorkerPool::QueuedWorkerPool(int max_workers, ThreadSystem* thread_system)
+QueuedWorkerPool::QueuedWorkerPool(
+    int max_workers, StringPiece thread_name_base, ThreadSystem* thread_system)
     : thread_system_(thread_system),
       mutex_(thread_system_->NewMutex()),
       max_workers_(max_workers),
       shutdown_(false),
       queue_size_(NULL),
       load_shedding_threshold_(kNoLoadShedding) {
+  thread_name_base.CopyToString(&thread_name_base_);
 }
 
 QueuedWorkerPool::~QueuedWorkerPool() {
@@ -187,7 +189,10 @@ void QueuedWorkerPool::QueueSequence(Sequence* sequence) {
       // If we have haven't yet initiated our full allotment of threads, add
       // on demand until we hit that limit.
       if (active_workers_.size() < max_workers_) {
-        worker = new QueuedWorker(thread_system_);
+        worker =
+            new QueuedWorker(StrCat(thread_name_base_, "-",
+                                    IntegerToString(active_workers_.size())),
+                             thread_system_);
         worker->Start();
         active_workers_.insert(worker);
       } else {

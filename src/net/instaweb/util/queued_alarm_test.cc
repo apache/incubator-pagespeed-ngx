@@ -92,7 +92,8 @@ class QueuedAlarmTest : public WorkerTestBase {
 
  protected:
   void SetupWorker() {
-    worker_.reset(new QueuedWorkerPool(2, thread_system_.get()));
+    worker_.reset(
+        new QueuedWorkerPool(2, "queued_alarm_test", thread_system_.get()));
     MakeSequence();
   }
 

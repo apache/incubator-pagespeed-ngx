@@ -1514,7 +1514,7 @@ class ResourceManagerTestThreadedCache : public ServerContextTest {
         cache_(new ThreadAlternatingCache(
             mock_scheduler(),
             new ThreadsafeCache(cache_backend_, threads_->NewMutex()),
-            new QueuedWorkerPool(2, threads_.get()))),
+            new QueuedWorkerPool(2, "alternator", threads_.get()))),
         http_cache_(new HTTPCache(cache_.get(), timer(), hasher(),
                                   statistics())) {
   }

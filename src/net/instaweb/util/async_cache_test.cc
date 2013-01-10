@@ -174,7 +174,7 @@ class AsyncCacheTest : public CacheTestBase {
         synced_lru_cache_(NULL),
         expected_outstanding_operations_(0) {
     set_mutex(thread_system_->NewMutex());
-    pool_.reset(new QueuedWorkerPool(1, thread_system_.get()));
+    pool_.reset(new QueuedWorkerPool(1, "cache", thread_system_.get()));
     synced_lru_cache_ = new SyncedLRUCache(
         &delay_map_, lru_cache_, thread_system_->NewMutex());
     async_cache_.reset(new AsyncCache(synced_lru_cache_, pool_.get()));

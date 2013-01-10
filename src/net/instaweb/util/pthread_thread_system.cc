@@ -18,12 +18,16 @@
 
 #include "net/instaweb/util/public/pthread_thread_system.h"
 
+#ifdef linux
+#include <features.h>
+#endif
 #include <pthread.h>
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/pthread_rw_lock.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -81,6 +85,17 @@ class PthreadThreadImpl : public ThreadSystem::ThreadImpl {
   static void* InvokeRun(void* self_ptr) {
     PthreadThreadImpl* self = static_cast<PthreadThreadImpl*>(self_ptr);
     self->thread_system_->BeforeThreadRunHook();
+#ifdef __GLIBC_PREREQ
+#if __GLIBC_PREREQ(2, 12)
+    std::string name = self->wrapper_->name();
+    // We need to truncate any long names to 15 characters or they might
+    // not take.
+    if (name.length() > 15) {
+      name = name.substr(0, 15);
+    }
+    pthread_setname_np(self->thread_obj_, name.c_str());
+#endif
+#endif
     self->wrapper_->Run();
     return NULL;
   }

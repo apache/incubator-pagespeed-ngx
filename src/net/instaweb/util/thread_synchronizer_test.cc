@@ -37,7 +37,7 @@ class ThreadSynchronizerTest : public testing::Test {
   ThreadSynchronizerTest()
       : thread_system_(ThreadSystem::CreateThreadSystem()),
         synchronizer_(thread_system_.get()),
-        pool_(1, thread_system_.get()),
+        pool_(1, "thread_synchronizer_test", thread_system_.get()),
         sequence_(pool_.NewSequence()),
         sync_point_(new WorkerTestBase::SyncPoint(thread_system_.get())) {
   }

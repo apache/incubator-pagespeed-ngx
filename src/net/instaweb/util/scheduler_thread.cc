@@ -20,6 +20,7 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/scheduler.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -53,7 +54,7 @@ class SchedulerThread::CleanupFunction : public Function {
 
 SchedulerThread::SchedulerThread(ThreadSystem* thread_system,
                                  Scheduler* scheduler)
-    : Thread(thread_system, ThreadSystem::kJoinable),
+    : Thread(thread_system, "scheduler_thread", ThreadSystem::kJoinable),
       quit_(false),
       scheduler_(scheduler) {}
 

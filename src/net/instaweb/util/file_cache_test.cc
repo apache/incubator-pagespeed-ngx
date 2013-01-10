@@ -43,7 +43,7 @@ class FileCacheTest : public CacheTestBase {
  protected:
   FileCacheTest()
       : thread_system_(ThreadSystem::CreateThreadSystem()),
-        worker_(thread_system_.get()),
+        worker_("cleaner", thread_system_.get()),
         mock_timer_(0),
         file_system_(thread_system_.get(), &mock_timer_),
         kCleanIntervalMs(Timer::kMinuteMs),

@@ -35,6 +35,7 @@
 #include "net/instaweb/util/public/shared_mem_statistics_test_base.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
 #include "net/instaweb/util/public/stl_util.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -86,7 +87,7 @@ class InProcessSharedMemEnv : public SharedMemTestEnv {
   class RunFunctionThread : public ThreadSystem::Thread {
    public:
     RunFunctionThread(ThreadSystem* runtime, Function* fn)
-        : Thread(runtime, ThreadSystem::kJoinable),
+        : Thread(runtime, "thread_run", ThreadSystem::kJoinable),
           fn_(fn) {
     }
 

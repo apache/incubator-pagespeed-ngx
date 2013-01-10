@@ -26,8 +26,8 @@ namespace net_instaweb {
 
 class ThreadSystem;
 
-SlowWorker::SlowWorker(ThreadSystem* runtime)
-    : Worker(runtime) {
+SlowWorker::SlowWorker(StringPiece thread_name, ThreadSystem* runtime)
+    : Worker(thread_name, runtime) {
 }
 
 SlowWorker::~SlowWorker() {

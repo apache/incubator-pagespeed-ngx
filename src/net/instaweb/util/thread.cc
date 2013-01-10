@@ -21,15 +21,18 @@
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
-ThreadSystem::Thread::Thread(ThreadSystem* runtime, ThreadFlags flags)
+ThreadSystem::Thread::Thread(
+    ThreadSystem* runtime, StringPiece name, ThreadFlags flags)
     : impl_(runtime->NewThreadImpl(this, flags)),
       flags_(flags),
       started_(false) {
+  name.CopyToString(&name_);
 }
 
 ThreadSystem::Thread::~Thread() {

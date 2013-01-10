@@ -28,6 +28,7 @@
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -383,6 +384,7 @@ class ThreadedSchedulerBasedLockTest : public SchedulerBasedAbstractLockTest {
    public:
     explicit HelperThread(ThreadedSchedulerBasedLockTest* test)
         : ThreadSystem::Thread(test->thread_system_.get(),
+                               "threaded_scheduler_based_lock_test_helper",
                                ThreadSystem::kJoinable),
           test_(test) { }
     virtual void Run() {
