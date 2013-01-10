@@ -43,7 +43,7 @@ Download and build nginx:
     $ # check http://nginx.org/en/download.html for the latest version
     $ wget http://nginx.org/download/nginx-1.2.6.tar.gz
     $ tar -xvzf nginx-1.2.6.tar.gz
-    $ cd nginx-1.2.6/src/
+    $ cd nginx-1.2.6/
     $ ./configure --add-module=$HOME/ngx_pagespeed
     $ make install
 
@@ -78,7 +78,7 @@ Download and build nginx:
     $ # check http://nginx.org/en/download.html for the latest version
     $ wget http://nginx.org/download/nginx-1.2.6.tar.gz
     $ tar -xvzf nginx-1.2.6.tar.gz
-    $ cd nginx-1.2.6/src/
+    $ cd nginx-1.2.6/
     $ MOD_PAGESPEED_DIR="$HOME/mod_pagespeed/src" ./configure --add-module=$HOME/ngx_pagespeed
     $ make install
 
