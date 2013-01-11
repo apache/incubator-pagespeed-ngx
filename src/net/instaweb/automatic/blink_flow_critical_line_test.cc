@@ -623,7 +623,6 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     // since we want to test that they get enabled in the blink flow.
     // We don't force enable some of the other rewriters in the test since
     // they manipulate the passthru case.
-    options_->DisableFilter(RewriteOptions::kComputePanelJson);
     options_->DisableFilter(RewriteOptions::kDisableJavascript);
     options_->ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
     options_->ForceEnableFilter(RewriteOptions::kConvertMetaTags);

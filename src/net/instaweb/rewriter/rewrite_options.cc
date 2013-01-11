@@ -262,7 +262,6 @@ const RewriteOptions::Filter kTestFilterSet[] = {
 // Note: These filters should not be included even if the level is "All".
 const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kCanonicalizeJavascriptLibraries,
-  RewriteOptions::kComputePanelJson,  // internal, enabled conditionally
   RewriteOptions::kComputeVisibleText,  // internal, enabled conditionally
   RewriteOptions::kDeferIframe,
   RewriteOptions::kDeferJavascript,
@@ -330,8 +329,6 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "ch", "Combine Heads" },
   { RewriteOptions::kCombineJavascript,
     RewriteOptions::kJavascriptCombinerId, "Combine Javascript" },
-  { RewriteOptions::kComputePanelJson,
-    "cv", "Computes panel json" },
   { RewriteOptions::kComputeVisibleText,
     "bp", "Computes visible text" },
   { RewriteOptions::kConvertGifToPng,
@@ -1196,9 +1193,6 @@ void RewriteOptions::DisallowTroublesomeResources() {
   DisableLazyloadForClassName("*nivo*");
   DisableLazyloadForClassName("*slider*");
 
-  if (Enabled(kComputePanelJson)) {
-    RetainComment(StrCat(kPanelCommentPrefix, "*"));
-  }
 }
 
 bool RewriteOptions::EnableFiltersByCommaSeparatedList(
