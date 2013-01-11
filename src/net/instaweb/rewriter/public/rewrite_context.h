@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -38,14 +39,10 @@
 namespace net_instaweb {
 
 class AsyncFetch;
-class CachedResult;
 class GoogleUrl;
-class InputInfo;
 class MessageHandler;
 class NamedLock;
-class OutputPartitions;
 class RequestTrace;
-class ResourceContext;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
@@ -93,6 +90,32 @@ class Writer;
 // RewriteDriver.
 class RewriteContext {
  public:
+  typedef std::vector<InputInfo*> InputInfoStarVector;
+  // Used to pass the result of the metadata cache lookups. Recipient must
+  // take ownership.
+  struct CacheLookupResult {
+    CacheLookupResult()
+        : cache_ok(false),
+          can_revalidate(false),
+          partitions(new OutputPartitions) {}
+
+    bool cache_ok;
+    bool can_revalidate;
+    InputInfoStarVector revalidate;
+    scoped_ptr<OutputPartitions> partitions;
+  };
+
+  // Used for LookupMetadataForOutputResource.
+  class CacheLookupResultCallback {
+   public:
+    CacheLookupResultCallback() {}
+    virtual ~CacheLookupResultCallback();
+    virtual void Done(const GoogleString& cache_key,
+                      CacheLookupResult* result) = 0;
+   private:
+    DISALLOW_COPY_AND_ASSIGN(CacheLookupResultCallback);
+  };
+
   // Takes ownership of resource_context, which must be NULL or
   // allocated with 'new'.
   RewriteContext(RewriteDriver* driver,   // exactly one of driver & parent
@@ -154,6 +177,25 @@ class RewriteContext {
              AsyncFetch* fetch,
              MessageHandler* message_handler);
 
+  // Attempts to lookup the metadata cache info that would be used for the
+  // output resource at url with the RewriteOptions set on driver.
+  //
+  // If there is a problem with the URL, returns false, and *error_out
+  // will contain an error message.
+  //
+  // If it can determine the metadata cache key successfully, returns true,
+  // and eventually callback will be invoked with the metadata cache key
+  // and the decoding results.
+  //
+  // Do not use the driver passed to this method for anything else.
+  //
+  // Note: this method is meant for debugging use only.
+  static bool LookupMetadataForOutputResource(
+      const GoogleString& url,
+      RewriteDriver* driver,
+      GoogleString* error_out,
+      CacheLookupResultCallback* callback);
+
   // Runs after all Rewrites have been completed, and all nested
   // RewriteContexts have completed and harvested.
   //
@@ -206,7 +248,6 @@ class RewriteContext {
   void DetachSlots();
 
  protected:
-  typedef std::vector<InputInfo*> InputInfoStarVector;
   typedef std::vector<GoogleUrl*> GoogleUrlStarVector;
 
   // Creates a new request trace associated with this context with a given
@@ -462,8 +503,8 @@ class RewriteContext {
   }
 
  private:
-  struct CacheLookupResult;
   class OutputCacheCallback;
+  class LookupMetadataForOutputResourceCallback;
   friend class OutputCacheCallback;
   class HTTPCacheCallback;
   friend class HTTPCacheCallback;
@@ -601,6 +642,13 @@ class RewriteContext {
   // Actual implementation of StartNestedTasks that's queued to run in
   // high-priority rewrite thread.
   void StartNestedTasksImpl();
+
+  // Sets up all the state needed for Fetch, but doesn't register this context
+  // or actually start the rewrite process.
+  bool PrepareFetch(
+      const OutputResourcePtr& output_resource,
+      AsyncFetch* fetch,
+      MessageHandler* message_handler);
 
   // Callback for metadata lookup on fetch path.
   void FetchCacheDone(CacheLookupResult* cache_result);

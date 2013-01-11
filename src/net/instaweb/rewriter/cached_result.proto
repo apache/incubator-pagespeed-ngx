@@ -133,7 +133,7 @@ message CachedResult {
   // vary the output based on things like the base URL. Output is cached
   // when the rewrite is expensive, with different base URLs being instead
   // incorporated into the key.
-  optional string inlined_data = 12;
+  optional bytes inlined_data = 12;
 
   // The result of a spriting operation, containing x/y coordinates for each
   // subimage in the sprite.
@@ -151,7 +151,7 @@ message CachedResult {
 
   // This contains low resolution/quality image contents. This will be set only
   // if DelayImagesFilter is enabled.
-  optional string low_resolution_inlined_data = 16;
+  optional bytes low_resolution_inlined_data = 16;
 
   // The image type is actually a net_instaweb::Image::Type.  It permits image
   // inlining to create an appropriate data: url from this and the

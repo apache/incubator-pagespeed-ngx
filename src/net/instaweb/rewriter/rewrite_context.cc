@@ -46,6 +46,7 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -74,8 +75,6 @@
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
-
-class RewriteFilter;
 
 namespace {
 
@@ -178,20 +177,6 @@ class FreshenMetadataUpdateManager {
 
 }  // namespace
 
-// Used to pass the result of the metadata cache lookup from OutputCacheCallback
-// to RewriteContext.  These are deleted by RewriteContext.
-struct RewriteContext::CacheLookupResult {
-  CacheLookupResult()
-      : cache_ok(false),
-        can_revalidate(false),
-        partitions(new OutputPartitions) {}
-
-  bool cache_ok;
-  bool can_revalidate;
-  InputInfoStarVector revalidate;
-  scoped_ptr<OutputPartitions> partitions;
-};
-
 // Two callback classes for completed caches & fetches.  These gaskets
 // help RewriteContext, which knows about all the pending inputs,
 // trigger the rewrite once the data is available.  There are two
@@ -266,6 +251,10 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
     // ValidateCandidate we might return false when we might actually end up
     // using the cached result via revalidate.
     return cache_result_->cache_ok;
+  }
+
+  CacheLookupResult* ReleaseLookupResult() {
+    return cache_result_.release();
   }
 
  private:
@@ -520,6 +509,32 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
   RewriteContext* rewrite_context_;
   CacheResultHandlerFunction function_;
   scoped_ptr<CacheLookupResult> cache_result_;
+};
+
+// Like OutputCacheCallback but forwarding info to an external user rather
+// than to RewriteContext
+class RewriteContext::LookupMetadataForOutputResourceCallback
+    : public RewriteContext::OutputCacheCallback {
+ public:
+  // Unlike base class, this takes ownership of 'rc'.
+  LookupMetadataForOutputResourceCallback(
+      const GoogleString& key, RewriteContext* rc,
+      CacheLookupResultCallback* callback)
+      : OutputCacheCallback(rc, NULL),
+        key_(key),
+        rewrite_context_(rc),
+        callback_(callback) {
+  }
+
+  virtual void Done(CacheInterface::KeyState state) {
+    callback_->Done(key_, ReleaseLookupResult());
+    delete this;
+  }
+
+ private:
+  GoogleString key_;
+  scoped_ptr<RewriteContext> rewrite_context_;
+  CacheLookupResultCallback* callback_;
 };
 
 // Bridge class for routing cache callbacks to RewriteContext methods
@@ -936,6 +951,9 @@ class RewriteContext::InvokeRewriteFunction : public Function {
   int partition_;
   OutputResourcePtr output_;
 };
+
+RewriteContext::CacheLookupResultCallback::~CacheLookupResultCallback() {
+}
 
 RewriteContext::RewriteContext(RewriteDriver* driver,
                                RewriteContext* parent,
@@ -2082,10 +2100,25 @@ bool RewriteContext::Fetch(
     const OutputResourcePtr& output_resource,
     AsyncFetch* fetch,
     MessageHandler* message_handler) {
+  Driver()->InitiateFetch(this);
+  if (PrepareFetch(output_resource, fetch, message_handler)) {
+    Driver()->AddRewriteTask(MakeFunction(this,
+                                          &RewriteContext::StartFetch,
+                                          &RewriteContext::CancelFetch));
+    return true;
+  } else {
+    fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
+    return false;
+  }
+}
+
+bool RewriteContext::PrepareFetch(
+    const OutputResourcePtr& output_resource,
+    AsyncFetch* fetch,
+    MessageHandler* message_handler) {
   // Decode the URLs required to execute the rewrite.
   bool ret = false;
   RewriteDriver* driver = Driver();
-  driver->InitiateFetch(this);
   GoogleUrlStarVector url_vector;
   if (DecodeFetchUrls(output_resource, message_handler, &url_vector)) {
     bool is_valid = true;
@@ -2123,17 +2156,55 @@ bool RewriteContext::Fetch(
       if (output_resource->has_hash()) {
         fetch_->set_requested_hash(output_resource->hash());
       }
-      Driver()->AddRewriteTask(MakeFunction(this,
-                                            &RewriteContext::StartFetch,
-                                            &RewriteContext::CancelFetch));
       ret = true;
     }
   }
-  if (!ret) {
-    fetch->response_headers()->SetStatusAndReason(HttpStatus::kNotFound);
-  }
 
   return ret;
+}
+
+bool RewriteContext::LookupMetadataForOutputResource(
+    const GoogleString& url,
+    RewriteDriver* driver,
+    GoogleString* error_out,
+    CacheLookupResultCallback* callback) {
+  RewriteFilter* filter = NULL;
+  GoogleUrl gurl(url);
+
+  if (!gurl.is_valid()) {
+    *error_out = "Unable to parse URL.";
+    return false;
+  }
+
+  driver->SetBaseUrlForFetch(gurl.Spec());
+  OutputResourcePtr output_resource(
+      driver->DecodeOutputResource(gurl, &filter));
+
+  if (output_resource.get() == NULL || filter == NULL) {
+    *error_out = "Unable to decode resource.";
+    return false;
+  }
+
+  scoped_ptr<RewriteContext> context(filter->MakeRewriteContext());
+  if (context.get() == NULL) {
+    *error_out = "Unable to create RewriteContext.";
+    return false;
+  }
+
+  StringAsyncFetch dummy_fetch(driver->request_context());
+  if (!context->PrepareFetch(output_resource, &dummy_fetch,
+                             driver->message_handler())) {
+    *error_out = "PrepareFetch failed.";
+    return false;
+  }
+
+  const GoogleString key = context->partition_key_;
+  CacheInterface* metadata_cache =
+      context->FindServerContext()->metadata_cache();
+  metadata_cache->Get(key,
+                      new LookupMetadataForOutputResourceCallback(
+                              key, context.release(), callback));
+  return true;
 }
 
 void RewriteContext::CancelFetch() {

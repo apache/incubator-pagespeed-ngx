@@ -1004,6 +1004,7 @@ class RewriteDriver : public HtmlParse {
              OutputResource* output);
 
  private:
+  friend class RewriteContext;
   friend class RewriteDriverTest;
   friend class RewriteTestBase;
   friend class ServerContextTest;
