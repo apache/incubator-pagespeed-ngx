@@ -377,6 +377,11 @@ bool handle_as_resource(ApacheServerContext* server_context,
     return false;
   }
 
+  // We must potentially poll for cache.flush (which can mutate global_options)
+  // before constructing the options that we use to decide whether IPRO is
+  // enabled.
+  server_context->PollFilesystemForCacheFlush();
+
   bool using_spdy = ApacheRewriteDriverFactory::TreatRequestAsSpdy(request);
   RewriteOptions* global_options = server_context->global_options();
   if (using_spdy && (server_context->SpdyConfig() != NULL)) {

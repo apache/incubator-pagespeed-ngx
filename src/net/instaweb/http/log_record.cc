@@ -129,6 +129,15 @@ void LogRecord::SetTimingFetchMs(int64 ms) {
   logging_info()->mutable_timing_info()->set_fetch_ms(ms);
 }
 
+void LogRecord::UpdateTimingInfoWithFetchStartTime(int64 start_time_ms) {
+  ScopedMutex lock(mutex_.get());
+  TimingInfo* timing_info = logging_info()->mutable_timing_info();
+  if (timing_info->has_request_start_ms()) {
+    timing_info->set_time_to_start_fetch_ms(
+      start_time_ms - timing_info->request_start_ms());
+  }
+}
+
 void LogRecord::SetBlinkInfo(const GoogleString& user_agent) {
   ScopedMutex lock(mutex_.get());
   SetBlinkInfoImpl(user_agent);

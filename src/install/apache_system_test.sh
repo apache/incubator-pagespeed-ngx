@@ -595,12 +595,10 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
       "grep -c max-age=300,private" 1
 
   WGET_ARGS=""
-fi
 
-# Test fetching a pagespeed URL via Apache running as a reverse proxy, with
-# mod_pagespeed loaded, but disabled for the proxied domain. As reported in
-# Issue 582 this used to fail with a 403 (Forbidden).
-if [ -n "${SECONDARY_HOSTNAME}" ]; then
+  # Test fetching a pagespeed URL via Apache running as a reverse proxy, with
+  # mod_pagespeed loaded, but disabled for the proxied domain. As reported in
+  # Issue 582 this used to fail with a 403 (Forbidden).
   start_test Reverse proxy a pagespeed URL.
 
   PROXY_PATH="http://modpagespeed.com/styles"
@@ -659,6 +657,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
   echo $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
   $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
+  sleep 1
 
   URL_PATH=cache_flush_test.html?ModPagespeedFilters=inline_css
   URL=$TEST_ROOT/$URL_PATH
@@ -700,6 +699,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   sleep 2
   echo $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
   $SUDO touch $MOD_PAGESPEED_CACHE/cache.flush
+  sleep 1
   fetch_until $URL "grep -c $COLOR1" 1
 
   # TODO(jmarantz): we can change this test to be more exacting now, since
@@ -720,6 +720,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   # Now flush the secondary cache too so it can see the change to $COLOR1.
   echo $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
   $SUDO touch ${MOD_PAGESPEED_CACHE}/_secondary/cache.flush
+  sleep 1
   http_proxy=$SECONDARY_HOSTNAME fetch_until $SECONDARY_URL "grep -c $COLOR1" 1
 
   # Clean up update.css from mod_pagespeed_test so it doesn't leave behind
@@ -832,12 +833,10 @@ blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
   # Now fetch the resource using a different host, which is mapped to the first
   # one.  To get the correct bytes, matching hash, and long TTL, we need to do
   # apply the domain mapping in the CSS resource fetch.
-  CSS_OUT="$OUTDIR/mapped_css.$$"
   URL="http://origin.example.com/$MAPPED_CSS"
-  echo http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL '>' $CSS_OUT
-  http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL > $CSS_OUT
-  check fgrep -q "Cache-Control: max-age=31536000" $CSS_OUT
-  rm -f $CSS_OUT
+  echo http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL
+  CSS_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+  check_from "$CSS_OUT" fgrep -q "Cache-Control: max-age=31536000"
 
   # Test ModPagespeedForbidFilters, which is set in pagespeed.conf for the VHost
   # forbidden.example.com, where we've forbidden remove_quotes, remove_comments,

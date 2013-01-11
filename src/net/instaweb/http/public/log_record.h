@@ -91,6 +91,14 @@ class LogRecord  {
   void SetIsOriginalResourceCacheable(bool cacheable);
   void SetTimingRequestStartMs(int64 ms);
   void SetTimingFetchMs(int64 ms);
+  // Sets time_to_start_fetch_ms in the TimingInfo submessage as an offset from
+  // timing_info.request_start_ms (|start_time_ms| is an absolute time value
+  // and is converted into the offset). If request_start_ms is unset, this is a
+  // silent no-op. This may be called several times in sucession, for example
+  // in the case of retried fetches. In that case, if time_to_start_fetch_ms has
+  // already been set in the log record, this is again a silent no-op.
+  void UpdateTimingInfoWithFetchStartTime(int64 start_time_ms);
+
   // Override SetBlinkInfoImpl if necessary.
   void SetBlinkInfo(const GoogleString& user_agent);
 
