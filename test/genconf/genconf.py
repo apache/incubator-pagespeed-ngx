@@ -1,5 +1,4 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
 from collections import OrderedDict
 import compiler
 from compiler.ast import Const
@@ -19,13 +18,12 @@ def parse_python_struct(file_contents):
 
 
 def flatten_attribute(o):
-
-  # true/false from  end up here:
+    # true/false from  end up here:
 
     if len(o.getChildren()) == 1:
         return o.getChildren()[0]
 
-  # handle reference to other element
+    # handle reference to other element
 
     c1 = o.getChildren()[0]
     c2 = o.getChildren()[1]
@@ -71,6 +69,8 @@ def ast_node_to_dict(
         if flattened in lookup:
             val = lookup[flattened]
             lookup[parent_key] = val
+        else:
+            raise Exception(val)
         return val
     return dest
 
@@ -79,8 +79,7 @@ def replace_comments(conditions, s):
     condition = s.group(1)
     config = s.group(2)
 
-  # TODO(oschaaf): handle comments
-
+    # TODO(oschaaf): handle comments
     if condition in conditions:
         return config
     else:
@@ -90,9 +89,8 @@ def replace_comments(conditions, s):
 def fill_placeholders(placeholders, match):
     placeholder = match.group(1)
     if placeholder not in placeholders:
-
-    # re-insert the placeholder
-
+        # re-insert the placeholder
+        # TODO(oschaaf): probably need to raise here
         return '@@' + placeholder + '@@'
     else:
         return str(placeholders[placeholder])
@@ -111,7 +109,7 @@ def pre_process_text(cfg, conditions, placeholders):
     return cfg
 
 
-def process_ifdefs(cfg,conditions):
+def pre_process_ifdefs(cfg,conditions):
     lines = cfg.split("\n")
     ifstack = [True]
     ret = []
@@ -133,15 +131,11 @@ def process_ifdefs(cfg,conditions):
     # TODO(oschaaf): ensure ifstack length equals 1 here
     return "\n".join(ret)
 
-def execute_template(
-    pyconf_path,
-    conditions,
-    placeholders,
-    template_path,
-    ):
+def execute_template(pyconf_path, conditions,
+                     placeholders, template_path):
     config_file = open(pyconf_path)
     config_text = config_file.read()
-    config_text = process_ifdefs(config_text, conditions)
+    config_text = pre_process_ifdefs(config_text, conditions)
     config_text = pre_process_text(config_text, conditions,
                                    placeholders)
     ast = parse_python_struct(config_text)
@@ -149,7 +143,7 @@ def execute_template(
     template_file = open(template_path)
     template_text = template_file.read()
     template_text = pre_process_text(template_text, conditions,
-            placeholders)
+                                     placeholders)
     template = Templite(template_text)
     text = template.render(config=config)
     return text
