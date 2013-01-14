@@ -238,8 +238,9 @@ pagespeed: {
 #endif
     XHeaderValue: "\"test\"",
 #endif #ALL_DIRECTIVES
+#ifndef nginx
     #PER_VHOST_STATS UsePerVHostStatistics: "on",
-
+#endif
     # Do testing using memcached in lieu of the file cache.
     #MEMCACHED MemcachedServers: "localhost:6765",
 

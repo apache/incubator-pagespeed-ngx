@@ -5,6 +5,7 @@ from compiler.ast import Const
 from compiler.ast import Dict
 from compiler.ast import List
 from compiler.ast import Node
+from compiler.ast import UnarySub
 import re
 from templite import Templite
 
@@ -56,16 +57,19 @@ def ast_node_to_dict(
     elif isinstance(node, List):
         dest = []
         for (index, child) in enumerate(node.getChildren()):
-            cn = ast_node_to_dict(child, None, lookup, parent_key + '.'
-                                  + repr(index))
+            cn = ast_node_to_dict(child, None, lookup, parent_key +
+                                  '.' + repr(index))
             dest.append(cn)
             lookup[parent_key] = dest
+    elif isinstance(node, UnarySub):
+        lookup[parent_key] = '-' + repr(node.getChildren()[0].getChildren()[0])
+        return '-' + repr(node.getChildren()[0].getChildren()[0])
     elif isinstance(node, Const):
         lookup[parent_key] = node.getChildren()[0]
         return node.getChildren()[0]
     elif isinstance(node, Node):
         flattened = flatten_attribute(node)
-        val = '#LOOKUP_FAILED [' + str(flattened) + ']!'
+        val = '#LOOKUP_FAILED [' + repr(node) + ']!'
         if flattened in lookup:
             val = lookup[flattened]
             lookup[parent_key] = val
