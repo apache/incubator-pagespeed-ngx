@@ -49,6 +49,8 @@ namespace net_instaweb {
 
 class MessageHandler;
 
+const char AjaxRewriteResourceSlot::kIproSlotLocation[] = "ipro";
+
 // Names for Statistics variables.
 const char AjaxRewriteContext::kInPlaceOversizedOptStream[] =
     "in_place_oversized_opt_stream";
@@ -57,6 +59,10 @@ AjaxRewriteResourceSlot::AjaxRewriteResourceSlot(const ResourcePtr& resource)
     : ResourceSlot(resource) {}
 
 AjaxRewriteResourceSlot::~AjaxRewriteResourceSlot() {}
+
+GoogleString AjaxRewriteResourceSlot::LocationString() {
+  return kIproSlotLocation;
+}
 
 void AjaxRewriteResourceSlot::Render() {
   // Do nothing.

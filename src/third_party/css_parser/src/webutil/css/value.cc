@@ -157,7 +157,7 @@ bool Value::Equals(const Value& other) const {
     case FUNCTION:
       if (str_ != other.str_)
         return false;
-      // pass through
+      FALLTHROUGH_INTENDED;
     case RECT:
       if (params_.get() == NULL)
         return other.params_.get() == NULL;

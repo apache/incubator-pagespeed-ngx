@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/image.h"
@@ -152,7 +153,10 @@ void SetWebpCompressionOptions(
 void ImageRewriteFilter::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
-  AttachDependentRequestTrace("ProcessImage");
+  bool is_ipro =
+      num_slots() == 1 &&
+      slot(0)->LocationString() == AjaxRewriteResourceSlot::kIproSlotLocation;
+  AttachDependentRequestTrace(is_ipro ? "IproProcessImage" : "ProcessImage");
   RewriteDone(
       filter_->RewriteLoadedResourceImpl(this, input_resource, output_resource),
       0);
@@ -529,34 +533,38 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       } else {
         // Server fails to write merged files.
         image_rewrites_dropped_server_write_fail_->Add(1);
-        driver_->InfoAt(
-            rewrite_context, "Server fails writing image content for `%s'; "
+        GoogleString msg(StringPrintf(
+            "Server fails writing image content for `%s'; "
             "rewriting dropped.",
-            input_resource->url().c_str());
+            input_resource->url().c_str()));
+        driver_->InfoAt(rewrite_context, "%s", msg.c_str());
+        rewrite_context->TracePrintf("%s", msg.c_str());
       }
     } else if (resized) {
       // Eliminate any image dimensions from a resize operation that succeeded,
       // but yielded overly-large output.
       image_rewrites_dropped_nosaving_resize_->Add(1);
-      driver_->InfoAt(
-          rewrite_context,
+      GoogleString msg(StringPrintf(
           "Shrink of image `%s' (%u -> %u bytes) doesn't save space; dropped.",
           input_resource->url().c_str(),
           static_cast<unsigned>(image->input_size()),
-          static_cast<unsigned>(image->output_size()));
+          static_cast<unsigned>(image->output_size())));
+      driver_->InfoAt(rewrite_context, "%s", msg.c_str());
+      rewrite_context->TracePrintf("%s", msg.c_str());
       ImageDim* dims = cached->mutable_image_file_dims();
       dims->clear_width();
       dims->clear_height();
     } else if (options->ImageOptimizationEnabled()) {
       // Fails due to overly-large output without resize.
       image_rewrites_dropped_nosaving_noresize_->Add(1);
-      driver_->InfoAt(
-          rewrite_context,
+      GoogleString msg(StringPrintf(
           "Recompressing image `%s' (%u -> %u bytes) doesn't save space; "
           "dropped.",
           input_resource->url().c_str(),
           static_cast<unsigned>(image->input_size()),
-          static_cast<unsigned>(image->output_size()));
+          static_cast<unsigned>(image->output_size())));
+      driver_->InfoAt(rewrite_context, "%s", msg.c_str());
+      rewrite_context->TracePrintf("%s", msg.c_str());
     }
 
     // Try inlining input image if output hasn't been inlined already.
@@ -622,8 +630,10 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     work_bound_->WorkComplete();
   } else {
     image_rewrites_dropped_due_to_load_->IncBy(1);
-    message_handler->Message(kInfo, "%s: Too busy to rewrite image.",
-                             input_resource->url().c_str());
+    GoogleString msg(StringPrintf("%s: Too busy to rewrite image.",
+                                  input_resource->url().c_str()));
+    rewrite_context->TracePrintf("%s", msg.c_str());
+    message_handler->Message(kInfo, "%s", msg.c_str());
   }
 
   // All other conditions were updated in other code paths above.

@@ -52,13 +52,15 @@ class Variable;
 // there are no references remaining.
 class AjaxRewriteResourceSlot : public ResourceSlot {
  public:
+  static const char kIproSlotLocation[];
+
   explicit AjaxRewriteResourceSlot(const ResourcePtr& resource);
 
   // Implements ResourceSlot::Render().
   virtual void Render();
 
   // Implements ResourceSlot::LocationString().
-  virtual GoogleString LocationString() { return "ajax"; }
+  virtual GoogleString LocationString();
 
  protected:
   virtual ~AjaxRewriteResourceSlot();

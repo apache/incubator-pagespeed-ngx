@@ -29,6 +29,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
 #include "net/instaweb/rewriter/public/association_transformer.h"
 #include "net/instaweb/rewriter/public/css_flatten_imports_context.h"
 #include "net/instaweb/rewriter/public/css_hierarchy.h"
@@ -251,7 +252,10 @@ void CssFilter::Context::SetupExternalRewrite(const GoogleUrl& base_gurl,
 void CssFilter::Context::RewriteSingle(
     const ResourcePtr& input_resource,
     const OutputResourcePtr& output_resource) {
-  AttachDependentRequestTrace("ProcessCSS");
+  bool is_ipro =
+      num_slots() == 1 &&
+      slot(0)->LocationString() == AjaxRewriteResourceSlot::kIproSlotLocation;
+  AttachDependentRequestTrace(is_ipro ? "IproProcessCSS" : "ProcessCSS");
   input_resource_ = input_resource;
   output_resource_ = output_resource;
   StringPiece input_contents = input_resource_->contents();

@@ -174,6 +174,7 @@ bool CssExtractUntil(bool is_string, char term,
             if (is_string) {
               break;
             }
+            FALLTHROUGH_INTENDED;
           default:
             // We can't parse it but it's not clear that ignoring it is the
             // safest thing, so we just pass it through unmodified
