@@ -18,6 +18,7 @@
 
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
+#include "ngx_thread_system.h"
 
 #include <cstdio>
 
@@ -71,6 +72,7 @@ class Writer;
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
+    RewriteDriverFactory(new NgxThreadSystem()),
     shared_mem_runtime_(new NullSharedMem()),
     cache_hasher_(20),
     main_conf_(main_conf),
@@ -349,6 +351,7 @@ void NgxRewriteDriverFactory::StartThreads() {
   if (threads_started_) {
     return;
   }
+  reinterpret_cast<NgxThreadSystem*>(thread_system())->PermitThreadStarting();
   // TODO(jefftk): use a native nginx timer instead of running our own thread.
   // See issue #111.
   SchedulerThread* thread = new SchedulerThread(thread_system(), scheduler());
