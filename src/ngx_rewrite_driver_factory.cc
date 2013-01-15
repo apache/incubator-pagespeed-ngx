@@ -91,7 +91,9 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
-  slow_worker_->ShutDown();
+  if (slow_worker_ != NULL) {
+    slow_worker_->ShutDown();
+  }
   ShutDown();
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
@@ -158,7 +160,9 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
-  slow_worker_.reset(new SlowWorker(thread_system()));
+  if (slow_worker_ == NULL) {
+    slow_worker_.reset(new SlowWorker(thread_system()));
+  }
 
   // TODO(jefftk): see the ngx_rewrite_options.h note on OriginRewriteOptions;
   // this would move to OriginRewriteOptions.

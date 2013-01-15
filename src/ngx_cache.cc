@@ -61,7 +61,7 @@ NgxCache::NgxCache(const StringPiece& path,
       config.file_cache_clean_size_kb() * 1024,
       config.file_cache_clean_inode_limit());
   file_cache_ = new FileCache(
-      config.file_cache_path(), factory->file_system(), NULL,
+      config.file_cache_path(), factory->file_system(), factory->slow_worker(),
       factory->filename_encoder(), policy, factory->message_handler());
   l2_cache_.reset(new CacheStats(kFileCache, file_cache_, factory->timer(),
                                  factory->statistics()));
