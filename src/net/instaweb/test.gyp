@@ -104,6 +104,7 @@
         'rewriter/collect_subresources_filter_test.cc',
         'rewriter/common_filter_test.cc',
         'rewriter/compute_visible_text_filter_test.cc',
+        'rewriter/critical_images_beacon_filter_test.cc',
         'rewriter/critical_images_finder_test.cc',
         'rewriter/critical_images_finder_test_base.cc',
         'rewriter/css_combine_filter_test.cc',

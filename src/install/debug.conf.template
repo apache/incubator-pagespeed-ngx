@@ -681,6 +681,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 #ALL_DIRECTIVES ModPagespeedClientDomainRewrite false
 #ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
 #ALL_DIRECTIVES ModPagespeedCombineAcrossPaths true
+#ALL_DIRECTIVES ModPagespeedCriticalImagesBeaconEnabled true
 #ALL_DIRECTIVES ModPagespeedCssFlattenMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssImageInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssInlineMaxBytes 2000

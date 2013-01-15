@@ -40,6 +40,8 @@ extern const char* JS_add_instrumentation;
 extern const char* JS_add_instrumentation_opt;
 extern const char* JS_client_domain_rewriter;
 extern const char* JS_client_domain_rewriter_opt;
+extern const char* JS_critical_images_beacon;
+extern const char* JS_critical_images_beacon_opt;
 extern const char* JS_defer_iframe;
 extern const char* JS_defer_iframe_opt;
 extern const char* JS_delay_images;
@@ -176,6 +178,8 @@ void StaticJavascriptManager::InitializeJsStrings() {
       JS_add_instrumentation_opt;
   opt_js_vector_[static_cast<int>(kClientDomainRewriter)] =
       JS_client_domain_rewriter_opt;
+  opt_js_vector_[static_cast<int>(kCriticalImagesBeaconJs)] =
+      JS_critical_images_beacon_opt;
   opt_js_vector_[static_cast<int>(kDeferIframe)] = JS_defer_iframe_opt;
   opt_js_vector_[static_cast<int>(kDeferJs)] = JS_js_defer_opt;
   opt_js_vector_[static_cast<int>(kDelayImagesJs)] =
@@ -196,6 +200,8 @@ void StaticJavascriptManager::InitializeJsStrings() {
       JS_add_instrumentation;
   debug_js_vector_[static_cast<int>(kClientDomainRewriter)] =
       JS_client_domain_rewriter;
+  debug_js_vector_[static_cast<int>(kCriticalImagesBeaconJs)] =
+      JS_critical_images_beacon;
   debug_js_vector_[static_cast<int>(kDeferIframe)] = JS_defer_iframe;
   debug_js_vector_[static_cast<int>(kDeferJs)] = JS_js_defer;
   debug_js_vector_[static_cast<int>(kDelayImagesJs)] =

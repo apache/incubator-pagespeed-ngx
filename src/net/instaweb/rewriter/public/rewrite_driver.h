@@ -274,6 +274,7 @@ class RewriteDriver : public HtmlParse {
     return server_context()->user_agent_matcher();
   }
   bool UserAgentSupportsImageInlining() const;
+  bool UserAgentSupportsCriticalImagesBeacon() const;
   bool UserAgentSupportsJsDefer() const;
   bool UserAgentSupportsWebp() const;
   bool UserAgentSupportsWebpLosslessAlpha() const;

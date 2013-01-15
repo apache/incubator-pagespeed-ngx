@@ -690,7 +690,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(132, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(133, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -721,9 +721,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ClientDomainRewrite",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kClientDomainRewrite));
-  EXPECT_STREQ("FinderPropertiesCacheExpirationTimeMs",
+  EXPECT_STREQ("CriticalImagesBeaconEnabled",
                RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFinderPropertiesCacheExpirationTimeMs));
+                   RewriteOptions::kCriticalImagesBeaconEnabled));
   EXPECT_STREQ("CriticalLineConfig",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kCriticalLineConfig));
@@ -778,6 +778,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("EnableRewriting",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnabled));
+  EXPECT_STREQ("FinderPropertiesCacheExpirationTimeMs",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kFinderPropertiesCacheExpirationTimeMs));
   EXPECT_STREQ("FlushBufferLimitBytes",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kFlushBufferLimitBytes));

@@ -169,8 +169,7 @@ class RewriteOptions {
     kCacheSmallImagesUnrewritten,
     kClientDomainRewrite,
     kCombineAcrossPaths,
-    kFinderPropertiesCacheExpirationTimeMs,
-    kFinderPropertiesCacheRefreshTimeMs,
+    kCriticalImagesBeaconEnabled,
     kCriticalLineConfig,
     kCssFlattenMaxBytes,
     kCssImageInlineMaxBytes,
@@ -191,6 +190,8 @@ class RewriteOptions {
     kEnableInlinePreviewImagesExperimental,
     kEnableLazyloadInBlink,
     kEnabled,
+    kFinderPropertiesCacheExpirationTimeMs,
+    kFinderPropertiesCacheRefreshTimeMs,
     kFlushBufferLimitBytes,
     kFlushHtml,
     kFlushMoreResourcesEarlyIfTimePermits,
@@ -220,9 +221,9 @@ class RewriteOptions {
     kInlineOnlyCriticalImages,
     kJsInlineMaxBytes,
     kJsOutlineMinBytes,
-    kLazyloadImagesBlankUrl,
     kJsPreserveURLs,
     kLazyloadImagesAfterOnload,
+    kLazyloadImagesBlankUrl,
     kLogRewriteTiming,
     kLowercaseHtmlNames,
     kMaxCacheableResponseContentLength,
@@ -1269,6 +1270,13 @@ class RewriteOptions {
   }
   bool inline_only_critical_images() const {
     return inline_only_critical_images_.value();
+  }
+
+  void set_critical_images_beacon_enabled(bool x) {
+    set_option(x, &critical_images_beacon_enabled_);
+  }
+  bool critical_images_beacon_enabled() const {
+    return critical_images_beacon_enabled_.value();
   }
 
   void set_lazyload_images_after_onload(bool x) {
@@ -2614,6 +2622,9 @@ class RewriteOptions {
   // people may want to inline all images (both critical and non-critical). If
   // set to false, all images will be inlined within the html.
   Option<bool> inline_only_critical_images_;
+  // Indicates whether image rewriting filters should insert the critical images
+  // beacon code.
+  Option<bool> critical_images_beacon_enabled_;
   // Indicates whether the DomainRewriteFilter should also do client side
   // rewriting.
   Option<bool> client_domain_rewrite_;

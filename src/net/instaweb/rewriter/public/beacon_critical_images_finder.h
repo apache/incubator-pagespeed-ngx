@@ -19,6 +19,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_BEACON_CRITICAL_IMAGES_FINDER_H_
 
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -41,6 +42,13 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
     // it is functional.
     return false;
   }
+
+  // Checks whether the requested image is present in the critical set or not.
+  // The critical image beacon sends back hashes of the URls to save space, so
+  // this computes the same hash on image_url and checks if it is stored in the
+  // critical image set.
+  virtual bool IsCriticalImage(const GoogleString& image_url,
+                               const RewriteDriver* driver) const;
 
   virtual void ComputeCriticalImages(StringPiece url,
                                      RewriteDriver* driver);

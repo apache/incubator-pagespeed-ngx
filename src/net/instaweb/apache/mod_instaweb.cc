@@ -134,6 +134,8 @@ const char kModPagespeedClientDomainRewrite[] =
 const char kModPagespeedCollectRefererStatistics[] =
     "ModPagespeedCollectRefererStatistics";
 const char kModPagespeedCombineAcrossPaths[] = "ModPagespeedCombineAcrossPaths";
+const char kModPagespeedCriticalImagesBeaconEnabled[] =
+    "ModPagespeedCriticalImagesBeaconEnabled";
 const char kModPagespeedCssFlattenMaxBytes[] = "ModPagespeedCssFlattenMaxBytes";
 const char kModPagespeedCssImageInlineMaxBytes[] =
     "ModPagespeedCssImageInlineMaxBytes";
@@ -1847,6 +1849,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedDangerPermitFetchFromUnknownHosts,
         "Disable security checks that prohibit fetching from hostnames "
         "mod_pagespeed does not know about"),
+  APACHE_CONFIG_OPTION(kModPagespeedCriticalImagesBeaconEnabled,
+                       "Enable inserting client-side critical images detection "
+                       "js for image optimization filters."),
   APACHE_CONFIG_OPTION(kModPagespeedExperimentalFetchFromModSpdy,
         "Under construction. Do not use"),
   APACHE_CONFIG_OPTION(kModPagespeedFetcherTimeoutMs,

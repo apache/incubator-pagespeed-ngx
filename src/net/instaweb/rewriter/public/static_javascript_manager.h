@@ -52,6 +52,7 @@ class StaticJavascriptManager {
   enum JsModule {
     kAddInstrumentationJs,
     kClientDomainRewriter,
+    kCriticalImagesBeaconJs,
     kDeferIframe,
     kDeferJs,
     kDelayImagesJs,

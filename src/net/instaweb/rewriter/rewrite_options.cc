@@ -722,6 +722,8 @@ void RewriteOptions::AddProperties() {
              "ipprci", kInPlacePreemptiveRewriteCssImages);
   add_option(true, &RewriteOptions::combine_across_paths_, "cp",
              kCombineAcrossPaths);
+  add_option(false, &RewriteOptions::critical_images_beacon_enabled_, "cibe",
+             kCriticalImagesBeaconEnabled);
   add_option(false, &RewriteOptions::log_rewrite_timing_, "lr",
              kLogRewriteTiming);
   add_option(false, &RewriteOptions::lowercase_html_names_, "lh",

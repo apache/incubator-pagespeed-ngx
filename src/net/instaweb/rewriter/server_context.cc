@@ -686,7 +686,7 @@ bool ServerContext::HandleBeacon(const StringPiece& unparsed_url,
   // Extract critical image URLs
   param_values.clear();
   if (page_property_cache() != NULL && page_property_cache()->enabled() &&
-      query_params.Lookup("critimg", &param_values) &&
+      query_params.Lookup("ci", &param_values) &&
       param_values.size() == 1 && param_values[0] != NULL) {
     // Beacon property callback takes ownership of both critical images sets.
     scoped_ptr<StringSet> html_critical_images_set(new StringSet);
@@ -705,6 +705,8 @@ bool ServerContext::HandleBeacon(const StringPiece& unparsed_url,
     // by looking up the property page for the URL specified in the beacon, and
     // performing the page update and cohort write in
     // BeaconPropertyCallback::Done(). Done() is called when the read completes.
+    // TODO(jud): This needs to handle different clients reporting different
+    // critical image sets, and also vary based on the user agent type.
     scoped_ptr<BeaconPropertyCallback> property_callback(
         new BeaconPropertyCallback(
             this, url_query_param.AllExceptQuery(), request_context,

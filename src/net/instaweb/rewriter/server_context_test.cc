@@ -980,7 +980,7 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
       HashString<CasePreserve, int>(img2.c_str(), img2.size()));
 
   EXPECT_TRUE(server_context()->HandleBeacon(
-      "/beacon?url=http%3A%2F%2Fwww.example.com&critimg=" + hash1,
+      "/beacon?url=http%3A%2F%2Fwww.example.com&ci=" + hash1,
       CreateRequestContext()));
   property_cache->Read(page.get());
   property = page->GetProperty(cohort, "critical_images");
@@ -988,7 +988,7 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
   EXPECT_EQ(hash1, property->value());
 
   EXPECT_TRUE(server_context()->HandleBeacon(
-      "/beacon?url=http%3A%2F%2Fwww.example.com&critimg=" + hash1 + "," +
+      "/beacon?url=http%3A%2F%2Fwww.example.com&ci=" + hash1 + "," +
       hash2, CreateRequestContext()));
   property_cache->Read(page.get());
   property = page->GetProperty(cohort, "critical_images");
@@ -997,7 +997,7 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
 
   // Ensure duplicate critimgs only get inserted once.
   EXPECT_TRUE(server_context()->HandleBeacon(
-      "/beacon?url=http%3A%2F%2Fwww.example.com&critimg=" + hash1 + "," +
+      "/beacon?url=http%3A%2F%2Fwww.example.com&ci=" + hash1 + "," +
       hash1, CreateRequestContext()));
   property_cache->Read(page.get());
   property = page->GetProperty(cohort, "critical_images");

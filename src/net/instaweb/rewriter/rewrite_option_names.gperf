@@ -35,7 +35,7 @@ struct OptionName {
 "CacheSmallImagesUnrewritten",           RewriteOptions::kCacheSmallImagesUnrewritten
 "ClientDomainRewrite",                   RewriteOptions::kClientDomainRewrite
 "CombineAcrossPaths",                    RewriteOptions::kCombineAcrossPaths
-"FinderPropertiesCacheExpirationTimeMs", RewriteOptions::kFinderPropertiesCacheExpirationTimeMs,
+"CriticalImagesBeaconEnabled",           RewriteOptions::kCriticalImagesBeaconEnabled
 "CriticalLineConfig",                    RewriteOptions::kCriticalLineConfig
 "CssFlattenMaxBytes",                    RewriteOptions::kCssFlattenMaxBytes
 "CssImageInlineMaxBytes",                RewriteOptions::kCssImageInlineMaxBytes
@@ -53,6 +53,7 @@ struct OptionName {
 "EnableLazyloadInBlink",                 RewriteOptions::kEnableLazyloadInBlink
 "EnableRewriting",                       RewriteOptions::kEnabled
 "ExperimentSlot",                        RewriteOptions::kFuriousSlot
+"FinderPropertiesCacheExpirationTimeMs", RewriteOptions::kFinderPropertiesCacheExpirationTimeMs,
 "FlushBufferLimitBytes",                 RewriteOptions::kFlushBufferLimitBytes
 "FlushHtml",                             RewriteOptions::kFlushHtml
 "FlushMoreResourcesEarlyIfTimePermits",  RewriteOptions::kFlushMoreResourcesEarlyIfTimePermits

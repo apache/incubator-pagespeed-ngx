@@ -17,15 +17,26 @@
 
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_hash.h"
+#include "net/instaweb/util/public/string_util.h"
+
 namespace net_instaweb {
 
 const char BeaconCriticalImagesFinder::kBeaconCohort[] = "beacon_cohort";
 
-// Note: This class is not yet implemented.
 BeaconCriticalImagesFinder::BeaconCriticalImagesFinder(Statistics* stats)
     : CriticalImagesFinder(stats) {}
 
 BeaconCriticalImagesFinder::~BeaconCriticalImagesFinder() {
+}
+
+bool BeaconCriticalImagesFinder::IsCriticalImage(
+    const GoogleString& image_url, const RewriteDriver* driver) const {
+  unsigned int hash_val = HashString<CasePreserve, unsigned int>(
+      image_url.c_str(), image_url.size());
+  GoogleString hash_str = UintToString(hash_val);
+  return CriticalImagesFinder::IsCriticalImage(hash_str, driver);
 }
 
 void BeaconCriticalImagesFinder::ComputeCriticalImages(

@@ -61,6 +61,10 @@ inline GoogleString IntegerToString(int i) {
   return base::IntToString(i);
 }
 
+inline GoogleString UintToString(unsigned int i) {
+  return base::UintToString(i);
+}
+
 inline GoogleString Integer64ToString(int64 i) {
   return base::Int64ToString(i);
 }

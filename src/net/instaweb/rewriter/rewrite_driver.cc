@@ -58,6 +58,7 @@
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
 #include "net/instaweb/rewriter/public/collect_subresources_filter.h"
 #include "net/instaweb/rewriter/public/compute_visible_text_filter.h"
+#include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_inline_filter.h"
@@ -760,6 +761,7 @@ void RewriteDriver::Initialize() {
 void RewriteDriver::InitStats(Statistics* statistics) {
   AddInstrumentationFilter::InitStats(statistics);
   CacheExtender::InitStats(statistics);
+  CriticalImagesBeaconFilter::InitStats(statistics);
   CssCombineFilter::InitStats(statistics);
   CssFilter::InitStats(statistics);
   CssInlineImportToLinkFilter::InitStats(statistics);
@@ -858,6 +860,13 @@ bool RewriteDriver::UserAgentSupportsJsDefer() const {
         kTrue : kFalse;
   }
   return (user_agent_supports_js_defer_ == kTrue);
+}
+
+bool RewriteDriver::UserAgentSupportsCriticalImagesBeacon() const {
+  // For now this script has the same user agent requirements as image inlining,
+  // however that could change in the future if more advanced JS is used by the
+  // beacon.
+  return UserAgentSupportsImageInlining();
 }
 
 bool RewriteDriver::UserAgentSupportsWebp() const {
@@ -1017,6 +1026,19 @@ void RewriteDriver::AddPreRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kStripScripts)) {
     // Experimental filter that blindly strips all scripts from a page.
     AppendOwnedPreRenderFilter(new StripScriptsFilter(this));
+  }
+  if ((rewrite_options->Enabled(RewriteOptions::kLazyloadImages) ||
+       rewrite_options->Enabled(RewriteOptions::kInlineImages) ||
+       rewrite_options->Enabled(RewriteOptions::kDelayImages)) &&
+      rewrite_options->critical_images_beacon_enabled() &&
+      server_context_->page_property_cache()->enabled()) {
+    // Inject javascript to detect above-the-fold images. This should be enabled
+    // if one of the filters that uses critical image information is enabled,
+    // the property cache is enabled (since the critical image information is
+    // stored in the property cache), and this option is not explicitly
+    // disabled. It should also come early, at least before image rewriting,
+    // because it depends on seeing the original image URLs.
+    AppendOwnedPreRenderFilter(new CriticalImagesBeaconFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineImportToLink)) {
     // If we're converting simple embedded CSS @imports into a href link

@@ -206,6 +206,10 @@ DEFINE_string(pre_connect_url, "",
 DEFINE_bool(inline_only_critical_images, true, "Boolean indicating whether "
             "inline_images should inline only critical images or not.");
 
+DEFINE_bool(critical_images_beacon_enabled, false, "Boolean indicating whether "
+            "critical images beacon should be inserted for image rewriting "
+            "filters.");
+
 DEFINE_int64(implicit_cache_ttl_ms,
              net_instaweb::RewriteOptions::kDefaultImplicitCacheTtlMs,
              "The number of milliseconds of cache TTL we assign to resources "
@@ -502,6 +506,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("inline_only_critical_images")) {
     options->set_inline_only_critical_images(
         FLAGS_inline_only_critical_images);
+  }
+  if (WasExplicitlySet("critical_images_beacon_enabled")) {
+    options->set_critical_images_beacon_enabled(
+        FLAGS_critical_images_beacon_enabled);
   }
   if (WasExplicitlySet("implicit_cache_ttl_ms")) {
     options->set_implicit_cache_ttl_ms(FLAGS_implicit_cache_ttl_ms);
