@@ -91,7 +91,9 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
-  slow_worker_->ShutDown();
+  if (slow_worker_ != NULL) {
+    slow_worker_->ShutDown();
+  }
   ShutDown();
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
