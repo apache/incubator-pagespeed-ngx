@@ -322,7 +322,6 @@ ps_configure(ngx_conf_t* cf,
              net_instaweb::MessageHandler* handler) {
   if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
-    // TODO(oschaaf): these should be deleted on process exit
     *options = new net_instaweb::NgxRewriteOptions();
   }
 
@@ -372,6 +371,8 @@ ps_cleanup_loc_conf(void* data) {
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(data);
   delete cfg_l->handler;
   cfg_l->handler = NULL;
+  delete cfg_l->options;
+  cfg_l->options = NULL;
 }
 
 void
@@ -383,6 +384,8 @@ ps_cleanup_srv_conf(void* data) {
   }
   delete cfg_s->handler;
   cfg_s->handler = NULL;
+  delete cfg_s->options;
+  cfg_s->options = NULL;
 }
 
 void
@@ -926,7 +929,6 @@ ps_determine_request_options(
 
   // Will be NULL if there aren't any options set with query params or in
   // headers.
-  // TODO(oschaaf): seems the acquired options here are never deleted
   *request_options = query_options_success.first;
 
   return true;
@@ -988,6 +990,7 @@ ps_determine_options(ngx_http_request_t* r,
   // settings.
   if (request_options != NULL) {
     (*options)->Merge(*request_options);
+    delete request_options;
   } else if ((*options)->running_furious()) {
     (*options)->set_need_to_store_experiment_data(
         cfg_s->server_context->furious_matcher()->ClassifyIntoExperiment(

@@ -28,6 +28,7 @@ extern "C" {
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
 
 namespace net_instaweb {
 
@@ -204,6 +205,29 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions2(
     domain_lawyer()->AddShard(arg1, arg2, handler);
   } else if (IsDirective(directive, "CustomFetchHeader")) {
     AddCustomFetchHeader(arg1, arg2);
+  } else if (IsDirective(directive, "LoadFromFile")) {
+    file_load_policy()->Associate(arg1,arg2);
+  } else if (IsDirective(directive, "LoadFromFileMatch")) {
+    if (!file_load_policy()->AssociateRegexp(arg1,arg2,msg)) {
+      return RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (IsDirective(directive, "LoadFromFileRule")
+             || IsDirective(directive, "LoadFromFileRuleMatch")) {
+    bool is_regexp = IsDirective(directive, "LoadFromFileRuleMatch");
+    bool allow;
+    // TODO(oschaaf): we should probably define consts for Allow/Disallow
+    if (IsDirective(arg1, "Allow")) {
+      allow = true;
+    } else if (IsDirective(arg1, "Disallow")) {
+      allow = false;
+    } else {
+      *msg = "Argument 1 must be either 'Allow' or 'Disallow'";
+      return RewriteOptions::kOptionValueInvalid;
+    }
+    if (!file_load_policy()->AddRule(arg2.as_string().c_str(),
+                                     is_regexp, allow, msg)) {
+      return RewriteOptions::kOptionValueInvalid;
+    }
   } else {
     return RewriteOptions::kOptionNameUnknown;
   }
