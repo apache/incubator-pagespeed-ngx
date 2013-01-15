@@ -441,6 +441,9 @@
         'rewriter/flush_early.proto',
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/flush_early.pb.cc',
       ],
+      'dependencies': [
+        'instaweb_http_pb',
+      ],
       'includes': [
         'protoc.gypi',
       ],
