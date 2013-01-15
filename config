@@ -125,7 +125,8 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_base_fetch.h \
     $ps_src/ngx_server_context.h \
     $ps_src/ngx_rewrite_options.h \
-    $ps_src/ngx_rewrite_driver_factory.h"
+    $ps_src/ngx_rewrite_driver_factory.h \
+    $ps_src/ngx_thread_system.h"
   NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
     $ps_src/ngx_pagespeed.cc \
     $ps_src/ngx_rewrite_driver_factory.cc \
@@ -133,6 +134,7 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_server_context.cc \
     $ps_src/ngx_base_fetch.cc \
     $ps_src/ngx_cache.cc \
+    $ps_src/ngx_thread_system.cc \
     $mod_pagespeed_dir/net/instaweb/apache/apr_thread_compatible_pool.cc \
     $mod_pagespeed_dir/net/instaweb/apache/serf_url_async_fetcher.cc \
     $mod_pagespeed_dir/net/instaweb/apache/apr_mem_cache.cc \
