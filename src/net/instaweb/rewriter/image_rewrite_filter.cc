@@ -839,7 +839,17 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     DCHECK(!options->cache_small_images_unrewritten())
         << "Modifying a URL slot despite "
         << "image_inlining_identify_and_cache_without_rewriting set.";
-    src->SetValue(data_url);
+    if (options->Enabled(RewriteOptions::kProcessBlinkInBackground)) {
+      // kPagespeedInlineSrc attribute is added to record data urls for
+      // directly-inlined-images in the blink background processing flow.
+      // In case the image lies above the critical line, this attribute
+      // is used to replace the original src value with the data url.
+      element->AddAttribute(driver_->MakeName(HtmlName::kPagespeedInlineSrc),
+                            data_url,
+                            HtmlElement::DOUBLE_QUOTE);
+    } else {
+      src->SetValue(data_url);
+    }
     // TODO(jmaessen): We used to take the absence of desired_image_dims here as
     // license to delete dimensions.  That was incorrect, as sometimes there
     // were dimensions in the page but the image was being enlarged on page and

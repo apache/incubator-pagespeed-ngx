@@ -57,10 +57,12 @@
         '<(DEPTH)/third_party/css_parser/src',
       ],
       'sources': [
-        'automatic/html_detector_test.cc',
         'automatic/blink_flow_critical_line_test.cc',
+        'automatic/flush_early_flow_test.cc',
+        'automatic/html_detector_test.cc',
         'automatic/proxy_fetch_test.cc',
         'automatic/proxy_interface_test.cc',
+        'automatic/proxy_interface_test_base.cc',
 
         'htmlparse/canonical_attributes_test.cc',
         'htmlparse/html_keywords_test.cc',

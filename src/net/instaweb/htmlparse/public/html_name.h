@@ -159,6 +159,7 @@ class HtmlName {
     kPagespeedBlankSrc,
     kPagespeedHighResSrc,
     kPagespeedIframe,
+    kPagespeedInlineSrc,
     kPagespeedLazySrc,
     kPagespeedLowResSrc,
     kPagespeedLscExpiry,

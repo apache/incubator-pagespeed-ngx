@@ -1614,7 +1614,7 @@ bool RewriteOptions::Forbidden(StringPiece filter_id) const {
 }
 
 int64 RewriteOptions::ImageInlineMaxBytes() const {
-  if (Enabled(kInlineImages)) {
+  if (Enabled(kInlineImages) || Enabled(kProcessBlinkInBackground)) {
     return image_inline_max_bytes_.value();
   } else {
     return 0;

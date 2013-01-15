@@ -938,8 +938,14 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
   // Disable filters which trigger render requests. This is not needed for
   // when we have non-200 code but we just blanket disable here.
   options_->DisableFilter(RewriteOptions::kDelayImages);
-  options_->DisableFilter(RewriteOptions::kInlineImages);
   options_->DisableFilter(RewriteOptions::kFlushSubresources);
+  if (!options_->Enabled(RewriteOptions::kInlineImages)) {
+    // inline-images has been explicitly disabled for this site.
+    options_->set_min_image_size_low_resolution_bytes(0);
+    options_->set_image_inline_max_bytes(0);
+  }
+  options_->DisableFilter(RewriteOptions::kInlineImages);
+  // Enable inlining for all the images in html.
   if (critical_line_data_found) {
     SetFilterOptions(options_);
     options_->ForceEnableFilter(RewriteOptions::kServeNonCacheableNonCritical);
@@ -1035,8 +1041,6 @@ void BlinkFlowCriticalLine::SetFilterOptions(RewriteOptions* options) const {
 
   options->ForceEnableFilter(RewriteOptions::kDisableJavascript);
 
-  options->set_min_image_size_low_resolution_bytes(0);
-  // Enable inlining for all the images in html.
   options->set_max_inlined_preview_images_index(-1);
 }
 
