@@ -351,7 +351,7 @@ void NgxRewriteDriverFactory::StartThreads() {
   if (threads_started_) {
     return;
   }
-  reinterpret_cast<NgxThreadSystem*>(thread_system())->PermitThreadStarting();
+  static_cast<NgxThreadSystem*>(thread_system())->PermitThreadStarting();
   // TODO(jefftk): use a native nginx timer instead of running our own thread.
   // See issue #111.
   SchedulerThread* thread = new SchedulerThread(thread_system(), scheduler());
