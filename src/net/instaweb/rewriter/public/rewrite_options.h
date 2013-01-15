@@ -327,7 +327,6 @@ class RewriteOptions {
   // options->set_default.
   static const int kOptionsVersion = 13;
 
-  static const char kAjaxRewriteId[];
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
   static const char kCssImportFlattenerId[];
@@ -335,6 +334,7 @@ class RewriteOptions {
   static const char kCacheExtenderId[];
   static const char kImageCombineId[];
   static const char kImageCompressionId[];
+  static const char kInPlaceRewriteId[];
   static const char kJavascriptCombinerId[];
   static const char kJavascriptInlineId[];
   static const char kLocalStorageCacheId[];

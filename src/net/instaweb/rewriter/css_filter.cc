@@ -29,7 +29,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
 #include "net/instaweb/rewriter/public/association_transformer.h"
 #include "net/instaweb/rewriter/public/css_flatten_imports_context.h"
 #include "net/instaweb/rewriter/public/css_hierarchy.h"
@@ -40,6 +39,7 @@
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
+#include "net/instaweb/rewriter/public/in_place_rewrite_context.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -254,7 +254,8 @@ void CssFilter::Context::RewriteSingle(
     const OutputResourcePtr& output_resource) {
   bool is_ipro =
       num_slots() == 1 &&
-      slot(0)->LocationString() == AjaxRewriteResourceSlot::kIproSlotLocation;
+      (slot(0)->LocationString() ==
+          InPlaceRewriteResourceSlot::kIproSlotLocation);
   AttachDependentRequestTrace(is_ipro ? "IproProcessCSS" : "ProcessCSS");
   input_resource_ = input_resource;
   output_resource_ = output_resource;

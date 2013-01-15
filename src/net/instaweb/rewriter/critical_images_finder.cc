@@ -186,6 +186,9 @@ StringSet* CriticalImagesFinder::ExtractCriticalImagesSet(
     RewriteDriver* driver,
     const PropertyValue* property_value,
     bool track_stats) {
+  // Don't track stats if we are flushing early, since we will already be
+  // counting this when we are rewriting the full page.
+  track_stats &= !driver->flushing_early();
   const PropertyCache* page_property_cache =
       driver->server_context()->page_property_cache();
   int64 cache_ttl_ms =

@@ -40,7 +40,6 @@
 namespace net_instaweb {
 
 // RewriteFilter prefixes
-const char RewriteOptions::kAjaxRewriteId[] = "aj";
 const char RewriteOptions::kCssCombinerId[] = "cc";
 const char RewriteOptions::kCssFilterId[] = "cf";
 const char RewriteOptions::kCssImportFlattenerId[] = "if";
@@ -48,6 +47,7 @@ const char RewriteOptions::kCssInlineId[] = "ci";
 const char RewriteOptions::kCacheExtenderId[] = "ce";
 const char RewriteOptions::kImageCombineId[] = "is";
 const char RewriteOptions::kImageCompressionId[] = "ic";
+const char RewriteOptions::kInPlaceRewriteId[] = "aj";  // Comes from ajax.
 const char RewriteOptions::kJavascriptCombinerId[] = "jc";
 const char RewriteOptions::kJavascriptMinId[] = "jm";
 const char RewriteOptions::kJavascriptInlineId[] = "ji";

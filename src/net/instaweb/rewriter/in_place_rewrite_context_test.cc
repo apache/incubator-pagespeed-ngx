@@ -16,7 +16,7 @@
 
 // Author: nikhilmadan@google.com (Nikhil Madan)
 
-#include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
+#include "net/instaweb/rewriter/public/in_place_rewrite_context.h"
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -200,13 +200,13 @@ class FakeFetch : public AsyncFetch {
   DISALLOW_COPY_AND_ASSIGN(FakeFetch);
 };
 
-class AjaxRewriteContextTest : public RewriteTestBase {
+class InPlaceRewriteContextTest : public RewriteTestBase {
  protected:
   static const bool kWriteToCache = true;
   static const bool kNoWriteToCache = false;
   static const bool kNoTransform = true;
   static const bool kTransform = false;
-  AjaxRewriteContextTest()
+  InPlaceRewriteContextTest()
       : img_filter_(NULL),
         js_filter_(NULL),
         css_filter_(NULL),
@@ -282,7 +282,7 @@ class AjaxRewriteContextTest : public RewriteTestBase {
     ClearStats();
 
     oversized_stream_ = statistics()->GetVariable(
-        AjaxRewriteContext::kInPlaceOversizedOptStream);
+        InPlaceRewriteContext::kInPlaceOversizedOptStream);
   }
 
   void AddResponse(const GoogleString& url, const ContentType& content_type,
@@ -367,7 +367,7 @@ class AjaxRewriteContextTest : public RewriteTestBase {
     RewriteTestBase::ClearStats();
   }
 
-  void ExpectAjaxImageSuccessFlow(const GoogleString& url) {
+  void ExpectInPlaceImageSuccessFlow(const GoogleString& url) {
     FetchAndCheckResponse(url, cache_body_, true, ttl_ms_,
                           original_etag_, start_time_ms());
 
@@ -456,8 +456,9 @@ class AjaxRewriteContextTest : public RewriteTestBase {
   Variable* oversized_stream_;
 };
 
-TEST_F(AjaxRewriteContextTest, CacheableHtmlUrlNoRewriting) {
-  // All these entries find no ajax rewrite metadata and no rewriting happens.
+TEST_F(InPlaceRewriteContextTest, CacheableHtmlUrlNoRewriting) {
+  // All these entries find no in-place rewrite metadata and no rewriting
+  // happens.
   Init();
   FetchAndCheckResponse(cache_html_url_, cache_body_, true, ttl_ms_,
                         original_etag_, start_time_ms());
@@ -506,7 +507,7 @@ TEST_F(AjaxRewriteContextTest, CacheableHtmlUrlNoRewriting) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
-TEST_F(AjaxRewriteContextTest, WaitForOptimizedFirstRequest) {
+TEST_F(InPlaceRewriteContextTest, WaitForOptimizedFirstRequest) {
   // By setting this flag we should get an optimized response on the first
   // request unless we hit a rewrite timeout but in this test it will complete
   // in time.
@@ -553,7 +554,7 @@ TEST_F(AjaxRewriteContextTest, WaitForOptimizedFirstRequest) {
   EXPECT_EQ(0, oversized_stream_->Get());
 }
 
-TEST_F(AjaxRewriteContextTest, WaitForOptimizeWithDisabledFilter) {
+TEST_F(InPlaceRewriteContextTest, WaitForOptimizeWithDisabledFilter) {
   // Wait for optimized but if the resource fails to optimize we should get
   // back the original resource.
   options()->set_in_place_wait_for_optimized(true);
@@ -605,7 +606,7 @@ TEST_F(AjaxRewriteContextTest, WaitForOptimizeWithDisabledFilter) {
   EXPECT_EQ(0, oversized_stream_->Get());
 }
 
-TEST_F(AjaxRewriteContextTest, WaitForOptimizeNoTransform) {
+TEST_F(InPlaceRewriteContextTest, WaitForOptimizeNoTransform) {
   // Confirm that when cache-control:no-transform is present in the response
   // headers that the in-place optimizer does not optimize the resource.
   options()->set_in_place_wait_for_optimized(true);
@@ -650,7 +651,7 @@ TEST_F(AjaxRewriteContextTest, WaitForOptimizeNoTransform) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
-TEST_F(AjaxRewriteContextTest, WaitForOptimizeTimeout) {
+TEST_F(InPlaceRewriteContextTest, WaitForOptimizeTimeout) {
   // Confirm that rewrite deadlines cause the original resource to be returned
   // (but caches the optimized) even if in_place_wait_for_optimize is on.
   options()->set_in_place_wait_for_optimized(true);
@@ -695,7 +696,7 @@ TEST_F(AjaxRewriteContextTest, WaitForOptimizeTimeout) {
   EXPECT_EQ(0, oversized_stream_->Get());
 }
 
-TEST_F(AjaxRewriteContextTest, WaitForOptimizeResourceTooBig) {
+TEST_F(InPlaceRewriteContextTest, WaitForOptimizeResourceTooBig) {
   // Wait for optimized but if it's larger than the RecordingFetch can handle
   // make sure we piece together the original resource properly.
   options()->set_in_place_wait_for_optimized(true);
@@ -746,7 +747,7 @@ TEST_F(AjaxRewriteContextTest, WaitForOptimizeResourceTooBig) {
   EXPECT_EQ(1, oversized_stream_->Get());
 }
 
-TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
+TEST_F(InPlaceRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   Init();
   FetchAndCheckResponse(cache_jpg_url_, cache_body_, true, ttl_ms_, NULL,
                         start_time_ms());
@@ -833,7 +834,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   // We find the metadata in cache, but don't find the rewritten resource.
   // Hence, we reconstruct the resource and insert it into cache. We see 2
   // identical reinserts - one for the image rewrite filter metadata and one for
-  // the ajax metadata.
+  // the in-place metadata.
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
@@ -909,12 +910,12 @@ TEST_F(AjaxRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
-TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingSucceeds) {
+TEST_F(InPlaceRewriteContextTest, CacheablePngUrlRewritingSucceeds) {
   Init();
-  ExpectAjaxImageSuccessFlow(cache_png_url_);
+  ExpectInPlaceImageSuccessFlow(cache_png_url_);
 }
 
-TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingSucceedsWithShards) {
+TEST_F(InPlaceRewriteContextTest, CacheablePngUrlRewritingSucceedsWithShards) {
   Init();
   const char kShard1[] = "http://s1.example.com/";
   const char kShard2[] = "http://s2.example.com/";
@@ -922,20 +923,20 @@ TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingSucceedsWithShards) {
   DomainLawyer* lawyer = options()->domain_lawyer();
   lawyer->AddShard("http://www.example.com", StrCat(kShard1, ",", kShard2),
                    message_handler());
-  ExpectAjaxImageSuccessFlow(cache_png_url_);
+  ExpectInPlaceImageSuccessFlow(cache_png_url_);
 }
 
-TEST_F(AjaxRewriteContextTest, CacheableiGifUrlRewritingSucceeds) {
+TEST_F(InPlaceRewriteContextTest, CacheableiGifUrlRewritingSucceeds) {
   Init();
-  ExpectAjaxImageSuccessFlow(cache_gif_url_);
+  ExpectInPlaceImageSuccessFlow(cache_gif_url_);
 }
 
-TEST_F(AjaxRewriteContextTest, CacheableWebpUrlRewritingSucceeds) {
+TEST_F(InPlaceRewriteContextTest, CacheableWebpUrlRewritingSucceeds) {
   Init();
-  ExpectAjaxImageSuccessFlow(cache_webp_url_);
+  ExpectInPlaceImageSuccessFlow(cache_webp_url_);
 }
 
-TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingFails) {
+TEST_F(InPlaceRewriteContextTest, CacheablePngUrlRewritingFails) {
   // Setup the image filter to fail at rewriting.
   Init();
   img_filter_->set_enabled(false);
@@ -973,7 +974,7 @@ TEST_F(AjaxRewriteContextTest, CacheablePngUrlRewritingFails) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
-TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingSucceeds) {
+TEST_F(InPlaceRewriteContextTest, CacheableJsUrlRewritingSucceeds) {
   Init();
   FetchAndCheckResponse(cache_js_url_, cache_body_, true, ttl_ms_, NULL,
                         start_time_ms());
@@ -1028,7 +1029,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingSucceeds) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
-TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
+TEST_F(InPlaceRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
   Init();
   options()->ClearSignatureForTesting();
   options()->set_metadata_cache_staleness_threshold_ms(ttl_ms_);
@@ -1061,7 +1062,7 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  // Two cache hits, one for the ajax metadata and one for the rewritten
+  // Two cache hits, one for the in-place metadata and one for the rewritten
   // resource.
   EXPECT_EQ(2, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_misses());
@@ -1091,14 +1092,14 @@ TEST_F(AjaxRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
-TEST_F(AjaxRewriteContextTest, CacheableJsUrlModifiedImplicitCacheTtl) {
+TEST_F(InPlaceRewriteContextTest, CacheableJsUrlModifiedImplicitCacheTtl) {
   Init();
   response_headers_.set_implicit_cache_ttl_ms(500 * Timer::kSecondMs);
   FetchAndCheckResponse(cache_js_no_max_age_url_, cache_body_, true,
                         500 * Timer::kSecondMs, NULL, start_time_ms());
 }
 
-TEST_F(AjaxRewriteContextTest, CacheableCssUrlIfCssRewritingDisabled) {
+TEST_F(InPlaceRewriteContextTest, CacheableCssUrlIfCssRewritingDisabled) {
   Init();
   options()->ClearSignatureForTesting();
   options()->DisableFilter(RewriteOptions::kRewriteCss);
@@ -1142,7 +1143,7 @@ TEST_F(AjaxRewriteContextTest, CacheableCssUrlIfCssRewritingDisabled) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
-TEST_F(AjaxRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
+TEST_F(InPlaceRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
   Init();
   FetchAndCheckResponse(cache_css_url_, cache_body_, true, ttl_ms_, NULL,
                         start_time_ms());
@@ -1197,7 +1198,7 @@ TEST_F(AjaxRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
-TEST_F(AjaxRewriteContextTest, NonCacheableUrlNoRewriting) {
+TEST_F(InPlaceRewriteContextTest, NonCacheableUrlNoRewriting) {
   Init();
   FetchAndCheckResponse(nocache_html_url_, nocache_body_, true, 0, NULL,
                         timer()->NowMs());
@@ -1216,7 +1217,7 @@ TEST_F(AjaxRewriteContextTest, NonCacheableUrlNoRewriting) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
-TEST_F(AjaxRewriteContextTest, BadUrlNoRewriting) {
+TEST_F(InPlaceRewriteContextTest, BadUrlNoRewriting) {
   Init();
   FetchAndCheckResponse(bad_url_, bad_body_, true, 0, NULL, start_time_ms());
   // First fetch misses initial cache lookup, succeeds at fetch and we don't
@@ -1234,7 +1235,7 @@ TEST_F(AjaxRewriteContextTest, BadUrlNoRewriting) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
-TEST_F(AjaxRewriteContextTest, FetchFailedNoRewriting) {
+TEST_F(InPlaceRewriteContextTest, FetchFailedNoRewriting) {
   Init();
   FetchAndCheckResponse("http://www.notincache.com", "", false, 0, NULL,
                         start_time_ms());
@@ -1250,7 +1251,7 @@ TEST_F(AjaxRewriteContextTest, FetchFailedNoRewriting) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
-TEST_F(AjaxRewriteContextTest, HandleResourceCreationFailure) {
+TEST_F(InPlaceRewriteContextTest, HandleResourceCreationFailure) {
   // Regression test. Trying to in-place optimize https resources with
   // a fetcher that didn't support https would fail to invoke the callbacks
   // and leak the rewrite driver.
@@ -1259,7 +1260,7 @@ TEST_F(AjaxRewriteContextTest, HandleResourceCreationFailure) {
   FetchAndCheckResponse("https://www.example.com", "", false, 0, NULL, 0);
 }
 
-TEST_F(AjaxRewriteContextTest, ResponseHeaderMimeTypeUpdate) {
+TEST_F(InPlaceRewriteContextTest, ResponseHeaderMimeTypeUpdate) {
   options()->set_in_place_wait_for_optimized(true);
   Init();
   // We are going to rewrite a PNG image below. Assume it will be converted

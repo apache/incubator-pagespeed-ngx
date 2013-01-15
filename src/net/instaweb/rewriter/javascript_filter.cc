@@ -28,7 +28,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
-#include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
+#include "net/instaweb/rewriter/public/in_place_rewrite_context.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -155,7 +155,8 @@ class JavascriptFilter::Context : public SingleRewriteContext {
       const ResourcePtr& input, const OutputResourcePtr& output) {
     bool is_ipro =
         num_slots() == 1 &&
-        slot(0)->LocationString() == AjaxRewriteResourceSlot::kIproSlotLocation;
+        (slot(0)->LocationString() ==
+            InPlaceRewriteResourceSlot::kIproSlotLocation);
     AttachDependentRequestTrace(is_ipro ? "IproProcessJs" : "ProcessJs");
     if (!StringPiece(input->url()).starts_with("data:")) {
       TracePrintf("RewriteJs: %s", input->url().c_str());

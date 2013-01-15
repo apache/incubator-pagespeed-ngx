@@ -50,7 +50,6 @@
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
-#include "net/instaweb/rewriter/public/ajax_rewrite_context.h"
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
 #include "net/instaweb/rewriter/public/blink_background_filter.h"
 #include "net/instaweb/rewriter/public/blink_filter.h"
@@ -85,6 +84,7 @@
 #include "net/instaweb/rewriter/public/html_attribute_quote_removal.h"
 #include "net/instaweb/rewriter/public/image_combine_filter.h"
 #include "net/instaweb/rewriter/public/image_rewrite_filter.h"
+#include "net/instaweb/rewriter/public/in_place_rewrite_context.h"
 #include "net/instaweb/rewriter/public/insert_dns_prefetch_filter.h"
 #include "net/instaweb/rewriter/public/insert_ga_filter.h"
 #include "net/instaweb/rewriter/public/javascript_filter.h"
@@ -759,7 +759,6 @@ void RewriteDriver::Initialize() {
 
 void RewriteDriver::InitStats(Statistics* statistics) {
   AddInstrumentationFilter::InitStats(statistics);
-  AjaxRewriteContext::InitStats(statistics);
   CacheExtender::InitStats(statistics);
   CssCombineFilter::InitStats(statistics);
   CssFilter::InitStats(statistics);
@@ -769,6 +768,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   GoogleAnalyticsFilter::InitStats(statistics);
   ImageCombineFilter::InitStats(statistics);
   ImageRewriteFilter::InitStats(statistics);
+  InPlaceRewriteContext::InitStats(statistics);
   InsertGAFilter::InitStats(statistics);
   JavascriptFilter::InitStats(statistics);
   JsCombineFilter::InitStats(statistics);
@@ -1754,7 +1754,7 @@ void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
       server_context_, base, base, base, namer, options(), kRewrittenResource));
   SetBaseUrlForFetch(gurl.Spec());
   fetch_queued_ = true;
-  AjaxRewriteContext* context = new AjaxRewriteContext(this, gurl.Spec());
+  InPlaceRewriteContext* context = new InPlaceRewriteContext(this, gurl.Spec());
   context->set_perform_http_fetch(perform_http_fetch);
   if (!context->Fetch(output_resource, async_fetch, message_handler())) {
     // RewriteContext::Fetch can fail if the input URLs are undecodeable

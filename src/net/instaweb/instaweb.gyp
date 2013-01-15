@@ -1025,7 +1025,6 @@
       'sources': [
         'rewriter/add_head_filter.cc',
         'rewriter/add_instrumentation_filter.cc',
-        'rewriter/ajax_rewrite_context.cc',
         'rewriter/base_tag_filter.cc',
         'rewriter/blink_background_filter.cc',
         'rewriter/blink_filter.cc',
@@ -1059,6 +1058,7 @@
         'rewriter/google_analytics_filter.cc',
         'rewriter/handle_noscript_redirect_filter.cc',
         'rewriter/image_rewrite_filter.cc',
+        'rewriter/in_place_rewrite_context.cc',
         'rewriter/inline_rewrite_context.cc',
         'rewriter/insert_dns_prefetch_filter.cc',
         'rewriter/insert_ga_filter.cc',
