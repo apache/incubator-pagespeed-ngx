@@ -47,6 +47,12 @@ Download and build nginx:
     $ ./configure --add-module=$HOME/ngx_pagespeed
     $ make install
 
+If `configure` fails with `checking for psol ... not found` then open
+`objs/autoconf.err` and search for `psol`.  If it's not clear what's wrong from
+the error message, then send it to the [mailing
+list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss) and we'll
+have a look at it.
+
 ### Complex method: Building the Pagespeed Optimization Library from source
 
 First build mod_pagespeed against the current revision we work at:
