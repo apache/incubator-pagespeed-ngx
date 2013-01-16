@@ -760,13 +760,14 @@ RewriteDriver* ServerContext::NewUnmanagedRewriteDriver(
   rewrite_driver->set_options_for_pool(pool, options);
   rewrite_driver->SetResourceManager(this);
   rewrite_driver->set_request_context(request_ctx);
+  ApplySessionFetchers(request_ctx, rewrite_driver);
   return rewrite_driver;
 }
 
 RewriteDriver* ServerContext::NewRewriteDriver(
     const RequestContextPtr& request_ctx) {
-  return NewRewriteDriverFromPool(
-      available_rewrite_drivers_.get(), request_ctx);
+  RewriteDriverPool* pool = SelectDriverPool(request_ctx->using_spdy());
+  return NewRewriteDriverFromPool(pool, request_ctx);
 }
 
 RewriteDriver* ServerContext::NewRewriteDriverFromPool(
@@ -812,6 +813,7 @@ RewriteDriver* ServerContext::NewRewriteDriverFromPool(
     }
   } else {
     rewrite_driver->set_request_context(request_ctx);
+    ApplySessionFetchers(request_ctx, rewrite_driver);
   }
 
   {
@@ -1056,6 +1058,14 @@ void ServerContext::set_critical_images_finder(
 void ServerContext::set_flush_early_info_finder(
     FlushEarlyInfoFinder* finder) {
   flush_early_info_finder_.reset(finder);
+}
+
+RewriteDriverPool* ServerContext::SelectDriverPool(bool using_spdy) {
+  return standard_rewrite_driver_pool();
+}
+
+void ServerContext::ApplySessionFetchers(const RequestContextPtr& req,
+                                         RewriteDriver* driver) {
 }
 
 }  // namespace net_instaweb

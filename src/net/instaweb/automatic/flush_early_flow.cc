@@ -115,6 +115,8 @@ const char FlushEarlyFlow::kFlushEarlyRewriteLatencyMs[] =
     "flush_early_rewrite_latency_ms";
 const char FlushEarlyFlow::kNumFlushEarlyHttpStatusCodeDeemedUnstable[] =
     "num_flush_early_http_status_code_deemed_unstable";
+const char FlushEarlyFlow::kNumFlushEarlyRequestsRedirected[] =
+    "num_flush_early_requests_redirected";
 const char FlushEarlyFlow::kRedirectPageJs[] =
     "<script type=\"text/javascript\">window.location.replace(\"%s\")"
     "</script>";
@@ -135,11 +137,13 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
  public:
   FlushEarlyAsyncFetch(AsyncFetch* fetch, AbstractMutex* mutex,
                        MessageHandler* message_handler,
-                       const GoogleString& url)
+                       const GoogleString& url,
+                       ServerContext* server_context)
       : AsyncFetch(fetch->request_context()),
         base_fetch_(fetch),
         mutex_(mutex),
         message_handler_(message_handler),
+        server_context_(server_context),
         url_(url),
         flush_early_flow_done_(false),
         flushed_early_(false),
@@ -149,6 +153,9 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
         done_value_(false),
         non_ok_status_code_(false) {
     set_request_headers(fetch->request_headers());
+    Statistics* stats = server_context_->statistics();
+    num_flush_early_requests_redirected_ = stats->GetTimedVariable(
+        kNumFlushEarlyRequestsRedirected);
   }
 
   // Indicates that the flush early flow is complete.
@@ -255,6 +262,7 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   }
 
   void SendRedirectToPsaOff() {
+    num_flush_early_requests_redirected_->IncBy(1);
     GoogleUrl gurl(url_);
     scoped_ptr<GoogleUrl> url_with_psa_off(gurl.CopyAndAddQueryParam(
         RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue));
@@ -269,6 +277,7 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   AsyncFetch* base_fetch_;
   scoped_ptr<AbstractMutex> mutex_;
   MessageHandler* message_handler_;
+  ServerContext* server_context_;
   GoogleString url_;
   GoogleString buffered_content_;
   bool flush_early_flow_done_;
@@ -278,6 +287,8 @@ class FlushEarlyFlow::FlushEarlyAsyncFetch : public AsyncFetch {
   bool done_called_;
   bool done_value_;
   bool non_ok_status_code_;
+
+  TimedVariable* num_flush_early_requests_redirected_;
 
   DISALLOW_COPY_AND_ASSIGN(FlushEarlyAsyncFetch);
 };
@@ -290,7 +301,8 @@ void FlushEarlyFlow::Start(
     ProxyFetchPropertyCallbackCollector* property_cache_callback) {
   FlushEarlyAsyncFetch* flush_early_fetch = new FlushEarlyAsyncFetch(
       *base_fetch, driver->server_context()->thread_system()->NewMutex(),
-      driver->server_context()->message_handler(), url);
+      driver->server_context()->message_handler(), url,
+      driver->server_context());
   FlushEarlyFlow* flow = new FlushEarlyFlow(
       url, *base_fetch, flush_early_fetch, driver, factory,
       property_cache_callback);
@@ -309,6 +321,8 @@ void FlushEarlyFlow::InitStats(Statistics* stats) {
       FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly,
       ServerContext::kStatisticsGroup);
   stats->AddTimedVariable(kNumFlushEarlyHttpStatusCodeDeemedUnstable,
+                          ServerContext::kStatisticsGroup);
+  stats->AddTimedVariable(kNumFlushEarlyRequestsRedirected,
                           ServerContext::kStatisticsGroup);
   stats->AddHistogram(kFlushEarlyRewriteLatencyMs)->EnableNegativeBuckets();
 }

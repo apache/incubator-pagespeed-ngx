@@ -18,12 +18,17 @@
 
 #include "httpd.h"
 #include "base/logging.h"
+#include "net/instaweb/apache/add_headers_fetcher.h"
 #include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_config.h"
+#include "net/instaweb/apache/apache_request_context.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/apache/loopback_route_fetcher.h"
+#include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
@@ -346,6 +351,59 @@ bool ApacheServerContext::UpdateCacheFlushTimestampMs(int64 timestamp_ms) {
 void ApacheServerContext::AddHtmlRewriteTimeUs(int64 rewrite_time_us) {
   if (html_rewrite_time_us_histogram_ != NULL) {
     html_rewrite_time_us_histogram_->Add(rewrite_time_us);
+  }
+}
+
+RewriteDriverPool* ApacheServerContext::SelectDriverPool(bool using_spdy) {
+  if (using_spdy && (SpdyConfig() != NULL)) {
+    return spdy_driver_pool();
+  }
+  return standard_rewrite_driver_pool();
+}
+
+void ApacheServerContext::ApplySessionFetchers(
+    const RequestContextPtr& request, RewriteDriver* driver) {
+  const ApacheConfig* conf = ApacheConfig::DynamicCast(driver->options());
+  CHECK(conf != NULL);
+  ApacheRequestContext* apache_request = ApacheRequestContext::DynamicCast(
+      request.get());
+  if (apache_request == NULL) {
+    return;  // decoding_driver has a null RequestContext.
+  }
+  request_rec* req = apache_request->apache_request();
+
+  // Note that these fetchers are applied in the opposite order of how they are
+  // added: the last one added here is the first one applied and vice versa.
+  //
+  // Currently, we want AddHeadersFetcher running first, then perhaps
+  // ModSpdyFetcher and then LoopbackRouteFetcher (and then Serf).
+  //
+  // We want AddHeadersFetcher to run before the ModSpdyFetcher since we
+  // want any headers it adds to be visible.
+  //
+  // We want ModSpdyFetcher to run before LoopbackRouteFetcher as it needs
+  // to know the request hostname, which LoopbackRouteFetcher could potentially
+  // rewrite to 127.0.0.1; and it's OK without the rewriting since it will
+  // always talk to the local machine anyway.
+  if (!apache_factory_->disable_loopback_routing() &&
+      !config()->slurping_enabled() &&
+      !config()->test_proxy()) {
+    // Note the port here is our port, not from the request, since
+    // LoopbackRouteFetcher may decide we should be talking to ourselves.
+    driver->SetSessionFetcher(new LoopbackRouteFetcher(
+        driver->options(), req->connection->local_addr->port,
+        driver->async_fetcher()));
+  }
+
+  if (conf->experimental_fetch_from_mod_spdy() &&
+      ModSpdyFetcher::ShouldUseOn(req)) {
+    driver->SetSessionFetcher(new ModSpdyFetcher(
+        apache_factory_->mod_spdy_fetch_controller(), req, driver));
+  }
+
+  if (driver->options()->num_custom_fetch_headers() > 0) {
+    driver->SetSessionFetcher(new AddHeadersFetcher(driver->options(),
+                                                    driver->async_fetcher()));
   }
 }
 

@@ -20,6 +20,7 @@
 
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -90,7 +91,7 @@ class InstawebContext {
                   const ContentType& content_type,
                   ApacheServerContext* server_context,
                   const GoogleString& base_url,
-                  bool using_spdy,
+                  const RequestContextPtr& request_context,
                   bool use_custom_options,
                   const RewriteOptions& options);
   ~InstawebContext();

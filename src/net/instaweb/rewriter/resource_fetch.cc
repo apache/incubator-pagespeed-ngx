@@ -21,15 +21,16 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -37,12 +38,14 @@
 
 namespace net_instaweb {
 
-void ResourceFetch::ApplyFuriousOptions(const ServerContext* server_context,
-                                        const GoogleUrl& url,
-                                        RewriteDriverPool* driver_pool,
+void ResourceFetch::ApplyFuriousOptions(const GoogleUrl& url,
+                                        const RequestContextPtr& request_ctx,
+                                        ServerContext* server_context,
                                         RewriteOptions** custom_options) {
   const RewriteOptions* active_options;
   if (*custom_options == NULL) {
+    RewriteDriverPool* driver_pool = server_context->SelectDriverPool(
+        request_ctx->using_spdy());
     active_options = driver_pool->TargetOptions();
   } else {
     active_options = *custom_options;
@@ -64,15 +67,11 @@ void ResourceFetch::ApplyFuriousOptions(const ServerContext* server_context,
 
 RewriteDriver* ResourceFetch::GetDriver(
     const GoogleUrl& url, RewriteOptions* custom_options,
-    RewriteDriverPool* driver_pool, bool using_spdy,
     ServerContext* server_context, const RequestContextPtr& request_ctx) {
-  DCHECK((custom_options != NULL) ^ (driver_pool != NULL));
-  ApplyFuriousOptions(server_context, url, driver_pool, &custom_options);
+  ApplyFuriousOptions(url, request_ctx, server_context, &custom_options);
   RewriteDriver* driver = (custom_options == NULL)
-      ? server_context->NewRewriteDriverFromPool(driver_pool, request_ctx)
+      ? server_context->NewRewriteDriver(request_ctx)
       : server_context->NewCustomRewriteDriver(custom_options, request_ctx);
-  // Note: this is reset in RewriteDriver::clear().
-  driver->set_using_spdy(using_spdy);
   return driver;
 }
 
@@ -95,10 +94,7 @@ void ResourceFetch::Start(const GoogleUrl& url,
                           ServerContext* server_context,
                           AsyncFetch* async_fetch) {
   RewriteDriver* driver = GetDriver(
-      url, custom_options,
-      (custom_options != NULL) ?
-          NULL : server_context->standard_rewrite_driver_pool(),
-      using_spdy, server_context, async_fetch->request_context());
+      url, custom_options, server_context, async_fetch->request_context());
   StartWithDriver(url, kAutoCleanupDriver,
                   server_context, driver, async_fetch);
 }

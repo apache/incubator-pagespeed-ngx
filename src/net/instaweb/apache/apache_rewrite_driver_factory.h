@@ -30,7 +30,6 @@
 #include "net/instaweb/util/public/string_util.h"
 
 struct apr_pool_t;
-struct request_rec;
 struct server_rec;
 
 namespace net_instaweb {
@@ -49,7 +48,6 @@ class MessageHandler;
 class ModSpdyFetchController;
 class NamedLockManager;
 class QueuedWorkerPool;
-class RewriteDriver;
 class RewriteOptions;
 class SerfUrlAsyncFetcher;
 class ServerContext;
@@ -275,20 +273,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // Print out details of all the connections to memcached servers.
   void PrintMemCacheStats(GoogleString* out);
 
-  // If needed, sets session fetchers on the driver to do the following:
-  // a) Adds custom headers when configured in RewriteOptions.
-  // b) Route requests directly to this very server when they are not
-  //    configured to be external.
-  // c) Route requests to mod_spdy's slave connection code if configured to.
-  void ApplySessionFetchers(ApacheServerContext* manager,
-                            RewriteDriver* driver, request_rec* req);
-
-  // Returns true if we should handle request as SPDY.
-  // This happens in two cases:
-  // 1) It's actually a SPDY request using mod_spdy
-  // 2) The header X-PSA-Optimize-For-SPDY is present, with any value.
-  static bool TreatRequestAsSpdy(request_rec* req);
-
   // Parses a comma-separated list of HTTPS options.  If successful, applies
   // the options to the fetcher and returns true.  If the options were invalid,
   // *error_message is populated and false is returned.
@@ -297,6 +281,10 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // when support is not compiled in.  However, an error message will be logged
   // in the server log, and the option-setting will have no effect.
   bool SetHttpsOptions(StringPiece directive, GoogleString* error_message);
+
+  ModSpdyFetchController* mod_spdy_fetch_controller() {
+    return mod_spdy_fetch_controller_.get();
+  }
 
  protected:
   virtual UrlFetcher* DefaultUrlFetcher();

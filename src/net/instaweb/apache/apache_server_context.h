@@ -18,6 +18,7 @@
 #define NET_INSTAWEB_APACHE_APACHE_SERVER_CONTEXT_H_
 
 #include "net/instaweb/apache/apache_config.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -32,6 +33,7 @@ class AbstractMutex;
 class ApacheRewriteDriverFactory;
 class Histogram;
 class RewriteDriverPool;
+class RewriteDriver;
 class RewriteStats;
 class SharedMemStatistics;
 class Statistics;
@@ -135,6 +137,11 @@ class ApacheServerContext : public ServerContext {
   static void InitStats(Statistics* statistics);
 
   const server_rec* server() const { return server_rec_; }
+
+  virtual RewriteDriverPool* SelectDriverPool(bool using_spdy);
+
+  virtual void ApplySessionFetchers(const RequestContextPtr& req,
+                                    RewriteDriver* driver);
 
  private:
   bool UpdateCacheFlushTimestampMs(int64 timestamp_ms);

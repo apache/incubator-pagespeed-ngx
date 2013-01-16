@@ -862,6 +862,8 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkRelSubresource, false, false),
       text);
+  EXPECT_EQ(0, statistics()->FindVariable(
+      FlushEarlyFlow::kNumFlushEarlyRequestsRedirected)->Get());
 
   SetFetchResponse404(kTestDomain);
   // Fetch again so that 404 is populated in response headers.
@@ -870,6 +872,8 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkRelSubresource, false, false, false,
       false, true), text);
+  EXPECT_EQ(1, statistics()->FindVariable(
+      FlushEarlyFlow::kNumFlushEarlyRequestsRedirected)->Get());
 
   // Fetch the url again. This time FlushEarlyFlow should not be triggered as
   // the status code is not stable.
@@ -905,6 +909,8 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkRelSubresource, false, false, false,
       false, true), text);
+  EXPECT_EQ(2, statistics()->FindVariable(
+      FlushEarlyFlow::kNumFlushEarlyRequestsRedirected)->Get());
 }
 */
 

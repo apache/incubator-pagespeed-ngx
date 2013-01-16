@@ -212,7 +212,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       is_screen_resolution_set_(kNotSet),
       user_agent_screen_resolution_width_(0),
       user_agent_screen_resolution_height_(0),
-      using_spdy_(false),
       response_headers_(NULL),
       request_headers_(NULL),
       status_code_(HttpStatus::kUnknownStatusCode),
@@ -324,7 +323,6 @@ void RewriteDriver::Clear() {
   base_url_.Clear();
   DCHECK(!base_url_.is_valid());
   decoded_base_url_.Clear();
-  using_spdy_ = false;
   resource_map_.clear();
 
   if (!server_context_->shutting_down()) {

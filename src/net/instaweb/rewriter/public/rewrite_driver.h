@@ -216,8 +216,7 @@ class RewriteDriver : public HtmlParse {
   }
 
   // Returns true if the request we're rewriting was made using SPDY.
-  bool using_spdy() const { return using_spdy_; }
-  void set_using_spdy(bool x) { using_spdy_ = x; }
+  bool using_spdy() const { return request_context_->using_spdy(); }
 
   bool write_property_cache_dom_cohort() const {
     return write_property_cache_dom_cohort_;

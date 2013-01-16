@@ -48,6 +48,7 @@ class FlushEarlyFlow {
   static const char kNumResourcesFlushedEarly[];
   static const char kFlushEarlyRewriteLatencyMs[];
   static const char kNumFlushEarlyHttpStatusCodeDeemedUnstable[];
+  static const char kNumFlushEarlyRequestsRedirected[];
   static const char kRedirectPageJs[];
 
   static void Start(

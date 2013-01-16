@@ -30,7 +30,6 @@
 #include "ap_mpm.h"
 
 #include "base/logging.h"
-#include "net/instaweb/apache/add_headers_fetcher.h"
 #include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_message_handler.h"
@@ -38,16 +37,12 @@
 #include "net/instaweb/apache/apache_thread_system.h"
 #include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_timer.h"
-#include "net/instaweb/apache/interface_mod_spdy.h"
-#include "net/instaweb/apache/loopback_route_fetcher.h"
 #include "net/instaweb/apache/mod_spdy_fetch_controller.h"
-#include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_writer.h"
-#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/rate_controller.h"
 #include "net/instaweb/http/public/rate_controlling_url_async_fetcher.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter.h"
@@ -57,7 +52,6 @@
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/async_cache.h"
@@ -878,56 +872,6 @@ void ApacheRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
                 mem_cache->server_spec());
     }
   }
-}
-
-void ApacheRewriteDriverFactory::ApplySessionFetchers(
-    ApacheServerContext* manager, RewriteDriver* driver, request_rec* req) {
-  const ApacheConfig* conf = ApacheConfig::DynamicCast(driver->options());
-  CHECK(conf != NULL);
-  // Note that these fetchers are applied in the opposite order of how they are
-  // added: the last one added here is the first one applied and vice versa.
-  //
-  // Currently, we want AddHeadersFetcher running first, then perhaps
-  // ModSpdyFetcher and then LoopbackRouteFetcher (and then Serf).
-  //
-  // We want AddHeadersFetcher to run before the ModSpdyFetcher since we
-  // want any headers it adds to be visible.
-  //
-  // We want ModSpdyFetcher to run before LoopbackRouteFetcher as it needs
-  // to know the request hostname, which LoopbackRouteFetcher could potentially
-  // rewrite to 127.0.0.1; and it's OK without the rewriting since it will
-  // always talk to the local machine anyway.
-  if (!disable_loopback_routing_ &&
-      !manager->config()->slurping_enabled() &&
-      !manager->config()->test_proxy()) {
-    // Note the port here is our port, not from the request, since
-    // LoopbackRouteFetcher may decide we should be talking to ourselves.
-    driver->SetSessionFetcher(new LoopbackRouteFetcher(
-        driver->options(), req->connection->local_addr->port,
-        driver->async_fetcher()));
-  }
-
-  if (conf->experimental_fetch_from_mod_spdy() &&
-      ModSpdyFetcher::ShouldUseOn(req)) {
-    driver->SetSessionFetcher(
-        new ModSpdyFetcher(mod_spdy_fetch_controller_.get(), req, driver));
-  }
-
-  if (driver->options()->num_custom_fetch_headers() > 0) {
-    driver->SetSessionFetcher(new AddHeadersFetcher(driver->options(),
-                                                    driver->async_fetcher()));
-  }
-}
-
-bool ApacheRewriteDriverFactory::TreatRequestAsSpdy(request_rec* request) {
-  if (mod_spdy_get_spdy_version(request->connection) != 0) {
-    return true;
-  }
-
-  const char* value = apr_table_get(
-      request->headers_in,
-      HttpAttributes::kXPsaOptimizeForSpdy);
-  return (value != NULL);
 }
 
 }  // namespace net_instaweb

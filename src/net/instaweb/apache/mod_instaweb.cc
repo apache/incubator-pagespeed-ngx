@@ -25,27 +25,27 @@
 #include <set>
 #include <utility>
 
-#include "apr_pools.h"
-
 #include "base/logging.h"
 #include "net/instaweb/apache/apache_config.h"
+#include "net/instaweb/apache/apache_request_context.h"
+#include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/header_util.h"
-#include "net/instaweb/apache/loopback_route_fetcher.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
+#include "net/instaweb/apache/loopback_route_fetcher.h"
 #include "net/instaweb/apache/mod_instaweb.h"
-#include "net/instaweb/apache/apache_rewrite_driver_factory.h"
-#include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
-#include "net/instaweb/public/version.h"
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/public/version.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/process_context.h"
@@ -56,9 +56,12 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
+
 #include "util_filter.h"
 // Note: a very useful reference is this file, which demos many Apache module
 // options:
@@ -68,6 +71,7 @@
 // the compiler will complain
 // "strtoul_is_not_a_portable_function_use_strtol_instead".
 #include "ap_release.h"                                              // NOLINT
+#include "apr_pools.h"                                               // NOLINT
 #include "apr_strings.h"                                             // NOLINT
 #include "apr_timer.h"                                               // NOLINT
 #include "http_config.h"                                             // NOLINT
@@ -444,7 +448,9 @@ InstawebContext* build_context_for_request(request_rec* request) {
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   scoped_ptr<RewriteOptions> custom_options;
 
-  bool using_spdy = factory->TreatRequestAsSpdy(request);
+  RequestContextPtr request_context(new ApacheRequestContext(
+      manager->thread_system()->NewMutex(), request));
+  bool using_spdy = request_context->using_spdy();
   const RewriteOptions* host_options = manager->global_options();
   if (using_spdy && manager->SpdyConfig() != NULL) {
     host_options = manager->SpdyConfig();
@@ -654,7 +660,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   InstawebContext* context = new InstawebContext(
       request, request_headers.release(), *content_type, manager, final_url,
-      using_spdy, use_custom_options, *options);
+      request_context, use_custom_options, *options);
 
   // TODO(sligocki): Move inside PSOL.
   InstawebContext::ContentEncoding encoding = context->content_encoding();

@@ -90,6 +90,14 @@ class RequestContext : public RefCounted<RequestContext> {
   // The log record for the this request, created when the request context is.
   LogRecord* log_record();
 
+  // Determines whether this request is using the SPDY protocol.
+  bool using_spdy() const { return using_spdy_; }
+  void set_using_spdy(bool x) { using_spdy_ = x; }
+
+  // Returns a char* representation of the class.  Used for poor man's RTTI.
+  // TODO(jmarantz): consider replacing with real RTTI.
+  virtual const char* class_name() const;
+
  protected:
   // The default constructor will not create a LogRecord. Subclass constructors
   // must do this explicitly.
@@ -109,6 +117,8 @@ class RequestContext : public RefCounted<RequestContext> {
 
   // Logs tracing events associated with the root request.
   scoped_ptr<RequestTrace> root_trace_context_;
+
+  bool using_spdy_;
 
   DISALLOW_COPY_AND_ASSIGN(RequestContext);
 };

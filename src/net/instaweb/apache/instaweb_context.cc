@@ -88,7 +88,7 @@ InstawebContext::InstawebContext(request_rec* request,
                                  const ContentType& content_type,
                                  ApacheServerContext* server_context,
                                  const GoogleString& absolute_url,
-                                 bool using_spdy,
+                                 const RequestContextPtr& request_context,
                                  bool use_custom_options,
                                  const RewriteOptions& options)
     : content_encoding_(kNone),
@@ -107,8 +107,6 @@ InstawebContext::InstawebContext(request_rec* request,
     // what ExperimentSpec the user should be seeing.
     use_custom_options = true;
   }
-  RequestContextPtr request_context(
-      new RequestContext(server_context_->thread_system()->NewMutex()));
   if (use_custom_options) {
     // TODO(jmarantz): this is a temporary hack until we sort out better
     // memory management of RewriteOptions.  This will drag on performance.
@@ -125,9 +123,6 @@ InstawebContext::InstawebContext(request_rec* request,
     server_context_->ComputeSignature(custom_options);
     rewrite_driver_ = server_context_->NewCustomRewriteDriver(
         custom_options, request_context);
-  } else if (using_spdy && (server_context_->SpdyConfig() != NULL)) {
-    rewrite_driver_ = server_context_->NewRewriteDriverFromPool(
-        server_context_->spdy_driver_pool(), request_context);
   } else {
     rewrite_driver_ = server_context_->NewRewriteDriver(request_context);
   }
@@ -144,11 +139,6 @@ InstawebContext::InstawebContext(request_rec* request,
   // save_url_hook. However, there is no request specific context to save the
   // result in at that point.
   PropertyCallback* property_callback(InitiatePropertyCacheLookup());
-
-  // Setup fetchers to direct most fetches to localhost or to add
-  // any custom fetch headers, if necessary.
-  server_context_->apache_factory()->ApplySessionFetchers(
-      server_context, rewrite_driver_, request);
 
   rewrite_driver_->EnableBlockingRewrite(request_headers);
 
@@ -184,8 +174,6 @@ InstawebContext::InstawebContext(request_rec* request,
                                                referer_url);
     }
   }
-
-  rewrite_driver_->set_using_spdy(using_spdy);
 
   // Make the entire request headers available to filters.
   rewrite_driver_->set_request_headers(request_headers_.get());

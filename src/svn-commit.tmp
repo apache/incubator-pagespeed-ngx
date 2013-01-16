@@ -1,19 +1,11 @@
-Send defer_js javascript only if flush_more resources_if_time_permits is
-enabled else the javacript delays rendering any content that follows the
-script tag until that script has been downloaded, parsed and
-executed.
 
 --This line, and those below, will be ignored--
 
-M    net/instaweb/genfiles/rewriter/add_instrumentation_opt.js
-M    net/instaweb/rewriter/flush_early_content_writer_filter.cc
-M    net/instaweb/rewriter/rewrite_driver.cc
-M    net/instaweb/rewriter/js_disable_filter.cc
-M    net/instaweb/rewriter/js_defer_disabled_filter.cc
-M    net/instaweb/rewriter/public/flush_early_content_writer_filter.h
-M    net/instaweb/rewriter/public/rewrite_driver.h
-M    net/instaweb/rewriter/flush_early_content_writer_filter_test.cc
-M    net/instaweb/http/user_agent_matcher.cc
-M    net/instaweb/automatic/public/flush_early_flow.h
-M    net/instaweb/automatic/proxy_interface_test.cc
-M    net/instaweb/automatic/flush_early_flow.cc
+M    net/instaweb/rewriter/public/rewrite_test_base.h
+M    net/instaweb/rewriter/rewrite_test_base.cc
+M    net/instaweb/rewriter/test_rewrite_driver_factory.cc
+M    net/instaweb/http/http_cache.cc
+M    net/instaweb/http/write_through_http_cache_test.cc
+M    net/instaweb/http/http_cache_test.cc
+M    net/instaweb/http/write_through_http_cache.cc
+M    net/instaweb/http/public/http_cache.h

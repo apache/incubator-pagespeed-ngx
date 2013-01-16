@@ -24,6 +24,7 @@
 #include "base/logging.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_message_handler.h"
+#include "net/instaweb/apache/apache_request_context.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/apache_slurp.h"
@@ -51,6 +52,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -68,8 +70,6 @@
 #include "net/instaweb/apache/apache_logging_includes.h"
 
 namespace net_instaweb {
-
-class RewriteDriverPool;
 
 extern const char* JS_mod_pagespeed_console_js;
 extern const char* CSS_mod_pagespeed_console_css;
@@ -254,19 +254,15 @@ RewriteOptions* get_custom_options(ApacheServerContext* server_context,
 }
 
 // Handle url as .pagespeed. rewritten resource.
-void handle_as_pagespeed_resource(GoogleUrl* gurl,
+void handle_as_pagespeed_resource(const RequestContextPtr& request_context,
+                                  GoogleUrl* gurl,
                                   const GoogleString& url,
                                   RewriteOptions* custom_options,
-                                  RewriteDriverPool* driver_pool,
-                                  bool using_spdy,
                                   ApacheServerContext* server_context,
                                   RequestHeaders* request_headers,
                                   request_rec* request) {
-  RequestContextPtr request_context(
-      new RequestContext(server_context->thread_system()->NewMutex()));
   RewriteDriver* driver = ResourceFetch::GetDriver(
-      *gurl, custom_options, driver_pool, using_spdy, server_context,
-      request_context);
+      *gurl, custom_options, server_context, request_context);
 
   MessageHandler* message_handler = server_context->message_handler();
   message_handler->Message(kInfo, "Fetching resource %s...", url.c_str());
@@ -277,11 +273,6 @@ void handle_as_pagespeed_resource(GoogleUrl* gurl,
   SyncFetcherAdapterCallback* callback = new SyncFetcherAdapterCallback(
       server_context->thread_system(), &writer, request_context);
   callback->SetRequestHeadersTakingOwnership(request_headers);
-
-  // Insert proxy fetchers to add custom fetch headers or apply
-  // routing policy.
-  server_context->apache_factory()->ApplySessionFetchers(
-      server_context, driver, request);
 
   if (ResourceFetch::BlockingFetch(*gurl, server_context, driver, callback)) {
     ResponseHeaders* response_headers = callback->response_headers();
@@ -307,20 +298,16 @@ void handle_as_pagespeed_resource(GoogleUrl* gurl,
 }
 
 // Handle url with In Place Resource Optimization (IPRO) flow.
-bool handle_as_inplace(GoogleUrl* gurl,
+bool handle_as_inplace(const RequestContextPtr& request_context,
+                       GoogleUrl* gurl,
                        const GoogleString& url,
                        RewriteOptions* custom_options,
-                       RewriteDriverPool* driver_pool,
-                       bool using_spdy,
                        ApacheServerContext* server_context,
                        request_rec* request) {
   bool handled = false;
 
-  RequestContextPtr request_context(
-      new RequestContext(server_context->thread_system()->NewMutex()));
   RewriteDriver* driver = ResourceFetch::GetDriver(
-      *gurl, custom_options, driver_pool, using_spdy, server_context,
-      request_context);
+      *gurl, custom_options, server_context, request_context);
 
   MessageHandler* message_handler = server_context->message_handler();
   message_handler->Message(kInfo, "Trying to optimize in-place: %s",
@@ -382,7 +369,9 @@ bool handle_as_resource(ApacheServerContext* server_context,
   // enabled.
   server_context->PollFilesystemForCacheFlush();
 
-  bool using_spdy = ApacheRewriteDriverFactory::TreatRequestAsSpdy(request);
+  RequestContextPtr request_context(new ApacheRequestContext(
+      server_context->thread_system()->NewMutex(), request));
+  bool using_spdy = request_context->using_spdy();
   RewriteOptions* global_options = server_context->global_options();
   if (using_spdy && (server_context->SpdyConfig() != NULL)) {
     global_options = server_context->SpdyConfig();
@@ -406,28 +395,22 @@ bool handle_as_resource(ApacheServerContext* server_context,
   scoped_ptr<RewriteOptions> custom_options(get_custom_options(
       server_context, request, gurl, request_headers.get(), global_options));
 
-  RewriteDriverPool* driver_pool = NULL;
   RewriteOptions* options = custom_options.get();  // Options for this request.
   if (custom_options.get() == NULL) {
     options = global_options;
-    if (using_spdy && (server_context->SpdyConfig() != NULL)) {
-      driver_pool = server_context->spdy_driver_pool();
-    } else {
-      driver_pool = server_context->standard_rewrite_driver_pool();
-    }
   }
 
   // Finally, do the actual handling.
   bool handled = false;
   if (server_context->IsPagespeedResource(*gurl)) {
     handled = true;
-    handle_as_pagespeed_resource(gurl, url, custom_options.release(),
-                                 driver_pool, using_spdy, server_context,
+    handle_as_pagespeed_resource(request_context, gurl, url,
+                                 custom_options.release(), server_context,
                                  request_headers.release(), request);
   } else if (options->ajax_rewriting_enabled() && options->enabled() &&
              options->IsAllowed(url)) {
-    handled = handle_as_inplace(gurl, url, custom_options.release(),
-                                driver_pool, using_spdy, server_context,
+    handled = handle_as_inplace(request_context, gurl, url,
+                                custom_options.release(), server_context,
                                 request);
   }
 
@@ -790,8 +773,8 @@ apr_status_t instaweb_handler(request_rec* request) {
     ret = OK;
 
   } else if (request_handler_str == kBeaconHandler) {
-    RequestContextPtr request_context(
-        new RequestContext(server_context->thread_system()->NewMutex()));
+    RequestContextPtr request_context(new ApacheRequestContext(
+        server_context->thread_system()->NewMutex(), request));
     server_context->HandleBeacon(request->unparsed_uri, request_context);
     ret = HTTP_NO_CONTENT;
 
