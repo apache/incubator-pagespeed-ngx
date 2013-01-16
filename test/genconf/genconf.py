@@ -6,6 +6,7 @@ from compiler.ast import Dict
 from compiler.ast import List
 from compiler.ast import Node
 from compiler.ast import UnarySub
+import copy
 import re
 from templite import Templite
 
@@ -135,6 +136,54 @@ def pre_process_ifdefs(cfg,conditions):
     # TODO(oschaaf): ensure ifstack length equals 1 here
     return "\n".join(ret)
 
+def copy_locations_to_virtual_hosts(config):
+    # nginx, for example, doesn't have a top level configuration
+    # for locations and directories (no directories at all AFAICT)
+    # we 'inherit' those sections here by explicitly 
+    # copying these directives to every server defined
+    # after that, we delete them from the root configuration
+    # and we should only have locations at the server level left
+    move = ["locations"]
+    servers = config["servers"]
+    for m in move:
+    	for server in servers:
+	    if not m in server: 
+	       server[m] = []
+	    server[m].extend(copy.deepcopy(config[m]))
+	del config[m]
+
+def move_configuration_to_locations(config):
+    if not "servers" in config: return
+
+    servers = config["servers"]
+
+    for server in servers:
+        if not "locations" in server: continue
+        locations = server["locations"]
+        for location in locations:
+            merge_location_config(config,server,location)
+        if "headers" in server:
+            del server["headers"]
+    if "headers" in config:
+        del config["headers"]
+
+
+# here, we provide an inheritance mechanism
+# pagespeed directives take care of inheriting properly
+# themselves, but in nginx for example the headers are not 
+# inherited like you would expect at first sight        
+def merge_location_config(root,server,location):
+    result = []
+    
+    if "headers" in root:
+        result.extend(root["headers"])
+    if "headers" in server:
+        result.extend(server["headers"])
+    if "headers" in location:
+        result.extend(location["headers"])
+
+    location["headers"] = result
+
 def execute_template(pyconf_path, conditions,
                      placeholders, template_path):
     config_file = open(pyconf_path)
@@ -149,5 +198,8 @@ def execute_template(pyconf_path, conditions,
     template_text = pre_process_text(template_text, conditions,
                                      placeholders)
     template = Templite(template_text)
+    
+    copy_locations_to_virtual_hosts(config)
+    move_configuration_to_locations(config)
     text = template.render(config=config)
     return text

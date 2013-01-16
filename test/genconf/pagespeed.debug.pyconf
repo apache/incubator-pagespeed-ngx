@@ -303,14 +303,29 @@ pagespeed_if:{
     },
 }, #pagespeed_if
 directories: [
+
+], #directories
+locations: [
     {
-        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/max_html_parse_size",
+        path: "/mod_pagespeed_log_request_headers.js",
+  	apache_literal: { value: "SetHandler mod_pagespeed_log_request_headers\n" },
+    },
+    {
+        wildcard_path: "/mod_pagespeed_test/response_headers.html*",
+## TODO: retain wildcard location
+##<Location ~ "/mod_pagespeed_test/response_headers.html*">
+##  SetHandler mod_pagespeed_response_options_handler
+##</Location>
+
+    },
+    {
+        path: "/mod_pagespeed_test/max_html_parse_size",
 	pagespeed: { 
             MaxHtmlParseBytes: 5000,
         }
     },
     {
-        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/https_fetch",
+        path: "/mod_pagespeed_test/https_fetch",
 	pagespeed: { 
             Domain: "https://modpagespeed.com",
             MapProxyDomain: "http://@@APACHE_DOMAIN@@/modpagespeed_dot_com https://modpagespeed.com/do_not_modify",
@@ -320,8 +335,8 @@ directories: [
     # also serve as a demonstration of good values to set for the entire
     # site, if it is to be optimized by mod_pagespeed.
     {
-        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_example",
-	apache_literal: 
+        path: "/mod_pagespeed_example",
+	xapache_literal: 
         {
             value:"""<IfModule headers_module>
     # To enable to show that mod_pagespeed to rewrites web pages, we must
@@ -348,12 +363,11 @@ directories: [
       Header set Cache-control "public, max-age=600"
     </FilesMatch>
   </IfModule>
-  AllowOverride All
 """
 	 },
     },
     {
-        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/shard",
+        path: "/mod_pagespeed_test/shard",
         pagespeed: {
 	    ShardDomain: "\"@@APACHE_DOMAIN@@\" shard1,shard2,",
 	    RewriteLevel: "PassThrough",
@@ -361,27 +375,25 @@ directories: [
         }
     },
     { 
-        path: "@@APACHE_DOC_ROOT@@/",
+        path: "/",
         # This is enabled to make sure we don't crash mod_negotiation.
     	add_options: ["MultiViews"],
     },
     {
-	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/",
-	apache_literal: { value: """    AllowOverride All\n"""},
+	path: "/mod_pagespeed_test/",
         # Some versions of mod_rewrite will refuse to do any work if
         # symlink handling is off.
     	add_options: ["SymLinksIfOwnerMatch"],
     },
     {
-	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/close_connection/",
-        apache_literal: { value: """    AllowOverride All\n"""},
+	path: "/mod_pagespeed_test/close_connection/",
     	add_options: ["SymLinksIfOwnerMatch"],
         # Helps tests whether we successfully strip Connection:close
         # results from the origin.
         headers: [{ action:"append", name:"Connection", value:"close"}],
     },
     {
-	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/compressed/",
+	path: "/mod_pagespeed_test/compressed/",
         # Files in this directory are already compressed so always add
         # the right header.
         headers: [
@@ -404,27 +416,27 @@ directories: [
         ]
     },
     {
-	path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/no_cache/",
+	path: "/mod_pagespeed_test/no_cache/",
         # Files in this directory should be served uncacheable.
         headers: [{ action:"set", name:"Cache-control", value:"no-cache"}],
     },
     # Set jpeg Quality
     {
-        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/jpeg_rewriting/",
+        path: "/mod_pagespeed_test/jpeg_rewriting/",
 	pagespeed: {
 	    JpegRecompressionQuality: 70,
 	}
     },
     # Set Generic Image Quality
     {
-        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/webp_rewriting",
+        path: "/mod_pagespeed_test/webp_rewriting",
 	pagespeed: {
 	    ImageRecompressionQuality: 75,
 	}
     },
     # Set Webp Quality
     {
-        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/image_rewriting",
+        path: "/mod_pagespeed_test/image_rewriting",
 	pagespeed: {
 	    ImageWebpRecompressionQuality: 65, 
 	}
@@ -433,7 +445,7 @@ directories: [
     # scope we test to make sure the options we claim are really settable in
     # .htaccess.  Note that <Directory> and .htaccess are enforced the same way.
     {
-        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/htaccess_test",
+        path: "/mod_pagespeed_test/htaccess_test",
 	pagespeed_status: "on",
 	pagespeed: {
   	    Allow: "*",
@@ -466,7 +478,7 @@ directories: [
         }
     },
     {
-        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/forbid_all_disabled/disabled",
+        path: "/mod_pagespeed_test/forbid_all_disabled/disabled",
 	pagespeed: { 
    	    # Prevent the enabling of these filters for files in this directory
     	    # -and- all subdirectories (they can't override it, deliberately).
@@ -477,21 +489,6 @@ directories: [
     	    EnableFilters: "inline_css",
 	}
     },
-], #directories
-locations: [
-    {
-        path: "/mod_pagespeed_log_request_headers.js",
-  	apache_literal: { value: "SetHandler mod_pagespeed_log_request_headers\n" },
-    },
-    {
-        wildcard_path: "/mod_pagespeed_test/response_headers.html*",
-## TODO: retain wildcard location
-##<Location ~ "/mod_pagespeed_test/response_headers.html*">
-##  SetHandler mod_pagespeed_response_options_handler
-#</Location>
-
-    },
-
 #PER_VHOST_STATS    {
 #PER_VHOST_STATS        path: "/mod_pagespeed_global_statistics",
 #PER_VHOST_STATS        apache_literal: {
@@ -505,7 +502,7 @@ locations: [
 
 #STRESS # These lines are only needed for the stress test.
 #STRESS    {
-#STRESS        path: "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/cgi",
+#STRESS        path: "/mod_pagespeed_example/cgi",
 #STRESS        add_options: ["ExecCGI"],
 #STRESS    },
 

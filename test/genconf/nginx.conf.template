@@ -43,6 +43,7 @@ def write_servers_close_item(server,level):
     emit(indent("}\n",level))
 
 def write_directories_open_item(server,level):
+    raise Exception("nginx does not support directories " + server["path"])
     write_locations_open_item(server,level,1)
 
 def write_directories_close_item(server,level):
@@ -236,23 +237,6 @@ key_to_writer = {
     "add_options_open": write_add_options_open,
     "rewrite_rules_open": write_rewrite_rules_open,
 }
-
-def prepare_configuration(config):
-    # nginx doesn't have a top level configuration
-    # for locations and directories (no directories at all AFAICT)
-    # we 'inherit' those sections here by explicitly 
-    # copying these directives to every server defined
-    # after that, we delete them from the root configuration
-    move = ["locations", "directories"]
-    servers = config["servers"]
-    for m in move:
-    	for server in servers:
-	    if not m in server: 
-	       server[m] = []
-	    server[m].extend(config[m])
-	del config[m]
-
-prepare_configuration(config)
 
 }$# nginx configuration, generated using 'TODO (oschaaf): '
 daemon off;
