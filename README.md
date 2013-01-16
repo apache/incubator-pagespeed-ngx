@@ -33,6 +33,12 @@ ngx_pagespeed as a build-time dependency.
 
 ### Simple method: Using a binary Pagespeed Optimization Library
 
+Install dependencies:
+
+    # These are for RedHat, CentOS, and Fedora.  Debian and Ubuntu will be
+    # similar.
+    $ sudo yum install git gcc-c++ pcre-dev pcre-devel zlib-devel make
+
 Check out ngx_pagespeed:
 
     $ cd ~
