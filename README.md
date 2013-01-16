@@ -66,7 +66,8 @@ First build mod_pagespeed against the current revision we work at:
     $ gclient runhooks
     $ make BUILDTYPE=Release mod_pagespeed_test pagespeed_automatic_test
 
-(See https://developers.google.com/speed/docs/mod_pagespeed/build_from_source if
+(See [mod_pagespeed: build from
+source](https://developers.google.com/speed/docs/mod_pagespeed/build_from_source) if
 you run into trouble, or ask for help on the mailing list.)
 
 Then build the pagespeed optimization library:
