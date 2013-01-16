@@ -119,6 +119,11 @@ In every server block where pagespeed is enabled add:
     location ~ "\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+" { }
     location ~ "^/ngx_pagespeed_static/" { }
 
+If you're proxying, you need to strip off the `Accept-Encoding` header because
+ngx_pagespeed does not (yet) handle compression from upstreams:
+
+    proxy_set_header Accept-Encoding "";
+
 To confirm that the module is loaded, fetch a page and check that you see the
 `X-Page-Speed` header:
 
