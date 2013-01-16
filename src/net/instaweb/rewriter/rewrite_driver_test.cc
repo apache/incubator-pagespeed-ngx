@@ -1145,8 +1145,10 @@ TEST_F(RewriteDriverTest, GetScreenResolutionTest) {
   PropertyCache::InitCohortStats(UserAgentMatcher::kDevicePropertiesCohort,
         rewrite_driver()->statistics());
   int width, height;
-  // No device property page.
-  EXPECT_FALSE(rewrite_driver()->GetScreenResolution(&width, &height));
+  // No device property page, returns defaults.
+  EXPECT_TRUE(rewrite_driver()->GetScreenResolution(&width, &height));
+  EXPECT_EQ(RewriteDriver::kDefaultMobileScreenWidth, width);
+  EXPECT_EQ(RewriteDriver::kDefaultMobileScreenHeight, height);
 
   // Property values not set, return defaults.
   server_context_->set_device_property_cache(dcache);

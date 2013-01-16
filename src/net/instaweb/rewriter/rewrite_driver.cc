@@ -747,8 +747,8 @@ const char RewriteDriver::kLastRequestTimestamp[] = "last_request_timestamp";
 const char RewriteDriver::kParseSizeLimitExceeded[] =
     "parse_size_limit_exceeded";
 
-const int RewriteDriver::kDefaultMobileScreenWidth = 720;
-const int RewriteDriver::kDefaultMobileScreenHeight = 1184;
+const int RewriteDriver::kDefaultMobileScreenWidth = 480;
+const int RewriteDriver::kDefaultMobileScreenHeight = 800;
 
 void RewriteDriver::Initialize() {
   if (RewriteOptions::Initialize()) {
@@ -927,15 +927,15 @@ bool RewriteDriver::GetScreenResolution(int* width, int* height) {
         } else {
           server_context()->user_agent_matcher()->
               LookupDeviceProperties(user_agent_, device_property_page_);
-          // If resolution isn't set in device_cache, return default values.
-          // Don't update is_screen_resolution_set, so lookup will try again.
-          if (IsMobileUserAgent()) {
-            *width = kDefaultMobileScreenWidth;
-            *height = kDefaultMobileScreenHeight;
-            return true;
-          }
         }
       }
+    }
+    // If we don't get resolution from device_cache, return default values.
+    // Don't update is_screen_resolution_set, so lookup will try again.
+    if (IsMobileUserAgent() && is_screen_resolution_set_ == kNotSet) {
+      *width = kDefaultMobileScreenWidth;
+      *height = kDefaultMobileScreenHeight;
+      return true;
     }
   }
   if (is_screen_resolution_set_ == kTrue) {
