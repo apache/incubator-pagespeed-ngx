@@ -46,7 +46,7 @@ const char DelayImagesFilter::kDelayImagesInlineSuffix[] =
 
 const char DelayImagesFilter::kOnloadFunction[] =
     "var elem=this;"
-    "setTimeout(function(){elem.removeAttribute('onload');"
+    "setTimeout(function(){elem.onload = null;"
     "elem.src=elem.getAttribute('pagespeed_high_res_src');}, 0);";
 
 DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
