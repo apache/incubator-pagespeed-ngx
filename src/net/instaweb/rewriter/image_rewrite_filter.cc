@@ -204,9 +204,7 @@ const UrlSegmentEncoder* ImageRewriteFilter::Context::encoder() const {
 
 GoogleString ImageRewriteFilter::Context::UserAgentCacheKey(
     const ResourceContext* resource_context) const {
-  // We want to disable user agent related cache key suffix for IPRO for now.
-  bool is_ipro_path = has_parent() && !is_css_;
-  if (resource_context != NULL && !is_ipro_path) {
+  if (resource_context != NULL) {
     // cache-key is sensitive to whether the UA supports webp or not.
     return ImageUrlEncoder::CacheKeyFromResourceContext(*resource_context);
   }
@@ -1244,7 +1242,6 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
     // CopyFrom parent_context is not sufficient because parent_context checks
     // only UserAgentSupportsWebp when creating the context, but while
     // rewriting the image, rewrite options should also be checked.
-    GoogleString url = slot->resource()->url();
     ImageUrlEncoder::SetLibWebpLevel(*driver_, cloned_context);
   }
   Context* context = new Context(css_image_inline_max_bytes,
@@ -1257,12 +1254,15 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
 
 RewriteContext* ImageRewriteFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
-  // This is used for IPRO path. We create a ResourceContext but do not
-  // call EncodeUserAgentIntoResourceContext(...) to set any context for
-  // browser capability.
-  Context* context = new Context(0 /*No Css inling */, this, NULL /* driver */,
-                                 parent, new ResourceContext,
-                                 false /*not css */, kNotCriticalIndex);
+  ResourceContext* resource_context = new ResourceContext;
+  DCHECK(parent != NULL);
+  DCHECK(parent->resource_context() != NULL);
+  if (parent != NULL && parent->resource_context() != NULL) {
+    resource_context->CopyFrom(*(parent->resource_context()));
+  }
+  Context* context = new Context(
+      0 /*No Css inling */, this, NULL /* driver */, parent, resource_context,
+      false /*not css */, kNotCriticalIndex);
   context->AddSlot(slot);
   return context;
 }

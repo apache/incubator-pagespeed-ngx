@@ -60,8 +60,8 @@ class ImageRewriteFilter : public RewriteFilter {
   virtual void EndElementImpl(HtmlElement* element);
   virtual const char* Name() const { return "ImageRewrite"; }
   virtual const char* id() const { return RewriteOptions::kImageCompressionId; }
-
-  void EncodeUserAgentIntoResourceContext(ResourceContext* context) const;
+  virtual void EncodeUserAgentIntoResourceContext(
+      ResourceContext* context) const;
 
   // Can we inline resource?  If so, encode its contents into the data_url,
   // otherwise leave data_url alone.

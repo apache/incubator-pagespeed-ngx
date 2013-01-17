@@ -21,6 +21,8 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_CONTENT_TYPE_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_CONTENT_TYPE_H_
 
+#include <set>
+
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -58,6 +60,9 @@ struct ContentType {
   // TODO(sligocki): Stop returning '.' in file_extension().
   const char* file_extension() const { return file_extension_; }
   Type type() const { return type_; }
+
+  // Return true iff this content type is CSS.
+  bool IsCss() const;
 
   // Return true iff this content type is HTML, or XHTML, or some other such
   // thing (e.g. CE-HTML) that we can rewrite.

@@ -41,6 +41,7 @@ namespace net_instaweb {
 
 class InputInfo;
 class MessageHandler;
+class ResourceContext;
 class RewriteDriver;
 class RewriteFilter;
 class Statistics;
@@ -100,6 +101,10 @@ class InPlaceRewriteContext : public SingleRewriteContext {
 
   virtual int64 GetRewriteDeadlineAlarmMs() const;
 
+  virtual GoogleString UserAgentCacheKey(
+      const ResourceContext* resource_context) const;
+  virtual void EncodeUserAgentIntoResourceContext(ResourceContext* context);
+
  private:
   friend class RecordingFetch;
   // Implements RewriteContext::Harvest().
@@ -118,6 +123,12 @@ class InPlaceRewriteContext : public SingleRewriteContext {
   // Update the date and expiry time based on the InputInfo's.
   void UpdateDateAndExpiry(const protobuf::RepeatedPtrField<InputInfo>& inputs,
                            int64* date_ms, int64* expiry_ms);
+  // Returns true if kInPlaceOptimizeForBrowser is enabled and we
+  // actually need to do browser specific rewriting based on options.
+  bool InPlaceOptimizeForBrowserEnabled() const;
+  // Returns true if the "Vary: User-Agent" header should be added for the
+  // rewritten resource.
+  bool ShouldAddVaryUserAgent() const;
 
   RewriteDriver* driver_;
   GoogleString url_;

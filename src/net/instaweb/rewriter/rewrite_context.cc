@@ -2048,9 +2048,6 @@ bool RewriteContext::DecodeFetchUrls(
   StringPiece original_base_sans_leaf(original_base.AllExceptLeaf());
   bool check_for_multiple_rewrites =
       (original_base_sans_leaf != decoded_base.AllExceptLeaf());
-  if (resource_context_ != NULL) {
-    EncodeUserAgentIntoResourceContext(resource_context_.get());
-  }
   StringVector urls;
   if (encoder()->Decode(output_resource->name(), &urls, resource_context_.get(),
                         message_handler)) {
@@ -2120,6 +2117,9 @@ bool RewriteContext::PrepareFetch(
   bool ret = false;
   RewriteDriver* driver = Driver();
   GoogleUrlStarVector url_vector;
+  if (resource_context_ != NULL) {
+    EncodeUserAgentIntoResourceContext(resource_context_.get());
+  }
   if (DecodeFetchUrls(output_resource, message_handler, &url_vector)) {
     bool is_valid = true;
     for (int i = 0, n = url_vector.size(); i < n; ++i) {

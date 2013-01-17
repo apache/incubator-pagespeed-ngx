@@ -28,7 +28,9 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -54,6 +56,9 @@ class MessageHandler;
 
 namespace {
 
+const char kTestUserAgentWebP[] = "test-user-agent-webp";
+const char kTestUserAgentNoWebP[] = "test-user-agent-nowebp";
+
 // A filter that that appends ':id' to the input contents and counts the number
 // of rewrites it has performed. It also has the ability to simulate a long
 // rewrite to test exceeding the rewrite deadline.
@@ -62,8 +67,9 @@ class FakeFilter : public RewriteFilter {
   class Context : public SingleRewriteContext {
    public:
     Context(FakeFilter* filter, RewriteDriver* driver,
-            RewriteContext* parent)
-        : SingleRewriteContext(driver, parent, NULL), filter_(filter) {}
+            RewriteContext* parent, ResourceContext* resource_context)
+        : SingleRewriteContext(driver, parent, resource_context),
+          filter_(filter) {}
     virtual ~Context() {}
 
     void RewriteSingle(const ResourcePtr& input,
@@ -107,6 +113,14 @@ class FakeFilter : public RewriteFilter {
 
       RewriteDone(result, 0);
     }
+    GoogleString UserAgentCacheKey(
+        const ResourceContext* resource_context) const {
+      if (resource_context != NULL) {
+        return ImageUrlEncoder::CacheKeyFromResourceContext(*resource_context);
+      }
+      return "";
+    }
+
     virtual const char* id() const { return filter_->id(); }
     virtual OutputResourceKind kind() const { return filter_->kind(); }
 
@@ -116,7 +130,8 @@ class FakeFilter : public RewriteFilter {
 
   FakeFilter(const char* id, RewriteDriver* rewrite_driver)
       : RewriteFilter(rewrite_driver), id_(id), exceed_deadline_(false),
-        enabled_(true), num_rewrites_(0), output_content_type_(NULL) {}
+        enabled_(true), num_rewrites_(0), output_content_type_(NULL),
+        num_encode_user_agent_(0) {}
 
   virtual ~FakeFilter() {}
 
@@ -124,16 +139,25 @@ class FakeFilter : public RewriteFilter {
   virtual void EndElementImpl(HtmlElement* element) {}
   virtual void StartElementImpl(HtmlElement* element) {}
   virtual RewriteContext* MakeRewriteContext() {
-    return new FakeFilter::Context(this, driver_, NULL);
+    return new FakeFilter::Context(this, driver_, NULL, NULL);
   }
   virtual RewriteContext* MakeNestedRewriteContext(
       RewriteContext* parent, const ResourceSlotPtr& slot) {
-    RewriteContext* context = new FakeFilter::Context(this, NULL, parent);
+    ResourceContext* resource_context = new ResourceContext;
+    if (parent != NULL && parent->resource_context() != NULL) {
+      resource_context->CopyFrom(*parent->resource_context());
+    }
+    RewriteContext* context = new FakeFilter::Context(
+        this, NULL, parent, resource_context);
     context->AddSlot(slot);
     return context;
   }
   int num_rewrites() const { return num_rewrites_; }
-  void ClearStats() { num_rewrites_ = 0; }
+  int num_encode_user_agent() const { return num_encode_user_agent_; }
+  void ClearStats() {
+    num_rewrites_ = 0;
+    num_encode_user_agent_ = 0;
+  }
   void set_enabled(bool x) { enabled_ = x; }
   bool enabled() { return enabled_; }
   bool exceed_deadline() { return exceed_deadline_; }
@@ -143,6 +167,13 @@ class FakeFilter : public RewriteFilter {
     output_content_type_ = type;
   }
   const ContentType* output_content_type() { return output_content_type_; }
+  virtual void EncodeUserAgentIntoResourceContext(
+      ResourceContext* context) const {
+    if (driver_->user_agent() == kTestUserAgentWebP) {
+      context->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
+    }
+    ++num_encode_user_agent_;
+  }
 
  protected:
   virtual const char* id() const { return id_; }
@@ -156,6 +187,7 @@ class FakeFilter : public RewriteFilter {
   bool enabled_;
   int num_rewrites_;
   const ContentType* output_content_type_;
+  mutable int num_encode_user_agent_;
 };
 
 class FakeFetch : public AsyncFetch {
@@ -212,11 +244,13 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
         css_filter_(NULL),
         cache_html_url_("http://www.example.com/cacheable.html"),
         cache_jpg_url_("http://www.example.com/cacheable.jpg"),
+        cache_jpg_no_extension_url_("http://www.example.com/cacheable_jpg"),
         cache_jpg_notransform_url_("http://www.example.com/notransform.jpg"),
         cache_png_url_("http://www.example.com/cacheable.png"),
         cache_gif_url_("http://www.example.com/cacheable.gif"),
         cache_webp_url_("http://www.example.com/cacheable.webp"),
         cache_js_url_("http://www.example.com/cacheable.js"),
+        cache_js_jpg_extension_url_("http://www.example.com/cacheable_js.jpg"),
         cache_css_url_("http://www.example.com/cacheable.css"),
         nocache_html_url_("http://www.example.com/nocacheable.html"),
         cache_js_no_max_age_url_("http://www.example.com/cacheablemod.js"),
@@ -226,7 +260,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
         cache_body_("good"), nocache_body_("bad"), bad_body_("ugly"),
         ttl_ms_(Timer::kHourMs), etag_("W/\"PSA-aj-0\""),
         original_etag_("original_etag"),
-        exceed_deadline_(false),
+        exceed_deadline_(false), optimize_for_browser_(false),
         oversized_stream_(NULL) {}
 
   virtual void Init() {
@@ -238,6 +272,8 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
                 ttl_ms_, original_etag_, kNoWriteToCache, kTransform);
     AddResponse(cache_jpg_url_, kContentTypeJpeg, cache_body_, start_time_ms(),
                 ttl_ms_, "", kNoWriteToCache, kTransform);
+    AddResponse(cache_jpg_no_extension_url_, kContentTypeJpeg, cache_body_,
+                start_time_ms(), ttl_ms_, "", kNoWriteToCache, kTransform);
     AddResponse(cache_jpg_notransform_url_, kContentTypeJpeg, cache_body_,
                 start_time_ms(), ttl_ms_, "", kNoWriteToCache, kNoTransform);
     AddResponse(cache_png_url_, kContentTypePng, cache_body_, start_time_ms(),
@@ -248,6 +284,9 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
                 ttl_ms_, original_etag_, kWriteToCache, kTransform);
     AddResponse(cache_js_url_, kContentTypeJavascript, cache_body_,
                 start_time_ms(), ttl_ms_, "", kNoWriteToCache, kTransform);
+    AddResponse(cache_js_jpg_extension_url_, kContentTypeJavascript,
+                cache_body_, start_time_ms(), ttl_ms_, "", kNoWriteToCache,
+                kTransform);
     AddResponse(cache_css_url_, kContentTypeCss, cache_body_, start_time_ms(),
                 ttl_ms_, "", kNoWriteToCache, kTransform);
     AddResponse(nocache_html_url_, kContentTypeHtml, nocache_body_,
@@ -276,6 +315,10 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     AddRecompressImageFilters();
     options()->EnableFilter(RewriteOptions::kRewriteJavascript);
     options()->EnableFilter(RewriteOptions::kRewriteCss);
+    if (optimize_for_browser()) {
+      options()->EnableFilter(RewriteOptions::kInPlaceOptimizeForBrowser);
+      options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+    }
     options()->set_ajax_rewriting_enabled(true);
     server_context()->ComputeSignature(options());
     // Clear stats since we may have added something to the cache.
@@ -424,6 +467,9 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
   bool exceed_deadline() { return exceed_deadline_; }
   void set_exceed_deadline(bool x) { exceed_deadline_ = x; }
 
+  bool optimize_for_browser() { return optimize_for_browser_; }
+  void set_optimize_for_browser(bool x) { optimize_for_browser_ = x; }
+
   FakeFilter* img_filter_;
   FakeFilter* js_filter_;
   FakeFilter* css_filter_;
@@ -433,11 +479,13 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
 
   const GoogleString cache_html_url_;
   const GoogleString cache_jpg_url_;
+  const GoogleString cache_jpg_no_extension_url_;
   const GoogleString cache_jpg_notransform_url_;
   const GoogleString cache_png_url_;
   const GoogleString cache_gif_url_;
   const GoogleString cache_webp_url_;
   const GoogleString cache_js_url_;
+  const GoogleString cache_js_jpg_extension_url_;
   const GoogleString cache_css_url_;
   const GoogleString nocache_html_url_;
   const GoogleString cache_js_no_max_age_url_;
@@ -452,6 +500,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
   const char* etag_;
   const char* original_etag_;
   bool exceed_deadline_;
+  bool optimize_for_browser_;
 
   Variable* oversized_stream_;
 };
@@ -1272,6 +1321,191 @@ TEST_F(InPlaceRewriteContextTest, ResponseHeaderMimeTypeUpdate) {
                response_headers_.Lookup1(HttpAttributes::kContentType));
 }
 
+TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserEncodingAndHeader) {
+  options()->set_in_place_wait_for_optimized(true);
+  set_optimize_for_browser(true);
+  Init();
+
+  // Image with correct extension in URL.
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
+                        start_time_ms());
+  EXPECT_EQ(0, css_filter_->num_encode_user_agent());
+  EXPECT_EQ(1, img_filter_->num_encode_user_agent());
+  EXPECT_EQ(0, js_filter_->num_encode_user_agent());
+  EXPECT_STREQ(HttpAttributes::kUserAgent,
+               response_headers_.Lookup1(HttpAttributes::kVary));
+
+  // Image with no extension in URL.
+  ResetHeadersAndStats();
+  FetchAndCheckResponse(cache_jpg_no_extension_url_, "good:ic", true, ttl_ms_,
+                        etag_, start_time_ms());
+  EXPECT_EQ(1, css_filter_->num_encode_user_agent());
+  EXPECT_EQ(1, img_filter_->num_encode_user_agent());
+  EXPECT_EQ(0, js_filter_->num_encode_user_agent());
+  EXPECT_STREQ(HttpAttributes::kUserAgent,
+               response_headers_.Lookup1(HttpAttributes::kVary));
+
+  // CSS with correct extension in URL.
+  ResetHeadersAndStats();
+  FetchAndCheckResponse(cache_css_url_, "good:cf", true, ttl_ms_, etag_,
+                        start_time_ms());
+  EXPECT_EQ(1, css_filter_->num_encode_user_agent());
+  EXPECT_EQ(0, img_filter_->num_encode_user_agent());
+  EXPECT_EQ(0, js_filter_->num_encode_user_agent());
+  EXPECT_STREQ(HttpAttributes::kUserAgent,
+               response_headers_.Lookup1(HttpAttributes::kVary));
+
+  // HTML with correct extension in URL.
+  ResetHeadersAndStats();
+  FetchAndCheckResponse(cache_html_url_, "good", true, ttl_ms_,
+                        original_etag_, start_time_ms());
+  EXPECT_EQ(0, css_filter_->num_encode_user_agent());
+  EXPECT_EQ(0, img_filter_->num_encode_user_agent());
+  EXPECT_EQ(0, js_filter_->num_encode_user_agent());
+  EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kVary));
+
+  // Javascript with correct extension in URL.
+  ResetHeadersAndStats();
+  FetchAndCheckResponse(cache_js_url_, "good:jm", true, ttl_ms_, etag_,
+                        start_time_ms());
+  EXPECT_EQ(0, css_filter_->num_encode_user_agent());
+  EXPECT_EQ(0, img_filter_->num_encode_user_agent());
+  EXPECT_EQ(0, js_filter_->num_encode_user_agent());
+  EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kVary));
+
+  // Javascript with jpeg extension in URL.
+  ResetHeadersAndStats();
+  FetchAndCheckResponse(cache_js_jpg_extension_url_, "good:jm", true, ttl_ms_,
+                        etag_, start_time_ms());
+  EXPECT_EQ(0, css_filter_->num_encode_user_agent());
+  EXPECT_EQ(1, img_filter_->num_encode_user_agent());
+  EXPECT_EQ(0, js_filter_->num_encode_user_agent());
+  EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kVary));
+
+  // Bad content with unknown extension.
+  ResetHeadersAndStats();
+  FetchAndCheckResponse(bad_url_, bad_body_, true, 0, NULL, start_time_ms());
+  EXPECT_EQ(1, css_filter_->num_encode_user_agent());
+  EXPECT_EQ(1, img_filter_->num_encode_user_agent());
+  EXPECT_EQ(0, js_filter_->num_encode_user_agent());
+  EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kVary));
+}
+
+TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
+  // When in_place_wait_for_optimized is true, force_rewrite is set to true and
+  // the nested RewriteContext will not check for rewritten content if input
+  // is ready. Keep that in mind when checking lru_cache hits/misses.
+  options()->set_in_place_wait_for_optimized(true);
+  set_optimize_for_browser(true);
+  Init();
+
+  // First fetch with kTestUserAgentWebP. This will miss everything (metadata
+  // lookup, original content, and rewritten content).
+  // Vary: User-Agent header should be added.
+  rewrite_driver()->set_user_agent(kTestUserAgentWebP);
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
+                        start_time_ms());
+
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());  // original
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());  // rewritten + original
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());  // + ipro-md
+  EXPECT_EQ(4, lru_cache()->num_inserts());  // + ipro-md + md
+  EXPECT_EQ(1, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(0, oversized_stream_->Get());
+  EXPECT_STREQ(HttpAttributes::kUserAgent,
+               response_headers_.Lookup1(HttpAttributes::kVary));
+
+  // The second fetch uses a different user agent, kTestUserAgentNoWebP.
+  // This will miss the metadata cache so it will start fetch input (cache hit)
+  // and rewrite content (cache miss).
+  // Vary: User-Agent header should be be added.
+  ResetHeadersAndStats();
+  SetTimeMs((start_time_ms() + ttl_ms_/2));
+  rewrite_driver()->set_user_agent(kTestUserAgentNoWebP);
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
+                        start_time_ms() + ttl_ms_/2);
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());  // original
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());  // rewritten
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());  // rewritten
+  EXPECT_EQ(1, lru_cache()->num_hits());  // original
+  EXPECT_EQ(1, lru_cache()->num_misses());  // ipro-md
+  EXPECT_EQ(3, lru_cache()->num_inserts());  // + ipro-md + md
+  EXPECT_EQ(1, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(0, oversized_stream_->Get());
+  EXPECT_STREQ(HttpAttributes::kUserAgent,
+               response_headers_.Lookup1(HttpAttributes::kVary));
+
+  // Fetch again still with kTestUserAgentNoWebP. Metadata cache hits.
+  // No input fetch and rewriting.
+  // Vary: User-Agent header should be be added.
+  ResetHeadersAndStats();
+  SetTimeMs((start_time_ms() + ttl_ms_/2));
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
+                        start_time_ms() + ttl_ms_/2);
+
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());  // original
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());  // +ipro-md
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(0, oversized_stream_->Get());
+  EXPECT_STREQ(HttpAttributes::kUserAgent,
+               response_headers_.Lookup1(HttpAttributes::kVary));
+
+  // Fetch another time but switch back to kTestUserAgentWebP.
+  // Metadata cache hits. No input fetch and rewriting.
+  // Vary: User-Agent header should be added.
+  ResetHeadersAndStats();
+  SetTimeMs((start_time_ms() + ttl_ms_/2));
+  rewrite_driver()->set_user_agent(kTestUserAgentWebP);
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
+                        start_time_ms() + ttl_ms_/2);
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());  // rewritten
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());  // +ipro-md
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(0, oversized_stream_->Get());
+  EXPECT_STREQ(HttpAttributes::kUserAgent,
+               response_headers_.Lookup1(HttpAttributes::kVary));
+}
+
+TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserNegative) {
+  options()->set_in_place_wait_for_optimized(true);
+  set_optimize_for_browser(false);
+  Init();
+
+  // Vary: User-Agent header should not be added no matter the user-agent.
+  rewrite_driver()->set_user_agent(kTestUserAgentWebP);
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
+                        start_time_ms());
+  EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kVary));
+
+  ResetHeadersAndStats();
+  SetTimeMs((start_time_ms() + ttl_ms_/2));
+  rewrite_driver()->set_user_agent(kTestUserAgentNoWebP);
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
+                        start_time_ms() + ttl_ms_/2);
+  EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kVary));
+}
 }  // namespace
 
 }  // namespace net_instaweb

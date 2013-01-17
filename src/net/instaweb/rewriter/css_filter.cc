@@ -612,7 +612,7 @@ bool CssFilter::Context::Partition(OutputPartitions* partitions,
 
 GoogleString CssFilter::Context::UserAgentCacheKey(
     const ResourceContext* resource_context) const {
-  if (resource_context != NULL && !has_parent()) {
+  if (resource_context != NULL) {
     // CSS cache-key is sensitive to whether the UA supports webp or not.
     return ImageUrlEncoder::CacheKeyFromResourceContext(*resource_context);
   }
@@ -957,17 +957,11 @@ bool CssFilter::GetApplicableMedia(const HtmlElement* element,
 CssFilter::Context* CssFilter::MakeContext(RewriteDriver* driver,
                                            RewriteContext* parent) {
   ResourceContext* resource_context = new ResourceContext;
-  resource_context->set_inline_images(
-      driver_->UserAgentSupportsImageInlining());
-  if (driver_->UserAgentSupportsWebpLosslessAlpha()) {
-    resource_context->set_libwebp_level(
-        ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA);
-  } else if (driver_->UserAgentSupportsWebp()) {
-    resource_context->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_ONLY);
+  if (parent != NULL && parent->resource_context() != NULL) {
+    resource_context->CopyFrom(*(parent->resource_context()));
   } else {
-    resource_context->set_libwebp_level(ResourceContext::LIBWEBP_NONE);
+    EncodeUserAgentIntoResourceContext(resource_context);
   }
-
   return new Context(this, driver, parent, cache_extender_,
                      image_rewrite_filter_, image_combiner_, resource_context);
 }
@@ -978,6 +972,12 @@ RewriteContext* CssFilter::MakeRewriteContext() {
 
 const UrlSegmentEncoder* CssFilter::encoder() const {
   return &encoder_;
+}
+
+void CssFilter::EncodeUserAgentIntoResourceContext(
+    ResourceContext* context) const {
+  context->set_inline_images(driver_->UserAgentSupportsImageInlining());
+  ImageUrlEncoder::SetLibWebpLevel(*driver_, context);
 }
 
 const UrlSegmentEncoder* CssFilter::Context::encoder() const {

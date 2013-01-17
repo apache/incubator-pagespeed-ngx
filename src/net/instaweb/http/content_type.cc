@@ -18,6 +18,8 @@
 
 #include "net/instaweb/http/public/content_type.h"
 
+#include <vector>
+
 #include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -90,6 +92,10 @@ const ContentType& kBinaryOctetStream = kTypes[14];
 
 int ContentType::MaxProducedExtensionLength() {
   return 4;  // .jpeg or .webp
+}
+
+bool ContentType::IsCss() const {
+  return type_ == kCss;
 }
 
 bool ContentType::IsHtmlLike() const {

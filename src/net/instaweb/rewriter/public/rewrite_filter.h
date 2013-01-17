@@ -28,6 +28,7 @@
 namespace net_instaweb {
 
 class Resource;
+class ResourceContext;
 class RewriteContext;
 class RewriteDriver;
 class UrlSegmentEncoder;
@@ -71,6 +72,12 @@ class RewriteFilter : public CommonFilter {
   // This is used to implement ajax rewriting.
   virtual RewriteContext* MakeNestedRewriteContext(
       RewriteContext* parent, const ResourceSlotPtr& slot);
+
+  // Encodes user agent information needed by the filter into ResourceContext.
+  // See additional header document for
+  // RewriteContext::EncodeUserAgentIntoResourceContext.
+  virtual void EncodeUserAgentIntoResourceContext(
+      ResourceContext* context) const {}
 
   // Determine the charset of a script. Logic taken from:
   //   http://www.whatwg.org/specs/web-apps/current-work/multipage/

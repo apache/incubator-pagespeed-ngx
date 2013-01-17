@@ -239,7 +239,9 @@ class RewriteContext {
   // If called with true, forces a rewrite and re-generates the output.
   void set_force_rewrite(bool x) { force_rewrite_ = x; }
 
-  const ResourceContext* resource_context() { return resource_context_.get(); }
+  const ResourceContext* resource_context() const {
+    return resource_context_.get();
+  }
 
   // Removes this RewriteContext from all slots.  This is done normally when
   // a RewriteContext is completed and we are ready to run the successors.
@@ -499,8 +501,10 @@ class RewriteContext {
   }
 
   // Encodes User Agent into the ResourceContext.
-  virtual void EncodeUserAgentIntoResourceContext(ResourceContext* context) {
-  }
+  // A subclass ResourceContext should normally call
+  // RewriteFilter::EncodeUserAgentIntoResourceContext if it has access to
+  // a RewriteFilter.
+  virtual void EncodeUserAgentIntoResourceContext(ResourceContext* context) {}
 
  private:
   class OutputCacheCallback;

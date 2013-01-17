@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
@@ -213,7 +214,7 @@ bool RecordingFetch::CanInPlaceRewrite() {
 
 InPlaceRewriteContext::InPlaceRewriteContext(RewriteDriver* driver,
                                        const StringPiece& url)
-    : SingleRewriteContext(driver, NULL, NULL),
+    : SingleRewriteContext(driver, NULL, new ResourceContext),
       driver_(driver),
       url_(url.data(), url.size()),
       is_rewritten_(true),
@@ -321,7 +322,9 @@ void InPlaceRewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
           HTTPCache::kEtagFormat,
           StrCat(id(), "-", rewritten_hash_).c_str()));
     }
-
+    if (ShouldAddVaryUserAgent()) {
+      headers->Replace(HttpAttributes::kVary, HttpAttributes::kUserAgent);
+    }
     headers->ComputeCaching();
     int64 expire_at_ms = kint64max;
     int64 date_ms = kint64max;
@@ -469,4 +472,67 @@ void InPlaceRewriteContext::StartFetchReconstruction() {
 void InPlaceRewriteContext::StartFetchReconstructionParent() {
   RewriteContext::StartFetchReconstruction();
 }
+
+bool InPlaceRewriteContext::InPlaceOptimizeForBrowserEnabled() const {
+  return Options()->Enabled(RewriteOptions::kInPlaceOptimizeForBrowser) &&
+      (Options()->Enabled(RewriteOptions::kConvertJpegToWebp) ||
+       Options()->Enabled(RewriteOptions::kSquashImagesForMobileScreen));
+}
+
+bool InPlaceRewriteContext::ShouldAddVaryUserAgent() const {
+  if (!InPlaceOptimizeForBrowserEnabled() || num_output_partitions() != 1) {
+    return false;
+  }
+  const CachedResult* result = output_partition(0);
+  // We trust the extension at this point as we put it there.
+  const ContentType* type = NameExtensionToContentType(result->url());
+  // Returns true if we may return different rewritten content based
+  // on the user agent.
+  return type->IsImage() || type->IsCss();
+}
+
+GoogleString InPlaceRewriteContext::UserAgentCacheKey(
+    const ResourceContext* resource_context) const {
+  if (InPlaceOptimizeForBrowserEnabled() && resource_context != NULL) {
+    return ImageUrlEncoder::CacheKeyFromResourceContext(*resource_context);
+  }
+  return "";
+}
+
+// We risk intentionally increasing metadata cache fragmentation when request
+// URL extensions are wrong or inconclusive.
+// For a known extension, we optimistically think it tells us the
+// correct resource type like image, css, etc. For images, we don't care about
+// the actual image format (JPEG or PNG, for example). If the type derived
+// from extension is wrong, we either lose the opportunity to optimize the
+// resource based on user agent context (e.g., an image with .txt extension)
+// or fragment the metadata cache unnecessarily (e.g., an HTML with .png
+// extension)
+// In case of an unknown extension or no extension in the URL, we encode
+// all supported user agent capacities so that it will work for both image and
+// CSS at the cost of unnecessary fragmentation of metadata cache.
+void InPlaceRewriteContext::EncodeUserAgentIntoResourceContext(
+    ResourceContext* context) {
+  if (!InPlaceOptimizeForBrowserEnabled()) {
+    return;
+  }
+  const ContentType* type = NameExtensionToContentType(url_);
+  if (type == NULL) {
+    // Get ImageRewriteFilter with any image type.
+    RewriteFilter* filter = GetRewriteFilter(kContentTypeJpeg);
+    if (filter != NULL) {
+      filter->EncodeUserAgentIntoResourceContext(context);
+    }
+    filter = GetRewriteFilter(kContentTypeCss);
+    if (filter != NULL) {
+      filter->EncodeUserAgentIntoResourceContext(context);
+    }
+  } else if (type->IsImage() || type->IsCss()) {
+    RewriteFilter* filter = GetRewriteFilter(*type);
+    if (filter != NULL) {
+      filter->EncodeUserAgentIntoResourceContext(context);
+    }
+  }
+}
+
 }  // namespace net_instaweb

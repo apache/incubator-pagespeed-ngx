@@ -111,6 +111,7 @@ class RewriteOptions {
     kInlineImages,
     kInlineImportToLink,
     kInlineJavascript,
+    kInPlaceOptimizeForBrowser,
     kInsertDnsPrefetch,
     kInsertGA,
     kInsertImageDimensions,

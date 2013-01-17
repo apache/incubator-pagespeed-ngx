@@ -389,6 +389,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "il", "Inline @import to Link" },
   { RewriteOptions::kInlineJavascript,
     RewriteOptions::kJavascriptInlineId, "Inline Javascript" },
+  { RewriteOptions::kInPlaceOptimizeForBrowser,
+    "io", "In-place optimize for browser" },
   { RewriteOptions::kInsertDnsPrefetch,
     "idp", "Insert DNS Prefetch" },
   { RewriteOptions::kInsertGA,
