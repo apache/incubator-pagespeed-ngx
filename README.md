@@ -26,6 +26,9 @@ content or workflow. Features include:
 - and [more](https://developers.google.com/speed/docs/mod_pagespeed/config_filters)
   - Note: not all mod_pagespeed features work in ngx_pagespeed yet.
 
+To see ngx_pagespeed in action, with example pages for each of the
+optimizations, see our <a href="http://ngxpagespeed.com">demonstration site</a>.
+
 ## How to build
 
 Because nginx does not support dynamic loading of modules, you need to add
