@@ -684,4 +684,69 @@ TEST_F(JavascriptFilterTest, ValidCdata) {
   ValidateExpected("valid_cdata", kHtmlInput, kHtmlOutput);
 }
 
+TEST_F(JavascriptFilterTest, FlushInInlineJS) {
+  InitFilters();
+  SetupWriter();
+  rewrite_driver()->StartParse(kTestDomain);
+  rewrite_driver()->ParseText("<html><body><script>  alert  (  'Hel");
+  // Flush in middle of inline JS.
+  rewrite_driver()->Flush();
+  rewrite_driver()->ParseText("lo, World!'  )  </script></body></html>");
+  rewrite_driver()->FinishParse();
+
+  // Expect text to be rewritten because it is coalesced.
+  // HtmlParse will send events like this to filter:
+  //   StartElement script
+  //   Flush
+  //   Characters ...
+  //   EndElement script
+  EXPECT_EQ("<html><body><script>alert('Hello, World!')</script></body></html>",
+            output_buffer_);
+}
+
+TEST_F(JavascriptFilterTest, FlushInEndTag) {
+  InitFilters();
+  SetupWriter();
+  rewrite_driver()->StartParse(kTestDomain);
+  rewrite_driver()->ParseText(
+      "<html><body><script>  alert  (  'Hello, World!'  )  </scr");
+  // Flush in middle of closing </script> tag.
+  rewrite_driver()->Flush();
+  rewrite_driver()->ParseText("ipt></body></html>");
+  rewrite_driver()->FinishParse();
+
+  // Expect text to be rewritten because it is coalesced.
+  // HtmlParse will send events like this to filter:
+  //   StartElement script
+  //   Characters ...
+  //   Flush
+  //   EndElement script
+  EXPECT_EQ("<html><body><script>alert('Hello, World!')</script></body></html>",
+            output_buffer_);
+}
+
+TEST_F(JavascriptFilterTest, FlushAfterBeginScript) {
+  InitFilters();
+  SetupWriter();
+  rewrite_driver()->StartParse(kTestDomain);
+  rewrite_driver()->ParseText(
+      "<html><body><script>");
+  rewrite_driver()->Flush();
+  rewrite_driver()->ParseText("alert  (  'Hello, World!'  )  </script>"
+                              "<script></script></body></html>");
+  rewrite_driver()->FinishParse();
+
+  // Expect text to be rewritten because it is coalesced.
+  // HtmlParse will send events like this to filter:
+  //   StartElement script
+  //   Flush
+  //   Characters ...
+  //   EndElement script
+  //   StartElement script
+  //   EndElement script
+  EXPECT_EQ("<html><body><script>alert('Hello, World!')</script>"
+            "<script></script></body></html>",
+            output_buffer_);
+}
+
 }  // namespace net_instaweb
