@@ -63,9 +63,13 @@ def ast_node_to_dict(
             dest.append(cn)
             lookup[parent_key] = dest
     elif isinstance(node, UnarySub):
+        if parent_key in lookup:
+            raise Exception(parent_key + ": already defined")
         lookup[parent_key] = '-' + repr(node.getChildren()[0].getChildren()[0])
         return '-' + repr(node.getChildren()[0].getChildren()[0])
     elif isinstance(node, Const):
+        if parent_key in lookup:
+            raise Exception(parent_key + ": already defined")
         lookup[parent_key] = node.getChildren()[0]
         return node.getChildren()[0]
     elif isinstance(node, Node):
@@ -158,12 +162,13 @@ def move_configuration_to_locations(config):
     servers = config["servers"]
 
     for server in servers:
-        if not "locations" in server: continue
-        locations = server["locations"]
-        for location in locations:
-            merge_location_config(config,server,location)
-        if "headers" in server:
-            del server["headers"]
+        if "locations" in server:
+            locations = server["locations"]
+            for location in locations:
+                merge_location_config(config,server,location)
+            if "headers" in server:
+                del server["headers"]
+
     if "headers" in config:
         del config["headers"]
 
@@ -182,7 +187,7 @@ def merge_location_config(root,server,location):
     if "headers" in location:
         result.extend(location["headers"])
 
-    location["headers"] = result
+    location["headers"] = copy.deepcopy(result)
 
 def execute_template(pyconf_path, conditions,
                      placeholders, template_path):

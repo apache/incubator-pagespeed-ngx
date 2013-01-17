@@ -52,9 +52,9 @@ def write_directories_close_item(server,level):
 def write_locations_open_item(server,level,is_dir=0):
     if "path" in server:
        if is_dir:
-           emit(indent("location = " + server["path"] + " {\n",level))
+           emit(indent("location  " + server["path"] + " {\n",level))
        else:
-           emit(indent("location = " + server["path"] + " {\n",level))
+           emit(indent("location  " + server["path"] + " {\n",level))
 
 
     if "proxy_pass" in server:
@@ -248,5 +248,7 @@ events {
 }
 
 http {
+    include       /usr/local/nginx/conf/mime.types;
+    default_type  application/octet-stream;
 ${write_cfg(key_to_writer, config, 1)}$
 } #http

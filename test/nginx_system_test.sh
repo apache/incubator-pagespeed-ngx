@@ -33,7 +33,6 @@
 #
 
 this_dir="$( dirname "$0" )"
-
 SYSTEM_TEST_FILE="$this_dir/../../mod_pagespeed/src/install/system_test.sh"
 
 if [ ! -e "$SYSTEM_TEST_FILE" ] ; then
@@ -44,10 +43,14 @@ fi
 
 PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 
+# TODO(oschaaf): added entries behind 'insert_dns_prefetch'
 PAGESPEED_EXPECTED_FAILURES="
   ~compression is enabled for rewritten JS.~
   ~convert_meta_tags~
   ~insert_dns_prefetch~
+  ~In-place resource optimization~
+  ~add_instrumentation adds 2 script tags~
+  ~canonicalize_javascript_libraries finds library urls~
 "
 
 source $SYSTEM_TEST_FILE

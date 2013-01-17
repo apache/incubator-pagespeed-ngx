@@ -1,7 +1,3 @@
-# TODO(oschaaf): AddOutputFilter, AddOutputFilterByType
-# TODO: handle webserver specifics. handle the fact that not all tests
-# / modes can be supported on every webserver
-
 {
 # Port map:
 # 8080 -- master configuration.
@@ -36,7 +32,12 @@ required_modules: [
 #HTTPS "ssl",
 #HTTPS "socache_shmcb",
 #HTTPS "slotmem_shm",
+#ifdef nginx
+"gzip",
+#endif
+#ifdef apache
 #GZIP "gzip",
+#endif
 #STRESS "cgi-script",
 #PROXY "proxy",
 ],
@@ -73,20 +74,17 @@ pagespeed: {
     FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/_default/\"",
 
     # add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
-    EnableFilters: "add_instrumentation",
+    EnableFilters: "add_instrumentation,rewrite_css",
 
     # For regression test of connection failing.
     Domain: "modpagespeed.com:1023",
 
     # Test LoadFromFile mapping by mapping one dir to another.
 
-#ifndef nginx
     LoadFromFile: '"http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"', 
     LoadFromFileMatch: '"^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\\1/"',
     LoadFromFileRule: "Disallow \"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/\"",
-    LoadFromFileRuleMatch: "Disallow \.ssp.css$",
-    LoadFromFileRuleMatch: "Allow exception\.ssp\.css$",
-#endif
+    LoadFromFileRuleMatch: ["Disallow \.ssp.css$","Allow exception\.ssp\.css$"],
 
     # Print out detail about connection-refused errors.  We don't negative-test
     # this here cause it's a hassle; we just depend on the unit-tests for that.
@@ -105,10 +103,9 @@ pagespeed: {
     MapProxyDomain: "@@APACHE_DOMAIN@@/pss_images http://ref.pssdemos.com/filter/images",
 
     # These will be sent to the origin domain when fetching subresources.
-    CustomFetchHeader: "header value",
-    CustomFetchHeader: "x-other False",
+    CustomFetchHeader: ["header value", "x-other False"],
 
-    ##TODO: uncomment
+    # TODO(oschaaf): not available in r2338
     ##InPlaceResourceOptimization: "on",
     RespectXForwardedProto: "on",
 
@@ -169,7 +166,9 @@ pagespeed: {
 #ifndef nginx
     ImgMaxRewritesAtOnce: 5,
 #endif
-    InPlaceResourceOptimization: "on",
+
+    ## TODO(oschaaf): not availiable in r2338
+    ##InPlaceResourceOptimization: "on",
     IncreaseSpeedTracking: "true",
 #ifndef nginx
     InstallCrashHandler: "off",
@@ -241,6 +240,7 @@ pagespeed: {
 #ifndef nginx
     #PER_VHOST_STATS UsePerVHostStatistics: "on",
 #endif
+
     # Do testing using memcached in lieu of the file cache.
     #MEMCACHED MemcachedServers: "localhost:6765",
 
@@ -363,8 +363,7 @@ locations: [
       Header set Cache-control "public, max-age=600"
     </FilesMatch>
   </IfModule>
-"""
-	 },
+"""}
     },
     {
         path: "/mod_pagespeed_test/shard",
@@ -509,7 +508,7 @@ locations: [
 ], #locations
 
 
-listen: [ 
+listen: [
     # oschaaf(TODO): where is 8080 enabled? this wasn't here
     8080,
     @@APACHE_SECONDARY_PORT@@,
@@ -553,7 +552,7 @@ servers: [
   	    # If you uncomment this, the test will fail, proving we can disable
   	    # cache-flush polling.
   	    # CacheFlushPollIntervalSec: 0,
-
+	    EnableFilters: "rewrite_css,rewrite_images",
   	    # Helps testing whether the configuration of reporting 'unload' time works.
   	    ReportUnloadTime: "on",
 
@@ -581,6 +580,13 @@ servers: [
 #REWRITE            },
 #REWRITE        ],
 #endif
+        headers: [
+            { 
+                action:"set", 
+                name:"vhost", 
+                value:"secondary.example.com"
+            },
+        ],
     },#server
     # Sets up a logical home-page server on www.example.com
     {
@@ -596,7 +602,14 @@ servers: [
   	    MapRewriteDomain: "cdn.example.com origin.example.com",
   	    RewriteLevel: "PassThrough",
   	    EnableFilters: "rewrite_css,rewrite_images",
-        }
+        },
+        headers: [
+            { 
+                action:"set", 
+                name:"vhost", 
+                value:"www.example.com"
+            },
+	]
     },
     # Sets up a logical origin for CDNs to fetch content from, on origin.example.com.
     {
@@ -628,7 +641,14 @@ servers: [
   	    MapRewriteDomain: "cdn.example.com origin.example.com",
   	    RewriteLevel: "PassThrough",
   	    EnableFilters: "rewrite_css,rewrite_images",
-        }
+        },
+        headers: [
+            { 
+                action:"set", 
+                name:"vhost", 
+                value: "cdn.example.com"
+            },
+        ]
     },
     # Sets up a virtual host where we can specify forbidden filters without
     # affecting any other hosts.
