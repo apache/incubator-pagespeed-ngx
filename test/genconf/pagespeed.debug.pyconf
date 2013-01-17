@@ -257,33 +257,36 @@ pagespeed: {
     #
     # TODO(jmarantz): add a test-path where we set this in a VirtualHost and
     # make sure the right error message comes out.
-    #COVERAGE # Don't want global slurp inheriting into :8080
-    #COVERAGE InheritVHostConfig: "off",
-    #COVERAGE MessageBufferSize: 100000,
-    #COVERAGE
-    #COVERAGE # We want backtraces to be dumped during the load test, as
-    #COVERAGE # one of its purposes is to discover crash bugs.
-    #COVERAGE InstallCrashHandler: "on",
-    #COVERAGE
-
+#ifdef COVERAGE
+     # Don't want global slurp inheriting into :8080
+     InheritVHostConfig: "off",
+     MessageBufferSize: 100000,
+    
+     # We want backtraces to be dumped during the load test, as
+     # one of its purposes is to discover crash bugs.
+     InstallCrashHandler: "on",
+#endif
     #SHARED_MEM_LOCKS SharedMemoryLocks: "on",
+#ifdef FURIOUS_GA
+     # This is used for testing the Furious experiment framework.
+     RunExperiment: "on",
+     AnalyticsID: "\"123-45-6734\"",
+     ExperimentVariable: 2,
+     ExperimentSpec: ["\"id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50\"",
+                      "\"id=2;enable=recompress_images;percent=50\""],
+#endif
+#ifdef FURIOUS_NO_GA
 
-    #FURIOUS_GA # This is used for testing the Furious experiment framework.
-    #FURIOUS_GA RunExperiment: "on",
-    #FURIOUS_GA AnalyticsID: "\"123-45-6734\"",
-    #FURIOUS_GA ExperimentVariable: 2,
-    #FURIOUS_GA ExperimentSpec: ["\"id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50\"",
-    #FURIOUS_GA                  "\"id=2;enable=recompress_images;percent=50\""],
-
-    #FURIOUS_NO_GA # This is used for testing the Furious experiment framework still
-    #FURIOUS_NO_GA # works when no analytics ID is specified.  It should assign
-    #FURIOUS_NO_GA # users to experiments and use appropriate experimental options,
-    #FURIOUS_NO_GA # but not report back to Google Analytics.  The instrumentation
-    #FURIOUS_NO_GA # beacon, however, will still contain the experiment id.
-    #FURIOUS_NO_GA RunExperiment: "on",
-    #FURIOUS_NO_GA ExperimentVariable: 2,
-    #FURIOUS_NO_GA ExperimentSpec: ["\"id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50\"",
-    #FURIOUS_NO_GA                 "\"id=2;enable=recompress_images;percent=50\""],
+     # This is used for testing the Furious experiment framework still
+     # works when no analytics ID is specified.  It should assign
+     # users to experiments and use appropriate experimental options,
+     # but not report back to Google Analytics.  The instrumentation
+     # beacon, however, will still contain the experiment id.
+     RunExperiment: "on",
+     ExperimentVariable: 2,
+     ExperimentSpec: ["\"id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50\"",
+                     "\"id=2;enable=recompress_images;percent=50\""],
+#endif
     #HTTPS MapOriginDomain: "http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@",
 
 }, #pagespeed:
@@ -488,25 +491,26 @@ locations: [
     	    EnableFilters: "inline_css",
 	}
     },
-#PER_VHOST_STATS    {
-#PER_VHOST_STATS        path: "/mod_pagespeed_global_statistics",
-#PER_VHOST_STATS        apache_literal: {
-#PER_VHOST_STATS            value: """
-#PER_VHOST_STATS        Order allow,deny
-#PER_VHOST_STATS        Allow from localhost
-#PER_VHOST_STATS        Allow from 127.0.0.1
-#PER_VHOST_STATS        SetHandler mod_pagespeed_global_statistics\n""",
-#PER_VHOST_STATS        }
-#PER_VHOST_STATS    },
-
-#STRESS # These lines are only needed for the stress test.
-#STRESS    {
-#STRESS        path: "/mod_pagespeed_example/cgi",
-#STRESS        add_options: ["ExecCGI"],
-#STRESS    },
-
+#ifdef PER_VHOST_STATS
+   {
+       path: "/mod_pagespeed_global_statistics",
+       apache_literal: {
+       value: """
+       Order allow,deny
+       Allow from localhost
+       Allow from 127.0.0.1
+       SetHandler mod_pagespeed_global_statistics\n""",
+       }
+   },
+#endif
+#ifdef STRESS
+   # These lines are only needed for the stress test.
+   {
+       path: "/mod_pagespeed_example/cgi",
+       add_options: ["ExecCGI"],
+   },
+#endif
 ], #locations
-
 
 listen: [
     # oschaaf(TODO): where is 8080 enabled? this wasn't here
@@ -558,27 +562,27 @@ servers: [
 
     	},#pagespeed
 #ifdef REWRITE
-#REWRITE   # These lines are only needed for the mod_rewrite test, where
-#REWRITE   # we are just trying to prove that we remove mod_rewrite from
-#REWRITE   # the request if the URL is going to be handled by mod_pagespeed.
-#REWRITE   # In the root install test, this mod_rewrite seems to only take
-#REWRITE   # effect in a vhost.  I haven't explored why that is because it
-#REWRITE   # doesn't affect the point of the test.
-#REWRITE        add_options: ["Indexes"],
-#REWRITE        rewrite_rules: [
-#REWRITE            {
-#REWRITE                pattern: "(.*).jpg.pagespeed.(.*).jpg",
-#REWRITE                substitution: "/broken.jpg",
-#REWRITE            },
-#REWRITE            {
-#REWRITE                pattern: "mod_pagespeed_statistics",
-#REWRITE                substitution: "/broken",
-#REWRITE            },
-#REWRITE            {
-#REWRITE                pattern: "shortcut.html",
-#REWRITE                substitution: "/mod_pagespeed_example/index.html",
-#REWRITE            },
-#REWRITE        ],
+        # These lines are only needed for the mod_rewrite test, where
+        # we are just trying to prove that we remove mod_rewrite from
+        # the request if the URL is going to be handled by mod_pagespeed.
+        # In the root install test, this mod_rewrite seems to only take
+        # effect in a vhost.  I haven't explored why that is because it
+        # doesn't affect the point of the test.
+        add_options: ["Indexes"],
+        rewrite_rules: [
+            {
+                pattern: "(.*).jpg.pagespeed.(.*).jpg",
+                substitution: "/broken.jpg",
+            },
+            {
+                pattern: "mod_pagespeed_statistics",
+                substitution: "/broken",
+            },
+            {
+                pattern: "shortcut.html",
+                substitution: "/mod_pagespeed_example/index.html",
+            },
+        ],
 #endif
         headers: [
             { 
@@ -769,161 +773,165 @@ servers: [
   	    Domain: "http://example.com",
         }
     },
-#COVERAGE    # These lines are used for large-scale code coverage testing.
-#COVERAGE    # We use 2 servers for it, one doing rewriting and fetching
-#COVERAGE    # from the other one, which plays back slurps
-#COVERAGE    {
-#COVERAGE        address: "*",
-#COVERAGE        port: 8080,
-#COVERAGE        pagespeed_status: "on",
-#COVERAGE        # Proxy using SERF
-#COVERAGE        pagespeed: {
-#COVERAGE            TestProxy: "on",
-#COVERAGE   	     FetchProxy: "\"127.0.0.1:8081\"",
+#ifdef COVERAGE
+    # These lines are used for large-scale code coverage testing.
+    # We use 2 servers for it, one doing rewriting and fetching
+    # from the other one, which plays back slurps
+    {
+        address: "*",
+        port: 8080,
+        pagespeed_status: "on",
+        # Proxy using SERF
+        pagespeed: {
+            TestProxy: "on",
+   	     FetchProxy: "\"127.0.0.1:8081\"",
 #MEMCACHE_COVERAGE   MemcachedServers: "localhost:6765",
-#COVERAGE   	     FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-#COVERAGE   	     RewriteLevel: "AllFilters",
-#COVERAGE   	     EnableFilters: "elide_attributes",
-#COVERAGE   	     Domain: "*",
-#COVERAGE   	     FileCacheSizeKb: 102400,
-#COVERAGE   	     FileCacheCleanIntervalMs: 3600000,
-#COVERAGE   	     LRUCacheKbPerProcess:     1024,
-#COVERAGE   	     LRUCacheByteLimit:        16384,
-#COVERAGE   	     CssFlattenMaxBytes:       2048,
-#COVERAGE   	     CssInlineMaxBytes:        2048,
-#COVERAGE   	     CssImageInlineMaxBytes:   2048,
-#COVERAGE   	     ImageInlineMaxBytes:      2048,
-#COVERAGE   	     JsInlineMaxBytes:         2048,
-#COVERAGE   	     CssOutlineMinBytes:       3000,
-#COVERAGE   	     JsOutlineMinBytes:        3000,
-#COVERAGE   	     ImageMaxRewritesAtOnce:      8,
-#COVERAGE   	     SlurpFlushLimit:          8192,
-#COVERAGE   	     JpegRecompressionQuality:   -1,
-#COVERAGE   	     ImageLimitOptimizedPercent:  100,
-#COVERAGE   	     ImageLimitResizeAreaPercent: 100,
-#COVERAGE        }, #pagespeed
-#COVERAGE       locations: [
-#COVERAGE           {
-#COVERAGE               path: "/mod_pagespeed_beacon",
-#COVERAGE               ##SetHandler mod_pagespeed_beacon
-#COVERAGE           },
-#COVERAGE           {
-#COVERAGE               path: "/mod_pagespeed_statistics",
-#COVERAGE               ##Order allow,deny
-#COVERAGE               ##Allow from localhost
-#COVERAGE               ##SetHandler mod_pagespeed_statistics
-#COVERAGE           },
-#COVERAGE           {
-#COVERAGE               path: "/mod_pagespeed_message",
-#COVERAGE               ##Allow from localhost
-#COVERAGE               ##Allow from 127.0.0.1
-#COVERAGE               ##SetHandler mod_pagespeed_message
-#COVERAGE           },
-#COVERAGE       ],
-#COVERAGE    },#server
-#COVERAGE    {
-#COVERAGE        address: "*",
-#COVERAGE        port: 8081,
-#COVERAGE        pagespeed_status: "on",
-#COVERAGE        pagespeed: {
-#COVERAGE            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt/\"",
-#COVERAGE            RewriteLevel: "PassThrough",
-#COVERAGE           # oschaaf: these where commented in the original config
-#COVERAGE           # SlurpDirectory: "...",
-#COVERAGE           # SlurpReadOnly: "on",
-#COVERAGE        },
-#COVERAGE        locations: [
-#COVERAGE            {
-#COVERAGE		path: "/mod_pagespeed_message",
-#COVERAGE        	##Allow from localhost
-#COVERAGE        	##Allow from 127.0.0.1
-#COVERAGE        	##SetHandler mod_pagespeed_message
-#COVERAGE            },
-#COVERAGE        ]
-#COVERAGE    }, #server
+   	     FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+   	     RewriteLevel: "AllFilters",
+   	     EnableFilters: "elide_attributes",
+   	     Domain: "*",
+   	     FileCacheSizeKb: 102400,
+   	     FileCacheCleanIntervalMs: 3600000,
+   	     LRUCacheKbPerProcess:     1024,
+   	     LRUCacheByteLimit:        16384,
+   	     CssFlattenMaxBytes:       2048,
+   	     CssInlineMaxBytes:        2048,
+   	     CssImageInlineMaxBytes:   2048,
+   	     ImageInlineMaxBytes:      2048,
+   	     JsInlineMaxBytes:         2048,
+   	     CssOutlineMinBytes:       3000,
+   	     JsOutlineMinBytes:        3000,
+   	     ImageMaxRewritesAtOnce:      8,
+   	     SlurpFlushLimit:          8192,
+   	     JpegRecompressionQuality:   -1,
+   	     ImageLimitOptimizedPercent:  100,
+   	     ImageLimitResizeAreaPercent: 100,
+        }, #pagespeed
+       locations: [
+           {
+               path: "/mod_pagespeed_beacon",
+               ##SetHandler mod_pagespeed_beacon
+           },
+           {
+               path: "/mod_pagespeed_statistics",
+               ##Order allow,deny
+               ##Allow from localhost
+               ##SetHandler mod_pagespeed_statistics
+           },
+           {
+               path: "/mod_pagespeed_message",
+               ##Allow from localhost
+               ##Allow from 127.0.0.1
+               ##SetHandler mod_pagespeed_message
+           },
+       ],
+    },#server
+    {
+        address: "*",
+        port: 8081,
+        pagespeed_status: "on",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt/\"",
+            RewriteLevel: "PassThrough",
+           # oschaaf: these where commented in the original config
+           # SlurpDirectory: "...",
+           # SlurpReadOnly: "on",
+        },
+        locations: [
+            {
+		path: "/mod_pagespeed_message",
+        	##Allow from localhost
+        	##Allow from 127.0.0.1
+        	##SetHandler mod_pagespeed_message
+            },
+        ]
+    }, #server
+#endif
+#ifdef PROXY
+    # This is used for ProxyPass testing.
+    #   See: http://code.google.com/p/modpagespeed/issues/detail?id=74
+    # We use 2 servers for it, one doing rewriting and fetching
+    # from the other one which does not have mod_pagespeed enabled.
+    {
+        address: "*",
+        port: 8080,
+        # Host at 8080 should have no relevant content.
+        root: "/tmp/",
+        # Turn these declarations back on during testing if you are
+        # having trouble distinguishing which server is saying what.
+        #ErrorLog   "@@MOD_PAGESPEED_CACHE@@/logs/error_log"
+        #CustomLog  "@@MOD_PAGESPEED_CACHE@@/logs/access_log" common
 
-#PROXY    # This is used for ProxyPass testing.
-#PROXY    #   See: http://code.google.com/p/modpagespeed/issues/detail?id=74
-#PROXY    # We use 2 servers for it, one doing rewriting and fetching
-#PROXY    # from the other one which does not have mod_pagespeed enabled.
-#PROXY    {
-#PROXY        address: "*",
-#PROXY        port: 8080,
-#PROXY        # Host at 8080 should have no relevant content.
-#PROXY        root: "/tmp/",
-#PROXY        # Turn these declarations back on during testing if you are
-#PROXY        # having trouble distinguishing which server is saying what.
-#PROXY        #ErrorLog   "@@MOD_PAGESPEED_CACHE@@/logs/error_log"
-#PROXY        #CustomLog  "@@MOD_PAGESPEED_CACHE@@/logs/access_log" common
-#PROXY
-#PROXY	      pagespeed_status: "on",
-#PROXY	      pagespeed: { 
-#PROXY	          FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-#PROXY	          RewriteLevel: "PassThrough",
-#PROXY            EnableFilters: "extend_cache",
-#PROXY            Domain: "*",
-#PROXY	      },
-#PROXY	      # Proxy through to 8081.
-#PROXY        locations: [ 
-#PROXY            {
-#PROXY                path: "/",
-#PROXY                proxy_pass: "http://localhost:8081/",
-#PROXY            }
-#PROXY        ]
-#PROXY    },
-#PROXY    {
-#PROXY        address: "*",
-#PROXY        port: 8081,
-#PROXY        # Host at 8081 sees into mod_pagespeed_examples directory.
-#PROXY        root:  "\"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/\"",
-#PROXY
-#PROXY   ##ErrorLog   "@@MOD_PAGESPEED_CACHE@@-alt/logs/error_log"
-#PROXY   ##CustomLog  "@@MOD_PAGESPEED_CACHE@@-alt/logs/access_log" common
-#PROXY
-#PROXY	      pagespeed_status: "off",
-#PROXY        pagespeed: {
-#PROXY            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt/\"",
-#PROXY            RewriteLevel: "PassThrough",
-#PROXY        },
-#PROXY    },
+	      pagespeed_status: "on",
+	      pagespeed: { 
+	          FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+	          RewriteLevel: "PassThrough",
+            EnableFilters: "extend_cache",
+            Domain: "*",
+	      },
+	      # Proxy through to 8081.
+        locations: [ 
+            {
+                path: "/",
+                proxy_pass: "http://localhost:8081/",
+            }
+        ]
+    },
+    {
+        address: "*",
+        port: 8081,
+        # Host at 8081 sees into mod_pagespeed_examples directory.
+        root:  "\"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/\"",
 
-#SLURP    # This is used for Slurp testing.  The initial slurp testing
-#SLURP 	  # uses a slurp test dir pre-populated from source control,
-#SLURP 	  # via a read-only slurp setup on port 8080.  We also test slurp
-#SLURP 	  # writing via an origin server on port 8081, and a slurp server
-#SLURP 	  # on 8082 with slurping read-only off.
-#SLURP    {
-#SLURP        address: "*",
-#SLURP        port: 8080,
-#SLURP        pagespeed: {
-#SLURP            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-#SLURP            SlurpDirectory: "\"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/slurp\"",
-#SLURP            SlurpReadOnly: "on",
-#SLURP        },
-#SLURP    },
-#SLURP    {
-#SLURP        address: "*",
-#SLURP        port: 8081,
-#SLURP        # Host at 8081 sees into mod_pagespeed_examples directory.
-#SLURP        root:  "\"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/\"",
-#SLURP        pagespeed_status: "off",
-	      ## TODO(oschaaf): pagespeed is disabled, why are these options set?
-#SLURP        pagespeed: {
-#SLURP            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt/\"",
-#SLURP            RewriteLevel: "PassThrough",
-#SLURP        },
-#SLURP    },
-#SLURP    {
-#SLURP        address: "*",
-#SLURP        port: 8082,
-#SLURP        pagespeed: {
-#SLURP            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt2/\"",
-#SLURP            SlurpDirectory: "@@TMP_SLURP_DIR@@",
-#SLURP            SlurpReadOnly: "off",
-#SLURP            Domain: "*",
-#SLURP            MaxHtmlParseBytes: 1000000,
-#SLURP            SlurpFlushLimit: 10000,
-#SLURP        },
-#SLURP    },
+   ##ErrorLog   "@@MOD_PAGESPEED_CACHE@@-alt/logs/error_log"
+   ##CustomLog  "@@MOD_PAGESPEED_CACHE@@-alt/logs/access_log" common
+
+	      pagespeed_status: "off",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt/\"",
+            RewriteLevel: "PassThrough",
+        },
+    },
+#endif
+#ifdef SLURP
+    # This is used for Slurp testing.  The initial slurp testing
+    # uses a slurp test dir pre-populated from source control,
+    # via a read-only slurp setup on port 8080.  We also test slurp
+    # writing via an origin server on port 8081, and a slurp server
+    # on 8082 with slurping read-only off.
+    {
+        address: "*",
+        port: 8080,
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+            SlurpDirectory: "\"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/slurp\"",
+            SlurpReadOnly: "on",
+        },
+    },
+    {
+        address: "*",
+        port: 8081,
+        # Host at 8081 sees into mod_pagespeed_examples directory.
+        root:  "\"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/\"",
+        pagespeed_status: "off",
+        ## TODO(oschaaf): pagespeed is disabled, why are these options set?
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt/\"",
+            RewriteLevel: "PassThrough",
+        },
+    },
+    {
+        address: "*",
+        port: 8082,
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt2/\"",
+            SlurpDirectory: "@@TMP_SLURP_DIR@@",
+            SlurpReadOnly: "off",
+            Domain: "*",
+            MaxHtmlParseBytes: 1000000,
+            SlurpFlushLimit: 10000,
+        },
+    },
+#endif
 ] #servers
 } #configuration
