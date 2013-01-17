@@ -149,7 +149,7 @@ run it you need to first build and configure nginx.  Set it up something like:
       pagespeed FileCachePath /path/to/ngx_pagespeed_cache;
 
       # For testing that the Library command works.
-      pagespeed Library 43 1o978_K0_L
+      pagespeed Library 43 1o978_K0_LNE5_ystNklf
                 http://www.modpagespeed.com/rewrite_javascript.js;
 
       # These gzip options are needed for tests that assume that pagespeed
