@@ -97,6 +97,18 @@ class RewriteOptionsTest : public RewriteOptionsTestBase<RewriteOptions> {
   MockHasher hasher_;
 };
 
+TEST_F(RewriteOptionsTest, EnabledStates) {
+  options_.set_enabled(RewriteOptions::kEnabledUnplugged);
+  ASSERT_FALSE(options_.enabled());
+  ASSERT_TRUE(options_.unplugged());
+  options_.set_enabled(RewriteOptions::kEnabledOff);
+  ASSERT_FALSE(options_.enabled());
+  ASSERT_FALSE(options_.unplugged());
+  options_.set_enabled(RewriteOptions::kEnabledOn);
+  ASSERT_TRUE(options_.enabled());
+  ASSERT_FALSE(options_.unplugged());
+}
+
 TEST_F(RewriteOptionsTest, DefaultEnabledFilters) {
   ASSERT_TRUE(OnlyEnabled(RewriteOptions::kHtmlWriterFilter));
 }

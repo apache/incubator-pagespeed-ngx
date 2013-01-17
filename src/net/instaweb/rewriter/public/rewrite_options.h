@@ -151,6 +151,17 @@ class RewriteOptions {
     kEndOfFilters
   };
 
+  enum EnabledEnum {
+    // Don't optimize HTML. Do serve .pagespeed. Can be overridden via query
+    // param.
+    kEnabledOff,
+    // Pagespeed runs normally.  Can be overridden via query param.
+    kEnabledOn,
+    // Completely passive. Do not serve .pagespeed. Return from handlers
+    // immediately. Cannot be overridden via query param.
+    kEnabledUnplugged,
+  };
+
   // Any new Option added, should have a corresponding enum here and this should
   // be passed in when add_option is called in the constructor.
   //
@@ -947,6 +958,29 @@ class RewriteOptions {
                                const GoogleString& value,
                                MessageHandler* handler);
 
+  static bool ParseFromString(const GoogleString& value_string, bool* value);
+  static bool ParseFromString(const GoogleString& value_string,
+                              EnabledEnum* value);
+  static bool ParseFromString(const GoogleString& value_string, int* value) {
+    return StringToInt(value_string, value);
+  }
+  static bool ParseFromString(const GoogleString& value_string, int64* value) {
+    return StringToInt64(value_string, value);
+  }
+  static bool ParseFromString(const GoogleString& value_string,
+                              GoogleString* value) {
+    *value = value_string;
+    return true;
+  }
+  static bool ParseFromString(const GoogleString& value_string,
+                              RewriteLevel* value) {
+    return ParseRewriteLevel(value_string, value);
+  }
+  static bool ParseFromString(const GoogleString& value_string,
+                              BeaconUrl* value) {
+    return ParseBeaconUrl(value_string, value);
+  }
+
   // TODO(jmarantz): consider setting flags in the set_ methods so that
   // first's explicit settings can override default values from second.
   int64 css_outline_min_bytes() const { return css_outline_min_bytes_.value(); }
@@ -1163,10 +1197,15 @@ class RewriteOptions {
     set_option(value, &domain_shard_count_);
   }
 
-  void set_enabled(bool x) {
+  void set_enabled(EnabledEnum x) {
     set_option(x, &enabled_);
   }
-  bool enabled() const { return enabled_.value(); }
+  bool enabled() const {
+    return enabled_.value() == kEnabledOn;
+  }
+  bool unplugged() const {
+    return enabled_.value() == kEnabledUnplugged;
+  }
 
   void set_add_options_to_urls(bool x) {
     set_option(x, &add_options_to_urls_);
@@ -2402,41 +2441,7 @@ class RewriteOptions {
       const StringPiece str) const;
   // These static methods are used by Option<T>::SetFromString to set
   // Option<T>::value_ from a string representation of it.
-  static bool ParseFromString(const GoogleString& value_string, bool* value) {
-    // How are bools passed in the string?  I am assuming "true"/"false" or
-    // "on"/"off".
-    if (StringCaseEqual(value_string, "true") ||
-        StringCaseEqual(value_string, "on")) {
-      *value = true;
-    } else if (StringCaseEqual(value_string, "false") ||
-        StringCaseEqual(value_string, "off")) {
-      *value = false;
-    } else {
-      // value_string is not "true"/"false" or "on"/"off".  Return a parse
-      // error.
-      return false;
-    }
-    return true;
-  }
-  static bool ParseFromString(const GoogleString& value_string, int* value) {
-    return StringToInt(value_string, value);
-  }
-  static bool ParseFromString(const GoogleString& value_string, int64* value) {
-    return StringToInt64(value_string, value);
-  }
-  static bool ParseFromString(const GoogleString& value_string,
-                              GoogleString* value) {
-    *value = value_string;
-    return true;
-  }
-  static bool ParseFromString(const GoogleString& value_string,
-                              RewriteLevel* value) {
-    return ParseRewriteLevel(value_string, value);
-  }
-  static bool ParseFromString(const GoogleString& value_string,
-                              BeaconUrl* value) {
-    return ParseBeaconUrl(value_string, value);
-  }
+
 
   // These static methods enable us to generate signatures for all
   // instantiated option-types from Option<T>::Signature().
@@ -2576,7 +2581,7 @@ class RewriteOptions {
   // Maximum number of shards for rewritten resources in a directory.
   Option<int> domain_shard_count_;
 
-  Option<bool> enabled_;
+  Option<EnabledEnum> enabled_;
 
   // Encode relevant rewrite options as URL query-parameters so that resources
   // can be reconstructed on servers without the same configuration file.

@@ -710,7 +710,7 @@ void RewriteOptions::AddProperties() {
              kForbidAllDisabledFilters);
   add_option(kDefaultRewriteDeadlineMs, &RewriteOptions::rewrite_deadline_ms_,
              "rdm", kRewriteDeadlineMs);
-  add_option(true, &RewriteOptions::enabled_, "e", kEnabled);
+  add_option(kEnabledOn, &RewriteOptions::enabled_, "e", kEnabled);
   add_option(false, &RewriteOptions::add_options_to_urls_, "aou",
              kAddOptionsToUrls);
   add_option(false, &RewriteOptions::ajax_rewriting_enabled_, "ipro",
@@ -1576,6 +1576,39 @@ bool RewriteOptions::SetOptionFromNameAndLog(const StringPiece& name,
     handler->Message(kWarning, "%s", msg.c_str());
     return false;
   }
+}
+
+bool RewriteOptions::ParseFromString(const GoogleString& value_string,
+                                     bool* value) {
+  // How are bools passed in the string?  I am assuming "true"/"false" or
+  // "on"/"off".
+  if (StringCaseEqual(value_string, "true") ||
+      StringCaseEqual(value_string, "on")) {
+    *value = true;
+  } else if (StringCaseEqual(value_string, "false") ||
+      StringCaseEqual(value_string, "off")) {
+    *value = false;
+  } else {
+    // value_string is not "true"/"false" or "on"/"off".  Return a parse
+    // error.
+    return false;
+  }
+  return true;
+}
+
+bool RewriteOptions::ParseFromString(const GoogleString& value_string,
+                                     EnabledEnum* value) {
+  bool bool_value;
+  if (ParseFromString(value_string, &bool_value)) {
+    *value = bool_value ? kEnabledOn : kEnabledOff;
+  } else if (StringCaseEqual(value_string, "unplugged")) {
+    *value = kEnabledUnplugged;
+  } else {
+    // value_string is not "true"/"false" or "on"/"off"/"unplugged".
+    // Return a parse error.
+    return false;
+  }
+  return true;
 }
 
 bool RewriteOptions::Enabled(Filter filter) const {

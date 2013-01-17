@@ -224,9 +224,9 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     RewriteOptions* options, MessageHandler* handler) {
   Status status = kNoneFound;
   if (name == kModPagespeed) {
-    bool is_on = value == "on";
-    if (is_on || (value == "off")) {
-      options->set_enabled(is_on);
+    RewriteOptions::EnabledEnum enabled;
+    if (RewriteOptions::ParseFromString(value, &enabled)) {
+      options->set_enabled(enabled);
       status = kSuccess;
     } else if (value == kNoscriptValue) {
       // Disable filters that depend on custom script execution.
@@ -241,7 +241,7 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
       // TODO(sligocki): Return 404s instead of logging server errors here
       // and below.
       handler->Message(kWarning, "Invalid value for %s: %s "
-                       "(should be on or off)",
+                       "(should be on, off, unplugged, or noscript)",
                        name.as_string().c_str(),
                        value.c_str());
       status = kInvalid;

@@ -1550,7 +1550,7 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingWhenAuthorizationButPublic) {
 TEST_F(ProxyInterfaceTest, AjaxRewritingDisabledByGlobalDisable) {
   RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
-  options->set_enabled(false);
+  options->set_enabled(RewriteOptions::kEnabledOff);
   server_context()->ComputeSignature(options);
 
   SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCssContent,

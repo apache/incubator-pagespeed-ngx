@@ -1112,47 +1112,29 @@ void* mod_pagespeed_create_server_config(apr_pool_t* pool, server_rec* server) {
   return manager;
 }
 
-template<class Options>
-const char* ParseBoolOption(Options* options, cmd_parms* cmd,
-                            void (Options::*fn)(bool val),
+const char kBoolHint[] = " on|off";
+const char kEnabledEnumHint[] = " on|off|unplugged";
+const char kInt64Hint[] = " must specify a 64-bit integer";
+const char kIntHint[] = " must specify a 32-bit integer";
+
+const char* ParseHint(bool x) { return kBoolHint; }
+const char* ParseHint(int x) { return kIntHint; }
+const char* ParseHint(int64 x) { return kInt64Hint; }
+const char* ParseHint(RewriteOptions::EnabledEnum x) {
+  return kEnabledEnumHint;
+}
+
+template<typename OptType, typename Options>
+const char* ParseOption(Options* options, cmd_parms* cmd,
+                            void (Options::*fn)(OptType val),
                             const char* arg) {
   const char* ret = NULL;
-  if (StringCaseEqual(arg, "on")) {
-    (options->*fn)(true);
-  } else if (StringCaseEqual(arg, "off")) {
-    (options->*fn)(false);
-  } else {
-    ret = apr_pstrcat(cmd->pool, cmd->directive->directive, " on|off", NULL);
-  }
-  return ret;
-}
-
-template<class Options>
-const char* ParseInt64Option(Options* options, cmd_parms* cmd,
-                             void (Options::*fn)(int64 val),
-                             const char* arg) {
-  int64 val;
-  const char* ret = NULL;
-  if (StringToInt64(arg, &val)) {
-    (options->*fn)(val);
+  OptType parsed;
+  if (RewriteOptions::ParseFromString(arg, &parsed)) {
+    (options->*fn)(parsed);
   } else {
     ret = apr_pstrcat(cmd->pool, cmd->directive->directive,
-                      " must specify a 64-bit integer", NULL);
-  }
-  return ret;
-}
-
-template<class Options>
-const char* ParseIntOption(Options* options, cmd_parms* cmd,
-                           void (Options::*fn)(int val),
-                           const char* arg) {
-  int val;
-  const char* ret = NULL;
-  if (StringToInt(arg, &val)) {
-    (options->*fn)(val);
-  } else {
-    ret = apr_pstrcat(cmd->pool, cmd->directive->directive,
-                      " must specify a 32-bit integer", NULL);
+                      ParseHint(parsed), NULL);
   }
   return ret;
 }
@@ -1320,14 +1302,16 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
 
   // Options which we handle manually.
   if (StringCaseEqual(directive, RewriteQuery::kModPagespeed)) {
-    ret = ParseBoolOption(options, cmd, &RewriteOptions::set_enabled, arg);
+    ret = ParseOption<RewriteOptions::EnabledEnum>(options, cmd,
+                                                   &RewriteOptions::set_enabled,
+                                                   arg);
   } else if (StringCaseEqual(directive, kModPagespeedAllow)) {
     options->Allow(arg);
   } else if (StringCaseEqual(directive,
                              kModPagespeedDangerPermitFetchFromUnknownHosts)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
     if (ret == NULL) {
-      ret = ParseBoolOption(
+      ret = ParseOption<bool>(
           factory, cmd,
           &ApacheRewriteDriverFactory::set_disable_loopback_routing, arg);
     }
@@ -1356,7 +1340,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedFetchWithGzip)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
-      ret = ParseBoolOption(
+      ret = ParseOption<bool>(
           factory, cmd, &ApacheRewriteDriverFactory::set_fetch_with_gzip, arg);
     }
   } else if (StringCaseEqual(directive, kModPagespeedForbidFilters)) {
@@ -1366,7 +1350,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
-        ret = ParseBoolOption(static_cast<RewriteDriverFactory*>(factory),
+        ret = ParseOption<bool>(static_cast<RewriteDriverFactory*>(factory),
                               cmd, &RewriteDriverFactory::set_force_caching,
                               arg);
     }
@@ -1382,14 +1366,14 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedInheritVHostConfig)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
     if (ret == NULL) {
-      ret = ParseBoolOption(
+      ret = ParseOption<bool>(
           factory, cmd,
           &ApacheRewriteDriverFactory::set_inherit_vhost_config, arg);
     }
   } else if (StringCaseEqual(directive, kModPagespeedInstallCrashHandler)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
     if (ret == NULL) {
-      ret = ParseBoolOption(
+      ret = ParseOption<bool>(
           factory, cmd,
           &ApacheRewriteDriverFactory::set_install_crash_handler, arg);
     }
@@ -1397,21 +1381,21 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
                              kModPagespeedListOutstandingUrlsOnError)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
-      ret = ParseBoolOption(
+      ret = ParseOption<bool>(
           factory, cmd,
           &ApacheRewriteDriverFactory::list_outstanding_urls_on_error, arg);
     }
   } else if (StringCaseEqual(directive, kModPagespeedMessageBufferSize)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
-      ret = ParseIntOption(factory, cmd,
+      ret = ParseOption<int>(factory, cmd,
                            &ApacheRewriteDriverFactory::set_message_buffer_size,
                            arg);
     }
   } else if (StringCaseEqual(directive, kModPagespeedNumRewriteThreads)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
     if (ret == NULL) {
-      ret = ParseIntOption(
+      ret = ParseOption<int>(
           factory, cmd,
           &ApacheRewriteDriverFactory::set_num_rewrite_threads, arg);
     }
@@ -1419,7 +1403,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
                              kModPagespeedNumExpensiveRewriteThreads)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
     if (ret == NULL) {
-      ret = ParseIntOption(
+      ret = ParseOption<int>(
           factory, cmd,
           &ApacheRewriteDriverFactory::set_num_expensive_rewrite_threads, arg);
     }
@@ -1427,7 +1411,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
     options->RetainComment(arg);
   } else if (StringCaseEqual(directive,
                              kModPagespeedTrackOriginalContentLength)) {
-    ret = ParseBoolOption(
+    ret = ParseOption<bool>(
         factory, cmd,
         &ApacheRewriteDriverFactory::set_track_original_content_length, arg);
   } else if (StringCaseEqual(directive, kModPagespeedNumShards) ||
@@ -1440,7 +1424,7 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedUsePerVHostStatistics)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
     if (ret == NULL) {
-      ret = ParseBoolOption(
+      ret = ParseOption<bool>(
           factory, cmd,
           &ApacheRewriteDriverFactory::set_use_per_vhost_statistics, arg);
     }
