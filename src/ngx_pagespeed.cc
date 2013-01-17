@@ -1261,6 +1261,52 @@ ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
   return NGX_OK;
 }
 
+void
+ps_strip_html_headers(ngx_http_request_t* r) {
+  // We're modifying content, so switch to 'Transfer-Encoding: chunked' and
+  // calculate on the fly.
+  ngx_http_clear_content_length(r);
+
+  // Pagespeed html doesn't need etags: it should never be cached.
+  ngx_http_clear_etag(r);
+
+  // An html page may change without the underlying file changing, because of
+  // how resources are included.  Pagespeed adds cache control headers for
+  // resources instead of using the last modified header.
+  ngx_http_clear_last_modified(r);
+
+  // Standard nginx idiom for iterating over a list.  See ngx_list.h
+  ngx_uint_t i;
+  ngx_list_part_t* part = &(r->headers_out.headers.part);
+  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
+
+  for (i = 0 ; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+
+      part = part->next;
+      header = static_cast<ngx_table_elt_t*>(part->elts);
+      i = 0;
+    }
+
+    // We also need to strip:
+    //   Accept-Ranges
+    //    - won't work because our html changes
+    //   Vary: Accept-Encoding
+    //    - our gzip filter will add this later
+    if (STR_CASE_EQ_LITERAL(header[i].key, "Accept-Ranges") ||
+        (STR_CASE_EQ_LITERAL(header[i].key, "Vary") &&
+         STR_CASE_EQ_LITERAL(header[i].value, "Accept-Encoding"))) {
+      // Response headers with hash of 0 are excluded from the response.
+      header[i].hash = 0;
+    }
+  }
+}
+
+
+
 ngx_int_t
 ps_header_filter(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
@@ -1314,17 +1360,7 @@ ps_header_filter(ngx_http_request_t* r) {
   CHECK(ctx->driver != NULL);  // Not a resource fetch, so driver is defined.
   const net_instaweb::RewriteOptions* options = ctx->driver->options();
 
-  // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
-  // and calculate on the fly.
-  ngx_http_clear_content_length(r);
-
-  // Pagespeed html doesn't need etags: it should never be cached.
-  ngx_http_clear_etag(r);
-
-  // An page may change without the underlying file changing, because of how
-  // resources are included.  Pagespeed adds cache control headers for
-  // resources instead of using the last modified header.
-  ngx_http_clear_last_modified(r);
+  ps_strip_html_headers(r);
 
   // Don't cache html.  See mod_instaweb:instaweb_fix_headers_filter.
   ps_set_cache_control(r, const_cast<char*>("max-age=0, no-cache"));
