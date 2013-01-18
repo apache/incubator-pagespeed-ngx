@@ -32,11 +32,10 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_PTR_H_
 
 #include "base/logging.h"
-#include "base/memory/ref_counted.h"
 #include "net/instaweb/util/public/atomic_int32.h"
+#include "net/instaweb/util/public/basictypes.h"
 
 namespace net_instaweb {
-
 
 template<class T>
 class RefCounted {
@@ -67,26 +66,62 @@ class RefCounted {
 // a typedef or subclass RefCountedPtr<YourClass>.  YourClass has to inherit
 // off RefCounted<T>.
 template<class T>
-class RefCountedPtr : public scoped_refptr<T> {
+class RefCountedPtr {
  public:
-  RefCountedPtr() : scoped_refptr<T>(NULL) {}
-  explicit RefCountedPtr(T* t) : scoped_refptr<T>(t) {}
+  RefCountedPtr() : ptr_(NULL) {}
+  explicit RefCountedPtr(T* t) : ptr_(t) {
+    if (t != NULL) {
+      t->AddRef();
+    }
+  }
+
+  RefCountedPtr(const RefCountedPtr<T>& src)
+      : ptr_(src.ptr_) {
+    if (ptr_ != NULL) {
+      ptr_->AddRef();
+    }
+  }
 
   template<class U>
   explicit RefCountedPtr(const RefCountedPtr<U>& src)
-      : scoped_refptr<T>(src) {
+      : ptr_(static_cast<T*>(src.ptr_)) {
+    if (ptr_ != NULL) {
+      ptr_->AddRef();
+    }
+  }
+
+  ~RefCountedPtr() {
+    if (ptr_ != NULL) {
+      ptr_->Release();
+    }
   }
 
   RefCountedPtr<T>& operator=(const RefCountedPtr<T>& other) {
-    scoped_refptr<T>::operator=(other);
+    // ref before deref to deal with self-assignment.
+    if (other.ptr_ != NULL) {
+      other.ptr_->AddRef();
+    }
+    if (ptr_ != NULL) {
+      ptr_->Release();
+    }
+    ptr_ = other.ptr_;
     return *this;
   }
 
   template<class U>
   RefCountedPtr<T>& operator=(const RefCountedPtr<U>& other) {
-    scoped_refptr<T>::operator=(other);
+    if (other.ptr_ != NULL) {
+      other.ptr_->AddRef();
+    }
+    if (ptr_ != NULL) {
+      ptr_->Release();
+    }
+    ptr_ = static_cast<T*>(other.ptr_);
     return *this;
   }
+
+  T* operator->() const { return ptr_; }
+  T* get() const { return ptr_; }
 
   // Determines whether any other RefCountedPtr objects share the same
   // storage.  This can be used to create copy-on-write semantics if
@@ -109,11 +144,13 @@ class RefCountedPtr : public scoped_refptr<T> {
   }
 
  private:
+  template <class U> friend class RefCountedPtr;
   operator void*() const;  // don't compare directly to NULL; use get()
   operator T*() const;     // don't assign directly to pointer; use get()
 
   // Note that copy and assign of RefCountedPtr is allowed -- that
   // is how the reference counts are updated.
+  T* ptr_;
 };
 
 // If you can't inherit off RefCounted due to using a pre-existing
@@ -155,13 +192,6 @@ class RefCountedObj {
   // Copying, etc., are OK thanks to data_ptr_.
 };
 
-// Helper macro to allow declaration of user-visible macro
-// REFCOUNT_DISALLOW_EXPLICIT_DESTROY which is used to generate
-// compile-time errors for code that deletes ref-counted objects
-// explicitly.
-#define REFCOUNT_SHARED_MEM_IMPL_CLASS net_instaweb::RefCounted
-
-
 // Macro for users implementing C++ ref-counted classes to prevent
 // explicit destruction.  Once a class is reference counted, it
 // should never be stack-allocated or explicitly deleted.  It should
@@ -172,7 +202,7 @@ class RefCountedObj {
 // This is only required for RefCountedPtr<T>, not RefCountedObj<T>.
 //
 #define REFCOUNT_FRIEND_DECLARATION(class_name) \
-  friend class REFCOUNT_SHARED_MEM_IMPL_CLASS<class_name>
+  friend class net_instaweb::RefCounted<class_name>
 
 }  // namespace net_instaweb
 
