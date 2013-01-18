@@ -561,6 +561,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName forbidden.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedBlockingRewriteKey psatest
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/"
   # Start with all core filters enabled ...
   ModPagespeedRewriteLevel CoreFilters
@@ -578,6 +579,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName max_cacheable_content_length.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedBlockingRewriteKey psatest
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
   ModPagespeedRewriteLevel PassThrough
   ModPagespeedEnableFilters rewrite_javascript
@@ -598,6 +600,10 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
 
+  # Don't actually try to rewrite any resources; the ones in
+  # rewrite_domains.html don't actually exist.
+  ModPagespeedRewriteLevel PassThrough
+
   ModPagespeedDomainRewriteHyperlinks on
   ModPagespeedMapRewriteDomain http://dst.example.com http://src.example.com
   ModPagespeedEnableFilters rewrite_domains
@@ -607,6 +613,10 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ServerName domain_hyperlinks_off.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+
+  # Don't actually try to rewrite any resources; the ones in
+  # rewrite_domains.html don't actually exist.
+  ModPagespeedRewriteLevel PassThrough
 
   ModPagespeedDomainRewriteHyperlinks off
   ModPagespeedMapRewriteDomain http://dst.example.com http://src.example.com
@@ -618,7 +628,12 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
 
-  ModPagespeedMapRewriteDomain  http://client_domain_rewrite.example.com http://@@APACHE_DOMAIN@@
+  # Don't actually try to rewrite any resources; the ones in
+  # rewrite_domains.html don't actually exist.
+  ModPagespeedRewriteLevel PassThrough
+
+  ModPagespeedMapRewriteDomain http://client_domain_rewrite.example.com \
+      http://@@APACHE_DOMAIN@@
   ModPagespeedClientDomainRewrite true
   ModPagespeedEnableFilters rewrite_domains
 </VirtualHost>
@@ -628,6 +643,10 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
 
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+
+  # Don't actually try to rewrite any resources; the ones in
+  # rewrite_domains.html don't actually exist.
+  ModPagespeedRewriteLevel PassThrough
 
   # This is used for testing dynamically defined url-valued
   # attributes

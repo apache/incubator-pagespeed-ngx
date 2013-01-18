@@ -1145,7 +1145,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   TEST="$HOST_NAME/mod_pagespeed_test"
   REWRITE_DOMAINS="$TEST/rewrite_domains.html"
   UVA_EXTEND_CACHE="$TEST/url_valued_attribute_extend_cache.html"
-  UVA_EXTEND_CACHE="${UVA_EXTEND_CACHE}?ModPagespeedFilters=+left_trim_urls"
+  UVA_EXTEND_CACHE+="?ModPagespeedFilters=core,+left_trim_urls"
 
   start_test Rewrite domains in dynamically defined url-valued attributes.
 
