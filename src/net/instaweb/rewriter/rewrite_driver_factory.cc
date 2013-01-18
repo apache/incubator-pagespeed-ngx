@@ -391,9 +391,12 @@ StringPiece RewriteDriverFactory::filename_prefix() {
   return filename_prefix_;
 }
 
+ServerContext* RewriteDriverFactory::NewServerContext() {
+  return new ServerContext(this);
+}
 
 ServerContext* RewriteDriverFactory::CreateServerContext() {
-  ServerContext* resource_manager = new ServerContext(this);
+  ServerContext* resource_manager = NewServerContext();
   InitServerContext(resource_manager);
   return resource_manager;
 }

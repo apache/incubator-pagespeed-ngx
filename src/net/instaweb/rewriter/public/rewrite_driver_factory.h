@@ -171,6 +171,8 @@ class RewriteDriverFactory {
   // ServerContext is owned by the factory, and should not be
   // deleted directly.  Currently it is not possible to delete a
   // server context except by deleting the entire factory.
+  //
+  // Implemented in terms of NewServerContext().
   ServerContext* CreateServerContext();
 
   // Initializes a ServerContext that has been new'd directly.  This
@@ -298,6 +300,12 @@ class RewriteDriverFactory {
   virtual Timer* DefaultTimer() = 0;
 
   virtual Hasher* NewHasher() = 0;
+
+  // If the platform uses CreateServerContext() and needs a platform-specific
+  // implementation, it should override this. Default implementation makes
+  // plain ServerContext's. Note that InitServerContext will be applied to the
+  // result.
+  virtual ServerContext* NewServerContext();
 
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
 
