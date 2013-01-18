@@ -249,6 +249,9 @@ class RewriteContext {
   // unhealthy.
   void DetachSlots();
 
+  // Returns debug information about this RewriteContext.
+  GoogleString ToString(StringPiece prefix) const;
+
  protected:
   typedef std::vector<GoogleUrl*> GoogleUrlStarVector;
 

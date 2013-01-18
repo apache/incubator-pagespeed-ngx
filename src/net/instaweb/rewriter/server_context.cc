@@ -258,6 +258,13 @@ ServerContext::~ServerContext() {
     message_handler_->Message(
         kError, "ServerContext: %d leaked_rewrite_drivers on destruction",
         static_cast<int>(active_rewrite_drivers_.size()));
+#ifndef NDEBUG
+    for (RewriteDriverSet::iterator p = active_rewrite_drivers_.begin(),
+             e = active_rewrite_drivers_.end(); p != e; ++p) {
+      RewriteDriver* driver = *p;
+      driver->PrintStateToErrorLog();
+    }
+#endif
   }
   STLDeleteElements(&active_rewrite_drivers_);
   available_rewrite_drivers_.reset();

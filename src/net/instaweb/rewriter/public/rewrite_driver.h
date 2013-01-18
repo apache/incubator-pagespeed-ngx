@@ -655,6 +655,11 @@ class RewriteDriver : public HtmlParse {
   // are no longer interested in its results.
   void Cleanup();
 
+  // Debugging routines to print out data about the driver.
+  GoogleString ToString();
+  void PrintState();            // For debugging.
+  void PrintStateToErrorLog();  // For logs.
+
   // Wait for outstanding Rewrite to complete.  Once the rewrites are
   // complete they can be rendered.
   void WaitForCompletion();
@@ -1272,9 +1277,6 @@ class RewriteDriver : public HtmlParse {
   LazyBool is_screen_resolution_set_;
   int user_agent_screen_resolution_width_;
   int user_agent_screen_resolution_height_;
-
-  // If true, request is known to have been made using SPDY.
-  bool using_spdy_;
 
   StringFilterMap resource_filter_map_;
 

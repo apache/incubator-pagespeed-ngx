@@ -2387,4 +2387,51 @@ int64 RewriteContext::GetRewriteDeadlineAlarmMs() const {
   return Driver()->rewrite_deadline_ms();
 }
 
+namespace {
+
+void AppendBool(GoogleString* out, const char* name, bool val,
+                StringPiece prefix) {
+  StrAppend(out, prefix, name, ": ", val ? "true\n": "false\n");
+}
+
+void AppendInt(GoogleString* out, const char* name, int val,
+                StringPiece prefix) {
+  StrAppend(out, prefix, name, ": ", IntegerToString(val), "\n");
+}
+
+}  // namespace
+
+GoogleString RewriteContext::ToString(StringPiece prefix) const {
+  GoogleString out;
+  StrAppend(&out, prefix, "Outputs(", IntegerToString(num_outputs()), "):");
+  for (int i = 0; i < num_outputs(); ++i) {
+    StrAppend(&out, " ", output(i)->UrlEvenIfHashNotSet());
+  }
+  StrAppend(&out, "\n");
+  if (fetch_.get() != NULL) {
+    StrAppend(&out, prefix, "Fetch: ",
+              fetch_->output_resource()->UrlEvenIfHashNotSet(), "\n");
+  }
+  AppendInt(&out, "num_slots()", num_slots(), prefix);
+  AppendInt(&out, "outstanding_fetches", outstanding_fetches_, prefix);
+  AppendInt(&out, "outstanding_rewrites", outstanding_rewrites_, prefix);
+  AppendInt(&out, "succesors_.size()", successors_.size(), prefix);
+  AppendInt(&out, "num_pending_nested", num_pending_nested_, prefix);
+  AppendInt(&out, "num_predecessors", num_predecessors_, prefix);
+  StrAppend(&out, prefix, "partition_key: ", partition_key_, "\n");
+  AppendBool(&out, "started", started_, prefix);
+  AppendBool(&out, "chained", chained_, prefix);
+  AppendBool(&out, "rewrite_done", rewrite_done_, prefix);
+  AppendBool(&out, "ok_to_write_output_partitions",
+             ok_to_write_output_partitions_, prefix);
+  AppendBool(&out, "was_too_busy", was_too_busy_, prefix);
+  AppendBool(&out, "slow", slow_, prefix);
+  AppendBool(&out, "revalidate_ok", revalidate_ok_, prefix);
+  AppendBool(&out, "notify_driver_on_fetch_done", notify_driver_on_fetch_done_,
+             prefix);
+  AppendBool(&out, "force_rewrite", force_rewrite_, prefix);
+  AppendBool(&out, "stale_rewrite", stale_rewrite_, prefix);
+  return out;
+}
+
 }  // namespace net_instaweb

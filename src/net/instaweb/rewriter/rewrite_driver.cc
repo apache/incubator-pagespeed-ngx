@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cstdarg>
+#include <cstdio>
 #include <list>
 #include <map>
 #include <set>
@@ -345,6 +346,7 @@ void RewriteDriver::Clear() {
   user_agent_supports_image_inlining_ = kNotSet;
   user_agent_supports_js_defer_ = kNotSet;
   user_agent_supports_webp_ = kNotSet;
+  user_agent_supports_webp_lossless_alpha_ = kNotSet;
   user_agent_supports_split_html_ = kNotSet;
   xhtml_mimetype_computed_ = false;
   xhtml_status_ = kXhtmlUnknown;
@@ -1862,15 +1864,27 @@ void RewriteDriver::DetachedFetchComplete() {
 }
 
 void RewriteDriver::FetchCompleteImpl(bool signal, ScopedMutex* lock) {
+  rewrite_mutex()->DCheckLocked();  // lock->mutex_ == rewrite_mutex().
   DCHECK_EQ(fetch_queued_, signal);
   DCHECK_EQ(0, pending_rewrites_);
 
-  fetch_queued_ = false;
   STLDeleteElements(&rewrites_);
-  if (signal) {
-    scheduler_->Signal();
-  }
+  fetch_queued_ = false;
   bool do_cleanup = cleanup_on_fetch_complete_;
+
+  if (signal) {
+    // 1) If Cleanup() happens before this critical section, then
+    // cleanup_on_fetch_complete_ will be true, so we would set
+    // do_cleanup = true and call it.  It will do it because
+    // RewritesComplete() will return false as fetch_queued_ is true.
+    // Note the call to HaveBackgroundFetchRewrite().
+    //
+    // 2) If Cleanup() happens after, then cleanup_on_fetch_complete_
+    // will be false, so this code will not do a clean, while
+    // BlockingFetch/etc. will just call Cleanup() and that will
+    // cleanup since everything is done.
+    scheduler_->Signal();  // Momentarily drops rewrite_mutex() (surprisingly)
+  }
   lock->Release();
 
   if (do_cleanup) {
@@ -2306,6 +2320,102 @@ void RewriteDriver::Cleanup() {
       server_context_->ReleaseRewriteDriver(this);
     }
   }
+}
+
+namespace {
+
+void AppendBool(GoogleString* out, const char* name, bool val) {
+  StrAppend(out, name, ": ", val ? "true\n": "false\n");
+}
+
+}  // namespace
+
+GoogleString RewriteDriver::ToString() {
+  GoogleString out;
+  {
+    ScopedMutex lock(rewrite_mutex());
+    StrAppend(&out, "URL: ", google_url().Spec(), "\n");
+    StrAppend(&out, "decoded_base: ", decoded_base_url().Spec(), "\n");
+    AppendBool(&out, "base_was_set", base_was_set_);
+    StrAppend(&out, "containing_charset: ", containing_charset_, "\n");
+    AppendBool(&out, "filters_added", filters_added_);
+    AppendBool(&out, "externally_managed", externally_managed_);
+    AppendBool(&out, "fetch_queued", fetch_queued_);
+    AppendBool(&out, "fetch_detached", fetch_detached_);
+    AppendBool(&out, "detached_fetch_main_path_complete",
+               detached_fetch_main_path_complete_);
+    AppendBool(&out, "detached_fetch_detached_path_complete",
+               detached_fetch_detached_path_complete_);
+    AppendBool(&out, "parsing", parsing_);
+    switch (waiting_) {
+      case kNoWait:
+        StrAppend(&out, "waiting: kNoWait\n");
+        break;
+      case kWaitForCompletion:
+        StrAppend(&out, "waiting: kWaitForCompletion\n");
+        break;
+      case kWaitForCachedRender:
+        StrAppend(&out, "waiting: kWaitForCachedRender\n");
+        break;
+      case kWaitForShutDown:
+        StrAppend(&out, "waiting: kWaitForShutDown\n");
+        break;
+      default:
+        StrAppend(&out, "waiting: ", IntegerToString(waiting_));
+        break;
+    }
+    StrAppend(&out, "pending_rewrites: ", IntegerToString(pending_rewrites_),
+              "\n");
+    StrAppend(&out, "detached_rewrites_.size(): ",
+              IntegerToString(detached_rewrites_.size()), "\n");
+    for (RewriteContextSet::iterator p = detached_rewrites_.begin(),
+             e = detached_rewrites_.end(); p != e; ++p) {
+      RewriteContext* detached_rewrite = *p;
+      StrAppend(&out, "  Detached Rewrite:\n",
+                detached_rewrite->ToString("  "));
+    }
+    StrAppend(&out, "rewrites_to_delete: ",
+              IntegerToString(rewrites_to_delete_), "\n");
+    AppendBool(&out, "RewritesComplete()", RewritesComplete());
+    AppendBool(&out, "HaveBackgroundFetchRewrite()",
+               HaveBackgroundFetchRewrite());
+    AppendBool(&out, "fully_rewrite_on_flush", fully_rewrite_on_flush_);
+    AppendBool(&out, "cleanup_on_fetch_complete", cleanup_on_fetch_complete_);
+    AppendBool(&out, "flush_requested", flush_requested_);
+    AppendBool(&out, "flush_occurred", flush_occurred_);
+    AppendBool(&out, "flushed_early", flushed_early_);
+    AppendBool(&out, "flushing_early", flushing_early_);
+    AppendBool(&out, "is_lazyload_script_flushed", is_lazyload_script_flushed_);
+    AppendBool(&out, "release_driver", release_driver_);
+    AppendBool(&out, "write_property_cache_dom_cohort",
+               write_property_cache_dom_cohort_);
+    AppendBool(&out, "using_spdy", using_spdy());
+    AppendBool(&out, "owns_property_page", owns_property_page_);
+    AppendBool(&out, "updated_critical_images", updated_critical_images_);
+    AppendBool(&out, "xhtml_mimetype_computed", xhtml_mimetype_computed_);
+    AppendBool(&out, "serve_blink_non_critical", serve_blink_non_critical_);
+    AppendBool(&out, "is_blink_request", is_blink_request_);
+    AppendBool(&out, "can_rewrite_resources", can_rewrite_resources_);
+    AppendBool(&out, "must_compute_finder_properties",
+               must_compute_finder_properties_);
+    AppendBool(&out, "is_nested", is_nested_);
+  }
+
+  {
+    ScopedMutex lock(inhibits_mutex_.get());
+    AppendBool(&out, "flush_in_progress", flush_in_progress_);
+    AppendBool(&out, "uninhibit_reflush_requested",
+               uninhibit_reflush_requested_);
+  }
+  return out;
+}
+
+void RewriteDriver::PrintState() {
+  fprintf(stderr, "%s\n", ToString().c_str());
+}
+
+void RewriteDriver::PrintStateToErrorLog() {
+  message_handler()->Message(kError, "%s", ToString().c_str());
 }
 
 void RewriteDriver::InhibitEndElement(const HtmlElement* element) {
