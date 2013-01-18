@@ -21,6 +21,10 @@ placeholders = {
     'APACHE_DOC_ROOT': '/home/oschaaf/code/google/mod_pagespeed/src/install',
     'MOD_PAGESPEED_CACHE': '/tmp/psol_cache',
     'APACHE_MODULES': '/usr/lib/apache2/modules',
+    'NGX_CONF_DIRECTORY': '/usr/local/nginx/conf',
+    'APACHE_SSL_CONF':'/etc/apache2/mods-available/ssl.conf',
+    'APACHE_HTTPS_DOMAIN': 'localhost',
+    'MOD_PAGESPEED_STATS_LOG': 'stats.log'
     }
 
 output_format = ''

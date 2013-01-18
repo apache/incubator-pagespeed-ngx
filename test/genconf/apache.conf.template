@@ -108,7 +108,7 @@ def write_required_modules_open(ps,level):
             emit(indent("AddType text/html .shtml\n",level))	
             emit(indent("AddOutputFilter INCLUDES .shtml\n",level))	
 	elif module_name == "ssl":
-            emit(indent("Include conf/extra/httpd-ssl.conf\n",level));
+            emit(indent("Include @@APACHE_SSL_CONF@@\n",level));
  	    emit(indent("<IfModule !" + module_name + "_module>\n", level))
             emit(load_module)
             emit(indent("</IfModule>\n",level))

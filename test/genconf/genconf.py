@@ -98,9 +98,7 @@ def replace_comments(conditions, s):
 def fill_placeholders(placeholders, match):
     placeholder = match.group(1)
     if placeholder not in placeholders:
-        # re-insert the placeholder
-        # TODO(oschaaf): probably need to raise here
-        return '@@' + placeholder + '@@'
+        raise Exception("placeholder '" + placeholder + "' not found")
     else:
         return str(placeholders[placeholder])
 

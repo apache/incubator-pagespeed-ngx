@@ -248,7 +248,7 @@ events {
 }
 
 http {
-    include       /usr/local/nginx/conf/mime.types;
+    include       @@NGX_CONF_DIRECTORY@@/mime.types;
     default_type  application/octet-stream;
 ${write_cfg(key_to_writer, config, 1)}$
 } #http

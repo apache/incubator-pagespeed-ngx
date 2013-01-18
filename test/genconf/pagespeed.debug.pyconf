@@ -72,7 +72,8 @@ pagespeed: {
     ##FetchHttps: "enable,allow_self_signed",
     ##TODO: this wasn't here:
     FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/_default/\"",
-
+    # For testing that the Library command works.
+    Library: "43 1o978_K0_LNE5_ystNklf http://www.modpagespeed.com/rewrite_javascript.js",
     # add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
     EnableFilters: "add_instrumentation,rewrite_css",
 
