@@ -33,12 +33,13 @@ extern "C" {
 
 #include <unistd.h>
 
-#include "ngx_rewrite_driver_factory.h"
-#include "ngx_server_context.h"
-#include "ngx_rewrite_options.h"
 #include "ngx_base_fetch.h"
+#include "ngx_rewrite_driver_factory.h"
+#include "ngx_rewrite_options.h"
+#include "ngx_server_context.h"
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/automatic/public/resource_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/process_context.h"
@@ -50,7 +51,6 @@ extern "C" {
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/automatic/public/resource_fetch.h"
 
 extern ngx_module_t ngx_pagespeed;
 
@@ -119,7 +119,7 @@ string_piece_to_buffer_chain(
     }
 
     if (sp.size() == 0) {
-      CHECK(offset == 0);
+      CHECK_EQ(0, offset);
       b->pos = b->start = b->end = b->last = NULL;
       // The purpose of this buffer is just to pass along last_buf.
       b->sync = 1;
@@ -256,7 +256,7 @@ enum Response {
   kInvalidUrl,
   kPagespeedDisabled,
 };
-} // namespace CreateRequestContext
+}  // namespace CreateRequestContext
 
 CreateRequestContext::Response
 ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch);
@@ -310,9 +310,9 @@ ps_ignore_sigpipe() {
   struct sigaction act;
   ngx_memzero(&act, sizeof(act));
   act.sa_handler = SIG_IGN;
-  sigemptyset (&act.sa_mask);
+  sigemptyset(&act.sa_mask);
   act.sa_flags = 0;
-  sigaction (SIGPIPE, &act, NULL);
+  sigaction(SIGPIPE, &act, NULL);
 }
 
 #define NGX_PAGESPEED_MAX_ARGS 10
@@ -763,8 +763,7 @@ ps_update(ps_request_ctx_t* ctx, ngx_event_t* ev) {
 }
 
 void
-ps_writer(ngx_http_request_t* r)
-{
+ps_writer(ngx_http_request_t* r) {
   ngx_connection_t* c = r->connection;
   ngx_event_t* wev = c->write;
 
@@ -782,33 +781,27 @@ ps_writer(ngx_http_request_t* r)
   }
 
   int rc = ngx_http_next_body_filter(r, NULL);
-
   ngx_log_debug3(NGX_LOG_DEBUG_HTTP, c->log, 0,
                  "http pagespeed writer output filter: %d, \"%V?%V\"",
                  rc, &r->uri, &r->args);
-
   if (rc == NGX_AGAIN) {
     return;
   }
 
   r->write_event_handler = ngx_http_request_empty_handler;
-
   ngx_http_finalize_request(r, rc);
 }
 
 ngx_int_t
-ngx_http_set_pagespeed_write_handler(ngx_http_request_t *r)
-{
+ngx_http_set_pagespeed_write_handler(ngx_http_request_t *r) {
   r->http_state = NGX_HTTP_WRITING_REQUEST_STATE;
 
   r->read_event_handler = ngx_http_request_empty_handler;
   r->write_event_handler = ps_writer;
 
   ngx_event_t* wev = r->connection->write;
-
   ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
       ngx_http_get_module_loc_conf(r, ngx_http_core_module));
-
   ngx_add_timer(wev, clcf->send_timeout);
 
   if (ngx_handle_write_event(wev, clcf->send_lowat) != NGX_OK) {
@@ -947,7 +940,6 @@ ps_determine_options(ngx_http_request_t* r,
                      ps_request_ctx_t* ctx,
                      net_instaweb::RewriteOptions** options,
                      net_instaweb::GoogleUrl* url) {
-
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   ps_loc_conf_t* cfg_l = ps_get_loc_config(r);
 
@@ -1198,7 +1190,7 @@ ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
 
   // We don't want to handle requests with errors, but we should be dealing with
   // that in the header filter and not initializing ctx.
-  CHECK(r->err_status == 0);
+  CHECK_EQ(0, r->err_status);
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed filter \"%V\"", &r->uri);
