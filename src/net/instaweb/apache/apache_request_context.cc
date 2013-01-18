@@ -17,6 +17,7 @@
 #include "net/instaweb/apache/apache_request_context.h"
 
 #include "net/instaweb/apache/interface_mod_spdy.h"
+#include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 
 #include "httpd.h"  // NOLINT
@@ -32,7 +33,18 @@ namespace net_instaweb {
 ApacheRequestContext::ApacheRequestContext(AbstractMutex* logging_mutex,
                                            request_rec* req)
     : RequestContext(logging_mutex),
-      apache_request_(req) {
+      use_spdy_fetcher_(ModSpdyFetcher::ShouldUseOn(req)),
+      local_port_(req->connection->local_addr->port),
+      spdy_connection_factory_(NULL) {
+  // Note that at the time we create a RequestContext we have full
+  // access to the Apache request_rec.  However, due to Cloning and (I
+  // believe) Detaching, we can initiate fetches after the Apache
+  // request_rec* has been retired.  So deep-copy the bits we need
+  // from the request_rec at the time we create our RequestContext.
+  // This includes the local port (for loopback fetches) and the
+  // entire connection subobject, for backdoor mod_spdy fetches.  To
+  // avoid temptation we do not keep a pointer to the request_rec.
+
   // Determines whether we should handle request as SPDY.
   // This happens in two cases:
   // 1) It's actually a SPDY request using mod_spdy
@@ -44,9 +56,21 @@ ApacheRequestContext::ApacheRequestContext(AbstractMutex* logging_mutex,
                                       HttpAttributes::kXPsaOptimizeForSpdy);
     set_using_spdy(value != NULL);
   }
+
+  // Independent of whether we are serving a SPDY request, we will want
+  // to be able to do back door mod_spdy fetches if configured to do so.
+  if (use_spdy_fetcher_) {
+    // TODO(jmarantz): mdsteele indicates this is not overly expensive to
+    // do per-request.  Verify this with profiling.
+    spdy_connection_factory_ =
+        mod_spdy_create_slave_connection_factory(req->connection);
+  }
 }
 
 ApacheRequestContext::~ApacheRequestContext() {
+  if (spdy_connection_factory_ != NULL) {
+    mod_spdy_destroy_slave_connection_factory(spdy_connection_factory_);
+  }
 }
 
 const char* ApacheRequestContext::class_name() const { return kClassName; }

@@ -369,8 +369,10 @@ bool handle_as_resource(ApacheServerContext* server_context,
   // enabled.
   server_context->PollFilesystemForCacheFlush();
 
-  RequestContextPtr request_context(new ApacheRequestContext(
-      server_context->thread_system()->NewMutex(), request));
+  ApacheRequestContext* apache_request_context = new ApacheRequestContext(
+      server_context->thread_system()->NewMutex(), request);
+  apache_request_context->set_url(url);
+  RequestContextPtr request_context(apache_request_context);
   bool using_spdy = request_context->using_spdy();
   RewriteOptions* global_options = server_context->global_options();
   if (using_spdy && (server_context->SpdyConfig() != NULL)) {

@@ -448,8 +448,9 @@ InstawebContext* build_context_for_request(request_rec* request) {
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   scoped_ptr<RewriteOptions> custom_options;
 
-  RequestContextPtr request_context(new ApacheRequestContext(
-      manager->thread_system()->NewMutex(), request));
+  ApacheRequestContext* apache_request = new ApacheRequestContext(
+      manager->thread_system()->NewMutex(), request);
+  RequestContextPtr request_context(apache_request);
   bool using_spdy = request_context->using_spdy();
   const RewriteOptions* host_options = manager->global_options();
   if (using_spdy && manager->SpdyConfig() != NULL) {
@@ -537,6 +538,8 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
   // Determine the absolute URL for this request.
   const char* absolute_url = InstawebContext::MakeRequestUrl(*options, request);
+  apache_request->set_url(absolute_url);
+
   // The final URL.  This is same as absolute_url but with ModPagespeed* query
   // params, if any, stripped.
   GoogleString final_url;

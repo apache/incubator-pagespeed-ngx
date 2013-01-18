@@ -16,15 +16,20 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 //
-// Captures the Apache request_rec* in our request context.
+// Captures the Apache request details in our request context, including
+// the port (used for loopback fetches) and (if enabled & serving spdy)
+// a factory for generating SPDY fetches.
 
 #ifndef NET_INSTAWEB_APACHE_APACHE_REQUEST_CONTEXT_H_
 #define NET_INSTAWEB_APACHE_APACHE_REQUEST_CONTEXT_H_
 
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 struct request_rec;
+struct spdy_slave_connection_factory;
 
 namespace net_instaweb {
 
@@ -34,17 +39,30 @@ class ApacheRequestContext : public RequestContext {
  public:
   ApacheRequestContext(AbstractMutex* logging_mutex, request_rec* req);
 
-  request_rec* apache_request() { return apache_request_; }
+  // Captures the original URL of the request, which is used to help
+  // authorize domains for fetches we do on behalf of that request.
+  void set_url(StringPiece url) { url.CopyToString(&url_); }
+
   virtual const char* class_name() const;
 
   // Returns rc as an ApacheRequestContext* if it is one, nor NULL if it's not.
   static ApacheRequestContext* DynamicCast(RequestContext* rc);
 
+  bool use_spdy_fetcher() const { return use_spdy_fetcher_; }
+  int local_port() const { return local_port_; }
+  StringPiece url() const { return url_; }
+  spdy_slave_connection_factory* spdy_connection_factory() {
+    return spdy_connection_factory_;
+  }
+
  protected:
   virtual ~ApacheRequestContext();
 
  private:
-  request_rec* apache_request_;
+  bool use_spdy_fetcher_;
+  int local_port_;
+  GoogleString url_;
+  spdy_slave_connection_factory* spdy_connection_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRequestContext);
 };

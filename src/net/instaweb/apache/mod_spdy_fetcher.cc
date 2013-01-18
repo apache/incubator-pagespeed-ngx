@@ -31,7 +31,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
-#include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/mod_spdy_fetch_controller.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_response_parser.h"
@@ -300,21 +299,19 @@ void ModSpdyFetcher::Initialize() {
 }
 
 ModSpdyFetcher::ModSpdyFetcher(ModSpdyFetchController* controller,
-                               request_rec* req,
-                               RewriteDriver* driver)
+                               StringPiece url,
+                               RewriteDriver* driver,
+                               spdy_slave_connection_factory* factory)
     : controller_(controller),
-      fallback_fetcher_(driver->async_fetcher()) {
-  GoogleUrl url(InstawebContext::MakeRequestUrl(*driver->options(), req));
-  if (url.is_valid()) {
-    url.Origin().CopyToString(&own_origin_);
+      fallback_fetcher_(driver->async_fetcher()),
+      connection_factory_(factory) {
+  GoogleUrl gurl(url);
+  if (gurl.is_valid()) {
+    gurl.Origin().CopyToString(&own_origin_);
   }
-
-  connection_factory_ =
-      mod_spdy_create_slave_connection_factory(req->connection);
 }
 
 ModSpdyFetcher::~ModSpdyFetcher() {
-  mod_spdy_destroy_slave_connection_factory(connection_factory_);
 }
 
 bool ModSpdyFetcher::ShouldUseOn(request_rec* req) {

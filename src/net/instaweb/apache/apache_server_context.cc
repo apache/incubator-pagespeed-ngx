@@ -370,7 +370,6 @@ void ApacheServerContext::ApplySessionFetchers(
   if (apache_request == NULL) {
     return;  // decoding_driver has a null RequestContext.
   }
-  request_rec* req = apache_request->apache_request();
 
   // Note that these fetchers are applied in the opposite order of how they are
   // added: the last one added here is the first one applied and vice versa.
@@ -391,14 +390,15 @@ void ApacheServerContext::ApplySessionFetchers(
     // Note the port here is our port, not from the request, since
     // LoopbackRouteFetcher may decide we should be talking to ourselves.
     driver->SetSessionFetcher(new LoopbackRouteFetcher(
-        driver->options(), req->connection->local_addr->port,
+        driver->options(), apache_request->local_port(),
         driver->async_fetcher()));
   }
 
   if (conf->experimental_fetch_from_mod_spdy() &&
-      ModSpdyFetcher::ShouldUseOn(req)) {
+      apache_request->use_spdy_fetcher()) {
     driver->SetSessionFetcher(new ModSpdyFetcher(
-        apache_factory_->mod_spdy_fetch_controller(), req, driver));
+        apache_factory_->mod_spdy_fetch_controller(), apache_request->url(),
+        driver, apache_request->spdy_connection_factory()));
   }
 
   if (driver->options()->num_custom_fetch_headers() > 0) {
