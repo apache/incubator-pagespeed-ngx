@@ -46,7 +46,7 @@ class CacheBatcher::Group {
   }
 
   void Done() {
-    if (outstanding_lookups_.increment(-1) == 0) {
+    if (outstanding_lookups_.BarrierIncrement(-1) == 0) {
       batcher_->GroupComplete();
       delete this;
     }

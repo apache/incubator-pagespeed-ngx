@@ -46,7 +46,7 @@ AsyncCache::~AsyncCache() {
 
 void AsyncCache::Get(const GoogleString& key, Callback* callback) {
   if (IsHealthy()) {
-    outstanding_operations_.increment(1);
+    outstanding_operations_.NoBarrierIncrement(1);
     sequence_->Add(MakeFunction(this, &AsyncCache::DoGet,
                                 &AsyncCache::CancelGet,
                                 new GoogleString(key), callback));
@@ -56,7 +56,7 @@ void AsyncCache::Get(const GoogleString& key, Callback* callback) {
 }
 
 void AsyncCache::MultiGet(MultiGetRequest* request) {
-  outstanding_operations_.increment(1);
+  outstanding_operations_.NoBarrierIncrement(1);
   if (IsHealthy()) {
     sequence_->Add(MakeFunction(this, &AsyncCache::DoMultiGet,
                                 &AsyncCache::CancelMultiGet, request));
@@ -69,7 +69,7 @@ void AsyncCache::DoGet(GoogleString* key, Callback* callback) {
   if (IsHealthy()) {
     cache_->Get(*key, callback);
     delete key;
-    outstanding_operations_.increment(-1);
+    outstanding_operations_.NoBarrierIncrement(-1);
   } else {
     CancelGet(key, callback);
   }
@@ -78,13 +78,13 @@ void AsyncCache::DoGet(GoogleString* key, Callback* callback) {
 void AsyncCache::CancelGet(GoogleString* key, Callback* callback) {
   ValidateAndReportResult(*key, CacheInterface::kNotFound, callback);
   delete key;
-  outstanding_operations_.increment(-1);
+  outstanding_operations_.NoBarrierIncrement(-1);
 }
 
 void AsyncCache::DoMultiGet(MultiGetRequest* request) {
   if (IsHealthy()) {
     cache_->MultiGet(request);
-    outstanding_operations_.increment(-1);
+    outstanding_operations_.NoBarrierIncrement(-1);
   } else {
     CancelMultiGet(request);
   }
@@ -92,7 +92,7 @@ void AsyncCache::DoMultiGet(MultiGetRequest* request) {
 
 void AsyncCache::CancelMultiGet(MultiGetRequest* request) {
   ReportMultiGetNotFound(request);
-  outstanding_operations_.increment(-1);
+  outstanding_operations_.NoBarrierIncrement(-1);
 }
 
 void AsyncCache::Put(const GoogleString& key, SharedString* value) {
@@ -112,7 +112,7 @@ void AsyncCache::Put(const GoogleString& key, SharedString* value) {
       value = new SharedString(*value);
     }
 
-    outstanding_operations_.increment(1);
+    outstanding_operations_.NoBarrierIncrement(1);
     sequence_->Add(
         MakeFunction(this, &AsyncCache::DoPut, &AsyncCache::CancelPut,
                      new GoogleString(key), value));
@@ -131,18 +131,18 @@ void AsyncCache::DoPut(GoogleString* key, SharedString* value) {
   }
   delete key;
   delete value;
-  outstanding_operations_.increment(-1);
+  outstanding_operations_.NoBarrierIncrement(-1);
 }
 
 void AsyncCache::CancelPut(GoogleString* key, SharedString* value) {
   delete key;
   delete value;
-  outstanding_operations_.increment(-1);
+  outstanding_operations_.NoBarrierIncrement(-1);
 }
 
 void AsyncCache::Delete(const GoogleString& key) {
   if (IsHealthy()) {
-    outstanding_operations_.increment(1);
+    outstanding_operations_.NoBarrierIncrement(1);
     sequence_->Add(MakeFunction(this, &AsyncCache::DoDelete,
                                 &AsyncCache::CancelDelete,
                                 new GoogleString(key)));
@@ -154,11 +154,11 @@ void AsyncCache::DoDelete(GoogleString* key) {
     cache_->Delete(*key);
   }
   delete key;
-  outstanding_operations_.increment(-1);
+  outstanding_operations_.NoBarrierIncrement(-1);
 }
 
 void AsyncCache::CancelDelete(GoogleString* key) {
-  outstanding_operations_.increment(-1);
+  outstanding_operations_.NoBarrierIncrement(-1);
   delete key;
 }
 

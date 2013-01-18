@@ -1469,7 +1469,7 @@ class ThreadAlternatingCache : public CacheInterface {
   }
 
   virtual void Get(const GoogleString& key, Callback* callback) {
-    int32 pos = position_.increment(1);
+    int32 pos = position_.NoBarrierIncrement(1);
     QueuedWorkerPool::Sequence* site = (pos & 1) ? sequence1_ : sequence2_;
     GoogleString key_copy(key);
     site->Add(MakeFunction(

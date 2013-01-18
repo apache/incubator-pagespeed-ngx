@@ -135,12 +135,12 @@ void CheckingThreadSystem::RWLock::TakeLockControl() {
 
 void CheckingThreadSystem::RWLock::DropReaderLockControl() {
   DCheckReaderLocked();
-  locked_.increment(-1);
+  locked_.NoBarrierIncrement(-1);
 }
 
 void CheckingThreadSystem::RWLock::TakeReaderLockControl() {
   CHECK_GE(locked_.value(), 0) << "Lock should have been available.";
-  locked_.increment(1);
+  locked_.NoBarrierIncrement(1);
 }
 
 bool CheckingThreadSystem::RWLock::TryLock() {

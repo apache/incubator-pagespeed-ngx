@@ -31,13 +31,36 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_PTR_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_REF_COUNTED_PTR_H_
 
+#include "base/logging.h"
 #include "base/memory/ref_counted.h"
+#include "net/instaweb/util/public/atomic_int32.h"
 
 namespace net_instaweb {
 
 
 template<class T>
-class RefCounted : public base::RefCountedThreadSafe<T> {
+class RefCounted {
+ public:
+  RefCounted() : ref_count_(0) {}
+  ~RefCounted() { DCHECK(ref_count_.value() == 0); }
+
+  void Release() {
+    if (ref_count_.BarrierIncrement(-1) == 0) {
+      delete static_cast<T*>(this);
+    }
+  }
+
+  void AddRef() {
+    ref_count_.NoBarrierIncrement(1);
+  }
+
+  bool HasOneRef() {
+    return (ref_count_.value() == 1);
+  }
+
+ private:
+  AtomicInt32 ref_count_;
+  DISALLOW_COPY_AND_ASSIGN(RefCounted<T>);
 };
 
 // Template class to help make reference-counted pointers.  You can use
@@ -136,7 +159,7 @@ class RefCountedObj {
 // REFCOUNT_DISALLOW_EXPLICIT_DESTROY which is used to generate
 // compile-time errors for code that deletes ref-counted objects
 // explicitly.
-#define REFCOUNT_SHARED_MEM_IMPL_CLASS base::RefCountedThreadSafe
+#define REFCOUNT_SHARED_MEM_IMPL_CLASS net_instaweb::RefCounted
 
 
 // Macro for users implementing C++ ref-counted classes to prevent
