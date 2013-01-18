@@ -51,6 +51,7 @@
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scheduler.h"
@@ -58,6 +59,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
+#include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
 
@@ -1191,6 +1193,25 @@ TEST_F(RewriteDriverTest, GetScreenResolutionTest) {
   EXPECT_EQ(200, height);
 }
 
+class WaitAsyncFetch : public StringAsyncFetch {
+ public:
+  WaitAsyncFetch(const RequestContextPtr& req, GoogleString* content,
+                 ThreadSystem* thread_system)
+      : StringAsyncFetch(req, content),
+        sync_(thread_system) {
+  }
+  virtual ~WaitAsyncFetch() {}
+
+  virtual void HandleDone(bool status) {
+    StringAsyncFetch::HandleDone(status);
+    sync_.Notify();
+  }
+  void Wait() { sync_.Wait(); }
+
+ private:
+  WorkerTestBase::SyncPoint sync_;
+};
+
 class InPlaceTest : public RewriteTestBase {
  protected:
   InPlaceTest() {}
@@ -1202,10 +1223,12 @@ class InPlaceTest : public RewriteTestBase {
                             ResponseHeaders* response) {
     GoogleUrl gurl(url);
     content->clear();
-    StringAsyncFetch async_fetch(CreateRequestContext(), content);
+    WaitAsyncFetch async_fetch(CreateRequestContext(), content,
+                               server_context()->thread_system());
     async_fetch.set_response_headers(response);
     rewrite_driver_->FetchInPlaceResource(gurl, perform_http_fetch,
                                           &async_fetch);
+    async_fetch.Wait();
 
     // Make sure we let the rewrite complete, and also wait for the driver to be
     // idle so we can reuse it safely.
