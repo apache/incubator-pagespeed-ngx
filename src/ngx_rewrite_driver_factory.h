@@ -19,28 +19,27 @@
 #ifndef NGX_REWRITE_DRIVER_FACTORY_H_
 #define NGX_REWRITE_DRIVER_FACTORY_H_
 
+#include "apr_pools.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/simple_stats.h"
-#include "apr_pools.h"
 
-// TODO (oschaaf):
-// We should reparent ApacheRewriteDriverFactory and NgxRewriteDriverFactory
-// to a new class OriginRewriteDriverFactory & factor out as much as possible.
+// TODO(oschaaf): We should reparent ApacheRewriteDriverFactory and
+// NgxRewriteDriverFactory to a new class OriginRewriteDriverFactory and factor
+// out as much as possible.
 
 namespace net_instaweb {
 
 class AbstractSharedMem;
-class SlowWorker;
-class StaticJavaScriptManager;
-class NgxServerContext;
 class AprMemCache;
+class AsyncCache;
+class CacheInterface;
+class NgxServerContext;
 class NgxCache;
 class NgxRewriteOptions;
-class AprMemCache;
-class CacheInterface;
-class AsyncCache;
+class SlowWorker;
+class StaticJavaScriptManager;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
@@ -49,7 +48,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
 
   // main_conf will have only options set in the main block.  It may be NULL,
   // and we do not take ownership.
-  NgxRewriteDriverFactory(NgxRewriteOptions* main_conf);
+  explicit NgxRewriteDriverFactory(NgxRewriteOptions* main_conf);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -94,7 +93,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   //
   // If a non-null CacheInterface* is returned, its ownership is transferred
   // to the caller and must be freed on destruction.
-  CacheInterface* GetMemcached(NgxRewriteOptions* options, CacheInterface* l2_cache);
+  CacheInterface* GetMemcached(NgxRewriteOptions* options,
+                               CacheInterface* l2_cache);
 
   // Returns the filesystem metadata cache for the given config's specification
   // (if it has one). NULL is returned if no cache is specified.
@@ -104,7 +104,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // called after the caller has finished any forking it intends to do.
   void StartThreads();
 
-private:
+ private:
   SimpleStats simple_stats_;
   Timer* timer_;
   scoped_ptr<SlowWorker> slow_worker_;
@@ -139,6 +139,6 @@ private:
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 
-} // namespace net_instaweb
+}  // namespace net_instaweb
 
 #endif  // NGX_REWRITE_DRIVER_FACTORY_H_

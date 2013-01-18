@@ -22,6 +22,7 @@
 #define NGX_SERVER_CONTEXT_H_
 
 #include "net/instaweb/rewriter/public/server_context.h"
+
 namespace net_instaweb {
 
 class NgxRewriteDriverFactory;
@@ -29,7 +30,7 @@ class NgxRewriteOptions;
 
 class NgxServerContext : public ServerContext {
  public:
-  NgxServerContext(NgxRewriteDriverFactory* factory);
+  explicit NgxServerContext(NgxRewriteDriverFactory* factory);
   virtual ~NgxServerContext();
 
   // Call only when you need an NgxRewriteOptions.  If you don't need
@@ -42,6 +43,6 @@ class NgxServerContext : public ServerContext {
   DISALLOW_COPY_AND_ASSIGN(NgxServerContext);
 };
 
-} // namespace net_instaweb
+}  // namespace net_instaweb
 
 #endif  // NGX_SERVER_CONTEXT_H_
