@@ -12,7 +12,8 @@
 #                       OPT_COVERAGE_TRACE_TEST, OPT_STRESS_TEST,
 #                       OPT_SHARED_MEM_LOCK_TEST, OPT_GZIP_TEST,
 #                       OPT_FURIOUS_GA_TEST, OPT_FURIOUS_NO_GA_TEST,
-#                       OPT_PER_VHOST_STATS_TEST, OPT_ALL_DIRECTIVES_TEST)
+#                       OPT_PER_VHOST_STATS_TEST, OPT_NO_PER_VHOST_STATS_TEST,
+#                       OPT_ALL_DIRECTIVES_TEST)
 #  stop, start  (to stop and start Apache)
 #  apache_debug_restart
 #  apache_debug_stop
@@ -103,6 +104,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	CACHE_FLUSH_TEST=on \
 	APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
 	APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
+	FIRST_RUN=true \
 	$(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
 	                                          $(APACHE_HTTPS_SERVER)
 	#
@@ -143,6 +145,7 @@ apache_debug_smoke_test : apache_install_conf apache_debug_restart
 	mv $(APACHE_DEBUG_PAGESPEED_CONF).save $(APACHE_DEBUG_PAGESPEED_CONF)
 	$(MAKE) apache_debug_stop
 	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
+	@echo PASS
 
 apache_debug_rewrite_test : rewrite_test_prepare apache_install_conf \
     apache_debug_restart
@@ -195,9 +198,15 @@ memcached_test_prepare :
 apache_debug_gzip_test : gzip_test_prepare apache_install_conf \
     apache_debug_restart
 	@echo Testing efficacy of ModPagespeedFetchWithGzip:
+	# Note: The client request will not served with gzip because we do not
+	# have an Accept-Encoding header, we are testing that the backend fetch
+	# uses gzip.
 	$(WGET_NO_PROXY) -O /dev/null --save-headers $(EXAMPLE_BIG_CSS) 2>&1 \
 	  | head | grep "HTTP request sent, awaiting response... 200 OK"
-	bytes=`$(WGET_NO_PROXY) -q -O - $(APACHE_SERVER)/mod_pagespeed_statistics \
+	# TODO(sligocki): The serf_fetch_bytes_count should be available on
+	# this vhost's mod_pagespeed_statistics page. Why isn't it?
+	bytes=`$(WGET_NO_PROXY) -q -O - \
+	  $(APACHE_SERVER)/mod_pagespeed_global_statistics \
 	  | sed -n 's/serf_fetch_bytes_count: *//p'`; \
 	  echo Compressed big.css took $$bytes bytes; \
 	  test $$bytes -gt 200 -a $$bytes -lt 500
@@ -298,10 +307,11 @@ TRIM_PATH = \
 
 apache_debug_per_vhost_stats_test :
 	$(MAKE) apache_install_conf \
-	    OPT_PER_VHOST_STATS_TEST="PER_VHOST_STATS_TEST=1"
+	    OPT_PER_VHOST_STATS_TEST="PER_VHOST_STATS_TEST=1" \
+	    OPT_NO_PER_VHOST_STATS_TEST="NO_PER_VHOST_STATS_TEST=0"
 	$(MAKE) apache_debug_restart
-	# Fetch a trim URL example from VHost: 8080 -- that should bump
-	# the stat for that there + global but not on :8083
+	@echo Fetch a trim URL example from VHost: 8080 -- that should bump
+	@echo the stat for that there + global but not on :8083
 	$(WGET_NO_PROXY) -q -O /dev/null $(APACHE_SERVER)/$(TRIM_PATH)
 	$(WGET_NO_PROXY) -q -O - $(APACHE_SERVER)/$(STATS) \
 	     | grep url_trims | grep -w 1
@@ -311,7 +321,7 @@ apache_debug_per_vhost_stats_test :
 	     | grep url_trims | grep -w 1
 	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/$(GLOBAL_STATS) \
 	     | grep url_trims | grep -w 1
-	# Now on :8083 as well.
+	@echo Now on :8083 as well.
 	$(WGET_NO_PROXY) -q -O /dev/null $(APACHE_SECONDARY_SERVER)/$(TRIM_PATH)
 	$(WGET_NO_PROXY) -q -O - $(APACHE_SERVER)/$(STATS) \
 	     | grep url_trims | grep -w 1
@@ -321,10 +331,12 @@ apache_debug_per_vhost_stats_test :
 	     | grep url_trims | grep -w 2
 	$(WGET_NO_PROXY) -q -O - $(APACHE_SECONDARY_SERVER)/$(GLOBAL_STATS) \
 	     | grep url_trims | grep -w 2
-	# Now try without global stats -- both should update at once.
+	# Without per-vhost stats.
 	$(MAKE) apache_install_conf \
-	    OPT_PER_VHOST_STATS_TEST="PER_VHOST_STATS_TEST=0"
+	    OPT_PER_VHOST_STATS_TEST="PER_VHOST_STATS_TEST=0" \
+	    OPT_NO_PER_VHOST_STATS_TEST="NO_PER_VHOST_STATS_TEST=1"
 	$(MAKE) apache_debug_restart
+	@echo Now try without global stats -- both should update at once.
 	$(WGET_NO_PROXY) -q -O /dev/null $(APACHE_SERVER)/$(TRIM_PATH)
 	$(WGET_NO_PROXY) -q -O - $(APACHE_SERVER)/$(STATS) \
 	     | grep url_trims | grep -w 1

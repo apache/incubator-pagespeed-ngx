@@ -109,15 +109,15 @@ check_not_from "$OUT" fgrep -q "BikeCrashIcn.png.pagespeed.ic"
 
 start_test In-place resource optimization
 FETCHED=$OUTDIR/ipro
-URL=$EXAMPLE_ROOT/images/pagespeed_logo.png
+# Note: we intentionally want to use an image which will not appear on
+# any HTML pages, and thus will not be in cache before this test is run.
+# (Since the system_test is run multiple times without clearing the cache
+# it may be in cache on some of those runs, but we know that it was put in
+# the cache by previous runs of this specific test.)
+URL=$TEST_ROOT/ipro/test_image_dont_reuse.png
 # Size between original image size and rewritten image size (in bytes).
 # Used to figure out whether the returned image was rewritten or not.
 THRESHOLD_SIZE=13000
-
-# Fetch HTML page which references image, this will ensure rewritten version
-# ends up in cache.
-# TODO(sligocki): Remove this once we have rewriting in the IPRO flow itself.
-fetch_until $EXAMPLE_ROOT/ 'grep -c pagespeed_logo.png.pagespeed' 1
 
 # Check that we compress the image (with IPRO).
 # Note: This requests $URL until it's size is less than $THRESHOLD_SIZE.

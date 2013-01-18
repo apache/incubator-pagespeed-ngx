@@ -143,7 +143,8 @@ InstawebContext::InstawebContext(request_rec* request,
   rewrite_driver_->EnableBlockingRewrite(request_headers);
 
   ComputeContentEncoding(request);
-  apr_pool_cleanup_register(request->pool, this, Cleanup,
+  apr_pool_cleanup_register(request->pool,
+                            this, apache_cleanup<InstawebContext>,
                             apr_pool_cleanup_null);
 
   bucket_brigade_ = apr_brigade_create(request->pool,
@@ -273,12 +274,6 @@ void InstawebContext::ProcessBytes(const char* input, int size) {
       output_.append(input, size);
     }
   }
-}
-
-apr_status_t InstawebContext::Cleanup(void* object) {
-  InstawebContext* ic = static_cast<InstawebContext*>(object);
-  delete ic;
-  return APR_SUCCESS;
 }
 
 void InstawebContext::ComputeContentEncoding(request_rec* request) {

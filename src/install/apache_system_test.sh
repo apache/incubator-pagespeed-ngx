@@ -795,13 +795,16 @@ ModPagespeedFilters=rewrite_images"
     NEWSTATS=$OUTDIR/blocking_rewrite_stats.new
     $WGET_DUMP $STATISTICS_URL > $OLDSTATS
     check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest'\
-      $BLOCKING_REWRITE_URL > $OUTFILE
+      $BLOCKING_REWRITE_URL -O $OUTFILE
     $WGET_DUMP $STATISTICS_URL > $NEWSTATS
     check_stat $OLDSTATS $NEWSTATS image_rewrites 1
     check_stat $OLDSTATS $NEWSTATS cache_hits 0
     check_stat $OLDSTATS $NEWSTATS cache_misses 2
-    check_stat $OLDSTATS $NEWSTATS cache_inserts 2
-    check_stat $OLDSTATS $NEWSTATS num_rewrites_executed 1
+    # 2 cache inserts for image + 1 for HTML in IPRO flow.
+    # Note: If we tune IPRO to exclude results for HTML, this will go back to 2.
+    check_stat $OLDSTATS $NEWSTATS cache_inserts 3
+    # TODO(sligocki): There is no stat num_rewrites_executed. Fix.
+    #check_stat $OLDSTATS $NEWSTATS num_rewrites_executed 1
 
     start_test Blocking rewrite enabled using wrong key.
     BLOCKING_REWRITE_URL="$SECONDARY_TEST_ROOT/\
@@ -892,6 +895,110 @@ blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
   CCONTROL=$(grep '^ *Cache-Control:' $HEADERS | sed -e 's/.*://')
   check_from "$CCONTROL" grep -w max-age=300
   check_from "$CCONTROL" grep -w private
+
+  # TODO(sligocki): Cache flushing appears to be broken and not actually
+  # flushing input resources. Remove this if clause once this is fixed.
+  if [ "${FIRST_RUN:-false}" == true ]; then
+    start_test IPRO flow uses cache as expected.
+    # TODO(sligocki): Use separate VHost instead to separate stats.
+    STATS=$OUTDIR/blocking_rewrite_stats
+    IPRO_ROOT=http://ipro.example.com/mod_pagespeed_test/ipro
+    URL=$IPRO_ROOT/test_image_dont_reuse2.png
+    IPRO_STATS_URL=http://ipro.example.com/mod_pagespeed_statistics?ModPagespeed=off
+
+    # Initial stats.
+    http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.0
+
+    # First IPRO request.
+    http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+    http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.1
+
+    # Resource not in cache the first time.
+    check_stat $STATS.0 $STATS.1 cache_hits 0
+    check_stat $STATS.0 $STATS.1 cache_misses 1
+    # So we run the ipro recorder flow and insert it into the cache.
+    check_stat $STATS.0 $STATS.1 ipro_recorder_resources 1
+    check_stat $STATS.0 $STATS.1 ipro_recorder_inserted_into_cache 1
+    # Image doesn't get rewritten the first time.
+    # TODO(sligocki): This should change to 1 when we get image rewrites started
+    # in the Apache output filter flow.
+    check_stat $STATS.0 $STATS.1 image_rewrites 0
+
+    # Second IPRO request.
+    http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+    # Wait for image rewrite to finish.
+    sleep 1
+    # TODO(sligocki): Replace sleep with some sort of reasonable check.
+    # Unfortunately bash has thwarted my every effort to compose a reaonable
+    # check. Both the below checks do not run:
+    #fetch_until $IPRO_STATS_URL \
+    #            'grep image_ongoing_rewrites | egrep -o "[0-9]"' 0
+    #fetch_until $IPRO_STATS_URL \
+    #            "sed -ne 's/^.*image_ongoing_rewrites: *\([0-9]*\).*$/\1/p'" 0
+    http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.2
+
+    # Resource is found in cache the second time.
+    check_stat $STATS.1 $STATS.2 cache_hits 1
+    # So we don't run the ipro recorder flow.
+    check_stat $STATS.1 $STATS.2 ipro_recorder_resources 0
+    # Image gets rewritten on the second pass through this filter.
+    # TODO(sligocki): This should change to 0 when we get image rewrites started
+    # in the Apache output filter flow.
+    check_stat $STATS.1 $STATS.2 image_rewrites 1
+
+    http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+    http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.3
+
+    check_stat $STATS.2 $STATS.3 cache_hits 1
+    check_stat $STATS.2 $STATS.3 ipro_recorder_resources 0
+    check_stat $STATS.2 $STATS.3 image_rewrites 0
+
+    start_test "IPRO flow doesn't copy uncacheable resources multiple times."
+    URL=$IPRO_ROOT/nocache/test_image_dont_reuse.png
+
+    # Initial stats.
+    http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.0
+
+    # First IPRO request.
+    http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+    http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.1
+
+    # Resource not in cache the first time.
+    check_stat $STATS.0 $STATS.1 cache_hits 0
+    check_stat $STATS.0 $STATS.1 cache_misses 1
+    # So we run the ipro recorder flow, but the resource is not cacheable.
+    check_stat $STATS.0 $STATS.1 ipro_recorder_resources 1
+    check_stat $STATS.0 $STATS.1 ipro_recorder_not_cacheable 1
+    # Uncacheable, so no rewrites.
+    check_stat $STATS.0 $STATS.1 image_rewrites 0
+    check_stat $STATS.1 $STATS.2 image_ongoing_rewrites 0
+
+    # Second IPRO request.
+    http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+    http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.2
+
+    check_stat $STATS.1 $STATS.2 cache_hits 0
+    # Note: This should load a RecentFetchFailed record from cache, but that
+    # is reported as a cache miss.
+    check_stat $STATS.1 $STATS.2 cache_misses 1
+    # TODO(sligocki): Should be 0. We should remember that this resource is not
+    # cacheable and not record it every time it is requested.
+    check_stat $STATS.1 $STATS.2 ipro_recorder_resources 1
+    check_stat $STATS.1 $STATS.2 image_rewrites 0
+    check_stat $STATS.1 $STATS.2 image_ongoing_rewrites 0
+
+    http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP $URL -O /dev/null
+    http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $IPRO_STATS_URL > $STATS.3
+
+    # Same as second fetch.
+    check_stat $STATS.2 $STATS.3 cache_hits 0
+    check_stat $STATS.2 $STATS.3 cache_misses 1
+    # TODO(sligocki): Should be 0. We should remember that this resource is not
+    # cacheable and not record it every time it is requested.
+    check_stat $STATS.2 $STATS.3 ipro_recorder_resources 1
+    check_stat $STATS.2 $STATS.3 image_rewrites 0
+    check_stat $STATS.2 $STATS.3 image_ongoing_rewrites 0
+  fi
 fi
 
 WGET_ARGS=""
@@ -958,8 +1065,10 @@ flushes,image_ongoing_rewrites&hist_titles=Html%20Time%20us%20Histogram"
 fi
 
 start_test ModPagespeedIf parsing
-readonly CONFIG_URL=$STATISTICS_URL?config
-readonly SPDY_CONFIG_URL=$STATISTICS_URL?spdy_config
+# $STATISTICS_URL ends in ?ModPagespeed=off, so we need & for now.
+# If we remove the query from $STATISTICS_URL, s/&/?/.
+readonly CONFIG_URL="$STATISTICS_URL&config"
+readonly SPDY_CONFIG_URL="$STATISTICS_URL&spdy_config"
 
 echo $WGET_DUMP $CONFIG_URL
 CONFIG=$($WGET_DUMP $CONFIG_URL)

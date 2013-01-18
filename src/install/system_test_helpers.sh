@@ -14,15 +14,15 @@
 #
 # Callers should leave argument parsing to this script.
 #
-# Callers should invoke check_failures_and_exit after no more tests are left so that
-# expected failures can be logged.
+# Callers should invoke check_failures_and_exit after no more tests are left
+# so that expected failures can be logged.
 #
 # If command line args are wrong, exit with status code 2.
 # If no tests fail, it will exit the shell-script with status 0.
 # If a test fails:
 #  - If it's listed in PAGESPEED_EXPECTED_FAILURES, log the name of the failing
-#    test, to display when check_failures_and_exit is called, at which point exit
-#    with status code 1.
+#    test, to display when check_failures_and_exit is called, at which point
+#    exit with status code 1.
 #  - Otherwise, exit immediately with status code 1.
 #
 # The format of PAGESPEED_EXPECTED_FAILURES is '~' separated test names.
@@ -97,7 +97,9 @@ EOF
 
 HOSTNAME=$1
 EXAMPLE_ROOT=http://$HOSTNAME/mod_pagespeed_example
-STATISTICS_URL=http://$HOSTNAME/mod_pagespeed_statistics
+# TODO(sligocki): Should we be rewriting the statistics page by default?
+# Currently we are, so disable that so that it doesn't spoil our stats.
+STATISTICS_URL=http://$HOSTNAME/mod_pagespeed_statistics?ModPagespeed=off
 BAD_RESOURCE_URL=http://$HOSTNAME/mod_pagespeed/W.bad.pagespeed.cf.hash.css
 MESSAGE_URL=http://$HOSTNAME/mod_pagespeed_message
 
@@ -221,12 +223,14 @@ function is_expected_failure() {
 # actual failure the user is interested in is our caller's caller.  If it
 # weren't for this, fail and handle_failure could be the same.
 function handle_failure() {
+  if [ $# -eq 1 ]; then
+    echo FAILed Input: "$1"
+  fi
+  # Note: we print line number after "failed input" so that it doesn't get
+  # knocked out of the terminal buffer.
   if type caller > /dev/null 2>&1 ; then
     # "caller 1" is our caller's caller.
     echo "     failure at line $(caller 1 | sed 's/ .*//')" 1>&2
-  fi
-  if [ $# -eq 1 ]; then
-    echo FAILed Input: "$1"
   fi
   echo "in '$CURRENT_TEST'"
   if is_expected_failure ; then
@@ -301,19 +305,23 @@ function check_stat() {
   NEW_STATS_FILE=$2
   COUNTER_NAME=$3
   EXPECTED_DIFF=$4
-  OLD_VAL=$(grep -w ${COUNTER_NAME} ${OLD_STATS_FILE} | awk '{print $2}')
-  NEW_VAL=$(grep -w ${COUNTER_NAME} ${NEW_STATS_FILE} | awk '{print $2}')
+  OLD_VAL=$(grep -w ${COUNTER_NAME} ${OLD_STATS_FILE} | awk '{print $2}' | tr -d ' ')
+  NEW_VAL=$(grep -w ${COUNTER_NAME} ${NEW_STATS_FILE} | awk '{print $2}' | tr -d ' ')
 
-  if [ $((${NEW_VAL} - ${OLD_VAL})) = ${EXPECTED_DIFF} ]; then
-    return;
-  else
-    OLD_VAL=`echo ${OLD_VAL} | tr -d ' '`
-    NEW_VAL=`echo ${NEW_VAL} | tr -d ' '`
-    EXPECTED_VAL=$((${OLD_VAL} + ${EXPECTED_DIFF}))
-    echo -n "Mismatched counter value : ${COUNTER_NAME} : "
-    echo "Expected=${EXPECTED_VAL} Actual=${NEW_VAL}";
-    handle_failure
+  # This extra check is necessary because the syntax error in the second if
+  # does not cause bash to fail :/
+  if [ "${NEW_VAL}" != "" -a "${OLD_VAL}" != "" ]; then
+    if [ $((${NEW_VAL} - ${OLD_VAL})) = ${EXPECTED_DIFF} ]; then
+      return;
+    fi
   fi
+
+  # Failure
+  EXPECTED_VAL=$((${OLD_VAL} + ${EXPECTED_DIFF}))
+  echo -n "Mismatched counter value : ${COUNTER_NAME} : "
+  echo "Expected=${EXPECTED_VAL} Actual=${NEW_VAL}"
+  echo "Compare stat files ${OLD_STATS_FILE} and ${NEW_STATS_FILE}"
+  handle_failure
 }
 
 FETCH_UNTIL_OUTFILE="$OUTDIR/fetch_until_output.$$"

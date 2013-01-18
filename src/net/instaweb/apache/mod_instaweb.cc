@@ -30,7 +30,9 @@
 #include "net/instaweb/apache/apache_request_context.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apache_server_context.h"
+#include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
+#include "net/instaweb/apache/in_place_resource_recorder.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/instaweb_handler.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
@@ -112,9 +114,6 @@ enum VHostHandling {
 // Used by ModPagespeedLoadFromFileRule
 const char kAllow[] = "allow";
 const char kDisallow[] = "disallow";
-
-const char kModPagespeedFilterName[] = "MOD_PAGESPEED_OUTPUT_FILTER";
-const char kModPagespeedFixHeadersName[] = "MOD_PAGESPEED_FIX_HEADERS_FILTER";
 
 // TODO(sligocki): Separate options parsing from all the other stuff here.
 // Instaweb directive names -- these must match
@@ -708,7 +707,7 @@ InstawebContext* build_context_for_request(request_rec* request) {
 
 // This returns 'false' if the output filter should stop its loop over
 // the brigade and return an error.
-bool process_bucket(ap_filter_t *filter, request_rec* request,
+bool process_bucket(ap_filter_t* filter, request_rec* request,
                     InstawebContext* context, apr_bucket* bucket,
                     apr_status_t* return_code) {
   // Remove the bucket from the old brigade. We will create new bucket or
@@ -765,7 +764,7 @@ bool process_bucket(ap_filter_t *filter, request_rec* request,
 }
 
 // Entry point from Apache for streaming HTML-like content.
-apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
+apr_status_t instaweb_out_filter(ap_filter_t* filter, apr_bucket_brigade* bb) {
   // Do nothing if there is nothing, and stop passing to other filters.
   if (APR_BRIGADE_EMPTY(bb)) {
     return APR_SUCCESS;
@@ -814,7 +813,7 @@ apr_status_t instaweb_out_filter(ap_filter_t *filter, apr_bucket_brigade *bb) {
 //
 // NOTE: This is disabled if users set "ModPagespeedModifyCachingHeaders false".
 apr_status_t instaweb_fix_headers_filter(
-    ap_filter_t *filter, apr_bucket_brigade *bb) {
+    ap_filter_t* filter, apr_bucket_brigade* bb) {
   request_rec* request = filter->r;
 
   // TODO(sligocki): Move inside PSOL.
@@ -824,8 +823,119 @@ apr_status_t instaweb_fix_headers_filter(
   apr_table_unset(request->headers_out, HttpAttributes::kExpires);
   apr_table_unset(request->headers_out, HttpAttributes::kEtag);
   // TODO(sligocki): Why remove ourselves? Is it to assure that this filter
-  // won't be turned on by default for the next request?
+  // only looks at the first bucket in the brigade?
   ap_remove_output_filter(filter);
+  return ap_pass_brigade(filter->next, bb);
+}
+
+// Entry point from Apache for recording resources for IPRO.
+// Modeled loosely after ap_content_length_filter() in protocol.c.
+// TODO(sligocki): Perhaps we can merge this filter with ApacheToMpsFilter().
+apr_status_t instaweb_in_place_filter(ap_filter_t* filter,
+                                      apr_bucket_brigade* bb) {
+  // Do nothing if there is nothing, and stop passing to other filters.
+  if (APR_BRIGADE_EMPTY(bb)) {
+    return APR_SUCCESS;
+  }
+
+  request_rec* request = filter->r;
+
+  // This should always be set by handle_as_in_place() in instaweb_handler.cc.
+  InPlaceResourceRecorder* recorder =
+      static_cast<InPlaceResourceRecorder*>(filter->ctx);
+  CHECK(recorder != NULL);
+  MessageHandler* handler = recorder->handler();
+  handler->Message(kInfo, "Attempting to save resource in-place: %s",
+                   recorder->url().c_str());
+
+  // Iterate through all buckets, saving content in the recorder and passing
+  // the buckets along when there is a flush.
+  for (apr_bucket* bucket = APR_BRIGADE_FIRST(bb);
+       bucket != APR_BRIGADE_SENTINEL(bb);
+       bucket = APR_BUCKET_NEXT(bucket)) {
+    if (!APR_BUCKET_IS_METADATA(bucket)) {
+      // Content bucket.
+      const char* buf = NULL;
+      size_t bytes = 0;
+      // Note: Each call to apr_bucket_read() on a FILE bucket will pull in
+      // some of the file into a HEAP bucket. Since we do not pass those
+      // buckets to the next filter until the end of this function, we are
+      // basically buffering up the entire size of the file into memory.
+      //
+      // Apache documentation says not to do this because of the memory issues:
+      //   http://httpd.apache.org/docs/developer/output-filters.html#filtering
+      // ... but since our whole point here is to load the resource into
+      // memory, it seems reasonable.
+      //
+      // TODO(sligocki): Should we do an APR_NONBLOCK_READ? mod_content_length
+      // seems to do that, but has to deal with APR_STATUS_IS_EAGAIN() and
+      // splitting the brigade, etc.
+      apr_status_t return_code = apr_bucket_read(bucket, &buf, &bytes,
+                                                 APR_BLOCK_READ);
+      StringPiece contents(buf, bytes);
+      if (return_code == APR_SUCCESS) {
+        // Ignore headers for now. They are checked by
+        // instaweb_in_place_check_headers_filter.
+        recorder->Write(contents, recorder->handler());
+      } else {
+        ap_log_rerror(APLOG_MARK, APLOG_ERR, return_code, request,
+                      "Reading bucket failed (rcode=%d)", return_code);
+        recorder->Fail();
+        return return_code;
+      }
+    } else if (APR_BUCKET_IS_FLUSH(bucket)) {
+      recorder->Flush(recorder->handler());
+    } else if (APR_BUCKET_IS_EOS(bucket)) {
+      // instaweb_in_place_check_headers_filter calls
+      // recorder->DoneAndSetHeaders().
+      break;
+    }
+  }
+
+  return ap_pass_brigade(filter->next, bb);
+}
+
+// Runs after mod_headers and other filters which muck with the headers.
+// We cannot run instaweb_in_place_filter after them because by then the
+// content is gzipped.
+// TODO(sligocki): Run as a single filter after mod_headers, etc. using
+// an inflater to gunzip the file? Or storing the gzipped version in cache?
+//
+// The sole purpose of this filter is to pass the finalized headers to recorder.
+apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
+                                                    apr_bucket_brigade* bb) {
+  // Do nothing if there is nothing, and stop passing to other filters.
+  if (APR_BRIGADE_EMPTY(bb)) {
+    return APR_SUCCESS;
+  }
+
+  // This should always be set by handle_as_in_place() in instaweb_handler.cc.
+  InPlaceResourceRecorder* recorder =
+      static_cast<InPlaceResourceRecorder*>(filter->ctx);
+  CHECK(recorder != NULL);
+
+  // Although headers come in first bucket, we do not want to call Done
+  // until last bucket comes in, so iterate to EOS bucket.
+  for (apr_bucket* bucket = APR_BRIGADE_FIRST(bb);
+       bucket != APR_BRIGADE_SENTINEL(bb);
+       bucket = APR_BUCKET_NEXT(bucket)) {
+    if (APR_BUCKET_IS_EOS(bucket)) {
+      ResponseHeaders response_headers;
+      ApacheRequestToResponseHeaders(*filter->r, &response_headers, NULL);
+
+      // Note: For some reason Apache never actually sets the Date header in
+      // request->headers_out, but without it set we consider it uncacheable,
+      // so we set it here.
+      // TODO(sligocki): Perhaps we should stop requiring Date header to
+      // consider resources cacheable?
+      AprTimer timer;
+      response_headers.SetDate(timer.NowMs());
+      response_headers.ComputeCaching();
+
+      recorder->DoneAndSetHeaders(&response_headers);
+    }
+  }
+
   return ap_pass_brigade(filter->next, bb);
 }
 
@@ -884,7 +994,7 @@ bool give_apache_user_permissions(ApacheRewriteDriverFactory* factory) {
 // Hook from Apache for initialization after config is read.
 // Initialize statistics, set appropriate directory permissions, etc.
 int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
-                          server_rec *server_list) {
+                          server_rec* server_list) {
   // This routine is complicated by the fact that statistics use inter-process
   // mutexes and have static data, which co-mingles poorly with this otherwise
   // re-entrant module.  The situation that gets interesting is when there are
@@ -969,7 +1079,7 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
 
 // Here log transaction will wait for all the asynchronous resource fetchers to
 // finish.
-apr_status_t pagespeed_log_transaction(request_rec *request) {
+apr_status_t pagespeed_log_transaction(request_rec* request) {
   return DECLINED;
 }
 
@@ -1026,7 +1136,7 @@ int pagespeed_modify_request(request_rec* r) {
 // processing and configuration requests. This
 // callback function declares the Handlers for
 // other events.
-void mod_pagespeed_register_hooks(apr_pool_t *pool) {
+void mod_pagespeed_register_hooks(apr_pool_t* pool) {
   // Enable logging using pagespeed style
   log_message_handler::Install(pool);
 
@@ -1056,6 +1166,19 @@ void mod_pagespeed_register_hooks(apr_pool_t *pool) {
   ap_register_output_filter(
       kModPagespeedFixHeadersName, instaweb_fix_headers_filter, NULL,
       static_cast<ap_filter_type>(AP_FTYPE_CONTENT_SET + 1));
+
+  // Run after contents are set, but before mod_deflate, which runs at
+  // AP_FTYPE_CONTENT_SET.
+  ap_register_output_filter(
+      kModPagespeedInPlaceFilterName, instaweb_in_place_filter, NULL,
+      static_cast<ap_filter_type>(AP_FTYPE_CONTENT_SET - 1));
+  // Run after headers are set by mod_headers, mod_expires, etc. and
+  // after Content-Type has been set (which appears to be at
+  // AP_FTYPE_PROTOCOL).
+  ap_register_output_filter(
+      kModPagespeedInPlaceCheckHeadersName,
+      instaweb_in_place_check_headers_filter, NULL,
+      static_cast<ap_filter_type>(AP_FTYPE_PROTOCOL + 1));
 
   ap_hook_post_config(pagespeed_post_config, NULL, NULL, APR_HOOK_MIDDLE);
   ap_hook_child_init(pagespeed_child_init, NULL, NULL, APR_HOOK_LAST);

@@ -41,21 +41,6 @@ ModPagespeedFetchHttps enable,allow_self_signed
                              https://modpagespeed.com/do_not_modify
 </Directory>
 
-#PER_VHOST_STATS ModPagespeedUsePerVHostStatistics on
-#PER_VHOST_STATS <Location /mod_pagespeed_global_statistics>
-#PER_VHOST_STATS    Order allow,deny
-#PER_VHOST_STATS    Allow from localhost
-#PER_VHOST_STATS    Allow from 127.0.0.1
-#PER_VHOST_STATS    SetHandler mod_pagespeed_global_statistics
-#PER_VHOST_STATS </Location>
-#PER_VHOST_STATS # Make sure we behave OK with this on, too.
-#PER_VHOST_STATS ModPagespeedFetchWithGzip on
-
-#STATS_LOGGING ModPagespeedStatistics on
-#STATS_LOGGING ModPagespeedStatisticsLogging on
-#STATS_LOGGING ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
-#STATS_LOGGING ModPagespeedStatisticsLoggingIntervalMs 10
-
 # These caching headers are set up for the document root, and
 # also serve as a demonstration of good values to set for the entire
 # site, if it is to be optimized by mod_pagespeed.
@@ -280,205 +265,6 @@ ModPagespeedRespectXForwardedProto on
   SetHandler mod_pagespeed_response_options_handler
 </Location>
 
-#SPELING # Enable mod_speling to ensure that we don't regress Issue 194
-#SPELING <IfModule !speling_module>
-#SPELING   LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so
-#SPELING </IfModule>
-#SPELING CheckSpelling on
-
-#GZIP ModPagespeedFetchWithGzip on
-#GZIP SetOutputFilter DEFLATE
-
-#STRESS # These lines are only needed for the stress test.
-#STRESS <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/cgi" >
-#STRESS   Options +ExecCGI
-#STRESS </Directory>
-#STRESS AddHandler cgi-script .cgi
-#STRESS <IfVersion >= 2.4.2>
-#STRESS   <IfModule !slotmem_shm_module>
-#STRESS     LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
-#STRESS   </IfModule>
-#STRESS </IfVersion>
-
-# Globally set the message-buffer size during load-tests.
-#
-# TODO(jmarantz): add a test-path where we set this in a VirtualHost and
-# make sure the right error message comes out.
-#COVERAGE # Don't want global slurp inheriting into :8080
-#COVERAGE ModPagespeedInheritVHostConfig off
-#COVERAGE ModPagespeedMessageBufferSize 100000
-#COVERAGE
-#COVERAGE # We want backtraces to be dumped during the load test, as
-#COVERAGE # one of its purposes is to discover crash bugs.
-#COVERAGE ModPagespeedInstallCrashHandler on
-#COVERAGE
-#COVERAGE # These lines are used for large-scale code coverage testing.
-#COVERAGE # We use 2 servers for it, one doing rewriting and fetching
-#COVERAGE # from the other one, which plays back slurps
-#COVERAGE Listen 8081
-#COVERAGE <VirtualHost *:8080>
-#COVERAGE   ModPagespeed on
-#COVERAGE   # Proxy using SERF
-#COVERAGE   ModPagespeedTestProxy on
-#COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
-#COVERAGE
-#MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:6765
-#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
-#COVERAGE   ModPagespeedRewriteLevel AllFilters
-#COVERAGE   ModPagespeedEnableFilters elide_attributes
-#COVERAGE   ModPagespeedDomain *
-#COVERAGE   ModPagespeedFileCacheSizeKb          102400
-#COVERAGE   ModPagespeedFileCacheCleanIntervalMs 3600000
-#COVERAGE   ModPagespeedLRUCacheKbPerProcess     1024
-#COVERAGE   ModPagespeedLRUCacheByteLimit        16384
-#COVERAGE   ModPagespeedCssFlattenMaxBytes       2048
-#COVERAGE   ModPagespeedCssInlineMaxBytes        2048
-#COVERAGE   ModPagespeedCssImageInlineMaxBytes   2048
-#COVERAGE   ModPagespeedImageInlineMaxBytes      2048
-#COVERAGE   ModPagespeedJsInlineMaxBytes         2048
-#COVERAGE   ModPagespeedCssOutlineMinBytes       3000
-#COVERAGE   ModPagespeedJsOutlineMinBytes        3000
-#COVERAGE   ModPagespeedImageMaxRewritesAtOnce      8
-#COVERAGE   ModPagespeedSlurpFlushLimit          8192
-#COVERAGE   ModPagespeedJpegRecompressionQuality   -1
-#COVERAGE   ModPagespeedImageLimitOptimizedPercent  100
-#COVERAGE   ModPagespeedImageLimitResizeAreaPercent 100
-#COVERAGE   <Location /mod_pagespeed_beacon>
-#COVERAGE       SetHandler mod_pagespeed_beacon
-#COVERAGE   </Location>
-#COVERAGE   <Location /mod_pagespeed_statistics>
-#COVERAGE       Order allow,deny
-#COVERAGE       Allow from localhost
-#COVERAGE       SetHandler mod_pagespeed_statistics
-#COVERAGE   </Location>
-#COVERAGE    <Location /mod_pagespeed_message>
-#COVERAGE        Allow from localhost
-#COVERAGE        Allow from 127.0.0.1
-#COVERAGE        SetHandler mod_pagespeed_message
-#COVERAGE    </Location>
-#COVERAGE </VirtualHost>
-#COVERAGE
-#COVERAGE <VirtualHost *:8081>
-#COVERAGE   ModPagespeed on
-#COVERAGE
-#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@-alt/"
-#COVERAGE   ModPagespeedRewriteLevel PassThrough
-#COVERAGE
-#COVERAGE   # ModPagespeedSlurpDirectory ...
-#COVERAGE   # ModPagespeedSlurpReadOnly on
-#COVERAGE
-#COVERAGE   <Location /mod_pagespeed_message>
-#COVERAGE        Allow from localhost
-#COVERAGE        Allow from 127.0.0.1
-#COVERAGE        SetHandler mod_pagespeed_message
-#COVERAGE   </Location>
-#COVERAGE </VirtualHost>
-
-
-#PROXY # This is used for ProxyPass testing.
-#PROXY #   See: http://code.google.com/p/modpagespeed/issues/detail?id=74
-#PROXY # We use 2 servers for it, one doing rewriting and fetching
-#PROXY # from the other one which does not have mod_pagespeed enabled.
-#PROXY Listen 8081
-#PROXY <VirtualHost *:8080>
-#PROXY   # Host at 8080 should have no relevant content.
-#PROXY   DocumentRoot  /tmp/
-#PROXY
-#PROXY   # Turn these declarations back on during testing if you are
-#PROXY   # having trouble distinguishing which server is saying what.
-#PROXY   #ErrorLog   "@@MOD_PAGESPEED_CACHE@@/logs/error_log"
-#PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@/logs/access_log" common
-#PROXY
-#PROXY   ModPagespeed on
-#PROXY
-#PROXY   ModPagespeedFileCachePath         "@@MOD_PAGESPEED_CACHE@@/"
-#PROXY
-#PROXY   ModPagespeedRewriteLevel PassThrough
-#PROXY   ModPagespeedEnableFilters extend_cache
-#PROXY   ModPagespeedDomain *
-#PROXY
-#PROXY   # Proxy through to 8081.
-#PROXY   ProxyPass / http://localhost:8081/
-#PROXY </VirtualHost>
-#PROXY
-#PROXY <VirtualHost *:8081>
-#PROXY   # Host at 8081 sees into mod_pagespeed_examples directory.
-#PROXY   DocumentRoot  "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
-#PROXY
-#PROXY   #ErrorLog   "@@MOD_PAGESPEED_CACHE@@-alt/logs/error_log"
-#PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@-alt/logs/access_log" common
-#PROXY
-#PROXY   ModPagespeed off
-#PROXY   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt/"
-#PROXY   ModPagespeedRewriteLevel PassThrough
-#PROXY </VirtualHost>
-
-#SLURP # This is used for Slurp testing.  The initial slurp testing
-#SLURP # uses a slurp test dir pre-populated from source control,
-#SLURP # via a read-only slurp setup on port 8080.  We also test slurp
-#SLURP # writing via an origin server on port 8081, and a slurp server
-#SLURP # on 8082 with slurping read-only off.
-#SLURP Listen 8081
-#SLURP Listen 8082
-#SLURP <VirtualHost *:8080>
-#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@/"
-#SLURP   ModPagespeedSlurpDirectory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/slurp"
-#SLURP   ModPagespeedSlurpReadOnly on
-#SLURP </VirtualHost>
-#SLURP <VirtualHost *:8081>
-#SLURP   # Host at 8081 sees into mod_pagespeed_examples directory.
-#SLURP   DocumentRoot  "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
-#SLURP
-#SLURP   ModPagespeed off
-#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt/"
-#SLURP   ModPagespeedRewriteLevel PassThrough
-#SLURP </VirtualHost>
-#SLURP <VirtualHost *:8082>
-#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt2/"
-#SLURP   ModPagespeedSlurpDirectory @@TMP_SLURP_DIR@@
-#SLURP   ModPagespeedSlurpReadOnly off
-#SLURP   ModPagespeedDomain *
-#SLURP   ModPagespeedMaxHtmlParseBytes 1000000
-#SLURP   ModPagespeedSlurpFlushLimit     10000
-#SLURP </VirtualHost>
-
-#SHARED_MEM_LOCKS ModPagespeedSharedMemoryLocks on
-
-#HTTPS # This is used for testing https requests.
-#HTTPS <IfVersion >= 2.4>
-#HTTPS   <IfModule !socache_shmcb_module>
-#HTTPS     LoadModule socache_shmcb_module @@APACHE_MODULES@@/mod_socache_shmcb.so
-#HTTPS   </IfModule>
-#HTTPS   <IfModule !slotmem_shm_module>
-#HTTPS     LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
-#HTTPS   </IfModule>
-#HTTPS </IfVersion>
-
-#HTTPS Include conf/extra/httpd-ssl.conf
-#HTTPS <IfModule !ssl_module>
-#HTTPS   LoadModule ssl_module @@APACHE_MODULES@@/mod_ssl.so
-#HTTPS </IfModule>
-#HTTPS SSLRandomSeed startup builtin
-#HTTPS SSLRandomSeed connect builtin
-#HTTPS ModPagespeedMapOriginDomain http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@
-
-#FURIOUS_GA # This is used for testing the Furious experiment framework.
-#FURIOUS_GA ModPagespeedRunExperiment on
-#FURIOUS_GA ModPagespeedAnalyticsID "123-45-6734"
-#FURIOUS_GA ModPagespeedExperimentVariable 2
-#FURIOUS_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
-#FURIOUS_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
-
-#FURIOUS_NO_GA # This is used for testing the Furious experiment framework still
-#FURIOUS_NO_GA # works when no analytics ID is specified.  It should assign
-#FURIOUS_NO_GA # users to experiments and use appropriate experimental options,
-#FURIOUS_NO_GA # but not report back to Google Analytics.  The instrumentation
-#FURIOUS_NO_GA # beacon, however, will still contain the experiment id.
-#FURIOUS_NO_GA ModPagespeedRunExperiment on
-#FURIOUS_NO_GA ModPagespeedExperimentVariable 2
-#FURIOUS_NO_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
-#FURIOUS_NO_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
-
 # Another VirtualHost can be enabled by default as it does no harm.  This can
 # be used for testing alternate configuration settings in system tests without
 # restarting Apache.
@@ -688,6 +474,233 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ProxyPass / http://modpagespeed.com/
   ProxyPassReverse / http://modpagespeed.com/
 </VirtualHost>
+
+# Enable per-vhost statistics so that tests can be somewhat independent.
+ModPagespeedUsePerVHostStatistics on
+<Location /mod_pagespeed_global_statistics>
+  Order allow,deny
+  Allow from localhost
+  Allow from 127.0.0.1
+  SetHandler mod_pagespeed_global_statistics
+</Location>
+
+# Use a separate vhost so that statistics are separate.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName ipro.example.com
+
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+
+</VirtualHost>
+
+#PER_VHOST_STATS ModPagespeedUsePerVHostStatistics on
+#PER_VHOST_STATS # Make sure we behave OK with this on, too.
+#PER_VHOST_STATS ModPagespeedFetchWithGzip on
+#NO_PER_VHOST_STATS ModPagespeedUsePerVHostStatistics off
+
+#STATS_LOGGING ModPagespeedStatistics on
+#STATS_LOGGING ModPagespeedStatisticsLogging on
+#STATS_LOGGING ModPagespeedStatisticsLoggingFile "@@MOD_PAGESPEED_STATS_LOG@@"
+#STATS_LOGGING ModPagespeedStatisticsLoggingIntervalMs 10
+
+#SPELING # Enable mod_speling to ensure that we don't regress Issue 194
+#SPELING <IfModule !speling_module>
+#SPELING   LoadModule speling_module  @@APACHE_MODULES@@/mod_speling.so
+#SPELING </IfModule>
+#SPELING CheckSpelling on
+
+#GZIP ModPagespeedFetchWithGzip on
+#GZIP SetOutputFilter DEFLATE
+
+#STRESS # These lines are only needed for the stress test.
+#STRESS <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/cgi" >
+#STRESS   Options +ExecCGI
+#STRESS </Directory>
+#STRESS AddHandler cgi-script .cgi
+#STRESS <IfVersion >= 2.4.2>
+#STRESS   <IfModule !slotmem_shm_module>
+#STRESS     LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
+#STRESS   </IfModule>
+#STRESS </IfVersion>
+
+# Globally set the message-buffer size during load-tests.
+#
+# TODO(jmarantz): add a test-path where we set this in a VirtualHost and
+# make sure the right error message comes out.
+#COVERAGE # Don't want global slurp inheriting into :8080
+#COVERAGE ModPagespeedInheritVHostConfig off
+#COVERAGE ModPagespeedMessageBufferSize 100000
+#COVERAGE
+#COVERAGE # We want backtraces to be dumped during the load test, as
+#COVERAGE # one of its purposes is to discover crash bugs.
+#COVERAGE ModPagespeedInstallCrashHandler on
+#COVERAGE
+#COVERAGE # These lines are used for large-scale code coverage testing.
+#COVERAGE # We use 2 servers for it, one doing rewriting and fetching
+#COVERAGE # from the other one, which plays back slurps
+#COVERAGE Listen 8081
+#COVERAGE <VirtualHost *:8080>
+#COVERAGE   ModPagespeed on
+#COVERAGE   # Proxy using SERF
+#COVERAGE   ModPagespeedTestProxy on
+#COVERAGE   ModPagespeedFetchProxy "127.0.0.1:8081"
+#COVERAGE
+#MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:6765
+#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+#COVERAGE   ModPagespeedRewriteLevel AllFilters
+#COVERAGE   ModPagespeedEnableFilters elide_attributes
+#COVERAGE   ModPagespeedDomain *
+#COVERAGE   ModPagespeedFileCacheSizeKb          102400
+#COVERAGE   ModPagespeedFileCacheCleanIntervalMs 3600000
+#COVERAGE   ModPagespeedLRUCacheKbPerProcess     1024
+#COVERAGE   ModPagespeedLRUCacheByteLimit        16384
+#COVERAGE   ModPagespeedCssFlattenMaxBytes       2048
+#COVERAGE   ModPagespeedCssInlineMaxBytes        2048
+#COVERAGE   ModPagespeedCssImageInlineMaxBytes   2048
+#COVERAGE   ModPagespeedImageInlineMaxBytes      2048
+#COVERAGE   ModPagespeedJsInlineMaxBytes         2048
+#COVERAGE   ModPagespeedCssOutlineMinBytes       3000
+#COVERAGE   ModPagespeedJsOutlineMinBytes        3000
+#COVERAGE   ModPagespeedImageMaxRewritesAtOnce      8
+#COVERAGE   ModPagespeedSlurpFlushLimit          8192
+#COVERAGE   ModPagespeedJpegRecompressionQuality   -1
+#COVERAGE   ModPagespeedImageLimitOptimizedPercent  100
+#COVERAGE   ModPagespeedImageLimitResizeAreaPercent 100
+#COVERAGE   <Location /mod_pagespeed_beacon>
+#COVERAGE       SetHandler mod_pagespeed_beacon
+#COVERAGE   </Location>
+#COVERAGE   <Location /mod_pagespeed_statistics>
+#COVERAGE       Order allow,deny
+#COVERAGE       Allow from localhost
+#COVERAGE       SetHandler mod_pagespeed_statistics
+#COVERAGE   </Location>
+#COVERAGE    <Location /mod_pagespeed_message>
+#COVERAGE        Allow from localhost
+#COVERAGE        Allow from 127.0.0.1
+#COVERAGE        SetHandler mod_pagespeed_message
+#COVERAGE    </Location>
+#COVERAGE </VirtualHost>
+#COVERAGE
+#COVERAGE <VirtualHost *:8081>
+#COVERAGE   ModPagespeed on
+#COVERAGE
+#COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@-alt/"
+#COVERAGE   ModPagespeedRewriteLevel PassThrough
+#COVERAGE
+#COVERAGE   # ModPagespeedSlurpDirectory ...
+#COVERAGE   # ModPagespeedSlurpReadOnly on
+#COVERAGE
+#COVERAGE   <Location /mod_pagespeed_message>
+#COVERAGE        Allow from localhost
+#COVERAGE        Allow from 127.0.0.1
+#COVERAGE        SetHandler mod_pagespeed_message
+#COVERAGE   </Location>
+#COVERAGE </VirtualHost>
+
+
+#PROXY # This is used for ProxyPass testing.
+#PROXY #   See: http://code.google.com/p/modpagespeed/issues/detail?id=74
+#PROXY # We use 2 servers for it, one doing rewriting and fetching
+#PROXY # from the other one which does not have mod_pagespeed enabled.
+#PROXY Listen 8081
+#PROXY <VirtualHost *:8080>
+#PROXY   # Host at 8080 should have no relevant content.
+#PROXY   DocumentRoot  /tmp/
+#PROXY
+#PROXY   # Turn these declarations back on during testing if you are
+#PROXY   # having trouble distinguishing which server is saying what.
+#PROXY   #ErrorLog   "@@MOD_PAGESPEED_CACHE@@/logs/error_log"
+#PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@/logs/access_log" common
+#PROXY
+#PROXY   ModPagespeed on
+#PROXY
+#PROXY   ModPagespeedFileCachePath         "@@MOD_PAGESPEED_CACHE@@/"
+#PROXY
+#PROXY   ModPagespeedRewriteLevel PassThrough
+#PROXY   ModPagespeedEnableFilters extend_cache
+#PROXY   ModPagespeedDomain *
+#PROXY
+#PROXY   # Proxy through to 8081.
+#PROXY   ProxyPass / http://localhost:8081/
+#PROXY </VirtualHost>
+#PROXY
+#PROXY <VirtualHost *:8081>
+#PROXY   # Host at 8081 sees into mod_pagespeed_examples directory.
+#PROXY   DocumentRoot  "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
+#PROXY
+#PROXY   #ErrorLog   "@@MOD_PAGESPEED_CACHE@@-alt/logs/error_log"
+#PROXY   #CustomLog  "@@MOD_PAGESPEED_CACHE@@-alt/logs/access_log" common
+#PROXY
+#PROXY   ModPagespeed off
+#PROXY   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt/"
+#PROXY   ModPagespeedRewriteLevel PassThrough
+#PROXY </VirtualHost>
+
+#SLURP # This is used for Slurp testing.  The initial slurp testing
+#SLURP # uses a slurp test dir pre-populated from source control,
+#SLURP # via a read-only slurp setup on port 8080.  We also test slurp
+#SLURP # writing via an origin server on port 8081, and a slurp server
+#SLURP # on 8082 with slurping read-only off.
+#SLURP Listen 8081
+#SLURP Listen 8082
+#SLURP <VirtualHost *:8080>
+#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@/"
+#SLURP   ModPagespeedSlurpDirectory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/slurp"
+#SLURP   ModPagespeedSlurpReadOnly on
+#SLURP </VirtualHost>
+#SLURP <VirtualHost *:8081>
+#SLURP   # Host at 8081 sees into mod_pagespeed_examples directory.
+#SLURP   DocumentRoot  "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
+#SLURP
+#SLURP   ModPagespeed off
+#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt/"
+#SLURP   ModPagespeedRewriteLevel PassThrough
+#SLURP </VirtualHost>
+#SLURP <VirtualHost *:8082>
+#SLURP   ModPagespeedFileCachePath        "@@MOD_PAGESPEED_CACHE@@-alt2/"
+#SLURP   ModPagespeedSlurpDirectory @@TMP_SLURP_DIR@@
+#SLURP   ModPagespeedSlurpReadOnly off
+#SLURP   ModPagespeedDomain *
+#SLURP   ModPagespeedMaxHtmlParseBytes 1000000
+#SLURP   ModPagespeedSlurpFlushLimit     10000
+#SLURP </VirtualHost>
+
+#SHARED_MEM_LOCKS ModPagespeedSharedMemoryLocks on
+
+#HTTPS # This is used for testing https requests.
+#HTTPS <IfVersion >= 2.4>
+#HTTPS   <IfModule !socache_shmcb_module>
+#HTTPS     LoadModule socache_shmcb_module @@APACHE_MODULES@@/mod_socache_shmcb.so
+#HTTPS   </IfModule>
+#HTTPS   <IfModule !slotmem_shm_module>
+#HTTPS     LoadModule slotmem_shm_module @@APACHE_MODULES@@/mod_slotmem_shm.so
+#HTTPS   </IfModule>
+#HTTPS </IfVersion>
+
+#HTTPS Include conf/extra/httpd-ssl.conf
+#HTTPS <IfModule !ssl_module>
+#HTTPS   LoadModule ssl_module @@APACHE_MODULES@@/mod_ssl.so
+#HTTPS </IfModule>
+#HTTPS SSLRandomSeed startup builtin
+#HTTPS SSLRandomSeed connect builtin
+#HTTPS ModPagespeedMapOriginDomain http://@@APACHE_DOMAIN@@ https://@@APACHE_HTTPS_DOMAIN@@
+
+#FURIOUS_GA # This is used for testing the Furious experiment framework.
+#FURIOUS_GA ModPagespeedRunExperiment on
+#FURIOUS_GA ModPagespeedAnalyticsID "123-45-6734"
+#FURIOUS_GA ModPagespeedExperimentVariable 2
+#FURIOUS_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
+#FURIOUS_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
+
+#FURIOUS_NO_GA # This is used for testing the Furious experiment framework still
+#FURIOUS_NO_GA # works when no analytics ID is specified.  It should assign
+#FURIOUS_NO_GA # users to experiments and use appropriate experimental options,
+#FURIOUS_NO_GA # but not report back to Google Analytics.  The instrumentation
+#FURIOUS_NO_GA # beacon, however, will still contain the experiment id.
+#FURIOUS_NO_GA ModPagespeedRunExperiment on
+#FURIOUS_NO_GA ModPagespeedExperimentVariable 2
+#FURIOUS_NO_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
+#FURIOUS_NO_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
 #ALL_DIRECTIVES ModPagespeedAllow foo

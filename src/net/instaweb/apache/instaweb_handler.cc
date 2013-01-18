@@ -30,6 +30,7 @@
 #include "net/instaweb/apache/apache_slurp.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
+#include "net/instaweb/apache/in_place_resource_recorder.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/http/public/async_fetch.h"
@@ -298,12 +299,14 @@ void handle_as_pagespeed_resource(const RequestContextPtr& request_context,
 }
 
 // Handle url with In Place Resource Optimization (IPRO) flow.
-bool handle_as_inplace(const RequestContextPtr& request_context,
+bool handle_as_in_place(const RequestContextPtr& request_context,
                        GoogleUrl* gurl,
-                       const GoogleString& url,
-                       RewriteOptions* custom_options,
-                       ApacheServerContext* server_context,
-                       request_rec* request) {
+                        const GoogleString& url,
+                        RewriteOptions* custom_options,
+                        ApacheServerContext* server_context,
+                        RequestHeaders* owned_headers,
+                        request_rec* request) {
+  scoped_ptr<RequestHeaders> request_headers(owned_headers);
   bool handled = false;
 
   RewriteDriver* driver = ResourceFetch::GetDriver(
@@ -319,11 +322,6 @@ bool handle_as_inplace(const RequestContextPtr& request_context,
   driver->FetchInPlaceResource(*gurl, perform_http_fetch, fetch);
 
   // Wait for cache lookup to complete.
-  // TODO(sligocki): Right now we just fail if cache lookup fails.
-  // Instead we should kick off an async rewrite for the resource.
-  // That way: A) We could rewrite resources not rewritten through
-  // default pathways and B) We will remember not to rewrite resources
-  // which are not rewritable.
   if (!fetch->done()) {
     int64 max_ms = driver->options()->blocking_fetch_timeout_ms();
     for (int64 start_ms = server_context->timer()->NowMs(), now_ms = start_ms;
@@ -332,6 +330,12 @@ bool handle_as_inplace(const RequestContextPtr& request_context,
       int64 remaining_ms = max_ms - (now_ms - start_ms);
 
       driver->BoundedWaitFor(RewriteDriver::kWaitForCompletion, remaining_ms);
+    }
+
+    if (!fetch->done()) {
+      // Note: This 5 second timeout should not actually be hit, instead
+      // FetchInPlaceResource should take care of timing out our rewrites.
+      LOG(DFATAL) << "In-place rewrite timed out on URL " << url;
     }
   }
 
@@ -343,9 +347,21 @@ bool handle_as_inplace(const RequestContextPtr& request_context,
     send_out_headers_and_body(request, *response_headers, fetch->buffer());
     handled = true;
   } else {
-    message_handler->Message(kInfo, "In-place rewrite fetch failed for %s . "
+    message_handler->Message(kInfo, "In-place rewrite fetch failed for %s "
                              "URL was not in cache or was not cacheable.",
                              url.c_str());
+    // In-place rewrite failed, perhaps because the URL was not found in cache.
+    // So we need to get it into cache, we do that using an output filter.
+    // TODO(sligocki): We only want to add this output filter on cache miss
+    // (not if we know it's not cacheable).
+    InPlaceResourceRecorder* recorder = new InPlaceResourceRecorder(
+        url, request_headers.release(), driver->options()->respect_vary(),
+        server_context->http_cache(), server_context->statistics(),
+        message_handler);
+    ap_add_output_filter(kModPagespeedInPlaceFilterName, recorder,
+                         request, request->connection);
+    ap_add_output_filter(kModPagespeedInPlaceCheckHeadersName, recorder,
+                         request, request->connection);
   }
   fetch->Detach();
   driver->Cleanup();
@@ -411,9 +427,9 @@ bool handle_as_resource(ApacheServerContext* server_context,
                                  request_headers.release(), request);
   } else if (options->ajax_rewriting_enabled() && options->enabled() &&
              options->IsAllowed(url)) {
-    handled = handle_as_inplace(request_context, gurl, url,
-                                custom_options.release(), server_context,
-                                request);
+    handled = handle_as_in_place(request_context,gurl, url,
+                                 custom_options.release(), server_context,
+                                 request_headers.release(), request);
   }
 
   return handled;

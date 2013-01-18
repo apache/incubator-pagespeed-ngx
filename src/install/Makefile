@@ -306,6 +306,14 @@ else
   PER_VHOST_STATS_TEST_SED_PATTERN=^\#PER_VHOST_STATS.*\n
 endif
 
+ifeq ($(NO_PER_VHOST_STATS_TEST),1)
+  # remove prefix
+  NO_PER_VHOST_STATS_TEST_SED_PATTERN=^\#NO_PER_VHOST_STATS
+else
+  # remove whole line
+  NO_PER_VHOST_STATS_TEST_SED_PATTERN=^\#NO_PER_VHOST_STATS.*\n
+endif
+
 ifeq ($(STATS_LOGGING_TEST),1)
   # remove prefix
   STATS_LOGGING_TEST_SED_PATTERN=^\#STATS_LOGGING
@@ -343,6 +351,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s@$(FURIOUS_NO_GA_TEST_SED_PATTERN)@@" \
 	    -e "s@$(ALL_DIRECTIVES_TEST_SED_PATTERN)@@" \
 	    -e "s@$(PER_VHOST_STATS_TEST_SED_PATTERN)@@" \
+	    -e "s@$(NO_PER_VHOST_STATS_TEST_SED_PATTERN)@@" \
 	    -e "s@$(STATS_LOGGING_TEST_SED_PATTERN)@@" \
 		$^ > $@
 	! grep '@@' $@  # Make sure we don't have any remaining @@variables@@
@@ -455,6 +464,7 @@ apache_install_conf :
 	    $(OPT_FURIOUS_NO_GA_TEST) \
 	    $(OPT_ALL_DIRECTIVES_TEST) \
 	    $(OPT_PER_VHOST_STATS_TEST) \
+	    $(OPT_NO_PER_VHOST_STATS_TEST) \
 	    $(OPT_STATS_LOGGING_TEST)
 	$(MAKE) install_except_module \
 	    $(OPT_REWRITE_TEST) \
@@ -472,6 +482,7 @@ apache_install_conf :
 	    $(OPT_FURIOUS_NO_GA_TEST) \
 	    $(OPT_ALL_DIRECTIVES_TEST) \
 	    $(OPT_PER_VHOST_STATS_TEST) \
+	    $(OPT_NO_PER_VHOST_STATS_TEST) \
 	    $(OPT_STATS_LOGGING_TEST)
 
 apache_debug_restart :

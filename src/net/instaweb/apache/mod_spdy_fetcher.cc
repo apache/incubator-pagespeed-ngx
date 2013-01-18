@@ -183,6 +183,7 @@ struct ApacheToMpsFilterContext {
   bool ok;
 };
 
+// TODO(sligocki): Perhaps we can merge this with instaweb_in_place_filter().
 apr_status_t ApacheToMpsFilter(ap_filter_t* filter,
                                apr_bucket_brigade* input_brigade) {
   // mod_spdy fed us some bits through Apache --- direct them to our client.

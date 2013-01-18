@@ -37,6 +37,7 @@
 #include "net/instaweb/apache/apache_thread_system.h"
 #include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_timer.h"
+#include "net/instaweb/apache/in_place_resource_recorder.h"
 #include "net/instaweb/apache/mod_spdy_fetch_controller.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
@@ -815,17 +816,23 @@ void ApacheRewriteDriverFactory::Initialize() {
 }
 
 void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
+  // Init standard PSOL stats.
   RewriteDriverFactory::InitStats(statistics);
-  SerfUrlAsyncFetcher::InitStats(statistics);
-  RateController::InitStats(statistics);
+
+  // Init Apache-specific stats.
   ApacheServerContext::InitStats(statistics);
   AprMemCache::InitStats(statistics);
+  InPlaceResourceRecorder::InitStats(statistics);
+  RateController::InitStats(statistics);
+  SerfUrlAsyncFetcher::InitStats(statistics);
+
   CacheStats::InitStats(ApacheCache::kFileCache, statistics);
   CacheStats::InitStats(ApacheCache::kLruCache, statistics);
   CacheStats::InitStats(kMemcached, statistics);
   PropertyCache::InitCohortStats(BeaconCriticalImagesFinder::kBeaconCohort,
                                  statistics);
   PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
+
   statistics->AddVariable(kShutdownCount);
 }
 
