@@ -1446,7 +1446,9 @@ ps_content_handler(ngx_http_request_t* r) {
     return NGX_DECLINED;
   }
 
-  // TODO(jefftk): return NGX_DECLINED for non-get non-head requests.
+  if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
+    return NGX_DECLINED;
+  }
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed handler \"%V\"", &r->uri);
