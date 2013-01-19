@@ -100,11 +100,17 @@ WGET_ARGS="--header='X-PSA-Blocking-Rewrite:psatest'"
 fetch_until $URL 'fgrep -c BikeCrashIcn.png.pagespeed.ic' 1
 echo "Image doesn't get rewritten when we turn it off with headers."
 OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest" \
-  --header="ModPagespeedFilters:-rewrite_images" $URL)
+  --header="ModPagespeedFilters:-convert_png_to_jpeg,-recompress_png" $URL)
 check_not_from "$OUT" fgrep -q "BikeCrashIcn.png.pagespeed.ic"
+
+# TODO(vchudnov): This test is not doing quite what it advertises. It
+# seems to be getting the cached rewritten resource from the previous
+# test case and not going into image.cc itself. Removing the previous
+# test case causes this one to go into image.cc. We should test with a
+# different resource.
 echo "Image doesn't get rewritten when we turn it off with query params."
 OUT=$($WGET_DUMP --header="X-PSA-Blocking-Rewrite:psatest" \
-  $URL?ModPagespeedFilters=-rewrite_images)
+  $URL?ModPagespeedFilters=-convert_png_to_jpeg,-recompress_png)
 check_not_from "$OUT" fgrep -q "BikeCrashIcn.png.pagespeed.ic"
 
 start_test In-place resource optimization

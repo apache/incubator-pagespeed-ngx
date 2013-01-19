@@ -29,6 +29,7 @@ namespace net_instaweb {
 
 const char ImageTestBase::kTestData[] = "/net/instaweb/rewriter/testdata/";
 const char ImageTestBase::kCuppa[] = "Cuppa.png";
+const char ImageTestBase::kCuppaTransparent[] = "CuppaT.png";
 const char ImageTestBase::kBikeCrash[] = "BikeCrashIcn.png";
 const char ImageTestBase::kIronChef[] = "IronChef2.gif";
 const char ImageTestBase::kCradle[] = "CradleAnimation.gif";
@@ -36,6 +37,10 @@ const char ImageTestBase::kPuzzle[] = "Puzzle.jpg";
 const char ImageTestBase::kLarge[] = "Large.png";
 const char ImageTestBase::kScenery[] = "Scenery.webp";
 const char ImageTestBase::kAppSegments[] = "AppSegments.jpg";
+
+// From: http://libpng.org/pub/png/png-RedbrushAlpha.html
+const char ImageTestBase::kRedbrush[] = "RedbrushAlpha-0.5.png";
+
 ImageTestBase::~ImageTestBase() {
 }
 
@@ -46,11 +51,13 @@ Image* ImageTestBase::ImageFromString(
     const GoogleString& contents, bool progressive) {
   net_instaweb::Image::CompressionOptions* image_options =
       new net_instaweb::Image::CompressionOptions();
-  // TODO(vchudnov): Modify to allow
-  // WEBP_LOSSY_LOSSLESS_ALPHA. Perhaps we should define
-  // Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA?
-  image_options->preferred_webp = (output_type == Image::IMAGE_WEBP) ?
-      Image::WEBP_LOSSY : Image::WEBP_NONE;
+  if (output_type == Image::IMAGE_WEBP) {
+    image_options->preferred_webp = Image::WEBP_LOSSY;
+  } else if (output_type == Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA) {
+    image_options->preferred_webp = Image::WEBP_LOSSLESS;
+  } else {
+    image_options->preferred_webp = Image::WEBP_NONE;
+  }
   image_options->jpeg_quality = -1;
   image_options->progressive_jpeg = progressive;
   image_options->convert_png_to_jpeg =  output_type == Image::IMAGE_JPEG;

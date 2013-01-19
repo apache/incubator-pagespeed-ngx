@@ -136,17 +136,31 @@ void SetWebpCompressionOptions(
     const RewriteOptions& options,
     const StringPiece& url,
     Image::CompressionOptions* image_options) {
-  if (resource_context.libwebp_level() == ResourceContext::LIBWEBP_NONE) {
-    image_options->preferred_webp = Image::WEBP_NONE;
-  } else if (resource_context.libwebp_level() ==
-             ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA) {
-    if (options.Enabled(RewriteOptions::kConvertToWebpLossless)) {
-      image_options->preferred_webp = Image::WEBP_LOSSLESS;
-    } else {
-      image_options->preferred_webp = Image::WEBP_LOSSY;
-    }
-  } else {
-    image_options->preferred_webp = Image::WEBP_LOSSY;
+  switch (resource_context.libwebp_level()) {
+      case ResourceContext::LIBWEBP_NONE:
+        image_options->preferred_webp = Image::WEBP_NONE;
+        image_options->allow_webp_alpha = false;
+        DLOG(INFO) << "User agent is not webp capable";
+        break;
+      case ResourceContext::LIBWEBP_LOSSY_ONLY:
+        image_options->preferred_webp = Image::WEBP_LOSSY;
+        image_options->allow_webp_alpha = false;
+        DLOG(INFO) << "User agent is webp lossy capable ";
+        break;
+      case ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA:
+        image_options->allow_webp_alpha = true;
+        if (options.Enabled(RewriteOptions::kConvertToWebpLossless)) {
+          image_options->preferred_webp = Image::WEBP_LOSSLESS;
+          DLOG(INFO) << "User agent is webp lossless+alpha capable "
+                     << "and lossless images preferred";
+        } else {
+          image_options->preferred_webp = Image::WEBP_LOSSY;
+          DLOG(INFO) << "User agent is webp lossless+alpha capable "
+                     << "and lossy images preferred";
+        }
+        break;
+      default:
+        LOG(DFATAL) << "Unhandled libwebp_level";
   }
 }
 
@@ -340,6 +354,17 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
       options->image_jpeg_num_progressive_scans();
   image_options->retain_color_sampling =
       !options->Enabled(RewriteOptions::kJpegSubsampling);
+
+  if (image_options->convert_jpeg_to_webp &&
+      (image_options->webp_quality < 0)) {
+    LOG(ERROR) << "Invalid webp quality: " << image_options->webp_quality
+               << ". Resetting to 100.";
+    image_options->webp_quality = 100;
+  }
+  if (image_options->convert_png_to_jpeg &&
+      (image_options->jpeg_quality < 0)) {
+    LOG(ERROR) << "Invalid jpeg quality: " << image_options->jpeg_quality;
+  }
   return image_options;
 }
 

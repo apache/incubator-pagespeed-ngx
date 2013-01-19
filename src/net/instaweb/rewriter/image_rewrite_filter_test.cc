@@ -565,6 +565,19 @@ TEST_F(ImageRewriteTest, ImgTagWebp) {
   RewriteImage("img", kContentTypeWebp);
 }
 
+TEST_F(ImageRewriteTest, ImgTagWebpLa) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+  // We use the webp testing user agent; real webp-capable user agents are
+  // tested as part of user_agent_matcher_test and are likely to remain in flux
+  // over time.
+  rewrite_driver()->set_user_agent("webp-la");
+  options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
+
+  RewriteImage("img", kContentTypeWebp);
+}
+
 TEST_F(ImageRewriteTest, InputTag) {
   RewriteImage("input type=\"image\"", kContentTypeJpeg);
 }
@@ -577,6 +590,22 @@ TEST_F(ImageRewriteTest, InputTagWebp) {
   // tested as part of user_agent_matcher_test and are likely to remain in flux
   // over time.
   rewrite_driver()->set_user_agent("webp");
+  RewriteImage("input type=\"image\"", kContentTypeWebp);
+}
+
+TEST_F(ImageRewriteTest, InputTagWebpLa) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+  // We use the webp-la testing user agent; real webp-capable user agents are
+  // tested as part of user_agent_matcher_test and are likely to remain in flux
+  // over time.
+  rewrite_driver()->set_user_agent("webp-la");
+
+  // Note that, currently, images that are originally jpegs are
+  // converted to webp lossy regardless of this filter below.
+  options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
+
   RewriteImage("input type=\"image\"", kContentTypeWebp);
 }
 
@@ -613,7 +642,7 @@ TEST_F(ImageRewriteTest, PngToJpegUnhealthy) {
   TestTranscodeAndOptimizePng(false, "", kContentTypePng);
 }
 
-TEST_F(ImageRewriteTest, PngToWebp) {
+TEST_F(ImageRewriteTest, PngToWebpWithWebpUa) {
   if (RunningOnValgrind()) {
     return;
   }
@@ -622,12 +651,43 @@ TEST_F(ImageRewriteTest, PngToWebp) {
   options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
-  options()->set_image_jpeg_recompress_quality(85);
+  options()->set_image_recompress_quality(85);
   rewrite_driver()->AddFilters();
   rewrite_driver()->set_user_agent("webp");
-  // TODO(jmaessen): Make png->webp conversion work in image.cc and
-  // webp_optimizer.cc (the latter code is jpeg-specific right now).
-  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeJpeg,
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeWebp,
+                    "", " width=\"100\" height=\"100\"", true, false);
+}
+
+TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUa) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+  // Make sure we convert png to webp if user agent permits.
+  // We lower compression quality to ensure the webp is smaller.
+  options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->set_image_recompress_quality(85);
+  rewrite_driver()->AddFilters();
+  rewrite_driver()->set_user_agent("webp-la");
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeWebp,
+                    "", " width=\"100\" height=\"100\"", true, false);
+}
+
+TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlag) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+  // Make sure we convert png to webp if user agent permits.
+  // We lower compression quality to ensure the webp is smaller.
+  options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
+  options()->set_image_recompress_quality(85);
+  rewrite_driver()->AddFilters();
+  rewrite_driver()->set_user_agent("webp-la");
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeWebp,
                     "", " width=\"100\" height=\"100\"", true, false);
 }
 
@@ -1418,6 +1478,42 @@ TEST_F(ImageRewriteTest, GifToPngTestWithoutResizeWithoutOptimize) {
   // Without resize and without optimization
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, false);
+}
+
+TEST_F(ImageRewriteTest, GifToJpegTestWithoutResizeWithOptimize) {
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  options()->set_image_recompress_quality(85);
+  rewrite_driver()->AddFilters();
+  // Without resize and with optimization
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeJpeg,
+                    "", "", true, false);
+}
+
+TEST_F(ImageRewriteTest, GifToWebpTestWithResizeWithOptimize) {
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->set_image_recompress_quality(85);
+  rewrite_driver()->AddFilters();
+  rewrite_driver()->set_user_agent("webp-la");
+  const char kResizedDims[] = " width=48 height=64";
+  // With resize and optimization
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeWebp,
+                    kResizedDims, kResizedDims, true, false);
+}
+
+TEST_F(ImageRewriteTest, GifToWebpTestWithoutResizeWithOptimize) {
+  options()->EnableFilter(RewriteOptions::kConvertGifToPng);
+  options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->set_image_recompress_quality(85);
+  rewrite_driver()->AddFilters();
+  rewrite_driver()->set_user_agent("webp-la");
+  // Without resize and with optimization
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeWebp,
+                    "", "", true, false);
 }
 
 TEST_F(ImageRewriteTest, InlinableImagesInsertedIntoPropertyCache) {

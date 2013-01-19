@@ -107,14 +107,40 @@ class ImageTest : public ImageTestBase {
                           int min_bytes_to_dimensions,
                           int width, int height,
                           int size, bool optimizable) {
-    options_->convert_png_to_jpeg = output_type == Image::IMAGE_JPEG;
-    options_->preferred_webp = Image::WEBP_LOSSY;
-    if (output_type == Image::IMAGE_WEBP) {
-      options_->convert_png_to_jpeg = true;
-      options_->convert_jpeg_to_webp = true;
-    } else {
-      options_->convert_jpeg_to_webp = false;
+    return CheckImageFromFile(filename, input_type, output_type, output_type,
+                              min_bytes_to_type, min_bytes_to_dimensions,
+                              width, height, size, optimizable);
+  }
+
+  bool CheckImageFromFile(const char* filename,
+                          Image::Type input_type,
+                          Image::Type intended_output_type,
+                          Image::Type actual_output_type,
+                          int min_bytes_to_type,
+                          int min_bytes_to_dimensions,
+                          int width, int height,
+                          int size, bool optimizable) {
+    // Set options to convert to intended_output_type, but to allow for
+    // negative tests, don't clear any other options.
+    if (intended_output_type == Image::IMAGE_WEBP) {
+      options_->preferred_webp = Image::WEBP_LOSSY;
+    } else if (intended_output_type == Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA) {
+      options_->preferred_webp = Image::WEBP_LOSSLESS;
     }
+    switch (intended_output_type) {
+      case Image::IMAGE_WEBP:
+      case Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA:
+        options_->convert_jpeg_to_webp = true;
+        FALLTHROUGH_INTENDED;
+      case Image::IMAGE_JPEG:
+        options_->convert_png_to_jpeg = true;
+        FALLTHROUGH_INTENDED;
+      case Image::IMAGE_PNG:
+        options_->convert_gif_to_png = true;
+      default:
+        break;
+    }
+
     bool progressive = options_->progressive_jpeg;
     int jpeg_quality = options_->jpeg_quality;
     GoogleString contents;
@@ -123,7 +149,7 @@ class ImageTest : public ImageTestBase {
     ExpectDimensions(input_type, size, width, height, image.get());
     if (optimizable) {
       EXPECT_GT(size, image->output_size());
-      ExpectDimensions(output_type, size, width, height, image.get());
+      ExpectDimensions(actual_output_type, size, width, height, image.get());
     } else {
       EXPECT_EQ(size, image->output_size());
       ExpectDimensions(input_type, size, width, height, image.get());
@@ -163,15 +189,17 @@ class ImageTest : public ImageTestBase {
     // get partial data.
     GoogleString dim_data(contents, 0, min_bytes_to_dimensions);
     ImagePtr dim_image(
-        ImageFromString(output_type, filename, dim_data, progressive));
+        ImageFromString(intended_output_type, filename, dim_data, progressive));
     ExpectDimensions(input_type, min_bytes_to_dimensions, width, height,
                      dim_image.get());
     EXPECT_EQ(min_bytes_to_dimensions, dim_image->output_size());
 
     GoogleString no_dim_data(contents, 0, min_bytes_to_dimensions - 1);
-    CheckInvalid(filename, no_dim_data, input_type, output_type, progressive);
+    CheckInvalid(filename, no_dim_data, input_type, intended_output_type,
+                 progressive);
     GoogleString type_data(contents, 0, min_bytes_to_type);
-    CheckInvalid(filename, type_data, input_type, output_type, progressive);
+    CheckInvalid(filename, type_data, input_type, intended_output_type,
+                 progressive);
     GoogleString junk(contents, 0, min_bytes_to_type - 1);
     CheckInvalid(filename, junk, Image::IMAGE_UNKNOWN, Image::IMAGE_UNKNOWN,
                  progressive);
@@ -253,6 +281,21 @@ TEST_F(ImageTest, WebpLowResTest) {
   EXPECT_GT(filesize, image->output_size());
 }
 
+TEST_F(ImageTest, WebpLaLowResTest) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  Image::CompressionOptions* options = new Image::CompressionOptions();
+  options->recompress_webp = true;
+  options->preferred_webp = Image::WEBP_LOSSLESS;
+  GoogleString contents;
+  ImagePtr image(ReadFromFileWithOptions(kScenery, &contents, options));
+  int filesize = 30320;
+  image->SetTransformToLowRes();
+  EXPECT_GT(filesize, image->output_size());
+}
+
 TEST_F(ImageTest, PngTest) {
   options_->recompress_png = true;
   CheckImageFromFile(
@@ -261,6 +304,140 @@ TEST_F(ImageTest, PngTest) {
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
       26548, true);
+}
+
+TEST_F(ImageTest, PngToWebpTest) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  options_->webp_quality = 75;
+  CheckImageFromFile(
+      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_WEBP,
+      ImageHeaders::kPngHeaderLength,
+      ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
+      100, 100,
+      26548, true);
+}
+
+TEST_F(ImageTest, PngToWebpFailToJpegDueToPreferredTest) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  options_->preferred_webp = Image::WEBP_NONE;
+  options_->webp_quality = 75;
+  options_->jpeg_quality = 85;
+  options_->convert_jpeg_to_webp = true;
+  CheckImageFromFile(
+      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_JPEG,
+      ImageHeaders::kPngHeaderLength,
+      ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
+      100, 100,
+      26548, true);
+}
+
+TEST_F(ImageTest, PngToWebpLaTest) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  options_->webp_quality = 75;
+  CheckImageFromFile(
+      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA,
+      ImageHeaders::kPngHeaderLength,
+      ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
+      100, 100,
+      26548, true);
+}
+
+// TODO(vchudnov): Add PngToWebpLaFailToWebpTest. This will require
+// creating/mocking an initial conversion failure.
+
+TEST_F(ImageTest, PngAlphaToWebpFailToPngTest) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  Image::CompressionOptions* options = new Image::CompressionOptions;
+  options->preferred_webp = Image::WEBP_LOSSY;
+  options->allow_webp_alpha = false;
+  options->webp_quality = 75;
+  options->jpeg_quality = 85;
+  options->convert_png_to_jpeg = true;
+  options->convert_jpeg_to_webp = true;
+  EXPECT_EQ(0, options->conversions_attempted);
+
+  GoogleString buffer;
+  ImagePtr image(ReadFromFileWithOptions(kCuppaTransparent, &buffer, options));
+  image->output_size();
+  EXPECT_EQ(ContentType::kPng, image->content_type()->type());
+  EXPECT_EQ(2, options->conversions_attempted);
+}
+
+TEST_F(ImageTest, PngAlphaToWebpTest) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  Image::CompressionOptions* options = new Image::CompressionOptions;
+  options->preferred_webp = Image::WEBP_LOSSY;
+  options->allow_webp_alpha = true;
+  options->convert_png_to_jpeg = true;
+  options->convert_jpeg_to_webp = true;
+  options->webp_quality = 75;
+  options->jpeg_quality = 85;
+  EXPECT_EQ(0, options->conversions_attempted);
+
+  GoogleString buffer;
+  ImagePtr image(ReadFromFileWithOptions(kCuppaTransparent, &buffer, options));
+  image->output_size();
+  EXPECT_EQ(ContentType::kWebp, image->content_type()->type());
+  EXPECT_EQ(1, options->conversions_attempted);
+}
+
+TEST_F(ImageTest, PngAlphaToWebpTestFailsBecauseTooManyTries) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  Image::CompressionOptions* options = new Image::CompressionOptions;
+  options->preferred_webp = Image::WEBP_LOSSY;
+  options->allow_webp_alpha = true;
+  options->convert_png_to_jpeg = true;
+  options->convert_jpeg_to_webp = true;
+  options->webp_quality = 75;
+  options->jpeg_quality = 85;
+  options->conversions_attempted = 2;
+
+  GoogleString buffer;
+  ImagePtr image(ReadFromFileWithOptions(kCuppaTransparent, &buffer, options));
+  image->output_size();
+  EXPECT_EQ(ContentType::kPng, image->content_type()->type());
+  EXPECT_EQ(2, options->conversions_attempted);
+}
+
+// This tests that we compress the alpha channel on the webp. If we
+// don't on this image, it becomes larger than the original.
+TEST_F(ImageTest, PngLargeAlphaToWebpTest) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  Image::CompressionOptions* options = new Image::CompressionOptions;
+  options->preferred_webp = Image::WEBP_LOSSY;
+  options->allow_webp_alpha = true;
+  options->convert_png_to_jpeg = true;
+  options->convert_jpeg_to_webp = true;
+  options->webp_quality = 75;
+  options->jpeg_quality = 85;
+  EXPECT_EQ(0, options->conversions_attempted);
+
+  GoogleString buffer;
+  ImagePtr image(ReadFromFileWithOptions(kRedbrush, &buffer, options));
+  EXPECT_GT(image->input_size(), image->output_size());
+  EXPECT_EQ(ContentType::kWebp, image->content_type()->type());
+  EXPECT_EQ(1, options->conversions_attempted);
 }
 
 TEST_F(ImageTest, PngToJpegTest) {
@@ -298,8 +475,7 @@ TEST_F(ImageTest, PngToProgressiveJpegTest) {
   EXPECT_TRUE(progressive);
 }
 
-TEST_F(ImageTest, GifTest) {
-  options_->convert_gif_to_png = true;
+TEST_F(ImageTest, GifToPngTest) {
   CheckImageFromFile(
       kIronChef, Image::IMAGE_GIF, Image::IMAGE_PNG,
       8,  // Min bytes to bother checking file type at all.
@@ -308,24 +484,54 @@ TEST_F(ImageTest, GifTest) {
       24941, true);
 }
 
-TEST_F(ImageTest, GifToPngTest) {
-  Image::CompressionOptions* options = new Image::CompressionOptions;
-  options->convert_gif_to_png = true;
-
-  GoogleString buffer;
-  ImagePtr image(ReadFromFileWithOptions(kIronChef, &buffer, options));
-  image->output_size();
-  EXPECT_EQ(ContentType::kPng, image->content_type()->type());
-}
-
 TEST_F(ImageTest, GifToPngDisabledTest) {
   Image::CompressionOptions* options = new Image::CompressionOptions;
   options->convert_gif_to_png = false;
+  EXPECT_EQ(0, options->conversions_attempted);
 
   GoogleString buffer;
   ImagePtr image(ReadFromFileWithOptions(kIronChef, &buffer, options));
   image->output_size();
   EXPECT_EQ(ContentType::kGif, image->content_type()->type());
+  EXPECT_EQ(0, options->conversions_attempted);
+}
+
+TEST_F(ImageTest, GifToJpegTest) {
+  options_->jpeg_quality = 85;
+  CheckImageFromFile(
+      kIronChef, Image::IMAGE_GIF, Image::IMAGE_JPEG,
+      8,  // Min bytes to bother checking file type at all.
+      ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
+      192, 256,
+      24941, true);
+}
+
+TEST_F(ImageTest, GifToWebpTest) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  options_->webp_quality = 25;
+  CheckImageFromFile(
+      kIronChef, Image::IMAGE_GIF, Image::IMAGE_WEBP,
+      8,  // Min bytes to bother checking file type at all.
+      ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
+      192, 256,
+      24941, true);
+}
+
+TEST_F(ImageTest, GifToWebpLaTest) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  options_->webp_quality = 75;
+  CheckImageFromFile(
+      kIronChef, Image::IMAGE_GIF, Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA,
+      8,  // Min bytes to bother checking file type at all.
+      ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
+      192, 256,
+      24941, true);
 }
 
 TEST_F(ImageTest, AnimationTest) {
@@ -349,6 +555,7 @@ TEST_F(ImageTest, JpegTest) {
 
 TEST_F(ImageTest, ProgressiveJpegTest) {
   options_->recompress_jpeg = true;
+  options_->progressive_jpeg = true;
   CheckImageFromFile(
       kPuzzle, Image::IMAGE_JPEG, Image::IMAGE_JPEG,
       8,  // Min bytes to bother checking file type at all.
@@ -490,8 +697,25 @@ TEST_F(ImageTest, WebpTest) {
   if (RunningOnValgrind()) {
     return;
   }
+  options_->webp_quality = 75;
   CheckImageFromFile(
       kPuzzle, Image::IMAGE_JPEG, Image::IMAGE_WEBP,
+      8,  // Min bytes to bother checking file type at all.
+      6468,  // Specific to this test
+      1023, 766,
+      241260, true);
+}
+
+TEST_F(ImageTest, WebpNonLaFromJpgTest) {
+  // FYI: Takes ~70000 ms to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  options_->webp_quality = 75;
+  // Note that jpeg->webp cannot return a lossless webp.
+  CheckImageFromFile(
+      kPuzzle, Image::IMAGE_JPEG, Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA,
+      Image::IMAGE_WEBP,
       8,  // Min bytes to bother checking file type at all.
       6468,  // Specific to this test
       1023, 766,

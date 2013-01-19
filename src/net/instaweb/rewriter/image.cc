@@ -184,12 +184,22 @@ class ImageImpl : public Image {
 #else
   typedef GoogleString OpenCvBuffer;
 #endif
+
+  // Maximum number of libpagespeed conversion attempts.
+  // TODO(vchudnov): Consider making this tunable.
+  static const int kMaxConversionAttempts = 2;
+
   virtual ~ImageImpl();
 
   // Concrete helper methods called by parent class
   virtual void ComputeImageType();
   virtual bool ComputeOutputContents();
 
+  bool ComputeOutputContentsFromPngReader(
+      const GoogleString& string_for_image,
+      const pagespeed::image_compression::PngReaderInterface* png_reader,
+      bool fall_back_to_png,
+      const char* dbg_input_format);
   bool QuickLoadGifToOutputContents();
 
   // Helper methods
@@ -239,6 +249,28 @@ class ImageImpl : public Image {
   bool OptimizePngOrConvertToJpeg(
       const pagespeed::image_compression::PngReaderInterface& png_reader,
       const GoogleString& image_data);
+
+  // Converts image_data, readable via png_reader, to a webp using the
+  // settings in options_, if allowed by those settings.
+  bool ConvertPngToWebp(
+      const pagespeed::image_compression::PngReaderInterface& png_reader,
+      const GoogleString& image_data);
+
+
+  // Determines whether we can attempt a libpagespeed conversion
+  // without exceeding kMaxConversionAttempts. If so, increments the
+  // number of attempts.
+  bool MayConvert() {
+    if (options_.get()) {
+      DLOG(INFO) << "Conversions attempted: "
+                 << options_->conversions_attempted;
+      if (options_->conversions_attempted < kMaxConversionAttempts) {
+        ++options_->conversions_attempted;
+        return true;
+      }
+    }
+    return false;
+  }
 
   const GoogleString file_prefix_;
   MessageHandler* handler_;
@@ -483,7 +515,11 @@ void ImageImpl::ComputeImageType() {
         // http://code.google.com/speed/webp/docs/riff_container.html
         if (buf.size() >= 20 && buf.substr(1, 3) == "IFF" &&
             buf.substr(8, 4) == "WEBP") {
-          image_type_ = IMAGE_WEBP;
+          if (buf.substr(12, 4) == "VP8L") {
+            image_type_ = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
+          } else {
+            image_type_ = IMAGE_WEBP;
+          }
           FindWebpSize();
         }
         break;
@@ -508,6 +544,7 @@ const ContentType* Image::TypeToContentType(Type image_type) {
       res = &kContentTypeGif;
       break;
     case IMAGE_WEBP:
+    case IMAGE_WEBP_LOSSLESS_OR_ALPHA:
       res = &kContentTypeWebp;
       break;
   }
@@ -841,6 +878,7 @@ bool ImageImpl::ComputeOutputContents() {
         case IMAGE_UNKNOWN:
           break;
         case IMAGE_WEBP:
+        case IMAGE_WEBP_LOSSLESS_OR_ALPHA:
           if (resized || options_->recompress_webp) {
             ok = ReduceWebpImageQuality(string_for_image,
                                         options_->webp_quality,
@@ -854,6 +892,8 @@ bool ImageImpl::ComputeOutputContents() {
               (options_->preferred_webp != WEBP_NONE)) {
             ok = OptimizeWebp(string_for_image, options_->webp_quality,
                               &output_contents_);
+            DLOG(INFO) << "Image conversion: " << ok
+                       << " jpeg->webp for " << url_.c_str();
             if (!ok) {
               handler_->Warning(url_.c_str(), 0, "Failed to create webp!");
             }
@@ -865,44 +905,26 @@ bool ImageImpl::ComputeOutputContents() {
             ConvertToJpegOptions(*options_.get(), &jpeg_options);
             ok = pagespeed::image_compression::OptimizeJpegWithOptions(
                 string_for_image, &output_contents_, jpeg_options);
+            DLOG(INFO) << "Image conversion: " << ok
+                       << " jpeg->jpeg for " << url_.c_str();
           }
           break;
         case IMAGE_PNG:
           png_reader.reset(new pagespeed::image_compression::PngReader);
-          if ((options_->convert_png_to_jpeg || low_quality_enabled_)) {
-            if (options_->convert_jpeg_to_webp) {
-              // TODO(vchudnov): Implement the webp_conversion:
-              // ok = ConvertPngToWebpIfPossible(*png_reader.get(),
-              //                                 string_for_image);
-            }
-            if (!ok && options_->jpeg_quality > 0) {
-              ok = OptimizePngOrConvertToJpeg(*png_reader.get(),
-                                              string_for_image);
-            };
-          }
-          if (!ok && (resized || options_->recompress_png)) {
-            ok = OptimizePng(*png_reader.get(), string_for_image);
-          }
+          ok = ComputeOutputContentsFromPngReader(
+              string_for_image,
+              png_reader.get(),
+              (resized || options_->recompress_png),
+              "png");
           break;
         case IMAGE_GIF:
           png_reader.reset(new pagespeed::image_compression::GifReader);
           if (options_->convert_gif_to_png || low_quality_enabled_) {
-            if (options_->convert_png_to_jpeg || low_quality_enabled_) {
-              if (options_->convert_jpeg_to_webp) {
-                // TODO(vchudnov): Implement the webp conversion:
-                // ok = ConvertPngToWebpIfPossible(*png_reader.get(),
-                //                                 string_for_image);
-              }
-              if (!ok) {
-                // TODO(vchudnov): Implement the gif-to-jpeg
-                // conversion (requires expanding gif colormap)
-                // ok = OptimizePngOrConvertToJpeg(*png_reader.get(),
-                //                                 string_for_image);
-              }
-            }
-            if (!ok) {
-              ok = OptimizePng(*png_reader.get(), string_for_image);
-            }
+            ok = ComputeOutputContentsFromPngReader(
+                string_for_image,
+                png_reader.get(),
+                true /* fall_back_to_png */,
+                "gif");
           }
           break;
       }
@@ -912,12 +934,94 @@ bool ImageImpl::ComputeOutputContents() {
   return output_valid_;
 }
 
+inline bool ImageImpl::ComputeOutputContentsFromPngReader(
+    const GoogleString& string_for_image,
+    const pagespeed::image_compression::PngReaderInterface* png_reader,
+    bool fall_back_to_png,
+    const char* dbg_input_format) {
+  bool ok = false;
+  if (options_->convert_png_to_jpeg || low_quality_enabled_) {
+    if (options_->convert_jpeg_to_webp) {
+      ok = ConvertPngToWebp(*png_reader, string_for_image);
+      DLOG(INFO) << "Image conversion: " << ok
+                 << " " << dbg_input_format
+                 << "->webp for " << url_.c_str();
+    }
+    if (!ok && options_->jpeg_quality > 0) {
+      ok = OptimizePngOrConvertToJpeg(*png_reader,
+                                      string_for_image);
+      DLOG(INFO) << "Image conversion: " << ok
+                 << " " << dbg_input_format
+                 << "->jpeg/png for " << url_.c_str();
+      return ok;  // Don't repeat, below, this failing PNG optimization.
+    }
+  }
+  if (!ok && fall_back_to_png) {
+    ok = OptimizePng(*png_reader, string_for_image);
+    DLOG(INFO) << "Image conversion: " << ok
+               << " " << dbg_input_format
+               << "->png for " << url_.c_str();
+  }
+  return ok;
+}
+
+bool ImageImpl::ConvertPngToWebp(
+      const pagespeed::image_compression::PngReaderInterface& png_reader,
+      const GoogleString& input_image) {
+  bool ok = false;
+  if (options_->preferred_webp != Image::WEBP_NONE) {
+    pagespeed::image_compression::WebpConfiguration webp_config;
+    webp_config.quality = options_->webp_quality;
+
+    // Quality/speed trade-off (0=fast, 6=slower-better).
+    // This is the default value in libpagespeed. We should evaluate
+    // whether this is the optimal value, and consider making it
+    // tunable.
+    webp_config.method = 3;
+
+    webp_config.alpha_quality = (options_->allow_webp_alpha ?
+                                 options_->webp_quality : 0);
+    webp_config.alpha_compression = 1;  // compressed with WebP lossless
+    bool is_opaque = false;
+
+    if (options_->preferred_webp == Image::WEBP_LOSSLESS) {
+      webp_config.lossless = true;
+      ok = MayConvert() &&
+          ImageConverter::ConvertPngToWebp(
+          png_reader, input_image, webp_config,
+          &output_contents_, &is_opaque);
+      if (ok) {
+        image_type_ = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
+      }
+    }
+
+    if (!ok) {
+      webp_config.lossless = false;
+      ok = MayConvert() &&
+          ImageConverter::ConvertPngToWebp(
+          png_reader, input_image, webp_config,
+          &output_contents_, &is_opaque);
+      if (ok) {
+        if (is_opaque) {
+          image_type_ = IMAGE_WEBP;
+        } else if (options_->allow_webp_alpha) {
+          image_type_ = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
+        } else {
+          ok = false;
+        }
+      }
+    }
+  }
+  return ok;
+}
+
 bool ImageImpl::OptimizePng(
     const pagespeed::image_compression::PngReaderInterface& png_reader,
     const GoogleString& image_data) {
-  bool ok = PngOptimizer::OptimizePngBestCompression(png_reader,
-                                                     image_data,
-                                                     &output_contents_);
+  bool ok = MayConvert() &&
+      PngOptimizer::OptimizePngBestCompression(png_reader,
+                                               image_data,
+                                               &output_contents_);
   if (ok) {
     image_type_ = IMAGE_PNG;
   }
@@ -930,9 +1034,10 @@ bool ImageImpl::OptimizePngOrConvertToJpeg(
   bool is_png;
   JpegCompressionOptions jpeg_options;
   ConvertToJpegOptions(*options_.get(), &jpeg_options);
-  bool ok = ImageConverter::OptimizePngOrConvertToJpeg(
-      png_reader, image_data, jpeg_options,
-      &output_contents_, &is_png);
+  bool ok = MayConvert() &&
+      ImageConverter::OptimizePngOrConvertToJpeg(
+          png_reader, image_data, jpeg_options,
+          &output_contents_, &is_png);
   if (ok) {
     if (is_png) {
       image_type_ = IMAGE_PNG;

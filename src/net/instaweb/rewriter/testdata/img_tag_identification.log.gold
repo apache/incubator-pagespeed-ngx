@@ -15,6 +15,7 @@ Info: img_tag_identification.html:53: Shrinking image `http://file.name/IronChef
 Info: img_tag_identification.html:55: Shrinking image `http://file.name/Cuppa.png' (1763 bytes) to `http://file.name/xCuppa.png.pagespeed.ic.0.png' (770 bytes)
 Info: img_tag_identification.html:56: Couldn't resize image `http://file.name/CuppaT.png' from 65x70 to 26x28
 Info: img_tag_identification.html:56: Recompressing image `http://file.name/CuppaT.png' (1452 -> 1463 bytes) doesn't save space; dropped.
+Info: img_tag_identification.html:56: Shrinking image `http://file.name/CuppaT.png'  to `http://file.name/26x28vCuppaT.png.pagespeed.ic.0.webp'
 Info: img_tag_identification.html:57: Resized image `http://file.name/CuppaO.png' from 65x70 to 64x69
 Info: img_tag_identification.html:57: Shrink of image `http://file.name/CuppaO.png' (770 -> 1044 bytes) doesn't save space; dropped.
 Info: img_tag_identification.html:71: Shrinking image `http://file.name/BikeCrashIcn.png' (26548 bytes) to `http://file.name/100x100xBikeCrashIcn.png.pagespeed.ic.0.png' (21420 bytes)

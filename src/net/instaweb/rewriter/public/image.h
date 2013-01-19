@@ -51,7 +51,9 @@ class Image {
     IMAGE_JPEG,
     IMAGE_PNG,
     IMAGE_GIF,
-    IMAGE_WEBP,  // Update kImageTypeEnd if you add something after this.
+    IMAGE_WEBP,
+    IMAGE_WEBP_LOSSLESS_OR_ALPHA,  // webps that are lossy or have transparency
+    // Update kImageTypeEnd if you add something after this.
   };
 
   enum PreferredWebp {
@@ -63,6 +65,7 @@ class Image {
   struct CompressionOptions {
     CompressionOptions()
         : preferred_webp(WEBP_NONE),
+          allow_webp_alpha(false),
           webp_quality(RewriteOptions::kDefaultImagesRecompressQuality),
           jpeg_quality(RewriteOptions::kDefaultImagesRecompressQuality),
           progressive_jpeg_min_bytes(
@@ -78,8 +81,10 @@ class Image {
           retain_color_sampling(false),
           retain_exif_data(false),
           jpeg_num_progressive_scans(
-              RewriteOptions::kDefaultImageJpegNumProgressiveScans) {}
+              RewriteOptions::kDefaultImageJpegNumProgressiveScans),
+          conversions_attempted(0) {}
     PreferredWebp preferred_webp;
+    bool allow_webp_alpha;
     int64 webp_quality;
     int64 jpeg_quality;
     int64 progressive_jpeg_min_bytes;
@@ -94,6 +99,7 @@ class Image {
     bool retain_color_sampling;
     bool retain_exif_data;
     int jpeg_num_progressive_scans;
+    int conversions_attempted;
   };
 
   virtual ~Image();
@@ -103,7 +109,7 @@ class Image {
 
   // Used for checking valid ImageType enum integer.
   static const Type kImageTypeStart = IMAGE_UNKNOWN;
-  static const Type kImageTypeEnd = IMAGE_WEBP;
+  static const Type kImageTypeEnd = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
 
   // Stores the image dimensions in natural_dim (on success, sets
   // natural_dim->{width, height} and
