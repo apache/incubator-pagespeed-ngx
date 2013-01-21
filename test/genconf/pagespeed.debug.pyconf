@@ -69,7 +69,6 @@ pagespeed: {
     # This will cause an error report in the startup log if mod_pagespeed is not
     # built with ssl, but otherwise will cause no trouble.
     ##FetchHttps: "enable,allow_self_signed",
-    ##TODO: this wasn't here:
     FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/_default/\"",
     # For testing that the Library command works.
     Library: "43 1o978_K0_LNE5_ystNklf http://www.modpagespeed.com/rewrite_javascript.js",
@@ -88,7 +87,7 @@ pagespeed: {
 
     # Print out detail about connection-refused errors.  We don't negative-test
     # this here cause it's a hassle; we just depend on the unit-tests for that.
-    ## not supported on ningx yet:
+    ## not supported on ningx yet (psa r2338):
     ##ListOutstandingUrlsOnError: "on",
 
     AvoidRenamingIntrospectiveJavascript: "off",
@@ -188,8 +187,7 @@ pagespeed: {
 #endif
     LogRewriteTiming: "false",
     LowercaseHtmlNames: "true",
-    ## TODO(oschaaf): typo in localhost? probably doesn't matter
-    MapOriginDomain: "example.com localhlost",
+    MapOriginDomain: "example.com localhost",
     MapRewriteDomain: "example.com static.example.com",
     MaxImageSizeLowResolutionBytes: 1000,
     MaxInlinedPreviewImagesIndex: 80,
@@ -914,7 +912,6 @@ servers: [
         # Host at 8081 sees into mod_pagespeed_examples directory.
         root:  "\"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/\"",
         pagespeed_status: "off",
-        ## TODO(oschaaf): pagespeed is disabled, why are these options set?
         pagespeed: {
             FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt/\"",
             RewriteLevel: "PassThrough",

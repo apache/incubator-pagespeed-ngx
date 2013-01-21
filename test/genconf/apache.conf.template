@@ -79,7 +79,6 @@ def write_headers_open(ps, level):
         action = val["action"]
         header_name = val["name"]
         header_value = val["value"]
-        # TODO(oschaaf): header name/value need to be quoted probably
         emit(indent("Header " + action + " " + repr(header_name) + ' '  + repr(header_value)  + "\n", level))
 
     return True
