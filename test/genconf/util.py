@@ -1,3 +1,6 @@
+class Error(Exception):
+    pass
+
 def write_cfg(key_to_writer, config, level=0):
     global global_writer
 

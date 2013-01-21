@@ -10,9 +10,7 @@ import copy
 import os
 import re
 from templite import Templite
-
-class Error(Exception):
-    pass
+from util import Error
 
 def parse_python_struct(file_contents):
     ast = compiler.parse(file_contents)
