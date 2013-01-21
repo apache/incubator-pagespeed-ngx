@@ -1,20 +1,29 @@
 #!/usr/bin/python
-# -*- coding: utf-8 -*-
-
 # configuration generator for mod_pagespeed
 
 import sys
 from genconf import execute_template
 
-
 def exit_with_help_message():
-    print 'usage: ./genconf.py <output_format> <mode>'
+    print "This script transforms .pyconf files into webserver configuration files"
+    print "usage: ./genconf.py <output_format> <mode>"
     print "where output_format can be either 'apache' or 'nginx'"
-    print 'and mode can be one of '
     quit()
 
-
+# conditions indicate which conditional configuration sections
+# should be included
+# formats: 
+#   #CONDITION
+# or:
+#   #ifdef CONDITION
+#   ....
+#   #endif
+# the output mode ('nginx' or 'apache') is also set as a condition
+# to be able to have output specific configuration sections
 conditions = {}
+
+# placeholders are inserted into the configuration during preprocessing
+# format: @@PLACEHOLDER@@
 placeholders = {
     'APACHE_SECONDARY_PORT': 8083,
     'APACHE_DOMAIN': 'apache.domain',

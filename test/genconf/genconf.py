@@ -7,9 +7,13 @@ from compiler.ast import List
 from compiler.ast import Node
 from compiler.ast import UnarySub
 import copy
+import os
 import re
 from templite import Templite
 
+
+class Error(Exception):
+    pass
 
 def parse_python_struct(file_contents):
     ast = compiler.parse(file_contents)
@@ -18,7 +22,6 @@ def parse_python_struct(file_contents):
     c3 = c2[0].getChildren()
     return c3[0]
 
-
 def flatten_attribute(o):
     # true/false from  end up here:
 
@@ -26,7 +29,6 @@ def flatten_attribute(o):
         return o.getChildren()[0]
 
     # handle reference to other element
-
     c1 = o.getChildren()[0]
     c2 = o.getChildren()[1]
 
@@ -37,7 +39,6 @@ def flatten_attribute(o):
             return flatten_attribute(c1) + '.' + c2
     else:
         return flatten_attribute(c2)
-
 
 def ast_node_to_dict(
     node,
@@ -64,12 +65,12 @@ def ast_node_to_dict(
             lookup[parent_key] = dest
     elif isinstance(node, UnarySub):
         if parent_key in lookup:
-            raise Exception(parent_key + ": already defined")
+            raise Error(parent_key + ": already defined")
         lookup[parent_key] = '-' + repr(node.getChildren()[0].getChildren()[0])
         return '-' + repr(node.getChildren()[0].getChildren()[0])
     elif isinstance(node, Const):
         if parent_key in lookup:
-            raise Exception(parent_key + ": already defined")
+            raise Error(parent_key + ": already defined")
         lookup[parent_key] = node.getChildren()[0]
         return node.getChildren()[0]
     elif isinstance(node, Node):
@@ -79,10 +80,9 @@ def ast_node_to_dict(
             val = lookup[flattened]
             lookup[parent_key] = val
         else:
-            raise Exception(val)
+            raise Error(val)
         return val
     return dest
-
 
 def replace_comments(conditions, s):
     condition = s.group(1)
@@ -94,14 +94,12 @@ def replace_comments(conditions, s):
     else:
         return s.group(0)
 
-
 def fill_placeholders(placeholders, match):
     placeholder = match.group(1)
     if placeholder not in placeholders:
         raise Exception("placeholder '" + placeholder + "' not found")
     else:
         return str(placeholders[placeholder])
-
 
 def pre_process_text(cfg, conditions, placeholders):
     re_conditional_lines = r'^[ \t]*#([^ \s\t]*)([^\r\n]*\r?\n?)$'
@@ -114,7 +112,6 @@ def pre_process_text(cfg, conditions, placeholders):
     re_empty_line = r'^\s*$'
     cfg = re.sub(re_empty_line, '', cfg, flags=re.MULTILINE)
     return cfg
-
 
 def pre_process_ifdefs(cfg,conditions):
     lines = cfg.split("\n")
@@ -139,12 +136,13 @@ def pre_process_ifdefs(cfg,conditions):
     return "\n".join(ret)
 
 def copy_locations_to_virtual_hosts(config):
-    # nginx, for example, doesn't have a top level configuration
-    # for locations and directories (no directories at all AFAICT)
-    # we 'inherit' those sections here by explicitly 
-    # copying these directives to every server defined
-    # after that, we delete them from the root configuration
-    # and we should only have locations at the server level left
+    # we clone locations that are defined at the root level
+    # to all defined servers. that way, we do not have
+    # to rely on inheritance being available in the targeted
+    # server configuration mechanisms
+    # we delete these locations from the root configuration
+    # after we have performed the clones
+
     move = ["locations"]
     servers = config["servers"]
     for m in move:
@@ -155,6 +153,10 @@ def copy_locations_to_virtual_hosts(config):
 	del config[m]
 
 def move_configuration_to_locations(config):
+    # this inspects all locations, and clones any 
+    # directives that should be inherited down to them
+    # so we do not have to rely on external inheritance
+    # mechanisms
     if not "servers" in config: return
 
     servers = config["servers"]
@@ -170,12 +172,11 @@ def move_configuration_to_locations(config):
     if "headers" in config:
         del config["headers"]
 
-
-# here, we provide an inheritance mechanism
-# pagespeed directives take care of inheriting properly
-# themselves, but in nginx for example the headers are not 
-# inherited like you would expect at first sight        
 def merge_location_config(root,server,location):
+    # pagespeed directives take care of inheriting properly
+    # themselves, but in nginx for example the headers are not 
+    # inherited like you would expect at first sight. we
+    # merge these headers ourselves to the location ourselves here
     result = []
     
     if "headers" in root:
@@ -189,11 +190,18 @@ def merge_location_config(root,server,location):
 
 def execute_template(pyconf_path, conditions,
                      placeholders, template_path):
+
+    if not os.path.exists(pyconf_path):
+        raise Error("Input configuration not found at [%s]" % pyconf_path)
+    if not os.path.exists(template_path):
+        raise Error("Expected a transformation script at [%s]" % template_path)
+
     config_file = open(pyconf_path)
     config_text = config_file.read()
     config_text = pre_process_ifdefs(config_text, conditions)
     config_text = pre_process_text(config_text, conditions,
                                    placeholders)
+
     ast = parse_python_struct(config_text)
     config = ast_node_to_dict(ast)
     template_file = open(template_path)
