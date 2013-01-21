@@ -39,8 +39,9 @@
 
 extern "C" {
 #include <ngx_http.h>
-#include <pthread.h>
 }
+
+#include <pthread.h>
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/headers.h"
