@@ -44,25 +44,4 @@ def write_void(ps, level):
 
 def set_writer(writer):
     global global_writer
-
     global_writer = writer
-
-def emit_val_or_default(dict, key, rep):
-    global global_writer
-
-    if not key in dict:
-        global_writer(rep)
-    else:
-        global_writer(dict[key])
-
-def emit_pagespeed_directive(prefix, directive, val):
-    global global_writer
-
-    if isinstance(val, list):
-        for (index, item) in enumerate(val):
-            emit_pagespeed_directive(prefix, directive, item)
-    else:
-        global_writer(prefix + 'pagespeed ' + directive + ' '
-                      + str(val) + ';\n')
-
-
