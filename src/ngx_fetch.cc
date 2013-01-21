@@ -159,8 +159,8 @@ namespace net_instaweb {
   void NgxFetch::CallbackDone(bool success) {
     if (async_fetch_ == NULL) {
       LOG(FATAL) << "BUG: NgxFetch callback called more than once on same fetch"
-        << str_url_.c_str() << "(" << this << ").Please report this"
-        << "at https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss";
+                 << str_url_.c_str() << "(" << this << ").Please report this"
+                 << "at https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss";
       return;
     }
 
