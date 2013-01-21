@@ -116,7 +116,7 @@ ngx_int_t string_piece_to_buffer_chain(
     }
 
     if (sp.size() == 0) {
-      CHECK_EQ(0, offset);
+      CHECK(offset == 0);
       b->pos = b->start = b->end = b->last = NULL;
       // The purpose of this buffer is just to pass along last_buf.
       b->sync = 1;
