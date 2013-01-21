@@ -115,7 +115,7 @@ class NgxBaseFetch : public AsyncFetch {
   int pipe_fd_;
   // How many active references there are to this fetch. Starts at two,
   // decremented once when Done() is called and once when Release() is called.
-  bool references_;
+  int references_;
   pthread_mutex_t mutex_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
