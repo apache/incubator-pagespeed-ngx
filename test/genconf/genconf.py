@@ -119,7 +119,6 @@ def pre_process_ifdefs(cfg,conditions):
                 raise Error("unmatched #endif found in input")
             ifstack.pop()
         else:
-            # TODO(oschaaf): bound check
             if not False in ifstack:
                 ret.append(line)
 

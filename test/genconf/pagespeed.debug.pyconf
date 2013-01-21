@@ -261,7 +261,7 @@ pagespeed: {
      # Don't want global slurp inheriting into :8080
      InheritVHostConfig: "off",
      MessageBufferSize: 100000,
-    
+
      # We want backtraces to be dumped during the load test, as
      # one of its purposes is to discover crash bugs.
      InstallCrashHandler: "on",
@@ -295,13 +295,13 @@ pagespeed: {
 pagespeed_if:{
     spdy: {
         # A setting one might want...
-  	DisableFilters: ["combine_css",
-  	# Settings that doesn't make much sense, but which we want for tests.
+        DisableFilters: ["combine_css",
+        # Settings that doesn't make much sense, but which we want for tests.
                          "rewrite_css",
- 	                 "extend_cache",
-  	                 "rewrite_images"],
+                         "extend_cache",
+                         "rewrite_images"],
     },
-    "!spdy": { 
+    "!spdy": {
       ShardDomain: "nonspdy.example.com s1.example.com,s2.example.com",
     },
 }, #pagespeed_if
@@ -311,7 +311,7 @@ directories: [
 locations: [
     {
         path: "/mod_pagespeed_log_request_headers.js",
-  	apache_literal: { value: "SetHandler mod_pagespeed_log_request_headers\n" },
+        apache_literal: { value: "SetHandler mod_pagespeed_log_request_headers\n" },
     },
     {
         wildcard_path: "/mod_pagespeed_test/response_headers.html*",
@@ -323,13 +323,13 @@ locations: [
     },
     {
         path: "/mod_pagespeed_test/max_html_parse_size",
-	pagespeed: { 
+        pagespeed: {
             MaxHtmlParseBytes: 5000,
         }
     },
     {
         path: "/mod_pagespeed_test/https_fetch",
-	pagespeed: { 
+        pagespeed: {
             Domain: "https://modpagespeed.com",
             MapProxyDomain: "http://@@APACHE_DOMAIN@@/modpagespeed_dot_com https://modpagespeed.com/do_not_modify",
         }
@@ -339,7 +339,7 @@ locations: [
     # site, if it is to be optimized by mod_pagespeed.
     {
         path: "/mod_pagespeed_example",
-	xapache_literal: 
+        xapache_literal: 
         {
             value:"""<IfModule headers_module>
     # To enable to show that mod_pagespeed to rewrites web pages, we must
@@ -371,42 +371,42 @@ locations: [
     {
         path: "/mod_pagespeed_test/shard",
         pagespeed: {
-	    ShardDomain: "\"@@APACHE_DOMAIN@@\" shard1,shard2,",
-	    RewriteLevel: "PassThrough",
-	    EnableFilters: "extend_cache",
+            ShardDomain: "\"@@APACHE_DOMAIN@@\" shard1,shard2,",
+            RewriteLevel: "PassThrough",
+            EnableFilters: "extend_cache",
         }
     },
-    { 
+    {
         path: "/",
         # This is enabled to make sure we don't crash mod_negotiation.
-    	add_options: ["MultiViews"],
+        add_options: ["MultiViews"],
     },
     {
-	path: "/mod_pagespeed_test/",
+        path: "/mod_pagespeed_test/",
         # Some versions of mod_rewrite will refuse to do any work if
         # symlink handling is off.
-    	add_options: ["SymLinksIfOwnerMatch"],
+        add_options: ["SymLinksIfOwnerMatch"],
     },
     {
-	path: "/mod_pagespeed_test/close_connection/",
-    	add_options: ["SymLinksIfOwnerMatch"],
+        path: "/mod_pagespeed_test/close_connection/",
+        add_options: ["SymLinksIfOwnerMatch"],
         # Helps tests whether we successfully strip Connection:close
         # results from the origin.
         headers: [{ action:"append", name:"Connection", value:"close"}],
     },
     {
-	path: "/mod_pagespeed_test/compressed/",
+        path: "/mod_pagespeed_test/compressed/",
         # Files in this directory are already compressed so always add
         # the right header.
         headers: [
-            { 
-                action:"set", 
-                name:"Cache-Control", 
+            {
+                action:"set",
+                name:"Cache-Control",
                 value:"max-age=600"
             },
-            { 
-                action:"append", 
-                name:"Content-Encoding", 
+            {
+                action:"append",
+                name:"Content-Encoding",
                 value:"gzip"
             },
         ],
@@ -418,78 +418,78 @@ locations: [
         ]
     },
     {
-	path: "/mod_pagespeed_test/no_cache/",
+        path: "/mod_pagespeed_test/no_cache/",
         # Files in this directory should be served uncacheable.
         headers: [{ action:"set", name:"Cache-control", value:"no-cache"}],
     },
     # Set jpeg Quality
     {
         path: "/mod_pagespeed_test/jpeg_rewriting/",
-	pagespeed: {
-	    JpegRecompressionQuality: 70,
-	}
+        pagespeed: {
+            JpegRecompressionQuality: 70,
+        }
     },
     # Set Generic Image Quality
     {
         path: "/mod_pagespeed_test/webp_rewriting",
-	pagespeed: {
-	    ImageRecompressionQuality: 75,
-	}
+        pagespeed: {
+            ImageRecompressionQuality: 75,
+        }
     },
     # Set Webp Quality
     {
         path: "/mod_pagespeed_test/image_rewriting",
-	pagespeed: {
-	    ImageWebpRecompressionQuality: 65, 
-	}
+        pagespeed: {
+            ImageWebpRecompressionQuality: 65,
+        }
     },
     # This Directory does not even exist, but by setting some options in that
     # scope we test to make sure the options we claim are really settable in
     # .htaccess.  Note that <Directory> and .htaccess are enforced the same way.
     {
         path: "/mod_pagespeed_test/htaccess_test",
-	pagespeed_status: "on",
-	pagespeed: {
-  	    Allow: "*",
-  	    AvoidRenamingIntrospectiveJavascript: "on",
-  	    BeaconUrl: "foo",
-  	    CombineAcrossPaths: "off",
- 	    CssFlattenMaxBytes: 100,
- 	    CssImageInlineMaxBytes: 100,
-	    CssInlineMaxBytes: 100,
-  	    CssOutlineMinBytes: 10000,
-  	    DisableFilters: "rewrite_images",
-  	    Disallow: "*bad*",
-  	    Domain: "example.com",
-  	    EnableFilters: "extend_cache",
-  	    ImageInlineMaxBytes: 100,
-  	    ImageLimitOptimizedPercent: 50,
- 	    ImageLimitResizeAreaPercent: 50,
-  	    JpegRecompressionQuality: 85,
-  	    JsInlineMaxBytes: 100,
-  	    JsOutlineMinBytes: 10000,
-  	    LowercaseHtmlNames: "on",
-  	    MapOriginDomain: "localhost example.com",
-  	    MapRewriteDomain: "cdn.com example.com",
- 	    MaxHtmlParseBytes: 100000,
-  	    MaxInlinedPreviewImagesIndex: 10,
-  	    MinImageSizeLowResolutionBytes: 100,
-  	    ModifyCachingHeaders: "off",
-  	    RetainComment: "*ad_tag*",
-  	    RewriteLevel: "PassThrough",
+        pagespeed_status: "on",
+        pagespeed: {
+            Allow: "*",
+            AvoidRenamingIntrospectiveJavascript: "on",
+            BeaconUrl: "foo",
+            CombineAcrossPaths: "off",
+            CssFlattenMaxBytes: 100,
+            CssImageInlineMaxBytes: 100,
+            CssInlineMaxBytes: 100,
+            CssOutlineMinBytes: 10000,
+            DisableFilters: "rewrite_images",
+            Disallow: "*bad*",
+            Domain: "example.com",
+            EnableFilters: "extend_cache",
+            ImageInlineMaxBytes: 100,
+            ImageLimitOptimizedPercent: 50,
+            ImageLimitResizeAreaPercent: 50,
+            JpegRecompressionQuality: 85,
+            JsInlineMaxBytes: 100,
+            JsOutlineMinBytes: 10000,
+            LowercaseHtmlNames: "on",
+            MapOriginDomain: "localhost example.com",
+            MapRewriteDomain: "cdn.com example.com",
+            MaxHtmlParseBytes: 100000,
+            MaxInlinedPreviewImagesIndex: 10,
+            MinImageSizeLowResolutionBytes: 100,
+            ModifyCachingHeaders: "off",
+            RetainComment: "*ad_tag*",
+            RewriteLevel: "PassThrough",
         }
     },
     {
         path: "/mod_pagespeed_test/forbid_all_disabled/disabled",
-	pagespeed: { 
-   	    # Prevent the enabling of these filters for files in this directory
-    	    # -and- all subdirectories (they can't override it, deliberately).
-    	    ForbidAllDisabledFilters: "true",
-    	    DisableFilters: ["remove_quotes,remove_comments","collapse_whitespace"],
-    	    # Enable this, which was disabled in ../.htaccess, to test that we can
-	    # enable something already disabled at the same time as we forbid all.
-    	    EnableFilters: "inline_css",
-	}
+        pagespeed: {
+            # Prevent the enabling of these filters for files in this directory
+            # -and- all subdirectories (they can't override it, deliberately).
+            ForbidAllDisabledFilters: "true",
+            DisableFilters: ["remove_quotes,remove_comments","collapse_whitespace"],
+            # Enable this, which was disabled in ../.htaccess, to test that we can
+            # enable something already disabled at the same time as we forbid all.
+            EnableFilters: "inline_css",
+        }
     },
 #ifdef PER_VHOST_STATS
    {
@@ -536,31 +536,31 @@ name_virtual_hosts: [
         port: @@APACHE_SECONDARY_PORT@@
     }
 ],
-servers: [ 
+servers: [
     {
         address: "localhost",
-    	port: @@APACHE_SECONDARY_PORT@@,
-    	server_name: "secondary.example.com",
-    	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed_status: "on",
-    	pagespeed: { 
-	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/_secondary/\"",
-	    MapProxyDomain: "secondary.example.com/pss_images http://ref.pssdemos.com/filter/images",
-  	    # This is the same memcached instance as the root configuration,
-  	    # but with a different file-cache path.
+        port: @@APACHE_SECONDARY_PORT@@,
+        server_name: "secondary.example.com",
+        root: "@@APACHE_DOC_ROOT@@",
+        pagespeed_status: "on",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/_secondary/\"",
+            MapProxyDomain: "secondary.example.com/pss_images http://ref.pssdemos.com/filter/images",
+            # This is the same memcached instance as the root configuration,
+            # but with a different file-cache path.
 #MEMCACHED  MemcachedServers: "localhost:6765",
 #ifndef nginx
 # TODO(oschaaf):
-  	    CacheFlushFilename: "cache.flush",
+            CacheFlushFilename: "cache.flush",
 #endif
-  	    # If you uncomment this, the test will fail, proving we can disable
-  	    # cache-flush polling.
-  	    # CacheFlushPollIntervalSec: 0,
-	    EnableFilters: "rewrite_css,rewrite_images",
-  	    # Helps testing whether the configuration of reporting 'unload' time works.
-  	    ReportUnloadTime: "on",
+            # If you uncomment this, the test will fail, proving we can disable
+            # cache-flush polling.
+            # CacheFlushPollIntervalSec: 0,
+            EnableFilters: "rewrite_css,rewrite_images",
+            # Helps testing whether the configuration of reporting 'unload' time works.
+            ReportUnloadTime: "on",
 
-    	},#pagespeed
+        },#pagespeed
 #ifdef REWRITE
         # These lines are only needed for the mod_rewrite test, where
         # we are just trying to prove that we remove mod_rewrite from
@@ -585,9 +585,9 @@ servers: [
         ],
 #endif
         headers: [
-            { 
-                action:"set", 
-                name:"vhost", 
+            {
+                action:"set",
+                name:"vhost",
                 value:"secondary.example.com"
             },
         ],
@@ -595,61 +595,61 @@ servers: [
     # Sets up a logical home-page server on www.example.com
     {
         address: "localhost",
-    	port: @@APACHE_SECONDARY_PORT@@,
-    	server_name: "www.example.com",
-    	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed: {  
-  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+        port: @@APACHE_SECONDARY_PORT@@,
+        server_name: "www.example.com",
+        root: "@@APACHE_DOC_ROOT@@",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
 #ifndef nginx
-  	    LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
+            LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
 #endif
-  	    MapRewriteDomain: "cdn.example.com origin.example.com",
-  	    RewriteLevel: "PassThrough",
-  	    EnableFilters: "rewrite_css,rewrite_images",
+            MapRewriteDomain: "cdn.example.com origin.example.com",
+            RewriteLevel: "PassThrough",
+            EnableFilters: "rewrite_css,rewrite_images",
         },
         headers: [
-            { 
-                action:"set", 
-                name:"vhost", 
+            {
+                action:"set",
+                name:"vhost",
                 value:"www.example.com"
             },
-	]
+        ]
     },
     # Sets up a logical origin for CDNs to fetch content from, on origin.example.com.
     {
         address: "localhost",
-    	port: @@APACHE_SECONDARY_PORT@@,
-    	server_name: "origin.example.com",
-    	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed: {  
-  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+        port: @@APACHE_SECONDARY_PORT@@,
+        server_name: "origin.example.com",
+        root: "@@APACHE_DOC_ROOT@@",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
 #ifndef nginx
-  	    LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
+            LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
 #endif
-  	    MapRewriteDomain: "cdn.example.com origin.example.com",
-  	    RewriteLevel: "PassThrough",
-  	    EnableFilters: "rewrite_css,rewrite_images",
+            MapRewriteDomain: "cdn.example.com origin.example.com",
+            RewriteLevel: "PassThrough",
+            EnableFilters: "rewrite_css,rewrite_images",
         }
     },
     # Sets up a logical cdn, which is where we tell browsers to fetch resources from.
     {
         address: "localhost",
-    	port: @@APACHE_SECONDARY_PORT@@,
-    	server_name: "cdn.example.com",
-    	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed: {  
-  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+        port: @@APACHE_SECONDARY_PORT@@,
+        server_name: "cdn.example.com",
+        root: "@@APACHE_DOC_ROOT@@",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
 #ifndef nginx
-  	    LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
+            LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
 #endif
-  	    MapRewriteDomain: "cdn.example.com origin.example.com",
-  	    RewriteLevel: "PassThrough",
-  	    EnableFilters: "rewrite_css,rewrite_images",
+            MapRewriteDomain: "cdn.example.com origin.example.com",
+            RewriteLevel: "PassThrough",
+            EnableFilters: "rewrite_css,rewrite_images",
         },
         headers: [
-            { 
-                action:"set", 
-                name:"vhost", 
+            {
+                action:"set",
+                name:"vhost",
                 value: "cdn.example.com"
             },
         ]
@@ -658,21 +658,21 @@ servers: [
     # affecting any other hosts.
     {
         address: "localhost",
-    	port: @@APACHE_SECONDARY_PORT@@,
-    	server_name: "forbidden.example.com",
-    	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed: {  
-  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-  	    # Start with all core filters enabled ...
-  	    RewriteLevel: "CoreFilters",
-  	    # ... then forbid these filters ...
+        port: @@APACHE_SECONDARY_PORT@@,
+        server_name: "forbidden.example.com",
+        root: "@@APACHE_DOC_ROOT@@",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+           # Start with all core filters enabled ...
+            RewriteLevel: "CoreFilters",
+            # ... then forbid these filters ...
 #ifndef nginx
 
-  	    ForbidFilters: ["remove_quotes,remove_comments,collapse_whitespace",
-  	    		   "rewrite_css,resize_images"],
+            ForbidFilters: ["remove_quotes,remove_comments,collapse_whitespace",
+                           "rewrite_css,resize_images"],
 #endif
-  	    # ... and disable but not forbid this one (to ensure we retain its URL).
-  	    DisableFilters: "inline_css",
+            #and disable but not forbid this one (to ensure we retain its URL).
+            DisableFilters: "inline_css",
         }
     },
     # Sets up a logical home-page server on
@@ -681,96 +681,96 @@ servers: [
     # max_cacheable_response_content_length.
     {
         address: "localhost",
-    	port: @@APACHE_SECONDARY_PORT@@,
-    	server_name: "max_cacheable_content_length.example.com",
-    	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed: {  
-  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-  	    RewriteLevel: "PassThrough",
-	    EnableFilters: "rewrite_javascript",
-  	    MaxCacheableContentLength: 85,
+        port: @@APACHE_SECONDARY_PORT@@,
+        server_name: "max_cacheable_content_length.example.com",
+        root: "@@APACHE_DOC_ROOT@@",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+            RewriteLevel: "PassThrough",
+            EnableFilters: "rewrite_javascript",
+            MaxCacheableContentLength: 85,
         }
     },
     # Set the value of the X-Mod-Pagespeed header
     {
         address: "localhost",
-    	port: @@APACHE_SECONDARY_PORT@@,
-    	server_name: "xheader.example.com",
-    	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed: {  
-  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-	    XHeaderValue: "\"UNSPECIFIED VERSION\""
+        port: @@APACHE_SECONDARY_PORT@@,
+        server_name: "xheader.example.com",
+        root: "@@APACHE_DOC_ROOT@@",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+            XHeaderValue: "\"UNSPECIFIED VERSION\""
         }
     },
     {
         address: "localhost",
-    	port: @@APACHE_SECONDARY_PORT@@,
-    	server_name: "domain_hyperlinks_on.example.com",
-    	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed: {  
-  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-  	    DomainRewriteHyperlinks: "on",
-  	    MapRewriteDomain: "http://dst.example.com http://src.example.com",
-  	    EnableFilters: "rewrite_domains",
+        port: @@APACHE_SECONDARY_PORT@@,
+        server_name: "domain_hyperlinks_on.example.com",
+        root: "@@APACHE_DOC_ROOT@@",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+            DomainRewriteHyperlinks: "on",
+            MapRewriteDomain: "http://dst.example.com http://src.example.com",
+            EnableFilters: "rewrite_domains",
         }
     },
     {
         address: "localhost",
-    	port: @@APACHE_SECONDARY_PORT@@,
-    	server_name: "domain_hyperlinks_off.example.com",
-    	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed: {  
-  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-  	    DomainRewriteHyperlinks: "off",
-  	    MapRewriteDomain: "http://dst.example.com http://src.example.com",
-  	    EnableFilters: "rewrite_domains",
+        port: @@APACHE_SECONDARY_PORT@@,
+        server_name: "domain_hyperlinks_off.example.com",
+        root: "@@APACHE_DOC_ROOT@@",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+            DomainRewriteHyperlinks: "off",
+            MapRewriteDomain: "http://dst.example.com http://src.example.com",
+            EnableFilters: "rewrite_domains",
         }
     },
     {
         address: "localhost",
-    	port: @@APACHE_SECONDARY_PORT@@,
-    	server_name: "client_domain_rewrite.example.com",
-    	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed: {
-  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
- 	    MapRewriteDomain: "http://client_domain_rewrite.example.com http://@@APACHE_DOMAIN@@",
-  	    ClientDomainRewrite: "true",
-  	    EnableFilters: "rewrite_domains",
+        port: @@APACHE_SECONDARY_PORT@@,
+       server_name: "client_domain_rewrite.example.com",
+        root: "@@APACHE_DOC_ROOT@@",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+            MapRewriteDomain: "http://client_domain_rewrite.example.com http://@@APACHE_DOMAIN@@",
+            ClientDomainRewrite: "true",
+            EnableFilters: "rewrite_domains",
         }
     },
     {
         address: "localhost",
-    	port: @@APACHE_SECONDARY_PORT@@,
-    	server_name: "url_attribute.example.com",
-    	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed: {  
-  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-  	    # This is used for testing dynamically defined url-valued
-  	    # attributes
-  	    UrlValuedAttribute: ["span src Hyperlink",
-  	    			 "hr imgsrc Image",
-				 "custom a Image",
-				 "custom b otherResource",
-				 "custom c hyperlink"],
-  	    DomainRewriteHyperlinks: "on",
-	    MapRewriteDomain: "http://dst.example.com http://src.example.com",
-  	    EnableFilters: "rewrite_domains",
+        port: @@APACHE_SECONDARY_PORT@@,
+        server_name: "url_attribute.example.com",
+        root: "@@APACHE_DOC_ROOT@@",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+            # This is used for testing dynamically defined url-valued
+            # attributes
+            UrlValuedAttribute: ["span src Hyperlink",
+                                 "hr imgsrc Image",
+                                 "custom a Image",
+                                 "custom b otherResource",
+                                 "custom c hyperlink"],
+            DomainRewriteHyperlinks: "on",
+            MapRewriteDomain: "http://dst.example.com http://src.example.com",
+            EnableFilters: "rewrite_domains",
         }
     },
     {
         address: "localhost",
-    	port: @@APACHE_SECONDARY_PORT@@,
-    	server_name: "absolute_urls.example.com",
-    	root: "@@APACHE_DOC_ROOT@@",
-	pagespeed: {  
-  	    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-	    # This is used for testing that we don't load resources from
-  	    # absolute urls during resource reconstruction unless they're for
-  	    # our own hostname.  While ModPagespeedDomain should no longer
-  	    # have an effect on whether we load absolute urls, we need to
-  	    # include it to be sure we're failing because of the code under
-  	    # test and not because the domain lawyer is rejecting it.
-  	    Domain: "http://example.com",
+        port: @@APACHE_SECONDARY_PORT@@,
+        server_name: "absolute_urls.example.com",
+        root: "@@APACHE_DOC_ROOT@@",
+        pagespeed: {
+            FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+            # This is used for testing that we don't load resources from
+            # absolute urls during resource reconstruction unless they're for
+            # our own hostname.  While ModPagespeedDomain should no longer
+            # have an effect on whether we load absolute urls, we need to
+            # include it to be sure we're failing because of the code under
+            # test and not because the domain lawyer is rejecting it.
+            Domain: "http://example.com",
         }
     },
 #ifdef COVERAGE
@@ -784,28 +784,28 @@ servers: [
         # Proxy using SERF
         pagespeed: {
             TestProxy: "on",
-   	     FetchProxy: "\"127.0.0.1:8081\"",
+             FetchProxy: "\"127.0.0.1:8081\"",
 #MEMCACHE_COVERAGE   MemcachedServers: "localhost:6765",
-   	     FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-   	     RewriteLevel: "AllFilters",
-   	     EnableFilters: "elide_attributes",
-   	     Domain: "*",
-   	     FileCacheSizeKb: 102400,
-   	     FileCacheCleanIntervalMs: 3600000,
-   	     LRUCacheKbPerProcess:     1024,
-   	     LRUCacheByteLimit:        16384,
-   	     CssFlattenMaxBytes:       2048,
-   	     CssInlineMaxBytes:        2048,
-   	     CssImageInlineMaxBytes:   2048,
-   	     ImageInlineMaxBytes:      2048,
-   	     JsInlineMaxBytes:         2048,
-   	     CssOutlineMinBytes:       3000,
-   	     JsOutlineMinBytes:        3000,
-   	     ImageMaxRewritesAtOnce:      8,
-   	     SlurpFlushLimit:          8192,
-   	     JpegRecompressionQuality:   -1,
-   	     ImageLimitOptimizedPercent:  100,
-   	     ImageLimitResizeAreaPercent: 100,
+             FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+             RewriteLevel: "AllFilters",
+             EnableFilters: "elide_attributes",
+             Domain: "*",
+             FileCacheSizeKb: 102400,
+             FileCacheCleanIntervalMs: 3600000,
+             LRUCacheKbPerProcess:     1024,
+             LRUCacheByteLimit:        16384,
+             CssFlattenMaxBytes:       2048,
+             CssInlineMaxBytes:        2048,
+             CssImageInlineMaxBytes:   2048,
+             ImageInlineMaxBytes:      2048,
+             JsInlineMaxBytes:         2048,
+             CssOutlineMinBytes:       3000,
+             JsOutlineMinBytes:        3000,
+             ImageMaxRewritesAtOnce:      8,
+             SlurpFlushLimit:          8192,
+             JpegRecompressionQuality:   -1,
+             ImageLimitOptimizedPercent:  100,
+             ImageLimitResizeAreaPercent: 100,
         }, #pagespeed
        locations: [
            {
@@ -839,10 +839,10 @@ servers: [
         },
         locations: [
             {
-		path: "/mod_pagespeed_message",
-        	##Allow from localhost
-        	##Allow from 127.0.0.1
-        	##SetHandler mod_pagespeed_message
+                path: "/mod_pagespeed_message",
+                ##Allow from localhost
+                ##Allow from 127.0.0.1
+                ##SetHandler mod_pagespeed_message
             },
         ]
     }, #server
@@ -862,15 +862,15 @@ servers: [
         #ErrorLog   "@@MOD_PAGESPEED_CACHE@@/logs/error_log"
         #CustomLog  "@@MOD_PAGESPEED_CACHE@@/logs/access_log" common
 
-	      pagespeed_status: "on",
-	      pagespeed: { 
-	          FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-	          RewriteLevel: "PassThrough",
+             pagespeed_status: "on",
+             pagespeed: {
+                 FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
+                 RewriteLevel: "PassThrough",
             EnableFilters: "extend_cache",
             Domain: "*",
-	      },
-	      # Proxy through to 8081.
-        locations: [ 
+             },
+             # Proxy through to 8081.
+        locations: [
             {
                 path: "/",
                 proxy_pass: "http://localhost:8081/",
@@ -886,7 +886,7 @@ servers: [
    ##ErrorLog   "@@MOD_PAGESPEED_CACHE@@-alt/logs/error_log"
    ##CustomLog  "@@MOD_PAGESPEED_CACHE@@-alt/logs/access_log" common
 
-	      pagespeed_status: "off",
+        pagespeed_status: "off",
         pagespeed: {
             FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@-alt/\"",
             RewriteLevel: "PassThrough",
