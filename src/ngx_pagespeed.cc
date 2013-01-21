@@ -1440,13 +1440,15 @@ ps_static_handler(ngx_http_request_t* r) {
 // and for static content like /ngx_pagespeed_static/js_defer.q1EBmcgYOC.js
 ngx_int_t
 ps_content_handler(ngx_http_request_t* r) {
+  if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
+    return NGX_DECLINED;
+  }
+
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   if (cfg_s->server_context == NULL) {
     // Pagespeed is on for some server block but not this one.
     return NGX_DECLINED;
   }
-
-  // TODO(jefftk): return NGX_DECLINED for non-get non-head requests.
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed handler \"%V\"", &r->uri);
