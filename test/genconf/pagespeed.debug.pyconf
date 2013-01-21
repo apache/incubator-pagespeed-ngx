@@ -511,7 +511,6 @@ locations: [
 ], #locations
 
 listen: [
-    # oschaaf(TODO): where is 8080 enabled? this wasn't here
     8080,
     @@APACHE_SECONDARY_PORT@@,
     #COVERAGE 8081,
@@ -548,7 +547,7 @@ servers: [
             # but with a different file-cache path.
 #MEMCACHED  MemcachedServers: "localhost:6765",
 #ifndef nginx
-# TODO(oschaaf):
+# TODO(oschaaf): uncomment after this is ported to nginx
             CacheFlushFilename: "cache.flush",
 #endif
             # If you uncomment this, the test will fail, proving we can disable
