@@ -24,9 +24,9 @@
 
 #include <cstdio>
 
+#include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_thread_compatible_pool.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
-#include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
