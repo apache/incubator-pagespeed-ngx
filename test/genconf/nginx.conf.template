@@ -42,13 +42,6 @@ def write_servers_open_item(server,level):
 def write_servers_close_item(server,level):
     emit(indent("}\n",level))
 
-def write_directories_open_item(server,level):
-    raise Exception("nginx does not support directories " + server["path"])
-    write_locations_open_item(server,level,1)
-
-def write_directories_close_item(server,level):
-    emit(indent("}\n",level))
-
 def write_locations_open_item(server,level,is_dir=0):
     if "path" in server:
        if is_dir:
@@ -211,10 +204,6 @@ key_to_writer = {
     "servers_close": write_void,
     "servers_open_item": write_servers_open_item,
     "servers_close_item": write_servers_close_item,
-    "directories_open": write_void,
-    "directories_close": write_void,
-    "directories_open_item": write_directories_open_item,
-    "directories_close_item": write_directories_close_item,
     "locations_open": write_void,
     "locations_close": write_void,
     "locations_open_item": write_locations_open_item,

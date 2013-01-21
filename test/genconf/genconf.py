@@ -128,7 +128,6 @@ def pre_process_ifdefs(cfg,conditions):
     if not len(ifstack) == 1:
         raise Error("#ifdef not matched with an #endif")
 
-    # TODO(oschaaf): ensure ifstack length equals 1 here
     return "\n".join(ret)
 
 def copy_locations_to_virtual_hosts(config):

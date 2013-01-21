@@ -1,7 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
-
-
 def write_cfg(key_to_writer, config, level=0):
     global global_writer
 
@@ -37,22 +33,16 @@ def write_cfg(key_to_writer, config, level=0):
                     global_writer(indent('', level) + "no writer for '"
                                   + key + "'\n")
 
-
 def indent(txt, level):
     return ' ' * (level * 4) + txt
 
-
 def write_void(ps, level):
     pass
-
 
 def set_writer(writer):
     global global_writer
 
     global_writer = writer
-
-
-# TODO(oschaaf): rename to emit_val_or_default
 
 def emit_val_or_default(dict, key, rep):
     global global_writer
@@ -61,7 +51,6 @@ def emit_val_or_default(dict, key, rep):
         global_writer(rep)
     else:
         global_writer(dict[key])
-
 
 def emit_pagespeed_directive(prefix, directive, val):
     global global_writer
