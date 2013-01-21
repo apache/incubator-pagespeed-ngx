@@ -1,3 +1,20 @@
+# Copyright 2013 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Author: oschaaf@gmail.com (Otto van der Schaaf)
+
+
 {
 # Port map:
 # 8080 -- master configuration.
@@ -12,9 +29,11 @@
 # add_instrumentation xhtml tests to work, though, we have to enable
 # it here.  If we change pagespeed.conf.template to enable XHTML by
 # default then we can eliminate this line.
-apache_literal: {
+#ifdef apache
+literal: {
     value: "AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml\n"
 },
+#endif
 required_modules: [
     "mime",
     "pagespeed",
@@ -289,6 +308,7 @@ pagespeed: {
 
 }, #pagespeed:
 
+#ifdef apache
 # Test coverage for <ModPagespeedIf>
 pagespeed_if:{
     spdy: {
@@ -303,13 +323,13 @@ pagespeed_if:{
       ShardDomain: "nonspdy.example.com s1.example.com,s2.example.com",
     },
 }, #pagespeed_if
-directories: [
-
-], #directories
+#endif
 locations: [
     {
         path: "/mod_pagespeed_log_request_headers.js",
-        apache_literal: { value: "SetHandler mod_pagespeed_log_request_headers\n" },
+#ifdef apache
+        literal: { value: "SetHandler mod_pagespeed_log_request_headers\n" },
+#endif
     },
     {
         wildcard_path: "/mod_pagespeed_test/response_headers.html*",
@@ -337,7 +357,8 @@ locations: [
     # site, if it is to be optimized by mod_pagespeed.
     {
         path: "/mod_pagespeed_example",
-        xapache_literal: 
+#ifdef apache
+        literal: 
         {
             value:"""<IfModule headers_module>
     # To enable to show that mod_pagespeed to rewrites web pages, we must
@@ -365,6 +386,7 @@ locations: [
     </FilesMatch>
   </IfModule>
 """}
+#endif
     },
     {
         path: "/mod_pagespeed_test/shard",
@@ -492,7 +514,9 @@ locations: [
 #ifdef PER_VHOST_STATS
    {
        path: "/mod_pagespeed_global_statistics",
-       apache_literal: {
+#ifdef apache
+       literal: {
+#endif
        value: """
        Order allow,deny
        Allow from localhost

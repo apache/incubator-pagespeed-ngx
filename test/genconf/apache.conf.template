@@ -180,11 +180,11 @@ key_to_writer = {
     "headers_open": write_headers_open,
     "mime_types_open": write_void,
     "mime_types_open_item": write_mime_types_open_item,
-    "apache_literal_open": write_apache_literal_open,
+    "literal_open": write_apache_literal_open,
     "add_options_open": write_add_options_open,
     "rewrite_rules_open": write_rewrite_rules_open,
 }
 
-}$# apache configuration, generated with mode [@TODO@]
+}$
 ${write_cfg(key_to_writer, config)
 }$

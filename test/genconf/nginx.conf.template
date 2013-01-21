@@ -134,7 +134,6 @@ def write_required_modules_open(ps,level):
             emit(indent("gzip_types text/plain;\n",level))
             emit(indent("gzip_types text/xml;\n",level))
             emit(indent("gzip_http_version 1.0;\n",level))
-        ## TODO(oschaaf): cgi-script module
         #elif module_name == "cgi-script":
         #    emit("")
         elif module_name == "mime":
@@ -188,8 +187,9 @@ key_to_writer = {
     "pagespeed_open": write_pagespeed_open,
     "pagespeed_close": write_void,
 # not implemented yet in nginx, left in as an example
-#    "pagespeed_if_open": write_pagespeed_if_open,
-#    "pagespeed_if_close": write_pagespeed_if_close,
+# these are currently apache specific in the configuration
+    "pagespeed_if_open": write_pagespeed_if_open,
+    "pagespeed_if_close": write_pagespeed_if_close,
     "pagespeed_if_open": write_void,
     "pagespeed_if_close": write_void,
     "listen_open": write_listen_open,
@@ -205,7 +205,7 @@ key_to_writer = {
     "rewrite_rules_open": write_rewrite_rules_open,
 }
 
-}$# nginx configuration, generated using 'TODO (oschaaf): '
+}$
 daemon off;
 master_process off;
 error_log  logs/error.log  notice;

@@ -1,5 +1,36 @@
 #!/usr/bin/python
+# Copyright 2013 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Author: oschaaf@gmail.com (Otto van der Schaaf)
+
+
 # configuration generator for mod_pagespeed
+
+# TODO(oschaaf): add license banner, author
+# TODO(oschaaf): polish location matching
+# TODO(oschaaf): change apache_literal to a literal in a condition block
+# TODO(oschaaf): create a README
+# TODO(oschaaf): list failing modes per server
+# TODO(oschaaf): insert blurb with date/time, and flags in template header
+# TODO(oschaaf): nginx + cgi
+# TODO(oschaaf:  nginx + ssl
+# TODO(oschaaf): wildcard locations?
+# TODO(oschaaf): filesmatch stuff in pyconf
+# TODO(oschaaf): check usage of proper formatting string everywhere
+# TODO(oschaaf): fix long lines
+# TODO(oschaaf): document
 
 import sys
 from genconf import execute_template
