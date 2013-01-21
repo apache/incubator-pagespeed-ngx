@@ -273,7 +273,7 @@ namespace net_instaweb {
     RequestHeaders* request_headers = async_fetch_->request_headers();
     ConstStringStarVector v;
     size_t size = 0;
-    size = sizeof("GET ") - 1 + url_.uri.len + sizeof(" HTTP/1.1\r\n") - 1;
+    size = sizeof("GET ") - 1 + url_.uri.len + sizeof(" HTTP/1.0\r\n") - 1;
     for (int i = 0; i < request_headers->NumAttributes(); i++) {
 
       // name: value\r\n
@@ -323,7 +323,7 @@ namespace net_instaweb {
     pc.socklen = sizeof(struct sockaddr_in);
     pc.name = &url_.host;
 
-    // get callback is dump function, it just returns NGX_OK
+    // get callback is dummy function, it just returns NGX_OK
     pc.get = ngx_event_get_peer;
     pc.log_error = NGX_ERROR_ERR;
     pc.log = fetcher_->log_;
@@ -432,7 +432,7 @@ namespace net_instaweb {
     ResponseHeaders* response_headers =
       fetch->async_fetch_->response_headers();
     response_headers->SetStatusAndReason(
-        static_cast<HttpStatus::Code>(fetch->get_code()));
+        static_cast<HttpStatus::Code>(fetch->get_status_code()));
     response_headers->set_major_version(fetch->get_major_version());
     response_headers->set_minor_version(fetch->get_minor_version());
     fetch->set_response_handler(NgxFetchHandleHeader);

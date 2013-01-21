@@ -11,8 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+# Environment Variables (Optional):
+#   MOD_PAGESPEED_DIR: absolute path to the mod_pagespeed/src directory
+#   PSOL_BINARY: absolute path to pagespeed_automatic.a
 
-mod_pagespeed_dir="$ngx_addon_dir/../mod_pagespeed/src"
+mod_pagespeed_dir="${MOD_PAGESPEED_DIR:-unset}"
+if [ "$mod_pagespeed_dir" = "unset" ] ; then
+  mod_pagespeed_dir="$ngx_addon_dir/psol/include"
+  build_from_source=false
+else
+  build_from_source=true
+fi
+
+echo "mod_pagespeed_dir=$mod_pagespeed_dir"
+echo "build_from_source=$build_from_source"
+
 ngx_feature="psol"
 ngx_feature_name=""
 ngx_feature_run=no
@@ -30,58 +44,74 @@ uname_os=`uname`
 uname_arch=`uname -m`
 
 if [ $uname_os = 'Linux' ]; then
-   os_name='linux'
+  os_name='linux'
 elif [ $uname_os = 'Darwin' ]; then
-   os_name='mac'
+  os_name='mac'
 else
-   echo "OS not supported: $uname_os"
-   exit 1
+  echo "OS not supported: $uname_os"
+  exit 1
 fi
 
 if [ $uname_arch = 'x86_64' ]; then
-   arch_name='x64'
+  arch_name='x64'
 elif [ $uname_arch = 'x86_32' ]; then
-   arch_name='ia32'
+  arch_name='ia32'
 else
-   echo "Architecture not supported: $uname_arch"
-   exit 1
+  echo "Architecture not supported: $uname_arch"
+  exit 1
 fi
 
 if [ "$NGX_DEBUG" = "YES" ]; then
-    buildtype=Debug
+  buildtype=Debug
 else
-    buildtype=Release
+  buildtype=Release
 fi
 
-pagespeed_include="$mod_pagespeed_dir
-                   $mod_pagespeed_dir/third_party/chromium/src/
-                   $mod_pagespeed_dir/third_party/protobuf/src/
-                   $mod_pagespeed_dir/out/$buildtype/obj/gen/
-                   $mod_pagespeed_dir/third_party/apr/src/include/
-                   $mod_pagespeed_dir/third_party/apr/gen/arch/$os_name/$arch_name/include/
-                   $mod_pagespeed_dir/third_party/aprutil/src/include/
-                   $mod_pagespeed_dir/third_party/aprutil/gen/arch/$os_name/$arch_name/include/"
+pagespeed_include="\
+  $mod_pagespeed_dir \
+  $mod_pagespeed_dir/third_party/chromium/src \
+  $mod_pagespeed_dir/third_party/protobuf/src \
+  $mod_pagespeed_dir/out/$buildtype/obj/gen \
+  $mod_pagespeed_dir/third_party/apr/src/include \
+  $mod_pagespeed_dir/third_party/aprutil/src/include \
+  $mod_pagespeed_dir/third_party/apr/gen/arch/$os_name/$arch_name/include \
+  $mod_pagespeed_dir/third_party/aprutil/gen/arch/$os_name/$arch_name/include"
 ngx_feature_path="$pagespeed_include"
-pagespeed_automatic_dir="$mod_pagespeed_dir/net/instaweb/automatic"
-pagespeed_libs="-lstdc++ $pagespeed_automatic_dir/pagespeed_automatic.a -lrt -pthread"
+
+if $build_from_source ; then
+  psol_library_binaries="\
+    $mod_pagespeed_dir/net/instaweb/automatic/pagespeed_automatic.a \
+    $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/serf/libserf.a \
+    $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/aprutil/libaprutil.a \
+    $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/apr/libapr.a"
+else
+  psol_library_dir="$ngx_addon_dir/psol/lib/$buildtype/$os_name/$arch_name"
+  psol_library_binaries="\
+    $psol_library_dir/pagespeed_automatic.a \
+    $psol_library_dir/libserf.a \
+    $psol_library_dir/libaprutil.a \
+    $psol_library_dir/libapr.a"
+fi
+
+pagespeed_libs="-lstdc++ $psol_library_binaries -lrt -pthread"
 ngx_feature_libs="$pagespeed_libs"
 ngx_feature_test="
-    GoogleString output_buffer;
-    net_instaweb::StringWriter write_to_string(&output_buffer);
+  GoogleString output_buffer;
+  net_instaweb::StringWriter write_to_string(&output_buffer);
 
-    net_instaweb::NullMessageHandler handler;
-    net_instaweb::HtmlParse html_parse(&handler);
-    net_instaweb::HtmlWriterFilter html_writer_filter(&html_parse);
+  net_instaweb::NullMessageHandler handler;
+  net_instaweb::HtmlParse html_parse(&handler);
+  net_instaweb::HtmlWriterFilter html_writer_filter(&html_parse);
 
-    html_writer_filter.set_writer(&write_to_string);
-    html_parse.AddFilter(&html_writer_filter);
+  html_writer_filter.set_writer(&write_to_string);
+  html_parse.AddFilter(&html_writer_filter);
 
-    html_parse.StartParse(\"http:example.com\");
-    html_parse.ParseText(
-        \"<html ><body ><h1 >Test</h1 ><p>Test Text</p></body></html>\n\");
-    html_parse.FinishParse();
+  html_parse.StartParse(\"http:example.com\");
+  html_parse.ParseText(
+      \"<html ><body ><h1 >Test</h1 ><p>Test Text</p></body></html>\n\");
+  html_parse.FinishParse();
 
-    printf(\"parsed as: %s\", output_buffer.c_str())"
+  printf(\"parsed as: %s\", output_buffer.c_str())"
 
 # Test whether we have pagespeed and can compile and link against it.
 . "$ngx_addon_dir/cpp_feature"
@@ -89,33 +119,33 @@ ngx_feature_test="
 if [ $ngx_found = yes ]; then
   ps_src="$ngx_addon_dir/src"
   ngx_addon_name=ngx_pagespeed
-  NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ps_src/ngx_fetch.h"
-  NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ps_src/ngx_url_async_fetcher.h"
-  NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ps_src/ngx_cache.h"
-  NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ps_src/ngx_pagespeed.h"
-  NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ps_src/ngx_base_fetch.h"
-  NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ps_src/ngx_server_context.h"
-  NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ps_src/ngx_rewrite_options.h"
-  NGX_ADDON_DEPS="$NGX_ADDON_DEPS $ps_src/ngx_rewrite_driver_factory.h"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/../../mod_pagespeed/src/net/instaweb/apache/apr_thread_compatible_pool.cc"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/../../mod_pagespeed/src/net/instaweb/apache/serf_url_async_fetcher.cc"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/../../mod_pagespeed/src/net/instaweb/apache/apr_mem_cache.cc"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/../../mod_pagespeed/src/net/instaweb/util/key_value_codec.cc"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/../../mod_pagespeed/src/third_party/aprutil/apr_memcache2.c"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_pagespeed.cc"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_rewrite_driver_factory.cc"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_rewrite_options.cc"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_server_context.cc"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_base_fetch.cc"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_cache.cc"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_url_async_fetcher.cc"
-  NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ps_src/ngx_fetch.cc"
+  NGX_ADDON_DEPS="$NGX_ADDON_DEPS \
+    $ps_src/ngx_cache.h \
+    $ps_src/ngx_pagespeed.h \
+    $ps_src/ngx_fetch.h \
+    $ps_src/ngx_url_async_fetcher.h \
+    $ps_src/ngx_base_fetch.h \
+    $ps_src/ngx_server_context.h \
+    $ps_src/ngx_rewrite_options.h \
+    $ps_src/ngx_rewrite_driver_factory.h \
+    $ps_src/ngx_thread_system.h"
+  NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
+    $ps_src/ngx_pagespeed.cc \
+    $ps_src/ngx_rewrite_driver_factory.cc \
+    $ps_src/ngx_rewrite_options.cc \
+    $ps_src/ngx_server_context.cc \
+    $ps_src/ngx_fetch.cc \
+    $ps_src/ngx_url_async_fetcher.cc \
+    $ps_src/ngx_base_fetch.cc \
+    $ps_src/ngx_cache.cc \
+    $ps_src/ngx_thread_system.cc \
+    $mod_pagespeed_dir/net/instaweb/apache/apr_thread_compatible_pool.cc \
+    $mod_pagespeed_dir/net/instaweb/apache/serf_url_async_fetcher.cc \
+    $mod_pagespeed_dir/net/instaweb/apache/apr_mem_cache.cc \
+    $mod_pagespeed_dir/net/instaweb/util/key_value_codec.cc \
+    $mod_pagespeed_dir/third_party/aprutil/apr_memcache2.c"
   HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
-  CORE_LIBS="$CORE_LIBS 
-             $pagespeed_libs
-             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/serf/libserf.a
-             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/aprutil/libaprutil.a
-             $mod_pagespeed_dir/out/$buildtype/obj.target/third_party/apr/libapr.a"
+  CORE_LIBS="$CORE_LIBS $pagespeed_libs"
   CORE_INCS="$CORE_INCS $pagespeed_include"
 else
   cat << END
