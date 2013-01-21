@@ -18,11 +18,11 @@
 
 #include "ngx_rewrite_driver_factory.h"
 
+#include <cstdio>
+
 #include "ngx_cache.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_thread_system.h"
-
-#include <cstdio>
 
 #include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_thread_compatible_pool.h"
