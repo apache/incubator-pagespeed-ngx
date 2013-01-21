@@ -19,6 +19,7 @@
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_url_async_fetcher.h"
+#include "ngx_thread_system.h"
 
 #include <cstdio>
 
@@ -72,8 +73,9 @@ class Writer;
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_msec_t resolver_timeout,
-    ngx_resolver_t* resolver,
-    NgxRewriteOptions* main_conf) :
+  ngx_resolver_t* resolver,
+  NgxRewriteOptions* main_conf) :
+  RewriteDriverFactory(new NgxThreadSystem()),
   shared_mem_runtime_(new NullSharedMem()),
   cache_hasher_(20),
   main_conf_(main_conf),
@@ -97,7 +99,9 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_msec_t resolver_timeout,
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
-  slow_worker_->ShutDown();
+  if (slow_worker_ != NULL) {
+    slow_worker_->ShutDown();
+  }
   ShutDown();
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
@@ -164,7 +168,9 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
-  slow_worker_.reset(new SlowWorker(thread_system()));
+  if (slow_worker_ == NULL) {
+    slow_worker_.reset(new SlowWorker(thread_system()));
+  }
 
   // TODO(jefftk): see the ngx_rewrite_options.h note on OriginRewriteOptions;
   // this would move to OriginRewriteOptions.
@@ -372,6 +378,7 @@ void NgxRewriteDriverFactory::StartThreads() {
   if (threads_started_) {
     return;
   }
+  static_cast<NgxThreadSystem*>(thread_system())->PermitThreadStarting();
   // TODO(jefftk): use a native nginx timer instead of running our own thread.
   // See issue #111.
   SchedulerThread* thread = new SchedulerThread(thread_system(), scheduler());

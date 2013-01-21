@@ -325,7 +325,6 @@ ps_configure(ngx_conf_t* cf,
              net_instaweb::MessageHandler* handler) {
   if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
-    // TODO(oschaaf): these should be deleted on process exit
     *options = new net_instaweb::NgxRewriteOptions();
   }
 
@@ -375,6 +374,8 @@ ps_cleanup_loc_conf(void* data) {
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(data);
   delete cfg_l->handler;
   cfg_l->handler = NULL;
+  delete cfg_l->options;
+  cfg_l->options = NULL;
 }
 
 void
@@ -386,6 +387,8 @@ ps_cleanup_srv_conf(void* data) {
   }
   delete cfg_s->handler;
   cfg_s->handler = NULL;
+  delete cfg_s->options;
+  cfg_s->options = NULL;
 }
 
 void
@@ -931,7 +934,6 @@ ps_determine_request_options(
 
   // Will be NULL if there aren't any options set with query params or in
   // headers.
-  // TODO(oschaaf): seems the acquired options here are never deleted
   *request_options = query_options_success.first;
 
   return true;
@@ -993,6 +995,7 @@ ps_determine_options(ngx_http_request_t* r,
   // settings.
   if (request_options != NULL) {
     (*options)->Merge(*request_options);
+    delete request_options;
   } else if ((*options)->running_furious()) {
     (*options)->set_need_to_store_experiment_data(
         cfg_s->server_context->furious_matcher()->ClassifyIntoExperiment(
@@ -1068,7 +1071,9 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
   }
 
   // Handles its own deletion.  We need to call Release() when we're done with
-  // it, and call Done() on the associated proxy fetch.
+  // it, and call Done() on the associated parent (Proxy or Resource) fetch.  If
+  // we fail before creating the associated fetch then we need to call Done() on
+  // the BaseFetch ourselves.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(
       r, file_descriptors[1],
       net_instaweb::RequestContextPtr(new net_instaweb::RequestContext(
@@ -1078,6 +1083,7 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
   net_instaweb::RewriteOptions* custom_options;
   bool ok = ps_determine_options(r, ctx, &custom_options, &url);
   if (!ok) {
+    ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
     ps_release_request_context(ctx);
     return CreateRequestContext::kError;
   }
@@ -1094,6 +1100,7 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
   }
 
   if (!options->enabled()) {
+    ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
     ps_release_request_context(ctx);
     return CreateRequestContext::kPagespeedDisabled;
   }
@@ -1259,6 +1266,52 @@ ps_set_cache_control(ngx_http_request_t* r, char* cache_control) {
   return NGX_OK;
 }
 
+void
+ps_strip_html_headers(ngx_http_request_t* r) {
+  // We're modifying content, so switch to 'Transfer-Encoding: chunked' and
+  // calculate on the fly.
+  ngx_http_clear_content_length(r);
+
+  // Pagespeed html doesn't need etags: it should never be cached.
+  ngx_http_clear_etag(r);
+
+  // An html page may change without the underlying file changing, because of
+  // how resources are included.  Pagespeed adds cache control headers for
+  // resources instead of using the last modified header.
+  ngx_http_clear_last_modified(r);
+
+  // Standard nginx idiom for iterating over a list.  See ngx_list.h
+  ngx_uint_t i;
+  ngx_list_part_t* part = &(r->headers_out.headers.part);
+  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
+
+  for (i = 0 ; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+
+      part = part->next;
+      header = static_cast<ngx_table_elt_t*>(part->elts);
+      i = 0;
+    }
+
+    // We also need to strip:
+    //   Accept-Ranges
+    //    - won't work because our html changes
+    //   Vary: Accept-Encoding
+    //    - our gzip filter will add this later
+    if (STR_CASE_EQ_LITERAL(header[i].key, "Accept-Ranges") ||
+        (STR_CASE_EQ_LITERAL(header[i].key, "Vary") &&
+         STR_CASE_EQ_LITERAL(header[i].value, "Accept-Encoding"))) {
+      // Response headers with hash of 0 are excluded from the response.
+      header[i].hash = 0;
+    }
+  }
+}
+
+
+
 ngx_int_t
 ps_header_filter(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
@@ -1312,17 +1365,7 @@ ps_header_filter(ngx_http_request_t* r) {
   CHECK(ctx->driver != NULL);  // Not a resource fetch, so driver is defined.
   const net_instaweb::RewriteOptions* options = ctx->driver->options();
 
-  // We're modifying content below, so switch to 'Transfer-Encoding: chunked'
-  // and calculate on the fly.
-  ngx_http_clear_content_length(r);
-
-  // Pagespeed html doesn't need etags: it should never be cached.
-  ngx_http_clear_etag(r);
-
-  // An page may change without the underlying file changing, because of how
-  // resources are included.  Pagespeed adds cache control headers for
-  // resources instead of using the last modified header.
-  ngx_http_clear_last_modified(r);
+  ps_strip_html_headers(r);
 
   // Don't cache html.  See mod_instaweb:instaweb_fix_headers_filter.
   ps_set_cache_control(r, const_cast<char*>("max-age=0, no-cache"));

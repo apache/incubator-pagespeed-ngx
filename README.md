@@ -26,15 +26,58 @@ content or workflow. Features include:
 - and [more](https://developers.google.com/speed/docs/mod_pagespeed/config_filters)
   - Note: not all mod_pagespeed features work in ngx_pagespeed yet.
 
+To see ngx_pagespeed in action, with example pages for each of the
+optimizations, see our <a href="http://ngxpagespeed.com">demonstration site</a>.
+
 ## How to build
 
 Because nginx does not support dynamic loading of modules, you need to add
 ngx_pagespeed as a build-time dependency.
 
-First build mod_pagespeed against trunk, following these instructions through
-the end of the "Compile" step, and making sure that when you run `gclient sync`
-you run it against "trunk" and not "latest-beta":
-https://developers.google.com/speed/docs/mod_pagespeed/build_from_source
+### Simple method: Using a binary Pagespeed Optimization Library
+
+Install dependencies:
+
+    # These are for RedHat, CentOS, and Fedora.  Debian and Ubuntu will be
+    # similar.
+    $ sudo yum install git gcc-c++ pcre-dev pcre-devel zlib-devel make
+
+Check out ngx_pagespeed:
+
+    $ cd ~
+    $ git clone https://github.com/pagespeed/ngx_pagespeed.git
+
+Download and build nginx:
+
+    $ # check http://nginx.org/en/download.html for the latest version
+    $ wget http://nginx.org/download/nginx-1.2.6.tar.gz
+    $ tar -xvzf nginx-1.2.6.tar.gz
+    $ cd nginx-1.2.6/
+    $ ./configure --add-module=$HOME/ngx_pagespeed
+    $ make install
+
+If `configure` fails with `checking for psol ... not found` then open
+`objs/autoconf.err` and search for `psol`.  If it's not clear what's wrong from
+the error message, then send it to the [mailing
+list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss) and we'll
+have a look at it.
+
+### Complex method: Building the Pagespeed Optimization Library from source
+
+First build mod_pagespeed against the current revision we work at:
+
+    $ mkdir ~/mod_pagespeed
+    $ cd ~/mod_pagespeed
+    $ gclient config http://modpagespeed.googlecode.com/svn/trunk/src
+    $ gclient sync --force --jobs=1
+    $ cd src/
+    $ svn up -r2338
+    $ gclient runhooks
+    $ make BUILDTYPE=Release mod_pagespeed_test pagespeed_automatic_test
+
+(See [mod_pagespeed: build from
+source](https://developers.google.com/speed/docs/mod_pagespeed/build_from_source) if
+you run into trouble, or ask for help on the mailing list.)
 
 Then build the pagespeed optimization library:
 
@@ -51,14 +94,16 @@ Download and build nginx:
     $ # check http://nginx.org/en/download.html for the latest version
     $ wget http://nginx.org/download/nginx-1.2.6.tar.gz
     $ tar -xvzf nginx-1.2.6.tar.gz
-    $ cd nginx-1.2.6/src/
-    $ ./configure --with-debug --add-module=$HOME/ngx_pagespeed
+    $ cd nginx-1.2.6/
+    $ MOD_PAGESPEED_DIR="$HOME/mod_pagespeed/src" ./configure --add-module=$HOME/ngx_pagespeed
     $ make install
 
-(This assumes you put everything in your home directory; if not, change paths
-appropriately.  The only restriction is that the `mod_pagespeed` and
-`ngx_pagespeed` directories need to have the same parent so that ngx_pagespeed
-can find the pagespeed optimization library.)
+This assumes you put everything in your home directory; if not, change paths
+appropriately.
+
+For a debug build, remove the `BUILDTYPE=Release` option when running `make
+mod_pagespeed_test pagespeed_automatic_test` and add the flag `--with-debug` to
+`./configure --add-module=...`.
 
 ## How to use
 
@@ -76,6 +121,11 @@ In every server block where pagespeed is enabled add:
     # optimized resources go to the pagespeed handler.
     location ~ "\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+" { }
     location ~ "^/ngx_pagespeed_static/" { }
+
+If you're proxying, you need to strip off the `Accept-Encoding` header because
+ngx_pagespeed does not (yet) handle compression from upstreams:
+
+    proxy_set_header Accept-Encoding "";
 
 To confirm that the module is loaded, fetch a page and check that you see the
 `X-Page-Speed` header:
@@ -102,7 +152,7 @@ run it you need to first build and configure nginx.  Set it up something like:
       pagespeed FileCachePath /path/to/ngx_pagespeed_cache;
 
       # For testing that the Library command works.
-      pagespeed Library 43 1o978_K0_L
+      pagespeed Library 43 1o978_K0_LNE5_ystNklf
                 http://www.modpagespeed.com/rewrite_javascript.js;
 
       # These gzip options are needed for tests that assume that pagespeed
@@ -201,6 +251,23 @@ Then run the system test:
 
     /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
 
+#### Testing with valgrind
+
+To run nginx as a single process, which is much easier to debug with valgrind,
+put at the top of your config:
+
+    daemon off;
+    master_process off;
+
+Then run nginx with valgrind:
+
+    valgrind --leak-check=full /path/to/nginx/sbin/nginx
+
+Because valgrind puts its results on stderr and there are a lot of them, it can
+be useful to log that:
+
+    ERR_FILE=~/tmp.ngx_pagespeed.valgrind.$(date +%s).err ; valgrind --leak-check=full /path/to/nginx/sbin/nginx 2> $ERR_FILE ; echo $ERR_FILE
+
 ## Configuration
 
 Most mod_pagespeed configuration directives work in ngx_pagespeed after a small
@@ -217,3 +284,40 @@ adjustment: replace '"ModPagespeed"' with '"pagespeed "':
       pagespeed RunExperiment on;
       pagespeed ExperimentSpec "id=3;percent=50;default";
       pagespeed ExperimentSpec "id=4;percent=50";
+
+## Preparing the binary distribution
+
+If you just want to run ngx_pagespeed you don't need this.  This is
+documentation on how the `psol/` directory was created and is maintained.
+
+We redistribute precompiled libraries and the accompanying headers for the
+pagespeed optimization library and its dependencies.  To update the headers,
+run:
+
+    $ cd ngx_pagespeed/
+    $ scripts/copy_includes.sh /path/to/mod_pagespeed/src
+
+This will delete `psol/include/` and recreate it from `mod_pagespeed/src` by
+copying over all the headers and a few selected source files.  The commit diff
+should only be the changes, but it can be huge.
+
+To update the binaries, create a virtual machine running an old version of
+Linux.  The current binaries were created on two CentOS 5.4 virtual machines,
+32-bit and 64-bit.  Because the binaries will usually work on systems that are
+more recent, it's important not to do this on your development machine.
+Building the binaries meant building mod_pagespeed and pagespeed_automatic from
+source, in separate directories with `BUILDTYPE=Release` on and off, and then
+copying the resulting binaries over to `psol/lib/`:
+
+    $ for buildtype in Debug Release ; do
+        for arch in ia32 x64 ; do
+          for library in
+            net/instaweb/automatic/pagespeed_automatic.a
+            out/Debug/obj.target/third_party/aprutil/libaprutil.a
+            out/Debug/obj.target/third_party/apr/libapr.a
+            out/Debug/obj.target/third_party/serf/libserf.a ; do
+              scp machine-${arch}:mod_pagespeed_${buildtype}/src/${library}
+                  psol/lib/${buildtype}/linux/${arch}/
+          done
+        done
+      done

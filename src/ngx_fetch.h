@@ -74,7 +74,7 @@ namespace net_instaweb {
         return static_cast<int>(status_->http_version % 1000);
       }
 
-      int get_code() {
+      int get_status_code() {
         return static_cast<int>(status_->code);
       }
 
