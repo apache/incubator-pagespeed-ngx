@@ -24,7 +24,6 @@ def parse_python_struct(file_contents):
 
 def flatten_attribute(o):
     # true/false from  end up here:
-
     if len(o.getChildren()) == 1:
         return o.getChildren()[0]
 
@@ -146,14 +145,14 @@ def copy_locations_to_virtual_hosts(config):
     move = ["locations"]
     servers = config["servers"]
     for m in move:
-    	for server in servers:
-	    if not m in server: 
-	       server[m] = []
-	    server[m].extend(copy.deepcopy(config[m]))
-	del config[m]
+        for server in servers:
+            if not m in server:
+               server[m] = []
+            server[m].extend(copy.deepcopy(config[m]))
+        del config[m]
 
 def move_configuration_to_locations(config):
-    # this inspects all locations, and clones any 
+    # this inspects all locations, and clones any
     # directives that should be inherited down to them
     # so we do not have to rely on external inheritance
     # mechanisms
@@ -174,11 +173,11 @@ def move_configuration_to_locations(config):
 
 def merge_location_config(root,server,location):
     # pagespeed directives take care of inheriting properly
-    # themselves, but in nginx for example the headers are not 
+    # themselves, but in nginx for example the headers are not
     # inherited like you would expect at first sight. we
     # merge these headers ourselves to the location ourselves here
     result = []
-    
+
     if "headers" in root:
         result.extend(root["headers"])
     if "headers" in server:
@@ -209,7 +208,7 @@ def execute_template(pyconf_path, conditions,
     template_text = pre_process_text(template_text, conditions,
                                      placeholders)
     template = Templite(template_text)
-    
+
     copy_locations_to_virtual_hosts(config)
     move_configuration_to_locations(config)
     text = template.render(config=config)

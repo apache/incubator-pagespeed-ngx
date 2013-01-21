@@ -12,7 +12,7 @@ def exit_with_help_message():
 
 # conditions indicate which conditional configuration sections
 # should be included
-# formats: 
+# formats:
 #   #CONDITION
 # or:
 #   #ifdef CONDITION
