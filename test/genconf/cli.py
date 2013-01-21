@@ -16,24 +16,23 @@
 # Author: oschaaf@gmail.com (Otto van der Schaaf)
 
 
-# configuration generator for mod_pagespeed
+# configuration generator for pagespeed
 
-# TODO(oschaaf): add license banner, author
 # TODO(oschaaf): polish location matching
-# TODO(oschaaf): change apache_literal to a literal in a condition block
 # TODO(oschaaf): create a README
 # TODO(oschaaf): list failing modes per server
-# TODO(oschaaf): insert blurb with date/time, and flags in template header
-# TODO(oschaaf): nginx + cgi
-# TODO(oschaaf:  nginx + ssl
 # TODO(oschaaf): wildcard locations?
-# TODO(oschaaf): filesmatch stuff in pyconf
 # TODO(oschaaf): check usage of proper formatting string everywhere
 # TODO(oschaaf): fix long lines
 # TODO(oschaaf): document
+# TODO(oschaaf): don't hardcode pagespeed.debug.pyconf 
+# TODO(oschaaf): inspect stale comments from pyconf
 
-import sys
+
+import datetime
 from genconf import execute_template
+import sys
+from util import Error
 
 def exit_with_help_message():
     print "This script transforms .pyconf files into webserver configuration files"
@@ -54,7 +53,7 @@ def exit_with_help_message():
 conditions = {}
 
 # placeholders are inserted into the configuration during preprocessing
-# format: @@PLACEHOLDER@@
+# format in templates: @@PLACEHOLDER@@
 placeholders = {
     'APACHE_SECONDARY_PORT': 8083,
     'APACHE_DOMAIN': 'apache.domain',
@@ -78,9 +77,15 @@ else:
 
 conditions[mode] = True
 conditions[output_format] = True
+placeholders["__template_header"] = "generated at %s through \"%s\"" %\
+    (datetime.datetime.now().strftime('%b-%d-%I%M%p-%G'), ' '.join(sys.argv))
 
+#by convention, a file named <outputformat>.conf.template is
+#expected to contain the translation script
 template = output_format + '.conf.template'
-text = execute_template('pagespeed.debug.pyconf', conditions,
-                        placeholders, template)
 
-print text
+
+text = execute_template('pagespeed.debug.pyconf', conditions,
+                            placeholders, template)
+print(text)
+

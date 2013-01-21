@@ -48,6 +48,8 @@ def write_locations_open_item(server,level,is_dir=0):
 def write_locations_close_item(server,level):
     emit(indent("}\n",level))
 
+# pagespeed_if is not implemented yet for nginx.
+# this code isn't wired up but left in as an example
 def write_pagespeed_open(ps,level):
     for key in ps:
         val = ps[key]
@@ -82,6 +84,7 @@ def write_listen_open(ps, level):
 def write_name_virtual_hosts_open(ps, level):
     return 1
 
+# TODO(oschaaf): nginx only supports appending headers out of the box?
 def map_header_action(action):
     if action == "append":
         return "add_header"
@@ -90,7 +93,7 @@ def map_header_action(action):
     elif action =="set":
         return "add_header"
     else:
-        raise Exception("could not translate header action '" + action  + "' to nginx" )
+        raise Error("could not translate header action \"%s\" to nginx" % action)
 
 def write_headers_open(ps, level):
     for val in ps:
@@ -98,6 +101,7 @@ def write_headers_open(ps, level):
         specific_action = map_header_action(generic_action)
         header_name = val["name"]
         header_value = val["value"]
+        header_value = "\"%s\"" % header_value
         emit(indent(specific_action + " " + header_name + ' '  + header_value  + ";\n", level))
 
     return True
@@ -111,17 +115,15 @@ def write_required_modules_open(ps,level):
         elif module_name == "headers":
             emit("")
         elif module_name == "include":
+            emit(indent("ssi on;\n",level))
+        elif module_name == "ssl":
             emit("")
-        #elif module_name == "ssl":
-        #    emit("")
         elif module_name == "gzip":
-            emit(indent("# These gzip options are needed for tests that assume that pagespeed\n",level))
-            emit(indent("# always enables gzip.  Which it does in apache, but not in nginx.\n",level))
+            #apache enables gzip by default, nginx doesn't
             emit(indent("gzip on;\n",level))
             emit(indent("gzip_vary on;\n",level))
-            emit(indent("# Turn on gzip for all content types that should benefit from it.\n",level))
             emit(indent("gzip_types application/ecmascript;\n",level))
-            emit(indent("gzip_types application/javascript;",level))
+            emit(indent("gzip_types application/javascript;\n",level))
             emit(indent("gzip_types application/json;\n",level))
             emit(indent("gzip_types application/pdf;\n",level))
             emit(indent("gzip_types application/postscript;\n",level))
@@ -129,19 +131,18 @@ def write_required_modules_open(ps,level):
             emit(indent("gzip_types image/svg+xml;\n",level))
             emit(indent("gzip_types text/css;\n",level))
             emit(indent("gzip_types text/csv;\n",level))
-            emit(indent("# \"gzip_types text/html\" is assumed.\n",level))
             emit(indent("gzip_types text/javascript;\n",level))
             emit(indent("gzip_types text/plain;\n",level))
             emit(indent("gzip_types text/xml;\n",level))
             emit(indent("gzip_http_version 1.0;\n",level))
-        #elif module_name == "cgi-script":
-        #    emit("")
+        elif module_name == "cgi-script":
+            emit("")
         elif module_name == "mime":
             emit("")
         elif module_name == "pagespeed":
             emit("")
         else:
-            raise Exception("could not translate module '" + module_name + "' to nginx configuration")
+            raise Error("could not translate module \"%s\" to nginx configuration" % module_name)
     return True
 
 def write_mime_types_open(ps,level):
@@ -205,7 +206,8 @@ key_to_writer = {
     "rewrite_rules_open": write_rewrite_rules_open,
 }
 
-}$
+}$# @@__template_header@@
+
 daemon off;
 master_process off;
 error_log  logs/error.log  notice;

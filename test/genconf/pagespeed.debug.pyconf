@@ -44,9 +44,10 @@ required_modules: [
     "headers",
 # For the mod_rewrite test in apache_system_test.sh
     "rewrite",
-#STRESS "slotmem_shm",
+#ifdef  apache
 #SPELING # Enable mod_speling to ensure that we don't regress Issue 194
 #SPELING "speling",
+#endif
 #HTTPS "ssl",
 #HTTPS "socache_shmcb",
 #HTTPS "slotmem_shm",
@@ -55,6 +56,9 @@ required_modules: [
 #endif
 #ifdef apache
 #GZIP "gzip",
+#endif
+#ifdef apache
+#STRESS "slotmem_shm",
 #endif
 #STRESS "cgi-script",
 #PROXY "proxy",
@@ -355,23 +359,28 @@ locations: [
     # These caching headers are set up for the document root, and
     # also serve as a demonstration of good values to set for the entire
     # site, if it is to be optimized by mod_pagespeed.
-    {
-        path: "/mod_pagespeed_example",
-#ifdef apache
-        literal: 
-        {
-            value:"""<IfModule headers_module>
+
     # To enable to show that mod_pagespeed to rewrites web pages, we must
     # turn off Etags for HTML files and eliminate caching altogether.
     # mod_pagespeed should rewrite HTML files each time they are served.
     # The first time mod_pagespeed sees an HTML file, it may not optimize
     # it fully.  It will optimize better after the second view.  Caching
     # defeats this behavior.
-    <FilesMatch "\.(html|htm)$">
-      Header unset Etag
-      Header set Cache-control "max-age=0, no-cache"
-    </FilesMatch>
-
+    {
+        path: "/mod_pagespeed_example/[^.]*\.(html|htm)$",
+        headers: [
+           {
+               action:"set",
+               name:"Etag",
+               value: "",
+           },
+           {
+               action:"set",
+               name:"Cache-Control",
+               value: "max-age=0, no-cache"
+           },
+        ],
+     },
     # Images, styles, and javascript are all cache-extended for
     # a year by rewriting URLs to include a content hash.  mod_pagespeed
     # can only do this if the resources are cacheable in the first place.
@@ -380,13 +389,20 @@ locations: [
     # the content-hash.  As long as the content doesn't actually change,
     # the content-hash will remain the same, and the resources stored
     # in browser caches will stay relevant.
-    <FilesMatch "\.(jpg|jpeg|gif|png|js|css)$">
-      Header unset Etag
-      Header set Cache-control "public, max-age=600"
-    </FilesMatch>
-  </IfModule>
-"""}
-#endif
+    {
+        path: "/mod_pagespeed_example/[^.]*\.(jpg|jpeg|gif|png|js|css)$",
+        headers: [
+           {
+               action:"set",
+               name:"Etag",
+               value: "",
+           },
+           {
+               action:"set",
+               name:"Cache-Control",
+               value: "public, max-age=600"
+           },
+        ],
     },
     {
         path: "/mod_pagespeed_test/shard",

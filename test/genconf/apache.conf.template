@@ -140,7 +140,7 @@ def write_required_modules_open(ps,level):
             raise Exception("unknown module: " + module_name)
     return True
 
-def write_apache_literal_open(ps, level):
+def write_literal_open(ps, level):
     emit(ps["value"])
 
 def write_mime_types_open_item(ps,level):
@@ -180,11 +180,12 @@ key_to_writer = {
     "headers_open": write_headers_open,
     "mime_types_open": write_void,
     "mime_types_open_item": write_mime_types_open_item,
-    "literal_open": write_apache_literal_open,
+    "literal_open": write_literal_open,
     "add_options_open": write_add_options_open,
     "rewrite_rules_open": write_rewrite_rules_open,
 }
 
-}$
+}$# @@__template_header@@
+
 ${write_cfg(key_to_writer, config)
 }$
