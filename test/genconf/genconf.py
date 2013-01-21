@@ -11,7 +11,6 @@ import os
 import re
 from templite import Templite
 
-
 class Error(Exception):
     pass
 
@@ -33,18 +32,13 @@ def flatten_attribute(o):
 
     if not isinstance(c2, Node):
         if isinstance(c1.getChildren()[0], str):
-            return '.' + c1.getChildren()[0] + '.' + c2
+            return '.%s.%s' % (c1.getChildren()[0], c2)
         else:
-            return flatten_attribute(c1) + '.' + c2
+            return '%s.%s' % (flatten_attribute(c1), c2)
     else:
         return flatten_attribute(c2)
 
-def ast_node_to_dict(
-    node,
-    dest=None,
-    lookup={},
-    parent_key='',
-    ):
+def ast_node_to_dict(node, dest, lookup, parent_key):
     if Node is None:
         return None
     elif isinstance(node, Dict):
@@ -53,7 +47,7 @@ def ast_node_to_dict(
         for n in range(0, len(c), 2):
             key = c[n].getChildren()[0]
             dest[key] = ast_node_to_dict(c[n + 1], dest, lookup,
-                    parent_key + '.' + key)
+                    '%s.%s' % (parent_key, key))
             lookup[parent_key] = dest
     elif isinstance(node, List):
         dest = []
@@ -64,22 +58,21 @@ def ast_node_to_dict(
             lookup[parent_key] = dest
     elif isinstance(node, UnarySub):
         if parent_key in lookup:
-            raise Error(parent_key + ": already defined")
+            raise Error("%s: already defined" % parent_key)
         lookup[parent_key] = '-' + repr(node.getChildren()[0].getChildren()[0])
         return '-' + repr(node.getChildren()[0].getChildren()[0])
     elif isinstance(node, Const):
         if parent_key in lookup:
-            raise Error(parent_key + ": already defined")
+            raise Error("%s: already defined" % parent_key)
         lookup[parent_key] = node.getChildren()[0]
         return node.getChildren()[0]
     elif isinstance(node, Node):
         flattened = flatten_attribute(node)
-        val = '#LOOKUP_FAILED [' + repr(node) + ']!'
         if flattened in lookup:
             val = lookup[flattened]
             lookup[parent_key] = val
         else:
-            raise Error(val)
+            raise Error("Lookup failed for [%s]" % repr(node))
         return val
     return dest
 
@@ -96,7 +89,7 @@ def replace_comments(conditions, s):
 def fill_placeholders(placeholders, match):
     placeholder = match.group(1)
     if placeholder not in placeholders:
-        raise Exception("placeholder '" + placeholder + "' not found")
+        raise Error("placeholder '" + placeholder + "' not found")
     else:
         return str(placeholders[placeholder])
 
@@ -202,7 +195,7 @@ def execute_template(pyconf_path, conditions,
                                    placeholders)
 
     ast = parse_python_struct(config_text)
-    config = ast_node_to_dict(ast)
+    config = ast_node_to_dict(ast, None, {}, '')
     template_file = open(template_path)
     template_text = template_file.read()
     template_text = pre_process_text(template_text, conditions,
