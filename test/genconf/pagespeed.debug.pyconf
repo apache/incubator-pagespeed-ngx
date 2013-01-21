@@ -12,7 +12,6 @@
 # add_instrumentation xhtml tests to work, though, we have to enable
 # it here.  If we change pagespeed.conf.template to enable XHTML by
 # default then we can eliminate this line.
-
 apache_literal: {
     value: "AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml\n"
 },

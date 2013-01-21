@@ -21,7 +21,7 @@ def parse_python_struct(file_contents):
     c3 = c2[0].getChildren()
     return c3[0]
 
-def flatten_attribute(o):
+def get_key_path(o):
     # true/false from  end up here:
     if len(o.getChildren()) == 1:
         return o.getChildren()[0]
@@ -34,9 +34,9 @@ def flatten_attribute(o):
         if isinstance(c1.getChildren()[0], str):
             return '.%s.%s' % (c1.getChildren()[0], c2)
         else:
-            return '%s.%s' % (flatten_attribute(c1), c2)
+            return '%s.%s' % (get_key_path(c1), c2)
     else:
-        return flatten_attribute(c2)
+        return get_key_path(c2)
 
 def ast_node_to_dict(node, dest, lookup, parent_key):
     if Node is None:
@@ -67,9 +67,9 @@ def ast_node_to_dict(node, dest, lookup, parent_key):
         lookup[parent_key] = node.getChildren()[0]
         return node.getChildren()[0]
     elif isinstance(node, Node):
-        flattened = flatten_attribute(node)
-        if flattened in lookup:
-            val = lookup[flattened]
+        key_path = get_key_path(node)
+        if key_path in lookup:
+            val = lookup[key_path]
             lookup[parent_key] = val
         else:
             raise Error("Lookup failed for [%s]" % repr(node))
@@ -80,7 +80,6 @@ def replace_comments(conditions, s):
     condition = s.group(1)
     config = s.group(2)
 
-    # TODO(oschaaf): handle comments
     if condition in conditions:
         return config
     else:
@@ -89,7 +88,7 @@ def replace_comments(conditions, s):
 def fill_placeholders(placeholders, match):
     placeholder = match.group(1)
     if placeholder not in placeholders:
-        raise Error("placeholder '" + placeholder + "' not found")
+        raise Error("placeholder [%s] not found" % placeholder)
     else:
         return str(placeholders[placeholder])
 
@@ -118,11 +117,16 @@ def pre_process_ifdefs(cfg,conditions):
             condition = line[len("#ifndef"):].strip()
             ifstack.append(not condition in conditions)
         elif line.startswith("#endif"):
+            if len(ifstack) == 1:
+                raise Error("unmatched #endif found in input")
             ifstack.pop()
         else:
             # TODO(oschaaf): bound check
             if not False in ifstack:
                 ret.append(line)
+
+    if not len(ifstack) == 1:
+        raise Error("#ifdef not matched with an #endif")
 
     # TODO(oschaaf): ensure ifstack length equals 1 here
     return "\n".join(ret)
