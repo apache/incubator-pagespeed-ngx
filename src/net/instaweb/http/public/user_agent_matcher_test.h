@@ -112,6 +112,9 @@ const char kIPadUserAgent[] =
 const char kNexus7ChromeUserAgent[] =
     "Mozilla/5.0 (Linux; Android 4.2; Nexus 7 Build/JOP32C) AppleWebKit/535.19"
     "(KHTML, like Gecko) Chrome/18.0.1025.166 Safari/535.19";
+const char XT907UserAgent[] =
+    "Mozilla/5.0 (Linux; Android 4.1.1; XT907 Build/9.8.1Q_27-2) AppleWebKit"
+    "/537.25 (KHTML, like Gecko) Chrome/26.0.1376.1 Mobile Safari/537.25";
 const char kAcceptHeaderValueNonMobile[] = "text/html";
 const char kAcceptHeaderValueMobile[] =
     "text/html,application/vnd.wap.xhtml+xml";

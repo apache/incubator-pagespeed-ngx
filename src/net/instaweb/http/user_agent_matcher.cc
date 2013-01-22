@@ -186,6 +186,20 @@ const char* kSupportsPrefetchLinkScriptTag[] = {
 };
 
 const char* kChromeVersionPattern = "Chrome/(\\d+)\\.(\\d+)\\.(\\d+)\\.(\\d+)";
+
+// Device strings must not include wildcards.
+const pair<GoogleString, pair<int, int> > kKnownScreenDimensions[] = {
+  make_pair("Galaxy Nexus", make_pair(720, 1280)),
+  make_pair("GT-I9300", make_pair(720, 1280)),
+  make_pair("GT-N7100", make_pair(720, 1280)),
+  make_pair("HTC One", make_pair(720, 1280)),
+  make_pair("Nexus 4", make_pair(768, 1280)),
+  make_pair("Nexus 7", make_pair(800, 1280)),
+  make_pair("Nexus 10", make_pair(1600, 2560)),
+  make_pair("Nexus S", make_pair(480, 800)),
+  make_pair("Xoom", make_pair(800, 1280)),
+  make_pair("XT907", make_pair(540, 960))
+};
 }  // namespace
 
 const char UserAgentMatcher::kDevicePropertiesCohort[] = "deviceproperties";
@@ -246,6 +260,14 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kInsertDnsPrefetchBlacklist); i < n; ++i) {
     supports_dns_prefetch_.Disallow(kInsertDnsPrefetchBlacklist[i]);
   }
+  for (int i = 0, n = arraysize(kKnownScreenDimensions); i < n; ++i) {
+    screen_dimensions_map_[kKnownScreenDimensions[i].first] =
+        kKnownScreenDimensions[i].second;
+    known_devices_pattern_ = known_devices_pattern_ +
+        kKnownScreenDimensions[i].first + "|";
+  }
+  known_devices_pattern_ = "(" + known_devices_pattern_.substr(
+      0, known_devices_pattern_.length() - 1) + ")";
 }
 
 UserAgentMatcher::~UserAgentMatcher() {
@@ -399,6 +421,22 @@ StringPiece UserAgentMatcher::DeviceTypeSuffix(DeviceType device_type) {
       break;
   }
   return device_type_suffix;
+}
+
+bool UserAgentMatcher::GetScreenDimensionsFromLocalRegex(
+    const StringPiece& user_agent, int* width, int* height) {
+  if (width == NULL || height == NULL) {
+    return false;
+  }
+  GoogleString match;
+  if (RE2::PartialMatch(StringPieceToRe2(user_agent), known_devices_pattern_,
+      &match)) {
+    pair<int, int> dims = screen_dimensions_map_[match];
+    *width = dims.first;
+    *height = dims.second;
+    return true;
+  }
+  return false;
 }
 
 }  // namespace net_instaweb

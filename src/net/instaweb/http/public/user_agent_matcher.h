@@ -20,6 +20,10 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/fast_wildcard_group.h"
 
+using std::pair;
+using std::make_pair;
+using std::map;
+
 namespace net_instaweb {
 
 class PropertyCache;
@@ -95,6 +99,10 @@ class UserAgentMatcher {
   // Returns the suffix for the given device_type.
   static StringPiece DeviceTypeSuffix(DeviceType device_type);
 
+  // Returns true and sets width and height if we know them for the UA.
+  bool GetScreenDimensionsFromLocalRegex(
+      const StringPiece& user_agent, int* width, int* height);
+
   bool SupportsJsDefer(const StringPiece& user_agent, bool allow_mobile) const;
   bool SupportsWebp(const StringPiece& user_agent) const;
   bool SupportsWebpLosslessAlpha(const StringPiece& user_agent) const;
@@ -145,6 +153,8 @@ class UserAgentMatcher {
   PropertyPage* device_page_;
 
   const RE2 chrome_version_pattern_;
+  map <GoogleString, pair<int, int> > screen_dimensions_map_;
+  GoogleString known_devices_pattern_;
 
   DISALLOW_COPY_AND_ASSIGN(UserAgentMatcher);
 };

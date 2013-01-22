@@ -441,4 +441,30 @@ TEST_F(UserAgentMatcherTest, GetDeviceTypeForUA) {
       NULL));
 }
 
+TEST_F(UserAgentMatcherTest, GetScreenDimensionsFromLocalRegex) {
+  int width, height;
+
+  // Unknown user agent.
+  EXPECT_FALSE(user_agent_matcher_.GetScreenDimensionsFromLocalRegex(
+      UserAgentStrings::kIPhoneChrome21UserAgent, &width, &height));
+
+  // Galaxy Nexus, first in list
+  EXPECT_TRUE(user_agent_matcher_.GetScreenDimensionsFromLocalRegex(
+      UserAgentStrings::kAndroidICSUserAgent, &width, &height));
+  EXPECT_EQ(720, width);
+  EXPECT_EQ(1280, height);
+
+  // Nexus S, middle of list.
+  EXPECT_TRUE(user_agent_matcher_.GetScreenDimensionsFromLocalRegex(
+      UserAgentStrings::kAndroidNexusSUserAgent, &width, &height));
+  EXPECT_EQ(480, width);
+  EXPECT_EQ(800, height);
+
+  // XT907, last in list.
+  EXPECT_TRUE(user_agent_matcher_.GetScreenDimensionsFromLocalRegex(
+      UserAgentStrings::XT907UserAgent, &width, &height));
+  EXPECT_EQ(540, width);
+  EXPECT_EQ(960, height);
+}
+
 }  // namespace net_instaweb

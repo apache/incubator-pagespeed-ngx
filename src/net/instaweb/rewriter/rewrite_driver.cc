@@ -906,6 +906,7 @@ bool RewriteDriver::IsMobileUserAgent() const {
 
 // TODO(buettner): Consolidate the various *Supports* functions behind a common
 //                 API that uses the device_property_page object.
+// TODO(buettner): Replace MDL and device_property cache machinery with UDL.
 bool RewriteDriver::GetScreenResolution(int* width, int* height) {
   if (is_screen_resolution_set_ == kNotSet) {
     PropertyPage* device_page = device_property_page();
@@ -914,11 +915,11 @@ bool RewriteDriver::GetScreenResolution(int* width, int* height) {
       const PropertyCache::Cohort* device_cohort = cache->GetCohort(
           UserAgentMatcher::kDevicePropertiesCohort);
       if (device_cohort != NULL) {
+        int w, h;
         PropertyValue* width_pvalue = device_page->GetProperty(
           device_cohort, UserAgentMatcher::kScreenWidth);
         PropertyValue* height_pvalue = device_page->GetProperty(
           device_cohort, UserAgentMatcher::kScreenHeight);
-        int w, h;
         if (width_pvalue != NULL &&
             width_pvalue->has_value() &&
             StringToInt(width_pvalue->value().as_string(), &w) &&
@@ -932,12 +933,13 @@ bool RewriteDriver::GetScreenResolution(int* width, int* height) {
         }
       }
     }
-    // If we don't get resolution from device_cache, return default values.
-    // Don't update is_screen_resolution_set, so lookup will try again.
-    if (IsMobileUserAgent() && is_screen_resolution_set_ == kNotSet) {
-      *width = kDefaultMobileScreenWidth;
-      *height = kDefaultMobileScreenHeight;
-      return true;
+    // If we don't get resolution from device_cache, try regex matching.
+    // Don't update is_screen_resolution_set, so lookup can try again.
+    if (is_screen_resolution_set_ == kNotSet) {
+      if (server_context()->user_agent_matcher()->
+          GetScreenDimensionsFromLocalRegex(user_agent_, width, height)) {
+        return true;
+      }
     }
   }
   if (is_screen_resolution_set_ == kTrue) {
