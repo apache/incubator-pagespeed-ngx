@@ -978,6 +978,7 @@ class RewriteDriver : public HtmlParse {
 
   // Sets the is_nested property on the driver.
   void set_is_nested(bool n) { is_nested_ = n; }
+  bool is_nested() const { return is_nested_; }
 
   // Sets must compute finder properties to true. Note that this value is
   // sticky. Once it is set to true for a given request, it remains true till
@@ -1451,7 +1452,8 @@ class RewriteDriver : public HtmlParse {
 
   // True if this driver has been cloned from another to execute subordinate
   // rewrites. Some logging operations aren't executed on nested rewrite
-  // drivers. Note that this is totally distinct from nested rewrite contexts.
+  // drivers, and timeout policies are changed. Note that this is totally
+  // distinct from nested rewrite contexts.
   bool is_nested_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);

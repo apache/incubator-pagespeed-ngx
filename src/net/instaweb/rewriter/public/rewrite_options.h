@@ -1189,6 +1189,13 @@ class RewriteOptions {
     set_option(x, &rewrite_deadline_ms_);
   }
 
+  bool test_instant_fetch_rewrite_deadline() const {
+    return test_instant_fetch_rewrite_deadline_.value();
+  }
+  void set_test_instant_fetch_rewrite_deadline(bool x) {
+    set_option(x, &test_instant_fetch_rewrite_deadline_);
+  }
+
   int domain_shard_count() const { return domain_shard_count_.value(); }
   // The argument is int64 to allow it to be set from the http header or url
   // query param and int64_query_params_ only allows setting of 64 bit values.
@@ -2675,6 +2682,9 @@ class RewriteOptions {
 
   // Overrides the IE document mode to use the highest mode available.
   Option<bool> override_ie_document_mode_;
+
+  // Test-only flag to get fetch deadlines to trigger instantly.
+  Option<bool> test_instant_fetch_rewrite_deadline_;
 
   // Enables blocking rewrite of html. RewriteDriver provides a flag
   // fully_rewrite_on_flush which makes sure that all rewrites are done before

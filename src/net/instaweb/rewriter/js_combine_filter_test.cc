@@ -494,6 +494,53 @@ TEST_F(JsFilterAndCombineFilterTest, MinifyPartlyCached) {
                 true /*minified*/, kTestDomain);
 }
 
+TEST_F(JsFilterAndCombineFilterTest, MinifyPartlyCachedWithDeadline) {
+  // Testcase for the case where we have cached metadata for results of JS
+  // rewrites, but not their data, and where we can hit a fetch deadline
+  // during their reconstruction.
+
+  SimulateJsResource(kJsUrl1, kJsText1);
+  SimulateJsResource(kJsUrl2, kJsText2);
+
+  // Fetch the result of the JS filter (which runs first) filter applied,
+  // to pre-cache them.
+  GoogleString out_url1(Encode(kTestDomain, "jm", "FUEwDOA7jh", kJsUrl1, "js"));
+  GoogleString content;
+  EXPECT_TRUE(FetchResourceUrl(out_url1, &content));
+  EXPECT_STREQ(kMinifiedJs1, content);
+
+  GoogleString out_url2(Encode(kTestDomain, "jm", "Y1kknPfzVs", kJsUrl2, "js"));
+  EXPECT_TRUE(FetchResourceUrl(out_url2, &content));
+  EXPECT_STREQ(kMinifiedJs2, content);
+
+  // Make sure the data isn't available in the HTTP cache (while the metadata
+  // still is).
+  lru_cache()->Delete(out_url1);
+  lru_cache()->Delete(out_url2);
+
+  // Force the fetch-path deadline to trigger, if applicable. This should not
+  // actually change the options signature.
+  GoogleString old_signature = options()->signature();
+  options()->ClearSignatureForTesting();
+  options()->set_test_instant_fetch_rewrite_deadline(true);
+  server_context()->ComputeSignature(options());
+  EXPECT_EQ(old_signature, options()->signature());
+
+  // Now try to get a combination.
+  // Besides deadlines for nested drivers in HTML, this also covers them
+  // triggering in nested rewrites for fetch, which can cause correctness
+  // troubles by messing with resource names.
+  //
+  // TODO(morlovich): Consider unwinding .pagespeed. resource names in
+  //                  JsCombineFilter's VarName?
+  bool test_url_namer = factory()->use_test_url_namer();
+  TestCombineJs(MultiUrl("a.js,Mjm.FUEwDOA7jh.js", "b.js,Mjm.Y1kknPfzVs.js"),
+                test_url_namer ? "8erozavBF5" : "FA3Pqioukh",
+                test_url_namer ? "JO0ZTfFSfI" : "S$0tgbTH0O",
+                test_url_namer ? "8QmSuIkgv_" : "ose8Vzgyj9",
+                true, kTestDomain);
+}
+
 // Various things that prevent combining
 TEST_F(JsCombineFilterTest, TestBarriers) {
   ValidateNoChanges("noscript",

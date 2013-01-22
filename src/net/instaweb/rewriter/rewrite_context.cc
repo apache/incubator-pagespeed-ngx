@@ -740,12 +740,34 @@ class RewriteContext::FetchContext {
     if (detached_) {
       return;
     }
+
     RewriteDriver* driver = rewrite_context_->Driver();
+    if (driver->is_nested()) {
+      // If we're being used to help reconstruct a .pagespeed. resource during
+      // chained optimizations within HTML, we do not want fetch-style deadlines
+      // to be active, as if they trigger, the main rewrite that created us
+      // would get a cache-control: private fallback as its input, causing it
+      // to cache 'my input wasn't rewritable' metadata result. Further, the
+      // HTML-targeted rewrite already has a way of dealing with slowness, by
+      // detaching from rendering.
+
+      // We also do not want nested rewrites to early-return in case of fetches
+      // as it can affect correctness of JS combine, as the names of the
+      // OutputResources, and hence the JS variables may turn out not be
+      // what was expected.
+      return;
+    }
+
     Timer* timer = rewrite_context_->FindServerContext()->timer();
 
     // Negative rewrite deadline means unlimited.
     int deadline_ms = rewrite_context_->GetRewriteDeadlineAlarmMs();
-    if (deadline_ms >= 0) {
+    bool test_force_alarm =
+        driver->options()->test_instant_fetch_rewrite_deadline();
+    if (deadline_ms >= 0 || test_force_alarm) {
+      if (test_force_alarm) {
+        deadline_ms = 0;
+      }
       // Startup an alarm which will cause us to return unrewritten content
       // rather than hold up the fetch too long on firing.
       deadline_alarm_ =

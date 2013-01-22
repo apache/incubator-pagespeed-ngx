@@ -638,6 +638,10 @@ RewriteOptions::RewriteOptions()
 
   InitializeOptions(properties_);
 
+  // We need to exclude this test-only option from signature, since we may need
+  // to change it in the middle of tests.
+  test_instant_fetch_rewrite_deadline_.DoNotUseForSignatureComputation();
+
   // Enable HtmlWriterFilter by default.
   EnableFilter(kHtmlWriterFilter);
 }
@@ -898,6 +902,10 @@ void RewriteOptions::AddProperties() {
              RewriteOptions::kUseSmartDiffInBlink);
   add_option(false, &RewriteOptions::enable_aggressive_rewriters_for_mobile_,
              "earm", RewriteOptions::kEnableAggressiveRewritersForMobile);
+
+  // Test-only, so no enum.
+  add_option(false, &RewriteOptions::test_instant_fetch_rewrite_deadline_,
+             "tifrwd");
 
   //
   // Recently sriharis@ excluded a variety of options from
