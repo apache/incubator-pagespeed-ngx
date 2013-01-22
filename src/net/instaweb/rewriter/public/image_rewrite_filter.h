@@ -52,6 +52,36 @@ class WorkBound;
 //     rewritten urls, when in general those urls will be in a different domain.
 class ImageRewriteFilter : public RewriteFilter {
  public:
+  // Name for statistic used to bound rewriting work.
+  static const char kImageOngoingRewrites[];
+
+  // # of images that we decided not to rewrite because of size constraint.
+  static const char kImageNoRewritesHighResolution[];
+
+  // TimedVariable denoting image rewrites we dropped due to
+  // load (too many concurrent rewrites)
+  static const char kImageRewritesDroppedDueToLoad[];
+
+  // # of images not rewritten because the image MIME type is unknown.
+  static const char kImageRewritesDroppedMIMETypeUnknown[];
+
+  // # of images not rewritten because the server fails to write the merged
+  // html files.
+  static const char kImageRewritesDroppedServerWriteFail[];
+
+  // # of images not rewritten because the rewriting does not reduce the
+  // data size by a certain threshold. The image is resized in this case.
+  static const char kImageRewritesDroppedNoSavingResize[];
+
+  // # of images not rewritten because the rewriting does not reduce the
+  // data size by a certain threshold. The image is not resized in this case.
+  static const char kImageRewritesDroppedNoSavingNoResize[];
+
+  // The property cache property name used to store URLs discovered when
+  // image_inlining_identify_and_cache_without_rewriting() is set in the
+  // RewriteOptions.
+  static const char kInlinableImageUrlsPropertyName[];
+
   explicit ImageRewriteFilter(RewriteDriver* driver);
   virtual ~ImageRewriteFilter();
   static void InitStats(Statistics* statistics);
@@ -128,35 +158,9 @@ class ImageRewriteFilter : public RewriteFilter {
       const ResourceContext& context, const ResourcePtr& input_resource,
       bool is_css);
 
-  // name for statistic used to bound rewriting work.
-  static const char kImageOngoingRewrites[];
-
-  // # of images that we decided not to rewrite because of size constraint.
-  static const char kImageNoRewritesHighResolution[];
-
-  // TimedVariable denoting image rewrites we dropped due to
-  // load (too many concurrent rewrites)
-  static const char kImageRewritesDroppedDueToLoad[];
-
-  // # of images not rewritten because the image MIME type is unknown.
-  static const char kImageRewritesDroppedMIMETypeUnknown[];
-
-  // # of images not rewritten because the server fails to write the merged
-  // html files.
-  static const char kImageRewritesDroppedServerWriteFail[];
-
-  // # of images not rewritten because the rewriting does not reduce the
-  // data size by a certain threshold. The image is resized in this case.
-  static const char kImageRewritesDroppedNoSavingResize[];
-
-  // # of images not rewritten because the rewriting does not reduce the
-  // data size by a certain threshold. The image is not resized in this case.
-  static const char kImageRewritesDroppedNoSavingNoResize[];
-
-  // The property cache property name used to store URLs discovered when
-  // image_inlining_identify_and_cache_without_rewriting() is set in the
-  // RewriteOptions.
-  static const char kInlinableImageUrlsPropertyName[];
+  virtual const RewriteOptions::Filter* RelatedFilters(int* num_filters) const;
+  virtual const RewriteOptions::OptionEnum* RelatedOptions(
+      int* num_options) const;
 
  protected:
   virtual const UrlSegmentEncoder* encoder() const;

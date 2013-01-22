@@ -59,6 +59,43 @@ namespace net_instaweb {
 
 class UrlSegmentEncoder;
 
+namespace {
+
+static const RewriteOptions::Filter kRelatedFilters[] = {
+  RewriteOptions::kConvertGifToPng,
+  RewriteOptions::kConvertJpegToProgressive,
+  RewriteOptions::kConvertJpegToWebp,
+  RewriteOptions::kConvertPngToJpeg,
+  RewriteOptions::kConvertToWebpLossless,
+  RewriteOptions::kJpegSubsampling,
+  RewriteOptions::kRecompressJpeg,
+  RewriteOptions::kRecompressPng,
+  RewriteOptions::kRecompressWebp,
+  RewriteOptions::kResizeImages,
+  RewriteOptions::kResizeMobileImages,
+  RewriteOptions::kSquashImagesForMobileScreen,
+  RewriteOptions::kStripImageColorProfile,
+  RewriteOptions::kStripImageMetaData
+};
+
+static const RewriteOptions::OptionEnum kRelatedOptions[] = {
+  RewriteOptions::kImageJpegNumProgressiveScans,
+  RewriteOptions::kImageJpegRecompressionQuality,
+  RewriteOptions::kImageLimitOptimizedPercent,
+  RewriteOptions::kImageLimitResizeAreaPercent,
+  RewriteOptions::kImageMaxRewritesAtOnce,
+  RewriteOptions::kImagePreserveURLs,
+  RewriteOptions::kImageRecompressionQuality,
+  RewriteOptions::kImageResolutionLimitBytes,
+  RewriteOptions::kImageRetainColorProfile,
+  RewriteOptions::kImageRetainColorSampling,
+  RewriteOptions::kImageRetainExifData,
+  RewriteOptions::kImageWebpRecompressionQuality,
+  RewriteOptions::kProgressiveJpegMinBytes
+};
+
+}  // namespace
+
 // names for Statistics variables.
 const char kImageRewrites[] = "image_rewrites";
 const char ImageRewriteFilter::kImageNoRewritesHighResolution[] =
@@ -265,6 +302,17 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
 ImageRewriteFilter::~ImageRewriteFilter() {}
 
 void ImageRewriteFilter::InitStats(Statistics* statistics) {
+#ifndef NDEBUG
+  for (int i = 1; i < static_cast<int>(arraysize(kRelatedFilters)); ++i) {
+    CHECK_LT(kRelatedFilters[i - 1], kRelatedFilters[i])
+        << "kRelatedFilters not in enum-value order";
+  }
+  for (int i = 1; i < static_cast<int>(arraysize(kRelatedOptions)); ++i) {
+    CHECK_LT(kRelatedOptions[i - 1], kRelatedOptions[i])
+        << "kRelatedOptions not in enum-value order";
+  }
+#endif
+
   statistics->AddVariable(kImageRewrites);
   statistics->AddVariable(kImageNoRewritesHighResolution);
   statistics->AddVariable(kImageRewritesDroppedIntentionally);
@@ -1337,6 +1385,18 @@ bool ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
     updated = true;
   }
   return updated;
+}
+
+const RewriteOptions::Filter* ImageRewriteFilter::RelatedFilters(
+    int* num_filters) const {
+  *num_filters = arraysize(kRelatedFilters);
+  return kRelatedFilters;
+}
+
+const RewriteOptions::OptionEnum* ImageRewriteFilter::RelatedOptions(
+    int* num_options) const {
+  *num_options = arraysize(kRelatedOptions);
+  return kRelatedOptions;
 }
 
 }  // namespace net_instaweb

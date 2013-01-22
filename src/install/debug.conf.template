@@ -702,6 +702,42 @@ ModPagespeedUsePerVHostStatistics on
 #FURIOUS_NO_GA ModPagespeedExperimentSpec "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50"
 #FURIOUS_NO_GA ModPagespeedExperimentSpec "id=2;enable=recompress_images;percent=50"
 
+# Support for embedded configurations, where image flags in the
+# VirtualHost serving HTML is not the same as the one serving resources,
+# and thus we must embed the image flags in the rewritten image URLs.
+#
+# Note that we test with two distinct caches.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName embed_config_html.example.com
+
+  DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_test"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/"
+
+  ModPagespeedAddOptionsToUrls on
+  ModPagespeedJpegRecompressionQuality 73
+  ModPagespeedDisableFilters inline_css
+  ModPagespeedDomain embed_config_resources.example.com
+
+  ModPagespeedLoadFromFile "http://embed_config_resources.example.com/" \
+      "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/"
+</VirtualHost>
+
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName embed_config_resources.example.com
+
+  DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/"
+
+  ModPagespeedAddOptionsToUrls on
+  # Note that we do not set the jpeg quality here, but take
+  # it from image URL query parameters that we synthesize in
+  # from embed_config_html.example.com.
+
+  ModPagespeedLoadFromFile "http://embed_config_resources.example.com/" \
+      "/usr/local/apache2/htdocs/mod_pagespeed_example/"
+</VirtualHost>
+
+
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
 #ALL_DIRECTIVES ModPagespeedAllow foo
 #ALL_DIRECTIVES ModPagespeedAnalyticsID 1234

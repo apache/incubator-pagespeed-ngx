@@ -3008,9 +3008,17 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
       CachedResult* cached = output->EnsureCachedResultCreated();
       cached->set_optimizable(true);
       GoogleString url = output->url();  // Note: output->url() will be sharded.
-
-      // TODO(jmarantz): optionally generate a query-string based on options and
-      // append it to the URL.
+      if (options()->add_options_to_urls()) {
+        // TODO(jmarantz): Determine whether we need to use the related-options
+        // to compute the MD-cache options-signature to allow MD-cache entry
+        // sharing between the HTML flow and the resource flow.
+        GoogleString resource_option =
+            RewriteQuery::GenerateResourceOption(
+                output->full_name().id(), this);
+        if (!resource_option.empty()) {
+          StrAppend(&url, "?", resource_option);
+        }
+      }
       cached->mutable_url()->swap(url);
     }
   } else {

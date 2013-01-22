@@ -923,7 +923,8 @@ ServerContext::OptionsBoolPair ServerContext::GetQueryOptions(
     ResponseHeaders* response_headers) {
   scoped_ptr<RewriteOptions> query_options;
   bool success = false;
-  switch (RewriteQuery::Scan(factory(), request_url, request_headers,
+  switch (RewriteQuery::Scan(global_options()->add_options_to_urls(),
+                             factory(), this, request_url, request_headers,
                              response_headers, &query_options,
                              message_handler_)) {
     case RewriteQuery::kInvalid:

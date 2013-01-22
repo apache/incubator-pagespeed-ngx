@@ -36,6 +36,29 @@ SECONDARY_HOSTNAME=${SECONDARY_HOSTNAME:-}
 this_dir=$(dirname $0)
 source "$this_dir/system_test.sh" || exit 1
 
+# Define a mechanism to start a test before the cache-flush and finish it
+# after the cache-flush.  This mechanism is preferable to flushing cache
+# within a test as that requires waiting 5 seconds for the poll, so we'd
+# like to limit the number of cache flushes and exploit it on behalf of
+# multiple tests.
+
+# Variable holding a space-separated lists of bash functions to run after
+# flushing cache.
+post_cache_flush_test=""
+
+# Adds a new function to run after cache flush.
+function on_cache_flush() {
+  post_cache_flush_test+=" $1"
+}
+
+# Called after cache-flush to run all the functions specified to
+# on_cache_flush.
+function run_post_cache_flush() {
+  for test in $post_cache_flush_test; do
+    $test
+  done
+}
+
 # Extract secondary hostname when set. Currently it's only set
 # when doing the cache flush test, but it can be used in other
 # tests we run in that run.
@@ -614,6 +637,50 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   echo  http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $FILTERED
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $FILTERED 2>&1)
   check_from "$OUT" fgrep " 200 OK"
+
+  start_test Embed image configuration in rewritten image URL.
+  http_proxy=$SECONDARY_HOSTNAME fetch_until -save -recursive \
+      http://embed_config_html.example.com/embed_config.html \
+      'grep -c \.pagespeed\.' 2
+
+  # with the default rewriters in vhost embed_config_resources.example.com
+  # the image will be >200k.  But by enabling resizing & compression 73
+  # as specified in the HTML domain, and transmitting that configuration via
+  # image URL query param, the image file (including headers) is 8341 bytes.
+  # We check against 10000 here so this test isn't sensitive to
+  # image-compression tweaks (we have enough of those elsewhere).
+  check_file_size "$OUTDIR/256x192xPuz*PsolOpt*" -lt 10000
+
+  # The CSS file is rewritten but has no related options set, so it will
+  # not get the PsolOpt suffix.
+  check_file_size "$OUTDIR/*.bold.css.pagespeed.cf.*.css" -lt 500
+
+  # One flaw in the above test is that it short-circuits the decoding
+  # of the query-params because when Apache responds to the recursive
+  # wget fetch of the image, it finds the rewritten resource in the
+  # cache.  The two vhosts are set up with the same cache.  If they
+  # had different caches we'd have a different problem, which is that
+  # the first load of the image-rewrite from the resource vhost would
+  # not be resized.  To make sure the decoding path works, we'll
+  # "finish" this test below after performing a cache flush, saving
+  # the encoded image and expected size.
+  EMBED_CONFIGURATION_IMAGE="http://embed_config_resources.example.com/images/"
+  EMBED_CONFIGURATION_IMAGE_TAIL=$(ls $OUTDIR | grep 256x192xPuz | grep PsolOpt)
+  EMBED_CONFIGURATION_IMAGE+="$EMBED_CONFIGURATION_IMAGE_TAIL"
+  EMBED_CONFIGURATION_IMAGE_LENGTH=$( \
+    head -10 "$OUTDIR/$EMBED_CONFIGURATION_IMAGE_TAIL" | \
+    grep 'Content-Length' | awk '{print $2}' | tr -d '\r')
+
+  function embed_image_config_post_flush() {
+    # Finish off the url-params-.pagespeed.-resource test with a clear
+    # cache.  We split the test like this to avoid having multiple
+    # places where we flush cache, which requires sleeps since the
+    # cache-flush is poll driven.
+    start_test Embed image configuration decoding with clear cache.
+    http_proxy=$SECONDARY_HOSTNAME fetch_until "$EMBED_CONFIGURATION_IMAGE" \
+        "wc -c" $EMBED_CONFIGURATION_IMAGE_LENGTH
+  }
+  on_cache_flush embed_image_config_post_flush
 fi
 
 # TODO(sligocki): start_test ModPagespeedMaxSegmentLength
@@ -999,6 +1066,9 @@ blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
     check_stat $STATS.2 $STATS.3 image_rewrites 0
     check_stat $STATS.2 $STATS.3 image_ongoing_rewrites 0
   fi
+
+  # Run all the tests that want to have cache-flush as part of the flow.
+  run_post_cache_flush
 fi
 
 WGET_ARGS=""

@@ -21,6 +21,7 @@
 
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -111,6 +112,35 @@ class RewriteFilter : public CommonFilter {
       const Resource* stylesheet,
       const StringPiece attribute_charset,
       const StringPiece enclosing_charset);
+
+  // Determines which filters are related to this RewriteFilter.  Note,
+  // for example, that the ImageRewriteFilter class implements lots of
+  // different RewriteOptions::Filters.
+  //
+  // This is used for embedding the relevant enabled filter IDs.  See
+  // the doc for RewriteOptions::add_options_to_urls_.  We want to support
+  // that without bloating URLs excessively adding unrelated filter settings.
+  //
+  // The vector is returned in numerically increasing order so binary_search
+  // is possible.
+  //
+  // *num_filters is set to the size of this array.
+  //
+  // Ownership of the filter-vector is not transferred to the caller; it
+  // is expected to return a pointer to a static vector.
+  virtual const RewriteOptions::Filter* RelatedFilters(int* num_filters) const;
+
+  // Determines which options are related to this RewriteFilter.
+  //
+  // The vector is returned in numerically increasing order so binary_search
+  // is possible.
+  //
+  // *num_options is set to the size of this array.
+  //
+  // Ownership of the filter-vector is not transferred to the caller; it
+  // is expected to return a pointer to a static vector.
+  virtual const RewriteOptions::OptionEnum* RelatedOptions(
+      int* num_options) const;
 
  protected:
   // This class logs using id().

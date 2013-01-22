@@ -14,6 +14,8 @@
 
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 
+#include <algorithm>  // for std::binary_search
+
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
@@ -23,8 +25,23 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
+
+namespace {
+
+// Query-param name used to encode all relevant enabled filters and
+// non-default options for a pagespeed resource.  The value of this
+// is not intended to be human-readable; it uses ID codes for brevity
+// and hence we keep this distinct from the general query-param syntax
+// used for debug & experimentation.
+const char kAddQueryFromOptionName[] = "PsolOpt";
+
+}  // namespace
 
 namespace net_instaweb {
 
@@ -81,7 +98,9 @@ RewriteQuery::Status RewriteQuery::ScanHeader(
   HeaderT headers_to_remove;
 
   for (int i = 0, n = headers->NumAttributes(); i < n; ++i) {
-    switch (ScanNameValue(headers->Name(i), headers->Value(i), options,
+    switch (ScanNameValue(headers->Name(i), headers->Value(i),
+                          NULL,  // We don't need arbitrary options for headers
+                          options,
                           handler)) {
       case kNoneFound:
         break;
@@ -107,7 +126,9 @@ RewriteQuery::Status RewriteQuery::ScanHeader(
 // of poisoning our internal cache. Domain adjustments can potentially introduce
 // a security vulnerability.
 RewriteQuery::Status RewriteQuery::Scan(
+    bool allow_related_options,
     RewriteDriverFactory* factory,
+    ServerContext* server_context,
     GoogleUrl* request_url,
     RequestHeaders* request_headers,
     ResponseHeaders* response_headers,
@@ -118,9 +139,26 @@ RewriteQuery::Status RewriteQuery::Scan(
   QueryParams query_params;
   query_params.Parse(request_url->Query());
 
+  // To support serving resources from servers that don't share the
+  // same settings as the ones generating HTML, we can put whitelisted
+  // option-settings into the query-params by ID.  But we expose this
+  // setting (a) only for .pagespeed. resources, not HTML, and (b)
+  // only when allow_related_options is true.
+  const RewriteFilter* rewrite_filter = NULL;
+  ResourceNamer namer;
+  if (allow_related_options) {
+    if (namer.Decode(request_url->LeafSansQuery())) {
+      rewrite_filter = server_context->decoding_driver()->FindFilter(
+          namer.id());
+    } else {
+      allow_related_options = false;
+    }
+  }
+
   // See if anything looks even remotely like one of our options before doing
   // any more work.
-  if (!MayHaveCustomOptions(query_params, request_headers, response_headers)) {
+  if (!MayHaveCustomOptions(query_params, request_headers, response_headers,
+                            allow_related_options)) {
     return kNoneFound;
   }
 
@@ -132,7 +170,8 @@ RewriteQuery::Status RewriteQuery::Scan(
     const GoogleString* value = query_params.value(i);
     if (value != NULL) {
       switch (ScanNameValue(
-                  query_params.name(i), *value, options->get(), handler)) {
+          query_params.name(i), *value, rewrite_filter, options->get(),
+          handler)) {
         case kNoneFound:
           temp_query_params.Add(query_params.name(i), *value);
           break;
@@ -204,9 +243,11 @@ bool RewriteQuery::HeadersMayHaveCustomOptions(const QueryParams& params,
 
 bool RewriteQuery::MayHaveCustomOptions(
     const QueryParams& params, const RequestHeaders* req_headers,
-    const ResponseHeaders* resp_headers) {
+    const ResponseHeaders* resp_headers, bool allow_related_options) {
   for (int i = 0, n = params.size(); i < n; ++i) {
-    if (StringPiece(params.name(i)).starts_with(kModPagespeed)) {
+    StringPiece name(params.name(i));
+    if (name.starts_with(kModPagespeed) ||
+        (allow_related_options && (name == kAddQueryFromOptionName))) {
       return true;
     }
   }
@@ -221,7 +262,8 @@ bool RewriteQuery::MayHaveCustomOptions(
 
 RewriteQuery::Status RewriteQuery::ScanNameValue(
     const StringPiece& name, const GoogleString& value,
-    RewriteOptions* options, MessageHandler* handler) {
+    const RewriteFilter* rewrite_filter, RewriteOptions* options,
+    MessageHandler* handler) {
   Status status = kNoneFound;
   if (name == kModPagespeed) {
     RewriteOptions::EnabledEnum enabled;
@@ -254,6 +296,8 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     } else {
       status = kInvalid;
     }
+  } else if ((rewrite_filter != NULL) && (name == kAddQueryFromOptionName)) {
+    status = ParseResourceOption(value, options, rewrite_filter);
   } else {
     for (unsigned i = 0; i < arraysize(int64_query_params_); ++i) {
       if (name == int64_query_params_[i].name_) {
@@ -272,6 +316,108 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     }
   }
 
+  return status;
+}
+
+// In some environments it is desirable to bind a URL to the options
+// that affect it.  One example of where this would be needed is if
+// images are served by a separate cluster that doesn't share the same
+// configuration as the mod_pagespeed instances that rewrote the HTML.
+// In this case, we must encode the relevant options as query-params
+// to be appended to the URL.  These should be decodable by Scan()
+// above, though they don't need to be in the same verbose format that
+// we document for debugging and experimentation.  They can use the
+// more concise abbreviations of 2-4 letters for each option.
+GoogleString RewriteQuery::GenerateResourceOption(
+    StringPiece filter_id, RewriteDriver* driver) {
+  const RewriteFilter* filter = driver->FindFilter(filter_id);
+  GoogleString prefix_buffer = StrCat(kAddQueryFromOptionName, "=");
+  StringPiece prefix(prefix_buffer);
+  GoogleString value;
+  const RewriteOptions* options = driver->options();
+
+  // All the filters & options will be encoded into the value of a
+  // single query param with name kAddQueryFromOptionName ("PsolOpt").
+  // The value will have the comma-separated filters IDs, and option IDs,
+  // which are all given a 2-4 letter codes.  The only difference between
+  // options & filters syntactically is that options have values preceded
+  // by a colon:
+  //   filter1,filter2,filter3,option1:value1,option2:value2
+
+  // Add any relevant enabled filters.
+  int num_filters, num_options;
+  const RewriteOptions::Filter* filters = filter->RelatedFilters(&num_filters);
+  for (int i = 0; i < num_filters; ++i) {
+    RewriteOptions::Filter filter_enum = filters[i];
+    if (options->Enabled(filter_enum)) {
+      StrAppend(&value, prefix, RewriteOptions::FilterId(filter_enum));
+      prefix = ",";
+    }
+  }
+
+  // Add any non-default options.
+  GoogleString option_value;
+  const RewriteOptions::OptionEnum* opts = filter->RelatedOptions(&num_options);
+  for (int i = 0; i < num_options; ++i) {
+    RewriteOptions::OptionEnum option = opts[i];
+    const char* id;
+    bool was_set = false;
+    if (options->OptionValue(option, &id, &was_set, &option_value) && was_set) {
+      StrAppend(&value, prefix, id, ":", option_value);
+      prefix = ",";
+    }
+  }
+  return value;
+}
+
+RewriteQuery::Status RewriteQuery::ParseResourceOption(
+    StringPiece value, RewriteOptions* options, const RewriteFilter* filter) {
+  Status status = kNoneFound;
+  StringPieceVector filters_and_options;
+  SplitStringPieceToVector(value, ",", &filters_and_options, true);
+
+  // We will want to validate any filters & options we are trying to set
+  // with this mechanism against the whitelist of whatever the filter thinks is
+  // needed.  But do this lazily.
+  int num_filters, num_options;
+  const RewriteOptions::Filter* filters = filter->RelatedFilters(&num_filters);
+  const RewriteOptions::OptionEnum* opts = filter->RelatedOptions(&num_options);
+
+  for (int i = 0, n = filters_and_options.size(); i < n; ++i) {
+    StringPieceVector name_value;
+    SplitStringPieceToVector(filters_and_options[i], ":", &name_value, true);
+    switch (name_value.size()) {
+      case 1: {
+        RewriteOptions::Filter filter =
+            RewriteOptions::LookupFilterById(name_value[0]);
+        if ((filter == RewriteOptions::kEndOfFilters) ||
+            !std::binary_search(filters, filters + num_filters, filter)) {
+          status = kInvalid;
+        } else {
+          options->EnableFilter(filter);
+          status = kSuccess;
+        }
+        break;
+      }
+      case 2: {
+        RewriteOptions::OptionEnum option_enum =
+            RewriteOptions::LookupOptionEnumById(name_value[0]);
+        if ((option_enum != RewriteOptions::kEndOfOptions) &&
+            std::binary_search(opts, opts + num_options, option_enum) &&
+            (options->SetOptionFromEnum(option_enum, name_value[1].as_string())
+             == RewriteOptions::kOptionOk)) {
+          status = kSuccess;
+        } else {
+          status = kInvalid;
+        }
+        break;
+      }
+      default:
+        status = kInvalid;
+    }
+  }
+  options->SetRewriteLevel(RewriteOptions::kPassThrough);
+  options->DisableAllFiltersNotExplicitlyEnabled();
   return status;
 }
 

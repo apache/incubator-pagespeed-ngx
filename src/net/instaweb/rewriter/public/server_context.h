@@ -535,6 +535,10 @@ class ServerContext {
   virtual void ApplySessionFetchers(const RequestContextPtr& req,
                                     RewriteDriver* driver);
 
+  const RewriteDriver* decoding_driver() const {
+    return decoding_driver_.get();
+  }
+
  protected:
   // Takes ownership of the given pool, making sure to clean it up at the
   // appropriate spot during shutdown.

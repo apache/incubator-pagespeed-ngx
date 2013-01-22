@@ -75,7 +75,6 @@
 #include "ap_release.h"                                              // NOLINT
 #include "apr_pools.h"                                               // NOLINT
 #include "apr_strings.h"                                             // NOLINT
-#include "apr_timer.h"                                               // NOLINT
 #include "http_config.h"                                             // NOLINT
 #include "http_protocol.h"                                           // NOLINT
 #include "http_request.h"                                            // NOLINT
@@ -123,6 +122,7 @@ const char kDisallow[] = "disallow";
 
 const char kModPagespeedIf[] = "<ModPagespeedIf";
 
+const char kModPagespeedAddOptionsToUrls[] = "ModPagespeedAddOptionsToUrls";
 const char kModPagespeedAllow[] = "ModPagespeedAllow";
 const char kModPagespeedAnalyticsID[] = "ModPagespeedAnalyticsID";
 const char kModPagespeedAvoidRenamingIntrospectiveJavascript[] =
@@ -1815,6 +1815,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
 
   // All one parameter options that are allowed in <Directory> blocks.
   APACHE_CONFIG_DIR_OPTION(RewriteQuery::kModPagespeed, "Enable instaweb"),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedAddOptionsToUrls,
+        "Add query-params with configuration adjustments to rewritten URLs."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedAllow,
         "wildcard_spec for urls"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedAnalyticsID,

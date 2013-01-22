@@ -150,9 +150,9 @@ class ImageRewriteTest : public RewriteTestBase {
     pcache->Read(page);
   }
 
-  // Simple image rewrite test to check resource fetching functionality.
-  void RewriteImage(const GoogleString& tag_string,
-                    const ContentType& content_type) {
+  void RewriteImageFromHtml(const GoogleString& tag_string,
+                            const ContentType& content_type,
+                            GoogleString* img_src) {
     options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
     AddRecompressImageFilters();
     options()->set_image_inline_max_bytes(2000);
@@ -170,8 +170,6 @@ class ImageRewriteTest : public RewriteTestBase {
 
     // Store image contents into fetcher.
     AddFileToMockFetcher(image_url, kPuzzleJpgFile, kContentTypeJpeg, 100);
-
-    // Rewrite the HTML page.
     ParseUrl(html_url, image_html);
     StringVector img_srcs;
     CollectImgSrcs("RewriteImage/collect_sources", output_buffer_, &img_srcs);
@@ -184,8 +182,15 @@ class ImageRewriteTest : public RewriteTestBase {
     EXPECT_EQ(domain.AllExceptLeaf(), img_gurl.AllExceptLeaf());
     EXPECT_TRUE(img_gurl.LeafSansQuery().ends_with(
         content_type.file_extension()));
+    *img_src = img_srcs[0];
+  }
 
-    const GoogleString& src_string = img_srcs[0];
+  // Simple image rewrite test to check resource fetching functionality.
+  void RewriteImage(const GoogleString& tag_string,
+                    const ContentType& content_type) {
+    GoogleString src_string;
+    RewriteImageFromHtml(tag_string, content_type, &src_string);
+
     const GoogleString expected_output =
         StrCat("<head/><body><", tag_string, " src=\"", src_string,
                "\" width=\"1023\" height=\"766\"/></body>");
@@ -1734,6 +1739,40 @@ TEST_F(ImageRewriteTest, CacheControlHeaderCheckForNonWebpUA) {
     EXPECT_FALSE(response.IsProxyCacheable());
     EXPECT_EQ(5 * Timer::kMinuteMs,
               response.CacheExpirationTimeMs() - timer()->NowMs());
+}
+
+TEST_F(ImageRewriteTest, RewriteImagesAddingOptionsToUrl) {
+  AddRecompressImageFilters();
+  options()->set_add_options_to_urls(true);
+  options()->set_image_jpeg_recompress_quality(73);
+  GoogleString img_src;
+  RewriteImageFromHtml("img", kContentTypeJpeg, &img_src);
+  GoogleUrl gurl(img_src);
+  EXPECT_STREQ("PsolOpt=gp,jw,pj,rj,rp,rw,iq:73", gurl.Query());
+
+  // Serve this from rewrite_driver(), which has the same cache & the
+  // same options set so will have the canonical results.
+  GoogleString golden_content, remote_content;
+  ResponseHeaders golden_response, remote_response;
+  EXPECT_TRUE(FetchResourceUrl(img_src, &golden_content, &golden_response));
+  // EXPECT_EQ(84204, golden_content.size());
+
+  // TODO(jmarantz): We cannot test fetches using a flow that
+  // resembles that of the server currently; we need a non-trivial
+  // refactor to put the query-param processing into BlockingFetch.
+  //
+  // In the meantime we rely on system-tests to make sure we can fetch
+  // what we rewrite.
+  /*
+  RewriteOptions* other_opts = other_server_context()->global_options();
+  other_opts->ClearSignatureForTesting();
+  other_opts->set_add_options_to_urls(true);
+  other_server_context()->ComputeSignature(other_opts);
+  ASSERT_TRUE(BlockingFetch(img_src, &remote_content,
+                            other_server_context(), NULL));
+  ASSERT_EQ(golden_content.size(), remote_content.size());
+  EXPECT_EQ(golden_content, remote_content);  // don't bother if sizes differ...
+  */
 }
 
 }  // namespace net_instaweb

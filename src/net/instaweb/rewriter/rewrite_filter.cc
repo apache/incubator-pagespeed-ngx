@@ -126,4 +126,16 @@ GoogleString RewriteFilter::GetCharsetForStylesheet(
   return GoogleString();
 }
 
+const RewriteOptions::Filter* RewriteFilter::RelatedFilters(
+    int* num_filters) const {
+  *num_filters = 0;
+  return NULL;
+};
+
+const RewriteOptions::OptionEnum* RewriteFilter::RelatedOptions(
+    int* num_options) const {
+  *num_options = 0;
+  return NULL;
+}
+
 }  // namespace net_instaweb
