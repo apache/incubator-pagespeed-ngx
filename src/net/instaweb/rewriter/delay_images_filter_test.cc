@@ -18,7 +18,6 @@
 
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
-#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
@@ -194,7 +193,6 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
   html_parse()->Flush();
   html_parse()->ParseText(flush2);
   html_parse()->FinishParse();
-  rewrite_driver()->log_record()->Finalize();
 
   GoogleString output_html = StrCat(GetHeadHtmlWithDeferJs(),
       StrCat("<body>",

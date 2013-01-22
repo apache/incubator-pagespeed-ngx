@@ -112,9 +112,9 @@ class RewriteFilter : public CommonFilter {
       const StringPiece attribute_charset,
       const StringPiece enclosing_charset);
 
-  // Add this filter to the logged list of applied rewriters.
+ protected:
   // This class logs using id().
-  virtual void LogFilterModifiedContent();
+  virtual const char* LoggingId() { return id(); }
 
  private:
   // Filters should override this and return true if they write to the property

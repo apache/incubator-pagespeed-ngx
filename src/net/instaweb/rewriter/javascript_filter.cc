@@ -27,6 +27,8 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/in_place_rewrite_context.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
@@ -39,6 +41,7 @@
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -97,6 +100,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
       : SingleRewriteContext(driver, parent, NULL),
         config_(config),
         body_node_(body_node) {
+    rewriter_info_ = Driver()->log_record()->NewRewriterInfo(id());
   }
 
   RewriteResult RewriteJavascript(
@@ -184,8 +188,12 @@ class JavascriptFilter::Context : public SingleRewriteContext {
       return;
     }
     // The url or script content is changing, so log that fact.
+    {
+      ScopedMutex lock(Driver()->log_record()->mutex());
+      Driver()->log_record()->SetRewriterLoggingStatus(
+          rewriter_info_, RewriterInfo::APPLIED_OK);
+    }
     config_->num_uses()->Add(1);
-    Driver()->log_record()->LogAppliedRewriter(id());
   }
 
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
@@ -263,6 +271,8 @@ class JavascriptFilter::Context : public SingleRewriteContext {
   JavascriptRewriteConfig* config_;
   // The node containing the body of the script tag, or NULL.
   HtmlCharactersNode* body_node_;
+  // RewriterInfo logging structure for this rewrite.
+  RewriterInfo* rewriter_info_;
 };
 
 void JavascriptFilter::StartElementImpl(HtmlElement* element) {
@@ -314,6 +324,8 @@ void JavascriptFilter::InitializeConfig() {
 
 void JavascriptFilter::RewriteInlineScript() {
   if (body_node_ != NULL) {
+    // Log rewriter activity
+    RewriterInfo* rewriter_info = driver_->log_record()->NewRewriterInfo(id());
     // First buffer up script data and minify it.
     GoogleString* script = body_node_->mutable_contents();
     MessageHandler* message_handler = driver_->message_handler();
@@ -341,7 +353,11 @@ void JavascriptFilter::RewriteInlineScript() {
         script->swap(*rewritten_script);
       }
       config_->num_uses()->Add(1);
-      LogFilterModifiedContent();
+      {
+        ScopedMutex lock(driver_->log_record()->mutex());
+        driver_->log_record()->SetRewriterLoggingStatus(
+            rewriter_info, RewriterInfo::APPLIED_OK);
+      }
     } else {
       config_->did_not_shrink()->Add(1);
     }
@@ -351,7 +367,7 @@ void JavascriptFilter::RewriteInlineScript() {
 // External script; minify and replace with rewritten version (also external).
 void JavascriptFilter::RewriteExternalScript() {
   const StringPiece script_url(script_src_->DecodedValueOrNull());
-    ResourcePtr resource = CreateInputResource(script_url);
+  ResourcePtr resource = CreateInputResource(script_url);
   if (resource.get() != NULL) {
     ResourceSlotPtr slot(
         driver_->GetSlot(resource, script_in_progress_, script_src_));

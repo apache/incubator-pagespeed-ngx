@@ -25,9 +25,10 @@ class LoggingInfo;
 class MetadataCacheInfo;
 class PropertyCohortInfo;
 class PropertyPageInfo;
+class RewriterInfo;
 class TimingInfo;
 
-}
+}  // namespace net_instaweb
 
 
 #endif  // NET_INSTAWEB_HTTP_PUBLIC_LOGGING_PROTO_H_

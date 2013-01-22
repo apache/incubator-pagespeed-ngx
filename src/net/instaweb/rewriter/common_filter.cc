@@ -187,7 +187,7 @@ bool CommonFilter::ExtractMetaTagDetails(const HtmlElement& element,
 }
 
 void CommonFilter::LogFilterModifiedContent() {
-  driver()->log_record()->LogAppliedRewriter(Name());
+  driver()->log_record()->LogAppliedRewriter(LoggingId());
 }
 
 }  // namespace net_instaweb

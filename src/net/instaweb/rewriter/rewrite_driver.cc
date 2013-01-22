@@ -2263,16 +2263,6 @@ void RewriteDriver::WriteClientStateIntoPropertyCache() {
   }
 }
 
-void RewriteDriver::FinalizeFilterLogging() {
-  {
-    ScopedMutex lock(log_record()->mutex());
-    log_record()->logging_info()->set_furious_id(options()->furious_id());
-  }
-  if (!is_nested_) {
-    log_record()->Finalize();
-  }
-}
-
 void RewriteDriver::UpdatePropertyValueInDomCohort(StringPiece property_name,
                                                    StringPiece property_value) {
   if (!owns_property_page_) {
@@ -2292,7 +2282,10 @@ void RewriteDriver::UpdatePropertyValueInDomCohort(StringPiece property_name,
 }
 
 void RewriteDriver::Cleanup() {
-  FinalizeFilterLogging();
+  {
+    ScopedMutex lock(log_record()->mutex());
+    log_record()->logging_info()->set_furious_id(options()->furious_id());
+  }
   if (!externally_managed_) {
     bool should_release = false;
     {

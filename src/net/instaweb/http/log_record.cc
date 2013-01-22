@@ -28,14 +28,15 @@
 
 namespace net_instaweb {
 
-LogRecord::LogRecord(AbstractMutex* mutex) : finalized_(false), mutex_(mutex) {
+const char kRewriterIdSeparator[] = ",";
+
+LogRecord::LogRecord(AbstractMutex* mutex) : mutex_(mutex) {
   InitLogging();
 }
 
 // Non-initializing constructor for subclasses to invoke.
 LogRecord::LogRecord()
     : logging_info_(NULL),
-      finalized_(false),
       mutex_(NULL) {
 }
 
@@ -90,25 +91,49 @@ void LogRecord::LogAppliedRewriter(const char* rewriter_id) {
 
 void LogRecord::LogAppliedRewriterImpl(const char* rewriter_id) {
   mutex_->DCheckLocked();
-  if (!finalized()) {
-    applied_rewriters_.insert(rewriter_id);
+  if (strlen(rewriter_id) > 0) {
+    NewRewriterInfoImpl(rewriter_id, RewriterInfo::APPLIED_OK);
   }
 }
 
-void LogRecord::Finalize() {
+RewriterInfo* LogRecord::NewRewriterInfo(const char* rewriter_id) {
   ScopedMutex lock(mutex_.get());
-  FinalizeImpl();
+  return NewRewriterInfoImpl(rewriter_id, RewriterInfo::UNKNOWN_STATUS);
 }
 
-void LogRecord::FinalizeImpl() {
+RewriterInfo* LogRecord::NewRewriterInfoImpl(const char* rewriter_id,
+                                             int status) {
+  DCHECK(RewriterInfo::RewriterApplicationStatus_IsValid(status));
   mutex_->DCheckLocked();
-  if (!finalized()) {
-    logging_info()->set_applied_rewriters(ConcatenatedRewriterString());
-    finalized_ = true;
+  RewriterInfo* rewriter_info = logging_info()->add_rewriter_info();
+  rewriter_info->set_id(rewriter_id);
+  rewriter_info->set_status(
+      static_cast<RewriterInfo::RewriterApplicationStatus>(status));
+  // Interim measure to preserve the applied_rewriters string.
+  // TODO(marq): Remove when applied_rewriters is fully deprecated.
+  if (status == RewriterInfo::APPLIED_OK) {
+    logging_info()->set_applied_rewriters(AppliedRewritersString());
+  }
+  return rewriter_info;
+}
+
+void LogRecord::SetRewriterLoggingStatus(
+    RewriterInfo* rewriter_info, int status) {
+  DCHECK(RewriterInfo::RewriterApplicationStatus_IsValid(status));
+  mutex_->DCheckLocked();
+  DCHECK_EQ(RewriterInfo::UNKNOWN_STATUS, rewriter_info->status()) <<
+    "Only RewriterInfo messages with UNKNOWN_STATUS may have their status set.";
+  rewriter_info->set_status(
+      static_cast<RewriterInfo::RewriterApplicationStatus>(status));
+  // Interim measure to preserve the applied_rewriters string.
+  // TODO(marq): Remove when applied_rewriters is fully deprecated.
+  if (status == RewriterInfo::APPLIED_OK) {
+    logging_info()->set_applied_rewriters(AppliedRewritersString());
   }
 }
 
 void LogRecord::SetBlinkRequestFlow(int flow) {
+  DCHECK(BlinkInfo::BlinkRequestFlow_IsValid(flow));
   ScopedMutex lock(mutex_.get());
   logging_info()->mutable_blink_info()->set_blink_request_flow(
       static_cast<BlinkInfo::BlinkRequestFlow>(flow));
@@ -148,14 +173,25 @@ bool LogRecord::WriteLog() {
   return WriteLogImpl();
 }
 
-GoogleString LogRecord::ConcatenatedRewriterString() {
-  GoogleString rewriters_str;
-  StringSet::iterator iter;
-  for (iter = applied_rewriters_.begin(); iter != applied_rewriters_.end();
-      ++iter) {
-    if (iter != applied_rewriters_.begin()) {
-      StrAppend(&rewriters_str, ",");
+GoogleString LogRecord::AppliedRewritersString() {
+  mutex_->DCheckLocked();
+  StringSet applied_rewriters;
+  for (int i = 0, e = logging_info()->rewriter_info_size();
+       i < e; ++i) {
+    RewriterInfo info = logging_info()->rewriter_info(i);
+    if (info.status() == RewriterInfo::APPLIED_OK) {
+      applied_rewriters.insert(info.id());
     }
+  }
+  GoogleString rewriters_str;
+  for (StringSet::iterator begin = applied_rewriters.begin(),
+       iter = applied_rewriters.begin(), end = applied_rewriters.end();
+       iter != end; ++iter) {
+    if (iter != begin) {
+      StrAppend(&rewriters_str, kRewriterIdSeparator);
+    }
+    DCHECK((*iter).find(kRewriterIdSeparator) == GoogleString::npos) <<
+       "No comma should appear in a rewriter ID";
     StrAppend(&rewriters_str, *iter);
   }
   return rewriters_str;

@@ -118,8 +118,23 @@ message PropertyPageInfo {
   repeated PropertyCohortInfo cohort_info = 1;
 }
 
+// This proto stores information describing each rewriter's activity in a
+// request.
+// Next id for RewriterInfo: 3
+message RewriterInfo {
+  enum RewriterApplicationStatus {
+    UNKNOWN_STATUS = 0;
+    APPLIED_OK = 1;
+  }
+
+  // The rewriter's id.
+  optional string id = 1;
+  // Status of this rewriter application.
+  optional RewriterApplicationStatus status = 2;
+}
+
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 9
+// Next id for LoggingInfo: 10
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -138,4 +153,6 @@ message LoggingInfo {
   optional SplitHtmlInfo split_html_info = 7;
   // All information related to the pcache lookup.
   optional PropertyPageInfo property_page_info = 8;
+  // Rewriter information for this request.
+  repeated RewriterInfo rewriter_info = 9;
 }
