@@ -20,7 +20,7 @@ from util import *
 set_writer(emit)
 
 def write_servers_open_item(server,level):
-    emit_indent("<VirtualHost %s%s>\n" % (server["address"], server["port"])
+    emit_indent("<VirtualHost %s:%s>\n" % (server["address"], server["port"])
                 , level)
     if "root" in server:
         emit_indent("DocumentRoot %s\n" % server["root"], level+1)
@@ -34,9 +34,7 @@ def write_servers_close_item(server,level):
 
 def write_locations_open_item(server,level):
     if "path" in server:
-        emit_indent("<Location %s >\n" % server["path"],level)
-    elif "wildcard_path" in server:
-        emit_indent("<Location ~ \"%s\">\n" % server["wildcard_path"],level)
+        emit_indent("<Location ~ \"%s\">\n" % server["path"],level)
 
     if "proxy_pass" in server:
         emit_indent("ProxyPass %s\n" % server["proxy_pass"],level+1)

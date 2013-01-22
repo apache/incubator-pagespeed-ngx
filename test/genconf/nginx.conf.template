@@ -30,7 +30,7 @@ def write_servers_open_item(server, level):
         emit_indent("root %s;\n" % server["root"], level+1)
 
     if "server_name" in server:
-        emit_indent("server_name %s" % server["server_name"], level+1)
+        emit_indent("server_name %s;" % server["server_name"], level+1)
 
     emit_indent("location ~ \"\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+\" { }\n"
                 , level+1)
@@ -45,17 +45,10 @@ def write_servers_close_item(server, level):
 
 def write_locations_open_item(server, level):
     if "path" in server:
-        emit_indent("location  " + server["path"] + " {\n",level)
-
+        emit_indent("location ~ " + server["path"] + " {\n",level)
 
     if "proxy_pass" in server:
         emit_indent("proxy_pass " + server["proxy_pass"] + ";\n",level+1)
-
-
-    elif "wildcard_path" in server:
-        wp = server["wildcard_path"]
-        wp = string.replace(wp,"*",".*$")
-        emit_indent("location ~* " + wp + " {\n",level)
 
 def write_locations_close_item(server,level):
     emit_indent("}\n",level)
@@ -175,12 +168,6 @@ def write_add_options_open(ps,level):
     for item in ps:
         if item == "Indexes":
             emit(indent("autoindex on;\n",level))
-        elif item == "MultiViews":
-            # for mod_rewrite in apache, ignore for nginx
-            pass
-        elif item == "SymLinksIfOwnerMatch":
-            # for mod_rewrite in apache, ignore for nginx
-            pass
         else:
             raise Exception("Option '" + item + "': no translation for nginx")
     return True

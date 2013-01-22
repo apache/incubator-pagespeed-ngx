@@ -337,12 +337,10 @@ locations: [
 #endif
     },
     {
-        wildcard_path: "/mod_pagespeed_test/response_headers.html*",
-## TODO: retain wildcard location
-##<Location ~ "/mod_pagespeed_test/response_headers.html*">
-##  SetHandler mod_pagespeed_response_options_handler
-##</Location>
-
+        path: "/mod_pagespeed_test/response_headers.html.*",
+#ifdef apache
+        literal: { value: "SetHandler  mod_pagespeed_response_options_handler\n" },
+#endif
     },
     {
         path: "/mod_pagespeed_test/max_html_parse_size",
@@ -415,18 +413,24 @@ locations: [
     },
     {
         path: "/",
+#ifdef apache
         # This is enabled to make sure we don't crash mod_negotiation.
         add_options: ["MultiViews"],
+#endif
     },
     {
         path: "/mod_pagespeed_test/",
+#ifdef apache
         # Some versions of mod_rewrite will refuse to do any work if
         # symlink handling is off.
         add_options: ["SymLinksIfOwnerMatch"],
+#endif
     },
     {
         path: "/mod_pagespeed_test/close_connection/",
+#ifdef apache
         add_options: ["SymLinksIfOwnerMatch"],
+#endif
         # Helps tests whether we successfully strip Connection:close
         # results from the origin.
         headers: [{ action:"append", name:"Connection", value:"close"}],
