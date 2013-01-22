@@ -18,11 +18,10 @@
 
 # configuration generator for pagespeed
 
-# TODO(oschaaf): polish location matching
+# TODO(oschaaf): run tests again, pay attention to location matching
 # TODO(oschaaf): create a README
 # TODO(oschaaf): list failing modes per server
 # TODO(oschaaf): document
-# TODO(oschaaf): don't hardcode pagespeed.debug.pyconf 
 # TODO(oschaaf): inspect stale comments from pyconf
 
 
@@ -33,7 +32,7 @@ from util import Error
 
 def exit_with_help_message():
     print "This script transforms .pyconf files into webserver configuration files"
-    print "usage: ./genconf.py <output_format> <mode>"
+    print "usage: ./genconf.py <input.pyconf> <output_format> <mode>"
     print "where output_format can be either 'apache' or 'nginx'"
     quit()
 
@@ -63,12 +62,14 @@ placeholders = {
     'MOD_PAGESPEED_STATS_LOG': 'stats.log'
     }
 
-output_format = ''
-mode = ''
+input_config_path = ""
+output_format = ""
+mode = ""
 
-if len(sys.argv) == 3:
-    output_format = sys.argv[1]
-    mode = sys.argv[2]
+if len(sys.argv) == 4:
+    input_config_path = sys.argv[1]
+    output_format = sys.argv[2]
+    mode = sys.argv[3]
 else:
     exit_with_help_message()
 
@@ -81,8 +82,7 @@ placeholders["__template_header"] = "generated at %s through \"%s\"" %\
 #expected to contain the translation script
 template = output_format + '.conf.template'
 
-
-text = execute_template('pagespeed.debug.pyconf', conditions,
-                            placeholders, template)
+text = execute_template(input_config_path, conditions,
+                        placeholders, template)
 print(text)
 
