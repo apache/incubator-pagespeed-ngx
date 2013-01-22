@@ -18,13 +18,6 @@
 
 # configuration generator for pagespeed
 
-# TODO(oschaaf): run tests again, pay attention to location matching
-# TODO(oschaaf): create a README
-# TODO(oschaaf): list failing modes per server
-# TODO(oschaaf): document
-# TODO(oschaaf): inspect stale comments from pyconf
-
-
 import datetime
 from genconf import execute_template
 import sys
