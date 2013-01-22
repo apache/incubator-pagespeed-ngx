@@ -204,16 +204,22 @@ def execute_template(pyconf_path, conditions,
     if not os.path.exists(template_path):
         raise Error("Expected a transformation script at [%s]" % template_path)
 
-    config_file = open(pyconf_path)
-    config_text = config_file.read()
+    config_text = ""
+
+    with open(pyconf_path) as config_file:
+        config_text = config_file.read()
+
     config_text = pre_process_ifdefs(config_text, conditions)
     config_text = pre_process_text(config_text, conditions,
                                    placeholders)
 
     ast = parse_python_struct(config_text)
     config = ast_node_to_dict(ast, None, {}, '')
-    template_file = open(template_path)
-    template_text = template_file.read()
+    template_file = ""
+
+    with open(template_path) as template_file:
+        template_text = template_file.read()
+
     template_text = pre_process_text(template_text, conditions,
                                      placeholders)
     template = Templite(template_text)

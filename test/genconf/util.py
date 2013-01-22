@@ -51,7 +51,17 @@ def write_cfg(key_to_writer, config, level=0):
                 raise Error("no tranform handler for [%s]" % key)
 
 def indent(txt, level):
-    return ' ' * (level * 4) + txt
+    lines = txt.split("\n")
+    r = []
+    for line in lines:
+        if not line: continue
+        r.append("%s%s\n" % (' ' * (level * 4), line))
+        
+    return ''.join(r)
+
+def emit_indent(txt,level):
+    global global_writer
+    global_writer(indent(txt,level))
 
 def write_void(ps, level):
     pass

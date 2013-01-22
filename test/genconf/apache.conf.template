@@ -20,57 +20,50 @@ from util import *
 set_writer(emit)
 
 def write_servers_open_item(server,level):
-    emit(indent("<VirtualHost ", level))
-    emit(server["address"])
-    emit(":")
-    emit(server["port"])
-    emit(">\n")
+    emit_indent("<VirtualHost %s%s>\n" % (server["address"], server["port"])
+                , level)
     if "root" in server:
-       emit(indent("DocumentRoot " + server["root"] + "\n", level+1));
+        emit_indent("DocumentRoot %s\n" % server["root"], level+1)
     if "server_name" in server:
-        emit(indent("ServerName " + server["server_name"] + "\n", level+1));
+        emit_indent("ServerName %s\n" % server["server_name"], level+1)
     if "pagespeed_status" in server:
-        emit(indent("ModPagespeed " + server["pagespeed_status"] + "\n", level+1));
+        emit_indent("ModPagespeed %s\n" % server["pagespeed_status"], level+1)
 
 def write_servers_close_item(server,level):
-    emit(indent("</VirtualHost>\n",level))
+    emit_indent("</VirtualHost>\n",level)
 
 def write_locations_open_item(server,level):
     if "path" in server:
-        emit(indent("<Location " + server["path"]  + " >\n",level))
+        emit_indent("<Location %s >\n" % server["path"],level)
     elif "wildcard_path" in server:
-        emit(indent("<Location ~ \"" + server["wildcard_path"]  + "\">\n",level))
+        emit_indent("<Location ~ \"%s\">\n" % server["wildcard_path"],level)
 
     if "proxy_pass" in server:
-        emit(indent("ProxyPass " + server["proxy_pass"] + "\n",level+1))
-
-
-    if "text" in server:
-       raise Exception("deprecated")
-       emit(server["text"])
+        emit_indent("ProxyPass %s\n" % server["proxy_pass"],level+1)
 
 def write_locations_close_item(server,level):
-    emit(indent("</Location>\n",level))
+    emit_indent("</Location>\n",level)
 
 def write_pagespeed_open(ps,level):
     for key in ps:
         val = ps[key]
-        # in pagespeed.debug.conf, the same pagespeed directive can occur multiple times
-        # that is represented as an array, which we need to loop in that case
+        # in pagespeed.debug.conf, the same pagespeed directive can occur
+        # multiple times that is represented as an array, in our config
+        # which we need to loop in that case
         if isinstance(val,list) and not isinstance(val,str):
-            for item in val: 
-                emit(indent("ModPagespeed" + key + " " + str(item),level) + "\n")
+            for item in val:
+                emit_indent("ModPagespeed%s %s\n" %(key,str(item)),level)
         else:
-            emit(indent("ModPagespeed" + key + " " + str(val),level) + "\n")
+            emit_indent("ModPagespeed%s %s\n" % (key, str(val)),level)
 
     return True
 
 def write_pagespeed_if_open(ps,level):
     for key in ps:
-        emit(indent("<ModPagespeedIf " + key,level) + ">\n")
+        emit_indent("<ModPagespeedIf %s>\n" % key,level)
         val = ps[key]
         write_pagespeed_open(val, level+1)
-        emit(indent("</ModPagespeedIf>\n",level))
+        emit_indent("</ModPagespeedIf>\n",level)
     return True
 
 def write_pagespeed_if_close(ps,level):
@@ -78,13 +71,14 @@ def write_pagespeed_if_close(ps,level):
 
 def write_listen_open(ps, level):
     for val in ps:
-        emit(indent("Listen " + str(val) + "\n", level))
+        emit_indent("Listen %s\n" % str(val), level)
     return True
 
 
 def write_name_virtual_hosts_open(ps, level):
     for val in ps:
-        emit(indent("NameVirtualHost " + val["address"] + ":" + str(val["port"]) + "\n", level))
+        emit_indent("NameVirtualHost %s:%s\n" % (val["address"],
+                                                 str(val["port"])),level)
 
     return True
 
@@ -93,65 +87,68 @@ def write_headers_open(ps, level):
         action = val["action"]
         header_name = val["name"]
         header_value = val["value"]
-        emit(indent("Header " + action + " " + repr(header_name) + ' '  + repr(header_value)  + "\n", level))
+        emit_indent("Header %s %s %s\n"
+                    % (action, repr(header_name), repr(header_value)),level)
 
     return True
 
 def write_required_modules_open(ps,level):
     module_path_prefix = "@@APACHE_MODULES@@/mod_"
     for module_name in ps:
-        load_module = indent("LoadModule " + module_name + "_module " + module_path_prefix + module_name + ".so\n", level+1)
+        load_module = "LoadModule %s_module %s%s.so\n" \
+                      % (module_name, module_path_prefix,module_name)
+        load_module = indent(load_module, level + 1)
 
         if module_name in ["headers","rewrite"]:
-            emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
             emit(load_module)
-            emit(indent("</IfModule>\n",level))
+            emit_indent("</IfModule>\n",level)
         elif module_name == "include":
-            emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
             emit(load_module)
-            emit(indent("</IfModule>\n",level))
-            emit(indent("AddType text/html .shtml\n",level))	
-            emit(indent("AddOutputFilter INCLUDES .shtml\n",level))	
+            emit_indent("</IfModule>\n",level)
+            emit_indent("AddType text/html .shtml\n",level)
+            emit_indent("AddOutputFilter INCLUDES .shtml\n",level)
         elif module_name == "ssl":
-            emit(indent("Include @@APACHE_SSL_CONF@@\n",level));
-            emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit_indent("Include @@APACHE_SSL_CONF@@\n",level);
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
             emit(load_module)
-            emit(indent("</IfModule>\n",level))
-            emit(indent("SSLRandomSeed startup builtin\n",level))
-            emit(indent("SSLRandomSeed connect builtin\n",level))
+            emit_indent("</IfModule>\n",level)
+            emit_indent("SSLRandomSeed startup builtin\n",level)
+            emit_indent("SSLRandomSeed connect builtin\n",level)
         elif module_name == "socache_shmcb":
-            emit(indent("<IfVersion >= 2.4>\n",level));
-            emit(indent("<IfModule !" + module_name + "_module>\n", level+1))
+            emit_indent("<IfVersion >= 2.4>\n",level);
+            emit_indent("<IfModule !" + module_name + "_module>\n", level+1)
             emit(load_module)
-            emit(indent("</IfModule>\n",level+1))
-            emit(indent("</IfVersion>\n",level));
+            emit_indent("</IfModule>\n",level+1)
+            emit_indent("</IfVersion>\n",level)
         elif module_name == "slotmem_shm":
-            emit(indent("<IfVersion >= 2.4>\n",level));
-            emit(indent("<IfModule !" + module_name + "_module>\n", level+1))
+            emit_indent("<IfVersion >= 2.4>\n",level)
+            emit_indent("<IfModule !" + module_name + "_module>\n", level+1)
             emit(load_module)
-            emit(indent("</IfModule>\n",level+1))
-            emit(indent("</IfVersion>\n",level));
+            emit_indent("</IfModule>\n",level+1)
+            emit_indent("</IfVersion>\n",level)
         elif module_name == "speling":
-            emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
             emit(load_module)
-            emit(indent("</IfModule>\n",level))
-            emit(indent("CheckSpelling on\n",level))
+            emit_indent("</IfModule>\n",level)
+            emit_indent("CheckSpelling on\n",level)
         elif module_name == "gzip":
-            emit(indent("SetOutputFilter DEFLATE\n",level))
+            emit_indent("SetOutputFilter DEFLATE\n",level)
         elif module_name == "cgi-script":
-            emit(indent("AddHandler cgi-script .cgi\n",level))
+            emit_indent("AddHandler cgi-script .cgi\n",level)
         elif module_name == "mime":
-            emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
             emit(load_module)
-            emit(indent("</IfModule>\n",level))
+            emit_indent("</IfModule>\n",level)
         elif module_name == "pagespeed":
-            emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
             emit(load_module)
-            emit(indent("</IfModule>\n",level))
+            emit_indent("</IfModule>\n",level)
         elif module_name == "proxy":
-            emit(indent("<IfModule !" + module_name + "_module>\n", level))
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
             emit(load_module)
-            emit(indent("</IfModule>\n",level))
+            emit_indent("</IfModule>\n",level)
         else:
             raise Exception("unknown module: " + module_name)
     return True
@@ -160,17 +157,18 @@ def write_literal_open(ps, level):
     emit(ps["value"])
 
 def write_mime_types_open_item(ps,level):
-    emit(indent("AddType " + ps["extension"] + " " + ps["mime_type"] + " \n",level))
+    emit_indent("AddType %s %s\n" % (ps["extension"], ps["mime_type"]),level)
 
 def write_add_options_open(ps,level):
     for item in ps:
-        emit(indent("Options +" + item + "\n",level))
+        emit_indent("Options +%s\n" % item , level)
     return True
 
 def write_rewrite_rules_open(ps,level):
-    emit(indent("RewriteEngine on\n",level))
+    emit_indent("RewriteEngine on\n",level)
     for item in ps:
-        emit(indent("RewriteRule " + item["pattern"] + " " + item["substitution"] + "\n",level))
+        emit_indent("RewriteRule %s %s\n"
+                    % (item["pattern"], item["substitution"]),level)
     return True
 
 key_to_writer = {

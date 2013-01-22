@@ -31,7 +31,8 @@
 # default then we can eliminate this line.
 #ifdef apache
 literal: {
-    value: "AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER application/xhtml+xml\n"
+    value: "AddOutputFilterByType MOD_PAGESPEED_OUTPUT_FILTER "\
+           "application/xhtml+xml\n"
 },
 #endif
 required_modules: [
@@ -85,9 +86,9 @@ headers: [
     },
 ],
 pagespeed: {
-    # If X-PSA-Blocking-Rewrite request header is present and its value matches the
-    # value of ModPagespeedBlockingRewriteKey below, the response will be fully
-    # rewritten before being flushed to the client.
+    # If X-PSA-Blocking-Rewrite request header is present and its value matches
+    # the value of ModPagespeedBlockingRewriteKey below, the response will be
+    # fully rewritten before being flushed to the client.
     BlockingRewriteKey: "psatest",
     # This will cause an error report in the startup log if mod_pagespeed is not
     # built with ssl, but otherwise will cause no trouble.

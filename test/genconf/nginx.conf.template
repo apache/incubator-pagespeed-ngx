@@ -21,78 +21,74 @@ from util import *
 
 set_writer(emit)
 
-def write_servers_open_item(server,level):
-    emit(indent("server{  ", level))
-    emit("\n")
-    emit(indent("listen ",level+1) + server["address"])
-    emit(":")
-    emit(server["port"])
-    emit(";\n")
-    if "root" in server:
-        emit(indent("root " + server["root"] + ";\n", level+1))
-    if "server_name" in server:
-        emit(indent("server_name " + server["server_name"] + ";\n", level+1))
+def write_servers_open_item(server, level):
+    emit_indent("server{\n", level)
+    emit_indent("listen %s:%s;\n" % (server["address"], server["port"])
+                , level+1)
 
-    emit(indent("# This is a temporary workaround that ensures requests for pagespeed\n",level+1))
-    emit(indent("# optimized resources go to the pagespeed handler.\n",level+1))
-    emit(indent("location ~ \"\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+\" { }\n", level+1))
-    emit(indent("location ~ \"^/ngx_pagespeed_static/\" { }\n", level+1))
+    if "root" in server:
+        emit_indent("root %s;\n" % server["root"], level+1)
+
+    if "server_name" in server:
+        emit_indent("server_name %s" % server["server_name"], level+1)
+
+    emit_indent("location ~ \"\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+\" { }\n"
+                , level+1)
+    emit_indent("location ~ \"^/ngx_pagespeed_static/\" { }\n", level+1)
 
     if "pagespeed_status" in server:
-        emit(indent("pagespeed " + server["pagespeed_status"] + ";\n", level+1))
+        emit_indent("pagespeed %s;\n" % server["pagespeed_status"], level+1)
 
 
-def write_servers_close_item(server,level):
-    emit(indent("}\n",level))
+def write_servers_close_item(server, level):
+    emit_indent("}\n",level)
 
-def write_locations_open_item(server,level,is_dir=0):
+def write_locations_open_item(server, level):
     if "path" in server:
-       if is_dir:
-           emit(indent("location  " + server["path"] + " {\n",level))
-       else:
-           emit(indent("location  " + server["path"] + " {\n",level))
+        emit_indent("location  " + server["path"] + " {\n",level)
 
 
     if "proxy_pass" in server:
-        emit(indent("proxy_pass " + server["proxy_pass"] + ";\n",level+1))
+        emit_indent("proxy_pass " + server["proxy_pass"] + ";\n",level+1)
 
 
     elif "wildcard_path" in server:
         wp = server["wildcard_path"]
         wp = string.replace(wp,"*",".*$")
-        emit(indent("location ~* " + wp + " {\n",level))
+        emit_indent("location ~* " + wp + " {\n",level)
 
 def write_locations_close_item(server,level):
-    emit(indent("}\n",level))
+    emit_indent("}\n",level)
 
-# pagespeed_if is not implemented yet for nginx.
-# this code isn't wired up but left in as an example
-def write_pagespeed_open(ps,level):
+def write_pagespeed_open(ps, level):
+    # pagespeed_if is not implemented yet for nginx.
+    # this code isn't wired up but left in as an example
     for key in ps:
         val = ps[key]
-        # in pagespeed.debug.conf, the same pagespeed directive can occur multiple times
-        # our pyconf represents that as an array, which we need to loop in that case
+        # In pagespeed.debug.conf, the same pagespeed directive can occur
+        # multiple times. Our pyconf represents that as an array, which we
+        # need to loop in that case
         if isinstance(val,list) and not isinstance(val,str):
-            for item in val: 
-                emit(indent("pagespeed " + key + " " + str(item),level) + ";\n")
+            for item in val:
+                emit_indent("pagespeed %s %s;\n" % (key, str(item)),level)
         else:
-            emit(indent("pagespeed " + key + " " + str(val),level) + ";\n")
+            emit_indent("pagespeed %s %s;\n" % (key, str(val)), level)
 
     return 1
 
-def write_pagespeed_if_open(ps,level):
+def write_pagespeed_if_open(ps, level):
     emit(indent("#these are not implemented yet for nginx\n", level))
     emit(indent("pagespeed_if { \n", level))
 
     for key in ps:
-        emit(indent(key + " { \n", level+1))
+        emit_indent(key + " { \n", level+1)
         val = ps[key]
         write_pagespeed_open(val, level+2)
-        emit(indent("}\n", level+1))
+        emit_indent("}\n", level+1)
     return 1
 
 def write_pagespeed_if_close(ps,level):
-    emit(indent("}\n",level))
+    emit_indent("}\n",level)
 
 def write_listen_open(ps, level):
     return 1
@@ -106,11 +102,12 @@ def map_header_action(action):
     if action == "append":
         return "add_header"
     # nginx doesn't have a set header out of the box
-    # currently, we just translate it to add-header
+    # currently, we translate it to add-header
     elif action =="set":
         return "add_header"
     else:
-        raise Error("could not translate header action \"%s\" to nginx" % action)
+        raise Error("could not translate header action \"%s\" to nginx"
+                    % action)
 
 def write_headers_open(ps, level):
     for val in ps:
@@ -119,8 +116,8 @@ def write_headers_open(ps, level):
         header_name = val["name"]
         header_value = val["value"]
         header_value = "\"%s\"" % header_value
-        emit(indent(specific_action + " " + header_name + ' '  + header_value  + ";\n", level))
-
+        emit_indent("%s %s %s;\n" % (specific_action, header_name, header_value)
+                    , level)
     return True
 
 
@@ -128,46 +125,48 @@ def write_required_modules_open(ps,level):
     for module_name in ps:
 
         if module_name == "rewrite":
-            emit("")
+            pass
         elif module_name == "headers":
-            emit("")
+            pass
         elif module_name == "include":
-            emit(indent("ssi on;\n",level))
+            emit_indent("ssi on;\n",level)
         elif module_name == "ssl":
-            emit("")
+            pass
         elif module_name == "gzip":
             #apache enables gzip by default, nginx doesn't
-            emit(indent("gzip on;\n",level))
-            emit(indent("gzip_vary on;\n",level))
-            emit(indent("gzip_types application/ecmascript;\n",level))
-            emit(indent("gzip_types application/javascript;\n",level))
-            emit(indent("gzip_types application/json;\n",level))
-            emit(indent("gzip_types application/pdf;\n",level))
-            emit(indent("gzip_types application/postscript;\n",level))
-            emit(indent("gzip_types application/x-javascript;\n",level))
-            emit(indent("gzip_types image/svg+xml;\n",level))
-            emit(indent("gzip_types text/css;\n",level))
-            emit(indent("gzip_types text/csv;\n",level))
-            emit(indent("gzip_types text/javascript;\n",level))
-            emit(indent("gzip_types text/plain;\n",level))
-            emit(indent("gzip_types text/xml;\n",level))
-            emit(indent("gzip_http_version 1.0;\n",level))
+            emit_indent("""
+gzip on;
+gzip_vary on;
+gzip_types application/ecmascript;
+gzip_types application/javascript;
+gzip_types application/json;
+gzip_types application/pdf;
+gzip_types application/postscript;
+gzip_types application/x-javascript;
+gzip_types image/svg+xml;
+gzip_types text/css;
+gzip_types text/csv;
+gzip_types text/javascript;
+gzip_types text/plain;
+gzip_types text/xml;
+gzip_http_version 1.0;
+""",level)
         elif module_name == "cgi-script":
-            emit("")
+            pass
         elif module_name == "mime":
-            emit("")
+            pass
         elif module_name == "pagespeed":
-            emit("")
+            pass
         else:
-            raise Error("could not translate module \"%s\" to nginx configuration" % module_name)
+            raise Error("could not translate module \"%s\"" % module_name)
     return True
 
 def write_mime_types_open(ps,level):
-    emit(indent("types {\n",level))
+    emit_indent("types {\n",level)
 
 def write_mime_types_open_item(ps,level):
     #the extension is stripped from it's leading '.'
-    emit(indent(ps["mime_type"] + " " + ps["extension"][1:] + ";\n",level))
+    emit_indent(ps["mime_type"] + " " + ps["extension"][1:] + ";\n",level)
 
 def write_mime_types_close(ps,level):
     emit(indent("}\n",level))
@@ -188,7 +187,8 @@ def write_add_options_open(ps,level):
 
 def write_rewrite_rules_open(ps,level):
     for item in ps:
-        emit(indent("rewrite " + item["pattern"] + " " + item["substitution"] + ";\n",level))
+        emit_indent("rewrite %s %s;\n" % (item["pattern"], item["substitution"])
+                    ,level)
     return True
 
 key_to_writer = {

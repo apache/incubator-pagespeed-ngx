@@ -21,9 +21,6 @@
 # TODO(oschaaf): polish location matching
 # TODO(oschaaf): create a README
 # TODO(oschaaf): list failing modes per server
-# TODO(oschaaf): wildcard locations?
-# TODO(oschaaf): check usage of proper formatting string everywhere
-# TODO(oschaaf): fix long lines
 # TODO(oschaaf): document
 # TODO(oschaaf): don't hardcode pagespeed.debug.pyconf 
 # TODO(oschaaf): inspect stale comments from pyconf
