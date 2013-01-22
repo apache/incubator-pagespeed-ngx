@@ -26,12 +26,21 @@ content or workflow. Features include:
 - and [more](https://developers.google.com/speed/docs/mod_pagespeed/config_filters)
   - Note: not all mod_pagespeed features work in ngx_pagespeed yet.
 
+To see ngx_pagespeed in action, with example pages for each of the
+optimizations, see our <a href="http://ngxpagespeed.com">demonstration site</a>.
+
 ## How to build
 
 Because nginx does not support dynamic loading of modules, you need to add
 ngx_pagespeed as a build-time dependency.
 
 ### Simple method: Using a binary Pagespeed Optimization Library
+
+Install dependencies:
+
+    # These are for RedHat, CentOS, and Fedora.  Debian and Ubuntu will be
+    # similar.
+    $ sudo yum install git gcc-c++ pcre-dev pcre-devel zlib-devel make
 
 Check out ngx_pagespeed:
 
@@ -47,6 +56,12 @@ Download and build nginx:
     $ ./configure --add-module=$HOME/ngx_pagespeed
     $ make install
 
+If `configure` fails with `checking for psol ... not found` then open
+`objs/autoconf.err` and search for `psol`.  If it's not clear what's wrong from
+the error message, then send it to the [mailing
+list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss) and we'll
+have a look at it.
+
 ### Complex method: Building the Pagespeed Optimization Library from source
 
 First build mod_pagespeed against the current revision we work at:
@@ -60,7 +75,8 @@ First build mod_pagespeed against the current revision we work at:
     $ gclient runhooks
     $ make BUILDTYPE=Release mod_pagespeed_test pagespeed_automatic_test
 
-(See https://developers.google.com/speed/docs/mod_pagespeed/build_from_source if
+(See [mod_pagespeed: build from
+source](https://developers.google.com/speed/docs/mod_pagespeed/build_from_source) if
 you run into trouble, or ask for help on the mailing list.)
 
 Then build the pagespeed optimization library:
@@ -106,6 +122,11 @@ In every server block where pagespeed is enabled add:
     location ~ "\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+" { }
     location ~ "^/ngx_pagespeed_static/" { }
 
+If you're proxying, you need to strip off the `Accept-Encoding` header because
+ngx_pagespeed does not (yet) handle compression from upstreams:
+
+    proxy_set_header Accept-Encoding "";
+
 To confirm that the module is loaded, fetch a page and check that you see the
 `X-Page-Speed` header:
 
@@ -131,7 +152,7 @@ run it you need to first build and configure nginx.  Set it up something like:
       pagespeed FileCachePath /path/to/ngx_pagespeed_cache;
 
       # For testing that the Library command works.
-      pagespeed Library 43 1o978_K0_L
+      pagespeed Library 43 1o978_K0_LNE5_ystNklf
                 http://www.modpagespeed.com/rewrite_javascript.js;
 
       # These gzip options are needed for tests that assume that pagespeed
