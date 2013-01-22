@@ -41,7 +41,7 @@ if [ ! -e "$SYSTEM_TEST_FILE" ] ; then
   exit 2
 fi
 
-PSA_JS_LIBRARY_URL_PREFIX="mod_pagespeed_static"
+PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 
 # TODO(oschaaf): added entries behind 'insert_dns_prefetch'
 PAGESPEED_EXPECTED_FAILURES="
@@ -50,7 +50,7 @@ PAGESPEED_EXPECTED_FAILURES="
   ~insert_dns_prefetch~
   ~In-place resource optimization~
   ~add_instrumentation adds 2 script tags~
-  ~canonicalize_javascript_libraries finds library urls~
+  ~rewrite_javascript,inline_javascript with gzipped js origin~
 "
 
 source $SYSTEM_TEST_FILE

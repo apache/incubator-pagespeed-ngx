@@ -89,19 +89,25 @@ pagespeed: {
     # If X-PSA-Blocking-Rewrite request header is present and its value matches
     # the value of ModPagespeedBlockingRewriteKey below, the response will be
     # fully rewritten before being flushed to the client.
+#ifndef ALL_DIRECTIVES
     BlockingRewriteKey: "psatest",
+#endif
     # This will cause an error report in the startup log if mod_pagespeed is not
     # built with ssl, but otherwise will cause no trouble.
     ##FetchHttps: "enable,allow_self_signed",
+#ifndef ALL_DIRECTIVES
     FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/_default/\"",
+#endif
     # For testing that the Library command works.
     Library: "43 1o978_K0_LNE5_ystNklf http://www.modpagespeed.com/rewrite_javascript.js",
     # add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
+#ifndef ALL_DIRECTIVES
     EnableFilters: "add_instrumentation,rewrite_css",
-
+#endif
     # For regression test of connection failing.
+#ifndef ALL_DIRECTIVES
     Domain: "modpagespeed.com:1023",
-
+#endif
     # Test LoadFromFile mapping by mapping one dir to another.
 
     LoadFromFile: '"http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"', 
@@ -113,9 +119,10 @@ pagespeed: {
     # this here cause it's a hassle; we just depend on the unit-tests for that.
     ## not supported on ningx yet (psa r2338):
     ##ListOutstandingUrlsOnError: "on",
-
+# Avoid duplicate entry when ALL_DIRECTIVES is specified
+#ifndef ALL_DIRECTIVES
     AvoidRenamingIntrospectiveJavascript: "off",
-
+#endif
     # Establish a proxy mapping where the current server proxies an image
     # stored on ref.pssdemos.com.  We use ref.pssdemos.com rather than
     # modpagespeed.com so that we use a single html file both for:
@@ -130,8 +137,9 @@ pagespeed: {
 
     # TODO(oschaaf): not available in r2338
     ##InPlaceResourceOptimization: "on",
+#ifndef ALL_DIRECTIVES
     RespectXForwardedProto: "on",
-
+#endif
     #STATS_LOGGING Statistics: "on",
     #STATS_LOGGING StatisticsLogging: "on",
     #STATS_LOGGING StatisticsLoggingFile: "\"@@MOD_PAGESPEED_STATS_LOG@@\"",
@@ -365,6 +373,10 @@ locations: [
     # The first time mod_pagespeed sees an HTML file, it may not optimize
     # it fully.  It will optimize better after the second view.  Caching
     # defeats this behavior.
+# TODO(oschaaf): nginx only has the ability to add headers
+# this would cause a double cache-control header
+# and make the system test fail
+#ifndef nginx
     {
         path: "/mod_pagespeed_example/[^.]*\.(html|htm)$",
         headers: [
@@ -380,6 +392,7 @@ locations: [
            },
         ],
      },
+#endif
     # Images, styles, and javascript are all cache-extended for
     # a year by rewriting URLs to include a content hash.  mod_pagespeed
     # can only do this if the resources are cacheable in the first place.
@@ -411,21 +424,20 @@ locations: [
             EnableFilters: "extend_cache",
         }
     },
+# these would be catch-alls in nginx
+#ifdef apache
     {
         path: "/",
-#ifdef apache
         # This is enabled to make sure we don't crash mod_negotiation.
         add_options: ["MultiViews"],
-#endif
     },
     {
         path: "/mod_pagespeed_test/",
-#ifdef apache
         # Some versions of mod_rewrite will refuse to do any work if
         # symlink handling is off.
         add_options: ["SymLinksIfOwnerMatch"],
-#endif
     },
+#endif
     {
         path: "/mod_pagespeed_test/close_connection/",
 #ifdef apache
