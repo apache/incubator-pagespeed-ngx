@@ -375,9 +375,22 @@ ps_cleanup_loc_conf(void* data) {
   cfg_l->options = NULL;
 }
 
+bool
+factory_deleted = false;
+
 void
 ps_cleanup_srv_conf(void* data) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(data);
+
+  // destroy the factory on the first call, causing all worker threads
+  // to be shut down when we destroy any proxy_fetch_factories. This
+  // will prevent any queued callbacks to destroyed proxy fetch factories
+  // from being executed
+  
+  if (!factory_deleted) {
+    delete cfg_s->server_context->factory();
+    factory_deleted = true;
+  }
   if (cfg_s->proxy_fetch_factory != NULL) {
     delete cfg_s->proxy_fetch_factory;
     cfg_s->proxy_fetch_factory = NULL;
@@ -391,10 +404,6 @@ ps_cleanup_srv_conf(void* data) {
 void
 ps_cleanup_main_conf(void* data) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(data);
-  if (cfg_m->driver_factory != NULL) {
-    delete cfg_m->driver_factory;
-    cfg_m->driver_factory = NULL;
-  }
   delete cfg_m->handler;
   cfg_m->handler = NULL;
   net_instaweb::NgxRewriteDriverFactory::Terminate();
