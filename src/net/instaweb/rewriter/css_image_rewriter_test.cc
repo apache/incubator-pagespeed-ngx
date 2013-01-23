@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/data_url.h"
+#include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
@@ -982,6 +983,10 @@ TEST_F(CssRecompressImagesInStyleAttributes, RecompressAndStyleEnabled) {
 }
 
 TEST_F(CssRecompressImagesInStyleAttributes, RecompressAndWebpAndStyleEnabled) {
+  if (RunningOnValgrind()) {  // Too slow under vg.
+    return;
+  }
+
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.jpg"), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
@@ -998,6 +1003,10 @@ TEST_F(CssRecompressImagesInStyleAttributes, RecompressAndWebpAndStyleEnabled) {
 
 TEST_F(CssRecompressImagesInStyleAttributes,
        RecompressAndWebpLosslessAndStyleEnabled) {
+  if (RunningOnValgrind()) {  // Too slow under vg.
+    return;
+  }
+
   AddFileToMockFetcher(StrCat(kTestDomain, "foo.jpg"), kPuzzleJpgFile,
                        kContentTypeJpeg, 100);
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
