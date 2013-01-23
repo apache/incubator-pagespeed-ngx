@@ -50,6 +50,9 @@ class PthreadSharedMem : public AbstractSharedMem {
   virtual void DestroySegment(const GoogleString& name,
                               MessageHandler* handler);
 
+  // Frees all lazy-initialized memory used to track shared-memory segments.
+  static void Terminate();
+
  private:
   typedef std::map<GoogleString, char*> SegmentBaseMap;
 

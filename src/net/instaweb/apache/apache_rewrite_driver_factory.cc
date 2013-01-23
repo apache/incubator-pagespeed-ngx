@@ -839,6 +839,7 @@ void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
 void ApacheRewriteDriverFactory::Terminate() {
   RewriteDriverFactory::Terminate();
   ApacheConfig::Terminate();
+  PthreadSharedMem::Terminate();
 }
 
 ApacheServerContext* ApacheRewriteDriverFactory::MakeApacheServerContext(

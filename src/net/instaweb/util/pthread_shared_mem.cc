@@ -219,8 +219,20 @@ PthreadSharedMem::SegmentBaseMap* PthreadSharedMem::AcquireSegmentBases() {
   return segment_bases_;
 }
 
-void  PthreadSharedMem::UnlockSegmentBases() {
+void PthreadSharedMem::UnlockSegmentBases() {
   PthreadSharedMemMutex lock(&segment_bases_lock);
+  lock.Unlock();
+}
+
+void PthreadSharedMem::Terminate() {
+  // Clean up the local memory associated with the maps to shared memory
+  // storage.
+  PthreadSharedMemMutex lock(&segment_bases_lock);
+  lock.Lock();
+  if (segment_bases_ != NULL) {
+    delete segment_bases_;
+    segment_bases_ = NULL;
+  }
   lock.Unlock();
 }
 
