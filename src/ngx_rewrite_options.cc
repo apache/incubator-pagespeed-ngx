@@ -22,13 +22,13 @@ extern "C" {
   #include <ngx_http.h>
 }
 
-
 #include "ngx_rewrite_options.h"
 #include "ngx_pagespeed.h"
+
 #include "net/instaweb/public/version.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/rewriter/public/file_load_policy.h"
 
 namespace net_instaweb {
 
@@ -60,7 +60,7 @@ void NgxRewriteOptions::AddProperties() {
   add_ngx_option(500000,
                  &NgxRewriteOptions::file_cache_clean_inode_limit_, "nfcl",
                  RewriteOptions::kFileCacheCleanInodeLimit);
-  add_ngx_option(16384,  //16MB
+  add_ngx_option(16384,  // 16MB
                  &NgxRewriteOptions::lru_cache_byte_limit_, "nlcb",
                  RewriteOptions::kLruCacheByteLimit);
   add_ngx_option(1024,  // 1MB
@@ -206,9 +206,9 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions2(
   } else if (IsDirective(directive, "CustomFetchHeader")) {
     AddCustomFetchHeader(arg1, arg2);
   } else if (IsDirective(directive, "LoadFromFile")) {
-    file_load_policy()->Associate(arg1,arg2);
+    file_load_policy()->Associate(arg1, arg2);
   } else if (IsDirective(directive, "LoadFromFileMatch")) {
-    if (!file_load_policy()->AssociateRegexp(arg1,arg2,msg)) {
+    if (!file_load_policy()->AssociateRegexp(arg1, arg2, msg)) {
       return RewriteOptions::kOptionValueInvalid;
     }
   } else if (IsDirective(directive, "LoadFromFileRule")
@@ -256,7 +256,7 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions3(
     if (!ok) {
       *msg = "Format is size md5 url; bad md5 or URL";
       return RewriteOptions::kOptionValueInvalid;
-    }    
+    }
   } else {
     return RewriteOptions::kOptionNameUnknown;
   }
@@ -268,7 +268,7 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions3(
 const char*
 NgxRewriteOptions::ParseAndSetOptions(
     StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler) {
-  CHECK(n_args >= 1);
+  CHECK_GE(n_args, 1);
 
   int i;
   fprintf(stderr, "Setting option from (");
@@ -349,6 +349,5 @@ NgxRewriteOptions* NgxRewriteOptions::DynamicCast(RewriteOptions* instance) {
 const char* NgxRewriteOptions::class_name() const {
   return NgxRewriteOptions::kClassName;
 }
-
 
 }  // namespace net_instaweb

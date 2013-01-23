@@ -23,13 +23,13 @@
 
 namespace net_instaweb {
 
-class NgxRewriteOptions;
-class NgxRewriteDriverFactory;
 class CacheInterface;
 class FileCache;
 class FileSystemLockManager;
 class MessageHandler;
 class NamedLockManager;
+class NgxRewriteOptions;
+class NgxRewriteDriverFactory;
 class SharedMemLockManager;
 
 // The NgxCache encapsulates a cache-sharing model where a user specifies
@@ -41,8 +41,8 @@ class NgxCache {
   static const char kLruCache[];
 
   NgxCache(const StringPiece& path,
-              const NgxRewriteOptions& config,
-              NgxRewriteDriverFactory* factory);
+           const NgxRewriteOptions& config,
+           NgxRewriteDriverFactory* factory);
   ~NgxCache();
   CacheInterface* l1_cache() { return l1_cache_.get(); }
   CacheInterface* l2_cache() { return l2_cache_.get(); }

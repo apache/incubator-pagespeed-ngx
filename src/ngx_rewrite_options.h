@@ -131,6 +131,7 @@ class NgxRewriteOptions : public RewriteOptions {
   void set_fetcher_proxy(GoogleString x) {
     set_option(x, &fetcher_proxy_);
   }
+
  private:
   // Used by class_name() and DynamicCast() to provide error checking.
   static const char kClassName[];
@@ -158,7 +159,7 @@ class NgxRewriteOptions : public RewriteOptions {
       StringPiece directive, StringPiece arg1, StringPiece arg2,
       GoogleString* msg, MessageHandler* handler);
   OptionSettingResult ParseAndSetOptions3(
-      StringPiece directive, StringPiece arg1, StringPiece arg2, 
+      StringPiece directive, StringPiece arg1, StringPiece arg2,
       StringPiece arg3, GoogleString* msg, MessageHandler* handler);
 
   // Keeps the properties added by this subclass.  These are merged into
@@ -202,6 +203,6 @@ class NgxRewriteOptions : public RewriteOptions {
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteOptions);
 };
 
-} // namespace net_instaweb
+}  // namespace net_instaweb
 
 #endif  // NGX_REWRITE_OPTIONS_H_
