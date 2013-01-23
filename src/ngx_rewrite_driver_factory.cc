@@ -86,8 +86,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
   SetStatistics(&simple_stats_);
   timer_ = DefaultTimer();
   InitializeDefaultOptions();
-  default_options()->set_beacon_url(
-      "/ngx_pagespeed_beacon /ngx_pagespeed_beacon");
+  default_options()->set_beacon_url("/ngx_pagespeed_beacon");
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
