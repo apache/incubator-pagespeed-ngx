@@ -315,14 +315,36 @@ ps_ignore_sigpipe() {
   sigaction (SIGPIPE, &act, NULL);
 }
 
+namespace PsConfigure {
+enum OptionLevel {
+  kRoot,
+  kServer,
+  kLocation,
+};
+} // namespace PsConfigure
+
+struct ci_less : std::binary_function<StringPiece, StringPiece, bool>
+{
+  bool operator() (const StringPiece& s1, const StringPiece& s2) const {
+    return net_instaweb::StringCaseCompare(s1,s2);
+  }
+};
+
+typedef std::map<GoogleString, bool, ci_less> ForbiddenLocationOptionsMap;
+ForbiddenLocationOptionsMap forbidden_location_options_map;
+
 #define NGX_PAGESPEED_MAX_ARGS 10
 char*
 ps_configure(ngx_conf_t* cf,
              net_instaweb::NgxRewriteOptions** options,
-             net_instaweb::MessageHandler* handler) {
+             net_instaweb::MessageHandler* handler,
+             PsConfigure::OptionLevel option_level) {
   if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
     *options = new net_instaweb::NgxRewriteOptions();
+    forbidden_location_options_map["FetchProxy"] = true;
+    forbidden_location_options_map["FileCachePath"] = true;
+    forbidden_location_options_map["FileCacheSizeKb"] = true;
   }
 
   // args[0] is always "pagespeed"; ignore it.
@@ -338,7 +360,11 @@ ps_configure(ngx_conf_t* cf,
   for (i = 0 ; i < n_args ; i++) {
     args[i] = str_to_string_piece(value[i+1]);
   }
-
+  if (option_level == PsConfigure::kLocation && n_args > 1) {
+    if (forbidden_location_options_map.count(args[0].as_string()) > 0) {
+      return const_cast<char*>("FAIL");
+    }
+  }
   const char* status = (*options)->ParseAndSetOptions(
       args, n_args, cf->pool, handler);
 
@@ -350,7 +376,8 @@ char*
 ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
       ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
-  return ps_configure(cf, &cfg_s->options, cfg_s->handler);
+  return ps_configure(cf, &cfg_s->options, cfg_s->handler,
+                      PsConfigure::kServer);
 }
 
 char*
@@ -358,12 +385,8 @@ ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(
           ngx_http_conf_get_module_loc_conf(cf, ngx_pagespeed));
 
-  // TODO(jefftk): pass something to configure() to tell it that this option was
-  // set in a location block so it can be more strict.  Not all options can be
-  // set in location blocks.  (For now we'll allow them, which in practice means
-  // they'll be ignored because they're read from the config before
-  // location-specific options are applied.)
-  return ps_configure(cf, &cfg_l->options, cfg_l->handler);
+  return ps_configure(cf, &cfg_l->options, cfg_l->handler,
+                      PsConfigure::kLocation);
 }
 
 void
