@@ -48,6 +48,7 @@ PAGESPEED_EXPECTED_FAILURES="
   ~compression is enabled for rewritten JS.~
   ~convert_meta_tags~
   ~insert_dns_prefetch~
+  ~In-place resource optimization~
 "
 
 source $SYSTEM_TEST_FILE
