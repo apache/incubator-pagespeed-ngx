@@ -161,7 +161,7 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   if (slow_worker_ == NULL) {
-    slow_worker_.reset(new SlowWorker(thread_system()));
+    slow_worker_.reset(new SlowWorker("slow work thread", thread_system()));
   }
 
   // TODO(jefftk): see the ngx_rewrite_options.h note on OriginRewriteOptions;
@@ -262,6 +262,7 @@ CacheInterface* NgxRewriteDriverFactory::GetMemcached(
           // Note -- we will use the first value of ModPagespeedMemCacheThreads
           // that we see in a VirtualHost, ignoring later ones.
           memcached_pool_.reset(new QueuedWorkerPool(num_threads,
+                                                     "memcached",
                                                      thread_system()));
         }
         AsyncCache* async_cache = new AsyncCache(mem_cache,
