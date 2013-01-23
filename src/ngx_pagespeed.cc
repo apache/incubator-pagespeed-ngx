@@ -255,6 +255,7 @@ enum Response {
   kStaticContent,
   kInvalidUrl,
   kPagespeedDisabled,
+  kBeacon,
 };
 } // namespace CreateRequestContext
 
@@ -631,13 +632,18 @@ ps_set_buffered(ngx_http_request_t* r, bool on) {
   }
 }
 
+bool
+ps_is_https(ngx_http_request_t* r) {
+  // Based on ngx_http_variable_scheme.
+#if (NGX_HTTP_SSL)
+  return r->connection->ssl;
+#endif
+  return false;
+}
+
 GoogleString
 ps_determine_url(ngx_http_request_t* r) {
-  // Based on ngx_http_variable_scheme.
-  bool is_https = false;
-#if (NGX_HTTP_SSL)
-  is_https = r->connection->ssl;
-#endif
+
 
   // Based on ngx_http_variable_server_port.
   ngx_uint_t port;
@@ -655,7 +661,7 @@ ps_determine_url(ngx_http_request_t* r) {
   }
 
   GoogleString port_string;
-  if ((is_https && port == 443) || (!is_https && port == 80)) {
+  if ((ps_is_https(r) && port == 443) || (!ps_is_https(r) && port == 80)) {
     // No port specifier needed for requests on default ports.
     port_string = "";
   } else {
@@ -679,7 +685,7 @@ ps_determine_url(ngx_http_request_t* r) {
   }
 
   return net_instaweb::StrCat(
-      is_https ? "https://" : "http://", host, port_string,
+      ps_is_https(r) ? "https://" : "http://", host, port_string,
       str_to_string_piece(r->unparsed_uri));
 }
 
@@ -1021,11 +1027,24 @@ ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch) {
     if (url.PathSansLeaf() ==
         net_instaweb::NgxRewriteDriverFactory::kStaticJavaScriptPrefix) {
       return CreateRequestContext::kStaticContent;
-    } else {
-      DBG(r, "Passing on content handling for non-pagespeed resource '%s'",
-          url_string.c_str());
-      return CreateRequestContext::kNotUnderstood;
     }
+
+    net_instaweb::RewriteOptions* global_options =
+        cfg_s->server_context->global_options();
+    const GoogleString* beacon_url;
+    if (ps_is_https(r)) {
+      beacon_url = &(global_options->beacon_url().https);
+    } else {
+      beacon_url = &(global_options->beacon_url().http);
+    }
+
+    if (url.PathSansQuery() == StringPiece(*beacon_url)) {
+      return CreateRequestContext::kBeacon;
+    }
+
+    DBG(r, "Passing on content handling for non-pagespeed resource '%s'",
+        url_string.c_str());
+    return CreateRequestContext::kNotUnderstood;
   }
 
   int file_descriptors[2];
@@ -1349,6 +1368,7 @@ ps_header_filter(ngx_http_request_t* r) {
       // in which case we can not get here.
       CHECK(false);
       return NGX_ERROR;
+    case CreateRequestContext::kBeacon:
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kStaticContent:
     case CreateRequestContext::kInvalidUrl:
@@ -1436,6 +1456,16 @@ ps_static_handler(ngx_http_request_t* r) {
   return ngx_http_output_filter(r, out);
 }
 
+ngx_int_t
+ps_beacon_handler(ngx_http_request_t* r) {
+  ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
+  CHECK(cfg_s != NULL);
+
+  cfg_s->server_context->HandleBeacon(str_to_string_piece(r->unparsed_uri));
+
+  return NGX_HTTP_NO_CONTENT;
+}
+
 // Handle requests for resources like example.css.pagespeed.ce.LyfcM6Wulf.css
 // and for static content like /ngx_pagespeed_static/js_defer.q1EBmcgYOC.js
 ngx_int_t
@@ -1461,6 +1491,8 @@ ps_content_handler(ngx_http_request_t* r) {
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kInvalidUrl:
       return NGX_DECLINED;
+    case CreateRequestContext::kBeacon:
+      return ps_beacon_handler(r);
     case CreateRequestContext::kStaticContent:
       return ps_static_handler(r);
     case CreateRequestContext::kOk:
