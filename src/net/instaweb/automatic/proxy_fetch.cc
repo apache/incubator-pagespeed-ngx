@@ -576,6 +576,10 @@ void ProxyFetch::AddPagespeedHeader() {
 }
 
 void ProxyFetch::SetupForHtml() {
+  {
+    ScopedMutex lock(log_record()->mutex());
+    log_record()->logging_info()->set_is_html_response(true);
+  }
   const RewriteOptions* options = Options();
   if (options->enabled() && options->IsAllowed(url_)) {
     started_parse_ = StartParse();
@@ -643,8 +647,15 @@ void ProxyFetch::StartFetch() {
 void ProxyFetch::DoFetch() {
   if (prepare_success_) {
     const RewriteOptions* options = driver_->options();
+    const bool is_allowed = options->IsAllowed(url_);
+    {
+      ScopedMutex lock(log_record()->mutex());
+      if (!is_allowed) {
+        log_record()->logging_info()->set_is_url_disallowed(true);
+      }
+    }
 
-    if (options->enabled() && options->IsAllowed(url_)) {
+    if (options->enabled() && is_allowed) {
       // Pagespeed enabled on URL.
       if (options->ajax_rewriting_enabled()) {
         // For Ajax rewrites, we go through RewriteDriver to give it

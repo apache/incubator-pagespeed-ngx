@@ -275,9 +275,9 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   ResponseHeaders headers;
   headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
   headers.SetStatusAndReason(HttpStatus::kOK);
-  mock_url_fetcher_.SetResponse("http://www.example.com/", headers,
-                                "<html></html>");
 
+  // Fetch HTML content.
+  mock_url_fetcher_.SetResponse(url, headers, "<html></html>");
   FetchFromProxy(url, request_headers, true, &text, &headers);
   CheckBackgroundFetch(headers, false);
   CheckNumBackgroundFetches(0);
@@ -287,12 +287,29 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   EXPECT_FALSE(timing_info.has_cache2_ms());
   EXPECT_FALSE(timing_info.has_header_fetch_ms());
   EXPECT_FALSE(timing_info.has_fetch_ms());
+  EXPECT_TRUE(logging_info()->is_html_response());
+  EXPECT_FALSE(logging_info()->is_url_disallowed());
 
   const PropertyPageInfo& page_info = logging_info()->property_page_info();
   // 3 for 3 device types.
   EXPECT_EQ(3, page_info.cohort_info_size());
   const PropertyCohortInfo& cohort_info = page_info.cohort_info(0);
   EXPECT_EQ("dom", cohort_info.name());
+
+  // Fetch non-HTML content.
+  logging_info()->Clear();
+  mock_url_fetcher_.SetResponse(url, headers, "js");
+  FetchFromProxy(url, request_headers, true, &text, &headers);
+  EXPECT_FALSE(logging_info()->is_html_response());
+  EXPECT_FALSE(logging_info()->is_url_disallowed());
+
+  // Fetch blacklisted url.
+  url = "http://www.blacklist.com/";
+  logging_info()->Clear();
+  mock_url_fetcher_.SetResponse(url, headers, "<html></html>");
+  FetchFromProxy(url, request_headers, true, &text, &headers);
+  EXPECT_TRUE(logging_info()->is_html_response());
+  EXPECT_TRUE(logging_info()->is_url_disallowed());
 }
 
 TEST_F(ProxyInterfaceTest, HeadRequest) {

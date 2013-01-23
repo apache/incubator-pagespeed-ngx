@@ -41,7 +41,6 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -77,6 +76,8 @@ const int kMinLatencyForPreconnectMs = 100;
 }  // namespace
 
 namespace net_instaweb {
+
+class StaticJavascriptManager;
 
 namespace {
 
@@ -536,8 +537,12 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
   base_fetch_->Flush(handler_);
   flush_early_rewrite_latency_ms_->Add(
       manager_->timer()->NowMs() - start_time_ms);
-  flush_early_fetch_->set_flush_early_flow_done(true);
+  // We delete FlushEarlyFlow first to prevent the race conditon where
+  // tests finish before the destructor of FlushEarlyFlow gets called
+  // and hence decrement async events on the driver doesn't happen.
+  FlushEarlyAsyncFetch* flush_early_fetch = flush_early_fetch_;
   delete this;
+  flush_early_fetch->set_flush_early_flow_done(true);
 }
 
 void FlushEarlyFlow::GenerateResponseHeaders(
