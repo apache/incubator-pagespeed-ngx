@@ -320,7 +320,7 @@ enum OptionLevel {
   kServer,
   kLocation,
 };
-} // namespace PsConfigure
+}  // namespace PsConfigure
 
 // These options are copied from mod_instaweb.cc, where
 // APACHE_CONFIG_OPTIONX indicates that they can not be set at the
