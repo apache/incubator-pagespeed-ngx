@@ -121,6 +121,7 @@ In every server block where pagespeed is enabled add:
     # optimized resources go to the pagespeed handler.
     location ~ "\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+" { }
     location ~ "^/ngx_pagespeed_static/" { }
+    location ~ "^/ngx_pagespeed_beacon$" { }
 
 If you're proxying, you need to strip off the `Accept-Encoding` header because
 ngx_pagespeed does not (yet) handle compression from upstreams:
@@ -135,6 +136,24 @@ To confirm that the module is loaded, fetch a page and check that you see the
 
 Looking at the source of a few pages you should see various changes, such as
 urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
+
+### Configuration Differences From mod_pagespeed
+
+#### BeaconUrl
+
+PageSpeed can use a beacon to track load times.  By default PageSpeed sends
+beacons to `/ngx_pagespeed_beacon` on your site, but you can change this:
+
+    pagespeed BeaconUrl /path/to/beacon;
+
+If you do, you also need to change the regexp above from `location ~
+"^/ngx_pagespeed_beacon$" { }` to `location ~ "^/path/to/beacon$" { }`.
+
+As with <a
+href="https://developers.google.com/speed/docs/mod_pagespeed/filter-instrumentation-add">ModPagespeedBeaconUrl</a>
+you can set your beacons to go to another site by specifying a full path:
+
+    pagespeed BeaconUrl http://thirdpartyanalytics.example.com/my/beacon;
 
 ### Testing
 
