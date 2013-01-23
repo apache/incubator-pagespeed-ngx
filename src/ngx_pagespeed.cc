@@ -412,7 +412,7 @@ ps_configure(ngx_conf_t* cf,
 
     for (i = 0; i < size && valid; i++) {
       valid = !net_instaweb::StringCaseEqual(
-          no_location_options[i],args[0]);
+          no_location_options[i], args[0]);
     }
 
     if (!valid) {
