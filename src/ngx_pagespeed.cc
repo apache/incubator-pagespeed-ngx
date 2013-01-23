@@ -315,14 +315,91 @@ ps_ignore_sigpipe() {
   sigaction (SIGPIPE, &act, NULL);
 }
 
+namespace PsConfigure {
+enum OptionLevel {
+  kRoot,
+  kServer,
+  kLocation,
+};
+} // namespace PsConfigure
+
+struct ci_less : std::binary_function<StringPiece, StringPiece, bool>
+{
+  bool operator() (const StringPiece& s1, const StringPiece& s2) const {
+    return net_instaweb::StringCaseCompare(s1, s2) < 0;
+  }
+};
+
+typedef std::map<StringPiece, bool, ci_less> ForbiddenLocationOptionsMap;
+ForbiddenLocationOptionsMap forbidden_location_options_map;
+
 #define NGX_PAGESPEED_MAX_ARGS 10
 char*
 ps_configure(ngx_conf_t* cf,
              net_instaweb::NgxRewriteOptions** options,
-             net_instaweb::MessageHandler* handler) {
+             net_instaweb::MessageHandler* handler,
+             PsConfigure::OptionLevel option_level) {
   if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
     *options = new net_instaweb::NgxRewriteOptions();
+
+    // These options are copied from mod_instaweb.cc, where
+    // APACHE_CONFIG_OPTIONX indicates that they can not be set at the
+    // directory/location level. They are not alphabetized on purpose,
+    // but rather left in the same order as in mod_instaweb.cc in case
+    // we end up need te compare.
+    // TODO(oschaaf): this duplication is a short term solution.
+    forbidden_location_options_map["BlockingRewriteKey"] = true;
+    forbidden_location_options_map["CacheFlushFilename"] = true;
+    forbidden_location_options_map["CacheFlushPollIntervalSec"] = true;
+    forbidden_location_options_map["DangerPermitFetchFromUnknownHosts"] = true;
+    forbidden_location_options_map["CriticalImagesBeaconEnabled"] = true;
+    forbidden_location_options_map["ExperimentalFetchFromModSpdy"] = true;
+    forbidden_location_options_map["FetcherTimeoutMs"] = true;
+    forbidden_location_options_map["FetchHttps"] = true;
+    forbidden_location_options_map["FetchWithGzip"] = true;
+    forbidden_location_options_map["FileCacheCleanIntervalMs"] = true;
+    forbidden_location_options_map["FileCacheInodeLimit"] = true;
+    forbidden_location_options_map["FileCachePath"] = true;
+    forbidden_location_options_map["FileCacheSizeKb"] = true;
+    forbidden_location_options_map["ForceCaching"] = true;
+    forbidden_location_options_map["ImageMaxRewritesAtOnce"] = true;
+    forbidden_location_options_map["ImgMaxRewritesAtOnce"] = true;
+    forbidden_location_options_map["InheritVHostConfig"] = true;
+    forbidden_location_options_map["InstallCrashHandler"] = true;
+    forbidden_location_options_map["LRUCacheByteLimit"] = true;
+    forbidden_location_options_map["LRUCacheKbPerProcess"] = true;
+    forbidden_location_options_map["MaxCacheableContentLength"] = true;
+    forbidden_location_options_map["MemcachedServers"] = true;
+    forbidden_location_options_map["MemcachedThreads"] = true;
+    forbidden_location_options_map["MemcachedTimeoutUs"] = true;
+    forbidden_location_options_map["MessageBufferSize"] = true;
+    forbidden_location_options_map["NumRewriteThreads"] = true;
+    forbidden_location_options_map["NumExpensiveRewriteThreads"] = true;
+    forbidden_location_options_map["RateLimitBackgroundFetches"] = true;
+    forbidden_location_options_map["ReportUnloadTime"] = true;
+    forbidden_location_options_map["RespectXForwardedProto"] = true;
+    forbidden_location_options_map["SharedMemoryLocks"] = true;
+    forbidden_location_options_map["SlurpDirectory"] = true;
+    forbidden_location_options_map["SlurpFlushLimit"] = true;
+    forbidden_location_options_map["SlurpReadOnly"] = true;
+    forbidden_location_options_map["SupportNoScriptEnabled"] = true;
+    forbidden_location_options_map["StatisticsLoggingChartsCSS"] = true;
+    forbidden_location_options_map["StatisticsLoggingChartsJS"] = true;
+    forbidden_location_options_map["TestProxy"] = true;
+    forbidden_location_options_map["TestProxySlurp"] = true;
+    forbidden_location_options_map["TrackOriginalContentLength"] = true;
+    forbidden_location_options_map["UsePerVHostStatistics"] = true;
+    forbidden_location_options_map["XHeaderValue"] = true;
+    forbidden_location_options_map["CustomFetchHeader"] = true;
+    forbidden_location_options_map["MapOriginDomain"] = true;
+    forbidden_location_options_map["MapProxyDomain"] = true;
+    forbidden_location_options_map["MapRewriteDomain"] = true;
+    forbidden_location_options_map["ShardDomain"] = true;
+    forbidden_location_options_map["LoadFromFile"] = true;
+    forbidden_location_options_map["LoadFromFileMatch"] = true;
+    forbidden_location_options_map["LoadFromFileRule"] = true;
+    forbidden_location_options_map["LoadFromFileRuleMatch"] = true;
   }
 
   // args[0] is always "pagespeed"; ignore it.
@@ -338,7 +415,12 @@ ps_configure(ngx_conf_t* cf,
   for (i = 0 ; i < n_args ; i++) {
     args[i] = str_to_string_piece(value[i+1]);
   }
-
+  if (option_level == PsConfigure::kLocation && n_args > 1) {
+    fprintf(stderr, "check location level option: [%s]\n", args[0].as_string().c_str());
+    if (forbidden_location_options_map.count(args[0]) > 0) {
+      return const_cast<char*>("Option can not be set at location scope");
+    }
+  }
   const char* status = (*options)->ParseAndSetOptions(
       args, n_args, cf->pool, handler);
 
@@ -350,7 +432,8 @@ char*
 ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
       ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
-  return ps_configure(cf, &cfg_s->options, cfg_s->handler);
+  return ps_configure(cf, &cfg_s->options, cfg_s->handler,
+                      PsConfigure::kServer);
 }
 
 char*
@@ -358,12 +441,8 @@ ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(
           ngx_http_conf_get_module_loc_conf(cf, ngx_pagespeed));
 
-  // TODO(jefftk): pass something to configure() to tell it that this option was
-  // set in a location block so it can be more strict.  Not all options can be
-  // set in location blocks.  (For now we'll allow them, which in practice means
-  // they'll be ignored because they're read from the config before
-  // location-specific options are applied.)
-  return ps_configure(cf, &cfg_l->options, cfg_l->handler);
+  return ps_configure(cf, &cfg_l->options, cfg_l->handler,
+                      PsConfigure::kLocation);
 }
 
 void
