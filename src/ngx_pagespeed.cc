@@ -419,8 +419,7 @@ ps_configure(ngx_conf_t* cf,
 
   if (option_level == PsConfigure::kLocation && n_args > 1) {
     if (ps_is_global_only_option(args[0])) {
-      return const_cast<char*>(
-          "Option can not be set at location scope");
+      return const_cast<char*>("Option can not be set at location scope");
     }
   }
 
