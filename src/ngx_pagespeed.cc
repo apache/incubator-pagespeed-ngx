@@ -382,6 +382,18 @@ const char * const no_location_options[] = {
   "LoadFromFileRuleMatch"
 };
 
+bool is_no_location_option(const StringPiece& option_name) {
+  ngx_uint_t i;
+  ngx_uint_t size = sizeof(no_location_options) / sizeof(char*);
+  for (i = 0; i < size; i++) {
+    if (net_instaweb::StringCaseEqual(
+            no_location_options[i], option_name)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 #define NGX_PAGESPEED_MAX_ARGS 10
 char*
 ps_configure(ngx_conf_t* cf,
@@ -407,15 +419,7 @@ ps_configure(ngx_conf_t* cf,
   }
 
   if (option_level == PsConfigure::kLocation && n_args > 1) {
-    bool valid = false;
-    ngx_uint_t size = sizeof(no_location_options) / sizeof(char*);
-
-    for (i = 0; i < size && valid; i++) {
-      valid = !net_instaweb::StringCaseEqual(
-          no_location_options[i], args[0]);
-    }
-
-    if (!valid) {
+    if (is_no_location_option(args[0])) {
       return const_cast<char*>(
           "Option can not be set at location scope");
     }
