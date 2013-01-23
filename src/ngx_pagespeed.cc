@@ -39,10 +39,10 @@ extern "C" {
 #include "ngx_server_context.h"
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
-#include "net/instaweb/automatic/public/resource_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/process_context.h"
+#include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/public/global_constants.h"
