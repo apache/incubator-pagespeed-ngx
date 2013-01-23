@@ -800,7 +800,7 @@ void CssFilter::EndElementImpl(HtmlElement* element) {
         // If it has a href= attribute
         StartExternalRewrite(element, element_href);
       } else {
-        driver_->ErrorHere("Link element with no href.");
+        driver_->InfoHere("Link element with no href.");
       }
     }
   // Note any meta tag charset specifier.
