@@ -386,8 +386,7 @@ bool ps_is_no_location_option(const StringPiece& option_name) {
   ngx_uint_t i;
   ngx_uint_t size = sizeof(no_location_options) / sizeof(char*);
   for (i = 0; i < size; i++) {
-    if (net_instaweb::StringCaseEqual(
-            no_location_options[i], option_name)) {
+    if (net_instaweb::StringCaseEqual(no_location_options[i], option_name)) {
       return true;
     }
   }
