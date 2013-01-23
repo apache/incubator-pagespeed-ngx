@@ -326,11 +326,11 @@ enum OptionLevel {
 struct ci_less : std::binary_function<StringPiece, StringPiece, bool>
 {
   bool operator() (const StringPiece& s1, const StringPiece& s2) const {
-    return net_instaweb::StringCaseCompare(s1,s2);
+    return net_instaweb::StringCaseCompare(s1, s2) < 0;
   }
 };
 
-typedef std::map<GoogleString, bool, ci_less> ForbiddenLocationOptionsMap;
+typedef std::map<StringPiece, bool, ci_less> ForbiddenLocationOptionsMap;
 ForbiddenLocationOptionsMap forbidden_location_options_map;
 
 #define NGX_PAGESPEED_MAX_ARGS 10
@@ -342,9 +342,64 @@ ps_configure(ngx_conf_t* cf,
   if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
     *options = new net_instaweb::NgxRewriteOptions();
-    forbidden_location_options_map["FetchProxy"] = true;
+
+    // These options are copied from mod_instaweb.cc, where
+    // APACHE_CONFIG_OPTIONX indicates that they can not be set at the
+    // directory/location level. They are not alphabetized on purpose,
+    // but rather left in the same order as in mod_instaweb.cc in case
+    // we end up need te compare.
+    // TODO(oschaaf): this duplication is a short term solution.
+    forbidden_location_options_map["BlockingRewriteKey"] = true;
+    forbidden_location_options_map["CacheFlushFilename"] = true;
+    forbidden_location_options_map["CacheFlushPollIntervalSec"] = true;
+    forbidden_location_options_map["DangerPermitFetchFromUnknownHosts"] = true;
+    forbidden_location_options_map["CriticalImagesBeaconEnabled"] = true;
+    forbidden_location_options_map["ExperimentalFetchFromModSpdy"] = true;
+    forbidden_location_options_map["FetcherTimeoutMs"] = true;
+    forbidden_location_options_map["FetchHttps"] = true;
+    forbidden_location_options_map["FetchWithGzip"] = true;
+    forbidden_location_options_map["FileCacheCleanIntervalMs"] = true;
+    forbidden_location_options_map["FileCacheInodeLimit"] = true;
     forbidden_location_options_map["FileCachePath"] = true;
     forbidden_location_options_map["FileCacheSizeKb"] = true;
+    forbidden_location_options_map["ForceCaching"] = true;
+    forbidden_location_options_map["ImageMaxRewritesAtOnce"] = true;
+    forbidden_location_options_map["ImgMaxRewritesAtOnce"] = true;
+    forbidden_location_options_map["InheritVHostConfig"] = true;
+    forbidden_location_options_map["InstallCrashHandler"] = true;
+    forbidden_location_options_map["LRUCacheByteLimit"] = true;
+    forbidden_location_options_map["LRUCacheKbPerProcess"] = true;
+    forbidden_location_options_map["MaxCacheableContentLength"] = true;
+    forbidden_location_options_map["MemcachedServers"] = true;
+    forbidden_location_options_map["MemcachedThreads"] = true;
+    forbidden_location_options_map["MemcachedTimeoutUs"] = true;
+    forbidden_location_options_map["MessageBufferSize"] = true;
+    forbidden_location_options_map["NumRewriteThreads"] = true;
+    forbidden_location_options_map["NumExpensiveRewriteThreads"] = true;
+    forbidden_location_options_map["RateLimitBackgroundFetches"] = true;
+    forbidden_location_options_map["ReportUnloadTime"] = true;
+    forbidden_location_options_map["RespectXForwardedProto"] = true;
+    forbidden_location_options_map["SharedMemoryLocks"] = true;
+    forbidden_location_options_map["SlurpDirectory"] = true;
+    forbidden_location_options_map["SlurpFlushLimit"] = true;
+    forbidden_location_options_map["SlurpReadOnly"] = true;
+    forbidden_location_options_map["SupportNoScriptEnabled"] = true;
+    forbidden_location_options_map["StatisticsLoggingChartsCSS"] = true;
+    forbidden_location_options_map["StatisticsLoggingChartsJS"] = true;
+    forbidden_location_options_map["TestProxy"] = true;
+    forbidden_location_options_map["TestProxySlurp"] = true;
+    forbidden_location_options_map["TrackOriginalContentLength"] = true;
+    forbidden_location_options_map["UsePerVHostStatistics"] = true;
+    forbidden_location_options_map["XHeaderValue"] = true;
+    forbidden_location_options_map["CustomFetchHeader"] = true;
+    forbidden_location_options_map["MapOriginDomain"] = true;
+    forbidden_location_options_map["MapProxyDomain"] = true;
+    forbidden_location_options_map["MapRewriteDomain"] = true;
+    forbidden_location_options_map["ShardDomain"] = true;
+    forbidden_location_options_map["LoadFromFile"] = true;
+    forbidden_location_options_map["LoadFromFileMatch"] = true;
+    forbidden_location_options_map["LoadFromFileRule"] = true;
+    forbidden_location_options_map["LoadFromFileRuleMatch"] = true;
   }
 
   // args[0] is always "pagespeed"; ignore it.
@@ -361,8 +416,9 @@ ps_configure(ngx_conf_t* cf,
     args[i] = str_to_string_piece(value[i+1]);
   }
   if (option_level == PsConfigure::kLocation && n_args > 1) {
-    if (forbidden_location_options_map.count(args[0].as_string()) > 0) {
-      return const_cast<char*>("FAIL");
+    fprintf(stderr, "check location level option: [%s]\n", args[0].as_string().c_str());
+    if (forbidden_location_options_map.count(args[0]) > 0) {
+      return const_cast<char*>("Option can not be set at location scope");
     }
   }
   const char* status = (*options)->ParseAndSetOptions(
