@@ -753,6 +753,11 @@ apr_status_t instaweb_handler(request_rec* request) {
   ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(request->server);
   ApacheConfig* config = server_context->config();
+  // Escape ASAP if we're in unplugged mode.
+  if (config->unplugged()) {
+    return DECLINED;
+  }
+
   ApacheRewriteDriverFactory* factory = server_context->apache_factory();
   ApacheMessageHandler* message_handler = factory->apache_message_handler();
   StringPiece request_handler_str = request->handler;
@@ -914,6 +919,11 @@ apr_status_t instaweb_handler(request_rec* request) {
 apr_status_t save_url_hook(request_rec *request) {
   ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(request->server);
+  // Escape ASAP if we're in unplugged mode.
+  if (server_context->config()->unplugged()) {
+    return DECLINED;
+  }
+
   // This call to MakeRequestUrl() not only returns the url but also
   // saves it for future use so that if another module changes the
   // url in the request, we still have the original one.
@@ -957,6 +967,14 @@ apr_status_t save_url_hook(request_rec *request) {
 // Override core_map_to_storage for pagespeed resources.
 apr_status_t instaweb_map_to_storage(request_rec* request) {
   apr_status_t ret = DECLINED;
+
+  // Escape ASAP if we're in unplugged mode.
+  ApacheServerContext* server_context =
+      InstawebContext::ServerContextFromServerRec(request->server);
+  if (server_context->config()->unplugged()) {
+    return DECLINED;
+  }
+
   if (request->proxyreq == PROXYREQ_REVERSE) {
     // If Apache is acting as a reverse proxy for this request there is no
     // point in walking the directory because it doesn't apply to this

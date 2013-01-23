@@ -440,10 +440,14 @@ class ScopedTimer {
 // that we should not handle the request for various reasons.
 // TODO(sligocki): Move most of these checks into non-Apache specific code.
 InstawebContext* build_context_for_request(request_rec* request) {
-  ApacheConfig* directory_options = static_cast<ApacheConfig*>
-      ap_get_module_config(request->per_dir_config, &pagespeed_module);
   ApacheServerContext* manager =
       InstawebContext::ServerContextFromServerRec(request->server);
+  // Escape ASAP if we're in unplugged mode.
+  if (manager->config()->unplugged()) {
+    return NULL;
+  }
+  ApacheConfig* directory_options = static_cast<ApacheConfig*>
+      ap_get_module_config(request->per_dir_config, &pagespeed_module);
   ApacheRewriteDriverFactory* factory = manager->apache_factory();
   scoped_ptr<RewriteOptions> custom_options;
 
@@ -816,6 +820,14 @@ apr_status_t instaweb_fix_headers_filter(
     ap_filter_t* filter, apr_bucket_brigade* bb) {
   request_rec* request = filter->r;
 
+  // Escape ASAP if we're in unplugged mode.
+  ApacheServerContext* server_context =
+      InstawebContext::ServerContextFromServerRec(request->server);
+  if (server_context->config()->unplugged()) {
+    ap_remove_output_filter(filter);
+    return ap_pass_brigade(filter->next, bb);
+  }
+
   // TODO(sligocki): Move inside PSOL.
   // Turn off caching for the HTTP requests.
   apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
@@ -940,6 +952,13 @@ apr_status_t instaweb_in_place_check_headers_filter(ap_filter_t* filter,
 }
 
 void pagespeed_child_init(apr_pool_t* pool, server_rec* server) {
+  // Escape ASAP if we're in unplugged mode.
+  ApacheServerContext* server_context =
+      InstawebContext::ServerContextFromServerRec(server);
+  if (server_context->config()->unplugged()) {
+    return;
+  }
+
   // Create PageSpeed context used by instaweb rewrite-driver.  This is
   // per-process, so we initialize all the server's context by iterating the
   // server lists in server->next.
@@ -1021,6 +1040,11 @@ int pagespeed_post_config(apr_pool_t* pool, apr_pool_t* plog, apr_pool_t* ptemp,
       manager->CollapseConfigOverlaysAndComputeSignatures();
       ApacheConfig* config = manager->config();
 
+      // Escape ASAP if we're in unplugged mode.
+      if (config->unplugged()) {
+        continue;
+      }
+
       if (config->enabled()) {
         GoogleString file_cache_path = config->file_cache_path();
         if (file_cache_path.empty()) {
@@ -1090,6 +1114,13 @@ void pagespeed_fetch_optional_fns() {
 }
 
 int pagespeed_modify_request(request_rec* r) {
+  // Escape ASAP if we're in unplugged mode.
+  ApacheServerContext* server_context =
+      InstawebContext::ServerContextFromServerRec(r->server);
+  if (server_context->config()->unplugged()) {
+    return OK;
+  }
+
   // This method is based in part on mod_remoteip.
   conn_rec* c = r->connection;
 

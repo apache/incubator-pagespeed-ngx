@@ -737,6 +737,20 @@ ModPagespeedUsePerVHostStatistics on
       "/usr/local/apache2/htdocs/mod_pagespeed_example/"
 </VirtualHost>
 
+# For testing Modpagespeed unplugged.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName mpsunplugged.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeed unplugged
+</VirtualHost>
+
+# For testing Modpagespeed off.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName mpsoff.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/mpsoff/"
+  ModPagespeed off
+</VirtualHost>
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:
 #ALL_DIRECTIVES ModPagespeedAllow foo
