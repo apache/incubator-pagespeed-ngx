@@ -534,6 +534,77 @@ TEST_F(PropertyCacheTest, MultiRead) {
   }
 }
 
+TEST_F(PropertyCacheTest, TwoCohortsDifferentCacheImplementations) {
+  // Verify the second cohort does not exist.
+  EXPECT_TRUE(property_cache_.GetCohort(kCohortName2) == NULL);
+
+  // Create a second cache implementation.
+  LRUCache second_cache(kMaxCacheSize);
+
+  // Add a second cohort backed by the second cache.
+  const PropertyCache::Cohort* cohort2 =
+      property_cache_.AddCohortWithCache(kCohortName2, &second_cache);
+
+  // Verify the first cohort behaves as expected.
+  ReadWriteInitial(kCacheKey1, "Value1");
+  EXPECT_EQ(1, lru_cache_.num_misses());
+  EXPECT_EQ(1, lru_cache_.num_inserts());
+
+  // We should miss the second cache for the second cohort.
+  EXPECT_EQ(1, second_cache.num_misses());
+  EXPECT_EQ(0, second_cache.num_inserts());
+
+  lru_cache_.ClearStats();
+  second_cache.ClearStats();
+  {
+    // Insert a value into cohort2.
+    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    property_cache_.Read(&page);
+
+    EXPECT_EQ(1, lru_cache_.num_hits());
+    EXPECT_EQ(0, lru_cache_.num_misses());
+    EXPECT_EQ(0, lru_cache_.num_inserts());
+
+    EXPECT_EQ(0, second_cache.num_hits());
+    EXPECT_EQ(1, second_cache.num_misses());
+    EXPECT_EQ(0, second_cache.num_inserts());
+
+    PropertyValue* property = page.GetProperty(cohort2, kPropertyName2);
+    EXPECT_FALSE(property->has_value());
+
+    property_cache_.UpdateValue("Value2", property);
+    property_cache_.WriteCohort(cohort2, &page);
+
+    EXPECT_EQ(0, lru_cache_.num_inserts());
+    EXPECT_EQ(1, second_cache.num_inserts());
+  }
+
+  lru_cache_.ClearStats();
+  second_cache.ClearStats();
+  {
+    // Read again.  We should have properties in each cohort, each in their own
+    // cache.
+    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    property_cache_.Read(&page);
+
+    EXPECT_EQ(1, lru_cache_.num_hits());
+    EXPECT_EQ(0, lru_cache_.num_misses());
+    EXPECT_EQ(0, lru_cache_.num_inserts());
+
+    EXPECT_EQ(1, second_cache.num_hits());
+    EXPECT_EQ(0, second_cache.num_misses());
+    EXPECT_EQ(0, second_cache.num_inserts());
+
+    PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
+    EXPECT_TRUE(property->has_value());
+    EXPECT_EQ("Value1", property->value());
+
+    property = page.GetProperty(cohort2, kPropertyName2);
+    EXPECT_TRUE(property->has_value());
+    EXPECT_EQ("Value2", property->value());
+  }
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

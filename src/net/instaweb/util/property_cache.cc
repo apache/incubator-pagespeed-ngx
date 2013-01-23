@@ -405,6 +405,13 @@ bool PropertyCache::IsExpired(const PropertyValue* property_value,
 
 const PropertyCache::Cohort* PropertyCache::AddCohort(
     const StringPiece& cohort_name) {
+  // Use the default cache implementation.
+  return AddCohortWithCache(cohort_name, cache_);
+}
+
+const PropertyCache::Cohort* PropertyCache::AddCohortWithCache(
+    const StringPiece& cohort_name, CacheInterface* cache) {
+  CHECK(cache != NULL);
   GoogleString cohort_string;
   cohort_name.CopyToString(&cohort_string);
   std::pair<CohortMap::iterator, bool> insertions = cohorts_.insert(
@@ -412,9 +419,11 @@ const PropertyCache::Cohort* PropertyCache::AddCohort(
   if (insertions.second) {
     // Create a new CacheStats for every cohort so that we can track cache
     // statistics independently for every cohort.
-    CacheInterface* cache = new CacheStats(
-        GetStatsPrefix(cohort_string), new CacheCopy(cache_), timer_, stats_);
-    insertions.first->second = new Cohort(cohort_name, cache);
+    CacheInterface* cache_stats = new CacheStats(GetStatsPrefix(cohort_string),
+                                                 new CacheCopy(cache),
+                                                 timer_,
+                                                 stats_);
+    insertions.first->second = new Cohort(cohort_name, cache_stats);
   }
   return insertions.first->second;
 }

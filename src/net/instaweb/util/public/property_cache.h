@@ -255,9 +255,15 @@ class PropertyCache {
     mutations_per_1000_writes_threshold_ = x;
   }
 
-  // Establishes a new Cohort for this property cache. Note that you must call
+  // Establishes a new Cohort for this property cache backed by the
+  // CacheInteface passed to the constructor. Note that you must call
   // InitCohortStats prior to calling AddCohort.
   const Cohort* AddCohort(const StringPiece& cohort_name);
+
+  // Establishes a new Cohort to be backed by the specified CacheInterface.
+  // NOTE: Does not take ownership of the CacheInterface object.
+  const Cohort* AddCohortWithCache(const StringPiece& cohort_name,
+                                   CacheInterface* cache);
 
   // Returns the specified Cohort* or NULL if not found.  Cohorts must
   // be established at startup time, via AddCohort before any pages
