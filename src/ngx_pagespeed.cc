@@ -108,7 +108,6 @@ ngx_int_t string_piece_to_buffer_chain(
            // generate empty buffers.
            (offset == 0 && sp.size() == 0);
        offset += max_buffer_size) {
-
     // Prepare a new nginx buffer to put our buffered writes into.
     ngx_buf_t* b = static_cast<ngx_buf_t*>(ngx_calloc_buf(pool));
     if (b == NULL) {
@@ -116,7 +115,7 @@ ngx_int_t string_piece_to_buffer_chain(
     }
 
     if (sp.size() == 0) {
-      CHECK(offset == 0);
+      CHECK(offset == 0);                                          // NOLINT
       b->pos = b->start = b->end = b->last = NULL;
       // The purpose of this buffer is just to pass along last_buf.
       b->sync = 1;
@@ -358,7 +357,7 @@ void ps_cleanup_srv_conf(void* data) {
   // to be shut down when we destroy any proxy_fetch_factories. This
   // will prevent any queued callbacks to destroyed proxy fetch factories
   // from being executed
-  
+
   if (!factory_deleted) {
     delete cfg_s->server_context->factory();
     factory_deleted = true;
@@ -391,7 +390,7 @@ template <typename ConfT> ConfT* ps_create_conf(ngx_conf_t* cf) {
 }
 
 void ps_set_conf_cleanup_handler(
-    ngx_conf_t* cf, void (func)(void*), void* data) {
+    ngx_conf_t* cf, void (func)(void*), void* data) {                // NOLINT
   ngx_pool_cleanup_t* cleanup_m = ngx_pool_cleanup_add(cf->pool, 0);
   if (cleanup_m == NULL) {
      ngx_conf_log_error(
@@ -1147,7 +1146,7 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
 
   // We don't want to handle requests with errors, but we should be dealing with
   // that in the header filter and not initializing ctx.
-  CHECK(r->err_status == 0);
+  CHECK(r->err_status == 0);                                         // NOLINT
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed filter \"%V\"", &r->uri);
