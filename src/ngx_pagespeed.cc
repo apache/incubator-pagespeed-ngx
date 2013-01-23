@@ -256,7 +256,7 @@ enum Response {
   kInvalidUrl,
   kPagespeedDisabled,
 };
-} // namespace CreateRequestContext
+}  // namespace CreateRequestContext
 
 CreateRequestContext::Response
 ps_create_request_context(ngx_http_request_t* r, bool is_resource_fetch);
@@ -328,7 +328,7 @@ enum OptionLevel {
 // but rather left in the same order as in mod_instaweb.cc in case
 // we end up needing te compare.
 // TODO(oschaaf): this duplication is a short term solution.
-const char * const global_only_options[] = {
+const char* const global_only_options[] = {
   "BlockingRewriteKey",
   "CacheFlushFilename",
   "CacheFlushPollIntervalSec",
