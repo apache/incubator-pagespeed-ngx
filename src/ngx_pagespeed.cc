@@ -328,7 +328,7 @@ enum OptionLevel {
 // but rather left in the same order as in mod_instaweb.cc in case
 // we end up needing te compare.
 // TODO(oschaaf): this duplication is a short term solution.
-const char * const no_location_options[] = {
+const char * const global_only_options[] = {
   "BlockingRewriteKey",
   "CacheFlushFilename",
   "CacheFlushPollIntervalSec",
@@ -382,11 +382,11 @@ const char * const no_location_options[] = {
   "LoadFromFileRuleMatch"
 };
 
-bool ps_is_no_location_option(const StringPiece& option_name) {
+bool ps_is_global_only_option(const StringPiece& option_name) {
   ngx_uint_t i;
-  ngx_uint_t size = sizeof(no_location_options) / sizeof(char*);
+  ngx_uint_t size = sizeof(global_only_options) / sizeof(char*);
   for (i = 0; i < size; i++) {
-    if (net_instaweb::StringCaseEqual(no_location_options[i], option_name)) {
+    if (net_instaweb::StringCaseEqual(global_only_options[i], option_name)) {
       return true;
     }
   }
@@ -418,7 +418,7 @@ ps_configure(ngx_conf_t* cf,
   }
 
   if (option_level == PsConfigure::kLocation && n_args > 1) {
-    if (ps_is_no_location_option(args[0])) {
+    if (ps_is_global_only_option(args[0])) {
       return const_cast<char*>(
           "Option can not be set at location scope");
     }
