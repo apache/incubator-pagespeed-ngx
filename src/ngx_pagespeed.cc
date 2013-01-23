@@ -291,16 +291,93 @@ void ps_ignore_sigpipe() {
   sigaction(SIGPIPE, &act, NULL);
 }
 
-#define NGX_PAGESPEED_MAX_ARGS 10
+namespace PsConfigure {
+enum OptionLevel {
+  kServer,
+  kLocation,
+};
+}  // namespace PsConfigure
 
+// These options are copied from mod_instaweb.cc, where
+// APACHE_CONFIG_OPTIONX indicates that they can not be set at the
+// directory/location level. They are not alphabetized on purpose,
+// but rather left in the same order as in mod_instaweb.cc in case
+// we end up needing te compare.
+// TODO(oschaaf): this duplication is a short term solution.
+const char* const global_only_options[] = {
+  "BlockingRewriteKey",
+  "CacheFlushFilename",
+  "CacheFlushPollIntervalSec",
+  "DangerPermitFetchFromUnknownHosts",
+  "CriticalImagesBeaconEnabled",
+  "ExperimentalFetchFromModSpdy",
+  "FetcherTimeoutMs",
+  "FetchHttps",
+  "FetchWithGzip",
+  "FileCacheCleanIntervalMs",
+  "FileCacheInodeLimit",
+  "FileCachePath",
+  "FileCacheSizeKb",
+  "ForceCaching",
+  "ImageMaxRewritesAtOnce",
+  "ImgMaxRewritesAtOnce",
+  "InheritVHostConfig",
+  "InstallCrashHandler",
+  "LRUCacheByteLimit",
+  "LRUCacheKbPerProcess",
+  "MaxCacheableContentLength",
+  "MemcachedServers",
+  "MemcachedThreads",
+  "MemcachedTimeoutUs",
+  "MessageBufferSize",
+  "NumRewriteThreads",
+  "NumExpensiveRewriteThreads",
+  "RateLimitBackgroundFetches",
+  "ReportUnloadTime",
+  "RespectXForwardedProto",
+  "SharedMemoryLocks",
+  "SlurpDirectory",
+  "SlurpFlushLimit",
+  "SlurpReadOnly",
+  "SupportNoScriptEnabled",
+  "StatisticsLoggingChartsCSS",
+  "StatisticsLoggingChartsJS",
+  "TestProxy",
+  "TestProxySlurp",
+  "TrackOriginalContentLength",
+  "UsePerVHostStatistics",
+  "XHeaderValue",
+  "CustomFetchHeader",
+  "MapOriginDomain",
+  "MapProxyDomain",
+  "MapRewriteDomain",
+  "ShardDomain",
+  "LoadFromFile",
+  "LoadFromFileMatch",
+  "LoadFromFileRule",
+  "LoadFromFileRuleMatch"
+};
+
+bool ps_is_global_only_option(const StringPiece& option_name) {
+  ngx_uint_t i;
+  ngx_uint_t size = sizeof(global_only_options) / sizeof(char*);
+  for (i = 0; i < size; i++) {
+    if (net_instaweb::StringCaseEqual(global_only_options[i], option_name)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+#define NGX_PAGESPEED_MAX_ARGS 10
 char* ps_configure(ngx_conf_t* cf,
                    net_instaweb::NgxRewriteOptions** options,
-                   net_instaweb::MessageHandler* handler) {
+                   net_instaweb::MessageHandler* handler,
+                   PsConfigure::OptionLevel option_level) {
   if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
     *options = new net_instaweb::NgxRewriteOptions();
   }
-
   // args[0] is always "pagespeed"; ignore it.
   ngx_uint_t n_args = cf->args->nelts - 1;
 
@@ -315,6 +392,12 @@ char* ps_configure(ngx_conf_t* cf,
     args[i] = str_to_string_piece(value[i+1]);
   }
 
+  if (option_level == PsConfigure::kLocation && n_args > 1) {
+    if (ps_is_global_only_option(args[0])) {
+      return const_cast<char*>("Option can not be set at location scope");
+    }
+  }
+
   const char* status = (*options)->ParseAndSetOptions(
       args, n_args, cf->pool, handler);
 
@@ -325,19 +408,16 @@ char* ps_configure(ngx_conf_t* cf,
 char* ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
       ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
-  return ps_configure(cf, &cfg_s->options, cfg_s->handler);
+  return ps_configure(cf, &cfg_s->options, cfg_s->handler,
+                      PsConfigure::kServer);
 }
 
 char* ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(
           ngx_http_conf_get_module_loc_conf(cf, ngx_pagespeed));
 
-  // TODO(jefftk): pass something to configure() to tell it that this option was
-  // set in a location block so it can be more strict.  Not all options can be
-  // set in location blocks.  (For now we'll allow them, which in practice means
-  // they'll be ignored because they're read from the config before
-  // location-specific options are applied.)
-  return ps_configure(cf, &cfg_l->options, cfg_l->handler);
+  return ps_configure(cf, &cfg_l->options, cfg_l->handler,
+                      PsConfigure::kLocation);
 }
 
 void ps_cleanup_loc_conf(void* data) {
