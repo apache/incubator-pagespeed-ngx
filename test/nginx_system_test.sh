@@ -51,4 +51,4 @@ PAGESPEED_EXPECTED_FAILURES="
 "
 
 source $SYSTEM_TEST_FILE
-system_test_trailer
+check_failures_and_exit
