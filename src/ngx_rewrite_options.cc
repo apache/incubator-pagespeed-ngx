@@ -108,9 +108,11 @@ bool NgxRewriteOptions::IsDirective(StringPiece config_directive,
 RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions0(
     StringPiece directive, GoogleString* msg, MessageHandler* handler) {
   if (IsDirective(directive, "on")) {
-    set_enabled(true);
+    set_enabled(RewriteOptions::kEnabledOn);
   } else if (IsDirective(directive, "off")) {
-    set_enabled(false);
+    set_enabled(RewriteOptions::kEnabledOff);
+  } else if (IsDirective(directive, "unplugged")) {
+    set_enabled(RewriteOptions::kEnabledUnplugged);
   } else {
     return RewriteOptions::kOptionNameUnknown;
   }
