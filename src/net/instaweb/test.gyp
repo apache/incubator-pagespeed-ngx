@@ -242,6 +242,8 @@
         'util/scheduler_based_abstract_lock_test.cc',
         'util/scheduler_test.cc',
         'util/scheduler_thread_test.cc',
+        'util/shared_mem_cache_data_test_base.cc',
+        'util/shared_mem_cache_test_base.cc',
         'util/shared_circular_buffer_test_base.cc',
         'util/shared_dynamic_string_map_test_base.cc',
         'util/shared_mem_lock_manager_test_base.cc',

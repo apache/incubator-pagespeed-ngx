@@ -687,6 +687,8 @@
         'util/scheduler_based_abstract_lock.cc',
         'util/shared_circular_buffer.cc',
         'util/shared_dynamic_string_map.cc',
+        'util/shared_mem_cache.cc',
+        'util/shared_mem_cache_data.cc',
         'util/shared_mem_lock_manager.cc',
         'util/shared_mem_referer_statistics.cc',
         'util/shared_mem_statistics.cc',

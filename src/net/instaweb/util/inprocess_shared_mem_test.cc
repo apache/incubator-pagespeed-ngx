@@ -38,6 +38,9 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/shared_mem_cache_data_test_base.h"
+#include "net/instaweb/util/shared_mem_cache_test_base.h"
+
 
 namespace net_instaweb {
 
@@ -108,6 +111,10 @@ class InProcessSharedMemEnv : public SharedMemTestEnv {
 INSTANTIATE_TYPED_TEST_CASE_P(InprocessShm, SharedCircularBufferTestTemplate,
                               InProcessSharedMemEnv);
 INSTANTIATE_TYPED_TEST_CASE_P(InprocessShm, SharedDynamicStringMapTestTemplate,
+                              InProcessSharedMemEnv);
+INSTANTIATE_TYPED_TEST_CASE_P(InprocessShm, SharedMemCacheTestTemplate,
+                              InProcessSharedMemEnv);
+INSTANTIATE_TYPED_TEST_CASE_P(InprocessShm, SharedMemCacheDataTestTemplate,
                               InProcessSharedMemEnv);
 INSTANTIATE_TYPED_TEST_CASE_P(InprocessShm, SharedMemLockManagerTestTemplate,
                               InProcessSharedMemEnv);
