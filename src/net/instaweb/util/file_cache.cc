@@ -88,10 +88,13 @@ FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
       message_handler_(handler),
       cache_policy_(policy),
       path_length_limit_(file_system_->MaxPathLength(path)),
-      clean_time_path_(path) {
+      clean_time_path_(path),
+      clean_lock_path_(path) {
   next_clean_ms_ = policy->timer->NowMs() + policy->clean_interval_ms / 2;
   EnsureEndsInSlash(&clean_time_path_);
-  clean_time_path_ += kCleanTimeName;
+  StrAppend(&clean_time_path_, kCleanTimeName);
+  EnsureEndsInSlash(&clean_lock_path_);
+  StrAppend(&clean_lock_path_, kCleanLockName);
 }
 
 FileCache::~FileCache() {
@@ -154,6 +157,14 @@ bool FileCache::EncodeFilename(const GoogleString& key,
   return true;
 }
 
+namespace {
+// The minimum age an empty directory needs to be before cache cleaning will
+// delete it. This is to prevent cache cleaning from removing file lock
+// directories that StdioFileSystem uses and is set to be double
+// ServerContext::kBreakLockMs / kSecondMs.
+const int64 kEmptyDirCleanAgeSec = 60;
+}  // namespace
+
 bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
   // TODO(jud): this function can delete .lock and .outputlock files, is this
   // problematic?
@@ -194,7 +205,18 @@ bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
   StringVector::iterator it;
   for (it = dir_info.empty_dirs.begin(); it != dir_info.empty_dirs.end();
        ++it) {
-    everything_ok &= file_system_->RemoveDir(it->c_str(), message_handler_);
+    // StdioFileSystem uses an empty directory as a file lock. Avoid deleting
+    // these file locks by not removing the file cache clean lock file, and
+    // making sure empty directories are at least n seconds old before removing
+    // them, where n is double ServerContext::kBreakLockMs.
+    int64 timestamp_sec;
+    file_system_->Mtime(it->c_str(), &timestamp_sec, message_handler_);
+    const int64 now_sec = cache_policy_->timer->NowMs() / Timer::kSecondMs;
+    int64 age_sec = now_sec - timestamp_sec;
+    if (age_sec > kEmptyDirCleanAgeSec &&
+        clean_lock_path_.compare(it->c_str()) != 0) {
+      everything_ok &= file_system_->RemoveDir(it->c_str(), message_handler_);
+    }
     // Decrement cache_inode_count even if RemoveDir failed. This is likely
     // because the directory has already been removed.
     --cache_inode_count;
@@ -218,10 +240,12 @@ bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
            cache_inode_count > target_inode_count))) {
     FileSystem::FileInfo file = *file_itr;
     ++file_itr;
-    // Don't clean the clean_time file! It ought to be the newest file (and very
-    // small) so it would normally not be deleted anyway. But on some systems
-    // (e.g. mounted noatime?) it was getting deleted.
-    if (clean_time_path_.compare(file.name) == 0) {
+    // Don't clean the clean_time or clean_lock files! They ought to be the
+    // newest files (and very small) so they would normally not be deleted
+    // anyway. But on some systems (e.g. mounted noatime?) they were getting
+    // deleted.
+    if (clean_time_path_.compare(file.name) == 0 ||
+        clean_lock_path_.compare(file.name) == 0) {
       continue;
     }
     cache_size -= file.size_bytes;
@@ -242,11 +266,8 @@ bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
 bool FileCache::CleanWithLocking(int64 next_clean_time_ms) {
   bool to_return = false;
 
-  GoogleString lock_name(path_);
-  EnsureEndsInSlash(&lock_name);
-  lock_name += kCleanLockName;
   if (file_system_->TryLockWithTimeout(
-      lock_name, Timer::kHourMs, message_handler_).is_true()) {
+      clean_lock_path_, Timer::kHourMs, message_handler_).is_true()) {
     // Update the timestamp file..
     next_clean_ms_ = next_clean_time_ms;
     file_system_->WriteFile(clean_time_path_.c_str(),
@@ -256,7 +277,7 @@ bool FileCache::CleanWithLocking(int64 next_clean_time_ms) {
     // Now actually clean.
     to_return = Clean(cache_policy_->target_size,
                       cache_policy_->target_inode_count);
-    file_system_->Unlock(lock_name, message_handler_);
+    file_system_->Unlock(clean_lock_path_, message_handler_);
   }
   return to_return;
 }

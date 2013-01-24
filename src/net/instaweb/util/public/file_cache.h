@@ -101,8 +101,9 @@ class FileCache : public CacheInterface {
   const scoped_ptr<CachePolicy> cache_policy_;
   int64 next_clean_ms_;
   int path_length_limit_;  // Maximum total length of path file_system_ supports
-  // The full path to our cleanup timestamp file.
+  // The full paths to our cleanup timestamp and lock files.
   GoogleString clean_time_path_;
+  GoogleString clean_lock_path_;
   bool last_conditional_clean_result_;
 
   // The filename where we keep the next scheduled cleanup time in seconds.
