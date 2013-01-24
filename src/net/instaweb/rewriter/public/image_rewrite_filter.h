@@ -77,6 +77,9 @@ class ImageRewriteFilter : public RewriteFilter {
   // data size by a certain threshold. The image is not resized in this case.
   static const char kImageRewritesDroppedNoSavingNoResize[];
 
+  // TimedVariable denoting image squashing for mobile screen.
+  static const char kImageRewritesSquashingForMobileScreen[];
+
   // The property cache property name used to store URLs discovered when
   // image_inlining_identify_and_cache_without_rewriting() is set in the
   // RewriteOptions.
@@ -248,6 +251,10 @@ class ImageRewriteFilter : public RewriteFilter {
   Variable* image_rewrites_dropped_nosaving_noresize_;
   // # of images not rewritten because of load.
   TimedVariable* image_rewrites_dropped_due_to_load_;
+  // # of image squashing for mobile screen initiated. This may not be the
+  // actual # of images squashed as squashing may fail or rewritten image size
+  // is larger.
+  TimedVariable* image_rewrites_squashing_for_mobile_screen_;
   // # of bytes saved from image rewriting (Note: This is computed at
   // rewrite time not at serve time, so the number of bytes saved in
   // transmission should be larger than this).

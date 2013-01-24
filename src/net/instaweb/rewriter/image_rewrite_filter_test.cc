@@ -475,6 +475,9 @@ class ImageRewriteTest : public RewriteTestBase {
     EXPECT_LT(1, screen_width);
     EXPECT_LT(1, screen_height);
     rewrite_driver()->SetScreenResolution(screen_width, screen_height);
+    TimedVariable* rewrites_squashing = statistics()->GetTimedVariable(
+        ImageRewriteFilter::kImageRewritesSquashingForMobileScreen);
+    rewrites_squashing->Clear();
 
     ImageDim desired_dim;
     ImageDim image_dim;
@@ -489,6 +492,7 @@ class ImageRewriteTest : public RewriteTestBase {
 
     EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
         image_dim, context, &desired_dim));
+    EXPECT_EQ(0, rewrites_squashing->Get(TimedVariable::START));
 
     // Image height is larger than screen height but image width is less than
     // screen width.
@@ -500,6 +504,8 @@ class ImageRewriteTest : public RewriteTestBase {
     EXPECT_EQ(screen_height, desired_dim.height());
     desired_dim.clear_height();
     desired_dim.clear_width();
+    EXPECT_EQ(1, rewrites_squashing->Get(TimedVariable::START));
+    rewrites_squashing->Clear();
 
     // Image height is less than screen height but image width is larger than
     // screen width.
@@ -511,6 +517,8 @@ class ImageRewriteTest : public RewriteTestBase {
     EXPECT_FALSE(desired_dim.has_height());
     desired_dim.clear_height();
     desired_dim.clear_width();
+    EXPECT_EQ(1, rewrites_squashing->Get(TimedVariable::START));
+    rewrites_squashing->Clear();
 
     // Both image dims are larger than screen and screen/image width ratio is
     // is larger than height ratio.
@@ -522,6 +530,8 @@ class ImageRewriteTest : public RewriteTestBase {
     EXPECT_EQ(screen_height, desired_dim.height());
     desired_dim.clear_height();
     desired_dim.clear_width();
+    EXPECT_EQ(1, rewrites_squashing->Get(TimedVariable::START));
+    rewrites_squashing->Clear();
 
     // Both image dims are larger than screen and screen/image height ratio is
     // is larger than width ratio.
@@ -531,6 +541,8 @@ class ImageRewriteTest : public RewriteTestBase {
         image_dim, context, &desired_dim));
     EXPECT_EQ(screen_width, desired_dim.width());
     EXPECT_FALSE(desired_dim.has_height());
+    EXPECT_EQ(1, rewrites_squashing->Get(TimedVariable::START));
+    rewrites_squashing->Clear();
 
     // Keep image dims unchanged and larger than screen from now on and
     // update desired_dim.
@@ -542,16 +554,19 @@ class ImageRewriteTest : public RewriteTestBase {
     desired_dim.clear_height();
     EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
         image_dim, context, &desired_dim));
+    EXPECT_EQ(0, rewrites_squashing->Get(TimedVariable::START));
 
     desired_dim.clear_width();
     desired_dim.set_height(screen_height);
     EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
         image_dim, context, &desired_dim));
+    EXPECT_EQ(0, rewrites_squashing->Get(TimedVariable::START));
 
     desired_dim.set_width(screen_width);
     desired_dim.set_height(screen_height);
     EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
         image_dim, context, &desired_dim));
+    EXPECT_EQ(0, rewrites_squashing->Get(TimedVariable::START));
   }
 };
 

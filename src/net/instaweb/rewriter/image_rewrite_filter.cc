@@ -112,6 +112,8 @@ const char ImageRewriteFilter::kImageRewritesDroppedNoSavingNoResize[] =
     "image_rewrites_dropped_nosaving_noresize";
 const char ImageRewriteFilter::kImageRewritesDroppedDueToLoad[] =
     "image_rewrites_dropped_due_to_load";
+const char ImageRewriteFilter::kImageRewritesSquashingForMobileScreen[] =
+    "image_rewrites_squashing_for_mobile_screen";
 const char kImageRewriteTotalBytesSaved[] = "image_rewrite_total_bytes_saved";
 const char kImageRewriteTotalOriginalBytes[] =
     "image_rewrite_total_original_bytes";
@@ -286,6 +288,8 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
       stats->GetVariable(kImageRewritesDroppedNoSavingNoResize);
   image_rewrites_dropped_due_to_load_ =
       stats->GetTimedVariable(kImageRewritesDroppedDueToLoad);
+  image_rewrites_squashing_for_mobile_screen_ =
+      stats->GetTimedVariable(kImageRewritesSquashingForMobileScreen);
   image_rewrite_total_bytes_saved_ =
       stats->GetVariable(kImageRewriteTotalBytesSaved);
   image_rewrite_total_original_bytes_ =
@@ -321,6 +325,8 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kImageRewritesDroppedNoSavingResize);
   statistics->AddVariable(kImageRewritesDroppedNoSavingNoResize);
   statistics->AddTimedVariable(kImageRewritesDroppedDueToLoad,
+                               ServerContext::kStatisticsGroup);
+  statistics->AddTimedVariable(kImageRewritesSquashingForMobileScreen,
                                ServerContext::kStatisticsGroup);
   statistics->AddVariable(kImageRewriteTotalBytesSaved);
   statistics->AddVariable(kImageRewriteTotalOriginalBytes);
@@ -1382,6 +1388,7 @@ bool ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
     } else {
       desired_dim->set_height(screen_dim.height());
     }
+    image_rewrites_squashing_for_mobile_screen_->IncBy(1);
     updated = true;
   }
   return updated;
