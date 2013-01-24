@@ -56,6 +56,7 @@ const ContentType kTypes[] = {
   {"text/x-js",                ".js",   ContentType::kJavascript},
   {"application/ecmascript",   ".js",   ContentType::kJavascript},
   {"image/jpeg",               ".jpeg", ContentType::kJpeg},
+  {"image/jpg",                ".jpg",  ContentType::kJpeg},
   {"text/html",                ".htm",  ContentType::kHtml},
   {"application/xml",          ".xml",  ContentType::kXml},  // RFC 3023
 
