@@ -1148,11 +1148,11 @@ TEST_F(RewriteDriverTest, GetScreenResolutionTest) {
   int width, height;
 
   // Unknown user agent;
-  rewrite_driver()->set_user_agent(UserAgentStrings::kIPhoneChrome21UserAgent);
+  rewrite_driver()->SetUserAgent(UserAgentStrings::kIPhoneChrome21UserAgent);
   EXPECT_FALSE(rewrite_driver()->GetScreenResolution(&width, &height));
 
   // No device property page, regex based results.
-  rewrite_driver()->set_user_agent(UserAgentStrings::kAndroidICSUserAgent);
+  rewrite_driver()->SetUserAgent(UserAgentStrings::kAndroidICSUserAgent);
   EXPECT_TRUE(rewrite_driver()->GetScreenResolution(&width, &height));
   EXPECT_EQ(720, width);
   EXPECT_EQ(1280, height);

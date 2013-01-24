@@ -63,4 +63,11 @@
 #endif
 
 
+// Lazily-initialized boolean value
+enum LazyBool {
+  kNotSet = -1,
+  kFalse = 0,
+  kTrue = 1
+};
+
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_BASICTYPES_H_

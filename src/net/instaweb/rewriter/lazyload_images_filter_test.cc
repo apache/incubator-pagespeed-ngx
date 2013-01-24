@@ -187,7 +187,7 @@ TEST_F(LazyloadImagesFilterTest, Blacklist) {
                  GetOverrideAttributesScriptHtml(),
                  "</body>")));
 
-  rewrite_driver()->set_user_agent("Firefox/1.0");
+  rewrite_driver()->SetUserAgent("Firefox/1.0");
   ValidateNoChanges("inlining_not_supported", input_html);
 }
 
@@ -229,7 +229,7 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
                  GetOverrideAttributesScriptHtml(),
                  "</body>")));
 
-  rewrite_driver()->set_user_agent("Firefox/1.0");
+  rewrite_driver()->SetUserAgent("Firefox/1.0");
   ValidateNoChanges("inlining_not_supported", input_html);
 }
 

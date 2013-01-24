@@ -53,7 +53,7 @@ TEST_F(SupportNoscriptFilterTest, TestNoscript) {
       "\"http://test.com/support_noscript&#39;%22.html?ModPagespeed=noscript\">"
       "here</a> if you are not redirected within a few seconds.</div>"
       "</noscript><img src=\"http://test.com/1.jpeg\"/></body>";
-  rewrite_driver()->set_user_agent(kChromeUserAgent);
+  rewrite_driver()->SetUserAgent(kChromeUserAgent);
   ValidateExpected("support_noscript'\"", input_html, output_html);
 }
 
@@ -72,14 +72,14 @@ TEST_F(SupportNoscriptFilterTest, TestNoscriptMultipleBodies) {
       "here</a> if you are not redirected within a few seconds.</div>"
       "</noscript><img src=\"http://test.com/1.jpeg\"/></body>"
       "<body><img src=\"http://test.com/2.jpeg\"/></body>";
-  rewrite_driver()->set_user_agent(kChromeUserAgent);
+  rewrite_driver()->SetUserAgent(kChromeUserAgent);
   ValidateExpected("support_noscript", input_html, output_html);
 }
 
 TEST_F(SupportNoscriptFilterTest, TestNoBody) {
   GoogleString input_html =
       "<head></head>";
-  rewrite_driver()->set_user_agent(kChromeUserAgent);
+  rewrite_driver()->SetUserAgent(kChromeUserAgent);
   ValidateExpected("support_noscript", input_html, input_html);
 }
 
@@ -87,7 +87,7 @@ TEST_F(SupportNoscriptFilterTest, TestUnsupportedUserAgent) {
   GoogleString input_html =
       "<head></head><body>"
       "<img src=\"http://test.com/1.jpeg\"/></body>";
-  rewrite_driver()->set_user_agent(kUnsupportedUserAgent);
+  rewrite_driver()->SetUserAgent(kUnsupportedUserAgent);
   ValidateExpected("support_noscript", input_html, input_html);
 }
 

@@ -44,7 +44,8 @@ DetectReflowJsDeferFilter::~DetectReflowJsDeferFilter() { }
 
 void DetectReflowJsDeferFilter::StartDocument() {
   script_written_ = false;
-  defer_js_enabled_ = rewrite_driver_->UserAgentSupportsJsDefer();
+  defer_js_enabled_ = rewrite_driver_->device_properties()->SupportsJsDefer(
+      rewrite_driver_->options()->enable_aggressive_rewriters_for_mobile());
 }
 
 void DetectReflowJsDeferFilter::StartElement(HtmlElement* element) {

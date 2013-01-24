@@ -123,7 +123,7 @@ class CollectSubresourcesFilterTest : public RewriteTestBase {
 
   virtual void SetUp() {
     RewriteTestBase::SetUp();
-    rewrite_driver()->set_user_agent("prefetch_link_rel_subresource");
+    rewrite_driver()->SetUserAgent("prefetch_link_rel_subresource");
     SetResponseWithDefaultHeaders("http://test.com/a.css", kContentTypeCss,
                                   ".yellow {background-color: yellow;}",
                                   kOriginTtlMs);

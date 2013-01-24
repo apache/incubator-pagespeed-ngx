@@ -87,7 +87,7 @@ TEST_F(DetectReflowJsDeferFilterTest, DetectReflowNoHead) {
 
 TEST_F(DetectReflowJsDeferFilterTest, InvalidUserAgent) {
   InitDetectReflowJsDeferFilter();
-  rewrite_driver()->set_user_agent("BlackListUserAgent");
+  rewrite_driver()->SetUserAgent("BlackListUserAgent");
   const char script[] = "<head>"
       "<script type='text/psajs' "
       "src='http://www.google.com/javascript/ajax_apis.js'></script>"

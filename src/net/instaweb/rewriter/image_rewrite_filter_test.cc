@@ -581,7 +581,7 @@ TEST_F(ImageRewriteTest, ImgTagWebp) {
   // We use the webp testing user agent; real webp-capable user agents are
   // tested as part of user_agent_matcher_test and are likely to remain in flux
   // over time.
-  rewrite_driver()->set_user_agent("webp");
+  rewrite_driver()->SetUserAgent("webp");
   RewriteImage("img", kContentTypeWebp);
 }
 
@@ -592,7 +592,7 @@ TEST_F(ImageRewriteTest, ImgTagWebpLa) {
   // We use the webp testing user agent; real webp-capable user agents are
   // tested as part of user_agent_matcher_test and are likely to remain in flux
   // over time.
-  rewrite_driver()->set_user_agent("webp-la");
+  rewrite_driver()->SetUserAgent("webp-la");
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
 
   RewriteImage("img", kContentTypeWebp);
@@ -609,7 +609,7 @@ TEST_F(ImageRewriteTest, InputTagWebp) {
   // We use the webp testing user agent; real webp-capable user agents are
   // tested as part of user_agent_matcher_test and are likely to remain in flux
   // over time.
-  rewrite_driver()->set_user_agent("webp");
+  rewrite_driver()->SetUserAgent("webp");
   RewriteImage("input type=\"image\"", kContentTypeWebp);
 }
 
@@ -620,7 +620,7 @@ TEST_F(ImageRewriteTest, InputTagWebpLa) {
   // We use the webp-la testing user agent; real webp-capable user agents are
   // tested as part of user_agent_matcher_test and are likely to remain in flux
   // over time.
-  rewrite_driver()->set_user_agent("webp-la");
+  rewrite_driver()->SetUserAgent("webp-la");
 
   // Note that, currently, images that are originally jpegs are
   // converted to webp lossy regardless of this filter below.
@@ -673,7 +673,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpUa) {
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   options()->set_image_recompress_quality(85);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->set_user_agent("webp");
+  rewrite_driver()->SetUserAgent("webp");
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeWebp,
                     "", " width=\"100\" height=\"100\"", true, false);
 }
@@ -689,7 +689,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUa) {
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   options()->set_image_recompress_quality(85);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->set_user_agent("webp-la");
+  rewrite_driver()->SetUserAgent("webp-la");
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeWebp,
                     "", " width=\"100\" height=\"100\"", true, false);
 }
@@ -706,7 +706,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlag) {
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_recompress_quality(85);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->set_user_agent("webp-la");
+  rewrite_driver()->SetUserAgent("webp-la");
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeWebp,
                     "", " width=\"100\" height=\"100\"", true, false);
 }
@@ -1139,14 +1139,14 @@ TEST_F(ImageRewriteTest, ComputeCriticalImages) {
 
   // Change to a user agent that does not support inlining. We don't call
   // ComputeCriticalImages.
-  rewrite_driver()->set_user_agent("Firefox/2.0");
+  rewrite_driver()->SetUserAgent("Firefox/2.0");
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, false);
   EXPECT_EQ(1, finder->num_compute_calls());
 
   // Change back to a user agent that supports inlining. We call
   // ComputeCriticalImages again.
-  rewrite_driver()->set_user_agent("Firefox/3.0");
+  rewrite_driver()->SetUserAgent("Firefox/3.0");
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, false);
   EXPECT_EQ(2, finder->num_compute_calls());
@@ -1517,7 +1517,7 @@ TEST_F(ImageRewriteTest, GifToWebpTestWithResizeWithOptimize) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->set_image_recompress_quality(85);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->set_user_agent("webp-la");
+  rewrite_driver()->SetUserAgent("webp-la");
   const char kResizedDims[] = " width=48 height=64";
   // With resize and optimization
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeWebp,
@@ -1530,7 +1530,7 @@ TEST_F(ImageRewriteTest, GifToWebpTestWithoutResizeWithOptimize) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->set_image_recompress_quality(85);
   rewrite_driver()->AddFilters();
-  rewrite_driver()->set_user_agent("webp-la");
+  rewrite_driver()->SetUserAgent("webp-la");
   // Without resize and with optimization
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeWebp,
                     "", "", true, false);
@@ -1634,12 +1634,12 @@ TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
   int screen_height;
   ImageUrlEncoder::GetNormalizedScreenResolution(
       100, 80, &screen_width, &screen_height);
-  rewrite_driver()->set_user_agent("Android 4 Mobile Safari");
+  rewrite_driver()->SetUserAgent("Android 4 Mobile Safari");
 
   TestSquashImagesForMobileScreen(
       rewrite_driver(), screen_width, screen_height);
 
-  rewrite_driver()->set_user_agent(
+  rewrite_driver()->SetUserAgent(
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/537.13+ "
       "(KHTML, like Gecko) Version/5.1.7 Safari/534.57.2");
   rewrite_driver()->SetScreenResolution(screen_width, screen_height);
@@ -1655,7 +1655,7 @@ TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
   EXPECT_FALSE(image_rewrite_filter.UpdateDesiredImageDimsIfNecessary(
       image_dim, context, &desired_dim));
 
-  rewrite_driver()->set_user_agent("iPhone OS");
+  rewrite_driver()->SetUserAgent("iPhone OS");
   TestSquashImagesForMobileScreen(
       rewrite_driver(), screen_width, screen_height);
 }
@@ -1709,7 +1709,7 @@ TEST_F(ImageRewriteTest, CacheControlHeaderCheckForNonWebpUA) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   AddRecompressImageFilters();
   rewrite_driver()->AddFilters();
-  rewrite_driver()->set_user_agent("webp");
+  rewrite_driver()->SetUserAgent("webp");
 
   GoogleString page_url = StrCat(kTestDomain, "test.html");
   // Store image contents into fetcher.
@@ -1733,7 +1733,7 @@ TEST_F(ImageRewriteTest, CacheControlHeaderCheckForNonWebpUA) {
   EXPECT_EQ(Timer::kYearMs,
             response_headers->CacheExpirationTimeMs() - timer()->NowMs());
   // Set a non-webp UA.
-  rewrite_driver()->set_user_agent("");
+  rewrite_driver()->SetUserAgent("");
 
   GoogleString new_image_url =  StrCat(kTestDomain, kPuzzleJpgFile);
   page_url = StrCat(kTestDomain, "test.html");

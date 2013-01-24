@@ -1402,7 +1402,7 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // First fetch with kTestUserAgentWebP. This will miss everything (metadata
   // lookup, original content, and rewritten content).
   // Vary: User-Agent header should be added.
-  rewrite_driver()->set_user_agent(kTestUserAgentWebP);
+  rewrite_driver()->SetUserAgent(kTestUserAgentWebP);
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
                         start_time_ms());
 
@@ -1426,7 +1426,7 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // Vary: User-Agent header should be be added.
   ResetHeadersAndStats();
   SetTimeMs((start_time_ms() + ttl_ms_/2));
-  rewrite_driver()->set_user_agent(kTestUserAgentNoWebP);
+  rewrite_driver()->SetUserAgent(kTestUserAgentNoWebP);
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
@@ -1470,7 +1470,7 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   // Vary: User-Agent header should be added.
   ResetHeadersAndStats();
   SetTimeMs((start_time_ms() + ttl_ms_/2));
-  rewrite_driver()->set_user_agent(kTestUserAgentWebP);
+  rewrite_driver()->SetUserAgent(kTestUserAgentWebP);
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
@@ -1494,14 +1494,14 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserNegative) {
   Init();
 
   // Vary: User-Agent header should not be added no matter the user-agent.
-  rewrite_driver()->set_user_agent(kTestUserAgentWebP);
+  rewrite_driver()->SetUserAgent(kTestUserAgentWebP);
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_, etag_,
                         start_time_ms());
   EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kVary));
 
   ResetHeadersAndStats();
   SetTimeMs((start_time_ms() + ttl_ms_/2));
-  rewrite_driver()->set_user_agent(kTestUserAgentNoWebP);
+  rewrite_driver()->SetUserAgent(kTestUserAgentNoWebP);
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
   EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kVary));

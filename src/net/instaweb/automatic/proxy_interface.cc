@@ -537,7 +537,7 @@ void ProxyInterface::ProxyRequestCallback(
       // request headers for different flows.
       if (user_agent != NULL) {
         VLOG(1) << "Setting user-agent to " << user_agent;
-        driver->set_user_agent(user_agent);
+        driver->SetUserAgent(user_agent);
       } else {
         VLOG(1) << "User-agent empty";
       }

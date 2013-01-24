@@ -342,7 +342,7 @@ void ImageRewriteFilter::StartDocumentImpl() {
   CriticalImagesFinder* finder =
       driver_->server_context()->critical_images_finder();
   if (finder->IsMeaningful() &&
-      driver_->UserAgentSupportsImageInlining() &&
+      driver_->device_properties()->SupportsImageInlining() &&
       (driver_->options()->Enabled(RewriteOptions::kDelayImages) ||
        (driver_->options()->Enabled(RewriteOptions::kInlineImages) &&
         driver_->options()->inline_only_critical_images()))) {
@@ -848,7 +848,7 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     // If the image will be inlined and the local storage cache is enabled, add
     // the LSC marker attribute to this element so that the LSC filter knows to
     // insert the relevant javascript functions.
-    if (driver_->UserAgentSupportsImageInlining()) {
+    if (driver_->device_properties()->SupportsImageInlining()) {
       LocalStorageCacheFilter::InlineState state;
       LocalStorageCacheFilter::AddStorableResource(src->DecodedValueOrNull(),
                                                    driver_,
@@ -872,7 +872,7 @@ bool ImageRewriteFilter::FinishRewriteCssImageUrl(
     int64 css_image_inline_max_bytes,
     const CachedResult* cached, ResourceSlot* slot) {
   GoogleString data_url;
-  if (driver_->UserAgentSupportsImageInlining() &&
+  if (driver_->device_properties()->SupportsImageInlining() &&
       TryInline(css_image_inline_max_bytes, cached, slot, &data_url)) {
     // TODO(jmaessen): Can we make output URL reflect actual *usage*
     // of image inlining and/or webp images?
@@ -907,7 +907,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   // TODO(jmaessen): get rid of a string copy here. Tricky because ->SetValue()
   // copies implicitly.
   GoogleString data_url;
-  if (driver_->UserAgentSupportsImageInlining() &&
+  if (driver_->device_properties()->SupportsImageInlining() &&
       (!driver_->options()->inline_only_critical_images() ||
        IsCriticalImage(src_value)) &&
       TryInline(driver_->options()->ImageInlineMaxBytes(),
@@ -979,7 +979,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   }
 
   if (!slot->disable_rendering() &&
-      driver_->UserAgentSupportsImageInlining() && !image_inlined &&
+      driver_->device_properties()->SupportsImageInlining() && !image_inlined &&
       options->NeedLowResImages() &&
       cached->has_low_resolution_inlined_data() &&
       IsCriticalImage(src_value) &&
@@ -1321,7 +1321,8 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
     // CopyFrom parent_context is not sufficient because parent_context checks
     // only UserAgentSupportsWebp when creating the context, but while
     // rewriting the image, rewrite options should also be checked.
-    ImageUrlEncoder::SetLibWebpLevel(*driver_, cloned_context);
+    ImageUrlEncoder::SetLibWebpLevel(*driver_->device_properties(),
+        cloned_context);
   }
   Context* context = new Context(css_image_inline_max_bytes,
                                  this, NULL /* driver*/, parent,
@@ -1350,7 +1351,7 @@ bool ImageRewriteFilter::SquashImagesForMobileScreenEnabled() const {
   const RewriteOptions* options = driver_->options();
   return options->Enabled(RewriteOptions::kResizeImages) &&
       options->Enabled(RewriteOptions::kSquashImagesForMobileScreen) &&
-      driver_->IsMobileUserAgent();
+      driver_->device_properties()->IsMobileUserAgent();
 }
 
 bool ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(

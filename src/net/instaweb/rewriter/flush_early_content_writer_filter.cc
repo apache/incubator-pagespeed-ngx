@@ -171,7 +171,8 @@ void FlushEarlyContentWriterFilter::TryFlushingDeferJavascriptEarly() {
   bool should_try_flushing_early_js_defer_script =
       !options->Enabled(RewriteOptions::kSplitHtml) &&
       defer_javascript_enabled_ &&
-      driver_->UserAgentSupportsJsDefer() &&
+      driver_->device_properties()->SupportsJsDefer(
+          driver_->options()->enable_aggressive_rewriters_for_mobile()) &&
       options->flush_more_resources_early_if_time_permits();
   if (should_try_flushing_early_js_defer_script) {
     GoogleString defer_js = driver_->server_context()->

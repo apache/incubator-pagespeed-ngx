@@ -479,7 +479,7 @@ ProxyFetch::ProxyFetch(
         HttpAttributes::kUserAgent);
     if (user_agent != NULL) {
       VLOG(1) << "Setting user-agent to " << user_agent;
-      driver_->set_user_agent(user_agent);
+      driver_->SetUserAgent(user_agent);
     } else {
       VLOG(1) << "User-agent empty";
     }

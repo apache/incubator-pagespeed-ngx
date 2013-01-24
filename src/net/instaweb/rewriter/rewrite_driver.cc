@@ -36,6 +36,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
@@ -201,16 +202,9 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       flush_in_progress_(false),
       uninhibit_reflush_requested_(false),
       rewrites_to_delete_(0),
-      user_agent_is_bot_(kNotSet),
-      user_agent_supports_image_inlining_(kNotSet),
-      user_agent_supports_js_defer_(kNotSet),
-      user_agent_supports_webp_(kNotSet),
-      user_agent_supports_webp_lossless_alpha_(kNotSet),
-      is_mobile_user_agent_(kNotSet),
-      supports_flush_early_(kNotSet),
-      user_agent_supports_split_html_(kNotSet),
-      should_skip_parsing_(kNotSet),
       is_screen_resolution_set_(kNotSet),
+      should_skip_parsing_(kNotSet),
+      supports_flush_early_(kNotSet),
       user_agent_screen_resolution_width_(0),
       user_agent_screen_resolution_height_(0),
       response_headers_(NULL),
@@ -343,22 +337,15 @@ void RewriteDriver::Clear() {
     DCHECK(!fetch_queued_);
     DCHECK_EQ(0, pending_async_events_);
   }
-  user_agent_supports_image_inlining_ = kNotSet;
-  user_agent_supports_js_defer_ = kNotSet;
-  user_agent_supports_webp_ = kNotSet;
-  user_agent_supports_webp_lossless_alpha_ = kNotSet;
-  user_agent_supports_split_html_ = kNotSet;
   xhtml_mimetype_computed_ = false;
   xhtml_status_ = kXhtmlUnknown;
 
   client_state_.reset(NULL);
-  is_mobile_user_agent_ = kNotSet;
   is_screen_resolution_set_ = kNotSet;
-  supports_flush_early_ = kNotSet;
   should_skip_parsing_ = kNotSet;
+  supports_flush_early_ = kNotSet;
   pending_async_events_ = 0;
   max_page_processing_delay_ms_ = -1;
-  user_agent_is_bot_ = kNotSet;
   request_headers_ = NULL;
   response_headers_ = NULL;
   status_code_ = 0;
@@ -411,6 +398,7 @@ void RewriteDriver::Clear() {
   // (as the request is over).
   url_async_fetcher_ = default_url_async_fetcher_;
   STLDeleteElements(&owned_url_async_fetchers_);
+  ClearDeviceProperties();
 }
 
 // Must be called with rewrite_mutex() held.
@@ -843,69 +831,6 @@ void RewriteDriver::TracePrintf(const char* fmt, ...) {
   va_end(argp);
 }
 
-bool RewriteDriver::UserAgentSupportsImageInlining() const {
-  if (user_agent_supports_image_inlining_ == kNotSet) {
-    user_agent_supports_image_inlining_ =
-        user_agent_matcher()->SupportsImageInlining(user_agent_) ?
-        kTrue : kFalse;
-  }
-  return (user_agent_supports_image_inlining_ == kTrue);
-}
-
-bool RewriteDriver::UserAgentSupportsJsDefer() const {
-  if (user_agent_supports_js_defer_ == kNotSet) {
-    bool allow_mobile = options()->enable_aggressive_rewriters_for_mobile();
-    user_agent_supports_js_defer_ =
-        user_agent_matcher()->SupportsJsDefer(user_agent_, allow_mobile) ?
-        kTrue : kFalse;
-  }
-  return (user_agent_supports_js_defer_ == kTrue);
-}
-
-bool RewriteDriver::UserAgentSupportsCriticalImagesBeacon() const {
-  // For now this script has the same user agent requirements as image inlining,
-  // however that could change in the future if more advanced JS is used by the
-  // beacon.
-  return UserAgentSupportsImageInlining();
-}
-
-bool RewriteDriver::UserAgentSupportsWebp() const {
-  if (user_agent_supports_webp_ == kNotSet) {
-    user_agent_supports_webp_ =
-        user_agent_matcher()->SupportsWebp(user_agent_) ? kTrue : kFalse;
-  }
-  return (user_agent_supports_webp_ == kTrue);
-}
-
-bool RewriteDriver::UserAgentSupportsWebpLosslessAlpha() const {
-  if (user_agent_supports_webp_lossless_alpha_ == kNotSet) {
-    user_agent_supports_webp_lossless_alpha_ =
-        user_agent_matcher()->SupportsWebpLosslessAlpha(user_agent_) ?
-        kTrue : kFalse;
-  }
-  return (user_agent_supports_webp_lossless_alpha_ == kTrue);
-}
-
-bool RewriteDriver::UserAgentSupportsSplitHtml() const {
-  if (user_agent_supports_split_html_ == kNotSet) {
-    bool allow_mobile = options()->enable_aggressive_rewriters_for_mobile();
-    user_agent_supports_split_html_ =
-        user_agent_matcher()->SupportsSplitHtml(user_agent_, allow_mobile) ?
-        kTrue : kFalse;
-  }
-  return (user_agent_supports_split_html_ == kTrue);
-}
-
-bool RewriteDriver::IsMobileUserAgent() const {
-  if (is_mobile_user_agent_ == kNotSet) {
-    is_mobile_user_agent_ =
-        user_agent_matcher()->IsMobileUserAgent(user_agent_) ? kTrue : kFalse;
-  }
-  return (is_mobile_user_agent_ == kTrue);
-}
-
-// TODO(buettner): Consolidate the various *Supports* functions behind a common
-//                 API that uses the device_property_page object.
 // TODO(buettner): Replace MDL and device_property cache machinery with UDL.
 bool RewriteDriver::GetScreenResolution(int* width, int* height) {
   if (is_screen_resolution_set_ == kNotSet) {
@@ -961,9 +886,8 @@ bool RewriteDriver::SupportsFlushEarly() const {
         (options_->Enabled(RewriteOptions::kFlushSubresources) &&
         request_headers_ != NULL &&
         request_headers_->method() == RequestHeaders::kGet &&
-        user_agent_matcher()->GetPrefetchMechanism(user_agent(),
-            request_headers_) != UserAgentMatcher::kPrefetchNotSupported)
-            ? kTrue : kFalse;
+        device_properties_->CanPreloadResources(request_headers_))
+        ? kTrue : kFalse;
   }
   return (supports_flush_early_ == kTrue);
 }
@@ -2763,6 +2687,13 @@ void RewriteDriver::AddLowPriorityRewriteTask(Function* task) {
   low_priority_rewrite_worker_->Add(task);
 }
 
+void RewriteDriver::SetUserAgent(const StringPiece& user_agent_string) {
+  user_agent_string.CopyToString(&user_agent_);
+  ClearDeviceProperties();
+  device_properties_->set_user_agent(user_agent_string);
+  is_screen_resolution_set_ = kNotSet;
+}
+
 OptionsAwareHTTPCacheCallback::OptionsAwareHTTPCacheCallback(
     const RewriteOptions* rewrite_options, const RequestContextPtr& request_ctx)
     : HTTPCache::Callback(request_ctx), rewrite_options_(rewrite_options) {}
@@ -3031,6 +2962,11 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
                      server_context_->filename_prefix().as_string().c_str());
   }
   return ret;
+}
+
+void RewriteDriver::ClearDeviceProperties() {
+  device_properties_.reset(new DeviceProperties(
+      server_context_->user_agent_matcher()));
 }
 
 }  // namespace net_instaweb

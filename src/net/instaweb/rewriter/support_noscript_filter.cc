@@ -79,8 +79,10 @@ void SupportNoscriptFilter::StartElement(HtmlElement* element) {
 
 bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
   RewriteOptions::FilterSet js_filters;
-  rewrite_driver_->options()->GetEnabledFiltersRequiringScriptExecution(
-      &js_filters);
+  const RewriteOptions* options = rewrite_driver_->options();
+  const DeviceProperties* device_properties =
+      rewrite_driver_->device_properties();
+  options->GetEnabledFiltersRequiringScriptExecution(&js_filters);
   if (!js_filters.empty()) {
     for (RewriteOptions::FilterSet::const_iterator p = js_filters.begin(),
          e = js_filters.end(); p != e; ++p) {
@@ -91,12 +93,13 @@ bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
         case RewriteOptions::kDeferJavascript:
         case RewriteOptions::kDetectReflowWithDeferJavascript:
         case RewriteOptions::kSplitHtml:
-          filter_enabled = rewrite_driver_->UserAgentSupportsJsDefer();
+          filter_enabled = device_properties->SupportsJsDefer(
+              options->enable_aggressive_rewriters_for_mobile());
           break;
         case RewriteOptions::kDelayImages:
         case RewriteOptions::kLazyloadImages:
         case RewriteOptions::kLocalStorageCache:
-          filter_enabled = rewrite_driver_->UserAgentSupportsImageInlining();
+          filter_enabled = device_properties->SupportsImageInlining();
           break;
         case RewriteOptions::kFlushSubresources:
           filter_enabled = rewrite_driver_->SupportsFlushEarly();

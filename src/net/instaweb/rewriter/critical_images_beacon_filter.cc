@@ -49,7 +49,8 @@ CriticalImagesBeaconFilter::CriticalImagesBeaconFilter(RewriteDriver* driver)
 CriticalImagesBeaconFilter::~CriticalImagesBeaconFilter() {}
 
 void CriticalImagesBeaconFilter::DetermineEnabled() {
-  set_is_enabled(driver_->UserAgentSupportsCriticalImagesBeacon());
+  set_is_enabled(
+      driver_->device_properties()->SupportsCriticalImagesBeacon());
 }
 
 void CriticalImagesBeaconFilter::InitStats(Statistics* statistics) {

@@ -159,7 +159,7 @@ TEST_F(CriticalImagesBeaconFilterTest, ScriptInjectionWithImageInlining) {
 
 TEST_F(CriticalImagesBeaconFilterTest, UnsupportedUserAgent) {
   // Test that the filter is not applied for unsupported user agents.
-  rewrite_driver()->set_user_agent("Firefox/1.0");
+  rewrite_driver()->SetUserAgent("Firefox/1.0");
   RunInjection();
   VerifyNoInjection();
 }

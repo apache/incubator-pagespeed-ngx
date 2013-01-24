@@ -976,8 +976,9 @@ const UrlSegmentEncoder* CssFilter::encoder() const {
 
 void CssFilter::EncodeUserAgentIntoResourceContext(
     ResourceContext* context) const {
-  context->set_inline_images(driver_->UserAgentSupportsImageInlining());
-  ImageUrlEncoder::SetLibWebpLevel(*driver_, context);
+  context->set_inline_images(
+      driver_->device_properties()->SupportsImageInlining());
+  ImageUrlEncoder::SetLibWebpLevel(*driver_->device_properties(), context);
 }
 
 const UrlSegmentEncoder* CssFilter::Context::encoder() const {

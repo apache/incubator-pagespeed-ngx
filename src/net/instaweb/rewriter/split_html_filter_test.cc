@@ -142,7 +142,7 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     RewriteTestBase::SetUp();
 
     rewrite_driver()->set_request_headers(&request_headers_);
-    rewrite_driver()->set_user_agent("");
+    rewrite_driver()->SetUserAgent("");
     rewrite_driver()->SetWriter(&writer_);
     SplitHtmlFilter* filter = new SplitHtmlFilter(rewrite_driver());
     html_writer_filter_.reset(filter);
@@ -369,7 +369,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithUnsupportedUserAgent) {
   options_->set_critical_line_config(
       "div[@id = \"container\"]/div[4],"
       "img[3]:h1[@id = \"footer\"]");
-  rewrite_driver()->set_user_agent("BlackListUserAgent");
+  rewrite_driver()->SetUserAgent("BlackListUserAgent");
   Parse("split_with_options", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   EXPECT_EQ(StrCat(kHtmlInputPart1, kHtmlInputPart2), output_);
   VerifyAppliedRewriters("");

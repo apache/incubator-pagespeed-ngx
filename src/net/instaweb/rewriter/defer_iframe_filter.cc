@@ -44,7 +44,8 @@ DeferIframeFilter::~DeferIframeFilter() {
 }
 
 void DeferIframeFilter::DetermineEnabled() {
-  set_is_enabled(driver_->UserAgentSupportsJsDefer());
+  set_is_enabled(driver_->device_properties()->SupportsJsDefer(
+      driver_->options()->enable_aggressive_rewriters_for_mobile()));
 }
 
 void DeferIframeFilter::StartDocument() {

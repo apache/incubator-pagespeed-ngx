@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/url_segment_encoder.h"
 
 namespace net_instaweb {
+class DeviceProperties;
 class RewriteDriver;
 class MessageHandler;
 
@@ -73,7 +74,7 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
   // TODO(poojatandon): Pass a user agent object with its webp-cabaple bits
   // pre-analyzed (not just the string from the request headers), since
   // checking webp level related code doesn't belong here.
-  static void  SetLibWebpLevel(const RewriteDriver& driver,
+  static void  SetLibWebpLevel(const DeviceProperties& device_properties,
                                ResourceContext* resource_context);
 
   // Sets webp and mobile capability in resource context.

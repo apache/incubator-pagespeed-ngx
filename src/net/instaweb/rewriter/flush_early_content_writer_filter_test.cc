@@ -124,7 +124,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
 
   // Set the User-Agent to prefetch_link_rel_subresource.
   Clear();
-  rewrite_driver()->set_user_agent("prefetch_link_rel_subresource");
+  rewrite_driver()->SetUserAgent("prefetch_link_rel_subresource");
   html_output =
       "<link rel=\"subresource\" href="
       "\"http://www.test.com/c.js.pagespeed.jm.0.js\"/>\n"
@@ -137,7 +137,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
 
   // Set the User-Agent to prefetch_link_script_tag.
   Clear();
-  rewrite_driver()->set_user_agent("prefetch_link_script_tag");
+  rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
   html_output =
       "<script type=\"text/javascript\">(function(){new Image().src=\""
       "http://www.test.com/e.jpg.pagespeed.ce.0.jpg\";})()</script>"
@@ -155,7 +155,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
 
   // Set the User-Agent to prefetch_image_tag.
   Clear();
-  rewrite_driver()->set_user_agent("prefetch_image_tag");
+  rewrite_driver()->SetUserAgent("prefetch_image_tag");
   html_output =
       "<script type=\"text/javascript\">(function(){"
       "new Image().src=\"http://www.test.com/c.js.pagespeed.jm.0.js\";"
@@ -195,7 +195,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   // Set the User-Agent to prefetch_link_script_tag with defer_javascript
   // enabled.
   Clear();
-  rewrite_driver()->set_user_agent("prefetch_link_script_tag");
+  rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
   html_output =
       "<script type=\"text/javascript\">(function(){new Image().src=\""
       "http://www.test.com/e.jpg.pagespeed.ce.0.jpg\";})()</script>"
@@ -225,14 +225,14 @@ TEST_F(FlushEarlyContentWriterFilterTest, NoResourcesToFlush) {
 
   // Set the User-Agent to prefetch_link_rel_subresource.
   output_.clear();
-  rewrite_driver()->set_user_agent("prefetch_link_rel_subresource");
+  rewrite_driver()->SetUserAgent("prefetch_link_rel_subresource");
 
   Parse("prefetch_link_rel_subresource", html_input);
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 0), output_);
 
   // Set the User-Agent to prefetch_image_tag.
   output_.clear();
-  rewrite_driver()->set_user_agent("prefetch_image_tag");
+  rewrite_driver()->SetUserAgent("prefetch_image_tag");
 
   Parse("prefetch_image_tag", html_input);
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 0), output_);
@@ -250,7 +250,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, FlushDeferJsEarlyIfTimePermits) {
   EnableDeferJsAndSetFetchLatency(0);
   // User-Agent: prefetch_link_script_tag.
   output_.clear();
-  rewrite_driver()->set_user_agent("prefetch_link_script_tag");
+  rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
   Parse("prefetch_link_script_tag", html_input);
   EXPECT_EQ(RewrittenOutputWithResources("", 0), output_);
 
@@ -259,7 +259,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, FlushDeferJsEarlyIfTimePermits) {
   EnableDeferJsAndSetFetchLatency(200);
   // User-Agent: prefetch_link_script_tag.
   output_.clear();
-  rewrite_driver()->set_user_agent("prefetch_link_script_tag");
+  rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
   Parse("prefetch_link_script_tag", html_input);
   EXPECT_EQ(RewrittenOutputWithResources(
       "<script type=\"psa_prefetch\" src=\"/psajs/js_defer.0.js\"></script>\n",
@@ -292,7 +292,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources) {
 
   // Set the User-Agent to prefetch_link_rel_subresource.
   output_.clear();
-  rewrite_driver()->set_user_agent("prefetch_link_rel_subresource");
+  rewrite_driver()->SetUserAgent("prefetch_link_rel_subresource");
   html_output =
       "<link rel=\"subresource\" href=\"a.css\"/>\n"
       "<link rel=\"subresource\" href="
@@ -304,7 +304,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources) {
 
   // Set the User-Agent to prefetch_image_tag.
   output_.clear();
-  rewrite_driver()->set_user_agent("prefetch_image_tag");
+  rewrite_driver()->SetUserAgent("prefetch_image_tag");
   html_output =
       "<script type=\"text/javascript\">(function(){"
       "new Image().src=\"a.css\";"

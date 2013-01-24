@@ -431,7 +431,7 @@ void FlushEarlyFlow::FlushEarly() {
         new_driver->set_flushing_early(true);
 
         new_driver->SetWriter(base_fetch_);
-        new_driver->set_user_agent(driver_->user_agent());
+        new_driver->SetUserAgent(driver_->user_agent());
         new_driver->StartParse(url_);
 
         InitFlushEarlyDriverWithPropertyCacheValues(new_driver, page);

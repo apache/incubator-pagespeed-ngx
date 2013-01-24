@@ -285,7 +285,7 @@ void RewriteTestBase::ServeResourceFromNewContext(
   server_context_->ComputeSignature(new_options);
   RewriteDriver* new_rewrite_driver = MakeDriver(new_server_context,
                                                  new_options);
-  new_rewrite_driver->set_user_agent(current_user_agent_);
+  new_rewrite_driver->SetUserAgent(current_user_agent_);
 
   new_factory->SetupWaitFetcher();
 

@@ -28,6 +28,7 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -104,13 +105,6 @@ class RewriteDriver : public HtmlParse {
                            // and anything else that finishes within deadline.
     kWaitForShutDown       // Makes sure that all work, including any that's
                            // being done in background, finishes.
-  };
-
-  // Lazily-initialized boolean value
-  enum LazyBool {
-    kNotSet = -1,
-    kFalse = 0,
-    kTrue = 1
   };
 
   // Indicates document's mimetype as XHTML, HTML, or is not
@@ -200,20 +194,16 @@ class RewriteDriver : public HtmlParse {
   bool MayCacheExtendScripts() const;
 
   void RememberResource(const StringPiece& url, const ResourcePtr& resource);
-  const GoogleString& user_agent() const {
-    return user_agent_;
+  const GoogleString& user_agent() const { return user_agent_; }
+
+  void SetUserAgent(const StringPiece& user_agent_string);
+
+  const DeviceProperties* device_properties() const {
+    return device_properties_.get();
   }
-  void set_user_agent(const StringPiece& user_agent_string) {
-    user_agent_string.CopyToString(&user_agent_);
-    user_agent_is_bot_ = kNotSet;
-    user_agent_supports_image_inlining_ = kNotSet;
-    user_agent_supports_js_defer_ = kNotSet;
-    user_agent_supports_webp_ = kNotSet;
-    user_agent_supports_webp_lossless_alpha_ = kNotSet;
-    is_mobile_user_agent_ = kNotSet;
-    user_agent_supports_split_html_ = kNotSet;
-    is_screen_resolution_set_ = kNotSet;
-  }
+
+  // Reinitializes device_properties_, clearing any cached values.
+  void ClearDeviceProperties();
 
   // Returns true if the request we're rewriting was made using SPDY.
   bool using_spdy() const { return request_context_->using_spdy(); }
@@ -272,17 +262,10 @@ class RewriteDriver : public HtmlParse {
     DCHECK(server_context() != NULL);
     return server_context()->user_agent_matcher();
   }
-  bool UserAgentSupportsImageInlining() const;
-  bool UserAgentSupportsCriticalImagesBeacon() const;
-  bool UserAgentSupportsJsDefer() const;
-  bool UserAgentSupportsWebp() const;
-  bool UserAgentSupportsWebpLosslessAlpha() const;
-  bool IsMobileUserAgent() const;
+
+  bool SupportsFlushEarly() const;
   bool GetScreenResolution(int* width, int* height);
   void SetScreenResolution(int width, int height);
-  // Whether flush early flow is supported for this request.
-  bool SupportsFlushEarly() const;
-  bool UserAgentSupportsSplitHtml() const;
 
   // Adds the filters from the options, specified by name in enabled_filters.
   // This must be called explicitly after object construction to provide an
@@ -1263,19 +1246,10 @@ class RewriteDriver : public HtmlParse {
   GoogleUrl decoded_base_url_;
 
   GoogleString user_agent_;
-  // Properties of the user_agent_ that are computed once and cached.
-  mutable LazyBool user_agent_is_bot_;
-  mutable LazyBool user_agent_supports_image_inlining_;
-  mutable LazyBool user_agent_supports_js_defer_;
-  mutable LazyBool user_agent_supports_webp_;
-  mutable LazyBool user_agent_supports_webp_lossless_alpha_;
-  mutable LazyBool is_mobile_user_agent_;
-  mutable LazyBool supports_flush_early_;
-  mutable LazyBool user_agent_supports_split_html_;
-
-  LazyBool should_skip_parsing_;
 
   LazyBool is_screen_resolution_set_;
+  LazyBool should_skip_parsing_;
+  mutable LazyBool supports_flush_early_;
   int user_agent_screen_resolution_width_;
   int user_agent_screen_resolution_height_;
 
@@ -1455,6 +1429,8 @@ class RewriteDriver : public HtmlParse {
   // drivers, and timeout policies are changed. Note that this is totally
   // distinct from nested rewrite contexts.
   bool is_nested_;
+
+  scoped_ptr<DeviceProperties> device_properties_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

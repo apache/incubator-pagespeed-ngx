@@ -131,7 +131,7 @@ InstawebContext::InstawebContext(request_rec* request,
 
   const char* user_agent = apr_table_get(request->headers_in,
                                          HttpAttributes::kUserAgent);
-  rewrite_driver_->set_user_agent(user_agent);
+  rewrite_driver_->SetUserAgent(user_agent);
 
   // Begin the property cache lookup. This should be as early as possible since
   // it may be asynchronous (in the case of memcached).

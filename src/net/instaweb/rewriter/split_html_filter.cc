@@ -93,7 +93,8 @@ SplitHtmlFilter::~SplitHtmlFilter() {
 
 void SplitHtmlFilter::StartDocument() {
   flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
-  disable_filter_ = !rewrite_driver_->UserAgentSupportsSplitHtml();
+  disable_filter_ = !rewrite_driver_->device_properties()->SupportsSplitHtml(
+      rewrite_driver_->options()->enable_aggressive_rewriters_for_mobile());
   static_js_manager_ =
       rewrite_driver_->server_context()->static_javascript_manager();
   if (disable_filter_) {

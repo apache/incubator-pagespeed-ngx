@@ -168,7 +168,7 @@ class DelayImagesFilterTest : public RewriteTestBase {
 
   void SetupUserAgentTest(StringPiece user_agent) {
     ClearRewriteDriver();
-    rewrite_driver()->set_user_agent(user_agent);
+    rewrite_driver()->SetUserAgent(user_agent);
     SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
   }
 };
@@ -596,7 +596,7 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionWithSmallImage) {
 
   // No low quality data for an image smaller than kDelayImageWidthForMobile
   // (in image_rewrite_filter.cc).
-  rewrite_driver()->set_user_agent(kAndroidMobileUserAgent1);
+  rewrite_driver()->SetUserAgent(kAndroidMobileUserAgent1);
   MatchOutputAndCountBytes(input_html, output_html);
 }
 
@@ -628,7 +628,7 @@ TEST_F(DelayImagesFilterTest, DelayImagesScriptOptimized) {
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.jpeg", kLargeJpgFile,
                        kContentTypeJpeg, 100);
-  rewrite_driver()->set_user_agent("Safari");
+  rewrite_driver()->SetUserAgent("Safari");
   Parse("optimized",
         "<head></head><body><img src=\"http://test.com/1.jpeg\"</body>");
   EXPECT_EQ(GoogleString::npos, output_buffer_.find("/*"))
@@ -640,7 +640,7 @@ TEST_F(DelayImagesFilterTest, DelayImagesScriptDebug) {
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.jpeg", kLargeJpgFile,
                        kContentTypeJpeg, 100);
-  rewrite_driver()->set_user_agent("Safari");
+  rewrite_driver()->SetUserAgent("Safari");
   Parse("debug",
         "<head></head><body><img src=\"http://test.com/1.jpeg\"</body>");
   EXPECT_NE(GoogleString::npos, output_buffer_.find("/*"))

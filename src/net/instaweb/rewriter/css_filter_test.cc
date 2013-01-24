@@ -1454,7 +1454,7 @@ TEST_F(CssFilterTest, WebpRewriting) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->set_user_agent(kUaWebp);
+  rewrite_driver()->SetUserAgent(kUaWebp);
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
@@ -1470,7 +1470,7 @@ TEST_F(CssFilterTest, WebpLaRewriting) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->set_user_agent(kUaWebpLossless);
+  rewrite_driver()->SetUserAgent(kUaWebpLossless);
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
@@ -1487,7 +1487,7 @@ TEST_F(CssFilterTest, WebpLaWithFlagRewriting) {
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->set_user_agent(kUaWebpLossless);
+  rewrite_driver()->SetUserAgent(kUaWebpLossless);
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
@@ -1500,7 +1500,7 @@ TEST_F(CssFilterTest, NoWebpRewritingFromJpgIfDisabled) {
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->set_user_agent(kUaWebp);
+  rewrite_driver()->SetUserAgent(kUaWebp);
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.jpg",
@@ -1518,7 +1518,7 @@ TEST_F(CssFilterTest, WebpRewritingFromJpgWithWebpFlagWebpLaUa) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->set_user_agent(kUaWebpLossless);
+  rewrite_driver()->SetUserAgent(kUaWebpLossless);
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
@@ -1536,7 +1536,7 @@ TEST_F(CssFilterTest, WebpRewritingFromJpgWithWebpFlagWebpUa) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->set_user_agent(kUaWebp);
+  rewrite_driver()->SetUserAgent(kUaWebp);
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
@@ -1549,7 +1549,7 @@ TEST_F(CssFilterTest, NoWebpLaRewritingFromJpgIfDisabled) {
   options()->EnableFilter(RewriteOptions::kRecompressJpeg);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->set_user_agent(kUaWebpLossless);
+  rewrite_driver()->SetUserAgent(kUaWebpLossless);
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.jpg",
@@ -1563,7 +1563,7 @@ TEST_F(CssFilterTest, NoWebpRewritingFromPngIfDisabled) {
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->set_user_agent(kUaWebp);
+  rewrite_driver()->SetUserAgent(kUaWebp);
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
                     "x%s.pagespeed.ic.0.png",
@@ -1578,7 +1578,7 @@ TEST_F(CssFilterTest, WebpRewritingFromPngWithWebpFlagWebpLaUa) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_recompress_quality(85);
-  rewrite_driver()->set_user_agent(kUaWebpLossless);
+  rewrite_driver()->SetUserAgent(kUaWebpLossless);
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
                     "x%s.pagespeed.ic.0.webp",
@@ -1593,7 +1593,7 @@ TEST_F(CssFilterTest, WebpRewritingFromPngWithWebpFlagWebpUa) {
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
   options()->set_image_recompress_quality(85);
-  rewrite_driver()->set_user_agent(kUaWebp);
+  rewrite_driver()->SetUserAgent(kUaWebp);
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
                     "x%s.pagespeed.ic.0.webp",
@@ -1607,7 +1607,7 @@ TEST_F(CssFilterTest, NoWebpLaRewritingFromPngIfDisabled) {
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   options()->EnableFilter(RewriteOptions::kRewriteCss);
   options()->set_image_jpeg_recompress_quality(85);
-  rewrite_driver()->set_user_agent(kUaWebpLossless);
+  rewrite_driver()->SetUserAgent(kUaWebpLossless);
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
                     "x%s.pagespeed.ic.0.png",

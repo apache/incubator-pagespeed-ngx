@@ -18,6 +18,7 @@
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -245,12 +246,12 @@ bool ImageUrlEncoder::Decode(const StringPiece& encoded,
   }
 }
 
-void ImageUrlEncoder::SetLibWebpLevel(const RewriteDriver& driver,
+void ImageUrlEncoder::SetLibWebpLevel(const DeviceProperties& device_properties,
                                       ResourceContext* resource_context) {
   ResourceContext::LibWebpLevel libwebp_level = ResourceContext::LIBWEBP_NONE;
-  if (driver.UserAgentSupportsWebpLosslessAlpha()) {
+  if (device_properties.SupportsWebpLosslessAlpha()) {
     libwebp_level = ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA;
-  } else if (driver.UserAgentSupportsWebp()) {
+  } else if (device_properties.SupportsWebp()) {
     libwebp_level = ResourceContext::LIBWEBP_LOSSY_ONLY;
   }
   resource_context->set_libwebp_level(libwebp_level);
@@ -266,11 +267,11 @@ void ImageUrlEncoder::SetWebpAndMobileUserAgent(
 
   // TODO(poojatandon): Do enabled checks before Setting the Webp Level, since
   // it avoids writing two metadata cache keys for same output.
-  SetLibWebpLevel(driver, context);
+  SetLibWebpLevel(*driver.device_properties(), context);
 
   if (options->NeedLowResImages() &&
       options->Enabled(RewriteOptions::kResizeMobileImages) &&
-      driver.IsMobileUserAgent()) {
+      driver.device_properties()->IsMobileUserAgent()) {
     context->set_mobile_user_agent(true);
   }
 }
