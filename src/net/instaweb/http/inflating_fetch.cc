@@ -116,7 +116,9 @@ void InflatingFetch::HandleHeadersComplete() {
     // If we couldn't determine content type, or the content type is not in the
     // list of the content-types that we shouldn't inflate -- proceed.
     const ContentType* ct = response_headers()->DetermineContentType();
-    if (ct == NULL || inflation_content_type_blacklist_.count(ct->type_) == 0) {
+    // Note, if the set contains NULL then undetermined content types will also
+    // not be inflated.
+    if (inflation_content_type_blacklist_.count(ct) == 0) {
       // Look for an encoding to strip.  We only look at the *last* encoding.
       // See http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
       for (int i = v.size() - 1; i >= 0; --i) {

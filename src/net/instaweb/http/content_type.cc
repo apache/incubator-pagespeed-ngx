@@ -89,7 +89,7 @@ const ContentType& kContentTypeJson = kTypes[12];
 
 const ContentType& kContentTypePdf = kTypes[13];
 
-const ContentType& kBinaryOctetStream = kTypes[14];
+const ContentType& kContentTypeBinaryOctetStream = kTypes[14];
 
 int ContentType::MaxProducedExtensionLength() {
   return 4;  // .jpeg or .webp
@@ -228,7 +228,7 @@ bool ParseContentType(const StringPiece& content_type_str,
 
 void MimeTypeListToContentTypeSet(
     const GoogleString& in,
-    std::set<ContentType::Type>* out) {
+    std::set<const ContentType*>* out) {
   CHECK(out != NULL) << "'out' is a required parameter.";
   out->clear();
   if (in.empty()) {
@@ -243,7 +243,7 @@ void MimeTypeListToContentTypeSet(
       LOG(WARNING) << "'" << *i << "' is not a recognized mime-type.";
     } else {
       VLOG(1) << "Adding '" << *i << "' to the content-type set.";
-      out->insert(ct->type_);
+      out->insert(ct);
     }
   }
 }

@@ -35,7 +35,8 @@ void UrlAsyncFetcher::ShutDown() {
 
 AsyncFetch* UrlAsyncFetcher::EnableInflation(
     AsyncFetch* fetch,
-    const std::set<ContentType::Type>* inflation_content_type_blacklist) const {
+    const std::set<const ContentType*>*
+        inflation_content_type_blacklist) const {
   InflatingFetch* inflating_fetch = new InflatingFetch(fetch);
   if (fetch_with_gzip_) {
     inflating_fetch->EnableGzipFromBackend();

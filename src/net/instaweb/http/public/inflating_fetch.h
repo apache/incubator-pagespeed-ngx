@@ -45,9 +45,11 @@ class InflatingFetch : public SharedAsyncFetch {
   virtual ~InflatingFetch();
 
   // Use this one cautiously, since it may cause resources to be corrupted
-  // if you use it with anything other than the IPRO path.
+  // if you use it with anything other than the IPRO path. Note, that if NULL
+  // is contained in the bypass_set then resources with unknown content type
+  // will not be inflated.
   void set_inflation_content_type_blacklist(
-      const std::set<ContentType::Type>& bypass_set) {
+      const std::set<const ContentType*>& bypass_set) {
     inflation_content_type_blacklist_ = bypass_set;
   }
 
@@ -87,7 +89,7 @@ class InflatingFetch : public SharedAsyncFetch {
   bool inflate_failure_;
 
   // Set of content types that will not be inflated.
-  std::set<ContentType::Type> inflation_content_type_blacklist_;
+  std::set<const ContentType*> inflation_content_type_blacklist_;
 
   DISALLOW_COPY_AND_ASSIGN(InflatingFetch);
 };

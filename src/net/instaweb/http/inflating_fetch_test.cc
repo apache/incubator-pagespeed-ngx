@@ -38,6 +38,11 @@ const unsigned char kGzippedData[] = {
   0x89, 0xd1, 0xf7, 0x05, 0x00, 0x00, 0x00
 };
 
+bool binary_data_same(const void* left, size_t left_len,
+                      const void* right, size_t right_len) {
+  return left_len == right_len && memcmp(left, right, left_len) == 0;
+}
+
 }  // namespace
 
 namespace net_instaweb {
@@ -136,8 +141,11 @@ TEST_F(InflatingFetchTest, ExpectGzipped) {
   inflating_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kOK);
   inflating_fetch_->Write(gzipped_data_, &message_handler_);
   inflating_fetch_->Done(true);
-  EXPECT_STREQ(gzipped_data_, mock_fetch_.buffer())
-      << "data should be untouched.";
+  EXPECT_TRUE(
+      binary_data_same(
+          gzipped_data_.data(), gzipped_data_.length(),
+          mock_fetch_.buffer().data(), mock_fetch_.buffer().size()))
+          << "data should be untouched.";
   EXPECT_STREQ(HttpAttributes::kGzip, mock_fetch_.response_headers()->Lookup1(
       HttpAttributes::kContentEncoding)) << "content-encoding not stripped.";
   EXPECT_TRUE(mock_fetch_.done());
@@ -150,20 +158,23 @@ TEST_F(InflatingFetchTest, ExpectGzippedOnOctetStream) {
   inflating_fetch_->response_headers()->Add(
       HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
 
-  // Make sure we bypass octet-stream data.
-  std::set<ContentType::Type> blacklist;
-  blacklist.insert(ContentType::kOctetStream);
+  // Make sure we pass through octet-stream data.
+  std::set<const ContentType*> blacklist;
+  blacklist.insert(&kContentTypeBinaryOctetStream);
 
   inflating_fetch_->set_inflation_content_type_blacklist(blacklist);
 
-  // We need to set Content-Type to be one of them octet-streams.
+  // We need to set Content-Type to be one of octet-streams types.
   inflating_fetch_->response_headers()->Add(HttpAttributes::kContentType,
-                                            "binary/octet-stream");
+                                            "application/octet-stream");
   inflating_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kOK);
   inflating_fetch_->Write(gzipped_data_, &message_handler_);
   inflating_fetch_->Done(true);
-  EXPECT_STREQ(gzipped_data_, mock_fetch_.buffer())
-      << "data should be untouched when octet-stream is blacklisted.";
+  EXPECT_TRUE(
+      binary_data_same(
+          gzipped_data_.data(), gzipped_data_.length(),
+          mock_fetch_.buffer().data(), mock_fetch_.buffer().size()))
+          << "data should be untouched when octet-stream is blacklisted.";
   EXPECT_STREQ(HttpAttributes::kGzip, mock_fetch_.response_headers()->Lookup1(
       HttpAttributes::kContentEncoding)) << "content-encoding is stripped.";
   EXPECT_TRUE(mock_fetch_.done());
@@ -190,16 +201,148 @@ TEST_F(InflatingFetchTest, ExpectGzippedOnOctetStream) {
   EXPECT_TRUE(mock_fetch_.success());
 }
 
+// Tests that unknown content type, when listed does not trigger inflation.
+TEST_F(InflatingFetchTest, ExpectGzippedWithNullContentType) {
+  inflating_fetch_->response_headers()->Add(
+      HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
+
+  // Disable inflating of unknown types.
+  std::set<const ContentType*> blacklist;
+  blacklist.insert(NULL /*unknown content type*/);
+
+  inflating_fetch_->set_inflation_content_type_blacklist(blacklist);
+
+  // We don't set content type here, so determined type is NULL.
+  inflating_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  inflating_fetch_->Write(gzipped_data_, &message_handler_);
+  inflating_fetch_->Done(true);
+  EXPECT_TRUE(
+      binary_data_same(
+          gzipped_data_.data(), gzipped_data_.length(),
+          mock_fetch_.buffer().data(), mock_fetch_.buffer().size()))
+          << "data should be untouched when unknown content type is"
+          << " blacklisted.";
+  EXPECT_STREQ(HttpAttributes::kGzip, mock_fetch_.response_headers()->Lookup1(
+      HttpAttributes::kContentEncoding)) << "content-encoding is stripped.";
+  EXPECT_TRUE(mock_fetch_.done());
+  EXPECT_TRUE(mock_fetch_.success());
+
+  // Now check that without NULL, unknown types are inflated.
+  mock_fetch_.Reset();
+  inflating_fetch_ = new InflatingFetch(&mock_fetch_);
+  blacklist.clear();
+  inflating_fetch_->set_inflation_content_type_blacklist(blacklist);
+
+  inflating_fetch_->response_headers()->Add(
+      HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
+  inflating_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  inflating_fetch_->Write(gzipped_data_, &message_handler_);
+  inflating_fetch_->Done(true);
+  EXPECT_STREQ(kClearData, mock_fetch_.buffer())
+      << "data should be inflated when content-type is not in blacklist.";
+  EXPECT_FALSE(
+      mock_fetch_.response_headers()->Has(HttpAttributes::kContentEncoding))
+          << "content-encoding is not stripped.";
+  EXPECT_TRUE(mock_fetch_.done());
+  EXPECT_TRUE(mock_fetch_.success());
+}
+
+// Same as previous test, but does testing of other types (included and not in
+// the blacklist).
+TEST_F(InflatingFetchTest, ExpectGzippedWithNullContentTypeAndWithOther) {
+  inflating_fetch_->response_headers()->Add(
+      HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
+
+  // Set up unknown and jpeg types not to be inflated.
+  std::set<const ContentType*> blacklist;
+  blacklist.insert(NULL /*unknown content type*/);
+  blacklist.insert(&kContentTypeJpeg);
+
+  inflating_fetch_->set_inflation_content_type_blacklist(blacklist);
+
+  // We need to set Content-Type to be NULL here.
+  inflating_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  inflating_fetch_->Write(gzipped_data_, &message_handler_);
+  inflating_fetch_->Done(true);
+  EXPECT_TRUE(
+      binary_data_same(
+          gzipped_data_.data(), gzipped_data_.length(),
+          mock_fetch_.buffer().data(), mock_fetch_.buffer().size()))
+          << "data should be untouched when unknown content type is"
+          << " blacklisted.";
+  EXPECT_STREQ(HttpAttributes::kGzip, mock_fetch_.response_headers()->Lookup1(
+      HttpAttributes::kContentEncoding)) << "content-encoding is stripped.";
+  EXPECT_TRUE(mock_fetch_.done());
+  EXPECT_TRUE(mock_fetch_.success());
+
+  // Use a different Content-Type and check that data will be inflated.
+  mock_fetch_.Reset();
+  inflating_fetch_ = new InflatingFetch(&mock_fetch_);
+  inflating_fetch_->set_inflation_content_type_blacklist(blacklist);
+
+  inflating_fetch_->response_headers()->Add(
+      HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
+  inflating_fetch_->response_headers()->Add(HttpAttributes::kContentType,
+                                            "image/gif");
+  inflating_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  inflating_fetch_->Write(gzipped_data_, &message_handler_);
+  inflating_fetch_->Done(true);
+  EXPECT_STREQ(kClearData, mock_fetch_.buffer())
+      << "data should be inflated when content-type is not in blacklist.";
+  EXPECT_FALSE(
+      mock_fetch_.response_headers()->Has(HttpAttributes::kContentEncoding))
+          << "content-encoding is not stripped.";
+
+  // Now use Jpeg, which is also blacklisted to make sure it's not inflated.
+  mock_fetch_.Reset();
+  inflating_fetch_ = new InflatingFetch(&mock_fetch_);
+  inflating_fetch_->set_inflation_content_type_blacklist(blacklist);
+
+  inflating_fetch_->response_headers()->Add(
+      HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
+  inflating_fetch_->response_headers()->Add(HttpAttributes::kContentType,
+                                            "image/jpeg");
+  inflating_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  inflating_fetch_->Write(gzipped_data_, &message_handler_);
+  inflating_fetch_->Done(true);
+  EXPECT_TRUE(
+      binary_data_same(
+          gzipped_data_.data(), gzipped_data_.length(),
+          mock_fetch_.buffer().data(), mock_fetch_.buffer().size()))
+          << "data should be inflated when content-type is not in blacklist.";
+
+  // Now check that without NULL, but with other types,
+  // unknown types are inflated.
+  mock_fetch_.Reset();
+  inflating_fetch_ = new InflatingFetch(&mock_fetch_);
+  blacklist.clear();
+  blacklist.insert(&kContentTypeGif);
+  inflating_fetch_->set_inflation_content_type_blacklist(blacklist);
+
+  inflating_fetch_->response_headers()->Add(
+      HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
+  inflating_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kOK);
+  inflating_fetch_->Write(gzipped_data_, &message_handler_);
+  inflating_fetch_->Done(true);
+  EXPECT_STREQ(kClearData, mock_fetch_.buffer())
+      << "data should be inflated when content-type is not in blacklist.";
+  EXPECT_FALSE(
+      mock_fetch_.response_headers()->Has(HttpAttributes::kContentEncoding))
+          << "content-encoding is not stripped.";
+  EXPECT_TRUE(mock_fetch_.done());
+  EXPECT_TRUE(mock_fetch_.success());
+}
+
 // Tests that a blacklist with multiple types leaves those types compressed, and
 // that types not in the blacklist are inflated.
 TEST_F(InflatingFetchTest, ExpectGzippedOnManyTypes) {
   inflating_fetch_->response_headers()->Add(
       HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
 
-  // Make sure we bypass octet-stream & jpeg data.
-  std::set<ContentType::Type> blacklist;
-  blacklist.insert(ContentType::kOctetStream);
-  blacklist.insert(ContentType::kJpeg);
+  // Make sure we pass through octet-stream & jpeg data.
+  std::set<const ContentType*> blacklist;
+  blacklist.insert(&kContentTypeJpeg);
+  blacklist.insert(&kContentTypeBinaryOctetStream);
 
   inflating_fetch_->set_inflation_content_type_blacklist(blacklist);
 
@@ -209,8 +352,11 @@ TEST_F(InflatingFetchTest, ExpectGzippedOnManyTypes) {
   inflating_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kOK);
   inflating_fetch_->Write(gzipped_data_, &message_handler_);
   inflating_fetch_->Done(true);
-  EXPECT_STREQ(gzipped_data_, mock_fetch_.buffer())
-      << "data should be untouched when jpeg is contained in blacklist.";
+  EXPECT_TRUE(
+      binary_data_same(
+          gzipped_data_.data(), gzipped_data_.length(),
+          mock_fetch_.buffer().data(), mock_fetch_.buffer().size()))
+          << "data should be untouched when jpeg is contained in blacklist.";
   EXPECT_STREQ(HttpAttributes::kGzip, mock_fetch_.response_headers()->Lookup1(
       HttpAttributes::kContentEncoding)) << "content-encoding is stripped.";
   EXPECT_TRUE(mock_fetch_.done());
@@ -228,8 +374,12 @@ TEST_F(InflatingFetchTest, ExpectGzippedOnManyTypes) {
   inflating_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kOK);
   inflating_fetch_->Write(gzipped_data_, &message_handler_);
   inflating_fetch_->Done(true);
-  EXPECT_STREQ(gzipped_data_, mock_fetch_.buffer())
-      << "data should not be inflated when content-type is in the blacklist.";
+  EXPECT_TRUE(
+      binary_data_same(
+          gzipped_data_.data(), gzipped_data_.length(),
+          mock_fetch_.buffer().data(), mock_fetch_.buffer().size()))
+          << "data should not be inflated when content-type is in the"
+          << " blacklist.";
   EXPECT_STREQ(HttpAttributes::kGzip, mock_fetch_.response_headers()->Lookup1(
       HttpAttributes::kContentEncoding)) << "content-encoding is not stripped.";
   EXPECT_TRUE(mock_fetch_.done());
@@ -262,7 +412,7 @@ TEST_F(InflatingFetchTest, ExpectUnGzippedOnEmptyBlacklist) {
       HttpAttributes::kContentEncoding, HttpAttributes::kGzip);
 
   // Set empty set to be left compressed.
-  std::set<ContentType::Type> blacklist;
+  std::set<const ContentType*> blacklist;
   inflating_fetch_->set_inflation_content_type_blacklist(blacklist);
 
   // We need to set Content-Type to one of the octet-streams types.
@@ -390,8 +540,11 @@ TEST_F(InflatingFetchTest, TestEnableGzipFromBackendExpectingGzip) {
   inflating_fetch_->response_headers()->SetStatusAndReason(HttpStatus::kOK);
   inflating_fetch_->Write(gzipped_data_, &message_handler_);
   inflating_fetch_->Done(true);
-  EXPECT_STREQ(gzipped_data_, mock_fetch_.buffer())
-      << "data should be untouched.";
+  EXPECT_TRUE(
+      binary_data_same(
+          gzipped_data_.data(), gzipped_data_.length(),
+          mock_fetch_.buffer().data(), mock_fetch_.buffer().size()))
+          << "data should be untouched.";
   EXPECT_STREQ(HttpAttributes::kGzip, mock_fetch_.response_headers()->Lookup1(
       HttpAttributes::kContentEncoding)) << "content-encoding not stripped.";
   EXPECT_TRUE(mock_fetch_.done());

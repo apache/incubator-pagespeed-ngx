@@ -86,8 +86,8 @@ TEST_F(ContentTypeTest, TestMimeType) {
 // nothing is crashing.
 TEST(MimeTypeListToContentTypeSetTest, EmptyTest) {
   GoogleString s;
-  std::set<ContentType::Type> out;
-  out.insert(ContentType::kVideo);
+  std::set<const ContentType*> out;
+  out.insert(&kContentTypeXml);
   MimeTypeListToContentTypeSet(s, &out);
   EXPECT_TRUE(out.empty());
 }
@@ -97,41 +97,41 @@ TEST(MimeTypeListToContentTypeSetTest, EmptyTest) {
 // Single entry.
 TEST(MimeTypeListToContentTypeSetTest, OkTestSingle) {
   GoogleString s = "image/gif";
-  std::set<ContentType::Type> out;
-  out.insert(ContentType::kVideo);
+  std::set<const ContentType*> out;
+  out.insert(&kContentTypeXml);
 
   MimeTypeListToContentTypeSet(s, &out);
   EXPECT_EQ(1, out.size());
-  EXPECT_EQ(1, out.count(ContentType::kGif));
+  EXPECT_EQ(1, out.count(&kContentTypeGif));
 }
 
 // Multiple entries.
 TEST(MimeTypeListToContentTypeSetTest, OkTestMultiple) {
-  GoogleString s = "image/gif,image/jpeg,binary/octet-stream,image/jpeg";
-  std::set<ContentType::Type> out;
-  out.insert(ContentType::kVideo);
+  GoogleString s = "image/gif,image/jpeg,application/octet-stream,image/jpeg";
+  std::set<const ContentType*> out;
+  out.insert(&kContentTypeXml);
 
   MimeTypeListToContentTypeSet(s, &out);
   EXPECT_EQ(3, out.size());
-  EXPECT_EQ(1, out.count(ContentType::kOctetStream));
-  EXPECT_EQ(1, out.count(ContentType::kJpeg));
-  EXPECT_EQ(1, out.count(ContentType::kGif));
+  EXPECT_EQ(1, out.count(&kContentTypeBinaryOctetStream));
+  EXPECT_EQ(1, out.count(&kContentTypeJpeg));
+  EXPECT_EQ(1, out.count(&kContentTypeGif));
 }
 
 // Tests malformed string and string with bad mime-types.
 TEST(MimeTypeListToContentTypeSetTest, TestBadString) {
   GoogleString s = "image/gif,,,,,";
-  std::set<ContentType::Type> out;
-  out.insert(ContentType::kVideo);
+  std::set<const ContentType*> out;
+  out.insert(&kContentTypeXml);
 
   MimeTypeListToContentTypeSet(s, &out);
   EXPECT_EQ(1, out.size());
-  EXPECT_EQ(1, out.count(ContentType::kGif));
+  EXPECT_EQ(1, out.count(&kContentTypeGif));
 
   s = "apple,orange,turnip,,,,image/jpeg,";
 
   MimeTypeListToContentTypeSet(s, &out);
   EXPECT_EQ(1, out.size());
-  EXPECT_EQ(1, out.count(ContentType::kJpeg));
+  EXPECT_EQ(1, out.count(&kContentTypeJpeg));
 }
 }  // namespace net_instaweb

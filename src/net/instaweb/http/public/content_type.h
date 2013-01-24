@@ -109,7 +109,7 @@ extern const ContentType& kContentTypeWebp;
 extern const ContentType& kContentTypePdf;
 
 // Binary/octet-stream.
-extern const ContentType& kBinaryOctetStream;
+extern const ContentType& kContentTypeBinaryOctetStream;
 
 // Given a name (file or url), see if it has the canonical extension
 // corresponding to a particular content type.
@@ -130,7 +130,7 @@ bool ParseContentType(const StringPiece& content_type_str,
 // present.
 void MimeTypeListToContentTypeSet(
     const GoogleString& in,
-    std::set<ContentType::Type>* out);
+    std::set<const ContentType*>* out);
 
 }  // namespace net_instaweb
 
