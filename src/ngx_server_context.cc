@@ -21,7 +21,6 @@
 #include "ngx_cache.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_rewrite_driver_factory.h"
-#include "net/instaweb/util/public/file_system_lock_manager.h"
 
 namespace net_instaweb {
 
@@ -32,7 +31,6 @@ NgxServerContext::NgxServerContext(NgxRewriteDriverFactory* factory) :
 }
 
 NgxServerContext::~NgxServerContext() {
-  delete lock_manager();
 }
 
 NgxRewriteOptions* NgxServerContext::config() {

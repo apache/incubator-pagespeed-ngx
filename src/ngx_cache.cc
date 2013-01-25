@@ -116,7 +116,6 @@ void NgxCache::ChildInit() {
     FallBackToFileBasedLocking();
   }
   // XXX!
-  // ALSO, don't check uninitialized stuff cleanup on destruct
   //if (file_cache_backend_ != NULL) {
   //  file_cache_backend_->set_worker(factory_->slow_worker());
   //}

@@ -43,7 +43,6 @@
 #include "net/instaweb/util/public/cache_stats.h"
 #include "net/instaweb/util/public/fallback_cache.h"
 #include "net/instaweb/util/public/file_cache.h"
-#include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -78,7 +77,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
     shared_mem_runtime_(new NullSharedMem()),
     cache_hasher_(20),
     main_conf_(main_conf),
-    threads_started_(false) {
+    threads_started_(false),
+    is_root_process_(true){
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
@@ -94,11 +94,15 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
-  if (slow_worker_ != NULL) {
+  if (!is_root_process_ && slow_worker_ != NULL) {
     slow_worker_->ShutDown();
   }
+  
   ShutDown();
 
+  // We still have registered a pool deleter here, right?  This seems risky...
+  STLDeleteElements(&uninitialized_server_contexts_);
+  
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
     NgxCache* cache = p->second;
@@ -110,6 +114,9 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
     CacheInterface* memcached = p->second;
     defer_cleanup(new Deleter<CacheInterface>(memcached));
   }
+
+  //shared_mem_statistics_.reset(NULL);
+  
 }
 
 const char NgxRewriteDriverFactory::kStaticJavaScriptPrefix[] =
@@ -163,9 +170,9 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
-  if (slow_worker_ == NULL) {
-    slow_worker_.reset(new SlowWorker(thread_system()));
-  }
+  //if (slow_worker_ == NULL) {
+  //  slow_worker_.reset(new SlowWorker(thread_system()));
+  //}
 
   // TODO(jefftk): see the ngx_rewrite_options.h note on OriginRewriteOptions;
   // this would move to OriginRewriteOptions.
