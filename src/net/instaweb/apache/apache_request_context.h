@@ -43,9 +43,8 @@ class ApacheRequestContext : public RequestContext {
   // authorize domains for fetches we do on behalf of that request.
   void set_url(StringPiece url) { url.CopyToString(&url_); }
 
-  virtual const char* class_name() const;
-
-  // Returns rc as an ApacheRequestContext* if it is one, nor NULL if it's not.
+  // Returns rc as an ApacheRequestContext* if it is one and CHECK
+  // fails if it is not. Returns NULL if rc is NULL.
   static ApacheRequestContext* DynamicCast(RequestContext* rc);
 
   bool use_spdy_fetcher() const { return use_spdy_fetcher_; }

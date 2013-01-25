@@ -94,10 +94,6 @@ class RequestContext : public RefCounted<RequestContext> {
   bool using_spdy() const { return using_spdy_; }
   void set_using_spdy(bool x) { using_spdy_ = x; }
 
-  // Returns a char* representation of the class.  Used for poor man's RTTI.
-  // TODO(jmarantz): consider replacing with real RTTI.
-  virtual const char* class_name() const;
-
  protected:
   // The default constructor will not create a LogRecord. Subclass constructors
   // must do this explicitly.

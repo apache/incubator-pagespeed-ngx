@@ -23,12 +23,6 @@
 #include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/util/public/thread_system.h"
 
-namespace {
-
-const char kClassName[] = "RequestContext";
-
-}  // namespace
-
 namespace net_instaweb {
 
 RequestContext::RequestContext(AbstractMutex* logging_mutex)
@@ -75,7 +69,5 @@ void RequestContext::ReleaseDependentTraceContext(RequestTrace* t) {
     delete t;
   }
 }
-
-const char* RequestContext::class_name() const { return kClassName; }
 
 }  // namespace net_instaweb

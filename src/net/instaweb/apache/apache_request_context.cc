@@ -16,17 +16,12 @@
 
 #include "net/instaweb/apache/apache_request_context.h"
 
+#include "base/logging.h"
 #include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/apache/mod_spdy_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 
 #include "httpd.h"  // NOLINT
-
-namespace {
-
-const char* kClassName = "ApacheRequestContext";
-
-}  // namespace
 
 namespace net_instaweb {
 
@@ -73,13 +68,15 @@ ApacheRequestContext::~ApacheRequestContext() {
   }
 }
 
-const char* ApacheRequestContext::class_name() const { return kClassName; }
-
 ApacheRequestContext* ApacheRequestContext::DynamicCast(RequestContext* rc) {
-  if ((rc != NULL) && (rc->class_name() == kClassName)) {
-    return static_cast<ApacheRequestContext*>(rc);
+  if (rc == NULL) {
+    return NULL;
   }
-  return NULL;
+  ApacheRequestContext* out = dynamic_cast<ApacheRequestContext*>(rc);
+  DCHECK(out != NULL) << "Invalid request conversion. Do not rely on RTTI for "
+                      << "functional behavior. Apache handling flows must use "
+                      << "ApacheRequestContexts.";
+  return out;
 }
 
 }  // namespace net_instaweb
