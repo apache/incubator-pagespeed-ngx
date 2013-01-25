@@ -42,8 +42,7 @@ class BlinkCriticalLineDataFinder {
 
   // Gets BlinkCriticalLineData from the given PropertyPage.
   virtual BlinkCriticalLineData* ExtractBlinkCriticalLineData(
-      int64 cache_time_ms, PropertyPage* page, int64 now_ms, bool diff_enabled,
-      bool propagate_cache_deletes);
+      int64 cache_time_ms, PropertyPage* page, int64 now_ms, bool diff_enabled);
 
   // Computes BlinkCriticalLineData for the given html content.
   virtual void ComputeBlinkCriticalLineData(

@@ -309,7 +309,9 @@ DEFINE_int64(
     net_instaweb::RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs,
     "Time after which we should try to detect if publisher html has changed");
 
-DEFINE_bool(propagate_blink_cache_deletes, false,
+// TODO(sriharis): Remove this flag and the corresponding option (once all cdd
+// uses are removed) since we always propagate whenever diff is enabled.
+DEFINE_bool(propagate_blink_cache_deletes, true,
             "Enable publishing of cache deletion events for blink.");
 
 DEFINE_bool(enable_blink_html_change_detection_logging, false,
