@@ -918,8 +918,8 @@ bool ImageImpl::ComputeOutputContents() {
               "png");
           break;
         case IMAGE_GIF:
-          png_reader.reset(new pagespeed::image_compression::GifReader);
           if (options_->convert_gif_to_png || low_quality_enabled_) {
+            png_reader.reset(new pagespeed::image_compression::GifReader);
             ok = ComputeOutputContentsFromPngReader(
                 string_for_image,
                 png_reader.get(),
@@ -940,7 +940,9 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
     bool fall_back_to_png,
     const char* dbg_input_format) {
   bool ok = false;
-  if (options_->convert_png_to_jpeg || low_quality_enabled_) {
+  if ((options_->convert_png_to_jpeg || low_quality_enabled_) &&
+      (dims_.width() != 0) && (dims_.height() != 0)) {
+    // Don't try to optimize empty images, it just messes things up.
     if (options_->convert_jpeg_to_webp) {
       ok = ConvertPngToWebp(*png_reader, string_for_image);
       DLOG(INFO) << "Image conversion: " << ok
