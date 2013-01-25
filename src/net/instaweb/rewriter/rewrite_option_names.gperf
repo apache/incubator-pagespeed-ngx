@@ -117,6 +117,8 @@ struct OptionName {
 "RunExperiment",                         RewriteOptions::kRunningFurious
 "ServeStaleIfFetchError",                RewriteOptions::kServeStaleIfFetchError
 "SupportNoScriptEnabled",                RewriteOptions::kSupportNoScriptEnabled
+"UseFixedUserAgentForBlinkCacheMisses",  RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses
+"UseSmartDiffInBlink",                   RewriteOptions::kUseSmartDiffInBlink
 "XHeaderValue",                          RewriteOptions::kXModPagespeedHeaderValue
 # The following are Apache specific options.
 "CacheFlushFilename",                    RewriteOptions::kCacheFlushFilename
@@ -148,8 +150,7 @@ struct OptionName {
 "StatisticsLoggingIntervalMs",           RewriteOptions::kStatisticsLoggingIntervalMs
 "TestProxy",                             RewriteOptions::kTestProxy
 "TestProxySlurp",                        RewriteOptions::kTestProxySlurp
-"UseFixedUserAgentForBlinkCacheMisses",  RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses
-"UseSmartDiffInBlink",                   RewriteOptions::kUseSmartDiffInBlink
+"UseSharedMemoryMetadataCache",          RewriteOptions::kUseSharedMemMetadataCache
 %%
 
 RewriteOptions::OptionEnum RewriteOptions::LookupOption(

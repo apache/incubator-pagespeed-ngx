@@ -82,6 +82,19 @@ class SharedMemCache : public CacheInterface {
                             const GoogleString& filename,
                             MessageHandler* message_handler);
 
+  // Computes how many entries and blocks per sector a cache with total size
+  // 'size_kb' and 'sectors' should have if there are about 'block_entry_ratio'
+  // worth of blocks of data per every entry. You probably want to underestimate
+  // this ratio somewhat, since having extra entries can reduce conflicts.
+  // Also outputs size_cap, which is the limit on object size for the resulting
+  // cache.
+  static void ComputeDimensions(int64 size_kb,
+                                int block_entry_ratio,
+                                int sectors,
+                                int* entries_per_sector_out,
+                                int* blocks_per_sector_out,
+                                int64* size_cap_out);
+
   // Returns some statistics as plaintext.
   // TODO(morlovich): Potentially periodically push these to the main
   // Statistics system (or pull to it from these).

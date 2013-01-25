@@ -125,6 +125,8 @@ void ApacheConfig::AddProperties() {
              RewriteOptions::kCacheFlushPollIntervalSec);
   add_option(false, &ApacheConfig::experimental_fetch_from_mod_spdy_, "effms",
              RewriteOptions::kExperimentalFetchFromModSpdy);
+  add_option("", &ApacheConfig::use_shared_mem_metadata_cache_,
+             "asmc", RewriteOptions::kUseSharedMemMetadataCache);
 
   MergeSubclassProperties(apache_properties_);
   ApacheConfig config;

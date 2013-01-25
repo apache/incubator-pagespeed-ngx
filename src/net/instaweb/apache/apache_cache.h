@@ -37,6 +37,7 @@ class SharedMemLockManager;
 // a locking mechanism and an optional per-process LRUCache.
 class ApacheCache {
  public:
+  // CacheStats prefixes.
   static const char kFileCache[];
   static const char kLruCache[];
 
@@ -44,8 +45,13 @@ class ApacheCache {
               const ApacheConfig& config,
               ApacheRewriteDriverFactory* factory);
   ~ApacheCache();
-  CacheInterface* l1_cache() { return l1_cache_.get(); }
-  CacheInterface* l2_cache() { return l2_cache_.get(); }
+
+  // Per-process in-memory LRU, with any stats/thread safety wrappers, or NULL.
+  CacheInterface* lru_cache() { return lru_cache_.get(); }
+
+  // Per-machine file cache with any stats wrappers.
+  CacheInterface* file_cache() { return file_cache_.get(); }
+
   NamedLockManager* lock_manager() { return lock_manager_; }
 
   void RootInit();
@@ -61,9 +67,9 @@ class ApacheCache {
   scoped_ptr<SharedMemLockManager> shared_mem_lock_manager_;
   scoped_ptr<FileSystemLockManager> file_system_lock_manager_;
   NamedLockManager* lock_manager_;
-  FileCache* file_cache_;  // owned by l2 cache
-  scoped_ptr<CacheInterface> l1_cache_;
-  scoped_ptr<CacheInterface> l2_cache_;
+  FileCache* file_cache_backend_;  // owned by file_cache_
+  scoped_ptr<CacheInterface> lru_cache_;
+  scoped_ptr<CacheInterface> file_cache_;
 };
 
 // CACHE_STATISTICS is #ifdef'd to facilitate experiments with whether

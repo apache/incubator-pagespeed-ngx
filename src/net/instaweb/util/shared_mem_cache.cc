@@ -278,6 +278,37 @@ void SharedMemCache<kBlockSize>::GlobalCleanup(
 }
 
 template<size_t kBlockSize>
+void SharedMemCache<kBlockSize>::ComputeDimensions(
+    int64 size_kb,
+    int block_entry_ratio,
+    int sectors,
+    int* entries_per_sector_out,
+    int* blocks_per_sector_out,
+    int64* size_cap_out) {
+  int64 size = size_kb * 1024;
+  const int kEntrySize = sizeof(CacheEntry);
+  // Footprint of an entry is kEntrySize bytes. Block is kBlockSize + 4
+  // bytes for successor list. We ignore sector headers for the math since
+  // negligible. So:
+  //
+  // Size = (kBlockSize + 4) * Blocks + kEntrySize * Entries
+  //      = (kBlockSize + 4) * (Blocks/Entries) * Entries + kEntrySize * Entries
+  // Entries = Size / ((kBlockSize + 4) * (Blocks/Entries) + kEntrySize)
+  // Blocks  = Entries * (Blocks/Entries)
+  //
+  // We also divide things up into some number of sectors to lower contention,
+  // which reduces 'size' proportionally.
+  size /= sectors;
+  *entries_per_sector_out =
+      size / ((kBlockSize + 4) * block_entry_ratio + kEntrySize);
+  *blocks_per_sector_out = *entries_per_sector_out * block_entry_ratio;
+
+  // The cache sets a size cap of 1/8'th of a sector for object size; let our
+  // client know.
+  *size_cap_out = *blocks_per_sector_out * kBlockSize / 8;
+}
+
+template<size_t kBlockSize>
 GoogleString SharedMemCache<kBlockSize>::DumpStats() {
   SectorStats aggregate;
   for (size_t c = 0; c < sectors_.size(); ++c) {
@@ -293,6 +324,7 @@ GoogleString SharedMemCache<kBlockSize>::DumpStats() {
 template<size_t kBlockSize>
 void SharedMemCache<kBlockSize>::Put(const GoogleString& key,
                                      SharedString* value) {
+  // See also ::ComputeDimensions
   const size_t kMaxSize = (blocks_per_sector_ * kBlockSize) / 8;
 
   size_t value_size = static_cast<size_t>(value->size());

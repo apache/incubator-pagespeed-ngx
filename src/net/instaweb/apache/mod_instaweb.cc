@@ -139,6 +139,8 @@ const char kModPagespeedCollectRefererStatistics[] =
 const char kModPagespeedCombineAcrossPaths[] = "ModPagespeedCombineAcrossPaths";
 const char kModPagespeedCriticalImagesBeaconEnabled[] =
     "ModPagespeedCriticalImagesBeaconEnabled";
+const char kModPagespeedCreateSharedMemoryMetadataCache[] =
+    "ModPagespeedCreateSharedMemoryMetadataCache";
 const char kModPagespeedCssFlattenMaxBytes[] = "ModPagespeedCssFlattenMaxBytes";
 const char kModPagespeedCssImageInlineMaxBytes[] =
     "ModPagespeedCssImageInlineMaxBytes";
@@ -275,6 +277,8 @@ const char kModPagespeedUsePerVHostStatistics[] =
     "ModPagespeedUsePerVHostStatistics";
 const char kModPagespeedWebpRecompressionQuality[] =
     "ModPagespeedImageWebpRecompressionQuality";
+const char kModPagespeedUseSharedMemoryMetadataCache[] =
+    "ModPagespeedUseSharedMemoryMetadataCache";
 const char kModPagespeedXHeaderValue[] = "ModPagespeedXHeaderValue";
 
 // The following two are deprecated due to spelling
@@ -1693,7 +1697,19 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
   RewriteOptions* options = config;
 
   const char* directive = cmd->directive->directive;
-  if (StringCaseEqual(directive, kModPagespeedLoadFromFile)) {
+  if (StringCaseEqual(directive,
+                      kModPagespeedCreateSharedMemoryMetadataCache)) {
+    int64 kb = 0;
+    if (!StringToInt64(arg2, &kb) || kb < 0) {
+      return apr_pstrcat(cmd->pool, directive,
+                         " size_kb must be a positive 64-bit integer", NULL);
+    }
+    GoogleString result =
+        manager->apache_factory()->CreateShmMetadataCache(arg1, kb);
+    if (!result.empty()) {
+      return apr_pstrdup(cmd->pool, result.c_str());
+    }
+  } else if (StringCaseEqual(directive, kModPagespeedLoadFromFile)) {
     options->file_load_policy()->Associate(arg1, arg2);
   } else if (StringCaseEqual(directive, kModPagespeedLoadFromFileMatch)) {
     GoogleString error;
@@ -2087,6 +2103,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_OPTION(kModPagespeedUrlPrefix, "No longer used."),
   APACHE_CONFIG_OPTION(kModPagespeedUsePerVHostStatistics,
         "If true, keep track of statistics per VHost and not just globally"),
+  APACHE_CONFIG_OPTION(kModPagespeedUseSharedMemoryMetadataCache,
+        "Use given shared memory cache for metadata cache"),
   APACHE_CONFIG_OPTION(kModPagespeedXHeaderValue,
         "Set the value for the X-Mod-Pagespeed HTTP header"),
 
@@ -2104,6 +2122,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
 
   // All two parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)
+  APACHE_CONFIG_OPTION2(kModPagespeedCreateSharedMemoryMetadataCache,
+        "name size_kb"),
   APACHE_CONFIG_OPTION2(kModPagespeedLoadFromFile,
         "url_prefix filename_prefix"),
   APACHE_CONFIG_OPTION2(kModPagespeedLoadFromFileMatch,

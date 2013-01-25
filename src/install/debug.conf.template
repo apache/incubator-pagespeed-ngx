@@ -764,6 +764,7 @@ ModPagespeedUsePerVHostStatistics on
 #ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
 #ALL_DIRECTIVES ModPagespeedCombineAcrossPaths true
 #ALL_DIRECTIVES ModPagespeedCriticalImagesBeaconEnabled true
+#ALL_DIRECTIVES ModPagespeedCreateSharedMemoryMetadataCache config 10000
 #ALL_DIRECTIVES ModPagespeedCssFlattenMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssImageInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedCssInlineMaxBytes 2000
@@ -848,4 +849,5 @@ ModPagespeedUsePerVHostStatistics on
 #ALL_DIRECTIVES ModPagespeedTestProxy off
 #ALL_DIRECTIVES ModPagespeedUrlValuedAttribute span src Hyperlink
 #ALL_DIRECTIVES ModPagespeedUsePerVHostStatistics on
+#ALL_DIRECTIVES ModPagespeedUseSharedMemoryMetadataCache config
 #ALL_DIRECTIVES ModPagespeedXHeaderValue "test"

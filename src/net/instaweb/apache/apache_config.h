@@ -96,6 +96,9 @@ class ApacheConfig : public RewriteOptions {
   void set_use_shared_mem_locking(bool x) {
     set_option(x, &use_shared_mem_locking_);
   }
+  const GoogleString& use_shared_mem_metadata_cache() const {
+    return use_shared_mem_metadata_cache_.value();
+  }
   bool collect_referer_statistics() const {
     return collect_referer_statistics_.value();
   }
@@ -336,6 +339,10 @@ class ApacheConfig : public RewriteOptions {
   Option<GoogleString> statistics_logging_charts_js_;
   Option<GoogleString> cache_flush_filename_;
   Option<GoogleString> test_proxy_slurp_;
+
+  // Empty string if not on, otherwise should correspond to a name passed to
+  // ApacheRewriteDriverFactory::CreateShmMetadataCache().
+  Option<GoogleString> use_shared_mem_metadata_cache_;
 
   ApacheOption<RefererStatisticsOutputLevel> referer_statistics_output_level_;
 

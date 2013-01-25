@@ -702,7 +702,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(133, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(134, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -805,6 +805,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ForbidAllDisabledFilters",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kForbidAllDisabledFilters));
+  EXPECT_STREQ("FuriousCookieDurationMs",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kFuriousCookieDurationMs));
   EXPECT_STREQ("IdleFlushTimeMs",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kIdleFlushTimeMs));
@@ -955,6 +958,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("UseFixedUserAgentForBlinkCacheMisses",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses));
+  EXPECT_STREQ("UseSmartDiffInBlink",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kUseSmartDiffInBlink));
   EXPECT_STREQ("XHeaderValue",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kXModPagespeedHeaderValue));
@@ -1053,12 +1059,11 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("TestProxySlurp",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kTestProxySlurp));
-  EXPECT_STREQ("UseSmartDiffInBlink",
+  EXPECT_STREQ("UseSharedMemoryMetadataCache",
                RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kUseSmartDiffInBlink));
-  EXPECT_STREQ("FuriousCookieDurationMs",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kFuriousCookieDurationMs));
+                    RewriteOptions::kUseSharedMemMetadataCache));
+  // End Apache-specific option tests (so please don't add tests for generic
+  // options here).
 }
 
 TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {

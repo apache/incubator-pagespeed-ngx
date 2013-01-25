@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apache_request_context.h"
@@ -55,6 +56,7 @@
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/shared_mem_cache.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -704,6 +706,14 @@ apr_status_t instaweb_statistics_handler(
       statistics->Dump(&writer, message_handler);
       writer.Write("</pre>", message_handler);
       statistics->RenderHistograms(&writer, message_handler);
+
+      if (global_stats_request) {
+        // We don't want to print this in per-vhost info since it would leak
+        // all the declared caches.
+        GoogleString shm_stats;
+        factory->PrintShmMetadataCacheStats(&shm_stats);
+        writer.Write(shm_stats, message_handler);
+      }
 
       if (params.Has("memcached")) {
         GoogleString memcached_stats;

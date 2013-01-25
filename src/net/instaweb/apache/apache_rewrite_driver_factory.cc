@@ -94,6 +94,7 @@ const char kShutdownCount[] = "child_shutdown_count";
 }  // namespace
 
 const char ApacheRewriteDriverFactory::kMemcached[] = "memcached";
+const char ApacheRewriteDriverFactory::kShmCache[] = "shm_cache";
 const char ApacheRewriteDriverFactory::kStaticJavaScriptPrefix[] =
     "/mod_pagespeed_static/";
 
@@ -181,6 +182,12 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
            e = memcached_map_.end(); p != e; ++p) {
     CacheInterface* memcached = p->second;
     defer_cleanup(new Deleter<CacheInterface>(memcached));
+  }
+
+  for (MetadataShmCacheMap::iterator p = metadata_shm_caches_.begin(),
+           e = metadata_shm_caches_.end(); p != e; ++p) {
+    MetadataShmCacheInfo* cache_info = p->second;
+    defer_cleanup(new Deleter<MetadataShmCacheInfo>(cache_info));
   }
 
   shared_mem_statistics_.reset(NULL);
@@ -272,6 +279,74 @@ CacheInterface* ApacheRewriteDriverFactory::GetMemcached(
   return memcached;
 }
 
+GoogleString ApacheRewriteDriverFactory::CreateShmMetadataCache(
+    const GoogleString& name, int64 size_kb) {
+  MetadataShmCacheInfo* cache_info = NULL;
+  std::pair<MetadataShmCacheMap::iterator, bool> result =
+      metadata_shm_caches_.insert(
+          MetadataShmCacheMap::value_type(name, cache_info));
+  if (result.second) {
+    int entries, blocks;
+    int64 size_cap;
+    const int kSectors = 128;
+    MetadataShmCache::ComputeDimensions(
+        size_kb, 2 /* block/entry ratio, based empirically off load tests  */,
+        kSectors, &entries, &blocks, &size_cap);
+
+    // Make sure the size cap is not unusably low. In particular, with 2K
+    // inlining thresholds, something like 3K is needed. (As of time of writing,
+    // that required about 4.3MiB).
+    if (size_cap < 3 * 1024) {
+      metadata_shm_caches_.erase(result.first);
+      return "Shared memory cache unusably small.";
+    } else {
+      cache_info = new MetadataShmCacheInfo;
+      cache_info->cache_backend =
+          new SharedMemCache<64>(
+              shared_mem_runtime(),
+              StrCat(name, "/metadata_cache"),
+              timer(),
+              hasher(),
+              kSectors,
+              entries,  /* entries per sector */
+              blocks /* blocks per sector*/,
+              message_handler());
+      // We can't set cache_info->cache_to_use yet since statistics aren't ready
+      // yet. It will happen in ::RootInit().
+      result.first->second = cache_info;
+      return GoogleString();
+    }
+  } else {
+    return StrCat("Cache named ", name, " already exists.");
+  }
+}
+
+CacheInterface* ApacheRewriteDriverFactory::GetShmMetadataCache(
+    ApacheConfig* config) {
+  const GoogleString& name = config->use_shared_mem_metadata_cache();
+  if (name.empty()) {
+    return NULL;
+  }
+  MetadataShmCacheMap::iterator i = metadata_shm_caches_.find(name);
+  if (i != metadata_shm_caches_.end()) {
+    return i->second->cache_to_use.get();
+  }
+  return NULL;
+}
+
+void ApacheRewriteDriverFactory::PrintShmMetadataCacheStats(GoogleString* out) {
+  for (MetadataShmCacheMap::iterator p = metadata_shm_caches_.begin(),
+           e = metadata_shm_caches_.end(); p != e; ++p) {
+    MetadataShmCacheInfo* cache_info = p->second;
+    if (cache_info->cache_backend != NULL) {
+      StrAppend(out, "Shared memory metadata cache '", p->first,
+                "' statistics:<br>");
+      StrAppend(out, "<pre>", cache_info->cache_backend->DumpStats(),
+                "</pre>");
+    }
+  }
+}
+
 CacheInterface* ApacheRewriteDriverFactory::GetFilesystemMetadataCache(
     ApacheConfig* config) {
   // Reuse the memcached server(s) for the filesystem metadata cache. We need
@@ -311,51 +386,80 @@ MessageHandler* ApacheRewriteDriverFactory::DefaultMessageHandler() {
 }
 
 void ApacheRewriteDriverFactory::SetupCaches(
-    ServerContext* resource_manager) {
+    ServerContext* server_context) {
+  // TODO(morlovich): Factor out this logic. Most of this has nothing to do with
+  // Apache, and will probably be needed for nginx.
   ApacheConfig* config = ApacheConfig::DynamicCast(
-      resource_manager->global_options());
+      server_context->global_options());
   ApacheCache* apache_cache = GetCache(config);
-  CacheInterface* l1_cache = apache_cache->l1_cache();
-  CacheInterface* l2_cache = apache_cache->l2_cache();
-  CacheInterface* memcached = GetMemcached(config, l2_cache);
+  CacheInterface* lru_cache = apache_cache->lru_cache();
+  CacheInterface* file_cache = apache_cache->file_cache();
+  CacheInterface* shm_metadata_cache = GetShmMetadataCache(config);
+  CacheInterface* memcached = GetMemcached(config, file_cache);
+
   if (memcached != NULL) {
-    l2_cache = memcached;
-    resource_manager->set_owned_cache(memcached);
-    resource_manager->set_filesystem_metadata_cache(
+    server_context->set_owned_cache(memcached);
+    server_context->set_filesystem_metadata_cache(
         new CacheCopy(GetFilesystemMetadataCache(config)));
   }
-  Statistics* stats = resource_manager->statistics();
+  Statistics* stats = server_context->statistics();
 
-  // TODO(jmarantz): consider moving ownership of the L1 cache into the
+  // Figure out our L1/L2 hierarchy for http cache.
+  // TODO(jmarantz): consider moving ownership of the LRU cache into the
   // factory, rather than having one per vhost.
   //
-  // Note that a user can disable the L1 cache by setting its byte-count
-  // to 0, in which case we don't build the write-through mechanisms.
+  // Note that a user can disable the LRU cache by setting its byte-count
+  // to 0.
+  CacheInterface* http_l2 = (memcached != NULL) ? memcached : file_cache;
   int64 max_content_length = config->max_cacheable_response_content_length();
-  if (l1_cache == NULL) {
-    HTTPCache* http_cache = new HTTPCache(l2_cache, timer(), hasher(), stats);
-    http_cache->set_max_cacheable_response_content_length(max_content_length);
-    resource_manager->set_http_cache(http_cache);
-    resource_manager->set_metadata_cache(new CacheCopy(l2_cache));
-    resource_manager->MakePropertyCaches(l2_cache);
+  HTTPCache* http_cache = NULL;
+  if (lru_cache == NULL) {
+    // No L1, and so backend is just the L2
+    http_cache = new HTTPCache(http_l2, timer(), hasher(), stats);
   } else {
+    // L1 is LRU, with the L2 as computed above.
     WriteThroughHTTPCache* write_through_http_cache = new WriteThroughHTTPCache(
-        l1_cache, l2_cache, timer(), hasher(), stats);
+        lru_cache, http_l2, timer(), hasher(), stats);
     write_through_http_cache->set_cache1_limit(config->lru_cache_byte_limit());
-    write_through_http_cache->set_max_cacheable_response_content_length(
-        max_content_length);
-    resource_manager->set_http_cache(write_through_http_cache);
-
-    WriteThroughCache* write_through_cache = new WriteThroughCache(
-        l1_cache, l2_cache);
-    write_through_cache->set_cache1_limit(config->lru_cache_byte_limit());
-    resource_manager->set_metadata_cache(write_through_cache);
-
-    resource_manager->MakePropertyCaches(l2_cache);
+    http_cache = write_through_http_cache;
   }
 
-  resource_manager->set_enable_property_cache(enable_property_cache());
-  PropertyCache* pcache = resource_manager->page_property_cache();
+  http_cache->set_max_cacheable_response_content_length(max_content_length);
+  server_context->set_http_cache(http_cache);
+
+  // And now the metadata cache. metadata_l1 == NULL will be used to denote
+  // a 1-level cache.
+  CacheInterface* metadata_l1 = NULL;
+  CacheInterface* metadata_l2 = NULL;
+  size_t l1_size_limit = WriteThroughCache::kUnlimited;
+  if (shm_metadata_cache != NULL) {
+    // Do we have both a local SHM cache and a memcached-backed cache? In that
+    // case, it makes sense to go L1/L2 with them. If not, just use the SHM
+    // cache and ignore the per-process LRU as it's basically strictly worse.
+    if (memcached != NULL) {
+      metadata_l1 = shm_metadata_cache;
+      metadata_l2 = memcached;
+    } else {
+      metadata_l2 = shm_metadata_cache;
+    }
+  } else {
+    l1_size_limit = config->lru_cache_byte_limit();
+    metadata_l1 = lru_cache;  // may be NULL
+    metadata_l2 = http_l2;  // memcached or file.
+  }
+
+  if (metadata_l1 != NULL) {
+    WriteThroughCache* write_through_cache = new WriteThroughCache(
+        metadata_l1, metadata_l2);
+    write_through_cache->set_cache1_limit(l1_size_limit);
+    server_context->set_metadata_cache(write_through_cache);
+  } else {
+    server_context->set_metadata_cache(new CacheCopy(metadata_l2));
+  }
+  server_context->MakePropertyCaches(metadata_l2);
+
+  server_context->set_enable_property_cache(enable_property_cache());
+  PropertyCache* pcache = server_context->page_property_cache();
   if (pcache->GetCohort(BeaconCriticalImagesFinder::kBeaconCohort) == NULL) {
     pcache->AddCohort(BeaconCriticalImagesFinder::kBeaconCohort);
   }
@@ -637,6 +741,22 @@ void ApacheRewriteDriverFactory::RootInit() {
     // the map which we'll iterate on below.
     GetCache(resource_manager->config());
   }
+  for (MetadataShmCacheMap::iterator p = metadata_shm_caches_.begin(),
+           e = metadata_shm_caches_.end(); p != e; ++p) {
+    MetadataShmCacheInfo* cache_info = p->second;
+    if (cache_info->cache_backend->Initialize()) {
+      cache_info->cache_to_use.reset(
+          new CacheStats(kShmCache, cache_info->cache_backend, timer(),
+                         statistics()));
+    } else {
+      message_handler()->Message(
+          kWarning, "Unable to initialize shared memory cache: %s.",
+          p->first.c_str());
+      cache_info->cache_backend = NULL;
+      cache_info->cache_to_use.reset(NULL);
+    }
+  }
+
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
     ApacheCache* cache = p->second;
@@ -654,6 +774,18 @@ void ApacheRewriteDriverFactory::ChildInit() {
   slow_worker_.reset(new SlowWorker("slow_work_thread", thread_system()));
   if (shared_mem_statistics_.get() != NULL) {
     shared_mem_statistics_->Init(false, message_handler());
+  }
+  for (MetadataShmCacheMap::iterator p = metadata_shm_caches_.begin(),
+           e = metadata_shm_caches_.end(); p != e; ++p) {
+    MetadataShmCacheInfo* cache_info = p->second;
+    if ((cache_info->cache_backend != NULL) &&
+        !cache_info->cache_backend->Attach()) {
+      message_handler()->Message(
+          kWarning, "Unable to attach to shared memory cache: %s.",
+          p->first.c_str());
+      cache_info->cache_backend = NULL;
+      cache_info->cache_to_use.reset(NULL);
+    }
   }
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
@@ -828,6 +960,7 @@ void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
 
   CacheStats::InitStats(ApacheCache::kFileCache, statistics);
   CacheStats::InitStats(ApacheCache::kLruCache, statistics);
+  CacheStats::InitStats(kShmCache, statistics);
   CacheStats::InitStats(kMemcached, statistics);
   PropertyCache::InitCohortStats(BeaconCriticalImagesFinder::kBeaconCohort,
                                  statistics);

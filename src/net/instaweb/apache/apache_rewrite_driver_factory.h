@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/shared_mem_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -66,7 +67,11 @@ class Writer;
 // Creates an Apache RewriteDriver.
 class ApacheRewriteDriverFactory : public RewriteDriverFactory {
  public:
+  // CacheStats prefixes.
   static const char kMemcached[];
+  static const char kShmCache[];
+
+  // Path prefix were we serve JS snippets needed by some filters.
   static const char kStaticJavaScriptPrefix[];
 
   ApacheRewriteDriverFactory(server_rec* server, const StringPiece& version);
@@ -233,6 +238,21 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // to the caller and must be freed on destruction.
   CacheInterface* GetMemcached(ApacheConfig* config, CacheInterface* l2_cache);
 
+  // Creates & registers a shared memory metadata cache segment with given
+  // name and size.
+  //
+  // Returns a string with an error message, or an empty string in case of
+  // success.  Meant to be called from config parsing.
+  GoogleString CreateShmMetadataCache(const GoogleString& name, int64 size_kb);
+
+  // Returns any shared memory metadata cache configured for the given
+  // configuration, or NULL.
+  CacheInterface* GetShmMetadataCache(ApacheConfig* config);
+
+  // Writes to *out internal statistics from all the shared memory metadata
+  // cache objects we have.
+  void PrintShmMetadataCacheStats(GoogleString* out);
+
   // Returns the filesystem metadata cache for the given config's specification
   // (if it has one). NULL is returned if no cache is specified.
   CacheInterface* GetFilesystemMetadataCache(ApacheConfig* config);
@@ -325,6 +345,15 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
       StaticJavascriptManager* static_js_manager);
 
  private:
+  typedef SharedMemCache<64> MetadataShmCache;
+  struct MetadataShmCacheInfo {
+    MetadataShmCacheInfo() : cache_backend(NULL) {}
+
+    // Note that the fields may be NULL if e.g. initialization failed.
+    scoped_ptr<CacheInterface> cache_to_use;  // may be CacheStats or such.
+    MetadataShmCache* cache_backend;
+  };
+
   // Updates num_rewrite_threads_ and num_expensive_rewrite_threads_
   // with sensible values if they are not explicitly set.
   void AutoDetectThreadCounts();
@@ -439,6 +468,13 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   scoped_ptr<QueuedWorkerPool> memcached_pool_;
   std::vector<AprMemCache*> memcache_servers_;
   std::vector<AsyncCache*> async_caches_;
+
+  // Map of any shared memory metadata caches we have + their CacheStats
+  // wrappers. These are named explicitly to make configuration comprehensible.
+  typedef std::map<GoogleString, MetadataShmCacheInfo*> MetadataShmCacheMap;
+
+  // Note that entries here may be NULL in cases of config errors.
+  MetadataShmCacheMap metadata_shm_caches_;
 
   // Serf fetchers are expensive -- they each cost a thread. Allocate
   // one for each proxy/slurp-setting.  Currently there is no

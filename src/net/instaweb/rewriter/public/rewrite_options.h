@@ -304,6 +304,7 @@ class RewriteOptions {
     kTestProxy,
     kTestProxySlurp,
     kUseSharedMemLocking,
+    kUseSharedMemMetadataCache,
 
     // This is always the last option.
     kEndOfOptions

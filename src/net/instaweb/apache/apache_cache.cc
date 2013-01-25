@@ -41,7 +41,7 @@ ApacheCache::ApacheCache(const StringPiece& path,
     : path_(path.data(), path.size()),
       factory_(factory),
       lock_manager_(NULL),
-      file_cache_(NULL) {
+      file_cache_backend_(NULL) {
   if (config.use_shared_mem_locking()) {
     shared_mem_lock_manager_.reset(new SharedMemLockManager(
         factory->shared_mem_runtime(), StrCat(path, "/named_locks"),
@@ -57,11 +57,12 @@ ApacheCache::ApacheCache(const StringPiece& path,
       config.file_cache_clean_interval_ms(),
       config.file_cache_clean_size_kb() * 1024,
       config.file_cache_clean_inode_limit());
-  file_cache_ = new FileCache(
+  file_cache_backend_ = new FileCache(
       config.file_cache_path(), factory->file_system(), NULL,
       factory->filename_encoder(), policy, factory->message_handler());
-  l2_cache_.reset(new CacheStats(kFileCache, file_cache_, factory->timer(),
-                                 factory->statistics()));
+  file_cache_.reset(
+      new CacheStats(kFileCache, file_cache_backend_,
+                     factory->timer(), factory->statistics()));
 
   if (config.lru_cache_kb_per_process() != 0) {
     LRUCache* lru_cache = new LRUCache(
@@ -74,10 +75,10 @@ ApacheCache::ApacheCache(const StringPiece& path,
     ThreadsafeCache* ts_cache =
         new ThreadsafeCache(lru_cache, factory->thread_system()->NewMutex());
 #if CACHE_STATISTICS
-    l1_cache_.reset(new CacheStats(kLruCache, ts_cache, factory->timer(),
+    lru_cache_.reset(new CacheStats(kLruCache, ts_cache, factory->timer(),
                                    factory->statistics()));
 #else
-    l1_cache_.reset(ts_cache);
+    lru_cache_.reset(ts_cache);
 #endif
   }
 }
@@ -101,8 +102,8 @@ void ApacheCache::ChildInit() {
       !shared_mem_lock_manager_->Attach()) {
     FallBackToFileBasedLocking();
   }
-  if (file_cache_ != NULL) {
-    file_cache_->set_worker(factory_->slow_worker());
+  if (file_cache_backend_ != NULL) {
+    file_cache_backend_->set_worker(factory_->slow_worker());
   }
 }
 
