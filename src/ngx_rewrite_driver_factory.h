@@ -74,17 +74,17 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   virtual void StopCacheActivity();
   NgxServerContext* MakeNgxServerContext();
   void InitServerContexts();
+  // Finds a Cache for the file_cache_path in the config.  If none exists,
+  // creates one, using all the other parameters in the ApacheConfig.
+  // Currently, no checking is done that the other parameters (e.g. cache
+  // size, cleanup interval, etc.) are consistent.
+  NgxCache* GetCache(NgxRewriteOptions* rewrite_options);
+  
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
   }
 
   SlowWorker* slow_worker() { return slow_worker_.get(); }
-
-  // Finds a Cache for the file_cache_path in the config.  If none exists,
-  // creates one, using all the other parameters in the ApacheConfig.
-  // Currently, no checking is done that the other parameters (e.g. cache
-  // size, cleanup interval, etc.) are consistent.
-  NgxCache* GetCache(NgxRewriteOptions* config);
 
   // Create a new AprMemCache from the given hostname[:port] specification.
   AprMemCache* NewAprMemCache(const GoogleString& spec);
@@ -106,7 +106,15 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Starts pagespeed threads if they've not been started already.  Must be
   // called after the caller has finished any forking it intends to do.
   void StartThreads();
-
+  // This helper method contains init procedures invoked by both RootInit()
+  // and ChildInit()
+  void ParentOrChildInit();
+  // [1] Besides normal startup, Apache also uses a temporary process to
+  // syntax check the config file. That basically looks like a complete
+  // normal startup and shutdown to the code.
+  bool is_root_process() const { return is_root_process_; }
+  void RootInit();
+  void ChildInit();  
  private:
   SimpleStats simple_stats_;
   Timer* timer_;
@@ -140,7 +148,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   std::vector<AprMemCache*> memcache_servers_;
   std::vector<AsyncCache*> async_caches_;
   bool threads_started_;
-
+  bool is_root_process_;
+  
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

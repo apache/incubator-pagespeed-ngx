@@ -1561,15 +1561,15 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     return NGX_ERROR;
   }
 
-  // TODO(oschaaf): no c style casts
-  ngx_http_core_main_conf_t* cmcf = (ngx_http_core_main_conf_t*)
-      ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module);
-  ngx_http_core_srv_conf_t** cscfp = (ngx_http_core_srv_conf_t**)
-      cmcf->servers.elts;
+  ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
+  ngx_http_core_srv_conf_t** cscfp = static_cast<ngx_http_core_srv_conf_t**>(
+      cmcf->servers.elts);
   ngx_uint_t s;
 
   for (s = 0; s < cmcf->servers.nelts; s++) {
-    ps_srv_conf_t* cfg_s = (ps_srv_conf_t*)cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index];
+    ps_srv_conf_t* cfg_s =
+        static_cast<ps_srv_conf_t*>(cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
     cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext();
     // The server context sets some options when we call global_options().  So let
     // it do that, then merge in options we got from parsing the config file.
@@ -1580,16 +1580,15 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   }
 
   cfg_m->driver_factory->InitServerContexts();
-  cfg_m->driver_factory->StartThreads();
-
 
   for (s = 0; s < cmcf->servers.nelts; s++) {
-    ps_srv_conf_t* cfg_s = (ps_srv_conf_t*)cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index];
+    ps_srv_conf_t* cfg_s =
+        static_cast<ps_srv_conf_t*>(cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
     cfg_s->proxy_fetch_factory =
         new net_instaweb::ProxyFetchFactory(cfg_s->server_context);
   }
 
-
+  cfg_m->driver_factory->StartThreads();
   
   return NGX_OK;
 }

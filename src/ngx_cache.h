@@ -50,7 +50,8 @@ class NgxCache {
 
   void RootInit();
   void ChildInit();
-  void GlobalCleanup(MessageHandler* handler);  // only called in root process
+  // XXX: ????
+  //void GlobalCleanup(MessageHandler* handler);  // only called in root process
 
  private:
   void FallBackToFileBasedLocking();

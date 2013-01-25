@@ -89,8 +89,6 @@ NgxCache::NgxCache(const StringPiece& path,
 NgxCache::~NgxCache() {
 }
 
-// TODO(oschaaf): see rootinit/childinit from ApacheCache.cc
-
 void NgxCache::FallBackToFileBasedLocking() {
   if ((shared_mem_lock_manager_.get() != NULL) || (lock_manager_ == NULL)) {
     shared_mem_lock_manager_.reset(NULL);
@@ -99,6 +97,29 @@ void NgxCache::FallBackToFileBasedLocking() {
         factory_->scheduler(), factory_->message_handler()));
     lock_manager_ = file_system_lock_manager_.get();
   }
+}
+
+void NgxCache::RootInit() {
+  factory_->message_handler()->Message(
+      kInfo, "Initializing shared memory for path: %s.", path_.c_str());
+  if ((shared_mem_lock_manager_.get() != NULL) &&
+      !shared_mem_lock_manager_->Initialize()) {
+    FallBackToFileBasedLocking();
+  }
+}
+
+void NgxCache::ChildInit() {
+  factory_->message_handler()->Message(
+      kInfo, "Reusing shared memory for path: %s.", path_.c_str());
+  if ((shared_mem_lock_manager_.get() != NULL) &&
+      !shared_mem_lock_manager_->Attach()) {
+    FallBackToFileBasedLocking();
+  }
+  // XXX!
+  // ALSO, don't check uninitialized stuff cleanup on destruct
+  //if (file_cache_backend_ != NULL) {
+  //  file_cache_backend_->set_worker(factory_->slow_worker());
+  //}
 }
 
 }  // namespace net_instaweb
