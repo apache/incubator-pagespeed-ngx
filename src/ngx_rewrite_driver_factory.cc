@@ -352,25 +352,6 @@ NgxServerContext* NgxRewriteDriverFactory::MakeNgxServerContext() {
   return server_context;
 }
 
-void NgxRewriteDriverFactory::InitServerContexts() {
-  for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
-           e = uninitialized_server_contexts_.end(); p != e; ++p) {
-    NgxServerContext* server_context = *p;
-
-    // TODO(oschaaf): lock_manager should be taken from the
-    // associated NgxCache?
-    StringPiece filename_prefix = server_context->config()->file_cache_path();
-    
-    server_context->set_lock_manager(
-      new net_instaweb::FileSystemLockManager(
-          file_system(),
-          filename_prefix.as_string(),
-          scheduler(),
-          message_handler()));
-    InitServerContext(server_context);
-  }
-}
-
 void NgxRewriteDriverFactory::ShutDown() {
   RewriteDriverFactory::ShutDown();
 

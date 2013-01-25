@@ -572,6 +572,7 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 
     cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
         parent_cfg_s->options);
+    cfg_m->driver_factory->RootInit();
   }
 
 
@@ -1579,7 +1580,9 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     cfg_s->options = NULL;
   }
 
-  cfg_m->driver_factory->InitServerContexts();
+  cfg_m->driver_factory->ChildInit();
+  // XXX -> remove?
+  //cfg_m->driver_factory->InitServerContexts();
 
   for (s = 0; s < cmcf->servers.nelts; s++) {
     ps_srv_conf_t* cfg_s =

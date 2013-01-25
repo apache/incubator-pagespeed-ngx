@@ -73,7 +73,6 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   virtual void ShutDown();
   virtual void StopCacheActivity();
   NgxServerContext* MakeNgxServerContext();
-  void InitServerContexts();
   // Finds a Cache for the file_cache_path in the config.  If none exists,
   // creates one, using all the other parameters in the ApacheConfig.
   // Currently, no checking is done that the other parameters (e.g. cache
