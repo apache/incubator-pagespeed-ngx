@@ -102,6 +102,8 @@ struct CacheEntry {
 
   // Number of readers currently accessing the data.
   uint32 open_count : 31;
+
+  uint32 padding;  // ensures we're 8-aligned.
 };
 
 // Helper for operating on a given sector's data structures; helping
