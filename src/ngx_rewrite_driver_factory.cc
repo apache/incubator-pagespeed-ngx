@@ -23,6 +23,7 @@
 #include "ngx_cache.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_thread_system.h"
+#include "ngx_server_context.h"
 
 #include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_thread_compatible_pool.h"
@@ -42,6 +43,7 @@
 #include "net/instaweb/util/public/cache_stats.h"
 #include "net/instaweb/util/public/fallback_cache.h"
 #include "net/instaweb/util/public/file_cache.h"
+#include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/lru_cache.h"
@@ -341,6 +343,31 @@ void NgxRewriteDriverFactory::StopCacheActivity() {
            e = memcached_map_.end(); p != e; ++p) {
     CacheInterface* cache = p->second;
     cache->ShutDown();
+  }
+}
+
+NgxServerContext* NgxRewriteDriverFactory::MakeNgxServerContext() {
+  NgxServerContext* server_context = new NgxServerContext(this);
+  uninitialized_server_contexts_.insert(server_context);
+  return server_context;
+}
+
+void NgxRewriteDriverFactory::InitServerContexts() {
+  for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
+           e = uninitialized_server_contexts_.end(); p != e; ++p) {
+    NgxServerContext* server_context = *p;
+
+    // TODO(oschaaf): lock_manager should be taken from the
+    // associated NgxCache?
+    StringPiece filename_prefix = server_context->config()->file_cache_path();
+    
+    server_context->set_lock_manager(
+      new net_instaweb::FileSystemLockManager(
+          file_system(),
+          filename_prefix.as_string(),
+          scheduler(),
+          message_handler()));
+    InitServerContext(server_context);
   }
 }
 

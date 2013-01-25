@@ -19,6 +19,8 @@
 #ifndef NGX_REWRITE_DRIVER_FACTORY_H_
 #define NGX_REWRITE_DRIVER_FACTORY_H_
 
+#include <set>
+
 #include "apr_pools.h"
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
@@ -70,7 +72,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // release the base class resources.
   virtual void ShutDown();
   virtual void StopCacheActivity();
-
+  NgxServerContext* MakeNgxServerContext();
+  void InitServerContexts();
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
   }
@@ -113,7 +116,9 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   PathCacheMap path_cache_map_;
   MD5Hasher cache_hasher_;
   NgxRewriteOptions* main_conf_;
-
+  typedef std::set<NgxServerContext*> NgxServerContextSet;
+  NgxServerContextSet uninitialized_server_contexts_;
+  
   // memcache connections are expensive.  Just allocate one per
   // distinct server-list.  At the moment there is no consistency
   // checking for other parameters.  Note that each memcached
