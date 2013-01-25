@@ -114,7 +114,7 @@ class MeaningfulCriticalImagesFinder : public CriticalImagesFinder {
       : CriticalImagesFinder(stats),
         compute_calls_(0) {}
   virtual ~MeaningfulCriticalImagesFinder() {}
-  virtual bool IsMeaningful() const {
+  virtual bool IsMeaningful(const RewriteDriver* driver) const {
     return true;
   }
   virtual void ComputeCriticalImages(StringPiece url,

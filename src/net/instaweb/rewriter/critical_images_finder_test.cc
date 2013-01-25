@@ -43,7 +43,7 @@ class CriticalImagesFinderMock : public CriticalImagesFinder {
     return kCriticalImagesCohort;
   }
 
-  virtual bool IsMeaningful() const {
+  virtual bool IsMeaningful(const RewriteDriver* driver) const {
     return false;
   }
  private:

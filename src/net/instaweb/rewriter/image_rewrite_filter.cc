@@ -341,7 +341,7 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
 void ImageRewriteFilter::StartDocumentImpl() {
   CriticalImagesFinder* finder =
       driver_->server_context()->critical_images_finder();
-  if (finder->IsMeaningful() &&
+  if (finder->IsMeaningful(driver_) &&
       driver_->device_properties()->SupportsImageInlining() &&
       (driver_->options()->Enabled(RewriteOptions::kDelayImages) ||
        (driver_->options()->Enabled(RewriteOptions::kInlineImages) &&
@@ -1011,7 +1011,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
 bool ImageRewriteFilter::IsCriticalImage(const StringPiece& image_url) const {
   CriticalImagesFinder* finder =
       driver_->server_context()->critical_images_finder();
-  if (!finder->IsMeaningful()) {
+  if (!finder->IsMeaningful(driver_)) {
     // Default to all images being critical if we don't have meaningful critical
     // image information.
     return true;

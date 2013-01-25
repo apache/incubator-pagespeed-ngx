@@ -205,7 +205,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
           // Note that if the platform lacks a CriticalImageFinder
           // implementation, we consider all images to be non-critical and try
           // to lazily load them.
-          if (finder->IsMeaningful()) {
+          if (finder->IsMeaningful(driver())) {
             // Decode the url since the critical images in the finder are not
             // rewritten.
             if (finder->IsCriticalImage(full_url.data(), driver())) {

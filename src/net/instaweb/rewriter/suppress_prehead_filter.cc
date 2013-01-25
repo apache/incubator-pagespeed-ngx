@@ -162,7 +162,7 @@ void SuppressPreheadFilter::EndDocument() {
   if (!has_charset_) {
     FlushEarlyInfoFinder* finder =
         driver_->server_context()->flush_early_info_finder();
-    if (finder != NULL && finder->IsMeaningful()) {
+    if (finder != NULL && finder->IsMeaningful(driver_)) {
       finder->UpdateFlushEarlyInfoInDriver(driver_);
       charset_ = finder->GetCharset(driver_);
       if (!charset_.empty()) {

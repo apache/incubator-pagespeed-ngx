@@ -33,7 +33,7 @@ class MeaningfulFlushEarlyInfoFinder : public FlushEarlyInfoFinder {
  public:
   MeaningfulFlushEarlyInfoFinder() : num_compute_calls_(0) {}
   virtual ~MeaningfulFlushEarlyInfoFinder() {}
-  virtual bool IsMeaningful() const {
+  virtual bool IsMeaningful(const RewriteDriver* driver) const {
     return true;
   }
   virtual const char* GetCohort() const {

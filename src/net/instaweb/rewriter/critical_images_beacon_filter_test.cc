@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 
+#include <set>
+
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -26,6 +28,7 @@
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_hash.h"
@@ -142,7 +145,13 @@ TEST_F(CriticalImagesBeaconFilterTest, ScriptInjectionWithHttps) {
 TEST_F(CriticalImagesBeaconFilterTest, ScriptInjectionWithImageInlining) {
   // Verify that the URL hash is applied to the absolute image URL, and not to
   // the rewritten URL. In this case, make sure that an image inlined to a data
-  // URI has the correct hash.
+  // URI has the correct hash. We need to add the image hash to the critical
+  // image set to make sure that the image is inlined.
+  GoogleString hash_str = ImageUrlHash(kChefGifFile);
+  scoped_ptr<StringSet> crit_img_set(new StringSet);
+  crit_img_set->insert(hash_str);
+  rewrite_driver()->set_critical_images(crit_img_set.release());
+  rewrite_driver()->set_updated_critical_images(true);
   options()->set_image_inline_max_bytes(10000);
   options()->EnableFilter(RewriteOptions::kResizeImages);
   options()->EnableFilter(RewriteOptions::kInlineImages);
@@ -152,7 +161,6 @@ TEST_F(CriticalImagesBeaconFilterTest, ScriptInjectionWithImageInlining) {
   RunInjection();
   VerifyInjection();
 
-  GoogleString hash_str = ImageUrlHash(kChefGifFile);
   EXPECT_TRUE(output_buffer_.find("data:") != GoogleString::npos);
   EXPECT_TRUE(output_buffer_.find(hash_str) != GoogleString::npos);
 }

@@ -111,7 +111,7 @@ void FlushEarlyContentWriterFilter::StartDocument() {
   current_element_ = NULL;
   FlushEarlyInfoFinder* finder =
       driver_->server_context()->flush_early_info_finder();
-  if (finder != NULL && finder->IsMeaningful()) {
+  if (finder != NULL && finder->IsMeaningful(driver_)) {
     finder->UpdateFlushEarlyInfoInDriver(driver_);
     FlushEarlyRenderInfo* flush_early_render_info =
         driver_->flush_early_render_info();

@@ -93,14 +93,14 @@ void InitFlushEarlyDriverWithPropertyCacheValues(
   flush_early_driver->flush_early_info();
   FlushEarlyInfoFinder* finder =
       flush_early_driver->server_context()->flush_early_info_finder();
-  if (finder != NULL && finder->IsMeaningful()) {
+  if (finder != NULL && finder->IsMeaningful(flush_early_driver)) {
     finder->UpdateFlushEarlyInfoInDriver(flush_early_driver);
   }
 
   // Populating critical images from css in flush early driver.
   CriticalImagesFinder* critical_images_finder =
       flush_early_driver->server_context()->critical_images_finder();
-  if (critical_images_finder->IsMeaningful()) {
+  if (critical_images_finder->IsMeaningful(flush_early_driver)) {
     critical_images_finder->UpdateCriticalImagesSetInDriver(flush_early_driver);
   }
   flush_early_driver->set_unowned_property_page(NULL);

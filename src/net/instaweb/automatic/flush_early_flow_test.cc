@@ -446,7 +446,7 @@ class FakeCriticalImagesFinder : public CriticalImagesFinder {
       : CriticalImagesFinder(stats) {}
   ~FakeCriticalImagesFinder() {}
 
-  virtual bool IsMeaningful() const { return true; }
+  virtual bool IsMeaningful(const RewriteDriver* driver) const { return true; }
 
   virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver) {
     if (css_critical_images_ != NULL) {

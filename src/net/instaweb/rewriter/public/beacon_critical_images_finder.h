@@ -19,12 +19,12 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_BEACON_CRITICAL_IMAGES_FINDER_H_
 
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class RewriteDriver;
 class Statistics;
 
 // Support critical (above the fold) image detection through a javascript beacon
@@ -37,10 +37,8 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
   explicit BeaconCriticalImagesFinder(Statistics* stats);
   virtual ~BeaconCriticalImagesFinder();
 
-  virtual bool IsMeaningful() const {
-    // TODO(jud): This class is not currently implemented yet, change this when
-    // it is functional.
-    return false;
+  virtual bool IsMeaningful(const RewriteDriver* driver) const {
+    return driver->options()->critical_images_beacon_enabled();
   }
 
   // Checks whether the requested image is present in the critical set or not.
