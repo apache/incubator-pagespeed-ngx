@@ -336,6 +336,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
                               const StringVector& name_vector,
                               const StringPiece& ext);
 
+  // Takes an already-encoded URL and adds options to to it.
+  GoogleString AddOptionsToEncodedUrl(const StringPiece& url,
+                                      const StringPiece& options);
+
   // If append_new_suffix is true, appends new_suffix to old_url.
   // If append_new_suffix is false, replaces old_suffix at the end of old_url
   // with new_suffix.

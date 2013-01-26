@@ -109,20 +109,16 @@ class RewriteQuery {
   // expensive query processing.
   static bool MayHaveCustomOptions(const QueryParams& params,
                                    const RequestHeaders* req_headers,
-                                   const ResponseHeaders* resp_headers,
-                                   bool allow_related_options);
+                                   const ResponseHeaders* resp_headers);
 
   // As above, but only for headers.
   template <class HeaderT>
   static bool HeadersMayHaveCustomOptions(const QueryParams& params,
                                           const HeaderT* headers);
 
-  // Examines a name/value pair for options.  If filter is non-null, then
-  // this checks the ResourceOptions based on the filters RelatedFilters()
-  // and RelatedOptions() method.
+  // Examines a name/value pair for options.
   static Status ScanNameValue(const StringPiece& name,
                               const GoogleString& value,
-                              const RewriteFilter* filter,
                               RewriteOptions* options,
                               MessageHandler* handler);
 

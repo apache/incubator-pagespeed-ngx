@@ -34,12 +34,10 @@
 
 namespace {
 
-// Query-param name used to encode all relevant enabled filters and
-// non-default options for a pagespeed resource.  The value of this
-// is not intended to be human-readable; it uses ID codes for brevity
-// and hence we keep this distinct from the general query-param syntax
-// used for debug & experimentation.
-const char kAddQueryFromOptionName[] = "PsolOpt";
+// We use + and = inside the resource-options URL segment because they will not
+// be quoted by UrlEscaper, unlike "," and ":".
+const char kResourceFilterSeparator[] = "+";
+const char kResourceOptionValueSeparator[] = "=";
 
 }  // namespace
 
@@ -99,7 +97,6 @@ RewriteQuery::Status RewriteQuery::ScanHeader(
 
   for (int i = 0, n = headers->NumAttributes(); i < n; ++i) {
     switch (ScanNameValue(headers->Name(i), headers->Value(i),
-                          NULL,  // We don't need arbitrary options for headers
                           options,
                           handler)) {
       case kNoneFound:
@@ -136,41 +133,49 @@ RewriteQuery::Status RewriteQuery::Scan(
     MessageHandler* handler) {
   options->reset(NULL);
 
-  QueryParams query_params;
-  query_params.Parse(request_url->Query());
+  Status status = kNoneFound;
 
   // To support serving resources from servers that don't share the
   // same settings as the ones generating HTML, we can put whitelisted
   // option-settings into the query-params by ID.  But we expose this
   // setting (a) only for .pagespeed. resources, not HTML, and (b)
   // only when allow_related_options is true.
-  const RewriteFilter* rewrite_filter = NULL;
   ResourceNamer namer;
-  if (allow_related_options) {
-    if (namer.Decode(request_url->LeafSansQuery())) {
-      rewrite_filter = server_context->decoding_driver()->FindFilter(
-          namer.id());
-    } else {
-      allow_related_options = false;
+  if (allow_related_options && namer.Decode(request_url->LeafSansQuery()) &&
+      namer.has_options()) {
+    const RewriteFilter* rewrite_filter =
+        server_context->decoding_driver()->FindFilter(namer.id());
+    if (rewrite_filter != NULL) {
+      options->reset(factory->NewRewriteOptionsForQuery());
+      status = ParseResourceOption(namer.options(), options->get(),
+                                   rewrite_filter);
+      if (status != kSuccess) {
+        options->reset(NULL);
+        return status;
+      }
     }
   }
 
   // See if anything looks even remotely like one of our options before doing
-  // any more work.
-  if (!MayHaveCustomOptions(query_params, request_headers, response_headers,
-                            allow_related_options)) {
-    return kNoneFound;
+  // any more work.  Note that when options are correctly embedded in the URL,
+  // we will have a success-status here.  But we still allow a hand-added
+  // query-param to override the embedded options.
+  QueryParams query_params;
+  query_params.Parse(request_url->Query());
+  if (!MayHaveCustomOptions(query_params, request_headers, response_headers)) {
+    return status;
   }
 
-  options->reset(factory->NewRewriteOptionsForQuery());
+  if (options->get() == NULL) {
+    options->reset(factory->NewRewriteOptionsForQuery());
+  }
 
-  Status status = kNoneFound;
   QueryParams temp_query_params;
   for (int i = 0; i < query_params.size(); ++i) {
     const GoogleString* value = query_params.value(i);
     if (value != NULL) {
       switch (ScanNameValue(
-          query_params.name(i), *value, rewrite_filter, options->get(),
+          query_params.name(i), *value, options->get(),
           handler)) {
         case kNoneFound:
           temp_query_params.Add(query_params.name(i), *value);
@@ -243,11 +248,10 @@ bool RewriteQuery::HeadersMayHaveCustomOptions(const QueryParams& params,
 
 bool RewriteQuery::MayHaveCustomOptions(
     const QueryParams& params, const RequestHeaders* req_headers,
-    const ResponseHeaders* resp_headers, bool allow_related_options) {
+    const ResponseHeaders* resp_headers) {
   for (int i = 0, n = params.size(); i < n; ++i) {
     StringPiece name(params.name(i));
-    if (name.starts_with(kModPagespeed) ||
-        (allow_related_options && (name == kAddQueryFromOptionName))) {
+    if (name.starts_with(kModPagespeed)) {
       return true;
     }
   }
@@ -262,8 +266,7 @@ bool RewriteQuery::MayHaveCustomOptions(
 
 RewriteQuery::Status RewriteQuery::ScanNameValue(
     const StringPiece& name, const GoogleString& value,
-    const RewriteFilter* rewrite_filter, RewriteOptions* options,
-    MessageHandler* handler) {
+    RewriteOptions* options, MessageHandler* handler) {
   Status status = kNoneFound;
   if (name == kModPagespeed) {
     RewriteOptions::EnabledEnum enabled;
@@ -296,8 +299,6 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     } else {
       status = kInvalid;
     }
-  } else if ((rewrite_filter != NULL) && (name == kAddQueryFromOptionName)) {
-    status = ParseResourceOption(value, options, rewrite_filter);
   } else {
     for (unsigned i = 0; i < arraysize(int64_query_params_); ++i) {
       if (name == int64_query_params_[i].name_) {
@@ -331,8 +332,7 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
 GoogleString RewriteQuery::GenerateResourceOption(
     StringPiece filter_id, RewriteDriver* driver) {
   const RewriteFilter* filter = driver->FindFilter(filter_id);
-  GoogleString prefix_buffer = StrCat(kAddQueryFromOptionName, "=");
-  StringPiece prefix(prefix_buffer);
+  StringPiece prefix("");
   GoogleString value;
   const RewriteOptions* options = driver->options();
 
@@ -351,7 +351,7 @@ GoogleString RewriteQuery::GenerateResourceOption(
     RewriteOptions::Filter filter_enum = filters[i];
     if (options->Enabled(filter_enum)) {
       StrAppend(&value, prefix, RewriteOptions::FilterId(filter_enum));
-      prefix = ",";
+      prefix = kResourceFilterSeparator;
     }
   }
 
@@ -363,8 +363,9 @@ GoogleString RewriteQuery::GenerateResourceOption(
     const char* id;
     bool was_set = false;
     if (options->OptionValue(option, &id, &was_set, &option_value) && was_set) {
-      StrAppend(&value, prefix, id, ":", option_value);
-      prefix = ",";
+      StrAppend(&value, prefix, id, kResourceOptionValueSeparator,
+                option_value);
+      prefix = kResourceFilterSeparator;
     }
   }
   return value;
@@ -374,7 +375,8 @@ RewriteQuery::Status RewriteQuery::ParseResourceOption(
     StringPiece value, RewriteOptions* options, const RewriteFilter* filter) {
   Status status = kNoneFound;
   StringPieceVector filters_and_options;
-  SplitStringPieceToVector(value, ",", &filters_and_options, true);
+  SplitStringPieceToVector(value, kResourceFilterSeparator,
+                           &filters_and_options, true);
 
   // We will want to validate any filters & options we are trying to set
   // with this mechanism against the whitelist of whatever the filter thinks is
@@ -385,7 +387,8 @@ RewriteQuery::Status RewriteQuery::ParseResourceOption(
 
   for (int i = 0, n = filters_and_options.size(); i < n; ++i) {
     StringPieceVector name_value;
-    SplitStringPieceToVector(filters_and_options[i], ":", &name_value, true);
+    SplitStringPieceToVector(filters_and_options[i],
+                             kResourceOptionValueSeparator, &name_value, true);
     switch (name_value.size()) {
       case 1: {
         RewriteOptions::Filter filter =

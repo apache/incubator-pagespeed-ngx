@@ -2513,8 +2513,14 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
   full_name.set_id(filter_id);
   full_name.set_name(name);
   full_name.set_experiment(options()->GetFuriousStateStr());
-  OutputResourcePtr resource;
 
+  if (!full_name.has_experiment() && options()->add_options_to_urls()) {
+    GoogleString resource_option = RewriteQuery::GenerateResourceOption(
+        filter_id, this);
+    full_name.set_options(resource_option);
+  }
+
+  OutputResourcePtr resource;
   int max_leaf_size = full_name.EventualSize(*server_context_->hasher())
                       + ContentType::MaxProducedExtensionLength();
   int url_size = mapped_path.size() + max_leaf_size;
@@ -2940,19 +2946,7 @@ bool RewriteDriver::Write(const ResourceVector& inputs,
     if (output->kind() != kOutlinedResource) {
       CachedResult* cached = output->EnsureCachedResultCreated();
       cached->set_optimizable(true);
-      GoogleString url = output->url();  // Note: output->url() will be sharded.
-      if (options()->add_options_to_urls()) {
-        // TODO(jmarantz): Determine whether we need to use the related-options
-        // to compute the MD-cache options-signature to allow MD-cache entry
-        // sharing between the HTML flow and the resource flow.
-        GoogleString resource_option =
-            RewriteQuery::GenerateResourceOption(
-                output->full_name().id(), this);
-        if (!resource_option.empty()) {
-          StrAppend(&url, "?", resource_option);
-        }
-      }
-      cached->mutable_url()->swap(url);
+      cached->set_url(output->url());  // Note: output->url() will be sharded.
     }
   } else {
     // Note that we've already gotten a "could not open file" message;

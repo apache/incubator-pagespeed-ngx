@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/resource.h"
+#include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -1767,7 +1768,10 @@ TEST_F(ImageRewriteTest, RewriteImagesAddingOptionsToUrl) {
   GoogleString img_src;
   RewriteImageFromHtml("img", kContentTypeJpeg, &img_src);
   GoogleUrl gurl(img_src);
-  EXPECT_STREQ("PsolOpt=gp,jw,pj,rj,rp,rw,iq:73", gurl.Query());
+  EXPECT_STREQ("", gurl.Query());
+  ResourceNamer namer;
+  EXPECT_TRUE(namer.Decode(gurl.LeafSansQuery()));
+  EXPECT_STREQ("gp+jw+pj+rj+rp+rw+iq=73", namer.options());
 
   // Serve this from rewrite_driver(), which has the same cache & the
   // same options set so will have the canonical results.

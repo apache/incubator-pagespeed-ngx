@@ -673,10 +673,10 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # image URL query param, the image file (including headers) is 8341 bytes.
   # We check against 10000 here so this test isn't sensitive to
   # image-compression tweaks (we have enough of those elsewhere).
-  check_file_size "$OUTDIR/256x192xPuz*PsolOpt*" -lt 10000
+  check_file_size "$OUTDIR/256x192xPuz*.pagespeed.*iq=*.ic.*" -lt 10000
 
   # The CSS file is rewritten but has no related options set, so it will
-  # not get the PsolOpt suffix.
+  # not get the embedded options between "pagespeed" and "cf".
   check_file_size "$OUTDIR/*.bold.css.pagespeed.cf.*.css" -lt 500
 
   # One flaw in the above test is that it short-circuits the decoding
@@ -689,7 +689,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # "finish" this test below after performing a cache flush, saving
   # the encoded image and expected size.
   EMBED_CONFIGURATION_IMAGE="http://embed_config_resources.example.com/images/"
-  EMBED_CONFIGURATION_IMAGE_TAIL=$(ls $OUTDIR | grep 256x192xPuz | grep PsolOpt)
+  EMBED_CONFIGURATION_IMAGE_TAIL=$(ls $OUTDIR | grep 256x192xPuz | grep iq=)
   EMBED_CONFIGURATION_IMAGE+="$EMBED_CONFIGURATION_IMAGE_TAIL"
   EMBED_CONFIGURATION_IMAGE_LENGTH=$( \
     head -10 "$OUTDIR/$EMBED_CONFIGURATION_IMAGE_TAIL" | \

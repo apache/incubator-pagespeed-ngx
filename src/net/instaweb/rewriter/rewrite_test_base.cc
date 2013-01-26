@@ -669,11 +669,19 @@ GoogleString RewriteTestBase::EncodeWithBase(
   return EncodeNormal(path, id, hash, name_vector, ext);
 }
 
+GoogleString RewriteTestBase::AddOptionsToEncodedUrl(
+    const StringPiece& url, const StringPiece& options) {
+  ResourceNamer namer;
+  CHECK(namer.Decode(url));
+  namer.set_options(options);
+  return namer.Encode();
+}
+
 // Helper function which instantiates an encoder, collects the
 // required arguments and calls the virtual Encode().
 GoogleString RewriteTestBase::EncodeCssName(const StringPiece& name,
-                                                    bool supports_webp,
-                                                    bool can_inline) {
+                                            bool supports_webp,
+                                            bool can_inline) {
   CssUrlEncoder encoder;
   ResourceContext resource_context;
   resource_context.set_inline_images(can_inline);
