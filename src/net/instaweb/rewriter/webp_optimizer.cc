@@ -147,7 +147,7 @@ bool WebpOptimizer::DoReadJpegPixels(J_COLOR_SPACE color_space,
   jpeg_decompress_struct* jpeg_decompress = reader_.decompress_struct();
   jpeg_decompress->client_data = static_cast<void*>(&env);
 
-  reader_.PrepareForRead(original_jpeg);
+  reader_.PrepareForRead(original_jpeg.data(), original_jpeg.size());
 
   if (jpeg_read_header(jpeg_decompress, TRUE) != JPEG_HEADER_OK) {
     return false;
@@ -311,7 +311,8 @@ bool WebpOptimizer::CreateOptimizedWebp(
   // Begin by making sure we can create a webp image at all:
   WebPPicture picture;
   WebPConfig config;
-  int input_quality = JpegUtils::GetImageQualityFromImage(original_jpeg);
+  int input_quality = JpegUtils::GetImageQualityFromImage(original_jpeg.data(),
+                                                          original_jpeg.size());
 
   if (!WebPPictureInit(&picture) || !WebPConfigInit(&config)) {
     // Version mismatch.
