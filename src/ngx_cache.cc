@@ -61,7 +61,7 @@ NgxCache::NgxCache(const StringPiece& path,
       config.file_cache_clean_size_kb() * 1024,
       config.file_cache_clean_inode_limit());
   file_cache_ = new FileCache(
-      config.file_cache_path(), factory->file_system(), factory->slow_worker(),
+      config.file_cache_path(), factory->file_system(), NULL,
       factory->filename_encoder(), policy, factory->message_handler());
   l2_cache_.reset(new CacheStats(kFileCache, file_cache_, factory->timer(),
                                  factory->statistics()));
@@ -115,10 +115,10 @@ void NgxCache::ChildInit() {
       !shared_mem_lock_manager_->Attach()) {
     FallBackToFileBasedLocking();
   }
-  // XXX!
-  //if (file_cache_backend_ != NULL) {
-  //  file_cache_backend_->set_worker(factory_->slow_worker());
-  //}
+
+  if (file_cache_ != NULL) {
+    file_cache_->set_worker(factory_->slow_worker());
+  }
 }
 
 }  // namespace net_instaweb

@@ -170,10 +170,6 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
-  //if (slow_worker_ == NULL) {
-  //  slow_worker_.reset(new SlowWorker(thread_system()));
-  //}
-
   // TODO(jefftk): see the ngx_rewrite_options.h note on OriginRewriteOptions;
   // this would move to OriginRewriteOptions.
 
