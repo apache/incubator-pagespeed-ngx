@@ -446,6 +446,39 @@ TEST(BasicUtilsTest, JoinStringStar) {
   EXPECT_STREQ("bar, , # , #, ", JoinStringStar(blah, ", "));
 }
 
+TEST(BasicUtilsTest, JoinStringPieces) {
+  const GoogleString foo = "foo";
+  const GoogleString bar = "bar";
+  const GoogleString empty = "";
+  const GoogleString symbols = "# , #";
+
+  StringPieceVector nothing, single, foobar, barfoobar, blah;
+  EXPECT_STREQ("", JoinStringPieces(nothing, ""));
+  EXPECT_STREQ("", JoinStringPieces(nothing, ", "));
+
+  single.push_back(foo);
+  EXPECT_STREQ("foo", JoinStringPieces(single, ""));
+  EXPECT_STREQ("foo", JoinStringPieces(single, ", "));
+
+  foobar.push_back(foo);
+  foobar.push_back(bar);
+  EXPECT_STREQ("foobar", JoinStringPieces(foobar, ""));
+  EXPECT_STREQ("foo, bar", JoinStringPieces(foobar, ", "));
+
+  barfoobar.push_back(bar);
+  barfoobar.push_back(foo);
+  barfoobar.push_back(bar);
+  EXPECT_STREQ("barfoobar", JoinStringPieces(barfoobar, ""));
+  EXPECT_STREQ("bar##foo##bar", JoinStringPieces(barfoobar, "##"));
+
+  blah.push_back(bar);
+  blah.push_back(empty);
+  blah.push_back(symbols);
+  blah.push_back(empty);
+  EXPECT_STREQ("bar# , #", JoinStringPieces(blah, ""));
+  EXPECT_STREQ("bar, , # , #, ", JoinStringPieces(blah, ", "));
+}
+
 TEST(BasicUtilsTest, CEscape) {
   EXPECT_EQ("Hello,\\n\\tWorld.\\n", CEscape("Hello,\n\tWorld.\n"));
 

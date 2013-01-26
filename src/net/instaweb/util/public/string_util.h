@@ -39,6 +39,8 @@ using base::StringAppendV;
 using base::SStringPrintf;
 using base::StringPiece;
 
+typedef StringPiece::size_type stringpiece_ssize_type;
+
 // Quick macro to get the size of a static char[] without trailing '\0'.
 // Note: Cannot be used for char*, std::string, etc.
 #define STATIC_STRLEN(static_string) (arraysize(static_string) - 1)
@@ -177,6 +179,14 @@ int FindIgnoreCase(StringPiece haystack, StringPiece needle);
 // JoinStringStar({"foo", "", "bar"}, ", ") == "foo, , bar". (Pseudocode)
 GoogleString JoinStringStar(const ConstStringStarVector& vector,
                             const StringPiece& delim);
+
+GoogleString JoinStringPieces(const StringPieceVector& vector,
+                              int start_index, int size,
+                              const StringPiece& delim);
+inline GoogleString JoinStringPieces(const StringPieceVector& vector,
+                                     const StringPiece& delim) {
+  return JoinStringPieces(vector, 0, vector.size(), delim);
+}
 
 // See also: ./src/third_party/css_parser/src/strings/ascii_ctype.h
 // We probably don't want our core string header file to have a

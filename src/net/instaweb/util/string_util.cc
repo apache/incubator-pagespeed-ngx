@@ -237,6 +237,32 @@ GoogleString JoinStringStar(const ConstStringStarVector& vector,
   return result;
 }
 
+GoogleString JoinStringPieces(const StringPieceVector& vector,
+                              int start, int size,
+                              const StringPiece& delim) {
+  GoogleString result;
+
+  if (size > 0) {
+    int end = start + size;
+    // Precompute resulting length so we can reserve() memory in one shot.
+    int length = delim.size() * (size - 1);
+    for (int i = start; i < end; ++i) {
+      length += vector[i].size();
+    }
+    result.reserve(length);
+
+    // Now combine everything.
+    for (int i = start; i < end; ++i) {
+      if (i != start) {
+        delim.AppendToString(&result);
+      }
+      vector[i].AppendToString(&result);
+    }
+  }
+
+  return result;
+}
+
 bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2) {
   return ((s1.size() == s2.size()) && (0 == StringCaseCompare(s1, s2)));
 }
