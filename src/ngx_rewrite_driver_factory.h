@@ -60,7 +60,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
   virtual NamedLockManager* DefaultLockManager();
-  virtual void SetupCaches(ServerContext* resource_manager);
+  virtual void SetupCaches(ServerContext* server_context);
   virtual Statistics* statistics();
   // Create a new RewriteOptions.  In this implementation it will be an
   // NgxRewriteOptions.

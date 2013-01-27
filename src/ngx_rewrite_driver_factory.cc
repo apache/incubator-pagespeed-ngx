@@ -75,11 +75,8 @@ const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf)
     : RewriteDriverFactory(new NgxThreadSystem())
-      //#ifdef PAGESPEED_SUPPORT_POSIX_SHARED_MEM
+      // TODO(oschaaf): mod_pagespeed ifdefs this:
     , shared_mem_runtime_(new PthreadSharedMem())
-      //#else
-      //, shared_mem_runtime_(new NullSharedMem())
-      //#endif
     , cache_hasher_(20)
     , main_conf_(main_conf)
     , threads_started_(false)
@@ -381,13 +378,13 @@ void NgxRewriteDriverFactory::RootInit() {
   ParentOrChildInit();
   for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
-    NgxServerContext* resource_manager = *p;
+    NgxServerContext* server_context = *p;
 
     // Determine the set of caches needed based on the unique
     // file_cache_path()s in the manager configurations.  We ignore
     // the GetCache return value because our goal is just to populate
     // the map which we'll iterate on below.
-    GetCache(resource_manager->config());
+    GetCache(server_context->config());
   }
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
