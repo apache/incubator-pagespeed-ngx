@@ -1581,8 +1581,6 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   }
 
   cfg_m->driver_factory->ChildInit();
-  // XXX -> remove?
-  //cfg_m->driver_factory->InitServerContexts();
 
   for (s = 0; s < cmcf->servers.nelts; s++) {
     ps_srv_conf_t* cfg_s =

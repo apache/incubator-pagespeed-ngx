@@ -114,9 +114,6 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
     CacheInterface* memcached = p->second;
     defer_cleanup(new Deleter<CacheInterface>(memcached));
   }
-
-  //shared_mem_statistics_.reset(NULL);
-  
 }
 
 const char NgxRewriteDriverFactory::kStaticJavaScriptPrefix[] =
@@ -378,11 +375,7 @@ void NgxRewriteDriverFactory::StartThreads() {
 }
 
 void NgxRewriteDriverFactory::ParentOrChildInit() {
-  //if (install_crash_handler_) {
-  //  NgxMessageHandler::InstallCrashHandler(server_rec_);
-  //}
-  //SharedCircularBufferInit(is_root_process_);
-  //SharedMemRefererStatisticsInit(is_root_process_);
+  // left in as a stub, we will need it later on
 }
 
 void NgxRewriteDriverFactory::RootInit() {
@@ -397,21 +390,6 @@ void NgxRewriteDriverFactory::RootInit() {
     // the map which we'll iterate on below.
     GetCache(resource_manager->config());
   }
-  /*for (MetadataShmCacheMap::iterator p = metadata_shm_caches_.begin(),
-           e = metadata_shm_caches_.end(); p != e; ++p) {
-    MetadataShmCacheInfo* cache_info = p->second;
-    if (cache_info->cache_backend->Initialize()) {
-      cache_info->cache_to_use.reset(
-          new CacheStats(kShmCache, cache_info->cache_backend, timer(),
-                         statistics()));
-    } else {
-      message_handler()->Message(
-          kWarning, "Unable to initialize shared memory cache: %s.",
-          p->first.c_str());
-      cache_info->cache_backend = NULL;
-      cache_info->cache_to_use.reset(NULL);
-    }
-    }*/
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
@@ -423,26 +401,7 @@ void NgxRewriteDriverFactory::RootInit() {
 void NgxRewriteDriverFactory::ChildInit() {
   is_root_process_ = false;
   ParentOrChildInit();
-  // Reinitialize pid for child process.
-  //ngx_message_handler_->SetPidString(static_cast<int64>(getpid()));
-  //ngx_html_parse_message_handler_->SetPidString(
-  //    static_cast<int64>(getpid()));
   slow_worker_.reset(new SlowWorker(thread_system()));
-  //if (shared_mem_statistics_.get() != NULL) {
-  //  shared_mem_statistics_->Init(false, message_handler());
-  //}
-  //for (MetadataShmCacheMap::iterator p = metadata_shm_caches_.begin(),
-  //         e = metadata_shm_caches_.end(); p != e; ++p) {
-  //  MetadataShmCacheInfo* cache_info = p->second;
-  //  if ((cache_info->cache_backend != NULL) &&
-  //      !cache_info->cache_backend->Attach()) {
-  //    message_handler()->Message(
-  //        kWarning, "Unable to attach to shared memory cache: %s.",
-  //        p->first.c_str());
-  //    cache_info->cache_backend = NULL;
-  //    cache_info->cache_to_use.reset(NULL);
-  //  }
-  //}
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
@@ -454,6 +413,7 @@ void NgxRewriteDriverFactory::ChildInit() {
     NgxServerContext* server_context = *p;
     server_context->ChildInit();
   }
+
   uninitialized_server_contexts_.clear();
 
   for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
@@ -463,10 +423,6 @@ void NgxRewriteDriverFactory::ChildInit() {
       abort();  // TODO(jmarantz): is there a better way to exit?
     }
   }
-
-  //mod_spdy_fetch_controller_.reset(
-  //    new ModSpdyFetchController(max_mod_spdy_fetch_threads_, thread_system(),
-  //                               statistics()));
 }
 
 }  // namespace net_instaweb
