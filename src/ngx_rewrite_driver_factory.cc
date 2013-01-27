@@ -289,12 +289,6 @@ CacheInterface* NgxRewriteDriverFactory::GetMemcached(
       }
       memcached = batcher;
       result.first->second = memcached;
-
-      bool connected = mem_cache->Connect();
-      if (!connected) {
-        message_handler()->Message(kError, "Failed to attach memcached, abort");
-        abort();
-      }
     } else {
       memcached = result.first->second;
     }
@@ -418,9 +412,10 @@ void NgxRewriteDriverFactory::ChildInit() {
 
   for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
     AprMemCache* mem_cache = memcache_servers_[i];
-    if (!mem_cache->Connect()) {
-      message_handler()->Message(kError, "Memory cache failed");
-      abort();  // TODO(jmarantz): is there a better way to exit?
+    bool connected = mem_cache->Connect();
+    if (!connected) {
+      message_handler()->Message(kError, "Failed to attach memcached, abort");
+      abort();
     }
   }
 }
