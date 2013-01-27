@@ -72,8 +72,9 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // release the base class resources.
   virtual void ShutDown();
   virtual void StopCacheActivity();
+  NgxServerContext* MakeNgxServerContext();
   // Finds a Cache for the file_cache_path in the config.  If none exists,
-  // creates one, using all the other parameters in the ApacheConfig.
+  // creates one, using all the other parameters in the NgxRewriteOptions.
   // Currently, no checking is done that the other parameters (e.g. cache
   // size, cleanup interval, etc.) are consistent.
   NgxCache* GetCache(NgxRewriteOptions* rewrite_options);
@@ -107,7 +108,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // This helper method contains init procedures invoked by both RootInit()
   // and ChildInit()
   void ParentOrChildInit();
-  // [1] Besides normal startup, Apache also uses a temporary process to
+  // [1] Besides normal startup, nginx also uses a temporary process to
   // syntax check the config file. That basically looks like a complete
   // normal startup and shutdown to the code.
   bool is_root_process() const { return is_root_process_; }

@@ -1559,7 +1559,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
 
   if (cfg_m->driver_factory == NULL) {
-    return NGX_ERROR;
+    return NGX_OK;
   }
 
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
