@@ -48,6 +48,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
+#include "net/instaweb/util/public/pthread_shared_mem.h"
 #include "net/instaweb/util/public/scheduler_thread.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/slow_worker.h"
@@ -74,7 +75,11 @@ const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf)
     : RewriteDriverFactory(new NgxThreadSystem())
-    , shared_mem_runtime_(new NullSharedMem())
+      //#ifdef PAGESPEED_SUPPORT_POSIX_SHARED_MEM
+    , shared_mem_runtime_(new PthreadSharedMem())
+      //#else
+      //, shared_mem_runtime_(new NullSharedMem())
+      //#endif
     , cache_hasher_(20)
     , main_conf_(main_conf)
     , threads_started_(false)

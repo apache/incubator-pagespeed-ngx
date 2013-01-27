@@ -458,6 +458,8 @@ void ps_cleanup_main_conf(void* data) {
   cfg_m->handler = NULL;
   net_instaweb::NgxRewriteDriverFactory::Terminate();
   net_instaweb::NgxRewriteOptions::Terminate();
+  // TODO(oschaaf): terminate shared mem runtime when we update
+  // psol to a later revision that has it.
 }
 
 template <typename ConfT> ConfT* ps_create_conf(ngx_conf_t* cf) {
@@ -566,15 +568,18 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
     // with other modules that actually are interested in these signals
     ps_ignore_sigpipe();
     net_instaweb::NgxRewriteDriverFactory::Initialize();
-    // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
-    // we're done with it.  That never happens, though, because this is the
-    // top-level config and so sticks around as long as we're running.
 
     cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
         parent_cfg_s->options);
-    cfg_m->driver_factory->RootInit();
   }
 
+  cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext();
+  // The server context sets some options when we call global_options(). So
+  // let it do that, then merge in options we got from the config file.
+  // Once we do that we're done with cfg_s->options.
+  cfg_s->server_context->global_options()->Merge(*cfg_s->options);
+  delete cfg_s->options;
+  cfg_s->options = NULL;
 
   return NGX_CONF_OK;
 }
@@ -1552,6 +1557,16 @@ ngx_http_module_t ps_module = {
   ps_merge_loc_conf
 };
 
+// called after configuration is complete, but before nginx starts forking
+ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
+  if (cfg_m->driver_factory != NULL) {
+    cfg_m->driver_factory->RootInit();
+  }
+  return NGX_OK;
+}
+
 // Called when nginx forks worker processes.  No threads should be started
 // before this.
 ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
@@ -1562,26 +1577,15 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     return NGX_OK;
   }
 
+  // ChildInit() will initialise all servercontexts, which we need to
+  // create proxyfetchfactories below
+  cfg_m->driver_factory->ChildInit();
+
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
   ngx_http_core_srv_conf_t** cscfp = static_cast<ngx_http_core_srv_conf_t**>(
       cmcf->servers.elts);
   ngx_uint_t s;
-
-  for (s = 0; s < cmcf->servers.nelts; s++) {
-    ps_srv_conf_t* cfg_s =
-        static_cast<ps_srv_conf_t*>(
-            cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
-    cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext();
-    // The server context sets some options when we call global_options(). So
-    // let it do that, then merge in options we got from the config file.
-    // Once we do that we're done with cfg_s->options.
-    cfg_s->server_context->global_options()->Merge(*cfg_s->options);
-    delete cfg_s->options;
-    cfg_s->options = NULL;
-  }
-
-  cfg_m->driver_factory->ChildInit();
 
   for (s = 0; s < cmcf->servers.nelts; s++) {
     ps_srv_conf_t* cfg_s =
@@ -1606,7 +1610,7 @@ ngx_module_t ngx_pagespeed = {
   ngx_psol::ps_commands,
   NGX_HTTP_MODULE,
   NULL,
-  NULL,
+  ngx_psol::ps_init_module,
   ngx_psol::ps_init_child_process,
   NULL,
   NULL,
