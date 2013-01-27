@@ -24,10 +24,10 @@
 
 namespace net_instaweb {
 
-NgxServerContext::NgxServerContext(NgxRewriteDriverFactory* factory) :
-    ServerContext(factory),
-    ngx_factory_(factory),
-    initialized_(false){
+NgxServerContext::NgxServerContext(NgxRewriteDriverFactory* factory)
+    : ServerContext(factory)
+    , ngx_factory_(factory)
+    , initialized_(false) {
 }
 
 NgxServerContext::~NgxServerContext() {

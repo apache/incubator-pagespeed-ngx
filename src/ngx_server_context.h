@@ -39,11 +39,11 @@ class NgxServerContext : public ServerContext {
   NgxRewriteOptions* config();
   // Should be called after the child process is forked.
   void ChildInit();
-  bool initialized() const { return initialized_; }  
+  bool initialized() const { return initialized_; }
  private:
   NgxRewriteDriverFactory* ngx_factory_;
-  DISALLOW_COPY_AND_ASSIGN(NgxServerContext);
   bool initialized_;
+  DISALLOW_COPY_AND_ASSIGN(NgxServerContext);
 };
 
 }  // namespace net_instaweb

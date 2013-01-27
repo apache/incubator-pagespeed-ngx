@@ -72,13 +72,13 @@ class Writer;
 
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
-NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
-    RewriteDriverFactory(new NgxThreadSystem()),
-    shared_mem_runtime_(new NullSharedMem()),
-    cache_hasher_(20),
-    main_conf_(main_conf),
-    threads_started_(false),
-    is_root_process_(true){
+NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf)
+    : RewriteDriverFactory(new NgxThreadSystem())
+    , shared_mem_runtime_(new NullSharedMem())
+    , cache_hasher_(20)
+    , main_conf_(main_conf)
+    , threads_started_(false)
+    , is_root_process_(true) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
@@ -97,12 +97,12 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   if (!is_root_process_ && slow_worker_ != NULL) {
     slow_worker_->ShutDown();
   }
-  
+
   ShutDown();
 
   // We still have registered a pool deleter here, right?  This seems risky...
   STLDeleteElements(&uninitialized_server_contexts_);
-  
+
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
     NgxCache* cache = p->second;

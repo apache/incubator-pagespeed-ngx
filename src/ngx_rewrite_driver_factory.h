@@ -78,7 +78,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Currently, no checking is done that the other parameters (e.g. cache
   // size, cleanup interval, etc.) are consistent.
   NgxCache* GetCache(NgxRewriteOptions* rewrite_options);
-  
+
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
   }
@@ -113,7 +113,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // normal startup and shutdown to the code.
   bool is_root_process() const { return is_root_process_; }
   void RootInit();
-  void ChildInit();  
+  void ChildInit();
+
  private:
   SimpleStats simple_stats_;
   Timer* timer_;
@@ -125,7 +126,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   NgxRewriteOptions* main_conf_;
   typedef std::set<NgxServerContext*> NgxServerContextSet;
   NgxServerContextSet uninitialized_server_contexts_;
-  
+
   // memcache connections are expensive.  Just allocate one per
   // distinct server-list.  At the moment there is no consistency
   // checking for other parameters.  Note that each memcached
@@ -148,7 +149,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   std::vector<AsyncCache*> async_caches_;
   bool threads_started_;
   bool is_root_process_;
-  
+
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 
