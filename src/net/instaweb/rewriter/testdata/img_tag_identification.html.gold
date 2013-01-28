@@ -29,6 +29,7 @@
 				
 			</a>
 <td>
+<img height=1 width=1 src=http://file.name/xPuzzle.jpg.pagespeed.ic.0.jpg alt="Attempt to prefetch & preoptimize Puzzle.  Shouldn't be resized.">
 <img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAEBMgA7" alt=""/>
 <!-- img with long script url (gets truncated?) -->
 <img alt="" id=livestats src="o.gif?Nonsensical~but~very~long/and~slashy~CGI~URL~"/>

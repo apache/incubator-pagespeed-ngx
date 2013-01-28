@@ -357,7 +357,7 @@ void ImageRewriteFilter::StartDocumentImpl() {
 // Allocate and initialize CompressionOptions object based on RewriteOptions and
 // ResourceContext.
 Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
-    const ResourceContext& context, const ResourcePtr& input_resource,
+    const ResourceContext& resource_context, const ResourcePtr& input_resource,
     bool is_css) {
   Image::CompressionOptions* image_options = new Image::CompressionOptions();
   int64 input_size = static_cast<int64>(input_resource->contents().size());
@@ -366,11 +366,11 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
   // support progressive which causes a perceptible delay in the loading of
   // large background images.
   const RewriteOptions* options = driver_->options();
-  if ((context.libwebp_level() != ResourceContext::LIBWEBP_NONE) &&
+  if ((resource_context.libwebp_level() != ResourceContext::LIBWEBP_NONE) &&
       // TODO(vchudnov): Consider whether we want to treat CSS images
       // differently.
       (!is_css || input_size <= options->max_image_bytes_for_webp_in_css())) {
-    SetWebpCompressionOptions(context, *options, input_resource->url(),
+    SetWebpCompressionOptions(resource_context, *options, input_resource->url(),
                               image_options);
   }
   image_options->jpeg_quality = options->image_recompress_quality();
@@ -426,7 +426,7 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
 // if it's unnecessary or fails.
 bool ImageRewriteFilter::ResizeImageIfNecessary(
     const RewriteContext* rewrite_context, const GoogleString& url,
-    ResourceContext* context, Image* image, CachedResult* cached) {
+    ResourceContext* resource_context, Image* image, CachedResult* cached) {
   bool resized = false;
   // Begin by resizing the image if necessary
   ImageDim image_dim;
@@ -436,9 +436,9 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
   // page or as desired by mobile screen resolutions. If we succeed in doing so,
   // that will be the desired image size. Otherwise we may fill in
   // desired_image_dims later based on actual image size.
-  ImageDim* desired_dim = context->mutable_desired_image_dims();
+  ImageDim* desired_dim = resource_context->mutable_desired_image_dims();
   const ImageDim* post_resize_dim = &image_dim;
-  if (ShouldResize(*context, image, desired_dim)) {
+  if (ShouldResize(*resource_context, image, desired_dim)) {
     const char* message;  // Informational message for logging only.
     if (image->ResizeTo(*desired_dim)) {
       post_resize_dim = desired_dim;
@@ -466,7 +466,7 @@ bool ImageRewriteFilter::ResizeImageIfNecessary(
 // Determines whether an image should be resized based on the current options.
 //
 // Returns the dimensions to resize to in *desired_dimensions.
-bool ImageRewriteFilter::ShouldResize(const ResourceContext& context,
+bool ImageRewriteFilter::ShouldResize(const ResourceContext& resource_context,
                                       Image* image,
                                       ImageDim* desired_dim) {
   const RewriteOptions* options = driver_->options();
@@ -474,11 +474,11 @@ bool ImageRewriteFilter::ShouldResize(const ResourceContext& context,
     return false;
   }
 
-  *desired_dim = context.desired_image_dims();
+  *desired_dim = resource_context.desired_image_dims();
   ImageDim image_dim;
   image->Dimensions(&image_dim);
 
-  UpdateDesiredImageDimsIfNecessary(image_dim, context, desired_dim);
+  UpdateDesiredImageDimsIfNecessary(image_dim, resource_context, desired_dim);
 
   if (options->Enabled(RewriteOptions::kResizeImages) &&
       ImageUrlEncoder::HasValidDimension(*desired_dim) &&
@@ -528,17 +528,18 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
                                input_resource->url().c_str());
   MessageHandler* message_handler = driver_->message_handler();
   StringVector urls;
-  ResourceContext context;
+  ResourceContext resource_context;
   const RewriteOptions* options = driver_->options();
 
-  context.CopyFrom(*rewrite_context->resource_context());
+  resource_context.CopyFrom(*rewrite_context->resource_context());
 
-  if (!encoder_.Decode(result->name(), &urls, &context, message_handler)) {
+  if (!encoder_.Decode(result->name(),
+                       &urls, &resource_context, message_handler)) {
     return kRewriteFailed;
   }
 
   Image::CompressionOptions* image_options =
-      ImageOptionsForLoadedResource(context, input_resource,
+      ImageOptionsForLoadedResource(resource_context, input_resource,
                                     rewrite_context->is_css_);
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),
@@ -571,7 +572,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     rewrite_result = kRewriteFailed;
     CachedResult* cached = result->EnsureCachedResultCreated();
     bool resized = ResizeImageIfNecessary(
-        rewrite_context, input_resource->url(), &context, image.get(), cached);
+        rewrite_context, input_resource->url(),
+        &resource_context, image.get(), cached);
 
     // Now re-compress the (possibly resized) image, and decide if it's
     // saved us anything.
@@ -657,8 +659,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
         image_size <= options->max_image_size_low_resolution_bytes()) {
       Image::CompressionOptions* image_options =
           new Image::CompressionOptions();
-      SetWebpCompressionOptions(context, *options, input_resource->url(),
-                                image_options);
+      SetWebpCompressionOptions(resource_context, *options,
+                                input_resource->url(), image_options);
 
       image_options->jpeg_quality = options->image_recompress_quality();
       if (options->image_jpeg_recompress_quality() != -1) {
@@ -695,7 +697,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       if (image->Contents().size() > low_image->Contents().size()) {
         // TODO(pulkitg): Add a some sort of guarantee on how small inline
         // images will be.
-        if (context.mobile_user_agent()) {
+        if (resource_context.mobile_user_agent()) {
           ResizeLowQualityImage(low_image.get(), input_resource, cached);
         } else {
           cached->set_low_resolution_inlined_data(low_image->Contents().data(),
@@ -837,7 +839,14 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
   // image dimension information from HTML/CSS.
   if (options->Enabled(RewriteOptions::kResizeImages) &&
       !driver_->options()->image_preserve_urls()) {
-    GetDimensions(element, resource_context->mutable_desired_image_dims());
+    ImageDim* desired_dim = resource_context->mutable_desired_image_dims();
+    GetDimensions(element, desired_dim);
+    if (desired_dim->width() == 0 || desired_dim->height() == 0 ||
+        (desired_dim->width() == 1 && desired_dim->height() == 1)) {
+      // This is either a beacon image, or an attempt to prefetch.  Drop the
+      // desired dimensions so that the image is not resized.
+      resource_context->clear_desired_image_dims();
+    }
   }
   StringPiece url(src->DecodedValueOrNull());
 
@@ -891,6 +900,83 @@ bool ImageRewriteFilter::FinishRewriteCssImageUrl(
   return false;
 }
 
+namespace {
+
+// Skip ascii whitespace, returning pointer to first non-whitespace character in
+// accordance with:
+//   http://www.whatwg.org/specs/web-apps/current-work/multipage/
+//                  common-microsyntaxes.html#space-character
+const char* SkipAsciiWhitespace(const char* position) {
+  while (*position <= ' ' &&  // Quickly skip if no leading whitespace
+         (*position == ' ' || *position == '\x09' || *position == '\x0A' ||
+          *position == '\x0C' || *position == '\x0D')) {
+    ++position;
+  }
+  return position;
+}
+
+bool GetDimensionAttribute(
+    const HtmlElement* element, HtmlName::Keyword name, int* value) {
+  const HtmlElement::Attribute* attribute = element->FindAttribute(name);
+  if (attribute == NULL) {
+    return false;
+  }
+  const char* position = attribute->DecodedValueOrNull();
+  return ImageRewriteFilter::ParseDimensionAttribute(position, value);
+}
+
+// If the element has a width attribute, set it in page_dim.
+void SetWidthFromAttribute(const HtmlElement* element, ImageDim* page_dim) {
+  int32 width;
+  if (GetDimensionAttribute(element, HtmlName::kWidth, &width)) {
+    page_dim->set_width(width);
+  }
+}
+
+// If the element has a height attribute, set it in page_dim.
+void SetHeightFromAttribute(const HtmlElement* element, ImageDim* page_dim) {
+  int32 height;
+  if (GetDimensionAttribute(element, HtmlName::kHeight, &height)) {
+    page_dim->set_height(height);
+  }
+}
+
+void DeleteMatchingImageDimsAfterInline(
+    const CachedResult* cached, HtmlElement* element) {
+  // We used to take the absence of desired_image_dims here as license to delete
+  // dimensions.  That was incorrect, as sometimes there were dimensions in the
+  // page but the image was being enlarged on page and we can't strip the
+  // enlargement out safely.  Now we also strip desired_image_dims when the
+  // image is 1x1 or less.  As a result, we go back to the html to determine
+  // whether it's safe to strip the width and height attributes, doing so only
+  // if all dimensions that are present match the actual post-optimization image
+  // dimensions.
+  if (cached->has_image_file_dims()) {
+    int attribute_width, attribute_height = -1;
+    if (GetDimensionAttribute(element, HtmlName::kWidth, &attribute_width)) {
+      if (cached->image_file_dims().width() == attribute_width) {
+        // Width matches, height must either be absent or match.
+        if (!GetDimensionAttribute(
+                element, HtmlName::kHeight, &attribute_height)) {
+          // No height, just delete width.
+          element->DeleteAttribute(HtmlName::kWidth);
+        } else if (cached->image_file_dims().height() == attribute_height) {
+          // Both dimensions match, delete both.
+          element->DeleteAttribute(HtmlName::kWidth);
+          element->DeleteAttribute(HtmlName::kHeight);
+        }
+      }
+    } else if (
+        GetDimensionAttribute(element, HtmlName::kHeight, &attribute_height) &&
+        cached->image_file_dims().height() == attribute_height) {
+      // No width, matching height
+      element->DeleteAttribute(HtmlName::kHeight);
+    }
+  }
+}
+
+}  // namespace
+
 bool ImageRewriteFilter::FinishRewriteImageUrl(
     const CachedResult* cached, const ResourceContext* resource_context,
     HtmlElement* element, HtmlElement::Attribute* src, int image_index,
@@ -926,24 +1012,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
                             HtmlElement::DOUBLE_QUOTE);
     } else {
       src->SetValue(data_url);
-    }
-    // TODO(jmaessen): We used to take the absence of desired_image_dims here as
-    // license to delete dimensions.  That was incorrect, as sometimes there
-    // were dimensions in the page but the image was being enlarged on page and
-    // we can't strip the enlargement out safely.  So right now, if the size
-    // information exactly matches the size of the image, we'll inline the
-    // image, but resource_context->has_desired_image_dims() will be false (so
-    // that the rewritten image url doesn't contain the image dimensions) and
-    // we'll leave the dimensions in place unnecessarily.
-    if (cached->has_image_file_dims() &&
-        resource_context->has_desired_image_dims() &&
-        (cached->image_file_dims().width() ==
-         resource_context->desired_image_dims().width()) &&
-        (cached->image_file_dims().height() ==
-         resource_context->desired_image_dims().height())) {
-      // Delete dimensions, as they they match the given inline image data.
-      element->DeleteAttribute(HtmlName::kWidth);
-      element->DeleteAttribute(HtmlName::kHeight);
+      DeleteMatchingImageDimsAfterInline(cached, element);
     }
     // Note the use of the ORIGINAL url not the data url.
     LocalStorageCacheFilter::AddLscAttributes(src_value, *cached,
@@ -1065,49 +1134,6 @@ bool ImageRewriteFilter::HasAnyDimensions(HtmlElement* element) {
   css_util::StyleExtractor extractor(element);
   return extractor.HasAnyDimensions();
 }
-
-namespace {
-
-// Skip ascii whitespace, returning pointer to first non-whitespace character in
-// accordance with:
-//   http://www.whatwg.org/specs/web-apps/current-work/multipage/
-//                  common-microsyntaxes.html#space-character
-const char* SkipAsciiWhitespace(const char* position) {
-  while (*position <= ' ' &&  // Quickly skip if no leading whitespace
-         (*position == ' ' || *position == '\x09' || *position == '\x0A' ||
-          *position == '\x0C' || *position == '\x0D')) {
-    ++position;
-  }
-  return position;
-}
-
-bool GetDimensionAttribute(
-    const HtmlElement* element, HtmlName::Keyword name, int* value) {
-  const HtmlElement::Attribute* attribute = element->FindAttribute(name);
-  if (attribute == NULL) {
-    return false;
-  }
-  const char* position = attribute->DecodedValueOrNull();
-  return ImageRewriteFilter::ParseDimensionAttribute(position, value);
-}
-
-// If the element has a width attribute, set it in page_dim.
-void SetWidthFromAttribute(const HtmlElement* element, ImageDim* page_dim) {
-  int32 width;
-  if (GetDimensionAttribute(element, HtmlName::kWidth, &width)) {
-    page_dim->set_width(width);
-  }
-}
-
-// If the element has a height attribute, set it in page_dim.
-void SetHeightFromAttribute(const HtmlElement* element, ImageDim* page_dim) {
-  int32 height;
-  if (GetDimensionAttribute(element, HtmlName::kHeight, &height)) {
-    page_dim->set_height(height);
-  }
-}
-
-}  // namespace
 
 bool ImageRewriteFilter::ParseDimensionAttribute(
     const char* position, int* value) {
@@ -1257,8 +1283,8 @@ void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
   semantic_type::Category category;
   HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
       element, driver_, &category);
-  if (src == NULL || src->DecodedValueOrNull() == NULL ||
-      category != semantic_type::kImage) {
+  if (category != semantic_type::kImage ||
+      src == NULL || src->DecodedValueOrNull() == NULL) {
     return;
   }
 

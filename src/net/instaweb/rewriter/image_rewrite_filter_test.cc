@@ -72,6 +72,11 @@ const char kLargePngFile[] = "Large.png";
 const char kPuzzleJpgFile[] = "Puzzle.jpg";
 const char kSmallDataFile[] = "small-data.png";
 
+const char kChefDims[] = " width=\"192\" height=\"256\"";
+
+// Size of a 1x1 image.
+const char kPixelDims[] = " width='1' height='1'";
+
 // A callback for HTTP cache that stores body and string representation
 // of headers into given strings.
 class HTTPCacheStringCallback : public OptionsAwareHTTPCacheCallback {
@@ -796,6 +801,24 @@ TEST_F(ImageRewriteTest, ResizeTest) {
                     kResizedDims, kResizedDims, true, false);
 }
 
+TEST_F(ImageRewriteTest, ResizeIsReallyPrefetch) {
+  // Make sure we don't resize a large image to 1x1, as it's
+  // really an image prefetch request.
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  rewrite_driver()->AddFilters();
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
+                    kPixelDims, kPixelDims, false, false);
+}
+
+TEST_F(ImageRewriteTest, OptimizeRequestedPrefetch) {
+  // We shouldn't resize this image, but we should optimize it.
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->EnableFilter(RewriteOptions::kRecompressJpeg);
+  rewrite_driver()->AddFilters();
+  TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
+                    kPixelDims, kPixelDims, true, false);
+}
+
 TEST_F(ImageRewriteTest, ResizeHigherDimensionTest) {
   options()->EnableFilter(RewriteOptions::kResizeImages);
   rewrite_driver()->AddFilters();
@@ -1085,7 +1108,6 @@ TEST_F(ImageRewriteTest, InlineTestWithoutOptimize) {
   options()->EnableFilter(RewriteOptions::kInlineImages);
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
   rewrite_driver()->AddFilters();
-  const char kChefDims[] = " width=\"192\" height=\"256\"";
   // Without resize, it's not optimizable.
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", kChefDims, false, false);
@@ -1105,6 +1127,28 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
   // size information, which is now embedded in the image itself anyway.
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypePng,
                     kResizedDims, "", true, true);
+}
+
+TEST_F(ImageRewriteTest, DimensionStripAfterInline) {
+  options()->set_image_inline_max_bytes(100000);
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  rewrite_driver()->AddFilters();
+  const char kChefWidth[] = " width=192";
+  const char kChefHeight[] = " height=256";
+  // With all specified dimensions matching, dims are stripped after inlining.
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    kChefDims, "", false, true);
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    kChefWidth, "", false, true);
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    kChefHeight, "", false, true);
+  // If we stretch the image in either dimension, we keep the dimensions.
+  const char kChefWider[] = " width=384 height=256";
+  const char kChefTaller[] = " width=192 height=512";
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    kChefWider, kChefWider, false, true);
+  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
+                    kChefTaller, kChefTaller, false, true);
 }
 
 TEST_F(ImageRewriteTest, InlineCriticalOnly) {
@@ -1158,14 +1202,10 @@ TEST_F(ImageRewriteTest, InlineNoRewrite) {
   options()->set_image_inline_max_bytes(30000);
   options()->EnableFilter(RewriteOptions::kInlineImages);
   rewrite_driver()->AddFilters();
-  const char kChefDims[] = " width=192 height=256";
   // This image is just small enough to inline, which also erases
   // dimension information.
-  // TODO(jmaessen): At present we're conservatively leaving it in
-  // due to problems with resizing in the field.  The second set
-  // of dimensions ought to be "".
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
-                    kChefDims, kChefDims, false, true);
+                    kChefDims, "", false, true);
   // This image is too big to inline, and we don't insert missing
   // dimension information because that is not explicitly enabled.
   TestSingleRewrite(kPuzzleJpgFile, kContentTypeJpeg, kContentTypeJpeg,
@@ -1541,7 +1581,6 @@ TEST_F(ImageRewriteTest, InlinableImagesInsertedIntoPropertyCache) {
   // If image_inlining_identify_and_cache_without_rewriting() is set in
   // RewriteOptions, images that would have been inlined are instead inserted
   // into the property cache.
-  const char kChefDims[] = " width=192 height=256";
   options()->set_image_inline_max_bytes(30000);
   options()->set_cache_small_images_unrewritten(true);
   options()->EnableFilter(RewriteOptions::kInlineImages);

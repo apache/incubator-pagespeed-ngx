@@ -1202,6 +1202,7 @@ void RewriteOptions::DisallowTroublesomeResources() {
   // Disallow("*//stats.wordpress.com/e-*");
 
   DisableLazyloadForClassName("*dfcg*");
+  DisableLazyloadForClassName("*lazy*");
   DisableLazyloadForClassName("*nivo*");
   DisableLazyloadForClassName("*slider*");
 
