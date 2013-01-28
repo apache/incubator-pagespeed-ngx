@@ -290,7 +290,7 @@ GoogleString ApacheRewriteDriverFactory::CreateShmMetadataCache(
     int64 size_cap;
     const int kSectors = 128;
     MetadataShmCache::ComputeDimensions(
-        size_kb, 2 /* block/entry ratio, based empirically off load tests  */,
+        size_kb, 2 /* block/entry ratio, based empirically off load tests */,
         kSectors, &entries, &blocks, &size_cap);
 
     // Make sure the size cap is not unusably low. In particular, with 2K
@@ -427,8 +427,8 @@ void ApacheRewriteDriverFactory::SetupCaches(
   http_cache->set_max_cacheable_response_content_length(max_content_length);
   server_context->set_http_cache(http_cache);
 
-  // And now the metadata cache. metadata_l1 == NULL will be used to denote
-  // a 1-level cache.
+  // And now the metadata cache. If we only have one level, it will be in
+  // metadata_l2, with metadata_l1 set to NULL.
   CacheInterface* metadata_l1 = NULL;
   CacheInterface* metadata_l2 = NULL;
   size_t l1_size_limit = WriteThroughCache::kUnlimited;

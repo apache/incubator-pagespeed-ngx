@@ -24,6 +24,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_cache.h"
@@ -42,7 +43,6 @@ class ApacheMessageHandler;
 class ApacheServerContext;
 class AprMemCache;
 class AsyncCache;
-class CacheInterface;
 class FileSystem;
 class Hasher;
 class MessageHandler;
@@ -71,7 +71,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   static const char kMemcached[];
   static const char kShmCache[];
 
-  // Path prefix were we serve JS snippets needed by some filters.
+  // Path prefix where we serve JS snippets needed by some filters.
   static const char kStaticJavaScriptPrefix[];
 
   ApacheRewriteDriverFactory(server_rec* server, const StringPiece& version);
