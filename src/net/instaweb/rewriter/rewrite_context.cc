@@ -1903,12 +1903,6 @@ void RewriteContext::StartRewriteForFetch() {
   output->set_cached_result(partition);
   ++outstanding_rewrites_;
   if (ok_to_rewrite) {
-    // To avoid rewrites from delaying fetches, we try to fallback
-    // to the original version if rewriting takes too long.
-    if (CanFetchFallbackToOriginal(kFallbackDiscretional)) {
-      fetch_->SetupDeadlineAlarm();
-    }
-
     // Generally, we want to do all rewriting in the low-priority thread,
     // to ensure the main rewrite thread is always responsive. However, the
     // low-priority thread's tasks may get cancelled due to load-shedding,
@@ -1918,6 +1912,9 @@ void RewriteContext::StartRewriteForFetch() {
     InvokeRewriteFunction* call_rewrite =
         new InvokeRewriteFunction(this, 0, output);
     if (CanFetchFallbackToOriginal(kFallbackDiscretional)) {
+      // To avoid rewrites from delaying fetches, we try to fallback
+      // to the original version if rewriting takes too long.
+      fetch_->SetupDeadlineAlarm();
       Driver()->AddLowPriorityRewriteTask(call_rewrite);
     } else {
       Driver()->AddRewriteTask(call_rewrite);
