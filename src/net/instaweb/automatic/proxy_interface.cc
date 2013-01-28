@@ -24,6 +24,8 @@
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -499,6 +501,16 @@ void ProxyInterface::ProxyRequestCallback(
     property_callback.reset(InitiatePropertyCacheLookup(
         is_resource_fetch, *request_url, options, async_fetch,
         &page_callback_added));
+    if (options != NULL) {
+      server_context_->ComputeSignature(options);
+      LogRecord* log_record = async_fetch->request_context()->log_record();
+      {
+        ScopedMutex lock(log_record->mutex());
+        log_record->logging_info()->set_options_signature_hash(
+            server_context_->contents_hasher()->HashToUint64(
+                options->signature()));
+      }
+    }
 
     if (is_blink_request && apply_blink_critical_line && page_callback_added) {
       // In blink flow, we have to modify RewriteOptions after the

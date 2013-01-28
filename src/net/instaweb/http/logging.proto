@@ -142,7 +142,7 @@ message RewriterInfo {
 }
 
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 12
+// Next id for LoggingInfo: 13
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -167,4 +167,6 @@ message LoggingInfo {
   optional bool is_html_response = 10 [ default = false ];
   // Whether request URL is disallowed.
   optional bool is_url_disallowed = 11 [ default = false ];
+  // RewriteOptions signature hash.
+  optional int64 options_signature_hash = 12;
 }
