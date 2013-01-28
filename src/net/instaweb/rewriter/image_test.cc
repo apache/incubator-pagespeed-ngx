@@ -586,7 +586,8 @@ TEST_F(ImageTest, UseJpegLossessIfInputQualityIsLowTest) {
   ImagePtr image(ReadFromFileWithOptions(kAppSegments, &buffer, options));
   EXPECT_GT(buffer.size(), image->output_size());
   EXPECT_EQ(
-      50, JpegUtils::GetImageQualityFromImage(image->Contents().as_string()));
+      50, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
+                                              image->Contents().size()));
 
   // When num progressive scans is set, we use lossless path so we recompress
   // with quality 85.
@@ -598,7 +599,8 @@ TEST_F(ImageTest, UseJpegLossessIfInputQualityIsLowTest) {
   image.reset(ReadFromFileWithOptions(kAppSegments, &buffer, options));
   EXPECT_GT(buffer.size(), image->output_size());
   EXPECT_EQ(
-      85, JpegUtils::GetImageQualityFromImage(image->Contents().as_string()));
+      85, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
+                                              image->Contents().size()));
 
   // Empty image will return -1 when we try to determine its quality.
   options = new Image::CompressionOptions();
@@ -606,7 +608,8 @@ TEST_F(ImageTest, UseJpegLossessIfInputQualityIsLowTest) {
   options->progressive_jpeg = true;
   image.reset(NewImage("", "", GTestTempDir(), options, &handler_));
   EXPECT_EQ(
-      -1, JpegUtils::GetImageQualityFromImage(image->Contents().as_string()));
+      -1, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
+                                              image->Contents().size()));
 }
 
 TEST_F(ImageTest, JpegRetainColorProfileTest) {
