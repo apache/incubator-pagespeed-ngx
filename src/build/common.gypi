@@ -67,9 +67,7 @@
     ],
   },
   'includes': [
-    # Import base Chromium build system, and pagespeed customizations of it.
-    '../third_party/chromium/src/build/common.gypi',
-    '../third_party/libpagespeed/src/build/pagespeed_overrides.gypi',
+    '../third_party/libpagespeed/src/build/common.gypi',
   ],
   'target_defaults': {
     'conditions': [

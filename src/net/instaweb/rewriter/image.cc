@@ -272,12 +272,6 @@ class ImageImpl : public Image {
     return false;
   }
 
-  int GetJpegQualityFromImage(const StringPiece& contents) {
-    const int quality = JpegUtils::GetImageQualityFromImage(contents.data(),
-                                                            contents.size());
-    return quality;
-  }
-
   const GoogleString file_prefix_;
   MessageHandler* handler_;
   IplImage* opencv_image_;        // Lazily filled on OpenCV load.
@@ -1077,7 +1071,8 @@ bool ImageImpl::QuickLoadGifToOutputContents() {
 
 void ImageImpl::ConvertToJpegOptions(const Image::CompressionOptions& options,
                                      JpegCompressionOptions* jpeg_options) {
-  int input_quality = GetJpegQualityFromImage(original_contents_);
+  int input_quality = JpegUtils::GetImageQualityFromImage(
+      original_contents_.as_string());
   jpeg_options->retain_color_profile = options.retain_color_profile;
   jpeg_options->retain_exif_data = options.retain_exif_data;
   int64 output_quality = std::min(ImageHeaders::kMaxJpegQuality,

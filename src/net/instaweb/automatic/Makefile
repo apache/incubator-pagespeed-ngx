@@ -112,7 +112,6 @@ BASE_LIBS = \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_reader.a \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_jpeg_utils.a \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_png_optimizer.a \
-  third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_scanline_utils.a \
   third_party/libpagespeed/src/pagespeed/image_compression/libpagespeed_webp_optimizer.a \
   third_party/libpagespeed/src/pagespeed/js/libpagespeed_jsminify.a \
   third_party/libpagespeed/src/pagespeed/proto/libpagespeed_output_pb.a \
