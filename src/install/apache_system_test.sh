@@ -663,9 +663,14 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   fi
 
   start_test Embed image configuration in rewritten image URL.
+
+  # The embedded configuration is placed between the "pagespeed" and "ic", e.g.
+  # *xPuzzle.jpg.pagespeed.gp+jp+pj+js+rj+rp+rw+ri+cp+md+iq=73.ic.oFXPiLYMka.jpg
+  # We use a regex matching "gp+jp+pj+js+rj+rp+rw+ri+cp+md+iq=73" rather than
+  # spelling it out to avoid test regolds when we add image filter IDs.
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save -recursive \
       http://embed_config_html.example.com/embed_config.html \
-      'grep -c \.pagespeed\.' 2
+      'grep -c \.pagespeed\.[a-z+=0-9]*\.ic\.' 1
 
   # with the default rewriters in vhost embed_config_resources.example.com
   # the image will be >200k.  But by enabling resizing & compression 73
