@@ -104,6 +104,13 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // called after the caller has finished any forking it intends to do.
   void StartThreads();
 
+  bool use_per_vhost_statistics() const {
+    return use_per_vhost_statistics_;
+  }
+
+  void set_use_per_vhost_statistics(bool x) {
+    use_per_vhost_statistics_ = x;
+  }
  private:
   SimpleStats simple_stats_;
   Timer* timer_;
@@ -135,7 +142,11 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   std::vector<AprMemCache*> memcache_servers_;
   std::vector<AsyncCache*> async_caches_;
   bool threads_started_;
-
+  // If true, we'll have a separate statistics object for each vhost
+  // (along with a global aggregate), rather than just a single object
+  // aggregating all of them.
+  bool use_per_vhost_statistics_;
+  
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

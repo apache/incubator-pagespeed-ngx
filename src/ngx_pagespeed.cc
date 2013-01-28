@@ -1,6 +1,6 @@
 /*
  * Copyright 2012 Google Inc.
- *
+*
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -1473,6 +1473,155 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   CHECK(rc == NGX_OK);
 
   return ngx_http_output_filter(r, out);
+}
+
+ngx_int_t ps_statistics_handler(ngx_http_request_t* r,
+                                net_instaweb::NgxServerContext* server_context) {
+  StringPiece request_uri_path = str_to_string_piece(r->uri);
+  bool general_stats_request =
+      (net_instaweb::StringCaseStartsWith(request_uri_path, "/ngx_pagespeed_statistics") == 0);
+  bool global_stats_request =
+      (net_instaweb::StringCaseStartsWith(request_uri_path, "/ngx_pagespeed_global_statistics") == 0);
+  net_instaweb::NgxRewriteDriverFactory* factory =
+      static_cast<net_instaweb::NgxRewriteDriverFactory*>(server_context->factory());
+  int64 start_time, end_time, granularity_ms;
+  std::set<GoogleString> var_titles;
+  std::set<GoogleString> hist_titles;
+  if (general_stats_request && !factory->use_per_vhost_statistics()) {
+    global_stats_request = true;
+  }
+
+  // Choose the correct statistics.
+  net_instaweb::Statistics* statistics = global_stats_request ?
+      factory->statistics() : server_context->statistics();
+
+  // TODO(oschaaf): wire up ps_statistics_handler
+  // TODO(oschaaf): set per_vhost_stats on factory from config
+  // TODO(oschaaf): port write_handler_response, refactor statis js
+  // handler to use that if possible
+  /*
+  QueryParams params;
+  params.Parse(request->args);
+
+  // Parse various mode query params.
+  bool print_normal_config = params.Has("config");
+  bool print_spdy_config = params.Has("spdy_config");
+
+  // JSON statistics handling is done only if we have a console logger.
+  bool json = false;
+  if (statistics->console_logger() != NULL) {
+    // Default values for start_time, end_time, and granularity_ms in case the
+    // query does not include these parameters.
+    start_time = 0;
+    end_time = statistics->console_logger()->timer()->NowMs();
+    // Granularity is the difference in ms between data points. If it is not
+    // specified by the query, the default value is 3000 ms, the same as the
+    // default logging granularity.
+    granularity_ms = 3000;
+    for (int i = 0; i < params.size(); ++i) {
+            const GoogleString value =
+                (params.value(i) == NULL) ? "" : *params.value(i);
+            const char* name = params.name(i);
+            if (strcmp(name, "json") == 0) {
+              json = true;
+            } else if (strcmp(name, "start_time") == 0) {
+              StringToInt64(value, &start_time);
+            } else if (strcmp(name, "end_time") == 0) {
+              StringToInt64(value, &end_time);
+            } else if (strcmp(name, "var_titles") == 0) {
+              std::vector<StringPiece> variable_names;
+              SplitStringPieceToVector(value, ",", &variable_names, true);
+              for (size_t i = 0; i < variable_names.size(); ++i) {
+                var_titles.insert(variable_names[i].as_string());
+              }
+            } else if (strcmp(name, "hist_titles") == 0) {
+              std::vector<StringPiece> histogram_names;
+              SplitStringPieceToVector(value, ",", &histogram_names, true);
+              for (size_t i = 0; i < histogram_names.size(); ++i) {
+                // TODO(morlovich): Cleanup & publicize UrlToFileNameEncoder::Unescape
+                // and use it here, instead of this GlobalReplaceSubstring hack.
+                GoogleString name = histogram_names[i].as_string();
+                GlobalReplaceSubstring("%20", " ", &(name));
+                hist_titles.insert(name);
+              }
+            } else if (strcmp(name, "granularity") == 0) {
+              StringToInt64(value, &granularity_ms);
+            }
+    }
+  }
+  GoogleString output;
+  StringWriter writer(&output);
+  if (json) {
+    statistics->console_logger()->DumpJSON(var_titles, hist_titles,
+                                           start_time, end_time,
+                                           granularity_ms, &writer,
+                                           message_handler);
+  } else {
+    // Generate some navigational links to the right to help
+    // our users get to other modes.
+    writer.Write(
+                "<div style='float:right'>View "
+                        "<a href='?config'>Configuration</a>, "
+                        "<a href='?spdy_config'>SPDY Configuration</a>, "
+                        "<a href='?'>Statistics</a> "
+                        "(<a href='?memcached'>with memcached Stats</a>). "
+                "</div>",
+                message_handler);
+
+    // Only print stats or configuration, not both.
+    if (!print_normal_config && !print_spdy_config) {
+      writer.Write(global_stats_request ?
+                   "Global Statistics" : "VHost-Specific Statistics",
+                   message_handler);
+
+      // Write <pre></pre> for Dump to keep good format.
+      writer.Write("<pre>", message_handler);
+      statistics->Dump(&writer, message_handler);
+      writer.Write("</pre>", message_handler);
+      statistics->RenderHistograms(&writer, message_handler);
+
+      if (global_stats_request) {
+        // We don't want to print this in per-vhost info since it would leak
+        // all the declared caches.
+        GoogleString shm_stats;
+        factory->PrintShmMetadataCacheStats(&shm_stats);
+        writer.Write(shm_stats, message_handler);
+      }
+
+      if (params.Has("memcached")) {
+        GoogleString memcached_stats;
+        factory->PrintMemCacheStats(&memcached_stats);
+        if (!memcached_stats.empty()) {
+          WritePre(memcached_stats, &writer, message_handler);
+        }
+      }
+    }
+
+    if (print_normal_config) {
+      writer.Write("Configuration:<br>", message_handler);
+      WritePre(server_context->config()->OptionsToString(),
+               &writer, message_handler);
+    }
+
+    if (print_spdy_config) {
+      ApacheConfig* spdy_config = server_context->SpdyConfig();
+      if (spdy_config == NULL) {
+        writer.Write("SPDY-specific configuration missing, using default.",
+                     message_handler);
+      } else {
+        writer.Write("SPDY-specific configuration:<br>", message_handler);
+        WritePre(spdy_config->OptionsToString(), &writer, message_handler);
+      }
+    }
+  }
+
+  if (json) {
+    write_handler_response(output, request, kContentTypeJson);
+  } else {
+    write_handler_response(output, request);
+  }
+  */
+  return NGX_OK;
 }
 
 ngx_int_t

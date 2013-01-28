@@ -76,7 +76,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
     shared_mem_runtime_(new NullSharedMem()),
     cache_hasher_(20),
     main_conf_(main_conf),
-    threads_started_(false) {
+    threads_started_(false),
+    use_per_vhost_statistics_(false) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
