@@ -171,6 +171,8 @@ ngx_int_t string_piece_to_buffer_chain(
   return NGX_OK;
 }
 
+// TODO(oschaaf): check handling of 'special' fields, like:
+// content-length, content-type
 ngx_int_t copy_response_headers_to_ngx(ngx_http_request_t* r,
                                 const net_instaweb::ResponseHeaders& pagespeed_headers) {
   ngx_http_headers_out_t* headers_out = &r->headers_out;
@@ -1511,6 +1513,8 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
   return ngx_http_next_header_filter(r);
 }
 
+// TOOD(oschaaf): see if we can make ps_static_handler
+// use write_handler_response? for now, minimize the diff
 ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
 
@@ -1630,9 +1634,11 @@ void write_handler_response(const StringPiece& output, ngx_http_request_t* r,
   write_handler_response(output, r, net_instaweb::kContentTypeHtml, timer);
 }
 
+// TODO(oschaaf): set per_vhost_stats on factory from config  
 ngx_int_t ps_statistics_handler(ngx_http_request_t* r,
                                 net_instaweb::NgxServerContext* server_context) {
   StringPiece request_uri_path = str_to_string_piece(r->uri);
+  // TODO(oschaaf): declare these urls somewhere above / don't duplicate them
   bool general_stats_request =
       (net_instaweb::StringCaseStartsWith(request_uri_path, "/ngx_pagespeed_statistics") == 0);
   bool global_stats_request =
@@ -1652,15 +1658,10 @@ ngx_int_t ps_statistics_handler(ngx_http_request_t* r,
   net_instaweb::Statistics* statistics = global_stats_request ?
       factory->statistics() : server_context->statistics();
   
-  // TODO(oschaaf): set per_vhost_stats on factory from config
-  // TODO(oschaaf): port write_handler_response, refactor statis js
-  // handler to use that if possible
-  
   net_instaweb::QueryParams params;
-
-
-  // TODO(oschaaf):
-  //params.Parse(request->args);
+  StringPiece query_string = StringPiece(
+      reinterpret_cast<char*>(r->args.data), r->args.len);
+  params.Parse(query_string);
 
   // Parse various mode query params.
   bool print_normal_config = params.Has("config");
