@@ -90,6 +90,11 @@ class LogRecord  {
   // a cache hit.
   void SetCacheStatusForCohortInfo(int index, bool found);
 
+  // Updates the cohort info at the specified index with the device and cache
+  // type.
+  void SetDeviceAndCacheTypeForCohortInfo(
+      int index, int device_type, int cache_type);
+
   // Mutex-guarded log mutation convenience methods. The rule of thumb is that
   // if a single-field update to a logging proto occurs multiple times, it
   // should be factored out into a method on this class.

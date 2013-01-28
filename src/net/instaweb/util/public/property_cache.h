@@ -351,6 +351,9 @@ class PropertyPage {
     return request_context_->log_record();
   }
 
+  // Adds logs for the given PropertyPage to the specified cohort info index.
+  virtual void LogPageCohortInfo(LogRecord* log_record, int cohort_index) {}
+
  protected:
   // The Page takes ownership of the mutex.
   PropertyPage(AbstractMutex* mutex,

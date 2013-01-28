@@ -141,6 +141,9 @@ class ProxyFetchPropertyCallback : public PropertyPage {
 
   virtual void Done(bool success);
 
+  // Adds logs for the given PropertyPage to the specified cohort info index.
+  virtual void LogPageCohortInfo(LogRecord* log_record, int cohort_index);
+
  private:
   CacheType cache_type_;
   UserAgentMatcher::DeviceType device_type_;

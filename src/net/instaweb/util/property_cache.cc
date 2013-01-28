@@ -330,6 +330,7 @@ void PropertyCache::MultiRead(PropertyPageStarVector* page_list) const {
           page->cohort_data_map_.find(cohort);
       CHECK(cohort_itr != page->cohort_data_map_.end());
       PropertyPage::PropertyMapStruct* pmap_struct = cohort_itr->second;
+      page->LogPageCohortInfo(page->log_record(), pmap_struct->cohort_index);
         const GoogleString cache_key = CacheKey(page->key(), cohort);
         cohort->cache()->Get(
           cache_key,

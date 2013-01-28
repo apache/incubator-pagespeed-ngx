@@ -293,8 +293,15 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   const PropertyPageInfo& page_info = logging_info()->property_page_info();
   // 3 for 3 device types.
   EXPECT_EQ(3, page_info.cohort_info_size());
-  const PropertyCohortInfo& cohort_info = page_info.cohort_info(0);
-  EXPECT_EQ("dom", cohort_info.name());
+  const PropertyCohortInfo& cohort_info_0 = page_info.cohort_info(0);
+  EXPECT_EQ("dom", cohort_info_0.name());
+  EXPECT_EQ(0, cohort_info_0.device_type());
+  const PropertyCohortInfo& cohort_info_1 = page_info.cohort_info(1);
+  EXPECT_EQ("dom", cohort_info_1.name());
+  EXPECT_EQ(1, cohort_info_1.device_type());
+  const PropertyCohortInfo& cohort_info_2 = page_info.cohort_info(2);
+  EXPECT_EQ("dom", cohort_info_2.name());
+  EXPECT_EQ(2, cohort_info_2.device_type());
 
   // Fetch non-HTML content.
   logging_info()->Clear();

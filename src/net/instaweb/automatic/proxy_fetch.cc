@@ -198,6 +198,12 @@ void ProxyFetchPropertyCallback::Done(bool success) {
   collector_->Done(this, success);
 }
 
+void ProxyFetchPropertyCallback::LogPageCohortInfo(
+    LogRecord* log_record, int cohort_index) {
+  log_record->SetDeviceAndCacheTypeForCohortInfo(
+      cohort_index, device_type_, cache_type_);
+}
+
 ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
     ServerContext* server_context, const StringPiece& url,
     const RequestContextPtr& request_ctx, const RewriteOptions* options,

@@ -84,6 +84,15 @@ void LogRecord::SetCacheStatusForCohortInfo(int index, bool found) {
       set_is_cache_hit(found);
 }
 
+void LogRecord::SetDeviceAndCacheTypeForCohortInfo(int index, int device_type,
+                                                   int cache_type) {
+  ScopedMutex lock(mutex_.get());
+  PropertyCohortInfo* cohort_info =
+      logging_info()->mutable_property_page_info()->mutable_cohort_info(index);
+  cohort_info->set_device_type(device_type);
+  cohort_info->set_cache_type(cache_type);
+}
+
 void LogRecord::LogAppliedRewriter(const char* rewriter_id) {
   ScopedMutex lock(mutex_.get());
   LogAppliedRewriterImpl(rewriter_id);
