@@ -63,6 +63,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Create a new RewriteOptions.  In this implementation it will be an
   // NgxRewriteOptions.
   virtual RewriteOptions* NewRewriteOptions();
+  // Print out details of all the connections to memcached servers.
+  void PrintMemCacheStats(GoogleString* out);
   // Initializes the StaticJavascriptManager.
   virtual void InitStaticJavascriptManager(
       StaticJavascriptManager* static_js_manager);

@@ -217,6 +217,16 @@ RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
   return new NgxRewriteOptions();
 }
 
+void NgxRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
+  for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
+    AprMemCache* mem_cache = memcache_servers_[i];
+    if (!mem_cache->GetStatus(out)) {
+      StrAppend(out, "\nError getting memcached server status for ",
+                mem_cache->server_spec());
+    }
+  }
+}
+
 void NgxRewriteDriverFactory::InitStaticJavascriptManager(
     StaticJavascriptManager* static_js_manager) {
   static_js_manager->set_library_url_prefix(kStaticJavaScriptPrefix);
