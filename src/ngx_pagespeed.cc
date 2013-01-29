@@ -981,7 +981,7 @@ bool ps_determine_request_options(
 bool ps_set_furious_state_and_cookie(ngx_http_request_t* r,
                                      ps_request_ctx_t* ctx,
                                      net_instaweb::RewriteOptions* options,
-                                     const StringPiece host) {
+                                     const StringPiece& host) {
   CHECK(options->running_furious());
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   bool need_cookie = cfg_s->server_context->furious_matcher()->
