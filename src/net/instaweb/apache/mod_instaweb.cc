@@ -190,6 +190,14 @@ const char kModPagespeedImageMaxRewritesAtOnce[] =
 const char kModPagespeedImageRecompressionQuality[] =
     "ModPagespeedImageRecompressionQuality";
 const char kModPagespeedImagePreserveURLs[] = "ModPagespeedImagePreserveURLs";
+const char kModPagespeedInPlacePreemptiveRewriteCss[] =
+    "ModPagespeedInPlacePreemptiveRewriteCss";
+const char kModPagespeedInPlacePreemptiveRewriteCssImages[] =
+    "ModPagespeedInPlacePreemptiveRewriteCssImages";
+const char kModPagespeedInPlacePreemptiveRewriteImages[] =
+    "ModPagespeedInPlacePreemptiveRewriteImages";
+const char kModPagespeedInPlacePreemptiveRewriteJavascript[] =
+    "ModPagespeedInPlacePreemptiveRewriteJavascript";
 const char kModPagespeedInPlaceResourceOptimization[] =
     "ModPagespeedInPlaceResourceOptimization";
 const char kModPagespeedInheritVHostConfig[] = "ModPagespeedInheritVHostConfig";
@@ -1935,6 +1943,18 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "refers to best quality, -1 disables lossy compression."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImagePreserveURLs,
         "Disable the rewriting of image URLs."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedInPlacePreemptiveRewriteCss,
+        "If set, issue preemptive rewrites of CSS on the HTML path when "
+        "configured to use IPRO."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedInPlacePreemptiveRewriteCssImages,
+        "If set, issue preemptive rewrites of CSS images on the IPRO serving "
+        "path."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedInPlacePreemptiveRewriteImages,
+        "If set, issue preemptive rewrites of images on the HTML path when "
+        "configured to use IPRO."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedInPlacePreemptiveRewriteJavascript,
+        "If set, issue preemptive rewrites of JS on the HTML path when "
+        "configured to use IPRO."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedImgInlineMaxBytes,
         "DEPRECATED, use ModPagespeedImageInlineMaxBytes."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedJsInlineMaxBytes,

@@ -25,6 +25,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -1273,7 +1274,7 @@ bool ImageRewriteFilter::TryInline(
 }
 
 void ImageRewriteFilter::EndElementImpl(HtmlElement* element) {
-  // Don't rewrite it the image is broken by a flush.
+  // Don't rewrite if the image is broken by a flush.
   if (driver_->HasChildrenInFlushWindow(element)) {
     return;
   }

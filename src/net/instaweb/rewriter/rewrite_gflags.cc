@@ -107,9 +107,22 @@ DEFINE_int32(in_place_rewrite_deadline_ms,
              "After this interval passes, the original unoptimized resource "
              "will be served to clients. A value of -1 will wait indefinitely "
              "for each in-place rewrite to complete.");
+// TODO(piatek): Add external docs for these.
+DEFINE_bool(in_place_preemptive_rewrite_css, true,
+            "If set, issue preemptive rewrites of CSS on the HTML path when "
+            "configured to use IPRO. If --css_preserve_urls is not set, this "
+            "has no effect.");
 DEFINE_bool(in_place_preemptive_rewrite_css_images, true,
             "If set, preemptive rewrite images in CSS files on the IPRO "
             "serving path.");
+DEFINE_bool(in_place_preemptive_rewrite_images, true,
+            "If set, issue preemptive rewrites of images on the HTML path when "
+            "configured to use IPRO. If --image_preserve_urls is not set, this "
+            "flag has no effect.");
+DEFINE_bool(in_place_preemptive_rewrite_javascript, true,
+            "If set, issue preemptive rewrites of javascript on the HTML path "
+            "when configured to use IPRO. If --js_preserve_urls is not set, "
+            "this flag has no effect.");
 DEFINE_bool(image_preserve_urls, false, "Boolean to indicate whether image"
             "URLs should be preserved.");
 DEFINE_bool(css_preserve_urls, false, "Boolean to indicate whether CSS URLS"
@@ -637,6 +650,19 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("in_place_preemptive_rewrite_css_images")) {
     options->set_in_place_preemptive_rewrite_css_images(
         FLAGS_in_place_preemptive_rewrite_css_images);
+  }
+
+  if (WasExplicitlySet("in_place_preemptive_rewrite_images")) {
+    options->set_in_place_preemptive_rewrite_images(
+        FLAGS_in_place_preemptive_rewrite_images);
+  }
+  if (WasExplicitlySet("in_place_preemptive_rewrite_css")) {
+    options->set_in_place_preemptive_rewrite_css(
+        FLAGS_in_place_preemptive_rewrite_css);
+  }
+  if (WasExplicitlySet("in_place_preemptive_rewrite_javascript")) {
+    options->set_in_place_preemptive_rewrite_javascript(
+        FLAGS_in_place_preemptive_rewrite_javascript);
   }
 
   MessageHandler* handler = factory->message_handler();

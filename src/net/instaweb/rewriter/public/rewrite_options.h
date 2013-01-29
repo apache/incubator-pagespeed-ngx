@@ -227,8 +227,11 @@ class RewriteOptions {
     kImplicitCacheTtlMs,
     kInPlaceResourceOptimization,
     kInPlaceWaitForOptimized,
-    kInPlaceRewriteDeadlineMs,
+    kInPlacePreemptiveRewriteCss,
     kInPlacePreemptiveRewriteCssImages,
+    kInPlacePreemptiveRewriteImages,
+    kInPlacePreemptiveRewriteJavascript,
+    kInPlaceRewriteDeadlineMs,
     kIncreaseSpeedTracking,
     kInlineOnlyCriticalImages,
     kJsInlineMaxBytes,
@@ -1245,11 +1248,32 @@ class RewriteOptions {
     return in_place_rewrite_deadline_ms_.value();
   }
 
+  void set_in_place_preemptive_rewrite_css(bool x) {
+    set_option(x, &in_place_preemptive_rewrite_css_);
+  }
+  bool in_place_preemptive_rewrite_css() const {
+    return in_place_preemptive_rewrite_css_.value();
+  }
+
   void set_in_place_preemptive_rewrite_css_images(bool x) {
     set_option(x, &in_place_preemptive_rewrite_css_images_);
   }
   bool in_place_preemptive_rewrite_css_images() const {
     return in_place_preemptive_rewrite_css_images_.value();
+  }
+
+  void set_in_place_preemptive_rewrite_images(bool x) {
+    set_option(x, &in_place_preemptive_rewrite_images_);
+  }
+  bool in_place_preemptive_rewrite_images() const {
+    return in_place_preemptive_rewrite_images_.value();
+  }
+
+  void set_in_place_preemptive_rewrite_javascript(bool x) {
+    set_option(x, &in_place_preemptive_rewrite_javascript_);
+  }
+  bool in_place_preemptive_rewrite_javascript() const {
+    return in_place_preemptive_rewrite_javascript_.value();
   }
 
   void set_combine_across_paths(bool x) {
@@ -2596,8 +2620,17 @@ class RewriteOptions {
   // Interval to delay serving on the IPRO path while waiting for optimizations.
   // After this interval, the unoptimized resource will be served.
   Option<int> in_place_rewrite_deadline_ms_;
+  // If set, preemptively rewrite images in CSS files on the HTML serving path
+  // when IPRO of CSS is enabled.
+  Option<bool> in_place_preemptive_rewrite_css_;
   // If set, preemptively rewrite images in CSS files on the IPRO serving path.
   Option<bool> in_place_preemptive_rewrite_css_images_;
+  // If set, preemptively rewrite images in image files on the HTML serving path
+  // when IPRO of images is enabled.
+  Option<bool> in_place_preemptive_rewrite_images_;
+  // If set, preemptively rewrite images in JS files on the HTML serving path
+  // when IPRO of JS is enabled.
+  Option<bool> in_place_preemptive_rewrite_javascript_;
   Option<bool> combine_across_paths_;
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?
   Option<bool> lowercase_html_names_;

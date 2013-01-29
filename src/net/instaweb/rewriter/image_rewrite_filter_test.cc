@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -742,6 +743,43 @@ TEST_F(ImageRewriteTest, ImageRewritePreserveURLsOn) {
   EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
   EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
 
+  // Make sure that we didn't resize (original image is 100x100).
+  scoped_ptr<Image> image(
+      NewImage(out_png, out_png_url, server_context_->filename_prefix(),
+               new Image::CompressionOptions(), &message_handler_));
+  ImageDim image_dim;
+  image->Dimensions(&image_dim);
+  EXPECT_EQ(100, image_dim.width());
+  EXPECT_EQ(100, image_dim.height());
+}
+
+TEST_F(ImageRewriteTest, ImageRewritePreserveURLsDisablePreemptiveRewrite) {
+  // Make sure that the image URL stays the same.
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->EnableFilter(RewriteOptions::kResizeImages);
+  options()->set_image_preserve_urls(true);
+  options()->set_in_place_preemptive_rewrite_images(false);
+  rewrite_driver()->AddFilters();
+  ClearStats();
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
+                    " width=10 height=10",  // initial_dims,
+                    " width=10 height=10",  // final_dims,
+                    false,   // expect_rewritten
+                    false);  // expect_inline
+
+  // We should not have attempted any rewriting.
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_hits()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
+
+  // But, a direct fetch should work.
+  ClearStats();
+  GoogleString out_png_url(Encode(kTestDomain, "ic", "0", kBikePngFile, "png"));
+  GoogleString out_png;
+  EXPECT_TRUE(FetchResourceUrl(out_png_url, &out_png));
   // Make sure that we didn't resize (original image is 100x100).
   scoped_ptr<Image> image(
       NewImage(out_png, out_png_url, server_context_->filename_prefix(),

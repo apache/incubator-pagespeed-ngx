@@ -247,6 +247,36 @@ TEST_F(CssFilterTestCustomOptions, CssPreserveUrls) {
   EXPECT_EQ(kOutputStyle, out_css);
 }
 
+TEST_F(CssFilterTestCustomOptions, CssPreserveUrlsNoPreemptiveRewrite) {
+  options()->EnableFilter(RewriteOptions::kInlineCss);
+  options()->set_css_preserve_urls(true);
+  options()->set_in_place_preemptive_rewrite_css(false);
+  CssFilterTest::SetUp();
+  // Verify that preserve had a chance to forbid some filters.
+  EXPECT_FALSE(options()->Enabled(RewriteOptions::kInlineCss));
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kInputStyle, 100);
+
+  // The URL shouldn't change.
+  ValidateNoChanges("css_preserve_urls_on_no_preemptive",
+                    "<link rel=StyleSheet href=a.css>");
+
+  // We should not have attempted any rewriting.
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_hits()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
+
+  // But, if we fetch the optimized CSS directly, we should receive the
+  // optimized version.
+  ClearStats();
+  GoogleString out_css_url = Encode(kTestDomain, "cf", "0", "a.css", "css");
+  GoogleString out_css;
+  EXPECT_TRUE(FetchResourceUrl(out_css_url, &out_css));
+  EXPECT_EQ(kOutputStyle, out_css);
+}
+
 TEST_F(CssFilterTest, LinkHrefCaseInsensitive) {
   // Make sure we check rel value case insensitively.
   // http://code.google.com/p/modpagespeed/issues/detail?id=354

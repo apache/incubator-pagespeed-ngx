@@ -263,6 +263,41 @@ TEST_F(JavascriptFilterTest, JsPreserveURLsOnTest) {
   EXPECT_EQ(kJsMinData, out_js);
 }
 
+TEST_F(JavascriptFilterTest, JsPreserveURLsNoPreemptiveRewriteTest) {
+  // Make sure that when in conservative mode the URL stays the same.
+  RegisterLibrary();
+  options()->EnableFilter(RewriteOptions::kRewriteJavascript);
+  options()->EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
+  options()->set_js_preserve_urls(true);
+  options()->set_in_place_preemptive_rewrite_javascript(false);
+  rewrite_driver()->AddFilters();
+  EXPECT_TRUE(options()->Enabled(RewriteOptions::kRewriteJavascript));
+  // Verify that preserve had a chance to forbid some filters.
+  EXPECT_FALSE(options()->Enabled(
+      RewriteOptions::kCanonicalizeJavascriptLibraries));
+  InitTest(100);
+  // Make sure the URL doesn't change.
+  ValidateExpected("js_urls_preserved_no_preemptive",
+                   GenerateHtml(kOrigJsName),
+                   GenerateHtml(kOrigJsName));
+
+  // We should not have attempted any rewriting.
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_hits()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_misses()));
+  EXPECT_EQ(0, static_cast<int>(lru_cache()->num_inserts()));
+
+  // But, if we fetch the JS directly, we should receive the optimized version.
+  ClearStats();
+  GoogleString out_js_url = Encode(kTestDomain, "jm", "0", kRewrittenJsName,
+                                   "js");
+  GoogleString out_js;
+  EXPECT_TRUE(FetchResourceUrl(out_js_url, &out_js));
+  EXPECT_EQ(kJsMinData, out_js);
+}
+
 TEST_F(JavascriptFilterTest, IdentifyLibraryNoMinification) {
   // Don't enable kRewriteJavascript.  This should still identify the library.
   RegisterLibrary();

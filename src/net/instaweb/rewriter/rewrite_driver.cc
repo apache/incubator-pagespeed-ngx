@@ -46,7 +46,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
@@ -934,7 +933,12 @@ void RewriteDriver::AddPreRenderFilters() {
     EnableRewriteFilter(RewriteOptions::kCssCombinerId);
   }
   if (rewrite_options->Enabled(RewriteOptions::kRewriteCss)) {
-    EnableRewriteFilter(RewriteOptions::kCssFilterId);
+    // Since AddFilters only applies to the HTML rewrite path, we check here
+    // if IPRO preemptive rewrites are disabled and skip the filter if so.
+    if (!rewrite_options->css_preserve_urls() ||
+        rewrite_options->in_place_preemptive_rewrite_css()) {
+      EnableRewriteFilter(RewriteOptions::kCssFilterId);
+    }
   }
   if (rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync)) {
     // Converts sync loads of Google Analytics javascript to async loads.
@@ -951,9 +955,14 @@ void RewriteDriver::AddPreRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kRewriteJavascript) ||
       rewrite_options->Enabled(
           RewriteOptions::kCanonicalizeJavascriptLibraries)) {
-    // Rewrite (minify etc.) JavaScript code to reduce time to first
-    // interaction.
-    EnableRewriteFilter(RewriteOptions::kJavascriptMinId);
+    // Since AddFilters only applies to the HTML rewrite path, we check here
+    // if IPRO preemptive rewrites are disabled and skip the filter if so.
+    if (!rewrite_options->js_preserve_urls() ||
+        rewrite_options->in_place_preemptive_rewrite_javascript()) {
+      // Rewrite (minify etc.) JavaScript code to reduce time to first
+      // interaction.
+      EnableRewriteFilter(RewriteOptions::kJavascriptMinId);
+    }
   }
   if (!flush_subresources_enabled &&
       rewrite_options->Enabled(RewriteOptions::kCombineJavascript)) {
@@ -983,7 +992,12 @@ void RewriteDriver::AddPreRenderFilters() {
       rewrite_options->Enabled(RewriteOptions::kStripImageColorProfile) ||
       rewrite_options->Enabled(RewriteOptions::kStripImageMetaData) ||
       rewrite_options->NeedLowResImages()) {
-    EnableRewriteFilter(RewriteOptions::kImageCompressionId);
+    // Since AddFilters only applies to the HTML rewrite path, we check here
+    // if IPRO preemptive rewrites are disabled and skip the filter if so.
+    if (!rewrite_options->image_preserve_urls() ||
+        rewrite_options->in_place_preemptive_rewrite_images()) {
+      EnableRewriteFilter(RewriteOptions::kImageCompressionId);
+    }
   }
   if (rewrite_options->Enabled(RewriteOptions::kRemoveComments)) {
     AppendOwnedPreRenderFilter(new RemoveCommentsFilter(

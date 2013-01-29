@@ -722,8 +722,14 @@ void RewriteOptions::AddProperties() {
   add_option(kDefaultRewriteDeadlineMs,
              &RewriteOptions::in_place_rewrite_deadline_ms_, "iprdm",
              kInPlaceRewriteDeadlineMs);
+  add_option(true, &RewriteOptions::in_place_preemptive_rewrite_css_,
+             "ipprc", kInPlacePreemptiveRewriteCss);
   add_option(true, &RewriteOptions::in_place_preemptive_rewrite_css_images_,
              "ipprci", kInPlacePreemptiveRewriteCssImages);
+  add_option(true, &RewriteOptions::in_place_preemptive_rewrite_images_,
+             "ippri", kInPlacePreemptiveRewriteImages);
+  add_option(true, &RewriteOptions::in_place_preemptive_rewrite_javascript_,
+             "ipprj", kInPlacePreemptiveRewriteJavascript);
   add_option(true, &RewriteOptions::combine_across_paths_, "cp",
              kCombineAcrossPaths);
   add_option(false, &RewriteOptions::critical_images_beacon_enabled_, "cibe",
