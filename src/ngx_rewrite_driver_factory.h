@@ -108,6 +108,20 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // This helper method contains init procedures invoked by both RootInit()
   // and ChildInit()
   void ParentOrChildInit();
+  // For shared memory resources the general setup we follow is to have the
+  // first running process (aka the root) create the necessary segments and
+  // fill in their shared data structures, while processes created to actually
+  // handle requests attach to already existing shared data structures.
+  //
+  // During normal server startup[1], RootInit() is called from the nginx hooks
+  // in the root process for the first task, and then ChildInit() is called in
+  // any child process.
+  //
+  // Keep in mind, however, that when fork() is involved a process may
+  // effectively see both calls, in which case the 'ChildInit' call would
+  // come second and override the previous root status. Both calls are also
+  // invoked in the debug single-process mode.
+  //
   // [1] Besides normal startup, nginx also uses a temporary process to
   // syntax check the config file. That basically looks like a complete
   // normal startup and shutdown to the code.
