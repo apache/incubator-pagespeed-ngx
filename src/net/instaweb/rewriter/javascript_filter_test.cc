@@ -749,4 +749,22 @@ TEST_F(JavascriptFilterTest, FlushAfterBeginScript) {
             output_buffer_);
 }
 
+TEST_F(JavascriptFilterTest, StripInlineWhitespaceFlush) {
+  // Make sure we strip inline whitespace when minifying external scripts even
+  // if there's a flush between open and close.
+  InitFiltersAndTest(100);
+  SetupWriter();
+  const GoogleString kScriptTag =
+      StrCat("<script type='text/javascript' src='", kOrigJsName, "'>");
+  rewrite_driver()->StartParse(kTestDomain);
+  rewrite_driver()->ParseText(kScriptTag);
+  rewrite_driver()->ParseText("   \t\n");
+  rewrite_driver()->Flush();
+  rewrite_driver()->ParseText("   </script>\n");
+  rewrite_driver()->FinishParse();
+  const GoogleString expected =
+      StringPrintf(kHtmlFormat, expected_rewritten_path_.c_str());
+  EXPECT_EQ(expected, output_buffer_);
+}
+
 }  // namespace net_instaweb

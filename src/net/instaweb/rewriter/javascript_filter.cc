@@ -23,7 +23,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
@@ -53,35 +52,32 @@ namespace net_instaweb {
 
 namespace {
 
-void CleanupWhitespaceScriptBody(
-    RewriteDriver* driver, RewriteContext* context, HtmlCharactersNode* node) {
-  if (node != NULL) {
-    // Note that an external script tag might contain body data.  We erase this
-    // if it is just whitespace; otherwise we leave it alone.  The script body
-    // is ignored by all browsers we know of.  However, various sources have
-    // encouraged using the body of an external script element to store a
-    // post-load callback.  As this technique is preferable to storing callbacks
-    // in, say, html comments, we support it here.
-    const GoogleString& contents = node->contents();
-    for (size_t j = 0; j < contents.size(); ++j) {
-      char c = contents[j];
-      if (!isspace(c) && c != 0) {
-        driver->InfoAt(context, "Retaining contents of script tag;"
+void CleanupWhitespaceScriptBody(RewriteDriver* driver,
+                                 HtmlCharactersNode* node) {
+  // Note that an external script tag might contain body data.  We erase this
+  // if it is just whitespace; otherwise we leave it alone.  The script body
+  // is ignored by all browsers we know of.  However, various sources have
+  // encouraged using the body of an external script element to store a
+  // post-load callback.  As this technique is preferable to storing callbacks
+  // in, say, html comments, we support it here.
+  const GoogleString& contents = node->contents();
+  for (size_t j = 0; j < contents.size(); ++j) {
+    char c = contents[j];
+    if (!isspace(c) && c != 0) {
+      driver->InfoHere("Retaining contents of script tag;"
                        " probably data for external script.");
-        return;
-      }
+      return;
     }
-    driver->DeleteElement(node);
   }
+  bool deleted = driver->DeleteElement(node);
+  DCHECK(deleted);
 }
 
 }  // namespace
 
 JavascriptFilter::JavascriptFilter(RewriteDriver* driver)
     : RewriteFilter(driver),
-      body_node_(NULL),
-      script_in_progress_(NULL),
-      script_src_(NULL),
+      script_type_(kNoScript),
       some_missing_scripts_(false),
       config_(NULL),
       script_tag_scanner_(driver_) { }
@@ -95,11 +91,9 @@ void JavascriptFilter::InitStats(Statistics* statistics) {
 class JavascriptFilter::Context : public SingleRewriteContext {
  public:
   Context(RewriteDriver* driver, RewriteContext* parent,
-          JavascriptRewriteConfig* config,
-          HtmlCharactersNode* body_node)
+          JavascriptRewriteConfig* config)
       : SingleRewriteContext(driver, parent, NULL),
-        config_(config),
-        body_node_(body_node) {
+        config_(config) {
     rewriter_info_ = Driver()->log_record()->NewRewriterInfo(id());
   }
 
@@ -169,7 +163,6 @@ class JavascriptFilter::Context : public SingleRewriteContext {
   }
 
   virtual void Render() {
-    CleanupWhitespaceScriptBody(Driver(), this, body_node_);
     if (num_output_partitions() != 1) {
       return;
     }
@@ -269,24 +262,22 @@ class JavascriptFilter::Context : public SingleRewriteContext {
   }
 
   JavascriptRewriteConfig* config_;
-  // The node containing the body of the script tag, or NULL.
-  HtmlCharactersNode* body_node_;
   // RewriterInfo logging structure for this rewrite.
   RewriterInfo* rewriter_info_;
 };
 
 void JavascriptFilter::StartElementImpl(HtmlElement* element) {
-  // These ought to be invariants.  If they're not, we may leak
-  // memory and/or fail to optimize, but it's not a disaster.
-  DCHECK(script_in_progress_ == NULL);
-  DCHECK(body_node_ == NULL);
-
-  switch (script_tag_scanner_.ParseScriptElement(element, &script_src_)) {
+  DCHECK_EQ(kNoScript, script_type_);
+  HtmlElement::Attribute* script_src;
+  switch (script_tag_scanner_.ParseScriptElement(element, &script_src)) {
     case ScriptTagScanner::kJavaScript:
-      script_in_progress_ = element;
-      if (script_src_ != NULL) {
+      if (script_src != NULL) {
+        script_type_ = kExternalScript;
         driver_->InfoHere("Found script with src %s",
-                          script_src_->DecodedValueOrNull());
+                          script_src->DecodedValueOrNull());
+        RewriteExternalScript(element, script_src);
+      } else {
+        script_type_ = kInlineScript;
       }
       break;
     case ScriptTagScanner::kUnknownScript: {
@@ -301,12 +292,15 @@ void JavascriptFilter::StartElementImpl(HtmlElement* element) {
 }
 
 void JavascriptFilter::Characters(HtmlCharactersNode* characters) {
-  if (script_in_progress_ != NULL) {
-    // Note: We must record body_node_ even if this is an external JS file.
-    body_node_ = characters;
-    if (script_src_ == NULL) {
-      RewriteInlineScript();
-    }
+  switch (script_type_) {
+    case kInlineScript:
+      RewriteInlineScript(characters);
+      break;
+    case kExternalScript:
+      CleanupWhitespaceScriptBody(driver_, characters);
+      break;
+    case kNoScript:
+      break;
   }
 }
 
@@ -322,104 +316,69 @@ void JavascriptFilter::InitializeConfig() {
           driver_->options()->javascript_library_identification()));
 }
 
-void JavascriptFilter::RewriteInlineScript() {
-  if (body_node_ != NULL) {
-    // Log rewriter activity
-    RewriterInfo* rewriter_info = driver_->log_record()->NewRewriterInfo(id());
-    // First buffer up script data and minify it.
-    GoogleString* script = body_node_->mutable_contents();
-    MessageHandler* message_handler = driver_->message_handler();
-    const JavascriptCodeBlock code_block(
-        *script, config_.get(), driver_->UrlLine(), message_handler);
-    StringPiece library_url = code_block.ComputeJavascriptLibrary();
-    if (!library_url.empty()) {
-      // TODO(jmaessen): outline and use canonical url.
-      driver_->InfoHere("Script is inlined version of %s",
-                        library_url.as_string().c_str());
-    }
-    if (code_block.ProfitableToRewrite()) {
-      // Replace the old script string with the new, minified one.
-      GoogleString* rewritten_script = code_block.RewrittenString();
-      if ((driver_->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) &&
-          (script->find("<![CDATA[") != StringPiece::npos) &&
-          !StringPiece(*rewritten_script).starts_with(
-              "<![CDATA")) {  // See Issue 542.
-        // Minifier strips leading and trailing CDATA comments from scripts.
-        // Restore them if necessary and safe according to the original script.
-        script->clear();
-        StrAppend(script, "//<![CDATA[\n", *rewritten_script, "\n//]]>");
-      } else {
-        // Swap in the minified code to replace the original code.
-        script->swap(*rewritten_script);
-      }
-      config_->num_uses()->Add(1);
-      {
-        ScopedMutex lock(driver_->log_record()->mutex());
-        driver_->log_record()->SetRewriterLoggingStatus(
-            rewriter_info, RewriterInfo::APPLIED_OK);
-      }
+void JavascriptFilter::RewriteInlineScript(HtmlCharactersNode* body_node) {
+  // Log rewriter activity
+  RewriterInfo* rewriter_info = driver_->log_record()->NewRewriterInfo(id());
+  // First buffer up script data and minify it.
+  GoogleString* script = body_node->mutable_contents();
+  MessageHandler* message_handler = driver_->message_handler();
+  const JavascriptCodeBlock code_block(
+      *script, config_.get(), driver_->UrlLine(), message_handler);
+  StringPiece library_url = code_block.ComputeJavascriptLibrary();
+  if (!library_url.empty()) {
+    // TODO(jmaessen): outline and use canonical url.
+    driver_->InfoHere("Script is inlined version of %s",
+                      library_url.as_string().c_str());
+  }
+  if (code_block.ProfitableToRewrite()) {
+    // Replace the old script string with the new, minified one.
+    GoogleString* rewritten_script = code_block.RewrittenString();
+    if ((driver_->MimeTypeXhtmlStatus() != RewriteDriver::kIsNotXhtml) &&
+        (script->find("<![CDATA[") != StringPiece::npos) &&
+        !StringPiece(*rewritten_script).starts_with(
+            "<![CDATA")) {  // See Issue 542.
+      // Minifier strips leading and trailing CDATA comments from scripts.
+      // Restore them if necessary and safe according to the original script.
+      script->clear();
+      StrAppend(script, "//<![CDATA[\n", *rewritten_script, "\n//]]>");
     } else {
-      config_->did_not_shrink()->Add(1);
+      // Swap in the minified code to replace the original code.
+      script->swap(*rewritten_script);
     }
+    config_->num_uses()->Add(1);
+    {
+      ScopedMutex lock(driver_->log_record()->mutex());
+      driver_->log_record()->SetRewriterLoggingStatus(
+          rewriter_info, RewriterInfo::APPLIED_OK);
+    }
+  } else {
+    config_->did_not_shrink()->Add(1);
   }
 }
 
 // External script; minify and replace with rewritten version (also external).
-void JavascriptFilter::RewriteExternalScript() {
-  const StringPiece script_url(script_src_->DecodedValueOrNull());
+void JavascriptFilter::RewriteExternalScript(
+    HtmlElement* script_in_progress, HtmlElement::Attribute* script_src) {
+  const StringPiece script_url(script_src->DecodedValueOrNull());
   ResourcePtr resource = CreateInputResource(script_url);
   if (resource.get() != NULL) {
     ResourceSlotPtr slot(
-        driver_->GetSlot(resource, script_in_progress_, script_src_));
+        driver_->GetSlot(resource, script_in_progress, script_src));
     if (driver_->options()->js_preserve_urls()) {
       slot->set_disable_rendering(true);
     }
-    Context* jrc = new Context(driver_, NULL, config_.get(), body_node_);
+    Context* jrc = new Context(driver_, NULL, config_.get());
     jrc->AddSlot(slot);
     driver_->InitiateRewrite(jrc);
   }
 }
 
-// Reset state at end of script.
-void JavascriptFilter::CompleteScriptInProgress() {
-  body_node_ = NULL;
-  script_in_progress_ = NULL;
-  script_src_ = NULL;
-}
-
 void JavascriptFilter::EndElementImpl(HtmlElement* element) {
-  if (script_in_progress_ != NULL &&
-      element->keyword() == HtmlName::kScript) {
-    if (driver_->IsRewritable(script_in_progress_) &&
-        driver_->IsRewritable(element)) {
-      if (element->close_style() == HtmlElement::BRIEF_CLOSE) {
-        driver_->InfoHere("Brief close of script tag (non-portable)");
-      }
-      if (script_src_ != NULL) {
-        RewriteExternalScript();
-      }
-    } else if (body_node_ != NULL) {
-       CHECK_EQ(script_in_progress_, element);
-    }
-    CompleteScriptInProgress();
-  }
-  // Should not happen by construction (parser should not have tags here).
-  // Note that if we get here, this test *Will* fail; it is written
-  // out longhand to make diagnosis easier.
-  CHECK(script_in_progress_ == NULL);
-}
-
-void JavascriptFilter::Flush() {
-  if (script_in_progress_ != NULL && script_src_ != NULL) {
-    // Not actually an error!
-    driver_->InfoHere("Flush in mid-script; leaving script untouched.");
-    CompleteScriptInProgress();
-    some_missing_scripts_ = true;
-  }
+  script_type_ = kNoScript;
 }
 
 void JavascriptFilter::IEDirective(HtmlIEDirectiveNode* directive) {
-  CHECK(script_in_progress_ == NULL);
+  CHECK_EQ(kNoScript, script_type_);
   // We presume an IE directive is concealing some js code.
   some_missing_scripts_ = true;
 }
@@ -431,15 +390,14 @@ RewriteContext* JavascriptFilter::MakeRewriteContext() {
   // disabled for this resource (eg because we've recognized it as a library).
   // This usually happens because the underlying JS content or rewrite
   // configuration changed since the client fetched a rewritten page.
-  return new Context(driver_, NULL, config_.get(), NULL /* no body node */);
+  return new Context(driver_, NULL, config_.get());
 }
 
 RewriteContext* JavascriptFilter::MakeNestedRewriteContext(
     RewriteContext* parent, const ResourceSlotPtr& slot) {
   InitializeConfigIfNecessary();
   // A nested rewrite, should work just like an HTML rewrite does.
-  Context* context = new Context(NULL /* driver */, parent, config_.get(),
-                                 NULL /* no body node */);
+  Context* context = new Context(NULL /* driver */, parent, config_.get());
   context->AddSlot(slot);
   return context;
 }
