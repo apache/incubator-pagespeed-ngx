@@ -38,10 +38,13 @@ extern "C" {
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
 
+#include "apr_time.h"
+
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/automatic/public/resource_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
+#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
@@ -51,6 +54,7 @@ extern "C" {
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/time_util.h"
 
 extern ngx_module_t ngx_pagespeed;
 
@@ -969,6 +973,53 @@ bool ps_determine_request_options(
   return true;
 }
 
+// Check whether this visitor is already in an experiment.  If they're not,
+// classify them into one by setting a cookie.  Then set options appropriately
+// for their experiment.
+//
+// See InstawebContext::SetFuriousStateAndCookie()
+bool ps_set_furious_state_and_cookie(ngx_http_request_t* r,
+                                     ps_request_ctx_t* ctx,
+                                     net_instaweb::RewriteOptions* options,
+                                     const StringPiece& host) {
+  CHECK(options->running_furious());
+  ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
+  bool need_cookie = cfg_s->server_context->furious_matcher()->
+      ClassifyIntoExperiment(*ctx->base_fetch->request_headers(), options);
+  if (need_cookie && host.length() > 0) {
+    int64 time_now_us = apr_time_now();
+    int64 expiration_time_ms = (time_now_us/1000 +
+                                options->furious_cookie_duration_ms());
+
+    // TODO(jefftk): refactor SetFuriousCookie to expose the value we want to
+    // set on the cookie.
+    int state = options->furious_id();
+    GoogleString expires;
+    net_instaweb::ConvertTimeToString(expiration_time_ms, &expires);
+    GoogleString value = StringPrintf(
+        "%s=%s; Expires=%s; Domain=.%s; Path=/",
+        net_instaweb::furious::kFuriousCookie,
+        net_instaweb::furious::FuriousStateToCookieString(state).c_str(),
+        expires.c_str(), host.as_string().c_str());
+
+    // Set the GFURIOUS cookie.
+    ngx_table_elt_t* cookie = static_cast<ngx_table_elt_t*>(
+        ngx_list_push(&r->headers_out.headers));
+    if (cookie == NULL) {
+      return false;
+    }
+    cookie->hash = 1;  // Include this header in the response.
+
+    ngx_str_set(&cookie->key, "Set-Cookie");
+    // It's not safe to use value.c_str here because cookie header only keeps a
+    // pointer to the string data.
+    cookie->value.data = reinterpret_cast<u_char*>(
+        string_piece_to_pool_string(r->pool, value));
+    cookie->value.len = value.size();
+  }
+  return true;
+}
+
 // There are many sources of options:
 //  - the request (query parameters and headers)
 //  - location block
@@ -997,7 +1048,6 @@ bool ps_determine_options(ngx_http_request_t* r,
   net_instaweb::RewriteOptions* request_options;
   bool ok = ps_determine_request_options(r, ctx, cfg_s, url, &request_options);
   if (!ok) {
-    *options = NULL;
     return false;
   }
 
@@ -1006,7 +1056,6 @@ bool ps_determine_options(ngx_http_request_t* r,
   // the global options are ok as are.
   if (directory_options == NULL && request_options == NULL &&
       !global_options->running_furious()) {
-    *options = NULL;
     return true;
   }
 
@@ -1025,9 +1074,14 @@ bool ps_determine_options(ngx_http_request_t* r,
     (*options)->Merge(*request_options);
     delete request_options;
   } else if ((*options)->running_furious()) {
-    (*options)->set_need_to_store_experiment_data(
-        cfg_s->server_context->furious_matcher()->ClassifyIntoExperiment(
-            *ctx->base_fetch->request_headers(), *options));
+    ok = ps_set_furious_state_and_cookie(r, ctx, *options, url->Host());
+    if (!ok) {
+      if (*options != NULL) {
+        delete *options;
+        *options = NULL;
+      }
+      return false;
+    }
   }
 
   return true;
@@ -1121,7 +1175,7 @@ CreateRequestContext::Response ps_create_request_context(
           cfg_s->server_context->thread_system()->NewMutex())));
 
   // If null, that means use global options.
-  net_instaweb::RewriteOptions* custom_options;
+  net_instaweb::RewriteOptions* custom_options = NULL;
   bool ok = ps_determine_options(r, ctx, &custom_options, &url);
   if (!ok) {
     ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
