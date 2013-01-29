@@ -47,7 +47,7 @@ extern "C" {
     // crashing/deadlocking/etc. we set an alarm() to abort us if it comes to
     // that.
     alarm(2);
-    fprintf(stdout, "[@%s] ngx_pagespeed detected a CRASH with signal:%d at %s",
+    fprintf(stderr, "[@%s] ngx_pagespeed detected a CRASH with signal:%d at %s",
             net_instaweb::Integer64ToString(getpid()).c_str(),
             sig,
             net_instaweb::StackTraceString().c_str());
@@ -131,10 +131,10 @@ void NgxMessageHandler::set_buffer(SharedCircularBuffer* buff) {
 
 void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                         va_list args) {
-  ngx_uint_t log_level = GetNgxLogLevel(type);
+  //ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
-  //fprintf(stdout, "nm [%d] %s\n", getpid(), formatted_message.c_str());
-  //ngx_log_error(log_level, log_, 0, formatted_message.c_str());
+  fprintf(stderr, "nm [%d] %s\n", getpid(), formatted_message.c_str());
+  //ngx_log_error(log_level, log_, 0, "%s", formatted_message.c_str());
   // TODO(oschaaf): make equivalent
   /*
   ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
@@ -168,10 +168,10 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
 void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
                                             int line, const char* msg,
                                             va_list args) {
-  ngx_uint_t log_level = GetNgxLogLevel(type);
+  //ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
-  //fprintf(stdout, "fm [%d] - %s\n", getpid(), formatted_message.c_str());
-  //ngx_log_error(log_level, log_, 0/* TODO(oschaaf): describe*/, formatted_message.c_str());
+  fprintf(stderr, "fm [%d] - %s\n", getpid(), formatted_message.c_str());
+  //ngx_log_error(log_level, log_, 0/* TODO(oschaaf): describe*/, "%s", formatted_message.c_str());
   // TODO(oschaaf):
   /*ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
                "[%s %s @%ld] %s:%d: %s",
