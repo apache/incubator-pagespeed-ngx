@@ -21,6 +21,7 @@
 #include <cstdio>
 
 #include "ngx_cache.h"
+#include "ngx_message_handler.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_thread_system.h"
 #include "ngx_server_context.h"
@@ -49,6 +50,7 @@
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
+#include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/scheduler_thread.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/slow_worker.h"
@@ -73,14 +75,22 @@ class Writer;
 
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
-NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf)
+NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf,
+                                                 ngx_cycle_t* cycle)
     : RewriteDriverFactory(new NgxThreadSystem())
       // TODO(oschaaf): mod_pagespeed ifdefs this:
     , shared_mem_runtime_(new PthreadSharedMem())
     , cache_hasher_(20)
     , main_conf_(main_conf)
     , threads_started_(false)
-    , is_root_process_(true) {
+    , is_root_process_(true)
+    , cycle_(cycle)
+    , ngx_message_handler_(new NgxMessageHandler(
+        cycle_->log, "-x-", timer(), thread_system()->NewMutex()))
+      // TODO(oschaaf)
+    , install_crash_handler_(true)
+    , message_buffer_size_(1024*100)
+    , shared_circular_buffer_(NULL) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
@@ -91,6 +101,9 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf)
   timer_ = DefaultTimer();
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
+  set_message_handler(ngx_message_handler_);
+  // TODO(oschaaf):
+  set_html_parse_message_handler(ngx_message_handler_);
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
@@ -148,11 +161,11 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
-  return new GoogleMessageHandler;
+  return ngx_message_handler_;
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultMessageHandler() {
-  return DefaultHtmlParseMessageHandler();
+  return ngx_message_handler_;
 }
 
 FileSystem* NgxRewriteDriverFactory::DefaultFileSystem() {
@@ -354,6 +367,9 @@ void NgxRewriteDriverFactory::ShutDown() {
   // Take down any memcached threads.
   // TODO(oschaaf): should be refactored with the Apache shutdown code
   memcached_pool_.reset(NULL);
+  ngx_message_handler_->set_buffer(NULL);
+  // TODO(oschaaf): separate html_parse_message_handler
+  //ngx_html_parse_message_handler_->set_buffer(NULL);
 }
 
 void NgxRewriteDriverFactory::StartThreads() {
@@ -371,7 +387,35 @@ void NgxRewriteDriverFactory::StartThreads() {
 }
 
 void NgxRewriteDriverFactory::ParentOrChildInit() {
-  // left in as a stub, we will need it later on
+  if (install_crash_handler_) {
+    NgxMessageHandler::InstallCrashHandler();
+  }
+  SharedCircularBufferInit(is_root_process_);
+}
+
+// TODO(jmarantz): make this per-vhost.
+void NgxRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
+  // Set buffer size to 0 means turning it off
+  if (shared_mem_runtime() != NULL && (message_buffer_size_ != 0)) {
+    // TODO(jmarantz): it appears that filename_prefix() is not actually
+    // established at the time of this construction, calling into question
+    // whether we are naming our shared-memory segments correctly.
+    shared_circular_buffer_.reset(new SharedCircularBuffer(
+        shared_mem_runtime(),
+        message_buffer_size_,
+        filename_prefix().as_string(),
+        // TODO(oschaaf): I think this won't work, as we don't nessecarily
+        // have  a vhost per worker process in nginx
+        // come to think of that, we may have to look at the slow worker
+        // again, we may be starting too many
+        "FOO.com" /*hostname_identifier()*/));
+    if (shared_circular_buffer_->InitSegment(is_root, message_handler())) {
+      ngx_message_handler_->set_buffer(shared_circular_buffer_.get());
+      // TODO(oschaaf):
+      //ngx_html_parse_message_handler_->set_buffer(
+      //    shared_circular_buffer_.get());
+    }
+  }
 }
 
 void NgxRewriteDriverFactory::RootInit() {

@@ -19,6 +19,12 @@
 #ifndef NGX_REWRITE_DRIVER_FACTORY_H_
 #define NGX_REWRITE_DRIVER_FACTORY_H_
 
+extern "C" {
+  #include <ngx_config.h>
+  #include <ngx_core.h>
+  //#include <ngx_http.h>
+}
+
 #include <set>
 
 #include "apr_pools.h"
@@ -39,7 +45,9 @@ class AsyncCache;
 class CacheInterface;
 class NgxServerContext;
 class NgxCache;
+class NgxMessageHandler;
 class NgxRewriteOptions;
+class SharedCircularBuffer;
 class SlowWorker;
 class StaticJavaScriptManager;
 
@@ -50,7 +58,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
 
   // main_conf will have only options set in the main block.  It may be NULL,
   // and we do not take ownership.
-  explicit NgxRewriteDriverFactory(NgxRewriteOptions* main_conf);
+  explicit NgxRewriteDriverFactory(NgxRewriteOptions* main_conf,
+                                   ngx_cycle_t* cycle);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -114,6 +123,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   bool is_root_process() const { return is_root_process_; }
   void RootInit();
   void ChildInit();
+  void SharedCircularBufferInit(bool is_root);
 
  private:
   SimpleStats simple_stats_;
@@ -149,7 +159,12 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   std::vector<AsyncCache*> async_caches_;
   bool threads_started_;
   bool is_root_process_;
-
+  ngx_cycle_t* cycle_;
+  NgxMessageHandler* ngx_message_handler_;
+  bool install_crash_handler_;
+  int message_buffer_size_;
+  scoped_ptr<SharedCircularBuffer> shared_circular_buffer_;
+  
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 
