@@ -1587,6 +1587,8 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
       cmcf->servers.elts);
   ngx_uint_t s;
 
+  // Iterate over all configured server{} blocks, and find our context in it,
+  // so we can create and set a ProxyFetchFactory for it.
   for (s = 0; s < cmcf->servers.nelts; s++) {
     ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
         cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
