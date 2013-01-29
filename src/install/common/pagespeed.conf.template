@@ -120,6 +120,15 @@
     # ModPagespeedNumRewriteThreads 4
     # ModPagespeedNumExpensiveRewriteThreads 4
 
+    # Many filters modify the URLs of resources in HTML files. This is typically
+    # harmless but pages whose Javascript expects to read or modify the original
+    # URLs may break. The following parameters prevent filters from modifying
+    # URLs of their respective types.
+    #
+    # ModPagespeedJsPreserveURLs on
+    # ModPagespeedImagePreserveURLs on
+    # ModPagespeedCssPreserveURLs on
+
     # Settings for image optimization:
     #
     # Jpeg recompression quality (0 to 100, -1 strips metadata):

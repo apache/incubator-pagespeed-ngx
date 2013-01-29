@@ -22,7 +22,6 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apache_request_context.h"
@@ -56,7 +55,6 @@
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/shared_mem_cache.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -470,18 +468,19 @@ void write_handler_response(const StringPiece& output, request_rec* request) {
 
 // Returns request URL if it was a .pagespeed. rewritten resource URL.
 // Otherwise returns NULL. Since other Apache modules can change request->uri,
-// we run save_url_hook early to stow the original request URL in a note.
-// This method reads that note and thus should return the URL that the
-// browser actually requested (rather than a mod_rewrite altered URL).
-const char* get_instaweb_resource_url(request_rec* request) {
+// we stow the original request URL in a note. This method reads that note
+// and thus should return the URL that the browser actually requested (rather
+// than a mod_rewrite altered URL).
+const char* get_instaweb_resource_url(request_rec* request,
+                                      ApacheServerContext* server_context) {
   const char* resource = apr_table_get(request->notes, kResourceUrlNote);
 
-  // If our translate_name hook, save_url_hook, failed
-  // to run because some other module's translate_hook returned OK first,
-  // then run it now.  The main reason we try to do this early is to
-  // save our URL before mod_rewrite mutates it.
+  // If our translate_name hook, save_url_hook, failed to run because some
+  // other module's translate_hook returned OK first, then run it now. The
+  // main reason we try to do this early is to save our URL before mod_rewrite
+  // mutates it.
   if (resource == NULL) {
-    save_url_hook(request);
+    save_url_in_note(request, server_context);
     resource = apr_table_get(request->notes, kResourceUrlNote);
   }
 
@@ -929,6 +928,11 @@ apr_status_t instaweb_handler(request_rec* request) {
 apr_status_t save_url_hook(request_rec *request) {
   ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(request->server);
+  return save_url_in_note(request, server_context);
+}
+
+apr_status_t save_url_in_note(request_rec *request,
+                              ApacheServerContext* server_context) {
   // Escape ASAP if we're in unplugged mode.
   if (server_context->config()->unplugged()) {
     return DECLINED;
@@ -976,15 +980,6 @@ apr_status_t save_url_hook(request_rec *request) {
 
 // Override core_map_to_storage for pagespeed resources.
 apr_status_t instaweb_map_to_storage(request_rec* request) {
-  apr_status_t ret = DECLINED;
-
-  // Escape ASAP if we're in unplugged mode.
-  ApacheServerContext* server_context =
-      InstawebContext::ServerContextFromServerRec(request->server);
-  if (server_context->config()->unplugged()) {
-    return DECLINED;
-  }
-
   if (request->proxyreq == PROXYREQ_REVERSE) {
     // If Apache is acting as a reverse proxy for this request there is no
     // point in walking the directory because it doesn't apply to this
@@ -994,65 +989,83 @@ apr_status_t instaweb_map_to_storage(request_rec* request) {
     // or DECLINED here, at least with URLs that aren't overly long; also,
     // we actually fetch the DECODED URL (no .pagespeed. etc) from the proxy
     // server and we rewrite it ourselves.
-  } else if (get_instaweb_resource_url(request) != NULL) {
-    // core_map_to_storage does at least two things:
-    //  1) checks filename length limits
-    //  2) determines directory specific options
-    // We want (2) but not (1).  If we simply return OK we will keep
-    // core_map_to_storage from running and let through our long filenames but
-    // resource requests that require regeneration will not respect directory
-    // specific options.
-    //
-    // To fix this we need to be more dependent on apache internals than we
-    // would like.  core_map_to_storage always calls ap_directory_walk(request),
-    // which does both (1) and (2) and appears to work entirely off of
-    // request->filename.  But ap_directory_walk doesn't care whether the last
-    // request->segment of the path actually exists.  So if we change the
-    // request->filename from something like:
-    //    /var/www/path/to/LEAF_WHICH_MAY_BE_HUGE.pagespeed.FILTER.HASH.EXT
-    // to:
-    //    /var/www/path/to/A
-    // then we will bypass the filename length limit without harming the load of
-    // directory specific options.
-    //
-    // So: modify request->filename in place to cut it off after the last '/'
-    // character and replace the whole leaf with 'A', and then call
-    // ap_directory_walk to figure out custom options.
-    char* filename_starting_at_last_slash = strrchr(request->filename, '/');
-    if (filename_starting_at_last_slash != NULL &&
-        filename_starting_at_last_slash[1] != '\0') {
-      filename_starting_at_last_slash[1] = 'A';
-      filename_starting_at_last_slash[2] = '\0';
-    }
-    ap_directory_walk(request);
-
-    // mod_speling, if enabled, looks for the filename on the file system,
-    // and tries to "correct" the spelling.  This is not desired for
-    // mod_pagesped resources, but mod_speling will not do this damage
-    // when request->filename == NULL.  See line 219 of
-    // http://svn.apache.org/viewvc/httpd/httpd/trunk/modules/mappers/
-    // mod_speling.c?revision=983065&view=markup
-    //
-    // Note that mod_speling runs 'hook_fixups' at APR_HOOK_LAST, and
-    // we are currently running instaweb_map_to_storage in map_to_storage
-    // HOOK_FIRST-2, which is a couple of phases before hook_fixups.
-    //
-    // If at some point we stop NULLing the filename here we need to modify the
-    // code above that mangles it to use a temporary buffer instead.
-    request->filename = NULL;
-
-    // While setting request->filename helps get mod_speling (as well as
-    // mod_mime and mod_mime_magic) out of our hair, it causes crashes
-    // in mod_negotiation (if on) when finfo.filetype is APR_NOFILE.
-    // So we give it a type that's something other than APR_NOFILE (plus we
-    // also don't want APR_DIR, since that would make mod_mime to set the
-    // mimetype to httpd/unix-directory).
-    request->finfo.filetype = APR_UNKFILE;
-
-    // Keep core_map_to_storage from running and rejecting our long filenames.
-    ret = OK;
+    return DECLINED;
   }
-  return ret;
+
+  if (request->filename == NULL) {
+    // We set filename to NULL below, and it appears other modules do too
+    // (the WebSphere plugin for example; see issue 610), so to prevent a
+    // dereference of NULL.
+    return DECLINED;
+  }
+
+  ApacheServerContext* server_context =
+      InstawebContext::ServerContextFromServerRec(request->server);
+  if (server_context->config()->unplugged()) {
+    // If we're in unplugged mode then none of our hooks apply so escape ASAP.
+    return DECLINED;
+  }
+
+  if (get_instaweb_resource_url(request, server_context) == NULL) {
+    return DECLINED;
+  }
+
+  // core_map_to_storage does at least two things:
+  //  1) checks filename length limits
+  //  2) determines directory specific options
+  // We want (2) but not (1).  If we simply return OK we will keep
+  // core_map_to_storage from running and let through our long filenames but
+  // resource requests that require regeneration will not respect directory
+  // specific options.
+  //
+  // To fix this we need to be more dependent on apache internals than we
+  // would like.  core_map_to_storage always calls ap_directory_walk(request),
+  // which does both (1) and (2) and appears to work entirely off of
+  // request->filename.  But ap_directory_walk doesn't care whether the last
+  // request->segment of the path actually exists.  So if we change the
+  // request->filename from something like:
+  //    /var/www/path/to/LEAF_WHICH_MAY_BE_HUGE.pagespeed.FILTER.HASH.EXT
+  // to:
+  //    /var/www/path/to/A
+  // then we will bypass the filename length limit without harming the load of
+  // directory specific options.
+  //
+  // So: modify request->filename in place to cut it off after the last '/'
+  // character and replace the whole leaf with 'A', and then call
+  // ap_directory_walk to figure out custom options.
+  char* filename_starting_at_last_slash = strrchr(request->filename, '/');
+  if (filename_starting_at_last_slash != NULL &&
+      filename_starting_at_last_slash[1] != '\0') {
+    filename_starting_at_last_slash[1] = 'A';
+    filename_starting_at_last_slash[2] = '\0';
+  }
+  ap_directory_walk(request);
+
+  // mod_speling, if enabled, looks for the filename on the file system,
+  // and tries to "correct" the spelling.  This is not desired for
+  // mod_pagesped resources, but mod_speling will not do this damage
+  // when request->filename == NULL.  See line 219 of
+  // http://svn.apache.org/viewvc/httpd/httpd/trunk/modules/mappers/
+  // mod_speling.c?revision=983065&view=markup
+  //
+  // Note that mod_speling runs 'hook_fixups' at APR_HOOK_LAST, and
+  // we are currently running instaweb_map_to_storage in map_to_storage
+  // HOOK_FIRST-2, which is a couple of phases before hook_fixups.
+  //
+  // If at some point we stop NULLing the filename here we need to modify the
+  // code above that mangles it to use a temporary buffer instead.
+  request->filename = NULL;
+
+  // While setting request->filename helps get mod_speling (as well as
+  // mod_mime and mod_mime_magic) out of our hair, it causes crashes
+  // in mod_negotiation (if on) when finfo.filetype is APR_NOFILE.
+  // So we give it a type that's something other than APR_NOFILE (plus we
+  // also don't want APR_DIR, since that would make mod_mime to set the
+  // mimetype to httpd/unix-directory).
+  request->finfo.filetype = APR_UNKFILE;
+
+  // Keep core_map_to_storage from running and rejecting our long filenames.
+  return OK;
 }
 
 }  // namespace net_instaweb
