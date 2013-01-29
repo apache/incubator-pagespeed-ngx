@@ -1578,7 +1578,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   }
 
   // ChildInit() will initialise all ServerContexts, which we need to
-  // create proxyfetchfactories below
+  // create ProxyFetchFactories below
   cfg_m->driver_factory->ChildInit();
 
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
