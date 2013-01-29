@@ -61,7 +61,7 @@ NgxCache::NgxCache(const StringPiece& path,
       config.file_cache_clean_size_kb() * 1024,
       config.file_cache_clean_inode_limit());
   file_cache_ = new FileCache(
-      config.file_cache_path(), factory->file_system(), factory->slow_worker(),
+      config.file_cache_path(), factory->file_system(), NULL,
       factory->filename_encoder(), policy, factory->message_handler());
   l2_cache_.reset(new CacheStats(kFileCache, file_cache_, factory->timer(),
                                  factory->statistics()));
@@ -89,8 +89,6 @@ NgxCache::NgxCache(const StringPiece& path,
 NgxCache::~NgxCache() {
 }
 
-// TODO(oschaaf): see rootinit/childinit from ApacheCache.cc
-
 void NgxCache::FallBackToFileBasedLocking() {
   if ((shared_mem_lock_manager_.get() != NULL) || (lock_manager_ == NULL)) {
     shared_mem_lock_manager_.reset(NULL);
@@ -98,6 +96,28 @@ void NgxCache::FallBackToFileBasedLocking() {
         factory_->file_system(), path_,
         factory_->scheduler(), factory_->message_handler()));
     lock_manager_ = file_system_lock_manager_.get();
+  }
+}
+
+void NgxCache::RootInit() {
+  factory_->message_handler()->Message(
+      kInfo, "Initializing shared memory for path: %s.", path_.c_str());
+  if ((shared_mem_lock_manager_.get() != NULL) &&
+      !shared_mem_lock_manager_->Initialize()) {
+    FallBackToFileBasedLocking();
+  }
+}
+
+void NgxCache::ChildInit() {
+  factory_->message_handler()->Message(
+      kInfo, "Reusing shared memory for path: %s.", path_.c_str());
+  if ((shared_mem_lock_manager_.get() != NULL) &&
+      !shared_mem_lock_manager_->Attach()) {
+    FallBackToFileBasedLocking();
+  }
+
+  if (file_cache_ != NULL) {
+    file_cache_->set_worker(factory_->slow_worker());
   }
 }
 
