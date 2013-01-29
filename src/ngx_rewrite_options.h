@@ -66,9 +66,6 @@ class NgxRewriteOptions : public RewriteOptions {
   static const NgxRewriteOptions* DynamicCast(const RewriteOptions* instance);
   static NgxRewriteOptions* DynamicCast(RewriteOptions* instance);
 
-  // Name of the actual type of this instance as a poor man's RTTI.
-  virtual const char* class_name() const;
-
   // TODO(jefftk): All these caching-related getters and setters could move to
   // an OriginRewriteOptions.
   const GoogleString& file_cache_path() const {
@@ -133,9 +130,6 @@ class NgxRewriteOptions : public RewriteOptions {
   }
 
  private:
-  // Used by class_name() and DynamicCast() to provide error checking.
-  static const char kClassName[];
-
   // Helper methods for ParseAndSetOptions().  Each can:
   //  - return kOptionNameUnknown and not set msg:
   //    - directive not handled; continue on with other possible

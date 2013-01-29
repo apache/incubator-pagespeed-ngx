@@ -32,8 +32,6 @@ extern "C" {
 
 namespace net_instaweb {
 
-const char NgxRewriteOptions::kClassName[] = "NgxRewriteOptions";
-
 RewriteOptions::Properties* NgxRewriteOptions::ngx_properties_ = NULL;
 
 NgxRewriteOptions::NgxRewriteOptions() {
@@ -335,21 +333,11 @@ NgxRewriteOptions* NgxRewriteOptions::Clone() const {
 
 const NgxRewriteOptions* NgxRewriteOptions::DynamicCast(
     const RewriteOptions* instance) {
-  return (instance == NULL ||
-          instance->class_name() != NgxRewriteOptions::kClassName
-          ? NULL
-          : static_cast<const NgxRewriteOptions*>(instance));
+  return dynamic_cast<const NgxRewriteOptions*>(instance);
 }
 
 NgxRewriteOptions* NgxRewriteOptions::DynamicCast(RewriteOptions* instance) {
-  return (instance == NULL ||
-          instance->class_name() != NgxRewriteOptions::kClassName
-          ? NULL
-          : static_cast<NgxRewriteOptions*>(instance));
-}
-
-const char* NgxRewriteOptions::class_name() const {
-  return NgxRewriteOptions::kClassName;
+  return dynamic_cast<NgxRewriteOptions*>(instance);
 }
 
 }  // namespace net_instaweb
