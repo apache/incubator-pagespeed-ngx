@@ -36,6 +36,7 @@
         '<(instaweb_root)/instaweb.gyp:instaweb_http',
         '<(instaweb_root)/instaweb.gyp:instaweb_rewriter',
         '<(instaweb_root)/instaweb.gyp:instaweb_spriter',
+        '<(instaweb_root)/instaweb.gyp:instaweb_system',
         '<(instaweb_root)/instaweb.gyp:instaweb_util',
         '<(instaweb_root)/instaweb.gyp:instaweb_util_pthread',
         '<(instaweb_root)/instaweb.gyp:process_context',

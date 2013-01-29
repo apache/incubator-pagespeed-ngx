@@ -187,8 +187,6 @@ const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
 const int RewriteOptions::kDefaultFuriousTrafficPercent = 50;
 const int RewriteOptions::kDefaultFuriousSlot = 1;
 
-const char RewriteOptions::kClassName[] = "RewriteOptions";
-
 const char RewriteOptions::kDefaultBlinkDesktopUserAgentValue[] =
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 "
     "(KHTML, like Gecko) Chrome/19.0.1084.46 Safari/536.5";
@@ -2174,10 +2172,6 @@ GoogleString RewriteOptions::ToExperimentDebugString() const {
 void RewriteOptions::Modify() {
   DCHECK(!frozen_);
   modified_ = true;
-}
-
-const char* RewriteOptions::class_name() const {
-  return RewriteOptions::kClassName;
 }
 
 void RewriteOptions::AddCustomFetchHeader(const StringPiece& name,

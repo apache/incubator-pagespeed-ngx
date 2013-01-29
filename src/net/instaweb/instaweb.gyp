@@ -1196,6 +1196,16 @@
       ],
     },
     {
+      'target_name': 'instaweb_system',
+      'type': '<(library)',
+      'dependencies': [
+        'instaweb_util',
+      ],
+      'sources': [
+        'system/system_rewrite_options.cc',
+      ],
+    },
+    {
       # TODO(sligocki): Why is this called "automatic" util?
       'target_name': 'automatic_util',
       'type': '<(library)',

@@ -19,30 +19,21 @@
 #include "base/logging.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
-
-namespace {
-
-const int64 kDefaultCacheFlushIntervalSec = 5;
-
-}  // namespace
-
-const char ApacheConfig::kClassName[] = "ApacheConfig";
 
 RewriteOptions::Properties* ApacheConfig::apache_properties_ = NULL;
 
 void ApacheConfig::Initialize() {
   if (Properties::Initialize(&apache_properties_)) {
-    RewriteOptions::Initialize();
+    SystemRewriteOptions::Initialize();
     AddProperties();
   }
 }
 
 void ApacheConfig::Terminate() {
   if (Properties::Terminate(&apache_properties_)) {
-    RewriteOptions::Terminate();
+    SystemRewriteOptions::Terminate();
   }
 }
 
@@ -62,71 +53,26 @@ void ApacheConfig::Init() {
 }
 
 void ApacheConfig::AddProperties() {
-  add_option("", &ApacheConfig::fetcher_proxy_, "afp",
-             RewriteOptions::kFetcherProxy);
-  add_option("", &ApacheConfig::file_cache_path_, "afcp",
-             RewriteOptions::kFileCachePath);
-  add_option("", &ApacheConfig::memcached_servers_, "ams",
-             RewriteOptions::kMemcachedServers);
-  add_option(1, &ApacheConfig::memcached_threads_, "amt",
-             RewriteOptions::kMemcachedThreads);
-  add_option(0, &ApacheConfig::memcached_timeout_us_, "amo",
-             RewriteOptions::kMemcachedTimeoutUs);
   add_option("", &ApacheConfig::slurp_directory_, "asd",
              RewriteOptions::kSlurpDirectory);
-  add_option("", &ApacheConfig::statistics_logging_file_, "aslf",
-             RewriteOptions::kStatisticsLoggingFile);
-  add_option("", &ApacheConfig::statistics_logging_charts_css_, "aslcc",
-      RewriteOptions::kStatisticsLoggingChartsCSS);
-  add_option("", &ApacheConfig::statistics_logging_charts_js_, "aslcj",
-      RewriteOptions::kStatisticsLoggingChartsJS);
   add_option(kOrganized, &ApacheConfig::referer_statistics_output_level_,
              "arso", RewriteOptions::kRefererStatisticsOutputLevel);
   add_option(false, &ApacheConfig::collect_referer_statistics_, "acrs",
              RewriteOptions::kCollectRefererStatistics);
   add_option(false, &ApacheConfig::hash_referer_statistics_, "ahrs",
              RewriteOptions::kHashRefererStatistics);
-  add_option(true, &ApacheConfig::statistics_enabled_, "ase",
-             RewriteOptions::kStatisticsEnabled);
-  add_option(false, &ApacheConfig::statistics_logging_enabled_, "asle",
-             RewriteOptions::kStatisticsLoggingEnabled);
   add_option(false, &ApacheConfig::test_proxy_, "atp",
              RewriteOptions::kTestProxy);
   add_option("", &ApacheConfig::test_proxy_slurp_, "atps",
              RewriteOptions::kTestProxySlurp);
-  add_option(false, &ApacheConfig::use_shared_mem_locking_, "ausml",
-             RewriteOptions::kUseSharedMemLocking);
   add_option(false, &ApacheConfig::slurp_read_only_, "asro",
              RewriteOptions::kSlurpReadOnly);
   add_option(false, &ApacheConfig::rate_limit_background_fetches_, "rlbf",
              RewriteOptions::kRateLimitBackgroundFetches);
-
-  add_option(Timer::kHourMs, &ApacheConfig::file_cache_clean_interval_ms_,
-             "afcci", RewriteOptions::kFileCacheCleanIntervalMs);
-
-  add_option(100 * 1024, &ApacheConfig::file_cache_clean_size_kb_, "afc",
-             RewriteOptions::kFileCacheCleanSizeKb);  // 100 megabytes
-  // Default to no inode limit so that existing installations are not affected.
-  // pagespeed.conf.template contains suggested limit for new installations.
-  add_option(0, &ApacheConfig::file_cache_clean_inode_limit_, "afcl",
-             RewriteOptions::kFileCacheCleanInodeLimit);
-  add_option(0, &ApacheConfig::lru_cache_byte_limit_, "alcb",
-             RewriteOptions::kLruCacheByteLimit);
-  add_option(0, &ApacheConfig::lru_cache_kb_per_process_, "alcp",
-             RewriteOptions::kLruCacheKbPerProcess);
   add_option(0, &ApacheConfig::slurp_flush_limit_, "asfl",
              RewriteOptions::kSlurpFlushLimit);
-  add_option(3000, &ApacheConfig::statistics_logging_interval_ms_, "asli",
-             RewriteOptions::kStatisticsLoggingIntervalMs);
-  add_option("", &ApacheConfig::cache_flush_filename_, "acff",
-             RewriteOptions::kCacheFlushFilename);
-  add_option(kDefaultCacheFlushIntervalSec,
-             &ApacheConfig::cache_flush_poll_interval_sec_, "acfpi",
-             RewriteOptions::kCacheFlushPollIntervalSec);
   add_option(false, &ApacheConfig::experimental_fetch_from_mod_spdy_, "effms",
              RewriteOptions::kExperimentalFetchFromModSpdy);
-  add_option("", &ApacheConfig::use_shared_mem_metadata_cache_,
-             "asmc", RewriteOptions::kUseSharedMemMetadataCache);
 
   MergeSubclassProperties(apache_properties_);
   ApacheConfig config;
@@ -190,21 +136,15 @@ ApacheConfig* ApacheConfig::Clone() const {
 }
 
 const ApacheConfig* ApacheConfig::DynamicCast(const RewriteOptions* instance) {
-  return (instance == NULL ||
-          instance->class_name() != ApacheConfig::kClassName
-          ? NULL
-          : static_cast<const ApacheConfig*>(instance));
+  const ApacheConfig* config = dynamic_cast<const ApacheConfig*>(instance);
+  DCHECK(config != NULL);
+  return config;
 }
 
 ApacheConfig* ApacheConfig::DynamicCast(RewriteOptions* instance) {
-  return (instance == NULL ||
-          instance->class_name() != ApacheConfig::kClassName
-          ? NULL
-          : static_cast<ApacheConfig*>(instance));
-}
-
-const char* ApacheConfig::class_name() const {
-  return ApacheConfig::kClassName;
+  ApacheConfig* config = dynamic_cast<ApacheConfig*>(instance);
+  DCHECK(config != NULL);
+  return config;
 }
 
 }  // namespace net_instaweb

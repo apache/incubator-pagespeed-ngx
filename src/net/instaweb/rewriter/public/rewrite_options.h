@@ -552,8 +552,6 @@ class RewriteOptions {
   // Default Custom Variable slot in which to put Furious information.
   static const int kDefaultFuriousSlot;
 
-  static const char kClassName[];
-
   static const char kDefaultBlinkDesktopUserAgentValue[];
 
   static const char kDefaultBlockingRewriteKey[];
@@ -1940,9 +1938,6 @@ class RewriteOptions {
   // experiment. Primarily used for tagging Google Analytics data.  This format
   // is not at all specific to Google Analytics, however.
   virtual GoogleString ToExperimentDebugString() const;
-
-  // Name of the actual type of this instance as a poor man's RTTI.
-  virtual const char* class_name() const;
 
   // Returns true if generation low res images is required.
   virtual bool NeedLowResImages() const {
