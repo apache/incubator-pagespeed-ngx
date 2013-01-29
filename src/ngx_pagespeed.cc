@@ -1048,7 +1048,6 @@ bool ps_determine_options(ngx_http_request_t* r,
   net_instaweb::RewriteOptions* request_options;
   bool ok = ps_determine_request_options(r, ctx, cfg_s, url, &request_options);
   if (!ok) {
-    *options = NULL;
     return false;
   }
 
@@ -1057,7 +1056,6 @@ bool ps_determine_options(ngx_http_request_t* r,
   // the global options are ok as are.
   if (directory_options == NULL && request_options == NULL &&
       !global_options->running_furious()) {
-    *options = NULL;
     return true;
   }
 
@@ -1078,7 +1076,10 @@ bool ps_determine_options(ngx_http_request_t* r,
   } else if ((*options)->running_furious()) {
     ok = ps_set_furious_state_and_cookie(r, ctx, *options, url->Host());
     if (!ok) {
-      *options = NULL;
+      if (*options != NULL) {
+        delete *options;
+        *options = NULL;
+      }
       return false;
     }
   }
@@ -1174,7 +1175,7 @@ CreateRequestContext::Response ps_create_request_context(
           cfg_s->server_context->thread_system()->NewMutex())));
 
   // If null, that means use global options.
-  net_instaweb::RewriteOptions* custom_options;
+  net_instaweb::RewriteOptions* custom_options = NULL;
   bool ok = ps_determine_options(r, ctx, &custom_options, &url);
   if (!ok) {
     ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
