@@ -102,7 +102,6 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
 
   ShutDown();
 
-  // We still have registered a pool deleter here, right?  This seems risky...
   STLDeleteElements(&uninitialized_server_contexts_);
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
