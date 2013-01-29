@@ -59,17 +59,10 @@ void FlushEarlyInfoFinder::UpdateFlushEarlyInfoInDriver(RewriteDriver* driver) {
                                            "into FlushEarlyRenderInfo failed.");
         delete flush_early_render_info;
       } else {
-        // Force a computation if the value is imminently expiry.
-        if (property_cache->IsExpired(
-            property_value,
-            driver->options()->finder_properties_cache_refresh_time_ms())) {
-          driver->enable_must_compute_finder_properties();
-        }
         driver->set_flush_early_render_info(flush_early_render_info);
         return;
       }
     }
-    driver->enable_must_compute_finder_properties();
   }
 }
 

@@ -243,7 +243,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       serve_blink_non_critical_(false),
       is_blink_request_(false),
       can_rewrite_resources_(true),
-      must_compute_finder_properties_(false),
       request_context_(NULL),
       start_time_ms_(0),
       is_nested_(false)
@@ -372,7 +371,6 @@ void RewriteDriver::Clear() {
   serve_blink_non_critical_ = false;
   is_blink_request_ = false;
   can_rewrite_resources_ = true;
-  must_compute_finder_properties_ = false;
   request_context_.reset(NULL);
   start_time_ms_ = 0;
   is_nested_ = false;
@@ -2315,8 +2313,6 @@ GoogleString RewriteDriver::ToString() {
     AppendBool(&out, "serve_blink_non_critical", serve_blink_non_critical_);
     AppendBool(&out, "is_blink_request", is_blink_request_);
     AppendBool(&out, "can_rewrite_resources", can_rewrite_resources_);
-    AppendBool(&out, "must_compute_finder_properties",
-               must_compute_finder_properties_);
     AppendBool(&out, "is_nested", is_nested_);
   }
 

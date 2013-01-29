@@ -94,7 +94,6 @@ void CollectFlushEarlyContentFilter::StartDocumentImpl() {
       driver()->server_context()->flush_early_info_finder();
   if (finder != NULL && finder->IsMeaningful(driver())) {
     finder->UpdateFlushEarlyInfoInDriver(driver());
-    finder->ComputeFlushEarlyInfo(driver());
   }
 }
 

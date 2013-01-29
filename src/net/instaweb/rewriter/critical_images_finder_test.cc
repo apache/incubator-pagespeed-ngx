@@ -156,7 +156,6 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   EXPECT_TRUE(rewrite_driver()->critical_images() == NULL);
   ResetDriver();
   finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
-  EXPECT_FALSE(rewrite_driver()->must_compute_finder_properties());
   CheckCriticalImageFinderStats(1, 0, 0);
   ClearStats();
 
@@ -181,7 +180,6 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   // We read it from cache.
   ResetDriver();
   finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
-  EXPECT_FALSE(rewrite_driver()->must_compute_finder_properties());
   CheckCriticalImageFinderStats(1, 0, 0);
   ClearStats();
 
@@ -189,7 +187,6 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   AdvanceTimeMs(0.9 * options()->finder_properties_cache_expiration_time_ms());
   ResetDriver();
   finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
-  EXPECT_TRUE(rewrite_driver()->must_compute_finder_properties());
   CheckCriticalImageFinderStats(1, 0, 0);
   ClearStats();
 
@@ -198,7 +195,6 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   AdvanceTimeMs(2 * options()->finder_properties_cache_expiration_time_ms());
   rewrite_driver()->set_updated_critical_images(false);
   finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
-  EXPECT_TRUE(rewrite_driver()->must_compute_finder_properties());
   CheckCriticalImageFinderStats(0, 1, 0);
 }
 

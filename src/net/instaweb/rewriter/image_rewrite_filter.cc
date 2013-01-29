@@ -347,8 +347,6 @@ void ImageRewriteFilter::StartDocumentImpl() {
        (driver_->options()->Enabled(RewriteOptions::kInlineImages) &&
         driver_->options()->inline_only_critical_images()))) {
     finder->UpdateCriticalImagesSetInDriver(driver_);
-    // Compute critical images if critical images information is not present.
-    finder->ComputeCriticalImages(driver_->url(), driver_);
   }
   image_counter_ = 0;
   inlinable_urls_.clear();

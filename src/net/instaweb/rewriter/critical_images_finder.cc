@@ -215,12 +215,6 @@ StringSet* CriticalImagesFinder::ExtractCriticalImagesSet(
       if (track_stats) {
         critical_images_valid_count_->Add(1);
       }
-      // Force a computation if the value is imminently expiry.
-      if (page_property_cache->IsExpired(
-          property_value,
-          driver->options()->finder_properties_cache_refresh_time_ms())) {
-        driver->enable_must_compute_finder_properties();
-      }
       return critical_images;
     } else if (track_stats) {
       critical_images_expired_count_->Add(1);
@@ -228,7 +222,6 @@ StringSet* CriticalImagesFinder::ExtractCriticalImagesSet(
   } else if (track_stats) {
     critical_images_not_found_count_->Add(1);
   }
-  driver->enable_must_compute_finder_properties();
   return NULL;
 }
 

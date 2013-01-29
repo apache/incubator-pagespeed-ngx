@@ -1170,33 +1170,6 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
                     "", "", false, true);
 }
 
-TEST_F(ImageRewriteTest, ComputeCriticalImages) {
-  MeaningfulCriticalImagesFinder* finder =
-      new MeaningfulCriticalImagesFinder(statistics());
-  server_context()->set_critical_images_finder(finder);
-  options()->set_image_inline_max_bytes(30000);
-  options()->EnableFilter(RewriteOptions::kInlineImages);
-  rewrite_driver()->AddFilters();
-  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
-                    "", "", false, false);
-  // Empty user agent supports inlining, so we call ComputeCriticalImages.
-  EXPECT_EQ(1, finder->num_compute_calls());
-
-  // Change to a user agent that does not support inlining. We don't call
-  // ComputeCriticalImages.
-  rewrite_driver()->SetUserAgent("Firefox/2.0");
-  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
-                    "", "", false, false);
-  EXPECT_EQ(1, finder->num_compute_calls());
-
-  // Change back to a user agent that supports inlining. We call
-  // ComputeCriticalImages again.
-  rewrite_driver()->SetUserAgent("Firefox/3.0");
-  TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
-                    "", "", false, false);
-  EXPECT_EQ(2, finder->num_compute_calls());
-}
-
 TEST_F(ImageRewriteTest, InlineNoRewrite) {
   // Make sure we inline an image that isn't otherwise altered in any way.
   options()->set_image_inline_max_bytes(30000);

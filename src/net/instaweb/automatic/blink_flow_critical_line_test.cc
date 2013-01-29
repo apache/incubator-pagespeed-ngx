@@ -1346,7 +1346,6 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkFlushSubresources) {
                  "?ModPagespeedFilters=+extend_cache_css,-inline_css", true,
                  request_headers, &text, &response_headers, NULL, false);
   VerifyNonBlinkResponse(&response_headers);
-  EXPECT_EQ(1, flush_early_info_finder_->num_compute_calls());
 
   // Requesting again.
   flush_early_info_finder_->Clear();
@@ -1355,9 +1354,6 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkFlushSubresources) {
                  "?ModPagespeedFilters=+extend_cache_css,-inline_css", true,
                  request_headers, &text, &response_headers, NULL, false);
   VerifyFlushSubresourcesResponse(text, true);
-  // Since 2 rewrite drivers are created in flush early flow so compute is
-  // called twice.
-  EXPECT_EQ(2, flush_early_info_finder_->num_compute_calls());
 }
 
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkCacheMissHitFlushSubresources) {

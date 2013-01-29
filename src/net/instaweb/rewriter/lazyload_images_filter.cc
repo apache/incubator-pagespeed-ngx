@@ -69,6 +69,12 @@ void LazyloadImagesFilter::DetermineEnabled() {
 }
 
 void LazyloadImagesFilter::StartDocumentImpl() {
+  CriticalImagesFinder* finder =
+      driver()->server_context()->critical_images_finder();
+  if (finder->IsMeaningful(driver()) &&
+      driver_->device_properties()->SupportsImageInlining()) {
+    finder->UpdateCriticalImagesSetInDriver(driver());
+  }
   Clear();
 }
 
