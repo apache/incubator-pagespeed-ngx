@@ -272,6 +272,8 @@ void SharedMemCacheTestBase::TestEvict() {
     CheckPut(small_cache.get(), key.c_str(), large_);
     CheckGet(small_cache.get(), key.c_str(), large_);
   }
+
+  small_cache->GlobalCleanup(shmem_runtime_.get(), kAltSegment, &handler_);
 }
 
 void SharedMemCacheTestBase::CheckDelete(const char* key) {

@@ -157,6 +157,8 @@ void SharedMemCacheDataTestBase::TestFreeList() {
   EXPECT_EQ(kBlocks, blocks.size());
   SanityCheckBlockVector(blocks, 0, kBlocks - 1);
   EXPECT_EQ(kBlocks, sector->sector_stats()->used_blocks);
+
+  ParentCleanup();
 }
 
 void SharedMemCacheDataTestBase::TestFreeListChild() {
@@ -222,6 +224,8 @@ void SharedMemCacheDataTestBase::TestLRU() {
   ASSERT_EQ(2u, lru.size());
   EXPECT_EQ(1, lru[0]);
   EXPECT_EQ(3, lru[1]);
+
+  ParentCleanup();
 }
 
 void SharedMemCacheDataTestBase::TestBlockLists() {
@@ -271,6 +275,8 @@ void SharedMemCacheDataTestBase::TestBlockLists() {
   BlockVector extracted_blocks;
   sector->BlockListForEntry(entry, &extracted_blocks);
   EXPECT_EQ(blocks, extracted_blocks);
+
+  ParentCleanup();
 }
 
 bool SharedMemCacheDataTestBase::ParentInit(AbstractSharedMemSegment** out_seg,
@@ -307,6 +313,11 @@ bool SharedMemCacheDataTestBase::ChildInit(AbstractSharedMemSegment** out_seg,
   *out_sector = sector;
 
   return sector->Attach(&handler_);
+}
+
+void SharedMemCacheDataTestBase::ParentCleanup() {
+  test_env_->WaitForChildren();
+  shmem_runtime_->DestroySegment(kSegment, &handler_);
 }
 
 }  // namespace net_instaweb

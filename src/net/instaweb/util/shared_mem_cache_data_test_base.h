@@ -60,6 +60,7 @@ class SharedMemCacheDataTestBase : public testing::Test {
   bool ChildInit(AbstractSharedMemSegment** out_seg,
                  SharedMemCacheData::Sector<kBlockSize>** out_sector);
 
+  void ParentCleanup();
 
   scoped_ptr<SharedMemTestEnv> test_env_;
   scoped_ptr<AbstractSharedMem> shmem_runtime_;
