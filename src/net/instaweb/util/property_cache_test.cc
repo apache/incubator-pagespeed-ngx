@@ -390,6 +390,7 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoValuesInACohort) {
     EXPECT_EQ(kCohortName1, cohort_info.name());
     EXPECT_FALSE(cohort_info.is_cache_hit());
     EXPECT_EQ(0, cohort_info.properties_found_size());
+    EXPECT_EQ(1, cohort_info.cache_key_state());
   }
 
   {
@@ -409,6 +410,7 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoValuesInACohort) {
       EXPECT_EQ(kPropertyName2, cohort_info.properties_found(1));
       EXPECT_EQ(kCohortName1, cohort_info.name());
       EXPECT_TRUE(cohort_info.is_cache_hit());
+      EXPECT_EQ(0, cohort_info.cache_key_state());
     }
     EXPECT_TRUE(page.valid());
     EXPECT_TRUE(page.called());

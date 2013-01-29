@@ -102,12 +102,12 @@ message SplitHtmlInfo {
 }
 
 // This proto stores all information related to property cohorts.
-// Next is for PropertyCohortInfo: 6
+// Next is for PropertyCohortInfo: 7
 message PropertyCohortInfo {
   // The name of the property cohort.
   optional string name = 1;
   // Whether the cohort was found in the cache
-  optional bool is_cache_hit = 2 [ default = false];
+  optional bool is_cache_hit = 2 [ default = false ];
   // The list of properties that were found in the cache.
   repeated string properties_found = 3;
   // The device type for which this cohort was looked up.
@@ -118,6 +118,9 @@ message PropertyCohortInfo {
   // Refer to net/instaweb/automatic/public/proxy_fetch.h to see what the
   // different values map to.
   optional int32 cache_type = 5;
+  // Cache result defined as CacheInterface::KeyState in
+  // net/instaweb/util/public/cache_interface.h.
+  optional int32 cache_key_state = 6;
 }
 
 // This proto stores information related to property cache lookups.

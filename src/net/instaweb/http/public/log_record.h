@@ -88,7 +88,7 @@ class LogRecord  {
 
   // Updates the cohort info at the specified index, to indicate whether it was
   // a cache hit.
-  void SetCacheStatusForCohortInfo(int index, bool found);
+  void SetCacheStatusForCohortInfo(int index, bool found, int key_state);
 
   // Updates the cohort info at the specified index with the device and cache
   // type.

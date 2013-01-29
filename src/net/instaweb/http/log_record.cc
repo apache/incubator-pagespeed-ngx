@@ -78,10 +78,13 @@ void LogRecord::AddFoundPropertyToCohortInfo(
       add_properties_found(property);
 }
 
-void LogRecord::SetCacheStatusForCohortInfo(int index, bool found) {
+void LogRecord::SetCacheStatusForCohortInfo(
+    int index, bool found, int key_state) {
   ScopedMutex lock(mutex_.get());
-  logging_info()->mutable_property_page_info()->mutable_cohort_info(index)->
-      set_is_cache_hit(found);
+  PropertyCohortInfo* cohort_info =
+      logging_info()->mutable_property_page_info()->mutable_cohort_info(index);
+  cohort_info->set_is_cache_hit(found);
+  cohort_info->set_cache_key_state(key_state);
 }
 
 void LogRecord::SetDeviceAndCacheTypeForCohortInfo(int index, int device_type,

@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "base/scoped_ptr.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
@@ -32,8 +33,11 @@ namespace net_instaweb {
 class CacheInterface {
  public:
   enum KeyState {
-    kAvailable,    // Requested key is available for serving
-    kNotFound      // Requested key needs to be written
+    kAvailable = 0,     // Requested key is available for serving
+    kNotFound = 1,      // Requested key needs to be written
+    kOverload = 2,      // Lookup is discarded due to cache server is overloaded
+    kNetworkError = 3,  // Cache lookup ended up in network error
+    kTimeout = 4,       // Request timeout
   };
 
   class Callback {

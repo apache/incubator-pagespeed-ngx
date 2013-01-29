@@ -170,8 +170,9 @@ class PropertyCache::CacheInterfaceCallback : public CacheInterface::Callback {
         }
       }
     }
+
     page_->log_record()->SetCacheStatusForCohortInfo(
-        pmap_struct_->cohort_index, valid);
+        pmap_struct_->cohort_index, valid, state);
     collector_->Done(valid);
     delete this;
   }
