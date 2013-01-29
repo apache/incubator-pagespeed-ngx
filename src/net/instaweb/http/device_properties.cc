@@ -22,7 +22,8 @@ DeviceProperties::DeviceProperties(UserAgentMatcher* matcher)
     : ua_matcher_(matcher), supports_image_inlining_(kNotSet),
       supports_js_defer_(kNotSet), supports_webp_(kNotSet),
       supports_webp_lossless_alpha_(kNotSet), is_mobile_user_agent_(kNotSet),
-      supports_split_html_(kNotSet), supports_flush_early_(kNotSet) {}
+      supports_split_html_(kNotSet), supports_flush_early_(kNotSet),
+      screen_dimensions_set_(kNotSet), screen_width_(0), screen_height_(0) {}
 
 DeviceProperties::~DeviceProperties() {
 }
@@ -96,6 +97,25 @@ bool DeviceProperties::CanPreloadResources(
     const RequestHeaders* req_hdrs) const {
   return ua_matcher_->GetPrefetchMechanism(user_agent_, req_hdrs) !=
       UserAgentMatcher::kPrefetchNotSupported;
+}
+
+bool DeviceProperties::GetScreenResolution(int* width, int* height) const {
+  if (screen_dimensions_set_ == kNotSet) {
+    if (ua_matcher_->GetScreenResolution(user_agent_, width, height)) {
+      SetScreenResolution(*width, *height);
+    }
+  }
+  if (screen_dimensions_set_ == kTrue) {
+    *width = screen_width_;
+    *height = screen_height_;
+  }
+  return (screen_dimensions_set_ == kTrue);
+}
+
+void DeviceProperties::SetScreenResolution(int width, int height) const {
+  screen_dimensions_set_ = kTrue;
+  screen_width_ = width;
+  screen_height_ = height;
 }
 
 }  // namespace net_instaweb

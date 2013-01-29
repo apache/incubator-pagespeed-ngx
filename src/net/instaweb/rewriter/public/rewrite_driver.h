@@ -153,9 +153,6 @@ class RewriteDriver : public HtmlParse {
   // responses.
   static const char kStatusCodePropertyName[];
 
-  static const int kDefaultMobileScreenWidth;
-  static const int kDefaultMobileScreenHeight;
-
   RewriteDriver(MessageHandler* message_handler,
                 FileSystem* file_system,
                 UrlAsyncFetcher* url_async_fetcher);
@@ -264,8 +261,6 @@ class RewriteDriver : public HtmlParse {
   }
 
   bool SupportsFlushEarly() const;
-  bool GetScreenResolution(int* width, int* height);
-  void SetScreenResolution(int width, int height);
 
   // Adds the filters from the options, specified by name in enabled_filters.
   // This must be called explicitly after object construction to provide an
@@ -849,10 +844,6 @@ class RewriteDriver : public HtmlParse {
   // Does not take the ownership of the page.
   void set_unowned_property_page(PropertyPage* page);
 
-  PropertyPage* device_property_page() const { return device_property_page_; }
-  void set_device_property_page(PropertyPage* page);
-  void set_unowned_device_property_page(PropertyPage* page);
-
   // Used by ImageRewriteFilter for identifying critical images.
   const CriticalLineInfo* critical_line_info() const;
 
@@ -1236,11 +1227,8 @@ class RewriteDriver : public HtmlParse {
 
   GoogleString user_agent_;
 
-  LazyBool is_screen_resolution_set_;
   LazyBool should_skip_parsing_;
   mutable LazyBool supports_flush_early_;
-  int user_agent_screen_resolution_width_;
-  int user_agent_screen_resolution_height_;
 
   StringFilterMap resource_filter_map_;
 
@@ -1356,13 +1344,6 @@ class RewriteDriver : public HtmlParse {
 
   // Boolean value which tells whether property page is owned by driver or not.
   bool owns_property_page_;
-
-  // Stores any cached properties associated with the current device.
-  PropertyPage* device_property_page_;
-
-  // Boolean value which tells whether device property page is owned by driver
-  // or not.
-  bool owns_device_property_page_;
 
   scoped_ptr<CriticalLineInfo> critical_line_info_;
 

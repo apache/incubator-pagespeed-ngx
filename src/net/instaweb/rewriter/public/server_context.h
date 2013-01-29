@@ -194,12 +194,6 @@ class ServerContext {
   PropertyCache* client_property_cache() const {
     return client_property_cache_.get();
   }
-  void set_device_property_cache(PropertyCache* cache) {
-    device_property_cache_.reset(cache);
-  }
-  PropertyCache* device_property_cache() const {
-    return device_property_cache_.get();
-  }
 
   // Cache for storing file system metadata. It must be private to a server,
   // preferably but not necessarily shared between its processes, and is
@@ -582,7 +576,6 @@ class ServerContext {
   scoped_ptr<HTTPCache> http_cache_;
   scoped_ptr<PropertyCache> page_property_cache_;
   scoped_ptr<PropertyCache> client_property_cache_;
-  scoped_ptr<PropertyCache> device_property_cache_;
   scoped_ptr<CacheInterface> filesystem_metadata_cache_;
   scoped_ptr<CacheInterface> metadata_cache_;
 

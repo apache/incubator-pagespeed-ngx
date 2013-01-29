@@ -16,6 +16,7 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_DEVICE_PROPERTIES_H_
 
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -39,10 +40,15 @@ class DeviceProperties {
   bool IsMobileUserAgent() const;
   bool SupportsSplitHtml(bool enable_mobile) const;
   bool CanPreloadResources(const RequestHeaders* request_headers) const;
+  bool GetScreenResolution(int* width, int* height) const;
 
  private:
+  friend class ImageRewriteTest;
+  FRIEND_TEST(ImageRewriteTest, SquashImagesForMobileScreen);
+  void SetScreenResolution(int width, int height) const;
+
   GoogleString user_agent_;
-  const UserAgentMatcher* ua_matcher_;
+  UserAgentMatcher* ua_matcher_;
 
   mutable LazyBool supports_image_inlining_;
   mutable LazyBool supports_js_defer_;
@@ -51,6 +57,9 @@ class DeviceProperties {
   mutable LazyBool is_mobile_user_agent_;
   mutable LazyBool supports_split_html_;
   mutable LazyBool supports_flush_early_;
+  mutable LazyBool screen_dimensions_set_;
+  mutable int screen_width_;
+  mutable int screen_height_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceProperties);
 };

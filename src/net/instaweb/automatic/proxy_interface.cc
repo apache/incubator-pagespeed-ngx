@@ -333,12 +333,9 @@ ProxyFetchPropertyCallbackCollector*
   PropertyPageStarVector property_callbacks;
 
   ProxyFetchPropertyCallback* client_callback = NULL;
-  ProxyFetchPropertyCallback* device_callback = NULL;
   PropertyCache* page_property_cache = server_context_->page_property_cache();
   PropertyCache* client_property_cache =
       server_context_->client_property_cache();
-  PropertyCache* device_property_cache =
-      server_context_->device_property_cache();
   if (!is_resource_fetch &&
       server_context_->page_property_cache()->enabled() &&
       UrlMightHavePropertyCacheEntry(request_url) &&
@@ -386,21 +383,6 @@ ProxyFetchPropertyCallbackCollector*
         added_callback = true;
       }
     }
-
-    // Initiate device properties lookup.
-    const char* user_agent = async_fetch->request_headers()->Lookup1(
-        HttpAttributes::kUserAgent);
-    if (device_property_cache != NULL &&
-        device_property_cache->enabled() &&
-        user_agent != NULL) {
-      AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
-      device_callback = new ProxyFetchPropertyCallback(
-          ProxyFetchPropertyCallback::kDevicePropertyCache,
-          *device_property_cache, user_agent,
-          UserAgentMatcher::kEndOfDeviceType, callback_collector.get(), mutex);
-      callback_collector->AddCallback(device_callback);
-      added_callback = true;
-    }
   }
 
   // All callbacks need to be registered before Reads to avoid race.
@@ -409,9 +391,6 @@ ProxyFetchPropertyCallbackCollector*
   }
   if (client_callback != NULL) {
     client_property_cache->Read(client_callback);
-  }
-  if (device_callback != NULL) {
-    device_property_cache->Read(device_callback);
   }
 
   if (!added_callback) {

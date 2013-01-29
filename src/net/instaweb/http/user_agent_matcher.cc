@@ -207,8 +207,7 @@ const char UserAgentMatcher::kScreenWidth[] = "screen_width";
 const char UserAgentMatcher::kScreenHeight[] = "screen_height";
 
 UserAgentMatcher::UserAgentMatcher()
-    : device_cache_(NULL), device_page_(NULL),
-      chrome_version_pattern_(kChromeVersionPattern) {
+    : chrome_version_pattern_(kChromeVersionPattern) {
   // Initialize FastWildcardGroup for image inlining whitelist & blacklist.
   for (int i = 0, n = arraysize(kImageInliningWhitelist); i < n; ++i) {
     supports_image_inlining_.Allow(kImageInliningWhitelist[i]);
@@ -391,10 +390,6 @@ bool UserAgentMatcher::SupportsSplitHtml(const StringPiece& user_agent,
   return SupportsJsDefer(user_agent, allow_mobile);
 }
 
-void UserAgentMatcher::LookupDeviceProperties(
-    const StringPiece& user_agent, PropertyPage* page) {
-}
-
 UserAgentMatcher::DeviceType UserAgentMatcher::GetDeviceTypeForUA(
     const StringPiece& user_agent) const {
   // TODO(ksimbili): Pass in device property page once changes related to device
@@ -423,11 +418,10 @@ StringPiece UserAgentMatcher::DeviceTypeSuffix(DeviceType device_type) {
   return device_type_suffix;
 }
 
-bool UserAgentMatcher::GetScreenDimensionsFromLocalRegex(
+bool UserAgentMatcher::GetScreenResolution(
     const StringPiece& user_agent, int* width, int* height) {
-  if (width == NULL || height == NULL) {
-    return false;
-  }
+  DCHECK(width != NULL);
+  DCHECK(height != NULL);
   GoogleString match;
   if (RE2::PartialMatch(StringPieceToRe2(user_agent), known_devices_pattern_,
       &match)) {

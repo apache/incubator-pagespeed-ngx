@@ -725,9 +725,6 @@ void ProxyFetch::PropertyCacheComplete(
     driver_->set_property_page(
         callback_collector->GetPropertyPage(
             ProxyFetchPropertyCallback::kPagePropertyCache));
-    driver_->set_device_property_page(
-        callback_collector->GetPropertyPage(
-            ProxyFetchPropertyCallback::kDevicePropertyCache));
     driver_->set_client_state(GetClientState(callback_collector));
   }
   // We have to set the callback to NULL to let ScheduleQueueExecutionIfNeeded

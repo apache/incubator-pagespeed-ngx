@@ -283,7 +283,8 @@ void ImageUrlEncoder::SetUserAgentScreenResolution(
   }
   int screen_width = 0;
   int screen_height = 0;
-  if (driver->GetScreenResolution(&screen_width, &screen_height) &&
+  if (driver->device_properties()->GetScreenResolution(
+      &screen_width, &screen_height) &&
       GetNormalizedScreenResolution(
           screen_width, screen_height, &screen_width, &screen_height)) {
     ImageDim *dims = context->mutable_user_agent_screen_resolution();

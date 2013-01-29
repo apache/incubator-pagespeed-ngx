@@ -99,10 +99,6 @@ class UserAgentMatcher {
   // Returns the suffix for the given device_type.
   static StringPiece DeviceTypeSuffix(DeviceType device_type);
 
-  // Returns true and sets width and height if we know them for the UA.
-  bool GetScreenDimensionsFromLocalRegex(
-      const StringPiece& user_agent, int* width, int* height);
-
   bool SupportsJsDefer(const StringPiece& user_agent, bool allow_mobile) const;
   bool SupportsWebp(const StringPiece& user_agent) const;
   bool SupportsWebpLosslessAlpha(const StringPiece& user_agent) const;
@@ -129,13 +125,9 @@ class UserAgentMatcher {
   virtual bool SupportsSplitHtml(const StringPiece& user_agent,
                                  bool allow_mobile) const;
 
-  // Looks up device properties and stores them in device_property_cache_.
-  virtual void LookupDeviceProperties(const StringPiece& user_agent,
-      PropertyPage* page);
-  void set_device_cache(PropertyCache* cache) { device_cache_ = cache; }
-  PropertyCache* device_cache() const { return device_cache_; }
-  void set_device_page(PropertyPage* page) { device_page_ = page; }
-  PropertyPage* device_page() const { return device_page_; }
+  // Returns true and sets width and height if we know them for the UA.
+  virtual bool GetScreenResolution(
+        const StringPiece& user_agent, int* width, int* height);
 
  private:
   FastWildcardGroup supports_image_inlining_;
@@ -149,11 +141,9 @@ class UserAgentMatcher {
   FastWildcardGroup supports_prefetch_image_tag_;
   FastWildcardGroup supports_prefetch_link_script_tag_;
   FastWildcardGroup supports_dns_prefetch_;
-  PropertyCache* device_cache_;
-  PropertyPage* device_page_;
 
   const RE2 chrome_version_pattern_;
-  map <GoogleString, pair<int, int> > screen_dimensions_map_;
+  mutable map <GoogleString, pair<int, int> > screen_dimensions_map_;
   GoogleString known_devices_pattern_;
 
   DISALLOW_COPY_AND_ASSIGN(UserAgentMatcher);

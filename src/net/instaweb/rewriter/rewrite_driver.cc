@@ -202,11 +202,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       flush_in_progress_(false),
       uninhibit_reflush_requested_(false),
       rewrites_to_delete_(0),
-      is_screen_resolution_set_(kNotSet),
       should_skip_parsing_(kNotSet),
       supports_flush_early_(kNotSet),
-      user_agent_screen_resolution_width_(0),
-      user_agent_screen_resolution_height_(0),
       response_headers_(NULL),
       request_headers_(NULL),
       status_code_(HttpStatus::kUnknownStatusCode),
@@ -230,8 +227,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       client_state_(NULL),
       property_page_(NULL),
       owns_property_page_(false),
-      device_property_page_(NULL),
-      owns_device_property_page_(false),
       updated_critical_images_(false),
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
@@ -340,7 +335,6 @@ void RewriteDriver::Clear() {
   xhtml_status_ = kXhtmlUnknown;
 
   client_state_.reset(NULL);
-  is_screen_resolution_set_ = kNotSet;
   should_skip_parsing_ = kNotSet;
   supports_flush_early_ = kNotSet;
   pending_async_events_ = 0;
@@ -385,12 +379,6 @@ void RewriteDriver::Clear() {
   }
   property_page_ = NULL;
   owns_property_page_ = false;
-
-  if (owns_device_property_page_) {
-      delete device_property_page_;
-  }
-  device_property_page_ = NULL;
-  owns_device_property_page_ = false;
 
   // Reset to the default fetcher from any session fetcher
   // (as the request is over).
@@ -735,9 +723,6 @@ const char RewriteDriver::kLastRequestTimestamp[] = "last_request_timestamp";
 const char RewriteDriver::kParseSizeLimitExceeded[] =
     "parse_size_limit_exceeded";
 
-const int RewriteDriver::kDefaultMobileScreenWidth = 480;
-const int RewriteDriver::kDefaultMobileScreenHeight = 800;
-
 void RewriteDriver::Initialize() {
   if (RewriteOptions::Initialize()) {
     CssFilter::Initialize();
@@ -827,55 +812,6 @@ void RewriteDriver::TracePrintf(const char* fmt, ...) {
   va_start(argp, fmt);
   trace_context()->TraceVPrintf(fmt, argp);
   va_end(argp);
-}
-
-// TODO(buettner): Replace MDL and device_property cache machinery with UDL.
-bool RewriteDriver::GetScreenResolution(int* width, int* height) {
-  if (is_screen_resolution_set_ == kNotSet) {
-    PropertyPage* device_page = device_property_page();
-    if (device_page != NULL) {
-      PropertyCache* cache = server_context_->device_property_cache();
-      const PropertyCache::Cohort* device_cohort = cache->GetCohort(
-          UserAgentMatcher::kDevicePropertiesCohort);
-      if (device_cohort != NULL) {
-        int w, h;
-        PropertyValue* width_pvalue = device_page->GetProperty(
-          device_cohort, UserAgentMatcher::kScreenWidth);
-        PropertyValue* height_pvalue = device_page->GetProperty(
-          device_cohort, UserAgentMatcher::kScreenHeight);
-        if (width_pvalue != NULL &&
-            width_pvalue->has_value() &&
-            StringToInt(width_pvalue->value().as_string(), &w) &&
-            height_pvalue != NULL &&
-            height_pvalue->has_value() &&
-            StringToInt(height_pvalue->value().as_string(), &h)) {
-          SetScreenResolution(w, h);
-        } else {
-          server_context()->user_agent_matcher()->
-              LookupDeviceProperties(user_agent_, device_property_page_);
-        }
-      }
-    }
-    // If we don't get resolution from device_cache, try regex matching.
-    // Don't update is_screen_resolution_set, so lookup can try again.
-    if (is_screen_resolution_set_ == kNotSet) {
-      if (server_context()->user_agent_matcher()->
-          GetScreenDimensionsFromLocalRegex(user_agent_, width, height)) {
-        return true;
-      }
-    }
-  }
-  if (is_screen_resolution_set_ == kTrue) {
-    *width = user_agent_screen_resolution_width_;
-    *height = user_agent_screen_resolution_height_;
-  }
-  return (is_screen_resolution_set_ == kTrue);
-}
-
-void RewriteDriver::SetScreenResolution(int width, int height) {
-  is_screen_resolution_set_ = kTrue;
-  user_agent_screen_resolution_width_ = width;
-  user_agent_screen_resolution_height_ = height;
 }
 
 bool RewriteDriver::SupportsFlushEarly() const {
@@ -2693,7 +2629,6 @@ void RewriteDriver::SetUserAgent(const StringPiece& user_agent_string) {
   user_agent_string.CopyToString(&user_agent_);
   ClearDeviceProperties();
   device_properties_->set_user_agent(user_agent_string);
-  is_screen_resolution_set_ = kNotSet;
 }
 
 OptionsAwareHTTPCacheCallback::OptionsAwareHTTPCacheCallback(
@@ -2786,22 +2721,6 @@ void RewriteDriver::set_unowned_property_page(PropertyPage* page) {
   }
   property_page_ = page;
   owns_property_page_ = false;
-}
-
-void RewriteDriver::set_device_property_page(PropertyPage* page) {
-  if (owns_device_property_page_) {
-    delete device_property_page_;
-  }
-  device_property_page_ = page;
-  owns_device_property_page_ = true;
-}
-
-void RewriteDriver::set_unowned_device_property_page(PropertyPage* page) {
-  if (owns_device_property_page_) {
-    delete device_property_page_;
-  }
-  device_property_page_ = page;
-  owns_device_property_page_ = false;
 }
 
 void RewriteDriver::increment_num_inline_preview_images() {

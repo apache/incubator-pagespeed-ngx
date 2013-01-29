@@ -1140,64 +1140,6 @@ TEST_F(RewriteDriverTest, SetSessionFetcherTest) {
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
 }
 
-TEST_F(RewriteDriverTest, GetScreenResolutionTest) {
-  PropertyCache* dcache = server_context_->MakePropertyCache(
-      PropertyCache::kDevicePropertyCacheKeyPrefix, lru_cache());
-  PropertyCache::InitCohortStats(UserAgentMatcher::kDevicePropertiesCohort,
-        rewrite_driver()->statistics());
-  int width, height;
-
-  // Unknown user agent;
-  rewrite_driver()->SetUserAgent(UserAgentStrings::kIPhoneChrome21UserAgent);
-  EXPECT_FALSE(rewrite_driver()->GetScreenResolution(&width, &height));
-
-  // No device property page, regex based results.
-  rewrite_driver()->SetUserAgent(UserAgentStrings::kAndroidICSUserAgent);
-  EXPECT_TRUE(rewrite_driver()->GetScreenResolution(&width, &height));
-  EXPECT_EQ(720, width);
-  EXPECT_EQ(1280, height);
-
-  // Property values not set, regex based results.
-  server_context_->set_device_property_cache(dcache);
-  server_context_->device_property_cache()->AddCohort(
-      UserAgentMatcher::kDevicePropertiesCohort);
-  server_context_->device_property_cache()->set_enabled(true);
-  MockPropertyPage* device_page(new MockPropertyPage(
-      server_context_->thread_system(),
-      *server_context_->device_property_cache(), "test_ua"));
-  rewrite_driver()->set_device_property_page(device_page);
-  server_context_->device_property_cache()->Read(device_page);
-  EXPECT_TRUE(rewrite_driver()->GetScreenResolution(&width, &height));
-  EXPECT_EQ(720, width);
-  EXPECT_EQ(1280, height);
-
-  // Bad data in page, regex based results.
-  const PropertyCache::Cohort* device_cohort =
-      server_context_->device_property_cache()->GetCohort(
-      UserAgentMatcher::kDevicePropertiesCohort);
-  PropertyValue* width_pvalue = device_page->GetProperty(device_cohort,
-      UserAgentMatcher::kScreenWidth);
-  PropertyValue* height_pvalue = device_page->GetProperty(device_cohort,
-      UserAgentMatcher::kScreenHeight);
-  server_context_->device_property_cache()->UpdateValue("cat", width_pvalue);
-  server_context_->device_property_cache()->UpdateValue("200", height_pvalue);
-  server_context_->device_property_cache()->WriteCohort(
-      device_cohort, device_page);
-  server_context_->device_property_cache()->Read(device_page);
-  EXPECT_TRUE(rewrite_driver()->GetScreenResolution(&width, &height));
-  EXPECT_EQ(720, width);
-  EXPECT_EQ(1280, height);
-
-  // Good data in page.
-  server_context_->device_property_cache()->UpdateValue("100", width_pvalue);
-  server_context_->device_property_cache()->WriteCohort(
-      device_cohort, device_page);
-  server_context_->device_property_cache()->Read(device_page);
-  EXPECT_TRUE(rewrite_driver()->GetScreenResolution(&width, &height));
-  EXPECT_EQ(100, width);
-  EXPECT_EQ(200, height);
-}
-
 class WaitAsyncFetch : public StringAsyncFetch {
  public:
   WaitAsyncFetch(const RequestContextPtr& req, GoogleString* content,
