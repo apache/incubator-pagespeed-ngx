@@ -102,6 +102,7 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
 
   ShutDown();
 
+  CHECK(uninitialized_server_contexts_.empty() || is_root_process_);
   STLDeleteElements(&uninitialized_server_contexts_);
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
