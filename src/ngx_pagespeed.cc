@@ -1577,7 +1577,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     return NGX_OK;
   }
 
-  // ChildInit() will initialise all servercontexts, which we need to
+  // ChildInit() will initialise all ServerContexts, which we need to
   // create proxyfetchfactories below
   cfg_m->driver_factory->ChildInit();
 
