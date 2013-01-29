@@ -289,6 +289,7 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   EXPECT_FALSE(timing_info.has_fetch_ms());
   EXPECT_TRUE(logging_info()->is_html_response());
   EXPECT_FALSE(logging_info()->is_url_disallowed());
+  EXPECT_FALSE(logging_info()->is_request_disabled());
 
   const PropertyPageInfo& page_info = logging_info()->property_page_info();
   // 3 for 3 device types.
@@ -309,6 +310,7 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   FetchFromProxy(url, request_headers, true, &text, &headers);
   EXPECT_FALSE(logging_info()->is_html_response());
   EXPECT_FALSE(logging_info()->is_url_disallowed());
+  EXPECT_FALSE(logging_info()->is_request_disabled());
 
   // Fetch blacklisted url.
   url = "http://www.blacklist.com/";
@@ -317,6 +319,17 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   FetchFromProxy(url, request_headers, true, &text, &headers);
   EXPECT_TRUE(logging_info()->is_html_response());
   EXPECT_TRUE(logging_info()->is_url_disallowed());
+  EXPECT_FALSE(logging_info()->is_request_disabled());
+
+  // Fetch disabled url.
+  url = "http://www.example.com/?ModPagespeed=off";
+  logging_info()->Clear();
+  mock_url_fetcher_.SetResponse("http://www.example.com/", headers,
+                                "<html></html>");
+  FetchFromProxy(url, request_headers, true, &text, &headers);
+  EXPECT_TRUE(logging_info()->is_html_response());
+  EXPECT_FALSE(logging_info()->is_url_disallowed());
+  EXPECT_TRUE(logging_info()->is_request_disabled());
 }
 
 TEST_F(ProxyInterfaceTest, HeadRequest) {

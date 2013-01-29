@@ -654,14 +654,18 @@ void ProxyFetch::DoFetch() {
   if (prepare_success_) {
     const RewriteOptions* options = driver_->options();
     const bool is_allowed = options->IsAllowed(url_);
+    const bool is_enabled = options->enabled();
     {
       ScopedMutex lock(log_record()->mutex());
       if (!is_allowed) {
         log_record()->logging_info()->set_is_url_disallowed(true);
       }
+      if (!is_enabled) {
+        log_record()->logging_info()->set_is_request_disabled(true);
+      }
     }
 
-    if (options->enabled() && is_allowed) {
+    if (is_enabled && is_allowed) {
       // Pagespeed enabled on URL.
       if (options->ajax_rewriting_enabled()) {
         // For Ajax rewrites, we go through RewriteDriver to give it
