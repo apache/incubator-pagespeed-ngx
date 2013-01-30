@@ -37,9 +37,12 @@ class NgxServerContext : public ServerContext {
   // nginx-specific behavior, call global_options() instead which doesn't
   // downcast.
   NgxRewriteOptions* config();
-
+  // Should be called after the child process is forked.
+  void ChildInit();
+  bool initialized() const { return initialized_; }
  private:
   NgxRewriteDriverFactory* ngx_factory_;
+  bool initialized_;
   DISALLOW_COPY_AND_ASSIGN(NgxServerContext);
 };
 
