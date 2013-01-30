@@ -77,20 +77,20 @@ const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf,
                                                  ngx_cycle_t* cycle)
-    : RewriteDriverFactory(new NgxThreadSystem())
+    : RewriteDriverFactory(new NgxThreadSystem()),
       // TODO(oschaaf): mod_pagespeed ifdefs this:
-    , shared_mem_runtime_(new PthreadSharedMem())
-    , cache_hasher_(20)
-    , main_conf_(main_conf)
-    , threads_started_(false)
-    , is_root_process_(true)
-    , cycle_(cycle)
-    , ngx_message_handler_(new NgxMessageHandler(
-        cycle_->log, "-x-", timer(), thread_system()->NewMutex()))
+      shared_mem_runtime_(new PthreadSharedMem()),
+      cache_hasher_(20),
+      main_conf_(main_conf),
+      threads_started_(false),
+      is_root_process_(true),
+      cycle_(cycle),
+      ngx_message_handler_(new NgxMessageHandler(
+          cycle_->log, "-x-", timer(), thread_system()->NewMutex())),
       // TODO(oschaaf)
-    , install_crash_handler_(true)
-    , message_buffer_size_(1024*100)
-    , shared_circular_buffer_(NULL) {
+      install_crash_handler_(true),
+      message_buffer_size_(1024*100),
+      shared_circular_buffer_(NULL) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
@@ -115,7 +115,7 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
 
   ShutDown();
 
-  // We still have registered a pool deleter here, right?  This seems risky...
+  CHECK(uninitialized_server_contexts_.empty() || is_root_process_);
   STLDeleteElements(&uninitialized_server_contexts_);
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
