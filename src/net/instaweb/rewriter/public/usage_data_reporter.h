@@ -50,6 +50,13 @@ class UsageDataReporter {
                                   const GoogleString& ip,
                                   const GoogleString& user_agent) {}
 
+  // Reports fetch errors.
+  virtual void ReportFetchErrors(const GoogleString& host,
+                                 const GoogleString& url,
+                                 int32 error_code,
+                                 const StringPiece& fetch_error) {}
+
+
   // Report a warning.
   virtual void ReportWarning(const GoogleUrl& url, int32 warning_code,
                              const StringPiece& warning_message) {}

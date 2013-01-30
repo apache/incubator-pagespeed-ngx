@@ -185,20 +185,8 @@ GoogleString CssRewriteTestBase::ExpectedUrlForCss(
   return ExpectedUrlForNamer(namer);
 }
 
-// Check that external CSS gets rewritten correctly.
-void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
-    const StringPiece& css_url,
-    const GoogleString& css_input,
-    const GoogleString& expected_css_output,
-    int flags) {
-  CheckFlags(flags);
-
-  // Set input file.
-  if (!FlagSet(flags, kNoClearFetcher)) {
-    ClearFetcherResponses();
-  }
-  SetResponseWithDefaultHeaders(css_url, kContentTypeCss, css_input, 300);
-
+GoogleString CssRewriteTestBase::MakeHtmlWithExternalCssLink(
+    const StringPiece& css_url, int flags) {
   GoogleString link_extras("");
   if (FlagSet(flags, kLinkCharsetIsUTF8)) {
     link_extras = " charset='utf-8'";
@@ -238,9 +226,37 @@ void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
       "  <!-- Style ends here -->\n"
       "</head>";
 
-  GoogleString html_input  = StringPrintf(html_template, meta_tag.c_str(),
-                                          css_url.as_string().c_str(),
-                                          link_extras.c_str());
+  return StringPrintf(html_template, meta_tag.c_str(),
+                      css_url.as_string().c_str(),
+                      link_extras.c_str());
+}
+
+GoogleString CssRewriteTestBase::MakeIndentedCssWithImage(
+    StringPiece image_url) {
+  return StrCat("body {\n"
+                "  background-image: url(", image_url, ");\n"
+                "}\n");
+}
+
+GoogleString CssRewriteTestBase::MakeMinifiedCssWithImage(
+    StringPiece image_url) {
+  return StrCat("body{background-image:url(", image_url, ")}");
+}
+
+// Check that external CSS gets rewritten correctly.
+void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
+    const StringPiece& css_url,
+    const GoogleString& css_input,
+    const GoogleString& expected_css_output,
+    int flags) {
+  CheckFlags(flags);
+
+  // Set input file.
+  if (!FlagSet(flags, kNoClearFetcher)) {
+    ClearFetcherResponses();
+  }
+  SetResponseWithDefaultHeaders(css_url, kContentTypeCss, css_input, 300);
+  GoogleString html_input = MakeHtmlWithExternalCssLink(css_url, flags);
   GoogleString html_output;
 
   ResourceNamer namer;
@@ -251,8 +267,7 @@ void CssRewriteTestBase::ValidateRewriteExternalCssUrl(
              namer.name(), namer.ext());
 
   if (FlagSet(flags, kExpectSuccess) || FlagSet(flags, kExpectFallback)) {
-    html_output = StringPrintf(html_template, meta_tag.c_str(),
-                               expected_new_url.c_str(), link_extras.c_str());
+    html_output = MakeHtmlWithExternalCssLink(expected_new_url, flags);
   } else {
     html_output = html_input;
   }

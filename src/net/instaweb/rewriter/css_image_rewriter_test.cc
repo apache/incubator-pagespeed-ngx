@@ -129,14 +129,9 @@ TEST_F(CssImageRewriterTest, MinifyImagesEmbeddedSpace) {
   options()->DisableFilter(RewriteOptions::kExtendCacheImages);
   server_context()->ComputeSignature(options());
 
-  static const char css_before[] =
-      "body {\n"
-      "  background-image: url('foo bar.png');\n"
-      "}\n";
-  static const char css_after[] =
-      "body{background-image:url(foo\\ bar.png)}";
-
-  ValidateRewrite("minify", css_before, css_after,
+  ValidateRewrite("minify",
+                  MakeIndentedCssWithImage("'foo bar.png'"),
+                  MakeMinifiedCssWithImage("foo\\ bar.png"),
                   kExpectSuccess | kNoClearFetcher);
 }
 
@@ -150,14 +145,10 @@ TEST_F(CssImageRewriterTest, CacheExtendsWhenCssGrows) {
   options()->set_always_rewrite_css(false);
   server_context()->ComputeSignature(options());
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 100);
-  static const char css_before[] =
-      "body{background-image: url(foo.png)}";
-  const GoogleString css_after =
-      StrCat("body{background-image:url(",
-             Encode(kTestDomain, "ce", "0", "foo.png", "png)"),
-             "}");
-
-  ValidateRewrite("cache_extends_images_growcheck", css_before, css_after,
+  ValidateRewrite("cache_extends_images_growcheck",
+                  MakeIndentedCssWithImage("foo.png"),
+                  MakeMinifiedCssWithImage(
+                      Encode(kTestDomain, "ce", "0", "foo.png", "png")),
                   kExpectSuccess | kNoClearFetcher);
 }
 
@@ -171,11 +162,10 @@ TEST_F(CssImageRewriterTest, CacheExtendsRepeatedTopLevel) {
   const char kCss[] = "stylesheet.css";
   const GoogleString kRewrittenCss =
       Encode(kTestDomain, "cf", "0", "stylesheet.css", "css");
-  const char kCssTemplate[] = "body{background-image:url(%s)}";
 
   SetResponseWithDefaultHeaders(kImg, kContentTypePng, kDummyContent, 100);
   SetResponseWithDefaultHeaders(
-      kCss, kContentTypeCss, StringPrintf(kCssTemplate, kImg), 100);
+      kCss, kContentTypeCss, MakeMinifiedCssWithImage(kImg), 100);
 
   const char kHtmlTemplate[] =
       "<link rel='stylesheet' href='%s'>"
@@ -189,7 +179,7 @@ TEST_F(CssImageRewriterTest, CacheExtendsRepeatedTopLevel) {
 
   GoogleString css_out;
   EXPECT_TRUE(FetchResourceUrl(kRewrittenCss, &css_out));
-  EXPECT_EQ(StringPrintf(kCssTemplate, kExtendedImg.c_str()), css_out);
+  EXPECT_EQ(MakeMinifiedCssWithImage(kExtendedImg), css_out);
 }
 
 TEST_F(CssImageRewriterTest, CacheExtendsImages) {
@@ -242,18 +232,11 @@ TEST_F(CssImageRewriterTest, TrimsImageUrls) {
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
   server_context()->ComputeSignature(options());
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 100);
-  static const char kCss[] =
-      "body {\n"
-      "  background-image: url(foo.png);\n"
-      "}\n";
-
-  const GoogleString kCssAfter = StrCat(
-      "body{background-image:url(",
-      Encode("", "ce", "0", "foo.png", "png"),
-      ")}");
-
-  ValidateRewriteExternalCss("trims_css_urls", kCss, kCssAfter,
-                              kExpectSuccess | kNoClearFetcher);
+  ValidateRewriteExternalCss("trims_css_urls",
+                             MakeIndentedCssWithImage("foo.png"),
+                             MakeMinifiedCssWithImage(
+                                 Encode("", "ce", "0", "foo.png", "png")),
+                             kExpectSuccess | kNoClearFetcher);
 }
 
 class CssImageRewriterTestUrlNamer : public CssImageRewriterTest {
@@ -274,18 +257,11 @@ TEST_F(CssImageRewriterTestUrlNamer, TrimsImageUrls) {
   options()->EnableFilter(RewriteOptions::kLeftTrimUrls);
   server_context()->ComputeSignature(options());
   SetResponseWithDefaultHeaders("foo.png", kContentTypePng, kDummyContent, 100);
-  static const char kCss[] =
-      "body {\n"
-      "  background-image: url(foo.png);\n"
-      "}\n";
-
-  const GoogleString kCssAfter = StrCat(
-      "body{background-image:url(",
-      Encode("", "ce", "0", "foo.png", "png"),
-      ")}");
-
-  ValidateRewriteExternalCss("trims_css_urls", kCss, kCssAfter,
-                              kExpectSuccess | kNoClearFetcher);
+  ValidateRewriteExternalCss("trims_css_urls",
+                             MakeIndentedCssWithImage("foo.png"),
+                             MakeMinifiedCssWithImage(
+                                 Encode("", "ce", "0", "foo.png", "png")),
+                             kExpectSuccess | kNoClearFetcher);
 }
 
 TEST_F(CssImageRewriterTest, InlinePaths) {
