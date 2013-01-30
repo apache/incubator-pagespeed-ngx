@@ -1939,8 +1939,12 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   for (s = 0; s < cmcf->servers.nelts; s++) {
     ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
         cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
-    cfg_s->proxy_fetch_factory =
-        new net_instaweb::ProxyFetchFactory(cfg_s->server_context);
+    // Some server{} blocks may not have a ServerContext in that case we must
+    // not instantiate a ProxyFetchFactory.
+    if (cfg_s->server_context != NULL) {
+      cfg_s->proxy_fetch_factory =
+          new net_instaweb::ProxyFetchFactory(cfg_s->server_context);
+    }
   }
 
   cfg_m->driver_factory->StartThreads();

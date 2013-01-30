@@ -134,7 +134,6 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   bool use_per_vhost_statistics() const {
     return use_per_vhost_statistics_;
   }
-
   void set_use_per_vhost_statistics(bool x) {
     use_per_vhost_statistics_ = x;
   }
