@@ -1495,8 +1495,8 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
   return ngx_http_next_header_filter(r);
 }
 
-// TOOD(oschaaf): see if we can make ps_static_handler
-// use write_handler_response? for now, minimize the diff
+// TODO(oschaaf): make ps_static_handler use write_handler_response? for now,
+// minimize the diff
 ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
 
@@ -1623,9 +1623,9 @@ ngx_int_t ps_statistics_handler(ngx_http_request_t* r,
   StringPiece request_uri_path = str_to_string_piece(r->uri);
   // TODO(oschaaf): declare these urls somewhere above / don't duplicate them
   bool general_stats_request =
-      (net_instaweb::StringCaseStartsWith(request_uri_path, "/ngx_pagespeed_statistics") == 0);
+      net_instaweb::StringCaseStartsWith(request_uri_path, "/ngx_pagespeed_statistics");
   bool global_stats_request =
-      (net_instaweb::StringCaseStartsWith(request_uri_path, "/ngx_pagespeed_global_statistics") == 0);
+      net_instaweb::StringCaseStartsWith(request_uri_path, "/ngx_pagespeed_global_statistics");
   net_instaweb::NgxRewriteDriverFactory* factory =
       static_cast<net_instaweb::NgxRewriteDriverFactory*>(server_context->factory());
   net_instaweb::MessageHandler* message_handler = factory->message_handler();
