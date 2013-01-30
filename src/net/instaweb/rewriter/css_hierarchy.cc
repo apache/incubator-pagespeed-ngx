@@ -74,8 +74,8 @@ void CssHierarchy::InitializeRoot(const GoogleUrl& css_base_url,
 
 void CssHierarchy::InitializeNested(const CssHierarchy& parent,
                                     const GoogleUrl& import_url) {
-  url_ = import_url.Spec();
   css_base_url_.Reset(import_url);
+  url_ = css_base_url_.Spec();
   parent_ = &parent;
   // These are invariant and propagate from our parent.
   css_trim_url_.Reset(parent.css_trim_url());
