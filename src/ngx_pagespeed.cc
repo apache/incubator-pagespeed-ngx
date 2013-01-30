@@ -481,8 +481,10 @@ char* ps_configure(ngx_conf_t* cf,
     }
   }
 
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cf->cycle, ngx_pagespeed));
   const char* status = (*options)->ParseAndSetOptions(
-      args, n_args, cf->pool, handler);
+      args, n_args, cf->pool, handler, cfg_m->driver_factory);
 
   // nginx expects us to return a string literal but doesn't mark it const.
   return const_cast<char*>(status);
@@ -570,7 +572,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   ps_main_conf_t* cfg_m = ps_create_conf<ps_main_conf_t>(cf);
   if (cfg_m == NULL) {
     return NGX_CONF_ERROR;
-  }
+  } 
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
 }

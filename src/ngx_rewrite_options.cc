@@ -24,6 +24,7 @@ extern "C" {
 
 #include "ngx_rewrite_options.h"
 #include "ngx_pagespeed.h"
+#include "ngx_rewrite_driver_factory.h"
 
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -118,8 +119,8 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions0(
 }
 
 RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions1(
-    StringPiece directive, StringPiece arg,
-    GoogleString* msg, MessageHandler* handler) {
+    StringPiece directive, StringPiece arg, GoogleString* msg,
+    MessageHandler* handler, NgxRewriteDriverFactory* driver_factory) {
 
   // FileCachePath needs error checking.
   if (IsDirective(directive, "FileCachePath")) {
@@ -185,6 +186,19 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions1(
     RetainComment(arg);
   } else if (IsDirective(directive, "BlockingRewriteKey")) {
     set_blocking_rewrite_key(arg);
+  } else if (IsDirective(directive, "UsePerVHostStatistics")) {
+    CHECK(driver_factory != NULL);
+
+    //TODO(oschaaf): mod_pagespeed has code that handles this in a nicer way
+    if (IsDirective(arg, "on")) {
+      driver_factory->set_use_per_vhost_statistics(true);
+      return RewriteOptions::kOptionOk;
+    } else if (IsDirective(arg, "off")) {
+      driver_factory->set_use_per_vhost_statistics(false);
+      return RewriteOptions::kOptionOk;
+    } else {
+      return RewriteOptions::kOptionValueInvalid;
+    }
   } else {
     return RewriteOptions::kOptionNameUnknown;
   }
@@ -267,7 +281,8 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions3(
 // TODO(jefftk): Move argument parsing to OriginRewriteOptions.
 const char*
 NgxRewriteOptions::ParseAndSetOptions(
-    StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler) {
+    StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
+    NgxRewriteDriverFactory* driver_factory) {
   CHECK_GE(n_args, 1);
 
   int i;
@@ -292,7 +307,8 @@ NgxRewriteOptions::ParseAndSetOptions(
   if (n_args == 1) {
     result = ParseAndSetOptions0(directive, &msg, handler);
   } else if (n_args == 2) {
-    result = ParseAndSetOptions1(directive, args[1], &msg, handler);
+    result = ParseAndSetOptions1(directive, args[1], &msg, handler,
+                                 driver_factory);
   } else if (n_args == 3) {
     result = ParseAndSetOptions2(directive, args[1], args[2], &msg, handler);
   } else if (n_args == 4) {

@@ -35,6 +35,8 @@ extern "C" {
 
 namespace net_instaweb {
 
+class NgxRewriteDriverFactory;
+
 class NgxRewriteOptions : public RewriteOptions {
  public:
   // See rewrite_options::Initialize and ::Terminate
@@ -56,7 +58,8 @@ class NgxRewriteOptions : public RewriteOptions {
   //
   // pool is a memory pool for allocating error strings.
   const char* ParseAndSetOptions(
-      StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler);
+      StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
+      NgxRewriteDriverFactory* driver_factory);
 
   // Make an identical copy of these options and return it.
   virtual NgxRewriteOptions* Clone() const;
@@ -153,8 +156,8 @@ class NgxRewriteOptions : public RewriteOptions {
   OptionSettingResult ParseAndSetOptions0(
       StringPiece directive, GoogleString* msg, MessageHandler* handler);
   OptionSettingResult ParseAndSetOptions1(
-      StringPiece directive, StringPiece arg,
-      GoogleString* msg, MessageHandler* handler);
+      StringPiece directive, StringPiece arg, GoogleString* msg,
+      MessageHandler* handler, NgxRewriteDriverFactory* driver_factory);
   OptionSettingResult ParseAndSetOptions2(
       StringPiece directive, StringPiece arg1, StringPiece arg2,
       GoogleString* msg, MessageHandler* handler);
