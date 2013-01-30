@@ -18,23 +18,33 @@
 
 #include "ngx_server_context.h"
 
+#include "ngx_cache.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_rewrite_driver_factory.h"
-#include "net/instaweb/util/public/file_system_lock_manager.h"
 
 namespace net_instaweb {
 
-NgxServerContext::NgxServerContext(NgxRewriteDriverFactory* factory) :
-    ServerContext(factory),
-    ngx_factory_(factory) {
+NgxServerContext::NgxServerContext(NgxRewriteDriverFactory* factory)
+    : ServerContext(factory),
+      ngx_factory_(factory),
+      initialized_(false) {
 }
 
 NgxServerContext::~NgxServerContext() {
-  delete lock_manager();
 }
 
 NgxRewriteOptions* NgxServerContext::config() {
   return NgxRewriteOptions::DynamicCast(global_options());
+}
+
+void NgxServerContext::ChildInit() {
+  DCHECK(!initialized_);
+  if (!initialized_) {
+    initialized_ = true;
+    NgxCache* cache = ngx_factory_->GetCache(config());
+    set_lock_manager(cache->lock_manager());
+    ngx_factory_->InitServerContext(this);
+  }
 }
 
 }  // namespace net_instaweb
