@@ -42,7 +42,7 @@ Install dependencies:
     $ sudo yum install git gcc-c++ pcre-dev pcre-devel zlib-devel make
     
     # These are for Debian. Ubuntu will be similar.
-    $ sudo apt-get install git build-essential make zlib1g-dev libpcre3 libpcre3-dev
+    $ sudo apt-get install git-core build-essential zlib1g-dev libpcre3 libpcre3-dev
 
 Check out ngx_pagespeed:
 
