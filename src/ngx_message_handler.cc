@@ -19,7 +19,6 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/log_message_handler.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/debug.h"
@@ -28,11 +27,11 @@
 
 namespace {
 
-// This name will be prefixed to every logged message. 
+// This will be prefixed to every logged message.
 const char kModuleName[] = "ngx_pagespeed";
 
 // If set, the crash handler will use this to output a backtrace using
-// ngx_log_error
+// ngx_log_error.
 ngx_log_t* global_log = NULL;
 
 }  // namespace
@@ -58,14 +57,13 @@ extern "C" {
 
 namespace net_instaweb {
 
-NgxMessageHandler::NgxMessageHandler(Timer* timer, AbstractMutex* mutex)
-    :  timer_(timer),
-       mutex_(mutex),
-       buffer_(NULL) {
+NgxMessageHandler::NgxMessageHandler(AbstractMutex* mutex)
+    : mutex_(mutex),
+      buffer_(NULL) {
   SetPidString(static_cast<int64>(getpid()));
 }
 
-// Installs a signal handler for common crash signals that tries to print
+// Installs a signal handler for common crash signals, that tries to print
 // out a backtrace.
 void NgxMessageHandler::InstallCrashHandler(ngx_log_t* log) {
   global_log = log;

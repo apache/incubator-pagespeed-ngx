@@ -83,10 +83,9 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf)
       main_conf_(main_conf),
       threads_started_(false),
       is_root_process_(true),
-      ngx_message_handler_(new NgxMessageHandler(
-          timer(), thread_system()->NewMutex())),
-      ngx_html_parse_message_handler_(new NgxMessageHandler(
-          timer(), thread_system()->NewMutex())),
+      ngx_message_handler_(new NgxMessageHandler(thread_system()->NewMutex())),
+      ngx_html_parse_message_handler_(
+          new NgxMessageHandler(thread_system()->NewMutex())),
       // TODO(oschaaf): configurable
       install_crash_handler_(true),
       message_buffer_size_(1024*100),

@@ -42,19 +42,19 @@ namespace net_instaweb {
   // logging to emit messsages, with a fallback to GoogleMessageHandler
   class NgxMessageHandler : public GoogleMessageHandler {
  public:
-    // version is a string added to each message.
-    // Timer is used to generate timestamp for messages in shared memory.
-    NgxMessageHandler(Timer* timer, AbstractMutex* mutex);
+    NgxMessageHandler(AbstractMutex* mutex);
 
-    // Installs a signal hndler for common crash signals that tries to print
-    // out a backtrace.
+    // Installs a signal handler for common crash signals that tries to print
+    // out a backtrace. log 
     static void InstallCrashHandler(ngx_log_t* log);
 
-    // When we initialize NgxMessageHandler in NgxRewriteDriverFactory,
-    // SharedCircularBuffer of NgxRewriteDriverFactory is not initialized yet.
-    // We need to set buffer_ later in RootInit() or ChildInit().
+    // When NgxRewriteDriver instantiates the NgxMessageHandlers, the
+    // SharedCircularBuffer and ngx_log_t are not available yet. These
+    // will later be set in RootInit/Childinit
+    // Messages logged before that will be passed on to handler_;
     void set_buffer(SharedCircularBuffer* buff);
     void set_log(ngx_log_t* log) { log_ = log; };
+
     void SetPidString(const int64 pid) {
       pid_string_ = StrCat("[", Integer64ToString(pid), "]");
     }
@@ -71,22 +71,14 @@ namespace net_instaweb {
     ngx_uint_t GetNgxLogLevel(MessageType type);
     GoogleString Format(const char* msg, va_list args);
 
-    //const server_rec* server_rec_;
-    const GoogleString version_;
-    // This timer is used to prepend time when writing a message
-    // to SharedCircularBuffer.
-    Timer* timer_;
     scoped_ptr<AbstractMutex> mutex_;
-    // String "[pid]".
     GoogleString pid_string_;
-    // This handler is for internal use.
-    // Some functions of SharedCircularBuffer need MessageHandler as argument,
-    // We do not want to pass in another NgxMessageHandler to cause infinite
-    // loop.
+    // handler_ is used as a fallback when we can not use ngx_log_errort
+    // It's also used when calling Dump on the internal SharedCircularBuffer
     GoogleMessageHandler handler_;
     SharedCircularBuffer* buffer_;
     ngx_log_t* log_;
-    
+
     DISALLOW_COPY_AND_ASSIGN(NgxMessageHandler);
   };
 
