@@ -42,10 +42,10 @@ namespace net_instaweb {
   // logging to emit messsages, with a fallback to GoogleMessageHandler
   class NgxMessageHandler : public GoogleMessageHandler {
  public:
-    NgxMessageHandler(AbstractMutex* mutex);
+    explicit NgxMessageHandler(AbstractMutex* mutex);
 
     // Installs a signal handler for common crash signals that tries to print
-    // out a backtrace. log 
+    // out a backtrace.
     static void InstallCrashHandler(ngx_log_t* log);
 
     // When NgxRewriteDriver instantiates the NgxMessageHandlers, the
@@ -53,7 +53,7 @@ namespace net_instaweb {
     // will later be set in RootInit/Childinit
     // Messages logged before that will be passed on to handler_;
     void set_buffer(SharedCircularBuffer* buff);
-    void set_log(ngx_log_t* log) { log_ = log; };
+    void set_log(ngx_log_t* log) { log_ = log; }
 
     void SetPidString(const int64 pid) {
       pid_string_ = StrCat("[", Integer64ToString(pid), "]");

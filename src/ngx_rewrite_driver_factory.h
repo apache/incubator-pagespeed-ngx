@@ -136,7 +136,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   void RootInit(ngx_log_t* log);
   void ChildInit(ngx_log_t* log);
   void SharedCircularBufferInit(bool is_root);
-  NgxMessageHandler* ngx_message_handler() { return ngx_message_handler_; };
+  NgxMessageHandler* ngx_message_handler() { return ngx_message_handler_; }
+
  private:
   SimpleStats simple_stats_;
   Timer* timer_;
@@ -176,7 +177,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   bool install_crash_handler_;
   int message_buffer_size_;
   scoped_ptr<SharedCircularBuffer> shared_circular_buffer_;
-  
+
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

@@ -35,7 +35,6 @@ ngx_log_t* global_log = NULL;
 }  // namespace
 
 extern "C" {
-
   static void signal_handler(int sig) {
     // Try to output the backtrace to the log file. Since this may end up
     // crashing/deadlocking/etc. we set an alarm() to abort us if it comes to
@@ -50,7 +49,6 @@ extern "C" {
     }
     kill(getpid(), SIGKILL);
   }
-
 }  // extern "C"
 
 namespace net_instaweb {
@@ -105,7 +103,7 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                         va_list args) {
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
-  if (log_!=NULL) {
+  if (log_ != NULL) {
     ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s:%s",
                   kModuleName, formatted_message.c_str());
   } else {
@@ -142,7 +140,7 @@ void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
   GoogleString formatted_message = Format(msg, args);
   if (log_ != NULL) {
     ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s:%s",
-                  kModuleName,formatted_message.c_str());
+                  kModuleName, formatted_message.c_str());
   } else {
     GoogleMessageHandler::FileMessageVImpl(type, file, line, msg, args);
   }

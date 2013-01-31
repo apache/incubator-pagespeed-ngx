@@ -420,7 +420,7 @@ void NgxRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
 
 void NgxRewriteDriverFactory::RootInit(ngx_log_t* log) {
   ParentOrChildInit(log);
-  
+
   for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
     NgxServerContext* server_context = *p;
