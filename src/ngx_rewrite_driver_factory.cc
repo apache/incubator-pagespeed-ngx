@@ -86,8 +86,14 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf)
       ngx_message_handler_(new NgxMessageHandler(thread_system()->NewMutex())),
       ngx_html_parse_message_handler_(
           new NgxMessageHandler(thread_system()->NewMutex())),
-      // TODO(oschaaf): configurable
+      // Hard coded for now, these should be configurable but that
+      // requires a change in our NgxRewriteDriverFactory initialisation.
+      // I will make a separate pull for that.
+#ifdef NGX_DEBUG
       install_crash_handler_(true),
+#else
+      install_crash_handler_(false),
+#endif
       message_buffer_size_(1024*100),
       shared_circular_buffer_(NULL) {
   RewriteDriverFactory::InitStats(&simple_stats_);
@@ -403,10 +409,6 @@ void NgxRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
         shared_mem_runtime(),
         message_buffer_size_,
         filename_prefix().as_string(),
-        // TODO(oschaaf): I think this won't work, as we don't nessecarily
-        // have  a vhost per worker process in nginx
-        // come to think of that, we may have to look at the slow worker
-        // again, we may be starting too many
         "foo.com" /*hostname_identifier()*/));
     if (shared_circular_buffer_->InitSegment(is_root, message_handler())) {
       ngx_message_handler_->set_buffer(shared_circular_buffer_.get());

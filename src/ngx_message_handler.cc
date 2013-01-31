@@ -17,9 +17,7 @@
 #include "ngx_message_handler.h"
 
 #include <signal.h>
-#include <unistd.h>
 
-#include "net/instaweb/apache/log_message_handler.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
@@ -113,15 +111,15 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
   } else {
     GoogleMessageHandler::MessageVImpl(type, msg, args);
   }
-  
-  struct tm    tm;
+
+  // TODO(oschaaf): fix this
+  struct tm tm;
   time_t now = ngx_time();
   const int kDateMaxLength = 30;
-  char buf[kDateMaxLength];
-  ngx_libc_gmtime(now, &tm);
+  char buf[kDateMaxLength + 1];
+  buf[kDateMaxLength] = '\0';
+  ngx_libc_localtime(now, &tm);
 
-  // TODO(oschaaf): mod_pagespeed also adds microseconds to this log,
-  // but depends on apr to do so. Should we depend on apr in this file?
   ngx_uint_t len = strftime(buf, kDateMaxLength, "%X", &tm);
 
   // Format is [time] [severity] [pid] message.
