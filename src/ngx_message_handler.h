@@ -33,14 +33,14 @@ extern "C" {
 
 namespace net_instaweb {
 
-  class AbstractMutex;
-  class SharedCircularBuffer;
-  class Timer;
-  class Writer;
+class AbstractMutex;
+class SharedCircularBuffer;
+class Timer;
+class Writer;
 
-  // Implementation of a message handler that uses ngx_log_error()
-  // logging to emit messsages, with a fallback to GoogleMessageHandler
-  class NgxMessageHandler : public GoogleMessageHandler {
+// Implementation of a message handler that uses ngx_log_error()
+// logging to emit messsages, with a fallback to GoogleMessageHandler
+class NgxMessageHandler : public GoogleMessageHandler {
  public:
     explicit NgxMessageHandler(AbstractMutex* mutex);
 
