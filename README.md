@@ -107,6 +107,28 @@ For a debug build, remove the `BUILDTYPE=Release` option when running `make
 mod_pagespeed_test pagespeed_automatic_test` and add the flag `--with-debug` to
 `./configure --add-module=...`.
 
+### Alternate method: Use Tengine
+
+Tengine is an Nginx distribution that supports dynamically loaded modules.  You
+can add ngx_pagespeed to an existing Tengine install without recompiling
+Tengine.  First follow one of the two installation methods above until you get
+to the "Download and build nginx" section.  Then run:
+
+    # This might be /usr/local/tengine, depending on your configuration.
+    $ cd /path/to/tengine/sbin/
+    $ ./dso_tool --add-module=/path/to/ngx_pagespeed
+
+This will prepare a dynamically loadable module out of ngx_pagespeed.  To check
+that it worked you can verify that `/path/to/tengine/modules/` contains an
+`ngx_pagespeed.so`.
+
+You need to tell tengine to load this module.  Before continuing with "How to
+use" below, add this to the top of your configuration:
+
+    dso {
+        load ngx_pagespeed.so;
+    }
+
 ## How to use
 
 In your `nginx.conf`, add to the main or server block:
