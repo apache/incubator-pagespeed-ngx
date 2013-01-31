@@ -49,7 +49,7 @@ namespace net_instaweb {
 
     // Installs a signal hndler for common crash signals that tries to print
     // out a backtrace.
-    static void InstallCrashHandler();
+    static void InstallCrashHandler(ngx_log_t* log);
 
     // When we initialize NgxMessageHandler in NgxRewriteDriverFactory,
     // SharedCircularBuffer of NgxRewriteDriverFactory is not initialized yet.

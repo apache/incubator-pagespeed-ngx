@@ -21,7 +21,6 @@
 
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/log_message_handler.h"
-
 //#include "net/instaweb/apache/apache_logging_includes.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/debug.h"
@@ -36,7 +35,7 @@ namespace {
 const char kModuleName[] = "ngx_pagespeed";
 
 // For crash handler's use.
-//const server_rec* global_server;
+ngx_log_t* global_log;
 
 }  // namespace
 
@@ -47,15 +46,8 @@ extern "C" {
     // crashing/deadlocking/etc. we set an alarm() to abort us if it comes to
     // that.
     alarm(2);
-    fprintf(stderr, "[@%s] ngx_pagespeed detected a CRASH with signal:%d at %s",
-            net_instaweb::Integer64ToString(getpid()).c_str(),
-            sig,
-            net_instaweb::StackTraceString().c_str());
-    //ap_log_error(APLOG_MARK, APLOG_ALERT, APR_SUCCESS, global_server,
-    //             "[@%s] CRASH with signal:%d at %s",
-    //             net_instaweb::Integer64ToString(getpid()).c_str(),
-    //             sig,
-    //             net_instaweb::StackTraceString().c_str());
+    ngx_log_error(NGX_LOG_ALERT, global_log, 0, "Trapped signal [%d]\n%s",
+                  sig, net_instaweb::StackTraceString().c_str());
     kill(getpid(), SIGKILL);
   }
 
@@ -74,11 +66,12 @@ NgxMessageHandler::NgxMessageHandler(
     Timer* timer, AbstractMutex* mutex)
     : version_(version.data(), version.size()),
       timer_(timer),
+      // TODO(oschaaf): make sure this mutex is only used pre-fork
       mutex_(mutex),
       buffer_(NULL),
       log_(log) {
   // Tell log_message_handler about this server_rec and version.
-  //log_message_handler::AddServerConfig(server_rec_, version);
+  // log_message_handler::AddServerConfig(server_rec_, version);
   // Set pid string.
   SetPidString(static_cast<int64>(getpid()));
   // TODO(jmarantz): consider making this a little terser by default.
@@ -88,8 +81,8 @@ NgxMessageHandler::NgxMessageHandler(
 
 // Installs a signal handler for common crash signals that tries to print
 // out a backtrace.
-void NgxMessageHandler::InstallCrashHandler(/*server_rec* server*/) {
-  //global_server = server;
+void NgxMessageHandler::InstallCrashHandler(ngx_log_t* log) {
+  global_log = log;
   signal(SIGTRAP, signal_handler);  // On check failures
   signal(SIGABRT, signal_handler);
   signal(SIGFPE, signal_handler);
@@ -132,8 +125,8 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                         va_list args) {
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
-  ngx_log_error(log_level, log_, 0, "nm [%d] %s",
-                getpid(), formatted_message.c_str());
+  ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s",
+                formatted_message.c_str());
 
   // TODO(oschaaf): make equivalent
   /*
@@ -170,8 +163,8 @@ void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
                                             va_list args) {
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
-  ngx_log_error(log_level, log_, 0/* TODO(oschaaf): describe*/, "fm  [%d] %s"
-                , getpid(), formatted_message.c_str());
+  ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s",
+                formatted_message.c_str());
 
   // TODO(oschaaf):
   /*ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,

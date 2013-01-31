@@ -1616,7 +1616,7 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
   if (cfg_m->driver_factory != NULL) {
-    cfg_m->driver_factory->RootInit();
+    cfg_m->driver_factory->RootInit(cycle->log);
   }
   return NGX_OK;
 }

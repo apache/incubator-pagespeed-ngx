@@ -117,7 +117,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   void StartThreads();
   // This helper method contains init procedures invoked by both RootInit()
   // and ChildInit()
-  void ParentOrChildInit();
+  void ParentOrChildInit(ngx_log_t* log);
   // For shared memory resources the general setup we follow is to have the
   // first running process (aka the root) create the necessary segments and
   // fill in their shared data structures, while processes created to actually
@@ -136,7 +136,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // syntax check the config file. That basically looks like a complete
   // normal startup and shutdown to the code.
   bool is_root_process() const { return is_root_process_; }
-  void RootInit();
+  void RootInit(ngx_log_t* log);
   void ChildInit(ngx_log_t* log);
   void SharedCircularBufferInit(bool is_root);
 

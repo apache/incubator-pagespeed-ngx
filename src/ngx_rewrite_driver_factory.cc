@@ -387,9 +387,9 @@ void NgxRewriteDriverFactory::StartThreads() {
   threads_started_ = true;
 }
 
-void NgxRewriteDriverFactory::ParentOrChildInit() {
+void NgxRewriteDriverFactory::ParentOrChildInit(ngx_log_t* log) {
   if (install_crash_handler_) {
-    NgxMessageHandler::InstallCrashHandler();
+    NgxMessageHandler::InstallCrashHandler(log);
   }
   SharedCircularBufferInit(is_root_process_);
 }
@@ -418,8 +418,8 @@ void NgxRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
   }
 }
 
-void NgxRewriteDriverFactory::RootInit() {
-  ParentOrChildInit();
+void NgxRewriteDriverFactory::RootInit(ngx_log_t* log) {
+  ParentOrChildInit(log);
   
   for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
@@ -444,7 +444,7 @@ void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
 
   ngx_message_handler_->set_log(log);
   ngx_html_parse_message_handler_->set_log(log);
-  ParentOrChildInit();
+  ParentOrChildInit(log);
   slow_worker_.reset(new SlowWorker(thread_system()));
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
