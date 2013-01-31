@@ -24,6 +24,7 @@
 #include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/public/version.h"
 
 namespace {
 
@@ -106,8 +107,8 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
   if (log_ != NULL) {
-    ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s:%s",
-                  kModuleName, formatted_message.c_str());
+    ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "[%s %s] %s",
+                  kModuleName, kModPagespeedVersion, formatted_message.c_str());
   } else {
     GoogleMessageHandler::MessageVImpl(type, msg, args);
   }
@@ -138,8 +139,8 @@ void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
   if (log_ != NULL) {
-    ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s:%s",
-                  kModuleName, formatted_message.c_str());
+    ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "[%s %s] %s",
+                  kModuleName, kModPagespeedVersion, formatted_message.c_str());
   } else {
     GoogleMessageHandler::FileMessageVImpl(type, file, line, msg, args);
   }
