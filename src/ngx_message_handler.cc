@@ -35,7 +35,7 @@ namespace {
 const char kModuleName[] = "ngx_pagespeed";
 
 // For crash handler's use.
-ngx_log_t* global_log;
+ngx_log_t* global_log = NULL;
 
 }  // namespace
 
@@ -46,8 +46,13 @@ extern "C" {
     // crashing/deadlocking/etc. we set an alarm() to abort us if it comes to
     // that.
     alarm(2);
-    ngx_log_error(NGX_LOG_ALERT, global_log, 0, "Trapped signal [%d]\n%s",
-                  sig, net_instaweb::StackTraceString().c_str());
+    if (global_log != NULL) {
+      ngx_log_error(NGX_LOG_ALERT, global_log, 0, "Trapped signal [%d]\n%s",
+                    sig, net_instaweb::StackTraceString().c_str());
+    } else {
+      fprintf(stderr, "Trapped signal [%d]\n%s\n",
+              sig, net_instaweb::StackTraceString().c_str());
+    }
     kill(getpid(), SIGKILL);
   }
 
@@ -60,16 +65,11 @@ namespace net_instaweb {
 // NgxMessageHandler before its filename_prefix is set. So we initialize
 // NgxMessageHandler without SharedCircularBuffer first, then initalize its
 // SharedCircularBuffer in RootInit() when filename_prefix is set.
-NgxMessageHandler::NgxMessageHandler(
-    ngx_log_t* log,
-    const StringPiece& version,
-    Timer* timer, AbstractMutex* mutex)
-    : version_(version.data(), version.size()),
-      timer_(timer),
-      // TODO(oschaaf): make sure this mutex is only used pre-fork
-      mutex_(mutex),
-      buffer_(NULL),
-      log_(log) {
+NgxMessageHandler::NgxMessageHandler(Timer* timer, AbstractMutex* mutex)
+    :  timer_(timer),
+       // TODO(oschaaf): make sure this mutex is only used pre-fork
+       mutex_(mutex),
+       buffer_(NULL) {
   // Tell log_message_handler about this server_rec and version.
   // log_message_handler::AddServerConfig(server_rec_, version);
   // Set pid string.
@@ -125,18 +125,14 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                         va_list args) {
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
-  ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s",
-                formatted_message.c_str());
+  if (log_!=NULL) {
+    ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s",
+                  formatted_message.c_str());
+  } else {
+    GoogleMessageHandler::MessageVImpl(type, msg, args);
+  }
 
-  // TODO(oschaaf): make equivalent
-  /*
-  ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
-               "[%s %s @%ld] %s",
-               kModuleName, version_.c_str(), static_cast<long>(getpid()),
-               formatted_message.c_str());
-  */
   // Can not write to SharedCircularBuffer before it's set up.
-
   // Prepend time (down to microseconds) and severity to message.
   // Format is [time:microseconds] [severity] [pid] message.
   GoogleString message;
@@ -163,14 +159,12 @@ void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
                                             va_list args) {
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
-  ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s",
-                formatted_message.c_str());
-
-  // TODO(oschaaf):
-  /*ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
-               "[%s %s @%ld] %s:%d: %s",
-               kModuleName, version_.c_str(), static_cast<long>(getpid()),
-               file, line, formatted_message.c_str());*/
+  if (log_ != NULL) {
+    ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s",
+                  formatted_message.c_str());
+  } else {
+    GoogleMessageHandler::FileMessageVImpl(type, file, line, msg, args);
+  }
 }
 
 // TODO(sligocki): It'd be nice not to do so much string copying.

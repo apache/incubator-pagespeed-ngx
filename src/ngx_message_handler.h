@@ -38,14 +38,13 @@ namespace net_instaweb {
   class Timer;
   class Writer;
 
-  // Implementation of an HTML parser message handler that uses Ngx
-  // logging to emit messsages.
-  class NgxMessageHandler : public MessageHandler {
+  // Implementation of a message handler that uses ngx_log_error()
+  // logging to emit messsages, with a fallback to GoogleMessageHandler
+  class NgxMessageHandler : public GoogleMessageHandler {
  public:
     // version is a string added to each message.
     // Timer is used to generate timestamp for messages in shared memory.
-    NgxMessageHandler(ngx_log_t* log, const StringPiece& version,
-                      Timer* timer, AbstractMutex* mutex);
+    NgxMessageHandler(Timer* timer, AbstractMutex* mutex);
 
     // Installs a signal hndler for common crash signals that tries to print
     // out a backtrace.

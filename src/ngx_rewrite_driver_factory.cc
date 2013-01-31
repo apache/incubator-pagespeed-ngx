@@ -85,11 +85,9 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf,
       threads_started_(false),
       is_root_process_(true),
       ngx_message_handler_(new NgxMessageHandler(
-          // TODO(oschaaf): "-x-"
-          log, "-x-", timer(), thread_system()->NewMutex())),
+          timer(), thread_system()->NewMutex())),
       ngx_html_parse_message_handler_(new NgxMessageHandler(
-          // TODO(oschaaf): "-x-"
-          log, "-x-", timer(), thread_system()->NewMutex())),
+          timer(), thread_system()->NewMutex())),
       // TODO(oschaaf): configurable
       install_crash_handler_(true),
       message_buffer_size_(1024*100),
@@ -391,6 +389,8 @@ void NgxRewriteDriverFactory::ParentOrChildInit(ngx_log_t* log) {
   if (install_crash_handler_) {
     NgxMessageHandler::InstallCrashHandler(log);
   }
+  ngx_message_handler_->set_log(log);
+  ngx_html_parse_message_handler_->set_log(log);
   SharedCircularBufferInit(is_root_process_);
 }
 
@@ -442,8 +442,6 @@ void NgxRewriteDriverFactory::RootInit(ngx_log_t* log) {
 void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
   is_root_process_ = false;
 
-  ngx_message_handler_->set_log(log);
-  ngx_html_parse_message_handler_->set_log(log);
   ParentOrChildInit(log);
   slow_worker_.reset(new SlowWorker(thread_system()));
 
