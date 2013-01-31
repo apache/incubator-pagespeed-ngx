@@ -574,7 +574,7 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
     net_instaweb::NgxRewriteDriverFactory::Initialize();
 
     cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
-        parent_cfg_s->options, cf->cycle->log);
+        parent_cfg_s->options);
   }
 
   cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext();

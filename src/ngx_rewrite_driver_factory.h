@@ -59,8 +59,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
 
   // main_conf will have only options set in the main block.  It may be NULL,
   // and we do not take ownership.
-  explicit NgxRewriteDriverFactory(NgxRewriteOptions* main_conf,
-                                   ngx_log_t* log);
+  explicit NgxRewriteDriverFactory(NgxRewriteOptions* main_conf);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
