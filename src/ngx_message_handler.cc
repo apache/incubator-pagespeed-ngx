@@ -140,8 +140,9 @@ void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
   if (log_ != NULL) {
-    ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "[%s %s] %s",
-                  kModuleName, kModPagespeedVersion, formatted_message.c_str());
+    ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "[%s %s] %s:%d:%s",
+                  kModuleName, kModPagespeedVersion, file, line,
+                  formatted_message.c_str());
   } else {
     GoogleMessageHandler::FileMessageVImpl(type, file, line, msg, args);
   }
