@@ -18,6 +18,8 @@
 
 #include <signal.h>
 
+#include "apr_time.h"
+
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
@@ -110,19 +112,16 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
     GoogleMessageHandler::MessageVImpl(type, msg, args);
   }
 
-  // TODO(oschaaf): fix this
-  struct tm tm;
-  time_t now = ngx_time();
-  const int kDateMaxLength = 30;
-  char buf[kDateMaxLength + 1];
-  buf[kDateMaxLength] = '\0';
-  ngx_libc_localtime(now, &tm);
-
-  ngx_uint_t len = strftime(buf, kDateMaxLength, "%X", &tm);
-
+  // Prepend time and severity to message.
   // Format is [time] [severity] [pid] message.
   GoogleString message;
-  StrAppend(&message, "[", (len > 0 ? buf : "?"), "] ",
+  char time_buffer[APR_CTIME_LEN + 1];
+  const char* time = time_buffer;
+  apr_status_t status = apr_ctime(time_buffer, apr_time_now());
+  if (status != APR_SUCCESS) {
+    time = "?";
+  }
+  StrAppend(&message, "[", time, "] ",
             "[", MessageTypeToString(type), "] ");
   StrAppend(&message, pid_string_, " ", formatted_message, "\n");
   {
