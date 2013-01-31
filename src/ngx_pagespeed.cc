@@ -25,6 +25,12 @@
 
 #include "ngx_pagespeed.h"
 
+extern "C" {
+#include <ngx_config.h>
+#include <ngx_core.h>
+#include <ngx_http.h>
+}
+
 #include <unistd.h>
 
 #include "ngx_base_fetch.h"
@@ -568,7 +574,7 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
     net_instaweb::NgxRewriteDriverFactory::Initialize();
 
     cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
-        parent_cfg_s->options, cf->cycle);
+        parent_cfg_s->options, cf->cycle->log);
   }
 
   cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext();
@@ -1627,7 +1633,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
 
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below
-  cfg_m->driver_factory->ChildInit();
+  cfg_m->driver_factory->ChildInit(cycle->log);
 
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));

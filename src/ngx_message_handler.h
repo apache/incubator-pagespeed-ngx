@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Author: sligocki@google.com (Shawn Ligocki)
+// Author: oschaaf@gmail.com (Otto van der Schaaf)
 
 #ifndef NGX_MESSAGE_HANDLER_H_
 #define NGX_MESSAGE_HANDLER_H_
@@ -20,9 +20,6 @@
 extern "C" {
   #include <ngx_core.h>
   #include <ngx_log.h>
-  //#include <ngx_config.h>
-  //#include <ngx_core.h>
-  //#include <ngx_http.h>
 }
 
 #include <cstdarg>
@@ -33,8 +30,6 @@ extern "C" {
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-
-//struct server_rec;
 
 namespace net_instaweb {
 
@@ -60,6 +55,7 @@ namespace net_instaweb {
     // SharedCircularBuffer of NgxRewriteDriverFactory is not initialized yet.
     // We need to set buffer_ later in RootInit() or ChildInit().
     void set_buffer(SharedCircularBuffer* buff);
+    void set_log(ngx_log_t* log) { log_ = log; };
     void SetPidString(const int64 pid) {
       pid_string_ = StrCat("[", Integer64ToString(pid), "]");
     }

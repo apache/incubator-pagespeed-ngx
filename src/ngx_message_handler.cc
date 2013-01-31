@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Author: sligocki@google.com (Shawn Ligocki)
+// Author: oschaaf@gmail.com (Otto van der Schaaf)
 
 #include "ngx_message_handler.h"
 
@@ -124,17 +124,17 @@ ngx_uint_t NgxMessageHandler::GetNgxLogLevel(MessageType type) {
 }
 
 void NgxMessageHandler::set_buffer(SharedCircularBuffer* buff) {
-  fprintf(stdout, "%s\n", "ngxmessagehandler buffer set");
   ScopedMutex lock(mutex_.get());
   buffer_ = buff;
 }
 
 void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                         va_list args) {
-  //ngx_uint_t log_level = GetNgxLogLevel(type);
+  ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
-  fprintf(stderr, "nm [%d] %s\n", getpid(), formatted_message.c_str());
-  //ngx_log_error(log_level, log_, 0, "%s", formatted_message.c_str());
+  ngx_log_error(log_level, log_, 0, "nm [%d] %s\n",
+                getpid(), formatted_message.c_str());
+
   // TODO(oschaaf): make equivalent
   /*
   ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
@@ -168,10 +168,10 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
 void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
                                             int line, const char* msg,
                                             va_list args) {
-  //ngx_uint_t log_level = GetNgxLogLevel(type);
+  ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
-  fprintf(stderr, "fm [%d] - %s\n", getpid(), formatted_message.c_str());
-  //ngx_log_error(log_level, log_, 0/* TODO(oschaaf): describe*/, "%s", formatted_message.c_str());
+  ngx_log_error(log_level, log_, 0/* TODO(oschaaf): describe*/, "fm  [%d] %s", getpid(), formatted_message.c_str());
+
   // TODO(oschaaf):
   /*ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,
                "[%s %s @%ld] %s:%d: %s",

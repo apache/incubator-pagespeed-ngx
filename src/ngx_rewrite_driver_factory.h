@@ -22,6 +22,7 @@
 extern "C" {
   #include <ngx_config.h>
   #include <ngx_core.h>
+  #include <ngx_log.h>
   //#include <ngx_http.h>
 }
 
@@ -59,7 +60,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // main_conf will have only options set in the main block.  It may be NULL,
   // and we do not take ownership.
   explicit NgxRewriteDriverFactory(NgxRewriteOptions* main_conf,
-                                   ngx_cycle_t* cycle);
+                                   ngx_log_t* log);
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -136,7 +137,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // normal startup and shutdown to the code.
   bool is_root_process() const { return is_root_process_; }
   void RootInit();
-  void ChildInit();
+  void ChildInit(ngx_log_t* log);
   void SharedCircularBufferInit(bool is_root);
 
  private:
@@ -173,7 +174,6 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   std::vector<AsyncCache*> async_caches_;
   bool threads_started_;
   bool is_root_process_;
-  ngx_cycle_t* cycle_;
   NgxMessageHandler* ngx_message_handler_;
   bool install_crash_handler_;
   int message_buffer_size_;

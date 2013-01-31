@@ -76,7 +76,7 @@ class Writer;
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf,
-                                                 ngx_cycle_t* cycle)
+                                                 ngx_log_t* log)
     : RewriteDriverFactory(new NgxThreadSystem()),
       // TODO(oschaaf): mod_pagespeed ifdefs this:
       shared_mem_runtime_(new PthreadSharedMem()),
@@ -84,10 +84,10 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf,
       main_conf_(main_conf),
       threads_started_(false),
       is_root_process_(true),
-      cycle_(cycle),
       ngx_message_handler_(new NgxMessageHandler(
-          cycle_->log, "-x-", timer(), thread_system()->NewMutex())),
-      // TODO(oschaaf)
+          // TODO(oschaaf): "-x-"
+          log, "-x-", timer(), thread_system()->NewMutex())),
+      // TODO(oschaaf): configurable
       install_crash_handler_(true),
       message_buffer_size_(1024*100),
       shared_circular_buffer_(NULL) {
@@ -420,6 +420,8 @@ void NgxRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
 
 void NgxRewriteDriverFactory::RootInit() {
   ParentOrChildInit();
+  message_handler()->Message(kError, "Root Init!");
+  
   for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
     NgxServerContext* server_context = *p;
@@ -438,8 +440,12 @@ void NgxRewriteDriverFactory::RootInit() {
   }
 }
 
-void NgxRewriteDriverFactory::ChildInit() {
+void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
   is_root_process_ = false;
+
+  ngx_message_handler_->set_log(log);
+  message_handler()->Message(kError, "Child Init!");
+  
   ParentOrChildInit();
   slow_worker_.reset(new SlowWorker(thread_system()));
 
