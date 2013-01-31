@@ -126,8 +126,8 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
   if (log_!=NULL) {
-    ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s",
-                  formatted_message.c_str());
+    ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s:%s",
+                  kModuleName, formatted_message.c_str());
   } else {
     GoogleMessageHandler::MessageVImpl(type, msg, args);
   }
@@ -160,8 +160,8 @@ void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
   if (log_ != NULL) {
-    ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s",
-                  formatted_message.c_str());
+    ngx_log_error(log_level, log_, 0/*ngx_err_t*/, "%s:%s",
+                  kModuleName,formatted_message.c_str());
   } else {
     GoogleMessageHandler::FileMessageVImpl(type, file, line, msg, args);
   }

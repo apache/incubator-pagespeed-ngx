@@ -408,7 +408,7 @@ void NgxRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
         // have  a vhost per worker process in nginx
         // come to think of that, we may have to look at the slow worker
         // again, we may be starting too many
-        "FOO.com" /*hostname_identifier()*/));
+        "foo.com" /*hostname_identifier()*/));
     if (shared_circular_buffer_->InitSegment(is_root, message_handler())) {
       ngx_message_handler_->set_buffer(shared_circular_buffer_.get());
       ngx_html_parse_message_handler_->set_buffer(
