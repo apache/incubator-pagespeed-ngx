@@ -31,7 +31,7 @@ vars = {
 
   "libpagespeed_svn_root": "http://page-speed.googlecode.com/svn",
   "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/trunk",
-  "libpagespeed_revision": "@2393",
+  "libpagespeed_revision": "@2419",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
 
   "modspdy_src": "http://mod-spdy.googlecode.com/svn/trunk/src",
