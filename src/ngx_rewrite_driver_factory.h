@@ -138,7 +138,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   void RootInit(ngx_log_t* log);
   void ChildInit(ngx_log_t* log);
   void SharedCircularBufferInit(bool is_root);
-
+  NgxMessageHandler* ngx_message_handler() { return ngx_message_handler_; };
  private:
   SimpleStats simple_stats_;
   Timer* timer_;

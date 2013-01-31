@@ -21,7 +21,6 @@
 
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/log_message_handler.h"
-//#include "net/instaweb/apache/apache_logging_includes.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/debug.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
@@ -29,12 +28,11 @@
 
 namespace {
 
-// This name will be prefixed to every logged message.  This could be made
-// smaller if people think it's too long.  In my opinion it's probably OK,
-// and it would be good to let people know where messages are coming from.
+// This name will be prefixed to every logged message. 
 const char kModuleName[] = "ngx_pagespeed";
 
-// For crash handler's use.
+// If set, the crash handler will use this to output a backtrace using
+// ngx_log_error
 ngx_log_t* global_log = NULL;
 
 }  // namespace
@@ -60,23 +58,11 @@ extern "C" {
 
 namespace net_instaweb {
 
-// filename_prefix of NgxRewriteDriverFactory is needed to initialize
-// SharedCircuarBuffer. However, NgxRewriteDriverFactory needs
-// NgxMessageHandler before its filename_prefix is set. So we initialize
-// NgxMessageHandler without SharedCircularBuffer first, then initalize its
-// SharedCircularBuffer in RootInit() when filename_prefix is set.
 NgxMessageHandler::NgxMessageHandler(Timer* timer, AbstractMutex* mutex)
     :  timer_(timer),
-       // TODO(oschaaf): make sure this mutex is only used pre-fork
        mutex_(mutex),
        buffer_(NULL) {
-  // Tell log_message_handler about this server_rec and version.
-  // log_message_handler::AddServerConfig(server_rec_, version);
-  // Set pid string.
   SetPidString(static_cast<int64>(getpid()));
-  // TODO(jmarantz): consider making this a little terser by default.
-  // The string we expect in is something like "0.9.1.1-171" and we will
-  // may be able to pick off some of the 5 fields that prove to be boring.
 }
 
 // Installs a signal handler for common crash signals that tries to print
@@ -87,8 +73,6 @@ void NgxMessageHandler::InstallCrashHandler(ngx_log_t* log) {
   signal(SIGABRT, signal_handler);
   signal(SIGFPE, signal_handler);
   signal(SIGSEGV, signal_handler);
-  // TODO(oschaaf): for testing only:
-  signal(SIGTERM, signal_handler);
 }
 
 bool NgxMessageHandler::Dump(Writer* writer) {
@@ -131,19 +115,20 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
   } else {
     GoogleMessageHandler::MessageVImpl(type, msg, args);
   }
+  
+  struct tm    tm;
+  time_t now = ngx_time();
+  const int kDateMaxLength = 30;
+  char buf[kDateMaxLength];
+  ngx_libc_gmtime(now, &tm);
 
-  // Can not write to SharedCircularBuffer before it's set up.
-  // Prepend time (down to microseconds) and severity to message.
-  // Format is [time:microseconds] [severity] [pid] message.
+  // TODO(oschaaf): mod_pagespeed also adds microseconds to this log,
+  // but depends on apr to do so. Should we depend on apr in this file?
+  ngx_uint_t len = strftime(buf, kDateMaxLength, "%X", &tm);
+
+  // Format is [time] [severity] [pid] message.
   GoogleString message;
-  //char time_buffer[APR_CTIME_LEN + 1];
-  // TODO(oschaaf): format time stamp
-  const char* time = "?";//time_buffer;
-  //apr_status_t status = apr_ctime(time_buffer, apr_time_now());
-  //if (status != APR_SUCCESS) {
-  //  time = "?";
-  // }n
-  StrAppend(&message, "[", time, "] ",
+  StrAppend(&message, "[", (len > 0 ? buf : "?"), "] ",
             "[", MessageTypeToString(type), "] ");
   StrAppend(&message, pid_string_, " ", formatted_message, "\n");
   {
