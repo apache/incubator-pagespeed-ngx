@@ -436,7 +436,9 @@ bool factory_deleted = false;
 
 void ps_cleanup_srv_conf(void* data) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(data);
-
+  if (cfg_s->server_context == NULL) {
+    return;
+  }
   // destroy the factory on the first call, causing all worker threads
   // to be shut down when we destroy any proxy_fetch_factories. This
   // will prevent any queued callbacks to destroyed proxy fetch factories
