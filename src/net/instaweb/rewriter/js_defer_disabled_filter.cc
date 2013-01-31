@@ -20,6 +20,8 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
@@ -29,8 +31,6 @@
 #include "net/instaweb/util/public/null_message_handler.h"
 
 namespace net_instaweb {
-
-class RewriteOptions;
 
 JsDeferDisabledFilter::JsDeferDisabledFilter(RewriteDriver* driver)
     : rewrite_driver_(driver) {

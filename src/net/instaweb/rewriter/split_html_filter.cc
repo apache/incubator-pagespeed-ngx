@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/htmlparse/public/html_element.h"

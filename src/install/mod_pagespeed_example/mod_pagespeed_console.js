@@ -993,6 +993,12 @@ pagespeed.MpsConsole.prototype.isHistogram = function(graphTitle) {
  * @param {number} endTime The ending time of the data requested, displayed if
  *   the user has queried a histogram.
  * @param {string} graphTitle The title to display for the graph.
+ * @suppress {checkTypes} actual parameter 2 of
+ * pagespeed.MpsConsole.prototype.computeMultipleTimeSeries
+ * does not match formal parameter
+ * found   : (Array.<(Object|null)>|null)
+ * required: (Array.<number>|null)
+ *                   data['variables'], data['timestamps'], graphIndex));
  */
 pagespeed.MpsConsole.prototype.scrapeData =
     function(data, graphIndexes, isHistogram, endTime, graphTitle) {
