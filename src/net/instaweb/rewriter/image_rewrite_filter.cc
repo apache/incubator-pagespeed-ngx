@@ -180,23 +180,23 @@ void SetWebpCompressionOptions(
       case ResourceContext::LIBWEBP_NONE:
         image_options->preferred_webp = Image::WEBP_NONE;
         image_options->allow_webp_alpha = false;
-        DLOG(INFO) << "User agent is not webp capable";
+        VLOG(1) << "User agent is not webp capable";
         break;
       case ResourceContext::LIBWEBP_LOSSY_ONLY:
         image_options->preferred_webp = Image::WEBP_LOSSY;
         image_options->allow_webp_alpha = false;
-        DLOG(INFO) << "User agent is webp lossy capable ";
+        VLOG(1) << "User agent is webp lossy capable ";
         break;
       case ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA:
         image_options->allow_webp_alpha = true;
         if (options.Enabled(RewriteOptions::kConvertToWebpLossless)) {
           image_options->preferred_webp = Image::WEBP_LOSSLESS;
-          DLOG(INFO) << "User agent is webp lossless+alpha capable "
-                     << "and lossless images preferred";
+          VLOG(1) << "User agent is webp lossless+alpha capable "
+                  << "and lossless images preferred";
         } else {
           image_options->preferred_webp = Image::WEBP_LOSSY;
-          DLOG(INFO) << "User agent is webp lossless+alpha capable "
-                     << "and lossy images preferred";
+          VLOG(1) << "User agent is webp lossless+alpha capable "
+                  << "and lossy images preferred";
         }
         break;
       default:
