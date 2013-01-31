@@ -175,6 +175,12 @@ struct HtmlMultiByteSequenceCompare {
   bool operator()(const char* a, const HtmlMultiByteSequence& b) const {
     return StringCaseCompare(a, b.sequence) < 0;
   }
+
+  // Seems to be needed by MSVC in debug build.
+  bool operator()(const HtmlMultiByteSequence& a,
+                  const HtmlMultiByteSequence& b) const {
+    return StringCaseCompare(a.sequence, b.sequence) < 0;
+  }
 };
 
 HtmlMultiByteSequence kHtmlKeywordsSequencesMultiByte[] = {
