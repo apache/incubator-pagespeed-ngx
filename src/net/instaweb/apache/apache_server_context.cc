@@ -329,7 +329,8 @@ void ApacheServerContext::PollFilesystemForCacheFlush() {
       // Do the difference-check first because that involves only a
       // reader-lock, so we have zero contention risk when the cache is not
       // being flushed.
-      if (global_options()->cache_invalidation_timestamp() < timestamp_ms) {
+      if ((timestamp_ms > 0) &&
+          (global_options()->cache_invalidation_timestamp() < timestamp_ms)) {
         UpdateCacheFlushTimestampMs(timestamp_ms);
       }
     }

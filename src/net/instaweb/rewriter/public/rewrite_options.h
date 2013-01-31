@@ -70,7 +70,10 @@ class RewriteOptions {
  public:
   // If you add or remove anything from this list, you need to update the
   // kFilterVectorStaticInitializer array in rewrite_options.cc and the
-  // LookupOptionEnumTest method in rewrite_options_test.cc.
+  // LookupOptionEnumTest method in rewrite_options_test.cc.  If you add
+  // image-related options or css-related options, you must add them
+  // to the kRelatedFilters and kRelatedOptions lists in css_filter.cc
+  // and image_rewrite_filter.cc.
   enum Filter {
     kAddBaseTag,  // Update kFirstFilter if you add something before this.
     kAddHead,
@@ -1136,6 +1139,7 @@ class RewriteOptions {
   // See also UpdateCacheInvalidationTimestampMs.
   void set_cache_invalidation_timestamp(int64 timestamp_ms) {
     cache_invalidation_timestamp_.mutex()->DCheckLocked();
+    DCHECK_LT(0, timestamp_ms);
     set_option(timestamp_ms, &cache_invalidation_timestamp_);
   }
 

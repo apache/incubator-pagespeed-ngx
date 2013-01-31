@@ -324,6 +324,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
     GoogleString contents_hash =
         server_context->contents_hasher()->Hash(contents);
     fsmdc_info->set_type(InputInfo::FILE_BASED);
+    DCHECK_LT(0, mtime_ms);
     fsmdc_info->set_last_modified_time_ms(mtime_ms);
     fsmdc_info->set_input_content_hash(contents_hash);
     GoogleString buf;
@@ -398,6 +399,7 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
           // in the filesystem metadata cache.
           return AreInputInfosEqual(input_info, fsmdc_info, mtime_ms);
         } else {
+          DCHECK_LT(0, input_info.last_modified_time_ms());
           return (mtime_ms == input_info.last_modified_time_ms());
         }
       }

@@ -2472,6 +2472,7 @@ void RewriteOptions::AddUrlCacheInvalidationEntry(
 
 bool RewriteOptions::UpdateCacheInvalidationTimestampMs(int64 timestamp_ms,
                                                         const Hasher* hasher) {
+  DCHECK_LT(0, timestamp_ms);
   bool ret = false;
   ScopedMutex lock(cache_invalidation_timestamp_.mutex());
   if (cache_invalidation_timestamp_.value() < timestamp_ms) {
