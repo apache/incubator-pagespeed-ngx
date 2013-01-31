@@ -121,7 +121,7 @@ In every server block where pagespeed is enabled add:
 
     # This is a temporary workaround that ensures requests for pagespeed
     # optimized resources go to the pagespeed handler.
-    location ~ "\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+" { }
+    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" { }
     location ~ "^/ngx_pagespeed_static/" { }
     location ~ "^/ngx_pagespeed_beacon$" { }
 
