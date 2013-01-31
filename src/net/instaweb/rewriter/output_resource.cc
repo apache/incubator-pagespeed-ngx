@@ -214,8 +214,10 @@ void OutputResource::SetHash(const StringPiece& hash) {
   computed_url_.clear();  // Since dependent on full_name_.
 }
 
-bool OutputResource::Load(MessageHandler* handler) {
-  return writing_complete_;
+void OutputResource::LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
+                                     AsyncCallback* callback,
+                                     MessageHandler* handler) {
+  callback->Done(false /* lock_failure */, writing_complete_);
 }
 
 GoogleString OutputResource::decoded_base() const {
@@ -225,10 +227,6 @@ GoogleString OutputResource::decoded_base() const {
     gurl.Reset(decoded_url);
   }
   return gurl.AllExceptLeaf().as_string();
-}
-
-bool OutputResource::IsWritten() const {
-  return writing_complete_;
 }
 
 void OutputResource::SetType(const ContentType* content_type) {

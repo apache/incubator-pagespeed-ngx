@@ -23,9 +23,24 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/data_url.h"
 
 namespace net_instaweb {
+
+DataUrlInputResource::DataUrlInputResource(const GoogleString* url,
+                                           Encoding encoding,
+                                           const ContentType* type,
+                                           const StringPiece& encoded_contents,
+                                           ServerContext* server_context)
+    : Resource(server_context, type),
+      url_(url),
+      encoding_(encoding),
+      encoded_contents_(encoded_contents) {
+  // Make sure we auto-load.
+  LoadAndCallback(kLoadEvenIfNotCacheable, NULL,
+                  server_context->message_handler());
+}
 
 DataUrlInputResource::~DataUrlInputResource() {}
 
@@ -39,17 +54,17 @@ void DataUrlInputResource::FillInPartitionInputInfo(
   input->set_type(InputInfo::ALWAYS_VALID);
 }
 
-bool DataUrlInputResource::Load(MessageHandler* message_handler) {
-  if (loaded()) {
-    return true;
-  }
-
-  if (DecodeDataUrlContent(encoding_, encoded_contents_,
+void DataUrlInputResource::LoadAndCallback(
+    NotCacheablePolicy not_cacheable_policy,
+    AsyncCallback* callback,
+    MessageHandler* message_handler) {
+  if (!loaded() &&
+      DecodeDataUrlContent(encoding_, encoded_contents_,
                            &decoded_contents_) &&
       value_.Write(decoded_contents_, message_handler)) {
     // Note that we do not set caching headers here.
     // This is because they are expensive to compute; and should not be used
-    // for this resource anyway, as it has IsCacheable() false, and provides
+    // for this resource anyway, as it has UseHttpCache() false, and provides
     // IsValidAndCacheable() and an ALWAYS_VALID output of
     // FillInPartitionInputInfo.
     response_headers_.set_major_version(1);
@@ -58,11 +73,9 @@ bool DataUrlInputResource::Load(MessageHandler* message_handler) {
     response_headers_.Add(HttpAttributes::kContentType, type_->mime_type());
     value_.SetHeaders(&response_headers_);
   }
-  return loaded();
-}
-
-bool DataUrlInputResource::IsCacheable() const {
-  return false;
+  if (callback != NULL) {
+    callback->Done(false /* lock_failure */, loaded());
+  }
 }
 
 }  // namespace net_instaweb

@@ -172,6 +172,8 @@ class RemoveCommentsFilterOptions
 
 class FileSystem;
 
+int RewriteDriver::initialized_count_ = 0;
+
 RewriteDriver::RewriteDriver(MessageHandler* message_handler,
                              FileSystem* file_system,
                              UrlAsyncFetcher* url_async_fetcher)
@@ -723,7 +725,9 @@ const char RewriteDriver::kParseSizeLimitExceeded[] =
     "parse_size_limit_exceeded";
 
 void RewriteDriver::Initialize() {
-  if (RewriteOptions::Initialize()) {
+  ++initialized_count_;
+  if (initialized_count_ == 1) {
+    RewriteOptions::Initialize();
     CssFilter::Initialize();
   }
 }
@@ -750,7 +754,9 @@ void RewriteDriver::InitStats(Statistics* statistics) {
 
 void RewriteDriver::Terminate() {
   // Clean up statics.
-  if (RewriteOptions::Terminate()) {
+  --initialized_count_;
+  if (initialized_count_ == 0) {
+    RewriteOptions::Terminate();
     CssFilter::Terminate();
   }
 }
@@ -1549,14 +1555,14 @@ class CacheCallback : public OptionsAwareHTTPCacheCallback {
                       value->ExtractHeaders(response_headers, handler_));
       if (success) {
         output_resource_->Link(value, handler_);
-        output_resource_->set_written(true);
+        output_resource_->SetWritten(true);
         success = async_fetch_->Write(content, handler_);
       }
       async_fetch_->Done(success);
       driver_->FetchComplete();
       delete this;
     } else if (did_locking_) {
-      if (output_resource_->Load(handler_)) {
+      if (output_resource_->IsWritten()) {
         // OutputResources can also be loaded while not in cache if
         // FetchOutputResource() somehow got called on an already written
         // resource object (while the cache somehow decided not to store it).

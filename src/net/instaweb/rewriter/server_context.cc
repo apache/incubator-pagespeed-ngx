@@ -471,7 +471,7 @@ bool ServerContext::IsImminentlyExpiring(int64 start_date_ms,
 
 void ServerContext::RefreshIfImminentlyExpiring(
     Resource* resource, MessageHandler* handler) const {
-  if (!http_cache_->force_caching() && resource->IsCacheableTypeOfResource()) {
+  if (!http_cache_->force_caching() && resource->UseHttpCache()) {
     const ResponseHeaders* headers = resource->response_headers();
     int64 start_date_ms = headers->date_ms();
     int64 expire_ms = headers->CacheExpirationTimeMs();
@@ -558,11 +558,8 @@ void ResourceManagerHttpCallback::Done(HTTPCache::FindResult find_result) {
   delete this;
 }
 
-// TODO(sligocki): Move into Resource? This would allow us to treat
-// file- and URL-based resources differently as far as cacheability, etc.
-// Specifically, we are now making a cache request for file-based resources
-// which will always fail, for FileInputResources, we should just Load them.
-// TODO(morlovich): Should this load non-cacheable + non-loaded resources?
+// TODO(sligocki): Move into Resource::LoadAndCallback. This would simplify
+// the logic and allow removal of UseHttpCache()
 void ServerContext::ReadAsync(
     Resource::NotCacheablePolicy not_cacheable_policy,
     const RequestContextPtr& request_context,
@@ -573,7 +570,7 @@ void ServerContext::ReadAsync(
   if (resource->loaded()) {
     RefreshIfImminentlyExpiring(resource.get(), message_handler_);
     callback->Done(false /* lock_failure */, true /* resource_ok */);
-  } else if (resource->IsCacheableTypeOfResource()) {
+  } else if (resource->UseHttpCache()) {
     ResourceManagerHttpCallback* resource_manager_callback =
         new ResourceManagerHttpCallback(not_cacheable_policy,
                                         callback,
@@ -581,6 +578,9 @@ void ServerContext::ReadAsync(
                                         request_context);
     http_cache_->Find(resource->url(), message_handler_,
                       resource_manager_callback);
+  } else {
+    resource->LoadAndCallback(not_cacheable_policy, callback,
+                              message_handler_);
   }
 }
 

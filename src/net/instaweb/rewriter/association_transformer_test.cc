@@ -45,7 +45,13 @@ class DummyResource : public Resource {
   virtual GoogleString url() const { return url_; }
 
   virtual const RewriteOptions* rewrite_options() const { return NULL; }
-  virtual bool Load(MessageHandler* handler) { return false; }
+  virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
+                               AsyncCallback* callback,
+                               MessageHandler* handler) {
+    callback->Done(false, false);
+  }
+
+  virtual bool UseHttpCache() const { return true; }
 
  private:
   GoogleString url_;

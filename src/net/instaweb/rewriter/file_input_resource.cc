@@ -30,7 +30,25 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
 
+namespace {
+
+const int64 kTimestampUnset = 0;
+
+}  // namespace
+
 namespace net_instaweb {
+
+FileInputResource::FileInputResource(ServerContext* server_context,
+                                     const RewriteOptions* options,
+                                     const ContentType* type,
+                                     const StringPiece& url,
+                                     const StringPiece& filename)
+    : Resource(server_context, type),
+      url_(url.data(), url.size()),
+      filename_(filename.data(), filename.size()),
+      last_modified_time_sec_(kTimestampUnset),
+      rewrite_options_(options) {
+}
 
 FileInputResource::~FileInputResource() {
 }
@@ -47,6 +65,22 @@ void FileInputResource::FillInPartitionInputInfo(
     HashHint include_content_hash, InputInfo* input) {
   CHECK(loaded());
   input->set_type(InputInfo::FILE_BASED);
+  if (last_modified_time_sec_ == kTimestampUnset) {
+    LOG(DFATAL) << "We should never have populated FileInputResource without "
+        "a timestamp for " << filename_;
+
+    // Resources can in theory be preloaded via HTTP cache, in which
+    // case we'll have loaded() == true, but last_modified_time_sec_
+    // unset.  We should be preventing this at a higher level because
+    // FileInputResource::UseHttpCache returns false.  But we'll
+    // defensively fill in the timestamp anyway in production.
+    FileSystem* file_system = server_context_->file_system();
+    if (!file_system->Mtime(filename_, &last_modified_time_sec_,
+                            server_context()->message_handler())) {
+      LOG(DFATAL) << "Could not get last_modified_time_ for file " << filename_;
+    }
+  }
+
   input->set_last_modified_time_ms(last_modified_time_sec_ * Timer::kSecondMs);
   input->set_filename(filename_);
   // If the file is valid and we are using a filesystem metadata cache, save
@@ -88,14 +122,18 @@ void FileInputResource::SetDefaultHeaders(const ContentType* content_type,
 
 // Note: We do not save this resource to the HttpCache, so it will be
 // reloaded for every request.
-bool FileInputResource::Load(MessageHandler* handler) {
-  FileSystem* file_system = server_context_->file_system();
-  if (file_system->ReadFile(filename_.c_str(), &value_, handler) &&
-      file_system->Mtime(filename_, &last_modified_time_sec_, handler)) {
-    SetDefaultHeaders(type_, &response_headers_, handler);
-    value_.SetHeaders(&response_headers_);
+void FileInputResource::LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
+                                        AsyncCallback* callback,
+                                        MessageHandler* handler) {
+  if (!loaded()) {
+    FileSystem* file_system = server_context_->file_system();
+    if (file_system->ReadFile(filename_.c_str(), &value_, handler) &&
+        file_system->Mtime(filename_, &last_modified_time_sec_, handler)) {
+      SetDefaultHeaders(type_, &response_headers_, handler);
+      value_.SetHeaders(&response_headers_);
+    }
   }
-  return loaded();
+  callback->Done(false /* lock_failure */, loaded());
 }
 
 }  // namespace net_instaweb

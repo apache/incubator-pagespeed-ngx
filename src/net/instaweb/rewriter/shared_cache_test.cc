@@ -136,27 +136,29 @@ class SharedCacheTest : public RewriteContextTestBase {
     EXPECT_EQ(num_new_metadata_misses,
               validation_ctx_->log_record()->logging_info()->
                   metadata_cache_info().num_misses() -
-              metadata_num_misses_);
+              metadata_num_misses_) << id;
     metadata_num_misses_ = logging_info()->metadata_cache_info().num_misses();
 
     EXPECT_EQ(num_new_shared_hits,
-              shared_cache_->num_hits() - shared_num_hits_);
+              shared_cache_->num_hits() - shared_num_hits_) << id;
     shared_num_hits_ = shared_cache_->num_hits();
 
     EXPECT_EQ(num_new_shared_misses,
-              shared_cache_->num_misses() - shared_num_misses_);
+              shared_cache_->num_misses() - shared_num_misses_) << id;
     shared_num_misses_ = shared_cache_->num_misses();
 
     EXPECT_EQ(num_new_shared_inserts,
-              shared_cache_->num_inserts() - shared_num_inserts_);
+              shared_cache_->num_inserts() - shared_num_inserts_) << id;
     shared_num_inserts_ = shared_cache_->num_inserts();
 
     EXPECT_EQ(num_new_shared_reinserts,
-              shared_cache_->num_identical_reinserts() - shared_num_reinserts_);
+              shared_cache_->num_identical_reinserts() - shared_num_reinserts_)
+        << id;
     shared_num_reinserts_ = shared_cache_->num_identical_reinserts();
 
     EXPECT_EQ(num_new_filesystem_opens,
-              file_system()->num_input_file_opens() - filesystem_num_opens_);
+              file_system()->num_input_file_opens() - filesystem_num_opens_)
+        << id;
     filesystem_num_opens_ = file_system()->num_input_file_opens();
 
     // Check the rewritten content then check that we got it from the cache.
@@ -238,7 +240,7 @@ TEST_F(SharedCacheTest, LoadFromFileMisbehavesWithoutFilesystemMetadataCache) {
                   /* num_new_metadata_hits = */    0,
                   /* num_new_metadata_misses = */  1,
                   /* num_new_shared_hits = */      0,
-                  /* num_new_shared_misses = */    2,  // metadata + HTTP
+                  /* num_new_shared_misses = */    1,  // metadata
                   /* num_new_shared_inserts = */   2,  // metadata + HTTP
                   /* num_new_shared_reinserts = */ 0,
                   /* num_new_filesystem_opens = */ 1,  // HTTP
@@ -284,7 +286,7 @@ TEST_F(SharedCacheTest, LoadFromFileMisbehavesWithoutFilesystemMetadataCache) {
                   /* num_new_metadata_hits = */    0,
                   /* num_new_metadata_misses = */  1,
                   /* num_new_shared_hits = */      1,  // metadata
-                  /* num_new_shared_misses = */    1,  // HTTP
+                  /* num_new_shared_misses = */    0,
                   /* num_new_shared_inserts = */   2,  // HTTP + metadata
                   /* num_new_shared_reinserts = */ 0,
                   /* num_new_filesystem_opens = */ 1,
@@ -308,7 +310,7 @@ TEST_F(SharedCacheTest, LoadFromFileMisbehavesWithoutFilesystemMetadataCache) {
                   /* num_new_metadata_hits = */    0,
                   /* num_new_metadata_misses = */  1,
                   /* num_new_shared_hits = */      1,  // HTTP
-                  /* num_new_shared_misses = */    1,  // metadata
+                  /* num_new_shared_misses = */    0,
                   /* num_new_shared_inserts = */   2,  // HTTP + metadata
                   /* num_new_shared_reinserts = */ 0,
                   /* num_new_filesystem_opens = */ 1,
@@ -327,7 +329,7 @@ TEST_F(SharedCacheTest, LoadFromFileSucceedsWithFilesystemMetadataCache) {
                   /* num_new_metadata_hits = */    0,
                   /* num_new_metadata_misses = */  1,
                   /* num_new_shared_hits = */      0,
-                  /* num_new_shared_misses = */    2,  // metadata + HTTP
+                  /* num_new_shared_misses = */    1,  // metadata
                   /* num_new_shared_inserts = */   2,  // metadata + HTTP
                   /* num_new_shared_reinserts = */ 0,
                   /* num_new_filesystem_opens = */ 1,  // HTTP
@@ -356,7 +358,7 @@ TEST_F(SharedCacheTest, LoadFromFileSucceedsWithFilesystemMetadataCache) {
                   /* num_new_metadata_hits = */    0,
                   /* num_new_metadata_misses = */  1,
                   /* num_new_shared_hits = */      1,  // metadata
-                  /* num_new_shared_misses = */    1,  // HTTP
+                  /* num_new_shared_misses = */    0,
                   /* num_new_shared_inserts = */   2,  // HTTP + metadata
                   /* num_new_shared_reinserts = */ 0,
                   /* num_new_filesystem_opens = */ 2,  // FSMDC + HTTP
@@ -371,7 +373,7 @@ TEST_F(SharedCacheTest, LoadFromFileSucceedsWithFilesystemMetadataCache) {
                   /* num_new_metadata_hits = */    0,
                   /* num_new_metadata_misses = */  1,
                   /* num_new_shared_hits = */      1,  // HTTP
-                  /* num_new_shared_misses = */    1,  // metadata
+                  /* num_new_shared_misses = */    0,
                   /* num_new_shared_inserts = */   2,  // HTTP + metadata
                   /* num_new_shared_reinserts = */ 0,
                   /* num_new_filesystem_opens = */ 2,  // FSMDC + HTTP
@@ -384,7 +386,7 @@ TEST_F(SharedCacheTest, LoadFromFileSucceedsWithFilesystemMetadataCache) {
                   /* num_new_metadata_hits = */    0,
                   /* num_new_metadata_misses = */  1,
                   /* num_new_shared_hits = */      1,  // metadata
-                  /* num_new_shared_misses = */    1,  // HTTP
+                  /* num_new_shared_misses = */    0,
                   /* num_new_shared_inserts = */   2,  // HTTP + metadata
                   /* num_new_shared_reinserts = */ 0,
                   /* num_new_filesystem_opens = */ 2,  // FSMDC + HTTP
@@ -394,7 +396,7 @@ TEST_F(SharedCacheTest, LoadFromFileSucceedsWithFilesystemMetadataCache) {
                   /* num_new_metadata_hits = */    0,
                   /* num_new_metadata_misses = */  1,
                   /* num_new_shared_hits = */      1,  // metadata
-                  /* num_new_shared_misses = */    1,  // HTTP
+                  /* num_new_shared_misses = */    0,
                   /* num_new_shared_inserts = */   2,  // HTTP + metadata
                   /* num_new_shared_reinserts = */ 0,
                   /* num_new_filesystem_opens = */ 2,  // FSMDC + HTTP
@@ -404,7 +406,7 @@ TEST_F(SharedCacheTest, LoadFromFileSucceedsWithFilesystemMetadataCache) {
                   /* num_new_metadata_hits = */    0,
                   /* num_new_metadata_misses = */  1,
                   /* num_new_shared_hits = */      1,  // metadata
-                  /* num_new_shared_misses = */    1,  // HTTP
+                  /* num_new_shared_misses = */    0,
                   /* num_new_shared_inserts = */   2,  // HTTP + metadata
                   /* num_new_shared_reinserts = */ 0,
                   /* num_new_filesystem_opens = */ 2,  // FSMDC + HTTP

@@ -62,7 +62,9 @@ class OutputResource : public Resource {
                  const RewriteOptions* options,
                  OutputResourceKind kind);
 
-  virtual bool Load(MessageHandler* message_handler);
+  virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
+                               AsyncCallback* callback,
+                               MessageHandler* handler);
   // NOTE: url() will crash if resource has does not have a hash set yet.
   // Specifically, this will occur if the resource has not been completely
   // written yet. Before that point, the final URL cannot be known.
@@ -159,7 +161,7 @@ class OutputResource : public Resource {
   // to refactor this to check to see whether the desired resource is
   // already known.  For now we'll assume we can commit to serving the
   // resource during the HTML rewriter.
-  bool IsWritten() const;
+  bool IsWritten() const { return writing_complete_; }
 
   // Sets the type of the output resource, and thus also its suffix.
   virtual void SetType(const ContentType* type);
@@ -210,7 +212,7 @@ class OutputResource : public Resource {
   bool has_lock() const;
 
   // This is called by CacheCallback::Done in rewrite_driver.cc.
-  void set_written(bool written) { writing_complete_ = true; }
+  void SetWritten(bool written) { writing_complete_ = true; }
 
   virtual const RewriteOptions* rewrite_options() const {
     return rewrite_options_;
@@ -221,6 +223,8 @@ class OutputResource : public Resource {
   // BeginWrite is owned by this OutputResource.
   Writer* BeginWrite(MessageHandler* message_handler);
   void EndWrite(MessageHandler* message_handler);
+
+  virtual bool UseHttpCache() const { return true; }
 
  protected:
   virtual ~OutputResource();

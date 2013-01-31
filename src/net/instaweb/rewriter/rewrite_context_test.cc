@@ -2432,8 +2432,9 @@ TEST_F(RewriteContextTest, LoadFromFileOnTheFly) {
   ValidateExpected("trimmable", CssLinkHref("a.css"),
                    CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(0, lru_cache()->num_hits());
-  // 2 cache misses: one for the OutputPartitions, one for the input resource.
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  // 1 cache miss for the OutputPartitions.  The input resource does not
+  // induce a cache check as it's loaded from the file system.
+  EXPECT_EQ(1, lru_cache()->num_misses());
   // 1 cache insertion: resource mapping (CachedResult).
   // Output resource not stored in cache (because it's an on-the-fly resource).
   EXPECT_EQ(1, lru_cache()->num_inserts());
@@ -2470,8 +2471,9 @@ TEST_F(RewriteContextTest, LoadFromFileRewritten) {
                    CssLinkHref("a.css"),
                    CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
   EXPECT_EQ(0, lru_cache()->num_hits());
-  // 2 cache misses: one for the OutputPartitions, one for the input resource.
-  EXPECT_EQ(2, lru_cache()->num_misses());
+  // 1 cache miss for the OutputPartitions.  No cache lookup is
+  // done for the input resource since it is loaded from the file system.
+  EXPECT_EQ(1, lru_cache()->num_misses());
   // 2 cache insertion: resource mapping (CachedResult) and output resource.
   EXPECT_EQ(2, lru_cache()->num_inserts());
   // No fetches because it's loaded from file.

@@ -193,9 +193,7 @@ class ServerContextTest : public RewriteTestBase {
     rewrite_driver()->SetBaseUrlForFetch(url);
     GoogleUrl resource_url(url);
     ResourcePtr resource(rewrite_driver()->CreateInputResource(resource_url));
-    if ((resource.get() != NULL) &&
-        (!resource->IsCacheableTypeOfResource() ||
-         !ReadIfCached(resource))) {
+    if ((resource.get() != NULL) && !ReadIfCached(resource)) {
       resource.clear();
     }
     return resource;

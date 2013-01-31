@@ -28,7 +28,6 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -59,6 +58,7 @@ class CollectSubresourcesFilter;
 class CommonFilter;
 class CriticalLineInfo;
 class DebugFilter;
+class DeviceProperties;
 class DomainRewriteFilter;
 class FileSystem;
 class FlushEarlyInfo;
@@ -1398,6 +1398,11 @@ class RewriteDriver : public HtmlParse {
   bool is_nested_;
 
   scoped_ptr<DeviceProperties> device_properties_;
+
+  // Helps make sure RewriteDriver and its children are initialized exactly
+  // once, allowing for multiple calls to RewriteDriver::Initialize as long
+  // as they are matched to RewriteDriver::Terminate.
+  static int initialized_count_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };
