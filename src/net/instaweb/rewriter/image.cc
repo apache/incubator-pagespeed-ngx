@@ -262,8 +262,8 @@ class ImageImpl : public Image {
   // number of attempts.
   bool MayConvert() {
     if (options_.get()) {
-      VLOG(1) << "Conversions attempted: "
-              << options_->conversions_attempted;
+      DLOG(INFO) << "Conversions attempted: "
+                 << options_->conversions_attempted;
       if (options_->conversions_attempted < kMaxConversionAttempts) {
         ++options_->conversions_attempted;
         return true;
@@ -898,8 +898,8 @@ bool ImageImpl::ComputeOutputContents() {
               (options_->preferred_webp != WEBP_NONE)) {
             ok = OptimizeWebp(string_for_image, options_->webp_quality,
                               &output_contents_);
-            VLOG(1) << "Image conversion: " << ok
-                    << " jpeg->webp for " << url_.c_str();
+            DLOG(INFO) << "Image conversion: " << ok
+                       << " jpeg->webp for " << url_.c_str();
             if (!ok) {
               handler_->Warning(url_.c_str(), 0, "Failed to create webp!");
             }
@@ -911,8 +911,8 @@ bool ImageImpl::ComputeOutputContents() {
             ConvertToJpegOptions(*options_.get(), &jpeg_options);
             ok = pagespeed::image_compression::OptimizeJpegWithOptions(
                 string_for_image, &output_contents_, jpeg_options);
-            VLOG(1) << "Image conversion: " << ok
-                    << " jpeg->jpeg for " << url_.c_str();
+            DLOG(INFO) << "Image conversion: " << ok
+                       << " jpeg->jpeg for " << url_.c_str();
           }
           break;
         case IMAGE_PNG:
@@ -951,24 +951,24 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
     // Don't try to optimize empty images, it just messes things up.
     if (options_->convert_jpeg_to_webp) {
       ok = ConvertPngToWebp(*png_reader, string_for_image);
-      VLOG(1) << "Image conversion: " << ok
-              << " " << dbg_input_format
-              << "->webp for " << url_.c_str();
+      DLOG(INFO) << "Image conversion: " << ok
+                 << " " << dbg_input_format
+                 << "->webp for " << url_.c_str();
     }
     if (!ok && options_->jpeg_quality > 0) {
       ok = OptimizePngOrConvertToJpeg(*png_reader,
                                       string_for_image);
-      VLOG(1) << "Image conversion: " << ok
-              << " " << dbg_input_format
-              << "->jpeg/png for " << url_.c_str();
+      DLOG(INFO) << "Image conversion: " << ok
+                 << " " << dbg_input_format
+                 << "->jpeg/png for " << url_.c_str();
       return ok;  // Don't repeat, below, this failing PNG optimization.
     }
   }
   if (!ok && fall_back_to_png) {
     ok = OptimizePng(*png_reader, string_for_image);
-    VLOG(1) << "Image conversion: " << ok
-            << " " << dbg_input_format
-            << "->png for " << url_.c_str();
+    DLOG(INFO) << "Image conversion: " << ok
+               << " " << dbg_input_format
+               << "->png for " << url_.c_str();
   }
   return ok;
 }

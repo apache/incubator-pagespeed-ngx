@@ -661,6 +661,7 @@
         'util/gzip_inflater.cc',
         'util/hashed_referer_statistics.cc',
         'util/hasher.cc',
+        'util/hostname_util.cc',
         'util/inprocess_shared_mem.cc',
         'util/json_writer.cc',
         'util/key_value_codec.cc',
