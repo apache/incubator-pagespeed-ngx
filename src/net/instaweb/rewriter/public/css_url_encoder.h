@@ -25,14 +25,15 @@
 
 namespace net_instaweb {
 
+class DeviceProperties;
 class MessageHandler;
 class ResourceContext;
 
 // This class implements the encoding of css urls with optional additional
-// dimension metadata.  It prepends characters indicating whether the
-// user-agent allows for inlining or webp.  We may need to employ distinct
-// CSS files to these types of browsers.  This information is conveyed in
-// the ResourceContext.
+// dimension metadata. For the legacy encoding, it used to prepend characters
+// indicating whether the user-agent allows for inlining or webp. We may need
+// to employ distinct CSS files for these types of browsers.  This information
+// is conveyed in the ResourceContext.
 //   http://..path../W.cssfile...  CSS file optimized for webp-capable browsers.
 //   http://..path../I.cssfile...  CSS file optimzed for for non-webp browsers
 //                                 that inline.
@@ -41,6 +42,10 @@ class ResourceContext;
 // Note that a legacy CSS URL beginning with W., I., or A. will be
 // misinterpreted and will not be fetchable since the Decode function
 // will strip off the leading 2 characters.
+//
+// Note that a lot of this is legacy encoding now, and that we just
+// unconditionally use the "A." encoding and rely on content hash and
+// metadata cache + user-agent sniffing to keep things consistent.
 class CssUrlEncoder : public UrlSegmentEncoder {
  public:
   CssUrlEncoder() {}
@@ -54,6 +59,10 @@ class CssUrlEncoder : public UrlSegmentEncoder {
                       StringVector* urls,
                       ResourceContext* dim,
                       MessageHandler* handler) const;
+
+  // Sets Inlining of image according to the user agent.
+  static void SetInliningImages(const DeviceProperties& device_properties,
+                                ResourceContext* resource_context);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CssUrlEncoder);

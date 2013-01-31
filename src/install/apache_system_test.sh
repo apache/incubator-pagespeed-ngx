@@ -626,7 +626,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
   PROXY_PATH="http://modpagespeed.com/styles"
   ORIGINAL="${PROXY_PATH}/yellow.css"
-  FILTERED="${PROXY_PATH}/W.yellow.css.pagespeed.cf.KM5K8SbHQL.css"
+  FILTERED="${PROXY_PATH}/A.yellow.css.pagespeed.cf.KM5K8SbHQL.css"
   WGET_ARGS="--save-headers"
 
   # We should be able to fetch the original ...
@@ -645,7 +645,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     VHOST_MPS_UNPLUGGED="http://mpsunplugged.example.com"
     SITE="mod_pagespeed_example"
     ORIGINAL="$SITE/styles/yellow.css"
-    FILTERED="$SITE/styles/W.yellow.css.pagespeed.cf.KM5K8SbHQL.css"
+    FILTERED="$SITE/styles/A.yellow.css.pagespeed.cf.KM5K8SbHQL.css"
 
     # ModPagespeed unplugged does not serve .pagespeed. resources.
     http_proxy=$SPROXY check_not $WGET $VHOST_MPS_UNPLUGGED/$FILTERED
@@ -925,7 +925,7 @@ blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
   WGET_ARGS=""
   DIR="mod_pagespeed_test/map_css_embedded"
   URL="http://www.example.com/$DIR/issue494.html"
-  MAPPED_CSS="$DIR/I.styles.css.pagespeed.cf.w9O-kBfMWw.css"
+  MAPPED_CSS="$DIR/A.styles.css.pagespeed.cf.w9O-kBfMWw.css"
   http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
       "grep -c cdn.example.com/$MAPPED_CSS" 1
 
@@ -975,7 +975,7 @@ blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET -O /dev/null $ALLOWED 2>&1)
   check_from "$OUT" fgrep -q "200 OK"
   # .cf. is forbidden
-  FORBIDDEN=$FORBIDDEN_STYLES_ROOT/I.all_styles.css.pagespeed.cf.UH8L-zY4b4.css
+  FORBIDDEN=$FORBIDDEN_STYLES_ROOT/A.all_styles.css.pagespeed.cf.UH8L-zY4b4.css
   OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET -O /dev/null $FORBIDDEN 2>&1)
   check_from "$OUT" fgrep -q "404 Not Found"
   # The image will be optimized but NOT resized to the much smaller size,
@@ -1471,12 +1471,12 @@ check_from "$OUT" egrep -q '.pagespeed.cc'
 # rewrite_images for spdy, we should not see rewritten resources there,
 # while we will in the other normal case.
 OUT=$($WGET_DUMP  --header 'X-PSA-Blocking-Rewrite: psatest' \
-    $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.rnLTdExmOm.css)
+    $EXAMPLE_ROOT/styles/A.rewrite_css_images.css.pagespeed.cf.rnLTdExmOm.css)
 check_from "$OUT" grep -q 'png.pagespeed.'
 
 OUT=$($WGET_DUMP  --header 'X-PSA-Blocking-Rewrite: psatest' \
     --header 'X-PSA-Optimize-For-SPDY: true' \
-    $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.rnLTdExmOm.css)
+    $EXAMPLE_ROOT/styles/A.rewrite_css_images.css.pagespeed.cf.rnLTdExmOm.css)
 check_not_from "$OUT" grep -q 'png.pagespeed.'
 COMMENTING_BLOCK
 

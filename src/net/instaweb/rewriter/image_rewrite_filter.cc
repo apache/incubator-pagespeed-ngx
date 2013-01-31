@@ -29,9 +29,9 @@
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/image.h"
-#include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/in_place_rewrite_context.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -1316,6 +1316,7 @@ const UrlSegmentEncoder* ImageRewriteFilter::encoder() const {
 void ImageRewriteFilter::EncodeUserAgentIntoResourceContext(
     ResourceContext* context) const {
   ImageUrlEncoder::SetWebpAndMobileUserAgent(*driver_, context);
+  CssUrlEncoder::SetInliningImages(*driver_->device_properties(), context);
   if (SquashImagesForMobileScreenEnabled()) {
     ImageUrlEncoder::SetUserAgentScreenResolution(driver_, context);
   }

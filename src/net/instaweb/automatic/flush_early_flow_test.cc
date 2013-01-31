@@ -801,8 +801,8 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTest) {
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   // Check total number of cache inserts.
   // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.
-  // 6 for I.1.css.pagespeed.cf.0.css, I.2.css.pagespeed.cf.0.css,
-  //       I.3.css.pagespeed.cf.0.css, 1.js.pagespeed.jm.0.js and
+  // 6 for A.1.css.pagespeed.cf.0.css, A.2.css.pagespeed.cf.0.css,
+  //       A.3.css.pagespeed.cf.0.css, 1.js.pagespeed.jm.0.js and
   //       2.js.pagespeed.jm.0.js and 1.jpg.pagespeed.ce.0.jpg.
   // 19 metadata cache enties - three for cf and jm, seven for ce and
   //       six for fs.
@@ -827,8 +827,8 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPrefetch) {
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   // Check total number of cache inserts.
   // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.
-  // 6 for I.1.css.pagespeed.cf.0.css, I.2.css.pagespeed.cf.0.css,
-  //       I.3.css.pagespeed.cf.0.css, 1.js.pagespeed.jm.0.js and
+  // 6 for A.1.css.pagespeed.cf.0.css, A.2.css.pagespeed.cf.0.css,
+  //       A.3.css.pagespeed.cf.0.css, 1.js.pagespeed.jm.0.js and
   //       2.js.pagespeed.jm.0.js and 1.jpg.pagespeed.ce.0.jpg.
   // 19 metadata cache enties - three for cf and jm, seven for ce and
   //       six for fs.
@@ -1228,7 +1228,7 @@ TEST_F(FlushEarlyFlowTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
       "<html>"
       "<head>"
       "<link rel=\"stylesheet\""
-      " href=\"http://test.com/I.1.css.pagespeed.cf.0.css\""
+      " href=\"http://test.com/A.1.css.pagespeed.cf.0.css\""
       " media=\"print\" disabled=\"true\"/>\n"
       "<script type='text/javascript'>"
       "window.mod_pagespeed_prefetch_start = Number(new Date());"
@@ -1239,7 +1239,7 @@ TEST_F(FlushEarlyFlowTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
       "<meta charset=\"UTF-8\"/>"
       "<title>Flush Subresources Early example</title>"
       "<link rel=\"stylesheet\" type=\"text/css\""
-      " href=\"http://test.com/I.1.css.pagespeed.cf.0.css\"></head>"
+      " href=\"http://test.com/A.1.css.pagespeed.cf.0.css\"></head>"
       "<body>",
       StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
                    redirect_url.c_str()),
@@ -1298,7 +1298,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyMoreResourcesIfTimePermits) {
       "<html>"
       "<head>"
       "<script type=\"text/javascript\">(function(){"
-      "new Image().src=\"http://test.com/I.1.css.pagespeed.cf.0.css\";"
+      "new Image().src=\"http://test.com/A.1.css.pagespeed.cf.0.css\";"
       "new Image().src=\"http://test.com/1.jpg.pagespeed.ce.0.jpg\";"
       "new Image().src=\"http://test.com/1.js.pagespeed.ce.0.js\";})()</script>"
       "<script type='text/javascript'>"
@@ -1310,7 +1310,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyMoreResourcesIfTimePermits) {
       "<meta charset=\"UTF-8\"/>"
       "<title>Flush Subresources Early example</title>"
       "<link rel=\"stylesheet\" type=\"text/css\""
-      " href=\"http://test.com/I.1.css.pagespeed.cf.0.css\"></head>"
+      " href=\"http://test.com/A.1.css.pagespeed.cf.0.css\"></head>"
       "<body>",
       StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
                    redirect_url.c_str()),
@@ -1470,7 +1470,7 @@ TEST_F(FlushEarlyFlowTest, PreconnectTest) {
       "<head>"
       "<script type=\"text/javascript\">"
       "(function(){new Image().src=\"http://cdn.com/http/test.com/http/"
-      "test.com/I.1.css.pagespeed.cf.0.css\";})()</script>"
+      "test.com/A.1.css.pagespeed.cf.0.css\";})()</script>"
       "<script type='text/javascript'>"
       "window.mod_pagespeed_prefetch_start = Number("
       "new Date());window.mod_pagespeed_num_resources_prefetched = 1</script>",
@@ -1478,7 +1478,7 @@ TEST_F(FlushEarlyFlowTest, PreconnectTest) {
       StringPrintf(pre_connect_tag, "1"),
       "<title>Flush Subresources Early example</title>"
       "<link rel=\"stylesheet\" type=\"text/css\" href=\"http://cdn.com/http/"
-          "test.com/http/test.com/I.1.css.pagespeed.cf.0.css\">"
+          "test.com/http/test.com/A.1.css.pagespeed.cf.0.css\">"
       "</head>"
       "<body>", StrCat(
       StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),

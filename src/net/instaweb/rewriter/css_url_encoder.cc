@@ -18,6 +18,7 @@
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
@@ -33,18 +34,9 @@ void CssUrlEncoder::Encode(const StringVector& urls,
                            GoogleString* rewritten_url) const {
   DCHECK(data != NULL) << "null data passed to CssUrlEncoder::Encode";
   DCHECK_EQ(1U, urls.size());
-  if (data != NULL) {
-    if (data->libwebp_level() ==
-         ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA) {
-      rewritten_url->append("V.");
-    } else if (data->libwebp_level() == ResourceContext::LIBWEBP_LOSSY_ONLY) {
-      rewritten_url->append("W.");
-    } else if (data->inline_images()) {
-      rewritten_url->append("I.");
-    } else {
-      rewritten_url->append("A.");
-    }
-  }
+
+  rewritten_url->append("A.");
+
   UrlEscaper::EncodeToUrlSegment(urls[0], rewritten_url);
 }
 
@@ -63,10 +55,6 @@ bool CssUrlEncoder::Decode(const StringPiece& encoded,
     return false;
   }
   switch (encoded[0]) {
-    case 'A':
-      data->set_libwebp_level(ResourceContext::LIBWEBP_NONE);
-      data->set_inline_images(false);
-      break;
     case 'V':
       data->set_libwebp_level(ResourceContext::LIBWEBP_LOSSY_LOSSLESS_ALPHA);
       data->set_inline_images(true);
@@ -79,6 +67,8 @@ bool CssUrlEncoder::Decode(const StringPiece& encoded,
       data->set_libwebp_level(ResourceContext::LIBWEBP_NONE);
       data->set_inline_images(true);
       break;
+    case 'A':
+      break;
   }
 
   GoogleString* url = StringVectorAdd(urls);
@@ -89,6 +79,15 @@ bool CssUrlEncoder::Decode(const StringPiece& encoded,
     urls->pop_back();
     return false;
   }
+}
+
+void CssUrlEncoder::SetInliningImages(const DeviceProperties& device_properties,
+                                      ResourceContext* resource_context) {
+  DCHECK(resource_context != NULL)
+      << "null data passed to CssUrlEncoder::SetInliningImages";
+
+  resource_context->set_inline_images(
+      device_properties.SupportsImageInlining());
 }
 
 }  // namespace net_instaweb

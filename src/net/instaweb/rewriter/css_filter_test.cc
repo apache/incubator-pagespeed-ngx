@@ -1488,7 +1488,7 @@ TEST_F(CssFilterTest, WebpRewriting) {
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
-                    "W.%s.pagespeed.cf.0.css");
+                    "A.%s.pagespeed.cf.0.css");
 }
 
 TEST_F(CssFilterTest, WebpLaRewriting) {
@@ -1504,7 +1504,7 @@ TEST_F(CssFilterTest, WebpLaRewriting) {
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
-                    "V.%s.pagespeed.cf.0.css");
+                    "A.%s.pagespeed.cf.0.css");
 }
 
 TEST_F(CssFilterTest, WebpLaWithFlagRewriting) {
@@ -1521,7 +1521,7 @@ TEST_F(CssFilterTest, WebpLaWithFlagRewriting) {
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
-                    "V.%s.pagespeed.cf.0.css");
+                    "A.%s.pagespeed.cf.0.css");
 }
 
 TEST_F(CssFilterTest, NoWebpRewritingFromJpgIfDisabled) {
@@ -1534,7 +1534,7 @@ TEST_F(CssFilterTest, NoWebpRewritingFromJpgIfDisabled) {
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.jpg",
-                    "W.%s.pagespeed.cf.0.css");
+                    "A.%s.pagespeed.cf.0.css");
 }
 
 TEST_F(CssFilterTest, WebpRewritingFromJpgWithWebpFlagWebpLaUa) {
@@ -1552,7 +1552,7 @@ TEST_F(CssFilterTest, WebpRewritingFromJpgWithWebpFlagWebpLaUa) {
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
-                    "V.%s.pagespeed.cf.0.css");
+                    "A.%s.pagespeed.cf.0.css");
 }
 
 TEST_F(CssFilterTest, WebpRewritingFromJpgWithWebpFlagWebpUa) {
@@ -1570,7 +1570,7 @@ TEST_F(CssFilterTest, WebpRewritingFromJpgWithWebpFlagWebpUa) {
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.webp",
-                    "W.%s.pagespeed.cf.0.css");
+                    "A.%s.pagespeed.cf.0.css");
 }
 
 TEST_F(CssFilterTest, NoWebpLaRewritingFromJpgIfDisabled) {
@@ -1583,7 +1583,7 @@ TEST_F(CssFilterTest, NoWebpLaRewritingFromJpgIfDisabled) {
 
   TestWebpRewriting(kPuzzleJpgFile, kContentTypeJpeg,
                     "x%s.pagespeed.ic.0.jpg",
-                    "V.%s.pagespeed.cf.0.css");
+                    "A.%s.pagespeed.cf.0.css");
 }
 
 TEST_F(CssFilterTest, NoWebpRewritingFromPngIfDisabled) {
@@ -1597,7 +1597,7 @@ TEST_F(CssFilterTest, NoWebpRewritingFromPngIfDisabled) {
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
                     "x%s.pagespeed.ic.0.png",
-                    "W.%s.pagespeed.cf.0.css");
+                    "A.%s.pagespeed.cf.0.css");
 }
 
 TEST_F(CssFilterTest, WebpRewritingFromPngWithWebpFlagWebpLaUa) {
@@ -1612,7 +1612,7 @@ TEST_F(CssFilterTest, WebpRewritingFromPngWithWebpFlagWebpLaUa) {
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
                     "x%s.pagespeed.ic.0.webp",
-                    "V.%s.pagespeed.cf.0.css");
+                    "A.%s.pagespeed.cf.0.css");
 }
 
 TEST_F(CssFilterTest, WebpRewritingFromPngWithWebpFlagWebpUa) {
@@ -1627,7 +1627,7 @@ TEST_F(CssFilterTest, WebpRewritingFromPngWithWebpFlagWebpUa) {
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
                     "x%s.pagespeed.ic.0.webp",
-                    "W.%s.pagespeed.cf.0.css");
+                    "A.%s.pagespeed.cf.0.css");
 }
 
 TEST_F(CssFilterTest, NoWebpLaRewritingFromPngIfDisabled) {
@@ -1641,7 +1641,7 @@ TEST_F(CssFilterTest, NoWebpLaRewritingFromPngIfDisabled) {
 
   TestWebpRewriting(kBikePngFile, kContentTypePng,
                     "x%s.pagespeed.ic.0.png",
-                    "V.%s.pagespeed.cf.0.css");
+                    "A.%s.pagespeed.cf.0.css");
 }
 
 TEST_F(CssFilterTest, DontAbsolutifyUrlsIfNoDomainMapping) {
