@@ -132,7 +132,7 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
                                         va_list args) {
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
-  ngx_log_error(log_level, log_, 0, "nm [%d] %s\n",
+  ngx_log_error(log_level, log_, 0, "nm [%d] %s",
                 getpid(), formatted_message.c_str());
 
   // TODO(oschaaf): make equivalent
@@ -170,7 +170,8 @@ void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
                                             va_list args) {
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
-  ngx_log_error(log_level, log_, 0/* TODO(oschaaf): describe*/, "fm  [%d] %s", getpid(), formatted_message.c_str());
+  ngx_log_error(log_level, log_, 0/* TODO(oschaaf): describe*/, "fm  [%d] %s"
+                , getpid(), formatted_message.c_str());
 
   // TODO(oschaaf):
   /*ap_log_error(APLOG_MARK, log_level, APR_SUCCESS, server_rec_,

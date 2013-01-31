@@ -87,6 +87,9 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf,
       ngx_message_handler_(new NgxMessageHandler(
           // TODO(oschaaf): "-x-"
           log, "-x-", timer(), thread_system()->NewMutex())),
+      ngx_html_parse_message_handler_(new NgxMessageHandler(
+          // TODO(oschaaf): "-x-"
+          log, "-x-", timer(), thread_system()->NewMutex())),
       // TODO(oschaaf): configurable
       install_crash_handler_(true),
       message_buffer_size_(1024*100),
@@ -102,8 +105,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf,
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
   set_message_handler(ngx_message_handler_);
-  // TODO(oschaaf):
-  set_html_parse_message_handler(ngx_message_handler_);
+  set_html_parse_message_handler(ngx_html_parse_message_handler_);
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
@@ -161,7 +163,7 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
-  return ngx_message_handler_;
+  return ngx_html_parse_message_handler_;
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultMessageHandler() {
@@ -368,8 +370,7 @@ void NgxRewriteDriverFactory::ShutDown() {
   // TODO(oschaaf): should be refactored with the Apache shutdown code
   memcached_pool_.reset(NULL);
   ngx_message_handler_->set_buffer(NULL);
-  // TODO(oschaaf): separate html_parse_message_handler
-  //ngx_html_parse_message_handler_->set_buffer(NULL);
+  ngx_html_parse_message_handler_->set_buffer(NULL);
 }
 
 void NgxRewriteDriverFactory::StartThreads() {
@@ -411,16 +412,14 @@ void NgxRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
         "FOO.com" /*hostname_identifier()*/));
     if (shared_circular_buffer_->InitSegment(is_root, message_handler())) {
       ngx_message_handler_->set_buffer(shared_circular_buffer_.get());
-      // TODO(oschaaf):
-      //ngx_html_parse_message_handler_->set_buffer(
-      //    shared_circular_buffer_.get());
+      ngx_html_parse_message_handler_->set_buffer(
+          shared_circular_buffer_.get());
     }
   }
 }
 
 void NgxRewriteDriverFactory::RootInit() {
   ParentOrChildInit();
-  message_handler()->Message(kError, "Root Init!");
   
   for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
@@ -444,8 +443,7 @@ void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
   is_root_process_ = false;
 
   ngx_message_handler_->set_log(log);
-  message_handler()->Message(kError, "Child Init!");
-  
+  ngx_html_parse_message_handler_->set_log(log);
   ParentOrChildInit();
   slow_worker_.reset(new SlowWorker(thread_system()));
 

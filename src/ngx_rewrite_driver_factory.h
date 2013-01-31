@@ -175,6 +175,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   bool threads_started_;
   bool is_root_process_;
   NgxMessageHandler* ngx_message_handler_;
+  NgxMessageHandler* ngx_html_parse_message_handler_;
   bool install_crash_handler_;
   int message_buffer_size_;
   scoped_ptr<SharedCircularBuffer> shared_circular_buffer_;
