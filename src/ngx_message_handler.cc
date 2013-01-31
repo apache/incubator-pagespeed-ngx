@@ -113,6 +113,7 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
     GoogleMessageHandler::MessageVImpl(type, msg, args);
   }
 
+  // Prepare a log message for the SharedCircularBuffer only.
   // Prepend time and severity to message.
   // Format is [time] [severity] [pid] message.
   GoogleString message;
