@@ -115,7 +115,7 @@ Tengine.  First follow one of the two installation methods above until you get
 to the "Download and build nginx" section.  Then run:
 
     # This might be /usr/local/tengine, depending on your configuration.
-    $ cd /path/to/tengine
+    $ cd /path/to/tengine/sbin/
     $ ./dso_tool --add-module=/path/to/ngx_pagespeed
 
 This will prepare a dynamically loadable module out of ngx_pagespeed.  To check
