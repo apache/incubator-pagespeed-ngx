@@ -300,7 +300,7 @@ void handle_as_pagespeed_resource(const RequestContextPtr& request_context,
 
 // Handle url with In Place Resource Optimization (IPRO) flow.
 bool handle_as_in_place(const RequestContextPtr& request_context,
-                        GoogleUrl* gurl,
+                       GoogleUrl* gurl,
                         const GoogleString& url,
                         RewriteOptions* custom_options,
                         ApacheServerContext* server_context,
@@ -321,16 +321,21 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
   bool perform_http_fetch = false;
   driver->FetchInPlaceResource(*gurl, perform_http_fetch, fetch);
 
-  // Wait for cache lookup to complete.  Note: This 5 second timeout
-  // should not normally be hit.  Instead FetchInPlaceResource should
-  // take care of timing out our rewrites.  However this timeout can
-  // occur while debugging.
-  int64 timeout_ms = driver->options()->blocking_fetch_timeout_ms();
-  while (!fetch->done()) {
-    driver->BoundedWaitFor(RewriteDriver::kWaitForCompletion, timeout_ms);
+  // Wait for cache lookup to complete.
+  if (!fetch->done()) {
+    int64 max_ms = driver->options()->blocking_fetch_timeout_ms();
+    for (int64 start_ms = server_context->timer()->NowMs(), now_ms = start_ms;
+         !fetch->done() && now_ms - start_ms < max_ms;
+         now_ms = server_context->timer()->NowMs()) {
+      int64 remaining_ms = max_ms - (now_ms - start_ms);
+
+      driver->BoundedWaitFor(RewriteDriver::kWaitForCompletion, remaining_ms);
+    }
+
     if (!fetch->done()) {
-      message_handler->Message(
-          kWarning, "Waiting for in-place rewrite on URL %s", url.c_str());
+      // Note: This 5 second timeout should not actually be hit, instead
+      // FetchInPlaceResource should take care of timing out our rewrites.
+      LOG(DFATAL) << "In-place rewrite timed out on URL " << url;
     }
   }
 

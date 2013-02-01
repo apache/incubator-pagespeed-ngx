@@ -245,8 +245,11 @@ class CriticalLineFetch : public AsyncFetch {
           IntegerToString(response_headers()->status_code()));
     }
 
-    if (blink_critical_line_data_ != NULL) {
-      // We need to do diff mismatch detection only in cache hit case.
+    if (options_->enable_blink_html_change_detection() ||
+        options_->enable_blink_html_change_detection_logging()) {
+      // We do diff mismatch detection in cache miss case also so that we can
+      // update the content hash and smart text hash in blink critical line data
+      // in pcache.
       CreateHtmlChangeDetectionDriverAndRewrite();
     } else {
       CreateCriticalLineComputationDriverAndRewrite();
@@ -346,7 +349,12 @@ class CriticalLineFetch : public AsyncFetch {
       computed_hash_smart_diff_ = server_context_->hasher()->Hash(result[0]);
       computed_hash_ = server_context_->hasher()->Hash(result[1]);
     }
-    DCHECK(blink_critical_line_data_ != NULL);
+    if (blink_critical_line_data_ == NULL) {
+      // A cache miss case.  Just compute critical line data. The computed
+      // hashes will be written to pcache along with critical line data.
+      CreateCriticalLineComputationDriverAndRewrite();
+      return;
+    }
     {
       ScopedMutex lock(log_record()->mutex());
       BlinkInfo* blink_info =

@@ -137,7 +137,6 @@ class ImageTest : public ImageTestBase {
         FALLTHROUGH_INTENDED;
       case Image::IMAGE_PNG:
         options_->convert_gif_to_png = true;
-        break;
       default:
         break;
     }

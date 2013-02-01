@@ -382,6 +382,7 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
  public:
   FakeBlinkCriticalLineDataFinder()
       : expect_diff_update_mismatch_(false),
+        expect_non_empty_content_hash_(false),
         num_compute_calls_(0),
         pcache_(NULL) {}
 
@@ -425,6 +426,9 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
       const StringPiece html_content,
       const ResponseHeaders* response_headers,
       RewriteDriver* driver) {
+    if (expect_non_empty_content_hash_) {
+      EXPECT_FALSE(computed_hash.empty());
+    }
     ++num_compute_calls_;
     html_content_ = html_content.as_string();
     if (pcache_ == NULL || blink_critical_line_data_ == NULL) {
@@ -456,12 +460,17 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
     expect_diff_update_mismatch_ = expect_diff_update_mismatch;
   }
 
+  void set_expect_non_empty_content_hash() {
+    expect_non_empty_content_hash_ = true;
+  }
+
   int num_compute_calls() { return num_compute_calls_; }
 
   GoogleString& html_content() { return html_content_; }
 
  private:
   bool expect_diff_update_mismatch_;
+  bool expect_non_empty_content_hash_;
   int num_compute_calls_;
   PropertyCache* pcache_;
   GoogleString html_content_;
@@ -991,6 +1000,9 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     options_->set_enable_blink_html_change_detection_logging(just_logging);
     options_->set_use_smart_diff_in_blink(use_smart_diff);
     server_context()->ComputeSignature(options_.get());
+    // The following should be true whenever ComputeBlinkCriticalLineData is
+    // called (i.e., for cache misses) and diff is enabled.
+    fake_blink_critical_line_data_finder_->set_expect_non_empty_content_hash();
 
     GoogleString text;
     ResponseHeaders response_headers;
