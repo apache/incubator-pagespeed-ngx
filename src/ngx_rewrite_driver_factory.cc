@@ -23,6 +23,7 @@
 #include "ngx_cache.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_thread_system.h"
+#include "ngx_server_context.h"
 
 #include "net/instaweb/apache/apr_mem_cache.h"
 #include "net/instaweb/apache/apr_thread_compatible_pool.h"
@@ -47,6 +48,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
+#include "net/instaweb/util/public/pthread_shared_mem.h"
 #include "net/instaweb/util/public/scheduler_thread.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/slow_worker.h"
@@ -71,12 +73,14 @@ class Writer;
 
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
-NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
-    RewriteDriverFactory(new NgxThreadSystem()),
-    shared_mem_runtime_(new NullSharedMem()),
-    cache_hasher_(20),
-    main_conf_(main_conf),
-    threads_started_(false) {
+NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf)
+    : RewriteDriverFactory(new NgxThreadSystem()),
+      // TODO(oschaaf): mod_pagespeed ifdefs this:
+      shared_mem_runtime_(new PthreadSharedMem()),
+      cache_hasher_(20),
+      main_conf_(main_conf),
+      threads_started_(false),
+      is_root_process_(true) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
@@ -86,15 +90,20 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf) :
   SetStatistics(&simple_stats_);
   timer_ = DefaultTimer();
   InitializeDefaultOptions();
+  default_options()->set_beacon_url("/ngx_pagespeed_beacon");
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
-  if (slow_worker_ != NULL) {
+  if (!is_root_process_ && slow_worker_ != NULL) {
     slow_worker_->ShutDown();
   }
+
   ShutDown();
+
+  CHECK(uninitialized_server_contexts_.empty() || is_root_process_);
+  STLDeleteElements(&uninitialized_server_contexts_);
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
@@ -160,10 +169,6 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
-  if (slow_worker_ == NULL) {
-    slow_worker_.reset(new SlowWorker("slow work thread", thread_system()));
-  }
-
   // TODO(jefftk): see the ngx_rewrite_options.h note on OriginRewriteOptions;
   // this would move to OriginRewriteOptions.
 
@@ -287,12 +292,6 @@ CacheInterface* NgxRewriteDriverFactory::GetMemcached(
       }
       memcached = batcher;
       result.first->second = memcached;
-
-      bool connected = mem_cache->Connect();
-      if (!connected) {
-        message_handler()->Message(kError, "Failed to attach memcached, abort");
-        abort();
-      }
     } else {
       memcached = result.first->second;
     }
@@ -344,6 +343,12 @@ void NgxRewriteDriverFactory::StopCacheActivity() {
   }
 }
 
+NgxServerContext* NgxRewriteDriverFactory::MakeNgxServerContext() {
+  NgxServerContext* server_context = new NgxServerContext(this);
+  uninitialized_server_contexts_.insert(server_context);
+  return server_context;
+}
+
 void NgxRewriteDriverFactory::ShutDown() {
   RewriteDriverFactory::ShutDown();
 
@@ -364,6 +369,58 @@ void NgxRewriteDriverFactory::StartThreads() {
   CHECK(ok) << "Unable to start scheduler thread";
   defer_cleanup(thread->MakeDeleter());
   threads_started_ = true;
+}
+
+void NgxRewriteDriverFactory::ParentOrChildInit() {
+  // left in as a stub, we will need it later on
+}
+
+void NgxRewriteDriverFactory::RootInit() {
+  ParentOrChildInit();
+  for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
+           e = uninitialized_server_contexts_.end(); p != e; ++p) {
+    NgxServerContext* server_context = *p;
+
+    // Determine the set of caches needed based on the unique
+    // file_cache_path()s in the manager configurations.  We ignore
+    // the GetCache return value because our goal is just to populate
+    // the map which we'll iterate on below.
+    GetCache(server_context->config());
+  }
+
+  for (PathCacheMap::iterator p = path_cache_map_.begin(),
+           e = path_cache_map_.end(); p != e; ++p) {
+    NgxCache* cache = p->second;
+    cache->RootInit();
+  }
+}
+
+void NgxRewriteDriverFactory::ChildInit() {
+  is_root_process_ = false;
+  ParentOrChildInit();
+  slow_worker_.reset(new SlowWorker(thread_system()));
+
+  for (PathCacheMap::iterator p = path_cache_map_.begin(),
+           e = path_cache_map_.end(); p != e; ++p) {
+    NgxCache* cache = p->second;
+    cache->ChildInit();
+  }
+  for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
+           e = uninitialized_server_contexts_.end(); p != e; ++p) {
+    NgxServerContext* server_context = *p;
+    server_context->ChildInit();
+  }
+
+  uninitialized_server_contexts_.clear();
+
+  for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
+    AprMemCache* mem_cache = memcache_servers_[i];
+    bool connected = mem_cache->Connect();
+    if (!connected) {
+      message_handler()->Message(kError, "Failed to attach memcached, abort");
+      abort();
+    }
+  }
 }
 
 }  // namespace net_instaweb

@@ -38,19 +38,22 @@ extern "C" {
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
 
+#include "apr_time.h"
+
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
+#include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
-#include "net/instaweb/util/public/file_system_lock_manager.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/time_util.h"
 
 extern ngx_module_t ngx_pagespeed;
 
@@ -108,7 +111,6 @@ ngx_int_t string_piece_to_buffer_chain(
            // generate empty buffers.
            (offset == 0 && sp.size() == 0);
        offset += max_buffer_size) {
-
     // Prepare a new nginx buffer to put our buffered writes into.
     ngx_buf_t* b = static_cast<ngx_buf_t*>(ngx_calloc_buf(pool));
     if (b == NULL) {
@@ -116,7 +118,7 @@ ngx_int_t string_piece_to_buffer_chain(
     }
 
     if (sp.size() == 0) {
-      CHECK(offset == 0);
+      CHECK(offset == 0);                                          // NOLINT
       b->pos = b->start = b->end = b->last = NULL;
       // The purpose of this buffer is just to pass along last_buf.
       b->sync = 1;
@@ -240,6 +242,7 @@ enum Response {
   kStaticContent,
   kInvalidUrl,
   kPagespeedDisabled,
+  kBeacon,
 };
 }  // namespace CreateRequestContext
 
@@ -292,16 +295,93 @@ void ps_ignore_sigpipe() {
   sigaction(SIGPIPE, &act, NULL);
 }
 
-#define NGX_PAGESPEED_MAX_ARGS 10
+namespace PsConfigure {
+enum OptionLevel {
+  kServer,
+  kLocation,
+};
+}  // namespace PsConfigure
 
+// These options are copied from mod_instaweb.cc, where
+// APACHE_CONFIG_OPTIONX indicates that they can not be set at the
+// directory/location level. They are not alphabetized on purpose,
+// but rather left in the same order as in mod_instaweb.cc in case
+// we end up needing te compare.
+// TODO(oschaaf): this duplication is a short term solution.
+const char* const global_only_options[] = {
+  "BlockingRewriteKey",
+  "CacheFlushFilename",
+  "CacheFlushPollIntervalSec",
+  "DangerPermitFetchFromUnknownHosts",
+  "CriticalImagesBeaconEnabled",
+  "ExperimentalFetchFromModSpdy",
+  "FetcherTimeoutMs",
+  "FetchHttps",
+  "FetchWithGzip",
+  "FileCacheCleanIntervalMs",
+  "FileCacheInodeLimit",
+  "FileCachePath",
+  "FileCacheSizeKb",
+  "ForceCaching",
+  "ImageMaxRewritesAtOnce",
+  "ImgMaxRewritesAtOnce",
+  "InheritVHostConfig",
+  "InstallCrashHandler",
+  "LRUCacheByteLimit",
+  "LRUCacheKbPerProcess",
+  "MaxCacheableContentLength",
+  "MemcachedServers",
+  "MemcachedThreads",
+  "MemcachedTimeoutUs",
+  "MessageBufferSize",
+  "NumRewriteThreads",
+  "NumExpensiveRewriteThreads",
+  "RateLimitBackgroundFetches",
+  "ReportUnloadTime",
+  "RespectXForwardedProto",
+  "SharedMemoryLocks",
+  "SlurpDirectory",
+  "SlurpFlushLimit",
+  "SlurpReadOnly",
+  "SupportNoScriptEnabled",
+  "StatisticsLoggingChartsCSS",
+  "StatisticsLoggingChartsJS",
+  "TestProxy",
+  "TestProxySlurp",
+  "TrackOriginalContentLength",
+  "UsePerVHostStatistics",
+  "XHeaderValue",
+  "CustomFetchHeader",
+  "MapOriginDomain",
+  "MapProxyDomain",
+  "MapRewriteDomain",
+  "ShardDomain",
+  "LoadFromFile",
+  "LoadFromFileMatch",
+  "LoadFromFileRule",
+  "LoadFromFileRuleMatch"
+};
+
+bool ps_is_global_only_option(const StringPiece& option_name) {
+  ngx_uint_t i;
+  ngx_uint_t size = sizeof(global_only_options) / sizeof(char*);
+  for (i = 0; i < size; i++) {
+    if (net_instaweb::StringCaseEqual(global_only_options[i], option_name)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+#define NGX_PAGESPEED_MAX_ARGS 10
 char* ps_configure(ngx_conf_t* cf,
                    net_instaweb::NgxRewriteOptions** options,
-                   net_instaweb::MessageHandler* handler) {
+                   net_instaweb::MessageHandler* handler,
+                   PsConfigure::OptionLevel option_level) {
   if (*options == NULL) {
     net_instaweb::NgxRewriteOptions::Initialize();
     *options = new net_instaweb::NgxRewriteOptions();
   }
-
   // args[0] is always "pagespeed"; ignore it.
   ngx_uint_t n_args = cf->args->nelts - 1;
 
@@ -316,6 +396,12 @@ char* ps_configure(ngx_conf_t* cf,
     args[i] = str_to_string_piece(value[i+1]);
   }
 
+  if (option_level == PsConfigure::kLocation && n_args > 1) {
+    if (ps_is_global_only_option(args[0])) {
+      return const_cast<char*>("Option can not be set at location scope");
+    }
+  }
+
   const char* status = (*options)->ParseAndSetOptions(
       args, n_args, cf->pool, handler);
 
@@ -326,19 +412,16 @@ char* ps_configure(ngx_conf_t* cf,
 char* ps_srv_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
       ngx_http_conf_get_module_srv_conf(cf, ngx_pagespeed));
-  return ps_configure(cf, &cfg_s->options, cfg_s->handler);
+  return ps_configure(cf, &cfg_s->options, cfg_s->handler,
+                      PsConfigure::kServer);
 }
 
 char* ps_loc_configure(ngx_conf_t* cf, ngx_command_t* cmd, void* conf) {
   ps_loc_conf_t* cfg_l = static_cast<ps_loc_conf_t*>(
           ngx_http_conf_get_module_loc_conf(cf, ngx_pagespeed));
 
-  // TODO(jefftk): pass something to configure() to tell it that this option was
-  // set in a location block so it can be more strict.  Not all options can be
-  // set in location blocks.  (For now we'll allow them, which in practice means
-  // they'll be ignored because they're read from the config before
-  // location-specific options are applied.)
-  return ps_configure(cf, &cfg_l->options, cfg_l->handler);
+  return ps_configure(cf, &cfg_l->options, cfg_l->handler,
+                      PsConfigure::kLocation);
 }
 
 void ps_cleanup_loc_conf(void* data) {
@@ -353,12 +436,14 @@ bool factory_deleted = false;
 
 void ps_cleanup_srv_conf(void* data) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(data);
-
+  if (cfg_s->server_context == NULL) {
+    return;
+  }
   // destroy the factory on the first call, causing all worker threads
   // to be shut down when we destroy any proxy_fetch_factories. This
   // will prevent any queued callbacks to destroyed proxy fetch factories
   // from being executed
-  
+
   if (!factory_deleted) {
     delete cfg_s->server_context->factory();
     factory_deleted = true;
@@ -379,6 +464,8 @@ void ps_cleanup_main_conf(void* data) {
   cfg_m->handler = NULL;
   net_instaweb::NgxRewriteDriverFactory::Terminate();
   net_instaweb::NgxRewriteOptions::Terminate();
+  // TODO(oschaaf): terminate shared mem runtime when we update
+  // psol to a later revision that has it.
 }
 
 template <typename ConfT> ConfT* ps_create_conf(ngx_conf_t* cf) {
@@ -391,7 +478,7 @@ template <typename ConfT> ConfT* ps_create_conf(ngx_conf_t* cf) {
 }
 
 void ps_set_conf_cleanup_handler(
-    ngx_conf_t* cf, void (func)(void*), void* data) {
+    ngx_conf_t* cf, void (func)(void*), void* data) {                // NOLINT
   ngx_pool_cleanup_t* cleanup_m = ngx_pool_cleanup_add(cf->pool, 0);
   if (cleanup_m == NULL) {
      ngx_conf_log_error(
@@ -487,37 +574,18 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
     // with other modules that actually are interested in these signals
     ps_ignore_sigpipe();
     net_instaweb::NgxRewriteDriverFactory::Initialize();
-    // TODO(jefftk): We should call NgxRewriteDriverFactory::Terminate() when
-    // we're done with it.  That never happens, though, because this is the
-    // top-level config and so sticks around as long as we're running.
 
     cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
         parent_cfg_s->options);
   }
 
-  cfg_s->server_context = new net_instaweb::NgxServerContext(
-      cfg_m->driver_factory);
-
-  // The server context sets some options when we call global_options().  So let
-  // it do that, then merge in options we got from parsing the config file.
+  cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext();
+  // The server context sets some options when we call global_options(). So
+  // let it do that, then merge in options we got from the config file.
   // Once we do that we're done with cfg_s->options.
   cfg_s->server_context->global_options()->Merge(*cfg_s->options);
   delete cfg_s->options;
   cfg_s->options = NULL;
-
-  StringPiece filename_prefix =
-      cfg_s->server_context->config()->file_cache_path();
-  cfg_s->server_context->set_lock_manager(
-      new net_instaweb::FileSystemLockManager(
-          cfg_m->driver_factory->file_system(),
-          filename_prefix.as_string(),
-          cfg_m->driver_factory->scheduler(),
-          cfg_m->driver_factory->message_handler()));
-
-  cfg_m->driver_factory->InitServerContext(cfg_s->server_context);
-
-  cfg_s->proxy_fetch_factory =
-      new net_instaweb::ProxyFetchFactory(cfg_s->server_context);
 
   return NGX_CONF_OK;
 }
@@ -602,13 +670,15 @@ void ps_set_buffered(ngx_http_request_t* r, bool on) {
   }
 }
 
-GoogleString ps_determine_url(ngx_http_request_t* r) {
+bool ps_is_https(ngx_http_request_t* r) {
   // Based on ngx_http_variable_scheme.
-  bool is_https = false;
 #if (NGX_HTTP_SSL)
-  is_https = r->connection->ssl;
+  return r->connection->ssl;
 #endif
+  return false;
+}
 
+GoogleString ps_determine_url(ngx_http_request_t* r) {
   // Based on ngx_http_variable_server_port.
   ngx_uint_t port;
   bool have_port = false;
@@ -625,7 +695,7 @@ GoogleString ps_determine_url(ngx_http_request_t* r) {
   }
 
   GoogleString port_string;
-  if ((is_https && port == 443) || (!is_https && port == 80)) {
+  if ((ps_is_https(r) && port == 443) || (!ps_is_https(r) && port == 80)) {
     // No port specifier needed for requests on default ports.
     port_string = "";
   } else {
@@ -649,7 +719,7 @@ GoogleString ps_determine_url(ngx_http_request_t* r) {
   }
 
   return net_instaweb::StrCat(
-      is_https ? "https://" : "http://", host, port_string,
+      ps_is_https(r) ? "https://" : "http://", host, port_string,
       str_to_string_piece(r->unparsed_uri));
 }
 
@@ -887,6 +957,53 @@ bool ps_determine_request_options(
   return true;
 }
 
+// Check whether this visitor is already in an experiment.  If they're not,
+// classify them into one by setting a cookie.  Then set options appropriately
+// for their experiment.
+//
+// See InstawebContext::SetFuriousStateAndCookie()
+bool ps_set_furious_state_and_cookie(ngx_http_request_t* r,
+                                     ps_request_ctx_t* ctx,
+                                     net_instaweb::RewriteOptions* options,
+                                     const StringPiece& host) {
+  CHECK(options->running_furious());
+  ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
+  bool need_cookie = cfg_s->server_context->furious_matcher()->
+      ClassifyIntoExperiment(*ctx->base_fetch->request_headers(), options);
+  if (need_cookie && host.length() > 0) {
+    int64 time_now_us = apr_time_now();
+    int64 expiration_time_ms = (time_now_us/1000 +
+                                options->furious_cookie_duration_ms());
+
+    // TODO(jefftk): refactor SetFuriousCookie to expose the value we want to
+    // set on the cookie.
+    int state = options->furious_id();
+    GoogleString expires;
+    net_instaweb::ConvertTimeToString(expiration_time_ms, &expires);
+    GoogleString value = StringPrintf(
+        "%s=%s; Expires=%s; Domain=.%s; Path=/",
+        net_instaweb::furious::kFuriousCookie,
+        net_instaweb::furious::FuriousStateToCookieString(state).c_str(),
+        expires.c_str(), host.as_string().c_str());
+
+    // Set the GFURIOUS cookie.
+    ngx_table_elt_t* cookie = static_cast<ngx_table_elt_t*>(
+        ngx_list_push(&r->headers_out.headers));
+    if (cookie == NULL) {
+      return false;
+    }
+    cookie->hash = 1;  // Include this header in the response.
+
+    ngx_str_set(&cookie->key, "Set-Cookie");
+    // It's not safe to use value.c_str here because cookie header only keeps a
+    // pointer to the string data.
+    cookie->value.data = reinterpret_cast<u_char*>(
+        string_piece_to_pool_string(r->pool, value));
+    cookie->value.len = value.size();
+  }
+  return true;
+}
+
 // There are many sources of options:
 //  - the request (query parameters and headers)
 //  - location block
@@ -915,7 +1032,6 @@ bool ps_determine_options(ngx_http_request_t* r,
   net_instaweb::RewriteOptions* request_options;
   bool ok = ps_determine_request_options(r, ctx, cfg_s, url, &request_options);
   if (!ok) {
-    *options = NULL;
     return false;
   }
 
@@ -924,7 +1040,6 @@ bool ps_determine_options(ngx_http_request_t* r,
   // the global options are ok as are.
   if (directory_options == NULL && request_options == NULL &&
       !global_options->running_furious()) {
-    *options = NULL;
     return true;
   }
 
@@ -943,9 +1058,14 @@ bool ps_determine_options(ngx_http_request_t* r,
     (*options)->Merge(*request_options);
     delete request_options;
   } else if ((*options)->running_furious()) {
-    (*options)->set_need_to_store_experiment_data(
-        cfg_s->server_context->furious_matcher()->ClassifyIntoExperiment(
-            *ctx->base_fetch->request_headers(), *options));
+    ok = ps_set_furious_state_and_cookie(r, ctx, *options, url->Host());
+    if (!ok) {
+      if (*options != NULL) {
+        delete *options;
+        *options = NULL;
+      }
+      return false;
+    }
   }
 
   return true;
@@ -972,11 +1092,24 @@ CreateRequestContext::Response ps_create_request_context(
     if (url.PathSansLeaf() ==
         net_instaweb::NgxRewriteDriverFactory::kStaticJavaScriptPrefix) {
       return CreateRequestContext::kStaticContent;
-    } else {
-      DBG(r, "Passing on content handling for non-pagespeed resource '%s'",
-          url_string.c_str());
-      return CreateRequestContext::kNotUnderstood;
     }
+
+    net_instaweb::RewriteOptions* global_options =
+        cfg_s->server_context->global_options();
+    const GoogleString* beacon_url;
+    if (ps_is_https(r)) {
+      beacon_url = &(global_options->beacon_url().https);
+    } else {
+      beacon_url = &(global_options->beacon_url().http);
+    }
+
+    if (url.PathSansQuery() == StringPiece(*beacon_url)) {
+      return CreateRequestContext::kBeacon;
+    }
+
+    DBG(r, "Passing on content handling for non-pagespeed resource '%s'",
+        url_string.c_str());
+    return CreateRequestContext::kNotUnderstood;
   }
 
   int file_descriptors[2];
@@ -1026,7 +1159,7 @@ CreateRequestContext::Response ps_create_request_context(
           cfg_s->server_context->thread_system()->NewMutex())));
 
   // If null, that means use global options.
-  net_instaweb::RewriteOptions* custom_options;
+  net_instaweb::RewriteOptions* custom_options = NULL;
   bool ok = ps_determine_options(r, ctx, &custom_options, &url);
   if (!ok) {
     ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
@@ -1147,7 +1280,7 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
 
   // We don't want to handle requests with errors, but we should be dealing with
   // that in the header filter and not initializing ctx.
-  CHECK(r->err_status == 0);
+  CHECK(r->err_status == 0);                                         // NOLINT
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed filter \"%V\"", &r->uri);
@@ -1293,6 +1426,7 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
       // in which case we can not get here.
       CHECK(false);
       return NGX_ERROR;
+    case CreateRequestContext::kBeacon:
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kStaticContent:
     case CreateRequestContext::kInvalidUrl:
@@ -1379,6 +1513,16 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   return ngx_http_output_filter(r, out);
 }
 
+ngx_int_t
+ps_beacon_handler(ngx_http_request_t* r) {
+  ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
+  CHECK(cfg_s != NULL);
+
+  cfg_s->server_context->HandleBeacon(str_to_string_piece(r->unparsed_uri));
+
+  return NGX_HTTP_NO_CONTENT;
+}
+
 // Handle requests for resources like example.css.pagespeed.ce.LyfcM6Wulf.css
 // and for static content like /ngx_pagespeed_static/js_defer.q1EBmcgYOC.js
 ngx_int_t ps_content_handler(ngx_http_request_t* r) {
@@ -1403,6 +1547,8 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kInvalidUrl:
       return NGX_DECLINED;
+    case CreateRequestContext::kBeacon:
+      return ps_beacon_handler(r);
     case CreateRequestContext::kStaticContent:
       return ps_static_handler(r);
     case CreateRequestContext::kOk:
@@ -1467,14 +1613,52 @@ ngx_http_module_t ps_module = {
   ps_merge_loc_conf
 };
 
-// Called when nginx forks worker processes.  No threads should be started
-// before this.
-ngx_int_t ps_init_process(ngx_cycle_t* cycle) {
+// called after configuration is complete, but before nginx starts forking
+ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
   if (cfg_m->driver_factory != NULL) {
-    cfg_m->driver_factory->StartThreads();
+    cfg_m->driver_factory->RootInit();
   }
+  return NGX_OK;
+}
+
+// Called when nginx forks worker processes.  No threads should be started
+// before this.
+ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
+
+  if (cfg_m->driver_factory == NULL) {
+    return NGX_OK;
+  }
+
+  // ChildInit() will initialise all ServerContexts, which we need to
+  // create ProxyFetchFactories below
+  cfg_m->driver_factory->ChildInit();
+
+  ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
+  ngx_http_core_srv_conf_t** cscfp = static_cast<ngx_http_core_srv_conf_t**>(
+      cmcf->servers.elts);
+  ngx_uint_t s;
+
+  // Iterate over all configured server{} blocks, and find our context in it,
+  // so we can create and set a ProxyFetchFactory for it.
+  for (s = 0; s < cmcf->servers.nelts; s++) {
+    ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
+        cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
+
+    // Some server{} blocks may not have a ServerContext in that case we must
+    // not instantiate a ProxyFetchFactory.
+    if (cfg_s->server_context != NULL) {
+      cfg_s->proxy_fetch_factory =
+          new net_instaweb::ProxyFetchFactory(cfg_s->server_context);
+    }
+  }
+
+  cfg_m->driver_factory->StartThreads();
+
   return NGX_OK;
 }
 
@@ -1488,8 +1672,8 @@ ngx_module_t ngx_pagespeed = {
   ngx_psol::ps_commands,
   NGX_HTTP_MODULE,
   NULL,
-  NULL,
-  ngx_psol::ps_init_process,
+  ngx_psol::ps_init_module,
+  ngx_psol::ps_init_child_process,
   NULL,
   NULL,
   NULL,

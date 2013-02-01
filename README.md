@@ -38,9 +38,11 @@ ngx_pagespeed as a build-time dependency.
 
 Install dependencies:
 
-    # These are for RedHat, CentOS, and Fedora.  Debian and Ubuntu will be
-    # similar.
+    # These are for RedHat, CentOS, and Fedora.  
     $ sudo yum install git gcc-c++ pcre-dev pcre-devel zlib-devel make
+    
+    # These are for Debian. Ubuntu will be similar.
+    $ sudo apt-get install git-core build-essential zlib1g-dev libpcre3 libpcre3-dev
 
 Check out ngx_pagespeed:
 
@@ -105,6 +107,28 @@ For a debug build, remove the `BUILDTYPE=Release` option when running `make
 mod_pagespeed_test pagespeed_automatic_test` and add the flag `--with-debug` to
 `./configure --add-module=...`.
 
+### Alternate method: Use Tengine
+
+Tengine is an Nginx distribution that supports dynamically loaded modules.  You
+can add ngx_pagespeed to an existing Tengine install without recompiling
+Tengine.  First follow one of the two installation methods above until you get
+to the "Download and build nginx" section.  Then run:
+
+    # This might be /usr/local/tengine, depending on your configuration.
+    $ cd /path/to/tengine/sbin/
+    $ ./dso_tool --add-module=/path/to/ngx_pagespeed
+
+This will prepare a dynamically loadable module out of ngx_pagespeed.  To check
+that it worked you can verify that `/path/to/tengine/modules/` contains an
+`ngx_pagespeed.so`.
+
+You need to tell tengine to load this module.  Before continuing with "How to
+use" below, add this to the top of your configuration:
+
+    dso {
+        load ngx_pagespeed.so;
+    }
+
 ## How to use
 
 In your `nginx.conf`, add to the main or server block:
@@ -119,8 +143,9 @@ In every server block where pagespeed is enabled add:
 
     # This is a temporary workaround that ensures requests for pagespeed
     # optimized resources go to the pagespeed handler.
-    location ~ "\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+" { }
+    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" { }
     location ~ "^/ngx_pagespeed_static/" { }
+    location ~ "^/ngx_pagespeed_beacon$" { }
 
 If you're proxying, you need to strip off the `Accept-Encoding` header because
 ngx_pagespeed does not (yet) handle compression from upstreams:
@@ -135,6 +160,24 @@ To confirm that the module is loaded, fetch a page and check that you see the
 
 Looking at the source of a few pages you should see various changes, such as
 urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
+
+### Configuration Differences From mod_pagespeed
+
+#### BeaconUrl
+
+PageSpeed can use a beacon to track load times.  By default PageSpeed sends
+beacons to `/ngx_pagespeed_beacon` on your site, but you can change this:
+
+    pagespeed BeaconUrl /path/to/beacon;
+
+If you do, you also need to change the regexp above from `location ~
+"^/ngx_pagespeed_beacon$" { }` to `location ~ "^/path/to/beacon$" { }`.
+
+As with <a
+href="https://developers.google.com/speed/docs/mod_pagespeed/filter-instrumentation-add">ModPagespeedBeaconUrl</a>
+you can set your beacons to go to another site by specifying a full path:
+
+    pagespeed BeaconUrl http://thirdpartyanalytics.example.com/my/beacon;
 
 ### Testing
 
