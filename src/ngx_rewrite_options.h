@@ -17,10 +17,6 @@
 // Author: jefftk@google.com (Jeff Kaufman)
 
 // Manage configuration for pagespeed.  Compare to ApacheConfig.
-//
-// TODO(jefftk): Much of the code here is copied from ApacheConfig, and is very
-// similar.  It may be worth it to create an OriginRewriteOptions that both
-// NgxRewriteOptions and ApacheConfig inherit from.
 
 #ifndef NGX_REWRITE_OPTIONS_H_
 #define NGX_REWRITE_OPTIONS_H_
@@ -84,15 +80,14 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   // detailed message goes to their log via handler.
   OptionSettingResult ParseAndSetOptions0(
       StringPiece directive, GoogleString* msg, MessageHandler* handler);
-  OptionSettingResult ParseAndSetOptions1(
-      StringPiece directive, StringPiece arg,
+
+  // These are called via RewriteOptions::ParseAndSetOptionFromName[123]
+  virtual OptionSettingResult ParseAndSetOptionFromEnum1(
+      OptionEnum name, StringPiece arg,
       GoogleString* msg, MessageHandler* handler);
-  OptionSettingResult ParseAndSetOptions2(
-      StringPiece directive, StringPiece arg1, StringPiece arg2,
-      GoogleString* msg, MessageHandler* handler);
-  OptionSettingResult ParseAndSetOptions3(
-      StringPiece directive, StringPiece arg1, StringPiece arg2,
-      StringPiece arg3, GoogleString* msg, MessageHandler* handler);
+
+  // We may want to override 2- and 3-argument versions as well in the future,
+  // but they are not needed yet.
 
   // Keeps the properties added by this subclass.  These are merged into
   // RewriteOptions::all_properties_ during Initialize().
