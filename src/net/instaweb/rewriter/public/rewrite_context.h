@@ -304,8 +304,12 @@ class RewriteContext {
   void StartNestedTasks();
 
   // Deconstructs a URL by name and creates an output resource that
-  // corresponds to it.
+  // corresponds to it. If force_hash_to_zero is present, we are
+  // processing a stale rewrite, and we should use "0" as the hash
+  // so that the client browser sends a request for the freshened
+  // rewritten resource.
   bool CreateOutputResourceForCachedOutput(const CachedResult* cached_result,
+                                           bool force_hash_to_zero,
                                            OutputResourcePtr* output_resource);
 
   // If this returns true, running the rewriter isn't required for

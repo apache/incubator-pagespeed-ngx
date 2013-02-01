@@ -701,9 +701,19 @@ TEST_F(RewriteContextTest, FetchNonOptimizable) {
   // should still work in a single-input case. This is important to be more
   // robust against JS URL manipulation.
   GoogleString output;
+  ResponseHeaders headers;
   EXPECT_TRUE(FetchResourceUrl(Encode(kTestDomain, "tw", "0", "b.css", "css"),
-                               &output));
+                               &output, &headers));
   EXPECT_EQ("b", output);
+
+  // Since this resource URL has a zero hash in it, this turns out to be a hash
+  // mismatch. So, cache TTL should be short and the result should be marked
+  // private.
+  ConstStringStarVector values;
+  headers.Lookup(HttpAttributes::kCacheControl, &values);
+  ASSERT_EQ(2, values.size());
+  EXPECT_STREQ("max-age=300", *values[0]);
+  EXPECT_STREQ("private", *values[1]);
 }
 
 TEST_F(RewriteContextTest, FetchNoSource) {
@@ -3662,6 +3672,8 @@ TEST_F(RewriteContextTest, TestStaleRewriting) {
   const char kNewDataIn[] = "   newdata  ";
   const GoogleString kOriginalRewriteUrl(Encode(kTestDomain, "tw", "jXd_OF09_s",
                                                 "test.css", "css"));
+  const GoogleString kStaleRewriteUrl(Encode(kTestDomain, "tw", "0",
+                                             "test.css", "css"));
 
   options()->ClearSignatureForTesting();
   options()->set_metadata_cache_staleness_threshold_ms(kTtlMs / 2);
@@ -3693,9 +3705,9 @@ TEST_F(RewriteContextTest, TestStaleRewriting) {
   // We continue to rewrite the resource with the old hash. However, we noticed
   // that the resource has changed, store it in cache and delete the old
   // metadata.
-  ValidateExpected("initial",
+  ValidateExpected("stale",
                    CssLinkHref(kPath),
-                   CssLinkHref(kOriginalRewriteUrl));
+                   CssLinkHref(kStaleRewriteUrl));
 
   CallFetcherCallbacks();
   EXPECT_EQ(0, trim_filter_->num_rewrites());
@@ -3708,7 +3720,7 @@ TEST_F(RewriteContextTest, TestStaleRewriting) {
 
   ClearStats();
   // Next time, we serve the html with the new resource hash.
-  ValidateExpected("initial",
+  ValidateExpected("freshened",
                    CssLinkHref(kPath),
                    CssLinkHref(Encode(kTestDomain, "tw", "nnVv_VJ4Xn",
                                       "test.css", "css")));

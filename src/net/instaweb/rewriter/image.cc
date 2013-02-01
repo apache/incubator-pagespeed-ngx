@@ -88,6 +88,7 @@ const size_t kGifIntSize = 2;
 
 const size_t kJpegIntSize = 2;
 const int64 kMaxJpegQuality = 100;
+const int64 kQualityForJpegWithUnkownQuality = 85;
 
 }  // namespace ImageHeaders
 
@@ -277,6 +278,9 @@ class ImageImpl : public Image {
                                                             contents.size());
     return quality;
   }
+
+  // Quality level for compressing the resized image.
+  int EstimateQualityForResizedJpeg();
 
   const GoogleString file_prefix_;
   MessageHandler* handler_;
@@ -726,11 +730,43 @@ bool ImageImpl::LoadOpenCvFromBuffer(const StringPiece& data) {
   return opencv_image_ != NULL;
 }
 
+// Determine the quality level for compressing the resized image.
+// If a JPEG image needs resizing, we decompress it first, then resize it,
+// and finally compress it into a new JPEG image. To compress the output image,
+// We would like to use the quality level that was used in the input image,
+// if such information can be calculated from the input image; otherwise, we
+// will use the quality level set in the configuration; otherwise, we will use
+// a predefined default quality.
+int ImageImpl::EstimateQualityForResizedJpeg() {
+  int input_quality = GetJpegQualityFromImage(original_contents_);
+  int output_quality = std::min(ImageHeaders::kMaxJpegQuality,
+                                options_->jpeg_quality);
+  if (input_quality > 0 && output_quality > 0) {
+    return std::min(input_quality, output_quality);
+  } else if (input_quality > 0) {
+    return input_quality;
+  } else if (output_quality > 0) {
+    return output_quality;
+  } else {
+    return ImageHeaders::kQualityForJpegWithUnkownQuality;
+  }
+}
+
 bool ImageImpl::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
   // This is preferable to cvEncodeImage as it makes it easy to avoid a copy.
   // Note: period included with the extension on purpose.
+  std::vector<int> quality_setting;
+  if (image_type() == IMAGE_JPEG) {
+    int quality = EstimateQualityForResizedJpeg();
+    quality_setting.push_back(CV_IMWRITE_JPEG_QUALITY);
+    quality_setting.push_back(quality);
+  } else {
+    int quality = 0;  // 0 corresponds to the fastest compression.
+    quality_setting.push_back(CV_IMWRITE_PNG_COMPRESSION);
+    quality_setting.push_back(quality);
+  }
   return cv::imencode(content_type()->file_extension(), cv::Mat(opencv_image_),
-                      *buf);
+                      *buf, quality_setting);
 }
 
 #else
@@ -1080,8 +1116,7 @@ void ImageImpl::ConvertToJpegOptions(const Image::CompressionOptions& options,
   int input_quality = GetJpegQualityFromImage(original_contents_);
   jpeg_options->retain_color_profile = options.retain_color_profile;
   jpeg_options->retain_exif_data = options.retain_exif_data;
-  int64 output_quality = std::min(ImageHeaders::kMaxJpegQuality,
-                                  options.jpeg_quality);
+  int output_quality = EstimateQualityForResizedJpeg();
 
   if (options.jpeg_quality > 0) {
     // If the source image is JPEG we want to fallback to lossless if the input
@@ -1102,8 +1137,6 @@ void ImageImpl::ConvertToJpegOptions(const Image::CompressionOptions& options,
         jpeg_options->lossy_options.color_sampling =
             pagespeed::image_compression::RETAIN;
       }
-    } else {
-      output_quality = input_quality;
     }
   }
 

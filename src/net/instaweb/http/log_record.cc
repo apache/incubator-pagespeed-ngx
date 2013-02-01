@@ -166,6 +166,20 @@ void LogRecord::SetTimingFetchMs(int64 ms) {
   logging_info()->mutable_timing_info()->set_fetch_ms(ms);
 }
 
+int64 LogRecord::GetTimingFetchMs() {
+  ScopedMutex lock(mutex_.get());
+  if (logging_info()->has_timing_info()) {
+    return logging_info()->timing_info().fetch_ms();
+  } else {
+    return 0;
+  }
+}
+
+void LogRecord::SetTimingProcessingTimeMs(int64 ms) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->mutable_timing_info()->set_processing_time_ms(ms);
+}
+
 void LogRecord::UpdateTimingInfoWithFetchStartTime(int64 start_time_ms) {
   ScopedMutex lock(mutex_.get());
   TimingInfo* timing_info = logging_info()->mutable_timing_info();

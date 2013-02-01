@@ -1304,7 +1304,8 @@ void RewriteContext::OutputCacheDone(CacheLookupResult* cache_result) {
       // Create output resources, if appropriate.
       OutputResourcePtr output_resource;
       if (partition.optimizable() &&
-          CreateOutputResourceForCachedOutput(&partition, &output_resource)) {
+          CreateOutputResourceForCachedOutput(
+              &partition, stale_rewrite_, &output_resource)) {
         outputs_.push_back(output_resource);
       } else {
         outputs_.push_back(OutputResourcePtr(NULL));
@@ -1386,7 +1387,9 @@ void RewriteContext::RepeatedSuccess(const RewriteContext* primary) {
       // process is threaded, and would therefore race. Therefore, recreate
       // another copy matching the cache data.
       CreateOutputResourceForCachedOutput(
-          &partitions_->partition(i), &outputs_[i]);
+          &partitions_->partition(i),
+          false,  // Exact copy of cache data means we won't force hash to zero.
+          &outputs_[i]);
     }
   }
 
@@ -1978,6 +1981,7 @@ void RewriteContext::CollectDependentTopLevel(ContextSet* contexts) {
 
 bool RewriteContext::CreateOutputResourceForCachedOutput(
     const CachedResult* cached_result,
+    bool force_hash_to_zero,
     OutputResourcePtr* output_resource) {
   bool ret = false;
   GoogleUrl gurl(cached_result->url());
@@ -1986,6 +1990,9 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
 
   ResourceNamer namer;
   if (gurl.is_valid() && namer.Decode(gurl.LeafWithQuery())) {
+    if (force_hash_to_zero) {
+      namer.set_hash("0");
+    }
     output_resource->reset(
         new OutputResource(FindServerContext(),
                            gurl.AllExceptLeaf() /* resolved_base */,
@@ -2254,7 +2261,10 @@ void RewriteContext::FetchCacheDone(CacheLookupResult* cache_result) {
     CachedResult* result = output_partition(0);
     OutputResourcePtr output_resource;
     if (result->optimizable() &&
-        CreateOutputResourceForCachedOutput(result, &output_resource)) {
+        CreateOutputResourceForCachedOutput(
+            result,
+            false,  // The cached output resource will not have stale inputs
+            &output_resource)) {
       if (fetch_->requested_hash() != output_resource->hash()) {
         // Try to do a cache look up on the proper hash; if it's available,
         // we can serve it.

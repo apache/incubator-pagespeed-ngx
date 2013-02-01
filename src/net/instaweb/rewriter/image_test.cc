@@ -577,7 +577,7 @@ TEST_F(ImageTest, NumProgressiveScansTest) {
   EXPECT_EQ(3, GetNumScansInJpeg(image->Contents().as_string()));
 }
 
-TEST_F(ImageTest, UseJpegLossessIfInputQualityIsLowTest) {
+TEST_F(ImageTest, UseJpegLossyIfInputQualityIsLowTest) {
   Image::CompressionOptions* options = new Image::CompressionOptions();
   SetJpegRecompressionAndQuality(options);
   options->progressive_jpeg = true;
@@ -590,8 +590,8 @@ TEST_F(ImageTest, UseJpegLossessIfInputQualityIsLowTest) {
       50, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
                                               image->Contents().size()));
 
-  // When num progressive scans is set, we use lossless path so we recompress
-  // with quality 85.
+  // When num progressive scans is set, we use lossy path. The compression
+  // quality is the minimum of the input and the configuration, i.e., 50.
   options = new Image::CompressionOptions();
   SetJpegRecompressionAndQuality(options);
   options->progressive_jpeg = true;
@@ -600,7 +600,7 @@ TEST_F(ImageTest, UseJpegLossessIfInputQualityIsLowTest) {
   image.reset(ReadFromFileWithOptions(kAppSegments, &buffer, options));
   EXPECT_GT(buffer.size(), image->output_size());
   EXPECT_EQ(
-      85, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
+      50, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
                                               image->Contents().size()));
 
   // Empty image will return -1 when we try to determine its quality.
@@ -788,6 +788,46 @@ TEST_F(ImageTest, ResizeTo) {
 
   ExpectEmptyOuput(image.get());
   ExpectContentType(Image::IMAGE_JPEG, image.get());
+}
+
+TEST_F(ImageTest, CompressJpegUsingLossyOrLossless) {
+  Image::CompressionOptions* options = new Image::CompressionOptions();
+  SetJpegRecompressionAndQuality(options);
+  GoogleString buffer;
+
+  // Input image quality is 50. When jpeg_quality is set to -1, lossless
+  // will be used and the quality of the input image will be preserved.
+  options->jpeg_quality = -1;
+  ImagePtr image(ReadFromFileWithOptions(kAppSegments, &buffer, options));
+  EXPECT_GT(buffer.size(), image->output_size());
+  EXPECT_EQ(
+      50, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
+                                              image->Contents().size()));
+
+  // When jpeg_num_progressive_scans > 0, lossy will be used and the quality
+  // will be set to the minimum of input quality and jpeg_quality.
+  options = new Image::CompressionOptions();
+  SetJpegRecompressionAndQuality(options);
+  options->jpeg_num_progressive_scans = 1;
+  options->jpeg_quality = 51;
+  buffer.clear();
+  image.reset(ReadFromFileWithOptions(kAppSegments, &buffer, options));
+  EXPECT_GT(buffer.size(), image->output_size());
+  EXPECT_EQ(
+      50, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
+                                              image->Contents().size()));
+
+  // When jpeg_quality is less than input quality, lossy will be used and the
+  // output quality is the minimum of them.
+  options = new Image::CompressionOptions();
+  SetJpegRecompressionAndQuality(options);
+  options->jpeg_quality = 49;
+  buffer.clear();
+  image.reset(ReadFromFileWithOptions(kAppSegments, &buffer, options));
+  EXPECT_GT(buffer.size(), image->output_size());
+  EXPECT_EQ(
+      49, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
+                                              image->Contents().size()));
 }
 
 }  // namespace net_instaweb
