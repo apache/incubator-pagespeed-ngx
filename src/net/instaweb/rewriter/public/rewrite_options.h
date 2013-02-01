@@ -277,7 +277,33 @@ class RewriteOptions {
     kXModPagespeedHeaderValue,
     kXPsaBlockingRewrite,
 
-    // Apache specific:
+    // Options that require special handling, e.g. non-scalar values
+    kAllow,
+    kDisableFilters,
+    kDisallow,
+    kDomain,
+    kEnableFilters,
+    kExperimentVariable,
+    kExperimentSpec,
+    kForbidFilters,
+    kRetainComment,
+
+    // 2-argument ones:
+    kCustomFetchHeader,
+    kLoadFromFile,
+    kLoadFromFileMatch,
+    kLoadFromFileRule,
+    kLoadFromFileRuleMatch,
+    kMapOriginDomain,
+    kMapRewriteDomain,
+    kMapProxyDomain,
+    kShardDomain,
+
+    // 3-argument ones:
+    kUrlValuedAttribute,
+    kLibrary,
+
+    // apache/ or system/ specific:
     kCacheFlushFilename,
     kCacheFlushPollIntervalSec,
     kCollectRefererStatistics,
@@ -312,7 +338,8 @@ class RewriteOptions {
     kUseSharedMemLocking,
     kUseSharedMemMetadataCache,
 
-    // This is always the last option.
+    // This is used as a marker for unknown options, as well as to denote
+    // how many options the PSOL library itself knows about.
     kEndOfOptions
   };
 
@@ -435,6 +462,8 @@ class RewriteOptions {
    public:
     OptionBase() {}
     virtual ~OptionBase();
+
+    // TODO(jmarantz): Change the 'value_string' formal to a StringPiece.
     virtual bool SetFromString(const GoogleString& value_string) = 0;
     virtual void Merge(const OptionBase* src) = 0;
     virtual bool was_set() const = 0;
@@ -936,14 +965,46 @@ class RewriteOptions {
 
   // Set Option 'name' to 'value'. Returns whether it succeeded or the kind of
   // failure (wrong name or value), and writes the diagnostic into 'msg'.
+  // This only understands simple scalar options, and not more general things
+  // like filter lists, blacklists, etc.
   OptionSettingResult SetOptionFromName(
-      const StringPiece& name, const GoogleString& value, GoogleString* msg);
+      StringPiece name, StringPiece value, GoogleString* msg);
+
+  // Advanced option parsing, that can understand non-scalar values
+  // (unlike SetOptionFromName), and which is extensible by platforms.
+  // Returns whether succeeded or the kind of failure, and writes the
+  // diagnostic into *msg. These are implemented in terms of the
+  // corresponding ParseAndSetOptionFromEnumN methods.
+  OptionSettingResult ParseAndSetOptionFromName1(
+      StringPiece name, StringPiece arg,
+      GoogleString* msg, MessageHandler* handler);
+
+  OptionSettingResult ParseAndSetOptionFromName2(
+      StringPiece name, StringPiece arg1, StringPiece arg2,
+      GoogleString* msg, MessageHandler* handler);
+
+  OptionSettingResult ParseAndSetOptionFromName3(
+      StringPiece name, StringPiece arg1, StringPiece arg2, StringPiece arg3,
+      GoogleString* msg, MessageHandler* handler);
+
+  // See description of ParseAndSetOptionFromName1 above. This is the step
+  // of that function that occurs after the name has been turned into an
+  // enum.
+  virtual OptionSettingResult ParseAndSetOptionFromEnum1(
+      OptionEnum name, StringPiece arg,
+      GoogleString* msg, MessageHandler* handler);
+
+  virtual OptionSettingResult ParseAndSetOptionFromEnum2(
+      OptionEnum name, StringPiece arg1, StringPiece arg2,
+      GoogleString* msg, MessageHandler* handler);
+
+  virtual OptionSettingResult ParseAndSetOptionFromEnum3(
+      OptionEnum name, StringPiece arg1, StringPiece arg2, StringPiece arg3,
+      GoogleString* msg, MessageHandler* handler);
 
   // Given an option specified as an enum, set its value.
-  //
-  // TODO(jmarantz): Change the 'value' formal to a StringPiece.
   OptionSettingResult SetOptionFromEnum(OptionEnum option_enum,
-                                        const GoogleString& value);
+                                        StringPiece value);
 
   // Returns the id and value of the specified option-enum in *id and *value.
   // Sets *was_set to true if this option has been altered from the default.
@@ -959,10 +1020,12 @@ class RewriteOptions {
 
   // Sets Option 'name' to 'value'. Returns whether it succeeded and logs
   // any warnings to 'handler'.
-  bool SetOptionFromNameAndLog(const StringPiece& name,
-                               const GoogleString& value,
+  bool SetOptionFromNameAndLog(StringPiece name,
+                               StringPiece value,
                                MessageHandler* handler);
 
+  // These static methods are used by Option<T>::SetFromString to set
+  // Option<T>::value_ from a string representation of it.
   static bool ParseFromString(const GoogleString& value_string, bool* value);
   static bool ParseFromString(const GoogleString& value_string,
                               EnabledEnum* value);
@@ -1630,7 +1693,7 @@ class RewriteOptions {
     return blocking_rewrite_key_.value();
   }
   void set_blocking_rewrite_key(const StringPiece& p) {
-    set_option(GoogleString(p.data(), p.size()), &blocking_rewrite_key_);
+    set_option(p.as_string(), &blocking_rewrite_key_);
   }
 
   // Does url match a cacheable family pattern?  Returns true if url matches a
@@ -2470,9 +2533,13 @@ class RewriteOptions {
   // PrioritizeVisibleContentFamily that it matches, else returns NULL.
   const PrioritizeVisibleContentFamily* FindPrioritizeVisibleContentFamily(
       const StringPiece str) const;
-  // These static methods are used by Option<T>::SetFromString to set
-  // Option<T>::value_ from a string representation of it.
 
+  // Helper for converting the result of SetOptionFromEnum into
+  // a status/message pair. The returned result may be adjusted from the passed
+  // in one (in particular when option_enum is kEndOfOptions).
+  OptionSettingResult FormatSetOptionMessage(
+      OptionSettingResult result, OptionEnum option_enum, StringPiece name,
+      StringPiece value, GoogleString* msg);
 
   // These static methods enable us to generate signatures for all
   // instantiated option-types from Option<T>::Signature().

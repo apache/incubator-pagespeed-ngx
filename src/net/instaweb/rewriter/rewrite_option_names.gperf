@@ -32,6 +32,7 @@ struct OptionName {
 "BeaconUrl",                             RewriteOptions::kBeaconUrl
 "BlinkMaxHtmlSizeRewritable",            RewriteOptions::kBlinkMaxHtmlSizeRewritable
 "BlinkNonCacheablesForAllFamilies",      RewriteOptions::kBlinkNonCacheablesForAllFamilies
+"BlockingRewriteKey",                    RewriteOptions::kXPsaBlockingRewrite
 "CacheSmallImagesUnrewritten",           RewriteOptions::kCacheSmallImagesUnrewritten
 "ClientDomainRewrite",                   RewriteOptions::kClientDomainRewrite
 "CombineAcrossPaths",                    RewriteOptions::kCombineAcrossPaths
@@ -123,7 +124,34 @@ struct OptionName {
 "UseFixedUserAgentForBlinkCacheMisses",  RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses
 "UseSmartDiffInBlink",                   RewriteOptions::kUseSmartDiffInBlink
 "XHeaderValue",                          RewriteOptions::kXModPagespeedHeaderValue
-# The following are Apache specific options.
+#
+# Options that require special handling, e.g. non-scalar values.
+"Allow",                                 RewriteOptions::kAllow
+"DisableFilters",                        RewriteOptions::kDisableFilters
+"Disallow",                              RewriteOptions::kDisallow
+"Domain",                                RewriteOptions::kDomain
+"EnableFilters",                         RewriteOptions::kEnableFilters
+"ExperimentVariable",                    RewriteOptions::kExperimentVariable
+"ExperimentSpec",                        RewriteOptions::kExperimentSpec
+"ForbidFilters",                         RewriteOptions::kForbidFilters
+"RetainComment",                         RewriteOptions::kRetainComment
+#
+# 2 argument options
+"CustomFetchHeader",                     RewriteOptions::kCustomFetchHeader
+"LoadFromFile",                          RewriteOptions::kLoadFromFile
+"LoadFromFileMatch",                     RewriteOptions::kLoadFromFileMatch
+"LoadFromFileRule",                      RewriteOptions::kLoadFromFileRule
+"LoadFromFileRuleMatch",                 RewriteOptions::kLoadFromFileRuleMatch
+"MapOriginDomain",                       RewriteOptions::kMapOriginDomain
+"MapProxyDomain",                        RewriteOptions::kMapProxyDomain
+"MapRewriteDomain",                      RewriteOptions::kMapRewriteDomain
+"ShardDomain",                           RewriteOptions::kShardDomain
+#
+# 3 argument options
+"UrlValuedAttribute",                    RewriteOptions::kUrlValuedAttribute
+"Library",                               RewriteOptions::kLibrary
+#
+# The following are used in apache/ or the system/ common port code.
 "CacheFlushFilename",                    RewriteOptions::kCacheFlushFilename
 "CacheFlushPollIntervalSec",             RewriteOptions::kCacheFlushPollIntervalSec
 "CollectRefererStatistics",              RewriteOptions::kCollectRefererStatistics

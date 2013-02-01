@@ -1509,7 +1509,7 @@ bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set) {
        iter != option_set.end(); ++iter) {
     GoogleString msg;
     OptionSettingResult result = SetOptionFromName(
-        iter->first, iter->second.as_string(), &msg);
+        iter->first, iter->second, &msg);
     if (result != kOptionOk) {
       ret = false;
     }
@@ -1518,22 +1518,30 @@ bool RewriteOptions::SetOptionsFromName(const OptionSet& option_set) {
 }
 
 RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
-    const StringPiece& name, const GoogleString& value, GoogleString* msg) {
+    StringPiece name, StringPiece value, GoogleString* msg) {
   OptionEnum option_enum = LookupOption(name);
+  OptionSettingResult result = kOptionNameUnknown;
+  if (option_enum != kEndOfOptions) {
+    result = SetOptionFromEnum(option_enum, value);
+  }
+  return FormatSetOptionMessage(result, option_enum, name, value, msg);
+}
+
+RewriteOptions::OptionSettingResult RewriteOptions::FormatSetOptionMessage(
+    OptionSettingResult result, OptionEnum option_enum, StringPiece name,
+    StringPiece value, GoogleString* msg) {
   if (option_enum == kEndOfOptions) {
     // Not a mapped option.
     SStringPrintf(msg, "Option %s not mapped.", name.as_string().c_str());
     return kOptionNameUnknown;
   }
-  RewriteOptions::OptionSettingResult result = SetOptionFromEnum(
-      option_enum, value);
   switch (result) {
     case kOptionNameUnknown:
       SStringPrintf(msg, "Option %s not found.", name.as_string().c_str());
       break;
     case kOptionValueInvalid:
-      SStringPrintf(msg, "Cannot set %s for option %s.", value.c_str(),
-                    name.as_string().c_str());
+      SStringPrintf(msg, "Cannot set option %s to %s.",
+                    name.as_string().c_str(), value.as_string().c_str());
       break;
     default:
       break;
@@ -1541,15 +1549,204 @@ RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromName(
   return result;
 }
 
+RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName1(
+    StringPiece name, StringPiece arg, GoogleString* msg,
+    MessageHandler* handler) {
+  OptionSettingResult result = kOptionNameUnknown;
+
+  // We first handle the simple scalar stuff.
+  OptionEnum option_enum = LookupOption(name);
+  if (option_enum != kEndOfOptions) {
+    result = SetOptionFromEnum(option_enum, arg);
+  }
+
+  if (result != RewriteOptions::kOptionNameUnknown) {
+    return FormatSetOptionMessage(result, option_enum, name, arg, msg);
+  }
+
+  return ParseAndSetOptionFromEnum1(option_enum, arg, msg, handler);
+}
+
+RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName2(
+    StringPiece name, StringPiece arg1, StringPiece arg2,
+    GoogleString* msg, MessageHandler* handler) {
+  OptionEnum option_enum = LookupOption(name);
+  return ParseAndSetOptionFromEnum2(option_enum, arg1, arg2, msg, handler);
+}
+
+RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromName3(
+    StringPiece name, StringPiece arg1, StringPiece arg2, StringPiece arg3,
+    GoogleString* msg, MessageHandler* handler) {
+  OptionEnum option_enum = LookupOption(name);
+  return ParseAndSetOptionFromEnum3(option_enum, arg1, arg2, arg3,
+                                    msg, handler);
+}
+
+RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum1(
+    OptionEnum name, StringPiece arg,
+    GoogleString* msg, MessageHandler* handler) {
+  switch (name) {
+    case kAllow:
+      Allow(arg);
+      break;
+    case kDisableFilters: {
+      bool ok = DisableFiltersByCommaSeparatedList(arg, handler);
+      if (!ok) {
+        *msg = "Failed to disable some filters.";
+        return RewriteOptions::kOptionValueInvalid;
+      }
+      break;
+    }
+    case kDisallow:
+      Disallow(arg);
+      break;
+    case kDomain:
+      domain_lawyer()->AddDomain(arg, handler);
+      break;
+    case kEnableFilters: {
+      bool ok = EnableFiltersByCommaSeparatedList(arg, handler);
+      if (!ok) {
+        *msg = "Failed to enable some filters.";
+        return RewriteOptions::kOptionValueInvalid;
+      }
+      break;
+    }
+    case kExperimentVariable: {
+      int slot;
+      bool ok = StringToInt(arg.as_string().c_str(), &slot);
+      if (!ok || slot < 1 || slot > 5) {
+        *msg = "must be an integer between 1 and 5";
+        return RewriteOptions::kOptionValueInvalid;
+      }
+      set_furious_ga_slot(slot);
+      break;
+    }
+    case kExperimentSpec: {
+      bool ok = AddFuriousSpec(arg, handler);
+      if (!ok) {
+        *msg = "not a valid experiment spec";
+        return RewriteOptions::kOptionValueInvalid;
+      }
+      break;
+    }
+    case kForbidFilters: {
+      if (!ForbidFiltersByCommaSeparatedList(arg, handler)) {
+        *msg = "Failed to forbid some filters.";
+        return RewriteOptions::kOptionValueInvalid;
+      }
+      break;
+    }
+    case kRetainComment: {
+      RetainComment(arg);
+      break;
+    }
+    default:
+      return RewriteOptions::kOptionNameUnknown;
+  }
+  return RewriteOptions::kOptionOk;
+}
+
+RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum2(
+    OptionEnum name, StringPiece arg1, StringPiece arg2,
+    GoogleString* msg, MessageHandler* handler) {
+  switch (name) {
+    case kCustomFetchHeader:
+      AddCustomFetchHeader(arg1, arg2);
+      break;
+    case kLoadFromFile:
+      file_load_policy()->Associate(arg1, arg2);
+      break;
+    case kLoadFromFileMatch:
+      if (!file_load_policy()->AssociateRegexp(arg1, arg2, msg)) {
+        return RewriteOptions::kOptionValueInvalid;
+      }
+      break;
+    case kLoadFromFileRule:
+    case kLoadFromFileRuleMatch: {
+      bool is_regexp = (name == kLoadFromFileRuleMatch);
+      bool allow;
+      if (StringCaseEqual(arg1, "Allow")) {
+        allow = true;
+      } else if (StringCaseEqual(arg1, "Disallow")) {
+        allow = false;
+      } else {
+        *msg = "Argument 1 must be either 'Allow' or 'Disallow'";
+        return RewriteOptions::kOptionValueInvalid;
+      }
+      if (!file_load_policy()->AddRule(arg2.as_string().c_str(),
+                                      is_regexp, allow, msg)) {
+        return RewriteOptions::kOptionValueInvalid;
+      }
+      break;
+    }
+    case kMapOriginDomain:
+      domain_lawyer()->AddOriginDomainMapping(arg1, arg2, handler);
+      break;
+    case  kMapProxyDomain:
+      domain_lawyer()->AddProxyDomainMapping(arg1, arg2, handler);
+      break;
+    case kMapRewriteDomain:
+      domain_lawyer()->AddRewriteDomainMapping(arg1, arg2, handler);
+      break;
+    case kShardDomain:
+      domain_lawyer()->AddShard(arg1, arg2, handler);
+      break;
+    default:
+      return RewriteOptions::kOptionNameUnknown;
+  }
+  return RewriteOptions::kOptionOk;
+}
+
+RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum3(
+    OptionEnum name, StringPiece arg1, StringPiece arg2, StringPiece arg3,
+    GoogleString* msg, MessageHandler* handler) {
+  switch (name) {
+    case kUrlValuedAttribute: {
+      // Examples:
+      //   UrlValuedAttribute span src Hyperlink
+      //     - <span src=...> indicates a hyperlink
+      //   UrlValuedAttribute hr imgsrc Image
+      //     - <hr image=...> indicates an image resource
+      semantic_type::Category category;
+      if (!semantic_type::ParseCategory(arg3, &category)) {
+        *msg = StrCat("Invalid resource category: ", arg3);
+        return RewriteOptions::kOptionValueInvalid;
+      } else {
+        AddUrlValuedAttribute(arg1, arg2, category);
+      }
+      break;
+    }
+    case kLibrary: {
+      // Library bytes md5 canonical_url
+      // Examples:
+      //   Library 43567 5giEj_jl-Ag5G8 http://www.example.com/url.js
+      int64 bytes;
+      if (!StringToInt64(arg1.as_string(), &bytes) || bytes < 0) {
+        *msg = "Library size must be a positive 64-bit integer";
+        return RewriteOptions::kOptionValueInvalid;
+      }
+      if (!RegisterLibrary(bytes, arg2, arg3)) {
+        *msg = StrCat("Format is size md5 url; bad md5 ", arg2, " or URL ",
+                      arg3);
+        return RewriteOptions::kOptionValueInvalid;
+      }
+      break;
+    }
+    default:
+      return RewriteOptions::kOptionNameUnknown;
+  }
+  return RewriteOptions::kOptionOk;
+}
+
 RewriteOptions::OptionSettingResult RewriteOptions::SetOptionFromEnum(
-    OptionEnum option_enum, const GoogleString& value) {
+    OptionEnum option_enum, StringPiece value) {
   OptionBaseVector::iterator it = std::lower_bound(
       all_options_.begin(), all_options_.end(), option_enum,
       RewriteOptions::OptionEnumLessThanArg);
   if (it != all_options_.end()) {
     OptionBase* option = *it;
     if (option->option_enum() == option_enum) {
-      if (!option->SetFromString(value)) {
+      if (!option->SetFromString(value.as_string())) {
         return kOptionValueInvalid;
       } else {
         return kOptionOk;
@@ -1578,8 +1775,8 @@ bool RewriteOptions::OptionValue(OptionEnum option_enum,
   return false;
 }
 
-bool RewriteOptions::SetOptionFromNameAndLog(const StringPiece& name,
-                                             const GoogleString& value,
+bool RewriteOptions::SetOptionFromNameAndLog(StringPiece name,
+                                             StringPiece value,
                                              MessageHandler* handler) {
   GoogleString msg;
   OptionSettingResult result = SetOptionFromName(name, value, &msg);

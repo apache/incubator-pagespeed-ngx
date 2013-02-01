@@ -702,7 +702,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(137, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(157, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -724,6 +724,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("BlinkNonCacheablesForAllFamilies",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kBlinkNonCacheablesForAllFamilies));
+  EXPECT_STREQ("BlockingRewriteKey",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kXPsaBlockingRewrite));
   EXPECT_STREQ("CacheSmallImagesUnrewritten",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kCacheSmallImagesUnrewritten));
@@ -974,7 +977,73 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kXModPagespeedHeaderValue));
 
-  // Apache-specific options.
+  // Non-scalar options
+  EXPECT_STREQ("Allow",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kAllow));
+  EXPECT_STREQ("DisableFilters",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kDisableFilters));
+  EXPECT_STREQ("Disallow",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kDisallow));
+  EXPECT_STREQ("Domain",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kDomain));
+  EXPECT_STREQ("EnableFilters",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kEnableFilters));
+  EXPECT_STREQ("ExperimentVariable",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kExperimentVariable));
+  EXPECT_STREQ("ExperimentSpec",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kExperimentSpec));
+  EXPECT_STREQ("ForbidFilters",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kForbidFilters));
+  EXPECT_STREQ("RetainComment",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kRetainComment));
+
+  // 2-arg options
+  EXPECT_STREQ("CustomFetchHeader",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kCustomFetchHeader));
+  EXPECT_STREQ("LoadFromFile",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kLoadFromFile));
+  EXPECT_STREQ("LoadFromFileMatch",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kLoadFromFileMatch));
+  EXPECT_STREQ("LoadFromFileRule",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kLoadFromFileRule));
+  EXPECT_STREQ("LoadFromFileRuleMatch",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kLoadFromFileRuleMatch));
+  EXPECT_STREQ("MapOriginDomain",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kMapOriginDomain));
+  EXPECT_STREQ("MapProxyDomain",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kMapProxyDomain));
+  EXPECT_STREQ("MapRewriteDomain",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kMapRewriteDomain));
+  EXPECT_STREQ("ShardDomain",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kShardDomain));
+
+  // 3-arg options
+  EXPECT_STREQ("UrlValuedAttribute",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kUrlValuedAttribute));
+  EXPECT_STREQ("Library",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kLibrary));
+
+  // system/ and apache/ options.
   EXPECT_STREQ("CacheFlushFilename",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kCacheFlushFilename));
@@ -1073,6 +1142,360 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
                     RewriteOptions::kUseSharedMemMetadataCache));
   // End Apache-specific option tests (so please don't add tests for generic
   // options here).
+}
+
+TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName1) {
+  // This tests mostly the interaction between ParseAndSetOptionFromName1
+  // and ParseAndSetOptionFromEnum1. The individual cases in the latter
+  // are mostly covered by its own test.
+  GoogleString msg;
+  NullMessageHandler handler;
+
+  // Unknown option.
+  EXPECT_EQ(RewriteOptions::kOptionNameUnknown,
+            options_.ParseAndSetOptionFromName1("arghh", "", &msg, &handler));
+
+  // Simple scalar option.
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromName1("JsInlineMaxBytes", "42",
+                                                &msg, &handler));
+  EXPECT_EQ(42, options_.js_inline_max_bytes());
+
+  // Scalar with invalid value.
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.ParseAndSetOptionFromName1("JsInlineMaxBytes", "one",
+                                                &msg, &handler));
+  EXPECT_EQ("Cannot set option JsInlineMaxBytes to one.", msg);
+
+  // Complex, valid value.
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kDebug));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kOutlineCss));
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromName1(
+                "EnableFilters", "debug,outline_css", &msg, &handler));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kDebug));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kOutlineCss));
+
+  // Complex, invalid value.
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.ParseAndSetOptionFromName1(
+                "EnableFilters", "no_such_filter", &msg, &handler));
+  EXPECT_EQ("Failed to enable some filters.", msg);
+}
+
+TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
+  GoogleString msg;
+  NullMessageHandler handler;
+
+  // Disallow/Allow.
+  options_.Disallow("*");
+  EXPECT_FALSE(options_.IsAllowed("example.com"));
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kAllow, "*.com", &msg, &handler));
+  EXPECT_TRUE(options_.IsAllowed("example.com"));
+  EXPECT_TRUE(options_.IsAllowed("evil.com"));
+  EXPECT_FALSE(options_.IsAllowed("example.org"));
+
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kDisallow, "*evil*", &msg, &handler));
+  EXPECT_TRUE(options_.IsAllowed("example.com"));
+  EXPECT_FALSE(options_.IsAllowed("evil.com"));
+
+  // Disable/forbid filters (enable covered above).
+  options_.EnableFilter(RewriteOptions::kDebug);
+  options_.EnableFilter(RewriteOptions::kOutlineCss);
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kDebug));
+  EXPECT_TRUE(options_.Enabled(RewriteOptions::kOutlineCss));
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kDisableFilters, "debug,outline_css",
+                &msg, &handler));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kDebug));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kOutlineCss));
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kDisableFilters, "nosuch",
+                &msg, &handler));
+  EXPECT_EQ("Failed to disable some filters.", msg);
+
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kForbidFilters, "debug",
+                &msg, &handler));
+  EXPECT_FALSE(
+      options_.Forbidden(options_.FilterId(RewriteOptions::kOutlineCss)));
+  EXPECT_TRUE(
+      options_.Forbidden(options_.FilterId(RewriteOptions::kDebug)));
+
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kForbidFilters, "nosuch",
+                &msg, &handler));
+  EXPECT_EQ("Failed to forbid some filters.", msg);
+
+  // Domain.
+  GoogleUrl main("http://example.com");
+  GoogleUrl content("http://static.example.com");
+  EXPECT_FALSE(options_.domain_lawyer()->IsDomainAuthorized(main, content));
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kDomain, "static.example.com",
+                &msg, &handler));
+  EXPECT_TRUE(options_.domain_lawyer()->IsDomainAuthorized(main, content)) <<
+      options_.domain_lawyer()->ToString();
+
+  // Experiments.
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kExperimentSpec,
+                "id=2;enable=recompress_png;percent=50",
+                &msg, &handler));
+  RewriteOptions::FuriousSpec* spec = options_.GetFuriousSpec(2);
+  ASSERT_TRUE(spec != NULL);
+  EXPECT_EQ(2, spec->id());
+  EXPECT_EQ(50, spec->percent());
+  EXPECT_EQ(1,  spec->enabled_filters().size());
+  EXPECT_NE(spec->enabled_filters().end(),
+            spec->enabled_filters().find(RewriteOptions::kRecompressPng));
+
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kExperimentSpec, "@)#@(#@(#@)((#)@",
+                &msg, &handler));
+  EXPECT_EQ("not a valid experiment spec", msg);
+
+  EXPECT_NE(4, options_.furious_ga_slot());
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kExperimentVariable, "4", &msg, &handler));
+  EXPECT_EQ(4, options_.furious_ga_slot());
+
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kExperimentVariable, "10", &msg, &handler));
+  EXPECT_EQ("must be an integer between 1 and 5", msg);
+
+  // Retain comment.
+  EXPECT_FALSE(options_.IsRetainedComment("important"));
+  EXPECT_FALSE(options_.IsRetainedComment("silly"));
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum1(
+                RewriteOptions::kRetainComment, "*port*", &msg, &handler));
+  EXPECT_TRUE(options_.IsRetainedComment("important"));
+  EXPECT_FALSE(options_.IsRetainedComment("silly"));
+}
+
+TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName2) {
+  // This tests mostly the interaction between ParseAndSetOptionFromName2
+  // and ParseAndSetOptionFromEnum2. The individual cases in the latter
+  // are mostly covered by its own test.
+  GoogleString msg;
+  NullMessageHandler handler;
+
+  // Unknown option.
+  EXPECT_EQ(RewriteOptions::kOptionNameUnknown,
+            options_.ParseAndSetOptionFromName2("arghh", "", "",
+                                                &msg, &handler));
+
+  // Option mapped, but not a 2-argument.
+  EXPECT_EQ(RewriteOptions::kOptionNameUnknown,
+            options_.ParseAndSetOptionFromName2("JsInlineMaxBytes", "", "",
+                                                &msg, &handler));
+
+  // Valid value.
+  EXPECT_EQ(0, options_.num_custom_fetch_headers());
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromName2(
+                "CustomFetchHeader", "header", "value", &msg, &handler));
+  ASSERT_EQ(1, options_.num_custom_fetch_headers());
+  EXPECT_EQ("header", options_.custom_fetch_header(0)->name);
+  EXPECT_EQ("value", options_.custom_fetch_header(0)->value);
+
+  // Invalid value.
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.ParseAndSetOptionFromName2(
+                "LoadFromFileRule", "weird", "42", &msg, &handler));
+  EXPECT_EQ("Argument 1 must be either 'Allow' or 'Disallow'", msg);
+}
+
+TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
+  GoogleString msg;
+  NullMessageHandler handler;
+
+  // Various LoadFromFile options.
+  GoogleString file_out;
+  GoogleUrl url1("http://www.example.com/a.css");
+  EXPECT_FALSE(
+      options_.file_load_policy()->ShouldLoadFromFile(url1, &file_out));
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum2(
+                RewriteOptions::kLoadFromFile, "http://www.example.com",
+                "/example/", &msg, &handler));
+  EXPECT_TRUE(
+      options_.file_load_policy()->ShouldLoadFromFile(url1, &file_out));
+  EXPECT_EQ("/example/a.css", file_out);
+
+  GoogleUrl url2("http://www.example.com/styles/b.css");
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum2(
+                RewriteOptions::kLoadFromFileMatch,
+                "^http://www.example.com/styles/([^/]*)", "/style/\\1",
+                &msg, &handler));
+  EXPECT_TRUE(
+      options_.file_load_policy()->ShouldLoadFromFile(url2, &file_out));
+  EXPECT_EQ("/style/b.css", file_out);
+
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.ParseAndSetOptionFromEnum2(
+                RewriteOptions::kLoadFromFileMatch,
+                "[a-", "/style/\\1",
+                &msg, &handler));
+  EXPECT_EQ("File mapping regular expression must match beginning of string. "
+            "(Must start with '^'.)", msg);
+
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.ParseAndSetOptionFromEnum2(
+                RewriteOptions::kLoadFromFileRuleMatch,
+                "Allow", "[a-",
+                &msg, &handler));
+  // Not testing the message since it's RE2-originated.
+
+  GoogleUrl url3("http://www.example.com/images/a.png");
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum2(
+                RewriteOptions::kLoadFromFileRule,
+                "Disallow", "/example/images/",
+                &msg, &handler));
+  EXPECT_FALSE(
+      options_.file_load_policy()->ShouldLoadFromFile(url3, &file_out));
+
+  GoogleUrl url4("http://www.example.com/images/a.jpeg");
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum2(
+                RewriteOptions::kLoadFromFileRuleMatch,
+                "Allow", "\\.jpeg", &msg, &handler));
+  EXPECT_FALSE(
+      options_.file_load_policy()->ShouldLoadFromFile(url3, &file_out));
+  EXPECT_TRUE(
+      options_.file_load_policy()->ShouldLoadFromFile(url4, &file_out));
+  EXPECT_EQ("/example/images/a.jpeg", file_out);
+
+  // Domain lawyer options.
+  scoped_ptr<RewriteOptions> options2(new RewriteOptions);
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options2->ParseAndSetOptionFromEnum2(
+                RewriteOptions::kMapOriginDomain,
+                "localhost/example", "www.example.com",
+                &msg, &handler));
+  EXPECT_EQ("http://localhost/example/\n"
+            "http://www.example.com/ Auth "
+                "OriginDomain:http://localhost/example/\n",
+            options2->domain_lawyer()->ToString());
+
+  scoped_ptr<RewriteOptions> options3(new RewriteOptions);
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options3->ParseAndSetOptionFromEnum2(
+                RewriteOptions::kMapProxyDomain,
+                "mainsite.com/static", "static.mainsite.com",
+                &msg, &handler));
+  EXPECT_EQ("http://mainsite.com/static/ Auth "
+                "ProxyOriginDomain:http://static.mainsite.com/\n"
+            "http://static.mainsite.com/ Auth "
+                "ProxyDomain:http://mainsite.com/static/\n",
+            options3->domain_lawyer()->ToString());
+
+  scoped_ptr<RewriteOptions> options4(new RewriteOptions);
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options4->ParseAndSetOptionFromEnum2(
+                RewriteOptions::kMapRewriteDomain,
+                "cdn.example.com", "*example.com",
+                &msg, &handler));
+  EXPECT_EQ("http://*example.com/ Auth RewriteDomain:http://cdn.example.com/\n"
+            "http://cdn.example.com/ Auth\n",
+            options4->domain_lawyer()->ToString());
+
+  scoped_ptr<RewriteOptions> options5(new RewriteOptions);
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options5->ParseAndSetOptionFromEnum2(
+                RewriteOptions::kShardDomain,
+                "https://www.example.com",
+                "https://example1.cdn.com,https://example2.cdn.com",
+                &msg, &handler));
+  EXPECT_EQ("https://example1.cdn.com/ Auth "
+                "RewriteDomain:https://www.example.com/\n"
+            "https://example2.cdn.com/ Auth "
+                "RewriteDomain:https://www.example.com/\n"
+            "https://www.example.com/ Auth Shards:"
+                "{https://example1.cdn.com/, "
+                "https://example2.cdn.com/}\n",
+            options5->domain_lawyer()->ToString());
+}
+
+TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName3) {
+  // This tests mostly the interaction between ParseAndSetOptionFromName3
+  // and ParseAndSetOptionFromEnum3. The individual cases in the latter
+  // are mostly covered by its own test.
+  GoogleString msg;
+  NullMessageHandler handler;
+
+  // Unknown option.
+  EXPECT_EQ(RewriteOptions::kOptionNameUnknown,
+            options_.ParseAndSetOptionFromName3("arghh", "", "", "",
+                                                &msg, &handler));
+
+  // Option mapped, but not a 2-argument.
+  EXPECT_EQ(RewriteOptions::kOptionNameUnknown,
+            options_.ParseAndSetOptionFromName3("JsInlineMaxBytes", "", "", "",
+                                                &msg, &handler));
+
+  // Valid value.
+  EXPECT_EQ(0, options_.num_url_valued_attributes());
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromName3(
+                "UrlValuedAttribute", "span", "src", "Hyperlink",
+                &msg, &handler));
+  ASSERT_EQ(1, options_.num_url_valued_attributes());
+  StringPiece element, attribute;
+  semantic_type::Category category;
+  options_.UrlValuedAttribute(0, &element, &attribute, &category);
+  EXPECT_EQ("span", element);
+  EXPECT_EQ("src", attribute);
+  EXPECT_EQ(semantic_type::kHyperlink, category);
+
+  // Invalid value.
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.ParseAndSetOptionFromName3(
+                "UrlValuedAttribute", "span", "src", "nonsense",
+                &msg, &handler));
+  EXPECT_EQ("Invalid resource category: nonsense", msg);
+}
+
+TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum3) {
+  GoogleString msg;
+  NullMessageHandler handler;
+
+  options_.EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
+  GoogleString sig;
+  options_.javascript_library_identification()->AppendSignature(&sig);
+  EXPECT_EQ("", sig);
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options_.ParseAndSetOptionFromEnum3(
+                RewriteOptions::kLibrary, "43567", "5giEj_jl-Ag5G8",
+                "http://www.example.com/url.js",
+                &msg, &handler));
+  sig.clear();
+  options_.javascript_library_identification()->AppendSignature(&sig);
+  EXPECT_EQ("S:43567_H:5giEj_jl-Ag5G8_J:http://www.example.com/url.js", sig);
+
+  EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
+            options_.ParseAndSetOptionFromEnum3(
+                RewriteOptions::kLibrary, "43567", "#@#)@(#@)",
+                "http://www.example.com/url.js",
+                &msg, &handler));
+  EXPECT_EQ("Format is size md5 url; bad md5 #@#)@(#@) or "
+            "URL http://www.example.com/url.js", msg);
 }
 
 TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {

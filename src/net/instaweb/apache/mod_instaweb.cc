@@ -45,11 +45,8 @@
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
-#include "net/instaweb/rewriter/public/domain_lawyer.h"
-#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -110,10 +107,6 @@ enum VHostHandling {
   kErrorInVHost
 };
 
-// Used by ModPagespeedLoadFromFileRule
-const char kAllow[] = "allow";
-const char kDisallow[] = "disallow";
-
 // TODO(sligocki): Separate options parsing from all the other stuff here.
 // Instaweb directive names -- these must match
 // install/common/pagespeed.conf.template.
@@ -173,8 +166,8 @@ const char kModPagespeedForbidAllDisabledFilters[] =
     "ModPagespeedForbidAllDisabledFilters";
 const char kModPagespeedForbidFilters[] = "ModPagespeedForbidFilters";
 const char kModPagespeedForceCaching[] = "ModPagespeedForceCaching";
-const char kModPagespeedFuriousSlot[] = "ModPagespeedExperimentVariable";
-const char kModPagespeedFuriousSpec[] = "ModPagespeedExperimentSpec";
+const char kModPagespeedExperimentVariable[] = "ModPagespeedExperimentVariable";
+const char kModPagespeedExperimentSpec[] = "ModPagespeedExperimentSpec";
 const char kModPagespeedGeneratedFilePrefix[] =
     "ModPagespeedGeneratedFilePrefix";
 const char kModPagespeedHashRefererStatistics[] =
@@ -1403,6 +1396,29 @@ static char* CheckGlobalOption(const cmd_parms* cmd,
   return NULL;
 }
 
+// Returns true if standard parsing handled the option and sets *err_msg to NULL
+// if OK, and to the error string managed in cmd->pool otherwise.
+bool StandardParsingHandled(
+    cmd_parms* cmd, RewriteOptions::OptionSettingResult result,
+    const GoogleString& msg, const char** err_msg) {
+  switch (result) {
+    case RewriteOptions::kOptionOk:
+      *err_msg = NULL;  // No error.
+      return true;
+    case RewriteOptions::kOptionNameUnknown:
+      // RewriteOptions didn't recognize the option, but we might do so
+      // with our own code.
+      return false;
+    case RewriteOptions::kOptionValueInvalid:
+      // The option is recognized, but the value is not. Return the error
+      // message.
+      *err_msg = apr_pstrdup(cmd->pool, msg.c_str());
+      return true;
+  }
+  LOG(DFATAL) << "Should be unreachable";
+  return true;
+}
+
 // Callback function that parses a single-argument directive.  This is called
 // by the Apache config parser.
 static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
@@ -1418,10 +1434,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   if (ret != NULL) {
     return ret;
   }
-
-  // Keep an upcast version of 'config' around so that the template methods
-  // resolve properly for options in RewriteOptions for ApacheConfig.
-  RewriteOptions* options = config;
 
   // We have "FileCachePath" mapped in gperf, but here we do more than just
   // setting the option. This must precede the call to SetOptionFromName which
@@ -1453,29 +1465,18 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   if (directive.starts_with(prefix)) {
     GoogleString msg;
     RewriteOptions::OptionSettingResult result =
-        options->SetOptionFromName(directive.substr(prefix.size()), arg, &msg);
-    switch (result) {
-      case RewriteOptions::kOptionOk:
-        return NULL;  // No error
-      case RewriteOptions::kOptionNameUnknown:
-        // RewriteOptions didn't recognize the option, but we might do so
-        // below.
-        break;
-      case RewriteOptions::kOptionValueInvalid:
-        // The option is recognized, but the value is not. Return the error
-        // message.
-        ret = apr_pstrdup(cmd->pool, msg.c_str());
-        return ret;
+        config->ParseAndSetOptionFromName1(
+            directive.substr(prefix.size()), arg, &msg, handler);
+    if (StandardParsingHandled(cmd, result, msg, &ret)) {
+      return ret;
     }
   }
 
   // Options which we handle manually.
   if (StringCaseEqual(directive, RewriteQuery::kModPagespeed)) {
-    ret = ParseOption<RewriteOptions::EnabledEnum>(options, cmd,
-                                                   &RewriteOptions::set_enabled,
-                                                   arg);
-  } else if (StringCaseEqual(directive, kModPagespeedAllow)) {
-    options->Allow(arg);
+    ret = ParseOption<RewriteOptions::EnabledEnum>(
+        static_cast<RewriteOptions*>(config), cmd, &RewriteOptions::set_enabled,
+        arg);
   } else if (StringCaseEqual(directive,
                              kModPagespeedDangerPermitFetchFromUnknownHosts)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
@@ -1483,18 +1484,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
       ret = ParseOption<bool>(
           factory, cmd,
           &ApacheRewriteDriverFactory::set_disable_loopback_routing, arg);
-    }
-  } else if (StringCaseEqual(directive, kModPagespeedDisableFilters)) {
-    if (!options->DisableFiltersByCommaSeparatedList(arg, handler)) {
-      ret = "Failed to disable some filters.";
-    }
-  } else if (StringCaseEqual(directive, kModPagespeedDisallow)) {
-    options->Disallow(arg);
-  } else if (StringCaseEqual(directive, kModPagespeedDomain)) {
-    options->domain_lawyer()->AddDomain(arg, factory->message_handler());
-  } else if (StringCaseEqual(directive, kModPagespeedEnableFilters)) {
-    if (!options->EnableFiltersByCommaSeparatedList(arg, handler)) {
-      ret = "Failed to enable some filters.";
     }
   } else if (StringCaseEqual(directive, kModPagespeedFetchHttps)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
@@ -1512,25 +1501,12 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
       ret = ParseOption<bool>(
           factory, cmd, &ApacheRewriteDriverFactory::set_fetch_with_gzip, arg);
     }
-  } else if (StringCaseEqual(directive, kModPagespeedForbidFilters)) {
-    if (!options->ForbidFiltersByCommaSeparatedList(arg, handler)) {
-      ret = "Failed to forbid some filters.";
-    }
   } else if (StringCaseEqual(directive, kModPagespeedForceCaching)) {
     ret = CheckGlobalOption(cmd, kTolerateInVHost, handler);
     if (ret == NULL) {
         ret = ParseOption<bool>(static_cast<RewriteDriverFactory*>(factory),
                               cmd, &RewriteDriverFactory::set_force_caching,
                               arg);
-    }
-  } else if (StringCaseEqual(directive, kModPagespeedFuriousSlot)) {
-    ParseIntBoundedOption(options, cmd,
-                          &RewriteOptions::set_furious_ga_slot,
-                          arg, 1, 5);
-  } else if (StringCaseEqual(directive, kModPagespeedFuriousSpec)) {
-    bool succeeded = options->AddFuriousSpec(arg, handler);
-    if (!succeeded) {
-      ret = apr_pstrcat(cmd->pool, "Invalid experiment spec: ", arg, NULL);
     }
   } else if (StringCaseEqual(directive, kModPagespeedInheritVHostConfig)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
@@ -1576,8 +1552,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
           factory, cmd,
           &ApacheRewriteDriverFactory::set_num_expensive_rewrite_threads, arg);
     }
-  } else if (StringCaseEqual(directive, kModPagespeedRetainComment)) {
-    options->RetainComment(arg);
   } else if (StringCaseEqual(directive,
                              kModPagespeedTrackOriginalContentLength)) {
     ret = ParseOption<bool>(
@@ -1588,8 +1562,6 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
              StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix) ||
              StringCaseEqual(directive, kModPagespeedDisableForBots)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
-  } else if (StringCaseEqual(directive, kModPagespeedBlockingRewriteKey)) {
-    options->set_blocking_rewrite_key(arg);
   } else if (StringCaseEqual(directive, kModPagespeedUsePerVHostStatistics)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
     if (ret == NULL) {
@@ -1694,72 +1666,41 @@ static const char* ParseScope(cmd_parms* cmd, ap_directive_t** mconfig,
 // by the Apache config parser.
 static const char* ParseDirective2(cmd_parms* cmd, void* data,
                                    const char* arg1, const char* arg2) {
-  ApacheServerContext* manager =
+  ApacheServerContext* server_context =
       InstawebContext::ServerContextFromServerRec(cmd->server);
+  ApacheRewriteDriverFactory* factory = server_context->apache_factory();
+  MessageHandler* handler = factory->message_handler();
 
   ApacheConfig* config;
   const char* ret = CmdOptions(cmd, data, &config);
   if (ret != NULL) {
     return ret;
   }
-  RewriteOptions* options = config;
 
-  const char* directive = cmd->directive->directive;
+  StringPiece prefix(RewriteQuery::kModPagespeed);
+  StringPiece directive = cmd->directive->directive;
+  // Go through generic path first.
+  if (directive.starts_with(prefix)) {
+    GoogleString msg;
+    RewriteOptions::OptionSettingResult result =
+        config->ParseAndSetOptionFromName2(
+            directive.substr(prefix.size()), arg1, arg2, &msg, handler);
+    if (StandardParsingHandled(cmd, result, msg, &ret)) {
+      return ret;
+    }
+  }
+
   if (StringCaseEqual(directive,
                       kModPagespeedCreateSharedMemoryMetadataCache)) {
     int64 kb = 0;
     if (!StringToInt64(arg2, &kb) || kb < 0) {
-      return apr_pstrcat(cmd->pool, directive,
+      return apr_pstrcat(cmd->pool, cmd->directive->directive,
                          " size_kb must be a positive 64-bit integer", NULL);
     }
-    GoogleString result =
-        manager->apache_factory()->CreateShmMetadataCache(arg1, kb);
+    GoogleString result = factory->CreateShmMetadataCache(arg1, kb);
     if (!result.empty()) {
       return apr_pstrdup(cmd->pool, result.c_str());
     }
-  } else if (StringCaseEqual(directive, kModPagespeedLoadFromFile)) {
-    options->file_load_policy()->Associate(arg1, arg2);
-  } else if (StringCaseEqual(directive, kModPagespeedLoadFromFileMatch)) {
-    GoogleString error;
-    bool ok = options->file_load_policy()->AssociateRegexp(arg1, arg2, &error);
-    if (!ok) {
-      return apr_pstrcat(cmd->pool, "Invalid LoadFromFile Regexp: ",
-                         error.c_str(), NULL);
-    }
-  } else if (StringCaseEqual(directive, kModPagespeedLoadFromFileRule) ||
-             StringCaseEqual(directive, kModPagespeedLoadFromFileRuleMatch)) {
-    bool is_regexp = StringCaseEqual(
-        directive, kModPagespeedLoadFromFileRuleMatch);
-    bool allow;
-    if (StringCaseEqual(arg1, kAllow)) {
-      allow = true;
-    } else if (StringCaseEqual(arg1, kDisallow)) {
-      allow = false;
-    } else {
-      return apr_pstrcat(cmd->pool, "Argument 1 of ", directive,
-                         " must be either '", kAllow, "' or '", kDisallow,
-                         "'.  Got '", arg1, "'.", NULL);
-    }
-    GoogleString error;
-    bool ok = options->file_load_policy()->AddRule(
-        arg2, is_regexp, allow, &error);
-    if (!ok) {
-      return apr_pstrcat(cmd->pool, "Invalid argument '", arg2, "' to ",
-                         directive, ": ", error.c_str(), NULL);
-    }
-  } else if (StringCaseEqual(directive, kModPagespeedMapRewriteDomain)) {
-    options->domain_lawyer()->AddRewriteDomainMapping(
-        arg1, arg2, manager->message_handler());
-  } else if (StringCaseEqual(directive, kModPagespeedMapOriginDomain)) {
-    options->domain_lawyer()->AddOriginDomainMapping(
-        arg1, arg2, manager->message_handler());
-  } else if (StringCaseEqual(directive, kModPagespeedMapProxyDomain)) {
-    options->domain_lawyer()->AddProxyDomainMapping(
-        arg1, arg2, manager->message_handler());
-  } else if (StringCaseEqual(directive, kModPagespeedShardDomain)) {
-    options->domain_lawyer()->AddShard(arg1, arg2, manager->message_handler());
-  } else if (StringCaseEqual(directive, kModPagespeedCustomFetchHeader)) {
-    options->AddCustomFetchHeader(arg1, arg2);
   } else {
     return "Unknown directive.";
   }
@@ -1771,43 +1712,32 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
 static const char* ParseDirective3(
     cmd_parms* cmd, void* data,
     const char* arg1, const char* arg2, const char* arg3) {
+  ApacheServerContext* server_context =
+      InstawebContext::ServerContextFromServerRec(cmd->server);
+  ApacheRewriteDriverFactory* factory = server_context->apache_factory();
+  MessageHandler* handler = factory->message_handler();
+
   ApacheConfig* config;
   const char* ret = CmdOptions(cmd, data, &config);
   if (ret != NULL) {
     return ret;
   }
-  RewriteOptions* options = config;
-  const char* directive = cmd->directive->directive;
-  if (StringCaseEqual(directive, kModPagespeedUrlValuedAttribute)) {
-    // Examples:
-    //   ModPagespeedUrlValuedAttribute span src Hyperlink
-    //     - <span src=...> indicates a hyperlink
-    //   ModPagespeedUrlValuedAttribute hr imgsrc Image
-    //     - <hr image=...> indicates an image resource
-    semantic_type::Category category;
-    if (!semantic_type::ParseCategory(arg3, &category)) {
-      return apr_pstrcat(cmd->pool, "Invalid resource category: ", arg3, NULL);
-    } else {
-      options->AddUrlValuedAttribute(arg1, arg2, category);
+
+  StringPiece prefix(RewriteQuery::kModPagespeed);
+  StringPiece directive = cmd->directive->directive;
+  // Go through generic path first.
+  if (directive.starts_with(prefix)) {
+    GoogleString msg;
+    RewriteOptions::OptionSettingResult result =
+        config->ParseAndSetOptionFromName3(
+            directive.substr(prefix.size()), arg1, arg2, arg3, &msg, handler);
+    if (StandardParsingHandled(cmd, result, msg, &ret)) {
+      return ret;
     }
-  } else if (StringCaseEqual(directive, kModPagespeedLibrary)) {
-    // ModPagespeedLibrary bytes md5 canonical_url
-    // Examples:
-    //   ModPagespeedLibrary 43567 5giEj_jl-Ag5G8 http://www.example.com/url.js
-    int64 bytes;
-    if (!StringToInt64(arg1, &bytes) || bytes < 0) {
-      return apr_pstrcat(cmd->pool, directive,
-                         " size must be a positive 64-bit integer", NULL);
-    }
-    if (!options->RegisterLibrary(bytes, arg2, arg3)) {
-      return apr_pstrcat(cmd->pool, directive,
-                         "Format is size md5 url; bad md5 ", arg2,
-                         " or URL ", arg3, NULL);
-    }
-  } else {
-    return apr_pstrcat(cmd->pool, directive, " unknown directive.", NULL);
   }
-  return NULL;
+
+  return apr_pstrcat(cmd->pool, cmd->directive->directive,
+                     " unknown directive.", NULL);
 }
 
 // Setting up Apache options is cumbersome for several reasons:
@@ -1914,10 +1844,10 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "Prevents the use of disabled filters"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedForbidFilters,
         "Comma-separated list of forbidden filters"),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousSlot,
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedExperimentVariable,
          "Specify the custom variable slot with which to run experiments."
          "Defaults to 1."),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedFuriousSpec,
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedExperimentSpec,
          "Configuration for one side of an experiment in the form: "
          "'id= ;enabled= ;disabled= ;ga= ;percent= ...'"),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedHashRefererStatistics,
