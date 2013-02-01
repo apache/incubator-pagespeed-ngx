@@ -130,7 +130,7 @@ TEST_F(StripNonCacheableFilterTest, TestGstatic) {
   StaticJavascriptManager js_manager(&url_namer, server_context()->hasher(),
                                      server_context()->message_handler());
   js_manager.set_serve_js_from_gstatic(true);
-  js_manager.set_gstatic_blink_hash("1");
+  js_manager.set_gstatic_hash(StaticJavascriptManager::kBlinkJs, "1");
   server_context()->set_static_javascript_manager(&js_manager);
   ValidateExpectedUrl(kRequestUrl, kHtmlInput,
                       GetExpectedOutput(kBlinkUrlGstatic));

@@ -79,46 +79,52 @@ class StaticJavascriptManagerTest : public RewriteTestBase {
 
 TEST_F(StaticJavascriptManagerTest, TestBlinkHandler) {
   const char blink_url[] = "http://proxy-domain/psajs/blink.js";
-  EXPECT_STREQ(blink_url, manager_->GetBlinkJsUrl(options_));
+  EXPECT_STREQ(blink_url, manager_->GetJsUrl(StaticJavascriptManager::kBlinkJs,
+                                             options_));
 }
 
 TEST_F(StaticJavascriptManagerTest, TestBlinkGstatic) {
   manager_->set_serve_js_from_gstatic(true);
-  manager_->set_gstatic_blink_hash("1");
+  manager_->set_gstatic_hash(StaticJavascriptManager::kBlinkJs, "1");
   const char blink_url[] =
       "http://www.gstatic.com/psa/static/1-blink.js";
-  EXPECT_STREQ(blink_url, manager_->GetBlinkJsUrl(options_));
+  EXPECT_STREQ(blink_url, manager_->GetJsUrl(StaticJavascriptManager::kBlinkJs,
+                                             options_));
 }
 
 TEST_F(StaticJavascriptManagerTest, TestBlinkDebug) {
   manager_->set_serve_js_from_gstatic(true);
-  manager_->set_gstatic_blink_hash("1");
+  manager_->set_gstatic_hash(StaticJavascriptManager::kBlinkJs, "1");
   options_->EnableFilter(RewriteOptions::kDebug);
   const char blink_url[] = "http://proxy-domain/psajs/blink.js";
-  EXPECT_STREQ(blink_url, manager_->GetBlinkJsUrl(options_));
+  EXPECT_STREQ(blink_url, manager_->GetJsUrl(StaticJavascriptManager::kBlinkJs,
+                                             options_));
 }
 
 TEST_F(StaticJavascriptManagerTest, TestDeferJsGstatic) {
   manager_->set_serve_js_from_gstatic(true);
-  manager_->set_gstatic_defer_js_hash("1");
+  manager_->set_gstatic_hash(StaticJavascriptManager::kDeferJs, "1");
   const char defer_js_url[] =
       "http://www.gstatic.com/psa/static/1-js_defer.js";
-  EXPECT_STREQ(defer_js_url, manager_->GetDeferJsUrl(options_));
+  EXPECT_STREQ(defer_js_url, manager_->GetJsUrl(
+      StaticJavascriptManager::kDeferJs, options_));
 }
 
-TEST_F(StaticJavascriptManagerTest, TestdeferJsDebug) {
+TEST_F(StaticJavascriptManagerTest, TestDeferJsDebug) {
   manager_->set_serve_js_from_gstatic(true);
-  manager_->set_gstatic_defer_js_hash("1");
+  manager_->set_gstatic_hash(StaticJavascriptManager::kDeferJs, "1");
   options_->EnableFilter(RewriteOptions::kDebug);
   const char defer_js_debug_url[] =
       "http://proxy-domain/psajs/js_defer_debug.0.js";
-  EXPECT_STREQ(defer_js_debug_url, manager_->GetDeferJsUrl(options_));
+  EXPECT_STREQ(defer_js_debug_url, manager_->GetJsUrl(
+      StaticJavascriptManager::kDeferJs, options_));
 }
 
-TEST_F(StaticJavascriptManagerTest, TestdeferJsNonGStatic) {
+TEST_F(StaticJavascriptManagerTest, TestDeferJsNonGStatic) {
   const char defer_js_url[] =
       "http://proxy-domain/psajs/js_defer.0.js";
-  EXPECT_STREQ(defer_js_url, manager_->GetDeferJsUrl(options_));
+  EXPECT_STREQ(defer_js_url, manager_->GetJsUrl(
+      StaticJavascriptManager::kDeferJs, options_));
 }
 
 TEST_F(StaticJavascriptManagerTest, TestJsDebug) {

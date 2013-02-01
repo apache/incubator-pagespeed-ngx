@@ -23,13 +23,13 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "net/instaweb/http/public/device_properties.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
-#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
@@ -40,12 +40,12 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/json_writer.h"
+#include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/writer.h"
-#include "net/instaweb/util/public/re2.h"
 
 namespace net_instaweb {
 
@@ -524,7 +524,8 @@ bool SplitHtmlFilter::ElementMatchesXpath(
 const GoogleString& SplitHtmlFilter::GetBlinkJsUrl(
       const RewriteOptions* options,
       StaticJavascriptManager* static_js_manager) {
-  return static_js_manager->GetBlinkJsUrl(options);
+  return static_js_manager->GetJsUrl(StaticJavascriptManager::kBlinkJs,
+                                     options);
 }
 
 // TODO(rahulbansal): Refactor this pattern.

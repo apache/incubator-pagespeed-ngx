@@ -183,7 +183,7 @@ TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromGStatic) {
   StaticJavascriptManager js_manager(&url_namer, server_context()->hasher(),
                                      server_context()->message_handler());
   js_manager.set_serve_js_from_gstatic(true);
-  js_manager.set_gstatic_defer_js_hash("1");
+  js_manager.set_gstatic_hash(StaticJavascriptManager::kDeferJs, "1");
 
   server_context()->set_static_javascript_manager(&js_manager);
 

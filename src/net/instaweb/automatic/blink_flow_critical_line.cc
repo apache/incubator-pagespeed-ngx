@@ -871,7 +871,8 @@ void BlinkFlowCriticalLine::SendCriticalHtml(
   StaticJavascriptManager* static_js_manager =
       manager_->static_javascript_manager();
   WriteString("<script type=\"text/javascript\" src=\"");
-  WriteString(static_js_manager->GetBlinkJsUrl(options_));
+  WriteString(static_js_manager->GetJsUrl(StaticJavascriptManager::kBlinkJs,
+                                          options_));
   WriteString("\"></script>");
   WriteString("<script type=\"text/javascript\">");
   WriteString("\npagespeed.panelLoaderInit();");

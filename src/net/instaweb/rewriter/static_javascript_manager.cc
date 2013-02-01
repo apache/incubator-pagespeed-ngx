@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 
+#include <utility>
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -31,6 +32,7 @@
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -63,16 +65,19 @@ extern const char* JS_local_storage_cache_opt;
 // format.
 const char StaticJavascriptManager::kGStaticBase[] =
     "http://www.gstatic.com/psa/static/";
-const char StaticJavascriptManager::kBlinkGstaticSuffix[] = "-blink.js";
 
-// Following are file names when gstatic is not used.
-// The file name for debug version is appended with '_debug'.
-// Eg: <fileName>[_debug].<md5>.js
 const char StaticJavascriptManager::kDefaultLibraryUrlPrefix[] = "/psajs/";
-const char StaticJavascriptManager::kBlinkJsFileName[] = "blink";
-const char StaticJavascriptManager::kDeferJsFileName[] = "js_defer";
-const char StaticJavascriptManager::kDeferJsDebugFileName[] = "js_defer_debug";
 const char StaticJavascriptManager::kJsExtension[] = ".js";
+
+struct StaticJavascriptManager::Asset {
+  const char* file_name;
+  const char* js_optimized;
+  const char* js_debug;
+  GoogleString js_opt_hash;
+  GoogleString js_debug_hash;
+  GoogleString opt_url;
+  GoogleString debug_url;
+};
 
 StaticJavascriptManager::StaticJavascriptManager(
     UrlNamer* url_namer,
@@ -83,10 +88,7 @@ StaticJavascriptManager::StaticJavascriptManager(
       message_handler_(message_handler),
       serve_js_from_gstatic_(false),
       library_url_prefix_(kDefaultLibraryUrlPrefix) {
-  InitializeFileNameToJsStringMap();
   InitializeJsStrings();
-  InitBlink();
-  InitDeferJs();
 
   ResponseHeaders header;
   // TODO(ksimbili): Define a new constant kShortCacheTtlForMismatchedContentMs
@@ -102,133 +104,132 @@ StaticJavascriptManager::StaticJavascriptManager(
 }
 
 StaticJavascriptManager::~StaticJavascriptManager() {
+  STLDeleteElements(&assets_);
 }
 
-const GoogleString& StaticJavascriptManager::GetBlinkJsUrl(
-    const RewriteOptions* options) const {
-  if (serve_js_from_gstatic_ && !options->Enabled(RewriteOptions::kDebug)) {
-    return blink_javascript_gstatic_url_;
-  }
-  return blink_javascript_handler_url_;
+const GoogleString& StaticJavascriptManager::GetJsUrl(
+    const JsModule& module, const RewriteOptions* options) const {
+  return options->Enabled(RewriteOptions::kDebug) ?
+      assets_[module]->debug_url :
+      assets_[module]->opt_url;
 }
 
-void StaticJavascriptManager::InitBlink() {
-  // TODO(ksimbili): Make blink.js to have hash and serve it through
-  // static_javascript_manager
-  blink_javascript_handler_url_ =
-      StrCat(url_namer_->get_proxy_domain(),
-             library_url_prefix_,
-             kBlinkJsFileName, kJsExtension);
-}
-
-void StaticJavascriptManager::set_gstatic_blink_hash(const GoogleString& hash) {
+void StaticJavascriptManager::set_gstatic_hash(const JsModule& module,
+                                               const GoogleString& hash) {
   if (serve_js_from_gstatic_) {
     CHECK(!hash.empty());
-    blink_javascript_gstatic_url_ =
-        StrCat(kGStaticBase, hash, kBlinkGstaticSuffix);
+    assets_[module]->opt_url =
+        StrCat(kGStaticBase, hash, "-", assets_[module]->file_name,
+               kJsExtension);
   }
-}
-
-const GoogleString& StaticJavascriptManager::GetDeferJsUrl(
-    const RewriteOptions* options) const {
-  if (options->Enabled(RewriteOptions::kDebug)) {
-    return defer_javascript_debug_url_;
-  }
-  return defer_javascript_url_;
-}
-
-void StaticJavascriptManager::InitDeferJs() {
-  defer_javascript_url_ =
-      StrCat(url_namer_->get_proxy_domain(),
-             library_url_prefix_,
-             kDeferJsFileName,
-             ".", file_name_to_js_map_[kDeferJsFileName].second,  // hash
-             kJsExtension);
-
-  defer_javascript_debug_url_ =
-      StrCat(url_namer_->get_proxy_domain(),
-             library_url_prefix_,
-             kDeferJsDebugFileName,
-             ".", file_name_to_js_map_[kDeferJsDebugFileName].second,
-             kJsExtension);
-}
-
-void StaticJavascriptManager::set_gstatic_defer_js_hash(
-    const GoogleString& hash) {
-  if (serve_js_from_gstatic_) {
-    CHECK(!hash.empty());
-    // TODO(ksimbili): Modify the Gstatic Urls to confirm with the url naming
-    // pattern as in non-GStatic case.
-    defer_javascript_url_ =
-        StrCat(kGStaticBase, hash, "-", kDeferJsFileName, kJsExtension);
-  }
-}
-
-void StaticJavascriptManager::InitializeFileNameToJsStringMap() {
-  file_name_to_js_map_[kDeferJsFileName] =
-      std::make_pair(JS_js_defer_opt, hasher_->Hash(JS_js_defer_opt));
-  file_name_to_js_map_[kDeferJsDebugFileName] =
-      std::make_pair(JS_js_defer, hasher_->Hash(JS_js_defer));
 }
 
 void StaticJavascriptManager::InitializeJsStrings() {
-  // Initialize compiled javascript strings.
-  opt_js_vector_.resize(static_cast<int>(kEndOfModules));
-  opt_js_vector_[static_cast<int>(kAddInstrumentationJs)] =
-      JS_add_instrumentation_opt;
-  opt_js_vector_[static_cast<int>(kClientDomainRewriter)] =
+  assets_.resize(kEndOfModules);
+  for (std::vector<Asset*>::iterator it = assets_.begin();
+       it != assets_.end(); ++it) {
+    *it = new Asset;
+  }
+  // Initialize file names.
+  assets_[kAddInstrumentationJs]->file_name = "add_instrumentation";
+  assets_[kBlinkJs]->file_name = "blink";
+  assets_[kClientDomainRewriter]->file_name = "client_domain_rewriter";
+  assets_[kCriticalImagesBeaconJs]->file_name = "critical_images_beacon";
+  assets_[kDeferIframe]->file_name = "defer_iframe";
+  assets_[kDeferJs]->file_name = "js_defer";
+  assets_[kDelayImagesJs]->file_name = "delay_images";
+  assets_[kDelayImagesInlineJs]->file_name = "delay_images_inline";
+  assets_[kLazyloadImagesJs]->file_name = "lazyload_images";
+  assets_[kDetectReflowJs]->file_name = "detect_reflow";
+  assets_[kDeterministicJs]->file_name = "deterministic";
+  assets_[kLocalStorageCacheJs]->file_name = "local_storage_cache";
+
+  // Initialize compiled javascript strings->
+  assets_[kAddInstrumentationJs]->js_optimized = JS_add_instrumentation_opt;
+  // Fetching the blink JS is not currently supported->
+  assets_[kBlinkJs]->js_optimized = "// Unsupported";
+  assets_[kClientDomainRewriter]->js_optimized =
       JS_client_domain_rewriter_opt;
-  opt_js_vector_[static_cast<int>(kCriticalImagesBeaconJs)] =
+  assets_[kCriticalImagesBeaconJs]->js_optimized =
       JS_critical_images_beacon_opt;
-  opt_js_vector_[static_cast<int>(kDeferIframe)] = JS_defer_iframe_opt;
-  opt_js_vector_[static_cast<int>(kDeferJs)] = JS_js_defer_opt;
-  opt_js_vector_[static_cast<int>(kDelayImagesJs)] =
-      JS_delay_images_opt;
-  opt_js_vector_[static_cast<int>(kDelayImagesInlineJs)] =
-      JS_delay_images_inline_opt;
-  opt_js_vector_[static_cast<int>(kLazyloadImagesJs)] =
-      JS_lazyload_images_opt;
-  opt_js_vector_[static_cast<int>(kDetectReflowJs)] =
-      JS_detect_reflow_opt;
-  opt_js_vector_[static_cast<int>(kDeterministicJs)] =
-      JS_deterministic_opt;
-  opt_js_vector_[static_cast<int>(kLocalStorageCacheJs)] =
-      JS_local_storage_cache_opt;
-  // Initialize cleartext javascript strings.
-  debug_js_vector_.resize(static_cast<int>(kEndOfModules));
-  debug_js_vector_[static_cast<int>(kAddInstrumentationJs)] =
-      JS_add_instrumentation;
-  debug_js_vector_[static_cast<int>(kClientDomainRewriter)] =
-      JS_client_domain_rewriter;
-  debug_js_vector_[static_cast<int>(kCriticalImagesBeaconJs)] =
-      JS_critical_images_beacon;
-  debug_js_vector_[static_cast<int>(kDeferIframe)] = JS_defer_iframe;
-  debug_js_vector_[static_cast<int>(kDeferJs)] = JS_js_defer;
-  debug_js_vector_[static_cast<int>(kDelayImagesJs)] =
-      JS_delay_images;
-  debug_js_vector_[static_cast<int>(kDelayImagesInlineJs)] =
-      JS_delay_images_inline;
-  debug_js_vector_[static_cast<int>(kLazyloadImagesJs)] =
-      JS_lazyload_images;
-  debug_js_vector_[static_cast<int>(kDetectReflowJs)] =
-      JS_detect_reflow;
-  debug_js_vector_[static_cast<int>(kDeterministicJs)] =
-      JS_deterministic;
-  debug_js_vector_[static_cast<int>(kLocalStorageCacheJs)] =
-      JS_local_storage_cache;
+  assets_[kDeferIframe]->js_optimized = JS_defer_iframe_opt;
+  assets_[kDeferJs]->js_optimized = JS_js_defer_opt;
+  assets_[kDelayImagesJs]->js_optimized = JS_delay_images_opt;
+  assets_[kDelayImagesInlineJs]->js_optimized = JS_delay_images_inline_opt;
+  assets_[kLazyloadImagesJs]->js_optimized = JS_lazyload_images_opt;
+  assets_[kDetectReflowJs]->js_optimized = JS_detect_reflow_opt;
+  assets_[kDeterministicJs]->js_optimized = JS_deterministic_opt;
+  assets_[kLocalStorageCacheJs]->js_optimized = JS_local_storage_cache_opt;
+
+  // Initialize cleartext javascript strings->
+  assets_[kAddInstrumentationJs]->js_debug = JS_add_instrumentation;
+  // Fetching the blink JS is not currently supported-> Add a comment in as the
+  // unit test expects debug code to include comments->
+  assets_[kBlinkJs]->js_debug = "/* Unsupported */";
+  assets_[kClientDomainRewriter]->js_debug = JS_client_domain_rewriter;
+  assets_[kCriticalImagesBeaconJs]->js_debug = JS_critical_images_beacon;
+  assets_[kDeferIframe]->js_debug = JS_defer_iframe;
+  assets_[kDeferJs]->js_debug = JS_js_defer;
+  assets_[kDelayImagesJs]->js_debug = JS_delay_images;
+  assets_[kDelayImagesInlineJs]->js_debug = JS_delay_images_inline;
+  assets_[kLazyloadImagesJs]->js_debug = JS_lazyload_images;
+  assets_[kDetectReflowJs]->js_debug = JS_detect_reflow;
+  assets_[kDeterministicJs]->js_debug = JS_deterministic;
+  assets_[kLocalStorageCacheJs]->js_debug = JS_local_storage_cache;
+
+  for (std::vector<Asset*>::iterator it = assets_.begin();
+       it != assets_.end(); ++it) {
+    Asset* asset = *it;
+    asset->js_opt_hash = hasher_->Hash(asset->js_optimized);
+    asset->js_debug_hash = hasher_->Hash(asset->js_debug);
+
+    // Setup a map of file name to the corresponding index in assets_ to
+    // allow easier lookup in GetJsSnippet.
+    file_name_to_module_map_[asset->file_name] =
+        static_cast<JsModule>(it - assets_.begin());
+  }
+  InitializeJsUrls();
+}
+
+void StaticJavascriptManager::InitializeJsUrls() {
+  for (std::vector<Asset*>::iterator it = assets_.begin();
+       it != assets_.end(); ++it) {
+    Asset* asset = *it;
+    // Generated urls are in the format "<filename>.<md5>.js".
+    asset->opt_url = StrCat(url_namer_->get_proxy_domain(),
+                            library_url_prefix_,
+                            asset->file_name,
+                            ".", asset->js_opt_hash,
+                            kJsExtension);
+
+    // Generated debug urls are in the format "<fileName>_debug.<md5>.js".
+    asset->debug_url = StrCat(url_namer_->get_proxy_domain(),
+                              library_url_prefix_,
+                              asset->file_name,
+                              "_debug.", asset->js_debug_hash,
+                              kJsExtension);
+  }
+
+  // Blink does not currently use the hash in the URL, so it is special cased
+  // here.
+  GoogleString blink_js_url = StrCat(url_namer_->get_proxy_domain(),
+                                     library_url_prefix_,
+                                     assets_[kBlinkJs]->file_name,
+                                     kJsExtension);
+  assets_[kBlinkJs]->debug_url = blink_js_url;
+  assets_[kBlinkJs]->opt_url = blink_js_url;
 }
 
 const char* StaticJavascriptManager::GetJsSnippet(
-    StaticJavascriptManager::JsModule js_module,
-    const RewriteOptions* options) {
-  CHECK(js_module != kEndOfModules);
-  int module = js_module;
+    const JsModule& module, const RewriteOptions* options) const {
+  CHECK(module != kEndOfModules);
   return options->Enabled(RewriteOptions::kDebug) ?
-      debug_js_vector_[module] : opt_js_vector_[module];
+      assets_[module]->js_debug :
+      assets_[module]->js_optimized;
 }
 
 void StaticJavascriptManager::AddJsToElement(
-    StringPiece js, HtmlElement* script, RewriteDriver* driver) {
+    StringPiece js, HtmlElement* script, RewriteDriver* driver) const {
   DCHECK(script->keyword() == HtmlName::kScript);
   // CDATA tags are required for inlined JS in XHTML pages to prevent
   // interpretation of certain characters (like &). In apache, something
@@ -252,7 +253,7 @@ void StaticJavascriptManager::AddJsToElement(
 
 bool StaticJavascriptManager::GetJsSnippet(StringPiece file_name,
                                            StringPiece* content,
-                                           StringPiece* cache_header) {
+                                           StringPiece* cache_header) const {
   StringPieceVector names;
   SplitStringPieceToVector(file_name, ".", &names, true);
   // Expected file_name format is <name>[_debug].<HASH>.js
@@ -264,15 +265,24 @@ bool StaticJavascriptManager::GetJsSnippet(StringPiece file_name,
     return false;
   }
   GoogleString plain_file_name;
-  names[0].CopyToString(&plain_file_name);;
+  names[0].CopyToString(&plain_file_name);
+  bool is_debug = false;
 
-  FileNameToStringsMap::const_iterator p =
-      file_name_to_js_map_.find(plain_file_name);
-  if (p != file_name_to_js_map_.end()) {
-    const JsSnippetHashPair& value = p->second;
-    *content = value.first;
+  if (StringPiece(plain_file_name).ends_with("_debug")) {
+    is_debug = true;
+    plain_file_name = plain_file_name.substr(0, plain_file_name.length() -
+                                             strlen("_debug"));
+  }
+
+  FileNameToModuleMap::const_iterator p =
+      file_name_to_module_map_.find(plain_file_name);
+  if (p != file_name_to_module_map_.end()) {
+    CHECK_GT(assets_.size(), p->second);
+    Asset* asset = assets_[p->second];
+    *content = is_debug ? asset->js_debug : asset->js_optimized;
     if (cache_header) {
-      if (value.second == names[1]) {  // compare hash
+      StringPiece hash = is_debug ? asset->js_debug_hash : asset->js_opt_hash;
+      if (hash == names[1]) {  // compare hash
         *cache_header = cache_header_with_long_ttl_;
       } else {
         *cache_header = cache_header_with_private_ttl_;

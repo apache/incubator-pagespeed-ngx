@@ -604,8 +604,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 
   GoogleString GetDeferJsCode() {
     return StrCat("<script type=\"text/javascript\" src=\"",
-                  server_context()->static_javascript_manager()->GetDeferJsUrl(
-                      options_),
+                  server_context()->static_javascript_manager()->GetJsUrl(
+                      StaticJavascriptManager::kDeferJs, options_),
                   "\"></script>");
   }
 

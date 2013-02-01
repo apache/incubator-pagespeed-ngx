@@ -155,7 +155,8 @@ class SplitHtmlFilterTest : public RewriteTestBase {
     output_.clear();
     StaticJavascriptManager* js_manager =
         rewrite_driver_->server_context()->static_javascript_manager();
-    blink_js_url_ = js_manager->GetBlinkJsUrl(options_).c_str();
+    blink_js_url_ = js_manager->GetJsUrl(StaticJavascriptManager::kBlinkJs,
+                                         options_).c_str();
   }
 
   // TODO(marq): This looks reusable enough to go into RewriteTestBase. Perhaps

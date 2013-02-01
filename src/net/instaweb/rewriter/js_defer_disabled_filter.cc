@@ -21,9 +21,9 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 
 #include "base/logging.h"
@@ -57,8 +57,9 @@ void JsDeferDisabledFilter::InsertJsDeferCode() {
       rewrite_driver_->NewElement(NULL, HtmlName::kScript);
   rewrite_driver_->AddAttribute(defer_js_url_node, HtmlName::kType,
                                 "text/javascript");
-  rewrite_driver_->AddAttribute(defer_js_url_node, HtmlName::kSrc,
-                                static_js_manager->GetDeferJsUrl(options));
+  rewrite_driver_->AddAttribute(
+      defer_js_url_node, HtmlName::kSrc,
+      static_js_manager->GetJsUrl(StaticJavascriptManager::kDeferJs, options));
   rewrite_driver_->InsertElementAfterCurrent(defer_js_url_node);
 }
 
