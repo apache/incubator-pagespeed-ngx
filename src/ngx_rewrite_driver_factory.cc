@@ -398,7 +398,7 @@ void NgxRewriteDriverFactory::RootInit() {
 void NgxRewriteDriverFactory::ChildInit() {
   is_root_process_ = false;
   ParentOrChildInit();
-  slow_worker_.reset(new SlowWorker(thread_system()));
+  slow_worker_.reset(new SlowWorker("slow work thread", thread_system()));
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
