@@ -22,9 +22,9 @@
 #include <set>
 
 #include "apr_pools.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 
 // TODO(oschaaf): We should reparent ApacheRewriteDriverFactory and
