@@ -18,20 +18,18 @@ vars = {
   # sync means that we will end up linking different versions of code
   # that may be incompatible with each other, which can lead to bugs.
   "chromium_trunk": "http://src.chromium.org/svn/trunk",
-  "chromium_revision_num": "90205",
-  # Next target is: 161115
+  # We don't include @ inside the revision here as is customary since
+  # we want to pass this into a -D flag
+  "chromium_revision_num": "161115",
   "chromium_deps_root": "src/third_party/chromium_deps",
 
-  # We use libwebp from the chromium trunk (to get the .gyp file), but we need a
-  # later revision than is used in the above Chromium checkout.  If the chromium
-  # dependency is brought up to date, this should be dropped, and the
-  # definition of order_profiling and armv7 should be removed from
-  # src/build/common.gypi.
+  # Version of libwebp we use. This should normally match the chromium base,
+  # but sometimes it's easier to update it separately.
   "chromium_webp_revision": "@161115",
 
   "libpagespeed_svn_root": "http://page-speed.googlecode.com/svn",
   "libpagespeed_trunk": "http://page-speed.googlecode.com/svn/lib/trunk",
-  "libpagespeed_revision": "@2419",
+  "libpagespeed_revision": "@2433",
   "libpagespeed_deps_root": "src/third_party/libpagespeed_deps",
 
   "modspdy_src": "http://mod-spdy.googlecode.com/svn/trunk/src",
@@ -79,12 +77,6 @@ vars = {
   # 'gclient' command, without having to edit the gyp & DEPS files.
   #
   # "openssl_src": "http://git.chromium.org/chromium/deps/openssl.git",
-
-  "gyp_src": "http://gyp.googlecode.com/svn/trunk/",
-  # This version of gyp is new enough that it knows to use make for Linux 3.x
-  # and FreeBSD, but old enough that 'type': 'settings' works and
-  # LINKER_SUPPORTS_ICF hasn't been removed yet.
-  "gyp_revision": "@1175",
 }
 
 deps = {
@@ -106,8 +98,7 @@ deps = {
     Var("libpagespeed_trunk") + "/src/build/temp_gyp" +
       Var("libpagespeed_revision"),
 
-  # Re-enable once chromium_revision = 161115
-  # "src/build/ios": From(Var("libpagespeed_deps_root")),
+  "src/build/ios": From(Var("libpagespeed_deps_root")),
   "src/build/internal": From(Var("libpagespeed_deps_root")),
   "src/build/linux": From(Var("libpagespeed_deps_root")),
   "src/build/mac": From(Var("libpagespeed_deps_root")),
@@ -215,10 +206,9 @@ deps = {
      Var("chromium_trunk") + "/src/third_party/libwebp" +
      Var("chromium_webp_revision"),
 
-  # Re-enable once chromium_revision = 161115
-  # "src/tools/clang":From(Var("libpagespeed_deps_root")),
+  "src/tools/clang":From(Var("libpagespeed_deps_root")),
   "src/tools/grit": From(Var("libpagespeed_deps_root")),
-  "src/tools/gyp": Var("gyp_src") + Var("gyp_revision"),
+  "src/tools/gyp": From(Var("chromium_deps_root")),
 
   "src/third_party/modp_b64": From(Var("libpagespeed_deps_root")),
 

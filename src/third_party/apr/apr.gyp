@@ -70,17 +70,6 @@
           'export_dependent_settings': [
             'include',
           ],
-          'sources': [
-            '<(apr_src_root)/passwd/apr_getpass.c',
-            '<(apr_src_root)/strings/apr_strnatcmp.c',
-            '<(apr_src_root)/strings/apr_strtok.c',
-            '<(apr_src_root)/strings/apr_strings.c',
-            '<(apr_src_root)/strings/apr_snprintf.c',
-            '<(apr_src_root)/strings/apr_fnmatch.c',
-            '<(apr_src_root)/strings/apr_cpystrn.c',
-            '<(apr_src_root)/tables/apr_tables.c',
-            '<(apr_src_root)/tables/apr_hash.c',
-          ],
           'conditions': [
             ['OS!="win"', { # TODO(lsong): Add win sources.
               'conditions': [
