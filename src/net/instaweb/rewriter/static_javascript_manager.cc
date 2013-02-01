@@ -277,7 +277,7 @@ bool StaticJavascriptManager::GetJsSnippet(StringPiece file_name,
   FileNameToModuleMap::const_iterator p =
       file_name_to_module_map_.find(plain_file_name);
   if (p != file_name_to_module_map_.end()) {
-    CHECK_GT(assets_.size(), p->second);
+    CHECK_GT(assets_.size(), static_cast<size_t>(p->second));
     Asset* asset = assets_[p->second];
     *content = is_debug ? asset->js_debug : asset->js_optimized;
     if (cache_header) {
