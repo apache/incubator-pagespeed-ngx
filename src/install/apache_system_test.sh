@@ -648,9 +648,10 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     FILTERED="$SITE/styles/A.yellow.css.pagespeed.cf.KM5K8SbHQL.css"
 
     # ModPagespeed unplugged does not serve .pagespeed. resources.
-    http_proxy=$SPROXY check_not $WGET $VHOST_MPS_UNPLUGGED/$FILTERED
+    http_proxy=$SPROXY check_not $WGET -O /dev/null \
+        $VHOST_MPS_UNPLUGGED/$FILTERED
     # ModPagespeed off does serve .pagespeed. resources.
-    http_proxy=$SPROXY check $WGET $VHOST_MPS_OFF/$FILTERED
+    http_proxy=$SPROXY check $WGET -O /dev/null $VHOST_MPS_OFF/$FILTERED
 
     # ModPagespeed unplugged doesn't rewrite HTML, even when asked via query.
     OUT=$(http_proxy=$SPROXY check $WGET -S -O - \
@@ -670,7 +671,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # spelling it out to avoid test regolds when we add image filter IDs.
   http_proxy=$SECONDARY_HOSTNAME fetch_until -save -recursive \
       http://embed_config_html.example.com/embed_config.html \
-      'grep -c \.pagespeed\.[a-z+=0-9]*\.ic\.' 1
+      'grep -c \.pagespeed\.' 3
 
   # with the default rewriters in vhost embed_config_resources.example.com
   # the image will be >200k.  But by enabling resizing & compression 73
@@ -680,9 +681,14 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # image-compression tweaks (we have enough of those elsewhere).
   check_file_size "$OUTDIR/256x192xPuz*.pagespeed.*iq=*.ic.*" -lt 10000
 
-  # The CSS file is rewritten but has no related options set, so it will
-  # not get the embedded options between "pagespeed" and "cf".
-  check_file_size "$OUTDIR/*.bold.css.pagespeed.cf.*.css" -lt 500
+  # The CSS file gets rewritten with embedded options, and will have an
+  # embedded image in it as well.
+  check_file_size "$OUTDIR/*rewrite_css_images.css.pagespeed.*+ii+*+iq=*.cf.*" \
+      -lt 600
+
+  # The JS file is rewritten but has no related options set, so it will
+  # not get the embedded options between "pagespeed" and "jm".
+  check_file_size "$OUTDIR/rewrite_javascript.js.pagespeed.jm.*.js" -lt 500
 
   # One flaw in the above test is that it short-circuits the decoding
   # of the query-params because when Apache responds to the recursive
@@ -698,16 +704,51 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   EMBED_CONFIGURATION_IMAGE+="$EMBED_CONFIGURATION_IMAGE_TAIL"
   EMBED_CONFIGURATION_IMAGE_LENGTH=$( \
     head -10 "$OUTDIR/$EMBED_CONFIGURATION_IMAGE_TAIL" | \
-    grep 'Content-Length' | awk '{print $2}' | tr -d '\r')
+    scrape_content_length)
+
+  # Grab the URL for the CSS file.
+  EMBED_CONFIGURATION_CSS_LEAF=$(ls $OUTDIR | \
+      grep '\.pagespeed\..*+ii+.*+iq=.*\.cf\..*')
+  EMBED_CONFIGURATION_CSS_LENGTH=$(cat $OUTDIR/$EMBED_CONFIGURATION_CSS_LEAF | \
+      scrape_content_length)
+  EMBED_CONFIGURATION_CSS_URL="http://embed_config_resources.example.com/styles"
+  EMBED_CONFIGURATION_CSS_URL+="/$EMBED_CONFIGURATION_CSS_LEAF"
+
+  # Grab the URL for that embedded image; it should *also* have the embedded
+  # configuration options in it, though wget/recursive will not have pulled
+  # it to a file for us (wget does not parse CSS) so we'll have to request it.
+  EMBED_CONFIGURATION_CSS_IMAGE_URL=$(egrep -o \
+    'http://.*iq=[0-9]*\.ic\..*\.jpg' \
+    $OUTDIR/*rewrite_css_images.css.pagespeed.*+ii+*+iq=*.cf.*)
+  # fetch that file and make sure it has the right cache-control
+  CSS_IMAGE_HEADERS=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+      $EMBED_CONFIGURATION_CSS_IMAGE_URL | head -10)
+  check_from "$CSS_IMAGE_HEADERS" fgrep -q "Cache-Control: max-age=31536000"
+  EMBED_CONFIGURATION_CSS_IMAGE_LENGTH=$(echo "$CSS_IMAGE_HEADERS" | \
+    scrape_content_length)
 
   function embed_image_config_post_flush() {
-    # Finish off the url-params-.pagespeed.-resource test with a clear
+    # Finish off the url-params-.pagespeed.-resource tests with a clear
     # cache.  We split the test like this to avoid having multiple
     # places where we flush cache, which requires sleeps since the
     # cache-flush is poll driven.
-    start_test Embed image configuration decoding with clear cache.
+    start_test Embed image/css configuration decoding with clear cache.
+    echo Looking for $EMBED_CONFIGURATION_IMAGE expecting \
+        $EMBED_CONFIGURATION_IMAGE_LENGTH bytes
     http_proxy=$SECONDARY_HOSTNAME fetch_until "$EMBED_CONFIGURATION_IMAGE" \
         "wc -c" $EMBED_CONFIGURATION_IMAGE_LENGTH
+
+    echo Looking for $EMBED_CONFIGURATION_CSS_IMAGE_URL expecting \
+        $EMBED_CONFIGURATION_CSS_IMAGE_LENGTH bytes
+    http_proxy=$SECONDARY_HOSTNAME fetch_until \
+        "$EMBED_CONFIGURATION_CSS_IMAGE_URL" \
+        "wc -c" $EMBED_CONFIGURATION_CSS_IMAGE_LENGTH
+
+    echo Looking for $EMBED_CONFIGURATION_CSS_URL expecting \
+        $EMBED_CONFIGURATION_CSS_LENGTH bytes
+    http_proxy=$SECONDARY_HOSTNAME fetch_until \
+        "$EMBED_CONFIGURATION_CSS_URL" \
+        "wc -c" $EMBED_CONFIGURATION_CSS_LENGTH
   }
   on_cache_flush embed_image_config_post_flush
 fi

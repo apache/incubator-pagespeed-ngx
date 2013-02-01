@@ -127,6 +127,10 @@ class CssFilter : public RewriteFilter {
       CssFilter::Context* rewriter, RewriteContext* parent,
       CssHierarchy* hierarchy);
 
+  virtual const RewriteOptions::Filter* RelatedFilters(int* num_filters) const;
+  virtual const RewriteOptions::OptionEnum* RelatedOptions(
+      int* num_options) const;
+
  protected:
   virtual RewriteContext* MakeRewriteContext();
   virtual const UrlSegmentEncoder* encoder() const;

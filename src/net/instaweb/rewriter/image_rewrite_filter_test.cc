@@ -28,7 +28,6 @@
 #include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -236,7 +235,7 @@ class ImageRewriteTest : public RewriteTestBase {
         rewrite_driver()->user_agent());
 
     // Check that filter application was logged.
-    EXPECT_STREQ("ic", logging_info()->applied_rewriters());
+    EXPECT_STREQ("ic", AppliedRewriterStringFromLog());
   }
 
   // Helper class to collect image srcs.

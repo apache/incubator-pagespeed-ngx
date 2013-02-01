@@ -23,7 +23,6 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -172,7 +171,7 @@ TEST_F(JavascriptFilterTest, DoRewrite) {
             total_bytes_saved_->Get());
   EXPECT_EQ(STATIC_STRLEN(kJsData), total_original_bytes_->Get());
   EXPECT_EQ(1, num_uses_->Get());
-  EXPECT_STREQ("jm", logging_info()->applied_rewriters());
+  EXPECT_STREQ("jm", AppliedRewriterStringFromLog());
 }
 
 TEST_F(JavascriptFilterTest, DoRewriteUnhealthy) {
@@ -180,7 +179,7 @@ TEST_F(JavascriptFilterTest, DoRewriteUnhealthy) {
 
   InitFiltersAndTest(100);
   ValidateNoChanges("do_rewrite", GenerateHtml(kOrigJsName));
-  EXPECT_STREQ("", logging_info()->applied_rewriters());
+  EXPECT_STREQ("", AppliedRewriterStringFromLog());
 }
 
 TEST_F(JavascriptFilterTest, RewriteAlreadyCachedProperly) {

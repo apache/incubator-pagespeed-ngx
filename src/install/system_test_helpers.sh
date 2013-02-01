@@ -458,3 +458,8 @@ function test_resource_ext_corruption() {
 function scrape_stat {
   $WGET_DUMP $STATISTICS_URL | egrep "^$1:? " | awk '{print $2}'
 }
+
+# Scrapes HTTP headers from stdin for Content-Length and returns the value.
+function scrape_content_length {
+  grep 'Content-Length' | awk '{print $2}' | tr -d '\r'
+}

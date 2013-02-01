@@ -163,7 +163,7 @@ class SplitHtmlFilterTest : public RewriteTestBase {
   // it should also know the rewriter-under-test's ID so there's less
   // boilerplate?
   void VerifyAppliedRewriters(GoogleString expected_rewriters) {
-    EXPECT_STREQ(expected_rewriters, logging_info()->applied_rewriters());
+    EXPECT_STREQ(expected_rewriters, AppliedRewriterStringFromLog());
   }
 
   void VerifyJsonSize(int64 expected_size) {

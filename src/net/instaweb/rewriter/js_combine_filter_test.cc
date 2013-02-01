@@ -28,7 +28,6 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
@@ -801,7 +800,7 @@ TEST_F(JsCombineFilterTest, TestCombineStats) {
                   StrCat("<script src=", kJsUrl2, "></script>"),
                   StrCat("<script src=", kJsUrl3, "></script>")));
 
-  EXPECT_STREQ("jc", logging_info()->applied_rewriters());
+  EXPECT_STREQ("jc", AppliedRewriterStringFromLog());
   EXPECT_EQ(2, num_reduced->Get());
 }
 

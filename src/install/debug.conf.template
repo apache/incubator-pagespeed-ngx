@@ -715,7 +715,7 @@ ModPagespeedUsePerVHostStatistics on
 
   ModPagespeedAddOptionsToUrls on
   ModPagespeedJpegRecompressionQuality 73
-  ModPagespeedDisableFilters inline_css,extend_cache
+  ModPagespeedDisableFilters inline_css,extend_cache,inline_javascript
   ModPagespeedDomain embed_config_resources.example.com
 
   ModPagespeedLoadFromFile "http://embed_config_resources.example.com/" \

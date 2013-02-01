@@ -840,7 +840,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPrefetch) {
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkRelSubresource, false, false),
       text);
-  EXPECT_STREQ("cf,ei,jm", logging_info()->applied_rewriters());
+  EXPECT_STREQ("cf,ei,jm", AppliedRewriterStringFromLog());
   VerifyCharset(&headers);
 }
 

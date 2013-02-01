@@ -60,9 +60,9 @@ namespace net_instaweb {
 
 class UrlSegmentEncoder;
 
-namespace {
-
-static const RewriteOptions::Filter kRelatedFilters[] = {
+// Expose kRelatedFilters and kRelatedOptions as class variables for the benefit
+// of static-init-time merging in css_filter.cc.
+const RewriteOptions::Filter ImageRewriteFilter::kRelatedFilters[] = {
   RewriteOptions::kConvertGifToPng,
   RewriteOptions::kConvertJpegToProgressive,
   RewriteOptions::kConvertJpegToWebp,
@@ -78,8 +78,9 @@ static const RewriteOptions::Filter kRelatedFilters[] = {
   RewriteOptions::kStripImageColorProfile,
   RewriteOptions::kStripImageMetaData
 };
+const int ImageRewriteFilter::kRelatedFiltersSize = arraysize(kRelatedFilters);
 
-static const RewriteOptions::OptionEnum kRelatedOptions[] = {
+const RewriteOptions::OptionEnum ImageRewriteFilter::kRelatedOptions[] = {
   RewriteOptions::kImageJpegNumProgressiveScans,
   RewriteOptions::kImageJpegRecompressionQuality,
   RewriteOptions::kImageLimitOptimizedPercent,
@@ -94,8 +95,7 @@ static const RewriteOptions::OptionEnum kRelatedOptions[] = {
   RewriteOptions::kImageWebpRecompressionQuality,
   RewriteOptions::kProgressiveJpegMinBytes
 };
-
-}  // namespace
+const int ImageRewriteFilter::kRelatedOptionsSize = arraysize(kRelatedOptions);
 
 // names for Statistics variables.
 const char kImageRewrites[] = "image_rewrites";
@@ -308,11 +308,11 @@ ImageRewriteFilter::~ImageRewriteFilter() {}
 
 void ImageRewriteFilter::InitStats(Statistics* statistics) {
 #ifndef NDEBUG
-  for (int i = 1; i < static_cast<int>(arraysize(kRelatedFilters)); ++i) {
+  for (int i = 1; i < kRelatedFiltersSize; ++i) {
     CHECK_LT(kRelatedFilters[i - 1], kRelatedFilters[i])
         << "kRelatedFilters not in enum-value order";
   }
-  for (int i = 1; i < static_cast<int>(arraysize(kRelatedOptions)); ++i) {
+  for (int i = 1; i < kRelatedOptionsSize; ++i) {
     CHECK_LT(kRelatedOptions[i - 1], kRelatedOptions[i])
         << "kRelatedOptions not in enum-value order";
   }
@@ -410,13 +410,8 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
 
   if (image_options->convert_jpeg_to_webp &&
       (image_options->webp_quality < 0)) {
-    LOG(ERROR) << "Invalid webp quality: " << image_options->webp_quality
-               << ". Resetting to 100.";
+    // TODO(vchudnov): Determine a better value here than 100.
     image_options->webp_quality = 100;
-  }
-  if (image_options->convert_png_to_jpeg &&
-      (image_options->jpeg_quality < 0)) {
-    LOG(ERROR) << "Invalid jpeg quality: " << image_options->jpeg_quality;
   }
   return image_options;
 }
@@ -1423,13 +1418,13 @@ bool ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(
 
 const RewriteOptions::Filter* ImageRewriteFilter::RelatedFilters(
     int* num_filters) const {
-  *num_filters = arraysize(kRelatedFilters);
+  *num_filters = kRelatedFiltersSize;
   return kRelatedFilters;
 }
 
 const RewriteOptions::OptionEnum* ImageRewriteFilter::RelatedOptions(
     int* num_options) const {
-  *num_options = arraysize(kRelatedOptions);
+  *num_options = kRelatedOptionsSize;
   return kRelatedOptions;
 }
 

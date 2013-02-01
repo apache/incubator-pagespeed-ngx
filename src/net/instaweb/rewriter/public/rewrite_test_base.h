@@ -602,6 +602,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // for this call.
   LoggingInfo* logging_info();
 
+  // Convenience method for retrieving the computed applied rewriters string
+  // from the current request context's log record. Thread-safe.
+  GoogleString AppliedRewriterStringFromLog();
+
   // Sets current_user_agent_
   void SetCurrentUserAgent(const StringPiece& user_agent) {
     current_user_agent_ = user_agent;

@@ -17,7 +17,6 @@
 // Author: pulkitg@google.com (Pulkit Goyal)
 
 #include "net/instaweb/http/public/content_type.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
@@ -212,7 +211,7 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
              "\npagespeed.delayImages.replaceWithHighRes();\n</script>"
              "</body>", GetDeferJs()));
   EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_));
-  EXPECT_TRUE(logging_info()->applied_rewriters().find("di") !=
+  EXPECT_TRUE(AppliedRewriterStringFromLog().find("di") !=
               GoogleString::npos);
 }
 

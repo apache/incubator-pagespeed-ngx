@@ -42,6 +42,7 @@
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/css_url_encoder.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
+#include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -53,6 +54,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -120,6 +122,7 @@ RewriteTestBase::RewriteTestBase(
 
 void RewriteTestBase::Init() {
   DCHECK(statistics_ != NULL);
+  RewriteDriverFactory::Initialize();
   RewriteDriverFactory::InitStats(statistics_.get());
   factory_->SetStatistics(statistics_.get());
   other_factory_->SetStatistics(statistics_.get());
@@ -129,6 +132,7 @@ void RewriteTestBase::Init() {
 }
 
 RewriteTestBase::~RewriteTestBase() {
+  RewriteDriverFactory::Terminate();
 }
 
 // The Setup/Constructor split is designed so that test subclasses can
@@ -152,11 +156,13 @@ void RewriteTestBase::TearDown() {
     factory_->ShutDown();
     rewrite_driver_->Clear();
     delete rewrite_driver_;
+    rewrite_driver_ = NULL;
 
     other_rewrite_driver_->WaitForShutDown();
     other_factory_->ShutDown();
     other_rewrite_driver_->Clear();
     delete other_rewrite_driver_;
+    other_rewrite_driver_ = NULL;
   }
   HtmlParseTestBaseNoAlloc::TearDown();
 }
@@ -611,6 +617,7 @@ void RewriteTestBase::EncodePathAndLeaf(const StringPiece& id,
   }
 
   ResourceContext context;
+  ImageUrlEncoder::SetWebpAndMobileUserAgent(*rewrite_driver(), &context);
   const UrlSegmentEncoder* encoder = FindEncoder(id);
   GoogleString encoded_name;
   encoder->Encode(name_vector, &context, &encoded_name);
@@ -626,10 +633,10 @@ const UrlSegmentEncoder* RewriteTestBase::FindEncoder(
 }
 
 GoogleString RewriteTestBase::Encode(const StringPiece& path,
-                                             const StringPiece& id,
-                                             const StringPiece& hash,
-                                             const StringVector& name_vector,
-                                             const StringPiece& ext) {
+                                     const StringPiece& id,
+                                     const StringPiece& hash,
+                                     const StringVector& name_vector,
+                                     const StringPiece& ext) {
   return EncodeWithBase(kTestDomain, path, id, hash, name_vector, ext);
 }
 
@@ -962,6 +969,13 @@ void RewriteTestBase::AdjustTimeUsWithoutWakingAlarms(int64 time_us) {
 LoggingInfo* RewriteTestBase::logging_info() {
   CHECK(rewrite_driver()->request_context().get() != NULL);
   return rewrite_driver()->request_context()->log_record()->logging_info();
+}
+
+GoogleString RewriteTestBase::AppliedRewriterStringFromLog() {
+  CHECK(rewrite_driver()->request_context().get() != NULL);
+  ScopedMutex lock(rewrite_driver()->request_context()->log_record()->mutex());
+  return rewrite_driver()->request_context()->
+    log_record()->AppliedRewritersString();
 }
 
 // Logging at the INFO level slows down tests, adds to the noise, and

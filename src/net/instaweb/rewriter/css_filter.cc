@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/css_filter.h"
 
+#include <algorithm>                    // for std::merge.
 #include <map>
 #include <utility>                      // for pair
 #include <vector>
@@ -39,16 +40,17 @@
 #include "net/instaweb/rewriter/public/css_url_counter.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
+#include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/in_place_rewrite_context.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/usage_data_reporter.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -76,7 +78,6 @@ namespace net_instaweb {
 
 class CacheExtender;
 class ImageCombineFilter;
-class ImageRewriteFilter;
 class MessageHandler;
 class UrlSegmentEncoder;
 
@@ -119,6 +120,38 @@ class SimpleAbsolutifyTransformer : public CssTagScanner::Transformer {
   const GoogleUrl* base_url_;
   DISALLOW_COPY_AND_ASSIGN(SimpleAbsolutifyTransformer);
 };
+
+// All of the options that can affect image optimization can also affect
+// CSS rewriting, due to embedded images.  We will merge those in during
+// Initialize.  There are additional options that affect CSS files.  Notably,
+// image inlining does not affect the http* URLs of images, but it does affect
+// the URLs of CSS files because images inlined into CSS changes the hash.
+const RewriteOptions::Filter kRelatedFilters[] = {
+  RewriteOptions::kExtendCacheCss,
+  RewriteOptions::kExtendCacheImages,
+  RewriteOptions::kFallbackRewriteCssUrls,
+  RewriteOptions::kFlattenCssImports,
+  RewriteOptions::kInlineImages,
+  RewriteOptions::kLeftTrimUrls,
+  RewriteOptions::kRewriteDomains,
+  RewriteOptions::kSpriteImages,
+};
+const int kRelatedFiltersSize = arraysize(kRelatedFilters);
+
+const RewriteOptions::OptionEnum kRelatedOptions[] = {
+  RewriteOptions::kCssFlattenMaxBytes,
+  RewriteOptions::kCssImageInlineMaxBytes,
+  RewriteOptions::kCssPreserveURLs,
+  RewriteOptions::kImagePreserveURLs,
+  RewriteOptions::kMaxUrlSegmentSize,
+  RewriteOptions::kMaxUrlSize,
+};
+const int kRelatedOptionsSize = arraysize(kRelatedOptions);
+
+const RewriteOptions::Filter* kMergedFilters = NULL;
+int merged_filters_size = 0;
+const RewriteOptions::OptionEnum* kMergedOptions = NULL;
+int merged_options_size = 0;
 
 }  // namespace
 
@@ -715,8 +748,47 @@ void CssFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(CssFilter::kComplexQueries);
 }
 
+namespace {
+
+// Merges arrays a & b and returns the result, allocated with new[].  Checks
+// that the arrays were non-overlapping by verifying the size of the output
+// array.
+template<typename T>
+T* MergeArrays(const T* a, int a_size, const T* b, int b_size, int* out_size) {
+  *out_size = a_size + b_size;
+  T* out = new T[*out_size];
+  T* out_end = std::merge(a, a + a_size, b, b + b_size, out);
+  CHECK_EQ(*out_size, out_end - out);
+  return out;
+}
+
+}  // namespace
+
 void CssFilter::Initialize() {
   InitializeAtExitManager();
+
+  CHECK(kMergedFilters == NULL);
+  CHECK(kMergedOptions == NULL);
+
+#ifndef NDEBUG
+  for (int i = 1; i < kRelatedFiltersSize; ++i) {
+    CHECK_LT(kRelatedFilters[i - 1], kRelatedFilters[i])
+        << "kRelatedFilters not in enum-value order";
+  }
+  for (int i = 1; i < kRelatedOptionsSize; ++i) {
+    CHECK_LT(kRelatedOptions[i - 1], kRelatedOptions[i])
+        << "kRelatedOptions not in enum-value order";
+  }
+#endif
+
+  kMergedFilters = MergeArrays(ImageRewriteFilter::kRelatedFilters,
+                               ImageRewriteFilter::kRelatedFiltersSize,
+                               kRelatedFilters, kRelatedFiltersSize,
+                               &merged_filters_size);
+  kMergedOptions = MergeArrays(ImageRewriteFilter::kRelatedOptions,
+                               ImageRewriteFilter::kRelatedOptionsSize,
+                               kRelatedOptions, kRelatedOptionsSize,
+                               &merged_options_size);
 }
 
 void CssFilter::Terminate() {
@@ -725,6 +797,13 @@ void CssFilter::Terminate() {
     delete at_exit_manager;
     at_exit_manager = NULL;
   }
+
+  CHECK(kMergedFilters != NULL);
+  CHECK(kMergedOptions != NULL);
+  delete [] kMergedFilters;
+  delete [] kMergedOptions;
+  kMergedFilters = NULL;
+  kMergedOptions = NULL;
 }
 
 void CssFilter::InitializeAtExitManager() {
@@ -1002,6 +1081,18 @@ RewriteContext* CssFilter::MakeNestedFlatteningContextInNewSlot(
                                                          rewriter, hierarchy);
   context->AddSlot(slot);
   return context;
+}
+
+const RewriteOptions::Filter* CssFilter::RelatedFilters(
+    int* num_filters) const {
+  *num_filters = merged_filters_size;
+  return kMergedFilters;
+}
+
+const RewriteOptions::OptionEnum* CssFilter::RelatedOptions(
+    int* num_options) const {
+  *num_options = merged_options_size;
+  return kMergedOptions;
 }
 
 }  // namespace net_instaweb

@@ -115,17 +115,10 @@ RewriterInfo* LogRecord::NewRewriterInfo(const char* rewriter_id) {
 
 RewriterInfo* LogRecord::NewRewriterInfoImpl(const char* rewriter_id,
                                              int status) {
-  DCHECK(RewriterInfo::RewriterApplicationStatus_IsValid(status));
   mutex_->DCheckLocked();
   RewriterInfo* rewriter_info = logging_info()->add_rewriter_info();
   rewriter_info->set_id(rewriter_id);
-  rewriter_info->set_status(
-      static_cast<RewriterInfo::RewriterApplicationStatus>(status));
-  // Interim measure to preserve the applied_rewriters string.
-  // TODO(marq): Remove when applied_rewriters is fully deprecated.
-  if (status == RewriterInfo::APPLIED_OK) {
-    logging_info()->set_applied_rewriters(AppliedRewritersString());
-  }
+  SetRewriterLoggingStatus(rewriter_info, status);
   return rewriter_info;
 }
 
@@ -137,11 +130,6 @@ void LogRecord::SetRewriterLoggingStatus(
     "Only RewriterInfo messages with UNKNOWN_STATUS may have their status set.";
   rewriter_info->set_status(
       static_cast<RewriterInfo::RewriterApplicationStatus>(status));
-  // Interim measure to preserve the applied_rewriters string.
-  // TODO(marq): Remove when applied_rewriters is fully deprecated.
-  if (status == RewriterInfo::APPLIED_OK) {
-    logging_info()->set_applied_rewriters(AppliedRewritersString());
-  }
 }
 
 void LogRecord::SetBlinkRequestFlow(int flow) {

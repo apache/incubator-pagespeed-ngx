@@ -21,7 +21,6 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -147,12 +146,12 @@ class CacheExtenderTest : public RewriteTestBase {
                          Encode(kTestDomain, "ce", "0", "c.js", "js")));
         EXPECT_EQ((i + 1) * 3, num_cache_extended_->Get())
             << "Number of cache extended resources is wrong";
-        EXPECT_STREQ("ec,ei,es", logging_info()->applied_rewriters());
+        EXPECT_STREQ("ec,ei,es", AppliedRewriterStringFromLog());
       } else {
         ValidateNoChanges("unhealthy", input_html);
         EXPECT_EQ(0, num_cache_extended_->Get())
             << "Number of cache extended resources is wrong";
-        EXPECT_STREQ("", logging_info()->applied_rewriters());
+        EXPECT_STREQ("", AppliedRewriterStringFromLog());
       }
     }
   }
@@ -270,7 +269,7 @@ TEST_F(CacheExtenderTest, DoNotExtendIntrospectiveJavascript) {
       StringPrintf(kJsTemplate, "introspective.js"));
   EXPECT_EQ(0, num_cache_extended_->Get())
       << "Number of cache extended resources is wrong";
-  EXPECT_STREQ("", logging_info()->applied_rewriters());
+  EXPECT_STREQ("", AppliedRewriterStringFromLog());
 }
 
 TEST_F(CacheExtenderTest, DoExtendIntrospectiveJavascriptByDefault) {
@@ -312,7 +311,7 @@ TEST_F(CacheExtenderTest, DoExtendForImagesOnly) {
                      "c.js"));
     EXPECT_EQ((i + 1), num_cache_extended_->Get())
         << "Number of cache extended resources is wrong";
-    EXPECT_STREQ("ei", logging_info()->applied_rewriters());
+    EXPECT_STREQ("ei", AppliedRewriterStringFromLog());
   }
 }
 
@@ -409,7 +408,7 @@ TEST_F(CacheExtenderTest, ExtendIfRewritten) {
                        Encode("http://cdn.com/", "ce", "0", "c.js", "js")));
   EXPECT_EQ(3, num_cache_extended_->Get())
       << "Number of cache extended resources is wrong";
-  EXPECT_STREQ("ec,ei,es", logging_info()->applied_rewriters());
+  EXPECT_STREQ("ec,ei,es", AppliedRewriterStringFromLog());
 }
 
 TEST_F(CacheExtenderTest, ExtendIfShardedAndRewritten) {

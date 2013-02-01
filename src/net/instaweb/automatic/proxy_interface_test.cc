@@ -1732,7 +1732,7 @@ TEST_F(ProxyInterfaceTest, RewriteHtml) {
             headers.CacheExpirationTimeMs());
   EXPECT_EQ(NULL, headers.Lookup1(HttpAttributes::kEtag));
   EXPECT_EQ(NULL, headers.Lookup1(HttpAttributes::kLastModified));
-  EXPECT_STREQ("cf", logging_info()->applied_rewriters());
+  EXPECT_STREQ("cf", AppliedRewriterStringFromLog());
 
   // Fetch the rewritten resource as well.
   text.clear();
@@ -1768,7 +1768,7 @@ TEST_F(ProxyInterfaceTest, LogChainedResourceRewrites) {
   combined_js_url[combined_js_url.find('X')] = '+';
 
   FetchFromProxy(combined_js_url, true, &text, &headers);
-  EXPECT_STREQ("jc,jm", logging_info()->applied_rewriters());
+  EXPECT_STREQ("jc,jm", AppliedRewriterStringFromLog());
 }
 
 TEST_F(ProxyInterfaceTest, FlushHugeHtml) {
@@ -1887,7 +1887,7 @@ TEST_F(ProxyInterfaceTest, ReconstructResource) {
   CheckBackgroundFetch(headers, false);
   EXPECT_LE(start_time_ms_ + Timer::kYearMs, headers.CacheExpirationTimeMs());
   EXPECT_EQ(kMinimizedCssContent, text);
-  EXPECT_STREQ("cf", logging_info()->applied_rewriters());
+  EXPECT_STREQ("cf", AppliedRewriterStringFromLog());
 }
 
 TEST_F(ProxyInterfaceTest, ReconstructResourceCustomOptions) {

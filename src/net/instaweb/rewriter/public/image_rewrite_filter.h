@@ -85,6 +85,11 @@ class ImageRewriteFilter : public RewriteFilter {
   // RewriteOptions.
   static const char kInlinableImageUrlsPropertyName[];
 
+  static const RewriteOptions::Filter kRelatedFilters[];
+  static const int kRelatedFiltersSize;
+  static const RewriteOptions::OptionEnum kRelatedOptions[];
+  static const int kRelatedOptionsSize;
+
   explicit ImageRewriteFilter(RewriteDriver* driver);
   virtual ~ImageRewriteFilter();
   static void InitStats(Statistics* statistics);
