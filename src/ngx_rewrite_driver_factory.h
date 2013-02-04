@@ -50,7 +50,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
 
   // main_conf will have only options set in the main block.  It may be NULL,
   // and we do not take ownership.
-  explicit NgxRewriteDriverFactory(NgxRewriteOptions* main_conf);
+  explicit NgxRewriteDriverFactory();
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -128,7 +128,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   bool is_root_process() const { return is_root_process_; }
   void RootInit();
   void ChildInit();
-
+  void set_main_conf(NgxRewriteOptions* main_conf){  main_conf_ = main_conf; }
  private:
   SimpleStats simple_stats_;
   Timer* timer_;

@@ -73,12 +73,11 @@ class Writer;
 
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
-NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf)
+NgxRewriteDriverFactory::NgxRewriteDriverFactory()
     : RewriteDriverFactory(new NgxThreadSystem()),
       // TODO(oschaaf): mod_pagespeed ifdefs this:
       shared_mem_runtime_(new PthreadSharedMem()),
       cache_hasher_(20),
-      main_conf_(main_conf),
       threads_started_(false),
       is_root_process_(true) {
   RewriteDriverFactory::InitStats(&simple_stats_);
