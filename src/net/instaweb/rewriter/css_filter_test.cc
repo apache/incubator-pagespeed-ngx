@@ -446,7 +446,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{background-image:url(foo.png)}",  // url
     "a{background-position:-19px 60%}",  // negative position
     "a{margin:0}",  // 0 w/ no units
-    "a{padding:0.01em 0.25em}",  // fractions and em
+    "a{padding:.01em -.25em}",  // fractions, negative and em
     "a{-moz-border-radius-topleft:0}",  // Browser-specific (-moz)
     ".ds{display:-moz-inline-box}",
     "a{background:none}",  // CSS Parser used to expand this.
@@ -468,7 +468,7 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "::-moz-focus-inner{border:0}",
     "input::-webkit-input-placeholder{color:#ababab}"
     // http://code.google.com/p/modpagespeed/issues/detail?id=51
-    "a{box-shadow:-1px -2px 2px rgba(0,0,0,0.15)}",  // CSS3 rgba
+    "a{box-shadow:-1px -2px 2px rgba(0,0,0,.15)}",  // CSS3 rgba
     // http://code.google.com/p/modpagespeed/issues/detail?id=66
     "a{-moz-transform:rotate(7deg)}",
     // Microsoft syntax values.
@@ -637,9 +637,6 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
 TEST_F(CssFilterTest, ToOptimize) {
   const char* examples[][2] = {
     // Noticed from YUI minification.
-    { "td { line-height: 0.8em; }",
-      // Could be: "td{line-height:.8em}"
-      "td{line-height:0.8em}", },
     { ".gb1, .gb3 {}",
       // Could be: ""
       ".gb1,.gb3{}", },
@@ -704,9 +701,9 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "}\n",
 
       // TODO(sligocki): Do we care about color:WindowText?
-      //".suggestions-result{color:#000;color:WindowText;padding:0.01em 0.25em}"
+      // ".suggestions-result{color:#000;color:WindowText;padding:.01em .25em}"
 
-      ".suggestions-result{color:#000;color:#000;padding:0.01em 0.25em}"},
+      ".suggestions-result{color:#000;color:#000;padding:.01em .25em}"},
 
     { ".ui-corner-tl { -moz-border-radius-topleft: 0; -webkit-border-top-left"
       "-radius: 0; }\n",
@@ -754,7 +751,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 
       ".shift{-moz-transform:rotate(7deg);-webkit-transform:rotate(7deg);"
       "-moz-transform:skew(-25deg);-webkit-transform:skew(-25deg);"
-      "-moz-transform:scale(0.5);-webkit-transform:scale(0.5);"
+      "-moz-transform:scale(.5);-webkit-transform:scale(.5);"
       "-moz-transform:translate(3em,0);-webkit-transform:translate(3em,0)}" },
 
     // http://code.google.com/p/modpagespeed/issues/detail?id=5
@@ -811,7 +808,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       ".foo { color: rgba(1, 2, 3, 0.4); }\n",
 
       "body{background-image:-webkit-gradient(linear,50% 0%,50% 100%,"
-      "from(#e8edf0),to(#fcfcfd));color:red}.foo{color:rgba(1,2,3,0.4)}" },
+      "from(#e8edf0),to(#fcfcfd));color:red}.foo{color:rgba(1,2,3,.4)}" },
 
     // Counters
     // http://www.w3schools.com/CSS/tryit.asp?filename=trycss_gen_counter-reset
@@ -906,7 +903,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "opacity:1\\0/;top:-4px\\0/;left:-6px\\0/;right:5px\\0/;bottom:4px\\0/}",
 
       ".gbxms{background-color:#ccc;display:block;position:absolute;"
-      "z-index:1;top:-1px;left:-2px;right:-2px;bottom:-2px;opacity:0.4;"
+      "z-index:1;top:-1px;left:-2px;right:-2px;bottom:-2px;opacity:.4;"
       "-moz-border-radius:3px;"
       "filter:progid:DXImageTransform.Microsoft.Blur(pixelradius=5);"
       "*opacity:1;*top:-2px;*left:-5px;*right:5px;*bottom:4px;"
@@ -926,7 +923,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       ".cnn_html_slideshow_controls>.cnn_html_slideshow_pager_container>"
       ".cnn_html_slideshow_pager>li{"
       "font-size:16px;-webkit-transition-property: color, background-color;"
-      "-webkit-transition-duration:0.5s}" },
+      "-webkit-transition-duration:.5s}" },
 
     { "a.login,a.home{position:absolute;right:15px;top:15px;display:block;"
       "float:right;height:29px;line-height:27px;font-size:15px;"
@@ -940,11 +937,14 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "box-shadow:0 1px 0 rgba(255,255,255,0.15),0 1px 0 "
       "rgba(255,255,255,0.15) inset}",
 
+      // Note: We do not strip leading 0s from 0.15s below because those
+      // sections are passed through verbatim rather than being parsed as
+      // decimal numbers.
       "a.login,a.home{position:absolute;right:15px;top:15px;display:block;"
       "float:right;height:29px;line-height:27px;font-size:15px;"
-      "font-weight:bold;color:rgba(255,255,255,0.7)!important;color:#fff;"
-      "text-shadow:0 -1px 0 rgba(0,0,0,0.2);background:#607890;padding:0 12px;"
-      "opacity:0.9;text-decoration:none;border:1px solid #2e4459;"
+      "font-weight:bold;color:rgba(255,255,255,.7)!important;color:#fff;"
+      "text-shadow:0 -1px 0 rgba(0,0,0,.2);background:#607890;padding:0 12px;"
+      "opacity:.9;text-decoration:none;border:1px solid #2e4459;"
       "-moz-border-radius:6px;-webkit-border-radius:6px;border-radius:6px;"
       "-moz-box-shadow:0 1px 0 rgba(255,255,255,0.15),0 1px 0"
       " rgba(255,255,255,0.15) inset;-webkit-box-shadow:0 1px 0 "
@@ -1233,6 +1233,11 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       // unquoted url().
       "#ac{background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgA"
       "AAG4AAAAfCAA\\ AAAAjTqdDAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZS) no-repeat}" },
+
+    // Noticed from YUI minification.
+    // https://code.google.com/p/modpagespeed/issues/detail?id=614
+    { "td { line-height: 0.8em; margin: -0.9in; }",
+      "td{line-height:.8em;margin:-.9in}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

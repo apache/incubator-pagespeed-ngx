@@ -422,16 +422,26 @@ void CssMinify::Minify(const Css::Declaration& declaration) {
 void CssMinify::Minify(const Css::Value& value) {
   switch (value.GetLexicalUnitType()) {
     case Css::Value::NUMBER: {
+      // TODO(sligocki): Minify number
+      // TODO(sligocki): Check that exponential notation is appropriate.
+      // TODO(sligocki): Distinguish integers from float and print differently.
+      // We use .16 to get most precision without getting rounding artifacts.
+      GoogleString float_string = StringPrintf("%.16g", value.GetFloatValue());
+      if (StringPiece(float_string).starts_with("0.")) {
+        // Optimization: Strip "0.25" -> ".25".
+        float_string.erase(0, 1);
+      } else if (StringPiece(float_string).starts_with("-0.")) {
+        // Optimization: Strip "-0.25" -> "-.25".
+        float_string.erase(1, 1);
+      }
+      Write(float_string);
+
       GoogleString unit = value.GetDimensionUnitText();
       // Unit can be either "%" or an identifier.
       if (unit != "%") {
         unit = Css::EscapeIdentifier(unit);
       }
-      // TODO(sligocki): Minify number
-      // TODO(sligocki): Check that exponential notation is appropriate.
-      // TODO(sligocki): Distinguish integers from float and print differently.
-      // We use .16 to get most precision without getting rounding artifacts.
-      Write(StringPrintf("%.16g%s", value.GetFloatValue(), unit.c_str()));
+      Write(unit);
       break;
     }
     case Css::Value::URI:
