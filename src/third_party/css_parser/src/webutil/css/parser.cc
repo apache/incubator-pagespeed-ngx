@@ -586,7 +586,7 @@ HtmlColor Parser::ParseColor() {
     HtmlColor val("", 0);
     if (name_valid) {
       val.SetValueFromName(ident.c_str());
-      if (!val.IsDefined())
+      if (!val.IsDefined() && !preservation_mode_)
         Util::GetSystemColor(ident, &val);
     }
     return val;

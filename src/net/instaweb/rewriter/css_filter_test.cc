@@ -489,6 +489,10 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     "a{color:red\\9 }",
     "a{background:none\\9 }",
 
+    // Don't replace system color names with defaults.
+    "a{color:WindowText}",
+    "a{color:FooBar}",
+
     // Recovered parse errors:
     // Slashes in value list.
     ".border8{border-radius: 36px / 12px }",
@@ -700,10 +704,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "  padding:0.01em 0.25em;\n"
       "}\n",
 
-      // TODO(sligocki): Do we care about color:WindowText?
-      // ".suggestions-result{color:#000;color:WindowText;padding:.01em .25em}"
-
-      ".suggestions-result{color:#000;color:#000;padding:.01em .25em}"},
+      ".suggestions-result{color:#000;color:WindowText;padding:.01em .25em}" },
 
     { ".ui-corner-tl { -moz-border-radius-topleft: 0; -webkit-border-top-left"
       "-radius: 0; }\n",
