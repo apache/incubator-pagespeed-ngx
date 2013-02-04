@@ -78,6 +78,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
       // TODO(oschaaf): mod_pagespeed ifdefs this:
       shared_mem_runtime_(new PthreadSharedMem()),
       cache_hasher_(20),
+      main_conf_(NULL),
       threads_started_(false),
       is_root_process_(true) {
   RewriteDriverFactory::InitStats(&simple_stats_);
