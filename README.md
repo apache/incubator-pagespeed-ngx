@@ -58,8 +58,15 @@ Download and build nginx:
     $ ./configure --add-module=$HOME/ngx_pagespeed
     $ make install
 
+
+If `make` fails with `unknown type name ‘off64_t’`,
+add `--with-cc-opt='-DLINUX=2 -D_REENTRANT -D_LARGEFILE64_SOURCE -march=i686 -pthread'`
+to `./configure` and try to `make` again.
+
 If `configure` fails with `checking for psol ... not found` then open
-`objs/autoconf.err` and search for `psol`.  If it's not clear what's wrong from
+`objs/autoconf.err` and search for `psol`.
+
+If it's not clear what's wrong from
 the error message, then send it to the [mailing
 list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss) and we'll
 have a look at it.
