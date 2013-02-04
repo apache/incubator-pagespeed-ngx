@@ -821,9 +821,7 @@ bool ProxyFetch::HandleWrite(const StringPiece& str,
 
     {
       ScopedMutex lock(mutex_.get());
-      for (int c = 0, n = chunks.size(); c < n; ++c) {
-        text_queue_.push_back(chunks[c]);
-      }
+      text_queue_.insert(text_queue_.end(), chunks.begin(), chunks.end());
       ScheduleQueueExecutionIfNeeded();
     }
   } else {
