@@ -462,7 +462,6 @@ char* ps_configure(ngx_conf_t* cf,
                    net_instaweb::MessageHandler* handler,
                    PsConfigure::OptionLevel option_level) {
   if (*options == NULL) {
-    net_instaweb::NgxRewriteOptions::Initialize();
     *options = new net_instaweb::NgxRewriteOptions();
   }
   // args[0] is always "pagespeed"; ignore it.
@@ -521,15 +520,12 @@ bool factory_deleted = false;
 
 void ps_cleanup_srv_conf(void* data) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(data);
-  if (cfg_s->server_context == NULL) {
-    return;
-  }
   // destroy the factory on the first call, causing all worker threads
   // to be shut down when we destroy any proxy_fetch_factories. This
   // will prevent any queued callbacks to destroyed proxy fetch factories
   // from being executed
 
-  if (!factory_deleted) {
+  if (!factory_deleted && cfg_s->server_context != NULL) {
     delete cfg_s->server_context->factory();
     factory_deleted = true;
   }
@@ -578,7 +574,10 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   ps_main_conf_t* cfg_m = ps_create_conf<ps_main_conf_t>(cf);
   if (cfg_m == NULL) {
     return NGX_CONF_ERROR;
-  } 
+  }
+  net_instaweb::NgxRewriteOptions::Initialize();
+  net_instaweb::NgxRewriteDriverFactory::Initialize();
+  cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
 }
@@ -648,22 +647,7 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
-
-  // We initialize the driver factory here and not in an init_main_conf function
-  // because if there are no server blocks with pagespeed configuration
-  // directives then we don't want it initialized.
-  if (cfg_m->driver_factory == NULL) {
-    // TODO(oschaaf): this ignores sigpipe messages from memcached.
-    // however, it would be better to not have those signals generated
-    // in the first place, as suppressing them this way may interfere
-    // with other modules that actually are interested in these signals
-    ps_ignore_sigpipe();
-    net_instaweb::NgxRewriteDriverFactory::Initialize();
-
-    cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
-        parent_cfg_s->options);
-  }
-
+  cfg_m->driver_factory->set_main_conf(parent_cfg_s->options);
   cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext();
   // The server context sets some options when we call global_options(). So
   // let it do that, then merge in options we got from the config file.
@@ -1910,8 +1894,31 @@ ngx_http_module_t ps_module = {
 ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
-  if (cfg_m->driver_factory != NULL) {
+  ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
+  ngx_http_core_srv_conf_t** cscfp = static_cast<ngx_http_core_srv_conf_t**>(
+      cmcf->servers.elts);
+  ngx_uint_t s;
+
+  bool have_server_context = false;
+  // Iterate over all configured server{} blocks, and find out if we have
+  // an enabled ServerContext.
+  for (s = 0; s < cmcf->servers.nelts && !have_server_context; s++) {
+    ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
+        cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
+    have_server_context = cfg_s->server_context != NULL;
+  }
+
+  if (have_server_context) {
+    // TODO(oschaaf): this ignores sigpipe messages from memcached.
+    // however, it would be better to not have those signals generated
+    // in the first place, as suppressing them this way may interfere
+    // with other modules that actually are interested in these signals
+    ps_ignore_sigpipe();
     cfg_m->driver_factory->RootInit();
+  } else {
+    delete cfg_m->driver_factory;
+    cfg_m->driver_factory = NULL;
   }
   return NGX_OK;
 }
