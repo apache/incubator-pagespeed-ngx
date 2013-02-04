@@ -490,11 +490,6 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   if (cfg_m == NULL) {
     return NGX_CONF_ERROR;
   }
-  // TODO(oschaaf): this ignores sigpipe messages from memcached.
-  // however, it would be better to not have those signals generated
-  // in the first place, as suppressing them this way may interfere
-  // with other modules that actually are interested in these signals
-  ps_ignore_sigpipe();
   net_instaweb::NgxRewriteOptions::Initialize();
   net_instaweb::NgxRewriteDriverFactory::Initialize();
   cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
@@ -1613,8 +1608,8 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   ngx_uint_t s;
 
   bool have_server_context = false;
-  // Iterate over all configured server{} blocks, and see if we are
-  // enabled anywhere
+  // Iterate over all configured server{} blocks, and find out if we have
+  // an enabled ServerContext.
   for (s = 0; s < cmcf->servers.nelts && !have_server_context; s++) {
     ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
         cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
@@ -1622,9 +1617,13 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   }
 
   if (have_server_context) {
+    // TODO(oschaaf): this ignores sigpipe messages from memcached.
+    // however, it would be better to not have those signals generated
+    // in the first place, as suppressing them this way may interfere
+    // with other modules that actually are interested in these signals
+    ps_ignore_sigpipe();
     cfg_m->driver_factory->RootInit();
   } else {
-    fprintf(stderr, "ngx_pagespeed: detaching, not enabled\n");
     delete cfg_m->driver_factory;
     cfg_m->driver_factory = NULL;
   }

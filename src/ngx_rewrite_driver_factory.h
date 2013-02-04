@@ -128,7 +128,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   bool is_root_process() const { return is_root_process_; }
   void RootInit();
   void ChildInit();
-  void set_main_conf(NgxRewriteOptions* main_conf){  main_conf_ = main_conf; }
+  void set_main_conf(NgxRewriteOptions* main_conf) {  main_conf_ = main_conf; }
+
  private:
   SimpleStats simple_stats_;
   Timer* timer_;
