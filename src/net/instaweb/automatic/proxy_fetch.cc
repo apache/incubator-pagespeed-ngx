@@ -684,6 +684,13 @@ void ProxyFetch::DoFetch() {
             options->reject_blacklisted_status_code());
         Done(true);
         return;
+      } else if (cross_domain_ && !is_allowed) {
+        // If we find a cross domain request that is blacklisted, send a 302
+        // redirect to the decoded url instead of doing a passthrough.
+        response_headers()->Add(HttpAttributes::kLocation, url_);
+        response_headers()->SetStatusAndReason(HttpStatus::kFound);
+        Done(false);
+        return;
       }
       // Else we should do a passthrough. In that case, we still do a normal
       // origin fetch, but we will never rewrite anything, since

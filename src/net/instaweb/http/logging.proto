@@ -131,23 +131,63 @@ message PropertyPageInfo {
   repeated PropertyCohortInfo cohort_info = 1;
 }
 
+// Information related to flush subresources filter.
+// Next id for FlushEarlyFlowInfo: 2
+message FlushEarlyFlowInfo {
+  // An estimate of the time available at the client to download resources
+  // before it starts receiving html content.
+  optional int64 available_time_ms = 1;
+}
+
+// Information related to each resource url considered by the flush subresources
+// filter.
+// Next id for FlushEarlyResourceInfo: 5
+message FlushEarlyResourceInfo {
+  enum ResourceType {
+    UNKNOWN_TYPE = 0;
+    PAGESPEED = 1;
+    NON_PAGESPEED = 2;
+    PRIVATE_CACHEABLE = 3;
+    DEFERJS_SCRIPT = 4;
+  }
+
+  enum ContentType {
+    UNKNOWN_CONTENT_TYPE = 0;
+    IMAGE = 1;
+    JS = 2;
+    CSS = 3;
+  }
+
+  // Content type of the resource.
+  optional ContentType content_type = 1;
+  // Type of the resource based on url and its cache ttl.
+  optional ResourceType resource_type = 2;
+  // Is this resource affected by available bandwidth?
+  optional bool is_bandwidth_affected = 3;
+  // Is the resource in HEAD or BODY?
+  optional bool in_head = 4;
+}
+
 // This proto stores information describing each rewriter's activity in a
 // request.
-// Next id for RewriterInfo: 3
+// Next id for RewriterInfo: 4
 message RewriterInfo {
   enum RewriterApplicationStatus {
     UNKNOWN_STATUS = 0;
     APPLIED_OK = 1;
+    NOT_APPLIED = 2;
   }
 
   // The rewriter's id.
   optional string id = 1;
   // Status of this rewriter application.
   optional RewriterApplicationStatus status = 2;
+  // Flush subresources specific information.
+  optional FlushEarlyResourceInfo flush_early_resource_info = 3;
 }
 
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 14
+// Next id for LoggingInfo: 15
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -176,4 +216,6 @@ message LoggingInfo {
   optional int64 options_signature_hash = 12;
   // Whether request is disabled like ModPagespeed=off.
   optional bool is_request_disabled = 13 [ default = false ];
+  // Information about flush subresources filter.
+  optional FlushEarlyFlowInfo flush_early_flow_info = 14;
 }

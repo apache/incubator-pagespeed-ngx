@@ -2354,6 +2354,21 @@ TEST_F(ProxyInterfaceTest, CrossDomainHeaders) {
   EXPECT_STREQ(NULL, out_headers.Lookup1(HttpAttributes::kSetCookie));
 }
 
+TEST_F(ProxyInterfaceTest, CrossDomainRedirectIfBlacklisted) {
+  ProxyUrlNamer url_namer;
+  server_context()->set_url_namer(&url_namer);
+  ResponseHeaders out_headers;
+  GoogleString out_text;
+  FetchFromProxy(
+      StrCat("http://", ProxyUrlNamer::kProxyHost,
+             "/test.com/test1.com/blacklist.css"),
+      false, &out_text, &out_headers);
+  EXPECT_STREQ("", out_text);
+  EXPECT_EQ(HttpStatus::kFound, out_headers.status_code());
+  EXPECT_STREQ("http://test1.com/blacklist.css",
+               out_headers.Lookup1(HttpAttributes::kLocation));
+}
+
 TEST_F(ProxyInterfaceTest, CrossDomainAuthorization) {
   // If we're serving content from evil.com via kProxyHostUrl, we need to make
   // sure we don't propagate through any (non-proxy) authorization headers, as
