@@ -32,10 +32,11 @@ extern "C" {
 }
 
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/system/public/system_rewrite_options.h"
 
 namespace net_instaweb {
 
-class NgxRewriteOptions : public RewriteOptions {
+class NgxRewriteOptions : public SystemRewriteOptions {
  public:
   // See rewrite_options::Initialize and ::Terminate
   static void Initialize();
@@ -66,76 +67,7 @@ class NgxRewriteOptions : public RewriteOptions {
   static const NgxRewriteOptions* DynamicCast(const RewriteOptions* instance);
   static NgxRewriteOptions* DynamicCast(RewriteOptions* instance);
 
-  // Name of the actual type of this instance as a poor man's RTTI.
-  virtual const char* class_name() const;
-
-  // TODO(jefftk): All these caching-related getters and setters could move to
-  // an OriginRewriteOptions.
-  const GoogleString& file_cache_path() const {
-    return file_cache_path_.value();
-  }
-  void set_file_cache_path(GoogleString x) {
-    set_option(x, &file_cache_path_);
-  }
-  int64 file_cache_clean_interval_ms() const {
-    return file_cache_clean_interval_ms_.value();
-  }
-  void set_file_cache_clean_interval_ms(int64 x) {
-    set_option(x, &file_cache_clean_interval_ms_);
-  }
-  int64 file_cache_clean_size_kb() const {
-    return file_cache_clean_size_kb_.value();
-  }
-  void set_file_cache_clean_size_kb(int64 x) {
-    set_option(x, &file_cache_clean_size_kb_);
-  }
-  int64 file_cache_clean_inode_limit() const {
-    return file_cache_clean_inode_limit_.value();
-  }
-  void set_file_cache_clean_inode_limit(int64 x) {
-    set_option(x, &file_cache_clean_inode_limit_);
-  }
-  int64 lru_cache_byte_limit() const {
-    return lru_cache_byte_limit_.value();
-  }
-  void set_lru_cache_byte_limit(int64 x) {
-    set_option(x, &lru_cache_byte_limit_);
-  }
-  int64 lru_cache_kb_per_process() const {
-    return lru_cache_kb_per_process_.value();
-  }
-  void set_lru_cache_kb_per_process(int64 x) {
-    set_option(x, &lru_cache_kb_per_process_);
-  }
-  bool use_shared_mem_locking() const {
-    return use_shared_mem_locking_.value();
-  }
-  void set_use_shared_mem_locking(bool x) {
-    set_option(x, &use_shared_mem_locking_);
-  }
-  const GoogleString& memcached_servers() const {
-    return memcached_servers_.value();
-  }
-  void set_memcached_servers(GoogleString x) {
-    set_option(x, &memcached_servers_);
-  }
-  int memcached_threads() const {
-    return memcached_threads_.value();
-  }
-  void set_memcached_threads(int x) {
-    set_option(x, &memcached_threads_);
-  }
-  const GoogleString& fetcher_proxy() const {
-    return fetcher_proxy_.value();
-  }
-  void set_fetcher_proxy(GoogleString x) {
-    set_option(x, &fetcher_proxy_);
-  }
-
  private:
-  // Used by class_name() and DynamicCast() to provide error checking.
-  static const char kClassName[];
-
   // Helper methods for ParseAndSetOptions().  Each can:
   //  - return kOptionNameUnknown and not set msg:
   //    - directive not handled; continue on with other possible
@@ -187,18 +119,6 @@ class NgxRewriteOptions : public RewriteOptions {
   bool IsDirective(StringPiece config_directive, StringPiece compare_directive);
 
   // TODO(jefftk): support fetch proxy in server and location blocks.
-  Option<GoogleString> fetcher_proxy_;
-  Option<GoogleString> file_cache_path_;
-  Option<int64> file_cache_clean_inode_limit_;
-  Option<int64> file_cache_clean_interval_ms_;
-  Option<int64> file_cache_clean_size_kb_;
-  Option<int64> lru_cache_byte_limit_;
-  Option<int64> lru_cache_kb_per_process_;
-  Option<bool> use_shared_mem_locking_;
-  Option<int> memcached_threads_;
-  // comma-separated list of host[:port].  See AprMemCache::AprMemCache
-  // for code that parses it.
-  Option<GoogleString> memcached_servers_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteOptions);
 };

@@ -32,8 +32,6 @@ extern "C" {
 
 namespace net_instaweb {
 
-const char NgxRewriteOptions::kClassName[] = "NgxRewriteOptions";
-
 RewriteOptions::Properties* NgxRewriteOptions::ngx_properties_ = NULL;
 
 NgxRewriteOptions::NgxRewriteOptions() {
@@ -47,33 +45,7 @@ void NgxRewriteOptions::Init() {
 }
 
 void NgxRewriteOptions::AddProperties() {
-  // TODO(jefftk): All these caching-related properties could move to an
-  // OriginRewriteOptions.
-  add_ngx_option("", &NgxRewriteOptions::file_cache_path_, "nfcp",
-                 RewriteOptions::kFileCachePath);
-  add_ngx_option(Timer::kHourMs,
-                 &NgxRewriteOptions::file_cache_clean_interval_ms_,
-                 "nfcci", RewriteOptions::kFileCacheCleanIntervalMs);
-  add_ngx_option(100 * 1024,  // 100MB
-                 &NgxRewriteOptions::file_cache_clean_size_kb_, "nfc",
-                 RewriteOptions::kFileCacheCleanSizeKb);
-  add_ngx_option(500000,
-                 &NgxRewriteOptions::file_cache_clean_inode_limit_, "nfcl",
-                 RewriteOptions::kFileCacheCleanInodeLimit);
-  add_ngx_option(16384,  // 16MB
-                 &NgxRewriteOptions::lru_cache_byte_limit_, "nlcb",
-                 RewriteOptions::kLruCacheByteLimit);
-  add_ngx_option(1024,  // 1MB
-                 &NgxRewriteOptions::lru_cache_kb_per_process_, "nlcp",
-                 RewriteOptions::kLruCacheKbPerProcess);
-  add_ngx_option("", &NgxRewriteOptions::memcached_servers_, "ams",
-                 RewriteOptions::kMemcachedServers);
-  add_ngx_option(1, &NgxRewriteOptions::memcached_threads_, "amt",
-                 RewriteOptions::kMemcachedThreads);
-  add_ngx_option(false, &NgxRewriteOptions::use_shared_mem_locking_, "ausml",
-                 RewriteOptions::kUseSharedMemLocking);
-  add_ngx_option("", &NgxRewriteOptions::fetcher_proxy_, "afp",
-                 RewriteOptions::kFetcherProxy);
+  // Nothing ngx-specific for now.
 
   MergeSubclassProperties(ngx_properties_);
   NgxRewriteOptions config;
@@ -89,14 +61,14 @@ void NgxRewriteOptions::InitializeSignaturesAndDefaults() {
 
 void NgxRewriteOptions::Initialize() {
   if (Properties::Initialize(&ngx_properties_)) {
-    RewriteOptions::Initialize();
+    SystemRewriteOptions::Initialize();
     AddProperties();
   }
 }
 
 void NgxRewriteOptions::Terminate() {
   if (Properties::Terminate(&ngx_properties_)) {
-    RewriteOptions::Terminate();
+    SystemRewriteOptions::Terminate();
   }
 }
 
@@ -335,21 +307,11 @@ NgxRewriteOptions* NgxRewriteOptions::Clone() const {
 
 const NgxRewriteOptions* NgxRewriteOptions::DynamicCast(
     const RewriteOptions* instance) {
-  return (instance == NULL ||
-          instance->class_name() != NgxRewriteOptions::kClassName
-          ? NULL
-          : static_cast<const NgxRewriteOptions*>(instance));
+  return dynamic_cast<const NgxRewriteOptions*>(instance);
 }
 
 NgxRewriteOptions* NgxRewriteOptions::DynamicCast(RewriteOptions* instance) {
-  return (instance == NULL ||
-          instance->class_name() != NgxRewriteOptions::kClassName
-          ? NULL
-          : static_cast<NgxRewriteOptions*>(instance));
-}
-
-const char* NgxRewriteOptions::class_name() const {
-  return NgxRewriteOptions::kClassName;
+  return dynamic_cast<NgxRewriteOptions*>(instance);
 }
 
 }  // namespace net_instaweb

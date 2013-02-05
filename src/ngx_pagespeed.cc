@@ -1518,7 +1518,10 @@ ps_beacon_handler(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   CHECK(cfg_s != NULL);
 
-  cfg_s->server_context->HandleBeacon(str_to_string_piece(r->unparsed_uri));
+  cfg_s->server_context->HandleBeacon(
+      str_to_string_piece(r->unparsed_uri),
+      net_instaweb::RequestContextPtr(new net_instaweb::RequestContext(
+          cfg_s->server_context->thread_system()->NewMutex())));
 
   return NGX_HTTP_NO_CONTENT;
 }
