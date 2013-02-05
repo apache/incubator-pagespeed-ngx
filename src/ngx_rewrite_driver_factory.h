@@ -19,6 +19,11 @@
 #ifndef NGX_REWRITE_DRIVER_FACTORY_H_
 #define NGX_REWRITE_DRIVER_FACTORY_H_
 
+extern "C" {
+  #include <ngx_core.h>
+  #include <ngx_log.h>
+}
+
 #include <set>
 
 #include "apr_pools.h"
@@ -39,7 +44,9 @@ class AsyncCache;
 class CacheInterface;
 class NgxServerContext;
 class NgxCache;
+class NgxMessageHandler;
 class NgxRewriteOptions;
+class SharedCircularBuffer;
 class SlowWorker;
 class StaticJavaScriptManager;
 
@@ -107,7 +114,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   void StartThreads();
   // This helper method contains init procedures invoked by both RootInit()
   // and ChildInit()
-  void ParentOrChildInit();
+  void ParentOrChildInit(ngx_log_t* log);
   // For shared memory resources the general setup we follow is to have the
   // first running process (aka the root) create the necessary segments and
   // fill in their shared data structures, while processes created to actually
@@ -126,8 +133,10 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // syntax check the config file. That basically looks like a complete
   // normal startup and shutdown to the code.
   bool is_root_process() const { return is_root_process_; }
-  void RootInit();
-  void ChildInit();
+  void RootInit(ngx_log_t* log);
+  void ChildInit(ngx_log_t* log);
+  void SharedCircularBufferInit(bool is_root);
+  NgxMessageHandler* ngx_message_handler() { return ngx_message_handler_; }
 
  private:
   SimpleStats simple_stats_;
@@ -163,6 +172,11 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   std::vector<AsyncCache*> async_caches_;
   bool threads_started_;
   bool is_root_process_;
+  NgxMessageHandler* ngx_message_handler_;
+  NgxMessageHandler* ngx_html_parse_message_handler_;
+  bool install_crash_handler_;
+  int message_buffer_size_;
+  scoped_ptr<SharedCircularBuffer> shared_circular_buffer_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };

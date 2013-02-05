@@ -436,6 +436,7 @@ bool factory_deleted = false;
 
 void ps_cleanup_srv_conf(void* data) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(data);
+
   if (cfg_s->server_context == NULL) {
     return;
   }
@@ -1618,7 +1619,7 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
   if (cfg_m->driver_factory != NULL) {
-    cfg_m->driver_factory->RootInit();
+    cfg_m->driver_factory->RootInit(cycle->log);
   }
   return NGX_OK;
 }
@@ -1635,7 +1636,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
 
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below
-  cfg_m->driver_factory->ChildInit();
+  cfg_m->driver_factory->ChildInit(cycle->log);
 
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
