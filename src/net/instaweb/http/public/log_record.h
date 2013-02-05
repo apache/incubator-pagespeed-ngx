@@ -101,6 +101,7 @@ class LogRecord  {
   void SetBlinkRequestFlow(int flow);
   void SetIsOriginalResourceCacheable(bool cacheable);
   void SetTimingRequestStartMs(int64 ms);
+  void SetTimingHeaderFetchMs(int64 ms);
   void SetTimingFetchMs(int64 ms);
   int64 GetTimingFetchMs();
   void SetTimingProcessingTimeMs(int64 ms);

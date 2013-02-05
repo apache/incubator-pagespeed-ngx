@@ -46,6 +46,7 @@ class AbstractMutex;
 class BlinkCriticalLineDataFinder;
 class ContentType;
 class CriticalImagesFinder;
+class CriticalCssFinder;
 class FileSystem;
 class FilenameEncoder;
 class FlushEarlyInfoFinder;
@@ -228,6 +229,11 @@ class ServerContext {
     return critical_images_finder_.get();
   }
   void set_critical_images_finder(CriticalImagesFinder* finder);
+
+  CriticalCssFinder* critical_css_finder() const {
+    return critical_css_finder_.get();
+  }
+  void set_critical_css_finder(CriticalCssFinder* finder);
 
   FlushEarlyInfoFinder* flush_early_info_finder() const {
     return flush_early_info_finder_.get();
@@ -559,6 +565,7 @@ class ServerContext {
   UrlAsyncFetcher* default_system_fetcher_;
   Hasher* hasher_;
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
+  scoped_ptr<CriticalCssFinder> critical_css_finder_;
   scoped_ptr<BlinkCriticalLineDataFinder> blink_critical_line_data_finder_;
   scoped_ptr<FlushEarlyInfoFinder> flush_early_info_finder_;
 

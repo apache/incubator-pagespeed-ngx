@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
@@ -1059,13 +1060,15 @@ void ServerContext::set_blink_critical_line_data_finder(
   blink_critical_line_data_finder_.reset(finder);
 }
 
-void ServerContext::set_critical_images_finder(
-    CriticalImagesFinder* finder) {
+void ServerContext::set_critical_images_finder(CriticalImagesFinder* finder) {
   critical_images_finder_.reset(finder);
 }
 
-void ServerContext::set_flush_early_info_finder(
-    FlushEarlyInfoFinder* finder) {
+void ServerContext::set_critical_css_finder(CriticalCssFinder* finder) {
+  critical_css_finder_.reset(finder);
+}
+
+void ServerContext::set_flush_early_info_finder(FlushEarlyInfoFinder* finder) {
   flush_early_info_finder_.reset(finder);
 }
 

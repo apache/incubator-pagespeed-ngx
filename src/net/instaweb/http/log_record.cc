@@ -149,6 +149,11 @@ void LogRecord::SetTimingRequestStartMs(int64 ms) {
   logging_info()->mutable_timing_info()->set_request_start_ms(ms);
 }
 
+void LogRecord::SetTimingHeaderFetchMs(int64 ms) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->mutable_timing_info()->set_header_fetch_ms(ms);
+}
+
 void LogRecord::SetTimingFetchMs(int64 ms) {
   ScopedMutex lock(mutex_.get());
   logging_info()->mutable_timing_info()->set_fetch_ms(ms);

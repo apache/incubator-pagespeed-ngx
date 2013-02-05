@@ -492,6 +492,21 @@
       ],
     },
     {
+      'target_name': 'instaweb_critical_css_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/critical_css.pb.cc',
+        'rewriter/critical_css.proto',
+      ],
+      'dependencies': [
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_critical_line_info_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -1027,6 +1042,7 @@
         'instaweb_client_domain_rewriter_opt_data2c',
         'instaweb_core.gyp:instaweb_rewriter_html',
         'instaweb_blink_critical_line_data_pb',
+        'instaweb_critical_css_pb',
         'instaweb_critical_line_info_pb',
         'instaweb_http',
         'instaweb_critical_images_beacon_data2c',
@@ -1071,6 +1087,8 @@
         'rewriter/compute_visible_text_filter.cc',
         'rewriter/collect_flush_early_content_filter.cc',
         'rewriter/collect_subresources_filter.cc',
+        'rewriter/critical_css_filter.cc',
+        'rewriter/critical_css_finder.cc',
         'rewriter/critical_images_beacon_filter.cc',
         'rewriter/critical_images_callback.cc',
         'rewriter/css_inline_filter.cc',
