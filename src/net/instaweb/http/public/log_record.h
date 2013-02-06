@@ -67,8 +67,10 @@ class LogRecord  {
   // number of successful rewrites for that id have been logged.
   GoogleString AppliedRewritersString();
 
-  // Create a new rewriter logging submessage for |rewriter_id|,
-  // returning its key for later access.
+  // Create a new rewriter logging submessage for |rewriter_id|, returning a
+  // pointer to it for later access. Note that this can return NULL if the
+  // size of rewriter_info has grown too large. It is the caller's
+  // responsibility to handle this safely.
   RewriterInfo* NewRewriterInfo(const char* rewriter_id);
 
   // Sets status on a RewriterInfo with updates to AppliedRewriters.
@@ -124,6 +126,10 @@ class LogRecord  {
   // guard reads and writes of LogRecords
   AbstractMutex* mutex() { return mutex_.get(); }
 
+  // Sets the maximum number of RewriterInfo submessages that can accumulate in
+  // the LoggingInfo proto wrapped by this class.
+  void SetRewriterInfoMaxSize(int x);
+
  protected:
   // Non-initializing default constructor for subclasses. Subclasses that invoke
   // this constructor should implement and call their own initializer that
@@ -153,6 +159,9 @@ class LogRecord  {
   // Thus must be set. Implementation constructors must minimally default this
   // to a NullMutex.
   scoped_ptr<AbstractMutex> mutex_;
+
+  // The maximum number of rewrite info logs stored for a single request.
+  int rewriter_info_max_size_;
 
   DISALLOW_COPY_AND_ASSIGN(LogRecord);
 };

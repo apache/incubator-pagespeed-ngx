@@ -233,4 +233,36 @@ TEST_F(JsDisableFilterTest, DisablesScriptWithMultipleTypeAttributes) {
   ValidateExpectedUrl("http://example.com/", input_html, expected);
 }
 
+TEST_F(JsDisableFilterTest, ScriptWithPagespeedPrioritizeAttribute) {
+  options()->set_enable_prioritizing_scripts(true);
+  const GoogleString input_html = StrCat(
+      "<body>",
+      kUnrelatedNoscriptTags,
+      "<script src=\"blah1\" random=\"true\">hi1</script>",
+      kUnrelatedTags,
+      "<img src=\"abc.jpg\" onload=\"foo1();foo2();\">"
+      "<script src=\"blah2\" random=\"false\" data-pagespeed-prioritize>hi2"
+      "</script>"
+      "<script data-pagespeed-prioritize>hi5</script>"
+      "</body>");
+  const GoogleString expected = StrCat(
+      "<head><script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+      JsDisableFilter::kDisableJsExperimental,
+      "</script></head>"
+      "<body>",
+      kUnrelatedNoscriptTags,
+      "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
+      " orig_index=\"0\">hi1</script>",
+      kUnrelatedTags,
+      "<img src=\"abc.jpg\" onload=\"this.setAttribute('pagespeed_onload',"
+      "'foo1();foo2();');\">"
+      "<script pagespeed_orig_src=\"blah2\" random=\"false\" "
+      "data-pagespeed-prioritize type=\"text/prioritypsajs\" orig_index=\"1\">"
+      "hi2</script>"
+      "<script data-pagespeed-prioritize type=\"text/prioritypsajs\" "
+      "orig_index=\"2\">hi5</script>"
+      "</body>");
+  ValidateExpectedUrl("http://example.com/", input_html, expected);
+}
+
 }  // namespace net_instaweb

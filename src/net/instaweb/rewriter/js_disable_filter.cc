@@ -131,9 +131,18 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
       // attribute(duplicate). Chrome and firefox picks up the first type
       // attribute for the node.
       while (element->DeleteAttribute(HtmlName::kType)) {}
-      element->AddAttribute(
-          rewrite_driver_->MakeName(HtmlName::kType), "text/psajs",
-          HtmlElement::DOUBLE_QUOTE);
+      HtmlElement::Attribute* prioritize_attr = element->FindAttribute(
+          HtmlName::kDataPagespeedPrioritize);
+      if (prioritize_attr != NULL &&
+          rewrite_driver_->options()->enable_prioritizing_scripts()) {
+        element->AddAttribute(
+            rewrite_driver_->MakeName(HtmlName::kType), "text/prioritypsajs",
+            HtmlElement::DOUBLE_QUOTE);
+      } else {
+        element->AddAttribute(
+            rewrite_driver_->MakeName(HtmlName::kType), "text/psajs",
+            HtmlElement::DOUBLE_QUOTE);
+      }
       element->AddAttribute(
           rewrite_driver_->MakeName("orig_index"), IntegerToString(index_++),
           HtmlElement::DOUBLE_QUOTE);

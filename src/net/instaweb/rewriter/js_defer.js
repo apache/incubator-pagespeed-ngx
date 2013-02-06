@@ -21,6 +21,22 @@
  * @author atulvasu@google.com (Atul Vasu)
  */
 
+// Defer javascript will be executed in two phases. First phase will be for
+// high priority scripts and second phase is for low priority scripts. Order
+// of execution will be:
+// 1) High priority scripts.
+// 2) Low priority scripts.
+// 3) Onload of high priority scripts.
+// 4) Onload of low priority scripts.
+//
+// In case of blink, order will be:
+// 1) High priority scripts present in above the fold.
+// 2) Low priority scripts present in above the fold.
+// 3) High priority scripts which are below the fold.
+// 4) Low priority scripts which are below the fold.
+// 5) Onload of high priority scripts.
+// 6) Onload of low priority scripts.
+//
 // Exporting functions using quoted attributes to prevent js compiler from
 // renaming them.
 // See http://code.google.com/closure/compiler/docs/api-tutorial3.html#dangers
@@ -234,6 +250,21 @@ deferJsNs.DeferJs = function() {
    * @private
    */
   this.prefetchScriptsHtml_ = '';
+
+  /**
+   * Type of the javascript node that will get executed.
+   * @type {string}
+   * @private
+   */
+  this.psaScriptType_ = '';
+
+  /**
+   * Last Index until incremental scripts will be executed, rest scripts will
+   * be executed after the execution of incrementalScriptsDoneCallback_.
+   * @type {!number}
+   * @private
+   */
+  this.optLastIndex_ = -1;
 };
 
 /**
@@ -333,6 +364,12 @@ deferJsNs.DeferJs.PSA_CURRENT_NODE = 'psa_current_node';
  * @const {string}
  */
 deferJsNs.DeferJs.PSA_SCRIPT_TYPE = 'text/psajs';
+
+/**
+ * Value of psa dummmy priority script nodes.
+ * @const {string}
+ */
+deferJsNs.DeferJs.PRIORITY_PSA_SCRIPT_TYPE = 'text/prioritypsajs';
 
 /**
  * Name of orig_type attribute in deferred script node.
@@ -620,7 +657,7 @@ deferJsNs.DeferJs.prototype.removeNotProcessedAttributeTillNode = function(
       if (dom_node == opt_node) {
         return;
       }
-      if (dom_node.getAttribute('type') != deferJsNs.DeferJs.PSA_SCRIPT_TYPE) {
+      if (dom_node.getAttribute('type') != this.psaScriptType_) {
         dom_node.removeAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED);
       }
     }
@@ -646,7 +683,7 @@ deferJsNs.DeferJs.prototype.nextPsaJsNode = function() {
   var current_node = null;
   if (document.querySelector) {
     current_node = document.querySelector(
-        '[type="' + deferJsNs.DeferJs.PSA_SCRIPT_TYPE + '"]');
+        '[type="' + this.psaScriptType_ + '"]');
   }
   return current_node;
 };
@@ -685,7 +722,7 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
     return;
   }
 
-  if (this.lastIncrementalRun_) {
+  if (this.lastIncrementalRun_ && this.isLowPriorityDeferJs()) {
     // ReadyState should be restored only during the last onComplete,
     // so that document.readyState returns 'loading' till the last deferred
     // script is executed.
@@ -723,32 +760,40 @@ deferJsNs.DeferJs.prototype.onComplete = function() {
 
     this.restoreAddEventListeners();
 
-    var me = this;
-    if (document.readyState != 'complete') {
-      deferJsNs.addOnload(window, function() {
-        me.fireOnload();
-      });
+    if (this.isLowPriorityDeferJs()) {
+      var me = this;
+      if (document.readyState != 'complete') {
+        deferJsNs.addOnload(window, function() {
+          me.fireOnload();
+        });
+      } else {
+        // Here there is a chance that window.onload is triggered twice.
+        // But we have no way of finding this.
+        // TODO(ksimbili): Fix the above scenario.
+        if (document.onreadystatechange) {
+          this.exec(document.onreadystatechange, document);
+        }
+        // Execute window.onload
+        if (window.onload) {
+          psaAddEventListener(window, 'onload', window.onload);
+          window.onload = null;
+        }
+        this.fireOnload();
+      }
     } else {
-      // Here there is a chance that window.onload is triggered twice.
-      // But we have no way of finding this.
-      // TODO(ksimbili): Fix the above scenario.
-      if (document.onreadystatechange) {
-        this.exec(document.onreadystatechange, document);
-      }
-      // Execute window.onload
-      if (window.onload) {
-        psaAddEventListener(window, 'onload', window.onload);
-        window.onload = null;
-      }
-      this.fireOnload();
+      this.highPriorityFinalize();
     }
   } else {
     // The following state change is only for debugging.
     this.state_ = deferJsNs.DeferJs.STATES.WAITING_FOR_NEXT_RUN;
     this.firstIncrementalRun_ = false;
-    if (this.incrementalScriptsDoneCallback_) {
+    if (this.incrementalScriptsDoneCallback_ && this.isLowPriorityDeferJs()) {
+      pagespeed.deferJs = pagespeed.highPriorityDeferJs;
+      pagespeed['deferJs'] = pagespeed.highPriorityDeferJs;
       this.exec(this.incrementalScriptsDoneCallback_);
       this.incrementalScriptsDoneCallback_ = null;
+    } else {
+      this.highPriorityFinalize();
     }
   }
 };
@@ -761,25 +806,50 @@ deferJsNs.DeferJs.prototype.fireOnload = function() {
   // Note, by the time we come here, all the images, iframes etc all should have
   // been loaded. Because main page onload gets triggered when all it's
   // resources are loaded.So we can blindly trigger all those onloads.
-  this.addDeferredOnloadListeners();
+  if (this.isLowPriorityDeferJs()) {
+    this.addDeferredOnloadListeners();
+    pagespeed.highPriorityDeferJs.fireOnload();
+  }
 
   this.fireEvent(deferJsNs.DeferJs.EVENT.LOAD);
 
-  // Clean up psanode elements from the DOM.
-  var psanodes = document.body.getElementsByTagName('psanode');
-  for (var i = (psanodes.length - 1); i >= 0; i--) {
-    document.body.removeChild(psanodes[i]);
-  }
+  if (this.isLowPriorityDeferJs()) {
+    // Clean up psanode elements from the DOM.
+    var psanodes = document.body.getElementsByTagName('psanode');
+    for (var i = (psanodes.length - 1); i >= 0; i--) {
+      document.body.removeChild(psanodes[i]);
+    }
 
-  // Clean up all prefetch containers we added.
-  var prefetchContainers =
-      document.body.getElementsByClassName('psa_prefetch_container');
-  for (var i = (prefetchContainers.length - 1); i >= 0; i--) {
-    prefetchContainers[i].parentNode.removeChild(prefetchContainers[i]);
+    // Clean up all prefetch containers we added.
+    var prefetchContainers =
+        document.body.getElementsByClassName('psa_prefetch_container');
+    for (var i = (prefetchContainers.length - 1); i >= 0; i--) {
+      prefetchContainers[i].parentNode.removeChild(prefetchContainers[i]);
+    }
   }
 
   this.state_ = deferJsNs.DeferJs.STATES.SCRIPTS_DONE;
   this.fireEvent(deferJsNs.DeferJs.EVENT.AFTER_SCRIPTS);
+};
+
+/**
+ * Finalize function for high priority scripts execution that start the
+ * execution of low priority scripts.
+ */
+deferJsNs.DeferJs.prototype.highPriorityFinalize = function() {
+  var me = this;
+  window.setTimeout(function() {
+    pagespeed.deferJs = pagespeed.lowPriorityDeferJs;
+    pagespeed['deferJs'] = pagespeed.lowPriorityDeferJs;
+    if (me.incrementalScriptsDoneCallback_) {
+      pagespeed.deferJs.registerScriptTags(
+        me.incrementalScriptsDoneCallback_, me.optLastIndex_);
+      me.incrementalScriptsDoneCallback_ = null;
+    } else {
+      pagespeed.deferJs.registerScriptTags();
+    }
+    pagespeed.deferJs.execute();
+  }, 0);
 };
 
 /**
@@ -905,7 +975,7 @@ deferJsNs.DeferJs.prototype.nodeListToArray = function(nodeList) {
  */
 deferJsNs.DeferJs.prototype.setUp = function() {
   var me = this;
-  if (this.firstIncrementalRun_) {
+  if (this.firstIncrementalRun_ && !this.isLowPriorityDeferJs()) {
     // TODO(ksimbili): Remove this once context is not optional.
     // Place where document.write() happens if there is no context element
     // present. Happens if there is no context registering that happened in
@@ -1137,7 +1207,7 @@ deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
       if (this.isJSNode(child)) {
         scriptNodes.push(child);
         child.setAttribute(deferJsNs.DeferJs.PSA_ORIG_TYPE, child.type);
-        child.setAttribute('type', deferJsNs.DeferJs.PSA_SCRIPT_TYPE);
+        child.setAttribute('type', this.psaScriptType_);
         child.setAttribute(deferJsNs.DeferJs.PSA_ORIG_SRC, child.src);
         child.setAttribute('src', '');
         child.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, '');
@@ -1388,8 +1458,8 @@ var psaAddEventListener = function(elem, eventName, func, opt_capture,
  *     done executing.
  * @param {number} opt_last_index till where its safe to run scripts.
  */
-deferJsNs.DeferJs.prototype.registerScriptTags =
-    function(opt_callback, opt_last_index) {
+deferJsNs.DeferJs.prototype.registerScriptTags = function(
+  opt_callback, opt_last_index) {
   if (this.state_ >= deferJsNs.DeferJs.STATES.SCRIPTS_REGISTERED) {
     return;
   }
@@ -1400,6 +1470,9 @@ deferJsNs.DeferJs.prototype.registerScriptTags =
     }
     this.lastIncrementalRun_ = false;
     this.incrementalScriptsDoneCallback_ = opt_callback;
+    if (opt_last_index) {
+      this.optLastIndex_ = opt_last_index;
+    }
   } else {
     this.lastIncrementalRun_ = true;
   }
@@ -1411,7 +1484,7 @@ deferJsNs.DeferJs.prototype.registerScriptTags =
     var isFirstScript = (this.queue_.length == this.next_);
     var script = scripts[i];
     // TODO(ksimbili): Use orig_type
-    if (script.getAttribute('type') == deferJsNs.DeferJs.PSA_SCRIPT_TYPE) {
+    if (script.getAttribute('type') == this.psaScriptType_) {
       if (opt_callback) {
         var scriptIndex =
             script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX);
@@ -1494,6 +1567,26 @@ deferJsNs.DeferJs.prototype.getIEVersion = function() {
 };
 
 /**
+ * Set the type of the scripts which will be executed.
+ * @param {string} type of psa dummy nodes that need to be processed.
+ */
+deferJsNs.DeferJs.prototype.setType = function(type) {
+  this.psaScriptType_ = type;
+};
+
+/**
+ * Whether defer javascript is executing low priority scripts.
+ * @return {boolean} returns true if defer javascript is executing low priority
+ *     scripts.
+ */
+deferJsNs.DeferJs.prototype.isLowPriorityDeferJs = function() {
+  if (this.psaScriptType_ == deferJsNs.DeferJs.PSA_SCRIPT_TYPE) {
+    return true;
+  }
+  return false;
+};
+
+/**
  * Overrides createElement for the non-deferred scripts. Any async script
  * created by non-deferred script should be executed before deferred scripts
  * gets executed.
@@ -1543,7 +1636,13 @@ deferJsNs.deferInit = function() {
         window.localStorage['defer_js_experimental'];
   }
 
-  pagespeed.deferJs = new deferJsNs.DeferJs();
+  pagespeed.highPriorityDeferJs = new deferJsNs.DeferJs();
+  pagespeed.highPriorityDeferJs.setType(
+    deferJsNs.DeferJs.PRIORITY_PSA_SCRIPT_TYPE);
+  pagespeed.lowPriorityDeferJs = new deferJsNs.DeferJs();
+  pagespeed.lowPriorityDeferJs.setType(deferJsNs.DeferJs.PSA_SCRIPT_TYPE);
+  pagespeed.deferJs = pagespeed.highPriorityDeferJs;
+
   pagespeed.deferJs.noDeferCreateElementOverride();
   pagespeed['deferJs'] = pagespeed.deferJs;
 };

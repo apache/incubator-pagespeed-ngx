@@ -3078,4 +3078,33 @@ TEST_F(ProxyInterfaceTest, BailOutOfParsing) {
             "</body></html>", text);
 }
 
+
+TEST_F(ProxyInterfaceTest, LoggingInfoRewriteInfoMaxSize) {
+  RewriteOptions* options = server_context()->global_options();
+  options->ClearSignatureForTesting();
+  options->set_max_rewrite_info_log_size(10);
+  server_context()->ComputeSignature(options);
+
+  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.jpg"), kContentTypeJpeg,
+                                "image", kHtmlCacheTimeSec * 2);
+
+  GoogleString content = "<html><head></head><body>";
+  for (int i = 0; i < 50; ++i) {
+    StrAppend(&content, "<img src=\"1.jpg\">");
+  }
+  StrAppend(&content,  "</body></html>");
+
+  SetResponseWithDefaultHeaders(kPageUrl, kContentTypeHtml, content, 0);
+  ResponseHeaders headers;
+  GoogleString text;
+  FetchFromProxy(kPageUrl, true, &text, &headers);
+
+  GoogleString expected_response(content);
+  GlobalReplaceSubstring("1.jpg", "http://test.com/1.jpg.pagespeed.ce.0.jpg",
+                         &expected_response);
+  EXPECT_STREQ(expected_response, text);
+  EXPECT_EQ(10, logging_info()->rewriter_info_size());
+  EXPECT_TRUE(logging_info()->rewriter_info_size_limit_exceeded());
+}
+
 }  // namespace net_instaweb

@@ -335,6 +335,10 @@ DEFINE_bool(enable_blink_html_change_detection_logging, false,
 DEFINE_bool(enable_lazyload_in_blink, false,
     "If it is set to true, don't force disable lazyload in blink");
 
+DEFINE_bool(enable_prioritizing_scripts, false,
+    "If it is set to true, defer javascript will prioritize scripts with"
+    "data-pagespeed-prioritize attibute.");
+
 DEFINE_int64(max_image_bytes_for_webp_in_css,
              net_instaweb::RewriteOptions::kDefaultMaxImageBytesForWebpInCss,
              "The maximum size of an image in CSS, which we convert to webp.");
@@ -360,6 +364,11 @@ DEFINE_bool(enable_aggressive_rewriters_for_mobile, false,
 DEFINE_string(lazyload_disabled_classes, "",
               "A comma separated list of classes for which the lazyload images "
               "filter is disabled.");
+
+DEFINE_int32(max_rewrite_info_log_size,
+             net_instaweb::RewriteOptions::kDefaultMaxRewriteInfoLogSize,
+             "The maximum number of RewriterInfo submessage stored for a "
+             "single request.");
 
 namespace net_instaweb {
 
@@ -607,6 +616,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_enable_lazyload_in_blink(
         FLAGS_enable_lazyload_in_blink);
   }
+  if (WasExplicitlySet("enable_prioritizing_scripts")) {
+    options->set_enable_prioritizing_scripts(
+        FLAGS_enable_prioritizing_scripts);
+  }
   if (WasExplicitlySet("override_ie_document_mode")) {
     options->set_override_ie_document_mode(FLAGS_override_ie_document_mode);
   }
@@ -627,6 +640,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     for (int i = 0, n = lazyload_disabled_classes.size(); i < n; ++i) {
       options->DisableLazyloadForClassName(lazyload_disabled_classes[i]);
     }
+  }
+  if (WasExplicitlySet("max_rewrite_info_log_size")) {
+    options->set_max_rewrite_info_log_size(FLAGS_max_rewrite_info_log_size);
   }
   if (WasExplicitlySet("property_cache_http_status_stability_threshold")) {
     options->set_property_cache_http_status_stability_threshold(

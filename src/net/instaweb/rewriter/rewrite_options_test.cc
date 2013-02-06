@@ -702,7 +702,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(157, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(159, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -790,6 +790,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("EnableLazyloadInBlink",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableLazyloadInBlink));
+  EXPECT_STREQ("EnablePrioritizingScripts",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kEnablePrioritizingScripts));
   EXPECT_STREQ("EnableRewriting",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnabled));

@@ -52,6 +52,7 @@ struct OptionName {
 "EnableDeferJsExperimental",             RewriteOptions::kEnableDeferJsExperimental
 "EnableFlushSubresourcesExperimental",   RewriteOptions::kEnableFlushSubresourcesExperimental
 "EnableLazyloadInBlink",                 RewriteOptions::kEnableLazyloadInBlink
+"EnablePrioritizingScripts",             RewriteOptions::kEnablePrioritizingScripts
 "EnableRewriting",                       RewriteOptions::kEnabled
 "ExperimentSlot",                        RewriteOptions::kFuriousSlot
 "FinderPropertiesCacheExpirationTimeMs", RewriteOptions::kFinderPropertiesCacheExpirationTimeMs,
@@ -99,6 +100,7 @@ struct OptionName {
 "MaxInlinedPreviewImagesIndex",          RewriteOptions::kMaxInlinedPreviewImagesIndex
 # TODO(sligocki): Put names in agreement. MaxSegmentLength is the
 # mod_pagespeed config name, MaxUrlSegmentSize is the name used in code.
+"MaxRewriteInfoLogSize",                 RewriteOptions::kMaxRewriteInfoLogSize
 "MaxSegmentLength",                      RewriteOptions::kMaxUrlSegmentSize
 "MaxUrlSize",                            RewriteOptions::kMaxUrlSize
 "MemcachedServers",                      RewriteOptions::kMemcachedServers

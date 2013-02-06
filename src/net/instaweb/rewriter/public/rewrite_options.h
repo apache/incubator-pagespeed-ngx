@@ -204,6 +204,7 @@ class RewriteOptions {
     kEnableFlushSubresourcesExperimental,
     kEnableInlinePreviewImagesExperimental,
     kEnableLazyloadInBlink,
+    kEnablePrioritizingScripts,
     kEnabled,
     kFinderPropertiesCacheExpirationTimeMs,
     kFinderPropertiesCacheRefreshTimeMs,
@@ -251,6 +252,7 @@ class RewriteOptions {
     kMaxImageBytesForWebpInCss,
     kMaxImageSizeLowResolutionBytes,
     kMaxInlinedPreviewImagesIndex,
+    kMaxRewriteInfoLogSize,
     kMaxUrlSegmentSize,
     kMaxUrlSize,
     kMinImageSizeLowResolutionBytes,
@@ -594,6 +596,8 @@ class RewriteOptions {
   static const char kRejectedRequestUrlKeyName[];
 
   static const int kDefaultPropertyCacheHttpStatusStabilityThreshold;
+
+  static const int kDefaultMaxRewriteInfoLogSize;
 
   // This class is a separate subset of options for running a furious
   // experiment.
@@ -1667,6 +1671,13 @@ class RewriteOptions {
     return enable_lazyload_in_blink_.value();
   }
 
+  void set_enable_prioritizing_scripts(bool x) {
+    set_option(x, &enable_prioritizing_scripts_);
+  }
+  bool enable_prioritizing_scripts() const {
+    return enable_prioritizing_scripts_.value();
+  }
+
   void set_blink_html_change_detection_time_ms(int64 x) {
     set_option(x, &blink_html_change_detection_time_ms_);
   }
@@ -1846,6 +1857,13 @@ class RewriteOptions {
   }
   int property_cache_http_status_stability_threshold() const {
     return property_cache_http_status_stability_threshold_.value();
+  }
+
+  void set_max_rewrite_info_log_size(int x) {
+    set_option(x, &max_rewrite_info_log_size_);
+  }
+  int max_rewrite_info_log_size() const {
+    return max_rewrite_info_log_size_.value();
   }
 
   void set_enable_aggressive_rewriters_for_mobile(bool x) {
@@ -2868,6 +2886,8 @@ class RewriteOptions {
   Option<bool> propagate_blink_cache_deletes_;
   // Don't force disable lazyload in blink;
   Option<bool> enable_lazyload_in_blink_;
+  // Enable Prioritizing of scripts in defer javascript.
+  Option<bool> enable_prioritizing_scripts_;
   // Override cache-time for cacheable resources in blink.
   Option<int64> override_blink_cache_time_ms_;
   // Non-cacheables to be used for all families in
@@ -2906,6 +2926,8 @@ class RewriteOptions {
   // The number of requests for which the status code should remain same so that
   // we consider it to be stable.
   Option<int> property_cache_http_status_stability_threshold_;
+  // The maximum number of rewrite info logs stored for a single request.
+  Option<int> max_rewrite_info_log_size_;
 
   // The cache TTL with which to override the urls matching the
   // override_caching_ WildCardGroup. Note that we do not override the cache TTL

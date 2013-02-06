@@ -187,7 +187,7 @@ message RewriterInfo {
 }
 
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 15
+// Next id for LoggingInfo: 16
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -218,4 +218,6 @@ message LoggingInfo {
   optional bool is_request_disabled = 13 [ default = false ];
   // Information about flush subresources filter.
   optional FlushEarlyFlowInfo flush_early_flow_info = 14;
+  // Whether the size limit for rewriter_info was exceeded.
+  optional bool rewriter_info_size_limit_exceeded = 15 [ default = false ];
 }

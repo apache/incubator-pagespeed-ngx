@@ -37,11 +37,12 @@ LogRecord::LogRecord(AbstractMutex* mutex) : mutex_(mutex) {
 // Non-initializing constructor for subclasses to invoke.
 LogRecord::LogRecord()
     : logging_info_(NULL),
-      mutex_(NULL) {
-}
+      mutex_(NULL),
+      rewriter_info_max_size_(-1) {}
 
 void LogRecord::InitLogging() {
   logging_info_.reset(new LoggingInfo);
+  rewriter_info_max_size_ = -1;
 }
 
 LogRecord::~LogRecord() {
@@ -116,6 +117,14 @@ RewriterInfo* LogRecord::NewRewriterInfo(const char* rewriter_id) {
 RewriterInfo* LogRecord::NewRewriterInfoImpl(const char* rewriter_id,
                                              int status) {
   mutex_->DCheckLocked();
+  if (rewriter_info_max_size_ != -1 &&
+      logging_info()->rewriter_info_size() >= rewriter_info_max_size_) {
+    if (!logging_info()->rewriter_info_size_limit_exceeded()) {
+      VLOG(1) << "Exceeded size limit for rewriter info.";
+      logging_info()->set_rewriter_info_size_limit_exceeded(true);
+    }
+    return NULL;
+  }
   RewriterInfo* rewriter_info = logging_info()->add_rewriter_info();
   rewriter_info->set_id(rewriter_id);
   SetRewriterLoggingStatus(rewriter_info, status);
@@ -124,6 +133,9 @@ RewriterInfo* LogRecord::NewRewriterInfoImpl(const char* rewriter_id,
 
 void LogRecord::SetRewriterLoggingStatus(
     RewriterInfo* rewriter_info, int status) {
+  if (rewriter_info == NULL) {
+    return;
+  }
   DCHECK(RewriterInfo::RewriterApplicationStatus_IsValid(status));
   mutex_->DCheckLocked();
   DCHECK_EQ(RewriterInfo::UNKNOWN_STATUS, rewriter_info->status()) <<
@@ -216,5 +228,9 @@ GoogleString LogRecord::AppliedRewritersString() {
   return rewriters_str;
 }
 
+void LogRecord::SetRewriterInfoMaxSize(int x) {
+  ScopedMutex lock(mutex_.get());
+  rewriter_info_max_size_ = x;
+}
 
 }  // namespace net_instaweb

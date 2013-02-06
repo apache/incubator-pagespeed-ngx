@@ -168,6 +168,8 @@ const int kValgrindWaitForRewriteMs = 1000;
 
 const int RewriteOptions::kDefaultPropertyCacheHttpStatusStabilityThreshold = 5;
 
+const int RewriteOptions::kDefaultMaxRewriteInfoLogSize = 150;
+
 const char RewriteOptions::kDefaultBeaconUrl[] = "/mod_pagespeed_beacon";
 
 const int RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex = 5;
@@ -883,10 +885,15 @@ void RewriteOptions::AddProperties() {
              "bfto", RewriteOptions::kFetcherTimeOutMs);
   add_option(false, &RewriteOptions::enable_lazyload_in_blink_, "elib",
              kEnableLazyloadInBlink);
+  add_option(false, &RewriteOptions::enable_prioritizing_scripts_, "eps",
+             kEnablePrioritizingScripts);
   add_option("", &RewriteOptions::pre_connect_url_, "pcu");
   add_option(kDefaultPropertyCacheHttpStatusStabilityThreshold,
              &RewriteOptions::property_cache_http_status_stability_threshold_,
              "pchsst");
+  add_option(kDefaultMaxRewriteInfoLogSize,
+             &RewriteOptions::max_rewrite_info_log_size_, "mrils",
+             kMaxRewriteInfoLogSize);
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
              &RewriteOptions::metadata_cache_staleness_threshold_ms_, "mcst");
   add_option(kDefaultMetadataInputErrorsCacheTtlMs,
@@ -903,9 +910,9 @@ void RewriteOptions::AddProperties() {
              &RewriteOptions::blink_html_change_detection_time_ms_, "bhcdt");
   add_option(false, &RewriteOptions::override_ie_document_mode_, "oidm");
   add_option(false, &RewriteOptions::use_smart_diff_in_blink_, "usdb",
-             RewriteOptions::kUseSmartDiffInBlink);
+             kUseSmartDiffInBlink);
   add_option(false, &RewriteOptions::enable_aggressive_rewriters_for_mobile_,
-             "earm", RewriteOptions::kEnableAggressiveRewritersForMobile);
+             "earm", kEnableAggressiveRewritersForMobile);
 
   // Test-only, so no enum.
   add_option(false, &RewriteOptions::test_instant_fetch_rewrite_deadline_,

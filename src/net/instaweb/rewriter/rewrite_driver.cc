@@ -264,6 +264,10 @@ void RewriteDriver::set_request_context(const RequestContextPtr& x) {
   // request context; i.e., those necessarily associated with page serving
   // rather than option decoding.
   request_context_.reset(x);
+  if (request_context_.get() != NULL) {
+    request_context_->log_record()->SetRewriterInfoMaxSize(
+        options()->max_rewrite_info_log_size());
+  }
 }
 
 LogRecord* RewriteDriver::log_record() {
