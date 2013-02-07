@@ -26,6 +26,7 @@
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
@@ -434,6 +435,9 @@ void FlushEarlyFlow::FlushEarly() {
         new_driver->SetUserAgent(driver_->user_agent());
         new_driver->StartParse(url_);
 
+        new_driver->log_record()->LogAppliedRewriter(
+            RewriteOptions::FilterId(RewriteOptions::kFlushSubresources));
+
         InitFlushEarlyDriverWithPropertyCacheValues(new_driver, page);
         if (flush_early_info.has_average_fetch_latency_ms()) {
           average_fetch_time_ = flush_early_info.average_fetch_latency_ms();
@@ -485,6 +489,8 @@ void FlushEarlyFlow::FlushEarly() {
                             num_resources_flushed_, url_.c_str());
           num_requests_flushed_early_->IncBy(1);
           num_resources_flushed_early_->IncBy(num_resources_flushed_);
+          driver_->log_record()->LogAppliedRewriter(
+            RewriteOptions::FilterId(RewriteOptions::kFlushSubresources));
           GenerateResponseHeaders(flush_early_info);
           base_fetch_->Write(dummy_head_, handler_);
           base_fetch_->Flush(handler_);
@@ -550,9 +556,11 @@ void FlushEarlyFlow::GenerateResponseHeaders(
   ResponseHeaders* response_headers = base_fetch_->response_headers();
   response_headers->UpdateFromProto(flush_early_info.response_headers());
   // TODO(mmohabey): Add this header only when debug filter is on.
-  response_headers->Add(
-      kPsaRewriterHeader,
-      RewriteOptions::FilterId(RewriteOptions::kFlushSubresources));
+  {
+    ScopedMutex lock(driver_->log_record()->mutex());
+    response_headers->Add(
+        kPsaRewriterHeader, driver_->log_record()->AppliedRewritersString());
+  }
   response_headers->SetDateAndCaching(manager_->timer()->NowMs(), 0,
                                       ", private, no-cache");
   response_headers->ComputeCaching();

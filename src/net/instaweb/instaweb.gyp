@@ -522,6 +522,22 @@
       ],
     },
     {
+      'target_name': 'instaweb_cache_html_info_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        'rewriter/cache_html_info.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/cache_html_info.pb.cc',
+      ],
+      'dependencies': [
+        'instaweb_http_pb',
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_rewriter_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -1038,13 +1054,13 @@
       'dependencies': [
         'instaweb_add_instrumentation_data2c',
         'instaweb_add_instrumentation_opt_data2c',
+        'instaweb_blink_critical_line_data_pb',
+        'instaweb_cache_html_info_pb',
         'instaweb_client_domain_rewriter_data2c',
         'instaweb_client_domain_rewriter_opt_data2c',
         'instaweb_core.gyp:instaweb_rewriter_html',
-        'instaweb_blink_critical_line_data_pb',
         'instaweb_critical_css_pb',
         'instaweb_critical_line_info_pb',
-        'instaweb_http',
         'instaweb_critical_images_beacon_data2c',
         'instaweb_critical_images_beacon_opt_data2c',
         'instaweb_defer_iframe_data2c',
@@ -1058,6 +1074,7 @@
         'instaweb_deterministic_data2c',
         'instaweb_deterministic_opt_data2c',
         'instaweb_flush_early_pb',
+        'instaweb_http',
         'instaweb_js_defer_data2c',
         'instaweb_js_defer_opt_data2c',
         'instaweb_lazyload_images_data2c',
@@ -1083,6 +1100,7 @@
         'rewriter/blink_filter.cc',
         'rewriter/blink_util.cc',
         'rewriter/cache_extender.cc',
+        'rewriter/cache_html_filter.cc',
         'rewriter/common_filter.cc',
         'rewriter/compute_visible_text_filter.cc',
         'rewriter/collect_flush_early_content_filter.cc',
@@ -1197,10 +1215,11 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_blink_critical_line_data_pb',
+        'instaweb_cache_html_info_pb',
         'instaweb_critical_css_pb',
         'instaweb_critical_line_info_pb',
-        'instaweb_http',
         'instaweb_flush_early_pb',
+        'instaweb_http',
         'instaweb_rewriter',
         'instaweb_util',
         '<(DEPTH)/base/base.gyp:base',
@@ -1209,6 +1228,7 @@
       ],
       'sources': [
         'automatic/blink_flow_critical_line.cc',
+        'automatic/cache_html_flow.cc',
         'automatic/flush_early_flow.cc',
         'automatic/html_detector.cc',
         'automatic/proxy_fetch.cc',

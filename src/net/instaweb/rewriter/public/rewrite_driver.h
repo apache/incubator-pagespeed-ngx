@@ -137,20 +137,14 @@ class RewriteDriver : public HtmlParse {
   // on every HTML request.
   static const char kDomCohort[];
 
-  // The name of the property in the DomCohort that tracks the timestamp when
-  // we last received a request for this url.
+  // Property Names in DomCohort.
+  // Tracks the timestamp when we last received a request for this url.
   static const char kLastRequestTimestamp[];
-
-  // The name of the property in the DomCohort that tracks whether we exceeded
-  // the maximum size limit of html which we should parse.
+  // Tracks if we exceeded the maximum size limit of html which we should parse.
   static const char kParseSizeLimitExceeded[];
-
-  // This proprty is used to store information regarding the subresources
-  // associted with the HTML page.
+  // Flush Subresources Info associted with the HTML page.
   static const char kSubresourcesPropertyName[];
-
-  // Key for storage of information regarding the status codes of previous
-  // responses.
+  // Status codes of previous responses.
   static const char kStatusCodePropertyName[];
 
   RewriteDriver(MessageHandler* message_handler,
@@ -907,6 +901,12 @@ class RewriteDriver : public HtmlParse {
   // that browsers should parse it as XHTML.
   XhtmlStatus MimeTypeXhtmlStatus();
 
+  void set_flushed_cached_html(bool x) { flushed_cached_html_ = x; }
+  bool flushed_cached_html() { return flushed_cached_html_; }
+
+  void set_flushing_cached_html(bool x) { flushing_cached_html_ = x; }
+  bool flushing_cached_html() { return flushing_cached_html_; }
+
   void set_flushed_early(bool x) { flushed_early_ = x; }
   bool flushed_early() { return flushed_early_; }
 
@@ -1177,6 +1177,12 @@ class RewriteDriver : public HtmlParse {
 
   bool flush_requested_;
   bool flush_occurred_;
+
+  // If it is true, then cached html is flushed.
+  bool flushed_cached_html_;
+
+  // If it is true, then we are using this RewriteDriver to flush cached html.
+  bool flushing_cached_html_;
 
   // If it is true, then the bytes were flushed before receiving bytes from the
   // origin server.

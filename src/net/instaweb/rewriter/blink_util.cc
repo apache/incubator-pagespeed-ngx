@@ -31,7 +31,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -72,6 +71,8 @@ bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
           user_agent, async_fetch->request_headers());
   {
     ScopedMutex lock(async_fetch->log_record()->mutex());
+    // TODO(mmohabey): When called by IsCacheHtmlRequest logging should be done
+    // differently.
     BlinkInfo* blink_info =
         async_fetch->log_record()->logging_info()->mutable_blink_info();
     switch (request_type) {
@@ -107,14 +108,15 @@ bool IsBlinkRequest(const GoogleUrl& url,
                     AsyncFetch* async_fetch,
                     const RewriteOptions* options,
                     const char* user_agent,
-                    UserAgentMatcher* user_agent_matcher) {
+                    UserAgentMatcher* user_agent_matcher,
+                    RewriteOptions::Filter filter) {
   if (options != NULL &&
       // Is rewriting enabled?
       options->enabled() &&
       // Is Get Request?
       async_fetch->request_headers()->method() == RequestHeaders::kGet &&
-      // Is prioritize visible content filter enabled?
-      options->Enabled(RewriteOptions::kPrioritizeVisibleContent) &&
+      // Is the filter enabled?
+      options->Enabled(filter) &&
       // Is url allowed? (i.e., it is not in black-list.)
       // TODO(sriharis): We also make this check in regular proxy flow
       // (ProxyFetch).  Should we combine these?

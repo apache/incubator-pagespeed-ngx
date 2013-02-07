@@ -20,6 +20,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/automatic/public/blink_flow_critical_line.h"
+#include "net/instaweb/automatic/public/cache_html_flow.h"
 #include "net/instaweb/automatic/public/flush_early_flow.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
@@ -196,6 +197,7 @@ void ProxyInterface::InitStats(Statistics* statistics) {
   statistics->AddTimedVariable(kRejectedRequestCount,
                                ServerContext::kStatisticsGroup);
   BlinkFlowCriticalLine::InitStats(statistics);
+  CacheHtmlFlow::InitStats(statistics);
   FlushEarlyFlow::InitStats(statistics);
 }
 
@@ -472,7 +474,8 @@ void ProxyInterface::ProxyRequestCallback(
         HttpAttributes::kUserAgent);
     bool is_blink_request = BlinkUtil::IsBlinkRequest(
         *request_url, async_fetch, options, user_agent,
-        server_context_->user_agent_matcher());
+        server_context_->user_agent_matcher(),
+        RewriteOptions::kPrioritizeVisibleContent);
     bool apply_blink_critical_line =
         BlinkUtil::ShouldApplyBlinkFlowCriticalLine(server_context_,
                                                     options);
@@ -533,13 +536,27 @@ void ProxyInterface::ProxyRequestCallback(
         VLOG(1) << "User-agent empty";
       }
       driver->set_request_headers(async_fetch->request_headers());
-
+      // TODO(mmohabey): Factor out the below checks so that they are not
+      // repeated in BlinkUtil::IsBlinkRequest().
       if (driver->options() != NULL && driver->options()->enabled() &&
-          property_callback != NULL && driver->SupportsFlushEarly() &&
+          property_callback != NULL &&
           driver->options()->IsAllowed(url_string)) {
-        FlushEarlyFlow::Start(url_string, &async_fetch, driver,
-                              proxy_fetch_factory_.get(),
-                              property_callback.get());
+        bool is_cache_html_request = BlinkUtil::IsBlinkRequest(
+            *request_url, async_fetch, driver->options(),
+            driver->user_agent().c_str(),
+            server_context_->user_agent_matcher(), RewriteOptions::kCacheHtml);
+        if (is_cache_html_request) {
+          CacheHtmlFlow::Start(url_string, async_fetch, driver,
+                               proxy_fetch_factory_.get(),
+                               property_callback.release());
+
+          return;
+        }
+        if (driver->SupportsFlushEarly()) {
+          FlushEarlyFlow::Start(url_string, &async_fetch, driver,
+                                proxy_fetch_factory_.get(),
+                                property_callback.get());
+        }
       }
       proxy_fetch_factory_->StartNewProxyFetch(
           url_string, async_fetch, driver, property_callback.release(), NULL);

@@ -768,6 +768,8 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
     return;
   }
   log_record()->SetBlinkRequestFlow(BlinkInfo::BLINK_CACHE_HIT);
+  log_record()->LogAppliedRewriter(
+      RewriteOptions::FilterId(RewriteOptions::kPrioritizeVisibleContent));
   GoogleUrl* url_with_psa_off = google_url_.CopyAndAddQueryParam(
       RewriteQuery::kModPagespeed, RewriteQuery::kNoscriptValue);
   const int start_body_marker_length = strlen(BlinkUtil::kStartBodyMarker);
@@ -792,9 +794,11 @@ void BlinkFlowCriticalLine::BlinkCriticalLineDataHit() {
                    blink_critical_line_data_->charset().c_str() :
                    kUtf8Charset);
   response_headers->Add(HttpAttributes::kContentType, content_type);
-  response_headers->Add(
-      kPsaRewriterHeader,
-      RewriteOptions::FilterId(RewriteOptions::kPrioritizeVisibleContent));
+  {
+    ScopedMutex lock(log_record()->mutex());
+    response_headers->Add(
+       kPsaRewriterHeader, log_record()->AppliedRewritersString());
+  }
   response_headers->ComputeCaching();
   response_headers->SetDateAndCaching(manager_->timer()->NowMs(), 0,
                                       ", private, no-cache");

@@ -54,6 +54,7 @@
 #include "net/instaweb/rewriter/public/base_tag_filter.h"
 #include "net/instaweb/rewriter/public/blink_background_filter.h"
 #include "net/instaweb/rewriter/public/blink_filter.h"
+#include "net/instaweb/rewriter/public/cache_html_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
@@ -192,6 +193,8 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       cleanup_on_fetch_complete_(false),
       flush_requested_(false),
       flush_occurred_(false),
+      flushed_cached_html_(false),
+      flushing_cached_html_(false),
       flushed_early_(false),
       flushing_early_(false),
       is_lazyload_script_flushed_(false),
@@ -350,6 +353,8 @@ void RewriteDriver::Clear() {
   fetch_detached_ = false;
   flush_requested_ = false;
   flush_occurred_ = false;
+  flushed_cached_html_ = false;
+  flushing_cached_html_ = false;
   flushed_early_ = false;
   flushing_early_ = false;
   is_lazyload_script_flushed_ = false;
@@ -1240,6 +1245,9 @@ void RewriteDriver::SetWriter(Writer* writer) {
   if (html_writer_filter_ == NULL) {
     if (options()->Enabled(RewriteOptions::kServeNonCacheableNonCritical)) {
       html_writer_filter_.reset(new BlinkFilter(this));
+    } else if (options()->Enabled(RewriteOptions::kCacheHtml) &&
+               flushed_cached_html_) {
+      html_writer_filter_.reset(new CacheHtmlFilter(this));
     } else if (options()->Enabled(RewriteOptions::kFlushSubresources) &&
         flushing_early_) {
       DCHECK(options()->enable_flush_subresources_experimental());

@@ -58,6 +58,7 @@
       ],
       'sources': [
         'automatic/blink_flow_critical_line_test.cc',
+        'automatic/cache_html_flow_test.cc',
         'automatic/flush_early_flow_test.cc',
         'automatic/html_detector_test.cc',
         'automatic/proxy_fetch_test.cc',
@@ -99,6 +100,7 @@
         'rewriter/blink_filter_test.cc',
         'rewriter/blink_util_test.cc',
         'rewriter/cache_extender_test.cc',
+        'rewriter/cache_html_filter_test.cc',
         'rewriter/collapse_whitespace_filter_test.cc',
         'rewriter/collect_flush_early_content_filter_test.cc',
         'rewriter/collect_subresources_filter_test.cc',

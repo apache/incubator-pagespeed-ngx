@@ -840,8 +840,9 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPrefetch) {
   EXPECT_EQ(FlushEarlyRewrittenHtml(
       UserAgentMatcher::kPrefetchLinkRelSubresource, false, false),
       text);
-  EXPECT_STREQ("cf,ei,jm", AppliedRewriterStringFromLog());
+  EXPECT_STREQ("cf,ei,fs,jm", AppliedRewriterStringFromLog());
   VerifyCharset(&headers);
+  EXPECT_STREQ("cf,ei,fs,jm", headers.Lookup1(kPsaRewriterHeader));
 }
 
 // TODO(rahulbansal): Remove the flakiness and uncomment this.
