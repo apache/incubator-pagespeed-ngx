@@ -375,6 +375,32 @@ TEST_F(FlushEarlyContentWriterFilterTest, NoResourcesToFlush) {
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 0), output_);
 }
 
+TEST_F(FlushEarlyContentWriterFilterTest, TooManyRewriterInfoRecords) {
+  Clear();
+  GoogleString html_input =
+      "<!DOCTYPE html>"
+      "<html>"
+      "<head>"
+        "<link type=\"text/css\" rel=\"stylesheet\" "
+          "href=\"a.css.pagespeed.cf.0.css\">"
+        "<link type=\"text/css\" rel=\"stylesheet\" "
+          "href=\"b.css.pagespeed.cf.0.css\">"
+        "<link type=\"text/css\" rel=\"stylesheet\" "
+          "href=\"c.css.pagespeed.cf.0.css\">"
+      "</head><body></body></html>";
+  GoogleString html_output =
+      "<link rel=\"subresource\" href=\"a.css.pagespeed.cf.0.css\"/>\n"
+      "<link rel=\"subresource\" href=\"b.css.pagespeed.cf.0.css\"/>\n"
+      "<link rel=\"subresource\" href=\"c.css.pagespeed.cf.0.css\"/>\n";
+
+  rewrite_driver()->SetUserAgent("prefetch_link_rel_subresource");
+  rewrite_driver_->log_record()->SetRewriterInfoMaxSize(2);
+  Parse("prefetch_link_rel_subresource", html_input);
+  EXPECT_EQ(RewrittenOutputWithResources(html_output, 3), output_);
+  ExpectNumLogRecords(2);
+  EXPECT_TRUE(logging_info()->rewriter_info_size_limit_exceeded());
+}
+
 TEST_F(FlushEarlyContentWriterFilterTest, FlushDeferJsEarlyIfTimePermits) {
   GoogleString html_input =
       "<!DOCTYPE html>"

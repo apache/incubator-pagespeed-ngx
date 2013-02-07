@@ -118,6 +118,9 @@ void LogFilterAction(RewriterInfo::RewriterApplicationStatus status,
                      LogRecord* log_record) {
   RewriterInfo* rewriter_info = log_record->NewRewriterInfo(
        RewriteOptions::FilterId(RewriteOptions::kFlushSubresources));
+  if (rewriter_info == NULL) {
+    return;
+  }
   FlushEarlyResourceInfo* flush_early_resource_info =
       rewriter_info->mutable_flush_early_resource_info();
   flush_early_resource_info->set_content_type(content_type);
