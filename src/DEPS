@@ -252,6 +252,13 @@ skip_child_includes = [
 
 
 hooks = [
+   {
+    # Pull clang on mac. If nothing changed, or on non-mac platforms, this takes
+    # zero seconds to run. If something changed, it downloads a prebuilt clang,
+    # which takes ~20s, but clang speeds up builds by more than 20s.
+    "pattern": ".",
+    "action": ["python", "src/tools/clang/scripts/update.py", "--mac-only"],
+  },
   {
     # A change to a .gyp, .gypi, or to GYP itself should run the generator.
     "pattern": ".",
