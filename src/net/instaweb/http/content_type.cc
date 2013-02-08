@@ -34,8 +34,9 @@ const ContentType kTypes[] = {
   {"application/xhtml+xml",         ".xhtml", ContentType::kXhtml},  // RFC 3236
   {"application/ce-html+xml",       ".xhtml", ContentType::kCeHtml},
 
+  // RFC 4329 defines application/javascript as canonical for JavaScript.
+  // text/javascript can break firewall gzipping.
   {"application/javascript",        ".js",   ContentType::kJavascript},
-     // RFC 4329 makes this canonical; text/... can break firewall gzipping
   {"text/css",                      ".css",  ContentType::kCss},
   {"text/plain",                    ".txt",  ContentType::kText},
   {"text/xml",                      ".xml",  ContentType::kXml},  // RFC 3023
@@ -44,6 +45,9 @@ const ContentType kTypes[] = {
   {"image/jpeg",                    ".jpg",  ContentType::kJpeg},
   {"application/x-shockwave-flash", ".swf",  ContentType::kSwf},
   {"image/webp",                    ".webp", ContentType::kWebp},
+  // While the official MIME type is image/vnd.microsoft.icon, old IE browsers
+  // will not accept that type, so we use portable image/x-icon as canonical.
+  {"image/x-icon",                  ".ico",  ContentType::kIco},
   {"application/json",              ".json", ContentType::kJson},
   {"application/pdf",               ".pdf",  ContentType::kPdf},  // RFC 3778
   {"application/octet-stream",      ".bin",  ContentType::kOctetStream },
@@ -57,6 +61,7 @@ const ContentType kTypes[] = {
   {"application/ecmascript",   ".js",   ContentType::kJavascript},
   {"image/jpeg",               ".jpeg", ContentType::kJpeg},
   {"image/jpg",                ".jpg",  ContentType::kJpeg},
+  {"image/vnd.microsoft.icon", ".ico",  ContentType::kIco},
   {"text/html",                ".htm",  ContentType::kHtml},
   {"application/xml",          ".xml",  ContentType::kXml},  // RFC 3023
 
@@ -85,11 +90,13 @@ const ContentType& kContentTypeGif = kTypes[8];
 const ContentType& kContentTypeJpeg = kTypes[9];
 const ContentType& kContentTypeSwf = kTypes[10];
 const ContentType& kContentTypeWebp = kTypes[11];
-const ContentType& kContentTypeJson = kTypes[12];
+const ContentType& kContentTypeIco = kTypes[12];
 
-const ContentType& kContentTypePdf = kTypes[13];
+const ContentType& kContentTypeJson = kTypes[13];
 
-const ContentType& kContentTypeBinaryOctetStream = kTypes[14];
+const ContentType& kContentTypePdf = kTypes[14];
+
+const ContentType& kContentTypeBinaryOctetStream = kTypes[15];
 
 int ContentType::MaxProducedExtensionLength() {
   return 4;  // .jpeg or .webp

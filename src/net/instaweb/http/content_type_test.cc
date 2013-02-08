@@ -39,17 +39,27 @@ TEST_F(ContentTypeTest, TestUnknown) {
 
 TEST_F(ContentTypeTest, TestExtensions) {
   EXPECT_EQ(ContentType::kHtml,       ExtToType(".html"));
+  EXPECT_EQ(ContentType::kHtml,       ExtToType(".htm"));
+  EXPECT_EQ(ContentType::kXhtml,      ExtToType(".xhtml"));
   EXPECT_EQ(ContentType::kJavascript, ExtToType(".js"));
-  EXPECT_EQ(ContentType::kJpeg,       ExtToType(".jpg"));
-  EXPECT_EQ(ContentType::kJpeg,       ExtToType(".jpeg"));
   EXPECT_EQ(ContentType::kCss,        ExtToType(".css"));
   EXPECT_EQ(ContentType::kText,       ExtToType(".txt"));
   EXPECT_EQ(ContentType::kXml,        ExtToType(".xml"));
   EXPECT_EQ(ContentType::kPng,        ExtToType(".png"));
   EXPECT_EQ(ContentType::kGif,        ExtToType(".gif"));
-  EXPECT_EQ(ContentType::kVideo,      ExtToType(".mp4"));
+  EXPECT_EQ(ContentType::kJpeg,       ExtToType(".jpg"));
+  EXPECT_EQ(ContentType::kJpeg,       ExtToType(".jpeg"));
+  EXPECT_EQ(ContentType::kSwf,        ExtToType(".swf"));
+  EXPECT_EQ(ContentType::kWebp,       ExtToType(".webp"));
+  EXPECT_EQ(ContentType::kIco,        ExtToType(".ico"));
+  EXPECT_EQ(ContentType::kJson,       ExtToType(".json"));
+  EXPECT_EQ(ContentType::kPdf,        ExtToType(".pdf"));
+  EXPECT_EQ(ContentType::kOctetStream, ExtToType(".bin"));
   EXPECT_EQ(ContentType::kVideo,      ExtToType(".mpg"));
+  EXPECT_EQ(ContentType::kVideo,      ExtToType(".mp4"));
   EXPECT_EQ(ContentType::kVideo,      ExtToType(".3gp"));
+  EXPECT_EQ(ContentType::kVideo,      ExtToType(".flv"));
+  EXPECT_EQ(ContentType::kVideo,      ExtToType(".ogg"));
 }
 
 TEST_F(ContentTypeTest, TestMimeType) {
@@ -64,8 +74,6 @@ TEST_F(ContentTypeTest, TestMimeType) {
   EXPECT_EQ(ContentType::kJavascript, MimeToType("application/javascript"));
   EXPECT_EQ(ContentType::kJavascript, MimeToType("text/ecmascript"));
   EXPECT_EQ(ContentType::kJavascript, MimeToType("application/ecmascript"));
-  EXPECT_EQ(ContentType::kJpeg,       MimeToType("image/jpeg"));
-  EXPECT_EQ(ContentType::kJpeg,       MimeToType("image/jpg"));
   EXPECT_EQ(ContentType::kCss,        MimeToType("text/css"));
   EXPECT_EQ(ContentType::kText,       MimeToType("text/plain"));
   EXPECT_EQ(ContentType::kXml,        MimeToType("application/xml"));
@@ -73,6 +81,12 @@ TEST_F(ContentTypeTest, TestMimeType) {
   EXPECT_EQ(ContentType::kPng,        MimeToType("image/png"));
   EXPECT_EQ(ContentType::kGif,        MimeToType("image/gif"));
 
+  EXPECT_EQ(ContentType::kJpeg,       MimeToType("image/jpeg"));
+  EXPECT_EQ(ContentType::kJpeg,       MimeToType("image/jpg"));
+  EXPECT_EQ(ContentType::kSwf,   MimeToType("application/x-shockwave-flash"));
+  EXPECT_EQ(ContentType::kWebp,       MimeToType("image/webp"));
+  EXPECT_EQ(ContentType::kIco,        MimeToType("image/x-icon"));
+  EXPECT_EQ(ContentType::kIco,        MimeToType("image/vnd.microsoft.icon"));
   EXPECT_EQ(ContentType::kVideo,      MimeToType("video/3gpp"));
   EXPECT_EQ(ContentType::kVideo,      MimeToType("video/mpeg"));
   EXPECT_EQ(ContentType::kVideo,      MimeToType("video/x-flv"));
@@ -80,6 +94,25 @@ TEST_F(ContentTypeTest, TestMimeType) {
 
   EXPECT_EQ(ContentType::kOctetStream, MimeToType("application/octet-stream"));
   EXPECT_EQ(ContentType::kOctetStream, MimeToType("binary/octet-stream"));
+}
+
+TEST_F(ContentTypeTest, ConstantSanityCheck) {
+  EXPECT_EQ(ContentType::kHtml, kContentTypeHtml.type());
+  EXPECT_EQ(ContentType::kXhtml, kContentTypeXhtml.type());
+  EXPECT_EQ(ContentType::kCeHtml, kContentTypeCeHtml.type());
+  EXPECT_EQ(ContentType::kJavascript, kContentTypeJavascript.type());
+  EXPECT_EQ(ContentType::kCss, kContentTypeCss.type());
+  EXPECT_EQ(ContentType::kText, kContentTypeText.type());
+  EXPECT_EQ(ContentType::kXml, kContentTypeXml.type());
+  EXPECT_EQ(ContentType::kJson, kContentTypeJson.type());
+  EXPECT_EQ(ContentType::kPng, kContentTypePng.type());
+  EXPECT_EQ(ContentType::kGif, kContentTypeGif.type());
+  EXPECT_EQ(ContentType::kJpeg, kContentTypeJpeg.type());
+  EXPECT_EQ(ContentType::kSwf, kContentTypeSwf.type());
+  EXPECT_EQ(ContentType::kWebp, kContentTypeWebp.type());
+  EXPECT_EQ(ContentType::kIco, kContentTypeIco.type());
+  EXPECT_EQ(ContentType::kPdf, kContentTypePdf.type());
+  EXPECT_EQ(ContentType::kOctetStream, kContentTypeBinaryOctetStream.type());
 }
 
 // Checks that empty string is parsed correctly and results in empty set and
