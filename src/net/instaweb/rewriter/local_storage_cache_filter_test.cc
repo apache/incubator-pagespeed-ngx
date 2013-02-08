@@ -258,7 +258,7 @@ TEST_F(LocalStorageCacheTest, ImgLocalStorageDisabled) {
   // Enabling another filter that triggers the NOSCRIPT tag-insertion in HTML.
   options()->EnableFilter(RewriteOptions::kDeferIframe);
   options()->DisableFilter(RewriteOptions::kLocalStorageCache);
-  options()->set_ajax_rewriting_enabled(true);
+  options()->set_in_place_rewriting_enabled(true);
   server_context()->ComputeSignature(options());
 
   TestLocalStorage("img_local_storage_disabled", "", "",

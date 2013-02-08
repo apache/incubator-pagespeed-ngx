@@ -239,7 +239,7 @@ Scheduler* TestRewriteDriverFactory::CreateScheduler() {
 
 RewriteOptions* TestRewriteDriverFactory::NewRewriteOptions() {
   RewriteOptions* options = RewriteDriverFactory::NewRewriteOptions();
-  options->set_ajax_rewriting_enabled(false);
+  options->set_in_place_rewriting_enabled(false);
   // As we are using mock time, we need to set a consistent deadline here,
   // as otherwise when running under Valgrind some tests will finish
   // with different HTML headers than expected.

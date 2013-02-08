@@ -109,7 +109,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
     options->ClearSignatureForTesting();
     options->EnableFilter(RewriteOptions::kRewriteCss);
     options->set_max_html_cache_time_ms(kHtmlCacheTimeSec * Timer::kSecondMs);
-    options->set_ajax_rewriting_enabled(true);
+    options->set_in_place_rewriting_enabled(true);
     options->Disallow("*blacklist*");
     server_context()->ComputeSignature(options);
     ProxyInterfaceTestBase::SetUp();
@@ -234,7 +234,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
   void DisableAjax() {
     RewriteOptions* options = server_context()->global_options();
     options->ClearSignatureForTesting();
-    options->set_ajax_rewriting_enabled(false);
+    options->set_in_place_rewriting_enabled(false);
     server_context()->ComputeSignature(options);
   }
 
@@ -1506,7 +1506,7 @@ TEST_F(ProxyInterfaceTest, AjaxRewritingForCss) {
   // freshening. This response has kBackgroundFetchHeader set to 1.
   RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
-  options->set_ajax_rewriting_enabled(false);
+  options->set_in_place_rewriting_enabled(false);
   server_context()->ComputeSignature(options);
 
   ClearStats();

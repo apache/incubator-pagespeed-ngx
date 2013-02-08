@@ -85,7 +85,7 @@ class UrlBlacklistTest {
         Disallow("*//www.googleadservices.com/pagead/conversion.js*");
         FALLTHROUGH_INTENDED;
       default:
-        FALLTHROUGH_INTENDED;
+        break;
     }
   }
   ~UrlBlacklistTest() { }

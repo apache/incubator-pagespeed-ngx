@@ -721,7 +721,7 @@ void RewriteOptions::AddProperties() {
   add_option(kEnabledOn, &RewriteOptions::enabled_, "e", kEnabled);
   add_option(false, &RewriteOptions::add_options_to_urls_, "aou",
              kAddOptionsToUrls);
-  add_option(false, &RewriteOptions::ajax_rewriting_enabled_, "ipro",
+  add_option(false, &RewriteOptions::in_place_rewriting_enabled_, "ipro",
              kInPlaceResourceOptimization);
   add_option(false, &RewriteOptions::in_place_wait_for_optimized_, "ipwo",
              kInPlaceWaitForOptimized);
@@ -937,7 +937,7 @@ void RewriteOptions::AddProperties() {
   // Commenting these out for now.
   //
   // In particular, ProxyInterfaceTest.AjaxRewritingForCss will fail
-  // if we don't let ajax_rewriting_enabled_ affect the signature.
+  // if we don't let in_place_rewriting_enabled_ affect the signature.
   //
   // TODO(jmarantz): consider whether there's any measurable benefit
   // from excluding these options from the signature.  If there is,
@@ -945,7 +945,7 @@ void RewriteOptions::AddProperties() {
   // keys.  If not, just remove the DoNotUseForSignatureComputation
   // infrastructure.
   //
-  // ajax_rewriting_enabled_.DoNotUseForSignatureComputation();
+  // in_place_rewriting_enabled_.DoNotUseForSignatureComputation();
   // log_rewrite_timing_.DoNotUseForSignatureComputation();
   // serve_stale_if_fetch_error_.DoNotUseForSignatureComputation();
   // enable_defer_js_experimental_.DoNotUseForSignatureComputation();

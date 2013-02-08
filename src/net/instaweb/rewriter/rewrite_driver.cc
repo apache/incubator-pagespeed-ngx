@@ -1647,7 +1647,7 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
       filter->LogFilterModifiedContent();
     }
     FetchOutputResource(output_resource, filter, async_fetch);
-  } else if (options()->ajax_rewriting_enabled()) {
+  } else if (options()->in_place_rewriting_enabled()) {
     // This is an ajax resource.
     handled = true;
     bool perform_http_fetch = true;

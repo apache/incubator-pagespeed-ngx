@@ -319,7 +319,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
       options()->EnableFilter(RewriteOptions::kInPlaceOptimizeForBrowser);
       options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
     }
-    options()->set_ajax_rewriting_enabled(true);
+    options()->set_in_place_rewriting_enabled(true);
     server_context()->ComputeSignature(options());
     // Clear stats since we may have added something to the cache.
     ClearStats();

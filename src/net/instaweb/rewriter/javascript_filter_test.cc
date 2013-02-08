@@ -422,7 +422,7 @@ TEST_F(JavascriptFilterTest, IdentifyAjaxLibrary) {
   // If ajax rewriting is enabled, we won't minify a library when it is fetched,
   // but it will still be replaced on the containing page.
   RegisterLibrary();
-  options()->set_ajax_rewriting_enabled(true);
+  options()->set_in_place_rewriting_enabled(true);
   options()->EnableFilter(RewriteOptions::kCanonicalizeJavascriptLibraries);
   rewrite_driver_->AddFilters();
   InitTest(100);

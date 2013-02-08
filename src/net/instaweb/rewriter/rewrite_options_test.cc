@@ -1813,7 +1813,7 @@ TEST_F(RewriteOptionsTest, ComputeSignatureWildcardGroup) {
 TEST_F(RewriteOptionsTest, ComputeSignatureOptionEffect) {
   options_.ClearSignatureForTesting();
   options_.set_css_image_inline_max_bytes(2048);
-  options_.set_ajax_rewriting_enabled(false);
+  options_.set_in_place_rewriting_enabled(false);
   options_.ComputeSignature(&hasher_);
   GoogleString signature1 = options_.signature();
 
@@ -1827,7 +1827,7 @@ TEST_F(RewriteOptionsTest, ComputeSignatureOptionEffect) {
   // Changing an Option not used in signature computation will not change the
   // signature.
   options_.ClearSignatureForTesting();
-  options_.set_ajax_rewriting_enabled(true);
+  options_.set_in_place_rewriting_enabled(true);
   options_.ComputeSignature(&hasher_);
   GoogleString signature3 = options_.signature();
 

@@ -1296,12 +1296,12 @@ class RewriteOptions {
     return add_options_to_urls_.value();
   }
 
-  void set_ajax_rewriting_enabled(bool x) {
-    set_option(x, &ajax_rewriting_enabled_);
+  void set_in_place_rewriting_enabled(bool x) {
+    set_option(x, &in_place_rewriting_enabled_);
   }
 
-  bool ajax_rewriting_enabled() const {
-    return ajax_rewriting_enabled_.value();
+  bool in_place_rewriting_enabled() const {
+    return in_place_rewriting_enabled_.value();
   }
 
   void set_in_place_wait_for_optimized(bool x) {
@@ -2697,7 +2697,8 @@ class RewriteOptions {
   // can be reconstructed on servers without the same configuration file.
   Option<bool> add_options_to_urls_;
 
-  Option<bool> ajax_rewriting_enabled_;   // Should ajax rewriting be enabled?
+  // Should in-place-resource-optimization(IPRO) be enabled?
+  Option<bool> in_place_rewriting_enabled_;
   // Optimize before responding in in-place flow?
   Option<bool> in_place_wait_for_optimized_;
   // Interval to delay serving on the IPRO path while waiting for optimizations.

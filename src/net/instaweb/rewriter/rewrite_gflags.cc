@@ -643,7 +643,7 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   // TODO(nikhilmadan): Check if this is explicitly set. Since this has been
   // disabled by default because of potential conflicts with Apache, we are
   // forcing this to be set in the default options.
-  options->set_ajax_rewriting_enabled(FLAGS_ajax_rewriting_enabled);
+  options->set_in_place_rewriting_enabled(FLAGS_ajax_rewriting_enabled);
 
   if (WasExplicitlySet("in_place_wait_for_optimized")) {
     options->set_in_place_wait_for_optimized(FLAGS_in_place_wait_for_optimized);

@@ -420,7 +420,7 @@ bool handle_as_resource(ApacheServerContext* server_context,
     handle_as_pagespeed_resource(request_context, gurl, url,
                                  custom_options.release(), server_context,
                                  request_headers.release(), request);
-  } else if (options->ajax_rewriting_enabled() && options->enabled() &&
+  } else if (options->in_place_rewriting_enabled() && options->enabled() &&
              options->IsAllowed(url)) {
     handled = handle_as_in_place(request_context,gurl, url,
                                  custom_options.release(), server_context,

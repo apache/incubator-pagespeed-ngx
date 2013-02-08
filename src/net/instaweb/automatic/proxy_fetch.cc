@@ -667,7 +667,7 @@ void ProxyFetch::DoFetch() {
 
     if (is_enabled && is_allowed) {
       // Pagespeed enabled on URL.
-      if (options->ajax_rewriting_enabled()) {
+      if (options->in_place_rewriting_enabled()) {
         // For Ajax rewrites, we go through RewriteDriver to give it
         // a chance to optimize resources. (If they are HTML, it will
         // not touch them, and we will stream them to the parser here).
