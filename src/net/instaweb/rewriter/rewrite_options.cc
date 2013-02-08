@@ -878,9 +878,6 @@ void RewriteOptions::AddProperties() {
   add_option(false,
              &RewriteOptions::enable_blink_html_change_detection_logging_,
              "ebhcdl", kEnableBlinkHtmlChangeDetectionLogging);
-  add_option(true,
-             &RewriteOptions::propagate_blink_cache_deletes_,
-             "pbcd", kPropagateBlinkCacheDeletes);
   add_option("", &RewriteOptions::critical_line_config_, "clc",
              kCriticalLineConfig);
   add_option(-1, &RewriteOptions::override_caching_ttl_ms_, "octm",

@@ -1658,13 +1658,6 @@ class RewriteOptions {
     return use_smart_diff_in_blink_.value();
   }
 
-  void set_propagate_blink_cache_deletes(bool x) {
-    set_option(x, &propagate_blink_cache_deletes_);
-  }
-  bool propagate_blink_cache_deletes() const {
-    return propagate_blink_cache_deletes_.value();
-  }
-
   void set_enable_lazyload_in_blink(bool x) {
     set_option(x, &enable_lazyload_in_blink_);
   }
@@ -2883,8 +2876,6 @@ class RewriteOptions {
   Option<bool> enable_blink_html_change_detection_logging_;
   // Use smart diff to detect publisher changes in html in blink.
   Option<bool> use_smart_diff_in_blink_;
-  // Enable publishing of cache deletion events.
-  Option<bool> propagate_blink_cache_deletes_;
   // Don't force disable lazyload in blink;
   Option<bool> enable_lazyload_in_blink_;
   // Enable Prioritizing of scripts in defer javascript.

@@ -766,9 +766,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("DomainShardCount",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kDomainShardCount));
-  EXPECT_STREQ("PropagateBlinkCacheDeletes",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kPropagateBlinkCacheDeletes));
   EXPECT_STREQ("EnableAggressiveRewritersForMobile",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableAggressiveRewritersForMobile));
