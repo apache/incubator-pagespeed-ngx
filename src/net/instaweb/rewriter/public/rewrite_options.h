@@ -93,6 +93,7 @@ class RewriteOptions {
     kConvertPngToJpeg,
     kConvertToWebpLossless,
     kDebug,
+    kDecodeRewrittenUrls,
     kDeferIframe,
     kDeferJavascript,
     kDelayImages,

@@ -187,6 +187,11 @@ void RecordingFetch::HandleDone(bool success) {
 }
 
 bool RecordingFetch::CanInPlaceRewrite() {
+  // We are rewriting only 200 responses.
+  if (response_headers()->status_code() != HttpStatus::kOK) {
+    return false;
+  }
+
   const ContentType* type = response_headers()->DetermineContentType();
   if (type == NULL) {
     VLOG(2) << "CanInPlaceRewrite false. Content-Type is not defined. Url: "

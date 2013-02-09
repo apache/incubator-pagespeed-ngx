@@ -255,9 +255,12 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
         nocache_html_url_("http://www.example.com/nocacheable.html"),
         cache_js_no_max_age_url_("http://www.example.com/cacheablemod.js"),
         bad_url_("http://www.example.com/bad.url"),
+        redirect_url_("http://www.example.com/redir.url"),
         rewritten_jpg_url_(
             "http://www.example.com/cacheable.jpg.pagespeed.ic.0.jpg"),
-        cache_body_("good"), nocache_body_("bad"), bad_body_("ugly"),
+        cache_body_("good"), nocache_body_("bad"),
+        bad_body_("ugly"),
+        redirect_body_("Location: http://www.example.com/final.url"),
         ttl_ms_(Timer::kHourMs), etag_("W/\"PSA-aj-0\""),
         original_etag_("original_etag"),
         exceed_deadline_(false), optimize_for_browser_(false),
@@ -299,6 +302,15 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     bad_headers.set_first_line(1, 1, 404, "Not Found");
     bad_headers.SetDate(start_time_ms());
     mock_url_fetcher()->SetResponse(bad_url_, bad_headers, bad_body_);
+
+    // Add a response for permanent redirect.
+    ResponseHeaders redirect_headers;
+    redirect_headers.set_first_line(1, 1, 301, "Moved Permanently");
+    redirect_headers.SetCacheControlMaxAge(36000);
+    redirect_headers.Add(HttpAttributes::kCacheControl, "public");
+    redirect_headers.Add(HttpAttributes::kContentType, "image/jpeg");
+    mock_url_fetcher()->SetResponse(
+        redirect_url_, redirect_headers, redirect_body_);
 
     img_filter_ = new FakeFilter(RewriteOptions::kImageCompressionId,
                                  rewrite_driver());
@@ -490,11 +502,13 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
   const GoogleString nocache_html_url_;
   const GoogleString cache_js_no_max_age_url_;
   const GoogleString bad_url_;
+  const GoogleString redirect_url_;
   const GoogleString rewritten_jpg_url_;
 
   const GoogleString cache_body_;
   const GoogleString nocache_body_;
   const GoogleString bad_body_;
+  const GoogleString redirect_body_;
 
   const int ttl_ms_;
   const char* etag_;
@@ -1279,6 +1293,25 @@ TEST_F(InPlaceRewriteContextTest, BadUrlNoRewriting) {
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+}
+
+TEST_F(InPlaceRewriteContextTest, PermanentRedirectNoRewriting) {
+  options()->set_in_place_wait_for_optimized(true);
+  Init();
+  FetchAndCheckResponse(redirect_url_, redirect_body_,
+                        true /*expected_success*/, 36000 /*ttl*/, NULL /*etag*/,
+                        start_time_ms());
+  // Don't attempt to rewrite this since it's not a 200 response.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_inserts());
   EXPECT_EQ(0, img_filter_->num_rewrites());
   EXPECT_EQ(0, js_filter_->num_rewrites());
   EXPECT_EQ(0, css_filter_->num_rewrites());

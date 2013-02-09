@@ -349,6 +349,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "ws", "When converting images to WebP, prefer lossless conversions" },
   { RewriteOptions::kDebug,
     "db", "Debug" },
+  { RewriteOptions::kDecodeRewrittenUrls,
+    "du", "Decode Rewritten URLs" },
   { RewriteOptions::kDeferIframe,
     "df", "Defer Iframe" },
   { RewriteOptions::kDeferJavascript,

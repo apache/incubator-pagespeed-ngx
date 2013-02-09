@@ -70,6 +70,7 @@
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
 #include "net/instaweb/rewriter/public/debug_filter.h"
+#include "net/instaweb/rewriter/public/decode_rewritten_urls_filter.h"
 #include "net/instaweb/rewriter/public/defer_iframe_filter.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/detect_reflow_js_defer_filter.h"
@@ -878,6 +879,10 @@ void RewriteDriver::AddPreRenderFilters() {
   // enabled since in this case, flush_subresources does not flush JS resources.
   bool flush_subresources_enabled = rewrite_options->Enabled(
       RewriteOptions::kFlushSubresources);
+
+  if (rewrite_options->Enabled(RewriteOptions::kDecodeRewrittenUrls)) {
+    AddOwnedEarlyPreRenderFilter(new DecodeRewrittenUrlsFilter(this));
+  }
 
   if (rewrite_options->Enabled(RewriteOptions::kAddBaseTag) ||
       rewrite_options->Enabled(RewriteOptions::kAddHead) ||

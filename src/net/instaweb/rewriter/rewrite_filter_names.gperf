@@ -42,6 +42,7 @@ struct FilterMap {
 "convert_png_to_jpeg",               RewriteOptions::kConvertPngToJpeg
 "convert_to_webp_lossless",          RewriteOptions::kConvertToWebpLossless
 "debug",                             RewriteOptions::kDebug
+"decode_rewritten_urls",             RewriteOptions::kDecodeRewrittenUrls
 "defer_iframe",                      RewriteOptions::kDeferIframe
 "defer_javascript",                  RewriteOptions::kDeferJavascript
 "detect_reflow_with_defer_js",       RewriteOptions::kDetectReflowWithDeferJavascript
