@@ -48,9 +48,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   static const char kStaticJavaScriptPrefix[];
   static const char kMemcached[];
 
-  // main_conf will have only options set in the main block.  It may be NULL,
-  // and we do not take ownership.
-  explicit NgxRewriteDriverFactory(NgxRewriteOptions* main_conf);
+  explicit NgxRewriteDriverFactory();
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -128,6 +126,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   bool is_root_process() const { return is_root_process_; }
   void RootInit();
   void ChildInit();
+  void set_main_conf(NgxRewriteOptions* main_conf) {  main_conf_ = main_conf; }
 
  private:
   SimpleStats simple_stats_;
@@ -137,6 +136,8 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   typedef std::map<GoogleString, NgxCache*> PathCacheMap;
   PathCacheMap path_cache_map_;
   MD5Hasher cache_hasher_;
+  // main_conf will have only options set in the main block.  It may be NULL,
+  // and we do not take ownership.
   NgxRewriteOptions* main_conf_;
   typedef std::set<NgxServerContext*> NgxServerContextSet;
   NgxServerContextSet uninitialized_server_contexts_;
