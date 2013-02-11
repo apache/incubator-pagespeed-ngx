@@ -696,6 +696,9 @@ TEST_F(RewriteContextTest, TrimRepeated404) {
 TEST_F(RewriteContextTest, FetchNonOptimizable) {
   InitTrimFilters(kRewrittenResource);
   InitResources();
+  // We use MD5 hasher instead of mock hasher so that the we get the actual hash
+  // of the content and not hash 0 always.
+  UseMd5Hasher();
 
   // Fetching a resource that's not optimizable under the rewritten URL
   // should still work in a single-input case. This is important to be more
@@ -714,6 +717,58 @@ TEST_F(RewriteContextTest, FetchNonOptimizable) {
   ASSERT_EQ(2, values.size());
   EXPECT_STREQ("max-age=300", *values[0]);
   EXPECT_STREQ("private", *values[1]);
+}
+
+TEST_F(RewriteContextTest, FetchNonOptimizableLowTtl) {
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+  // We use MD5 hasher instead of mock hasher so that the we get the actual hash
+  // of the content and not hash 0 always.
+  UseMd5Hasher();
+
+  // Fetching a resource that's not optimizable under the rewritten URL
+  // should still work in a single-input case. This is important to be more
+  // robust against JS URL manipulation.
+  GoogleString output;
+  ResponseHeaders headers;
+  EXPECT_TRUE(FetchResourceUrl(Encode(kTestDomain, "tw", "0", "e.css", "css"),
+                               &output, &headers));
+  EXPECT_EQ("e", output);
+
+  ConstStringStarVector values;
+  headers.Lookup(HttpAttributes::kCacheControl, &values);
+  ASSERT_EQ(2, values.size());
+  EXPECT_STREQ("max-age=5", *values[0]);
+  EXPECT_STREQ("private", *values[1]);
+  // Miss for request URL in http cache (twice, since we retry in
+  // RewriteDriver::CacheCallback), metadata, and input resource.  Insert
+  // metadata, and input and output resource with correct hash in http cache.
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // We do a second fetch to trigger the case where the output resource for the
+  // URL from meta-data cache is found in http cache and hence we do not have
+  // the original input at the time we try to fix headers.
+  ClearStats();
+  GoogleString output2;
+  ResponseHeaders headers2;
+  EXPECT_TRUE(FetchResourceUrl(Encode(kTestDomain, "tw", "0", "e.css", "css"),
+                               &output2, &headers2));
+  EXPECT_EQ("e", output2);
+
+  ConstStringStarVector values2;
+  headers2.Lookup(HttpAttributes::kCacheControl, &values2);
+  ASSERT_EQ(2, values2.size());
+  EXPECT_STREQ("max-age=5", *values2[0]);
+  EXPECT_STREQ("private", *values2[1]);
+  // Miss for request URL (twice).  Hit for metadata and output resource with
+  // correct hash.
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
 }
 
 TEST_F(RewriteContextTest, FetchNoSource) {
@@ -1676,9 +1731,8 @@ TEST_F(RewriteContextTest, TrimFetchHashFailed) {
 
 TEST_F(RewriteContextTest, TrimFetchHashFailedShortTtl) {
   // Variation of TrimFetchHashFailed, where the input's TTL is very short.
-  const int kTestTtlSec = 5;
   InitTrimFilters(kRewrittenResource);
-  SetResponseWithDefaultHeaders("d.css", kContentTypeCss, "d", kTestTtlSec);
+  InitResources();
   ValidateNoChanges("no_trimmable", CssLinkHref("d.css"));
   ClearStats();
 
@@ -1687,7 +1741,7 @@ TEST_F(RewriteContextTest, TrimFetchHashFailedShortTtl) {
   EXPECT_TRUE(FetchResourceUrl(Encode(kTestDomain, "tw", "1", "d.css", "css"),
                                &contents, &headers));
   EXPECT_STREQ("d", contents);
-  EXPECT_EQ(kTestTtlSec * Timer::kSecondMs, headers.cache_ttl_ms());
+  EXPECT_EQ(kLowOriginTtlMs, headers.cache_ttl_ms());
   EXPECT_FALSE(headers.IsProxyCacheable());
   EXPECT_TRUE(headers.IsCacheable());
 }
@@ -2032,16 +2086,16 @@ TEST_F(RewriteContextTest, NestedFailed) {
   // Make sure that the was_optimized() bit is not set when the nested
   // rewrite fails (which it will since it's already all caps)
   const GoogleString kRewrittenUrl = Encode(kTestDomain, "nf", "0",
-                                            "d.css", "css");
+                                            "t.css", "css");
   InitNestedFilter(NestedFilter::kExpectNestedRewritesFail);
   InitResources();
   ResponseHeaders default_css_header;
   SetDefaultLongCacheHeaders(&kContentTypeCss, &default_css_header);
   SetFetchResponse("http://test.com/u.css", default_css_header,
                      "UPPERCASE");
-  SetFetchResponse("http://test.com/d.css", default_css_header,
+  SetFetchResponse("http://test.com/t.css", default_css_header,
                      "u.css");
-  ValidateExpected("nested-noop", CssLinkHref("d.css"),
+  ValidateExpected("nested-noop", CssLinkHref("t.css"),
                    CssLinkHref(kRewrittenUrl));
 }
 

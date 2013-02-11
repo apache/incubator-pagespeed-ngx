@@ -2471,6 +2471,26 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceFromResource(
   return result;
 }
 
+void RewriteDriver::PopulateResourceNamer(
+    const StringPiece& filter_id,
+    const StringPiece& name,
+    ResourceNamer* full_name) {
+  full_name->set_id(filter_id);
+  full_name->set_name(name);
+  full_name->set_experiment(options()->GetFuriousStateStr());
+
+  // Note that we never populate ResourceNamer::options for in place resource
+  // rewrites.
+  if (filter_id != RewriteOptions::kInPlaceRewriteId &&
+      !full_name->has_experiment() && options()->add_options_to_urls()) {
+    GoogleString resource_option = RewriteQuery::GenerateResourceOption(
+        filter_id, this);
+    full_name->set_options(resource_option);
+  } else {
+    full_name->set_options("");
+  }
+}
+
 OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
     const StringPiece& mapped_path,
     const StringPiece& unmapped_path,
@@ -2479,16 +2499,7 @@ OutputResourcePtr RewriteDriver::CreateOutputResourceWithPath(
     const StringPiece& name,
     OutputResourceKind kind) {
   ResourceNamer full_name;
-  full_name.set_id(filter_id);
-  full_name.set_name(name);
-  full_name.set_experiment(options()->GetFuriousStateStr());
-
-  if (!full_name.has_experiment() && options()->add_options_to_urls()) {
-    GoogleString resource_option = RewriteQuery::GenerateResourceOption(
-        filter_id, this);
-    full_name.set_options(resource_option);
-  }
-
+  PopulateResourceNamer(filter_id, name, &full_name);
   OutputResourcePtr resource;
   int max_leaf_size = full_name.EventualSize(*server_context_->hasher())
                       + ContentType::MaxProducedExtensionLength();

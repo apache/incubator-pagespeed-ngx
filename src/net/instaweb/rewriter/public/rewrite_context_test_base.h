@@ -428,6 +428,9 @@ class RewriteContextTestBase : public RewriteTestBase {
   // Use a TTL value other than the implicit value, so we are sure we are using
   // the original TTL value.
   static const int64 kOriginTtlMs = 12 * Timer::kMinuteMs;
+  // An TTL value that is lower than the default implicit TTL value (300
+  // seconds).
+  static const int64 kLowOriginTtlMs = 5 * Timer::kSecondMs;
 
   // Use a TTL value other than the implicit value, so we are sure we are using
   // the original TTL value.

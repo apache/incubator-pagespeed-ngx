@@ -498,6 +498,13 @@ class RewriteDriver : public HtmlParse {
       const StringPiece& base_url, const StringPiece& filter_id,
       const StringPiece& name, OutputResourceKind kind);
 
+  // Fills in the resource namer based on the give filter_id, name and options
+  // stored in the driver.
+  void PopulateResourceNamer(
+    const StringPiece& filter_id,
+    const StringPiece& name,
+    ResourceNamer* full_name);
+
   // Version of CreateOutputResourceWithPath which first takes only the
   // unmapped path and finds the mapped path using the DomainLawyer
   // and the base_url is this driver's base_url.

@@ -42,6 +42,9 @@ const char TrimWhitespaceSyncFilter::kFilterId[] = "ts";
 const char UpperCaseRewriter::kFilterId[] = "uc";
 const char NestedFilter::kFilterId[] = "nf";
 const char CombiningFilter::kFilterId[] = "cr";
+// This is needed to prevent link error due to EXPECT_EQ on this field in
+// RewriteContextTest::TrimFetchHashFailedShortTtl.
+const int64 RewriteContextTestBase::kLowOriginTtlMs;
 
 TrimWhitespaceRewriter::~TrimWhitespaceRewriter() {
 }
@@ -339,6 +342,16 @@ void RewriteContextTestBase::InitResourcesToDomain(const char* domain) {
   SetFetchResponse(StrCat(domain, "c.css"), default_css_header,
                    "a.css\nb.css\n");
 
+  // not trimmable, low ttl.
+  ResponseHeaders low_ttl_css_header;
+  SetDefaultLongCacheHeaders(&kContentTypeCss, &low_ttl_css_header);
+  low_ttl_css_header.SetDateAndCaching(now_ms, kLowOriginTtlMs);
+  low_ttl_css_header.ComputeCaching();
+  SetFetchResponse(StrCat(domain, "d.css"), low_ttl_css_header, "d");
+
+  // trimmable, low ttl.
+  SetFetchResponse(StrCat(domain, "e.css"), low_ttl_css_header, " e ");
+
   // trimmable, with charset.
   ResponseHeaders encoded_css_header;
   server_context()->SetDefaultLongCacheHeadersWithCharset(
@@ -348,7 +361,6 @@ void RewriteContextTestBase::InitResourcesToDomain(const char* domain) {
 
   // trimmable, private
   ResponseHeaders private_css_header;
-  now_ms = http_cache()->timer()->NowMs();
   private_css_header.set_major_version(1);
   private_css_header.set_minor_version(1);
   private_css_header.SetStatusAndReason(HttpStatus::kOK);
@@ -361,7 +373,6 @@ void RewriteContextTestBase::InitResourcesToDomain(const char* domain) {
 
   // trimmable, no-cache
   ResponseHeaders no_cache_css_header;
-  now_ms = http_cache()->timer()->NowMs();
   no_cache_css_header.set_major_version(1);
   no_cache_css_header.set_minor_version(1);
   no_cache_css_header.SetStatusAndReason(HttpStatus::kOK);
@@ -374,7 +385,6 @@ void RewriteContextTestBase::InitResourcesToDomain(const char* domain) {
 
   // trimmable, no-transform
   ResponseHeaders no_transform_css_header;
-  now_ms = http_cache()->timer()->NowMs();
   no_transform_css_header.set_major_version(1);
   no_transform_css_header.set_minor_version(1);
   no_transform_css_header.SetStatusAndReason(HttpStatus::kOK);
@@ -388,7 +398,6 @@ void RewriteContextTestBase::InitResourcesToDomain(const char* domain) {
 
   // trimmable, no-cache, no-store
   ResponseHeaders no_store_css_header;
-  now_ms = http_cache()->timer()->NowMs();
   no_store_css_header.set_major_version(1);
   no_store_css_header.set_minor_version(1);
   no_store_css_header.SetStatusAndReason(HttpStatus::kOK);

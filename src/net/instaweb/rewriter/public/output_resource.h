@@ -136,6 +136,7 @@ class OutputResource : public Resource {
   const GoogleString& unmapped_base() const { return unmapped_base_; }
   const GoogleString& original_base() const { return original_base_; }
   const ResourceNamer& full_name() const { return full_name_; }
+  ResourceNamer* mutable_full_name() { return &full_name_; }
   StringPiece name() const { return full_name_.name(); }
   StringPiece experiment() const { return full_name_.experiment(); }
   StringPiece suffix() const;

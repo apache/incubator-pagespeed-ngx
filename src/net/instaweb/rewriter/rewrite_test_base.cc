@@ -907,6 +907,13 @@ HTTPCache::FindResult RewriteTestBase::HttpBlockingFind(
   return callback.result();
 }
 
+HTTPCache::FindResult RewriteTestBase::HttpBlockingFindStatus(
+    const GoogleString& key, HTTPCache* http_cache) {
+  HTTPValue value_out;
+  ResponseHeaders response_headers;
+  return HttpBlockingFind(key, http_cache, &value_out, &response_headers);
+}
+
 void RewriteTestBase::SetMimetype(const StringPiece& mimetype) {
   rewrite_driver()->set_response_headers_ptr(&response_headers_);
   response_headers_.Add(HttpAttributes::kContentType, mimetype);

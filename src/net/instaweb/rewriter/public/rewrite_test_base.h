@@ -527,6 +527,11 @@ class RewriteTestBase : public RewriteOptionsTestBase {
       const GoogleString& key, HTTPCache* http_cache, HTTPValue* value_out,
       ResponseHeaders* headers);
 
+  // The same as the above function, but doesn't need an HTTPValue or
+  // ResponseHeaders.
+  HTTPCache::FindResult HttpBlockingFindStatus(
+      const GoogleString& key, HTTPCache* http_cache);
+
   // Sets the response-headers Content-Type to "application/xhtml+xml".
   void SetXhtmlMimetype() { SetMimetype("application/xhtml+xml"); }
 

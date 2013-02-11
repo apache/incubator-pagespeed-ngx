@@ -1808,7 +1808,9 @@ TEST_F(ImageRewriteTest, CacheControlHeaderCheckForNonWebpUA) {
              new_hash, ".jpg");
   ASSERT_TRUE(FetchResourceUrl(rewritten_url_new, &content, &response));
   EXPECT_FALSE(response.IsProxyCacheable());
-  EXPECT_EQ(5 * Timer::kMinuteMs,
+  // TTL will be 100s because that is the input resource TTL and is lower than
+  // the 300s implicit cache TTL for hash mismatch.
+  EXPECT_EQ(100 * Timer::kSecondMs,
             response.CacheExpirationTimeMs() - timer()->NowMs());
 }
 

@@ -1338,5 +1338,129 @@ TEST_F(RewriteDriverInhibitTest, InhibitWithFinishParse) {
   EXPECT_EQ("<html><body><p></p></body></html>", output_buffer_);
 }
 
+TEST_F(RewriteDriverTest, CachePollutionWithWrongEncodingCharacter) {
+  AddFilter(RewriteOptions::kRewriteCss);
+
+  const char kCss[] = "* { display: none; }";
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCss, 100);
+
+  GoogleString css_wrong_url =
+      "http://test.com/B.a.css.pagespeed.cf.0.css";
+
+  GoogleString correct_url = Encode(
+      kTestDomain, RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
+      "a.css", "css");
+
+  // Cold load.
+  EXPECT_TRUE(TryFetchResource(css_wrong_url));
+
+  // We should have 3 things inserted:
+  // 1) the source data
+  // 2) the result
+  // 3) the rname entry for the result
+  int cold_num_inserts = lru_cache()->num_inserts();
+  EXPECT_EQ(3, cold_num_inserts);
+
+  EXPECT_EQ(HTTPCache::kFound,
+            HttpBlockingFindStatus(correct_url, http_cache()));
+
+  GoogleString input_html(CssLinkHref("a.css"));
+  GoogleString output_html(CssLinkHref(correct_url));
+  ValidateExpected("wrong_encoding", input_html, output_html);
+}
+
+TEST_F(RewriteDriverTest, CachePollutionWithLowerCasedncodingCharacter) {
+  AddFilter(RewriteOptions::kRewriteCss);
+
+  const char kCss[] = "* { display: none; }";
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCss, 100);
+
+  GoogleString css_wrong_url =
+      "http://test.com/a.a.css.pagespeed.cf.0.css";
+
+  GoogleString correct_url = Encode(
+      kTestDomain, RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
+      "a.css", "css");
+
+  // Cold load.
+  EXPECT_TRUE(TryFetchResource(css_wrong_url));
+
+  // We should have 3 things inserted:
+  // 1) the source data
+  // 2) the result
+  // 3) the rname entry for the result
+  int cold_num_inserts = lru_cache()->num_inserts();
+  EXPECT_EQ(3, cold_num_inserts);
+
+  EXPECT_EQ(HTTPCache::kFound,
+            HttpBlockingFindStatus(correct_url, http_cache()));
+
+  GoogleString input_html(CssLinkHref("a.css"));
+  GoogleString output_html(CssLinkHref(correct_url));
+  ValidateExpected("wrong_encoding", input_html, output_html);
+}
+
+TEST_F(RewriteDriverTest, CachePollutionWithExperimentId) {
+  AddFilter(RewriteOptions::kRewriteCss);
+
+  const char kCss[] = "* { display: none; }";
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCss, 100);
+
+  GoogleString css_wrong_url =
+      "http://test.com/A.a.css.pagespeed.b.cf.0.css";
+
+  GoogleString correct_url = Encode(
+      kTestDomain, RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
+      "a.css", "css");
+
+  // Cold load.
+  EXPECT_TRUE(TryFetchResource(css_wrong_url));
+
+  // We should have 3 things inserted:
+  // 1) the source data
+  // 2) the result
+  // 3) the rname entry for the result
+  int cold_num_inserts = lru_cache()->num_inserts();
+  EXPECT_EQ(3, cold_num_inserts);
+
+  EXPECT_EQ(HTTPCache::kFound,
+            HttpBlockingFindStatus(correct_url, http_cache()));
+
+  GoogleString input_html(CssLinkHref("a.css"));
+  GoogleString output_html(CssLinkHref(correct_url));
+  ValidateExpected("wrong_encoding", input_html, output_html);
+}
+
+TEST_F(RewriteDriverTest, CachePollutionWithQueryParams) {
+  AddFilter(RewriteOptions::kRewriteCss);
+
+  const char kCss[] = "* { display: none; }";
+  SetResponseWithDefaultHeaders("a.css?ver=3", kContentTypeCss, kCss, 100);
+
+  GoogleString css_wrong_url =
+      "http://test.com/A.a.css,qver%3D3.pagespeed.cf.0.css";
+
+  GoogleString correct_url = Encode(
+      kTestDomain, RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
+      "a.css?ver=3", "css");
+
+  // Cold load.
+  EXPECT_TRUE(TryFetchResource(css_wrong_url));
+
+  // We should have 3 things inserted:
+  // 1) the source data
+  // 2) the result
+  // 3) the rname entry for the result
+  int cold_num_inserts = lru_cache()->num_inserts();
+  EXPECT_EQ(3, cold_num_inserts);
+
+  EXPECT_EQ(HTTPCache::kFound,
+            HttpBlockingFindStatus(correct_url, http_cache()));
+
+  GoogleString input_html(CssLinkHref("a.css?ver=3"));
+  GoogleString output_html(CssLinkHref(correct_url));
+  ValidateExpected("wrong_encoding", input_html, output_html);
+}
+
 
 }  // namespace net_instaweb

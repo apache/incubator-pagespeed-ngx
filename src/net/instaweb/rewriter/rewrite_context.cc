@@ -2176,6 +2176,20 @@ bool RewriteContext::PrepareFetch(
       ResourceSlotPtr slot(new FetchResourceSlot(resource));
       AddSlot(slot);
     }
+    OutputResourcePtr output = output_resource;
+    if (is_valid) {
+      // Fix the output resourcename based on the decoded urls and the real
+      // options used while rewriting this request.
+      StringVector url_string_vector;
+      for (int i = 0, n = url_vector.size(); i < n; ++i) {
+        url_string_vector.push_back(url_vector[i]->LeafWithQuery().as_string());
+      }
+      GoogleString encoded_url;
+      encoder()->Encode(url_string_vector, resource_context(),
+                        &encoded_url);
+      driver->PopulateResourceNamer(
+          id(), encoded_url, output->mutable_full_name());
+    }
     STLDeleteContainerPointers(url_vector.begin(), url_vector.end());
     if (is_valid) {
       SetPartitionKey();
@@ -2384,11 +2398,33 @@ void RewriteContext::FixFetchFallbackHeaders(ResponseHeaders* headers) {
     headers->ComputeCaching();
   }
 
+  // In the case of a resource fetch with hash mismatch, we will not have
+  // inputs.  So fix headers based on metadata.  We do not consider
+  // FILE_BASED inputs here.  Hence if all inputs are FILED_BASED then the TTL
+  // wil be min of headers->cache_ttl_ms() and
+  // ResponseHeaders::kImplicitCacheTtlMs.
+  int64 min_cache_expiry_time_ms = headers->cache_ttl_ms() + headers->date_ms();
+  for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
+    const CachedResult& partition = partitions_->partition(i);
+    for (int j = 0, m = partition.input_size(); j < m; ++j) {
+      const InputInfo& input_info = partition.input(j);
+      if (input_info.type() == InputInfo::CACHED &&
+          input_info.has_expiration_time_ms()) {
+        int64 input_expiration_time_ms = input_info.expiration_time_ms();
+        if (input_expiration_time_ms > 0) {
+          min_cache_expiry_time_ms = std::min(input_expiration_time_ms,
+                                              min_cache_expiry_time_ms);
+        }
+      }
+    }
+  }
+
   // Shorten cache length, and prevent proxies caching this, as it's under
   // the "wrong" URL.
   headers->SetDateAndCaching(
       headers->date_ms(),
-      std::min(headers->cache_ttl_ms(), ResponseHeaders::kImplicitCacheTtlMs),
+      std::min(min_cache_expiry_time_ms - headers->date_ms(),
+               ResponseHeaders::kImplicitCacheTtlMs),
       ",private");
   headers->ComputeCaching();
 }
