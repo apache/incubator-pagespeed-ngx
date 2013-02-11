@@ -408,11 +408,6 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
   image_options->retain_color_sampling =
       !options->Enabled(RewriteOptions::kJpegSubsampling);
 
-  if (image_options->convert_jpeg_to_webp &&
-      (image_options->webp_quality < 0)) {
-    // TODO(vchudnov): Determine a better value here than 100.
-    image_options->webp_quality = 100;
-  }
   return image_options;
 }
 

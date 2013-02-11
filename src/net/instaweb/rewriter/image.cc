@@ -252,7 +252,10 @@ class ImageImpl : public Image {
       const GoogleString& image_data);
 
   // Converts image_data, readable via png_reader, to a webp using the
-  // settings in options_, if allowed by those settings.
+  // settings in options_, if allowed by those settings. If the
+  // settings specify a WebP lossless conversion and that fails for
+  // some reason, this will fall back to WebP lossy, unless
+  // options_->preserve_lossless is set.
   bool ConvertPngToWebp(
       const pagespeed::image_compression::PngReaderInterface& png_reader,
       const GoogleString& image_data);
@@ -982,16 +985,28 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
     bool fall_back_to_png,
     const char* dbg_input_format) {
   bool ok = false;
-  if ((options_->convert_png_to_jpeg || low_quality_enabled_) &&
+  // If the user specifies --convert_to_webp_lossless and does not
+  // specify --convert_png_to_jpeg, we will fall back directly to PNG
+  // if WebP lossless fails; in other words, we do only lossless
+  // conversions.
+  options_->preserve_lossless =
+      (options_->preferred_webp == Image::WEBP_LOSSLESS) &&
+      (!options_->convert_png_to_jpeg);
+  if ((options_->preserve_lossless ||
+       options_->convert_png_to_jpeg ||
+       low_quality_enabled_) &&
       (dims_.width() != 0) && (dims_.height() != 0)) {
     // Don't try to optimize empty images, it just messes things up.
-    if (options_->convert_jpeg_to_webp) {
+    if (options_->preserve_lossless ||
+        options_->convert_jpeg_to_webp) {
       ok = ConvertPngToWebp(*png_reader, string_for_image);
       VLOG(1) << "Image conversion: " << ok
               << " " << dbg_input_format
               << "->webp for " << url_.c_str();
     }
-    if (!ok && options_->jpeg_quality > 0) {
+    if (!ok &&
+        !options_->preserve_lossless &&
+        options_->jpeg_quality > 0) {
       ok = OptimizePngOrConvertToJpeg(*png_reader,
                                       string_for_image);
       VLOG(1) << "Image conversion: " << ok
@@ -1013,7 +1028,8 @@ bool ImageImpl::ConvertPngToWebp(
       const pagespeed::image_compression::PngReaderInterface& png_reader,
       const GoogleString& input_image) {
   bool ok = false;
-  if (options_->preferred_webp != Image::WEBP_NONE) {
+  if ((options_->preferred_webp != Image::WEBP_NONE) &&
+      (options_->webp_quality > 0)) {
     pagespeed::image_compression::WebpConfiguration webp_config;
     webp_config.quality = options_->webp_quality;
 
@@ -1023,12 +1039,12 @@ bool ImageImpl::ConvertPngToWebp(
     // tunable.
     webp_config.method = 3;
 
-    webp_config.alpha_quality = (options_->allow_webp_alpha ?
-                                 options_->webp_quality : 0);
-    webp_config.alpha_compression = 1;  // compressed with WebP lossless
     bool is_opaque = false;
 
     if (options_->preferred_webp == Image::WEBP_LOSSLESS) {
+      // Note that webp_config.alpha_quality and
+      // webp_config.alpha_compression are only meaningful in the
+      // lossy compression case.
       webp_config.lossless = true;
       ok = MayConvert() &&
           ImageConverter::ConvertPngToWebp(
@@ -1039,8 +1055,10 @@ bool ImageImpl::ConvertPngToWebp(
       }
     }
 
-    if (!ok) {
+    if (!ok && !options_->preserve_lossless) {
       webp_config.lossless = false;
+      webp_config.alpha_quality = (options_->allow_webp_alpha ? 100 : 0);
+      webp_config.alpha_compression = 1;  // compressed with WebP lossless
       ok = MayConvert() &&
           ImageConverter::ConvertPngToWebp(
           png_reader, input_image, webp_config,

@@ -352,7 +352,7 @@ TEST_F(ImageTest, PngToWebpLaTest) {
       26548, true);
 }
 
-// TODO(vchudnov): Add PngToWebpLaFailToWebpTest. This will require
+// TODO(vchudnov): Add PngToWebpLaFailToPngTest. This will require
 // creating/mocking an initial conversion failure.
 
 TEST_F(ImageTest, PngAlphaToWebpFailToPngTest) {
@@ -439,6 +439,30 @@ TEST_F(ImageTest, PngLargeAlphaToWebpTest) {
   EXPECT_GT(image->input_size(), image->output_size());
   EXPECT_EQ(ContentType::kWebp, image->content_type()->type());
   EXPECT_EQ(1, options->conversions_attempted);
+}
+
+// This tests that we compress the alpha channel on the webp. If we
+// don't on this image, it becomes larger than the original.
+TEST_F(ImageTest, PngLargeAlphaToWebpLaTest) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  Image::CompressionOptions* options = new Image::CompressionOptions;
+  options->preferred_webp = Image::WEBP_LOSSLESS;
+  options->allow_webp_alpha = true;
+  options->convert_png_to_jpeg = true;
+  options->convert_jpeg_to_webp = true;
+  options->webp_quality = 75;
+  options->jpeg_quality = 85;
+  EXPECT_EQ(0, options->conversions_attempted);
+
+  GoogleString buffer;
+  ImagePtr image(ReadFromFileWithOptions(kRedbrush, &buffer, options));
+  EXPECT_GT(image->input_size(), image->output_size());
+  EXPECT_EQ(ContentType::kWebp, image->content_type()->type());
+  EXPECT_EQ(1, options->conversions_attempted);
+  // TODO(vchudnov): Check that the pixels match.
 }
 
 TEST_F(ImageTest, PngToJpegTest) {

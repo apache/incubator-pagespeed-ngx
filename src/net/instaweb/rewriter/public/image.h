@@ -82,7 +82,10 @@ class Image {
           retain_exif_data(false),
           jpeg_num_progressive_scans(
               RewriteOptions::kDefaultImageJpegNumProgressiveScans),
-          conversions_attempted(0) {}
+          conversions_attempted(0),
+          preserve_lossless(false) {}
+    // These options are set by the client to specify what type of
+    // conversion to perform:
     PreferredWebp preferred_webp;
     bool allow_webp_alpha;
     int64 webp_quality;
@@ -99,7 +102,11 @@ class Image {
     bool retain_color_sampling;
     bool retain_exif_data;
     int jpeg_num_progressive_scans;
+
+    // These fields are set by the conversion routines to report
+    // characteristics of the conversion process.
     int conversions_attempted;
+    bool preserve_lossless;
   };
 
   virtual ~Image();
