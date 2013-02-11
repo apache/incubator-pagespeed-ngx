@@ -582,10 +582,6 @@ void ProxyFetch::AddPagespeedHeader() {
 }
 
 void ProxyFetch::SetupForHtml() {
-  {
-    ScopedMutex lock(log_record()->mutex());
-    log_record()->logging_info()->set_is_html_response(true);
-  }
   const RewriteOptions* options = Options();
   if (options->enabled() && options->IsAllowed(url_)) {
     started_parse_ = StartParse();
@@ -781,7 +777,10 @@ bool ProxyFetch::HandleWrite(const StringPiece& str,
     if (html_detector_.ConsiderInput(str)) {
       // Figured out whether really HTML or not.
       if (html_detector_.probable_html()) {
-        SetupForHtml();
+        log_record()->SetIsHtml(true);
+        if (Options()->max_html_parse_bytes() != 0) {
+          SetupForHtml();
+        }
       }
 
       // Now we're done mucking about with headers, add one noting our

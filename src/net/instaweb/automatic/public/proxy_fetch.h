@@ -30,9 +30,11 @@
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -44,6 +46,7 @@ class AbstractClientState;
 class AbstractMutex;
 class CacheUrlAsyncFetcher;
 class Function;
+class LogRecord;
 class MessageHandler;
 class ProxyFetch;
 class ProxyFetchPropertyCallbackCollector;
@@ -306,6 +309,7 @@ class ProxyFetch : public SharedAsyncFetch {
   friend class ProxyFetchFactory;
   friend class ProxyFetchPropertyCallbackCollector;
   friend class MockProxyFetch;
+  FRIEND_TEST(ProxyFetchTest, TestInhibitParsing);
 
   // Called by ProxyFetchPropertyCallbackCollector when all property-cache
   // fetches are complete.  This function takes ownership of collector.

@@ -21,6 +21,8 @@
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -28,8 +30,10 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -185,6 +189,40 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
 
   DISALLOW_COPY_AND_ASSIGN(ProxyFetchPropertyCallbackCollectorTest);
 };
+
+
+// Test fixture for ProxyFetch.
+class ProxyFetchTest : public RewriteTestBase {
+};
+
+TEST_F(ProxyFetchTest, TestInhibitParsing) {
+  NullMessageHandler handler;
+  server_context()->global_options()->ClearSignatureForTesting();
+  server_context()->global_options()->set_max_html_parse_bytes(0L);
+  server_context()->global_options()->ComputeSignature(
+      server_context()->hasher());
+  StringAsyncFetch fetch(
+      RequestContext::NewTestRequestContext(
+          server_context()->thread_system()));
+  fetch.response_headers()->Add("Content-Type", "text/html");
+  fetch.response_headers()->ComputeCaching();
+  ProxyFetchFactory factory(server_context_);
+  MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
+      &fetch, &factory, server_context());
+  mock_proxy_fetch->Write("<html>HTML</html>.", &handler);
+  mock_proxy_fetch->Flush(&handler);
+
+  // We never parsed the HTML, but we did log HTML content type.
+  EXPECT_FALSE(mock_proxy_fetch->started_parse_);
+  {
+    LogRecord* log_record = mock_proxy_fetch->request_context()->log_record();
+    ScopedMutex lock(log_record->mutex());
+    LoggingInfo* info = log_record->logging_info();
+    EXPECT_TRUE(info->is_html_response());
+  }
+
+  mock_proxy_fetch->Done(true);
+}
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, EmptyCollectorTest) {
   // Test that creating an empty collector works.

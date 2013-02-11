@@ -81,6 +81,9 @@ class LogRecord  {
   // guard any reads and writes to this using mutex().
   virtual LoggingInfo* logging_info();
 
+  // Atomically sets is_html_response in the logging proto.
+  void SetIsHtml(bool is_html);
+
   // Adds a new cohort info with the given cohort name and returns its index.
   int AddPropertyCohortInfo(const GoogleString& cohort);
 

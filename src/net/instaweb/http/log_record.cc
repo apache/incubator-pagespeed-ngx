@@ -64,6 +64,11 @@ LoggingInfo* LogRecord::logging_info() {
   return logging_info_.get();
 }
 
+void LogRecord::SetIsHtml(bool is_html) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->set_is_html_response(true);
+}
+
 int LogRecord::AddPropertyCohortInfo(const GoogleString& cohort) {
   ScopedMutex lock(mutex_.get());
   PropertyCohortInfo* cohort_info =
