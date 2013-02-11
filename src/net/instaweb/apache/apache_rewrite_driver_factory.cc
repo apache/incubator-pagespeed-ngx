@@ -30,7 +30,6 @@
 #include "ap_mpm.h"
 
 #include "base/logging.h"
-#include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apache_server_context.h"
@@ -54,6 +53,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/system/public/system_cache_path.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/async_cache.h"
 #include "net/instaweb/util/public/cache_batcher.h"
@@ -174,8 +174,8 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
-    ApacheCache* cache = p->second;
-    defer_cleanup(new Deleter<ApacheCache>(cache));
+    SystemCachePath* cache = p->second;
+    defer_cleanup(new Deleter<SystemCachePath>(cache));
   }
 
   for (MemcachedMap::iterator p = memcached_map_.begin(),
@@ -193,13 +193,14 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
   shared_mem_statistics_.reset(NULL);
 }
 
-ApacheCache* ApacheRewriteDriverFactory::GetCache(ApacheConfig* config) {
+SystemCachePath* ApacheRewriteDriverFactory::GetCache(ApacheConfig* config) {
   const GoogleString& path = config->file_cache_path();
   std::pair<PathCacheMap::iterator, bool> result = path_cache_map_.insert(
-      PathCacheMap::value_type(path, static_cast<ApacheCache*>(NULL)));
+      PathCacheMap::value_type(path, static_cast<SystemCachePath*>(NULL)));
   PathCacheMap::iterator iter = result.first;
   if (result.second) {
-    iter->second = new ApacheCache(path, *config, this);
+    iter->second = new SystemCachePath(path, config, this,
+                                       slow_worker(), shared_mem_runtime());
   }
   return iter->second;
 }
@@ -391,9 +392,9 @@ void ApacheRewriteDriverFactory::SetupCaches(
   // Apache, and will probably be needed for nginx.
   ApacheConfig* config = ApacheConfig::DynamicCast(
       server_context->global_options());
-  ApacheCache* apache_cache = GetCache(config);
-  CacheInterface* lru_cache = apache_cache->lru_cache();
-  CacheInterface* file_cache = apache_cache->file_cache();
+  SystemCachePath* caches_for_path = GetCache(config);
+  CacheInterface* lru_cache = caches_for_path->lru_cache();
+  CacheInterface* file_cache = caches_for_path->file_cache();
   CacheInterface* shm_metadata_cache = GetShmMetadataCache(config);
   CacheInterface* memcached = GetMemcached(config, file_cache);
 
@@ -474,7 +475,8 @@ void ApacheRewriteDriverFactory::InitStaticJavascriptManager(
 }
 
 NamedLockManager* ApacheRewriteDriverFactory::DefaultLockManager() {
-  LOG(DFATAL) << "In Apache locks are owned by ApacheCache, not the factory";
+  LOG(DFATAL)
+      << "In Apache locks are owned by SystemCachePath, not the factory";
   return NULL;
 }
 
@@ -759,7 +761,7 @@ void ApacheRewriteDriverFactory::RootInit() {
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
-    ApacheCache* cache = p->second;
+    SystemCachePath* cache = p->second;
     cache->RootInit();
   }
 }
@@ -790,7 +792,7 @@ void ApacheRewriteDriverFactory::ChildInit() {
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
-    ApacheCache* cache = p->second;
+    SystemCachePath* cache = p->second;
     cache->ChildInit();
   }
   for (ApacheServerContextSet::iterator p = uninitialized_managers_.begin(),
@@ -958,8 +960,8 @@ void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
   RateController::InitStats(statistics);
   SerfUrlAsyncFetcher::InitStats(statistics);
 
-  CacheStats::InitStats(ApacheCache::kFileCache, statistics);
-  CacheStats::InitStats(ApacheCache::kLruCache, statistics);
+  CacheStats::InitStats(SystemCachePath::kFileCache, statistics);
+  CacheStats::InitStats(SystemCachePath::kLruCache, statistics);
   CacheStats::InitStats(kShmCache, statistics);
   CacheStats::InitStats(kMemcached, statistics);
   PropertyCache::InitCohortStats(BeaconCriticalImagesFinder::kBeaconCohort,

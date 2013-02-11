@@ -29,7 +29,6 @@
     '<(DEPTH)',
   ],
   'sources': [
-    'apache/apache_cache.cc',
     'apache/apache_config.cc',
     'apache/apache_message_handler.cc',
     'apache/apache_request_context.cc',

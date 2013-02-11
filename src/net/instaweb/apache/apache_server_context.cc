@@ -19,7 +19,6 @@
 #include "httpd.h"
 #include "base/logging.h"
 #include "net/instaweb/apache/add_headers_fetcher.h"
-#include "net/instaweb/apache/apache_cache.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_request_context.h"
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
@@ -32,6 +31,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/system/public/system_cache_path.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -207,7 +207,7 @@ void ApacheServerContext::ChildInit() {
   DCHECK(!initialized_);
   if (!initialized_) {
     initialized_ = true;
-    ApacheCache* cache = apache_factory_->GetCache(config());
+    SystemCachePath* cache = apache_factory_->GetCache(config());
 
     set_lock_manager(cache->lock_manager());
     UrlAsyncFetcher* fetcher = apache_factory_->GetFetcher(config());

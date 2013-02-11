@@ -14,8 +14,8 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_APACHE_APACHE_CACHE_H_
-#define NET_INSTAWEB_APACHE_APACHE_CACHE_H_
+#ifndef NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_CACHE_PATH_H_
+#define NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_CACHE_PATH_H_
 
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -23,28 +23,32 @@
 
 namespace net_instaweb {
 
-class ApacheConfig;
-class ApacheRewriteDriverFactory;
+class AbstractSharedMem;
 class CacheInterface;
 class FileCache;
 class FileSystemLockManager;
 class MessageHandler;
 class NamedLockManager;
+class RewriteDriverFactory;
 class SharedMemLockManager;
+class SlowWorker;
+class SystemRewriteOptions;
 
-// The ApacheCache encapsulates a cache-sharing model where a user specifies
+// The SystemCachePath encapsulates a cache-sharing model where a user specifies
 // a file-cache path per virtual-host.  With each file-cache object we keep
 // a locking mechanism and an optional per-process LRUCache.
-class ApacheCache {
+class SystemCachePath {
  public:
   // CacheStats prefixes.
   static const char kFileCache[];
   static const char kLruCache[];
 
-  ApacheCache(const StringPiece& path,
-              const ApacheConfig& config,
-              ApacheRewriteDriverFactory* factory);
-  ~ApacheCache();
+  SystemCachePath(const StringPiece& path,
+                  const SystemRewriteOptions* config,
+                  RewriteDriverFactory* factory,
+                  SlowWorker* cache_clean_worker,
+                  AbstractSharedMem* shm_runtime);
+  ~SystemCachePath();
 
   // Per-process in-memory LRU, with any stats/thread safety wrappers, or NULL.
   CacheInterface* lru_cache() { return lru_cache_.get(); }
@@ -54,6 +58,7 @@ class ApacheCache {
 
   NamedLockManager* lock_manager() { return lock_manager_; }
 
+  // See comments in SystemCaches for calling conventions on these.
   void RootInit();
   void ChildInit();
   void GlobalCleanup(MessageHandler* handler);  // only called in root process
@@ -63,7 +68,9 @@ class ApacheCache {
 
   GoogleString path_;
 
-  ApacheRewriteDriverFactory* factory_;
+  RewriteDriverFactory* factory_;
+  SlowWorker* cache_clean_worker_;
+  AbstractSharedMem* shm_runtime_;
   scoped_ptr<SharedMemLockManager> shared_mem_lock_manager_;
   scoped_ptr<FileSystemLockManager> file_system_lock_manager_;
   NamedLockManager* lock_manager_;
@@ -79,4 +86,5 @@ class ApacheCache {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APACHE_CACHE_H_
+#endif  // NET_INSTAWEB_SYSTEM_PUBLIC_SYSTEM_CACHE_PATH_H_
+

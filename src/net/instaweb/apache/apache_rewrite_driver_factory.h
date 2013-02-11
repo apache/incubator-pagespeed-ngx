@@ -37,7 +37,6 @@ struct server_rec;
 namespace net_instaweb {
 
 class AbstractSharedMem;
-class ApacheCache;
 class ApacheConfig;
 class ApacheMessageHandler;
 class ApacheServerContext;
@@ -58,6 +57,7 @@ class SharedMemStatistics;
 class SlowWorker;
 class StaticJavascriptManager;
 class Statistics;
+class SystemCachePath;
 class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
@@ -224,7 +224,7 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // creates one, using all the other parameters in the ApacheConfig.
   // Currently, no checking is done that the other parameters (e.g. cache
   // size, cleanup interval, etc.) are consistent.
-  ApacheCache* GetCache(ApacheConfig* config);
+  SystemCachePath* GetCache(ApacheConfig* config);
 
   // Create a new AprMemCache from the given hostname[:port] specification.
   AprMemCache* NewAprMemCache(const GoogleString& spec);
@@ -438,14 +438,14 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   // File-Caches are expensive.  Just allocate one per distinct file-cache path.
   // At the moment there is no consistency checking for other parameters.  Note
-  // that the LRUCache is instantiated inside the ApacheCache, so we get a new
-  // LRUCache for each distinct file-cache path.  Also note that only the
+  // that the LRUCache is instantiated inside the SystemCachePath, so we get a
+  // new LRUCache for each distinct file-cache path.  Also note that only the
   // file-cache path is used as the key in this map.  Other parameters changed,
   // such as lru cache size or file cache clean interval, are taken from the
   // first file-cache found configured to one address.
   //
   // TODO(jmarantz): Consider instantiating one LRUCache per process.
-  typedef std::map<GoogleString, ApacheCache*> PathCacheMap;
+  typedef std::map<GoogleString, SystemCachePath*> PathCacheMap;
   PathCacheMap path_cache_map_;
 
   // memcache connections are expensive.  Just allocate one per

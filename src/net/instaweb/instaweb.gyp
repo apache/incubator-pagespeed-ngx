@@ -1243,6 +1243,7 @@
         'instaweb_util',
       ],
       'sources': [
+        'system/system_cache_path.cc',
         'system/system_rewrite_options.cc',
       ],
     },

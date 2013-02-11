@@ -14,9 +14,10 @@
 //
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/apache/apache_cache.h"
-#include "net/instaweb/apache/apache_config.h"
-#include "net/instaweb/apache/apache_rewrite_driver_factory.h"
+#include "net/instaweb/system/public/system_cache_path.h"
+
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/system/public/system_rewrite_options.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/cache_stats.h"
 #include "net/instaweb/util/public/file_cache.h"
@@ -29,22 +30,26 @@
 
 namespace net_instaweb {
 
-const char ApacheCache::kFileCache[] = "file_cache";
-const char ApacheCache::kLruCache[] = "lru_cache";
+const char SystemCachePath::kFileCache[] = "file_cache";
+const char SystemCachePath::kLruCache[] = "lru_cache";
 
-// The ApacheCache encapsulates a cache-sharing model where a user specifies
+// The SystemCachePath encapsulates a cache-sharing model where a user specifies
 // a file-cache path per virtual-host.  With each file-cache object we keep
 // a locking mechanism and an optional per-process LRUCache.
-ApacheCache::ApacheCache(const StringPiece& path,
-                         const ApacheConfig& config,
-                         ApacheRewriteDriverFactory* factory)
+SystemCachePath::SystemCachePath(const StringPiece& path,
+                                 const SystemRewriteOptions* config,
+                                 RewriteDriverFactory* factory,
+                                 SlowWorker* cache_clean_worker,
+                                 AbstractSharedMem* shm_runtime)
     : path_(path.data(), path.size()),
       factory_(factory),
+      cache_clean_worker_(cache_clean_worker),
+      shm_runtime_(shm_runtime),
       lock_manager_(NULL),
       file_cache_backend_(NULL) {
-  if (config.use_shared_mem_locking()) {
+  if (config->use_shared_mem_locking()) {
     shared_mem_lock_manager_.reset(new SharedMemLockManager(
-        factory->shared_mem_runtime(), StrCat(path, "/named_locks"),
+        shm_runtime, StrCat(path, "/named_locks"),
         factory->scheduler(), factory->hasher(), factory->message_handler()));
     lock_manager_ = shared_mem_lock_manager_.get();
   } else {
@@ -54,19 +59,19 @@ ApacheCache::ApacheCache(const StringPiece& path,
   FileCache::CachePolicy* policy = new FileCache::CachePolicy(
       factory->timer(),
       factory->hasher(),
-      config.file_cache_clean_interval_ms(),
-      config.file_cache_clean_size_kb() * 1024,
-      config.file_cache_clean_inode_limit());
+      config->file_cache_clean_interval_ms(),
+      config->file_cache_clean_size_kb() * 1024,
+      config->file_cache_clean_inode_limit());
   file_cache_backend_ = new FileCache(
-      config.file_cache_path(), factory->file_system(), NULL,
+      config->file_cache_path(), factory->file_system(), NULL,
       factory->filename_encoder(), policy, factory->message_handler());
   file_cache_.reset(
       new CacheStats(kFileCache, file_cache_backend_,
                      factory->timer(), factory->statistics()));
 
-  if (config.lru_cache_kb_per_process() != 0) {
+  if (config->lru_cache_kb_per_process() != 0) {
     LRUCache* lru_cache = new LRUCache(
-        config.lru_cache_kb_per_process() * 1024);
+        config->lru_cache_kb_per_process() * 1024);
 
     // We only add the threadsafe-wrapper to the LRUCache.  The FileCache
     // is naturally thread-safe because it's got no writable member variables.
@@ -76,17 +81,17 @@ ApacheCache::ApacheCache(const StringPiece& path,
         new ThreadsafeCache(lru_cache, factory->thread_system()->NewMutex());
 #if CACHE_STATISTICS
     lru_cache_.reset(new CacheStats(kLruCache, ts_cache, factory->timer(),
-                                   factory->statistics()));
+                                    factory->statistics()));
 #else
     lru_cache_.reset(ts_cache);
 #endif
   }
 }
 
-ApacheCache::~ApacheCache() {
+SystemCachePath::~SystemCachePath() {
 }
 
-void ApacheCache::RootInit() {
+void SystemCachePath::RootInit() {
   factory_->message_handler()->Message(
       kInfo, "Initializing shared memory for path: %s.", path_.c_str());
   if ((shared_mem_lock_manager_.get() != NULL) &&
@@ -95,7 +100,7 @@ void ApacheCache::RootInit() {
   }
 }
 
-void ApacheCache::ChildInit() {
+void SystemCachePath::ChildInit() {
   factory_->message_handler()->Message(
       kInfo, "Reusing shared memory for path: %s.", path_.c_str());
   if ((shared_mem_lock_manager_.get() != NULL) &&
@@ -103,11 +108,11 @@ void ApacheCache::ChildInit() {
     FallBackToFileBasedLocking();
   }
   if (file_cache_backend_ != NULL) {
-    file_cache_backend_->set_worker(factory_->slow_worker());
+    file_cache_backend_->set_worker(cache_clean_worker_);
   }
 }
 
-void ApacheCache::FallBackToFileBasedLocking() {
+void SystemCachePath::FallBackToFileBasedLocking() {
   if ((shared_mem_lock_manager_.get() != NULL) || (lock_manager_ == NULL)) {
     shared_mem_lock_manager_.reset(NULL);
     file_system_lock_manager_.reset(new FileSystemLockManager(
