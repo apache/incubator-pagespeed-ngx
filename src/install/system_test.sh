@@ -585,6 +585,8 @@ FETCHED=$OUTDIR/$FILE
 check run_wget_with_args "$URL"
 check grep -q text/psajs $FETCHED
 check grep -q /js_defer_debug $FETCHED
+# The deferjs src url is in the format js_defer.<hash>.js. This strips out
+# everthing except the js filename and saves it to test fetching later.
 DEFERJSURL=`grep js_defer $FETCHED | sed 's/^.*js_defer/js_defer/;s/\.js.*$/\.js/g;'`
 check grep -q "ModPagespeed=noscript" $FETCHED
 
@@ -623,6 +625,17 @@ check run_wget_with_args $URL
 check grep -q pagespeed.lazyLoad $FETCHED
 check_not grep '/\*' $FETCHED
 check grep -q "ModPagespeed=noscript" $FETCHED
+# The lazyload placeholder image is in the format 1.<hash>.gif. This matches the
+# first src attribute set to the placeholder, and then strips out everything
+# except for the gif name for later testing of fetching this image.
+BLANKGIFSRC=`grep -m1 -o " src=.*1.*.gif" $FETCHED | sed 's/^.*1\./1./;s/\.gif.*$/\.gif/g'`
+
+# Fetch the blank image and make sure it's served correctly.
+start_test serve_blank_gif
+echo run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/$BLANKGIFSRC
+run_wget_with_args http://$PROXY_DOMAIN/$PSA_JS_LIBRARY_URL_PREFIX/$BLANKGIFSRC
+check fgrep "200 OK" $WGET_OUTPUT
+check fgrep "Cache-Control: max-age=31536000" $WGET_OUTPUT
 
 # Checks that lazyload_images,debug injects non compiled javascript from
 # lazyload_images.js

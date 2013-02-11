@@ -559,10 +559,10 @@ void instaweb_static_handler(request_rec* request,
           strlen(ApacheRewriteDriverFactory::kStaticJavaScriptPrefix));
   StringPiece file_contents;
   StringPiece cache_header;
-  if (static_javascript_manager->GetJsSnippet(file_name, &file_contents,
-                                              &cache_header)) {
-    write_handler_response(file_contents, request, kContentTypeJavascript,
-                           cache_header);
+  ContentType content_type;
+  if (static_javascript_manager->GetJsSnippet(
+      file_name, &file_contents, &content_type, &cache_header)) {
+    write_handler_response(file_contents, request, content_type, cache_header);
   } else {
     instaweb_404_handler(request->parsed_uri.path, request);
   }

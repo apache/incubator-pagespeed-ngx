@@ -18,10 +18,10 @@
 
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
-#include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -57,7 +57,7 @@ const char MeaningfulCriticalImagesFinder::kCriticalImagesCohort[] =
 class LazyloadImagesFilterTest : public RewriteTestBase {
  protected:
   LazyloadImagesFilterTest()
-      : blank_image_src_(LazyloadImagesFilter::kBlankImageSrc) {}
+      : blank_image_src_("/psajs/1.0.gif") {}
 
   // TODO(matterbury): Delete this method as it should be redundant.
   virtual void SetUp() {
@@ -186,9 +186,6 @@ TEST_F(LazyloadImagesFilterTest, Blacklist) {
                      "img", "img2", ""),
                  GetOverrideAttributesScriptHtml(),
                  "</body>")));
-
-  rewrite_driver()->SetUserAgent("Firefox/1.0");
-  ValidateNoChanges("inlining_not_supported", input_html);
 }
 
 TEST_F(LazyloadImagesFilterTest, CriticalImages) {
@@ -228,9 +225,6 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
                  "<img src=\"", rewritten_url, "\"/>",
                  GetOverrideAttributesScriptHtml(),
                  "</body>")));
-
-  rewrite_driver()->SetUserAgent("Firefox/1.0");
-  ValidateNoChanges("inlining_not_supported", input_html);
 }
 
 TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {

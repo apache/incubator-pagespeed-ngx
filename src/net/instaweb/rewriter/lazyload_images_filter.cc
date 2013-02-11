@@ -21,11 +21,10 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
-#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -42,10 +41,6 @@ const char kJquerySlider[] = "jquery.sexyslider";
 
 }  // namespace
 
-// base64 encoding of a transparent 1x1 gif.
-const char* LazyloadImagesFilter::kBlankImageSrc = "data:image/gif;"
-    "base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
-
 const char* LazyloadImagesFilter::kImageOnloadCode =
     "pagespeed.lazyLoadImages.loadIfVisible(this);";
 
@@ -61,7 +56,9 @@ const char* LazyloadImagesFilter::kIsLazyloadScriptInsertedPropertyName =
 LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
     : CommonFilter(driver) {
   Clear();
-  blank_image_url_ = GetBlankImageSrc(driver->options());
+  blank_image_url_ = GetBlankImageSrc(
+      driver->options(),
+      driver->server_context()->static_javascript_manager());
 }
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
 
@@ -72,8 +69,7 @@ void LazyloadImagesFilter::DetermineEnabled() {
 void LazyloadImagesFilter::StartDocumentImpl() {
   CriticalImagesFinder* finder =
       driver()->server_context()->critical_images_finder();
-  if (finder->IsMeaningful(driver()) &&
-      driver_->device_properties()->SupportsImageInlining()) {
+  if (finder->IsMeaningful(driver())) {
     finder->UpdateCriticalImagesSetInDriver(driver());
   }
   Clear();
@@ -94,8 +90,7 @@ void LazyloadImagesFilter::Clear() {
 }
 
 bool LazyloadImagesFilter::ShouldApply(RewriteDriver* driver) {
-  return driver->device_properties()->SupportsImageInlining() &&
-      !driver->flushing_early();
+  return !driver->flushing_early();
 }
 
 void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
@@ -276,10 +271,12 @@ void LazyloadImagesFilter::InsertOverrideAttributesScript(
 }
 
 GoogleString LazyloadImagesFilter::GetBlankImageSrc(
-    const RewriteOptions* options) {
+    const RewriteOptions* options,
+    const StaticJavascriptManager* static_js_manager) {
   const GoogleString& options_url = options->lazyload_images_blank_url();
   if (options_url.empty()) {
-    return kBlankImageSrc;
+    return static_js_manager->GetJsUrl(StaticJavascriptManager::kBlankGif,
+                                       options);
   } else {
     return options_url;
   }
@@ -293,7 +290,8 @@ GoogleString LazyloadImagesFilter::GetLazyloadJsSnippet(
   StringPiece lazyload_images_js =
       static_js_manager->GetJsSnippet(
           StaticJavascriptManager::kLazyloadImagesJs, options);
-  const GoogleString& blank_image_url = GetBlankImageSrc(options);
+  const GoogleString& blank_image_url =
+      GetBlankImageSrc(options, static_js_manager);
   GoogleString lazyload_js =
       StrCat(lazyload_images_js, "\npagespeed.lazyLoadInit(",
              load_onload, ", \"", blank_image_url, "\");\n");

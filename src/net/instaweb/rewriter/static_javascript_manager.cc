@@ -18,12 +18,14 @@
 
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 
+#include <cstddef>
 #include <utility>
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/doctype.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -61,14 +63,23 @@ extern const char* JS_detect_reflow_opt;
 extern const char* JS_local_storage_cache;
 extern const char* JS_local_storage_cache_opt;
 
+// TODO(jud): use the data2c build flow to create this data.
+const char GIF_blank[] = { 0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x1, 0x0, 0x1,
+  0x0, 0x80, 0x0, 0x0, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x21, 0xfe, 0x6,
+  0x70, 0x73, 0x61, 0x5f, 0x6c, 0x6c, 0x0, 0x21, 0xf9, 0x4, 0x1, 0xa, 0x0, 0x1,
+  0x0, 0x2c, 0x0, 0x0, 0x0, 0x0, 0x1, 0x0, 0x1, 0x0, 0x0, 0x2, 0x2, 0x4c, 0x1,
+  0x0, 0x3b };
+const int GIF_blank_len = arraysize(GIF_blank);
+
 // The generated files(blink.js, js_defer.js) are named in "<hash>-<fileName>"
 // format.
 const char StaticJavascriptManager::kGStaticBase[] =
     "http://www.gstatic.com/psa/static/";
 
 const char StaticJavascriptManager::kDefaultLibraryUrlPrefix[] = "/psajs/";
-const char StaticJavascriptManager::kJsExtension[] = ".js";
 
+// TODO(jud): Refactor this struct so that each static type served (js, images,
+// etc.) has it's own implementation.
 struct StaticJavascriptManager::Asset {
   const char* file_name;
   const char* js_optimized;
@@ -77,6 +88,11 @@ struct StaticJavascriptManager::Asset {
   GoogleString js_debug_hash;
   GoogleString opt_url;
   GoogleString debug_url;
+  ContentType content_type;
+
+  // Only use these for gif content type.
+  int js_debug_len;
+  int js_optimized_len;
 };
 
 StaticJavascriptManager::StaticJavascriptManager(
@@ -120,7 +136,7 @@ void StaticJavascriptManager::set_gstatic_hash(const JsModule& module,
     CHECK(!hash.empty());
     assets_[module]->opt_url =
         StrCat(kGStaticBase, hash, "-", assets_[module]->file_name,
-               kJsExtension);
+               assets_[module]->content_type.file_extension());
   }
 }
 
@@ -129,6 +145,7 @@ void StaticJavascriptManager::InitializeJsStrings() {
   for (std::vector<Asset*>::iterator it = assets_.begin();
        it != assets_.end(); ++it) {
     *it = new Asset;
+    (*it)->content_type = kContentTypeJavascript;
   }
   // Initialize file names.
   assets_[kAddInstrumentationJs]->file_name = "add_instrumentation";
@@ -177,6 +194,13 @@ void StaticJavascriptManager::InitializeJsStrings() {
   assets_[kDeterministicJs]->js_debug = JS_deterministic;
   assets_[kLocalStorageCacheJs]->js_debug = JS_local_storage_cache;
 
+  assets_[kBlankGif]->file_name = "1";
+  assets_[kBlankGif]->js_optimized = GIF_blank;
+  assets_[kBlankGif]->js_debug = GIF_blank;
+  assets_[kBlankGif]->content_type = kContentTypeGif;
+  assets_[kBlankGif]->js_optimized_len = GIF_blank_len;
+  assets_[kBlankGif]->js_debug_len = GIF_blank_len;
+
   for (std::vector<Asset*>::iterator it = assets_.begin();
        it != assets_.end(); ++it) {
     Asset* asset = *it;
@@ -200,22 +224,23 @@ void StaticJavascriptManager::InitializeJsUrls() {
                             library_url_prefix_,
                             asset->file_name,
                             ".", asset->js_opt_hash,
-                            kJsExtension);
+                            asset->content_type.file_extension());
 
     // Generated debug urls are in the format "<fileName>_debug.<md5>.js".
     asset->debug_url = StrCat(url_namer_->get_proxy_domain(),
                               library_url_prefix_,
                               asset->file_name,
                               "_debug.", asset->js_debug_hash,
-                              kJsExtension);
+                              asset->content_type.file_extension());
   }
 
   // Blink does not currently use the hash in the URL, so it is special cased
   // here.
-  GoogleString blink_js_url = StrCat(url_namer_->get_proxy_domain(),
-                                     library_url_prefix_,
-                                     assets_[kBlinkJs]->file_name,
-                                     kJsExtension);
+  GoogleString blink_js_url = StrCat(
+      url_namer_->get_proxy_domain(),
+      library_url_prefix_,
+      assets_[kBlinkJs]->file_name,
+      assets_[kBlinkJs]->content_type.file_extension());
   assets_[kBlinkJs]->debug_url = blink_js_url;
   assets_[kBlinkJs]->opt_url = blink_js_url;
 }
@@ -253,6 +278,7 @@ void StaticJavascriptManager::AddJsToElement(
 
 bool StaticJavascriptManager::GetJsSnippet(StringPiece file_name,
                                            StringPiece* content,
+                                           ContentType* content_type,
                                            StringPiece* cache_header) const {
   StringPieceVector names;
   SplitStringPieceToVector(file_name, ".", &names, true);
@@ -279,7 +305,11 @@ bool StaticJavascriptManager::GetJsSnippet(StringPiece file_name,
   if (p != file_name_to_module_map_.end()) {
     CHECK_GT(assets_.size(), static_cast<size_t>(p->second));
     Asset* asset = assets_[p->second];
-    *content = is_debug ? asset->js_debug : asset->js_optimized;
+    if (asset->content_type.IsImage()) {
+      content->set(asset->js_optimized, asset->js_optimized_len);
+    } else {
+      *content = is_debug ? asset->js_debug : asset->js_optimized;
+    }
     if (cache_header) {
       StringPiece hash = is_debug ? asset->js_debug_hash : asset->js_opt_hash;
       if (hash == names[1]) {  // compare hash
@@ -288,6 +318,7 @@ bool StaticJavascriptManager::GetJsSnippet(StringPiece file_name,
         *cache_header = cache_header_with_private_ttl_;
       }
     }
+    *content_type = asset->content_type;
     return true;
   }
   return false;

@@ -40,6 +40,8 @@ const char kSampleWebpFile[] = "Sample_webp.webp";
 const char kLargeJpgFile[] = "Puzzle.jpg";
 const char kSmallPngFile[] = "BikeCrashIcn.png";
 
+const char kBlankImageSrc[] = "/psajs/1.0.gif";
+
 // Generated html is matched approximately because different versions of
 // libjpeg are yeilding different low_res_image_data.
 const char kSampleJpegData[] = "data:image/jpeg;base64*";
@@ -114,7 +116,7 @@ class DelayImagesFilterTest : public RewriteTestBase {
 
   GoogleString GenerateRewrittenImageTag(const StringPiece& url) {
     return StrCat("<img pagespeed_lazy_src=\"", url, "\" src=\"",
-                  LazyloadImagesFilter::kBlankImageSrc, "\" onload=\"",
+                  kBlankImageSrc, "\" onload=\"",
                   LazyloadImagesFilter::kImageOnloadCode, "\"/>");
   }
 
@@ -130,7 +132,7 @@ class DelayImagesFilterTest : public RewriteTestBase {
   GoogleString GetHtmlWithLazyload() {
     return StringPrintf(kLazyloadTemplate,
                         GetLazyloadImagesCode().c_str(),
-                        LazyloadImagesFilter::kBlankImageSrc);
+                        kBlankImageSrc);
   }
 
   GoogleString GetInlineScript() {

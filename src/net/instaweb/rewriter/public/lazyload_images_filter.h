@@ -74,7 +74,6 @@ class Statistics;
 class LazyloadImagesFilter : public CommonFilter {
  public:
   static const char* kImageLazyloadCode;
-  static const char* kBlankImageSrc;
   static const char* kImageOnloadCode;
   static const char* kLoadAllImages;
   static const char* kOverrideAttributeFunctions;
@@ -104,7 +103,9 @@ class LazyloadImagesFilter : public CommonFilter {
   // Clears all state associated with the filter.
   void Clear();
 
-  static GoogleString GetBlankImageSrc(const RewriteOptions* options);
+  static GoogleString GetBlankImageSrc(
+      const RewriteOptions* options,
+      const StaticJavascriptManager* static_js_manager);
 
   // Inserts the lazyload JS code before the given element.
   void InsertLazyloadJsCode(HtmlElement* element);

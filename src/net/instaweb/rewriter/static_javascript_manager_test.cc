@@ -135,8 +135,10 @@ TEST_F(StaticJavascriptManagerTest, TestJsDebug) {
     StaticJavascriptManager::JsModule module =
         static_cast<StaticJavascriptManager::JsModule>(i);
     GoogleString script(manager_->GetJsSnippet(module, options_));
-    EXPECT_NE(GoogleString::npos, script.find("/*"))
-        << "There should be some comments in the debug code";
+    if (module != StaticJavascriptManager::kBlankGif) {
+      EXPECT_NE(GoogleString::npos, script.find("/*"))
+          << "There should be some comments in the debug code";
+    }
   }
 }
 

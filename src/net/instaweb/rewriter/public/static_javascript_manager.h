@@ -16,6 +16,9 @@
 
 // Author: guptaa@google.com (Ashish Gupta)
 
+// TODO(jud): Rename this class StaticAssetManager, and rename functions like
+// GetJsSnippet accordingly.
+
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_STATIC_JAVASCRIPT_MANAGER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_STATIC_JAVASCRIPT_MANAGER_H_
 
@@ -27,6 +30,7 @@
 
 namespace net_instaweb {
 
+class ContentType;
 class Hasher;
 class HtmlElement;
 class MessageHandler;
@@ -42,10 +46,10 @@ class StaticJavascriptManager {
  public:
   static const char kGStaticBase[];
   static const char kDefaultLibraryUrlPrefix[];
-  static const char kJsExtension[];
 
   enum JsModule {
     kAddInstrumentationJs,
+    kBlankGif,
     kBlinkJs,
     kClientDomainRewriter,
     kCriticalImagesBeaconJs,
@@ -79,6 +83,7 @@ class StaticJavascriptManager {
   // or else set to 'private max-age=300'.
   // Returns true iff the content for filename is found.
   bool GetJsSnippet(StringPiece file_name, StringPiece* content,
+                    ContentType* content_type,
                     StringPiece* cache_header) const;
 
   // Add a CharacterNode to an already created script element, properly escaping

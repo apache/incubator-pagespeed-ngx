@@ -28,22 +28,21 @@
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
-#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
+#include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/blink_critical_line_data.pb.h"
+#include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder_test_base.h"
-#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_javascript_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
@@ -63,8 +62,8 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
-#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
@@ -182,16 +181,21 @@ const char kLazyLoadHtml[] =
     "<div id=\"container\" class>"
       "<h2 id=\"beforeItems\"> This is before Items </h2>"
       "<div class=\"item\">%s"
-         "<img pagespeed_lazy_src=\"image1\" src=\"data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==\" onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
-         "<img pagespeed_lazy_src=\"image2\" src=\"data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==\" onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
+         "<img pagespeed_lazy_src=\"image1\" src=\"/psajs/1.0.gif\" "
+         "onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
+         "<img pagespeed_lazy_src=\"image2\" src=\"/psajs/1.0.gif\" "
+         "onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
          "</div>"
          "<div class=\"item\">"
-           "<img pagespeed_lazy_src=\"image3\" src=\"data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==\" onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
+           "<img pagespeed_lazy_src=\"image3\" src=\"/psajs/1.0.gif\" "
+           "onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
            "<div class=\"item\">"
-             "<img pagespeed_lazy_src=\"image4\" src=\"data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==\" onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
+             "<img pagespeed_lazy_src=\"image4\" src=\"/psajs/1.0.gif\" "
+             "onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\">"
           "</div>"
       "</div>"
-      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
+      "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+      "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
     "</body></html>";
 
 const char kHtmlInputWithExtraCommentAndNonCacheable[] =
@@ -575,21 +579,26 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
                              StringPrintf(kNoScriptRedirectFormatter,
                                           kNoBlinkUrl, kNoBlinkUrl),
                              "</body></html>");
+    const StaticJavascriptManager* static_js_manager =
+        server_context()->static_javascript_manager();
     StringPiece lazyload_js_code =
-        server_context()->static_javascript_manager()->GetJsSnippet(
+        static_js_manager->GetJsSnippet(
             StaticJavascriptManager::kLazyloadImagesJs, options());
+    StringPiece blank_gif_url =
+        static_js_manager->GetJsUrl(StaticJavascriptManager::kBlankGif,
+                                    options());
     noblink_output_with_lazy_load_ = StringPrintf(kLazyLoadHtml,
         StringPrintf(kNoScriptRedirectFormatter,
                      kNoScriptTextUrl, kNoScriptTextUrl).c_str(),
         StrCat("<script type=\"text/javascript\">",
                lazyload_js_code, "\npagespeed.lazyLoadInit(false, \"",
-               LazyloadImagesFilter::kBlankImageSrc,
+               blank_gif_url,
                "\");\n</script>").c_str());
     blink_output_with_lazy_load_ = StrCat(StringPrintf(
         kBlinkOutputCommon, "text.html", "text.html"),
         "<script type=\"text/javascript\">",
         lazyload_js_code, "\npagespeed.lazyLoadInit(false, \"",
-        LazyloadImagesFilter::kBlankImageSrc, "\");\n</script>",
+        blank_gif_url, "\");\n</script>",
         kBlinkOutputSuffix);
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
   }
