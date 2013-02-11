@@ -73,7 +73,8 @@ namespace SharedMemLockData {
 // getting filled suggests it's under heavy load as it is, in which case
 // blocking further operations is desirable.
 //
-const size_t kBuckets = 256;   // assumed to be <= 256
+const size_t kBuckets = 512;   // needs to be <= 65536 as we use 2 bytes of
+                               // hash to pick a bucket.
 const size_t kSlotsPerBucket = 32;
 
 struct Slot {
@@ -176,8 +177,14 @@ class SharedMemLock : public SchedulerBasedAbstractLock {
                         size_t* bucket_out) {
     GoogleString raw_hash = manager_->hasher_->RawHash(name);
 
+    // We use 10 bytes from the hash in the computation below:
+    // 2 choose the bucket, while 8 form the uint64 we use as the key.
+    CHECK_GE(raw_hash.size(), 10u);
+
     // We use separate hash bits to determine the hash and the bucket.
-    *bucket_out = static_cast<unsigned char>(raw_hash[8]) % Data::kBuckets;
+    unsigned char bucket_low = static_cast<unsigned char>(raw_hash[8]);
+    unsigned char bucket_high = static_cast<unsigned char>(raw_hash[9]);
+    *bucket_out = (bucket_high * 256 + bucket_low) % Data::kBuckets;
 
     uint64 hash = 0;
     for (int c = 0; c < 8; ++c) {

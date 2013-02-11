@@ -73,7 +73,7 @@ void SystemRewriteOptions::AddProperties() {
              RewriteOptions::kStatisticsEnabled);
   add_option(false, &SystemRewriteOptions::statistics_logging_enabled_, "asle",
              RewriteOptions::kStatisticsLoggingEnabled);
-  add_option(false, &SystemRewriteOptions::use_shared_mem_locking_, "ausml",
+  add_option(true, &SystemRewriteOptions::use_shared_mem_locking_, "ausml",
              RewriteOptions::kUseSharedMemLocking);
 
   add_option(Timer::kHourMs,
