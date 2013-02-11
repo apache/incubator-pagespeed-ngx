@@ -154,7 +154,7 @@ bool RecordingFetch::HandleFlush(MessageHandler* handler) {
 }
 
 void RecordingFetch::HandleDone(bool success) {
-  if (success && can_in_place_rewrite_) {
+  if (success && can_in_place_rewrite_ && resource_->UseHttpCache()) {
     // Extract X-Original-Content-Length from the response headers, which may
     // have been added by the fetcher, and set it in the Resource. This will
     // be used to build the X-Original-Content-Length for rewrites.
@@ -174,7 +174,13 @@ void RecordingFetch::HandleDone(bool success) {
   }
 
   if (success && can_in_place_rewrite_) {
-    resource_->Link(&cache_value_, handler_);
+    if (resource_->UseHttpCache()) {
+      // Note, if !UseHttpCache() then the value will already be populated.
+      // See InPlaceRewriteContext::StartFetchReconstruction.
+      resource_->Link(&cache_value_, handler_);
+    } else {
+      DCHECK(resource_->loaded());
+    }
     if (streaming_) {
       context_->DetachFetch();
     }
@@ -452,6 +458,65 @@ bool InPlaceRewriteContext::DecodeFetchUrls(
   return true;
 }
 
+namespace {
+
+// Callback class used to asynchronously load a non-http resource into
+// a RecordingFetch.  There are two types of non-http resources in
+// this context: FileInputResource and DataUrlInputResource, but our
+// concern for now is FileInputResource.  We do not want to use the
+// HTTPCache for such input resources, so the code is forked where
+// this is constructed.
+//
+// TODO(jmarantz): I think we should consider whether it makes sense
+// to use CacheFetcher for this; it might make more sense to put
+// the decision to use the HTTPCache into UrlInputResource, and
+// then this callback would be used in all flows.
+class NonHttpResourceCallback : public Resource::AsyncCallback {
+ public:
+  NonHttpResourceCallback(const ResourcePtr& resource,
+                          bool perform_http_fetch,
+                          RewriteContext* context,
+                          RecordingFetch* fetch,
+                          MessageHandler* handler)
+      : AsyncCallback(resource),
+        perform_http_fetch_(perform_http_fetch),
+        context_(context),
+        async_fetch_(fetch),
+        message_handler_(handler) {
+  }
+
+  virtual void Done(bool lock_failure, bool resource_ok) {
+    if (!lock_failure && resource_ok) {
+      async_fetch_->response_headers()->CopyFrom(
+          *resource()->response_headers());
+      async_fetch_->Write(resource()->contents(), message_handler_);
+      async_fetch_->Done(true);
+    } else {
+      // TODO(jmarantz): If we're in proxy mode, we must always
+      // produce the result.  If we're in origin mode, it's OK to
+      // fail.  But we'll never use load-from-file when acting as a
+      // proxy.  It would be better to enforce that formally.
+      //
+      // TODO(jmarantz): We might have to pass stuff through even on lock
+      // failure.  Consider the error cases.
+
+      DCHECK(!perform_http_fetch_);
+      async_fetch_->Done(false);
+    }
+    delete this;
+  }
+
+ private:
+  bool perform_http_fetch_;
+  RewriteContext* context_;
+  RecordingFetch* async_fetch_;
+  MessageHandler* message_handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(NonHttpResourceCallback);
+};
+
+}  // namespace
+
 void InPlaceRewriteContext::StartFetchReconstruction() {
   // The in-place metdata or the rewritten resource was not found in cache.
   // Fetch the original resource and trigger an asynchronous rewrite.
@@ -461,12 +526,21 @@ void InPlaceRewriteContext::StartFetchReconstruction() {
     is_rewritten_ = false;
     RecordingFetch* fetch = new RecordingFetch(
         async_fetch(), resource, this, fetch_message_handler());
-    if (perform_http_fetch_) {
-      cache_fetcher_.reset(driver_->CreateCacheFetcher());
+    if (resource->UseHttpCache()) {
+      if (perform_http_fetch_) {
+        cache_fetcher_.reset(driver_->CreateCacheFetcher());
+      } else {
+        cache_fetcher_.reset(driver_->CreateCacheOnlyFetcher());
+      }
+      cache_fetcher_->Fetch(url_, fetch_message_handler(), fetch);
     } else {
-      cache_fetcher_.reset(driver_->CreateCacheOnlyFetcher());
+      ServerContext* server_context = resource->server_context();
+      MessageHandler* handler = server_context->message_handler();
+      NonHttpResourceCallback* callback = new NonHttpResourceCallback(
+          resource, perform_http_fetch_, this, fetch, handler);
+      server_context->ReadAsync(Resource::kLoadEvenIfNotCacheable,
+                                Driver()->request_context(), callback);
     }
-    cache_fetcher_->Fetch(url_, fetch_message_handler(), fetch);
   } else {
     LOG(ERROR) << "Expected one resource slot, but found " << num_slots()
                << ".";

@@ -126,11 +126,25 @@ void FileInputResource::LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
                                         AsyncCallback* callback,
                                         MessageHandler* handler) {
   if (!loaded()) {
+    // Load the file from disk.  Make sure we correctly read a timestamp
+    // before loading the file.  A failure (say due to EINTR) on the
+    // timestamp read could leave us with populated metadata and
+    // an unset timestamp.
+    //
+    // TODO(jmarantz): it would be much better to use fstat on the
+    // same file-handle we use for reading, rather than doing two
+    // distinct file lookups, which is both slower and can introduce
+    // skew.
     FileSystem* file_system = server_context_->file_system();
-    if (file_system->ReadFile(filename_.c_str(), &value_, handler) &&
-        file_system->Mtime(filename_, &last_modified_time_sec_, handler)) {
+    if (file_system->Mtime(filename_, &last_modified_time_sec_, handler) &&
+        (last_modified_time_sec_ != kTimestampUnset) &&
+        file_system->ReadFile(filename_.c_str(), &value_, handler)) {
       SetDefaultHeaders(type_, &response_headers_, handler);
       value_.SetHeaders(&response_headers_);
+    } else {
+      value_.Clear();
+      response_headers_.Clear();
+      last_modified_time_sec_ = kTimestampUnset;
     }
   }
   callback->Done(false /* lock_failure */, loaded());

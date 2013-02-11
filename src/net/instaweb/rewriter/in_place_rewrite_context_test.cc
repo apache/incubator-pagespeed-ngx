@@ -37,6 +37,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
+#include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -422,6 +423,20 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     RewriteTestBase::ClearStats();
   }
 
+  void CheckWarmCache(StringPiece id) {
+    EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count()) << id;
+    EXPECT_EQ(1, http_cache()->cache_hits()->Get()) << id;
+    EXPECT_EQ(0, http_cache()->cache_misses()->Get()) << id;
+    EXPECT_EQ(0, http_cache()->cache_inserts()->Get()) << id;
+    EXPECT_EQ(2, lru_cache()->num_hits()) << id;
+    EXPECT_EQ(0, lru_cache()->num_misses()) << id;
+    EXPECT_EQ(0, lru_cache()->num_inserts()) << id;
+    EXPECT_EQ(0, img_filter_->num_rewrites()) << id;
+    EXPECT_EQ(0, js_filter_->num_rewrites()) << id;
+    EXPECT_EQ(0, css_filter_->num_rewrites()) << id;
+    EXPECT_EQ(0, oversized_stream_->Get()) << id;
+  }
+
   void ExpectInPlaceImageSuccessFlow(const GoogleString& url) {
     FetchAndCheckResponse(url, cache_body_, true, ttl_ms_,
                           original_etag_, start_time_ms());
@@ -446,16 +461,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
                           start_time_ms() + ttl_ms_/2);
     // Second fetch hits the metadata cache and the rewritten resource is
     // served out.
-    EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-    EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-    EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-    EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-    EXPECT_EQ(2, lru_cache()->num_hits());
-    EXPECT_EQ(0, lru_cache()->num_misses());
-    EXPECT_EQ(0, lru_cache()->num_inserts());
-    EXPECT_EQ(0, img_filter_->num_rewrites());
-    EXPECT_EQ(0, js_filter_->num_rewrites());
-    EXPECT_EQ(0, css_filter_->num_rewrites());
+    CheckWarmCache("second_fetch_1");
 
     AdvanceTimeMs(2 * ttl_ms_);
     ResetHeadersAndStats();
@@ -604,17 +610,7 @@ TEST_F(InPlaceRewriteContextTest, WaitForOptimizedFirstRequest) {
                         start_time_ms() + ttl_ms_/2);
   // Second fetch hits the metadata cache and the rewritten resource is
   // served out.
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
-  EXPECT_EQ(0, oversized_stream_->Get());
+  CheckWarmCache("second_fetch_2");
 }
 
 TEST_F(InPlaceRewriteContextTest, WaitForOptimizeWithDisabledFilter) {
@@ -656,17 +652,7 @@ TEST_F(InPlaceRewriteContextTest, WaitForOptimizeWithDisabledFilter) {
                         expected_etag.c_str(), start_time_ms());
   // Second fetch hits the metadata cache, sees that the rewrite failed and
   // fetches and serves the original resource from cache.
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
-  EXPECT_EQ(0, oversized_stream_->Get());
+  CheckWarmCache("second_fetch_3");
 }
 
 TEST_F(InPlaceRewriteContextTest, WaitForOptimizeNoTransform) {
@@ -701,17 +687,7 @@ TEST_F(InPlaceRewriteContextTest, WaitForOptimizeNoTransform) {
                         ttl_ms_, "W/\"PSA-0\"", start_time_ms());
   // The second fetch should return the cached original after seeing that it
   // can't be rewritten.
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
+  CheckWarmCache("second_fetch_4");
 }
 
 TEST_F(InPlaceRewriteContextTest, WaitForOptimizeTimeout) {
@@ -746,17 +722,7 @@ TEST_F(InPlaceRewriteContextTest, WaitForOptimizeTimeout) {
                         start_time_ms() + ttl_ms_/2);
   // Second fetch hits the metadata cache and the rewritten resource is served
   // out.
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
-  EXPECT_EQ(0, oversized_stream_->Get());
+  CheckWarmCache("second_fetch_5");
 }
 
 TEST_F(InPlaceRewriteContextTest, WaitForOptimizeResourceTooBig) {
@@ -835,16 +801,7 @@ TEST_F(InPlaceRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
                         start_time_ms() + ttl_ms_/2);
   // Second fetch hits the metadata cache and the rewritten resource is served
   // out.
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
+  CheckWarmCache("second_fetch_6");
 
   ResetHeadersAndStats();
   // We get a 304 if we send a request with an If-None-Match matching the hash
@@ -873,16 +830,7 @@ TEST_F(InPlaceRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   EXPECT_EQ(HttpStatus::kOK, response_headers_.status_code());
   // We hit the metadata cache, but the etag doesn't match so we fetch the
   // rewritten resource from the HTTPCache and serve it out.
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
+  CheckWarmCache("etag_mismatch");
 
   // Delete the rewritten resource from cache to check if reconstruction works.
   lru_cache()->Delete(rewritten_jpg_url_);
@@ -942,16 +890,7 @@ TEST_F(InPlaceRewriteContextTest, CacheableJpgUrlRewritingSucceeds) {
   // Since the previous request freshened the metadata, this fetch hits the
   // metadata cache and the rewritten resource is served out. Note that no
   // freshening needs to be triggered here.
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
+  CheckWarmCache("freshened_metadata");
 
   AdvanceTimeMs(2 * ttl_ms_);
   ResetHeadersAndStats();
@@ -1025,16 +964,7 @@ TEST_F(InPlaceRewriteContextTest, CacheablePngUrlRewritingFails) {
                         original_etag_, start_time_ms());
   // Second fetch hits the metadata cache, sees that the rewrite failed and
   // fetches and serves the original resource from cache.
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
+  CheckWarmCache("second_fetch_7");
 }
 
 TEST_F(InPlaceRewriteContextTest, CacheableJsUrlRewritingSucceeds) {
@@ -1062,16 +992,7 @@ TEST_F(InPlaceRewriteContextTest, CacheableJsUrlRewritingSucceeds) {
                         start_time_ms() + ttl_ms_/2);
   // Second fetch hits the metadata cache and the rewritten resource is served
   // out.
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
+  CheckWarmCache("second_fetch_8");
 
   AdvanceTimeMs(2 * ttl_ms_);
   ResetHeadersAndStats();
@@ -1119,20 +1040,7 @@ TEST_F(InPlaceRewriteContextTest, CacheableJsUrlRewritingWithStaleServing) {
   SetTimeMs(start_time_ms() + ttl_ms_/2);
   FetchAndCheckResponse(cache_js_url_, "good:jm", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
-  // Second fetch hits the metadata cache and the rewritten resource is served
-  // out.
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  // Two cache hits, one for the in-place metadata and one for the rewritten
-  // resource.
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
+  CheckWarmCache("second_fetch_9");
 
   SetTimeMs(start_time_ms() + (3 * ttl_ms_) / 2);
   ResetHeadersAndStats();
@@ -1194,16 +1102,7 @@ TEST_F(InPlaceRewriteContextTest, CacheableCssUrlIfCssRewritingDisabled) {
 
   // Second fetch hits the metadata cache, finds that the result is not
   // optimizable. It then looks up cache for the original and finds it.
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
+  CheckWarmCache("second_fetch_10");
 }
 
 TEST_F(InPlaceRewriteContextTest, CacheableCssUrlRewritingSucceeds) {
@@ -1483,18 +1382,7 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   SetTimeMs((start_time_ms() + ttl_ms_/2));
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
-
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());  // original
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());  // +ipro-md
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
-  EXPECT_EQ(0, oversized_stream_->Get());
+  CheckWarmCache("no_webp");
   EXPECT_STREQ(HttpAttributes::kUserAgent,
                response_headers_.Lookup1(HttpAttributes::kVary));
 
@@ -1506,17 +1394,7 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserRewriting) {
   rewrite_driver()->SetUserAgent(kTestUserAgentWebP);
   FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_/2, etag_,
                         start_time_ms() + ttl_ms_/2);
-  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, http_cache()->cache_hits()->Get());  // rewritten
-  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
-  EXPECT_EQ(2, lru_cache()->num_hits());  // +ipro-md
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, img_filter_->num_rewrites());
-  EXPECT_EQ(0, js_filter_->num_rewrites());
-  EXPECT_EQ(0, css_filter_->num_rewrites());
-  EXPECT_EQ(0, oversized_stream_->Get());
+  CheckWarmCache("back_to_webp");
   EXPECT_STREQ(HttpAttributes::kUserAgent,
                response_headers_.Lookup1(HttpAttributes::kVary));
 }
@@ -1539,6 +1417,117 @@ TEST_F(InPlaceRewriteContextTest, OptimizeForBrowserNegative) {
                         start_time_ms() + ttl_ms_/2);
   EXPECT_EQ(NULL, response_headers_.Lookup1(HttpAttributes::kVary));
 }
+
+TEST_F(InPlaceRewriteContextTest, LoadFromFile) {
+  options()->file_load_policy()->Associate("http://www.example.com", "/test/");
+  WriteFile("/test/cacheable.js", cache_body_ /*"   alert ( 'foo ')   "*/);
+
+  Init();
+
+  // TODO(jmarantz): currently we will not have caching headers on
+  // file-input-resources so we default to the implicit cache TTL.
+  // We should probably have a new config options for file-input
+  // TTL for use with in-place.
+  const int64 kIproFileTtl = ResponseHeaders::kImplicitCacheTtlMs;
+  FetchAndCheckResponse(cache_js_url_, cache_body_, true,
+                        kIproFileTtl, NULL, start_time_ms());
+
+  // First fetch misses initial cache lookup, succeeds at fetch and inserts
+  // result into cache. Also, the resource gets rewritten and the rewritten
+  // resource gets inserted into cache.
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(1, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  // Note that without file-input resources, we would expect that our
+  // TTL would be reduced to ttl_ms_/2.  But it doesn't work like that
+  // for files.  The TTL stays the same.
+  ResetHeadersAndStats();
+  SetTimeMs(start_time_ms() + ttl_ms_/2);
+  FetchAndCheckResponse(cache_js_url_, "good:jm", true,
+                        kIproFileTtl, etag_,
+                        start_time_ms() + ttl_ms_/2);
+  // Second fetch hits the metadata cache and the rewritten resource is served
+  // out.
+  CheckWarmCache("second_fetch_11");
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  // Third fetch is the same exact deal.  The file hasn't actually
+  // changed and the existing rewrite still is valid.  The metadata
+  // cache does not go stale until the file is actually touched.
+  AdvanceTimeMs(2 * ttl_ms_);
+  ResetHeadersAndStats();
+  FetchAndCheckResponse(cache_js_url_, "good:jm", true,
+                        kIproFileTtl, etag_, timer()->NowMs());
+  CheckWarmCache("third_fetch");
+
+  // OK let's now move time forward a little and touch the file
+  // without changing it.  This results in a total reset back to
+  // the original state.  It seems like we could read the file
+  // and see if it's changed, but we wind up queuing up the asynchronous
+  // rewrite.
+  AdvanceTimeMs(1 * Timer::kSecondMs);
+  WriteFile("/test/cacheable.js", cache_body_ /*"   alert ( 'foo ')   "*/);
+  ResetHeadersAndStats();
+  FetchAndCheckResponse(cache_js_url_, cache_body_, true,
+                        kIproFileTtl, NULL, timer()->NowMs());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());  // ajax-metadata, metadata
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());  // http, metadata, ajax-metadata
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(1, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  AdvanceTimeMs(1 * Timer::kSecondMs);
+  ResetHeadersAndStats();
+  FetchAndCheckResponse(cache_js_url_, "good:jm", true,
+                        kIproFileTtl, etag_, timer()->NowMs());
+  CheckWarmCache("second_fetch_after_touch");
+
+  // Now change the content.
+  AdvanceTimeMs(1 * Timer::kSecondMs);
+  WriteFile("/test/cacheable.js", "new_content");
+  ResetHeadersAndStats();
+  FetchAndCheckResponse(cache_js_url_, "new_content", true,
+                        kIproFileTtl, NULL, timer()->NowMs());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(2, lru_cache()->num_hits());  // ajax-metadata, metadata
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());  // http, metadata, ajax-metadata
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(1, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  AdvanceTimeMs(1 * Timer::kSecondMs);
+  ResetHeadersAndStats();
+  FetchAndCheckResponse(cache_js_url_, "new_content:jm", true,
+                        kIproFileTtl, etag_, timer()->NowMs());
+  CheckWarmCache("second_fetch_after_mutation");
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

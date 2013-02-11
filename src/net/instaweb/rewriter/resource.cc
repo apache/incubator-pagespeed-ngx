@@ -136,11 +136,13 @@ Resource::FreshenCallback::~FreshenCallback() {
 }
 
 bool Resource::Link(HTTPValue* value, MessageHandler* handler) {
+  DCHECK(UseHttpCache());
   SharedString* contents_and_headers = value->share();
   return value_.Link(contents_and_headers, &response_headers_, handler);
 }
 
 void Resource::LinkFallbackValue(HTTPValue* value) {
+  DCHECK(UseHttpCache());
   if (!value->Empty()) {
     fallback_value_.Link(value);
   }
