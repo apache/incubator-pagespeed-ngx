@@ -400,6 +400,10 @@ class ApacheProcessContext {
   ~ApacheProcessContext() {
     ApacheRewriteDriverFactory::Terminate();
     log_message_handler::ShutDown();
+    // We must reset the factory to NULL before ProcessContext's dtor
+    // is called, which terminates the protobuf libraries.  It is unsafe
+    // to free our structures after the protobuf library has been shut down.
+    factory_.reset(NULL);
   }
 
   ApacheRewriteDriverFactory* factory(server_rec* server) {
