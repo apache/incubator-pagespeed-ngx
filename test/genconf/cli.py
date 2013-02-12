@@ -23,10 +23,31 @@ from genconf import execute_template
 import sys
 from util import Error
 
+modes = [
+    "ALL_DIRECTIVES",
+    "COVERAGE",
+    "FURIOUS_GA",
+    "FURIOUS_NO_GA",
+    "GZIP",
+    "HTTPS",
+    "MEMCACHE_COVERAGE",
+    "MEMCACHED",
+    "PER_VHOST_STATS",
+    "PROXY",
+    "REWRITE",
+    "SHARED_MEM_LOCKS",
+    "SLURP",
+    "SPELING",
+    "STATS_LOGGING",
+    "STRESS"
+    ]
+
 def exit_with_help_message():
     print "This script transforms .pyconf files into webserver configuration files"
     print "usage: ./cli.py <input.pyconf> <output_format> <mode>"
-    print "where output_format can be either 'apache' or 'nginx'"
+    print "where output_format can be either 'apache' or 'nginx', and mode can be one of:"
+    print "%s" % ", ".join(modes)
+ 
     quit()
 
 # conditions indicate which conditional configuration sections
