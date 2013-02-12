@@ -90,14 +90,29 @@ def ast_node_to_dict(node, dest, lookup, parent_key):
         return val
     return dest
 
+# Given a line like:
+#   #cond1,cond2,!cond3,cond4 foo bar baz
+# then if cond1 and cond2 and not cond3 and cond4 return
+#   foo bar baz
+# otherwise return an empty line
 def replace_comments(conditions, s):
-    condition = s.group(1)
+    matched_conditions = s.group(1)
     config = s.group(2)
 
-    if condition in conditions:
-        return config
+    for condition in matched_conditions.split(","):
+        if not matches_condition(condition, conditions):
+            return s.group(0)
+    return config
+
+# condition: something like 'cond1' or '!cond2'
+# conditions: a list of currently enabled conditions
+# return whether this condition is in conditions (or, if it's a negated
+# condition, whether it's not in conditions)
+def matches_condition(condition, conditions):
+    if condition.startswith("!"):
+        return condition[1:] not in conditions
     else:
-        return s.group(0)
+        return condition in conditions
 
 def fill_placeholders(placeholders, match):
     placeholder = match.group(1)
