@@ -391,6 +391,9 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoValuesInACohort) {
     EXPECT_FALSE(cohort_info.is_cache_hit());
     EXPECT_EQ(0, cohort_info.properties_found_size());
     EXPECT_EQ(1, cohort_info.cache_key_state());
+    // Test Read log setup here
+    EXPECT_EQ(MockPropertyPage::kMockDeviceType, cohort_info.device_type());
+    EXPECT_EQ(MockPropertyPage::kMockCacheType, cohort_info.cache_type());
   }
 
   {
@@ -607,6 +610,109 @@ TEST_F(PropertyCacheTest, TwoCohortsDifferentCacheImplementations) {
   }
 }
 
+TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
+  EXPECT_EQ(cohort_, property_cache_.GetCohort(kCohortName1));
+  EXPECT_EQ(cohort_, property_cache_.AddCohort(kCohortName1));
+  EXPECT_TRUE(property_cache_.GetCohort(kCohortName2) == NULL);
+
+  const PropertyCache::Cohort* cohort2 = property_cache_.AddCohort(
+      kCohortName2);
+  ReadWriteInitial(kCacheKey1, "Value1");
+  EXPECT_EQ(2, lru_cache_.num_misses()) << "one miss per cohort";
+  EXPECT_EQ(1, lru_cache_.num_inserts()) << "only cohort1 written";
+  lru_cache_.ClearStats();
+
+  // ReadWithCohorts only checked cohort2 but no value has yet been established
+  // for cohort2, so we'll get a miss only. Unlike normal Read, ReadWithCohorts
+  // does not read data from all cohorts, it only reads data from the specified
+  // cohorts. In this case, cohort1 did not get touched, so that there is no
+  // hit.
+  {
+    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    StringVector cohort_name_list;
+    cohort_name_list.push_back(kCohortName2);
+    property_cache_.ReadWithCohorts(&page, cohort_name_list);
+    EXPECT_EQ(0, lru_cache_.num_hits()) << "cohort1";
+    EXPECT_EQ(1, lru_cache_.num_misses()) << "cohort2";
+    PropertyValue* p2 = page.GetProperty(cohort2, kPropertyName2);
+    EXPECT_TRUE(p2->was_read());
+    EXPECT_FALSE(p2->has_value());
+    property_cache_.UpdateValue("v2", p2);
+    property_cache_.WriteCohort(cohort2, &page);
+    EXPECT_EQ(1, lru_cache_.num_inserts()) << "cohort2 written";
+  }
+
+  lru_cache_.ClearStats();
+  // Now a second read will get one hits, no misses, and only one data element
+  // presents.
+  {
+    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    StringVector cohort_name_list;
+    cohort_name_list.push_back(kCohortName2);
+    property_cache_.ReadWithCohorts(&page, cohort_name_list);
+
+    EXPECT_EQ(1, lru_cache_.num_hits()) << "cohort2";
+    EXPECT_EQ(0, lru_cache_.num_misses());
+    PropertyValue* p2 = page.GetProperty(cohort2, kPropertyName2);
+    EXPECT_TRUE(p2->was_read());
+    EXPECT_TRUE(p2->has_value());
+    PropertyValue* p1 = page.GetProperty(cohort_, kPropertyName1);
+    EXPECT_TRUE(p1->was_read());
+    EXPECT_FALSE(p1->has_value());
+
+    const PropertyPageInfo& page_info =
+        page.log_record()->logging_info()->property_page_info();
+    EXPECT_EQ(2, page_info.cohort_info_size());
+    bool found_cohort_1 = false;
+    bool found_cohort_2 = false;
+    for (int i = 0; i < page_info.cohort_info_size(); i++) {
+      const PropertyCohortInfo& info = page_info.cohort_info(i);
+      if (info.name() == kCohortName1) {
+        found_cohort_1 = true;
+        EXPECT_NE(MockPropertyPage::kMockDeviceType, info.device_type());
+        EXPECT_NE(MockPropertyPage::kMockCacheType, info.cache_type());
+      } else if (info.name() == kCohortName2) {
+        found_cohort_2 = true;
+        EXPECT_EQ(MockPropertyPage::kMockDeviceType, info.device_type());
+        EXPECT_EQ(MockPropertyPage::kMockCacheType, info.cache_type());
+      }
+    }
+    EXPECT_TRUE(found_cohort_1);
+    EXPECT_TRUE(found_cohort_2);
+  }
+
+  lru_cache_.ClearStats();
+  // Normal Read gets every thing from all cohorts, so that there are two hits.
+  {
+    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    property_cache_.Read(&page);
+    EXPECT_EQ(2, lru_cache_.num_hits()) << "both cohorts hit";
+    EXPECT_EQ(0, lru_cache_.num_misses());
+    PropertyValue* p2 = page.GetProperty(cohort2, kPropertyName2);
+    EXPECT_TRUE(p2->was_read());
+    EXPECT_TRUE(p2->has_value());
+    PropertyValue* p1 = page.GetProperty(cohort_, kPropertyName1);
+    EXPECT_TRUE(p1->was_read());
+    EXPECT_TRUE(p1->has_value());
+
+    const PropertyPageInfo& page_info =
+        page.log_record()->logging_info()->property_page_info();
+    EXPECT_EQ(2, page_info.cohort_info_size());
+    const PropertyCohortInfo& cohort_info_1 = page_info.cohort_info(0);
+    const PropertyCohortInfo& cohort_info_2 = page_info.cohort_info(1);
+    if (cohort_info_1.name() == kCohortName1) {
+      EXPECT_EQ(kCohortName2, cohort_info_2.name());
+    } else {
+      EXPECT_EQ(kCohortName2, cohort_info_1.name());
+      EXPECT_EQ(kCohortName1, cohort_info_2.name());
+    }
+    // Test Read log setup here
+    EXPECT_EQ(MockPropertyPage::kMockDeviceType, cohort_info_1.device_type());
+    EXPECT_EQ(MockPropertyPage::kMockCacheType, cohort_info_1.cache_type());
+    EXPECT_EQ(MockPropertyPage::kMockDeviceType, cohort_info_2.device_type());
+    EXPECT_EQ(MockPropertyPage::kMockCacheType, cohort_info_2.cache_type());
+  }
+}
 }  // namespace
 
 }  // namespace net_instaweb

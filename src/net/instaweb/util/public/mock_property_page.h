@@ -21,6 +21,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_MOCK_PROPERTY_PAGE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_MOCK_PROPERTY_PAGE_H_
 
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -31,6 +32,12 @@ namespace net_instaweb {
 
 class MockPropertyPage : public PropertyPage {
  public:
+  // Cache type for LogPageCohortInfo
+  static const int kMockCacheType = 1;
+
+  // Device type for LogPageCohortInfo
+  static const int kMockDeviceType = 2;
+
   MockPropertyPage(ThreadSystem* thread_system,
                    const PropertyCache& property_cache,
                    const StringPiece& key)
@@ -47,6 +54,15 @@ class MockPropertyPage : public PropertyPage {
     called_ = true;
     valid_ = valid;
   }
+
+  // PropertyPage has LogPageCohortInfo with empty body. Property Cache Read
+  // function calls LogPageCohortInfo to do log job. In order to test it,
+  // implementation is added here.
+  virtual void LogPageCohortInfo(LogRecord* log_record, int cohort_index) {
+    log_record->SetDeviceAndCacheTypeForCohortInfo(
+        cohort_index, kMockDeviceType, kMockCacheType);
+  }
+
   bool called() const { return called_; }
   bool valid() const { return valid_; }
   void set_time_ms(int64 time_ms) {
@@ -60,7 +76,6 @@ class MockPropertyPage : public PropertyPage {
 
   DISALLOW_COPY_AND_ASSIGN(MockPropertyPage);
 };
-
 }  // namespace net_instaweb
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_MOCK_PROPERTY_PAGE_H_

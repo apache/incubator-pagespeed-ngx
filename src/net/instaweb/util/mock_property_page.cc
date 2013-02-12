@@ -20,6 +20,9 @@
 
 namespace net_instaweb {
 
+const int MockPropertyPage::kMockCacheType;
+const int MockPropertyPage::kMockDeviceType;
+
 MockPropertyPage::~MockPropertyPage() {
 }
 

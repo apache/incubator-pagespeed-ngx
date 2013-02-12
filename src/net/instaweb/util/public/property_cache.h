@@ -216,10 +216,23 @@ class PropertyCache {
   // that the Cohorts are established prior to calling this function.
   void Read(PropertyPage* property_page) const;
 
+  // Reads all the PropertyValues in the specified Cohorts from
+  // cache, calling PropertyPage::Done when done.
+  void ReadWithCohorts(PropertyPage* property_page,
+                       const StringVector cohort_names) const;
+
   // Reads PropertyValues for multiple pages, calling corresponding
   // PropertyPage::Done as and when page read completes. It is essential
   // that the Cohorts are established prior to calling this function.
   void MultiRead(PropertyPageStarVector* property_page_list) const;
+
+  // Reads PropertyValues for multiple pages, each page has a specified
+  // cohorts. Here all pages from property_page_list have the same cohort
+  // list.
+  // Notes: Maybe PropertyPageStarVector should contain specified cohort
+  // information.
+  void MultiReadWithCohorts(PropertyPageStarVector* property_page_list,
+                            const StringVector cohort_name_list) const;
 
   void SetupCohorts(PropertyPage* property_page) const;
 
@@ -302,7 +315,8 @@ class PropertyCache {
   int mutations_per_1000_writes_threshold_;
   typedef std::map<GoogleString, Cohort*> CohortMap;
   CohortMap cohorts_;
-
+  // For MutltiRead to scan all cohorts.
+  StringVector cohort_name_list_;
   bool enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(PropertyCache);

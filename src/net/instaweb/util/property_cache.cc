@@ -317,28 +317,35 @@ void PropertyCache::SetupCohorts(PropertyPage* page) const {
 }
 
 void PropertyCache::MultiRead(PropertyPageStarVector* page_list) const {
-  for (PropertyPageStarVector::iterator it = page_list->begin();
-       it != page_list->end(); ++it) {
-    PropertyPage* page = *it;
-    if (enabled_ && !cohorts_.empty()) {
-      PropertyPage::CallbackCollector* collector =
-          new PropertyPage::CallbackCollector(
-              page, cohorts_.size(), thread_system_->NewMutex());
-      for (CohortMap::const_iterator p = cohorts_.begin(), e = cohorts_.end();
-           p != e; ++p) {
-        const Cohort* cohort = p->second;
+  MultiReadWithCohorts(page_list, cohort_name_list_);
+}
+
+void PropertyCache::MultiReadWithCohorts(
+    PropertyPageStarVector* property_page_list,
+    const StringVector cohort_name_list) const {
+  for (int i = 0, m = property_page_list->size(); i < m; i++) {
+    PropertyPage* page = property_page_list->at(i);
+    if (!enabled_  || cohorts_.empty() || cohort_name_list.empty()) {
+      page->CallDone(false);
+      return;
+    }
+
+    PropertyPage::CallbackCollector* collector =
+        new PropertyPage::CallbackCollector(
+            page, cohort_name_list.size(), thread_system_->NewMutex());
+    for (int j = 0, n = cohort_name_list.size(); j < n; j++) {
+      CohortMap::const_iterator p = cohorts_.find(cohort_name_list[j]);
+      CHECK(p != cohorts_.end());
+      const Cohort* cohort = p->second;
       PropertyPage::CohortDataMap::iterator cohort_itr =
-          page->cohort_data_map_.find(cohort);
+        page->cohort_data_map_.find(cohort);
       CHECK(cohort_itr != page->cohort_data_map_.end());
       PropertyPage::PropertyMapStruct* pmap_struct = cohort_itr->second;
       page->LogPageCohortInfo(page->log_record(), pmap_struct->cohort_index);
-        const GoogleString cache_key = CacheKey(page->key(), cohort);
-        cohort->cache()->Get(
-          cache_key,
-          new CacheInterfaceCallback(page, cohort, pmap_struct, collector));
-      }
-    } else {
-      page->CallDone(false);
+      const GoogleString cache_key = CacheKey(page->key(), cohort);
+      cohort->cache()->Get(
+        cache_key,
+        new CacheInterfaceCallback(page, cohort, pmap_struct, collector));
     }
   }
 }
@@ -347,6 +354,13 @@ void PropertyCache::Read(PropertyPage* page) const {
   PropertyPageStarVector page_list;
   page_list.push_back(page);
   MultiRead(&page_list);
+}
+
+void PropertyCache::ReadWithCohorts(PropertyPage* property_page,
+                                    const StringVector cohort_names) const {
+  PropertyPageStarVector page_list;
+  page_list.push_back(property_page);
+  MultiReadWithCohorts(&page_list, cohort_names);
 }
 
 bool PropertyValue::IsStable(int mutations_per_1000_threshold) const {
@@ -426,6 +440,7 @@ const PropertyCache::Cohort* PropertyCache::AddCohortWithCache(
                                                  timer_,
                                                  stats_);
     insertions.first->second = new Cohort(cohort_name, cache_stats);
+    cohort_name_list_.push_back(cohort_string);
   }
   return insertions.first->second;
 }
