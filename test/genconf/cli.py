@@ -25,7 +25,7 @@ from util import Error
 
 def exit_with_help_message():
     print "This script transforms .pyconf files into webserver configuration files"
-    print "usage: ./genconf.py <input.pyconf> <output_format> <mode>"
+    print "usage: ./cli.py <input.pyconf> <output_format> <mode>"
     print "where output_format can be either 'apache' or 'nginx'"
     quit()
 
