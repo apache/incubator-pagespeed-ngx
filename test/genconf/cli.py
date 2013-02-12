@@ -77,5 +77,5 @@ template = output_format + '.conf.template'
 
 text = execute_template(input_config_path, conditions,
                         placeholders, template)
-print(text)
+print text
 
