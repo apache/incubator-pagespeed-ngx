@@ -886,7 +886,7 @@
         'rewriter/output_resource.cc',
         'rewriter/resource_namer.cc',
         'rewriter/server_context.cc',
-        'rewriter/static_javascript_manager.cc',
+        'rewriter/static_asset_manager.cc',
         'rewriter/url_namer.cc',
       ],
       'include_dirs': [

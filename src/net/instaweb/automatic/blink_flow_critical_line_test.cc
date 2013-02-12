@@ -43,7 +43,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -579,14 +579,12 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
                              StringPrintf(kNoScriptRedirectFormatter,
                                           kNoBlinkUrl, kNoBlinkUrl),
                              "</body></html>");
-    const StaticJavascriptManager* static_js_manager =
-        server_context()->static_javascript_manager();
-    StringPiece lazyload_js_code =
-        static_js_manager->GetJsSnippet(
-            StaticJavascriptManager::kLazyloadImagesJs, options());
-    StringPiece blank_gif_url =
-        static_js_manager->GetJsUrl(StaticJavascriptManager::kBlankGif,
-                                    options());
+    const StaticAssetManager* static_asset_manager =
+        server_context()->static_asset_manager();
+    StringPiece lazyload_js_code =static_asset_manager->GetAsset(
+        StaticAssetManager::kLazyloadImagesJs, options());
+    StringPiece blank_gif_url = static_asset_manager->GetAssetUrl(
+        StaticAssetManager::kBlankGif, options());
     noblink_output_with_lazy_load_ = StringPrintf(kLazyLoadHtml,
         StringPrintf(kNoScriptRedirectFormatter,
                      kNoScriptTextUrl, kNoScriptTextUrl).c_str(),

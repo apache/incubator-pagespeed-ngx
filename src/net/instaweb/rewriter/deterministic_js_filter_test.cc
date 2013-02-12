@@ -20,7 +20,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -47,14 +47,14 @@ class DeterministicJsFilterTest : public RewriteTestBase {
 
 TEST_F(DeterministicJsFilterTest, DeterministicJsInjection) {
   StringPiece deterministic_js_code =
-      server_context()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kDeterministicJs, options());
+      server_context()->static_asset_manager()->GetAsset(
+          StaticAssetManager::kDeterministicJs, options());
   GoogleString expected_str = StrCat("<head><script type=\"text/javascript\" "
                                      "pagespeed_no_defer>",
                                      deterministic_js_code,
                                      "</script></head><body></body>");
 
-  // Check if StaticJavascriptManager populated the script correctly.
+  // Check if StaticAssetManager populated the script correctly.
   EXPECT_NE(GoogleString::npos, deterministic_js_code.find("Date"));
   EXPECT_NE(GoogleString::npos, deterministic_js_code.find("Math.random"));
   // Check if the deterministic js is inserted correctly.
@@ -65,8 +65,8 @@ TEST_F(DeterministicJsFilterTest, DeterministicJsInjection) {
 
 TEST_F(DeterministicJsFilterTest, DeterministicJsInjectionWithSomeHeadContent) {
   StringPiece deterministic_js_code =
-      server_context()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kDeterministicJs, options());
+      server_context()->static_asset_manager()->GetAsset(
+          StaticAssetManager::kDeterministicJs, options());
   GoogleString expected_str = StrCat("<head><script type=\"text/javascript\" "
                                      "pagespeed_no_defer>",
                                      deterministic_js_code,
@@ -74,7 +74,7 @@ TEST_F(DeterministicJsFilterTest, DeterministicJsInjectionWithSomeHeadContent) {
                                      "<link rel=\"stylesheet\" href=\"a.css\">"
                                      "</head><body></body>");
 
-  // Check if StaticJavascriptManager populated the script correctly.
+  // Check if StaticAssetManager populated the script correctly.
   EXPECT_NE(GoogleString::npos, deterministic_js_code.find("Date"));
   EXPECT_NE(GoogleString::npos, deterministic_js_code.find("Math.random"));
   // Check if the deterministic js is inserted correctly.

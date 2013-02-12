@@ -33,7 +33,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -45,8 +44,8 @@ namespace net_instaweb {
 class AbstractMutex;
 class BlinkCriticalLineDataFinder;
 class ContentType;
-class CriticalImagesFinder;
 class CriticalCssFinder;
+class CriticalImagesFinder;
 class FileSystem;
 class FilenameEncoder;
 class FlushEarlyInfoFinder;
@@ -57,6 +56,7 @@ class Hasher;
 class MessageHandler;
 class NamedLock;
 class NamedLockManager;
+class PropertyCache;
 class RequestHeaders;
 class ResponseHeaders;
 class RewriteDriver;
@@ -65,7 +65,7 @@ class RewriteDriverPool;
 class RewriteOptions;
 class RewriteStats;
 class Scheduler;
-class StaticJavascriptManager;
+class StaticAssetManager;
 class Statistics;
 class ThreadSynchronizer;
 class ThreadSystem;
@@ -169,11 +169,11 @@ class ServerContext {
   void set_filename_encoder(FilenameEncoder* x) { filename_encoder_ = x; }
   UrlNamer* url_namer() const { return url_namer_; }
   void set_url_namer(UrlNamer* n) { url_namer_ = n; }
-  StaticJavascriptManager* static_javascript_manager() const {
-    return static_javascript_manager_;
+  StaticAssetManager* static_asset_manager() const {
+    return static_asset_manager_;
   }
-  void set_static_javascript_manager(StaticJavascriptManager* manager) {
-    static_javascript_manager_ = manager;
+  void set_static_asset_manager(StaticAssetManager* manager) {
+    static_asset_manager_ = manager;
   }
   Scheduler* scheduler() const { return scheduler_; }
   void set_scheduler(Scheduler* s) { scheduler_ = s; }
@@ -648,8 +648,8 @@ class ServerContext {
 
   AtomicBool shutting_down_;
 
-  // Used to create URLs for various filter javascript files.
-  StaticJavascriptManager* static_javascript_manager_;
+  // Used to create URLs for various filter static js and image files.
+  StaticAssetManager* static_asset_manager_;
 
   // Used to help inject sync-points into thread-intensive code for the purposes
   // of controlling thread interleaving to test code for possible races.

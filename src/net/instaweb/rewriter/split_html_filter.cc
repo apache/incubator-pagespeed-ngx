@@ -36,7 +36,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/json_writer.h"
@@ -86,7 +86,7 @@ SplitHtmlFilter::SplitHtmlFilter(RewriteDriver* rewrite_driver)
       rewrite_driver_(rewrite_driver),
       options_(rewrite_driver->options()),
       current_panel_parent_element_(NULL),
-      static_js_manager_(NULL) {
+      static_asset_manager_(NULL) {
 }
 
 SplitHtmlFilter::~SplitHtmlFilter() {
@@ -96,8 +96,8 @@ void SplitHtmlFilter::StartDocument() {
   flush_head_enabled_ = options_->Enabled(RewriteOptions::kFlushSubresources);
   disable_filter_ = !rewrite_driver_->device_properties()->SupportsSplitHtml(
       rewrite_driver_->options()->enable_aggressive_rewriters_for_mobile());
-  static_js_manager_ =
-      rewrite_driver_->server_context()->static_javascript_manager();
+  static_asset_manager_ =
+      rewrite_driver_->server_context()->static_asset_manager();
   if (disable_filter_) {
     InvokeBaseHtmlFilterStartDocument();
     return;
@@ -164,10 +164,11 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
   GoogleString non_critical_json = fast_writer_.write(json);
   BlinkUtil::StripTrailingNewline(&non_critical_json);
   BlinkUtil::EscapeString(&non_critical_json);
-  WriteString(StringPrintf(kSplitSuffixJsFormatString,
-                           num_low_res_images_inlined_,
-                           GetBlinkJsUrl(options_, static_js_manager_).c_str(),
-                           non_critical_json.c_str()));
+  WriteString(StringPrintf(
+      kSplitSuffixJsFormatString,
+      num_low_res_images_inlined_,
+      GetBlinkJsUrl(options_, static_asset_manager_).c_str(),
+      non_critical_json.c_str()));
   if (!json.empty()) {
     rewrite_driver_->log_record()->LogAppliedRewriter(
         RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
@@ -307,7 +308,7 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
   if (send_lazyload_script_ &&
       !rewrite_driver_->is_lazyload_script_flushed()) {
     GoogleString lazyload_js = LazyloadImagesFilter::GetLazyloadJsSnippet(
-        options_, static_js_manager_);
+        options_, static_asset_manager_);
     StrAppend(&defer_js_with_blink, "<script type=\"text/javascript\">",
               lazyload_js, "</script>");
   }
@@ -523,9 +524,9 @@ bool SplitHtmlFilter::ElementMatchesXpath(
 
 const GoogleString& SplitHtmlFilter::GetBlinkJsUrl(
       const RewriteOptions* options,
-      StaticJavascriptManager* static_js_manager) {
-  return static_js_manager->GetJsUrl(StaticJavascriptManager::kBlinkJs,
-                                     options);
+      StaticAssetManager* static_asset_manager) {
+  return static_asset_manager->GetAssetUrl(StaticAssetManager::kBlinkJs,
+                                           options);
 }
 
 // TODO(rahulbansal): Refactor this pattern.

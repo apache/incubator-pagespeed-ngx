@@ -21,7 +21,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -127,11 +127,12 @@ TEST_F(StripNonCacheableFilterTest, StripNonCacheable) {
 
 TEST_F(StripNonCacheableFilterTest, TestGstatic) {
   UrlNamer url_namer;
-  StaticJavascriptManager js_manager(&url_namer, server_context()->hasher(),
-                                     server_context()->message_handler());
-  js_manager.set_serve_js_from_gstatic(true);
-  js_manager.set_gstatic_hash(StaticJavascriptManager::kBlinkJs, "1");
-  server_context()->set_static_javascript_manager(&js_manager);
+  StaticAssetManager static_asset_manager(
+      &url_namer, server_context()->hasher(),
+      server_context()->message_handler());
+  static_asset_manager.set_serve_asset_from_gstatic(true);
+  static_asset_manager.set_gstatic_hash(StaticAssetManager::kBlinkJs, "1");
+  server_context()->set_static_asset_manager(&static_asset_manager);
   ValidateExpectedUrl(kRequestUrl, kHtmlInput,
                       GetExpectedOutput(kBlinkUrlGstatic));
 }

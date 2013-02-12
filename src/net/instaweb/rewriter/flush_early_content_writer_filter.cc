@@ -30,7 +30,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -249,15 +249,15 @@ void FlushEarlyContentWriterFilter::TryFlushingDeferJavascriptEarly() {
           driver_->options()->enable_aggressive_rewriters_for_mobile()) &&
       options->flush_more_resources_early_if_time_permits();
   if (should_try_flushing_early_js_defer_script) {
-    StaticJavascriptManager* static_js_manager =
-        driver_->server_context()->static_javascript_manager();
-    GoogleString defer_js = static_js_manager->GetJsSnippet(
-            StaticJavascriptManager::kDeferJs, options);
+    StaticAssetManager* static_asset_manager =
+        driver_->server_context()->static_asset_manager();
+    GoogleString defer_js = static_asset_manager->GetAsset(
+            StaticAssetManager::kDeferJs, options);
     int64 time_to_download = TimeToDownload(defer_js.size());
     is_bandwidth_affected = true;
     if (time_consumed_ms_ + time_to_download < max_available_time_ms_) {
-      GoogleString defer_js_url = static_js_manager->GetJsUrl(
-          StaticJavascriptManager::kDeferJs, options);
+      GoogleString defer_js_url = static_asset_manager->GetAssetUrl(
+          StaticAssetManager::kDeferJs, options);
       FlushResources(defer_js_url, time_to_download, false,
                      semantic_type::kScript);
       is_flushed = true;

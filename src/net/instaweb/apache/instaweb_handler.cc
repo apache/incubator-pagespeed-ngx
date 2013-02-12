@@ -46,7 +46,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/escaping.h"
@@ -422,7 +422,7 @@ bool handle_as_resource(ApacheServerContext* server_context,
                                  request_headers.release(), request);
   } else if (options->in_place_rewriting_enabled() && options->enabled() &&
              options->IsAllowed(url)) {
-    handled = handle_as_in_place(request_context,gurl, url,
+    handled = handle_as_in_place(request_context, gurl, url,
                                  custom_options.release(), server_context,
                                  request_headers.release(), request);
   }
@@ -550,17 +550,17 @@ void WritePre(StringPiece str, Writer* writer, MessageHandler* handler) {
 
 void instaweb_static_handler(request_rec* request,
                              ApacheServerContext* server_context) {
-  StaticJavascriptManager* static_javascript_manager =
-      server_context->static_javascript_manager();
+  StaticAssetManager* static_asset_manager =
+      server_context->static_asset_manager();
   StringPiece request_uri_path = request->parsed_uri.path;
-  // Strip out the common prefix url before sending to StaticJavascriptManager.
+  // Strip out the common prefix url before sending to StaticAssetManager.
   StringPiece file_name =
       request_uri_path.substr(
-          strlen(ApacheRewriteDriverFactory::kStaticJavaScriptPrefix));
+          strlen(ApacheRewriteDriverFactory::kStaticAssetPrefix));
   StringPiece file_contents;
   StringPiece cache_header;
   ContentType content_type;
-  if (static_javascript_manager->GetJsSnippet(
+  if (static_asset_manager->GetAsset(
       file_name, &file_contents, &content_type, &cache_header)) {
     write_handler_response(file_contents, request, content_type, cache_header);
   } else {
@@ -852,7 +852,7 @@ apr_status_t instaweb_handler(request_rec* request) {
         ap_log_rerror(APLOG_MARK, APLOG_DEBUG, APR_SUCCESS, request,
                       "Ignoring invalid URL: %s", gurl.spec_c_str());
       } else if (gurl.PathSansLeaf() ==
-                 ApacheRewriteDriverFactory::kStaticJavaScriptPrefix) {
+                 ApacheRewriteDriverFactory::kStaticAssetPrefix) {
         instaweb_static_handler(request, server_context);
         ret = OK;
       } else if (handle_as_resource(server_context, request, &gurl, url)) {
@@ -949,7 +949,7 @@ apr_status_t save_url_in_note(request_rec *request,
         leaf == kGlobalStatisticsHandler || leaf == kBeaconHandler ||
         leaf == kMessageHandler || leaf == kRefererStatisticsHandler ||
         (gurl.PathSansLeaf() ==
-         ApacheRewriteDriverFactory::kStaticJavaScriptPrefix)) {
+         ApacheRewriteDriverFactory::kStaticAssetPrefix)) {
       bypass_mod_rewrite = true;
     } else {
       if (server_context->IsPagespeedResource(gurl)) {

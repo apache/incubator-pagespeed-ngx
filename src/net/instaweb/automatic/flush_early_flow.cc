@@ -21,7 +21,6 @@
 #include <algorithm>
 #include <set>
 
-#include "base/logging.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
@@ -29,8 +28,6 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/response_headers.h"
-#include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/js/public/js_minify.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -45,7 +42,6 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -78,7 +74,7 @@ const int kMinLatencyForPreconnectMs = 100;
 
 namespace net_instaweb {
 
-class StaticJavascriptManager;
+class StaticAssetManager;
 
 namespace {
 
@@ -500,10 +496,10 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
 
   if (should_flush_early_lazyload_script_) {
     // Flush Lazyload filter script content.
-    StaticJavascriptManager* static_js_manager =
-          manager_->static_javascript_manager();
+    StaticAssetManager* static_asset_manager =
+          manager_->static_asset_manager();
     GoogleString script_content = LazyloadImagesFilter::GetLazyloadJsSnippet(
-        driver_->options(), static_js_manager);
+        driver_->options(), static_asset_manager);
     base_fetch_->Write(StringPrintf(kJavascriptInline,
         script_content.c_str()), handler_);
     if (!driver_->options()->lazyload_images_blank_url().empty()) {

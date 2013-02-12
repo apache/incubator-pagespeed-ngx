@@ -34,7 +34,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/rewriter/public/usage_data_reporter.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -254,12 +254,12 @@ UserAgentMatcher* RewriteDriverFactory::user_agent_matcher() {
   return user_agent_matcher_.get();
 }
 
-StaticJavascriptManager* RewriteDriverFactory::static_javascript_manager() {
-  if (static_javascript_manager_ == NULL) {
-    static_javascript_manager_.reset(DefaultStaticJavascriptManager());
-    InitStaticJavascriptManager(static_javascript_manager_.get());
+StaticAssetManager* RewriteDriverFactory::static_asset_manager() {
+  if (static_asset_manager_ == NULL) {
+    static_asset_manager_.reset(DefaultStaticAssetManager());
+    InitStaticAssetManager(static_asset_manager_.get());
   }
-  return static_javascript_manager_.get();
+  return static_asset_manager_.get();
 }
 
 Scheduler* RewriteDriverFactory::scheduler() {
@@ -296,9 +296,8 @@ UserAgentMatcher* RewriteDriverFactory::DefaultUserAgentMatcher() {
   return new UserAgentMatcher();
 }
 
-StaticJavascriptManager*
-    RewriteDriverFactory::DefaultStaticJavascriptManager() {
-  return new StaticJavascriptManager(url_namer(), hasher(), message_handler());
+StaticAssetManager* RewriteDriverFactory::DefaultStaticAssetManager() {
+  return new StaticAssetManager(url_namer(), hasher(), message_handler());
 }
 
 CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
@@ -428,7 +427,7 @@ void RewriteDriverFactory::InitServerContext(
   resource_manager->set_filename_prefix(filename_prefix_);
   resource_manager->set_hasher(hasher());
   resource_manager->set_message_handler(message_handler());
-  resource_manager->set_static_javascript_manager(static_javascript_manager());
+  resource_manager->set_static_asset_manager(static_asset_manager());
   PropertyCache* pcache = resource_manager->page_property_cache();
   resource_manager->set_critical_images_finder(DefaultCriticalImagesFinder());
   resource_manager->set_flush_early_info_finder(DefaultFlushEarlyInfoFinder());

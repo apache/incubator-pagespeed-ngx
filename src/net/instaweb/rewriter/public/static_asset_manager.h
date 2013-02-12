@@ -16,11 +16,8 @@
 
 // Author: guptaa@google.com (Ashish Gupta)
 
-// TODO(jud): Rename this class StaticAssetManager, and rename functions like
-// GetJsSnippet accordingly.
-
-#ifndef NET_INSTAWEB_REWRITER_PUBLIC_STATIC_JAVASCRIPT_MANAGER_H_
-#define NET_INSTAWEB_REWRITER_PUBLIC_STATIC_JAVASCRIPT_MANAGER_H_
+#ifndef NET_INSTAWEB_REWRITER_PUBLIC_STATIC_ASSET_MANAGER_H_
+#define NET_INSTAWEB_REWRITER_PUBLIC_STATIC_ASSET_MANAGER_H_
 
 #include <map>
 #include <vector>
@@ -42,12 +39,12 @@ class UrlNamer;
 // Composes URLs for the javascript files injected by the various PSA filters.
 // TODO(ksimbili): Refactor out the common base class to serve the static files
 // of type css, images or html etc.
-class StaticJavascriptManager {
+class StaticAssetManager {
  public:
   static const char kGStaticBase[];
   static const char kDefaultLibraryUrlPrefix[];
 
-  enum JsModule {
+  enum StaticAsset {
     kAddInstrumentationJs,
     kBlankGif,
     kBlinkJs,
@@ -64,27 +61,27 @@ class StaticJavascriptManager {
     kEndOfModules,  // Keep this as the last enum value.
   };
 
-  StaticJavascriptManager(UrlNamer* url_namer, Hasher* hasher,
-                          MessageHandler* message_handler);
+  StaticAssetManager(UrlNamer* url_namer, Hasher* hasher,
+                     MessageHandler* message_handler);
 
-  ~StaticJavascriptManager();
+  ~StaticAssetManager();
 
-  // Returns the JS url based on the value of debug filter and the value of
-  // serve_js_from_gstatic flag.
-  const GoogleString& GetJsUrl(const JsModule& module,
-                               const RewriteOptions* options) const;
+  // Returns the url based on the value of debug filter and the value of
+  // serve_asset_from_gstatic flag.
+  const GoogleString& GetAssetUrl(const StaticAsset& module,
+                                  const RewriteOptions* options) const;
 
-  const char* GetJsSnippet(const JsModule& module,
-                           const RewriteOptions* options) const;
+  const char* GetAsset(const StaticAsset& module,
+                              const RewriteOptions* options) const;
 
-  // Get the Js snippet to be served as external file for the file names
-  // file_name. The snippet is returned as 'content' and cache-control headers
-  // is set into cache_header. If the hash matches, then ttl is set to 1 year,
-  // or else set to 'private max-age=300'.
+  // Get the asset to be served as external file for the file names file_name.
+  // The snippet is returned as 'content' and cache-control headers is set into
+  // cache_header. If the hash matches, then ttl is set to 1 year, or else set
+  // to 'private max-age=300'.
   // Returns true iff the content for filename is found.
-  bool GetJsSnippet(StringPiece file_name, StringPiece* content,
-                    ContentType* content_type,
-                    StringPiece* cache_header) const;
+  bool GetAsset(StringPiece file_name, StringPiece* content,
+                       ContentType* content_type,
+                       StringPiece* cache_header) const;
 
   // Add a CharacterNode to an already created script element, properly escaping
   // the text with CDATA tags is necessary. The script element should be added
@@ -93,30 +90,32 @@ class StaticJavascriptManager {
                       RewriteDriver* driver) const;
 
 
-  // If set_js_from_gstatic is true, update the URL for module to use gstatic.
-  void set_gstatic_hash(const JsModule& module, const GoogleString& hash);
+  // If set_serve_asset_from_gstatic is true, update the URL for module to use
+  // gstatic.
+  void set_gstatic_hash(const StaticAsset& module, const GoogleString& hash);
 
-  // Set serve_js_from_gstatic_ to serve the files from gstatic. Note that files
-  // won't actually get served from gstatic until you also call set_gstatic_hash
-  // for the URL that you'd like served from gstatic. set_gstatic_hash should be
-  // called after calling set_server_js_from_gstatic(true).
-  void set_serve_js_from_gstatic(bool serve_js_from_gstatic) {
-    serve_js_from_gstatic_ = serve_js_from_gstatic;
+  // Set serve_asset_from_gstatic_ to serve the files from gstatic. Note that
+  // files won't actually get served from gstatic until you also call
+  // set_gstatic_hash for the URL that you'd like served from gstatic.
+  // set_gstatic_hash should be called after calling
+  // set_server_asset_from_gstatic(true).
+  void set_serve_asset_from_gstatic(bool serve_asset_from_gstatic) {
+    serve_asset_from_gstatic_ = serve_asset_from_gstatic;
   }
 
-  // Set the url prefix for outlining js.
+  // Set the prefix for the URLs of assets.
   void set_library_url_prefix(const StringPiece& url_prefix) {
     url_prefix.CopyToString(&library_url_prefix_);
-    InitializeJsUrls();
+    InitializeAssetUrls();
   }
 
  private:
   class Asset;
 
-  typedef std::map<GoogleString, JsModule> FileNameToModuleMap;
+  typedef std::map<GoogleString, StaticAsset> FileNameToModuleMap;
 
-  void InitializeJsStrings();
-  void InitializeJsUrls();
+  void InitializeAssetStrings();
+  void InitializeAssetUrls();
 
   // Set in the constructor, this class does not own the following objects.
   UrlNamer* url_namer_;
@@ -126,14 +125,14 @@ class StaticJavascriptManager {
   std::vector<Asset*> assets_;
   FileNameToModuleMap file_name_to_module_map_;
 
-  bool serve_js_from_gstatic_;
+  bool serve_asset_from_gstatic_;
   GoogleString library_url_prefix_;
   GoogleString cache_header_with_long_ttl_;
   GoogleString cache_header_with_private_ttl_;
 
-  DISALLOW_COPY_AND_ASSIGN(StaticJavascriptManager);
+  DISALLOW_COPY_AND_ASSIGN(StaticAssetManager);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_REWRITER_PUBLIC_STATIC_JAVASCRIPT_MANAGER_H_
+#endif  // NET_INSTAWEB_REWRITER_PUBLIC_STATIC_ASSET_MANAGER_H_

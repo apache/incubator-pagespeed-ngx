@@ -25,7 +25,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -58,7 +58,7 @@ LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
   Clear();
   blank_image_url_ = GetBlankImageSrc(
       driver->options(),
-      driver->server_context()->static_javascript_manager());
+      driver->server_context()->static_asset_manager());
 }
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
 
@@ -243,11 +243,11 @@ void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
   if (!driver()->is_lazyload_script_flushed()) {
     HtmlElement* script = driver()->NewElement(element, HtmlName::kScript);
     driver()->InsertElementBeforeElement(element, script);
-    StaticJavascriptManager* static_js_manager =
-        driver()->server_context()->static_javascript_manager();
+    StaticAssetManager* static_asset_manager =
+        driver()->server_context()->static_asset_manager();
     GoogleString lazyload_js = GetLazyloadJsSnippet(
-        driver()->options(), static_js_manager);
-    static_js_manager->AddJsToElement(lazyload_js, script, driver());
+        driver()->options(), static_asset_manager);
+    static_asset_manager->AddJsToElement(lazyload_js, script, driver());
   }
   main_script_inserted_ = true;
 }
@@ -272,11 +272,11 @@ void LazyloadImagesFilter::InsertOverrideAttributesScript(
 
 GoogleString LazyloadImagesFilter::GetBlankImageSrc(
     const RewriteOptions* options,
-    const StaticJavascriptManager* static_js_manager) {
+    const StaticAssetManager* static_asset_manager) {
   const GoogleString& options_url = options->lazyload_images_blank_url();
   if (options_url.empty()) {
-    return static_js_manager->GetJsUrl(StaticJavascriptManager::kBlankGif,
-                                       options);
+    return static_asset_manager->GetAssetUrl(StaticAssetManager::kBlankGif,
+                                             options);
   } else {
     return options_url;
   }
@@ -284,14 +284,14 @@ GoogleString LazyloadImagesFilter::GetBlankImageSrc(
 
 GoogleString LazyloadImagesFilter::GetLazyloadJsSnippet(
     const RewriteOptions* options,
-    StaticJavascriptManager* static_js_manager) {
+    StaticAssetManager* static_asset_manager) {
   const GoogleString& load_onload =
       options->lazyload_images_after_onload() ? kTrue : kFalse;
   StringPiece lazyload_images_js =
-      static_js_manager->GetJsSnippet(
-          StaticJavascriptManager::kLazyloadImagesJs, options);
+      static_asset_manager->GetAsset(
+          StaticAssetManager::kLazyloadImagesJs, options);
   const GoogleString& blank_image_url =
-      GetBlankImageSrc(options, static_js_manager);
+      GetBlankImageSrc(options, static_asset_manager);
   GoogleString lazyload_js =
       StrCat(lazyload_images_js, "\npagespeed.lazyLoadInit(",
              load_onload, ", \"", blank_image_url, "\");\n");

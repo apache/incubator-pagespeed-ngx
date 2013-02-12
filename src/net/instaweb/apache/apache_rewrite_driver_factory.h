@@ -55,7 +55,7 @@ class SharedCircularBuffer;
 class SharedMemRefererStatistics;
 class SharedMemStatistics;
 class SlowWorker;
-class StaticJavascriptManager;
+class StaticAssetManager;
 class Statistics;
 class SystemCachePath;
 class Timer;
@@ -71,8 +71,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   static const char kMemcached[];
   static const char kShmCache[];
 
-  // Path prefix where we serve JS snippets needed by some filters.
-  static const char kStaticJavaScriptPrefix[];
+  // Path prefix where we serve static assets (primarily images and js
+  // resources) needed by some filters.
+  static const char kStaticAssetPrefix[];
 
   ApacheRewriteDriverFactory(server_rec* server, const StringPiece& version);
   virtual ~ApacheRewriteDriverFactory();
@@ -340,9 +341,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // the base class resources.
   virtual void ShutDown();
 
-  // Initializes the StaticJavascriptManager.
-  virtual void InitStaticJavascriptManager(
-      StaticJavascriptManager* static_js_manager);
+  // Initializes the StaticAssetManager.
+  virtual void InitStaticAssetManager(StaticAssetManager* static_asset_manager);
 
  private:
   typedef SharedMemCache<64> MetadataShmCache;

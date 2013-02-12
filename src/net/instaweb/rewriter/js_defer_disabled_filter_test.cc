@@ -23,7 +23,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -180,12 +180,13 @@ TEST_F(JsDeferDisabledFilterTest, DisAllowMobileUserAgent) {
 
 TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromGStatic) {
   UrlNamer url_namer;
-  StaticJavascriptManager js_manager(&url_namer, server_context()->hasher(),
-                                     server_context()->message_handler());
-  js_manager.set_serve_js_from_gstatic(true);
-  js_manager.set_gstatic_hash(StaticJavascriptManager::kDeferJs, "1");
+  StaticAssetManager static_asset_manager(&url_namer,
+                                          server_context()->hasher(),
+                                          server_context()->message_handler());
+  static_asset_manager.set_serve_asset_from_gstatic(true);
+  static_asset_manager.set_gstatic_hash(StaticAssetManager::kDeferJs, "1");
 
-  server_context()->set_static_javascript_manager(&js_manager);
+  server_context()->set_static_asset_manager(&static_asset_manager);
 
   InitJsDeferDisabledFilter(false);
   ValidateExpected(

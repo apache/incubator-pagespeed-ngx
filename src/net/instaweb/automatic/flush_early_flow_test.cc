@@ -39,7 +39,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/split_html_filter.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -600,8 +600,8 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 
   GoogleString GetDeferJsCode() {
     return StrCat("<script type=\"text/javascript\" src=\"",
-                  server_context()->static_javascript_manager()->GetJsUrl(
-                      StaticJavascriptManager::kDeferJs, options_),
+                  server_context()->static_asset_manager()->GetAssetUrl(
+                      StaticAssetManager::kDeferJs, options_),
                   "\"></script>");
   }
 
@@ -641,7 +641,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
           rewritten_css_url_3.data(),
           LazyloadImagesFilter::GetLazyloadJsSnippet(
               options_,
-              server_context()->static_javascript_manager()).c_str(),
+              server_context()->static_asset_manager()).c_str(),
           cookie_script.data(),
           rewritten_css_url_1.data(), rewritten_css_url_2.data(),
           rewritten_js_url_1.data(), rewritten_js_url_2.data(),
@@ -663,7 +663,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
               StrCat("<script type=\"text/javascript\">",
                      LazyloadImagesFilter::GetLazyloadJsSnippet(
                          options_,
-                         server_context()->static_javascript_manager()),
+                         server_context()->static_asset_manager()),
                      "</script>").c_str() : ""),
           cookie_script.data(),
           rewritten_css_url_1.data(), rewritten_css_url_2.data(),
@@ -1370,7 +1370,7 @@ TEST_F(FlushEarlyFlowTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
                    redirect_url.c_str()),
       "<script type=\"text/javascript\">",
       LazyloadImagesFilter::GetLazyloadJsSnippet(
-          options_, server_context()->static_javascript_manager()),
+          options_, server_context()->static_asset_manager()),
       "</script>"
       "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.0.jpg"
       " src=\"/psajs/1.0.gif\""

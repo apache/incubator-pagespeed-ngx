@@ -21,7 +21,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -48,8 +48,8 @@ class DetectReflowJsDeferFilterTest : public RewriteTestBase {
 TEST_F(DetectReflowJsDeferFilterTest, DetectReflow) {
   InitDetectReflowJsDeferFilter();
   StringPiece detect_reflow_code =
-      server_context()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kDetectReflowJs, options());
+      server_context()->static_asset_manager()->GetAsset(
+          StaticAssetManager::kDetectReflowJs, options());
   ValidateExpected("detect_reflow",
       "<head>"
       "<script type='text/psajs' "
@@ -70,8 +70,8 @@ TEST_F(DetectReflowJsDeferFilterTest, DetectReflow) {
 TEST_F(DetectReflowJsDeferFilterTest, DetectReflowNoHead) {
   InitDetectReflowJsDeferFilter();
   StringPiece detect_reflow_code =
-      server_context()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kDetectReflowJs, options());
+      server_context()->static_asset_manager()->GetAsset(
+          StaticAssetManager::kDetectReflowJs, options());
   ValidateExpected("detect_reflow_no_head",
       "<body>Hello, world!</body>"
       "<body><script type='text/psajs'"

@@ -36,7 +36,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
@@ -619,11 +619,11 @@ void CacheHtmlFlow::CacheHtmlHit(PropertyPage* page) {
 void CacheHtmlFlow::CacheHtmlRewriteDone() {
   rewrite_driver_->set_flushed_cached_html(true);
 
-  StaticJavascriptManager* static_js_manager =
-      server_context_->static_javascript_manager();
+  StaticAssetManager* static_asset_manager =
+      server_context_->static_asset_manager();
   base_fetch_->Write(StringPrintf(kBlinkJsString,
-      static_js_manager->GetJsUrl(
-          StaticJavascriptManager::kBlinkJs, options_).c_str()), handler_);
+      static_asset_manager->GetAssetUrl(
+          StaticAssetManager::kBlinkJs, options_).c_str()), handler_);
   base_fetch_->Write(kCacheHtmlSuffixJsString, handler_);
   base_fetch_->Flush(handler_);
   TriggerProxyFetch();

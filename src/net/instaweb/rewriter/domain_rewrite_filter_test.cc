@@ -23,7 +23,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -199,8 +199,8 @@ TEST_F(DomainRewriteFilterTest, ClientDomainRewrite) {
   options()->set_domain_rewrite_hyperlinks(true);
   options()->set_client_domain_rewrite(true);
   StringPiece client_domain_rewriter_code =
-      server_context_->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kClientDomainRewriter, options());
+      server_context_->static_asset_manager()->GetAsset(
+          StaticAssetManager::kClientDomainRewriter, options());
 
   SetupWriter();
   html_parse()->StartParse("http://test.com/");

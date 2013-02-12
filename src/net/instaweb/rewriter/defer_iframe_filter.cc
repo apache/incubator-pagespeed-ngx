@@ -25,7 +25,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -38,8 +38,8 @@ const char DeferIframeFilter::kDeferIframeIframeJs[] =
 
 DeferIframeFilter::DeferIframeFilter(RewriteDriver* driver)
     : driver_(driver),
-      static_js_manager_(
-          driver->server_context()->static_javascript_manager()),
+      static_asset_manager_(
+          driver->server_context()->static_asset_manager()),
       script_inserted_(false) {}
 
 DeferIframeFilter::~DeferIframeFilter() {
@@ -62,10 +62,10 @@ void DeferIframeFilter::StartElement(HtmlElement* element) {
       driver_->InsertElementBeforeElement(element, script);
 
       GoogleString js = StrCat(
-          static_js_manager_->GetJsSnippet(
-              StaticJavascriptManager::kDeferIframe, driver_->options()),
+          static_asset_manager_->GetAsset(
+              StaticAssetManager::kDeferIframe, driver_->options()),
               kDeferIframeInit);
-      static_js_manager_->AddJsToElement(js, script, driver_);
+      static_asset_manager_->AddJsToElement(js, script, driver_);
       script_inserted_ = true;
     }
     element->set_name(HtmlName(HtmlName::kPagespeedIframe, "pagespeed_iframe"));

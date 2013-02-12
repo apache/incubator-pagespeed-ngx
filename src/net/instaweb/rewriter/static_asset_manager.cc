@@ -16,7 +16,7 @@
 
 // Author: guptaa@google.com (Ashish Gupta)
 
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 
 #include <cstddef>
 #include <utility>
@@ -73,14 +73,15 @@ const int GIF_blank_len = arraysize(GIF_blank);
 
 // The generated files(blink.js, js_defer.js) are named in "<hash>-<fileName>"
 // format.
-const char StaticJavascriptManager::kGStaticBase[] =
+const char StaticAssetManager::kGStaticBase[] =
     "http://www.gstatic.com/psa/static/";
 
-const char StaticJavascriptManager::kDefaultLibraryUrlPrefix[] = "/psajs/";
+// TODO(jud): Change to "/psaassets/".
+const char StaticAssetManager::kDefaultLibraryUrlPrefix[] = "/psajs/";
 
 // TODO(jud): Refactor this struct so that each static type served (js, images,
 // etc.) has it's own implementation.
-struct StaticJavascriptManager::Asset {
+struct StaticAssetManager::Asset {
   const char* file_name;
   const char* js_optimized;
   const char* js_debug;
@@ -95,16 +96,16 @@ struct StaticJavascriptManager::Asset {
   int js_optimized_len;
 };
 
-StaticJavascriptManager::StaticJavascriptManager(
+StaticAssetManager::StaticAssetManager(
     UrlNamer* url_namer,
     Hasher* hasher,
     MessageHandler* message_handler)
     : url_namer_(url_namer),
       hasher_(hasher),
       message_handler_(message_handler),
-      serve_js_from_gstatic_(false),
+      serve_asset_from_gstatic_(false),
       library_url_prefix_(kDefaultLibraryUrlPrefix) {
-  InitializeJsStrings();
+  InitializeAssetStrings();
 
   ResponseHeaders header;
   // TODO(ksimbili): Define a new constant kShortCacheTtlForMismatchedContentMs
@@ -119,20 +120,20 @@ StaticJavascriptManager::StaticJavascriptManager(
   cache_header_with_long_ttl_ = header.Lookup1(HttpAttributes::kCacheControl);
 }
 
-StaticJavascriptManager::~StaticJavascriptManager() {
+StaticAssetManager::~StaticAssetManager() {
   STLDeleteElements(&assets_);
 }
 
-const GoogleString& StaticJavascriptManager::GetJsUrl(
-    const JsModule& module, const RewriteOptions* options) const {
+const GoogleString& StaticAssetManager::GetAssetUrl(
+    const StaticAsset& module, const RewriteOptions* options) const {
   return options->Enabled(RewriteOptions::kDebug) ?
       assets_[module]->debug_url :
       assets_[module]->opt_url;
 }
 
-void StaticJavascriptManager::set_gstatic_hash(const JsModule& module,
-                                               const GoogleString& hash) {
-  if (serve_js_from_gstatic_) {
+void StaticAssetManager::set_gstatic_hash(const StaticAsset& module,
+                                          const GoogleString& hash) {
+  if (serve_asset_from_gstatic_) {
     CHECK(!hash.empty());
     assets_[module]->opt_url =
         StrCat(kGStaticBase, hash, "-", assets_[module]->file_name,
@@ -140,7 +141,7 @@ void StaticJavascriptManager::set_gstatic_hash(const JsModule& module,
   }
 }
 
-void StaticJavascriptManager::InitializeJsStrings() {
+void StaticAssetManager::InitializeAssetStrings() {
   assets_.resize(kEndOfModules);
   for (std::vector<Asset*>::iterator it = assets_.begin();
        it != assets_.end(); ++it) {
@@ -208,25 +209,26 @@ void StaticJavascriptManager::InitializeJsStrings() {
     asset->js_debug_hash = hasher_->Hash(asset->js_debug);
 
     // Setup a map of file name to the corresponding index in assets_ to
-    // allow easier lookup in GetJsSnippet.
+    // allow easier lookup in GetAsset.
     file_name_to_module_map_[asset->file_name] =
-        static_cast<JsModule>(it - assets_.begin());
+        static_cast<StaticAsset>(it - assets_.begin());
   }
-  InitializeJsUrls();
+  InitializeAssetUrls();
 }
 
-void StaticJavascriptManager::InitializeJsUrls() {
+void StaticAssetManager::InitializeAssetUrls() {
   for (std::vector<Asset*>::iterator it = assets_.begin();
        it != assets_.end(); ++it) {
     Asset* asset = *it;
-    // Generated urls are in the format "<filename>.<md5>.js".
+    // Generated urls are in the format "<filename>.<md5>.<extension>".
     asset->opt_url = StrCat(url_namer_->get_proxy_domain(),
                             library_url_prefix_,
                             asset->file_name,
                             ".", asset->js_opt_hash,
                             asset->content_type.file_extension());
 
-    // Generated debug urls are in the format "<fileName>_debug.<md5>.js".
+    // Generated debug urls are in the format
+    // "<filename>_debug.<md5>.<extension>".
     asset->debug_url = StrCat(url_namer_->get_proxy_domain(),
                               library_url_prefix_,
                               asset->file_name,
@@ -245,15 +247,15 @@ void StaticJavascriptManager::InitializeJsUrls() {
   assets_[kBlinkJs]->opt_url = blink_js_url;
 }
 
-const char* StaticJavascriptManager::GetJsSnippet(
-    const JsModule& module, const RewriteOptions* options) const {
+const char* StaticAssetManager::GetAsset(
+    const StaticAsset& module, const RewriteOptions* options) const {
   CHECK(module != kEndOfModules);
   return options->Enabled(RewriteOptions::kDebug) ?
       assets_[module]->js_debug :
       assets_[module]->js_optimized;
 }
 
-void StaticJavascriptManager::AddJsToElement(
+void StaticAssetManager::AddJsToElement(
     StringPiece js, HtmlElement* script, RewriteDriver* driver) const {
   DCHECK(script->keyword() == HtmlName::kScript);
   // CDATA tags are required for inlined JS in XHTML pages to prevent
@@ -276,10 +278,10 @@ void StaticJavascriptManager::AddJsToElement(
   driver->AppendChild(script, script_content);
 }
 
-bool StaticJavascriptManager::GetJsSnippet(StringPiece file_name,
-                                           StringPiece* content,
-                                           ContentType* content_type,
-                                           StringPiece* cache_header) const {
+bool StaticAssetManager::GetAsset(StringPiece file_name,
+                                  StringPiece* content,
+                                  ContentType* content_type,
+                                  StringPiece* cache_header) const {
   StringPieceVector names;
   SplitStringPieceToVector(file_name, ".", &names, true);
   // Expected file_name format is <name>[_debug].<HASH>.js

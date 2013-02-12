@@ -27,7 +27,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/string.h"
@@ -107,13 +107,13 @@ class LocalStorageCacheTest : public RewriteTestBase,
                          kCuppaPngFilename, kContentTypePng, 100);
     AddFileToMockFetcher(StrCat(kTestDomain, kPuzzleJpgFilename),
                          kPuzzleJpgFilename, kContentTypeJpeg, 100);
-    StaticJavascriptManager* static_js_manager =
-        server_context()->static_javascript_manager();
+    StaticAssetManager* static_asset_manager =
+        server_context()->static_asset_manager();
     local_storage_cache_js_ =
         StrCat("<script type=\"text/javascript\" pagespeed_no_defer>"
                "//<![CDATA[\n",
-               static_js_manager->GetJsSnippet(
-                   StaticJavascriptManager::kLocalStorageCacheJs, options()),
+               static_asset_manager->GetAsset(
+                   StaticAssetManager::kLocalStorageCacheJs, options()),
                LocalStorageCacheFilter::kLscInitializer,
                "\n//]]></script>");
   }
@@ -123,11 +123,11 @@ class LocalStorageCacheTest : public RewriteTestBase,
                         const GoogleString& head_html_out,
                         const GoogleString& body_html_in,
                         const GoogleString& body_html_out) {
-    StaticJavascriptManager* static_js_manager =
-        server_context()->static_javascript_manager();
+    StaticAssetManager* static_asset_manager =
+        server_context()->static_asset_manager();
     StringPiece local_storage_cache_js =
-        static_js_manager->GetJsSnippet(
-            StaticJavascriptManager::kLocalStorageCacheJs, options());
+        static_asset_manager->GetAsset(
+            StaticAssetManager::kLocalStorageCacheJs, options());
     const char kInWrapperFormat[] =
         "<head>\n"
         "  <title>Local Storage Cache Test</title>\n"

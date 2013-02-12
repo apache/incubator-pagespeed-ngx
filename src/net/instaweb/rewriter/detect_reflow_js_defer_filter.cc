@@ -25,7 +25,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/string_util.h"
 
 #include "base/logging.h"
@@ -67,16 +67,16 @@ void DetectReflowJsDeferFilter::EndElement(HtmlElement* element) {
 }
 
 void DetectReflowJsDeferFilter::InsertDetectReflowCode(HtmlElement* element) {
-  StaticJavascriptManager* static_js_manager =
-      rewrite_driver_->server_context()->static_javascript_manager();
+  StaticAssetManager* static_asset_manager =
+      rewrite_driver_->server_context()->static_asset_manager();
   // Detect reflow functions script node.
   HtmlElement* script_node = rewrite_driver_->NewElement(element,
                                                          HtmlName::kScript);
   rewrite_driver_->AppendChild(element, script_node);
-  StringPiece detect_reflow_script = static_js_manager->GetJsSnippet(
-      StaticJavascriptManager::kDetectReflowJs, rewrite_driver_->options());
-  static_js_manager->AddJsToElement(detect_reflow_script, script_node,
-                                    rewrite_driver_);
+  StringPiece detect_reflow_script = static_asset_manager->GetAsset(
+      StaticAssetManager::kDetectReflowJs, rewrite_driver_->options());
+  static_asset_manager->AddJsToElement(detect_reflow_script, script_node,
+                                       rewrite_driver_);
   rewrite_driver_->AddAttribute(script_node, HtmlName::kPagespeedNoDefer, "");
   script_written_ = true;
 }

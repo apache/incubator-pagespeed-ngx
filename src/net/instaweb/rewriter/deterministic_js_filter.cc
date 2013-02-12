@@ -22,7 +22,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -43,12 +43,12 @@ void DeterministicJsFilter::StartElement(HtmlElement* element) {
     found_head_ = true;
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
     driver_->InsertElementAfterCurrent(script);
-    StaticJavascriptManager* static_js_manager =
-        driver_->server_context()->static_javascript_manager();
+    StaticAssetManager* static_asset_manager =
+        driver_->server_context()->static_asset_manager();
     StringPiece deterministic_js =
-        static_js_manager->GetJsSnippet(
-            StaticJavascriptManager::kDeterministicJs, driver_->options());
-    static_js_manager->AddJsToElement(deterministic_js, script, driver_);
+        static_asset_manager->GetAsset(
+            StaticAssetManager::kDeterministicJs, driver_->options());
+    static_asset_manager->AddJsToElement(deterministic_js, script, driver_);
     script->AddAttribute(
         driver_->MakeName(HtmlName::kPagespeedNoDefer), NULL,
         HtmlElement::NO_QUOTE);

@@ -52,7 +52,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/charset_util.h"
@@ -860,8 +860,7 @@ void BlinkFlowCriticalLine::SendLazyloadImagesJs() {
   if (!options_->Enabled(RewriteOptions::kLazyloadImages)) {
     return;
   }
-  StaticJavascriptManager* static_js__manager =
-      manager_->static_javascript_manager();
+  StaticAssetManager* static_js__manager = manager_->static_asset_manager();
   options_->set_lazyload_images_after_onload(false);
   GoogleString lazyload_js = LazyloadImagesFilter::GetLazyloadJsSnippet(
       options_, static_js__manager);
@@ -873,11 +872,10 @@ void BlinkFlowCriticalLine::SendLazyloadImagesJs() {
 void BlinkFlowCriticalLine::SendCriticalHtml(
     const GoogleString& critical_html) {
   WriteString(critical_html);
-  StaticJavascriptManager* static_js_manager =
-      manager_->static_javascript_manager();
+  StaticAssetManager* static_asset_manager = manager_->static_asset_manager();
   WriteString("<script type=\"text/javascript\" src=\"");
-  WriteString(static_js_manager->GetJsUrl(StaticJavascriptManager::kBlinkJs,
-                                          options_));
+  WriteString(static_asset_manager->GetAssetUrl(StaticAssetManager::kBlinkJs,
+                                                options_));
   WriteString("\"></script>");
   WriteString("<script type=\"text/javascript\">");
   WriteString("\npagespeed.panelLoaderInit();");

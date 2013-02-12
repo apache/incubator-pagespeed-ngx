@@ -24,7 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
@@ -49,8 +49,8 @@ bool JsDeferDisabledFilter::ShouldApply(RewriteDriver* driver) {
 }
 
 void JsDeferDisabledFilter::InsertJsDeferCode() {
-  StaticJavascriptManager* static_js_manager =
-      rewrite_driver_->server_context()->static_javascript_manager();
+  StaticAssetManager* static_asset_manager =
+      rewrite_driver_->server_context()->static_asset_manager();
   const RewriteOptions* options = rewrite_driver_->options();
   // Insert script node with deferJs code as outlined.
   HtmlElement* defer_js_url_node =
@@ -59,7 +59,7 @@ void JsDeferDisabledFilter::InsertJsDeferCode() {
                                 "text/javascript");
   rewrite_driver_->AddAttribute(
       defer_js_url_node, HtmlName::kSrc,
-      static_js_manager->GetJsUrl(StaticJavascriptManager::kDeferJs, options));
+      static_asset_manager->GetAssetUrl(StaticAssetManager::kDeferJs, options));
   rewrite_driver_->InsertElementAfterCurrent(defer_js_url_node);
 }
 

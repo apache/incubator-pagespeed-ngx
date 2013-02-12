@@ -24,7 +24,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -68,10 +68,10 @@ void CriticalImagesBeaconFilter::Clear() {
 
 void CriticalImagesBeaconFilter::EndElement(HtmlElement* element) {
   if (!added_script_ && element->keyword() == HtmlName::kBody) {
-    StaticJavascriptManager* static_js_manager =
-        driver_->server_context()->static_javascript_manager();
-    GoogleString js = static_js_manager->GetJsSnippet(
-        StaticJavascriptManager::kCriticalImagesBeaconJs, driver_->options());
+    StaticAssetManager* static_asset_manager =
+        driver_->server_context()->static_asset_manager();
+    GoogleString js = static_asset_manager->GetAsset(
+        StaticAssetManager::kCriticalImagesBeaconJs, driver_->options());
 
     // Create the init string to append at the end of the static JS.
     const RewriteOptions::BeaconUrl& beacons = driver_->options()->beacon_url();
@@ -88,7 +88,7 @@ void CriticalImagesBeaconFilter::EndElement(HtmlElement* element) {
 
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
     driver_->InsertElementBeforeCurrent(script);
-    static_js_manager->AddJsToElement(js, script, driver_);
+    static_asset_manager->AddJsToElement(js, script, driver_);
 
     added_script_ = true;
     critical_images_beacon_added_count_->Add(1);

@@ -27,7 +27,7 @@
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -204,14 +204,14 @@ void DomainRewriteFilter::EndElementImpl(HtmlElement* element) {
 
     HtmlElement* script_node = driver_->NewElement(element, HtmlName::kScript);
     driver_->AppendChild(element, script_node);
-    StaticJavascriptManager* js_manager =
-        driver_->server_context()->static_javascript_manager();
+    StaticAssetManager* static_asset_manager =
+        driver_->server_context()->static_asset_manager();
     GoogleString js = StrCat(
-        js_manager->GetJsSnippet(
-            StaticJavascriptManager::kClientDomainRewriter, driver_->options()),
+        static_asset_manager->GetAsset(
+            StaticAssetManager::kClientDomainRewriter, driver_->options()),
             "pagespeed.clientDomainRewriterInit([",
             comma_separated_from_domains, "]);");
-    js_manager->AddJsToElement(js, script_node, driver_);
+    static_asset_manager->AddJsToElement(js, script_node, driver_);
     client_domain_rewriter_script_written_ = true;
   }
 }

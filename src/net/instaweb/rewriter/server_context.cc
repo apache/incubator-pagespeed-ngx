@@ -226,7 +226,7 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       html_workers_(NULL),
       rewrite_workers_(NULL),
       low_priority_rewrite_workers_(NULL),
-      static_javascript_manager_(NULL),
+      static_asset_manager_(NULL),
       thread_synchronizer_(new ThreadSynchronizer(thread_system_)),
       furious_matcher_(factory_->NewFuriousMatcher()),
       usage_data_reporter_(factory_->usage_data_reporter()) {

@@ -84,7 +84,7 @@ class LazyloadImagesFilterTest : public RewriteTestBase {
   GoogleString GetLazyloadScriptHtml() {
     return GetScriptHtml(
         LazyloadImagesFilter::GetLazyloadJsSnippet(
-            options(), server_context()->static_javascript_manager()),
+            options(), server_context()->static_asset_manager()),
         false);
   }
 

@@ -33,7 +33,7 @@
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -51,8 +51,8 @@ const char DelayImagesFilter::kOnloadFunction[] =
 
 DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
     : driver_(driver),
-      static_js_manager_(
-          driver->server_context()->static_javascript_manager()),
+      static_asset_manager_(
+          driver->server_context()->static_asset_manager()),
       low_res_map_inserted_(false),
       num_low_res_inlined_images_(0),
       is_experimental_enabled_(
@@ -165,8 +165,8 @@ void DelayImagesFilter::InsertDelayImagesInlineJS(HtmlElement* element) {
   // Check script for changing src to low res data url is inserted once.
   if (!low_res_map_inserted_) {
     inline_script = StrCat(
-        static_js_manager_->GetJsSnippet(
-            StaticJavascriptManager::kDelayImagesInlineJs,
+        static_asset_manager_->GetAsset(
+            StaticAssetManager::kDelayImagesInlineJs,
             driver_->options()),
         kDelayImagesInlineSuffix);
   }
@@ -175,7 +175,7 @@ void DelayImagesFilter::InsertDelayImagesInlineJS(HtmlElement* element) {
             "\npagespeed.delayImagesInline.replaceWithLowRes();\n");
   HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
   driver_->InsertElementAfterElement(element, script);
-  static_js_manager_->AddJsToElement(inline_script, script, driver_);
+  static_asset_manager_->AddJsToElement(inline_script, script, driver_);
   InsertDelayImagesJS(script);
 }
 
@@ -187,8 +187,8 @@ void DelayImagesFilter::InsertDelayImagesJS(HtmlElement* element) {
   // Check script for changing src to high res src is inserted once.
   if (!low_res_map_inserted_) {
   delay_images_js = StrCat(
-      static_js_manager_->GetJsSnippet(
-          StaticJavascriptManager::kDelayImagesJs,
+      static_asset_manager_->GetAsset(
+          StaticAssetManager::kDelayImagesJs,
           driver_->options()),
       kDelayImagesSuffix);
   } else {
@@ -196,7 +196,7 @@ void DelayImagesFilter::InsertDelayImagesJS(HtmlElement* element) {
   }
   HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
   driver_->InsertElementAfterElement(element, script);
-  static_js_manager_->AddJsToElement(delay_images_js, script, driver_);
+  static_asset_manager_->AddJsToElement(delay_images_js, script, driver_);
   low_res_map_inserted_ = true;
 }
 

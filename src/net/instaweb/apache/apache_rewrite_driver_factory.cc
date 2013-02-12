@@ -52,7 +52,7 @@
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/system_cache_path.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
 #include "net/instaweb/util/public/async_cache.h"
@@ -95,7 +95,7 @@ const char kShutdownCount[] = "child_shutdown_count";
 
 const char ApacheRewriteDriverFactory::kMemcached[] = "memcached";
 const char ApacheRewriteDriverFactory::kShmCache[] = "shm_cache";
-const char ApacheRewriteDriverFactory::kStaticJavaScriptPrefix[] =
+const char ApacheRewriteDriverFactory::kStaticAssetPrefix[] =
     "/mod_pagespeed_static/";
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
@@ -469,9 +469,9 @@ void ApacheRewriteDriverFactory::SetupCaches(
   }
 }
 
-void ApacheRewriteDriverFactory::InitStaticJavascriptManager(
-    StaticJavascriptManager* static_js_manager) {
-  static_js_manager->set_library_url_prefix(kStaticJavaScriptPrefix);
+void ApacheRewriteDriverFactory::InitStaticAssetManager(
+    StaticAssetManager* static_asset_manager) {
+  static_asset_manager->set_library_url_prefix(kStaticAssetPrefix);
 }
 
 NamedLockManager* ApacheRewriteDriverFactory::DefaultLockManager() {

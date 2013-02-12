@@ -16,7 +16,7 @@
 
 // Author: guptaa@google.com (Ashish Gupta)
 
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -38,14 +38,13 @@ namespace {
 const char kHtml[] = "<body><br></body>";
 const char kScript[] = "alert('foo');";
 
-class StaticJavascriptManagerTest : public RewriteTestBase {
+class StaticAssetManagerTest : public RewriteTestBase {
  protected:
-  StaticJavascriptManagerTest() {
+  StaticAssetManagerTest() {
     url_namer_.set_proxy_domain("http://proxy-domain");
-    manager_.reset(
-        new StaticJavascriptManager(&url_namer_,
-                                    server_context()->hasher(),
-                                    server_context()->message_handler()));
+    manager_.reset(new StaticAssetManager(&url_namer_,
+                                          server_context()->hasher(),
+                                          server_context()->message_handler()));
   }
 
   virtual void SetUp() {
@@ -63,7 +62,7 @@ class StaticJavascriptManagerTest : public RewriteTestBase {
         HtmlElement* script = driver_->NewElement(element->parent(),
                                                   HtmlName::kScript);
         driver_->InsertElementBeforeElement(element, script);
-        driver_->server_context()->static_javascript_manager()->
+        driver_->server_context()->static_asset_manager()->
             AddJsToElement(kScript, script, driver_);
       }
     }
@@ -73,88 +72,88 @@ class StaticJavascriptManagerTest : public RewriteTestBase {
     DISALLOW_COPY_AND_ASSIGN(AddStaticJsBeforeBr);
   };
 
-  scoped_ptr<StaticJavascriptManager> manager_;
+  scoped_ptr<StaticAssetManager> manager_;
   UrlNamer url_namer_;
 };
 
-TEST_F(StaticJavascriptManagerTest, TestBlinkHandler) {
+TEST_F(StaticAssetManagerTest, TestBlinkHandler) {
   const char blink_url[] = "http://proxy-domain/psajs/blink.js";
-  EXPECT_STREQ(blink_url, manager_->GetJsUrl(StaticJavascriptManager::kBlinkJs,
-                                             options_));
+  EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetManager::kBlinkJs,
+                                                options_));
 }
 
-TEST_F(StaticJavascriptManagerTest, TestBlinkGstatic) {
-  manager_->set_serve_js_from_gstatic(true);
-  manager_->set_gstatic_hash(StaticJavascriptManager::kBlinkJs, "1");
+TEST_F(StaticAssetManagerTest, TestBlinkGstatic) {
+  manager_->set_serve_asset_from_gstatic(true);
+  manager_->set_gstatic_hash(StaticAssetManager::kBlinkJs, "1");
   const char blink_url[] =
       "http://www.gstatic.com/psa/static/1-blink.js";
-  EXPECT_STREQ(blink_url, manager_->GetJsUrl(StaticJavascriptManager::kBlinkJs,
-                                             options_));
+  EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetManager::kBlinkJs,
+                                                options_));
 }
 
-TEST_F(StaticJavascriptManagerTest, TestBlinkDebug) {
-  manager_->set_serve_js_from_gstatic(true);
-  manager_->set_gstatic_hash(StaticJavascriptManager::kBlinkJs, "1");
+TEST_F(StaticAssetManagerTest, TestBlinkDebug) {
+  manager_->set_serve_asset_from_gstatic(true);
+  manager_->set_gstatic_hash(StaticAssetManager::kBlinkJs, "1");
   options_->EnableFilter(RewriteOptions::kDebug);
   const char blink_url[] = "http://proxy-domain/psajs/blink.js";
-  EXPECT_STREQ(blink_url, manager_->GetJsUrl(StaticJavascriptManager::kBlinkJs,
-                                             options_));
+  EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetManager::kBlinkJs,
+                                                options_));
 }
 
-TEST_F(StaticJavascriptManagerTest, TestDeferJsGstatic) {
-  manager_->set_serve_js_from_gstatic(true);
-  manager_->set_gstatic_hash(StaticJavascriptManager::kDeferJs, "1");
+TEST_F(StaticAssetManagerTest, TestDeferJsGstatic) {
+  manager_->set_serve_asset_from_gstatic(true);
+  manager_->set_gstatic_hash(StaticAssetManager::kDeferJs, "1");
   const char defer_js_url[] =
       "http://www.gstatic.com/psa/static/1-js_defer.js";
-  EXPECT_STREQ(defer_js_url, manager_->GetJsUrl(
-      StaticJavascriptManager::kDeferJs, options_));
+  EXPECT_STREQ(defer_js_url, manager_->GetAssetUrl(
+      StaticAssetManager::kDeferJs, options_));
 }
 
-TEST_F(StaticJavascriptManagerTest, TestDeferJsDebug) {
-  manager_->set_serve_js_from_gstatic(true);
-  manager_->set_gstatic_hash(StaticJavascriptManager::kDeferJs, "1");
+TEST_F(StaticAssetManagerTest, TestDeferJsDebug) {
+  manager_->set_serve_asset_from_gstatic(true);
+  manager_->set_gstatic_hash(StaticAssetManager::kDeferJs, "1");
   options_->EnableFilter(RewriteOptions::kDebug);
   const char defer_js_debug_url[] =
       "http://proxy-domain/psajs/js_defer_debug.0.js";
-  EXPECT_STREQ(defer_js_debug_url, manager_->GetJsUrl(
-      StaticJavascriptManager::kDeferJs, options_));
+  EXPECT_STREQ(defer_js_debug_url, manager_->GetAssetUrl(
+      StaticAssetManager::kDeferJs, options_));
 }
 
-TEST_F(StaticJavascriptManagerTest, TestDeferJsNonGStatic) {
+TEST_F(StaticAssetManagerTest, TestDeferJsNonGStatic) {
   const char defer_js_url[] =
       "http://proxy-domain/psajs/js_defer.0.js";
-  EXPECT_STREQ(defer_js_url, manager_->GetJsUrl(
-      StaticJavascriptManager::kDeferJs, options_));
+  EXPECT_STREQ(defer_js_url, manager_->GetAssetUrl(
+      StaticAssetManager::kDeferJs, options_));
 }
 
-TEST_F(StaticJavascriptManagerTest, TestJsDebug) {
+TEST_F(StaticAssetManagerTest, TestJsDebug) {
   options_->EnableFilter(RewriteOptions::kDebug);
   for (int i = 0;
-       i < static_cast<int>(StaticJavascriptManager::kEndOfModules);
+       i < static_cast<int>(StaticAssetManager::kEndOfModules);
        ++i) {
-    StaticJavascriptManager::JsModule module =
-        static_cast<StaticJavascriptManager::JsModule>(i);
-    GoogleString script(manager_->GetJsSnippet(module, options_));
-    if (module != StaticJavascriptManager::kBlankGif) {
+    StaticAssetManager::StaticAsset module =
+        static_cast<StaticAssetManager::StaticAsset>(i);
+    GoogleString script(manager_->GetAsset(module, options_));
+    if (module != StaticAssetManager::kBlankGif) {
       EXPECT_NE(GoogleString::npos, script.find("/*"))
           << "There should be some comments in the debug code";
     }
   }
 }
 
-TEST_F(StaticJavascriptManagerTest, TestJsOpt) {
+TEST_F(StaticAssetManagerTest, TestJsOpt) {
   for (int i = 0;
-       i < static_cast<int>(StaticJavascriptManager::kEndOfModules);
+       i < static_cast<int>(StaticAssetManager::kEndOfModules);
        ++i) {
-    StaticJavascriptManager::JsModule module =
-        static_cast<StaticJavascriptManager::JsModule>(i);
-    GoogleString script(manager_->GetJsSnippet(module, options_));
+    StaticAssetManager::StaticAsset module =
+        static_cast<StaticAssetManager::StaticAsset>(i);
+    GoogleString script(manager_->GetAsset(module, options_));
     EXPECT_EQ(GoogleString::npos, script.find("/*"))
         << "There should be no comments in the compiled code";
   }
 }
 
-TEST_F(StaticJavascriptManagerTest, TestHtmlInsertInlineJs) {
+TEST_F(StaticAssetManagerTest, TestHtmlInsertInlineJs) {
   SetHtmlMimetype();
   AddStaticJsBeforeBr filter(rewrite_driver());
   rewrite_driver()->AddFilter(&filter);
@@ -163,7 +162,7 @@ TEST_F(StaticJavascriptManagerTest, TestHtmlInsertInlineJs) {
             "</script><br></body>\n</html>", output_buffer_);
 }
 
-TEST_F(StaticJavascriptManagerTest, TestXhtmlInsertInlineJs) {
+TEST_F(StaticAssetManagerTest, TestXhtmlInsertInlineJs) {
   SetXhtmlMimetype();
   AddStaticJsBeforeBr filter(rewrite_driver());
   rewrite_driver()->AddFilter(&filter);
@@ -173,7 +172,7 @@ TEST_F(StaticJavascriptManagerTest, TestXhtmlInsertInlineJs) {
             output_buffer_);
 }
 
-TEST_F(StaticJavascriptManagerTest, TestHtml5InsertInlineJs) {
+TEST_F(StaticAssetManagerTest, TestHtml5InsertInlineJs) {
   SetHtmlMimetype();
   AddStaticJsBeforeBr filter(rewrite_driver());
   rewrite_driver()->AddFilter(&filter);

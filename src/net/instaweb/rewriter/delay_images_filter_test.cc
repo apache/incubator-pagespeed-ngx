@@ -25,7 +25,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -145,25 +145,24 @@ class DelayImagesFilterTest : public RewriteTestBase {
   }
 
   GoogleString GetDelayImagesCode() {
-    return GetJsCode(StaticJavascriptManager::kDelayImagesJs,
+    return GetJsCode(StaticAssetManager::kDelayImagesJs,
                      DelayImagesFilter::kDelayImagesSuffix);
   }
 
   GoogleString GetDelayImagesInlineCode() {
-    return GetJsCode(StaticJavascriptManager::kDelayImagesInlineJs,
+    return GetJsCode(StaticAssetManager::kDelayImagesInlineJs,
                      DelayImagesFilter::kDelayImagesInlineSuffix);
   }
 
   GoogleString GetLazyloadImagesCode() {
-    return server_context()->static_javascript_manager()->GetJsSnippet(
-        StaticJavascriptManager::kLazyloadImagesJs, options());
+    return server_context()->static_asset_manager()->GetAsset(
+        StaticAssetManager::kLazyloadImagesJs, options());
   }
 
-  GoogleString GetJsCode(StaticJavascriptManager::JsModule module,
+  GoogleString GetJsCode(StaticAssetManager::StaticAsset module,
                          const StringPiece& call) {
     StringPiece code =
-        server_context()->static_javascript_manager()->GetJsSnippet(
-            module, options());
+        server_context()->static_asset_manager()->GetAsset(module, options());
     return StrCat(code, call);
   }
 

@@ -20,7 +20,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -47,8 +47,8 @@ class DeferIframeFilterTest : public RewriteTestBase {
 
 TEST_F(DeferIframeFilterTest, TestDeferIframe) {
   StringPiece defer_iframe_js_code =
-      server_context()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kDeferIframe, options());
+      server_context()->static_asset_manager()->GetAsset(
+          StaticAssetManager::kDeferIframe, options());
   GoogleString input_html = "<head></head>"
       "<body>"
       "<iframe src=\"http://test.com/1.html\"/>"
@@ -70,8 +70,8 @@ TEST_F(DeferIframeFilterTest, TestNoIframePresent) {
 
 TEST_F(DeferIframeFilterTest, TestMultipleIframePresent) {
   StringPiece defer_iframe_js_code =
-      server_context()->static_javascript_manager()->GetJsSnippet(
-          StaticJavascriptManager::kDeferIframe, options());
+      server_context()->static_asset_manager()->GetAsset(
+          StaticAssetManager::kDeferIframe, options());
   GoogleString input_html = "<head></head>"
       "<body>"
       "<iframe src=\"http://test.com/1.html\"/>"

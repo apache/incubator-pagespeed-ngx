@@ -28,7 +28,7 @@
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
@@ -117,17 +117,17 @@ void LocalStorageCacheFilter::EndElementImpl(HtmlElement* element) {
 }
 
 void LocalStorageCacheFilter::InsertOurScriptElement(HtmlElement* before) {
-  StaticJavascriptManager* static_js_manager =
-      driver_->server_context()->static_javascript_manager();
+  StaticAssetManager* static_asset_manager =
+      driver_->server_context()->static_asset_manager();
   StringPiece local_storage_cache_js =
-      static_js_manager->GetJsSnippet(
-          StaticJavascriptManager::kLocalStorageCacheJs, driver_->options());
+      static_asset_manager->GetAsset(
+          StaticAssetManager::kLocalStorageCacheJs, driver_->options());
   const GoogleString& initialized_js = StrCat(local_storage_cache_js,
                                               kLscInitializer);
   HtmlElement* script_element = driver_->NewElement(before->parent(),
                                                     HtmlName::kScript);
   driver_->InsertElementBeforeElement(before, script_element);
-  static_js_manager->AddJsToElement(initialized_js, script_element, driver_);
+  static_asset_manager->AddJsToElement(initialized_js, script_element, driver_);
   script_element->AddAttribute(driver_->MakeName(HtmlName::kPagespeedNoDefer),
                                NULL, HtmlElement::NO_QUOTE);
   script_inserted_ = true;
