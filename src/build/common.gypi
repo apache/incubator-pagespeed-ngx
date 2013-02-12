@@ -92,6 +92,10 @@
           }, {
             'cflags+': ['-Wno-unused-but-set-variable']
           }],
+          # Similarly, there is no -Wno-unused-result for gcc < 4.5
+          ['<(gcc_version) < 45', {
+            'cflags!': ['-Wno-unused-result']
+          }],
         ],
         'cflags': [
           # Our dependency on OpenCV need us to turn on exceptions.
