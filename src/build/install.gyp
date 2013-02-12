@@ -125,7 +125,7 @@
           'suppress_wildcard': 1,
           'type': 'none',
           'dependencies': [
-            '<(DEPTH)/net/instaweb/mod_pagespeed.gyp:*',
+            'all.gyp:All',
             'linux_installer_configs',
           ],
           'actions': [
@@ -153,7 +153,7 @@
           'suppress_wildcard': 1,
           'type': 'none',
           'dependencies': [
-            '<(DEPTH)/net/instaweb/mod_pagespeed.gyp:*',
+            'all.gyp:All',
             'linux_installer_configs',
           ],
           'actions': [

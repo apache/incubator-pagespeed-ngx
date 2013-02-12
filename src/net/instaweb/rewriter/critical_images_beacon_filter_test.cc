@@ -64,7 +64,8 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     // The filter should absolutify img URLs before generating the hash of the
     // URL, so test with both a relative and absolute URL and make sure the
     // hashes match.
-    GoogleUrl img_gurl(GoogleUrl(GetTestUrl()), kChefGifFile);
+    GoogleUrl base(GetTestUrl());
+    GoogleUrl img_gurl(base, kChefGifFile);
 
     AddFileToMockFetcher(img_gurl.Spec(), kChefGifFile, kContentTypeJpeg, 100);
 
@@ -92,7 +93,8 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
 
   void VerifyWithNoImageRewrite() {
     const GoogleString hash_str = ImageUrlHash(kChefGifFile);
-    GoogleUrl img_gurl(GoogleUrl(GetTestUrl()), kChefGifFile);
+    GoogleUrl base(GetTestUrl());
+    GoogleUrl img_gurl(base, kChefGifFile);
     EXPECT_TRUE(output_buffer_.find(
         StrCat("pagespeed_url_hash=\"", hash_str)) != GoogleString::npos);
   }
@@ -108,7 +110,8 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
 
   GoogleString ImageUrlHash(StringPiece url) {
     // Absolutify the URL before hashing.
-    GoogleUrl img_gurl(GoogleUrl(GetTestUrl()), url);
+    GoogleUrl base(GetTestUrl());
+    GoogleUrl img_gurl(base, url);
     unsigned int hash_val = HashString<CasePreserve, unsigned int>(
         img_gurl.spec_c_str(), strlen(img_gurl.spec_c_str()));
     return UintToString(hash_val);
