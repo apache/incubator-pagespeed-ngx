@@ -350,7 +350,8 @@ class RewriteContext::OutputCacheCallback : public CacheInterface::Callback {
             rewrite_context_->FindServerContext()->timer()->NowMs();
         if (ttl_ms > 0) {
           return true;
-        } else if (ttl_ms + rewrite_context_->Options()->
+        } else if (rewrite_context_->do_stale_rewrite() &&
+                   ttl_ms + rewrite_context_->Options()->
                    metadata_cache_staleness_threshold_ms() > 0) {
           rewrite_context_->stale_rewrite_ = true;
           return true;

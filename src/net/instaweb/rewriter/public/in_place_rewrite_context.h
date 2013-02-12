@@ -130,6 +130,10 @@ class InPlaceRewriteContext : public SingleRewriteContext {
   // rewritten resource.
   bool ShouldAddVaryUserAgent() const;
 
+  // No stale rewrites at all in the in place flow, since we will be actually
+  // serving out the stale value.
+  virtual bool do_stale_rewrite() const { return false; }
+
   RewriteDriver* driver_;
   GoogleString url_;
   // Boolean indicating whether or not the resource was rewritten successfully.

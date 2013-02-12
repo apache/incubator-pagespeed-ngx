@@ -675,6 +675,10 @@ class RewriteContext {
   // spike or overload (kFallbackDiscretional).
   bool CanFetchFallbackToOriginal(FallbackCondition circumstance) const;
 
+  // Whether stale rewrites should be done (only if within
+  // metadata_cache_staleness_threshold_ms).  Default is true.
+  virtual bool do_stale_rewrite() const { return true; }
+
   // To perform a rewrite, we need to have data for all of its input slots.
   ResourceSlotVector slots_;
 
