@@ -45,22 +45,18 @@ required_modules: [
     "headers",
 # For the mod_rewrite test in apache_system_test.sh
     "rewrite",
-#ifdef  apache
-#SPELING # Enable mod_speling to ensure that we don't regress Issue 194
-#SPELING "speling",
-#endif
+
+# Enable mod_speling to ensure that we don't regress Issue 194
+#SPELING,apache "speling",
+
 #HTTPS "ssl",
 #HTTPS "socache_shmcb",
 #HTTPS "slotmem_shm",
-#ifdef nginx
-"gzip",
-#endif
-#ifdef apache
-#GZIP "gzip",
-#endif
-#ifdef apache
-#STRESS "slotmem_shm",
-#endif
+
+#nginx "gzip",
+#GZIP,apache "gzip",
+
+#STRESS,apache "slotmem_shm",
 #STRESS "cgi-script",
 #PROXY "proxy",
 ],
@@ -89,27 +85,23 @@ pagespeed: {
     # If X-PSA-Blocking-Rewrite request header is present and its value matches
     # the value of ModPagespeedBlockingRewriteKey below, the response will be
     # fully rewritten before being flushed to the client.
-#ifndef ALL_DIRECTIVES
-    BlockingRewriteKey: "psatest",
-#endif
+    #!ALL_DIRECTIVES BlockingRewriteKey: "psatest",
+
     # This will cause an error report in the startup log if mod_pagespeed is not
     # built with ssl, but otherwise will cause no trouble.
     ##FetchHttps: "enable,allow_self_signed",
-#ifndef ALL_DIRECTIVES
-    FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/_default/\"",
-#endif
+
+    #!ALL_DIRECTIVES FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/_default/\"",
+
     # For testing that the Library command works.
     Library: "43 1o978_K0_LNE5_ystNklf http://www.modpagespeed.com/rewrite_javascript.js",
     # add_instrumentation must be enabled so that we can test /mod_pagespeed_beacon.
-#ifndef ALL_DIRECTIVES
-    EnableFilters: "add_instrumentation,rewrite_css",
-#endif
-    # For regression test of connection failing.
-#ifndef ALL_DIRECTIVES
-    Domain: "modpagespeed.com:1023",
-#endif
-    # Test LoadFromFile mapping by mapping one dir to another.
+    #!ALL_DIRECTIVES EnableFilters: "add_instrumentation,rewrite_css",
 
+    # For regression test of connection failing.
+    #!ALL_DIRECTIVES Domain: "modpagespeed.com:1023",
+
+    # Test LoadFromFile mapping by mapping one dir to another.
     LoadFromFile: '"http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"', 
     LoadFromFileMatch: '"^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\\1/"',
     LoadFromFileRule: "Disallow \"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/\"",
@@ -119,10 +111,8 @@ pagespeed: {
     # this here cause it's a hassle; we just depend on the unit-tests for that.
     ## not supported on ningx yet (psa r2338):
     ##ListOutstandingUrlsOnError: "on",
-# Avoid duplicate entry when ALL_DIRECTIVES is specified
-#ifndef ALL_DIRECTIVES
-    AvoidRenamingIntrospectiveJavascript: "off",
-#endif
+    #!ALL_DIRECTIVES AvoidRenamingIntrospectiveJavascript: "off",
+
     # Establish a proxy mapping where the current server proxies an image
     # stored on ref.pssdemos.com.  We use ref.pssdemos.com rather than
     # modpagespeed.com so that we use a single html file both for:
@@ -137,13 +127,14 @@ pagespeed: {
 
     # TODO(oschaaf): not available in r2338
     ##InPlaceResourceOptimization: "on",
-#ifndef ALL_DIRECTIVES
-    RespectXForwardedProto: "on",
-#endif
+
+    #!ALL_DIRECTIVES RespectXForwardedProto: "on",
+
     #STATS_LOGGING Statistics: "on",
     #STATS_LOGGING StatisticsLogging: "on",
     #STATS_LOGGING StatisticsLoggingFile: "\"@@MOD_PAGESPEED_STATS_LOG@@\"",
     #STATS_LOGGING StatisticsLoggingIntervalMs: 10,
+
 #ifdef ALL_DIRECTIVES
     # Invoke all ModPagespeed* directives to make sure they work:
     Allow: "foo",
@@ -151,14 +142,14 @@ pagespeed: {
     AvoidRenamingIntrospectiveJavascript: "true",
     BeaconUrl: "\"http://example.com/beacon\"",
     BlockingRewriteKey: "test",
-#ifndef nginx
-    CacheFlushFilename: "/tmp/cache.flush",
-    CacheFlushPollInterevalSec: 10,
-#endif
+
+    #!nginx CacheFlushFilename: "/tmp/cache.flush",
+    #!nginx CacheFlushPollInterevalSec: 10,
+
     ClientDomainRewrite: "false",
-#ifndef nginx
-    CollectRefererStatistics: "false",
-#endif
+
+    #!nginx CollectRefererStatistics: "false",
+
     CombineAcrossPaths: "true",
     CssFlattenMaxBytes: 2000,
     CssImageInlineMaxBytes: 2000,
@@ -173,10 +164,10 @@ pagespeed: {
     ExperimentSpec: "\"id=8;percent=10\"",
     ExperimentVariable: 3,
     FetchProxy: "localhost:4321",
-#ifndef nginx
-    FetchWithGzip: "on",
-    FetcherTimeOutMs: 1000,
-#endif
+
+    #!nginx FetchWithGzip: "on",
+    #!nginx FetcherTimeOutMs: 1000,
+
     FileCacheCleanIntervalMs: 3600000,
     FileCacheInodeLimit: 10000,
     FileCachePath: "/tmp/cache/",
@@ -194,16 +185,15 @@ pagespeed: {
     ImageRecompressionQuality: 75,
     ImagePreserveURLs: "false",
     ImageWebpRecompressionQuality: 85,
-#ifndef nginx
-    ImgMaxRewritesAtOnce: 5,
-#endif
+
+    #!nginx ImgMaxRewritesAtOnce: 5,
 
     ## TODO(oschaaf): not availiable in r2338
     ##InPlaceResourceOptimization: "on",
     IncreaseSpeedTracking: "true",
-#ifndef nginx
-    InstallCrashHandler: "off",
-#endif
+
+    #!nginx InstallCrashHandler: "off",
+
     JpegRecompressionQuality: 80,
     JsInlineMaxBytes: 2000,
     JsOutlineMinBytes: 2000,
@@ -226,9 +216,9 @@ pagespeed: {
     MaxSegmentLength: 100,
     MemcachedServers: "localhost:6765",
     MemcachedThreads: 1,
-#ifndef nginx
-    MessageBufferSize: 100,
-#endif
+
+    #!nginx MessageBufferSize: 100,
+
     MinImageSizeLowResolutionBytes: 2000,
     ModifyCachingHeaders: "true",
 #ifndef nginx
@@ -258,18 +248,17 @@ pagespeed: {
     StatisticsLoggingIntervalMs: 3000,
 #endif
     SupportNoScriptEnabled: "true",
-#ifndef nginx
-    TestProxy: "off",
-#endif
+
+    #!nginx TestProxy: "off",
+
     UrlValuedAttribute: "span src Hyperlink",
-#ifndef nginx
-    UsePerVHostStatistics: "on",
-#endif
+
+    #!nginx UsePerVHostStatistics: "on",
+
     XHeaderValue: "\"test\"",
 #endif #ALL_DIRECTIVES
-#ifndef nginx
-    #PER_VHOST_STATS UsePerVHostStatistics: "on",
-#endif
+
+    #PER_VHOST_STATS,!nginx UsePerVHostStatistics: "on",
 
     # Do testing using memcached in lieu of the file cache.
     #MEMCACHED MemcachedServers: "localhost:6765",
@@ -305,8 +294,8 @@ pagespeed: {
      ExperimentSpec: ["\"id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50\"",
                       "\"id=2;enable=recompress_images;percent=50\""],
 #endif
-#ifdef FURIOUS_NO_GA
 
+#ifdef FURIOUS_NO_GA
      # This is used for testing the Furious experiment framework still
      # works when no analytics ID is specified.  It should assign
      # users to experiments and use appropriate experimental options,
@@ -340,15 +329,11 @@ pagespeed_if:{
 locations: [
     {
         path: "/mod_pagespeed_log_request_headers.js",
-#ifdef apache
-        literal: { value: "SetHandler mod_pagespeed_log_request_headers\n" },
-#endif
+        #apache literal: { value: "SetHandler mod_pagespeed_log_request_headers\n" },
     },
     {
         path: "/mod_pagespeed_test/response_headers.html.*",
-#ifdef apache
-        literal: { value: "SetHandler  mod_pagespeed_response_options_handler\n" },
-#endif
+        #apache literal: { value: "SetHandler  mod_pagespeed_response_options_handler\n" },
     },
     {
         path: "/mod_pagespeed_test/max_html_parse_size",
@@ -440,9 +425,8 @@ locations: [
 #endif
     {
         path: "/mod_pagespeed_test/close_connection/",
-#ifdef apache
-        add_options: ["SymLinksIfOwnerMatch"],
-#endif
+        #apache add_options: ["SymLinksIfOwnerMatch"],
+
         # Helps tests whether we successfully strip Connection:close
         # results from the origin.
         headers: [{ action:"append", name:"Connection", value:"close"}],
@@ -547,15 +531,15 @@ locations: [
 #ifdef PER_VHOST_STATS
    {
        path: "/mod_pagespeed_global_statistics",
-#ifdef apache
+       #ifdef apache
        literal: {
-#endif
-       value: """
-       Order allow,deny
-       Allow from localhost
-       Allow from 127.0.0.1
-       SetHandler mod_pagespeed_global_statistics\n""",
+           value: """
+           Order allow,deny
+           Allow from localhost
+           Allow from 127.0.0.1
+           SetHandler mod_pagespeed_global_statistics\n""",
        }
+       #endif
    },
 #endif
 #ifdef STRESS
@@ -565,7 +549,7 @@ locations: [
        add_options: ["ExecCGI"],
    },
 #endif
-], #locations
+], # locations
 
 listen: [
     8080,
@@ -603,15 +587,16 @@ servers: [
             # This is the same memcached instance as the root configuration,
             # but with a different file-cache path.
 #MEMCACHED  MemcachedServers: "localhost:6765",
-#ifndef nginx
-# TODO(oschaaf): uncomment after this is ported to nginx
-            CacheFlushFilename: "cache.flush",
-#endif
+
+            # TODO(oschaaf): uncomment after this is ported to nginx
+            #!nginx CacheFlushFilename: "cache.flush",
+
             # If you uncomment this, the test will fail, proving we can disable
             # cache-flush polling.
             # CacheFlushPollIntervalSec: 0,
             EnableFilters: "rewrite_css,rewrite_images",
-            # Helps testing whether the configuration of reporting 'unload' time works.
+            # Helps testing whether the configuration of reporting 'unload' time
+            # works.
             ReportUnloadTime: "on",
 
         },#pagespeed
@@ -654,9 +639,7 @@ servers: [
         root: "@@APACHE_DOC_ROOT@@",
         pagespeed: {
             FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-#ifndef nginx
-            LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
-#endif
+            #!nginx LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
             MapRewriteDomain: "cdn.example.com origin.example.com",
             RewriteLevel: "PassThrough",
             EnableFilters: "rewrite_css,rewrite_images",
@@ -677,9 +660,7 @@ servers: [
         root: "@@APACHE_DOC_ROOT@@",
         pagespeed: {
             FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-#ifndef nginx
-            LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
-#endif
+            #!nginx LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
             MapRewriteDomain: "cdn.example.com origin.example.com",
             RewriteLevel: "PassThrough",
             EnableFilters: "rewrite_css,rewrite_images",
@@ -693,9 +674,7 @@ servers: [
         root: "@@APACHE_DOC_ROOT@@",
         pagespeed: {
             FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-#ifndef nginx
-            LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
-#endif
+            #!nginx LoadFromFile: "http://cdn.example.com @@APACHE_DOC_ROOT@@",
             MapRewriteDomain: "cdn.example.com origin.example.com",
             RewriteLevel: "PassThrough",
             EnableFilters: "rewrite_css,rewrite_images",
@@ -717,22 +696,20 @@ servers: [
         root: "@@APACHE_DOC_ROOT@@",
         pagespeed: {
             FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
-           # Start with all core filters enabled ...
+            # Start with all core filters enabled ...
             RewriteLevel: "CoreFilters",
             # ... then forbid these filters ...
 #ifndef nginx
-
             ForbidFilters: ["remove_quotes,remove_comments,collapse_whitespace",
                            "rewrite_css,resize_images"],
 #endif
-            #and disable but not forbid this one (to ensure we retain its URL).
+            # and disable but not forbid this one (to ensure we retain its URL).
             DisableFilters: "inline_css",
         }
     },
     # Sets up a logical home-page server on
-    # max_cacheable_content_length.example.com.  This server is only used to test
-    # MaxCacheableContentLength, i.e.,
-    # max_cacheable_response_content_length.
+    # max_cacheable_content_length.example.com.  This server is only used to
+    # test MaxCacheableContentLength (max_cacheable_response_content_length).
     {
         address: "localhost",
         port: @@APACHE_SECONDARY_PORT@@,
@@ -860,7 +837,7 @@ servers: [
              JpegRecompressionQuality:   -1,
              ImageLimitOptimizedPercent:  100,
              ImageLimitResizeAreaPercent: 100,
-        }, #pagespeed
+        }, # pagespeed
        locations: [
            {
                path: "/mod_pagespeed_beacon",
@@ -879,7 +856,7 @@ servers: [
                ##SetHandler mod_pagespeed_message
            },
        ],
-    },#server
+    }, # server
     {
         address: "*",
         port: 8081,
@@ -899,7 +876,7 @@ servers: [
                 ##SetHandler mod_pagespeed_message
             },
         ]
-    }, #server
+    }, # server
 #endif
 #ifdef PROXY
     # This is used for ProxyPass testing.
@@ -913,15 +890,15 @@ servers: [
         root: "/tmp/",
         # Turn these declarations back on during testing if you are
         # having trouble distinguishing which server is saying what.
-        #ErrorLog   "@@MOD_PAGESPEED_CACHE@@/logs/error_log"
-        #CustomLog  "@@MOD_PAGESPEED_CACHE@@/logs/access_log" common
+        # ErrorLog   "@@MOD_PAGESPEED_CACHE@@/logs/error_log"
+        # CustomLog  "@@MOD_PAGESPEED_CACHE@@/logs/access_log" common
 
              pagespeed_status: "on",
              pagespeed: {
                  FileCachePath: "\"@@MOD_PAGESPEED_CACHE@@/\"",
                  RewriteLevel: "PassThrough",
-            EnableFilters: "extend_cache",
-            Domain: "*",
+                 EnableFilters: "extend_cache",
+                 Domain: "*",
              },
              # Proxy through to 8081.
         locations: [
@@ -986,5 +963,5 @@ servers: [
         },
     },
 #endif
-] #servers
-} #configuration
+] # servers
+} # configuration
