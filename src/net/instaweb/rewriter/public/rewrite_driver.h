@@ -55,7 +55,6 @@ class AbstractMutex;
 class AddInstrumentationFilter;
 class AsyncFetch;
 class CacheUrlAsyncFetcher;
-class CollectSubresourcesFilter;
 class CommonFilter;
 class CriticalLineInfo;
 class DebugFilter;
@@ -1390,7 +1389,6 @@ class RewriteDriver : public HtmlParse {
   // The total number of bytes for which ParseText is called.
   int num_bytes_in_;
 
-  CollectSubresourcesFilter* collect_subresources_filter_;
   DebugFilter* debug_filter_;
 
   scoped_ptr<FlushEarlyInfo> flush_early_info_;

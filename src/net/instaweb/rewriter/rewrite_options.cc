@@ -768,8 +768,6 @@ void RewriteOptions::AddProperties() {
              "fmrief");
   add_option(false, &RewriteOptions::enable_defer_js_experimental_, "edje",
              kEnableDeferJsExperimental);
-  add_option(true, &RewriteOptions::enable_flush_subresources_experimental_,
-             "efse", kEnableFlushSubresourcesExperimental);
   add_option(false, &RewriteOptions::enable_inline_preview_images_experimental_,
              "eipie", kEnableInlinePreviewImagesExperimental);
   add_option(false, &RewriteOptions::enable_blink_critical_line_, "ebcl",

@@ -78,17 +78,8 @@ class FlushEarlyFlow {
                  ProxyFetchFactory* factory,
                  ProxyFetchPropertyCallbackCollector* property_cache_callback);
 
-  // Generates a dummy head with subresources and counts the number of resources
-  // which can be flused early.
-  void GenerateDummyHeadAndCountResources(
-      const FlushEarlyInfo& flush_early_info);
-
   // Generates response headers from previous values stored in property cache.
   void GenerateResponseHeaders(const FlushEarlyInfo& flush_early_info);
-
-  GoogleString GetHeadString(const FlushEarlyInfo& flush_early_info,
-                             const char* css_format,
-                             const char* js_format);
 
   // Callback that is invoked after we rewrite the early head.
   // start_time_ms indicates the time we started rewriting the flush early

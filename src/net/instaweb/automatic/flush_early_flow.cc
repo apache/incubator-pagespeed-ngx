@@ -408,7 +408,6 @@ void FlushEarlyFlow::FlushEarly() {
           flush_early_info.response_headers().status_code() ==
           HttpStatus::kOK && status_code_property_value_recently_constant) {
         // If the flush early info has non-empty resource html, we flush early.
-        DCHECK(options->enable_flush_subresources_experimental());
 
         // Check whether to flush lazyload script snippets early.
         PropertyValue* lazyload_property_value = page->GetProperty(
@@ -480,22 +479,6 @@ void FlushEarlyFlow::FlushEarly() {
             MakeFunction(this, &FlushEarlyFlow::FlushEarlyRewriteDone, now_ms,
                          new_driver));
         return;
-      } else if (!options->enable_flush_subresources_experimental()) {
-        // TODO(mmohabey): Remove non experimental flow.
-        GenerateDummyHeadAndCountResources(flush_early_info);
-        if (flush_early_info.response_headers().status_code() ==
-            HttpStatus::kOK && num_resources_flushed_ > 0) {
-          handler_->Message(kInfo, "Flushed %d Subresources Early for %s.",
-                            num_resources_flushed_, url_.c_str());
-          num_requests_flushed_early_->IncBy(1);
-          num_resources_flushed_early_->IncBy(num_resources_flushed_);
-          driver_->log_record()->LogAppliedRewriter(
-            RewriteOptions::FilterId(RewriteOptions::kFlushSubresources));
-          GenerateResponseHeaders(flush_early_info);
-          base_fetch_->Write(dummy_head_, handler_);
-          base_fetch_->Flush(handler_);
-          driver_->set_flushed_early(true);
-        }
       }
     }
   }
@@ -565,75 +548,6 @@ void FlushEarlyFlow::GenerateResponseHeaders(
                                       ", private, no-cache");
   response_headers->ComputeCaching();
   base_fetch_->HeadersComplete();
-}
-
-void FlushEarlyFlow::GenerateDummyHeadAndCountResources(
-    const FlushEarlyInfo& flush_early_info) {
-  Write(flush_early_info.pre_head());
-  GoogleString head_string, script, minified_script;
-  bool has_script = false;
-  switch (manager_->user_agent_matcher()->GetPrefetchMechanism(
-      driver_->user_agent().data(), driver_->request_headers())) {
-    case UserAgentMatcher::kPrefetchNotSupported:
-      LOG(DFATAL) << "Entered Flush Early Flow for a unsupported user agent";
-      break;
-    case UserAgentMatcher::kPrefetchLinkRelSubresource:
-      head_string = GetHeadString(
-          flush_early_info,
-          FlushEarlyContentWriterFilter::kPrefetchLinkRelSubresourceHtml,
-          FlushEarlyContentWriterFilter::kPrefetchLinkRelSubresourceHtml);
-      break;
-    case UserAgentMatcher::kPrefetchImageTag:
-      has_script = true;
-      script = GetHeadString(
-          flush_early_info,
-          FlushEarlyContentWriterFilter::kPrefetchImageTagHtml,
-          FlushEarlyContentWriterFilter::kPrefetchImageTagHtml);
-      break;
-    case UserAgentMatcher::kPrefetchLinkScriptTag:
-      head_string = GetHeadString(
-          flush_early_info,
-          FlushEarlyContentWriterFilter::kPrefetchLinkTagHtml,
-          FlushEarlyContentWriterFilter::kPrefetchScriptTagHtml);
-      break;
-    case UserAgentMatcher::kPrefetchObjectTag:
-      has_script = true;
-      StrAppend(&script, kPreloadScript, GetHeadString(flush_early_info,
-                kPrefetchObjectTagHtml, kPrefetchObjectTagHtml));
-      break;
-  }
-  if (has_script) {
-    if (!driver_->options()->Enabled(RewriteOptions::kDebug)) {
-      pagespeed::js::MinifyJs(script, &minified_script);
-      Write(StringPrintf(kScriptBlock, minified_script.c_str()));
-    } else {
-      Write(StringPrintf(kScriptBlock, script.c_str()));
-    }
-  } else {
-    Write(head_string);
-  }
-  Write(StringPrintf(FlushEarlyContentWriterFilter::kPrefetchStartTimeScript,
-                     num_resources_flushed_));
-}
-
-GoogleString FlushEarlyFlow::GetHeadString(
-    const FlushEarlyInfo& flush_early_info, const char* css_format,
-    const char* js_format) {
-  GoogleString head_string;
-  for (int i = 0; i < flush_early_info.subresource_size(); ++i) {
-    const char* chosen_format = css_format;
-    if (flush_early_info.subresource(i).content_type() == JAVASCRIPT) {
-      if (driver_->options()->Enabled(RewriteOptions::kDeferJavascript)) {
-          continue;
-      }
-      chosen_format = js_format;
-    }
-    StrAppend(&head_string, StringPrintf(
-        chosen_format,
-        flush_early_info.subresource(i).rewritten_url().c_str()));
-    ++num_resources_flushed_;
-  }
-  return head_string;
 }
 
 void FlushEarlyFlow::Write(const StringPiece& val) {

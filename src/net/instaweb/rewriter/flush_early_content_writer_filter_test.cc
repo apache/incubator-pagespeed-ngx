@@ -63,7 +63,6 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
       FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly,
       ServerContext::kStatisticsGroup);
     options()->EnableFilter(RewriteOptions::kFlushSubresources);
-    options()->set_enable_flush_subresources_experimental(true);
     options()->set_flush_more_resources_early_if_time_permits(true);
     options()->set_flush_more_resources_in_ie_and_firefox(true);
     RewriteTestBase::SetUp();

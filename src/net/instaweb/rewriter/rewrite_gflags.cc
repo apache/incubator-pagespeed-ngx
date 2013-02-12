@@ -238,9 +238,6 @@ DEFINE_int32(property_cache_http_status_stability_threshold,
 DEFINE_bool(enable_defer_js_experimental, false,
             "Enables experimental defer js.");
 
-DEFINE_bool(enable_flush_subresources_experimental, true,
-            "Enables experimental flush subresources.");
-
 DEFINE_bool(enable_inline_preview_images_experimental, false,
             "Enables experimental inline preview images.");
 
@@ -536,10 +533,6 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_defer_js_experimental")) {
     options->set_enable_defer_js_experimental(
         FLAGS_enable_defer_js_experimental);
-  }
-  if (WasExplicitlySet("enable_flush_subresources_experimental")) {
-    options->set_enable_flush_subresources_experimental(
-        FLAGS_enable_flush_subresources_experimental);
   }
   if (WasExplicitlySet("flush_more_resources_early_if_time_permits")) {
     options->set_flush_more_resources_early_if_time_permits(

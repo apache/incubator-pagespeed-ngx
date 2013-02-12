@@ -537,7 +537,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     start_time_ms_ = timer()->NowMs();
   }
 
-  void SetupForFlushEarlyFlow(bool enable_experimental) {
+  void SetupForFlushEarlyFlow() {
     // Setup
     ResponseHeaders headers;
     headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
@@ -554,8 +554,6 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
     rewrite_options->EnableFilter(RewriteOptions::kCombineCss);
     rewrite_options->EnableFilter(RewriteOptions::kCombineJavascript);
-    rewrite_options->set_enable_flush_subresources_experimental(
-        enable_experimental);
     rewrite_options->EnableExtendCacheFilters();
     // Disabling the inline filters so that the resources get flushed early
     // else our dummy resources are too small and always get inlined.
@@ -751,7 +749,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
       UserAgentMatcher::PrefetchMechanism mechanism,
       bool delay_pcache, bool thread_pcache, bool inject_error) {
     lru_cache()->Clear();
-    SetupForFlushEarlyFlow(true);
+    SetupForFlushEarlyFlow();
     GoogleString text;
     RequestHeaders request_headers;
     request_headers.Replace(HttpAttributes::kUserAgent, user_agent);
@@ -792,20 +790,17 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 };
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTest) {
-  SetupForFlushEarlyFlow(false);
+  SetupForFlushEarlyFlow();
   GoogleString text;
   RequestHeaders request_headers;
   ResponseHeaders headers;
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   // Check total number of cache inserts.
   // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.
-  // 6 for A.1.css.pagespeed.cf.0.css, A.2.css.pagespeed.cf.0.css,
-  //       A.3.css.pagespeed.cf.0.css, 1.js.pagespeed.jm.0.js and
-  //       2.js.pagespeed.jm.0.js and 1.jpg.pagespeed.ce.0.jpg.
   // 19 metadata cache enties - three for cf and jm, seven for ce and
   //       six for fs.
   // 1 for DomCohort write in property cache.
-  EXPECT_EQ(33, lru_cache()->num_inserts());
+  EXPECT_EQ(27, lru_cache()->num_inserts());
 
   // Fetch the url again. This time FlushEarlyFlow should not be triggered.
   // None
@@ -816,7 +811,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTest) {
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPrefetch) {
-  SetupForFlushEarlyFlow(false);
+  SetupForFlushEarlyFlow();
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent,
@@ -825,13 +820,10 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPrefetch) {
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   // Check total number of cache inserts.
   // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.
-  // 6 for A.1.css.pagespeed.cf.0.css, A.2.css.pagespeed.cf.0.css,
-  //       A.3.css.pagespeed.cf.0.css, 1.js.pagespeed.jm.0.js and
-  //       2.js.pagespeed.jm.0.js and 1.jpg.pagespeed.ce.0.jpg.
   // 19 metadata cache enties - three for cf and jm, seven for ce and
   //       six for fs.
   // 1 for DomCohort write in property cache.
-  EXPECT_EQ(33, lru_cache()->num_inserts());
+  EXPECT_EQ(27, lru_cache()->num_inserts());
 
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
@@ -848,7 +840,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPrefetch) {
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
   // Test that the flush early flow is not triggered when the status code is
   // unstable.
-  SetupForFlushEarlyFlow(true);
+  SetupForFlushEarlyFlow();
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent,
@@ -881,7 +873,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
 
   // Delete the 404 form cache and again set up for 200 response.
   lru_cache()->Delete(kTestDomain);
-  SetupForFlushEarlyFlow(true);
+  SetupForFlushEarlyFlow();
 
   // Flush early flow is again not triggered as the status code is not
   // stable for property_cache_http_status_stability_threshold number of
@@ -914,7 +906,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
 */
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestImageTag) {
-  SetupForFlushEarlyFlow(false);
+  SetupForFlushEarlyFlow();
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_image_tag");
@@ -922,13 +914,10 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestImageTag) {
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   // Check total number of cache inserts.
   // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.
-  // 6 for I.1.css.pagespeed.cf.0.css, I.2.css.pagespeed.cf.0.css,
-  //       I.3.css.pagespeed.cf.0.css, 1.js.pagespeed.jm.0.js and
-  //       2.js.pagespeed.jm.0.js and 1.jpg.pagespeed.ce.0.jpg.
   // 19 metadata cache enties - three for cf and jm, seven for ce and
   //       six for fs.
   // 1 for DomCohort write in property cache.
-  EXPECT_EQ(33, lru_cache()->num_inserts());
+  EXPECT_EQ(27, lru_cache()->num_inserts());
 
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
@@ -938,7 +927,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestImageTag) {
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestLinkScript) {
-  SetupForFlushEarlyFlow(false);
+  SetupForFlushEarlyFlow();
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent,
@@ -947,13 +936,10 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestLinkScript) {
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   // Check total number of cache inserts.
   // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.
-  // 6 for I.1.css.pagespeed.cf.0.css, I.2.css.pagespeed.cf.0.css,
-  //       I.3.css.pagespeed.cf.0.css, 1.js.pagespeed.jm.0.js and
-  //       2.js.pagespeed.jm.0.js and 1.jpg.pagespeed.ce.0.jpg.
   // 19 metadata cache enties - three for cf and jm, seven for ce and
   //       six for fs.
   // 1 for DomCohort write in property cache.
-  EXPECT_EQ(33, lru_cache()->num_inserts());
+  EXPECT_EQ(27, lru_cache()->num_inserts());
 
   // Fetch the url again. This time FlushEarlyFlow should be triggered.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
@@ -963,7 +949,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestLinkScript) {
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithDeferJsImageTag) {
-  SetupForFlushEarlyFlow(false);
+  SetupForFlushEarlyFlow();
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
@@ -985,7 +971,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithDeferJsImageTag) {
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithDeferJsPrefetch) {
-  SetupForFlushEarlyFlow(false);
+  SetupForFlushEarlyFlow();
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
@@ -1052,7 +1038,7 @@ TEST_F(FlushEarlyFlowTest, ExperimentalFlushEarlyFlowTestLinkScriptError) {
 }
 
 TEST_F(FlushEarlyFlowTest, ExperimentalFlushEarlyFlowTestWithDeferJsImageTag) {
-  SetupForFlushEarlyFlow(true);
+  SetupForFlushEarlyFlow();
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
@@ -1074,7 +1060,7 @@ TEST_F(FlushEarlyFlowTest, ExperimentalFlushEarlyFlowTestWithDeferJsImageTag) {
 }
 
 TEST_F(FlushEarlyFlowTest, ExperimentalFlushEarlyFlowTestWithDeferJsPrefetch) {
-  SetupForFlushEarlyFlow(true);
+  SetupForFlushEarlyFlow();
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
@@ -1098,7 +1084,7 @@ TEST_F(FlushEarlyFlowTest, ExperimentalFlushEarlyFlowTestWithDeferJsPrefetch) {
 
 TEST_F(FlushEarlyFlowTest,
        ExperimentalFlushEarlyFlowTestWithInsertDnsPrefetch) {
-  SetupForFlushEarlyFlow(true);
+  SetupForFlushEarlyFlow();
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kInsertDnsPrefetch);
@@ -1124,7 +1110,7 @@ TEST_F(FlushEarlyFlowTest,
 
 TEST_F(FlushEarlyFlowTest, LazyloadAndDeferJsScriptFlushedEarly) {
   latency_fetcher_->set_latency(600);
-  SetupForFlushEarlyFlow(true);
+  SetupForFlushEarlyFlow();
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
@@ -1149,7 +1135,7 @@ TEST_F(FlushEarlyFlowTest, LazyloadAndDeferJsScriptFlushedEarly) {
 }
 
 TEST_F(FlushEarlyFlowTest, SplitHtmlWithLazyloadScriptFlushedEarly) {
-  SetupForFlushEarlyFlow(true);
+  SetupForFlushEarlyFlow();
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
@@ -1178,7 +1164,7 @@ TEST_F(FlushEarlyFlowTest, SplitHtmlWithLazyloadScriptFlushedEarly) {
 }
 
 TEST_F(FlushEarlyFlowTest, SplitHtmlWithLazyloadScriptNotFlushedEarly) {
-  SetupForFlushEarlyFlow(true);
+  SetupForFlushEarlyFlow();
   scoped_ptr<RewriteOptions> custom_options(
       server_context()->global_options()->Clone());
   custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
@@ -1253,7 +1239,6 @@ TEST_F(FlushEarlyFlowTest, NoLazyloadScriptFlushedOutIfNoImagePresent) {
   RewriteOptions* rewrite_options = server_context()->global_options();
   rewrite_options->ClearSignatureForTesting();
   rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
-  rewrite_options->set_enable_flush_subresources_experimental(true);
   rewrite_options->EnableExtendCacheFilters();
   // Disabling the inline filters so that the resources get flushed early
   // else our dummy resources are too small and always get inlined.
@@ -1326,7 +1311,6 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyMoreResourcesIfTimePermits) {
   RewriteOptions* rewrite_options = server_context()->global_options();
   rewrite_options->ClearSignatureForTesting();
   rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
-  rewrite_options->set_enable_flush_subresources_experimental(true);
 
   rewrite_options->set_flush_more_resources_early_if_time_permits(true);
   rewrite_options->EnableExtendCacheFilters();
@@ -1405,7 +1389,6 @@ TEST_F(FlushEarlyFlowTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
   RewriteOptions* rewrite_options = server_context()->global_options();
   rewrite_options->ClearSignatureForTesting();
   rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
-  rewrite_options->set_enable_flush_subresources_experimental(true);
   rewrite_options->EnableExtendCacheFilters();
   // Disabling the inline filters so that the resources get flushed early
   // else our dummy resources are too small and always get inlined.
@@ -1497,7 +1480,6 @@ TEST_F(FlushEarlyFlowTest, PreconnectTest) {
   RewriteOptions* rewrite_options = server_context()->global_options();
   rewrite_options->ClearSignatureForTesting();
   rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
-  rewrite_options->set_enable_flush_subresources_experimental(true);
   rewrite_options->EnableExtendCacheFilters();
   // Disabling the inline filters so that the resources get flushed early
   // else our dummy resources are too small and always get inlined.
@@ -1531,7 +1513,7 @@ TEST_F(FlushEarlyFlowTest, PreconnectTest) {
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithLocalStorageDoesNotCrash) {
-  SetupForFlushEarlyFlow(true);
+  SetupForFlushEarlyFlow();
   GoogleString text;
   RequestHeaders request_headers;
   request_headers.Replace(HttpAttributes::kUserAgent,

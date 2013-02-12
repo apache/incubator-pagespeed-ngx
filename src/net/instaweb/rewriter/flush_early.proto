@@ -28,7 +28,7 @@ enum FlushEarlyContentType {
   CSS = 3;
 }
 
-message FlushEarlyResource {
+message FlushEarlyResource {  // deprecated.
   optional string rewritten_url = 1;
   optional FlushEarlyContentType content_type = 2;
 }
@@ -47,7 +47,7 @@ message FlushEarlyInfo {
   repeated string resources = 3;  // deprecated.
 
   // The resources in the head section for the page.
-  repeated FlushEarlyResource subresource = 4;
+  repeated FlushEarlyResource subresource = 4;  // deprecated.
 
   // Domains for which DNS prefetch tags will be inserted in <head>.
   repeated string dns_prefetch_domains = 5;

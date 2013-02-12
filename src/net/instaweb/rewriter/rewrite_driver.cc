@@ -58,7 +58,6 @@
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/collapse_whitespace_filter.h"
 #include "net/instaweb/rewriter/public/collect_flush_early_content_filter.h"
-#include "net/instaweb/rewriter/public/collect_subresources_filter.h"
 #include "net/instaweb/rewriter/public/compute_visible_text_filter.h"
 #include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 #include "net/instaweb/rewriter/public/css_combine_filter.h"
@@ -239,7 +238,6 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       num_inline_preview_images_(0),
       num_flushed_early_pagespeed_resources_(0),
       num_bytes_in_(0),
-      collect_subresources_filter_(NULL),
       debug_filter_(NULL),
       serve_blink_non_critical_(false),
       is_blink_request_(false),
@@ -373,7 +371,6 @@ void RewriteDriver::Clear() {
   num_bytes_in_ = 0;
   flush_early_info_.reset(NULL);
   flush_early_render_info_.reset(NULL);
-  collect_subresources_filter_ = NULL;
   serve_blink_non_critical_ = false;
   is_blink_request_ = false;
   can_rewrite_resources_ = true;
@@ -1047,12 +1044,8 @@ void RewriteDriver::AddPreRenderFilters() {
   // Enable Flush subresources early filter to extract the subresources from
   // head. This should be the last prerender filter.
   if (flush_subresources_enabled) {
-    if (rewrite_options->enable_flush_subresources_experimental()) {
-      AppendOwnedPreRenderFilter(new CollectFlushEarlyContentFilter(this));
-    } else {
-      collect_subresources_filter_ = new CollectSubresourcesFilter(this);
-      AppendOwnedPreRenderFilter(collect_subresources_filter_);
-    }
+      AppendOwnedPreRenderFilter(new
+                                 CollectFlushEarlyContentFilter(this));
   }
 }
 
@@ -1257,7 +1250,6 @@ void RewriteDriver::SetWriter(Writer* writer) {
       html_writer_filter_.reset(new CacheHtmlFilter(this));
     } else if (options()->Enabled(RewriteOptions::kFlushSubresources) &&
         flushing_early_) {
-      DCHECK(options()->enable_flush_subresources_experimental());
       // If we are flushing early using this RewriteDriver object, we use the
       // FlushEarlyContentWriterFilter.
       html_writer_filter_.reset(new FlushEarlyContentWriterFilter(this));
@@ -2114,10 +2106,6 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
     return;
   }
 
-  if (collect_subresources_filter_ != NULL) {
-    collect_subresources_filter_->AddSubresourcesToFlushEarlyInfo(
-        flush_early_info());
-  }
   PropertyPage* page = property_page();
   // Dont update property cache value if we are flushing early.
   if (page != NULL && owns_property_page_) {
