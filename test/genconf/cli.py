@@ -19,6 +19,7 @@
 # configuration generator for pagespeed
 
 import datetime
+import getpass
 from genconf import execute_template
 import sys
 from util import Error
@@ -52,7 +53,8 @@ placeholders = {
     'NGX_CONF_DIRECTORY': '/usr/local/nginx/conf',
     'APACHE_SSL_CONF':'/etc/apache2/mods-available/ssl.conf',
     'APACHE_HTTPS_DOMAIN': 'localhost',
-    'MOD_PAGESPEED_STATS_LOG': 'stats.log'
+    'MOD_PAGESPEED_STATS_LOG': 'stats.log',
+    'TMP_SLURP_DIR': '/tmp/instaweb/%s/slurp' % getpass.getuser()
     }
 
 input_config_path = ""
