@@ -49,16 +49,16 @@ required_modules: [
 # Enable mod_speling to ensure that we don't regress Issue 194
 #SPELING,apache "speling",
 
-#HTTPS "ssl",
-#HTTPS "socache_shmcb",
-#HTTPS "slotmem_shm",
+#HTTPS,apache "ssl",
+#HTTPS,apache "socache_shmcb",
+#HTTPS,apache "slotmem_shm",
 
 #nginx "gzip",
 #GZIP,apache "gzip",
 
 #STRESS,apache "slotmem_shm",
 #STRESS "cgi-script",
-#PROXY "proxy",
+#PROXY,apache "proxy",
 ],
 
 headers: [
@@ -102,10 +102,12 @@ pagespeed: {
     #!ALL_DIRECTIVES Domain: "modpagespeed.com:1023",
 
     # Test LoadFromFile mapping by mapping one dir to another.
+#ifndef ALL_DIRECTIVES
     LoadFromFile: '"http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file/web_dir/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/"', 
     LoadFromFileMatch: '"^http://@@APACHE_DOMAIN@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/" "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_\\1/"',
     LoadFromFileRule: "Disallow \"@@APACHE_DOC_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/\"",
     LoadFromFileRuleMatch: ["Disallow \.ssp.css$","Allow exception\.ssp\.css$"],
+#endif
 
     # Print out detail about connection-refused errors.  We don't negative-test
     # this here cause it's a hassle; we just depend on the unit-tests for that.
@@ -173,7 +175,7 @@ pagespeed: {
     FileCachePath: "/tmp/cache/",
     FileCacheSizeKb: 1000,
 #ifndef nginx
-    ForbidAllDisabledFilters: true,
+    ForbidAllDisabledFilters: "true",
     ForbidFilters: "rewrite_images",
     ForceCaching: "off",
     HashRefererStatistics: "false",
