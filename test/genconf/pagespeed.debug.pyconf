@@ -49,16 +49,16 @@ required_modules: [
 # Enable mod_speling to ensure that we don't regress Issue 194
 #SPELING,apache "speling",
 
-#HTTPS "ssl",
-#HTTPS "socache_shmcb",
-#HTTPS "slotmem_shm",
+#HTTPS,apache "ssl",
+#HTTPS,apache "socache_shmcb",
+#HTTPS,apache "slotmem_shm",
 
 #nginx "gzip",
 #GZIP,apache "gzip",
 
 #STRESS,apache "slotmem_shm",
 #STRESS "cgi-script",
-#PROXY "proxy",
+#PROXY,apache "proxy",
 ],
 
 headers: [
