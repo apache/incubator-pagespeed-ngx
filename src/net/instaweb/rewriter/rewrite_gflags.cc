@@ -95,8 +95,10 @@ DEFINE_int64(css_inline_max_bytes,
 DEFINE_int32(image_max_rewrites_at_once,
              net_instaweb::RewriteOptions::kDefaultImageMaxRewritesAtOnce,
              "Maximum number of images that will be rewritten simultaneously.");
-DEFINE_bool(ajax_rewriting_enabled, false, "Boolean to indicate whether ajax "
-            "rewriting is enabled.");
+DEFINE_bool(ajax_rewriting_enabled, false, "Depreciated. Use "
+            "in_place_rewriting_enabled.");
+DEFINE_bool(in_place_rewriting_enabled, false, "Boolean to indicate whether "
+            "in-place-resource-optimization(IPRO) is enabled.");
 DEFINE_bool(in_place_wait_for_optimized, false, "Indicates whether in-place "
             "resource optimization should wait to optimize the resource before "
             "responding.");
@@ -633,10 +635,14 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
         FLAGS_property_cache_http_status_stability_threshold);
   }
 
-  // TODO(nikhilmadan): Check if this is explicitly set. Since this has been
-  // disabled by default because of potential conflicts with Apache, we are
-  // forcing this to be set in the default options.
-  options->set_in_place_rewriting_enabled(FLAGS_ajax_rewriting_enabled);
+  // TODO(bolian): Remove ajax_rewriting_enabled once everyone moves to
+  // in_place_rewriting_enabled.
+  if (WasExplicitlySet("ajax_rewriting_enabled")) {
+    options->set_in_place_rewriting_enabled(FLAGS_ajax_rewriting_enabled);
+  }
+  if (WasExplicitlySet("in_place_rewriting_enabled")) {
+    options->set_in_place_rewriting_enabled(FLAGS_in_place_rewriting_enabled);
+  }
 
   if (WasExplicitlySet("in_place_wait_for_optimized")) {
     options->set_in_place_wait_for_optimized(FLAGS_in_place_wait_for_optimized);
