@@ -71,8 +71,8 @@ conditions[output_format] = True
 placeholders["__template_header"] = "generated at %s through \"%s\"" %\
     (datetime.datetime.now().strftime('%b-%d-%I%M%p-%G'), ' '.join(sys.argv))
 
-#by convention, a file named <outputformat>.conf.template is
-#expected to contain the translation script
+# by convention, a file named <outputformat>.conf.template is
+# expected to contain the translation script
 template = output_format + '.conf.template'
 
 text = execute_template(input_config_path, conditions,
