@@ -219,11 +219,10 @@ class ProxyFetchPropertyCallbackCollector {
 
   const RequestContextPtr& request_context() { return request_context_; }
 
-
- private:
   // Returns DeviceType from device property page.
   UserAgentMatcher::DeviceType GetDeviceTypeFromDeviceCacheMutexHeld();
 
+ private:
   // Set the property page corresponding to device_type for kPagePropertyCache.
   void SetPropertyPageForDeviceTypeMutexHeld(
       UserAgentMatcher::DeviceType device_type);

@@ -433,7 +433,8 @@ class CriticalLineFetch : public AsyncFetch {
         recompute_critical_line) {
       num_blink_html_mismatches_cache_deletes_->IncBy(1);
       server_context_->blink_critical_line_data_finder()->
-          PropagateCacheDeletes(url_, options_->furious_id());
+          PropagateCacheDeletes(url_, options_->furious_id(),
+                                rewrite_driver_->device_type());
       page->DeleteProperty(
           cohort, BlinkUtil::kBlinkCriticalLineDataPropertyName);
       property_cache->WriteCohort(cohort, page);

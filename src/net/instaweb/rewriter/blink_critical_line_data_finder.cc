@@ -45,7 +45,8 @@ void BlinkCriticalLineDataFinder::ComputeBlinkCriticalLineData(
 }
 
 void BlinkCriticalLineDataFinder::PropagateCacheDeletes(
-    const GoogleString& url, int furious_id) {
+    const GoogleString& url, int furious_id,
+    UserAgentMatcher::DeviceType device_type) {
   // Default interface is empty and derived classes can override.
 }
 

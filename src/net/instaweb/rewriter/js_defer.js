@@ -1664,5 +1664,6 @@ deferJsNs.startDeferJs = function() {
   pagespeed.deferJs.registerScriptTags();
   pagespeed.deferJs.execute();
 };
+deferJsNs['startDeferJs'] = deferJsNs.startDeferJs;
 deferJsNs.addHandler(document, 'DOMContentLoaded', deferJsNs.startDeferJs);
 deferJsNs.addOnload(window, deferJsNs.startDeferJs);

@@ -232,6 +232,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       client_state_(NULL),
       property_page_(NULL),
       owns_property_page_(false),
+      device_type_(UserAgentMatcher::kDesktop),
       updated_critical_images_(false),
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
@@ -390,6 +391,7 @@ void RewriteDriver::Clear() {
   }
   property_page_ = NULL;
   owns_property_page_ = false;
+  device_type_ = UserAgentMatcher::kDesktop;
 
   // Reset to the default fetcher from any session fetcher
   // (as the request is over).

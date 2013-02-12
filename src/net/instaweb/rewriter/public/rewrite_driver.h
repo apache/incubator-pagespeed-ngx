@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -83,7 +84,6 @@ class ScopedMutex;
 class Statistics;
 class UrlAsyncFetcher;
 class UrlLeftTrimFilter;
-class UserAgentMatcher;
 class Writer;
 
 // This extends class HtmlParse (which should renamed HtmlContext) by providing
@@ -716,6 +716,10 @@ class RewriteDriver : public HtmlParse {
     max_page_processing_delay_ms_ = x;
   }
   int max_page_processing_delay_ms() { return max_page_processing_delay_ms_; }
+
+  // Sets the device type chosen for the current property_page.
+  void set_device_type(UserAgentMatcher::DeviceType x) { device_type_ = x; }
+  UserAgentMatcher::DeviceType device_type() { return device_type_; }
 
   // Tries to register the given rewrite context as working on
   // its partition key. If this context is the first one to try to handle it,
@@ -1357,6 +1361,9 @@ class RewriteDriver : public HtmlParse {
 
   // Boolean value which tells whether property page is owned by driver or not.
   bool owns_property_page_;
+
+  // Device type for the current property page.
+  UserAgentMatcher::DeviceType device_type_;
 
   scoped_ptr<CriticalLineInfo> critical_line_info_;
 
