@@ -1,0 +1,203 @@
+${
+# Copyright 2013 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Author: oschaaf@gmail.com (Otto van der Schaaf)
+
+from util import *
+
+set_writer(emit)
+
+def write_servers_open_item(server,level):
+    emit_indent("<VirtualHost %s:%s>\n" % (server["address"], server["port"])
+                , level)
+    if "root" in server:
+        emit_indent("DocumentRoot %s\n" % server["root"], level+1)
+    if "server_name" in server:
+        emit_indent("ServerName %s\n" % server["server_name"], level+1)
+    if "pagespeed_status" in server:
+        emit_indent("ModPagespeed %s\n" % server["pagespeed_status"], level+1)
+
+def write_servers_close_item(server,level):
+    emit_indent("</VirtualHost>\n",level)
+
+def write_locations_open_item(server,level):
+    if "path" in server:
+        emit_indent("<Location ~ \"%s\">\n" % server["path"],level)
+
+    if "proxy_pass" in server:
+        emit_indent("ProxyPass %s\n" % server["proxy_pass"],level+1)
+
+def write_locations_close_item(server,level):
+    emit_indent("</Location>\n",level)
+
+def write_pagespeed_open(ps,level):
+    for key in ps:
+        val = ps[key]
+        # in pagespeed.debug.conf, the same pagespeed directive can occur
+        # multiple times that is represented as an array, in our config
+        # which we need to loop in that case
+        if isinstance(val,list) and not isinstance(val,str):
+            for item in val:
+                emit_indent("ModPagespeed%s %s\n" %(key,str(item)),level)
+        else:
+            emit_indent("ModPagespeed%s %s\n" % (key, str(val)),level)
+
+    return True
+
+def write_pagespeed_if_open(ps,level):
+    for key in ps:
+        emit_indent("<ModPagespeedIf %s>\n" % key,level)
+        val = ps[key]
+        write_pagespeed_open(val, level+1)
+        emit_indent("</ModPagespeedIf>\n",level)
+    return True
+
+def write_pagespeed_if_close(ps,level):
+    pass
+
+def write_listen_open(ps, level):
+    for val in ps:
+        emit_indent("Listen %s\n" % str(val), level)
+    return True
+
+
+def write_name_virtual_hosts_open(ps, level):
+    for val in ps:
+        emit_indent("NameVirtualHost %s:%s\n" % (val["address"],
+                                                 str(val["port"])),level)
+
+    return True
+
+def write_headers_open(ps, level):
+    for val in ps:
+        action = val["action"]
+        header_name = val["name"]
+        header_value = val["value"]
+        emit_indent("Header %s %s %s\n"
+                    % (action, repr(header_name), repr(header_value)),level)
+
+    return True
+
+def write_required_modules_open(ps,level):
+    module_path_prefix = "@@APACHE_MODULES@@/mod_"
+    for module_name in ps:
+        load_module = "LoadModule %s_module %s%s.so\n" \
+                      % (module_name, module_path_prefix,module_name)
+        load_module = indent(load_module, level + 1)
+
+        if module_name in ["headers","rewrite"]:
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
+            emit(load_module)
+            emit_indent("</IfModule>\n",level)
+        elif module_name == "include":
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
+            emit(load_module)
+            emit_indent("</IfModule>\n",level)
+            emit_indent("AddType text/html .shtml\n",level)
+            emit_indent("AddOutputFilter INCLUDES .shtml\n",level)
+        elif module_name == "ssl":
+            emit_indent("Include @@APACHE_SSL_CONF@@\n",level);
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
+            emit(load_module)
+            emit_indent("</IfModule>\n",level)
+            emit_indent("SSLRandomSeed startup builtin\n",level)
+            emit_indent("SSLRandomSeed connect builtin\n",level)
+        elif module_name == "socache_shmcb":
+            emit_indent("<IfVersion >= 2.4>\n",level);
+            emit_indent("<IfModule !" + module_name + "_module>\n", level+1)
+            emit(load_module)
+            emit_indent("</IfModule>\n",level+1)
+            emit_indent("</IfVersion>\n",level)
+        elif module_name == "slotmem_shm":
+            emit_indent("<IfVersion >= 2.4>\n",level)
+            emit_indent("<IfModule !" + module_name + "_module>\n", level+1)
+            emit(load_module)
+            emit_indent("</IfModule>\n",level+1)
+            emit_indent("</IfVersion>\n",level)
+        elif module_name == "speling":
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
+            emit(load_module)
+            emit_indent("</IfModule>\n",level)
+            emit_indent("CheckSpelling on\n",level)
+        elif module_name == "gzip":
+            emit_indent("SetOutputFilter DEFLATE\n",level)
+        elif module_name == "cgi-script":
+            emit_indent("AddHandler cgi-script .cgi\n",level)
+        elif module_name == "mime":
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
+            emit(load_module)
+            emit_indent("</IfModule>\n",level)
+        elif module_name == "pagespeed":
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
+            emit(load_module)
+            emit_indent("</IfModule>\n",level)
+        elif module_name == "proxy":
+            emit_indent("<IfModule !" + module_name + "_module>\n", level)
+            emit(load_module)
+            emit_indent("</IfModule>\n",level)
+        else:
+            raise Exception("unknown module: " + module_name)
+    return True
+
+def write_literal_open(ps, level):
+    emit(ps["value"])
+
+def write_mime_types_open_item(ps,level):
+    emit_indent("AddType %s %s\n" % (ps["extension"], ps["mime_type"]),level)
+
+def write_add_options_open(ps,level):
+    for item in ps:
+        emit_indent("Options +%s\n" % item , level)
+    return True
+
+def write_rewrite_rules_open(ps,level):
+    emit_indent("RewriteEngine on\n",level)
+    for item in ps:
+        emit_indent("RewriteRule %s %s\n"
+                    % (item["pattern"], item["substitution"]),level)
+    return True
+
+key_to_writer = {
+    "defaults_open": write_void,
+    "defaults_close": write_void,
+    "servers_open": write_void,
+    "servers_close": write_void,
+    "servers_open_item": write_servers_open_item,
+    "servers_close_item": write_servers_close_item,
+    "locations_open": write_void,
+    "locations_close": write_void,
+    "locations_open_item": write_locations_open_item,
+    "locations_close_item": write_locations_close_item,
+    "pagespeed_open": write_pagespeed_open,
+    "pagespeed_close": write_void,
+    "pagespeed_if_open": write_pagespeed_if_open,
+    "pagespeed_if_close": write_pagespeed_if_close,
+    "listen_open": write_listen_open,
+    "listen_close": write_void,
+    "name_virtual_hosts_open": write_name_virtual_hosts_open,
+    "name_virtual_hosts_close": write_void,
+    "required_modules_open": write_required_modules_open,
+    "headers_open": write_headers_open,
+    "mime_types_open": write_void,
+    "mime_types_open_item": write_mime_types_open_item,
+    "literal_open": write_literal_open,
+    "add_options_open": write_add_options_open,
+    "rewrite_rules_open": write_rewrite_rules_open,
+}
+
+}$# @@__template_header@@
+
+${write_cfg(key_to_writer, config)
+}$

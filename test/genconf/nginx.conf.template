@@ -1,0 +1,227 @@
+${
+# Copyright 2013 Google Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Author: oschaaf@gmail.com (Otto van der Schaaf)
+
+
+import string
+from util import *
+
+set_writer(emit)
+
+def write_servers_open_item(server, level):
+    emit_indent("server{\n", level)
+    emit_indent("listen %s:%s;\n" % (server["address"], server["port"])
+                , level+1)
+
+    if "root" in server:
+        emit_indent("root %s;\n" % server["root"], level+1)
+
+    if "server_name" in server:
+        emit_indent("server_name %s;" % server["server_name"], level+1)
+
+    emit_indent("location ~ \"\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+\" { }\n"
+                , level+1)
+    emit_indent("location ~ \"^/ngx_pagespeed_static/\" { }\n", level+1)
+
+    if "pagespeed_status" in server:
+        emit_indent("pagespeed %s;\n" % server["pagespeed_status"], level+1)
+
+
+def write_servers_close_item(server, level):
+    emit_indent("}\n",level)
+
+def write_locations_open_item(server, level):
+    if "path" in server:
+        emit_indent("location ~ " + server["path"] + " {\n",level)
+
+    if "proxy_pass" in server:
+        emit_indent("proxy_pass " + server["proxy_pass"] + ";\n",level+1)
+
+def write_locations_close_item(server,level):
+    emit_indent("}\n",level)
+
+def write_pagespeed_open(ps, level):
+    # pagespeed_if is not implemented yet for nginx.
+    # this code isn't wired up but left in as an example
+    for key in ps:
+        val = ps[key]
+        # In pagespeed.debug.conf, the same pagespeed directive can occur
+        # multiple times. Our pyconf represents that as an array, which we
+        # need to loop in that case
+        if isinstance(val,list) and not isinstance(val,str):
+            for item in val:
+                emit_indent("pagespeed %s %s;\n" % (key, str(item)),level)
+        else:
+            emit_indent("pagespeed %s %s;\n" % (key, str(val)), level)
+
+    return 1
+
+def write_pagespeed_if_open(ps, level):
+    emit(indent("#these are not implemented yet for nginx\n", level))
+    emit(indent("pagespeed_if { \n", level))
+
+    for key in ps:
+        emit_indent(key + " { \n", level+1)
+        val = ps[key]
+        write_pagespeed_open(val, level+2)
+        emit_indent("}\n", level+1)
+    return 1
+
+def write_pagespeed_if_close(ps,level):
+    emit_indent("}\n",level)
+
+def write_listen_open(ps, level):
+    return 1
+
+
+def write_name_virtual_hosts_open(ps, level):
+    return 1
+
+# TODO(oschaaf): nginx only supports appending headers out of the box?
+def map_header_action(action):
+    if action == "append":
+        return "add_header"
+    # nginx doesn't have a set header out of the box
+    # currently, we translate it to add-header
+    elif action =="set":
+        return "add_header"
+    else:
+        raise Error("could not translate header action \"%s\" to nginx"
+                    % action)
+
+def write_headers_open(ps, level):
+    for val in ps:
+        generic_action = val["action"]
+        specific_action = map_header_action(generic_action)
+        header_name = val["name"]
+        header_value = val["value"]
+        header_value = "\"%s\"" % header_value
+        emit_indent("%s %s %s;\n" % (specific_action, header_name, header_value)
+                    , level)
+    return True
+
+
+def write_required_modules_open(ps,level):
+    for module_name in ps:
+
+        if module_name == "rewrite":
+            pass
+        elif module_name == "headers":
+            pass
+        elif module_name == "include":
+            emit_indent("ssi on;\n",level)
+        elif module_name == "ssl":
+            pass
+        elif module_name == "gzip":
+            #apache enables gzip by default, nginx doesn't
+            emit_indent("""
+gzip on;
+gzip_vary on;
+gzip_types application/ecmascript;
+gzip_types application/javascript;
+gzip_types application/json;
+gzip_types application/pdf;
+gzip_types application/postscript;
+gzip_types application/x-javascript;
+gzip_types image/svg+xml;
+gzip_types text/css;
+gzip_types text/csv;
+gzip_types text/javascript;
+gzip_types text/plain;
+gzip_types text/xml;
+gzip_http_version 1.0;
+""",level)
+        elif module_name == "cgi-script":
+            pass
+        elif module_name == "mime":
+            pass
+        elif module_name == "pagespeed":
+            pass
+        else:
+            raise Error("could not translate module \"%s\"" % module_name)
+    return True
+
+def write_mime_types_open(ps,level):
+    emit_indent("types {\n",level)
+
+def write_mime_types_open_item(ps,level):
+    #the extension is stripped from it's leading '.'
+    emit_indent(ps["mime_type"] + " " + ps["extension"][1:] + ";\n",level)
+
+def write_mime_types_close(ps,level):
+    emit(indent("}\n",level))
+
+def write_add_options_open(ps,level):
+    for item in ps:
+        if item == "Indexes":
+            emit(indent("autoindex on;\n",level))
+        else:
+            raise Exception("Option '" + item + "': no translation for nginx")
+    return True
+
+def write_rewrite_rules_open(ps,level):
+    for item in ps:
+        emit_indent("rewrite %s %s;\n" % (item["pattern"], item["substitution"])
+                    ,level)
+    return True
+
+key_to_writer = {
+    "defaults_open": write_void,
+    "defaults_close": write_void,
+    "servers_open": write_void,
+    "servers_close": write_void,
+    "servers_open_item": write_servers_open_item,
+    "servers_close_item": write_servers_close_item,
+    "locations_open": write_void,
+    "locations_close": write_void,
+    "locations_open_item": write_locations_open_item,
+    "locations_close_item": write_locations_close_item,
+    "pagespeed_open": write_pagespeed_open,
+    "pagespeed_close": write_void,
+# not implemented yet in nginx, left in as an example
+# these are currently apache specific in the configuration
+    "pagespeed_if_open": write_pagespeed_if_open,
+    "pagespeed_if_close": write_pagespeed_if_close,
+    "pagespeed_if_open": write_void,
+    "pagespeed_if_close": write_void,
+    "listen_open": write_listen_open,
+    "listen_close": write_void,
+    "name_virtual_hosts_open": write_name_virtual_hosts_open,
+    "name_virtual_hosts_close": write_void,
+    "required_modules_open": write_required_modules_open,
+    "headers_open": write_headers_open,
+    "mime_types_open": write_mime_types_open,
+    "mime_types_close": write_mime_types_close,
+    "mime_types_open_item": write_mime_types_open_item,
+    "add_options_open": write_add_options_open,
+    "rewrite_rules_open": write_rewrite_rules_open,
+}
+
+}$# @@__template_header@@
+
+daemon off;
+master_process off;
+error_log  logs/error.log  notice;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       @@NGX_CONF_DIRECTORY@@/mime.types;
+    default_type  application/octet-stream;
+${write_cfg(key_to_writer, config, 1)}$
+} #http
