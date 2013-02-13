@@ -21,6 +21,7 @@
 #include <cstdio>
 
 #include "ngx_cache.h"
+#include "ngx_message_handler.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_thread_system.h"
 #include "ngx_server_context.h"
@@ -49,6 +50,7 @@
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
+#include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/scheduler_thread.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/slow_worker.h"
@@ -80,7 +82,20 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
       cache_hasher_(20),
       main_conf_(NULL),
       threads_started_(false),
-      is_root_process_(true) {
+      is_root_process_(true),
+      ngx_message_handler_(new NgxMessageHandler(thread_system()->NewMutex())),
+      ngx_html_parse_message_handler_(
+          new NgxMessageHandler(thread_system()->NewMutex())),
+      // Hard coded for now, these should be configurable but that
+      // requires a change in our NgxRewriteDriverFactory initialisation.
+      // I will make a separate pull for that.
+#ifdef NGX_DEBUG
+      install_crash_handler_(true),
+#else
+      install_crash_handler_(false),
+#endif
+      message_buffer_size_(1024*100),
+      shared_circular_buffer_(NULL) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
@@ -91,6 +106,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
   timer_ = DefaultTimer();
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
+  set_message_handler(ngx_message_handler_);
+  set_html_parse_message_handler(ngx_html_parse_message_handler_);
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
@@ -148,11 +165,11 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
-  return new GoogleMessageHandler;
+  return ngx_html_parse_message_handler_;
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultMessageHandler() {
-  return DefaultHtmlParseMessageHandler();
+  return ngx_message_handler_;
 }
 
 FileSystem* NgxRewriteDriverFactory::DefaultFileSystem() {
@@ -354,6 +371,8 @@ void NgxRewriteDriverFactory::ShutDown() {
   // Take down any memcached threads.
   // TODO(oschaaf): should be refactored with the Apache shutdown code
   memcached_pool_.reset(NULL);
+  ngx_message_handler_->set_buffer(NULL);
+  ngx_html_parse_message_handler_->set_buffer(NULL);
 }
 
 void NgxRewriteDriverFactory::StartThreads() {
@@ -370,12 +389,38 @@ void NgxRewriteDriverFactory::StartThreads() {
   threads_started_ = true;
 }
 
-void NgxRewriteDriverFactory::ParentOrChildInit() {
-  // left in as a stub, we will need it later on
+void NgxRewriteDriverFactory::ParentOrChildInit(ngx_log_t* log) {
+  if (install_crash_handler_) {
+    NgxMessageHandler::InstallCrashHandler(log);
+  }
+  ngx_message_handler_->set_log(log);
+  ngx_html_parse_message_handler_->set_log(log);
+  SharedCircularBufferInit(is_root_process_);
 }
 
-void NgxRewriteDriverFactory::RootInit() {
-  ParentOrChildInit();
+// TODO(jmarantz): make this per-vhost.
+void NgxRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
+  // Set buffer size to 0 means turning it off
+  if (shared_mem_runtime() != NULL && (message_buffer_size_ != 0)) {
+    // TODO(jmarantz): it appears that filename_prefix() is not actually
+    // established at the time of this construction, calling into question
+    // whether we are naming our shared-memory segments correctly.
+    shared_circular_buffer_.reset(new SharedCircularBuffer(
+        shared_mem_runtime(),
+        message_buffer_size_,
+        filename_prefix().as_string(),
+        "foo.com" /*hostname_identifier()*/));
+    if (shared_circular_buffer_->InitSegment(is_root, message_handler())) {
+      ngx_message_handler_->set_buffer(shared_circular_buffer_.get());
+      ngx_html_parse_message_handler_->set_buffer(
+          shared_circular_buffer_.get());
+    }
+  }
+}
+
+void NgxRewriteDriverFactory::RootInit(ngx_log_t* log) {
+  ParentOrChildInit(log);
+
   for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
     NgxServerContext* server_context = *p;
@@ -394,9 +439,10 @@ void NgxRewriteDriverFactory::RootInit() {
   }
 }
 
-void NgxRewriteDriverFactory::ChildInit() {
+void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
   is_root_process_ = false;
-  ParentOrChildInit();
+
+  ParentOrChildInit(log);
   slow_worker_.reset(new SlowWorker(thread_system()));
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
