@@ -461,6 +461,11 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedDomain http://example.com
 </VirtualHost>
 
+<IfModule !proxy_module>
+  LoadModule proxy_module @@APACHE_MODULES@@/mod_proxy.so
+  LoadModule proxy_http_module @@APACHE_MODULES@@/mod_proxy_http.so
+</IfModule>
+
 # Proxy modpagespeed.com for testing Issue 582.
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName modpagespeed.com

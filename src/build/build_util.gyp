@@ -25,7 +25,7 @@
           'inputs': [
             # Note:  <(default_lastchange_path) is optional,
             # so it doesn't show up in inputs.
-            'util/lastchange.py',
+            '<(DEPTH)/build/lastchange_wrapper.py',
           ],
           'outputs': [
             '<(lastchange_out_path).always',
