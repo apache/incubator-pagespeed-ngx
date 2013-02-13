@@ -52,7 +52,9 @@ def get_key_path(o):
     else:
         return get_key_path(c2)
 
-def ast_node_to_dict(node, dest, lookup, parent_key):
+def ast_node_to_dict(node, dest, lookup, parent_key, key_to_node):
+    key_to_node[parent_key] = node
+
     if Node is None:
         return None
     elif isinstance(node, Dict):
@@ -60,14 +62,16 @@ def ast_node_to_dict(node, dest, lookup, parent_key):
         c = node.getChildren()
         for n in range(0, len(c), 2):
             key = c[n].getChildren()[0]
+            key_to_node["%s.%s" % (parent_key, key)] = c[n]
             dest[key] = ast_node_to_dict(c[n + 1], dest, lookup,
-                    '%s.%s' % (parent_key, key))
+                    '%s.%s' % (parent_key, key), key_to_node)
             lookup[parent_key] = dest
     elif isinstance(node, List):
         dest = []
         for (index, child) in enumerate(node.getChildren()):
+            key_to_node["%s.%s" % (parent_key, str(index))] = child
             cn = ast_node_to_dict(child, None, lookup, parent_key +
-                                  '.' + repr(index))
+                                  '.' + repr(index), key_to_node)
             dest.append(cn)
             lookup[parent_key] = dest
     elif isinstance(node, UnarySub):
@@ -104,8 +108,7 @@ def replace_comments(conditions, s):
 
     for condition in matched_conditions.split(","):
         if not matches_condition(condition, conditions):
-            # append '\n' too, to keep the line numbers intact
-            return "%s %s" % (s.group(0), "\n")
+            return s.group(0)
     return config
 
 # condition: something like 'cond1' or '!cond2'
@@ -133,11 +136,12 @@ def pre_process_text(cfg, conditions, placeholders):
     re_placeholders = r'@@([^\s]*)@@'
     cfg = re.sub(re_placeholders, lambda x: \
                  fill_placeholders(placeholders, x), cfg)
-    re_empty_line = r'^\s*$'
-    cfg = re.sub(re_empty_line, '', cfg, flags=re.MULTILINE)
+    #re_empty_line = r'^\s*$'
+    #cfg = re.sub(re_empty_line, '', cfg, flags=re.MULTILINE)
     return cfg
 
 def pre_process_ifdefs(cfg,conditions):
+    cfg = cfg.replace("\r","")
     lines = cfg.split("\n")
     ifstack = [True]
     ret = []
@@ -146,29 +150,37 @@ def pre_process_ifdefs(cfg,conditions):
         if line.startswith("#ifdef"):
             condition = line[len("#ifdef"):].strip()
             ifstack.append(condition in conditions)
-            # keep the line numbers intact
-            ret.append("\n")
-        if line.startswith("#ifndef "):
+            ret.append("## filtered out")
+        elif line.startswith("#ifndef"):
             condition = line[len("#ifndef"):].strip()
             ifstack.append(not condition in conditions)
-            # keep the line numbers intact
-            ret.append("\n")
+            ret.append("## filtered out")
         elif line.startswith("#endif"):
             if len(ifstack) == 1:
                 raise Error("unmatched #endif found in input")
             ifstack.pop()
+            ret.append("## filtered out")
         else:
             if not False in ifstack:
                 ret.append(line)
             else:
-                ret.append("\n")
+                ret.append("## filtered out")
 
     if not len(ifstack) == 1:
         raise Error("#ifdef not matched with an #endif")
 
     return "\n".join(ret)
 
-def copy_locations_to_virtual_hosts(config):
+def copy_prefix(key_to_node, prefix, new_prefix):
+    copy_list = {}
+    for key in key_to_node:
+        if key[:len(prefix)] == prefix:
+            copy_list[new_prefix + key[len(prefix):]] = key_to_node[key]
+
+    for key in copy_list:
+        key_to_node[key] = copy_list[key]
+
+def copy_locations_to_virtual_hosts(config, key_to_node):
     # we clone locations that are defined at the root level
     # to all defined servers. that way, we do not have
     # to rely on inheritance being available in the targeted
@@ -179,10 +191,18 @@ def copy_locations_to_virtual_hosts(config):
     move = ["locations"]
     servers = config["servers"]
     for m in move:
-        for server in servers:
+        for server_index, server in enumerate(servers):
             if not m in server:
                server[m] = []
-            server[m].extend(copy.deepcopy(config[m]))
+
+            offset = len(server[m])
+            for (location_index, location) in enumerate(config[m]):
+                new_prefix = ".servers.%s.%s.%s" % (server_index, m,
+                                                    location_index + offset)
+                server[m].append(copy.deepcopy(location))
+                copy_prefix(key_to_node,
+                            ".locations.%s" % location_index, new_prefix)
+
         del config[m]
 
 def move_configuration_to_locations(config):
@@ -233,13 +253,28 @@ def execute_template(pyconf_path, conditions,
 
     with open(pyconf_path) as config_file:
         config_text = config_file.read()
-
+    original_len = len(config_text.split("\n"))
     config_text = pre_process_ifdefs(config_text, conditions)
+    new_len = len(config_text.split("\n"))
+
+    # Make sure the number of lines doesn't get changed by the preprocessor.
+    # We want to be able to report correct line numbers for templates that
+    # choke on a .pyconf file
+    if (new_len != original_len):
+        raise Error("preprocessor step 1: linecount changed from %s to %s:\n"
+                    % (original_len, new_len))
+
     config_text = pre_process_text(config_text, conditions,
                                    placeholders)
+    new_len = len(config_text.split("\n"))
+
+    if (new_len != original_len): 
+        raise Error("preprocessor step 2: linecount changed from %s to %s:\n"
+                    % (original_len, new_len))
 
     ast = parse_python_struct(config_text)
-    config = ast_node_to_dict(ast, None, {}, '')
+    key_to_node = {}
+    config = ast_node_to_dict(ast, None, {}, '', key_to_node)
     template_file = ""
 
     with open(template_path) as template_file:
@@ -249,7 +284,7 @@ def execute_template(pyconf_path, conditions,
                                      placeholders)
     template = Templite(template_text)
 
-    copy_locations_to_virtual_hosts(config)
+    copy_locations_to_virtual_hosts(config, key_to_node)
     move_configuration_to_locations(config)
-    text = template.render(config=config)
+    text = template.render(config=config, key_to_node=key_to_node)
     return text
