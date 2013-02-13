@@ -702,7 +702,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(159, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(160, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -850,6 +850,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ImageWebpRecompressionQuality",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageWebpRecompressionQuality));
+  EXPECT_STREQ("ImageWebpTimeoutMs",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kImageWebpTimeoutMs));
   EXPECT_STREQ("ImplicitCacheTtlMs",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImplicitCacheTtlMs));

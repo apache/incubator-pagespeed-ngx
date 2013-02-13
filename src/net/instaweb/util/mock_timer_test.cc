@@ -44,4 +44,15 @@ TEST_F(MockTimerTest, Advance) {
   EXPECT_EQ(7, timer_.NowMs());
 }
 
+TEST_F(MockTimerTest, SetTimeDelta) {
+  timer_.SetTimeDeltaUs(2001);
+  timer_.SetTimeDeltaUs(43);
+  timer_.SetTimeDeltaMs(2);
+  timer_.SetTimeDeltaUs(57);
+  EXPECT_EQ(2001, timer_.NowUs());
+  EXPECT_EQ(2044, timer_.NowUs());
+  EXPECT_EQ(4044, timer_.NowUs());
+  EXPECT_EQ(4101, timer_.NowUs());
+}
+
 }  // namespace net_instaweb

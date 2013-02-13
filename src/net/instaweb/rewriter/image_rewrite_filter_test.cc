@@ -470,7 +470,8 @@ class ImageRewriteTest : public RewriteTestBase {
     scoped_ptr<Image> image(
         NewImage(expect_callback.buffer(),
                  fetch_url, server_context_->filename_prefix(),
-                 new Image::CompressionOptions(), &message_handler_));
+                 new Image::CompressionOptions(),
+                 timer(), &message_handler_));
     ImageDim image_dim;
     image->Dimensions(&image_dim);
     EXPECT_EQ(expected_width, image_dim.width());
@@ -769,7 +770,8 @@ TEST_F(ImageRewriteTest, ImageRewritePreserveURLsOn) {
   // Make sure that we didn't resize (original image is 100x100).
   scoped_ptr<Image> image(
       NewImage(out_png, out_png_url, server_context_->filename_prefix(),
-               new Image::CompressionOptions(), &message_handler_));
+               new Image::CompressionOptions(),
+               timer(), &message_handler_));
   ImageDim image_dim;
   image->Dimensions(&image_dim);
   EXPECT_EQ(100, image_dim.width());
@@ -806,7 +808,8 @@ TEST_F(ImageRewriteTest, ImageRewritePreserveURLsDisablePreemptiveRewrite) {
   // Make sure that we didn't resize (original image is 100x100).
   scoped_ptr<Image> image(
       NewImage(out_png, out_png_url, server_context_->filename_prefix(),
-               new Image::CompressionOptions(), &message_handler_));
+               new Image::CompressionOptions(),
+               timer(), &message_handler_));
   ImageDim image_dim;
   image->Dimensions(&image_dim);
   EXPECT_EQ(100, image_dim.width());
@@ -1781,7 +1784,7 @@ TEST_F(ImageRewriteTest, ProgressiveJpegThresholds) {
   Image::CompressionOptions* options = new Image::CompressionOptions;
   options->recompress_jpeg = true;
   scoped_ptr<Image> image(NewImage(image_data, kPuzzleJpgFile, "",
-                                   options, message_handler()));
+                                   options, timer(), message_handler()));
 
   // Since we haven't established a size, resizing won't happen.
   ImageDim dims;

@@ -425,6 +425,8 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
       options->image_jpeg_num_progressive_scans();
   image_options->retain_color_sampling =
       !options->Enabled(RewriteOptions::kJpegSubsampling);
+  image_options->webp_conversion_timeout_ms =
+      options->image_webp_timeout_ms();
 
   return image_options;
 }
@@ -551,7 +553,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   scoped_ptr<Image> image(
       NewImage(input_resource->contents(), input_resource->url(),
                server_context_->filename_prefix(), image_options,
-               message_handler));
+               driver_->timer(), message_handler));
 
   Image::Type original_image_type = image->image_type();
   if (original_image_type == Image::IMAGE_UNKNOWN) {
@@ -701,7 +703,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       scoped_ptr<Image> low_image(
           NewImage(image->Contents(), input_resource->url(),
                    server_context_->filename_prefix(), image_options,
-                   message_handler));
+                   driver_->timer(), message_handler));
       low_image->SetTransformToLowRes();
       if (image->Contents().size() > low_image->Contents().size()) {
         // TODO(pulkitg): Add a some sort of guarantee on how small inline
@@ -781,7 +783,7 @@ void ImageRewriteFilter::ResizeLowQualityImage(
     scoped_ptr<Image> image(
         NewImage(low_image->Contents(), input_resource->url(),
                  server_context_->filename_prefix(), image_options,
-                 driver_->message_handler()));
+                 driver_->timer(), driver_->message_handler()));
     image->SetTransformToLowRes();
     ImageDim resized_dim;
     resized_dim.set_width(kDelayImageWidthForMobile);

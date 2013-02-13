@@ -147,6 +147,10 @@ const int64 RewriteOptions::kDefaultImageResolutionLimitBytes = 32*1024*1024;
 // use source image quality parameters.
 const int64 RewriteOptions::kDefaultImageWebpRecompressQuality = -1;
 
+// Timeout, in ms, for all WebP conversion attempts for each source
+// image. If negative, does not time out.
+const int64 RewriteOptions::kDefaultImageWebpTimeoutMs = -1;
+
 // Setting the maximum length for the cacheable response content to -1
 // indicates that there is no size limit.
 const int64 RewriteOptions::kDefaultMaxCacheableResponseContentLength = -1;
@@ -808,6 +812,9 @@ void RewriteOptions::AddProperties() {
   add_option(kDefaultImageWebpRecompressQuality,
              &RewriteOptions::image_webp_recompress_quality_, "iw",
              kImageWebpRecompressionQuality);
+  add_option(kDefaultImageWebpTimeoutMs,
+             &RewriteOptions::image_webp_timeout_ms_, "wt",
+             kImageWebpTimeoutMs);
   add_option(kDefaultMaxInlinedPreviewImagesIndex,
              &RewriteOptions::max_inlined_preview_images_index_, "mdii",
              kMaxInlinedPreviewImagesIndex);

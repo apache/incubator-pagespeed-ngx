@@ -72,6 +72,10 @@ DEFINE_int32(image_webp_recompress_quality,
              net_instaweb::RewriteOptions::kDefaultImageWebpRecompressQuality,
              "Quality parameter to use while recompressing the webp images."
              "This should be in range [0,100], 100 refers to best quality.");
+DEFINE_int64(image_webp_timeout_ms,
+             net_instaweb::RewriteOptions::kDefaultImageWebpTimeoutMs,
+             "The timeout, in milliseconds, for converting images to WebP "
+             "format. A negative value means 'no timeout'.");
 DEFINE_int32(
     image_limit_optimized_percent,
     net_instaweb::RewriteOptions::kDefaultImageLimitOptimizedPercent,
@@ -471,6 +475,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("image_webp_recompress_quality")) {
     options->set_image_webp_recompress_quality(
         FLAGS_image_webp_recompress_quality);
+  }
+  if (WasExplicitlySet("image_webp_timeout_ms")) {
+    options->set_image_webp_timeout_ms(
+        FLAGS_image_webp_timeout_ms);
   }
   if (WasExplicitlySet("image_limit_optimized_percent")) {
     options->set_image_limit_optimized_percent(

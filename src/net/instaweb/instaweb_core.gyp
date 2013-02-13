@@ -31,6 +31,7 @@
       'sources': [
         'util/atom.cc',
         'util/charset_util.cc',
+        'util/countdown_timer.cc',
         'util/fast_wildcard_group.cc',
         'util/file_message_handler.cc',
         'util/google_message_handler.cc',

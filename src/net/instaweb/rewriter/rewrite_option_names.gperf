@@ -74,6 +74,7 @@ struct OptionName {
 "ImageRetainColorSampling",              RewriteOptions::kImageRetainColorSampling
 "ImageRetainExifData",                   RewriteOptions::kImageRetainExifData
 "ImageWebpRecompressionQuality",         RewriteOptions::kImageWebpRecompressionQuality
+"ImageWebpTimeoutMs",                    RewriteOptions::kImageWebpTimeoutMs
 "ImplicitCacheTtlMs",                    RewriteOptions::kImplicitCacheTtlMs
 "InPlacePreemptiveRewriteCss",           RewriteOptions::kInPlacePreemptiveRewriteCss
 "InPlacePreemptiveRewriteCssImages",     RewriteOptions::kInPlacePreemptiveRewriteCssImages

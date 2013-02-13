@@ -2210,7 +2210,7 @@ void AppendBool(GoogleString* out, const char* name, bool val) {
 
 }  // namespace
 
-GoogleString RewriteDriver::ToString() {
+GoogleString RewriteDriver::ToString(bool show_detached_contexts) {
   GoogleString out;
   {
     ScopedMutex lock(rewrite_mutex());
@@ -2248,11 +2248,14 @@ GoogleString RewriteDriver::ToString() {
               "\n");
     StrAppend(&out, "detached_rewrites_.size(): ",
               IntegerToString(detached_rewrites_.size()), "\n");
-    for (RewriteContextSet::iterator p = detached_rewrites_.begin(),
-             e = detached_rewrites_.end(); p != e; ++p) {
-      RewriteContext* detached_rewrite = *p;
-      StrAppend(&out, "  Detached Rewrite:\n",
-                detached_rewrite->ToString("  "));
+
+    if (show_detached_contexts) {
+      for (RewriteContextSet::iterator p = detached_rewrites_.begin(),
+               e = detached_rewrites_.end(); p != e; ++p) {
+        RewriteContext* detached_rewrite = *p;
+        StrAppend(&out, "  Detached Rewrite:\n",
+                  detached_rewrite->ToString("  "));
+      }
     }
     StrAppend(&out, "rewrites_to_delete: ",
               IntegerToString(rewrites_to_delete_), "\n");
@@ -2288,12 +2291,13 @@ GoogleString RewriteDriver::ToString() {
   return out;
 }
 
-void RewriteDriver::PrintState() {
-  fprintf(stderr, "%s\n", ToString().c_str());
+void RewriteDriver::PrintState(bool show_detached_contexts) {
+  fprintf(stderr, "%s\n", ToString(show_detached_contexts).c_str());
 }
 
-void RewriteDriver::PrintStateToErrorLog() {
-  message_handler()->Message(kError, "%s", ToString().c_str());
+void RewriteDriver::PrintStateToErrorLog(bool show_detached_contexts) {
+  message_handler()->Message(kError, "%s",
+                             ToString(show_detached_contexts).c_str());
 }
 
 void RewriteDriver::InhibitEndElement(const HtmlElement* element) {

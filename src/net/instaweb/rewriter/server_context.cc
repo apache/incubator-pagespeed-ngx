@@ -263,7 +263,12 @@ ServerContext::~ServerContext() {
     for (RewriteDriverSet::iterator p = active_rewrite_drivers_.begin(),
              e = active_rewrite_drivers_.end(); p != e; ++p) {
       RewriteDriver* driver = *p;
-      driver->PrintStateToErrorLog();
+      // During load-test, print some detail about leaked drivers.  It
+      // appears that looking deep into the leaked driver's detached
+      // contexts crashes during shutdown, however, so disable that.
+      //
+      // TODO(jmarantz): investigate why that is so we can show the detail.
+      driver->PrintStateToErrorLog(false /* show_detached_contexts */);
     }
 #endif
   }

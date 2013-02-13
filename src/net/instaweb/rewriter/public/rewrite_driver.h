@@ -634,9 +634,9 @@ class RewriteDriver : public HtmlParse {
   void Cleanup();
 
   // Debugging routines to print out data about the driver.
-  GoogleString ToString();
-  void PrintState();            // For debugging.
-  void PrintStateToErrorLog();  // For logs.
+  GoogleString ToString(bool show_detached_contexts);
+  void PrintState(bool show_detached_contexts);            // For debugging.
+  void PrintStateToErrorLog(bool show_detached_contexts);  // For logs.
 
   // Wait for outstanding Rewrite to complete.  Once the rewrites are
   // complete they can be rendered.

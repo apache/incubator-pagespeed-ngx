@@ -61,6 +61,7 @@
 #include "webutil/css/value.h"
 
 namespace net_instaweb {
+class Timer;
 class UrlSegmentEncoder;
 
 typedef std::map<GoogleString, const spriter::Rect*> RectMap;
@@ -494,7 +495,7 @@ class Library : public spriter::ImageLibraryInterface {
   class Canvas : public spriter::ImageLibraryInterface::Canvas {
    public:
     Canvas(int width, int height, Library* lib,
-           const StringPiece& tmp_dir, MessageHandler* handler) :
+           const StringPiece& tmp_dir, Timer* timer, MessageHandler* handler) :
         spriter::ImageLibraryInterface::Canvas(lib),
         lib_(lib) {
       DCHECK(lib != NULL);
@@ -503,7 +504,7 @@ class Library : public spriter::ImageLibraryInterface {
       options->recompress_png = true;
       image_.reset(BlankImageWithOptions(width, height,
                                          net_instaweb::Image::IMAGE_PNG,
-                                         tmp_dir, handler, options));
+                                         tmp_dir, timer, handler, options));
     }
 
     virtual ~Canvas() { }
@@ -532,8 +533,9 @@ class Library : public spriter::ImageLibraryInterface {
   };
 
   Library(Delegate* delegate, const StringPiece& tmp_dir,
-          MessageHandler* handler)
-      : spriter::ImageLibraryInterface(delegate), handler_(handler) {
+          Timer* timer, MessageHandler* handler)
+      : spriter::ImageLibraryInterface(delegate), timer_(timer),
+        handler_(handler) {
     tmp_dir.CopyToString(&tmp_dir_);
   }
 
@@ -553,7 +555,7 @@ class Library : public spriter::ImageLibraryInterface {
   }
 
   virtual Canvas* CreateCanvas(int width, int height) {
-    return new Canvas(width, height, this, tmp_dir_, handler_);
+    return new Canvas(width, height, this, tmp_dir_, timer_, handler_);
   }
 
   // Does not take ownership of the resource.  Returns true if the image could
@@ -577,7 +579,7 @@ class Library : public spriter::ImageLibraryInterface {
 
     scoped_ptr<net_instaweb::Image> image(NewImage(
         resource->contents(), resource->url(), tmp_dir_, image_options,
-        handler_));
+        timer_, handler_));
 
     // We only handle PNGs and GIFs (which are converted to PNGs) for now.
     net_instaweb::Image::Type image_type = image->image_type();
@@ -617,6 +619,7 @@ class Library : public spriter::ImageLibraryInterface {
   // decoded raster) for quick access. Owns the Image objects.
   ImageMap fake_fs_;
   GoogleString tmp_dir_;
+  Timer* timer_;
   MessageHandler* handler_;
 };
 
@@ -753,6 +756,7 @@ class ImageCombineFilter::Context : public RewriteContext {
       : RewriteContext(NULL, parent, NULL),
         library_(NULL,
                  filter->driver()->server_context()->filename_prefix(),
+                 filter->driver()->timer(),
                  filter->driver()->message_handler()),
         filter_(filter) {
     MD5Hasher hasher;
@@ -764,6 +768,7 @@ class ImageCombineFilter::Context : public RewriteContext {
       : RewriteContext(driver, NULL, NULL),
         library_(NULL,
                  filter->driver()->server_context()->filename_prefix(),
+                 filter->driver()->timer(),
                  filter->driver()->message_handler()),
         filter_(filter) {
   }

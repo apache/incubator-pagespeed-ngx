@@ -62,7 +62,8 @@ Image* ImageTestBase::ImageFromString(
   image_options->progressive_jpeg = progressive;
   image_options->convert_png_to_jpeg =  output_type == Image::IMAGE_JPEG;
 
-  return NewImage(contents, name, GTestTempDir(), image_options, &handler_);
+  return NewImage(contents, name, GTestTempDir(), image_options,
+                  &timer_, &handler_);
 }
 
 Image* ImageTestBase::ReadFromFileWithOptions(
@@ -71,7 +72,8 @@ Image* ImageTestBase::ReadFromFileWithOptions(
   EXPECT_TRUE(file_system_.ReadFile(
       StrCat(GTestSrcDir(), kTestData, name).c_str(),
       contents, &handler_));
-  return NewImage(*contents, name, GTestTempDir(), options, &handler_);
+  return NewImage(*contents, name, GTestTempDir(), options,
+                  &timer_, &handler_);
 }
 
 Image* ImageTestBase::ReadImageFromFile(

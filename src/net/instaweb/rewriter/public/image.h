@@ -29,6 +29,7 @@
 namespace net_instaweb {
 class ImageDim;
 class MessageHandler;
+class Timer;
 struct ContentType;
 
 class Image {
@@ -82,6 +83,7 @@ class Image {
           retain_exif_data(false),
           jpeg_num_progressive_scans(
               RewriteOptions::kDefaultImageJpegNumProgressiveScans),
+          webp_conversion_timeout_ms(-1),
           conversions_attempted(0),
           preserve_lossless(false) {}
     // These options are set by the client to specify what type of
@@ -102,6 +104,7 @@ class Image {
     bool retain_color_sampling;
     bool retain_exif_data;
     int jpeg_num_progressive_scans;
+    int64 webp_conversion_timeout_ms;
 
     // These fields are set by the conversion routines to report
     // characteristics of the conversion process.
@@ -219,15 +222,6 @@ class Image {
 // intent is that an Image is created in a scoped fashion from an existing known
 // resource.
 //
-// The webp_preferred flag indicates that webp output should be produced rather
-// than jpg, unless webp creation fails for any reason (in which case jpg is
-// used as a fallback).  It has no effect if original_contents are a non-jpg or
-// non-webp image format.
-//
-// The jpeg_quality flag indicates what quality to use while recompressing jpeg
-// images. Quality value of 75 is used as default for web images by most of the
-// image libraries. Recommended setting for this is 85.
-//
 // The options should be set via Image::SetOptions after construction, before
 // the image is used for anything but determining its natural dimension size.
 //
@@ -237,12 +231,14 @@ Image* NewImage(const StringPiece& original_contents,
                 const GoogleString& url,
                 const StringPiece& file_prefix,
                 Image::CompressionOptions* options,
+                Timer* timer,
                 MessageHandler* handler);
 
 // Creates a blank image of the given dimensions and type.
 // For now, this is assumed to be an 8-bit 3-channel image.
 Image* BlankImageWithOptions(int width, int height, Image::Type type,
                              const StringPiece& tmp_dir,
+                             Timer* timer,
                              MessageHandler* handler,
                              Image::CompressionOptions* options);
 

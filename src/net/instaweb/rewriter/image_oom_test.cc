@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -92,7 +93,8 @@ TEST_F(ImageOomTest, BlankImage) {
   options->recompress_png = true;
   // Make sure creating gigantic image fails cleanly.
   ImagePtr giant(BlankImageWithOptions(10000, 10000, Image::IMAGE_PNG,
-                                       GTestTempDir(), &handler_, options));
+                                       GTestTempDir(), &timer_,
+                                       &handler_, options));
   EXPECT_FALSE(giant->EnsureLoaded(true));
 }
 

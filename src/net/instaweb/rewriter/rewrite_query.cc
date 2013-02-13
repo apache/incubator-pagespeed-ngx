@@ -79,6 +79,8 @@ static struct Int64QueryParam int64_query_params_[] = {
     &RewriteOptions::set_image_recompress_quality },
   { "ModPagespeedWebpRecompressionQuality",
     &RewriteOptions::set_image_webp_recompress_quality },
+  { "ModPagespeedWebpTimeoutMs",
+    &RewriteOptions::set_image_webp_timeout_ms },
 };
 
 template <class HeaderT>

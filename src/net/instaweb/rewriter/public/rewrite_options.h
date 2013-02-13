@@ -230,6 +230,7 @@ class RewriteOptions {
     kImageRetainColorSampling,
     kImageRetainExifData,
     kImageWebpRecompressionQuality,
+    kImageWebpTimeoutMs,
     kImplicitCacheTtlMs,
     kInPlaceResourceOptimization,
     kInPlaceWaitForOptimized,
@@ -543,6 +544,7 @@ class RewriteOptions {
   static const int64 kDefaultImageResolutionLimitBytes;
   static const int kDefaultImageJpegNumProgressiveScans;
   static const int64 kDefaultImageWebpRecompressQuality;
+  static const int64 kDefaultImageWebpTimeoutMs;
   static const int kDefaultDomainShardCount;
   static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;
   static const int64 kDefaultOverrideBlinkCacheTimeMs;
@@ -1580,6 +1582,13 @@ class RewriteOptions {
   }
   void set_image_webp_recompress_quality(int64 x) {
     set_option(x, &image_webp_recompress_quality_);
+  }
+
+  int64 image_webp_timeout_ms() const {
+    return image_webp_timeout_ms_.value();
+  }
+  void set_image_webp_timeout_ms(int64 x) {
+    set_option(x, &image_webp_timeout_ms_);
   }
 
   bool domain_rewrite_hyperlinks() const {
@@ -2675,6 +2684,7 @@ class RewriteOptions {
 
   // Options related to webp compression.
   Option<int64> image_webp_recompress_quality_;
+  Option<int64> image_webp_timeout_ms_;
 
   Option<int> image_max_rewrites_at_once_;
   Option<int> max_url_segment_size_;  // For http://a/b/c.d, use strlen("c.d").

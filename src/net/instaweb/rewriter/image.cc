@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/webp_optimizer.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/countdown_timer.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -164,9 +165,11 @@ class ImageImpl : public Image {
             const GoogleString& url,
             const StringPiece& file_prefix,
             CompressionOptions* options,
+            Timer* timer,
             MessageHandler* handler);
   ImageImpl(int width, int height, Type type,
-            const StringPiece& tmp_dir, MessageHandler* handler,
+            const StringPiece& tmp_dir,
+            Timer* timer, MessageHandler* handler,
             CompressionOptions* options);
 
   virtual void Dimensions(ImageDim* natural_dim);
@@ -260,6 +263,9 @@ class ImageImpl : public Image {
       const pagespeed::image_compression::PngReaderInterface& png_reader,
       const GoogleString& image_data);
 
+  static bool ContinueWebpConversion(
+      int percent,
+      void* user_data);
 
   // Determines whether we can attempt a libpagespeed conversion
   // without exceeding kMaxConversionAttempts. If so, increments the
@@ -295,6 +301,7 @@ class ImageImpl : public Image {
   ImageDim resized_dimensions_;
   scoped_ptr<Image::CompressionOptions> options_;
   bool low_quality_enabled_;
+  Timer* timer_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageImpl);
 };
@@ -321,6 +328,7 @@ ImageImpl::ImageImpl(const StringPiece& original_contents,
                      const GoogleString& url,
                      const StringPiece& file_prefix,
                      CompressionOptions* options,
+                     Timer* timer,
                      MessageHandler* handler)
     : Image(original_contents),
       file_prefix_(file_prefix.data(), file_prefix.size()),
@@ -330,14 +338,17 @@ ImageImpl::ImageImpl(const StringPiece& original_contents,
       changed_(false),
       url_(url),
       options_(options),
-      low_quality_enabled_(false) {}
+      low_quality_enabled_(false),
+      timer_(timer) {}
 
 Image* NewImage(const StringPiece& original_contents,
                 const GoogleString& url,
                 const StringPiece& file_prefix,
                 Image::CompressionOptions* options,
+                Timer* timer,
                 MessageHandler* handler) {
-  return new ImageImpl(original_contents, url, file_prefix, options, handler);
+  return new ImageImpl(original_contents, url, file_prefix, options,
+                       timer, handler);
 }
 
 Image::Image(Type type)
@@ -348,7 +359,8 @@ Image::Image(Type type)
       rewrite_attempted_(false) { }
 
 ImageImpl::ImageImpl(int width, int height, Type type,
-                     const StringPiece& tmp_dir, MessageHandler* handler,
+                     const StringPiece& tmp_dir,
+                     Timer* timer, MessageHandler* handler,
                      CompressionOptions* options)
     : Image(type),
       file_prefix_(tmp_dir.data(), tmp_dir.size()),
@@ -356,7 +368,8 @@ ImageImpl::ImageImpl(int width, int height, Type type,
       opencv_image_(NULL),
       opencv_load_possible_(true),
       changed_(false),
-      low_quality_enabled_(false) {
+      low_quality_enabled_(false),
+      timer_(timer) {
   options_.reset(options);
   dims_.set_width(width);
   dims_.set_height(height);
@@ -364,9 +377,9 @@ ImageImpl::ImageImpl(int width, int height, Type type,
 
 Image* BlankImageWithOptions(int width, int height, Image::Type type,
                              const StringPiece& tmp_dir,
-                             MessageHandler* handler,
+                             Timer* timer, MessageHandler* handler,
                              Image::CompressionOptions* options) {
-  return new ImageImpl(width, height, type, tmp_dir, handler, options);
+  return new ImageImpl(width, height, type, tmp_dir, timer, handler, options);
 }
 
 Image::~Image() {
@@ -1030,6 +1043,9 @@ bool ImageImpl::ConvertPngToWebp(
   bool ok = false;
   if ((options_->preferred_webp != Image::WEBP_NONE) &&
       (options_->webp_quality > 0)) {
+    CountdownTimer countdown_timer(timer_,
+                                   this,
+                                   options_->webp_conversion_timeout_ms);
     pagespeed::image_compression::WebpConfiguration webp_config;
     webp_config.quality = options_->webp_quality;
 
@@ -1038,6 +1054,8 @@ bool ImageImpl::ConvertPngToWebp(
     // whether this is the optimal value, and consider making it
     // tunable.
     webp_config.method = 3;
+    webp_config.progress_hook = ImageImpl::ContinueWebpConversion;
+    webp_config.user_data = &countdown_timer;
 
     bool is_opaque = false;
 
@@ -1055,7 +1073,11 @@ bool ImageImpl::ConvertPngToWebp(
       }
     }
 
-    if (!ok && !options_->preserve_lossless) {
+    if (!ok &&
+        !options_->preserve_lossless &&
+        countdown_timer.HaveTimeLeft()) {
+      // We failed or did not attempt lossless conversion, we have
+      // time left, and lossy conversion is allowed, so try it.
       webp_config.lossless = false;
       webp_config.alpha_quality = (options_->allow_webp_alpha ? 100 : 0);
       webp_config.alpha_compression = 1;  // compressed with WebP lossless
@@ -1075,6 +1097,20 @@ bool ImageImpl::ConvertPngToWebp(
     }
   }
   return ok;
+}
+
+bool ImageImpl::ContinueWebpConversion(
+      int percent,
+      void* user_data) {
+  CountdownTimer* countdown_timer =
+      static_cast<CountdownTimer*>(user_data);
+  if (!countdown_timer->HaveTimeLeft()) {
+    ImageImpl* impl = static_cast<ImageImpl*>(countdown_timer->user_data());
+    impl->handler_->Warning(impl->url_.c_str(), 0,
+                            "WebP conversion timed out!");
+    return false;
+  }
+  return true;
 }
 
 bool ImageImpl::OptimizePng(

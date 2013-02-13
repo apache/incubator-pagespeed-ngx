@@ -33,6 +33,7 @@
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -352,9 +353,6 @@ TEST_F(ImageTest, PngToWebpLaTest) {
       26548, true);
 }
 
-// TODO(vchudnov): Add PngToWebpLaFailToPngTest. This will require
-// creating/mocking an initial conversion failure.
-
 TEST_F(ImageTest, PngAlphaToWebpFailToPngTest) {
   // FYI: This test will also probably take very long to run under Valgrind.
   if (RunningOnValgrind()) {
@@ -463,6 +461,37 @@ TEST_F(ImageTest, PngLargeAlphaToWebpLaTest) {
   EXPECT_EQ(ContentType::kWebp, image->content_type()->type());
   EXPECT_EQ(1, options->conversions_attempted);
   // TODO(vchudnov): Check that the pixels match.
+}
+
+// Same image and settings that succeed in PngLargeAlphaToWebpTest,
+// should fail when using a very short timeout.
+TEST_F(ImageTest, PngLargeAlphaToWebpTimesOutToPngTest) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+  Image::CompressionOptions* options = new Image::CompressionOptions;
+  options->preferred_webp = Image::WEBP_LOSSY;
+  options->allow_webp_alpha = true;
+  options->convert_png_to_jpeg = true;
+  options->convert_jpeg_to_webp = true;
+  options->webp_quality = 75;
+  options->jpeg_quality = 85;
+  options->webp_conversion_timeout_ms = 1;
+  EXPECT_EQ(0, options->conversions_attempted);
+
+  GoogleString buffer;
+  ImagePtr image(ReadFromFileWithOptions(kRedbrush, &buffer, options));
+  timer_.SetTimeDeltaUs(1);  // When setting deadline
+  timer_.SetTimeDeltaUs(1);  // Before attempting webp lossless
+  timer_.SetTimeDeltaUs(     // During conversion
+      1000 * options->webp_conversion_timeout_ms + 1);
+  image->output_size();
+  EXPECT_EQ(ContentType::kPng, image->content_type()->type());
+
+  // One attempt for WebpP conversion, one attempt for the fall-back
+  // to PNG/JPEG.
+  EXPECT_EQ(2, options->conversions_attempted);
 }
 
 TEST_F(ImageTest, PngToJpegTest) {
@@ -631,7 +660,8 @@ TEST_F(ImageTest, UseJpegLossyIfInputQualityIsLowTest) {
   options = new Image::CompressionOptions();
   SetJpegRecompressionAndQuality(options);
   options->progressive_jpeg = true;
-  image.reset(NewImage("", "", GTestTempDir(), options, &handler_));
+  image.reset(NewImage("", "", GTestTempDir(), options,
+                       &timer_, &handler_));
   EXPECT_EQ(
       -1, JpegUtils::GetImageQualityFromImage(image->Contents().data(),
                                               image->Contents().size()));
@@ -772,7 +802,8 @@ TEST_F(ImageTest, DrawImage) {
   options = new Image::CompressionOptions();
   options->recompress_png = true;
   ImagePtr canvas(BlankImageWithOptions(width, height, Image::IMAGE_PNG,
-                                        GTestTempDir(), &handler_, options));
+                                        GTestTempDir(), &timer_,
+                                        &handler_, options));
   EXPECT_TRUE(canvas->DrawImage(image1.get(), 0, 0));
   EXPECT_TRUE(canvas->DrawImage(image2.get(), 0, image_dim1.height()));
   // The combined image should be bigger than either of the components, but

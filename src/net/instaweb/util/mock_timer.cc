@@ -29,7 +29,8 @@ const int64 MockTimer::kApr_5_2010_ms = 1270493486000LL;
 
 MockTimer::MockTimer(int64 time_ms)
     : time_us_(1000 * time_ms),
-      mutex_(new NullMutex) {
+      mutex_(new NullMutex),
+      next_delta_(0) {
 }
 
 MockTimer::~MockTimer() {
@@ -47,6 +48,9 @@ void MockTimer::SetTimeUs(int64 new_time_us) {
 
 int64 MockTimer::NowUs() const {
   ScopedMutex lock(mutex_.get());
+  if (next_delta_ < deltas_us_.size()) {
+    const_cast<MockTimer*>(this)->AdvanceUs(deltas_us_[next_delta_++]);
+  }
   return time_us_;
 }
 

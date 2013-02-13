@@ -344,6 +344,7 @@ class HtmlParse {
   // Provide timer to helping to report timing of each filter.  You must also
   // set_log_rewrite_timing(true) to turn on this reporting.
   void set_timer(Timer* timer) { timer_ = timer; }
+  Timer* timer() const { return timer_; }
   void set_log_rewrite_timing(bool x) { log_rewrite_timing_ = x; }
 
   // Adds a filter to be called during parsing as new events are added.
