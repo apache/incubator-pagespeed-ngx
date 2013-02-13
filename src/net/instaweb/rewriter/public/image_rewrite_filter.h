@@ -38,6 +38,7 @@ namespace net_instaweb {
 class CachedResult;
 class ContentType;
 class ImageDim;
+class Histogram;
 class ResourceContext;
 class RewriteContext;
 class RewriteDriver;
@@ -79,6 +80,12 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // TimedVariable denoting image squashing for mobile screen.
   static const char kImageRewritesSquashingForMobileScreen[];
+
+  // Histogram for delays of successful image rewrites.
+  static const char kImageRewriteLatencyOkMs[];
+
+  // Histogram for delays of failed image rewrites.
+  static const char kImageRewriteLatencyFailedMs[];
 
   // The property cache property name used to store URLs discovered when
   // image_inlining_identify_and_cache_without_rewriting() is set in the
@@ -275,6 +282,10 @@ class ImageRewriteFilter : public RewriteFilter {
   Variable* image_inline_count_;
   // # of images rewritten into WebP format.
   Variable* image_webp_rewrites_;
+  // Delay in microseconds of successful image rewrites.
+  Histogram* image_rewrite_latency_ok_ms_;
+  // Delay in microseconds of failed image rewrites.
+  Histogram* image_rewrite_latency_failed_ms_;
 
   ImageUrlEncoder encoder_;
 

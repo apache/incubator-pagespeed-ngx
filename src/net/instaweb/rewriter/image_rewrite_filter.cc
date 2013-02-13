@@ -26,6 +26,9 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -54,6 +57,7 @@
 #include "net/instaweb/util/public/statistics_work_bound.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/work_bound.h"
 
 namespace net_instaweb {
@@ -125,6 +129,10 @@ const char ImageRewriteFilter::kImageOngoingRewrites[] =
 const char kImageWebpRewrites[] = "image_webp_rewrites";
 const char ImageRewriteFilter::kInlinableImageUrlsPropertyName[] =
     "ImageRewriter-inlinable-urls";
+const char ImageRewriteFilter::kImageRewriteLatencyOkMs[] =
+    "image_rewrite_latency_ok_ms";
+const char ImageRewriteFilter::kImageRewriteLatencyFailedMs[] =
+    "image_rewrite_latency_failed_ms";
 
 const int kNotCriticalIndex = INT_MAX;
 
@@ -231,6 +239,11 @@ void ImageRewriteFilter::Context::Render() {
   if (is_css_) {
     rewrote_url = filter_->FinishRewriteCssImageUrl(css_image_inline_max_bytes_,
                                                     result, resource_slot);
+    if (rewrote_url) {
+      // Logging for HTML images is done in FinishRewriteImageUrl. For CSS
+      // images, we log here.
+      filter_->LogFilterModifiedContent();
+    }
   } else {
     if (!has_parent()) {
       // We use manual rendering for HTML, as we have to consider whether to
@@ -248,7 +261,6 @@ void ImageRewriteFilter::Context::Render() {
     // We wrote out the URL ourselves; don't let the default handling mess it up
     // (in particular replacing data: with out-of-line version)
     resource_slot->set_disable_rendering(true);
-    filter_->LogFilterModifiedContent();
   }
 }
 
@@ -297,8 +309,12 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
       stats->GetVariable(kImageRewriteTotalOriginalBytes);
   image_rewrite_uses_ = stats->GetVariable(kImageRewriteUses);
   image_inline_count_ = stats->GetVariable(kImageInline);
-  Variable* image_ongoing_rewrites = stats->GetVariable(kImageOngoingRewrites);
   image_webp_rewrites_ = stats->GetVariable(kImageWebpRewrites);
+  image_rewrite_latency_ok_ms_ = stats->GetHistogram(kImageRewriteLatencyOkMs);
+  image_rewrite_latency_failed_ms_ =
+      stats->GetHistogram(kImageRewriteLatencyFailedMs);
+
+  Variable* image_ongoing_rewrites = stats->GetVariable(kImageOngoingRewrites);
   work_bound_.reset(
       new StatisticsWorkBound(image_ongoing_rewrites,
                               driver->options()->image_max_rewrites_at_once()));
@@ -337,6 +353,8 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
   // We want image_ongoing_rewrites to be global even if we do per-vhost
   // stats, as it's used for a StatisticsWorkBound.
   statistics->AddGlobalVariable(kImageOngoingRewrites);
+  statistics->AddHistogram(kImageRewriteLatencyOkMs);
+  statistics->AddHistogram(kImageRewriteLatencyFailedMs);
 }
 
 void ImageRewriteFilter::StartDocumentImpl() {
@@ -559,6 +577,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
   }
   if (work_bound_->TryToWork()) {
     rewrite_result = kRewriteFailed;
+    int64 rewrite_time_start_ms = server_context_->timer()->NowMs();
+
     CachedResult* cached = result->EnsureCachedResultCreated();
     bool resized = ResizeImageIfNecessary(
         rewrite_context, input_resource->url(),
@@ -697,6 +717,14 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       }
     }
     work_bound_->WorkComplete();
+    if (rewrite_result == kRewriteOk) {
+      image_rewrite_latency_ok_ms_->Add(
+          server_context_->timer()->NowMs() - rewrite_time_start_ms);
+    } else {
+      image_rewrite_latency_failed_ms_->Add(
+          server_context_->timer()->NowMs() - rewrite_time_start_ms);
+    }
+
   } else {
     image_rewrites_dropped_due_to_load_->IncBy(1);
     GoogleString msg(StringPrintf("%s: Too busy to rewrite image.",
@@ -970,13 +998,15 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     const CachedResult* cached, const ResourceContext* resource_context,
     HtmlElement* element, HtmlElement::Attribute* src, int image_index,
     ResourceSlot* slot) {
-  const RewriteOptions* options = driver_->options();
-  bool rewrote_url = false;
-  bool image_inlined = false;
   GoogleString src_value(src->DecodedValueOrNull());
   if (src_value.empty()) {
     return false;
   }
+
+  const RewriteOptions* options = driver_->options();
+  bool rewrote_url = false;
+  bool image_inlined = false;
+  const bool is_critical_image = IsCriticalImage(src_value);
 
   // See if we have a data URL, and if so use it if the browser can handle it
   // TODO(jmaessen): get rid of a string copy here. Tricky because ->SetValue()
@@ -984,7 +1014,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   GoogleString data_url;
   if (driver_->device_properties()->SupportsImageInlining() &&
       (!driver_->options()->inline_only_critical_images() ||
-       IsCriticalImage(src_value)) &&
+       is_critical_image) &&
       TryInline(driver_->options()->ImageInlineMaxBytes(),
                 cached, slot, &data_url)) {
     const RewriteOptions* options = driver_->options();
@@ -1036,16 +1066,21 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     }
   }
 
-  if (!slot->disable_rendering() &&
-      driver_->device_properties()->SupportsImageInlining() && !image_inlined &&
-      options->NeedLowResImages() &&
-      cached->has_low_resolution_inlined_data() &&
-      IsCriticalImage(src_value) &&
+  bool low_res_src_inserted = false;
+  bool try_low_res_src_insertion = false;
+  if (options->NeedLowResImages() &&
       (element->keyword() == HtmlName::kImg ||
        element->keyword() == HtmlName::kInput)) {
+    try_low_res_src_insertion = true;
     int max_preview_image_index =
         driver_->options()->max_inlined_preview_images_index();
-    if (max_preview_image_index < 0 || image_index < max_preview_image_index) {
+    if (!image_inlined &&
+        !slot->disable_rendering() &&
+        is_critical_image &&
+        driver_->device_properties()->SupportsImageInlining() &&
+        cached->has_low_resolution_inlined_data() &&
+        (max_preview_image_index < 0 ||
+         image_index < max_preview_image_index)) {
       int image_type = cached->low_resolution_inlined_image_type();
       bool valid_image_type = Image::kImageTypeStart <= image_type &&
           Image::kImageTypeEnd >= image_type;
@@ -1056,6 +1091,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
                 BASE64, cached->low_resolution_inlined_data(), &data_url);
         driver_->AddAttribute(element, HtmlName::kPagespeedLowResSrc, data_url);
         driver_->increment_num_inline_preview_images();
+        low_res_src_inserted = true;
       } else {
         driver_->message_handler()->Message(kError,
                                             "Invalid low res image type: %d",
@@ -1063,6 +1099,16 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
       }
     }
   }
+  // TODO(bharathbhushan): Add logging for original resource size, input format,
+  // output format.
+  driver_->log_record()->LogImageRewriteActivity(
+      LoggingId(),
+      rewrote_url ? RewriterInfo::APPLIED_OK : RewriterInfo::NOT_APPLIED,
+      image_inlined,
+      is_critical_image,
+      try_low_res_src_insertion,
+      low_res_src_inserted,
+      cached->low_resolution_inlined_data().size());
   return rewrote_url;
 }
 

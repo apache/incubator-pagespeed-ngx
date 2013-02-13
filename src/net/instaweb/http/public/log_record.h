@@ -121,6 +121,16 @@ class LogRecord  {
   // Override SetBlinkInfoImpl if necessary.
   void SetBlinkInfo(const GoogleString& user_agent);
 
+  // Log a RewriterInfo for the image rewrite filter.
+  void LogImageRewriteActivity(
+      const char* id,
+      int status,
+      bool is_image_inlined,
+      bool is_critical_image,
+      bool try_low_res_src_insertion,
+      bool low_res_src_inserted,
+      int low_res_data_size);
+
   // Mutex-guarded log-writing operations. Derived classes should override
   // *Impl methods. Returns false if the log write attempt failed.
   bool WriteLog();

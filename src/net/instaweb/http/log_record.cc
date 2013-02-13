@@ -238,4 +238,31 @@ void LogRecord::SetRewriterInfoMaxSize(int x) {
   rewriter_info_max_size_ = x;
 }
 
+void LogRecord::LogImageRewriteActivity(
+    const char* id,
+    int status,
+    bool is_image_inlined,
+    bool is_critical_image,
+    bool try_low_res_src_insertion,
+    bool low_res_src_inserted,
+    int low_res_data_size) {
+  RewriterInfo* rewriter_info = NewRewriterInfo(id);
+  if (rewriter_info == NULL) {
+    return;
+  }
+  RewriteResourceInfo* rewrite_resource_info =
+      rewriter_info->mutable_rewrite_resource_info();
+  rewrite_resource_info->set_is_inlined(is_image_inlined);
+  rewrite_resource_info->set_is_critical(is_critical_image);
+  if (try_low_res_src_insertion) {
+    ImageRewriteResourceInfo* image_rewrite_resource_info =
+        rewriter_info->mutable_image_rewrite_resource_info();
+    image_rewrite_resource_info->set_is_low_res_src_inserted(
+        low_res_src_inserted);
+    image_rewrite_resource_info->set_low_res_size(low_res_data_size);
+  }
+  ScopedMutex lock(mutex_.get());
+  SetRewriterLoggingStatus(rewriter_info, status);
+}
+
 }  // namespace net_instaweb

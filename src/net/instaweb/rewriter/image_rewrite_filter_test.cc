@@ -28,6 +28,9 @@
 #include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_value.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -44,6 +47,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_url.h"
@@ -195,7 +199,18 @@ class ImageRewriteTest : public RewriteTestBase {
   void RewriteImage(const GoogleString& tag_string,
                     const ContentType& content_type) {
     GoogleString src_string;
+
+    Histogram* rewrite_latency_ok = statistics()->GetHistogram(
+        ImageRewriteFilter::kImageRewriteLatencyOkMs);
+    Histogram* rewrite_latency_failed = statistics()->GetHistogram(
+        ImageRewriteFilter::kImageRewriteLatencyFailedMs);
+    rewrite_latency_ok->Clear();
+    rewrite_latency_failed->Clear();
+
     RewriteImageFromHtml(tag_string, content_type, &src_string);
+
+    EXPECT_EQ(1, rewrite_latency_ok->Count());
+    EXPECT_EQ(0, rewrite_latency_failed->Count());
 
     const GoogleString expected_output =
         StrCat("<head/><body><", tag_string, " src=\"", src_string,
@@ -641,6 +656,13 @@ TEST_F(ImageRewriteTest, DataUrlTest) {
 }
 
 TEST_F(ImageRewriteTest, AddDimTest) {
+  Histogram* rewrite_latency_ok = statistics()->GetHistogram(
+      ImageRewriteFilter::kImageRewriteLatencyOkMs);
+  Histogram* rewrite_latency_failed = statistics()->GetHistogram(
+      ImageRewriteFilter::kImageRewriteLatencyFailedMs);
+  rewrite_latency_ok->Clear();
+  rewrite_latency_failed->Clear();
+
   // Make sure optimizable image isn't optimized, but
   // dimensions are inserted.
   options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
@@ -648,6 +670,8 @@ TEST_F(ImageRewriteTest, AddDimTest) {
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
                     "", " width=\"100\" height=\"100\"", false, false);
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, rewrite_latency_ok->Count());
+  EXPECT_EQ(1, rewrite_latency_failed->Count());
 
   // Force any image read to be a fetch.
   lru_cache()->Delete(StrCat(kTestDomain, kBikePngFile));
@@ -1149,6 +1173,21 @@ TEST_F(ImageRewriteTest, InlineTestWithoutOptimize) {
   // Without resize, it's not optimizable.
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", kChefDims, false, false);
+
+  ScopedMutex lock(rewrite_driver()->log_record()->mutex());
+  EXPECT_EQ(1, rewrite_driver()->log_record()->logging_info()
+            ->rewriter_info_size());
+  const RewriterInfo& rewriter_info = rewrite_driver()->log_record()
+      ->logging_info()->rewriter_info(0);
+  EXPECT_EQ("ic", rewriter_info.id());
+  EXPECT_EQ(RewriterInfo::NOT_APPLIED, rewriter_info.status());
+  EXPECT_TRUE(rewriter_info.has_rewrite_resource_info());
+  EXPECT_FALSE(rewriter_info.has_image_rewrite_resource_info());
+
+  const RewriteResourceInfo& resource_info =
+      rewriter_info.rewrite_resource_info();
+  EXPECT_FALSE(resource_info.is_inlined());
+  EXPECT_TRUE(resource_info.is_critical());
 }
 
 TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
@@ -1165,6 +1204,21 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
   // size information, which is now embedded in the image itself anyway.
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypePng,
                     kResizedDims, "", true, true);
+
+  ScopedMutex lock(rewrite_driver()->log_record()->mutex());
+  EXPECT_EQ(1, rewrite_driver()->log_record()->logging_info()
+            ->rewriter_info_size());
+  const RewriterInfo& rewriter_info = rewrite_driver()->log_record()
+      ->logging_info()->rewriter_info(0);
+  EXPECT_EQ("ic", rewriter_info.id());
+  EXPECT_EQ(RewriterInfo::APPLIED_OK, rewriter_info.status());
+  EXPECT_TRUE(rewriter_info.has_rewrite_resource_info());
+  EXPECT_FALSE(rewriter_info.has_image_rewrite_resource_info());
+
+  const RewriteResourceInfo& resource_info =
+      rewriter_info.rewrite_resource_info();
+  EXPECT_TRUE(resource_info.is_inlined());
+  EXPECT_TRUE(resource_info.is_critical());
 }
 
 TEST_F(ImageRewriteTest, DimensionStripAfterInline) {
@@ -1651,6 +1705,13 @@ TEST_F(ImageRewriteTest, InlinableCssImagesInsertedIntoPropertyCache) {
 }
 
 TEST_F(ImageRewriteTest, RewritesDroppedDueToNoSavingNoResizeTest) {
+  Histogram* rewrite_latency_ok = statistics()->GetHistogram(
+      ImageRewriteFilter::kImageRewriteLatencyOkMs);
+  Histogram* rewrite_latency_failed = statistics()->GetHistogram(
+      ImageRewriteFilter::kImageRewriteLatencyFailedMs);
+  rewrite_latency_ok->Clear();
+  rewrite_latency_failed->Clear();
+
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   rewrite_driver()->AddFilters();
   const char kOriginalDims[] = " width=65 height=70";
@@ -1659,6 +1720,8 @@ TEST_F(ImageRewriteTest, RewritesDroppedDueToNoSavingNoResizeTest) {
   Variable* rewrites_drops = statistics()->GetVariable(
       net_instaweb::ImageRewriteFilter::kImageRewritesDroppedNoSavingNoResize);
   EXPECT_EQ(1, rewrites_drops->Get());
+  EXPECT_EQ(0, rewrite_latency_ok->Count());
+  EXPECT_EQ(1, rewrite_latency_failed->Count());
 }
 
 TEST_F(ImageRewriteTest, RewritesDroppedDueToMIMETypeUnknownTest) {

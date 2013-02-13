@@ -17,6 +17,9 @@
 // Author: pulkitg@google.com (Pulkit Goyal)
 
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/delay_images_filter.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
@@ -26,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -171,6 +175,36 @@ class DelayImagesFilterTest : public RewriteTestBase {
     rewrite_driver()->SetUserAgent(user_agent);
     SetHtmlMimetype();  // Prevent insertion of CDATA tags to static JS.
   }
+
+  void ExpectLogRecord(int index, const RewriterInfo& expected_info) {
+    ScopedMutex lock(rewrite_driver()->log_record()->mutex());
+    ASSERT_LT(index, rewrite_driver()->log_record()->logging_info()
+              ->rewriter_info_size());
+    const RewriterInfo& actual_info = rewrite_driver()->log_record()
+        ->logging_info()->rewriter_info(index);
+    EXPECT_EQ(expected_info.id(), actual_info.id());
+    EXPECT_EQ(expected_info.status(), actual_info.status());
+    EXPECT_EQ(expected_info.has_rewrite_resource_info(),
+              actual_info.has_rewrite_resource_info());
+    EXPECT_EQ(expected_info.has_image_rewrite_resource_info(),
+              actual_info.has_image_rewrite_resource_info());
+    if (expected_info.has_rewrite_resource_info()) {
+      EXPECT_EQ(expected_info.rewrite_resource_info().is_inlined(),
+                actual_info.rewrite_resource_info().is_inlined());
+      EXPECT_EQ(expected_info.rewrite_resource_info().is_critical(),
+                actual_info.rewrite_resource_info().is_critical());
+    }
+    if (expected_info.has_image_rewrite_resource_info()) {
+      const ImageRewriteResourceInfo& expected_image_info =
+          expected_info.image_rewrite_resource_info();
+      const ImageRewriteResourceInfo& actual_image_info =
+          actual_info.image_rewrite_resource_info();
+      EXPECT_EQ(expected_image_info.is_low_res_src_inserted(),
+                actual_image_info.is_low_res_src_inserted());
+      EXPECT_GE(expected_image_info.low_res_size(),
+                actual_image_info.low_res_size());
+    }
+  }
 };
 
 TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
@@ -214,6 +248,34 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
   EXPECT_TRUE(Wildcard(output_html).Match(output_buffer_));
   EXPECT_TRUE(AppliedRewriterStringFromLog().find("di") !=
               GoogleString::npos);
+
+  {
+    ScopedMutex lock(rewrite_driver()->log_record()->mutex());
+    EXPECT_EQ(4, rewrite_driver()->log_record()->logging_info()
+              ->rewriter_info_size());
+  }
+
+  RewriterInfo expected1;
+  expected1.set_id("ic");
+  expected1.set_status(RewriterInfo::NOT_APPLIED);
+  RewriteResourceInfo& expected_resource1 =
+      *(expected1.mutable_rewrite_resource_info());
+  expected_resource1.set_is_inlined(false);
+  expected_resource1.set_is_critical(true);
+  ImageRewriteResourceInfo& expected_image1 =
+      *(expected1.mutable_image_rewrite_resource_info());
+  expected_image1.set_is_low_res_src_inserted(true);
+  expected_image1.set_low_res_size(916);
+
+  RewriterInfo expected2;
+  expected2.set_id("di");
+  expected2.set_status(RewriterInfo::APPLIED_OK);
+
+  ExpectLogRecord(0, expected1);
+  ExpectLogRecord(1, expected2);
+  expected1.mutable_image_rewrite_resource_info()->set_low_res_size(1072);
+  ExpectLogRecord(2, expected1);
+  ExpectLogRecord(3, expected2);
 }
 
 TEST_F(DelayImagesFilterTest, DelayImagesPreserveURLsOn) {
@@ -598,6 +660,26 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionWithSmallImage) {
   // (in image_rewrite_filter.cc).
   rewrite_driver()->SetUserAgent(kAndroidMobileUserAgent1);
   MatchOutputAndCountBytes(input_html, output_html);
+
+  ScopedMutex lock(rewrite_driver()->log_record()->mutex());
+  EXPECT_EQ(1, rewrite_driver()->log_record()->logging_info()
+            ->rewriter_info_size());
+  const RewriterInfo& rewriter_info = rewrite_driver()->log_record()
+      ->logging_info()->rewriter_info(0);
+  EXPECT_EQ("ic", rewriter_info.id());
+  EXPECT_EQ(RewriterInfo::NOT_APPLIED, rewriter_info.status());
+  EXPECT_TRUE(rewriter_info.has_rewrite_resource_info());
+  EXPECT_TRUE(rewriter_info.has_image_rewrite_resource_info());
+
+  const RewriteResourceInfo& resource_info =
+      rewriter_info.rewrite_resource_info();
+  EXPECT_FALSE(resource_info.is_inlined());
+  EXPECT_TRUE(resource_info.is_critical());
+
+  const ImageRewriteResourceInfo& image_info =
+      rewriter_info.image_rewrite_resource_info();
+  EXPECT_FALSE(image_info.is_low_res_src_inserted());
+  EXPECT_EQ(0, image_info.low_res_size());
 }
 
 TEST_F(DelayImagesFilterTest, ResizeForResolutionNegative) {

@@ -56,7 +56,7 @@ ConsoleStatisticsLogger::~ConsoleStatisticsLogger() {
 Histogram::~Histogram() {
 }
 
-NullHistogram::~NullHistogram() {
+CountHistogram::~CountHistogram() {
 }
 
 TimedVariable::~TimedVariable() {

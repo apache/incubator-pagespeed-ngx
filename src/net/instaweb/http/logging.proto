@@ -168,9 +168,30 @@ message FlushEarlyResourceInfo {
   optional bool in_head = 4;
 }
 
+// Information that applies to a resource.
+// Next id for RewriteResourceInfo: 4
+message RewriteResourceInfo {
+  // True if we inlined the resource.
+  optional bool is_inlined = 1 [ default = false ];
+  // True if the resource is critical.
+  optional bool is_critical = 2 [ default = false ];
+  // True if the resource has a pagespeed_no_defer attribute.
+  optional bool has_pagespeed_no_defer = 3 [ default = false ];
+}
+
+// Information related to each resource considered by the image rewrite filter.
+// Next id for ImageRewriteResourceInfo: 2
+message ImageRewriteResourceInfo {
+  // True if the low_res_src html attribute was inserted.
+  optional bool is_low_res_src_inserted = 1 [ default = false ];
+  // Size of the low resolution image. If it is zero, the low res image was not
+  // found.
+  optional int32 low_res_size = 2 [ default = 0 ];
+}
+
 // This proto stores information describing each rewriter's activity in a
 // request.
-// Next id for RewriterInfo: 4
+// Next id for RewriterInfo: 6
 message RewriterInfo {
   enum RewriterApplicationStatus {
     UNKNOWN_STATUS = 0;
@@ -184,6 +205,10 @@ message RewriterInfo {
   optional RewriterApplicationStatus status = 2;
   // Flush subresources specific information.
   optional FlushEarlyResourceInfo flush_early_resource_info = 3;
+  // Information about a resource.
+  optional RewriteResourceInfo rewrite_resource_info = 4;
+  // Image rewrite filter specific information.
+  optional ImageRewriteResourceInfo image_rewrite_resource_info = 5;
 }
 
 // This proto stores all information which we would like to log.
