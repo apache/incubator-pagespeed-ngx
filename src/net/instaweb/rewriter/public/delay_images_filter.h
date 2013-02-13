@@ -109,6 +109,10 @@ class DelayImagesFilter : public EmptyHtmlFilter {
   // this node just after element.
   void InsertDelayImagesInlineJS(HtmlElement* element);
 
+  // Returns a boolean for whether mobile aggressive rewriters are enabled and
+  // the current request is from a mobile user agent.
+  bool DisableInplaceLowResForMobile() const;
+
   RewriteDriver* driver_;
   StaticAssetManager* static_asset_manager_;
 

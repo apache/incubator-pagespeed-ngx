@@ -29,6 +29,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/semantic_type.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -61,10 +62,13 @@ DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
   // kDeferJavascript or kLazyloadImages is turned off or
   // enable_inline_preview_images_experimental is set to true. Otherwise, low
   // res images will be blocked by javascript or images which are not critical.
+  // If mobile aggressive rewriters are turned on, the low res images are NOT
+  // inlined in the image tag.
   insert_low_res_images_inplace_ =
-      is_experimental_enabled_ ||
-      !driver_->options()->Enabled(RewriteOptions::kDeferJavascript) ||
-      !driver_->options()->Enabled(RewriteOptions::kLazyloadImages);
+      !DisableInplaceLowResForMobile() &&
+          (is_experimental_enabled_ ||
+           !driver_->options()->Enabled(RewriteOptions::kDeferJavascript) ||
+           !driver_->options()->Enabled(RewriteOptions::kLazyloadImages));
 }
 
 DelayImagesFilter::~DelayImagesFilter() {}
@@ -150,18 +154,8 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
 }
 
 void DelayImagesFilter::InsertDelayImagesInlineJS(HtmlElement* element) {
-  // Generate javascript map for inline data urls where key is url and
-  // base64 encoded data url as its value. This map is added to the
-  // html at the end of last low res image.
-  GoogleString inline_data_script;
-  for (StringStringMap::iterator it = low_res_data_map_.begin();
-      it != low_res_data_map_.end(); ++it) {
-    StrAppend(&inline_data_script,
-              "\npagespeed.delayImagesInline.addLowResImages('",
-              it->first, "', '", it->second, "');");
-  }
-  low_res_data_map_.clear();
   GoogleString inline_script;
+  HtmlElement *current_element = element;
   // Check script for changing src to low res data url is inserted once.
   if (!low_res_map_inserted_) {
     inline_script = StrCat(
@@ -169,14 +163,36 @@ void DelayImagesFilter::InsertDelayImagesInlineJS(HtmlElement* element) {
             StaticAssetManager::kDelayImagesInlineJs,
             driver_->options()),
         kDelayImagesInlineSuffix);
+
+    HtmlElement* script_element =
+        driver_->NewElement(element, HtmlName::kScript);
+    driver_->InsertElementAfterElement(current_element, script_element);
+    static_asset_manager_->AddJsToElement(
+        inline_script, script_element, driver_);
+    current_element = script_element;
   }
-  StrAppend(&inline_script,
-            inline_data_script,
-            "\npagespeed.delayImagesInline.replaceWithLowRes();\n");
-  HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
-  driver_->InsertElementAfterElement(element, script);
-  static_asset_manager_->AddJsToElement(inline_script, script, driver_);
-  InsertDelayImagesJS(script);
+
+  // Generate javascript map for inline data urls where key is url and
+  // base64 encoded data url as its value. This map is added to the
+  // html at the end of last low res image.
+  GoogleString inline_data_script;
+  for (StringStringMap::iterator it = low_res_data_map_.begin();
+       it != low_res_data_map_.end(); ++it) {
+    inline_data_script = StrCat(
+        "\npagespeed.delayImagesInline.addLowResImages('",
+        it->first, "', '", it->second, "');");
+    StrAppend(&inline_data_script,
+              "\npagespeed.delayImagesInline.replaceWithLowRes();\n");
+    HtmlElement* low_res_element =
+        driver_->NewElement(current_element, HtmlName::kScript);
+    driver_->InsertElementAfterElement(current_element, low_res_element);
+    static_asset_manager_->AddJsToElement(
+        inline_data_script, low_res_element, driver_);
+    current_element = low_res_element;
+  }
+  low_res_data_map_.clear();
+
+  InsertDelayImagesJS(current_element);
 }
 
 void DelayImagesFilter::InsertDelayImagesJS(HtmlElement* element) {
@@ -198,6 +214,12 @@ void DelayImagesFilter::InsertDelayImagesJS(HtmlElement* element) {
   driver_->InsertElementAfterElement(element, script);
   static_asset_manager_->AddJsToElement(delay_images_js, script, driver_);
   low_res_map_inserted_ = true;
+}
+
+bool DelayImagesFilter::DisableInplaceLowResForMobile() const {
+  const RewriteOptions* options = driver_->options();
+  return options->enable_aggressive_rewriters_for_mobile() &&
+      driver_->device_properties()->IsMobileUserAgent();
 }
 
 }  // namespace net_instaweb
