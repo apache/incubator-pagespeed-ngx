@@ -582,4 +582,8 @@ void JsCombineFilter::NextCombination() {
   context_->Reset();
 }
 
+void JsCombineFilter::DetermineEnabled() {
+  set_is_enabled(!driver_->flushed_cached_html());
+}
+
 }  // namespace net_instaweb

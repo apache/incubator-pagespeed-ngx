@@ -90,4 +90,8 @@ void CssMoveToHeadFilter::EndElementImpl(HtmlElement* element) {
   }
 }
 
+void CssMoveToHeadFilter::DetermineEnabled() {
+  set_is_enabled(!driver_->flushed_cached_html());
+}
+
 }  // namespace net_instaweb

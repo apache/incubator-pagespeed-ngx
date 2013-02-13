@@ -1093,13 +1093,17 @@ void RewriteDriver::AddPostRenderFilters() {
   if (rewrite_options->Enabled(RewriteOptions::kSplitHtml)) {
     AddOwnedPostRenderFilter(new DeferIframeFilter(this));
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
-  } else if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript)) {
+  } else if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript) ||
+             rewrite_options->Enabled(RewriteOptions::kCacheHtml)) {
     // Defers javascript download and execution to post onload. This filter
     // should be applied before JsDisableFilter and JsDeferFilter.
     // kDeferIframe filter should never be turned on when either defer_js
     // or disable_js is enabled.
     AddOwnedPostRenderFilter(new DeferIframeFilter(this));
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
+    // Though we are adding JsDeferDisabledFilter here, if we are flushing
+    // cached html or we have flushed cached html, this filter will disable
+    // itself.
     AddOwnedPostRenderFilter(new JsDeferDisabledFilter(this));
     if (rewrite_options->Enabled(
         RewriteOptions::kDetectReflowWithDeferJavascript)) {

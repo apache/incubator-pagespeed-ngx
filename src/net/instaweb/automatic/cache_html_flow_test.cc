@@ -34,6 +34,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
+#include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -124,8 +125,9 @@ const char kHtmlInputWithMinifiableJs[] =
 const char kHtmlInputWithMinifiedJs[] =
     "<html>"
     "<head>"
-    "<script type=\"text/javascript\">var a=\"hello\";</script>"
-    "</head>"
+    "<script pagespeed_orig_type=\"text/javascript\" "
+    "type=\"text/psajs\" orig_index=\"0\">var a=\"hello\";</script>"
+    "%s</head>"
     "<body>\n"
     "<div id=\"header\"> This is the header </div>"
     "<div id=\"container\" class>"
@@ -141,7 +143,8 @@ const char kHtmlInputWithMinifiedJs[] =
           "</div>"
       "</div>"
     "</div>"
-    "</body></html>";
+    "</body></html>"
+    "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>";
 
 const char kHtmlInputWithExtraCommentAndNonCacheable[] =
     "<html>"
@@ -195,7 +198,7 @@ const char kHtmlInputForNoBlink[] =
     "<html><head></head><body></body></html>";
 
 const char kBlinkOutputCommon[] =
-    "<html><head></head><body>"
+    "<html><head>%s</head><body>"
     "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
     "url='%s?ModPagespeed=noscript'\" />"
     "<style><!--table,div,span,font,p{display:none} --></style>"
@@ -322,15 +325,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
  protected:
   static const int kHtmlCacheTimeSec = 5000;
 
-  CacheHtmlFlowTest()
-      : blink_output_partial_(StringPrintf(
-            kBlinkOutputCommon, kTestUrl, kTestUrl)),
-        blink_output_(StrCat(blink_output_partial_.c_str(),
-            kCookieScript, kBlinkOutputSuffix)) {
-    noblink_output_ = StrCat("<html><head></head><body>",
-                             StringPrintf(kNoScriptRedirectFormatter,
-                                          kNoBlinkUrl, kNoBlinkUrl),
-                             "</body></html>");
+  CacheHtmlFlowTest() {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
   }
 
@@ -342,6 +337,24 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   }
   static void TearDownTestCase() {
     RewriteOptions::Terminate();
+  }
+
+  void InitializeOutputs(RewriteOptions* options) {
+    blink_output_partial_ = StringPrintf(
+        kBlinkOutputCommon, GetJsDisableScriptSnippet(options).c_str(),
+        kTestUrl, kTestUrl);
+    blink_output_ = StrCat(blink_output_partial_.c_str(), kCookieScript,
+                           kBlinkOutputSuffix);
+    noblink_output_ = StrCat("<html><head></head><body>",
+                             StringPrintf(kNoScriptRedirectFormatter,
+                                          kNoBlinkUrl, kNoBlinkUrl),
+                             "</body></html>");
+  }
+
+  GoogleString GetJsDisableScriptSnippet(RewriteOptions* options) {
+    return StrCat("<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+                  JsDisableFilter::GetJsDisableScriptSnippet(options),
+                  "</script>");
   }
 
   virtual void SetUp() {
@@ -364,6 +377,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
 
     options_->Disallow("*blacklist*");
 
+    InitializeOutputs(options_.get());
     server_context()->ComputeSignature(options_.get());
 
     ProxyInterfaceTestBase::SetUp();
@@ -676,8 +690,8 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
   GoogleString noblink_output_;
   GoogleString noblink_output_with_lazy_load_;
   GoogleString blink_output_with_lazy_load_;
-  const GoogleString blink_output_partial_;
-  const GoogleString blink_output_;
+  GoogleString blink_output_partial_;
+  GoogleString blink_output_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CacheHtmlFlowTest);
@@ -692,7 +706,9 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheMiss) {
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
   EXPECT_EQ(1, values.size());
   VerifyNonCacheHtmlResponse(response_headers);
-  EXPECT_STREQ(kHtmlInputWithMinifiedJs, text);
+  EXPECT_STREQ(StringPrintf(
+      kHtmlInputWithMinifiedJs, GetJsDisableScriptSnippet(
+          options_.get()).c_str()), text);
 }
 
 TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheMissAndHit) {

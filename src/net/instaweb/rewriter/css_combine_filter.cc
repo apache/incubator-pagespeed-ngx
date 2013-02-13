@@ -452,4 +452,8 @@ RewriteContext* CssCombineFilter::MakeRewriteContext() {
   return MakeContext();
 }
 
+void CssCombineFilter::DetermineEnabled() {
+  set_is_enabled(!driver_->flushed_cached_html());
+}
+
 }  // namespace net_instaweb

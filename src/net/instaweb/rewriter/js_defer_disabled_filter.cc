@@ -39,7 +39,9 @@ JsDeferDisabledFilter::JsDeferDisabledFilter(RewriteDriver* driver)
 JsDeferDisabledFilter::~JsDeferDisabledFilter() { }
 
 void JsDeferDisabledFilter::DetermineEnabled() {
-  set_is_enabled(ShouldApply(rewrite_driver_));
+  set_is_enabled(ShouldApply(rewrite_driver_) &&
+                 !rewrite_driver_->flushing_cached_html() &&
+                 !rewrite_driver_->flushed_cached_html());
 }
 
 bool JsDeferDisabledFilter::ShouldApply(RewriteDriver* driver) {

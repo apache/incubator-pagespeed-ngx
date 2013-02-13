@@ -656,6 +656,11 @@ void CacheHtmlFlow::TriggerProxyFetch() {
     fetch = new AsyncFetchWithHeadersInhibited(base_fetch_,
                                                cache_html_computation_fetch);
   } else {
+    // PassThrough case.
+    // This flow has side effect that DeferJs is applied in passthrough case
+    // even when it is not explicitly enabled since it is added in
+    // RewriteDriver::AddPostRenderFilters() if RewriteOptions::kCacheHtml is
+    // enabled.
     fetch = base_fetch_;
   }
 
