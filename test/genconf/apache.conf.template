@@ -199,5 +199,5 @@ key_to_writer = {
 
 }$# @@__template_header@@
 
-${write_cfg(key_to_writer, config)
+${write_cfg(key_to_writer, config, key_to_node)
 }$

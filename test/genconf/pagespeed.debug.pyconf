@@ -408,7 +408,7 @@ locations: [
 #ifdef PER_VHOST_STATS
    {
        path: "/mod_pagespeed_global_statistics",
-       #ifdef apache
+#ifdef apache
        literal: {
            value: """
            Order allow,deny
@@ -416,7 +416,7 @@ locations: [
            Allow from 127.0.0.1
            SetHandler mod_pagespeed_global_statistics\n""",
        }
-       #endif
+#endif
    },
 #endif
 #ifdef STRESS
