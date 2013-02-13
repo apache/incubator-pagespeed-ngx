@@ -72,12 +72,14 @@ def ast_node_to_dict(node, dest, lookup, parent_key):
             lookup[parent_key] = dest
     elif isinstance(node, UnarySub):
         if parent_key in lookup:
-            raise Error("%s: already defined" % parent_key)
+            raise Error("line %d: %s: already defined" %
+                        (node.lineno,parent_key))
         lookup[parent_key] = '-' + repr(node.getChildren()[0].getChildren()[0])
         return '-' + repr(node.getChildren()[0].getChildren()[0])
     elif isinstance(node, Const):
         if parent_key in lookup:
-            raise Error("%s: already defined" % parent_key)
+            raise Error("line %d: %s: already defined" % (node.lineno,
+                                                          parent_key))
         lookup[parent_key] = node.getChildren()[0]
         return node.getChildren()[0]
     elif isinstance(node, Node):
@@ -86,7 +88,8 @@ def ast_node_to_dict(node, dest, lookup, parent_key):
             val = lookup[key_path]
             lookup[parent_key] = val
         else:
-            raise Error("Lookup failed for [%s]" % repr(node))
+            raise Error("line %d: Lookup failed for [%s]" % (node.lineno,
+                                                             repr(node)))
         return val
     return dest
 
@@ -101,7 +104,8 @@ def replace_comments(conditions, s):
 
     for condition in matched_conditions.split(","):
         if not matches_condition(condition, conditions):
-            return s.group(0)
+            # append '\n' too, to keep the line numbers intact
+            return "%s %s" % (s.group(0), "\n")
     return config
 
 # condition: something like 'cond1' or '!cond2'
@@ -142,9 +146,13 @@ def pre_process_ifdefs(cfg,conditions):
         if line.startswith("#ifdef"):
             condition = line[len("#ifdef"):].strip()
             ifstack.append(condition in conditions)
+            # keep the line numbers intact
+            ret.append("\n")
         if line.startswith("#ifndef "):
             condition = line[len("#ifndef"):].strip()
             ifstack.append(not condition in conditions)
+            # keep the line numbers intact
+            ret.append("\n")
         elif line.startswith("#endif"):
             if len(ifstack) == 1:
                 raise Error("unmatched #endif found in input")
@@ -152,6 +160,8 @@ def pre_process_ifdefs(cfg,conditions):
         else:
             if not False in ifstack:
                 ret.append(line)
+            else:
+                ret.append("\n")
 
     if not len(ifstack) == 1:
         raise Error("#ifdef not matched with an #endif")
