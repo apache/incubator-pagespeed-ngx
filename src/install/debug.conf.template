@@ -739,7 +739,7 @@ ModPagespeedUsePerVHostStatistics on
   # from embed_config_html.example.com.
 
   ModPagespeedLoadFromFile "http://embed_config_resources.example.com/" \
-      "/usr/local/apache2/htdocs/mod_pagespeed_example/"
+      "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/"
 </VirtualHost>
 
 # For testing Modpagespeed unplugged.
