@@ -47,7 +47,7 @@ done
 
 # Even worse with 2.2 worker we have to wait for processes to exit too.
 first=1
-while [ $(pgrep -c $httpd) -ne 0 ]; do
+while [ $(pgrep $httpd|wc -l) -ne 0 ]; do
   if [ $first -eq 1 ]; then
     /bin/echo -n "Waiting for $httpd to exit"
     first=0
