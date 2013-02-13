@@ -136,12 +136,9 @@ def pre_process_text(cfg, conditions, placeholders):
     re_placeholders = r'@@([^\s]*)@@'
     cfg = re.sub(re_placeholders, lambda x: \
                  fill_placeholders(placeholders, x), cfg)
-    #re_empty_line = r'^\s*$'
-    #cfg = re.sub(re_empty_line, '', cfg, flags=re.MULTILINE)
     return cfg
 
 def pre_process_ifdefs(cfg,conditions):
-    cfg = cfg.replace("\r","")
     lines = cfg.split("\n")
     ifstack = [True]
     ret = []
