@@ -143,25 +143,24 @@ def pre_process_ifdefs(cfg,conditions):
     ret = []
 
     for line in lines:
+        keep_line = False
         if line.startswith("#ifdef"):
             condition = line[len("#ifdef"):].strip()
             ifstack.append(condition in conditions)
-            # keep the line numbers intact
-            ret.append("\n")
-        if line.startswith("#ifndef "):
+        elif line.startswith("#ifndef "):
             condition = line[len("#ifndef"):].strip()
             ifstack.append(not condition in conditions)
-            # keep the line numbers intact
-            ret.append("\n")
         elif line.startswith("#endif"):
             if len(ifstack) == 1:
                 raise Error("unmatched #endif found in input")
             ifstack.pop()
         else:
-            if not False in ifstack:
-                ret.append(line)
-            else:
-                ret.append("\n")
+            keep_line = False not in ifstack
+
+        if keep_line:
+            ret.append(line)
+        else:
+            ret.append("")
 
     if not len(ifstack) == 1:
         raise Error("#ifdef not matched with an #endif")
