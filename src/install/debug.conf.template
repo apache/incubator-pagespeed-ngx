@@ -480,6 +480,59 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ProxyPassReverse / http://modpagespeed.com/
 </VirtualHost>
 
+# The following three VHosts are created for Issue 599.
+# Create three sites for a MapProxyDomain experiment. The sites are:
+# cdn: forwards requests to proxy.
+# proxy: runs MPS, and optimizes data from origin.
+# origin: a normal website that is potentially external to proxy.
+
+# The CDN in our example which simply forwards requests to the proxy.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName cdn.pm.example.com
+
+  # Point the docroot somewhere useless so that we know we're not fetching
+  # from the CDN's filesystem. Note that in particular we are not attempting to
+  # run CGI scripts.
+  DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/cgi"
+
+  # Tell mod_proxy that we need to use a proxy to reach our VirtualHost servers.
+  ProxyRemote * http://localhost:@@APACHE_SECONDARY_PORT@@
+  ProxyPass /external/ http://proxy.pm.example.com/external/
+  ProxyPassReverse /external/ http://proxy.pm.example.com/external/
+
+  # Unplugged so that it passes the .pagespeed. requests through to the proxy.
+  ModPagespeed unplugged
+</VirtualHost>
+
+# The proxy that runs MPS and can proxy data from origin. When the CDN
+# requests proxied data from the proxy the proxy knows to fetch it from the
+# origin server.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName proxy.pm.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/"
+  # The usual cache location so that it gets cleared for on_cache_flush tests.
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/"
+
+  # We have to fetch through our localhost proxy to get to our other vhosts.
+  ModPagespeedFetchProxy "localhost:@@APACHE_SECONDARY_PORT@@"
+
+  # Origin resources should be optimized and hosted on proxy/external but
+  # rewritten to cdn/external.
+  ModPagespeedDomain proxy.pm.example.com
+  ModPagespeedMapProxyDomain proxy.pm.example.com/external \
+                             origin.pm.example.com \
+                             cdn.pm.example.com/external
+  ModPagespeedRewriteLevel CoreFilters
+  ModPagespeedRewriteDeadlinePerFlushMs -1
+</VirtualHost>
+
+# The origin that serves the images to be proxied (Puzzle.jpg)
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName origin.pm.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@/mod_pagespeed_example/images"
+  ModPagespeed unplugged
+</VirtualHost>
+
 # Enable per-vhost statistics so that tests can be somewhat independent.
 ModPagespeedUsePerVHostStatistics on
 <Location /mod_pagespeed_global_statistics>

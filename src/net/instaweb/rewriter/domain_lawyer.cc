@@ -691,13 +691,49 @@ bool DomainLawyer::AddOriginDomainMapping(
 bool DomainLawyer::AddProxyDomainMapping(
     const StringPiece& proxy_domain_name,
     const StringPiece& origin_domain_name,
+    const StringPiece& to_domain_name,
     MessageHandler* handler) {
-  return MapDomainHelper(origin_domain_name, proxy_domain_name,
-                         &Domain::SetProxyDomain,
-                         false /* allow_wildcards */,
-                         true /* allow_map_to_https */,
-                         true /* authorize */,
-                         handler);
+  bool result;
+
+  if (to_domain_name.empty()) {
+    // 1. Rewrite from origin_domain to proxy_domain.
+    // 2. Set origin_domain->is_proxy = true.
+    // 3. Map origin from proxy_domain to origin_domain.
+    result = MapDomainHelper(origin_domain_name, proxy_domain_name,
+                             &Domain::SetProxyDomain,
+                             false /* allow_wildcards */,
+                             true /* allow_map_to_https */,
+                             true /* authorize */,
+                             handler);
+  } else {
+    // 1. Rewrite from origin_domain to to_domain.
+    // 2. Set origin_domain->is_proxy = true.
+    // 3. Map origin from to_domain to origin_domain.
+    result = MapDomainHelper(origin_domain_name, to_domain_name,
+                             &Domain::SetProxyDomain,
+                             false /* allow_wildcards */,
+                             true /* allow_map_to_https */,
+                             true /* authorize */,
+                             handler);
+    // 4. Rewrite from proxy_domain to to_domain. This way when the CDN asks us
+    // for resources on proxy_domain it knows to use the CDN domain for the
+    // cache key.
+    result &= MapDomainHelper(to_domain_name, proxy_domain_name,
+                              &Domain::SetRewriteDomain,
+                              false /* allow_wildcards */,
+                              true /* allow_map_to_https */,
+                              true /* authorize */,
+                              handler);
+    // 5. Map origin from proxy_domain to origin_domain. This tells the proxy
+    // how to fetch files from the origin for reconstruction.
+    result &= MapDomainHelper(origin_domain_name, proxy_domain_name,
+                              &Domain::SetOriginDomain,
+                              false /* allow wildcards */,
+                              true /* allow_map_to_https */,
+                              true /* authorize */,
+                              handler);
+  }
+  return result;
 }
 
 

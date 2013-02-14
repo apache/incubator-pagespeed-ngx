@@ -731,7 +731,7 @@ TEST_F(DomainLawyerTest, MapOriginDomain) {
 TEST_F(DomainLawyerTest, ProxyExternalResource) {
   GoogleUrl context_gurl("http://origin.com/index.html");
   ASSERT_TRUE(domain_lawyer_.AddProxyDomainMapping(
-      "http://origin.com/external", "http://external.com/static",
+      "http://origin.com/external", "http://external.com/static", "",
       &message_handler_));
 
   // Map proxy_this.png to a subdirectory in origin.com.
@@ -758,10 +758,60 @@ TEST_F(DomainLawyerTest, ProxyExternalResource) {
                           &mapped_domain_name, &resolved_request));
 }
 
+// Test a situation in which origin is proxied, optimized, and rewritten to a
+// CDN.
+TEST_F(DomainLawyerTest, ProxyExternalResourceToCDN) {
+  GoogleUrl context_gurl("http://proxy.com/index.html");
+  ASSERT_TRUE(domain_lawyer_.AddProxyDomainMapping(
+      "http://proxy.com/external",  // Proxies origin, optimizes.
+      "http://origin.com/static",   // Origin server, potentially external.
+      "http://cdn.com/external",    // CDN, caches responses.
+      &message_handler_));
+
+  GoogleUrl resolved_request;
+  GoogleString mapped_domain_name;
+
+  // We should rewrite origin.com/static to cdn.com/external
+  const char kUrlToProxy[] = "http://origin.com/static/images/proxy_this.png";
+  ASSERT_TRUE(MapRequest(context_gurl, kUrlToProxy, &mapped_domain_name,
+                         &resolved_request));
+  EXPECT_STREQ("http://cdn.com/external/images/proxy_this.png",
+               resolved_request.Spec());
+
+  // We should also rewrite proxy.com/external to cdn.com/external for looking
+  // up cached resources on proxy.com.
+  ASSERT_TRUE(
+      MapRequest(context_gurl,
+                         "http://proxy.com/external/images/proxy_this.png",
+                         &mapped_domain_name,
+                         &resolved_request));
+  EXPECT_STREQ("http://cdn.com/external/images/proxy_this.png",
+               resolved_request.Spec());
+
+  GoogleString external_url;
+
+  // Map CDN domain to Origin
+  ASSERT_TRUE(MapProxy("http://cdn.com/external/images/proxy_this.png",
+                        &external_url));
+  EXPECT_EQ(kUrlToProxy, external_url);
+
+  // Map Proxy domain to Origin
+  ASSERT_TRUE(MapProxy("http://proxy.com/external/images/proxy_this.png",
+                       &external_url));
+  EXPECT_EQ(kUrlToProxy, external_url);
+
+  // Just because we enabled proxying from origin.com/static, doesn't mean
+  // we want to proxy from origin.com/evil or origin.com.
+  EXPECT_FALSE(MapRequest(context_gurl, "http://origin.com/evil/gifar.gif",
+                          &mapped_domain_name, &resolved_request));
+  EXPECT_FALSE(MapRequest(context_gurl, "http://origin.com/gifar.gif",
+                          &mapped_domain_name, &resolved_request));
+}
+
 TEST_F(DomainLawyerTest, ProxyExternalResourceFromHttps) {
   GoogleUrl context_gurl("http://origin.com/index.html");
   ASSERT_TRUE(domain_lawyer_.AddProxyDomainMapping(
-      "http://origin.com/external", "https://external.com/static",
+      "http://origin.com/external", "https://external.com/static", NULL,
       &message_handler_));
 
   // Map proxy_this.png to a subdirectory in origin.com.
@@ -792,7 +842,7 @@ TEST_F(DomainLawyerTest, ProxyExternalResourceFromHttps) {
 TEST_F(DomainLawyerTest, ProxyAmbiguous) {
   GoogleUrl context_gurl("http://origin.com/index.html");
   ASSERT_TRUE(domain_lawyer_.AddProxyDomainMapping(
-      "http://proxy.com/origin", "http://origin.com", &message_handler_));
+      "http://proxy.com/origin", "http://origin.com", "",  &message_handler_));
 
   GoogleString out;
   EXPECT_TRUE(MapProxy("http://proxy.com/origin/x", &out));
@@ -800,7 +850,8 @@ TEST_F(DomainLawyerTest, ProxyAmbiguous) {
 
   // We don't allow proxy/proxy conflicts.
   EXPECT_FALSE(domain_lawyer_.AddProxyDomainMapping(
-      "http://proxy.com/origin", "http://ambiguous.com", &message_handler_));
+      "http://proxy.com/origin", "http://ambiguous.com", "",
+      &message_handler_));
 
   EXPECT_TRUE(MapProxy("http://proxy.com/origin/x", &out));
   EXPECT_STREQ("http://origin.com/x", out);
@@ -823,7 +874,7 @@ TEST_F(DomainLawyerTest, ProxyAmbiguous) {
 
   // It is also a bad idea to map the same origin to two different proxies.
   EXPECT_FALSE(domain_lawyer_.AddProxyDomainMapping(
-      "http://proxy2.com/origin", "http://origin.com", &message_handler_));
+      "http://proxy2.com/origin", "http://origin.com", "", &message_handler_));
 }
 
 TEST_F(DomainLawyerTest, Merge) {
@@ -834,7 +885,7 @@ TEST_F(DomainLawyerTest, Merge) {
   ASSERT_TRUE(AddOriginDomainMapping(
       "http://localhost:8080", "http://o1.com:8080"));
   ASSERT_TRUE(domain_lawyer_.AddProxyDomainMapping(
-      "http://proxy.com/origin", "http://origin.com", &message_handler_));
+      "http://proxy.com/origin", "http://origin.com", "", &message_handler_));
 
   // We'll also a mapping that will conflict, and one that won't.
   ASSERT_TRUE(AddOriginDomainMapping("http://dest1/", "http://common_src1"));

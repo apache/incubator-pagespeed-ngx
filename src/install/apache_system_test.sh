@@ -751,6 +751,60 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
         "wc -c" $EMBED_CONFIGURATION_CSS_LENGTH
   }
   on_cache_flush embed_image_config_post_flush
+
+  start_test ModPagespeedMapProxyDomain for CDN setup
+  # Test transitive ProxyMapDomain.  In this mode we have three hosts: cdn,
+  # proxy, and origin.  Proxy runs MPS and fetches resources from origin,
+  # optimizes them, and rewrites them to CDN for serving. The CDN is dumb and
+  # has no caching so simply proxies all requests to proxy.  Origin serves out
+  # images only.
+  echo "Rewrite HTML with reference to proxyable image on CDN."
+  URL="http://proxy.pm.example.com/transitive_proxy.html"
+  PDT_STATSDIR=$TEMPDIR/stats
+  rm -rf $PDT_STATSDIR
+  mkdir -p $PDT_STATSDIR
+  PDT_OLDSTATS=$PDT_STATSDIR/blocking_rewrite_stats.old
+  PDT_NEWSTATS=$PDT_STATSDIR/blocking_rewrite_stats.new
+  PDT_PROXY_STATS_URL=http://proxy.pm.example.com/mod_pagespeed_statistics?ModPagespeed=off
+  http_proxy=$SECONDARY_HOSTNAME \
+    $WGET_DUMP $PDT_PROXY_STATS_URL > $PDT_OLDSTATS
+
+  # The image should be proxied from origin, compressed, and rewritten to cdn.
+  http_proxy=$SECONDARY_HOSTNAME \
+    fetch_until -save -recursive $URL \
+    'fgrep -c cdn.pm.example.com/external/xPuzzle.jpg.pagespeed.ic' 1
+  check_file_size "${OUTDIR}/xPuzzle*" -lt 241260
+
+  # Make sure that the file was only rewritten once.
+  http_proxy=$SECONDARY_HOSTNAME \
+    $WGET_DUMP $PDT_PROXY_STATS_URL > $PDT_NEWSTATS
+  check_stat $PDT_OLDSTATS $PDT_NEWSTATS image_rewrites 1
+
+  # The js should be fetched locally and inlined.
+  http_proxy=$SECONDARY_HOSTNAME \
+    fetch_until -save -recursive $URL 'fgrep -c CDATA' 1
+
+  # Save the image URL so we can try to reconstruct it later.
+  PDT_IMG_URL=`egrep -o \".*xPuzzle.*\.pagespeed.*\" $FETCH_FILE | \
+    sed -e 's/\"//g'`
+
+  # This function will be called after the cache is flushed to test
+  # reconstruction.
+  function map_proxy_domain_cdn_reconstruct() {
+    rm -rf $PDT_STATSDIR
+    mkdir -p $PDT_STATSDIR
+    http_proxy=$SECONDARY_HOSTNAME \
+      $WGET_DUMP $PDT_PROXY_STATS_URL > $PDT_OLDSTATS
+    echo "Make sure we can reconstruct the image."
+    http_proxy=$SECONDARY_HOSTNAME \
+      check wget -O $TEMPDIR/tp.jpg $PDT_IMG_URL
+    check_file_size $TEMPDIR/tp.jpg -lt 241260
+    # Double check that we actually reconstructed.
+    http_proxy=$SECONDARY_HOSTNAME \
+      $WGET_DUMP $PDT_PROXY_STATS_URL > $PDT_NEWSTATS
+    check_stat $PDT_OLDSTATS $PDT_NEWSTATS image_rewrites 1
+  }
+  on_cache_flush map_proxy_domain_cdn_reconstruct
 fi
 
 # TODO(sligocki): start_test ModPagespeedMaxSegmentLength

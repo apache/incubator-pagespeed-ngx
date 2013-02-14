@@ -497,6 +497,7 @@ TEST_F(CssCombineFilterCustomOptions, CssCombineAcrossProxyDomains) {
   GoogleString proxy_target = StrCat(kTestDomain, "proxied/");
   ASSERT_TRUE(lawyer->AddProxyDomainMapping(proxy_target,
                                             kProxyMapDomain,
+                                            NULL,
                                             &message_handler_));
   CssCombineFilterTest::SetUp();
   SetHtmlMimetype();

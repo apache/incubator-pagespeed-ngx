@@ -1401,10 +1401,11 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum2) {
             options2->domain_lawyer()->ToString());
 
   scoped_ptr<RewriteOptions> options3(new RewriteOptions);
+  // This is an option 2 or 3, so test 2 here and 3 below.
   EXPECT_EQ(RewriteOptions::kOptionOk,
-            options3->ParseAndSetOptionFromEnum2(
+            options3->ParseAndSetOptionFromEnum3(
                 RewriteOptions::kMapProxyDomain,
-                "mainsite.com/static", "static.mainsite.com",
+                "mainsite.com/static", "static.mainsite.com", "",
                 &msg, &handler));
   EXPECT_EQ("http://mainsite.com/static/ Auth "
                 "ProxyOriginDomain:http://static.mainsite.com/\n"
@@ -1476,6 +1477,24 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromName3) {
                 "UrlValuedAttribute", "span", "src", "nonsense",
                 &msg, &handler));
   EXPECT_EQ("Invalid resource category: nonsense", msg);
+
+  // Domain lawyer.
+  scoped_ptr<RewriteOptions> options(new RewriteOptions);
+  EXPECT_EQ(RewriteOptions::kOptionOk,
+            options->ParseAndSetOptionFromEnum3(
+                RewriteOptions::kMapProxyDomain,
+                "myproxy.com/static",
+                "static.origin.com",
+                "myproxy.cdn.com",
+                &msg, &handler));
+  EXPECT_EQ("http://myproxy.cdn.com/ Auth "
+                "ProxyOriginDomain:http://static.origin.com/\n"
+            "http://myproxy.com/static/ Auth "
+                "RewriteDomain:http://myproxy.cdn.com/ "
+                "ProxyOriginDomain:http://static.origin.com/\n"
+            "http://static.origin.com/ Auth "
+                "ProxyDomain:http://myproxy.cdn.com/\n",
+            options->domain_lawyer()->ToString());
 }
 
 TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum3) {

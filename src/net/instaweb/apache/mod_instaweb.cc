@@ -1720,7 +1720,6 @@ static const char* ParseDirective3(
       InstawebContext::ServerContextFromServerRec(cmd->server);
   ApacheRewriteDriverFactory* factory = server_context->apache_factory();
   MessageHandler* handler = factory->message_handler();
-
   ApacheConfig* config;
   const char* ret = CmdOptions(cmd, data, &config);
   if (ret != NULL) {
@@ -1795,6 +1794,11 @@ static const char* ParseDirective3(
 #define APACHE_CONFIG_DIR_OPTION3(name, help) \
   AP_INIT_TAKE3(name, reinterpret_cast<const char*(*)()>(ParseDirective3), \
                 NULL, OR_ALL, help)
+
+// APACHE_CONFIG_OPTION for 2 or 3 arguments
+#define APACHE_CONFIG_DIR_OPTION23(name, help) \
+  AP_INIT_TAKE23(name, reinterpret_cast<const char*(*)()>(ParseDirective3), \
+                 NULL, OR_ALL, help)
 
 static const command_rec mod_pagespeed_filter_cmds[] = {
   // Special conditional op.
@@ -2067,8 +2071,8 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
         "custom_header_name custom_header_value"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapOriginDomain,
         "to_domain from_domain[,from_domain]*"),
-  APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapProxyDomain,
-        "proxy_domain origin_domain"),
+  APACHE_CONFIG_DIR_OPTION23(kModPagespeedMapProxyDomain,
+        "proxy_domain origin_domain [to_domain]"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedMapRewriteDomain,
         "to_domain from_domain[,from_domain]*"),
   APACHE_CONFIG_DIR_OPTION2(kModPagespeedShardDomain,
