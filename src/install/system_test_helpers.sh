@@ -254,7 +254,7 @@ function check() {
 function check_from() {
   text="$1"
   shift
-  echo "     check" "$@"
+  echo "     check_from" "$@"
   echo "$text" | "$@" || handle_failure "$text"
 }
 
@@ -269,7 +269,7 @@ function check_not() {
 function check_not_from() {
   text="$1"
   shift
-  echo "     check_not" "$@"
+  echo "     check_not_from" "$@"
   echo "$text" | "$@" && handle_failure "$text"
 }
 
