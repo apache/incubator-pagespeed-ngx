@@ -95,9 +95,9 @@ def write_pagespeed_open(ps, level):
     # pagespeed_if is not implemented yet for nginx.
     # this code isn't wired up but left in as an example
     for key in ps:
-    	if key.lower() in map(str.lower,pagespeed_unsupported):
-	   warnings.warn("%s not supported, skipping" % key)
-	   continue
+        if key.lower() in map(str.lower,pagespeed_unsupported):
+           warnings.warn("%s not supported, skipping" % key)
+           continue
         val = ps[key]
         # In pagespeed.debug.conf, the same pagespeed directive can occur
         # multiple times. Our pyconf represents that as an array, which we
