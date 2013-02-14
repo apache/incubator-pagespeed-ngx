@@ -18,6 +18,9 @@ ${
 
 import string
 from util import *
+import warnings
+
+set_writer(emit)
 
 pagespeed_unsupported = [
     "CacheFlushFileName",
@@ -55,8 +58,6 @@ pagespeed_unsupported = [
     "UsePerVHostStatistics",
 ]
 
-set_writer(emit)
-set_pagespeed_unsupported(pagespeed_unsupported)
 
 def write_servers_open_item(server, level):
     emit_indent("server{\n", level)
@@ -94,6 +95,9 @@ def write_pagespeed_open(ps, level):
     # pagespeed_if is not implemented yet for nginx.
     # this code isn't wired up but left in as an example
     for key in ps:
+    	if key.lower() in map(str.lower,pagespeed_unsupported):
+	   warnings.warn("%s not supported, skipping" % key)
+	   continue
         val = ps[key]
         # In pagespeed.debug.conf, the same pagespeed directive can occur
         # multiple times. Our pyconf represents that as an array, which we
