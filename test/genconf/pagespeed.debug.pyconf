@@ -466,7 +466,7 @@ servers: [
 #MEMCACHED  MemcachedServers: "localhost:6765",
 
             # TODO(oschaaf): uncomment after this is ported to nginx
-            #!nginx CacheFlushFilename: "cache.flush",
+            CacheFlushFilename: "cache.flush",
 
             # If you uncomment this, the test will fail, proving we can disable
             # cache-flush polling.
@@ -854,14 +854,10 @@ servers: [
             AvoidRenamingIntrospectiveJavascript: "true",
             BeaconUrl: "\"http://example.com/beacon\"",
             BlockingRewriteKey: "test",
-
-            #!nginx CacheFlushFilename: "/tmp/cache.flush",
-            #!nginx CacheFlushPollInterevalSec: 10,
-
+            CacheFlushFilename: "/tmp/cache.flush",
+            CacheFlushPollIntervalSec: 10,
             ClientDomainRewrite: "false",
-
-            #!nginx CollectRefererStatistics: "false",
-
+            CollectRefererStatistics: "false",
             CombineAcrossPaths: "true",
             CssFlattenMaxBytes: 2000,
             CssImageInlineMaxBytes: 2000,
@@ -876,49 +872,39 @@ servers: [
             ExperimentSpec: "\"id=8;percent=10\"",
             ExperimentVariable: 3,
             FetchProxy: "localhost:4321",
-
-            #!nginx FetchWithGzip: "on",
-            #!nginx FetcherTimeOutMs: 1000,
-
+            FetchWithGzip: "on",
+            FetcherTimeOutMs: 1000,
             FileCacheCleanIntervalMs: 3600000,
             FileCacheInodeLimit: 10000,
             FileCachePath: "/tmp/cache/",
             FileCacheSizeKb: 1000,
-#ifndef nginx
             ForbidAllDisabledFilters: "true",
             ForbidFilters: "rewrite_images",
             ForceCaching: "off",
             HashRefererStatistics: "false",
             ImageInlineMaxBytes: 2000,
-#endif
             ImageLimitOptimizedPercent: 80,
             ImageLimitResizeAreaPercent: 80,
             ImageMaxRewritesAtOnce: 5,
             ImageRecompressionQuality: 75,
             ImagePreserveURLs: "false",
             ImageWebpRecompressionQuality: 85,
-
-            #!nginx ImgMaxRewritesAtOnce: 5,
-
+            ImgMaxRewritesAtOnce: 5,
             ## TODO(oschaaf): not availiable in r2338
             ##InPlaceResourceOptimization: "on",
             IncreaseSpeedTracking: "true",
-
-            #!nginx InstallCrashHandler: "off",
-
+            InstallCrashHandler: "off",
             JpegRecompressionQuality: 80,
             JsInlineMaxBytes: 2000,
             JsOutlineMinBytes: 2000,
             JsPreserveURLS: "off",
             LRUCacheByteLimit: 1000,
             LRUCacheKbPerProcess: 1,
- #ifndef nginx
             ListOutstandingUrlsOnError: "on",
             LoadFromFile: "http://example.com/ /var/html/example/",
             LoadFromFileMatch: "\"^http://example.com/\" /var/html/example/",
             LoadFromFileRule: "allow /var/html/example/",
             LoadFromFileRuleMatch: "Disallow \.php.css$",
- #endif
             LogRewriteTiming: "false",
             LowercaseHtmlNames: "true",
             MapOriginDomain: "example.com localhost",
@@ -928,17 +914,13 @@ servers: [
             MaxSegmentLength: 100,
             MemcachedServers: "localhost:6765",
             MemcachedThreads: 1,
-
-            #!nginx MessageBufferSize: 100,
-
+            MessageBufferSize: 100,
             MinImageSizeLowResolutionBytes: 2000,
             ModifyCachingHeaders: "true",
-#ifndef nginx
             NumExpensiveRewriteThreads: 2,
             NumRewriteThreads: 4,
             RateLimitBackgroundFetches: "true",
             RefererStatisticsOutputLevel: "simple",
-#endif
             ReportUnloadTime: "true",
             RespectVary: "true",
             RespectXForwardedProto: "off",
@@ -948,7 +930,6 @@ servers: [
             RunExperiment: "true",
             ShardDomain: "example.com 1.example.com,2.example.com",
             SharedMemoryLocks: "true",
-#ifndef nginx
             SlurpDirectory: "/tmp/slurp/",
             SlurpFlushLimit: 5,
             SlurpReadOnly: "true",
@@ -958,15 +939,10 @@ servers: [
             StatisticsLoggingChartsJS: "\"example.com/js.js\"",
             StatisticsLoggingFile: "\"@@MOD_PAGESPEED_STATS_LOG@@\"",
             StatisticsLoggingIntervalMs: 3000,
-#endif
             SupportNoScriptEnabled: "true",
-
-            #!nginx TestProxy: "off",
-
+            TestProxy: "off",
             UrlValuedAttribute: "span src Hyperlink",
-
-            #!nginx UsePerVHostStatistics: "on",
-
+            UsePerVHostStatistics: "on",
             XHeaderValue: "\"test\"",
 
         }
