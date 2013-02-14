@@ -85,6 +85,7 @@ class RewriteOptions {
     kCombineCss,
     kCombineHeads,
     kCombineJavascript,
+    kComputeCriticalCss,
     kComputeVisibleText,
     kConvertGifToPng,
     kConvertJpegToProgressive,
@@ -131,6 +132,7 @@ class RewriteOptions {
     kOutlineCss,
     kOutlineJavascript,
     kPedantic,
+    kPrioritizeCriticalCss,
     kPrioritizeVisibleContent,
     kProcessBlinkInBackground,
     kRecompressJpeg,
@@ -380,19 +382,20 @@ class RewriteOptions {
   // options->set_default.
   static const int kOptionsVersion = 13;
 
+  static const char kCacheExtenderId[];
+  static const char kCollectFlushEarlyContentFilterId[];
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
   static const char kCssImportFlattenerId[];
   static const char kCssInlineId[];
-  static const char kCacheExtenderId[];
   static const char kImageCombineId[];
   static const char kImageCompressionId[];
   static const char kInPlaceRewriteId[];
   static const char kJavascriptCombinerId[];
   static const char kJavascriptInlineId[];
-  static const char kLocalStorageCacheId[];
   static const char kJavascriptMinId[];
-  static const char kCollectFlushEarlyContentFilterId[];
+  static const char kLocalStorageCacheId[];
+  static const char kPrioritizeCriticalCssId[];
 
   static const char kPanelCommentPrefix[];
 

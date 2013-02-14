@@ -34,6 +34,7 @@ namespace net_instaweb {
 class AbstractClientState;
 class AbstractMutex;
 class BlinkCriticalLineDataFinder;
+class CriticalCssFinder;
 class CriticalImagesFinder;
 class FileSystem;
 class FilenameEncoder;
@@ -307,6 +308,7 @@ class RewriteDriverFactory {
   // result.
   virtual ServerContext* NewServerContext();
 
+  virtual CriticalCssFinder* DefaultCriticalCssFinder();
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
 
   // Default implementation returns NULL.

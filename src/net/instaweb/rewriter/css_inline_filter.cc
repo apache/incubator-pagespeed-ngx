@@ -256,7 +256,14 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
         }
       }
     }
-
+    if (driver_->options()->Enabled(RewriteOptions::kComputeCriticalCss)) {
+      // If compute_critical_css is enabled, add 'href' attribute to the style
+      // node.
+      // Computing critical css needs this url to store the critical
+      // css in the map.
+      driver_->AddAttribute(style_element, HtmlName::kDataPagespeedHref,
+                            resource_url.Spec());
+    }
     // Add the local storage cache attributes if it is enabled.
     LocalStorageCacheFilter::AddLscAttributes(resource_url.Spec(), cached,
                                               false /* has_url */,

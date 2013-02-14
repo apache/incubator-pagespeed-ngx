@@ -225,15 +225,15 @@ class ServerContext {
     owned_cache_.reset(owned_cache);
   }
 
-  CriticalImagesFinder* critical_images_finder() const {
-    return critical_images_finder_.get();
-  }
-  void set_critical_images_finder(CriticalImagesFinder* finder);
-
   CriticalCssFinder* critical_css_finder() const {
     return critical_css_finder_.get();
   }
   void set_critical_css_finder(CriticalCssFinder* finder);
+
+  CriticalImagesFinder* critical_images_finder() const {
+    return critical_images_finder_.get();
+  }
+  void set_critical_images_finder(CriticalImagesFinder* finder);
 
   FlushEarlyInfoFinder* flush_early_info_finder() const {
     return flush_early_info_finder_.get();

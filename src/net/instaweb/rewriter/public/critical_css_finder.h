@@ -48,8 +48,6 @@ class CriticalCssFinder {
   virtual void ComputeCriticalCss(StringPiece url, RewriteDriver* driver) = 0;
 
   // Copy |critical_css_map| into property cache. Returns true on success.
-  //     Note: This base implementation does not call WriteCohort. This should
-  //     be called in the subclass if the cohort is not written elsewhere.
   virtual bool UpdateCache(RewriteDriver* driver,
                            const StringStringMap& critical_css_map);
 

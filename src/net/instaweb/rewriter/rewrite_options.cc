@@ -54,6 +54,7 @@ const char RewriteOptions::kJavascriptInlineId[] = "ji";
 const char RewriteOptions::kLocalStorageCacheId[] = "ls";
 const char RewriteOptions::kCollectFlushEarlyContentFilterId[] = "fe";
 const char RewriteOptions::kPanelCommentPrefix[] = "GooglePanel";
+const char RewriteOptions::kPrioritizeCriticalCssId[] = "pr";
 
 // Sets limit for buffering html in blink secondary fetch to 10MB default.
 const int64 RewriteOptions::kDefaultBlinkMaxHtmlSizeRewritable =
@@ -278,6 +279,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
   RewriteOptions::kExperimentSpdy,
   RewriteOptions::kExplicitCloseTags,
   RewriteOptions::kLazyloadImages,
+  RewriteOptions::kPrioritizeCriticalCss,
   RewriteOptions::kProcessBlinkInBackground,  // internal,
                                               // enabled conditionally
   RewriteOptions::kServeNonCacheableNonCritical,  // internal,
@@ -337,6 +339,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "ch", "Combine Heads" },
   { RewriteOptions::kCombineJavascript,
     RewriteOptions::kJavascriptCombinerId, "Combine Javascript" },
+  { RewriteOptions::kComputeCriticalCss,
+    "bc", "Background Compute Critical css" },
   { RewriteOptions::kComputeVisibleText,
     "bp", "Computes visible text" },
   { RewriteOptions::kConvertGifToPng,
@@ -429,6 +433,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "jo", "Outline Javascript" },
   { RewriteOptions::kPedantic,
     "pc", "Add pedantic types" },
+  { RewriteOptions::kPrioritizeCriticalCss,
+    RewriteOptions::kPrioritizeCriticalCssId, "Prioritize Critical Css" },
   { RewriteOptions::kPrioritizeVisibleContent,
     "pv", "Prioritize Visible Content" },
   { RewriteOptions::kProcessBlinkInBackground,

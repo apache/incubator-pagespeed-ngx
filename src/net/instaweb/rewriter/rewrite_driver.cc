@@ -64,6 +64,7 @@
 #include "net/instaweb/rewriter/public/css_filter.h"
 #include "net/instaweb/rewriter/public/css_inline_filter.h"
 #include "net/instaweb/rewriter/public/css_inline_import_to_link_filter.h"
+#include "net/instaweb/rewriter/public/critical_css_filter.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
@@ -144,6 +145,7 @@
 
 namespace net_instaweb {
 
+class CriticalCssFinder;
 class RewriteDriverPool;
 
 namespace {
@@ -925,7 +927,15 @@ void RewriteDriver::AddPreRenderFilters() {
     AppendOwnedPreRenderFilter(new CssInlineImportToLinkFilter(this,
                                                                statistics()));
   }
-  if (rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
+  if (rewrite_options->Enabled(RewriteOptions::kPrioritizeCriticalCss)) {
+    // If we're inlining styles that resolved initially, skip outlining
+    // css since that works against this.
+    // TODO(slamm): Figure out if move_css_to_head needs to be disabled.
+    CriticalCssFinder* finder = server_context()->critical_css_finder();
+    if (finder != NULL) {
+      AppendOwnedPreRenderFilter(new CriticalCssFilter(this, finder));
+    }
+  } else if (rewrite_options->Enabled(RewriteOptions::kOutlineCss)) {
     // Cut out inlined styles and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
     CHECK(server_context_ != NULL);

@@ -300,6 +300,10 @@ StaticAssetManager* RewriteDriverFactory::DefaultStaticAssetManager() {
   return new StaticAssetManager(url_namer(), hasher(), message_handler());
 }
 
+CriticalCssFinder* RewriteDriverFactory::DefaultCriticalCssFinder() {
+  return NULL;
+}
+
 CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
   return new BeaconCriticalImagesFinder(statistics());
 }
@@ -429,6 +433,7 @@ void RewriteDriverFactory::InitServerContext(
   resource_manager->set_message_handler(message_handler());
   resource_manager->set_static_asset_manager(static_asset_manager());
   PropertyCache* pcache = resource_manager->page_property_cache();
+  resource_manager->set_critical_css_finder(DefaultCriticalCssFinder());
   resource_manager->set_critical_images_finder(DefaultCriticalImagesFinder());
   resource_manager->set_flush_early_info_finder(DefaultFlushEarlyInfoFinder());
   resource_manager->set_blink_critical_line_data_finder(
