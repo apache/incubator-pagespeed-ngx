@@ -520,6 +520,7 @@ bool factory_deleted = false;
 
 void ps_cleanup_srv_conf(void* data) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(data);
+
   // destroy the factory on the first call, causing all worker threads
   // to be shut down when we destroy any proxy_fetch_factories. This
   // will prevent any queued callbacks to destroyed proxy fetch factories
@@ -1894,6 +1895,7 @@ ngx_http_module_t ps_module = {
 ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
+
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
   ngx_http_core_srv_conf_t** cscfp = static_cast<ngx_http_core_srv_conf_t**>(
@@ -1915,7 +1917,7 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
     // in the first place, as suppressing them this way may interfere
     // with other modules that actually are interested in these signals
     ps_ignore_sigpipe();
-    cfg_m->driver_factory->RootInit();
+    cfg_m->driver_factory->RootInit(cycle->log);
   } else {
     delete cfg_m->driver_factory;
     cfg_m->driver_factory = NULL;
@@ -1935,7 +1937,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
 
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below
-  cfg_m->driver_factory->ChildInit();
+  cfg_m->driver_factory->ChildInit(cycle->log);
 
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
