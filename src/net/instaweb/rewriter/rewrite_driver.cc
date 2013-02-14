@@ -758,6 +758,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   JavascriptFilter::InitStats(statistics);
   JsCombineFilter::InitStats(statistics);
   MetaTagFilter::InitStats(statistics);
+  RewriteContext::InitStats(statistics);
   UrlLeftTrimFilter::InitStats(statistics);
 }
 
@@ -1315,6 +1316,13 @@ bool RewriteDriver::DecodeOutputResourceNameHelper(
     RewriteFilter** filter_out,
     GoogleString* url_base,
     StringVector* urls) const {
+  // In forward proxy in preserve-URLs mode we want to fetch .pagespeed.
+  // resource, i.e. do not decode and and do not fetch original (especially
+  // that encoded one will never be cached internally).
+  if (options_.get() != NULL && options_->oblivious_pagespeed_urls()) {
+    return false;
+  }
+
   // First, we can't handle anything that's not a valid URL nor is named
   // properly as our resource.
   if (!gurl.is_valid()) {

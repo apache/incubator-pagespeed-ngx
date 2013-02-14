@@ -261,6 +261,7 @@ class RewriteOptions {
     kMinImageSizeLowResolutionBytes,
     kMinResourceCacheTimeToRewriteMs,
     kModifyCachingHeaders,
+    kObliviousPagespeedUrls,
     kOverrideBlinkCacheTimeMs,
     kOverrideCachingTtlMs,
     kOverrideIeDocumentMode,
@@ -1301,6 +1302,14 @@ class RewriteOptions {
 
   void set_in_place_rewriting_enabled(bool x) {
     set_option(x, &in_place_rewriting_enabled_);
+  }
+
+  void set_oblivious_pagespeed_urls(bool x) {
+    set_option(x, &oblivious_pagespeed_urls_);
+  }
+
+  bool oblivious_pagespeed_urls() const {
+    return oblivious_pagespeed_urls_.value();
   }
 
   bool in_place_rewriting_enabled() const {
@@ -2814,6 +2823,10 @@ class RewriteOptions {
   Option<int64> min_image_size_low_resolution_bytes_;
   // Maximum image size below which low res image is generated.
   Option<int64> max_image_size_low_resolution_bytes_;
+
+  // For proxies operating in in-place mode this allows fetching optimized
+  // resources from sites that have MPS, etc configured.
+  Option<bool> oblivious_pagespeed_urls_;
 
   // Cache expiration time in msec for properties of finders.
   Option<int64> finder_properties_cache_expiration_time_ms_;

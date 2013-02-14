@@ -46,6 +46,7 @@ class RequestTrace;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
+class Statistics;
 class Writer;
 
 // A RewriteContext is all the contextual information required to
@@ -91,6 +92,7 @@ class Writer;
 class RewriteContext {
  public:
   typedef std::vector<InputInfo*> InputInfoStarVector;
+  static const char kNumDeadlineAlarmInvocations[];
   // Used to pass the result of the metadata cache lookups. Recipient must
   // take ownership.
   struct CacheLookupResult {
@@ -251,6 +253,9 @@ class RewriteContext {
 
   // Returns debug information about this RewriteContext.
   GoogleString ToString(StringPiece prefix) const;
+
+  // Initializes statistics.
+  static void InitStats(Statistics* stats);
 
  protected:
   typedef std::vector<GoogleUrl*> GoogleUrlStarVector;

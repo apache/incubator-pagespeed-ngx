@@ -704,6 +704,9 @@ void RewriteOptions::AddProperties() {
   add_option(kDefaultCacheInvalidationTimestamp,
              &RewriteOptions::cache_invalidation_timestamp_, "it",
              kCacheInvalidationTimestamp);
+  add_option(false,
+             &RewriteOptions::oblivious_pagespeed_urls_, "opu",
+             kObliviousPagespeedUrls);
   add_option(kDefaultIdleFlushTimeMs,
              &RewriteOptions::idle_flush_time_ms_, "if",
              kIdleFlushTimeMs);

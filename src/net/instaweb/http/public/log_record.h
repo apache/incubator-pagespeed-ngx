@@ -131,6 +131,9 @@ class LogRecord  {
       bool low_res_src_inserted,
       int low_res_data_size);
 
+  void LogJsDisableFilter(const char* id, int status,
+                          bool has_pagespeed_no_defer);
+
   // Mutex-guarded log-writing operations. Derived classes should override
   // *Impl methods. Returns false if the log write attempt failed.
   bool WriteLog();

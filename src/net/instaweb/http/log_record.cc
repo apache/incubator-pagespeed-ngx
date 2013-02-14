@@ -250,6 +250,8 @@ void LogRecord::LogImageRewriteActivity(
   if (rewriter_info == NULL) {
     return;
   }
+
+  ScopedMutex lock(mutex_.get());
   RewriteResourceInfo* rewrite_resource_info =
       rewriter_info->mutable_rewrite_resource_info();
   rewrite_resource_info->set_is_inlined(is_image_inlined);
@@ -261,7 +263,21 @@ void LogRecord::LogImageRewriteActivity(
         low_res_src_inserted);
     image_rewrite_resource_info->set_low_res_size(low_res_data_size);
   }
+
+  SetRewriterLoggingStatus(rewriter_info, status);
+}
+
+void LogRecord::LogJsDisableFilter(const char* id, int status,
+                                   bool has_pagespeed_no_defer) {
+  RewriterInfo* rewriter_info = NewRewriterInfo(id);
+  if (rewriter_info == NULL) {
+    return;
+  }
+
   ScopedMutex lock(mutex_.get());
+  RewriteResourceInfo* rewrite_resource_info =
+      rewriter_info->mutable_rewrite_resource_info();
+  rewrite_resource_info->set_has_pagespeed_no_defer(has_pagespeed_no_defer);
   SetRewriterLoggingStatus(rewriter_info, status);
 }
 

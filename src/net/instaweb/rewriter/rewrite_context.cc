@@ -730,7 +730,14 @@ class RewriteContext::FetchContext {
         handler_(handler),
         deadline_alarm_(NULL),
         success_(false),
-        detached_(false) {
+        detached_(false),
+        num_deadline_alarm_invocations_(
+            rewrite_context_->Driver()->statistics()->GetVariable(
+                kNumDeadlineAlarmInvocations)) {
+  }
+
+  static void InitStats(Statistics* stats) {
+    stats->AddVariable(kNumDeadlineAlarmInvocations);
   }
 
   void SetupDeadlineAlarm() {
@@ -797,7 +804,7 @@ class RewriteContext::FetchContext {
     // so, as OutputResource::UrlEvenIfHashNotSet can write to the hash,
     // which may race against normal setting of the hash in
     // ResourceManager::Write called off low-priority thread.
-    // TODO(sligocki): Log a variable for number of deadline hits.
+    num_deadline_alarm_invocations_->Add(1);
     ResourcePtr input(rewrite_context_->slot(0)->resource());
     handler_->Message(
         kInfo, "Deadline exceeded for rewrite of resource %s with %s.",
@@ -941,6 +948,7 @@ class RewriteContext::FetchContext {
 
   bool success_;
   bool detached_;
+  Variable* const num_deadline_alarm_invocations_;
 
   DISALLOW_COPY_AND_ASSIGN(FetchContext);
 };
@@ -979,6 +987,13 @@ class RewriteContext::InvokeRewriteFunction : public Function {
 
 RewriteContext::CacheLookupResultCallback::~CacheLookupResultCallback() {
 }
+
+void RewriteContext::InitStats(Statistics* stats) {
+  RewriteContext::FetchContext::InitStats(stats);
+}
+
+const char RewriteContext::kNumDeadlineAlarmInvocations[] =
+    "num_deadline_alarm_invocations";
 
 RewriteContext::RewriteContext(RewriteDriver* driver,
                                RewriteContext* parent,

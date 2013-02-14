@@ -2257,6 +2257,9 @@ TEST_F(RewriteContextTest, CombinationFetch) {
 
   EXPECT_EQ(4, lru_cache()->num_inserts()) << "2 inputs, 1 output, 1 metadata.";
   EXPECT_EQ(2, counting_url_async_fetcher()->fetch_count());
+  Variable* v = statistics()->GetVariable(
+      RewriteContext::kNumDeadlineAlarmInvocations);
+  EXPECT_EQ(0, v->Get());
   ClearStats();
   content.clear();
 
@@ -2290,6 +2293,10 @@ TEST_F(RewriteContextTest, FetchDeadlineTest) {
   // However, due to mock scheduler auto-advance, it should finish
   // everything now, and be able to do it from cache.
   content.clear();
+  Variable* v = statistics()->GetVariable(
+      RewriteContext::kNumDeadlineAlarmInvocations);
+  EXPECT_EQ(1, v->Get());
+
   ClearStats();
   EXPECT_TRUE(FetchResourceUrl(combined_url, &content));
   EXPECT_EQ("| a ", content);

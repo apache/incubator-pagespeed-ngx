@@ -121,6 +121,8 @@ void LogFilterAction(RewriterInfo::RewriterApplicationStatus status,
   if (rewriter_info == NULL) {
     return;
   }
+
+  ScopedMutex lock(log_record->mutex());
   FlushEarlyResourceInfo* flush_early_resource_info =
       rewriter_info->mutable_flush_early_resource_info();
   flush_early_resource_info->set_content_type(content_type);
@@ -128,7 +130,6 @@ void LogFilterAction(RewriterInfo::RewriterApplicationStatus status,
   flush_early_resource_info->set_is_bandwidth_affected(is_bandwidth_affected);
   flush_early_resource_info->set_in_head(in_head);
 
-  ScopedMutex lock(log_record->mutex());
   log_record->SetRewriterLoggingStatus(rewriter_info, status);
 }
 

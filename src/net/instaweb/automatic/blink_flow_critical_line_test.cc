@@ -1497,7 +1497,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   ConstStringStarVector psa_rewriter_header_values;
   EXPECT_FALSE(response_headers.Lookup(kPsaRewriterHeader,
                                        &psa_rewriter_header_values));
-  EXPECT_STREQ("jm", AppliedRewriterStringFromLog());
+  EXPECT_STREQ("jd,jm", AppliedRewriterStringFromLog());
   EXPECT_EQ(1, statistics()->FindVariable(
       BlinkFlowCriticalLine::kNumBlinkSharedFetchesStarted)->Get());
   EXPECT_EQ(1, statistics()->FindVariable(

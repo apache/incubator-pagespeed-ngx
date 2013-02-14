@@ -18,6 +18,9 @@
 
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -47,6 +50,7 @@ class JsDisableFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     options_->EnableFilter(RewriteOptions::kDisableJavascript);
+    options_->EnableFilter(RewriteOptions::kDeferJavascript);
     RewriteTestBase::SetUp();
     filter_.reset(new JsDisableFilter(rewrite_driver()));
     rewrite_driver()->AddFilter(filter_.get());
@@ -56,6 +60,16 @@ class JsDisableFilterTest : public RewriteTestBase {
     return false;
   }
 
+  void ExpectLogRecord(int index, int status, bool has_pagespeed_no_defer) {
+    LogRecord* log_record = rewrite_driver_->log_record();
+    const RewriterInfo& rewriter_info =
+        log_record->logging_info()->rewriter_info(index);
+    EXPECT_EQ("jd", rewriter_info.id());
+    EXPECT_EQ(status, rewriter_info.status());
+    EXPECT_EQ(has_pagespeed_no_defer,
+              rewriter_info.rewrite_resource_info().has_pagespeed_no_defer());
+  }
+
   scoped_ptr<JsDisableFilter> filter_;
 };
 
@@ -63,10 +77,12 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
   const GoogleString input_html = StrCat(
       "<body>",
       kUnrelatedNoscriptTags,
+      "<script></script>"
       "<script src=\"blah1\" random=\"true\">hi1</script>",
       kUnrelatedTags,
       "<img src=\"abc.jpg\" onload=\"foo1();foo2();\">"
       "<script src=\"blah2\" random=\"false\">hi2</script>"
+      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
       "</body>");
   const GoogleString expected = StrCat(
       "<head><script type=\"text/javascript\" pagespeed_no_defer=\"\">",
@@ -74,6 +90,7 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "</script></head>"
       "<body>",
       kUnrelatedNoscriptTags,
+      "<script></script>"
       "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
       kUnrelatedTags,
@@ -81,9 +98,14 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "'foo1();foo2();');\">"
       "<script pagespeed_orig_src=\"blah2\" random=\"false\""
       " type=\"text/psajs\" orig_index=\"1\">hi2</script>"
+      "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
       "</body>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
+  ExpectLogRecord(0, RewriterInfo::NOT_APPLIED, false);
+  ExpectLogRecord(1, RewriterInfo::APPLIED_OK, false);
+  ExpectLogRecord(2, RewriterInfo::APPLIED_OK, false);
+  ExpectLogRecord(3, RewriterInfo::NOT_APPLIED, true);
 }
 
 TEST_F(JsDisableFilterTest, DisablesScriptWithExperimental) {

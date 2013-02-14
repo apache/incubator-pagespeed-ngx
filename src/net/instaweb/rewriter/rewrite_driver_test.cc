@@ -116,6 +116,23 @@ TEST_F(RewriteDriverTest, TestLegacyUrl) {
       << "invalid extension";
 }
 
+TEST_F(RewriteDriverTest, PagespeedObliviousPositiveTest) {
+  RewriteOptions* ops = options();
+  ops->set_oblivious_pagespeed_urls(false);  // Decode Pagespeed URL.
+  rewrite_driver()->AddFilters();
+
+  EXPECT_TRUE(CanDecodeUrl(
+      "http://www.example.com/foresee-trigger.js.pagespeed.jm.0D45DpKAeI.js"));
+}
+
+TEST_F(RewriteDriverTest, PagespeedObliviousNegativeTest) {
+  RewriteOptions* ops = options();
+  ops->set_oblivious_pagespeed_urls(true);  // Don't decode Pagespeed URL.
+  rewrite_driver()->AddFilters();
+  EXPECT_FALSE(CanDecodeUrl(
+      "http://www.example.com/foresee-trigger.js.pagespeed.jm.0D45DpKAeI.js"));
+}
+
 TEST_F(RewriteDriverTest, TestModernUrl) {
   rewrite_driver()->AddFilters();
 
@@ -1235,7 +1252,7 @@ TEST_F(InPlaceTest, FetchInPlaceResource) {
 
 class RewriteDriverInhibitTest : public RewriteDriverTest {
  protected:
-  RewriteDriverInhibitTest() {}
+  RewriteDriverInhibitTest() : html_(NULL), body_(NULL), par_(NULL) {}
 
   void SetUpDocument() {
     SetupWriter();

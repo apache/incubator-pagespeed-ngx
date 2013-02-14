@@ -368,6 +368,11 @@ DEFINE_int32(max_rewrite_info_log_size,
              "The maximum number of RewriterInfo submessage stored for a "
              "single request.");
 
+DEFINE_bool(oblivious_pagespeed_urls, false,
+            "If set to true, the system will retrieve .pagespeed. resources, "
+            "instead of decoding and retrieving original. Should be set only "
+            "for IPRO PreserveUrls.");
+
 namespace net_instaweb {
 
 namespace {
@@ -650,6 +655,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("in_place_rewriting_enabled")) {
     options->set_in_place_rewriting_enabled(FLAGS_in_place_rewriting_enabled);
+  }
+
+  if (WasExplicitlySet("oblivious_pagespeed_urls")) {
+    options->set_oblivious_pagespeed_urls(FLAGS_oblivious_pagespeed_urls);
   }
 
   if (WasExplicitlySet("in_place_wait_for_optimized")) {
