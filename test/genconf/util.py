@@ -14,8 +14,10 @@
 #
 # Author: oschaaf@gmail.com (Otto van der Schaaf)
 
+from collections import OrderedDict
 import sys
 import traceback
+import warnings
 
 class Error(Exception):
     pass
@@ -31,6 +33,28 @@ def exec_template_call(func, lineno, item, level):
     except Exception as e:
         pyconf_fatal(lineno, e)
         raise
+
+def check_pagespeed_supported(directives):
+    global global_pagespeed_unsupported
+    pagespeed_unsupported = None
+
+    try:
+        pagespeed_unsupported = global_pagespeed_unsupported
+    except NameError:
+        pagespeed_unsupported = None
+
+    if not pagespeed_unsupported:
+        return directives
+
+    supported_directives = OrderedDict()
+
+    for directive in directives:
+        if directive.lower() in map(str.lower, pagespeed_unsupported):
+            warnings.warn("%s not supported, skipping" % directive)
+        else:
+            supported_directives[directive] = directives[directive]
+
+    return supported_directives
 
 def write_cfg(key_to_writer, config, key_to_node, level=0, parent_key = ""):
     global global_writer
@@ -48,6 +72,9 @@ def write_cfg(key_to_writer, config, key_to_node, level=0, parent_key = ""):
             w = key_to_writer[key + '_open']
             if w != write_void:
                 next_level = next_level + 1
+
+            if key.lower() == "pagespeed":
+                config[key] = check_pagespeed_supported(config[key])
 
             handled = exec_template_call(w, lineno, config[key], level)
 
@@ -97,3 +124,7 @@ def write_void(ps, level):
 def set_writer(writer):
     global global_writer
     global_writer = writer
+
+def set_pagespeed_unsupported(pagespeed_unsupported):
+    global global_pagespeed_unsupported
+    global_pagespeed_unsupported = pagespeed_unsupported
