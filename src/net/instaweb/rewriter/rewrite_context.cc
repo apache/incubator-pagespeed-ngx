@@ -2007,7 +2007,7 @@ bool RewriteContext::CreateOutputResourceForCachedOutput(
   ResourceNamer namer;
   if (gurl.is_valid() && namer.Decode(gurl.LeafWithQuery())) {
     if (force_hash_to_zero) {
-      namer.set_hash("0");
+      namer.set_hash(ServerContext::kStaleHash);
     }
     output_resource->reset(
         new OutputResource(FindServerContext(),

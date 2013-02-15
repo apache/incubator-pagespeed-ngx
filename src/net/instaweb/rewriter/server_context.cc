@@ -142,6 +142,8 @@ const int64 ServerContext::kGeneratedMaxAgeMs = Timer::kYearMs;
 // Statistics group names.
 const char ServerContext::kStatisticsGroup[] = "Statistics";
 
+const char ServerContext::kStaleHash[] = "0";
+
 // Our HTTP cache mostly stores full URLs, including the http: prefix,
 // mapping them into the URL contents and HTTP headers.  However, we
 // also put name->hash mappings into the HTTP cache, and we prefix
@@ -435,13 +437,28 @@ void ServerContext::AddOriginalContentLengthHeader(
   }
 }
 
-bool ServerContext::IsPagespeedResource(const GoogleUrl& url) {
+void ServerContext::GetResourceInfo(const GoogleUrl& url,
+                                    bool* is_pagespeed_resource,
+                                    bool* is_stale) {
   // Various things URL decoding produces which we ignore here.
   ResourceNamer namer;
   OutputResourceKind kind;
   RewriteFilter* filter;
-  return decoding_driver_->DecodeOutputResourceName(url, &namer, &kind,
-                                                    &filter);
+  *is_pagespeed_resource = decoding_driver_->DecodeOutputResourceName(
+      url, &namer, &kind, &filter);
+  *is_stale = (namer.hash() == kStaleHash);
+}
+
+bool ServerContext::IsPagespeedResource(const GoogleUrl& url) {
+  bool is_pagespeed_resource, is_stale;
+  GetResourceInfo(url, &is_pagespeed_resource, &is_stale);
+  return is_pagespeed_resource;
+}
+
+bool ServerContext::IsNonStalePagespeedResource(const GoogleUrl& url) {
+  bool is_pagespeed_resource, is_stale;
+  GetResourceInfo(url, &is_pagespeed_resource, &is_stale);
+  return (is_pagespeed_resource && !is_stale);
 }
 
 bool ServerContext::IsImminentlyExpiring(int64 start_date_ms,

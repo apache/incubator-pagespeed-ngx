@@ -306,7 +306,7 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
       if (driver_->options()->flush_more_resources_early_if_time_permits() &&
           ExtractUrl(attr, driver_, &gurl)) {
         bool is_pagespeed_resource =
-            driver_->server_context()->IsPagespeedResource(gurl);
+            driver_->server_context()->IsNonStalePagespeedResource(gurl);
         // Scripts can be flushed for kPrefetchLinkScriptTag prefetch
         // mechanism only if defer_javascript is disabled and
         // flush_more_resources_in_ie_and_firefox is enabled.
@@ -369,7 +369,7 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
               size / (kConnectionSpeedBytesPerMs * kGzipMultiplier);
         }
         bool is_pagespeed_resource =
-            driver_->server_context()->IsPagespeedResource(gurl);
+            driver_->server_context()->IsNonStalePagespeedResource(gurl);
         if (call_flush_resources &&
             IsFlushable(gurl, is_pagespeed_resource)) {
           StringPiece url(attr->DecodedValueOrNull());

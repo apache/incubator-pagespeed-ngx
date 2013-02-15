@@ -101,6 +101,9 @@ class ServerContext {
   // Default statistics group name.
   static const char kStatisticsGroup[];
 
+  // Hash for resources in case of stale metadata cache lookup.
+  static const char kStaleHash[];
+
   explicit ServerContext(RewriteDriverFactory* factory);
   virtual ~ServerContext();
 
@@ -152,6 +155,9 @@ class ServerContext {
 
   // Is this URL a ref to a Pagespeed resource?
   bool IsPagespeedResource(const GoogleUrl& url);
+
+  // Is this URL a ref to a Pagespeed resource which is not stale ?
+  bool IsNonStalePagespeedResource(const GoogleUrl& url);
 
   // Returns true if the resource with given date and TTL is going to expire
   // shortly and should hence be proactively re-fetched.
@@ -557,6 +563,13 @@ class ServerContext {
 
   // Must be called with rewrite_drivers_mutex_ held.
   void ReleaseRewriteDriverImpl(RewriteDriver* rewrite_driver);
+
+  // Checks if the given resource url is a pagespeed resource and if it is
+  // stale and sets is_pagespeed_resource and is_stale respectively.
+  // is_pagespeed_resource and is_stale should not be NULL.
+  // *is_stale makes sense only if *is_pagespeed_resource is true.
+  void GetResourceInfo(const GoogleUrl& url, bool* is_pagespeed_resource,
+                       bool* is_stale);
 
   // These are normally owned by the RewriteDriverFactory that made 'this'.
   ThreadSystem* thread_system_;
