@@ -102,15 +102,6 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
       message_buffer_size_(0), // TODO(oschaaf): wire up
       shared_circular_buffer_(NULL),
       statistics_frozen_(false) {
-  /*
-  RewriteDriverFactory::InitStats(&simple_stats_);
-  SerfUrlAsyncFetcher::InitStats(&simple_stats_);
-  AprMemCache::InitStats(&simple_stats_);
-  CacheStats::InitStats(NgxCache::kFileCache, &simple_stats_);
-  CacheStats::InitStats(NgxCache::kLruCache, &simple_stats_);
-  CacheStats::InitStats(kMemcached, &simple_stats_);
-  SetStatistics(&simple_stats_);
-  */
   timer_ = DefaultTimer();
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
@@ -382,6 +373,11 @@ NgxServerContext* NgxRewriteDriverFactory::MakeNgxServerContext() {
 }
 
 void NgxRewriteDriverFactory::ShutDown() {
+  if (!is_root_process_) {
+    Variable* child_shutdown_count = statistics()->GetVariable(kShutdownCount);
+    child_shutdown_count->Add(1);
+    message_handler()->Message(kInfo, "Shutting down ngx_pagespeed child");
+  }
   RewriteDriverFactory::ShutDown();
 
   // Take down any memcached threads.
@@ -460,7 +456,10 @@ void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
 
   ParentOrChildInit(log);
   slow_worker_.reset(new SlowWorker(thread_system()));
-
+  if (shared_mem_statistics_.get() != NULL) {
+    shared_mem_statistics_->Init(false, message_handler());
+  }
+  
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
     NgxCache* cache = p->second;
@@ -525,20 +524,14 @@ void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
   // Init standard PSOL stats.
   RewriteDriverFactory::InitStats(statistics);
 
-  // Init Apache-specific stats.
+  // Init Ngx-specific stats.
   NgxServerContext::InitStats(statistics);
   AprMemCache::InitStats(statistics);
-  //InPlaceResourceRecorder::InitStats(statistics);
-  //RateController::InitStats(statistics);
   SerfUrlAsyncFetcher::InitStats(statistics);
 
   CacheStats::InitStats(NgxCache::kFileCache, statistics);
   CacheStats::InitStats(NgxCache::kLruCache, statistics);
-  //CacheStats::InitStats(kShmCache, statistics);
   CacheStats::InitStats(kMemcached, statistics);
-  //PropertyCache::InitCohortStats(BeaconCriticalImagesFinder::kBeaconCohort,
-  //                               statistics);
-  //PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
 
   statistics->AddVariable(kShutdownCount);
 }

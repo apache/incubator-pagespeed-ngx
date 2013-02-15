@@ -27,6 +27,7 @@ namespace net_instaweb {
 
 class NgxRewriteDriverFactory;
 class NgxRewriteOptions;
+class RewriteStats;
 class SharedMemStatistics;
 class Statistics;
 
@@ -61,6 +62,8 @@ class NgxServerContext : public ServerContext {
 
   // May be NULL. Owned by *split_statistics_.
   SharedMemStatistics* local_statistics_;
+  // These are non-NULL if we have per-vhost stats.
+  scoped_ptr<RewriteStats> local_rewrite_stats_;
   
   DISALLOW_COPY_AND_ASSIGN(NgxServerContext);
 };

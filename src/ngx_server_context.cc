@@ -21,7 +21,8 @@
 #include "ngx_cache.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_rewrite_driver_factory.h"
-//TODO(oschaaf):
+
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/split_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -55,7 +56,25 @@ void NgxServerContext::ChildInit() {
     initialized_ = true;
     NgxCache* cache = ngx_factory_->GetCache(config());
     set_lock_manager(cache->lock_manager());
+
+    if (split_statistics_.get() != NULL) {
+      // Readjust the SHM stuff for the new process
+      local_statistics_->Init(false, message_handler());
+
+      // Create local stats for the ServerContext, and fill in its
+      // statistics() and rewrite_stats() using them; if we didn't do this here
+      // they would get set to the factory's by the InitServerContext call
+      // below.
+      set_statistics(split_statistics_.get());
+      local_rewrite_stats_.reset(new RewriteStats(
+          split_statistics_.get(), ngx_factory_->thread_system(),
+          ngx_factory_->timer()));
+      set_rewrite_stats(local_rewrite_stats_.get());
+    }
+    
     ngx_factory_->InitServerContext(this);
+    // TODO(oschaaf): in mod_pagespeed, the ServerContext owns
+    // the fetchers, and sets up the UrlAsyncFetcherStats here
   }
 }
 
@@ -75,6 +94,7 @@ void NgxServerContext::CreateLocalStatistics(
 }
 
 void NgxServerContext::InitStats(Statistics* statistics) {
+  // TODO(oschaaf): we need to port the cache flush mechanism
   statistics->AddVariable(kCacheFlushCount);
   statistics->AddVariable(kCacheFlushTimestampMs);
     Histogram* html_rewrite_time_us_histogram =
