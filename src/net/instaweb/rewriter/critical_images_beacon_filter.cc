@@ -27,6 +27,7 @@
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_hash.h"
@@ -81,10 +82,13 @@ void CriticalImagesBeaconFilter::EndElement(HtmlElement* element) {
     EscapeToJsStringLiteral(driver_->google_url().Spec(),
                             false, /* no quotes */
                             &html_url);
-    GoogleString init_js = "\npagespeed.criticalImagesBeaconInit(";
-    StrAppend(&init_js, "'", *beacon_url, "', ");
-    StrAppend(&init_js, "'", html_url, "');");
-    StrAppend(&js, init_js);
+    GoogleString options_signature_hash =
+        driver_->server_context()->hasher()->Hash(
+            driver_->options()->signature());
+    StrAppend(&js, "\npagespeed.criticalImagesBeaconInit(");
+    StrAppend(&js, "'", *beacon_url, "', ");
+    StrAppend(&js, "'", html_url, "', ");
+    StrAppend(&js, "'", options_signature_hash, "');");
 
     HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
     driver_->InsertElementBeforeCurrent(script);

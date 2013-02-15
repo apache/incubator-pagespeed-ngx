@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -631,10 +632,11 @@ void ServerContext::LockForCreation(NamedLock* creation_lock,
       new QueuedWorkerPool::Sequence::AddFunction(worker, callback));
 }
 
-bool ServerContext::HandleBeacon(const StringPiece& unparsed_url,
+bool ServerContext::HandleBeacon(StringPiece unparsed_url,
+                                 StringPiece user_agent,
                                  const RequestContextPtr& request_context) {
-  // The url HandleBeacon recieves is a relative url, so adding some dummy
-  // host to make it complete url so that i can use GoogleUrl for parsing.
+  // The URL HandleBeacon receives is a relative URL, so adding a dummy host to
+  // make it an absolute URL so that I can use GoogleUrl for parsing.
   GoogleUrl base("http://www.example.com");
   GoogleUrl url(base, unparsed_url);
 
@@ -673,7 +675,7 @@ bool ServerContext::HandleBeacon(const StringPiece& unparsed_url,
     return false;
   }
 
-  bool success = true;
+  bool status = true;
 
   // Extract the onload time from the ets query param.
   param_values.clear();
@@ -688,7 +690,7 @@ bool ServerContext::HandleBeacon(const StringPiece& unparsed_url,
       StringToInt(load_time_str.as_string(), &value);
     }
     if (value < 0) {
-      success = false;
+      status = false;
     } else {
       rewrite_stats_->total_page_load_ms()->Add(value);
       rewrite_stats_->page_load_count()->Add(1);
@@ -701,6 +703,14 @@ bool ServerContext::HandleBeacon(const StringPiece& unparsed_url,
   if (page_property_cache() != NULL && page_property_cache()->enabled() &&
       query_params.Lookup("ci", &param_values) &&
       param_values.size() == 1 && param_values[0] != NULL) {
+    // Make sure the beacon has the options hash, which is included in the
+    // property cache key.
+    ConstStringStarVector options_hash_param;
+    if (!(query_params.Lookup("oh", &options_hash_param) &&
+          options_hash_param.size() == 1 &&
+          options_hash_param[0] != NULL)) {
+      return status;
+    }
     // Beacon property callback takes ownership of both critical images sets.
     scoped_ptr<StringSet> html_critical_images_set(new StringSet);
     // TODO(jud): Add css critical image detection to the beacon.
@@ -718,17 +728,24 @@ bool ServerContext::HandleBeacon(const StringPiece& unparsed_url,
     // by looking up the property page for the URL specified in the beacon, and
     // performing the page update and cohort write in
     // BeaconPropertyCallback::Done(). Done() is called when the read completes.
-    // TODO(jud): This needs to handle different clients reporting different
-    // critical image sets, and also vary based on the user agent type.
+    UserAgentMatcher::DeviceType device_type =
+        user_agent_matcher()->GetDeviceTypeForUA(user_agent);
+    StringPiece device_type_suffix =
+        UserAgentMatcher::DeviceTypeSuffix(device_type);
+
+    GoogleString key = GetPagePropertyCacheKey(
+        url_query_param.Spec(),
+        *options_hash_param[0],
+        device_type_suffix);
     scoped_ptr<BeaconPropertyCallback> property_callback(
         new BeaconPropertyCallback(
-            this, url_query_param.AllExceptQuery(), request_context,
+            this, key, request_context,
             html_critical_images_set.release(),
             css_critical_images_set.release()));
     page_property_cache()->Read(property_callback.release());
   }
 
-  return success;
+  return status;
 }
 
 // TODO(jmaessen): Note that we *could* re-structure the
@@ -1006,16 +1023,26 @@ RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
 }
 
 GoogleString ServerContext::GetPagePropertyCacheKey(
-    const StringPiece& url, const RewriteOptions* options,
-    const StringPiece& device_type_suffix) {
-  // TODO(ksimbili): Understand why we need the options signature.
+    StringPiece url, const RewriteOptions* options,
+    StringPiece device_type_suffix) {
   GoogleString options_signature_hash;
   if (options != NULL) {
     // Should we use lock_hasher() instead of hasher() below?
-    StrAppend(&options_signature_hash,
-              "_", hasher()->Hash(options->signature()));
+    options_signature_hash = hasher()->Hash(options->signature());
   }
-  return StrCat(url, options_signature_hash, device_type_suffix);
+  return GetPagePropertyCacheKey(
+      url, options_signature_hash, device_type_suffix);
+}
+
+GoogleString ServerContext::GetPagePropertyCacheKey(
+    StringPiece url, StringPiece options_signature_hash,
+    StringPiece device_type_suffix) {
+  GoogleString result(url.as_string());
+  if (!options_signature_hash.empty()) {
+    StrAppend(&result, "_", options_signature_hash);
+  }
+  StrAppend(&result, device_type_suffix);
+  return result;
 }
 
 void ServerContext::ComputeSignature(RewriteOptions* rewrite_options) const {

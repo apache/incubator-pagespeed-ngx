@@ -1486,6 +1486,33 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   MATCHES=$(echo "$RESPONSE_OUT" | grep -c pagespeed\.clientDomainRewriterInit)
   check [ $MATCHES -eq 1 ]
 
+  # Verify that we can send a critical image beacon and that lazyload_images
+  # does not try to lazyload the critical images.
+  start_test lazyload with critical images beacon
+  HOST_NAME="http://imagebeacon.example.com"
+  URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/rewrite_images.html"
+  # There are 3 images on rewrite_images.html. Check that they are all
+  # lazyloaded by default.
+  http_proxy=$SECONDARY_HOSTNAME\
+    fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
+  check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
+    $OUTDIR/rewrite_images.html) = 1 ];
+  # We need the options hash to send a critical image beacon, so extract it from
+  # injected beacon JS.
+  OPTIONS_HASH=$(grep "^pagespeed\.criticalImagesBeaconInit" \
+    $OUTDIR/rewrite_images.html | awk -F\' '{print $(NF-1)}')
+  # Now send a beacon response inidicating that Puzzle.jpg is a critical image.
+  BEACON_URL="$HOST_NAME/mod_pagespeed_beacon?"
+  BEACON_URL+="url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
+  BEACON_URL+="image_rewriting%2Frewrite_images.html"
+  BEACON_URL+="&oh=$OPTIONS_HASH&ci=2932493096"
+  http_proxy=$SECONDARY_HOSTNAME \
+    OUT=$($WGET --save-headers -q -O - "$BEACON_URL")
+  check_from "$OUT" egrep -q "HTTP/1[.]. 204"
+  # Now only 2 of the images should be lazyloaded, Puzzle.jpg should not be.
+  http_proxy=$SECONDARY_HOSTNAME \
+    fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 2
+
   if [ -n "$APACHE_LOG" ]; then
     start_test Encoded absolute urls are not respected
     HOST_NAME="http://absolute_urls.example.com"

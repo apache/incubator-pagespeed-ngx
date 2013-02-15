@@ -25,9 +25,11 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -123,9 +125,13 @@ class CriticalImagesBeaconFilterTest : public RewriteTestBase {
     EscapeToJsStringLiteral(rewrite_driver()->google_url().Spec(), false, &url);
     StringPiece beacon_url = https_mode_ ? options()->beacon_url().https :
         options()->beacon_url().http;
+    GoogleString options_signature_hash =
+        rewrite_driver()->server_context()->hasher()->Hash(
+            rewrite_driver()->options()->signature());
     GoogleString str = "pagespeed.criticalImagesBeaconInit(";
     StrAppend(&str, "'", beacon_url, "', ");
-    StrAppend(&str, "'", url, "');");
+    StrAppend(&str, "'", url, "', ");
+    StrAppend(&str, "'", options_signature_hash, "');");
     return str;
   }
 

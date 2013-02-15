@@ -301,7 +301,8 @@ class ServerContext {
   // variables.  Returns true if the url was parsed and handled correctly; in
   // this case a 204 No Content response should be sent.  Returns false if the
   // url could not be parsed; in this case the request should be declined.
-  bool HandleBeacon(const StringPiece& unparsed_url,
+  bool HandleBeacon(StringPiece unparsed_url,
+                    StringPiece user_agent,
                     const RequestContextPtr& request_context);
 
   // Returns a pointer to the master global_options.  These are not used
@@ -346,9 +347,13 @@ class ServerContext {
 
   // Returns the page property cache key to be used for the proxy interface
   // flow.  options is expected to be frozen.
-  GoogleString GetPagePropertyCacheKey(const StringPiece& url,
+  GoogleString GetPagePropertyCacheKey(StringPiece url,
                                        const RewriteOptions* options,
-                                       const StringPiece& device_type_suffix);
+                                       StringPiece device_type_suffix);
+
+  GoogleString GetPagePropertyCacheKey(StringPiece url,
+                                       StringPiece options_signature_hash,
+                                       StringPiece device_type_suffix);
 
   // Generates a new managed RewriteDriver using the RewriteOptions
   // managed by this class.  Each RewriteDriver is not thread-safe,

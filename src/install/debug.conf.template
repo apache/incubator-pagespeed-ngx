@@ -551,6 +551,18 @@ ModPagespeedUsePerVHostStatistics on
 
 </VirtualHost>
 
+# Setup a vhost with the critical image beacon and lazyload filter enabled to
+# make sure that critical images are not lazyloaded.
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName imagebeacon.example.com
+
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedRewriteLevel PassThrough
+  ModPagespeedEnableFilters lazyload_images
+  ModPagespeedCriticalImagesBeaconEnabled true
+</VirtualHost>
+
 #PER_VHOST_STATS ModPagespeedUsePerVHostStatistics on
 #PER_VHOST_STATS # Make sure we behave OK with this on, too.
 #PER_VHOST_STATS ModPagespeedFetchWithGzip on

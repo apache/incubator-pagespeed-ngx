@@ -802,7 +802,10 @@ apr_status_t instaweb_handler(request_rec* request) {
   } else if (request_handler_str == kBeaconHandler) {
     RequestContextPtr request_context(new ApacheRequestContext(
         server_context->thread_system()->NewMutex(), request));
-    server_context->HandleBeacon(request->unparsed_uri, request_context);
+    StringPiece user_agent = apr_table_get(request->headers_in,
+                                           HttpAttributes::kUserAgent);
+    server_context->HandleBeacon(
+        request->unparsed_uri, user_agent, request_context);
     ret = HTTP_NO_CONTENT;
 
   } else if (request_handler_str == kLogRequestHeadersHandler) {
