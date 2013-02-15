@@ -1903,12 +1903,27 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   ngx_uint_t s;
 
   bool have_server_context = false;
+  net_instaweb::Statistics* statistics = NULL;
   // Iterate over all configured server{} blocks, and find out if we have
   // an enabled ServerContext.
   for (s = 0; s < cmcf->servers.nelts && !have_server_context; s++) {
     ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
         cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
-    have_server_context = cfg_s->server_context != NULL;
+    if (cfg_s->server_context != NULL) { 
+      have_server_context = true;
+      net_instaweb::NgxRewriteOptions* config = server_context->config();
+      // Lazily create shared-memory statistics if enabled in any
+      // config, even when mod_pagespeed is totally disabled.  This
+      // allows statistics to work if mod_pagespeed gets turned on via
+      // .htaccess or query param.
+      // TODO(oschaaf): implement these options
+      if ((statistics == NULL) && config->statistics_enabled()) {
+        // TODO(oschaaf): port MakeGlobalSharedMemStatistics
+        statistics = cfg_m->driver_factory->MakeGlobalSharedMemStatistics(
+            config->statistics_logging_enabled(),
+            config->statistics_logging_interval_ms(),
+            config->statistics_logging_file());
+    }
   }
 
   if (have_server_context) {

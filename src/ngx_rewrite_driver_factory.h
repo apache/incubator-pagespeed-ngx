@@ -30,7 +30,6 @@ extern "C" {
 #include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/util/public/simple_stats.h"
 
 // TODO(oschaaf): We should reparent ApacheRewriteDriverFactory and
 // NgxRewriteDriverFactory to a new class OriginRewriteDriverFactory and factor
@@ -47,8 +46,11 @@ class NgxCache;
 class NgxMessageHandler;
 class NgxRewriteOptions;
 class SharedCircularBuffer;
+class SharedMemRefererStatistics;
+class SharedMemStatistics;
 class SlowWorker;
 class StaticJavaScriptManager;
+class Statistics;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
@@ -66,7 +68,6 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   virtual Timer* DefaultTimer();
   virtual NamedLockManager* DefaultLockManager();
   virtual void SetupCaches(ServerContext* server_context);
-  virtual Statistics* statistics();
   // Create a new RewriteOptions.  In this implementation it will be an
   // NgxRewriteOptions.
   virtual RewriteOptions* NewRewriteOptions();
@@ -158,7 +159,6 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
     message_buffer_size_ = x;
   }
  private:
-  SimpleStats simple_stats_;
   Timer* timer_;
   scoped_ptr<SlowWorker> slow_worker_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;

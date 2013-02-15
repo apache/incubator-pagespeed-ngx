@@ -52,7 +52,6 @@
 #include "net/instaweb/util/public/pthread_shared_mem.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/scheduler_thread.h"
-#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
@@ -90,6 +89,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
       install_crash_handler_(false),
       message_buffer_size_(0), // TODO(oschaaf): wire up
       shared_circular_buffer_(NULL) {
+  /*
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
@@ -97,6 +97,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
   CacheStats::InitStats(NgxCache::kLruCache, &simple_stats_);
   CacheStats::InitStats(kMemcached, &simple_stats_);
   SetStatistics(&simple_stats_);
+  */
   timer_ = DefaultTimer();
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
@@ -221,10 +222,6 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   // TODO(oschaaf): see the property cache setup in the apache rewrite
   // driver factory
   server_context->set_enable_property_cache(true);
-}
-
-Statistics* NgxRewriteDriverFactory::statistics() {
-  return &simple_stats_;
 }
 
 RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
