@@ -1911,7 +1911,7 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
         cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
     if (cfg_s->server_context != NULL) { 
       have_server_context = true;
-      net_instaweb::NgxRewriteOptions* config = server_context->config();
+      net_instaweb::NgxRewriteOptions* config = cfg_s->server_context->config();
       // Lazily create shared-memory statistics if enabled in any
       // config, even when mod_pagespeed is totally disabled.  This
       // allows statistics to work if mod_pagespeed gets turned on via
@@ -1923,6 +1923,13 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
             config->statistics_logging_enabled(),
             config->statistics_logging_interval_ms(),
             config->statistics_logging_file());
+
+        // If config has statistics on and we have per-vhost statistics on
+        // as well, then set it up.
+        if (config->statistics_enabled() && cfg_m->driver_factory->use_per_vhost_statistics()) {
+          cfg_s->server_context->CreateLocalStatistics(statistics);
+        }
+      }
     }
   }
 

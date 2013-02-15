@@ -134,7 +134,36 @@ class NgxRewriteOptions : public RewriteOptions {
   void set_fetcher_proxy(GoogleString x) {
     set_option(x, &fetcher_proxy_);
   }
-
+  bool statistics_enabled() const {
+    return statistics_enabled_.value();
+  }
+  void set_statistics_enabled(bool x) {
+    set_option(x, &statistics_enabled_);
+  }
+  bool statistics_logging_enabled() const {
+    return statistics_logging_enabled_.value();
+  }
+  void set_statistics_logging_enabled(bool x) {
+    set_option(x, &statistics_logging_enabled_);
+  }
+  const GoogleString& statistics_logging_file() const {
+    return statistics_logging_file_.value();
+  }
+  const GoogleString& statistics_logging_charts_css() const {
+    return statistics_logging_charts_css_.value();
+  }
+  const GoogleString& statistics_logging_charts_js() const {
+    return statistics_logging_charts_js_.value();
+  }
+  void set_statistics_logging_file(GoogleString x) {
+    set_option(x, &statistics_logging_file_);
+  }
+  int64 statistics_logging_interval_ms() const {
+    return statistics_logging_interval_ms_.value();
+  }
+  void set_statistics_logging_interval_ms(int64 x) {
+    set_option(x, &statistics_logging_interval_ms_);
+  }
  private:
   // Used by class_name() and DynamicCast() to provide error checking.
   static const char kClassName[];
@@ -203,6 +232,13 @@ class NgxRewriteOptions : public RewriteOptions {
   // for code that parses it.
   Option<GoogleString> memcached_servers_;
 
+  Option<GoogleString> statistics_logging_file_;
+  Option<GoogleString> statistics_logging_charts_css_;
+  Option<GoogleString> statistics_logging_charts_js_;
+  Option<bool> statistics_enabled_;
+  Option<bool> statistics_logging_enabled_;
+  Option<int64> statistics_logging_interval_ms_;
+  
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteOptions);
 };
 

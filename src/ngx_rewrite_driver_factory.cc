@@ -51,6 +51,8 @@
 #include "net/instaweb/util/public/null_shared_mem.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
+#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
+#include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/scheduler_thread.h"
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
@@ -72,7 +74,17 @@ class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
 
+namespace {
+
+const size_t kRefererStatisticsNumberOfPages = 1024;
+const size_t kRefererStatisticsAverageUrlLength = 64;
+const char kShutdownCount[] = "child_shutdown_count";
+
+}  // namespace
+
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
+const char NgxRewriteDriverFactory::kStaticAssetPrefix[] =
+    "/mod_pagespeed_static/";
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory()
     : RewriteDriverFactory(new NgxThreadSystem()),
@@ -88,7 +100,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
           new NgxMessageHandler(thread_system()->NewMutex())),
       install_crash_handler_(false),
       message_buffer_size_(0), // TODO(oschaaf): wire up
-      shared_circular_buffer_(NULL) {
+      shared_circular_buffer_(NULL),
+      statistics_frozen_(false) {
   /*
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
@@ -128,6 +141,8 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
     CacheInterface* memcached = p->second;
     defer_cleanup(new Deleter<CacheInterface>(memcached));
   }
+  
+  shared_mem_statistics_.reset(NULL);
 }
 
 const char NgxRewriteDriverFactory::kStaticJavaScriptPrefix[] =
@@ -467,6 +482,65 @@ void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
       abort();
     }
   }
+}
+
+// Initializes global statistics object if needed, using factory to
+// help with the settings if needed.
+// Note: does not call set_statistics() on the factory.
+Statistics* NgxRewriteDriverFactory::MakeGlobalSharedMemStatistics(
+    bool logging, int64 logging_interval_ms,
+    const GoogleString& logging_file_base) {
+  if (shared_mem_statistics_.get() == NULL) {
+    shared_mem_statistics_.reset(AllocateAndInitSharedMemStatistics(
+        "global", logging, logging_interval_ms, logging_file_base));
+  }
+  DCHECK(!statistics_frozen_);
+  statistics_frozen_ = true;
+  SetStatistics(shared_mem_statistics_.get());
+  return shared_mem_statistics_.get();
+}
+
+SharedMemStatistics* NgxRewriteDriverFactory::
+AllocateAndInitSharedMemStatistics(
+    const StringPiece& name, const bool logging,
+    const int64 logging_interval_ms,
+    const GoogleString& logging_file_base) {
+  // Note that we create the statistics object in the parent process, and
+  // it stays around in the kids but gets reinitialized for them
+  // inside ChildInit(), called from pagespeed_child_init.
+  //
+  // TODO(jmarantz): it appears that filename_prefix() is not actually
+  // established at the time of this construction, calling into question
+  // whether we are naming our shared-memory segments correctly.
+  SharedMemStatistics* stats = new SharedMemStatistics(
+      logging_interval_ms, StrCat(logging_file_base, name), logging,
+      StrCat(filename_prefix(), name), shared_mem_runtime(), message_handler(),
+      file_system(), timer());
+  InitStats(stats);
+  stats->Init(true, message_handler());
+  return stats;
+}
+
+void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
+  // Init standard PSOL stats.
+  RewriteDriverFactory::InitStats(statistics);
+
+  // Init Apache-specific stats.
+  NgxServerContext::InitStats(statistics);
+  AprMemCache::InitStats(statistics);
+  //InPlaceResourceRecorder::InitStats(statistics);
+  //RateController::InitStats(statistics);
+  SerfUrlAsyncFetcher::InitStats(statistics);
+
+  CacheStats::InitStats(NgxCache::kFileCache, statistics);
+  CacheStats::InitStats(NgxCache::kLruCache, statistics);
+  //CacheStats::InitStats(kShmCache, statistics);
+  CacheStats::InitStats(kMemcached, statistics);
+  //PropertyCache::InitCohortStats(BeaconCriticalImagesFinder::kBeaconCohort,
+  //                               statistics);
+  //PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
+
+  statistics->AddVariable(kShutdownCount);
 }
 
 }  // namespace net_instaweb

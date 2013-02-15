@@ -55,6 +55,7 @@ class Statistics;
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
   static const char kStaticJavaScriptPrefix[];
+  static const char kStaticAssetPrefix[];
   static const char kMemcached[];
 
   explicit NgxRewriteDriverFactory();
@@ -78,6 +79,10 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
       StaticJavascriptManager* static_js_manager);
   // Release all the resources. It also calls the base class ShutDown to
   // release the base class resources.
+  // Initializes all the statistics objects created transitively by
+  // ApacheRewriteDriverFactory, including apache-specific and
+  // platform-independent statistics.
+  static void InitStats(Statistics* statistics);
   virtual void ShutDown();
   virtual void StopCacheActivity();
   NgxServerContext* MakeNgxServerContext();
@@ -137,6 +142,17 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   void RootInit(ngx_log_t* log);
   void ChildInit(ngx_log_t* log);
   void SharedCircularBufferInit(bool is_root);
+  // Build global shared-memory statistics.  This is invoked if at least
+  // one server context (global or VirtualHost) enables statistics.
+  Statistics* MakeGlobalSharedMemStatistics(bool logging,
+                                            int64 logging_interval_ms,
+                                            const GoogleString& logging_file);
+
+  // Creates and ::Initializes a shared memory statistics object.
+  SharedMemStatistics* AllocateAndInitSharedMemStatistics(
+      const StringPiece& name, const bool logging,
+      const int64 logging_interval_ms, const GoogleString& logging_file);
+
   NgxMessageHandler* ngx_message_handler() { return ngx_message_handler_; }
   void set_main_conf(NgxRewriteOptions* main_conf) {  main_conf_ = main_conf; }
 
@@ -202,7 +218,9 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   bool install_crash_handler_;
   int message_buffer_size_;
   scoped_ptr<SharedCircularBuffer> shared_circular_buffer_;
-
+  scoped_ptr<SharedMemStatistics> shared_mem_statistics_;
+  bool statistics_frozen_;
+  
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 
