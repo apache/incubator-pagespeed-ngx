@@ -1659,7 +1659,6 @@ void write_handler_response(const StringPiece& output, ngx_http_request_t* r,
   write_handler_response(output, r, net_instaweb::kContentTypeHtml, timer);
 }
 
-// TODO(oschaaf): set per_vhost_stats on factory from config
 // TODO(oschaaf): port SPDY specific functionality, shmcache stats
 ngx_int_t ps_statistics_handler(ngx_http_request_t* r,
                                 net_instaweb::NgxServerContext* server_context) {
@@ -1932,13 +1931,21 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       }
     }
   }
-
+  
   if (have_server_context) {
     // TODO(oschaaf): this ignores sigpipe messages from memcached.
     // however, it would be better to not have those signals generated
     // in the first place, as suppressing them this way may interfere
     // with other modules that actually are interested in these signals
     ps_ignore_sigpipe();
+    
+    // If no shared-mem statistics are enabled, then init using the default
+    // NullStatistics.
+    if (statistics == NULL) {
+      statistics = cfg_m->driver_factory->statistics();
+      net_instaweb::NgxRewriteDriverFactory::InitStats(statistics);
+    }
+    
     cfg_m->driver_factory->RootInit(cycle->log);
   } else {
     delete cfg_m->driver_factory;

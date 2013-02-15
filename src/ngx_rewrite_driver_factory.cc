@@ -385,6 +385,17 @@ void NgxRewriteDriverFactory::ShutDown() {
   memcached_pool_.reset(NULL);
   ngx_message_handler_->set_buffer(NULL);
   ngx_html_parse_message_handler_->set_buffer(NULL);
+
+  if (is_root_process_) {
+    // Cleanup statistics.
+    // TODO(morlovich): This looks dangerous with async.
+    if (shared_mem_statistics_.get() != NULL) {
+      shared_mem_statistics_->GlobalCleanup(message_handler());
+    }
+    if (shared_circular_buffer_ != NULL) {
+      shared_circular_buffer_->GlobalCleanup(message_handler());
+    }
+  }
 }
 
 void NgxRewriteDriverFactory::StartThreads() {
