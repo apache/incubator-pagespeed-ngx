@@ -45,6 +45,7 @@ class UsageDataReporter {
 
   // Reports all useful response data.
   virtual void ReportResponseData(const GoogleUrl& url, int32 response_code,
+                                  const GoogleString& reason_phrase,
                                   const ContentType* content_type,
                                   int64 time_taken,
                                   const GoogleString& ip,
