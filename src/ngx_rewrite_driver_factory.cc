@@ -84,7 +84,7 @@ const char kShutdownCount[] = "child_shutdown_count";
 
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 const char NgxRewriteDriverFactory::kStaticAssetPrefix[] =
-    "/mod_pagespeed_static/";
+    "/ngx_pagespeed_static/";
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory()
     : RewriteDriverFactory(new NgxThreadSystem()),
