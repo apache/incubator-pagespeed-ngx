@@ -36,7 +36,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/async_cache.h"
 #include "net/instaweb/util/public/cache_batcher.h"
 #include "net/instaweb/util/public/cache_copy.h"
@@ -118,7 +118,7 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   }
 }
 
-const char NgxRewriteDriverFactory::kStaticJavaScriptPrefix[] =
+const char NgxRewriteDriverFactory::kStaticAssetPrefix[] =
     "/ngx_pagespeed_static/";
 
 Hasher* NgxRewriteDriverFactory::NewHasher() {
@@ -220,9 +220,9 @@ RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
   return new NgxRewriteOptions();
 }
 
-void NgxRewriteDriverFactory::InitStaticJavascriptManager(
-    StaticJavascriptManager* static_js_manager) {
-  static_js_manager->set_library_url_prefix(kStaticJavaScriptPrefix);
+void NgxRewriteDriverFactory::InitStaticAssetManager(
+    StaticAssetManager* static_asset_manager) {
+  static_asset_manager->set_library_url_prefix(kStaticAssetPrefix);
 }
 
 NgxCache* NgxRewriteDriverFactory::GetCache(NgxRewriteOptions* options) {

@@ -41,11 +41,11 @@ class NgxServerContext;
 class NgxCache;
 class NgxRewriteOptions;
 class SlowWorker;
-class StaticJavaScriptManager;
+class StaticAssetManager;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
-  static const char kStaticJavaScriptPrefix[];
+  static const char kStaticAssetPrefix[];
   static const char kMemcached[];
 
   // main_conf will have only options set in the main block.  It may be NULL,
@@ -65,9 +65,9 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Create a new RewriteOptions.  In this implementation it will be an
   // NgxRewriteOptions.
   virtual RewriteOptions* NewRewriteOptions();
-  // Initializes the StaticJavascriptManager.
-  virtual void InitStaticJavascriptManager(
-      StaticJavascriptManager* static_js_manager);
+  // Initializes the StaticAssetManager.
+  virtual void InitStaticAssetManager(
+      StaticAssetManager* static_asset_manager);
   // Release all the resources. It also calls the base class ShutDown to
   // release the base class resources.
   virtual void ShutDown();
