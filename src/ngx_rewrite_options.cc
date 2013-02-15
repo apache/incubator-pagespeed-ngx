@@ -187,14 +187,33 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions1(
   } else if (IsDirective(directive, "BlockingRewriteKey")) {
     set_blocking_rewrite_key(arg);
   } else if (IsDirective(directive, "UsePerVHostStatistics")) {
-    CHECK(driver_factory != NULL);
-
-    //TODO(oschaaf): mod_pagespeed has code that handles this in a nicer way
+    // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
     if (IsDirective(arg, "on")) {
       driver_factory->set_use_per_vhost_statistics(true);
       return RewriteOptions::kOptionOk;
     } else if (IsDirective(arg, "off")) {
       driver_factory->set_use_per_vhost_statistics(false);
+      return RewriteOptions::kOptionOk;
+    } else {
+      return RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (IsDirective(directive, "InstallCrashHandler")) {
+    // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+    if (IsDirective(arg, "on")) {
+      driver_factory->set_install_crash_handler(true);
+      return RewriteOptions::kOptionOk;
+    } else if (IsDirective(arg, "off")) {
+      driver_factory->set_install_crash_handler(false);
+      return RewriteOptions::kOptionOk;
+    } else {
+      return RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (IsDirective(directive, "MessageBufferSize")) {
+    // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+    int message_buffer_size;
+    bool ok = StringToInt(arg.as_string().c_str(), &message_buffer_size);
+    if (ok && message_buffer_size >= 0) {
+      driver_factory->set_message_buffer_size(message_buffer_size);
       return RewriteOptions::kOptionOk;
     } else {
       return RewriteOptions::kOptionValueInvalid;

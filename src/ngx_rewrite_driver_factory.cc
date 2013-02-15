@@ -82,19 +82,13 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
       cache_hasher_(20),
       main_conf_(NULL),
       threads_started_(false),
+      use_per_vhost_statistics_(false),
       is_root_process_(true),
       ngx_message_handler_(new NgxMessageHandler(thread_system()->NewMutex())),
       ngx_html_parse_message_handler_(
           new NgxMessageHandler(thread_system()->NewMutex())),
-      // Hard coded for now, these should be configurable but that
-      // requires a change in our NgxRewriteDriverFactory initialisation.
-      // I will make a separate pull for that.
-#ifdef NGX_DEBUG
-      install_crash_handler_(true),
-#else
       install_crash_handler_(false),
-#endif
-      message_buffer_size_(1024*100),
+      message_buffer_size_(0), // TODO(oschaaf): wire up
       shared_circular_buffer_(NULL) {
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);

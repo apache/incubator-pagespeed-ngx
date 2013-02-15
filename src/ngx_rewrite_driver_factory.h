@@ -145,6 +145,18 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   void set_use_per_vhost_statistics(bool x) {
     use_per_vhost_statistics_ = x;
   }
+  bool install_crash_handler() const {
+    return install_crash_handler_;
+  }
+  void set_install_crash_handler(bool x) {
+    install_crash_handler_ = x;
+  }
+  bool message_buffer_size() const {
+    return message_buffer_size_;
+  }
+  void set_message_buffer_size(int x) {
+    message_buffer_size_ = x;
+  }
  private:
   SimpleStats simple_stats_;
   Timer* timer_;
