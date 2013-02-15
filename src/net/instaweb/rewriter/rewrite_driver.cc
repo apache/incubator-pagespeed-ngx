@@ -759,6 +759,7 @@ void RewriteDriver::InitStats(Statistics* statistics) {
   InsertGAFilter::InitStats(statistics);
   JavascriptFilter::InitStats(statistics);
   JsCombineFilter::InitStats(statistics);
+  LocalStorageCacheFilter::InitStats(statistics);
   MetaTagFilter::InitStats(statistics);
   RewriteContext::InitStats(statistics);
   UrlLeftTrimFilter::InitStats(statistics);

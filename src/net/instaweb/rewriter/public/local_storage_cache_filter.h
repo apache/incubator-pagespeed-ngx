@@ -32,6 +32,8 @@ namespace net_instaweb {
 class CachedResult;
 class HtmlElement;
 class RewriteDriver;
+class Statistics;
+class Variable;
 
 /*
  * The Local Storage Cache rewriter reduces HTTP requests by inlining resources
@@ -48,6 +50,14 @@ class LocalStorageCacheFilter : public RewriteFilter {
   static const char kLscCookieName[];
   static const char kLscInitializer[];  // public for the test harness only.
 
+  // Statistics' names.
+  static const char kCandidatesFound[];
+  static const char kStoredTotal[];
+  static const char kStoredImages[];
+  static const char kStoredCss[];
+  static const char kCandidatesAdded[];
+  static const char kCandidatesRemoved[];
+
   // State information for an inline filter using LSC.
   class InlineState {
    public:
@@ -63,6 +73,9 @@ class LocalStorageCacheFilter : public RewriteFilter {
 
   explicit LocalStorageCacheFilter(RewriteDriver* rewrite_driver);
   virtual ~LocalStorageCacheFilter();
+
+  // May be called multiple times, if there are multiple statistics objects.
+  static void InitStats(Statistics* statistics);
 
   virtual void StartDocumentImpl();
   virtual void EndDocument();
@@ -116,7 +129,8 @@ class LocalStorageCacheFilter : public RewriteFilter {
                                HtmlElement* element);
 
   // Remove the LSC attributes from the given element.
-  static void RemoveLscAttributes(HtmlElement* element);
+  static void RemoveLscAttributes(HtmlElement* element,
+                                  RewriteDriver* driver);
 
  private:
   void InsertOurScriptElement(HtmlElement* before);
@@ -133,6 +147,19 @@ class LocalStorageCacheFilter : public RewriteFilter {
   // The set of hashes in the local storage cache cookie. Each element points
   // into the rewrite driver's cookies() - that must not change underneath us.
   std::set<StringPiece> cookie_hashes_;
+
+  // # of times an img/link was found with a pagespeed_lsc_url attribute.
+  Variable* num_local_storage_cache_candidates_found_;
+  // # of times the hash of an img/link was found in the hash cookie.
+  Variable* num_local_storage_cache_stored_total_;
+  // # of times an img's hash was found in the hash cookie.
+  Variable* num_local_storage_cache_stored_images_;
+  // # of times a link's hash was found in the hash cookie.
+  Variable* num_local_storage_cache_stored_css_;
+  // # of times we added the hash and expiry attributes to a candidate img/link.
+  Variable* num_local_storage_cache_candidates_added_;
+  // # of times we removed the lsc attributes from a candidate img/link.
+  Variable* num_local_storage_cache_candidates_removed_;
 
   DISALLOW_COPY_AND_ASSIGN(LocalStorageCacheFilter);
 };

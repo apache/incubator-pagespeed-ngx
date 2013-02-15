@@ -20,6 +20,7 @@
 
 #include <set>
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
@@ -32,6 +33,7 @@
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/time_util.h"
 
 namespace net_instaweb {
@@ -40,14 +42,49 @@ const char LocalStorageCacheFilter::kLscCookieName[] = "_GPSLSC";
 const char LocalStorageCacheFilter::kLscInitializer[] =
     "pagespeed.localStorageCacheInit();";
 
+const char LocalStorageCacheFilter::kCandidatesFound[] =
+    "num_local_storage_cache_candidates_found";
+const char LocalStorageCacheFilter::kStoredTotal[] =
+    "num_local_storage_cache_stored_total";
+const char LocalStorageCacheFilter::kStoredImages[] =
+    "num_local_storage_cache_stored_images";
+const char LocalStorageCacheFilter::kStoredCss[] =
+    "num_local_storage_cache_stored_css";
+const char LocalStorageCacheFilter::kCandidatesAdded[] =
+    "num_local_storage_cache_candidates_added";
+const char LocalStorageCacheFilter::kCandidatesRemoved[] =
+    "num_local_storage_cache_candidates_removed";
+
 LocalStorageCacheFilter::LocalStorageCacheFilter(RewriteDriver* rewrite_driver)
     : RewriteFilter(rewrite_driver),
       script_inserted_(false),
       script_needs_inserting_(false) {
+  Statistics* stats = server_context_->statistics();
+  num_local_storage_cache_candidates_found_ =
+      stats->GetVariable(kCandidatesFound);
+  num_local_storage_cache_stored_total_ =
+      stats->GetVariable(kStoredTotal);
+  num_local_storage_cache_stored_images_ =
+      stats->GetVariable(kStoredImages);
+  num_local_storage_cache_stored_css_ =
+      stats->GetVariable(kStoredCss);
+  num_local_storage_cache_candidates_added_ =
+      stats->GetVariable(kCandidatesAdded);
+  num_local_storage_cache_candidates_removed_ =
+      stats->GetVariable(kCandidatesRemoved);
 }
 
 LocalStorageCacheFilter::~LocalStorageCacheFilter() {
   cookie_hashes_.clear();
+}
+
+void LocalStorageCacheFilter::InitStats(Statistics* statistics) {
+  statistics->AddVariable(LocalStorageCacheFilter::kCandidatesFound);
+  statistics->AddVariable(LocalStorageCacheFilter::kStoredTotal);
+  statistics->AddVariable(LocalStorageCacheFilter::kStoredImages);
+  statistics->AddVariable(LocalStorageCacheFilter::kStoredCss);
+  statistics->AddVariable(LocalStorageCacheFilter::kCandidatesAdded);
+  statistics->AddVariable(LocalStorageCacheFilter::kCandidatesRemoved);
 }
 
 void LocalStorageCacheFilter::StartDocumentImpl() {
@@ -90,16 +127,20 @@ void LocalStorageCacheFilter::EndElementImpl(HtmlElement* element) {
   if (is_img || is_link) {
     const char* url = element->AttributeValue(HtmlName::kPagespeedLscUrl);
     if (url != NULL) {
+      num_local_storage_cache_candidates_found_->Add(1);
       GoogleString hash = driver_->server_context()->hasher()->Hash(url);
       if (IsHashInCookie(driver_, kLscCookieName, hash, &cookie_hashes_)) {
+        num_local_storage_cache_stored_total_->Add(1);
         StringPiece given_url(url);
         GoogleUrl abs_url(base_url(), given_url);
         StringPiece lsc_url(abs_url.is_valid() ? abs_url.Spec() : given_url);
         GoogleString snippet("pagespeed.localStorageCache.");
         if (is_img) {
+          num_local_storage_cache_stored_images_->Add(1);
           StrAppend(&snippet, "inlineImg(\"", lsc_url, "\"",
                     ExtractOtherImgAttributes(element), ");");
         } else /* is_link */ {
+          num_local_storage_cache_stored_css_->Add(1);
           StrAppend(&snippet, "inlineCss(\"", lsc_url, "\");");
         }
         HtmlElement* script_element =
@@ -192,6 +233,15 @@ bool LocalStorageCacheFilter::AddLscAttributes(const StringPiece url,
     return false;
   }
 
+  // TODO(matterbury): Determine how expensive this is and drop it if too high.
+  RewriteFilter* filter =
+      driver->FindFilter(RewriteOptions::kLocalStorageCacheId);
+  if (filter != NULL) {
+    LocalStorageCacheFilter* lsc =
+        static_cast<LocalStorageCacheFilter*>(filter);
+    lsc->num_local_storage_cache_candidates_added_->Add(1);
+  }
+
   GoogleUrl gurl(driver->base_url(), url);
   StringPiece lsc_url(gurl.is_valid() ? gurl.Spec() : url);
   GoogleString hash = driver->server_context()->hasher()->Hash(lsc_url);
@@ -212,17 +262,31 @@ bool LocalStorageCacheFilter::AddLscAttributes(const StringPiece url,
   return true;
 }
 
-void LocalStorageCacheFilter::RemoveLscAttributes(HtmlElement* element) {
+void LocalStorageCacheFilter::RemoveLscAttributes(HtmlElement* element,
+                                                  RewriteDriver* driver) {
   element->DeleteAttribute(HtmlName::kPagespeedLscUrl);
   element->DeleteAttribute(HtmlName::kPagespeedLscHash);
   element->DeleteAttribute(HtmlName::kPagespeedLscExpiry);
   element->DeleteAttribute(HtmlName::kPagespeedNoDefer);
+
+  RewriteFilter* filter =
+      driver->FindFilter(RewriteOptions::kLocalStorageCacheId);
+  if (filter != NULL) {
+    LocalStorageCacheFilter* lsc =
+        static_cast<LocalStorageCacheFilter*>(filter);
+    lsc->num_local_storage_cache_candidates_removed_->Add(1);
+  }
 }
 
 bool LocalStorageCacheFilter::IsHashInCookie(const RewriteDriver* driver,
                                              const StringPiece cookie_name,
                                              const StringPiece hash,
                                              std::set<StringPiece>* hash_set) {
+  if (driver->request_headers() == NULL) {
+    LOG(WARNING) << "LocalStorageCacheFilter::IsHashInCookie: NO HEADERS!";
+    return false;
+  }
+
   // If we have a cookie header and we haven't yet parsed it.
   if (hash_set->empty()) {
     ConstStringStarVector v;

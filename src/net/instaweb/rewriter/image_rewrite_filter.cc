@@ -1046,7 +1046,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
 
   if (!image_inlined && !slot->disable_rendering()) {
     // Not inlined means we cannot store it in local storage.
-    LocalStorageCacheFilter::RemoveLscAttributes(element);
+    LocalStorageCacheFilter::RemoveLscAttributes(element, driver_);
     if (cached->optimizable()) {
       // Rewritten HTTP url
       src->SetValue(cached->url());

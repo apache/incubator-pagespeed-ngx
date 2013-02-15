@@ -56,7 +56,8 @@ class CssInlineFilter::Context : public InlineRewriteContext {
   virtual void Render() {
     if (num_output_partitions() < 1) {
       // Remove any LSC attributes as they're pointless if we don't inline.
-      LocalStorageCacheFilter::RemoveLscAttributes(get_element());
+      LocalStorageCacheFilter::RemoveLscAttributes(get_element(),
+                                                   filter_->driver());
     }
     InlineRewriteContext::Render();
   }
@@ -270,7 +271,7 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
                                               driver_, style_element);
   } else {
     // Remove any LSC attributes as they're now pointless.
-    LocalStorageCacheFilter::RemoveLscAttributes(element);
+    LocalStorageCacheFilter::RemoveLscAttributes(element, driver_);
   }
 }
 
