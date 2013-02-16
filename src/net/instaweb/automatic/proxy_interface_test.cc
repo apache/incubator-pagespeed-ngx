@@ -290,6 +290,7 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   EXPECT_TRUE(logging_info()->is_html_response());
   EXPECT_FALSE(logging_info()->is_url_disallowed());
   EXPECT_FALSE(logging_info()->is_request_disabled());
+  EXPECT_FALSE(logging_info()->is_pagespeed_resource());
 
   const PropertyPageInfo& page_info = logging_info()->property_page_info();
   // 3 for 3 device types.
@@ -411,6 +412,7 @@ TEST_F(ProxyInterfaceTest, HeadResourceRequest) {
   // will not be changed.
   FetchFromProxy("I.embedded.css.pagespeed.cf.0.css", request_headers,
                  true, &text, &response_headers);
+  EXPECT_TRUE(logging_info()->is_pagespeed_resource());
   EXPECT_EQ(expected_response_headers_string, response_headers.ToString());
   EXPECT_EQ(orig_css, text);
   // Headers and body are correct for a Head request.
