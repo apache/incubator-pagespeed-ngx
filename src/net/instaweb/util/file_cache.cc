@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <vector>
 
+#include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -327,6 +328,7 @@ bool FileCache::ShouldClean(int64* suggested_next_clean_time_ms) {
 }
 
 void FileCache::CleanIfNeeded() {
+  DCHECK(worker_ != NULL);
   if (worker_ != NULL) {
     int64 suggested_next_clean_time_ms;
     last_conditional_clean_result_ = false;

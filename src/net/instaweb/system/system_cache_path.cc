@@ -39,11 +39,9 @@ const char SystemCachePath::kLruCache[] = "lru_cache";
 SystemCachePath::SystemCachePath(const StringPiece& path,
                                  const SystemRewriteOptions* config,
                                  RewriteDriverFactory* factory,
-                                 SlowWorker* cache_clean_worker,
                                  AbstractSharedMem* shm_runtime)
     : path_(path.data(), path.size()),
       factory_(factory),
-      cache_clean_worker_(cache_clean_worker),
       shm_runtime_(shm_runtime),
       lock_manager_(NULL),
       file_cache_backend_(NULL) {
@@ -100,7 +98,7 @@ void SystemCachePath::RootInit() {
   }
 }
 
-void SystemCachePath::ChildInit() {
+void SystemCachePath::ChildInit(SlowWorker* cache_clean_worker) {
   factory_->message_handler()->Message(
       kInfo, "Reusing shared memory for path: %s.", path_.c_str());
   if ((shared_mem_lock_manager_.get() != NULL) &&
@@ -108,7 +106,7 @@ void SystemCachePath::ChildInit() {
     FallBackToFileBasedLocking();
   }
   if (file_cache_backend_ != NULL) {
-    file_cache_backend_->set_worker(cache_clean_worker_);
+    file_cache_backend_->set_worker(cache_clean_worker);
   }
 }
 

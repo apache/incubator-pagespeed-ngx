@@ -200,7 +200,7 @@ SystemCachePath* ApacheRewriteDriverFactory::GetCache(ApacheConfig* config) {
   PathCacheMap::iterator iter = result.first;
   if (result.second) {
     iter->second = new SystemCachePath(path, config, this,
-                                       slow_worker(), shared_mem_runtime());
+                                       shared_mem_runtime());
   }
   return iter->second;
 }
@@ -793,7 +793,7 @@ void ApacheRewriteDriverFactory::ChildInit() {
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
     SystemCachePath* cache = p->second;
-    cache->ChildInit();
+    cache->ChildInit(slow_worker_.get());
   }
   for (ApacheServerContextSet::iterator p = uninitialized_managers_.begin(),
            e = uninitialized_managers_.end(); p != e; ++p) {

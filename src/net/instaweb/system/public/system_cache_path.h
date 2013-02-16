@@ -46,7 +46,6 @@ class SystemCachePath {
   SystemCachePath(const StringPiece& path,
                   const SystemRewriteOptions* config,
                   RewriteDriverFactory* factory,
-                  SlowWorker* cache_clean_worker,
                   AbstractSharedMem* shm_runtime);
   ~SystemCachePath();
 
@@ -60,7 +59,7 @@ class SystemCachePath {
 
   // See comments in SystemCaches for calling conventions on these.
   void RootInit();
-  void ChildInit();
+  void ChildInit(SlowWorker* cache_clean_worker);
   void GlobalCleanup(MessageHandler* handler);  // only called in root process
 
  private:
@@ -69,7 +68,6 @@ class SystemCachePath {
   GoogleString path_;
 
   RewriteDriverFactory* factory_;
-  SlowWorker* cache_clean_worker_;
   AbstractSharedMem* shm_runtime_;
   scoped_ptr<SharedMemLockManager> shared_mem_lock_manager_;
   scoped_ptr<FileSystemLockManager> file_system_lock_manager_;
