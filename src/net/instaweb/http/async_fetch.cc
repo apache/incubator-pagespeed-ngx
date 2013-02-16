@@ -51,6 +51,7 @@ AsyncFetch::AsyncFetch(const RequestContextPtr& request_ctx)
       owns_response_headers_(false),
       owns_extra_response_headers_(false),
       headers_complete_(false) {
+  DCHECK(request_ctx_.get() != NULL);
 }
 
 AsyncFetch::~AsyncFetch() {

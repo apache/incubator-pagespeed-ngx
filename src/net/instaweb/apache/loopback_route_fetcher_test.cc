@@ -24,13 +24,16 @@
 
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/reflecting_test_fetcher.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"  // for ThreadSystem
 
 #include "apr_network_io.h"
 #include "apr_pools.h"
@@ -44,7 +47,8 @@ class LoopbackRouteFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
  public:
   LoopbackRouteFetcherTest()
       : pool_(NULL),
-        loopback_route_fetcher_(&options_, 42, &reflecting_fetcher_) {}
+        loopback_route_fetcher_(&options_, 42, &reflecting_fetcher_),
+        thread_system_(ThreadSystem::CreateThreadSystem()) {}
 
   static void SetUpTestCase() {
     apr_initialize();
@@ -71,13 +75,15 @@ class LoopbackRouteFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
   RewriteOptions options_;
   ReflectingTestFetcher reflecting_fetcher_;
   LoopbackRouteFetcher loopback_route_fetcher_;
+  scoped_ptr<ThreadSystem> thread_system_;
 };
 
 TEST_F(LoopbackRouteFetcherTest, LoopbackRouteFetcherWorks) {
   // As we use the reflecting fetcher as the backend here, the reply
   // messages will contain the URL the fetcher got as payload.
 
-  ExpectStringAsyncFetch dest(true);
+  ExpectStringAsyncFetch dest(
+      true, RequestContext::NewTestRequestContext(thread_system_.get()));
   loopback_route_fetcher_.Fetch("http://somehost.com/url", &handler_, &dest);
   EXPECT_STREQ("http://127.0.0.1:42/url", dest.buffer());
   EXPECT_STREQ("somehost.com",
@@ -87,17 +93,20 @@ TEST_F(LoopbackRouteFetcherTest, LoopbackRouteFetcherWorks) {
   options_.domain_lawyer()->AddOriginDomainMapping(
       "somehost.cdn.com", "somehost.com", &handler_);
 
-  ExpectStringAsyncFetch dest2(true);
+  ExpectStringAsyncFetch dest2(
+      true, RequestContext::NewTestRequestContext(thread_system_.get()));
   loopback_route_fetcher_.Fetch("http://somehost.com/url", &handler_, &dest2);
   EXPECT_STREQ("http://somehost.com/url", dest2.buffer());
 
-  ExpectStringAsyncFetch dest3(true);
+  ExpectStringAsyncFetch dest3(
+      true, RequestContext::NewTestRequestContext(thread_system_.get()));
   loopback_route_fetcher_.Fetch("http://somehost.cdn.com/url",
                                 &handler_, &dest3);
   EXPECT_STREQ("http://somehost.cdn.com/url", dest3.buffer());
 
   // Should still be redirected if the port doesn't match.
-  ExpectStringAsyncFetch dest4(true);
+  ExpectStringAsyncFetch dest4(
+      true, RequestContext::NewTestRequestContext(thread_system_.get()));
   loopback_route_fetcher_.Fetch("http://somehost.cdn.com:123/url",
                                 &handler_, &dest4);
   EXPECT_STREQ("http://127.0.0.1:42/url", dest4.buffer());

@@ -174,7 +174,7 @@ class ResourceCombinerTest : public RewriteTestBase {
 
     // TODO(morlovich): This is basically copy-paste from FetchResourceUrl.
     content->clear();
-    StringAsyncFetch callback(content);
+    StringAsyncFetch callback(CreateRequestContext(), content);
     bool fetched = rewrite_driver()->FetchResource(url, &callback);
 
     if (!fetched) {

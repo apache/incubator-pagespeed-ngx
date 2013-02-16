@@ -27,6 +27,7 @@
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -73,8 +74,9 @@ const int kConnectionRefused = 6;
 // to done_.
 class SerfTestFetch : public AsyncFetch {
  public:
-  explicit SerfTestFetch(AbstractMutex* mutex)
-      : mutex_(mutex), enable_threaded_(false), success_(false), done_(false) {
+  explicit SerfTestFetch(const RequestContextPtr& ctx, AbstractMutex* mutex)
+      : AsyncFetch(ctx),
+        mutex_(mutex), enable_threaded_(false), success_(false), done_(false) {
   }
   virtual ~SerfTestFetch() {}
 
@@ -175,7 +177,10 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
                   const GoogleString& content_start) {
     urls_.push_back(url);
     content_starts_.push_back(content_start);
-    fetches_.push_back(new SerfTestFetch(mutex_.get()));
+    fetches_.push_back(
+        new SerfTestFetch(
+            RequestContext::NewTestRequestContext(thread_system_.get()),
+            mutex_.get()));
   }
 
   void StartFetch(int idx) {
@@ -602,7 +607,9 @@ TEST_F(SerfUrlAsyncFetcherTest, ThreadedConnectionRefusedWithDetail) {
 // when requested.
 TEST_F(SerfUrlAsyncFetcherTest, TestTrackOriginalContentLength) {
   serf_url_async_fetcher_->set_track_original_content_length(true);
-  StringAsyncFetch async_fetch;
+  RequestContextPtr ctx(
+      RequestContext::NewTestRequestContext(thread_system_.get()));
+  StringAsyncFetch async_fetch(ctx);
   serf_url_async_fetcher_->Fetch(urls_[kModpagespeedSite], &message_handler_,
                                  &async_fetch);
   while (!async_fetch.done()) {

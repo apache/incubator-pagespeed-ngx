@@ -45,6 +45,7 @@
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
@@ -219,8 +220,10 @@ class StrippingFetch : public StringAsyncFetch {
                  const DomainLawyer* lawyer,
                  UrlAsyncFetcher* fetcher,
                  ThreadSystem* thread_system,
+                 const RequestContextPtr& ctx,
                  MessageHandler* message_handler)
-      : fetcher_(fetcher),
+      : StringAsyncFetch(ctx),
+        fetcher_(fetcher),
         lawyer_(lawyer),
         url_(url_input),
         message_handler_(message_handler),
@@ -329,8 +332,11 @@ void SlurpUrl(ApacheServerContext* manager, request_rec* r) {
   }
 
   MessageHandler* handler = manager->message_handler();
+  RequestContextPtr request_context(
+      new RequestContext(manager->thread_system()->NewMutex()));
   StrippingFetch fetch(stripped_url, manager->config()->domain_lawyer(),
-                       fetcher, manager->thread_system(), handler);
+                       fetcher, manager->thread_system(), request_context,
+                       handler);
   ApacheRequestToRequestHeaders(*r, fetch.request_headers());
 
   if (fetch.Fetch()) {

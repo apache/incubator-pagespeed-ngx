@@ -23,10 +23,13 @@
 
 #include "net/instaweb/http/public/mock_callback.h"
 #include "net/instaweb/http/public/request_headers.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -39,7 +42,9 @@ class ReflectingFetcherTest : public ::testing::Test {
 };
 
 TEST_F(ReflectingFetcherTest, ReflectingFetcherWorks) {
-  ExpectStringAsyncFetch dest(true);
+  scoped_ptr<ThreadSystem> ts(ThreadSystem::CreateThreadSystem());
+  ExpectStringAsyncFetch dest(
+      true, RequestContext::NewTestRequestContext(ts.get()));
   dest.request_headers()->Add("A", "First letter");
   dest.request_headers()->Add("B", "B#1");
   dest.request_headers()->Add("B", "B#2");
