@@ -245,6 +245,8 @@ class RewriteContext {
     return resource_context_.get();
   }
 
+  bool is_metadata_cache_miss() const { return is_metadata_cache_miss_; }
+
   // Removes this RewriteContext from all slots.  This is done normally when
   // a RewriteContext is completed and we are ready to run the successors.
   // It is also done when aborting a RewriteContext due to cache being
@@ -809,6 +811,10 @@ class RewriteContext {
   // Indicates that the current rewrite involves at least one resource which
   // is stale.
   bool stale_rewrite_;
+
+  // Indicates whether we have a metadata miss (or an unsuccessful revalidation
+  // attempt) on the html path.
+  bool is_metadata_cache_miss_;
 
   // An optional request trace associated with this context. May be NULL.
   // Always owned externally.

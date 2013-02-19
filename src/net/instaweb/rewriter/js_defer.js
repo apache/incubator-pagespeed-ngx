@@ -203,13 +203,6 @@ deferJsNs.DeferJs = function() {
   this.eventState_ = deferJsNs.DeferJs.EVENT.NOT_STARTED;
 
   /**
-   * Maintains the last 'orig_index' of the script executed so far.
-   * @type {!number}
-   * @private
-   */
-  this.nextScriptIndexInHtml_ = 0;
-
-  /**
    * This variable indicates whether deferJs is called for the first time.
    * This is set to false if deferJs is called again.
    * @private
@@ -257,6 +250,13 @@ deferJsNs.DeferJs = function() {
    * @private
    */
   this.psaScriptType_ = '';
+
+  /**
+   * Attribute added for nodes which are not processed yet.
+   * @type {string}
+   * @private
+   */
+  this.psaNotProcessed_ = '';
 
   /**
    * Last Index until incremental scripts will be executed, rest scripts will
@@ -348,6 +348,13 @@ deferJsNs.DeferJs.EVENT = {
 
 /**
  * Name of the attribute set for the nodes that are not reached so far during
+ * priority scripts execution.
+ * @const {string}
+ */
+deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED = 'priority_psa_not_processed';
+
+/**
+ * Name of the attribute set for the nodes that are not reached so far during
  * scripts execution.
  * @const {string}
  */
@@ -427,6 +434,7 @@ deferJsNs.DeferJs.prototype.submitTask = function(task, opt_pos) {
  * @param {string} str to be evaluated.
  * @param {Element} opt_script_elem Script element to copy attributes into the
  *     new script node.
+ * @return {Element} Script cloned element which is created.
  */
 deferJsNs.DeferJs.prototype.globalEval = function(str, opt_script_elem) {
   var script = this.cloneScriptNode(opt_script_elem);
@@ -434,6 +442,7 @@ deferJsNs.DeferJs.prototype.globalEval = function(str, opt_script_elem) {
   script.setAttribute('type', 'text/javascript');
   var currentElem = this.getCurrentDomLocation();
   currentElem.parentNode.insertBefore(script, currentElem);
+  return script;
 };
 
 /**
@@ -465,7 +474,9 @@ deferJsNs.DeferJs.prototype.createIdVars = function() {
     }
   }
   if (idVarsString) {
-    this.globalEval(idVarsString);
+    var script = this.globalEval(idVarsString);
+    script.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, '');
+    script.setAttribute(deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED, '');
   }
 };
 
@@ -584,7 +595,7 @@ deferJsNs.DeferJs.prototype.cloneScriptNode = function(opt_script_elem) {
           a[i].name != deferJsNs.DeferJs.PSA_ORIG_SRC &&
           a[i].name != deferJsNs.DeferJs.PSA_ORIG_INDEX &&
           a[i].name != deferJsNs.DeferJs.PSA_CURRENT_NODE &&
-          a[i].name != deferJsNs.DeferJs.PSA_NOT_PROCESSED) {
+          a[i].name != this.psaNotProcessed_) {
         newScript.setAttribute(a[i].name, a[i].value);
         opt_script_elem.removeAttribute(a[i].name);
       }
@@ -644,21 +655,21 @@ deferJsNs.DeferJs.prototype.addUrl = function(url, script_elem, opt_pos) {
 deferJsNs.DeferJs.prototype['addUrl'] = deferJsNs.DeferJs.prototype.addUrl;
 
 /**
- * Remove 'psa_not_processed' attribute till the given node.
+ * Remove psaNotProcessed_ attribute till the given node.
  * @param {Node} opt_node Stop node.
  */
 deferJsNs.DeferJs.prototype.removeNotProcessedAttributeTillNode = function(
     opt_node) {
   if (document.querySelectorAll && !(this.getIEVersion() <= 8)) {
     var nodes = document.querySelectorAll(
-        '[' + deferJsNs.DeferJs.PSA_NOT_PROCESSED + ']');
+        '[' + this.psaNotProcessed_ + ']');
     for (var i = 0; i < nodes.length; i++) {
       var dom_node = nodes.item(i);
       if (dom_node == opt_node) {
         return;
       }
       if (dom_node.getAttribute('type') != this.psaScriptType_) {
-        dom_node.removeAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED);
+        dom_node.removeAttribute(this.psaNotProcessed_);
       }
     }
   }
@@ -671,7 +682,7 @@ deferJsNs.DeferJs.prototype.setNotProcessedAttributeForNodes = function() {
   var nodes = this.origGetElementsByTagName_.call(document, '*');
   for (var i = 0; i < nodes.length; i++) {
     var dom_node = nodes.item(i);
-    dom_node.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, '');
+    dom_node.setAttribute(this.psaNotProcessed_, '');
   }
 };
 
@@ -1021,7 +1032,7 @@ deferJsNs.DeferJs.prototype.setUp = function() {
       }
     }
   }
-  this.setNotProcessedAttributeForNodes();
+
   // override AddEventListeners.
   this.overrideAddEventListeners();
 
@@ -1039,15 +1050,14 @@ deferJsNs.DeferJs.prototype.setUp = function() {
     me.handlePendingDocumentWrites();
     var node = me.origGetElementById_.call(document, str);
     return node == null ||
-        node.hasAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED) ?
-          null : node;
+        node.hasAttribute(me.psaNotProcessed_) ? null : node;
   }
 
   if (document.querySelectorAll && !(me.getIEVersion() <= 8)) {
     // TODO(ksimbili): Support IE8
     document.getElementsByTagName = function(tagName) {
       return document.querySelectorAll(
-          tagName + ':not([' + deferJsNs.DeferJs.PSA_NOT_PROCESSED + '])');
+          tagName + ':not([' + me.psaNotProcessed_ + '])');
     }
   }
 
@@ -1210,7 +1220,7 @@ deferJsNs.DeferJs.prototype.markNodesAndExtractScriptNodes = function(
         child.setAttribute('type', this.psaScriptType_);
         child.setAttribute(deferJsNs.DeferJs.PSA_ORIG_SRC, child.src);
         child.setAttribute('src', '');
-        child.setAttribute(deferJsNs.DeferJs.PSA_NOT_PROCESSED, '');
+        child.setAttribute(this.psaNotProcessed_, '');
       }
     } else {
       this.markNodesAndExtractScriptNodes(child, scriptNodes);
@@ -1488,14 +1498,12 @@ deferJsNs.DeferJs.prototype.registerScriptTags = function(
       if (opt_callback) {
         var scriptIndex =
             script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX);
-        if (scriptIndex <= opt_last_index &&
-            scriptIndex == this.nextScriptIndexInHtml_) {
-          this.nextScriptIndexInHtml_++;
+        if (scriptIndex <= this.optLastIndex_) {
           this.addNode(script, undefined, !isFirstScript);
         }
       } else {
         if (script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX) <
-            this.nextScriptIndexInHtml_) {
+            this.optLastIndex_) {
           this.log('Executing a script twice. Orig_Index: ' +
                    script.getAttribute(deferJsNs.DeferJs.PSA_ORIG_INDEX),
                    new Error(''));
@@ -1575,6 +1583,14 @@ deferJsNs.DeferJs.prototype.setType = function(type) {
 };
 
 /**
+ * Set the psaNotProcessed marker.
+ * @param {string} psaNotProcessed marker.
+ */
+deferJsNs.DeferJs.prototype.setPsaNotProcessed = function(psaNotProcessed) {
+  this.psaNotProcessed_ = psaNotProcessed;
+};
+
+/**
  * Whether defer javascript is executing low priority scripts.
  * @return {boolean} returns true if defer javascript is executing low priority
  *     scripts.
@@ -1639,8 +1655,14 @@ deferJsNs.deferInit = function() {
   pagespeed.highPriorityDeferJs = new deferJsNs.DeferJs();
   pagespeed.highPriorityDeferJs.setType(
     deferJsNs.DeferJs.PRIORITY_PSA_SCRIPT_TYPE);
+  pagespeed.highPriorityDeferJs.setPsaNotProcessed(
+    deferJsNs.DeferJs.PRIORITY_PSA_NOT_PROCESSED);
+  pagespeed.highPriorityDeferJs.setNotProcessedAttributeForNodes();
   pagespeed.lowPriorityDeferJs = new deferJsNs.DeferJs();
   pagespeed.lowPriorityDeferJs.setType(deferJsNs.DeferJs.PSA_SCRIPT_TYPE);
+  pagespeed.lowPriorityDeferJs.setPsaNotProcessed(
+    deferJsNs.DeferJs.PSA_NOT_PROCESSED);
+  pagespeed.lowPriorityDeferJs.setNotProcessedAttributeForNodes();
   pagespeed.deferJs = pagespeed.highPriorityDeferJs;
 
   pagespeed.deferJs.noDeferCreateElementOverride();

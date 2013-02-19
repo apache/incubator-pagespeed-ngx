@@ -670,6 +670,14 @@ void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
   RewriteStats* stats = server_context_->rewrite_stats();
   stats->cached_output_hits()->Add(completed_rewrites);
   stats->cached_output_missed_deadline()->Add(pending_rewrites_);
+  {
+    // Add completed_rewrites (from this flush window) to the logged value.
+    ScopedMutex lock(log_record()->mutex());
+    MetadataCacheInfo* metadata_log_info =
+        log_record()->logging_info()->mutable_metadata_cache_info();
+    metadata_log_info->set_num_rewrites_completed(
+        metadata_log_info->num_rewrites_completed() + completed_rewrites);
+  }
 
   // While new slots are created for distinct HtmlElements, Resources can be
   // shared across multiple slots, via resource_map_.  However, to avoid
@@ -2029,6 +2037,16 @@ void RewriteDriver::RewriteComplete(RewriteContext* rewrite_context,
   bool attached = false;
   RewriteContextSet::iterator p = initiated_rewrites_.find(rewrite_context);
   if (p != initiated_rewrites_.end()) {
+    if (rewrite_context->is_metadata_cache_miss()) {
+      // If the rewrite completed within the deadline and it actually involved
+      // and fetch rewrite (not a metadata hit or successful revalidate) then
+      // bump up the corresponding counter in log record.
+      ScopedMutex lock(log_record()->mutex());
+      MetadataCacheInfo* metadata_log_info =
+          log_record()->logging_info()->mutable_metadata_cache_info();
+      metadata_log_info->set_num_successful_rewrites_on_miss(
+          metadata_log_info->num_successful_rewrites_on_miss() + 1);
+    }
     initiated_rewrites_.erase(p);
     attached = true;
 

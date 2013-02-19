@@ -514,9 +514,10 @@ void HtmlParse::InsertElementBeforeCurrent(HtmlNode* new_node) {
       // The node pointed to by Current will be our new sibling, so
       // we should grab its parent.
       HtmlNode* node = current_event->GetNode();
-      message_handler_->Check(node != NULL,
-                              "Cannot compute parent for new node");
-      new_node->set_parent(node->parent());
+      // 'node' can be null when the current event is EndDocument.
+      if (node != NULL) {
+        new_node->set_parent(node->parent());
+      }
     }
   }
   InsertElementBeforeEvent(current_, new_node);

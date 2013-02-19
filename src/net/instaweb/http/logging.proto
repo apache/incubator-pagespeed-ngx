@@ -88,12 +88,36 @@ message BlinkInfo {
   optional bool mismatch_blacklist_threshold_exceeded = 7;
 }
 
-// This proto stores information related to metadata cache lookups.
-// Next id for MetadataCacheInfo: 4
+// This proto stores information related to metadata cache lookups and
+// rewriting.
+// Next id for MetadataCacheInfo: 8
 message MetadataCacheInfo {
+  // Number of hits.
   optional int32 num_hits = 1;
+  // Number of "can revalidates".
   optional int32 num_revalidates = 2;
+  // Number of misses.
   optional int32 num_misses = 3;
+
+  // The following fields are only for rewriting from HTML parse flow.
+
+  // The number of times we successfully revalidated an expired metadata within
+  // the rewrite deadline.  This will be 0 if
+  // metadata_cache_staleness_threshold_ms is >0.  Will be <= num_revalidates
+  optional int32 num_successful_revalidates = 4;
+  // The number of times we successfully fetched and rewrote a resource (when
+  // metadata cache gave a miss) within the rewrite deadline.  Will be <=
+  // num_misses.
+  optional int32 num_successful_rewrites_on_miss = 5;
+  // The number of times an expired resource metadata was used (as stale).  This
+  // will be 0 unless metadata_cache_staleness_threshold_ms flag has a value >0.
+  // Will be <= num_hits.
+  optional int32 num_stale_rewrites = 6;
+  // Total number of rewrites that were completed in the rewrite deadline.
+  optional int32 num_rewrites_completed = 7;
+}
+
+message RewritingInfo {
 }
 
 // This proto stores all information related to split_html.

@@ -1015,6 +1015,7 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     notify_driver_on_fetch_done_(false),
     force_rewrite_(false),
     stale_rewrite_(false),
+    is_metadata_cache_miss_(false),
     dependent_request_trace_(NULL) {
   partitions_.reset(new OutputPartitions);
 }
@@ -1183,6 +1184,10 @@ void RewriteContext::LogMetadataCacheInfo(bool cache_ok, bool can_revalidate) {
         log_record->logging_info()->mutable_metadata_cache_info();
     if (cache_ok) {
       metadata_log_info->set_num_hits(metadata_log_info->num_hits() + 1);
+      if (stale_rewrite_) {
+        metadata_log_info->set_num_stale_rewrites(
+            metadata_log_info->num_stale_rewrites() + 1);
+      }
     } else if (can_revalidate) {
       metadata_log_info->set_num_revalidates(
           metadata_log_info->num_revalidates() + 1);
@@ -1355,6 +1360,7 @@ void RewriteContext::OutputCacheHit(bool write_partitions) {
 }
 
 void RewriteContext::OutputCacheMiss() {
+  is_metadata_cache_miss_ = true;
   outputs_.clear();
   partitions_->Clear();
   ServerContext* server_context = FindServerContext();
@@ -1545,6 +1551,15 @@ void RewriteContext::ResourceRevalidateDone(InputInfo* input_info,
   --outstanding_fetches_;
   if (outstanding_fetches_ == 0) {
     if (revalidate_ok_) {
+      // Increment num_successful_revalidates.
+      if (!has_parent()) {
+        LogRecord* log_record = Driver()->log_record();
+        ScopedMutex lock(log_record->mutex());
+        MetadataCacheInfo* metadata_log_info =
+            log_record->logging_info()->mutable_metadata_cache_info();
+        metadata_log_info->set_num_successful_revalidates(
+            metadata_log_info->num_successful_revalidates() + 1);
+      }
       OutputCacheHit(true /* update the cache with new timestamps*/);
     } else {
       OutputCacheMiss();

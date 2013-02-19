@@ -56,8 +56,8 @@ class CriticalCssFilter::CssElement {
   // HtmlParse deletes the element (regardless of whether it is inserted).
   virtual ~CssElement() {}
 
-  virtual void InsertAfterCurrent() const {
-    html_parse_->InsertElementAfterCurrent(element_);
+  virtual void InsertBeforeCurrent() const {
+    html_parse_->InsertElementBeforeCurrent(element_);
   }
 
  protected:
@@ -75,15 +75,15 @@ class CriticalCssFilter::CssStyleElement
   CssStyleElement(HtmlParse* p, HtmlElement* e) : CssElement(p, e) {}
   virtual ~CssStyleElement() {}
 
-  // Call before InsertAfterCurrent.
+  // Call before InsertBeforeCurrent.
   void AppendCharactersNode(HtmlCharactersNode* characters_node) {
     characters_nodes_.push_back(
         html_parse_->NewCharactersNode(NULL, characters_node->contents()));
   }
 
-  virtual void InsertAfterCurrent() const {
+  virtual void InsertBeforeCurrent() const {
     HtmlElement* element = element_;
-    CssElement::InsertAfterCurrent();
+    CssElement::InsertBeforeCurrent();
     for (CharactersNodeVector::const_iterator it = characters_nodes_.begin(),
          end = characters_nodes_.end(); it != end; ++it) {
       html_parse_->AppendChild(element, *it);
@@ -125,7 +125,7 @@ void CriticalCssFilter::EndDocument() {
     // Write the full set of CSS elements (critical and non-critical rules).
     for (CssElementVector::iterator it = css_elements_.begin(),
          end = css_elements_.end(); it != end; ++it) {
-      (*it)->InsertAfterCurrent();
+      (*it)->InsertBeforeCurrent();
     }
   }
   if (!css_elements_.empty()) {
