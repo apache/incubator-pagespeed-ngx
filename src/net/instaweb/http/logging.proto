@@ -169,7 +169,7 @@ message FlushEarlyResourceInfo {
 }
 
 // Information that applies to a resource.
-// Next id for RewriteResourceInfo: 4
+// Next id for RewriteResourceInfo: 5
 message RewriteResourceInfo {
   // True if we inlined the resource.
   optional bool is_inlined = 1 [ default = false ];
@@ -177,6 +177,8 @@ message RewriteResourceInfo {
   optional bool is_critical = 2 [ default = false ];
   // True if the resource has a pagespeed_no_defer attribute.
   optional bool has_pagespeed_no_defer = 3 [ default = false ];
+  // True if the resource is blacklisted.
+  optional bool is_blacklisted = 4 [ default = false ];
 }
 
 // Information related to each resource considered by the image rewrite filter.

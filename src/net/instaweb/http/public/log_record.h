@@ -134,6 +134,9 @@ class LogRecord  {
   void LogJsDisableFilter(const char* id, int status,
                           bool has_pagespeed_no_defer);
 
+  void LogLazyloadFilter(const char* id, int status,
+                         bool is_blacklisted, bool is_critical);
+
   // Mutex-guarded log-writing operations. Derived classes should override
   // *Impl methods. Returns false if the log write attempt failed.
   bool WriteLog();

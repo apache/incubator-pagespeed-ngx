@@ -281,4 +281,23 @@ void LogRecord::LogJsDisableFilter(const char* id, int status,
   SetRewriterLoggingStatus(rewriter_info, status);
 }
 
+void LogRecord::LogLazyloadFilter(const char* id, int status,
+                                  bool is_blacklisted, bool is_critical) {
+  RewriterInfo* rewriter_info = NewRewriterInfo(id);
+  if (rewriter_info == NULL) {
+    return;
+  }
+
+  ScopedMutex lock(mutex_.get());
+  RewriteResourceInfo* rewrite_resource_info =
+      rewriter_info->mutable_rewrite_resource_info();
+  if (is_blacklisted) {
+    rewrite_resource_info->set_is_blacklisted(is_blacklisted);
+  }
+  if (is_critical) {
+    rewrite_resource_info->set_is_critical(is_critical);
+  }
+  SetRewriterLoggingStatus(rewriter_info, status);
+}
+
 }  // namespace net_instaweb
