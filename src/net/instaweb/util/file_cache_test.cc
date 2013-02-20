@@ -31,7 +31,9 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/slow_worker.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -48,13 +50,21 @@ class FileCacheTest : public CacheTestBase {
         file_system_(thread_system_.get(), &mock_timer_),
         kCleanIntervalMs(Timer::kMinuteMs),
         kTargetSize(12),  // Small enough to overflow with a few strings.
-        kTargetInodeLimit(10),
-        cache_(GTestTempDir(), &file_system_, &worker_,
-               &filename_encoder_,
-               new FileCache::CachePolicy(
-                   &mock_timer_, &hasher_, kCleanIntervalMs, kTargetSize,
-                   kTargetInodeLimit),
-               &message_handler_) {
+        kTargetInodeLimit(10) {
+    FileCache::InitStats(&stats_);
+    cache_.reset(new FileCache(GTestTempDir(), &file_system_, &worker_,
+                               &filename_encoder_,
+                               new FileCache::CachePolicy(
+                                   &mock_timer_, &hasher_, kCleanIntervalMs,
+                                   kTargetSize, kTargetInodeLimit),
+                               &stats_,
+                               &message_handler_));
+    disk_checks_ = stats_.GetVariable(FileCache::kDiskChecks);
+    cleanups_ = stats_.GetVariable(FileCache::kCleanups);
+    evictions_ = stats_.GetVariable(FileCache::kEvictions);
+    bytes_freed_in_cleanup_ = stats_.GetVariable(
+        FileCache::kBytesFreedInCleanup);
+
     // TODO(jmarantz): consider using mock_thread_system if we want
     // explicit control of time.  For now, just mutex-protect the
     // MockTimer.
@@ -64,7 +74,7 @@ class FileCacheTest : public CacheTestBase {
 
   void CheckCleanTimestamp(int64 min_time_ms) {
     GoogleString buffer;
-    file_system_.ReadFile(cache_.clean_time_path_.c_str(), &buffer,
+    file_system_.ReadFile(cache_->clean_time_path_.c_str(), &buffer,
                            &message_handler_);
     int64 clean_time_ms;
     StringToInt64(buffer, &clean_time_ms);
@@ -77,19 +87,19 @@ class FileCacheTest : public CacheTestBase {
     file_system_.set_atime_enabled(true);
   }
 
-  virtual CacheInterface* Cache() { return &cache_; }
+  virtual CacheInterface* Cache() { return cache_.get(); }
   virtual void PostOpCleanup() { }
 
   bool Clean(int64 size, int64 inode_count) {
-    return cache_.Clean(size, inode_count);
+    return cache_->Clean(size, inode_count);
   }
 
   bool CheckClean() {
-    cache_.CleanIfNeeded();
+    cache_->CleanIfNeeded();
     while (worker_.IsBusy()) {
       usleep(10);
     }
-    return cache_.last_conditional_clean_result_;
+    return cache_->last_conditional_clean_result_;
   }
 
  protected:
@@ -102,8 +112,14 @@ class FileCacheTest : public CacheTestBase {
   const int64 kCleanIntervalMs;
   const int64 kTargetSize;
   const int64 kTargetInodeLimit;
-  FileCache cache_;
+  SimpleStats stats_;
+  scoped_ptr<FileCache> cache_;
   GoogleMessageHandler message_handler_;
+
+  Variable* disk_checks_;
+  Variable* cleanups_;
+  Variable* evictions_;
+  Variable* bytes_freed_in_cleanup_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FileCacheTest);
@@ -118,7 +134,7 @@ TEST_F(FileCacheTest, PutGetDelete) {
   CheckPut("Name", "NewValue");
   CheckGet("Name", "NewValue");
 
-  cache_.Delete("Name");
+  cache_->Delete("Name");
   CheckNotFound("Name");
 }
 
@@ -140,8 +156,9 @@ TEST_F(FileCacheTest, Clean) {
   const char* names1[] = {"a1", "a2", "a/3"};
   const char* values1[] = {"a2", "a234", "a2345678"};
   // Less common keys
-  const char* names2[] =
-      {"b/1", "b2", "b3", "b4", "b5", "b6", "b7", "b8", "b9"};
+  const char* names2[] = {"b/1", "b2", "b3",
+                          "b4", "b5", "b6",
+                          "b7", "b8", "b9"};
   const char* values2[] = {"b2", "b234", "b2345678",
                            "b2", "b234", "b2345678",
                            "b2", "b234", "b2345678"};
@@ -159,6 +176,11 @@ TEST_F(FileCacheTest, Clean) {
 
   // Clean should not remove anything if target is bigger than total size.
   EXPECT_TRUE(Clean(dir_info.size_bytes + 1, dir_info.inode_count + 1));
+  EXPECT_EQ(1, disk_checks_->Get());
+  EXPECT_EQ(0, cleanups_->Get());
+  EXPECT_EQ(0, evictions_->Get());
+  EXPECT_EQ(0, bytes_freed_in_cleanup_->Get());
+
   for (int i = 0; i < 27; i++) {
     // This pattern represents more common usage of the names1 files.
     CheckGet(names1[i % 3], values1[i % 3]);
@@ -169,16 +191,24 @@ TEST_F(FileCacheTest, Clean) {
   EXPECT_EQ((2 + 4 + 8) * 4, dir_info.size_bytes);
   EXPECT_EQ(15, dir_info.inode_count);
 
+  stats_.Clear();
   // Verify that inode_count_target of 0 (meaning no inode limit) is respected.
   EXPECT_TRUE(Clean(dir_info.size_bytes + 1, 0));
+  EXPECT_EQ(1, disk_checks_->Get());
+  EXPECT_EQ(0, cleanups_->Get());
   file_system_.GetDirInfo(GTestTempDir(), &dir_info, &message_handler_);
   EXPECT_EQ((2 + 4 + 8) * 4, dir_info.size_bytes);
   EXPECT_EQ(15, dir_info.inode_count);
 
+  stats_.Clear();
   // Test cleaning by target_size, not inode_count
   int64 target_size = dir_info.size_bytes;
   int64 target_inode_count = dir_info.inode_count + 1;
   EXPECT_TRUE(Clean(target_size, target_inode_count));
+  EXPECT_EQ(1, disk_checks_->Get());
+  EXPECT_EQ(1, cleanups_->Get());
+  EXPECT_EQ(3, evictions_->Get());  // Directory is not counted.
+  EXPECT_EQ(2 + 4 + 8, bytes_freed_in_cleanup_->Get());
   // b/c/, b/1, b2, b3 should be removed
   for (int i = 0; i < 3; i++) {
     CheckGet(names1[i], values1[i]);
@@ -196,10 +226,15 @@ TEST_F(FileCacheTest, Clean) {
   EXPECT_TRUE(file_system_.Exists(dir2.c_str(), &message_handler_).is_true());
   EXPECT_TRUE(file_system_.Exists(dir3.c_str(), &message_handler_).is_false());
 
+  stats_.Clear();
   // Test cleaning by inode_count, not target_size
   target_size = dir_info.size_bytes + 1;
   target_inode_count = dir_info.inode_count;
   EXPECT_TRUE(Clean(target_size, target_inode_count));
+  EXPECT_EQ(1, disk_checks_->Get());
+  EXPECT_EQ(1, cleanups_->Get());
+  EXPECT_EQ(4, evictions_->Get());
+  EXPECT_EQ(2 + 2 + 2 + 4, bytes_freed_in_cleanup_->Get());
   // b/, b4, b7, a1, a2 should be removed
   for (int i = 0; i < 2; i++) {
     CheckNotFound(names1[i]);

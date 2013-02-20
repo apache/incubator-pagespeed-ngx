@@ -64,6 +64,7 @@
 #include "net/instaweb/util/public/checking_thread_system.h"
 #endif
 #include "net/instaweb/util/public/fallback_cache.h"
+#include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/md5_hasher.h"
@@ -962,6 +963,7 @@ void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
   // Init Apache-specific stats.
   ApacheServerContext::InitStats(statistics);
   AprMemCache::InitStats(statistics);
+  FileCache::InitStats(statistics);
   InPlaceResourceRecorder::InitStats(statistics);
   RateController::InitStats(statistics);
   SerfUrlAsyncFetcher::InitStats(statistics);

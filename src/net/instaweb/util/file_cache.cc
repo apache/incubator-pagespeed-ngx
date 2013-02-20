@@ -33,6 +33,7 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/slow_worker.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -69,6 +70,12 @@ class FileCache::CacheCleanFunction : public Function {
   DISALLOW_COPY_AND_ASSIGN(CacheCleanFunction);
 };
 
+const char FileCache::kDiskChecks[] = "file_cache_disk_checks";
+const char FileCache::kCleanups[] = "file_cache_cleanups";
+const char FileCache::kEvictions[] = "file_cache_evictions";
+const char FileCache::kBytesFreedInCleanup[] =
+    "file_cache_bytes_freed_in_cleanup";
+
 // Filenames for the next scheduled clean time and the lockfile.  In
 // order to prevent these from colliding with actual cachefiles, they
 // contain characters that our filename encoder would escape.
@@ -81,6 +88,7 @@ FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
                      SlowWorker* worker,
                      FilenameEncoder* filename_encoder,
                      CachePolicy* policy,
+                     Statistics* stats,
                      MessageHandler* handler)
     : path_(path),
       file_system_(file_system),
@@ -90,7 +98,11 @@ FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
       cache_policy_(policy),
       path_length_limit_(file_system_->MaxPathLength(path)),
       clean_time_path_(path),
-      clean_lock_path_(path) {
+      clean_lock_path_(path),
+      disk_checks_(stats->GetVariable(kDiskChecks)),
+      cleanups_(stats->GetVariable(kCleanups)),
+      evictions_(stats->GetVariable(kEvictions)),
+      bytes_freed_in_cleanup_(stats->GetVariable(kBytesFreedInCleanup)) {
   next_clean_ms_ = policy->timer->NowMs() + policy->clean_interval_ms / 2;
   EnsureEndsInSlash(&clean_time_path_);
   StrAppend(&clean_time_path_, kCleanTimeName);
@@ -99,6 +111,13 @@ FileCache::FileCache(const GoogleString& path, FileSystem* file_system,
 }
 
 FileCache::~FileCache() {
+}
+
+void FileCache::InitStats(Statistics* statistics) {
+  statistics->AddVariable(kDiskChecks);
+  statistics->AddVariable(kCleanups);
+  statistics->AddVariable(kEvictions);
+  statistics->AddVariable(kBytesFreedInCleanup);
 }
 
 void FileCache::Get(const GoogleString& key, Callback* callback) {
@@ -174,6 +193,7 @@ bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
                             "count against target %s",
                             Integer64ToString(target_size).c_str(),
                             Integer64ToString(target_inode_count).c_str());
+  disk_checks_->Add(1);
 
   bool everything_ok = true;
 
@@ -201,6 +221,7 @@ bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
                             "beginning cleanup.",
                             Integer64ToString(cache_size).c_str(),
                             Integer64ToString(cache_inode_count).c_str());
+  cleanups_->Add(1);
 
   // Remove empty directories.
   StringVector::iterator it;
@@ -255,12 +276,14 @@ bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
     --cache_inode_count;
     everything_ok &= file_system_->RemoveFile(file.name.c_str(),
                                               message_handler_);
+    evictions_->Add(1);
   }
 
   int64 bytes_freed = orig_cache_size - cache_size;
   message_handler_->Message(kInfo,
                             "File cache cleanup complete; freed %s bytes",
                             Integer64ToString(bytes_freed).c_str());
+  bytes_freed_in_cleanup_->Add(bytes_freed);
   return everything_ok;
 }
 
