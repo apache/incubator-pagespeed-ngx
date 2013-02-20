@@ -374,18 +374,6 @@ class HtmlParse {
   // Returns the number of events on the event queue.
   size_t GetEventQueueSize();
 
-  // Move the entire contents of extra_events onto the end of the event queue.
-  void AppendEventsToQueue(HtmlEventList* extra_events);
-
-  // Move the entire event queue after the first event in event_set to the end
-  // of tail.  Return that event, or NULL if there was none.
-  HtmlEvent* SplitQueueOnFirstEventInSet(const ConstHtmlEventSet& event_set,
-                                         HtmlEventList* tail);
-
-  // Return the EndElementEvent for this element, or NULL if it doesn't exist
-  // yet.
-  HtmlEvent* GetEndElementEvent(const HtmlElement* element);
-
   virtual void ParseTextInternal(const char* content, int size);
 
   // Allow filters to determine whether they are enabled for this request.

@@ -702,7 +702,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(161, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(162, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -928,6 +928,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("MaxUrlSize",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kMaxUrlSize));
+  EXPECT_STREQ("MetadataCacheStalenessThresholdMs",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kMetadataCacheStalenessThresholdMs));
   EXPECT_STREQ("MinImageSizeLowResolutionBytes",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kMinImageSizeLowResolutionBytes));

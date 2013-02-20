@@ -912,7 +912,8 @@ void RewriteOptions::AddProperties() {
              &RewriteOptions::max_rewrite_info_log_size_, "mrils",
              kMaxRewriteInfoLogSize);
   add_option(kDefaultMetadataCacheStalenessThresholdMs,
-             &RewriteOptions::metadata_cache_staleness_threshold_ms_, "mcst");
+             &RewriteOptions::metadata_cache_staleness_threshold_ms_, "mcst",
+             kMetadataCacheStalenessThresholdMs);
   add_option(kDefaultMetadataInputErrorsCacheTtlMs,
              &RewriteOptions::metadata_input_errors_cache_ttl_ms_, "mect");
   add_option(false,

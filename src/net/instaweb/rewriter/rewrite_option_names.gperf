@@ -107,6 +107,7 @@ struct OptionName {
 "MemcachedServers",                      RewriteOptions::kMemcachedServers
 "MemcachedThreads",                      RewriteOptions::kMemcachedThreads
 "MemcachedTimeoutUs",                    RewriteOptions::kMemcachedTimeoutUs
+"MetadataCacheStalenessThresholdMs",     RewriteOptions::kMetadataCacheStalenessThresholdMs
 "MinImageSizeLowResolutionBytes",        RewriteOptions::kMinImageSizeLowResolutionBytes
 "MinResourceCacheTimeToRewriteMs",       RewriteOptions::kMinResourceCacheTimeToRewriteMs
 "ModifyCachingHeaders",                  RewriteOptions::kModifyCachingHeaders

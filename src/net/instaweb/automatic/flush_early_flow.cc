@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -542,6 +543,14 @@ void FlushEarlyFlow::GenerateResponseHeaders(
   }
   response_headers->SetDateAndCaching(manager_->timer()->NowMs(), 0,
                                       ", private, no-cache");
+
+  if ((driver_->options()->Enabled(RewriteOptions::kDeferJavascript) ||
+       driver_->options()->Enabled(RewriteOptions::kSplitHtml)) &&
+      driver_->user_agent_matcher()->IsIe(driver_->user_agent()) &&
+      !response_headers->Has(HttpAttributes::kXUACompatible)) {
+    response_headers->Add(HttpAttributes::kXUACompatible, "IE=edge");
+  }
+
   response_headers->ComputeCaching();
   base_fetch_->HeadersComplete();
 }

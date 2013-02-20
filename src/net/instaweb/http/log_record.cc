@@ -149,6 +149,16 @@ void LogRecord::SetRewriterLoggingStatus(
       static_cast<RewriterInfo::RewriterApplicationStatus>(status));
 }
 
+void LogRecord::SetRewriterLoggingStatus(const char* id, int status) {
+  RewriterInfo* rewriter_info = NewRewriterInfo(id);
+  if (rewriter_info == NULL) {
+    return;
+  }
+
+  ScopedMutex lock(mutex_.get());
+  SetRewriterLoggingStatus(rewriter_info, status);
+}
+
 void LogRecord::SetBlinkRequestFlow(int flow) {
   DCHECK(BlinkInfo::BlinkRequestFlow_IsValid(flow));
   ScopedMutex lock(mutex_.get());

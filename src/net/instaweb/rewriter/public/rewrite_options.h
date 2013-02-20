@@ -260,6 +260,7 @@ class RewriteOptions {
     kMaxRewriteInfoLogSize,
     kMaxUrlSegmentSize,
     kMaxUrlSize,
+    kMetadataCacheStalenessThresholdMs,
     kMinImageSizeLowResolutionBytes,
     kMinResourceCacheTimeToRewriteMs,
     kModifyCachingHeaders,

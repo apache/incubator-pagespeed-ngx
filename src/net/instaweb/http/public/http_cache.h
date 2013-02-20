@@ -86,7 +86,8 @@ class HTTPCache {
     explicit Callback(const RequestContextPtr& request_ctx)
         : response_headers_(NULL),
           owns_response_headers_(false),
-          request_ctx_(request_ctx) {
+          request_ctx_(request_ctx),
+          log_timing_(true) {
     }
     virtual ~Callback();
     virtual void Done(FindResult find_result) = 0;
@@ -141,6 +142,8 @@ class HTTPCache {
 
     LogRecord* log_record();
     const RequestContextPtr& request_context() { return request_ctx_; }
+    void set_log_timing(bool t) { log_timing_ = t; }
+    bool log_timing() const { return log_timing_; }
 
     virtual void SetTimingMs(int64 timing_value_ms);
 
@@ -152,6 +155,7 @@ class HTTPCache {
     ResponseHeaders* response_headers_;
     bool owns_response_headers_;
     RequestContextPtr request_ctx_;
+    bool log_timing_;
 
     DISALLOW_COPY_AND_ASSIGN(Callback);
   };

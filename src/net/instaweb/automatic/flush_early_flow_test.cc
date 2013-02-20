@@ -287,11 +287,12 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     "<link rel=\"stylesheet\" href=\"%s\" media=\"print\" disabled=\"true\"/>\n"
     "<link rel=\"stylesheet\" href=\"%s\" media=\"print\" disabled=\"true\"/>\n"
     "<link rel=\"stylesheet\" href=\"%s\" media=\"print\" disabled=\"true\"/>\n"
-    "<script type=\"psa_prefetch\" src=\"/psajs/js_defer.0.js\"></script>\n"
+    "%s"
     "<script type='text/javascript'>"
     "window.mod_pagespeed_prefetch_start = Number(new Date());"
-    "window.mod_pagespeed_num_resources_prefetched = 4</script>"
-    "<script type=\"text/javascript\">%s</script>"
+    "window.mod_pagespeed_num_resources_prefetched = %d</script>"
+    "%s"
+    "%s"
     "%s"
     "<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\"/>"
     "<meta http-equiv=\"last-modified\" content=\"2012-08-09T11:03:27Z\"/>"
@@ -303,11 +304,7 @@ const char kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly[] =
     "</script>"
     "<script pagespeed_orig_src=\"%s\" type=\"text/psajs\" orig_index=\"1\">"
     "</script>"
-    "<img pagespeed_lazy_src=\"%s\""
-    " src=\"/psajs/1.0.gif\""
-    " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
-    "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
-    "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
+    "%s"
     "<script pagespeed_orig_src=\"http://test.com/private.js\""
     " type=\"text/psajs\""
     " orig_index=\"2\"></script>"
@@ -640,18 +637,46 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
          "}})()"
         "</script>";
     combined_js_url[combined_js_url.find('X')] = '+';
-    if (value == UserAgentMatcher::kPrefetchLinkScriptTag && defer_js_enabled) {
+    if (value == UserAgentMatcher::kPrefetchLinkScriptTag && defer_js_enabled
+        && !lazyload_enabled) {
+      return StringPrintf(
+          kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly,
+          rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
+          rewritten_css_url_3_.data(), "", 3, "",
+          cookie_script.data(),
+          "<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">",
+          rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
+          rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
+          StrCat("<img src=\"", rewritten_img_url_1.data(), "\"/>").c_str(),
+          StrCat("<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+                 JsDisableFilter::GetJsDisableScriptSnippet(options_),
+                 "</script>").c_str(),
+          StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
+                       redirect_url.c_str()).c_str(),
+          rewritten_css_url_3_.data(),
+          GetDeferJsCode().c_str());
+    } else if (value == UserAgentMatcher::kPrefetchLinkScriptTag
+               && defer_js_enabled && lazyload_enabled) {
       return StringPrintf(
           kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly,
           rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
           rewritten_css_url_3_.data(),
-          LazyloadImagesFilter::GetLazyloadJsSnippet(
-              options_,
-              server_context()->static_asset_manager()).c_str(),
-          cookie_script.data(),
+          StrCat("<script type=\"psa_prefetch\" src=\"/psajs/js_defer.0.js\">",
+                 "</script>\n").c_str(), 4,
+          StrCat("<script type=\"text/javascript\">",
+                 LazyloadImagesFilter::GetLazyloadJsSnippet(
+                     options_,
+                     server_context()->static_asset_manager()),
+                 "</script>").c_str(),
+          cookie_script.data(), "",
           rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
           rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
-          rewritten_img_url_1.data(),
+          StrCat("<img pagespeed_lazy_src=\"", rewritten_img_url_1.data(),
+                 "\" src=\"/psajs/1.0.gif\"",
+                 " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>",
+                 "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+                 "pagespeed.lazyLoadImages.overrideAttributeFunctions();",
+                 "</script>").c_str(),
           StrCat("<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
                  JsDisableFilter::GetJsDisableScriptSnippet(options_),
                  "</script>").c_str(),
@@ -1551,6 +1576,36 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithLocalStorageDoesNotCrash) {
   ResponseHeaders headers;
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+}
+
+TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithIEAddUACompatibilityHeader) {
+  SetupForFlushEarlyFlow();
+  RequestHeaders request_headers;
+  // Useragent is set to "MSIE 9." because we need to check if appropriate
+  // HttpAttributes::kXUACompatible header is added, which happens only with
+  // MSIE 9 and above.
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          " MSIE 9.");
+  scoped_ptr<RewriteOptions> custom_options(
+      server_context()->global_options()->Clone());
+  custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
+
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  server_context()->set_url_namer(&url_namer);
+
+  GoogleString text;
+  ResponseHeaders headers;
+
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  // Fetch the url again. This time FlushEarlyFlow should be triggered.
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+  EXPECT_EQ(FlushEarlyRewrittenHtml(UserAgentMatcher::kPrefetchLinkScriptTag,
+                                    true, false, false, false, false), text);
+  ConstStringStarVector values;
+  EXPECT_TRUE(headers.Lookup(HttpAttributes::kXUACompatible, &values));
+  EXPECT_STREQ("IE=edge", *(values[0]));
 }
 
 }  // namespace net_instaweb

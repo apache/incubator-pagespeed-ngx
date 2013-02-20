@@ -25,7 +25,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
@@ -64,7 +63,6 @@ class FileSystem;
 class FlushEarlyInfo;
 class FlushEarlyRenderInfo;
 class Function;
-class HtmlEvent;
 class HtmlFilter;
 class HtmlWriterFilter;
 class LogRecord;
@@ -430,28 +428,6 @@ class RewriteDriver : public HtmlParse {
   // deleted at the point the callback is invoked.
   void FinishParseAsync(Function* callback);
 
-  // Prevent the EndElementEvent for element from flushing.  If it has already
-  // flushed, this has no effect.  Should only be called from an event listener.
-  // Useful for giving an active filter time to complete an RPC that provides
-  // data to append to element.
-  void InhibitEndElement(const HtmlElement* element);
-
-  // Permits the EndElementEvent for element to flush.  If it was not previously
-  // prevented from doing so by InhibitEndElement, this has no effect.  Should
-  // only be called from an active filter, in coordination with an event
-  // listener that called InhibitEndElement.  If we are currently flushing,
-  // another flush will be scheduled as soon as this one finishes.  If we are
-  // not, another flush will be scheduled immediately.
-  void UninhibitEndElement(const HtmlElement* element);
-
-  // Returns true if the EndElementEvent for element is inhibited from flushing.
-  bool EndElementIsInhibited(const HtmlElement* element);
-
-  // Will return true if the EndElementEvent of element is inhibited from
-  // flushing, and that event determined the size of the current flush.  Will
-  // return false if a flush is not currently in progress.
-  bool EndElementIsStoppingFlush(const HtmlElement* element);
-
   // Report error message with description of context's location
   // (such as filenames and line numbers). context may be NULL, in which case
   // the current parse position will be used.
@@ -769,10 +745,8 @@ class RewriteDriver : public HtmlParse {
   virtual void Flush();
 
   // Initiates an asynchronous Flush.  done->Run() will be called when
-  // the flush is complete.  The inhibits_mutex_ will be held while the callback
-  // is running, so the callback should not attempt to inhibit or uninhibit
-  // an element.  Further calls to ParseText should be deferred until the
-  // callback is called.
+  // the flush is complete.  Further calls to ParseText should be deferred until
+  // the callback is called.
   void FlushAsync(Function* done);
 
   // Queues up a task to run on the (high-priority) rewrite thread.
@@ -1087,12 +1061,6 @@ class RewriteDriver : public HtmlParse {
   void AddPreRenderFilters();
   void AddPostRenderFilters();
 
-  // After removing an inhibition, finish the parse if necessary.
-  void UninhibitFlushDone(Function* user_callback);
-
-  // Move anything on queue_ after the first inhibited event to deferred_queue_.
-  void SplitQueueIfNecessary();
-
   // Helper function to decode the pagespeed url.
   bool DecodeOutputResourceNameHelper(const GoogleUrl& url,
                                       ResourceNamer* name_out,
@@ -1213,15 +1181,6 @@ class RewriteDriver : public HtmlParse {
   // enabled. Writes to the property cache for this cohort are predicated on
   // this.
   bool write_property_cache_dom_cohort_;
-
-  scoped_ptr<AbstractMutex> inhibits_mutex_;
-  typedef std::set <const HtmlElement*> ConstHtmlElementSet;
-  ConstHtmlElementSet end_elements_inhibited_;  // protected by inhibits_mutex_
-  HtmlEventList deferred_queue_;                // protected by inhibits_mutex_
-  Function* finish_parse_on_hold_;              // protected by inhibits_mutex_
-  HtmlEvent* inhibiting_event_;                 // protected by inhibits_mutex_
-  bool flush_in_progress_;                      // protected by inhibits_mutex_
-  bool uninhibit_reflush_requested_;            // protected by inhibits_mutex_
 
   // Tracks the number of RewriteContexts that have been completed,
   // but not yet deleted.  Once RewriteComplete has been called,

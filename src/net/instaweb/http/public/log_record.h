@@ -77,6 +77,10 @@ class LogRecord  {
   // Calling code must lock mutex().
   void SetRewriterLoggingStatus(RewriterInfo* rewriter_info, int status);
 
+  // Creates a new rewriter logging submessage for |rewriter_id|,
+  // and sets status it.
+  void SetRewriterLoggingStatus(const char* rewriter_id, int status);
+
   // Return the LoggingInfo proto wrapped by this class. Calling code must
   // guard any reads and writes to this using mutex().
   virtual LoggingInfo* logging_info();
