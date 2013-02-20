@@ -891,6 +891,12 @@ void ApacheRewriteDriverFactory::ShutDown() {
   apache_html_parse_message_handler_->set_buffer(NULL);
 
   if (is_root_process_) {
+    // Cleanup per-path shm resources.
+    for (PathCacheMap::iterator p = path_cache_map_.begin(),
+         e = path_cache_map_.end(); p != e; ++p) {
+      p->second->GlobalCleanup(message_handler());
+    }
+
     // Cleanup statistics.
     // TODO(morlovich): This looks dangerous with async.
     if (shared_mem_statistics_.get() != NULL) {

@@ -47,7 +47,7 @@ SystemCachePath::SystemCachePath(const StringPiece& path,
       file_cache_backend_(NULL) {
   if (config->use_shared_mem_locking()) {
     shared_mem_lock_manager_.reset(new SharedMemLockManager(
-        shm_runtime, StrCat(path, "/named_locks"),
+        shm_runtime, LockManagerSegmentName(),
         factory->scheduler(), factory->hasher(), factory->message_handler()));
     lock_manager_ = shared_mem_lock_manager_.get();
   } else {
@@ -110,6 +110,13 @@ void SystemCachePath::ChildInit(SlowWorker* cache_clean_worker) {
   }
 }
 
+void SystemCachePath::GlobalCleanup(MessageHandler* handler) {
+  if (shared_mem_lock_manager_.get() != NULL) {
+    shared_mem_lock_manager_->GlobalCleanup(
+        shm_runtime_, LockManagerSegmentName(), handler);
+  }
+}
+
 void SystemCachePath::FallBackToFileBasedLocking() {
   if ((shared_mem_lock_manager_.get() != NULL) || (lock_manager_ == NULL)) {
     shared_mem_lock_manager_.reset(NULL);
@@ -118,6 +125,10 @@ void SystemCachePath::FallBackToFileBasedLocking() {
         factory_->scheduler(), factory_->message_handler()));
     lock_manager_ = file_system_lock_manager_.get();
   }
+}
+
+GoogleString SystemCachePath::LockManagerSegmentName() const {
+  return StrCat(path_, "/named_locks");
 }
 
 }  // namespace net_instaweb
