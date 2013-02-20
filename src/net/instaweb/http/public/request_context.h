@@ -52,6 +52,11 @@ class RequestContext : public RefCounted<RequestContext> {
   //             Makes a request context for running tests.
   static RequestContextPtr NewTestRequestContext(ThreadSystem* thread_system);
 
+  // Creates a new, unowned LogRecord, for use by some subordinate action.
+  // Also useful in case of background activity where logging is required after
+  // the response is written out, e.g., blink flow.
+  virtual LogRecord* NewSubordinateLogRecord(AbstractMutex* logging_mutex);
+
   // The root trace context is associated with the user request which we
   // are attempting to serve. If this is a request with constituent resources
   // that we rewrite, there may be several dependent fetches synthesized

@@ -50,6 +50,11 @@ RequestContextPtr RequestContext::NewTestRequestContext(
   return RequestContextPtr(new RequestContext(thread_system->NewMutex()));
 }
 
+LogRecord* RequestContext::NewSubordinateLogRecord(
+    AbstractMutex* logging_mutex) {
+  return new LogRecord(logging_mutex);
+}
+
 void RequestContext::set_root_trace_context(RequestTrace* x) {
   root_trace_context_.reset(x);
 }
