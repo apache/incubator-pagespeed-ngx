@@ -386,7 +386,9 @@ void NgxRewriteDriverFactory::ShutDown() {
   ngx_message_handler_->set_buffer(NULL);
   ngx_html_parse_message_handler_->set_buffer(NULL);
 
-  if (is_root_process_) {
+  // TODO(oschaaf): enable this once the shared memory cleanup code
+  // supports our ordering
+  if (false && is_root_process_) {
     // Cleanup statistics.
     // TODO(morlovich): This looks dangerous with async.
     if (shared_mem_statistics_.get() != NULL) {
