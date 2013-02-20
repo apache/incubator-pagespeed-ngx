@@ -1064,7 +1064,7 @@ void RewriteContext::AddSlot(const ResourceSlotPtr& slot) {
 }
 
 void RewriteContext::RemoveLastSlot() {
-  int index = num_slots() - 1;
+  const int index = num_slots() - 1;
   slot(index)->DetachContext(this);
   RewriteContext* predecessor = slot(index)->LastContext();
   if (predecessor) {
@@ -1074,8 +1074,8 @@ void RewriteContext::RemoveLastSlot() {
     --num_predecessors_;
   }
 
-  slots_.erase(slots_.begin() + index);
-  render_slots_.erase(render_slots_.begin() + index);
+  slots_.pop_back();
+  render_slots_.pop_back();
 }
 
 void RewriteContext::Initiate() {
