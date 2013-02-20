@@ -32,10 +32,18 @@ if [ $grep_status = 0 ]; then
 else
   echo starting memcached with 1G on port 6765, then sleeping for 2 seconds...
 
+  # If memcached is run as root, it expects an explicit -u user argument, or
+  # it will refuse to start. Normally one would want to use a restricted
+  # user, but for integration tests, root will do.
+  MEMCACHED_USER_OPTS=
+  if [ "$UID" = "0" ]; then
+    MEMCACHED_USER_OPTS="-u root"
+  fi
+
   # '-m 1024' means run with a maximum of 1G cache space, which is helpful
   # for load-testing, and harmless for unit testing since memcached does not
   # preallocate the storage.
-  memcached -p 6765 -m 1024 >/tmp/memcached.log &
+  memcached -p 6765 -m 1024 $MEMCACHED_USER_OPTS >/tmp/memcached.log &
   memcached_pid="$!"
   sleep 2
 fi
