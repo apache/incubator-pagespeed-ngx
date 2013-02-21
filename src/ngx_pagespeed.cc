@@ -1617,7 +1617,7 @@ ngx_int_t send_out_headers_and_body(
 }
 
 // Write response headers and send out headers and output, including the option
-//     for a custom Content-Type.
+// for a custom Content-Type.
 void write_handler_response(const StringPiece& output,
                             ngx_http_request_t* r,
                             net_instaweb::ContentType content_type,
