@@ -1163,7 +1163,7 @@ CreateRequestContext::Response ps_create_request_context(
       return CreateRequestContext::kStaticContent;
     }
     if (url.PathSansQuery() == "/ngx_pagespeed_statistics"
-               || url.PathSansQuery() == "/ngx_pagespeed_global_statistics" ) {
+        || url.PathSansQuery() == "/ngx_pagespeed_global_statistics" ) {
       return CreateRequestContext::kStatistics;
     }
     net_instaweb::RewriteOptions* global_options =
