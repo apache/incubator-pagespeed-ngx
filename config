@@ -122,7 +122,6 @@ if [ $ngx_found = yes ]; then
   ps_src="$ngx_addon_dir/src"
   ngx_addon_name=ngx_pagespeed
   NGX_ADDON_DEPS="$NGX_ADDON_DEPS \
-    $ps_src/ngx_cache.h \
     $ps_src/ngx_pagespeed.h \
     $ps_src/ngx_base_fetch.h \
     $ps_src/ngx_server_context.h \
@@ -135,7 +134,6 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_rewrite_options.cc \
     $ps_src/ngx_server_context.cc \
     $ps_src/ngx_base_fetch.cc \
-    $ps_src/ngx_cache.cc \
     $ps_src/ngx_thread_system.cc \
     $mod_pagespeed_dir/net/instaweb/apache/apr_thread_compatible_pool.cc \
     $mod_pagespeed_dir/net/instaweb/apache/serf_url_async_fetcher.cc \

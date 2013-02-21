@@ -38,10 +38,10 @@ class AprMemCache;
 class AsyncCache;
 class CacheInterface;
 class NgxServerContext;
-class NgxCache;
 class NgxRewriteOptions;
 class SlowWorker;
 class StaticAssetManager;
+class SystemCachePath;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
@@ -77,7 +77,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // creates one, using all the other parameters in the NgxRewriteOptions.
   // Currently, no checking is done that the other parameters (e.g. cache
   // size, cleanup interval, etc.) are consistent.
-  NgxCache* GetCache(NgxRewriteOptions* rewrite_options);
+  SystemCachePath* GetCache(NgxRewriteOptions* rewrite_options);
 
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
@@ -134,7 +134,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   Timer* timer_;
   scoped_ptr<SlowWorker> slow_worker_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
-  typedef std::map<GoogleString, NgxCache*> PathCacheMap;
+  typedef std::map<GoogleString, SystemCachePath*> PathCacheMap;
   PathCacheMap path_cache_map_;
   MD5Hasher cache_hasher_;
   NgxRewriteOptions* main_conf_;

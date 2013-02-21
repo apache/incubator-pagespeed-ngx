@@ -20,7 +20,6 @@
 
 #include <cstdio>
 
-#include "ngx_cache.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_thread_system.h"
 #include "ngx_server_context.h"
@@ -37,6 +36,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/system/public/system_cache_path.h"
 #include "net/instaweb/util/public/async_cache.h"
 #include "net/instaweb/util/public/cache_batcher.h"
 #include "net/instaweb/util/public/cache_copy.h"
@@ -84,8 +84,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf)
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
-  CacheStats::InitStats(NgxCache::kFileCache, &simple_stats_);
-  CacheStats::InitStats(NgxCache::kLruCache, &simple_stats_);
+  CacheStats::InitStats(SystemCachePath::kFileCache, &simple_stats_);
+  CacheStats::InitStats(SystemCachePath::kLruCache, &simple_stats_);
   CacheStats::InitStats(kMemcached, &simple_stats_);
   SetStatistics(&simple_stats_);
   timer_ = DefaultTimer();
@@ -107,8 +107,8 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
-    NgxCache* cache = p->second;
-    defer_cleanup(new Deleter<NgxCache>(cache));
+    SystemCachePath* cache = p->second;
+    defer_cleanup(new Deleter<SystemCachePath>(cache));
   }
 
   for (MemcachedMap::iterator p = memcached_map_.begin(),
@@ -175,9 +175,9 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   NgxRewriteOptions* options = NgxRewriteOptions::DynamicCast(
       server_context->global_options());
 
-  NgxCache* ngx_cache = GetCache(options);
-  CacheInterface* l1_cache = ngx_cache->l1_cache();
-  CacheInterface* l2_cache = ngx_cache->l2_cache();
+  SystemCachePath* ngx_cache = GetCache(options);
+  CacheInterface* l1_cache = ngx_cache->lru_cache();
+  CacheInterface* l2_cache = ngx_cache->file_cache();
   CacheInterface* memcached = GetMemcached(options, l2_cache);
   if (memcached != NULL) {
     l2_cache = memcached;
@@ -225,13 +225,14 @@ void NgxRewriteDriverFactory::InitStaticAssetManager(
   static_asset_manager->set_library_url_prefix(kStaticAssetPrefix);
 }
 
-NgxCache* NgxRewriteDriverFactory::GetCache(NgxRewriteOptions* options) {
+SystemCachePath* NgxRewriteDriverFactory::GetCache(NgxRewriteOptions* options) {
   const GoogleString& path = options->file_cache_path();
   std::pair<PathCacheMap::iterator, bool> result = path_cache_map_.insert(
-      PathCacheMap::value_type(path, static_cast<NgxCache*>(NULL)));
+      PathCacheMap::value_type(path, static_cast<SystemCachePath*>(NULL)));
   PathCacheMap::iterator iter = result.first;
   if (result.second) {
-    iter->second = new NgxCache(path, *options, this);
+    iter->second = new SystemCachePath(path, options, this,
+                                       shared_mem_runtime());
   }
   return iter->second;
 }
@@ -390,7 +391,7 @@ void NgxRewriteDriverFactory::RootInit() {
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
-    NgxCache* cache = p->second;
+    SystemCachePath* cache = p->second;
     cache->RootInit();
   }
 }
@@ -402,8 +403,8 @@ void NgxRewriteDriverFactory::ChildInit() {
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
-    NgxCache* cache = p->second;
-    cache->ChildInit();
+    SystemCachePath* cache = p->second;
+    cache->ChildInit(slow_worker_.get());
   }
   for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
