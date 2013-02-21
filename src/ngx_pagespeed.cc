@@ -1,6 +1,6 @@
 /*
  * Copyright 2012 Google Inc.
-*
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -174,8 +174,6 @@ ngx_int_t string_piece_to_buffer_chain(
   return NGX_OK;
 }
 
-// TODO(oschaaf): check handling of 'special' fields, like:
-// content-length, content-type
 ngx_int_t copy_response_headers_to_ngx(ngx_http_request_t* r,
                                 const net_instaweb::ResponseHeaders& pagespeed_headers) {
   ngx_http_headers_out_t* headers_out = &r->headers_out;
@@ -1178,7 +1176,7 @@ CreateRequestContext::Response ps_create_request_context(
 
     if (url.PathSansQuery() == StringPiece(*beacon_url)) {
       return CreateRequestContext::kBeacon;
-    } 
+    }
 
     DBG(r, "Passing on content handling for non-pagespeed resource '%s'",
         url_string.c_str());
