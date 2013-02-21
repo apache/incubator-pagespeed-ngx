@@ -1754,7 +1754,10 @@ ngx_int_t ps_statistics_handler(ngx_http_request_t* r,
       writer.Write(global_stats_request ?
                    "Global Statistics" : "VHost-Specific Statistics",
                    message_handler);
-
+      if (!global_stats_request) {
+        writer.Write(net_instaweb::StrCat("[",server_context->hostname_identifier(),"]"),message_handler);
+      }
+      
       // Write <pre></pre> for Dump to keep good format.
       writer.Write("<pre>", message_handler);
       statistics->Dump(&writer, message_handler);
@@ -1903,11 +1906,12 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   net_instaweb::Statistics* statistics = NULL;
   // Iterate over all configured server{} blocks, and find out if we have
   // an enabled ServerContext.
-  for (s = 0; s < cmcf->servers.nelts && !have_server_context; s++) {
+  for (s = 0; s < cmcf->servers.nelts; s++) {
     ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
         cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
     if (cfg_s->server_context != NULL) {
       have_server_context = true;
+
       net_instaweb::NgxRewriteOptions* config = cfg_s->server_context->config();
       // Lazily create shared-memory statistics if enabled in any
       // config, even when ngx_pagespeed is totally disabled.  This
@@ -1920,6 +1924,12 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
             config->statistics_logging_interval_ms(),
             config->statistics_logging_file());
       }
+
+      // The hostname identifier is used by the shared memory statistics
+      // to allocate a segment, and should be unique name per server
+      GoogleString hostname_identifier =
+          net_instaweb::StrCat("Host[", base::IntToString((int)s),"]");
+      cfg_s->server_context->set_hostname_identifier(hostname_identifier);
 
       // If config has statistics on and we have per-vhost statistics on
       // as well, then set it up.

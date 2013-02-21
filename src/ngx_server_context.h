@@ -49,6 +49,7 @@ class NgxServerContext : public ServerContext {
   static void InitStats(Statistics* statistics);
   bool initialized() const { return initialized_; }
   GoogleString hostname_identifier() { return hostname_identifier_; }
+  void set_hostname_identifier(GoogleString x) { hostname_identifier_ = x; } 
  private:
   NgxRewriteDriverFactory* ngx_factory_;
   // hostname_identifier_ equals to "server_hostname:port" of Apache,
