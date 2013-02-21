@@ -103,8 +103,8 @@ void NgxServerContext::InitStats(Statistics* statistics) {
     // worse than anything we have reasonably seen, to make sure we don't
     // cut off actual samples.
     html_rewrite_time_us_histogram->SetMaxValue(2 * Timer::kSecondUs);
-    // TODO(oschaaf):
-    //UrlAsyncFetcherStats::InitStats(kLocalFetcherStatsPrefix, statistics);
+    // TODO(oschaaf): Once the ServerContext owns the fetchers,
+    // initialise UrlAsyncFetcherStats here
 }
 
 }  // namespace net_instaweb

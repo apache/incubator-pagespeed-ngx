@@ -1591,7 +1591,7 @@ ngx_int_t send_out_headers_and_body(ngx_http_request_t* r,
                                const net_instaweb::ResponseHeaders& response_headers,
                                const GoogleString& output) {
   ngx_int_t rc = copy_response_headers_to_ngx(r, response_headers);
-  // TODO(oschaaf): log != NGX_OK. 
+
   if (rc != NGX_OK) {
     return NGX_ERROR;
   }
@@ -1906,44 +1906,44 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   for (s = 0; s < cmcf->servers.nelts && !have_server_context; s++) {
     ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
         cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
-    if (cfg_s->server_context != NULL) { 
+    if (cfg_s->server_context != NULL) {
       have_server_context = true;
       net_instaweb::NgxRewriteOptions* config = cfg_s->server_context->config();
       // Lazily create shared-memory statistics if enabled in any
-      // config, even when mod_pagespeed is totally disabled.  This
-      // allows statistics to work if mod_pagespeed gets turned on via
+      // config, even when ngx_pagespeed is totally disabled.  This
+      // allows statistics to work if ngx_pagespeed gets turned on via
       // .htaccess or query param.
-      // TODO(oschaaf): implement these options
       if ((statistics == NULL) && config->statistics_enabled()) {
         // TODO(oschaaf): port MakeGlobalSharedMemStatistics
         statistics = cfg_m->driver_factory->MakeGlobalSharedMemStatistics(
             config->statistics_logging_enabled(),
             config->statistics_logging_interval_ms(),
             config->statistics_logging_file());
+      }
 
-        // If config has statistics on and we have per-vhost statistics on
-        // as well, then set it up.
-        if (config->statistics_enabled() && cfg_m->driver_factory->use_per_vhost_statistics()) {
-          cfg_s->server_context->CreateLocalStatistics(statistics);
-        }
+      // If config has statistics on and we have per-vhost statistics on
+      // as well, then set it up.
+      if (config->statistics_enabled()
+          && cfg_m->driver_factory->use_per_vhost_statistics()) {
+        cfg_s->server_context->CreateLocalStatistics(statistics);
       }
     }
   }
-  
+
   if (have_server_context) {
     // TODO(oschaaf): this ignores sigpipe messages from memcached.
     // however, it would be better to not have those signals generated
     // in the first place, as suppressing them this way may interfere
     // with other modules that actually are interested in these signals
     ps_ignore_sigpipe();
-    
+
     // If no shared-mem statistics are enabled, then init using the default
     // NullStatistics.
     if (statistics == NULL) {
       statistics = cfg_m->driver_factory->statistics();
       net_instaweb::NgxRewriteDriverFactory::InitStats(statistics);
     }
-    
+
     cfg_m->driver_factory->RootInit(cycle->log);
   } else {
     delete cfg_m->driver_factory;

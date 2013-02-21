@@ -387,7 +387,7 @@ void NgxRewriteDriverFactory::ShutDown() {
   ngx_html_parse_message_handler_->set_buffer(NULL);
 
   // TODO(oschaaf): enable this once the shared memory cleanup code
-  // supports our ordering
+  // supports our ordering of events during a configuration reload
   if (false && is_root_process_) {
     // Cleanup statistics.
     // TODO(morlovich): This looks dangerous with async.
