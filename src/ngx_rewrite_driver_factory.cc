@@ -24,8 +24,6 @@
 #include "ngx_thread_system.h"
 #include "ngx_server_context.h"
 
-#include "net/instaweb/apache/apr_mem_cache.h"
-#include "net/instaweb/apache/apr_thread_compatible_pool.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
@@ -36,6 +34,8 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/system/public/apr_mem_cache.h"
+#include "net/instaweb/system/public/apr_thread_compatible_pool.h"
 #include "net/instaweb/system/public/system_cache_path.h"
 #include "net/instaweb/util/public/async_cache.h"
 #include "net/instaweb/util/public/cache_batcher.h"
