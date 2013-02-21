@@ -1943,9 +1943,8 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
 
       // The hostname identifier is used by the shared memory statistics
       // to allocate a segment, and should be unique name per server
-      GoogleString hostname_identifier =
-          net_instaweb::StrCat("Host[", base::IntToString(static_cast<int>(s)),
-                               "]");
+      GoogleString hostname_identifier = net_instaweb::StrCat(
+          "Host[", base::IntToString(static_cast<int>(s)), "]");
       cfg_s->server_context->set_hostname_identifier(hostname_identifier);
 
       // If config has statistics on and we have per-vhost statistics on
