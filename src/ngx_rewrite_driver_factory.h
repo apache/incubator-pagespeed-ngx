@@ -55,7 +55,6 @@ class Statistics;
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
   static const char kStaticJavaScriptPrefix[];
-  static const char kStaticAssetPrefix[];
   static const char kMemcached[];
 
   explicit NgxRewriteDriverFactory();
@@ -80,7 +79,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Release all the resources. It also calls the base class ShutDown to
   // release the base class resources.
   // Initializes all the statistics objects created transitively by
-  // ApacheRewriteDriverFactory, including apache-specific and
+  // NgxRewriteDriverFactory, including nginx-specific and
   // platform-independent statistics.
   static void InitStats(Statistics* statistics);
   virtual void ShutDown();
