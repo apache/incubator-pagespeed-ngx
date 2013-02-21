@@ -46,6 +46,10 @@ const char kNumFlushes[] = "num_flushes";
 const char kFallbackResponsesServed[] = "num_fallback_responses_served";
 const char kNumConditionalRefreshes[] = "num_conditional_refreshes";
 
+const char kIproServed[] = "ipro_served";
+const char kIproNotInCache[] = "ipro_not_in_cache";
+const char kIproNotRewritable[] = "ipro_not_rewritable";
+
 // Variables for the beacon to increment.  These are currently handled in
 // mod_pagespeed_handler on apache.  The average load time in milliseconds is
 // total_page_load_ms / page_load_count.  Note that these are not updated
@@ -96,6 +100,9 @@ void RewriteStats::InitStats(Statistics* statistics) {
   statistics->AddHistogram(kBackendLatencyHistogram);
   statistics->AddVariable(kFallbackResponsesServed);
   statistics->AddVariable(kNumConditionalRefreshes);
+  statistics->AddVariable(kIproServed);
+  statistics->AddVariable(kIproNotInCache);
+  statistics->AddVariable(kIproNotRewritable);
   statistics->AddTimedVariable(kTotalFetchCount,
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kTotalRewriteCount,
@@ -142,6 +149,9 @@ RewriteStats::RewriteStats(Statistics* stats,
           stats->GetVariable(kFallbackResponsesServed)),
       num_conditional_refreshes_(
           stats->GetVariable(kNumConditionalRefreshes)),
+      ipro_served_(stats->GetVariable(kIproServed)),
+      ipro_not_in_cache_(stats->GetVariable(kIproNotInCache)),
+      ipro_not_rewritable_(stats->GetVariable(kIproNotRewritable)),
       beacon_timings_ms_histogram_(
           stats->GetHistogram(kBeaconTimingsMsHistogram)),
       fetch_latency_histogram_(

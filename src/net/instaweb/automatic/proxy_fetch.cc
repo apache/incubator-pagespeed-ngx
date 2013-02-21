@@ -694,6 +694,9 @@ void ProxyFetch::DoFetch() {
     }
 
     cache_fetcher_.reset(driver_->CreateCacheFetcher());
+    // Since we are proxying resources to user, we want to fetch it even if
+    // there is a kRecentFetchNotCacheable message in the cache.
+    cache_fetcher_->set_ignore_recent_fetch_failed(true);
     cache_fetcher_->Fetch(url_, factory_->handler_, this);
   } else {
     Done(false);

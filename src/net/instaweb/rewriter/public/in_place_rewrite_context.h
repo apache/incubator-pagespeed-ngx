@@ -39,13 +39,13 @@
 
 namespace net_instaweb {
 
+class CacheUrlAsyncFetcher;
 class InputInfo;
 class MessageHandler;
 class ResourceContext;
 class RewriteDriver;
 class RewriteFilter;
 class Statistics;
-class UrlAsyncFetcher;
 class Variable;
 
 // A resource-slot created for an in-place rewrite. This has an empty render
@@ -96,8 +96,8 @@ class InPlaceRewriteContext : public SingleRewriteContext {
 
   static void InitStats(Statistics* statistics);
 
-  bool perform_http_fetch() const { return perform_http_fetch_; }
-  void set_perform_http_fetch(bool x) { perform_http_fetch_ = x; }
+  bool proxy_mode() const { return proxy_mode_; }
+  void set_proxy_mode(bool x) { proxy_mode_ = x; }
 
   virtual int64 GetRewriteDeadlineAlarmMs() const;
 
@@ -146,10 +146,18 @@ class InPlaceRewriteContext : public SingleRewriteContext {
   ResourcePtr input_resource_;
   OutputResourcePtr output_resource_;
 
-  scoped_ptr<UrlAsyncFetcher> cache_fetcher_;
+  scoped_ptr<CacheUrlAsyncFetcher> cache_fetcher_;
 
-  // Should we fetch the contents if cache lookup fails?
-  bool perform_http_fetch_;
+  // Are we in proxy mode?
+  //
+  // True means that we are acting as a proxy and the user is depending on us
+  // to serve them the resource, thus we will fetch the contents over HTTP if
+  // not found in cache and ignore kRecentFetchNotCacheable and
+  // kRecentFetchFailed since we'll have to fetch the resource for users anyway.
+  //
+  // False means we are running on the origin, so we respect kRecent* messages
+  // and let the origin itself serve the resource.
+  bool proxy_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(InPlaceRewriteContext);
 };

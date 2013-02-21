@@ -469,6 +469,21 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
     EXPECT_EQ(0, http_cache_->cache_inserts()->Get());
   }
 
+  void DefaultResponseHeaders(const ContentType& content_type, int64 ttl_sec,
+                              ResponseHeaders* headers) {
+    headers->set_major_version(1);
+    headers->set_minor_version(1);
+    headers->SetStatusAndReason(HttpStatus::kOK);
+
+    headers->Add(HttpAttributes::kContentType, content_type.mime_type());
+
+    const int64 now_ms = timer_.NowMs();
+    headers->SetDateAndCaching(now_ms, ttl_sec * Timer::kSecondMs);
+    headers->SetLastModified(now_ms);
+
+    headers->ComputeCaching();
+  }
+
   SimpleStats statistics_;
 
   MockUrlFetcher mock_fetcher_;
@@ -1421,6 +1436,40 @@ TEST_F(CacheUrlAsyncFetcherTest, PATCH) {
 
 TEST_F(CacheUrlAsyncFetcherTest, ERROR) {
   ExpectNoCacheWithMethod(cache_url_, cache_body_, RequestHeaders::kError);
+}
+
+// Ensure that non-cacheable requests get kNotInCacheStatus set when there
+// is no backup fetcher.
+TEST_F(CacheUrlAsyncFetcherTest, NotInCache) {
+  CacheUrlAsyncFetcher fetcher(http_cache_.get(), NULL);
+  StringAsyncFetch fetch(
+      RequestContext::NewTestRequestContext(thread_system_.get()));
+  // Note: nocache_url_ is not even in the cache.
+  fetcher.Fetch(nocache_url_, &handler_, &fetch);
+  EXPECT_TRUE(fetch.done());
+  EXPECT_FALSE(fetch.success());
+  EXPECT_EQ(CacheUrlAsyncFetcher::kNotInCacheStatus,
+            fetch.response_headers()->status_code());
+}
+
+// Ensure that non-GET requests get kNotInCacheStatus set when there is no
+// backup fetcher.
+TEST_F(CacheUrlAsyncFetcherTest, NotInCachePost) {
+  CacheUrlAsyncFetcher fetcher(http_cache_.get(), NULL);
+  StringAsyncFetch fetch(
+      RequestContext::NewTestRequestContext(thread_system_.get()));
+  fetch.request_headers()->set_method(RequestHeaders::kPost);
+
+  // Put result in cache.
+  ResponseHeaders headers;
+  DefaultResponseHeaders(kContentTypeCss, 100, &headers);
+  http_cache_->Put(cache_url_, &headers, ".a { color: red; }", &handler_);
+
+  fetcher.Fetch(cache_url_, &handler_, &fetch);
+  EXPECT_TRUE(fetch.done());
+  EXPECT_FALSE(fetch.success());
+  EXPECT_EQ(CacheUrlAsyncFetcher::kNotInCacheStatus,
+            fetch.response_headers()->status_code());
 }
 
 }  // namespace

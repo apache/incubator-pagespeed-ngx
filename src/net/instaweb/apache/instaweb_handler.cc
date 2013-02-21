@@ -34,6 +34,7 @@
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/mod_instaweb.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -313,13 +314,12 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
       *gurl, custom_options, server_context, request_context);
 
   MessageHandler* message_handler = server_context->message_handler();
-  message_handler->Message(kInfo, "Trying to optimize in-place: %s",
-                           url.c_str());
+  message_handler->Message(kInfo, "Trying to serve rewritten resource "
+                           "in-place: %s", url.c_str());
 
   SelfOwnedStringAsyncFetch* fetch = new SelfOwnedStringAsyncFetch(
       request_context, server_context->thread_system()->NewMutex());
-  bool perform_http_fetch = false;
-  driver->FetchInPlaceResource(*gurl, perform_http_fetch, fetch);
+  driver->FetchInPlaceResource(*gurl, false /* proxy_mode */, fetch);
 
   // Wait for cache lookup to complete.  Note: This 5 second timeout
   // should not normally be hit.  Instead FetchInPlaceResource should
@@ -335,28 +335,37 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
   }
 
   if (fetch->done() && fetch->success()) {
+    server_context->rewrite_stats()->ipro_served()->Add(1);
+    message_handler->Message(kInfo, "Serving rewritten resource in-place: %s",
+                             url.c_str());
     ResponseHeaders* response_headers = fetch->response_headers();
     // TODO(sligocki): Add X-Mod-Pagespeed header.
-    message_handler->Message(kInfo, "In-place rewrite fetch succeeded for %s",
-                             url.c_str());
     send_out_headers_and_body(request, *response_headers, fetch->buffer());
     handled = true;
   } else {
-    message_handler->Message(kInfo, "In-place rewrite fetch failed for %s "
-                             "URL was not in cache or was not cacheable.",
-                             url.c_str());
-    // In-place rewrite failed, perhaps because the URL was not found in cache.
-    // So we need to get it into cache, we do that using an output filter.
-    // TODO(sligocki): We only want to add this output filter on cache miss
-    // (not if we know it's not cacheable).
-    InPlaceResourceRecorder* recorder = new InPlaceResourceRecorder(
-        url, request_headers.release(), driver->options()->respect_vary(),
-        server_context->http_cache(), server_context->statistics(),
-        message_handler);
-    ap_add_output_filter(kModPagespeedInPlaceFilterName, recorder,
-                         request, request->connection);
-    ap_add_output_filter(kModPagespeedInPlaceCheckHeadersName, recorder,
-                         request, request->connection);
+    if (fetch->response_headers()->status_code() ==
+        CacheUrlAsyncFetcher::kNotInCacheStatus) {
+      server_context->rewrite_stats()->ipro_not_in_cache()->Add(1);
+      message_handler->Message(kInfo, "Could not server rewritten resource "
+                               "in-place because URL is not in cache: %s",
+                               url.c_str());
+      // This URL was not found in cache (neither the input resource nor
+      // a ResourceNotCacheable entry) so we need to get it into cache
+      // (or at least a note that it cannot be cached stored there).
+      // We do that using an Apache output filter.
+      InPlaceResourceRecorder* recorder = new InPlaceResourceRecorder(
+          url, request_headers.release(), driver->options()->respect_vary(),
+          server_context->http_cache(), server_context->statistics(),
+          message_handler);
+      ap_add_output_filter(kModPagespeedInPlaceFilterName, recorder,
+                           request, request->connection);
+      ap_add_output_filter(kModPagespeedInPlaceCheckHeadersName, recorder,
+                           request, request->connection);
+    } else {
+      server_context->rewrite_stats()->ipro_not_rewritable()->Add(1);
+      message_handler->Message(kInfo, "Could not rewrite resource in-place: %s",
+                               url.c_str());
+    }
   }
   fetch->Detach();
   driver->Cleanup();

@@ -330,15 +330,18 @@ class RewriteDriver : public HtmlParse {
   // Initiates an In-Place Resource Optimization (IPRO) fetch (A resource which
   // is served under the original URL, but is still able to be rewritten).
   //
-  // perform_http_fetch indicates whether or not an HTTP fetch should be done
-  // to get the resource if a cache lookup fails. Proxy implementations will
-  // want to set this to true because there is no other way to get the content.
-  // However, origin implementations will want to set this to false so that
-  // they can fall back to locally serving the contents.
+  // proxy_mode indicates whether we are running as a proxy where users
+  // depend on us to send contents. When set true, we will perform HTTP fetches
+  // to get contents if not in cache and will ignore kRecentFetchNotCacheable
+  // and kRecentFetchFailed since we'll have to fetch the resource for users
+  // anyway. Origin implementations (like mod_pagespeed) should set this to
+  // false and let the serve serve the resource if it's not in cache.
   //
-  // async_fetch->Done(false) will be called if perform_http_fetch is false
-  // and the resource could not be found in HTTP cache.
-  void FetchInPlaceResource(const GoogleUrl& gurl, bool perform_http_fetch,
+  // If proxy_mode is false and the resource could not be found in HTTP cache,
+  // async_fetch->Done(false) will be called and async_fetch->status_code()
+  // will be CacheUrlAsyncFetcher::kNotInCacheStatus (to distinguish this
+  // from a different reason for failure, like kRecentFetchNotCacheable).
+  void FetchInPlaceResource(const GoogleUrl& gurl, bool proxy_mode,
                             AsyncFetch* async_fetch);
 
   // See FetchResource.  There are two differences:

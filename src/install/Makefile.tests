@@ -177,13 +177,16 @@ speling_test_prepare :
 
 apache_debug_memcached_test : memcached_test_prepare apache_install_conf \
     apache_debug_restart
+	# Note: We run apache_system_test.sh twice inside
+	# run_program_with_memcached.sh. That is why we have \; below.
 	$(INSTALL_DATA_DIR)/run_program_with_memcached.sh -multi \
-            $(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
-	                                        $(APACHE_HTTPS_SERVER) \; \
-        $(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
-	    $(APACHE_HTTPS_SERVER)
+	    $(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
+	        $(APACHE_HTTPS_SERVER) \; \
+	    $(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
+	        $(APACHE_HTTPS_SERVER)
 	$(MAKE) apache_debug_stop
 	[ -z "`grep leaked_rewrite_drivers $(APACHE_LOG)`" ]
+	@echo PASS
 
 memcached_test_prepare :
 	$(eval OPT_MEMCACHED_TEST="MEMCACHED_TEST=1")

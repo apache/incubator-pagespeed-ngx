@@ -1172,7 +1172,7 @@ class InPlaceTest : public RewriteTestBase {
   virtual ~InPlaceTest() {}
 
   bool FetchInPlaceResource(const StringPiece& url,
-                            bool perform_http_fetch,
+                            bool proxy_mode,
                             GoogleString* content,
                             ResponseHeaders* response) {
     GoogleUrl gurl(url);
@@ -1180,7 +1180,7 @@ class InPlaceTest : public RewriteTestBase {
     WaitAsyncFetch async_fetch(CreateRequestContext(), content,
                                server_context()->thread_system());
     async_fetch.set_response_headers(response);
-    rewrite_driver_->FetchInPlaceResource(gurl, perform_http_fetch,
+    rewrite_driver_->FetchInPlaceResource(gurl, proxy_mode,
                                           &async_fetch);
     async_fetch.Wait();
 
@@ -1194,10 +1194,10 @@ class InPlaceTest : public RewriteTestBase {
   }
 
   bool TryFetchInPlaceResource(const StringPiece& url,
-                               bool perform_http_fetch) {
+                               bool proxy_mode) {
     GoogleString contents;
     ResponseHeaders response;
-    return FetchInPlaceResource(url, perform_http_fetch, &contents, &response);
+    return FetchInPlaceResource(url, proxy_mode, &contents, &response);
   }
 
  private:
@@ -1212,8 +1212,7 @@ TEST_F(InPlaceTest, FetchInPlaceResource) {
                                 ".a { color: red; }", 100);
 
   // This will fail because cache is empty and we are not allowing HTTP fetch.
-  bool perform_http_fetch = false;
-  EXPECT_FALSE(TryFetchInPlaceResource(url, perform_http_fetch));
+  EXPECT_FALSE(TryFetchInPlaceResource(url, false /* proxy_mode */));
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
@@ -1221,8 +1220,7 @@ TEST_F(InPlaceTest, FetchInPlaceResource) {
   ClearStats();
 
   // Now we allow HTTP fetches and we expect success.
-  perform_http_fetch = true;
-  EXPECT_TRUE(TryFetchInPlaceResource(url, perform_http_fetch));
+  EXPECT_TRUE(TryFetchInPlaceResource(url, true /* proxy_mode */));
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   // We insert both original and rewritten resources.
@@ -1231,8 +1229,7 @@ TEST_F(InPlaceTest, FetchInPlaceResource) {
   ClearStats();
 
   // Now that we've loaded the resource into cache, we expect success.
-  perform_http_fetch = false;
-  EXPECT_TRUE(TryFetchInPlaceResource(url, perform_http_fetch));
+  EXPECT_TRUE(TryFetchInPlaceResource(url, false /* proxy_mode */));
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
   EXPECT_EQ(0, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, http_cache()->cache_inserts()->Get());

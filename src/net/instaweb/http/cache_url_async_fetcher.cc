@@ -38,6 +38,10 @@
 
 namespace net_instaweb {
 
+// HTTP 501 Not Implemented: The server either does not recognize the
+// request method, or it lacks the ability to fulfill the request.
+const int CacheUrlAsyncFetcher::kNotInCacheStatus = HttpStatus::kNotImplemented;
+
 namespace {
 
 class CachePutFetch : public SharedAsyncFetch {
@@ -239,52 +243,56 @@ class CacheFindCallback : public HTTPCache::Callback {
         }
       case HTTPCache::kNotFound: {
         VLOG(1) << "Did not find in cache: " << url_;
-        AsyncFetch* base_fetch = base_fetch_;
-        if (request_headers()->method() == RequestHeaders::kGet) {
-          // Only cache GET results as they can be used for HEAD requests, but
-          // not vice versa.
-          // TODO(gee): It is possible to cache HEAD results as well, but we
-          // must add code to ensure we do not serve GET requests using HEAD
-          // responses.
-          if (serve_stale_if_fetch_error_) {
-            // If fallback_http_value() is populated, use it in case the fetch
-            // fails. Note that this is only populated if the response in cache
-            // is stale.
-            FallbackSharedAsyncFetch* fallback_fetch =
-                new FallbackSharedAsyncFetch(
-                    base_fetch_, fallback_http_value(), handler_);
-            fallback_fetch->set_fallback_responses_served(
-                fallback_responses_served_);
-            base_fetch = fallback_fetch;
-          }
-
-          CachePutFetch* put_fetch = new CachePutFetch(
-              url_, base_fetch, respect_vary_, default_cache_html_, cache_,
-              backend_first_byte_latency_, handler_);
-          DCHECK_EQ(response_headers(), base_fetch_->response_headers());
-
-          // Remove any Etags added by us before sending the request out.
-          const char* etag = request_headers()->Lookup1(
-              HttpAttributes::kIfNoneMatch);
-          if (etag != NULL &&
-              StringCaseStartsWith(etag, HTTPCache::kEtagPrefix)) {
-            put_fetch->request_headers()->RemoveAll(
-                HttpAttributes::kIfNoneMatch);
-          }
-
-          ConditionalSharedAsyncFetch* conditional_fetch =
-              new ConditionalSharedAsyncFetch(
-                  put_fetch, fallback_http_value(), handler_);
-          conditional_fetch->set_num_conditional_refreshes(
-              num_conditional_refreshes_);
-
-          base_fetch = conditional_fetch;
-        }
-
-        if (fetcher_ != NULL) {
-          fetcher_->Fetch(url_, handler_, base_fetch);
+        if (fetcher_ == NULL) {
+          // Set status code to indicate reason we failed Fetch.
+          DCHECK(!base_fetch_->headers_complete());
+          base_fetch_->response_headers()->set_status_code(
+              CacheUrlAsyncFetcher::kNotInCacheStatus);
+          base_fetch_->Done(false);
         } else {
-          base_fetch->Done(false);
+          AsyncFetch* base_fetch = base_fetch_;
+          if (request_headers()->method() == RequestHeaders::kGet) {
+            // Only cache GET results as they can be used for HEAD requests,
+            // but not vice versa.
+            // TODO(gee): It is possible to cache HEAD results as well, but we
+            // must add code to ensure we do not serve GET requests using HEAD
+            // responses.
+            if (serve_stale_if_fetch_error_) {
+              // If fallback_http_value() is populated, use it in case the
+              // fetch fails. Note that this is only populated if the
+              // response in cache is stale.
+              FallbackSharedAsyncFetch* fallback_fetch =
+                  new FallbackSharedAsyncFetch(
+                      base_fetch_, fallback_http_value(), handler_);
+              fallback_fetch->set_fallback_responses_served(
+                  fallback_responses_served_);
+              base_fetch = fallback_fetch;
+            }
+
+            CachePutFetch* put_fetch = new CachePutFetch(
+                url_, base_fetch, respect_vary_, default_cache_html_, cache_,
+                backend_first_byte_latency_, handler_);
+            DCHECK_EQ(response_headers(), base_fetch_->response_headers());
+
+            // Remove any Etags added by us before sending the request out.
+            const char* etag = request_headers()->Lookup1(
+                HttpAttributes::kIfNoneMatch);
+            if (etag != NULL &&
+                StringCaseStartsWith(etag, HTTPCache::kEtagPrefix)) {
+              put_fetch->request_headers()->RemoveAll(
+                  HttpAttributes::kIfNoneMatch);
+            }
+
+            ConditionalSharedAsyncFetch* conditional_fetch =
+                new ConditionalSharedAsyncFetch(
+                    put_fetch, fallback_http_value(), handler_);
+            conditional_fetch->set_num_conditional_refreshes(
+                num_conditional_refreshes_);
+
+            base_fetch = conditional_fetch;
+          }
+
+          fetcher_->Fetch(url_, handler_, base_fetch);
         }
         break;
       }
@@ -395,6 +403,9 @@ void CacheUrlAsyncFetcher::Fetch(
   if (fetcher_ != NULL) {
     fetcher_->Fetch(url, handler, base_fetch);
   } else {
+    // Set status code to indicate reason we failed Fetch.
+    DCHECK(!base_fetch->headers_complete());
+    base_fetch->response_headers()->set_status_code(kNotInCacheStatus);
     base_fetch->Done(false);
   }
 }

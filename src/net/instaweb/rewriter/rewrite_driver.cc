@@ -1242,7 +1242,6 @@ CacheUrlAsyncFetcher* RewriteDriver::CreateCustomCacheFetcher(
   CacheUrlAsyncFetcher* cache_fetcher = new CacheUrlAsyncFetcher(
       server_context_->http_cache(), base_fetcher);
   cache_fetcher->set_respect_vary(options()->respect_vary());
-  cache_fetcher->set_ignore_recent_fetch_failed(true);
   cache_fetcher->set_default_cache_html(options()->default_cache_html());
   cache_fetcher->set_backend_first_byte_latency_histogram(
       server_context_->rewrite_stats()->backend_latency_histogram());
@@ -1615,16 +1614,15 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
   } else if (options()->in_place_rewriting_enabled()) {
     // This is an ajax resource.
     handled = true;
-    bool perform_http_fetch = true;
     // TODO(sligocki): Get rid of this fallback and make all callers call
     // FetchInPlaceResource when that is what they want.
-    FetchInPlaceResource(gurl, perform_http_fetch, async_fetch);
+    FetchInPlaceResource(gurl, true /* proxy_mode */, async_fetch);
   }
   return handled;
 }
 
 void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
-                                         bool perform_http_fetch,
+                                         bool proxy_mode,
                                          AsyncFetch* async_fetch) {
   CHECK(gurl.is_valid()) << "Invalid URL " << gurl.spec_c_str();
   StringPiece base = gurl.AllExceptLeaf();
@@ -1634,7 +1632,7 @@ void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
   SetBaseUrlForFetch(gurl.Spec());
   fetch_queued_ = true;
   InPlaceRewriteContext* context = new InPlaceRewriteContext(this, gurl.Spec());
-  context->set_perform_http_fetch(perform_http_fetch);
+  context->set_proxy_mode(proxy_mode);
   if (!context->Fetch(output_resource, async_fetch, message_handler())) {
     // RewriteContext::Fetch can fail if the input URLs are undecodeable
     // or unfetchable. There is no decoding in this case, but unfetchability
