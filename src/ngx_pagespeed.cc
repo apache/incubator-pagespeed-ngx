@@ -1661,6 +1661,7 @@ void write_handler_response(const StringPiece& output, ngx_http_request_t* r,
 }
 
 // TODO(oschaaf): port SPDY specific functionality, shmcache stats
+// TODO(oschaaf): refactor this with the apache code to share this code
 ngx_int_t ps_statistics_handler(
     ngx_http_request_t* r,
     net_instaweb::NgxServerContext* server_context) {
@@ -1762,6 +1763,10 @@ ngx_int_t ps_statistics_handler(
       writer.Write(global_stats_request ?
                    "Global Statistics" : "VHost-Specific Statistics",
                    message_handler);
+
+      // TODO(oschaaf): for when refactoring this with the apache code,
+      // this note is a reminder that this is different in nginx:
+      // we prepend the host identifier here
       if (!global_stats_request) {
         writer.Write(
             net_instaweb::StrCat("[",
