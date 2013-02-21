@@ -1623,7 +1623,6 @@ void write_handler_response(const StringPiece& output,
                             net_instaweb::Timer* timer) {
   net_instaweb::ResponseHeaders response_headers;
   response_headers.SetStatusAndReason(net_instaweb::HttpStatus::kOK);
-  // TODO(oschaaf): what about 1.0 requests?
   response_headers.set_major_version(1);
   response_headers.set_minor_version(1);
 
@@ -1661,7 +1660,6 @@ void write_handler_response(const StringPiece& output, ngx_http_request_t* r,
 ngx_int_t ps_statistics_handler(ngx_http_request_t* r,
                                 net_instaweb::NgxServerContext* server_context) {
   StringPiece request_uri_path = str_to_string_piece(r->uri);
-  // TODO(oschaaf): declare these urls somewhere above / don't duplicate them
   bool general_stats_request =
       net_instaweb::StringCaseStartsWith(request_uri_path, "/ngx_pagespeed_statistics");
   bool global_stats_request =
@@ -1918,7 +1916,6 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       // allows statistics to work if ngx_pagespeed gets turned on via
       // .htaccess or query param.
       if ((statistics == NULL) && config->statistics_enabled()) {
-        // TODO(oschaaf): port MakeGlobalSharedMemStatistics
         statistics = cfg_m->driver_factory->MakeGlobalSharedMemStatistics(
             config->statistics_logging_enabled(),
             config->statistics_logging_interval_ms(),
