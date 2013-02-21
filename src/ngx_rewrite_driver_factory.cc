@@ -520,10 +520,6 @@ AllocateAndInitSharedMemStatistics(
   // Note that we create the statistics object in the parent process, and
   // it stays around in the kids but gets reinitialized for them
   // inside ChildInit(), called from pagespeed_child_init.
-  //
-  // TODO(jmarantz): it appears that filename_prefix() is not actually
-  // established at the time of this construction, calling into question
-  // whether we are naming our shared-memory segments correctly.
   SharedMemStatistics* stats = new SharedMemStatistics(
       logging_interval_ms, StrCat(logging_file_base, name), logging,
       StrCat(filename_prefix(), name), shared_mem_runtime(), message_handler(),
