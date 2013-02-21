@@ -35,7 +35,6 @@ const char kCacheFlushTimestampMs[] = "cache_flush_timestamp_ms";
 // Statistics histogram names.
 const char kHtmlRewriteTimeUsHistogram[] = "Html Time us Histogram";
 
-const char kLocalFetcherStatsPrefix[] = "http";
 
 NgxServerContext::NgxServerContext(NgxRewriteDriverFactory* factory)
     : ServerContext(factory),
