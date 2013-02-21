@@ -53,9 +53,8 @@ class NgxServerContext : public ServerContext {
 
  private:
   NgxRewriteDriverFactory* ngx_factory_;
-  // hostname_identifier_ equals to "server_hostname:port" of Apache,
-  // it's used to distinguish the name of shared memory,
-  // so that each vhost has its own SharedCircularBuffer.
+  // hostname_identifier_ is used to distinguish the name of shared memory
+  // segments associated with this ServerContext
   GoogleString hostname_identifier_;
   bool initialized_;
 
