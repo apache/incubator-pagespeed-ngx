@@ -78,8 +78,8 @@ void NgxRewriteOptions::AddProperties() {
 
   add_ngx_option("", &NgxRewriteOptions::statistics_logging_file_, "aslf",
              RewriteOptions::kStatisticsLoggingFile);
-  add_ngx_option("", &NgxRewriteOptions::statistics_logging_charts_css_, "aslcc",
-             RewriteOptions::kStatisticsLoggingChartsCSS);
+  add_ngx_option("", &NgxRewriteOptions::statistics_logging_charts_css_,
+                 "aslcc", RewriteOptions::kStatisticsLoggingChartsCSS);
   add_ngx_option("", &NgxRewriteOptions::statistics_logging_charts_js_, "aslcj",
              RewriteOptions::kStatisticsLoggingChartsJS);
   add_ngx_option(true, &NgxRewriteOptions::statistics_enabled_, "ase",
@@ -88,7 +88,7 @@ void NgxRewriteOptions::AddProperties() {
              RewriteOptions::kStatisticsLoggingEnabled);
   add_ngx_option(3000, &NgxRewriteOptions::statistics_logging_interval_ms_,
              "asli", RewriteOptions::kStatisticsLoggingIntervalMs);
-  
+
   MergeSubclassProperties(ngx_properties_);
   NgxRewriteOptions config;
   config.InitializeSignaturesAndDefaults();

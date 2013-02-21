@@ -49,7 +49,8 @@ class NgxServerContext : public ServerContext {
   static void InitStats(Statistics* statistics);
   bool initialized() const { return initialized_; }
   GoogleString hostname_identifier() { return hostname_identifier_; }
-  void set_hostname_identifier(GoogleString x) { hostname_identifier_ = x; } 
+  void set_hostname_identifier(GoogleString x) { hostname_identifier_ = x; }
+
  private:
   NgxRewriteDriverFactory* ngx_factory_;
   // hostname_identifier_ equals to "server_hostname:port" of Apache,
@@ -65,7 +66,7 @@ class NgxServerContext : public ServerContext {
   SharedMemStatistics* local_statistics_;
   // These are non-NULL if we have per-vhost stats.
   scoped_ptr<RewriteStats> local_rewrite_stats_;
-  
+
   DISALLOW_COPY_AND_ASSIGN(NgxServerContext);
 };
 

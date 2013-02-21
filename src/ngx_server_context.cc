@@ -71,7 +71,7 @@ void NgxServerContext::ChildInit() {
           ngx_factory_->timer()));
       set_rewrite_stats(local_rewrite_stats_.get());
     }
-    
+
     ngx_factory_->InitServerContext(this);
     // TODO(oschaaf): in mod_pagespeed, the ServerContext owns
     // the fetchers, and sets up the UrlAsyncFetcherStats here

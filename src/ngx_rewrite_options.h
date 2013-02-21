@@ -164,6 +164,7 @@ class NgxRewriteOptions : public RewriteOptions {
   void set_statistics_logging_interval_ms(int64 x) {
     set_option(x, &statistics_logging_interval_ms_);
   }
+
  private:
   // Used by class_name() and DynamicCast() to provide error checking.
   static const char kClassName[];
@@ -238,7 +239,7 @@ class NgxRewriteOptions : public RewriteOptions {
   Option<bool> statistics_enabled_;
   Option<bool> statistics_logging_enabled_;
   Option<int64> statistics_logging_interval_ms_;
-  
+
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteOptions);
 };
 

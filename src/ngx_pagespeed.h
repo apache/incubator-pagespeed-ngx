@@ -56,8 +56,9 @@ StringPiece str_to_string_piece(ngx_str_t s);
 // Allocate memory out of the pool for the string piece, and copy the contents
 // over.  Returns NULL if we can't get memory.
 char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
-ngx_int_t copy_response_headers_to_ngx(ngx_http_request_t* r,
-                                       const net_instaweb::ResponseHeaders& pagespeed_headers);
+ngx_int_t copy_response_headers_to_ngx(
+    ngx_http_request_t* r,
+    const net_instaweb::ResponseHeaders& pagespeed_headers);
 
 }  // namespace ngx_psol
 

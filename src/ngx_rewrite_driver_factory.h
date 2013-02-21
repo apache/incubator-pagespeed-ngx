@@ -173,6 +173,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   void set_message_buffer_size(int x) {
     message_buffer_size_ = x;
   }
+
  private:
   Timer* timer_;
   scoped_ptr<SlowWorker> slow_worker_;
@@ -219,7 +220,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   scoped_ptr<SharedCircularBuffer> shared_circular_buffer_;
   scoped_ptr<SharedMemStatistics> shared_mem_statistics_;
   bool statistics_frozen_;
-  
+
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

@@ -97,7 +97,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
       ngx_html_parse_message_handler_(
           new NgxMessageHandler(thread_system()->NewMutex())),
       install_crash_handler_(false),
-      message_buffer_size_(0), // TODO(oschaaf): wire up
+      message_buffer_size_(0),
       shared_circular_buffer_(NULL),
       statistics_frozen_(false) {
   timer_ = DefaultTimer();
@@ -130,7 +130,7 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
     CacheInterface* memcached = p->second;
     defer_cleanup(new Deleter<CacheInterface>(memcached));
   }
-  
+
   shared_mem_statistics_.reset(NULL);
 }
 
@@ -470,7 +470,7 @@ void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
   if (shared_mem_statistics_.get() != NULL) {
     shared_mem_statistics_->Init(false, message_handler());
   }
-  
+
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
     NgxCache* cache = p->second;

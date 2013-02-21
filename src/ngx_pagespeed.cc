@@ -174,8 +174,9 @@ ngx_int_t string_piece_to_buffer_chain(
   return NGX_OK;
 }
 
-ngx_int_t copy_response_headers_to_ngx(ngx_http_request_t* r,
-                                const net_instaweb::ResponseHeaders& pagespeed_headers) {
+ngx_int_t copy_response_headers_to_ngx(
+    ngx_http_request_t* r,
+    const net_instaweb::ResponseHeaders& pagespeed_headers) {
   ngx_http_headers_out_t* headers_out = &r->headers_out;
   headers_out->status = pagespeed_headers.status_code();
 
@@ -248,7 +249,7 @@ ngx_int_t copy_response_headers_to_ngx(ngx_http_request_t* r,
       headers_out->server = header;
     }
   }
-  
+
   return NGX_OK;
 }
 
@@ -1587,17 +1588,18 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   return ngx_http_output_filter(r, out);
 }
 
-ngx_int_t send_out_headers_and_body(ngx_http_request_t* r,
-                               const net_instaweb::ResponseHeaders& response_headers,
-                               const GoogleString& output) {
+ngx_int_t send_out_headers_and_body(
+    ngx_http_request_t* r,
+    const net_instaweb::ResponseHeaders& response_headers,
+    const GoogleString& output) {
   ngx_int_t rc = copy_response_headers_to_ngx(r, response_headers);
 
   if (rc != NGX_OK) {
     return NGX_ERROR;
   }
-  
+
   rc = ngx_http_send_header(r);
-  
+
   if (rc != NGX_OK) {
     return NGX_ERROR;
   }
@@ -1626,12 +1628,14 @@ void write_handler_response(const StringPiece& output,
   response_headers.set_major_version(1);
   response_headers.set_minor_version(1);
 
-  response_headers.Add(net_instaweb::HttpAttributes::kContentType, content_type.mime_type());
+  response_headers.Add(net_instaweb::HttpAttributes::kContentType,
+                       content_type.mime_type());
 
   int64 now_ms = timer->NowMs();
   response_headers.SetDate(now_ms);
   response_headers.SetLastModified(now_ms);
-  response_headers.Add(net_instaweb::HttpAttributes::kCacheControl, cache_control);
+  response_headers.Add(net_instaweb::HttpAttributes::kCacheControl,
+                       cache_control);
   send_out_headers_and_body(r, response_headers, output.as_string());
 }
 
@@ -1657,17 +1661,21 @@ void write_handler_response(const StringPiece& output, ngx_http_request_t* r,
 }
 
 // TODO(oschaaf): port SPDY specific functionality, shmcache stats
-ngx_int_t ps_statistics_handler(ngx_http_request_t* r,
-                                net_instaweb::NgxServerContext* server_context) {
+ngx_int_t ps_statistics_handler(
+    ngx_http_request_t* r,
+    net_instaweb::NgxServerContext* server_context) {
+
   StringPiece request_uri_path = str_to_string_piece(r->uri);
-  bool general_stats_request =
-      net_instaweb::StringCaseStartsWith(request_uri_path, "/ngx_pagespeed_statistics");
+  bool general_stats_request = net_instaweb::StringCaseStartsWith(
+      request_uri_path, "/ngx_pagespeed_statistics");
   bool global_stats_request =
-      net_instaweb::StringCaseStartsWith(request_uri_path, "/ngx_pagespeed_global_statistics");
+      net_instaweb::StringCaseStartsWith(
+          request_uri_path, "/ngx_pagespeed_global_statistics");
   net_instaweb::NgxRewriteDriverFactory* factory =
-      static_cast<net_instaweb::NgxRewriteDriverFactory*>(server_context->factory());
+      static_cast<net_instaweb::NgxRewriteDriverFactory*>(
+          server_context->factory());
   net_instaweb::MessageHandler* message_handler = factory->message_handler();
-  
+
   int64 start_time, end_time, granularity_ms;
   std::set<GoogleString> var_titles;
   std::set<GoogleString> hist_titles;
@@ -1678,7 +1686,7 @@ ngx_int_t ps_statistics_handler(ngx_http_request_t* r,
   // Choose the correct statistics.
   net_instaweb::Statistics* statistics = global_stats_request ?
       factory->statistics() : server_context->statistics();
-  
+
   net_instaweb::QueryParams params;
   StringPiece query_string = StringPiece(
       reinterpret_cast<char*>(r->args.data), r->args.len);
@@ -1710,13 +1718,15 @@ ngx_int_t ps_statistics_handler(ngx_http_request_t* r,
         net_instaweb::StringToInt64(value, &end_time);
       } else if (strcmp(name, "var_titles") == 0) {
         std::vector<StringPiece> variable_names;
-        net_instaweb::SplitStringPieceToVector(value, ",", &variable_names, true);
+        net_instaweb::SplitStringPieceToVector(
+            value, ",", &variable_names, true);
         for (size_t i = 0; i < variable_names.size(); ++i) {
           var_titles.insert(variable_names[i].as_string());
         }
       } else if (strcmp(name, "hist_titles") == 0) {
         std::vector<StringPiece> histogram_names;
-        net_instaweb::SplitStringPieceToVector(value, ",", &histogram_names, true);
+        net_instaweb::SplitStringPieceToVector(
+            value, ",", &histogram_names, true);
         for (size_t i = 0; i < histogram_names.size(); ++i) {
           // TODO(morlovich): Cleanup & publicize UrlToFileNameEncoder::Unescape
           // and use it here, instead of this GlobalReplaceSubstring hack.
@@ -1753,9 +1763,12 @@ ngx_int_t ps_statistics_handler(ngx_http_request_t* r,
                    "Global Statistics" : "VHost-Specific Statistics",
                    message_handler);
       if (!global_stats_request) {
-        writer.Write(net_instaweb::StrCat("[",server_context->hostname_identifier(),"]"),message_handler);
+        writer.Write(
+            net_instaweb::StrCat("[",
+                                 server_context->hostname_identifier(), "]"),
+            message_handler);
       }
-      
+
       // Write <pre></pre> for Dump to keep good format.
       writer.Write("<pre>", message_handler);
       statistics->Dump(&writer, message_handler);
@@ -1779,11 +1792,12 @@ ngx_int_t ps_statistics_handler(ngx_http_request_t* r,
   }
 
   if (json) {
-    write_handler_response(output, r, net_instaweb::kContentTypeJson, factory->timer());
+    write_handler_response(output, r, net_instaweb::kContentTypeJson,
+                           factory->timer());
   } else {
     write_handler_response(output, r, factory->timer());
   }
-  
+
   return NGX_OK;
 }
 
@@ -1925,7 +1939,8 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       // The hostname identifier is used by the shared memory statistics
       // to allocate a segment, and should be unique name per server
       GoogleString hostname_identifier =
-          net_instaweb::StrCat("Host[", base::IntToString((int)s),"]");
+          net_instaweb::StrCat("Host[", base::IntToString(static_cast<int>(s)),
+                               "]");
       cfg_s->server_context->set_hostname_identifier(hostname_identifier);
 
       // If config has statistics on and we have per-vhost statistics on
