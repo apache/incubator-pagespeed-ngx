@@ -395,6 +395,8 @@ void NgxRewriteDriverFactory::ShutDown() {
     if (shared_circular_buffer_ != NULL) {
       shared_circular_buffer_->GlobalCleanup(message_handler());
     }
+    // TODO(oschaaf): Should the shared memory lock manager be cleaning up here
+    // as well? In mod_pagespeed, it doesn't.
   }
 }
 
