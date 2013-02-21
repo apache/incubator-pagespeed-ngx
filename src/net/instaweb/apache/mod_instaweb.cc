@@ -278,6 +278,8 @@ const char kModPagespeedUsePerVHostStatistics[] =
     "ModPagespeedUsePerVHostStatistics";
 const char kModPagespeedWebpRecompressionQuality[] =
     "ModPagespeedImageWebpRecompressionQuality";
+const char kModPagespeedWebpTimeoutMs[] =
+    "ModPagespeedImageWebpTimeoutMs";
 const char kModPagespeedUseSharedMemoryMetadataCache[] =
     "ModPagespeedUseSharedMemoryMetadataCache";
 const char kModPagespeedXHeaderValue[] = "ModPagespeedXHeaderValue";
@@ -1956,6 +1958,9 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedWebpRecompressionQuality,
         "Set quality parameter for recompressing webp images [-1,100], 100 "
         "refers to best quality, -1 disables lossy compression."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedWebpTimeoutMs,
+        "Set the timeout, in milliseconds, for image conversions to WebP "
+        "format. A negative value disables this timeout timeout."),
 
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)

@@ -55,8 +55,10 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -68,6 +70,7 @@
 
 namespace net_instaweb {
 
+class AbstractMutex;
 class Function;
 class MessageHandler;
 
@@ -554,6 +557,46 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceWithDelayCache);
 };
 
+// LogRecord that copies logging_info() when in WriteLog.  This should be
+// useful for testing any logging flow where an owned subordinate log record is
+// needed.
+class CopyOnWriteLogRecord : public LogRecord {
+ public:
+  CopyOnWriteLogRecord(AbstractMutex* logging_mutex, LoggingInfo* logging_info)
+      : LogRecord(logging_mutex), logging_info_copy_(logging_info) {}
+
+ protected:
+  virtual bool WriteLogImpl() {
+    logging_info_copy_->CopyFrom(*logging_info());
+    return true;
+  }
+
+ private:
+  LoggingInfo* logging_info_copy_;  // Not owned by us.
+
+  DISALLOW_COPY_AND_ASSIGN(CopyOnWriteLogRecord);
+};
+
+// RequestContext that overrides NewSubordinateLogRecord to return a
+// CopyOnWriteLogRecord that copies to a logging_info given at construction
+// time.
+class TestRequestContext : public RequestContext {
+ public:
+  explicit TestRequestContext(LoggingInfo* logging_info)
+      : RequestContext(new NullMutex),
+        logging_info_copy_(logging_info) {}
+
+  virtual LogRecord* NewSubordinateLogRecord(AbstractMutex* logging_mutex) {
+    return new CopyOnWriteLogRecord(logging_mutex, logging_info_copy_);
+  }
+
+ private:
+  LoggingInfo* logging_info_copy_;  // Not owned by us.
+
+  DISALLOW_COPY_AND_ASSIGN(TestRequestContext);
+};
+typedef RefCountedPtr<TestRequestContext> TestRequestContextPtr;
+
 // TODO(nikhilmadan): Test cookies, fetch failures, 304 responses etc.
 // TODO(nikhilmadan): Refactor to share common code with ProxyInterfaceTest.
 class BlinkFlowCriticalLineTest : public RewriteTestBase {
@@ -574,7 +617,9 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
             kBlinkOutputWithCacheablePanelsNoCookiesSuffix)),
         blink_output_with_cacheable_panels_cookies_(StrCat(StringPrintf(
             kBlinkOutputCommon, "cache.html", "cache.html"),
-            kBlinkOutputWithCacheablePanelsCookiesSuffix)) {
+            kBlinkOutputWithCacheablePanelsCookiesSuffix)),
+        test_request_context_(TestRequestContextPtr(
+            new TestRequestContext(&blink_logging_info_))) {
     noblink_output_ = StrCat("<html><head></head><body>",
                              StringPrintf(kNoScriptRedirectFormatter,
                                           kNoBlinkUrl, kNoBlinkUrl),
@@ -720,6 +765,10 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
   virtual void TearDown() {
     EXPECT_EQ(0, server_context()->num_active_rewrite_drivers());
     RewriteTestBase::TearDown();
+  }
+
+  virtual RequestContextPtr CreateRequestContext() {
+    return RequestContextPtr(test_request_context_);
   }
 
   void InitializeFuriousSpec() {
@@ -880,7 +929,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
                                   GoogleString* user_agent_out) {
     WorkerTestBase::SyncPoint sync(server_context()->thread_system());
     AsyncExpectStringAsyncFetch callback(
-        expect_success, &sync, rewrite_driver()->request_context());
+        expect_success, &sync, RequestContextPtr(test_request_context_));
     rewrite_driver()->log_record()->SetTimingRequestStartMs(
         server_context()->timer()->NowMs());
     callback.set_response_headers(headers_out);
@@ -907,7 +956,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
       ResponseHeaders* headers_out) {
     WorkerTestBase::SyncPoint sync(server_context()->thread_system());
     AsyncExpectStringAsyncFetch callback(
-        expect_success, &sync, rewrite_driver()->request_context());
+        expect_success, &sync, RequestContextPtr(test_request_context_));
     callback.set_response_headers(headers_out);
     callback.request_headers()->CopyFrom(request_headers);
     proxy_interface->Fetch(AbsolutifyUrl(url), message_handler(), &callback);
@@ -931,7 +980,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
 
   // Verifies the fields of BlinkInfo proto being logged.
   BlinkInfo* VerifyBlinkInfo(int blink_request_flow, const char* url) {
-    BlinkInfo* blink_info = logging_info()->mutable_blink_info();
+    BlinkInfo* blink_info = blink_logging_info_.mutable_blink_info();
     EXPECT_EQ(blink_request_flow, blink_info->blink_request_flow());
     EXPECT_EQ("1345815119391831", blink_info->request_event_id_time_usec());
     EXPECT_STREQ(url, blink_info->url());
@@ -1157,6 +1206,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
         BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
   }
 
+  LoggingInfo blink_logging_info_;
   ResponseHeaders response_headers_;
   GoogleString noblink_output_;
   GoogleString noblink_output_with_lazy_load_;
@@ -1167,6 +1217,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
   const GoogleString blink_output_with_extra_non_cacheable_;
   const GoogleString blink_output_with_cacheable_panels_no_cookies_;
   const GoogleString blink_output_with_cacheable_panels_cookies_;
+  TestRequestContextPtr test_request_context_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BlinkFlowCriticalLineTest);
@@ -1469,7 +1520,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
   FetchFromProxyWaitForBackground("minifiable_text.html", true, &text,
                                   &response_headers);
   EXPECT_EQ(BlinkInfo::BLINK_DESKTOP_WHITELIST,
-            logging_info()-> blink_info().blink_user_agent());
+            logging_info()->blink_info().blink_user_agent());
   ConstStringStarVector values;
   EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kSetCookie, &values));
   EXPECT_EQ(1, values.size());
@@ -1758,7 +1809,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithBlacklistUrls) {
                  &response_headers, false);
   // unassigned user agent
   EXPECT_EQ(BlinkInfo::NOT_SET,
-            logging_info()-> blink_info().blink_user_agent());
+            logging_info()->blink_info().blink_user_agent());
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_STREQ(kHtmlInput, text);

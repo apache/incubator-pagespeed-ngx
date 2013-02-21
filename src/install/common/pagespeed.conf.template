@@ -134,6 +134,14 @@
     # Jpeg recompression quality (0 to 100, -1 strips metadata):
     # ModPagespeedJpegRecompressionQuality -1
     #
+    # WebP recompression quality (0 to 100):
+    # ModPagespeedImageWebpRecompressionQuality 70
+    #
+    # Timeout for conversions to WebP format, in
+    # milliseconds. Negative values mean no timeout is applied. The
+    # default value is -1:
+    # ModPagespeedImageWebpTimeoutMs 5000
+    #
     # Percent of original image size below which optimized images are retained:
     # ModPagespeedImageLimitOptimizedPercent 100
     #
