@@ -25,6 +25,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -82,7 +83,19 @@ bool CriticalCssFinder::UpdateCache(
            end = critical_css_map.end(); it != end; ++it) {
     CriticalCssSet_CriticalCss* critical_css =
         critical_css_set.add_critical_css();
-    critical_css->set_link_url(it->first);
+    StringVector decoded_url;
+    GoogleUrl gurl(it->first);
+    // Decode the url if it is pagespeed encoded.
+    if (driver->DecodeUrl(gurl, &decoded_url)) {
+      // Combine css is turned off during compute_critical_css, so should never
+      // have multiple Urls.
+      DCHECK_EQ(decoded_url.size(), 1U)
+          << "Found combined url " << it->first << " in compute flow for "
+          << driver->base_url().Spec();
+      critical_css->set_link_url(decoded_url.at(0));
+    } else {
+      critical_css->set_link_url(it->first);
+    }
     critical_css->set_critical_rules(it->second);
   }
   GoogleString buf;

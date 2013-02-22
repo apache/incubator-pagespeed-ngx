@@ -43,6 +43,24 @@
 
 namespace net_instaweb {
 
+// TODO(ksimbili): Move this to appropriate event instead of 'onload'.
+const char CriticalCssFilter::kAddStylesScript[] =
+    "<script type=\"text/javascript\">"
+    "var addAllStyles = function() {"
+    "  var stylesCommentedNode = document.getElementById(\"psa_add_styles\");"
+    "  var htmlString = stylesCommentedNode.firstChild.textContent;"
+    "  var div = document.createElement(\"div\");"
+    "  div.innerHTML = htmlString;"
+    "  document.body.appendChild(div);"
+    "};"
+    "if (window.addEventListener) {"
+    "  window.addEventListener(\"load\", addAllStyles, false);"
+    "} else if(window.attachEvent) {"
+    "  window.attachEvent(\"onload\", addAllStyles);"
+    "} else {"
+    "  window.onload = addAllStyles;"
+    "}</script>";
+
 // TODO(slamm): Check charset like CssInlineFilter::ShouldInline().
 
 // Wrap CSS elements to move them later in the document.
@@ -122,11 +140,26 @@ void CriticalCssFilter::StartDocument() {
 
 void CriticalCssFilter::EndDocument() {
   if (has_critical_css_match_) {
+    // Comment all the style, link tags so that look ahead parser cannot find
+    // them.
+    driver_->InsertElementBeforeCurrent(
+        driver_->NewCharactersNode(NULL, "<div id=\"psa_add_styles\"><!--"));
     // Write the full set of CSS elements (critical and non-critical rules).
     for (CssElementVector::iterator it = css_elements_.begin(),
          end = css_elements_.end(); it != end; ++it) {
       (*it)->InsertBeforeCurrent();
     }
+    // Note: If a <style> block has a string '-->' then this will break the html
+    // parsing. Most likely that is possible only in comments. But, since this
+    // filter is ahead of MinifyCss, such strings inside <style> shouldn't be
+    // sent to browser. The only problem with this is, if somebody has MinifyCss
+    // turned off and that site has '-->' in <style> block we would have
+    // problem.
+    // TODO(ksimbili): Escape the '-->' inside <style> blocks.
+    driver_->InsertElementBeforeCurrent(
+        driver_->NewCharactersNode(NULL, "--></div>"));
+    driver_->InsertElementBeforeCurrent(
+        driver_->NewCharactersNode(NULL, kAddStylesScript));
   }
   if (!css_elements_.empty()) {
     STLDeleteElements(&css_elements_);
@@ -185,8 +218,20 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
   }
 }
 
-StringPiece CriticalCssFilter::GetRules(StringPiece decoded_url) const {
+StringPiece CriticalCssFilter::GetRules(StringPiece url) const {
   StringPiece critical_rules;
+  StringVector decoded_urls;
+  GoogleUrl gurl(url);
+  StringPiece decoded_url = url;
+  // Decode the url if it is pagespeed encoded.
+  if (driver_->DecodeUrl(gurl, &decoded_urls)) {
+    // PrioritizeCriticalCss is ahead of combine_css.
+    // So ideally, we should never have combined urls here.
+     DCHECK_EQ(decoded_urls.size(), 1U)
+         << "Found combined css url " << url << " in "
+         << driver_->base_url().Spec();
+    decoded_url.set(decoded_urls.at(0).c_str(), decoded_urls.at(0).size());
+  }
   if (!critical_css_map_->empty()) {
     GoogleUrl link_url(driver_->base_url(), decoded_url);
     if (link_url.is_valid()) {

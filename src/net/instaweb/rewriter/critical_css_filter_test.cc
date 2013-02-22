@@ -137,7 +137,7 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
       "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
       "</body>\n";
 
-  static const char expected_html[] =
+  GoogleString expected_html = StrCat(
       "<head>\n"
       "  <title>Example</title>\n"
       "</head>\n"
@@ -149,10 +149,12 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
       "  World!\n"
       "  <style>c_used {color: cyan }</style>\n"
       "</body>\n"
-      "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
+      "<div id=\"psa_add_styles\">"
+      "<!--<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
       "<link rel='stylesheet' href='b.css' type='text/css'>"
       "<style type='text/css'>t {color: turquoise }</style>"
-      "<link rel='stylesheet' href='c.css' type='text/css'>";
+      "<link rel='stylesheet' href='c.css' type='text/css'>--></div>",
+      CriticalCssFilter::kAddStylesScript);
 
   finder_->AddCriticalCss("http://test.com/a.css", "a_used {color: azure }");
   finder_->AddCriticalCss("http://test.com/b.css", "b_used {color: blue }");
@@ -173,7 +175,7 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
       "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
       "</body>\n";
 
-  static const char expected_html[] =
+  GoogleString expected_html = StrCat(
       "<head>\n"
       "  <title>Example</title>\n"
       "</head>\n"
@@ -183,8 +185,10 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
       "  World!\n"
       "  <style>c_used {color: cyan }</style>\n"
       "</body>\n"
-      "<link rel='stylesheet' href='Hi there!' type='text/css'>"
-      "<link rel='stylesheet' href='c.css' type='text/css'>";
+      "<div id=\"psa_add_styles\">"
+      "<!--<link rel='stylesheet' href='Hi there!' type='text/css'>"
+      "<link rel='stylesheet' href='c.css' type='text/css'>--></div>",
+      CriticalCssFilter::kAddStylesScript);
 
   finder_->AddCriticalCss("http://test.com/c.css", "c_used {color: cyan }");
 
@@ -205,7 +209,7 @@ TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
       "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
       "</body>\n";
 
-  static const char expected_html[] =
+  GoogleString expected_html = StrCat(
       "<head>\n"
       "  <title>Example</title>\n"
       "</head>\n"
@@ -217,10 +221,12 @@ TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
       "  World!\n"
       "  <style>c_used {color: cyan }</style>\n"
       "</body>\n"
-      "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
+      "<div id=\"psa_add_styles\">"
+      "<!--<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
       "<link rel='stylesheet' href='b.css' type='text/css'>"
       "<style type='text/css'>t {color: turquoise }</style>"
-      "<link rel='stylesheet' href='c.css' type='text/css'>";
+      "<link rel='stylesheet' href='c.css' type='text/css'>--></div>",
+      CriticalCssFilter::kAddStylesScript);
 
   // Skip adding a critical CSS for a.css.
   //     In the filtered html, the original link is left in place and

@@ -51,6 +51,8 @@ class CriticalCssFilter : public EmptyHtmlFilter {
                              CriticalCssFinder* finder);
   virtual ~CriticalCssFilter();
 
+  static const char kAddStylesScript[];
+
   // Overridden from EmptyHtmlFilter:
   virtual void StartDocument();
   virtual void EndDocument();
