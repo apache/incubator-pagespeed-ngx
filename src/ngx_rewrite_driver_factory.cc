@@ -84,6 +84,7 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(NgxRewriteOptions* main_conf)
   RewriteDriverFactory::InitStats(&simple_stats_);
   SerfUrlAsyncFetcher::InitStats(&simple_stats_);
   AprMemCache::InitStats(&simple_stats_);
+  FileCache::InitStats(&simple_stats_);
   CacheStats::InitStats(SystemCachePath::kFileCache, &simple_stats_);
   CacheStats::InitStats(SystemCachePath::kLruCache, &simple_stats_);
   CacheStats::InitStats(kMemcached, &simple_stats_);
