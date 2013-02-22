@@ -39,9 +39,24 @@ namespace net_instaweb {
 
 namespace {
 
+const char kUrl[] = "http://www.myhost.com/static/mycss.css";
+const char kPrint[] = "print";
+const char kStylesheet[] = "stylesheet";
+const char kAlternateStylesheet[] = "alternate stylesheet";
+
 class CssTagScannerTest : public testing::Test {
  protected:
-  CssTagScannerTest() {}
+  CssTagScannerTest()
+      : html_parse_(&message_handler_), scanner_(&html_parse_),
+        link_(NULL), href_(NULL), media_(NULL), num_nonstandard_attributes_(0) {
+  }
+
+  void SetUp() {
+    link_ = html_parse_.NewElement(NULL, HtmlName::kLink);
+    // Set up link_ to a reasonable (and legal) start state.
+    html_parse_.AddAttribute(link_, HtmlName::kRel, "stylesheet");
+    html_parse_.AddAttribute(link_, HtmlName::kHref, kUrl);
+  }
 
   void CheckGurlResolve(const GoogleUrl& base, const char* relative_path,
                         const char* abs_path) {
@@ -51,6 +66,14 @@ class CssTagScannerTest : public testing::Test {
   }
 
   GoogleMessageHandler message_handler_;
+
+ protected:
+  HtmlParse html_parse_;
+  CssTagScanner scanner_;
+  HtmlElement* link_;
+  HtmlElement::Attribute* href_;
+  const char* media_;
+  int num_nonstandard_attributes_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CssTagScannerTest);
@@ -73,61 +96,140 @@ TEST_F(CssTagScannerTest, TestGurl) {
   CheckGurlResolve(base_no_slash, "./r/path.ext", "http://base/r/path.ext");
 }
 
-// This test makes sure we can identify a few different forms of CSS tags we've
-// seen.
-TEST_F(CssTagScannerTest, TestFull) {
-  HtmlParse html_parse(&message_handler_);
-  HtmlElement* link = html_parse.NewElement(NULL, HtmlName::kLink);
-  const char kUrl[] = "http://www.myhost.com/static/mycss.css";
-  const char kPrint[] = "print";
-  html_parse.AddAttribute(link, HtmlName::kRel, "stylesheet");
-  html_parse.AddAttribute(link, HtmlName::kHref, kUrl);
-  HtmlElement::Attribute* href = NULL;
-  const char* media = NULL;
-  CssTagScanner scanner(&html_parse);
-
-  // We can parse css even lacking a 'type' attribute.  Default to text/css.
-  EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
-  EXPECT_STREQ("", media);
-  EXPECT_STREQ(kUrl, href->DecodedValueOrNull());
-
-  // Add an unexpected attribute.  Now we don't know what to do with it.
-  link->AddAttribute(html_parse.MakeName("other"), "value",
-                     HtmlElement::DOUBLE_QUOTE);
-  EXPECT_FALSE(scanner.ParseCssElement(link, &href, &media));
-
-  // Mutate it to the correct attribute.
-  HtmlElement::Attribute* attr = link->FindAttribute(HtmlName::kOther);
-  ASSERT_TRUE(attr != NULL);
-  html_parse.SetAttributeName(attr, HtmlName::kType);
-  attr->SetValue("text/css");
-  EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
-  EXPECT_STREQ("", media);
-  EXPECT_STREQ(kUrl, href->DecodedValueOrNull());
-
-  // Add a media attribute.  It should still pass, yielding media.
-  html_parse.AddAttribute(link, HtmlName::kMedia, kPrint);
-  EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
-  EXPECT_STREQ(kPrint, media);
-  EXPECT_STREQ(kUrl, href->DecodedValueOrNull());
-
-  // TODO(jmarantz): test removal of 'rel' and 'href' attributes
+TEST_F(CssTagScannerTest, CanMediaAffectScreenTest) {
+  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen(""));
+  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("  screen  "));
+  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("all\n"));
+  // Case insensitive, handles multiple (possibly junk) media types.
+  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("print, audio ,, ,sCrEeN"));
+  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen(
+      "not!?#?;valid,screen,@%*%@*"));
+  // Some simple cases that fail.
+  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("print"));
+  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("not screen"));
+  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("print screen"));
+  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("not!?#?;valid"));
+  // we don't handle media queries yet:
+  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("not print"));
+  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen(
+      "only screen and (max-device-width: 480px) "));
 }
 
-TEST_F(CssTagScannerTest, RelCaseInsensitive) {
-  // The rel attribute is case-insensitive.
-  HtmlParse html_parse(&message_handler_);
-  HtmlElement* link = html_parse.NewElement(NULL, HtmlName::kLink);
-  const char kUrl[] = "http://www.myhost.com/static/mycss.css";
-  html_parse.AddAttribute(link, HtmlName::kRel, "StyleSheet");
-  html_parse.AddAttribute(link, HtmlName::kHref, kUrl);
-  HtmlElement::Attribute* href = NULL;
-  const char* media = NULL;
-  CssTagScanner scanner(&html_parse);
+// This test makes sure we can identify a few different forms of CSS tags we've
+// seen.
+TEST_F(CssTagScannerTest, MinimalOK) {
+  // We can parse css if it has only href= and rel=stylesheet attributes.
+  EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
+                                       &num_nonstandard_attributes_));
+  EXPECT_STREQ("", media_);
+  EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
+  EXPECT_EQ(0, num_nonstandard_attributes_);
+}
 
-  EXPECT_TRUE(scanner.ParseCssElement(link, &href, &media));
-  EXPECT_STREQ("", media);
-  EXPECT_STREQ(kUrl, href->DecodedValueOrNull());
+TEST_F(CssTagScannerTest, NonstandardAttributeOK) {
+  // Add a nonstandard attribute.
+  html_parse_.AddAttribute(link_, HtmlName::kOther, "value");
+  EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
+                                       &num_nonstandard_attributes_));
+  EXPECT_STREQ("", media_);
+  EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
+  EXPECT_EQ(1, num_nonstandard_attributes_);
+}
+
+TEST_F(CssTagScannerTest, WithTypeOK) {
+  // Type=text/css works
+  html_parse_.AddAttribute(link_, HtmlName::kType, "text/css");
+  EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
+                                       &num_nonstandard_attributes_));
+  EXPECT_STREQ("", media_);
+  EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
+  EXPECT_EQ(0, num_nonstandard_attributes_);
+}
+
+TEST_F(CssTagScannerTest, BadTypeFail) {
+  // Types other than text/css don't work.
+  html_parse_.AddAttribute(link_, HtmlName::kType, "text/plain");
+  EXPECT_FALSE(scanner_.ParseCssElement(link_, &href_, &media_,
+                                        &num_nonstandard_attributes_));
+}
+
+TEST_F(CssTagScannerTest, WithMediaOK) {
+  // Add a media attribute.  It should still pass, yielding media.
+  html_parse_.AddAttribute(link_, HtmlName::kMedia, kPrint);
+  EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
+                                      &num_nonstandard_attributes_));
+  EXPECT_STREQ(kPrint, media_);
+  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen(media_));
+  EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
+  EXPECT_EQ(0, num_nonstandard_attributes_);
+}
+
+TEST_F(CssTagScannerTest, DoubledHrefFail) {
+  // We used to just count href and rel attributes; if we double the href
+  // attribute we ought to fail.  We *could* succeed if the urls match, but it's
+  // not worth the bother.
+  HtmlElement::Attribute* attr = link_->FindAttribute(HtmlName::kHref);
+  link_->AddAttribute(*attr);
+  EXPECT_FALSE(scanner_.ParseCssElement(link_, &href_, &media_,
+                                      &num_nonstandard_attributes_));
+}
+
+TEST_F(CssTagScannerTest, MissingRelFail) {
+  // Removal of rel= attribute.
+  link_->DeleteAttribute(HtmlName::kRel);
+  EXPECT_FALSE(scanner_.ParseCssElement(link_, &href_, &media_,
+                                      &num_nonstandard_attributes_));
+}
+
+TEST_F(CssTagScannerTest, AlternateRelFail) {
+  // rel="alternate stylesheet" should fail.
+  link_->DeleteAttribute(HtmlName::kRel);
+  html_parse_.AddAttribute(link_, HtmlName::kRel, kAlternateStylesheet);
+  EXPECT_FALSE(scanner_.ParseCssElement(link_, &href_, &media_,
+                                      &num_nonstandard_attributes_));
+}
+
+TEST_F(CssTagScannerTest, MissingRelDoubledHrefFail) {
+  // Removal of rel= attribute and doubling of href.  This used to succeed since
+  // we just counted to 2.
+  link_->DeleteAttribute(HtmlName::kRel);
+  HtmlElement::Attribute* attr = link_->FindAttribute(HtmlName::kHref);
+  link_->AddAttribute(*attr);
+  EXPECT_FALSE(scanner_.ParseCssElement(link_, &href_, &media_,
+                                      &num_nonstandard_attributes_));
+}
+
+TEST_F(CssTagScannerTest, DoubledRelOK) {
+  // Double the rel="stylesheet" and everything is OK.
+  HtmlElement::Attribute* attr = link_->FindAttribute(HtmlName::kRel);
+  link_->AddAttribute(*attr);
+  EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
+                                       &num_nonstandard_attributes_));
+  EXPECT_STREQ("", media_);
+  EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
+  EXPECT_EQ(0, num_nonstandard_attributes_);
+}
+
+TEST_F(CssTagScannerTest, MissingHrefDoubledRelFailOK) {
+  // Double the rel and remove the href, and we should reject rather than
+  // counting to 2.
+  link_->DeleteAttribute(HtmlName::kHref);
+  HtmlElement::Attribute* attr = link_->FindAttribute(HtmlName::kRel);
+  link_->AddAttribute(*attr);
+  EXPECT_FALSE(scanner_.ParseCssElement(link_, &href_, &media_,
+                                        &num_nonstandard_attributes_));
+}
+
+TEST_F(CssTagScannerTest, RelCaseInsensitiveOK) {
+  // The rel attribute is case-insensitive.
+  link_->DeleteAttribute(HtmlName::kRel);
+  html_parse_.AddAttribute(link_, HtmlName::kRel, "StyleSheet");
+
+  EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
+                                       &num_nonstandard_attributes_));
+  EXPECT_STREQ("", media_);
+  EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
+  EXPECT_EQ(0, num_nonstandard_attributes_);
 }
 
 TEST_F(CssTagScannerTest, TestHasImport) {

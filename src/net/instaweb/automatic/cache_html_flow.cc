@@ -32,6 +32,7 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/cache_html_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -87,7 +88,16 @@ namespace {
 // it is cloned.
 void InitDriverWithPropertyCacheValues(
     RewriteDriver* cache_html_driver, PropertyPage* page) {
+  cache_html_driver->set_unowned_property_page(page);
   // TODO(mmohabey): Critical line info should be populated here.
+
+  // Populating critical images in cache html driver.
+  CriticalImagesFinder* critical_images_finder =
+      cache_html_driver->server_context()->critical_images_finder();
+  if (critical_images_finder->IsMeaningful(cache_html_driver)) {
+    critical_images_finder->UpdateCriticalImagesSetInDriver(cache_html_driver);
+  }
+  cache_html_driver->set_unowned_property_page(NULL);
 }
 
 class CacheHtmlComputationFetch : public AsyncFetch {
@@ -208,6 +218,7 @@ class CacheHtmlComputationFetch : public AsyncFetch {
   }
 
   void CreateHtmlChangeDetectionDriverAndRewrite() {
+    LOG(INFO) << "CreateHtmlChangeDetectionDriverAndRewrite";
     RewriteOptions* options = rewrite_driver_->options()->Clone();
     options->ClearFilters();
     options->ForceEnableFilter(RewriteOptions::kRemoveComments);
@@ -231,6 +242,7 @@ class CacheHtmlComputationFetch : public AsyncFetch {
   }
 
   void CreateCacheHtmlComputationDriverAndRewrite() {
+    LOG(INFO) << "CreateCacheHtmlComputationDriverAndRewrite";
     RewriteOptions* options = rewrite_driver_->options()->Clone();
     options->ClearFilters();
     options->ForceEnableFilter(RewriteOptions::kStripNonCacheable);
@@ -276,6 +288,7 @@ class CacheHtmlComputationFetch : public AsyncFetch {
   }
 
   void CompleteFinishParseForCacheHtmlComputationDriver() {
+    LOG(INFO) << "CompleteFinishParseForCacheHtmlComputationDriver";
     StringPiece rewritten_content;
     value_.ExtractContents(&rewritten_content);
     cache_html_info_->set_cached_html(rewritten_content.data(),
@@ -290,6 +303,7 @@ class CacheHtmlComputationFetch : public AsyncFetch {
   }
 
   void CompleteFinishParseForHtmlChangeDriver() {
+    LOG(INFO) << "CompleteFinishParseForHtmlChangeDriver";
     StringPiece output;
     value_.ExtractContents(&output);
     StringPieceVector result;
@@ -345,6 +359,7 @@ class CacheHtmlComputationFetch : public AsyncFetch {
   // is found, we delete the entry from the cache and trigger a cache html info
   // computation.
   void ProcessDiffResult() {
+    LOG(INFO) << "ProcessDiffResult";
     if (computed_hash_.empty()) {
       LOG(WARNING) << "Computed hash is empty for url " << url_;
       delete this;
@@ -355,10 +370,14 @@ class CacheHtmlComputationFetch : public AsyncFetch {
       compute_cache_html_info =
           (computed_hash_smart_diff_ !=
               cache_html_info_->hash_smart_diff());
+      LOG(INFO) << computed_hash_smart_diff_;
+      LOG(INFO) << cache_html_info_->hash_smart_diff();
     } else {
       compute_cache_html_info =
           (computed_hash_ !=
               cache_html_info_->hash());
+      LOG(INFO) << computed_hash_;
+      LOG(INFO) << cache_html_info_->hash();
     }
     // TODO(mmohabey): Incorporate DiffInfo.
 
@@ -381,10 +400,14 @@ class CacheHtmlComputationFetch : public AsyncFetch {
   }
 
   void UpdatePropertyCacheWithCacheHtmlInfo() {
+    LOG(INFO) << "Updating property cache";
     cache_html_info_->set_charset(response_headers()->DetermineCharset());
     cache_html_info_->set_hash(computed_hash_);
     cache_html_info_->set_hash_smart_diff(computed_hash_smart_diff_);
 
+    LOG(INFO) << cache_html_info_->cached_html().size();
+    LOG(INFO) << cache_html_info_->hash();
+    LOG(INFO) << cache_html_info_->hash_smart_diff();
     PropertyCache* property_cache =
         rewrite_driver_->server_context()->page_property_cache();
     PropertyPage* page = rewrite_driver_->property_page();
@@ -501,6 +524,7 @@ void CacheHtmlFlow::Start(
     RewriteDriver* driver,
     ProxyFetchFactory* factory,
     ProxyFetchPropertyCallbackCollector* property_cache_callback) {
+  LOG(INFO) << "Cache Html Flow Start:" << url;
   CacheHtmlFlow* flow = new CacheHtmlFlow(
       url, base_fetch, driver, factory, property_cache_callback);
 
@@ -552,6 +576,7 @@ CacheHtmlFlow::~CacheHtmlFlow() {
 }
 
 void CacheHtmlFlow::CacheHtmlLookupDone() {
+  LOG(INFO) << "CacheHtmlLookupDone:" << url_;
   PropertyPage* page = property_cache_callback_->
       GetPropertyPageWithoutOwnership(
           ProxyFetchPropertyCallback::kPagePropertyCache);
@@ -566,11 +591,13 @@ void CacheHtmlFlow::CacheHtmlLookupDone() {
 }
 
 void CacheHtmlFlow::CacheHtmlMiss() {
+  LOG(INFO) << "CacheHtmlMiss:" << url_;
   num_cache_html_misses_->IncBy(1);
   TriggerProxyFetch();
 }
 
 void CacheHtmlFlow::CacheHtmlHit(PropertyPage* page) {
+  LOG(INFO) << "CacheHtmlHit:" << url_;
   num_cache_html_hits_->IncBy(1);
   StringPiece cached_html = cache_html_info_.cached_html();
   // TODO(mmohabey): Handle malformed html case.
@@ -603,7 +630,9 @@ void CacheHtmlFlow::CacheHtmlHit(PropertyPage* page) {
 
   // Clone the RewriteDriver which is used to rewrite the HTML that we are
   // trying to flush early.
+  LOG(INFO) << "old" << rewrite_driver_;
   RewriteDriver* new_driver = rewrite_driver_->Clone();
+  LOG(INFO) << "new" << new_driver;
   new_driver->set_response_headers_ptr(base_fetch_->response_headers());
   new_driver->set_flushing_cached_html(true);
   new_driver->SetWriter(base_fetch_);
@@ -630,6 +659,7 @@ void CacheHtmlFlow::CacheHtmlRewriteDone() {
 }
 
 void CacheHtmlFlow::TriggerProxyFetch() {
+  LOG(INFO) << "ProxyFetchTriggered:" << url_;
   bool flushed_cached_html = rewrite_driver_->flushed_cached_html();
   AsyncFetch* fetch = NULL;
   CacheHtmlComputationFetch* cache_html_computation_fetch = NULL;

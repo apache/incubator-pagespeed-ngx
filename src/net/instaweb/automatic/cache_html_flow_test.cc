@@ -51,6 +51,7 @@
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/public/wildcard.h"
 #include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
@@ -64,6 +65,8 @@ namespace {
 const char kTestUrl[] = "http://test.com/text.html";
 
 const char kCssContent[] = "* { display: none; }";
+
+const char kSampleJpgFile[] = "Sample.jpg";
 
 const char kLinuxUserAgent[] =
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 "
@@ -230,7 +233,6 @@ const char kBlinkOutputSuffix[] =
     "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.0\":{\"instance_html\":\"<div class=\\\"item\\\"><img src=\\\"image1\\\"><img src=\\\"image2\\\"></div>\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[2]\"}}\n);</script>"  // NOLINT
     "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.1\":{\"instance_html\":\"<div class=\\\"item\\\"><img src=\\\"image3\\\"><div class=\\\"item\\\"><img src=\\\"image4\\\"></div></div>\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[3]\"}}\n);</script>"  // NOLINT
     "<script>pagespeed.panelLoader.bufferNonCriticalData({});</script>";  // NOLINT
-
 
 const char kFakePngInput[] = "FakePng";
 
@@ -438,6 +440,8 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
                      StrCat(kWhitespace, kHtmlInput));
     SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.css"), kContentTypeCss,
                                   kCssContent, kHtmlCacheTimeSec * 2);
+    AddFileToMockFetcher(StrCat(kTestDomain, "image1"), kSampleJpgFile,
+                         kContentTypeJpeg, 100);
   }
 
   void InitializeFuriousSpec() {
@@ -796,6 +800,90 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlFuriousCookieHandling) {
   VerifyCacheHtmlResponse(response_headers);
 }
 
+TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
+  const char kInlinePreviewHtmlInput[] =
+      "<html>"
+      "<head>"
+      "</head>"
+      "<body>\n"
+      "<div id=\"header\"> This is the header </div>"
+      "<div id=\"container\" class>"
+        "<h2 id=\"beforeItems\"> This is before Items </h2>"
+        "<div class=\"item1\">"
+           "<img src=\"image1\">"
+           "<img src=\"image2\">"
+        "</div>"
+        "<div class=\"item\">"
+           "<img src=\"image3\">"
+            "<div class=\"item\">"
+               "<img src=\"image4\">"
+            "</div>"
+        "</div>"
+      "</div>"
+      "</body></html>";
+  SetFetchResponse("http://test.com/text.html", response_headers_,
+                   kInlinePreviewHtmlInput);
+
+  StringSet* critical_images = new StringSet;
+  critical_images->insert(StrCat(kTestDomain, "image1"));
+  SetCriticalImagesInFinder(critical_images);
+  options_->ClearSignatureForTesting();
+  options_->EnableFilter(RewriteOptions::kDelayImages);
+  server_context()->ComputeSignature(options_.get());
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(options_.get());
+  server_context()->set_url_namer(&url_namer);
+
+  GoogleString text;
+  ResponseHeaders response_headers;
+  // First request updates the property cache with cached html.
+  FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
+  VerifyNonCacheHtmlResponse(response_headers);
+  // Cache Html hit case.
+  response_headers.Clear();
+  FetchFromProxyNoWaitForBackground("text.html", true, &text,
+                                    &response_headers);
+
+  VerifyCacheHtmlResponse(response_headers);
+  UnEscapeString(&text);
+
+  const char kBlinkOutputWithInlinePreviewImages[] =
+      "<html><head>%s</head><body>"
+      "<noscript><meta HTTP-EQUIV=\"refresh\" content=\"0;"
+      "url='%s?ModPagespeed=noscript'\" />"
+      "<style><!--table,div,span,font,p{display:none} --></style>"
+      "<div style=\"display:block\">Please click "
+      "<a href=\"%s?ModPagespeed=noscript\">here</a> "
+      "if you are not redirected within a few seconds.</div></noscript>"
+      "\n<div id=\"header\"> This is the header </div>"
+      "<div id=\"container\" class>"
+      "<!--GooglePanel begin panel-id-1.0-->"
+      "<!--GooglePanel end panel-id-1.0-->"
+      "<div class=\"item1\">%s"  // Inlined Image tag with script.
+      "<img src=\"image2\">"
+      "</div>"
+      "<!--GooglePanel begin panel-id-0.0-->"
+      "<!--GooglePanel end panel-id-0.0-->"
+      "</div>"
+      "</body></html>"
+      "<script type=\"text/javascript\" src=\"/psajs/blink.js\"></script>"
+      "<script type=\"text/javascript\">"
+      "pagespeed.panelLoaderInit();"
+      "pagespeed.panelLoader.loadCriticalData({});"
+      "pagespeed.panelLoader.loadImagesData({});</script>\n"
+      "%s"  // kCookieScript
+      "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-1.0\":{\"instance_html\":\"<h2 id=\\\"beforeItems\\\"> This is before Items </h2>\",\"xpath\":\"//div[@id=\\\"container\\\"]/h2[1]\"}}\n);</script>"  // NOLINT
+      "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.0\":{\"instance_html\":\"<div class=\\\"item\\\"><img src=\\\"image3\\\"><div class=\\\"item\\\"><img src=\\\"image4\\\"></div></div>\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[3]\"}}\n);</script>"  // NOLINT
+      "<script>pagespeed.panelLoader.bufferNonCriticalData({});</script>";  // NOLINT
+
+  GoogleString inlined_image_wildcard =
+      StringPrintf(kBlinkOutputWithInlinePreviewImages,
+                   GetJsDisableScriptSnippet(options_.get()).c_str(), kTestUrl,
+                   kTestUrl, "<img pagespeed_high_res_src=\"image1\" "
+                   "src=\"data:image/jpeg;base64*", kCookieScript);
+  EXPECT_TRUE(Wildcard(inlined_image_wildcard).Match(text))
+      << "Expected:\n" << inlined_image_wildcard << "\n\nGot:\n" << text;
+}
 
 // TODO(mmohabey): Add remaining test cases from
 // blink_flow_critical_line_test.cc as support of all the features is added.

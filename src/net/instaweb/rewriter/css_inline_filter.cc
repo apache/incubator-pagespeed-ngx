@@ -16,9 +16,11 @@
 
 #include "net/instaweb/rewriter/public/css_inline_filter.h"
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/inline_rewrite_context.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -28,13 +30,12 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 
 namespace net_instaweb {
-
-class MessageHandler;
 
 class CssInlineFilter::Context : public InlineRewriteContext {
  public:
@@ -81,7 +82,8 @@ class CssInlineFilter::Context : public InlineRewriteContext {
 
 CssInlineFilter::CssInlineFilter(RewriteDriver* driver)
     : CommonFilter(driver),
-      size_threshold_bytes_(driver->options()->css_inline_max_bytes()) {}
+      size_threshold_bytes_(driver->options()->css_inline_max_bytes()),
+      css_tag_scanner_(driver_) {}
 
 void CssInlineFilter::StartDocumentImpl() {
 }
@@ -89,104 +91,42 @@ void CssInlineFilter::StartDocumentImpl() {
 CssInlineFilter::~CssInlineFilter() {}
 
 void CssInlineFilter::EndElementImpl(HtmlElement* element) {
-  if ((element->keyword() == HtmlName::kLink) &&
+  HtmlElement::Attribute* href = NULL;
+  const char* media = NULL;
+  if (css_tag_scanner_.ParseCssElement(element, &href, &media) &&
       !driver_->HasChildrenInFlushWindow(element)) {
-    StringPiece rel(element->AttributeValue(HtmlName::kRel));
-    TrimWhitespace(&rel);
-    // Note: We intentionally do not inline rel="alternate stylesheet".
-    if (!StringCaseEqual(rel, "stylesheet")) {
+    // Only inline if the media type affects "screen".  We don't inline other
+    // types since they're very unlikely to change the initial page view, and
+    // inlining them would actually slow down the 99% case of "screen".
+    if (!CssTagScanner::CanMediaAffectScreen(media)) {
+      driver_->message_handler()->Message(
+          kInfo, "Stylesheet media=%s is not for screen href=%s",
+          media, href->DecodedValueOrNull());
       return;
     }
-    const char* type = element->AttributeValue(HtmlName::kType);
-    if (type != NULL) {
-      StringPiece type_trimmed(type);
-      TrimWhitespace(&type_trimmed);
-      if (!StringCaseEqual(type_trimmed, "text/css")) {
-        // Do not inline any <link> which has a non-CSS type= explicitly set.
-        return;
-      }
-    }
-
-    // Only inline <link> elements that do not contain unexpected attributes.
-    if (ContainsNonStandardAttributes(element)) {
-      return;
-    }
-
-    // Only inline if the media type includes "screen". We don't inline other
-    // types since they're much less common so inlining them would actually
-    // slow down the 99% case of "screen". "all" means all types, including
-    // "screen", and the type can be a comma-separated list, so we have to
-    // check every type in the list.
-    const char* media = element->EscapedAttributeValue(HtmlName::kMedia);
-    if (media != NULL) {
-      StringPiece media_sp(media);
-      StringPieceVector media_vector;
-      SplitStringPieceToVector(media_sp, ",", &media_vector, true);
-      bool is_for_screen = false;
-      for (int i = 0, n = media_vector.size(); i < n; ++i) {
-        TrimWhitespace(&media_vector[i]);
-        if (StringCaseEqual(media_vector[i], "all") ||
-            StringCaseEqual(media_vector[i], "screen")) {
-          is_for_screen = true;
-          break;
-        }
-      }
-      if (!is_for_screen) {
-        return;
-      }
-    }
-
-    // Get the URL where the external script is stored
-    HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kHref);
-    if (attr == NULL || attr->DecodedValueOrNull() == NULL) {
-      return;  // We obviously can't inline if the URL isn't there.
-    }
-
     // Ask the LSC filter to work out how to handle this element. A return
     // value of true means we don't have to rewrite it so can skip that.
     // The state is carried forward to after we initiate rewriting since
     // we might still have to modify the element.
     LocalStorageCacheFilter::InlineState state;
     if (!LocalStorageCacheFilter::AddStorableResource(
-            attr->DecodedValueOrNull(), driver_, false /* check cookie */,
+            href->DecodedValueOrNull(), driver_, false /* check cookie */,
             element, &state)) {
       // StartInlining() transfers possession of ctx to RewriteDriver or
       // deletes it on failure.
-      Context* ctx = new Context(this, base_url(), element, attr);
+      Context* ctx = new Context(this, base_url(), element, href);
       bool initiated = ctx->StartInlining();
 
       // If we're rewriting we need the LSC filter to add the URL as an
       // attribute so that it knows to insert the LSC specific javascript.
       if (initiated) {
-        LocalStorageCacheFilter::AddStorableResource(attr->DecodedValueOrNull(),
+        LocalStorageCacheFilter::AddStorableResource(href->DecodedValueOrNull(),
                                                      driver_,
                                                      true /* ignore cookie */,
                                                      element, &state);
       }
     }
   }
-}
-
-bool CssInlineFilter::ContainsNonStandardAttributes(
-    const HtmlElement* element) {
-  // We allow rel, href, media and type.
-  for (HtmlElement::AttributeList::const_iterator iter =
-           element->attributes().begin();
-       iter != element->attributes().end(); ++iter) {
-    const HtmlElement::Attribute& attr = *iter;
-    switch (attr.keyword()) {
-      case HtmlName::kRel:
-      case HtmlName::kHref:
-      case HtmlName::kMedia:
-      case HtmlName::kType:
-        // These attribute names are allowed.
-        break;
-      default:
-        // Any others are non-standard.
-        return true;
-    }
-  }
-  return false;
 }
 
 bool CssInlineFilter::ShouldInline(const ResourcePtr& resource,
@@ -239,40 +179,58 @@ void CssInlineFilter::RenderInline(const ResourcePtr& resource,
       break;
   }
 
-  if (resolved_ok) {
-    // Inline the CSS.
-    HtmlElement* style_element =
-        driver_->NewElement(element->parent(), HtmlName::kStyle);
-    if (driver_->ReplaceNode(element, style_element)) {
-      driver_->AppendChild(style_element,
-                           driver_->NewCharactersNode(element,
-                                                      rewritten_contents));
-
-      // If the link tag has a media attribute, copy it over to the style.
-      HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kMedia);
-      if (attr != NULL) {
-        const char* media = attr->escaped_value();
-        if (media != NULL) {
-          driver_->AddEscapedAttribute(style_element, HtmlName::kMedia, media);
-        }
-      }
-    }
-    if (driver_->options()->Enabled(RewriteOptions::kComputeCriticalCss)) {
-      // If compute_critical_css is enabled, add 'href' attribute to the style
-      // node.
-      // Computing critical css needs this url to store the critical
-      // css in the map.
-      driver_->AddAttribute(style_element, HtmlName::kDataPagespeedHref,
-                            resource_url.Spec());
-    }
-    // Add the local storage cache attributes if it is enabled.
-    LocalStorageCacheFilter::AddLscAttributes(resource_url.Spec(), cached,
-                                              false /* has_url */,
-                                              driver_, style_element);
-  } else {
+  if (!resolved_ok) {
     // Remove any LSC attributes as they're now pointless.
     LocalStorageCacheFilter::RemoveLscAttributes(element, driver_);
+    return;
   }
+
+  // Inline the CSS.
+  HtmlElement* style_element =
+      driver_->NewElement(element->parent(), HtmlName::kStyle);
+  if (!driver_->ReplaceNode(element, style_element)) {
+    DCHECK(false) << "!driver_->ReplaceNode(element, style_element)";
+    return;
+  }
+  driver_->AppendChild(style_element,
+                       driver_->NewCharactersNode(element,
+                                                  rewritten_contents));
+
+  // Copy over most attributes from the original link, discarding those that
+  // we convert (href, rel), and dropping those that are irrelevant (type)
+  // or subject to immediate replacement (pagespeed_lsc_*).
+  const HtmlElement::AttributeList& attrs = element->attributes();
+  for (HtmlElement::AttributeConstIterator i(attrs.begin()), e(attrs.end());
+       i != e; ++i) {
+    const HtmlElement::Attribute& attr = *i;
+    switch (attr.keyword()) {
+      case HtmlName::kHref:
+      case HtmlName::kRel:
+      case HtmlName::kType:
+      case HtmlName::kPagespeedLscUrl:
+      case HtmlName::kPagespeedLscHash:
+      case HtmlName::kPagespeedLscExpiry:
+        // TODO(jmaessen): consider whether we could handle the Lsc attributes
+        // more gracefully (say copy them across rather than remove them from
+        // one and re-add them to the other).
+        break;
+      default:
+        style_element->AddAttribute(attr);
+        break;
+    }
+  }
+  if (driver_->options()->Enabled(RewriteOptions::kComputeCriticalCss)) {
+    // If compute_critical_css is enabled, add 'href' attribute to the style
+    // node.
+    // Computing critical css needs this url to store the critical
+    // css in the map.
+    driver_->AddAttribute(style_element, HtmlName::kDataPagespeedHref,
+                          resource_url.Spec());
+  }
+  // Add the local storage cache attributes if it is enabled.
+  LocalStorageCacheFilter::AddLscAttributes(resource_url.Spec(), cached,
+                                            false /* has_url */,
+                                            driver_, style_element);
 }
 
 }  // namespace net_instaweb

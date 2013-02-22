@@ -16,8 +16,6 @@
 
 // Author: mdsteele@google.com (Matthew D. Steele)
 
-#include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
@@ -234,29 +232,25 @@ TEST_F(CssInlineFilterTest, DoInlineCssWithMediaScreen) {
                 "media=\"print, audio ,, ,sCrEeN \"", css, true, css);
 }
 
-TEST_F(CssInlineFilterTest, InlineCssWithUndecodableMedia) {
-  // Ensure that our test string really is not decodable, to cater for it
-  // becoming decodable in the future.
-  const char kNotDecodable[] = "not\240decodable";  // ' ' with high bit set.
-  RewriteDriver* driver = rewrite_driver();
-  HtmlElement* element = driver->NewElement(NULL, HtmlName::kStyle);
-  driver->AddEscapedAttribute(element, HtmlName::kMedia, kNotDecodable);
-  HtmlElement::Attribute* attr = element->FindAttribute(HtmlName::kMedia);
-  EXPECT_TRUE(NULL == attr->DecodedValueOrNull());
+TEST_F(CssInlineFilterTest, InlineCssWithInvalidMedia) {
+  // Use an invalid media tag, but one that's still decipherable.
+  // Trying to deal with indecipherable media tags turned out to be
+  // more trouble than it's worth.
+  const char kNotValid[] = "not!?#?;valid";
 
   const GoogleString css = "BODY { color: red; }\n";
   GoogleString media;
 
-  // Now do the actual test that we don't inline the CSS with an undecodable
+  // Now do the actual test that we don't inline the CSS with an invalid
   // media type (and not screen or all as well).
-  media = StrCat("media=\"", kNotDecodable, "\"");
+  media = StrCat("media=\"", kNotValid, "\"");
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 media, css, false, "");
 
-  // And now test that we DO inline the CSS with an undecodable media type
-  // if ther's also an instance of "screen" in the media attribute.
-  media = StrCat("media=\"", kNotDecodable, ",screen\"");
+  // And now test that we DO inline the CSS with an invalid media type
+  // if there's also an instance of "screen" in the media attribute.
+  media = StrCat("media=\"", kNotValid, ",screen\"");
   TestInlineCss("http://www.example.com/index.html",
                 "http://www.example.com/styles.css",
                 media, css, true, css);
@@ -508,7 +502,8 @@ TEST_F(CssInlineFilterTest, AlternateStylesheet) {
       "<style>a{margin:0}</style>");
 
   // Preferred CSS links are not because inline styles cannot be given
-  // a title (AFAICT).
+  // a title (AFAICT).  The title attribute indicates that the given
+  // CSS can be overridden by an alternate style sheet.
   ValidateNoChanges(
       "preferred",
       "<link rel='stylesheet' href='foo.css' title='foo'>");
@@ -517,6 +512,25 @@ TEST_F(CssInlineFilterTest, AlternateStylesheet) {
   ValidateNoChanges(
       "alternate",
       "<link rel='alternate stylesheet' href='foo.css' title='foo'>");
+}
+
+TEST_F(CssInlineFilterTest, CarryAcrossOtherAttributes) {
+  // Carry across attributes such as id and class to the inlined style tag.
+  AddFilter(RewriteOptions::kInlineCss);
+  SetResponseWithDefaultHeaders("foo.css", kContentTypeCss, "a{margin:0}", 100);
+
+  ValidateExpected(
+      "CarryAcross",
+      "<link rel='stylesheet' href='foo.css' id='my-stylesheet' class='a b c'"
+      " lulz='!@$@#$%@4lulz'>",
+      "<style id='my-stylesheet' class='a b c' lulz='!@$@#$%@4lulz'>"
+      "a{margin:0}</style>");
+
+  // But respect pagespeed_no_transform
+  ValidateNoChanges(
+      "NoTransform",
+      "<link rel='stylesheet' href='foo.css' id='my-stylesheet' class='a b c' "
+      "pagespeed_no_transform>");
 }
 
 TEST_F(CssInlineFilterTest, NoRel) {

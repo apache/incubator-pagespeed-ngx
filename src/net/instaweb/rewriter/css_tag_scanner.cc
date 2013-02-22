@@ -50,54 +50,78 @@ const char CssTagScanner::kUriValue[] = "url(";
 CssTagScanner::CssTagScanner(HtmlParse* html_parse) {
 }
 
-bool CssTagScanner::ParseCssElement(
-    HtmlElement* element, HtmlElement::Attribute** href, const char** media) {
-  int num_required_attributes_found = 0;
+bool CssTagScanner::ParseCssElement(HtmlElement* element,
+                                    HtmlElement::Attribute** href,
+                                    const char** media,
+                                    int* num_nonstandard_attributes) {
   *media = "";
   *href = NULL;
-  if (element->keyword() == HtmlName::kLink) {
-    // We must have all attributes rel='stylesheet' href='name.css'; and if
-    // there is a type, it better be type='text/css'. These can be in any order.
-    // We also panic on invalid attributes, since otherwise
-    // css_combine_filter.cc can lose them.
-    HtmlElement::AttributeList* attrs = element->mutable_attributes();
-    for (HtmlElement::AttributeIterator i(attrs->begin());
-         i != attrs->end(); ++i) {
-      HtmlElement::Attribute& attr = *i;
-      if (attr.decoding_error()) {
-        num_required_attributes_found = 0;
-        break;
-      } else if (attr.keyword() == HtmlName::kHref) {
+  *num_nonstandard_attributes = 0;
+  if (element->keyword() != HtmlName::kLink) {
+    return false;
+  }
+  // We must have all attributes rel='stylesheet' href='name.css'; and if
+  // there is a type, it must be type='text/css'. These can be in any order.
+  HtmlElement::AttributeList* attrs = element->mutable_attributes();
+  bool has_href = false, has_rel_stylesheet = false;
+  for (HtmlElement::AttributeIterator i(attrs->begin());
+       i != attrs->end(); ++i) {
+    HtmlElement::Attribute& attr = *i;
+    switch (attr.keyword()) {
+      case HtmlName::kHref:
+        if (has_href || attr.decoding_error()) {
+          // Duplicate or undecipherable href.
+          return false;
+        }
         *href = &attr;
-        ++num_required_attributes_found;
-      } else if (attr.keyword() == HtmlName::kRel) {
+        has_href = true;
+        break;
+      case HtmlName::kRel: {
         StringPiece rel(attr.DecodedValueOrNull());
         TrimWhitespace(&rel);
-        if (StringCaseEqual(rel, kStylesheet)) {
-          ++num_required_attributes_found;
-        } else {
-          // rel=something_else.  abort.
-          num_required_attributes_found = 0;
-          break;
+        if (!StringCaseEqual(rel, kStylesheet)) {
+          // rel=something_else.  Abort.  Includes alternate stylesheets.
+          return false;
         }
-      } else if (attr.keyword() == HtmlName::kMedia) {
-        *media = attr.DecodedValueOrNull();
-      } else {
-        // The only other attribute we should see is type=text/css.  This
-        // attribute is not required, but if the attribute we are
-        // finding here is anything else then abort.
-        if ((attr.keyword() != HtmlName::kType) ||
-            !StringCaseEqual(attr.DecodedValueOrNull(), kTextCss)) {
-          num_required_attributes_found = 0;
-          break;
-        }
+        has_rel_stylesheet = true;
+        break;
       }
+      case HtmlName::kMedia:
+        *media = attr.DecodedValueOrNull();
+        if (*media == NULL) {
+          // No value (media rather than media=), or decoding error
+          return false;
+        }
+        break;
+      case HtmlName::kType: {
+        // If we see this, it must be type=text/css.  This attribute is not
+        // required.
+        StringPiece type(attr.DecodedValueOrNull());
+        TrimWhitespace(&type);
+        if (!StringCaseEqual(type, kTextCss)) {
+          return false;
+        }
+        break;
+      }
+      case HtmlName::kTitle:
+      case HtmlName::kPagespeedNoTransform:
+        // title= is here because it indicates a default stylesheet among
+        // alternatives.  See:
+        // http://www.w3.org/TR/REC-html40/present/styles.html#h-14.3.1
+        // We don't alter a link for which pagespeed_no_transform is set.
+        return false;
+      default:
+        // Other tags are assumed to be harmless noise; if that is not the case
+        // for a particular filter, it should be detected within that filter
+        // (examples: extra tags are rejected in css_combine_filter, but they're
+        // preserved by css_inline_filter).
+        ++(*num_nonstandard_attributes);
+        break;
     }
   }
 
   // we require both 'href=...' and 'rel=stylesheet'.
-  // TODO(jmarantz): warn when CSS elements aren't quite what we expect?
-  return (num_required_attributes_found >= 2);
+  return (has_rel_stylesheet && has_href);
 }
 
 namespace {
@@ -395,6 +419,24 @@ bool CssTagScanner::IsStylesheetOrAlternate(
   return has_stylesheet && !has_other;
 }
 
+bool CssTagScanner::CanMediaAffectScreen(const StringPiece& media) {
+  if (media.empty()) {
+    // Media type "" appears to be either screen or all depending on spec
+    // version, and affects the screen either way.
+    return true;
+  }
+  StringPieceVector media_vector;
+  SplitStringPieceToVector(media, ",", &media_vector, true);
+  for (int i = 0, n = media_vector.size(); i < n; ++i) {
+    TrimWhitespace(&media_vector[i]);
+    // Common case first: just a bare media type.
+    if (StringCaseEqual(media_vector[i], "all") ||
+        StringCaseEqual(media_vector[i], "screen")) {
+      return true;
+    }
+  }
+  return false;
+}
 
 RewriteDomainTransformer::RewriteDomainTransformer(
     const GoogleUrl* old_base_url, const GoogleUrl* new_base_url,

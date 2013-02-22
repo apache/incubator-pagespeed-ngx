@@ -32,7 +32,6 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/public/global_constants.h"
-#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -55,7 +54,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class Statistics;
 
 namespace {
 
@@ -437,40 +435,6 @@ const char kFlushEarlyRewrittenHtmlLinkRelSubresourceWithDeferJs[] =
     "</body>"
     "</html>";
 
-class FakeCriticalImagesFinder : public CriticalImagesFinder {
- public:
-  explicit FakeCriticalImagesFinder(Statistics* stats)
-      : CriticalImagesFinder(stats) {}
-  ~FakeCriticalImagesFinder() {}
-
-  virtual bool IsMeaningful(const RewriteDriver* driver) const { return true; }
-
-  virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver) {
-    if (css_critical_images_ != NULL) {
-      StringSet* css_critical_images = new StringSet;
-      *css_critical_images = *css_critical_images_;
-      driver->set_css_critical_images(css_critical_images);
-    }
-  }
-
-  virtual void ComputeCriticalImages(StringPiece url,
-                                     RewriteDriver* driver) {
-    // Do Nothing
-  }
-
-  virtual const char* GetCriticalImagesCohort() const {
-    return "critical_images";
-  }
-
-  void set_css_critical_images(StringSet* css_critical_images) {
-    css_critical_images_.reset(css_critical_images);
-  }
-
- private:
-  scoped_ptr<StringSet> css_critical_images_;
-  DISALLOW_COPY_AND_ASSIGN(FakeCriticalImagesFinder);
-};
-
 class LatencyUrlAsyncFetcher : public UrlAsyncFetcher {
  public:
   explicit LatencyUrlAsyncFetcher(UrlAsyncFetcher* fetcher)
@@ -503,9 +467,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
   static const int kHtmlCacheTimeSec = 5000;
 
   FlushEarlyFlowTest()
-      : fake_critical_images_finder_(
-          new FakeCriticalImagesFinder(statistics())),
-        start_time_ms_(0),
+      : start_time_ms_(0),
         max_age_300_("max-age=300"),
         request_start_time_ms_(-1) {
     ConvertTimeToString(MockTimer::kApr_5_2010_ms, &start_time_string_);
@@ -532,7 +494,6 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     latency_fetcher_.reset(
         new LatencyUrlAsyncFetcher(background_fetch_fetcher_.get()));
     server_context()->set_default_system_fetcher(latency_fetcher_.get());
-    server_context()->set_critical_images_finder(fake_critical_images_finder_);
 
     start_time_ms_ = timer()->NowMs();
     rewritten_css_url_1_ = Encode(
@@ -811,7 +772,6 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 
   scoped_ptr<BackgroundFetchCheckingUrlAsyncFetcher> background_fetch_fetcher_;
   scoped_ptr<LatencyUrlAsyncFetcher> latency_fetcher_;
-  FakeCriticalImagesFinder* fake_critical_images_finder_;
   int64 start_time_ms_;
   GoogleString start_time_string_;
   GoogleString start_time_plus_300s_string_;
@@ -1311,7 +1271,7 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyMoreResourcesIfTimePermits) {
   latency_fetcher_->set_latency(600);
   StringSet* css_critical_images = new StringSet;
   css_critical_images->insert(StrCat(kTestDomain, "1.jpg"));
-  fake_critical_images_finder_->set_css_critical_images(css_critical_images);
+  SetCssCriticalImagesInFinder(css_critical_images);
   GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
 
   GoogleString kOutputHtml = StringPrintf(
@@ -1381,7 +1341,6 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyMoreResourcesIfTimePermits) {
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
 
   EXPECT_EQ(kOutputHtml, text);
-  fake_critical_images_finder_->set_css_critical_images(NULL);
 }
 
 TEST_F(FlushEarlyFlowTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {

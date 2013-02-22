@@ -32,6 +32,7 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -53,6 +54,8 @@
 #include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
+
+class Statistics;
 
 namespace {
 
@@ -116,6 +119,50 @@ class AsyncExpectStringAsyncFetch : public ExpectStringAsyncFetch {
   bool log_flush_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncExpectStringAsyncFetch);
+};
+
+class FakeCriticalImagesFinder : public CriticalImagesFinder {
+ public:
+  explicit FakeCriticalImagesFinder(Statistics* stats)
+      : CriticalImagesFinder(stats) {}
+  ~FakeCriticalImagesFinder() {}
+
+  virtual bool IsMeaningful(const RewriteDriver* driver) const { return true; }
+
+  virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver) {
+    if (critical_images_ != NULL) {
+      StringSet* critical_images = new StringSet;
+      *critical_images = *critical_images_;
+      driver->set_critical_images(critical_images);
+    }
+    if (css_critical_images_ != NULL) {
+      StringSet* css_critical_images = new StringSet;
+      *css_critical_images = *css_critical_images_;
+      driver->set_css_critical_images(css_critical_images);
+    }
+  }
+
+  virtual void ComputeCriticalImages(StringPiece url,
+                                     RewriteDriver* driver) {
+    // Do Nothing
+  }
+
+  virtual const char* GetCriticalImagesCohort() const {
+    return "critical_images";
+  }
+
+  void set_critical_images(StringSet* critical_images) {
+    critical_images_.reset(critical_images);
+  }
+
+  void set_css_critical_images(StringSet* css_critical_images) {
+    css_critical_images_.reset(css_critical_images);
+  }
+
+ private:
+  scoped_ptr<StringSet> critical_images_;
+  scoped_ptr<StringSet> css_critical_images_;
+  DISALLOW_COPY_AND_ASSIGN(FakeCriticalImagesFinder);
 };
 
 }  // namespace
@@ -221,6 +268,11 @@ void MockFilter::EndDocument() {
 }
 
 // ProxyInterfaceTestBase.
+ProxyInterfaceTestBase::ProxyInterfaceTestBase()
+    : callback_done_value_(false),
+      fake_critical_images_finder_(
+          new FakeCriticalImagesFinder(statistics())) {}
+
 void ProxyInterfaceTestBase::TestHeadersSetupRace() {
   mock_url_fetcher()->SetResponseFailure(AbsolutifyUrl(kPageUrl));
   TestPropertyCache(kPageUrl, true, true, false);
@@ -231,6 +283,8 @@ void ProxyInterfaceTestBase::SetUp() {
   ProxyInterface::InitStats(statistics());
   proxy_interface_.reset(
       new ProxyInterface("localhost", 80, server_context(), statistics()));
+  server_context()->set_critical_images_finder(
+      fake_critical_images_finder_);
 }
 
 void ProxyInterfaceTestBase::TearDown() {
@@ -239,6 +293,20 @@ void ProxyInterfaceTestBase::TearDown() {
   mock_scheduler()->AwaitQuiescence();
   EXPECT_EQ(0, server_context()->num_active_rewrite_drivers());
   RewriteTestBase::TearDown();
+}
+
+void ProxyInterfaceTestBase::SetCriticalImagesInFinder(
+    StringSet* critical_images) {
+  FakeCriticalImagesFinder* finder = static_cast<FakeCriticalImagesFinder*>(
+      fake_critical_images_finder_);
+  finder->set_critical_images(critical_images);
+}
+
+void ProxyInterfaceTestBase::SetCssCriticalImagesInFinder(
+    StringSet* css_critical_images) {
+  FakeCriticalImagesFinder* finder = static_cast<FakeCriticalImagesFinder*>(
+      fake_critical_images_finder_);
+  finder->set_css_critical_images(css_critical_images);
 }
 
 // Initiates a fetch using the proxy interface, and waits for it to

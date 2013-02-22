@@ -53,10 +53,23 @@ class CssTagScanner {
 
   explicit CssTagScanner(HtmlParse* html_parse);
 
-  // Examines an HTML element to determine if it's a CSS link,
-  // extracting out the HREF and the media-type.
-  bool ParseCssElement(
-      HtmlElement* element, HtmlElement::Attribute** href, const char** media);
+  // Examines an HTML element to determine if it's a CSS link, extracting out
+  // the href, the media type (if any) and the number of nonstandard attributes
+  // found.  If it's not CSS, href is set to NULL, media is set to "", and
+  // num_nonstandard_attributes is set to 0.
+  bool ParseCssElement(HtmlElement* element,
+                       HtmlElement::Attribute** href,
+                       const char** media,
+                       int* num_nonstandard_attributes);
+
+  // Many callers don't care about num_nonstandard_attributes, so we provide
+  // a version that discards that information.
+  bool ParseCssElement(HtmlElement* element,
+                       HtmlElement::Attribute** href,
+                       const char** media) {
+    int num_nonstandard_attributes;
+    return ParseCssElement(element, href, media, &num_nonstandard_attributes);
+  }
 
   // Scans the contents of a CSS file, looking for the pattern url(xxx).
   // Performs an arbitrary mutation on all such URLs.
@@ -76,6 +89,9 @@ class CssTagScanner {
   // Does this attribute value represent a stylesheet or alternate stylesheet?
   // Should be called with element->AttributeValue(HtmlName::kRel) as the arg.
   static bool IsStylesheetOrAlternate(const StringPiece& attribute_value);
+
+  // Can this media attribute include some kind of screen?
+  static bool CanMediaAffectScreen(const StringPiece& media);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CssTagScanner);
