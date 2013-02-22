@@ -16,8 +16,8 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_APACHE_APR_MEM_CACHE_H_
-#define NET_INSTAWEB_APACHE_APR_MEM_CACHE_H_
+#ifndef NET_INSTAWEB_SYSTEM_PUBLIC_APR_MEM_CACHE_H_
+#define NET_INSTAWEB_SYSTEM_PUBLIC_APR_MEM_CACHE_H_
 
 #include <cstddef>
 #include <vector>
@@ -168,4 +168,4 @@ class AprMemCache : public CacheInterface {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APR_MEM_CACHE_H_
+#endif  // NET_INSTAWEB_SYSTEM_PUBLIC_APR_MEM_CACHE_H_

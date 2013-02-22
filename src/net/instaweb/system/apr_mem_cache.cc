@@ -16,11 +16,12 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/apache/apr_mem_cache.h"
+#include "net/instaweb/system/public/apr_mem_cache.h"
 
 #include "apr_pools.h"
+
 #include "base/logging.h"
-#include "net/instaweb/apache/apr_thread_compatible_pool.h"
+#include "net/instaweb/system/public/apr_thread_compatible_pool.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/hostname_util.h"

@@ -18,7 +18,7 @@
 
 // Unit-test the memcache interface.
 
-#include "net/instaweb/apache/apr_mem_cache.h"
+#include "net/instaweb/system/public/apr_mem_cache.h"
 
 #include <cstddef>
 

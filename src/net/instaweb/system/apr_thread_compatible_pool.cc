@@ -15,10 +15,12 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 //         jmarantz@google.com (Joshua Marantz)  (refactoring only)
 
-#include "net/instaweb/apache/apr_thread_compatible_pool.h"
+#include "net/instaweb/system/public/apr_thread_compatible_pool.h"
 
 #include <cstddef>
+
 #include "apr_pools.h"
+
 #include "base/logging.h"
 #include "net/instaweb/util/stack_buffer.h"
 

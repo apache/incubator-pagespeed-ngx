@@ -1240,10 +1240,15 @@
       'type': '<(library)',
       'dependencies': [
         'instaweb_util',
+        '<(DEPTH)/third_party/apr/apr.gyp:include',
+        '<(DEPTH)/third_party/aprutil/aprutil.gyp:include',
       ],
       'sources': [
+        'system/apr_mem_cache.cc',
+        'system/apr_thread_compatible_pool.cc',
         'system/system_cache_path.cc',
         'system/system_rewrite_options.cc',
+        '<(DEPTH)/third_party/aprutil/apr_memcache2.c',
       ],
     },
     {

@@ -15,8 +15,8 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 //         jmarantz@google.com (Joshua Marantz)  (refactoring only)
 
-#ifndef NET_INSTAWEB_APACHE_APR_THREAD_COMPATIBLE_POOL_H_
-#define NET_INSTAWEB_APACHE_APR_THREAD_COMPATIBLE_POOL_H_
+#ifndef NET_INSTAWEB_SYSTEM_PUBLIC_APR_THREAD_COMPATIBLE_POOL_H_
+#define NET_INSTAWEB_SYSTEM_PUBLIC_APR_THREAD_COMPATIBLE_POOL_H_
 
 #include "apr_pools.h"
 
@@ -43,4 +43,4 @@ apr_pool_t* AprCreateThreadCompatiblePool(apr_pool_t* parent_pool);
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_APACHE_APR_THREAD_COMPATIBLE_POOL_H_
+#endif  // NET_INSTAWEB_SYSTEM_PUBLIC_APR_THREAD_COMPATIBLE_POOL_H_
