@@ -170,8 +170,9 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
       GetBlinkJsUrl(options_, static_asset_manager_).c_str(),
       non_critical_json.c_str()));
   if (!json.empty()) {
-    rewrite_driver_->log_record()->LogAppliedRewriter(
-        RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
+    rewrite_driver_->log_record()->SetRewriterLoggingStatus(
+        RewriteOptions::FilterId(RewriteOptions::kSplitHtml),
+        RewriterInfo::APPLIED_OK);
     ScopedMutex lock(rewrite_driver_->log_record()->mutex());
     rewrite_driver_->log_record()->logging_info()->mutable_split_html_info()
         ->set_json_size(non_critical_json.size());

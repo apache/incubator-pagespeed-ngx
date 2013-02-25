@@ -29,6 +29,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -118,8 +119,9 @@ class CssCombineFilter::CssCombiner : public ResourceCombiner {
   void AddFileCountReduction(int num_files) {
     css_file_count_reduction_->Add(num_files);
     if (num_files >= 1) {
-      rewrite_driver_->log_record()->LogAppliedRewriter(
-          RewriteOptions::FilterId(RewriteOptions::kCombineCss));
+      rewrite_driver_->log_record()->SetRewriterLoggingStatus(
+          RewriteOptions::FilterId(RewriteOptions::kCombineCss),
+          RewriterInfo::APPLIED_OK);
     }
   }
 

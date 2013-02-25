@@ -48,8 +48,9 @@ void DecodeRewrittenUrlsFilter::StartElement(HtmlElement* element) {
     if (driver_->DecodeUrl(gurl, &decoded_url)) {
       // An encoded URL.
       if (decoded_url.size() == 1) {
-        driver_->log_record()->LogAppliedRewriter(
-            RewriteOptions::FilterId(RewriteOptions::kDecodeRewrittenUrls));
+        driver_->log_record()->SetRewriterLoggingStatus(
+            RewriteOptions::FilterId(RewriteOptions::kDecodeRewrittenUrls),
+            RewriterInfo::APPLIED_OK);
         // Replace attr value with decoded URL.
         attr->SetValue(decoded_url.at(0));
       } else {

@@ -183,8 +183,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     // The url or script content is changing, so log that fact.
     {
       ScopedMutex lock(Driver()->log_record()->mutex());
-      Driver()->log_record()->SetRewriterLoggingStatus(
-          rewriter_info_, RewriterInfo::APPLIED_OK);
+      rewriter_info_->set_status(RewriterInfo::APPLIED_OK);
     }
     config_->num_uses()->Add(1);
   }
@@ -348,8 +347,7 @@ void JavascriptFilter::RewriteInlineScript(HtmlCharactersNode* body_node) {
     config_->num_uses()->Add(1);
     {
       ScopedMutex lock(driver_->log_record()->mutex());
-      driver_->log_record()->SetRewriterLoggingStatus(
-          rewriter_info, RewriterInfo::APPLIED_OK);
+      rewriter_info->set_status(RewriterInfo::APPLIED_OK);
     }
   } else {
     config_->did_not_shrink()->Add(1);

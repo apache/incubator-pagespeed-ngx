@@ -28,6 +28,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -123,8 +124,9 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
           // page.
           // High res src is added and original img src attribute is removed
           // from img tag.
-          driver_->log_record()->LogAppliedRewriter(
-              RewriteOptions::FilterId(RewriteOptions::kDelayImages));
+          driver_->log_record()->SetRewriterLoggingStatus(
+              RewriteOptions::FilterId(RewriteOptions::kDelayImages),
+              RewriterInfo::APPLIED_OK);
           driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
           if (insert_low_res_images_inplace_) {
             driver_->AddAttribute(element, HtmlName::kSrc,

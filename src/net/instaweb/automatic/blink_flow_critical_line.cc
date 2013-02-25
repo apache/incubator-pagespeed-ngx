@@ -109,8 +109,8 @@ class BlinkFlowCriticalLine::LogHelper {
   }
 
   void LogAppliedRewriter(const char* filter_id) {
-    log_record1_->LogAppliedRewriter(filter_id);
-    log_record2_->LogAppliedRewriter(filter_id);
+    log_record1_->SetRewriterLoggingStatus(filter_id, RewriterInfo::APPLIED_OK);
+    log_record2_->SetRewriterLoggingStatus(filter_id, RewriterInfo::APPLIED_OK);
   }
 
  private:
