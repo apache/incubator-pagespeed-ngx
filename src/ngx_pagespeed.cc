@@ -546,9 +546,9 @@ void ps_cleanup_main_conf(void* data) {
   cfg_m->handler = NULL;
   net_instaweb::NgxRewriteDriverFactory::Terminate();
   net_instaweb::NgxRewriteOptions::Terminate();
-  net_instaweb::PthreadSharedMem::Terminate();
-  // reset the factory deleted flag, so we clean up properly in case
-  // of a configuration reload.
+
+  // reset the factory deleted flag, so we will clean up properly next time,
+  // in case of a configuration reload.
   // TODO(oschaaf): get rid of the factory_deleted flag
   factory_deleted = false;
 }
