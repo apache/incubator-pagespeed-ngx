@@ -102,7 +102,9 @@ int mod_spdy_get_spdy_version(conn_rec* conn) {
 spdy_slave_connection_factory* mod_spdy_create_slave_connection_factory(
     conn_rec* master_connection) {
   if (spdy_create_slave_connection_factory_ptr == NULL) {
-    LOG(WARNING) << "mod_spdy slave connection functionality unavailable!";
+    // TODO(morlovich): We should warn when this happens, but only
+    // in cases where ModPagespeed[Experimental]FetchFromModSpdy is on,
+    // and not in a spammy way.
     return NULL;
   }
   return spdy_create_slave_connection_factory_ptr(master_connection);
