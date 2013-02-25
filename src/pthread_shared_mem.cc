@@ -144,11 +144,9 @@ PthreadSharedMem::SegmentBaseMap* PthreadSharedMem::segment_bases_ = NULL;
 
 PthreadSharedMem::PthreadSharedMem() {
   instance_number_ = ++s_instance_count_;
-  fprintf(stdout, ">>>>>> construct pthreadsharedmem [%d]\n", (int)instance_number_);
 }
 
 PthreadSharedMem::~PthreadSharedMem() {
-  fprintf(stdout, ">>>>>> destroy pthreadsharedmem [%d]\n", (int)instance_number_);
 }
 
 size_t PthreadSharedMem::SharedMutexSize() const {
@@ -159,7 +157,6 @@ AbstractSharedMemSegment* PthreadSharedMem::CreateSegment(
     const GoogleString& name, size_t size, MessageHandler* handler) {
   GoogleString prefixed_name = PrefixSegmentName(name);
   // Create the memory
-  fprintf(stderr, ">>>>>> create segment [%s]\n", prefixed_name.c_str()); 
   int fd = open("/dev/zero", O_RDWR);
   if (fd == -1) {
     handler->Message(kError, "Unable to create SHM segment %s, errno=%d.",
@@ -184,7 +181,6 @@ AbstractSharedMemSegment* PthreadSharedMem::CreateSegment(
 AbstractSharedMemSegment* PthreadSharedMem::AttachToSegment(
     const GoogleString& name, size_t size, MessageHandler* handler) {
   GoogleString prefixed_name = PrefixSegmentName(name);
-  fprintf(stderr, ">>>>>> attach segment [%s]\n", prefixed_name.c_str());
   SegmentBaseMap* bases = AcquireSegmentBases();
   SegmentBaseMap::const_iterator i = bases->find(prefixed_name);
   if (i == bases->end()) {
@@ -201,14 +197,12 @@ AbstractSharedMemSegment* PthreadSharedMem::AttachToSegment(
 void PthreadSharedMem::DestroySegment(const GoogleString& name,
                                       MessageHandler* handler) {
   GoogleString prefixed_name = PrefixSegmentName(name);
-  fprintf(stdout, ">>>>>> search & destroy segment [%s]\n", name.c_str());
 
   // Note that in the process state children will not see any mutations
   // we make here, so it acts mostly for checking in that case.
   SegmentBaseMap* bases = AcquireSegmentBases();
   SegmentBaseMap::iterator i = bases->find(prefixed_name);
   if (i != bases->end()) {
-    fprintf(stdout, ">>>>>> destroy segment [%s]\n", prefixed_name.c_str());
     bases->erase(i);
     if (bases->empty()) {
       delete segment_bases_;
