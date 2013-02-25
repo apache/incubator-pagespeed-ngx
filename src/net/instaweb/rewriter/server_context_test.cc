@@ -1004,37 +1004,46 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
       beacon_url,
       UserAgentStrings::kChromeUserAgent,
       CreateRequestContext()));
-  property_cache->Read(page.get());
-  property = page->GetProperty(cohort, "critical_images");
-  EXPECT_TRUE(property->has_value());
-  EXPECT_EQ(hash1, property->value());
+  {
+    scoped_ptr<MockPropertyPage> page(NewMockPage(key));
+    property_cache->Read(page.get());
+    property = page->GetProperty(cohort, "critical_images");
+    EXPECT_TRUE(property->has_value());
+    EXPECT_EQ(hash1, property->value());
 
-  beacon_url = StrCat(
-      "/beacon?url=http%3A%2F%2Fwww.example.com"
-      "&oh=", options_hash,
-      "&ci=", hash1, ",", hash2);
-  EXPECT_TRUE(server_context()->HandleBeacon(
-      beacon_url,
-      UserAgentStrings::kChromeUserAgent,
-      CreateRequestContext()));
-  property_cache->Read(page.get());
-  property = page->GetProperty(cohort, "critical_images");
-  EXPECT_TRUE(property->has_value());
-  EXPECT_EQ(hash1 + "\n" + hash2, property->value());
+    beacon_url = StrCat(
+        "/beacon?url=http%3A%2F%2Fwww.example.com"
+        "&oh=", options_hash,
+        "&ci=", hash1, ",", hash2);
+    EXPECT_TRUE(server_context()->HandleBeacon(
+        beacon_url,
+        UserAgentStrings::kChromeUserAgent,
+        CreateRequestContext()));
+  }
+  {
+    scoped_ptr<MockPropertyPage> page(NewMockPage(key));
+    property_cache->Read(page.get());
+    property = page->GetProperty(cohort, "critical_images");
+    EXPECT_TRUE(property->has_value());
+    EXPECT_EQ(hash1 + "\n" + hash2, property->value());
 
-  // Ensure duplicate critimgs only get inserted once.
-  beacon_url = StrCat(
-      "/beacon?url=http%3A%2F%2Fwww.example.com"
-      "&oh=", options_hash,
-      "&ci=", hash1, ",", hash1);
-  EXPECT_TRUE(server_context()->HandleBeacon(
-      beacon_url,
-      UserAgentStrings::kChromeUserAgent,
-      CreateRequestContext()));
-  property_cache->Read(page.get());
-  property = page->GetProperty(cohort, "critical_images");
-  EXPECT_TRUE(property->has_value());
-  EXPECT_EQ(hash1, property->value());
+    // Ensure duplicate critimgs only get inserted once.
+    beacon_url = StrCat(
+        "/beacon?url=http%3A%2F%2Fwww.example.com"
+        "&oh=", options_hash,
+        "&ci=", hash1, ",", hash1);
+    EXPECT_TRUE(server_context()->HandleBeacon(
+        beacon_url,
+        UserAgentStrings::kChromeUserAgent,
+        CreateRequestContext()));
+  }
+  {
+    scoped_ptr<MockPropertyPage> page(NewMockPage(key));
+    property_cache->Read(page.get());
+    property = page->GetProperty(cohort, "critical_images");
+    EXPECT_TRUE(property->has_value());
+    EXPECT_EQ(hash1, property->value());
+  }
 
   // Make sure that a mobile user agent stores to a different key than a desktop
   // user agent.
@@ -1061,16 +1070,22 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
       beacon_url,
       UserAgentStrings::kIPhoneUserAgent,
       CreateRequestContext()));
-  property_cache->Read(mobile_page.get());
-  property = mobile_page->GetProperty(cohort, "critical_images");
-  EXPECT_TRUE(property->has_value());
-  EXPECT_EQ(hash2, property->value());
+  {
+    scoped_ptr<MockPropertyPage> mobile_page(NewMockPage(mobile_key));
+    property_cache->Read(mobile_page.get());
+    property = mobile_page->GetProperty(cohort, "critical_images");
+    EXPECT_TRUE(property->has_value());
+    EXPECT_EQ(hash2, property->value());
+  }
 
   // And make sure desktop still has hash1 for its value.
-  property_cache->Read(page.get());
-  property = page->GetProperty(cohort, "critical_images");
-  EXPECT_TRUE(property->has_value());
-  EXPECT_EQ(hash1, property->value());
+  {
+    scoped_ptr<MockPropertyPage> page(NewMockPage(key));
+    property_cache->Read(page.get());
+    property = page->GetProperty(cohort, "critical_images");
+    EXPECT_TRUE(property->has_value());
+    EXPECT_EQ(hash1, property->value());
+  }
 }
 
 TEST_F(ServerContextTest, TestNotGenerated) {

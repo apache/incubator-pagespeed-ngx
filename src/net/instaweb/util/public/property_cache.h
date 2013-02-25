@@ -206,6 +206,8 @@ class PropertyCache {
     DISALLOW_COPY_AND_ASSIGN(Cohort);
   };
 
+  typedef std::vector<const Cohort*> CohortVector;
+
   PropertyCache(const GoogleString& cache_key_prefix,
                 CacheInterface* cache, Timer* timer,
                 Statistics* stats, ThreadSystem* threads);
@@ -218,8 +220,8 @@ class PropertyCache {
 
   // Reads all the PropertyValues in the specified Cohorts from
   // cache, calling PropertyPage::Done when done.
-  void ReadWithCohorts(PropertyPage* property_page,
-                       const StringVector cohort_names) const;
+  void ReadWithCohorts(const CohortVector& cohort_list,
+                       PropertyPage* property_page) const;
 
   // Reads PropertyValues for multiple pages, calling corresponding
   // PropertyPage::Done as and when page read completes. It is essential
@@ -231,10 +233,9 @@ class PropertyCache {
   // list.
   // Notes: Maybe PropertyPageStarVector should contain specified cohort
   // information.
-  void MultiReadWithCohorts(PropertyPageStarVector* property_page_list,
-                            const StringVector cohort_name_list) const;
-
-  void SetupCohorts(PropertyPage* property_page) const;
+  void MultiReadWithCohorts(
+      const CohortVector& cohort_list,
+      PropertyPageStarVector* property_page_list) const;
 
   // Updates a Cohort of properties into the cache.  It is a
   // programming error (dcheck-fail) to Write a PropertyPage that
@@ -316,7 +317,7 @@ class PropertyCache {
   typedef std::map<GoogleString, Cohort*> CohortMap;
   CohortMap cohorts_;
   // For MutltiRead to scan all cohorts.
-  StringVector cohort_name_list_;
+  CohortVector cohort_list_;
   bool enabled_;
 
   DISALLOW_COPY_AND_ASSIGN(PropertyCache);
@@ -387,6 +388,8 @@ class PropertyPage {
   friend class CallbackCollector;
   friend class PropertyCache::CacheInterfaceCallback;
   friend class PropertyCache;
+
+  void SetupCohorts(const PropertyCache::CohortVector& cohort_list);
 
   // Serializes the values in this cohort into a string.  Returns
   // false if there were no values to serialize.
