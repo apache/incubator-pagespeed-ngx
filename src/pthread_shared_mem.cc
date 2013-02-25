@@ -240,8 +240,6 @@ GoogleString PthreadSharedMem::PrefixSegmentName(const GoogleString& name)
 
 
 void PthreadSharedMem::Terminate() {
-  fprintf(stdout, ">>>>>> pthreadsharedmem::terminate() \n");
-
   // Clean up the local memory associated with the maps to shared memory
   // storage.
   PthreadSharedMemMutex lock(&segment_bases_lock);
