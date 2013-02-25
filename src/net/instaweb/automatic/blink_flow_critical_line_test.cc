@@ -73,6 +73,7 @@ namespace net_instaweb {
 class AbstractMutex;
 class Function;
 class MessageHandler;
+class RewriteDriverFactory;
 
 namespace {
 
@@ -458,7 +459,8 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
   }
 
   virtual bool UpdateDiffInfo(
-      bool is_diff, int64 now_ms, RewriteDriver* rewrite_driver) {
+      bool is_diff, int64 now_ms, RewriteDriver* rewrite_driver,
+      RewriteDriverFactory* factory) {
     EXPECT_EQ(expect_diff_update_mismatch_, is_diff);
     return false;
   }

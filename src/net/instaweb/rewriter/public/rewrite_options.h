@@ -1178,6 +1178,13 @@ class RewriteOptions {
     set_option(x, &override_ie_document_mode_);
   }
 
+  bool is_blink_auto_blacklisted() const {
+    return is_blink_auto_blacklisted_.value();
+  }
+  void set_is_blink_auto_blacklisted(bool x) {
+    set_option(x, &is_blink_auto_blacklisted_);
+  }
+
   // Returns false if there is an entry in url_cache_invalidation_entries_ with
   // its timestamp_ms > time_ms and url matches the url_pattern.  Else, return
   // true.
@@ -2866,6 +2873,8 @@ class RewriteOptions {
   //  ...
   std::vector<PrioritizeVisibleContentFamily*>
       prioritize_visible_content_families_;
+
+  Option<bool> is_blink_auto_blacklisted_;
 
   Option<GoogleString> ga_id_;
 

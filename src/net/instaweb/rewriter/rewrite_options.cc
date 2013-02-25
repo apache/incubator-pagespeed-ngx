@@ -931,6 +931,7 @@ void RewriteOptions::AddProperties() {
              kUseSmartDiffInBlink);
   add_option(false, &RewriteOptions::enable_aggressive_rewriters_for_mobile_,
              "earm", kEnableAggressiveRewritersForMobile);
+  add_option(false, &RewriteOptions::is_blink_auto_blacklisted_, "ibab");
 
   // Test-only, so no enum.
   add_option(false, &RewriteOptions::test_instant_fetch_rewrite_deadline_,
