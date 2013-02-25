@@ -52,6 +52,7 @@ extern "C" {
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "pthread_shared_mem.h"
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -545,8 +546,11 @@ void ps_cleanup_main_conf(void* data) {
   cfg_m->handler = NULL;
   net_instaweb::NgxRewriteDriverFactory::Terminate();
   net_instaweb::NgxRewriteOptions::Terminate();
-  // TODO(oschaaf): terminate shared mem runtime when we update
-  // psol to a later revision that has it.
+
+  // reset the factory deleted flag, so we will clean up properly next time,
+  // in case of a configuration reload.
+  // TODO(oschaaf): get rid of the factory_deleted flag
+  factory_deleted = false;
 }
 
 template <typename ConfT> ConfT* ps_create_conf(ngx_conf_t* cf) {
@@ -575,6 +579,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   if (cfg_m == NULL) {
     return NGX_CONF_ERROR;
   }
+  CHECK(!factory_deleted);
   net_instaweb::NgxRewriteOptions::Initialize();
   net_instaweb::NgxRewriteDriverFactory::Initialize();
   cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
