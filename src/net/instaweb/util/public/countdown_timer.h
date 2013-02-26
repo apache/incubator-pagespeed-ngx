@@ -42,10 +42,15 @@ class CountdownTimer {
 
   void* user_data() const { return user_data_; }
 
+  int64 TimeLeftMs() const;
+
+  int64 TimeElapsedMs() const;
+
  private:
   Timer* timer_;
   void* user_data_;
   clock_t limit_time_us_;
+  clock_t start_time_us_;
 };
 
 }  // namespace net_instaweb

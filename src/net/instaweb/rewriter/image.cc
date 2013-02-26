@@ -155,6 +155,55 @@ const double JpegPixelToByteRatio(int compression_level) {
   return ratio;
 }
 
+// Class to manage WebP conversion timeouts.
+class WebpTimeoutHandler {
+ public:
+  WebpTimeoutHandler(const GoogleString& url,
+                     Timer* timer,
+                     MessageHandler* handler,
+                     int64 timeout_ms) :
+      url_(url),
+      countdown_timer_(timer,
+                       this /* not used */,
+                       timeout_ms),
+      handler_(handler),
+      expired_(false) {}
+
+  ~WebpTimeoutHandler() {
+    VLOG(1) << "WebP attempts (which " << (expired_ ? "DID":"did NOT")
+            <<" expire) took " << countdown_timer_.TimeElapsedMs()
+            << " ms for " << url_;
+    // TODO(vchudnov): Update a timeout count
+  }
+
+  // This function may be passed as a progress hook to
+  // ImageConverter::ConvertPngToWebp or to OptimizeWebp(). user_data
+  // should be a pointer to a WebpTimeoutHandler object.
+  static bool Continue(int percent, void* user_data) {
+    WebpTimeoutHandler* timeout_handler =
+        static_cast<WebpTimeoutHandler*>(user_data);
+    VLOG(2) <<  "WebP conversions: " << percent <<"% done; time left: "
+            << timeout_handler->countdown_timer_.TimeLeftMs() << " ms";
+    if (!timeout_handler->HaveTimeLeft()) {
+        timeout_handler->handler_->Warning(timeout_handler->url_.c_str(), 0,
+        "WebP conversion timed out!");
+      timeout_handler->expired_ = true;
+      return false;
+    }
+    return true;
+  }
+
+  bool HaveTimeLeft() {
+    return countdown_timer_.HaveTimeLeft();
+  }
+
+ private:
+  const GoogleString& url_;
+  CountdownTimer countdown_timer_;
+  MessageHandler* handler_;
+  bool expired_;
+};
+
 }  // namespace
 
 // TODO(jmaessen): Put ImageImpl into private namespace.
@@ -262,6 +311,13 @@ class ImageImpl : public Image {
   bool ConvertPngToWebp(
       const pagespeed::image_compression::PngReaderInterface& png_reader,
       const GoogleString& image_data);
+
+  // Convert the JPEG in original_jpeg to WebP format in
+  // compressed_webp using the quality specified in
+  // configured_quality.
+  bool ConvertJpegToWebp(
+      const GoogleString& original_jpeg, int configured_quality,
+      GoogleString* compressed_webp);
 
   static bool ContinueWebpConversion(
       int percent,
@@ -938,18 +994,20 @@ bool ImageImpl::ComputeOutputContents() {
         case IMAGE_WEBP:
         case IMAGE_WEBP_LOSSLESS_OR_ALPHA:
           if (resized || options_->recompress_webp) {
-            ok = ReduceWebpImageQuality(string_for_image,
-                                        options_->webp_quality,
-                                        &output_contents_);
+            ok = MayConvert() &&
+                ReduceWebpImageQuality(string_for_image,
+                                       options_->webp_quality,
+                                       &output_contents_);
           }
           // TODO(pulkitg): Convert a webp image to jpeg image if
           // web_preferred_ is false.
           break;
         case IMAGE_JPEG:
-          if (options_->convert_jpeg_to_webp &&
+          if (MayConvert() &&
+              options_->convert_jpeg_to_webp &&
               (options_->preferred_webp != WEBP_NONE)) {
-            ok = OptimizeWebp(string_for_image, options_->webp_quality,
-                              &output_contents_);
+            ok = ConvertJpegToWebp(string_for_image, options_->webp_quality,
+                                   &output_contents_);
             VLOG(1) << "Image conversion: " << ok
                     << " jpeg->webp for " << url_.c_str();
             if (!ok) {
@@ -958,7 +1016,8 @@ bool ImageImpl::ComputeOutputContents() {
           }
           if (ok) {
             image_type_ = IMAGE_WEBP;
-          } else if (resized || options_->recompress_jpeg) {
+          } else if (MayConvert() &&
+                     (resized || options_->recompress_jpeg)) {
             JpegCompressionOptions jpeg_options;
             ConvertToJpegOptions(*options_.get(), &jpeg_options);
             ok = pagespeed::image_compression::OptimizeJpegWithOptions(
@@ -990,6 +1049,17 @@ bool ImageImpl::ComputeOutputContents() {
     output_valid_ = ok;
   }
   return output_valid_;
+}
+
+inline bool ImageImpl::ConvertJpegToWebp(
+    const GoogleString& original_jpeg, int configured_quality,
+    GoogleString* compressed_webp) {
+  WebpTimeoutHandler timeout_handler(url_, timer_, handler_,
+                                     options_->webp_conversion_timeout_ms);
+  bool ok = OptimizeWebp(original_jpeg, configured_quality,
+                         WebpTimeoutHandler::Continue, &timeout_handler,
+                         compressed_webp);
+  return ok;
 }
 
 inline bool ImageImpl::ComputeOutputContentsFromPngReader(
@@ -1043,9 +1113,8 @@ bool ImageImpl::ConvertPngToWebp(
   bool ok = false;
   if ((options_->preferred_webp != Image::WEBP_NONE) &&
       (options_->webp_quality > 0)) {
-    CountdownTimer countdown_timer(timer_,
-                                   this,
-                                   options_->webp_conversion_timeout_ms);
+    WebpTimeoutHandler timeout_handler(url_, timer_, handler_,
+                                       options_->webp_conversion_timeout_ms);
     pagespeed::image_compression::WebpConfiguration webp_config;
     webp_config.quality = options_->webp_quality;
 
@@ -1054,8 +1123,8 @@ bool ImageImpl::ConvertPngToWebp(
     // whether this is the optimal value, and consider making it
     // tunable.
     webp_config.method = 3;
-    webp_config.progress_hook = ImageImpl::ContinueWebpConversion;
-    webp_config.user_data = &countdown_timer;
+    webp_config.progress_hook = WebpTimeoutHandler::Continue;
+    webp_config.user_data = &timeout_handler;
 
     bool is_opaque = false;
 
@@ -1075,7 +1144,7 @@ bool ImageImpl::ConvertPngToWebp(
 
     if (!ok &&
         !options_->preserve_lossless &&
-        countdown_timer.HaveTimeLeft()) {
+        timeout_handler.HaveTimeLeft()) {
       // We failed or did not attempt lossless conversion, we have
       // time left, and lossy conversion is allowed, so try it.
       webp_config.lossless = false;
@@ -1097,20 +1166,6 @@ bool ImageImpl::ConvertPngToWebp(
     }
   }
   return ok;
-}
-
-bool ImageImpl::ContinueWebpConversion(
-      int percent,
-      void* user_data) {
-  CountdownTimer* countdown_timer =
-      static_cast<CountdownTimer*>(user_data);
-  if (!countdown_timer->HaveTimeLeft()) {
-    ImageImpl* impl = static_cast<ImageImpl*>(countdown_timer->user_data());
-    impl->handler_->Warning(impl->url_.c_str(), 0,
-                            "WebP conversion timed out!");
-    return false;
-  }
-  return true;
 }
 
 bool ImageImpl::OptimizePng(

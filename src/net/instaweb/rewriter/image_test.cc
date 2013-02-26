@@ -764,6 +764,27 @@ TEST_F(ImageTest, WebpTest) {
       241260, true);
 }
 
+TEST_F(ImageTest, WebpTimesOutTest) {
+  Image::CompressionOptions* options = new Image::CompressionOptions;
+  options->recompress_jpeg = true;
+  options->convert_jpeg_to_webp = true;
+  options->preferred_webp = Image::WEBP_LOSSY;
+  options->webp_quality = 75;
+  options->webp_conversion_timeout_ms = 1;
+  timer_.SetTimeDeltaUs(1);  // When setting deadline
+  timer_.SetTimeDeltaUs(     // During conversion
+      1000 * options->webp_conversion_timeout_ms + 1);
+
+  EXPECT_EQ(0, options->conversions_attempted);
+
+  GoogleString buffer;
+  ImagePtr image(ReadFromFileWithOptions(kPuzzle, &buffer, options));
+  image->output_size();
+  EXPECT_EQ(ContentType::kJpeg, image->content_type()->type());
+
+  EXPECT_EQ(2, options->conversions_attempted);
+}
+
 TEST_F(ImageTest, WebpNonLaFromJpgTest) {
   // FYI: Takes ~70000 ms to run under Valgrind.
   if (RunningOnValgrind()) {

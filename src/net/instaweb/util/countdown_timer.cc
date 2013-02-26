@@ -27,17 +27,28 @@ CountdownTimer::CountdownTimer(Timer* timer,
                                void* user_data,
                                int64 allowed_time_ms) : timer_(timer),
                                                         user_data_(user_data),
-                                                        limit_time_us_(0) {
+                                                        limit_time_us_(0),
+                                                        start_time_us_(0) {
   Reset(allowed_time_ms);
 }
 
 void CountdownTimer::Reset(int64 allowed_time_ms) {
+  start_time_us_ = timer_->NowUs();
   limit_time_us_ = ((allowed_time_ms >= 0) && (timer_ != NULL)) ?
-      timer_->NowUs() + 1000 * allowed_time_ms : 0;
+      start_time_us_ + 1000 * allowed_time_ms : 0;
 }
 
 bool CountdownTimer::HaveTimeLeft() const {
   return (limit_time_us_ == 0) || (timer_->NowUs() < limit_time_us_);
+}
+
+int64 CountdownTimer::TimeLeftMs() const {
+  return (limit_time_us_ == 0) ? 0 :
+      (limit_time_us_ - timer_->NowUs()) / 1000;
+}
+
+int64 CountdownTimer::TimeElapsedMs() const {
+  return (timer_->NowUs() -  start_time_us_) / 1000;
 }
 
 }  // namespace net_instaweb
