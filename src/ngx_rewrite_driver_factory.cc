@@ -51,8 +51,9 @@
 #include "net/instaweb/util/public/null_shared_mem.h"
 #include "net/instaweb/util/public/pthread_shared_mem.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
+#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
+#include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/scheduler_thread.h"
-#include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/slow_worker.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
@@ -73,6 +74,14 @@ class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
 
+namespace {
+
+const size_t kRefererStatisticsNumberOfPages = 1024;
+const size_t kRefererStatisticsAverageUrlLength = 64;
+const char kShutdownCount[] = "child_shutdown_count";
+
+}  // namespace
+
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory()
@@ -82,27 +91,15 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
       cache_hasher_(20),
       main_conf_(NULL),
       threads_started_(false),
+      use_per_vhost_statistics_(false),
       is_root_process_(true),
       ngx_message_handler_(new NgxMessageHandler(thread_system()->NewMutex())),
       ngx_html_parse_message_handler_(
           new NgxMessageHandler(thread_system()->NewMutex())),
-      // Hard coded for now, these should be configurable but that
-      // requires a change in our NgxRewriteDriverFactory initialisation.
-      // I will make a separate pull for that.
-#ifdef NGX_DEBUG
-      install_crash_handler_(true),
-#else
       install_crash_handler_(false),
-#endif
-      message_buffer_size_(1024*100),
-      shared_circular_buffer_(NULL) {
-  RewriteDriverFactory::InitStats(&simple_stats_);
-  SerfUrlAsyncFetcher::InitStats(&simple_stats_);
-  AprMemCache::InitStats(&simple_stats_);
-  CacheStats::InitStats(NgxCache::kFileCache, &simple_stats_);
-  CacheStats::InitStats(NgxCache::kLruCache, &simple_stats_);
-  CacheStats::InitStats(kMemcached, &simple_stats_);
-  SetStatistics(&simple_stats_);
+      message_buffer_size_(0),
+      shared_circular_buffer_(NULL),
+      statistics_frozen_(false) {
   timer_ = DefaultTimer();
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
@@ -133,6 +130,8 @@ NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
     CacheInterface* memcached = p->second;
     defer_cleanup(new Deleter<CacheInterface>(memcached));
   }
+
+  shared_mem_statistics_.reset(NULL);
 }
 
 const char NgxRewriteDriverFactory::kStaticJavaScriptPrefix[] =
@@ -229,12 +228,18 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   server_context->set_enable_property_cache(true);
 }
 
-Statistics* NgxRewriteDriverFactory::statistics() {
-  return &simple_stats_;
-}
-
 RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
   return new NgxRewriteOptions();
+}
+
+void NgxRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
+  for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
+    AprMemCache* mem_cache = memcache_servers_[i];
+    if (!mem_cache->GetStatus(out)) {
+      StrAppend(out, "\nError getting memcached server status for ",
+                mem_cache->server_spec());
+    }
+  }
 }
 
 void NgxRewriteDriverFactory::InitStaticJavascriptManager(
@@ -366,6 +371,11 @@ NgxServerContext* NgxRewriteDriverFactory::MakeNgxServerContext() {
 }
 
 void NgxRewriteDriverFactory::ShutDown() {
+  if (!is_root_process_) {
+    Variable* child_shutdown_count = statistics()->GetVariable(kShutdownCount);
+    child_shutdown_count->Add(1);
+    message_handler()->Message(kInfo, "Shutting down ngx_pagespeed child");
+  }
   RewriteDriverFactory::ShutDown();
 
   // Take down any memcached threads.
@@ -373,6 +383,21 @@ void NgxRewriteDriverFactory::ShutDown() {
   memcached_pool_.reset(NULL);
   ngx_message_handler_->set_buffer(NULL);
   ngx_html_parse_message_handler_->set_buffer(NULL);
+
+  // TODO(oschaaf): enable this once the shared memory cleanup code
+  // supports our ordering of events during a configuration reload
+  if (false && is_root_process_) {
+    // Cleanup statistics.
+    // TODO(morlovich): This looks dangerous with async.
+    if (shared_mem_statistics_.get() != NULL) {
+      shared_mem_statistics_->GlobalCleanup(message_handler());
+    }
+    if (shared_circular_buffer_ != NULL) {
+      shared_circular_buffer_->GlobalCleanup(message_handler());
+    }
+    // TODO(oschaaf): Should the shared memory lock manager be cleaning up here
+    // as well? In mod_pagespeed, it doesn't.
+  }
 }
 
 void NgxRewriteDriverFactory::StartThreads() {
@@ -444,6 +469,9 @@ void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
 
   ParentOrChildInit(log);
   slow_worker_.reset(new SlowWorker(thread_system()));
+  if (shared_mem_statistics_.get() != NULL) {
+    shared_mem_statistics_->Init(false, message_handler());
+  }
 
   for (PathCacheMap::iterator p = path_cache_map_.begin(),
            e = path_cache_map_.end(); p != e; ++p) {
@@ -466,6 +494,55 @@ void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
       abort();
     }
   }
+}
+
+// Initializes global statistics object if needed, using factory to
+// help with the settings if needed.
+// Note: does not call set_statistics() on the factory.
+Statistics* NgxRewriteDriverFactory::MakeGlobalSharedMemStatistics(
+    bool logging, int64 logging_interval_ms,
+    const GoogleString& logging_file_base) {
+  if (shared_mem_statistics_.get() == NULL) {
+    shared_mem_statistics_.reset(AllocateAndInitSharedMemStatistics(
+        "global", logging, logging_interval_ms, logging_file_base));
+  }
+  DCHECK(!statistics_frozen_);
+  statistics_frozen_ = true;
+  SetStatistics(shared_mem_statistics_.get());
+  return shared_mem_statistics_.get();
+}
+
+SharedMemStatistics* NgxRewriteDriverFactory::
+AllocateAndInitSharedMemStatistics(
+    const StringPiece& name, const bool logging,
+    const int64 logging_interval_ms,
+    const GoogleString& logging_file_base) {
+  // Note that we create the statistics object in the parent process, and
+  // it stays around in the kids but gets reinitialized for them
+  // inside ChildInit(), called from pagespeed_child_init.
+  SharedMemStatistics* stats = new SharedMemStatistics(
+      logging_interval_ms, StrCat(logging_file_base, name), logging,
+      StrCat(filename_prefix(), name), shared_mem_runtime(), message_handler(),
+      file_system(), timer());
+  InitStats(stats);
+  stats->Init(true, message_handler());
+  return stats;
+}
+
+void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
+  // Init standard PSOL stats.
+  RewriteDriverFactory::InitStats(statistics);
+
+  // Init Ngx-specific stats.
+  NgxServerContext::InitStats(statistics);
+  AprMemCache::InitStats(statistics);
+  SerfUrlAsyncFetcher::InitStats(statistics);
+
+  CacheStats::InitStats(NgxCache::kFileCache, statistics);
+  CacheStats::InitStats(NgxCache::kLruCache, statistics);
+  CacheStats::InitStats(kMemcached, statistics);
+
+  statistics->AddVariable(kShutdownCount);
 }
 
 }  // namespace net_instaweb

@@ -24,6 +24,7 @@ extern "C" {
 
 #include "ngx_rewrite_options.h"
 #include "ngx_pagespeed.h"
+#include "ngx_rewrite_driver_factory.h"
 
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -70,10 +71,23 @@ void NgxRewriteOptions::AddProperties() {
                  RewriteOptions::kMemcachedServers);
   add_ngx_option(1, &NgxRewriteOptions::memcached_threads_, "amt",
                  RewriteOptions::kMemcachedThreads);
-  add_ngx_option(false, &NgxRewriteOptions::use_shared_mem_locking_, "ausml",
+  add_ngx_option(true, &NgxRewriteOptions::use_shared_mem_locking_, "ausml",
                  RewriteOptions::kUseSharedMemLocking);
   add_ngx_option("", &NgxRewriteOptions::fetcher_proxy_, "afp",
                  RewriteOptions::kFetcherProxy);
+
+  add_ngx_option("", &NgxRewriteOptions::statistics_logging_file_, "aslf",
+             RewriteOptions::kStatisticsLoggingFile);
+  add_ngx_option("", &NgxRewriteOptions::statistics_logging_charts_css_,
+                 "aslcc", RewriteOptions::kStatisticsLoggingChartsCSS);
+  add_ngx_option("", &NgxRewriteOptions::statistics_logging_charts_js_, "aslcj",
+             RewriteOptions::kStatisticsLoggingChartsJS);
+  add_ngx_option(true, &NgxRewriteOptions::statistics_enabled_, "ase",
+             RewriteOptions::kStatisticsEnabled);
+  add_ngx_option(false, &NgxRewriteOptions::statistics_logging_enabled_, "asle",
+             RewriteOptions::kStatisticsLoggingEnabled);
+  add_ngx_option(3000, &NgxRewriteOptions::statistics_logging_interval_ms_,
+             "asli", RewriteOptions::kStatisticsLoggingIntervalMs);
 
   MergeSubclassProperties(ngx_properties_);
   NgxRewriteOptions config;
@@ -118,8 +132,8 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions0(
 }
 
 RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions1(
-    StringPiece directive, StringPiece arg,
-    GoogleString* msg, MessageHandler* handler) {
+    StringPiece directive, StringPiece arg, GoogleString* msg,
+    MessageHandler* handler, NgxRewriteDriverFactory* driver_factory) {
 
   // FileCachePath needs error checking.
   if (IsDirective(directive, "FileCachePath")) {
@@ -185,6 +199,38 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions1(
     RetainComment(arg);
   } else if (IsDirective(directive, "BlockingRewriteKey")) {
     set_blocking_rewrite_key(arg);
+  } else if (IsDirective(directive, "UsePerVHostStatistics")) {
+    // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+    if (IsDirective(arg, "on")) {
+      driver_factory->set_use_per_vhost_statistics(true);
+      return RewriteOptions::kOptionOk;
+    } else if (IsDirective(arg, "off")) {
+      driver_factory->set_use_per_vhost_statistics(false);
+      return RewriteOptions::kOptionOk;
+    } else {
+      return RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (IsDirective(directive, "InstallCrashHandler")) {
+    // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+    if (IsDirective(arg, "on")) {
+      driver_factory->set_install_crash_handler(true);
+      return RewriteOptions::kOptionOk;
+    } else if (IsDirective(arg, "off")) {
+      driver_factory->set_install_crash_handler(false);
+      return RewriteOptions::kOptionOk;
+    } else {
+      return RewriteOptions::kOptionValueInvalid;
+    }
+  } else if (IsDirective(directive, "MessageBufferSize")) {
+    // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+    int message_buffer_size;
+    bool ok = StringToInt(arg.as_string().c_str(), &message_buffer_size);
+    if (ok && message_buffer_size >= 0) {
+      driver_factory->set_message_buffer_size(message_buffer_size);
+      return RewriteOptions::kOptionOk;
+    } else {
+      return RewriteOptions::kOptionValueInvalid;
+    }
   } else {
     return RewriteOptions::kOptionNameUnknown;
   }
@@ -267,7 +313,8 @@ RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions3(
 // TODO(jefftk): Move argument parsing to OriginRewriteOptions.
 const char*
 NgxRewriteOptions::ParseAndSetOptions(
-    StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler) {
+    StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
+    NgxRewriteDriverFactory* driver_factory) {
   CHECK_GE(n_args, 1);
 
   int i;
@@ -292,7 +339,8 @@ NgxRewriteOptions::ParseAndSetOptions(
   if (n_args == 1) {
     result = ParseAndSetOptions0(directive, &msg, handler);
   } else if (n_args == 2) {
-    result = ParseAndSetOptions1(directive, args[1], &msg, handler);
+    result = ParseAndSetOptions1(directive, args[1], &msg, handler,
+                                 driver_factory);
   } else if (n_args == 3) {
     result = ParseAndSetOptions2(directive, args[1], args[2], &msg, handler);
   } else if (n_args == 4) {

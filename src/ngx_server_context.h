@@ -27,6 +27,9 @@ namespace net_instaweb {
 
 class NgxRewriteDriverFactory;
 class NgxRewriteOptions;
+class RewriteStats;
+class SharedMemStatistics;
+class Statistics;
 
 class NgxServerContext : public ServerContext {
  public:
@@ -39,10 +42,30 @@ class NgxServerContext : public ServerContext {
   NgxRewriteOptions* config();
   // Should be called after the child process is forked.
   void ChildInit();
+  // Initialize this ServerContext to have its own statistics domain.
+  // Must be called after global_statistics has been created and had
+  // ::Initialize called on it.
+  void CreateLocalStatistics(Statistics* global_statistics);
+  static void InitStats(Statistics* statistics);
   bool initialized() const { return initialized_; }
+  GoogleString hostname_identifier() { return hostname_identifier_; }
+  void set_hostname_identifier(GoogleString x) { hostname_identifier_ = x; }
+
  private:
   NgxRewriteDriverFactory* ngx_factory_;
+  // hostname_identifier_ is used to distinguish the name of shared memory
+  // segments associated with this ServerContext
+  GoogleString hostname_identifier_;
   bool initialized_;
+
+  // Non-NULL if we have per-vhost stats.
+  scoped_ptr<Statistics> split_statistics_;
+
+  // May be NULL. Owned by *split_statistics_.
+  SharedMemStatistics* local_statistics_;
+  // These are non-NULL if we have per-vhost stats.
+  scoped_ptr<RewriteStats> local_rewrite_stats_;
+
   DISALLOW_COPY_AND_ASSIGN(NgxServerContext);
 };
 
