@@ -110,7 +110,7 @@ void SharedMemCacheTestBase::TestBasic() {
   CheckNotFound("404");
   CheckGet("200", "OK");
 
-  CheckPut("big", large_.c_str());
+  CheckPut("big", large_);
   CheckGet("big", large_);
 
   // Make sure this at least doesn't blow up.
@@ -126,7 +126,7 @@ void SharedMemCacheTestBase::TestReinsert() {
   CheckGet("key", "alv");
 
   // Insert larger one..
-  CheckPut("key", large_.c_str());
+  CheckPut("key", large_);
   CheckGet("key", large_);
 
   // Now shrink it down again.
@@ -134,7 +134,7 @@ void SharedMemCacheTestBase::TestReinsert() {
   CheckGet("key", "small");
 
   // ... And make it huge.
-  CheckPut("key", gigantic_.c_str());
+  CheckPut("key", gigantic_);
   CheckGet("key", gigantic_);
 
   // Now try with empty value
@@ -152,10 +152,10 @@ void SharedMemCacheTestBase::TestReplacement() {
   // directory heavily.
   for (int n = 0; n < kSectorEntries * 4; ++n) {
     GoogleString key1 = IntegerToString(n);
-    CheckPut(key1.c_str(), key1.c_str());
+    CheckPut(key1, key1);
     timer_.AdvanceMs(1);
-    CheckPut(key1.c_str(), key1.c_str());
-    CheckGet(key1.c_str(), key1.c_str());
+    CheckPut(key1, key1);
+    CheckGet(key1, key1);
   }
 
   cache_->SanityCheck();
@@ -165,16 +165,16 @@ void SharedMemCacheTestBase::TestReplacement() {
     GoogleString key2 = IntegerToString(n + 1);
     GoogleString key3 = IntegerToString(n + 2);
 
-    CheckPut(key1.c_str(), large_.c_str());
+    CheckPut(key1, large_);
     timer_.AdvanceMs(1);
-    CheckPut(key2.c_str(), key2.c_str());
+    CheckPut(key2, key2);
     timer_.AdvanceMs(1);
-    CheckPut(key3.c_str(), gigantic_.c_str());
+    CheckPut(key3, gigantic_);
     timer_.AdvanceMs(1);
 
-    CheckGet(key1.c_str(), large_);
-    CheckGet(key2.c_str(), key2.c_str());
-    CheckGet(key3.c_str(), gigantic_);
+    CheckGet(key1, large_);
+    CheckGet(key2, key2);
+    CheckGet(key3, gigantic_);
     CheckDelete(key2.c_str());
     timer_.AdvanceMs(1);
     CheckNotFound(key2.c_str());
@@ -243,7 +243,7 @@ void SharedMemCacheTestBase::TestConflict() {
   // Insert kAssociativity + 1 entries.
   for (int c = 0; c <= kAssociativity; ++c) {
     GoogleString key = IntegerToString(c);
-    CheckPut(small_cache.get(), key.c_str(), key.c_str());
+    CheckPut(small_cache.get(), key, key);
   }
 
   // Now make sure the final one is available.
@@ -251,7 +251,7 @@ void SharedMemCacheTestBase::TestConflict() {
   // with us only having kAssoc possible key values, it's quite likely
   // that the constructed key set will not have full associativity.
   GoogleString last(IntegerToString(kAssociativity));
-  CheckGet(small_cache.get(), last.c_str(), last);
+  CheckGet(small_cache.get(), last, last);
   small_cache->GlobalCleanup(shmem_runtime_.get(), kAltSegment, &handler_);
 }
 
@@ -269,8 +269,8 @@ void SharedMemCacheTestBase::TestEvict() {
   // we will need to evict older entries eventually.
   for (int c = 0; c < kSectorBlocks; ++c) {
     GoogleString key = IntegerToString(c);
-    CheckPut(small_cache.get(), key.c_str(), large_);
-    CheckGet(small_cache.get(), key.c_str(), large_);
+    CheckPut(small_cache.get(), key, large_);
+    CheckGet(small_cache.get(), key, large_);
   }
 
   small_cache->GlobalCleanup(shmem_runtime_.get(), kAltSegment, &handler_);

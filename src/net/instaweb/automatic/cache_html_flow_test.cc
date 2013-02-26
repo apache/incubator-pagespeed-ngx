@@ -345,7 +345,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     blink_output_partial_ = StringPrintf(
         kBlinkOutputCommon, GetJsDisableScriptSnippet(options).c_str(),
         kTestUrl, kTestUrl);
-    blink_output_ = StrCat(blink_output_partial_.c_str(), kCookieScript,
+    blink_output_ = StrCat(blink_output_partial_, kCookieScript,
                            kBlinkOutputSuffix);
     noblink_output_ = StrCat("<html><head></head><body>",
                              StringPrintf(kNoScriptRedirectFormatter,

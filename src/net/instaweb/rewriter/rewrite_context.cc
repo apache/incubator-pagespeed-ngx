@@ -1100,6 +1100,14 @@ void RewriteContext::Start() {
   for (int c = 0; c < num_slots(); ++c) {
     if (slot(c)->disable_further_processing()) {
       rewrite_done_ = true;
+      if (!has_parent()) {
+        LogRecord* log_record = Driver()->log_record();
+        ScopedMutex lock(log_record->mutex());
+        MetadataCacheInfo* metadata_log_info =
+            log_record->logging_info()->mutable_metadata_cache_info();
+        metadata_log_info->set_num_disabled_rewrites(
+            metadata_log_info->num_disabled_rewrites() + 1);
+      }
       RetireRewriteForHtml(false /* no rendering*/);
       return;
     }
@@ -1659,10 +1667,19 @@ void RewriteContext::WritePartition() {
 void RewriteContext::FinalizeRewriteForHtml() {
   DCHECK(fetch_.get() == NULL);
 
+  int num_repeated = repeated_.size();
+  if (!has_parent() && num_repeated > 0) {
+    LogRecord* log_record = Driver()->log_record();
+    ScopedMutex lock(log_record->mutex());
+    MetadataCacheInfo* metadata_log_info =
+        log_record->logging_info()->mutable_metadata_cache_info();
+    metadata_log_info->set_num_repeated_rewrites(
+        metadata_log_info->num_repeated_rewrites() + num_repeated);
+  }
   bool partition_ok = (partitions_->partition_size() != 0);
   // Tells each of the repeated rewrites of the same thing if we have a valid
   // result or not.
-  for (int c = 0, n = repeated_.size(); c < n; ++c) {
+  for (int c = 0; c < num_repeated; ++c) {
     if (partition_ok) {
       repeated_[c]->RepeatedSuccess(this);
     } else {

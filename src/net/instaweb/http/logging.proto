@@ -90,7 +90,7 @@ message BlinkInfo {
 
 // This proto stores information related to metadata cache lookups and
 // rewriting.
-// Next id for MetadataCacheInfo: 8
+// Next id for MetadataCacheInfo: 10
 message MetadataCacheInfo {
   // Number of hits.
   optional int32 num_hits = 1;
@@ -115,6 +115,11 @@ message MetadataCacheInfo {
   optional int32 num_stale_rewrites = 6;
   // Total number of rewrites that were completed in the rewrite deadline.
   optional int32 num_rewrites_completed = 7;
+  // Number of rewrites that were disabled and hence no cache lookps were done.
+  optional int32 num_disabled_rewrites = 8;
+  // Number of rewrites that were repeats and hence a previous result was used
+  // (no cache lookps were done).
+  optional int32 num_repeated_rewrites = 9;
 }
 
 message RewritingInfo {

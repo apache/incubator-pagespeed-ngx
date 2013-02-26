@@ -1699,8 +1699,8 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum2(
         *msg = "Argument 1 must be either 'Allow' or 'Disallow'";
         return RewriteOptions::kOptionValueInvalid;
       }
-      if (!file_load_policy()->AddRule(arg2.as_string().c_str(),
-                                      is_regexp, allow, msg)) {
+      if (!file_load_policy()->AddRule(arg2.as_string(),
+                                       is_regexp, allow, msg)) {
         return RewriteOptions::kOptionValueInvalid;
       }
       break;

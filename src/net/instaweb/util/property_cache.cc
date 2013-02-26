@@ -173,6 +173,7 @@ class PropertyCache::CacheInterfaceCallback : public CacheInterface::Callback {
 
     page_->log_record()->SetCacheStatusForCohortInfo(
         pmap_struct_->cohort_index, valid, state);
+    pmap_struct_->cache_state = state;
     collector_->Done(valid);
     delete this;
   }
@@ -512,6 +513,29 @@ PropertyValue* PropertyPage::GetProperty(const PropertyCache::Cohort* cohort,
     property->set_was_read(was_read_);
   }
   return property;
+}
+
+CacheInterface::KeyState PropertyPage::GetCacheState(
+    const PropertyCache::Cohort* cohort) {
+  ScopedMutex lock(mutex_.get());
+  DCHECK(was_read_);
+  DCHECK(cohort != NULL);
+  CohortDataMap::iterator cohort_itr = cohort_data_map_.find(cohort);
+  CHECK(cohort_itr != cohort_data_map_.end());
+  PropertyMapStruct* pmap_struct = cohort_itr->second;
+  return pmap_struct->cache_state;
+}
+
+void PropertyPage::set_cache_state_for_tests(
+    const PropertyCache::Cohort* cohort,
+    CacheInterface::KeyState x) {
+  ScopedMutex lock(mutex_.get());
+  DCHECK(was_read_);
+  DCHECK(cohort != NULL);
+  CohortDataMap::iterator cohort_itr = cohort_data_map_.find(cohort);
+  CHECK(cohort_itr != cohort_data_map_.end());
+  PropertyMapStruct* pmap_struct = cohort_itr->second;
+  pmap_struct->cache_state = x;
 }
 
 void PropertyPage::DeleteProperty(const PropertyCache::Cohort* cohort,

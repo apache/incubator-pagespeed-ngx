@@ -409,7 +409,7 @@ RewriteQuery::Status RewriteQuery::ParseResourceOption(
             RewriteOptions::LookupOptionEnumById(name_value[0]);
         if ((option_enum != RewriteOptions::kEndOfOptions) &&
             std::binary_search(opts, opts + num_options, option_enum) &&
-            (options->SetOptionFromEnum(option_enum, name_value[1].as_string())
+            (options->SetOptionFromEnum(option_enum, name_value[1])
              == RewriteOptions::kOptionOk)) {
           status = kSuccess;
         } else {

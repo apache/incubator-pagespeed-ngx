@@ -348,6 +348,21 @@ class PropertyPage {
   PropertyValue* GetProperty(const PropertyCache::Cohort* cohort,
                              const StringPiece& property_name);
 
+  // This function returns the cache state for a given cohort.
+  //
+  // It is a programming error to call GetCacheState on a PropertyPage
+  // that has not yet been read.
+  CacheInterface::KeyState GetCacheState(const PropertyCache::Cohort* cohort);
+
+  // This function set the cache state for a given cohort. This is only for
+  // test code. Normally, cache state should be always set by cache, not from
+  // this function.
+  //
+  // It is a programming error to call set_cache_state_for_tests on a
+  // PropertyPage that has not yet been read.
+  void set_cache_state_for_tests(const PropertyCache::Cohort* cohort,
+                                 CacheInterface::KeyState x);
+
   // Deletes a property given the property name.
   //
   // This function deletes the PropertyValue if it already exists, otherwise
@@ -418,6 +433,7 @@ class PropertyPage {
     bool has_deleted_property;
     LogRecord* log_record;
     int cohort_index;
+    CacheInterface::KeyState cache_state;
   };
   typedef std::map<const PropertyCache::Cohort*, PropertyMapStruct*>
       CohortDataMap;

@@ -1823,7 +1823,7 @@ TEST_F(ImageRewriteTest, CacheControlHeaderCheckForNonWebpUA) {
 
   GoogleString initial_image_url = StrCat(kTestDomain, kPuzzleJpgFile);
   const GoogleString kHtmlInput =
-      StrCat("<img src='", initial_image_url.c_str(), "'>");
+      StrCat("<img src='", initial_image_url, "'>");
   options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
   AddRecompressImageFilters();
   rewrite_driver()->AddFilters();

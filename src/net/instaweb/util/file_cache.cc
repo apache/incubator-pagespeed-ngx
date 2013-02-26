@@ -232,7 +232,7 @@ bool FileCache::Clean(int64 target_size, int64 target_inode_count) {
     // making sure empty directories are at least n seconds old before removing
     // them, where n is double ServerContext::kBreakLockMs.
     int64 timestamp_sec;
-    file_system_->Mtime(it->c_str(), &timestamp_sec, message_handler_);
+    file_system_->Mtime(*it, &timestamp_sec, message_handler_);
     const int64 now_sec = cache_policy_->timer->NowMs() / Timer::kSecondMs;
     int64 age_sec = now_sec - timestamp_sec;
     if (age_sec > kEmptyDirCleanAgeSec &&

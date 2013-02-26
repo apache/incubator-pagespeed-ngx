@@ -252,7 +252,7 @@ ProxyFetchPropertyCallbackCollector::GetDeviceTypeFromDeviceCacheMutexHeld() {
   // TODO(ksimbili): Pass the property page from device cache.
   const UserAgentMatcher* user_agent_matcher =
       server_context_->user_agent_matcher();
-  return user_agent_matcher->GetDeviceTypeForUA(user_agent_.c_str());
+  return user_agent_matcher->GetDeviceTypeForUA(user_agent_);
 }
 
 void ProxyFetchPropertyCallbackCollector::SetPropertyPageForDeviceTypeMutexHeld(

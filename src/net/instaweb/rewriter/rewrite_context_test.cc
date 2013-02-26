@@ -127,6 +127,8 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
   const MetadataCacheInfo* metadata_cache_info =
       logging_info()->mutable_metadata_cache_info();
+  EXPECT_EQ(0, metadata_cache_info->num_repeated_rewrites());
+  EXPECT_EQ(0, metadata_cache_info->num_disabled_rewrites());
   EXPECT_EQ(1, metadata_cache_info->num_misses());
   EXPECT_EQ(0, metadata_cache_info->num_revalidates());
   EXPECT_EQ(0, metadata_cache_info->num_hits());
@@ -146,6 +148,8 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
   metadata_cache_info = logging_info()->mutable_metadata_cache_info();
+  EXPECT_EQ(0, metadata_cache_info->num_repeated_rewrites());
+  EXPECT_EQ(0, metadata_cache_info->num_disabled_rewrites());
   EXPECT_EQ(0, metadata_cache_info->num_misses());
   EXPECT_EQ(0, metadata_cache_info->num_revalidates());
   EXPECT_EQ(1, metadata_cache_info->num_hits());
@@ -168,6 +172,8 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(1, http_cache()->cache_expirations()->Get());
   metadata_cache_info = logging_info()->mutable_metadata_cache_info();
+  EXPECT_EQ(0, metadata_cache_info->num_repeated_rewrites());
+  EXPECT_EQ(0, metadata_cache_info->num_disabled_rewrites());
   EXPECT_EQ(0, metadata_cache_info->num_misses());
   EXPECT_EQ(1, metadata_cache_info->num_revalidates());
   EXPECT_EQ(0, metadata_cache_info->num_hits());
@@ -187,6 +193,8 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
   metadata_cache_info = logging_info()->mutable_metadata_cache_info();
+  EXPECT_EQ(0, metadata_cache_info->num_repeated_rewrites());
+  EXPECT_EQ(0, metadata_cache_info->num_disabled_rewrites());
   EXPECT_EQ(0, metadata_cache_info->num_misses());
   EXPECT_EQ(0, metadata_cache_info->num_revalidates());
   EXPECT_EQ(1, metadata_cache_info->num_hits());
@@ -686,6 +694,8 @@ TEST_F(RewriteContextTest, TrimRepeatedOptimizableDelayed) {
                     StrCat(CssLinkHref("a.css"), CssLinkHref("a.css")));
   const MetadataCacheInfo* metadata_cache_info =
       logging_info()->mutable_metadata_cache_info();
+  EXPECT_EQ(0, metadata_cache_info->num_disabled_rewrites());
+  EXPECT_EQ(0, metadata_cache_info->num_repeated_rewrites());
   EXPECT_EQ(1, metadata_cache_info->num_misses());
   EXPECT_EQ(0, metadata_cache_info->num_revalidates());
   EXPECT_EQ(0, metadata_cache_info->num_hits());
@@ -702,6 +712,8 @@ TEST_F(RewriteContextTest, TrimRepeatedOptimizableDelayed) {
       StrCat(CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")),
              CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css"))));
   metadata_cache_info = logging_info()->mutable_metadata_cache_info();
+  EXPECT_EQ(0, metadata_cache_info->num_disabled_rewrites());
+  EXPECT_EQ(1, metadata_cache_info->num_repeated_rewrites());
   EXPECT_EQ(0, metadata_cache_info->num_misses());
   EXPECT_EQ(0, metadata_cache_info->num_revalidates());
   EXPECT_EQ(1, metadata_cache_info->num_hits());
@@ -2187,6 +2199,18 @@ TEST_F(RewriteContextTest, DisableFurtherProcessing) {
   // disable_further_processing, since the framework may avoid
   // the issue by reusing the rewrite.
   EXPECT_EQ(1, trimmer->num_rewrites());
+  const MetadataCacheInfo* metadata_cache_info =
+      logging_info()->mutable_metadata_cache_info();
+  EXPECT_EQ(0, metadata_cache_info->num_repeated_rewrites());
+  EXPECT_EQ(1, metadata_cache_info->num_disabled_rewrites());
+  EXPECT_EQ(2, metadata_cache_info->num_misses());
+  EXPECT_EQ(0, metadata_cache_info->num_revalidates());
+  EXPECT_EQ(0, metadata_cache_info->num_hits());
+  EXPECT_EQ(0, metadata_cache_info->num_stale_rewrites());
+  EXPECT_EQ(2, metadata_cache_info->num_successful_rewrites_on_miss());
+  EXPECT_EQ(0, metadata_cache_info->num_successful_revalidates());
+  EXPECT_EQ(3, metadata_cache_info->num_rewrites_completed());
+  ClearStats();
 
   // Now prevent trim from running. Should not see it in the URL.
   combining_filter->set_disable_successors(true);
@@ -2200,6 +2224,17 @@ TEST_F(RewriteContextTest, DisableFurtherProcessing) {
       CssLinkHref(combined_url));
 
   EXPECT_EQ(1, trimmer->num_rewrites());  // unchanged.
+  metadata_cache_info = logging_info()->mutable_metadata_cache_info();
+  EXPECT_EQ(0, metadata_cache_info->num_repeated_rewrites());
+  EXPECT_EQ(2, metadata_cache_info->num_disabled_rewrites());
+  EXPECT_EQ(0, metadata_cache_info->num_misses());
+  EXPECT_EQ(0, metadata_cache_info->num_revalidates());
+  EXPECT_EQ(1, metadata_cache_info->num_hits());
+  EXPECT_EQ(0, metadata_cache_info->num_stale_rewrites());
+  EXPECT_EQ(0, metadata_cache_info->num_successful_rewrites_on_miss());
+  EXPECT_EQ(0, metadata_cache_info->num_successful_revalidates());
+  EXPECT_EQ(3, metadata_cache_info->num_rewrites_completed());
+  ClearStats();
 
   // Cached, too.
   ValidateExpected(
@@ -2208,6 +2243,17 @@ TEST_F(RewriteContextTest, DisableFurtherProcessing) {
       CssLinkHref(combined_url));
 
   EXPECT_EQ(1, trimmer->num_rewrites());  // unchanged.
+  metadata_cache_info = logging_info()->mutable_metadata_cache_info();
+  EXPECT_EQ(0, metadata_cache_info->num_repeated_rewrites());
+  EXPECT_EQ(2, metadata_cache_info->num_disabled_rewrites());
+  EXPECT_EQ(0, metadata_cache_info->num_misses());
+  EXPECT_EQ(0, metadata_cache_info->num_revalidates());
+  EXPECT_EQ(1, metadata_cache_info->num_hits());
+  EXPECT_EQ(0, metadata_cache_info->num_stale_rewrites());
+  EXPECT_EQ(0, metadata_cache_info->num_successful_rewrites_on_miss());
+  EXPECT_EQ(0, metadata_cache_info->num_successful_revalidates());
+  EXPECT_EQ(3, metadata_cache_info->num_rewrites_completed());
+  ClearStats();
 }
 
 TEST_F(RewriteContextTest, CombinationRewrite) {

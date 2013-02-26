@@ -388,7 +388,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript1) {
                                   SplitHtmlFilter::kSplitInit));
 
   GoogleString input(StringPrintf(kHtmlInputForIgnoreScript, "", ""));
-  Parse("split_ignore_script1", input.c_str());
+  Parse("split_ignore_script1", input);
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript1,
                          head_script.c_str(), "", "",
                          expected_output_suffix.c_str()).c_str(), output_);
@@ -407,7 +407,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript2) {
 
   GoogleString input = StringPrintf(kHtmlInputForIgnoreScript, "",
                                     "<script></script><noscript></noscript>");
-  Parse("split_ignore_script2", input.c_str());
+  Parse("split_ignore_script2", input);
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript1,
                          head_script.c_str(), "",
                          "<script></script><noscript></noscript>",
@@ -428,7 +428,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript3) {
   GoogleString input = StringPrintf(kHtmlInputForIgnoreScript,
                                     "<script></script><noscript></noscript>",
                                     "<script></script><noscript></noscript>");
-  Parse("split_ignore_script3", input.c_str());
+  Parse("split_ignore_script3", input);
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript1,
                          head_script.c_str(),
                          "<script></script><noscript></noscript>",
@@ -450,7 +450,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript4) {
                                   SplitHtmlFilter::kSplitInit));
 
   GoogleString input = StringPrintf(kHtmlInputForIgnoreScript, "", "");
-  Parse("split_ignore_script4", input.c_str());
+  Parse("split_ignore_script4", input);
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript2,
                          head_script.c_str(), "",
                          expected_output_suffix.c_str()).c_str(), output_);
@@ -473,7 +473,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript5) {
       kHtmlInputForIgnoreScript,
       "<script></script><noscript></noscript>"
       "<style></style><link href=\"http://a.com/\">", "");
-  Parse("split_ignore_script5", input.c_str());
+      Parse("split_ignore_script5", input);
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript2,
                          head_script.c_str(),
                          "<script></script><noscript></noscript>"

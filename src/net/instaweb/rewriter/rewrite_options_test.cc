@@ -80,11 +80,11 @@ class RewriteOptionsTest : public RewriteOptionsTestBase<RewriteOptions> {
       bool expected = (expected_result == RewriteOptions::kOptionOk);
       EXPECT_EQ(
           expected,
-          options_.SetOptionFromNameAndLog(name, value.as_string(), handler));
+          options_.SetOptionFromNameAndLog(name, value, handler));
     } else {
       GoogleString msg;
       EXPECT_EQ(expected_result,
-                options_.SetOptionFromName(name, value.as_string(), &msg));
+                options_.SetOptionFromName(name, value, &msg));
       // Should produce a message exactly when not OK.
       EXPECT_EQ(expected_result != RewriteOptions::kOptionOk, !msg.empty())
           << msg;
