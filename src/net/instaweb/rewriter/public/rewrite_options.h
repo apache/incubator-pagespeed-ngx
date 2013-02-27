@@ -385,6 +385,17 @@ class RewriteOptions {
 
   static const char kCacheExtenderId[];
   static const char kCollectFlushEarlyContentFilterId[];
+
+  // Determines the scope at which an option is evaluated.  In Apache,
+  // for example, kDirectoryScope indicates it can be changed via .htaccess
+  // files, which is the only way that sites using shared hosting can change
+  // settings.
+  enum OptionScope {
+    kDirectoryScope,  // customized at directory level (.htaccess, <Directory>)
+    kServerScope,     // customized at server level (e.g. VirtualHost)
+    kProcessScope,    // customized at process level only (command-line flags)
+  };
+
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
   static const char kCssImportFlattenerId[];
@@ -433,7 +444,9 @@ class RewriteOptions {
    public:
     PropertyBase(const char* id, OptionEnum option_enum)
         : id_(id),
+          help_text_(NULL),
           option_enum_(option_enum),
+          scope_(kDirectoryScope),
           do_not_use_for_signature_computation_(false),
           index_(-1) {
     }
@@ -450,6 +463,12 @@ class RewriteOptions {
       return !do_not_use_for_signature_computation_;
     }
 
+    void set_scope(OptionScope x) { scope_ = x; }
+    OptionScope scope() const { return scope_; }
+
+    void set_help_text(const char* x) { help_text_ = x; }
+    const char* help_text() const { return help_text_; }
+
     void set_index(int index) { index_ = index; }
     const char* id() const { return id_; }
     OptionEnum option_enum() const { return option_enum_; }
@@ -457,7 +476,9 @@ class RewriteOptions {
 
    private:
     const char* id_;
+    const char* help_text_;
     OptionEnum option_enum_;  // To know where this is in all_options_.
+    OptionScope scope_;
     bool do_not_use_for_signature_computation_;  // Default is false.
     int index_;
 
@@ -479,7 +500,9 @@ class RewriteOptions {
     virtual bool was_set() const = 0;
     virtual GoogleString Signature(const Hasher* hasher) const = 0;
     virtual GoogleString ToString() const = 0;
-    const char* id() { return property()->id(); }
+    const char* id() const { return property()->id(); }
+    const char* help_text() const { return property()->help_text(); }
+    OptionScope scope() const { return property()->scope(); }
     OptionEnum option_enum() const { return property()->option_enum(); }
     bool is_used_for_signature_computation() const {
       return property()->is_used_for_signature_computation();
@@ -2358,15 +2381,22 @@ class RewriteOptions {
  protected:
   // Adds a new Property to 'properties' (the last argument).
   template<class RewriteOptionsSubclass, class OptionClass>
-  static void AddProperty(typename OptionClass::ValueType default_value,
-                          OptionClass RewriteOptionsSubclass::*offset,
-                          const char* id,
-                          OptionEnum option_enum,
-                          Properties* properties) {
-    properties->push_back(new PropertyLeaf<RewriteOptionsSubclass, OptionClass>(
-        default_value, offset, id, option_enum));
+  static PropertyBase* AddProperty(
+      typename OptionClass::ValueType default_value,
+      OptionClass RewriteOptionsSubclass::*offset,
+      const char* id,
+      OptionEnum option_enum,
+      OptionScope scope,
+      const char* help_text,
+      Properties* properties) {
+    PropertyBase* property =
+        new PropertyLeaf<RewriteOptionsSubclass, OptionClass>(
+            default_value, offset, id, option_enum);
+    property->set_scope(scope);
+    property->set_help_text(help_text);
+    properties->push_back(property);
+    return property;
   }
-
 
   // Merges properties into all_properties so that
   // RewriteOptions::Merge and SetOptionFromName can work across
@@ -2536,17 +2566,21 @@ class RewriteOptions {
   static void add_option(typename OptionClass::ValueType default_value,
                          OptionClass RewriteOptionsSubclass::*offset,
                          const char* id) {
-    AddProperty(default_value, offset, id, kEndOfOptions, properties_);
+    AddProperty(default_value, offset, id, kEndOfOptions, kProcessScope,
+                NULL, properties_);
   }
 
   // Adds a property with a unique option_enum_ field, allowing use of
   // SetOptionFromName.
   template<class RewriteOptionsSubclass, class OptionClass>
   static void add_option(typename OptionClass::ValueType default_value,
-                         OptionClass RewriteOptionsSubclass::*offset,
-                         const char* id,
-                         OptionEnum option_enum) {
-    AddProperty(default_value, offset, id, option_enum, properties_);
+                                  OptionClass RewriteOptionsSubclass::*offset,
+                                  const char* id,
+                                  OptionEnum option_enum,
+                                  OptionScope scope,
+                                  const char* help) {
+    AddProperty(default_value, offset, id, option_enum, scope, help,
+                properties_);
   }
 
   static void AddProperties();

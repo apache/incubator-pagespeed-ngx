@@ -24,8 +24,6 @@
 
 namespace net_instaweb {
 
-class Hasher;
-
 // This manages system configuration options for platform supports classes that
 // the pagespeed optimization library comes bundled with.
 class SystemRewriteOptions : public RewriteOptions {
@@ -171,8 +169,10 @@ class SystemRewriteOptions : public RewriteOptions {
   static void add_option(typename OptionClass::ValueType default_value,
                          OptionClass RewriteOptionsSubclass::*offset,
                          const char* id,
-                         OptionEnum option_enum) {
-    AddProperty(default_value, offset, id, option_enum, system_properties_);
+                         OptionEnum option_enum,
+                         const char* help) {
+    AddProperty(default_value, offset, id, option_enum, kServerScope, help,
+                system_properties_);
   }
 
   static void AddProperties();

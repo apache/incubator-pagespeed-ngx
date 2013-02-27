@@ -177,8 +177,11 @@ class ApacheConfig : public SystemRewriteOptions {
   static void add_option(typename OptionClass::ValueType default_value,
                          OptionClass RewriteOptionsSubclass::*offset,
                          const char* id,
-                         OptionEnum option_enum) {
-    AddProperty(default_value, offset, id, option_enum, apache_properties_);
+                         OptionEnum option_enum,
+                         const char* help) {
+    AddProperty(default_value, offset, id, option_enum,
+                RewriteOptions::kServerScope, help,
+                apache_properties_);
   }
 
   void InitializeSignaturesAndDefaults();

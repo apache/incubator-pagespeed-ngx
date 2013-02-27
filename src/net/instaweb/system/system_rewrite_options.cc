@@ -54,53 +54,82 @@ SystemRewriteOptions::~SystemRewriteOptions() {
 
 void SystemRewriteOptions::AddProperties() {
   add_option("", &SystemRewriteOptions::fetcher_proxy_, "afp",
-             RewriteOptions::kFetcherProxy);
+             RewriteOptions::kFetcherProxy,
+             "Set the fetch proxy");
   add_option("", &SystemRewriteOptions::file_cache_path_, "afcp",
-             RewriteOptions::kFileCachePath);
+             RewriteOptions::kFileCachePath,
+             "Set the path for file cache");
   add_option("", &SystemRewriteOptions::memcached_servers_, "ams",
-             RewriteOptions::kMemcachedServers);
+             RewriteOptions::kMemcachedServers,
+             "Comma-separated list of servers e.g. host1:port1,host2:port2");
   add_option(1, &SystemRewriteOptions::memcached_threads_, "amt",
-             RewriteOptions::kMemcachedThreads);
+             RewriteOptions::kMemcachedThreads,
+             "Number of background threads to use to run memcached fetches");
   add_option(0, &SystemRewriteOptions::memcached_timeout_us_, "amo",
-             RewriteOptions::kMemcachedTimeoutUs);
+             RewriteOptions::kMemcachedTimeoutUs,
+             "Maximum time in microseconds to allow for memcached "
+             "transactions");
   add_option("", &SystemRewriteOptions::statistics_logging_file_, "aslf",
-             RewriteOptions::kStatisticsLoggingFile);
+             RewriteOptions::kStatisticsLoggingFile,
+             "Where to log cross-process statistics if they're being "
+             "collected."),
   add_option("", &SystemRewriteOptions::statistics_logging_charts_css_, "aslcc",
-      RewriteOptions::kStatisticsLoggingChartsCSS);
+             RewriteOptions::kStatisticsLoggingChartsCSS,
+             "Where to find an offline copy of the Google Charts Tools API "
+             "CSS.");
   add_option("", &SystemRewriteOptions::statistics_logging_charts_js_, "aslcj",
-      RewriteOptions::kStatisticsLoggingChartsJS);
+             RewriteOptions::kStatisticsLoggingChartsJS,
+             "Where to find an offline copy of the Google Charts Tools API "
+             "JS.");
   add_option(true, &SystemRewriteOptions::statistics_enabled_, "ase",
-             RewriteOptions::kStatisticsEnabled);
+             RewriteOptions::kStatisticsEnabled,
+             "Whether to collect cross-process statistics.");
   add_option(false, &SystemRewriteOptions::statistics_logging_enabled_, "asle",
-             RewriteOptions::kStatisticsLoggingEnabled);
+             RewriteOptions::kStatisticsLoggingEnabled,
+             "Whether to log cross-process statistics if they're being "
+             "collected.");
   add_option(true, &SystemRewriteOptions::use_shared_mem_locking_, "ausml",
-             RewriteOptions::kUseSharedMemLocking);
-
+             RewriteOptions::kUseSharedMemLocking,
+             "Use shared memory for internal named lock service");
   add_option(Timer::kHourMs,
              &SystemRewriteOptions::file_cache_clean_interval_ms_,
-             "afcci", RewriteOptions::kFileCacheCleanIntervalMs);
-
+             "afcci", RewriteOptions::kFileCacheCleanIntervalMs,
+             "Set the interval (in ms) for cleaning the file cache");
   add_option(100 * 1024, &SystemRewriteOptions::file_cache_clean_size_kb_,
-             "afc", RewriteOptions::kFileCacheCleanSizeKb);  // 100 megabytes
+             "afc", RewriteOptions::kFileCacheCleanSizeKb,   // 100 megabytes
+             "Set the target size (in kilobytes) for file cache");
   // Default to no inode limit so that existing installations are not affected.
   // pagespeed.conf.template contains suggested limit for new installations.
   // TODO(morlovich): Inject this as an argument, since we want a different
   // default for ngx_pagespeed?
   add_option(0, &SystemRewriteOptions::file_cache_clean_inode_limit_, "afcl",
-             RewriteOptions::kFileCacheCleanInodeLimit);
+             RewriteOptions::kFileCacheCleanInodeLimit,
+             "Set the target number of inodes for the file cache; 0 "
+             "means no limit");
   add_option(0, &SystemRewriteOptions::lru_cache_byte_limit_, "alcb",
-             RewriteOptions::kLruCacheByteLimit);
+             RewriteOptions::kLruCacheByteLimit,
+             "Set the maximum byte size entry to store in the per-process "
+             "in-memory LRU cache");
   add_option(0, &SystemRewriteOptions::lru_cache_kb_per_process_, "alcp",
-             RewriteOptions::kLruCacheKbPerProcess);
+             RewriteOptions::kLruCacheKbPerProcess,
+             "Set the total size, in KB, of the per-process in-memory "
+             "LRU cache");
   add_option(3000, &SystemRewriteOptions::statistics_logging_interval_ms_,
-             "asli", RewriteOptions::kStatisticsLoggingIntervalMs);
+             "asli", RewriteOptions::kStatisticsLoggingIntervalMs,
+             "How often to log cross-process statistics, in milliseconds.");
   add_option("", &SystemRewriteOptions::cache_flush_filename_, "acff",
-             RewriteOptions::kCacheFlushFilename);
+             RewriteOptions::kCacheFlushFilename,
+             "Name of file to check for timestamp updates used to flush "
+             "cache. This file will be relative to the "
+             "ModPagespeedFileCachePath if it does not begin with a slash.");
   add_option(kDefaultCacheFlushIntervalSec,
              &SystemRewriteOptions::cache_flush_poll_interval_sec_, "acfpi",
-             RewriteOptions::kCacheFlushPollIntervalSec);
+             RewriteOptions::kCacheFlushPollIntervalSec,
+             "Number of seconds to wait between polling for cache-flush "
+             "requests");
   add_option("", &SystemRewriteOptions::use_shared_mem_metadata_cache_,
-             "asmc", RewriteOptions::kUseSharedMemMetadataCache);
+             "asmc", RewriteOptions::kUseSharedMemMetadataCache,
+             "Use given shared memory cache for metadata cache");
 
   MergeSubclassProperties(system_properties_);
 }
