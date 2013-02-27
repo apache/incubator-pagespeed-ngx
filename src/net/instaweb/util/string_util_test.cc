@@ -261,13 +261,13 @@ TEST_F(SplitStringTest, TestSplitMultiSeparator) {
 
 TEST_F(SplitStringTest, TestPieceAfterEquals) {
   GoogleString piece("Test=1");
-  ASSERT_EQ(PieceAfterEquals(piece), "1");
+  ASSERT_EQ("1", PieceAfterEquals(piece));
   GoogleString piece2("TestingWithNoEquals");
-  ASSERT_EQ(PieceAfterEquals(piece2), "");
+  ASSERT_EQ("", PieceAfterEquals(piece2));
   GoogleString piece3("    TestingWithSpace =     45     ");
-  ASSERT_EQ(PieceAfterEquals(piece3), "45");
+  ASSERT_EQ("45", PieceAfterEquals(piece3));
   GoogleString piece4("Test1=1;Test2=2");
-  ASSERT_EQ(PieceAfterEquals(piece4), "1;Test2=2");
+  ASSERT_EQ("1;Test2=2", PieceAfterEquals(piece4));
 }
 
 TEST(StringCaseTest, TestStringCaseEqual) {
@@ -384,10 +384,48 @@ TEST(ParseShellLikeStringTest, UnclosedQuoteAndBackslash) {
 class BasicUtilsTest : public testing::Test {
 };
 
+TEST(BasicUtilsTest, TrimLeadingWhitespaceTest) {
+  StringPiece trimmed("Mary had a little lamb.  ");
+  // Whitespace at both ends
+  StringPiece test_piece1("\r\n\f\t Mary had a little lamb.  ");
+  EXPECT_TRUE(TrimLeadingWhitespace(&test_piece1));
+  EXPECT_EQ(trimmed, test_piece1);
+  // No whitespace to trim
+  StringPiece test_piece2(trimmed);
+  EXPECT_FALSE(TrimLeadingWhitespace(&test_piece2));
+  EXPECT_EQ(trimmed, test_piece2);
+}
+
+TEST(BasicUtilsTest, TrimTrailingWhitespaceTest) {
+  StringPiece trimmed("  Mary had a little lamb.");
+  // Whitespace at both ends
+  StringPiece test_piece1("  Mary had a little lamb.  \r\n\f\t");
+  EXPECT_TRUE(TrimTrailingWhitespace(&test_piece1));
+  EXPECT_EQ(trimmed, test_piece1);
+  // No whitespace to trim
+  StringPiece test_piece2(trimmed);
+  EXPECT_FALSE(TrimTrailingWhitespace(&test_piece2));
+  EXPECT_EQ(trimmed, test_piece2);
+}
+
 TEST(BasicUtilsTest, TrimWhitespaceTest) {
-  StringPiece test_piece("\t Mary had a little lamb.\n \r ");
-  TrimWhitespace(&test_piece);
-  EXPECT_EQ("Mary had a little lamb.", test_piece);
+  StringPiece trimmed("Mary had a little lamb.");
+  // Whitespace at both ends
+  StringPiece test_piece1("\t Mary had a little lamb.\n \r ");
+  EXPECT_TRUE(TrimWhitespace(&test_piece1));
+  EXPECT_EQ(trimmed, test_piece1);
+  // No whitespace to trim
+  StringPiece test_piece2(trimmed);
+  EXPECT_FALSE(TrimWhitespace(&test_piece2));
+  EXPECT_EQ(trimmed, test_piece2);
+  // Whitespace to left
+  StringPiece test_piece3("\f Mary had a little lamb.");
+  EXPECT_TRUE(TrimWhitespace(&test_piece3));
+  EXPECT_EQ(trimmed, test_piece3);
+  // Whitespace to right
+  StringPiece test_piece4("Mary had a little lamb.\r\n");
+  EXPECT_TRUE(TrimWhitespace(&test_piece4));
+  EXPECT_EQ(trimmed, test_piece4);
 }
 
 TEST(BasicUtilsTest, CountSubstringTest) {

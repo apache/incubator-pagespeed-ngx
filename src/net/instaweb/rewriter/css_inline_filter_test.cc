@@ -232,6 +232,14 @@ TEST_F(CssInlineFilterTest, DoInlineCssWithMediaScreen) {
                 "media=\"print, audio ,, ,sCrEeN \"", css, true, css);
 }
 
+TEST_F(CssInlineFilterTest, DoInlineCssWithMediaQuery) {
+  // Media queries are tested more exhaustively in css_tag_scanner_test.
+  const GoogleString css = "BODY { color: red; }\n";
+  TestInlineCss("http://www.example.com/index.html",
+                "http://www.example.com/styles.css",
+                "media=\"only (color)\"", css, true, css);
+}
+
 TEST_F(CssInlineFilterTest, InlineCssWithInvalidMedia) {
   // Use an invalid media tag, but one that's still decipherable.
   // Trying to deal with indecipherable media tags turned out to be

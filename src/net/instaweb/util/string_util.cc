@@ -19,7 +19,6 @@
 #include "net/instaweb/util/public/string_util.h"
 
 #include <algorithm>
-#include <cctype>
 #include <cstddef>
 #include <vector>
 
@@ -318,11 +317,11 @@ void ParseShellLikeString(const StringPiece& input,
         part.push_back(input[index]);
       }
       ++index;  // skip close quote
-    } else if (!isspace(ch)) {
+    } else if (!IsHtmlSpace(ch)) {
       // Without quotes, items are whitespace-separated.
       output->push_back("");
       GoogleString& part = output->back();
-      for (; index < input.size() && !isspace(input[index]); ++index) {
+      for (; index < input.size() && !IsHtmlSpace(input[index]); ++index) {
         part.push_back(input[index]);
       }
     } else {
@@ -357,16 +356,34 @@ int FindIgnoreCase(StringPiece haystack, StringPiece needle) {
 
 
 // In-place StringPiece whitespace trimming.  This mutates the StringPiece.
-void TrimWhitespace(StringPiece* str) {
-  while (str->size() && isspace(str->data()[0])) {
-    str->remove_prefix(1);
+bool TrimLeadingWhitespace(StringPiece* str) {
+  // We use stringpiece_ssize_type to avoid signedness problems.
+  stringpiece_ssize_type size = str->size();
+  stringpiece_ssize_type trim = 0;
+  while (trim != size && IsHtmlSpace(str->data()[trim])) {
+    ++trim;
   }
+  str->remove_prefix(trim);
+  return (trim > 0);
+}
 
-  int size = str->size();
-  while (size && isspace(str->data()[size - 1])) {
-    str->remove_suffix(1);
-    size = str->size();
+bool TrimTrailingWhitespace(StringPiece* str) {
+  // We use stringpiece_ssize_type to avoid signedness problems.
+  stringpiece_ssize_type rightmost = str->size();
+  while (rightmost != 0 && IsHtmlSpace(str->data()[rightmost - 1])) {
+    --rightmost;
   }
+  if (rightmost != str->size()) {
+    str->remove_suffix(str->size() - rightmost);
+    return true;
+  }
+  return false;
+}
+
+bool TrimWhitespace(StringPiece* str) {
+  // We *must* trim *both* leading and trailing spaces, so we use the
+  // non-shortcut bitwise | on the boolean results.
+  return TrimLeadingWhitespace(str) | TrimTrailingWhitespace(str);
 }
 
 void TrimQuote(StringPiece* str) {
@@ -378,12 +395,6 @@ void TrimQuote(StringPiece* str) {
     str->remove_suffix(1);
   }
   TrimWhitespace(str);
-}
-
-void TrimLeadingWhitespace(StringPiece* str) {
-  while (str->size() && isspace(str->data()[0])) {
-    str->remove_prefix(1);
-  }
 }
 
 

@@ -104,15 +104,19 @@ TEST_F(CssTagScannerTest, CanMediaAffectScreenTest) {
   EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("print, audio ,, ,sCrEeN"));
   EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen(
       "not!?#?;valid,screen,@%*%@*"));
-  // Some simple cases that fail.
+  // Some cases that fail.
   EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("print"));
   EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("not screen"));
   EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("print screen"));
   EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("not!?#?;valid"));
-  // we don't handle media queries yet:
-  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("not print"));
-  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen(
+  // We must handle CSS3 media queries (http://www.w3.org/TR/css3-mediaqueries/)
+  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("not print"));
+  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen(
       "only screen and (max-device-width: 480px) "));
+  // "(parens)" are equivalent to "all and (parens)" -- thus screen-affecting.
+  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("(monochrome)"));
+  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("(print)"));
+  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("not (audio or print)"));
 }
 
 // This test makes sure we can identify a few different forms of CSS tags we've
