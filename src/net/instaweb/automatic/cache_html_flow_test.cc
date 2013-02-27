@@ -222,7 +222,9 @@ const char kBlinkOutputCommon[] =
     "<script type=\"text/javascript\">"
     "pagespeed.panelLoaderInit();"
     "pagespeed.panelLoader.loadCriticalData({});"
-    "pagespeed.panelLoader.loadImagesData({});</script>\n";
+    "pagespeed.panelLoader.loadImagesData({});</script>\n"
+    "<script type=\"text/javascript\">"
+    "pagespeed.panelLoader.setRequestFromInternalIp();</script>\n";
 
 const char kCookieScript[] =
     "<script>pagespeed.panelLoader.loadCookies([\"helo=world; path=/\"]);"
@@ -871,6 +873,8 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
       "pagespeed.panelLoaderInit();"
       "pagespeed.panelLoader.loadCriticalData({});"
       "pagespeed.panelLoader.loadImagesData({});</script>\n"
+      "<script type=\"text/javascript\">"
+      "pagespeed.panelLoader.setRequestFromInternalIp();</script>\n"
       "%s"  // kCookieScript
       "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-1.0\":{\"instance_html\":\"<h2 id=\\\"beforeItems\\\"> This is before Items </h2>\",\"xpath\":\"//div[@id=\\\"container\\\"]/h2[1]\"}}\n);</script>"  // NOLINT
       "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.0\":{\"instance_html\":\"<div class=\\\"item\\\"><img src=\\\"image3\\\"><div class=\\\"item\\\"><img src=\\\"image4\\\"></div></div>\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[3]\"}}\n);</script>"  // NOLINT

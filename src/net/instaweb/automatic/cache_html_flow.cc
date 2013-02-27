@@ -35,6 +35,7 @@
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
@@ -60,6 +61,10 @@ const char kCacheHtmlSuffixJsString[] =
     "pagespeed.panelLoaderInit();"
     "pagespeed.panelLoader.loadCriticalData({});"
     "pagespeed.panelLoader.loadImagesData({});"
+    "</script>\n";
+const char kCacheHtmlSetInternalIp[] =
+    "<script type=\"text/javascript\">"
+    "pagespeed.panelLoader.setRequestFromInternalIp();"
     "</script>\n";
 
 const char CacheHtmlFlow::kBackgroundComputationDone[] =
@@ -582,7 +587,7 @@ void CacheHtmlFlow::CacheHtmlLookupDone() {
           ProxyFetchPropertyCallback::kPagePropertyCache);
   PopulateCacheHtmlInfo(page);
 
-  // TODO(mmohabey): Add timings and dashboard.
+  // TODO(mmohabey): Add CSI timings.
   if (cache_html_info_.has_cached_html()) {
     CacheHtmlHit(page);
   } else {
@@ -654,6 +659,12 @@ void CacheHtmlFlow::CacheHtmlRewriteDone() {
       static_asset_manager->GetAssetUrl(
           StaticAssetManager::kBlinkJs, options_).c_str()), handler_);
   base_fetch_->Write(kCacheHtmlSuffixJsString, handler_);
+  const char* user_ip = base_fetch_->request_headers()->Lookup1(
+      HttpAttributes::kXForwardedFor);
+  if (user_ip != NULL && server_context_->factory()->IsDebugClient(user_ip) &&
+      options_->enable_blink_debug_dashboard()) {
+    base_fetch_->Write(kCacheHtmlSetInternalIp, handler_);
+  }
   base_fetch_->Flush(handler_);
   TriggerProxyFetch();
 }
