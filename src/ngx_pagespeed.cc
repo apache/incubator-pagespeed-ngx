@@ -1818,11 +1818,11 @@ ngx_int_t ps_messages_handler(
     net_instaweb::NgxServerContext* server_context) {
   GoogleString output;
   net_instaweb::StringWriter writer(&output);
-  // Write <pre></pre> for Dump to keep good format.
   net_instaweb::NgxRewriteDriverFactory* factory =
       server_context->ngx_rewrite_driver_factory();
   net_instaweb::NgxMessageHandler* message_handler =
       factory->ngx_message_handler();
+  // Write <pre></pre> for Dump to keep good format.
   writer.Write("<pre>", message_handler);
   if (!message_handler->Dump(&writer)) {
     writer.Write("Writing to ngx_pagespeed_message failed. \n"
