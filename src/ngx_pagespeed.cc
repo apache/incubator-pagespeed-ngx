@@ -34,6 +34,7 @@ extern "C" {
 #include <unistd.h>
 
 #include "ngx_base_fetch.h"
+#include "ngx_message_handler.h"
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
@@ -325,6 +326,7 @@ enum Response {
   kPagespeedDisabled,
   kBeacon,
   kStatistics,
+  kMessages,
 };
 }  // namespace CreateRequestContext
 
@@ -1166,6 +1168,10 @@ CreateRequestContext::Response ps_create_request_context(
         || url.PathSansQuery() == "/ngx_pagespeed_global_statistics" ) {
       return CreateRequestContext::kStatistics;
     }
+    if (url.PathSansQuery() == "/ngx_pagespeed_message") {
+      return CreateRequestContext::kMessages;
+    }
+
     net_instaweb::RewriteOptions* global_options =
         cfg_s->server_context->global_options();
     const GoogleString* beacon_url;
@@ -1503,6 +1509,7 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     case CreateRequestContext::kStaticContent:
     case CreateRequestContext::kInvalidUrl:
     case CreateRequestContext::kStatistics:
+    case CreateRequestContext::kMessages:
       return ngx_http_next_header_filter(r);
     case CreateRequestContext::kOk:
       break;
@@ -1806,6 +1813,27 @@ ngx_int_t ps_statistics_handler(
   return NGX_OK;
 }
 
+ngx_int_t ps_messages_handler(
+    ngx_http_request_t* r,
+    net_instaweb::NgxServerContext* server_context) {
+  GoogleString output;
+  net_instaweb::StringWriter writer(&output);
+  // Write <pre></pre> for Dump to keep good format.
+  net_instaweb::NgxRewriteDriverFactory* factory =
+      server_context->ngx_rewrite_driver_factory();
+  net_instaweb::NgxMessageHandler* message_handler =
+      factory->ngx_message_handler();
+  writer.Write("<pre>", message_handler);
+  if (!message_handler->Dump(&writer)) {
+    writer.Write("Writing to ngx_pagespeed_message failed. \n"
+                 "Please check if it's enabled in pagespeed.conf.\n",
+                 message_handler);
+  }
+  writer.Write("</pre>", message_handler);
+  write_handler_response(output, r, factory->timer());
+  return NGX_OK;
+}
+
 ngx_int_t
 ps_beacon_handler(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
@@ -1846,6 +1874,8 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
       return ps_static_handler(r);
     case CreateRequestContext::kStatistics:
       return ps_statistics_handler(r, cfg_s->server_context);
+    case CreateRequestContext::kMessages:
+      return ps_messages_handler(r, cfg_s->server_context);
     case CreateRequestContext::kOk:
       break;
   }
