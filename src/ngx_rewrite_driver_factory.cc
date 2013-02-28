@@ -374,6 +374,7 @@ void NgxRewriteDriverFactory::ShutDown() {
   if (!is_root_process_) {
     Variable* child_shutdown_count = statistics()->GetVariable(kShutdownCount);
     child_shutdown_count->Add(1);
+    message_handler()->Message(kInfo, "Shutting down ngx_pagespeed child");
   } else {
     message_handler()->Message(kInfo, "Shutting down ngx_pagespeed root");
   }
