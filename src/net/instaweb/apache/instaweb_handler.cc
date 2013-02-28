@@ -48,6 +48,7 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/escaping.h"
@@ -710,20 +711,20 @@ apr_status_t instaweb_statistics_handler(
       writer.Write("</pre>", message_handler);
       statistics->RenderHistograms(&writer, message_handler);
 
+      int flags = SystemCaches::kDefaultStatFlags;
       if (global_stats_request) {
-        // We don't want to print this in per-vhost info since it would leak
-        // all the declared caches.
-        GoogleString shm_stats;
-        factory->PrintShmMetadataCacheStats(&shm_stats);
-        writer.Write(shm_stats, message_handler);
+        flags |= SystemCaches::kGlobalView;
       }
 
       if (params.Has("memcached")) {
-        GoogleString memcached_stats;
-        factory->PrintMemCacheStats(&memcached_stats);
-        if (!memcached_stats.empty()) {
-          WritePre(memcached_stats, &writer, message_handler);
-        }
+        flags |= SystemCaches::kIncludeMemcached;
+      }
+
+      GoogleString backend_stats;
+      factory->caches()->PrintCacheStats(
+          static_cast<SystemCaches::StatFlags>(flags), &backend_stats);
+      if (!backend_stats.empty()) {
+        WritePre(backend_stats, &writer, message_handler);
       }
     }
 

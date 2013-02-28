@@ -757,6 +757,9 @@
           '<(DEPTH)',
         ],
       },
+      'export_dependent_settings': [
+        'instaweb_http',
+      ]
     },
     {
       'target_name': 'instaweb_util_pthread',
@@ -839,6 +842,9 @@
           '<(DEPTH)',
         ],
       },
+      'export_dependent_settings': [
+        'instaweb_http_pb',
+      ]
     },
     {
       'target_name': 'instaweb_http_test',
@@ -1247,6 +1253,7 @@
         'system/apr_mem_cache.cc',
         'system/apr_thread_compatible_pool.cc',
         'system/system_cache_path.cc',
+        'system/system_caches.cc',
         'system/system_rewrite_options.cc',
         '<(DEPTH)/third_party/aprutil/apr_memcache2.c',
       ],

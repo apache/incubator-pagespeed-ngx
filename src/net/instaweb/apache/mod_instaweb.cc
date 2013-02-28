@@ -52,6 +52,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -1595,7 +1596,7 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
       return apr_pstrcat(cmd->pool, cmd->directive->directive,
                          " size_kb must be a positive 64-bit integer", NULL);
     }
-    GoogleString result = factory->CreateShmMetadataCache(arg1, kb);
+    GoogleString result = factory->caches()->CreateShmMetadataCache(arg1, kb);
     if (!result.empty()) {
       return apr_pstrdup(cmd->pool, result.c_str());
     }

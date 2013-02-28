@@ -31,7 +31,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
-#include "net/instaweb/system/public/system_cache_path.h"
+#include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
@@ -207,9 +207,7 @@ void ApacheServerContext::ChildInit() {
   DCHECK(!initialized_);
   if (!initialized_) {
     initialized_ = true;
-    SystemCachePath* cache = apache_factory_->GetCache(config());
-
-    set_lock_manager(cache->lock_manager());
+    set_lock_manager(apache_factory_->caches()->GetLockManager(config()));
     UrlAsyncFetcher* fetcher = apache_factory_->GetFetcher(config());
     set_default_system_fetcher(fetcher);
 
