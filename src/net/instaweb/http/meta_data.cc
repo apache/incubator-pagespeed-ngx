@@ -59,6 +59,12 @@ const char HttpAttributes::kXForwardedFor[] = "X-Forwarded-For";
 const char HttpAttributes::kXForwardedProto[] = "X-Forwarded-Proto";
 const char HttpAttributes::kXGooglePagespeedClientId[] =
     "X-Google-Pagespeed-Client-Id";
+
+const char HttpAttributes::kXPsaRequestMetadata[] =
+    "X-PSA-Request-Metadata";
+const char HttpAttributes::kXPsaResponseMetadata[] =
+    "X-PSA-Response-Metadata";
+
 const char HttpAttributes::kXGoogleRequestEventId[] =
     "X-Google-Request-Event-Id";
 const char HttpAttributes::kXOriginalContentLength[] =

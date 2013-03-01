@@ -32,6 +32,7 @@
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/cache_html_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
+#include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -415,18 +416,23 @@ class CacheHtmlComputationFetch : public AsyncFetch {
 
   void DeleteCacheHtmlInfoFromPropertyCache() {
     num_cache_html_mismatches_cache_deletes_->IncBy(1);
+    ServerContext* server_context = rewrite_driver_->server_context();
     const PropertyCache::Cohort* cohort =
-        rewrite_driver_->server_context()->page_property_cache()->
+        server_context->page_property_cache()->
             GetCohort(BlinkUtil::kBlinkCohort);
     PropertyPage* page = rewrite_driver_->property_page();
     page->DeleteProperty(cohort, BlinkUtil::kCacheHtmlRewriterInfo);
     // TODO(mmohabey): Call WriteCohort only once in
     // UpdatePropertyCacheWithCacheHtmlInfo and not here. This is to avoid
     // property cache write race.
-    rewrite_driver_->server_context()->
-        page_property_cache()->WriteCohort(cohort, page);
-    // TODO(mmohabey): Add logic to propogate the deletes and deleting the
-    // critical line info.
+    server_context->page_property_cache()->WriteCohort(cohort, page);
+    // Propagate the delete
+    if (server_context->cache_html_info_finder() != NULL) {
+      server_context->cache_html_info_finder()->PropagateCacheDeletes(
+          url_,
+          rewrite_driver_->options()->furious_id(),
+          rewrite_driver_->device_type());
+    }
   }
 
  private:

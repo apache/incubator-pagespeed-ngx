@@ -180,7 +180,6 @@ DEFINE_int32(psa_idle_flush_time_ms,
              net_instaweb::RewriteOptions::kDefaultIdleFlushTimeMs,
              "If the input HTML stops coming in for this many ms, a flush"
              " will be injected. Use a value <= 0 to disable.");
-
 DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
               "response header.");
 DEFINE_bool(enable_blink_critical_line, false,
@@ -300,6 +299,9 @@ DEFINE_string(blocking_rewrite_key,
               "Enables rewrites to finish before the response is sent to "
               "the client, if X-PSA-Blocking-Rewrite http request header's "
               "value is same as this flag's value.");
+
+DEFINE_string(distributed_rewrite_hosts, "",
+              "Comma-separated list of hosts for distributed rewriting.");
 
 DEFINE_bool(support_noscript_enabled, true,
             "Support for clients with no script support, in filters that "
@@ -584,6 +586,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("blocking_rewrite_key")) {
     options->set_blocking_rewrite_key(FLAGS_blocking_rewrite_key);
+  }
+  if (WasExplicitlySet("distributed_rewrite_hosts")) {
+    options->set_distributed_rewrite_hosts(FLAGS_distributed_rewrite_hosts);
   }
   if (WasExplicitlySet("pagespeed_version")) {
     options->set_x_header_value(FLAGS_pagespeed_version);

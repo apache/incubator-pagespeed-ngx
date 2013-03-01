@@ -72,13 +72,22 @@ struct HttpAttributes {
   // all rewrites are completed before the response is sent to the client.
   static const char kXPsaBlockingRewrite[];
 
+  // This header is set on optional fetches that got dropped due to load.
+  static const char kXPsaLoadShed[];
+
   // If this header is present on an incoming request it will be treated as if
   // it came over a SPDY connection for purposes of applying special
   // configuration or optimizations.
   static const char kXPsaOptimizeForSpdy[];
 
-  // This header is set on optional fetches that got dropped due to load.
-  static const char kXPsaLoadShed[];
+  // This header is set in a distributed rewrite task to ask for metadata
+  // in the response.
+  static const char kXPsaRequestMetadata[];
+
+  // This header is set in a distributed rewrite response and the value
+  // is the serialized metadata.
+  static const char kXPsaResponseMetadata[];
+
   static const char kXRequestedWith[];
 
   // This header is set on optimized responses to indicate the original

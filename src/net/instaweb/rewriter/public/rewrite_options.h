@@ -196,6 +196,7 @@ class RewriteOptions {
     kCssOutlineMinBytes,
     kCssPreserveURLs,
     kDefaultCacheHtml,
+    kDistributedRewriteHosts,
     kDomainRewriteHyperlinks,
     kDomainShardCount,
     kEnableAggressiveRewritersForMobile,
@@ -1803,6 +1804,13 @@ class RewriteOptions {
     return x_header_value_.value();
   }
 
+  void set_distributed_rewrite_hosts(const StringPiece& p) {
+      set_option(p.as_string(), &distributed_rewrite_hosts_);
+  }
+  const GoogleString& distributed_rewrite_hosts() const {
+    return distributed_rewrite_hosts_.value();
+  }
+
   void set_avoid_renaming_introspective_javascript(bool x) {
     set_option(x, &avoid_renaming_introspective_javascript_);
   }
@@ -2949,6 +2957,8 @@ class RewriteOptions {
   Option<GoogleString> blink_non_cacheables_for_all_families_;
   // Specification for critical line.
   Option<GoogleString> critical_line_config_;
+  // A comma delimited list of hosts that can be used to rewrite resources.
+  Option<GoogleString> distributed_rewrite_hosts_;
   // Forbid turning on of any disabled (not enabled) filters either via query
   // parameters or request headers or .htaccess for Directory. Note that this
   // is a latch so that setting it at some directory level forces it on for

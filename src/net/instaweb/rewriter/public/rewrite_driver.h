@@ -242,7 +242,6 @@ class RewriteDriver : public HtmlParse {
   }
 
   const RequestHeaders* request_headers() const {
-    DCHECK(request_headers_ != NULL);
     return request_headers_;
   }
 

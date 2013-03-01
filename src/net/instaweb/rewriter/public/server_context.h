@@ -43,6 +43,7 @@ namespace net_instaweb {
 
 class AbstractMutex;
 class BlinkCriticalLineDataFinder;
+class CacheHtmlInfoFinder;
 class ContentType;
 class CriticalCssFinder;
 class CriticalImagesFinder;
@@ -257,6 +258,12 @@ class ServerContext {
 
   void set_blink_critical_line_data_finder(
       BlinkCriticalLineDataFinder* finder);
+
+  CacheHtmlInfoFinder* cache_html_info_finder() const {
+    return cache_html_info_finder_.get();
+  }
+
+  void set_cache_html_info_finder(CacheHtmlInfoFinder* finder);
 
   // Whether or not dumps of rewritten resources should be stored to
   // the filesystem. This is meant for testing purposes only.
@@ -585,6 +592,7 @@ class ServerContext {
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
   scoped_ptr<CriticalCssFinder> critical_css_finder_;
   scoped_ptr<BlinkCriticalLineDataFinder> blink_critical_line_data_finder_;
+  scoped_ptr<CacheHtmlInfoFinder> cache_html_info_finder_;
   scoped_ptr<FlushEarlyInfoFinder> flush_early_info_finder_;
 
   // hasher_ is often set to a mock within unit tests, but some parts of the

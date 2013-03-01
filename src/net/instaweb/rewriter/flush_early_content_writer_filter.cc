@@ -19,6 +19,7 @@
 
 #include <set>
 
+#include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/device_properties.h"
@@ -160,6 +161,7 @@ void FlushEarlyContentWriterFilter::StartDocument() {
   // write whatever we need to original_writer_.
   original_writer_ = driver_->writer();
   set_writer(&null_writer_);
+  DCHECK(driver_->request_headers() != NULL);
   prefetch_mechanism_ = driver_->user_agent_matcher()->GetPrefetchMechanism(
       driver_->user_agent(), driver_->request_headers());
   current_element_ = NULL;

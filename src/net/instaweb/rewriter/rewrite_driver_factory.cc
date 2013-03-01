@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
+#include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
@@ -318,6 +319,11 @@ RewriteDriverFactory::DefaultBlinkCriticalLineDataFinder(
   return NULL;
 }
 
+CacheHtmlInfoFinder* RewriteDriverFactory::DefaultCacheHtmlInfoFinder(
+    PropertyCache* cache) {
+  return NULL;
+}
+
 UsageDataReporter* RewriteDriverFactory::DefaultUsageDataReporter() {
   return new UsageDataReporter;
 }
@@ -438,6 +444,8 @@ void RewriteDriverFactory::InitServerContext(
   resource_manager->set_flush_early_info_finder(DefaultFlushEarlyInfoFinder());
   resource_manager->set_blink_critical_line_data_finder(
       DefaultBlinkCriticalLineDataFinder(pcache));
+  resource_manager->set_cache_html_info_finder(
+      DefaultCacheHtmlInfoFinder(pcache));
   resource_manager->set_hostname(hostname_);
   resource_manager->InitWorkersAndDecodingDriver();
   server_contexts_.insert(resource_manager);

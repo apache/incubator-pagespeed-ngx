@@ -143,6 +143,10 @@ bool RequestHeaders::AcceptsGzip() const {
   return false;
 }
 
+bool RequestHeaders::MetadataRequested() const {
+  return Has(HttpAttributes::kXPsaRequestMetadata);
+}
+
 bool RequestHeaders::IsXmlHttpRequest() const {
   // Check if kXRequestedWith header is present to determine whether it is
   // XmlHttpRequest or not.

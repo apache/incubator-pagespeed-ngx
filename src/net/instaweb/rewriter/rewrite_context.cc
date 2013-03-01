@@ -38,6 +38,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource.h"
@@ -51,6 +52,7 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
@@ -812,6 +814,37 @@ class RewriteContext::FetchContext {
     FetchFallbackDoneImpl(input->contents(), input->response_headers());
   }
 
+  // We need to be careful not to leak metadata.  So only add it when
+  // it has been requested and we're configured to use distributed rewriting.
+  bool ShouldAddMetadata() {
+    const RequestHeaders* request_headers =
+        rewrite_context_->Driver()->request_headers();
+    // TODO(jkarlin): DCHECK that distributed rewrite is set in the request
+    // header.
+    // TODO(jkarlin): For Apache we'll also need to verify the src address is
+    // from a trusted host or trusted network. This will require a new directive
+    // and src address information in the request_context, which is not there
+    // today.
+    if (!rewrite_context_->Options()->distributed_rewrite_hosts().empty() &&
+        request_headers != NULL && request_headers->MetadataRequested()) {
+      return true;
+    }
+    return false;
+  }
+
+  // If the request headers asked for metadata then put base64 encoded
+  // metadata in the response headers.
+  void AddMetadataHeaderIfNecessary(ResponseHeaders* response_headers) {
+    DCHECK(!response_headers->Has(HttpAttributes::kXPsaResponseMetadata));
+    if (ShouldAddMetadata()) {
+      GoogleString encoded, serialized;
+      if (rewrite_context_->partitions()->SerializeToString(&serialized)) {
+        Mime64Encode(serialized, &encoded);
+        response_headers->Add(HttpAttributes::kXPsaResponseMetadata,  encoded);
+      }
+    }
+  }
+
   // Note that the callback is called from the RewriteThread.
   void FetchDone() {
     CancelDeadlineAlarm();
@@ -835,6 +868,7 @@ class RewriteContext::FetchContext {
             output_resource_->response_headers()));
         // Use the most conservative Cache-Control considering all inputs.
         ApplyInputCacheControl(response_headers);
+        AddMetadataHeaderIfNecessary(response_headers);
         async_fetch_->HeadersComplete();
         ok = async_fetch_->Write(output_resource_->contents(), handler_);
       } else {
@@ -850,6 +884,11 @@ class RewriteContext::FetchContext {
       if (rewrite_context_->CanFetchFallbackToOriginal(kFallbackEmergency)) {
         ResourcePtr input_resource(rewrite_context_->slot(0)->resource());
         if (input_resource.get() != NULL && input_resource->HttpStatusOk()) {
+          // TODO(jkarlin): When we have an X-Psa-Distributed-Rewrite-Html
+          // header we should guard this message (and the one ~20 lines down)
+          // with it so that we don't print messages for what are ultimately
+          // html-derived rewrites.  We might also want to guard Rewrite-IPRO
+          // as well.
           handler_->Message(kWarning, "Rewrite %s failed while fetching %s",
                             input_resource->url().c_str(),
                             output_resource_->UrlEvenIfHashNotSet().c_str());
@@ -908,6 +947,7 @@ class RewriteContext::FetchContext {
     rewrite_context_->FixFetchFallbackHeaders(async_fetch_->response_headers());
     // Use the most conservative Cache-Control considering all inputs.
     ApplyInputCacheControl(async_fetch_->response_headers());
+    AddMetadataHeaderIfNecessary(async_fetch_->response_headers());
     async_fetch_->HeadersComplete();
 
     bool ok = rewrite_context_->AbsolutifyIfNeeded(contents, async_fetch_,

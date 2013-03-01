@@ -1667,8 +1667,11 @@ bool RewriteDriver::FetchOutputResource(
   } else {
     SetBaseUrlForFetch(output_resource->url());
     fetch_queued_ = true;
-    if (output_resource->kind() == kOnTheFlyResource) {
-      // Don't bother to look up the resource in the cache: ask the filter.
+    if (output_resource->kind() == kOnTheFlyResource ||
+        async_fetch->request_headers()->MetadataRequested()) {
+      // Don't bother to look up the resource in the cache: ask the filter. If
+      // metadata is requested we need to skip the initial http cache lookup
+      // because we can't return until we've done a metadata lookup first.
       if (filter != NULL) {
         queued = FilterFetch::Start(filter, output_resource, async_fetch,
                                     message_handler());

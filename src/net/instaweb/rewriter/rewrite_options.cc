@@ -1088,6 +1088,10 @@ void RewriteOptions::AddProperties() {
              kReportUnloadTime,
              kDirectoryScope,
              "If set reports optional page unload time.");
+  add_option("", &RewriteOptions::distributed_rewrite_hosts_, "drwh",
+             kDistributedRewriteHosts, kProcessScope,
+             "A comma-separated list of hosts to use for distributed "
+             "rewrites.");
   add_option("", &RewriteOptions::x_header_value_, "xhv",
              kXModPagespeedHeaderValue,
              kDirectoryScope,

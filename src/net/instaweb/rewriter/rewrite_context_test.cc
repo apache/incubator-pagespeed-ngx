@@ -25,12 +25,14 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
@@ -102,9 +104,146 @@ class RewriteContextTest : public RewriteContextTestBase {
     options()->AddUrlCacheInvalidationEntry(url, timer()->NowMs(), is_strict);
     options()->ComputeSignature(hasher());
   }
+
+  void FetchAndValidateMetadata(StringPiece input_url,
+                                StringPiece correct_url,
+                                bool expect_metadata,
+                                bool head_request) {
+    GoogleString output;
+    ResponseHeaders response_headers;
+    RequestHeaders req_headers;
+    req_headers.Add(HttpAttributes::kXPsaRequestMetadata, "");
+    if (head_request) {
+      req_headers.set_method(RequestHeaders::kHead);
+    }
+    rewrite_driver()->set_request_headers(&req_headers);
+    EXPECT_TRUE(FetchResourceUrl(input_url, &req_headers, &output,
+                                 &response_headers));
+    // Check if we do or don't have metadata, as expected.
+    EXPECT_EQ(expect_metadata, response_headers.Has(
+        HttpAttributes::kXPsaResponseMetadata));
+
+    // Check if the metadata is valid.
+    if (expect_metadata) {
+      GoogleString encoded_serialized = response_headers.Lookup1(
+          HttpAttributes::kXPsaResponseMetadata);
+      GoogleString decoded_serialized;
+      Mime64Decode(encoded_serialized, &decoded_serialized);
+      OutputPartitions partitions;
+      EXPECT_TRUE(partitions.ParseFromString(decoded_serialized));
+      EXPECT_STREQ(correct_url, partitions.partition(0).url());
+    }
+
+    // If we did a HEAD request we don't expect any output
+    if (head_request) {
+      EXPECT_STREQ("", output);
+    }
+  }
 };
 
 }  // namespace
+
+TEST_F(RewriteContextTest, ReturnMetadataOnRequest) {
+  // Sends a fetch that asks for metadata in the response headers and checks
+  // that it's in the response.
+
+  // We need to make distributed_rewrite_hosts != "" in order to return
+  // metedata.
+  options()->set_distributed_rewrite_hosts("example.com");
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  GoogleString encoded_url = Encode(kTestDomain, "tw", "0", "a.css", "css");
+  GoogleString bad_encoded_url = Encode(kTestDomain, "tw", "1", "a.css", "css");
+
+  // Note that the .pagespeed. path with metadata request headers do not
+  // check the http cache up front.  If they did that and hit they would
+  // not have metadata to return.  Therefore the tests below have fewer
+  // cache misses than you might have expected.
+
+  // The first .pagespeed. request.  It should hit the reconstruction path.
+  // We'll miss on the metadata and the input resource.  Then fetch once
+  // and put optimized resource, input resource, and metadata in cache.
+  FetchAndValidateMetadata(encoded_url, encoded_url, true, false);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+
+  // We should get metadata even though the optimized output is cached.
+  ClearStats();
+  FetchAndValidateMetadata(encoded_url, encoded_url, true, false);
+  EXPECT_EQ(2, lru_cache()->num_hits());  // 1 metadata and 1 http
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+
+  // If we use the wrong encoding the metadata + subsequent HTTP cache will hit,
+  // following the fallback path.
+  ClearStats();
+  FetchAndValidateMetadata(bad_encoded_url, encoded_url, true, false);
+  // Expect the bad url to miss twice (RewriteDriver::CacheCallback tries
+  // twice). We should then hit the metadata and good http url.
+  EXPECT_EQ(2, lru_cache()->num_hits());     // 1 metadata and 1 http
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+
+  // If we clear the caches and use the wrong URL it should use the
+  // reconstruction path and return the right URL and the metadata.
+  ClearStats();
+  lru_cache()->Clear();
+  http_cache()->Delete(encoded_url);
+  FetchAndValidateMetadata(bad_encoded_url, encoded_url, true, false);
+  // We should fetch once and insert the input, optimized, and metadata into
+  // cache.
+  EXPECT_EQ(0, lru_cache()->num_hits());     // 1 metadata and 1 http
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_inserts());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(RewriteContextTest, NoMetadataWithoutRewriteOption) {
+  // Ensure that we don't return metadata if we're not configured
+  // to run with distributed rewrites.
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  GoogleString encoded_url = Encode(kTestDomain, "tw", "0", "a.css", "css");
+
+  // We didn't set rewrite tasks in options, so we shouldn't get any metadata.
+  FetchAndValidateMetadata(encoded_url, encoded_url, false, false);
+}
+
+TEST_F(RewriteContextTest, HeadMetadata) {
+  // Verify that a HEAD request that asks for metadata returns the metadata
+  // but not the content.  We don't check cache hit/miss numbers because that
+  // would be redundant with RewriteContextTest.ReturnMetadataOnRequest.
+
+  // We need to make distributed_rewrite_hosts != "" in order to return
+  // metedata.
+  options()->set_distributed_rewrite_hosts("example.com");
+  InitTrimFilters(kRewrittenResource);
+  InitResources();
+
+  GoogleString encoded_url = Encode(kTestDomain, "tw", "0", "a.css", "css");
+  GoogleString bad_encoded_url = Encode(kTestDomain, "tw", "1", "a.css", "css");
+
+  // Reconstruction path.
+  FetchAndValidateMetadata(encoded_url, encoded_url, true, true);
+
+  // Second fetch, verify that we skip the initial http cache check and do
+  // return metadata.
+  FetchAndValidateMetadata(encoded_url, encoded_url, true, true);
+
+  // Bad .pagespeed. hash but still gets resolved.
+  FetchAndValidateMetadata(bad_encoded_url, encoded_url, true, true);
+
+  // Bad .pagespeed. hash and empty cache but should still reconstruct properly.
+  lru_cache()->Clear();
+  http_cache()->Delete(encoded_url);
+  FetchAndValidateMetadata(bad_encoded_url, encoded_url, true, true);
+}
 
 TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   InitTrimFilters(kOnTheFlyResource);

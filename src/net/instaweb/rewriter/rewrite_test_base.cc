@@ -80,6 +80,7 @@
 namespace net_instaweb {
 
 class MessageHandler;
+class RequestHeaders;
 
 const char RewriteTestBase::kTestData[] =
     "/net/instaweb/rewriter/testdata/";
@@ -430,9 +431,19 @@ bool RewriteTestBase::FetchResourceUrl(
 
 bool RewriteTestBase::FetchResourceUrl(
     const StringPiece& url, GoogleString* content, ResponseHeaders* response) {
+  return FetchResourceUrl(url, NULL, content, response);
+}
+
+bool RewriteTestBase::FetchResourceUrl(const StringPiece& url,
+                                       RequestHeaders* request_headers,
+                                       GoogleString* content,
+                                       ResponseHeaders* response_headers) {
   content->clear();
   StringAsyncFetch async_fetch(rewrite_driver_->request_context(), content);
-  async_fetch.set_response_headers(response);
+  if (request_headers != NULL) {
+    async_fetch.set_request_headers(request_headers);
+  }
+  async_fetch.set_response_headers(response_headers);
   bool fetched = rewrite_driver_->FetchResource(url, &async_fetch);
 
   // Make sure we let the rewrite complete, and also wait for the driver to be

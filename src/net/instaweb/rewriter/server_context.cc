@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
+#include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
@@ -1109,6 +1110,10 @@ AbstractClientState* RewriteDriverFactory::NewClientState() {
 void ServerContext::set_blink_critical_line_data_finder(
     BlinkCriticalLineDataFinder* finder) {
   blink_critical_line_data_finder_.reset(finder);
+}
+
+void ServerContext::set_cache_html_info_finder(CacheHtmlInfoFinder* finder) {
+  cache_html_info_finder_.reset(finder);
 }
 
 void ServerContext::set_critical_images_finder(CriticalImagesFinder* finder) {
