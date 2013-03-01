@@ -233,6 +233,11 @@ bool LocalStorageCacheFilter::AddLscAttributes(const StringPiece url,
     return false;
   }
 
+  // Don't add the other attributes if we don't have a pagespeed_lsc_url.
+  if (has_url && element->AttributeValue(HtmlName::kPagespeedLscUrl) == NULL) {
+    return false;
+  }
+
   // TODO(matterbury): Determine how expensive this is and drop it if too high.
   RewriteFilter* filter =
       driver->FindFilter(RewriteOptions::kLocalStorageCacheId);
@@ -322,12 +327,9 @@ bool LocalStorageCacheFilter::IsHashInCookie(const RewriteDriver* driver,
 
 GoogleString LocalStorageCacheFilter::ExtractOtherImgAttributes(
     const HtmlElement* element) {
-  // Copy over all the 'other' attributes from an img element. We do not copy:
-  // pagespeed_lsc_url
-  // pagespeed_lsc_hash
-  // pagespeed_lsc_expiry
-  // pagespeed_no_defer
-  // src
+  // Copy over all the 'other' attributes from an img element except for
+  // pagespeed_lsc_url, pagespeed_lsc_hash, pagespeed_lsc_expiry,
+  // pagespeed_no_defer, and src.
   GoogleString result;
   const HtmlElement::AttributeList& attrs = element->attributes();
   for (HtmlElement::AttributeConstIterator i(attrs.begin());

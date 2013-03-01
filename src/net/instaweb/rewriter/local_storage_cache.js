@@ -118,7 +118,8 @@ pagespeed.LocalStorageCache.prototype.inlineImg = function(url) {
   // Copy over any other original attributes.
   for (var i = 1, n = arguments.length; i < n; ++i) {
     var pos = arguments[i].indexOf('=');
-    newNode[arguments[i].substring(0, pos)] = arguments[i].substring(pos + 1);
+    newNode.setAttribute(arguments[i].substring(0, pos),
+                         arguments[i].substring(pos + 1));
   }
   this.replaceLastScript(newNode);
 };
@@ -141,8 +142,8 @@ pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName,
   for (var i = 0, n = elements.length; i < n; ++i) {
     var element = elements[i];
     var hash = element.getAttribute('pagespeed_lsc_hash');
-    if (hash) {
-      var url = element.getAttribute('pagespeed_lsc_url');
+    var url = element.getAttribute('pagespeed_lsc_url');
+    if (hash && url) {
       var urlkey = 'pagespeed_lsc_url:' + url;
       var expiry = element.getAttribute('pagespeed_lsc_expiry');
       var millis = (expiry ? (new Date(expiry)).getTime() : '');
@@ -150,10 +151,15 @@ pagespeed.LocalStorageCache.prototype.processTags_ = function(tagName,
       if (!data) {
         // img.src is set to a data URI on the repeat view but is missing
         // thereafter, and we must not forget it once we have it.
-        data = this.getData(window.localStorage.getItem(urlkey));
+        var obj = window.localStorage.getItem(urlkey);
+        if (obj) {
+          data = this.getData(obj);
+        }
       }
-      window.localStorage.setItem(urlkey, millis + ' ' + hash + ' ' + data);
-      this.regenerate_cookie_ = true;
+      if (data) {
+        window.localStorage.setItem(urlkey, millis + ' ' + hash + ' ' + data);
+        this.regenerate_cookie_ = true;
+      }
     }
   }
 };
