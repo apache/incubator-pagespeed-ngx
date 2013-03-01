@@ -119,23 +119,24 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
       if (element->FindAttribute(HtmlName::kPagespeedNoDefer)) {
         rewrite_driver_->log_record()->LogJsDisableFilter(
             RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
-            RewriterInfo::NOT_APPLIED, true);
+            RewriterInfo::APPLIED_OK, true);
         return;
       }
-      // TODO(rahulbansal): Add logging for prioritize scripts.
+
+      // TODO(rahulbansal): Add a separate bool to track the inline
+      // scripts till first external script which aren't deferred.1
+      rewrite_driver_->log_record()->LogJsDisableFilter(
+          RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
+          RewriterInfo::APPLIED_OK, false);
+
+      // TODO(rahulbansal): Add logging for prioritize scripts
       if (src != NULL) {
         src->set_name(rewrite_driver_->MakeName(HtmlName::kPagespeedOrigSrc));
       } else if (index_ == 0 &&
                  rewrite_driver_->options()->Enabled(
                      RewriteOptions::kDeferJavascript)) {
-        rewrite_driver_->log_record()->LogJsDisableFilter(
-            RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
-            RewriterInfo::NOT_APPLIED, false);
         return;
       }
-      rewrite_driver_->log_record()->LogJsDisableFilter(
-          RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
-          RewriterInfo::APPLIED_OK, false);
       HtmlElement::Attribute* type = element->FindAttribute(HtmlName::kType);
       if (type != NULL) {
         type->set_name(rewrite_driver_->MakeName(HtmlName::kPagespeedOrigType));

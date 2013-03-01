@@ -102,10 +102,10 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "</body>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
-  ExpectLogRecord(0, RewriterInfo::NOT_APPLIED, false);
+  ExpectLogRecord(0, RewriterInfo::APPLIED_OK, false);
   ExpectLogRecord(1, RewriterInfo::APPLIED_OK, false);
   ExpectLogRecord(2, RewriterInfo::APPLIED_OK, false);
-  ExpectLogRecord(3, RewriterInfo::NOT_APPLIED, true);
+  ExpectLogRecord(3, RewriterInfo::APPLIED_OK, true);
 }
 
 TEST_F(JsDisableFilterTest, DisablesScriptWithExperimental) {
