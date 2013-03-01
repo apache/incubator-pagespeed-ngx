@@ -319,6 +319,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
 
   // Enable defer_javasript. We will flush JS resources only if time permits.
   Clear();
+  rewrite_driver()->SetUserAgent("prefetch_image_tag");
   options()->ClearSignatureForTesting();
   options()->EnableFilter(RewriteOptions::kDeferJavascript);
   server_context()->ComputeSignature(options());

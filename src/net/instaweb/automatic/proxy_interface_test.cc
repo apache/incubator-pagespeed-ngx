@@ -3080,7 +3080,6 @@ TEST_F(ProxyInterfaceTest, BailOutOfParsing) {
             "</body></html>", text);
 }
 
-
 TEST_F(ProxyInterfaceTest, LoggingInfoRewriteInfoMaxSize) {
   RewriteOptions* options = server_context()->global_options();
   options->ClearSignatureForTesting();
@@ -3107,6 +3106,39 @@ TEST_F(ProxyInterfaceTest, LoggingInfoRewriteInfoMaxSize) {
   EXPECT_STREQ(expected_response, text);
   EXPECT_EQ(10, logging_info()->rewriter_info_size());
   EXPECT_TRUE(logging_info()->rewriter_info_size_limit_exceeded());
+}
+
+TEST_F(ProxyInterfaceTest, WebpImageReconstruction) {
+  RewriteOptions* options = server_context()->global_options();
+  options->ClearSignatureForTesting();
+  options->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  server_context()->ComputeSignature(options);
+
+  AddFileToMockFetcher(StrCat(kTestDomain, "1.jpg"), "Puzzle.jpg",
+                       kContentTypeJpeg, 100);
+  ResponseHeaders response_headers;
+  GoogleString text;
+  RequestHeaders request_headers;
+  request_headers.Replace(HttpAttributes::kUserAgent, "webp");
+
+  const GoogleString kWebpUrl = Encode(kTestDomain, "ic", "0", "1.jpg", "webp");
+
+  FetchFromProxy(kWebpUrl, request_headers, true, &text, &response_headers);
+  response_headers.ComputeCaching();
+  EXPECT_STREQ(kContentTypeWebp.mime_type(),
+               response_headers.Lookup1(HttpAttributes::kContentType));
+  EXPECT_EQ(ServerContext::kGeneratedMaxAgeMs, response_headers.cache_ttl_ms());
+
+  const char kCssWithEmbeddedImage[] = "*{background-image:url(%s)}";
+  SetResponseWithDefaultHeaders(
+      "embedded.css", kContentTypeCss,
+      StringPrintf(kCssWithEmbeddedImage, "1.jpg"), kHtmlCacheTimeSec * 2);
+
+  FetchFromProxy(Encode(kTestDomain, "cf", "0", "embedded.css", "css"),
+                 request_headers, true, &text, &response_headers);
+  response_headers.ComputeCaching();
+  EXPECT_EQ(ServerContext::kGeneratedMaxAgeMs, response_headers.cache_ttl_ms());
+  EXPECT_EQ(StringPrintf(kCssWithEmbeddedImage, kWebpUrl.c_str()), text);
 }
 
 }  // namespace net_instaweb

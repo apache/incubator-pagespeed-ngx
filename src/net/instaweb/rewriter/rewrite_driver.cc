@@ -385,6 +385,7 @@ void RewriteDriver::Clear() {
   url_async_fetcher_ = default_url_async_fetcher_;
   STLDeleteElements(&owned_url_async_fetchers_);
   ClearDeviceProperties();
+  user_agent_.clear();
 }
 
 // Must be called with rewrite_mutex() held.
@@ -2560,6 +2561,7 @@ void RewriteDriver::AddLowPriorityRewriteTask(Function* task) {
   low_priority_rewrite_worker_->Add(task);
 }
 
+// TODO(nikhilmadan): Merge this with set_request_headers.
 void RewriteDriver::SetUserAgent(const StringPiece& user_agent_string) {
   user_agent_string.CopyToString(&user_agent_);
   ClearDeviceProperties();
