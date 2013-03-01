@@ -2566,14 +2566,12 @@ class RewriteOptions {
   // SetOptionFromName cannot be used for options associated with such
   // properties.
   //
-  // TODO(jmarantz): This particular method is named this way to make
-  // incremental reviews easier.  We are really adding a property here
-  // and not an option, and removing these wrapper methods should be
-  // done as a follow-up.
+  // TODO(jmarantz): This method should be removed and such properties
+  // should be moved into RequestContext.
   template<class OptionClass, class RewriteOptionsSubclass>
-  static void add_option(typename OptionClass::ValueType default_value,
-                         OptionClass RewriteOptionsSubclass::*offset,
-                         const char* id) {
+  static void AddRequestProperty(typename OptionClass::ValueType default_value,
+                                 OptionClass RewriteOptionsSubclass::*offset,
+                                 const char* id) {
     AddProperty(default_value, offset, id, kEndOfOptions, kProcessScope,
                 NULL, properties_);
   }
@@ -2581,12 +2579,12 @@ class RewriteOptions {
   // Adds a property with a unique option_enum_ field, allowing use of
   // SetOptionFromName.
   template<class RewriteOptionsSubclass, class OptionClass>
-  static void add_option(typename OptionClass::ValueType default_value,
-                                  OptionClass RewriteOptionsSubclass::*offset,
-                                  const char* id,
-                                  OptionEnum option_enum,
-                                  OptionScope scope,
-                                  const char* help) {
+  static void AddBaseProperty(typename OptionClass::ValueType default_value,
+                              OptionClass RewriteOptionsSubclass::*offset,
+                              const char* id,
+                              OptionEnum option_enum,
+                              OptionScope scope,
+                              const char* help) {
     AddProperty(default_value, offset, id, option_enum, scope, help,
                 properties_);
   }

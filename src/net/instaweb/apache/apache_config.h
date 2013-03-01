@@ -174,11 +174,11 @@ class ApacheConfig : public SystemRewriteOptions {
   // review-diffs are readable, at the cost of a small non-functional
   // follow-up refactor.
   template<class RewriteOptionsSubclass, class OptionClass>
-  static void add_option(typename OptionClass::ValueType default_value,
-                         OptionClass RewriteOptionsSubclass::*offset,
-                         const char* id,
-                         OptionEnum option_enum,
-                         const char* help) {
+  static void AddApacheProperty(typename OptionClass::ValueType default_value,
+                                OptionClass RewriteOptionsSubclass::*offset,
+                                const char* id,
+                                OptionEnum option_enum,
+                                const char* help) {
     AddProperty(default_value, offset, id, option_enum,
                 RewriteOptions::kServerScope, help,
                 apache_properties_);

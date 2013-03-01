@@ -53,43 +53,53 @@ void ApacheConfig::Init() {
 }
 
 void ApacheConfig::AddProperties() {
-  add_option("", &ApacheConfig::slurp_directory_, "asd",
-             RewriteOptions::kSlurpDirectory,
-             "Directory from which to read slurped resources");
-  add_option(kOrganized, &ApacheConfig::referer_statistics_output_level_,
-             "arso", RewriteOptions::kRefererStatisticsOutputLevel,
-             "Set the output level of mod_pagespeed_referer_statistics (Fast, "
-             "Simple, Organized).  There is a trade-off between readability "
-             "and speed.");
-  add_option(false, &ApacheConfig::collect_referer_statistics_, "acrs",
-             RewriteOptions::kCollectRefererStatistics,
-             "Track page, resource, and div location referrals for "
-             "prefetching.");
-  add_option(false, &ApacheConfig::hash_referer_statistics_, "ahrs",
-             RewriteOptions::kHashRefererStatistics,
-             "Hash URLs and div locations in referer statistics.");
-  add_option(false, &ApacheConfig::test_proxy_, "atp",
-             RewriteOptions::kTestProxy,
-             "Direct non-mod_pagespeed URLs to a fetcher, acting as a simple "
-             "proxy. Meant for test use only");
-  add_option("", &ApacheConfig::test_proxy_slurp_, "atps",
-             RewriteOptions::kTestProxySlurp,
-             "If set, the fetcher used by the TestProxy mode will be a "
-             "readonly slurp fetcher from the given directory");
-  add_option(false, &ApacheConfig::slurp_read_only_, "asro",
-             RewriteOptions::kSlurpReadOnly,
-             "Only read from the slurped directory, fail to fetch "
-             "URLs not already in the slurped directory");
-  add_option(false, &ApacheConfig::rate_limit_background_fetches_, "rlbf",
-             RewriteOptions::kRateLimitBackgroundFetches,
-             "Rate-limit the number of background HTTP fetches done at once");
-  add_option(0, &ApacheConfig::slurp_flush_limit_, "asfl",
-             RewriteOptions::kSlurpFlushLimit,
-             "Set the maximum byte size for the slurped content to hold before "
-             "a flush");
-  add_option(false, &ApacheConfig::experimental_fetch_from_mod_spdy_, "effms",
-             RewriteOptions::kExperimentalFetchFromModSpdy,
-             "Under construction. Do not use");
+  AddApacheProperty(
+      "", &ApacheConfig::slurp_directory_, "asd",
+      RewriteOptions::kSlurpDirectory,
+      "Directory from which to read slurped resources");
+  AddApacheProperty(
+      kOrganized, &ApacheConfig::referer_statistics_output_level_,
+      "arso", RewriteOptions::kRefererStatisticsOutputLevel,
+      "Set the output level of mod_pagespeed_referer_statistics (Fast, "
+      "Simple, Organized).  There is a trade-off between readability "
+      "and speed.");
+  AddApacheProperty(
+      false, &ApacheConfig::collect_referer_statistics_, "acrs",
+      RewriteOptions::kCollectRefererStatistics,
+      "Track page, resource, and div location referrals for "
+      "prefetching.");
+  AddApacheProperty(
+      false, &ApacheConfig::hash_referer_statistics_, "ahrs",
+      RewriteOptions::kHashRefererStatistics,
+      "Hash URLs and div locations in referer statistics.");
+  AddApacheProperty(
+      false, &ApacheConfig::test_proxy_, "atp",
+      RewriteOptions::kTestProxy,
+      "Direct non-mod_pagespeed URLs to a fetcher, acting as a simple "
+      "proxy. Meant for test use only");
+  AddApacheProperty(
+      "", &ApacheConfig::test_proxy_slurp_, "atps",
+      RewriteOptions::kTestProxySlurp,
+      "If set, the fetcher used by the TestProxy mode will be a "
+      "readonly slurp fetcher from the given directory");
+  AddApacheProperty(
+      false, &ApacheConfig::slurp_read_only_, "asro",
+      RewriteOptions::kSlurpReadOnly,
+      "Only read from the slurped directory, fail to fetch "
+      "URLs not already in the slurped directory");
+  AddApacheProperty(
+      false, &ApacheConfig::rate_limit_background_fetches_, "rlbf",
+      RewriteOptions::kRateLimitBackgroundFetches,
+      "Rate-limit the number of background HTTP fetches done at once");
+  AddApacheProperty(
+      0, &ApacheConfig::slurp_flush_limit_, "asfl",
+      RewriteOptions::kSlurpFlushLimit,
+      "Set the maximum byte size for the slurped content to hold before "
+      "a flush");
+  AddApacheProperty(
+      false, &ApacheConfig::experimental_fetch_from_mod_spdy_, "effms",
+      RewriteOptions::kExperimentalFetchFromModSpdy,
+      "Under construction. Do not use");
 
   MergeSubclassProperties(apache_properties_);
   ApacheConfig config;
