@@ -31,6 +31,21 @@ var pagespeed = window['pagespeed'];
  * @constructor
  */
 pagespeed.DelayImages = function() {
+  /*
+   * Boolean that controls whether the event handlers for lazy load are already
+   * registered.
+   * @type {boolean}
+   * @private
+   */
+  this.lazyLoadHighResHandlersRegistered_ = false;
+
+  /*
+   * Boolean that controls the logic to replace low res images with high res
+   * only once.
+   * @type {boolean}
+   * @private
+   */
+  this.highResReplaced_ = false;
 };
 
 /**
@@ -49,6 +64,63 @@ pagespeed.DelayImages.prototype['replaceElementSrc'] =
   pagespeed.DelayImages.prototype.replaceElementSrc;
 
 /**
+ * Register the event handlers to lazy load the high res images. This is
+ * called only when lazyload_high_res_experimental flag is enabled.
+ */
+pagespeed.DelayImages.prototype.registerLazyLoadHighRes = function() {
+  // Add event handlers only once
+  if (this.lazyLoadHighResHandlersRegistered_) {
+    this.highResReplaced_ = false;
+    return;
+  }
+
+  var elem = document.body;
+  var interval = 500;
+  var tapStart, tapEnd = 0;
+
+  this.highResReplaced = false;
+  if ('ontouchstart' in elem) {
+    elem.addEventListener('touchstart', function(e) {
+      tapStart = Date.now();
+    }, false);
+
+    elem.addEventListener('touchend', function(e) {
+      tapEnd = Date.now();
+      // Load the high res images if there is a multi-touch or if the tap
+      // duration is less than 500ms i.e single click. The timer catches the
+      // click event sooner than the click handler on most phones.
+      if ((e.changedTouches != null && e.changedTouches.length == 2) ||
+          (e.touches != null && e.touches.length == 2) ||
+          tapEnd - tapStart < interval) {
+        this.loadHighRes();
+      }
+    }, false);
+  } else {
+    elem.addEventListener('onclick', function(e) {
+      this.loadHighRes();
+    }, false);
+  }
+  elem.addEventListener('onload', function(e) {
+    this.loadHighRes();
+  }, false);
+  this.lazyLoadHighResHandlersRegistered_ = true;
+};
+
+pagespeed.DelayImages.prototype['registerLazyLoadHighRes'] =
+  pagespeed.DelayImages.prototype.registerLazyLoadHighRes;
+
+/**
+ * Triggered from event handlers that were previously registered. Replaces
+ * low res images with high res sources.
+ */
+pagespeed.DelayImages.prototype.loadHighRes = function() {
+  if (!this.highResReplaced_) {
+    this.replaceWithHighRes();
+    this.highResReplaced_ = true;
+  }
+};
+
+/**
  * Replaces low resolution image with high resolution image.
  */
 pagespeed.DelayImages.prototype.replaceWithHighRes = function() {
@@ -64,7 +136,6 @@ pagespeed.DelayImages.prototype['replaceWithHighRes'] =
 pagespeed.delayImagesInit = function() {
   var temp = new pagespeed.DelayImages();
   pagespeed['delayImages'] = temp;
-  temp.replaceWithHighRes();
 };
 
 pagespeed['delayImagesInit'] = pagespeed.delayImagesInit;

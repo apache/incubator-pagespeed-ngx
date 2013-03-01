@@ -208,6 +208,7 @@ class RewriteOptions {
     kEnableDeferJsExperimental,
     kEnableFlushSubresourcesExperimental,
     kEnableInlinePreviewImagesExperimental,
+    kEnableLazyLoadHighResImages,
     kEnableLazyloadInBlink,
     kEnablePrioritizingScripts,
     kEnabled,
@@ -1677,6 +1678,13 @@ class RewriteOptions {
     return enable_inline_preview_images_experimental_.value();
   }
 
+  void set_lazyload_highres_images(bool x) {
+    set_option(x, &lazyload_highres_images_);
+  }
+  bool lazyload_highres_images() const {
+    return lazyload_highres_images_.value();
+  }
+
   void set_enable_blink_debug_dashboard(bool x) {
     set_option(x, &enable_blink_debug_dashboard_);
   }
@@ -2849,6 +2857,9 @@ class RewriteOptions {
 
   // Enables experimental code in inline preview images.
   Option<bool> enable_inline_preview_images_experimental_;
+
+  // Enables the code to lazy load high res images.
+  Option<bool> lazyload_highres_images_;
 
   // Some introspective javascript is very brittle and may break if we
   // make any changes.  Enables code to detect such cases and avoid renaming.

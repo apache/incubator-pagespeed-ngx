@@ -976,6 +976,11 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // TODO(jmarantz): eliminate experiment or document.
   AddBaseProperty(
+      false, &RewriteOptions::lazyload_highres_images_,
+      "elhr", kEnableLazyLoadHighResImages,
+      kDirectoryScope,
+      NULL);
+  AddBaseProperty(
       false, &RewriteOptions::enable_blink_critical_line_, "ebcl",
       kEnableBlinkCriticalLine,
       kDirectoryScope,

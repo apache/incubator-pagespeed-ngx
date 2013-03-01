@@ -246,6 +246,9 @@ DEFINE_bool(enable_defer_js_experimental, false,
 DEFINE_bool(enable_inline_preview_images_experimental, false,
             "Enables experimental inline preview images.");
 
+DEFINE_bool(lazyload_highres_images, false,
+            "Enables experimental lazy load of high res images.");
+
 DEFINE_bool(flush_more_resources_early_if_time_permits, false,
             "Flush more resources if origin is slow to respond.");
 
@@ -563,6 +566,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_inline_preview_images_experimental")) {
     options->set_enable_inline_preview_images_experimental(
         FLAGS_enable_inline_preview_images_experimental);
+  }
+  if (WasExplicitlySet("lazyload_highres_images")) {
+    options->set_lazyload_highres_images(FLAGS_lazyload_highres_images);
   }
   if (WasExplicitlySet("image_preserve_urls")) {
     options->set_image_preserve_urls(FLAGS_image_preserve_urls);

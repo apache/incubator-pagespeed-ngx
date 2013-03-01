@@ -41,7 +41,7 @@
 namespace net_instaweb {
 
 const char DelayImagesFilter::kDelayImagesSuffix[] =
-    "\npagespeed.delayImagesInit()";
+    "\npagespeed.delayImagesInit();";
 
 const char DelayImagesFilter::kDelayImagesInlineSuffix[] =
     "\npagespeed.delayImagesInlineInit();";
@@ -57,7 +57,7 @@ DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
           driver->server_context()->static_asset_manager()),
       low_res_map_inserted_(false),
       num_low_res_inlined_images_(0),
-      is_experimental_enabled_(
+      is_experimental_inline_preview_enabled_(
           driver_->options()->enable_inline_preview_images_experimental()) {
   // Low res images will be placed inside the respective image tag if any one of
   // kDeferJavascript or kLazyloadImages is turned off or
@@ -67,9 +67,11 @@ DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
   // inlined in the image tag.
   insert_low_res_images_inplace_ =
       !DisableInplaceLowResForMobile() &&
-          (is_experimental_enabled_ ||
+          (is_experimental_inline_preview_enabled_ ||
            !driver_->options()->Enabled(RewriteOptions::kDeferJavascript) ||
            !driver_->options()->Enabled(RewriteOptions::kLazyloadImages));
+  lazyload_highres_images_ = driver_->options()->lazyload_highres_images() &&
+      driver_->device_properties()->IsMobileUserAgent();
 }
 
 DelayImagesFilter::~DelayImagesFilter() {}
@@ -114,7 +116,7 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
         ++num_low_res_inlined_images_;
         // Experimental mode adds an onload attribute of the image tag. So, low
         // res image is only added if onload function is not already present.
-        if (!is_experimental_enabled_ ||
+        if (!is_experimental_inline_preview_enabled_ ||
             element->FindAttribute(HtmlName::kOnload) == NULL) {
           // Low res image data is collected in low_res_data_map_ map. This
           // low_res_src will be moved just after last low res image in the html
@@ -131,7 +133,12 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
           if (insert_low_res_images_inplace_) {
             driver_->AddAttribute(element, HtmlName::kSrc,
                                   low_res_src->DecodedValueOrNull());
-            if (is_experimental_enabled_) {
+            // Add the image onload tag if experimental preview flag is enabled
+            // lazyload_highres flag is disabled. If the lazyload is set,
+            // we want to lazy load the high res images and not part of image
+            // onload.
+            if (is_experimental_inline_preview_enabled_ &&
+                !lazyload_highres_images_) {
               driver_->AddEscapedAttribute(
                   element, HtmlName::kOnload, kOnloadFunction);
             }
@@ -165,7 +172,6 @@ void DelayImagesFilter::InsertDelayImagesInlineJS(HtmlElement* element) {
             StaticAssetManager::kDelayImagesInlineJs,
             driver_->options()),
         kDelayImagesInlineSuffix);
-
     HtmlElement* script_element =
         driver_->NewElement(element, HtmlName::kScript);
     driver_->InsertElementAfterElement(current_element, script_element);
@@ -198,19 +204,25 @@ void DelayImagesFilter::InsertDelayImagesInlineJS(HtmlElement* element) {
 }
 
 void DelayImagesFilter::InsertDelayImagesJS(HtmlElement* element) {
-  if (is_experimental_enabled_) {
+  if (is_experimental_inline_preview_enabled_ && !lazyload_highres_images_) {
     return;
   }
   GoogleString delay_images_js;
   // Check script for changing src to high res src is inserted once.
   if (!low_res_map_inserted_) {
-  delay_images_js = StrCat(
-      static_asset_manager_->GetAsset(
-          StaticAssetManager::kDelayImagesJs,
-          driver_->options()),
-      kDelayImagesSuffix);
+    delay_images_js = StrCat(
+        static_asset_manager_->GetAsset(
+            StaticAssetManager::kDelayImagesJs,
+            driver_->options()),
+        kDelayImagesSuffix);
+  }
+
+  if (lazyload_highres_images_) {
+    StrAppend(&delay_images_js,
+              "\npagespeed.delayImages.registerLazyLoadHighRes();\n");
   } else {
-    delay_images_js = "\npagespeed.delayImages.replaceWithHighRes();\n";
+    StrAppend(&delay_images_js,
+              "\npagespeed.delayImages.replaceWithHighRes();\n");
   }
   HtmlElement* script = driver_->NewElement(element, HtmlName::kScript);
   driver_->InsertElementAfterElement(element, script);
