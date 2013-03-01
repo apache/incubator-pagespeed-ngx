@@ -702,6 +702,63 @@ TEST_F(ParserTest, font) {
   EXPECT_EQ(static_cast<Values *>(NULL), t.get()) << "invalid type";
 }
 
+TEST_F(ParserTest, numbers) {
+  scoped_ptr<Parser> p;
+  scoped_ptr<Value> v;
+
+  p.reset(new Parser("1"));
+  v.reset(p->ParseNumber());
+  ASSERT_EQ(Value::NUMBER, v->GetLexicalUnitType());
+  EXPECT_EQ(1, v->GetIntegerValue());
+  EXPECT_EQ(Value::NO_UNIT, v->GetDimension());
+  EXPECT_TRUE(p->Done());
+
+  p.reset(new Parser("1;"));
+  v.reset(p->ParseNumber());
+  ASSERT_EQ(Value::NUMBER, v->GetLexicalUnitType());
+  EXPECT_EQ(1, v->GetIntegerValue());
+  EXPECT_EQ(Value::NO_UNIT, v->GetDimension());
+  EXPECT_EQ(';', *p->in_);
+
+  p.reset(new Parser("1em;"));
+  v.reset(p->ParseNumber());
+  ASSERT_EQ(Value::NUMBER, v->GetLexicalUnitType());
+  EXPECT_EQ(1, v->GetIntegerValue());
+  EXPECT_EQ(Value::EM, v->GetDimension());
+  EXPECT_EQ(';', *p->in_);
+
+  p.reset(new Parser("1.1em;"));
+  v.reset(p->ParseNumber());
+  ASSERT_EQ(Value::NUMBER, v->GetLexicalUnitType());
+  EXPECT_EQ(1.1, v->GetFloatValue());
+  EXPECT_EQ(Value::EM, v->GetDimension());
+  EXPECT_EQ(';', *p->in_);
+
+  p.reset(new Parser(".1"));
+  v.reset(p->ParseNumber());
+  ASSERT_EQ(Value::NUMBER, v->GetLexicalUnitType());
+  EXPECT_EQ(.1, v->GetFloatValue());
+  EXPECT_EQ(Value::NO_UNIT, v->GetDimension());
+  EXPECT_TRUE(p->Done());
+
+  // Note: 1.em is *not* parsed as 1.0em, instead it needs to be parsed as
+  // INT(1) DELIM(.) IDENT(em)
+  p.reset(new Parser("1.em;"));
+  v.reset(p->ParseNumber());
+  ASSERT_EQ(Value::NUMBER, v->GetLexicalUnitType());
+  EXPECT_EQ(1, v->GetIntegerValue());
+  EXPECT_EQ(Value::NO_UNIT, v->GetDimension());  // Unit is not parsed.
+  EXPECT_EQ('.', *p->in_);  // Parsing ends on dot.
+
+  // Make sure this also works if file ends with dot.
+  p.reset(new Parser("1."));
+  v.reset(p->ParseNumber());
+  ASSERT_EQ(Value::NUMBER, v->GetLexicalUnitType());
+  EXPECT_EQ(1, v->GetIntegerValue());
+  EXPECT_EQ(Value::NO_UNIT, v->GetDimension());
+  EXPECT_EQ('.', *p->in_);
+}
+
 TEST_F(ParserTest, values) {
   scoped_ptr<Parser> a(new Parser(
       "rgb(12,25,30) url(blah) url('blah.png') 12% !important 'arial'"));
@@ -1504,6 +1561,10 @@ TEST_F(ParserTest, DeclarationError) {
   scoped_ptr<Declarations> declarations(p.ParseDeclarations());
   EXPECT_EQ(0, declarations->size());
   EXPECT_EQ(Parser::kDeclarationError, p.errors_seen_mask());
+
+  Parser p2("padding-top: 1.em");
+  declarations.reset(p2.ParseDeclarations());
+  EXPECT_TRUE(Parser::kDeclarationError & p2.errors_seen_mask());
 }
 
 TEST_F(ParserTest, SelectorError) {

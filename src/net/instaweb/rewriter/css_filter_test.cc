@@ -529,6 +529,10 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // Invalid font declaration.
     "a{font: menu foobar }",
 
+    // Do not remove . between 1 and em, this needs to be lexed as:
+    // INT(1) DELIM(.) IDENT(em)
+    "a{padding-top: 1.em }",
+
     // Things from Alexa-100 that we get parsing errors for. Most are illegal
     // syntax/typos. Some are CSS3 constructs.
 

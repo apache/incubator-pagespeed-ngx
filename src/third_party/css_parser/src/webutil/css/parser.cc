@@ -485,7 +485,11 @@ Value* Parser::ParseNumber() {
   while (!Done() && isdigit(*in_)) {
     in_++;
   }
-  if (!Done() && *in_ == '.') {
+  // CSS Spec tokenizes numbers as:
+  //   num     [0-9]+|[0-9]*\.[0-9]+
+  // Therefore we must have at least one digit after the dot.
+  // If there isn't, then dot is not part of the number.
+  if (in_ + 1 < end_ && in_[0] == '.' && isdigit(in_[1])) {
     in_++;
 
     while (!Done() && isdigit(*in_)) {
