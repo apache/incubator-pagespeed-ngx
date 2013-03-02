@@ -2074,42 +2074,6 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkBlacklistUserAgent) {
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
 }
 
-TEST_F(BlinkFlowCriticalLineTest, TestFixedUserAgentForDesktop) {
-  options_->ClearSignatureForTesting();
-  options_->set_use_fixed_user_agent_for_blink_cache_misses(true);
-  options_->set_blink_desktop_user_agent(kLinuxUserAgent);
-  server_context()->ComputeSignature(options_.get());
-  GoogleString text;
-  GoogleString user_agent;
-  ResponseHeaders response_headers;
-  RequestHeaders request_headers;
-  request_headers.Add(HttpAttributes::kUserAgent, kWindowsUserAgent);
-  FetchFromProxy("text.html", true, request_headers, &text,
-                 &response_headers, &user_agent, true);
-  EXPECT_STREQ(kLinuxUserAgent, user_agent);
-  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, statistics()->FindVariable(
-      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
-}
-
-TEST_F(BlinkFlowCriticalLineTest, TestNoFixedUserAgentForDesktop) {
-  options_->ClearSignatureForTesting();
-  options_->set_use_fixed_user_agent_for_blink_cache_misses(false);
-  options_->set_blink_desktop_user_agent(kLinuxUserAgent);
-  server_context()->ComputeSignature(options_.get());
-  GoogleString text;
-  GoogleString user_agent;
-  ResponseHeaders response_headers;
-  RequestHeaders request_headers;
-  request_headers.Add(HttpAttributes::kUserAgent, kWindowsUserAgent);
-  FetchFromProxy("text.html", true, request_headers, &text,
-                 &response_headers, &user_agent, true);
-  EXPECT_STREQ(kWindowsUserAgent, user_agent);
-  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
-  EXPECT_EQ(1, statistics()->FindVariable(
-      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
-}
-
 TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileWhiteListUserAgent) {
   GoogleString text;
   GoogleString user_agent;

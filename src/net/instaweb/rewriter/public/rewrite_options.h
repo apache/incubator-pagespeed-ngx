@@ -283,7 +283,6 @@ class RewriteOptions {
     kRunningFurious,
     kServeStaleIfFetchError,
     kSupportNoScriptEnabled,
-    kUseFixedUserAgentForBlinkCacheMisses,
     kUseSmartDiffInBlink,
     kXModPagespeedHeaderValue,
     kXPsaBlockingRewrite,
@@ -622,8 +621,6 @@ class RewriteOptions {
   static const int kDefaultFuriousTrafficPercent;
   // Default Custom Variable slot in which to put Furious information.
   static const int kDefaultFuriousSlot;
-
-  static const char kDefaultBlinkDesktopUserAgentValue[];
 
   static const char kDefaultBlockingRewriteKey[];
 
@@ -1826,20 +1823,6 @@ class RewriteOptions {
     return avoid_renaming_introspective_javascript_.value();
   }
 
-  void set_use_fixed_user_agent_for_blink_cache_misses(bool x) {
-    set_option(x, &use_fixed_user_agent_for_blink_cache_misses_);
-  }
-  bool use_fixed_user_agent_for_blink_cache_misses() const {
-    return use_fixed_user_agent_for_blink_cache_misses_.value();
-  }
-
-  void set_blink_desktop_user_agent(const StringPiece& p) {
-    set_option(GoogleString(p.data(), p.size()), &blink_desktop_user_agent_);
-  }
-  const GoogleString& blink_desktop_user_agent() const {
-    return blink_desktop_user_agent_.value();
-  }
-
   void set_passthrough_blink_for_last_invalid_response_code(bool x) {
     set_option(x, &passthrough_blink_for_last_invalid_response_code_);
   }
@@ -2929,12 +2912,6 @@ class RewriteOptions {
 
   Option<GoogleString> ga_id_;
 
-  // Whether to use a fixed user agent for prioritize_visible_content filter
-  // in case of cache miss.
-  Option<bool> use_fixed_user_agent_for_blink_cache_misses_;
-  // Fixed user agent string to be used for prioritize_visible_content cache
-  // miss cases if use_fixed_user_agent_for_blink_cache_misses_ is set to true.
-  Option<GoogleString> blink_desktop_user_agent_;
   // Pass-through request in prioritize_visible_content filter, if we got a
   // non-200 response from origin on the last fetch.
   Option<bool> passthrough_blink_for_last_invalid_response_code_;

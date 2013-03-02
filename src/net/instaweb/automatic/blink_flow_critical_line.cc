@@ -1031,14 +1031,6 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     secondary_fetch = new CriticalLineFetch(
         url_, manager_, options, driver, NULL, blink_log_record_.release(),
         blink_log_helper_.release());
-
-    // Setting a fixed user-agent for fetching content from origin server.
-    if (options->use_fixed_user_agent_for_blink_cache_misses()) {
-      base_fetch_->request_headers()->RemoveAll(HttpAttributes::kUserAgent);
-      base_fetch_->request_headers()->Add(
-          HttpAttributes::kUserAgent,
-          options->blink_desktop_user_agent());
-    }
   } else {
     // Non 200 status code and Malformed HTML case.
     // TODO(srihari):  Write system tests for this.  This will require a test

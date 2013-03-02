@@ -194,10 +194,6 @@ const int64 RewriteOptions::kDefaultMetadataCacheStalenessThresholdMs = 0;
 const int RewriteOptions::kDefaultFuriousTrafficPercent = 50;
 const int RewriteOptions::kDefaultFuriousSlot = 1;
 
-const char RewriteOptions::kDefaultBlinkDesktopUserAgentValue[] =
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/536.5 "
-    "(KHTML, like Gecko) Chrome/19.0.1084.46 Safari/536.5";
-
 // An empty default key indicates that the blocking rewrite feature is disabled.
 const char RewriteOptions::kDefaultBlockingRewriteKey[] = "";
 
@@ -1193,18 +1189,6 @@ void RewriteOptions::AddProperties() {
       "javascript in ways that require changing the URL if we see "
       "introspection in the form of "
       "document.getElementsByTagName('script').");
-  AddBaseProperty(
-      false,
-      &RewriteOptions::use_fixed_user_agent_for_blink_cache_misses_,
-      "ufua", kUseFixedUserAgentForBlinkCacheMisses,
-      kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
-  AddBaseProperty(
-      kDefaultBlinkDesktopUserAgentValue,
-      &RewriteOptions::blink_desktop_user_agent_, "bdua",
-      kBlinkDesktopUserAgent,
-      kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
   AddBaseProperty(
       false,
       &RewriteOptions::passthrough_blink_for_last_invalid_response_code_,

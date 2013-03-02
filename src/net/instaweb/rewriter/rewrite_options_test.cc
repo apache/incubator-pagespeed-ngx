@@ -702,7 +702,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(164, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(163, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -976,9 +976,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("SupportNoScriptEnabled",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kSupportNoScriptEnabled));
-  EXPECT_STREQ("UseFixedUserAgentForBlinkCacheMisses",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kUseFixedUserAgentForBlinkCacheMisses));
   EXPECT_STREQ("UseSmartDiffInBlink",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kUseSmartDiffInBlink));
