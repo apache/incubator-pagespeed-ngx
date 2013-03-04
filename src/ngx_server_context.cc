@@ -20,7 +20,7 @@
 
 #include "ngx_rewrite_options.h"
 #include "ngx_rewrite_driver_factory.h"
-#include "net/instaweb/system/public/system_cache_path.h"
+#include "net/instaweb/system/public/system_caches.h"
 
 namespace net_instaweb {
 
@@ -41,8 +41,7 @@ void NgxServerContext::ChildInit() {
   DCHECK(!initialized_);
   if (!initialized_) {
     initialized_ = true;
-    SystemCachePath* cache = ngx_factory_->GetCache(config());
-    set_lock_manager(cache->lock_manager());
+    set_lock_manager(ngx_factory_->caches()->GetLockManager(config()));
     ngx_factory_->InitServerContext(this);
   }
 }

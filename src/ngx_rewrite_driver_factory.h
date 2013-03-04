@@ -34,19 +34,15 @@
 namespace net_instaweb {
 
 class AbstractSharedMem;
-class AprMemCache;
-class AsyncCache;
-class CacheInterface;
 class NgxServerContext;
 class NgxRewriteOptions;
 class SlowWorker;
 class StaticAssetManager;
-class SystemCachePath;
+class SystemCaches;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
   static const char kStaticAssetPrefix[];
-  static const char kMemcached[];
 
   // main_conf will have only options set in the main block.  It may be NULL,
   // and we do not take ownership.
@@ -73,34 +69,11 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   virtual void ShutDown();
   virtual void StopCacheActivity();
   NgxServerContext* MakeNgxServerContext();
-  // Finds a Cache for the file_cache_path in the config.  If none exists,
-  // creates one, using all the other parameters in the NgxRewriteOptions.
-  // Currently, no checking is done that the other parameters (e.g. cache
-  // size, cleanup interval, etc.) are consistent.
-  SystemCachePath* GetCache(NgxRewriteOptions* rewrite_options);
-
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
   }
 
-  SlowWorker* slow_worker() { return slow_worker_.get(); }
-
-  // Create a new AprMemCache from the given hostname[:port] specification.
-  AprMemCache* NewAprMemCache(const GoogleString& spec);
-
-  // Makes a memcached-based cache if the configuration contains a
-  // memcached server specification.  The l2_cache passed in is used
-  // to handle puts/gets for huge (>1M) values.  NULL is returned if
-  // memcached is not specified for this server.
-  //
-  // If a non-null CacheInterface* is returned, its ownership is transferred
-  // to the caller and must be freed on destruction.
-  CacheInterface* GetMemcached(NgxRewriteOptions* options,
-                               CacheInterface* l2_cache);
-
-  // Returns the filesystem metadata cache for the given config's specification
-  // (if it has one). NULL is returned if no cache is specified.
-  CacheInterface* GetFilesystemMetadataCache(NgxRewriteOptions* config);
+  SystemCaches* caches() { return caches_.get(); }
 
   // Starts pagespeed threads if they've not been started already.  Must be
   // called after the caller has finished any forking it intends to do.
@@ -132,35 +105,15 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
  private:
   SimpleStats simple_stats_;
   Timer* timer_;
-  scoped_ptr<SlowWorker> slow_worker_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
-  typedef std::map<GoogleString, SystemCachePath*> PathCacheMap;
-  PathCacheMap path_cache_map_;
-  MD5Hasher cache_hasher_;
+
   NgxRewriteOptions* main_conf_;
   typedef std::set<NgxServerContext*> NgxServerContextSet;
   NgxServerContextSet uninitialized_server_contexts_;
 
-  // memcache connections are expensive.  Just allocate one per
-  // distinct server-list.  At the moment there is no consistency
-  // checking for other parameters.  Note that each memcached
-  // interface share the thread allocation, based on the
-  // ModPagespeedMemcachedThreads settings first encountered for
-  // a particular server-set.
-  //
-  // The QueuedWorkerPool for async cache-gets is shared among all
-  // memcached connections.
-  //
-  // The CacheInterface* value in the MemcacheMap now includes,
-  // depending on options, instances of CacheBatcher, AsyncCache,
-  // and CacheStats.  Explicit lists of AprMemCache instances and
-  // AsyncCache objects are also included, as they require extra
-  // treatment during startup and shutdown.
-  typedef std::map<GoogleString, CacheInterface*> MemcachedMap;
-  MemcachedMap memcached_map_;
-  scoped_ptr<QueuedWorkerPool> memcached_pool_;
-  std::vector<AprMemCache*> memcache_servers_;
-  std::vector<AsyncCache*> async_caches_;
+  // Manages all our caches & lock managers.
+  scoped_ptr<SystemCaches> caches_;
+
   bool threads_started_;
   bool is_root_process_;
 
