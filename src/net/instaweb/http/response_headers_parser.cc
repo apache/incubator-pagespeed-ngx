@@ -16,7 +16,6 @@
 
 #include "net/instaweb/http/public/response_headers_parser.h"
 
-#include <cctype>                      // for isspace
 #include "base/logging.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -74,8 +73,8 @@ int ResponseHeadersParser::ParseChunk(const StringPiece& text,
       parse_name_.clear();
       parse_value_.clear();
     } else if (parsing_value_) {
-      // Skip leading whitespace
-      if (!parse_value_.empty() || !isspace(c)) {
+      // Skip leading whitespace (form feeds don't count, unlike html)
+      if (!parse_value_.empty() || !IsHtmlSpace(c) || c == '\f') {
         parse_value_ += c;
       }
     } else {

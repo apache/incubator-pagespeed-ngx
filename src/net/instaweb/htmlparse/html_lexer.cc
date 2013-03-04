@@ -176,7 +176,7 @@ bool HtmlLexer::IsLegalTagChar(char c) {
 
 bool HtmlLexer::IsLegalAttrNameChar(char c) {
   return (IsI18nChar(c) ||
-          ((c != '=') && (c != '>') && (c != '/') && !isspace(c)));
+          ((c != '=') && (c != '>') && (c != '/') && !IsHtmlSpace(c)));
 }
 
 // Handle the case where "<" was recently parsed.
@@ -206,7 +206,7 @@ void HtmlLexer::EvalTagOpen(char c) {
     EmitTagOpen(true);
   } else if (c == '/') {
     state_ = TAG_BRIEF_CLOSE;
-  } else if (isspace(c)) {
+  } else if (IsHtmlSpace(c)) {
     state_ = TAG_ATTRIBUTE;
   } else {
     // Some other punctuation.  Not sure what to do.  Let's run this
@@ -223,7 +223,7 @@ void HtmlLexer::EvalTagOpen(char c) {
 void HtmlLexer::EvalTagBriefCloseAttr(char c) {
   if (c == '>') {
     FinishAttribute(c, has_attr_value_, true);
-  } else if (isspace(c)) {
+  } else if (IsHtmlSpace(c)) {
     // "<x y/ ".  This can lead to "<x y/ z" where z would be
     // a new attribute, or "<x y/ >" where the tag would be
     // closed without adding a new attribute.  In either case,
@@ -299,7 +299,7 @@ void HtmlLexer::EvalTagBriefClose(char c) {
 void HtmlLexer::EvalTagClose(char c) {
   if ((state_ != TAG_CLOSE_TERMINATE) && IsLegalTagChar(c)) {  // "</x"
     token_ += c;
-  } else if (isspace(c)) {
+  } else if (IsHtmlSpace(c)) {
     if (token_.empty()) {  // e.g. "</ a>"
       // just ignore the whitespace.  Wait for
       // the tag-name to begin.
@@ -757,7 +757,7 @@ void HtmlLexer::EvalAttribute(char c) {
   } else if (IsLegalAttrNameChar(c)) {
     attr_name_ += c;
     state_ = TAG_ATTR_NAME;
-  } else if (!isspace(c)) {
+  } else if (!IsHtmlSpace(c)) {
     SyntaxError("Unexpected char `%c' in attribute list", c);
   }
 }
@@ -769,7 +769,7 @@ void HtmlLexer::EvalAttrName(char c) {
     has_attr_value_ = true;
   } else if (IsLegalAttrNameChar(c) && (state_ != TAG_ATTR_NAME_SPACE)) {
     attr_name_ += c;
-  } else if (isspace(c)) {
+  } else if (IsHtmlSpace(c)) {
     state_ = TAG_ATTR_NAME_SPACE;
   } else if (c == '>') {
     MakeAttribute(false);
@@ -787,7 +787,7 @@ void HtmlLexer::EvalAttrName(char c) {
 }
 
 void HtmlLexer::FinishAttribute(char c, bool has_value, bool brief_close) {
-  if (isspace(c)) {
+  if (IsHtmlSpace(c)) {
     MakeAttribute(has_value);
     state_ = TAG_ATTRIBUTE;
   } else if (c == '/') {
@@ -831,7 +831,7 @@ void HtmlLexer::EvalAttrEq(char c) {
   } else if (c == '\'') {
     attr_quote_ = HtmlElement::SINGLE_QUOTE;
     state_ = TAG_ATTR_VALSQ;
-  } else if (isspace(c)) {
+  } else if (IsHtmlSpace(c)) {
     // ignore -- spaces are allowed between "=" and the value
   } else if (c == '>') {
     FinishAttribute(c, true, false);
@@ -843,7 +843,7 @@ void HtmlLexer::EvalAttrEq(char c) {
 }
 
 void HtmlLexer::EvalAttrVal(char c) {
-  if (isspace(c) || (c == '>')) {
+  if (IsHtmlSpace(c) || (c == '>')) {
     FinishAttribute(c, true, false);
   } else {
     attr_value_ += c;

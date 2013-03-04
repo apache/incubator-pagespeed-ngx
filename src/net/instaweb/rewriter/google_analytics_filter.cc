@@ -34,7 +34,6 @@
 
 #include "net/instaweb/rewriter/public/google_analytics_filter.h"
 
-#include <cctype>
 #include <vector>
 
 #include "base/logging.h"
@@ -375,7 +374,7 @@ bool GoogleAnalyticsFilter::MatchUnhandledCalls(
           if (c == '(') {
             html_parse_->InfoHere("Matched unhandled call: %s", method.data());
             return true;
-          } else if (!isspace(c)) {
+          } else if (!IsHtmlSpace(c)) {
             break;
           }
         }

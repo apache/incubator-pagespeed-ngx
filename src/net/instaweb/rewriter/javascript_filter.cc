@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/javascript_filter.h"
 
-#include <cctype>
 #include <cstddef>
 
 #include "base/logging.h"
@@ -62,7 +61,7 @@ void CleanupWhitespaceScriptBody(RewriteDriver* driver,
   const GoogleString& contents = node->contents();
   for (size_t j = 0; j < contents.size(); ++j) {
     char c = contents[j];
-    if (!isspace(c) && c != 0) {
+    if (!IsHtmlSpace(c) && c != 0) {
       driver->InfoHere("Retaining contents of script tag;"
                        " probably data for external script.");
       return;

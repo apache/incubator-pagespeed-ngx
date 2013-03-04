@@ -60,7 +60,7 @@ bool DocType::IsVersion5() const {
 bool DocType::Parse(const StringPiece& directive,
                     const ContentType& content_type) {
   // Check if this is a doctype directive; don't bother parsing if it isn't.
-  if (!StringCaseStartsWith(directive, "doctype ")) {
+  if (!StringCaseStartsWith(directive, "doctype")) {
     return false;
   }
 
@@ -70,7 +70,10 @@ bool DocType::Parse(const StringPiece& directive,
 
   // Sanity check:
   DCHECK_LE(1U, parts.size());
-  DCHECK(StringCaseEqual(parts[0], "doctype"));
+  // Make sure "doctype" was followed by a space:
+  if (!StringCaseEqual(parts[0], "doctype")) {
+    return false;
+  }
 
   // Check for known doctypes.
   // See http://en.wikipedia.org/wiki/DOCTYPE
