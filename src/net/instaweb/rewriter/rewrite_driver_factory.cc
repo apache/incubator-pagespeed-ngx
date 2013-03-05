@@ -27,7 +27,6 @@
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
-#include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
@@ -193,7 +192,6 @@ void RewriteDriverFactory::set_base_url_async_fetcher(
 
 void RewriteDriverFactory::set_hasher(Hasher* hasher) {
   hasher_.reset(hasher);
-  DCHECK(server_contexts_.empty());
 }
 
 void RewriteDriverFactory::set_timer(Timer* timer) {

@@ -160,6 +160,11 @@ class CacheInterface {
   // The name of this CacheInterface -- used for logging and debugging.
   virtual const char* Name() const = 0;
 
+  // If this cache is merely a wrapper around a backend that actually
+  // does all the work, returns that backend cache object. Otherwise
+  // just returns 'this'. Used for testing.
+  virtual CacheInterface* Backend();
+
   // Returns true if this cache is guaranteed to call its callbacks before
   // returning from Get and MultiGet.
   virtual bool IsBlocking() const = 0;

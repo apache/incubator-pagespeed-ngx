@@ -73,6 +73,9 @@ class SystemRewriteOptions : public RewriteOptions {
   const GoogleString& use_shared_mem_metadata_cache() const {
     return use_shared_mem_metadata_cache_.value();
   }
+  void set_use_shared_mem_metadata_cache(GoogleString x) {
+    set_option(x, &use_shared_mem_metadata_cache_);
+  }
   bool statistics_enabled() const {
     return statistics_enabled_.value();
   }

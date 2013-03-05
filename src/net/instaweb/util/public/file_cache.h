@@ -64,11 +64,15 @@ class FileCache : public CacheInterface {
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
   void set_worker(SlowWorker* worker) { worker_ = worker; }
+  SlowWorker* worker() { return worker_; }
 
   virtual const char* Name() const { return "FileCache"; }
   virtual bool IsBlocking() const { return true; }
   virtual bool IsHealthy() const { return true; }
   virtual void ShutDown() {}  // TODO(jmarantz): implement.
+
+  const CachePolicy* cache_policy() const { return cache_policy_.get(); }
+  const GoogleString& path() const { return path_; }
 
   // Variable names.
   // Number of times we checked disk usage in preparation from cleanup.

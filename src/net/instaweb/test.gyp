@@ -199,6 +199,7 @@
         'spriter/libpng_image_library_test.cc',
         'spriter/image_spriter_test.cc',
         'system/apr_mem_cache_test.cc',
+        'system/system_caches_test.cc',
         'util/async_cache_test.cc',
         'util/arena_test.cc',
         'util/base64_test.cc',

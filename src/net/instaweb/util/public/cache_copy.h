@@ -46,6 +46,7 @@ class CacheCopy : public CacheInterface {
   }
   virtual void Delete(const GoogleString& key) { cache_->Delete(key); }
   virtual const char* Name() const { return cache_->Name(); }
+  virtual CacheInterface* Backend() { return cache_; }
   virtual void MultiGet(MultiGetRequest* request) { cache_->MultiGet(request); }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
   virtual bool IsHealthy() const { return cache_->IsHealthy(); }

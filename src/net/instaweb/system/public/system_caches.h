@@ -103,9 +103,10 @@ class SystemCaches {
   // Creates & registers a shared memory metadata cache segment with given
   // name and size.
   //
-  // Returns a string with an error message, or an empty string in case of
-  // success.  Meant to be called from config parsing.
-  GoogleString CreateShmMetadataCache(const GoogleString& name, int64 size_kb);
+  // Returns whether successful or not, and if not, *error_msg will contain
+  // an error message.  Meant to be called from config parsing.
+  bool CreateShmMetadataCache(const GoogleString& name, int64 size_kb,
+                              GoogleString* error_msg);
 
   // Returns, perhaps creating it, an appropriate named manager for this config
   // (potentially sharing with others as appropriate).

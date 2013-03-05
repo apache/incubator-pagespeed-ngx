@@ -1406,6 +1406,12 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 fi
 
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
+  # Test that we work fine with SHM metadata cache.
+  start_test Using SHM metadata cache
+  HOST_NAME="http://shmcache.example.com"
+  URL="$HOST_NAME/mod_pagespeed_example/rewrite_images.html"
+  http_proxy=$SECONDARY_HOSTNAME fetch_until $URL 'grep -c .pagespeed.ic' 2
+
   # Test max_cacheable_response_content_length.  There are two Javascript files
   # in the html file.  The smaller Javascript file should be rewritten while
   # the larger one shouldn't.

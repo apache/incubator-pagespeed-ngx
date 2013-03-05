@@ -196,8 +196,8 @@ CacheInterface* SystemCaches::GetMemcached(SystemRewriteOptions* config) {
   return memcached;
 }
 
-GoogleString SystemCaches::CreateShmMetadataCache(
-    const GoogleString& name, int64 size_kb) {
+bool SystemCaches::CreateShmMetadataCache(
+    const GoogleString& name, int64 size_kb, GoogleString* error_msg) {
   MetadataShmCacheInfo* cache_info = NULL;
   std::pair<MetadataShmCacheMap::iterator, bool> result =
       metadata_shm_caches_.insert(
@@ -215,7 +215,8 @@ GoogleString SystemCaches::CreateShmMetadataCache(
     // that required about 4.3MiB).
     if (size_cap < 3 * 1024) {
       metadata_shm_caches_.erase(result.first);
-      return "Shared memory cache unusably small.";
+      *error_msg = "Shared memory cache unusably small.";
+      return false;
     } else {
       cache_info = new MetadataShmCacheInfo;
       cache_info->cache_backend =
@@ -231,10 +232,11 @@ GoogleString SystemCaches::CreateShmMetadataCache(
       // We can't set cache_info->cache_to_use yet since statistics aren't ready
       // yet. It will happen in ::RootInit().
       result.first->second = cache_info;
-      return GoogleString();
+      return true;
     }
   } else {
-    return StrCat("Cache named ", name, " already exists.");
+    *error_msg = StrCat("Cache named ", name, " already exists.");
+    return false;
   }
 }
 
@@ -377,6 +379,7 @@ void SystemCaches::RootInit() {
       factory_->message_handler()->Message(
           kWarning, "Unable to initialize shared memory cache: %s.",
           p->first.c_str());
+      delete cache_info->cache_backend;
       cache_info->cache_backend = NULL;
       cache_info->cache_to_use.reset(NULL);
     }
@@ -402,6 +405,7 @@ void SystemCaches::ChildInit() {
       factory_->message_handler()->Message(
           kWarning, "Unable to attach to shared memory cache: %s.",
           p->first.c_str());
+      delete cache_info->cache_backend;
       cache_info->cache_backend = NULL;
       cache_info->cache_to_use.reset(NULL);
     }

@@ -1596,9 +1596,10 @@ static const char* ParseDirective2(cmd_parms* cmd, void* data,
       return apr_pstrcat(cmd->pool, cmd->directive->directive,
                          " size_kb must be a positive 64-bit integer", NULL);
     }
-    GoogleString result = factory->caches()->CreateShmMetadataCache(arg1, kb);
-    if (!result.empty()) {
-      return apr_pstrdup(cmd->pool, result.c_str());
+    GoogleString message;
+    bool ok = factory->caches()->CreateShmMetadataCache(arg1, kb, &message);
+    if (!ok) {
+      return apr_pstrdup(cmd->pool, message.c_str());
     }
   } else {
     return "Unknown directive.";

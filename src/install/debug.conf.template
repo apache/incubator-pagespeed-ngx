@@ -563,6 +563,17 @@ ModPagespeedUsePerVHostStatistics on
   ModPagespeedCriticalImagesBeaconEnabled true
 </VirtualHost>
 
+# Test host for shared memory cache.
+ModPagespeedCreateSharedMemoryMetadataCache meta 8192
+<VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
+  ServerName shmcache.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+
+  ModPagespeedUseSharedMemoryMetadataCache meta
+  ModPagespeedEnableFilters rewrite_images
+</VirtualHost>
+
 #PER_VHOST_STATS ModPagespeedUsePerVHostStatistics on
 #PER_VHOST_STATS # Make sure we behave OK with this on, too.
 #PER_VHOST_STATS ModPagespeedFetchWithGzip on
