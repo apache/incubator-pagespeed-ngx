@@ -100,6 +100,18 @@ class ProxyUrlFetcher : public UrlFetcher {
   UrlFetcher* fetcher_;
 };
 
+class TestServerContext : public ServerContext {
+ public:
+  explicit TestServerContext(RewriteDriverFactory* factory)
+      : ServerContext(factory) {
+  }
+
+  virtual ~TestServerContext() {
+  }
+
+  virtual bool ProxiesHtml() const { return true; }
+};
+
 }  // namespace
 
 const int64 TestRewriteDriverFactory::kStartTimeMs =
@@ -245,6 +257,10 @@ RewriteOptions* TestRewriteDriverFactory::NewRewriteOptions() {
   // with different HTML headers than expected.
   options->set_rewrite_deadline_ms(20);
   return options;
+}
+
+ServerContext* TestRewriteDriverFactory::NewServerContext() {
+  return new TestServerContext(this);
 }
 
 void TestRewriteDriverFactory::AddPlatformSpecificDecodingPasses(

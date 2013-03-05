@@ -555,17 +555,30 @@ const RewriteOptions* ProxyFetch::Options() {
 }
 
 void ProxyFetch::HandleHeadersComplete() {
-  if (original_content_fetch_ != NULL) {
-    ResponseHeaders* headers = original_content_fetch_->response_headers();
-    headers->CopyFrom(*response_headers());
-    original_content_fetch_->HeadersComplete();
-  }
   // Figure out semantic info from response_headers_
   claims_html_ = response_headers()->IsHtmlLike();
 
+  if (original_content_fetch_ != NULL) {
+    ResponseHeaders* headers = original_content_fetch_->response_headers();
+    headers->CopyFrom(*response_headers());
+
+    if (!server_context_->ProxiesHtml() && claims_html_) {
+      LOG(DFATAL) << "Investigate how servers that don't proxy HTML can be "
+          "initiated with original_content_fetch_ non-null";
+      headers->SetStatusAndReason(HttpStatus::kForbidden);
+    }
+    original_content_fetch_->HeadersComplete();
+  }
+
+  bool sanitize = cross_domain_;
+  if (claims_html_ && !server_context_->ProxiesHtml()) {
+    response_headers()->SetStatusAndReason(HttpStatus::kForbidden);
+    sanitize = true;
+  }
+
   // Make sure we never serve cookies if the domain we are serving
   // under isn't the domain of the origin.
-  if (cross_domain_) {
+  if (sanitize) {
     // ... by calling Sanitize to remove them.
     bool changed = response_headers()->Sanitize();
     if (changed) {
@@ -773,6 +786,10 @@ AbstractClientState* ProxyFetch::GetClientState(
 
 bool ProxyFetch::HandleWrite(const StringPiece& str,
                              MessageHandler* message_handler) {
+  if (claims_html_ && !server_context_->ProxiesHtml()) {
+    return true;
+  }
+
   // TODO(jmarantz): check if the server is being shut down and punt.
   if (original_content_fetch_ != NULL) {
     original_content_fetch_->Write(str, message_handler);

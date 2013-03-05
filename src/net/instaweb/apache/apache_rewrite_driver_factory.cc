@@ -189,6 +189,16 @@ void ApacheRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   if (pcache->GetCohort(RewriteDriver::kDomCohort) == NULL) {
     pcache->AddCohort(RewriteDriver::kDomCohort);
   }
+
+  // TODO(jmarantz): It would make more sense to have the base ServerContext
+  // own the ProxyFetchFactory, but that would create a cyclic directory
+  // dependency.  This can be resolved minimally by moving proxy_fetch.cc
+  // from automatic/ to rewriter/.  I think we should also think harder about
+  // separating out rewriting infrastructure from rewriters.
+  ApacheServerContext* apache_server_context =
+      dynamic_cast<ApacheServerContext*>(server_context);
+  CHECK(apache_server_context != NULL);
+  apache_server_context->InitProxyFetchFactory();
 }
 
 void ApacheRewriteDriverFactory::InitStaticAssetManager(
@@ -637,6 +647,11 @@ ApacheServerContext* ApacheRewriteDriverFactory::MakeApacheServerContext(
   ApacheServerContext* rm = new ApacheServerContext(this, server, version_);
   uninitialized_managers_.insert(rm);
   return rm;
+}
+
+ServerContext* ApacheRewriteDriverFactory::NewServerContext() {
+  DCHECK(false);
+  return NULL;
 }
 
 bool ApacheRewriteDriverFactory::PoolDestroyed(ApacheServerContext* rm) {

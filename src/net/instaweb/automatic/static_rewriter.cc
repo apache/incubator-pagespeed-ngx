@@ -54,6 +54,22 @@ class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
 
+namespace {
+
+class FileServerContext : public ServerContext {
+ public:
+  explicit FileServerContext(RewriteDriverFactory* factory)
+      : ServerContext(factory) {
+  }
+
+  virtual ~FileServerContext() {
+  }
+
+  virtual bool ProxiesHtml() const { return false; }
+};
+
+}  // namespace
+
 FileRewriter::FileRewriter(const net_instaweb::RewriteGflags* gflags,
                            bool echo_errors_to_stdout)
     : gflags_(gflags),
@@ -108,6 +124,10 @@ void FileRewriter::SetupCaches(ServerContext* resource_manager) {
 
 Statistics* FileRewriter::statistics() {
   return &simple_stats_;
+}
+
+ServerContext* FileRewriter::NewServerContext() {
+  return new FileServerContext(this);
 }
 
 StaticRewriter::StaticRewriter(int* argc, char*** argv)

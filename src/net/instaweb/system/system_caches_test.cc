@@ -152,7 +152,7 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
 
   // Takes ownership of config.
   ServerContext* SetupServerContext(SystemRewriteOptions* config) {
-    scoped_ptr<ServerContext> server_context(new ServerContext(factory()));
+    scoped_ptr<ServerContext> server_context(factory()->NewServerContext());
     server_context->reset_global_options(config);
     server_context->set_statistics(factory()->statistics());
     system_caches_->SetupCaches(server_context.get());

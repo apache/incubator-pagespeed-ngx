@@ -28,11 +28,13 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/apache_server_context.h"
 #include "net/instaweb/apache/apache_slurp.h"
+#include "net/instaweb/apache/apache_writer.h"
 #include "net/instaweb/apache/apr_timer.h"
 #include "net/instaweb/apache/header_util.h"
 #include "net/instaweb/apache/in_place_resource_recorder.h"
 #include "net/instaweb/apache/instaweb_context.h"
 #include "net/instaweb/apache/mod_instaweb.h"
+#include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -42,6 +44,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/public/global_constants.h"
+#include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -51,6 +54,7 @@
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -140,6 +144,89 @@ class SelfOwnedStringAsyncFetch : public StringAsyncFetch {
   bool detached_;
 
   DISALLOW_COPY_AND_ASSIGN(SelfOwnedStringAsyncFetch);
+};
+
+// Links an apache request_rec* to an AsyncFetch, adding the ability to
+// block based on a condition variable.
+//
+// TODO(jmarantz): consider refactoring to share code with ProxyFetch, though
+// this implementation does not imply any rewriting; it's just a caching
+// proxy.
+class ApacheProxyFetch : public AsyncFetchUsingWriter {
+ public:
+  ApacheProxyFetch(const GoogleString& mapped_url, ThreadSystem* thread_system,
+                   RewriteDriver* driver, request_rec* request)
+      : AsyncFetchUsingWriter(driver->request_context(), &apache_writer_),
+        mapped_url_(mapped_url),
+        apache_writer_(request),
+        driver_(driver),
+        mutex_(thread_system->NewMutex()),
+        condvar_(mutex_->NewCondvar()),
+        done_(false) {
+    // We are proxying content, and the caching in the http configuration
+    // should not apply; we want to use the caching from the proxy.
+    apache_writer_.set_disable_downstream_header_filters(true);
+    apache_writer_.set_strip_cookies(true);
+    ApacheRequestToRequestHeaders(*request, request_headers());
+    request_headers()->RemoveAll(HttpAttributes::kCookie);
+    request_headers()->RemoveAll(HttpAttributes::kCookie2);
+  }
+
+  virtual ~ApacheProxyFetch() {
+  }
+
+  virtual void HandleHeadersComplete() {
+    apache_writer_.OutputHeaders(response_headers());
+  }
+
+  virtual void HandleDone(bool success) {
+    ScopedMutex lock(mutex_.get());
+    done_ = true;
+    condvar_->Signal();
+  }
+
+  // Blocks indefinitely waiting for the proxy fetch to complete.
+  // Every 'blocking_fetch_timeout_ms', log a message so that if
+  // we get stuck there's noise in the logs, but we don't expect this
+  // to happen because underlying fetch/cache timeouts should fire.
+  //
+  // Note that enforcing a timeout in this function makes debugging
+  // difficult.
+  void Wait() {
+    int64 timeout_ms = driver_->options()->blocking_fetch_timeout_ms();
+    ServerContext* server_context = driver_->server_context();
+    MessageHandler* handler = server_context->message_handler();
+    Timer* timer = server_context->timer();
+    int64 start_ms = timer->NowMs();
+    {
+      ScopedMutex lock(mutex_.get());
+      while (!done_) {
+        condvar_->TimedWait(timeout_ms);
+        if (!done_) {
+          int64 elapsed_ms = timer->NowMs() - start_ms;
+          handler->Message(
+              kWarning, "Waiting for in-place ProxyFetch on URL %s for %g sec",
+              mapped_url_.c_str(), elapsed_ms / 1000.0);
+        }
+      }
+    }
+  }
+
+  // Returning true here tells Serf to use the threaded fetcher.  We can
+  // also consider returning false here and polling the fetcher.
+  //
+  // TODO(jmarantz): delete the non-threaded fetcher support in Serf.
+  virtual bool EnableThreaded() const { return true; }
+
+ private:
+  GoogleString mapped_url_;
+  ApacheWriter apache_writer_;
+  RewriteDriver* driver_;
+  scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
+  scoped_ptr<ThreadSystem::Condvar> condvar_;
+  bool done_;
+
+  DISALLOW_COPY_AND_ASSIGN(ApacheProxyFetch);
 };
 
 bool IsCompressibleContentType(const char* content_type) {
@@ -327,11 +414,20 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
   // take care of timing out our rewrites.  However this timeout can
   // occur while debugging.
   int64 timeout_ms = driver->options()->blocking_fetch_timeout_ms();
+  Timer* timer = server_context->timer();
+  int64 start_ms = timer->NowMs();
+
+  // TODO(jmarantz): Consider re-using ApacheProxyFetch here so we can stream
+  // out responses to the client rather than buffering.  Even if we get the
+  // entire response in one shot, we'd avoid copying large resources before
+  // serving them.
   while (!fetch->done()) {
     driver->BoundedWaitFor(RewriteDriver::kWaitForCompletion, timeout_ms);
     if (!fetch->done()) {
+      int64 elapsed_ms = timer->NowMs() - start_ms;
       message_handler->Message(
-          kWarning, "Waiting for in-place rewrite on URL %s", url.c_str());
+          kWarning, "Waiting for in-place rewrite on URL %s for %g sec",
+          url.c_str(), elapsed_ms / 1000.0);
     }
   }
 
@@ -370,6 +466,36 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
   }
   fetch->Detach();
   driver->Cleanup();
+
+  return handled;
+}
+
+bool handle_as_proxy(ApacheServerContext* server_context,
+                     request_rec* request,
+                     const RequestContextPtr& request_context,
+                     GoogleUrl* gurl,
+                     RewriteOptions* options,
+                     scoped_ptr<RewriteOptions>* custom_options) {
+  bool handled = false;
+  // Consider Issue 609: proxying an external CSS file via
+  // ModPagespeedMapProxyDomain, and the CSS file makes reference to
+  // a font file, which mod_pagespeed does not know anything about, and
+  // does not know how to absolutify.  We need to handle the request for
+  // the external font file here, even if IPRO (in place resource
+  // optimization) is off.
+  bool is_proxy = false;
+  GoogleString mapped_url;
+  if (options->domain_lawyer()->MapOriginUrl(*gurl, &mapped_url, &is_proxy) &&
+      is_proxy) {
+    RewriteDriver* driver = ResourceFetch::GetDriver(
+        *gurl, custom_options->release(), server_context, request_context);
+    ApacheProxyFetch apache_proxy_fetch(
+        mapped_url, server_context->thread_system(), driver, request);
+    server_context->proxy_fetch_factory()->StartNewProxyFetch(
+        mapped_url, &apache_proxy_fetch, driver, NULL, NULL);
+    apache_proxy_fetch.Wait();
+    handled = true;
+  }
 
   return handled;
 }
@@ -430,6 +556,9 @@ bool handle_as_resource(ApacheServerContext* server_context,
     handle_as_pagespeed_resource(request_context, gurl, url,
                                  custom_options.release(), server_context,
                                  request_headers.release(), request);
+  } else if (handle_as_proxy(server_context, request, request_context, gurl,
+                             options, &custom_options)) {
+    handled = true;
   } else if (options->in_place_rewriting_enabled() && options->enabled() &&
              options->IsAllowed(url)) {
     handled = handle_as_in_place(request_context, gurl, url,

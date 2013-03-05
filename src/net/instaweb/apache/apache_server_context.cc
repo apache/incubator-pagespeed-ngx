@@ -24,6 +24,7 @@
 #include "net/instaweb/apache/apache_rewrite_driver_factory.h"
 #include "net/instaweb/apache/loopback_route_fetcher.h"
 #include "net/instaweb/apache/mod_spdy_fetcher.h"
+#include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -404,6 +405,10 @@ void ApacheServerContext::ApplySessionFetchers(
     driver->SetSessionFetcher(new AddHeadersFetcher(driver->options(),
                                                     driver->async_fetcher()));
   }
+}
+
+void ApacheServerContext::InitProxyFetchFactory() {
+  proxy_fetch_factory_.reset(new ProxyFetchFactory(this));
 }
 
 }  // namespace net_instaweb

@@ -557,6 +557,18 @@ class ServerContext {
     return decoding_driver_.get();
   }
 
+  // Determines whether in this server, it makes sense to proxy HTML
+  // from external sources.  If we're acting as a reverse proxy that
+  // talks to the backend over HTTP, it makes sense to set this to
+  // 'true'.  The JavaScript loaded from the HTML on the origin
+  // domain will be given full access to cookies on the proxied
+  // domain.
+  //
+  // For resource-proxying (e.g. ModPagespeedMapProxyDomain) this should
+  // be set to 'false' as that command is intended only for reosurces, not
+  // for HTML.
+  virtual bool ProxiesHtml() const = 0;
+
  protected:
   // Takes ownership of the given pool, making sure to clean it up at the
   // appropriate spot during shutdown.

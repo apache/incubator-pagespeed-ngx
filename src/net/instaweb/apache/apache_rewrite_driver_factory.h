@@ -132,7 +132,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
       const StringPiece& name, const bool logging,
       const int64 logging_interval_ms, const GoogleString& logging_file);
 
-  ApacheServerContext* MakeApacheServerContext(server_rec* server);
+  virtual ApacheServerContext* MakeApacheServerContext(server_rec* server);
+  ServerContext* NewServerContext();
+
 
   // Makes fetches from PSA to origin-server request
   // accept-encoding:gzip, even when used in a context when we want

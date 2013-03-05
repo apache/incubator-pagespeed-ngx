@@ -153,6 +153,9 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   // Note that this disables ajax rewriting by default.
   virtual RewriteOptions* NewRewriteOptions();
 
+  // Note that this enables html proxying.
+  virtual ServerContext* NewServerContext();
+
   virtual bool IsDebugClient(const GoogleString& ip) const {
     return ip == "127.0.0.1";
   }

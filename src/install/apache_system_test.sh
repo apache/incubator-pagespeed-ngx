@@ -13,6 +13,7 @@
 # NO_VHOST_MERGE=on can be passed to tell tests to assume
 # that ModPagespeedInheritVHostConfig has been turned off.
 
+
 if [ -z $APACHE_DEBUG_PAGESPEED_CONF ]; then
   APACHE_DEBUG_PAGESPEED_CONF=/usr/local/apache2/conf/pagespeed.conf
 fi
@@ -88,6 +89,9 @@ if egrep -q "^    # ModPagespeedStatistics off$" $APACHE_DEBUG_PAGESPEED_CONF &&
   rm $MOD_PAGESPEED_STATS_LOG*
   START_TIME=$(date +%s)000 # We need this in milliseconds.
   sleep 2; # Make sure we're around long enough to log stats.
+  statistics_enabled="1"
+else
+  statistics_enabled="0"
 fi
 
 # General system tests
@@ -108,7 +112,7 @@ fetch_until $TEST_ROOT/bot_test.html 'grep -c \.pagespeed\.' 2
 
 # Determine whether statistics are enabled or not.  If not, don't test them,
 # but do an additional regression test that tries harder to get a cache miss.
-if fgrep -q "# ModPagespeedStatistics off" $APACHE_DEBUG_PAGESPEED_CONF; then
+if [ $statistics_enabled = "1" ]; then
   start_test 404s are served and properly recorded.
   NUM_404=$(scrape_stat resource_404_count)
   WGET_ERROR=$($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
@@ -412,6 +416,7 @@ start_test ModPagespeedShardDomain directive in .htaccess file
 fetch_until -save $TEST_ROOT/shard/shard.html 'grep -c \.pagespeed\.' 4
 check [ $(grep -ce href=\"http://shard1 $FETCH_FILE) = 2 ];
 check [ $(grep -ce href=\"http://shard2 $FETCH_FILE) = 2 ];
+WGET_ARGS=""
 
 start_test server-side includes
 fetch_until -save $TEST_ROOT/ssi/ssi.shtml?ModPagespeedFilters=combine_css \
@@ -1016,8 +1021,8 @@ blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
   #
   # This rewrites the CSS, absolutifying the embedded relative image URL
   # reference based on the the main server host.
-  start_test Relative images embedded in a CSS file served from a mapped domain
   WGET_ARGS=""
+  start_test Relative images embedded in a CSS file served from a mapped domain
   DIR="mod_pagespeed_test/map_css_embedded"
   URL="http://www.example.com/$DIR/issue494.html"
   MAPPED_CSS="$DIR/A.styles.css.pagespeed.cf.w9O-kBfMWw.css"
@@ -1506,13 +1511,15 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
 
   # Verify that we can send a critical image beacon and that lazyload_images
   # does not try to lazyload the critical images.
-  start_test lazyload with critical images beacon
+  WGET_ARGS=""
+  start_test lazyload_images,rewrite_images with critical images beacon
   HOST_NAME="http://imagebeacon.example.com"
   URL="$HOST_NAME/mod_pagespeed_test/image_rewriting/rewrite_images.html"
   # There are 3 images on rewrite_images.html. Check that they are all
   # lazyloaded by default.
   http_proxy=$SECONDARY_HOSTNAME\
     fetch_until -save -recursive $URL 'fgrep -c pagespeed_lazy_src=' 3
+
   check [ $(grep -c "^pagespeed\.criticalImagesBeaconInit" \
     $OUTDIR/rewrite_images.html) = 1 ];
   # We need the options hash to send a critical image beacon, so extract it from
@@ -1524,8 +1531,9 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   BEACON_URL+="url=http%3A%2F%2Fimagebeacon.example.com%2Fmod_pagespeed_test%2F"
   BEACON_URL+="image_rewriting%2Frewrite_images.html"
   BEACON_URL+="&oh=$OPTIONS_HASH&ci=2932493096"
-  http_proxy=$SECONDARY_HOSTNAME \
-    OUT=$($WGET --save-headers -q -O - "$BEACON_URL")
+  OUT=$( \
+    env http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -q -O - "$BEACON_URL")
+
   check_from "$OUT" egrep -q "HTTP/1[.]. 204"
   # Now only 2 of the images should be lazyloaded, Puzzle.jpg should not be.
   http_proxy=$SECONDARY_HOSTNAME \
@@ -1565,6 +1573,63 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
     check [ $REJECTIONS -eq 1 ]
   fi
 fi
+
+WGET_ARGS=""
+start_test Issue 609 -- proxying non-.pagespeed content, and caching it locally
+URL="http://$HOSTNAME/modpagespeed_http/not_really_a_font.woff"
+echo $WGET_DUMP $URL ....
+OUT1=$(wget -O - --save-headers $URL)
+check_from "$OUT1" egrep -q "This is not really font data"
+if [ $statistics_enabled = "1" ]; then
+  OLDSTATS=$OUTDIR/proxy_fetch_stats.old
+  NEWSTATS=$OUTDIR/proxy_fetch_stats.new
+  $WGET_DUMP $STATISTICS_URL > $OLDSTATS
+fi
+OUT2=$($WGET_DUMP $URL)
+check_from "$OUT2" egrep -q "This is not really font data"
+if [ $statistics_enabled = "1" ]; then
+  $WGET_DUMP $STATISTICS_URL > $NEWSTATS
+  check_stat $OLDSTATS $NEWSTATS cache_hits 1
+  check_stat $OLDSTATS $NEWSTATS cache_misses 0
+fi
+
+start_test proxying from external domain should optimize images in-place.
+# Puzzle.jpg on disk is 241260 bytes, but we will optimize it with default
+# settings to 216942, but for this test let's look for anything below 230k.
+# Note that wc -c will include the headers.
+URL="http://$HOSTNAME/modpagespeed_http/Puzzle.jpg"
+fetch_until -save $URL "wc -c" 230000 "--save-headers" "-lt"
+
+# We should see the origin etag in the wget output due to -save.  Note that
+# the cache-control will start at 5 minutes -- the default on modpagespeed.com,
+# and descend as time expires from when we strobed the image.  However, we
+# provide a non-trivial etag with the content hash, but we'll just match the
+# common prefix.
+check_from "$(head $FETCH_UNTIL_OUTFILE)" fgrep -q 'Etag: W/"PSA-aj-'
+
+# Now add set jpeg compression to 75 and we expect 73238, but will test for 90k.
+# Note that wc -c will include the headers.
+start_test Proxying image from another domain, customizing image compression.
+URL+="?ModPagespeedJpegRecompressionQuality=75"
+fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
+check_from "$(head $FETCH_UNTIL_OUTFILE)" fgrep -q 'Etag: W/"PSA-aj-'
+
+echo Ensure that rewritten images strip cookies present at origin
+check_not_from "$(head $FETCH_UNTIL_OUTFILE)" fgrep -c 'Set-Cookie'
+ORIGINAL_HEADERS=$($WGET_DUMP http://modpagespeed.com/do_not_modify/Puzzle.jpg \
+    | head)
+check_from "$ORIGINAL_HEADERS" fgrep -c 'Set-Cookie'
+
+start_test proxying HTML from external domain should not work
+URL="http://$HOSTNAME/modpagespeed_http/evil.html"
+OUT=$($WGET_DUMP $URL)
+check [ $? = 8 ]
+check_not_from "$OUT" fgrep -q 'Set-Cookie:'
+
+start_test Fetching the HTML directly from the origin is fine including cookie.
+URL="http://modpagespeed.com/do_not_modify/evil.html"
+OUT=$($WGET_DUMP $URL)
+check_from "$OUT" fgrep -q 'Set-Cookie: test-cookie'
 
 # Test handling of large HTML files. We first test with a cold cache, and verify
 # that we bail out of parsing and insert a script redirecting to

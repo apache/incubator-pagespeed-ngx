@@ -303,11 +303,9 @@ class RewriteDriverFactory {
 
   virtual Hasher* NewHasher() = 0;
 
-  // If the platform uses CreateServerContext() and needs a platform-specific
-  // implementation, it should override this. Default implementation makes
-  // plain ServerContext's. Note that InitServerContext will be applied to the
-  // result.
-  virtual ServerContext* NewServerContext();
+  // Creates a new ServerContext* object.  ServerContexst itself must be
+  // overridden per Factory as it has at least one pure virtual method.
+  virtual ServerContext* NewServerContext() = 0;
 
   virtual CriticalCssFinder* DefaultCriticalCssFinder();
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
