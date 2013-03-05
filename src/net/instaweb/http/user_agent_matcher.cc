@@ -433,4 +433,33 @@ bool UserAgentMatcher::GetScreenResolution(
   return false;
 }
 
+bool UserAgentMatcher::UserAgentExceedsChromeAndroidBuildAndPatch(
+    const StringPiece& user_agent, int required_build,
+    int required_patch) const {
+  // By default user agent sniffing is disabled.
+  if (required_build == -1 && required_patch == -1) {
+    return false;
+  }
+  // Verify if this is an Android user agent.
+  if (!IsAndroidUserAgent(user_agent)) {
+    return false;
+  }
+  int major = -1;
+  int minor = -1;
+  int parsed_build = -1;
+  int parsed_patch = -1;
+  if (!GetChromeBuildNumber(user_agent, &major, &minor,
+                            &parsed_build, &parsed_patch)) {
+    return false;
+  }
+
+  if (parsed_build < required_build) {
+    return false;
+  } else if (parsed_build == required_build && parsed_patch < required_patch) {
+    return false;
+  }
+
+  return true;
+}
+
 }  // namespace net_instaweb

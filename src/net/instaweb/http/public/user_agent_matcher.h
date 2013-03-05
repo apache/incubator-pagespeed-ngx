@@ -129,6 +129,10 @@ class UserAgentMatcher {
   virtual bool GetScreenResolution(
         const StringPiece& user_agent, int* width, int* height);
 
+  bool UserAgentExceedsChromeAndroidBuildAndPatch(
+      const StringPiece& user_agent, int required_build,
+      int required_patch) const;
+
  private:
   FastWildcardGroup supports_image_inlining_;
   FastWildcardGroup blink_desktop_whitelist_;
