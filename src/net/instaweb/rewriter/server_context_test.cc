@@ -937,33 +937,32 @@ TEST_F(ServerContextTest, TestOnTheFly) {
 
 TEST_F(ServerContextTest, TestHandleBeaconNoLoadParam) {
   EXPECT_FALSE(server_context()->HandleBeacon(
-      "/index.html", UserAgentStrings::kChromeUserAgent,
+      "", UserAgentStrings::kChromeUserAgent,
       CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconInvalidLoadParam) {
   EXPECT_FALSE(server_context()->HandleBeacon(
-      "/beacon?ets=asd", UserAgentStrings::kChromeUserAgent,
+      "ets=asd", UserAgentStrings::kChromeUserAgent,
       CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconNoUrl) {
   EXPECT_FALSE(server_context()->HandleBeacon(
-      "/beacon?ets=load:34", UserAgentStrings::kChromeUserAgent,
+      "ets=load:34", UserAgentStrings::kChromeUserAgent,
       CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconInvalidUrl) {
   EXPECT_FALSE(server_context()->HandleBeacon(
-      "/beacon?url=%2f%2finvalidurl&ets=load:34",
+      "url=%2f%2finvalidurl&ets=load:34",
       UserAgentStrings::kChromeUserAgent, CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeacon) {
   EXPECT_TRUE(server_context()->HandleBeacon(
-      "/beacon?url=http%3A%2F%2Flocalhost%3A8080%2Findex.html"
-      "&ets=load:34", UserAgentStrings::kChromeUserAgent,
-      CreateRequestContext()));
+      "url=http%3A%2F%2Flocalhost%3A8080%2Findex.html&ets=load:34",
+      UserAgentStrings::kChromeUserAgent, CreateRequestContext()));
 }
 
 TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
@@ -997,7 +996,7 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
 
   GoogleString beacon_url;
   beacon_url = StrCat(
-      "/beacon?url=http%3A%2F%2Fwww.example.com"
+      "url=http%3A%2F%2Fwww.example.com"
       "&oh=", options_hash,
       "&ci=", hash1);
   EXPECT_TRUE(server_context()->HandleBeacon(
@@ -1012,7 +1011,7 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
     EXPECT_EQ(hash1, property->value());
 
     beacon_url = StrCat(
-        "/beacon?url=http%3A%2F%2Fwww.example.com"
+        "url=http%3A%2F%2Fwww.example.com"
         "&oh=", options_hash,
         "&ci=", hash1, ",", hash2);
     EXPECT_TRUE(server_context()->HandleBeacon(
@@ -1029,7 +1028,7 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
 
     // Ensure duplicate critimgs only get inserted once.
     beacon_url = StrCat(
-        "/beacon?url=http%3A%2F%2Fwww.example.com"
+        "url=http%3A%2F%2Fwww.example.com"
         "&oh=", options_hash,
         "&ci=", hash1, ",", hash1);
     EXPECT_TRUE(server_context()->HandleBeacon(
@@ -1063,7 +1062,7 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
   EXPECT_FALSE(property->has_value());
 
   beacon_url = StrCat(
-      "/beacon?url=http%3A%2F%2Fwww.example.com"
+      "url=http%3A%2F%2Fwww.example.com"
       "&oh=", options_hash,
       "&ci=", hash2);
   EXPECT_TRUE(server_context()->HandleBeacon(

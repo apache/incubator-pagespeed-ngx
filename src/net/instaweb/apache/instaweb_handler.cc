@@ -97,6 +97,14 @@ const char kResourceUrlNote[] = "mod_pagespeed_resource";
 const char kResourceUrlNo[] = "<NO>";
 const char kResourceUrlYes[] = "<YES>";
 
+// Set the maximum size we allow for processing a POST body. The limit of 128k
+// is based on a best guess for the maximum size of beacons required for
+// critical CSS.
+// TODO(jud): Factor this out, potentially into an option, and pass the value to
+// any filters using beacons with POST requests (CriticalImagesBeaconFilter for
+// instance).
+const size_t kMaxPostSizeBytes = 131072;
+
 // StringAsyncFetch that can be detached. It will delete itself after the
 // latter of Detach() and Done() are called. Therefore, the results can be
 // used in the scope of a function, but the fetch can live longer if we
@@ -883,6 +891,110 @@ apr_status_t instaweb_statistics_handler(
   return OK;
 }
 
+// Copy the query params from a GET request into data. Return true if
+// successful, otherwise, returns false and sets ret to the appropriate status.
+bool parse_query_params_from_get(const request_rec* request, GoogleString* data,
+                         apr_status_t* ret) {
+  if (request->method_number != M_GET) {
+    *ret = HTTP_METHOD_NOT_ALLOWED;
+    return false;
+  }
+
+  // Add a dummy host (www.example.com) to the request URL to make it absolute
+  // so that GoogleUrl can be used for parsing.
+  GoogleUrl base("http://www.example.com");
+  GoogleUrl url(base, request->unparsed_uri);
+
+  if (!url.is_valid() || !url.has_query()) {
+    *ret = HTTP_BAD_REQUEST;
+    return false;
+  }
+
+  url.Query().CopyToString(data);
+  return true;
+}
+
+// Read the body from a POST request into data. Return true if successful,
+// otherwise, returns false and sets ret to the appropriate status.
+bool parse_body_from_post(const request_rec* request, GoogleString* data,
+                          apr_status_t* ret) {
+  if (request->method_number != M_POST) {
+    *ret = HTTP_METHOD_NOT_ALLOWED;
+    return false;
+  }
+
+  // Verify that the request has the correct content type for a form POST
+  // submission. Ideally, we could use request->content_type here, but that is
+  // coming back as NULL, even when the header was set correctly.
+  const char* content_type = apr_table_get(request->headers_in,
+                                           HttpAttributes::kContentType);
+  if (content_type == NULL ||
+      (!StringCaseEqual(content_type, "application/x-www-form-urlencoded"))) {
+    *ret = HTTP_BAD_REQUEST;
+    return false;
+  }
+
+  // Setup the number of bytes to try to read from the POST body. If the
+  // Content-Length header is set, use it, otherwise try to pull up to
+  // kMaxPostSizeBytes.
+  int content_len = kMaxPostSizeBytes;
+  const char* content_len_str = apr_table_get(request->headers_in,
+                                              HttpAttributes::kContentLength);
+  if (content_len_str != NULL) {
+    if (!StringToInt(content_len_str, &content_len)) {
+      *ret = HTTP_BAD_REQUEST;
+      return false;
+    }
+    if (static_cast<size_t>(content_len) > kMaxPostSizeBytes) {
+      *ret = HTTP_REQUEST_ENTITY_TOO_LARGE;
+      return false;
+    }
+  }
+
+  // Parse the incoming brigade and add the contents to data. In apache 2.4 we
+  // could just use ap_parse_form_data. See the example at
+  // http://httpd.apache.org/docs/2.4/developer/modguide.html#snippets.
+  apr_bucket_brigade* bbin =
+      apr_brigade_create(request->pool, request->connection->bucket_alloc);
+
+  bool eos = false;
+
+  while (!eos) {
+    apr_status_t rv = ap_get_brigade(request->input_filters, bbin,
+                                     AP_MODE_READBYTES, APR_BLOCK_READ,
+                                     content_len);
+    if (rv != APR_SUCCESS) {
+      // Form input read failed.
+      *ret = HTTP_INTERNAL_SERVER_ERROR;
+      return false;
+    }
+    for (apr_bucket* bucket = APR_BRIGADE_FIRST(bbin);
+         bucket != APR_BRIGADE_SENTINEL(bbin);
+         bucket = APR_BUCKET_NEXT(bucket) ) {
+      if (!APR_BUCKET_IS_METADATA(bucket)) {
+        const char* buf = NULL;
+        size_t bytes = 0;
+        rv = apr_bucket_read(bucket, &buf, &bytes, APR_BLOCK_READ);
+        if (rv != APR_SUCCESS) {
+          *ret = HTTP_INTERNAL_SERVER_ERROR;
+          return false;
+        }
+        if (data->length() + bytes > kMaxPostSizeBytes) {
+          *ret = HTTP_REQUEST_ENTITY_TOO_LARGE;
+          return false;
+        }
+        data->append(buf, bytes);
+      } else if (APR_BUCKET_IS_EOS(bucket)) {
+        eos = true;
+        break;
+      }
+    }
+  }
+
+  // No need to modify ret as it is only used if reading the POST failed.
+  return true;
+}
+
 }  // namespace
 
 bool is_pagespeed_subrequest(request_rec* request) {
@@ -939,12 +1051,23 @@ apr_status_t instaweb_handler(request_rec* request) {
     ret = OK;
 
   } else if (request_handler_str == kBeaconHandler) {
+    GoogleString data;
+    if (request->method_number == M_GET) {
+      if (!parse_query_params_from_get(request, &data, &ret)) {
+        return ret;
+      }
+    } else if (request->method_number == M_POST) {
+      if (!parse_body_from_post(request, &data, &ret)) {
+        return ret;
+      }
+    } else {
+      return HTTP_METHOD_NOT_ALLOWED;
+    }
     RequestContextPtr request_context(new ApacheRequestContext(
         server_context->thread_system()->NewMutex(), request));
     StringPiece user_agent = apr_table_get(request->headers_in,
                                            HttpAttributes::kUserAgent);
-    server_context->HandleBeacon(
-        request->unparsed_uri, user_agent, request_context);
+    server_context->HandleBeacon(data, user_agent, request_context);
     ret = HTTP_NO_CONTENT;
 
   } else if (request_handler_str == kLogRequestHeadersHandler) {

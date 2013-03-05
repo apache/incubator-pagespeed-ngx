@@ -313,8 +313,10 @@ class ServerContext {
   // Handles an incoming beacon request by incrementing the appropriate
   // variables.  Returns true if the url was parsed and handled correctly; in
   // this case a 204 No Content response should be sent.  Returns false if the
-  // url could not be parsed; in this case the request should be declined.
-  bool HandleBeacon(StringPiece unparsed_url,
+  // url could not be parsed; in this case the request should be declined. body
+  // should be either the query params or the POST body, depending on how the
+  // beacon was sent, from the beacon request.
+  bool HandleBeacon(StringPiece body,
                     StringPiece user_agent,
                     const RequestContextPtr& request_context);
 

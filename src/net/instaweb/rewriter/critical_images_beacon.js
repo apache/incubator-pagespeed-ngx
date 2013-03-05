@@ -131,11 +131,50 @@ pagespeed.CriticalImagesBeacon.prototype.isCritical_ = function(element) {
 };
 
 /**
+ * Send the beacon as an AJAX POST request to the server.
+ * @param {string} data The data to be sent in the POST.
+ * @return {boolean} Return true if the request was sent.
+ * @private
+ */
+pagespeed.CriticalImagesBeacon.prototype.sendBeacon_ = function(data) {
+  var httpRequest;
+  // TODO(jud): Use the closure goog.net.Xhrlo.send function here once we have
+  // closure lib support in our static JS files.
+  if (window.XMLHttpRequest) { // Mozilla, Safari, ...
+    httpRequest = new XMLHttpRequest();
+  } else if (window.ActiveXObject) { // IE
+    try {
+      httpRequest = new ActiveXObject('Msxml2.XMLHTTP');
+    }
+    catch (e) {
+      try {
+        httpRequest = new ActiveXObject('Microsoft.XMLHTTP');
+      }
+      catch (e2) {}
+    }
+  }
+  if (!httpRequest) {
+    return false;
+  }
+
+  httpRequest.open('POST', this.beaconUrl_);
+  httpRequest.setRequestHeader(
+      'Content-Type', 'application/x-www-form-urlencoded');
+  httpRequest.send(data);
+  return true;
+};
+
+/**
  * Check position of images and input tags and beacon back images that are
  * visible on initial page load.
  * @private
  */
 pagespeed.CriticalImagesBeacon.prototype.checkCriticalImages_ = function() {
+  // Define the maximum size of a POST that the server will accept. We shouldn't
+  // send more data than this.
+  // TODO(jud): Factor out this const so that it matches kMaxPostSizeBytes.
+  var MAX_DATA_LEN = 131072;
+
   // List of tags whose elements we will check to see if they are critical.
   var tags = ['img', 'input'];
   // Use an object to store the critical_imgs so that we get a unique (no
@@ -157,22 +196,21 @@ pagespeed.CriticalImagesBeacon.prototype.checkCriticalImages_ = function() {
   }
   critical_imgs = Object.keys(critical_imgs);
   if (critical_imgs.length != 0) {
-    var url = this.beaconUrl_;
-    // Handle a beacon url that already has query params.
-    url += (url.indexOf('?') == -1) ? '?' : '&';
-    url += 'url=' + encodeURIComponent(this.htmlUrl_);
-    url += '&oh=' + this.optionsHash_;
-    url += '&ci=' + encodeURIComponent(critical_imgs[0]);
-    var MAX_URL_LEN = 2000;
-    for (var i = 1; i < critical_imgs.length &&
-         url.length < MAX_URL_LEN; ++i) {
-      url += ',' + encodeURIComponent(critical_imgs[i]);
+    var data = 'url=' + encodeURIComponent(this.htmlUrl_);
+    data += '&oh=' + this.optionsHash_;
+    data += '&ci=' + encodeURIComponent(critical_imgs[0]);
+    for (var i = 1; i < critical_imgs.length; ++i) {
+      var tmp = ',' + encodeURIComponent(critical_imgs[i]);
+      if ((data.length + tmp.length) > MAX_DATA_LEN) {
+        break;
+      }
+      data += tmp;
     }
     // Export the URL for testing purposes.
-    pagespeed['criticalImagesBeaconUrl'] = url;
+    pagespeed['criticalImagesBeaconData'] = data;
     // TODO(jud): This beacon should coordinate with the add_instrumentation JS
     // so that only one beacon request is sent if both filters are enabled.
-    new Image().src = url;
+    this.sendBeacon_(data);
   }
 };
 
