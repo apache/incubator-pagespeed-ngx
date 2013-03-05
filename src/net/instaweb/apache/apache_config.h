@@ -168,11 +168,6 @@ class ApacheConfig : public SystemRewriteOptions {
   static Properties* apache_properties_;
 
   // Adds an option to apache_properties_.
-  //
-  // TODO(jmarantz): rename this to avoid coinciding with private
-  // method RewriteOptions::add_option.  This is done for now so
-  // review-diffs are readable, at the cost of a small non-functional
-  // follow-up refactor.
   template<class RewriteOptionsSubclass, class OptionClass>
   static void AddApacheProperty(typename OptionClass::ValueType default_value,
                                 OptionClass RewriteOptionsSubclass::*offset,

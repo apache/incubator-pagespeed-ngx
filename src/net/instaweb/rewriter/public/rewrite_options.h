@@ -170,7 +170,7 @@ class RewriteOptions {
   };
 
   // Any new Option added, should have a corresponding enum here and this should
-  // be passed in when add_option is called in the constructor.
+  // be passed in when Add*Property is called in AddProperties().
   //
   // TODO(satyanarayana): Deprecate kImageRetainColorProfile,
   // kImageRetainExifData and kImageRetainColorSampling as they are now
@@ -380,7 +380,7 @@ class RewriteOptions {
   // cache.
   //
   // This version number should be incremented if any default-values
-  // are changed, either in the add_option() call or via
+  // are changed, either in an Add*Property() call or via
   // options->set_default.
   static const int kOptionsVersion = 13;
 
@@ -2123,7 +2123,7 @@ class RewriteOptions {
   class Property : public PropertyBase {
    public:
     // When adding a new Property, we take the default_value by value,
-    // not const-reference.  This is because when calling add_option
+    // not const-reference.  This is because when calling AddProperty
     // we may want to use a compile-time constant
     // (e.g. Timer::kHourMs) which does not have a linkable address.
     Property(ValueType default_value,

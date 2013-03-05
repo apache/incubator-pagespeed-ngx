@@ -665,12 +665,13 @@ void RewriteOptions::AddProperties() {
   // DEFINE_xxx directives.
   //
   //
-  // Note: there are two overloads for add_option().  The 3-args version
+  // Note: there are two functions used for registering properties here,
+  // AddBaseProperty() and AddRequestProperty().  AddRequestProperty()
   // is kind of a hack for stuffing request-specific data into the RewriteOption
   // object.  Those options should probably be changed to be fields in the
   // recently-added RequestContext.
   //
-  // The 6-arg version is for user-settable options.  The last argument
+  // AddBaseProperty() is for user-settable options.  The last argument
   // is a help-string.  The presence of a help-string enables the option
   // for mod_pagespeed, and serves as the error message if there is a
   // syntax error specifying the option in pagespeed.conf.

@@ -164,16 +164,12 @@ class SystemRewriteOptions : public RewriteOptions {
 
   // Adds an option to system_properties_.
   //
-  // TODO(jmarantz): rename this to avoid coinciding with private
-  // method RewriteOptions::add_option.  This is done for now so
-  // review-diffs are readable, at the cost of a small non-functional
-  // follow-up refactor.
   template<class RewriteOptionsSubclass, class OptionClass>
-  static void add_option(typename OptionClass::ValueType default_value,
-                         OptionClass RewriteOptionsSubclass::*offset,
-                         const char* id,
-                         OptionEnum option_enum,
-                         const char* help) {
+  static void AddSystemProperty(typename OptionClass::ValueType default_value,
+                                OptionClass RewriteOptionsSubclass::*offset,
+                                const char* id,
+                                OptionEnum option_enum,
+                                const char* help) {
     AddProperty(default_value, offset, id, option_enum, kServerScope, help,
                 system_properties_);
   }
