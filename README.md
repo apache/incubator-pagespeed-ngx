@@ -188,7 +188,7 @@ you can set your beacons to go to another site by specifying a full path:
 
 ### Testing
 
-The generic Pagespeed system test is ported, and all but three tests pass.  To
+The generic Pagespeed system test is ported, and all but six tests pass.  To
 run it you need to first build and configure nginx.  Set it up something like:
 
     ...
@@ -256,7 +256,20 @@ run it you need to first build and configure nginx.  Set it up something like:
       }
     }
 
-Then run the test, using the port you set up with `listen` in the configuration
+Alternatively, you can also generate a configuration file using 
+
+    cd /path/to/ngx_pagespeed/test/genconf/
+    # TODO(oschaaf): which directive do we supply here?
+    ./cli.py pagespeed.debug.pyconf nginx FOO > test.nginx.conf
+
+This will currently set up nginx to listen on localhost:8083
+
+After configuring, you can proceed to start nginx with this generated 
+configuration like
+
+    /path/to/nginx_executable/nginx -t -c test.nginx.conf
+
+To run the test, using the port you set up with `listen` in the configuration
 file:
 
     /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
@@ -269,8 +282,12 @@ This should print out a lot of lines like:
 and then eventually:
 
     Failing Tests:
+      In-place resource optimization
+      In-place resource optimization
+      add_instrumentation adds 2 script tags
       compression is enabled for rewritten JS.
       convert_meta_tags
+      rewrite_javascript,inline_javascript with gzipped js origin
       insert_dns_prefetch
       insert_dns_prefetch
     FAIL.
