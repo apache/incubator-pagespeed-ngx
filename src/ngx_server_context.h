@@ -50,6 +50,7 @@ class NgxServerContext : public ServerContext {
   bool initialized() const { return initialized_; }
   GoogleString hostname_identifier() { return hostname_identifier_; }
   void set_hostname_identifier(GoogleString x) { hostname_identifier_ = x; }
+  NgxRewriteDriverFactory* ngx_rewrite_driver_factory() { return ngx_factory_; }
 
  private:
   NgxRewriteDriverFactory* ngx_factory_;
