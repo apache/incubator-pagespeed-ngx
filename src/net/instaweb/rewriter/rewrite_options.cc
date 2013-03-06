@@ -797,6 +797,13 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
+      false,
+      &RewriteOptions::rewrite_uncacheable_resources_, "rur",
+      kRewriteUncacheableResources,
+      kServerScope,
+      "Allow optimization of uncacheable resources in the in-place rewriting"
+      " mode.");
+  AddBaseProperty(
       kDefaultIdleFlushTimeMs,
       &RewriteOptions::idle_flush_time_ms_, "if",
       kIdleFlushTimeMs,
@@ -1318,6 +1325,10 @@ void RewriteOptions::AddProperties() {
       NULL);   // Not applicable for mod_pagespeed.
   AddRequestProperty(
       false, &RewriteOptions::is_blink_auto_blacklisted_, "ibab");
+  AddBaseProperty(
+      false, &RewriteOptions::allow_logging_urls_in_log_record_,
+      "alulr", kAllowLoggingUrlsInLogRecord, kDirectoryScope,
+      NULL);   // Not applicable for mod_pagespeed.
 
   // Test-only, so no enum.
   AddRequestProperty(

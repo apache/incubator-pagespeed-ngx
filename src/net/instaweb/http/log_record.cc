@@ -37,11 +37,13 @@ LogRecord::LogRecord(AbstractMutex* mutex) : mutex_(mutex) {
 LogRecord::LogRecord()
     : logging_info_(NULL),
       mutex_(NULL),
-      rewriter_info_max_size_(-1) {}
+      rewriter_info_max_size_(-1),
+      allow_logging_urls_(false) {}
 
 void LogRecord::InitLogging() {
   logging_info_.reset(new LoggingInfo);
   rewriter_info_max_size_ = -1;
+  allow_logging_urls_ = false;
 }
 
 LogRecord::~LogRecord() {
@@ -118,12 +120,22 @@ RewriterInfo* LogRecord::NewRewriterInfo(const char* rewriter_id) {
 
 void LogRecord::SetRewriterLoggingStatus(
     const char* id, RewriterInfo::RewriterApplicationStatus status) {
+  SetRewriterLoggingStatus(id, "", status);
+}
+
+void LogRecord::SetRewriterLoggingStatus(
+    const char* id, StringPiece url,
+    RewriterInfo::RewriterApplicationStatus status) {
   RewriterInfo* rewriter_info = NewRewriterInfo(id);
   if (rewriter_info == NULL) {
     return;
   }
 
   ScopedMutex lock(mutex_.get());
+  if (allow_logging_urls_ && url != "") {
+    PopulateUrl(url, rewriter_info->mutable_rewrite_resource_info());
+  }
+
   rewriter_info->set_status(status);
 }
 
@@ -216,8 +228,14 @@ void LogRecord::SetRewriterInfoMaxSize(int x) {
   rewriter_info_max_size_ = x;
 }
 
+void LogRecord::SetAllowLoggingUrls(bool allow_logging_urls) {
+  ScopedMutex lock(mutex_.get());
+  allow_logging_urls_ = allow_logging_urls;
+}
+
 void LogRecord::LogImageRewriteActivity(
     const char* id,
+    StringPiece url,
     RewriterInfo::RewriterApplicationStatus status,
     bool is_image_inlined,
     bool is_critical_image,
@@ -232,6 +250,10 @@ void LogRecord::LogImageRewriteActivity(
   ScopedMutex lock(mutex_.get());
   RewriteResourceInfo* rewrite_resource_info =
       rewriter_info->mutable_rewrite_resource_info();
+  if (allow_logging_urls_ && url != "") {
+    PopulateUrl(url, rewrite_resource_info);
+  }
+
   rewrite_resource_info->set_is_inlined(is_image_inlined);
   rewrite_resource_info->set_is_critical(is_critical_image);
   if (try_low_res_src_insertion) {
@@ -278,6 +300,23 @@ void LogRecord::LogLazyloadFilter(
     rewrite_resource_info->set_is_critical(is_critical);
   }
   rewriter_info->set_status(status);
+}
+
+void LogRecord::PopulateUrl(
+    StringPiece url, RewriteResourceInfo* rewrite_resource_info) {
+  std::map<StringPiece, int>::iterator it = url_index_map_.find(url);
+  if (it != url_index_map_.end()) {
+    rewrite_resource_info->set_original_resource_url_index(it->second);
+    return;
+  }
+
+  ResourceUrlInfo* resource_url_info =
+      logging_info()->mutable_resource_url_info();
+  GoogleString* added_url = resource_url_info->add_url();
+  added_url->assign(url.data(), url.size());
+  int index = resource_url_info->url_size() - 1;
+  url_index_map_.insert(std::pair<StringPiece, int32>(url, index));
+  rewrite_resource_info->set_original_resource_url_index(index);
 }
 
 }  // namespace net_instaweb

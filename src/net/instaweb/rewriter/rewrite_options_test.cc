@@ -702,10 +702,13 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(163, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(165, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
+  EXPECT_STREQ("AllowLoggingUrlsInLogRecord",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kAllowLoggingUrlsInLogRecord));
   EXPECT_STREQ("AlwaysRewriteCss",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAlwaysRewriteCss));
@@ -967,6 +970,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("RewriteLevel",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kRewriteLevel));
+  EXPECT_STREQ("RewriteUncacheableResources",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kRewriteUncacheableResources));
   EXPECT_STREQ("RunExperiment",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kRunningFurious));

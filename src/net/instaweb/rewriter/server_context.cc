@@ -401,14 +401,15 @@ void ServerContext::ApplyInputCacheControl(const ResourceVector& inputs,
     if (proxy_cacheable) {
       return;
     } else {
-      headers->SetDateAndCaching(headers->date_ms(), max_age, ",private");
+      headers->SetDateAndCaching(headers->date_ms(), max_age,
+                                 ",private" /*cache_control_suffix*/);
     }
   } else {
     GoogleString directives = ",no-cache";
     if (no_store) {
       directives += ",no-store";
     }
-    headers->SetDateAndCaching(headers->date_ms(), 0, directives);
+    headers->SetDateAndCaching(headers->date_ms(), 0 /*ttl*/, directives);
   }
   headers->ComputeCaching();
 }

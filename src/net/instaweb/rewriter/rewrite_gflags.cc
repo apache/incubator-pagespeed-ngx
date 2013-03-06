@@ -368,6 +368,11 @@ DEFINE_bool(oblivious_pagespeed_urls, false,
             "instead of decoding and retrieving original. Should be set only "
             "for IPRO PreserveUrls.");
 
+DEFINE_bool(rewrite_uncacheable_resources, false,
+            "If set to true, the system will rewrite all the resources in "
+            "in-place rewriting mode, regardless of resource's caching "
+            "settings. in_place_wait_for_optimized flag should also be set.");
+
 namespace net_instaweb {
 
 namespace {
@@ -660,6 +665,11 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
 
   if (WasExplicitlySet("oblivious_pagespeed_urls")) {
     options->set_oblivious_pagespeed_urls(FLAGS_oblivious_pagespeed_urls);
+  }
+
+  if (WasExplicitlySet("rewrite_uncacheable_resources")) {
+    options->set_rewrite_uncacheable_resources(
+        FLAGS_rewrite_uncacheable_resources);
   }
 
   if (WasExplicitlySet("in_place_wait_for_optimized")) {

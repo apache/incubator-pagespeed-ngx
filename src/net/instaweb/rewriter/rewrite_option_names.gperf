@@ -26,6 +26,7 @@ struct OptionName {
 };
 %%
 "AddOptionsToUrls",                      RewriteOptions::kAddOptionsToUrls
+"AllowLoggingUrlsInLogRecord",           RewriteOptions::kAllowLoggingUrlsInLogRecord
 "AlwaysRewriteCss",                      RewriteOptions::kAlwaysRewriteCss
 "AnalyticsID",                           RewriteOptions::kAnalyticsID
 "AvoidRenamingIntrospectiveJavascript",  RewriteOptions::kAvoidRenamingIntrospectiveJavascript
@@ -123,6 +124,7 @@ struct OptionName {
 "RespectXForwardedProto",                RewriteOptions::kRespectXForwardedProto
 "RewriteDeadlinePerFlushMs",             RewriteOptions::kRewriteDeadlineMs
 "RewriteLevel",                          RewriteOptions::kRewriteLevel
+"RewriteUncacheableResources",           RewriteOptions::kRewriteUncacheableResources
 "RunExperiment",                         RewriteOptions::kRunningFurious
 "ServeStaleIfFetchError",                RewriteOptions::kServeStaleIfFetchError
 "SupportNoScriptEnabled",                RewriteOptions::kSupportNoScriptEnabled

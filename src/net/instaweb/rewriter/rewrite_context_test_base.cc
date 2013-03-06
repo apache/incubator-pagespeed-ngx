@@ -210,7 +210,7 @@ bool CombiningFilter::Context::Partition(OutputPartitions* partitions,
   for (int i = 0, n = num_slots(); i < n; ++i) {
     slot(i)->resource()->AddInputInfoToPartition(
         Resource::kIncludeInputHash, i, partition);
-    if (!slot(i)->resource()->IsSafeToRewrite() ||
+    if (!slot(i)->resource()->IsSafeToRewrite(rewrite_uncacheable()) ||
         !combiner_.AddResourceNoFetch(slot(i)->resource(), handler).value) {
       return false;
     }

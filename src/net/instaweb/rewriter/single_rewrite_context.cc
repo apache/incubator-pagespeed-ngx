@@ -42,7 +42,7 @@ bool SingleRewriteContext::Partition(OutputPartitions* partitions,
   if (num_slots() == 1) {
     ret = true;
     ResourcePtr resource(slot(0)->resource());
-    if (resource->IsSafeToRewrite()) {
+    if (resource->IsSafeToRewrite(rewrite_uncacheable())) {
       OutputResourcePtr output_resource(
           Driver()->CreateOutputResourceFromResource(
               id(), encoder(), resource_context(),

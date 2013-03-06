@@ -1056,6 +1056,7 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     force_rewrite_(false),
     stale_rewrite_(false),
     is_metadata_cache_miss_(false),
+    rewrite_uncacheable_(false),
     dependent_request_trace_(NULL) {
   partitions_.reset(new OutputPartitions);
 }
@@ -1175,9 +1176,9 @@ void RewriteContext::Start() {
     // When the cache lookup is finished, OutputCacheDone will be called.
     if (force_rewrite_) {
       // Make the metadata cache lookup fail since we want to force a rewrite.
-       (new OutputCacheCallback(
-           this, &RewriteContext::OutputCacheDone))->Done(
-               CacheInterface::kNotFound);
+      (new OutputCacheCallback(
+          this, &RewriteContext::OutputCacheDone))->Done(
+              CacheInterface::kNotFound);
     } else {
       metadata_cache->Get(
           partition_key_, new OutputCacheCallback(
@@ -1617,7 +1618,7 @@ void RewriteContext::ResourceRevalidateDone(InputInfo* input_info,
 
 bool RewriteContext::ReadyToRewrite() const {
   DCHECK(!rewrite_done_);
-  bool ready = ((outstanding_fetches_ == 0) && (num_predecessors_ == 0));
+  const bool ready = ((outstanding_fetches_ == 0) && (num_predecessors_ == 0));
   return ready;
 }
 
@@ -1679,24 +1680,33 @@ void RewriteContext::PartitionDone(bool result) {
 
 void RewriteContext::WritePartition() {
   ServerContext* manager = FindServerContext();
+  // If this was an IPRO rewrite which was forced for uncacheable rewrite, we
+  // should not write partition data.
   if (ok_to_write_output_partitions_ && !manager->shutting_down()) {
-    CacheInterface* metadata_cache = manager->metadata_cache();
-    GoogleString buf;
-    {
+    // rewrite_uncacheable() is set in IPRO flow only, therefore there'll be
+    // just one slot. If this was uncacheable rewrite, we should skip writing
+    // to the metadata cache.
+    const bool is_uncacheable_rewrite = rewrite_uncacheable() &&
+        !slots_[0]->resource()->IsValidAndCacheable();
+    if (!is_uncacheable_rewrite) {
+      CacheInterface* metadata_cache = manager->metadata_cache();
+      GoogleString buf;
+      {
 #ifndef NDEBUG
-      for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
-        const CachedResult& partition = partitions_->partition(i);
-        if (partition.optimizable() && !partition.has_inlined_data()) {
-          GoogleUrl gurl(partition.url());
-          DCHECK(gurl.is_valid()) << partition.url();
+        for (int i = 0, n = partitions_->partition_size(); i < n; ++i) {
+          const CachedResult& partition = partitions_->partition(i);
+          if (partition.optimizable() && !partition.has_inlined_data()) {
+            GoogleUrl gurl(partition.url());
+            DCHECK(gurl.is_valid()) << partition.url();
+          }
         }
-      }
 #endif
 
-      StringOutputStream sstream(&buf);  // finalizes buf in destructor
-      partitions_->SerializeToZeroCopyStream(&sstream);
+        StringOutputStream sstream(&buf);  // finalizes buf in destructor
+        partitions_->SerializeToZeroCopyStream(&sstream);
+      }
+      metadata_cache->PutSwappingString(partition_key_, &buf);
     }
-    metadata_cache->PutSwappingString(partition_key_, &buf);
   } else {
     // TODO(jmarantz): if our rewrite failed due to lock contention or
     // being too busy, then cancel all successors.

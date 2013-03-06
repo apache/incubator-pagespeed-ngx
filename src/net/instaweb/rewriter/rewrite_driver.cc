@@ -241,7 +241,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       request_context_(NULL),
       start_time_ms_(0),
       is_nested_(false)
-      // NOTE:  Be sure to clear per-request member vars in Clear()
+      // NOTE:  Be sure to clear per-request member variables in Clear()
 { // NOLINT  -- I want the initializer-list to end with that comment.
   // The Scan filter always goes first so it can find base-tags.
   early_pre_render_filters_.push_back(&scan_filter_);
@@ -266,6 +266,8 @@ void RewriteDriver::set_request_context(const RequestContextPtr& x) {
   if (request_context_.get() != NULL) {
     request_context_->log_record()->SetRewriterInfoMaxSize(
         options()->max_rewrite_info_log_size());
+    request_context_->log_record()->SetAllowLoggingUrls(
+        options()->allow_logging_urls_in_log_record());
   }
 }
 

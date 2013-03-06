@@ -177,6 +177,7 @@ class RewriteOptions {
   // converted to filters.
   enum OptionEnum {
     kAddOptionsToUrls,
+    kAllowLoggingUrlsInLogRecord,
     kAlwaysRewriteCss,
     kAnalyticsID,
     kAvoidRenamingIntrospectiveJavascript,
@@ -280,6 +281,7 @@ class RewriteOptions {
     kRespectXForwardedProto,
     kRewriteDeadlineMs,
     kRewriteLevel,
+    kRewriteUncacheableResources,
     kRunningFurious,
     kServeStaleIfFetchError,
     kSupportNoScriptEnabled,
@@ -1753,6 +1755,14 @@ class RewriteOptions {
     set_option(p.as_string(), &blocking_rewrite_key_);
   }
 
+  bool rewrite_uncacheable_resources() const {
+    return rewrite_uncacheable_resources_.value();
+  }
+
+  void set_rewrite_uncacheable_resources(bool x) {
+    set_option(x, &rewrite_uncacheable_resources_);
+  }
+
   // Does url match a cacheable family pattern?  Returns true if url matches a
   // url_pattern in prioritize_visible_content_families_.
   bool IsInBlinkCacheableFamily(const GoogleUrl& gurl) const;
@@ -1910,6 +1920,13 @@ class RewriteOptions {
   }
   bool enable_aggressive_rewriters_for_mobile() const {
     return enable_aggressive_rewriters_for_mobile_.value();
+  }
+
+  void set_allow_logging_urls_in_log_record(bool x) {
+    set_option(x, &allow_logging_urls_in_log_record_);
+  }
+  bool allow_logging_urls_in_log_record() const {
+    return allow_logging_urls_in_log_record_.value();
   }
 
   // Merge src into 'this'.  Generally, options that are explicitly
@@ -2936,6 +2953,8 @@ class RewriteOptions {
   Option<bool> enable_lazyload_in_blink_;
   // Enable Prioritizing of scripts in defer javascript.
   Option<bool> enable_prioritizing_scripts_;
+  // Enables rewriting of uncacheable resources.
+  Option<bool> rewrite_uncacheable_resources_;
   // Override cache-time for cacheable resources in blink.
   Option<int64> override_blink_cache_time_ms_;
   // Non-cacheables to be used for all families in
@@ -2985,6 +3004,9 @@ class RewriteOptions {
   // urls that match override_caching_wildcard_.
   Option<int64> override_caching_ttl_ms_;
   FastWildcardGroup override_caching_wildcard_;
+
+  // Whether to allow logging urls as part of LogRecord.
+  Option<bool> allow_logging_urls_in_log_record_;
 
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,

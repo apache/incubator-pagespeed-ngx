@@ -186,7 +186,7 @@ class CssCombineFilter::Context : public RewriteContext {
       bool add_input = false;
       ResourcePtr resource(slot(i)->resource());
 
-      if (resource->IsSafeToRewrite()) {
+      if (resource->IsSafeToRewrite(rewrite_uncacheable())) {
         if (combiner_.AddResourceNoFetch(resource, handler).value) {
           // This new element works in the existing partition.
           add_input = true;

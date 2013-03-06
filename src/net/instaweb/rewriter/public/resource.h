@@ -84,7 +84,9 @@ class Resource : public RefCounted<Resource> {
 
   // Answers question: Are we allowed to rewrite the contents now?
   // Checks if valid and cacheable and if it has a no-transform header.
-  bool IsSafeToRewrite() const;
+  // rewrite_uncacheable is used to answer question whether the resource can be
+  // optimizaed even if it is not cacheable.
+  bool IsSafeToRewrite(bool rewrite_uncacheable) const;
 
   // TODO(sligocki): Do we need these or can we just use IsValidAndCacheable
   // everywhere?

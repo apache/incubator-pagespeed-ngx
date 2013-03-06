@@ -1107,6 +1107,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   // output format.
   driver_->log_record()->LogImageRewriteActivity(
       LoggingId(),
+      src_value,
       rewrote_url ? RewriterInfo::APPLIED_OK : RewriterInfo::NOT_APPLIED,
       image_inlined,
       is_critical_image,

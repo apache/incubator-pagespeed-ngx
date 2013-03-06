@@ -255,6 +255,8 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
         cache_js_jpg_extension_url_("http://www.example.com/cacheable_js.jpg"),
         cache_css_url_("http://www.example.com/cacheable.css"),
         nocache_html_url_("http://www.example.com/nocacheable.html"),
+        nocache_js_url_("http://www.example.com/nocacheable.js"),
+        private_cache_js_url_("http://www.example.com/privatecacheable.js"),
         cache_js_no_max_age_url_("http://www.example.com/cacheablemod.js"),
         bad_url_("http://www.example.com/bad.url"),
         redirect_url_("http://www.example.com/redir.url"),
@@ -266,7 +268,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
         ttl_ms_(Timer::kHourMs), etag_("W/\"PSA-aj-0\""),
         original_etag_("original_etag"),
         exceed_deadline_(false), optimize_for_browser_(false),
-        oversized_stream_(NULL) {}
+        oversized_stream_(NULL), in_place_uncacheable_rewrites_(NULL) {}
 
   virtual void Init() {
     SetTimeMs(start_time_ms());
@@ -296,9 +298,18 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
                 ttl_ms_, "", kNoWriteToCache, kTransform);
     AddResponse(nocache_html_url_, kContentTypeHtml, nocache_body_,
                 start_time_ms(), -1, "", kNoWriteToCache, kTransform);
+    AddResponse(nocache_js_url_, kContentTypeJavascript, cache_body_,
+                start_time_ms(), -1 /*ttl*/, "" /*etag*/, kNoWriteToCache,
+                kTransform);
     AddResponse(cache_js_no_max_age_url_, kContentTypeJavascript, cache_body_,
                 start_time_ms(), 0, "", kNoWriteToCache, kTransform);
 
+    ResponseHeaders private_headers;
+    SetDefaultHeaders(kContentTypeJavascript, &private_headers);
+    private_headers.SetDateAndCaching(start_time_ms(), 1200 /*ttl*/,
+                                      ",private");
+    mock_url_fetcher()->SetResponse(
+        private_cache_js_url_, private_headers, cache_body_);
 
     ResponseHeaders bad_headers;
     bad_headers.set_first_line(1, 1, 404, "Not Found");
@@ -340,6 +351,8 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
 
     oversized_stream_ = statistics()->GetVariable(
         InPlaceRewriteContext::kInPlaceOversizedOptStream);
+    in_place_uncacheable_rewrites_ = statistics()->GetVariable(
+        InPlaceRewriteContext::kInPlaceUncacheableRewrites);
   }
 
   void AddResponse(const GoogleString& url, const ContentType& content_type,
@@ -511,6 +524,8 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
   const GoogleString cache_js_jpg_extension_url_;
   const GoogleString cache_css_url_;
   const GoogleString nocache_html_url_;
+  const GoogleString nocache_js_url_;
+  const GoogleString private_cache_js_url_;
   const GoogleString cache_js_no_max_age_url_;
   const GoogleString bad_url_;
   const GoogleString redirect_url_;
@@ -530,6 +545,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
   bool optimize_for_browser_;
 
   Variable* oversized_stream_;
+  Variable* in_place_uncacheable_rewrites_;
 };
 
 TEST_F(InPlaceRewriteContextTest, CacheableHtmlUrlNoRewriting) {
@@ -1185,6 +1201,84 @@ TEST_F(InPlaceRewriteContextTest, NonCacheableUrlNoRewriting) {
   EXPECT_EQ(0, css_filter_->num_rewrites());
 }
 
+// Tests that with correct flags set, the uncacheable resource will be
+// rewritten. Also checks, that resource will not be inserted.
+TEST_F(InPlaceRewriteContextTest, NonCacheableUrlRewriting) {
+  Init();
+
+  // Modify options for our test.
+  options()->ClearSignatureForTesting();
+  options()->set_in_place_wait_for_optimized(true);
+  options()->set_rewrite_uncacheable_resources(true);
+  server_context()->ComputeSignature(options());
+
+  // The ttl is just a value in proto, actual cacheable values will be checked
+  // below.
+  FetchAndCheckResponse(nocache_js_url_, StrCat(cache_body_, ":", "jm"),
+                        true /* success */, 31536000000 /* ttl (s) */, etag_,
+                        timer()->NowMs());
+
+  // Shouldn't be cacheable at all.
+  EXPECT_FALSE(response_headers_.IsCacheable());
+  EXPECT_FALSE(response_headers_.IsProxyCacheable());
+
+  // First fetch misses initial cache lookup, succeeds at fetch and we don't
+  // insert into cache because it's not cacheable. But since flags are set to
+  // rewrite uncacheable resources, JS rewriting should occur.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  // Should have been rewritten.
+  EXPECT_EQ(1, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(1, in_place_uncacheable_rewrites_->Get());
+}
+
+// Tests, that with correct flags set the private cacheable resource will be
+// rewritten. Also checks, that the resource will not be cached.
+TEST_F(InPlaceRewriteContextTest, PrivateCacheableUrlRewriting) {
+  Init();
+
+  // Modify options for our test.
+  options()->ClearSignatureForTesting();
+  options()->set_in_place_wait_for_optimized(true);
+  options()->set_rewrite_uncacheable_resources(true);
+  server_context()->ComputeSignature(options());
+
+  // The ttl is just a value in proto, actual cacheable values will be checked
+  // below.
+  FetchAndCheckResponse(private_cache_js_url_, StrCat(cache_body_, ":", "jm"),
+                        true /* success */, 1000 /* ttl (s) */, etag_,
+                        timer()->NowMs());
+  // Should be cacheable.
+  EXPECT_TRUE(response_headers_.IsCacheable());
+
+  // But only in a private way.
+  EXPECT_FALSE(response_headers_.IsProxyCacheable());
+
+  // First fetch misses initial cache lookup, succeeds at fetch and we don't
+  // insert into cache because it's not cacheable. But since flags are set to
+  // rewrite uncacheable resources, JS rewriting should occur.
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  // Should have been rewritten.
+  EXPECT_EQ(1, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+  EXPECT_EQ(1, in_place_uncacheable_rewrites_->Get());
+}
+
+
 TEST_F(InPlaceRewriteContextTest, BadUrlNoRewriting) {
   Init();
   FetchAndCheckResponse(bad_url_, bad_body_, true, 0, NULL, start_time_ms());
@@ -1206,9 +1300,10 @@ TEST_F(InPlaceRewriteContextTest, BadUrlNoRewriting) {
 TEST_F(InPlaceRewriteContextTest, PermanentRedirectNoRewriting) {
   options()->set_in_place_wait_for_optimized(true);
   Init();
-  FetchAndCheckResponse(redirect_url_, redirect_body_,
-                        true /*expected_success*/, 36000 /*ttl*/, NULL /*etag*/,
-                        start_time_ms());
+  FetchAndCheckResponse(
+      redirect_url_, redirect_body_, true /* expected_success */,
+      36000 /* ttl (s) */, NULL /* etag */, start_time_ms());
+
   // Don't attempt to rewrite this since it's not a 200 response.
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());

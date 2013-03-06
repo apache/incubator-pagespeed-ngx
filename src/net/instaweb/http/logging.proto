@@ -198,7 +198,7 @@ message FlushEarlyResourceInfo {
 }
 
 // Information that applies to a resource.
-// Next id for RewriteResourceInfo: 5
+// Next id for RewriteResourceInfo: 6
 message RewriteResourceInfo {
   // True if we inlined the resource.
   optional bool is_inlined = 1 [ default = false ];
@@ -208,6 +208,9 @@ message RewriteResourceInfo {
   optional bool has_pagespeed_no_defer = 3 [ default = false ];
   // True if the resource is blacklisted.
   optional bool is_blacklisted = 4 [ default = false ];
+   // Index of the original resource url in resource url info.
+  optional int32 original_resource_url_index = 5;
+
 }
 
 // Information related to each resource considered by the image rewrite filter.
@@ -222,7 +225,7 @@ message ImageRewriteResourceInfo {
 
 // This proto stores information describing each rewriter's activity in a
 // request.
-// Next id for RewriterInfo: 6
+// Next id for RewriterInfo: 5
 message RewriterInfo {
   enum RewriterApplicationStatus {
     UNKNOWN_STATUS = 0;
@@ -242,8 +245,14 @@ message RewriterInfo {
   optional ImageRewriteResourceInfo image_rewrite_resource_info = 5;
 }
 
+// This proto stores all information which related to resource urls.
+// Next id for ResourceUrlInfo: 2
+message ResourceUrlInfo {
+  repeated string url = 1;
+}
+
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 17
+// Next id for LoggingInfo: 18
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -278,4 +287,6 @@ message LoggingInfo {
   optional bool rewriter_info_size_limit_exceeded = 15 [ default = false ];
   // Whether the request is for a pagespeed resource.
   optional bool is_pagespeed_resource = 16 [ default = false ];
+  // Information about the resource urls seen on this page.
+  optional ResourceUrlInfo resource_url_info = 17;
 }

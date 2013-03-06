@@ -891,18 +891,19 @@ class RewriteDriver : public HtmlParse {
   bool flushed_cached_html() { return flushed_cached_html_; }
 
   void set_flushing_cached_html(bool x) { flushing_cached_html_ = x; }
-  bool flushing_cached_html() { return flushing_cached_html_; }
+  bool flushing_cached_html() const { return flushing_cached_html_; }
 
   void set_flushed_early(bool x) { flushed_early_ = x; }
-  bool flushed_early() { return flushed_early_; }
+  bool flushed_early() const { return flushed_early_; }
 
   void set_flushing_early(bool x) { flushing_early_ = x; }
-  bool flushing_early() { return flushing_early_; }
+  bool flushing_early() const { return flushing_early_; }
 
   void set_is_lazyload_script_flushed(bool x) {
     is_lazyload_script_flushed_ = x;
   }
-  bool is_lazyload_script_flushed() { return is_lazyload_script_flushed_; }
+  bool is_lazyload_script_flushed() const {
+    return is_lazyload_script_flushed_; }
 
   // This method is not thread-safe. Call it only from the html parser thread.
   FlushEarlyInfo* flush_early_info();
@@ -934,7 +935,7 @@ class RewriteDriver : public HtmlParse {
 
   // Determines whether the system is healthy enough to rewrite resources.
   // Currently, systems get sick based on the health of the metadata cache.
-  bool can_rewrite_resources() { return can_rewrite_resources_; }
+  bool can_rewrite_resources() const { return can_rewrite_resources_; }
 
   // Sets the is_nested property on the driver.
   void set_is_nested(bool n) { is_nested_ = n; }

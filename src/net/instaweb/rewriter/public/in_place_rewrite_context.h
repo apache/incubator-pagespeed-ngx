@@ -76,6 +76,7 @@ class InPlaceRewriteContext : public SingleRewriteContext {
   // stream (due to a large resource) when Options->in_place_wait_for_optimized
   // is true.
   static const char kInPlaceOversizedOptStream[];
+  static const char kInPlaceUncacheableRewrites[];
 
   InPlaceRewriteContext(RewriteDriver* driver, const StringPiece& url);
   virtual ~InPlaceRewriteContext();
@@ -190,17 +191,23 @@ class RecordingFetch : public SharedAsyncFetch {
   // By default RecordingFetch streams back the original content to the browser.
   // If this returns false then the RecordingFetch should cache the original
   // content but not stream it.
-  bool ShouldStream();
+  bool ShouldStream() const;
 
   MessageHandler* handler_;
   ResourcePtr resource_;
   InPlaceRewriteContext* context_;
+
+  // True if resource is of rewritable type and is cacheable or if we're forcing
+  // rewriting of uncacheable resources.
   bool can_in_place_rewrite_;
+
+  // True if we're streaming data as it is being fetched.
   bool streaming_;
   HTTPValue cache_value_;
   HTTPValueWriter cache_value_writer_;
   ResponseHeaders saved_headers_;
   Variable* in_place_oversized_opt_stream_;
+  Variable* in_place_uncacheable_rewrites_;
   DISALLOW_COPY_AND_ASSIGN(RecordingFetch);
 };
 
