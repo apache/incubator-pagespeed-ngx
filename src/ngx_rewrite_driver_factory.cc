@@ -49,7 +49,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
-#include "net/instaweb/util/public/pthread_shared_mem.h"
+#include "pthread_shared_mem.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
 #include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
@@ -375,6 +375,8 @@ void NgxRewriteDriverFactory::ShutDown() {
     Variable* child_shutdown_count = statistics()->GetVariable(kShutdownCount);
     child_shutdown_count->Add(1);
     message_handler()->Message(kInfo, "Shutting down ngx_pagespeed child");
+  } else {
+    message_handler()->Message(kInfo, "Shutting down ngx_pagespeed root");
   }
   RewriteDriverFactory::ShutDown();
 
@@ -386,7 +388,7 @@ void NgxRewriteDriverFactory::ShutDown() {
 
   // TODO(oschaaf): enable this once the shared memory cleanup code
   // supports our ordering of events during a configuration reload
-  if (false && is_root_process_) {
+  if (is_root_process_) {
     // Cleanup statistics.
     // TODO(morlovich): This looks dangerous with async.
     if (shared_mem_statistics_.get() != NULL) {
