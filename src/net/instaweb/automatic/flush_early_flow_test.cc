@@ -31,6 +31,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
@@ -769,6 +770,31 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
       VerifyCharset(&headers);
     }
   }
+  void TestFlushEarlyFlow(const StringPiece& user_agent,
+                          UserAgentMatcher::PrefetchMechanism mechanism) {
+    SetupForFlushEarlyFlow();
+    GoogleString text;
+    RequestHeaders request_headers;
+    ResponseHeaders headers;
+    request_headers.Replace(HttpAttributes::kUserAgent, user_agent.as_string());
+    FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+    // Check total number of cache inserts.
+    // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.
+    // 19 metadata cache enties - three for cf and jm, seven for ce and
+    //       six for fs.
+    // 1 for DomCohort write in property cache.
+    EXPECT_EQ(27, lru_cache()->num_inserts());
+
+    // Fetch the url again. This time FlushEarlyFlow should be triggered with
+    // the  appropriate prefetch mechanism.
+    FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+    EXPECT_EQ(FlushEarlyRewrittenHtml(mechanism, false, false), text);
+    VerifyCharset(&headers);
+    if (mechanism != UserAgentMatcher::kPrefetchNotSupported) {
+      EXPECT_STREQ("cf,ei,fs,jm", AppliedRewriterStringFromLog());
+      EXPECT_STREQ("cf,ei,fs,jm", headers.Lookup1(kPsaRewriterHeader));
+    }
+  }
 
   scoped_ptr<BackgroundFetchCheckingUrlAsyncFetcher> background_fetch_fetcher_;
   scoped_ptr<LatencyUrlAsyncFetcher> latency_fetcher_;
@@ -787,49 +813,12 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
 };
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTest) {
-  SetupForFlushEarlyFlow();
-  GoogleString text;
-  RequestHeaders request_headers;
-  ResponseHeaders headers;
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  // Check total number of cache inserts.
-  // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.
-  // 19 metadata cache enties - three for cf and jm, seven for ce and
-  //       six for fs.
-  // 1 for DomCohort write in property cache.
-  EXPECT_EQ(27, lru_cache()->num_inserts());
-
-  // Fetch the url again. This time FlushEarlyFlow should not be triggered.
-  // None
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchNotSupported, false, false), text);
-  VerifyCharset(&headers);
+  TestFlushEarlyFlow(NULL, UserAgentMatcher::kPrefetchNotSupported);
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPrefetch) {
-  SetupForFlushEarlyFlow();
-  GoogleString text;
-  RequestHeaders request_headers;
-  request_headers.Replace(HttpAttributes::kUserAgent,
-                          "prefetch_link_rel_subresource");
-  ResponseHeaders headers;
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  // Check total number of cache inserts.
-  // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.
-  // 19 metadata cache enties - three for cf and jm, seven for ce and
-  //       six for fs.
-  // 1 for DomCohort write in property cache.
-  EXPECT_EQ(27, lru_cache()->num_inserts());
-
-  // Fetch the url again. This time FlushEarlyFlow should be triggered.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkRelSubresource, false, false),
-      text);
-  EXPECT_STREQ("cf,ei,fs,jm", AppliedRewriterStringFromLog());
-  VerifyCharset(&headers);
-  EXPECT_STREQ("cf,ei,fs,jm", headers.Lookup1(kPsaRewriterHeader));
+  TestFlushEarlyFlow("prefetch_link_rel_subresource",
+                     UserAgentMatcher::kPrefetchLinkRelSubresource);
 }
 
 // TODO(rahulbansal): Remove the flakiness and uncomment this.
@@ -902,47 +891,19 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowStatusCodeUnstable) {
 }
 */
 
-TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestImageTag) {
-  SetupForFlushEarlyFlow();
-  GoogleString text;
-  RequestHeaders request_headers;
-  request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_image_tag");
-  ResponseHeaders headers;
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  // Check total number of cache inserts.
-  // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.
-  // 19 metadata cache enties - three for cf and jm, seven for ce and
-  //       six for fs.
-  // 1 for DomCohort write in property cache.
-  EXPECT_EQ(27, lru_cache()->num_inserts());
+TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestMobile) {
+  TestFlushEarlyFlow(UserAgentStrings::kAndroidChrome21UserAgent,
+                     UserAgentMatcher::kPrefetchImageTag);
+}
 
-  // Fetch the url again. This time FlushEarlyFlow should be triggered.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchImageTag, false, false), text);
-  VerifyCharset(&headers);
+TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestImageTag) {
+  TestFlushEarlyFlow("prefetch_image_tag",
+                     UserAgentMatcher::kPrefetchImageTag);
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestLinkScript) {
-  SetupForFlushEarlyFlow();
-  GoogleString text;
-  RequestHeaders request_headers;
-  request_headers.Replace(HttpAttributes::kUserAgent,
-                          "prefetch_link_script_tag");
-  ResponseHeaders headers;
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  // Check total number of cache inserts.
-  // 7 for 1.css, 2.css, 3.css, 1.js, 2.js, 1.jpg and private.js.
-  // 19 metadata cache enties - three for cf and jm, seven for ce and
-  //       six for fs.
-  // 1 for DomCohort write in property cache.
-  EXPECT_EQ(27, lru_cache()->num_inserts());
-
-  // Fetch the url again. This time FlushEarlyFlow should be triggered.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_EQ(FlushEarlyRewrittenHtml(
-      UserAgentMatcher::kPrefetchLinkScriptTag, false, false), text);
-  VerifyCharset(&headers);
+  TestFlushEarlyFlow("prefetch_link_script_tag",
+                     UserAgentMatcher::kPrefetchLinkScriptTag);
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithDeferJsImageTag) {

@@ -18,7 +18,7 @@
 #  apache_debug_restart
 #  apache_debug_stop
 #  apache_debug_leak_test, apache_debug_proxy_test, apache_debug_slurp_test
-#  APACHE_DEBUG_PORT
+#  APACHE_PORT
 #  APACHE_HTTPS_PORT
 #  APACHE_DEBUG_PAGESPEED_CONF
 #  MOD_PAGESPEED_CACHE
@@ -36,23 +36,23 @@ export APACHE_LOG
 export MOD_PAGESPEED_CACHE
 
 apache_vm_system_tests :
-	$(MAKE) apache_debug_smoke_test
-	$(MAKE) apache_debug_per_vhost_stats_test
-	$(MAKE) apache_debug_memcached_test
-	$(MAKE) apache_debug_leak_test
-	$(MAKE) apache_debug_rewrite_test
-	$(MAKE) apache_debug_proxy_test
-	$(MAKE) apache_debug_slurp_test
-	$(MAKE) apache_debug_speling_test
-	$(MAKE) apache_debug_gzip_test
-	$(MAKE) apache_debug_furious_test
-	$(MAKE) apache_debug_vhost_only_test
-	$(MAKE) apache_debug_global_off_test
-	$(MAKE) apache_debug_shared_mem_lock_sanity_test
+	$(MAKE) FAST_RESTART=1 apache_debug_smoke_test
+	$(MAKE) FAST_RESTART=1 apache_debug_per_vhost_stats_test
+	$(MAKE) FAST_RESTART=1 apache_debug_memcached_test
+	$(MAKE) FAST_RESTART=1 apache_debug_leak_test
+	$(MAKE) FAST_RESTART=1 apache_debug_rewrite_test
+	$(MAKE) FAST_RESTART=1 apache_debug_proxy_test
+	$(MAKE) FAST_RESTART=1 apache_debug_slurp_test
+	$(MAKE) FAST_RESTART=1 apache_debug_speling_test
+	$(MAKE) FAST_RESTART=1 apache_debug_gzip_test
+	$(MAKE) FAST_RESTART=1 apache_debug_furious_test
+	$(MAKE) FAST_RESTART=1 apache_debug_vhost_only_test
+	$(MAKE) FAST_RESTART=1 apache_debug_global_off_test
+	$(MAKE) FAST_RESTART=1 apache_debug_shared_mem_lock_sanity_test
 	# The stats logging test is disabled as it has permission issues
 	# when package building (issue 559).
-	# $(MAKE) apache_debug_stats_logging_test
-	$(MAKE) apache_debug_all_directives_test
+	# $(MAKE) FAST_RESTART=1 apache_debug_stats_logging_test
+	$(MAKE) FAST_RESTART=1 apache_debug_all_directives_test
 	$(MAKE) apache_install_conf
 # 'apache_install_conf' should always be last, to leave your debug
 # Apache server in a consistent state.
@@ -62,15 +62,15 @@ apache_vm_system_tests :
 # setup.
 # TODO(jmarantz): fix this.
 apache_system_tests : apache_vm_system_tests
-	$(MAKE) apache_debug_serf_empty_header_test
+	$(MAKE) FAST_RESTART=1 apache_debug_serf_empty_header_test
 	$(MAKE) apache_install_conf
-	$(MAKE) apache_debug_restart
+	$(MAKE) FAST_RESTART=1 apache_debug_restart
 
 APACHE_HOST = localhost
-ifeq ($(APACHE_DEBUG_PORT),80)
+ifeq ($(APACHE_PORT),80)
   APACHE_SERVER = $(APACHE_HOST)
 else
-  APACHE_SERVER = $(APACHE_HOST):$(APACHE_DEBUG_PORT)
+  APACHE_SERVER = $(APACHE_HOST):$(APACHE_PORT)
 endif
 APACHE_SECONDARY_SERVER = $(APACHE_HOST):$(APACHE_SECONDARY_PORT)
 

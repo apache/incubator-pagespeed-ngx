@@ -12,9 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <map>
+#include <utility>
+
+#include "base/logging.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/fast_wildcard_group.h"
+#include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -317,11 +322,7 @@ UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(
 }
 
 UserAgentMatcher::PrefetchMechanism UserAgentMatcher::GetPrefetchMechanism(
-    const StringPiece& user_agent,
-    const RequestHeaders* request_headers) const {
-  if (IsMobileRequest(user_agent, request_headers)) {
-    return kPrefetchNotSupported;
-  }
+    const StringPiece& user_agent) const {
   if (supports_prefetch_link_rel_subresource_.Match(user_agent, false)) {
     return kPrefetchLinkRelSubresource;
   } else if (supports_prefetch_image_tag_.Match(user_agent, false)) {

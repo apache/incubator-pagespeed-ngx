@@ -163,7 +163,7 @@ void FlushEarlyContentWriterFilter::StartDocument() {
   set_writer(&null_writer_);
   DCHECK(driver_->request_headers() != NULL);
   prefetch_mechanism_ = driver_->user_agent_matcher()->GetPrefetchMechanism(
-      driver_->user_agent(), driver_->request_headers());
+      driver_->user_agent());
   current_element_ = NULL;
   FlushEarlyInfoFinder* finder =
       driver_->server_context()->flush_early_info_finder();
@@ -193,6 +193,11 @@ void FlushEarlyContentWriterFilter::StartDocument() {
   time_consumed_ms_ = kDnsTimeMs + kTimeToConnectMs + kTtfbMs;
   defer_javascript_enabled_ =
       driver_->options()->Enabled(RewriteOptions::kDeferJavascript);
+  // TODO(ksimbili): Enable flush_more_resources_early_if_time_permits after
+  // tuning the RTT, bandwidth numbers for mobile.
+  flush_more_resources_early_if_time_permits_ =
+      driver_->options()->flush_more_resources_early_if_time_permits() &&
+      !driver_->user_agent_matcher()->IsMobileUserAgent(driver_->user_agent());
 }
 
 void FlushEarlyContentWriterFilter::EndDocument() {
@@ -249,7 +254,7 @@ void FlushEarlyContentWriterFilter::TryFlushingDeferJavascriptEarly() {
       defer_javascript_enabled_ &&
       driver_->device_properties()->SupportsJsDefer(
           driver_->options()->enable_aggressive_rewriters_for_mobile()) &&
-      options->flush_more_resources_early_if_time_permits();
+      flush_more_resources_early_if_time_permits_;
   if (should_try_flushing_early_js_defer_script) {
     StaticAssetManager* static_asset_manager =
         driver_->server_context()->static_asset_manager();
@@ -304,7 +309,7 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
       // Don't flush javascript resources if defer_javascript is enabled.
       // TOOD(nikhilmadan): Check if the User-Agent supports defer_javascript.
       GoogleUrl gurl;
-      if (driver_->options()->flush_more_resources_early_if_time_permits() &&
+      if (flush_more_resources_early_if_time_permits_ &&
           ExtractUrl(attr, driver_, &gurl)) {
         bool is_pagespeed_resource =
             driver_->server_context()->IsNonStalePagespeedResource(gurl);
@@ -415,6 +420,7 @@ void FlushEarlyContentWriterFilter::Clear() {
   STLDeleteElements(&js_resources_info_);
   defer_javascript_enabled_ = false;
   flush_early_content_.clear();
+  flush_more_resources_early_if_time_permits_ = false;
 }
 
 bool FlushEarlyContentWriterFilter::IsFlushable(

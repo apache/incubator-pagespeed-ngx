@@ -17,12 +17,12 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest_prod.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class UserAgentMatcher;
-class RequestHeaders;
 
 // This class keeps track of the device properties of the client, which are
 // for the most part learned from the UserAgent string.
@@ -39,7 +39,7 @@ class DeviceProperties {
   bool SupportsWebpLosslessAlpha() const;
   bool IsMobileUserAgent() const;
   bool SupportsSplitHtml(bool enable_mobile) const;
-  bool CanPreloadResources(const RequestHeaders* request_headers) const;
+  bool CanPreloadResources() const;
   bool GetScreenResolution(int* width, int* height) const;
 
  private:

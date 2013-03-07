@@ -50,6 +50,12 @@ const char kIproServed[] = "ipro_served";
 const char kIproNotInCache[] = "ipro_not_in_cache";
 const char kIproNotRewritable[] = "ipro_not_rewritable";
 
+const char* kWaveFormCounters[RewriteDriverFactory::kNumWorkerPools] = {
+  "html-worker-queue-depth",
+  "rewrite-worker-queue-depth",
+  "low-priority-worked-queue-depth"
+};
+
 // Variables for the beacon to increment.  These are currently handled in
 // mod_pagespeed_handler on apache.  The average load time in milliseconds is
 // total_page_load_ms / page_load_count.  Note that these are not updated
@@ -111,6 +117,9 @@ void RewriteStats::InitStats(Statistics* statistics) {
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kRewritesDropped,
                                ServerContext::kStatisticsGroup);
+  for (int i = 0; i < RewriteDriverFactory::kNumWorkerPools; ++i) {
+    statistics->AddVariable(kWaveFormCounters[i]);
+  }
 }
 
 // This is called when a RewriteDriverFactory is created, and adds
@@ -176,7 +185,8 @@ RewriteStats::RewriteStats(Statistics* stats,
 
   for (int i = 0; i < RewriteDriverFactory::kNumWorkerPools; ++i) {
     thread_queue_depths_.push_back(
-        new Waveform(thread_system, timer, kNumWaveformSamples));
+        new Waveform(thread_system, timer, kNumWaveformSamples,
+                     stats->GetVariable(kWaveFormCounters[i])));
   }
 }
 

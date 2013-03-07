@@ -100,7 +100,6 @@ class RewriteStats {
   Variable* cached_output_misses_;
   Variable* cached_resource_fetches_;
   Variable* failed_filter_resource_fetches_;
-  Variable* failed_filter_resource_fetches__;
   Variable* num_flushes_;
   Variable* page_load_count_;
   Variable* resource_404_count_;

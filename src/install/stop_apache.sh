@@ -5,12 +5,13 @@
 #    - graceful-stop complains about pid in pidfile not running but exits 0
 #    - Worker MPM child processes take longer to exit than parent.
 #
-# Usage: stop_apache.sh apachectl_program pid_file httpd_program stop_command
+# Usage:
+#     stop_apache.sh apachectl_program pid_file httpd_program stop_command port
 
 set -u
 
-if [ $# != 4 ]; then
-  echo Usage: $0 apachectl_program pid_file httpd_program stop_command
+if [ $# != 5 ]; then
+  echo Usage: $0 apachectl_program pid_file httpd_program stop_command port
   exit 1
 fi
 
@@ -18,6 +19,7 @@ apachectl="$1"
 pid_file="$2"
 httpd="$(basename $3)"
 stop_command="$4"
+port="$5"
 first=1
 
 $apachectl $stop_command
@@ -50,6 +52,17 @@ first=1
 while [ $(pgrep $httpd|wc -l) -ne 0 ]; do
   if [ $first -eq 1 ]; then
     /bin/echo -n "Waiting for $httpd to exit"
+    first=0
+  else
+    /bin/echo -n "."
+  fi
+  sleep 1
+done
+
+first=1
+while [ $(netstat -anp |& grep -c "::$port .* LISTEN ") -ne 0 ]; do
+  if [ $first -eq 1 ]; then
+    /bin/echo -n "Waiting for netstat to stop including refs to port $port"
     first=0
   else
     /bin/echo -n "."

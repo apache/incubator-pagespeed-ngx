@@ -18,6 +18,8 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/simple_stats.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -50,6 +52,7 @@ class WaveformTest : public testing::Test {
   MockMessageHandler handler_;
   MockTimer timer_;
   scoped_ptr<ThreadSystem> thread_system_;
+  SimpleStats stats_;
 };
 
 
@@ -63,7 +66,9 @@ TEST_F(WaveformTest, Header) {
 
 // Instantiate a waveform and make sure one of the values shows up.
 TEST_F(WaveformTest, BasicGraph) {
-  Waveform waveform(thread_system_.get(), &timer_, 10);
+  Variable* variable = stats_.AddVariable("test1");
+
+  Waveform waveform(thread_system_.get(), &timer_, 10, variable);
   timer_.SetTimeUs(MockTimer::kApr_5_2010_ms);
   waveform.Add(10);
   timer_.AdvanceMs(10);
@@ -92,11 +97,14 @@ TEST_F(WaveformTest, BasicGraph) {
   EXPECT_TRUE(Contains(html, 90, 60));
   EXPECT_NE(GoogleString::npos, html.find("'My Waveform'"));
   EXPECT_NE(GoogleString::npos, html.find("'My Values'"));
+  // The last Add call is sticky.
+  EXPECT_EQ(60, variable->Get());
 }
 
 // Instantiate a waveform and make sure one of the values shows up.
 TEST_F(WaveformTest, Delta) {
-  Waveform waveform(thread_system_.get(), &timer_, 10);
+  Variable* variable = stats_.AddVariable("test1");
+  Waveform waveform(thread_system_.get(), &timer_, 10, variable);
   timer_.SetTimeUs(MockTimer::kApr_5_2010_ms);
   waveform.AddDelta(10);
   timer_.AdvanceMs(10);
@@ -111,12 +119,13 @@ TEST_F(WaveformTest, Delta) {
   EXPECT_TRUE(Contains(html, 20, 25));
   EXPECT_NE(GoogleString::npos, html.find("'My Waveform'"));
   EXPECT_NE(GoogleString::npos, html.find("'My Values'"));
+  EXPECT_EQ(10 + 20 - 5, variable->Get());
 }
 
 // Overflows the number of samples and makes sure the desired results
 // are shown.
 TEST_F(WaveformTest, Overflow) {
-  Waveform waveform(thread_system_.get(), &timer_, 10);
+  Waveform waveform(thread_system_.get(), &timer_, 10, NULL /* variable */);
 
   // Don't overflow at first.
   for (int i = 0; i < 10; ++i) {
@@ -159,7 +168,7 @@ TEST_F(WaveformTest, Overflow) {
 }
 
 TEST_F(WaveformTest, AvgMinMax) {
-  Waveform waveform(thread_system_.get(), &timer_, 10);
+  Waveform waveform(thread_system_.get(), &timer_, 10, NULL /* variable */);
   for (int i = 1; i <= 1000; ++i) {
     waveform.Add(i);
     timer_.AdvanceMs(10);

@@ -784,7 +784,7 @@ bool RewriteDriver::SupportsFlushEarly() const {
         (options_->Enabled(RewriteOptions::kFlushSubresources) &&
         request_headers_ != NULL &&
         request_headers_->method() == RequestHeaders::kGet &&
-        device_properties_->CanPreloadResources(request_headers_))
+        device_properties_->CanPreloadResources())
         ? kTrue : kFalse;
   }
   return (supports_flush_early_ == kTrue);

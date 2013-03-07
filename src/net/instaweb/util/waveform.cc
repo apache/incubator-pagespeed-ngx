@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/basictypes.h"        // for int64
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -33,16 +34,17 @@ namespace net_instaweb {
 
 class MessageHandler;
 
-Waveform::Waveform(ThreadSystem* thread_system, Timer* timer, int capacity)
+Waveform::Waveform(ThreadSystem* thread_system, Timer* timer, int capacity,
+                   Variable* metric)
     : timer_(timer),
       capacity_(capacity),
       samples_(new TimeValue[capacity]),
-      mutex_(thread_system->NewMutex()) {
-
+      previous_value_(0.0),
+      mutex_(thread_system->NewMutex()),
+      metric_(metric) {
   // Note that we don't clear previous_value_ in Clear() because that would
   // get the Waveform out of sync with whatever system is sending it Delta
   // updates.
-  previous_value_ = 0.0;
   Clear();
 }
 
@@ -102,12 +104,18 @@ void Waveform::AddDelta(double delta) {
   // TODO(jmarantz): use writer-lock.
   ScopedMutex lock(mutex_.get());
   AddHelper(previous_value_ + delta);
+  if (metric_ != NULL) {
+    metric_->Add(static_cast<int64>(delta));
+  }
 }
 
 void Waveform::Add(double value) {
   // TODO(jmarantz): use writer-lock.
   ScopedMutex lock(mutex_.get());
   AddHelper(value);
+  if (metric_ != NULL) {
+    metric_->Set(static_cast<int64>(value));
+  }
 }
 
 void Waveform::AddHelper(double value) {
