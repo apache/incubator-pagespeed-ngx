@@ -32,13 +32,13 @@
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/fast_wildcard_group.h"
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/wildcard.h"
+#include "third_party/instaweb/util/fast_wildcard_group.h"
+#include "third_party/instaweb/util/wildcard.h"
 
 namespace net_instaweb {
 

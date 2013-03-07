@@ -16,13 +16,18 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
+// NOTE: THIS CODE IS DEAD.  IT IS ONLY LINKED BY THE SPEED_TEST PROVING IT'S
+// SLOWER THAN FastWildcardGroup, PLUS ITS OWN UNIT TEST.
+
+#include "third_party/instaweb/util/wildcard_group.h"
+
 #include <vector>
+
 #include "base/logging.h"
-#include "net/instaweb/util/public/wildcard_group.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/wildcard.h"
+#include "third_party/instaweb/util/wildcard.h"
 
 namespace net_instaweb {
 

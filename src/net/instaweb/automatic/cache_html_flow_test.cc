@@ -51,8 +51,8 @@
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
-#include "net/instaweb/util/public/wildcard.h"
 #include "net/instaweb/util/worker_test_base.h"
+#include "third_party/instaweb/util/wildcard.h"
 
 namespace net_instaweb {
 

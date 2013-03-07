@@ -15,7 +15,7 @@
 // Author: jmarantz@google.com (Joshua Marantz),
 //         jmaessen@google.com (Jan-Willem Maessen)
 
-#include "net/instaweb/util/public/wildcard.h"
+#include "third_party/instaweb/util/wildcard.h"
 
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/scoped_ptr.h"

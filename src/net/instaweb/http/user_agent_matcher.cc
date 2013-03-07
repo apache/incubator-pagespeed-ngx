@@ -18,12 +18,15 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/fast_wildcard_group.h"
 #include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "third_party/instaweb/util/fast_wildcard_group.h"
 
 namespace net_instaweb {
+
+class RequestHeaders;
+
 // These are the user-agents of browsers/mobile devices which support
 // image-inlining. The data is from "Latest WURFL Repository"(mobile devices)
 // and "Web Patch"(browsers) on http://wurfl.sourceforge.net

@@ -19,10 +19,10 @@
 #include "base/logging.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/benchmark.h"
-#include "net/instaweb/util/public/fast_wildcard_group.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/wildcard_group.h"
+#include "third_party/instaweb/util/fast_wildcard_group.h"
+#include "third_party/instaweb/util/wildcard_group.h"
 
 
 namespace net_instaweb {
@@ -167,13 +167,13 @@ template<class G> static void UrlBlacklistBenchmark(
   }
 }
 
-static void BM_WildcardGroup(int iters, int size) {
+void BM_WildcardGroup(int iters, int size) {
   int actual_size = size / 2;
   bool include_wildcards = (size % 2) == 1;
   UrlBlacklistBenchmark<WildcardGroup>(iters, actual_size, include_wildcards);
 }
 
-static void BM_FastWildcardGroup(int iters, int size) {
+void BM_FastWildcardGroup(int iters, int size) {
   int actual_size = size / 2;
   bool include_wildcards = (size % 2) == 1;
   UrlBlacklistBenchmark<FastWildcardGroup>(

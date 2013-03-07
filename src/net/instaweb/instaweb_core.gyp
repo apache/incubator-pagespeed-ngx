@@ -32,7 +32,6 @@
         'util/atom.cc',
         'util/charset_util.cc',
         'util/countdown_timer.cc',
-        'util/fast_wildcard_group.cc',
         'util/file_message_handler.cc',
         'util/google_message_handler.cc',
         'util/google_url.cc',
@@ -45,8 +44,6 @@
         'util/string_writer.cc',
         'util/symbol_table.cc',
         'util/timer.cc',
-        'util/wildcard.cc',
-        'util/wildcard_group.cc',
         'util/writer.cc',
       ],
       'include_dirs': [

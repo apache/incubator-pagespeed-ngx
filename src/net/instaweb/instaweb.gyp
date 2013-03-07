@@ -627,6 +627,7 @@
         'instaweb_logging_pb',
         'instaweb_propcache_pb',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
+        '<(DEPTH)/third_party/instaweb/util.gyp:util',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',

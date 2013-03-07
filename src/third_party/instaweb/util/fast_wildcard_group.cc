@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2012 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,19 @@
 
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
+#include "third_party/instaweb/util/fast_wildcard_group.h"
+
 #include <algorithm>
 #include <vector>
+
 #include "base/logging.h"
 #include "net/instaweb/util/public/atomic_int32.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/fast_wildcard_group.h"
 #include "net/instaweb/util/public/rolling_hash.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/wildcard.h"
+#include "third_party/instaweb/util/wildcard.h"
 
 namespace net_instaweb {
 

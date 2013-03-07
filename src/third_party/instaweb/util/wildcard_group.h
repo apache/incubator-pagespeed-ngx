@@ -16,8 +16,11 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_WILDCARD_GROUP_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_WILDCARD_GROUP_H_
+// NOTE: THIS CODE IS DEAD.  IT IS ONLY LINKED BY THE SPEED_TEST PROVING IT'S
+// SLOWER THAN FastWildcardGroup, PLUS ITS OWN UNIT TEST.
+
+#ifndef THIRD_PARTY_INSTAWEB_UTIL_WILDCARD_GROUP_H_
+#define THIRD_PARTY_INSTAWEB_UTIL_WILDCARD_GROUP_H_
 
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
@@ -79,4 +82,4 @@ class WildcardGroup {
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_WILDCARD_GROUP_H_
+#endif  // THIRD_PARTY_INSTAWEB_UTIL_WILDCARD_GROUP_H_

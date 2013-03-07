@@ -22,7 +22,7 @@
 #include "net/instaweb/util/public/re2.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/fast_wildcard_group.h"
+#include "third_party/instaweb/util/fast_wildcard_group.h"
 
 using std::pair;
 using std::make_pair;

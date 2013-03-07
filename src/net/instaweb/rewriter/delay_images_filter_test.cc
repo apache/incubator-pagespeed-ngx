@@ -33,7 +33,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/wildcard.h"
+#include "third_party/instaweb/util/wildcard.h"
 
 namespace {
 const char kAndroidMobileUserAgent1[] = "Android 3.1 Mobile Safari";
