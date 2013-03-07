@@ -85,6 +85,11 @@ class ImageUrlEncoder : public UrlSegmentEncoder {
   static void SetWebpAndMobileUserAgent(const RewriteDriver& driver,
                                         ResourceContext* context);
 
+  // Flag whether this device has a small screen, which determines what
+  // Jpeg/WebP quality to use.
+  static void SetSmallScreen(const RewriteDriver& driver,
+                             ResourceContext* context);
+
   // Set context for screen resolution.
   static void SetUserAgentScreenResolution(
       RewriteDriver* driver, ResourceContext* context);

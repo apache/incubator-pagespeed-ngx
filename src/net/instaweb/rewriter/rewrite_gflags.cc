@@ -57,21 +57,37 @@ DEFINE_int64(css_image_inline_max_bytes,
              "Number of bytes below which images in CSS will be inlined.");
 DEFINE_int32(image_recompress_quality,
              net_instaweb::RewriteOptions::kDefaultImagesRecompressQuality,
-             "Quality parameter to use while recompressing any image type."
-             "This should be in range [0,100], 100 refers to best quality.");
+             "Quality parameter to use while recompressing any image type. "
+             "This should be in the range [0,100]. 100 refers to the highest "
+             "quality.");
 // Deprecated flag.
 DEFINE_int32(images_recompress_quality,
              net_instaweb::RewriteOptions::kDefaultImagesRecompressQuality,
-             "Quality parameter to use while recompressing any image type."
-             "This should be in range [0,100], 100 refers to best quality.");
+             "Quality parameter to use while recompressing any image type. "
+             "This should be in the range [0,100]. 100 refers to the highest "
+             "quality.");
 DEFINE_int32(image_jpeg_recompress_quality,
              net_instaweb::RewriteOptions::kDefaultImageJpegRecompressQuality,
-             "Quality parameter to use while recompressing the jpeg images."
-             "This should be in range [0,100], 100 refers to best quality.");
+             "Quality parameter to use while recompressing jpeg images. "
+             "This should be in the range [0,100]. 100 refers to the highest "
+             "quality.");
+DEFINE_int32(image_jpeg_recompress_quality_for_small_screens,
+             net_instaweb::RewriteOptions::kDefaultImageJpegRecompressQuality,
+             "Quality parameter to use while recompressing jpeg images "
+             "for small screens. This should be in the range [0,100]. 100 "
+             "refers to the highest quality. If -1 or not set, "
+             "image_jpeg_recompress_quality will be used.");
 DEFINE_int32(image_webp_recompress_quality,
              net_instaweb::RewriteOptions::kDefaultImageWebpRecompressQuality,
-             "Quality parameter to use while recompressing the webp images."
-             "This should be in range [0,100], 100 refers to best quality.");
+             "Quality parameter to use while recompressing webp images. "
+             "This should be in the range [0,100]. 100 refers to the highest "
+             "quality.");
+DEFINE_int32(image_webp_recompress_quality_for_small_screens,
+             net_instaweb::RewriteOptions::kDefaultImageWebpRecompressQuality,
+             "Quality parameter to use while recompressing webp images "
+             "for small screens. This should be in the range [0,100]. 100 "
+             "refers to the highest quality. If -1 or not set, "
+             "image_webp_recompress_quality will be used.");
 DEFINE_int64(image_webp_timeout_ms,
              net_instaweb::RewriteOptions::kDefaultImageWebpTimeoutMs,
              "The timeout, in milliseconds, for converting images to WebP "
@@ -477,9 +493,17 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_image_jpeg_recompress_quality(
         FLAGS_image_jpeg_recompress_quality);
   }
+  if (WasExplicitlySet("image_jpeg_recompress_quality_for_small_screens")) {
+      options->set_image_jpeg_recompress_quality_for_small_screens(
+          FLAGS_image_jpeg_recompress_quality_for_small_screens);
+  }
   if (WasExplicitlySet("image_webp_recompress_quality")) {
     options->set_image_webp_recompress_quality(
         FLAGS_image_webp_recompress_quality);
+  }
+  if (WasExplicitlySet("image_webp_recompress_quality_for_small_screens")) {
+    options->set_image_webp_recompress_quality_for_small_screens(
+        FLAGS_image_webp_recompress_quality_for_small_screens);
   }
   if (WasExplicitlySet("image_webp_timeout_ms")) {
     options->set_image_webp_timeout_ms(

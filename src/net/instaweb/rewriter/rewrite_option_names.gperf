@@ -76,6 +76,7 @@ struct OptionName {
 "ImageRetainColorSampling",              RewriteOptions::kImageRetainColorSampling
 "ImageRetainExifData",                   RewriteOptions::kImageRetainExifData
 "ImageWebpRecompressionQuality",         RewriteOptions::kImageWebpRecompressionQuality
+"ImageWebpRecompressionQualityForSmallScreens", RewriteOptions::kImageWebpRecompressionQualityForSmallScreens
 "ImageWebpTimeoutMs",                    RewriteOptions::kImageWebpTimeoutMs
 "ImplicitCacheTtlMs",                    RewriteOptions::kImplicitCacheTtlMs
 "InPlacePreemptiveRewriteCss",           RewriteOptions::kInPlacePreemptiveRewriteCss
@@ -88,6 +89,7 @@ struct OptionName {
 "IncreaseSpeedTracking",                 RewriteOptions::kIncreaseSpeedTracking
 "InlineOnlyCriticalImages",              RewriteOptions::kInlineOnlyCriticalImages
 "JpegRecompressionQuality",              RewriteOptions::kImageJpegRecompressionQuality
+"JpegRecompressionQualityForSmallScreens", RewriteOptions::kImageJpegRecompressionQualityForSmallScreens
 "JsInlineMaxBytes",                      RewriteOptions::kJsInlineMaxBytes
 "JsOutlineMinBytes",                     RewriteOptions::kJsOutlineMinBytes
 "JsPreserveURLs",                        RewriteOptions::kJsPreserveURLs

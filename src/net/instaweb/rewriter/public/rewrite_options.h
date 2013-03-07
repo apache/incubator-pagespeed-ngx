@@ -225,6 +225,7 @@ class RewriteOptions {
     kImageInlineMaxBytes,
     kImageJpegNumProgressiveScans,
     kImageJpegRecompressionQuality,
+    kImageJpegRecompressionQualityForSmallScreens,
     kImageLimitOptimizedPercent,
     kImageLimitResizeAreaPercent,
     kImageMaxRewritesAtOnce,
@@ -235,6 +236,7 @@ class RewriteOptions {
     kImageRetainColorSampling,
     kImageRetainExifData,
     kImageWebpRecompressionQuality,
+    kImageWebpRecompressionQualityForSmallScreens,
     kImageWebpTimeoutMs,
     kImplicitCacheTtlMs,
     kInPlaceResourceOptimization,
@@ -570,11 +572,13 @@ class RewriteOptions {
   static const char kDefaultBeaconUrl[];
   static const int64 kDefaultImagesRecompressQuality;
   static const int64 kDefaultImageJpegRecompressQuality;
+  static const int64 kDefaultImageJpegRecompressQualityForSmallScreens;
   static const int kDefaultImageLimitOptimizedPercent;
   static const int kDefaultImageLimitResizeAreaPercent;
   static const int64 kDefaultImageResolutionLimitBytes;
   static const int kDefaultImageJpegNumProgressiveScans;
   static const int64 kDefaultImageWebpRecompressQuality;
+  static const int64 kDefaultImageWebpRecompressQualityForSmallScreens;
   static const int64 kDefaultImageWebpTimeoutMs;
   static const int kDefaultDomainShardCount;
   static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;
@@ -1594,6 +1598,13 @@ class RewriteOptions {
     set_option(x, &image_jpeg_recompress_quality_);
   }
 
+  int64 image_jpeg_recompress_quality_for_small_screens() const {
+    return image_jpeg_recompress_quality_for_small_screens_.value();
+  }
+  void set_image_jpeg_recompress_quality_for_small_screens(int64 x) {
+    set_option(x, &image_jpeg_recompress_quality_for_small_screens_);
+  }
+
   int64 image_recompress_quality() const {
     return image_recompress_quality_.value();
   }
@@ -1628,6 +1639,12 @@ class RewriteOptions {
     set_option(x, &image_webp_recompress_quality_);
   }
 
+  int64 image_webp_recompress_quality_for_small_screens() const {
+    return image_webp_recompress_quality_for_small_screens_.value();
+  }
+  void set_image_webp_recompress_quality_for_small_screens(int64 x) {
+    set_option(x, &image_webp_recompress_quality_for_small_screens_);
+  }
   int64 image_webp_timeout_ms() const {
     return image_webp_timeout_ms_.value();
   }
@@ -2741,6 +2758,7 @@ class RewriteOptions {
 
   // Options related to jpeg compression.
   Option<int64> image_jpeg_recompress_quality_;
+  Option<int64> image_jpeg_recompress_quality_for_small_screens_;
   Option<int> image_jpeg_num_progressive_scans_;
   Option<bool> image_retain_color_profile_;
   Option<bool> image_retain_color_sampling_;
@@ -2752,6 +2770,7 @@ class RewriteOptions {
 
   // Options related to webp compression.
   Option<int64> image_webp_recompress_quality_;
+  Option<int64> image_webp_recompress_quality_for_small_screens_;
   Option<int64> image_webp_timeout_ms_;
 
   Option<int> image_max_rewrites_at_once_;

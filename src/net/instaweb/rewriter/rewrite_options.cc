@@ -1048,6 +1048,15 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Set quality parameter for recompressing jpeg images [-1,100], "
       "100 Disable the rewriting of image URLs.");
+  // Use kDefaultImageJpegRecompressQuality as default.
+  AddBaseProperty(
+      kDefaultImageJpegRecompressQuality,
+      &RewriteOptions::image_jpeg_recompress_quality_for_small_screens_, "iqss",
+      kImageJpegRecompressionQualityForSmallScreens,
+      kDirectoryScope,
+      "Set quality parameter for recompressing jpeg images for small "
+      "screens. [-1,100], 100 refers to best quality, -1 falls back to "
+      "kImageJpegRecompressionQuality.");
   AddBaseProperty(
       kDefaultImagesRecompressQuality,
       &RewriteOptions::image_recompress_quality_, "irq",
@@ -1080,6 +1089,15 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Set quality parameter for recompressing webp images [-1,100], "
       "100 refers to best quality, -1 disables lossy compression.");
+  // Use kDefaultImageWebpRecompressQuality as default.
+  AddBaseProperty(
+      kDefaultImageWebpRecompressQuality,
+      &RewriteOptions::image_webp_recompress_quality_for_small_screens_, "iwss",
+      kImageWebpRecompressionQualityForSmallScreens,
+      kDirectoryScope,
+      "Set quality parameter for recompressing webp images for small "
+      "screens. [-1,100], 100 refers to best quality, -1 falls back to "
+      "kImageWebpRecompressionQuality.");
   AddBaseProperty(
       kDefaultImageWebpTimeoutMs,
       &RewriteOptions::image_webp_timeout_ms_, "wt",

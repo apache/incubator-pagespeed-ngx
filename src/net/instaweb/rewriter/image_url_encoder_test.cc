@@ -369,9 +369,17 @@ TEST_F(ImageUrlEncoderTest, UserAgentScreenResolution) {
   GoogleString cache_key =
       ImageUrlEncoder::CacheKeyFromResourceContext(context);
   GoogleString expected_key;
-  StrAppend(&expected_key, "screen", IntegerToString(width), "x",
+  StrAppend(&expected_key, "sr", IntegerToString(width), "x",
             IntegerToString(height));
   EXPECT_EQ(expected_key, cache_key);
+}
+
+TEST_F(ImageUrlEncoderTest, SmallScreen) {
+  ResourceContext context;
+  context.set_use_small_screen_quality(true);
+  GoogleString cache_key =
+      ImageUrlEncoder::CacheKeyFromResourceContext(context);
+  EXPECT_EQ("ss", cache_key);
 }
 
 TEST_F(ImageUrlEncoderTest, BadFirst) {

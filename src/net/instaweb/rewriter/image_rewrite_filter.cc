@@ -87,6 +87,7 @@ const int ImageRewriteFilter::kRelatedFiltersSize = arraysize(kRelatedFilters);
 const RewriteOptions::OptionEnum ImageRewriteFilter::kRelatedOptions[] = {
   RewriteOptions::kImageJpegNumProgressiveScans,
   RewriteOptions::kImageJpegRecompressionQuality,
+  RewriteOptions::kImageJpegRecompressionQualityForSmallScreens,
   RewriteOptions::kImageLimitOptimizedPercent,
   RewriteOptions::kImageLimitResizeAreaPercent,
   RewriteOptions::kImageMaxRewritesAtOnce,
@@ -97,6 +98,7 @@ const RewriteOptions::OptionEnum ImageRewriteFilter::kRelatedOptions[] = {
   RewriteOptions::kImageRetainColorSampling,
   RewriteOptions::kImageRetainExifData,
   RewriteOptions::kImageWebpRecompressionQuality,
+  RewriteOptions::kImageWebpRecompressionQualityForSmallScreens,
   RewriteOptions::kProgressiveJpegMinBytes
 };
 const int ImageRewriteFilter::kRelatedOptionsSize = arraysize(kRelatedOptions);
@@ -387,8 +389,8 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
       // TODO(vchudnov): Consider whether we want to treat CSS images
       // differently.
       (!is_css || input_size <= options->max_image_bytes_for_webp_in_css())) {
-    SetWebpCompressionOptions(resource_context, *options, input_resource->url(),
-                              image_options);
+    SetWebpCompressionOptions(
+        resource_context, *options, input_resource->url(), image_options);
   }
   image_options->jpeg_quality = options->image_recompress_quality();
   if (options->image_jpeg_recompress_quality() != -1) {
@@ -396,9 +398,20 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
     // quality.
     image_options->jpeg_quality = options->image_jpeg_recompress_quality();
   }
+
+  if (options->image_jpeg_recompress_quality_for_small_screens() != -1 &&
+      resource_context.use_small_screen_quality()) {
+    image_options->jpeg_quality =
+        options->image_jpeg_recompress_quality_for_small_screens();
+  }
   image_options->webp_quality = options->image_recompress_quality();
   if (options->image_webp_recompress_quality() != -1) {
     image_options->webp_quality = options->image_webp_recompress_quality();
+  }
+  if (options->image_webp_recompress_quality_for_small_screens() != -1 &&
+      resource_context.use_small_screen_quality()) {
+    image_options->webp_quality =
+        options->image_webp_recompress_quality_for_small_screens();
   }
   image_options->progressive_jpeg =
       options->Enabled(RewriteOptions::kConvertJpegToProgressive) &&
@@ -1361,6 +1374,7 @@ void ImageRewriteFilter::EncodeUserAgentIntoResourceContext(
   if (SquashImagesForMobileScreenEnabled()) {
     ImageUrlEncoder::SetUserAgentScreenResolution(driver_, context);
   }
+  ImageUrlEncoder::SetSmallScreen(*driver_, context);
 }
 
 RewriteContext* ImageRewriteFilter::MakeRewriteContext() {

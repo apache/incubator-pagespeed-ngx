@@ -1810,6 +1810,202 @@ TEST_F(ImageRewriteTest, SquashImagesForMobileScreen) {
       rewrite_driver(), screen_width, screen_height);
 }
 
+TEST_F(ImageRewriteTest, JpegQualityForSmallScreens) {
+  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
+      "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
+      "Version/4.0 Mobile Safari/534.30");
+  ImageRewriteFilter image_rewrite_filter(rewrite_driver());
+  ResourceContext ctx;
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  const ResourcePtr res_ptr(rewrite_driver()->
+      CreateInputResourceAbsoluteUnchecked("data:image/png;base64,test"));
+  scoped_ptr<Image::CompressionOptions> img_options(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+
+  // Neither option is set, default is -1.
+  EXPECT_EQ(-1, img_options->jpeg_quality);
+  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+
+  // Base jpeg quality set, but for_small_screens is not, return base quality.
+  ctx.Clear();
+  options()->ClearSignatureForTesting();
+  options()->set_image_jpeg_recompress_quality(85);
+  options()->set_image_jpeg_recompress_quality_for_small_screens(-1);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(85, img_options->jpeg_quality);
+  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+
+  // Base jpeg quality not set, but for_small_screens is, return small_screen.
+  options()->ClearSignatureForTesting();
+  options()->set_image_jpeg_recompress_quality_for_small_screens(20);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(20, img_options->jpeg_quality);
+  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+
+  // Base and for_small_screen options are set, and screen is small;
+  options()->ClearSignatureForTesting();
+  options()->set_image_jpeg_recompress_quality(85);
+  options()->set_image_jpeg_recompress_quality_for_small_screens(20);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(20, img_options->jpeg_quality);
+  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+
+  // Base and for_small_screen options are set, but screen is not small.
+  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
+      "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
+      "Version/4.0 Safari/534.30");
+  ctx.Clear();
+  options()->ClearSignatureForTesting();
+  options()->set_image_jpeg_recompress_quality(85);
+  options()->set_image_jpeg_recompress_quality_for_small_screens(20);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(85, img_options->jpeg_quality);
+  EXPECT_FALSE(ctx.has_use_small_screen_quality());
+
+  // Small screen following big screen.
+  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
+      "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
+      "Version/4.0 Mobile Safari/534.30");
+  ctx.Clear();
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(20, img_options->jpeg_quality);
+  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+
+  // Big screen following small screen.
+  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
+      "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
+      "Version/4.0 Safari/534.30");
+  ctx.Clear();
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(85, img_options->jpeg_quality);
+  EXPECT_FALSE(ctx.has_use_small_screen_quality());
+
+  // Non-mobile UA.
+  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
+      "en-US) AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.A.B.C "
+      "Safari/525.13");
+  ctx.Clear();
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(85, img_options->jpeg_quality);
+  EXPECT_FALSE(ctx.has_use_small_screen_quality());
+}
+
+TEST_F(ImageRewriteTest, WebPQualityForSmallScreens) {
+  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
+      "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
+      "Version/4.0 Mobile Safari/534.30");
+  ImageRewriteFilter image_rewrite_filter(rewrite_driver());
+  ResourceContext ctx;
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  const ResourcePtr res_ptr(rewrite_driver()->
+      CreateInputResourceAbsoluteUnchecked("data:image/png;base64,test"));
+  scoped_ptr<Image::CompressionOptions> img_options(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+
+  // Neither option is set, default is -1.
+  EXPECT_EQ(-1, img_options->webp_quality);
+  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+
+  // Base webp quality set, but for_small_screens is not, return base quality.
+  ctx.Clear();
+  options()->ClearSignatureForTesting();
+  options()->set_image_webp_recompress_quality(85);
+  options()->set_image_webp_recompress_quality_for_small_screens(-1);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(85, img_options->webp_quality);
+  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+
+  // Base webp quality not set, but for_small_screens is, return small_screen.
+  options()->ClearSignatureForTesting();
+  options()->set_image_webp_recompress_quality_for_small_screens(20);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(20, img_options->webp_quality);
+  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+
+  // Base and for_small_screen options are set, and screen is small;
+  options()->ClearSignatureForTesting();
+  options()->set_image_webp_recompress_quality(85);
+  options()->set_image_webp_recompress_quality_for_small_screens(20);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(20, img_options->webp_quality);
+  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+
+  // Base and for_small_screen options are set, but screen is not small.
+  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
+      "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
+      "Version/4.0 Safari/534.30");
+  ctx.Clear();
+  options()->ClearSignatureForTesting();
+  options()->set_image_webp_recompress_quality(85);
+  options()->set_image_webp_recompress_quality_for_small_screens(20);
+  rewrite_driver()->set_custom_options(options());
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(85, img_options->webp_quality);
+  EXPECT_FALSE(ctx.has_use_small_screen_quality());
+
+  // Small screen following big screen.
+  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.0.1; en-us; "
+      "Galaxy Nexus Build/ICL27) AppleWebKit/534.30 (KHTML, like Gecko) "
+      "Version/4.0 Mobile Safari/534.30");
+  ctx.Clear();
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(20, img_options->webp_quality);
+  EXPECT_TRUE(ctx.has_use_small_screen_quality());
+
+  // Big screen following small screen.
+  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Linux; U; Android 4.2; en-us; "
+      "Nexus 10 Build/JOP12D) AppleWebKit/534.30 (KHTML, like Gecko) "
+      "Version/4.0 Safari/534.30");
+  ctx.Clear();
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(85, img_options->webp_quality);
+  EXPECT_FALSE(ctx.has_use_small_screen_quality());
+
+  // Non-mobile UA.
+  rewrite_driver()->SetUserAgent("Mozilla/5.0 (Windows; U; Windows NT 5.1; "
+      "en-US) AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.A.B.C "
+      "Safari/525.13");
+  ctx.Clear();
+  image_rewrite_filter.EncodeUserAgentIntoResourceContext(&ctx);
+  img_options.reset(
+      image_rewrite_filter.ImageOptionsForLoadedResource(ctx, res_ptr, false));
+  EXPECT_EQ(85, img_options->webp_quality);
+  EXPECT_FALSE(ctx.has_use_small_screen_quality());
+}
+
 TEST_F(ImageRewriteTest, ProgressiveJpegThresholds) {
   GoogleString image_data;
   ASSERT_TRUE(LoadFile(kPuzzleJpgFile, &image_data));

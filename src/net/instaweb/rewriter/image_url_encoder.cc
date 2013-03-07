@@ -40,7 +40,13 @@ const char kMissingDimension = 'N';
 const char kWebpLossyUserAgentKey[] = "w";
 const char kWebpLossyLossLessAlphaUserAgentKey[] = "v";
 const char kMobileUserAgentKey[] = "m";
-const char kUserAgentScreenResolutionKey[] = "screen";
+const char kUserAgentScreenResolutionKey[] = "sr";
+const char kSmallScreenKey[] = "ss";
+
+// Area threshold that determines whether we use
+// Image*RecompressionQualityForSmallScreens to set WebP/Jpeg quality.
+// The intent is for phones and small tablets (e.g., Nexus 7) to be in.
+const int kSmallScreenSizeThresholdArea = 1280 * 800;
 
 bool IsValidCode(char code) {
   return ((code == kCodeSeparator) ||
@@ -276,6 +282,15 @@ void ImageUrlEncoder::SetWebpAndMobileUserAgent(
   }
 }
 
+void ImageUrlEncoder::SetSmallScreen(const RewriteDriver& driver,
+    ResourceContext* context) {
+  int width = 0, height = 0;
+  if (driver.device_properties()->GetScreenResolution(&width, &height) &&
+      width * height <= kSmallScreenSizeThresholdArea) {
+    context->set_use_small_screen_quality(true);
+  }
+}
+
 void ImageUrlEncoder::SetUserAgentScreenResolution(
     RewriteDriver* driver, ResourceContext* context) {
   if (context == NULL) {
@@ -306,6 +321,10 @@ GoogleString ImageUrlEncoder::CacheKeyFromResourceContext(
   }
   if (resource_context.mobile_user_agent()) {
     StrAppend(&user_agent_cache_key, kMobileUserAgentKey);
+  }
+  if (resource_context.has_use_small_screen_quality() &&
+      resource_context.use_small_screen_quality()) {
+    StrAppend(&user_agent_cache_key, kSmallScreenKey);
   }
   if (resource_context.has_user_agent_screen_resolution() &&
       resource_context.user_agent_screen_resolution().has_width() &&

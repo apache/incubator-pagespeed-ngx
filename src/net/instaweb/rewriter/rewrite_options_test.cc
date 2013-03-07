@@ -702,7 +702,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(165, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(167, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -856,6 +856,10 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("ImageWebpRecompressionQuality",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageWebpRecompressionQuality));
+  EXPECT_STREQ("ImageWebpRecompressionQualityForSmallScreens",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::
+                   kImageWebpRecompressionQualityForSmallScreens));
   EXPECT_STREQ("ImageWebpTimeoutMs",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageWebpTimeoutMs));
@@ -889,6 +893,10 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("JpegRecompressionQuality",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageJpegRecompressionQuality));
+  EXPECT_STREQ("JpegRecompressionQualityForSmallScreens",
+                 RewriteOptions::LookupOptionEnum(
+                     RewriteOptions::
+                     kImageJpegRecompressionQualityForSmallScreens));
   EXPECT_STREQ("JsInlineMaxBytes",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kJsInlineMaxBytes));
