@@ -170,6 +170,11 @@ NgxServerContext* NgxRewriteDriverFactory::MakeNgxServerContext() {
   return server_context;
 }
 
+ServerContext* NgxRewriteDriverFactory::NewServerContext() {
+  LOG(DFATAL) << "MakeNgxServerContext should be used instead";
+  return NULL;
+}
+
 void NgxRewriteDriverFactory::ShutDown() {
   StopCacheActivity();
   RewriteDriverFactory::ShutDown();

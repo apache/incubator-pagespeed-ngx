@@ -69,6 +69,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   virtual void ShutDown();
   virtual void StopCacheActivity();
   NgxServerContext* MakeNgxServerContext();
+  ServerContext* NewServerContext();
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
   }
