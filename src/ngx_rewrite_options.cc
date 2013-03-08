@@ -24,6 +24,7 @@ extern "C" {
 
 #include "ngx_rewrite_options.h"
 #include "ngx_pagespeed.h"
+#include "ngx_rewrite_driver_factory.h"
 
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -114,7 +115,8 @@ RewriteOptions::OptionSettingResult
 // Very similar to apache/mod_instaweb::ParseDirective.
 const char*
 NgxRewriteOptions::ParseAndSetOptions(
-    StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler) {
+    StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
+    NgxRewriteDriverFactory* driver_factory) {
   CHECK_GE(n_args, 1);
 
   int i;
@@ -139,7 +141,44 @@ NgxRewriteOptions::ParseAndSetOptions(
   if (n_args == 1) {
     result = ParseAndSetOptions0(directive, &msg, handler);
   } else if (n_args == 2) {
-    result = ParseAndSetOptionFromName1(directive, args[1], &msg, handler);
+    StringPiece arg = args[1];
+    // TODO(morlovich): Remove these special hacks, and handle these via
+    // ParseAndSetOptionFromEnum1.
+    if (IsDirective(directive, "UsePerVHostStatistics")) {
+        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+        if (IsDirective(arg, "on")) {
+          driver_factory->set_use_per_vhost_statistics(true);
+          result = RewriteOptions::kOptionOk;
+        } else if (IsDirective(arg, "off")) {
+          driver_factory->set_use_per_vhost_statistics(false);
+          result = RewriteOptions::kOptionOk;
+        } else {
+          result = RewriteOptions::kOptionValueInvalid;
+        }
+      } else if (IsDirective(directive, "InstallCrashHandler")) {
+        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+        if (IsDirective(arg, "on")) {
+          driver_factory->set_install_crash_handler(true);
+          result = RewriteOptions::kOptionOk;
+        } else if (IsDirective(arg, "off")) {
+          driver_factory->set_install_crash_handler(false);
+          result = RewriteOptions::kOptionOk;
+        } else {
+          result = RewriteOptions::kOptionValueInvalid;
+        }
+      } else if (IsDirective(directive, "MessageBufferSize")) {
+        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+        int message_buffer_size;
+        bool ok = StringToInt(arg.as_string(), &message_buffer_size);
+        if (ok && message_buffer_size >= 0) {
+          driver_factory->set_message_buffer_size(message_buffer_size);
+          result = RewriteOptions::kOptionOk;
+        } else {
+          result = RewriteOptions::kOptionValueInvalid;
+        }
+      } else {
+        result = ParseAndSetOptionFromName1(directive, args[1], &msg, handler);
+      }
   } else if (n_args == 3) {
     result = ParseAndSetOptionFromName2(directive, args[1], args[2],
                                         &msg, handler);

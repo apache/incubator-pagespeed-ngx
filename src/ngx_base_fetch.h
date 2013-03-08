@@ -43,6 +43,8 @@ extern "C" {
 
 #include <pthread.h>
 
+#include "ngx_pagespeed.h"
+
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/util/public/string.h"

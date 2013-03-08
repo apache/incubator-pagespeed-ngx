@@ -19,13 +19,17 @@
 #ifndef NGX_REWRITE_DRIVER_FACTORY_H_
 #define NGX_REWRITE_DRIVER_FACTORY_H_
 
+extern "C" {
+  #include <ngx_core.h>
+  #include <ngx_log.h>
+}
+
 #include <set>
 
 #include "apr_pools.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/simple_stats.h"
 
 // TODO(oschaaf): We should reparent ApacheRewriteDriverFactory and
 // NgxRewriteDriverFactory to a new class OriginRewriteDriverFactory and factor
@@ -35,18 +39,21 @@ namespace net_instaweb {
 
 class AbstractSharedMem;
 class NgxServerContext;
+class NgxMessageHandler;
 class NgxRewriteOptions;
+class SharedCircularBuffer;
+class SharedMemRefererStatistics;
+class SharedMemStatistics;
 class SlowWorker;
 class StaticAssetManager;
+class Statistics;
 class SystemCaches;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
   static const char kStaticAssetPrefix[];
 
-  // main_conf will have only options set in the main block.  It may be NULL,
-  // and we do not take ownership.
-  explicit NgxRewriteDriverFactory(NgxRewriteOptions* main_conf);
+  explicit NgxRewriteDriverFactory();
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -57,15 +64,20 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   virtual Timer* DefaultTimer();
   virtual NamedLockManager* DefaultLockManager();
   virtual void SetupCaches(ServerContext* server_context);
-  virtual Statistics* statistics();
   // Create a new RewriteOptions.  In this implementation it will be an
   // NgxRewriteOptions.
   virtual RewriteOptions* NewRewriteOptions();
   // Initializes the StaticAssetManager.
   virtual void InitStaticAssetManager(
       StaticAssetManager* static_asset_manager);
+  // Print out details of all the connections to memcached servers.
+  void PrintMemCacheStats(GoogleString* out);
   // Release all the resources. It also calls the base class ShutDown to
   // release the base class resources.
+  // Initializes all the statistics objects created transitively by
+  // NgxRewriteDriverFactory, including nginx-specific and
+  // platform-independent statistics.
+  static void InitStats(Statistics* statistics);
   virtual void ShutDown();
   virtual void StopCacheActivity();
   NgxServerContext* MakeNgxServerContext();
@@ -81,7 +93,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   void StartThreads();
   // This helper method contains init procedures invoked by both RootInit()
   // and ChildInit()
-  void ParentOrChildInit();
+  void ParentOrChildInit(ngx_log_t* log);
   // For shared memory resources the general setup we follow is to have the
   // first running process (aka the root) create the necessary segments and
   // fill in their shared data structures, while processes created to actually
@@ -100,14 +112,48 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // syntax check the config file. That basically looks like a complete
   // normal startup and shutdown to the code.
   bool is_root_process() const { return is_root_process_; }
-  void RootInit();
-  void ChildInit();
+  void RootInit(ngx_log_t* log);
+  void ChildInit(ngx_log_t* log);
+  void SharedCircularBufferInit(bool is_root);
+  // Build global shared-memory statistics.  This is invoked if at least
+  // one server context (global or VirtualHost) enables statistics.
+  Statistics* MakeGlobalSharedMemStatistics(bool logging,
+                                            int64 logging_interval_ms,
+                                            const GoogleString& logging_file);
+
+  // Creates and ::Initializes a shared memory statistics object.
+  SharedMemStatistics* AllocateAndInitSharedMemStatistics(
+      const StringPiece& name, const bool logging,
+      const int64 logging_interval_ms, const GoogleString& logging_file);
+
+  NgxMessageHandler* ngx_message_handler() { return ngx_message_handler_; }
+  void set_main_conf(NgxRewriteOptions* main_conf) {  main_conf_ = main_conf; }
+
+  bool use_per_vhost_statistics() const {
+    return use_per_vhost_statistics_;
+  }
+  void set_use_per_vhost_statistics(bool x) {
+    use_per_vhost_statistics_ = x;
+  }
+  bool install_crash_handler() const {
+    return install_crash_handler_;
+  }
+  void set_install_crash_handler(bool x) {
+    install_crash_handler_ = x;
+  }
+  bool message_buffer_size() const {
+    return message_buffer_size_;
+  }
+  void set_message_buffer_size(int x) {
+    message_buffer_size_ = x;
+  }
 
  private:
-  SimpleStats simple_stats_;
   Timer* timer_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
 
+  // main_conf will have only options set in the main block.  It may be NULL,
+  // and we do not take ownership.
   NgxRewriteOptions* main_conf_;
   typedef std::set<NgxServerContext*> NgxServerContextSet;
   NgxServerContextSet uninitialized_server_contexts_;
@@ -116,7 +162,18 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   scoped_ptr<SystemCaches> caches_;
 
   bool threads_started_;
+  // If true, we'll have a separate statistics object for each vhost
+  // (along with a global aggregate), rather than just a single object
+  // aggregating all of them.
+  bool use_per_vhost_statistics_;
   bool is_root_process_;
+  NgxMessageHandler* ngx_message_handler_;
+  NgxMessageHandler* ngx_html_parse_message_handler_;
+  bool install_crash_handler_;
+  int message_buffer_size_;
+  scoped_ptr<SharedCircularBuffer> shared_circular_buffer_;
+  scoped_ptr<SharedMemStatistics> shared_mem_statistics_;
+  bool statistics_frozen_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
