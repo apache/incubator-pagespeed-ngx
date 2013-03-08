@@ -70,12 +70,6 @@ class SystemRewriteOptions : public RewriteOptions {
   void set_use_shared_mem_locking(bool x) {
     set_option(x, &use_shared_mem_locking_);
   }
-  const GoogleString& use_shared_mem_metadata_cache() const {
-    return use_shared_mem_metadata_cache_.value();
-  }
-  void set_use_shared_mem_metadata_cache(GoogleString x) {
-    set_option(x, &use_shared_mem_metadata_cache_);
-  }
   bool statistics_enabled() const {
     return statistics_enabled_.value();
   }
@@ -186,10 +180,6 @@ class SystemRewriteOptions : public RewriteOptions {
   Option<GoogleString> statistics_logging_charts_css_;
   Option<GoogleString> statistics_logging_charts_js_;
   Option<GoogleString> cache_flush_filename_;
-
-  // Empty string if not on, otherwise should correspond to a name passed to
-  // CreateShmMetadataCache().
-  Option<GoogleString> use_shared_mem_metadata_cache_;
 
   Option<bool> statistics_enabled_;
   Option<bool> statistics_logging_enabled_;

@@ -107,7 +107,7 @@ BASE_LIBS = \
   third_party/gflags/libgflags.a \
   third_party/icu/libicudata.a \
   third_party/icu/libicuuc.a \
-  third_party/instaweb/util/libutil.a \
+  third_party/instaweb/libutil.a \
   third_party/jsoncpp/libjsoncpp.a \
   third_party/libjpeg/libjpeg.a \
   third_party/libpagespeed/src/pagespeed/core/libpagespeed_core.a \

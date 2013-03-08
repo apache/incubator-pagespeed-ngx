@@ -568,13 +568,12 @@ ModPagespeedUsePerVHostStatistics on
 </VirtualHost>
 
 # Test host for shared memory cache.
-ModPagespeedCreateSharedMemoryMetadataCache meta 8192
+ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@/with_shm" 8192
 <VirtualHost localhost:@@APACHE_SECONDARY_PORT@@>
   ServerName shmcache.example.com
   DocumentRoot "@@APACHE_DOC_ROOT@@"
-  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+  ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/with_shm"
 
-  ModPagespeedUseSharedMemoryMetadataCache meta
   ModPagespeedEnableFilters rewrite_images
 </VirtualHost>
 
@@ -934,5 +933,4 @@ ModPagespeedCreateSharedMemoryMetadataCache meta 8192
 #ALL_DIRECTIVES ModPagespeedTestProxy off
 #ALL_DIRECTIVES ModPagespeedUrlValuedAttribute span src Hyperlink
 #ALL_DIRECTIVES ModPagespeedUsePerVHostStatistics on
-#ALL_DIRECTIVES ModPagespeedUseSharedMemoryMetadataCache config
 #ALL_DIRECTIVES ModPagespeedXHeaderValue "test"

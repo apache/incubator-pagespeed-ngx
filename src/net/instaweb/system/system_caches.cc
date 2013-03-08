@@ -246,7 +246,7 @@ NamedLockManager* SystemCaches::GetLockManager(SystemRewriteOptions* config) {
 
 CacheInterface* SystemCaches::GetShmMetadataCache(
     SystemRewriteOptions* config) {
-  const GoogleString& name = config->use_shared_mem_metadata_cache();
+  const GoogleString& name = config->file_cache_path();
   if (name.empty()) {
     return NULL;
   }

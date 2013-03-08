@@ -350,7 +350,6 @@ class RewriteOptions {
     kTestProxy,
     kTestProxySlurp,
     kUseSharedMemLocking,
-    kUseSharedMemMetadataCache,
 
     // This is used as a marker for unknown options, as well as to denote
     // how many options the PSOL library itself knows about.

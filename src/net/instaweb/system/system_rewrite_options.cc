@@ -133,9 +133,6 @@ void SystemRewriteOptions::AddProperties() {
                     "acfpi", RewriteOptions::kCacheFlushPollIntervalSec,
                     "Number of seconds to wait between polling for cache-flush "
                         "requests");
-  AddSystemProperty("", &SystemRewriteOptions::use_shared_mem_metadata_cache_,
-                    "asmc", RewriteOptions::kUseSharedMemMetadataCache,
-                    "Use given shared memory cache for metadata cache");
 
   MergeSubclassProperties(system_properties_);
 }

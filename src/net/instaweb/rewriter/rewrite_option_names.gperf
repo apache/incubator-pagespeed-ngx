@@ -189,7 +189,6 @@ struct OptionName {
 "StatisticsLoggingIntervalMs",           RewriteOptions::kStatisticsLoggingIntervalMs
 "TestProxy",                             RewriteOptions::kTestProxy
 "TestProxySlurp",                        RewriteOptions::kTestProxySlurp
-"UseSharedMemoryMetadataCache",          RewriteOptions::kUseSharedMemMetadataCache
 %%
 
 RewriteOptions::OptionEnum RewriteOptions::LookupOption(
