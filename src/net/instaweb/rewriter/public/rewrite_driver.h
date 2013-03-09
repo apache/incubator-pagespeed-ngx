@@ -383,6 +383,12 @@ class RewriteDriver : public HtmlParse {
   // to this method are made.
   void SetSessionFetcher(UrlAsyncFetcher* f);
 
+  UrlAsyncFetcher* distributed_fetcher() { return distributed_async_fetcher_; }
+  // Does not take ownership.
+  void set_distributed_fetcher(UrlAsyncFetcher* fetcher) {
+    distributed_async_fetcher_ = fetcher;
+  }
+
   // Creates a cache fetcher that uses the driver's fetcher and its options.
   // Note: this means the driver's fetcher must survive as long as this does.
   CacheUrlAsyncFetcher* CreateCacheFetcher();
@@ -1266,6 +1272,11 @@ class RewriteDriver : public HtmlParse {
   // or whatever it was temporarily overridden to by SetSessionFetcher.
   // This is either owned externally or via owned_url_async_fetchers_.
   UrlAsyncFetcher* url_async_fetcher_;
+
+  // This is the fetcher that is used to distribute rewrites if enabled. This
+  // can be NULL if distributed rewriting is not configured. This is owned
+  // externally.
+  UrlAsyncFetcher* distributed_async_fetcher_;
 
   // A list of all the UrlAsyncFetchers that we own, as set with
   // SetSessionFetcher.

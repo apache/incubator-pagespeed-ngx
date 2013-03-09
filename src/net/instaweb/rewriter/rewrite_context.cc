@@ -825,7 +825,7 @@ class RewriteContext::FetchContext {
     // from a trusted host or trusted network. This will require a new directive
     // and src address information in the request_context, which is not there
     // today.
-    if (!rewrite_context_->Options()->distributed_rewrite_hosts().empty() &&
+    if (!rewrite_context_->Options()->distributed_rewrite_servers().empty() &&
         request_headers != NULL && request_headers->MetadataRequested()) {
       return true;
     }

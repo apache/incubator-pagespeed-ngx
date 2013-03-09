@@ -170,7 +170,7 @@ const int RewriteOptions::kDefaultRewriteDeadlineMs = 10;
 const int RewriteOptions::kDefaultRewriteDeadlineMs = 20;
 #endif
 const int kValgrindWaitForRewriteMs = 1000;
-
+const int64 RewriteOptions::kDefaultDistributedTimeoutMs = 60000;
 const int RewriteOptions::kDefaultPropertyCacheHttpStatusStabilityThreshold = 5;
 
 const int RewriteOptions::kDefaultMaxRewriteInfoLogSize = 150;
@@ -1204,9 +1204,14 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Set the value for the X-Mod-Pagespeed HTTP header");
   AddBaseProperty(
-      "", &RewriteOptions::distributed_rewrite_hosts_, "drwh",
-      kDistributedRewriteHosts, kProcessScope,
+      "", &RewriteOptions::distributed_rewrite_servers_, "drws",
+      kDistributedRewriteServers, kProcessScope,
      "A comma-separated list of hosts to use for distributed rewrites.");
+  AddBaseProperty(
+      kDefaultDistributedTimeoutMs,
+      &RewriteOptions::distributed_rewrite_timeout_ms_, "drwt",
+      kDistributedRewriteTimeoutMs, kProcessScope,
+      "Time to wait before giving up on a distributed rewrite request.");
   AddBaseProperty(
       false, &RewriteOptions::avoid_renaming_introspective_javascript_,
       "aris", kAvoidRenamingIntrospectiveJavascript,

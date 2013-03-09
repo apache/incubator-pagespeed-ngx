@@ -75,6 +75,7 @@ RewriteDriverFactory::RewriteDriverFactory()
 void RewriteDriverFactory::Init() {
   url_fetcher_ = NULL;
   url_async_fetcher_ = NULL;
+  distributed_async_fetcher_ = NULL;
   force_caching_ = false;
   slurp_read_only_ = false;
   slurp_print_urls_ = false;
@@ -125,6 +126,11 @@ RewriteDriverFactory::~RewriteDriverFactory() {
     delete url_fetcher_;
   }
   url_fetcher_ = NULL;
+
+  if (distributed_async_fetcher_ != NULL) {
+    delete distributed_async_fetcher_;
+    distributed_async_fetcher_ = NULL;
+  }
 
   for (int i = 0, n = deferred_cleanups_.size(); i < n; ++i) {
     deferred_cleanups_[i]->CallRun();
@@ -178,6 +184,13 @@ void RewriteDriverFactory::set_base_url_fetcher(UrlFetcher* url_fetcher) {
   CHECK(base_url_async_fetcher_.get() == NULL)
       << "Only call one of set_base_url_fetcher and set_base_url_async_fetcher";
   base_url_fetcher_.reset(url_fetcher);
+}
+
+void RewriteDriverFactory::SetDistributedAsyncFetcher(
+    UrlAsyncFetcher* fetcher) {
+  if (distributed_async_fetcher_ == NULL) {
+    distributed_async_fetcher_ = fetcher;
+  }
 }
 
 void RewriteDriverFactory::set_base_url_async_fetcher(
@@ -423,6 +436,11 @@ void RewriteDriverFactory::InitServerContext(
   }
   if (!resource_manager->has_default_system_fetcher()) {
     resource_manager->set_default_system_fetcher(ComputeUrlAsyncFetcher());
+  }
+  if (!resource_manager->has_default_distributed_fetcher() &&
+      distributed_async_fetcher_ != NULL) {
+    resource_manager->set_default_distributed_fetcher(
+        distributed_async_fetcher_);
   }
   resource_manager->set_url_namer(url_namer());
   resource_manager->set_user_agent_matcher(user_agent_matcher());

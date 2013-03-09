@@ -309,8 +309,14 @@ DEFINE_string(blocking_rewrite_key,
               "the client, if X-PSA-Blocking-Rewrite http request header's "
               "value is same as this flag's value.");
 
-DEFINE_string(distributed_rewrite_hosts, "",
-              "Comma-separated list of hosts for distributed rewriting.");
+DEFINE_string(distributed_rewrite_servers, "",
+              "Comma-separated list of servers for distributed rewriting. "
+              "Servers can be BNS jobs or host:port pairs.");
+
+DEFINE_int64(distributed_rewrite_timeout_ms,
+             net_instaweb::RewriteOptions::kDefaultDistributedTimeoutMs,
+             "Time to wait for a distributed rewrite to complete before "
+             "abandoning it.");
 
 DEFINE_bool(support_noscript_enabled, true,
             "Support for clients with no script support, in filters that "
@@ -612,8 +618,12 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("blocking_rewrite_key")) {
     options->set_blocking_rewrite_key(FLAGS_blocking_rewrite_key);
   }
-  if (WasExplicitlySet("distributed_rewrite_hosts")) {
-    options->set_distributed_rewrite_hosts(FLAGS_distributed_rewrite_hosts);
+  if (WasExplicitlySet("distributed_rewrite_servers")) {
+    options->set_distributed_rewrite_servers(FLAGS_distributed_rewrite_servers);
+  }
+  if (WasExplicitlySet("distributed_rewrite_timeout_ms")) {
+    options->set_distributed_rewrite_timeout_ms(
+        FLAGS_distributed_rewrite_timeout_ms);
   }
   if (WasExplicitlySet("pagespeed_version")) {
     options->set_x_header_value(FLAGS_pagespeed_version);

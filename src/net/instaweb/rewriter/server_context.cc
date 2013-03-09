@@ -213,6 +213,7 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       user_agent_matcher_(NULL),
       scheduler_(factory->scheduler()),
       default_system_fetcher_(NULL),
+      default_distributed_fetcher_(NULL),
       hasher_(NULL),
       blink_critical_line_data_finder_(NULL),
       lock_hasher_(20),
@@ -802,6 +803,9 @@ RewriteDriver* ServerContext::NewUnmanagedRewriteDriver(
   rewrite_driver->SetResourceManager(this);
   rewrite_driver->ClearDeviceProperties();
   rewrite_driver->set_request_context(request_ctx);
+  if (has_default_distributed_fetcher()) {
+    rewrite_driver->set_distributed_fetcher(default_distributed_fetcher_);
+  }
   ApplySessionFetchers(request_ctx, rewrite_driver);
   return rewrite_driver;
 }

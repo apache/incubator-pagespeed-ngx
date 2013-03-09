@@ -147,9 +147,9 @@ TEST_F(RewriteContextTest, ReturnMetadataOnRequest) {
   // Sends a fetch that asks for metadata in the response headers and checks
   // that it's in the response.
 
-  // We need to make distributed_rewrite_hosts != "" in order to return
+  // We need to make distributed_rewrite_servers != "" in order to return
   // metedata.
-  options()->set_distributed_rewrite_hosts("example.com");
+  options()->set_distributed_rewrite_servers("example.com");
   InitTrimFilters(kRewrittenResource);
   InitResources();
 
@@ -220,9 +220,9 @@ TEST_F(RewriteContextTest, HeadMetadata) {
   // but not the content.  We don't check cache hit/miss numbers because that
   // would be redundant with RewriteContextTest.ReturnMetadataOnRequest.
 
-  // We need to make distributed_rewrite_hosts != "" in order to return
+  // We need to make distributed_rewrite_servers != "" in order to return
   // metedata.
-  options()->set_distributed_rewrite_hosts("example.com");
+  options()->set_distributed_rewrite_servers("example.com");
   InitTrimFilters(kRewrittenResource);
   InitResources();
 
