@@ -886,15 +886,7 @@ void RewriteDriver::AddPreRenderFilters() {
     // Cut out inlined styles and make them into external resources.
     // This can only be called once and requires a resource_manager to be set.
     CHECK(server_context_ != NULL);
-    CssOutlineFilter* css_outline_filter = new CssOutlineFilter(this);
-    AppendOwnedPreRenderFilter(css_outline_filter);
-  }
-  if (rewrite_options->Enabled(RewriteOptions::kOutlineJavascript)) {
-    // Cut out inlined scripts and make them into external resources.
-    // This can only be called once and requires a resource_manager to be set.
-    CHECK(server_context_ != NULL);
-    JsOutlineFilter* js_outline_filter = new JsOutlineFilter(this);
-    AppendOwnedPreRenderFilter(js_outline_filter);
+    AppendOwnedPreRenderFilter(new CssOutlineFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kMoveCssToHead) ||
       rewrite_options->Enabled(RewriteOptions::kMoveCssAboveScripts)) {
@@ -916,6 +908,18 @@ void RewriteDriver::AddPreRenderFilters() {
         rewrite_options->in_place_preemptive_rewrite_css()) {
       EnableRewriteFilter(RewriteOptions::kCssFilterId);
     }
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kInlineCss)) {
+    // Inline small CSS files.  Give CSS minification and flattening a chance to
+    // run before we decide what counts as "small".
+    CHECK(server_context_ != NULL);
+    AppendOwnedPreRenderFilter(new CssInlineFilter(this));
+  }
+  if (rewrite_options->Enabled(RewriteOptions::kOutlineJavascript)) {
+    // Cut out inlined scripts and make them into external resources.
+    // This can only be called once and requires a resource_manager to be set.
+    CHECK(server_context_ != NULL);
+    AppendOwnedPreRenderFilter(new JsOutlineFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kMakeGoogleAnalyticsAsync)) {
     // Converts sync loads of Google Analytics javascript to async loads.
@@ -947,12 +951,6 @@ void RewriteDriver::AddPreRenderFilters() {
     // detection, as it converts script sources into string literals, making
     // them opaque to analysis.
     EnableRewriteFilter(RewriteOptions::kJavascriptCombinerId);
-  }
-  if (rewrite_options->Enabled(RewriteOptions::kInlineCss)) {
-    // Inline small CSS files.  Give CssCombineFilter and CSS minification a
-    // chance to run before we decide what counts as "small".
-    CHECK(server_context_ != NULL);
-    AppendOwnedPreRenderFilter(new CssInlineFilter(this));
   }
   if (rewrite_options->Enabled(RewriteOptions::kInlineJavascript)) {
     // Inline small Javascript files.  Give JS minification a chance to run
