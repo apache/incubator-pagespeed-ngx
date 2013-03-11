@@ -16,19 +16,21 @@
 
 // Author: jefftk@google.com (Jeff Kaufman)
 
+#include "ngx_rewrite_options.h"
+
 extern "C" {
   #include <ngx_config.h>
   #include <ngx_core.h>
   #include <ngx_http.h>
 }
 
-#include "ngx_rewrite_options.h"
 #include "ngx_pagespeed.h"
 #include "ngx_rewrite_driver_factory.h"
 
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
@@ -180,8 +182,22 @@ NgxRewriteOptions::ParseAndSetOptions(
         result = ParseAndSetOptionFromName1(directive, args[1], &msg, handler);
       }
   } else if (n_args == 3) {
-    result = ParseAndSetOptionFromName2(directive, args[1], args[2],
-                                        &msg, handler);
+    // Short-term special handling, until this moves to common code.
+    // TODO(morlovich): Clean this up.
+    if (StringCaseEqual(directive, "CreateSharedMemoryMetadataCache")) {
+      int64 kb = 0;
+      if (!StringToInt64(args[2], &kb) || kb < 0) {
+        result = RewriteOptions::kOptionValueInvalid;
+        msg = "size_kb must be a positive 64-bit integer";
+      } else {
+        bool ok = driver_factory->caches()->CreateShmMetadataCache(
+            args[1].as_string(), kb, &msg);
+        result = ok ? kOptionOk : kOptionValueInvalid;
+      }
+    } else {
+      result = ParseAndSetOptionFromName2(directive, args[1], args[2],
+                                          &msg, handler);
+    }
   } else if (n_args == 4) {
     result = ParseAndSetOptionFromName3(
         directive, args[1], args[2], args[3], &msg, handler);

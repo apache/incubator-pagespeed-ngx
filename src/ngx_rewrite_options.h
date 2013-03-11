@@ -33,6 +33,7 @@ extern "C" {
 namespace net_instaweb {
 
 class NgxRewriteDriverFactory;
+
 class NgxRewriteOptions : public SystemRewriteOptions {
  public:
   // See rewrite_options::Initialize and ::Terminate
