@@ -27,6 +27,8 @@
 namespace net_instaweb {
 class MessageHandler;
 
+namespace ngx {
+
 // POSIX shared memory support, using mmap/pthread_mutexattr_setpshared
 // Supports both processes and threads, but processes that want to access it
 // must be results of just fork (without exec), and all the CreateSegment
@@ -78,6 +80,8 @@ class PthreadSharedMem : public AbstractSharedMem {
 
   DISALLOW_COPY_AND_ASSIGN(PthreadSharedMem);
 };
+
+}  // namespace ngx
 
 }  // namespace net_instaweb
 

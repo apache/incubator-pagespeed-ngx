@@ -32,6 +32,8 @@
 
 namespace net_instaweb {
 
+namespace ngx {
+
 namespace {
 
 // This implementation relies on readonly copies of old memory and shared R/W
@@ -250,5 +252,7 @@ void PthreadSharedMem::Terminate() {
   }
   lock.Unlock();
 }
+
+}  // namespace ngx
 
 }  // namespace net_instaweb

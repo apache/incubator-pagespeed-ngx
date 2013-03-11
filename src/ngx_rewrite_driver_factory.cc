@@ -72,7 +72,7 @@ const char kShutdownCount[] = "child_shutdown_count";
 NgxRewriteDriverFactory::NgxRewriteDriverFactory()
     : RewriteDriverFactory(new NgxThreadSystem()),
       // TODO(oschaaf): mod_pagespeed ifdefs this:
-      shared_mem_runtime_(new PthreadSharedMem()),
+      shared_mem_runtime_(new ngx::PthreadSharedMem()),
       main_conf_(NULL),
       threads_started_(false),
       use_per_vhost_statistics_(false),
