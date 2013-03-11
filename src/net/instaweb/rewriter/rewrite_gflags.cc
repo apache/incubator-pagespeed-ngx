@@ -115,7 +115,7 @@ DEFINE_int64(css_inline_max_bytes,
 DEFINE_int32(image_max_rewrites_at_once,
              net_instaweb::RewriteOptions::kDefaultImageMaxRewritesAtOnce,
              "Maximum number of images that will be rewritten simultaneously.");
-DEFINE_bool(ajax_rewriting_enabled, false, "Depreciated. Use "
+DEFINE_bool(ajax_rewriting_enabled, false, "Deprecated. Use "
             "in_place_rewriting_enabled.");
 DEFINE_bool(in_place_rewriting_enabled, false, "Boolean to indicate whether "
             "in-place-resource-optimization(IPRO) is enabled.");

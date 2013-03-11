@@ -86,12 +86,6 @@ bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
         blink_info->set_blink_user_agent(BlinkInfo::BLINK_DESKTOP_BLACKLIST);
         return false;
       case UserAgentMatcher::kBlinkWhiteListForMobile:
-        if (options->enable_aggressive_rewriters_for_mobile()) {
-          blink_info->set_blink_user_agent(BlinkInfo::BLINK_MOBILE);
-          return true;
-        }
-        // FIXME: Check this fall-through.
-        FALLTHROUGH_INTENDED;
       case UserAgentMatcher::kDoesNotSupportBlinkForMobile:
         blink_info->set_blink_user_agent(BlinkInfo::BLINK_MOBILE);
         return false;

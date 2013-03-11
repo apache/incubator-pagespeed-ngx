@@ -2074,7 +2074,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkBlacklistUserAgent) {
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
 }
 
-TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileWhiteListUserAgent) {
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileUserAgent) {
   GoogleString text;
   GoogleString user_agent;
   ResponseHeaders response_headers;
@@ -2084,32 +2084,6 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileWhiteListUserAgent) {
   server_context()->ComputeSignature(options_.get());
   request_headers.Add(HttpAttributes::kUserAgent,
                       UserAgentStrings::kIPhone4Safari);  // Mobile Request.
-  FetchFromProxyWaitForBackground("text.html", true, request_headers, &text,
-                                  &response_headers, &user_agent, true);
-  EXPECT_EQ(BlinkInfo::BLINK_MOBILE,
-            logging_info()->blink_info().blink_user_agent());
-  ConstStringStarVector values;
-  EXPECT_TRUE(response_headers.Lookup(HttpAttributes::kCacheControl, &values));
-  EXPECT_STREQ("max-age=0", *(values[0]));
-  EXPECT_STREQ("no-cache", *(values[1]));
-
-  EXPECT_STREQ(start_time_string_,
-               response_headers.Lookup1(HttpAttributes::kDate));
-  EXPECT_STREQ(kHtmlInput, text);
-  EXPECT_EQ(1, statistics()->FindVariable(
-      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
-}
-
-TEST_F(BlinkFlowCriticalLineTest, TestBlinkMobileBlackListUserAgent) {
-  GoogleString text;
-  GoogleString user_agent;
-  ResponseHeaders response_headers;
-  RequestHeaders request_headers;
-  options_->ClearSignatureForTesting();
-  options_->set_enable_aggressive_rewriters_for_mobile(true);
-  server_context()->ComputeSignature(options_.get());
-  request_headers.Add(HttpAttributes::kUserAgent,
-                      "BlackBerry8800/4.2.0 Profile/MIDP-2.0");  // Mobile.
   FetchFromProxy("plain.html", true, request_headers, &text,
                  &response_headers, &user_agent, false);
   EXPECT_EQ(BlinkInfo::BLINK_MOBILE,
