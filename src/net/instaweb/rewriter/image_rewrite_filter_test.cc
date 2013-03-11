@@ -47,6 +47,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
@@ -682,6 +683,27 @@ TEST_F(ImageRewriteTest, AddDimTest) {
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypePng,
                     "", " width=\"100\" height=\"100\"", false, false);
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+}
+
+TEST_F(ImageRewriteTest, NoDimsInNonImg) {
+  // As above, only with an icon.  See:
+  // https://code.google.com/p/modpagespeed/issues/detail?id=629
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  rewrite_driver()->AddFilters();
+  GoogleString initial_url = StrCat(kTestDomain, kBikePngFile);
+  GoogleString page_url = StrCat(kTestDomain, "test.html");
+  AddFileToMockFetcher(initial_url, kBikePngFile, kContentTypePng, 100);
+
+  const char html_boilerplate[] =
+      "<link rel='apple-touch-icon-precomposed' sizes='100x100' href='%s'>";
+  GoogleString html_input =
+      StringPrintf(html_boilerplate, initial_url.c_str());
+
+  ParseUrl(page_url, html_input);
+
+  GoogleString html_expected_output =
+      StringPrintf(html_boilerplate, initial_url.c_str());
+  EXPECT_EQ(AddHtmlBody(html_expected_output), output_buffer_);
 }
 
 TEST_F(ImageRewriteTest, PngToJpeg) {

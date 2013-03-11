@@ -1070,6 +1070,8 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     }
 
     if (options->Enabled(RewriteOptions::kInsertImageDimensions) &&
+        (element->keyword() == HtmlName::kImg ||
+         element->keyword() == HtmlName::kInput) &&
         !HasAnyDimensions(element) &&
         cached->has_image_file_dims() &&
         ImageUrlEncoder::HasValidDimensions(cached->image_file_dims())) {

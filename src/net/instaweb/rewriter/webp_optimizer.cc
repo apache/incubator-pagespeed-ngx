@@ -361,8 +361,18 @@ bool WebpOptimizer::CreateOptimizedWebp(
   if (!WebPConfigPreset(&config, WEBP_PRESET_DEFAULT, output_quality)) {
     // Couldn't use the default preset.
     return false;
-  } else if (!WebPValidateConfig(&config)) {
-    return false;
+  } else {
+    // Set WebP compression method to 3 (4 is the default). From
+    // third_party/libwebp/v0_2/src/webp/encode.h, the method determines the
+    // 'quality/speed trade-off (0=fast, 6=slower-better). On a representative
+    // set of images, we see a 26% improvement in the 75th percentile
+    // compression time, even greater improvements further along the tail, and
+    // no increase in file size. Method 2 incurs a prohibitive 10% increase in
+    // file size, which is not worth the compression time savings.
+    config.method = 3;
+    if (!WebPValidateConfig(&config)) {
+      return false;
+    }
   }
 
   J_COLOR_SPACE color_space = kUseYUV ? JCS_YCbCr : JCS_RGB;
