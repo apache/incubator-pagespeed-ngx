@@ -296,6 +296,7 @@ class RewriteOptions {
     kAllow,
     kDisableFilters,
     kDisallow,
+    kDistributableFilters,  // For experimentation, may be removed later.
     kDomain,
     kEnableFilters,
     kExperimentVariable,
@@ -970,6 +971,19 @@ class RewriteOptions {
   // Used to deal with query param ?ModPagespeedFilter=foo
   // Which implies that all filters not listed should be disabled.
   void DisableAllFiltersNotExplicitlyEnabled();
+
+  // Adds a set of filters to the distributable set. Returns false if any of the
+  // filter names are invalid, but all the valid ones will be added anyway.
+  // For experimentation, may be removed later.
+  bool DistributeFiltersByCommaSeparatedList(const StringPiece& filters,
+                                                   MessageHandler* handler);
+  // Adds the filter to the list of distributable filters.
+  // For experimentation, may be removed later.
+  void DistributeFilter(Filter filter);
+
+  // Returns true if the filter is in the list of distributable filters.
+  // For experimentation, may be removed later.
+  bool Distributable(Filter filter) const;
 
   // Adds the filter to the list of enabled filters. However, if the filter
   // is also present in either the list of disabled or forbidden filters,
@@ -2716,6 +2730,10 @@ class RewriteOptions {
   FilterSet disabled_filters_;
   FilterSet forbidden_filters_;
 
+  // The set of filters that can be distributed to other tasks.
+  // For experimentation, may be removed later.
+  FilterSet distributable_filters_;
+
   // Note: using the template class Option here saves a lot of repeated
   // and error-prone merging code.  However, it is not space efficient as
   // we are alternating int64s and bools in the structure.  If we cared
@@ -2793,6 +2811,8 @@ class RewriteOptions {
   Option<int> domain_shard_count_;
 
   Option<EnabledEnum> enabled_;
+
+  Option<bool> distributable_;
 
   // Encode relevant rewrite options as URL query-parameters so that resources
   // can be reconstructed on servers without the same configuration file.

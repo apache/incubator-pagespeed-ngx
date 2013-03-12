@@ -138,6 +138,7 @@ struct OptionName {
 "Allow",                                 RewriteOptions::kAllow
 "DisableFilters",                        RewriteOptions::kDisableFilters
 "Disallow",                              RewriteOptions::kDisallow
+"DistributableFilters",                  RewriteOptions::kDistributableFilters
 "Domain",                                RewriteOptions::kDomain
 "EnableFilters",                         RewriteOptions::kEnableFilters
 "ExperimentVariable",                    RewriteOptions::kExperimentVariable

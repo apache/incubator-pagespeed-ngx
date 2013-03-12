@@ -39,6 +39,10 @@ DEFINE_string(rewrite_level, "CoreFilters",
               "Base rewrite level. Must be one of: "
               "PassThrough, CoreFilters, TestingCoreFilters, AllFilters.");
 DEFINE_string(rewriters, "", "Comma-separated list of rewriters");
+// distributable_filters is for experimentation and may be removed later.
+DEFINE_string(distributable_filters, "",
+    "List of comma-separated filters whose rewrites should be distributed to "
+    "another task.");
 DEFINE_string(domains, "", "Comma-separated list of domains");
 
 DEFINE_int64(css_outline_min_bytes,
@@ -805,6 +809,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
         ret = false;
       }
     }
+  }
+  if (WasExplicitlySet("distributable_filters")) {
+    options->DistributeFiltersByCommaSeparatedList(FLAGS_distributable_filters,
+                                                   handler);
   }
 
   ret &= SetRewriters("rewriters", FLAGS_rewriters.c_str(),

@@ -1707,6 +1707,23 @@ void RewriteOptions::ForceEnableFilter(Filter filter) {
   modified_ |= forbidden_filters_.erase(filter);
 }
 
+bool RewriteOptions::DistributeFiltersByCommaSeparatedList(
+    const StringPiece& filters, MessageHandler* handler) {
+  return AddCommaSeparatedListToFilterSetState(
+      filters, &distributable_filters_, handler);
+}
+
+void RewriteOptions::DistributeFilter(Filter filter) {
+  DCHECK(!frozen_);
+  std::pair<FilterSet::iterator, bool> inserted =
+      distributable_filters_.insert(filter);
+  modified_ |= inserted.second;
+}
+
+bool RewriteOptions::Distributable(Filter filter) const {
+  return distributable_filters_.find(filter) != distributable_filters_.end();
+}
+
 void RewriteOptions::EnableExtendCacheFilters() {
   EnableFilter(kExtendCacheCss);
   EnableFilter(kExtendCacheImages);
@@ -2046,6 +2063,14 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum1(
     case kDisallow:
       Disallow(arg);
       break;
+    case kDistributableFilters: {
+      bool ok = DistributeFiltersByCommaSeparatedList(arg, handler);
+      if (!ok) {
+        *msg = "Failed to make some filters distributable.";
+        return RewriteOptions::kOptionValueInvalid;
+      }
+      break;
+    }
     case kDomain:
       domain_lawyer()->AddDomain(arg, handler);
       break;
@@ -2468,6 +2493,13 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     forbidden_filters_.insert(filter);
     disabled_filters_.insert(filter);
     enabled_filters_.erase(filter);
+  }
+
+  for (FilterSet::const_iterator p = src.distributable_filters_.begin(),
+           e = src.distributable_filters_.end(); p != e; ++p) {
+    Filter filter = *p;
+    // Distributable filters union when merged.
+    distributable_filters_.insert(filter);
   }
 
   for (int i = 0, n = src.furious_specs_.size(); i < n; ++i) {

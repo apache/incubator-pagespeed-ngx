@@ -438,6 +438,21 @@ TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampTwoLarger) {
   EXPECT_EQ(22222222, options_.cache_invalidation_timestamp());
 }
 
+TEST_F(RewriteOptionsTest, MergeDistributed) {
+  RewriteOptions one, two;
+  EXPECT_FALSE(options_.Distributable(RewriteOptions::kOutlineCss));
+  EXPECT_FALSE(options_.Distributable(RewriteOptions::kLeftTrimUrls));
+  EXPECT_FALSE(options_.Distributable(RewriteOptions::kOutlineJavascript));
+
+  one.DistributeFilter(RewriteOptions::kOutlineCss);
+  two.DistributeFilter(RewriteOptions::kOutlineJavascript);
+  MergeOptions(one, two);
+
+  EXPECT_TRUE(options_.Distributable(RewriteOptions::kOutlineCss));
+  EXPECT_TRUE(options_.Distributable(RewriteOptions::kOutlineJavascript));
+  EXPECT_FALSE(options_.Distributable(RewriteOptions::kLeftTrimUrls));
+}
+
 TEST_F(RewriteOptionsTest, Allow) {
   options_.Allow("*.css");
   EXPECT_TRUE(options_.IsAllowed("abcd.css"));
@@ -702,7 +717,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(167, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(168, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -1013,6 +1028,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("Disallow",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kDisallow));
+  EXPECT_STREQ("DistributableFilters",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kDistributableFilters));
   EXPECT_STREQ("Domain",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kDomain));
