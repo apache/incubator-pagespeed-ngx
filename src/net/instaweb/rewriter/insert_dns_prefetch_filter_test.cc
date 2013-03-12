@@ -155,6 +155,25 @@ TEST_F(InsertDnsPrefetchFilterTest, StoreDomainsInBody) {
   CheckPrefetchInfo(3, 0, 3, "a.com,b.com,c.com");
 }
 
+TEST_F(InsertDnsPrefetchFilterTest, IgnoreCurrentDomain) {
+  GoogleString html = StrCat(
+      "<head></head>"
+      "<body>"
+      "<link type=\"text/css\" rel=\"stylesheet\" href=\"",
+      AbsolutifyUrl("style.css"),
+      "\">"
+      "<script src=\"",
+      AbsolutifyUrl("script.js"),
+      "\">"
+      "<img src=\"",
+      AbsolutifyUrl("img.src"),
+      "\">"
+      "</body>");
+  Parse("ignore_current_domain", html);
+  EXPECT_EQ(StrCat("<html>\n", html, "\n</html>"), output_);
+  CheckPrefetchInfo(0, 0, 0, "");
+}
+
 TEST_F(InsertDnsPrefetchFilterTest,
        DisableInsertDnsPrefetchForUserAgentsNotSupported) {
   rewrite_driver()->SetUserAgent("");

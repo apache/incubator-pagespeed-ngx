@@ -71,7 +71,7 @@ void InsertDnsPrefetchFilter::DetermineEnabled() {
 void InsertDnsPrefetchFilter::Clear() {
   dns_prefetch_inserted_ = false;
   in_head_ = false;
-  domains_in_head_.clear();
+  domains_to_ignore_.clear();
   domains_in_body_.clear();
   dns_prefetch_domains_.clear();
   user_agent_supports_dns_prefetch_ = false;
@@ -79,10 +79,12 @@ void InsertDnsPrefetchFilter::Clear() {
 
 // Read the information related to DNS prefetch tags from the property cache
 // info and populate it in the driver's flush_early_info.
-// TODO(bharathbhushan): Avoid inserting the domain name of this page
-// by pre-inserting it into domains_in_head_.
 void InsertDnsPrefetchFilter::StartDocumentImpl() {
   Clear();
+  // Avoid inserting the domain name of this page by pre-inserting it into
+  // domains_to_ignore_.
+  GoogleString host = driver()->base_url().Host().as_string();
+  domains_to_ignore_.insert(host);
   user_agent_supports_dns_prefetch_ =
       driver()->server_context()->user_agent_matcher()->SupportsDnsPrefetch(
           driver()->user_agent());
@@ -211,11 +213,14 @@ void InsertDnsPrefetchFilter::MarkAlreadyInHead(
     HtmlElement::Attribute* urlattr) {
   if (urlattr != NULL && urlattr->DecodedValueOrNull() != NULL) {
     GoogleUrl url(driver()->base_url(), urlattr->DecodedValueOrNull());
-    if (url.is_valid() && !url.Host().empty()) {
-      GoogleString domain(url.Host().data(), url.Host().size());
+    GoogleString domain;
+    if (url.is_valid()) {
+      url.Host().CopyToString(&domain);
+    }
+    if (!domain.empty()) {
       if (in_head_) {
         std::pair<StringSet::iterator, bool> result =
-            domains_in_head_.insert(domain);
+            domains_to_ignore_.insert(domain);
         if (driver()->options()->Enabled(RewriteOptions::kFlushSubresources)
             && result.second) {
           // Prefetch dns for the domains present in the head if flush
@@ -223,7 +228,7 @@ void InsertDnsPrefetchFilter::MarkAlreadyInHead(
           dns_prefetch_domains_.push_back(domain);
         }
       } else {
-        if (domains_in_head_.find(domain) == domains_in_head_.end()) {
+        if (domains_to_ignore_.find(domain) == domains_to_ignore_.end()) {
           std::pair<StringSet::iterator, bool> result =
               domains_in_body_.insert(domain);
           if (result.second) {

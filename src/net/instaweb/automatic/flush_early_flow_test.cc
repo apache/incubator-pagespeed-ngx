@@ -169,7 +169,6 @@ const char kFlushEarlyRewrittenHtmlImageTagInsertDnsPrefetch[] =
     "new Image().src=\"%s\";"
     "new Image().src=\"%s\";"
     "new Image().src=\"%s\";})()</script>"
-    "<link rel=\"dns-prefetch\" href=\"//test.com\">"
     "<link rel=\"dns-prefetch\" href=\"//www.domain1.com\">"
     "<link rel=\"dns-prefetch\" href=\"//www.domain2.com\">"
     "<link rel=\"dns-prefetch\" href=\"//www.domain3.com\">"

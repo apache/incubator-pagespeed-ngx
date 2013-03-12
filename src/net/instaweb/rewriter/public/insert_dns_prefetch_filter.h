@@ -66,8 +66,9 @@ class InsertDnsPrefetchFilter : public CommonFilter {
   // This flag indicates if we are currently processing elements in HEAD.
   bool in_head_;
 
-  // The set of domains seen in resource links in HEAD.
-  StringSet domains_in_head_;
+  // The set of domains that we should not insert DNS prefetch tags for. This
+  // includes the current domain we are rewriting, and resource links in HEAD.
+  StringSet domains_to_ignore_;
 
   // The set of domains seen in resource links in BODY and not already seen in
   // HEAD.
