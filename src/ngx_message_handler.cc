@@ -58,7 +58,8 @@ namespace net_instaweb {
 
 NgxMessageHandler::NgxMessageHandler(AbstractMutex* mutex)
     : mutex_(mutex),
-      buffer_(NULL) {
+      buffer_(NULL),
+      log_(NULL) {
   SetPidString(static_cast<int64>(getpid()));
 }
 
