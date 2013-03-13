@@ -69,6 +69,16 @@ template<class StringCompare> class StringMultiMap {
     return ret;
   }
 
+  // Looks up a single value.  Returns NULL if the name is not found or more
+  // than one value is found.
+  const GoogleString* Lookup1(const StringPiece& name) const {
+    ConstStringStarVector v;
+    if (Lookup(name, &v) && v.size() == 1) {
+      return v[0];
+    }
+    return NULL;
+  }
+
   bool Has(const StringPiece& name) const {
     return map_.find(name.as_string()) != map_.end();
   }

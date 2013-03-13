@@ -101,9 +101,12 @@ TEST_F(StringMultiMapTest, TestLookupHas) {
   ASSERT_EQ(2, v.size());
   EXPECT_EQ(GoogleString("1"), *(v[0]));
   EXPECT_EQ(GoogleString("3"), *(v[1]));
+  EXPECT_EQ(NULL, string_map_.Lookup1("a"));
+
   ASSERT_TRUE(string_map_.Lookup("B", &v));
   ASSERT_EQ(1, v.size());
   EXPECT_EQ(NULL, v[0]);
+
   ASSERT_TRUE(string_map_.Lookup("c", &v));
   ASSERT_EQ(1, v.size());
   EXPECT_EQ(GoogleString("2"), *(v[0]));
@@ -116,11 +119,14 @@ TEST_F(StringMultiMapTest, TestLookupHas) {
 
   EXPECT_FALSE(string_map_.Has("foo"));
   EXPECT_FALSE(string_map_.Lookup("foo", &v));
+  EXPECT_EQ(NULL, string_map_.Lookup1("foo"));
+
   string_map_.Add("foo", "bar");
   EXPECT_TRUE(string_map_.Has("foo"));
   ASSERT_TRUE(string_map_.Lookup("foo", &v));
   ASSERT_EQ(1, v.size());
   EXPECT_STREQ("bar", *v[0]);
+  EXPECT_STREQ("bar", *(string_map_.Lookup1("foo")));
 }
 
 TEST_F(StringMultiMapTest, TestRemove) {
