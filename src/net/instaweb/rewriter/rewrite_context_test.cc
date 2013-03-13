@@ -76,6 +76,13 @@ const int64 kRewriteDelayMs = 47;
 
 class RewriteContextTest : public RewriteContextTestBase {
  protected:
+  RewriteContextTest() {
+    fetch_failures_ = statistics()->GetVariable(
+        RewriteStats::kNumResourceFetchFailures);
+    fetch_successes_ = statistics()->GetVariable(
+        RewriteStats::kNumResourceFetchSuccesses);
+  }
+
   void InitTrimFiltersSync(OutputResourceKind kind) {
     rewrite_driver()->AppendRewriteFilter(
         new TrimWhitespaceSyncFilter(kind, rewrite_driver()));
@@ -139,6 +146,9 @@ class RewriteContextTest : public RewriteContextTestBase {
       EXPECT_STREQ("", output);
     }
   }
+
+  Variable* fetch_failures_;
+  Variable* fetch_successes_;
 };
 
 }  // namespace
@@ -264,6 +274,8 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   EXPECT_EQ(2, lru_cache()->num_inserts());  // 2 because it's kOnTheFlyResource
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+  EXPECT_EQ(1, fetch_successes_->Get());
+  EXPECT_EQ(0, fetch_failures_->Get());
   const MetadataCacheInfo* metadata_cache_info =
       logging_info()->mutable_metadata_cache_info();
   EXPECT_EQ(0, metadata_cache_info->num_repeated_rewrites());
@@ -296,6 +308,8 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   EXPECT_EQ(0, metadata_cache_info->num_successful_rewrites_on_miss());
   EXPECT_EQ(0, metadata_cache_info->num_successful_revalidates());
   EXPECT_EQ(1, metadata_cache_info->num_rewrites_completed());
+  EXPECT_EQ(0, fetch_successes_->Get());  // no more fetches.
+  EXPECT_EQ(0, fetch_failures_->Get());
   ClearStats();
 
   // The third time we request this URL, we've advanced time so that the origin
@@ -320,6 +334,8 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   EXPECT_EQ(0, metadata_cache_info->num_successful_rewrites_on_miss());
   EXPECT_EQ(1, metadata_cache_info->num_successful_revalidates());
   EXPECT_EQ(1, metadata_cache_info->num_rewrites_completed());
+  EXPECT_EQ(1, fetch_successes_->Get());  // Must freshen.
+  EXPECT_EQ(0, fetch_failures_->Get());
   ClearStats();
 
   // The fourth time we request this URL, the cache is in good shape despite
@@ -341,7 +357,35 @@ TEST_F(RewriteContextTest, TrimOnTheFlyOptimizable) {
   EXPECT_EQ(0, metadata_cache_info->num_successful_rewrites_on_miss());
   EXPECT_EQ(0, metadata_cache_info->num_successful_revalidates());
   EXPECT_EQ(1, metadata_cache_info->num_rewrites_completed());
+  EXPECT_EQ(0, fetch_successes_->Get());  // no more fetches.
+  EXPECT_EQ(0, fetch_failures_->Get());
   ClearStats();
+
+  // Induce a metadata cache flush by tweaking the options in way that
+  // happens to be irrelevant for the filter applied.  We will
+  // successfully rewrite, but we will not need to re-fetch.
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kInlineImages);
+  options()->ComputeSignature(hasher());
+  ValidateExpected("trimmable_flushed_metadata", input_html, output_html);
+  EXPECT_EQ(1, lru_cache()->num_hits());     // resource
+  EXPECT_EQ(1, lru_cache()->num_misses());   // metadata
+  EXPECT_EQ(1, lru_cache()->num_inserts());  // metadata
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_expirations()->Get());
+  metadata_cache_info = logging_info()->mutable_metadata_cache_info();
+  EXPECT_EQ(0, metadata_cache_info->num_repeated_rewrites());
+  EXPECT_EQ(0, metadata_cache_info->num_disabled_rewrites());
+  EXPECT_EQ(1, metadata_cache_info->num_misses());
+  EXPECT_EQ(0, metadata_cache_info->num_revalidates());
+  EXPECT_EQ(0, metadata_cache_info->num_hits());
+  EXPECT_EQ(0, metadata_cache_info->num_stale_rewrites());
+  EXPECT_EQ(1, metadata_cache_info->num_successful_rewrites_on_miss());
+  EXPECT_EQ(0, metadata_cache_info->num_successful_revalidates());
+  EXPECT_EQ(1, metadata_cache_info->num_rewrites_completed());
+  ClearStats();
+  EXPECT_EQ(0, fetch_successes_->Get());  // no more fetches.
+  EXPECT_EQ(0, fetch_failures_->Get());
 }
 
 TEST_F(RewriteContextTest, UnhealthyCacheNoHtmlRewrites) {
@@ -1940,10 +1984,15 @@ TEST_F(RewriteContextTest, FetchColdCacheRewritten) {
   InitResources();
   ValidateExpected("trimmable", CssLinkHref("a.css"),
                    CssLinkHref(Encode(kTestDomain, "tw", "0", "a.css", "css")));
+  EXPECT_EQ(1, fetch_successes_->Get());
+  EXPECT_EQ(0, fetch_failures_->Get());
   ClearStats();
   TestServeFiles(&kContentTypeCss, TrimWhitespaceRewriter::kFilterId, "css",
                  "a.css", " a ",
                  "a.css", "a");
+  // TestServeFiles clears cache so we need to re-fetch.
+  EXPECT_EQ(1, fetch_successes_->Get());
+  EXPECT_EQ(0, fetch_failures_->Get());
 }
 
 TEST_F(RewriteContextTest, OnTheFlyNotFound) {
@@ -1958,6 +2007,8 @@ TEST_F(RewriteContextTest, OnTheFlyNotFound) {
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_inserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, fetch_failures_->Get());
+  EXPECT_EQ(0, fetch_successes_->Get());
   ClearStats();
 
   // We should have cached the failed rewrite, no misses, fetches, or inserts.
@@ -1966,6 +2017,8 @@ TEST_F(RewriteContextTest, OnTheFlyNotFound) {
   EXPECT_EQ(0, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, fetch_failures_->Get());
+  EXPECT_EQ(0, fetch_successes_->Get());
 }
 
 TEST_F(RewriteContextTest, RewrittenNotFound) {

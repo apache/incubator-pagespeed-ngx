@@ -41,6 +41,7 @@
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
@@ -563,6 +564,12 @@ class UrlReadAsyncFetchCallback : public UrlResourceFetchCallback {
       response_headers()->Clear();
     }
 
+    Statistics* stats = resource_->server_context()->statistics();
+    if (resource_ok) {
+      stats->GetVariable(RewriteStats::kNumResourceFetchSuccesses)->Add(1);
+    } else {
+      stats->GetVariable(RewriteStats::kNumResourceFetchFailures)->Add(1);
+    }
     callback_->Done(lock_failure, resource_ok);
   }
 

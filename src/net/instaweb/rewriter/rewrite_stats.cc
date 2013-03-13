@@ -82,6 +82,11 @@ const char kRewritesDropped[] = "num_rewrites_dropped";
 
 }  // namespace
 
+const char RewriteStats::kNumResourceFetchSuccesses[] =
+    "num_resource_fetch_successes";
+const char RewriteStats::kNumResourceFetchFailures[] =
+    "num_resource_fetch_failures";
+
 // In Apache, this is called in the root process to establish shared memory
 // boundaries prior to the primary initialization of RewriteDriverFactories.
 //
@@ -117,6 +122,9 @@ void RewriteStats::InitStats(Statistics* statistics) {
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kRewritesDropped,
                                ServerContext::kStatisticsGroup);
+  statistics->AddVariable(kNumResourceFetchSuccesses);
+  statistics->AddVariable(kNumResourceFetchFailures);
+
   for (int i = 0; i < RewriteDriverFactory::kNumWorkerPools; ++i) {
     statistics->AddVariable(kWaveFormCounters[i]);
   }
