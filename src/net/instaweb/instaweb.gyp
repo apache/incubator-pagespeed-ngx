@@ -1004,6 +1004,7 @@
         'rewriter/css_inline_import_to_link_filter.cc',
         'rewriter/css_minify.cc',
         'rewriter/css_resource_slot.cc',
+        'rewriter/css_summarizer_base.cc',
         'rewriter/css_url_counter.cc',
         'rewriter/css_url_encoder.cc',
         'rewriter/css_util.cc',

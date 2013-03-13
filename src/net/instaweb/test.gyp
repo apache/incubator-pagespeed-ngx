@@ -124,6 +124,7 @@
         'rewriter/css_move_to_head_filter_test.cc',
         'rewriter/css_outline_filter_test.cc',
         'rewriter/css_rewrite_test_base.cc',
+        'rewriter/css_summarizer_base_test.cc',
         'rewriter/css_tag_scanner_test.cc',
         'rewriter/css_util_test.cc',
         'rewriter/debug_filter_test.cc',
