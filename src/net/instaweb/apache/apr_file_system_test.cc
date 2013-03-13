@@ -198,14 +198,6 @@ TEST_F(AprFileSystemTest, TestListContents) {
   TestListContents();
 }
 
-// This test appears to be flaky under valgrind, possibly due to OS buffer
-// cache issues.  It also won't work on file systems mounted with 'noatime'.
-TEST_F(AprFileSystemTest, TestAtime) {
-  if (!RunningOnValgrind()) {
-    TestAtime();
-  }
-}
-
 TEST_F(AprFileSystemTest, TestMtime) {
   TestMtime();
 }
