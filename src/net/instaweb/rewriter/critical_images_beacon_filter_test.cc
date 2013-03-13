@@ -22,6 +22,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -159,8 +160,8 @@ TEST_F(CriticalImagesBeaconFilterTest, ScriptInjectionWithImageInlining) {
   GoogleString hash_str = ImageUrlHash(kChefGifFile);
   scoped_ptr<StringSet> crit_img_set(new StringSet);
   crit_img_set->insert(hash_str);
-  rewrite_driver()->set_critical_images(crit_img_set.release());
-  rewrite_driver()->set_updated_critical_images(true);
+  server_context()->critical_images_finder()->SetHtmlCriticalImages(
+      rewrite_driver(), crit_img_set.release());
   options()->set_image_inline_max_bytes(10000);
   options()->EnableFilter(RewriteOptions::kResizeImages);
   options()->EnableFilter(RewriteOptions::kInlineImages);

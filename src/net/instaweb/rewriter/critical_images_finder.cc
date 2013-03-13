@@ -90,11 +90,56 @@ void CriticalImagesFinder::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCriticalImagesNotFoundCount);
 }
 
-bool CriticalImagesFinder::IsCriticalImage(
-    const GoogleString& image_url, const RewriteDriver* driver) const {
-  const StringSet* critical_images_set = driver->critical_images();
-  return critical_images_set != NULL &&
-      critical_images_set->find(image_url) != critical_images_set->end();
+bool CriticalImagesFinder::IsHtmlCriticalImage(
+    const GoogleString& image_url, RewriteDriver* driver) {
+  const StringSet* critical_images_set = GetHtmlCriticalImages(driver);
+  return critical_images_set->find(image_url) != critical_images_set->end();
+}
+
+bool CriticalImagesFinder::IsCssCriticalImage(
+    const GoogleString& image_url, RewriteDriver* driver) {
+  const StringSet* critical_images_set = GetCssCriticalImages(driver);
+  return critical_images_set->find(image_url) != critical_images_set->end();
+}
+
+const StringSet* CriticalImagesFinder::GetHtmlCriticalImages(
+    RewriteDriver* driver) {
+  UpdateCriticalImagesSetInDriver(driver);
+  const StringSet* critical_images_set =
+      driver->critical_images_info()->html_critical_images.get();
+  DCHECK(critical_images_set != NULL);
+  return critical_images_set;
+}
+
+const StringSet* CriticalImagesFinder::GetCssCriticalImages(
+    RewriteDriver* driver) {
+  UpdateCriticalImagesSetInDriver(driver);
+  const StringSet* critical_images_set =
+      driver->critical_images_info()->css_critical_images.get();
+  DCHECK(critical_images_set != NULL);
+  return critical_images_set;
+}
+
+void CriticalImagesFinder::SetHtmlCriticalImages(
+    RewriteDriver* driver, StringSet* critical_images) {
+  CriticalImagesInfo* driver_info = driver->critical_images_info();
+  // Preserve CSS critical images if they have been updated already.
+  if (driver_info == NULL) {
+    driver_info = new CriticalImagesInfo;
+    driver->set_critical_images_info(driver_info);
+  }
+  driver_info->html_critical_images.reset(critical_images);
+}
+
+void CriticalImagesFinder::SetCssCriticalImages(
+    RewriteDriver* driver, StringSet* critical_images) {
+  CriticalImagesInfo* driver_info = driver->critical_images_info();
+  // Preserve HTML critical images if they have been updated already.
+  if (driver_info == NULL) {
+    driver_info = new CriticalImagesInfo;
+    driver->set_critical_images_info(driver_info);
+  }
+  driver_info->css_critical_images.reset(critical_images);
 }
 
 // Copy the critical images for this request from the property cache into the
@@ -103,29 +148,30 @@ bool CriticalImagesFinder::IsCriticalImage(
 // between requests.
 void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
     RewriteDriver* driver) {
-  if (driver->updated_critical_images()) {
+  const CriticalImagesInfo* driver_info = driver->critical_images_info();
+  // If driver_info is not NULL, then the CriticalImagesInfo has already been
+  // updated, so no need to do anything here.
+  if (driver_info != NULL) {
     return;
   }
-  driver->set_updated_critical_images(true);
+  scoped_ptr<CriticalImagesInfo> info(new CriticalImagesInfo);
   PropertyCache* page_property_cache =
       driver->server_context()->page_property_cache();
   const PropertyCache::Cohort* cohort =
       page_property_cache->GetCohort(GetCriticalImagesCohort());
   PropertyPage* page = driver->property_page();
   if (page != NULL && cohort != NULL) {
-    if (driver->critical_images() == NULL) {
-      PropertyValue* property_value = page->GetProperty(
-          cohort, kCriticalImagesPropertyName);
-      driver->set_critical_images(ExtractCriticalImagesSet(
-          driver, property_value, true));
-    }
-    if (driver->css_critical_images() == NULL) {
-      PropertyValue* property_value = page->GetProperty(
-          cohort, kCssCriticalImagesPropertyName);
-      driver->set_css_critical_images(ExtractCriticalImagesSet(
-          driver, property_value, false));
-    }
+    PropertyValue* property_value = page->GetProperty(
+        cohort, kCriticalImagesPropertyName);
+    ExtractCriticalImagesSet(driver, property_value, true,
+                             info->html_critical_images.get());
+
+    property_value = page->GetProperty(
+        cohort, kCssCriticalImagesPropertyName);
+    ExtractCriticalImagesSet(driver, property_value, true,
+                             info->css_critical_images.get());
   }
+  driver->set_critical_images_info(info.release());
 }
 
 // TODO(pulkitg): Change all instances of critical_images_set to
@@ -182,10 +228,12 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
 
 // Extract the critical images stored for the given property_value in the
 // property page. Returned StringSet will owned by the caller.
-StringSet* CriticalImagesFinder::ExtractCriticalImagesSet(
+void CriticalImagesFinder::ExtractCriticalImagesSet(
     RewriteDriver* driver,
     const PropertyValue* property_value,
-    bool track_stats) {
+    bool track_stats,
+    StringSet* critical_images) {
+  DCHECK(critical_images != NULL);
   // Don't track stats if we are flushing early, since we will already be
   // counting this when we are rewriting the full page.
   track_stats &= !driver->flushing_early();
@@ -205,7 +253,6 @@ StringSet* CriticalImagesFinder::ExtractCriticalImagesSet(
       // empty, because the property cache does not store empty values.
       SplitStringPieceToVector(property_value->value(), kImageUrlSeparator,
                                &critical_images_vector, true);
-      StringSet* critical_images(new StringSet);  // Owned by RewriteDriver.
       StringPieceVector::iterator it;
       for (it = critical_images_vector.begin();
            it != critical_images_vector.end();
@@ -215,14 +262,13 @@ StringSet* CriticalImagesFinder::ExtractCriticalImagesSet(
       if (track_stats) {
         critical_images_valid_count_->Add(1);
       }
-      return critical_images;
+      return;
     } else if (track_stats) {
       critical_images_expired_count_->Add(1);
     }
   } else if (track_stats) {
     critical_images_not_found_count_->Add(1);
   }
-  return NULL;
 }
 
 }  // namespace net_instaweb

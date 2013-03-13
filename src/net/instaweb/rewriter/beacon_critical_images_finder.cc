@@ -31,12 +31,12 @@ BeaconCriticalImagesFinder::BeaconCriticalImagesFinder(Statistics* stats)
 BeaconCriticalImagesFinder::~BeaconCriticalImagesFinder() {
 }
 
-bool BeaconCriticalImagesFinder::IsCriticalImage(
-    const GoogleString& image_url, const RewriteDriver* driver) const {
+bool BeaconCriticalImagesFinder::IsHtmlCriticalImage(
+    const GoogleString& image_url, RewriteDriver* driver) {
   unsigned int hash_val = HashString<CasePreserve, unsigned int>(
       image_url.c_str(), image_url.size());
   GoogleString hash_str = UintToString(hash_val);
-  return CriticalImagesFinder::IsCriticalImage(hash_str, driver);
+  return CriticalImagesFinder::IsHtmlCriticalImage(hash_str, driver);
 }
 
 void BeaconCriticalImagesFinder::ComputeCriticalImages(

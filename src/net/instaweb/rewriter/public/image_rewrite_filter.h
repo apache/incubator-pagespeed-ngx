@@ -230,7 +230,7 @@ class ImageRewriteFilter : public RewriteFilter {
   // An image is considered critical if it is in the critical list as determined
   // by CriticalImageFinder. Images are considered critical if the platform
   // lacks a CriticalImageFinder implementation.
-  bool IsCriticalImage(const StringPiece& image_url) const;
+  bool IsHtmlCriticalImage(StringPiece image_url) const;
 
   // Persist a URL that would have be inlined to the property cache, if
   // options()->image_inlining_identify_and_cache_without_rewriting(). Returns

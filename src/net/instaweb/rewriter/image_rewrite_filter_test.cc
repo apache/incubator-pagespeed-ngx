@@ -1301,8 +1301,6 @@ TEST_F(ImageRewriteTest, DimensionStripAfterInline) {
 }
 
 TEST_F(ImageRewriteTest, InlineCriticalOnly) {
-  StringSet* critical_images = new StringSet;
-  rewrite_driver()->set_critical_images(critical_images);
   MeaningfulCriticalImagesFinder* finder =
       new MeaningfulCriticalImagesFinder(statistics());
   server_context()->set_critical_images_finder(finder);
@@ -1314,7 +1312,10 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
                     "", "", false, false);
 
   // Image present in critical set should be inlined.
+  StringSet* critical_images = new StringSet;
   critical_images->insert(StrCat(kTestDomain, kChefGifFile));
+  server_context()->critical_images_finder()->SetHtmlCriticalImages(
+      rewrite_driver(), critical_images);
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, true);
 }

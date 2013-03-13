@@ -17,8 +17,6 @@
 
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 
-#include <map>
-
 #include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -131,13 +129,16 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   StringSet* css_critical_images_set = new StringSet;
   css_critical_images_set->insert("imageD.jpeg");
 
-  finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
-  CheckCriticalImageFinderStats(0, 0, 1);
+  // Calling IsHtmlCriticalImage should update the CriticalImagesInfo in
+  // RewriteDriver.
+  finder()->IsHtmlCriticalImage("imageA.jpg", rewrite_driver());
+  // We should get 2 misses, 1 for the html and 1 for css.
+  CheckCriticalImageFinderStats(0, 0, 2);
   ClearStats();
 
-  // Call update again without resetting updated_critical_images. The stats do
-  // not get updated.
-  finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
+  // Calling IsHtmlCriticalImage again should not update the stats, because the
+  // CriticalImagesInfo has already been updated.
+  finder()->IsHtmlCriticalImage("imageA.jpg", rewrite_driver());
   CheckCriticalImageFinderStats(0, 0, 0);
   ClearStats();
 
@@ -153,49 +154,43 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
 
   // critical_images() is NULL because there is no previous call to
   // GetCriticalImages()
-  EXPECT_TRUE(rewrite_driver()->critical_images() == NULL);
   ResetDriver();
-  finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
-  CheckCriticalImageFinderStats(1, 0, 0);
+  EXPECT_TRUE(rewrite_driver()->critical_images_info() == NULL);
+  EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
+  CheckCriticalImageFinderStats(2, 0, 0);
   ClearStats();
 
   // GetCriticalImages() upates critical_images set in RewriteDriver().
-  const StringSet* critical_images = rewrite_driver()->critical_images();
-  EXPECT_TRUE(critical_images != NULL);
-  EXPECT_EQ(2, critical_images->size());
-  EXPECT_TRUE(finder()->IsCriticalImage("imageA.jpeg", rewrite_driver()));
-  EXPECT_TRUE(finder()->IsCriticalImage("imageB.jpeg", rewrite_driver()));
-  EXPECT_FALSE(finder()->IsCriticalImage("imageC.jpeg", rewrite_driver()));
+  EXPECT_TRUE(rewrite_driver()->critical_images_info() != NULL);
+  // EXPECT_EQ(2, GetCriticalImages(rewrite_driver()).size());
+  EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
+  EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageB.jpeg", rewrite_driver()));
+  EXPECT_FALSE(finder()->IsHtmlCriticalImage("imageC.jpeg", rewrite_driver()));
 
-  const StringSet* css_critical_images =
-      rewrite_driver()->css_critical_images();
-  EXPECT_TRUE(css_critical_images != NULL);
-  EXPECT_EQ(1, css_critical_images->size());
-  EXPECT_TRUE(
-      css_critical_images->find("imageD.jpeg") != css_critical_images->end());
-  EXPECT_TRUE(
-      css_critical_images->find("imageA.jpeg") == css_critical_images->end());
+  // EXPECT_EQ(1, css_critical_images->size());
+  EXPECT_TRUE(finder()->IsCssCriticalImage("imageD.jpeg", rewrite_driver()));
+  EXPECT_FALSE(finder()->IsCssCriticalImage("imageA.jpeg", rewrite_driver()));
 
-  // Reset the driver, read the page and call UpdateCriticalImagesSetInDriver.
+  // Reset the driver, read the page and call UpdateCriticalImagesSetInDriver by
+  // calling IsHtmlCriticalImage.
   // We read it from cache.
   ResetDriver();
-  finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
-  CheckCriticalImageFinderStats(1, 0, 0);
+  EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
+  CheckCriticalImageFinderStats(2, 0, 0);
   ClearStats();
 
   // Advance to 90% of expiry. We get a hit from cache and must_compute is true.
   AdvanceTimeMs(0.9 * options()->finder_properties_cache_expiration_time_ms());
   ResetDriver();
-  finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
-  CheckCriticalImageFinderStats(1, 0, 0);
+  EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
+  CheckCriticalImageFinderStats(2, 0, 0);
   ClearStats();
 
   ResetDriver();
   // Advance past expiry, so that the pages expire.
   AdvanceTimeMs(2 * options()->finder_properties_cache_expiration_time_ms());
-  rewrite_driver()->set_updated_critical_images(false);
-  finder()->UpdateCriticalImagesSetInDriver(rewrite_driver());
-  CheckCriticalImageFinderStats(0, 1, 0);
+  EXPECT_FALSE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
+  CheckCriticalImageFinderStats(0, 2, 0);
 }
 
 }  // namespace net_instaweb

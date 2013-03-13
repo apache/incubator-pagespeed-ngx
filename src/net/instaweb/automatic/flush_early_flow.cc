@@ -96,12 +96,16 @@ void InitFlushEarlyDriverWithPropertyCacheValues(
     finder->UpdateFlushEarlyInfoInDriver(flush_early_driver);
   }
 
-  // Populating critical images from css in flush early driver.
-  CriticalImagesFinder* critical_images_finder =
-      flush_early_driver->server_context()->critical_images_finder();
-  if (critical_images_finder->IsMeaningful(flush_early_driver)) {
-    critical_images_finder->UpdateCriticalImagesSetInDriver(flush_early_driver);
-  }
+  // Because we are resetting the property page at the end of this function, we
+  // need to make sure the CriticalImageFinder state is updated here. We don't
+  // have a public interface for updating the state in the driver, so perform a
+  // throwaway critical image query here, which will in turn cause the state
+  // that CriticalImageFinder keeps in RewriteDriver to be updated.
+  // TODO(jud): Remove this when the CriticalImageFinder is held in the
+  // RewriteDriver, instead of ServerContext.
+  flush_early_driver->server_context()->critical_images_finder()->
+      GetHtmlCriticalImages(flush_early_driver);
+
   flush_early_driver->set_unowned_property_page(NULL);
 }
 
@@ -454,8 +458,8 @@ void FlushEarlyFlow::FlushEarly() {
         new_driver->ParseText(flush_early_info.pre_head());
         new_driver->ParseText(flush_early_info.resource_html());
 
-        const StringSet* css_critical_images =
-            new_driver->css_critical_images();
+        const StringSet* css_critical_images = new_driver->server_context()->
+            critical_images_finder()->GetCssCriticalImages(new_driver);
         if (new_driver->options()->
             flush_more_resources_early_if_time_permits() &&
             css_critical_images != NULL) {

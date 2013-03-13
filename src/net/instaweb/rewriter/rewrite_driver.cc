@@ -228,7 +228,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       property_page_(NULL),
       owns_property_page_(false),
       device_type_(UserAgentMatcher::kDesktop),
-      updated_critical_images_(false),
+      critical_images_info_(NULL),
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0),
@@ -370,9 +370,7 @@ void RewriteDriver::Clear() {
   start_time_ms_ = 0;
   is_nested_ = false;
 
-  critical_images_.reset(NULL);
-  css_critical_images_.reset(NULL);
-  updated_critical_images_ = false;
+  critical_images_info_.reset(NULL);
   critical_line_info_.reset(NULL);
 
   if (owns_property_page_) {
@@ -2252,7 +2250,6 @@ GoogleString RewriteDriver::ToString(bool show_detached_contexts) {
                write_property_cache_dom_cohort_);
     AppendBool(&out, "using_spdy", using_spdy());
     AppendBool(&out, "owns_property_page", owns_property_page_);
-    AppendBool(&out, "updated_critical_images", updated_critical_images_);
     AppendBool(&out, "xhtml_mimetype_computed", xhtml_mimetype_computed_);
     AppendBool(&out, "serve_blink_non_critical", serve_blink_non_critical_);
     AppendBool(&out, "is_blink_request", is_blink_request_);

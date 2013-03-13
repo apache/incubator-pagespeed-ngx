@@ -360,15 +360,6 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
 }
 
 void ImageRewriteFilter::StartDocumentImpl() {
-  CriticalImagesFinder* finder =
-      driver_->server_context()->critical_images_finder();
-  if (finder->IsMeaningful(driver_) &&
-      driver_->device_properties()->SupportsImageInlining() &&
-      (driver_->options()->Enabled(RewriteOptions::kDelayImages) ||
-       (driver_->options()->Enabled(RewriteOptions::kInlineImages) &&
-        driver_->options()->inline_only_critical_images()))) {
-    finder->UpdateCriticalImagesSetInDriver(driver_);
-  }
   image_counter_ = 0;
   inlinable_urls_.clear();
 }
@@ -1023,7 +1014,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   const RewriteOptions* options = driver_->options();
   bool rewrote_url = false;
   bool image_inlined = false;
-  const bool is_critical_image = IsCriticalImage(src_value);
+  const bool is_critical_image = IsHtmlCriticalImage(src_value);
 
   // See if we have a data URL, and if so use it if the browser can handle it
   // TODO(jmaessen): get rid of a string copy here. Tricky because ->SetValue()
@@ -1133,7 +1124,7 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   return rewrote_url;
 }
 
-bool ImageRewriteFilter::IsCriticalImage(const StringPiece& image_url) const {
+bool ImageRewriteFilter::IsHtmlCriticalImage(StringPiece image_url) const {
   CriticalImagesFinder* finder =
       driver_->server_context()->critical_images_finder();
   if (!finder->IsMeaningful(driver_)) {
@@ -1142,7 +1133,7 @@ bool ImageRewriteFilter::IsCriticalImage(const StringPiece& image_url) const {
     return true;
   }
   GoogleUrl image_gurl(driver_->base_url(), image_url);
-  return finder->IsCriticalImage(image_gurl.spec_c_str(), driver_);
+  return finder->IsHtmlCriticalImage(image_gurl.spec_c_str(), driver_);
 }
 
 bool ImageRewriteFilter::StoreUrlInPropertyCache(const StringPiece& url) {

@@ -30,19 +30,20 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -838,28 +839,17 @@ class RewriteDriver : public HtmlParse {
   void set_critical_line_info(CriticalLineInfo* critical_line_info);
 
   // Used by ImageRewriteFilter for identifying critical images.
-  const StringSet* critical_images() const {
-    return critical_images_.get();
+  CriticalImagesInfo* critical_images_info() const {
+    return critical_images_info_.get();
   }
 
   // Inserts the critical images present on the requested html page. It takes
-  // the ownership of critical_images.
-  void set_critical_images(StringSet* critical_images) {
-    critical_images_.reset(critical_images);
+  // ownership of critical_images_info. This should only be called by the
+  // CriticalImagesFinder, normal users should just be using the automatic
+  // management of critical_images_info that CriticalImagesFinder provides.
+  void set_critical_images_info(CriticalImagesInfo* critical_images_info) {
+    critical_images_info_.reset(critical_images_info);
   }
-
-  const StringSet* css_critical_images() const {
-    return css_critical_images_.get();
-  }
-
-  // Inserts the critical images present in the css. It takes the ownership of
-  // css_critical_images.
-  void set_css_critical_images(StringSet* css_critical_images) {
-    css_critical_images_.reset(css_critical_images);
-  }
-
-  bool updated_critical_images() const { return updated_critical_images_; }
-  void set_updated_critical_images(bool x) { updated_critical_images_ = x; }
 
   // We expect to this method to be called on the HTML parser thread.
   // Returns the number of images whose low quality images are inlined in the
@@ -1339,14 +1329,8 @@ class RewriteDriver : public HtmlParse {
 
   scoped_ptr<CriticalLineInfo> critical_line_info_;
 
-  // Stores all the critical images for the current URL.
-  scoped_ptr<StringSet> critical_images_;
-
-  // Stores all the critical images for the current URL present in css.
-  scoped_ptr<StringSet> css_critical_images_;
-
-  // Indicates if the critical images were updated here.
-  bool updated_critical_images_;
+  // Stores all the critical image info for the current URL.
+  scoped_ptr<CriticalImagesInfo> critical_images_info_;
 
   // Memoized computation of whether the current doc has an XHTML mimetype.
   bool xhtml_mimetype_computed_;

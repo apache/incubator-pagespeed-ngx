@@ -69,11 +69,6 @@ void LazyloadImagesFilter::DetermineEnabled() {
 }
 
 void LazyloadImagesFilter::StartDocumentImpl() {
-  CriticalImagesFinder* finder =
-      driver()->server_context()->critical_images_finder();
-  if (finder->IsMeaningful(driver())) {
-    finder->UpdateCriticalImagesSetInDriver(driver());
-  }
   Clear();
 }
 
@@ -234,7 +229,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
     if (finder->IsMeaningful(driver())) {
       // Decode the url since the critical images in the finder are not
       // rewritten.
-      if (finder->IsCriticalImage(full_url.data(), driver())) {
+      if (finder->IsHtmlCriticalImage(full_url.data(), driver())) {
         log_record->LogLazyloadFilter(
             RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
             RewriterInfo::NOT_APPLIED, false, true);

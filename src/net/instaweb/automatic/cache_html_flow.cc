@@ -48,12 +48,12 @@
 #include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 
 namespace net_instaweb {
 
@@ -123,12 +123,16 @@ void InitDriverWithPropertyCacheValues(
   cache_html_driver->set_unowned_property_page(page);
   // TODO(mmohabey): Critical line info should be populated here.
 
-  // Populating critical images in cache html driver.
-  CriticalImagesFinder* critical_images_finder =
-      cache_html_driver->server_context()->critical_images_finder();
-  if (critical_images_finder->IsMeaningful(cache_html_driver)) {
-    critical_images_finder->UpdateCriticalImagesSetInDriver(cache_html_driver);
-  }
+  // Because we are resetting the property page at the end of this function, we
+  // need to make sure the CriticalImageFinder state is updated here. We don't
+  // have a public interface for updating the state in the driver, so perform a
+  // throwaway critical image query here, which will in turn cause the state
+  // that CriticalImageFinder keeps in RewriteDriver to be updated.
+  // TODO(jud): Remove this when the CriticalImageFinder is held in the
+  // RewriteDriver, instead of ServerContext.
+  cache_html_driver->server_context()->critical_images_finder()->
+      GetHtmlCriticalImages(cache_html_driver);
+
   cache_html_driver->set_unowned_property_page(NULL);
 }
 
