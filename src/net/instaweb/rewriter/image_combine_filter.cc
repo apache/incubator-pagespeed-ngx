@@ -28,6 +28,7 @@
 #include "base/logging.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/css_resource_slot.h"
 #include "net/instaweb/rewriter/public/image.h"
@@ -503,7 +504,7 @@ class Library : public spriter::ImageLibraryInterface {
           new net_instaweb::Image::CompressionOptions();
       options->recompress_png = true;
       image_.reset(BlankImageWithOptions(width, height,
-                                         net_instaweb::Image::IMAGE_PNG,
+                                         net_instaweb::IMAGE_PNG,
                                          tmp_dir, timer, handler, options));
     }
 
@@ -582,9 +583,9 @@ class Library : public spriter::ImageLibraryInterface {
         timer_, handler_));
 
     // We only handle PNGs and GIFs (which are converted to PNGs) for now.
-    net_instaweb::Image::Type image_type = image->image_type();
-    if ((image_type != net_instaweb::Image::IMAGE_PNG) &&
-        (image_type != net_instaweb::Image::IMAGE_GIF)) {
+    net_instaweb::ImageType image_type = image->image_type();
+    if ((image_type != net_instaweb::IMAGE_PNG) &&
+        (image_type != net_instaweb::IMAGE_GIF)) {
       handler->Message(kInfo, "Cannot sprite: not PNG or GIF, %s",
                        resource->url().c_str());
       return false;

@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -208,7 +209,7 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Save image contents in cached if the image is inlinable.
   void SaveIfInlinable(const StringPiece& contents,
-                       const Image::Type image_type,
+                       const ImageType image_type,
                        CachedResult* cached);
 
   // Populates width and height with the attributes specified in the

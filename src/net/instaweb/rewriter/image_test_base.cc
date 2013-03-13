@@ -47,20 +47,20 @@ ImageTestBase::~ImageTestBase() {
 // We use the output_type (ultimate expected output type after image
 // processing) to set up rewrite permissions for the resulting Image object.
 Image* ImageTestBase::ImageFromString(
-    Image::Type output_type, const GoogleString& name,
+    ImageType output_type, const GoogleString& name,
     const GoogleString& contents, bool progressive) {
   net_instaweb::Image::CompressionOptions* image_options =
       new net_instaweb::Image::CompressionOptions();
-  if (output_type == Image::IMAGE_WEBP) {
+  if (output_type == IMAGE_WEBP) {
     image_options->preferred_webp = Image::WEBP_LOSSY;
-  } else if (output_type == Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA) {
+  } else if (output_type == IMAGE_WEBP_LOSSLESS_OR_ALPHA) {
     image_options->preferred_webp = Image::WEBP_LOSSLESS;
   } else {
     image_options->preferred_webp = Image::WEBP_NONE;
   }
   image_options->jpeg_quality = -1;
   image_options->progressive_jpeg = progressive;
-  image_options->convert_png_to_jpeg =  output_type == Image::IMAGE_JPEG;
+  image_options->convert_png_to_jpeg =  output_type == IMAGE_JPEG;
 
   return NewImage(contents, name, GTestTempDir(), image_options,
                   &timer_, &handler_);
@@ -77,7 +77,7 @@ Image* ImageTestBase::ReadFromFileWithOptions(
 }
 
 Image* ImageTestBase::ReadImageFromFile(
-    Image::Type output_type, const char* filename, GoogleString* buffer,
+    ImageType output_type, const char* filename, GoogleString* buffer,
     bool progressive) {
   EXPECT_TRUE(file_system_.ReadFile(
       StrCat(GTestSrcDir(), kTestData, filename).c_str(),

@@ -1206,6 +1206,19 @@
       ],
     },
     {
+      'target_name': 'instaweb_image_types_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        'rewriter/image_types.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/image_types.pb.cc',
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_logging_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/http',
@@ -1213,6 +1226,9 @@
       'sources': [
         'http/logging.proto',
         '<(protoc_out_dir)/<(instaweb_protoc_subdir)/logging.pb.cc',
+      ],
+      'dependencies': [
+        'instaweb_image_types_pb',
       ],
       'includes': [
         'protoc.gypi',

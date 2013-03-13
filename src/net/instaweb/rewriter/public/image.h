@@ -21,6 +21,7 @@
 
 #include <cstddef>
 
+#include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -45,17 +46,6 @@ class Image {
   // In future we may need to plumb this to other data sources or change how
   // metadata is retrieved; the object is to do so locally in this class without
   // disrupting any of its clients.
-
-  enum Type {
-    // Update kImageTypeStart if you add something before this.
-    IMAGE_UNKNOWN = 0,
-    IMAGE_JPEG,
-    IMAGE_PNG,
-    IMAGE_GIF,
-    IMAGE_WEBP,
-    IMAGE_WEBP_LOSSLESS_OR_ALPHA,  // webps that are lossy or have transparency
-    // Update kImageTypeEnd if you add something after this.
-  };
 
   enum PreferredWebp {
     WEBP_NONE = 0,
@@ -114,12 +104,8 @@ class Image {
 
   virtual ~Image();
 
-  // static method to convert Type to mime type.
-  static const ContentType* TypeToContentType(Type t);
-
-  // Used for checking valid ImageType enum integer.
-  static const Type kImageTypeStart = IMAGE_UNKNOWN;
-  static const Type kImageTypeEnd = IMAGE_WEBP_LOSSLESS_OR_ALPHA;
+  // static method to convert image type to content type.
+  static const ContentType* TypeToContentType(ImageType t);
 
   // Stores the image dimensions in natural_dim (on success, sets
   // natural_dim->{width, height} and
@@ -147,7 +133,7 @@ class Image {
     return ret;
   }
 
-  Type image_type() {
+  ImageType image_type() {
     if (image_type_ == IMAGE_UNKNOWN) {
       ComputeImageType();
     }
@@ -190,7 +176,7 @@ class Image {
 
  protected:
   explicit Image(const StringPiece& original_contents);
-  explicit Image(Type type);
+  explicit Image(ImageType type);
 
   // Internal helpers
   virtual void ComputeImageType() = 0;
@@ -204,7 +190,7 @@ class Image {
   virtual bool ShouldConvertToProgressive(int64 quality) const = 0;
 
 
-  Type image_type_;  // Lazily initialized, initially IMAGE_UNKNOWN.
+  ImageType image_type_;  // Lazily initialized, initially IMAGE_UNKNOWN.
   const StringPiece original_contents_;
   GoogleString output_contents_;  // Lazily filled.
   bool output_valid_;             // Indicates output_contents_ now correct.
@@ -236,7 +222,7 @@ Image* NewImage(const StringPiece& original_contents,
 
 // Creates a blank image of the given dimensions and type.
 // For now, this is assumed to be an 8-bit 3-channel image.
-Image* BlankImageWithOptions(int width, int height, Image::Type type,
+Image* BlankImageWithOptions(int width, int height, ImageType type,
                              const StringPiece& tmp_dir,
                              Timer* timer,
                              MessageHandler* handler,

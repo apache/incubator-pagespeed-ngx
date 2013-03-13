@@ -66,11 +66,11 @@ class ImageTest : public ImageTestBase {
     EXPECT_TRUE(image->output_contents_.empty());
   }
 
-  void ExpectContentType(Image::Type image_type, Image* image) {
+  void ExpectContentType(ImageType image_type, Image* image) {
     EXPECT_EQ(image_type, image->image_type_);
   }
 
-  void ExpectDimensions(Image::Type image_type, int size,
+  void ExpectDimensions(ImageType image_type, int size,
                         int expected_width, int expected_height,
                         Image *image) {
     EXPECT_EQ(size, image->input_size());
@@ -86,7 +86,7 @@ class ImageTest : public ImageTestBase {
   }
 
   void CheckInvalid(const GoogleString& name, const GoogleString& contents,
-                    Image::Type input_type, Image::Type output_type,
+                    ImageType input_type, ImageType output_type,
                     bool progressive) {
     ImagePtr image(ImageFromString(output_type, name, contents, progressive));
     EXPECT_EQ(contents.size(), image->input_size());
@@ -102,8 +102,8 @@ class ImageTest : public ImageTestBase {
   }
 
   bool CheckImageFromFile(const char* filename,
-                          Image::Type input_type,
-                          Image::Type output_type,
+                          ImageType input_type,
+                          ImageType output_type,
                           int min_bytes_to_type,
                           int min_bytes_to_dimensions,
                           int width, int height,
@@ -114,29 +114,29 @@ class ImageTest : public ImageTestBase {
   }
 
   bool CheckImageFromFile(const char* filename,
-                          Image::Type input_type,
-                          Image::Type intended_output_type,
-                          Image::Type actual_output_type,
+                          ImageType input_type,
+                          ImageType intended_output_type,
+                          ImageType actual_output_type,
                           int min_bytes_to_type,
                           int min_bytes_to_dimensions,
                           int width, int height,
                           int size, bool optimizable) {
     // Set options to convert to intended_output_type, but to allow for
     // negative tests, don't clear any other options.
-    if (intended_output_type == Image::IMAGE_WEBP) {
+    if (intended_output_type == IMAGE_WEBP) {
       options_->preferred_webp = Image::WEBP_LOSSY;
-    } else if (intended_output_type == Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA) {
+    } else if (intended_output_type == IMAGE_WEBP_LOSSLESS_OR_ALPHA) {
       options_->preferred_webp = Image::WEBP_LOSSLESS;
     }
     switch (intended_output_type) {
-      case Image::IMAGE_WEBP:
-      case Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA:
+      case IMAGE_WEBP:
+      case IMAGE_WEBP_LOSSLESS_OR_ALPHA:
         options_->convert_jpeg_to_webp = true;
         FALLTHROUGH_INTENDED;
-      case Image::IMAGE_JPEG:
+      case IMAGE_JPEG:
         options_->convert_png_to_jpeg = true;
         FALLTHROUGH_INTENDED;
-      case Image::IMAGE_PNG:
+      case IMAGE_PNG:
         options_->convert_gif_to_png = true;
         break;
       default:
@@ -160,7 +160,7 @@ class ImageTest : public ImageTestBase {
     // Construct data url, then decode it and check for match.
     CachedResult cached;
     GoogleString data_url;
-    EXPECT_NE(Image::IMAGE_UNKNOWN, image->image_type());
+    EXPECT_NE(IMAGE_UNKNOWN, image->image_type());
     StringPiece image_contents = image->Contents();
 
     progressive &= ImageTestingPeer::ShouldConvertToProgressive(jpeg_quality,
@@ -174,7 +174,7 @@ class ImageTest : public ImageTestBase {
     cached.set_inlined_image_type(static_cast<int>(image->image_type()));
     DataUrl(
         *Image::TypeToContentType(
-            static_cast<Image::Type>(cached.inlined_image_type())),
+            static_cast<ImageType>(cached.inlined_image_type())),
         BASE64, cached.inlined_data(), &data_url);
     GoogleString data_header("data:");
     data_header.append(image->content_type()->mime_type());
@@ -203,7 +203,7 @@ class ImageTest : public ImageTestBase {
     CheckInvalid(filename, type_data, input_type, intended_output_type,
                  progressive);
     GoogleString junk(contents, 0, min_bytes_to_type - 1);
-    CheckInvalid(filename, junk, Image::IMAGE_UNKNOWN, Image::IMAGE_UNKNOWN,
+    CheckInvalid(filename, junk, IMAGE_UNKNOWN, IMAGE_UNKNOWN,
                  progressive);
     return progressive;
   }
@@ -254,13 +254,13 @@ class ImageTest : public ImageTestBase {
 };
 
 TEST_F(ImageTest, EmptyImageUnidentified) {
-  CheckInvalid("Empty string", "", Image::IMAGE_UNKNOWN, Image::IMAGE_UNKNOWN,
+  CheckInvalid("Empty string", "", IMAGE_UNKNOWN, IMAGE_UNKNOWN,
                false);
 }
 
 TEST_F(ImageTest, InputWebpTest) {
   CheckImageFromFile(
-      kScenery, Image::IMAGE_WEBP, Image::IMAGE_WEBP,
+      kScenery, IMAGE_WEBP, IMAGE_WEBP,
       20,  // Min bytes to bother checking file type at all.
       30,
       550, 368,
@@ -301,7 +301,7 @@ TEST_F(ImageTest, WebpLaLowResTest) {
 TEST_F(ImageTest, PngTest) {
   options_->recompress_png = true;
   CheckImageFromFile(
-      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_PNG,
+      kBikeCrash, IMAGE_PNG, IMAGE_PNG,
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
@@ -315,7 +315,7 @@ TEST_F(ImageTest, PngToWebpTest) {
   }
   options_->webp_quality = 75;
   CheckImageFromFile(
-      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_WEBP,
+      kBikeCrash, IMAGE_PNG, IMAGE_WEBP,
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
@@ -332,7 +332,7 @@ TEST_F(ImageTest, PngToWebpFailToJpegDueToPreferredTest) {
   options_->jpeg_quality = 85;
   options_->convert_jpeg_to_webp = true;
   CheckImageFromFile(
-      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_JPEG,
+      kBikeCrash, IMAGE_PNG, IMAGE_JPEG,
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
@@ -346,7 +346,7 @@ TEST_F(ImageTest, PngToWebpLaTest) {
   }
   options_->webp_quality = 75;
   CheckImageFromFile(
-      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA,
+      kBikeCrash, IMAGE_PNG, IMAGE_WEBP_LOSSLESS_OR_ALPHA,
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
@@ -497,7 +497,7 @@ TEST_F(ImageTest, PngLargeAlphaToWebpTimesOutToPngTest) {
 TEST_F(ImageTest, PngToJpegTest) {
   options_->jpeg_quality = 85;
   CheckImageFromFile(
-      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_JPEG,
+      kBikeCrash, IMAGE_PNG, IMAGE_JPEG,
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
@@ -508,7 +508,7 @@ TEST_F(ImageTest, TooSmallToConvertPngToProgressiveJpegTest) {
   options_->progressive_jpeg = true;
   options_->jpeg_quality = 85;
   bool progressive = CheckImageFromFile(
-      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_JPEG,
+      kBikeCrash, IMAGE_PNG, IMAGE_JPEG,
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
@@ -521,7 +521,7 @@ TEST_F(ImageTest, PngToProgressiveJpegTest) {
   options_->jpeg_quality = 85;
   options_->progressive_jpeg_min_bytes = 100;  // default is 10k.
   bool progressive = CheckImageFromFile(
-      kBikeCrash, Image::IMAGE_PNG, Image::IMAGE_JPEG,
+      kBikeCrash, IMAGE_PNG, IMAGE_JPEG,
       ImageHeaders::kPngHeaderLength,
       ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize * 2,
       100, 100,
@@ -531,7 +531,7 @@ TEST_F(ImageTest, PngToProgressiveJpegTest) {
 
 TEST_F(ImageTest, GifToPngTest) {
   CheckImageFromFile(
-      kIronChef, Image::IMAGE_GIF, Image::IMAGE_PNG,
+      kIronChef, IMAGE_GIF, IMAGE_PNG,
       8,  // Min bytes to bother checking file type at all.
       ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
       192, 256,
@@ -553,7 +553,7 @@ TEST_F(ImageTest, GifToPngDisabledTest) {
 TEST_F(ImageTest, GifToJpegTest) {
   options_->jpeg_quality = 85;
   CheckImageFromFile(
-      kIronChef, Image::IMAGE_GIF, Image::IMAGE_JPEG,
+      kIronChef, IMAGE_GIF, IMAGE_JPEG,
       8,  // Min bytes to bother checking file type at all.
       ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
       192, 256,
@@ -567,7 +567,7 @@ TEST_F(ImageTest, GifToWebpTest) {
   }
   options_->webp_quality = 25;
   CheckImageFromFile(
-      kIronChef, Image::IMAGE_GIF, Image::IMAGE_WEBP,
+      kIronChef, IMAGE_GIF, IMAGE_WEBP,
       8,  // Min bytes to bother checking file type at all.
       ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
       192, 256,
@@ -581,7 +581,7 @@ TEST_F(ImageTest, GifToWebpLaTest) {
   }
   options_->webp_quality = 75;
   CheckImageFromFile(
-      kIronChef, Image::IMAGE_GIF, Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA,
+      kIronChef, IMAGE_GIF, IMAGE_WEBP_LOSSLESS_OR_ALPHA,
       8,  // Min bytes to bother checking file type at all.
       ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
       192, 256,
@@ -590,7 +590,7 @@ TEST_F(ImageTest, GifToWebpLaTest) {
 
 TEST_F(ImageTest, AnimationTest) {
   CheckImageFromFile(
-      kCradle, Image::IMAGE_GIF, Image::IMAGE_PNG,
+      kCradle, IMAGE_GIF, IMAGE_PNG,
       8,  // Min bytes to bother checking file type at all.
       ImageHeaders::kGifDimStart + ImageHeaders::kGifIntSize * 2,
       200, 150,
@@ -600,7 +600,7 @@ TEST_F(ImageTest, AnimationTest) {
 TEST_F(ImageTest, JpegTest) {
   options_->recompress_jpeg = true;
   CheckImageFromFile(
-      kPuzzle, Image::IMAGE_JPEG, Image::IMAGE_JPEG,
+      kPuzzle, IMAGE_JPEG, IMAGE_JPEG,
       8,  // Min bytes to bother checking file type at all.
       6468,  // Specific to this test
       1023, 766,
@@ -611,7 +611,7 @@ TEST_F(ImageTest, ProgressiveJpegTest) {
   options_->recompress_jpeg = true;
   options_->progressive_jpeg = true;
   CheckImageFromFile(
-      kPuzzle, Image::IMAGE_JPEG, Image::IMAGE_JPEG,
+      kPuzzle, IMAGE_JPEG, IMAGE_JPEG,
       8,  // Min bytes to bother checking file type at all.
       6468,  // Specific to this test
       1023, 766,
@@ -757,7 +757,7 @@ TEST_F(ImageTest, WebpTest) {
   }
   options_->webp_quality = 75;
   CheckImageFromFile(
-      kPuzzle, Image::IMAGE_JPEG, Image::IMAGE_WEBP,
+      kPuzzle, IMAGE_JPEG, IMAGE_WEBP,
       8,  // Min bytes to bother checking file type at all.
       6468,  // Specific to this test
       1023, 766,
@@ -793,8 +793,8 @@ TEST_F(ImageTest, WebpNonLaFromJpgTest) {
   options_->webp_quality = 75;
   // Note that jpeg->webp cannot return a lossless webp.
   CheckImageFromFile(
-      kPuzzle, Image::IMAGE_JPEG, Image::IMAGE_WEBP_LOSSLESS_OR_ALPHA,
-      Image::IMAGE_WEBP,
+      kPuzzle, IMAGE_JPEG, IMAGE_WEBP_LOSSLESS_OR_ALPHA,
+      IMAGE_WEBP,
       8,  // Min bytes to bother checking file type at all.
       6468,  // Specific to this test
       1023, 766,
@@ -822,7 +822,7 @@ TEST_F(ImageTest, DrawImage) {
   ASSERT_GT(height, 0);
   options = new Image::CompressionOptions();
   options->recompress_png = true;
-  ImagePtr canvas(BlankImageWithOptions(width, height, Image::IMAGE_PNG,
+  ImagePtr canvas(BlankImageWithOptions(width, height, IMAGE_PNG,
                                         GTestTempDir(), &timer_,
                                         &handler_, options));
   EXPECT_TRUE(canvas->DrawImage(image1.get(), 0, 0));
@@ -845,7 +845,7 @@ TEST_F(ImageTest, OpencvStackOverflow) {
   }
 
   GoogleString buf;
-  ImagePtr image(ReadImageFromFile(Image::IMAGE_JPEG, kLarge, &buf, false));
+  ImagePtr image(ReadImageFromFile(IMAGE_JPEG, kLarge, &buf, false));
 
   ImageDim new_dim;
   new_dim.set_width(1);
@@ -855,7 +855,7 @@ TEST_F(ImageTest, OpencvStackOverflow) {
 
 TEST_F(ImageTest, ResizeTo) {
   GoogleString buf;
-  ImagePtr image(ReadImageFromFile(Image::IMAGE_JPEG, kPuzzle, &buf, false));
+  ImagePtr image(ReadImageFromFile(IMAGE_JPEG, kPuzzle, &buf, false));
 
   ImageDim new_dim;
   new_dim.set_width(10);
@@ -863,7 +863,7 @@ TEST_F(ImageTest, ResizeTo) {
   image->ResizeTo(new_dim);
 
   ExpectEmptyOuput(image.get());
-  ExpectContentType(Image::IMAGE_JPEG, image.get());
+  ExpectContentType(IMAGE_JPEG, image.get());
 }
 
 TEST_F(ImageTest, CompressJpegUsingLossyOrLossless) {

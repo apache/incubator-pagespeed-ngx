@@ -569,8 +569,8 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
                server_context_->filename_prefix(), image_options,
                driver_->timer(), message_handler));
 
-  Image::Type original_image_type = image->image_type();
-  if (original_image_type == Image::IMAGE_UNKNOWN) {
+  ImageType original_image_type = image->image_type();
+  if (original_image_type == IMAGE_UNKNOWN) {
     image_rewrites_dropped_intentionally_->Add(1);
     image_rewrites_dropped_mime_type_unknown_->Add(1);
     driver_->InfoAt(
@@ -835,7 +835,7 @@ void ImageRewriteFilter::ResizeLowQualityImage(
 }
 
 void ImageRewriteFilter::SaveIfInlinable(const StringPiece& contents,
-                                         const Image::Type image_type,
+                                         const ImageType image_type,
                                          CachedResult* cached) {
   // We retain inlining information if the image size is < the largest possible
   // inlining threshold, as an image might be used in both html and css and we
@@ -1100,14 +1100,15 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
         cached->has_low_resolution_inlined_data() &&
         (max_preview_image_index < 0 ||
          image_index < max_preview_image_index)) {
-      int image_type = cached->low_resolution_inlined_image_type();
-      bool valid_image_type = Image::kImageTypeStart <= image_type &&
-          Image::kImageTypeEnd >= image_type;
-      DCHECK(valid_image_type) << "Invalid Image Type: " << image_type;
-      if (valid_image_type) {
+      ImageType image_type = static_cast<ImageType>(
+          cached->low_resolution_inlined_image_type());
+
+      const ContentType* content_type = Image::TypeToContentType(image_type);
+      DCHECK(content_type != NULL) << "Invalid Image Type: " << image_type;
+      if (content_type != NULL) {
         GoogleString data_url;
-        DataUrl(*Image::TypeToContentType(static_cast<Image::Type>(image_type)),
-                BASE64, cached->low_resolution_inlined_data(), &data_url);
+        DataUrl(*content_type, BASE64, cached->low_resolution_inlined_data(),
+                &data_url);
         driver_->AddAttribute(element, HtmlName::kPagespeedLowResSrc, data_url);
         driver_->increment_num_inline_preview_images();
         low_res_src_inserted = true;
@@ -1324,7 +1325,7 @@ bool ImageRewriteFilter::TryInline(
   }
   DataUrl(
       *Image::TypeToContentType(
-          static_cast<Image::Type>(cached_result->inlined_image_type())),
+          static_cast<ImageType>(cached_result->inlined_image_type())),
       BASE64, data, data_url);
   return true;
 }

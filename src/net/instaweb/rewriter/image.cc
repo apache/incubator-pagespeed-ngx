@@ -216,7 +216,7 @@ class ImageImpl : public Image {
             CompressionOptions* options,
             Timer* timer,
             MessageHandler* handler);
-  ImageImpl(int width, int height, Type type,
+  ImageImpl(int width, int height, ImageType type,
             const StringPiece& tmp_dir,
             Timer* timer, MessageHandler* handler,
             CompressionOptions* options);
@@ -407,14 +407,14 @@ Image* NewImage(const StringPiece& original_contents,
                        timer, handler);
 }
 
-Image::Image(Type type)
+Image::Image(ImageType type)
     : image_type_(type),
       original_contents_(),
       output_contents_(),
       output_valid_(false),
       rewrite_attempted_(false) { }
 
-ImageImpl::ImageImpl(int width, int height, Type type,
+ImageImpl::ImageImpl(int width, int height, ImageType type,
                      const StringPiece& tmp_dir,
                      Timer* timer, MessageHandler* handler,
                      CompressionOptions* options)
@@ -431,7 +431,7 @@ ImageImpl::ImageImpl(int width, int height, Type type,
   dims_.set_height(height);
 }
 
-Image* BlankImageWithOptions(int width, int height, Image::Type type,
+Image* BlankImageWithOptions(int width, int height, ImageType type,
                              const StringPiece& tmp_dir,
                              Timer* timer, MessageHandler* handler,
                              Image::CompressionOptions* options) {
@@ -611,7 +611,7 @@ void ImageImpl::ComputeImageType() {
   }
 }
 
-const ContentType* Image::TypeToContentType(Type image_type) {
+const ContentType* Image::TypeToContentType(ImageType image_type) {
   const ContentType* res = NULL;
   switch (image_type) {
     case IMAGE_UNKNOWN:

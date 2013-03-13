@@ -22,6 +22,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
+#include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/rewriter/public/image_test_base.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -92,7 +93,7 @@ TEST_F(ImageOomTest, BlankImage) {
   Image::CompressionOptions* options = new Image::CompressionOptions();
   options->recompress_png = true;
   // Make sure creating gigantic image fails cleanly.
-  ImagePtr giant(BlankImageWithOptions(10000, 10000, Image::IMAGE_PNG,
+  ImagePtr giant(BlankImageWithOptions(10000, 10000, IMAGE_PNG,
                                        GTestTempDir(), &timer_,
                                        &handler_, options));
   EXPECT_FALSE(giant->EnsureLoaded(true));
@@ -105,14 +106,14 @@ TEST_F(ImageOomTest, LoadImage) {
 
   GoogleString buf;
   bool not_progressive = false;
-  ImagePtr giant(ReadImageFromFile(Image::IMAGE_JPEG, kLarge, &buf,
+  ImagePtr giant(ReadImageFromFile(IMAGE_JPEG, kLarge, &buf,
                                    not_progressive));
   EXPECT_FALSE(giant->EnsureLoaded(true));
 
   // Make sure we can still load a reasonable image OK.
   buf.clear();
   ImagePtr small(
-      ReadImageFromFile(Image::IMAGE_PNG, kCuppa, &buf, not_progressive));
+      ReadImageFromFile(IMAGE_PNG, kCuppa, &buf, not_progressive));
   EXPECT_TRUE(small->EnsureLoaded(true));
 }
 
