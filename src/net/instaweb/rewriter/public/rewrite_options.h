@@ -2006,6 +2006,12 @@ class RewriteOptions {
   // TODO(sligocki): Rename to allow for more general initialization.
   virtual void DisallowTroublesomeResources();
 
+  // Disallows resources that are served on well-distributed CDNs
+  // already, and are likely to be in browser-caches, or that are
+  // troublesome resources stored on external domains.  Note: this is
+  // not currently called by mod_pagespeed.
+  virtual void DisallowResourcesForProxy();
+
   DomainLawyer* domain_lawyer() { return &domain_lawyer_; }
   const DomainLawyer* domain_lawyer() const { return &domain_lawyer_; }
 

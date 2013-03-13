@@ -1607,9 +1607,6 @@ void RewriteOptions::DisallowTroublesomeResources() {
   // http://code.google.com/p/modpagespeed/issues/detail?id=352
   Disallow("*scriptaculous.js*");
 
-  // Breaks some sites.
-  Disallow("*connect.facebook.net/*");
-
   // http://code.google.com/p/modpagespeed/issues/detail?id=186
   // ckeditor.js, ckeditor_basic.js, ckeditor_basic_source.js, ...
   Disallow("*ckeditor*");
@@ -1629,6 +1626,39 @@ void RewriteOptions::DisallowTroublesomeResources() {
   // http://code.google.com/p/modpagespeed/issues/detail?id=142
   // Not clear which JS file is broken and proxying is not working correctly.
 
+  // Disable lazyload_images if there is another known lazyloader present.
+  DisableLazyloadForClassName("*dfcg*");
+  DisableLazyloadForClassName("*lazy*");
+  DisableLazyloadForClassName("*nivo*");
+  DisableLazyloadForClassName("*slider*");
+
+  // It is pretty well established that PSOL and the WordPress admin
+  // pages (wp-admin) don't work together.  Until we figure out why,
+  // black-list.
+  //
+  // http://snowulf.com/2013/03/06/
+  // wordpress-3-5-and-mod_pagespeed-does-not-play-well-together/
+  //
+  // TODO(jmarantz): Remove this blacklist once the source of the
+  // trouble is found and a more surgical workaround can be found.
+  Disallow("*/wp-admin/*");
+}
+
+// Note: this is not called by default in mod_pagespeed.
+void RewriteOptions::DisallowResourcesForProxy() {
+  Disallow("*://l.yimg.com/*");
+  Disallow("*store.yahoo.net/*");
+
+  // Breaks some sites.
+  Disallow("*connect.facebook.net/*");
+
+  // The following options are not really troublesome, but we want to disallow
+  // them anyway.
+
+  // The following url pattern shows up often, but under too many different
+  // unique urls:
+  // Disallow("*//stats.wordpress.com/e-*");
+
   // Disable resources that are already being shared across multiple sites and
   // have strong CDN support (ie they are already cheap to fetch and are also
   // very likely to reside in the browser cache from visits to another site).
@@ -1647,15 +1677,6 @@ void RewriteOptions::DisallowTroublesomeResources() {
   Disallow("*//www.google.com/coop/cse/brand*");
   Disallow("*//www.google-analytics.com/urchin.js*");
   Disallow("*//www.googleadservices.com/pagead/conversion.js*");
-  // The following url pattern shows up often, but under too many different
-  // unique urls:
-  // Disallow("*//stats.wordpress.com/e-*");
-
-  DisableLazyloadForClassName("*dfcg*");
-  DisableLazyloadForClassName("*lazy*");
-  DisableLazyloadForClassName("*nivo*");
-  DisableLazyloadForClassName("*slider*");
-
 }
 
 bool RewriteOptions::EnableFiltersByCommaSeparatedList(

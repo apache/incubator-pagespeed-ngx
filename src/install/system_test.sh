@@ -262,8 +262,6 @@ check grep "<script src=\"tiny_mce\.js\"></script>" $FETCHED >> $JS_TMP
 check grep "<script src=\"tinymce\.js\"></script>" $FETCHED >> $JS_TMP
 check grep "<script src=\"scriptaculous\.js?load=effects,builder\"></script>" \
   $FETCHED >> $JS_TMP
-check grep "<script src=\"connect\.facebook\.net/en_US/all\.js\"></script>" \
-  $FETCHED >> $JS_TMP
 check grep "<script src=\".*jquery.*\.js\.pagespeed\..*\.js\">" $FETCHED >> $JS_TMP
 check grep "<script src=\".*ckeditor\.js\">" $FETCHED >> $JS_TMP
 check grep "<script src=\".*swfobject\.js\.pagespeed\..*\.js\">" $FETCHED >> $JS_TMP
