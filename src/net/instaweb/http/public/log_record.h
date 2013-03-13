@@ -111,6 +111,7 @@ class LogRecord  {
   // if a single-field update to a logging proto occurs multiple times, it
   // should be factored out into a method on this class.
   void SetBlinkRequestFlow(int flow);
+  void SetCacheHtmlRequestFlow(int flow);
   void SetIsOriginalResourceCacheable(bool cacheable);
   void SetTimingRequestStartMs(int64 ms);
   void SetTimingHeaderFetchMs(int64 ms);
@@ -127,6 +128,9 @@ class LogRecord  {
 
   // Override SetBlinkInfoImpl if necessary.
   void SetBlinkInfo(const GoogleString& user_agent);
+
+  // Override SetCacheHtmlInfoImpl if necessary.
+  void SetCacheHtmlLoggingInfo(const GoogleString& user_agent);
 
   // Log a RewriterInfo for the image rewrite filter.
   void LogImageRewriteActivity(
@@ -174,6 +178,9 @@ class LogRecord  {
 
   // Implements setting Blink-specific log information; base impl is a no-op.
   virtual void SetBlinkInfoImpl(const GoogleString& user_agent) {}
+
+  // Implements setting CacheHtml-specific log information
+  void SetCacheHtmlInfoImpl(const GoogleString& user_agent) {}
   // Implements writing a log, base implementation is a no-op. Returns false if
   // writing failed.
   virtual bool WriteLogImpl() { return true; }

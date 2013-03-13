@@ -23,11 +23,13 @@
 #include "net/instaweb/rewriter/cache_html_info.pb.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
 class AsyncFetch;
+class LogRecord;
 class MessageHandler;
 class PropertyPage;
 class ProxyFetchPropertyCallbackCollector;
@@ -50,6 +52,8 @@ class TimedVariable;
 // compute CacheHtmlInfo and store it into the property cache.
 class CacheHtmlFlow {
  public:
+  class LogHelper;
+
   // Identifies the sync-point for reproducing races between foreground
   // serving request and background cache html computation requests in tests.
   static const char kBackgroundComputationDone[];
@@ -104,6 +108,9 @@ class CacheHtmlFlow {
   GoogleString url_;
   GoogleUrl google_url_;
   AsyncFetch* base_fetch_;
+  // Cache Html Flow needs its own log record since it needs to log even after
+  // the main log record is written out when the request processing is finished.
+  scoped_ptr<LogRecord> cache_html_log_record_;
   RewriteDriver* rewrite_driver_;
   const RewriteOptions* options_;
   ProxyFetchFactory* factory_;
@@ -111,6 +118,7 @@ class CacheHtmlFlow {
   ProxyFetchPropertyCallbackCollector* property_cache_callback_;
   MessageHandler* handler_;
   CacheHtmlInfo cache_html_info_;
+  scoped_ptr<LogHelper> cache_html_log_helper_;
 
   TimedVariable* num_cache_html_misses_;
   TimedVariable* num_cache_html_hits_;

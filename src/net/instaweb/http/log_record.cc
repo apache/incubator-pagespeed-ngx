@@ -146,6 +146,15 @@ void LogRecord::SetBlinkRequestFlow(int flow) {
       static_cast<BlinkInfo::BlinkRequestFlow>(flow));
 }
 
+void LogRecord::SetCacheHtmlRequestFlow(int flow) {
+  DCHECK(CacheHtmlLoggingInfo::CacheHtmlRequestFlow_IsValid(flow));
+  ScopedMutex lock(mutex_.get());
+  CacheHtmlLoggingInfo* cache_html_logging_info =
+      logging_info()->mutable_cache_html_logging_info();
+  cache_html_logging_info->set_cache_html_request_flow(
+      static_cast<CacheHtmlLoggingInfo::CacheHtmlRequestFlow>(flow));
+}
+
 void LogRecord::SetIsOriginalResourceCacheable(bool cacheable) {
   ScopedMutex lock(mutex_.get());
   logging_info()->set_is_original_resource_cacheable(cacheable);
@@ -192,6 +201,10 @@ void LogRecord::UpdateTimingInfoWithFetchStartTime(int64 start_time_ms) {
 void LogRecord::SetBlinkInfo(const GoogleString& user_agent) {
   ScopedMutex lock(mutex_.get());
   SetBlinkInfoImpl(user_agent);
+}
+
+void LogRecord::SetCacheHtmlLoggingInfo(const GoogleString& user_agent) {
+  SetCacheHtmlInfoImpl(user_agent);
 }
 
 bool LogRecord::WriteLog() {

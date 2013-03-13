@@ -26,6 +26,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -44,6 +45,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -85,6 +87,30 @@ const char CacheHtmlFlow::kNumCacheHtmlSmartdiffMatches[] =
 const char CacheHtmlFlow::kNumCacheHtmlSmartdiffMismatches[] =
     "num_cache_html_smart_diff_mismatches";
 
+// Utility for logging to both main and cache html flow log records.
+// Does not take ownership of the passed in log records.
+class CacheHtmlFlow::LogHelper {
+ public:
+  LogHelper(LogRecord* log_record1, LogRecord* log_record2)
+      : log_record1_(log_record1), log_record2_(log_record2) {}
+
+  void SetCacheHtmlRequestFlow(int32 cache_html_request_flow) {
+    log_record1_->SetCacheHtmlRequestFlow(cache_html_request_flow);
+    log_record2_->SetCacheHtmlRequestFlow(cache_html_request_flow);
+  }
+
+  void LogAppliedRewriter(const char* filter_id) {
+    log_record1_->SetRewriterLoggingStatus(filter_id, RewriterInfo::APPLIED_OK);
+    log_record2_->SetRewriterLoggingStatus(filter_id, RewriterInfo::APPLIED_OK);
+  }
+
+ private:
+  LogRecord* log_record1_;
+  LogRecord* log_record2_;
+
+  DISALLOW_COPY_AND_ASSIGN(LogHelper);
+};
+
 namespace {
 
 // Reads requisite info from Property Page. After reading, property page in
@@ -110,12 +136,16 @@ class CacheHtmlComputationFetch : public AsyncFetch {
  public:
   CacheHtmlComputationFetch(const GoogleString& url,
                             RewriteDriver* rewrite_driver,
-                            CacheHtmlInfo* cache_html_info)
+                            CacheHtmlInfo* cache_html_info,
+                            LogRecord* cache_html_log_record,
+                            CacheHtmlFlow::LogHelper* cache_html_log_helper)
       : AsyncFetch(rewrite_driver->request_context()),
         url_(url),
         server_context_(rewrite_driver->server_context()),
         options_(rewrite_driver->options()),
         rewrite_driver_(rewrite_driver),
+        cache_html_log_record_(cache_html_log_record),
+        cache_html_log_helper_(cache_html_log_helper),
         cache_html_info_(cache_html_info),
         claims_html_(false),
         probable_html_(false),
@@ -144,6 +174,10 @@ class CacheHtmlComputationFetch : public AsyncFetch {
   }
 
   virtual ~CacheHtmlComputationFetch() {
+    cache_html_log_record_->SetCacheHtmlLoggingInfo("");
+    if (!cache_html_log_record_->WriteLog()) {
+      LOG(WARNING) <<  "Cache html flow GWS Logging failed for " << url_;
+    }
     rewrite_driver_->decrement_async_events_count();
     ThreadSynchronizer* sync = server_context_->thread_synchronizer();
     sync->Signal(CacheHtmlFlow::kBackgroundComputationDone);
@@ -208,9 +242,23 @@ class CacheHtmlComputationFetch : public AsyncFetch {
         // since that class refers to this object.
         Finish();
       } else {
+        if (content_length_over_threshold_) {
+          cache_html_log_helper_->SetCacheHtmlRequestFlow(
+              CacheHtmlLoggingInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD);
+        } else if (non_ok_status_code_ || !success) {
+          cache_html_log_helper_->SetCacheHtmlRequestFlow(
+              CacheHtmlLoggingInfo::CACHE_HTML_MISS_FETCH_NON_OK);
+        } else if (!claims_html_ || !probable_html_) {
+          cache_html_log_helper_->SetCacheHtmlRequestFlow(
+              CacheHtmlLoggingInfo::CACHE_HTML_MISS_FOUND_RESOURCE);
+        }
         delete this;
       }
       return;
+    }
+    if (!cache_html_info_->has_cached_html()) {
+      cache_html_log_helper_->SetCacheHtmlRequestFlow(
+          CacheHtmlLoggingInfo::CACHE_HTML_MISS_TRIGGERED_REWRITE);
     }
     if (rewrite_driver_->options()->enable_blink_html_change_detection() ||
         rewrite_driver_->options()->
@@ -320,16 +368,26 @@ class CacheHtmlComputationFetch : public AsyncFetch {
       CreateCacheHtmlComputationDriverAndRewrite();
       return;
     }
-    if (computed_hash_ != cache_html_info_->hash()) {
-      num_cache_html_mismatches_->IncBy(1);
-    } else {
-      num_cache_html_matches_->IncBy(1);
-    }
-    if (computed_hash_smart_diff_ !=
-        cache_html_info_->hash_smart_diff()) {
-      num_cache_html_smart_diff_mismatches_->IncBy(1);
-    } else {
-      num_cache_html_smart_diff_matches_->IncBy(1);
+    {
+      ScopedMutex lock(cache_html_log_record_->mutex());
+      CacheHtmlLoggingInfo* cache_html_logging_info =
+          cache_html_log_record_->
+          logging_info()->mutable_cache_html_logging_info();
+      if (computed_hash_ != cache_html_info_->hash()) {
+        num_cache_html_mismatches_->IncBy(1);
+        cache_html_logging_info->set_html_match(false);
+      } else {
+        num_cache_html_matches_->IncBy(1);
+        cache_html_logging_info->set_html_match(true);
+      }
+      if (computed_hash_smart_diff_ !=
+          cache_html_info_->hash_smart_diff()) {
+        num_cache_html_smart_diff_mismatches_->IncBy(1);
+        cache_html_logging_info->set_html_smart_diff_match(false);
+      } else {
+        num_cache_html_smart_diff_matches_->IncBy(1);
+        cache_html_logging_info->set_html_smart_diff_match(true);
+      }
     }
     Finish();
   }
@@ -451,7 +509,8 @@ class CacheHtmlComputationFetch : public AsyncFetch {
   // RewriteDriver used to parse the buffered html content.
   RewriteDriver* cache_html_computation_driver_;
   RewriteDriver* html_change_detection_driver_;
-  scoped_ptr<LogRecord> log_record_;
+  scoped_ptr<LogRecord> cache_html_log_record_;
+  scoped_ptr<CacheHtmlFlow::LogHelper> cache_html_log_helper_;
   scoped_ptr<CacheHtmlInfo> cache_html_info_;
   Function* complete_finish_parse_cache_html_driver_fn_;
   Function* complete_finish_parse_html_change_driver_fn_;
@@ -556,17 +615,35 @@ CacheHtmlFlow::CacheHtmlFlow(
     : url_(url),
       google_url_(url),
       base_fetch_(base_fetch),
+      cache_html_log_record_(
+          base_fetch_->request_context()->NewSubordinateLogRecord(
+              new NullMutex)),
       rewrite_driver_(driver),
       options_(driver->options()),
       factory_(factory),
       server_context_(driver->server_context()),
       property_cache_callback_(property_cache_callback),
-      handler_(rewrite_driver_->server_context()->message_handler()) {
+      handler_(rewrite_driver_->server_context()->message_handler()),
+      cache_html_log_helper_(new LogHelper(
+          cache_html_log_record_.get(),
+          base_fetch_->request_context()->log_record())) {
   Statistics* stats = server_context_->statistics();
   num_cache_html_misses_ = stats->GetTimedVariable(
       kNumCacheHtmlMisses);
   num_cache_html_hits_ = stats->GetTimedVariable(
       kNumCacheHtmlHits);
+  const char* request_event_id = base_fetch_->request_headers()->Lookup1(
+      HttpAttributes::kXGoogleRequestEventId);
+  {
+    ScopedMutex lock(cache_html_log_record_->mutex());
+    CacheHtmlLoggingInfo* cache_html_logging_info =
+        cache_html_log_record_->
+        logging_info()->mutable_cache_html_logging_info();
+    cache_html_logging_info->set_url(url_);
+    if (request_event_id != NULL) {
+      cache_html_logging_info->set_request_event_id_time_usec(request_event_id);
+    }
+  }
 }
 
 CacheHtmlFlow::~CacheHtmlFlow() {
@@ -595,6 +672,10 @@ void CacheHtmlFlow::CacheHtmlHit(PropertyPage* page) {
   num_cache_html_hits_->IncBy(1);
   StringPiece cached_html = cache_html_info_.cached_html();
   // TODO(mmohabey): Handle malformed html case.
+  cache_html_log_helper_->SetCacheHtmlRequestFlow(
+      CacheHtmlLoggingInfo::CACHE_HTML_HIT);
+  cache_html_log_helper_->LogAppliedRewriter(
+            RewriteOptions::FilterId(RewriteOptions::kCacheHtml));
 
   ResponseHeaders* response_headers = base_fetch_->response_headers();
   response_headers->SetStatusAndReason(HttpStatus::kOK);
@@ -604,9 +685,11 @@ void CacheHtmlFlow::CacheHtmlHit(PropertyPage* page) {
       "text/html", cache_html_info_.has_charset() ?
       StrCat("; charset=", cache_html_info_.charset()) : "");
   response_headers->Add(HttpAttributes::kContentType, content_type);
-  response_headers->Add(
-      kPsaRewriterHeader,
-      RewriteOptions::FilterId(RewriteOptions::kCacheHtml));
+  {
+    ScopedMutex lock(cache_html_log_record_->mutex());
+    response_headers->Add(
+       kPsaRewriterHeader, cache_html_log_record_->AppliedRewritersString());
+  }
   response_headers->ComputeCaching();
   response_headers->SetDateAndCaching(server_context_->timer()->NowMs(), 0,
                                       ", private, no-cache");
@@ -671,7 +754,8 @@ void CacheHtmlFlow::TriggerProxyFetch() {
     CacheHtmlInfo* cache_html_info = new CacheHtmlInfo();
     cache_html_info->CopyFrom(cache_html_info_);
     cache_html_computation_fetch = new CacheHtmlComputationFetch(
-        url_, rewrite_driver_, cache_html_info);
+        url_, rewrite_driver_, cache_html_info,
+        cache_html_log_record_.release(), cache_html_log_helper_.release());
     // TODO(mmohabey) : Set a fixed user agent for fetching content from the
     // origin server if options->use_fixed_user_agent_for_blink_cache_misses()
     // is enabled.
@@ -690,7 +774,13 @@ void CacheHtmlFlow::TriggerProxyFetch() {
     // enabled.
     fetch = base_fetch_;
   }
-
+  if (cache_html_computation_fetch == NULL) {
+    cache_html_log_record_->SetCacheHtmlLoggingInfo(
+        fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent));
+    if (!cache_html_log_record_->WriteLog()) {
+      LOG(ERROR) <<  "Cache html flow GWS Logging failed for " << url_;
+    }
+  }  // else, logging will be done by cache_html_computation_fetch.
   factory_->StartNewProxyFetch(
             url_, fetch, rewrite_driver_, property_cache_callback_,
             cache_html_computation_fetch);

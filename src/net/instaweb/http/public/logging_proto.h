@@ -21,6 +21,7 @@
 namespace net_instaweb {
 
 class BlinkInfo;
+class CacheHtmlLoggingInfo;
 class FlushEarlyFilterInfo;
 class FlushEarlyResourceInfo;
 class ImageRewriteResourceInfo;

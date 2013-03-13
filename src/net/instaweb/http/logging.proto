@@ -197,6 +197,33 @@ message FlushEarlyResourceInfo {
   optional bool in_head = 4;
 }
 
+// This proto stores all Cache Html flow requests related information.
+// Next id for CacheHtmlLoggingInfo : 6
+message CacheHtmlLoggingInfo {
+  enum CacheHtmlRequestFlow {
+    CACHE_HTML_HIT = 1;
+    CACHE_HTML_MISS_FOUND_RESOURCE = 2;
+    CACHE_HTML_MISS_FETCH_NON_OK = 3;
+    CACHE_HTML_MISS_TRIGGERED_REWRITE = 4;
+    FOUND_MALFORMED_HTML = 5;
+    FOUND_CONTENT_LENGTH_OVER_THRESHOLD = 6;
+  };
+  // Tracks the flow of a cache html rewriter request.
+  optional CacheHtmlRequestFlow cache_html_request_flow = 1;
+
+  // The event id of the user request for which cache html flow was triggered.
+  optional string request_event_id_time_usec = 2;
+
+  // Tracks whether html change detection full-diff found a match or not.
+  optional bool html_match = 3;
+
+  // Tracks whether html change detection smart-diff found a match or not.
+  optional bool html_smart_diff_match = 4;
+
+  // URL of the request.
+  optional string url = 5;
+}
+
 // Information that applies to a resource.
 // Next id for RewriteResourceInfo: 6
 message RewriteResourceInfo {
@@ -252,7 +279,7 @@ message ResourceUrlInfo {
 }
 
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 18
+// Next id for LoggingInfo: 19
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -289,4 +316,6 @@ message LoggingInfo {
   optional bool is_pagespeed_resource = 16 [ default = false ];
   // Information about the resource urls seen on this page.
   optional ResourceUrlInfo resource_url_info = 17;
+  // Stores all Cache Html flow related information.
+  optional CacheHtmlLoggingInfo cache_html_logging_info = 18;
 }
