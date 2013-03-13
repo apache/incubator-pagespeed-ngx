@@ -178,15 +178,17 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
     return;
   }
 
-  LogRecord* log_record = driver_->log_record();
   StringPiece url(src->DecodedValueOrNull());
   if (url.empty() || url.starts_with(kData) ||
-      element->FindAttribute(HtmlName::kOnload) != NULL ||
-      element->FindAttribute(HtmlName::kDataSrc) != NULL ||
-      element->FindAttribute(HtmlName::kPagespeedLazySrc) != NULL ||
       element->DeleteAttribute(HtmlName::kPagespeedNoDefer)) {
     // Note that we remove the pagespeed_no_defer if it was present.
     // TODO(rahulbansal): Log separately for pagespeed_no_defer.
+    return;
+  }
+  LogRecord* log_record = driver_->log_record();
+  if (element->FindAttribute(HtmlName::kOnload) != NULL ||
+      element->FindAttribute(HtmlName::kDataSrc) != NULL ||
+      element->FindAttribute(HtmlName::kPagespeedLazySrc) != NULL) {
     log_record->LogLazyloadFilter(
         RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
         RewriterInfo::NOT_APPLIED, false, false);

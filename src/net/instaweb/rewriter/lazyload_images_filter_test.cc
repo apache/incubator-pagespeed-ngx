@@ -176,6 +176,18 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
                     "<img src=\"1.jpg\" class=\"123 dfcg-metabox\"/>",
                     GetOverrideAttributesScriptHtml(),
                     "</body>")));
+  EXPECT_EQ(4, rewrite_driver()->log_record()->logging_info()->
+             rewriter_info().size());
+  ExpectLogRecord(
+      0, RewriterInfo::APPLIED_OK /* img with src 1.jpg */, false, false);
+  ExpectLogRecord(
+      1, RewriterInfo::NOT_APPLIED /* img with src 1.jpg and data-src */,
+      false, false);
+  ExpectLogRecord(
+      2, RewriterInfo::APPLIED_OK /* img with src 2's.jpg*/, false, false);
+  ExpectLogRecord(
+      3, RewriterInfo::NOT_APPLIED /* img with src 1.jpg and onload */,
+      false, false);
 }
 
 TEST_F(LazyloadImagesFilterTest, Blacklist) {
@@ -202,6 +214,11 @@ TEST_F(LazyloadImagesFilterTest, Blacklist) {
                      "img", "img2", ""),
                  GetOverrideAttributesScriptHtml(),
                  "</body>")));
+  EXPECT_EQ(3, rewrite_driver()->log_record()->logging_info()->
+             rewriter_info().size());
+  ExpectLogRecord(0, RewriterInfo::NOT_APPLIED, true, false);
+  ExpectLogRecord(1, RewriterInfo::APPLIED_OK, false, false);
+  ExpectLogRecord(2, RewriterInfo::APPLIED_OK, false, false);
 }
 
 TEST_F(LazyloadImagesFilterTest, CriticalImages) {
