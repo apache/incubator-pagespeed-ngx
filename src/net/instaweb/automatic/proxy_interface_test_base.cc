@@ -475,10 +475,10 @@ void ProxyInterfaceTestBase::TestPropertyCacheWithHeadersAndOutput(
 
   if (check_stats) {
     EXPECT_EQ(1, lru_cache()->num_inserts());  // http-cache
-    // We expect 4 misses. 1 for http-cache and 3 for prop-cache which
+    // We expect 2 misses. 1 for http-cache and 1 for prop-cache which
     // correspond to each different device type in
     // UserAgentMatcher::DeviceType.
-    EXPECT_EQ(4, lru_cache()->num_misses());
+    EXPECT_EQ(2, lru_cache()->num_misses());
   }
 }
 

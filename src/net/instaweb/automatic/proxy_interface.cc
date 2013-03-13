@@ -327,14 +327,18 @@ ProxyFetchPropertyCallbackCollector*
   }
   StringPiece user_agent =
       async_fetch->request_headers()->Lookup1(HttpAttributes::kUserAgent);
+  UserAgentMatcher::DeviceType device_type =
+      server_context_->user_agent_matcher()->GetDeviceTypeForUA(user_agent);
+
   scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
       new ProxyFetchPropertyCallbackCollector(
           server_context_, request_url.Spec(), request_ctx, options,
-          user_agent));
+          device_type));
   bool added_callback = false;
   PropertyPageStarVector property_callbacks;
 
   ProxyFetchPropertyCallback* client_callback = NULL;
+  ProxyFetchPropertyCallback* property_callback = NULL;
   PropertyCache* page_property_cache = server_context_->page_property_cache();
   PropertyCache* client_property_cache =
       server_context_->client_property_cache();
@@ -345,24 +349,16 @@ ProxyFetchPropertyCallbackCollector*
     if (options != NULL) {
       server_context_->ComputeSignature(options);
     }
-    for (int i = 0;
-         i < static_cast<int>(UserAgentMatcher::kEndOfDeviceType);
-         ++i) {
-      UserAgentMatcher::DeviceType device_type =
-          static_cast<UserAgentMatcher::DeviceType>(i);
-      AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
-      const StringPiece& device_type_suffix =
-          UserAgentMatcher::DeviceTypeSuffix(device_type);
-      GoogleString page_key = server_context_->GetPagePropertyCacheKey(
-          request_url.Spec(), options, device_type_suffix);
-      ProxyFetchPropertyCallback* property_callback =
-          new ProxyFetchPropertyCallback(
-              ProxyFetchPropertyCallback::kPagePropertyCache,
-              *page_property_cache,
-              page_key, device_type, callback_collector.get(), mutex);
-      property_callbacks.push_back(property_callback);
-      callback_collector->AddCallback(property_callback);
-    }
+    AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
+    const StringPiece& device_type_suffix =
+        UserAgentMatcher::DeviceTypeSuffix(device_type);
+    GoogleString page_key = server_context_->GetPagePropertyCacheKey(
+        request_url.Spec(), options, device_type_suffix);
+    property_callback = new ProxyFetchPropertyCallback(
+        ProxyFetchPropertyCallback::kPagePropertyCache,
+        *page_property_cache, page_key, device_type,
+        callback_collector.get(), mutex);
+    callback_collector->AddCallback(property_callback);
     added_callback = true;
     if (added_page_property_callback != NULL) {
       *added_page_property_callback = true;
@@ -388,8 +384,8 @@ ProxyFetchPropertyCallbackCollector*
   }
 
   // All callbacks need to be registered before Reads to avoid race.
-  if (!property_callbacks.empty()) {
-    page_property_cache->MultiRead(&property_callbacks);
+  if (property_callback != NULL) {
+    page_property_cache->Read(property_callback);
   }
   if (client_callback != NULL) {
     client_property_cache->Read(client_callback);

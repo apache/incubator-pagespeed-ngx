@@ -119,6 +119,29 @@ template<class StringCompare> class StringMultiMap {
     vector_.push_back(StringPair(iter->first.c_str(), value_copy));
   }
 
+  // Parse and add from a string of name-value pairs.
+  // For example,
+  //   "name1=value1,name2=value2,name3="
+  // where separators is "," and value_separator is '='.
+  // If omit_if_no_value is true, a name-value pair with an empty value will
+  // not be added.
+  void AddFromNameValuePairs(const StringPiece& name_value_list,
+                             const StringPiece& separators,
+                             char value_separator,
+                             bool omit_if_no_value) {
+    StringPieceVector pairs;
+    SplitStringPieceToVector(name_value_list, separators, &pairs, true);
+    for (int i = 0, n = pairs.size(); i < n; ++i) {
+      StringPiece& pair = pairs[i];
+      StringPiece::size_type pos = pair.find(value_separator);
+      if (pos != StringPiece::npos) {
+        Add(pair.substr(0, pos), pair.substr(pos + 1));
+      } else if (!omit_if_no_value) {
+        Add(pair, StringPiece(NULL, 0));
+      }
+    }
+  }
+
   void CopyFrom(const StringMultiMap& string_multi_map) {
     Clear();
     for (int i = 0; i < string_multi_map.num_values(); ++i) {

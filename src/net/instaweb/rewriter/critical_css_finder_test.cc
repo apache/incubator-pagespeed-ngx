@@ -17,10 +17,8 @@
 
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 
-#include <map>
-#include <utility>
-
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -104,19 +102,20 @@ const char CriticalCssFinderTest::kRequestUrl[] = "http://www.test.com";
 
 TEST_F(CriticalCssFinderTest, UpdateCacheOnSuccess) {
   // Include an actual value in the RPC result to induce a cache write.
-  StringStringMap critical_css_map;
-  critical_css_map.insert(
-      make_pair(GoogleString("http://test.com/a.css"),
-                GoogleString("a_critical {color: black;}")));
-  EXPECT_TRUE(finder_->UpdateCache(rewrite_driver(), critical_css_map));
+  CriticalCssResult result;
+  CriticalCssResult_LinkRules* link_rules = result.add_link_rules();
+  link_rules->set_link_url(GoogleString("http://test.com/a.css"));
+  link_rules->set_critical_rules(GoogleString("a_critical {color: black;}"));
+  link_rules->set_original_size(100);
+  EXPECT_TRUE(finder_->UpdateCache(rewrite_driver(), result));
   EXPECT_TRUE(GetUpdatedValue()->has_value());
 }
 
 TEST_F(CriticalCssFinderTest,
        UpdateCriticalCssCacheEntrySuccessEmptySet) {
   // Include an actual value in the RPC result to induce a cache write.
-  StringStringMap critical_css_map;
-  EXPECT_TRUE(finder_->UpdateCache(rewrite_driver(), critical_css_map));
+  CriticalCssResult result;
+  EXPECT_TRUE(finder_->UpdateCache(rewrite_driver(), result));
   EXPECT_TRUE(GetUpdatedValue()->has_value());
 }
 
@@ -124,29 +123,42 @@ TEST_F(CriticalCssFinderTest,
        UpdateCriticalCssCacheEntryPropertyPageMissing) {
   // No cache insert if PropertyPage is not set in RewriteDriver.
   rewrite_driver()->set_property_page(NULL);
-  StringStringMap critical_css_map;
-  EXPECT_FALSE(finder_->UpdateCache(rewrite_driver(), critical_css_map));
+  CriticalCssResult result;
+  EXPECT_FALSE(finder_->UpdateCache(rewrite_driver(), result));
   EXPECT_EQ(NULL, GetUpdatedValue());
 }
 
 TEST_F(CriticalCssFinderTest, CheckCacheHandling) {
   {
-    scoped_ptr<StringStringMap> map(finder_->CriticalCssMap(rewrite_driver()));
-    EXPECT_EQ(0, map->size());
+    scoped_ptr<CriticalCssResult> result(
+        finder_->GetCriticalCssFromCache(rewrite_driver()));
+    EXPECT_TRUE(result == NULL);
     CheckCriticalCssFinderStats(0, 0, 1);  // hits, expiries, not_found
     ClearStats();
   }
 
+  GoogleString result_str;
   {
-    StringStringMap map;
+    CriticalCssResult result;
+
     // Insert a rewritten url.
-    map.insert(make_pair(
-        GoogleString("http://test.com/I.b.css.pagespeed.cf.0.css"),
-        GoogleString("b_critical {color: black }")));
-    // Insert a non-rewritten url.
-    map.insert(make_pair(GoogleString("http://test.com/c.css"),
-                         GoogleString("c_critical {color: cyan }")));
-    EXPECT_TRUE(finder_->UpdateCache(rewrite_driver(), map));
+    CriticalCssResult_LinkRules* link_rules = result.add_link_rules();
+    link_rules->set_link_url(
+        GoogleString("http://test.com/I.b.css.pagespeed.cf.0.css"));
+    link_rules->set_critical_rules(
+        GoogleString("b_critical {color: black }"));
+    link_rules->set_original_size(999);
+
+    link_rules = result.add_link_rules();
+    link_rules->set_link_url(
+        GoogleString("http://test.com/c.css"));
+    link_rules->set_critical_rules(
+        GoogleString("c_critical {color: cyan }"));
+    link_rules->set_original_size(100);
+
+    result.SerializeToString(&result_str);
+
+    EXPECT_TRUE(finder_->UpdateCache(rewrite_driver(), result));
     const PropertyCache::Cohort* cohort = page_property_cache()->GetCohort(
         finder_->GetCohort());
     // Write the updated value to the pcache.
@@ -157,30 +169,31 @@ TEST_F(CriticalCssFinderTest, CheckCacheHandling) {
 
   {
     ResetDriver();
-    scoped_ptr<StringStringMap> map(finder_->CriticalCssMap(rewrite_driver()));
-    EXPECT_EQ(2, map->size());
-    // Fetch using non-rewritten url.
-    EXPECT_EQ(GoogleString("b_critical {color: black }"),
-              map->find(GoogleString("http://test.com/b.css"))->second);
-    EXPECT_EQ(StringPiece("c_critical {color: cyan }"),
-              map->find(GoogleString("http://test.com/c.css"))->second);
+    scoped_ptr<CriticalCssResult> cached_result(
+        finder_->GetCriticalCssFromCache(rewrite_driver()));
+    EXPECT_TRUE(cached_result.get() != NULL);
+    EXPECT_EQ(2, cached_result->link_rules_size());
+    GoogleString cached_result_str;
+    EXPECT_TRUE(cached_result->SerializeToString(&cached_result_str));
+    EXPECT_EQ(result_str, cached_result_str);
     CheckCriticalCssFinderStats(1, 0, 0);  // hits, expiries, not_found
     ClearStats();
   }
 
   {
-    // Advance past expiry. Map is unavailable.
+    // Advance past expiry. Result is unavailable.
     ResetDriver();
     AdvanceTimeMs(2 * options()->finder_properties_cache_expiration_time_ms());
-    scoped_ptr<StringStringMap> map(finder_->CriticalCssMap(rewrite_driver()));
-    EXPECT_EQ(0, map->size());
+    scoped_ptr<CriticalCssResult> cached_result(
+        finder_->GetCriticalCssFromCache(rewrite_driver()));
+    EXPECT_TRUE(cached_result.get() == NULL);
     CheckCriticalCssFinderStats(0, 1, 0);  // hits, expiries, not_found
   }
 }
 
-TEST_F(CriticalCssFinderTest, EmptyMapWritesValueToCache) {
-  StringStringMap map;
-  EXPECT_TRUE(finder_->UpdateCache(rewrite_driver(), map));
+TEST_F(CriticalCssFinderTest, EmptyResultWritesValueToCache) {
+  CriticalCssResult result;
+  EXPECT_TRUE(finder_->UpdateCache(rewrite_driver(), result));
   const PropertyCache::Cohort* cohort = page_property_cache()->GetCohort(
       finder_->GetCohort());
   // Write the updated value to the pcache.

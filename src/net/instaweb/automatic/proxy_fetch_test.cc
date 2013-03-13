@@ -99,7 +99,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
         new ProxyFetchPropertyCallbackCollector(
             server_context_, RewriteTestBase::kTestDomain,
             RequestContext::NewTestRequestContext(thread_system_.get()),
-            options(), NULL);
+            options(), UserAgentMatcher::kDesktop);
     // Collector should not contain any PropertyPages
     EXPECT_EQ(NULL, collector->GetPropertyPage(
         ProxyFetchPropertyCallback::kPagePropertyCache));
@@ -422,10 +422,6 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, BothCallbacksComplete) {
 
   // Should not be complete since both callbacks not yet done.
   EXPECT_FALSE(mock_proxy_fetch->complete());
-
-  // Collector should not have a page property.
-  EXPECT_EQ(NULL, collector.get()->GetPropertyPage(
-      ProxyFetchPropertyCallback::kPagePropertyCache));
 
   // ... no client property as well.
   EXPECT_EQ(NULL, collector.get()->GetPropertyPage(

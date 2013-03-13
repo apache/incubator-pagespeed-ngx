@@ -24,15 +24,18 @@ package net_instaweb;
 
 
 // Protobuf of CSS resolved for each <link> tag when a page initially loads.
-// Next id = 2
-message CriticalCssSet {
-  message CriticalCss {
+message CriticalCssResult {
+  message LinkRules {
     // The unrewritten URL of the <link> tag that loaded the critical rules.
     optional string link_url = 1;
     // The unrewritten critical CSS rules (selectors and declarations)
     // for one <link> tag. If the string is empty, it means none of the
     // rules were critical.
     optional string critical_rules = 2;
+    optional int32 original_size = 3;
   };
-  repeated CriticalCss critical_css = 1;
+  repeated LinkRules link_rules = 1;
+  optional int32 exception_count = 2;
+  optional int32 import_count = 3;
+  optional int32 link_count = 4;
 }

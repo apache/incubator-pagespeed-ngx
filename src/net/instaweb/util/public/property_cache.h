@@ -223,20 +223,6 @@ class PropertyCache {
   void ReadWithCohorts(const CohortVector& cohort_list,
                        PropertyPage* property_page) const;
 
-  // Reads PropertyValues for multiple pages, calling corresponding
-  // PropertyPage::Done as and when page read completes. It is essential
-  // that the Cohorts are established prior to calling this function.
-  void MultiRead(PropertyPageStarVector* property_page_list) const;
-
-  // Reads PropertyValues for multiple pages, each page has a specified
-  // cohorts. Here all pages from property_page_list have the same cohort
-  // list.
-  // Notes: Maybe PropertyPageStarVector should contain specified cohort
-  // information.
-  void MultiReadWithCohorts(
-      const CohortVector& cohort_list,
-      PropertyPageStarVector* property_page_list) const;
-
   // Updates a Cohort of properties into the cache.  It is a
   // programming error (dcheck-fail) to Write a PropertyPage that
   // was not read first.  It is fine to Write after a failed Read.

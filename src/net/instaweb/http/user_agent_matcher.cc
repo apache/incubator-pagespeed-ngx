@@ -396,8 +396,6 @@ bool UserAgentMatcher::SupportsSplitHtml(const StringPiece& user_agent,
 
 UserAgentMatcher::DeviceType UserAgentMatcher::GetDeviceTypeForUA(
     const StringPiece& user_agent) const {
-  // TODO(ksimbili): Pass in device property page once changes related to device
-  // property cache are submitted.
   if (IsMobileUserAgent(user_agent)) {
     return kMobile;
   }

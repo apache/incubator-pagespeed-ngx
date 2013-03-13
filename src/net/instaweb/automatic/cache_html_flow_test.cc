@@ -221,8 +221,8 @@ const char kBlinkOutputCommon[] =
     "<script type=\"text/javascript\" src=\"/psajs/blink.js\"></script>"
     "<script type=\"text/javascript\">"
     "pagespeed.panelLoaderInit();"
-    "pagespeed.panelLoader.loadCriticalData({});"
-    "pagespeed.panelLoader.loadImagesData({});</script>\n"
+    "pagespeed.panelLoader.invokedFromSplit();"
+    "pagespeed.panelLoader.loadCriticalData({});</script>\n"
     "<script type=\"text/javascript\">"
     "pagespeed.panelLoader.setRequestFromInternalIp();</script>\n";
 
@@ -871,8 +871,8 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
       "<script type=\"text/javascript\" src=\"/psajs/blink.js\"></script>"
       "<script type=\"text/javascript\">"
       "pagespeed.panelLoaderInit();"
-      "pagespeed.panelLoader.loadCriticalData({});"
-      "pagespeed.panelLoader.loadImagesData({});</script>\n"
+      "pagespeed.panelLoader.invokedFromSplit();"
+      "pagespeed.panelLoader.loadCriticalData({});</script>\n"
       "<script type=\"text/javascript\">"
       "pagespeed.panelLoader.setRequestFromInternalIp();</script>\n"
       "%s"  // kCookieScript

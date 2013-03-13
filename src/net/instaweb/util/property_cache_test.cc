@@ -519,31 +519,6 @@ TEST_F(PropertyCacheTest, DeleteProperty) {
   }
 }
 
-TEST_F(PropertyCacheTest, MultiRead) {
-  ReadWriteInitial(kCacheKey1, "Value1");
-  ReadWriteInitial(kCacheKey2, "Value2");
-  {
-    PropertyPageStarVector pages;
-    MockPropertyPage page1(thread_system_.get(), property_cache_, kCacheKey1);
-    MockPropertyPage page2(thread_system_.get(), property_cache_, kCacheKey2);
-
-    pages.push_back(&page1);
-    pages.push_back(&page2);
-
-    property_cache_.MultiRead(&pages);
-    // Check for Page1.
-    EXPECT_TRUE(page1.valid());
-    EXPECT_TRUE(page1.called());
-    PropertyValue* property_page1 = page1.GetProperty(cohort_, kPropertyName1);
-    EXPECT_STREQ("Value1", property_page1->value());
-    // Check for Page2.
-    EXPECT_TRUE(page2.valid());
-    EXPECT_TRUE(page2.called());
-    PropertyValue* property_page2 = page2.GetProperty(cohort_, kPropertyName1);
-    EXPECT_STREQ("Value2", property_page2->value());
-  }
-}
-
 TEST_F(PropertyCacheTest, TwoCohortsDifferentCacheImplementations) {
   // Verify the second cohort does not exist.
   EXPECT_TRUE(property_cache_.GetCohort(kCohortName2) == NULL);
@@ -711,26 +686,18 @@ TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
   }
 }
 
-TEST_F(PropertyCacheTest, MultiReadWithEmptyCohort) {
+TEST_F(PropertyCacheTest, ReadWithEmptyCohort) {
   ReadWriteInitial(kCacheKey1, "Value1");
   ReadWriteInitial(kCacheKey2, "Value2");
   {
-    PropertyPageStarVector pages;
     MockPropertyPage page1(thread_system_.get(), property_cache_, kCacheKey1);
-    MockPropertyPage page2(thread_system_.get(), property_cache_, kCacheKey2);
-
-    pages.push_back(&page1);
-    pages.push_back(&page2);
 
     PropertyCache::CohortVector cohort_list;
-    property_cache_.MultiReadWithCohorts(cohort_list, &pages);
+    property_cache_.ReadWithCohorts(cohort_list, &page1);
 
     // Check for Page1.
     EXPECT_FALSE(page1.valid());
     EXPECT_TRUE(page1.called());
-    // Check for Page2.
-    EXPECT_FALSE(page2.valid());
-    EXPECT_TRUE(page2.called());
   }
 }
 

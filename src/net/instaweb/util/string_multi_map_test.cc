@@ -53,6 +53,47 @@ TEST_F(StringMultiMapTest, TestAdd) {
   EXPECT_EQ(1, strlen(string_map_.value(5)->c_str()));
 }
 
+TEST_F(StringMultiMapTest, AddFromNameValuePairs) {
+  StringMultiMapInsensitive string_map;
+  ConstStringStarVector v;
+
+  // Test the case that omit_if_no_value is true.
+  string_map.AddFromNameValuePairs(
+      "iq=22,m=3m3,x= ,oo=,kk", ",", '=', true /* omit_if_no_value */);
+  EXPECT_EQ(4, string_map.num_names());
+
+  EXPECT_TRUE(string_map.Lookup("iq", &v));
+  EXPECT_EQ(1, v.size());
+  EXPECT_STREQ("22", *v[0]);
+
+  EXPECT_TRUE(string_map.Lookup("m", &v));
+  EXPECT_EQ(1, v.size());
+  EXPECT_STREQ("3m3", *v[0]);
+
+  EXPECT_TRUE(string_map.Lookup("x", &v));
+  EXPECT_EQ(1, v.size());
+  EXPECT_STREQ(" ", *v[0]);
+
+  EXPECT_TRUE(string_map.Lookup("oo", &v));
+  EXPECT_EQ(1, v.size());
+  EXPECT_STREQ("", *v[0]);
+
+  EXPECT_FALSE(string_map.Lookup("kk", &v));
+
+  // Test the case that omit_if_no_value is false.
+  string_map.AddFromNameValuePairs(
+      "a,b;a=:3", ";", ':', false /* omit_if_no_value */);
+  EXPECT_EQ(6, string_map.num_names());
+
+  EXPECT_TRUE(string_map.Lookup("a,b", &v));
+  EXPECT_EQ(1, v.size());
+  EXPECT_EQ(NULL, v[0]);
+
+  EXPECT_TRUE(string_map.Lookup("a=", &v));
+  EXPECT_EQ(1, v.size());
+  EXPECT_STREQ("3", *v[0]);
+}
+
 TEST_F(StringMultiMapTest, TestLookupHas) {
   ConstStringStarVector v;
   EXPECT_TRUE(string_map_.Has("a"));

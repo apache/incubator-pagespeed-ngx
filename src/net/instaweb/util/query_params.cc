@@ -26,16 +26,7 @@ namespace net_instaweb {
 
 void QueryParams::Parse(const StringPiece& text) {
   CHECK_EQ(0, size());
-  StringPieceVector components;
-  SplitStringPieceToVector(text, "&", &components, true);
-  for (int i = 0, n = components.size(); i < n; ++i) {
-    StringPiece::size_type pos = components[i].find('=');
-    if (pos != StringPiece::npos) {
-      Add(components[i].substr(0, pos), components[i].substr(pos + 1));
-    } else {
-      Add(components[i], StringPiece(NULL, 0));
-    }
-  }
+  AddFromNameValuePairs(text, "&", '=', false);
 }
 
 GoogleString QueryParams::ToString() const {

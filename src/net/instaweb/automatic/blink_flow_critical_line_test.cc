@@ -1238,10 +1238,9 @@ TEST_F(BlinkFlowCriticalLineTest, TestFlakyNon200ResponseCodeValidHitAfter404) {
   // Cache lookup for original plain text in http cache,
   // cache lookups for BlinkCriticalLineData and Dom Cohort
   // in property cache for each device type.
-  // ie., 1 + 3(for BlinkCriticalLineData) + 3(for Dom Cohort).
   VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_TRIGGERED_REWRITE,
                   "http://test.com/flaky.html");
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, num_compute_calls());
 
   ClearStats();
@@ -1386,9 +1385,8 @@ TEST_F(BlinkFlowCriticalLineTest,
       "flaky.html", true, &text, &response_headers_out);
   EXPECT_STREQ(kHtmlInput, text);
   // 1 Failed cache lookup for  plain text,
-  // 3 failed lookups for BlinkCriticalLineData in property cache and
-  // 2 failed lookups for Dom Cohort.
-  EXPECT_EQ(6, lru_cache()->num_misses());
+  // 1 failed lookups for BlinkCriticalLineData in property cache
+  EXPECT_EQ(2, lru_cache()->num_misses());
   // 1 Hit cache lookup for Dom Cohort.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(2, num_compute_calls());
@@ -1538,8 +1536,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkPassthruAndNonPassthru) {
 
   // Cache lookup for original plain text, BlinkCriticalLineData and Dom Cohort
   // in property cache.
-  // ie., 1 + 3(for BlinkCriticalLineData) + 3(for Dom Cohort).
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_inserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
@@ -1611,8 +1608,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkUrlCacheInvalidation) {
   EXPECT_STREQ(kHtmlInput, text);
   // Cache lookup for original plain text, BlinkCriticalLineData and Dom Cohort
   // in property cache, all miss.
-  // ie., 1 + 3(for BlinkCriticalLineData) + 3(for Dom Cohort).
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(2, lru_cache()->num_inserts());  // Both cohorts in pcache.
   EXPECT_EQ(0, lru_cache()->num_deletes());
@@ -1629,9 +1625,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkUrlCacheInvalidation) {
   UnEscapeString(&text);
   EXPECT_STREQ(blink_output_, text);
   // 1 Miss for original plain text,
-  // 2 Misses for BlinkCriticalLineData(due to other device types),
-  // 2 Misses for DomCohort(due to other device types).
-  EXPECT_EQ(5, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_hits());     // pcache, two cohorts
   // The status code value in Dom cohort is unchanged, and so the PropertyValue
   // has num_writes bumped to 1.  Thus the value seen by the underlying lru
@@ -1655,9 +1649,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkUrlCacheInvalidation) {
   UnEscapeString(&text);
   EXPECT_STREQ(blink_output_, text);
   // 1 Miss for original plain text,
-  // 2 Misses for BlinkCriticalLineData(due to other device types),
-  // 2 Misses for DomCohort(due to other device types).
-  EXPECT_EQ(5, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_hits());     // pcache, two cohorts
   // The status code value in Dom cohort is unchanged, and so the PropertyValue
   // has num_writes bumped to 2.  Thus the value seen by the underlying lru
@@ -1682,9 +1674,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkUrlCacheInvalidation) {
 
   EXPECT_STREQ(kHtmlInput, text);
   // 1 Miss for original plain text,
-  // 2 Misses for BlinkCriticalLineData(due to other device types),
-  // 2 Misses for DomCohort(due to other device types).
-  EXPECT_EQ(5, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(2, lru_cache()->num_hits());     // pcache, two cohorts
   // The invalidation results in both the PropertyValues (status code in dom
   // cohort and critical line data in blink cohort) not getting populated in
@@ -1791,9 +1781,9 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkCriticalLineDataMissDelayCache) {
                response_headers.Lookup1(HttpAttributes::kContentType));
 
   // 1 Miss for original plain text,
-  // 3 Misses for BlinkCriticalLineData(due to 3 device types),
-  // 3 Misses for DomCohort(due to 3 device types).
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  // 1 Miss for BlinkCriticalLineData,
+  // 1 Miss for DomCohort.
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_inserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
@@ -1816,9 +1806,9 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkWithBlacklistUrls) {
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_STREQ(kHtmlInput, text);
   // 1 Miss for original plain text,
-  // 3 Misses for BlinkCriticalLineData(due to 3 device types),
-  // 3 Misses for DomCohort(due to 3 device types).
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  // 1 Miss for BlinkCriticalLineData,
+  // 1 Miss for DomCohort.
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
   // No fetch for background computation is triggered here.
   // Only original html is fetched from fetcher.
@@ -1888,9 +1878,9 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlOverThreshold) {
   VerifyBlinkInfo(BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD,
                   "http://test.com/smalltest.html");
   // 1 Miss for original plain text,
-  // 3 Misses for BlinkCriticalLineData(due to 3 device types),
-  // 3 Misses for DomCohort(due to 3 device types).
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  // 1 Miss for BlinkCriticalLineData,
+  // 1 Miss for DomCohort.
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
   EXPECT_EQ(0, statistics()->FindVariable(
@@ -1907,7 +1897,7 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlOverThreshold) {
   FetchFromProxyWaitForBackground(
       "smalltest.html", true, &text, &response_headers);
 
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
   EXPECT_EQ(1, statistics()->FindVariable(
@@ -1939,9 +1929,9 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkHtmlHeaderOverThreshold) {
   VerifyBlinkInfo(BlinkInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD,
                   "http://test.com/smalltest.html");
   // 1 Miss for original plain text,
-  // 3 Misses for BlinkCriticalLineData(due to 3 device types),
-  // 3 Misses for DomCohort(due to 3 device types).
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  // 1 Miss for BlinkCriticalLineData,
+  // 1 Miss for DomCohort.
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
   EXPECT_EQ(0, statistics()->FindVariable(
@@ -1961,9 +1951,9 @@ TEST_F(BlinkFlowCriticalLineTest, NonHtmlContent) {
   VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_FOUND_RESOURCE,
                   "http://test.com/plain.html");
   // 1 Miss for original plain text,
-  // 3 Misses for BlinkCriticalLineData(due to 3 device types),
-  // 3 Misses for DomCohort(due to 3 device types).
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  // 1 Miss for BlinkCriticalLineData,
+  // 1 Miss for DomCohort.
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_inserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
@@ -1986,9 +1976,9 @@ TEST_F(BlinkFlowCriticalLineTest, NonHtmlContent) {
 
   FetchFromProxyNoWaitForBackground(
       "plain.html", true, &text, &response_headers);
-  // 3 Misses for BlinkCriticalLineData(due to 3 device types),
-  // 3 Misses for DomCohort(due to 3 device types).
-  EXPECT_EQ(6, lru_cache()->num_misses());
+  // 1 Miss for BlinkCriticalLineData,
+  // 1 Miss for DomCohort.
+  EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_inserts());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
@@ -2024,9 +2014,9 @@ TEST_F(BlinkFlowCriticalLineTest, Non200StatusCode) {
   VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_FETCH_NON_OK,
                   "http://test.com/404.html");
   // 1 Miss for original plain text,
-  // 3 Misses for BlinkCriticalLineData(due to 3 device types),
-  // 3 Misses for DomCohort(due to 3 device types).
-  EXPECT_EQ(7, lru_cache()->num_misses());
+  // 1 Miss for BlinkCriticalLineData,
+  // 1 Miss for DomCohort.
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
   // There is an insert for status code in dom cohort.
   EXPECT_EQ(1, lru_cache()->num_inserts());
@@ -2040,10 +2030,9 @@ TEST_F(BlinkFlowCriticalLineTest, Non200StatusCode) {
 
   FetchFromProxyWaitForBackground("404.html", true, &text, &response_headers);
   // 1 Miss for original plain text,
-  // 3 Misses for BlinkCriticalLineData(due to 3 device types),
-  // 2 Misses for DomCohort(due to 3 device types).
+  // 1 Misses for BlinkCriticalLineData.
   // The hit and the insert is for the status code property.
-  EXPECT_EQ(6, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_inserts());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());

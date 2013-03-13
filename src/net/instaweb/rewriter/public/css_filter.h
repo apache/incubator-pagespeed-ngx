@@ -103,7 +103,6 @@ class CssFilter : public RewriteFilter {
 
   virtual const char* Name() const { return "CssFilter"; }
   virtual const char* id() const { return RewriteOptions::kCssFilterId; }
-  virtual int FilterCacheFormatVersion() const;
   virtual void EncodeUserAgentIntoResourceContext(
       ResourceContext* context) const;
 

@@ -293,17 +293,10 @@ TEST_F(ProxyInterfaceTest, LoggingInfo) {
   EXPECT_FALSE(logging_info()->is_pagespeed_resource());
 
   const PropertyPageInfo& page_info = logging_info()->property_page_info();
-  // 3 for 3 device types.
-  EXPECT_EQ(3, page_info.cohort_info_size());
+  EXPECT_EQ(1, page_info.cohort_info_size());
   const PropertyCohortInfo& cohort_info_0 = page_info.cohort_info(0);
   EXPECT_EQ("dom", cohort_info_0.name());
   EXPECT_EQ(0, cohort_info_0.device_type());
-  const PropertyCohortInfo& cohort_info_1 = page_info.cohort_info(1);
-  EXPECT_EQ("dom", cohort_info_1.name());
-  EXPECT_EQ(1, cohort_info_1.device_type());
-  const PropertyCohortInfo& cohort_info_2 = page_info.cohort_info(2);
-  EXPECT_EQ("dom", cohort_info_2.name());
-  EXPECT_EQ(2, cohort_info_2.device_type());
 
   // Fetch non-HTML content.
   logging_info()->Clear();
@@ -798,9 +791,9 @@ TEST_F(ProxyInterfaceTest, CacheableSize) {
   ResponseHeaders response_headers;
   FetchFromProxy("text.html", true, &text, &response_headers);
 
-  // One lookup for ajax metadata, one for the HTTP response and three for the
+  // One lookup for ajax metadata, one for the HTTP response and one for the
   // property cache entry. None are found.
-  EXPECT_EQ(5, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(0, lru_cache()->num_inserts());
@@ -813,7 +806,7 @@ TEST_F(ProxyInterfaceTest, CacheableSize) {
 
   // None are found as the size is bigger than
   // max_cacheable_response_content_length.
-  EXPECT_EQ(5, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
 
@@ -824,7 +817,7 @@ TEST_F(ProxyInterfaceTest, CacheableSize) {
   response_headers.Clear();
   FetchFromProxy("text.html", true, &text, &response_headers);
   // None are found.
-  EXPECT_EQ(5, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_inserts());
@@ -839,7 +832,7 @@ TEST_F(ProxyInterfaceTest, CacheableSize) {
   // max_cacheable_response_content_length.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, CacheableSizeAjax) {
@@ -919,9 +912,9 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
-  // One lookup for ajax metadata, one for the HTTP response and three for the
+  // One lookup for ajax metadata, one for the HTTP response and one for the
   // property cache entry. None are found.
-  EXPECT_EQ(5, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
 
@@ -942,7 +935,7 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   // ajax metadata.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
 
   // Change the response.
   SetFetchResponse(AbsolutifyUrl("text.html"), headers, "new");
@@ -965,7 +958,7 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   // ajax metadata.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
 
   // Invalidate the cache.
   scoped_ptr<RewriteOptions> custom_options(
@@ -994,7 +987,7 @@ TEST_F(ProxyInterfaceTest, InvalidationForCacheableHtml) {
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
@@ -1018,9 +1011,9 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
-  // One lookup for ajax metadata, one for the HTTP response and three for the
+  // One lookup for ajax metadata, one for the HTTP response and one for the
   // property cache entry. None are found.
-  EXPECT_EQ(5, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
 
@@ -1041,7 +1034,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   // ajax metadata.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
 
   // Change the response.
   SetFetchResponse(AbsolutifyUrl("text.html"), headers, "new");
@@ -1064,7 +1057,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   // ajax metadata.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
 
 
   // Invalidate the cache for some URL other than 'text.html'.
@@ -1093,7 +1086,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   // ajax metadata.
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(1, http_cache()->cache_hits()->Get());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
 
 
   // Invalidate the cache.
@@ -1127,7 +1120,7 @@ TEST_F(ProxyInterfaceTest, UrlInvalidationForCacheableHtml) {
   EXPECT_EQ(1, lru_cache()->num_hits());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
-  EXPECT_EQ(4, lru_cache()->num_misses());
+  EXPECT_EQ(2, lru_cache()->num_misses());
 }
 
 TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
@@ -1149,9 +1142,9 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
-  // Lookups for: (1) ajax metadata (2) HTTP response (3) 3 Property cache.
+  // Lookups for: (1) ajax metadata (2) HTTP response (3) Property cache.
   // None are found.
-  EXPECT_EQ(5, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
 
@@ -1164,9 +1157,9 @@ TEST_F(ProxyInterfaceTest, NoImplicitCachingHeadersForHtml) {
   EXPECT_STREQ(start_time_string_,
                response_headers.Lookup1(HttpAttributes::kDate));
   EXPECT_EQ(kContent, text);
-  // Lookups for: (1) ajax metadata (2) HTTP response (3) 3 Property cache.
+  // Lookups for: (1) ajax metadata (2) HTTP response (3) Property cache.
   // None are found.
-  EXPECT_EQ(5, lru_cache()->num_misses());
+  EXPECT_EQ(3, lru_cache()->num_misses());
   EXPECT_EQ(1, http_cache()->cache_misses()->Get());
   EXPECT_EQ(0, lru_cache()->num_hits());
 }
@@ -2637,7 +2630,7 @@ TEST_F(ProxyInterfaceTest, DomCohortWritten) {
   // No writes should occur if no filter that uses the dom cohort is enabled.
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(4, lru_cache()->num_misses());  // 3 property-cache + 1 http-cache
+  EXPECT_EQ(2, lru_cache()->num_misses());  // 1 property-cache + 1 http-cache
 
   // Enable a filter that uses the dom cohort and make sure property cache is
   // updated.
@@ -2645,7 +2638,7 @@ TEST_F(ProxyInterfaceTest, DomCohortWritten) {
   EnableDomCohortWritesWithDnsPrefetch();
   FetchFromProxy(kPageUrl, true, &text_out, &headers_out);
   EXPECT_EQ(1, lru_cache()->num_inserts());
-  EXPECT_EQ(4, lru_cache()->num_misses());  // 3 property-cache + 1 http-cache
+  EXPECT_EQ(2, lru_cache()->num_misses());  // 1 property-cache + 1 http-cache
 
   ClearStats();
   server_context_->set_enable_property_cache(false);

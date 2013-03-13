@@ -17,15 +17,10 @@
 
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 
-#include <map>
-#include <utility>
-
-#include "base/logging.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -68,47 +63,55 @@ void CriticalCssFinder::InitStats(Statistics* statistics) {
 }
 
 // Copy critical CSS from property cache.
-StringStringMap* CriticalCssFinder::CriticalCssMap(RewriteDriver* driver) {
-  return DeserializeCacheData(driver, GetPropertyValue(driver));
+CriticalCssResult* CriticalCssFinder::GetCriticalCssFromCache(
+    RewriteDriver* driver) {
+  CriticalCssResult* result = NULL;
+  PropertyValue* property_value = GetPropertyValue(driver);
+  if (property_value != NULL && property_value->has_value()) {
+    const PropertyCache* cache =
+        driver->server_context()->page_property_cache();
+    int64 cache_ttl_ms =
+        driver->options()->finder_properties_cache_expiration_time_ms();
+    if (!cache->IsExpired(property_value, cache_ttl_ms)) {
+      result = new CriticalCssResult();
+      ArrayInputStream input(property_value->value().data(),
+                             property_value->value().size());
+      if (result->ParseFromZeroCopyStream(&input)) {
+        critical_css_valid_count_->IncBy(1);
+      } else {
+        driver->WarningHere("Unable to parse Critical Css PropertyValue");
+      }
+    } else {
+      critical_css_expired_count_->IncBy(1);
+      driver->InfoHere("Critical CSS cache entry expired");
+    }
+  } else {
+    critical_css_not_found_count_->IncBy(1);
+    driver->InfoHere("Critical CSS not found in cache");
+  }
+  return result;
 }
 
 // Copy |critical_css_map| into property cache. Returns true on success.
 bool CriticalCssFinder::UpdateCache(
-    RewriteDriver* driver, const StringStringMap& critical_css_map) {
+    RewriteDriver* driver, const CriticalCssResult& result) {
   bool is_updated = false;
 
   // Update property cache if critical css is successfully determined.
-  CriticalCssSet critical_css_set;
-  for (StringStringMap::const_iterator it = critical_css_map.begin(),
-           end = critical_css_map.end(); it != end; ++it) {
-    CriticalCssSet_CriticalCss* critical_css =
-        critical_css_set.add_critical_css();
-    StringVector decoded_url;
-    GoogleUrl gurl(it->first);
-    // Decode the url if it is pagespeed encoded.
-    if (driver->DecodeUrl(gurl, &decoded_url)) {
-      // Combine css is turned off during compute_critical_css, so should never
-      // have multiple Urls.
-      DCHECK_EQ(decoded_url.size(), 1U)
-          << "Found combined url " << it->first << " in compute flow for "
-          << driver->base_url().Spec();
-      critical_css->set_link_url(decoded_url.at(0));
-    } else {
-      critical_css->set_link_url(it->first);
-    }
-    critical_css->set_critical_rules(it->second);
-  }
   GoogleString buf;
-  if (critical_css_set.SerializeToString(&buf)) {
+  if (result.SerializeToString(&buf)) {
     PropertyValue* property_value = GetPropertyValue(driver);
     if (property_value) {
       PropertyCache* cache = driver->server_context()->page_property_cache();
       cache->UpdateValue(buf, property_value);
+      driver->InfoHere("Critical CSS written to cache");
       is_updated = true;
     } else {
-      LOG(WARNING) << "Unable to get Critical Css PropertyValue for update; "
-                   << "url: " << driver->url();
+      driver->WarningHere(
+          "Unable to get Critical CSS PropertyValue for update");
     }
+  } else {
+    driver->WarningHere("Unable to serialize Critical CSS result");
   }
   return is_updated;
 }
@@ -121,41 +124,6 @@ PropertyValue* CriticalCssFinder::GetPropertyValue(RewriteDriver* driver) {
     return page->GetProperty(cohort, kCriticalCssPropertyName);
   }
   return NULL;
-}
-
-// Return StringStringMap of critical CSS property cache data.
-StringStringMap* CriticalCssFinder::DeserializeCacheData(
-    RewriteDriver* driver, const PropertyValue* property_value) {
-  StringStringMap* critical_css_map(new StringStringMap());
-  if (property_value != NULL && property_value->has_value()) {
-    const PropertyCache* cache =
-        driver->server_context()->page_property_cache();
-    int64 cache_ttl_ms =
-        driver->options()->finder_properties_cache_expiration_time_ms();
-    if (!cache->IsExpired(property_value, cache_ttl_ms)) {
-      CriticalCssSet critical_css_set;
-      ArrayInputStream input(property_value->value().data(),
-                             property_value->value().size());
-      if (critical_css_set.ParseFromZeroCopyStream(&input)) {
-        for (int i = 0, n = critical_css_set.critical_css_size(); i < n; ++i) {
-          const CriticalCssSet_CriticalCss& critical_css =
-              critical_css_set.critical_css(i);
-          critical_css_map->insert(make_pair(
-              critical_css.link_url(),
-              critical_css.critical_rules()));
-        }
-        critical_css_valid_count_->IncBy(1);
-      } else {
-        LOG(WARNING) << "Unable to parse Critical Css PropertyValue; "
-                     << "url: " << driver->url();
-      }
-    } else {
-      critical_css_expired_count_->IncBy(1);
-    }
-  } else {
-    critical_css_not_found_count_->IncBy(1);
-  }
-  return critical_css_map;
 }
 
 }  // namespace net_instaweb

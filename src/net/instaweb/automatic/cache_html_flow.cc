@@ -60,8 +60,8 @@ const char kBlinkJsString[] =
 const char kCacheHtmlSuffixJsString[] =
     "<script type=\"text/javascript\">"
     "pagespeed.panelLoaderInit();"
+    "pagespeed.panelLoader.invokedFromSplit();"
     "pagespeed.panelLoader.loadCriticalData({});"
-    "pagespeed.panelLoader.loadImagesData({});"
     "</script>\n";
 const char kCacheHtmlSetInternalIp[] =
     "<script type=\"text/javascript\">"
