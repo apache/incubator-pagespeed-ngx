@@ -93,31 +93,37 @@ void CriticalImagesFinder::InitStats(Statistics* statistics) {
 bool CriticalImagesFinder::IsHtmlCriticalImage(
     const GoogleString& image_url, RewriteDriver* driver) {
   const StringSet* critical_images_set = GetHtmlCriticalImages(driver);
-  return critical_images_set->find(image_url) != critical_images_set->end();
+  return ((critical_images_set != NULL) &&
+          (critical_images_set->find(image_url) != critical_images_set->end()));
 }
 
 bool CriticalImagesFinder::IsCssCriticalImage(
     const GoogleString& image_url, RewriteDriver* driver) {
   const StringSet* critical_images_set = GetCssCriticalImages(driver);
-  return critical_images_set->find(image_url) != critical_images_set->end();
+  return ((critical_images_set != NULL) &&
+          (critical_images_set->find(image_url) != critical_images_set->end()));
 }
 
 const StringSet* CriticalImagesFinder::GetHtmlCriticalImages(
     RewriteDriver* driver) {
   UpdateCriticalImagesSetInDriver(driver);
-  const StringSet* critical_images_set =
-      driver->critical_images_info()->html_critical_images.get();
-  DCHECK(critical_images_set != NULL);
-  return critical_images_set;
+  const CriticalImagesInfo* info = driver->critical_images_info();
+  if (info == NULL) {
+    return NULL;
+  }
+
+  return info->html_critical_images.get();
 }
 
 const StringSet* CriticalImagesFinder::GetCssCriticalImages(
     RewriteDriver* driver) {
   UpdateCriticalImagesSetInDriver(driver);
-  const StringSet* critical_images_set =
-      driver->critical_images_info()->css_critical_images.get();
-  DCHECK(critical_images_set != NULL);
-  return critical_images_set;
+  const CriticalImagesInfo* info = driver->critical_images_info();
+  if (info == NULL) {
+    return NULL;
+  }
+
+  return info->css_critical_images.get();
 }
 
 void CriticalImagesFinder::SetHtmlCriticalImages(

@@ -74,6 +74,8 @@ class CriticalImagesFinder {
   virtual bool IsCssCriticalImage(const GoogleString& image_url,
                                   RewriteDriver* driver);
 
+  // Get the critical image sets. Can return NULL if the property cache has not
+  // been set up.
   const StringSet* GetHtmlCriticalImages(RewriteDriver* driver);
   const StringSet* GetCssCriticalImages(RewriteDriver* driver);
 
