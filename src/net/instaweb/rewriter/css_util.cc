@@ -29,6 +29,7 @@
 #include "webutil/css/media.h"
 #include "webutil/css/parser.h"
 #include "webutil/css/property.h"
+#include "webutil/css/selector.h"
 #include "webutil/css/value.h"
 
 namespace net_instaweb {
@@ -194,6 +195,108 @@ void ClearVectorIfContainsMediaAll(StringVector* media) {
       break;
     }
   }
+}
+
+namespace {
+
+// Does the given data start with the given word followed by whitespace, '(', or
+// end of string?  If so, strip the token and spaces and return true.  Otherwise
+// return false and leave data alone.
+bool StartsWithWord(const StringPiece& word, StringPiece* data) {
+  // Make a local copy, so we only shorten on success.
+  StringPiece local(*data);
+  if (!local.starts_with(word)) {
+    return false;
+  }
+  local.remove_prefix(word.size());
+  if (TrimLeadingWhitespace(&local) ||
+      local.empty() ||
+      local[0] == '(') {
+    *data = local;
+    return true;
+  }
+  return false;
+}
+
+}  // namespace
+
+bool CanMediaAffectScreen(const StringPiece& media) {
+  // TODO(jmaessen): re-implement via CSS parser once it has an entry point for
+  // media parsing.
+  if (media.empty()) {
+    // Media type "" appears to be either screen or all depending on spec
+    // version, and affects the screen either way.
+    return true;
+  }
+  StringPieceVector media_vector;
+  SplitStringPieceToVector(media, ",", &media_vector, true);
+  for (int i = 0, n = media_vector.size(); i < n; ++i) {
+    StringPiece current(media_vector[i]);
+    TrimLeadingWhitespace(&current);
+    // Recognize a CSS3 media query.  We are generous in our recognition here:
+    // we'll take anything that contains "screen" or "all" as a token.  Compare
+    // with http://www.w3.org/TR/css3-mediaqueries/ which is relatively strict.
+    // Note that we rely on the fact that the media itself must come first, so
+    // we stop once we've seen that or a left paren.  Also, we don't require
+    // whitespace before (.
+    // First, we strip a leading "only" if it exists.  This is a no-op in CSS3
+    // (but causes CSS2 to not use this rule).
+    StartsWithWord("only", &current);
+    bool initial_not = StartsWithWord("not", &current);
+    if (StartsWithWord("screen", &current) ||
+        StartsWithWord("all", &current) ||
+        current.empty() ||
+        current[0] == '(') {
+      // Affects screen, unless there was an initial not.
+      if (!initial_not) {
+        return true;
+      }
+    } else if (initial_not) {
+      // Something like "not print" that affects screen.
+      return true;
+    }
+  }
+  return false;
+}
+
+GoogleString JsDetectableSelector(const Css::Selector& selector) {
+  // Create a temporary selector representing the desired result that shares
+  // structure with the given selector.  We do this because a SimpleSelector
+  // isn't copyable without about another page of code.  We're only creating
+  // this AST fragment locally and throwing it away.
+  Css::Selector trimmed;
+  for (int i = 0, n = selector.size(); i < n; ++i) {
+    Css::SimpleSelectors* simple_selectors = selector[i];
+    scoped_ptr<Css::SimpleSelectors> trimmed_selectors(
+        new Css::SimpleSelectors(simple_selectors->combinator()));
+    for (int j = 0, m = simple_selectors->size(); j < m; ++j) {
+      Css::SimpleSelector* simple_selector = (*simple_selectors)[j];
+      // For now we simply discard all pseudoclass attributes.
+      // TODO(jmaessen): Only discard pseudoclass attributes that
+      // refer to UI elements or dynamic pseudo-classes; see
+      // http://www.w3.org/TR/selectors/#pseudo-classes
+      if (simple_selector->type() != Css::SimpleSelector::PSEUDOCLASS) {
+        trimmed_selectors->push_back(simple_selector);
+      }
+    }
+    if (trimmed_selectors->empty()) {
+      // If there's no simple selector at this point, our combinators may have
+      // gotten messed up.  Conservatively truncate the Css selector.  This
+      // should be difficult in practice, as it requires rules like "p > :hover
+      // > a" whose exact interpretation are ambiguous.  We'll truncate such a
+      // rule to "p".  Note that rules like "p :hover a" should end up sensibly
+      // as "p a".
+      break;
+    }
+    trimmed.push_back(trimmed_selectors.release());
+  }
+  GoogleString result(trimmed.ToString());
+  for (int i = 0, n = trimmed.size(); i < n; ++i) {
+    // Remove the SimpleSelector objects without cleaning them up, since we
+    // don't own them.
+    trimmed[i]->clear();
+  }
+  return result;
 }
 
 }  // namespace css_util

@@ -21,6 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
+#include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/inline_rewrite_context.h"
 #include "net/instaweb/rewriter/public/local_storage_cache_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -95,7 +96,7 @@ void CssInlineFilter::EndElementImpl(HtmlElement* element) {
     // Only inline if the media type affects "screen".  We don't inline other
     // types since they're very unlikely to change the initial page view, and
     // inlining them would actually slow down the 99% case of "screen".
-    if (!CssTagScanner::CanMediaAffectScreen(media)) {
+    if (!css_util::CanMediaAffectScreen(media)) {
       driver_->message_handler()->Message(
           kInfo, "Stylesheet media=%s is not for screen href=%s",
           media, href->DecodedValueOrNull());

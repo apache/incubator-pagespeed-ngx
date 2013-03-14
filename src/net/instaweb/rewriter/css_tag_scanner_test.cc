@@ -23,6 +23,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -96,29 +97,6 @@ TEST_F(CssTagScannerTest, TestGurl) {
   CheckGurlResolve(base_no_slash, "./r/path.ext", "http://base/r/path.ext");
 }
 
-TEST_F(CssTagScannerTest, CanMediaAffectScreenTest) {
-  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen(""));
-  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("  screen  "));
-  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("all\n"));
-  // Case insensitive, handles multiple (possibly junk) media types.
-  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("print, audio ,, ,sCrEeN"));
-  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen(
-      "not!?#?;valid,screen,@%*%@*"));
-  // Some cases that fail.
-  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("print"));
-  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("not screen"));
-  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("print screen"));
-  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("not!?#?;valid"));
-  // We must handle CSS3 media queries (http://www.w3.org/TR/css3-mediaqueries/)
-  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("not print"));
-  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen(
-      "only screen and (max-device-width: 480px) "));
-  // "(parens)" are equivalent to "all and (parens)" -- thus screen-affecting.
-  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("(monochrome)"));
-  EXPECT_TRUE(CssTagScanner::CanMediaAffectScreen("(print)"));
-  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen("not (audio or print)"));
-}
-
 // This test makes sure we can identify a few different forms of CSS tags we've
 // seen.
 TEST_F(CssTagScannerTest, MinimalOK) {
@@ -163,7 +141,7 @@ TEST_F(CssTagScannerTest, WithMediaOK) {
   EXPECT_TRUE(scanner_.ParseCssElement(link_, &href_, &media_,
                                       &num_nonstandard_attributes_));
   EXPECT_STREQ(kPrint, media_);
-  EXPECT_FALSE(CssTagScanner::CanMediaAffectScreen(media_));
+  EXPECT_FALSE(css_util::CanMediaAffectScreen(media_));
   EXPECT_STREQ(kUrl, href_->DecodedValueOrNull());
   EXPECT_EQ(0, num_nonstandard_attributes_);
 }

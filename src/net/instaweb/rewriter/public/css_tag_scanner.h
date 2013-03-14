@@ -90,9 +90,6 @@ class CssTagScanner {
   // Should be called with element->AttributeValue(HtmlName::kRel) as the arg.
   static bool IsStylesheetOrAlternate(const StringPiece& attribute_value);
 
-  // Can this media attribute include some kind of screen?
-  static bool CanMediaAffectScreen(const StringPiece& media);
-
  private:
   DISALLOW_COPY_AND_ASSIGN(CssTagScanner);
 };
