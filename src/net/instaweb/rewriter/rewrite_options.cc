@@ -1015,11 +1015,31 @@ void RewriteOptions::AddProperties() {
       kBeaconUrl,
       kDirectoryScope,
       "URL for beacon callback injected by add_instrumentation.");
+
+  // TODO(jmarantz): igrigorik suggests that 'onload' should be the
+  // default in mobile.
+  //
+  // For mobile, the recommendation is that you prefetch all the
+  // necessary assets (burst your data), and then shutoff the radio to
+  // preserve battery. Further, if the radio has been idle, and then
+  // you scroll, then you'll have to incur the RRC upgrade cost, which
+  // can be anywhere from 100ms-2.5s, which makes the site appear very
+  // slowly.. and even worse if that triggers reflows.
+  //
+  // The problem on mobile is that everytime you wake up the radio, no
+  // matter the size of the transfer, it then has to cycle through
+  // the intermediate power states.. so even a tiny transfers results
+  // in radio consuming power for 10s+.  So you incur unnecessary
+  // latency, burn battery, etc.
+  //
+  // http://developer.android.com/training/efficient-downloads
+  // /efficient-network-access.html#PrefetchData
   AddBaseProperty(
       false, &RewriteOptions::lazyload_images_after_onload_, "llio",
       kLazyloadImagesAfterOnload,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      "Wait until page onload before loading lazy images");
+
   AddBaseProperty(
       "", &RewriteOptions::lazyload_images_blank_url_, "llbu",
       kLazyloadImagesBlankUrl,
