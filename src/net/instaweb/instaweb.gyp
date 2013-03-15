@@ -507,6 +507,21 @@
       ],
     },
     {
+      'target_name': 'instaweb_critical_selectors_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/critical_selectors.pb.cc',
+        'rewriter/critical_selectors.proto',
+      ],
+      'dependencies': [
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_critical_line_info_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -1072,6 +1087,7 @@
         'instaweb_critical_line_info_pb',
         'instaweb_critical_images_beacon_data2c',
         'instaweb_critical_images_beacon_opt_data2c',
+        'instaweb_critical_selectors_pb',
         'instaweb_defer_iframe_data2c',
         'instaweb_defer_iframe_opt_data2c',
         'instaweb_delay_images_data2c',
@@ -1117,6 +1133,7 @@
         'rewriter/critical_css_finder.cc',
         'rewriter/critical_images_beacon_filter.cc',
         'rewriter/critical_images_callback.cc',
+        'rewriter/critical_selector_finder.cc',
         'rewriter/css_inline_filter.cc',
         'rewriter/css_move_to_head_filter.cc',
         'rewriter/css_outline_filter.cc',

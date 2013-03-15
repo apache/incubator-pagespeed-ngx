@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -612,9 +613,10 @@ void RewriteDriverFactory::InitStats(Statistics* statistics) {
   HTTPCache::InitStats(statistics);
   RewriteDriver::InitStats(statistics);
   RewriteStats::InitStats(statistics);
-  CriticalImagesFinder::InitStats(statistics);
   CacheBatcher::InitStats(statistics);
+  CriticalImagesFinder::InitStats(statistics);
   CriticalCssFinder::InitStats(statistics);
+  CriticalSelectorFinder::InitStats(statistics);
   PropertyCache::InitCohortStats(ClientState::kClientStateCohort, statistics);
 }
 
