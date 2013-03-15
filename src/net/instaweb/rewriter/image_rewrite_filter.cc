@@ -278,11 +278,6 @@ void ImageRewriteFilter::Context::Render() {
   if (is_css_) {
     rewrote_url = filter_->FinishRewriteCssImageUrl(css_image_inline_max_bytes_,
                                                     result, resource_slot);
-    if (rewrote_url) {
-      // Logging for HTML images is done in FinishRewriteImageUrl. For CSS
-      // images, we log here.
-      filter_->LogFilterModifiedContent();
-    }
   } else {
     if (!has_parent()) {
       // We use manual rendering for HTML, as we have to consider whether to

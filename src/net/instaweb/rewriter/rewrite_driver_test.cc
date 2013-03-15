@@ -53,6 +53,10 @@
 
 namespace net_instaweb {
 
+namespace {
+const char kBikePngFile[] = "BikeCrashIcn.png";
+}
+
 class RewriteFilter;
 
 class RewriteDriverTest : public RewriteTestBase {
@@ -1359,6 +1363,33 @@ TEST_F(RewriteDriverTest, CachePollutionWithQueryParams) {
   GoogleString input_html(CssLinkHref("a.css?ver=3"));
   GoogleString output_html(CssLinkHref(correct_url));
   ValidateExpected("wrong_encoding", input_html, output_html);
+}
+
+TEST_F(RewriteDriverTest, NoLoggingForImagesRewrittenInsideCss) {
+  options()->set_image_inline_max_bytes(100000);
+  options()->EnableFilter(RewriteOptions::kExtendCacheCss);
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->EnableFilter(RewriteOptions::kExtendCacheImages);
+  options()->EnableFilter(RewriteOptions::kRecompressPng);
+  options()->set_always_rewrite_css(true);
+  rewrite_driver_->AddFilters();
+
+  GoogleString contents = "#a {background:url(1.png) ;}";
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, contents, 100);
+  AddFileToMockFetcher(StrCat(kTestDomain, "1.png"), kBikePngFile,
+                       kContentTypePng, 100);
+
+  GoogleString correct_url = Encode(
+        kTestDomain, RewriteOptions::kCssFilterId, hasher()->Hash(contents),
+        "a.css", "css");
+
+  GoogleString input_html(CssLinkHref("a.css"));
+  GoogleString output_html(CssLinkHref(correct_url));
+
+  ValidateExpected("no_logging_images_inside_css", input_html, output_html);
+  LoggingInfo* logging_info = rewrite_driver_->log_record()->logging_info();
+  ASSERT_EQ(1, logging_info->rewriter_info_size());
+  EXPECT_EQ("cf", logging_info->rewriter_info(0).id());
 }
 
 
