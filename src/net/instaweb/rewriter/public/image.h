@@ -28,9 +28,11 @@
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+class Histogram;
 class ImageDim;
 class MessageHandler;
 class Timer;
+class Variable;
 struct ContentType;
 
 class Image {
@@ -51,6 +53,38 @@ class Image {
     WEBP_NONE = 0,
     WEBP_LOSSY,
     WEBP_LOSSLESS
+  };
+
+  struct ConversionBySourceVariable {
+    ConversionBySourceVariable()
+        : timeout_count(NULL),
+          success_ms(NULL),
+          failure_ms(NULL) {}
+
+    Variable* timeout_count;  // # of timed-out conversions.
+    Histogram* success_ms;    // Successful conversion duration.
+    Histogram* failure_ms;    // Failed (and non-timed-out) conversion duration.
+  };
+
+  struct ConversionVariables {
+    enum VariableType {
+      FROM_UNKNOWN_FORMAT = 0,
+      FROM_GIF,
+      FROM_PNG,
+      FROM_JPEG,
+      OPAQUE,
+      NONOPAQUE,
+      NUM_VARIABLE_TYPE
+    };
+    ConversionBySourceVariable* Get(VariableType var_type) {
+      if ((var_type < FROM_UNKNOWN_FORMAT) ||
+          (var_type >= NUM_VARIABLE_TYPE)) {
+        return NULL;
+      }
+      return &(vars[var_type]);
+    }
+
+    ConversionBySourceVariable vars[NUM_VARIABLE_TYPE];
   };
 
   struct CompressionOptions {
@@ -75,7 +109,9 @@ class Image {
               RewriteOptions::kDefaultImageJpegNumProgressiveScans),
           webp_conversion_timeout_ms(-1),
           conversions_attempted(0),
-          preserve_lossless(false) {}
+          preserve_lossless(false),
+          webp_conversion_variables(NULL) {}
+
     // These options are set by the client to specify what type of
     // conversion to perform:
     PreferredWebp preferred_webp;
@@ -100,6 +136,8 @@ class Image {
     // characteristics of the conversion process.
     int conversions_attempted;
     bool preserve_lossless;
+
+    ConversionVariables* webp_conversion_variables;
   };
 
   virtual ~Image();

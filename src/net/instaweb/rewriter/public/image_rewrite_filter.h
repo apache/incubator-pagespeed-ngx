@@ -88,6 +88,36 @@ class ImageRewriteFilter : public RewriteFilter {
   // Histogram for delays of failed image rewrites.
   static const char kImageRewriteLatencyFailedMs[];
 
+  // # of timeouts while attempting to rewrite images as WebP from
+  // various formats.
+  static const char kImageWebpFromGifTimeouts[];
+  static const char kImageWebpFromPngTimeouts[];
+  static const char kImageWebpFromJpegTimeouts[];
+
+  // Duration of successful WebP conversions from various
+  // formats. Note that a successful conversion may not be served if
+  // it happens to be larger than the original image.
+  static const char kImageWebpFromGifSuccessMs[];
+  static const char kImageWebpFromPngSuccessMs[];
+  static const char kImageWebpFromJpegSuccessMs[];
+
+  // Duration of failed WebP conversions from various formats. Note
+  // that this does not include timeout failures, which are captured
+  // above.
+  static const char kImageWebpFromGifFailureMs[];
+  static const char kImageWebpFromPngFailureMs[];
+  static const char kImageWebpFromJpegFailureMs[];
+
+  // Duration of conversions of images with alpha to WebP.
+  static const char kImageWebpWithAlphaTimeouts[];
+  static const char kImageWebpWithAlphaSuccessMs[];
+  static const char kImageWebpWithAlphaFailureMs[];
+
+  // Duration of conversions of images without alpha to WebP.
+  static const char kImageWebpOpaqueTimeouts[];
+  static const char kImageWebpOpaqueSuccessMs[];
+  static const char kImageWebpOpaqueFailureMs[];
+
   // The property cache property name used to store URLs discovered when
   // image_inlining_identify_and_cache_without_rewriting() is set in the
   // RewriteOptions.
@@ -283,6 +313,7 @@ class ImageRewriteFilter : public RewriteFilter {
   Variable* image_inline_count_;
   // # of images rewritten into WebP format.
   Variable* image_webp_rewrites_;
+
   // Delay in microseconds of successful image rewrites.
   Histogram* image_rewrite_latency_ok_ms_;
   // Delay in microseconds of failed image rewrites.
@@ -298,6 +329,9 @@ class ImageRewriteFilter : public RewriteFilter {
   // image_inlining_identify_and_cache_without_rewriting() is set in the
   // RewriteOptions.
   StringSet inlinable_urls_;
+
+  // Sets of variables and histograms for various conversions to WebP.
+  Image::ConversionVariables webp_conversion_variables_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageRewriteFilter);
 };

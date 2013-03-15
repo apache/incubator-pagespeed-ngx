@@ -592,6 +592,103 @@ class ImageRewriteTest : public RewriteTestBase {
         image_dim, context, &desired_dim));
     EXPECT_EQ(0, rewrites_squashing->Get(TimedVariable::START));
   }
+
+  void TestConversionVariables(int gif_webp_timeout,
+                               int gif_webp_success,
+                               int gif_webp_failure,
+
+                               int png_webp_timeout,
+                               int png_webp_success,
+                               int png_webp_failure,
+
+                               int jpeg_webp_timeout,
+                               int jpeg_webp_success,
+                               int jpeg_webp_failure,
+
+                               bool is_opaque) {
+    EXPECT_EQ(
+        gif_webp_timeout,
+        statistics()->GetVariable(
+            net_instaweb::ImageRewriteFilter::kImageWebpFromGifTimeouts)->
+        Get());
+    EXPECT_EQ(
+        gif_webp_success,
+        statistics()->GetHistogram(
+            net_instaweb::ImageRewriteFilter::kImageWebpFromGifSuccessMs)->
+        Count());
+    EXPECT_EQ(
+        gif_webp_failure,
+        statistics()->GetHistogram(
+            net_instaweb::ImageRewriteFilter::kImageWebpFromGifFailureMs)->
+        Count());
+
+    EXPECT_EQ(
+        png_webp_timeout,
+        statistics()->GetVariable(
+            net_instaweb::ImageRewriteFilter::kImageWebpFromPngTimeouts)->
+        Get());
+    EXPECT_EQ(
+        png_webp_success,
+        statistics()->GetHistogram(
+            net_instaweb::ImageRewriteFilter::kImageWebpFromPngSuccessMs)->
+        Count());
+    EXPECT_EQ(
+        png_webp_failure,
+        statistics()->GetHistogram(
+            net_instaweb::ImageRewriteFilter::kImageWebpFromPngFailureMs)->
+        Count());
+
+    EXPECT_EQ(
+        jpeg_webp_timeout,
+        statistics()->GetVariable(
+            net_instaweb::ImageRewriteFilter::kImageWebpFromJpegTimeouts)->
+        Get());
+    EXPECT_EQ(
+        jpeg_webp_success,
+        statistics()->GetHistogram(
+            net_instaweb::ImageRewriteFilter::kImageWebpFromJpegSuccessMs)->
+        Count());
+    EXPECT_EQ(
+        jpeg_webp_failure,
+        statistics()->GetHistogram(
+            net_instaweb::ImageRewriteFilter::kImageWebpFromJpegFailureMs)->
+        Count());
+
+    int total_timeout =
+        gif_webp_timeout +
+        png_webp_timeout +
+        jpeg_webp_timeout;
+    int total_success =
+        gif_webp_success +
+        png_webp_success +
+        jpeg_webp_success;
+    int total_failure =
+        gif_webp_failure +
+        png_webp_failure +
+        jpeg_webp_failure;
+
+    EXPECT_EQ(
+        total_timeout,
+        statistics()->GetVariable(
+            is_opaque ?
+            net_instaweb::ImageRewriteFilter::kImageWebpOpaqueTimeouts :
+            net_instaweb::ImageRewriteFilter::kImageWebpWithAlphaTimeouts)->
+        Get());
+    EXPECT_EQ(
+        total_success,
+        statistics()->GetHistogram(
+            is_opaque ?
+            net_instaweb::ImageRewriteFilter::kImageWebpOpaqueSuccessMs :
+            net_instaweb::ImageRewriteFilter::kImageWebpWithAlphaSuccessMs)->
+        Count());
+    EXPECT_EQ(
+        total_failure,
+        statistics()->GetHistogram(
+            is_opaque ?
+            net_instaweb::ImageRewriteFilter::kImageWebpOpaqueFailureMs :
+            net_instaweb::ImageRewriteFilter::kImageWebpWithAlphaFailureMs)->
+        Count());
+  }
 };
 
 TEST_F(ImageRewriteTest, ImgTag) {
@@ -730,6 +827,10 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpUa) {
   rewrite_driver()->SetUserAgent("webp");
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeWebp,
                     "", " width=\"100\" height=\"100\"", true, false);
+  TestConversionVariables(0, 0, 0,   // gif
+                          0, 1, 0,   // png
+                          0, 0, 0,   // jpg
+                          true);
 }
 
 TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUa) {
@@ -746,6 +847,10 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUa) {
   rewrite_driver()->SetUserAgent("webp-la");
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeWebp,
                     "", " width=\"100\" height=\"100\"", true, false);
+  TestConversionVariables(0, 0, 0,   // gif
+                          0, 1, 0,   // png
+                          0, 0, 0,   // jpg
+                          true);
 }
 
 TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlag) {
@@ -763,6 +868,32 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlag) {
   rewrite_driver()->SetUserAgent("webp-la");
   TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeWebp,
                     "", " width=\"100\" height=\"100\"", true, false);
+  TestConversionVariables(0, 0, 0,   // gif
+                          0, 1, 0,   // png
+                          0, 0, 0,   // jpg
+                          true);
+}
+
+TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlagTimesOut) {
+  if (RunningOnValgrind()) {
+    return;
+  }
+  // Make sure we convert png to webp if user agent permits.
+  // We lower compression quality to ensure the webp is smaller.
+  options()->EnableFilter(RewriteOptions::kConvertPngToJpeg);
+  options()->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  options()->EnableFilter(RewriteOptions::kInsertImageDimensions);
+  options()->EnableFilter(RewriteOptions::kConvertToWebpLossless);
+  options()->set_image_recompress_quality(85);
+  options()->set_image_webp_timeout_ms(0);
+  rewrite_driver()->AddFilters();
+  rewrite_driver()->SetUserAgent("webp-la");
+  TestSingleRewrite(kBikePngFile, kContentTypePng, kContentTypeJpeg,
+                    "", " width=\"100\" height=\"100\"", true, false);
+  TestConversionVariables(0, 0, 0,   // gif
+                          1, 0, 0,   // png
+                          0, 0, 0,   // jpg
+                          true);
 }
 
 TEST_F(ImageRewriteTest, ImageRewritePreserveURLsOn) {
@@ -1686,6 +1817,10 @@ TEST_F(ImageRewriteTest, GifToWebpTestWithResizeWithOptimize) {
   // With resize and optimization
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeWebp,
                     kResizedDims, kResizedDims, true, false);
+  TestConversionVariables(0, 1, 0,   // gif
+                          0, 0, 0,   // png
+                          0, 0, 0,   // jpg
+                          true);
 }
 
 TEST_F(ImageRewriteTest, GifToWebpTestWithoutResizeWithOptimize) {
@@ -1698,6 +1833,10 @@ TEST_F(ImageRewriteTest, GifToWebpTestWithoutResizeWithOptimize) {
   // Without resize and with optimization
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeWebp,
                     "", "", true, false);
+  TestConversionVariables(0, 1, 0,   // gif
+                          0, 0, 0,   // png
+                          0, 0, 0,   // jpg
+                          true);
 }
 
 TEST_F(ImageRewriteTest, InlinableImagesInsertedIntoPropertyCache) {

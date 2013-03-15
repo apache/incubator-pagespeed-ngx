@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/countdown_timer.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 extern "C" {
@@ -156,9 +157,9 @@ const double JpegPixelToByteRatio(int compression_level) {
 }
 
 // Class to manage WebP conversion timeouts.
-class WebpTimeoutHandler {
+class ConversionTimeoutHandler {
  public:
-  WebpTimeoutHandler(const GoogleString& url,
+  ConversionTimeoutHandler(const GoogleString& url,
                      Timer* timer,
                      MessageHandler* handler,
                      int64 timeout_ms) :
@@ -167,21 +168,49 @@ class WebpTimeoutHandler {
                        this /* not used */,
                        timeout_ms),
       handler_(handler),
-      expired_(false) {}
+      expired_(false),
+      stopped_(false),
+      time_elapsed_(0) {}
 
-  ~WebpTimeoutHandler() {
-    VLOG(1) << "WebP attempts (which " << (expired_ ? "DID":"did NOT")
-            <<" expire) took " << countdown_timer_.TimeElapsedMs()
+  ~ConversionTimeoutHandler() {
+    VLOG(1) << "WebP attempts (which " << (expired_ ? "DID" : "did NOT")
+            << " expire) took " << countdown_timer_.TimeElapsedMs()
             << " ms for " << url_;
-    // TODO(vchudnov): Update a timeout count
+    if (!stopped_) {
+      DCHECK(expired_) << "Should have called RegisterStatus()";
+    }
+  }
+
+  // The first time this is called, it records the elapsed time. Every
+  // time this is called, this updates conversion_vars according to
+  // the status 'ok' and the recorded elapsed time.
+  void RegisterStatus(bool ok,
+                      Image::ConversionVariables::VariableType var_type,
+                      Image::ConversionVariables* conversion_vars) {
+    if (!stopped_) {
+      time_elapsed_ = countdown_timer_.TimeElapsedMs();
+      stopped_ = true;
+    }
+    if (conversion_vars != NULL) {
+      Image::ConversionBySourceVariable* the_var =
+          conversion_vars->Get(var_type);
+      if (the_var != NULL) {
+        if (expired_) {
+          IncrementVariable(the_var->timeout_count);
+          DCHECK(!ok);
+        } else {
+          IncrementHistogram(ok ? the_var->success_ms : the_var->failure_ms);
+        }
+      }
+    }
   }
 
   // This function may be passed as a progress hook to
   // ImageConverter::ConvertPngToWebp or to OptimizeWebp(). user_data
-  // should be a pointer to a WebpTimeoutHandler object.
+  // should be a pointer to a ConversionTimeoutHandler object.
   static bool Continue(int percent, void* user_data) {
-    WebpTimeoutHandler* timeout_handler =
-        static_cast<WebpTimeoutHandler*>(user_data);
+    ConversionTimeoutHandler* timeout_handler =
+        static_cast<ConversionTimeoutHandler*>(user_data);
     VLOG(2) <<  "WebP conversions: " << percent <<"% done; time left: "
             << timeout_handler->countdown_timer_.TimeLeftMs() << " ms";
     if (!timeout_handler->HaveTimeLeft()) {
@@ -198,10 +227,25 @@ class WebpTimeoutHandler {
   }
 
  private:
+  void IncrementVariable(Variable* variable) {
+    if (variable) {
+      variable->Add(1);
+    }
+  }
+
+  void IncrementHistogram(Histogram* histogram) {
+    if (histogram) {
+      DCHECK(stopped_);
+      histogram->Add(time_elapsed_);
+    }
+  }
+
   const GoogleString& url_;
   CountdownTimer countdown_timer_;
   MessageHandler* handler_;
   bool expired_;
+  bool stopped_;
+  int64 time_elapsed_;
 };
 
 }  // namespace
@@ -252,7 +296,8 @@ class ImageImpl : public Image {
       const GoogleString& string_for_image,
       const pagespeed::image_compression::PngReaderInterface* png_reader,
       bool fall_back_to_png,
-      const char* dbg_input_format);
+      const char* dbg_input_format,
+      ConversionVariables::VariableType var_type);
   bool QuickLoadGifToOutputContents();
 
   // Helper methods
@@ -310,7 +355,8 @@ class ImageImpl : public Image {
   // options_->preserve_lossless is set.
   bool ConvertPngToWebp(
       const pagespeed::image_compression::PngReaderInterface& png_reader,
-      const GoogleString& image_data);
+      const GoogleString& image_data,
+      ConversionVariables::VariableType var_type);
 
   // Convert the JPEG in original_jpeg to WebP format in
   // compressed_webp using the quality specified in
@@ -1032,7 +1078,8 @@ bool ImageImpl::ComputeOutputContents() {
               string_for_image,
               png_reader.get(),
               (resized || options_->recompress_png),
-              "png");
+              "png",
+              Image::ConversionVariables::FROM_PNG);
           break;
         case IMAGE_GIF:
           if (options_->convert_gif_to_png || low_quality_enabled_) {
@@ -1041,7 +1088,8 @@ bool ImageImpl::ComputeOutputContents() {
                 string_for_image,
                 png_reader.get(),
                 true /* fall_back_to_png */,
-                "gif");
+                "gif",
+                Image::ConversionVariables::FROM_GIF);
           }
           break;
       }
@@ -1054,11 +1102,19 @@ bool ImageImpl::ComputeOutputContents() {
 inline bool ImageImpl::ConvertJpegToWebp(
     const GoogleString& original_jpeg, int configured_quality,
     GoogleString* compressed_webp) {
-  WebpTimeoutHandler timeout_handler(url_, timer_, handler_,
+  ConversionTimeoutHandler timeout_handler(url_, timer_, handler_,
                                      options_->webp_conversion_timeout_ms);
   bool ok = OptimizeWebp(original_jpeg, configured_quality,
-                         WebpTimeoutHandler::Continue, &timeout_handler,
+                         ConversionTimeoutHandler::Continue, &timeout_handler,
                          compressed_webp);
+  timeout_handler.RegisterStatus(
+      ok,
+      Image::ConversionVariables::FROM_JPEG,
+      options_->webp_conversion_variables);
+  timeout_handler.RegisterStatus(
+      ok,
+      Image::ConversionVariables::OPAQUE,
+      options_->webp_conversion_variables);
   return ok;
 }
 
@@ -1066,7 +1122,8 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
     const GoogleString& string_for_image,
     const pagespeed::image_compression::PngReaderInterface* png_reader,
     bool fall_back_to_png,
-    const char* dbg_input_format) {
+    const char* dbg_input_format,
+    ConversionVariables::VariableType var_type) {
   bool ok = false;
   // If the user specifies --convert_to_webp_lossless and does not
   // specify --convert_png_to_jpeg, we will fall back directly to PNG
@@ -1082,7 +1139,8 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
     // Don't try to optimize empty images, it just messes things up.
     if (options_->preserve_lossless ||
         options_->convert_jpeg_to_webp) {
-      ok = ConvertPngToWebp(*png_reader, string_for_image);
+      ok = ConvertPngToWebp(*png_reader, string_for_image,
+                            var_type);
       VLOG(1) << "Image conversion: " << ok
               << " " << dbg_input_format
               << "->webp for " << url_.c_str();
@@ -1109,12 +1167,14 @@ inline bool ImageImpl::ComputeOutputContentsFromPngReader(
 
 bool ImageImpl::ConvertPngToWebp(
       const pagespeed::image_compression::PngReaderInterface& png_reader,
-      const GoogleString& input_image) {
+      const GoogleString& input_image,
+      ConversionVariables::VariableType var_type) {
   bool ok = false;
   if ((options_->preferred_webp != Image::WEBP_NONE) &&
       (options_->webp_quality > 0)) {
-    WebpTimeoutHandler timeout_handler(url_, timer_, handler_,
-                                       options_->webp_conversion_timeout_ms);
+    ConversionTimeoutHandler timeout_handler(
+        url_, timer_, handler_,
+        options_->webp_conversion_timeout_ms);
     pagespeed::image_compression::WebpConfiguration webp_config;
     webp_config.quality = options_->webp_quality;
 
@@ -1123,7 +1183,7 @@ bool ImageImpl::ConvertPngToWebp(
     // whether this is the optimal value, and consider making it
     // tunable.
     webp_config.method = 3;
-    webp_config.progress_hook = WebpTimeoutHandler::Continue;
+    webp_config.progress_hook = ConversionTimeoutHandler::Continue;
     webp_config.user_data = &timeout_handler;
 
     bool is_opaque = false;
@@ -1164,6 +1224,16 @@ bool ImageImpl::ConvertPngToWebp(
         }
       }
     }
+    timeout_handler.RegisterStatus(ok,
+                                   var_type,
+                                   options_->webp_conversion_variables);
+    // Note that if !ok, is_opaque may not have been set correctly.
+    timeout_handler.RegisterStatus(
+        ok,
+        (is_opaque ?
+         Image::ConversionVariables::OPAQUE :
+         Image::ConversionVariables::NONOPAQUE),
+        options_->webp_conversion_variables);
   }
   return ok;
 }
@@ -1324,5 +1394,4 @@ bool ImageImpl::DrawImage(Image* image, int x, int y) {
   changed_ = true;
   return true;
 }
-
 }  // namespace net_instaweb

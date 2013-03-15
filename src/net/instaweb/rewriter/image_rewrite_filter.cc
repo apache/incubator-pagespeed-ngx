@@ -136,6 +136,41 @@ const char ImageRewriteFilter::kImageRewriteLatencyOkMs[] =
 const char ImageRewriteFilter::kImageRewriteLatencyFailedMs[] =
     "image_rewrite_latency_failed_ms";
 
+const char ImageRewriteFilter::kImageWebpFromGifTimeouts[] =
+    "image_webp_conversion_gif_timeouts";
+const char ImageRewriteFilter::kImageWebpFromPngTimeouts[] =
+    "image_webp_conversion_png_timeouts";
+const char ImageRewriteFilter::kImageWebpFromJpegTimeouts[] =
+    "image_webp_conversion_jpeg_timeouts";
+
+const char ImageRewriteFilter::kImageWebpFromGifSuccessMs[] =
+    "image_webp_conversion_gif_success_ms";
+const char ImageRewriteFilter::kImageWebpFromPngSuccessMs[] =
+    "image_webp_conversion_png_success_ms";
+const char ImageRewriteFilter::kImageWebpFromJpegSuccessMs[] =
+    "image_webp_conversion_jpeg_success_ms";
+
+const char ImageRewriteFilter::kImageWebpFromGifFailureMs[] =
+    "image_webp_conversion_gif_failure_ms";
+const char ImageRewriteFilter::kImageWebpFromPngFailureMs[] =
+    "image_webp_conversion_png_failure_ms";
+const char ImageRewriteFilter::kImageWebpFromJpegFailureMs[] =
+    "image_webp_conversion_jpeg_failure_ms";
+
+const char ImageRewriteFilter::kImageWebpWithAlphaTimeouts[] =
+    "image_webp_alpha_timeouts";
+const char ImageRewriteFilter::kImageWebpWithAlphaSuccessMs[] =
+    "image_webp_alpha_success_ms";
+const char ImageRewriteFilter::kImageWebpWithAlphaFailureMs[] =
+    "image_webp_alpha_failure_ms";
+
+const char ImageRewriteFilter::kImageWebpOpaqueTimeouts[] =
+    "image_webp_opaque_timeouts";
+const char ImageRewriteFilter::kImageWebpOpaqueSuccessMs[] =
+    "image_webp_opaque_success_ms";
+const char ImageRewriteFilter::kImageWebpOpaqueFailureMs[] =
+    "image_webp_opaque_failure_ms";
+
 const int kNotCriticalIndex = INT_MAX;
 
 // This is the resized placeholder image width for mobile.
@@ -185,6 +220,7 @@ void SetWebpCompressionOptions(
     const ResourceContext& resource_context,
     const RewriteOptions& options,
     const StringPiece& url,
+    Image::ConversionVariables* webp_conversion_variables,
     Image::CompressionOptions* image_options) {
   switch (resource_context.libwebp_level()) {
       case ResourceContext::LIBWEBP_NONE:
@@ -212,6 +248,7 @@ void SetWebpCompressionOptions(
       default:
         LOG(DFATAL) << "Unhandled libwebp_level";
   }
+  image_options->webp_conversion_variables = webp_conversion_variables;
 }
 
 void ImageRewriteFilter::Context::RewriteSingle(
@@ -312,6 +349,57 @@ ImageRewriteFilter::ImageRewriteFilter(RewriteDriver* driver)
   image_rewrite_uses_ = stats->GetVariable(kImageRewriteUses);
   image_inline_count_ = stats->GetVariable(kImageInline);
   image_webp_rewrites_ = stats->GetVariable(kImageWebpRewrites);
+
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::FROM_GIF)->timeout_count =
+      stats->GetVariable(kImageWebpFromGifTimeouts);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::FROM_PNG)->timeout_count =
+      stats->GetVariable(kImageWebpFromPngTimeouts);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::FROM_JPEG)->timeout_count =
+      stats->GetVariable(kImageWebpFromJpegTimeouts);
+
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::FROM_GIF)->success_ms =
+      stats->GetHistogram(kImageWebpFromGifSuccessMs);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::FROM_PNG)->success_ms =
+      stats->GetHistogram(kImageWebpFromPngSuccessMs);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::FROM_JPEG)->success_ms =
+      stats->GetHistogram(kImageWebpFromJpegSuccessMs);
+
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::FROM_GIF)->failure_ms =
+      stats->GetHistogram(kImageWebpFromGifFailureMs);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::FROM_PNG)->failure_ms =
+      stats->GetHistogram(kImageWebpFromPngFailureMs);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::FROM_JPEG)->failure_ms =
+      stats->GetHistogram(kImageWebpFromJpegFailureMs);
+
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::NONOPAQUE)->timeout_count =
+      stats->GetVariable(kImageWebpWithAlphaTimeouts);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::NONOPAQUE)->success_ms =
+      stats->GetHistogram(kImageWebpWithAlphaSuccessMs);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::NONOPAQUE)->failure_ms =
+      stats->GetHistogram(kImageWebpWithAlphaFailureMs);
+
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::OPAQUE)->timeout_count =
+      stats->GetVariable(kImageWebpOpaqueTimeouts);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::OPAQUE)->success_ms =
+      stats->GetHistogram(kImageWebpOpaqueSuccessMs);
+  webp_conversion_variables_.Get(
+      Image::ConversionVariables::OPAQUE)->failure_ms =
+      stats->GetHistogram(kImageWebpOpaqueFailureMs);
+
   image_rewrite_latency_ok_ms_ = stats->GetHistogram(kImageRewriteLatencyOkMs);
   image_rewrite_latency_failed_ms_ =
       stats->GetHistogram(kImageRewriteLatencyFailedMs);
@@ -357,6 +445,26 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
   statistics->AddGlobalVariable(kImageOngoingRewrites);
   statistics->AddHistogram(kImageRewriteLatencyOkMs);
   statistics->AddHistogram(kImageRewriteLatencyFailedMs);
+
+  statistics->AddVariable(kImageWebpFromGifTimeouts);
+  statistics->AddVariable(kImageWebpFromPngTimeouts);
+  statistics->AddVariable(kImageWebpFromJpegTimeouts);
+
+  statistics->AddHistogram(kImageWebpFromGifSuccessMs);
+  statistics->AddHistogram(kImageWebpFromPngSuccessMs);
+  statistics->AddHistogram(kImageWebpFromJpegSuccessMs);
+
+  statistics->AddHistogram(kImageWebpFromGifFailureMs);
+  statistics->AddHistogram(kImageWebpFromPngFailureMs);
+  statistics->AddHistogram(kImageWebpFromJpegFailureMs);
+
+  statistics->AddVariable(kImageWebpWithAlphaTimeouts);
+  statistics->AddHistogram(kImageWebpWithAlphaSuccessMs);
+  statistics->AddHistogram(kImageWebpWithAlphaFailureMs);
+
+  statistics->AddVariable(kImageWebpOpaqueTimeouts);
+  statistics->AddHistogram(kImageWebpOpaqueSuccessMs);
+  statistics->AddHistogram(kImageWebpOpaqueFailureMs);
 }
 
 void ImageRewriteFilter::StartDocumentImpl() {
@@ -380,8 +488,9 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
       // TODO(vchudnov): Consider whether we want to treat CSS images
       // differently.
       (!is_css || input_size <= options->max_image_bytes_for_webp_in_css())) {
-    SetWebpCompressionOptions(
-        resource_context, *options, input_resource->url(), image_options);
+    SetWebpCompressionOptions(resource_context, *options, input_resource->url(),
+                              &webp_conversion_variables_,
+                              image_options);
   }
   image_options->jpeg_quality = options->image_recompress_quality();
   if (options->image_jpeg_recompress_quality() != -1) {
@@ -677,7 +786,9 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
       Image::CompressionOptions* image_options =
           new Image::CompressionOptions();
       SetWebpCompressionOptions(resource_context, *options,
-                                input_resource->url(), image_options);
+                                input_resource->url(),
+                                &webp_conversion_variables_,
+                                image_options);
 
       image_options->jpeg_quality = options->image_recompress_quality();
       if (options->image_jpeg_recompress_quality() != -1) {
