@@ -888,6 +888,8 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@/with_shm" 8
 #ALL_DIRECTIVES ModPagespeedJsInlineMaxBytes 2000
 #ALL_DIRECTIVES ModPagespeedJsOutlineMinBytes 2000
 #ALL_DIRECTIVES ModPagespeedJsPreserveURLS off
+#ALL_DIRECTIVES ModPagespeedLazyloadImagesAfterOnload on
+#ALL_DIRECTIVES ModPagespeedLazyloadImagesBlankUrl "http://www.gstatic.com/psa/static/1.gif"
 #ALL_DIRECTIVES ModPagespeedLRUCacheByteLimit 1000
 #ALL_DIRECTIVES ModPagespeedLRUCacheKbPerProcess 1
 #ALL_DIRECTIVES ModPagespeedListOutstandingUrlsOnError on

@@ -1044,7 +1044,7 @@ void RewriteOptions::AddProperties() {
       "", &RewriteOptions::lazyload_images_blank_url_, "llbu",
       kLazyloadImagesBlankUrl,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      "URL of image used to display prior to loading the lazy image");
   AddBaseProperty(
       true, &RewriteOptions::inline_only_critical_images_, "ioci",
       kInlineOnlyCriticalImages,
