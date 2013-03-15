@@ -561,9 +561,20 @@ HtmlColor Parser::ParseColor() {
   // We also do not want rrggbb (without #) to be accepted in non-quirks mode,
   // but HtmlColor will happily accept it anyway. Do a sanity check here.
   if (i == 3 || i == 6) {
-    if (!rgb_valid ||
-        (!Done() && (*in_ == '%' || StartsIdent(*in_))))
+    if (!Done() && (*in_ == '%' || StartsIdent(*in_))) {
       return HtmlColor("", 0);
+    } else {
+      if (!rgb_valid) {
+        if (preservation_mode_) {
+          // In preservation mode, we want to preserve quirks-mode colors
+          // (even if we are not parsing in quirks-mode). By reporting an
+          // error, we make sure that preservation-mode will preserve the
+          // original bytes and pass them through verbatim.
+          ReportParsingError(kValueError, "Quirks-mode color encountered");
+        }
+        return HtmlColor("", 0);
+      }
+    }
   }
 
   if (i == 3) {

@@ -413,6 +413,31 @@ TEST_F(ParserTest, color) {
   a.reset(new Parser("rgb( 12% , 25% 30%)"));
   t.reset(a->ParseAny());
   EXPECT_FALSE(t.get());
+
+  // Parsed as color in quirks-mode.
+  a.reset(new Parser("0000ff"));
+  t.reset(a->ParseAnyExpectingColor());
+  EXPECT_EQ(Value::COLOR, t->GetLexicalUnitType());
+  EXPECT_EQ("#0000ff", t->ToString());
+  EXPECT_EQ(Parser::kNoError, a->errors_seen_mask());
+
+  // Parsed as dimension in standards-mode.
+  a.reset(new Parser("0000ff"));
+  a->set_quirks_mode(false);
+  t.reset(a->ParseAnyExpectingColor());
+  EXPECT_EQ(Value::NUMBER, t->GetLexicalUnitType());
+  EXPECT_EQ("0ff", t->ToString());
+  EXPECT_EQ(Parser::kNoError, a->errors_seen_mask());
+
+  // Original preserved in preservation-mode + standards-mode.
+  a.reset(new Parser("0000ff"));
+  a->set_quirks_mode(false);
+  a->set_preservation_mode(true);
+  t.reset(a->ParseAnyExpectingColor());
+  EXPECT_EQ(Value::NUMBER, t->GetLexicalUnitType());
+  EXPECT_EQ("0ff", t->ToString());
+  // ValueError assures that we will preserve the original string.
+  EXPECT_EQ(Parser::kValueError, a->errors_seen_mask());
 }
 
 TEST_F(ParserTest, url) {

@@ -60,6 +60,7 @@ bool MinifyCss_main(int argc, char** argv) {
   // Parse CSS.
   Css::Parser parser(in_text);
   parser.set_preservation_mode(true);
+  parser.set_quirks_mode(false);
   scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
 
   // Report error summary.

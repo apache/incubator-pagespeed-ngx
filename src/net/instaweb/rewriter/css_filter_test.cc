@@ -127,6 +127,7 @@ class CssFilterTest : public CssRewriteTestBase {
     // in the CSS parser.
     Css::Parser parser(css_input);
     parser.set_preservation_mode(true);
+    parser.set_quirks_mode(false);
     scoped_ptr<Css::Stylesheet> stylesheet(parser.ParseRawStylesheet());
     EXPECT_TRUE(parser.errors_seen_mask() == Css::Parser::kNoError);
     EXPECT_EQ(expect_unparseable_section,
@@ -1219,7 +1220,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 
     // Don't "fix" quirks-mode colors.
     // Note: DECAFB is not converted to a more correct #decafb.
-    { "body { color: DECAFB }", "body{color:DECAFB}" },
+    { "body { color: DECAFB }", "body{color: DECAFB }" },
 
     { "#post_content, #post_content p{\n"
       " font-family:Helvetica;\n"
@@ -1252,6 +1253,15 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // ::- in selectors
     { "::-moz-selection {background: #f36921 ; color: #fff ; text-shadow:none}",
       "::-moz-selection{background:#f36921;color:#fff;text-shadow:none}" },
+
+    // Sloppy color syntax
+    // Note that according to the CSS spec: 0000ff should be parsed as
+    // DIM(0, ff) and then serialized as 0ff, but browsers will parse both
+    // of these values as quirks-mode colors and thus we would be changing
+    // the links from blue to cyan.
+    // https://code.google.com/p/modpagespeed/issues/detail?id=639
+    { "A:link, A:visited { color: 0000ff }",
+      "A:link,A:visited{color: 0000ff }" },
 
     // Unexpected ! uses in declarations.
     { ".filehistory a img,#file img:hover{background:white url(data:image/png;"
