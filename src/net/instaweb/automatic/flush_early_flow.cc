@@ -30,6 +30,7 @@
 #include "net/instaweb/http/public/meta_data.h"  // for Code::kOK
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -361,6 +362,10 @@ FlushEarlyFlow::FlushEarlyFlow(
   flush_early_rewrite_latency_ms_ = stats->GetHistogram(
       kFlushEarlyRewriteLatencyMs);
   driver_->increment_async_events_count();
+  // Do not flush preconnects on mobile as it can potentially block useful
+  // connections to resources.
+  should_flush_preconnects_ =
+      !driver_->device_properties()->IsMobileUserAgent();
 }
 
 FlushEarlyFlow::~FlushEarlyFlow() {
@@ -514,7 +519,7 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
     }
   }
 
-  if (max_preconnect_attempts > 0 &&
+  if (should_flush_preconnects_ && max_preconnect_attempts > 0 &&
       !flush_early_driver->options()->pre_connect_url().empty() &&
       average_fetch_time_ > kMinLatencyForPreconnectMs) {
     for (int index = 0; index < max_preconnect_attempts; ++index) {

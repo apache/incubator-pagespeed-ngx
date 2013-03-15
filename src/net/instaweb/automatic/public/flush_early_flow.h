@@ -104,6 +104,7 @@ class FlushEarlyFlow {
   ProxyFetchPropertyCallbackCollector* property_cache_callback_;
   bool should_flush_early_lazyload_script_;
   MessageHandler* handler_;
+  bool should_flush_preconnects_;
 
   TimedVariable* num_requests_flushed_early_;
   TimedVariable* num_resources_flushed_early_;

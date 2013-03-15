@@ -795,6 +795,114 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     }
   }
 
+  void TestFlushPreconnects(bool is_mobile) {
+    latency_fetcher_->set_latency(200);
+    const char kInputHtml[] =
+        "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+        "<html>"
+        "<head>"
+        "<title>Flush Subresources Early example</title>"
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
+        "</head>"
+        "<body>"
+        "<img src=1.jpg />"
+        "<img src=2.jpg />"
+        "<img src=3.jpg />"
+        "Hello, mod_pagespeed!"
+        "</body>"
+        "</html>";
+
+    GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
+    const char pre_connect_tag[] =
+        "<link rel=\"stylesheet\" href=\"http://cdn.com/pre_connect?id=%s\"/>";
+    const char image_tag[] =
+        "<img src=http://cdn.com/http/test.com/http/test.com/%s />";
+
+    GoogleString pre_connect_url = "http://cdn.com/pre_connect";
+    GoogleString kOutputHtml = StringPrintf(
+        "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+        "<html>"
+        "<head>"
+        "<script type=\"text/javascript\">"
+        "(function(){new Image().src=\"http://cdn.com/http/test.com/http/"
+        "test.com/A.1.css.pagespeed.cf.%s.css\";})()</script>"
+        "<script type='text/javascript'>"
+        "window.mod_pagespeed_prefetch_start = Number("
+        "new Date());"
+        "window.mod_pagespeed_num_resources_prefetched = 1</script>",
+        kMockHashValue);
+    if (!is_mobile) {
+      StrAppend(&kOutputHtml, StringPrintf(pre_connect_tag, "0"),
+                StringPrintf(pre_connect_tag, "1"));
+    }
+    StrAppend(&kOutputHtml,
+        StringPrintf(
+        "<title>Flush Subresources Early example</title>"
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"http://cdn.com/http/"
+            "test.com/http/test.com/A.1.css.pagespeed.cf.%s.css\">"
+        "</head>"
+        "<body>", kMockHashValue), StrCat(
+        StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
+                     redirect_url.c_str()),
+        StringPrintf(image_tag, StringPrintf("1.jpg.pagespeed.ce.%s.jpg",
+                                             kMockHashValue).c_str()),
+        StringPrintf(image_tag, StringPrintf("2.jpg.pagespeed.ce.%s.jpg",
+                                             kMockHashValue).c_str()),
+        StringPrintf(image_tag, StringPrintf("3.jpg.pagespeed.ce.%s.jpg",
+                                             kMockHashValue).c_str()),
+        "Hello, mod_pagespeed!"
+        "</body>"
+        "</html>"));
+
+    ResponseHeaders headers;
+    headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+    headers.SetStatusAndReason(HttpStatus::kOK);
+    mock_url_fetcher_.SetResponse(kTestDomain, headers, kInputHtml);
+
+    // Enable FlushSubresourcesFilter filter.
+    RewriteOptions* rewrite_options = server_context()->global_options();
+    rewrite_options->ClearSignatureForTesting();
+    rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
+    rewrite_options->EnableExtendCacheFilters();
+    // Disabling the inline filters so that the resources get flushed early
+    // else our dummy resources are too small and always get inlined.
+    rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
+    rewrite_options->DisableFilter(RewriteOptions::kInlineJavascript);
+    rewrite_options->set_pre_connect_url(pre_connect_url);
+    rewrite_options->ComputeSignature(hasher());
+
+    SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.css"), kContentTypeCss,
+                                  kCssContent, kHtmlCacheTimeSec * 2);
+    SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.jpg"),
+                                  kContentTypeJpeg, "image",
+                                  kHtmlCacheTimeSec * 2);
+    SetResponseWithDefaultHeaders(StrCat(kTestDomain, "2.jpg"),
+                                  kContentTypeJpeg, "image",
+                                  kHtmlCacheTimeSec * 2);
+    SetResponseWithDefaultHeaders(StrCat(kTestDomain, "3.jpg"),
+                                  kContentTypeJpeg, "image",
+                                  kHtmlCacheTimeSec * 2);
+    TestUrlNamer url_namer;
+    server_context()->set_url_namer(&url_namer);
+    url_namer.SetProxyMode(true);
+
+    GoogleString text;
+    RequestHeaders request_headers;
+    if (is_mobile) {
+      request_headers.Replace(HttpAttributes::kUserAgent,
+                              UserAgentStrings::kAndroidChrome21UserAgent);
+    } else {
+      request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_image_tag");
+    }
+
+    FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+    // Fetch the url again. This time FlushEarlyFlow and pre connect should be
+    // triggered.
+    FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+    EXPECT_EQ(kOutputHtml, text);
+  }
+
   scoped_ptr<BackgroundFetchCheckingUrlAsyncFetcher> background_fetch_fetcher_;
   scoped_ptr<LatencyUrlAsyncFetcher> latency_fetcher_;
   int64 start_time_ms_;
@@ -1381,99 +1489,11 @@ TEST_F(FlushEarlyFlowTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
 }
 
 TEST_F(FlushEarlyFlowTest, PreconnectTest) {
-  latency_fetcher_->set_latency(200);
-  const char kInputHtml[] =
-      "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
-      "<html>"
-      "<head>"
-      "<title>Flush Subresources Early example</title>"
-      "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
-      "</head>"
-      "<body>"
-      "<img src=1.jpg />"
-      "<img src=2.jpg />"
-      "<img src=3.jpg />"
-      "Hello, mod_pagespeed!"
-      "</body>"
-      "</html>";
+  TestFlushPreconnects(false);
+}
 
-  GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
-  const char pre_connect_tag[] =
-      "<link rel=\"stylesheet\" href=\"http://cdn.com/pre_connect?id=%s\"/>";
-  const char image_tag[] =
-      "<img src=http://cdn.com/http/test.com/http/test.com/%s />";
-
-  GoogleString pre_connect_url = "http://cdn.com/pre_connect";
-  GoogleString kOutputHtml = StrCat(StringPrintf(
-      "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
-      "<html>"
-      "<head>"
-      "<script type=\"text/javascript\">"
-      "(function(){new Image().src=\"http://cdn.com/http/test.com/http/"
-      "test.com/A.1.css.pagespeed.cf.%s.css\";})()</script>"
-      "<script type='text/javascript'>"
-      "window.mod_pagespeed_prefetch_start = Number("
-      "new Date());window.mod_pagespeed_num_resources_prefetched = 1</script>",
-      kMockHashValue),
-      StringPrintf(pre_connect_tag, "0"),
-      StringPrintf(pre_connect_tag, "1"),
-      StringPrintf(
-      "<title>Flush Subresources Early example</title>"
-      "<link rel=\"stylesheet\" type=\"text/css\" href=\"http://cdn.com/http/"
-          "test.com/http/test.com/A.1.css.pagespeed.cf.%s.css\">"
-      "</head>"
-      "<body>", kMockHashValue), StrCat(
-      StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
-                   redirect_url.c_str()),
-      StringPrintf(image_tag, StringPrintf("1.jpg.pagespeed.ce.%s.jpg",
-                                           kMockHashValue).c_str()),
-      StringPrintf(image_tag, StringPrintf("2.jpg.pagespeed.ce.%s.jpg",
-                                           kMockHashValue).c_str()),
-      StringPrintf(image_tag, StringPrintf("3.jpg.pagespeed.ce.%s.jpg",
-                                           kMockHashValue).c_str()),
-      "Hello, mod_pagespeed!"
-      "</body>"
-      "</html>"));
-
-  ResponseHeaders headers;
-  headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
-  headers.SetStatusAndReason(HttpStatus::kOK);
-  mock_url_fetcher_.SetResponse(kTestDomain, headers, kInputHtml);
-
-  // Enable FlushSubresourcesFilter filter.
-  RewriteOptions* rewrite_options = server_context()->global_options();
-  rewrite_options->ClearSignatureForTesting();
-  rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
-  rewrite_options->EnableExtendCacheFilters();
-  // Disabling the inline filters so that the resources get flushed early
-  // else our dummy resources are too small and always get inlined.
-  rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
-  rewrite_options->DisableFilter(RewriteOptions::kInlineJavascript);
-  rewrite_options->set_pre_connect_url(pre_connect_url);
-  rewrite_options->ComputeSignature(hasher());
-
-  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.css"), kContentTypeCss,
-                                kCssContent, kHtmlCacheTimeSec * 2);
-  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.jpg"), kContentTypeJpeg,
-                                "image", kHtmlCacheTimeSec * 2);
-  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "2.jpg"), kContentTypeJpeg,
-                                "image", kHtmlCacheTimeSec * 2);
-  SetResponseWithDefaultHeaders(StrCat(kTestDomain, "3.jpg"), kContentTypeJpeg,
-                                "image", kHtmlCacheTimeSec * 2);
-  TestUrlNamer url_namer;
-  server_context()->set_url_namer(&url_namer);
-  url_namer.SetProxyMode(true);
-
-  GoogleString text;
-  RequestHeaders request_headers;
-  request_headers.Replace(HttpAttributes::kUserAgent, "prefetch_image_tag");
-
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-
-  // Fetch the url again. This time FlushEarlyFlow and pre connect should be
-  // triggered.
-  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
-  EXPECT_EQ(kOutputHtml, text);
+TEST_F(FlushEarlyFlowTest, NoPreconnectForMobile) {
+  TestFlushPreconnects(true);
 }
 
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestWithLocalStorageDoesNotCrash) {
