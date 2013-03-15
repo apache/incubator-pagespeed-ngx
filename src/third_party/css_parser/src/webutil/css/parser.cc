@@ -1423,8 +1423,7 @@ Declarations* Parser::ParseRawDeclarations() {
     bool ignore_this_decl = false;
     switch (*in_) {
       case ';':
-        // TODO(sligocki): Is there any way declarations might not be separated
-        // by ';' in the current code? We don't explicitly check.
+        // Note: We check below that all declarations end with ';' or '}'.
         in_++;
         break;
       case '}':
@@ -1497,11 +1496,28 @@ Declarations* Parser::ParseRawDeclarations() {
           in_++;
           SkipSpace();
           UnicodeText ident = ParseIdent();
-          if (StringCaseEquals(ident, "important"))
+          if (StringCaseEquals(ident, "important")) {
             important = true;
+          } else {
+            ReportParsingError(kDeclarationError, StringPrintf(
+                "Unexpected !-identifier: !%s",
+                UnicodeTextToUTF8(ident).c_str()));
+            ignore_this_decl = true;
+            break;
+          }
         }
-        declarations->push_back(
-            new Declaration(prop, vals.release(), important));
+        SkipSpace();
+        // Don't add Declaration if it is not ended with a ';' or '}'.
+        // For example: "foo: bar !important really;" is not valid.
+        if (Done() || *in_ == ';' || *in_ == '}') {
+          declarations->push_back(
+              new Declaration(prop, vals.release(), important));
+        } else {
+          ReportParsingError(kDeclarationError, StringPrintf(
+              "Unexpected char %c at end of declaration", *in_));
+          ignore_this_decl = true;
+          break;
+        }
       }
     }
     SkipSpace();

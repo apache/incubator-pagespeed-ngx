@@ -1557,14 +1557,22 @@ TEST_F(ParserTest, Utf8Error) {
 }
 
 TEST_F(ParserTest, DeclarationError) {
-  Parser p("font-family ; ");
-  scoped_ptr<Declarations> declarations(p.ParseDeclarations());
+  scoped_ptr<Parser> p(new Parser("font-family ; "));
+  scoped_ptr<Declarations> declarations(p->ParseDeclarations());
   EXPECT_EQ(0, declarations->size());
-  EXPECT_EQ(Parser::kDeclarationError, p.errors_seen_mask());
+  EXPECT_EQ(Parser::kDeclarationError, p->errors_seen_mask());
 
-  Parser p2("padding-top: 1.em");
-  declarations.reset(p2.ParseDeclarations());
-  EXPECT_TRUE(Parser::kDeclarationError & p2.errors_seen_mask());
+  p.reset(new Parser("padding-top: 1.em"));
+  declarations.reset(p->ParseDeclarations());
+  EXPECT_TRUE(Parser::kDeclarationError & p->errors_seen_mask());
+
+  p.reset(new Parser("color: red !ie"));
+  declarations.reset(p->ParseDeclarations());
+  EXPECT_TRUE(Parser::kDeclarationError & p->errors_seen_mask());
+
+  p.reset(new Parser("color: red !important really"));
+  declarations.reset(p->ParseDeclarations());
+  EXPECT_TRUE(Parser::kDeclarationError & p->errors_seen_mask());
 }
 
 TEST_F(ParserTest, SelectorError) {

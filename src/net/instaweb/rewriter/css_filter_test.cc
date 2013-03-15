@@ -533,6 +533,11 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // INT(1) DELIM(.) IDENT(em)
     "a{padding-top: 1.em }",
 
+    // Unexpected ! uses in declarations.
+    "a{color: red !ie }",
+    "a{color: !important red }",
+    "a{color: red !important blue }",
+
     // Things from Alexa-100 that we get parsing errors for. Most are illegal
     // syntax/typos. Some are CSS3 constructs.
 
@@ -1247,6 +1252,19 @@ TEST_F(CssFilterTest, ComplexCssTest) {
     // ::- in selectors
     { "::-moz-selection {background: #f36921 ; color: #fff ; text-shadow:none}",
       "::-moz-selection{background:#f36921;color:#fff;text-shadow:none}" },
+
+    // Unexpected ! uses in declarations.
+    { ".filehistory a img,#file img:hover{background:white url(data:image/png;"
+      "base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAAAAAA6mKC9AAAAGElEQVQYV2N4DwX/"
+      "oYBhgARgDJjEAAkAAEC99wFuu0VFAAAAAElFTkSuQmCC) repeat;"
+      "background:white url(http://static.uncyc.org/skins/common/images/Checke"
+      "r-16x16.png?2012-02-15T12:25:00Z) repeat!ie}",
+
+      ".filehistory a img,#file img:hover{background:#fff url(data:image/png;"
+      "base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAAAAAA6mKC9AAAAGElEQVQYV2N4DwX/"
+      "oYBhgARgDJjEAAkAAEC99wFuu0VFAAAAAElFTkSuQmCC) repeat;"
+      "background:white url(http://static.uncyc.org/skins/common/images/Checke"
+      "r-16x16.png?2012-02-15T12:25:00Z) repeat!ie}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {
