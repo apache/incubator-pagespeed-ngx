@@ -19,8 +19,6 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_LOG_RECORD_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_LOG_RECORD_H_
 
-#include <map>
-
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -81,7 +79,7 @@ class LogRecord  {
   // Creates a new rewriter logging submessage for |rewriter_id|,
   // sets status and the url index.
   void SetRewriterLoggingStatus(
-      const char* rewriter_id, StringPiece url,
+      const char* rewriter_id, const GoogleString& url,
       RewriterInfo::RewriterApplicationStatus status);
 
   // Return the LoggingInfo proto wrapped by this class. Calling code must
@@ -135,7 +133,7 @@ class LogRecord  {
   // Log a RewriterInfo for the image rewrite filter.
   void LogImageRewriteActivity(
       const char* id,
-      StringPiece url,
+      const GoogleString& url,
       RewriterInfo::RewriterApplicationStatus status,
       bool is_image_inlined,
       bool is_critical_image,
@@ -190,7 +188,7 @@ class LogRecord  {
   void InitLogging();
 
   void PopulateUrl(
-      StringPiece url, RewriteResourceInfo* rewrite_resource_info);
+      const GoogleString& url, RewriteResourceInfo* rewrite_resource_info);
 
   scoped_ptr<LoggingInfo> logging_info_;
 
@@ -205,7 +203,7 @@ class LogRecord  {
   bool allow_logging_urls_;
 
   // Map which maintains the url to index for logging urls.
-  std::map<StringPiece, int32> url_index_map_;
+  StringIntMap url_index_map_;
 
   DISALLOW_COPY_AND_ASSIGN(LogRecord);
 };

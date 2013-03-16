@@ -18,7 +18,9 @@
 
 #include "net/instaweb/http/public/log_record.h"
 
+#include <map>
 #include <set>
+#include <utility>
 
 #include "base/logging.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -124,7 +126,7 @@ void LogRecord::SetRewriterLoggingStatus(
 }
 
 void LogRecord::SetRewriterLoggingStatus(
-    const char* id, StringPiece url,
+    const char* id, const GoogleString& url,
     RewriterInfo::RewriterApplicationStatus status) {
   RewriterInfo* rewriter_info = NewRewriterInfo(id);
   if (rewriter_info == NULL) {
@@ -248,7 +250,7 @@ void LogRecord::SetAllowLoggingUrls(bool allow_logging_urls) {
 
 void LogRecord::LogImageRewriteActivity(
     const char* id,
-    StringPiece url,
+    const GoogleString& url,
     RewriterInfo::RewriterApplicationStatus status,
     bool is_image_inlined,
     bool is_critical_image,
@@ -316,20 +318,18 @@ void LogRecord::LogLazyloadFilter(
 }
 
 void LogRecord::PopulateUrl(
-    StringPiece url, RewriteResourceInfo* rewrite_resource_info) {
-  std::map<StringPiece, int>::iterator it = url_index_map_.find(url);
-  if (it != url_index_map_.end()) {
-    rewrite_resource_info->set_original_resource_url_index(it->second);
-    return;
+    const GoogleString& url, RewriteResourceInfo* rewrite_resource_info) {
+  std::pair<StringIntMap::iterator, bool> result = url_index_map_.insert(
+      std::make_pair(url, 0));
+  StringIntMap::iterator iter = result.first;
+  if (result.second) {
+    ResourceUrlInfo* resource_url_info =
+        logging_info()->mutable_resource_url_info();
+    resource_url_info->add_url(url);
+    iter->second =  resource_url_info->url_size() - 1;
   }
 
-  ResourceUrlInfo* resource_url_info =
-      logging_info()->mutable_resource_url_info();
-  GoogleString* added_url = resource_url_info->add_url();
-  added_url->assign(url.data(), url.size());
-  int index = resource_url_info->url_size() - 1;
-  url_index_map_.insert(std::pair<StringPiece, int32>(url, index));
-  rewrite_resource_info->set_original_resource_url_index(index);
+  rewrite_resource_info->set_original_resource_url_index(iter->second);
 }
 
 }  // namespace net_instaweb
