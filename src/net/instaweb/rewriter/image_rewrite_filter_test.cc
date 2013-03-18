@@ -1443,10 +1443,9 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
                     "", "", false, false);
 
   // Image present in critical set should be inlined.
-  StringSet* critical_images = new StringSet;
+  StringSet* critical_images = server_context()->critical_images_finder()->
+      mutable_html_critical_images(rewrite_driver());
   critical_images->insert(StrCat(kTestDomain, kChefGifFile));
-  server_context()->critical_images_finder()->SetHtmlCriticalImages(
-      rewrite_driver(), critical_images);
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, true);
 }

@@ -20,7 +20,6 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_IMAGES_FINDER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -38,11 +37,8 @@ class Variable;
 // specific data needed by CriticalImagesFinder, and is held by the
 // RewriteDriver.
 struct CriticalImagesInfo {
-  CriticalImagesInfo() :
-    html_critical_images(new StringSet),
-    css_critical_images(new StringSet) {}
-  scoped_ptr<StringSet> html_critical_images;
-  scoped_ptr<StringSet> css_critical_images;
+  StringSet html_critical_images;
+  StringSet css_critical_images;
 };
 
 
@@ -74,20 +70,17 @@ class CriticalImagesFinder {
   virtual bool IsCssCriticalImage(const GoogleString& image_url,
                                   RewriteDriver* driver);
 
-  // Get the critical image sets. Can return NULL if the property cache has not
-  // been set up.
-  const StringSet* GetHtmlCriticalImages(RewriteDriver* driver);
-  const StringSet* GetCssCriticalImages(RewriteDriver* driver);
+  // Get the critical image sets. Returns an empty set if there is no critical
+  // image information.
+  const StringSet& GetHtmlCriticalImages(RewriteDriver* driver);
+  const StringSet& GetCssCriticalImages(RewriteDriver* driver);
 
   // Utility functions for manually setting the critical image sets. These
   // should only be used by unit tests that need to setup a specific set of
   // critical images. For normal users of CriticalImagesFinder, the critical
-  // images will be populated from entries in the property cache. Will take
-  // ownership of critical_images.
-  void SetHtmlCriticalImages(RewriteDriver* driver,
-                             StringSet* critical_images);
-  void SetCssCriticalImages(RewriteDriver* driver,
-                            StringSet* critical_images);
+  // images will be populated from entries in the property cache.
+  StringSet* mutable_html_critical_images(RewriteDriver* driver);
+  StringSet* mutable_css_critical_images(RewriteDriver* driver);
 
   // Compute the critical images for the given url.
   virtual void ComputeCriticalImages(StringPiece url,
@@ -117,8 +110,10 @@ class CriticalImagesFinder {
       StringSet* css_critical_images_set);
 
  protected:
-  // Gets critical images if present in the property cache and
-  // updates the critical_images set in RewriteDriver with the obtained set.
+  // Gets critical images if present in the property cache and updates the
+  // critical_images set in RewriteDriver with the obtained set.  If you
+  // override this method, driver->critical_images_info() must not return NULL
+  // after this function has been called.
   virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver);
 
   // Extracts and returns the critical images from the given property_value,

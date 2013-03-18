@@ -226,14 +226,12 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
   server_context()->set_critical_images_finder(
       new MeaningfulCriticalImagesFinder(statistics()));
 
-  StringSet* critical_images = new StringSet;
+  StringSet* critical_images = server_context()->critical_images_finder()->
+      mutable_html_critical_images(rewrite_driver());
   critical_images->insert("http://www.1.com/critical");
   critical_images->insert("www.1.com/critical2");
   critical_images->insert("http://test.com/critical3");
   critical_images->insert("http://test.com/critical4.jpg");
-
-  server_context()->critical_images_finder()->SetHtmlCriticalImages(
-      rewrite_driver(), critical_images);
 
   GoogleString rewritten_url = Encode(
       "http://test.com/", "ce", "HASH", "critical4.jpg", "jpg");

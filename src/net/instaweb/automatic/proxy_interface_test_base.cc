@@ -19,7 +19,6 @@
 #include "net/instaweb/automatic/public/proxy_interface_test_base.h"
 
 #include <cstddef>
-#include <set>
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/automatic/public/proxy_interface.h"
@@ -133,10 +132,10 @@ class FakeCriticalImagesFinder : public CriticalImagesFinder {
   virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver) {
     CriticalImagesInfo* info = new CriticalImagesInfo;
     if (critical_images_ != NULL) {
-      *info->html_critical_images = *critical_images_;
+      info->html_critical_images = *critical_images_;
     }
     if (css_critical_images_ != NULL) {
-      *info->css_critical_images = *css_critical_images_;
+      info->css_critical_images = *css_critical_images_;
     }
     driver->set_critical_images_info(info);
   }

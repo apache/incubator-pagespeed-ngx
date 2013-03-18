@@ -85,7 +85,7 @@ SimpleSelector* SimpleSelector::NewLang(const UnicodeText& lang) {
 }
 
 //
-// Some destructors that need STLDeleteElements() from stl_util-inl.h
+// Some destructors that need STLDeleteElements() from stl_util.h
 //
 
 SimpleSelectors::~SimpleSelectors() { STLDeleteElements(this); }

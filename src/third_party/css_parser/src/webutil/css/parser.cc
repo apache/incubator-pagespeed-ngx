@@ -2434,7 +2434,7 @@ Stylesheet* Parser::ParseStylesheet() {
 }
 
 //
-// Some destructors that need STLDeleteElements() from stl_util-inl.h
+// Some destructors that need STLDeleteElements() from stl_util.h
 //
 
 Declarations::~Declarations() { STLDeleteElements(this); }
