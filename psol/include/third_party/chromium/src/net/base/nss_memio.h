@@ -1,11 +1,10 @@
-// Copyright (c) 2008 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 // Written in NSPR style to also be suitable for adding to the NSS demo suite
 
 #ifndef __MEMIO_H
 #define __MEMIO_H
-#pragma once
 
 #include <stddef.h>
 
@@ -38,7 +37,7 @@ typedef struct memio_Private memio_Private;
 ----------------------------------------------------------------------*/
 
 /* Create the I/O layer and its two circular buffers. */
-PRFileDesc *memio_CreateIOLayer(int bufsize);
+PRFileDesc *memio_CreateIOLayer(int readbufsize, int writebufsize);
 
 /* Must call before trying to make an ssl connection */
 void memio_SetPeerName(PRFileDesc *fd, const PRNetAddr *peername);
@@ -82,7 +81,6 @@ void memio_GetWriteParams(memio_Private *secret,
  * On EWOULDBLOCK or the equivalent, don't call this function.
  */
 void memio_PutWriteResult(memio_Private *secret, int bytes_written);
-
 
 #ifdef __cplusplus
 }

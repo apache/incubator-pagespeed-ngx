@@ -28,6 +28,8 @@
 
 namespace net_instaweb {
 
+class ApacheServerContext;
+
 // Was this request made by mod_pagespeed itself? If so, we should not try to
 // handle it, just let Apache deal with it like normal.
 bool is_pagespeed_subrequest(request_rec* request);
@@ -41,6 +43,11 @@ apr_status_t instaweb_handler(request_rec* request);
 // a chance to corrupt mod_pagespeed's generated URLs, which would
 // prevent instaweb_handler from being able to decode the resource.
 apr_status_t save_url_hook(request_rec *request);
+
+// Implementation of the Apache 'translate_name' hook. Used by the actual hook
+// 'save_url_hook' and directly when we already have the server context.
+apr_status_t save_url_in_note(request_rec *request,
+                              ApacheServerContext* server_context);
 
 // By default, apache imposes limitations on URL segments of around
 // 256 characters that appear to correspond to filename limitations.

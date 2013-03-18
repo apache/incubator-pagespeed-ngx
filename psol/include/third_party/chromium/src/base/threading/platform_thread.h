@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,21 +8,17 @@
 
 #ifndef BASE_THREADING_PLATFORM_THREAD_H_
 #define BASE_THREADING_PLATFORM_THREAD_H_
-#pragma once
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
+#include "base/time.h"
 #include "build/build_config.h"
 
 #if defined(OS_WIN)
 #include <windows.h>
 #elif defined(OS_POSIX)
 #include <pthread.h>
-#if defined(OS_MACOSX)
-#include <mach/mach.h>
-#else  // OS_POSIX && !OS_MACOSX
 #include <unistd.h>
-#endif
 #endif
 
 namespace base {
@@ -38,11 +34,7 @@ const PlatformThreadHandle kNullThreadHandle = NULL;
 #elif defined(OS_POSIX)
 typedef pthread_t PlatformThreadHandle;
 const PlatformThreadHandle kNullThreadHandle = 0;
-#if defined(OS_MACOSX)
-typedef mach_port_t PlatformThreadId;
-#else  // OS_POSIX && !OS_MACOSX
 typedef pid_t PlatformThreadId;
-#endif
 #endif
 
 const PlatformThreadId kInvalidThreadId = 0;
@@ -55,14 +47,16 @@ enum ThreadPriority{
 };
 
 // A namespace for low-level thread functions.
-class BASE_API PlatformThread {
+class BASE_EXPORT PlatformThread {
  public:
   // Implement this interface to run code on a background thread.  Your
   // ThreadMain method will be called on the newly created thread.
-  class BASE_API Delegate {
+  class BASE_EXPORT Delegate {
    public:
-    virtual ~Delegate() {}
     virtual void ThreadMain() = 0;
+
+   protected:
+    virtual ~Delegate() {}
   };
 
   // Gets the current thread id, which may be useful for logging purposes.
@@ -71,11 +65,16 @@ class BASE_API PlatformThread {
   // Yield the current thread so another thread can be scheduled.
   static void YieldCurrentThread();
 
-  // Sleeps for the specified duration (units are milliseconds).
-  static void Sleep(int duration_ms);
+  // Sleeps for the specified duration.
+  static void Sleep(base::TimeDelta duration);
 
-  // Sets the thread name visible to a debugger.  This has no effect otherwise.
+  // Sets the thread name visible to debuggers/tools. This has no effect
+  // otherwise. This name pointer is not copied internally. Thus, it must stay
+  // valid until the thread ends.
   static void SetName(const char* name);
+
+  // Gets the thread name, if previously set by SetName.
+  static const char* GetName();
 
   // Creates a new thread.  The |stack_size| parameter can be 0 to indicate
   // that the default stack size should be used.  Upon success,
@@ -88,6 +87,15 @@ class BASE_API PlatformThread {
   static bool Create(size_t stack_size, Delegate* delegate,
                      PlatformThreadHandle* thread_handle);
 
+  // CreateWithPriority() does the same thing as Create() except the priority of
+  // the thread is set based on |priority|.  Can be used in place of Create()
+  // followed by SetThreadPriority().  SetThreadPriority() has not been
+  // implemented on the Linux platform yet, this is the only way to get a high
+  // priority thread on Linux.
+  static bool CreateWithPriority(size_t stack_size, Delegate* delegate,
+                                 PlatformThreadHandle* thread_handle,
+                                 ThreadPriority priority);
+
   // CreateNonJoinable() does the same thing as Create() except the thread
   // cannot be Join()'d.  Therefore, it also does not output a
   // PlatformThreadHandle.
@@ -98,6 +106,8 @@ class BASE_API PlatformThread {
   // |thread_handle|.
   static void Join(PlatformThreadHandle thread_handle);
 
+  // Sets the priority of the thread specified in |handle| to |priority|.
+  // This does not work on Linux, use CreateWithPriority() instead.
   static void SetThreadPriority(PlatformThreadHandle handle,
                                 ThreadPriority priority);
 

@@ -4,7 +4,6 @@
 
 #ifndef NET_BASE_MOCK_FILTER_CONTEXT_H_
 #define NET_BASE_MOCK_FILTER_CONTEXT_H_
-#pragma once
 
 #include <string>
 
@@ -28,30 +27,30 @@ class MockFilterContext : public FilterContext {
     is_sdch_response_ = is_sdch_response;
   }
 
-  virtual bool GetMimeType(std::string* mime_type) const;
+  virtual bool GetMimeType(std::string* mime_type) const OVERRIDE;
 
   // What URL was used to access this data?
   // Return false if gurl is not present.
-  virtual bool GetURL(GURL* gurl) const;
+  virtual bool GetURL(GURL* gurl) const OVERRIDE;
 
   // What was this data requested from a server?
-  virtual base::Time GetRequestTime() const;
+  virtual base::Time GetRequestTime() const OVERRIDE;
 
   // Is data supplied from cache, or fresh across the net?
-  virtual bool IsCachedContent() const;
+  virtual bool IsCachedContent() const OVERRIDE;
 
   // Is this a download?
-  virtual bool IsDownload() const;
+  virtual bool IsDownload() const OVERRIDE;
 
   // Was this data flagged as a response to a request with an SDCH dictionary?
-  virtual bool IsSdchResponse() const;
+  virtual bool IsSdchResponse() const OVERRIDE;
 
   // How many bytes were fed to filter(s) so far?
-  virtual int64 GetByteReadCount() const;
+  virtual int64 GetByteReadCount() const OVERRIDE;
 
-  virtual int GetResponseCode() const;
+  virtual int GetResponseCode() const OVERRIDE;
 
-  virtual void RecordPacketStats(StatisticSelector statistic) const {}
+  virtual void RecordPacketStats(StatisticSelector statistic) const OVERRIDE {}
 
  private:
   int buffer_size_;

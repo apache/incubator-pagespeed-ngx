@@ -4,7 +4,6 @@
 
 #ifndef BASE_BASE_PATHS_MAC_H_
 #define BASE_BASE_PATHS_MAC_H_
-#pragma once
 
 // This file declares Mac-specific path keys for the base module.
 // These can be used with the PathService to access various special

@@ -4,7 +4,6 @@
 
 #ifndef BASE_FORMAT_MACROS_H_
 #define BASE_FORMAT_MACROS_H_
-#pragma once
 
 // This file defines the format macros for some integer types.
 

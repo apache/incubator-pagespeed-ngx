@@ -7,14 +7,13 @@
 
 #ifndef NET_BASE_WINSOCK_INIT_H_
 #define NET_BASE_WINSOCK_INIT_H_
-#pragma once
 
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
 namespace net {
 
 // Make sure that Winsock is initialized, calling WSAStartup if needed.
-NET_API void EnsureWinsockInit();
+NET_EXPORT void EnsureWinsockInit();
 
 }  // namespace net
 

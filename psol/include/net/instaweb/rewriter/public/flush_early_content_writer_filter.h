@@ -21,6 +21,8 @@
 #include <list>
 
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -76,6 +78,12 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
       int64 time_to_download,
       bool is_pagespeed_resource,
       semantic_type::Category category);
+
+  void TryFlushingDeferJavascriptEarly();
+
+  // Returns the type of resource based on the url.
+  FlushEarlyResourceInfo::ResourceType GetResourceType(
+      const GoogleUrl& gurl, bool is_pagespeed_resource);
 
   RewriteDriver* driver_;
   TimedVariable* num_resources_flushed_early_;

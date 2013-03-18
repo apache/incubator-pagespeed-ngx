@@ -69,6 +69,10 @@ class RewriteStats {
   }
   Variable* num_conditional_refreshes() { return num_conditional_refreshes_; }
 
+  Variable* ipro_served() { return ipro_served_; }
+  Variable* ipro_not_in_cache() { return ipro_not_in_cache_; }
+  Variable* ipro_not_rewritable() { return ipro_not_rewritable_; }
+
   Histogram* beacon_timings_ms_histogram() {
     return beacon_timings_ms_histogram_;
   }
@@ -83,8 +87,8 @@ class RewriteStats {
   // Number of HTML pages rewritten.
   TimedVariable* total_rewrite_count() { return total_rewrite_count_; }
 
-  Waveform* thread_queue_depth(RewriteDriverFactory::WorkerPoolName name) {
-    return thread_queue_depths_[name];
+  Waveform* thread_queue_depth(RewriteDriverFactory::WorkerPoolCategory pool) {
+    return thread_queue_depths_[pool];
   }
 
   TimedVariable* num_rewrites_executed() { return num_rewrites_executed_; }
@@ -106,6 +110,9 @@ class RewriteStats {
   Variable* total_page_load_ms_;
   Variable* fallback_responses_served_;
   Variable* num_conditional_refreshes_;
+  Variable* ipro_served_;
+  Variable* ipro_not_in_cache_;
+  Variable* ipro_not_rewritable_;
 
   Histogram* beacon_timings_ms_histogram_;
   Histogram* fetch_latency_histogram_;

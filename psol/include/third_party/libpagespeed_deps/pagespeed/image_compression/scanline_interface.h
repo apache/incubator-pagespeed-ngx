@@ -59,8 +59,10 @@ class ScanlineReaderInterface {
   ScanlineReaderInterface() {}
   virtual ~ScanlineReaderInterface() {}
 
-  // Reset the scanline reader to its initial state.
-  virtual void Reset() = 0;
+  // Reset the scanline reader to its initial state.  This will only
+  // return false as a result of an unhandled error condition, such
+  // as a longjmp due to a libpng error.
+  virtual bool Reset() = 0;
 
   // Returns number of bytes that required to store a scanline.
   virtual size_t GetBytesPerScanline() = 0;

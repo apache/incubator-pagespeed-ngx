@@ -1,4 +1,4 @@
-// Copyright (c) 2008 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -29,13 +29,20 @@
 namespace multi_process_function_list {
 
 // Type for child process main functions.
-typedef int (*ChildFunctionPtr)();
+typedef int (*TestMainFunctionPtr)();
+
+// Type for child setup functions.
+typedef void (*SetupFunctionPtr)();
 
 // Helper class to append a test function to the global mapping.
 // Used by the MULTIPROCESS_TEST_MAIN macro.
 class AppendMultiProcessTest {
  public:
-  AppendMultiProcessTest(std::string test_name, ChildFunctionPtr func_ptr);
+  // |main_func_ptr| is the main function that is run in the child process.
+  // |setup_func_ptr| is a function run when the global mapping is added.
+  AppendMultiProcessTest(std::string test_name,
+                         TestMainFunctionPtr main_func_ptr,
+                         SetupFunctionPtr setup_func_ptr);
 };
 
 // Invoke the main function of a test previously registered with
@@ -45,10 +52,16 @@ int InvokeChildProcessTest(std::string test_name);
 // This macro creates a global MultiProcessTest::AppendMultiProcessTest object
 // whose constructor does the work of adding the global mapping.
 #define MULTIPROCESS_TEST_MAIN(test_main) \
+  MULTIPROCESS_TEST_MAIN_WITH_SETUP(test_main, NULL)
+
+// Same as above but lets callers specify a setup method that is run in the
+// child process, just before the main function is run.  This facilitates
+// adding a generic one-time setup function for multiple tests.
+#define MULTIPROCESS_TEST_MAIN_WITH_SETUP(test_main, test_setup) \
   int test_main(); \
   namespace { \
     multi_process_function_list::AppendMultiProcessTest \
-    AddMultiProcessTest##_##test_main(#test_main, (test_main)); \
+    AddMultiProcessTest##_##test_main(#test_main, (test_main), (test_setup)); \
   } \
   int test_main()
 

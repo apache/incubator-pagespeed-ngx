@@ -69,6 +69,8 @@ class GURL {
   GURL_API GURL(const char* canonical_spec, size_t canonical_spec_len,
                 const url_parse::Parsed& parsed, bool is_valid);
 
+  GURL_API ~GURL();
+
   GURL_API GURL& operator=(const GURL& other);
 
   // Returns true when this object represents a valid parsed URL. When not
@@ -210,8 +212,8 @@ class GURL {
 
   // Returns true if the scheme for the current URL is a known "standard"
   // scheme. Standard schemes have an authority and a path section. This
-  // includes file:, which some callers may want to filter out explicitly by
-  // calling SchemeIsFile.
+  // includes file: and filesystem:, which some callers may want to filter out
+  // explicitly by calling SchemeIsFile[System].
   GURL_API bool IsStandard() const;
 
   // Returns true if the given parameter (should be lower-case ASCII to match
@@ -226,9 +228,15 @@ class GURL {
     return SchemeIs("file");
   }
 
+  // FileSystem URLs need to be treated differently in some cases.
+  bool SchemeIsFileSystem() const {
+    return SchemeIs("filesystem");
+  }
+
   // If the scheme indicates a secure connection
   bool SchemeIsSecure() const {
-    return SchemeIs("https");
+    return SchemeIs("https") ||
+        (SchemeIsFileSystem() && inner_url() && inner_url()->SchemeIsSecure());
   }
 
   // Returns true if the hostname is an IP address. Note: this function isn't
@@ -347,6 +355,12 @@ class GURL {
   // This function may be called from any thread.
   GURL_API static const GURL& EmptyGURL();
 
+  // Returns the inner URL of a nested URL [currently only non-null for
+  // filesystem: URLs].
+  const GURL* inner_url() const {
+    return inner_url_;
+  }
+
  private:
   // Returns the substring of the input identified by the given component.
   std::string ComponentString(const url_parse::Component& comp) const {
@@ -365,6 +379,9 @@ class GURL {
 
   // Identified components of the canonical spec.
   url_parse::Parsed parsed_;
+
+  // Used for nested schemes [currently only filesystem:].
+  GURL* inner_url_;
 
   // TODO bug 684583: Add encoding for query params.
 };

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -14,19 +14,18 @@
 
 #ifndef BASE_COMMAND_LINE_H_
 #define BASE_COMMAND_LINE_H_
-#pragma once
 
 #include <stddef.h>
 #include <map>
 #include <string>
 #include <vector>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "build/build_config.h"
 
 class FilePath;
 
-class BASE_API CommandLine {
+class BASE_EXPORT CommandLine {
  public:
 #if defined(OS_WIN)
   // The native command line string type.
@@ -55,8 +54,10 @@ class BASE_API CommandLine {
   // Initialize the current process CommandLine singleton. On Windows, ignores
   // its arguments (we instead parse GetCommandLineW() directly) because we
   // don't trust the CRT's parsing of the command line, but it still must be
-  // called to set up the command line.
-  static void Init(int argc, const char* const* argv);
+  // called to set up the command line. Returns false if initialization has
+  // already occurred, and true otherwise. Only the caller receiving a 'true'
+  // return value should take responsibility for calling Reset.
+  static bool Init(int argc, const char* const* argv);
 
   // Destroys the current process CommandLine singleton. This is necessary if
   // you want to reset the base library to its initial state (for example, in an
@@ -79,8 +80,7 @@ class BASE_API CommandLine {
 
   // Constructs and returns the represented command line string.
   // CAUTION! This should be avoided because quoting behavior is unclear.
-  // TODO(msw): Rename GetCommandLineString.
-  StringType command_line_string() const;
+  StringType GetCommandLineString() const;
 
   // Returns the original command line string as a vector of strings.
   const StringVector& argv() const { return argv_; }
@@ -98,10 +98,6 @@ class BASE_API CommandLine {
   std::string GetSwitchValueASCII(const std::string& switch_string) const;
   FilePath GetSwitchValuePath(const std::string& switch_string) const;
   StringType GetSwitchValueNative(const std::string& switch_string) const;
-
-  // Get the number of switches in this process.
-  // TODO(msw): Remove unnecessary API.
-  size_t GetSwitchCount() const;
 
   // Get a copy of all switches, along with their values.
   const SwitchMap& GetSwitches() const { return switches_; }
@@ -122,8 +118,7 @@ class BASE_API CommandLine {
                         size_t count);
 
   // Get the remaining arguments to the command.
-  // TODO(msw): Rename GetArgs.
-  StringVector args() const;
+  StringVector GetArgs() const;
 
   // Append an argument to the command line. Note that the argument is quoted
   // properly such that it is interpreted as one argument to the target command.

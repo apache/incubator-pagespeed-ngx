@@ -119,8 +119,12 @@ struct Parsed {
     REF,
   };
 
-  // The default constructor is sufficient for the components.
+  // The default constructor is sufficient for the components, but inner_parsed_
+  // requires special handling.
   GURL_API Parsed();
+  GURL_API Parsed(const Parsed&);
+  GURL_API Parsed& operator=(const Parsed&);
+  GURL_API ~Parsed();
 
   // Returns the length of the URL (the end of the last component).
   //
@@ -198,6 +202,31 @@ struct Parsed {
   // Length will be -1 if there is no hash sign, or 0 if there is one but
   // nothing follows it.
   Component ref;
+
+  // This is used for nested URL types, currently only filesystem.  If you
+  // parse a filesystem URL, the resulting Parsed will have a nested
+  // inner_parsed_ to hold the parsed inner URL's component information.
+  // For all other url types [including the inner URL], it will be NULL.
+  Parsed* inner_parsed() const {
+    return inner_parsed_;
+  }
+
+  void set_inner_parsed(const Parsed& inner_parsed) {
+    if (!inner_parsed_)
+      inner_parsed_ = new Parsed(inner_parsed);
+    else
+      *inner_parsed_ = inner_parsed;
+  }
+
+  void clear_inner_parsed() {
+    if (inner_parsed_) {
+      delete inner_parsed_;
+      inner_parsed_ = NULL;
+    }
+  }
+
+ private:
+  Parsed* inner_parsed_;  // This object is owned and managed by this struct.
 };
 
 // Initialization functions ---------------------------------------------------
@@ -231,6 +260,14 @@ GURL_API void ParsePathURL(const char16* url, int url_len, Parsed* parsed);
 // these.
 GURL_API void ParseFileURL(const char* url, int url_len, Parsed* parsed);
 GURL_API void ParseFileURL(const char16* url, int url_len, Parsed* parsed);
+
+// Filesystem URLs are structured differently than other URLs.
+GURL_API void ParseFileSystemURL(const char* url,
+                                 int url_len,
+                                 Parsed* parsed);
+GURL_API void ParseFileSystemURL(const char16* url,
+                                 int url_len,
+                                 Parsed* parsed);
 
 // MailtoURL is for mailto: urls. They are made up scheme,path,query
 GURL_API void ParseMailtoURL(const char* url, int url_len, Parsed* parsed);

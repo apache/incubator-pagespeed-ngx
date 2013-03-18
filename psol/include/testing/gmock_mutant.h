@@ -48,7 +48,7 @@
 //
 //   void QuitMessageLoop(int seconds) {
 //     MessageLoop* loop = MessageLoop::current();
-//     loop->PostDelayedTask(FROM_HERE, new MessageLoop::QuitTask,
+//     loop->PostDelayedTask(FROM_HERE, MessageLoop::QuitClosure(),
 //                           1000 * seconds);
 //   }
 // };

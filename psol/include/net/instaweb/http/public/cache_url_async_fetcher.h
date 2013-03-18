@@ -67,6 +67,10 @@ class CacheUrlAsyncFetcher : public UrlAsyncFetcher {
                      MessageHandler* message_handler,
                      AsyncFetch* base_fetch);
 
+  // HTTP status code used to indicate that we failed the Fetch because
+  // result was not found in cache. (Only happens if fetcher_ == NULL).
+  static const int kNotInCacheStatus;
+
   HTTPCache* http_cache() const { return http_cache_; }
   UrlAsyncFetcher* fetcher() const { return fetcher_; }
 

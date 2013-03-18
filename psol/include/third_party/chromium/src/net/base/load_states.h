@@ -4,7 +4,8 @@
 
 #ifndef NET_BASE_LOAD_STATES_H__
 #define NET_BASE_LOAD_STATES_H__
-#pragma once
+
+#include "base/string16.h"
 
 namespace net {
 
@@ -17,6 +18,13 @@ enum LoadState {
   // called Read yet).
   LOAD_STATE_IDLE,
 
+  // This state indicates that the URLRequest delegate has chosen to block this
+  // request before it was sent over the network. When in this state, the
+  // delegate should set a load state parameter on the URLRequest describing
+  // the nature of the delay (i.e. "Waiting for <description given by
+  // delegate>").
+  LOAD_STATE_WAITING_FOR_DELEGATE,
+
   // This state corresponds to a resource load that is blocked waiting for
   // access to a resource in the cache.  If multiple requests are made for the
   // same resource, the first request will be responsible for writing (or
@@ -24,11 +32,20 @@ enum LoadState {
   // the first completes.  This may be done to optimize for cache reuse.
   LOAD_STATE_WAITING_FOR_CACHE,
 
+  // This state corresponds to a resource load that is blocked waiting for
+  // access to a resource in the AppCache.
+  // Note: This is a layering violation, but being the only one it's not that
+  // bad. TODO(rvargas): Reconsider what to do if we need to add more.
+  LOAD_STATE_WAITING_FOR_APPCACHE,
+
   // This state corresponds to a resource load that is blocked waiting for a
-  // proxy autoconfig script to return a proxy server to use.  This state may
-  // take a while if the proxy script needs to resolve the IP address of the
-  // host before deciding what proxy to use.
+  // proxy autoconfig script to return a proxy server to use.
   LOAD_STATE_RESOLVING_PROXY_FOR_URL,
+
+  // This state corresponds to a resource load that is blocked waiting for a
+  // proxy autoconfig script to return a proxy server to use, but that proxy
+  // script is busy resolving the IP address of a host.
+  LOAD_STATE_RESOLVING_HOST_IN_PROXY_SCRIPT,
 
   // This state indicates that we're in the process of establishing a tunnel
   // through the proxy server.
@@ -67,6 +84,17 @@ enum LoadState {
   // the response body has been downloaded.  (NOTE: This state only applies for
   // an URLRequest while there is an outstanding Read operation.)
   LOAD_STATE_READING_RESPONSE,
+};
+
+// Some states, like LOAD_STATE_WAITING_FOR_DELEGATE, are associated with extra
+// data that describes more precisely what the delegate (for example) is doing.
+// This class provides an easy way to hold a load state with an extra parameter.
+struct LoadStateWithParam {
+  LoadState state;
+  string16 param;
+  LoadStateWithParam() : state(LOAD_STATE_IDLE) {}
+  LoadStateWithParam(LoadState state, const string16& param)
+      : state(state), param(param) {}
 };
 
 }  // namespace net

@@ -306,11 +306,10 @@ internal::ParamGenerator<T> Range(T start, T end) {
 //
 template <typename ForwardIterator>
 internal::ParamGenerator<
-    typename ::std::iterator_traits<ForwardIterator>::value_type> ValuesIn(
-  ForwardIterator begin,
-  ForwardIterator end) {
-  typedef typename ::std::iterator_traits<ForwardIterator>::value_type
-      ParamType;
+  typename ::testing::internal::IteratorTraits<ForwardIterator>::value_type>
+ValuesIn(ForwardIterator begin, ForwardIterator end) {
+  typedef typename ::testing::internal::IteratorTraits<ForwardIterator>
+      ::value_type ParamType;
   return internal::ParamGenerator<ParamType>(
       new internal::ValuesInIteratorRangeGenerator<ParamType>(begin, end));
 }
@@ -1258,7 +1257,7 @@ inline internal::ParamGenerator<bool> Bool() {
 // Boolean flags:
 //
 // class FlagDependentTest
-//     : public testing::TestWithParam<tuple(bool, bool)> > {
+//     : public testing::TestWithParam<tuple<bool, bool> > {
 //   virtual void SetUp() {
 //     // Assigns external_flag_1 and external_flag_2 values from the tuple.
 //     tie(external_flag_1, external_flag_2) = GetParam();

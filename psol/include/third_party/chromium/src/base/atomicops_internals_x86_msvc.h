@@ -6,7 +6,6 @@
 
 #ifndef BASE_ATOMICOPS_INTERNALS_X86_MSVC_H_
 #define BASE_ATOMICOPS_INTERNALS_X86_MSVC_H_
-#pragma once
 
 #include <windows.h>
 

@@ -22,6 +22,7 @@
 #include <cstddef>
 
 #include "net/instaweb/rewriter/public/common_filter.h"
+#include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -59,6 +60,7 @@ class CssInlineFilter : public CommonFilter {
   const size_t size_threshold_bytes_;
 
   GoogleString domain_;
+  CssTagScanner css_tag_scanner_;
 
   DISALLOW_COPY_AND_ASSIGN(CssInlineFilter);
 };

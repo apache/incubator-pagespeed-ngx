@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,11 +17,11 @@
 
 #ifndef BASE_THREADING_WATCHDOG_H_
 #define BASE_THREADING_WATCHDOG_H_
-#pragma once
 
 #include <string>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
+#include "base/compiler_specific.h"
 #include "base/synchronization/condition_variable.h"
 #include "base/synchronization/lock.h"
 #include "base/threading/platform_thread.h"
@@ -29,13 +29,20 @@
 
 namespace base {
 
-class BASE_API Watchdog {
+class BASE_EXPORT Watchdog {
  public:
   // Constructor specifies how long the Watchdog will wait before alarming.
   Watchdog(const TimeDelta& duration,
            const std::string& thread_watched_name,
            bool enabled);
   virtual ~Watchdog();
+
+  // Notify watchdog thread to finish up. Sets the state_ to SHUTDOWN.
+  void Cleanup();
+
+  // Returns true if we state_ is JOINABLE (which indicates that Watchdog has
+  // exited).
+  bool IsJoinable();
 
   // Start timing, and alarm when time expires (unless we're disarm()ed.)
   void Arm();  // Arm  starting now.
@@ -58,16 +65,16 @@ class BASE_API Watchdog {
    public:
     explicit ThreadDelegate(Watchdog* watchdog) : watchdog_(watchdog) {
     }
-    virtual void ThreadMain();
+    virtual void ThreadMain() OVERRIDE;
    private:
     void SetThreadName() const;
 
     Watchdog* watchdog_;
   };
 
-  enum State {ARMED, DISARMED, SHUTDOWN };
+  enum State {ARMED, DISARMED, SHUTDOWN, JOINABLE };
 
-  bool init_successful_;
+  bool enabled_;
 
   Lock lock_;  // Mutex for state_.
   ConditionVariable condition_variable_;
@@ -78,18 +85,6 @@ class BASE_API Watchdog {
   ThreadDelegate delegate_;  // Store it, because it must outlive the thread.
 
   TimeTicks start_time_;  // Start of epoch, and alarm after duration_.
-
-  // When the debugger breaks (when we alarm), all the other alarms that are
-  // armed will expire (also alarm).  To diminish this effect, we track any
-  // delay due to debugger breaks, and we *try* to adjust the effective start
-  // time of other alarms to step past the debugging break.
-  // Without this safety net, any alarm will typically trigger a host of follow
-  // on alarms from callers that specify old times.
-  static Lock static_lock_;  // Lock for access of static data...
-  // When did we last alarm and get stuck (for a while) in a debugger?
-  static TimeTicks last_debugged_alarm_time_;
-  // How long did we sit on a break in the debugger?
-  static TimeDelta last_debugged_alarm_delay_;
 
   DISALLOW_COPY_AND_ASSIGN(Watchdog);
 };

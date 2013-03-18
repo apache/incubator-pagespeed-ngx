@@ -1,21 +1,22 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_OBSERVER_LIST_THREADSAFE_H_
 #define BASE_OBSERVER_LIST_THREADSAFE_H_
-#pragma once
 
 #include <algorithm>
 #include <map>
 
 #include "base/basictypes.h"
-#include "base/callback_old.h"
+#include "base/bind.h"
+#include "base/location.h"
 #include "base/logging.h"
 #include "base/memory/ref_counted.h"
 #include "base/message_loop.h"
+#include "base/message_loop_proxy.h"
 #include "base/observer_list.h"
-#include "base/task.h"
+#include "base/threading/platform_thread.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 //
@@ -54,6 +55,24 @@
 template <class ObserverType>
 class ObserverListThreadSafe;
 
+// An UnboundMethod is a wrapper for a method where the actual object is
+// provided at Run dispatch time.
+template <class T, class Method, class Params>
+class UnboundMethod {
+ public:
+  UnboundMethod(Method m, const Params& p) : m_(m), p_(p) {
+    COMPILE_ASSERT(
+        (base::internal::ParamsUseScopedRefptrCorrectly<Params>::value),
+        badunboundmethodparams);
+  }
+  void Run(T* obj) const {
+    DispatchToMethod(obj, m_, p_);
+  }
+ private:
+  Method m_;
+  Params p_;
+};
+
 // This class is used to work around VS2005 not accepting:
 //
 // friend class
@@ -86,18 +105,18 @@ class ObserverListThreadSafe
   // Add an observer to the list.  An observer should not be added to
   // the same list more than once.
   void AddObserver(ObserverType* obs) {
+    // If there is not a current MessageLoop, it is impossible to notify on it,
+    // so do not add the observer.
+    if (!MessageLoop::current())
+      return;
+
     ObserverList<ObserverType>* list = NULL;
-    MessageLoop* loop = MessageLoop::current();
-    // TODO(mbelshe): Get rid of this check.  Its needed right now because
-    //                Time currently triggers usage of the ObserverList.
-    //                And unittests use time without a MessageLoop.
-    if (!loop)
-      return;  // Some unittests may access this without a message loop.
+    base::PlatformThreadId thread_id = base::PlatformThread::CurrentId();
     {
       base::AutoLock lock(list_lock_);
-      if (observer_lists_.find(loop) == observer_lists_.end())
-        observer_lists_[loop] = new ObserverList<ObserverType>(type_);
-      list = observer_lists_[loop];
+      if (observer_lists_.find(thread_id) == observer_lists_.end())
+        observer_lists_[thread_id] = new ObserverListContext(type_);
+      list = &(observer_lists_[thread_id]->list);
     }
     list->AddObserver(obs);
   }
@@ -108,19 +127,19 @@ class ObserverListThreadSafe
   // If the observer to be removed is in the list, RemoveObserver MUST
   // be called from the same thread which called AddObserver.
   void RemoveObserver(ObserverType* obs) {
+    ObserverListContext* context = NULL;
     ObserverList<ObserverType>* list = NULL;
-    MessageLoop* loop = MessageLoop::current();
-    if (!loop)
-      return;  // On shutdown, it is possible that current() is already null.
+    base::PlatformThreadId thread_id = base::PlatformThread::CurrentId();
     {
       base::AutoLock lock(list_lock_);
-      typename ObserversListMap::iterator it = observer_lists_.find(loop);
+      typename ObserversListMap::iterator it = observer_lists_.find(thread_id);
       if (it == observer_lists_.end()) {
-        // This may happen if we try to remove an observer on a thread
+        // This will happen if we try to remove an observer on a thread
         // we never added an observer for.
         return;
       }
-      list = it->second;
+      context = it->second;
+      list = &context->list;
 
       // If we're about to remove the last observer from the list,
       // then we can remove this observer_list entirely.
@@ -133,7 +152,13 @@ class ObserverListThreadSafe
     // nonzero.  Instead of deleting here, the NotifyWrapper will delete
     // when it finishes iterating.
     if (list->size() == 0)
-      delete list;
+      delete context;
+  }
+
+  // Verifies that the list is currently empty (i.e. there are no observers).
+  void AssertEmpty() const {
+    base::AutoLock lock(list_lock_);
+    DCHECK(observer_lists_.empty());
   }
 
   // Notify methods.
@@ -180,6 +205,18 @@ class ObserverListThreadSafe
   // See comment above ObserverListThreadSafeTraits' definition.
   friend struct ObserverListThreadSafeTraits<ObserverType>;
 
+  struct ObserverListContext {
+    explicit ObserverListContext(NotificationType type)
+        : loop(base::MessageLoopProxy::current()),
+          list(type) {
+    }
+
+    scoped_refptr<base::MessageLoopProxy> loop;
+    ObserverList<ObserverType> list;
+
+    DISALLOW_COPY_AND_ASSIGN(ObserverListContext);
+  };
+
   ~ObserverListThreadSafe() {
     typename ObserversListMap::const_iterator it;
     for (it = observer_lists_.begin(); it != observer_lists_.end(); ++it)
@@ -192,13 +229,11 @@ class ObserverListThreadSafe
     base::AutoLock lock(list_lock_);
     typename ObserversListMap::iterator it;
     for (it = observer_lists_.begin(); it != observer_lists_.end(); ++it) {
-      MessageLoop* loop = (*it).first;
-      ObserverList<ObserverType>* list = (*it).second;
-      loop->PostTask(
+      ObserverListContext* context = (*it).second;
+      context->loop->PostTask(
           FROM_HERE,
-          NewRunnableMethod(this,
-              &ObserverListThreadSafe<ObserverType>::
-                 template NotifyWrapper<Method, Params>, list, method));
+          base::Bind(&ObserverListThreadSafe<ObserverType>::
+              template NotifyWrapper<Method, Params>, this, context, method));
     }
   }
 
@@ -206,50 +241,53 @@ class ObserverListThreadSafe
   // ObserverList.  This function MUST be called on the thread which owns
   // the unsafe ObserverList.
   template <class Method, class Params>
-  void NotifyWrapper(ObserverList<ObserverType>* list,
+  void NotifyWrapper(ObserverListContext* context,
       const UnboundMethod<ObserverType, Method, Params>& method) {
 
     // Check that this list still needs notifications.
     {
       base::AutoLock lock(list_lock_);
       typename ObserversListMap::iterator it =
-          observer_lists_.find(MessageLoop::current());
+          observer_lists_.find(base::PlatformThread::CurrentId());
 
       // The ObserverList could have been removed already.  In fact, it could
       // have been removed and then re-added!  If the master list's loop
       // does not match this one, then we do not need to finish this
       // notification.
-      if (it == observer_lists_.end() || it->second != list)
+      if (it == observer_lists_.end() || it->second != context)
         return;
     }
 
     {
-      typename ObserverList<ObserverType>::Iterator it(*list);
+      typename ObserverList<ObserverType>::Iterator it(context->list);
       ObserverType* obs;
       while ((obs = it.GetNext()) != NULL)
         method.Run(obs);
     }
 
     // If there are no more observers on the list, we can now delete it.
-    if (list->size() == 0) {
+    if (context->list.size() == 0) {
       {
         base::AutoLock lock(list_lock_);
         // Remove |list| if it's not already removed.
         // This can happen if multiple observers got removed in a notification.
         // See http://crbug.com/55725.
         typename ObserversListMap::iterator it =
-            observer_lists_.find(MessageLoop::current());
-        if (it != observer_lists_.end() && it->second == list)
+            observer_lists_.find(base::PlatformThread::CurrentId());
+        if (it != observer_lists_.end() && it->second == context)
           observer_lists_.erase(it);
       }
-      delete list;
+      delete context;
     }
   }
 
-  typedef std::map<MessageLoop*, ObserverList<ObserverType>*> ObserversListMap;
+  // Key by PlatformThreadId because in tests, clients can attempt to remove
+  // observers without a MessageLoop. If this were keyed by MessageLoop, that
+  // operation would be silently ignored, leaving garbage in the ObserverList.
+  typedef std::map<base::PlatformThreadId, ObserverListContext*>
+      ObserversListMap;
 
-  // These are marked mutable to facilitate having NotifyAll be const.
-  base::Lock list_lock_;  // Protects the observer_lists_.
+  mutable base::Lock list_lock_;  // Protects the observer_lists_.
   ObserversListMap observer_lists_;
   const NotificationType type_;
 

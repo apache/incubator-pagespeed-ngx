@@ -1,10 +1,9 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_TEST_TEST_SUITE_H_
 #define BASE_TEST_TEST_SUITE_H_
-#pragma once
 
 // Defines a basic test suite framework for running gtest based tests.  You can
 // instantiate this class in your main function and call its Run method to run
@@ -13,6 +12,7 @@
 #include <string>
 
 #include "base/at_exit.h"
+#include "base/memory/scoped_ptr.h"
 
 namespace testing {
 class TestInfo;
@@ -50,6 +50,8 @@ class TestSuite {
 
   void CatchMaybeTests();
 
+  void ResetCommandLine();
+
   int Run();
 
   // A command-line flag that makes a test failure always result in a non-zero
@@ -57,6 +59,11 @@ class TestSuite {
   static const char kStrictFailureHandling[];
 
  protected:
+  // This constructor is only accessible to specialized test suite
+  // implementations which need to control the creation of an AtExitManager
+  // instance for the duration of the test.
+  TestSuite(int argc, char** argv, bool create_at_exit_manager);
+
   // By default fatal log messages (e.g. from DCHECKs) result in error dialogs
   // which gum up buildbots. Use a minimalistic assert handler which just
   // terminates the process.
@@ -73,7 +80,13 @@ class TestSuite {
 
   // Make sure that we setup an AtExitManager so Singleton objects will be
   // destroyed.
-  base::AtExitManager at_exit_manager_;
+  scoped_ptr<base::AtExitManager> at_exit_manager_;
+
+ private:
+  // Basic initialization for the test suite happens here.
+  void PreInitialize(int argc, char** argv, bool create_at_exit_manager);
+
+  bool initialized_command_line_;
 
   DISALLOW_COPY_AND_ASSIGN(TestSuite);
 };

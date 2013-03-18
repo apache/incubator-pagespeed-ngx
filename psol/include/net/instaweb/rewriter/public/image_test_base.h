@@ -1,3 +1,4 @@
+
 /*
  * Copyright 2010 Google Inc.
  *
@@ -36,11 +37,13 @@ class ImageTestBase : public testing::Test {
  protected:
   static const char kTestData[];
   static const char kCuppa[];
+  static const char kCuppaTransparent[];
   static const char kBikeCrash[];
   static const char kIronChef[];
   static const char kCradle[];
   static const char kPuzzle[];
   static const char kLarge[];
+  static const char kRedbrush[];
   static const char kScenery[];
   static const char kAppSegments[];
 

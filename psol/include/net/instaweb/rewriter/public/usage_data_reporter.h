@@ -45,14 +45,26 @@ class UsageDataReporter {
 
   // Reports all useful response data.
   virtual void ReportResponseData(const GoogleUrl& url, int32 response_code,
+                                  const GoogleString& reason_phrase,
                                   const ContentType* content_type,
                                   int64 time_taken,
                                   const GoogleString& ip,
                                   const GoogleString& user_agent) {}
 
+  // Reports fetch errors.
+  virtual void ReportFetchErrors(const GoogleString& host,
+                                 const GoogleString& url,
+                                 int32 error_code,
+                                 const StringPiece& fetch_error) {}
+
+
   // Report a warning.
   virtual void ReportWarning(const GoogleUrl& url, int32 warning_code,
                              const StringPiece& warning_message) {}
+
+  // Report bandwidth.
+  virtual void ReportBandwidth(int64 project_id, const GoogleUrl& url,
+                               int64 bandwidth) {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UsageDataReporter);

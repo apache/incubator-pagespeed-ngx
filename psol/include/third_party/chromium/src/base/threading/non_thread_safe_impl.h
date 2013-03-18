@@ -1,12 +1,11 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_THREADING_NON_THREAD_SAFE_IMPL_H_
 #define BASE_THREADING_NON_THREAD_SAFE_IMPL_H_
-#pragma once
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/threading/thread_checker_impl.h"
 
 namespace base {
@@ -17,13 +16,13 @@ namespace base {
 //
 // Note: You should almost always use the NonThreadSafe class to get
 // the right version of the class for your build configuration.
-class BASE_API NonThreadSafeImpl {
+class BASE_EXPORT NonThreadSafeImpl {
  public:
-  ~NonThreadSafeImpl();
-
   bool CalledOnValidThread() const;
 
  protected:
+  ~NonThreadSafeImpl();
+
   // Changes the thread that is checked for in CalledOnValidThread. The next
   // call to CalledOnValidThread will attach this class to a new thread. It is
   // up to the NonThreadSafe derived class to decide to expose this or not.

@@ -20,11 +20,11 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_LOG_RECORD_H_
 
 #include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 // If your .cc file needs to use the types declared in logging_proto.h,
 // you must also include net/instaweb/http/public/logging_proto_impl.h
@@ -58,20 +58,45 @@ class LogRecord  {
   explicit LogRecord(AbstractMutex* mutex);
   virtual ~LogRecord();
 
-  // Log a rewriter (identified by an id string) as having been applied to
-  // the request being logged. These ids will be aggregated and written to the
-  // protobuf when Finalize() is called.
-  void LogAppliedRewriter(const char* rewriter_id);
+  // For compatibility with older logging methods, returns a comma-joined string
+  // concatenating the sorted coalesced rewriter ids of APPLIED_OK entries in
+  // the rewriter_info array. Each id will appear once in the string if any
+  // number of successful rewrites for that id have been logged.
+  GoogleString AppliedRewritersString();
 
-  // This should be called when all logging activity on the log record is
-  // complete. If a subclass of this class uses other aggregate data structures
-  // or other intermediates before writing to the wrapped data structure,
-  // it should do those writes in FinalizeImpl. mutex_ guards this.
-  void Finalize();
+  // Create a new rewriter logging submessage for |rewriter_id|, returning a
+  // pointer to it for later access. Note that this can return NULL if the
+  // size of rewriter_info has grown too large. It is the caller's
+  // responsibility to handle this safely.
+  RewriterInfo* NewRewriterInfo(const char* rewriter_id);
+
+  // Creates a new rewriter logging submessage for |rewriter_id|,
+  // and sets status it.
+  void SetRewriterLoggingStatus(
+      const char* rewriter_id, RewriterInfo::RewriterApplicationStatus status);
 
   // Return the LoggingInfo proto wrapped by this class. Calling code must
   // guard any reads and writes to this using mutex().
   virtual LoggingInfo* logging_info();
+
+  // Atomically sets is_html_response in the logging proto.
+  void SetIsHtml(bool is_html);
+
+  // Adds a new cohort info with the given cohort name and returns its index.
+  int AddPropertyCohortInfo(const GoogleString& cohort);
+
+  // Updates the cohort info at the specified index, to include the given
+  // property in the last of properties found in the cache.
+  void AddFoundPropertyToCohortInfo(int index, const GoogleString& property);
+
+  // Updates the cohort info at the specified index, to indicate whether it was
+  // a cache hit.
+  void SetCacheStatusForCohortInfo(int index, bool found, int key_state);
+
+  // Updates the cohort info at the specified index with the device and cache
+  // type.
+  void SetDeviceAndCacheTypeForCohortInfo(
+      int index, int device_type, int cache_type);
 
   // Mutex-guarded log mutation convenience methods. The rule of thumb is that
   // if a single-field update to a logging proto occurs multiple times, it
@@ -79,23 +104,50 @@ class LogRecord  {
   void SetBlinkRequestFlow(int flow);
   void SetIsOriginalResourceCacheable(bool cacheable);
   void SetTimingRequestStartMs(int64 ms);
+  void SetTimingHeaderFetchMs(int64 ms);
   void SetTimingFetchMs(int64 ms);
+  int64 GetTimingFetchMs();
+  void SetTimingProcessingTimeMs(int64 ms);
+  // Sets time_to_start_fetch_ms in the TimingInfo submessage as an offset from
+  // timing_info.request_start_ms (|start_time_ms| is an absolute time value
+  // and is converted into the offset). If request_start_ms is unset, this is a
+  // silent no-op. This may be called several times in sucession, for example
+  // in the case of retried fetches. In that case, if time_to_start_fetch_ms has
+  // already been set in the log record, this is again a silent no-op.
+  void UpdateTimingInfoWithFetchStartTime(int64 start_time_ms);
+
+  // Override SetBlinkInfoImpl if necessary.
+  void SetBlinkInfo(const GoogleString& user_agent);
+
+  // Log a RewriterInfo for the image rewrite filter.
+  void LogImageRewriteActivity(
+      const char* id,
+      RewriterInfo::RewriterApplicationStatus status,
+      bool is_image_inlined,
+      bool is_critical_image,
+      bool try_low_res_src_insertion,
+      bool low_res_src_inserted,
+      int low_res_data_size);
+
+  void LogJsDisableFilter(const char* id,
+                          RewriterInfo::RewriterApplicationStatus status,
+                          bool has_pagespeed_no_defer);
+
+  void LogLazyloadFilter(const char* id,
+                         RewriterInfo::RewriterApplicationStatus status,
+                         bool is_blacklisted, bool is_critical);
 
   // Mutex-guarded log-writing operations. Derived classes should override
   // *Impl methods. Returns false if the log write attempt failed.
   bool WriteLog();
-  // Update the log record with Blink-specific information, then write the
-  // log as if WriteLog() was called.
-  bool WriteLogForBlink(const GoogleString& user_agent);
-
-  // If log-writing needs to occur in the context of an existing lock,
-  // these methods may be used. Returns false if write attempt failed.
-  bool WriteLogWhileLocked();
-  bool WriteLogForBlinkWhileLocked(const GoogleString& user_agent);
 
   // Return the mutex associated with this instance. Calling code should
   // guard reads and writes of LogRecords
   AbstractMutex* mutex() { return mutex_.get(); }
+
+  // Sets the maximum number of RewriterInfo submessages that can accumulate in
+  // the LoggingInfo proto wrapped by this class.
+  void SetRewriterInfoMaxSize(int x);
 
  protected:
   // Non-initializing default constructor for subclasses. Subclasses that invoke
@@ -106,39 +158,24 @@ class LogRecord  {
 
   void set_mutex(AbstractMutex* m);
 
-  // Returns a comma-joined string concatenating the contents of
-  // applied_rewriters_
-  GoogleString ConcatenatedRewriterString();
-
-  // Implementation methods for subclasses to override.
-  // Implements logging an applied rewriter.
-  virtual void LogAppliedRewriterImpl(const char* rewriter_id);
-  // Implements finalization.
-  virtual void FinalizeImpl();
+  // Implements setting Blink-specific log information; base impl is a no-op.
+  virtual void SetBlinkInfoImpl(const GoogleString& user_agent) {}
   // Implements writing a log, base implementation is a no-op. Returns false if
   // writing failed.
   virtual bool WriteLogImpl() { return true; }
-  // Implements writing the Blink log, base implementation is a no-op. Returns
-  // false if writing failed.
-  virtual bool WriteLogForBlinkImpl(const GoogleString& user_agent) {
-    return true;
-  }
-
-  // True if Finalize() has been called. mutex_ guards this.
-  bool finalized() { return finalized_; }
-  FRIEND_TEST(LogRecordTest, NoAppliedRewriters);
 
  private:
   // Called on construction.
   void InitLogging();
 
-  StringSet applied_rewriters_;
-
   scoped_ptr<LoggingInfo> logging_info_;
-  bool finalized_;
+
   // Thus must be set. Implementation constructors must minimally default this
   // to a NullMutex.
   scoped_ptr<AbstractMutex> mutex_;
+
+  // The maximum number of rewrite info logs stored for a single request.
+  int rewriter_info_max_size_;
 
   DISALLOW_COPY_AND_ASSIGN(LogRecord);
 };

@@ -73,5 +73,6 @@ int            _xdg_utf8_validate (const char    *source);
 xdg_unichar_t *_xdg_convert_to_ucs4 (const char *source, int *len);
 void           _xdg_reverse_ucs4 (xdg_unichar_t *source, int len);
 const char    *_xdg_get_base_name (const char    *file_name);
+const char    *_xdg_binary_or_text_fallback(const void *data, size_t len);
 
 #endif /* __XDG_MIME_INT_H__ */

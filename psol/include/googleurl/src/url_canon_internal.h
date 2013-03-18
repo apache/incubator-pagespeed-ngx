@@ -1,4 +1,4 @@
-// Copyright 2007, Google Inc.
+// Copyright 2011, Google Inc.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -108,7 +108,7 @@ void AppendStringOfType(const char16* source, int length,
 
 // Maps the hex numerical values 0x0 to 0xf to the corresponding ASCII digit
 // that will be used to represent it.
-extern const char kHexCharLookup[0x10];
+GURL_API extern const char kHexCharLookup[0x10];
 
 // This lookup table allows fast conversion between ASCII hex letters and their
 // corresponding numerical value. The 8-bit range is divided up into 8
@@ -175,8 +175,8 @@ extern const char16 kUnicodeReplacementCharacter;
 // (for a single-byte ASCII character, it will not be changed).
 //
 // Implementation is in url_canon_icu.cc.
-bool ReadUTFChar(const char* str, int* begin, int length,
-                 unsigned* code_point_out);
+GURL_API bool ReadUTFChar(const char* str, int* begin, int length,
+                          unsigned* code_point_out);
 
 // Generic To-UTF-8 converter. This will call the given append method for each
 // character that should be appended, with the given output method. Wrappers
@@ -252,8 +252,8 @@ inline void AppendUTF8EscapedValue(unsigned char_value, CanonOutput* output) {
 // (for a single-16-bit-word character, it will not be changed).
 //
 // Implementation is in url_canon_icu.cc.
-bool ReadUTFChar(const char16* str, int* begin, int length,
-                 unsigned* code_point);
+GURL_API bool ReadUTFChar(const char16* str, int* begin, int length,
+                          unsigned* code_point);
 
 // Equivalent to U16_APPEND_UNSAFE in ICU but uses our output method.
 inline void AppendUTF16Value(unsigned code_point,
@@ -371,10 +371,10 @@ void AppendInvalidNarrowString(const char16* spec, int begin, int end,
 // replacing the invalid characters with the "invalid character". It will
 // return false in the failure case, and the caller should not continue as
 // normal.
-bool ConvertUTF16ToUTF8(const char16* input, int input_len,
-                        CanonOutput* output);
-bool ConvertUTF8ToUTF16(const char* input, int input_len,
-                        CanonOutputT<char16>* output);
+GURL_API bool ConvertUTF16ToUTF8(const char16* input, int input_len,
+                                 CanonOutput* output);
+GURL_API bool ConvertUTF8ToUTF16(const char* input, int input_len,
+                                 CanonOutputT<char16>* output);
 
 // Converts from UTF-16 to 8-bit using the character set converter. If the
 // converter is NULL, this will use UTF-8.
@@ -433,8 +433,9 @@ bool CanonicalizePartialPath(const char16* spec,
 #ifndef WIN32
 
 // Implementations of Windows' int-to-string conversions
-int _itoa_s(int value, char* buffer, size_t size_in_chars, int radix);
-int _itow_s(int value, char16* buffer, size_t size_in_chars, int radix);
+GURL_API int _itoa_s(int value, char* buffer, size_t size_in_chars, int radix);
+GURL_API int _itow_s(int value, char16* buffer, size_t size_in_chars,
+                     int radix);
 
 // Secure template overloads for these functions
 template<size_t N>

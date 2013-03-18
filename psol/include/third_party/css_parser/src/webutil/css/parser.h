@@ -592,6 +592,7 @@ class Parser {
   FRIEND_TEST(ParserTest, font_family);
   FRIEND_TEST(ParserTest, ParseBlock);
   FRIEND_TEST(ParserTest, font);
+  FRIEND_TEST(ParserTest, numbers);
   FRIEND_TEST(ParserTest, values);
   FRIEND_TEST(ParserTest, declarations);
   FRIEND_TEST(ParserTest, universalselector);

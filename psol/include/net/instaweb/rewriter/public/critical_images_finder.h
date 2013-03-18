@@ -48,7 +48,7 @@ class CriticalImagesFinder {
   // Checks whether IsCriticalImage will return meaningful results about
   // critical images. Users of IsCriticalImage should check this function and
   // supply a default behavior if IsMeaningful returns false.
-  virtual bool IsMeaningful() const = 0;
+  virtual bool IsMeaningful(const RewriteDriver* driver) const = 0;
 
   // Checks whether the requested image is present in the critical set or not.
   // Users of this function should also check IsMeaningful() to see if the

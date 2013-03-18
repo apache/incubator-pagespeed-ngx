@@ -4,9 +4,8 @@
 
 #ifndef BASE_SCOPED_NATIVE_LIBRARY_H_
 #define BASE_SCOPED_NATIVE_LIBRARY_H_
-#pragma once
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/native_library.h"
 
 class FilePath;
@@ -16,7 +15,7 @@ namespace base {
 // A class which encapsulates a base::NativeLibrary object available only in a
 // scope.
 // This class automatically unloads the loaded library in its destructor.
-class BASE_API ScopedNativeLibrary {
+class BASE_EXPORT ScopedNativeLibrary {
  public:
   // Initializes with a NULL library.
   ScopedNativeLibrary();

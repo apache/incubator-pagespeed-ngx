@@ -18,6 +18,7 @@
 #define NET_INSTAWEB_APACHE_APACHE_SERVER_CONTEXT_H_
 
 #include "net/instaweb/apache/apache_config.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -31,7 +32,9 @@ namespace net_instaweb {
 class AbstractMutex;
 class ApacheRewriteDriverFactory;
 class Histogram;
+class ProxyFetchFactory;
 class RewriteDriverPool;
+class RewriteDriver;
 class RewriteStats;
 class SharedMemStatistics;
 class Statistics;
@@ -136,6 +139,22 @@ class ApacheServerContext : public ServerContext {
 
   const server_rec* server() const { return server_rec_; }
 
+  virtual RewriteDriverPool* SelectDriverPool(bool using_spdy);
+
+  virtual void ApplySessionFetchers(const RequestContextPtr& req,
+                                    RewriteDriver* driver);
+
+  ProxyFetchFactory* proxy_fetch_factory() {
+    return proxy_fetch_factory_.get();
+  }
+
+  void InitProxyFetchFactory();
+
+  // We do not proxy external HTML from mod_pagespeed in Apache using the
+  // ProxyFetch flow.  Currently we must rely on a separate module to
+  // let mod_pagespeed behave as an origin fetcher.
+  virtual bool ProxiesHtml() const { return false; }
+
  private:
   bool UpdateCacheFlushTimestampMs(int64 timestamp_ms);
 
@@ -182,6 +201,8 @@ class ApacheServerContext : public ServerContext {
 
   Variable* cache_flush_count_;
   Variable* cache_flush_timestamp_ms_;
+
+  scoped_ptr<ProxyFetchFactory> proxy_fetch_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheServerContext);
 };

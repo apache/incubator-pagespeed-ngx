@@ -4,7 +4,6 @@
 
 #ifndef BASE_PERFTIMER_H_
 #define BASE_PERFTIMER_H_
-#pragma once
 
 #include <string>
 

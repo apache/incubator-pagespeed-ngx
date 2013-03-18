@@ -30,12 +30,15 @@ namespace pagespeed {
 namespace image_compression {
 
 struct WebpConfiguration {
-  // This contains a subset of the options in
-  // libwebp/webp/encode.h:WebPConfig, with our own defaults.
+  // This contains a subset of the options in WebPConfig and
+  // WebPPicture.
+
+  typedef bool (*WebpProgressHook)(int percent, void* user_data);
 
   WebpConfiguration()
-      : lossless(true), quality(100), method(3), target_size(0),
-        alpha_compression(0), alpha_filtering(1), alpha_quality(100) {}
+      : lossless(true), quality(75), method(3), target_size(0),
+        alpha_compression(1), alpha_filtering(1), alpha_quality(100),
+        progress_hook(NULL), user_data(NULL) {}
   void CopyTo(WebPConfig* webp_config) const;
 
   int lossless;           // Lossless encoding (0=lossy(default), 1=lossless).
@@ -51,8 +54,17 @@ struct WebpConfiguration {
                           //  0: none, 1: fast, 2: best. Default is 1.
   int alpha_quality;      // Between 0 (smallest size) and 100 (lossless).
                           // Default is 100.
-  // NOTE: If you add more fields to this struct, please update the
-  // CopyTo() method.
+
+  WebpProgressHook progress_hook;   // If non-NULL, called during encoding.
+
+  void* user_data;        // Can be used by progress_hook. This
+                          // pointer remains owned by the client and
+                          // must remain valid until
+                          // WebpScanlineWriter::FinalizeWrite()
+                          // completes.
+
+  // NOTE: If you add more fields to this struct that feed into
+  // WebPConfig, please update the CopyTo() method.
 };
 
 
@@ -109,6 +121,19 @@ class WebpScanlineWriter : public ScanlineWriterInterface {
 
   // Whether all the scanlines have been written.
   bool got_all_scanlines_;
+
+  // The user-supplied progress hook.
+  WebpConfiguration::WebpProgressHook progress_hook_;
+
+  // The user-supplied user data for progress_hook. This pointer must
+  // remain valid until FinalizeWrite() completes. This class does NOT
+  // take ownership of this pointer.
+  void* progress_hook_data_;
+
+  // The function to be called by libwebp's progress hook (with 'this'
+  // as the user data), which in turn will call the user-supplied function
+  // in progress_hook_, passing it progress_hook_data_.
+  static int ProgressHook(int percent, const WebPPicture* picture);
 
   DISALLOW_COPY_AND_ASSIGN(WebpScanlineWriter);
 };

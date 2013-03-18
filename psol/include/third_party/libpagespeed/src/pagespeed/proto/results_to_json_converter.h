@@ -19,7 +19,9 @@
 
 #include "base/basictypes.h"
 
+namespace base {
 class Value;
+}  // namespace base
 
 namespace pagespeed {
 
@@ -41,14 +43,15 @@ class ResultsToJsonConverter {
   static bool Convert(const pagespeed::Results& results, std::string* out);
 
   // Converts the various protocol buffers in a Results structure into
-  // a Value* object, which can be converted to JSON with a
-  // JSONWriter. Ownership of the returned Value* is transferred to the
-  // caller. Will return NULL if conversion fails.
-  static Value* ConvertResults(const pagespeed::Results& results);
-  static Value* ConvertRuleResult(const pagespeed::RuleResults& rule_results);
-  static Value* ConvertResult(const pagespeed::Result& result);
-  static Value* ConvertSavings(const pagespeed::Savings& savings);
-  static Value* ConvertVersion(const pagespeed::Version& version);
+  // a base::Value* object, which can be converted to JSON with a
+  // JSONWriter. Ownership of the returned base::Value* is transferred
+  // to the caller. Will return NULL if conversion fails.
+  static base::Value* ConvertResults(const pagespeed::Results& results);
+  static base::Value* ConvertRuleResult(
+      const pagespeed::RuleResults& rule_results);
+  static base::Value* ConvertResult(const pagespeed::Result& result);
+  static base::Value* ConvertSavings(const pagespeed::Savings& savings);
+  static base::Value* ConvertVersion(const pagespeed::Version& version);
 
  private:
   DISALLOW_IMPLICIT_CONSTRUCTORS(ResultsToJsonConverter);

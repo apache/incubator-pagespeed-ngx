@@ -4,7 +4,6 @@
 
 #ifndef NET_BASE_CONNECTION_TYPE_HISTOGRAMS_H_
 #define NET_BASE_CONNECTION_TYPE_HISTOGRAMS_H_
-#pragma once
 
 // The UpdateConnectionTypeHistograms function collects statistics related
 // to the number of MD5 certificates that our users are encountering.  The

@@ -8,7 +8,6 @@
 
 #ifndef BASE_STRINGIZE_MACROS_H_
 #define BASE_STRINGIZE_MACROS_H_
-#pragma once
 
 #include "build/build_config.h"
 

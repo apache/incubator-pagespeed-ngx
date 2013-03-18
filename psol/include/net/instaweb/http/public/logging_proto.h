@@ -21,11 +21,18 @@
 namespace net_instaweb {
 
 class BlinkInfo;
+class FlushEarlyFilterInfo;
+class FlushEarlyResourceInfo;
+class ImageRewriteResourceInfo;
 class LoggingInfo;
 class MetadataCacheInfo;
+class PropertyCohortInfo;
+class PropertyPageInfo;
+class RewriterInfo;
+class RewriteResourceInfo;
 class TimingInfo;
 
-}
+}  // namespace net_instaweb
 
 
 #endif  // NET_INSTAWEB_HTTP_PUBLIC_LOGGING_PROTO_H_

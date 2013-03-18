@@ -4,12 +4,12 @@
 
 #ifndef NET_BASE_CRYPTO_MODULE_H_
 #define NET_BASE_CRYPTO_MODULE_H_
-#pragma once
 
 #include <string>
 #include <vector>
 
 #include "base/memory/ref_counted.h"
+#include "net/base/net_export.h"
 
 #if defined(USE_NSS)
 typedef struct PK11SlotInfoStr PK11SlotInfo;
@@ -21,7 +21,8 @@ class CryptoModule;
 
 typedef std::vector<scoped_refptr<CryptoModule> > CryptoModuleList;
 
-class CryptoModule : public base::RefCountedThreadSafe<CryptoModule> {
+class NET_EXPORT CryptoModule
+    : public base::RefCountedThreadSafe<CryptoModule> {
  public:
 #if defined(USE_NSS)
   typedef PK11SlotInfo* OSModuleHandle;

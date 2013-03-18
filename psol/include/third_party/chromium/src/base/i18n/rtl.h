@@ -4,11 +4,11 @@
 
 #ifndef BASE_I18N_RTL_H_
 #define BASE_I18N_RTL_H_
-#pragma once
 
 #include <string>
 
 #include "base/compiler_specific.h"
+#include "base/i18n/base_i18n_export.h"
 #include "base/string16.h"
 #include "build/build_config.h"
 
@@ -34,10 +34,10 @@ enum TextDirection {
 // Get the locale that the currently running process has been configured to use.
 // The return value is of the form language[-country] (e.g., en-US) where the
 // language is the 2 or 3 letter code from ISO-639.
-std::string GetConfiguredLocale();
+BASE_I18N_EXPORT std::string GetConfiguredLocale();
 
 // Canonicalize a string (eg. a POSIX locale string) to a Chrome locale name.
-std::string GetCanonicalLocale(const char* locale);
+BASE_I18N_EXPORT std::string GetCanonicalLocale(const char* locale);
 
 // Sets the default locale of ICU.
 // Once the application locale of Chrome in GetApplicationLocale is determined,
@@ -46,19 +46,20 @@ std::string GetCanonicalLocale(const char* locale);
 // This is handy in that we don't have to call GetApplicationLocale()
 // everytime we call locale-dependent ICU APIs as long as we make sure
 // that this is called before any locale-dependent API is called.
-void SetICUDefaultLocale(const std::string& locale_string);
+BASE_I18N_EXPORT void SetICUDefaultLocale(const std::string& locale_string);
 
 // Returns true if the application text direction is right-to-left.
-bool IsRTL();
+BASE_I18N_EXPORT bool IsRTL();
 
 // Returns whether the text direction for the default ICU locale is RTL.  This
 // assumes that SetICUDefaultLocale has been called to set the default locale to
 // the UI locale of Chrome.
 // NOTE: Generally, you should call IsRTL() instead of this.
-bool ICUIsRTL();
+BASE_I18N_EXPORT bool ICUIsRTL();
 
 // Returns the text direction for |locale_name|.
-TextDirection GetTextDirectionForLocale(const char* locale_name);
+BASE_I18N_EXPORT TextDirection GetTextDirectionForLocale(
+    const char* locale_name);
 
 // Given the string in |text|, returns the directionality of the first
 // character with strong directionality in the string. If no character in the
@@ -66,7 +67,8 @@ TextDirection GetTextDirectionForLocale(const char* locale_name);
 // character types L, LRE, LRO, R, AL, RLE, and RLO are considered as strong
 // directionality characters. Please refer to http://unicode.org/reports/tr9/
 // for more information.
-TextDirection GetFirstStrongCharacterDirection(const string16& text);
+BASE_I18N_EXPORT TextDirection GetFirstStrongCharacterDirection(
+    const string16& text);
 
 // Given the string in |text|, this function modifies the string in place with
 // the appropriate Unicode formatting marks that mark the string direction
@@ -90,43 +92,43 @@ TextDirection GetFirstStrongCharacterDirection(const string16& text);
 // installed. Since the English version of Windows doesn't have right-to-left
 // language support installed by default, inserting the direction Unicode mark
 // results in Windows displaying squares.
-bool AdjustStringForLocaleDirection(string16* text);
+BASE_I18N_EXPORT bool AdjustStringForLocaleDirection(string16* text);
+
+// Undoes the actions of the above function (AdjustStringForLocaleDirection).
+BASE_I18N_EXPORT bool UnadjustStringForLocaleDirection(string16* text);
 
 // Returns true if the string contains at least one character with strong right
 // to left directionality; that is, a character with either R or AL Unicode
 // BiDi character type.
-bool StringContainsStrongRTLChars(const string16& text);
+BASE_I18N_EXPORT bool StringContainsStrongRTLChars(const string16& text);
 
 // Wraps a string with an LRE-PDF pair which essentialy marks the string as a
 // Left-To-Right string. Doing this is useful in order to make sure LTR
 // strings are rendered properly in an RTL context.
-void WrapStringWithLTRFormatting(string16* text);
+BASE_I18N_EXPORT void WrapStringWithLTRFormatting(string16* text);
 
 // Wraps a string with an RLE-PDF pair which essentialy marks the string as a
 // Right-To-Left string. Doing this is useful in order to make sure RTL
 // strings are rendered properly in an LTR context.
-void WrapStringWithRTLFormatting(string16* text);
+BASE_I18N_EXPORT void WrapStringWithRTLFormatting(string16* text);
 
 // Wraps file path to get it to display correctly in RTL UI. All filepaths
 // should be passed through this function before display in UI for RTL locales.
-void WrapPathWithLTRFormatting(const FilePath& path,
-                               string16* rtl_safe_path);
+BASE_I18N_EXPORT void WrapPathWithLTRFormatting(const FilePath& path,
+                                                string16* rtl_safe_path);
 
-// Given the string in |text|, this function returns the adjusted string having
-// LTR directionality for display purpose. Which means that in RTL locale the
-// string is wrapped with LRE (Left-To-Right Embedding) and PDF (Pop
-// Directional Formatting) marks and returned. In LTR locale, the string itself
-// is returned.
-string16 GetDisplayStringInLTRDirectionality(const string16& text)
-    WARN_UNUSED_RESULT;
+// Return the string in |text| wrapped with LRE (Left-To-Right Embedding) and
+// PDF (Pop Directional Formatting) marks, if needed for UI display purposes.
+BASE_I18N_EXPORT string16 GetDisplayStringInLTRDirectionality(
+    const string16& text) WARN_UNUSED_RESULT;
 
 // Strip the beginning (U+202A..U+202B, U+202D..U+202E) and/or ending (U+202C)
 // explicit bidi control characters from |text|, if there are any. Otherwise,
 // return the text itself. Explicit bidi control characters display and have
 // semantic effect. They can be deleted so they might not always appear in a
 // pair.
-const string16 StripWrappingBidiControlCharacters(const string16& text)
-    WARN_UNUSED_RESULT;
+BASE_I18N_EXPORT string16 StripWrappingBidiControlCharacters(
+    const string16& text) WARN_UNUSED_RESULT;
 
 }  // namespace i18n
 }  // namespace base

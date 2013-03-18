@@ -4,7 +4,6 @@
 
 #ifndef BASE_PORT_H_
 #define BASE_PORT_H_
-#pragma once
 
 #include <stdarg.h>
 #include "build/build_config.h"

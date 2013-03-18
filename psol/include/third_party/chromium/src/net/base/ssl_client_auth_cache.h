@@ -4,14 +4,14 @@
 
 #ifndef NET_BASE_SSL_CLIENT_AUTH_CACHE_H_
 #define NET_BASE_SSL_CLIENT_AUTH_CACHE_H_
-#pragma once
 
 #include <string>
 #include <map>
 
+#include "base/compiler_specific.h"
 #include "base/memory/ref_counted.h"
 #include "net/base/cert_database.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
 namespace net {
 
@@ -24,7 +24,7 @@ class X509Certificate;
 //
 // TODO(wtc): This class is based on FtpAuthCache.  We can extract the common
 // code to a template class.
-class NET_TEST SSLClientAuthCache : public CertDatabase::Observer {
+class NET_EXPORT_PRIVATE SSLClientAuthCache : public CertDatabase::Observer {
  public:
   SSLClientAuthCache();
   virtual ~SSLClientAuthCache();
@@ -47,7 +47,7 @@ class NET_TEST SSLClientAuthCache : public CertDatabase::Observer {
   void Remove(const std::string& server);
 
   // CertDatabase::Observer methods:
-  virtual void OnUserCertAdded(const X509Certificate* cert);
+  virtual void OnCertAdded(const X509Certificate* cert) OVERRIDE;
 
  private:
   typedef std::string AuthCacheKey;

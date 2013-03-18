@@ -43,7 +43,7 @@ class HtmlElement;
 class Panel;
 class RewriteDriver;
 class RewriteOptions;
-class StaticJavascriptManager;
+class StaticAssetManager;
 class Writer;
 
 typedef std::map<GoogleString, const Panel*> PanelIdToSpecMap;
@@ -73,7 +73,7 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
 
   static const GoogleString& GetBlinkJsUrl(
       const RewriteOptions* options,
-      StaticJavascriptManager* static_js_manager);
+      StaticAssetManager* static_asset_manager);
 
   virtual const char* Name() const { return "SplitHtmlFilter"; }
 
@@ -169,7 +169,7 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   bool send_lazyload_script_;
   int num_low_res_images_inlined_;
   HtmlElement* current_panel_parent_element_;
-  StaticJavascriptManager* static_js_manager_;  // Owned by rewrite_driver_.
+  StaticAssetManager* static_asset_manager_;  // Owned by rewrite_driver_.
 
   DISALLOW_COPY_AND_ASSIGN(SplitHtmlFilter);
 };

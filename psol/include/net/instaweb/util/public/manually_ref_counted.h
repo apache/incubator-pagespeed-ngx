@@ -36,7 +36,7 @@ class ManuallyRefCounted {
   //   Example* e = other->GetExample();
   //   e->IncrementRefs();
   void IncrementRefs() {
-    n_active.increment(1);
+    n_active.NoBarrierIncrement(1);
   }
 
   // Call this when finished with a pointer to a subclass instance:
@@ -50,7 +50,7 @@ class ManuallyRefCounted {
   //     }
   //   }
   void DecrementRefs() {
-    int n_others_active = n_active.increment(-1);
+    int n_others_active = n_active.BarrierIncrement(-1);
     if (n_others_active == 0) {
       delete this;
     }

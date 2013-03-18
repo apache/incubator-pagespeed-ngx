@@ -41,13 +41,7 @@ class FileInputResource : public Resource {
                     const RewriteOptions* options,
                     const ContentType* type,
                     const StringPiece& url,
-                    const StringPiece& filename)
-      : Resource(server_context, type),
-        url_(url.data(), url.size()),
-        filename_(filename.data(), filename.size()),
-        rewrite_options_(options) {
-  }
-
+                    const StringPiece& filename);
   virtual ~FileInputResource();
 
   // Uses default no-op Freshen implementation because file-based resources
@@ -64,12 +58,15 @@ class FileInputResource : public Resource {
     return rewrite_options_;
   }
 
+  virtual bool UseHttpCache() const { return false; }
+
  protected:
   void SetDefaultHeaders(const ContentType* content_type,
                          ResponseHeaders* header, MessageHandler* handler);
 
-  virtual bool Load(MessageHandler* message_handler);
-  // Uses default, blocking LoadAndCallback implementation.
+  virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
+                               AsyncCallback* callback,
+                               MessageHandler* message_handler);
 
  private:
   GoogleString url_;

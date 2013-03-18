@@ -4,11 +4,10 @@
 
 #ifndef BASE_UTF_STRING_CONVERSIONS_H_
 #define BASE_UTF_STRING_CONVERSIONS_H_
-#pragma once
 
 #include <string>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/string16.h"
 #include "base/string_piece.h"
 
@@ -18,23 +17,25 @@
 // do the best it can and put the result in the output buffer. The versions that
 // return strings ignore this error and just return the best conversion
 // possible.
-BASE_API bool WideToUTF8(const wchar_t* src, size_t src_len,
-                         std::string* output);
-BASE_API std::string WideToUTF8(const std::wstring& wide);
-BASE_API bool UTF8ToWide(const char* src, size_t src_len, std::wstring* output);
-BASE_API std::wstring UTF8ToWide(const base::StringPiece& utf8);
+BASE_EXPORT bool WideToUTF8(const wchar_t* src, size_t src_len,
+                            std::string* output);
+BASE_EXPORT std::string WideToUTF8(const std::wstring& wide);
+BASE_EXPORT bool UTF8ToWide(const char* src, size_t src_len,
+                            std::wstring* output);
+BASE_EXPORT std::wstring UTF8ToWide(const base::StringPiece& utf8);
 
-BASE_API bool WideToUTF16(const wchar_t* src, size_t src_len, string16* output);
-BASE_API string16 WideToUTF16(const std::wstring& wide);
-BASE_API bool UTF16ToWide(const char16* src, size_t src_len,
-                          std::wstring* output);
-BASE_API std::wstring UTF16ToWide(const string16& utf16);
+BASE_EXPORT bool WideToUTF16(const wchar_t* src, size_t src_len,
+                             string16* output);
+BASE_EXPORT string16 WideToUTF16(const std::wstring& wide);
+BASE_EXPORT bool UTF16ToWide(const char16* src, size_t src_len,
+                             std::wstring* output);
+BASE_EXPORT std::wstring UTF16ToWide(const string16& utf16);
 
-BASE_API bool UTF8ToUTF16(const char* src, size_t src_len, string16* output);
-BASE_API string16 UTF8ToUTF16(const base::StringPiece& utf8);
-BASE_API bool UTF16ToUTF8(const char16* src, size_t src_len,
-                          std::string* output);
-BASE_API std::string UTF16ToUTF8(const string16& utf16);
+BASE_EXPORT bool UTF8ToUTF16(const char* src, size_t src_len, string16* output);
+BASE_EXPORT string16 UTF8ToUTF16(const base::StringPiece& utf8);
+BASE_EXPORT bool UTF16ToUTF8(const char16* src, size_t src_len,
+                             std::string* output);
+BASE_EXPORT std::string UTF16ToUTF8(const string16& utf16);
 
 // We are trying to get rid of wstring as much as possible, but it's too big
 // a mess to do it all at once.  These conversions should be used when we
@@ -51,7 +52,7 @@ BASE_API std::string UTF16ToUTF8(const string16& utf16);
 
 // These convert an ASCII string, typically a hardcoded constant, to a
 // UTF16/Wide string.
-BASE_API std::wstring ASCIIToWide(const base::StringPiece& ascii);
-BASE_API string16 ASCIIToUTF16(const base::StringPiece& ascii);
+BASE_EXPORT std::wstring ASCIIToWide(const base::StringPiece& ascii);
+BASE_EXPORT string16 ASCIIToUTF16(const base::StringPiece& ascii);
 
 #endif  // BASE_UTF_STRING_CONVERSIONS_H_
