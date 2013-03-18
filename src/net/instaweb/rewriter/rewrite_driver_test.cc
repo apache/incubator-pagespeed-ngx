@@ -1245,14 +1245,14 @@ TEST_F(RewriteDriverTest, CachePollutionWithWrongEncodingCharacter) {
   AddFilter(RewriteOptions::kRewriteCss);
 
   const char kCss[] = "* { display: none; }";
-  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCss, 100);
+  SetResponseWithDefaultHeaders("dir/a.css", kContentTypeCss, kCss, 100);
 
   GoogleString css_wrong_url =
-      "http://test.com/B.a.css.pagespeed.cf.0.css";
+      "http://test.com/dir/B.a.css.pagespeed.cf.0.css";
 
   GoogleString correct_url = Encode(
-      kTestDomain, RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
-      "a.css", "css");
+      StrCat(kTestDomain, "dir/"),
+      RewriteOptions::kCssFilterId, hasher()->Hash(kCss), "a.css", "css");
 
   // Cold load.
   EXPECT_TRUE(TryFetchResource(css_wrong_url));
@@ -1267,7 +1267,7 @@ TEST_F(RewriteDriverTest, CachePollutionWithWrongEncodingCharacter) {
   EXPECT_EQ(HTTPCache::kFound,
             HttpBlockingFindStatus(correct_url, http_cache()));
 
-  GoogleString input_html(CssLinkHref("a.css"));
+  GoogleString input_html(CssLinkHref("dir/a.css"));
   GoogleString output_html(CssLinkHref(correct_url));
   ValidateExpected("wrong_encoding", input_html, output_html);
 }
@@ -1276,14 +1276,14 @@ TEST_F(RewriteDriverTest, CachePollutionWithLowerCasedncodingCharacter) {
   AddFilter(RewriteOptions::kRewriteCss);
 
   const char kCss[] = "* { display: none; }";
-  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCss, 100);
+  SetResponseWithDefaultHeaders("dir/a.css", kContentTypeCss, kCss, 100);
 
   GoogleString css_wrong_url =
-      "http://test.com/a.a.css.pagespeed.cf.0.css";
+      "http://test.com/dir/a.a.css.pagespeed.cf.0.css";
 
   GoogleString correct_url = Encode(
-      kTestDomain, RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
-      "a.css", "css");
+      StrCat(kTestDomain, "dir/"),
+      RewriteOptions::kCssFilterId, hasher()->Hash(kCss), "a.css", "css");
 
   // Cold load.
   EXPECT_TRUE(TryFetchResource(css_wrong_url));
@@ -1298,7 +1298,7 @@ TEST_F(RewriteDriverTest, CachePollutionWithLowerCasedncodingCharacter) {
   EXPECT_EQ(HTTPCache::kFound,
             HttpBlockingFindStatus(correct_url, http_cache()));
 
-  GoogleString input_html(CssLinkHref("a.css"));
+  GoogleString input_html(CssLinkHref("dir/a.css"));
   GoogleString output_html(CssLinkHref(correct_url));
   ValidateExpected("wrong_encoding", input_html, output_html);
 }
@@ -1307,14 +1307,14 @@ TEST_F(RewriteDriverTest, CachePollutionWithExperimentId) {
   AddFilter(RewriteOptions::kRewriteCss);
 
   const char kCss[] = "* { display: none; }";
-  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCss, 100);
+  SetResponseWithDefaultHeaders("dir/a.css", kContentTypeCss, kCss, 100);
 
   GoogleString css_wrong_url =
-      "http://test.com/A.a.css.pagespeed.b.cf.0.css";
+      "http://test.com/dir/A.a.css.pagespeed.b.cf.0.css";
 
   GoogleString correct_url = Encode(
-      kTestDomain, RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
-      "a.css", "css");
+      StrCat(kTestDomain, "dir/"),
+      RewriteOptions::kCssFilterId, hasher()->Hash(kCss), "a.css", "css");
 
   // Cold load.
   EXPECT_TRUE(TryFetchResource(css_wrong_url));
@@ -1329,7 +1329,7 @@ TEST_F(RewriteDriverTest, CachePollutionWithExperimentId) {
   EXPECT_EQ(HTTPCache::kFound,
             HttpBlockingFindStatus(correct_url, http_cache()));
 
-  GoogleString input_html(CssLinkHref("a.css"));
+  GoogleString input_html(CssLinkHref("dir/a.css"));
   GoogleString output_html(CssLinkHref(correct_url));
   ValidateExpected("wrong_encoding", input_html, output_html);
 }
@@ -1338,14 +1338,14 @@ TEST_F(RewriteDriverTest, CachePollutionWithQueryParams) {
   AddFilter(RewriteOptions::kRewriteCss);
 
   const char kCss[] = "* { display: none; }";
-  SetResponseWithDefaultHeaders("a.css?ver=3", kContentTypeCss, kCss, 100);
+  SetResponseWithDefaultHeaders("dir/a.css?ver=3", kContentTypeCss, kCss, 100);
 
   GoogleString css_wrong_url =
-      "http://test.com/A.a.css,qver%3D3.pagespeed.cf.0.css";
+      "http://test.com/dir/A.a.css,qver%3D3.pagespeed.cf.0.css";
 
   GoogleString correct_url = Encode(
-      kTestDomain, RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
-      "a.css?ver=3", "css");
+      StrCat(kTestDomain, "dir/"),
+      RewriteOptions::kCssFilterId, hasher()->Hash(kCss), "a.css?ver=3", "css");
 
   // Cold load.
   EXPECT_TRUE(TryFetchResource(css_wrong_url));
@@ -1360,7 +1360,7 @@ TEST_F(RewriteDriverTest, CachePollutionWithQueryParams) {
   EXPECT_EQ(HTTPCache::kFound,
             HttpBlockingFindStatus(correct_url, http_cache()));
 
-  GoogleString input_html(CssLinkHref("a.css?ver=3"));
+  GoogleString input_html(CssLinkHref("dir/a.css?ver=3"));
   GoogleString output_html(CssLinkHref(correct_url));
   ValidateExpected("wrong_encoding", input_html, output_html);
 }
@@ -1390,6 +1390,30 @@ TEST_F(RewriteDriverTest, NoLoggingForImagesRewrittenInsideCss) {
   LoggingInfo* logging_info = rewrite_driver_->log_record()->logging_info();
   ASSERT_EQ(1, logging_info->rewriter_info_size());
   EXPECT_EQ("cf", logging_info->rewriter_info(0).id());
+}
+
+TEST_F(RewriteDriverTest, DecodeMultiUrlsEncodesCorrectly) {
+  options()->EnableFilter(RewriteOptions::kRewriteCss);
+  options()->EnableFilter(RewriteOptions::kCombineCss);
+  rewrite_driver()->AddFilters();
+
+  const char kCss[] = "* { display: none; }";
+  SetResponseWithDefaultHeaders("a.css", kContentTypeCss, kCss, 100);
+  SetResponseWithDefaultHeaders("test/b.css", kContentTypeCss, kCss, 100);
+
+  // Combine filters
+  GoogleString multi_url = Encode(
+      kTestDomain, RewriteOptions::kCssFilterId, hasher()->Hash(kCss),
+      "a.css+test,_b.css.pagespeed.cc.0.css", "css");
+  EXPECT_TRUE(TryFetchResource(multi_url));
+
+  GoogleString input_html(
+      StrCat(CssLinkHref("a.css"), CssLinkHref("test/b.css")));
+  ParseUrl(kTestDomain, input_html);
+  StringVector css_urls;
+  CollectCssLinks("multi", output_buffer_, &css_urls);
+  EXPECT_EQ(1UL, css_urls.size());
+  EXPECT_EQ(multi_url, css_urls[0]);
 }
 
 

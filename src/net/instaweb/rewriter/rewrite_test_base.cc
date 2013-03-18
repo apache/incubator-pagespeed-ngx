@@ -604,10 +604,10 @@ void RewriteTestBase::CollectCssLinks(
 }
 
 void RewriteTestBase::EncodePathAndLeaf(const StringPiece& id,
-                                                const StringPiece& hash,
-                                                const StringVector& name_vector,
-                                                const StringPiece& ext,
-                                                ResourceNamer* namer) {
+                                        const StringPiece& hash,
+                                        const StringVector& name_vector,
+                                        const StringPiece& ext,
+                                        ResourceNamer* namer) {
   namer->set_id(id);
   namer->set_hash(hash);
 
@@ -620,6 +620,7 @@ void RewriteTestBase::EncodePathAndLeaf(const StringPiece& id,
   // in, at least, CacheExtenderTest.
   //
   // Note that this can only be done for 1-element name_vectors.
+  // TODO(jmarantz): Modify this to work with combining across paths.
   for (int i = 0, n = name_vector.size(); i < n; ++i) {
     const GoogleString& name = name_vector[i];
     CHECK(name.find('/') == GoogleString::npos) << "No slashes should be "

@@ -2185,6 +2185,14 @@ bool RewriteContext::DecodeFetchUrls(
       original_base.Reset(original_base_sans_leaf);
     }
 
+    // Fix the output resource name based on the decoded urls and the real
+    // options used while rewriting this request. Note that we must call
+    // Encoder::Encode on the url vector before the urls in it are absolutified.
+    GoogleString encoded_url;
+    encoder()->Encode(urls, resource_context(), &encoded_url);
+    Driver()->PopulateResourceNamer(
+        id(), encoded_url, output_resource->mutable_full_name());
+
     for (int i = 0, n = urls.size(); i < n; ++i) {
       // If the decoded name is still encoded (because originally it was
       // rewritten by multiple filters, such as CSS minified then combined),
@@ -2199,7 +2207,6 @@ bool RewriteContext::DecodeFetchUrls(
       // which will then be decoded to http://my.com/a.css and b.css so for the
       // first decoding here we need to retain the encoded domain name.
       GoogleUrl* url = NULL;
-      ResourceNamer namer;
 
       if (check_for_multiple_rewrites) {
         scoped_ptr<GoogleUrl> orig_based_url(
@@ -2273,20 +2280,6 @@ bool RewriteContext::PrepareFetch(
       resource->set_is_background_fetch(false);
       ResourceSlotPtr slot(new FetchResourceSlot(resource));
       AddSlot(slot);
-    }
-    OutputResourcePtr output = output_resource;
-    if (is_valid) {
-      // Fix the output resourcename based on the decoded urls and the real
-      // options used while rewriting this request.
-      StringVector url_string_vector;
-      for (int i = 0, n = url_vector.size(); i < n; ++i) {
-        url_string_vector.push_back(url_vector[i]->LeafWithQuery().as_string());
-      }
-      GoogleString encoded_url;
-      encoder()->Encode(url_string_vector, resource_context(),
-                        &encoded_url);
-      driver->PopulateResourceNamer(
-          id(), encoded_url, output->mutable_full_name());
     }
     STLDeleteContainerPointers(url_vector.begin(), url_vector.end());
     if (is_valid) {
