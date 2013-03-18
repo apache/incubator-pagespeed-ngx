@@ -1361,11 +1361,19 @@ void RewriteOptions::AddProperties() {
       kUseSmartDiffInBlink,
       kDirectoryScope,
       NULL);   // Not applicable for mod_pagespeed.
+
+  // Note: defer_javascript and defer_iframe were previously not
+  // trusted on mobile user-agents, but have now matured to the point
+  // where we should trust them by default.  The mod_pagespeed
+  // config-file setting "ModPagespeedEnableAggressiveRewritersForMobile"
+  // will work, but we will omit it from the documentation because we
+  // are enabling it by default.
   AddBaseProperty(
-      false, &RewriteOptions::enable_aggressive_rewriters_for_mobile_,
+      true, &RewriteOptions::enable_aggressive_rewriters_for_mobile_,
       "earm", kEnableAggressiveRewritersForMobile,
       kDirectoryScope,
-      NULL);   // Not applicable for mod_pagespeed.
+      "Allows defer_javascript and defer_iframe for mobile browsers");
+
   AddRequestProperty(
       false, &RewriteOptions::is_blink_auto_blacklisted_, "ibab");
   AddBaseProperty(

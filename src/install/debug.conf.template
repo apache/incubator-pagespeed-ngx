@@ -858,6 +858,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@/with_shm" 8
 #ALL_DIRECTIVES ModPagespeedDisallow bar
 #ALL_DIRECTIVES ModPagespeedDomain http://example.com
 #ALL_DIRECTIVES ModPagespeedDomainRewriteHyperlinks true
+#ALL_DIRECTIVES ModPagespeedEnableAggressiveRewritersForMobile false
 #ALL_DIRECTIVES ModPagespeedEnableFilters extend_cache
 #ALL_DIRECTIVES ModPagespeedExperimentSpec "id=8;percent=10"
 #ALL_DIRECTIVES ModPagespeedExperimentVariable 3

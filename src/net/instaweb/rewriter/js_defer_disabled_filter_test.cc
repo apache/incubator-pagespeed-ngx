@@ -143,8 +143,6 @@ TEST_F(JsDeferDisabledFilterTest, InvalidUserAgent) {
 
 TEST_F(JsDeferDisabledFilterTest, AllowMobileUserAgent) {
   InitJsDeferDisabledFilter(false);
-  options_->ClearSignatureForTesting();
-  options_->set_enable_aggressive_rewriters_for_mobile(true);
   rewrite_driver()->SetUserAgent(UserAgentStrings::kIPhone4Safari);
   const char script[] = "<head>"
       "<script type='text/psajs' "
@@ -167,6 +165,8 @@ TEST_F(JsDeferDisabledFilterTest, AllowMobileUserAgent) {
 
 TEST_F(JsDeferDisabledFilterTest, DisAllowMobileUserAgent) {
   InitJsDeferDisabledFilter(false);
+  options_->ClearSignatureForTesting();
+  options_->set_enable_aggressive_rewriters_for_mobile(false);
   rewrite_driver()->SetUserAgent(UserAgentStrings::kIPhone4Safari);
   const char script[] = "<head>"
       "<script type='text/psajs' "
