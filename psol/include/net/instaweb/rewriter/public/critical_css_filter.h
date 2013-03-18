@@ -30,17 +30,21 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_CSS_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CRITICAL_CSS_FILTER_H_
 
+#include <map>
 #include <vector>
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 class CriticalCssFinder;
+class CriticalCssResult;
+class CriticalCssResult_LinkRules;
 class HtmlCharactersNode;
 class HtmlElement;
 class RewriteDriver;
@@ -57,8 +61,9 @@ class CriticalCssFilter : public EmptyHtmlFilter {
   virtual void StartDocument();
   virtual void EndDocument();
   virtual void StartElement(HtmlElement* element);
-  virtual void Characters(HtmlCharactersNode* characters);
   virtual void EndElement(HtmlElement* element);
+  virtual void Characters(HtmlCharactersNode* characters);
+
   virtual const char* Name() const { return "CriticalCss"; }
 
  private:
@@ -66,21 +71,32 @@ class CriticalCssFilter : public EmptyHtmlFilter {
   // If data is unavailable (e.g., not yet determined, or flushed from
   //     page property cache), the returned StringPiece .data() is NULL.
   // If no CSS is critical for |decoded_url|, the returned StringPiece is empty.
-  StringPiece GetRules(StringPiece decoded_url) const;
+  const CriticalCssResult_LinkRules* GetLinkRules(
+      StringPiece decoded_url) const;
 
   RewriteDriver* driver_;
   CssTagScanner css_tag_scanner_;
   CriticalCssFinder* finder_;
 
-  // Stores a map of CSS link URLs to critical CSS.
-  scoped_ptr<StringStringMap> critical_css_map_;
+  scoped_ptr<CriticalCssResult> critical_css_result_;
+
+  // Map link URLs to indexes in the critical CSS result.
+  typedef std::map<GoogleString, int> UrlIndexes;
+  UrlIndexes url_indexes_;
 
   class CssElement;
   class CssStyleElement;
   typedef std::vector<CssElement*> CssElementVector;
   CssElementVector css_elements_;
   CssStyleElement* current_style_element_;
+  bool has_critical_css_;
   bool has_critical_css_match_;
+
+  int total_critical_size_;
+  int total_original_size_;
+  int repeated_style_blocks_size_;
+  int num_repeated_style_blocks_;
+  int num_delayed_links_;
 
   DISALLOW_COPY_AND_ASSIGN(CriticalCssFilter);
 };

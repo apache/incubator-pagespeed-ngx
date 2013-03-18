@@ -15,10 +15,14 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_USER_AGENT_MATCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_USER_AGENT_MATCHER_H_
 
+#include <map>
+#include <utility>
+
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/re2.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/fast_wildcard_group.h"
+#include "third_party/instaweb/util/fast_wildcard_group.h"
 
 using std::pair;
 using std::make_pair;
@@ -26,8 +30,6 @@ using std::map;
 
 namespace net_instaweb {
 
-class PropertyCache;
-class PropertyPage;
 class RequestHeaders;
 
 // This class contains various user agent based checks.  Currently all of these
@@ -89,9 +91,7 @@ class UserAgentMatcher {
       const char* user_agent, const RequestHeaders* request_headers) const;
 
   // Returns the supported prefetch mechanism depending upon the user agent.
-  PrefetchMechanism GetPrefetchMechanism(
-      const StringPiece& user_agent,
-      const RequestHeaders* request_headers) const;
+  PrefetchMechanism GetPrefetchMechanism(const StringPiece& user_agent) const;
 
   // Returns the DeviceType for the given user agent string.
   DeviceType GetDeviceTypeForUA(const StringPiece& user_agent) const;
@@ -128,6 +128,10 @@ class UserAgentMatcher {
   // Returns true and sets width and height if we know them for the UA.
   virtual bool GetScreenResolution(
         const StringPiece& user_agent, int* width, int* height);
+
+  bool UserAgentExceedsChromeAndroidBuildAndPatch(
+      const StringPiece& user_agent, int required_build,
+      int required_patch) const;
 
  private:
   FastWildcardGroup supports_image_inlining_;

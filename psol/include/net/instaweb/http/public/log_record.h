@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 // If your .cc file needs to use the types declared in logging_proto.h,
 // you must also include net/instaweb/http/public/logging_proto_impl.h
@@ -75,6 +76,12 @@ class LogRecord  {
   void SetRewriterLoggingStatus(
       const char* rewriter_id, RewriterInfo::RewriterApplicationStatus status);
 
+  // Creates a new rewriter logging submessage for |rewriter_id|,
+  // sets status and the url index.
+  void SetRewriterLoggingStatus(
+      const char* rewriter_id, const GoogleString& url,
+      RewriterInfo::RewriterApplicationStatus status);
+
   // Return the LoggingInfo proto wrapped by this class. Calling code must
   // guard any reads and writes to this using mutex().
   virtual LoggingInfo* logging_info();
@@ -102,6 +109,7 @@ class LogRecord  {
   // if a single-field update to a logging proto occurs multiple times, it
   // should be factored out into a method on this class.
   void SetBlinkRequestFlow(int flow);
+  void SetCacheHtmlRequestFlow(int flow);
   void SetIsOriginalResourceCacheable(bool cacheable);
   void SetTimingRequestStartMs(int64 ms);
   void SetTimingHeaderFetchMs(int64 ms);
@@ -119,9 +127,13 @@ class LogRecord  {
   // Override SetBlinkInfoImpl if necessary.
   void SetBlinkInfo(const GoogleString& user_agent);
 
+  // Override SetCacheHtmlInfoImpl if necessary.
+  void SetCacheHtmlLoggingInfo(const GoogleString& user_agent);
+
   // Log a RewriterInfo for the image rewrite filter.
   void LogImageRewriteActivity(
       const char* id,
+      const GoogleString& url,
       RewriterInfo::RewriterApplicationStatus status,
       bool is_image_inlined,
       bool is_critical_image,
@@ -149,6 +161,10 @@ class LogRecord  {
   // the LoggingInfo proto wrapped by this class.
   void SetRewriterInfoMaxSize(int x);
 
+  // Sets whether urls should be logged. This could potentially generate a lot
+  // of logs data, so this should be switched on only for debugging.
+  void SetAllowLoggingUrls(bool allow_logging_urls);
+
  protected:
   // Non-initializing default constructor for subclasses. Subclasses that invoke
   // this constructor should implement and call their own initializer that
@@ -160,6 +176,9 @@ class LogRecord  {
 
   // Implements setting Blink-specific log information; base impl is a no-op.
   virtual void SetBlinkInfoImpl(const GoogleString& user_agent) {}
+
+  // Implements setting CacheHtml-specific log information
+  void SetCacheHtmlInfoImpl(const GoogleString& user_agent) {}
   // Implements writing a log, base implementation is a no-op. Returns false if
   // writing failed.
   virtual bool WriteLogImpl() { return true; }
@@ -167,6 +186,9 @@ class LogRecord  {
  private:
   // Called on construction.
   void InitLogging();
+
+  void PopulateUrl(
+      const GoogleString& url, RewriteResourceInfo* rewrite_resource_info);
 
   scoped_ptr<LoggingInfo> logging_info_;
 
@@ -176,6 +198,12 @@ class LogRecord  {
 
   // The maximum number of rewrite info logs stored for a single request.
   int rewriter_info_max_size_;
+
+  // Allow urls to be logged.
+  bool allow_logging_urls_;
+
+  // Map which maintains the url to index for logging urls.
+  StringIntMap url_index_map_;
 
   DISALLOW_COPY_AND_ASSIGN(LogRecord);
 };

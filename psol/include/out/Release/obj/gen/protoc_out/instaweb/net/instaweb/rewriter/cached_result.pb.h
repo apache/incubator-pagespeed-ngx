@@ -786,6 +786,13 @@ class ResourceContext : public ::google::protobuf::MessageLite {
   inline ::net_instaweb::ImageDim* mutable_user_agent_screen_resolution();
   inline ::net_instaweb::ImageDim* release_user_agent_screen_resolution();
   
+  // optional bool use_small_screen_quality = 7 [default = false];
+  inline bool has_use_small_screen_quality() const;
+  inline void clear_use_small_screen_quality();
+  static const int kUseSmallScreenQualityFieldNumber = 7;
+  inline bool use_small_screen_quality() const;
+  inline void set_use_small_screen_quality(bool value);
+  
   // @@protoc_insertion_point(class_scope:net_instaweb.ResourceContext)
  private:
   inline void set_has_desired_image_dims();
@@ -800,16 +807,19 @@ class ResourceContext : public ::google::protobuf::MessageLite {
   inline void clear_has_libwebp_level();
   inline void set_has_user_agent_screen_resolution();
   inline void clear_has_user_agent_screen_resolution();
+  inline void set_has_use_small_screen_quality();
+  inline void clear_has_use_small_screen_quality();
   
   ::net_instaweb::ImageDim* desired_image_dims_;
   bool attempt_webp_;
   bool inline_images_;
   bool mobile_user_agent_;
+  bool use_small_screen_quality_;
   int libwebp_level_;
   ::net_instaweb::ImageDim* user_agent_screen_resolution_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(6 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(7 + 31) / 32];
   
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_net_2finstaweb_2frewriter_2fcached_5fresult_2eproto_impl();
@@ -1876,6 +1886,28 @@ inline ::net_instaweb::ImageDim* ResourceContext::release_user_agent_screen_reso
   ::net_instaweb::ImageDim* temp = user_agent_screen_resolution_;
   user_agent_screen_resolution_ = NULL;
   return temp;
+}
+
+// optional bool use_small_screen_quality = 7 [default = false];
+inline bool ResourceContext::has_use_small_screen_quality() const {
+  return (_has_bits_[0] & 0x00000040u) != 0;
+}
+inline void ResourceContext::set_has_use_small_screen_quality() {
+  _has_bits_[0] |= 0x00000040u;
+}
+inline void ResourceContext::clear_has_use_small_screen_quality() {
+  _has_bits_[0] &= ~0x00000040u;
+}
+inline void ResourceContext::clear_use_small_screen_quality() {
+  use_small_screen_quality_ = false;
+  clear_has_use_small_screen_quality();
+}
+inline bool ResourceContext::use_small_screen_quality() const {
+  return use_small_screen_quality_;
+}
+inline void ResourceContext::set_use_small_screen_quality(bool value) {
+  set_has_use_small_screen_quality();
+  use_small_screen_quality_ = value;
 }
 
 

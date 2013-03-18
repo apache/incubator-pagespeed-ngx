@@ -47,6 +47,7 @@ class CacheHtmlInfoFinder;
 class ContentType;
 class CriticalCssFinder;
 class CriticalImagesFinder;
+class CriticalSelectorFinder;
 class FileSystem;
 class FilenameEncoder;
 class FlushEarlyInfoFinder;
@@ -185,10 +186,16 @@ class ServerContext {
   Scheduler* scheduler() const { return scheduler_; }
   void set_scheduler(Scheduler* s) { scheduler_ = s; }
   bool has_default_system_fetcher() { return default_system_fetcher_ != NULL; }
-
+  bool has_default_distributed_fetcher() {
+    return default_distributed_fetcher_ != NULL;
+  }
   // Note: for rewriting user content, you want to use RewriteDriver's
   // async_fetcher() instead, as it may apply session-specific optimizations.
   UrlAsyncFetcher* DefaultSystemFetcher() { return default_system_fetcher_; }
+
+  UrlAsyncFetcher* DefaultDistributedFetcher() {
+    return default_distributed_fetcher_;
+  }
 
   Timer* timer() const { return http_cache_->timer(); }
 
@@ -241,6 +248,11 @@ class ServerContext {
     return critical_images_finder_.get();
   }
   void set_critical_images_finder(CriticalImagesFinder* finder);
+
+  CriticalSelectorFinder* critical_selector_finder() const {
+    return critical_selector_finder_.get();
+  }
+  void set_critical_selector_finder(CriticalSelectorFinder* finder);
 
   FlushEarlyInfoFinder* flush_early_info_finder() const {
     return flush_early_info_finder_.get();
@@ -309,12 +321,17 @@ class ServerContext {
   void set_default_system_fetcher(UrlAsyncFetcher* fetcher) {
     default_system_fetcher_ = fetcher;
   }
+  void set_default_distributed_fetcher(UrlAsyncFetcher* fetcher) {
+    default_distributed_fetcher_ = fetcher;
+  }
 
   // Handles an incoming beacon request by incrementing the appropriate
   // variables.  Returns true if the url was parsed and handled correctly; in
   // this case a 204 No Content response should be sent.  Returns false if the
-  // url could not be parsed; in this case the request should be declined.
-  bool HandleBeacon(StringPiece unparsed_url,
+  // url could not be parsed; in this case the request should be declined. body
+  // should be either the query params or the POST body, depending on how the
+  // beacon was sent, from the beacon request.
+  bool HandleBeacon(StringPiece body,
                     StringPiece user_agent,
                     const RequestContextPtr& request_context);
 
@@ -600,9 +617,11 @@ class ServerContext {
   UserAgentMatcher* user_agent_matcher_;
   Scheduler* scheduler_;
   UrlAsyncFetcher* default_system_fetcher_;
+  UrlAsyncFetcher* default_distributed_fetcher_;
   Hasher* hasher_;
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
   scoped_ptr<CriticalCssFinder> critical_css_finder_;
+  scoped_ptr<CriticalSelectorFinder> critical_selector_finder_;
   scoped_ptr<BlinkCriticalLineDataFinder> blink_critical_line_data_finder_;
   scoped_ptr<CacheHtmlInfoFinder> cache_html_info_finder_;
   scoped_ptr<FlushEarlyInfoFinder> flush_early_info_finder_;

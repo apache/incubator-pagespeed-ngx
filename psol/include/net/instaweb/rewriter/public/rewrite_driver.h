@@ -30,19 +30,20 @@
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -56,6 +57,7 @@ class AsyncFetch;
 class CacheUrlAsyncFetcher;
 class CommonFilter;
 class CriticalLineInfo;
+class CriticalSelectorSet;
 class DebugFilter;
 class DeviceProperties;
 class DomainRewriteFilter;
@@ -382,6 +384,12 @@ class RewriteDriver : public HtmlParse {
   // fetcher, and will keep it around until Clear(), even if further calls
   // to this method are made.
   void SetSessionFetcher(UrlAsyncFetcher* f);
+
+  UrlAsyncFetcher* distributed_fetcher() { return distributed_async_fetcher_; }
+  // Does not take ownership.
+  void set_distributed_fetcher(UrlAsyncFetcher* fetcher) {
+    distributed_async_fetcher_ = fetcher;
+  }
 
   // Creates a cache fetcher that uses the driver's fetcher and its options.
   // Note: this means the driver's fetcher must survive as long as this does.
@@ -832,28 +840,23 @@ class RewriteDriver : public HtmlParse {
   void set_critical_line_info(CriticalLineInfo* critical_line_info);
 
   // Used by ImageRewriteFilter for identifying critical images.
-  const StringSet* critical_images() const {
-    return critical_images_.get();
+  CriticalImagesInfo* critical_images_info() const {
+    return critical_images_info_.get();
   }
 
   // Inserts the critical images present on the requested html page. It takes
-  // the ownership of critical_images.
-  void set_critical_images(StringSet* critical_images) {
-    critical_images_.reset(critical_images);
+  // ownership of critical_images_info. This should only be called by the
+  // CriticalImagesFinder, normal users should just be using the automatic
+  // management of critical_images_info that CriticalImagesFinder provides.
+  void set_critical_images_info(CriticalImagesInfo* critical_images_info) {
+    critical_images_info_.reset(critical_images_info);
   }
 
-  const StringSet* css_critical_images() const {
-    return css_critical_images_.get();
-  }
-
-  // Inserts the critical images present in the css. It takes the ownership of
-  // css_critical_images.
-  void set_css_critical_images(StringSet* css_critical_images) {
-    css_critical_images_.reset(css_critical_images);
-  }
-
-  bool updated_critical_images() const { return updated_critical_images_; }
-  void set_updated_critical_images(bool x) { updated_critical_images_ = x; }
+  // Returns computed critical selector set for this page, or NULL
+  // if not available. Should only be called from HTML-safe thread context.
+  // (parser threar or Render() callbacks). The returned value is owned by
+  // the rewrite driver.
+  CriticalSelectorSet* CriticalSelectors();
 
   // We expect to this method to be called on the HTML parser thread.
   // Returns the number of images whose low quality images are inlined in the
@@ -891,18 +894,19 @@ class RewriteDriver : public HtmlParse {
   bool flushed_cached_html() { return flushed_cached_html_; }
 
   void set_flushing_cached_html(bool x) { flushing_cached_html_ = x; }
-  bool flushing_cached_html() { return flushing_cached_html_; }
+  bool flushing_cached_html() const { return flushing_cached_html_; }
 
   void set_flushed_early(bool x) { flushed_early_ = x; }
-  bool flushed_early() { return flushed_early_; }
+  bool flushed_early() const { return flushed_early_; }
 
   void set_flushing_early(bool x) { flushing_early_ = x; }
-  bool flushing_early() { return flushing_early_; }
+  bool flushing_early() const { return flushing_early_; }
 
   void set_is_lazyload_script_flushed(bool x) {
     is_lazyload_script_flushed_ = x;
   }
-  bool is_lazyload_script_flushed() { return is_lazyload_script_flushed_; }
+  bool is_lazyload_script_flushed() const {
+    return is_lazyload_script_flushed_; }
 
   // This method is not thread-safe. Call it only from the html parser thread.
   FlushEarlyInfo* flush_early_info();
@@ -934,7 +938,7 @@ class RewriteDriver : public HtmlParse {
 
   // Determines whether the system is healthy enough to rewrite resources.
   // Currently, systems get sick based on the health of the metadata cache.
-  bool can_rewrite_resources() { return can_rewrite_resources_; }
+  bool can_rewrite_resources() const { return can_rewrite_resources_; }
 
   // Sets the is_nested property on the driver.
   void set_is_nested(bool n) { is_nested_ = n; }
@@ -1266,6 +1270,11 @@ class RewriteDriver : public HtmlParse {
   // This is either owned externally or via owned_url_async_fetchers_.
   UrlAsyncFetcher* url_async_fetcher_;
 
+  // This is the fetcher that is used to distribute rewrites if enabled. This
+  // can be NULL if distributed rewriting is not configured. This is owned
+  // externally.
+  UrlAsyncFetcher* distributed_async_fetcher_;
+
   // A list of all the UrlAsyncFetchers that we own, as set with
   // SetSessionFetcher.
   std::vector<UrlAsyncFetcher*> owned_url_async_fetchers_;
@@ -1327,14 +1336,12 @@ class RewriteDriver : public HtmlParse {
 
   scoped_ptr<CriticalLineInfo> critical_line_info_;
 
-  // Stores all the critical images for the current URL.
-  scoped_ptr<StringSet> critical_images_;
+  // Stores all the critical image info for the current URL.
+  scoped_ptr<CriticalImagesInfo> critical_images_info_;
 
-  // Stores all the critical images for the current URL present in css.
-  scoped_ptr<StringSet> css_critical_images_;
-
-  // Indicates if the critical images were updated here.
-  bool updated_critical_images_;
+  // We lazy-initialize critical_selector_info_ from the finder.
+  bool critical_selector_info_computed_;
+  scoped_ptr<CriticalSelectorSet> critical_selector_info_;
 
   // Memoized computation of whether the current doc has an XHTML mimetype.
   bool xhtml_mimetype_computed_;

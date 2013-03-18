@@ -31,43 +31,43 @@ void  protobuf_AddDesc_net_2finstaweb_2frewriter_2fcritical_5fcss_2eproto();
 void protobuf_AssignDesc_net_2finstaweb_2frewriter_2fcritical_5fcss_2eproto();
 void protobuf_ShutdownFile_net_2finstaweb_2frewriter_2fcritical_5fcss_2eproto();
 
-class CriticalCssSet;
-class CriticalCssSet_CriticalCss;
+class CriticalCssResult;
+class CriticalCssResult_LinkRules;
 
 // ===================================================================
 
-class CriticalCssSet_CriticalCss : public ::google::protobuf::MessageLite {
+class CriticalCssResult_LinkRules : public ::google::protobuf::MessageLite {
  public:
-  CriticalCssSet_CriticalCss();
-  virtual ~CriticalCssSet_CriticalCss();
+  CriticalCssResult_LinkRules();
+  virtual ~CriticalCssResult_LinkRules();
   
-  CriticalCssSet_CriticalCss(const CriticalCssSet_CriticalCss& from);
+  CriticalCssResult_LinkRules(const CriticalCssResult_LinkRules& from);
   
-  inline CriticalCssSet_CriticalCss& operator=(const CriticalCssSet_CriticalCss& from) {
+  inline CriticalCssResult_LinkRules& operator=(const CriticalCssResult_LinkRules& from) {
     CopyFrom(from);
     return *this;
   }
   
-  static const CriticalCssSet_CriticalCss& default_instance();
+  static const CriticalCssResult_LinkRules& default_instance();
   
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   // Returns the internal default instance pointer. This function can
   // return NULL thus should not be used by the user. This is intended
   // for Protobuf internal code. Please use default_instance() declared
   // above instead.
-  static inline const CriticalCssSet_CriticalCss* internal_default_instance() {
+  static inline const CriticalCssResult_LinkRules* internal_default_instance() {
     return default_instance_;
   }
   #endif
   
-  void Swap(CriticalCssSet_CriticalCss* other);
+  void Swap(CriticalCssResult_LinkRules* other);
   
   // implements Message ----------------------------------------------
   
-  CriticalCssSet_CriticalCss* New() const;
+  CriticalCssResult_LinkRules* New() const;
   void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
-  void CopyFrom(const CriticalCssSet_CriticalCss& from);
-  void MergeFrom(const CriticalCssSet_CriticalCss& from);
+  void CopyFrom(const CriticalCssResult_LinkRules& from);
+  void MergeFrom(const CriticalCssResult_LinkRules& from);
   void Clear();
   bool IsInitialized() const;
   
@@ -111,18 +111,28 @@ class CriticalCssSet_CriticalCss : public ::google::protobuf::MessageLite {
   inline ::std::string* mutable_critical_rules();
   inline ::std::string* release_critical_rules();
   
-  // @@protoc_insertion_point(class_scope:net_instaweb.CriticalCssSet.CriticalCss)
+  // optional int32 original_size = 3;
+  inline bool has_original_size() const;
+  inline void clear_original_size();
+  static const int kOriginalSizeFieldNumber = 3;
+  inline ::google::protobuf::int32 original_size() const;
+  inline void set_original_size(::google::protobuf::int32 value);
+  
+  // @@protoc_insertion_point(class_scope:net_instaweb.CriticalCssResult.LinkRules)
  private:
   inline void set_has_link_url();
   inline void clear_has_link_url();
   inline void set_has_critical_rules();
   inline void clear_has_critical_rules();
+  inline void set_has_original_size();
+  inline void clear_has_original_size();
   
   ::std::string* link_url_;
   ::std::string* critical_rules_;
+  ::google::protobuf::int32 original_size_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(2 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(3 + 31) / 32];
   
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_net_2finstaweb_2frewriter_2fcritical_5fcss_2eproto_impl();
@@ -133,42 +143,42 @@ class CriticalCssSet_CriticalCss : public ::google::protobuf::MessageLite {
   friend void protobuf_ShutdownFile_net_2finstaweb_2frewriter_2fcritical_5fcss_2eproto();
   
   void InitAsDefaultInstance();
-  static CriticalCssSet_CriticalCss* default_instance_;
+  static CriticalCssResult_LinkRules* default_instance_;
 };
 // -------------------------------------------------------------------
 
-class CriticalCssSet : public ::google::protobuf::MessageLite {
+class CriticalCssResult : public ::google::protobuf::MessageLite {
  public:
-  CriticalCssSet();
-  virtual ~CriticalCssSet();
+  CriticalCssResult();
+  virtual ~CriticalCssResult();
   
-  CriticalCssSet(const CriticalCssSet& from);
+  CriticalCssResult(const CriticalCssResult& from);
   
-  inline CriticalCssSet& operator=(const CriticalCssSet& from) {
+  inline CriticalCssResult& operator=(const CriticalCssResult& from) {
     CopyFrom(from);
     return *this;
   }
   
-  static const CriticalCssSet& default_instance();
+  static const CriticalCssResult& default_instance();
   
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   // Returns the internal default instance pointer. This function can
   // return NULL thus should not be used by the user. This is intended
   // for Protobuf internal code. Please use default_instance() declared
   // above instead.
-  static inline const CriticalCssSet* internal_default_instance() {
+  static inline const CriticalCssResult* internal_default_instance() {
     return default_instance_;
   }
   #endif
   
-  void Swap(CriticalCssSet* other);
+  void Swap(CriticalCssResult* other);
   
   // implements Message ----------------------------------------------
   
-  CriticalCssSet* New() const;
+  CriticalCssResult* New() const;
   void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
-  void CopyFrom(const CriticalCssSet& from);
-  void MergeFrom(const CriticalCssSet& from);
+  void CopyFrom(const CriticalCssResult& from);
+  void MergeFrom(const CriticalCssResult& from);
   void Clear();
   bool IsInitialized() const;
   
@@ -188,29 +198,59 @@ class CriticalCssSet : public ::google::protobuf::MessageLite {
   
   // nested types ----------------------------------------------------
   
-  typedef CriticalCssSet_CriticalCss CriticalCss;
+  typedef CriticalCssResult_LinkRules LinkRules;
   
   // accessors -------------------------------------------------------
   
-  // repeated .net_instaweb.CriticalCssSet.CriticalCss critical_css = 1;
-  inline int critical_css_size() const;
-  inline void clear_critical_css();
-  static const int kCriticalCssFieldNumber = 1;
-  inline const ::net_instaweb::CriticalCssSet_CriticalCss& critical_css(int index) const;
-  inline ::net_instaweb::CriticalCssSet_CriticalCss* mutable_critical_css(int index);
-  inline ::net_instaweb::CriticalCssSet_CriticalCss* add_critical_css();
-  inline const ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalCssSet_CriticalCss >&
-      critical_css() const;
-  inline ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalCssSet_CriticalCss >*
-      mutable_critical_css();
+  // repeated .net_instaweb.CriticalCssResult.LinkRules link_rules = 1;
+  inline int link_rules_size() const;
+  inline void clear_link_rules();
+  static const int kLinkRulesFieldNumber = 1;
+  inline const ::net_instaweb::CriticalCssResult_LinkRules& link_rules(int index) const;
+  inline ::net_instaweb::CriticalCssResult_LinkRules* mutable_link_rules(int index);
+  inline ::net_instaweb::CriticalCssResult_LinkRules* add_link_rules();
+  inline const ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalCssResult_LinkRules >&
+      link_rules() const;
+  inline ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalCssResult_LinkRules >*
+      mutable_link_rules();
   
-  // @@protoc_insertion_point(class_scope:net_instaweb.CriticalCssSet)
+  // optional int32 exception_count = 2;
+  inline bool has_exception_count() const;
+  inline void clear_exception_count();
+  static const int kExceptionCountFieldNumber = 2;
+  inline ::google::protobuf::int32 exception_count() const;
+  inline void set_exception_count(::google::protobuf::int32 value);
+  
+  // optional int32 import_count = 3;
+  inline bool has_import_count() const;
+  inline void clear_import_count();
+  static const int kImportCountFieldNumber = 3;
+  inline ::google::protobuf::int32 import_count() const;
+  inline void set_import_count(::google::protobuf::int32 value);
+  
+  // optional int32 link_count = 4;
+  inline bool has_link_count() const;
+  inline void clear_link_count();
+  static const int kLinkCountFieldNumber = 4;
+  inline ::google::protobuf::int32 link_count() const;
+  inline void set_link_count(::google::protobuf::int32 value);
+  
+  // @@protoc_insertion_point(class_scope:net_instaweb.CriticalCssResult)
  private:
+  inline void set_has_exception_count();
+  inline void clear_has_exception_count();
+  inline void set_has_import_count();
+  inline void clear_has_import_count();
+  inline void set_has_link_count();
+  inline void clear_has_link_count();
   
-  ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalCssSet_CriticalCss > critical_css_;
+  ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalCssResult_LinkRules > link_rules_;
+  ::google::protobuf::int32 exception_count_;
+  ::google::protobuf::int32 import_count_;
+  ::google::protobuf::int32 link_count_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(4 + 31) / 32];
   
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_net_2finstaweb_2frewriter_2fcritical_5fcss_2eproto_impl();
@@ -221,63 +261,63 @@ class CriticalCssSet : public ::google::protobuf::MessageLite {
   friend void protobuf_ShutdownFile_net_2finstaweb_2frewriter_2fcritical_5fcss_2eproto();
   
   void InitAsDefaultInstance();
-  static CriticalCssSet* default_instance_;
+  static CriticalCssResult* default_instance_;
 };
 // ===================================================================
 
 
 // ===================================================================
 
-// CriticalCssSet_CriticalCss
+// CriticalCssResult_LinkRules
 
 // optional string link_url = 1;
-inline bool CriticalCssSet_CriticalCss::has_link_url() const {
+inline bool CriticalCssResult_LinkRules::has_link_url() const {
   return (_has_bits_[0] & 0x00000001u) != 0;
 }
-inline void CriticalCssSet_CriticalCss::set_has_link_url() {
+inline void CriticalCssResult_LinkRules::set_has_link_url() {
   _has_bits_[0] |= 0x00000001u;
 }
-inline void CriticalCssSet_CriticalCss::clear_has_link_url() {
+inline void CriticalCssResult_LinkRules::clear_has_link_url() {
   _has_bits_[0] &= ~0x00000001u;
 }
-inline void CriticalCssSet_CriticalCss::clear_link_url() {
+inline void CriticalCssResult_LinkRules::clear_link_url() {
   if (link_url_ != &::google::protobuf::internal::kEmptyString) {
     link_url_->clear();
   }
   clear_has_link_url();
 }
-inline const ::std::string& CriticalCssSet_CriticalCss::link_url() const {
+inline const ::std::string& CriticalCssResult_LinkRules::link_url() const {
   return *link_url_;
 }
-inline void CriticalCssSet_CriticalCss::set_link_url(const ::std::string& value) {
+inline void CriticalCssResult_LinkRules::set_link_url(const ::std::string& value) {
   set_has_link_url();
   if (link_url_ == &::google::protobuf::internal::kEmptyString) {
     link_url_ = new ::std::string;
   }
   link_url_->assign(value);
 }
-inline void CriticalCssSet_CriticalCss::set_link_url(const char* value) {
+inline void CriticalCssResult_LinkRules::set_link_url(const char* value) {
   set_has_link_url();
   if (link_url_ == &::google::protobuf::internal::kEmptyString) {
     link_url_ = new ::std::string;
   }
   link_url_->assign(value);
 }
-inline void CriticalCssSet_CriticalCss::set_link_url(const char* value, size_t size) {
+inline void CriticalCssResult_LinkRules::set_link_url(const char* value, size_t size) {
   set_has_link_url();
   if (link_url_ == &::google::protobuf::internal::kEmptyString) {
     link_url_ = new ::std::string;
   }
   link_url_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* CriticalCssSet_CriticalCss::mutable_link_url() {
+inline ::std::string* CriticalCssResult_LinkRules::mutable_link_url() {
   set_has_link_url();
   if (link_url_ == &::google::protobuf::internal::kEmptyString) {
     link_url_ = new ::std::string;
   }
   return link_url_;
 }
-inline ::std::string* CriticalCssSet_CriticalCss::release_link_url() {
+inline ::std::string* CriticalCssResult_LinkRules::release_link_url() {
   clear_has_link_url();
   if (link_url_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -289,53 +329,53 @@ inline ::std::string* CriticalCssSet_CriticalCss::release_link_url() {
 }
 
 // optional string critical_rules = 2;
-inline bool CriticalCssSet_CriticalCss::has_critical_rules() const {
+inline bool CriticalCssResult_LinkRules::has_critical_rules() const {
   return (_has_bits_[0] & 0x00000002u) != 0;
 }
-inline void CriticalCssSet_CriticalCss::set_has_critical_rules() {
+inline void CriticalCssResult_LinkRules::set_has_critical_rules() {
   _has_bits_[0] |= 0x00000002u;
 }
-inline void CriticalCssSet_CriticalCss::clear_has_critical_rules() {
+inline void CriticalCssResult_LinkRules::clear_has_critical_rules() {
   _has_bits_[0] &= ~0x00000002u;
 }
-inline void CriticalCssSet_CriticalCss::clear_critical_rules() {
+inline void CriticalCssResult_LinkRules::clear_critical_rules() {
   if (critical_rules_ != &::google::protobuf::internal::kEmptyString) {
     critical_rules_->clear();
   }
   clear_has_critical_rules();
 }
-inline const ::std::string& CriticalCssSet_CriticalCss::critical_rules() const {
+inline const ::std::string& CriticalCssResult_LinkRules::critical_rules() const {
   return *critical_rules_;
 }
-inline void CriticalCssSet_CriticalCss::set_critical_rules(const ::std::string& value) {
+inline void CriticalCssResult_LinkRules::set_critical_rules(const ::std::string& value) {
   set_has_critical_rules();
   if (critical_rules_ == &::google::protobuf::internal::kEmptyString) {
     critical_rules_ = new ::std::string;
   }
   critical_rules_->assign(value);
 }
-inline void CriticalCssSet_CriticalCss::set_critical_rules(const char* value) {
+inline void CriticalCssResult_LinkRules::set_critical_rules(const char* value) {
   set_has_critical_rules();
   if (critical_rules_ == &::google::protobuf::internal::kEmptyString) {
     critical_rules_ = new ::std::string;
   }
   critical_rules_->assign(value);
 }
-inline void CriticalCssSet_CriticalCss::set_critical_rules(const char* value, size_t size) {
+inline void CriticalCssResult_LinkRules::set_critical_rules(const char* value, size_t size) {
   set_has_critical_rules();
   if (critical_rules_ == &::google::protobuf::internal::kEmptyString) {
     critical_rules_ = new ::std::string;
   }
   critical_rules_->assign(reinterpret_cast<const char*>(value), size);
 }
-inline ::std::string* CriticalCssSet_CriticalCss::mutable_critical_rules() {
+inline ::std::string* CriticalCssResult_LinkRules::mutable_critical_rules() {
   set_has_critical_rules();
   if (critical_rules_ == &::google::protobuf::internal::kEmptyString) {
     critical_rules_ = new ::std::string;
   }
   return critical_rules_;
 }
-inline ::std::string* CriticalCssSet_CriticalCss::release_critical_rules() {
+inline ::std::string* CriticalCssResult_LinkRules::release_critical_rules() {
   clear_has_critical_rules();
   if (critical_rules_ == &::google::protobuf::internal::kEmptyString) {
     return NULL;
@@ -346,33 +386,121 @@ inline ::std::string* CriticalCssSet_CriticalCss::release_critical_rules() {
   }
 }
 
+// optional int32 original_size = 3;
+inline bool CriticalCssResult_LinkRules::has_original_size() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void CriticalCssResult_LinkRules::set_has_original_size() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void CriticalCssResult_LinkRules::clear_has_original_size() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void CriticalCssResult_LinkRules::clear_original_size() {
+  original_size_ = 0;
+  clear_has_original_size();
+}
+inline ::google::protobuf::int32 CriticalCssResult_LinkRules::original_size() const {
+  return original_size_;
+}
+inline void CriticalCssResult_LinkRules::set_original_size(::google::protobuf::int32 value) {
+  set_has_original_size();
+  original_size_ = value;
+}
+
 // -------------------------------------------------------------------
 
-// CriticalCssSet
+// CriticalCssResult
 
-// repeated .net_instaweb.CriticalCssSet.CriticalCss critical_css = 1;
-inline int CriticalCssSet::critical_css_size() const {
-  return critical_css_.size();
+// repeated .net_instaweb.CriticalCssResult.LinkRules link_rules = 1;
+inline int CriticalCssResult::link_rules_size() const {
+  return link_rules_.size();
 }
-inline void CriticalCssSet::clear_critical_css() {
-  critical_css_.Clear();
+inline void CriticalCssResult::clear_link_rules() {
+  link_rules_.Clear();
 }
-inline const ::net_instaweb::CriticalCssSet_CriticalCss& CriticalCssSet::critical_css(int index) const {
-  return critical_css_.Get(index);
+inline const ::net_instaweb::CriticalCssResult_LinkRules& CriticalCssResult::link_rules(int index) const {
+  return link_rules_.Get(index);
 }
-inline ::net_instaweb::CriticalCssSet_CriticalCss* CriticalCssSet::mutable_critical_css(int index) {
-  return critical_css_.Mutable(index);
+inline ::net_instaweb::CriticalCssResult_LinkRules* CriticalCssResult::mutable_link_rules(int index) {
+  return link_rules_.Mutable(index);
 }
-inline ::net_instaweb::CriticalCssSet_CriticalCss* CriticalCssSet::add_critical_css() {
-  return critical_css_.Add();
+inline ::net_instaweb::CriticalCssResult_LinkRules* CriticalCssResult::add_link_rules() {
+  return link_rules_.Add();
 }
-inline const ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalCssSet_CriticalCss >&
-CriticalCssSet::critical_css() const {
-  return critical_css_;
+inline const ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalCssResult_LinkRules >&
+CriticalCssResult::link_rules() const {
+  return link_rules_;
 }
-inline ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalCssSet_CriticalCss >*
-CriticalCssSet::mutable_critical_css() {
-  return &critical_css_;
+inline ::google::protobuf::RepeatedPtrField< ::net_instaweb::CriticalCssResult_LinkRules >*
+CriticalCssResult::mutable_link_rules() {
+  return &link_rules_;
+}
+
+// optional int32 exception_count = 2;
+inline bool CriticalCssResult::has_exception_count() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void CriticalCssResult::set_has_exception_count() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void CriticalCssResult::clear_has_exception_count() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void CriticalCssResult::clear_exception_count() {
+  exception_count_ = 0;
+  clear_has_exception_count();
+}
+inline ::google::protobuf::int32 CriticalCssResult::exception_count() const {
+  return exception_count_;
+}
+inline void CriticalCssResult::set_exception_count(::google::protobuf::int32 value) {
+  set_has_exception_count();
+  exception_count_ = value;
+}
+
+// optional int32 import_count = 3;
+inline bool CriticalCssResult::has_import_count() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void CriticalCssResult::set_has_import_count() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void CriticalCssResult::clear_has_import_count() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void CriticalCssResult::clear_import_count() {
+  import_count_ = 0;
+  clear_has_import_count();
+}
+inline ::google::protobuf::int32 CriticalCssResult::import_count() const {
+  return import_count_;
+}
+inline void CriticalCssResult::set_import_count(::google::protobuf::int32 value) {
+  set_has_import_count();
+  import_count_ = value;
+}
+
+// optional int32 link_count = 4;
+inline bool CriticalCssResult::has_link_count() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void CriticalCssResult::set_has_link_count() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void CriticalCssResult::clear_has_link_count() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void CriticalCssResult::clear_link_count() {
+  link_count_ = 0;
+  clear_has_link_count();
+}
+inline ::google::protobuf::int32 CriticalCssResult::link_count() const {
+  return link_count_;
+}
+inline void CriticalCssResult::set_link_count(::google::protobuf::int32 value) {
+  set_has_link_count();
+  link_count_ = value;
 }
 
 

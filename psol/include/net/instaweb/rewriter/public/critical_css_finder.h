@@ -24,10 +24,12 @@
 
 namespace net_instaweb {
 
+class CriticalCssResult;
 class PropertyValue;
 class RewriteDriver;
 class Statistics;
 class TimedVariable;
+
 
 // Finds critical CSS rules (i.e. CSS needed for the initial page load).
 class CriticalCssFinder {
@@ -41,15 +43,16 @@ class CriticalCssFinder {
 
   static void InitStats(Statistics* statistics);
 
-  // Gets critical css from property cache.
-  virtual StringStringMap* CriticalCssMap(RewriteDriver* driver);
+  // Get critical css result from property cache.
+  // Ownership of the result is passed to the caller.
+  virtual CriticalCssResult* GetCriticalCssFromCache(RewriteDriver* driver);
 
   // Compute the critical css for |url|.
   virtual void ComputeCriticalCss(StringPiece url, RewriteDriver* driver) = 0;
 
   // Copy |critical_css_map| into property cache. Returns true on success.
   virtual bool UpdateCache(RewriteDriver* driver,
-                           const StringStringMap& critical_css_map);
+                           const CriticalCssResult& result);
 
   virtual const char* GetCohort() const = 0;
 
@@ -58,10 +61,6 @@ class CriticalCssFinder {
 
  private:
   static const char kCriticalCssPropertyName[];
-
-  // Returns the critical css from |property_value|.
-  StringStringMap* DeserializeCacheData(RewriteDriver* driver,
-                                        const PropertyValue* property_value);
 
   TimedVariable* critical_css_valid_count_;
   TimedVariable* critical_css_expired_count_;

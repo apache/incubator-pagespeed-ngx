@@ -37,6 +37,7 @@ class BlinkCriticalLineDataFinder;
 class CacheHtmlInfoFinder;
 class CriticalCssFinder;
 class CriticalImagesFinder;
+class CriticalSelectorFinder;
 class FileSystem;
 class FilenameEncoder;
 class FlushEarlyInfoFinder;
@@ -136,6 +137,9 @@ class RewriteDriverFactory {
   // been called.
   void set_base_url_fetcher(UrlFetcher* url_fetcher);
   void set_base_url_async_fetcher(UrlAsyncFetcher* url_fetcher);
+
+  // Takes ownership of fetcher. This should only be called once.
+  void SetDistributedAsyncFetcher(UrlAsyncFetcher* fetcher);
 
   bool set_filename_prefix(StringPiece p);
 
@@ -309,6 +313,7 @@ class RewriteDriverFactory {
 
   virtual CriticalCssFinder* DefaultCriticalCssFinder();
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
+  virtual CriticalSelectorFinder* DefaultCriticalSelectorFinder();
 
   // Default implementation returns NULL.
   virtual BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder(
@@ -376,6 +381,7 @@ class RewriteDriverFactory {
   scoped_ptr<FileSystem> file_system_;
   UrlFetcher* url_fetcher_;
   UrlAsyncFetcher* url_async_fetcher_;
+  UrlAsyncFetcher* distributed_async_fetcher_;
   scoped_ptr<UrlFetcher> base_url_fetcher_;
   scoped_ptr<UrlAsyncFetcher> base_url_async_fetcher_;
   scoped_ptr<Hasher> hasher_;

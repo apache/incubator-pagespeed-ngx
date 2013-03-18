@@ -34,6 +34,7 @@ namespace Css {
 class Declarations;
 class MediaQueries;
 class MediaQuery;
+class Selector;
 }
 
 namespace net_instaweb {
@@ -131,6 +132,13 @@ void ConvertStringVectorToMediaQueries(const StringVector& in_vector,
 // Clear the given vector if it contains the media 'all'. This is required
 // because Css::Parser doesn't treat 'all' specially but we do for efficiency.
 void ClearVectorIfContainsMediaAll(StringVector* media);
+
+// Can this media attribute include some kind of screen?
+bool CanMediaAffectScreen(const StringPiece& media);
+
+// Strip a parsed selector down to a string that can be used by a
+// querySelectorAll call in the browser to select DOM elements.
+GoogleString JsDetectableSelector(const Css::Selector& selector);
 
 // Eliminate all elements from the first vector that are not in the second
 // vector, with the caveat that an empty vector (first or second) means 'the

@@ -20,6 +20,7 @@
 
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -45,8 +46,8 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
   // The critical image beacon sends back hashes of the URls to save space, so
   // this computes the same hash on image_url and checks if it is stored in the
   // critical image set.
-  virtual bool IsCriticalImage(const GoogleString& image_url,
-                               const RewriteDriver* driver) const;
+  virtual bool IsHtmlCriticalImage(const GoogleString& image_url,
+                               RewriteDriver* driver);
 
   virtual void ComputeCriticalImages(StringPiece url,
                                      RewriteDriver* driver);

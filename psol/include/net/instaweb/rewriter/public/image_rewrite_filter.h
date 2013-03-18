@@ -20,6 +20,7 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_IMAGE_REWRITE_FILTER_H_
 
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/rewriter/public/image.h"
 #include "net/instaweb/rewriter/public/image_url_encoder.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -86,6 +87,36 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Histogram for delays of failed image rewrites.
   static const char kImageRewriteLatencyFailedMs[];
+
+  // # of timeouts while attempting to rewrite images as WebP from
+  // various formats.
+  static const char kImageWebpFromGifTimeouts[];
+  static const char kImageWebpFromPngTimeouts[];
+  static const char kImageWebpFromJpegTimeouts[];
+
+  // Duration of successful WebP conversions from various
+  // formats. Note that a successful conversion may not be served if
+  // it happens to be larger than the original image.
+  static const char kImageWebpFromGifSuccessMs[];
+  static const char kImageWebpFromPngSuccessMs[];
+  static const char kImageWebpFromJpegSuccessMs[];
+
+  // Duration of failed WebP conversions from various formats. Note
+  // that this does not include timeout failures, which are captured
+  // above.
+  static const char kImageWebpFromGifFailureMs[];
+  static const char kImageWebpFromPngFailureMs[];
+  static const char kImageWebpFromJpegFailureMs[];
+
+  // Duration of conversions of images with alpha to WebP.
+  static const char kImageWebpWithAlphaTimeouts[];
+  static const char kImageWebpWithAlphaSuccessMs[];
+  static const char kImageWebpWithAlphaFailureMs[];
+
+  // Duration of conversions of images without alpha to WebP.
+  static const char kImageWebpOpaqueTimeouts[];
+  static const char kImageWebpOpaqueSuccessMs[];
+  static const char kImageWebpOpaqueFailureMs[];
 
   // The property cache property name used to store URLs discovered when
   // image_inlining_identify_and_cache_without_rewriting() is set in the
@@ -208,7 +239,7 @@ class ImageRewriteFilter : public RewriteFilter {
 
   // Save image contents in cached if the image is inlinable.
   void SaveIfInlinable(const StringPiece& contents,
-                       const Image::Type image_type,
+                       const ImageType image_type,
                        CachedResult* cached);
 
   // Populates width and height with the attributes specified in the
@@ -229,7 +260,7 @@ class ImageRewriteFilter : public RewriteFilter {
   // An image is considered critical if it is in the critical list as determined
   // by CriticalImageFinder. Images are considered critical if the platform
   // lacks a CriticalImageFinder implementation.
-  bool IsCriticalImage(const StringPiece& image_url) const;
+  bool IsHtmlCriticalImage(StringPiece image_url) const;
 
   // Persist a URL that would have be inlined to the property cache, if
   // options()->image_inlining_identify_and_cache_without_rewriting(). Returns
@@ -282,6 +313,7 @@ class ImageRewriteFilter : public RewriteFilter {
   Variable* image_inline_count_;
   // # of images rewritten into WebP format.
   Variable* image_webp_rewrites_;
+
   // Delay in microseconds of successful image rewrites.
   Histogram* image_rewrite_latency_ok_ms_;
   // Delay in microseconds of failed image rewrites.
@@ -297,6 +329,9 @@ class ImageRewriteFilter : public RewriteFilter {
   // image_inlining_identify_and_cache_without_rewriting() is set in the
   // RewriteOptions.
   StringSet inlinable_urls_;
+
+  // Sets of variables and histograms for various conversions to WebP.
+  Image::ConversionVariables webp_conversion_variables_;
 
   DISALLOW_COPY_AND_ASSIGN(ImageRewriteFilter);
 };

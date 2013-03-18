@@ -162,7 +162,7 @@ class ProxyFetchPropertyCallbackCollector {
                                       const StringPiece& url,
                                       const RequestContextPtr& req_ctx,
                                       const RewriteOptions* options,
-                                      const StringPiece& user_agent);
+                                      UserAgentMatcher::DeviceType device_type);
   virtual ~ProxyFetchPropertyCallbackCollector();
 
   // Add a callback to be handled by this collector.
@@ -220,23 +220,17 @@ class ProxyFetchPropertyCallbackCollector {
   const RequestContextPtr& request_context() { return request_context_; }
 
   // Returns DeviceType from device property page.
-  UserAgentMatcher::DeviceType GetDeviceTypeFromDeviceCacheMutexHeld();
+  UserAgentMatcher::DeviceType device_type() { return device_type_; }
 
  private:
-  // Set the property page corresponding to device_type for kPagePropertyCache.
-  void SetPropertyPageForDeviceTypeMutexHeld(
-      UserAgentMatcher::DeviceType device_type);
-
   std::set<ProxyFetchPropertyCallback*> pending_callbacks_;
   std::map<ProxyFetchPropertyCallback::CacheType, PropertyPage*>
   property_pages_;
-  std::map<UserAgentMatcher::DeviceType, PropertyPage*>
-  property_pages_for_device_types_;
   scoped_ptr<AbstractMutex> mutex_;
   ServerContext* server_context_;
   GoogleString url_;
   RequestContextPtr request_context_;
-  GoogleString user_agent_;
+  UserAgentMatcher::DeviceType device_type_;
   bool detached_;             // protected by mutex_.
   bool done_;                 // protected by mutex_.
   bool success_;              // protected by mutex_; accessed after quiescence.

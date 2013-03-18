@@ -37,6 +37,9 @@ class Waveform;
 // Collects a few specific statistics variables related to Rewriting.
 class RewriteStats {
  public:
+  static const char kNumResourceFetchSuccesses[];
+  static const char kNumResourceFetchFailures[];
+
   RewriteStats(Statistics* stats, ThreadSystem* thread_system, Timer* timer);
   ~RewriteStats();
 
@@ -100,7 +103,6 @@ class RewriteStats {
   Variable* cached_output_misses_;
   Variable* cached_resource_fetches_;
   Variable* failed_filter_resource_fetches_;
-  Variable* failed_filter_resource_fetches__;
   Variable* num_flushes_;
   Variable* page_load_count_;
   Variable* resource_404_count_;

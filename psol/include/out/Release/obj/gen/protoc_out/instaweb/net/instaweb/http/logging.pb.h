@@ -22,6 +22,7 @@
 #include <google/protobuf/generated_message_util.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/extension_set.h>
+#include "net/instaweb/rewriter/image_types.pb.h"
 // @@protoc_insertion_point(includes)
 
 namespace net_instaweb {
@@ -40,6 +41,7 @@ class PropertyCohortInfo;
 class PropertyPageInfo;
 class FlushEarlyFlowInfo;
 class FlushEarlyResourceInfo;
+class CacheHtmlLoggingInfo;
 class RewriteResourceInfo;
 class ImageRewriteResourceInfo;
 class RewriterInfo;
@@ -95,6 +97,19 @@ bool FlushEarlyResourceInfo_ContentType_IsValid(int value);
 const FlushEarlyResourceInfo_ContentType FlushEarlyResourceInfo_ContentType_ContentType_MIN = FlushEarlyResourceInfo_ContentType_UNKNOWN_CONTENT_TYPE;
 const FlushEarlyResourceInfo_ContentType FlushEarlyResourceInfo_ContentType_ContentType_MAX = FlushEarlyResourceInfo_ContentType_CSS;
 const int FlushEarlyResourceInfo_ContentType_ContentType_ARRAYSIZE = FlushEarlyResourceInfo_ContentType_ContentType_MAX + 1;
+
+enum CacheHtmlLoggingInfo_CacheHtmlRequestFlow {
+  CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CACHE_HTML_HIT = 1,
+  CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CACHE_HTML_MISS_FOUND_RESOURCE = 2,
+  CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CACHE_HTML_MISS_FETCH_NON_OK = 3,
+  CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CACHE_HTML_MISS_TRIGGERED_REWRITE = 4,
+  CacheHtmlLoggingInfo_CacheHtmlRequestFlow_FOUND_MALFORMED_HTML = 5,
+  CacheHtmlLoggingInfo_CacheHtmlRequestFlow_FOUND_CONTENT_LENGTH_OVER_THRESHOLD = 6
+};
+bool CacheHtmlLoggingInfo_CacheHtmlRequestFlow_IsValid(int value);
+const CacheHtmlLoggingInfo_CacheHtmlRequestFlow CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CacheHtmlRequestFlow_MIN = CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CACHE_HTML_HIT;
+const CacheHtmlLoggingInfo_CacheHtmlRequestFlow CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CacheHtmlRequestFlow_MAX = CacheHtmlLoggingInfo_CacheHtmlRequestFlow_FOUND_CONTENT_LENGTH_OVER_THRESHOLD;
+const int CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CacheHtmlRequestFlow_ARRAYSIZE = CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CacheHtmlRequestFlow_MAX + 1;
 
 enum RewriterInfo_RewriterApplicationStatus {
   RewriterInfo_RewriterApplicationStatus_UNKNOWN_STATUS = 0,
@@ -1233,6 +1248,154 @@ class FlushEarlyResourceInfo : public ::google::protobuf::MessageLite {
 };
 // -------------------------------------------------------------------
 
+class CacheHtmlLoggingInfo : public ::google::protobuf::MessageLite {
+ public:
+  CacheHtmlLoggingInfo();
+  virtual ~CacheHtmlLoggingInfo();
+  
+  CacheHtmlLoggingInfo(const CacheHtmlLoggingInfo& from);
+  
+  inline CacheHtmlLoggingInfo& operator=(const CacheHtmlLoggingInfo& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  
+  static const CacheHtmlLoggingInfo& default_instance();
+  
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  // Returns the internal default instance pointer. This function can
+  // return NULL thus should not be used by the user. This is intended
+  // for Protobuf internal code. Please use default_instance() declared
+  // above instead.
+  static inline const CacheHtmlLoggingInfo* internal_default_instance() {
+    return default_instance_;
+  }
+  #endif
+  
+  void Swap(CacheHtmlLoggingInfo* other);
+  
+  // implements Message ----------------------------------------------
+  
+  CacheHtmlLoggingInfo* New() const;
+  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const CacheHtmlLoggingInfo& from);
+  void MergeFrom(const CacheHtmlLoggingInfo& from);
+  void Clear();
+  bool IsInitialized() const;
+  
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  
+  ::std::string GetTypeName() const;
+  
+  // nested types ----------------------------------------------------
+  
+  typedef CacheHtmlLoggingInfo_CacheHtmlRequestFlow CacheHtmlRequestFlow;
+  static const CacheHtmlRequestFlow CACHE_HTML_HIT = CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CACHE_HTML_HIT;
+  static const CacheHtmlRequestFlow CACHE_HTML_MISS_FOUND_RESOURCE = CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CACHE_HTML_MISS_FOUND_RESOURCE;
+  static const CacheHtmlRequestFlow CACHE_HTML_MISS_FETCH_NON_OK = CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CACHE_HTML_MISS_FETCH_NON_OK;
+  static const CacheHtmlRequestFlow CACHE_HTML_MISS_TRIGGERED_REWRITE = CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CACHE_HTML_MISS_TRIGGERED_REWRITE;
+  static const CacheHtmlRequestFlow FOUND_MALFORMED_HTML = CacheHtmlLoggingInfo_CacheHtmlRequestFlow_FOUND_MALFORMED_HTML;
+  static const CacheHtmlRequestFlow FOUND_CONTENT_LENGTH_OVER_THRESHOLD = CacheHtmlLoggingInfo_CacheHtmlRequestFlow_FOUND_CONTENT_LENGTH_OVER_THRESHOLD;
+  static inline bool CacheHtmlRequestFlow_IsValid(int value) {
+    return CacheHtmlLoggingInfo_CacheHtmlRequestFlow_IsValid(value);
+  }
+  static const CacheHtmlRequestFlow CacheHtmlRequestFlow_MIN =
+    CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CacheHtmlRequestFlow_MIN;
+  static const CacheHtmlRequestFlow CacheHtmlRequestFlow_MAX =
+    CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CacheHtmlRequestFlow_MAX;
+  static const int CacheHtmlRequestFlow_ARRAYSIZE =
+    CacheHtmlLoggingInfo_CacheHtmlRequestFlow_CacheHtmlRequestFlow_ARRAYSIZE;
+  
+  // accessors -------------------------------------------------------
+  
+  // optional .net_instaweb.CacheHtmlLoggingInfo.CacheHtmlRequestFlow cache_html_request_flow = 1;
+  inline bool has_cache_html_request_flow() const;
+  inline void clear_cache_html_request_flow();
+  static const int kCacheHtmlRequestFlowFieldNumber = 1;
+  inline ::net_instaweb::CacheHtmlLoggingInfo_CacheHtmlRequestFlow cache_html_request_flow() const;
+  inline void set_cache_html_request_flow(::net_instaweb::CacheHtmlLoggingInfo_CacheHtmlRequestFlow value);
+  
+  // optional string request_event_id_time_usec = 2;
+  inline bool has_request_event_id_time_usec() const;
+  inline void clear_request_event_id_time_usec();
+  static const int kRequestEventIdTimeUsecFieldNumber = 2;
+  inline const ::std::string& request_event_id_time_usec() const;
+  inline void set_request_event_id_time_usec(const ::std::string& value);
+  inline void set_request_event_id_time_usec(const char* value);
+  inline void set_request_event_id_time_usec(const char* value, size_t size);
+  inline ::std::string* mutable_request_event_id_time_usec();
+  inline ::std::string* release_request_event_id_time_usec();
+  
+  // optional bool html_match = 3;
+  inline bool has_html_match() const;
+  inline void clear_html_match();
+  static const int kHtmlMatchFieldNumber = 3;
+  inline bool html_match() const;
+  inline void set_html_match(bool value);
+  
+  // optional bool html_smart_diff_match = 4;
+  inline bool has_html_smart_diff_match() const;
+  inline void clear_html_smart_diff_match();
+  static const int kHtmlSmartDiffMatchFieldNumber = 4;
+  inline bool html_smart_diff_match() const;
+  inline void set_html_smart_diff_match(bool value);
+  
+  // optional string url = 5;
+  inline bool has_url() const;
+  inline void clear_url();
+  static const int kUrlFieldNumber = 5;
+  inline const ::std::string& url() const;
+  inline void set_url(const ::std::string& value);
+  inline void set_url(const char* value);
+  inline void set_url(const char* value, size_t size);
+  inline ::std::string* mutable_url();
+  inline ::std::string* release_url();
+  
+  // @@protoc_insertion_point(class_scope:net_instaweb.CacheHtmlLoggingInfo)
+ private:
+  inline void set_has_cache_html_request_flow();
+  inline void clear_has_cache_html_request_flow();
+  inline void set_has_request_event_id_time_usec();
+  inline void clear_has_request_event_id_time_usec();
+  inline void set_has_html_match();
+  inline void clear_has_html_match();
+  inline void set_has_html_smart_diff_match();
+  inline void clear_has_html_smart_diff_match();
+  inline void set_has_url();
+  inline void clear_has_url();
+  
+  ::std::string* request_event_id_time_usec_;
+  int cache_html_request_flow_;
+  bool html_match_;
+  bool html_smart_diff_match_;
+  ::std::string* url_;
+  
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(5 + 31) / 32];
+  
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  friend void  protobuf_AddDesc_net_2finstaweb_2fhttp_2flogging_2eproto_impl();
+  #else
+  friend void  protobuf_AddDesc_net_2finstaweb_2fhttp_2flogging_2eproto();
+  #endif
+  friend void protobuf_AssignDesc_net_2finstaweb_2fhttp_2flogging_2eproto();
+  friend void protobuf_ShutdownFile_net_2finstaweb_2fhttp_2flogging_2eproto();
+  
+  void InitAsDefaultInstance();
+  static CacheHtmlLoggingInfo* default_instance_;
+};
+// -------------------------------------------------------------------
+
 class RewriteResourceInfo : public ::google::protobuf::MessageLite {
  public:
   RewriteResourceInfo();
@@ -1871,6 +2034,14 @@ class LoggingInfo : public ::google::protobuf::MessageLite {
   inline ::net_instaweb::ResourceUrlInfo* mutable_resource_url_info();
   inline ::net_instaweb::ResourceUrlInfo* release_resource_url_info();
   
+  // optional .net_instaweb.CacheHtmlLoggingInfo cache_html_logging_info = 18;
+  inline bool has_cache_html_logging_info() const;
+  inline void clear_cache_html_logging_info();
+  static const int kCacheHtmlLoggingInfoFieldNumber = 18;
+  inline const ::net_instaweb::CacheHtmlLoggingInfo& cache_html_logging_info() const;
+  inline ::net_instaweb::CacheHtmlLoggingInfo* mutable_cache_html_logging_info();
+  inline ::net_instaweb::CacheHtmlLoggingInfo* release_cache_html_logging_info();
+  
   // @@protoc_insertion_point(class_scope:net_instaweb.LoggingInfo)
  private:
   inline void set_has_timing_info();
@@ -1905,6 +2076,8 @@ class LoggingInfo : public ::google::protobuf::MessageLite {
   inline void clear_has_is_pagespeed_resource();
   inline void set_has_resource_url_info();
   inline void clear_has_resource_url_info();
+  inline void set_has_cache_html_logging_info();
+  inline void clear_has_cache_html_logging_info();
   
   ::net_instaweb::TimingInfo* timing_info_;
   ::net_instaweb::BlinkInfo* blink_info_;
@@ -1921,11 +2094,12 @@ class LoggingInfo : public ::google::protobuf::MessageLite {
   ::google::protobuf::int64 options_signature_hash_;
   ::net_instaweb::FlushEarlyFlowInfo* flush_early_flow_info_;
   ::net_instaweb::ResourceUrlInfo* resource_url_info_;
+  ::net_instaweb::CacheHtmlLoggingInfo* cache_html_logging_info_;
   bool rewriter_info_size_limit_exceeded_;
   bool is_pagespeed_resource_;
   
   mutable int _cached_size_;
-  ::google::protobuf::uint32 _has_bits_[(17 + 31) / 32];
+  ::google::protobuf::uint32 _has_bits_[(18 + 31) / 32];
   
   #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
   friend void  protobuf_AddDesc_net_2finstaweb_2fhttp_2flogging_2eproto_impl();
@@ -2952,6 +3126,193 @@ inline void FlushEarlyResourceInfo::set_in_head(bool value) {
 
 // -------------------------------------------------------------------
 
+// CacheHtmlLoggingInfo
+
+// optional .net_instaweb.CacheHtmlLoggingInfo.CacheHtmlRequestFlow cache_html_request_flow = 1;
+inline bool CacheHtmlLoggingInfo::has_cache_html_request_flow() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void CacheHtmlLoggingInfo::set_has_cache_html_request_flow() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void CacheHtmlLoggingInfo::clear_has_cache_html_request_flow() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void CacheHtmlLoggingInfo::clear_cache_html_request_flow() {
+  cache_html_request_flow_ = 1;
+  clear_has_cache_html_request_flow();
+}
+inline ::net_instaweb::CacheHtmlLoggingInfo_CacheHtmlRequestFlow CacheHtmlLoggingInfo::cache_html_request_flow() const {
+  return static_cast< ::net_instaweb::CacheHtmlLoggingInfo_CacheHtmlRequestFlow >(cache_html_request_flow_);
+}
+inline void CacheHtmlLoggingInfo::set_cache_html_request_flow(::net_instaweb::CacheHtmlLoggingInfo_CacheHtmlRequestFlow value) {
+  GOOGLE_DCHECK(::net_instaweb::CacheHtmlLoggingInfo_CacheHtmlRequestFlow_IsValid(value));
+  set_has_cache_html_request_flow();
+  cache_html_request_flow_ = value;
+}
+
+// optional string request_event_id_time_usec = 2;
+inline bool CacheHtmlLoggingInfo::has_request_event_id_time_usec() const {
+  return (_has_bits_[0] & 0x00000002u) != 0;
+}
+inline void CacheHtmlLoggingInfo::set_has_request_event_id_time_usec() {
+  _has_bits_[0] |= 0x00000002u;
+}
+inline void CacheHtmlLoggingInfo::clear_has_request_event_id_time_usec() {
+  _has_bits_[0] &= ~0x00000002u;
+}
+inline void CacheHtmlLoggingInfo::clear_request_event_id_time_usec() {
+  if (request_event_id_time_usec_ != &::google::protobuf::internal::kEmptyString) {
+    request_event_id_time_usec_->clear();
+  }
+  clear_has_request_event_id_time_usec();
+}
+inline const ::std::string& CacheHtmlLoggingInfo::request_event_id_time_usec() const {
+  return *request_event_id_time_usec_;
+}
+inline void CacheHtmlLoggingInfo::set_request_event_id_time_usec(const ::std::string& value) {
+  set_has_request_event_id_time_usec();
+  if (request_event_id_time_usec_ == &::google::protobuf::internal::kEmptyString) {
+    request_event_id_time_usec_ = new ::std::string;
+  }
+  request_event_id_time_usec_->assign(value);
+}
+inline void CacheHtmlLoggingInfo::set_request_event_id_time_usec(const char* value) {
+  set_has_request_event_id_time_usec();
+  if (request_event_id_time_usec_ == &::google::protobuf::internal::kEmptyString) {
+    request_event_id_time_usec_ = new ::std::string;
+  }
+  request_event_id_time_usec_->assign(value);
+}
+inline void CacheHtmlLoggingInfo::set_request_event_id_time_usec(const char* value, size_t size) {
+  set_has_request_event_id_time_usec();
+  if (request_event_id_time_usec_ == &::google::protobuf::internal::kEmptyString) {
+    request_event_id_time_usec_ = new ::std::string;
+  }
+  request_event_id_time_usec_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* CacheHtmlLoggingInfo::mutable_request_event_id_time_usec() {
+  set_has_request_event_id_time_usec();
+  if (request_event_id_time_usec_ == &::google::protobuf::internal::kEmptyString) {
+    request_event_id_time_usec_ = new ::std::string;
+  }
+  return request_event_id_time_usec_;
+}
+inline ::std::string* CacheHtmlLoggingInfo::release_request_event_id_time_usec() {
+  clear_has_request_event_id_time_usec();
+  if (request_event_id_time_usec_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = request_event_id_time_usec_;
+    request_event_id_time_usec_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+
+// optional bool html_match = 3;
+inline bool CacheHtmlLoggingInfo::has_html_match() const {
+  return (_has_bits_[0] & 0x00000004u) != 0;
+}
+inline void CacheHtmlLoggingInfo::set_has_html_match() {
+  _has_bits_[0] |= 0x00000004u;
+}
+inline void CacheHtmlLoggingInfo::clear_has_html_match() {
+  _has_bits_[0] &= ~0x00000004u;
+}
+inline void CacheHtmlLoggingInfo::clear_html_match() {
+  html_match_ = false;
+  clear_has_html_match();
+}
+inline bool CacheHtmlLoggingInfo::html_match() const {
+  return html_match_;
+}
+inline void CacheHtmlLoggingInfo::set_html_match(bool value) {
+  set_has_html_match();
+  html_match_ = value;
+}
+
+// optional bool html_smart_diff_match = 4;
+inline bool CacheHtmlLoggingInfo::has_html_smart_diff_match() const {
+  return (_has_bits_[0] & 0x00000008u) != 0;
+}
+inline void CacheHtmlLoggingInfo::set_has_html_smart_diff_match() {
+  _has_bits_[0] |= 0x00000008u;
+}
+inline void CacheHtmlLoggingInfo::clear_has_html_smart_diff_match() {
+  _has_bits_[0] &= ~0x00000008u;
+}
+inline void CacheHtmlLoggingInfo::clear_html_smart_diff_match() {
+  html_smart_diff_match_ = false;
+  clear_has_html_smart_diff_match();
+}
+inline bool CacheHtmlLoggingInfo::html_smart_diff_match() const {
+  return html_smart_diff_match_;
+}
+inline void CacheHtmlLoggingInfo::set_html_smart_diff_match(bool value) {
+  set_has_html_smart_diff_match();
+  html_smart_diff_match_ = value;
+}
+
+// optional string url = 5;
+inline bool CacheHtmlLoggingInfo::has_url() const {
+  return (_has_bits_[0] & 0x00000010u) != 0;
+}
+inline void CacheHtmlLoggingInfo::set_has_url() {
+  _has_bits_[0] |= 0x00000010u;
+}
+inline void CacheHtmlLoggingInfo::clear_has_url() {
+  _has_bits_[0] &= ~0x00000010u;
+}
+inline void CacheHtmlLoggingInfo::clear_url() {
+  if (url_ != &::google::protobuf::internal::kEmptyString) {
+    url_->clear();
+  }
+  clear_has_url();
+}
+inline const ::std::string& CacheHtmlLoggingInfo::url() const {
+  return *url_;
+}
+inline void CacheHtmlLoggingInfo::set_url(const ::std::string& value) {
+  set_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    url_ = new ::std::string;
+  }
+  url_->assign(value);
+}
+inline void CacheHtmlLoggingInfo::set_url(const char* value) {
+  set_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    url_ = new ::std::string;
+  }
+  url_->assign(value);
+}
+inline void CacheHtmlLoggingInfo::set_url(const char* value, size_t size) {
+  set_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    url_ = new ::std::string;
+  }
+  url_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* CacheHtmlLoggingInfo::mutable_url() {
+  set_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    url_ = new ::std::string;
+  }
+  return url_;
+}
+inline ::std::string* CacheHtmlLoggingInfo::release_url() {
+  clear_has_url();
+  if (url_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = url_;
+    url_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
+}
+
+// -------------------------------------------------------------------
+
 // RewriteResourceInfo
 
 // optional bool is_inlined = 1 [default = false];
@@ -3835,6 +4196,39 @@ inline ::net_instaweb::ResourceUrlInfo* LoggingInfo::release_resource_url_info()
   clear_has_resource_url_info();
   ::net_instaweb::ResourceUrlInfo* temp = resource_url_info_;
   resource_url_info_ = NULL;
+  return temp;
+}
+
+// optional .net_instaweb.CacheHtmlLoggingInfo cache_html_logging_info = 18;
+inline bool LoggingInfo::has_cache_html_logging_info() const {
+  return (_has_bits_[0] & 0x00020000u) != 0;
+}
+inline void LoggingInfo::set_has_cache_html_logging_info() {
+  _has_bits_[0] |= 0x00020000u;
+}
+inline void LoggingInfo::clear_has_cache_html_logging_info() {
+  _has_bits_[0] &= ~0x00020000u;
+}
+inline void LoggingInfo::clear_cache_html_logging_info() {
+  if (cache_html_logging_info_ != NULL) cache_html_logging_info_->::net_instaweb::CacheHtmlLoggingInfo::Clear();
+  clear_has_cache_html_logging_info();
+}
+inline const ::net_instaweb::CacheHtmlLoggingInfo& LoggingInfo::cache_html_logging_info() const {
+#ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  return cache_html_logging_info_ != NULL ? *cache_html_logging_info_ : *default_instance().cache_html_logging_info_;
+#else
+  return cache_html_logging_info_ != NULL ? *cache_html_logging_info_ : *default_instance_->cache_html_logging_info_;
+#endif
+}
+inline ::net_instaweb::CacheHtmlLoggingInfo* LoggingInfo::mutable_cache_html_logging_info() {
+  set_has_cache_html_logging_info();
+  if (cache_html_logging_info_ == NULL) cache_html_logging_info_ = new ::net_instaweb::CacheHtmlLoggingInfo;
+  return cache_html_logging_info_;
+}
+inline ::net_instaweb::CacheHtmlLoggingInfo* LoggingInfo::release_cache_html_logging_info() {
+  clear_has_cache_html_logging_info();
+  ::net_instaweb::CacheHtmlLoggingInfo* temp = cache_html_logging_info_;
+  cache_html_logging_info_ = NULL;
   return temp;
 }
 

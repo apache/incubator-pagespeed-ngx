@@ -247,6 +247,11 @@ class RewriteContext {
 
   bool is_metadata_cache_miss() const { return is_metadata_cache_miss_; }
 
+  bool rewrite_uncacheable() const { return rewrite_uncacheable_; }
+  void set_rewrite_uncacheable(bool rewrite_uncacheable) {
+    rewrite_uncacheable_ = rewrite_uncacheable;
+  }
+
   // Removes this RewriteContext from all slots.  This is done normally when
   // a RewriteContext is completed and we are ready to run the successors.
   // It is also done when aborting a RewriteContext due to cache being
@@ -815,6 +820,10 @@ class RewriteContext {
   // Indicates whether we have a metadata miss (or an unsuccessful revalidation
   // attempt) on the html path.
   bool is_metadata_cache_miss_;
+
+  // If set to true, we'll try to rewrite un-cacheable resources.
+  // The flag is expected to be set to true only from IPRO context.
+  bool rewrite_uncacheable_;
 
   // An optional request trace associated with this context. May be NULL.
   // Always owned externally.
