@@ -95,7 +95,10 @@ you run into trouble, or ask for help on the mailing list.)
 Then build the pagespeed optimization library:
 
     $ cd ~/mod_pagespeed/src/net/instaweb/automatic
-    $ make all
+    $ make all  # will fail.
+
+While `make all` will always report an error, as long as it creates
+`pagespeed_automatic.a` you have what you need.
 
 Check out ngx_pagespeed:
 
