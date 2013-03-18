@@ -75,6 +75,10 @@ have a look at it.
 
 First build mod_pagespeed against the current revision we work at:
 
+    $ mkdir -p ~/bin
+    $ cd ~/bin
+    $ svn co http://src.chromium.org/svn/trunk/tools/depot_tools
+    $ export PATH=$PATH:~/bin/depot_tools
     $ mkdir ~/mod_pagespeed
     $ cd ~/mod_pagespeed
     $ gclient config http://modpagespeed.googlecode.com/svn/trunk/src
