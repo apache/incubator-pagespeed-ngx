@@ -62,6 +62,14 @@ const char* kImageInliningBlacklist[] = {
   "*Opera?5*",
   "*Opera?6*"
 };
+
+// Exclude BlackBerry OS 5.0 and older. See
+// http://supportforums.blackberry.com/t5/Web-and-WebWorks-Development/How-to-detect-the-BlackBerry-Browser/ta-p/559862
+// for details on BlackBerry UAs.
+const char* kLazyloadImagesBlacklist[] = {
+  "BlackBerry*CLDC*"
+};
+
 // For Panels and deferJs the list is same as of now.
 // we only allow Firefox3+, IE8+, safari and Chrome
 // We'll be updating this as and when required.
@@ -223,6 +231,9 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kImageInliningBlacklist); i < n; ++i) {
     supports_image_inlining_.Disallow(kImageInliningBlacklist[i]);
   }
+  for (int i = 0, n = arraysize(kLazyloadImagesBlacklist); i < n; ++i) {
+    supports_lazyload_images_.Disallow(kLazyloadImagesBlacklist[i]);
+  }
   for (int i = 0, n = arraysize(kPanelSupportDesktopWhitelist); i < n; ++i) {
     blink_desktop_whitelist_.Allow(kPanelSupportDesktopWhitelist[i]);
   }
@@ -302,6 +313,10 @@ bool UserAgentMatcher::SupportsImageInlining(
     return true;
   }
   return supports_image_inlining_.Match(user_agent, false);
+}
+
+bool UserAgentMatcher::SupportsLazyloadImages(StringPiece user_agent) const {
+  return supports_lazyload_images_.Match(user_agent, true);
 }
 
 UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(

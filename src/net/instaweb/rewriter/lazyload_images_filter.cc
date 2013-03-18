@@ -21,6 +21,7 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -87,7 +88,8 @@ void LazyloadImagesFilter::Clear() {
 }
 
 bool LazyloadImagesFilter::ShouldApply(RewriteDriver* driver) {
-  return !driver->flushing_early();
+  return (!driver->flushing_early() &&
+          driver->device_properties()->SupportsLazyloadImages());
 }
 
 void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {

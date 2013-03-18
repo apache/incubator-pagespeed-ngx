@@ -33,10 +33,12 @@ class DeviceProperties {
 
   void set_user_agent(const StringPiece& user_agent_string);
   bool SupportsImageInlining() const;
+  bool SupportsLazyloadImages() const;
   bool SupportsCriticalImagesBeacon() const;
   bool SupportsJsDefer(bool enable_mobile) const;
   bool SupportsWebp() const;
   bool SupportsWebpLosslessAlpha() const;
+  bool IsBot() const;
   bool IsMobileUserAgent() const;
   bool SupportsSplitHtml(bool enable_mobile) const;
   bool CanPreloadResources() const;
@@ -52,8 +54,10 @@ class DeviceProperties {
 
   mutable LazyBool supports_image_inlining_;
   mutable LazyBool supports_js_defer_;
+  mutable LazyBool supports_lazyload_images_;
   mutable LazyBool supports_webp_;
   mutable LazyBool supports_webp_lossless_alpha_;
+  mutable LazyBool is_bot_;
   mutable LazyBool is_mobile_user_agent_;
   mutable LazyBool supports_split_html_;
   mutable LazyBool supports_flush_early_;

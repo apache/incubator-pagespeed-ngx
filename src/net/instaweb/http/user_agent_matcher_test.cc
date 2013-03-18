@@ -77,6 +77,19 @@ TEST_F(UserAgentMatcherTest, SupportsImageInlining) {
       UserAgentStrings::kAndroidChrome21UserAgent));
 }
 
+TEST_F(UserAgentMatcherTest, SupportsLazyloadImages) {
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kChromeUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kFirefoxUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kIPhoneUserAgent));
+  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kBlackBerryOS6UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kBlackBerryOS5UserAgent));
+}
+
 TEST_F(UserAgentMatcherTest, NotSupportsImageInlining) {
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(
       UserAgentStrings::kIe6UserAgent));

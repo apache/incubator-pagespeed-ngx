@@ -12,15 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "net/instaweb/http/public/bot_checker.h"
 #include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
 DeviceProperties::DeviceProperties(UserAgentMatcher* matcher)
     : ua_matcher_(matcher), supports_image_inlining_(kNotSet),
-      supports_js_defer_(kNotSet), supports_webp_(kNotSet),
-      supports_webp_lossless_alpha_(kNotSet), is_mobile_user_agent_(kNotSet),
+      supports_js_defer_(kNotSet),
+      supports_lazyload_images_(kNotSet),
+      supports_webp_(kNotSet),
+      supports_webp_lossless_alpha_(kNotSet),
+      is_bot_(kNotSet),
+      is_mobile_user_agent_(kNotSet),
       supports_split_html_(kNotSet), supports_flush_early_(kNotSet),
       screen_dimensions_set_(kNotSet), screen_width_(0), screen_height_(0) {}
 
@@ -37,6 +44,15 @@ bool DeviceProperties::SupportsImageInlining() const {
         ua_matcher_->SupportsImageInlining(user_agent_) ? kTrue : kFalse;
   }
   return (supports_image_inlining_ == kTrue);
+}
+
+bool DeviceProperties::SupportsLazyloadImages() const {
+  if (supports_lazyload_images_ == kNotSet) {
+    supports_lazyload_images_ =
+        (!IsBot() && ua_matcher_->SupportsLazyloadImages(user_agent_)) ?
+        kTrue : kFalse;
+  }
+  return (supports_lazyload_images_ == kTrue);
 }
 
 bool DeviceProperties::SupportsCriticalImagesBeacon() const {
@@ -73,6 +89,13 @@ bool DeviceProperties::SupportsWebpLosslessAlpha() const {
         kTrue : kFalse;
   }
   return (supports_webp_lossless_alpha_ == kTrue);
+}
+
+bool DeviceProperties::IsBot() const {
+  if (is_bot_ == kNotSet) {
+    is_bot_ = BotChecker::Lookup(user_agent_) ? kTrue : kFalse;
+  }
+  return (is_bot_ == kTrue);
 }
 
 bool DeviceProperties::IsMobileUserAgent() const {
