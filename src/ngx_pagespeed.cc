@@ -33,6 +33,7 @@ extern "C" {
 
 #include <unistd.h>
 #include <vector>
+#include <set>
 
 #include "ngx_base_fetch.h"
 #include "ngx_message_handler.h"
