@@ -17,6 +17,7 @@
 
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -134,12 +135,18 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   finder()->IsHtmlCriticalImage("imageA.jpg", rewrite_driver());
   // We should get 2 misses, 1 for the html and 1 for css.
   CheckCriticalImageFinderStats(0, 0, 2);
+  EXPECT_EQ(0, logging_info()->num_html_critical_images());
+  EXPECT_EQ(0, logging_info()->num_css_critical_images());
   ClearStats();
 
   // Calling IsHtmlCriticalImage again should not update the stats, because the
   // CriticalImagesInfo has already been updated.
   finder()->IsHtmlCriticalImage("imageA.jpg", rewrite_driver());
   CheckCriticalImageFinderStats(0, 0, 0);
+  // ClearStats() creates a new request context and hence a new log record. So
+  // the critical image counts are not set.
+  EXPECT_EQ(-1, logging_info()->num_html_critical_images());
+  EXPECT_EQ(-1, logging_info()->num_css_critical_images());
   ClearStats();
 
   EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(
@@ -158,6 +165,8 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   EXPECT_TRUE(rewrite_driver()->critical_images_info() == NULL);
   EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
   CheckCriticalImageFinderStats(2, 0, 0);
+  EXPECT_EQ(2, logging_info()->num_html_critical_images());
+  EXPECT_EQ(1, logging_info()->num_css_critical_images());
   ClearStats();
 
   // GetCriticalImages() upates critical_images set in RewriteDriver().
@@ -177,6 +186,8 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   ResetDriver();
   EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
   CheckCriticalImageFinderStats(2, 0, 0);
+  EXPECT_EQ(2, logging_info()->num_html_critical_images());
+  EXPECT_EQ(1, logging_info()->num_css_critical_images());
   ClearStats();
 
   // Advance to 90% of expiry. We get a hit from cache and must_compute is true.
@@ -184,6 +195,8 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   ResetDriver();
   EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
   CheckCriticalImageFinderStats(2, 0, 0);
+  EXPECT_EQ(2, logging_info()->num_html_critical_images());
+  EXPECT_EQ(1, logging_info()->num_css_critical_images());
   ClearStats();
 
   ResetDriver();
@@ -191,6 +204,8 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   AdvanceTimeMs(2 * options()->finder_properties_cache_expiration_time_ms());
   EXPECT_FALSE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
   CheckCriticalImageFinderStats(0, 2, 0);
+  EXPECT_EQ(0, logging_info()->num_html_critical_images());
+  EXPECT_EQ(0, logging_info()->num_css_critical_images());
 }
 
 }  // namespace net_instaweb

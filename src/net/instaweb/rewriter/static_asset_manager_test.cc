@@ -86,7 +86,7 @@ TEST_F(StaticAssetManagerTest, TestBlinkGstatic) {
   manager_->set_serve_asset_from_gstatic(true);
   manager_->set_gstatic_hash(StaticAssetManager::kBlinkJs, "1");
   const char blink_url[] =
-      "http://www.gstatic.com/psa/static/1-blink.js";
+      "//www.gstatic.com/psa/static/1-blink.js";
   EXPECT_STREQ(blink_url, manager_->GetAssetUrl(StaticAssetManager::kBlinkJs,
                                                 options_));
 }
@@ -104,7 +104,7 @@ TEST_F(StaticAssetManagerTest, TestDeferJsGstatic) {
   manager_->set_serve_asset_from_gstatic(true);
   manager_->set_gstatic_hash(StaticAssetManager::kDeferJs, "1");
   const char defer_js_url[] =
-      "http://www.gstatic.com/psa/static/1-js_defer.js";
+      "//www.gstatic.com/psa/static/1-js_defer.js";
   EXPECT_STREQ(defer_js_url, manager_->GetAssetUrl(
       StaticAssetManager::kDeferJs, options_));
 }

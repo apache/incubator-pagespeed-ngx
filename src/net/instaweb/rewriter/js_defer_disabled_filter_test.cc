@@ -197,7 +197,7 @@ TEST_F(JsDeferDisabledFilterTest, TestDeferJsUrlFromGStatic) {
       "</body><body><script type='text/psajs'> func2(); "
       "</script></body></html>"
       "<script type=\"text/javascript\" "
-      "src=\"http://www.gstatic.com/psa/static/1-js_defer.js\">"
+      "src=\"//www.gstatic.com/psa/static/1-js_defer.js\">"
       "</script>");
 }
 

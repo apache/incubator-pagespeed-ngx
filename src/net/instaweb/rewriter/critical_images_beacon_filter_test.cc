@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -169,6 +170,8 @@ TEST_F(CriticalImagesBeaconFilterTest, ScriptInjectionWithImageInlining) {
 
   EXPECT_TRUE(output_buffer_.find("data:") != GoogleString::npos);
   EXPECT_TRUE(output_buffer_.find(hash_str) != GoogleString::npos);
+  EXPECT_EQ(-1, logging_info()->num_html_critical_images());
+  EXPECT_EQ(-1, logging_info()->num_css_critical_images());
 }
 
 TEST_F(CriticalImagesBeaconFilterTest, UnsupportedUserAgent) {

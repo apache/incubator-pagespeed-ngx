@@ -1331,10 +1331,8 @@ TEST_F(ImageRewriteTest, InlineTestWithoutOptimize) {
                     "", kChefDims, false, false);
 
   ScopedMutex lock(rewrite_driver()->log_record()->mutex());
-  EXPECT_EQ(1, rewrite_driver()->log_record()->logging_info()
-            ->rewriter_info_size());
-  const RewriterInfo& rewriter_info = rewrite_driver()->log_record()
-      ->logging_info()->rewriter_info(0);
+  EXPECT_EQ(1, logging_info()->rewriter_info_size());
+  const RewriterInfo& rewriter_info = logging_info()->rewriter_info(0);
   EXPECT_EQ("ic", rewriter_info.id());
   EXPECT_EQ(RewriterInfo::NOT_APPLIED, rewriter_info.status());
   EXPECT_TRUE(rewriter_info.has_rewrite_resource_info());
@@ -1362,16 +1360,13 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
                     kResizedDims, "", true, true);
 
   ScopedMutex lock(rewrite_driver()->log_record()->mutex());
-  EXPECT_EQ(1, rewrite_driver()->log_record()->logging_info()
-            ->rewriter_info_size());
-  const RewriterInfo& rewriter_info = rewrite_driver()->log_record()
-      ->logging_info()->rewriter_info(0);
+  EXPECT_EQ(1, logging_info()->rewriter_info_size());
+  const RewriterInfo& rewriter_info = logging_info()->rewriter_info(0);
   EXPECT_EQ("ic", rewriter_info.id());
   EXPECT_EQ(RewriterInfo::APPLIED_OK, rewriter_info.status());
   EXPECT_TRUE(rewriter_info.has_rewrite_resource_info());
   EXPECT_FALSE(rewriter_info.has_image_rewrite_resource_info());
-  EXPECT_EQ(0, rewrite_driver()->log_record()->logging_info()->
-            resource_url_info().url_size());
+  EXPECT_EQ(0, logging_info()->resource_url_info().url_size());
 
   const RewriteResourceInfo& resource_info =
       rewriter_info.rewrite_resource_info();
@@ -1399,14 +1394,13 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimizeAndUrlLogging) {
                     kResizedDims, "", true, true);
 
   ScopedMutex lock(rewrite_driver()->log_record()->mutex());
-  LoggingInfo* logging_info = rewrite_driver()->log_record()->logging_info();
-  const RewriterInfo& rewriter_info = logging_info->rewriter_info(0);
+  const RewriterInfo& rewriter_info = logging_info()->rewriter_info(0);
   EXPECT_EQ(RewriterInfo::APPLIED_OK, rewriter_info.status());
-  EXPECT_EQ(1, logging_info->resource_url_info().url_size());
-  EXPECT_EQ(0, logging_info->rewriter_info(0).rewrite_resource_info().
+  EXPECT_EQ(1, logging_info()->resource_url_info().url_size());
+  EXPECT_EQ(0, logging_info()->rewriter_info(0).rewrite_resource_info().
             original_resource_url_index());
   EXPECT_EQ("http://test.com/IronChef2.gif",
-            logging_info->resource_url_info().url(0));
+            logging_info()->resource_url_info().url(0));
 }
 
 TEST_F(ImageRewriteTest, DimensionStripAfterInline) {
@@ -1441,6 +1435,8 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
   // Image not present in critical set should not be inlined.
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, false);
+  EXPECT_EQ(-1, logging_info()->num_html_critical_images());
+  EXPECT_EQ(-1, logging_info()->num_css_critical_images());
 
   // Image present in critical set should be inlined.
   StringSet* critical_images = server_context()->critical_images_finder()->
@@ -1448,6 +1444,8 @@ TEST_F(ImageRewriteTest, InlineCriticalOnly) {
   critical_images->insert(StrCat(kTestDomain, kChefGifFile));
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypeGif,
                     "", "", false, true);
+  EXPECT_EQ(-1, logging_info()->num_html_critical_images());
+  EXPECT_EQ(-1, logging_info()->num_css_critical_images());
 }
 
 TEST_F(ImageRewriteTest, InlineNoRewrite) {

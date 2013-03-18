@@ -47,7 +47,6 @@
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/null_mutex.h"
-#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -946,6 +945,8 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheHitWithInlinePreviewImages) {
   // First request updates the property cache with cached html.
   FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
   VerifyNonCacheHtmlResponse(response_headers);
+  EXPECT_EQ(-1, logging_info()->num_html_critical_images());
+  EXPECT_EQ(-1, logging_info()->num_css_critical_images());
   // Cache Html hit case.
   response_headers.Clear();
   FetchFromProxyNoWaitForBackground("text.html", true, &text,

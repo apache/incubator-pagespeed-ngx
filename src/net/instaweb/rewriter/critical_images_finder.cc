@@ -22,6 +22,7 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -173,6 +174,10 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
         cohort, kCssCriticalImagesPropertyName);
     ExtractCriticalImagesSet(driver, property_value, true,
                              &info->css_critical_images);
+    driver->log_record()->SetNumHtmlCriticalImages(
+        info->html_critical_images.size());
+    driver->log_record()->SetNumCssCriticalImages(
+        info->css_critical_images.size());
   }
   driver->set_critical_images_info(info.release());
 }

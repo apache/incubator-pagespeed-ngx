@@ -74,7 +74,7 @@ const int GIF_blank_len = arraysize(GIF_blank);
 // The generated files(blink.js, js_defer.js) are named in "<hash>-<fileName>"
 // format.
 const char StaticAssetManager::kGStaticBase[] =
-    "http://www.gstatic.com/psa/static/";
+    "//www.gstatic.com/psa/static/";
 
 // TODO(jud): Change to "/psaassets/".
 const char StaticAssetManager::kDefaultLibraryUrlPrefix[] = "/psajs/";

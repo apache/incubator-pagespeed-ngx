@@ -165,6 +165,12 @@ class LogRecord  {
   // of logs data, so this should be switched on only for debugging.
   void SetAllowLoggingUrls(bool allow_logging_urls);
 
+  // Sets the number of critical images in HTML.
+  void SetNumHtmlCriticalImages(int num_html_critical_images);
+
+  // Sets the number of critical images in CSS.
+  void SetNumCssCriticalImages(int num_css_critical_images);
+
  protected:
   // Non-initializing default constructor for subclasses. Subclasses that invoke
   // this constructor should implement and call their own initializer that

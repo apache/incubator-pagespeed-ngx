@@ -18,7 +18,6 @@
 
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 
-#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -32,6 +31,7 @@
 
 namespace net_instaweb {
 
+class LogRecord;
 class Statistics;
 
 // By default, CriticalImagesFinder does not return meaningful results. However,
@@ -110,9 +110,7 @@ class LazyloadImagesFilterTest : public RewriteTestBase {
 
   void ExpectLogRecord(int index, int status, bool is_blacklisted,
                        bool is_critical) {
-    LogRecord* log_record = rewrite_driver_->log_record();
-    const RewriterInfo& rewriter_info =
-        log_record->logging_info()->rewriter_info(index);
+    const RewriterInfo& rewriter_info = logging_info()->rewriter_info(index);
     EXPECT_EQ("ll", rewriter_info.id());
     EXPECT_EQ(status, rewriter_info.status());
     EXPECT_EQ(is_blacklisted,
@@ -176,8 +174,7 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
                     "<img src=\"1.jpg\" class=\"123 dfcg-metabox\"/>",
                     GetOverrideAttributesScriptHtml(),
                     "</body>")));
-  EXPECT_EQ(4, rewrite_driver()->log_record()->logging_info()->
-             rewriter_info().size());
+  EXPECT_EQ(4, logging_info()->rewriter_info().size());
   ExpectLogRecord(
       0, RewriterInfo::APPLIED_OK /* img with src 1.jpg */, false, false);
   ExpectLogRecord(
@@ -214,8 +211,7 @@ TEST_F(LazyloadImagesFilterTest, Blacklist) {
                      "img", "img2", ""),
                  GetOverrideAttributesScriptHtml(),
                  "</body>")));
-  EXPECT_EQ(3, rewrite_driver()->log_record()->logging_info()->
-             rewriter_info().size());
+  EXPECT_EQ(3, logging_info()->rewriter_info().size());
   ExpectLogRecord(0, RewriterInfo::NOT_APPLIED, true, false);
   ExpectLogRecord(1, RewriterInfo::APPLIED_OK, false, false);
   ExpectLogRecord(2, RewriterInfo::APPLIED_OK, false, false);
@@ -258,12 +254,13 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
                  "<img src=\"", rewritten_url, "\"/>",
                  GetOverrideAttributesScriptHtml(),
                  "</body>")));
-  EXPECT_EQ(4, rewrite_driver()->log_record()->logging_info()->
-            rewriter_info().size());
+  EXPECT_EQ(4, logging_info()->rewriter_info().size());
   ExpectLogRecord(0, RewriterInfo::NOT_APPLIED, false, true);
   ExpectLogRecord(1, RewriterInfo::APPLIED_OK, false, false);
   ExpectLogRecord(2, RewriterInfo::NOT_APPLIED, false, true);
   ExpectLogRecord(3, RewriterInfo::NOT_APPLIED, false, true);
+  EXPECT_EQ(-1, logging_info()->num_html_critical_images());
+  EXPECT_EQ(-1, logging_info()->num_css_critical_images());
 }
 
 TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {
@@ -391,8 +388,7 @@ TEST_F(LazyloadImagesFilterTest, NoImages) {
   InitLazyloadImagesFilter(false);
   GoogleString input_html = "<head></head><body></body>";
   ValidateNoChanges("lazyload_images", input_html);
-  EXPECT_EQ(0, rewrite_driver()->log_record()->logging_info()->
-            rewriter_info().size());
+  EXPECT_EQ(0, logging_info()->rewriter_info().size());
 }
 
 TEST_F(LazyloadImagesFilterTest, LazyloadScriptOptimized) {

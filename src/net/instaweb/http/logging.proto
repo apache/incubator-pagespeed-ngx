@@ -281,7 +281,7 @@ message ResourceUrlInfo {
 }
 
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 19
+// Next id for LoggingInfo: 21
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -320,4 +320,12 @@ message LoggingInfo {
   optional ResourceUrlInfo resource_url_info = 17;
   // Stores all Cache Html flow related information.
   optional CacheHtmlLoggingInfo cache_html_logging_info = 18;
+  // Number of critical images on the page. The default is -1 to easily
+  // differentiate between the field being unset and there being no critical
+  // images.
+  optional int32 num_html_critical_images = 19 [ default = -1 ];
+  // Number of critical images in CSS referenced by the page. The default is -1
+  // to easily differentiate between the field being unset and there being no
+  // critical images.
+  optional int32 num_css_critical_images = 20 [ default = -1 ];
 }

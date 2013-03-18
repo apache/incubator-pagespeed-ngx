@@ -332,4 +332,14 @@ void LogRecord::PopulateUrl(
   rewrite_resource_info->set_original_resource_url_index(iter->second);
 }
 
+void LogRecord::SetNumHtmlCriticalImages(int num_html_critical_images) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->set_num_html_critical_images(num_html_critical_images);
+}
+
+void LogRecord::SetNumCssCriticalImages(int num_css_critical_images) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->set_num_css_critical_images(num_css_critical_images);
+}
+
 }  // namespace net_instaweb
