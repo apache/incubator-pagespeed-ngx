@@ -58,10 +58,10 @@ extern "C" {
 #include "net/instaweb/util/public/google_url.h"
 #include "pthread_shared_mem.h"
 #include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
-
 extern ngx_module_t ngx_pagespeed;
 
 // Hacks for debugging.
@@ -665,6 +665,18 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   cfg_s->server_context->global_options()->Merge(*cfg_s->options);
   delete cfg_s->options;
   cfg_s->options = NULL;
+
+  // Validate FileCachePath
+  net_instaweb::GoogleMessageHandler handler;
+  const char* file_cache_path =
+      cfg_s->server_context->config()->file_cache_path().c_str();
+  if (file_cache_path[0] == '\0') {
+    return const_cast<char*>("FileCachePath must be set");
+  } else if (!cfg_m->driver_factory->file_system()->IsDir(
+      file_cache_path, &handler).is_true()) {
+    return const_cast<char*>(
+        "FileCachePath must be an nginx-writeable directory");
+  }
 
   return NGX_CONF_OK;
 }
