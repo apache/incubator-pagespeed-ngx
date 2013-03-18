@@ -57,6 +57,7 @@ class AsyncFetch;
 class CacheUrlAsyncFetcher;
 class CommonFilter;
 class CriticalLineInfo;
+class CriticalSelectorSet;
 class DebugFilter;
 class DeviceProperties;
 class DomainRewriteFilter;
@@ -851,6 +852,12 @@ class RewriteDriver : public HtmlParse {
     critical_images_info_.reset(critical_images_info);
   }
 
+  // Returns computed critical selector set for this page, or NULL
+  // if not available. Should only be called from HTML-safe thread context.
+  // (parser threar or Render() callbacks). The returned value is owned by
+  // the rewrite driver.
+  CriticalSelectorSet* CriticalSelectors();
+
   // We expect to this method to be called on the HTML parser thread.
   // Returns the number of images whose low quality images are inlined in the
   // html page.
@@ -1331,6 +1338,10 @@ class RewriteDriver : public HtmlParse {
 
   // Stores all the critical image info for the current URL.
   scoped_ptr<CriticalImagesInfo> critical_images_info_;
+
+  // We lazy-initialize critical_selector_info_ from the finder.
+  bool critical_selector_info_computed_;
+  scoped_ptr<CriticalSelectorSet> critical_selector_info_;
 
   // Memoized computation of whether the current doc has an XHTML mimetype.
   bool xhtml_mimetype_computed_;

@@ -47,6 +47,7 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
+#include "net/instaweb/rewriter/critical_selectors.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/add_head_filter.h"
 #include "net/instaweb/rewriter/public/add_instrumentation_filter.h"
@@ -65,6 +66,7 @@
 #include "net/instaweb/rewriter/public/css_inline_import_to_link_filter.h"
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
 #include "net/instaweb/rewriter/public/css_move_to_head_filter.h"
+#include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/rewriter/public/data_url_input_resource.h"
@@ -229,6 +231,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       owns_property_page_(false),
       device_type_(UserAgentMatcher::kDesktop),
       critical_images_info_(NULL),
+      critical_selector_info_computed_(false),
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
       num_inline_preview_images_(0),
@@ -331,6 +334,8 @@ void RewriteDriver::Clear() {
     DCHECK(!fetch_queued_);
     DCHECK_EQ(0, pending_async_events_);
   }
+  critical_selector_info_computed_ = false;
+  critical_selector_info_.reset(NULL);
   xhtml_mimetype_computed_ = false;
   xhtml_status_ = kXhtmlUnknown;
 
@@ -2659,6 +2664,18 @@ void RewriteDriver::set_unowned_property_page(PropertyPage* page) {
 
 void RewriteDriver::increment_num_inline_preview_images() {
   ++num_inline_preview_images_;
+}
+
+CriticalSelectorSet* RewriteDriver::CriticalSelectors() {
+  if (!critical_selector_info_computed_) {
+    if (server_context_->critical_selector_finder() != NULL) {
+      critical_selector_info_.reset(
+          server_context_->critical_selector_finder()
+              ->DecodeCriticalSelectorsFromPropertyCache(this));
+    }
+    critical_selector_info_computed_ = true;
+  }
+  return critical_selector_info_.get();
 }
 
 void RewriteDriver::increment_async_events_count() {

@@ -37,6 +37,7 @@ class BlinkCriticalLineDataFinder;
 class CacheHtmlInfoFinder;
 class CriticalCssFinder;
 class CriticalImagesFinder;
+class CriticalSelectorFinder;
 class FileSystem;
 class FilenameEncoder;
 class FlushEarlyInfoFinder;
@@ -312,6 +313,7 @@ class RewriteDriverFactory {
 
   virtual CriticalCssFinder* DefaultCriticalCssFinder();
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
+  virtual CriticalSelectorFinder* DefaultCriticalSelectorFinder();
 
   // Default implementation returns NULL.
   virtual BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder(

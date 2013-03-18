@@ -47,6 +47,7 @@ class CacheHtmlInfoFinder;
 class ContentType;
 class CriticalCssFinder;
 class CriticalImagesFinder;
+class CriticalSelectorFinder;
 class FileSystem;
 class FilenameEncoder;
 class FlushEarlyInfoFinder;
@@ -247,6 +248,11 @@ class ServerContext {
     return critical_images_finder_.get();
   }
   void set_critical_images_finder(CriticalImagesFinder* finder);
+
+  CriticalSelectorFinder* critical_selector_finder() const {
+    return critical_selector_finder_.get();
+  }
+  void set_critical_selector_finder(CriticalSelectorFinder* finder);
 
   FlushEarlyInfoFinder* flush_early_info_finder() const {
     return flush_early_info_finder_.get();
@@ -615,6 +621,7 @@ class ServerContext {
   Hasher* hasher_;
   scoped_ptr<CriticalImagesFinder> critical_images_finder_;
   scoped_ptr<CriticalCssFinder> critical_css_finder_;
+  scoped_ptr<CriticalSelectorFinder> critical_selector_finder_;
   scoped_ptr<BlinkCriticalLineDataFinder> blink_critical_line_data_finder_;
   scoped_ptr<CacheHtmlInfoFinder> cache_html_info_finder_;
   scoped_ptr<FlushEarlyInfoFinder> flush_early_info_finder_;
