@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/css_summarizer_base.h"
 
 #include <cstddef>
-#include <vector>
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -129,6 +128,14 @@ CssSummarizerBase::Context::Context(int pos,
 }
 
 CssSummarizerBase::Context::~Context() {
+}
+
+void CssSummarizerBase::InjectSummaryData(HtmlNode* data) {
+  if (injection_point_ != NULL && driver()->IsRewritable(injection_point_)) {
+    driver()->AppendChild(injection_point_, data);
+  } else {
+    driver()->InsertElementBeforeCurrent(data);
+  }
 }
 
 void CssSummarizerBase::Context::SetupInlineRewrite(
@@ -255,28 +262,28 @@ GoogleString CssSummarizerBase::Context::CacheKeySuffix() const {
   return suffix;
 }
 
-CssSummarizerBase::CssSummarizerBase(
-    RewriteDriver* driver, StringPiece filter_name, StringPiece filter_id)
+CssSummarizerBase::CssSummarizerBase(RewriteDriver* driver)
     : RewriteFilter(driver),
-      progress_lock_(driver->server_context()->thread_system()->NewMutex()),
-      outstanding_rewrites_(0),
-      saw_end_of_document_(false),
-      filter_name_(filter_name.as_string()),
-      filter_id_(filter_id.as_string()),
-      style_element_(NULL) {
+      progress_lock_(driver->server_context()->thread_system()->NewMutex()) {
+  Clear();
 }
 
 CssSummarizerBase::~CssSummarizerBase() {
   STLDeleteElements(&summaries_);
 }
 
-void CssSummarizerBase::StartDocumentImpl() {
-  style_element_ = NULL;
+void CssSummarizerBase::Clear() {
   outstanding_rewrites_ = 0;
   saw_end_of_document_ = false;
+  style_element_ = NULL;
+  injection_point_ = NULL;
+}
+
+void CssSummarizerBase::StartDocumentImpl() {
   // TODO(morlovich): we hold on to this memory too long; refine this once the
   // data type is refined.
   STLDeleteElements(&summaries_);
+  Clear();
 }
 
 void CssSummarizerBase::EndDocument() {
@@ -310,31 +317,60 @@ void CssSummarizerBase::Characters(HtmlCharactersNode* characters_node) {
     // per <style> block even if it is split by a flush. However, this code
     // will still mostly work if we somehow got multiple CharacterNodes.
     // TODO(morlovich): Validate media
+    injection_point_ = NULL;
     StartInlineRewrite(characters_node);
+  } else if (injection_point_ != NULL &&
+             !OnlyWhitespace(characters_node->contents())) {
+    // Ignore whitespace between </body> and </html> or after </html> when
+    // deciding whether </body> is a safe injection point.  Otherwise, there's
+    // content after the injection_point_ and we should inject at end of
+    // document instead.
+    injection_point_ = NULL;
   }
 }
 
 void CssSummarizerBase::EndElementImpl(HtmlElement* element) {
   if (style_element_ != NULL) {
     // End of an inline style.
-    CHECK(style_element_ == element);  // HtmlParse should not pass unmatching.
+    CHECK_EQ(style_element_, element);  // HtmlParse should not pass unmatching.
     style_element_ = NULL;
-  } else if (element->keyword() == HtmlName::kLink) {
-    // Rewrite an external style.
-    // TODO(morlovich): Validate media
-    // TODO(morlovich): This is wrong with alternate; current
-    //     CssTagScanner is wrong with title=
-    if (CssTagScanner::IsStylesheetOrAlternate(
-            element->AttributeValue(HtmlName::kRel))) {
-      HtmlElement::Attribute* element_href = element->FindAttribute(
-          HtmlName::kHref);
-      if (element_href != NULL) {
-        // If it has a href= attribute
-        StartExternalRewrite(element, element_href);
-      } else {
-        driver_->InfoHere("Link element with no href.");
+    return;
+  }
+  switch (element->keyword()) {
+    case HtmlName::kLink: {
+      // Rewrite an external style.
+      // TODO(morlovich): Validate media
+      // TODO(morlovich): This is wrong with alternate; current
+      //     CssTagScanner is wrong with title=
+      injection_point_ = NULL;
+      if (CssTagScanner::IsStylesheetOrAlternate(
+              element->AttributeValue(HtmlName::kRel))) {
+        HtmlElement::Attribute* element_href = element->FindAttribute(
+            HtmlName::kHref);
+        if (element_href != NULL) {
+          // If it has a href= attribute
+          StartExternalRewrite(element, element_href);
+        }
       }
+      break;
     }
+    case HtmlName::kBody:
+      // Preferred injection location
+      injection_point_ = element;
+      break;
+    case HtmlName::kHtml:
+      if ((injection_point_ == NULL ||
+           !driver()->IsRewritable(injection_point_)) &&
+          driver()->IsRewritable(element)) {
+        // Try to inject before </html> if before </body> won't work.
+        injection_point_ = element;
+      }
+      break;
+    default:
+      // There were (possibly implicit) close tags after </body> or </html>, so
+      // throw that point away.
+      injection_point_ = NULL;
+      break;
   }
 }
 
@@ -360,7 +396,7 @@ void CssSummarizerBase::StartExternalRewrite(
     // TODO(morlovich): Stat?
     if (DebugMode()) {
       driver_->InsertComment(StrCat(
-          filter_name_, ": unable to create resource; is it authorized?"));
+          Name(), ": unable to create resource; is it authorized?"));
     }
     return;
   }

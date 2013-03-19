@@ -19,8 +19,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_SUMMARIZER_BASE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_SUMMARIZER_BASE_H_
 
-#include <vector>
-
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -39,6 +37,7 @@ namespace net_instaweb {
 
 class AbstractMutex;
 class HtmlCharactersNode;
+class HtmlNode;
 class RewriteContext;
 class RewriteDriver;
 
@@ -48,8 +47,7 @@ class RewriteDriver;
 // can lookup summaries via NumStyles/GetSummary.
 class CssSummarizerBase : public RewriteFilter {
  public:
-  CssSummarizerBase(RewriteDriver* driver, StringPiece filter_name,
-                    StringPiece filter_id);
+  explicit CssSummarizerBase(RewriteDriver* driver);
   virtual ~CssSummarizerBase();
 
  protected:
@@ -63,13 +61,22 @@ class CssSummarizerBase : public RewriteFilter {
   virtual void Summarize(const Css::Stylesheet& stylesheet,
                          GoogleString* out) const = 0;
 
-  // This is called at the end of the document when all outstanding
-  // summary computations has completed, regardless of whether
-  // successfully or not. It might not be called at all if they are still
-  // ongoing, however.
+  // This is called at the end of the document when all outstanding summary
+  // computations have completed, regardless of whether successful or not. It
+  // will not be called at all if they are still ongoing, however.
   //
-  // It's called from a context which allows HTML parser state access.
+  // It's called from a context which allows HTML parser state access.  You can
+  // insert things at end of document by constructing an HtmlNode* using the
+  // factories in HtmlParse and calling InjectSummaryData(element).
   virtual void SummariesDone() = 0;
+
+  // Inject summary data at the end of the document.  Intended to be called from
+  // SummariesDone().  Tries to inject just before </body> if nothing else
+  // intervenes; otherwise tries to inject before </html> or, failing that, at
+  // the end of all content.  This latter case still works in browsers, but is
+  // incredibly ugly.  It can be necessitated by other post-</html> content, or
+  // by flushes in the body.
+  void InjectSummaryData(HtmlNode* data);
 
   // Returns total number of <link> and <style> elements we encountered.
   // This includes those for which we had problem computing summary information.
@@ -96,12 +103,13 @@ class CssSummarizerBase : public RewriteFilter {
   virtual void Characters(HtmlCharactersNode* characters);
   virtual void EndElementImpl(HtmlElement* element);
 
-  virtual const char* Name() const { return filter_name_.c_str(); }
-  virtual const char* id() const { return filter_id_.c_str(); }
   virtual RewriteContext* MakeRewriteContext();
 
  private:
   class Context;
+
+  // Clean out private data.
+  void Clear();
 
   // Starts the asynchronous rewrite process for inline CSS 'text'.
   void StartInlineRewrite(HtmlCharactersNode* text);
@@ -119,15 +127,14 @@ class CssSummarizerBase : public RewriteFilter {
   ResourceSlot* MakeSlotForInlineCss(const StringPiece& content);
 
   // Stores all the computed summaries.
-  std::vector<GoogleString*> summaries_;
+  StringStarVector summaries_;
 
   scoped_ptr<AbstractMutex> progress_lock_;
   int outstanding_rewrites_;  // guarded by progress_lock_
   bool saw_end_of_document_;  // guarded by progress_lock_
 
-  GoogleString filter_name_;
-  GoogleString filter_id_;
   HtmlElement* style_element_;  // The element we are in, or NULL.
+  HtmlElement* injection_point_;  // Preferred location for InjectSummaryData
 
   DISALLOW_COPY_AND_ASSIGN(CssSummarizerBase);
 };

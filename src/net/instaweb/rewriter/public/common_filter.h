@@ -76,7 +76,7 @@ class CommonFilter : public EmptyHtmlFilter {
   // base tag.  After the filter sees the base tag, it will return true.
   bool BaseUrlIsValid() const;
 
-  RewriteDriver* driver() { return driver_; }
+  RewriteDriver* driver() const { return driver_; }
 
   // Returns whether the current options specify the "debug" filter.
   // If set, then other filters can annotate output HTML with HTML

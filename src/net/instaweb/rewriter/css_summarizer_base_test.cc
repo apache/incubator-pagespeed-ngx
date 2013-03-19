@@ -18,6 +18,8 @@
 
 #include "net/instaweb/rewriter/public/css_summarizer_base.h"
 
+#include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -32,17 +34,24 @@ namespace net_instaweb {
 
 namespace {
 
+const char kExpectedComment[] =
+    "<!--*{display:|div{displa|(nil)|(nil)|(nil)|-->";
+const char kExpectedResult[] =
+    "*{display:|div{displa|(nil)|(nil)|(nil)|";
+
 // Extracts first 10 characters of minified form of every stylesheet.
 class MinifyExcerptFilter : public CssSummarizerBase {
  public:
   explicit MinifyExcerptFilter(RewriteDriver* driver)
-      : CssSummarizerBase(driver, "Minify10", "csr"),
-        driver_(driver) {}
+      : CssSummarizerBase(driver) {}
+
+  virtual const char* Name() const { return "Minify10"; }
+  virtual const char* id() const { return "csr"; }
 
   virtual void Summarize(const Css::Stylesheet& stylesheet,
                          GoogleString* out) const {
     StringWriter write_out(out);
-    CssMinify::Stylesheet(stylesheet, &write_out, driver_->message_handler());
+    CssMinify::Stylesheet(stylesheet, &write_out, driver()->message_handler());
     if (out->length() > 10) {
       out->resize(10);
     }
@@ -58,16 +67,26 @@ class MinifyExcerptFilter : public CssSummarizerBase {
       }
       StrAppend(&result_, "|");
     }
+    InjectSummaryData(driver()->NewCommentNode(NULL, result_));
   }
 
   const GoogleString& result() { return result_; }
 
  private:
   GoogleString result_;
-  RewriteDriver* driver_;
 };
 
 class CssSummarizerBaseTest : public RewriteTestBase {
+ public:
+  CssSummarizerBaseTest()
+      : head_(StrCat("<html>\n",
+                     "<style>* {display: none; }</style>",
+                     CssLinkHref("a.css"),  // ok
+                     CssLinkHref("b.css"),  // parse error
+                     CssLinkHref("404.css"),  // fetch error
+                     CssLinkHref("http://evil.com/d.css"))) { }
+  virtual ~CssSummarizerBaseTest() { }
+
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
@@ -91,17 +110,135 @@ class CssSummarizerBaseTest : public RewriteTestBase {
                                   "div { display: inline; }", 100);
   }
 
+  void StartTest(StringPiece name, StringPiece pre_comment) {
+    SetupWriter();
+    GoogleString url = StrCat(kTestDomain, name);
+    rewrite_driver()->StartParse(url);
+    rewrite_driver()->ParseText(head_);
+    rewrite_driver()->ParseText(pre_comment);
+  }
+
+  const GoogleString FinishTest(
+      StringPiece pre_comment, StringPiece post_comment) {
+    const GoogleString expected_html =
+        StrCat(head_, pre_comment, kExpectedComment, post_comment);
+    rewrite_driver()->ParseText(post_comment);
+    rewrite_driver()->FinishParse();
+    return expected_html;
+  }
+
+  const GoogleString FullTest(
+      StringPiece name, StringPiece pre_comment, StringPiece post_comment) {
+    StartTest(name, pre_comment);
+    return FinishTest(pre_comment, post_comment);
+  }
+
+  const GoogleString FlushTest(
+      StringPiece name, StringPiece pre_flush,
+      StringPiece pre_comment, StringPiece post_comment) {
+    StartTest(name, pre_flush);
+    rewrite_driver()->Flush();
+    rewrite_driver()->ParseText(pre_comment);
+    GoogleString full_pre_comment = StrCat(pre_flush, pre_comment);
+    return FinishTest(full_pre_comment, post_comment);
+  }
+
   MinifyExcerptFilter* filter_;  // owned by the driver;
+  const GoogleString head_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(CssSummarizerBaseTest);
 };
 
 TEST_F(CssSummarizerBaseTest, BasicOperation) {
-  ValidateNoChanges("foo",
-                    StrCat("<style>* {display: none; }</style>",
-                           CssLinkHref("a.css"),  // ok
-                           CssLinkHref("b.css"),  // parse error
-                           CssLinkHref("404.css"),  // fetch error
-                           CssLinkHref("http://evil.com/d.css")));
-  EXPECT_EQ("*{display:|div{displa|(nil)|(nil)|(nil)|", filter_->result());
+  GoogleString expected =
+      FullTest("basic", "<body> <p>some content</p> ", "</body></html>");
+  EXPECT_STREQ(expected, output_buffer_);
+  EXPECT_STREQ(kExpectedResult, filter_->result());
+}
+
+TEST_F(CssSummarizerBaseTest, BasicOperationWhitespace) {
+  GoogleString expected =
+      FullTest("basic", "<body> <p>some content</p> ", "</body>\n</html>");
+  EXPECT_STREQ(expected, output_buffer_);
+  EXPECT_STREQ(kExpectedResult, filter_->result());
+}
+
+TEST_F(CssSummarizerBaseTest, NoBody) {
+  GoogleString expected =
+      FullTest("no_body", "some content without body tag\n", "</html>");
+  EXPECT_STREQ(expected, output_buffer_);
+  EXPECT_STREQ(kExpectedResult, filter_->result());
+}
+
+TEST_F(CssSummarizerBaseTest, TwoBodies) {
+  GoogleString expected =
+      FullTest("two_bodies",
+               "<body>First body</body><body>Second body", "</body></html>");
+  EXPECT_STREQ(expected, output_buffer_);
+  EXPECT_STREQ(kExpectedResult, filter_->result());
+}
+
+TEST_F(CssSummarizerBaseTest, StuffAfterBody) {
+  GoogleString expected =
+      FullTest("stuff_after_body",
+               "<body>Howdy!</body><p>extra stuff</p>", "</html>");
+  EXPECT_STREQ(expected, output_buffer_);
+  EXPECT_STREQ(kExpectedResult, filter_->result());
+}
+
+TEST_F(CssSummarizerBaseTest, StuffAfterHtml) {
+  GoogleString expected =
+      FullTest("stuff_after_html",
+               "<body>Howdy!</body></html>extra stuff", "");
+  EXPECT_STREQ(expected, output_buffer_);
+  EXPECT_STREQ(kExpectedResult, filter_->result());
+}
+
+TEST_F(CssSummarizerBaseTest, FlushAfterBody) {
+  // Even though we flush between </body> and </html>, !IsRewritable(</html>)
+  // (since the inital <html> was in a different flush window) so we inject at
+  // end of document.
+  GoogleString expected =
+      FlushTest("flush_after_body",
+                "<body> some content </body>", "</html>", "");
+  EXPECT_STREQ(expected, output_buffer_);
+  EXPECT_STREQ(kExpectedResult, filter_->result());
+}
+
+TEST_F(CssSummarizerBaseTest, FlushDuringBody) {
+  // As above we end up inserting at end.
+  GoogleString expected =
+      FlushTest("flush_during_body",
+                "<body> partial", " content </body></html>", "");
+  EXPECT_STREQ(expected, output_buffer_);
+  EXPECT_STREQ(kExpectedResult, filter_->result());
+}
+
+TEST_F(CssSummarizerBaseTest, FlushBeforeBody) {
+  // Here we can insert at end of body.
+  GoogleString expected =
+      FlushTest("flush_before_body",
+                "", "<body> post-flush content ", "</body></html>");
+  EXPECT_STREQ(expected, output_buffer_);
+  EXPECT_STREQ(kExpectedResult, filter_->result());
+}
+
+TEST_F(CssSummarizerBaseTest, FlushAtEnd) {
+  // This causes us to append to the end of document after the flush.
+  GoogleString expected =
+      FlushTest("flush_at_end",
+                "<body>pre-flush content</body></html>", "", "");
+  EXPECT_STREQ(expected, output_buffer_);
+  EXPECT_STREQ(kExpectedResult, filter_->result());
+}
+
+TEST_F(CssSummarizerBaseTest, EnclosedBody) {
+  GoogleString expected =
+      FullTest("enclosed_body",
+               "<noscript><body>no script body</body></noscript>", "</html>");
+  EXPECT_STREQ(expected, output_buffer_);
+  EXPECT_STREQ(kExpectedResult, filter_->result());
 }
 
 }  // namespace
