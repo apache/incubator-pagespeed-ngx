@@ -713,8 +713,7 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::css_image_inline_max_bytes_,
       "cii", kCssImageInlineMaxBytes,
       kDirectoryScope,
-      "Number of bytes below which images will be inlined in "
-      "external CSS.");
+      "Number of bytes below which CSS images will be inlined.");
   AddBaseProperty(
       kDefaultCssInlineMaxBytes,
       &RewriteOptions::css_inline_max_bytes_, "ci",

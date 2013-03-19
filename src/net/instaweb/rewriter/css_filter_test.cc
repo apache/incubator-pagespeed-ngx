@@ -1440,6 +1440,10 @@ TEST_F(CssFilterTest, RewriteStyleAttribute) {
   ValidateExpected("rewrite-simple",
                    "<div style='background-color: #f00; color: yellow;'/>",
                    "<div style='background-color:red;color:#ff0'/>");
+  // Rewritten elements with style attributes don't have any log entries.
+  EXPECT_EQ(0, rewrite_driver()->request_context()->log_record()->
+            logging_info()->rewriter_info().size());
+
 
   SetFetchResponse404("404.css");
   static const char kMixedInput[] =
@@ -1890,6 +1894,9 @@ TEST_F(CssFilterTest, FlushInInlineCss) {
   //   EndElement style
   EXPECT_EQ("<html><body><style>.a{color:red}</style></body></html>",
             output_buffer_);
+  // Inlined rewritten css don't have any log entries.
+  EXPECT_EQ(0, rewrite_driver()->request_context()->log_record()->
+            logging_info()->rewriter_info().size());
 }
 
 TEST_F(CssFilterTest, InlineCssWithExternalUrlAndDelayCache) {

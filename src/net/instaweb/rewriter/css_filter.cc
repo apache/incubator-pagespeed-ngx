@@ -252,9 +252,11 @@ void CssFilter::Context::Render() {
       driver_->ReplaceNode(rewrite_inline_char_node_, new_style_char_node);
     } else if (rewrite_inline_attribute_ != NULL) {
       rewrite_inline_attribute_->SetValue(result.inlined_data());
+    } else {
+      // Log only when we rewrite external css.
+      filter_->LogFilterModifiedContent();
     }
     filter_->num_uses_->Add(1);
-    filter_->LogFilterModifiedContent();
   }
 }
 
@@ -627,6 +629,18 @@ bool CssFilter::Context::SerializeCss(int64 in_text_size,
   }
   return ret;
 }
+
+int64 CssFilter::Context::ImageInlineMaxBytes() const {
+    if (rewrite_inline_element_ != NULL) {
+      // We're in an html context.
+      return std::min(
+          driver_->options()->ImageInlineMaxBytes(),
+          driver_->options()->CssImageInlineMaxBytes());
+    } else {
+      // We're in a standalone CSS file.
+      return driver_->options()->CssImageInlineMaxBytes();
+    }
+  }
 
 bool CssFilter::Context::Partition(OutputPartitions* partitions,
                                    OutputResourceVector* outputs) {

@@ -428,119 +428,122 @@ TEST_F(CssImageRewriterTest, CssImagePreserveUrlsNoPreemptiveRewrite) {
   EXPECT_EQ(0, static_cast<int>(lru_cache()->num_hits()));
 }
 
-TEST_F(CssImageRewriterTest, InlineImages) {
-  // Make sure we can inline images in any kind of CSS.
-  options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kInlineImages);
-  options()->set_image_inline_max_bytes(2000);
-  options()->set_css_image_inline_max_bytes(2000);
-  EXPECT_EQ(2000, options()->ImageInlineMaxBytes());
-  EXPECT_EQ(2000, options()->CssImageInlineMaxBytes());
-  server_context()->ComputeSignature(options());
-  // Here Cuppa.png is 1763 bytes, so should be inlined.
-  AddFileToMockFetcher(StrCat(kTestDomain, "Cuppa.png"), kCuppaPngFile,
-                       kContentTypePng, 100);
-  static const char kCss[] =
+class InlineCssImageRewriterTest : public CssImageRewriterTest {
+ protected:
+  int NumTestImageBytes() { return test_image_file_contents_.size(); }
+
+  GoogleString TestImageFileName() { return kCuppaPngFile; }
+
+  GoogleString TestImageDataUrl() {
+    GoogleString data_url;
+    DataUrl(kContentTypePng, BASE64, test_image_file_contents_, &data_url);
+    return data_url;
+  }
+
+  void SetMaxBytes(int image_inline_max_bytes,
+                   int css_image_inline_max_bytes) {
+    options()->ClearSignatureForTesting();
+    options()->set_image_inline_max_bytes(image_inline_max_bytes);
+    options()->set_css_image_inline_max_bytes(css_image_inline_max_bytes);
+    EXPECT_EQ(image_inline_max_bytes, options()->ImageInlineMaxBytes());
+    EXPECT_EQ(css_image_inline_max_bytes, options()->CssImageInlineMaxBytes());
+    server_context()->ComputeSignature(options());
+  }
+
+  virtual void SetUp() {
+    options()->EnableFilter(RewriteOptions::kInlineImages);
+    CssImageRewriterTest::SetUp();
+    SetUpTestImageFile();
+    EXPECT_FALSE(test_image_file_contents_.empty());
+  }
+
+ private:
+  void SetUpTestImageFile() {
+    GoogleString file_name = TestImageFileName();
+    AddFileToMockFetcher(StrCat(kTestDomain, file_name),
+                         file_name, kContentTypePng, 100);
+
+    StdioFileSystem stdio_file_system(timer());
+    GoogleString file_path = StrCat(GTestSrcDir(), kTestData, file_name);
+    EXPECT_TRUE(stdio_file_system.ReadFile(
+        file_path.c_str(), &test_image_file_contents_, message_handler()));
+  }
+
+  GoogleString test_image_file_contents_;
+};
+
+TEST_F(InlineCssImageRewriterTest, InlineImages) {
+  SetMaxBytes(NumTestImageBytes() + 1,  // image_inline_max_bytes
+              NumTestImageBytes() + 1);  // css_image_inline_max_bytes
+  GoogleString input_css = StrCat(
       "body {\n"
-      "  background-image: url(Cuppa.png);\n"
-      "}\n";
+      "  background-image: url(", TestImageFileName(), ");\n"
+      "}\n");
+  GoogleString expected_css = StrCat(
+      "body{background-image:url(", TestImageDataUrl(), ")}");
 
-  // Read original image file and create data url for comparison purposes.
-  GoogleString contents;
-  StdioFileSystem stdio_file_system(timer());
-  GoogleString filename = StrCat(GTestSrcDir(), kTestData, kCuppaPngFile);
-  ASSERT_TRUE(stdio_file_system.ReadFile(
-      filename.c_str(), &contents, message_handler()));
-  GoogleString data_url;
-  DataUrl(kContentTypePng, BASE64, contents, &data_url);
-
-  GoogleString kCssAfter = StrCat("body{background-image:url(", data_url, ")}");
-
-  // Here we skip the stat check because we are *increasing* the size of the CSS
-  // (which causes the check to fail).  That eliminates a resource fetch, so it
-  // should normally be a net win in practice.
-  ValidateRewrite("inline_css_images", kCss, kCssAfter,
+  // Skip the stat check because inlining *increases* the CSS size and
+  // causes the check to fail. Inlining eliminates a resource fetch, so
+  // it should normally be a net win in practice.
+  ValidateRewrite("inline_css_images", input_css, expected_css,
                   kExpectSuccess | kNoClearFetcher | kNoStatCheck);
 }
 
-TEST_F(CssImageRewriterTest, InlineImagesFallback) {
-  // Make sure we can inline images when CSS parsing goes to fallback mode.
-  options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kInlineImages);
-  options()->set_image_inline_max_bytes(2000);
-  options()->set_css_image_inline_max_bytes(2000);
-  server_context()->ComputeSignature(options());
-  // Here Cuppa.png is 1763 bytes, so should be inlined.
-  AddFileToMockFetcher(StrCat(kTestDomain, "Cuppa.png"), kCuppaPngFile,
-                       kContentTypePng, 100);
-
-  // This ought to not parse..
+TEST_F(InlineCssImageRewriterTest, InlineImagesInFallbackMode) {
+  SetMaxBytes(NumTestImageBytes() + 1,  // image_inline_max_bytes
+              NumTestImageBytes() + 1);  // css_image_inline_max_bytes
+  // This ought to not parse.
   static const char kCssTemplate[] =
       "body {\n"
       "  background-image: url(%s);\n"
       "}}}}}\n";
-  GoogleString css_before = StringPrintf(kCssTemplate, "Cuppa.png");
+  GoogleString input_css = StringPrintf(
+      kCssTemplate, TestImageFileName().c_str());
+  GoogleString expected_css = StringPrintf(
+      kCssTemplate, TestImageDataUrl().c_str());
 
-  // Read original image file and create data url for comparison purposes.
-  GoogleString contents;
-  StdioFileSystem stdio_file_system(timer());
-  GoogleString filename = StrCat(GTestSrcDir(), kTestData, kCuppaPngFile);
-  ASSERT_TRUE(stdio_file_system.ReadFile(
-      filename.c_str(), &contents, message_handler()));
-  GoogleString data_url;
-  DataUrl(kContentTypePng, BASE64, contents, &data_url);
-
-  GoogleString css_after = StringPrintf(kCssTemplate, data_url.c_str());
-
-  // Here we skip the stat check because we are *increasing* the size of the CSS
-  // (which causes the check to fail).  That eliminates a resource fetch, so it
-  // should normally be a net win in practice.
-  ValidateRewrite("inline_css_images", css_before, css_after,
+  // Skip the stat check because inlining *increases* the CSS size and
+  // causes the check to fail. Inlining eliminates a resource fetch, so
+  // it should normally be a net win in practice.
+  ValidateRewrite("inline_images_in_fallback_mode", input_css, expected_css,
                   kExpectFallback | kNoClearFetcher | kNoStatCheck);
 }
 
-TEST_F(CssImageRewriterTest, InlineImageOnlyInOutlineCss) {
-  // Make sure that we use image_inline_max_bytes to determine image inlining in
-  // inline css (css that occurs in an html file), but that we use
-  // css_image_inline_max_bytes for standalone css.
-  options()->ClearSignatureForTesting();
-  options()->EnableFilter(RewriteOptions::kInlineImages);
-  // Do inline in CSS file but not in inline CSS.
-  options()->set_image_inline_max_bytes(0);
-  options()->set_css_image_inline_max_bytes(2000);
-  EXPECT_EQ(0, options()->ImageInlineMaxBytes());  // This is disabled...
-  ASSERT_EQ(2000, options()->CssImageInlineMaxBytes());  // But this is enabled.
-  server_context()->ComputeSignature(options());
-  // Here Cuppa.png is 1763 bytes, so should be inlined.
-  AddFileToMockFetcher(StrCat(kTestDomain, "Cuppa.png"), kCuppaPngFile,
-                       kContentTypePng, 100);
-  static const char kCss[] =
+TEST_F(InlineCssImageRewriterTest, NoInlineWhenImageTooLargeForCss) {
+  SetMaxBytes(NumTestImageBytes() + 1,  // image_inline_max_bytes
+              NumTestImageBytes());  // css_image_inline_max_bytes
+  GoogleString file_name = TestImageFileName();
+  GoogleString input_css = StrCat(
       "body {\n"
-      "  background-image: url(Cuppa.png);\n"
-      "}\n";
+      "  background-image: url(", file_name, ");\n"
+      "}\n");
+  GoogleString expected_css = StrCat(
+      "body{background-image:url(",
+      Encode(kTestDomain, "ce", "0", file_name, "png"), ")}");
 
-  // Read original image file and create data url for comparison purposes.
-  GoogleString contents;
-  StdioFileSystem stdio_file_system(timer());
-  GoogleString filename = StrCat(GTestSrcDir(), kTestData, kCuppaPngFile);
-  ASSERT_TRUE(stdio_file_system.ReadFile(
-      filename.c_str(), &contents, message_handler()));
-  GoogleString data_url;
-  DataUrl(kContentTypePng, BASE64, contents, &data_url);
+  ValidateRewrite("no_inline_when_image_too_large_for_css",
+                  input_css, expected_css, kExpectSuccess | kNoClearFetcher);
+}
 
-  GoogleString kCssInlineAfter =
-      StrCat("body{background-image:url(",
-             Encode(kTestDomain, "ce", "0", "Cuppa.png", "png"),
-             ")}");
-  GoogleString kCssExternalAfter =
-      StrCat("body{background-image:url(", data_url, ")}");
+TEST_F(InlineCssImageRewriterTest, InlineInExternalCssOnly) {
+  SetMaxBytes(NumTestImageBytes(),  // image_inline_max_bytes
+              NumTestImageBytes() + 1);  // css_image_inline_max_bytes
+  GoogleString file_name = TestImageFileName();
+  GoogleString input_css = StrCat(
+      "body {\n"
+      "  background-image: url(", file_name, ");\n"
+      "}\n");
+  GoogleString expected_inline_css = StrCat(
+      "body{background-image:url(",
+      Encode(kTestDomain, "ce", "0", file_name, "png"), ")}");
+  GoogleString expected_outline_css = StrCat(
+      "body{background-image:url(", TestImageDataUrl(), ")}");
 
   ValidateRewriteInlineCss(
-      "no_inline_in_inline", kCss, kCssInlineAfter,
+      "no_inline_in_inline", input_css, expected_inline_css,
       kExpectSuccess | kNoClearFetcher);
-  // Again skip the stat check because we are *increasing* the size of the CSS
   ValidateRewriteExternalCss(
-      "inline_in_outline", kCss, kCssExternalAfter,
+      "inline_in_external", input_css, expected_outline_css,
       kExpectSuccess | kNoClearFetcher | kNoStatCheck);
 }
 
