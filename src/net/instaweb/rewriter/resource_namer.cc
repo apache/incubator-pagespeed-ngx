@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 
 #include <cctype>
+#include <vector>
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -95,7 +96,10 @@ bool ResourceNamer::Decode(const StringPiece& encoded_string) {
   // one character, experiments always have 1 character.
   if ((system_id_index >= 1) &&      // at least 1 segment before the system ID.
       (n - system_id_index >= 4)) {  // at least 3 segments after the system ID.
-    name_ = JoinStringPieces(segments, 0, system_id_index, kSeparatorString);
+    name_.clear();
+    AppendJoinIterator(&name_,
+                       segments.begin(), segments.begin() + system_id_index,
+                       kSeparatorString);
 
     // Looking from the right, we should always see ext, hash, id
     segments[--n].CopyToString(&ext_);
@@ -105,11 +109,13 @@ bool ResourceNamer::Decode(const StringPiece& encoded_string) {
     // Now between system_id_index and n, we have the experiment or options.
     // Re-join them (general case includes dots for the options.
     int experiment_or_options_start = system_id_index + 1;
-    int experiment_or_options_num_segments = n - experiment_or_options_start;
-    if (experiment_or_options_num_segments > 0) {
-      GoogleString experiment_or_options = JoinStringPieces(
-          segments, experiment_or_options_start,
-          experiment_or_options_num_segments, kSeparatorString);
+    if (experiment_or_options_start < n) {
+      GoogleString experiment_or_options;
+      AppendJoinIterator(
+          &experiment_or_options,
+          segments.begin() + experiment_or_options_start,
+          segments.begin() + n,
+          kSeparatorString);
       if (experiment_or_options.size() == 1) {
         if ((experiment_or_options[0] >= 'a') &&
             (experiment_or_options[0] <= 'z')) {
@@ -181,7 +187,7 @@ GoogleString ResourceNamer::InternalEncode() const {
   parts.push_back(id_);
   parts.push_back(hash_);
   parts.push_back(ext_);
-  return JoinStringPieces(parts, kSeparatorString);
+  return JoinCollection(parts, kSeparatorString);
 }
 
 // The current encoding assumes there are no dots in any of the components.

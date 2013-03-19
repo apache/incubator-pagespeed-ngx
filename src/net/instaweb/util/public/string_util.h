@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_STRING_UTIL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_UTIL_H_
 
+#include <cstddef>
 #include <map>
 #include <set>
 #include <vector>
@@ -180,14 +181,6 @@ int FindIgnoreCase(StringPiece haystack, StringPiece needle);
 GoogleString JoinStringStar(const ConstStringStarVector& vector,
                             const StringPiece& delim);
 
-GoogleString JoinStringPieces(const StringPieceVector& vector,
-                              int start_index, int size,
-                              const StringPiece& delim);
-inline GoogleString JoinStringPieces(const StringPieceVector& vector,
-                                     const StringPiece& delim) {
-  return JoinStringPieces(vector, 0, vector.size(), delim);
-}
-
 // See also: ./src/third_party/css_parser/src/strings/ascii_ctype.h
 // We probably don't want our core string header file to have a
 // dependecy on the Google CSS parser, so for now we'll write this here:
@@ -332,6 +325,45 @@ bool HasIllicitTokenCharacter(const StringPiece& str);
 inline GoogleString* StringVectorAdd(StringVector* v) {
   v->push_back(GoogleString());
   return &v->back();
+}
+
+// Append string-like objects accessed through an iterator.
+template<typename I>
+void AppendJoinIterator(
+    GoogleString* dest, I start, I end, StringPiece sep) {
+  if (start == end) {
+    // Skip a lot of set-up and tear-down in empty case.
+    return;
+  }
+  size_t size = dest->size();
+  size_t sep_size = 0;  // No separator before initial element
+  for (I str = start; str != end; ++str) {
+    size += str->size() + sep_size;
+    sep_size = sep.size();
+  }
+  dest->reserve(size);
+  StringPiece to_prepend("");
+  for (I str = start; str != end; ++str) {
+    StrAppend(dest, to_prepend, *str);
+    to_prepend = sep;
+  }
+}
+
+// Append an arbitrary iterable collection of strings such as a StringSet,
+// StringVector, or StringPieceVector, separated by a given separator, with
+// given initial and final strings.  Argument order chosen to be consistent
+// with StrAppend.
+template<typename C>
+void AppendJoinCollection(
+    GoogleString* dest, const C& collection, StringPiece sep) {
+  AppendJoinIterator(dest, collection.begin(), collection.end(), sep);
+}
+
+template<typename C>
+GoogleString JoinCollection(const C& collection, StringPiece sep) {
+  GoogleString result;
+  AppendJoinCollection(&result, collection, sep);
+  return result;
 }
 
 
