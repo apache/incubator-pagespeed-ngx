@@ -483,6 +483,18 @@ TEST_F(RewriteOptionsTest, MergeAllow) {
   EXPECT_FALSE(options_.IsAllowed("a.css"));
 }
 
+TEST_F(RewriteOptionsTest, DisableAllFilters) {
+  RewriteOptions one, two;
+  one.EnableFilter(RewriteOptions::kAddHead);
+  two.EnableFilter(RewriteOptions::kExtendCacheCss);
+  two.DisableAllFilters();  // Should disable both.
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheCss));
+
+  MergeOptions(one, two);
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kAddHead));
+  EXPECT_FALSE(options_.Enabled(RewriteOptions::kExtendCacheCss));
+}
+
 TEST_F(RewriteOptionsTest, DisableAllFiltersNotExplicitlyEnabled) {
   RewriteOptions one, two;
   one.EnableFilter(RewriteOptions::kAddHead);

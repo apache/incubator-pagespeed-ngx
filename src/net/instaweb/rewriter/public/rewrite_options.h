@@ -963,6 +963,9 @@ class RewriteOptions {
   bool ForbidFiltersByCommaSeparatedList(const StringPiece& filters,
                                          MessageHandler* handler);
 
+  // Set rewrite level to kPassThrough and explicitly disable all filters.
+  void DisableAllFilters();
+
   // Explicitly disable all filters which are not *currently* explicitly enabled
   //
   // Note: Do not call EnableFilter(...) for this options object after calling

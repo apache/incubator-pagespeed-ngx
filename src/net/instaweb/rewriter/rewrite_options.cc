@@ -1724,6 +1724,18 @@ bool RewriteOptions::ForbidFiltersByCommaSeparatedList(
       filters, &forbidden_filters_, handler);
 }
 
+void RewriteOptions::DisableAllFilters() {
+  DCHECK(!frozen_);
+  enabled_filters_.clear();
+  SetRewriteLevel(RewriteOptions::kPassThrough);
+  // Note: Disabling all filters is not efficient for subsequent merges.
+  // We do that for now to make the disabled filters survive subsequent merges.
+  // This is something we'd like to improve later.
+  for (int f = kFirstFilter; f != kEndOfFilters; ++f) {
+    DisableFilter(static_cast<Filter>(f));
+  }
+}
+
 void RewriteOptions::DisableAllFiltersNotExplicitlyEnabled() {
   for (int f = kFirstFilter; f != kEndOfFilters; ++f) {
     Filter filter = static_cast<Filter>(f);
