@@ -1129,6 +1129,7 @@
         'rewriter/common_filter.cc',
         'rewriter/compute_visible_text_filter.cc',
         'rewriter/collect_flush_early_content_filter.cc',
+        'rewriter/critical_css_beacon_filter.cc',
         'rewriter/critical_css_filter.cc',
         'rewriter/critical_css_finder.cc',
         'rewriter/critical_images_beacon_filter.cc',
