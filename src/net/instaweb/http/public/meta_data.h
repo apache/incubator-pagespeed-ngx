@@ -72,6 +72,9 @@ struct HttpAttributes {
   // all rewrites are completed before the response is sent to the client.
   static const char kXPsaBlockingRewrite[];
 
+  // A request header for client to specify client options.
+  static const char kXPsaClientOptions[];
+
   // This header is set on optional fetches that got dropped due to load.
   static const char kXPsaLoadShed[];
 

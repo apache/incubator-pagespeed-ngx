@@ -20,6 +20,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -132,6 +133,69 @@ class RewriteQueryTest : public RewriteTestBase {
                                  NULL, NULL, &query_options,
                                  message_handler()));
     options->Merge(*query_options.get());
+  }
+
+  void TestParseClientOptions(
+      RequestHeaders* request_headers,
+      bool expected_parsing_result,
+      RewriteQuery::ProxyMode expected_proxy_mode,
+      RewriteQuery::ImageQualityPreference expected_quality_preference) {
+    RewriteQuery::ProxyMode proxy_mode;
+    RewriteQuery::ImageQualityPreference quality_preference;
+    const StringPiece header_value(
+        request_headers->Lookup1(HttpAttributes::kXPsaClientOptions));
+    bool parsing_result = RewriteQuery::ParseClientOptions(
+        header_value, &proxy_mode, &quality_preference);
+    EXPECT_EQ(expected_parsing_result, parsing_result);
+    if (parsing_result) {
+      EXPECT_EQ(expected_proxy_mode, proxy_mode);
+      EXPECT_EQ(expected_quality_preference, quality_preference);
+    }
+  }
+
+  void TestClientOptions(
+      RequestHeaders* request_headers,
+      bool expected_parsing_result,
+      RewriteQuery::ProxyMode expected_proxy_mode,
+      RewriteQuery::ImageQualityPreference expected_quality_preference) {
+    ResponseHeaders response_headers;
+    GoogleString in_query, out_query, out_req_string, out_resp_string;
+
+    TestParseClientOptions(
+        request_headers, expected_parsing_result, expected_proxy_mode,
+        expected_quality_preference);
+
+    RewriteOptions* options = ParseAndScan(kHtmlUrl, in_query, request_headers,
+                                           &response_headers, &out_query,
+                                           &out_req_string, &out_resp_string);
+    if (!expected_parsing_result) {
+      EXPECT_TRUE(options == NULL);
+      return;
+    }
+    if (expected_proxy_mode == RewriteQuery::kProxyModeNoTransform) {
+      EXPECT_EQ(RewriteOptions::kPassThrough, options->level());
+      // Not a complete list. Only checks the important ones.
+      EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteCss));
+      EXPECT_FALSE(options->Enabled(RewriteOptions::kRewriteJavascript));
+    }
+    if (expected_proxy_mode == RewriteQuery::kProxyModeNoTransform ||
+        expected_proxy_mode == RewriteQuery::kProxyModeNoImageTransform) {
+      // Not a complete list. Only checks the important ones.
+      EXPECT_FALSE(options->Enabled(RewriteOptions::kConvertGifToPng));
+      EXPECT_FALSE(options->Enabled(RewriteOptions::kConvertPngToJpeg));
+      EXPECT_FALSE(options->Enabled(RewriteOptions::kConvertJpegToProgressive));
+      EXPECT_FALSE(options->Enabled(RewriteOptions::kConvertJpegToWebp));
+      EXPECT_FALSE(options->Enabled(RewriteOptions::kConvertToWebpLossless));
+      EXPECT_FALSE(options->Enabled(RewriteOptions::kResizeImages));
+      EXPECT_FALSE(options->Enabled(RewriteOptions::kResizeMobileImages));
+    } else {
+      EXPECT_EQ(RewriteQuery::kProxyModeDefault, expected_proxy_mode);
+      if (expected_quality_preference == RewriteQuery::kImageQualityDefault) {
+        EXPECT_TRUE(options == NULL);
+      }
+    }
+    EXPECT_TRUE(
+        request_headers->Lookup1(HttpAttributes::kXPsaClientOptions) == NULL);
   }
 
   GoogleMessageHandler handler_;
@@ -594,6 +658,83 @@ TEST_F(RewriteQueryTest, OnlyAllowWhitelistedResources) {
   EXPECT_TRUE(ParseAndScan(image_url_, "", "") == NULL);
   image = AddOptionsToEncodedUrl(image_url_, "rdm=10");
   EXPECT_TRUE(ParseAndScan(image_url_, "", "") == NULL);
+}
+
+TEST_F(RewriteQueryTest, ClientOptionsEmptyHeader) {
+  RequestHeaders request_headers;
+
+  TestClientOptions(&request_headers,
+                    false, /* expected_parsing_result */
+                    RewriteQuery::kProxyModeDefault,
+                    RewriteQuery::kImageQualityDefault);
+}
+
+TEST_F(RewriteQueryTest, ClientOptionsMultipleHeaders) {
+  RequestHeaders request_headers;
+
+  request_headers.Add(HttpAttributes::kXPsaClientOptions, "v=1,iqp=3,m=0");
+  request_headers.Add(HttpAttributes::kXPsaClientOptions, "v=1,iqp=3,m=0");
+  TestClientOptions(&request_headers,
+                    false, /* expected_parsing_result */
+                    RewriteQuery::kProxyModeDefault,
+                    RewriteQuery::kImageQualityDefault);
+}
+
+TEST_F(RewriteQueryTest, ClientOptionsOrder1) {
+  RequestHeaders request_headers;
+
+  request_headers.Replace(HttpAttributes::kXPsaClientOptions, "v=1,iqp=2,m=0");
+  // Image quality is set.
+  TestClientOptions(&request_headers,
+                    true, /* expected_parsing_result */
+                    RewriteQuery::kProxyModeDefault,
+                    RewriteQuery::kImageQualityMedium);
+}
+
+TEST_F(RewriteQueryTest, ClientOptionsOrder2) {
+  RequestHeaders request_headers;
+
+  // The order of name-value pairs does not matter.
+  // Not-supported parts are ignored.
+  request_headers.Replace(HttpAttributes::kXPsaClientOptions,
+                          "m=0,iqp=3,v=1,xyz=100,zyx=,yzx");
+  TestClientOptions(&request_headers,
+                    true, /* expected_parsing_result */
+                    RewriteQuery::kProxyModeDefault,
+                    RewriteQuery::kImageQualityHigh);
+}
+
+TEST_F(RewriteQueryTest, ClientOptionsNonDefaultProxyMode) {
+  RequestHeaders request_headers;
+
+  // Image quality is ignored if mode is not Default.
+  request_headers.Replace(HttpAttributes::kXPsaClientOptions, "v=1,iqp=2,m=1");
+  TestClientOptions(&request_headers,
+                    true, /* expected_parsing_result */
+                    RewriteQuery::kProxyModeNoImageTransform,
+                    RewriteQuery::kImageQualityDefault);
+}
+
+TEST_F(RewriteQueryTest, ClientOptionsValidVersionBadOptions) {
+  RequestHeaders request_headers;
+
+  // A valid version with bad options.
+  request_headers.Replace(HttpAttributes::kXPsaClientOptions,
+                          "v=1,iqp=2m=1,iqp=");
+  TestClientOptions(&request_headers,
+                    true, /* expected_parsing_result */
+                    RewriteQuery::kProxyModeDefault,
+                    RewriteQuery::kImageQualityDefault);
+}
+
+TEST_F(RewriteQueryTest, ClientOptionsInvalidVersion) {
+  RequestHeaders request_headers;
+
+  request_headers.Replace(HttpAttributes::kXPsaClientOptions, "iqp=2,m=1,v=2");
+  TestClientOptions(&request_headers,
+                    false, /* expected_parsing_result */
+                    RewriteQuery::kProxyModeDefault,
+                    RewriteQuery::kImageQualityDefault);
 }
 
 }  // namespace net_instaweb

@@ -59,6 +59,8 @@ const char HttpAttributes::kXForwardedFor[] = "X-Forwarded-For";
 const char HttpAttributes::kXForwardedProto[] = "X-Forwarded-Proto";
 const char HttpAttributes::kXGooglePagespeedClientId[] =
     "X-Google-Pagespeed-Client-Id";
+// Warning: The header name is subject to change.
+const char HttpAttributes::kXPsaClientOptions[] = "X-PSA-Client-Options";
 
 const char HttpAttributes::kXPsaRequestMetadata[] =
     "X-PSA-Request-Metadata";

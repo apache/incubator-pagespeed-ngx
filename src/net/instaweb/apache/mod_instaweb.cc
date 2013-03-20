@@ -530,11 +530,14 @@ InstawebContext* build_context_for_request(request_rec* request) {
                                          &tmp_err_resp_headers);
 
           // Use ScanHeader's parsing logic to find and strip the ModPagespeed
-          // options from the headers.
-          RewriteQuery::ScanHeader(&tmp_err_resp_headers, &unused_opts1,
-                                   factory->message_handler());
-          RewriteQuery::ScanHeader(&tmp_resp_headers, &unused_opts2,
-                                   factory->message_handler());
+          // options from the headers. Use NULL for device_properties as no
+          // device property information is needed for the stripping.
+          RewriteQuery::ScanHeader(
+              &tmp_err_resp_headers, NULL /* device_properties */,
+              &unused_opts1, factory->message_handler());
+          RewriteQuery::ScanHeader(
+              &tmp_resp_headers, NULL  /* device_properties */, &unused_opts2,
+              factory->message_handler());
 
           // Write the stripped headers back to the Apache record.
           apr_table_clear(request->err_headers_out);

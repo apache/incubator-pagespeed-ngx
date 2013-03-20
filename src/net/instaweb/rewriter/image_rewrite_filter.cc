@@ -1588,4 +1588,10 @@ const RewriteOptions::OptionEnum* ImageRewriteFilter::RelatedOptions(
   return kRelatedOptions;
 }
 
+void ImageRewriteFilter::DisableRelatedFilters(RewriteOptions* options) {
+  for (int i = 0; i < kRelatedFiltersSize; ++i) {
+    options->DisableFilter(kRelatedFilters[i]);
+  }
+}
+
 }  // namespace net_instaweb

@@ -16,6 +16,9 @@
 
 #include <algorithm>  // for std::binary_search
 
+#include "base/logging.h"
+#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"        // for int64
@@ -24,7 +27,9 @@
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_multi_map.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/rewriter/public/image_rewrite_filter.h"
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
@@ -38,6 +43,13 @@ namespace {
 // be quoted by UrlEscaper, unlike "," and ":".
 const char kResourceFilterSeparator[] = "+";
 const char kResourceOptionValueSeparator[] = "=";
+
+const char kProxyOptionSeparator[] = ",";
+const char kProxyOptionValueSeparator = '=';
+const char kProxyOptionVersion[] = "v";
+const char kProxyOptionMode[] = "m";
+const char kProxyOptionImageQualityPreference[] = "iqp";
+const char kProxyOptionValidVersionValue[] = "1";
 
 }  // namespace
 
@@ -90,6 +102,7 @@ static struct Int64QueryParam int64_query_params_[] = {
 template <class HeaderT>
 RewriteQuery::Status RewriteQuery::ScanHeader(
     HeaderT* headers,
+    DeviceProperties* device_properties,
     RewriteOptions* options,
     MessageHandler* handler) {
   Status status = kNoneFound;
@@ -102,9 +115,9 @@ RewriteQuery::Status RewriteQuery::ScanHeader(
   HeaderT headers_to_remove;
 
   for (int i = 0, n = headers->NumAttributes(); i < n; ++i) {
-    switch (ScanNameValue(headers->Name(i), headers->Value(i),
-                          options,
-                          handler)) {
+    switch (ScanNameValue(
+        headers->Name(i), headers->Value(i), device_properties, options,
+        handler)) {
       case kNoneFound:
         break;
       case kSuccess:
@@ -116,9 +129,15 @@ RewriteQuery::Status RewriteQuery::ScanHeader(
     }
   }
 
+  // TODO(bolian): jmarantz suggested below change.  we should make a
+  // StringSetInsensitive and put all the names we want to remove including
+  // XPSAClientOptions and then call RemoveAllFromSet.
+  // That will be more efficient.
   for (int i = 0, n = headers_to_remove.NumAttributes(); i < n; ++i) {
     headers->Remove(headers_to_remove.Name(i), headers_to_remove.Value(i));
   }
+  // kXPsaClientOptions is meant for proxy only. Remove it in any case.
+  headers->RemoveAll(HttpAttributes::kXPsaClientOptions);
 
   return status;
 }
@@ -176,12 +195,20 @@ RewriteQuery::Status RewriteQuery::Scan(
     options->reset(factory->NewRewriteOptionsForQuery());
   }
 
+  scoped_ptr<DeviceProperties> device_properties;
+  if (request_headers != NULL) {
+    device_properties.reset(
+        new DeviceProperties(server_context->user_agent_matcher()));
+    device_properties->set_user_agent(
+        request_headers->Lookup1(HttpAttributes::kUserAgent));
+  }
+
   QueryParams temp_query_params;
   for (int i = 0; i < query_params.size(); ++i) {
     const GoogleString* value = query_params.value(i);
     if (value != NULL) {
       switch (ScanNameValue(
-          query_params.name(i), *value, options->get(),
+          query_params.name(i), *value, device_properties.get(), options->get(),
           handler)) {
         case kNoneFound:
           temp_query_params.Add(query_params.name(i), *value);
@@ -204,8 +231,8 @@ RewriteQuery::Status RewriteQuery::Scan(
                               request_url->AllAfterQuery()));
   }
 
-  switch (ScanHeader<RequestHeaders>(request_headers, options->get(),
-                                     handler)) {
+  switch (ScanHeader<RequestHeaders>(
+      request_headers, device_properties.get(), options->get(), handler)) {
     case kNoneFound:
       break;
     case kSuccess:
@@ -215,8 +242,9 @@ RewriteQuery::Status RewriteQuery::Scan(
       return kInvalid;
   }
 
-  switch (ScanHeader<ResponseHeaders>(response_headers, options->get(),
-                                      handler)) {
+  switch (ScanHeader<ResponseHeaders>(
+      response_headers, device_properties.get(), options->get(),
+      handler)) {
     case kNoneFound:
       break;
     case kSuccess:
@@ -257,7 +285,8 @@ bool RewriteQuery::MayHaveCustomOptions(
     const ResponseHeaders* resp_headers) {
   for (int i = 0, n = params.size(); i < n; ++i) {
     StringPiece name(params.name(i));
-    if (name.starts_with(kModPagespeed)) {
+    if (name.starts_with(kModPagespeed) ||
+        name == HttpAttributes::kXPsaClientOptions) {
       return true;
     }
   }
@@ -267,12 +296,17 @@ bool RewriteQuery::MayHaveCustomOptions(
   if (HeadersMayHaveCustomOptions(params, resp_headers)) {
     return true;
   }
+  if (req_headers != NULL &&
+      req_headers->Lookup1(HttpAttributes::kXPsaClientOptions) != NULL) {
+    return true;
+  }
   return false;
 }
 
 RewriteQuery::Status RewriteQuery::ScanNameValue(
     const StringPiece& name, const GoogleString& value,
-    RewriteOptions* options, MessageHandler* handler) {
+    DeviceProperties* device_properties, RewriteOptions* options,
+    MessageHandler* handler) {
   Status status = kNoneFound;
   if (name == kModPagespeed) {
     RewriteOptions::EnabledEnum enabled;
@@ -305,6 +339,13 @@ RewriteQuery::Status RewriteQuery::ScanNameValue(
     } else {
       status = kInvalid;
     }
+  } else if (name == HttpAttributes::kXPsaClientOptions) {
+    if (UpdateRewriteOptionsWithClientOptions(
+        value, device_properties, options)) {
+      status = kSuccess;
+    }
+    // We don't want to return kInvalid, which causes 405 (kMethodNotAllowed)
+    // returned to client.
   } else {
     for (unsigned i = 0; i < arraysize(int64_query_params_); ++i) {
       if (name == int64_query_params_[i].name_) {
@@ -428,6 +469,98 @@ RewriteQuery::Status RewriteQuery::ParseResourceOption(
   options->SetRewriteLevel(RewriteOptions::kPassThrough);
   options->DisableAllFiltersNotExplicitlyEnabled();
   return status;
+}
+
+bool RewriteQuery::ParseProxyMode(
+    const GoogleString* mode_name, ProxyMode* mode) {
+  int mode_value = 0;
+  if (mode_name != NULL &&
+      !mode_name->empty() &&
+      StringToInt(*mode_name, &mode_value) &&
+      mode_value >= kProxyModeDefault &&
+      mode_value <= kProxyModeNoTransform) {
+    *mode = static_cast<ProxyMode>(mode_value);
+    return true;
+  }
+  return false;
+}
+
+bool RewriteQuery::ParseImageQualityPreference(
+    const GoogleString* preference_name, ImageQualityPreference* preference) {
+  int value = 0;
+  if (preference_name != NULL &&
+      !preference_name->empty() &&
+      StringToInt(*preference_name, &value) &&
+      value >= kImageQualityDefault &&
+      value <= kImageQualityHigh) {
+    *preference = static_cast<ImageQualityPreference>(value);
+    return true;
+  }
+  return false;
+}
+
+bool RewriteQuery::ParseClientOptions(
+    const StringPiece& client_options, ProxyMode* proxy_mode,
+    ImageQualityPreference* image_quality_preference) {
+  StringMultiMapSensitive options;
+  options.AddFromNameValuePairs(
+      client_options, kProxyOptionSeparator, kProxyOptionValueSeparator,
+      true);
+
+  const GoogleString* version_value = options.Lookup1(kProxyOptionVersion);
+  // We only support version value of kProxyOptionValidVersionValue for now.
+  // New supported version might be added later.
+  if (version_value != NULL &&
+      *version_value == kProxyOptionValidVersionValue) {
+    *proxy_mode = kProxyModeDefault;
+    *image_quality_preference = kImageQualityDefault;
+    ParseProxyMode(options.Lookup1(kProxyOptionMode), proxy_mode);
+
+    if (*proxy_mode == kProxyModeDefault) {
+      ParseImageQualityPreference(
+          options.Lookup1(kProxyOptionImageQualityPreference),
+          image_quality_preference);
+    }
+    return true;
+  }
+  return false;
+}
+
+bool RewriteQuery::SetEffectiveImageQualities(
+    ImageQualityPreference quality_preference,
+    DeviceProperties* device_properties,
+    RewriteOptions* options) {
+  if (quality_preference == kImageQualityDefault ||
+      device_properties == NULL) {
+    return false;
+  }
+  // TODO(bolian): Set jpeg and webp image qualities based on screen
+  // resolution and client hint options.
+  // For now, do nothing and keep using default values.
+  return false;
+}
+
+bool RewriteQuery::UpdateRewriteOptionsWithClientOptions(
+    const GoogleString& client_options, DeviceProperties* device_properties,
+    RewriteOptions* options) {
+  ProxyMode proxy_mode = kProxyModeDefault;
+  ImageQualityPreference quality_preference = kImageQualityDefault;
+  if (!ParseClientOptions(client_options, &proxy_mode, &quality_preference)) {
+    return false;
+  }
+
+  if (proxy_mode == kProxyModeNoTransform) {
+    options->DisableAllFilters();
+    return true;
+  } else if (proxy_mode == kProxyModeNoImageTransform) {
+    ImageRewriteFilter::DisableRelatedFilters(options);
+    return true;
+  } else if (proxy_mode == kProxyModeDefault) {
+    return SetEffectiveImageQualities(
+        quality_preference, device_properties, options);
+  }
+  DCHECK(false);
+  return false;
 }
 
 }  // namespace net_instaweb
