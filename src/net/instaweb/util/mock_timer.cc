@@ -20,6 +20,7 @@
 
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 
@@ -34,6 +35,12 @@ MockTimer::MockTimer(int64 time_ms)
 }
 
 MockTimer::~MockTimer() {
+  while (next_delta_ < deltas_us_.size()) {
+    TimeAndCallback time_and_callback = deltas_us_[next_delta_++];
+    if (time_and_callback.callback) {
+      time_and_callback.callback->CallCancel();
+    }
+  }
 }
 
 void MockTimer::SetTimeUs(int64 new_time_us) {
@@ -45,11 +52,25 @@ void MockTimer::SetTimeUs(int64 new_time_us) {
   }
   mutex_->Unlock();
 }
+void MockTimer::SetTimeDeltaUsWithCallback(int64 delta_us,
+                                           Function* callback) {
+  TimeAndCallback time_and_callback;
+  time_and_callback.time = delta_us;
+  time_and_callback.callback = callback;
+  {
+    ScopedMutex lock(mutex_.get());
+    deltas_us_.push_back(time_and_callback);
+  }
+}
 
 int64 MockTimer::NowUs() const {
   ScopedMutex lock(mutex_.get());
   if (next_delta_ < deltas_us_.size()) {
-    const_cast<MockTimer*>(this)->AdvanceUs(deltas_us_[next_delta_++]);
+    TimeAndCallback time_and_callback = deltas_us_[next_delta_++];
+    if (time_and_callback.callback) {
+      time_and_callback.callback->CallRun();
+    }
+    const_cast<MockTimer*>(this)->AdvanceUs(time_and_callback.time);
   }
   return time_us_;
 }

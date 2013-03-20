@@ -584,8 +584,8 @@ class CopyOnWriteLogRecord : public LogRecord {
 // time.
 class TestRequestContext : public RequestContext {
  public:
-  explicit TestRequestContext(LoggingInfo* logging_info)
-      : RequestContext(new NullMutex),
+  explicit TestRequestContext(LoggingInfo* logging_info, AbstractMutex* mutex)
+      : RequestContext(mutex),
         logging_info_copy_(logging_info) {}
 
   virtual LogRecord* NewSubordinateLogRecord(AbstractMutex* logging_mutex) {
@@ -621,7 +621,8 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
             kBlinkOutputCommon, "cache.html", "cache.html"),
             kBlinkOutputWithCacheablePanelsCookiesSuffix)),
         test_request_context_(TestRequestContextPtr(
-            new TestRequestContext(&blink_logging_info_))) {
+            new TestRequestContext(&blink_logging_info_,
+                                   factory()->thread_system()->NewMutex()))) {
     noblink_output_ = StrCat("<html><head></head><body>",
                              StringPrintf(kNoScriptRedirectFormatter,
                                           kNoBlinkUrl, kNoBlinkUrl),

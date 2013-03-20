@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
@@ -203,7 +204,15 @@ class ImageTest : public ImageTestBase {
   ImageTest() : options_(new Image::CompressionOptions()) {}
 
  protected:
-  void ExpectEmptyOuput(Image* image) {
+  GoogleString* GetOutputContents(Image* image) {
+    return &(image->output_contents_);
+  }
+
+  void WriteToBuffer(const char* contents, GoogleString* str) {
+    *str = contents;
+  }
+
+  void ExpectEmptyOutput(Image* image) {
     EXPECT_FALSE(image->output_valid_);
     EXPECT_TRUE(image->output_contents_.empty());
   }
@@ -1150,7 +1159,7 @@ TEST_F(ImageTest, ResizeTo) {
   new_dim.set_height(10);
   image->ResizeTo(new_dim);
 
-  ExpectEmptyOuput(image.get());
+  ExpectEmptyOutput(image.get());
   ExpectContentType(IMAGE_JPEG, image.get());
 }
 
@@ -1194,4 +1203,113 @@ TEST_F(ImageTest, CompressJpegUsingLossyOrLossless) {
                                               image->Contents().size()));
 }
 
+void SetBaseJpegOptions(Image::CompressionOptions* options) {
+  options->preferred_webp = Image::WEBP_LOSSY;
+  options->allow_webp_alpha = true;
+  options->convert_gif_to_png = true;
+  options->convert_png_to_jpeg = true;
+  options->webp_quality = 75;
+  options->jpeg_quality = 85;
+}
+
+TEST_F(ImageTest, IgnoreTimeoutWhenFinishingWebp) {
+  // FYI: This test will also probably take very long to run under Valgrind.
+  if (RunningOnValgrind()) {
+    return;
+  }
+
+  // Get the jpeg reference image
+  Image::CompressionOptions* jpeg_options = new Image::CompressionOptions;
+  SetBaseJpegOptions(jpeg_options);
+
+  GoogleString jpeg_buffer;
+  ImagePtr jpeg_image(ReadFromFileWithOptions(kBikeCrash,
+                                              &jpeg_buffer,
+                                              jpeg_options));
+
+  jpeg_image->output_size();
+  EXPECT_EQ(ContentType::kJpeg, jpeg_image->content_type()->type());
+
+
+  // Get the webp reference image
+  Image::CompressionOptions* webp_options = new Image::CompressionOptions;
+  SetBaseJpegOptions(webp_options);
+  webp_options->convert_jpeg_to_webp = true;
+  webp_options->webp_conversion_timeout_ms = 1;
+  GoogleString webp_buffer;
+  ImagePtr webp_image(ReadFromFileWithOptions(kBikeCrash,
+                                              &webp_buffer,
+                                              webp_options));
+
+  webp_image->output_size();
+  EXPECT_EQ(ContentType::kWebp, webp_image->content_type()->type());
+
+
+  // Make sure that if the timeout occurs before the first byte is
+  // written, we do indeed time out.
+  Image::CompressionOptions* timed_out_webp_options =
+      new Image::CompressionOptions;
+  SetBaseJpegOptions(timed_out_webp_options);
+  timed_out_webp_options->convert_jpeg_to_webp = true;
+  timed_out_webp_options->webp_conversion_timeout_ms = 1;
+
+  GoogleString timed_out_webp_buffer;
+  ImagePtr timed_out_webp_image(
+      ReadFromFileWithOptions(kBikeCrash,
+                              &timed_out_webp_buffer,
+                              timed_out_webp_options));
+  timer_.SetTimeMs(10);
+  timer_.SetTimeDeltaUs(1);  // When setting deadline
+  timer_.SetTimeDeltaUs(1);  // Before attempting webp lossless
+  timer_.SetTimeDeltaUs(1);
+  timer_.SetTimeDeltaUs(2000);
+
+  timed_out_webp_image->output_size();
+  EXPECT_EQ(ContentType::kJpeg, timed_out_webp_image->content_type()->type());
+  EXPECT_EQ(jpeg_image->Contents(),
+            timed_out_webp_image->Contents());
+
+  // Test that if we time out after the first output byte is emitted, we keep
+  // going with the webp output.
+  Image::CompressionOptions* almost_done_webp_options =
+      new Image::CompressionOptions;
+  SetBaseJpegOptions(almost_done_webp_options);
+  almost_done_webp_options->convert_jpeg_to_webp = true;
+  almost_done_webp_options->webp_conversion_timeout_ms = 1;
+
+  const char* kSomeData = "some data";
+  GoogleString almost_done_webp_buffer;
+  ImagePtr almost_done_webp_image(
+      ReadFromFileWithOptions(kBikeCrash,
+                              &almost_done_webp_buffer,
+                              almost_done_webp_options));
+  timer_.SetTimeMs(20);
+  timer_.SetTimeDeltaUs(1);  // When setting deadline
+  timer_.SetTimeDeltaUs(1);  // Before attempting webp lossless
+  timer_.SetTimeDeltaUs(1);
+  timer_.SetTimeDeltaUs(1);
+  timer_.SetTimeDeltaUs(1);
+  timer_.SetTimeDeltaUs(1);
+  // We need to specify the template typenames explicitly below
+  // because the compiler can't decide whether to use this test class
+  // or its base class, ImageTest.
+  timer_.SetTimeDeltaUsWithCallback(
+      2000,
+      MakeFunction<
+        ImageTest_IgnoreTimeoutWhenFinishingWebp_Test,
+        const char*,
+        GoogleString*>(
+            this,
+            &ImageTest_IgnoreTimeoutWhenFinishingWebp_Test::WriteToBuffer,
+            kSomeData,
+            GetOutputContents(almost_done_webp_image.get())));
+
+  almost_done_webp_image->output_size();
+  EXPECT_EQ(ContentType::kWebp,
+            almost_done_webp_image->content_type()->type());
+  GoogleString expected = kSomeData;
+  expected.append(webp_image->Contents().as_string());
+  EXPECT_EQ(expected,
+            almost_done_webp_image->Contents());
+}
 }  // namespace net_instaweb

@@ -162,13 +162,15 @@ class ConversionTimeoutHandler {
   ConversionTimeoutHandler(const GoogleString& url,
                      Timer* timer,
                      MessageHandler* handler,
-                     int64 timeout_ms) :
+                     int64 timeout_ms,
+                     GoogleString* output_contents) :
       url_(url),
       countdown_timer_(timer,
                        this /* not used */,
                        timeout_ms),
       handler_(handler),
       expired_(false),
+      output_(output_contents),
       stopped_(false),
       time_elapsed_(0) {}
 
@@ -207,15 +209,27 @@ class ConversionTimeoutHandler {
 
   // This function may be passed as a progress hook to
   // ImageConverter::ConvertPngToWebp or to OptimizeWebp(). user_data
-  // should be a pointer to a ConversionTimeoutHandler object.
+  // should be a pointer to a WebpTimeoutHandler object. This function
+  // returns true if countdown_timer_ hasn't expired or there are some
+  // bytes in output_contents_ (meaning WebP conversion is essentially
+  // finished).
   static bool Continue(int percent, void* user_data) {
     ConversionTimeoutHandler* timeout_handler =
         static_cast<ConversionTimeoutHandler*>(user_data);
     VLOG(2) <<  "WebP conversions: " << percent <<"% done; time left: "
             << timeout_handler->countdown_timer_.TimeLeftMs() << " ms";
+    VLOG(2) << "Progress: " << percent << "% for " << timeout_handler->url_;
     if (!timeout_handler->HaveTimeLeft()) {
-        timeout_handler->handler_->Warning(timeout_handler->url_.c_str(), 0,
-        "WebP conversion timed out!");
+      // We include the output_->empty() check after HaveTimeLeft()
+      // for testing, in case there's a callback that writes to
+      // output_ invoked at a time that triggers a timeout.
+      if (!timeout_handler->output_->empty()) {
+        VLOG(2) << "Output non-empty at " << percent
+                << "% for " << timeout_handler->url_;
+        return true;
+      }
+      timeout_handler->handler_->Warning(timeout_handler->url_.c_str(), 0,
+                                         "WebP conversion timed out!");
       timeout_handler->expired_ = true;
       return false;
     }
@@ -244,6 +258,7 @@ class ConversionTimeoutHandler {
   CountdownTimer countdown_timer_;
   MessageHandler* handler_;
   bool expired_;
+  GoogleString* output_;
   bool stopped_;
   int64 time_elapsed_;
 };
@@ -1103,7 +1118,8 @@ inline bool ImageImpl::ConvertJpegToWebp(
     const GoogleString& original_jpeg, int configured_quality,
     GoogleString* compressed_webp) {
   ConversionTimeoutHandler timeout_handler(url_, timer_, handler_,
-                                     options_->webp_conversion_timeout_ms);
+                                           options_->webp_conversion_timeout_ms,
+                                           compressed_webp);
   bool ok = OptimizeWebp(original_jpeg, configured_quality,
                          ConversionTimeoutHandler::Continue, &timeout_handler,
                          compressed_webp);
@@ -1174,7 +1190,8 @@ bool ImageImpl::ConvertPngToWebp(
       (options_->webp_quality > 0)) {
     ConversionTimeoutHandler timeout_handler(
         url_, timer_, handler_,
-        options_->webp_conversion_timeout_ms);
+        options_->webp_conversion_timeout_ms,
+        &output_contents_);
     pagespeed::image_compression::WebpConfiguration webp_config;
     webp_config.quality = options_->webp_quality;
 

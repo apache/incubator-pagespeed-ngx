@@ -15,16 +15,26 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
 class MockTimerTest : public testing::Test {
  protected:
   MockTimerTest() : timer_(0) {}
+  virtual void SampleCallback(GoogleString* str) {
+    *str = str->empty() ? kCallbackCalledOnce : kCallbackCalledTwice;
+  }
 
   MockTimer timer_;
+  static const char* kCallbackCalledOnce;
+  static const char* kCallbackCalledTwice;
 };
+
+const char* MockTimerTest::kCallbackCalledOnce = "CALLED ONCE";
+const char* MockTimerTest::kCallbackCalledTwice = "CALLED TWICE";
 
 TEST_F(MockTimerTest, Set) {
   timer_.SetTimeUs(5012);
@@ -53,6 +63,51 @@ TEST_F(MockTimerTest, SetTimeDelta) {
   EXPECT_EQ(2044, timer_.NowUs());
   EXPECT_EQ(4044, timer_.NowUs());
   EXPECT_EQ(4101, timer_.NowUs());
+}
+
+
+TEST_F(MockTimerTest, SetTimeDeltaWithCallback) {
+  GoogleString str = "";
+  timer_.SetTimeDeltaUs(2001);
+  // We need to specify the template typenames explicitly below
+  // because the compiler can't decide whether to use this test class
+  // or its base class, MockTimerTest.
+  timer_.SetTimeDeltaUsWithCallback(
+      43,
+      MakeFunction<
+        MockTimerTest_SetTimeDeltaWithCallback_Test,
+        GoogleString*>(
+            this,
+            &MockTimerTest_SetTimeDeltaWithCallback_Test::
+            SampleCallback, &str));
+  timer_.SetTimeDeltaMs(2);
+  timer_.SetTimeDeltaUsWithCallback(
+      57,
+      MakeFunction<
+      MockTimerTest_SetTimeDeltaWithCallback_Test,
+      GoogleString*>(
+          this,
+          &MockTimerTest_SetTimeDeltaWithCallback_Test::
+          SampleCallback, &str));
+  // This callback never gets called but should get canceled:
+  timer_.SetTimeDeltaUsWithCallback(
+      103,
+      MakeFunction<
+      MockTimerTest_SetTimeDeltaWithCallback_Test,
+      GoogleString*>(
+          this,
+          &MockTimerTest_SetTimeDeltaWithCallback_Test::
+          SampleCallback, &str));
+
+  EXPECT_EQ("", str);
+  EXPECT_EQ(2001, timer_.NowUs());
+  EXPECT_EQ("", str);
+  EXPECT_EQ(2044, timer_.NowUs());
+  EXPECT_EQ(kCallbackCalledOnce, str);
+  EXPECT_EQ(4044, timer_.NowUs());
+  EXPECT_EQ(kCallbackCalledOnce, str);
+  EXPECT_EQ(4101, timer_.NowUs());
+  EXPECT_EQ(kCallbackCalledTwice, str);
 }
 
 }  // namespace net_instaweb
