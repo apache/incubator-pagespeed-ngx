@@ -24,7 +24,6 @@
  */
 
 // TODO(jud): Reuse and share code with critical_images_beacon.js.
-// TODO(jud): Add a webdriver test for this JS. [google]
 
 // Exporting functions using quoted attributes to prevent js compiler from
 // renaming them.
