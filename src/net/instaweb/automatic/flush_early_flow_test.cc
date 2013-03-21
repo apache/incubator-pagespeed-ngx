@@ -795,6 +795,132 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     }
   }
 
+  void TestFlushLazyLoadJsEarly(bool is_mobile) {
+    const char kInputHtml[] =
+        "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+        "<html>"
+        "<head>"
+        "<title>Flush Subresources Early example</title>"
+        "</head>"
+        "<body>"
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"1.css\">"
+        "<img src=1.jpg />"
+        "Hello, mod_pagespeed!"
+        "</body>"
+        "</html>";
+
+    GoogleString redirect_url = StrCat(kTestDomain, "?ModPagespeed=noscript");
+    GoogleString kNotMobileOutputHtml = StrCat(
+        "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+        "<html>"
+        "<head>",
+        StringPrintf(
+        "<script type=\"text/javascript\">(function(){"
+        "new Image().src=\"%s\";})()</script>"
+        "<script type='text/javascript'>"
+        "window.mod_pagespeed_prefetch_start = Number(new Date());"
+        "window.mod_pagespeed_num_resources_prefetched = 1"
+        "</script>", rewritten_css_url_1_.c_str()),
+        "<script type=\"text/javascript\">",
+        LazyloadImagesFilter::GetLazyloadJsSnippet(
+            options_, server_context()->static_asset_manager()),
+        "</script>"
+        "<title>Flush Subresources Early example</title>"
+        "</head>"
+        "<body>",
+        StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
+                     redirect_url.c_str()),
+        StringPrintf(
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
+        "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
+        " src=\"/psajs/1.0.gif\""
+        " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
+        "Hello, mod_pagespeed!"
+        "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+        "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
+        "</body></html>", rewritten_css_url_1_.c_str(), kMockHashValue));
+
+    GoogleString kMobileOutputHtml = StrCat(
+        "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+        "<html>"
+        "<head>",
+        StringPrintf(
+        "<script type=\"text/javascript\">(function(){"
+        "new Image().src=\"%s\";})()</script>"
+        "<script type='text/javascript'>"
+        "window.mod_pagespeed_prefetch_start = Number(new Date());"
+        "window.mod_pagespeed_num_resources_prefetched = 1"
+        "</script>", rewritten_css_url_1_.c_str()),
+        "<title>Flush Subresources Early example</title>"
+        "</head>"
+        "<body>",
+        StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
+                     redirect_url.c_str()),
+        StringPrintf(
+        "<link rel=\"stylesheet\" type=\"text/css\" href=\"%s\">"
+        "<script type=\"text/javascript\">", rewritten_css_url_1_.c_str()),
+        LazyloadImagesFilter::GetLazyloadJsSnippet(
+            options_, server_context()->static_asset_manager()),
+        StringPrintf(
+        "</script>"
+        "<img pagespeed_lazy_src=http://test.com/1.jpg.pagespeed.ce.%s.jpg"
+        " src=\"/psajs/1.0.gif\""
+        " onload=\"pagespeed.lazyLoadImages.loadIfVisible(this);\"/>"
+        "Hello, mod_pagespeed!"
+        "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
+        "pagespeed.lazyLoadImages.overrideAttributeFunctions();</script>"
+        "</body></html>", kMockHashValue));
+
+    ResponseHeaders headers;
+    headers.Add(HttpAttributes::kContentType, kContentTypeHtml.mime_type());
+    headers.SetStatusAndReason(HttpStatus::kOK);
+    mock_url_fetcher_.SetResponse(kTestDomain, headers, kInputHtml);
+
+    // Enable FlushSubresourcesFilter filter.
+    RewriteOptions* rewrite_options = server_context()->global_options();
+    rewrite_options->ClearSignatureForTesting();
+    rewrite_options->EnableFilter(RewriteOptions::kFlushSubresources);
+    rewrite_options->EnableExtendCacheFilters();
+    // Disabling the inline filters so that the resources get flushed early
+    // else our dummy resources are too small and always get inlined.
+    rewrite_options->DisableFilter(RewriteOptions::kInlineCss);
+    rewrite_options->DisableFilter(RewriteOptions::kInlineJavascript);
+    rewrite_options->ComputeSignature(hasher());
+
+    SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.jpg"),
+                                  kContentTypeJpeg, "image",
+                                  kHtmlCacheTimeSec * 2);
+    SetResponseWithDefaultHeaders(StrCat(kTestDomain, "1.css"), kContentTypeCss,
+                                  kCssContent, kHtmlCacheTimeSec * 2);
+
+    scoped_ptr<RewriteOptions> custom_options(
+        server_context()->global_options()->Clone());
+    custom_options->EnableFilter(RewriteOptions::kLazyloadImages);
+    ProxyUrlNamer url_namer;
+    url_namer.set_options(custom_options.get());
+    server_context()->set_url_namer(&url_namer);
+
+    GoogleString text;
+    RequestHeaders request_headers;
+    if (is_mobile) {
+      request_headers.Replace(HttpAttributes::kUserAgent,
+                              UserAgentStrings::kAndroidChrome21UserAgent);
+    } else {
+      request_headers.Replace(HttpAttributes::kUserAgent, "Chrome/ 9.0");
+    }
+
+    FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+    // Fetch the url again. This time FlushEarlyFlow should be triggered but no
+    // lazyload js will be flushed early as no resource is present in the html.
+    FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+    if (is_mobile) {
+      EXPECT_EQ(kMobileOutputHtml, text);
+    } else {
+      EXPECT_EQ(kNotMobileOutputHtml, text);
+    }
+  }
+
   void TestFlushPreconnects(bool is_mobile) {
     latency_fetcher_->set_latency(200);
     const char kInputHtml[] =
@@ -1486,6 +1612,14 @@ TEST_F(FlushEarlyFlowTest, InsertLazyloadJsOnlyIfResourceHtmlNotEmpty) {
   // lazyload js will be flushed early as no resource is present in the html.
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
   EXPECT_EQ(kOutputHtml, text);
+}
+
+TEST_F(FlushEarlyFlowTest, DontInsertLazyloadJsIfMobile) {
+  TestFlushLazyLoadJsEarly(true);
+}
+
+TEST_F(FlushEarlyFlowTest, InsertLazyloadJsIfNotMobile) {
+  TestFlushLazyLoadJsEarly(false);
 }
 
 TEST_F(FlushEarlyFlowTest, PreconnectTest) {

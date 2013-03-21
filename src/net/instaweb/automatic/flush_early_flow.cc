@@ -362,10 +362,11 @@ FlushEarlyFlow::FlushEarlyFlow(
   flush_early_rewrite_latency_ms_ = stats->GetHistogram(
       kFlushEarlyRewriteLatencyMs);
   driver_->increment_async_events_count();
-  // Do not flush preconnects on mobile as it can potentially block useful
-  // connections to resources.
-  should_flush_preconnects_ =
-      !driver_->device_properties()->IsMobileUserAgent();
+  // If mobile, do not flush preconnects as it can potentially block useful
+  // connections to resources. This is also used to determine whether to
+  // flush early the lazy load js snippet.
+  is_mobile_user_agent_ =
+      driver_->device_properties()->IsMobileUserAgent();
 }
 
 FlushEarlyFlow::~FlushEarlyFlow() {
@@ -423,7 +424,8 @@ void FlushEarlyFlow::FlushEarly() {
         if (lazyload_property_value->has_value() &&
             StringCaseEqual(lazyload_property_value->value(), "1") &&
             options->Enabled(RewriteOptions::kLazyloadImages) &&
-            LazyloadImagesFilter::ShouldApply(driver_)) {
+            LazyloadImagesFilter::ShouldApply(driver_) &&
+            !is_mobile_user_agent_) {
           driver_->set_is_lazyload_script_flushed(true);
           should_flush_early_lazyload_script_ = true;
         }
@@ -518,7 +520,7 @@ void FlushEarlyFlow::FlushEarlyRewriteDone(int64 start_time_ms,
     }
   }
 
-  if (should_flush_preconnects_ && max_preconnect_attempts > 0 &&
+  if (!is_mobile_user_agent_ && max_preconnect_attempts > 0 &&
       !flush_early_driver->options()->pre_connect_url().empty() &&
       average_fetch_time_ > kMinLatencyForPreconnectMs) {
     for (int index = 0; index < max_preconnect_attempts; ++index) {
