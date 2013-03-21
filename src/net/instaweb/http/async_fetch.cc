@@ -117,7 +117,7 @@ void AsyncFetch::Done(bool success) {
   HandleDone(success);
 }
 
-// Sets the request-headers to the specifid pointer.  The caller must
+// Sets the request-headers to the specified pointer.  The caller must
 // guarantee that the pointed-to headers remain valid as long as the
 // AsyncFetch is running.
 void AsyncFetch::set_request_headers(RequestHeaders* headers) {
