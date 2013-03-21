@@ -48,6 +48,7 @@
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -477,14 +478,11 @@ class CriticalLineFetch : public AsyncFetch {
       blink_critical_line_data_->set_hash(computed_hash_);
       blink_critical_line_data_->set_hash_smart_diff(computed_hash_smart_diff_);
       // TODO(rahulbansal): Move the code to write to pcache to blink_util.cc
-      const PropertyCache::Cohort* cohort = property_cache->GetCohort(
-          BlinkUtil::kBlinkCohort);
-      GoogleString buf;
-      blink_critical_line_data_->SerializeToString(&buf);
-      PropertyValue* property_value = page->GetProperty(
-          cohort, BlinkUtil::kBlinkCriticalLineDataPropertyName);
-      property_cache->UpdateValue(buf, property_value);
-      property_cache->WriteCohort(cohort, page);
+      UpdateInPropertyCache(*blink_critical_line_data_,
+                            rewrite_driver_,
+                            BlinkUtil::kBlinkCohort,
+                            BlinkUtil::kBlinkCriticalLineDataPropertyName,
+                            true /* write the cohort*/);
       delete this;
     } else {
       if (diff_info_updated) {

@@ -28,6 +28,7 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
@@ -41,6 +42,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
@@ -463,17 +465,10 @@ class CacheHtmlComputationFetch : public AsyncFetch {
     cache_html_info_->set_hash(computed_hash_);
     cache_html_info_->set_hash_smart_diff(computed_hash_smart_diff_);
 
-    PropertyCache* property_cache =
-        rewrite_driver_->server_context()->page_property_cache();
-    PropertyPage* page = rewrite_driver_->property_page();
-    const PropertyCache::Cohort* cohort = property_cache->GetCohort(
-        BlinkUtil::kBlinkCohort);
-    GoogleString buf;
-    cache_html_info_->SerializeToString(&buf);
-    PropertyValue* property_value = page->GetProperty(
-        cohort, BlinkUtil::kCacheHtmlRewriterInfo);
-    property_cache->UpdateValue(buf, property_value);
-    property_cache->WriteCohort(cohort, page);
+    UpdateInPropertyCache(*cache_html_info_, rewrite_driver_,
+                          BlinkUtil::kBlinkCohort,
+                          BlinkUtil::kCacheHtmlRewriterInfo,
+                          true /* write_cohort*/);
   }
 
   void DeleteCacheHtmlInfoFromPropertyCache() {

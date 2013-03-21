@@ -104,6 +104,7 @@
 #include "net/instaweb/rewriter/public/output_resource.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/pedantic_filter.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/redirect_on_size_limit_filter.h"
 #include "net/instaweb/rewriter/public/remove_comments_filter.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -133,7 +134,6 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/request_trace.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -2730,17 +2730,12 @@ RewriteDriver::XhtmlStatus RewriteDriver::MimeTypeXhtmlStatus() {
 
 FlushEarlyInfo* RewriteDriver::flush_early_info() {
   if (flush_early_info_.get() == NULL) {
-    flush_early_info_.reset(new FlushEarlyInfo);
-    const PropertyCache::Cohort* cohort = server_context_
-        ->page_property_cache()->GetCohort(RewriteDriver::kDomCohort);
-    if (property_page() != NULL && cohort != NULL) {
-      PropertyValue* property_value = property_page()->GetProperty(
-          cohort, RewriteDriver::kSubresourcesPropertyName);
-      if (property_value->has_value()) {
-        ArrayInputStream value(property_value->value().data(),
-                               property_value->value().size());
-        flush_early_info_->ParseFromZeroCopyStream(&value);
-      }
+    PropertyCacheDecodeResult status;
+    flush_early_info_.reset(DecodeFromPropertyCache<FlushEarlyInfo>(
+        this, RewriteDriver::kDomCohort, kSubresourcesPropertyName,
+        -1 /* no ttl checking*/, &status));
+    if (status != kPropertyCacheDecodeOk) {
+      flush_early_info_.reset(new FlushEarlyInfo);
     }
   }
   return flush_early_info_.get();

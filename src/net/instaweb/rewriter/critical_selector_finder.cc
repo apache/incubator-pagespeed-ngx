@@ -18,12 +18,11 @@
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 
 #include "net/instaweb/rewriter/critical_selectors.pb.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -70,61 +69,51 @@ void CriticalSelectorFinder::InitStats(Statistics* statistics) {
 CriticalSelectorSet*
 CriticalSelectorFinder::DecodeCriticalSelectorsFromPropertyCache(
     RewriteDriver* driver) {
-  scoped_ptr<CriticalSelectorSet> critical_selectors;
-  PropertyValue* property_value = GetPropertyValue(driver);
-  if (property_value != NULL && property_value->has_value()) {
-    const PropertyCache* cache =
-        driver->server_context()->page_property_cache();
-    int64 cache_ttl_ms =
-        driver->options()->finder_properties_cache_expiration_time_ms();
-    if (!cache->IsExpired(property_value, cache_ttl_ms)) {
-      critical_selectors.reset(new CriticalSelectorSet);
-      ArrayInputStream input(property_value->value().data(),
-                             property_value->value().size());
-      if (critical_selectors->ParseFromZeroCopyStream(&input)) {
-        critical_selectors_valid_count_->IncBy(1);
-      } else {
-        driver->message_handler()->Message(
-            kWarning, "Unable to parse Critical Selectors PropertyValue; "
-            "url: %s", driver->url());
-        critical_selectors.reset(NULL);
-      }
-    } else {
+  PropertyCacheDecodeResult result;
+  scoped_ptr<CriticalSelectorSet> critical_selectors(
+      DecodeFromPropertyCache<CriticalSelectorSet>(
+          driver, cohort_, kCriticalSelectorsPropertyName,
+          driver->options()->finder_properties_cache_expiration_time_ms(),
+          &result));
+  switch (result) {
+    case kPropertyCacheDecodeNotFound:
+      critical_selectors_not_found_count_->IncBy(1);
+      break;
+    case kPropertyCacheDecodeExpired:
       critical_selectors_expired_count_->IncBy(1);
-    }
-  } else {
-    critical_selectors_not_found_count_->IncBy(1);
+      break;
+    case kPropertyCacheDecodeParseError:
+      driver->message_handler()->Message(
+          kWarning, "Unable to parse Critical Selectors PropertyValue; "
+          "url: %s", driver->url());
+      break;
+    case kPropertyCacheDecodeOk:
+      critical_selectors_valid_count_->IncBy(1);
+      return critical_selectors.release();
   }
-  return critical_selectors.release();
+  return NULL;
 }
 
 void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
     const CriticalSelectorSet& selectors, RewriteDriver* driver) {
-  GoogleString buf;
-  if (selectors.SerializeToString(&buf)) {
-    PropertyValue* property_value = GetPropertyValue(driver);
-    if (property_value != NULL) {
-      PropertyCache* cache = driver->server_context()->page_property_cache();
-      cache->UpdateValue(buf, property_value);
-    } else {
+  PropertyCacheUpdateResult result =
+      UpdateInPropertyCache(
+          selectors, driver, cohort_, kCriticalSelectorsPropertyName,
+          false /* don't write cohort*/);
+  switch (result) {
+    case kPropertyCacheUpdateNotFound:
       driver->message_handler()->Message(
           kWarning, "Unable to get Critical css selector set for update; "
           "url: %s", driver->url());
-    }
-  } else {
-    driver->message_handler()->Message(
-        kWarning,"Trouble marshaling CriticalSelectorSet!?");
+      break;
+    case kPropertyCacheUpdateEncodeError:
+      driver->message_handler()->Message(
+          kWarning, "Trouble marshaling CriticalSelectorSet!?");
+      break;
+    case kPropertyCacheUpdateOk:
+      // Nothing more to do.
+      break;
   }
-}
-
-PropertyValue* CriticalSelectorFinder::GetPropertyValue(RewriteDriver* driver) {
-  const PropertyCache* cache = driver->server_context()->page_property_cache();
-  const PropertyCache::Cohort* cohort = cache->GetCohort(cohort_);
-  PropertyPage* page = driver->property_page();
-  if (cohort != NULL && page != NULL) {
-    return page->GetProperty(cohort, kCriticalSelectorsPropertyName);
-  }
-  return NULL;
 }
 
 }  // namespace net_instaweb

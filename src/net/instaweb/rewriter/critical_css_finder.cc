@@ -18,14 +18,13 @@
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 
 #include "net/instaweb/rewriter/critical_css.pb.h"
+#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/property_cache.h"
-#include "net/instaweb/util/public/proto_util.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -65,55 +64,50 @@ void CriticalCssFinder::InitStats(Statistics* statistics) {
 // Copy critical CSS from property cache.
 CriticalCssResult* CriticalCssFinder::GetCriticalCssFromCache(
     RewriteDriver* driver) {
-  CriticalCssResult* result = NULL;
-  PropertyValue* property_value = GetPropertyValue(driver);
-  if (property_value != NULL && property_value->has_value()) {
-    const PropertyCache* cache =
-        driver->server_context()->page_property_cache();
-    int64 cache_ttl_ms =
-        driver->options()->finder_properties_cache_expiration_time_ms();
-    if (!cache->IsExpired(property_value, cache_ttl_ms)) {
-      result = new CriticalCssResult();
-      ArrayInputStream input(property_value->value().data(),
-                             property_value->value().size());
-      if (result->ParseFromZeroCopyStream(&input)) {
-        critical_css_valid_count_->IncBy(1);
-      } else {
-        driver->WarningHere("Unable to parse Critical Css PropertyValue");
-      }
-    } else {
+  PropertyCacheDecodeResult pcache_status;
+  scoped_ptr<CriticalCssResult> result(
+      DecodeFromPropertyCache<CriticalCssResult>(
+          driver, GetCohort(), kCriticalCssPropertyName,
+          driver->options()->finder_properties_cache_expiration_time_ms(),
+          &pcache_status));
+  switch (pcache_status) {
+    case kPropertyCacheDecodeNotFound:
+      critical_css_not_found_count_->IncBy(1);
+      driver->InfoHere("Critical CSS not found in cache");
+      break;
+    case kPropertyCacheDecodeExpired:
       critical_css_expired_count_->IncBy(1);
       driver->InfoHere("Critical CSS cache entry expired");
-    }
-  } else {
-    critical_css_not_found_count_->IncBy(1);
-    driver->InfoHere("Critical CSS not found in cache");
+      break;
+    case kPropertyCacheDecodeParseError:
+      driver->WarningHere("Unable to parse Critical Css PropertyValue");
+      break;
+    case kPropertyCacheDecodeOk:
+      critical_css_valid_count_->IncBy(1);
   }
-  return result;
+  return result.release();
 }
 
 // Copy |critical_css_map| into property cache. Returns true on success.
 bool CriticalCssFinder::UpdateCache(
     RewriteDriver* driver, const CriticalCssResult& result) {
-  bool is_updated = false;
-
-  // Update property cache if critical css is successfully determined.
-  GoogleString buf;
-  if (result.SerializeToString(&buf)) {
-    PropertyValue* property_value = GetPropertyValue(driver);
-    if (property_value) {
-      PropertyCache* cache = driver->server_context()->page_property_cache();
-      cache->UpdateValue(buf, property_value);
+  PropertyCacheUpdateResult status =
+      UpdateInPropertyCache(
+          result, driver, GetCohort(), kCriticalCssPropertyName,
+          false /* don't write cohort */);
+  switch (status) {
+    case kPropertyCacheUpdateOk:
       driver->InfoHere("Critical CSS written to cache");
-      is_updated = true;
-    } else {
+      return true;
+    case kPropertyCacheUpdateNotFound:
       driver->WarningHere(
           "Unable to get Critical CSS PropertyValue for update");
-    }
-  } else {
-    driver->WarningHere("Unable to serialize Critical CSS result");
+      return false;
+    case kPropertyCacheUpdateEncodeError:
+      driver->WarningHere("Unable to serialize Critical CSS result");
+      return false;
   }
-  return is_updated;
+  return false;
 }
 
 PropertyValue* CriticalCssFinder::GetPropertyValue(RewriteDriver* driver) {

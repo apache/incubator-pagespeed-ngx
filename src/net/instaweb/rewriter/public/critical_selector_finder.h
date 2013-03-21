@@ -26,7 +26,6 @@
 namespace net_instaweb {
 
 class CriticalSelectorSet;
-class PropertyValue;
 class RewriteDriver;
 class Statistics;
 class TimedVariable;
@@ -61,8 +60,6 @@ class CriticalSelectorFinder {
 
  private:
   static const char kCriticalSelectorsPropertyName[];
-
-  PropertyValue* GetPropertyValue(RewriteDriver* driver);
 
   GoogleString cohort_;
 
