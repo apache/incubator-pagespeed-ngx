@@ -38,9 +38,12 @@
 #define NGX_BASE_FETCH_H_
 
 extern "C" {
-#include <pthread.h>
 #include <ngx_http.h>
 }
+
+#include <pthread.h>
+
+#include "ngx_pagespeed.h"
 
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/headers.h"
@@ -121,6 +124,6 @@ class NgxBaseFetch : public AsyncFetch {
   DISALLOW_COPY_AND_ASSIGN(NgxBaseFetch);
 };
 
-} // namespace net_instaweb
+}  // namespace net_instaweb
 
 #endif  // NGX_BASE_FETCH_H_
