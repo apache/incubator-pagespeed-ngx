@@ -598,7 +598,6 @@ InstawebContext* build_context_for_request(request_rec* request) {
   apr_table_set(request->headers_out,
                 kModPagespeedHeader, options->x_header_value().c_str());
 
-  apr_table_unset(request->headers_out, HttpAttributes::kLastModified);
   apr_table_unset(request->headers_out, HttpAttributes::kContentLength);
   apr_table_unset(request->headers_out, "Content-MD5");
   apr_table_unset(request->headers_out, HttpAttributes::kContentEncoding);
@@ -739,6 +738,7 @@ apr_status_t instaweb_fix_headers_filter(
   // Turn off caching for the HTTP requests.
   apr_table_set(request->headers_out, HttpAttributes::kCacheControl,
                 HttpAttributes::kNoCache);
+  apr_table_unset(request->headers_out, HttpAttributes::kLastModified);
   apr_table_unset(request->headers_out, HttpAttributes::kExpires);
   apr_table_unset(request->headers_out, HttpAttributes::kEtag);
   // TODO(sligocki): Why remove ourselves? Is it to assure that this filter

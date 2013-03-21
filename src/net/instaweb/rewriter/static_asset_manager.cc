@@ -44,6 +44,8 @@ extern const char* JS_add_instrumentation;
 extern const char* JS_add_instrumentation_opt;
 extern const char* JS_client_domain_rewriter;
 extern const char* JS_client_domain_rewriter_opt;
+extern const char* JS_critical_css_beacon;
+extern const char* JS_critical_css_beacon_opt;
 extern const char* JS_critical_images_beacon;
 extern const char* JS_critical_images_beacon_opt;
 extern const char* JS_defer_iframe;
@@ -152,6 +154,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kAddInstrumentationJs]->file_name = "add_instrumentation";
   assets_[kBlinkJs]->file_name = "blink";
   assets_[kClientDomainRewriter]->file_name = "client_domain_rewriter";
+  assets_[kCriticalCssBeaconJs]->file_name = "critical_css_beacon";
   assets_[kCriticalImagesBeaconJs]->file_name = "critical_images_beacon";
   assets_[kDeferIframe]->file_name = "defer_iframe";
   assets_[kDeferJs]->file_name = "js_defer";
@@ -168,6 +171,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   assets_[kBlinkJs]->js_optimized = "// Unsupported";
   assets_[kClientDomainRewriter]->js_optimized =
       JS_client_domain_rewriter_opt;
+  assets_[kCriticalCssBeaconJs]->js_optimized = JS_critical_css_beacon_opt;
   assets_[kCriticalImagesBeaconJs]->js_optimized =
       JS_critical_images_beacon_opt;
   assets_[kDeferIframe]->js_optimized = JS_defer_iframe_opt;
@@ -185,6 +189,7 @@ void StaticAssetManager::InitializeAssetStrings() {
   // unit test expects debug code to include comments->
   assets_[kBlinkJs]->js_debug = "/* Unsupported */";
   assets_[kClientDomainRewriter]->js_debug = JS_client_domain_rewriter;
+  assets_[kCriticalCssBeaconJs]->js_debug = JS_critical_css_beacon;
   assets_[kCriticalImagesBeaconJs]->js_debug = JS_critical_images_beacon;
   assets_[kDeferIframe]->js_debug = JS_defer_iframe;
   assets_[kDeferJs]->js_debug = JS_js_defer;
