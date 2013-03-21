@@ -85,8 +85,7 @@ const char kShutdownCount[] = "child_shutdown_count";
 
 const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
 
-NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_msec_t resolver_timeout,
-  ngx_resolver_t* resolver) :
+NgxRewriteDriverFactory::NgxRewriteDriverFactory()
     : RewriteDriverFactory(new NgxThreadSystem()),
       // TODO(oschaaf): mod_pagespeed ifdefs this:
       shared_mem_runtime_(new PthreadSharedMem()),
@@ -101,13 +100,11 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory(ngx_msec_t resolver_timeout,
       install_crash_handler_(false),
       message_buffer_size_(0),
       shared_circular_buffer_(NULL),
-      statistics_frozen_(false) {
+      statistics_frozen_(false),
+      ngx_url_async_fetcher_(NULL),
+      log_(NULL),
+      resolver_timeout_(NGX_CONF_UNSET_MSEC) {
   timer_ = DefaultTimer();
-  log_ = NULL;
-  resolver_timeout_ = resolver_timeout == NGX_CONF_UNSET_MSEC ?
-    1000 : resolver_timeout;
-  resolver_ = resolver;
-  ngx_url_async_fetcher_ = NULL;
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
   set_message_handler(ngx_message_handler_);
@@ -157,6 +154,7 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   if (main_conf_ != NULL) {
     fetcher_proxy = main_conf_->fetcher_proxy().c_str();
   }
+  fprintf(stderr, "construct async url fetcher\n");
   net_instaweb::NgxUrlAsyncFetcher* fetcher =
       new net_instaweb::NgxUrlAsyncFetcher(
         fetcher_proxy,
@@ -359,8 +357,10 @@ CacheInterface* NgxRewriteDriverFactory::GetFilesystemMetadataCache(
 
 bool NgxRewriteDriverFactory::InitNgxUrlAsyncFecther() {
   if (ngx_url_async_fetcher_ == NULL) {
+    fprintf(stderr, "no ngx url async fetcher, no init\n");
     return true;
   }
+  fprintf(stderr, "have ngx url async fetcher, call init\n");
   log_ = ngx_cycle->log;
   return ngx_url_async_fetcher_->Init();
 }

@@ -62,8 +62,7 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
 
   // main_conf will have only options set in the main block.  It may be NULL,
   // and we do not take ownership.
-  explicit NgxRewriteDriverFactory(ngx_msec_t resolver_timeout,
-                                   ngx_resolver_t* resolver);
+  explicit NgxRewriteDriverFactory();
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -182,6 +181,13 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   }
   void set_message_buffer_size(int x) {
     message_buffer_size_ = x;
+  }
+  void set_resolver(ngx_resolver_t* resolver) {
+    resolver_ = resolver;
+  }
+  void set_resolver_timeout(ngx_msec_t resolver_timeout) {
+    resolver_timeout_ = resolver_timeout == NGX_CONF_UNSET_MSEC ?
+        1000 : resolver_timeout;
   }
 
  private:

@@ -587,6 +587,12 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   CHECK(!factory_deleted);
   net_instaweb::NgxRewriteOptions::Initialize();
   net_instaweb::NgxRewriteDriverFactory::Initialize();
+  // TODO:
+  //ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
+  //    ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module));
+  //fprintf(stderr, "pre set resolver [%p]\n", clcf->resolver);
+  //fprintf(stderr, "pre set resolver timeout [%u]\n", (unsigned int)clcf->resolver_timeout);
+
   cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
@@ -2101,6 +2107,14 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       statistics = cfg_m->driver_factory->statistics();
       net_instaweb::NgxRewriteDriverFactory::InitStats(statistics);
     }
+    ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
+        ngx_http_conf_get_module_loc_conf((*cscfp), ngx_http_core_module));
+    //cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
+    //  clcf->resolver_timeout, clcf->resolver);
+    fprintf(stderr, "set resolver [%p]\n", clcf->resolver);
+    fprintf(stderr, "set resolver timeout [%u]\n", (unsigned int)clcf->resolver_timeout);
+    cfg_m->driver_factory->set_resolver(clcf->resolver);
+    cfg_m->driver_factory->set_resolver_timeout(clcf->resolver_timeout);
 
     cfg_m->driver_factory->RootInit(cycle->log);
   } else {
@@ -2117,9 +2131,6 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
   if (cfg_m->driver_factory == NULL) {
     return NGX_OK;
-  }
-  if (!cfg_m->driver_factory->InitNgxUrlAsyncFecther()) {
-    return NGX_ERROR;
   }
 
   // ChildInit() will initialise all ServerContexts, which we need to
@@ -2145,6 +2156,9 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     }
   }
 
+  if (!cfg_m->driver_factory->InitNgxUrlAsyncFecther()) {
+    return NGX_ERROR;
+  }
   cfg_m->driver_factory->StartThreads();
 
   return NGX_OK;

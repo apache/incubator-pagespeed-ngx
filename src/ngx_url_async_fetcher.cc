@@ -142,6 +142,7 @@ namespace net_instaweb {
   // thread. It should be called in the worker process.
   bool NgxUrlAsyncFetcher::Init() {
     log_ = ngx_cycle->log;
+    fprintf(stderr, "init ngx async url fetcher\n");
     if (pool_ == NULL) {
       pool_ = ngx_create_pool(4096, log_);
       if (pool_ == NULL) {
@@ -206,6 +207,7 @@ namespace net_instaweb {
   void NgxUrlAsyncFetcher::Fetch(const GoogleString& url,
                                  MessageHandler* message_handler,
                                  AsyncFetch* async_fetch) {
+    fprintf(stderr, "start fetch [%s]\n", url.c_str());
     async_fetch = EnableInflation(async_fetch, NULL);
     NgxFetch* fetch = new NgxFetch(url, async_fetch,
           message_handler, fetch_timeout_, log_);
@@ -221,11 +223,16 @@ namespace net_instaweb {
     int rc;
     while (true) {
       rc = write(pipe_fd_, &command, 1);
+      
       if (rc == 1) {
+        fprintf(stderr, "ngx async url fetcher set command [%c] OK\n", command);
         return true;
       } else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+        fprintf(stderr, "ngx async url fetcher set command [%c] AGAIN\n", command);
         // TODO(junmin): It's rare. But it need be fixed.
       } else {
+        fprintf(stderr, "ngx async url fetcher set command [%c] NOT OK\n", command);
+
         return false;
       }
     }
@@ -250,7 +257,10 @@ namespace net_instaweb {
       return;
     }
 
-    ScopedMutex lock(fetcher->mutex_); 
+    ScopedMutex lock(fetcher->mutex_);
+
+    fprintf(stderr, "ngx async url command handler received [%c]\n", command);
+
     switch (command) {
       // All the new fetches are appended in the pending_fetches.
       // Start all these fetches.
@@ -294,6 +304,7 @@ namespace net_instaweb {
   // Don't need add the mutex here.
   bool NgxUrlAsyncFetcher::StartFetch(NgxFetch* fetch) {
     bool started = !shutdown_ && fetch->Start(this);
+    fprintf(stderr, "calling fetch->Start for [%s]\n", fetch->str_url());
     if (started) {
       active_fetches_.Add(fetch);
       fetchers_count_++;

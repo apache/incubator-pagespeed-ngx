@@ -102,17 +102,20 @@ namespace net_instaweb {
   bool NgxFetch::Init() {
     pool_ = ngx_create_pool(12288, log_);
     if (pool_ == NULL) {
-        return false;
+      fprintf(stderr,"fetch: ngx_create_pool failed\n");
+      return false;
     }
 
     if (!ParseUrl()) {
+      fprintf(stderr,"fetch: parse url failed\n");
       return false;
     }
 
     timeout_event_ = static_cast<ngx_event_t*>(
         ngx_pcalloc(pool_, sizeof(ngx_event_t)));
     if (timeout_event_ == NULL) {
-        return false;
+      fprintf(stderr,"fetch: palloc for timeoutevent failed\n");
+      return false;
     }
     timeout_event_->data = this;
     timeout_event_->handler = NgxFetchTimeout;
@@ -122,11 +125,14 @@ namespace net_instaweb {
     r_ = static_cast<ngx_http_request_t*>(ngx_pcalloc(pool_,
                                            sizeof(ngx_http_request_t)));
     if (r_ == NULL) {
+      fprintf(stderr,"fetch: ngx_pcalloc failed for r_\n");
+
         return false;
     }
     status_ = static_cast<ngx_http_status_t*>(ngx_pcalloc(pool_,
                                               sizeof(ngx_http_status_t)));
     if (status_ == NULL) {
+      fprintf(stderr,"fetch: ngx_pcalloc failed for status\n");
         return false;
     }
     ngx_resolver_ctx_t temp;
@@ -134,6 +140,7 @@ namespace net_instaweb {
     temp.name.len = url_.host.len;
     resolver_ctx_ = ngx_resolve_start(fetcher_->resolver_, &temp);
     if (resolver_ctx_ == NULL || resolver_ctx_ == NGX_NO_RESOLVER) {
+      fprintf(stderr,"fetch: resolving failed\n");
       return false;
     }
 
@@ -145,6 +152,7 @@ namespace net_instaweb {
     resolver_ctx_->timeout = fetcher_->resolver_timeout_;
 
     if (ngx_resolve_name(resolver_ctx_) != NGX_OK) {
+      fprintf(stderr,"fetch: ngx_resolve_name failed\n");
       return false;
     }
     return true;
@@ -252,7 +260,7 @@ namespace net_instaweb {
     }
     ngx_memzero(&fetch->sin_, sizeof(fetch->sin_));
     fetch->sin_.sin_family = AF_INET;
-    fetch->sin_.sin_port = htons(fetch->url_.port);
+    fetch->sin_.sin_port = htons(80);//htons(fetch->url_.port);
     fetch->sin_.sin_addr.s_addr = resolver_ctx->addrs[0];
     ngx_resolve_name_done(resolver_ctx);
     if (fetch->InitRquest() != NGX_OK) {
