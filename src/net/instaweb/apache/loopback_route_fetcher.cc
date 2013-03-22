@@ -35,11 +35,16 @@ class MessageHandler;
 
 LoopbackRouteFetcher::LoopbackRouteFetcher(
     const RewriteOptions* options,
+    const GoogleString& own_ip,
     int own_port,
     UrlAsyncFetcher* backend_fetcher)
     : options_(options),
+      own_ip_(own_ip),
       own_port_(own_port),
       backend_fetcher_(backend_fetcher) {
+  if (own_ip_.empty()) {
+    own_ip_ = "127.0.0.1";
+  }
 }
 
 LoopbackRouteFetcher::~LoopbackRouteFetcher() {
@@ -78,10 +83,10 @@ void LoopbackRouteFetcher::Fetch(const GoogleString& original_url,
     StringPiece scheme = parsed_url.Scheme();
     if ((own_port_ == 80 && scheme == "http") ||
         (own_port_ == 443 && scheme == "https")) {
-      base.Reset(StrCat(scheme, "://127.0.0.1/"));
+      base.Reset(StrCat(scheme, "://", own_ip_, "/"));
     } else {
       base.Reset(
-          StrCat(scheme, "://127.0.0.1:", IntegerToString(own_port_), "/"));
+          StrCat(scheme, "://", own_ip_, ":", IntegerToString(own_port_), "/"));
     }
 
     GoogleString rel;
@@ -91,9 +96,9 @@ void LoopbackRouteFetcher::Fetch(const GoogleString& original_url,
     parsed_url.Spec().CopyToString(&url);
 
     // Note that we end up with host: containing the actual URL's host, but
-    // the URL containing just 127.0.0.1. This is technically wrong, but the
+    // the URL containing just our IP. This is technically wrong, but the
     // Serf fetcher will interpret it in the way we want it to --- it will
-    // connect to 127.0.0.1, pass only the path portion to the host, and
+    // connect to our IP, pass only the path portion to the host, and
     // keep the host: header matching what's in the request_headers.
   }
 

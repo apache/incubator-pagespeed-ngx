@@ -390,8 +390,8 @@ void ApacheServerContext::ApplySessionFetchers(
     // Note the port here is our port, not from the request, since
     // LoopbackRouteFetcher may decide we should be talking to ourselves.
     driver->SetSessionFetcher(new LoopbackRouteFetcher(
-        driver->options(), apache_request->local_port(),
-        driver->async_fetcher()));
+        driver->options(), apache_request->local_ip(),
+        apache_request->local_port(), driver->async_fetcher()));
   }
 
   if (conf->experimental_fetch_from_mod_spdy() &&

@@ -52,6 +52,11 @@ ApacheRequestContext::ApacheRequestContext(AbstractMutex* logging_mutex,
     set_using_spdy(value != NULL);
   }
 
+  // Save our own IP as well, LoopbackRouteFetcher will need it.
+  if (req->connection->local_ip != NULL) {
+    local_ip_ = req->connection->local_ip;
+  }
+
   // Independent of whether we are serving a SPDY request, we will want
   // to be able to do back door mod_spdy fetches if configured to do so.
   if (use_spdy_fetcher_) {

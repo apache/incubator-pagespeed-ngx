@@ -43,11 +43,13 @@ namespace net_instaweb {
 
 namespace {
 
+const char kOwnIp[] = "198.51.100.1";
+
 class LoopbackRouteFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
  public:
   LoopbackRouteFetcherTest()
       : pool_(NULL),
-        loopback_route_fetcher_(&options_, 42, &reflecting_fetcher_),
+        loopback_route_fetcher_(&options_, kOwnIp, 42, &reflecting_fetcher_),
         thread_system_(ThreadSystem::CreateThreadSystem()) {}
 
   static void SetUpTestCase() {
@@ -85,7 +87,7 @@ TEST_F(LoopbackRouteFetcherTest, LoopbackRouteFetcherWorks) {
   ExpectStringAsyncFetch dest(
       true, RequestContext::NewTestRequestContext(thread_system_.get()));
   loopback_route_fetcher_.Fetch("http://somehost.com/url", &handler_, &dest);
-  EXPECT_STREQ("http://127.0.0.1:42/url", dest.buffer());
+  EXPECT_STREQ(StrCat("http://", kOwnIp, ":42/url"), dest.buffer());
   EXPECT_STREQ("somehost.com",
                dest.response_headers()->Lookup1("Host"));
 
@@ -109,7 +111,7 @@ TEST_F(LoopbackRouteFetcherTest, LoopbackRouteFetcherWorks) {
       true, RequestContext::NewTestRequestContext(thread_system_.get()));
   loopback_route_fetcher_.Fetch("http://somehost.cdn.com:123/url",
                                 &handler_, &dest4);
-  EXPECT_STREQ("http://127.0.0.1:42/url", dest4.buffer());
+  EXPECT_STREQ(StrCat("http://", kOwnIp, ":42/url"), dest4.buffer());
   EXPECT_STREQ("somehost.cdn.com:123",
                dest4.response_headers()->Lookup1("Host"));
 }

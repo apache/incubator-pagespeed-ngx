@@ -3,6 +3,7 @@
 # 8081 -- COVERAGE / PROXY / SLURP
 # 8082 -- SLURP
 # @@APACHE_SECONDARY_PORT@@ -- secondary configuration (8083 debug, 8084 root)
+# 8085 --- loopback route testing
 #
 # Note that when system-testing on CentOS installs we need to authorize these
 # ports via semanage.  Any new ports should thus be added to the Makefile in
@@ -834,6 +835,15 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@/with_shm" 8
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/mpsoff/"
   ModPagespeed off
+</VirtualHost>
+
+# For testing where we do our loopback routing. Note that this is listening
+# on an unusual loopback IP.
+Listen 127.0.0.2:8085
+<VirtualHost 127.0.0.2:8085>
+  ServerName loopbackfetch.example.com
+  DocumentRoot "@@APACHE_DOC_ROOT@@"
+  ModPagespeedFileCachePath "@@MOD_PAGESPEED_CACHE@@/loopbackfetch/"
 </VirtualHost>
 
 #ALL_DIRECTIVES # Invoke all ModPagespeed* directives to make sure they work:

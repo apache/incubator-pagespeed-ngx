@@ -142,6 +142,14 @@ else
 fi
 
 
+# Test that loopback route fetcher works with vhosts not listening on
+# 127.0.0.1
+start_test IP choice for loopback fetches.
+HOST_NAME="loopbackfetch.example.com"
+URL="$HOST_NAME/mod_pagespeed_example/rewrite_images.html"
+http_proxy=127.0.0.2:8085 \
+    fetch_until $URL 'grep -c .pagespeed.ic' 2
+
 # Test /mod_pagespeed_message exists.
 start_test Check if /mod_pagespeed_message page exists.
 OUT=$($WGET --save-headers -q -O - $MESSAGE_URL | head -1)
