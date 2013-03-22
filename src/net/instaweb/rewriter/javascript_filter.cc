@@ -40,6 +40,7 @@
 #include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -152,7 +153,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
         (slot(0)->LocationString() ==
             InPlaceRewriteResourceSlot::kIproSlotLocation);
     AttachDependentRequestTrace(is_ipro ? "IproProcessJs" : "ProcessJs");
-    if (!StringPiece(input->url()).starts_with("data:")) {
+    if (!IsDataUrl(input->url())) {
       TracePrintf("RewriteJs: %s", input->url().c_str());
     }
     RewriteDone(RewriteJavascript(input, output), 0);

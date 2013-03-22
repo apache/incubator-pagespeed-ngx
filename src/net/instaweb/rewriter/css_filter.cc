@@ -307,7 +307,7 @@ void CssFilter::Context::RewriteSingle(
   // is stale (it's the first input to the combination). It ought to be
   // the URL of the output of the combination. Similarly the css_trim_gurl_
   // needs to be set from the ultimate output resource.
-  if (!StringPiece(input_resource_->url()).starts_with("data:")) {
+  if (!IsDataUrl(input_resource_->url())) {
     css_base_gurl_.Reset(input_resource_->url());
     css_trim_gurl_.Reset(output_resource_->UrlEvenIfHashNotSet());
     TracePrintf("RewriteCss: %s", input_resource_->url().c_str());

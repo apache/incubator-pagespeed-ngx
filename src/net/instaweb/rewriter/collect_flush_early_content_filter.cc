@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/public/rewrite_result.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -126,7 +127,7 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
     return;
   }
   StringPiece url(attr->DecodedValueOrNull());
-  if (url.empty() || url.starts_with("data:")) {
+  if (url.empty() || IsDataUrl(url)) {
     return;
   }
   if (driver()->flushing_early() &&

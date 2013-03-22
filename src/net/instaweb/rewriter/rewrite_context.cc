@@ -55,6 +55,7 @@
 #include "net/instaweb/util/public/base64_util.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
+#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/function.h"
@@ -1287,7 +1288,7 @@ void RewriteContext::SetPartitionKey() {
               CacheKeySuffix());
 
     url = slot(0)->resource()->url();
-    if (StringPiece(url).starts_with("data:")) {
+    if (IsDataUrl(url)) {
       url = HashSplit(hasher, url);
     }
   } else if (num_slots() == 0) {

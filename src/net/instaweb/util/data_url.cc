@@ -63,6 +63,14 @@ void DataUrl(const ContentType& content_type,
   }
 }
 
+bool IsDataUrl(const StringPiece url) {
+  return url.starts_with("data:");
+}
+
+bool IsDataImageUrl(const StringPiece url) {
+  return url.starts_with("data:image/");
+}
+
 bool ParseDataUrl(const StringPiece& url,
                   const ContentType** content_type,
                   Encoding* encoding,

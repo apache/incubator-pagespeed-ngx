@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -39,7 +40,6 @@ namespace {
 
 const char kTrue[] = "true";
 const char kFalse[] = "false";
-const char kData[] = "data:";
 const char kJquerySlider[] = "jquery.sexyslider";
 
 }  // namespace
@@ -176,7 +176,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
   }
 
   StringPiece url(src->DecodedValueOrNull());
-  if (url.empty() || url.starts_with(kData) ||
+  if (url.empty() || IsDataUrl(url) ||
       element->DeleteAttribute(HtmlName::kPagespeedNoDefer)) {
     // Note that we remove the pagespeed_no_defer if it was present.
     // TODO(rahulbansal): Log separately for pagespeed_no_defer.

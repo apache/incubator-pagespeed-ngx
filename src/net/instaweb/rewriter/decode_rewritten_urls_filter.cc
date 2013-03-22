@@ -23,6 +23,7 @@
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -39,7 +40,7 @@ void DecodeRewrittenUrlsFilter::StartElement(HtmlElement* element) {
     return;
   }
   StringPiece url(attr->DecodedValueOrNull());
-  if (url.empty() || url.starts_with("data:")) {
+  if (url.empty() || IsDataUrl(url)) {
     return;
   }
   GoogleUrl gurl(driver_->base_url(), url);
