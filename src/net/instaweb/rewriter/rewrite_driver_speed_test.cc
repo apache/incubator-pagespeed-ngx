@@ -34,9 +34,10 @@ using net_instaweb::RequestContext;
 namespace net_instaweb { class RewriteDriver; }
 
 static void BM_RewriteDriverConstruction(int iters) {
-  net_instaweb::MockUrlFetcher fetcher;
+  net_instaweb::MockUrlFetcher fetcher, distributed_fetcher;
   net_instaweb::RewriteDriverFactory::Initialize();
-  net_instaweb::TestRewriteDriverFactory factory("/tmp", &fetcher);
+  net_instaweb::TestRewriteDriverFactory factory("/tmp", &fetcher,
+                                                 &distributed_fetcher);
   net_instaweb::RewriteDriverFactory::InitStats(factory.statistics());
   net_instaweb::ServerContext* resource_manager =
       factory.CreateServerContext();

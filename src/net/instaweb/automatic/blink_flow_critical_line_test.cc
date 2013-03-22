@@ -55,7 +55,6 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
-#include "net/instaweb/util/public/null_mutex.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -64,6 +63,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
+#include "net/instaweb/util/public/thread_system.h"  // for ThreadSystem, etc
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/worker_test_base.h"
@@ -489,8 +489,10 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
 
 class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
  public:
-  explicit CustomRewriteDriverFactory(MockUrlFetcher* url_fetcher)
-      : TestRewriteDriverFactory(GTestTempDir(), url_fetcher) {
+  explicit CustomRewriteDriverFactory(MockUrlFetcher* url_fetcher,
+                                      MockUrlFetcher* distributed_fetcher)
+      : TestRewriteDriverFactory(GTestTempDir(), url_fetcher,
+                                 distributed_fetcher) {
     InitializeDefaultOptions();
   }
 
@@ -607,8 +609,11 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
 
   BlinkFlowCriticalLineTest()
       : RewriteTestBase(
-          std::make_pair(new CustomRewriteDriverFactory(&mock_url_fetcher_),
-                         new CustomRewriteDriverFactory(&mock_url_fetcher_))),
+            std::make_pair(
+                new CustomRewriteDriverFactory(&mock_url_fetcher_,
+                                               &mock_distributed_fetcher_),
+                new CustomRewriteDriverFactory(&mock_url_fetcher_,
+                                               &mock_distributed_fetcher_))),
         blink_output_(StrCat(StringPrintf(
             kBlinkOutputCommon, "text.html", "text.html"), kBlinkOutputSuffix)),
         blink_output_with_extra_non_cacheable_(StrCat(StringPrintf(

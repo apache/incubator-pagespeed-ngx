@@ -88,9 +88,11 @@ const char RewriteTestBase::kTestData[] =
 RewriteTestBase::RewriteTestBase()
     : statistics_(new SimpleStats()),
       factory_(new TestRewriteDriverFactory(GTestTempDir(),
-                                            &mock_url_fetcher_)),
+                                            &mock_url_fetcher_,
+                                            &mock_distributed_fetcher_)),
       other_factory_(new TestRewriteDriverFactory(GTestTempDir(),
-                                                  &mock_url_fetcher_)),
+                                                  &mock_url_fetcher_,
+                                                  &mock_distributed_fetcher_)),
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
       other_options_(other_factory_->NewRewriteOptions()) {
@@ -101,9 +103,11 @@ RewriteTestBase::RewriteTestBase()
 RewriteTestBase::RewriteTestBase(Statistics* statistics)
     : statistics_(statistics),
       factory_(new TestRewriteDriverFactory(GTestTempDir(),
-                                            &mock_url_fetcher_)),
+                                            &mock_url_fetcher_,
+                                            &mock_distributed_fetcher_)),
       other_factory_(new TestRewriteDriverFactory(GTestTempDir(),
-                                                  &mock_url_fetcher_)),
+                                                  &mock_url_fetcher_,
+                                                  &mock_distributed_fetcher_)),
       use_managed_rewrite_drivers_(false),
       options_(factory_->NewRewriteOptions()),
       other_options_(other_factory_->NewRewriteOptions()) {
@@ -272,7 +276,8 @@ void RewriteTestBase::ServeResourceFromManyContextsWithUA(
 }
 
 TestRewriteDriverFactory* RewriteTestBase::MakeTestFactory() {
-  return new TestRewriteDriverFactory(GTestTempDir(), &mock_url_fetcher_);
+  return new TestRewriteDriverFactory(GTestTempDir(), &mock_url_fetcher_,
+                                      &mock_distributed_fetcher_);
 }
 
 // Test that a resource can be served from a new server that has not yet
@@ -813,6 +818,7 @@ void RewriteTestBase::ClearStats() {
     lru_cache()->ClearStats();
   }
   counting_url_async_fetcher()->Clear();
+  counting_distributed_fetcher()->Clear();
   file_system()->ClearStats();
   rewrite_driver()->set_request_context(CreateRequestContext());
 }

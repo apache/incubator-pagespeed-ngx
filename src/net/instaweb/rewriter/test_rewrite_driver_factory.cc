@@ -120,15 +120,19 @@ const int64 TestRewriteDriverFactory::kStartTimeMs =
 const char TestRewriteDriverFactory::kUrlNamerScheme[] = "URL_NAMER_SCHEME";
 
 TestRewriteDriverFactory::TestRewriteDriverFactory(
-    const StringPiece& temp_dir, MockUrlFetcher* mock_fetcher)
+    const StringPiece& temp_dir, MockUrlFetcher* mock_fetcher,
+    MockUrlFetcher* mock_distributed_fetcher)
   : mock_timer_(NULL),
     mock_scheduler_(NULL),
     delay_cache_(NULL),
     lru_cache_(NULL),
     proxy_url_fetcher_(NULL),
     mock_url_fetcher_(mock_fetcher),
+    mock_distributed_fetcher_(mock_distributed_fetcher),
     mock_url_async_fetcher_(NULL),
+    mock_distributed_async_fetcher_(NULL),
     counting_url_async_fetcher_(NULL),
+    counting_distributed_async_fetcher_(NULL),
     mem_file_system_(NULL),
     mock_hasher_(NULL),
     mock_message_handler_(NULL),
@@ -179,6 +183,15 @@ UrlAsyncFetcher* TestRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   counting_url_async_fetcher_ = new CountingUrlAsyncFetcher(
       mock_url_async_fetcher_.get());
   return counting_url_async_fetcher_;
+}
+
+UrlAsyncFetcher* TestRewriteDriverFactory::DefaultDistributedUrlFetcher() {
+  DCHECK(counting_distributed_async_fetcher_ == NULL);
+  mock_distributed_async_fetcher_.reset(
+      new FakeUrlAsyncFetcher(mock_distributed_fetcher_));
+  counting_distributed_async_fetcher_ = new CountingUrlAsyncFetcher(
+      mock_distributed_async_fetcher_.get());
+  return counting_distributed_async_fetcher_;
 }
 
 FileSystem* TestRewriteDriverFactory::DefaultFileSystem() {

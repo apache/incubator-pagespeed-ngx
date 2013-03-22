@@ -137,10 +137,8 @@ class RewriteDriverFactory {
   // been called.
   void set_base_url_fetcher(UrlFetcher* url_fetcher);
   void set_base_url_async_fetcher(UrlAsyncFetcher* url_fetcher);
-
-  // Takes ownership of fetcher. This should only be called once.
-  void SetDistributedAsyncFetcher(UrlAsyncFetcher* fetcher);
-
+  // Takes ownership of distributed_fetcher.
+  void set_base_distributed_async_fetcher(UrlAsyncFetcher* distributed_fetcher);
   bool set_filename_prefix(StringPiece p);
 
   // Determines whether Slurping is enabled.
@@ -166,12 +164,13 @@ class RewriteDriverFactory {
   Scheduler* scheduler();
   UsageDataReporter* usage_data_reporter();
 
-  // Computes URL fetchers using the based fetcher, and optionally,
+  // Computes URL fetchers using the base fetcher, and optionally,
   // slurp_directory and slurp_read_only.  These are not thread-safe;
   // they must be called once prior to spawning threads, e.g. via
   // CreateServerContext.
   virtual UrlFetcher* ComputeUrlFetcher();
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
+  virtual UrlAsyncFetcher* ComputeDistributedFetcher();
 
   // Threadsafe mechanism to create a managed ServerContext.  The
   // ServerContext is owned by the factory, and should not be
@@ -311,6 +310,8 @@ class RewriteDriverFactory {
   // overridden per Factory as it has at least one pure virtual method.
   virtual ServerContext* NewServerContext() = 0;
 
+  virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher() { return NULL; }
+
   virtual CriticalCssFinder* DefaultCriticalCssFinder();
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
   virtual CriticalSelectorFinder* DefaultCriticalSelectorFinder();
@@ -384,6 +385,7 @@ class RewriteDriverFactory {
   UrlAsyncFetcher* distributed_async_fetcher_;
   scoped_ptr<UrlFetcher> base_url_fetcher_;
   scoped_ptr<UrlAsyncFetcher> base_url_async_fetcher_;
+  scoped_ptr<UrlAsyncFetcher> base_distributed_async_fetcher_;
   scoped_ptr<Hasher> hasher_;
   scoped_ptr<FilenameEncoder> filename_encoder_;
   scoped_ptr<UrlNamer> url_namer_;

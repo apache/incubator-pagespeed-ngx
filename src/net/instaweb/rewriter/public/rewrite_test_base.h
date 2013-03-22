@@ -435,6 +435,9 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   MockUrlFetcher* mock_url_fetcher() {
     return &mock_url_fetcher_;
   }
+  MockUrlFetcher* mock_distributed_fetcher() {
+    return &mock_distributed_fetcher_;
+  }
   Hasher* hasher() { return server_context_->hasher(); }
   DelayCache* delay_cache() { return factory_->delay_cache(); }
   LRUCache* lru_cache() { return factory_->lru_cache(); }
@@ -475,7 +478,9 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   CountingUrlAsyncFetcher* counting_url_async_fetcher() {
     return factory_->counting_url_async_fetcher();
   }
-
+  CountingUrlAsyncFetcher* counting_distributed_fetcher() {
+    return factory_->counting_distributed_async_fetcher();
+  }
   void SetMockHashValue(const GoogleString& value) {
     factory_->mock_hasher()->set_hash_value(value);
   }
@@ -621,8 +626,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
     current_user_agent_ = user_agent;
   }
 
-  // The mock fetcher & stats are global across all Factories used in the tests.
+  // The mock fetchers & stats are global across all Factories used in the
+  // tests.
   MockUrlFetcher mock_url_fetcher_;
+  MockUrlFetcher mock_distributed_fetcher_;
   scoped_ptr<Statistics> statistics_;
 
   // We have two independent RewriteDrivers representing two completely

@@ -96,7 +96,8 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   };
 
   TestRewriteDriverFactory(const StringPiece& temp_dir,
-                           MockUrlFetcher* mock_fetcher);
+                           MockUrlFetcher* mock_fetcher,
+                           MockUrlFetcher* mock_distributed_fetcher);
   virtual ~TestRewriteDriverFactory();
 
   DelayCache* delay_cache() { return delay_cache_; }
@@ -112,6 +113,9 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   }
   CountingUrlAsyncFetcher* counting_url_async_fetcher() {
     return counting_url_async_fetcher_;
+  }
+  CountingUrlAsyncFetcher* counting_distributed_async_fetcher() {
+    return counting_distributed_async_fetcher_;
   }
   MockTimeCache* mock_time_cache() { return mock_time_cache_.get(); }
 
@@ -182,6 +186,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual MessageHandler* DefaultMessageHandler();
   virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
+  virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher();
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
   virtual void SetupCaches(ServerContext* resource_manager);
@@ -199,8 +204,11 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   LRUCache* lru_cache_;
   UrlFetcher* proxy_url_fetcher_;
   MockUrlFetcher* mock_url_fetcher_;
+  MockUrlFetcher* mock_distributed_fetcher_;
   scoped_ptr<FakeUrlAsyncFetcher> mock_url_async_fetcher_;
+  scoped_ptr<FakeUrlAsyncFetcher> mock_distributed_async_fetcher_;
   CountingUrlAsyncFetcher* counting_url_async_fetcher_;
+  CountingUrlAsyncFetcher* counting_distributed_async_fetcher_;
   scoped_ptr<WaitUrlAsyncFetcher> wait_url_async_fetcher_;
   scoped_ptr<MockTimeCache> mock_time_cache_;
   MemFileSystem* mem_file_system_;  // owned by base class file_system_.

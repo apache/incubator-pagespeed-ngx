@@ -123,11 +123,6 @@ class LocalStorageCacheTest : public RewriteTestBase,
                         const GoogleString& head_html_out,
                         const GoogleString& body_html_in,
                         const GoogleString& body_html_out) {
-    StaticAssetManager* static_asset_manager =
-        server_context()->static_asset_manager();
-    StringPiece local_storage_cache_js =
-        static_asset_manager->GetAsset(
-            StaticAssetManager::kLocalStorageCacheJs, options());
     const char kInWrapperFormat[] =
         "<head>\n"
         "  <title>Local Storage Cache Test</title>\n"
