@@ -50,22 +50,23 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_automatic.a \
   net/instaweb/libinstaweb_blink_critical_line_data_pb.a \
   net/instaweb/libinstaweb_cache_html_info_pb.a \
-  net/instaweb/libinstaweb_clientstate_pb.a \
   net/instaweb/libinstaweb_client_domain_rewriter_data2c.a \
   net/instaweb/libinstaweb_client_domain_rewriter_opt_data2c.a \
+  net/instaweb/libinstaweb_clientstate_pb.a \
   net/instaweb/libinstaweb_critical_css_beacon_data2c.a \
   net/instaweb/libinstaweb_critical_css_beacon_opt_data2c.a \
+  net/instaweb/libinstaweb_critical_css_pb.a \
   net/instaweb/libinstaweb_critical_images_beacon_data2c.a \
   net/instaweb/libinstaweb_critical_images_beacon_opt_data2c.a \
-  net/instaweb/libinstaweb_critical_css_pb.a \
+  net/instaweb/libinstaweb_critical_images_pb.a \
   net/instaweb/libinstaweb_critical_line_info_pb.a \
   net/instaweb/libinstaweb_critical_selectors_pb.a \
   net/instaweb/libinstaweb_defer_iframe_data2c.a \
   net/instaweb/libinstaweb_defer_iframe_opt_data2c.a \
   net/instaweb/libinstaweb_delay_images_data2c.a \
-  net/instaweb/libinstaweb_delay_images_opt_data2c.a \
   net/instaweb/libinstaweb_delay_images_inline_data2c.a \
   net/instaweb/libinstaweb_delay_images_inline_opt_data2c.a \
+  net/instaweb/libinstaweb_delay_images_opt_data2c.a \
   net/instaweb/libinstaweb_detect_reflow_data2c.a \
   net/instaweb/libinstaweb_detect_reflow_opt_data2c.a \
   net/instaweb/libinstaweb_deterministic_data2c.a \
@@ -135,8 +136,8 @@ BASE_LIBS = \
   third_party/libwebp/libwebp_enc.a \
   third_party/libwebp/libwebp_utils.a \
   third_party/opencv/libhighgui.a \
-  third_party/opencv/libopencv_imgproc.a \
   third_party/opencv/libopencv_core.a \
+  third_party/opencv/libopencv_imgproc.a \
   third_party/protobuf/libprotobuf_lite.a \
   third_party/re2/libre2.a \
   third_party/zlib/libzlib.a

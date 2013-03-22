@@ -86,7 +86,6 @@ TEST_F(CriticalImagesFinderTest, UpdateCriticalImagesCacheEntrySuccess) {
   EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(
       rewrite_driver(), critical_images_set, css_critical_images_set));
   EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
-  EXPECT_TRUE(GetCssCriticalImagesUpdatedValue()->has_value());
 }
 
 TEST_F(CriticalImagesFinderTest,
@@ -97,14 +96,17 @@ TEST_F(CriticalImagesFinderTest,
   EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(
       rewrite_driver(), critical_images_set, css_critical_images_set));
   EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
-  EXPECT_TRUE(GetCssCriticalImagesUpdatedValue()->has_value());
+  const PropertyCache::Cohort* cohort = page_property_cache()->GetCohort(
+      finder()->GetCriticalImagesCohort());
+  EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
+  page_property_cache()->WriteCohort(
+      cohort, rewrite_driver()->property_page());
 }
 
 TEST_F(CriticalImagesFinderTest, UpdateCriticalImagesCacheEntrySetNULL) {
   EXPECT_FALSE(CallUpdateCriticalImagesCacheEntry(
       rewrite_driver(), NULL, NULL));
   EXPECT_FALSE(GetCriticalImagesUpdatedValue()->has_value());
-  EXPECT_FALSE(GetCssCriticalImagesUpdatedValue()->has_value());
 }
 
 TEST_F(CriticalImagesFinderTest,
@@ -118,7 +120,6 @@ TEST_F(CriticalImagesFinderTest,
   EXPECT_FALSE(CallUpdateCriticalImagesCacheEntry(
       rewrite_driver(), critical_images_set, css_critical_images_set));
   EXPECT_EQ(NULL, GetCriticalImagesUpdatedValue());
-  EXPECT_EQ(NULL, GetCssCriticalImagesUpdatedValue());
 }
 
 TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
@@ -134,7 +135,7 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   // RewriteDriver.
   finder()->IsHtmlCriticalImage("imageA.jpg", rewrite_driver());
   // We should get 2 misses, 1 for the html and 1 for css.
-  CheckCriticalImageFinderStats(0, 0, 2);
+  CheckCriticalImageFinderStats(0, 0, 1);
   EXPECT_EQ(0, logging_info()->num_html_critical_images());
   EXPECT_EQ(0, logging_info()->num_css_critical_images());
   ClearStats();
@@ -157,14 +158,13 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   page_property_cache()->WriteCohort(
       cohort, rewrite_driver()->property_page());
   EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
-  EXPECT_TRUE(GetCssCriticalImagesUpdatedValue()->has_value());
 
   // critical_images() is NULL because there is no previous call to
   // GetCriticalImages()
   ResetDriver();
   EXPECT_TRUE(rewrite_driver()->critical_images_info() == NULL);
   EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
-  CheckCriticalImageFinderStats(2, 0, 0);
+  CheckCriticalImageFinderStats(1, 0, 0);
   EXPECT_EQ(2, logging_info()->num_html_critical_images());
   EXPECT_EQ(1, logging_info()->num_css_critical_images());
   ClearStats();
@@ -185,7 +185,7 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   // We read it from cache.
   ResetDriver();
   EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
-  CheckCriticalImageFinderStats(2, 0, 0);
+  CheckCriticalImageFinderStats(1, 0, 0);
   EXPECT_EQ(2, logging_info()->num_html_critical_images());
   EXPECT_EQ(1, logging_info()->num_css_critical_images());
   ClearStats();
@@ -194,7 +194,7 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   AdvanceTimeMs(0.9 * options()->finder_properties_cache_expiration_time_ms());
   ResetDriver();
   EXPECT_TRUE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
-  CheckCriticalImageFinderStats(2, 0, 0);
+  CheckCriticalImageFinderStats(1, 0, 0);
   EXPECT_EQ(2, logging_info()->num_html_critical_images());
   EXPECT_EQ(1, logging_info()->num_css_critical_images());
   ClearStats();
@@ -203,7 +203,7 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   // Advance past expiry, so that the pages expire.
   AdvanceTimeMs(2 * options()->finder_properties_cache_expiration_time_ms());
   EXPECT_FALSE(finder()->IsHtmlCriticalImage("imageA.jpeg", rewrite_driver()));
-  CheckCriticalImageFinderStats(0, 2, 0);
+  CheckCriticalImageFinderStats(0, 1, 0);
   EXPECT_EQ(0, logging_info()->num_html_critical_images());
   EXPECT_EQ(0, logging_info()->num_css_critical_images());
 }

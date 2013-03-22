@@ -535,6 +535,21 @@
       ],
     },
     {
+      'target_name': 'instaweb_critical_images_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/rewriter',
+      },
+      'sources': [
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/critical_images.pb.cc',
+        'rewriter/critical_images.proto',
+      ],
+      'dependencies': [
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_critical_selectors_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/rewriter',
@@ -1111,19 +1126,20 @@
         'instaweb_client_domain_rewriter_data2c',
         'instaweb_client_domain_rewriter_opt_data2c',
         'instaweb_core.gyp:instaweb_rewriter_html',
-        'instaweb_critical_css_pb',
-        'instaweb_critical_line_info_pb',
         'instaweb_critical_css_beacon_data2c',
         'instaweb_critical_css_beacon_opt_data2c',
+        'instaweb_critical_css_pb',
         'instaweb_critical_images_beacon_data2c',
         'instaweb_critical_images_beacon_opt_data2c',
+        'instaweb_critical_images_pb',
+        'instaweb_critical_line_info_pb',
         'instaweb_critical_selectors_pb',
         'instaweb_defer_iframe_data2c',
         'instaweb_defer_iframe_opt_data2c',
         'instaweb_delay_images_data2c',
-        'instaweb_delay_images_opt_data2c',
         'instaweb_delay_images_inline_data2c',
         'instaweb_delay_images_inline_opt_data2c',
+        'instaweb_delay_images_opt_data2c',
         'instaweb_detect_reflow_data2c',
         'instaweb_detect_reflow_opt_data2c',
         'instaweb_deterministic_data2c',

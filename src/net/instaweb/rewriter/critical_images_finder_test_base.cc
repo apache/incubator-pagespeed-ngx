@@ -57,21 +57,4 @@ CriticalImagesFinderTestBase::GetCriticalImagesUpdatedValue() {
   return property_value;
 }
 
-const PropertyValue*
-CriticalImagesFinderTestBase::GetCssCriticalImagesUpdatedValue() {
-  PropertyPage* page = rewrite_driver()->property_page();
-  if (page == NULL) {
-    return NULL;
-  }
-  PropertyCache* pcache = server_context_->page_property_cache();
-  const PropertyCache::Cohort* cohort = pcache->GetCohort(
-      finder()->GetCriticalImagesCohort());
-  if (cohort == NULL) {
-    return NULL;
-  }
-  const PropertyValue* property_value = page->GetProperty(
-      cohort, CriticalImagesFinder::kCssCriticalImagesPropertyName);
-  return property_value;
-}
-
 }  // namespace net_instaweb

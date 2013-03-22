@@ -36,6 +36,7 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/critical_images.pb.h"
 #include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -354,6 +355,68 @@ class ServerContextTest : public RewriteTestBase {
     EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheCss));
     EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheImages));
     EXPECT_EQ(x, options->Enabled(RewriteOptions::kExtendCacheScripts));
+  }
+
+  GoogleString CreateCriticalImagePropertyCacheValue(
+      const StringSet* html_critical_images) {
+    CriticalImages critical_images;
+    DCHECK(html_critical_images != NULL);
+    // Update critical images from html.
+    for (StringSet::iterator i = html_critical_images->begin();
+         i != html_critical_images->end(); ++i) {
+      critical_images.add_html_critical_images(*i);
+    }
+    return critical_images.SerializeAsString();
+  }
+
+  // Send a beacon through ServerContext::HandleBeacon and verify that that
+  // property cache entry for critical images was updated correctly.
+  void TestBeacon(const StringSet* critical_image_hashes,
+                  StringPiece user_agent) {
+    // Setup the beacon_url and pass to HandleBeacon.
+    GoogleString options_hash = "1234";
+    GoogleString beacon_url = StrCat(
+        "url=http%3A%2F%2Fwww.example.com"
+        "&oh=", options_hash,
+        "&ci=");
+    bool first = true;
+    for (StringSet::const_iterator it = critical_image_hashes->begin();
+         it != critical_image_hashes->end(); ++it) {
+      if (!first) {
+        StrAppend(&beacon_url, ",");
+      }
+      StrAppend(&beacon_url, *it);
+      first = false;
+    }
+
+    EXPECT_TRUE(server_context()->HandleBeacon(
+        beacon_url,
+        user_agent,
+        CreateRequestContext()));
+
+    UserAgentMatcher::DeviceType device_type =
+        server_context()->user_agent_matcher()->GetDeviceTypeForUA(
+            user_agent);
+    StringPiece device_type_suffix =
+        UserAgentMatcher::DeviceTypeSuffix(device_type);
+
+    GoogleString key = server_context()->GetPagePropertyCacheKey(
+        kUrlPrefix,
+        options_hash,
+        device_type_suffix);
+
+    // Read the property cache value for critical images, and verify that it has
+    // the expected value.
+    scoped_ptr<MockPropertyPage> page(NewMockPage(key));
+    PropertyCache* property_cache = server_context()->page_property_cache();
+    property_cache->Read(page.get());
+    const PropertyCache::Cohort* cohort = property_cache->GetCohort(
+        BeaconCriticalImagesFinder::kBeaconCohort);
+    PropertyValue* property = page->GetProperty(cohort, "critical_images");
+    EXPECT_TRUE(property->has_value());
+    GoogleString hash = CreateCriticalImagePropertyCacheValue(
+        critical_image_hashes);
+    EXPECT_EQ(hash, property->value());
   }
 };
 
@@ -994,97 +1057,16 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
   GoogleString hash2 = IntegerToString(
       HashString<CasePreserve, int>(img2.c_str(), img2.size()));
 
-  GoogleString beacon_url;
-  beacon_url = StrCat(
-      "url=http%3A%2F%2Fwww.example.com"
-      "&oh=", options_hash,
-      "&ci=", hash1);
-  EXPECT_TRUE(server_context()->HandleBeacon(
-      beacon_url,
-      UserAgentStrings::kChromeUserAgent,
-      CreateRequestContext()));
-  {
-    scoped_ptr<MockPropertyPage> page(NewMockPage(key));
-    property_cache->Read(page.get());
-    property = page->GetProperty(cohort, "critical_images");
-    EXPECT_TRUE(property->has_value());
-    EXPECT_EQ(hash1, property->value());
 
-    beacon_url = StrCat(
-        "url=http%3A%2F%2Fwww.example.com"
-        "&oh=", options_hash,
-        "&ci=", hash1, ",", hash2);
-    EXPECT_TRUE(server_context()->HandleBeacon(
-        beacon_url,
-        UserAgentStrings::kChromeUserAgent,
-        CreateRequestContext()));
-  }
-  {
-    scoped_ptr<MockPropertyPage> page(NewMockPage(key));
-    property_cache->Read(page.get());
-    property = page->GetProperty(cohort, "critical_images");
-    EXPECT_TRUE(property->has_value());
-    EXPECT_EQ(hash1 + "\n" + hash2, property->value());
-
-    // Ensure duplicate critimgs only get inserted once.
-    beacon_url = StrCat(
-        "url=http%3A%2F%2Fwww.example.com"
-        "&oh=", options_hash,
-        "&ci=", hash1, ",", hash1);
-    EXPECT_TRUE(server_context()->HandleBeacon(
-        beacon_url,
-        UserAgentStrings::kChromeUserAgent,
-        CreateRequestContext()));
-  }
-  {
-    scoped_ptr<MockPropertyPage> page(NewMockPage(key));
-    property_cache->Read(page.get());
-    property = page->GetProperty(cohort, "critical_images");
-    EXPECT_TRUE(property->has_value());
-    EXPECT_EQ(hash1, property->value());
-  }
-
-  // Make sure that a mobile user agent stores to a different key than a desktop
-  // user agent.
-  UserAgentMatcher::DeviceType mobile_device_type =
-      server_context()->user_agent_matcher()->GetDeviceTypeForUA(
-          UserAgentStrings::kIPhoneUserAgent);
-  StringPiece mobile_device_type_suffix =
-      UserAgentMatcher::DeviceTypeSuffix(mobile_device_type);
-
-  GoogleString mobile_key = server_context()->GetPagePropertyCacheKey(
-      kUrlPrefix,
-      options_hash,
-      mobile_device_type_suffix);
-  scoped_ptr<MockPropertyPage> mobile_page(NewMockPage(mobile_key));
-  property_cache->Read(mobile_page.get());
-  property = mobile_page->GetProperty(cohort, "critical_images");
-  EXPECT_FALSE(property->has_value());
-
-  beacon_url = StrCat(
-      "url=http%3A%2F%2Fwww.example.com"
-      "&oh=", options_hash,
-      "&ci=", hash2);
-  EXPECT_TRUE(server_context()->HandleBeacon(
-      beacon_url,
-      UserAgentStrings::kIPhoneUserAgent,
-      CreateRequestContext()));
-  {
-    scoped_ptr<MockPropertyPage> mobile_page(NewMockPage(mobile_key));
-    property_cache->Read(mobile_page.get());
-    property = mobile_page->GetProperty(cohort, "critical_images");
-    EXPECT_TRUE(property->has_value());
-    EXPECT_EQ(hash2, property->value());
-  }
-
-  // And make sure desktop still has hash1 for its value.
-  {
-    scoped_ptr<MockPropertyPage> page(NewMockPage(key));
-    property_cache->Read(page.get());
-    property = page->GetProperty(cohort, "critical_images");
-    EXPECT_TRUE(property->has_value());
-    EXPECT_EQ(hash1, property->value());
-  }
+  StringSet critical_image_hashes;
+  critical_image_hashes.insert(hash1);
+  TestBeacon(&critical_image_hashes, UserAgentStrings::kChromeUserAgent);
+  critical_image_hashes.insert(hash2);
+  TestBeacon(&critical_image_hashes, UserAgentStrings::kChromeUserAgent);
+  critical_image_hashes.clear();
+  critical_image_hashes.insert(hash1);
+  TestBeacon(&critical_image_hashes, UserAgentStrings::kChromeUserAgent);
+  TestBeacon(&critical_image_hashes, UserAgentStrings::kIPhoneUserAgent);
 }
 
 TEST_F(ServerContextTest, TestNotGenerated) {
