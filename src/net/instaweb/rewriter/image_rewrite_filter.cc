@@ -1394,26 +1394,22 @@ bool ImageRewriteFilter::TryInline(
   if (static_cast<int64>(data.size()) >= image_inline_max_bytes) {
     return false;
   }
-  GoogleUrl absolute_url(base_url(), slot->resource()->url());
-  if (!absolute_url.is_valid()) {
-    return false;
-  }
   // This is the decision point for whether or not an image is suitable for
-  // inlining. After this point, we may skip inlining an image, but not because
-  // of properties of the image.
-  GoogleString absolute_url_string(absolute_url.UncheckedSpec().as_string());
-
-  // If we are skipping rewriting, record the URL for storage in the property
-  // cache, suppress future rewrites to this slot, and return immediately.
+  // inlining. After this point, we may skip inlining an image, but not
+  // because of properties of the image.
   const RewriteOptions* options = driver_->options();
   if (options->cache_small_images_unrewritten()) {
+    // Skip rewriting, record the URL for storage in the property cache,
+    // suppress future rewrites to this slot, and return immediately.
+    GoogleString url(slot->resource()->url());
+
     // Duplicate URLs are suppressed.
-    if (inlinable_urls_.insert(absolute_url_string).second) {
+    if (inlinable_urls_.insert(url).second) {
       // This write to the property value allows downstream filters to observe
       // inlinable images within the same flush window. Note that this does not
       // induce a write to the underlying cache -- the value is written only
       // when the filter chain has finished execution.
-      StoreUrlInPropertyCache(absolute_url.Spec());
+      StoreUrlInPropertyCache(url);
     }
     // We disable rendering to prevent any rewriting of the URL that we'll
     // advertise in the property cache.
