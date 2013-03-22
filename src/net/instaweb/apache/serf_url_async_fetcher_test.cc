@@ -44,6 +44,8 @@
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
 
+namespace {
+
 // Default domain to test URL fetches from.  If the default site is
 // down, the tests can be directed to a backup host by setting the
 // environment variable FETCH_TEST_DOMAIN.  Note that this relies on
@@ -51,6 +53,13 @@
 // relative to the domain, by copying them into /var/www from
 // MOD_PAGESPEED_SVN_PATH/src/install.
 const char kFetchTestDomain[] = "//modpagespeed.com";
+
+// The threaded async fetching tests are a bit flaky and quite slow, especially
+// on valgrind.  Ideally that should be fixed but until it becomes a priority,
+// do not subject all developers to this tax.
+#define SERF_FLAKY_SLOW_THREADING_TESTS 0
+
+}  // namespace
 
 namespace net_instaweb {
 
@@ -441,6 +450,16 @@ TEST_F(SerfUrlAsyncFetcherTest, TestWaitThreeThreaded) {
   EXPECT_EQ(0, ActiveFetches());
 }
 
+#if SERF_FLAKY_SLOW_THREADING_TESTS
+
+// Example flake:
+// net/instaweb/apache/serf_url_async_fetcher_test.cc:495: Failure
+// Value of: ActiveFetches()
+//   Actual: 1
+// Expected: 0
+//
+// TODO(jmarantz): analyze this flake and fix it.
+
 TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreadedAsync) {
   StartFetches(kModpagespeedSite, kModpagespeedSite, true);
   serf_url_async_fetcher_->WaitForActiveFetches(
@@ -482,6 +501,7 @@ TEST_F(SerfUrlAsyncFetcherTest, TestThreeThreadedAsync) {
   ValidateFetches(kModpagespeedSite, kGoogleLogo);
   EXPECT_EQ(0, ActiveFetches());
 }
+#endif  // SERF_FLAKY_SLOW_THREADING_TESTS
 
 TEST_F(SerfUrlAsyncFetcherTest, TestWaitOneThreadedTwoSync) {
   StartFetches(kModpagespeedSite, kModpagespeedSite, true);
