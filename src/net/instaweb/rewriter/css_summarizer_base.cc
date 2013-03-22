@@ -42,7 +42,6 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -100,6 +99,7 @@ class CssSummarizerBase::Context : public SingleRewriteContext {
   }
 
  private:
+  // Reports completion of one summary (including failures).
   void ReportDone();
 
   int pos_;  // our position in the list of all styles in the page.
@@ -166,25 +166,29 @@ void CssSummarizerBase::Context::ReportDone() {
     }
   }
   if (should_report_all_done) {
-    filter_->SummariesDone();
+    filter_->ReportSummariesDone();
   }
 }
 
 void CssSummarizerBase::Context::Render() {
-  if (num_output_partitions() == 0) {
-    return;
-  }
-
-  const CachedResult& result = *output_partition(0);
   DCHECK_LE(0, pos_);
   DCHECK_LT(static_cast<size_t>(pos_), filter_->summaries_.size());
-
-  // Transfer the result out to the summary table; we have to do it here
-  // so it's available on the cache hit. Conveniently this will also never
-  // race with the HTML thread, so the summary accessors will be safe to
-  // access off parser events.
-  if (result.has_inlined_data()) {
-    filter_->summaries_[pos_] = new GoogleString(result.inlined_data());
+  SummaryInfo& summary_info = filter_->summaries_[pos_];
+  if (num_output_partitions() == 0) {
+    // Failed at partition -> resource fetch failed or uncacheable.
+    summary_info.state = kSummaryInputUnavailable;
+  } else {
+    const CachedResult& result = *output_partition(0);
+    // Transfer the result out to the summary table; we have to do it here
+    // so it's available on the cache hit. Conveniently this will also never
+    // race with the HTML thread, so the summary accessors will be safe to
+    // access off parser events.
+    if (result.has_inlined_data()) {
+      summary_info.state = kSummaryOk;
+      summary_info.data = result.inlined_data();
+    } else {
+      summary_info.state = kSummaryCssParseError;
+    }
   }
 
   ReportDone();
@@ -238,11 +242,6 @@ bool CssSummarizerBase::Context::Partition(OutputPartitions* partitions,
     ok = true;
   }
 
-  if (!ok) {
-    // Make sure to mark this as no longer pending.
-    ReportDone();
-  }
-
   return ok;
 }
 
@@ -269,7 +268,7 @@ CssSummarizerBase::CssSummarizerBase(RewriteDriver* driver)
 }
 
 CssSummarizerBase::~CssSummarizerBase() {
-  STLDeleteElements(&summaries_);
+  Clear();
 }
 
 void CssSummarizerBase::Clear() {
@@ -277,12 +276,12 @@ void CssSummarizerBase::Clear() {
   saw_end_of_document_ = false;
   style_element_ = NULL;
   injection_point_ = NULL;
+  summaries_.clear();
 }
 
 void CssSummarizerBase::StartDocumentImpl() {
-  // TODO(morlovich): we hold on to this memory too long; refine this once the
-  // data type is refined.
-  STLDeleteElements(&summaries_);
+  // TODO(morlovich): we hold on to the summaries_ memory too long; refine this
+  // once the data type is refined.
   Clear();
 }
 
@@ -298,7 +297,7 @@ void CssSummarizerBase::EndDocument() {
   }
 
   if (should_report_all_done) {
-    SummariesDone();
+    ReportSummariesDone();
   }
 }
 
@@ -374,13 +373,46 @@ void CssSummarizerBase::EndElementImpl(HtmlElement* element) {
   }
 }
 
+void CssSummarizerBase::ReportSummariesDone() {
+  if (DebugMode()) {
+    GoogleString comment = "Summary computation status for ";
+    StrAppend(&comment, Name(), "\n");
+    for (int i = 0, n = summaries_.size(); i < n; ++i) {
+      StrAppend(&comment, "Resource ", IntegerToString(i),
+                " ", summaries_[i].location, ": ");
+      switch (summaries_[i].state) {
+        case kSummaryOk:
+          StrAppend(&comment, "Computed OK\n");
+          break;
+        case kSummaryStillPending:
+          StrAppend(&comment, "Computation still pending\n");
+          break;
+        case kSummaryCssParseError:
+          StrAppend(&comment, "Unrecoverable CSS parse error\n");
+          break;
+        case kSummaryResourceCreationFailed:
+          StrAppend(&comment, "Cannot create resource; is it authorized and "
+                              "is URL well-formed?\n");
+          break;
+        case kSummaryInputUnavailable:
+          StrAppend(&comment,
+                    "Fetch failed or resource not publicly cacheable\n");
+          break;
+      }
+    }
+    InjectSummaryData(driver()->NewCommentNode(NULL, comment));
+  }
+
+  SummariesDone();
+}
+
 void CssSummarizerBase::StartInlineRewrite(HtmlCharactersNode* text) {
   // TODO(sligocki): Clean this up to not need to pass parent around explicitly.
   // The few places that actually need to know the parent can call
   // text->parent() themselves.
   HtmlElement* element = text->parent();
   ResourceSlotPtr slot(MakeSlotForInlineCss(text->contents()));
-  Context* context = CreatContextForSlot(slot);
+  Context* context = CreateContextForSlot(slot, slot->LocationString());
   context->SetupInlineRewrite(element, text);
   driver_->InitiateRewrite(context);
 }
@@ -391,7 +423,10 @@ void CssSummarizerBase::StartExternalRewrite(
   ResourcePtr input_resource(CreateInputResource(src->DecodedValueOrNull()));
   if (input_resource.get() == NULL) {
     // Record a failure, so the subclass knows of it.
-    summaries_.push_back(NULL);
+    summaries_.push_back(SummaryInfo());
+    summaries_.back().state = kSummaryResourceCreationFailed;
+    const char* url = src->DecodedValueOrNull();
+    summaries_.back().location = (url != NULL ? url : driver_->UrlLine());
 
     // TODO(morlovich): Stat?
     if (DebugMode()) {
@@ -401,7 +436,7 @@ void CssSummarizerBase::StartExternalRewrite(
     return;
   }
   ResourceSlotPtr slot(driver_->GetSlot(input_resource, link, src));
-  Context* context = CreatContextForSlot(slot);
+  Context* context = CreateContextForSlot(slot, input_resource->url());
   GoogleUrl input_resource_gurl(input_resource->url());
   context->SetupExternalRewrite(input_resource_gurl);
   driver_->InitiateRewrite(context);
@@ -419,10 +454,11 @@ ResourceSlot* CssSummarizerBase::MakeSlotForInlineCss(
   return new InlineCssSlot(input_resource, driver_->UrlLine());
 }
 
-CssSummarizerBase::Context* CssSummarizerBase::CreatContextForSlot(
-    const ResourceSlotPtr& slot) {
+CssSummarizerBase::Context* CssSummarizerBase::CreateContextForSlot(
+    const ResourceSlotPtr& slot, const GoogleString& location) {
   int id = summaries_.size();
-  summaries_.push_back(NULL);
+  summaries_.push_back(SummaryInfo());
+  summaries_.back().location = location;
   ++outstanding_rewrites_;
 
   Context* context = new Context(id, this, driver_);

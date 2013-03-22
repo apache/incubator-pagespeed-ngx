@@ -82,13 +82,13 @@ void CriticalCssBeaconFilter::SummariesDone() {
   // sorted, too, which makes this easier to test).  We re-serialize the set.
   set<StringPiece> selectors;
   for (int i = 0; i < NumStyles(); ++i) {
-    const GoogleString* one_block = GetSummary(i);
-    if (one_block == NULL) {
+    const SummaryInfo& block_info = GetSummaryForStyle(i);
+    if (block_info.state != kSummaryOk) {
       // Skip entries that weren't fetched.
       continue;
     }
     StringPieceVector temp;
-    SplitStringPieceToVector(*one_block, ",", &temp,
+    SplitStringPieceToVector(block_info.data, ",", &temp,
                              false /* empty shouldn't happen */);
     selectors.insert(temp.begin(), temp.end());
   }

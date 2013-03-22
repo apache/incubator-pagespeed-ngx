@@ -34,10 +34,8 @@ namespace net_instaweb {
 
 namespace {
 
-const char kExpectedComment[] =
-    "<!--*{display:|div{displa|(nil)|(nil)|(nil)|-->";
 const char kExpectedResult[] =
-    "*{display:|div{displa|(nil)|(nil)|(nil)|";
+    "OK/*{display:|OK/div{displa|ParseError/|FetchError/|ResourceError/|";
 
 // Extracts first 10 characters of minified form of every stylesheet.
 class MinifyExcerptFilter : public CssSummarizerBase {
@@ -57,15 +55,26 @@ class MinifyExcerptFilter : public CssSummarizerBase {
     }
   }
 
+  GoogleString EncodeState(SummaryState state) {
+    switch (state) {
+      case kSummaryOk:
+        return "OK";
+      case kSummaryStillPending:
+        return "Pending";
+      case kSummaryCssParseError:
+        return "ParseError";
+      case kSummaryResourceCreationFailed:
+        return "ResourceError";
+      case kSummaryInputUnavailable:
+        return "FetchError";
+    }
+  };
+
   virtual void SummariesDone() {
+    result_.clear();
     for (int i = 0; i < NumStyles(); ++i) {
-      const GoogleString* sum = GetSummary(i);
-      if (sum != NULL) {
-        StrAppend(&result_, *sum);
-      } else {
-        StrAppend(&result_, "(nil)");
-      }
-      StrAppend(&result_, "|");
+      const SummaryInfo& sum = GetSummaryForStyle(i);
+      StrAppend(&result_, EncodeState(sum.state), "/", sum.data, "|");
     }
     InjectSummaryData(driver()->NewCommentNode(NULL, result_));
   }
@@ -120,8 +129,8 @@ class CssSummarizerBaseTest : public RewriteTestBase {
 
   const GoogleString FinishTest(
       StringPiece pre_comment, StringPiece post_comment) {
-    const GoogleString expected_html =
-        StrCat(head_, pre_comment, kExpectedComment, post_comment);
+    const GoogleString expected_html = StrCat(
+        head_, pre_comment, "<!--", kExpectedResult, "-->", post_comment);
     rewrite_driver()->ParseText(post_comment);
     rewrite_driver()->FinishParse();
     return expected_html;
@@ -153,6 +162,11 @@ class CssSummarizerBaseTest : public RewriteTestBase {
 TEST_F(CssSummarizerBaseTest, BasicOperation) {
   GoogleString expected =
       FullTest("basic", "<body> <p>some content</p> ", "</body></html>");
+  EXPECT_STREQ(expected, output_buffer_);
+  EXPECT_STREQ(kExpectedResult, filter_->result());
+
+  // Re-test to make sure we behave OK with the result cached.
+  expected = FullTest("basic", "<body> <p>some content</p> ", "</body></html>");
   EXPECT_STREQ(expected, output_buffer_);
   EXPECT_STREQ(kExpectedResult, filter_->result());
 }

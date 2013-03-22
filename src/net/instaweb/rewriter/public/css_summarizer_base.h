@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_CSS_SUMMARIZER_BASE_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_CSS_SUMMARIZER_BASE_H_
 
+#include <vector>
+
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
@@ -44,13 +46,46 @@ class RewriteDriver;
 // This class helps implement filters that try to compute some properties of
 // all the screen-affecting CSS in the page. They are expected to override
 // Summarize() to perform the per-CSS computation; then at SummariesDone() they
-// can lookup summaries via NumStyles/GetSummary.
+// can lookup summaries via NumStyles/GetSummaryForStyle.
 class CssSummarizerBase : public RewriteFilter {
  public:
   explicit CssSummarizerBase(RewriteDriver* driver);
   virtual ~CssSummarizerBase();
 
  protected:
+  enum SummaryState {
+    // All OK!
+    kSummaryOk,
+
+    // Computation/Fetches ongoing, we don't have a result yet.
+    kSummaryStillPending,
+
+    // CSS parse error we can't recover from.
+    kSummaryCssParseError,
+
+    // Could not create the resource object, so its URL is malformed or we do
+    // not have permission to rewrite it.
+    kSummaryResourceCreationFailed,
+
+    // Fetch result unusable, either error or not cacheable.
+    kSummaryInputUnavailable
+  };
+
+  struct SummaryInfo {
+    SummaryInfo() : state(kSummaryStillPending) {}
+
+    // data actually computed by the subclass's Summarize method. Make sure to
+    // check state == kSummaryOk before using it.
+    GoogleString data;
+
+    // State of computation of 'data'.
+    SummaryState state;
+
+    // Human-readable description of the location of the CSS. For use in debug
+    // messages.
+    GoogleString location;
+  };
+
   // This should be overridden to compute a per-resource summary.
   // The method should not modify the object state, and only
   // put the result into *out as it may not be invoked in case of a
@@ -84,14 +119,12 @@ class CssSummarizerBase : public RewriteFilter {
   // Should be called from a thread context that has HTML parser state access.
   int NumStyles() const { return static_cast<int>(summaries_.size()); }
 
-  // Returns summary computed for the pos'th style in the document; or NULL
-  // if it's not available. (Could be because of parse error, or because
-  // we don't have the result ready in time, etc.)
+  // Returns summary computed for the pos'th style in the document.
   //
   // pos must be in [0, NumStyles())
   //
   // Should be called from a thread context that has HTML parser state access.
-  const GoogleString* GetSummary(int pos) const {
+  const SummaryInfo& GetSummaryForStyle(int pos) const {
     return summaries_.at(pos);
   }
 
@@ -111,6 +144,10 @@ class CssSummarizerBase : public RewriteFilter {
   // Clean out private data.
   void Clear();
 
+  // Invokes SummariesDone and, if the debug filter is on, injects a comment
+  // describing what happened with every CSS resource.
+  void ReportSummariesDone();
+
   // Starts the asynchronous rewrite process for inline CSS 'text'.
   void StartInlineRewrite(HtmlCharactersNode* text);
 
@@ -122,12 +159,14 @@ class CssSummarizerBase : public RewriteFilter {
   // with the summaries_ vector and gives it an id. The context will
   // still need to have SetupInlineRewrite / SetupExternalRewrite and
   // InitiateRewrite called on it.
-  Context* CreatContextForSlot(const ResourceSlotPtr& slot);
+  // location is used to identify the resource in debug comments.
+  Context* CreateContextForSlot(const ResourceSlotPtr& slot,
+                                const GoogleString& location);
 
   ResourceSlot* MakeSlotForInlineCss(const StringPiece& content);
 
   // Stores all the computed summaries.
-  StringStarVector summaries_;
+  std::vector<SummaryInfo> summaries_;
 
   scoped_ptr<AbstractMutex> progress_lock_;
   int outstanding_rewrites_;  // guarded by progress_lock_
