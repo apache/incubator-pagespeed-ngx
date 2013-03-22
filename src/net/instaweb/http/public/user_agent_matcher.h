@@ -20,6 +20,7 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/re2.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "third_party/instaweb/util/fast_wildcard_group.h"
@@ -149,8 +150,8 @@ class UserAgentMatcher {
   FastWildcardGroup supports_dns_prefetch_;
 
   const RE2 chrome_version_pattern_;
+  scoped_ptr<RE2> known_devices_pattern_;
   mutable map <GoogleString, pair<int, int> > screen_dimensions_map_;
-  GoogleString known_devices_pattern_;
 
   DISALLOW_COPY_AND_ASSIGN(UserAgentMatcher);
 };

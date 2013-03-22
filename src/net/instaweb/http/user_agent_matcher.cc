@@ -278,14 +278,17 @@ UserAgentMatcher::UserAgentMatcher()
   for (int i = 0, n = arraysize(kInsertDnsPrefetchBlacklist); i < n; ++i) {
     supports_dns_prefetch_.Disallow(kInsertDnsPrefetchBlacklist[i]);
   }
+  GoogleString known_devices_pattern_string = "(";
   for (int i = 0, n = arraysize(kKnownScreenDimensions); i < n; ++i) {
     screen_dimensions_map_[kKnownScreenDimensions[i].first] =
         kKnownScreenDimensions[i].second;
-    known_devices_pattern_ = known_devices_pattern_ +
-        kKnownScreenDimensions[i].first + "|";
+    if (i != 0) {
+      StrAppend(&known_devices_pattern_string, "|");
+    }
+    StrAppend(&known_devices_pattern_string, kKnownScreenDimensions[i].first);
   }
-  known_devices_pattern_ = "(" + known_devices_pattern_.substr(
-      0, known_devices_pattern_.length() - 1) + ")";
+  StrAppend(&known_devices_pattern_string, ")");
+  known_devices_pattern_.reset(new RE2(known_devices_pattern_string));
 }
 
 UserAgentMatcher::~UserAgentMatcher() {
@@ -440,8 +443,8 @@ bool UserAgentMatcher::GetScreenResolution(
   DCHECK(width != NULL);
   DCHECK(height != NULL);
   GoogleString match;
-  if (RE2::PartialMatch(StringPieceToRe2(user_agent), known_devices_pattern_,
-      &match)) {
+  if (RE2::PartialMatch(
+      StringPieceToRe2(user_agent), *known_devices_pattern_.get(), &match)) {
     pair<int, int> dims = screen_dimensions_map_[match];
     *width = dims.first;
     *height = dims.second;
