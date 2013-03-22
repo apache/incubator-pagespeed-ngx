@@ -431,6 +431,9 @@ class RewriteOptions {
   // Convenience name for a set of rewrite filters.
   typedef std::set<Filter> FilterSet;
 
+  // Convenience name for a set of rewrite filter ids.
+  typedef std::set<GoogleString> FilterIdSet;
+
   // Lookup the given name to see if it's a filter name or one of the special
   // names like "core" or "rewrite_images", and if so add the corresponding
   // filter(s) to the given set. If the given name doesn't match -and- if
@@ -975,18 +978,17 @@ class RewriteOptions {
   // Which implies that all filters not listed should be disabled.
   void DisableAllFiltersNotExplicitlyEnabled();
 
-  // Adds a set of filters to the distributable set. Returns false if any of the
-  // filter names are invalid, but all the valid ones will be added anyway.
-  // For experimentation, may be removed later.
-  bool DistributeFiltersByCommaSeparatedList(const StringPiece& filters,
-                                                   MessageHandler* handler);
+  // Adds a set of filter prefixes (ids) to the set of distributable filters.
+  // The names are not verified and all prefixes will be added.
+  void DistributeFiltersByCommaSeparatedList(const StringPiece& filter_ids,
+                                               MessageHandler* handler);
   // Adds the filter to the list of distributable filters.
   // For experimentation, may be removed later.
-  void DistributeFilter(Filter filter);
+  void DistributeFilter(const StringPiece& filter_id);
 
   // Returns true if the filter is in the list of distributable filters.
   // For experimentation, may be removed later.
-  bool Distributable(Filter filter) const;
+  bool Distributable(const StringPiece& filter_id) const;
 
   // Adds the filter to the list of enabled filters. However, if the filter
   // is also present in either the list of disabled or forbidden filters,
@@ -2741,7 +2743,7 @@ class RewriteOptions {
 
   // The set of filters that can be distributed to other tasks.
   // For experimentation, may be removed later.
-  FilterSet distributable_filters_;
+  FilterIdSet distributable_filters_;
 
   // Note: using the template class Option here saves a lot of repeated
   // and error-prone merging code.  However, it is not space efficient as

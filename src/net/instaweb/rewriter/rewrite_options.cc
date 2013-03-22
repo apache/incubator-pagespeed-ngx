@@ -1767,21 +1767,25 @@ void RewriteOptions::ForceEnableFilter(Filter filter) {
   modified_ |= forbidden_filters_.erase(filter);
 }
 
-bool RewriteOptions::DistributeFiltersByCommaSeparatedList(
+void RewriteOptions::DistributeFiltersByCommaSeparatedList(
     const StringPiece& filters, MessageHandler* handler) {
-  return AddCommaSeparatedListToFilterSetState(
-      filters, &distributable_filters_, handler);
+  StringPieceVector names;
+  SplitStringPieceToVector(filters, ",", &names, true);
+  for (int i = 0, n = names.size(); i < n; ++i) {
+    DistributeFilter(names[i]);
+  }
 }
 
-void RewriteOptions::DistributeFilter(Filter filter) {
+void RewriteOptions::DistributeFilter(const StringPiece& filter_id) {
   DCHECK(!frozen_);
-  std::pair<FilterSet::iterator, bool> inserted =
-      distributable_filters_.insert(filter);
+  std::pair<FilterIdSet::iterator, bool> inserted =
+      distributable_filters_.insert(filter_id.as_string());
   modified_ |= inserted.second;
 }
 
-bool RewriteOptions::Distributable(Filter filter) const {
-  return distributable_filters_.find(filter) != distributable_filters_.end();
+bool RewriteOptions::Distributable(const StringPiece& filter_id) const {
+  return distributable_filters_.find(filter_id.as_string())
+      != distributable_filters_.end();
 }
 
 void RewriteOptions::EnableExtendCacheFilters() {
@@ -2124,11 +2128,7 @@ RewriteOptions::OptionSettingResult RewriteOptions::ParseAndSetOptionFromEnum1(
       Disallow(arg);
       break;
     case kDistributableFilters: {
-      bool ok = DistributeFiltersByCommaSeparatedList(arg, handler);
-      if (!ok) {
-        *msg = "Failed to make some filters distributable.";
-        return RewriteOptions::kOptionValueInvalid;
-      }
+      DistributeFiltersByCommaSeparatedList(arg, handler);
       break;
     }
     case kDomain:
@@ -2555,11 +2555,11 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
     enabled_filters_.erase(filter);
   }
 
-  for (FilterSet::const_iterator p = src.distributable_filters_.begin(),
+  for (FilterIdSet::const_iterator p = src.distributable_filters_.begin(),
            e = src.distributable_filters_.end(); p != e; ++p) {
-    Filter filter = *p;
+    StringPiece filter_id = *p;
     // Distributable filters union when merged.
-    distributable_filters_.insert(filter);
+    distributable_filters_.insert(filter_id.as_string());
   }
 
   for (int i = 0, n = src.furious_specs_.size(); i < n; ++i) {

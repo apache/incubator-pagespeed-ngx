@@ -440,17 +440,17 @@ TEST_F(RewriteOptionsTest, MergeCacheInvalidationTimeStampTwoLarger) {
 
 TEST_F(RewriteOptionsTest, MergeDistributed) {
   RewriteOptions one, two;
-  EXPECT_FALSE(options_.Distributable(RewriteOptions::kOutlineCss));
-  EXPECT_FALSE(options_.Distributable(RewriteOptions::kLeftTrimUrls));
-  EXPECT_FALSE(options_.Distributable(RewriteOptions::kOutlineJavascript));
+  EXPECT_FALSE(options_.Distributable(RewriteOptions::kCacheExtenderId));
+  EXPECT_FALSE(options_.Distributable(RewriteOptions::kImageCompressionId));
+  EXPECT_FALSE(options_.Distributable(RewriteOptions::kCssFilterId));
 
-  one.DistributeFilter(RewriteOptions::kOutlineCss);
-  two.DistributeFilter(RewriteOptions::kOutlineJavascript);
+  one.DistributeFilter(RewriteOptions::kCacheExtenderId);
+  two.DistributeFilter(RewriteOptions::kImageCompressionId);
   MergeOptions(one, two);
 
-  EXPECT_TRUE(options_.Distributable(RewriteOptions::kOutlineCss));
-  EXPECT_TRUE(options_.Distributable(RewriteOptions::kOutlineJavascript));
-  EXPECT_FALSE(options_.Distributable(RewriteOptions::kLeftTrimUrls));
+  EXPECT_TRUE(options_.Distributable(RewriteOptions::kCacheExtenderId));
+  EXPECT_TRUE(options_.Distributable(RewriteOptions::kImageCompressionId));
+  EXPECT_FALSE(options_.Distributable(RewriteOptions::kCssFilterId));
 }
 
 TEST_F(RewriteOptionsTest, Allow) {
