@@ -38,3 +38,9 @@ message CriticalSelectorSet {
   // included.
   repeated string critical_selectors = 1;
 }
+
+// TODO(morlovich):This will need to be a list of media/style pairs,
+// so we can retain any media that's in the tag (and not CSS itself).
+message CriticalSelectorSummarizedCss {
+  optional string content = 1;
+}

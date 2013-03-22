@@ -89,11 +89,11 @@ class CssSummarizerBase : public RewriteFilter {
   // This should be overridden to compute a per-resource summary.
   // The method should not modify the object state, and only
   // put the result into *out as it may not be invoked in case of a
-  // cache hit.
+  // cache hit. The subclass may mutate *stylesheet if it so wishes.
   //
   // Note: this is called on a rewrite thread, so it should not access
   // HTML parser state.
-  virtual void Summarize(const Css::Stylesheet& stylesheet,
+  virtual void Summarize(Css::Stylesheet* stylesheet,
                          GoogleString* out) const = 0;
 
   // This is called at the end of the document when all outstanding summary
@@ -127,6 +127,16 @@ class CssSummarizerBase : public RewriteFilter {
   const SummaryInfo& GetSummaryForStyle(int pos) const {
     return summaries_.at(pos);
   }
+
+  // These notify the subclass of external or inline CSS the summarizer has
+  // noticed. Overriding these is optional, and base implementations do nothing.
+  // TODO(morlovich): wire up external media; or should we store them in the
+  //                  summaries_ vector?
+  // Note that the inline method is called before </style> is called, so you
+  // may need to wait until EndElementImpl if you need to alter the DOM for it.
+  virtual void NotifyInlineCss(HtmlElement* style_element,
+                               HtmlCharactersNode* content);
+  virtual void NotifyExternalCss(HtmlElement* link);
 
   // Overrides of the filter APIs. You should call through to this class's
   // implementations if you override them.

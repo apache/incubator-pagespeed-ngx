@@ -82,7 +82,7 @@ class CssSummarizerBase::Context : public SingleRewriteContext {
 
   // Calls to finish initialization for given rewrite type; should be called
   // soon after construction.
-  void SetupInlineRewrite(HtmlElement* style_element, HtmlCharactersNode* text);
+  void SetupInlineRewrite();
   void SetupExternalRewrite(const GoogleUrl& base_gurl);
 
  protected:
@@ -108,11 +108,8 @@ class CssSummarizerBase::Context : public SingleRewriteContext {
   // Base URL against which CSS in here is resolved.
   GoogleUrl css_base_gurl_;
 
-  // Style element containing inline CSS (see StartInlineRewrite)
-  HtmlElement* rewrite_inline_element_;
-
-  // Node with inline CSS to rewrite, or NULL if we're rewriting external stuff.
-  HtmlCharactersNode* rewrite_inline_char_node_;
+  // True if we're rewriting a <style> block, false if it's a <link>
+  bool rewrite_inline_;
 
   DISALLOW_COPY_AND_ASSIGN(Context);
 };
@@ -123,8 +120,7 @@ CssSummarizerBase::Context::Context(int pos,
     : SingleRewriteContext(driver, NULL /*parent*/, NULL /* resource_context*/),
       pos_(pos),
       filter_(filter),
-      rewrite_inline_element_(NULL),
-      rewrite_inline_char_node_(NULL) {
+      rewrite_inline_(false) {
 }
 
 CssSummarizerBase::Context::~Context() {
@@ -138,21 +134,18 @@ void CssSummarizerBase::InjectSummaryData(HtmlNode* data) {
   }
 }
 
-void CssSummarizerBase::Context::SetupInlineRewrite(
-    HtmlElement* style_element, HtmlCharactersNode* text) {
+void CssSummarizerBase::Context::SetupInlineRewrite() {
   // To handle nested rewrites of inline CSS, we internally handle it
   // as a rewrite of a data: URL.
   css_base_gurl_.Reset(filter_->decoded_base_url());
   DCHECK(css_base_gurl_.is_valid());
-  rewrite_inline_element_ = style_element;
-  rewrite_inline_char_node_ = text;
+  rewrite_inline_ = true;
 }
 
 void CssSummarizerBase::Context::SetupExternalRewrite(
     const GoogleUrl& base_gurl) {
   css_base_gurl_.Reset(base_gurl);
-  rewrite_inline_element_ = NULL;
-  rewrite_inline_char_node_ = NULL;
+  rewrite_inline_ = false;
 }
 
 void CssSummarizerBase::Context::ReportDone() {
@@ -217,7 +210,7 @@ void CssSummarizerBase::Context::RewriteSingle(
     // TODO(morlovich): do we want a stat here?
     result->clear_inlined_data();
   } else {
-    filter_->Summarize(*stylesheet, result->mutable_inlined_data());
+    filter_->Summarize(stylesheet.get(), result->mutable_inlined_data());
   }
 
   // We never produce output --- just write to the CachedResult; so we
@@ -228,7 +221,7 @@ void CssSummarizerBase::Context::RewriteSingle(
 bool CssSummarizerBase::Context::Partition(OutputPartitions* partitions,
                                            OutputResourceVector* outputs) {
   bool ok;
-  if (rewrite_inline_element_ == NULL) {
+  if (!rewrite_inline_) {
     ok = SingleRewriteContext::Partition(partitions, outputs);
     ok = ok && (partitions->partition_size() != 0);
   } else {
@@ -247,7 +240,7 @@ bool CssSummarizerBase::Context::Partition(OutputPartitions* partitions,
 
 GoogleString CssSummarizerBase::Context::CacheKeySuffix() const {
   GoogleString suffix;
-  if (rewrite_inline_element_ != NULL) {
+  if (rewrite_inline_) {
     // Incorporate the base path of the HTML as part of the key --- it
     // matters for inline CSS since resources are resolved against
     // that (while it doesn't for external CSS, since that uses the
@@ -269,6 +262,13 @@ CssSummarizerBase::CssSummarizerBase(RewriteDriver* driver)
 
 CssSummarizerBase::~CssSummarizerBase() {
   Clear();
+}
+
+void CssSummarizerBase::NotifyInlineCss(HtmlElement* style_element,
+                                        HtmlCharactersNode* content) {
+}
+
+void CssSummarizerBase::NotifyExternalCss(HtmlElement* link) {
 }
 
 void CssSummarizerBase::Clear() {
@@ -313,11 +313,11 @@ void CssSummarizerBase::StartElementImpl(HtmlElement* element) {
 void CssSummarizerBase::Characters(HtmlCharactersNode* characters_node) {
   if (style_element_ != NULL) {
     // Note: HtmlParse should guarantee that we only get one CharactersNode
-    // per <style> block even if it is split by a flush. However, this code
-    // will still mostly work if we somehow got multiple CharacterNodes.
+    // per <style> block even if it is split by a flush.
     // TODO(morlovich): Validate media
     injection_point_ = NULL;
     StartInlineRewrite(characters_node);
+    NotifyInlineCss(style_element_, characters_node);
   } else if (injection_point_ != NULL &&
              !OnlyWhitespace(characters_node->contents())) {
     // Ignore whitespace between </body> and </html> or after </html> when
@@ -349,6 +349,7 @@ void CssSummarizerBase::EndElementImpl(HtmlElement* element) {
         if (element_href != NULL) {
           // If it has a href= attribute
           StartExternalRewrite(element, element_href);
+          NotifyExternalCss(element);
         }
       }
       break;
@@ -407,13 +408,9 @@ void CssSummarizerBase::ReportSummariesDone() {
 }
 
 void CssSummarizerBase::StartInlineRewrite(HtmlCharactersNode* text) {
-  // TODO(sligocki): Clean this up to not need to pass parent around explicitly.
-  // The few places that actually need to know the parent can call
-  // text->parent() themselves.
-  HtmlElement* element = text->parent();
   ResourceSlotPtr slot(MakeSlotForInlineCss(text->contents()));
   Context* context = CreateContextForSlot(slot, slot->LocationString());
-  context->SetupInlineRewrite(element, text);
+  context->SetupInlineRewrite();
   driver_->InitiateRewrite(context);
 }
 

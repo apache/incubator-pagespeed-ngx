@@ -115,6 +115,7 @@
         'rewriter/critical_images_finder_test.cc',
         'rewriter/critical_images_finder_test_base.cc',
         'rewriter/critical_selector_finder_test.cc',
+        'rewriter/critical_selector_filter_test.cc',
         'rewriter/css_combine_filter_test.cc',
         'rewriter/css_embedded_config_test.cc',
         'rewriter/css_filter_test.cc',

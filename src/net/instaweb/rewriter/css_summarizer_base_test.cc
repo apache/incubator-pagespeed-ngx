@@ -46,10 +46,10 @@ class MinifyExcerptFilter : public CssSummarizerBase {
   virtual const char* Name() const { return "Minify10"; }
   virtual const char* id() const { return "csr"; }
 
-  virtual void Summarize(const Css::Stylesheet& stylesheet,
+  virtual void Summarize(Css::Stylesheet* stylesheet,
                          GoogleString* out) const {
     StringWriter write_out(out);
-    CssMinify::Stylesheet(stylesheet, &write_out, driver()->message_handler());
+    CssMinify::Stylesheet(*stylesheet, &write_out, driver_->message_handler());
     if (out->length() > 10) {
       out->resize(10);
     }

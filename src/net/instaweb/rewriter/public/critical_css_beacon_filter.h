@@ -58,7 +58,7 @@ class CriticalCssBeaconFilter : public CssSummarizerBase {
   virtual const char* id() const { return "cb"; }
 
  protected:
-  virtual void Summarize(const Css::Stylesheet& stylesheet,
+  virtual void Summarize(Css::Stylesheet* stylesheet,
                          GoogleString* out) const;
   virtual void SummariesDone();
 

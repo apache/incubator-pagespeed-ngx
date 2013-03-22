@@ -67,10 +67,10 @@ void CriticalCssBeaconFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCriticalCssSkippedDueToCharset);
 }
 
-void CriticalCssBeaconFilter::Summarize(const Css::Stylesheet& stylesheet,
+void CriticalCssBeaconFilter::Summarize(Css::Stylesheet* stylesheet,
                                         GoogleString* out) const {
   StringSet selectors;
-  FindSelectorsFromStylesheet(stylesheet, &selectors);
+  FindSelectorsFromStylesheet(*stylesheet, &selectors);
   // Serialize set into out.
   AppendJoinCollection(out, selectors, ",");
 }
