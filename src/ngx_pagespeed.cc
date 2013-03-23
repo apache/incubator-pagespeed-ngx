@@ -2001,10 +2001,40 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   CHECK(ctx != NULL);
 
-  // Tell nginx we're still working on this one.
-  r->count++;
-
+  // generic checker will not finalize request
+  // so do not need increase r->count here
   return NGX_DONE;
+}
+
+// preaccess_handler should be at generic phase before try_files
+ngx_int_t ps_preaccess_handler(ngx_http_request_t *r) {
+
+  ngx_http_core_main_conf_t *cmcf;
+  ngx_http_phase_handler_t *ph;
+  ngx_uint_t i;
+
+  cmcf = static_cast<ngx_http_core_main_conf_t *>(
+                    ngx_http_get_module_main_conf(r, ngx_http_core_module));
+
+  ph = cmcf->phase_engine.handlers;
+
+  i = r->phase_handler;
+  // move handlers before try_files && content phase
+  while (ph[i + 1].checker != ngx_http_core_try_files_phase
+      && ph[i + 1].checker != ngx_http_core_content_phase) {
+    ph[i] = ph[i + 1];
+    ph[i].next--;
+    i++;
+  }
+
+  // insert content handler
+  ph[i].checker = ngx_http_core_generic_phase;
+  ph[i].handler = ps_content_handler;
+  ph[i].next = i + 1;
+
+  // next preaccess handler
+  r->phase_handler--;
+  return NGX_DECLINED;
 }
 
 ngx_int_t ps_init(ngx_conf_t* cf) {
@@ -2031,12 +2061,13 @@ ngx_int_t ps_init(ngx_conf_t* cf) {
 
     ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
         ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module));
+
     ngx_http_handler_pt* h = static_cast<ngx_http_handler_pt*>(
-        ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers));
+        ngx_array_push(&cmcf->phases[NGX_HTTP_PREACCESS_PHASE].handlers));
     if (h == NULL) {
       return NGX_ERROR;
     }
-    *h = ps_content_handler;
+    *h = ps_preaccess_handler;
   }
 
   return NGX_OK;
