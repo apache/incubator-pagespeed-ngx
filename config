@@ -94,7 +94,7 @@ else
     $psol_library_dir/libapr.a"
 fi
 
-pagespeed_libs="-lstdc++ $psol_library_binaries -lrt -pthread"
+pagespeed_libs="-lstdc++ $psol_library_binaries -lrt -pthread -lm"
 ngx_feature_libs="$pagespeed_libs"
 ngx_feature_test="
   GoogleString output_buffer;
