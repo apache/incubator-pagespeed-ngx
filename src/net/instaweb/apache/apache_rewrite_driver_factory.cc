@@ -86,7 +86,7 @@ const char ApacheRewriteDriverFactory::kStaticAssetPrefix[] =
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     server_rec* server, const StringPiece& version)
-    : RewriteDriverFactory(
+    : SystemRewriteDriverFactory(
 #ifdef NDEBUG
         new ApacheThreadSystem
 #else

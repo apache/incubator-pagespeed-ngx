@@ -19,7 +19,7 @@
 
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/system/public/system_server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -47,7 +47,7 @@ class Variable;
 //    - default RewriteOptions.
 // Additionally, there are startup semantics for apache's prefork model
 // that require a phased initialization.
-class ApacheServerContext : public ServerContext {
+class ApacheServerContext : public SystemServerContext {
  public:
   ApacheServerContext(ApacheRewriteDriverFactory* factory,
                       server_rec* server,

@@ -27,7 +27,6 @@
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_async_fetcher_stats.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_pool.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -78,7 +77,7 @@ ApacheServerContext::ApacheServerContext(
     ApacheRewriteDriverFactory* factory,
     server_rec* server,
     const StringPiece& version)
-    : ServerContext(factory),
+    : SystemServerContext(factory),
       apache_factory_(factory),
       server_rec_(server),
       version_(version.data(), version.size()),

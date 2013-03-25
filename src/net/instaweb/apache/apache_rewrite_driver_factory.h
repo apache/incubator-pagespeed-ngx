@@ -22,6 +22,7 @@
 #include <set>
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -61,7 +62,7 @@ class UrlPollableAsyncFetcher;
 class Writer;
 
 // Creates an Apache RewriteDriver.
-class ApacheRewriteDriverFactory : public RewriteDriverFactory {
+class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
  public:
   // Path prefix where we serve static assets (primarily images and js
   // resources) needed by some filters.
