@@ -247,13 +247,12 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
           if (buf.empty()) {
             buf = kEmptyValuePlaceholder;
           }
-          page_property_cache->UpdateValue(buf, property_value);
+          page->UpdateValue(cohort, kCriticalImagesPropertyName, buf);
         } else {
           LOG(WARNING) << "Serialization of critical images protobuf failed.";
           return false;
         }
       }
-
       return updated;
     } else {
       LOG(WARNING) << "Critical Images Cohort is NULL.";

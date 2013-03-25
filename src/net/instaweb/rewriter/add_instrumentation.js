@@ -115,6 +115,14 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
     url += '&b_ncii=' + bci['NUM_CRITICAL_IMAGES_INLINED'] +
            '&b_ncini=' + bci['NUM_CRITICAL_IMAGES_NOT_INLINED'];
   }
+  if (pagespeed['criticalCss']) {
+    var cc = pagespeed['criticalCss'];
+    url += '&ccis=' + cc['total_critical_inlined_size'] +
+           '&cces=' + cc['total_original_external_size'] +
+           '&ccos=' + cc['total_overhead_size'] +
+           '&ccrl=' + cc['num_replaced_links'] +
+           '&ccul=' + cc['num_unreplaced_links'];
+  }
   if (this.headerFetchTime_ != '') {
     url += '&hft=' + this.headerFetchTime_;
   }

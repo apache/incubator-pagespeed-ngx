@@ -66,13 +66,13 @@ class PropertyCacheTest : public testing::Test {
   // Returns whether the value is considered Stable or not.  In general
   // we would expect this routine to return false.
   bool ReadWriteInitial(const GoogleString& key, const GoogleString& value) {
-    MockPropertyPage page(thread_system_.get(), property_cache_, key);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, key);
     property_cache_.Read(&page);
-    PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
     EXPECT_FALSE(page.valid());
     EXPECT_TRUE(page.called());
-    property_cache_.UpdateValue(value, property);
-    property_cache_.WriteCohort(cohort_, &page);
+    page.UpdateValue(cohort_, kPropertyName1, value);
+    page.WriteCohort(cohort_);
+    PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
     EXPECT_TRUE(property->has_value());
     return property_cache_.IsStable(property);
   }
@@ -84,14 +84,14 @@ class PropertyCacheTest : public testing::Test {
   bool ReadWriteTestStable(const GoogleString& key,
                            const GoogleString& old_value,
                            const GoogleString& new_value) {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     property_cache_.Read(&page);
     PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
     EXPECT_TRUE(page.valid());
     EXPECT_TRUE(page.called());
     EXPECT_STREQ(old_value, property->value());
-    property_cache_.UpdateValue(new_value, property);
-    property_cache_.WriteCohort(cohort_, &page);
+    page.UpdateValue(cohort_, kPropertyName1, new_value);
+    page.WriteCohort(cohort_);
     return property_cache_.IsStable(property);
   }
 
@@ -99,7 +99,7 @@ class PropertyCacheTest : public testing::Test {
   // stable with num_writes_unchanged.
   bool ReadTestRecentlyConstant(const GoogleString& key,
                                 int num_writes_unchanged) {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     property_cache_.Read(&page);
     PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
     return property->IsRecentlyConstant(num_writes_unchanged);
@@ -110,11 +110,11 @@ class PropertyCacheTest : public testing::Test {
   bool ReadWriteTestRecentlyConstant(const GoogleString& key,
                                       const GoogleString& value,
                                       int num_writes_unchanged) {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     property_cache_.Read(&page);
+    page.UpdateValue(cohort_, kPropertyName1, value);
+    page.WriteCohort(cohort_);
     PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
-    property_cache_.UpdateValue(value, property);
-    property_cache_.WriteCohort(cohort_, &page);
     return property->IsRecentlyConstant(num_writes_unchanged);
   }
 
@@ -250,17 +250,16 @@ TEST_F(PropertyCacheTest, DropOldWrites) {
   const PropertyCache::Cohort* cohort2 = property_cache2.GetCohort(
       kCohortName1);
   {
-    MockPropertyPage page(thread_system_.get(), property_cache2, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache2, kCacheKey1);
     property_cache2.Read(&page);
     EXPECT_TRUE(page.valid());
     EXPECT_TRUE(page.called());
-    PropertyValue* property = page.GetProperty(cohort2, kPropertyName1);
-    property_cache2.UpdateValue("Value2", property);
+    page.UpdateValue(cohort2, kPropertyName1, "Value2");
     // Stale value dropped.
-    property_cache2.WriteCohort(cohort2, &page);
+    page.WriteCohort(cohort2);
   }
   {
-    MockPropertyPage page(thread_system_.get(), property_cache2, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache2, kCacheKey1);
     property_cache2.Read(&page);
     EXPECT_TRUE(page.valid());
     EXPECT_TRUE(page.called());
@@ -270,7 +269,7 @@ TEST_F(PropertyCacheTest, DropOldWrites) {
 }
 
 TEST_F(PropertyCacheTest, EmptyReadNewPropertyWasRead) {
-  MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+  MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
   property_cache_.Read(&page);
   PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
   EXPECT_TRUE(property->was_read());
@@ -291,15 +290,15 @@ TEST_F(PropertyCacheTest, TwoCohorts) {
   // ReadWriteInitial found something for cohort1 but no value has
   // yet been established for cohort2, so we'll get a hit and a miss.
   {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     property_cache_.Read(&page);
     EXPECT_EQ(1, lru_cache_.num_hits()) << "cohort1";
     EXPECT_EQ(1, lru_cache_.num_misses()) << "cohort2";
     PropertyValue* p2 = page.GetProperty(cohort2, kPropertyName2);
     EXPECT_TRUE(p2->was_read());
     EXPECT_FALSE(p2->has_value());
-    property_cache_.UpdateValue("v2", p2);
-    property_cache_.WriteCohort(cohort2, &page);
+    page.UpdateValue(cohort2, kPropertyName2, "v2");
+    page.WriteCohort(cohort2);
     EXPECT_EQ(1, lru_cache_.num_inserts()) << "cohort2 written";
   }
 
@@ -308,7 +307,7 @@ TEST_F(PropertyCacheTest, TwoCohorts) {
   // Now a second read will get two hits, no misses, and both data elements
   // present.
   {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     property_cache_.Read(&page);
     EXPECT_EQ(2, lru_cache_.num_hits()) << "both cohorts hit";
     EXPECT_EQ(0, lru_cache_.num_misses());
@@ -325,7 +324,7 @@ TEST_F(PropertyCacheTest, Expiration) {
   // Read a value & make sure it's not expired initially, but expires when
   // we move time forward.
   {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     property_cache_.Read(&page);
     PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
 
@@ -347,7 +346,7 @@ TEST_F(PropertyCacheTest, IsCacheValid) {
   ReadWriteInitial(kCacheKey1, "Value1");
 
   {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     // The timestamp for invalidation is older than the write time of value.  So
     // it as valid.
     page.set_time_ms(timer_.NowMs() - 1);
@@ -361,7 +360,7 @@ TEST_F(PropertyCacheTest, IsCacheValid) {
   {
     // The timestamp for invalidation is newer than the write time of value.  So
     // it as invalid.
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     page.set_time_ms(timer_.NowMs());
     property_cache_.Read(&page);
     EXPECT_FALSE(page.valid());
@@ -373,14 +372,12 @@ TEST_F(PropertyCacheTest, IsCacheValid) {
 
 TEST_F(PropertyCacheTest, IsCacheValidTwoValuesInACohort) {
   timer_.SetTimeMs(MockTimer::kApr_5_2010_ms);
-  MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+  MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
   property_cache_.Read(&page);
-  PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
-  property_cache_.UpdateValue("Value1", property);
+  page.UpdateValue(cohort_, kPropertyName1, "Value1");
   timer_.AdvanceMs(2);
-  property = page.GetProperty(cohort_, kPropertyName2);
-  property_cache_.UpdateValue("Value2", property);
-  property_cache_.WriteCohort(cohort_, &page);
+  page.UpdateValue(cohort_, kPropertyName2, "Value2");
+  page.WriteCohort(cohort_);
   {
     ScopedMutex lock(page.log_record()->mutex());
     const PropertyPageInfo& page_info =
@@ -397,7 +394,7 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoValuesInACohort) {
   }
 
   {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     // The timestamp for invalidation is older than the write times of both
     // value.  So they are treated as valid.
     page.set_time_ms(timer_.NowMs() - 3);
@@ -426,7 +423,7 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoValuesInACohort) {
   {
     // The timestamp for invalidation is newer than the write time of one of the
     // values.  So both are treated as invalid.
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     page.set_time_ms(timer_.NowMs() - 1);
     property_cache_.Read(&page);
     EXPECT_FALSE(page.valid());
@@ -442,18 +439,17 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoCohorts) {
   timer_.SetTimeMs(MockTimer::kApr_5_2010_ms);
   const PropertyCache::Cohort* cohort2 = property_cache_.AddCohort(
       kCohortName2);
-  MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+  MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
   property_cache_.Read(&page);
   PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
-  property_cache_.UpdateValue("Value1", property);
+  page.UpdateValue(cohort_, kPropertyName1, "Value1");
   timer_.AdvanceMs(2);
-  property = page.GetProperty(cohort2, kPropertyName2);
-  property_cache_.UpdateValue("Value2", property);
-  property_cache_.WriteCohort(cohort_, &page);
-  property_cache_.WriteCohort(cohort2, &page);
+  page.UpdateValue(cohort2, kPropertyName2, "Value2");
+  page.WriteCohort(cohort_);
+  page.WriteCohort(cohort2);
 
   {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     // The timestamp for invalidation is older than the write times of values in
     // both cohorts.  So they are treated as valid.
     page.set_time_ms(timer_.NowMs() - 3);
@@ -470,7 +466,7 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoCohorts) {
     // The timestamp for invalidation is newer than the write time of one of the
     // values.  But the the values are in different cohorts and so the page is
     // treated as valid.
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     page.set_time_ms(timer_.NowMs() - 1);
     property_cache_.Read(&page);
     EXPECT_TRUE(page.valid());
@@ -486,21 +482,23 @@ TEST_F(PropertyCacheTest, DeleteProperty) {
   ReadWriteInitial(kCacheKey1, "Value1");
   {
     {
-      MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+      MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
       property_cache_.Read(&page);
       EXPECT_TRUE(page.valid());
       EXPECT_TRUE(page.called());
       // Deletes a property which already exists.
-      PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
+      PropertyValue* property = page.GetProperty(
+          cohort_, kPropertyName1);
       EXPECT_STREQ("Value1", property->value());
 
       page.DeleteProperty(cohort_, kPropertyName1);
-      property_cache_.WriteCohort(cohort_, &page);
+      page.WriteCohort(cohort_);
     }
     {
-      MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+      MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
       property_cache_.Read(&page);
-      PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
+      PropertyValue* property = page.GetProperty(
+          cohort_, kPropertyName1);
       EXPECT_FALSE(property->has_value());
 
       // Deletes a property which does not exist.
@@ -543,7 +541,7 @@ TEST_F(PropertyCacheTest, TwoCohortsDifferentCacheImplementations) {
   second_cache.ClearStats();
   {
     // Insert a value into cohort2.
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     property_cache_.Read(&page);
 
     EXPECT_EQ(1, lru_cache_.num_hits());
@@ -557,8 +555,8 @@ TEST_F(PropertyCacheTest, TwoCohortsDifferentCacheImplementations) {
     PropertyValue* property = page.GetProperty(cohort2, kPropertyName2);
     EXPECT_FALSE(property->has_value());
 
-    property_cache_.UpdateValue("Value2", property);
-    property_cache_.WriteCohort(cohort2, &page);
+    page.UpdateValue(cohort2, kPropertyName2, "Value2");
+    page.WriteCohort(cohort2);
 
     EXPECT_EQ(0, lru_cache_.num_inserts());
     EXPECT_EQ(1, second_cache.num_inserts());
@@ -569,7 +567,7 @@ TEST_F(PropertyCacheTest, TwoCohortsDifferentCacheImplementations) {
   {
     // Read again.  We should have properties in each cohort, each in their own
     // cache.
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     property_cache_.Read(&page);
 
     EXPECT_EQ(1, lru_cache_.num_hits());
@@ -608,7 +606,7 @@ TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
   // cohorts. In this case, cohort1 did not get touched, so that there is no
   // hit.
   {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     PropertyCache::CohortVector cohort_list;
     cohort_list.push_back(cohort2);
     const PropertyPageInfo& page_info_before_read =
@@ -624,8 +622,8 @@ TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
     PropertyValue* p2 = page.GetProperty(cohort2, kPropertyName2);
     EXPECT_TRUE(p2->was_read());
     EXPECT_FALSE(p2->has_value());
-    property_cache_.UpdateValue("v2", p2);
-    property_cache_.WriteCohort(cohort2, &page);
+    page.UpdateValue(cohort2, kPropertyName2, "v2");
+    page.WriteCohort(cohort2);
     EXPECT_EQ(1, lru_cache_.num_inserts()) << "cohort2 written";
   }
 
@@ -633,7 +631,7 @@ TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
   // Now a second read will get one hit, no misses, and only one data element
   // is present.
   {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     PropertyCache::CohortVector cohort_list;
     cohort_list.push_back(cohort2);
     property_cache_.ReadWithCohorts(cohort_list, &page);
@@ -656,7 +654,7 @@ TEST_F(PropertyCacheTest, MultiReadWithCohorts) {
   lru_cache_.ClearStats();
   // Normal Read gets every thing from all cohorts, so that there are two hits.
   {
-    MockPropertyPage page(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
     property_cache_.Read(&page);
     EXPECT_EQ(2, lru_cache_.num_hits()) << "both cohorts hit";
     EXPECT_EQ(0, lru_cache_.num_misses());
@@ -690,7 +688,7 @@ TEST_F(PropertyCacheTest, ReadWithEmptyCohort) {
   ReadWriteInitial(kCacheKey1, "Value1");
   ReadWriteInitial(kCacheKey2, "Value2");
   {
-    MockPropertyPage page1(thread_system_.get(), property_cache_, kCacheKey1);
+    MockPropertyPage page1(thread_system_.get(), &property_cache_, kCacheKey1);
 
     PropertyCache::CohortVector cohort_list;
     property_cache_.ReadWithCohorts(cohort_list, &page1);

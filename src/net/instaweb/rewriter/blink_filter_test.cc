@@ -139,10 +139,9 @@ class BlinkFilterTest : public RewriteTestBase {
 
     GoogleString buf;
     response.SerializeToString(&buf);
-    PropertyValue* property_value = page->GetProperty(
-        cohort, BlinkFilter::kBlinkCriticalLineDataPropertyName);
-    property_cache->UpdateValue(buf, property_value);
-    property_cache->WriteCohort(cohort, page);
+    page->UpdateValue(
+        cohort, BlinkFilter::kBlinkCriticalLineDataPropertyName, buf);
+    page->WriteCohort(cohort);
 
     EXPECT_EQ(1, lru_cache()->num_inserts());
   }

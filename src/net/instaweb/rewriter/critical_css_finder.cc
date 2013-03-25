@@ -101,7 +101,7 @@ bool CriticalCssFinder::UpdateCache(
       return true;
     case kPropertyCacheUpdateNotFound:
       driver->WarningHere(
-          "Unable to get Critical CSS PropertyValue for update");
+          "Unable to update Critical CSS PropertyValue");
       return false;
     case kPropertyCacheUpdateEncodeError:
       driver->WarningHere("Unable to serialize Critical CSS result");

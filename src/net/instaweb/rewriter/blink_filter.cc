@@ -113,8 +113,7 @@ void BlinkFilter::HandleLastModifiedChange() {
     // TODO(sriharis):  Change the above check to a '>' comparison of dates.
     PropertyPage* page = rewrite_driver_->property_page();
     page->DeleteProperty(cohort_, kBlinkCriticalLineDataPropertyName);
-    rewrite_driver_->server_context()->page_property_cache()->WriteCohort(
-        cohort_, page);
+    page->WriteCohort(cohort_);
     if (has_last_modified_date_in_cache) {
       abort_filter_ = true;
       // TODO(sriharis):  Should we redirect to ?ModPagespeed=off instead?

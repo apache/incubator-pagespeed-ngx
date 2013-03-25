@@ -356,7 +356,7 @@ ProxyFetchPropertyCallbackCollector*
         request_url.Spec(), options, device_type_suffix);
     property_callback = new ProxyFetchPropertyCallback(
         ProxyFetchPropertyCallback::kPagePropertyCache,
-        *page_property_cache, page_key, device_type,
+        page_property_cache, page_key, device_type,
         callback_collector.get(), mutex);
     callback_collector->AddCallback(property_callback);
     added_callback = true;
@@ -374,7 +374,7 @@ ProxyFetchPropertyCallbackCollector*
         AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
         client_callback = new ProxyFetchPropertyCallback(
             ProxyFetchPropertyCallback::kClientPropertyCache,
-            *client_property_cache, client_id,
+            client_property_cache, client_id,
             UserAgentMatcher::kEndOfDeviceType,
             callback_collector.get(), mutex);
         callback_collector->AddCallback(client_callback);

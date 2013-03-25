@@ -469,7 +469,7 @@ class CriticalLineFetch : public AsyncFetch {
                                 rewrite_driver_->device_type());
       page->DeleteProperty(
           cohort, BlinkUtil::kBlinkCriticalLineDataPropertyName);
-      property_cache->WriteCohort(cohort, page);
+      page->WriteCohort(cohort);
       CreateCriticalLineComputationDriverAndRewrite();
     } else if (options_->enable_blink_html_change_detection() ||
                computed_hash_ != blink_critical_line_data_->hash() ||
@@ -486,7 +486,7 @@ class CriticalLineFetch : public AsyncFetch {
       delete this;
     } else {
       if (diff_info_updated) {
-        property_cache->WriteCohort(cohort, page);
+        page->WriteCohort(cohort);
       }
       delete this;
     }

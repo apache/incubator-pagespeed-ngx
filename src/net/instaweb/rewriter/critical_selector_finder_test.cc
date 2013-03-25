@@ -87,7 +87,7 @@ TEST_F(CriticalSelectorFinderTest, StoreRestore) {
 
   const PropertyCache::Cohort* cohort =
       page_property_cache()->GetCohort(kCohort);
-  page_property_cache()->WriteCohort(cohort, rewrite_driver()->property_page());
+  rewrite_driver()->property_page()->WriteCohort(cohort);
 
   ResetDriver();
 

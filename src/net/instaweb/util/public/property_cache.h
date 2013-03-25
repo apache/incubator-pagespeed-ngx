@@ -157,10 +157,10 @@ class PropertyValue {
 
   // Updates the value of a property, tracking stability so future
   // Readers can get a sense of how stable it is.  This is called from
-  // PropertyCache::UpdateValue only.
+  // PropertyPage::UpdateValue only.
   //
   // Updating the value here buffers it in a protobuf, but does not commit
-  // it to the cache.  PropertyCache::WriteCohort() is required to commit.
+  // it to the cache. PropertyPage::WriteCohort() is required to commit.
   void SetValue(const StringPiece& value, int64 now_ms);
 
   PropertyValueProtobuf* protobuf() { return proto_.get(); }
@@ -223,15 +223,6 @@ class PropertyCache {
   void ReadWithCohorts(const CohortVector& cohort_list,
                        PropertyPage* property_page) const;
 
-  // Updates a Cohort of properties into the cache.  It is a
-  // programming error (dcheck-fail) to Write a PropertyPage that
-  // was not read first.  It is fine to Write after a failed Read.
-  //
-  // Even if a PropertyValue was not changed since it was read, Write
-  // should be called periodically to update stability metrics.
-  void WriteCohort(const Cohort* cohort,
-                   PropertyPage* property_page) const;
-
   // Determines whether a value that was read is reasonably stable.
   bool IsStable(const PropertyValue* property) const {
     return property->IsStable(mutations_per_1000_writes_threshold_);
@@ -246,10 +237,6 @@ class PropertyCache {
   // our envisioned usage has the TTL coming from a configuration that is
   // available at read-time, so for now we just use that.
   bool IsExpired(const PropertyValue* property_value, int64 ttl_ms) const;
-
-  // Updates the value of a property, tracking stability & discarding
-  // writes when the existing data is more up-to-date.
-  void UpdateValue(const StringPiece& value, PropertyValue* property) const;
 
   void set_mutations_per_1000_writes_threshold(int x) {
     mutations_per_1000_writes_threshold_ = x;
@@ -289,6 +276,9 @@ class PropertyCache {
   // Initialize stats for the specified cohort.
   static void InitCohortStats(const GoogleString& cohort,
                               Statistics* statistics);
+
+  // Returns timer pointer.
+  Timer* timer() const { return timer_; }
 
   // TODO(jmarantz): add some statistics tracking for stomps, stability, etc.
 
@@ -331,8 +321,22 @@ class PropertyPage {
   // via PropertyCache::Read.  This allows cache implementations that support
   // batching to do so on the read.  However, properties are written back to
   // cache one Cohort at a time, via PropertyCache::WriteCohort.
-  PropertyValue* GetProperty(const PropertyCache::Cohort* cohort,
-                             const StringPiece& property_name);
+  virtual PropertyValue* GetProperty(const PropertyCache::Cohort* cohort,
+                                     const StringPiece& property_name);
+
+  // Updates the value of a property, tracking stability & discarding
+  // writes when the existing data is more up-to-date.
+  virtual void UpdateValue(
+      const PropertyCache::Cohort* cohort, const StringPiece& property_name,
+      const StringPiece& value);
+
+  // Updates a Cohort of properties into the cache.  It is a
+  // programming error (dcheck-fail) to Write a PropertyPage that
+  // was not read first.  It is fine to Write after a failed Read.
+  //
+  // Even if a PropertyValue was not changed since it was read, Write
+  // should be called periodically to update stability metrics.
+  virtual void WriteCohort(const PropertyCache::Cohort* cohort);
 
   // This function returns the cache state for a given cohort.
   //
@@ -372,10 +376,10 @@ class PropertyPage {
 
  protected:
   // The Page takes ownership of the mutex.
-  PropertyPage(AbstractMutex* mutex,
-               const PropertyCache& property_cache,
-               const StringPiece& key,
-               const RequestContextPtr& request_context);
+  PropertyPage(const StringPiece& key,
+               const RequestContextPtr& request_context,
+               AbstractMutex* mutex,
+               PropertyCache* property_cache);
 
   // Called immediatly after the underlying cache lookup is done, from
   // PropertyCache::CacheInterfaceCallback::Done().
@@ -428,6 +432,7 @@ class PropertyPage {
   GoogleString key_;
   RequestContextPtr request_context_;
   bool was_read_;
+  PropertyCache* property_cache_;  // Owned by the caller.
 
   DISALLOW_COPY_AND_ASSIGN(PropertyPage);
 };

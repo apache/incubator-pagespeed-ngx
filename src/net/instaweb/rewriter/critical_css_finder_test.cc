@@ -162,8 +162,7 @@ TEST_F(CriticalCssFinderTest, CheckCacheHandling) {
     const PropertyCache::Cohort* cohort = page_property_cache()->GetCohort(
         finder_->GetCohort());
     // Write the updated value to the pcache.
-    page_property_cache()->WriteCohort(cohort,
-                                       rewrite_driver()->property_page());
+    rewrite_driver()->property_page()->WriteCohort(cohort);
     EXPECT_TRUE(GetUpdatedValue()->has_value());
   }
 
@@ -197,8 +196,7 @@ TEST_F(CriticalCssFinderTest, EmptyResultWritesValueToCache) {
   const PropertyCache::Cohort* cohort = page_property_cache()->GetCohort(
       finder_->GetCohort());
   // Write the updated value to the pcache.
-  page_property_cache()->WriteCohort(cohort,
-                                     rewrite_driver()->property_page());
+  rewrite_driver()->property_page()->WriteCohort(cohort);
   EXPECT_TRUE(GetUpdatedValue()->has_value());
 }
 

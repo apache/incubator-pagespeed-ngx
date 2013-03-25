@@ -61,6 +61,17 @@ const char CriticalCssFilter::kAddStylesScript[] =
     "  window.onload = addAllStyles;"
     "}";
 
+// TODO(slamm): Remove this once we complete logging for this filter.
+const char CriticalCssFilter::kStatsScriptTemplate[] =
+    "window['pagespeed'] = window['pagespeed'] || {};"
+    "window['pagespeed']['criticalCss'] = {"
+    "  'total_critical_inlined_size': %d,"
+    "  'total_original_external_size': %d,"
+    "  'total_overhead_size': %d,"
+    "  'num_replaced_links': %d,"
+    "  'num_unreplaced_links': %d"
+    "};";
+
 // TODO(slamm): Check charset like CssInlineFilter::ShouldInline().
 
 // Wrap CSS elements to move them later in the document.
@@ -121,15 +132,7 @@ CriticalCssFilter::CriticalCssFilter(RewriteDriver* driver,
                                      CriticalCssFinder* finder)
     : driver_(driver),
       css_tag_scanner_(driver),
-      finder_(finder),
-      current_style_element_(NULL),
-      has_critical_css_(false),
-      has_critical_css_match_(false),
-      total_critical_size_(0),
-      total_original_size_(0),
-      repeated_style_blocks_size_(0),
-      num_repeated_style_blocks_(0),
-      num_delayed_links_(0) {
+      finder_(finder) {
 }
 
 CriticalCssFilter::~CriticalCssFilter() {
@@ -138,7 +141,13 @@ CriticalCssFilter::~CriticalCssFilter() {
 void CriticalCssFilter::StartDocument() {
   DCHECK(css_elements_.empty());
   current_style_element_ = NULL;
-  has_critical_css_match_ = false;
+
+  total_critical_size_ = 0;
+  total_original_size_ = 0;
+  repeated_style_blocks_size_ = 0;
+  num_repeated_style_blocks_ = 0;
+  num_links_ = 0;
+  num_replaced_links_ = 0;
 
   has_critical_css_ = false;
   if (finder_ != NULL) {
@@ -159,29 +168,7 @@ void CriticalCssFilter::StartDocument() {
 }
 
 void CriticalCssFilter::EndDocument() {
-  if (has_critical_css_ && driver_->DebugMode()) {
-    driver_->InsertComment(StringPrintf(
-        "Summary Critical CSS stats:\n"
-        "total_critical_inlined_size=%d\n"
-        "total_original_external_size=%d\n"
-        "\n"
-        "num_delayed_links=%d\n"
-        "num_repeated_style_blocks=%d\n"
-        "repeated_style_blocks_size=%d\n"
-        "\n"
-        "unhandled_import_count=%d\n"
-        "unhandled_link_count=%d\n"
-        "exception_count=%d\n",
-        total_critical_size_,
-        total_original_size_,
-        num_delayed_links_,
-        num_repeated_style_blocks_,
-        repeated_style_blocks_size_,
-        critical_css_result_->import_count(),
-        critical_css_result_->link_count(),
-        critical_css_result_->exception_count()));
-  }
-  if (has_critical_css_match_) {
+  if (num_replaced_links_ > 0) {
     // Comment all the style, link tags so that look-ahead parser cannot find
     // them.
     HtmlElement* noscript_element =
@@ -196,8 +183,36 @@ void CriticalCssFilter::EndDocument() {
 
     HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
     driver_->InsertElementBeforeCurrent(script);
+    int num_unreplaced_links_ = num_links_ - num_replaced_links_;
+    int total_overhead_size =
+        total_critical_size_ + repeated_style_blocks_size_;
+    GoogleString critical_css_script = StrCat(
+        kAddStylesScript,
+        StringPrintf(kStatsScriptTemplate,
+                     total_critical_size_,
+                     total_original_size_,
+                     total_overhead_size,
+                     num_replaced_links_,
+                     num_unreplaced_links_));
     driver_->server_context()->static_asset_manager()->AddJsToElement(
-        kAddStylesScript, script, driver_);
+        critical_css_script, script, driver_);
+  }
+  if (has_critical_css_ && driver_->DebugMode()) {
+    driver_->InsertComment(StringPrintf(
+        "Additional Critical CSS stats:\n"
+        "  num_repeated_style_blocks=%d\n"
+        "  repeated_style_blocks_size=%d\n"
+        "\n"
+        "From computing the critical CSS:\n"
+        "  unhandled_import_count=%d\n"
+        "  unhandled_link_count=%d\n"
+        "  exception_count=%d\n",
+        num_repeated_style_blocks_,
+        repeated_style_blocks_size_,
+
+        critical_css_result_->import_count(),
+        critical_css_result_->link_count(),
+        critical_css_result_->exception_count()));
   }
   if (!css_elements_.empty()) {
     STLDeleteElements(&css_elements_);
@@ -232,15 +247,12 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
     const char* media;
     if (css_tag_scanner_.ParseCssElement(element, &href, &media)) {
       css_elements_.push_back(new CssElement(driver_, element));
-      num_delayed_links_ += 1;
+      num_links_ += 1;
 
       const CriticalCssResult_LinkRules* link_rules =
           GetLinkRules(href->DecodedValueOrNull());
       if (link_rules != NULL) {
         // Replace link with critical CSS rules.
-        // TODO(slamm): Keep stats on CSS added and repeated CSS links.
-        //   The latter will help debugging if resources get downloaded twice.
-        has_critical_css_match_ = true;
         HtmlElement* style_element =
             driver_->NewElement(element->parent(), HtmlName::kStyle);
         if (driver_->ReplaceNode(element, style_element)) {
@@ -252,11 +264,11 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
             driver_->AddEscapedAttribute(
                 style_element, HtmlName::kMedia, media);
           }
+          int critical_size = link_rules->critical_rules().length();
+          int original_size = link_rules->original_size();
+          total_critical_size_ += critical_size;
+          total_original_size_ += original_size;
           if (driver_->DebugMode()) {
-            int critical_size = link_rules->critical_rules().length();
-            int original_size = link_rules->original_size();
-            total_critical_size_ += critical_size;
-            total_original_size_ += original_size;
             driver_->InsertComment(StringPrintf(
                 "Critical CSS applied:\n"
                 "critical_size=%d\n"
@@ -264,6 +276,7 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
                 "original_src=%s\n",
                 critical_size, original_size, link_rules->link_url().c_str()));
           }
+          num_replaced_links_++;
         }
       }
     }

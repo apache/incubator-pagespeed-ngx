@@ -567,7 +567,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   MockPropertyPage* NewMockPage(const StringPiece& key) {
     return new MockPropertyPage(
         server_context_->thread_system(),
-        *server_context_->page_property_cache(),
+        server_context_->page_property_cache(),
         key);
   }
 
@@ -575,7 +575,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   MockPropertyPage* NewMockClientPage(const StringPiece& key) {
     return new MockPropertyPage(
         server_context_->thread_system(),
-        *server_context_->client_property_cache(),
+        server_context_->client_property_cache(),
         key);
   }
 

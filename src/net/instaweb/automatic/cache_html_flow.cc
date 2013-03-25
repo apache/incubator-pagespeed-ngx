@@ -482,7 +482,7 @@ class CacheHtmlComputationFetch : public AsyncFetch {
     // TODO(mmohabey): Call WriteCohort only once in
     // UpdatePropertyCacheWithCacheHtmlInfo and not here. This is to avoid
     // property cache write race.
-    server_context->page_property_cache()->WriteCohort(cohort, page);
+    page->WriteCohort(cohort);
     // Propagate the delete
     if (server_context->cache_html_info_finder() != NULL) {
       server_context->cache_html_info_finder()->PropagateCacheDeletes(

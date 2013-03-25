@@ -39,10 +39,10 @@ class MockPropertyPage : public PropertyPage {
   static const int kMockDeviceType = 2;
 
   MockPropertyPage(ThreadSystem* thread_system,
-                   const PropertyCache& property_cache,
+                   PropertyCache* property_cache,
                    const StringPiece& key)
-      : PropertyPage(thread_system->NewMutex(), property_cache, key,
-                     RequestContext::NewTestRequestContext(thread_system)),
+      : PropertyPage(key, RequestContext::NewTestRequestContext(thread_system),
+                     thread_system->NewMutex(), property_cache),
         called_(false),
         valid_(false),
         time_ms_(-1) {}

@@ -108,14 +108,13 @@ class BeaconPropertyCallback : public PropertyPage {
       const RequestContextPtr& request_context,
       StringSet* html_critical_images_set,
       StringSet* css_critical_images_set)
-      : PropertyPage(server_context->thread_system()->NewMutex(),
-                     *server_context->page_property_cache(), key,
-                     request_context),
+      : PropertyPage(key, request_context,
+                     server_context->thread_system()->NewMutex(),
+                     server_context->page_property_cache()),
         server_context_(server_context),
         html_critical_images_set_(html_critical_images_set),
         css_critical_images_set_(css_critical_images_set) {
   }
-
 
   virtual ~BeaconPropertyCallback() {}
 
@@ -126,7 +125,7 @@ class BeaconPropertyCallback : public PropertyPage {
     server_context_->critical_images_finder()->UpdateCriticalImagesCacheEntry(
         this, server_context_->page_property_cache(),
         html_critical_images_set_, css_critical_images_set_);
-    server_context_->page_property_cache()->WriteCohort(cohort, this);
+    WriteCohort(cohort);
     delete this;
   }
 

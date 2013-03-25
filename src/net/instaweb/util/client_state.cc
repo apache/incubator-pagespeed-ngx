@@ -135,9 +135,6 @@ void ClientState::WriteBackToPropertyCache() {
     LOG(WARNING) << "Not writing ClientState to pCache due to NULL cohort";
     return;
   }
-  PropertyValue* value = property_page_.get()->GetProperty(
-      cohort, ClientState::kClientStatePropertyValue);
-  DCHECK(value != NULL);
 
   // Pack and serialize the ClientState protobuf
   ClientStateMsg proto;
@@ -147,8 +144,9 @@ void ClientState::WriteBackToPropertyCache() {
     LOG(WARNING) << "ClientState serialization failed, not writing back";
     return;
   }
-  property_cache_->UpdateValue(bytes, value);
-  property_cache_->WriteCohort(cohort, property_page_.get());
+  property_page_->UpdateValue(
+      cohort, ClientState::kClientStatePropertyValue, bytes);
+  property_page_->WriteCohort(cohort);
 }
 
 }  // namespace net_instaweb

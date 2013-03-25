@@ -81,14 +81,12 @@ void FlushEarlyInfoFinder::UpdateFlushEarlyInfoCacheEntry(
         GetCohort());
     if (cohort != NULL) {
       flush_early_render_info->set_updated(true);
-      PropertyValue* property_value = page->GetProperty(
-          cohort, kFlushEarlyRenderPropertyName);
       GoogleString value;
       {
         StringOutputStream sstream(&value);  // finalizes in destructor
         flush_early_render_info->SerializeToZeroCopyStream(&sstream);
       }
-      property_cache->UpdateValue(value, property_value);
+      page->UpdateValue(cohort, kFlushEarlyRenderPropertyName, value);
     } else {
       driver->message_handler()->Message(kWarning, "FlushEarly FinderCohort is"
                                          "NULL.");

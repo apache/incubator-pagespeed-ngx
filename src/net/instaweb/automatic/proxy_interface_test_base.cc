@@ -255,12 +255,14 @@ void MockFilter::EndDocument() {
   // IsCacheable is true for HTML files because of kHtmlCacheTimeSec
   // above.
   EXPECT_TRUE(driver_->response_headers()->IsCacheable());
-
-  if (num_elements_property_ != NULL) {
-    PropertyCache* page_cache =
-        driver_->server_context()->page_property_cache();
-    page_cache->UpdateValue(IntegerToString(num_elements_),
-                            num_elements_property_);
+  PropertyPage* page = driver_->property_page();
+  PropertyCache* page_cache =
+      driver_->server_context()->page_property_cache();
+  const PropertyCache::Cohort* cohort =
+      page_cache->GetCohort(RewriteDriver::kDomCohort);
+  if (page != NULL && cohort != NULL) {
+    page->UpdateValue(
+        cohort, "num_elements", IntegerToString(num_elements_));
     num_elements_property_ = NULL;
   }
 }

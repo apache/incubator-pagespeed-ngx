@@ -119,7 +119,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
         page_property_cache() : server_context()->client_property_cache();
     ProxyFetchPropertyCallback* callback =
         new ProxyFetchPropertyCallback(
-            cache_type, *property_cache, RewriteTestBase::kTestDomain,
+            cache_type, property_cache, RewriteTestBase::kTestDomain,
             UserAgentMatcher::kDesktop, collector, mutex);
     EXPECT_EQ(cache_type, callback->cache_type());
     collector->AddCallback(callback);

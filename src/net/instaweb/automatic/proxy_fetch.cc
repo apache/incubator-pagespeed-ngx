@@ -179,12 +179,12 @@ void ProxyFetchFactory::RegisterFinishedFetch(ProxyFetch* fetch) {
 
 ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(
     CacheType cache_type,
-    const PropertyCache& property_cache,
+    PropertyCache* property_cache,
     const StringPiece& key,
     UserAgentMatcher::DeviceType device_type,
     ProxyFetchPropertyCallbackCollector* collector,
     AbstractMutex* mutex)
-    : PropertyPage(mutex, property_cache, key, collector->request_context()),
+    : PropertyPage(key, collector->request_context(), mutex, property_cache),
       cache_type_(cache_type),
       device_type_(device_type),
       collector_(collector) {
@@ -354,10 +354,10 @@ void ProxyFetchPropertyCallbackCollector::UpdateStatusCodeInPropertyCache() {
     const PropertyCache::Cohort* dom = pcache->GetCohort(
         RewriteDriver::kDomCohort);
     if (dom != NULL) {
-      PropertyValue* value = page->GetProperty(
-          dom, RewriteDriver::kStatusCodePropertyName);
-      pcache->UpdateValue(IntegerToString(status_code_), value);
-      pcache->WriteCohort(dom, page);
+      page->UpdateValue(
+          dom, RewriteDriver::kStatusCodePropertyName,
+          IntegerToString(status_code_));
+      page->WriteCohort(dom);
     } else {
       server_context_->message_handler()->Message(
           kInfo, "dom cohort is not available for url %s.", url_.c_str());

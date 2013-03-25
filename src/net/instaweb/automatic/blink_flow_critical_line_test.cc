@@ -408,8 +408,8 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
     if (page == NULL || cohort == NULL) {
       return NULL;
     }
-    PropertyValue* pvalue = page->GetProperty(cohort,
-                                              "blink_critical_line_data");
+    PropertyValue* pvalue = page->GetProperty(
+        cohort, "blink_critical_line_data");
     if (!pvalue->has_value() || pcache_->IsExpired(pvalue, cache_time_ms)) {
       return NULL;
     }
@@ -452,10 +452,8 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
     }
     GoogleString buf;
     blink_critical_line_data_->SerializeToString(&buf);
-    PropertyValue* pvalue = page->GetProperty(cohort,
-                                              "blink_critical_line_data");
-    pcache_->UpdateValue(buf, pvalue);
-    pcache_->WriteCohort(cohort, page);
+    page->UpdateValue(cohort, "blink_critical_line_data", buf);
+    page->WriteCohort(cohort);
   }
 
   virtual bool UpdateDiffInfo(

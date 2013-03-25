@@ -121,10 +121,10 @@ PropertyCacheUpdateResult UpdateInPropertyCache(const T& value,
     return kPropertyCacheUpdateEncodeError;
   }
 
-  cache->UpdateValue(buf, property_value);
+  page->UpdateValue(cohort, property_name, buf);
 
   if (write_cohort) {
-    cache->WriteCohort(cohort, page);
+    page->WriteCohort(cohort);
   }
 
   return kPropertyCacheUpdateOk;

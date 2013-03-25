@@ -175,6 +175,14 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
       "</noscript>"
       "<script type=\"text/javascript\">//<![CDATA[\n",
       CriticalCssFilter::kAddStylesScript,
+      "window['pagespeed'] = window['pagespeed'] || {};"
+      "window['pagespeed']['criticalCss'] = {"
+      "  'total_critical_inlined_size': 64,"
+      "  'total_original_external_size': 6,"
+      "  'total_overhead_size': 85,"
+      "  'num_replaced_links': 3,"
+      "  'num_unreplaced_links': 0"
+      "};"
       "\n//]]></script>");
 
   finder_->AddCriticalCss("http://test.com/a.css", "a_used {color: azure }", 1);
@@ -212,6 +220,14 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
       "</noscript>"
       "<script type=\"text/javascript\">//<![CDATA[\n",
       CriticalCssFilter::kAddStylesScript,
+      "window['pagespeed'] = window['pagespeed'] || {};"
+      "window['pagespeed']['criticalCss'] = {"
+      "  'total_critical_inlined_size': 21,"
+      "  'total_original_external_size': 33,"
+      "  'total_overhead_size': 21,"
+      "  'num_replaced_links': 1,"
+      "  'num_unreplaced_links': 1"
+      "};"
       "\n//]]></script>");
 
   finder_->AddCriticalCss("http://test.com/c.css", "c_used {color: cyan }", 33);
@@ -253,6 +269,14 @@ TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
       "</noscript>"
       "<script type=\"text/javascript\">//<![CDATA[\n",
       CriticalCssFilter::kAddStylesScript,
+      "window['pagespeed'] = window['pagespeed'] || {};"
+      "window['pagespeed']['criticalCss'] = {"
+      "  'total_critical_inlined_size': 21,"
+      "  'total_original_external_size': 10,"
+      "  'total_overhead_size': 42,"
+      "  'num_replaced_links': 2,"
+      "  'num_unreplaced_links': 1"
+      "};"
       "\n//]]></script>");
 
   // Skip adding a critical CSS for a.css.
@@ -303,18 +327,6 @@ TEST_F(CriticalCssFilterTest, DebugFilterAddsStats) {
       "original_src=http://test.com/c.css\n"
       "-->\n"
       "</body>\n"
-      "<!--Summary Critical CSS stats:\n"
-      "total_critical_inlined_size=19\n"
-      "total_original_external_size=555\n"
-      "\n"
-      "num_delayed_links=3\n"
-      "num_repeated_style_blocks=1\n"
-      "repeated_style_blocks_size=21\n"
-      "\n"
-      "unhandled_import_count=8\n"
-      "unhandled_link_count=11\n"
-      "exception_count=5\n"
-      "-->"
       "<noscript id=\"psa_add_styles\">"
       "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
       "<link rel='stylesheet' href='b.css' type='text/css'>"
@@ -323,7 +335,24 @@ TEST_F(CriticalCssFilterTest, DebugFilterAddsStats) {
       "</noscript>"
       "<script type=\"text/javascript\">//<![CDATA[\n",
       CriticalCssFilter::kAddStylesScript,
-      "\n//]]></script>");
+      "window['pagespeed'] = window['pagespeed'] || {};"
+      "window['pagespeed']['criticalCss'] = {"
+      "  'total_critical_inlined_size': 19,"
+      "  'total_original_external_size': 555,"
+      "  'total_overhead_size': 40,"
+      "  'num_replaced_links': 2,"
+      "  'num_unreplaced_links': 1"
+      "};"
+      "\n//]]></script>"
+      "<!--Additional Critical CSS stats:\n"
+      "  num_repeated_style_blocks=1\n"
+      "  repeated_style_blocks_size=21\n"
+      "\n"
+      "From computing the critical CSS:\n"
+      "  unhandled_import_count=8\n"
+      "  unhandled_link_count=11\n"
+      "  exception_count=5\n"
+      "-->");
 
   // Skip adding a critical CSS for a.css.
   //     In the filtered html, the original link is left in place and

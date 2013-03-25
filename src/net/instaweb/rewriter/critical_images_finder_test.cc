@@ -99,8 +99,7 @@ TEST_F(CriticalImagesFinderTest,
   const PropertyCache::Cohort* cohort = page_property_cache()->GetCohort(
       finder()->GetCriticalImagesCohort());
   EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
-  page_property_cache()->WriteCohort(
-      cohort, rewrite_driver()->property_page());
+  rewrite_driver()->property_page()->WriteCohort(cohort);
 }
 
 TEST_F(CriticalImagesFinderTest, UpdateCriticalImagesCacheEntrySetNULL) {
@@ -155,8 +154,7 @@ TEST_F(CriticalImagesFinderTest, GetCriticalImagesTest) {
   const PropertyCache::Cohort* cohort = page_property_cache()->GetCohort(
       finder()->GetCriticalImagesCohort());
   // Write the updated value to the pcache.
-  page_property_cache()->WriteCohort(
-      cohort, rewrite_driver()->property_page());
+  rewrite_driver()->property_page()->WriteCohort(cohort);
   EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
 
   // critical_images() is NULL because there is no previous call to

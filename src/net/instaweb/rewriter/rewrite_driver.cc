@@ -2119,7 +2119,7 @@ void RewriteDriver::WriteDomCohortIntoPropertyCache() {
       // make more sense for this check to be done at the property cache or
       // lower level.
       if (!server_context_->shutting_down()) {
-        pcache->WriteCohort(dom_cohort, page);
+        page->WriteCohort(dom_cohort);
       }
     }
   }
@@ -2145,8 +2145,7 @@ void RewriteDriver::UpdatePropertyValueInDomCohort(StringPiece property_name,
     LOG(DFATAL) << "dom cohort is not available.";
     return;
   }
-  PropertyValue* value = property_page()->GetProperty(dom, property_name);
-  pcache->UpdateValue(property_value, value);
+  property_page()->UpdateValue(dom, property_name, property_value);
 }
 
 void RewriteDriver::Cleanup() {

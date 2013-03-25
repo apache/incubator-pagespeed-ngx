@@ -56,6 +56,7 @@ class CriticalCssFilter : public EmptyHtmlFilter {
   virtual ~CriticalCssFilter();
 
   static const char kAddStylesScript[];
+  static const char kStatsScriptTemplate[];
 
   // Overridden from EmptyHtmlFilter:
   virtual void StartDocument();
@@ -90,13 +91,13 @@ class CriticalCssFilter : public EmptyHtmlFilter {
   CssElementVector css_elements_;
   CssStyleElement* current_style_element_;
   bool has_critical_css_;
-  bool has_critical_css_match_;
 
   int total_critical_size_;
   int total_original_size_;
   int repeated_style_blocks_size_;
   int num_repeated_style_blocks_;
-  int num_delayed_links_;
+  int num_links_;
+  int num_replaced_links_;
 
   DISALLOW_COPY_AND_ASSIGN(CriticalCssFilter);
 };

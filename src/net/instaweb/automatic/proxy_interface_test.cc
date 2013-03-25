@@ -183,7 +183,8 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
         RewriteDriver::kDomCohort);
     PropertyValue* value;
     pcache->Read(page.get());
-    value = page->GetProperty(cohort, RewriteDriver::kStatusCodePropertyName);
+    value = page->GetProperty(
+        cohort, RewriteDriver::kStatusCodePropertyName);
     int status_code;
     EXPECT_TRUE(StringToInt(value->value().as_string(), &status_code));
     return status_code;

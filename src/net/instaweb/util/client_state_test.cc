@@ -121,7 +121,7 @@ TEST_F(ClientStateTest, PropertyCacheWorks) {
 
   // Prime the PropertyCache with an initial read.
   scoped_ptr<MockPropertyPage> page1(
-      new MockPropertyPage(thread_system_.get(), property_cache_, client_id1));
+      new MockPropertyPage(thread_system_.get(), &property_cache_, client_id1));
   property_cache_.Read(page1.get());
   PropertyValue* property = page1.get()->GetProperty(
       cohort_, ClientState::kClientStatePropertyValue);
@@ -132,13 +132,14 @@ TEST_F(ClientStateTest, PropertyCacheWorks) {
   client_state_.Pack(&proto);
   GoogleString bytes;
   EXPECT_TRUE(proto.SerializeToString(&bytes));
-  property_cache_.UpdateValue(bytes, property);
-  property_cache_.WriteCohort(cohort_, page1.get());
+  page1->UpdateValue(
+      cohort_, ClientState::kClientStatePropertyValue, bytes);
+  page1->WriteCohort(cohort_);
   EXPECT_TRUE(property->has_value());
 
   // Read it back and test that we got the right thing.
   MockPropertyPage* page2 = new MockPropertyPage(
-      thread_system_.get(), property_cache_, client_id1);
+      thread_system_.get(), &property_cache_, client_id1);
   property_cache_.Read(page2);
   ClientState new_clientstate;
   new_clientstate.InitFromPropertyCache(
@@ -150,7 +151,7 @@ TEST_F(ClientStateTest, PropertyCacheWorks) {
   // an initial read.
   GoogleString client_id2 = "client_id2";
   MockPropertyPage* page4 = new MockPropertyPage(
-      thread_system_.get(), property_cache_, client_id2);
+      thread_system_.get(), &property_cache_, client_id2);
   property_cache_.Read(page4);
   property = page4->GetProperty(
       cohort_, ClientState::kClientStatePropertyValue);

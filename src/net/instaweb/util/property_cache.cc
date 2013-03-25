@@ -278,20 +278,6 @@ void PropertyValue::InitFromProtobuf(const PropertyValueProtobuf& value) {
   was_read_ = true;
 }
 
-void PropertyCache::UpdateValue(const StringPiece& value,
-                                PropertyValue* property) const {
-  int64 now_ms = timer_->NowMs();
-
-  // TODO(jmarantz): the policy of not having old timestamps override
-  // new timestamps can cause us to discard some writes when
-  // system-time jumps backwards, which can happen for various
-  // reasons.  I think will need to revisit this policy as we learn how
-  // to use the property cache & get the dynamics we want.
-  if (property->write_timestamp_ms() <= now_ms) {
-    property->SetValue(value, now_ms);
-  }
-}
-
 void PropertyValue::SetValue(const StringPiece& value, int64 now_ms) {
   if (!valid_ || (value != proto_->body())) {
     valid_ = true;
@@ -383,19 +369,6 @@ bool PropertyValue::IsIndexOfLeastSetBitSmaller(uint64 value, int index) {
   return ((value & ~(value - 1)) < check_mask);
 }
 
-void PropertyCache::WriteCohort(const PropertyCache::Cohort* cohort,
-                                PropertyPage* page) const {
-  if (enabled_) {
-    DCHECK(GetCohort(cohort->name()) == cohort);
-    GoogleString value;
-    if (page->EncodeCacheEntry(cohort, &value) ||
-        page->HasPropertyValueDeleted(cohort)) {
-      const GoogleString cache_key = CacheKey(page->key(), cohort);
-      cohort->cache()->PutSwappingString(cache_key, &value);
-    }
-  }
-}
-
 bool PropertyCache::IsExpired(const PropertyValue* property_value,
                               int64 ttl_ms) const {
   DCHECK(property_value->has_value());
@@ -446,14 +419,15 @@ void PropertyCache::InitCohortStats(const GoogleString& cohort,
   CacheStats::InitStats(GetStatsPrefix(cohort), statistics);
 }
 
-PropertyPage::PropertyPage(AbstractMutex* mutex,
-                           const PropertyCache& property_cache,
-                           const StringPiece& key,
-                           const RequestContextPtr& request_context)
+PropertyPage::PropertyPage(const StringPiece& key,
+                           const RequestContextPtr& request_context,
+                           AbstractMutex* mutex,
+                           PropertyCache* property_cache)
       : mutex_(mutex),
         key_(key.as_string()),
         request_context_(request_context),
-        was_read_(false) {
+        was_read_(false),
+        property_cache_(property_cache) {
 }
 
 PropertyPage::~PropertyPage() {
@@ -493,6 +467,33 @@ PropertyValue* PropertyPage::GetProperty(const PropertyCache::Cohort* cohort,
     property->set_was_read(was_read_);
   }
   return property;
+}
+
+void PropertyPage::UpdateValue(
+    const PropertyCache::Cohort* cohort, const StringPiece& property_name,
+    const StringPiece& value) {
+  PropertyValue* property = GetProperty(cohort, property_name);
+  int64 now_ms = property_cache_->timer()->NowMs();
+
+  // TODO(jmarantz): the policy of not having old timestamps override
+  // new timestamps can cause us to discard some writes when
+  // system-time jumps backwards, which can happen for various
+  // reasons.  I think will need to revisit this policy as we learn how
+  // to use the property cache & get the dynamics we want.
+  if (property->write_timestamp_ms() <= now_ms) {
+    property->SetValue(value, now_ms);
+  }
+}
+
+void PropertyPage::WriteCohort(const PropertyCache::Cohort* cohort) {
+  if (property_cache_->enabled()) {
+    GoogleString value;
+    if (EncodeCacheEntry(cohort, &value) ||
+        HasPropertyValueDeleted(cohort)) {
+      const GoogleString cache_key = property_cache_->CacheKey(key(), cohort);
+      cohort->cache()->PutSwappingString(cache_key, &value);
+    }
+  }
 }
 
 CacheInterface::KeyState PropertyPage::GetCacheState(

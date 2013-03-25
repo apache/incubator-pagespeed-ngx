@@ -1273,7 +1273,8 @@ bool ImageRewriteFilter::StoreUrlInPropertyCache(const StringPiece& url) {
   if (value->has_value()) {
     StrAppend(&new_value, ",", value->value());
   }
-  pcache->UpdateValue(new_value, value);
+  property_page->UpdateValue(
+      cohort, kInlinableImageUrlsPropertyName, new_value);
   return true;
 }
 

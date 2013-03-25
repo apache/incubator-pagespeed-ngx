@@ -61,7 +61,7 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     selectors.add_critical_selectors("*");
     server_context()->critical_selector_finder()->
         WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
-    pcache_->WriteCohort(pcache_->GetCohort(kTestCohort), page_);
+    page_->WriteCohort(pcache_->GetCohort(kTestCohort));
 
     // Some weird but valid CSS.
     SetResponseWithDefaultHeaders("a.css", kContentTypeCss,
