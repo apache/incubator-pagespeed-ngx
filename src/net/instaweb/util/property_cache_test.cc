@@ -441,7 +441,6 @@ TEST_F(PropertyCacheTest, IsCacheValidTwoCohorts) {
       kCohortName2);
   MockPropertyPage page(thread_system_.get(), &property_cache_, kCacheKey1);
   property_cache_.Read(&page);
-  PropertyValue* property = page.GetProperty(cohort_, kPropertyName1);
   page.UpdateValue(cohort_, kPropertyName1, "Value1");
   timer_.AdvanceMs(2);
   page.UpdateValue(cohort2, kPropertyName2, "Value2");
