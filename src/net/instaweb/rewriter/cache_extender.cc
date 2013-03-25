@@ -148,11 +148,12 @@ void CacheExtender::StartElementImpl(HtmlElement* element) {
       break;
     default:
       // Does the url in the attribute end in .pdf, ignoring query params?
-      if (href != NULL && href->DecodedValueOrNull() != NULL) {
+      if (href != NULL && href->DecodedValueOrNull() != NULL
+          && driver_->MayCacheExtendPdfs()) {
         GoogleUrl url(driver_->base_url(), href->DecodedValueOrNull());
         if (url.is_valid() && StringCaseEndsWith(
                 url.LeafSansQuery(), kContentTypePdf.file_extension())) {
-          may_load = driver_->MayCacheExtendPdfs();
+          may_load = true;
         }
       }
       break;
