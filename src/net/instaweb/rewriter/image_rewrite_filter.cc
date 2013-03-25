@@ -1218,9 +1218,11 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   }
   // TODO(bharathbhushan): Add logging for original resource size, input format,
   // output format.
+  // Absolutify the image url for logging.
+  GoogleUrl image_gurl(driver_->base_url(), src_value);
   driver_->log_record()->LogImageRewriteActivity(
       LoggingId(),
-      src_value,
+      image_gurl.spec_c_str(),
       rewrote_url ? RewriterInfo::APPLIED_OK : RewriterInfo::NOT_APPLIED,
       image_inlined,
       is_critical_image,

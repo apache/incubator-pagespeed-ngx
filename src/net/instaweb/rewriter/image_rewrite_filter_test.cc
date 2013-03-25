@@ -388,6 +388,18 @@ class ImageRewriteTest : public RewriteTestBase {
                          const char* initial_dims, const char* final_dims,
                          bool expect_rewritten, bool expect_inline) {
     GoogleString initial_url = StrCat(kTestDomain, name);
+    TestSingleRewriteWithoutAbs(initial_url, name, input_type, output_type,
+        initial_dims, final_dims, expect_rewritten, expect_inline);
+  }
+
+  void TestSingleRewriteWithoutAbs(const GoogleString& initial_url,
+                                   const StringPiece& name,
+                                   const ContentType& input_type,
+                                   const ContentType& output_type,
+                                   const char* initial_dims,
+                                   const char* final_dims,
+                                   bool expect_rewritten,
+                                   bool expect_inline) {
     GoogleString page_url = StrCat(kTestDomain, "test.html");
     AddFileToMockFetcher(initial_url, name, input_type, 100);
 
@@ -1392,7 +1404,8 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimizeAndUrlLogging) {
   // size information, which is now embedded in the image itself anyway.
   TestSingleRewrite(kChefGifFile, kContentTypeGif, kContentTypePng,
                     kResizedDims, "", true, true);
-
+  TestSingleRewriteWithoutAbs(kChefGifFile, kChefGifFile, kContentTypeGif,
+                              kContentTypePng, kResizedDims, "", true, true);
   ScopedMutex lock(rewrite_driver()->log_record()->mutex());
   const RewriterInfo& rewriter_info = logging_info()->rewriter_info(0);
   EXPECT_EQ(RewriterInfo::APPLIED_OK, rewriter_info.status());
