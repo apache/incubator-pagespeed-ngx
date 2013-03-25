@@ -28,7 +28,7 @@ namespace net_instaweb {
 
 // We escape backslash, double-quote, CR and LF while forming a string
 // from the code. Single quotes are escaped as well, if we don't know we're
-// explicitly double-quoting.
+// explicitly double-quoting.  Appends to *escaped.
 //
 // This is /almost/ completely right: U+2028 and U+2029 are
 // line terminators as well (ECMA 262-5 --- 7.3, 7.8.4), so should really be
@@ -36,6 +36,12 @@ namespace net_instaweb {
 void EscapeToJsStringLiteral(const StringPiece& original,
                              bool add_quotes,
                              GoogleString* escaped) {
+  // Optimistically assume no escaping will be required and reserve enough space
+  // for that result.  This assumes that either escaped is empty (or nearly so),
+  // or reserve(...) behaves sanely and only vector doubles rather than
+  // increasing size linearly.  The latter is true in gcc at least (but not true
+  // of some implementations of std::vector, thus the caveat).
+  escaped->reserve(escaped->size() + original.size() + (add_quotes ? 2 : 0));
   if (add_quotes) {
     (*escaped) += "\"";
   }
