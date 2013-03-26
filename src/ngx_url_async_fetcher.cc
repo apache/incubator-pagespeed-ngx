@@ -309,16 +309,14 @@ namespace net_instaweb {
       return false;
     }
     
-    fprintf(stderr, "calling fetch->Start for [%s]", fetch->str_url());
     bool started = fetch->Start(this);
     if (started) {
       active_fetches_.Add(fetch);
       fetchers_count_++;
     } else {
-      LOG(WARNING) << "Fetch failed to start: " << fetch->str_url();
-      // TODO(oschaaf): test this code path. it seems fetch::init always
-      // calls callbackdone when it return false
-      //fetch->CallbackDone(false);
+      message_handler_->Message(kWarning, "Fetch failed to start: %s",
+                                fetch->str_url());
+      delete fetch;
     }
     return started;
   }
@@ -328,6 +326,7 @@ namespace net_instaweb {
                     fetch->str_url());
     byte_count_ += fetch->bytes_received();
     fetchers_count_--;
+    delete fetch;
   }
 
   void NgxUrlAsyncFetcher::PrintActiveFetches(MessageHandler* handler) const {
