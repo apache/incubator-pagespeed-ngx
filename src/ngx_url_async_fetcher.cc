@@ -122,9 +122,11 @@ namespace net_instaweb {
   }
 
   NgxUrlAsyncFetcher::~NgxUrlAsyncFetcher() {
+    message_handler_->Message(kInfo,"Destruct ngxurlasyncfetcher [%d] fetchers",
+                              ApproximateNumActiveFetches());
     CancelActiveFetches();
     active_fetches_.DeleteAll();
-
+    
     // TODO(oschaaf): Do we always own this? It seems that
     // we may need to track ownership if we get the pool
     // from the parent async fetcher pass in during construction
@@ -323,27 +325,40 @@ namespace net_instaweb {
       fetch->CallbackDone(false);
       return false;
     }
+    message_handler_->Message(kInfo, "Fetch [%p] start...: %s", fetch,
+                              fetch->str_url());
     
     bool started = fetch->Start(this);
     if (started) {
+      message_handler_->Message(kInfo, "Fetch start OK: %s",
+                                fetch->str_url());
       active_fetches_.Add(fetch);
       fetchers_count_++;
     } else {
       message_handler_->Message(kWarning, "Fetch failed to start: %s",
                                 fetch->str_url());
-      delete fetch;
+      active_fetches_.Add(fetch);
+      fetchers_count_++;
+      fetch->CallbackDone(false);
+      //delete fetch;
     }
     return started;
   }
 
   void NgxUrlAsyncFetcher::FetchComplete(NgxFetch* fetch) {
     // TODO(oschaaf): do we need to lock here?
-    fetch->message_handler()->Message(kInfo, "Fetch complete:%s",
+    fetch->message_handler()->Message(kInfo, "Fetch [%p] complete:%s", fetch,
                     fetch->str_url());
     byte_count_ += fetch->bytes_received();
-    fetchers_count_--;
-    active_fetches_.Remove(fetch);
-    delete fetch;
+    {
+      // OS: -> this deadlocks with startfetch() on the non-happy flow.
+      //ScopedMutex lock(mutex_);
+      fetchers_count_--;
+      active_fetches_.Remove(fetch);
+      PrintActiveFetches(fetch->message_handler());
+      delete fetch;
+
+    }
   }
 
   void NgxUrlAsyncFetcher::PrintActiveFetches(MessageHandler* handler) const {
