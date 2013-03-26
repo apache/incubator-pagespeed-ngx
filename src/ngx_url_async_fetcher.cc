@@ -274,9 +274,14 @@ namespace net_instaweb {
       return;
     }
 
-    ScopedMutex lock(fetcher->mutex_);
+    fprintf(stderr, "prelock ngx async url command handler received [%c]\n", command);
 
-    fprintf(stderr, "ngx async url command handler received [%c]\n", command);
+    // TODO: document locking here. It's very easy to deadlock at this
+    // point
+    //ScopedMutex lock(fetcher->mutex_);
+    std::vector<NgxFetch*> to_start;
+    
+    fprintf(stderr, "postlock ngx async url command handler received [%c]\n", command);
 
     switch (command) {
       // All the new fetches are appended in the pending_fetches.
@@ -287,7 +292,9 @@ namespace net_instaweb {
               e = fetcher->pending_fetches_.end(); p != e; p++) {
             NgxFetch* fetch = *p;
             fetcher->StartFetch(fetch);
+            to_start.push_back(fetch);
           }
+          ScopedMutex lock(fetcher->mutex_);
           fetcher->pending_fetches_.Clear();
         }
         CHECK(ngx_handle_read_event(cmdev, 0) == NGX_OK);
@@ -320,45 +327,43 @@ namespace net_instaweb {
   // It's locked in the CommandHandler.
   // Don't need add the mutex here.
   bool NgxUrlAsyncFetcher::StartFetch(NgxFetch* fetch) {
+    // ScopedMutex lock(mutex_);
+    mutex_->Lock();
+    // TODO: doc this, why we always add fetch to the active fetchers
+    active_fetches_.Add(fetch);
+    fetchers_count_++;
+    mutex_->Unlock();
+     
     // Don't initiate the fetch when we are shutting down
     if (shutdown_) {
       fetch->CallbackDone(false);
       return false;
     }
-    message_handler_->Message(kInfo, "Fetch [%p] start...: %s", fetch,
-                              fetch->str_url());
     
     bool started = fetch->Start(this);
-    if (started) {
-      message_handler_->Message(kInfo, "Fetch start OK: %s",
-                                fetch->str_url());
-      active_fetches_.Add(fetch);
-      fetchers_count_++;
-    } else {
+
+    if (!started) {
       message_handler_->Message(kWarning, "Fetch failed to start: %s",
                                 fetch->str_url());
-      active_fetches_.Add(fetch);
-      fetchers_count_++;
       fetch->CallbackDone(false);
-      //delete fetch;
     }
+
     return started;
   }
 
   void NgxUrlAsyncFetcher::FetchComplete(NgxFetch* fetch) {
-    // TODO(oschaaf): do we need to lock here?
-    fetch->message_handler()->Message(kInfo, "Fetch [%p] complete:%s", fetch,
+    fetch->message_handler()->Message(kInfo, "Fetch [%p] complete prelock:%s", fetch,
+                    fetch->str_url());
+
+    ScopedMutex lock(mutex_);
+
+    fetch->message_handler()->Message(kInfo, "Fetch [%p] complete postlock:%s", fetch,
                     fetch->str_url());
     byte_count_ += fetch->bytes_received();
-    {
-      // OS: -> this deadlocks with startfetch() on the non-happy flow.
-      //ScopedMutex lock(mutex_);
-      fetchers_count_--;
-      active_fetches_.Remove(fetch);
-      PrintActiveFetches(fetch->message_handler());
-      delete fetch;
-
-    }
+    fetchers_count_--;
+    active_fetches_.Remove(fetch);
+    delete fetch;
+    PrintActiveFetches(fetch->message_handler());
   }
 
   void NgxUrlAsyncFetcher::PrintActiveFetches(MessageHandler* handler) const {
