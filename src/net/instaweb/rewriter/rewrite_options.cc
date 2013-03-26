@@ -205,6 +205,9 @@ const int RewriteOptions::kDefaultDomainShardCount = 0;
 const int64 RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs =
     Timer::kMinuteMs;
 
+// By default, reinstrument every 6 hours.
+const int RewriteOptions::kDefaultBeaconReinstrumentTimeSec = 6 * 60 * 60;
+
 const char* RewriteOptions::option_enum_to_name_array_[
     RewriteOptions::kEndOfOptions];
 
@@ -910,6 +913,12 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Enable inserting client-side critical images detection "
       "js for image optimization filters.");
+  AddBaseProperty(
+      kDefaultBeaconReinstrumentTimeSec,
+      &RewriteOptions::beacon_reinstrument_time_sec_, "brts",
+      kBeaconReinstrumentTimeSec,
+      kDirectoryScope,
+      "How often (in seconds) to reinstrument pages with beacons.");
   AddBaseProperty(
       false, &RewriteOptions::log_rewrite_timing_, "lr",
       kLogRewriteTiming,

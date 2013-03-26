@@ -54,6 +54,7 @@ class CriticalImagesFinder {
   static const char kCriticalImagesValidCount[];
   static const char kCriticalImagesExpiredCount[];
   static const char kCriticalImagesNotFoundCount[];
+  static const char kCriticalImagesPropertyName[];
 
   explicit CriticalImagesFinder(Statistics* stats);
   virtual ~CriticalImagesFinder();
@@ -133,9 +134,6 @@ class CriticalImagesFinder {
 
 
  private:
-  static const char kCriticalImagesPropertyName[];
-  static const char kCssCriticalImagesPropertyName[];
-
   Variable* critical_images_valid_count_;
   Variable* critical_images_expired_count_;
   Variable* critical_images_not_found_count_;

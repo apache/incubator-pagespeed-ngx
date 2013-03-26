@@ -181,6 +181,7 @@ class RewriteOptions {
     kAlwaysRewriteCss,
     kAnalyticsID,
     kAvoidRenamingIntrospectiveJavascript,
+    kBeaconReinstrumentTimeSec,
     kBeaconUrl,
     kBlinkDesktopUserAgent,
     kBlinkMaxHtmlSizeRewritable,
@@ -553,6 +554,7 @@ class RewriteOptions {
     kOptionValueInvalid
   };
 
+  static const int kDefaultBeaconReinstrumentTimeSec;
   static const int64 kDefaultBlinkMaxHtmlSizeRewritable;
   static const int64 kDefaultCssFlattenMaxBytes;
   static const int64 kDefaultCssImageInlineMaxBytes;
@@ -1492,6 +1494,13 @@ class RewriteOptions {
   }
   bool critical_images_beacon_enabled() const {
     return critical_images_beacon_enabled_.value();
+  }
+
+  void set_beacon_reinstrument_beacon_time_sec(int x) {
+    set_option(x, &beacon_reinstrument_time_sec_);
+  }
+  int beacon_reinstrument_time_sec() const {
+    return beacon_reinstrument_time_sec_.value();
   }
 
   void set_lazyload_images_after_onload(bool x) {
@@ -2937,6 +2946,11 @@ class RewriteOptions {
   // X-PSA-Blocking-Rewrite header matches this key, the
   // RewriteDriver::fully_rewrite_on_flush flag will be set.
   Option<GoogleString> blocking_rewrite_key_;
+
+  // Indicates how often we should reinstrument pages with the critical images
+  // beacon, based on the time since the last write to the property cache by a
+  // beacon response.
+  Option<int> beacon_reinstrument_time_sec_;
 
   // Number of first N images for which low res image is generated. Negative
   // values will bypass image index check.

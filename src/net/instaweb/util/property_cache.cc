@@ -449,14 +449,15 @@ PropertyPage::~PropertyPage() {
   }
 }
 
-PropertyValue* PropertyPage::GetProperty(const PropertyCache::Cohort* cohort,
-                                         const StringPiece& property_name) {
+PropertyValue* PropertyPage::GetProperty(
+    const PropertyCache::Cohort* cohort,
+    const StringPiece& property_name) const {
   ScopedMutex lock(mutex_.get());
   DCHECK(was_read_);
   DCHECK(cohort != NULL);
   PropertyValue* property = NULL;
   GoogleString property_name_str(property_name.data(), property_name.size());
-  CohortDataMap::iterator cohort_itr = cohort_data_map_.find(cohort);
+  CohortDataMap::const_iterator cohort_itr = cohort_data_map_.find(cohort);
   CHECK(cohort_itr != cohort_data_map_.end());
   PropertyMapStruct* pmap_struct = cohort_itr->second;
   PropertyMap* pmap = &pmap_struct->pmap;

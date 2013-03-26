@@ -729,7 +729,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(168, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(169, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -745,6 +745,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("AvoidRenamingIntrospectiveJavascript",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAvoidRenamingIntrospectiveJavascript));
+  EXPECT_STREQ("BeaconReinstrumentTimeSec",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kBeaconReinstrumentTimeSec));
   EXPECT_STREQ("BeaconUrl",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kBeaconUrl));

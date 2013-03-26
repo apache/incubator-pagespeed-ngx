@@ -322,7 +322,7 @@ class PropertyPage {
   // batching to do so on the read.  However, properties are written back to
   // cache one Cohort at a time, via PropertyCache::WriteCohort.
   virtual PropertyValue* GetProperty(const PropertyCache::Cohort* cohort,
-                                     const StringPiece& property_name);
+                                     const StringPiece& property_name) const;
 
   // Updates the value of a property, tracking stability & discarding
   // writes when the existing data is more up-to-date.

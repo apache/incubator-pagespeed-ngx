@@ -18,9 +18,12 @@
 
 #include "net/instaweb/rewriter/public/critical_images_beacon_filter.h"
 
+#include <algorithm>
+
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -28,10 +31,12 @@
 #include "net/instaweb/util/public/escaping.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_hash.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -51,8 +56,45 @@ CriticalImagesBeaconFilter::CriticalImagesBeaconFilter(RewriteDriver* driver)
 CriticalImagesBeaconFilter::~CriticalImagesBeaconFilter() {}
 
 void CriticalImagesBeaconFilter::DetermineEnabled() {
-  set_is_enabled(
-      driver_->device_properties()->SupportsCriticalImagesBeacon());
+  // Default to not enabled.
+  set_is_enabled(false);
+
+  if (!driver_->device_properties()->SupportsCriticalImagesBeacon()) {
+    return;
+  }
+
+  const CriticalImagesFinder* finder =
+      driver_->server_context()->critical_images_finder();
+  // Instrument if we don't have any critical image information, or the critical
+  // image information in the pcache is close to expiring or older than
+  // RewriteOptions::beacon_reinstrument_time().
+  const PropertyCache* page_property_cache =
+      driver_->server_context()->page_property_cache();
+  const PropertyCache::Cohort* cohort =
+      page_property_cache->GetCohort(finder->GetCriticalImagesCohort());
+  const PropertyPage* page = driver_->property_page();
+  if (!driver_->server_context()->page_property_cache()->enabled() ||
+      (page == NULL) || (cohort == NULL)) {
+    return;
+  }
+  const PropertyValue* property_value = page->GetProperty(
+      cohort, CriticalImagesFinder::kCriticalImagesPropertyName);
+  if (!property_value->has_value()) {
+    set_is_enabled(true);
+    return;
+  }
+
+  // Check if the value is expired, or past our deadline for reinstrumenting.
+  int64 cache_ttl_ms =
+      driver_->options()->finder_properties_cache_expiration_time_ms();
+  int64 reinstrument_time =
+      driver_->options()->beacon_reinstrument_time_sec() * Timer::kSecondMs;
+  // TODO(jud): Add some randomness to when we reinstrument, so that
+  // instrumentation is not predictable.
+  int64 expiration_time = std::min(cache_ttl_ms, reinstrument_time);
+  if (page_property_cache->IsExpired(property_value, expiration_time)) {
+    set_is_enabled(true);
+  }
 }
 
 void CriticalImagesBeaconFilter::InitStats(Statistics* statistics) {
