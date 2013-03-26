@@ -44,7 +44,6 @@
 #include "net/instaweb/http/public/sync_fetcher_adapter.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
-#include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
@@ -183,8 +182,8 @@ void ApacheRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
   caches_->SetupCaches(server_context);
   server_context->set_enable_property_cache(enable_property_cache());
   PropertyCache* pcache = server_context->page_property_cache();
-  if (pcache->GetCohort(BeaconCriticalImagesFinder::kBeaconCohort) == NULL) {
-    pcache->AddCohort(BeaconCriticalImagesFinder::kBeaconCohort);
+  if (pcache->GetCohort(RewriteDriver::kBeaconCohort) == NULL) {
+    pcache->AddCohort(RewriteDriver::kBeaconCohort);
   }
   if (pcache->GetCohort(RewriteDriver::kDomCohort) == NULL) {
     pcache->AddCohort(RewriteDriver::kDomCohort);
@@ -629,8 +628,7 @@ void ApacheRewriteDriverFactory::InitStats(Statistics* statistics) {
   RateController::InitStats(statistics);
   SerfUrlAsyncFetcher::InitStats(statistics);
   SystemCaches::InitStats(statistics);
-  PropertyCache::InitCohortStats(BeaconCriticalImagesFinder::kBeaconCohort,
-                                 statistics);
+  PropertyCache::InitCohortStats(RewriteDriver::kBeaconCohort, statistics);
   PropertyCache::InitCohortStats(RewriteDriver::kDomCohort, statistics);
 
   statistics->AddVariable(kShutdownCount);

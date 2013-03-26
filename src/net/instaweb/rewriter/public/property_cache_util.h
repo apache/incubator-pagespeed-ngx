@@ -96,8 +96,6 @@ enum PropertyCacheUpdateResult {
 // cache managed by the rewrite driver with the new value of the proto T.
 // If 'write_cohort' is true, will also additionally write out the cohort
 // to the cache backing.
-//
-// TODO(morlovich): Provide a variant convenient for beacons.
 template<typename T>
 PropertyCacheUpdateResult UpdateInPropertyCache(const T& value,
                                                 RewriteDriver* driver,
@@ -105,8 +103,19 @@ PropertyCacheUpdateResult UpdateInPropertyCache(const T& value,
                                                 StringPiece property_name,
                                                 bool write_cohort) {
   const PropertyCache* cache = driver->server_context()->page_property_cache();
-  const PropertyCache::Cohort* cohort = cache->GetCohort(cohort_name);
   PropertyPage* page = driver->property_page();
+  return UpdateInPropertyCache(
+      value, cache, cohort_name, property_name, write_cohort, page);
+}
+
+template<typename T>
+PropertyCacheUpdateResult UpdateInPropertyCache(const T& value,
+                                                const PropertyCache* cache,
+                                                StringPiece cohort_name,
+                                                StringPiece property_name,
+                                                bool write_cohort,
+                                                PropertyPage* page) {
+  const PropertyCache::Cohort* cohort = cache->GetCohort(cohort_name);
   if (cohort == NULL || page == NULL) {
     return kPropertyCacheUpdateNotFound;
   }

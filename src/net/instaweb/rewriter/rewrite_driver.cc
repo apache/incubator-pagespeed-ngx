@@ -678,6 +678,7 @@ const char* RewriteDriver::kPassThroughRequestAttributes[5] = {
 };
 
 const char RewriteDriver::kDomCohort[] = "dom";
+const char RewriteDriver::kBeaconCohort[] = "beacon_cohort";
 const char RewriteDriver::kSubresourcesPropertyName[] = "subresources";
 const char RewriteDriver::kStatusCodePropertyName[] = "status_code";
 

@@ -26,6 +26,9 @@
 namespace net_instaweb {
 
 class CriticalSelectorSet;
+class MessageHandler;
+class PropertyCache;
+class PropertyPage;
 class RewriteDriver;
 class Statistics;
 class TimedVariable;
@@ -37,6 +40,7 @@ class CriticalSelectorFinder {
   static const char kCriticalSelectorsValidCount[];
   static const char kCriticalSelectorsExpiredCount[];
   static const char kCriticalSelectorsNotFoundCount[];
+  static const char kCriticalSelectorsPropertyName[];
 
   CriticalSelectorFinder(StringPiece cohort, Statistics* stats);
   virtual ~CriticalSelectorFinder();
@@ -53,14 +57,16 @@ class CriticalSelectorFinder {
   // This updates the value in the in-memory property page but does not write
   // the cohort.
   void WriteCriticalSelectorsToPropertyCache(
-      const CriticalSelectorSet& selectors, RewriteDriver* driver);
+      const StringSet& selector_set, RewriteDriver* driver);
+
+  void WriteCriticalSelectorsToPropertyCache(
+      const StringSet& selector_set, const PropertyCache* cache,
+      PropertyPage* page, MessageHandler* message_handler);
 
   // TODO(morlovich): Add an API for enabling the appropriate instrumentation
   // filter; once it's clear when the configuration resolving takes place.
 
  private:
-  static const char kCriticalSelectorsPropertyName[];
-
   GoogleString cohort_;
 
   TimedVariable* critical_selectors_valid_count_;

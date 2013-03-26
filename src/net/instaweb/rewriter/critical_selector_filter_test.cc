@@ -20,7 +20,6 @@
 
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
-#include "net/instaweb/rewriter/critical_selectors.pb.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -56,9 +55,9 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     ResetDriver();
 
     // Write out some initial critical selectors for us to work with.
-    CriticalSelectorSet selectors;
-    selectors.add_critical_selectors("div");
-    selectors.add_critical_selectors("*");
+    StringSet selectors;
+    selectors.insert("div");
+    selectors.insert("*");
     server_context()->critical_selector_finder()->
         WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
     page_->WriteCohort(pcache_->GetCohort(kTestCohort));

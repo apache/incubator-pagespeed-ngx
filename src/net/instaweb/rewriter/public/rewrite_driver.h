@@ -135,6 +135,8 @@ class RewriteDriver : public HtmlParse {
   // that are computed from the DOM, and thus can, if desired, be rewritten
   // on every HTML request.
   static const char kDomCohort[];
+  // The cohort for properties that are written by the beacon handler.
+  static const char kBeaconCohort[];
 
   // Property Names in DomCohort.
   // Tracks the timestamp when we last received a request for this url.

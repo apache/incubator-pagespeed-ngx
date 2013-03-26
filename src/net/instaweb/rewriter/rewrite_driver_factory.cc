@@ -325,7 +325,7 @@ CriticalImagesFinder* RewriteDriverFactory::DefaultCriticalImagesFinder() {
 }
 
 CriticalSelectorFinder* RewriteDriverFactory::DefaultCriticalSelectorFinder() {
-  return NULL;
+  return new CriticalSelectorFinder(RewriteDriver::kBeaconCohort, statistics());
 }
 
 FlushEarlyInfoFinder* RewriteDriverFactory::DefaultFlushEarlyInfoFinder() {

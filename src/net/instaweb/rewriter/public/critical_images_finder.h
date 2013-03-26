@@ -109,6 +109,8 @@ class CriticalImagesFinder {
   // useful in contexts like the beacon handler where the RewriteDriver for the
   // original request no longer exists. This will take ownership of
   // critical_images_set.
+  // TODO(jud): Modify to not take ownership of the sets. This will make the
+  // memory management of BeaconPropertyCallback clearer.
   bool UpdateCriticalImagesCacheEntry(
       PropertyPage* page,
       PropertyCache* page_property_cache,

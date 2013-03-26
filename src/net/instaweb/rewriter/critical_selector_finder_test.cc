@@ -78,12 +78,11 @@ TEST_F(CriticalSelectorFinderTest, StoreRestore) {
   EXPECT_TRUE(read_selectors.get() == NULL);
   CheckCriticalSelectorFinderStats(0, 0, 1);
 
-  CriticalSelectorSet selectors;
-  selectors.add_critical_selectors(".foo");
-  selectors.add_critical_selectors("#bar");
+  StringSet selectors;
+  selectors.insert(".foo");
+  selectors.insert("#bar");
 
-  finder_->WriteCriticalSelectorsToPropertyCache(
-      selectors, rewrite_driver());
+  finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
 
   const PropertyCache::Cohort* cohort =
       page_property_cache()->GetCohort(kCohort);
@@ -95,8 +94,8 @@ TEST_F(CriticalSelectorFinderTest, StoreRestore) {
       finder_->DecodeCriticalSelectorsFromPropertyCache(rewrite_driver()));
   ASSERT_TRUE(read_selectors.get() != NULL);
   ASSERT_EQ(2, read_selectors->critical_selectors_size());
-  EXPECT_EQ(".foo", read_selectors->critical_selectors(0));
-  EXPECT_EQ("#bar", read_selectors->critical_selectors(1));
+  EXPECT_EQ("#bar", read_selectors->critical_selectors(0));
+  EXPECT_EQ(".foo", read_selectors->critical_selectors(1));
   CheckCriticalSelectorFinderStats(1, 0, 1);
 
   // Now test expiration.

@@ -17,6 +17,8 @@
 
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 
+#include <set>
+
 #include "net/instaweb/rewriter/critical_selectors.pb.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -95,19 +97,38 @@ CriticalSelectorFinder::DecodeCriticalSelectorsFromPropertyCache(
 }
 
 void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
-    const CriticalSelectorSet& selectors, RewriteDriver* driver) {
+  const StringSet& selector_set, RewriteDriver* driver) {
+  WriteCriticalSelectorsToPropertyCache(
+      selector_set,
+      driver->server_context()->page_property_cache(),
+      driver->property_page(),
+      driver->message_handler());
+}
+
+void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
+    const StringSet& selector_set,
+    const PropertyCache* cache, PropertyPage* page,
+    MessageHandler* message_handler) {
+
+  // Construct the protobuf CriticalSelectorSet from the input StringSet to
+  // write to the property cache.
+  CriticalSelectorSet selectors;
+  for (StringSet::const_iterator i = selector_set.begin();
+       i != selector_set.end(); ++i) {
+    selectors.add_critical_selectors(*i);
+  }
+
   PropertyCacheUpdateResult result =
       UpdateInPropertyCache(
-          selectors, driver, cohort_, kCriticalSelectorsPropertyName,
-          false /* don't write cohort*/);
+          selectors, cache, cohort_, kCriticalSelectorsPropertyName,
+          false /* don't write cohort*/, page);
   switch (result) {
     case kPropertyCacheUpdateNotFound:
-      driver->message_handler()->Message(
-          kWarning, "Unable to get Critical css selector set for update; "
-          "url: %s", driver->url());
+      message_handler->Message(
+          kWarning, "Unable to get Critical css selector set for update.");
       break;
     case kPropertyCacheUpdateEncodeError:
-      driver->message_handler()->Message(
+      message_handler->Message(
           kWarning, "Trouble marshaling CriticalSelectorSet!?");
       break;
     case kPropertyCacheUpdateOk:

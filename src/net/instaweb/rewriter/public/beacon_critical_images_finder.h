@@ -53,7 +53,7 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
                                      RewriteDriver* driver);
 
   virtual const char* GetCriticalImagesCohort() const {
-    return kBeaconCohort;
+    return RewriteDriver::kBeaconCohort;
   }
 };
 

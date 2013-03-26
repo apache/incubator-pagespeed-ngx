@@ -37,7 +37,8 @@
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/critical_images.pb.h"
-#include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
+#include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
@@ -372,21 +373,33 @@ class ServerContextTest : public RewriteTestBase {
   // Send a beacon through ServerContext::HandleBeacon and verify that that
   // property cache entry for critical images was updated correctly.
   void TestBeacon(const StringSet* critical_image_hashes,
+                  const StringSet* critical_css_selectors,
                   StringPiece user_agent) {
     // Setup the beacon_url and pass to HandleBeacon.
     GoogleString options_hash = "1234";
     GoogleString beacon_url = StrCat(
         "url=http%3A%2F%2Fwww.example.com"
-        "&oh=", options_hash,
-        "&ci=");
-    bool first = true;
-    for (StringSet::const_iterator it = critical_image_hashes->begin();
-         it != critical_image_hashes->end(); ++it) {
-      if (!first) {
-        StrAppend(&beacon_url, ",");
+        "&oh=", options_hash);
+    if (critical_image_hashes != NULL) {
+      StrAppend(&beacon_url, "&ci=");
+      for (StringSet::const_iterator it = critical_image_hashes->begin();
+           it != critical_image_hashes->end(); ++it) {
+        if (it != critical_image_hashes->begin()) {
+          StrAppend(&beacon_url, ",");
+        }
+        StrAppend(&beacon_url, *it);
       }
-      StrAppend(&beacon_url, *it);
-      first = false;
+    }
+
+    if (critical_css_selectors != NULL) {
+      StrAppend(&beacon_url, "&cs=");
+      for (StringSet::const_iterator it = critical_css_selectors->begin();
+           it != critical_css_selectors->end(); ++it) {
+        if (it != critical_css_selectors->begin()) {
+          StrAppend(&beacon_url, ",");
+        }
+        StrAppend(&beacon_url, *it);
+      }
     }
 
     EXPECT_TRUE(server_context()->HandleBeacon(
@@ -411,12 +424,21 @@ class ServerContextTest : public RewriteTestBase {
     PropertyCache* property_cache = server_context()->page_property_cache();
     property_cache->Read(page.get());
     const PropertyCache::Cohort* cohort = property_cache->GetCohort(
-        BeaconCriticalImagesFinder::kBeaconCohort);
-    PropertyValue* property = page->GetProperty(cohort, "critical_images");
-    EXPECT_TRUE(property->has_value());
-    GoogleString hash = CreateCriticalImagePropertyCacheValue(
-        critical_image_hashes);
-    EXPECT_EQ(hash, property->value());
+        RewriteDriver::kBeaconCohort);
+    if (critical_image_hashes != NULL) {
+      PropertyValue* property = page->GetProperty(
+          cohort, CriticalImagesFinder::kCriticalImagesPropertyName);
+      EXPECT_TRUE(property->has_value());
+      GoogleString hash = CreateCriticalImagePropertyCacheValue(
+          critical_image_hashes);
+      EXPECT_EQ(hash, property->value());
+    }
+
+    if (critical_css_selectors != NULL) {
+      PropertyValue* property = page->GetProperty(
+          cohort, CriticalSelectorFinder::kCriticalSelectorsPropertyName);
+      EXPECT_TRUE(property->has_value());
+    }
   }
 };
 
@@ -1022,6 +1044,12 @@ TEST_F(ServerContextTest, TestHandleBeaconInvalidUrl) {
       UserAgentStrings::kChromeUserAgent, CreateRequestContext()));
 }
 
+TEST_F(ServerContextTest, TestHandleBeaconMissingValue) {
+  EXPECT_FALSE(server_context()->HandleBeacon(
+      "url=http%3A%2F%2Flocalhost%3A8080%2Findex.html&ets=load:",
+      UserAgentStrings::kChromeUserAgent, CreateRequestContext()));
+}
+
 TEST_F(ServerContextTest, TestHandleBeacon) {
   EXPECT_TRUE(server_context()->HandleBeacon(
       "url=http%3A%2F%2Flocalhost%3A8080%2Findex.html&ets=load:34",
@@ -1031,9 +1059,9 @@ TEST_F(ServerContextTest, TestHandleBeacon) {
 TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
   PropertyCache* property_cache = server_context()->page_property_cache();
   property_cache->set_enabled(true);
-  SetupCohort(property_cache, BeaconCriticalImagesFinder::kBeaconCohort);
+  SetupCohort(property_cache, RewriteDriver::kBeaconCohort);
   const PropertyCache::Cohort* cohort = property_cache->GetCohort(
-      BeaconCriticalImagesFinder::kBeaconCohort);
+      RewriteDriver::kBeaconCohort);
   GoogleString options_hash = "1234";
   UserAgentMatcher::DeviceType device_type =
       server_context()->user_agent_matcher()->GetDeviceTypeForUA(
@@ -1060,13 +1088,18 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
 
   StringSet critical_image_hashes;
   critical_image_hashes.insert(hash1);
-  TestBeacon(&critical_image_hashes, UserAgentStrings::kChromeUserAgent);
+  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kChromeUserAgent);
   critical_image_hashes.insert(hash2);
-  TestBeacon(&critical_image_hashes, UserAgentStrings::kChromeUserAgent);
+  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kChromeUserAgent);
   critical_image_hashes.clear();
   critical_image_hashes.insert(hash1);
-  TestBeacon(&critical_image_hashes, UserAgentStrings::kChromeUserAgent);
-  TestBeacon(&critical_image_hashes, UserAgentStrings::kIPhoneUserAgent);
+  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kChromeUserAgent);
+  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kIPhoneUserAgent);
+
+  StringSet critical_css_selector;
+  critical_css_selector.insert(".foo");
+  critical_css_selector.insert("#bar");
+  TestBeacon(NULL, &critical_css_selector, UserAgentStrings::kChromeUserAgent);
 }
 
 TEST_F(ServerContextTest, TestNotGenerated) {

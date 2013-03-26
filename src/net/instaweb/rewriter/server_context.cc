@@ -29,7 +29,6 @@
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
-#include "net/instaweb/rewriter/public/beacon_critical_images_finder.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
 #include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -77,6 +76,13 @@ class RewriteFilter;
 
 namespace {
 
+// Define the various query parameter keys sent by instrumentation beacons.
+const char kBeaconUrlQueryParam[] = "url";
+const char kBeaconEtsQueryParam[] = "ets";
+const char kBeaconOptionsHashQueryParam[] = "oh";
+const char kBeaconCriticalImagesQueryParam[] = "ci";
+const char kBeaconCriticalCssQueryParam[] = "cs";
+
 const int64 kRefreshExpirePercent = 80;
 
 // Attributes that should not be automatically copied from inputs to outputs
@@ -97,6 +103,15 @@ const char* kExcludedAttributes[] = {
   HttpAttributes::kVary
 };
 
+void CommaSeparatedStringToSet(StringPiece str, StringSet* set) {
+  StringPieceVector str_values;
+  SplitStringPieceToVector(str, ",", &str_values, true);
+  for (StringPieceVector::const_iterator it = str_values.begin();
+       it != str_values.end(); ++it) {
+    set->insert(it->as_string());
+  }
+}
+
 // Track a property cache lookup triggered from a beacon response. When
 // complete, Done will update and and writeback the beacon cohort with the
 // critical image set.
@@ -107,13 +122,15 @@ class BeaconPropertyCallback : public PropertyPage {
       const StringPiece& key,
       const RequestContextPtr& request_context,
       StringSet* html_critical_images_set,
-      StringSet* css_critical_images_set)
+      StringSet* css_critical_images_set,
+      StringSet* critical_css_selector_set)
       : PropertyPage(key, request_context,
                      server_context->thread_system()->NewMutex(),
                      server_context->page_property_cache()),
         server_context_(server_context),
         html_critical_images_set_(html_critical_images_set),
-        css_critical_images_set_(css_critical_images_set) {
+        css_critical_images_set_(css_critical_images_set),
+        critical_css_selector_set_(critical_css_selector_set) {
   }
 
   virtual ~BeaconPropertyCallback() {}
@@ -121,18 +138,33 @@ class BeaconPropertyCallback : public PropertyPage {
   virtual void Done(bool success) {
     const PropertyCache::Cohort* cohort =
         server_context_->page_property_cache()->GetCohort(
-            BeaconCriticalImagesFinder::kBeaconCohort);
+            RewriteDriver::kBeaconCohort);
+
     server_context_->critical_images_finder()->UpdateCriticalImagesCacheEntry(
         this, server_context_->page_property_cache(),
-        html_critical_images_set_, css_critical_images_set_);
+        html_critical_images_set_.release(),
+        css_critical_images_set_.release());
+    if (critical_css_selector_set_ != NULL) {
+      server_context_->critical_selector_finder()->
+          WriteCriticalSelectorsToPropertyCache(
+              *critical_css_selector_set_,
+              server_context_->page_property_cache(), this,
+              server_context_->message_handler());
+    }
+
     WriteCohort(cohort);
     delete this;
   }
 
  private:
   ServerContext* server_context_;
-  StringSet* html_critical_images_set_;
-  StringSet* css_critical_images_set_;
+  // Note that currently CriticalImagesFinder::UpdateCriticalImagesCacheEntry
+  // will take onwership of the StringSet* passed to it, while
+  // CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache does not.
+  // There is a TODO outstanding in CriticalImagesFinder to not take ownership.
+  scoped_ptr<StringSet> html_critical_images_set_;
+  scoped_ptr<StringSet> css_critical_images_set_;
+  scoped_ptr<StringSet> critical_css_selector_set_;
   DISALLOW_COPY_AND_ASSIGN(BeaconPropertyCallback);
 };
 
@@ -666,19 +698,19 @@ bool ServerContext::HandleBeacon(StringPiece params,
   // prevent attempting to parse the other.
   QueryParams query_params;
   query_params.Parse(params);
-  ConstStringStarVector param_values;
+  const GoogleString* query_param_str;
   GoogleUrl url_query_param;
 
-  if (query_params.Lookup("url", &param_values) && param_values.size() == 1 &&
-      param_values[0] != NULL) {
+  query_param_str = query_params.Lookup1(kBeaconUrlQueryParam);
+  if (query_param_str != NULL) {
     // The url parameter sent by the beacon is encoded with EncodeURIComponent,
     // so decode it.
-    url_query_param.Reset(UrlToFilenameEncoder::Unescape(*param_values[0]));
+    url_query_param.Reset(UrlToFilenameEncoder::Unescape(*query_param_str));
 
     if (!url_query_param.is_valid()) {
       message_handler_->Message(kWarning,
                                 "Invalid URL parameter in beacon: %s",
-                                param_values[0]->c_str());
+                                query_param_str->c_str());
       return false;
     }
   } else {
@@ -690,56 +722,64 @@ bool ServerContext::HandleBeacon(StringPiece params,
   bool status = true;
 
   // Extract the onload time from the ets query param.
-  param_values.clear();
-  if (query_params.Lookup("ets", &param_values) && param_values.size() == 1 &&
-      param_values[0] != NULL) {
+  query_param_str = query_params.Lookup1(kBeaconEtsQueryParam);
+  if (query_param_str != NULL) {
     int value = -1;
 
-    StringPiece param_value_str(*param_values[0]);
-    size_t index = param_value_str.find(":");
-    if (index < param_value_str.size()) {
-      StringPiece load_time_str = param_value_str.substr(index + 1);
-      StringToInt(load_time_str.as_string(), &value);
-    }
-    if (value < 0) {
-      status = false;
-    } else {
-      rewrite_stats_->total_page_load_ms()->Add(value);
-      rewrite_stats_->page_load_count()->Add(1);
-      rewrite_stats_->beacon_timings_ms_histogram()->Add(value);
+    size_t index = query_param_str->find(":");
+    if (index != GoogleString::npos && index < query_param_str->size()) {
+      GoogleString load_time_str = query_param_str->substr(index + 1);
+      if (!(StringToInt(load_time_str, &value) && value >= 0)) {
+        status = false;
+      } else {
+        rewrite_stats_->total_page_load_ms()->Add(value);
+        rewrite_stats_->page_load_count()->Add(1);
+        rewrite_stats_->beacon_timings_ms_histogram()->Add(value);
+      }
     }
   }
 
-  // Extract critical image URLs
-  param_values.clear();
-  if (page_property_cache() != NULL && page_property_cache()->enabled() &&
-      query_params.Lookup("ci", &param_values) &&
-      param_values.size() == 1 && param_values[0] != NULL) {
-    // Make sure the beacon has the options hash, which is included in the
-    // property cache key.
-    ConstStringStarVector options_hash_param;
-    if (!(query_params.Lookup("oh", &options_hash_param) &&
-          options_hash_param.size() == 1 &&
-          options_hash_param[0] != NULL)) {
-      return status;
-    }
-    // Beacon property callback takes ownership of both critical images sets.
-    scoped_ptr<StringSet> html_critical_images_set(new StringSet);
-    // TODO(jud): Add css critical image detection to the beacon.
-    scoped_ptr<StringSet> css_critical_images_set(NULL);
-    StringPieceVector crit_img_hashes;
-    SplitStringPieceToVector(*param_values[0], ",", &crit_img_hashes, true);
-    for (StringPieceVector::iterator i = crit_img_hashes.begin();
-         i != crit_img_hashes.end(); ++i) {
-      // Critical image URLs should be reported by the beacon as hashes, using a
-      // hash function that matches HashString in util/public/string_hash.h.
-      html_critical_images_set->insert(i->as_string());
-    }
+  // Process data from critical image and CSS beacons.
+  // Beacon contents are stored in the property cache, so bail out if it isn't
+  // enabled.
+  if (page_property_cache() == NULL || !page_property_cache()->enabled()) {
+    return status;
+  }
+  // Make sure the beacon has the options hash, which is included in the
+  // property cache key.
+  const GoogleString* options_hash_param =
+      query_params.Lookup1(kBeaconOptionsHashQueryParam);
+  if (options_hash_param == NULL) {
+    return status;
+  }
 
-    // Store the critical image information in the property cache. This is done
-    // by looking up the property page for the URL specified in the beacon, and
-    // performing the page update and cohort write in
-    // BeaconPropertyCallback::Done(). Done() is called when the read completes.
+  // Extract critical image URLs
+  // TODO(jud): Add css critical image detection to the beacon.
+  // Beacon property callback takes ownership of both critical images sets.
+  scoped_ptr<StringSet> html_critical_images_set;
+  scoped_ptr<StringSet> css_critical_images_set;
+  query_param_str = query_params.Lookup1(kBeaconCriticalImagesQueryParam);
+  if (query_param_str != NULL) {
+    html_critical_images_set.reset(new StringSet);
+    CommaSeparatedStringToSet(*query_param_str,
+                              html_critical_images_set.get());
+  }
+
+  scoped_ptr<StringSet> critical_css_selector_set;
+  query_param_str = query_params.Lookup1(kBeaconCriticalCssQueryParam);
+  if (query_param_str != NULL) {
+    critical_css_selector_set.reset(new StringSet);
+    CommaSeparatedStringToSet(*query_param_str,
+                              critical_css_selector_set.get());
+  }
+
+  // Store the critical information in the property cache. This is done by
+  // looking up the property page for the URL specified in the beacon, and
+  // performing the page update and cohort write in
+  // BeaconPropertyCallback::Done(). Done() is called when the read completes.
+  if (html_critical_images_set != NULL ||
+      css_critical_images_set != NULL ||
+      critical_css_selector_set != NULL) {
     UserAgentMatcher::DeviceType device_type =
         user_agent_matcher()->GetDeviceTypeForUA(user_agent);
     StringPiece device_type_suffix =
@@ -747,14 +787,13 @@ bool ServerContext::HandleBeacon(StringPiece params,
 
     GoogleString key = GetPagePropertyCacheKey(
         url_query_param.Spec(),
-        *options_hash_param[0],
+        *options_hash_param,
         device_type_suffix);
-    scoped_ptr<BeaconPropertyCallback> property_callback(
-        new BeaconPropertyCallback(
-            this, key, request_context,
-            html_critical_images_set.release(),
-            css_critical_images_set.release()));
-    page_property_cache()->Read(property_callback.release());
+    page_property_cache()->Read(new BeaconPropertyCallback(
+        this, key, request_context,
+        html_critical_images_set.release(),
+        css_critical_images_set.release(),
+        critical_css_selector_set.release()));
   }
 
   return status;
