@@ -38,9 +38,9 @@ ngx_pagespeed as a build-time dependency.
 
 Install dependencies:
 
-    # These are for RedHat, CentOS, and Fedora.  
+    # These are for RedHat, CentOS, and Fedora.
     $ sudo yum install git gcc-c++ pcre-dev pcre-devel zlib-devel make
-    
+
     # These are for Debian. Ubuntu will be similar.
     $ sudo apt-get install git-core build-essential zlib1g-dev libpcre3 libpcre3-dev
 
@@ -86,9 +86,10 @@ First build mod_pagespeed against the current revision we work at:
     $ cd src/
     $ svn up -r2618
     $ gclient runhooks
-    $ make AR.host=`pwd`/build/wrappers/ar.sh \
-      AR.target=`pwd`/build/wrappers/ar.sh BUILDTYPE=Release \
-      mod_pagespeed_test pagespeed_automatic_test
+    $ make AR.host="$PWD/build/wrappers/ar.sh" \
+           AR.target="$PWD/build/wrappers/ar.sh" \
+           BUILDTYPE=Release \
+           mod_pagespeed_test pagespeed_automatic_test
 
 (See [mod_pagespeed: build from
 source](https://developers.google.com/speed/docs/mod_pagespeed/build_from_source) if
@@ -97,7 +98,9 @@ you run into trouble, or ask for help on the mailing list.)
 Then build the pagespeed optimization library:
 
     $ cd ~/mod_pagespeed/src/net/instaweb/automatic
-    $ make all  # will fail.
+    $ make AR.host="$PWD/../../../build/wrappers/ar.sh" \
+           AR.target="$PWD/../../../build/wrappers/ar.sh" \
+           all
 
 While `make all` will always report an error, as long as it creates
 `pagespeed_automatic.a` you have what you need.
