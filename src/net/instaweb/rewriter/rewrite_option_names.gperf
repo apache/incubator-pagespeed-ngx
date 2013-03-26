@@ -165,7 +165,6 @@ struct OptionName {
 # The following are used in apache/ or the system/ common port code.
 "CacheFlushFilename",                    RewriteOptions::kCacheFlushFilename
 "CacheFlushPollIntervalSec",             RewriteOptions::kCacheFlushPollIntervalSec
-"CollectRefererStatistics",              RewriteOptions::kCollectRefererStatistics
 "DomainRewriteHyperlinks",               RewriteOptions::kDomainRewriteHyperlinks
 "ExperimentalFetchFromModSpdy",          RewriteOptions::kExperimentalFetchFromModSpdy
 "FetchHttps",                            RewriteOptions::kFetchHttps
@@ -175,11 +174,9 @@ struct OptionName {
 "FileCacheInodeLimit",                   RewriteOptions::kFileCacheCleanInodeLimit
 "FileCachePath",                         RewriteOptions::kFileCachePath
 "FileCacheSizeKb",                       RewriteOptions::kFileCacheCleanSizeKb
-"HashRefererStatistics",                 RewriteOptions::kHashRefererStatistics
 "LRUCacheByteLimit",                     RewriteOptions::kLruCacheByteLimit
 "LRUCacheKbPerProcess",                  RewriteOptions::kLruCacheKbPerProcess
 "RateLimitBackgroundFetches",            RewriteOptions::kRateLimitBackgroundFetches
-"RefererStatisticsOutputLevel",          RewriteOptions::kRefererStatisticsOutputLevel
 "SharedMemoryLocks",                     RewriteOptions::kUseSharedMemLocking
 "SlurpDirectory",                        RewriteOptions::kSlurpDirectory
 "SlurpFlushLimit",                       RewriteOptions::kSlurpFlushLimit

@@ -729,7 +729,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(169, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(166, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -1109,9 +1109,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("CacheFlushPollIntervalSec",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kCacheFlushPollIntervalSec));
-  EXPECT_STREQ("CollectRefererStatistics",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kCollectRefererStatistics));
   EXPECT_STREQ("ExperimentalFetchFromModSpdy",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kExperimentalFetchFromModSpdy));
@@ -1136,9 +1133,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("FileCacheInodeLimit",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kFileCacheCleanInodeLimit));
-  EXPECT_STREQ("HashRefererStatistics",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kHashRefererStatistics));
   EXPECT_STREQ("LRUCacheByteLimit",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kLruCacheByteLimit));
@@ -1157,9 +1151,6 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("RateLimitBackgroundFetches",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kRateLimitBackgroundFetches));
-  EXPECT_STREQ("RefererStatisticsOutputLevel",
-               RewriteOptions::LookupOptionEnum(
-                   RewriteOptions::kRefererStatisticsOutputLevel));
   EXPECT_STREQ("SharedMemoryLocks",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kUseSharedMemLocking));

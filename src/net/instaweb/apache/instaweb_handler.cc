@@ -61,7 +61,6 @@
 #include "net/instaweb/util/public/query_params.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -87,7 +86,6 @@ namespace {
 const char kStatisticsHandler[] = "mod_pagespeed_statistics";
 const char kConsoleHandler[] = "mod_pagespeed_console";
 const char kGlobalStatisticsHandler[] = "mod_pagespeed_global_statistics";
-const char kRefererStatisticsHandler[] = "mod_pagespeed_referer_statistics";
 const char kMessageHandler[] = "mod_pagespeed_message";
 const char kBeaconHandler[] = "mod_pagespeed_beacon";
 const char kLogRequestHeadersHandler[] = "mod_pagespeed_log_request_headers";
@@ -589,28 +587,6 @@ const char* get_instaweb_resource_url(request_rec* request,
   return url;
 }
 
-void log_resource_referral(request_rec* request,
-                           ApacheRewriteDriverFactory* factory) {
-  // If all the pieces are in place, we log this request as a resource referral
-  // for future prerender decision-making purposes
-  SharedMemRefererStatistics* referer_stats =
-      factory->shared_mem_referer_statistics();
-  if (referer_stats != NULL) {
-    const char* original_url = apr_table_get(request->notes,
-                                             kPagespeedOriginalUrl);
-    if (original_url != NULL) {
-      const char* referer = apr_table_get(request->headers_in,
-                                          HttpAttributes::kReferer);
-      if (referer != NULL) {
-        GoogleUrl referer_url(referer);
-        GoogleUrl resource_url(original_url);
-        referer_stats->LogResourceRequestWithReferer(resource_url,
-                                                     referer_url);
-      }
-    }
-  }
-}
-
 // Used by log_request_headers for testing only.
 struct HeaderLoggingData {
   HeaderLoggingData(StringWriter* writer_in, MessageHandler* handler_in)
@@ -972,21 +948,11 @@ apr_status_t instaweb_handler(request_rec* request) {
   ApacheMessageHandler* message_handler = factory->apache_message_handler();
   StringPiece request_handler_str = request->handler;
 
-  log_resource_referral(request, factory);
-
   // mod_pagespeed_statistics or mod_pagespeed_global_statistics.
   if (request_handler_str == kStatisticsHandler ||
       request_handler_str == kGlobalStatisticsHandler) {
     ret = instaweb_statistics_handler(request, server_context, factory,
                                       message_handler);
-
-  } else if (request_handler_str == kRefererStatisticsHandler) {
-    GoogleString output;
-    StringWriter writer(&output);
-    factory->DumpRefererStatistics(&writer);
-    write_handler_response(output, request);
-    ret = OK;
-
   } else if (request_handler_str == kConsoleHandler) {
     ret = instaweb_console_handler(request, config, message_handler);
 
@@ -1167,7 +1133,7 @@ apr_status_t save_url_in_note(request_rec *request,
     StringPiece leaf = gurl.LeafSansQuery();
     if (leaf == kStatisticsHandler || leaf == kConsoleHandler ||
         leaf == kGlobalStatisticsHandler || leaf == kBeaconHandler ||
-        leaf == kMessageHandler || leaf == kRefererStatisticsHandler ||
+        leaf == kMessageHandler ||
         (gurl.PathSansLeaf() ==
          ApacheRewriteDriverFactory::kStaticAssetPrefix)) {
       bypass_mod_rewrite = true;

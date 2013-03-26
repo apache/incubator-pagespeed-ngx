@@ -28,7 +28,6 @@
 #include "net/instaweb/util/public/shared_circular_buffer_test_base.h"
 #include "net/instaweb/util/public/shared_dynamic_string_map_test_base.h"
 #include "net/instaweb/util/public/shared_mem_lock_manager_test_base.h"
-#include "net/instaweb/util/public/shared_mem_referer_statistics_test_base.h"
 #include "net/instaweb/util/public/shared_mem_statistics_test_base.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
 #include "net/instaweb/util/shared_mem_cache_data_test_base.h"
@@ -140,9 +139,6 @@ INSTANTIATE_TYPED_TEST_CASE_P(PthreadProc, SharedMemCacheDataTestTemplate,
                               PthreadSharedMemProcEnv);
 INSTANTIATE_TYPED_TEST_CASE_P(PthreadProc, SharedMemLockManagerTestTemplate,
                               PthreadSharedMemProcEnv);
-INSTANTIATE_TYPED_TEST_CASE_P(PthreadProc,
-                              SharedMemRefererStatisticsTestTemplate,
-                              PthreadSharedMemProcEnv);
 INSTANTIATE_TYPED_TEST_CASE_P(PthreadProc, SharedMemStatisticsTestTemplate,
                               PthreadSharedMemProcEnv);
 INSTANTIATE_TYPED_TEST_CASE_P(PthreadProc, SharedMemTestTemplate,
@@ -156,9 +152,6 @@ INSTANTIATE_TYPED_TEST_CASE_P(PthreadThread, SharedMemCacheTestTemplate,
 INSTANTIATE_TYPED_TEST_CASE_P(PthreadThread, SharedMemCacheDataTestTemplate,
                               PthreadSharedMemThreadEnv);
 INSTANTIATE_TYPED_TEST_CASE_P(PthreadThread, SharedMemLockManagerTestTemplate,
-                              PthreadSharedMemThreadEnv);
-INSTANTIATE_TYPED_TEST_CASE_P(PthreadThread,
-                              SharedMemRefererStatisticsTestTemplate,
                               PthreadSharedMemThreadEnv);
 INSTANTIATE_TYPED_TEST_CASE_P(PthreadThread, SharedMemStatisticsTestTemplate,
                               PthreadSharedMemThreadEnv);

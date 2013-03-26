@@ -285,9 +285,4 @@
         Allow from 127.0.0.1
         SetHandler mod_pagespeed_message
     </Location>
-    <Location /mod_pagespeed_referer_statistics>
-        Allow from localhost
-        Allow from 127.0.0.1
-        SetHandler mod_pagespeed_referer_statistics
-    </Location>
 </IfModule>

@@ -60,7 +60,6 @@
 #include "net/instaweb/util/public/pthread_shared_mem.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
-#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/slow_worker.h"
@@ -74,8 +73,6 @@ namespace net_instaweb {
 
 namespace {
 
-const size_t kRefererStatisticsNumberOfPages = 1024;
-const size_t kRefererStatisticsAverageUrlLength = 64;
 const char kShutdownCount[] = "child_shutdown_count";
 
 }  // namespace
@@ -105,7 +102,6 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
       fetch_with_gzip_(false),
       track_original_content_length_(false),
       list_outstanding_urls_on_error_(false),
-      shared_mem_referer_statistics_(NULL),
       hostname_identifier_(StrCat(server->server_hostname,
                                   ":",
                                   IntegerToString(server->port))),
@@ -407,59 +403,11 @@ void ApacheRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
   }
 }
 
-// Temporarily disable shared-mem-referrers stuff until we get the rest the
-// one-factory-per-process change in.
-#define ENABLE_REFERER_STATS 0
-
-void ApacheRewriteDriverFactory::SharedMemRefererStatisticsInit(bool is_root) {
-#if ENABLE_REFERER_STATS
-  if (shared_mem_runtime_ != NULL && config_->collect_referer_statistics()) {
-    // TODO(jmarantz): it appears that filename_prefix() is not actually
-    // established at the time of this construction, calling into question
-    // whether we are naming our shared-memory segments correctly.
-    if (config_->hash_referer_statistics()) {
-      // By making the hashes equal roughly to half the expected url length,
-      // entries corresponding to referrals in the
-      // shared_mem_referer_statistics_ map will be roughly the expected size
-      //   The size of the hash might be capped, so we check for this and cap
-      // expected average url length if necessary.
-      //
-      // hostname_identifier() is passed in as a suffix so that the shared
-      // memory segments for different v-hosts have unique identifiers, keeping
-      // the statistics separate.
-      Hasher* hasher =
-          new MD5Hasher(kRefererStatisticsAverageUrlLength / 2);
-      size_t referer_statistics_average_expected_url_length_ =
-          2 * hasher->HashSizeInChars();
-      shared_mem_referer_statistics_.reset(new HashedRefererStatistics(
-          kRefererStatisticsNumberOfPages,
-          referer_statistics_average_expected_url_length_,
-          shared_mem_runtime(),
-          filename_prefix().as_string(),
-          hostname_identifier(),
-          hasher));
-    } else {
-      shared_mem_referer_statistics_.reset(new SharedMemRefererStatistics(
-          kRefererStatisticsNumberOfPages,
-          kRefererStatisticsAverageUrlLength,
-          shared_mem_runtime(),
-          filename_prefix().as_string(),
-          hostname_identifier()));
-    }
-    if (!shared_mem_referer_statistics_->InitSegment(is_root,
-                                                     message_handler())) {
-      shared_mem_referer_statistics_.reset(NULL);
-    }
-  }
-#endif
-}
-
 void ApacheRewriteDriverFactory::ParentOrChildInit() {
   if (install_crash_handler_) {
     ApacheMessageHandler::InstallCrashHandler(server_rec_);
   }
   SharedCircularBufferInit(is_root_process_);
-  SharedMemRefererStatisticsInit(is_root_process_);
 }
 
 void ApacheRewriteDriverFactory::RootInit() {
@@ -500,29 +448,6 @@ void ApacheRewriteDriverFactory::ChildInit() {
   mod_spdy_fetch_controller_.reset(
       new ModSpdyFetchController(max_mod_spdy_fetch_threads_, thread_system(),
                                  statistics()));
-}
-
-void ApacheRewriteDriverFactory::DumpRefererStatistics(Writer* writer) {
-#if ENABLE_REFERER_STATS
-  // Note: Referer statistics are only displayed for within the same v-host
-  MessageHandler* handler = message_handler();
-  if (shared_mem_referer_statistics_ == NULL) {
-    writer->Write("mod_pagespeed referer statistics either had an error or "
-                  "are not enabled.", handler);
-  } else {
-    switch (config_->referer_statistics_output_level()) {
-      case ApacheConfig::kFast:
-        shared_mem_referer_statistics_->DumpFast(writer, handler);
-        break;
-      case ApacheConfig::kSimple:
-        shared_mem_referer_statistics_->DumpSimple(writer, handler);
-        break;
-      case ApacheConfig::kOrganized:
-        shared_mem_referer_statistics_->DumpOrganized(writer, handler);
-        break;
-    }
-  }
-#endif
 }
 
 void ApacheRewriteDriverFactory::StopCacheActivity() {

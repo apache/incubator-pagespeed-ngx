@@ -37,7 +37,6 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/stack_buffer.h"
@@ -159,21 +158,6 @@ InstawebContext::InstawebContext(request_rec* request,
       inflater_.reset(new GzipInflater(GzipInflater::kDeflate));
     }
     inflater_->Init();
-  }
-
-  SharedMemRefererStatistics* referer_stats =
-      server_context_->apache_factory()->shared_mem_referer_statistics();
-  if (referer_stats != NULL && !absolute_url_.empty()) {
-    GoogleUrl target_url(absolute_url_);
-    const char* referer = apr_table_get(request->headers_in,
-                                        HttpAttributes::kReferer);
-    if (referer == NULL) {
-      referer_stats->LogPageRequestWithoutReferer(target_url);
-    } else {
-      GoogleUrl referer_url(referer);
-      referer_stats->LogPageRequestWithReferer(target_url,
-                                               referer_url);
-    }
   }
 
   // Make the entire request headers available to filters.

@@ -324,7 +324,6 @@ class RewriteOptions {
     // apache/ or system/ specific:
     kCacheFlushFilename,
     kCacheFlushPollIntervalSec,
-    kCollectRefererStatistics,
     kExperimentalFetchFromModSpdy,
     kFetchHttps,
     kFetcherProxy,
@@ -333,7 +332,6 @@ class RewriteOptions {
     kFileCacheCleanIntervalMs,
     kFileCacheCleanSizeKb,
     kFileCachePath,
-    kHashRefererStatistics,
     kLruCacheByteLimit,
     kLruCacheKbPerProcess,
     kMemcachedServers,
@@ -341,7 +339,6 @@ class RewriteOptions {
     kMemcachedTimeoutUs,
     kMessageBufferSize,
     kRateLimitBackgroundFetches,
-    kRefererStatisticsOutputLevel,
     kSlurpDirectory,
     kSlurpFlushLimit,
     kSlurpReadOnly,

@@ -58,21 +58,6 @@ void ApacheConfig::AddProperties() {
       RewriteOptions::kSlurpDirectory,
       "Directory from which to read slurped resources");
   AddApacheProperty(
-      kOrganized, &ApacheConfig::referer_statistics_output_level_,
-      "arso", RewriteOptions::kRefererStatisticsOutputLevel,
-      "Set the output level of mod_pagespeed_referer_statistics (Fast, "
-      "Simple, Organized).  There is a trade-off between readability "
-      "and speed.");
-  AddApacheProperty(
-      false, &ApacheConfig::collect_referer_statistics_, "acrs",
-      RewriteOptions::kCollectRefererStatistics,
-      "Track page, resource, and div location referrals for "
-      "prefetching.");
-  AddApacheProperty(
-      false, &ApacheConfig::hash_referer_statistics_, "ahrs",
-      RewriteOptions::kHashRefererStatistics,
-      "Hash URLs and div locations in referer statistics.");
-  AddApacheProperty(
       false, &ApacheConfig::test_proxy_, "atp",
       RewriteOptions::kTestProxy,
       "Direct non-mod_pagespeed URLs to a fetcher, acting as a simple "
@@ -121,9 +106,6 @@ void ApacheConfig::InitializeSignaturesAndDefaults() {
   // fetcher_proxy_.DoNotUseForSignatureComputation();
   // file_cache_path_.DoNotUseForSignatureComputation();
   // slurp_directory_.DoNotUseForSignatureComputation();
-  // referer_statistics_output_level_.DoNotUseForSignatureComputation();
-  // collect_referer_statistics_.DoNotUseForSignatureComputation();
-  // hash_referer_statistics_.DoNotUseForSignatureComputation();
   // statistics_enabled_.DoNotUseForSignatureComputation();
   // test_proxy_.DoNotUseForSignatureComputation();
   // use_shared_mem_locking_.DoNotUseForSignatureComputation();
@@ -136,24 +118,6 @@ void ApacheConfig::InitializeSignaturesAndDefaults() {
 
   // Set mod_pagespeed-specific default header value.
   set_default_x_header_value(kModPagespeedVersion);
-}
-
-bool ApacheConfig::ParseRefererStatisticsOutputLevel(
-    const StringPiece& in, RefererStatisticsOutputLevel* out) {
-  bool ret = false;
-  if (in != NULL) {
-    if (StringCaseEqual(in, "Fast")) {
-      *out = kFast;
-       ret = true;
-    } else if (StringCaseEqual(in, "Simple")) {
-      *out = kSimple;
-       ret = true;
-    } else if (StringCaseEqual(in, "Organized")) {
-      *out = kOrganized;
-       ret = true;
-    }
-  }
-  return ret;
 }
 
 ApacheConfig* ApacheConfig::Clone() const {

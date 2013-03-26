@@ -177,6 +177,14 @@ const char kModPagespeedImgInlineMaxBytes[] = "ModPagespeedImgInlineMaxBytes";
 const char kModPagespeedImgMaxRewritesAtOnce[] =
     "ModPagespeedImgMaxRewritesAtOnce";
 
+// The following three are deprecated because we didn't finish the feature.
+const char kModPagespeedCollectRefererStatistics[] =
+    "ModPagespeedCollectRefererStatistics";
+const char kModPagespeedHashRefererStatistics[] =
+    "ModPagespeedHashRefererStatistics";
+const char kModPagespeedRefererStatisticsOutputLevel[] =
+    "ModPagespeedRefererStatisticsOutputLevel";
+
 enum RewriteOperation {REWRITE, FLUSH, FINISH};
 
 // TODO(sligocki): Move inside PSOL.
@@ -1462,7 +1470,12 @@ static const char* ParseDirective(cmd_parms* cmd, void* data, const char* arg) {
   } else if (StringCaseEqual(directive, kModPagespeedNumShards) ||
              StringCaseEqual(directive, kModPagespeedUrlPrefix) ||
              StringCaseEqual(directive, kModPagespeedGeneratedFilePrefix) ||
-             StringCaseEqual(directive, kModPagespeedDisableForBots)) {
+             StringCaseEqual(directive, kModPagespeedDisableForBots) ||
+             StringCaseEqual(directive,
+                             kModPagespeedCollectRefererStatistics) ||
+             StringCaseEqual(directive, kModPagespeedHashRefererStatistics) ||
+             StringCaseEqual(directive,
+                             kModPagespeedRefererStatisticsOutputLevel)) {
     warn_deprecated(cmd, "Please remove it from your configuration.");
   } else if (StringCaseEqual(directive, kModPagespeedUsePerVHostStatistics)) {
     ret = CheckGlobalOption(cmd, kErrorInVHost, handler);
@@ -1725,8 +1738,6 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedExperimentSpec,
          "Configuration for one side of an experiment in the form: "
          "'id= ;enabled= ;disabled= ;ga= ;percent= ...'"),
-  APACHE_CONFIG_DIR_OPTION(kModPagespeedImgInlineMaxBytes,
-        "DEPRECATED, use ModPagespeedImageInlineMaxBytes."),
   APACHE_CONFIG_DIR_OPTION(kModPagespeedListOutstandingUrlsOnError,
         "Adds an error message into the log for every URL fetch in "
         "flight when the HTTP stack encounters a system error, e.g. "
@@ -1739,6 +1750,16 @@ static const command_rec mod_pagespeed_filter_cmds[] = {
   APACHE_CONFIG_DIR_OPTION(kModPagespeedSpeedTracking,
         "Increase the percentage of sites that have Google Analytics page "
         "speed tracking"),
+
+  // All one parameter deprecated options.
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedImgInlineMaxBytes,
+        "DEPRECATED, use ModPagespeedImageInlineMaxBytes."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedCollectRefererStatistics,
+        "Deprecated.  Does nothing."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedHashRefererStatistics,
+        "Deprecated.  Does nothing."),
+  APACHE_CONFIG_DIR_OPTION(kModPagespeedRefererStatisticsOutputLevel,
+        "Deprecated.  Does nothing."),
 
   // All one parameter options that can only be specified at the server level.
   // (Not in <Directory> blocks.)
