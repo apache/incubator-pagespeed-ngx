@@ -19,12 +19,15 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/rewriter/public/critical_css_beacon_filter.h"
+#include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/mock_property_page.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -137,30 +140,25 @@ TEST_F(CriticalCssBeaconFilterTest, ExtractFromOpt) {
 
 TEST_F(CriticalCssBeaconFilterTest, Unauthorized) {
   GoogleString css = StrCat(CssLinkHref(kEvilUrl), kInlineStyle);
-  GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
-  GoogleString output_html = StringPrintf(
-      kHtmlTemplate, css.c_str(), BeaconScriptFor("\"a\",\"p\"").c_str());
-  ValidateExpectedUrl(kTestDomain, input_html, output_html);
+  GoogleString html = StringPrintf(kHtmlTemplate, css.c_str(), "");
+  ValidateNoChanges("unauthorized", html);
 }
 
 TEST_F(CriticalCssBeaconFilterTest, Missing) {
   SetFetchFailOnUnexpected(false);
   GoogleString css = StrCat(CssLinkHref("404.css"), kInlineStyle);
-  GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
-  GoogleString output_html = StringPrintf(
-      kHtmlTemplate, css.c_str(), BeaconScriptFor("\"a\",\"p\"").c_str());
-  ValidateExpectedUrl(kTestDomain, input_html, output_html);
+  GoogleString html = StringPrintf(kHtmlTemplate, css.c_str(), "");
+  ValidateNoChanges("missing", html);
 }
 
 TEST_F(CriticalCssBeaconFilterTest, Corrupt) {
   GoogleString css = StrCat(CssLinkHref("corrupt.css"), kInlineStyle);
-  GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
-  GoogleString output_html = StringPrintf(
-      kHtmlTemplate, css.c_str(), BeaconScriptFor("\"a\",\"p\"").c_str());
-  ValidateExpectedUrl(kTestDomain, input_html, output_html);
+  GoogleString html = StringPrintf(kHtmlTemplate, css.c_str(), "");
+  ValidateNoChanges("corrupt", html);
 }
 
-TEST_F(CriticalCssBeaconFilterTest, Everything) {
+TEST_F(CriticalCssBeaconFilterTest, MixOfGoodAndBad) {
+  // Make sure we don't see any strange interactions / missed connections.
   SetFetchFailOnUnexpected(false);
   GoogleString css = StrCat(
       CssLinkHref("a.css"), CssLinkHref("404.css"), kInlineStyle,
@@ -170,15 +168,56 @@ TEST_F(CriticalCssBeaconFilterTest, Everything) {
       CssLinkHref(kEvilUrl), CssLinkHref("corrupt.css"),
       CssLinkHrefOpt("b.css"));
   GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
+  GoogleString output_html = StringPrintf(kHtmlTemplate, opt.c_str(), "");
+  ValidateExpected("good_and_bad", input_html, output_html);
+}
+
+TEST_F(CriticalCssBeaconFilterTest, EverythingThatParses) {
+  GoogleString css = StrCat(
+      CssLinkHref("a.css"), kInlineStyle, CssLinkHref("b.css"));
+  GoogleString opt = StrCat(
+      CssLinkHref("a.css"), kInlineStyle, CssLinkHrefOpt("b.css"));
+  GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
   GoogleString output_html = StringPrintf(
       kHtmlTemplate, opt.c_str(),
       BeaconScriptFor("\".sec h1#id\",\"a\",\"div ul > li\",\"p\"").c_str());
   ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
-// Make sure we ignore non-screen resources.
-// Test behavior in the face of up-to-date pCache data
-// Test behavior in the face of extant stale pCache data
+// Right now we never beacon if there's valid pcache data, even if that data
+// corresponds to an earlier version of the page.
+TEST_F(CriticalCssBeaconFilterTest, ExtantPCache) {
+  // Set up and register a beacon finder.
+  CriticalSelectorFinder* finder =
+      new CriticalSelectorFinder(RewriteDriver::kBeaconCohort, statistics());
+  server_context()->set_critical_selector_finder(finder);
+  // Set up pcache for page.
+  SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);
+  PropertyPage* page = NewMockPage(kTestDomain);
+  rewrite_driver()->set_property_page(page);
+  page_property_cache()->Read(page);
+  // Inject pcache entry.
+  StringSet selectors;
+  selectors.insert("div ul > li");
+  selectors.insert("p");
+  selectors.insert("span");  // Doesn't occur in our CSS
+  finder->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  // Force cohort to persist.
+  page->WriteCohort(
+      page_property_cache()->GetCohort(RewriteDriver::kBeaconCohort));
+  // Check injection
+  EXPECT_TRUE(rewrite_driver()->CriticalSelectors() != NULL);
+  // Now do the test.
+  GoogleString css = StrCat(
+      CssLinkHref("a.css"), kInlineStyle, CssLinkHref("b.css"));
+  GoogleString opt = StrCat(
+      CssLinkHref("a.css"), kInlineStyle, CssLinkHrefOpt("b.css"));
+  GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
+  GoogleString output_html = StringPrintf(kHtmlTemplate, opt.c_str(), "");
+  ValidateExpected("already_beaconed", input_html, output_html);
+}
+
+// TODO(jmaessen): Make sure we ignore non-screen resources (NYI)
 
 }  // namespace
 

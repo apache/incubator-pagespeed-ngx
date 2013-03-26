@@ -109,6 +109,19 @@ GoogleString CriticalCssBeaconFilter::BeaconBoilerplate() {
 }
 
 void CriticalCssBeaconFilter::SummariesDone() {
+  // First check the property cache to see if we need to inject a beacon at all.
+  // TODO(jmaessen): Why do we do this so late in the process?  Because
+  // eventually we want to store a signature of the selectors the browser
+  // checked as part of the beacon result, and this is the point where we'll be
+  // able to check it against the set of selectors we would *like* the browser
+  // to check.  If they're different we have to insert the beacon because the
+  // CSS has changed.
+  // TODO(jmaessen): This is also where we decide whether we want >1 set of
+  // beacon results, a la what's done with critical images.  For now we bail
+  // out if there are beacon results available to us.
+  if (driver()->CriticalSelectors() != NULL) {
+    return;
+  }
   // We construct a transient set of StringPiece objects backed by the summary
   // information.  We parse each summary back into component selectors from its
   // comma-separated string, use the set to remove duplicates (they'll be
@@ -117,8 +130,8 @@ void CriticalCssBeaconFilter::SummariesDone() {
   for (int i = 0; i < NumStyles(); ++i) {
     const SummaryInfo& block_info = GetSummaryForStyle(i);
     if (block_info.state != kSummaryOk) {
-      // Skip entries that weren't fetched.
-      continue;
+      // Don't beacon unless all CSS was correctly parsed and summarized.
+      return;
     }
     StringPieceVector temp;
     SplitStringPieceToVector(block_info.data, ",", &temp,
