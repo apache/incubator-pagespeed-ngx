@@ -177,10 +177,12 @@ namespace net_instaweb {
     if (timeout_event_ && timeout_event_->timer_set) {
       message_handler()->Message(kInfo,"fetch/callbackdone[%p]: delete timeout event\n", this);
       ngx_del_timer(timeout_event_);
+      timeout_event_ = NULL;
     }
     if (connection_) {
       message_handler()->Message(kInfo,"fetch/callbackdone[%p]: close connection\n", this);
       ngx_close_connection(connection_);
+      connection_ = NULL;
     }
 
     async_fetch_->Done(success);
