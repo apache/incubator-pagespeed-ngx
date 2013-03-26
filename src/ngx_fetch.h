@@ -77,6 +77,10 @@ namespace net_instaweb {
       int get_status_code() {
         return static_cast<int>(status_->code);
       }
+      
+      ngx_event_t* timeout_event() {
+        return timeout_event_;
+      };
 
     private:
       response_handler_pt response_handler;

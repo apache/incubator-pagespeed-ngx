@@ -75,6 +75,7 @@ namespace net_instaweb {
   }
 
   NgxFetch::~NgxFetch() {
+    message_handler()->Message(kInfo,"DESTRUCT FETCH");
     if (timeout_event_ != NULL && timeout_event_->timer_set) {
         ngx_del_timer(timeout_event_);
     }
@@ -102,19 +103,19 @@ namespace net_instaweb {
   bool NgxFetch::Init() {
     pool_ = ngx_create_pool(12288, log_);
     if (pool_ == NULL) {
-      fprintf(stderr,"fetch: ngx_create_pool failed\n");
+      message_handler_->Message(kInfo,"fetch: ngx_create_pool failed\n");
       return false;
     }
 
     if (!ParseUrl()) {
-      fprintf(stderr,"fetch: parse url failed\n");
+      message_handler_->Message(kInfo,"fetch: parse url failed\n");
       return false;
     }
 
     timeout_event_ = static_cast<ngx_event_t*>(
         ngx_pcalloc(pool_, sizeof(ngx_event_t)));
     if (timeout_event_ == NULL) {
-      fprintf(stderr,"fetch: palloc for timeoutevent failed\n");
+      message_handler_->Message(kInfo,"fetch: palloc for timeoutevent failed\n");
       return false;
     }
     timeout_event_->data = this;
@@ -125,22 +126,21 @@ namespace net_instaweb {
     r_ = static_cast<ngx_http_request_t*>(ngx_pcalloc(pool_,
                                            sizeof(ngx_http_request_t)));
     if (r_ == NULL) {
-      fprintf(stderr,"fetch: ngx_pcalloc failed for r_\n");
-
-        return false;
+      message_handler_->Message(kInfo,"fetch: ngx_pcalloc failed for r_\n");
+      return false;
     }
     status_ = static_cast<ngx_http_status_t*>(ngx_pcalloc(pool_,
                                               sizeof(ngx_http_status_t)));
     if (status_ == NULL) {
-      fprintf(stderr,"fetch: ngx_pcalloc failed for status\n");
-        return false;
+      message_handler_->Message(kInfo,"fetch: ngx_pcalloc failed for status\n");
+      return false;
     }
     ngx_resolver_ctx_t temp;
     temp.name.data = url_.host.data;
     temp.name.len = url_.host.len;
     resolver_ctx_ = ngx_resolve_start(fetcher_->resolver_, &temp);
     if (resolver_ctx_ == NULL || resolver_ctx_ == NGX_NO_RESOLVER) {
-      fprintf(stderr,"fetch: resolving failed\n");
+      message_handler_->Message(kInfo,"fetch: resolving failed\n");
       return false;
     }
 
@@ -152,9 +152,10 @@ namespace net_instaweb {
     resolver_ctx_->timeout = fetcher_->resolver_timeout_;
 
     if (ngx_resolve_name(resolver_ctx_) != NGX_OK) {
-      fprintf(stderr,"fetch: ngx_resolve_name failed\n");
+      message_handler_->Message(kInfo,"fetch: ngx_resolve_name failed");
       return false;
     }
+    message_handler_->Message(kInfo,"fetch[%p]: ngx_resolve_name returned OK",this);
     return true;
   }
 
@@ -165,6 +166,7 @@ namespace net_instaweb {
   // This function should be called only once. The only argument is sucess or
   // not.
   void NgxFetch::CallbackDone(bool success) {
+    message_handler_->Message(kInfo,"fetch[%p]: CallbackDone[%s]",this, success?"true":"false");
     if (async_fetch_ == NULL) {
       LOG(FATAL) << "BUG: NgxFetch callback called more than once on same fetch"
                  << str_url_.c_str() << "(" << this << ").Please report this"
@@ -173,9 +175,11 @@ namespace net_instaweb {
     }
 
     if (timeout_event_ && timeout_event_->timer_set) {
+      message_handler()->Message(kInfo,"fetch/callbackdone[%p]: delete timeout event\n", this);
       ngx_del_timer(timeout_event_);
     }
     if (connection_) {
+      message_handler()->Message(kInfo,"fetch/callbackdone[%p]: close connection\n", this);
       ngx_close_connection(connection_);
     }
 
@@ -254,8 +258,17 @@ namespace net_instaweb {
   // Issue a request after resolver has beed done.
   void NgxFetch::NgxFetchResolveDone(ngx_resolver_ctx_t* resolver_ctx) {
     NgxFetch* fetch = static_cast<NgxFetch*>(resolver_ctx->data);
+    fetch->message_handler()->Message(kInfo,"fetch[%p]: ResolveDone()\n", fetch);
     if (resolver_ctx->state != NGX_OK) {
+      // TODO(oschaaf): this gets called 3 times for 2 fetches
+      // when the dns lookups fail
+      if (fetch->timeout_event() != NULL && fetch->timeout_event()->timer_set) {
+        fetch->message_handler()->Message(kInfo,"fetch[%p]: delete timeout event\n", fetch);
+        ngx_del_timer(fetch->timeout_event());
+      }
+      fetch->message_handler()->Message(kInfo,"fetch[%p]: ResolveDone() -> resolver_ctx->state != NGX_OK", fetch);
       fetch->CallbackDone(false);
+      ngx_resolve_name_done(resolver_ctx);
       return;
     }
     ngx_memzero(&fetch->sin_, sizeof(fetch->sin_));
@@ -265,12 +278,14 @@ namespace net_instaweb {
     ngx_resolve_name_done(resolver_ctx);
     if (fetch->InitRquest() != NGX_OK) {
       // TODO (junmin): LOG
+      fetch->message_handler()->Message(kInfo,"fetch[%p]: ResolveDone() -> initrequest failure", fetch);
       fetch->CallbackDone(false);
     }
   }
 
   // prepare the send data for this fetch, and hook write event.
   int NgxFetch::InitRquest() {
+    message_handler_->Message(kInfo,"fetch: InitRquest()\n");
     in_ = ngx_create_temp_buf(pool_, 4096);
     if (in_ == NULL) {
       return NGX_ERROR;

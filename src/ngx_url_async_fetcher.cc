@@ -303,13 +303,21 @@ namespace net_instaweb {
   // It's locked in the CommandHandler.
   // Don't need add the mutex here.
   bool NgxUrlAsyncFetcher::StartFetch(NgxFetch* fetch) {
-    bool started = !shutdown_ && fetch->Start(this);
-    fprintf(stderr, "calling fetch->Start for [%s]\n", fetch->str_url());
+    // Don't initiate the fetch when we are shutting down
+    if (shutdown_) {
+      fetch->CallbackDone(false);
+      return false;
+    }
+    
+    fprintf(stderr, "calling fetch->Start for [%s]", fetch->str_url());
+    bool started = fetch->Start(this);
     if (started) {
       active_fetches_.Add(fetch);
       fetchers_count_++;
     } else {
       LOG(WARNING) << "Fetch failed to start: " << fetch->str_url();
+      // TODO(oschaaf): test this code path. it seems fetch::init always
+      // calls callbackdone when it return false
       fetch->CallbackDone(false);
     }
     return started;
