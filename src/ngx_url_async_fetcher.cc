@@ -124,13 +124,29 @@ namespace net_instaweb {
   NgxUrlAsyncFetcher::~NgxUrlAsyncFetcher() {
     CancelActiveFetches();
     active_fetches_.DeleteAll();
-    ngx_destroy_pool(pool_);
-    ngx_close_connection(command_connection_);
-    close(pipe_fd_);
+
+    // TODO(oschaaf): Do we always own this? It seems that
+    // we may need to track ownership if we get the pool
+    // from the parent async fetcher pass in during construction
+    if (pool_ != NULL ) {
+      ngx_destroy_pool(pool_);
+      pool_ = NULL;
+    }
+    if (command_connection_ != NULL) { 
+      ngx_close_connection(command_connection_);
+      command_connection_ = NULL;
+    }
+    if (pipe_fd_ != -1) {
+      close(pipe_fd_);
+      pipe_fd_ = -1;
+    }
   }
 
   // If there are still active requests, cancel them.
   void NgxUrlAsyncFetcher::CancelActiveFetches() {
+    // TODO(oschaaf): TODO: this seems tricky, this may end up calling
+    // FetchComplete, modifying the active fetches while we are looping
+    // it
     for (NgxFetchPool::const_iterator p = active_fetches_.begin(),
         e = active_fetches_.end(); p != e; ++p) {
       NgxFetch* fetch = *p;
@@ -142,7 +158,7 @@ namespace net_instaweb {
   // thread. It should be called in the worker process.
   bool NgxUrlAsyncFetcher::Init() {
     log_ = ngx_cycle->log;
-    fprintf(stderr, "init ngx async url fetcher\n");
+
     if (pool_ == NULL) {
       pool_ = ngx_create_pool(4096, log_);
       if (pool_ == NULL) {
@@ -172,6 +188,7 @@ namespace net_instaweb {
     if (command_connection_ == NULL) {
       close(pipe_fds[1]);
       close(pipe_fds[0]);
+      pipe_fd_ = -1;
       return false;
     }
 
@@ -189,6 +206,9 @@ namespace net_instaweb {
     if (url_.url.len == 0) {
       return true;
     }
+
+    // TODO(oschaaf): shouldn't we do this earlier? Do we need to clean
+    // up when parsing the url failed?
     if (ngx_parse_url(pool_, &url_) != NGX_OK) {
       ngx_log_error(NGX_LOG_ERR, log_, 0,
           "NgxUrlAsyncFetcher::Init parse proxy[%V] failed", &url_.url);
@@ -207,7 +227,6 @@ namespace net_instaweb {
   void NgxUrlAsyncFetcher::Fetch(const GoogleString& url,
                                  MessageHandler* message_handler,
                                  AsyncFetch* async_fetch) {
-    fprintf(stderr, "start fetch [%s]\n", url.c_str());
     async_fetch = EnableInflation(async_fetch, NULL);
     NgxFetch* fetch = new NgxFetch(url, async_fetch,
           message_handler, fetch_timeout_, log_);
@@ -225,14 +244,10 @@ namespace net_instaweb {
       rc = write(pipe_fd_, &command, 1);
       
       if (rc == 1) {
-        fprintf(stderr, "ngx async url fetcher set command [%c] OK\n", command);
         return true;
       } else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
-        fprintf(stderr, "ngx async url fetcher set command [%c] AGAIN\n", command);
         // TODO(junmin): It's rare. But it need be fixed.
       } else {
-        fprintf(stderr, "ngx async url fetcher set command [%c] NOT OK\n", command);
-
         return false;
       }
     }
@@ -322,10 +337,12 @@ namespace net_instaweb {
   }
 
   void NgxUrlAsyncFetcher::FetchComplete(NgxFetch* fetch) {
+    // TODO(oschaaf): do we need to lock here?
     fetch->message_handler()->Message(kInfo, "Fetch complete:%s",
                     fetch->str_url());
     byte_count_ += fetch->bytes_received();
     fetchers_count_--;
+    active_fetches_.Remove(fetch);
     delete fetch;
   }
 
