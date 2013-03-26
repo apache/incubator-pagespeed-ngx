@@ -318,7 +318,7 @@ namespace net_instaweb {
       LOG(WARNING) << "Fetch failed to start: " << fetch->str_url();
       // TODO(oschaaf): test this code path. it seems fetch::init always
       // calls callbackdone when it return false
-      fetch->CallbackDone(false);
+      //fetch->CallbackDone(false);
     }
     return started;
   }
