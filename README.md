@@ -86,7 +86,9 @@ First build mod_pagespeed against the current revision we work at:
     $ cd src/
     $ svn up -r2618
     $ gclient runhooks
-    $ make BUILDTYPE=Release mod_pagespeed_test pagespeed_automatic_test
+    $ make AR.host=`pwd`/build/wrappers/ar.sh \
+      AR.target=`pwd`/build/wrappers/ar.sh BUILDTYPE=Release \
+      mod_pagespeed_test pagespeed_automatic_test
 
 (See [mod_pagespeed: build from
 source](https://developers.google.com/speed/docs/mod_pagespeed/build_from_source) if
