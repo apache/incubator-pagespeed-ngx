@@ -35,15 +35,15 @@ namespace net_instaweb {
 
 namespace {
 
-const char kCohort[] = "test_beacon_cohort";
 const char kRequestUrl[] = "http://www.example.com";
 
 class CriticalSelectorFinderTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
-    finder_.reset(new CriticalSelectorFinder(kCohort, statistics()));
-    SetupCohort(page_property_cache(), kCohort);
+    finder_.reset(new CriticalSelectorFinder(
+        RewriteDriver::kBeaconCohort, statistics()));
+    SetupCohort(page_property_cache(), RewriteDriver::kBeaconCohort);
     ResetDriver();
   }
 
@@ -85,7 +85,7 @@ TEST_F(CriticalSelectorFinderTest, StoreRestore) {
   finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
 
   const PropertyCache::Cohort* cohort =
-      page_property_cache()->GetCohort(kCohort);
+      page_property_cache()->GetCohort(RewriteDriver::kBeaconCohort);
   rewrite_driver()->property_page()->WriteCohort(cohort);
 
   ResetDriver();

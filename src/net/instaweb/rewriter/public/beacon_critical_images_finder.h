@@ -33,8 +33,6 @@ class Statistics;
 // TODO(jud): This class is not yet implemented.
 class BeaconCriticalImagesFinder : public CriticalImagesFinder {
  public:
-  static const char kBeaconCohort[];
-
   explicit BeaconCriticalImagesFinder(Statistics* stats);
   virtual ~BeaconCriticalImagesFinder();
 

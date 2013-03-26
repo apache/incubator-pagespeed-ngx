@@ -35,7 +35,6 @@ namespace net_instaweb {
 
 namespace {
 
-const char kTestCohort[] = "test_cohort";
 const char kRequestUrl[] = "http://www.example.com/";
 
 class CriticalSelectorFilterTest : public RewriteTestBase {
@@ -46,11 +45,11 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     rewrite_driver()->AppendOwnedPreRenderFilter(filter_);
     server_context()->ComputeSignature(options());
     server_context()->set_critical_selector_finder(
-        new CriticalSelectorFinder(kTestCohort, statistics()));
+        new CriticalSelectorFinder(RewriteDriver::kBeaconCohort, statistics()));
 
     // Setup pcache.
     pcache_ = rewrite_driver()->server_context()->page_property_cache();
-    SetupCohort(pcache_, kTestCohort);
+    SetupCohort(pcache_, RewriteDriver::kBeaconCohort);
     SetupCohort(pcache_, RewriteDriver::kDomCohort);
     ResetDriver();
 
@@ -60,7 +59,7 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     selectors.insert("*");
     server_context()->critical_selector_finder()->
         WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
-    page_->WriteCohort(pcache_->GetCohort(kTestCohort));
+    page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kBeaconCohort));
 
     // Some weird but valid CSS.
     SetResponseWithDefaultHeaders("a.css", kContentTypeCss,

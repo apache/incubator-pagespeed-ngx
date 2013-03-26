@@ -105,55 +105,6 @@ const char kResourceUrlYes[] = "<YES>";
 // instance).
 const size_t kMaxPostSizeBytes = 131072;
 
-// StringAsyncFetch that can be detached. It will delete itself after the
-// latter of Detach() and Done() are called. Therefore, the results can be
-// used in the scope of a function, but the fetch can live longer if we
-// timeout or want run the fetch asynchronously as well.
-class SelfOwnedStringAsyncFetch : public StringAsyncFetch {
- public:
-  SelfOwnedStringAsyncFetch(const RequestContextPtr& request_context,
-                            AbstractMutex* mutex)
-      : StringAsyncFetch(request_context), mutex_(mutex), detached_(false) {}
-  virtual ~SelfOwnedStringAsyncFetch() {}
-
-  // Call when you no longer want to the results to be saved. It will either
-  // delete itself here or when Done() is called (whichever comes last).
-  //
-  // Note: Only call once!
-  void Detach() {
-    ScopedMutex lock(mutex_.get());
-    DCHECK(!detached_);
-    detached_ = true;
-    if (done()) {
-      // Note: This is safe because Detach() and Done() should each be called
-      // only once, so we don't need locking during the delete step, we can
-      // be assured we are the only thread touching this object.
-      lock.Release();
-      delete this;
-    }
-  }
-
-  // Fetch does not delete itself unless we have detached it.
-  virtual void HandleDone(bool success) {
-    ScopedMutex lock(mutex_.get());
-    DCHECK(!done());
-    StringAsyncFetch::HandleDone(success);
-    if (detached_) {
-      // Note: This is safe because Detach() and Done() should each be called
-      // only once, so we don't need locking during the delete step, we can
-      // be assured we are the only thread touching this object.
-      lock.Release();
-      delete this;
-    }
-  }
-
- private:
-  scoped_ptr<AbstractMutex> mutex_;
-  bool detached_;
-
-  DISALLOW_COPY_AND_ASSIGN(SelfOwnedStringAsyncFetch);
-};
-
 // Links an apache request_rec* to an AsyncFetch, adding the ability to
 // block based on a condition variable.
 //
@@ -170,7 +121,9 @@ class ApacheProxyFetch : public AsyncFetchUsingWriter {
         driver_(driver),
         mutex_(thread_system->NewMutex()),
         condvar_(mutex_->NewCondvar()),
-        done_(false) {
+        done_(false),
+        handle_error_(true),
+        status_ok_(false) {
     // We are proxying content, and the caching in the http configuration
     // should not apply; we want to use the caching from the proxy.
     apache_writer_.set_disable_downstream_header_filters(true);
@@ -183,13 +136,37 @@ class ApacheProxyFetch : public AsyncFetchUsingWriter {
   virtual ~ApacheProxyFetch() {
   }
 
+  // When used for in-place resource optimization in mod_pagespeed, we have
+  // disabled fetching resources that are not in cache, otherwise we may wind
+  // up doing a loopback fetch to the same Apache server.  So the
+  // CacheUrlAsyncFetcher will return a 501 or 404 but we do not want to
+  // send that to the client.  So for ipro we suppress resporting errors
+  // in this flow.
+  //
+  // TODO(jmarantz): consider allowing serf fetches in ipro when running as
+  // a reverse-proxy.
+  void set_handle_error(bool x) { handle_error_ = x; }
+
   virtual void HandleHeadersComplete() {
-    apache_writer_.OutputHeaders(response_headers());
+    int status_code = response_headers()->status_code();
+    status_ok_ = (status_code != 0) && (status_code < 400);
+    if (handle_error_ || status_ok_) {
+      // TODO(sligocki): Add X-Mod-Pagespeed header.
+      apache_writer_.OutputHeaders(response_headers());
+    }
   }
 
   virtual void HandleDone(bool success) {
     ScopedMutex lock(mutex_.get());
     done_ = true;
+    if (status_ok_ && !success) {
+      driver_->message_handler()->Message(
+          kWarning,
+          "Response for url %s issued with status %d %s but "
+          "failed to complete.",
+          mapped_url_.c_str(), response_headers()->status_code(),
+          response_headers()->reason_phrase());
+    }
     condvar_->Signal();
   }
 
@@ -226,6 +203,8 @@ class ApacheProxyFetch : public AsyncFetchUsingWriter {
   // TODO(jmarantz): delete the non-threaded fetcher support in Serf.
   virtual bool EnableThreaded() const { return true; }
 
+  bool status_ok() const { return status_ok_; }
+
  private:
   GoogleString mapped_url_;
   ApacheWriter apache_writer_;
@@ -233,6 +212,8 @@ class ApacheProxyFetch : public AsyncFetchUsingWriter {
   scoped_ptr<ThreadSystem::CondvarCapableMutex> mutex_;
   scoped_ptr<ThreadSystem::Condvar> condvar_;
   bool done_;
+  bool handle_error_;
+  bool status_ok_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheProxyFetch);
 };
@@ -413,66 +394,40 @@ bool handle_as_in_place(const RequestContextPtr& request_context,
   message_handler->Message(kInfo, "Trying to serve rewritten resource "
                            "in-place: %s", url.c_str());
 
-  SelfOwnedStringAsyncFetch* fetch = new SelfOwnedStringAsyncFetch(
-      request_context, server_context->thread_system()->NewMutex());
-  driver->FetchInPlaceResource(*gurl, false /* proxy_mode */, fetch);
+  ApacheProxyFetch fetch(
+      url, server_context->thread_system(), driver, request);
+  fetch.set_handle_error(false);
+  driver->FetchInPlaceResource(*gurl, false /* proxy_mode */, &fetch);
 
-  // Wait for cache lookup to complete.  Note: This 5 second timeout
-  // should not normally be hit.  Instead FetchInPlaceResource should
-  // take care of timing out our rewrites.  However this timeout can
-  // occur while debugging.
-  int64 timeout_ms = driver->options()->blocking_fetch_timeout_ms();
-  Timer* timer = server_context->timer();
-  int64 start_ms = timer->NowMs();
-
-  // TODO(jmarantz): Consider re-using ApacheProxyFetch here so we can stream
-  // out responses to the client rather than buffering.  Even if we get the
-  // entire response in one shot, we'd avoid copying large resources before
-  // serving them.
-  while (!fetch->done()) {
-    driver->BoundedWaitFor(RewriteDriver::kWaitForCompletion, timeout_ms);
-    if (!fetch->done()) {
-      int64 elapsed_ms = timer->NowMs() - start_ms;
-      message_handler->Message(
-          kWarning, "Waiting for in-place rewrite on URL %s for %g sec",
-          url.c_str(), elapsed_ms / 1000.0);
-    }
-  }
-
-  if (fetch->done() && fetch->success()) {
+  fetch.Wait();
+  if (fetch.status_ok()) {
     server_context->rewrite_stats()->ipro_served()->Add(1);
     message_handler->Message(kInfo, "Serving rewritten resource in-place: %s",
                              url.c_str());
-    ResponseHeaders* response_headers = fetch->response_headers();
-    // TODO(sligocki): Add X-Mod-Pagespeed header.
-    send_out_headers_and_body(request, *response_headers, fetch->buffer());
     handled = true;
+  } else if (fetch.response_headers()->status_code() ==
+             CacheUrlAsyncFetcher::kNotInCacheStatus) {
+    server_context->rewrite_stats()->ipro_not_in_cache()->Add(1);
+    message_handler->Message(kInfo, "Could not rewrite resource in-place "
+                             "because URL is not in cache: %s",
+                             url.c_str());
+    // This URL was not found in cache (neither the input resource nor
+    // a ResourceNotCacheable entry) so we need to get it into cache
+    // (or at least a note that it cannot be cached stored there).
+    // We do that using an Apache output filter.
+    InPlaceResourceRecorder* recorder = new InPlaceResourceRecorder(
+        url, request_headers.release(), driver->options()->respect_vary(),
+        server_context->http_cache(), server_context->statistics(),
+        message_handler);
+    ap_add_output_filter(kModPagespeedInPlaceFilterName, recorder,
+                         request, request->connection);
+    ap_add_output_filter(kModPagespeedInPlaceCheckHeadersName, recorder,
+                         request, request->connection);
   } else {
-    if (fetch->response_headers()->status_code() ==
-        CacheUrlAsyncFetcher::kNotInCacheStatus) {
-      server_context->rewrite_stats()->ipro_not_in_cache()->Add(1);
-      message_handler->Message(kInfo, "Could not server rewritten resource "
-                               "in-place because URL is not in cache: %s",
-                               url.c_str());
-      // This URL was not found in cache (neither the input resource nor
-      // a ResourceNotCacheable entry) so we need to get it into cache
-      // (or at least a note that it cannot be cached stored there).
-      // We do that using an Apache output filter.
-      InPlaceResourceRecorder* recorder = new InPlaceResourceRecorder(
-          url, request_headers.release(), driver->options()->respect_vary(),
-          server_context->http_cache(), server_context->statistics(),
-          message_handler);
-      ap_add_output_filter(kModPagespeedInPlaceFilterName, recorder,
-                           request, request->connection);
-      ap_add_output_filter(kModPagespeedInPlaceCheckHeadersName, recorder,
-                           request, request->connection);
-    } else {
-      server_context->rewrite_stats()->ipro_not_rewritable()->Add(1);
-      message_handler->Message(kInfo, "Could not rewrite resource in-place: %s",
-                               url.c_str());
-    }
+    server_context->rewrite_stats()->ipro_not_rewritable()->Add(1);
+    message_handler->Message(kInfo, "Could not rewrite resource in-place: %s",
+                             url.c_str());
   }
-  fetch->Detach();
   driver->Cleanup();
 
   return handled;
