@@ -274,28 +274,28 @@ namespace net_instaweb {
       return;
     }
 
-    fprintf(stderr, "prelock ngx async url command handler received [%c]\n", command);
-
     // TODO: document locking here. It's very easy to deadlock at this
     // point
     //ScopedMutex lock(fetcher->mutex_);
     std::vector<NgxFetch*> to_start;
     
-    fprintf(stderr, "postlock ngx async url command handler received [%c]\n", command);
-
     switch (command) {
       // All the new fetches are appended in the pending_fetches.
       // Start all these fetches.
       case 'F':
         if (!fetcher->pending_fetches_.empty()) {
+          fetcher->mutex_->Lock();
           for (Pool<NgxFetch>::iterator p = fetcher->pending_fetches_.begin(),
               e = fetcher->pending_fetches_.end(); p != e; p++) {
             NgxFetch* fetch = *p;
-            fetcher->StartFetch(fetch);
             to_start.push_back(fetch);
           }
-          ScopedMutex lock(fetcher->mutex_);
           fetcher->pending_fetches_.Clear();
+          fetcher->mutex_->Unlock();
+          
+          for (size_t i = 0; i < to_start.size(); i++) {
+            fetcher->StartFetch(to_start[i]);
+          }
         }
         CHECK(ngx_handle_read_event(cmdev, 0) == NGX_OK);
         break;
@@ -352,13 +352,7 @@ namespace net_instaweb {
   }
 
   void NgxUrlAsyncFetcher::FetchComplete(NgxFetch* fetch) {
-    fetch->message_handler()->Message(kInfo, "Fetch [%p] complete prelock:%s", fetch,
-                    fetch->str_url());
-
     ScopedMutex lock(mutex_);
-
-    fetch->message_handler()->Message(kInfo, "Fetch [%p] complete postlock:%s", fetch,
-                    fetch->str_url());
     byte_count_ += fetch->bytes_received();
     fetchers_count_--;
     active_fetches_.Remove(fetch);
