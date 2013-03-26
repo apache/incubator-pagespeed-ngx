@@ -22,6 +22,8 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
+#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -31,7 +33,7 @@ namespace net_instaweb {
 namespace {
 
 const char kHtmlTemplate[] =
-    "<html><head>%s</head><body><p>content</p>%s</body></html>";
+    "<head>%s</head><body><p>content</p>%s</body>";
 const char kInlineStyle[] =
     "<style media='not print'>"
     "a{color:red}"
@@ -60,6 +62,7 @@ class CriticalCssBeaconFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
     options()->EnableFilter(RewriteOptions::kRewriteCss);
     options()->EnableFilter(RewriteOptions::kFlattenCssImports);
     options()->EnableFilter(RewriteOptions::kInlineImportToLink);
@@ -85,13 +88,30 @@ class CriticalCssBeaconFilterTest : public RewriteTestBase {
     return CssLinkHref(Encode(kTestDomain, "cf", "0", leaf, "css"));
   }
 
+  GoogleString BeaconScriptFor(StringPiece selectors) {
+    StaticAssetManager* manager =
+        rewrite_driver()->server_context()->static_asset_manager();
+    GoogleString script = StrCat(
+        "<script src=\"",
+        manager->GetAssetUrl(
+            StaticAssetManager::kCriticalCssBeaconJs, options()),
+        "\"></script><script type=\"text/javascript\">");
+    StrAppend(
+        &script,
+        "pagespeed.criticalCssBeaconInit('",
+        options()->beacon_url().http, "','",
+        kTestDomain, "','0',[", selectors, "]);</script>");
+    return script;
+  }
+
   CriticalCssBeaconFilter* filter_;  // Owned by rewrite_driver()
 };
 
 TEST_F(CriticalCssBeaconFilterTest, ExtractFromInlineStyle) {
   GoogleString input_html = StringPrintf(kHtmlTemplate, kInlineStyle, "");
   GoogleString output_html =
-      StringPrintf(kHtmlTemplate, kInlineStyle, "<!-- a, p -->");
+      StringPrintf(kHtmlTemplate, kInlineStyle,
+                   BeaconScriptFor("\"a\",\"p\"").c_str());
   ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
@@ -100,7 +120,8 @@ TEST_F(CriticalCssBeaconFilterTest, ExtractFromUnopt) {
   GoogleString input_html = StringPrintf(
       kHtmlTemplate, css.c_str(), "");
   GoogleString output_html = StringPrintf(
-      kHtmlTemplate, css.c_str(), "<!-- .sec h1#id, div ul > li -->");
+      kHtmlTemplate, css.c_str(),
+      BeaconScriptFor("\".sec h1#id\",\"div ul > li\"").c_str());
   ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
@@ -109,7 +130,8 @@ TEST_F(CriticalCssBeaconFilterTest, ExtractFromOpt) {
   GoogleString opt = StrCat(CssLinkHrefOpt("b.css"), kInlineStyle);
   GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
   GoogleString output_html = StringPrintf(
-      kHtmlTemplate, opt.c_str(), "<!-- a, div ul > li, p -->");
+      kHtmlTemplate, opt.c_str(),
+      BeaconScriptFor("\"a\",\"div ul > li\",\"p\"").c_str());
   ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
@@ -117,7 +139,7 @@ TEST_F(CriticalCssBeaconFilterTest, Unauthorized) {
   GoogleString css = StrCat(CssLinkHref(kEvilUrl), kInlineStyle);
   GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
   GoogleString output_html = StringPrintf(
-      kHtmlTemplate, css.c_str(), "<!-- a, p -->");
+      kHtmlTemplate, css.c_str(), BeaconScriptFor("\"a\",\"p\"").c_str());
   ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
@@ -126,7 +148,7 @@ TEST_F(CriticalCssBeaconFilterTest, Missing) {
   GoogleString css = StrCat(CssLinkHref("404.css"), kInlineStyle);
   GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
   GoogleString output_html = StringPrintf(
-      kHtmlTemplate, css.c_str(), "<!-- a, p -->");
+      kHtmlTemplate, css.c_str(), BeaconScriptFor("\"a\",\"p\"").c_str());
   ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
@@ -134,7 +156,7 @@ TEST_F(CriticalCssBeaconFilterTest, Corrupt) {
   GoogleString css = StrCat(CssLinkHref("corrupt.css"), kInlineStyle);
   GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
   GoogleString output_html = StringPrintf(
-      kHtmlTemplate, css.c_str(), "<!-- a, p -->");
+      kHtmlTemplate, css.c_str(), BeaconScriptFor("\"a\",\"p\"").c_str());
   ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
@@ -150,7 +172,7 @@ TEST_F(CriticalCssBeaconFilterTest, Everything) {
   GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
   GoogleString output_html = StringPrintf(
       kHtmlTemplate, opt.c_str(),
-      "<!-- .sec h1#id, a, div ul > li, p -->");
+      BeaconScriptFor("\".sec h1#id\",\"a\",\"div ul > li\",\"p\"").c_str());
   ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 

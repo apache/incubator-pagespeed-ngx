@@ -69,6 +69,10 @@ class CriticalCssBeaconFilter : public CssSummarizerBase {
   static void FindSelectorsFromStylesheet(const Css::Stylesheet& css,
                                           StringSet* selectors);
 
+  // Return the initial portion of the beaconing Javascript.  Just requires
+  // appending the array of css selector strings plus a closing ");".
+  GoogleString BeaconBoilerplate();
+
   // The total number of times the beacon is added to a page.
   Variable* critical_css_beacon_added_count_;
   // The number of times we abandon beacon insertion due to missing CSS data (it
