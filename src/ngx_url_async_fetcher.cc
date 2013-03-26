@@ -122,11 +122,14 @@ namespace net_instaweb {
   }
 
   NgxUrlAsyncFetcher::~NgxUrlAsyncFetcher() {
-    message_handler_->Message(kInfo,"Destruct ngxurlasyncfetcher [%d] fetchers",
-                              ApproximateNumActiveFetches());
+    message_handler_->Message(
+        kInfo,
+        "Destruct NgxUrlAsyncFetcher with [%d] active fetchers",
+        ApproximateNumActiveFetches());
+
     CancelActiveFetches();
     active_fetches_.DeleteAll();
-    
+
     // TODO(oschaaf): Do we always own this? It seems that
     // we may need to track ownership if we get the pool
     // from the parent async fetcher pass in during construction
@@ -134,7 +137,7 @@ namespace net_instaweb {
       ngx_destroy_pool(pool_);
       pool_ = NULL;
     }
-    if (command_connection_ != NULL) { 
+    if (command_connection_ != NULL) {
       ngx_close_connection(command_connection_);
       command_connection_ = NULL;
     }
@@ -244,7 +247,6 @@ namespace net_instaweb {
     int rc;
     while (true) {
       rc = write(pipe_fd_, &command, 1);
-      
       if (rc == 1) {
         return true;
       } else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -275,7 +277,7 @@ namespace net_instaweb {
     }
 
     std::vector<NgxFetch*> to_start;
-    
+
     switch (command) {
       // All the new fetches are appended in the pending_fetches.
       // Start all these fetches.
@@ -327,13 +329,13 @@ namespace net_instaweb {
     active_fetches_.Add(fetch);
     fetchers_count_++;
     mutex_->Unlock();
-     
+
     // Don't initiate the fetch when we are shutting down
     if (shutdown_) {
       fetch->CallbackDone(false);
       return false;
     }
-    
+
     bool started = fetch->Start(this);
 
     if (!started) {
