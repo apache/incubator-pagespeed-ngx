@@ -81,6 +81,9 @@ namespace net_instaweb {
       ngx_event_t* timeout_event() {
         return timeout_event_;
       };
+      void set_timeout_event(ngx_event_t* x) {
+        timeout_event_ = x;
+      };
 
     private:
       response_handler_pt response_handler;

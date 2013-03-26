@@ -262,11 +262,10 @@ namespace net_instaweb {
     NgxFetch* fetch = static_cast<NgxFetch*>(resolver_ctx->data);
     fetch->message_handler()->Message(kInfo,"fetch[%p]: ResolveDone()\n", fetch);
     if (resolver_ctx->state != NGX_OK) {
-      // TODO(oschaaf): this gets called 3 times for 2 fetches
-      // when the dns lookups fail
       if (fetch->timeout_event() != NULL && fetch->timeout_event()->timer_set) {
         fetch->message_handler()->Message(kInfo,"fetch[%p]: delete timeout event\n", fetch);
         ngx_del_timer(fetch->timeout_event());
+        fetch->set_timeout_event(NULL);
       }
       fetch->message_handler()->Message(kInfo,"fetch[%p]: ResolveDone() -> resolver_ctx->state != NGX_OK", fetch);
       fetch->CallbackDone(false);
