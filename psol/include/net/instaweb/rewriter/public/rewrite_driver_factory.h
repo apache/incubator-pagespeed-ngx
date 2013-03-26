@@ -34,7 +34,10 @@ namespace net_instaweb {
 class AbstractClientState;
 class AbstractMutex;
 class BlinkCriticalLineDataFinder;
+class CacheHtmlInfoFinder;
+class CriticalCssFinder;
 class CriticalImagesFinder;
+class CriticalSelectorFinder;
 class FileSystem;
 class FilenameEncoder;
 class FlushEarlyInfoFinder;
@@ -49,7 +52,7 @@ class RewriteDriver;
 class RewriteOptions;
 class RewriteStats;
 class Scheduler;
-class StaticJavascriptManager;
+class StaticAssetManager;
 class Statistics;
 class ThreadSystem;
 class Timer;
@@ -68,7 +71,7 @@ class RewriteDriverFactory {
   // Helper for users of defer_cleanup; see below.
   template<class T> class Deleter;
 
-  enum WorkerPoolName {
+  enum WorkerPoolCategory {
     kHtmlWorkers,
     kRewriteWorkers,
     kLowPriorityRewriteWorkers,
@@ -135,6 +138,9 @@ class RewriteDriverFactory {
   void set_base_url_fetcher(UrlFetcher* url_fetcher);
   void set_base_url_async_fetcher(UrlAsyncFetcher* url_fetcher);
 
+  // Takes ownership of fetcher. This should only be called once.
+  void SetDistributedAsyncFetcher(UrlAsyncFetcher* fetcher);
+
   bool set_filename_prefix(StringPiece p);
 
   // Determines whether Slurping is enabled.
@@ -149,14 +155,14 @@ class RewriteDriverFactory {
   FilenameEncoder* filename_encoder() { return filename_encoder_.get(); }
   UrlNamer* url_namer();
   UserAgentMatcher* user_agent_matcher();
-  StaticJavascriptManager* static_javascript_manager();
+  StaticAssetManager* static_asset_manager();
   RewriteOptions* default_options() { return default_options_.get(); }
 
   // These accessors are *not* thread-safe.  They must be called once prior
   // to forking threads, e.g. via ComputeUrlFetcher().
   Timer* timer();
   NamedLockManager* lock_manager();
-  QueuedWorkerPool* WorkerPool(WorkerPoolName pool);
+  QueuedWorkerPool* WorkerPool(WorkerPoolCategory pool);
   Scheduler* scheduler();
   UsageDataReporter* usage_data_reporter();
 
@@ -171,6 +177,8 @@ class RewriteDriverFactory {
   // ServerContext is owned by the factory, and should not be
   // deleted directly.  Currently it is not possible to delete a
   // server context except by deleting the entire factory.
+  //
+  // Implemented in terms of NewServerContext().
   ServerContext* CreateServerContext();
 
   // Initializes a ServerContext that has been new'd directly.  This
@@ -299,10 +307,20 @@ class RewriteDriverFactory {
 
   virtual Hasher* NewHasher() = 0;
 
+  // Creates a new ServerContext* object.  ServerContexst itself must be
+  // overridden per Factory as it has at least one pure virtual method.
+  virtual ServerContext* NewServerContext() = 0;
+
+  virtual CriticalCssFinder* DefaultCriticalCssFinder();
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
+  virtual CriticalSelectorFinder* DefaultCriticalSelectorFinder();
 
   // Default implementation returns NULL.
   virtual BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder(
+      PropertyCache* cache);
+
+  // Default implementation returns NULL.
+  virtual CacheHtmlInfoFinder* DefaultCacheHtmlInfoFinder(
       PropertyCache* cache);
 
   // Default implementation returns NULL.
@@ -322,7 +340,8 @@ class RewriteDriverFactory {
   // Subclasses can override this to create an appropriately-sized thread
   // pool for their environment. The default implementation will always
   // make one with a single thread.
-  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolName name);
+  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolCategory pool,
+                                             StringPiece name);
 
   // Subclasses can override this method to request load-shedding to happen
   // if the low-priority work pool has too many inactive sequences queued up
@@ -344,15 +363,15 @@ class RewriteDriverFactory {
   // filename_prefix()
   virtual StringPiece LockFilePrefix();
 
-  // Initializes the StaticJavascriptManager.
-  virtual void InitStaticJavascriptManager(
-      StaticJavascriptManager* static_js_manager) {}
+  // Initializes the StaticAssetManager.
+  virtual void InitStaticAssetManager(
+      StaticAssetManager* static_asset_manager) {}
 
  private:
-  // Creates a StaticJavascriptManager instance. Default implementation creates
-  // an instance that disables serving of filter javascript via gstatic
+  // Creates a StaticAssetManager instance. Default implementation creates an
+  // instance that disables serving of filter javascript via gstatic
   // (gstatic.com is the domain google uses for serving static content).
-  StaticJavascriptManager* DefaultStaticJavascriptManager();
+  StaticAssetManager* DefaultStaticAssetManager();
 
   void SetupSlurpDirectories();
   void Init();  // helper-method for constructors.
@@ -362,13 +381,14 @@ class RewriteDriverFactory {
   scoped_ptr<FileSystem> file_system_;
   UrlFetcher* url_fetcher_;
   UrlAsyncFetcher* url_async_fetcher_;
+  UrlAsyncFetcher* distributed_async_fetcher_;
   scoped_ptr<UrlFetcher> base_url_fetcher_;
   scoped_ptr<UrlAsyncFetcher> base_url_async_fetcher_;
   scoped_ptr<Hasher> hasher_;
   scoped_ptr<FilenameEncoder> filename_encoder_;
   scoped_ptr<UrlNamer> url_namer_;
   scoped_ptr<UserAgentMatcher> user_agent_matcher_;
-  scoped_ptr<StaticJavascriptManager> static_javascript_manager_;
+  scoped_ptr<StaticAssetManager> static_asset_manager_;
   scoped_ptr<Timer> timer_;
   scoped_ptr<Scheduler> scheduler_;
   scoped_ptr<UsageDataReporter> usage_data_reporter_;

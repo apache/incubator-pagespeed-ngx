@@ -19,7 +19,9 @@
 
 #include "base/basictypes.h"
 
+namespace base {
 class Value;
+}  // namespace base
 
 namespace pagespeed {
 
@@ -43,20 +45,20 @@ class FormattedResultsToJsonConverter {
                       std::string* out);
 
   // Converts the various protocol buffers in a FormattedResults
-  // structure into a Value* object, whsich can be converted to JSON
-  // with a JSONWriter. Ownership of the returned Value* is
+  // structure into a base::Value* object, whsich can be converted to
+  // JSON with a JSONWriter. Ownership of the returned base::Value* is
   // transferred to the caller. Will return NULL if conversion fails.
-  static Value* ConvertFormattedResults(
+  static base::Value* ConvertFormattedResults(
       const pagespeed::FormattedResults& results);
-  static Value* ConvertFormattedRuleResults(
+  static base::Value* ConvertFormattedRuleResults(
       const pagespeed::FormattedRuleResults& rule_results);
-  static Value* ConvertFormattedUrlBlockResults(
+  static base::Value* ConvertFormattedUrlBlockResults(
       const pagespeed::FormattedUrlBlockResults& url_block_results);
-  static Value* ConvertFormattedUrlResult(
+  static base::Value* ConvertFormattedUrlResult(
       const pagespeed::FormattedUrlResult& url_result);
-  static Value* ConvertFormatString(
+  static base::Value* ConvertFormatString(
       const pagespeed::FormatString& format_string);
-  static Value* ConvertFormatArgument(
+  static base::Value* ConvertFormatArgument(
       const pagespeed::FormatArgument& format_arg);
   static const char* ConvertFormatArgumentType(int argument_type);
 

@@ -4,12 +4,11 @@
 
 #ifndef BASE_WIN_SCOPED_VARIANT_H_
 #define BASE_WIN_SCOPED_VARIANT_H_
-#pragma once
 
 #include <windows.h>
 #include <oleauto.h>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
 
 namespace base {
@@ -21,7 +20,7 @@ namespace win {
 // Instead of inheriting from VARIANT, we take the containment approach
 // in order to have more control over the usage of the variant and guard
 // against memory leaks.
-class BASE_API ScopedVariant {
+class BASE_EXPORT ScopedVariant {
  public:
   // Declaration of a global variant variable that's always VT_EMPTY
   static const VARIANT kEmptyVariant;
@@ -38,7 +37,7 @@ class BASE_API ScopedVariant {
   explicit ScopedVariant(const wchar_t* str);
 
   // Creates a new VT_BSTR variant of a specified length.
-  explicit ScopedVariant(const wchar_t* str, UINT length);
+  ScopedVariant(const wchar_t* str, UINT length);
 
   // Creates a new integral type variant and assigns the value to
   // VARIANT.lVal (32 bit sized field).

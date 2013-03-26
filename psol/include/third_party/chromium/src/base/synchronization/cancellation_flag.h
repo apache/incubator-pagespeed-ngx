@@ -4,9 +4,8 @@
 
 #ifndef BASE_SYNCHRONIZATION_CANCELLATION_FLAG_H_
 #define BASE_SYNCHRONIZATION_CANCELLATION_FLAG_H_
-#pragma once
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/atomicops.h"
 #include "base/threading/platform_thread.h"
 
@@ -17,7 +16,7 @@ namespace base {
 // is thread-safe.
 //
 // This class IS NOT intended for synchronization between threads.
-class BASE_API CancellationFlag {
+class BASE_EXPORT CancellationFlag {
  public:
   CancellationFlag() : flag_(false) {
 #if !defined(NDEBUG)

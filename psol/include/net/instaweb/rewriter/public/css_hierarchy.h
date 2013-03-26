@@ -118,7 +118,7 @@ class CssHierarchy {
   bool unparseable_detected() const { return unparseable_detected_; }
   void set_unparseable_detected(bool ok) { unparseable_detected_ = ok; }
 
-  bool flattened_result_limit() const { return flattened_result_limit_; }
+  int64 flattened_result_limit() const { return flattened_result_limit_; }
   void set_flattened_result_limit(int64 x) { flattened_result_limit_ = x; }
 
   // If we haven't already, determine the charset of this CSS, then check if

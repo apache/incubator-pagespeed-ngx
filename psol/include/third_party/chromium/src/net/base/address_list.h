@@ -1,115 +1,86 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_BASE_ADDRESS_LIST_H_
 #define NET_BASE_ADDRESS_LIST_H_
-#pragma once
 
 #include <string>
+#include <vector>
 
-#include "base/memory/ref_counted.h"
-#include "net/base/net_api.h"
+#include "base/basictypes.h"
+#include "base/compiler_specific.h"
+#include "net/base/ip_endpoint.h"
+#include "net/base/net_export.h"
+#include "net/base/net_log.h"
 #include "net/base/net_util.h"
 
 struct addrinfo;
 
 namespace net {
 
-// An AddressList object contains a linked list of addrinfo structures.  This
-// class is designed to be copied around by value.
-class NET_API AddressList {
+class NET_EXPORT AddressList
+    : NON_EXPORTED_BASE(private std::vector<IPEndPoint>) {
  public:
-  // Constructs an invalid address list. Should not call any methods on this
-  // other than assignment.
   AddressList();
-
-  AddressList(const AddressList& addresslist);
   ~AddressList();
-  AddressList& operator=(const AddressList& addresslist);
-
-  // Creates an address list for a list of IP literals.
-  static AddressList CreateFromIPAddressList(
-      const std::vector<IPAddressNumber>& addresses,
-      uint16 port);
 
   // Creates an address list for a single IP literal.
-  static AddressList CreateFromIPAddress(
-      const IPAddressNumber& address,
-      uint16 port);
+  explicit AddressList(const IPEndPoint& endpoint);
 
-  // Creates an address list for a single IP literal.  If
-  // |canonicalize_name| is true, fill the ai_canonname field with the
-  // canonicalized IP address.
-  static AddressList CreateFromIPAddressWithCname(
-      const IPAddressNumber& address,
-      uint16 port,
-      bool canonicalize_name);
+  static AddressList CreateFromIPAddress(const IPAddressNumber& address,
+                                         uint16 port);
 
-  // Adopts the given addrinfo list (assumed to have been created by
-  // the system, e.g. returned by getaddrinfo()) in place of the
-  // existing one if any.  This hands over responsibility for freeing
-  // the addrinfo list to the AddressList object.
-  static AddressList CreateByAdoptingFromSystem(struct addrinfo* head);
+  static AddressList CreateFromIPAddressList(
+      const IPAddressList& addresses,
+      const std::string& canonical_name);
 
-  // Creates a new address list with a copy of |head|. This includes the
-  // entire linked list.
-  static AddressList CreateByCopying(const struct addrinfo* head);
+  // Copies the data from |head| and the chained list into an AddressList.
+  static AddressList CreateFromAddrinfo(const struct addrinfo* head);
 
-  // Creates a new address list wich has a single address, |head|. If there
-  // are other addresses in |head| they will be ignored.
-  static AddressList CreateByCopyingFirstAddress(const struct addrinfo* head);
+  // TODO(szym): Remove all three. http://crbug.com/126134
+  const std::string& canonical_name() const {
+    return canonical_name_;
+  }
 
-  // Creates an address list for a single socket address.
-  // |address| the sockaddr to copy.
-  // |socket_type| is either SOCK_STREAM or SOCK_DGRAM.
-  // |protocol| is either IPPROTO_TCP or IPPROTO_UDP.
-  static AddressList CreateFromSockaddr(
-      const struct sockaddr* address,
-      socklen_t address_length,
-      int socket_type,
-      int protocol);
+  void set_canonical_name(const std::string& canonical_name) {
+    canonical_name_ = canonical_name;
+  }
 
-  // Appends a copy of |head| and all its linked addrinfos to the stored
-  // addrinfo. Note that this will cause a reallocation of the linked list,
-  // which invalidates the head pointer.
-  void Append(const struct addrinfo* head);
+  // Sets canonical name to the literal of the first IP address on the list.
+  void SetDefaultCanonicalName();
 
-  // Sets the port of all addresses in the list to |port| (that is the
-  // sin[6]_port field for the sockaddrs). Note that this will cause a
-  // reallocation of the linked list, which invalidates the head pointer.
-  void SetPort(uint16 port);
+  // Creates a callback for use with the NetLog that returns a Value
+  // representation of the address list.  The callback must be destroyed before
+  // |this| is.
+  NetLog::ParametersCallback CreateNetLogCallback() const;
 
-  // Retrieves the port number of the first sockaddr in the list. (If SetPort()
-  // was previously used on this list, then all the addresses will have this
-  // same port number.)
-  uint16 GetPort() const;
-
-  // Gets the canonical name for the address.
-  // If the canonical name exists, |*canonical_name| is filled in with the
-  // value and true is returned. If it does not exist, |*canonical_name| is
-  // not altered and false is returned.
-  // |canonical_name| must be a non-null value.
-  bool GetCanonicalName(std::string* canonical_name) const;
-
-  // Gets access to the head of the addrinfo list.
-  //
-  // IMPORTANT: Callers SHOULD NOT mutate the addrinfo chain, since under the
-  //            hood this data might be shared by other AddressLists, which
-  //            might even be running on other threads.
-  //
-  //            Additionally, non-const methods like SetPort() and Append() can
-  //            cause the head to be reallocated, so do not cache the return
-  //            value of head() across such calls.
-  const struct addrinfo* head() const;
+  // Exposed methods from std::vector.
+  using std::vector<IPEndPoint>::size;
+  using std::vector<IPEndPoint>::empty;
+  using std::vector<IPEndPoint>::clear;
+  using std::vector<IPEndPoint>::reserve;
+  using std::vector<IPEndPoint>::capacity;
+  using std::vector<IPEndPoint>::operator[];
+  using std::vector<IPEndPoint>::front;
+  using std::vector<IPEndPoint>::back;
+  using std::vector<IPEndPoint>::push_back;
+  using std::vector<IPEndPoint>::insert;
+  using std::vector<IPEndPoint>::erase;
+  using std::vector<IPEndPoint>::iterator;
+  using std::vector<IPEndPoint>::const_iterator;
+  using std::vector<IPEndPoint>::begin;
+  using std::vector<IPEndPoint>::end;
+  using std::vector<IPEndPoint>::rbegin;
+  using std::vector<IPEndPoint>::rend;
 
  private:
-  struct Data;
-
-  explicit AddressList(Data* data);
-
-  scoped_refptr<Data> data_;
+  // TODO(szym): Remove. http://crbug.com/126134
+  std::string canonical_name_;
 };
+
+// Sets the port on each element in |list| to |port|.
+void NET_EXPORT SetPortOnAddressList(uint16 port, AddressList* list);
 
 }  // namespace net
 

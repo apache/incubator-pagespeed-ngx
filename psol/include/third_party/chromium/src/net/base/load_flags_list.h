@@ -102,15 +102,15 @@ LOAD_FLAG(REPORT_RAW_HEADERS, 1 << 22)
 // and is (in theory) not intended for the current frame.
 LOAD_FLAG(PREFETCH, 1 << 23)
 
-// Indicates that this load was requested by a page that is currently
-// prerendering.
-LOAD_FLAG(PRERENDERING, 1 << 24)
-
 // Indicates that this is a load that ignores limits and should complete
 // immediately.
-LOAD_FLAG(IGNORE_LIMITS, 1 << 25)
+LOAD_FLAG(IGNORE_LIMITS, 1 << 24)
 
 // Suppress login prompts for this request. Cached credentials or
 // default credentials may still be used for authentication.
-LOAD_FLAG(DO_NOT_PROMPT_FOR_LOGIN, 1 << 26)
+LOAD_FLAG(DO_NOT_PROMPT_FOR_LOGIN, 1 << 25)
 
+// Indicates that the operation is somewhat likely to be due to an
+// explicit user action. This can be used as a hint to treat the
+// request with higher priority.
+LOAD_FLAG(MAYBE_USER_GESTURE, 1 << 26)

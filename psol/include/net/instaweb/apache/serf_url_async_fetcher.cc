@@ -30,7 +30,6 @@
 #include "apr_pools.h"
 #include "apr_thread_proc.h"
 #include "base/logging.h"
-#include "net/instaweb/apache/apr_thread_compatible_pool.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -38,6 +37,7 @@
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
+#include "net/instaweb/system/public/apr_thread_compatible_pool.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
@@ -1140,7 +1140,8 @@ bool SerfUrlAsyncFetcher::StartFetch(SerfFetch* fetch) {
 void SerfUrlAsyncFetcher::Fetch(const GoogleString& url,
                                 MessageHandler* message_handler,
                                 AsyncFetch* async_fetch) {
-  async_fetch = EnableInflation(async_fetch, NULL /* blacklist */);
+  async_fetch = EnableInflation(
+      async_fetch, &inflation_content_type_blacklist_);
   SerfFetch* fetch = new SerfFetch(url, async_fetch, message_handler, timer_);
 
   request_count_->Add(1);

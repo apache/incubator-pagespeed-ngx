@@ -31,6 +31,7 @@ class AbstractMutex;
 class MessageHandler;
 class ThreadSystem;
 class Timer;
+class Variable;
 class Writer;
 
 // Displays a waveform of values over time.  This can run
@@ -43,7 +44,8 @@ class Writer;
 // This class is threadsafe.
 class Waveform {
  public:
-  Waveform(ThreadSystem* thread_system, Timer* timer, int capacity);
+  Waveform(ThreadSystem* thread_system, Timer* timer, int capacity,
+           Variable* metric);
 
   void Clear();
   double Average();
@@ -84,6 +86,10 @@ class Waveform {
   double max_;
   double previous_value_;
   scoped_ptr<AbstractMutex> mutex_;  // protects all the above member variables.
+
+  // Un-owned pointer to a variable to export current waveform values.
+  // May be NULL.
+  Variable* metric_;
 
   DISALLOW_COPY_AND_ASSIGN(Waveform);
 };

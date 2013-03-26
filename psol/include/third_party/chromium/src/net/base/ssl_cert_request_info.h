@@ -4,13 +4,12 @@
 
 #ifndef NET_BASE_SSL_CERT_REQUEST_INFO_H_
 #define NET_BASE_SSL_CERT_REQUEST_INFO_H_
-#pragma once
 
 #include <string>
 #include <vector>
 
 #include "base/memory/ref_counted.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
 namespace net {
 
@@ -18,7 +17,7 @@ class X509Certificate;
 
 // The SSLCertRequestInfo class contains the info that allows a user to
 // select a certificate to send to the SSL server for client authentication.
-class NET_API SSLCertRequestInfo
+class NET_EXPORT SSLCertRequestInfo
     : public base::RefCountedThreadSafe<SSLCertRequestInfo> {
  public:
   SSLCertRequestInfo();
@@ -27,6 +26,10 @@ class NET_API SSLCertRequestInfo
 
   // The host and port of the SSL server that requested client authentication.
   std::string host_and_port;
+
+  // True if the server that issues this request was the HTTPS proxy used in
+  // the request.  False, if the server was the origin server.
+  bool is_proxy;
 
   // A list of client certificates that match the server's criteria in the
   // SSL CertificateRequest message.  In TLS 1.0, the CertificateRequest

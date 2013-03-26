@@ -45,6 +45,7 @@ class MockScheduler;
 class MockTimer;
 class MockTimeCache;
 class MockUrlFetcher;
+class PropertyCache;
 class ServerContext;
 class RewriteDriver;
 class RewriteFilter;
@@ -152,6 +153,9 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   // Note that this disables ajax rewriting by default.
   virtual RewriteOptions* NewRewriteOptions();
 
+  // Note that this enables html proxying.
+  virtual ServerContext* NewServerContext();
+
   virtual bool IsDebugClient(const GoogleString& ip) const {
     return ip == "127.0.0.1";
   }
@@ -168,6 +172,9 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
 
   // Advances the mock scheduler by delta_ms.
   void AdvanceTimeMs(int64 delta_ms);
+
+  // Sets up the cohort in the PropertyCache provided.
+  void SetupCohort(PropertyCache* cache, const GoogleString& cohort_name);
 
  protected:
   virtual Hasher* NewHasher();

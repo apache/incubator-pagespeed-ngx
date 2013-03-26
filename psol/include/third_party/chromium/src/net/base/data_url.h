@@ -4,11 +4,10 @@
 
 #ifndef NET_BASE_DATA_URL_H_
 #define NET_BASE_DATA_URL_H_
-#pragma once
 
 #include <string>
 
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
 class GURL;
 
@@ -28,7 +27,7 @@ namespace net {
 // If <mediatype> is omitted, it defaults to text/plain;charset=US-ASCII.  As a
 // shorthand, "text/plain" can be omitted but the charset parameter supplied.
 //
-class NET_API DataURL {
+class NET_EXPORT DataURL {
  public:
   // This method can be used to parse a 'data' URL into its component pieces.
   //

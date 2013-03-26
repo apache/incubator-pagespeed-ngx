@@ -1,10 +1,9 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_BASE_DIRECTORY_LISTER_H_
 #define NET_BASE_DIRECTORY_LISTER_H_
-#pragma once
 
 #include <vector>
 
@@ -12,7 +11,7 @@
 #include "base/file_util.h"
 #include "base/message_loop_proxy.h"
 #include "base/memory/ref_counted.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
 namespace net {
 
@@ -23,7 +22,7 @@ namespace net {
 // structs over to the main application thread.  The consumer of this class
 // is insulated from any of the multi-threading details.
 //
-class NET_API DirectoryLister  {
+class NET_EXPORT DirectoryLister  {
  public:
   // Represents one file found.
   struct DirectoryListerData {
@@ -92,10 +91,11 @@ class NET_API DirectoryLister  {
 
     ~Core();
 
-    // Runs on a WorkerPool thread.
+    // This method runs on a WorkerPool thread.
     void StartInternal();
 
-    void OnReceivedData(const DirectoryListerData* data, int count);
+    void SendData(const std::vector<DirectoryListerData>& data);
+
     void OnDone(int error);
 
     FilePath dir_;

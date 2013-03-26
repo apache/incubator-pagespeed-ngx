@@ -17,10 +17,6 @@
 // Author: jefftk@google.com (Jeff Kaufman)
 
 // Manage configuration for pagespeed.  Compare to ApacheConfig.
-//
-// TODO(jefftk): Much of the code here is copied from ApacheConfig, and is very
-// similar.  It may be worth it to create an OriginRewriteOptions that both
-// NgxRewriteOptions and ApacheConfig inherit from.
 
 #ifndef NGX_REWRITE_OPTIONS_H_
 #define NGX_REWRITE_OPTIONS_H_
@@ -35,6 +31,8 @@ extern "C" {
 #include "net/instaweb/system/public/system_rewrite_options.h"
 
 namespace net_instaweb {
+
+class NgxRewriteDriverFactory;
 
 class NgxRewriteOptions : public SystemRewriteOptions {
  public:
@@ -57,7 +55,8 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   //
   // pool is a memory pool for allocating error strings.
   const char* ParseAndSetOptions(
-      StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler);
+      StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
+      NgxRewriteDriverFactory* driver_factory);
 
   // Make an identical copy of these options and return it.
   virtual NgxRewriteOptions* Clone() const;
@@ -66,6 +65,7 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   // of this class, NULL if not.
   static const NgxRewriteOptions* DynamicCast(const RewriteOptions* instance);
   static NgxRewriteOptions* DynamicCast(RewriteOptions* instance);
+
 
  private:
   // Helper methods for ParseAndSetOptions().  Each can:
@@ -84,15 +84,14 @@ class NgxRewriteOptions : public SystemRewriteOptions {
   // detailed message goes to their log via handler.
   OptionSettingResult ParseAndSetOptions0(
       StringPiece directive, GoogleString* msg, MessageHandler* handler);
-  OptionSettingResult ParseAndSetOptions1(
-      StringPiece directive, StringPiece arg,
+
+  // These are called via RewriteOptions::ParseAndSetOptionFromName[123]
+  virtual OptionSettingResult ParseAndSetOptionFromEnum1(
+      OptionEnum name, StringPiece arg,
       GoogleString* msg, MessageHandler* handler);
-  OptionSettingResult ParseAndSetOptions2(
-      StringPiece directive, StringPiece arg1, StringPiece arg2,
-      GoogleString* msg, MessageHandler* handler);
-  OptionSettingResult ParseAndSetOptions3(
-      StringPiece directive, StringPiece arg1, StringPiece arg2,
-      StringPiece arg3, GoogleString* msg, MessageHandler* handler);
+
+  // We may want to override 2- and 3-argument versions as well in the future,
+  // but they are not needed yet.
 
   // Keeps the properties added by this subclass.  These are merged into
   // RewriteOptions::all_properties_ during Initialize().

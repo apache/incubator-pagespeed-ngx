@@ -4,7 +4,6 @@
 
 #ifndef BASE_LINKED_LIST_H_
 #define BASE_LINKED_LIST_H_
-#pragma once
 
 // Simple LinkedList type. (See the Q&A section to understand how this
 // differs from std::list).
@@ -126,13 +125,6 @@ class LinkNode {
     return static_cast<T*>(this);
   }
 
-  // Work around a Clang bug reported upstream:
-  //   http://llvm.org/bugs/show_bug.cgi?id=7974
-  // TODO(evanm): remove this and its sole caller.
-  void set(LinkNode<T>* prev, LinkNode<T>* next) {
-    previous_ = prev; next_ = next;
-  }
-
  private:
   LinkNode<T>* previous_;
   LinkNode<T>* next_;
@@ -144,7 +136,7 @@ class LinkedList {
   // The "root" node is self-referential, and forms the basis of a circular
   // list (root_.next() will point back to the start of the list,
   // and root_->previous() wraps around to the end of the list).
-  LinkedList() { root_.set(&root_, &root_); }
+  LinkedList() : root_(&root_, &root_) {}
 
   // Appends |e| to the end of the linked list.
   void Append(LinkNode<T>* e) {

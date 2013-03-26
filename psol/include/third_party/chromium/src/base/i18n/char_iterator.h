@@ -4,11 +4,11 @@
 
 #ifndef BASE_I18N_CHAR_ITERATOR_H_
 #define BASE_I18N_CHAR_ITERATOR_H_
-#pragma once
 
 #include <string>
 
 #include "base/basictypes.h"
+#include "base/i18n/base_i18n_export.h"
 #include "base/string16.h"
 
 // The CharIterator classes iterate through the characters in UTF8 and
@@ -27,7 +27,7 @@ typedef unsigned char uint8_t;
 namespace base {
 namespace i18n {
 
-class UTF8CharIterator {
+class BASE_I18N_EXPORT UTF8CharIterator {
  public:
   // Requires |str| to live as long as the UTF8CharIterator does.
   UTF8CharIterator(const std::string* str);
@@ -73,7 +73,7 @@ class UTF8CharIterator {
   DISALLOW_COPY_AND_ASSIGN(UTF8CharIterator);
 };
 
-class UTF16CharIterator {
+class BASE_I18N_EXPORT UTF16CharIterator {
  public:
   // Requires |str| to live as long as the UTF16CharIterator does.
   UTF16CharIterator(const string16* str);

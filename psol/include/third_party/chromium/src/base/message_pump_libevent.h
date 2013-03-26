@@ -1,12 +1,13 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_MESSAGE_PUMP_LIBEVENT_H_
 #define BASE_MESSAGE_PUMP_LIBEVENT_H_
-#pragma once
 
 #include "base/basictypes.h"
+#include "base/compiler_specific.h"
+#include "base/memory/weak_ptr.h"
 #include "base/message_pump.h"
 #include "base/observer_list.h"
 #include "base/threading/thread_checker.h"
@@ -20,7 +21,7 @@ namespace base {
 
 // Class to monitor sockets and issue callbacks when sockets are ready for I/O
 // TODO(dkegel): add support for background file IO somehow
-class BASE_API MessagePumpLibevent : public MessagePump {
+class BASE_EXPORT MessagePumpLibevent : public MessagePump {
  public:
   class IOObserver {
    public:
@@ -37,15 +38,19 @@ class BASE_API MessagePumpLibevent : public MessagePump {
     virtual ~IOObserver() {}
   };
 
-  // Used with WatchFileDescptor to asynchronously monitor the I/O readiness of
-  // a File Descriptor.
+  class FileDescriptorWatcher;
+
+  // Used with WatchFileDescriptor to asynchronously monitor the I/O readiness
+  // of a file descriptor.
   class Watcher {
    public:
-    virtual ~Watcher() {}
     // Called from MessageLoop::Run when an FD can be read from/written to
     // without blocking
     virtual void OnFileCanReadWithoutBlocking(int fd) = 0;
     virtual void OnFileCanWriteWithoutBlocking(int fd) = 0;
+
+   protected:
+    virtual ~Watcher() {}
   };
 
   // Object returned by WatchFileDescriptor to manage further watching.
@@ -63,13 +68,14 @@ class BASE_API MessagePumpLibevent : public MessagePump {
 
    private:
     friend class MessagePumpLibevent;
+    friend class MessagePumpLibeventTest;
 
     // Called by MessagePumpLibevent, ownership of |e| is transferred to this
     // object.
-    void Init(event* e, bool is_persistent);
+    void Init(event* e);
 
     // Used by MessagePumpLibevent to take ownership of event_.
-    event *ReleaseEvent();
+    event* ReleaseEvent();
 
     void set_pump(MessagePumpLibevent* pump) { pump_ = pump; }
     MessagePumpLibevent* pump() { return pump_; }
@@ -79,10 +85,10 @@ class BASE_API MessagePumpLibevent : public MessagePump {
     void OnFileCanReadWithoutBlocking(int fd, MessagePumpLibevent* pump);
     void OnFileCanWriteWithoutBlocking(int fd, MessagePumpLibevent* pump);
 
-    bool is_persistent_;  // false if this event is one-shot.
     event* event_;
     MessagePumpLibevent* pump_;
     Watcher* watcher_;
+    base::WeakPtrFactory<FileDescriptorWatcher> weak_factory_;
 
     DISALLOW_COPY_AND_ASSIGN(FileDescriptorWatcher);
   };
@@ -94,7 +100,6 @@ class BASE_API MessagePumpLibevent : public MessagePump {
   };
 
   MessagePumpLibevent();
-  virtual ~MessagePumpLibevent();
 
   // Have the current thread's message loop watch for a a situation in which
   // reading/writing to the FD can be performed without blocking.
@@ -118,12 +123,17 @@ class BASE_API MessagePumpLibevent : public MessagePump {
   void RemoveIOObserver(IOObserver* obs);
 
   // MessagePump methods:
-  virtual void Run(Delegate* delegate);
-  virtual void Quit();
-  virtual void ScheduleWork();
-  virtual void ScheduleDelayedWork(const TimeTicks& delayed_work_time);
+  virtual void Run(Delegate* delegate) OVERRIDE;
+  virtual void Quit() OVERRIDE;
+  virtual void ScheduleWork() OVERRIDE;
+  virtual void ScheduleDelayedWork(const TimeTicks& delayed_work_time) OVERRIDE;
+
+ protected:
+  virtual ~MessagePumpLibevent();
 
  private:
+  friend class MessagePumpLibeventTest;
+
   void WillProcessIOEvent();
   void DidProcessIOEvent();
 
@@ -143,6 +153,9 @@ class BASE_API MessagePumpLibevent : public MessagePump {
 
   // This flag is set when inside Run.
   bool in_run_;
+
+  // This flag is set if libevent has processed I/O events.
+  bool processed_io_events_;
 
   // The time at which we should call DoDelayedWork.
   TimeTicks delayed_work_time_;

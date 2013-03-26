@@ -1,3 +1,4 @@
+
 /*
  * Copyright 2010 Google Inc.
  *
@@ -22,6 +23,7 @@
 
 #include "net/instaweb/rewriter/public/image.h"
 
+#include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -36,11 +38,13 @@ class ImageTestBase : public testing::Test {
  protected:
   static const char kTestData[];
   static const char kCuppa[];
+  static const char kCuppaTransparent[];
   static const char kBikeCrash[];
   static const char kIronChef[];
   static const char kCradle[];
   static const char kPuzzle[];
   static const char kLarge[];
+  static const char kRedbrush[];
   static const char kScenery[];
   static const char kAppSegments[];
 
@@ -51,7 +55,7 @@ class ImageTestBase : public testing::Test {
 
   // We use the output_type (ultimate expected output type after image
   // processing) to set up rewrite permissions for the resulting Image object.
-  Image* ImageFromString(Image::Type output_type,
+  Image* ImageFromString(ImageType output_type,
                          const GoogleString& name,
                          const GoogleString& contents,
                          bool progressive);
@@ -64,7 +68,7 @@ class ImageTestBase : public testing::Test {
 
   // We use the output_type (ultimate expected output type after image
   // processing) to set up rewrite permissions for the resulting Image object.
-  Image* ReadImageFromFile(Image::Type output_type,
+  Image* ReadImageFromFile(ImageType output_type,
                            const char* filename, GoogleString* buffer,
                            bool progressive);
 

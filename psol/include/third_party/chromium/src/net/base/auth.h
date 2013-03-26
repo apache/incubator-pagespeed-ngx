@@ -4,38 +4,80 @@
 
 #ifndef NET_BASE_AUTH_H__
 #define NET_BASE_AUTH_H__
-#pragma once
 
 #include <string>
 
 #include "base/memory/ref_counted.h"
 #include "base/string16.h"
-#include "net/base/net_api.h"
+#include "net/base/host_port_pair.h"
+#include "net/base/net_export.h"
 
 namespace net {
 
 // Holds info about an authentication challenge that we may want to display
 // to the user.
-class NET_API AuthChallengeInfo :
+class NET_EXPORT AuthChallengeInfo :
     public base::RefCountedThreadSafe<AuthChallengeInfo> {
  public:
   AuthChallengeInfo();
 
-  bool operator==(const AuthChallengeInfo& that) const;
+  // Determines whether two AuthChallengeInfo's are equivalent.
+  bool Equals(const AuthChallengeInfo& other) const;
 
-  bool operator!=(const AuthChallengeInfo& that) const {
-    return !(*this == that);
-  }
+  // Whether this came from a server or a proxy.
+  bool is_proxy;
 
-  bool is_proxy;  // true for Proxy-Authenticate, false for WWW-Authenticate.
-  std::wstring host_and_port;  // <host>:<port> of the server asking for auth
-                               // (could be the proxy).
-  std::wstring scheme;  // "Basic", "Digest", or whatever other method is used.
-  std::wstring realm;  // the realm provided by the server, if there is one.
+  // The service issuing the challenge.
+  HostPortPair challenger;
+
+  // The authentication scheme used, such as "basic" or "digest". If the
+  // |source| is FTP_SERVER, this is an empty string. The encoding is ASCII.
+  std::string scheme;
+
+  // The realm of the challenge. May be empty. The encoding is UTF-8.
+  std::string realm;
 
  private:
   friend class base::RefCountedThreadSafe<AuthChallengeInfo>;
   ~AuthChallengeInfo();
+};
+
+// Authentication Credentials for an authentication credentials.
+class NET_EXPORT AuthCredentials {
+ public:
+  AuthCredentials();
+  AuthCredentials(const string16& username, const string16& password);
+  ~AuthCredentials();
+
+  // Set the |username| and |password|.
+  void Set(const string16& username, const string16& password);
+
+  // Determines if |this| is equivalent to |other|.
+  bool Equals(const AuthCredentials& other) const;
+
+  // Returns true if all credentials are empty.
+  bool Empty() const;
+
+  // Overwrites the password memory to prevent it from being read if
+  // it's paged out to disk.
+  void Zap();
+
+  const string16& username() const { return username_; }
+  const string16& password() const { return password_; }
+
+ private:
+  // The username to provide, possibly empty. This should be ASCII only to
+  // minimize compatibility problems, but arbitrary UTF-16 strings are allowed
+  // and will be attempted.
+  string16 username_;
+
+  // The password to provide, possibly empty. This should be ASCII only to
+  // minimize compatibility problems, but arbitrary UTF-16 strings are allowed
+  // and will be attempted.
+  string16 password_;
+
+  // Intentionally allowing the implicit copy constructor and assignment
+  // operators.
 };
 
 // Authentication structures
@@ -49,9 +91,7 @@ enum AuthState {
 class AuthData : public base::RefCountedThreadSafe<AuthData> {
  public:
   AuthState state;  // whether we need, have, or gave up on authentication.
-  std::wstring scheme;  // the authentication scheme.
-  string16 username;  // the username supplied to us for auth.
-  string16 password;  // the password supplied to us for auth.
+  AuthCredentials credentials; // The credentials to use for auth.
 
   // We wouldn't instantiate this class if we didn't need authentication.
   AuthData();

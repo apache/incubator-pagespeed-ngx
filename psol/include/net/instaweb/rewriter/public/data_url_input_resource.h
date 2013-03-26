@@ -22,7 +22,6 @@
 
 #include "base/logging.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -38,6 +37,8 @@ class ContentType;
 class InputInfo;
 class MessageHandler;
 class RewriteOptions;
+class ServerContext;
+
 enum Encoding;
 
 class DataUrlInputResource : public Resource {
@@ -76,23 +77,19 @@ class DataUrlInputResource : public Resource {
     return NULL;
   }
 
+  virtual bool UseHttpCache() const { return false; }
+
  protected:
-  virtual bool Load(MessageHandler* message_handler);
-  virtual bool IsCacheable() const;
+  virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
+                               AsyncCallback* callback,
+                               MessageHandler* message_handler);
 
  private:
   DataUrlInputResource(const GoogleString* url,
                        Encoding encoding,
                        const ContentType* type,
                        const StringPiece& encoded_contents,
-                       ServerContext* server_context)
-      : Resource(server_context, type),
-        url_(url),
-        encoding_(encoding),
-        encoded_contents_(encoded_contents) {
-    // Make sure we auto-load.
-    Load(server_context->message_handler());
-  }
+                       ServerContext* server_context);
 
   scoped_ptr<const GoogleString> url_;
   const Encoding encoding_;

@@ -1,10 +1,9 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_BASE_NET_LOG_UNITTEST_H_
 #define NET_BASE_NET_LOG_UNITTEST_H_
-#pragma once
 
 #include <cstddef>
 
@@ -21,7 +20,7 @@ inline base::TimeTicks MakeTime(int t) {
 }
 
 inline ::testing::AssertionResult LogContainsEventHelper(
-    const CapturingNetLog::EntryList& entries,
+    const CapturingNetLog::CapturedEntryList& entries,
     int i,  // Negative indices are reverse indices.
     const base::TimeTicks& expected_time,
     bool check_time,
@@ -33,7 +32,7 @@ inline ::testing::AssertionResult LogContainsEventHelper(
       static_cast<size_t>(i);
   if (j >= entries.size())
     return ::testing::AssertionFailure() << j << " is out of bounds.";
-  const CapturingNetLog::Entry& entry = entries[j];
+  const CapturingNetLog::CapturedEntry& entry = entries[j];
   if (expected_event != entry.type) {
     return ::testing::AssertionFailure()
         << "Actual event: " << NetLog::EventTypeToString(entry.type)
@@ -57,7 +56,7 @@ inline ::testing::AssertionResult LogContainsEventHelper(
 }
 
 inline ::testing::AssertionResult LogContainsEventAtTime(
-    const CapturingNetLog::EntryList& log,
+    const CapturingNetLog::CapturedEntryList& log,
     int i,  // Negative indices are reverse indices.
     const base::TimeTicks& expected_time,
     NetLog::EventType expected_event,
@@ -68,7 +67,7 @@ inline ::testing::AssertionResult LogContainsEventAtTime(
 
 // Version without timestamp.
 inline ::testing::AssertionResult LogContainsEvent(
-    const CapturingNetLog::EntryList& log,
+    const CapturingNetLog::CapturedEntryList& log,
     int i,  // Negative indices are reverse indices.
     NetLog::EventType expected_event,
     NetLog::EventPhase expected_phase) {
@@ -78,7 +77,7 @@ inline ::testing::AssertionResult LogContainsEvent(
 
 // Version for PHASE_BEGIN (and no timestamp).
 inline ::testing::AssertionResult LogContainsBeginEvent(
-    const CapturingNetLog::EntryList& log,
+    const CapturingNetLog::CapturedEntryList& log,
     int i,  // Negative indices are reverse indices.
     NetLog::EventType expected_event) {
   return LogContainsEvent(log, i, expected_event, NetLog::PHASE_BEGIN);
@@ -86,14 +85,14 @@ inline ::testing::AssertionResult LogContainsBeginEvent(
 
 // Version for PHASE_END (and no timestamp).
 inline ::testing::AssertionResult LogContainsEndEvent(
-    const CapturingNetLog::EntryList& log,
+    const CapturingNetLog::CapturedEntryList& log,
     int i,  // Negative indices are reverse indices.
     NetLog::EventType expected_event) {
   return LogContainsEvent(log, i, expected_event, NetLog::PHASE_END);
 }
 
 inline ::testing::AssertionResult LogContainsEntryWithType(
-    const CapturingNetLog::EntryList& entries,
+    const CapturingNetLog::CapturedEntryList& entries,
     int i, // Negative indices are reverse indices.
     NetLog::EventType type) {
   // Negative indices are reverse indices.
@@ -102,7 +101,7 @@ inline ::testing::AssertionResult LogContainsEntryWithType(
       static_cast<size_t>(i);
   if (j >= entries.size())
     return ::testing::AssertionFailure() << j << " is out of bounds.";
-  const CapturingNetLog::Entry& entry = entries[j];
+  const CapturingNetLog::CapturedEntry& entry = entries[j];
   if (entry.type != type)
     return ::testing::AssertionFailure() << "Type does not match.";
   return ::testing::AssertionSuccess();
@@ -113,13 +112,13 @@ inline ::testing::AssertionResult LogContainsEntryWithType(
 // as long as the first index where it is found is at least |min_index|.
 // Returns the position where the event was found.
 inline size_t ExpectLogContainsSomewhere(
-    const CapturingNetLog::EntryList& entries,
+    const CapturingNetLog::CapturedEntryList& entries,
     size_t min_index,
     NetLog::EventType expected_event,
     NetLog::EventPhase expected_phase) {
   size_t i = 0;
   for (; i < entries.size(); ++i) {
-    const CapturingNetLog::Entry& entry = entries[i];
+    const CapturingNetLog::CapturedEntry& entry = entries[i];
     if (entry.type == expected_event &&
         entry.phase == expected_phase)
       break;
@@ -133,13 +132,13 @@ inline size_t ExpectLogContainsSomewhere(
 // as long as one index where it is found is at least |min_index|.
 // Returns the first such position where the event was found.
 inline size_t ExpectLogContainsSomewhereAfter(
-    const CapturingNetLog::EntryList& entries,
+    const CapturingNetLog::CapturedEntryList& entries,
     size_t min_index,
     NetLog::EventType expected_event,
     NetLog::EventPhase expected_phase) {
   size_t i = min_index;
   for (; i < entries.size(); ++i) {
-    const CapturingNetLog::Entry& entry = entries[i];
+    const CapturingNetLog::CapturedEntry& entry = entries[i];
     if (entry.type == expected_event &&
         entry.phase == expected_phase)
       break;

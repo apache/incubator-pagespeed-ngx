@@ -1,21 +1,21 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_BASE_HOST_PORT_PAIR_H_
 #define NET_BASE_HOST_PORT_PAIR_H_
-#pragma once
 
 #include <string>
 #include "base/basictypes.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
-struct addrinfo;
 class GURL;
 
 namespace net {
 
-class NET_API HostPortPair {
+class IPEndPoint;
+
+class NET_EXPORT HostPortPair {
  public:
   HostPortPair();
   // If |in_host| represents an IPv6 address, it should not bracket the address.
@@ -24,8 +24,12 @@ class NET_API HostPortPair {
   // Creates a HostPortPair for the origin of |url|.
   static HostPortPair FromURL(const GURL& url);
 
-  // Creates a HostPortPair from an addrinfo struct.
-  static HostPortPair FromAddrInfo(const struct addrinfo* ai);
+  // Creates a HostPortPair from an IPEndPoint.
+  static HostPortPair FromIPEndPoint(const IPEndPoint& ipe);
+
+  // Creates a HostPortPair from a string formatted in same manner as
+  // ToString().
+  static HostPortPair FromString(const std::string& str);
 
   // TODO(willchan): Define a functor instead.
   // Comparator function so this can be placed in a std::map.
@@ -38,6 +42,10 @@ class NET_API HostPortPair {
   // Equality test of contents. (Probably another violation of style guide).
   bool Equals(const HostPortPair& other) const {
     return host_ == other.host_ && port_ == other.port_;
+  }
+
+  bool IsEmpty() const {
+    return host_.empty() && port_ == 0;
   }
 
   const std::string& host() const {

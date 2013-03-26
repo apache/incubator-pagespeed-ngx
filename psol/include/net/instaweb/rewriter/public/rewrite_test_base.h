@@ -41,6 +41,7 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/mock_property_page.h"
 // We need to include mock_timer.h to allow upcast to Timer*.
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -61,6 +62,7 @@ class LRUCache;
 class MessageHandler;
 class MockScheduler;
 class PropertyCache;
+class RequestHeaders;
 class ResourceNamer;
 class RewriteFilter;
 class Statistics;
@@ -170,6 +172,11 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   void ServeResourceFromManyContexts(const GoogleString& resource_url,
                                      const StringPiece& expected_content);
 
+  void ServeResourceFromManyContextsWithUA(
+      const GoogleString& resource_url,
+      const StringPiece& expected_content,
+      const StringPiece& user_agent);
+
   // Test that a resource can be served from an new server that has not already
   // constructed it.
   void ServeResourceFromNewContext(
@@ -197,6 +204,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
 
   bool FetchResourceUrl(const StringPiece& url, GoogleString* content,
                         ResponseHeaders* response);
+  bool FetchResourceUrl(const StringPiece& url,
+                        RequestHeaders* request_headers,
+                        GoogleString* content,
+                        ResponseHeaders* response_headers);
   bool FetchResourceUrl(const StringPiece& url, GoogleString* content);
 
   // Just check if we can fetch a resource successfully, ignore response.
@@ -329,6 +340,10 @@ class RewriteTestBase : public RewriteOptionsTestBase {
                               const StringPiece& hash,
                               const StringVector& name_vector,
                               const StringPiece& ext);
+
+  // Takes an already-encoded URL and adds options to to it.
+  GoogleString AddOptionsToEncodedUrl(const StringPiece& url,
+                                      const StringPiece& options);
 
   // If append_new_suffix is true, appends new_suffix to old_url.
   // If append_new_suffix is false, replaces old_suffix at the end of old_url
@@ -517,6 +532,11 @@ class RewriteTestBase : public RewriteOptionsTestBase {
       const GoogleString& key, HTTPCache* http_cache, HTTPValue* value_out,
       ResponseHeaders* headers);
 
+  // The same as the above function, but doesn't need an HTTPValue or
+  // ResponseHeaders.
+  HTTPCache::FindResult HttpBlockingFindStatus(
+      const GoogleString& key, HTTPCache* http_cache);
+
   // Sets the response-headers Content-Type to "application/xhtml+xml".
   void SetXhtmlMimetype() { SetMimetype("application/xhtml+xml"); }
 
@@ -532,6 +552,27 @@ class RewriteTestBase : public RewriteOptionsTestBase {
       StringPiece url,
       StringPiece expected_contents,
       int64 expected_expiration_ms);
+
+  // Setup statistics for the given cohort and add it to the give PropertyCache.
+  void SetupCohort(PropertyCache* cache, const GoogleString& cohort) {
+    factory()->SetupCohort(cache, cohort);
+  }
+
+  // Returns a new mock property page for the page property cache.
+  MockPropertyPage* NewMockPage(const StringPiece& key) {
+    return new MockPropertyPage(
+        server_context_->thread_system(),
+        *server_context_->page_property_cache(),
+        key);
+  }
+
+  // Returns a new mock property page for the client property cache.
+  MockPropertyPage* NewMockClientPage(const StringPiece& key) {
+    return new MockPropertyPage(
+        server_context_->thread_system(),
+        *server_context_->client_property_cache(),
+        key);
+  }
 
  protected:
   void Init();
@@ -571,6 +612,15 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // for this call.
   LoggingInfo* logging_info();
 
+  // Convenience method for retrieving the computed applied rewriters string
+  // from the current request context's log record. Thread-safe.
+  GoogleString AppliedRewriterStringFromLog();
+
+  // Sets current_user_agent_
+  void SetCurrentUserAgent(const StringPiece& user_agent) {
+    current_user_agent_ = user_agent;
+  }
+
   // The mock fetcher & stats are global across all Factories used in the tests.
   MockUrlFetcher mock_url_fetcher_;
   scoped_ptr<Statistics> statistics_;
@@ -589,7 +639,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   scoped_ptr<HtmlWriterFilter> other_html_writer_filter_;
   ActiveServerFlag active_server_;
   bool use_managed_rewrite_drivers_;
-
+  StringPiece current_user_agent_;
   MD5Hasher md5_hasher_;
 
   RewriteOptions* options_;  // owned by rewrite_driver_.

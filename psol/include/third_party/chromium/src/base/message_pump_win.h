@@ -1,18 +1,20 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_MESSAGE_PUMP_WIN_H_
 #define BASE_MESSAGE_PUMP_WIN_H_
-#pragma once
 
 #include <windows.h>
 
 #include <list>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/message_pump.h"
+#include "base/message_pump_dispatcher.h"
+#include "base/message_pump_observer.h"
 #include "base/observer_list.h"
 #include "base/time.h"
 #include "base/win/scoped_handle.h"
@@ -22,51 +24,17 @@ namespace base {
 // MessagePumpWin serves as the base for specialized versions of the MessagePump
 // for Windows. It provides basic functionality like handling of observers and
 // controlling the lifetime of the message pump.
-class BASE_API MessagePumpWin : public MessagePump {
+class BASE_EXPORT MessagePumpWin : public MessagePump {
  public:
-  // An Observer is an object that receives global notifications from the
-  // UI MessageLoop.
-  //
-  // NOTE: An Observer implementation should be extremely fast!
-  //
-  class Observer {
-   public:
-    virtual ~Observer() {}
-
-    // This method is called before processing a message.
-    // The message may be undefined in which case msg.message is 0
-    virtual void WillProcessMessage(const MSG& msg) = 0;
-
-    // This method is called when control returns from processing a UI message.
-    // The message may be undefined in which case msg.message is 0
-    virtual void DidProcessMessage(const MSG& msg) = 0;
-  };
-
-  // Dispatcher is used during a nested invocation of Run to dispatch events.
-  // If Run is invoked with a non-NULL Dispatcher, MessageLoop does not
-  // dispatch events (or invoke TranslateMessage), rather every message is
-  // passed to Dispatcher's Dispatch method for dispatch. It is up to the
-  // Dispatcher to dispatch, or not, the event.
-  //
-  // The nested loop is exited by either posting a quit, or returning false
-  // from Dispatch.
-  class Dispatcher {
-   public:
-    virtual ~Dispatcher() {}
-    // Dispatches the event. If true is returned processing continues as
-    // normal. If false is returned, the nested loop exits immediately.
-    virtual bool Dispatch(const MSG& msg) = 0;
-  };
-
   MessagePumpWin() : have_work_(0), state_(NULL) {}
   virtual ~MessagePumpWin() {}
 
   // Add an Observer, which will start receiving notifications immediately.
-  void AddObserver(Observer* observer);
+  void AddObserver(MessagePumpObserver* observer);
 
   // Remove an Observer.  It is safe to call this method while an Observer is
   // receiving a notification callback.
-  void RemoveObserver(Observer* observer);
+  void RemoveObserver(MessagePumpObserver* observer);
 
   // Give a chance to code processing additional messages to notify the
   // message loop observers that another message has been processed.
@@ -74,7 +42,7 @@ class BASE_API MessagePumpWin : public MessagePump {
   void DidProcessMessage(const MSG& msg);
 
   // Like MessagePump::Run, but MSG objects are routed through dispatcher.
-  void RunWithDispatcher(Delegate* delegate, Dispatcher* dispatcher);
+  void RunWithDispatcher(Delegate* delegate, MessagePumpDispatcher* dispatcher);
 
   // MessagePump methods:
   virtual void Run(Delegate* delegate) { RunWithDispatcher(delegate, NULL); }
@@ -83,7 +51,7 @@ class BASE_API MessagePumpWin : public MessagePump {
  protected:
   struct RunState {
     Delegate* delegate;
-    Dispatcher* dispatcher;
+    MessagePumpDispatcher* dispatcher;
 
     // Used to flag that the current Run() invocation should return ASAP.
     bool should_quit;
@@ -95,7 +63,7 @@ class BASE_API MessagePumpWin : public MessagePump {
   virtual void DoRunLoop() = 0;
   int GetCurrentDelay() const;
 
-  ObserverList<Observer> observers_;
+  ObserverList<MessagePumpObserver> observers_;
 
   // The time at which delayed work should run.
   TimeTicks delayed_work_time_;
@@ -157,13 +125,45 @@ class BASE_API MessagePumpWin : public MessagePump {
 // an excellent choice.  It is also helpful that the starter messages that are
 // placed in the queue when new task arrive also awakens DoRunLoop.
 //
-class BASE_API MessagePumpForUI : public MessagePumpWin {
+class BASE_EXPORT MessagePumpForUI : public MessagePumpWin {
  public:
+  // A MessageFilter implements the common Peek/Translate/Dispatch code to deal
+  // with windows messages.
+  // This abstraction is used to inject TSF message peeking. See
+  // TextServicesMessageFilter.
+  class BASE_EXPORT MessageFilter {
+   public:
+    virtual ~MessageFilter() {}
+    // Implements the functionality exposed by the OS through PeekMessage.
+    virtual BOOL DoPeekMessage(MSG* msg,
+                               HWND window_handle,
+                               UINT msg_filter_min,
+                               UINT msg_filter_max,
+                               UINT remove_msg) {
+      return PeekMessage(msg, window_handle, msg_filter_min, msg_filter_max,
+                         remove_msg);
+    }
+    // Returns true if |message| was consumed by the filter and no extra
+    // processing is required. If this method returns false, it is the
+    // responsibility of the caller to ensure that normal processing takes
+    // place.
+    // The priority to consume messages is the following:
+    // - Native Windows' message filter (CallMsgFilter).
+    // - MessageFilter::ProcessMessage.
+    // - MessagePumpDispatcher.
+    // - TranslateMessage / DispatchMessage.
+    virtual bool ProcessMessage(const MSG& msg) { return false;}
+  };
   // The application-defined code passed to the hook procedure.
   static const int kMessageFilterCode = 0x5001;
 
   MessagePumpForUI();
   virtual ~MessagePumpForUI();
+
+  // Sets a new MessageFilter. MessagePumpForUI takes ownership of
+  // |message_filter|. When SetMessageFilter is called, old MessageFilter is
+  // deleted.
+  void SetMessageFilter(scoped_ptr<MessageFilter> message_filter);
 
   // MessagePump methods:
   virtual void ScheduleWork();
@@ -175,8 +175,10 @@ class BASE_API MessagePumpForUI : public MessagePumpWin {
   void PumpOutPendingPaintMessages();
 
  private:
-  static LRESULT CALLBACK WndProcThunk(
-      HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam);
+  static LRESULT CALLBACK WndProcThunk(HWND window_handle,
+                                       UINT message,
+                                       WPARAM wparam,
+                                       LPARAM lparam);
   virtual void DoRunLoop();
   void InitMessageWnd();
   void WaitForWork();
@@ -186,8 +188,13 @@ class BASE_API MessagePumpForUI : public MessagePumpWin {
   bool ProcessMessageHelper(const MSG& msg);
   bool ProcessPumpReplacementMessage();
 
+  // Instance of the module containing the window procedure.
+  HMODULE instance_;
+
   // A hidden message-only window.
   HWND message_hwnd_;
+
+  scoped_ptr<MessageFilter> message_filter_;
 };
 
 //-----------------------------------------------------------------------------
@@ -196,7 +203,7 @@ class BASE_API MessagePumpForUI : public MessagePumpWin {
 // deal with Windows mesagges, and instead has a Run loop based on Completion
 // Ports so it is better suited for IO operations.
 //
-class BASE_API MessagePumpForIO : public MessagePumpWin {
+class BASE_EXPORT MessagePumpForIO : public MessagePumpWin {
  public:
   struct IOContext;
 
@@ -326,6 +333,12 @@ class BASE_API MessagePumpForIO : public MessagePumpWin {
   // |handler| must be valid as long as there is pending IO for the given file.
   void RegisterIOHandler(HANDLE file_handle, IOHandler* handler);
 
+  // Register the handler to be used to process job events. The registration
+  // persists as long as the job object is live, so |handler| must be valid
+  // until the job object is destroyed. Returns true if the registration
+  // succeeded, and false otherwise.
+  bool RegisterJobObject(HANDLE job_handle, IOHandler* handler);
+
   // Waits for the next IO completion that should be processed by |filter|, for
   // up to |timeout| milliseconds. Return true if any IO operation completed,
   // regardless of the involved handler, and false if the timeout expired. If
@@ -346,6 +359,11 @@ class BASE_API MessagePumpForIO : public MessagePumpWin {
     IOContext* context;
     DWORD bytes_transfered;
     DWORD error;
+
+    // In some cases |context| can be a non-pointer value casted to a pointer.
+    // |has_valid_io_context| is true if |context| is a valid IOContext
+    // pointer, and false otherwise.
+    bool has_valid_io_context;
   };
 
   virtual void DoRunLoop();
@@ -355,6 +373,14 @@ class BASE_API MessagePumpForIO : public MessagePumpWin {
   bool ProcessInternalIOItem(const IOItem& item);
   void WillProcessIOEvent();
   void DidProcessIOEvent();
+
+  // Converts an IOHandler pointer to a completion port key.
+  // |has_valid_io_context| specifies whether completion packets posted to
+  // |handler| will have valid OVERLAPPED pointers.
+  static ULONG_PTR HandlerToKey(IOHandler* handler, bool has_valid_io_context);
+
+  // Converts a completion port key to an IOHandler pointer.
+  static IOHandler* KeyToHandler(ULONG_PTR key, bool* has_valid_io_context);
 
   // The completion port associated with this thread.
   win::ScopedHandle port_;

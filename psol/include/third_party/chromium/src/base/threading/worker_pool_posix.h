@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -23,23 +23,26 @@
 
 #ifndef BASE_THREADING_WORKER_POOL_POSIX_H_
 #define BASE_THREADING_WORKER_POOL_POSIX_H_
-#pragma once
 
 #include <queue>
 #include <string>
 
 #include "base/basictypes.h"
+#include "base/callback_forward.h"
+#include "base/location.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_ptr.h"
+#include "base/pending_task.h"
 #include "base/synchronization/condition_variable.h"
 #include "base/synchronization/lock.h"
 #include "base/threading/platform_thread.h"
+#include "base/tracked_objects.h"
 
 class Task;
 
 namespace base {
 
-class BASE_API PosixDynamicThreadPool
+class BASE_EXPORT PosixDynamicThreadPool
     : public RefCountedThreadSafe<PosixDynamicThreadPool> {
  public:
   class PosixDynamicThreadPoolPeer;
@@ -48,22 +51,28 @@ class BASE_API PosixDynamicThreadPool
   // |idle_seconds_before_exit|.
   PosixDynamicThreadPool(const std::string& name_prefix,
                          int idle_seconds_before_exit);
-  ~PosixDynamicThreadPool();
 
   // Indicates that the thread pool is going away.  Stops handing out tasks to
   // worker threads.  Wakes up all the idle threads to let them exit.
   void Terminate();
 
-  // Adds |task| to the thread pool.  PosixDynamicThreadPool assumes ownership
-  // of |task|.
-  void PostTask(Task* task);
+  // Adds |task| to the thread pool.
+  void PostTask(const tracked_objects::Location& from_here,
+                const Closure& task);
 
   // Worker thread method to wait for up to |idle_seconds_before_exit| for more
   // work from the thread pool.  Returns NULL if no work is available.
-  Task* WaitForTask();
+  PendingTask WaitForTask();
 
  private:
+  friend class RefCountedThreadSafe<PosixDynamicThreadPool>;
   friend class PosixDynamicThreadPoolPeer;
+
+  ~PosixDynamicThreadPool();
+
+  // Adds pending_task to the thread pool.  This function will clear
+  // |pending_task->task|.
+  void AddTask(PendingTask* pending_task);
 
   const std::string name_prefix_;
   const int idle_seconds_before_exit_;
@@ -73,9 +82,9 @@ class BASE_API PosixDynamicThreadPool
   // Signal()s worker threads to let them know more tasks are available.
   // Also used for Broadcast()'ing to worker threads to let them know the pool
   // is being deleted and they can exit.
-  ConditionVariable tasks_available_cv_;
+  ConditionVariable pending_tasks_available_cv_;
   int num_idle_threads_;
-  std::queue<Task*> tasks_;
+  TaskQueue pending_tasks_;
   bool terminated_;
   // Only used for tests to ensure correct thread ordering.  It will always be
   // NULL in non-test code.

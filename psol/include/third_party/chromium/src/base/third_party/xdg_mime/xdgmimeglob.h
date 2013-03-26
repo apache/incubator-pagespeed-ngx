@@ -51,7 +51,8 @@ typedef enum
 #endif
 
 void         _xdg_mime_glob_read_from_file   (XdgGlobHash *glob_hash,
-					      const char  *file_name);
+					      const char  *file_name,
+					      int          version_two);
 XdgGlobHash *_xdg_glob_hash_new              (void);
 void         _xdg_glob_hash_free             (XdgGlobHash *glob_hash);
 int          _xdg_glob_hash_lookup_file_name (XdgGlobHash *glob_hash,
@@ -61,7 +62,8 @@ int          _xdg_glob_hash_lookup_file_name (XdgGlobHash *glob_hash,
 void         _xdg_glob_hash_append_glob      (XdgGlobHash *glob_hash,
 					      const char  *glob,
 					      const char  *mime_type,
-					      int          weight);
+					      int          weight,
+					      int          case_sensitive);
 XdgGlobType  _xdg_glob_determine_type        (const char  *glob);
 void         _xdg_glob_hash_dump             (XdgGlobHash *glob_hash);
 

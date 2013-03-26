@@ -38,9 +38,9 @@ ngx_pagespeed as a build-time dependency.
 
 Install dependencies:
 
-    # These are for RedHat, CentOS, and Fedora.  
+    # These are for RedHat, CentOS, and Fedora.
     $ sudo yum install git gcc-c++ pcre-dev pcre-devel zlib-devel make
-    
+
     # These are for Debian. Ubuntu will be similar.
     $ sudo apt-get install git-core build-essential zlib1g-dev libpcre3 libpcre3-dev
 
@@ -58,8 +58,15 @@ Download and build nginx:
     $ ./configure --add-module=$HOME/ngx_pagespeed
     $ make install
 
+
+If `make` fails with `unknown type name ‘off64_t’`,
+add `--with-cc-opt='-DLINUX=2 -D_REENTRANT -D_LARGEFILE64_SOURCE -march=i686 -pthread'`
+to `./configure` and try to `make` again.
+
 If `configure` fails with `checking for psol ... not found` then open
-`objs/autoconf.err` and search for `psol`.  If it's not clear what's wrong from
+`objs/autoconf.err` and search for `psol`.
+
+If it's not clear what's wrong from
 the error message, then send it to the [mailing
 list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss) and we'll
 have a look at it.
@@ -68,14 +75,21 @@ have a look at it.
 
 First build mod_pagespeed against the current revision we work at:
 
+    $ mkdir -p ~/bin
+    $ cd ~/bin
+    $ svn co http://src.chromium.org/svn/trunk/tools/depot_tools
+    $ export PATH=$PATH:~/bin/depot_tools
     $ mkdir ~/mod_pagespeed
     $ cd ~/mod_pagespeed
     $ gclient config http://modpagespeed.googlecode.com/svn/trunk/src
     $ gclient sync --force --jobs=1
     $ cd src/
-    $ svn up -r2338
+    $ svn up -r2618
     $ gclient runhooks
-    $ make BUILDTYPE=Release mod_pagespeed_test pagespeed_automatic_test
+    $ make AR.host="$PWD/build/wrappers/ar.sh" \
+           AR.target="$PWD/build/wrappers/ar.sh" \
+           BUILDTYPE=Release \
+           mod_pagespeed_test pagespeed_automatic_test
 
 (See [mod_pagespeed: build from
 source](https://developers.google.com/speed/docs/mod_pagespeed/build_from_source) if
@@ -84,7 +98,12 @@ you run into trouble, or ask for help on the mailing list.)
 Then build the pagespeed optimization library:
 
     $ cd ~/mod_pagespeed/src/net/instaweb/automatic
-    $ make all
+    $ make AR.host="$PWD/../../../build/wrappers/ar.sh" \
+           AR.target="$PWD/../../../build/wrappers/ar.sh" \
+           all
+
+While `make all` will always report an error, as long as it creates
+`pagespeed_automatic.a` you have what you need.
 
 Check out ngx_pagespeed:
 

@@ -1,24 +1,26 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_MESSAGE_LOOP_H_
 #define BASE_MESSAGE_LOOP_H_
-#pragma once
 
 #include <queue>
 #include <string>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
-#include "base/callback.h"
+#include "base/callback_forward.h"
+#include "base/location.h"
 #include "base/memory/ref_counted.h"
+#include "base/message_loop_proxy.h"
 #include "base/message_pump.h"
 #include "base/observer_list.h"
+#include "base/pending_task.h"
+#include "base/sequenced_task_runner_helpers.h"
 #include "base/synchronization/lock.h"
-#include "base/task.h"
+#include "base/tracking_info.h"
 #include "base/time.h"
-#include "base/tracked.h"
 
 #if defined(OS_WIN)
 // We need this to declare base::MessagePumpWin::Dispatcher, which we should
@@ -26,24 +28,25 @@
 #include "base/message_pump_win.h"
 #elif defined(OS_POSIX)
 #include "base/message_pump_libevent.h"
-#if !defined(OS_MACOSX)
-#include "base/message_pump_glib.h"
-typedef struct _XDisplay Display;
+#if !defined(OS_MACOSX) && !defined(OS_ANDROID)
+
+#if defined(USE_AURA) && defined(USE_X11) && !defined(OS_NACL)
+#include "base/message_pump_aurax11.h"
+#else
+#include "base/message_pump_gtk.h"
 #endif
+
 #endif
-#if defined(TOUCH_UI)
-#include "base/message_pump_glib_x_dispatch.h"
 #endif
 
 namespace base {
 class Histogram;
-}
-
-#if defined(TRACK_ALL_TASK_OBJECTS)
-namespace tracked_objects {
-class Births;
-}
-#endif  // defined(TRACK_ALL_TASK_OBJECTS)
+class RunLoop;
+class ThreadTaskRunnerHandle;
+#if defined(OS_ANDROID)
+class MessagePumpForUI;
+#endif
+}  // namespace base
 
 // A MessageLoop is used to process events for a particular thread.  There is
 // at most one MessageLoop instance per thread.
@@ -66,26 +69,22 @@ class Births;
 // (DoDragDrop), printer functions (StartDoc) and *many* others.
 //
 // Sample workaround when inner task processing is needed:
-//   bool old_state = MessageLoop::current()->NestableTasksAllowed();
-//   MessageLoop::current()->SetNestableTasksAllowed(true);
-//   HRESULT hr = DoDragDrop(...); // Implicitly runs a modal message loop here.
-//   MessageLoop::current()->SetNestableTasksAllowed(old_state);
-//   // Process hr  (the result returned by DoDragDrop().
+//   HRESULT hr;
+//   {
+//     MessageLoop::ScopedNestableTaskAllower allow(MessageLoop::current());
+//     hr = DoDragDrop(...); // Implicitly runs a modal message loop.
+//   }
+//   // Process |hr| (the result returned by DoDragDrop()).
 //
 // Please be SURE your task is reentrant (nestable) and all global variables
 // are stable and accessible before calling SetNestableTasksAllowed(true).
 //
-class BASE_API MessageLoop : public base::MessagePump::Delegate {
+class BASE_EXPORT MessageLoop : public base::MessagePump::Delegate {
  public:
-#if defined(OS_WIN)
-  typedef base::MessagePumpWin::Dispatcher Dispatcher;
-  typedef base::MessagePumpForUI::Observer Observer;
-#elif defined(TOUCH_UI)
-  typedef base::MessagePumpGlibXDispatcher Dispatcher;
-  typedef base::MessagePumpXObserver Observer;
-#elif !defined(OS_MACOSX)
-  typedef base::MessagePumpForUI::Dispatcher Dispatcher;
-  typedef base::MessagePumpForUI::Observer Observer;
+
+#if !defined(OS_MACOSX) && !defined(OS_ANDROID)
+  typedef base::MessagePumpDispatcher Dispatcher;
+  typedef base::MessagePumpObserver Observer;
 #endif
 
   // A MessageLoop has a particular type, which indicates the set of
@@ -118,15 +117,20 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
 
   static void EnableHistogrammer(bool enable_histogrammer);
 
+  typedef base::MessagePump* (MessagePumpFactory)();
+  // Using the given base::MessagePumpForUIFactory to override the default
+  // MessagePump implementation for 'TYPE_UI'.
+  static void InitMessagePumpForUIFactory(MessagePumpFactory* factory);
+
   // A DestructionObserver is notified when the current MessageLoop is being
-  // destroyed.  These obsevers are notified prior to MessageLoop::current()
+  // destroyed.  These observers are notified prior to MessageLoop::current()
   // being changed to return NULL.  This gives interested parties the chance to
   // do final cleanup that depends on the MessageLoop.
   //
   // NOTE: Any tasks posted to the MessageLoop during this notification will
   // not be run.  Instead, they will be deleted.
   //
-  class BASE_API DestructionObserver {
+  class BASE_EXPORT DestructionObserver {
    public:
     virtual void WillDestroyCurrentMessageLoop() = 0;
 
@@ -158,33 +162,14 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
   //
   // NOTE: These methods may be called on any thread.  The Task will be invoked
   // on the thread that executes MessageLoop::Run().
-
-  void PostTask(
-      const tracked_objects::Location& from_here, Task* task);
-
-  void PostDelayedTask(
-      const tracked_objects::Location& from_here, Task* task, int64 delay_ms);
-
-  void PostNonNestableTask(
-      const tracked_objects::Location& from_here, Task* task);
-
-  void PostNonNestableDelayedTask(
-      const tracked_objects::Location& from_here, Task* task, int64 delay_ms);
-
-  // TODO(ajwong): Remove the functions above once the Task -> Closure migration
-  // is complete.
-  //
-  // There are 2 sets of Post*Task functions, one which takes the older Task*
-  // function object representation, and one that takes the newer base::Closure.
-  // We have this overload to allow a staged transition between the two systems.
-  // Once the transition is done, the functions above should be deleted.
   void PostTask(
       const tracked_objects::Location& from_here,
       const base::Closure& task);
 
   void PostDelayedTask(
       const tracked_objects::Location& from_here,
-      const base::Closure& task, int64 delay_ms);
+      const base::Closure& task,
+      base::TimeDelta delay);
 
   void PostNonNestableTask(
       const tracked_objects::Location& from_here,
@@ -192,7 +177,8 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
 
   void PostNonNestableDelayedTask(
       const tracked_objects::Location& from_here,
-      const base::Closure& task, int64 delay_ms);
+      const base::Closure& task,
+      base::TimeDelta delay);
 
   // A variant on PostTask that deletes the given object.  This is useful
   // if the object needs to live until the next run of the MessageLoop (for
@@ -205,7 +191,8 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
   // from RefCountedThreadSafe<T>!
   template <class T>
   void DeleteSoon(const tracked_objects::Location& from_here, const T* object) {
-    PostNonNestableTask(from_here, new DeleteTask<T>(object));
+    base::subtle::DeleteHelperInternal<T, void>::DeleteViaSequencedTaskRunner(
+        this, from_here, object);
   }
 
   // A variant on PostTask that releases the given reference counted object
@@ -221,39 +208,59 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
   template <class T>
   void ReleaseSoon(const tracked_objects::Location& from_here,
                    const T* object) {
-    PostNonNestableTask(from_here, new ReleaseTask<T>(object));
+    base::subtle::ReleaseHelperInternal<T, void>::ReleaseViaSequencedTaskRunner(
+        this, from_here, object);
   }
 
+  // Deprecated: use RunLoop instead.
   // Run the message loop.
   void Run();
 
+  // Deprecated: use RunLoop instead.
   // Process all pending tasks, windows messages, etc., but don't wait/sleep.
   // Return as soon as all items that can be run are taken care of.
-  void RunAllPending();
+  void RunUntilIdle();
 
-  // Signals the Run method to return after it is done processing all pending
-  // messages.  This method may only be called on the same thread that called
-  // Run, and Run must still be on the call stack.
-  //
-  // Use QuitTask if you need to Quit another thread's MessageLoop, but note
-  // that doing so is fairly dangerous if the target thread makes nested calls
-  // to MessageLoop::Run.  The problem being that you won't know which nested
-  // run loop you are quiting, so be careful!
-  //
-  void Quit();
+  // TODO(jbates) remove this. crbug.com/131220. See RunUntilIdle().
+  void RunAllPending() { RunUntilIdle(); }
 
+  // TODO(jbates) remove this. crbug.com/131220. See QuitWhenIdle().
+  void Quit() { QuitWhenIdle(); }
+
+  // Deprecated: use RunLoop instead.
+  //
+  // Signals the Run method to return when it becomes idle. It will continue to
+  // process pending messages and future messages as long as they are enqueued.
+  // Warning: if the MessageLoop remains busy, it may never quit. Only use this
+  // Quit method when looping procedures (such as web pages) have been shut
+  // down.
+  //
+  // This method may only be called on the same thread that called Run, and Run
+  // must still be on the call stack.
+  //
+  // Use QuitClosure variants if you need to Quit another thread's MessageLoop,
+  // but note that doing so is fairly dangerous if the target thread makes
+  // nested calls to MessageLoop::Run.  The problem being that you won't know
+  // which nested run loop you are quitting, so be careful!
+  void QuitWhenIdle();
+
+  // Deprecated: use RunLoop instead.
+  //
   // This method is a variant of Quit, that does not wait for pending messages
   // to be processed before returning from Run.
   void QuitNow();
 
-  // Invokes Quit on the current MessageLoop when run.  Useful to schedule an
-  // arbitrary MessageLoop to Quit.
-  class QuitTask : public Task {
-   public:
-    virtual void Run() {
-      MessageLoop::current()->Quit();
-    }
-  };
+  // TODO(jbates) remove this. crbug.com/131220. See QuitWhenIdleClosure().
+  static base::Closure QuitClosure() { return QuitWhenIdleClosure(); }
+
+  // Deprecated: use RunLoop instead.
+  // Construct a Closure that will call QuitWhenIdle(). Useful to schedule an
+  // arbitrary MessageLoop to QuitWhenIdle.
+  static base::Closure QuitWhenIdleClosure();
+
+  // Returns true if this loop is |type|. This allows subclasses (especially
+  // those in tests) to specialize how they are identified.
+  virtual bool IsType(Type type) const;
 
   // Returns the type passed to the constructor.
   Type type() const { return type_; }
@@ -265,10 +272,19 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
   }
   const std::string& thread_name() const { return thread_name_; }
 
+  // Gets the message loop proxy associated with this message loop.
+  scoped_refptr<base::MessageLoopProxy> message_loop_proxy() {
+    return message_loop_proxy_.get();
+  }
+
   // Enables or disables the recursive task processing. This happens in the case
   // of recursive message loops. Some unwanted message loop may occurs when
   // using common controls or printer functions. By default, recursive task
   // processing is disabled.
+  //
+  // Please utilize |ScopedNestableTaskAllower| instead of calling these methods
+  // directly.  In general nestable message loops are to be avoided.  They are
+  // dangerous and difficult to get right, so please use with extreme caution.
   //
   // The specific case where tasks get queued is:
   // - The thread is running a message loop.
@@ -315,7 +331,7 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
   // MessageLoop.
   //
   // NOTE: A TaskObserver implementation should be extremely fast!
-  class BASE_API TaskObserver {
+  class BASE_EXPORT TaskObserver {
    public:
     TaskObserver();
 
@@ -361,73 +377,12 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
   }
 #endif  // OS_WIN
 
+  // Can only be called from the thread that owns the MessageLoop.
+  bool is_running() const;
+
   //----------------------------------------------------------------------------
  protected:
-  struct RunState {
-    // Used to count how many Run() invocations are on the stack.
-    int run_depth;
-
-    // Used to record that Quit() was called, or that we should quit the pump
-    // once it becomes idle.
-    bool quit_received;
-
-#if !defined(OS_MACOSX)
-    Dispatcher* dispatcher;
-#endif
-  };
-
-  class BASE_API AutoRunState : RunState {
-   public:
-    explicit AutoRunState(MessageLoop* loop);
-    ~AutoRunState();
-   private:
-    MessageLoop* loop_;
-    RunState* previous_state_;
-  };
-
-  // This structure is copied around by value.
-  struct PendingTask {
-    PendingTask(const base::Closure& task,
-                const tracked_objects::Location& posted_from,
-                base::TimeTicks delayed_run_time,
-                bool nestable);
-    ~PendingTask();
-
-    // Used to support sorting.
-    bool operator<(const PendingTask& other) const;
-
-    // The task to run.
-    base::Closure task;
-
-#if defined(TRACK_ALL_TASK_OBJECTS)
-    // Counter for location where the Closure was posted from.
-    tracked_objects::Births* post_births;
-#endif  // defined(TRACK_ALL_TASK_OBJECTS)
-
-    // Time this PendingTask was posted.
-    base::TimeTicks time_posted;
-
-    // The time when the task should be run.
-    base::TimeTicks delayed_run_time;
-
-    // Secondary sort key for run time.
-    int sequence_num;
-
-    // OK to dispatch from a nested loop.
-    bool nestable;
-
-    // The site this PendingTask was posted from.
-    const void* birth_program_counter;
-  };
-
-  class TaskQueue : public std::queue<PendingTask> {
-   public:
-    void Swap(TaskQueue* queue) {
-      c.swap(queue->c);  // Calls std::deque::swap
-    }
-  };
-
-  typedef std::priority_queue<PendingTask> DelayedTaskQueue;
+  friend class base::RunLoop;
 
 #if defined(OS_WIN)
   base::MessagePumpWin* pump_win() {
@@ -458,14 +413,14 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
   bool ProcessNextDelayedNonNestableTask();
 
   // Runs the specified PendingTask.
-  void RunTask(const PendingTask& pending_task);
+  void RunTask(const base::PendingTask& pending_task);
 
   // Calls RunTask or queues the pending_task on the deferred task list if it
   // cannot be run right now.  Returns true if the task was run.
-  bool DeferOrRunPendingTask(const PendingTask& pending_task);
+  bool DeferOrRunPendingTask(const base::PendingTask& pending_task);
 
   // Adds the pending task to delayed_work_queue_.
-  void AddToDelayedWorkQueue(const PendingTask& pending_task);
+  void AddToDelayedWorkQueue(const base::PendingTask& pending_task);
 
   // Adds the pending task to our incoming_queue_.
   //
@@ -473,7 +428,7 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
   // reset the value of pending_task->task.  This is needed to ensure
   // that the posting call stack does not retain pending_task->task
   // beyond this function call.
-  void AddToIncomingQueue(PendingTask* pending_task);
+  void AddToIncomingQueue(base::PendingTask* pending_task);
 
   // Load tasks from the incoming_queue_ into work_queue_ if the latter is
   // empty.  The former requires a lock to access, while the latter is directly
@@ -485,31 +440,31 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
   // true if some work was done.
   bool DeletePendingTasks();
 
-  // Calcuates the time at which a PendingTask should run.
-  base::TimeTicks CalculateDelayedRuntime(int64 delay_ms);
+  // Calculates the time at which a PendingTask should run.
+  base::TimeTicks CalculateDelayedRuntime(base::TimeDelta delay);
 
   // Start recording histogram info about events and action IF it was enabled
   // and IF the statistics recorder can accept a registration of our histogram.
   void StartHistogrammer();
 
-  // Add occurence of event to our histogram, so that we can see what is being
+  // Add occurrence of event to our histogram, so that we can see what is being
   // done in a specific MessageLoop instance (i.e., specific thread).
   // If message_histogram_ is NULL, this is a no-op.
   void HistogramEvent(int event);
 
   // base::MessagePump::Delegate methods:
-  virtual bool DoWork();
-  virtual bool DoDelayedWork(base::TimeTicks* next_delayed_work_time);
-  virtual bool DoIdleWork();
+  virtual bool DoWork() OVERRIDE;
+  virtual bool DoDelayedWork(base::TimeTicks* next_delayed_work_time) OVERRIDE;
+  virtual bool DoIdleWork() OVERRIDE;
 
   Type type_;
 
   // A list of tasks that need to be processed by this instance.  Note that
   // this queue is only accessed (push/pop) by our current thread.
-  TaskQueue work_queue_;
+  base::TaskQueue work_queue_;
 
   // Contains delayed tasks, sorted by their 'delayed_run_time' property.
-  DelayedTaskQueue delayed_work_queue_;
+  base::DelayedTaskQueue delayed_work_queue_;
 
   // A recent snapshot of Time::Now(), used to check delayed_work_queue_.
   base::TimeTicks recent_time_;
@@ -517,13 +472,13 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
   // A queue of non-nestable tasks that we had to defer because when it came
   // time to execute them we were in a nested message loop.  They will execute
   // once we're out of nested message loops.
-  TaskQueue deferred_non_nestable_work_queue_;
+  base::TaskQueue deferred_non_nestable_work_queue_;
 
   scoped_refptr<base::MessagePump> pump_;
 
   ObserverList<DestructionObserver> destruction_observers_;
 
-  // A recursion block that prevents accidentally running additonal tasks when
+  // A recursion block that prevents accidentally running additional tasks when
   // insider a (accidentally induced?) nested message pump.
   bool nestable_tasks_allowed_;
 
@@ -537,15 +492,11 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
   // acquired under a mutex for processing on this instance's thread. These
   // tasks have not yet been sorted out into items for our work_queue_ vs items
   // that will be handled by the TimerManager.
-  TaskQueue incoming_queue_;
+  base::TaskQueue incoming_queue_;
   // Protect access to incoming_queue_.
   mutable base::Lock incoming_queue_lock_;
 
-  RunState* state_;
-
-  // The need for this variable is subtle. Please see implementation comments
-  // around where it is used.
-  bool should_leak_tasks_;
+  base::RunLoop* run_loop_;
 
 #if defined(OS_WIN)
   base::TimeTicks high_resolution_timer_expiration_;
@@ -554,12 +505,27 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
   bool os_modal_loop_;
 #endif
 
-  // The next sequence number to use for delayed tasks.
+  // The next sequence number to use for delayed tasks. Updating this counter is
+  // protected by incoming_queue_lock_.
   int next_sequence_num_;
 
   ObserverList<TaskObserver> task_observers_;
 
+  // The message loop proxy associated with this message loop, if one exists.
+  scoped_refptr<base::MessageLoopProxy> message_loop_proxy_;
+  scoped_ptr<base::ThreadTaskRunnerHandle> thread_task_runner_handle_;
+
  private:
+  template <class T, class R> friend class base::subtle::DeleteHelperInternal;
+  template <class T, class R> friend class base::subtle::ReleaseHelperInternal;
+
+  void DeleteSoonInternal(const tracked_objects::Location& from_here,
+                          void(*deleter)(const void*),
+                          const void* object);
+  void ReleaseSoonInternal(const tracked_objects::Location& from_here,
+                           void(*releaser)(const void*),
+                           const void* object);
+
   DISALLOW_COPY_AND_ASSIGN(MessageLoop);
 };
 
@@ -570,14 +536,19 @@ class BASE_API MessageLoop : public base::MessagePump::Delegate {
 // This class is typically used like so:
 //   MessageLoopForUI::current()->...call some method...
 //
-class BASE_API MessageLoopForUI : public MessageLoop {
+class BASE_EXPORT MessageLoopForUI : public MessageLoop {
  public:
+#if defined(OS_WIN)
+  typedef base::MessagePumpForUI::MessageFilter MessageFilter;
+#endif
+
   MessageLoopForUI() : MessageLoop(TYPE_UI) {
   }
 
   // Returns the MessageLoopForUI of the current thread.
   static MessageLoopForUI* current() {
     MessageLoop* loop = MessageLoop::current();
+    DCHECK(loop);
     DCHECK_EQ(MessageLoop::TYPE_UI, loop->type());
     return static_cast<MessageLoopForUI*>(loop);
   }
@@ -586,26 +557,36 @@ class BASE_API MessageLoopForUI : public MessageLoop {
   void DidProcessMessage(const MSG& message);
 #endif  // defined(OS_WIN)
 
-#if defined(USE_X11)
-  // Returns the Xlib Display that backs the MessagePump for this MessageLoop.
-  //
-  // This allows for raw access to the X11 server in situations where our
-  // abstractions do not provide enough power.
-  //
-  // Be careful how this is used. The MessagePump in general expects
-  // exclusive access to the Display. Calling things like XNextEvent() will
-  // likely break things in subtle, hard to detect, ways.
-  Display* GetDisplay();
-#endif  // defined(OS_X11)
+#if defined(OS_IOS)
+  // On iOS, the main message loop cannot be Run().  Instead call Attach(),
+  // which connects this MessageLoop to the UI thread's CFRunLoop and allows
+  // PostTask() to work.
+  void Attach();
+#endif
 
-#if !defined(OS_MACOSX)
+#if defined(OS_ANDROID)
+  // On Android, the UI message loop is handled by Java side. So Run() should
+  // never be called. Instead use Start(), which will forward all the native UI
+  // events to the Java message loop.
+  void Start();
+#elif !defined(OS_MACOSX)
   // Please see message_pump_win/message_pump_glib for definitions of these
   // methods.
   void AddObserver(Observer* observer);
   void RemoveObserver(Observer* observer);
-  void Run(Dispatcher* dispatcher);
+
+#if defined(OS_WIN)
+  // Plese see MessagePumpForUI for definitions of this method.
+  void SetMessageFilter(scoped_ptr<MessageFilter> message_filter) {
+    pump_ui()->SetMessageFilter(message_filter.Pass());
+  }
+#endif
 
  protected:
+#if defined(USE_AURA) && defined(USE_X11) && !defined(OS_NACL)
+  friend class base::MessagePumpAuraX11;
+#endif
+
   // TODO(rvargas): Make this platform independent.
   base::MessagePumpForUI* pump_ui() {
     return static_cast<base::MessagePumpForUI*>(pump_.get());
@@ -626,7 +607,7 @@ COMPILE_ASSERT(sizeof(MessageLoop) == sizeof(MessageLoopForUI),
 // This class is typically used like so:
 //   MessageLoopForIO::current()->...call some method...
 //
-class BASE_API MessageLoopForIO : public MessageLoop {
+class BASE_EXPORT MessageLoopForIO : public MessageLoop {
  public:
 #if defined(OS_WIN)
   typedef base::MessagePumpForIO::IOHandler IOHandler;
@@ -666,7 +647,8 @@ class BASE_API MessageLoopForIO : public MessageLoop {
 
 #if defined(OS_WIN)
   // Please see MessagePumpWin for definitions of these methods.
-  void RegisterIOHandler(HANDLE file_handle, IOHandler* handler);
+  void RegisterIOHandler(HANDLE file, IOHandler* handler);
+  bool RegisterJobObject(HANDLE job, IOHandler* handler);
   bool WaitForIOCompletion(DWORD timeout, IOHandler* filter);
 
  protected:
@@ -680,8 +662,8 @@ class BASE_API MessageLoopForIO : public MessageLoop {
   bool WatchFileDescriptor(int fd,
                            bool persistent,
                            Mode mode,
-                           FileDescriptorWatcher *controller,
-                           Watcher *delegate);
+                           FileDescriptorWatcher* controller,
+                           Watcher* delegate);
 
  private:
   base::MessagePumpLibevent* pump_io() {

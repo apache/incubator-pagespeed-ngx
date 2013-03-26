@@ -32,8 +32,11 @@ extern "C" {
 }
 
 #include <unistd.h>
+#include <vector>
+#include <set>
 
 #include "ngx_base_fetch.h"
+#include "ngx_message_handler.h"
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
@@ -41,19 +44,26 @@ extern "C" {
 #include "apr_time.h"
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/process_context.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/gzip_inflater.h"
+#include "pthread_shared_mem.h"
+#include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
+#include "net/instaweb/util/stack_buffer.h"
 
 extern ngx_module_t ngx_pagespeed;
 
@@ -172,6 +182,85 @@ ngx_int_t string_piece_to_buffer_chain(
   return NGX_OK;
 }
 
+ngx_int_t copy_response_headers_to_ngx(
+    ngx_http_request_t* r,
+    const net_instaweb::ResponseHeaders& pagespeed_headers) {
+  ngx_http_headers_out_t* headers_out = &r->headers_out;
+  headers_out->status = pagespeed_headers.status_code();
+
+  ngx_int_t i;
+  for (i = 0 ; i < pagespeed_headers.NumAttributes() ; i++) {
+    const GoogleString& name_gs = pagespeed_headers.Name(i);
+    const GoogleString& value_gs = pagespeed_headers.Value(i);
+
+    ngx_str_t name, value;
+    name.len = name_gs.length();
+    name.data = reinterpret_cast<u_char*>(const_cast<char*>(name_gs.data()));
+    value.len = value_gs.length();
+    value.data = reinterpret_cast<u_char*>(const_cast<char*>(value_gs.data()));
+
+    // TODO(jefftk): If we're setting a cache control header we'd like to
+    // prevent any downstream code from changing it.  Specifically, if we're
+    // serving a cache-extended resource the url will change if the resource
+    // does and so we've given it a long lifetime.  If the site owner has done
+    // something like set all css files to a 10-minute cache lifetime, that
+    // shouldn't apply to our generated resources.  See Apache code in
+    // net/instaweb/apache/header_util:AddResponseHeadersToRequest
+
+    // Make copies of name and value to put into headers_out.
+
+    u_char* value_s = ngx_pstrdup(r->pool, &value);
+    if (value_s == NULL) {
+      return NGX_ERROR;
+    }
+
+    if (STR_EQ_LITERAL(name, "Content-Type")) {
+      // Unlike all the other headers, content_type is just a string.
+      headers_out->content_type.data = value_s;
+      headers_out->content_type.len = value.len;
+      headers_out->content_type_len = value.len;
+      // In ngx_http_test_content_type() nginx will allocate and calculate
+      // content_type_lowcase if we leave it as null.
+      headers_out->content_type_lowcase = NULL;
+      continue;
+    }
+
+    u_char* name_s = ngx_pstrdup(r->pool, &name);
+    if (name_s == NULL) {
+      return NGX_ERROR;
+    }
+
+    ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(
+        ngx_list_push(&headers_out->headers));
+    if (header == NULL) {
+      return NGX_ERROR;
+    }
+
+    header->hash = 1;  // Include this header in the output.
+    header->key.len = name.len;
+    header->key.data = name_s;
+    header->value.len = value.len;
+    header->value.data = value_s;
+
+    // Populate the shortcuts to commonly used headers.
+    if (STR_EQ_LITERAL(name, "Date")) {
+      headers_out->date = header;
+    } else if (STR_EQ_LITERAL(name, "Etag")) {
+      headers_out->etag = header;
+    } else if (STR_EQ_LITERAL(name, "Expires")) {
+      headers_out->expires = header;
+    } else if (STR_EQ_LITERAL(name, "Last-Modified")) {
+      headers_out->last_modified = header;
+    } else if (STR_EQ_LITERAL(name, "Location")) {
+      headers_out->location = header;
+    } else if (STR_EQ_LITERAL(name, "Server")) {
+      headers_out->server = header;
+    }
+  }
+
+  return NGX_OK;
+}
+
 namespace {
 
 typedef struct {
@@ -208,6 +297,7 @@ typedef struct {
   bool is_resource_fetch;
   bool sent_headers;
   bool write_pending;
+  net_instaweb::GzipInflater* inflater_;
 } ps_request_ctx_t;
 
 ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
@@ -243,6 +333,8 @@ enum Response {
   kInvalidUrl,
   kPagespeedDisabled,
   kBeacon,
+  kStatistics,
+  kMessages,
 };
 }  // namespace CreateRequestContext
 
@@ -379,7 +471,6 @@ char* ps_configure(ngx_conf_t* cf,
                    net_instaweb::MessageHandler* handler,
                    PsConfigure::OptionLevel option_level) {
   if (*options == NULL) {
-    net_instaweb::NgxRewriteOptions::Initialize();
     *options = new net_instaweb::NgxRewriteOptions();
   }
   // args[0] is always "pagespeed"; ignore it.
@@ -402,8 +493,10 @@ char* ps_configure(ngx_conf_t* cf,
     }
   }
 
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cf->cycle, ngx_pagespeed));
   const char* status = (*options)->ParseAndSetOptions(
-      args, n_args, cf->pool, handler);
+      args, n_args, cf->pool, handler, cfg_m->driver_factory);
 
   // nginx expects us to return a string literal but doesn't mark it const.
   return const_cast<char*>(status);
@@ -436,15 +529,13 @@ bool factory_deleted = false;
 
 void ps_cleanup_srv_conf(void* data) {
   ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(data);
-  if (cfg_s->server_context == NULL) {
-    return;
-  }
+
   // destroy the factory on the first call, causing all worker threads
   // to be shut down when we destroy any proxy_fetch_factories. This
   // will prevent any queued callbacks to destroyed proxy fetch factories
   // from being executed
 
-  if (!factory_deleted) {
+  if (!factory_deleted && cfg_s->server_context != NULL) {
     delete cfg_s->server_context->factory();
     factory_deleted = true;
   }
@@ -464,8 +555,11 @@ void ps_cleanup_main_conf(void* data) {
   cfg_m->handler = NULL;
   net_instaweb::NgxRewriteDriverFactory::Terminate();
   net_instaweb::NgxRewriteOptions::Terminate();
-  // TODO(oschaaf): terminate shared mem runtime when we update
-  // psol to a later revision that has it.
+
+  // reset the factory deleted flag, so we will clean up properly next time,
+  // in case of a configuration reload.
+  // TODO(oschaaf): get rid of the factory_deleted flag
+  factory_deleted = false;
 }
 
 template <typename ConfT> ConfT* ps_create_conf(ngx_conf_t* cf) {
@@ -494,6 +588,10 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   if (cfg_m == NULL) {
     return NGX_CONF_ERROR;
   }
+  CHECK(!factory_deleted);
+  net_instaweb::NgxRewriteOptions::Initialize();
+  net_instaweb::NgxRewriteDriverFactory::Initialize();
+  cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
 }
@@ -563,22 +661,7 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
 
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
-
-  // We initialize the driver factory here and not in an init_main_conf function
-  // because if there are no server blocks with pagespeed configuration
-  // directives then we don't want it initialized.
-  if (cfg_m->driver_factory == NULL) {
-    // TODO(oschaaf): this ignores sigpipe messages from memcached.
-    // however, it would be better to not have those signals generated
-    // in the first place, as suppressing them this way may interfere
-    // with other modules that actually are interested in these signals
-    ps_ignore_sigpipe();
-    net_instaweb::NgxRewriteDriverFactory::Initialize();
-
-    cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
-        parent_cfg_s->options);
-  }
-
+  cfg_m->driver_factory->set_main_conf(parent_cfg_s->options);
   cfg_s->server_context = cfg_m->driver_factory->MakeNgxServerContext();
   // The server context sets some options when we call global_options(). So
   // let it do that, then merge in options we got from the config file.
@@ -586,6 +669,18 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   cfg_s->server_context->global_options()->Merge(*cfg_s->options);
   delete cfg_s->options;
   cfg_s->options = NULL;
+
+  // Validate FileCachePath
+  net_instaweb::GoogleMessageHandler handler;
+  const char* file_cache_path =
+      cfg_s->server_context->config()->file_cache_path().c_str();
+  if (file_cache_path[0] == '\0') {
+    return const_cast<char*>("FileCachePath must be set");
+  } else if (!cfg_m->driver_factory->file_system()->IsDir(
+      file_cache_path, &handler).is_true()) {
+    return const_cast<char*>(
+        "FileCachePath must be an nginx-writeable directory");
+  }
 
   return NGX_CONF_OK;
 }
@@ -644,6 +739,11 @@ void ps_release_request_context(void* data) {
   if (ctx->base_fetch != NULL) {
     ctx->base_fetch->Release();
     ctx->base_fetch = NULL;
+  }
+
+  if (ctx->inflater_ != NULL) {
+    delete ctx->inflater_;
+    ctx->inflater_ = NULL;
   }
 
   // Close the connection, delete the events attached with it, and free it to
@@ -1090,8 +1190,15 @@ CreateRequestContext::Response ps_create_request_context(
 
   if (is_resource_fetch && !cfg_s->server_context->IsPagespeedResource(url)) {
     if (url.PathSansLeaf() ==
-        net_instaweb::NgxRewriteDriverFactory::kStaticJavaScriptPrefix) {
+        net_instaweb::NgxRewriteDriverFactory::kStaticAssetPrefix) {
       return CreateRequestContext::kStaticContent;
+    }
+    if (url.PathSansQuery() == "/ngx_pagespeed_statistics"
+        || url.PathSansQuery() == "/ngx_pagespeed_global_statistics" ) {
+      return CreateRequestContext::kStatistics;
+    }
+    if (url.PathSansQuery() == "/ngx_pagespeed_message") {
+      return CreateRequestContext::kMessages;
     }
 
     net_instaweb::RewriteOptions* global_options =
@@ -1246,10 +1353,26 @@ void ps_send_to_pagespeed(ngx_http_request_t* r,
     cur->buf->last_buf = 0;
 
     CHECK(ctx->proxy_fetch != NULL);
-    ctx->proxy_fetch->Write(StringPiece(reinterpret_cast<char*>(cur->buf->pos),
-                                        cur->buf->last - cur->buf->pos),
-                            cfg_s->handler);
-
+    if (ctx->inflater_ == NULL) {
+      ctx->proxy_fetch->Write(
+          StringPiece(reinterpret_cast<char*>(cur->buf->pos),
+                      cur->buf->last - cur->buf->pos), cfg_s->handler);
+    } else {
+      char buf[net_instaweb::kStackBufferSize];
+      ctx->inflater_->SetInput(reinterpret_cast<char*>(cur->buf->pos),
+                               cur->buf->last - cur->buf->pos);
+      while (ctx->inflater_->HasUnconsumedInput()) {
+        int num_inflated_bytes = ctx->inflater_->InflateBytes(
+            buf, net_instaweb::kStackBufferSize);
+        if (num_inflated_bytes < 0) {
+          cfg_s->handler->Message(net_instaweb::kWarning,
+                                  "Corrupted inflation");
+        } else if (num_inflated_bytes > 0) {
+          ctx->proxy_fetch->Write(StringPiece(buf, num_inflated_bytes),
+                                  cfg_s->handler);
+        }
+      }
+    }
     // We're done with buffers as we pass them through, so mark them as sent as
     // we go.
     cur->buf->pos = cur->buf->last;
@@ -1385,6 +1508,46 @@ void ps_strip_html_headers(ngx_http_request_t* r) {
   }
 }
 
+// Returns true, if the the response headers indicate there are multiple
+// content encodings.
+bool ps_has_stacked_content_encoding(ngx_http_request_t* r) {
+  ngx_uint_t i;
+  ngx_list_part_t* part = &(r->headers_out.headers.part);
+  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
+  int field_count = 0;
+
+  for (i = 0 ; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+
+      part = part->next;
+      header = static_cast<ngx_table_elt_t*>(part->elts);
+      i = 0;
+    }
+
+    // Inspect Content-Encoding headers, checking all value fields
+    // If an origin returns gzip,foo, that is what we will get here.
+    if (STR_CASE_EQ_LITERAL(header[i].key, "Content-Encoding")) {
+      if (header[i].value.data != NULL && header[i].value.len > 0) {
+        char* p = reinterpret_cast<char*>(header[i].value.data);
+        ngx_uint_t j;
+        for (j = 0; j < header[i].value.len; j++) {
+          if (p[j] == ',' || j == header[i].value.len - 1) {
+            field_count++;
+          }
+        }
+        if (field_count > 1) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
 ngx_int_t ps_header_filter(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   if (cfg_s->server_context == NULL) {
@@ -1430,12 +1593,43 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kStaticContent:
     case CreateRequestContext::kInvalidUrl:
+    case CreateRequestContext::kStatistics:
+    case CreateRequestContext::kMessages:
       return ngx_http_next_header_filter(r);
     case CreateRequestContext::kOk:
       break;
   }
   ctx = ps_get_request_context(r);
   CHECK(ctx->driver != NULL);  // Not a resource fetch, so driver is defined.
+
+  if (r->headers_out.content_encoding &&
+      r->headers_out.content_encoding->value.len) {
+    // headers_out.content_encoding will be set to the exact last
+    // Content-Encoding response header value that nginx receives. To
+    // check if there were multiple (aka stacked) encodings in the
+    // response headers, we must iterate them all.
+    if (!ps_has_stacked_content_encoding(r)) {
+      StringPiece content_encoding =
+          str_to_string_piece(r->headers_out.content_encoding->value);
+      net_instaweb::GzipInflater::InflateType inflate_type;
+      bool is_encoded = false;
+      if (net_instaweb::StringCaseEqual(content_encoding, "deflate")) {
+        is_encoded = true;
+        inflate_type = net_instaweb::GzipInflater::kDeflate;
+      } else if (net_instaweb::StringCaseEqual(content_encoding, "gzip")) {
+        is_encoded = true;
+        inflate_type = net_instaweb::GzipInflater::kGzip;
+      }
+
+      if (is_encoded) {
+        r->headers_out.content_encoding->hash = 0;
+        r->headers_out.content_encoding = NULL;
+        ctx->inflater_ = new net_instaweb::GzipInflater(inflate_type);
+        ctx->inflater_->Init();
+      }
+    }
+  }
+
   const net_instaweb::RewriteOptions* options = ctx->driver->options();
 
   ps_strip_html_headers(r);
@@ -1464,6 +1658,8 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
   return ngx_http_next_header_filter(r);
 }
 
+// TODO(oschaaf): make ps_static_handler use write_handler_response? for now,
+// minimize the diff
 ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
 
@@ -1472,11 +1668,12 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   // Strip out the common prefix url before sending to
   // StaticJavascriptManager.
   StringPiece file_name = request_uri_path.substr(
-      strlen(net_instaweb::NgxRewriteDriverFactory::kStaticJavaScriptPrefix));
+      strlen(net_instaweb::NgxRewriteDriverFactory::kStaticAssetPrefix));
   StringPiece file_contents;
   StringPiece cache_header;
-  bool found = cfg_s->server_context->static_javascript_manager()->GetJsSnippet(
-      file_name, &file_contents, &cache_header);
+  net_instaweb::ContentType content_type;
+  bool found = cfg_s->server_context->static_asset_manager()->GetAsset(
+      file_name, &file_contents, &content_type, &cache_header);
   if (!found) {
     return NGX_DECLINED;
   }
@@ -1486,10 +1683,16 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
 
   // Content length
   r->headers_out.content_length_n = file_contents.size();
-  r->headers_out.content_type.len = sizeof("text/javascript") - 1;
-  r->headers_out.content_type_len = r->headers_out.content_type.len;
-  r->headers_out.content_type.data =
-      reinterpret_cast<u_char*>(const_cast<char*>("text/javascript"));
+
+  // Content type
+  StringPiece content_type_sp(content_type.mime_type());
+  r->headers_out.content_type_len = content_type_sp.length();
+  r->headers_out.content_type.len = content_type_sp.length();
+  r->headers_out.content_type.data = reinterpret_cast<u_char*>(
+      string_piece_to_pool_string(r->pool, content_type_sp));
+  if (r->headers_out.content_type.data == NULL) {
+    return NGX_ERROR;
+  }
   r->headers_out.content_type_lowcase = r->headers_out.content_type.data;
 
   // Cache control
@@ -1513,13 +1716,258 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   return ngx_http_output_filter(r, out);
 }
 
+ngx_int_t send_out_headers_and_body(
+    ngx_http_request_t* r,
+    const net_instaweb::ResponseHeaders& response_headers,
+    const GoogleString& output) {
+  ngx_int_t rc = copy_response_headers_to_ngx(r, response_headers);
+
+  if (rc != NGX_OK) {
+    return NGX_ERROR;
+  }
+
+  rc = ngx_http_send_header(r);
+
+  if (rc != NGX_OK) {
+    return NGX_ERROR;
+  }
+
+  // Send the body.
+  ngx_chain_t* out;
+  rc = string_piece_to_buffer_chain(
+      r->pool, output, &out, true /* send_last_buf */);
+  if (rc == NGX_ERROR) {
+    return NGX_ERROR;
+  }
+  CHECK(rc == NGX_OK);
+
+  return ngx_http_output_filter(r, out);
+}
+
+// Write response headers and send out headers and output, including the option
+// for a custom Content-Type.
+void write_handler_response(const StringPiece& output,
+                            ngx_http_request_t* r,
+                            net_instaweb::ContentType content_type,
+                            const StringPiece& cache_control,
+                            net_instaweb::Timer* timer) {
+  net_instaweb::ResponseHeaders response_headers;
+  response_headers.SetStatusAndReason(net_instaweb::HttpStatus::kOK);
+  response_headers.set_major_version(1);
+  response_headers.set_minor_version(1);
+
+  response_headers.Add(net_instaweb::HttpAttributes::kContentType,
+                       content_type.mime_type());
+
+  int64 now_ms = timer->NowMs();
+  response_headers.SetDate(now_ms);
+  response_headers.SetLastModified(now_ms);
+  response_headers.Add(net_instaweb::HttpAttributes::kCacheControl,
+                       cache_control);
+  send_out_headers_and_body(r, response_headers, output.as_string());
+}
+
+// Writes text wrapped in a <pre> block
+void WritePre(StringPiece str, net_instaweb::Writer* writer,
+              net_instaweb::MessageHandler* handler) {
+  writer->Write("<pre>\n", handler);
+  writer->Write(str, handler);
+  writer->Write("</pre>\n", handler);
+}
+
+void write_handler_response(const StringPiece& output,
+                            ngx_http_request_t* r,
+                            net_instaweb::ContentType content_type,
+                            net_instaweb::Timer* timer) {
+  write_handler_response(output, r, net_instaweb::kContentTypeHtml,
+                         net_instaweb::HttpAttributes::kNoCache, timer);
+}
+
+void write_handler_response(const StringPiece& output, ngx_http_request_t* r,
+                            net_instaweb::Timer* timer) {
+  write_handler_response(output, r, net_instaweb::kContentTypeHtml, timer);
+}
+
+// TODO(oschaaf): port SPDY specific functionality, shmcache stats
+// TODO(oschaaf): refactor this with the apache code to share this code
+ngx_int_t ps_statistics_handler(
+    ngx_http_request_t* r,
+    net_instaweb::NgxServerContext* server_context) {
+
+  StringPiece request_uri_path = str_to_string_piece(r->uri);
+  bool general_stats_request = net_instaweb::StringCaseStartsWith(
+      request_uri_path, "/ngx_pagespeed_statistics");
+  bool global_stats_request =
+      net_instaweb::StringCaseStartsWith(
+          request_uri_path, "/ngx_pagespeed_global_statistics");
+  net_instaweb::NgxRewriteDriverFactory* factory =
+      static_cast<net_instaweb::NgxRewriteDriverFactory*>(
+          server_context->factory());
+  net_instaweb::MessageHandler* message_handler = factory->message_handler();
+
+  int64 start_time, end_time, granularity_ms;
+  std::set<GoogleString> var_titles;
+  std::set<GoogleString> hist_titles;
+  if (general_stats_request && !factory->use_per_vhost_statistics()) {
+    global_stats_request = true;
+  }
+
+  // Choose the correct statistics.
+  net_instaweb::Statistics* statistics = global_stats_request ?
+      factory->statistics() : server_context->statistics();
+
+  net_instaweb::QueryParams params;
+  StringPiece query_string = StringPiece(
+      reinterpret_cast<char*>(r->args.data), r->args.len);
+  params.Parse(query_string);
+
+  // Parse various mode query params.
+  bool print_normal_config = params.Has("config");
+
+  // JSON statistics handling is done only if we have a console logger.
+  bool json = false;
+  if (statistics->console_logger() != NULL) {
+    // Default values for start_time, end_time, and granularity_ms in case the
+    // query does not include these parameters.
+    start_time = 0;
+    end_time = statistics->console_logger()->timer()->NowMs();
+    // Granularity is the difference in ms between data points. If it is not
+    // specified by the query, the default value is 3000 ms, the same as the
+    // default logging granularity.
+    granularity_ms = 3000;
+    for (int i = 0; i < params.size(); ++i) {
+      const GoogleString value =
+          (params.value(i) == NULL) ? "" : *params.value(i);
+      const char* name = params.name(i);
+      if (strcmp(name, "json") == 0) {
+        json = true;
+      } else if (strcmp(name, "start_time") == 0) {
+        net_instaweb::StringToInt64(value, &start_time);
+      } else if (strcmp(name, "end_time") == 0) {
+        net_instaweb::StringToInt64(value, &end_time);
+      } else if (strcmp(name, "var_titles") == 0) {
+        std::vector<StringPiece> variable_names;
+        net_instaweb::SplitStringPieceToVector(
+            value, ",", &variable_names, true);
+        for (size_t i = 0; i < variable_names.size(); ++i) {
+          var_titles.insert(variable_names[i].as_string());
+        }
+      } else if (strcmp(name, "hist_titles") == 0) {
+        std::vector<StringPiece> histogram_names;
+        net_instaweb::SplitStringPieceToVector(
+            value, ",", &histogram_names, true);
+        for (size_t i = 0; i < histogram_names.size(); ++i) {
+          // TODO(morlovich): Cleanup & publicize UrlToFileNameEncoder::Unescape
+          // and use it here, instead of this GlobalReplaceSubstring hack.
+          GoogleString name = histogram_names[i].as_string();
+          net_instaweb::GlobalReplaceSubstring("%20", " ", &(name));
+          hist_titles.insert(name);
+        }
+      } else if (strcmp(name, "granularity") == 0) {
+        net_instaweb::StringToInt64(value, &granularity_ms);
+      }
+    }
+  }
+  GoogleString output;
+  net_instaweb::StringWriter writer(&output);
+  if (json) {
+    statistics->console_logger()->DumpJSON(var_titles, hist_titles,
+                                           start_time, end_time,
+                                           granularity_ms, &writer,
+                                           message_handler);
+  } else {
+    // Generate some navigational links to the right to help
+    // our users get to other modes.
+    writer.Write(
+                "<div style='float:right'>View "
+                        "<a href='?config'>Configuration</a>, "
+                        "<a href='?'>Statistics</a> "
+                        "(<a href='?memcached'>with memcached Stats</a>). "
+                "</div>",
+                message_handler);
+
+    // Only print stats or configuration, not both.
+    if (!print_normal_config) {
+      writer.Write(global_stats_request ?
+                   "Global Statistics" : "VHost-Specific Statistics",
+                   message_handler);
+
+      // TODO(oschaaf): for when refactoring this with the apache code,
+      // this note is a reminder that this is different in nginx:
+      // we prepend the host identifier here
+      if (!global_stats_request) {
+        writer.Write(
+            net_instaweb::StrCat("[",
+                                 server_context->hostname_identifier(), "]"),
+            message_handler);
+      }
+
+      // Write <pre></pre> for Dump to keep good format.
+      writer.Write("<pre>", message_handler);
+      statistics->Dump(&writer, message_handler);
+      writer.Write("</pre>", message_handler);
+      statistics->RenderHistograms(&writer, message_handler);
+
+      if (params.Has("memcached")) {
+        GoogleString memcached_stats;
+        factory->PrintMemCacheStats(&memcached_stats);
+        if (!memcached_stats.empty()) {
+          WritePre(memcached_stats, &writer, message_handler);
+        }
+      }
+    }
+
+    if (print_normal_config) {
+      writer.Write("Configuration:<br>", message_handler);
+      WritePre(server_context->config()->OptionsToString(),
+               &writer, message_handler);
+    }
+  }
+
+  if (json) {
+    write_handler_response(output, r, net_instaweb::kContentTypeJson,
+                           factory->timer());
+  } else {
+    write_handler_response(output, r, factory->timer());
+  }
+
+  return NGX_OK;
+}
+
+ngx_int_t ps_messages_handler(
+    ngx_http_request_t* r,
+    net_instaweb::NgxServerContext* server_context) {
+  GoogleString output;
+  net_instaweb::StringWriter writer(&output);
+  net_instaweb::NgxRewriteDriverFactory* factory =
+      server_context->ngx_rewrite_driver_factory();
+  net_instaweb::NgxMessageHandler* message_handler =
+      factory->ngx_message_handler();
+  // Write <pre></pre> for Dump to keep good format.
+  writer.Write("<pre>", message_handler);
+  if (!message_handler->Dump(&writer)) {
+    writer.Write("Writing to ngx_pagespeed_message failed. \n"
+                 "Please check if it's enabled in pagespeed.conf.\n",
+                 message_handler);
+  }
+  writer.Write("</pre>", message_handler);
+  write_handler_response(output, r, factory->timer());
+  return NGX_OK;
+}
+
 ngx_int_t
 ps_beacon_handler(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   CHECK(cfg_s != NULL);
 
+  StringPiece user_agent;
+  if (r->headers_in.user_agent != NULL) {
+    user_agent = str_to_string_piece(r->headers_in.user_agent->value);
+  }
+
   cfg_s->server_context->HandleBeacon(
       str_to_string_piece(r->unparsed_uri),
+      user_agent,
       net_instaweb::RequestContextPtr(new net_instaweb::RequestContext(
           cfg_s->server_context->thread_system()->NewMutex())));
 
@@ -1554,6 +2002,10 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
       return ps_beacon_handler(r);
     case CreateRequestContext::kStaticContent:
       return ps_static_handler(r);
+    case CreateRequestContext::kStatistics:
+      return ps_statistics_handler(r, cfg_s->server_context);
+    case CreateRequestContext::kMessages:
+      return ps_messages_handler(r, cfg_s->server_context);
     case CreateRequestContext::kOk:
       break;
   }
@@ -1620,8 +2072,68 @@ ngx_http_module_t ps_module = {
 ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
-  if (cfg_m->driver_factory != NULL) {
-    cfg_m->driver_factory->RootInit();
+
+  ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
+      ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
+  ngx_http_core_srv_conf_t** cscfp = static_cast<ngx_http_core_srv_conf_t**>(
+      cmcf->servers.elts);
+  ngx_uint_t s;
+
+  bool have_server_context = false;
+  net_instaweb::Statistics* statistics = NULL;
+  // Iterate over all configured server{} blocks, and find out if we have
+  // an enabled ServerContext.
+  for (s = 0; s < cmcf->servers.nelts; s++) {
+    ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
+        cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
+    if (cfg_s->server_context != NULL) {
+      have_server_context = true;
+
+      net_instaweb::NgxRewriteOptions* config = cfg_s->server_context->config();
+      // Lazily create shared-memory statistics if enabled in any
+      // config, even when ngx_pagespeed is totally disabled.  This
+      // allows statistics to work if ngx_pagespeed gets turned on via
+      // .htaccess or query param.
+      if ((statistics == NULL) && config->statistics_enabled()) {
+        statistics = cfg_m->driver_factory->MakeGlobalSharedMemStatistics(
+            config->statistics_logging_enabled(),
+            config->statistics_logging_interval_ms(),
+            config->statistics_logging_file());
+      }
+
+      // The hostname identifier is used by the shared memory statistics
+      // to allocate a segment, and should be unique name per server
+      GoogleString hostname_identifier = net_instaweb::StrCat(
+          "Host[", base::IntToString(static_cast<int>(s)), "]");
+      cfg_s->server_context->set_hostname_identifier(hostname_identifier);
+
+      // If config has statistics on and we have per-vhost statistics on
+      // as well, then set it up.
+      if (config->statistics_enabled()
+          && cfg_m->driver_factory->use_per_vhost_statistics()) {
+        cfg_s->server_context->CreateLocalStatistics(statistics);
+      }
+    }
+  }
+
+  if (have_server_context) {
+    // TODO(oschaaf): this ignores sigpipe messages from memcached.
+    // however, it would be better to not have those signals generated
+    // in the first place, as suppressing them this way may interfere
+    // with other modules that actually are interested in these signals
+    ps_ignore_sigpipe();
+
+    // If no shared-mem statistics are enabled, then init using the default
+    // NullStatistics.
+    if (statistics == NULL) {
+      statistics = cfg_m->driver_factory->statistics();
+      net_instaweb::NgxRewriteDriverFactory::InitStats(statistics);
+    }
+
+    cfg_m->driver_factory->RootInit(cycle->log);
+  } else {
+    delete cfg_m->driver_factory;
+    cfg_m->driver_factory = NULL;
   }
   return NGX_OK;
 }
@@ -1638,7 +2150,7 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
 
   // ChildInit() will initialise all ServerContexts, which we need to
   // create ProxyFetchFactories below
-  cfg_m->driver_factory->ChildInit();
+  cfg_m->driver_factory->ChildInit(cycle->log);
 
   ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_http_core_module));
@@ -1651,7 +2163,6 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   for (s = 0; s < cmcf->servers.nelts; s++) {
     ps_srv_conf_t* cfg_s = static_cast<ps_srv_conf_t*>(
         cscfp[s]->ctx->srv_conf[ngx_pagespeed.ctx_index]);
-
     // Some server{} blocks may not have a ServerContext in that case we must
     // not instantiate a ProxyFetchFactory.
     if (cfg_s->server_context != NULL) {

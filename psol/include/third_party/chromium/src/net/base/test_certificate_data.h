@@ -1,8 +1,24 @@
-// Copyright (c) 2006-2008 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 namespace {
+
+// This is the SHA1 hash of the SubjectPublicKeyInfo of nist.der.
+static const char kNistSPKIHash[] =
+    "\x15\x60\xde\x65\x4e\x03\x9f\xd0\x08\x82"
+    "\xa9\x6a\xc4\x65\x8e\x6f\x92\x06\x84\x35";
+
+// kCertSESPKIs contains the SHA1 hashes of the SPKIs of the certse.pem
+// certificate chain, in order.
+static const char kCertSESPKIs[3][21] = {
+  "\x3f\x6c\xf3\xf1\xc9\xdf\xb6\x63\xa8\x05"
+  "\x44\x75\x9a\xac\x21\x4a\x74\xb2\xa5\xa4",
+  "\xae\x4a\xd7\xf9\xb3\x80\xe1\x12\x93\x32"
+  "\xbb\x52\xde\x5a\x09\x0c\x52\x1b\x33\xd0",
+  "\xb1\x81\x08\x1a\x19\xa4\xc0\x94\x1f\xfa"
+  "\xe8\x95\x28\xc1\x24\xc9\x9b\x34\xac\xc7",
+};
 
 // Certificates for test data. They're obtained with:
 //

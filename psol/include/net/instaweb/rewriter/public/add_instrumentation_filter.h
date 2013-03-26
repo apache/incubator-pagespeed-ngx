@@ -60,8 +60,13 @@ class AddInstrumentationFilter : public EmptyHtmlFilter {
   // tag name.
   void AddScriptNode(HtmlElement* element, const GoogleString& tag_name);
 
+  // Adds the kHeadScript just before the current event only if the element is
+  // not a <title> or <meta>.
+  void AddHeadScript(HtmlElement* element);
+
   RewriteDriver* driver_;
   bool found_head_;
+  bool added_head_script_;
   bool added_tail_script_;
   bool added_unload_script_;
 

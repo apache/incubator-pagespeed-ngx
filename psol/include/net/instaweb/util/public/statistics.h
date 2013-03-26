@@ -198,12 +198,19 @@ class Histogram {
   DISALLOW_COPY_AND_ASSIGN(Histogram);
 };
 
-class NullHistogram : public Histogram {
+// Trivial implementation. But Count() returns a meaningful value.
+class CountHistogram : public Histogram {
  public:
-  NullHistogram() {}
-  virtual ~NullHistogram();
-  virtual void Add(const double value) { }
-  virtual void Clear() { }
+  CountHistogram() : count_(0) {}
+  virtual ~CountHistogram();
+  virtual void Add(const double value) {
+    ScopedMutex hold(lock());
+    ++count_;
+  }
+  virtual void Clear() {
+    ScopedMutex hold(lock());
+    count_ = 0;
+  }
   virtual int NumBuckets() { return 0; }
   virtual void EnableNegativeBuckets() { }
   virtual void SetMinValue(double value) { }
@@ -216,7 +223,7 @@ class NullHistogram : public Histogram {
   virtual double AverageInternal() { return 0.0; }
   virtual double PercentileInternal(const double perc) { return 0.0; }
   virtual double StandardDeviationInternal() { return 0.0; }
-  virtual double CountInternal() { return 0.0; }
+  virtual double CountInternal() { return count_; }
   virtual double MaximumInternal() { return 0.0; }
   virtual double MinimumInternal() { return 0.0; }
   virtual double BucketStart(int index) { return 0.0; }
@@ -224,8 +231,9 @@ class NullHistogram : public Histogram {
 
  private:
   NullMutex mutex_;
+  int count_;
 
-  DISALLOW_COPY_AND_ASSIGN(NullHistogram);
+  DISALLOW_COPY_AND_ASSIGN(CountHistogram);
 };
 
 // TimedVariable is a statistic class returns the amount added in the

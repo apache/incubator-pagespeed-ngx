@@ -4,9 +4,8 @@
 
 #ifndef BASE_EVENT_RECORDER_H_
 #define BASE_EVENT_RECORDER_H_
-#pragma once
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
 #include "build/build_config.h"
 
@@ -33,7 +32,7 @@ namespace base {
 //        Why?  Imagine if the product had a "record a macro" feature.
 //        You might be recording globally, while recording or playing back
 //        a macro.  I don't think two playbacks make sense.
-class BASE_API EventRecorder {
+class BASE_EXPORT EventRecorder {
  public:
   // Get the singleton EventRecorder.
   // We can only handle one recorder/player at a time.

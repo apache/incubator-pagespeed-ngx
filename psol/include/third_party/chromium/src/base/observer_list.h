@@ -4,7 +4,6 @@
 
 #ifndef BASE_OBSERVER_LIST_H__
 #define BASE_OBSERVER_LIST_H__
-#pragma once
 
 #include <algorithm>
 #include <limits>
@@ -162,14 +161,9 @@ class ObserverListBase
 
  protected:
   void Compact() {
-    typename ListType::iterator it = observers_.begin();
-    while (it != observers_.end()) {
-      if (*it) {
-        ++it;
-      } else {
-        it = observers_.erase(it);
-      }
-    }
+    observers_.erase(
+        std::remove(observers_.begin(), observers_.end(),
+                    static_cast<ObserverType*>(NULL)), observers_.end());
   }
 
  private:
@@ -203,14 +197,20 @@ class ObserverList : public ObserverListBase<ObserverType> {
       DCHECK_EQ(ObserverListBase<ObserverType>::size(), 0U);
     }
   }
+
+  bool might_have_observers() const {
+    return ObserverListBase<ObserverType>::size() != 0;
+  }
 };
 
-#define FOR_EACH_OBSERVER(ObserverType, observer_list, func)  \
-  do {                                                        \
-    ObserverListBase<ObserverType>::Iterator it(observer_list);   \
-    ObserverType* obs;                                        \
-    while ((obs = it.GetNext()) != NULL)                      \
-      obs->func;                                              \
+#define FOR_EACH_OBSERVER(ObserverType, observer_list, func)         \
+  do {                                                               \
+    if ((observer_list).might_have_observers()) {                    \
+      ObserverListBase<ObserverType>::Iterator it(observer_list);    \
+      ObserverType* obs;                                             \
+      while ((obs = it.GetNext()) != NULL)                           \
+        obs->func;                                                   \
+    }                                                                \
   } while (0)
 
 #endif  // BASE_OBSERVER_LIST_H__

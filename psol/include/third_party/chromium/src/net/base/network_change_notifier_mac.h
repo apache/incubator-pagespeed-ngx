@@ -1,16 +1,17 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_BASE_NETWORK_CHANGE_NOTIFIER_MAC_H_
 #define NET_BASE_NETWORK_CHANGE_NOTIFIER_MAC_H_
-#pragma once
 
-#include <SystemConfiguration/SCDynamicStore.h>
-#include <SystemConfiguration/SCNetworkReachability.h>
+#include <SystemConfiguration/SystemConfiguration.h>
 
 #include "base/basictypes.h"
+#include "base/compiler_specific.h"
 #include "base/mac/scoped_cftyperef.h"
+#include "base/memory/scoped_ptr.h"
+#include "base/synchronization/condition_variable.h"
 #include "base/synchronization/lock.h"
 #include "net/base/network_change_notifier.h"
 #include "net/base/network_config_watcher_mac.h"
@@ -23,9 +24,8 @@ class NetworkChangeNotifierMac: public NetworkChangeNotifier {
   virtual ~NetworkChangeNotifierMac();
 
   // NetworkChangeNotifier implementation:
-  virtual bool IsCurrentlyOffline() const;
+  virtual ConnectionType GetCurrentConnectionType() const OVERRIDE;
 
- private:
   // Forwarder just exists to keep the NetworkConfigWatcherMac API out of
   // NetworkChangeNotifierMac's public API.
   class Forwarder : public NetworkConfigWatcherMac::Delegate {
@@ -34,32 +34,44 @@ class NetworkChangeNotifierMac: public NetworkChangeNotifier {
         : net_config_watcher_(net_config_watcher) {}
 
     // NetworkConfigWatcherMac::Delegate implementation:
-    virtual void SetDynamicStoreNotificationKeys(SCDynamicStoreRef store) {
-      net_config_watcher_->SetDynamicStoreNotificationKeys(store);
-    }
-    virtual void OnNetworkConfigChange(CFArrayRef changed_keys) {
-      net_config_watcher_->OnNetworkConfigChange(changed_keys);
-    }
+    virtual void Init() OVERRIDE;
+    virtual void StartReachabilityNotifications() OVERRIDE;
+    virtual void SetDynamicStoreNotificationKeys(
+        SCDynamicStoreRef store) OVERRIDE;
+    virtual void OnNetworkConfigChange(CFArrayRef changed_keys) OVERRIDE;
 
    private:
     NetworkChangeNotifierMac* const net_config_watcher_;
     DISALLOW_COPY_AND_ASSIGN(Forwarder);
   };
 
-  // NetworkConfigWatcherMac::Delegate implementation:
+ private:
+  class DnsConfigServiceThread;
+
+  // Methods directly called by the NetworkConfigWatcherMac::Delegate:
+  void StartReachabilityNotifications();
   void SetDynamicStoreNotificationKeys(SCDynamicStoreRef store);
   void OnNetworkConfigChange(CFArrayRef changed_keys);
+
+  void SetInitialConnectionType();
 
   static void ReachabilityCallback(SCNetworkReachabilityRef target,
                                    SCNetworkConnectionFlags flags,
                                    void* notifier);
 
-  Forwarder forwarder_;
-  const NetworkConfigWatcherMac config_watcher_;
-  base::mac::ScopedCFTypeRef<CFRunLoopRef> run_loop_;
+  // These must be constructed before config_watcher_ to ensure
+  // the lock is in a valid state when Forwarder::Init is called.
+  ConnectionType connection_type_;
+  bool connection_type_initialized_;
+  mutable base::Lock connection_type_lock_;
+  mutable base::ConditionVariable initial_connection_type_cv_;
   base::mac::ScopedCFTypeRef<SCNetworkReachabilityRef> reachability_;
-  bool network_reachable_;
-  mutable base::Lock network_reachable_lock_;
+  base::mac::ScopedCFTypeRef<CFRunLoopRef> run_loop_;
+
+  Forwarder forwarder_;
+  scoped_ptr<const NetworkConfigWatcherMac> config_watcher_;
+
+  scoped_ptr<DnsConfigServiceThread> dns_config_service_thread_;
 
   DISALLOW_COPY_AND_ASSIGN(NetworkChangeNotifierMac);
 };

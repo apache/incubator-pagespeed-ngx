@@ -116,7 +116,10 @@ class CommonFilter : public EmptyHtmlFilter {
   virtual void StartElementImpl(HtmlElement* element) = 0;
   virtual void EndElementImpl(HtmlElement* element) = 0;
 
-  // Protected pointers for inheriter's to use
+  // ID string used in logging. Inheritors should supply whatever short ID
+  // string they use.
+  virtual const char* LoggingId() { return Name(); }
+  // Protected pointers for inheritors to use.
   RewriteDriver* driver_;
   ServerContext* server_context_;
   const RewriteOptions* rewrite_options_;

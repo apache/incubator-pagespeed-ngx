@@ -62,7 +62,7 @@ class StdStringCanonOutput : public CanonOutput {
         str_(str) {
     cur_len_ = static_cast<int>(str_->size());  // Append to existing data.
     str_->resize(str_->capacity());
-    buffer_ = &(*str_)[0];
+    buffer_ = str_->empty() ? NULL : &(*str_)[0];
     buffer_len_ = static_cast<int>(str_->size());
   }
   virtual ~StdStringCanonOutput() {
@@ -77,7 +77,7 @@ class StdStringCanonOutput : public CanonOutput {
 
   virtual void Resize(int sz) {
     str_->resize(sz);
-    buffer_ = &(*str_)[0];
+    buffer_ = str_->empty() ? NULL : &(*str_)[0];
     buffer_len_ = sz;
   }
 

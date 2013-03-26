@@ -4,7 +4,6 @@
 
 #ifndef BASE_FILE_VERSION_INFO_H__
 #define BASE_FILE_VERSION_INFO_H__
-#pragma once
 
 #include "build/build_config.h"
 
@@ -16,7 +15,7 @@ extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 #include <string>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/string16.h"
 
 class FilePath;
@@ -38,14 +37,14 @@ class FileVersionInfo {
   // Creates a FileVersionInfo for the specified path. Returns NULL if something
   // goes wrong (typically the file does not exit or cannot be opened). The
   // returned object should be deleted when you are done with it.
-  BASE_API static FileVersionInfo* CreateFileVersionInfo(
+  BASE_EXPORT static FileVersionInfo* CreateFileVersionInfo(
       const FilePath& file_path);
 #endif  // OS_WIN || OS_MACOSX
 
 #if defined(OS_WIN)
   // Creates a FileVersionInfo for the specified module. Returns NULL in case
   // of error. The returned object should be deleted when you are done with it.
-  BASE_API static FileVersionInfo* CreateFileVersionInfoForModule(
+  BASE_EXPORT static FileVersionInfo* CreateFileVersionInfoForModule(
       HMODULE module);
 
   // Creates a FileVersionInfo for the current module. Returns NULL in case
@@ -60,7 +59,7 @@ class FileVersionInfo {
 #else
   // Creates a FileVersionInfo for the current module. Returns NULL in case
   // of error. The returned object should be deleted when you are done with it.
-  static FileVersionInfo* CreateFileVersionInfoForCurrentModule();
+  BASE_EXPORT static FileVersionInfo* CreateFileVersionInfoForCurrentModule();
 #endif  // OS_WIN
 
   // Accessors to the different version properties.

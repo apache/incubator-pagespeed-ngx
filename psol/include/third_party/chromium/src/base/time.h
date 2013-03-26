@@ -1,33 +1,39 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 // Time represents an absolute point in time, internally represented as
-// microseconds (s/1,000,000) since a platform-dependent epoch.  Each
-// platform's epoch, along with other system-dependent clock interface
-// routines, is defined in time_PLATFORM.cc.
+// microseconds (s/1,000,000) since the Windows epoch (1601-01-01 00:00:00 UTC)
+// (See http://crbug.com/14734).  System-dependent clock interface routines are
+// defined in time_PLATFORM.cc.
 //
 // TimeDelta represents a duration of time, internally represented in
 // microseconds.
 //
-// TimeTicks represents an abstract time that is always incrementing for use
-// in measuring time durations. It is internally represented in microseconds.
-// It can not be converted to a human-readable time, but is guaranteed not to
-// decrease (if the user changes the computer clock, Time::Now() may actually
-// decrease or jump).
+// TimeTicks represents an abstract time that is most of the time incrementing
+// for use in measuring time durations. It is internally represented in
+// microseconds.  It can not be converted to a human-readable time, but is
+// guaranteed not to decrease (if the user changes the computer clock,
+// Time::Now() may actually decrease or jump).  But note that TimeTicks may
+// "stand still", for example if the computer suspended.
 //
 // These classes are represented as only a 64-bit value, so they can be
 // efficiently passed by value.
 
 #ifndef BASE_TIME_H_
 #define BASE_TIME_H_
-#pragma once
 
 #include <time.h>
 
 #include "base/atomicops.h"
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
+
+#if defined(OS_MACOSX)
+#include <CoreFoundation/CoreFoundation.h>
+// Avoid Mac system header macro leak.
+#undef TYPE_BOOL
+#endif
 
 #if defined(OS_POSIX)
 // For struct timeval.
@@ -40,6 +46,8 @@
 #include <windows.h>
 #endif
 
+#include <limits>
+
 namespace base {
 
 class Time;
@@ -47,7 +55,7 @@ class TimeTicks;
 
 // TimeDelta ------------------------------------------------------------------
 
-class BASE_API TimeDelta {
+class BASE_EXPORT TimeDelta {
  public:
   TimeDelta() : delta_(0) {
   }
@@ -59,10 +67,22 @@ class BASE_API TimeDelta {
   static TimeDelta FromSeconds(int64 secs);
   static TimeDelta FromMilliseconds(int64 ms);
   static TimeDelta FromMicroseconds(int64 us);
+#if defined(OS_WIN)
+  static TimeDelta FromQPCValue(LONGLONG qpc_value);
+#endif
+
+  // Converts an integer value representing TimeDelta to a class. This is used
+  // when deserializing a |TimeDelta| structure, using a value known to be
+  // compatible. It is not provided as a constructor because the integer type
+  // may be unclear from the perspective of a caller.
+  static TimeDelta FromInternalValue(int64 delta) {
+    return TimeDelta(delta);
+  }
 
   // Returns the internal numeric value of the TimeDelta object. Please don't
   // use this and do arithmetic on it, as it is more error prone than using the
   // provided operators.
+  // For serializing, use FromInternalValue to reconstitute.
   int64 ToInternalValue() const {
     return delta_;
   }
@@ -177,7 +197,7 @@ inline TimeDelta operator*(int64 a, TimeDelta td) {
 // Time -----------------------------------------------------------------------
 
 // Represents a wall clock time.
-class BASE_API Time {
+class BASE_EXPORT Time {
  public:
   static const int64 kMillisecondsPerSecond = 1000;
   static const int64 kMicrosecondsPerMillisecond = 1000;
@@ -203,7 +223,7 @@ class BASE_API Time {
   // Represents an exploded time that can be formatted nicely. This is kind of
   // like the Win32 SYSTEMTIME structure or the Unix "struct tm" with a few
   // additions and changes to prevent errors.
-  struct BASE_API Exploded {
+  struct BASE_EXPORT Exploded {
     int year;          // Four digit year "2007"
     int month;         // 1-based month (values 1 = January, etc.)
     int day_of_week;   // 0-based day of week (0 = Sunday, etc.)
@@ -229,6 +249,11 @@ class BASE_API Time {
     return us_ == 0;
   }
 
+  // Returns true if the time object is the maximum time.
+  bool is_max() const {
+    return us_ == std::numeric_limits<int64>::max();
+  }
+
   // Returns the time for epoch in Unix-like system (Jan 1, 1970).
   static Time UnixEpoch();
 
@@ -236,6 +261,10 @@ class BASE_API Time {
   // in which case time will actually go backwards. We don't guarantee that
   // times are increasing, or that two calls to Now() won't be the same.
   static Time Now();
+
+  // Returns the maximum time, which should be greater than any reasonable time
+  // with which we might compare it.
+  static Time Max();
 
   // Returns the current time. Same as Now() except that this function always
   // uses system time so that there are no discrepancies between the returned
@@ -257,8 +286,20 @@ class BASE_API Time {
   static Time FromDoubleT(double dt);
   double ToDoubleT() const;
 
+  // Converts to/from the Javascript convention for times, a number of
+  // milliseconds since the epoch:
+  // https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Date/getTime.
+  static Time FromJsTime(double ms_since_epoch);
+  double ToJsTime() const;
+
 #if defined(OS_POSIX)
+  static Time FromTimeVal(struct timeval t);
   struct timeval ToTimeVal() const;
+#endif
+
+#if defined(OS_MACOSX)
+  static Time FromCFAbsoluteTime(CFAbsoluteTime t);
+  CFAbsoluteTime ToCFAbsoluteTime() const;
 #endif
 
 #if defined(OS_WIN)
@@ -317,7 +358,7 @@ class BASE_API Time {
   // in the input string, we assume local time.
   // TODO(iyengar) Move the FromString/FromTimeT/ToTimeT/FromFileTime to
   // a new time converter class.
-  static bool FromString(const wchar_t* time_string, Time* parsed_time);
+  static bool FromString(const char* time_string, Time* parsed_time);
 
   // For serializing, use FromInternalValue to reconstitute. Please don't use
   // this and do arithmetic on it, as it is more error prone than using the
@@ -457,7 +498,7 @@ inline Time TimeDelta::operator+(Time t) const {
 
 // TimeTicks ------------------------------------------------------------------
 
-class BASE_API TimeTicks {
+class BASE_EXPORT TimeTicks {
  public:
   TimeTicks() : ticks_(0) {
   }
@@ -473,9 +514,18 @@ class BASE_API TimeTicks {
   // SHOULD ONLY BE USED WHEN IT IS REALLY NEEDED.
   static TimeTicks HighResNow();
 
+  // Returns the current system trace time or, if none is defined, the current
+  // high-res time (i.e. HighResNow()). On systems where a global trace clock
+  // is defined, timestamping TraceEvents's with this value guarantees
+  // synchronization between events collected inside chrome and events
+  // collected outside (e.g. kernel, X server).
+  static TimeTicks NowFromSystemTraceTime();
+
 #if defined(OS_WIN)
   // Get the absolute value of QPC time drift. For testing.
   static int64 GetQPCDriftMicroseconds();
+
+  static TimeTicks FromQPCValue(LONGLONG qpc_value);
 
   // Returns true if the high resolution clock is working on this system.
   // This is only for testing.
@@ -487,7 +537,16 @@ class BASE_API TimeTicks {
     return ticks_ == 0;
   }
 
+  // Converts an integer value representing TimeTicks to a class. This is used
+  // when deserializing a |TimeTicks| structure, using a value known to be
+  // compatible. It is not provided as a constructor because the integer type
+  // may be unclear from the perspective of a caller.
+  static TimeTicks FromInternalValue(int64 ticks) {
+    return TimeTicks(ticks);
+  }
+
   // Returns the internal numeric value of the TimeTicks object.
+  // For serializing, use FromInternalValue to reconstitute.
   int64 ToInternalValue() const {
     return ticks_;
   }

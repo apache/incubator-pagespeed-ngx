@@ -20,7 +20,6 @@
 
 #ifndef BASE_HASH_TABLES_H_
 #define BASE_HASH_TABLES_H_
-#pragma once
 
 #include "build/build_config.h"
 
@@ -29,11 +28,16 @@
 #if defined(COMPILER_MSVC)
 #include <hash_map>
 #include <hash_set>
-namespace base {
-using stdext::hash_map;
-using stdext::hash_set;
-}
+
+#define BASE_HASH_NAMESPACE stdext
+
 #elif defined(COMPILER_GCC)
+#if defined(OS_ANDROID)
+#define BASE_HASH_NAMESPACE std
+#else
+#define BASE_HASH_NAMESPACE __gnu_cxx
+#endif
+
 // This is a hack to disable the gcc 4.4 warning about hash_map and hash_set
 // being deprecated.  We can get rid of this when we upgrade to VS2008 and we
 // can use <tr1/unordered_map> and <tr1/unordered_set>.
@@ -42,8 +46,14 @@ using stdext::hash_set;
 #undef __DEPRECATED
 #endif
 
+#if defined(OS_ANDROID)
+#include <hash_map>
+#include <hash_set>
+#else
 #include <ext/hash_map>
 #include <ext/hash_set>
+#endif
+
 #include <string>
 
 #ifdef CHROME_OLD__DEPRECATED
@@ -51,13 +61,9 @@ using stdext::hash_set;
 #undef CHROME_OLD__DEPRECATED
 #endif
 
-namespace base {
-using __gnu_cxx::hash_map;
-using __gnu_cxx::hash_set;
-}  // namespace base
+namespace BASE_HASH_NAMESPACE {
 
-namespace __gnu_cxx {
-
+#if !defined(OS_ANDROID)
 // The GNU C++ library provides identity hash functions for many integral types,
 // but not for |long long|.  This hash function will truncate if |size_t| is
 // narrower than |long long|.  This is probably good enough for what we will
@@ -75,6 +81,7 @@ DEFINE_TRIVIAL_HASH(long long);
 DEFINE_TRIVIAL_HASH(unsigned long long);
 
 #undef DEFINE_TRIVIAL_HASH
+#endif  // !defined(OS_ANDROID)
 
 // Implement string hash functions so that strings of various flavors can
 // be used as keys in STL maps and sets.  The hash algorithm comes from the
@@ -98,8 +105,15 @@ DEFINE_STRING_HASH(string16);
 
 #undef DEFINE_STRING_HASH
 
-}  // namespace __gnu_cxx
+}  // namespace BASE_HASH_NAMESPACE
 
+#else  // COMPILER
+#error define BASE_HASH_NAMESPACE for your compiler
 #endif  // COMPILER
+
+namespace base {
+using BASE_HASH_NAMESPACE::hash_map;
+using BASE_HASH_NAMESPACE::hash_set;
+}
 
 #endif  // BASE_HASH_TABLES_H_

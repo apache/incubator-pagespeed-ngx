@@ -4,7 +4,6 @@
 
 #ifndef BASE_SYNCHRONIZATION_LOCK_IMPL_H_
 #define BASE_SYNCHRONIZATION_LOCK_IMPL_H_
-#pragma once
 
 #include "build/build_config.h"
 
@@ -14,7 +13,7 @@
 #include <pthread.h>
 #endif
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
 
 namespace base {
@@ -23,7 +22,7 @@ namespace internal {
 // This class implements the underlying platform-specific spin-lock mechanism
 // used for the Lock class.  Most users should not use LockImpl directly, but
 // should instead use Lock.
-class BASE_API LockImpl {
+class BASE_EXPORT LockImpl {
  public:
 #if defined(OS_WIN)
   typedef CRITICAL_SECTION OSLockType;
@@ -45,12 +44,10 @@ class BASE_API LockImpl {
   // a successful call to Try, or a call to Lock.
   void Unlock();
 
-  // Return the native underlying lock.  Not supported for Windows builds.
+  // Return the native underlying lock.
   // TODO(awalker): refactor lock and condition variables so that this is
   // unnecessary.
-#if !defined(OS_WIN)
   OSLockType* os_lock() { return &os_lock_; }
-#endif
 
  private:
   OSLockType os_lock_;

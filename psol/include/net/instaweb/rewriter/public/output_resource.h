@@ -62,10 +62,15 @@ class OutputResource : public Resource {
                  const RewriteOptions* options,
                  OutputResourceKind kind);
 
-  virtual bool Load(MessageHandler* message_handler);
+  virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
+                               AsyncCallback* callback,
+                               MessageHandler* handler);
   // NOTE: url() will crash if resource has does not have a hash set yet.
   // Specifically, this will occur if the resource has not been completely
   // written yet. Before that point, the final URL cannot be known.
+  //
+  // Note: the OutputResource will never have a query string, even when
+  // ModPagespeedAddOptionsToUrls is on.
   virtual GoogleString url() const;
   // Returns the same as url(), but with a spoofed hash in case no hash
   // was set yet. Use this for error reporting, etc. where you do not
@@ -131,6 +136,7 @@ class OutputResource : public Resource {
   const GoogleString& unmapped_base() const { return unmapped_base_; }
   const GoogleString& original_base() const { return original_base_; }
   const ResourceNamer& full_name() const { return full_name_; }
+  ResourceNamer* mutable_full_name() { return &full_name_; }
   StringPiece name() const { return full_name_.name(); }
   StringPiece experiment() const { return full_name_.experiment(); }
   StringPiece suffix() const;
@@ -156,7 +162,7 @@ class OutputResource : public Resource {
   // to refactor this to check to see whether the desired resource is
   // already known.  For now we'll assume we can commit to serving the
   // resource during the HTML rewriter.
-  bool IsWritten() const;
+  bool IsWritten() const { return writing_complete_; }
 
   // Sets the type of the output resource, and thus also its suffix.
   virtual void SetType(const ContentType* type);
@@ -207,7 +213,7 @@ class OutputResource : public Resource {
   bool has_lock() const;
 
   // This is called by CacheCallback::Done in rewrite_driver.cc.
-  void set_written(bool written) { writing_complete_ = true; }
+  void SetWritten(bool written) { writing_complete_ = true; }
 
   virtual const RewriteOptions* rewrite_options() const {
     return rewrite_options_;
@@ -218,6 +224,8 @@ class OutputResource : public Resource {
   // BeginWrite is owned by this OutputResource.
   Writer* BeginWrite(MessageHandler* message_handler);
   void EndWrite(MessageHandler* message_handler);
+
+  virtual bool UseHttpCache() const { return true; }
 
  protected:
   virtual ~OutputResource();

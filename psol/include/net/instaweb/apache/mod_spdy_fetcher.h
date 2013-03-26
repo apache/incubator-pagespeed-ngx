@@ -30,6 +30,7 @@
 #include "net/instaweb/apache/interface_mod_spdy.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 
 struct request_rec;
 struct spdy_slave_connection_factory;
@@ -48,7 +49,8 @@ class ModSpdyFetcher : public UrlAsyncFetcher {
   static void Initialize();
 
   ModSpdyFetcher(ModSpdyFetchController* controller,
-                 request_rec* req, RewriteDriver* driver);
+                 StringPiece url, RewriteDriver* driver,
+                 spdy_slave_connection_factory* connection_factory);
   virtual ~ModSpdyFetcher();
 
   virtual void Fetch(const GoogleString& url,
@@ -72,9 +74,9 @@ class ModSpdyFetcher : public UrlAsyncFetcher {
                      AsyncFetch* fetch);
 
   ModSpdyFetchController* controller_;
-  spdy_slave_connection_factory* connection_factory_;
   UrlAsyncFetcher* fallback_fetcher_;
   GoogleString own_origin_;  // empty if we couldn't figure it out.
+  spdy_slave_connection_factory* connection_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(ModSpdyFetcher);
 };

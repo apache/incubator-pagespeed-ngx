@@ -16,7 +16,7 @@
 #define PAGESPEED_RULES_ENABLE_GZIP_COMPRESSION_H_
 
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
+#include "base/memory/scoped_ptr.h"
 #include "pagespeed/rules/minify_rule.h"
 #include "pagespeed/rules/savings_computer.h"
 

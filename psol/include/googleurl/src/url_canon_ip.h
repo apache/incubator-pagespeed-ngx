@@ -37,6 +37,14 @@
 
 namespace url_canon {
 
+// Writes the given IPv4 address to |output|.
+GURL_API void AppendIPv4Address(const unsigned char address[4],
+                                CanonOutput* output);
+
+// Writes the given IPv6 address to |output|.
+GURL_API void AppendIPv6Address(const unsigned char address[16],
+                                CanonOutput* output);
+
 // Searches the host name for the portions of the IPv4 address. On success,
 // each component will be placed into |components| and it will return true.
 // It will return false if the host can not be separated as an IPv4 address

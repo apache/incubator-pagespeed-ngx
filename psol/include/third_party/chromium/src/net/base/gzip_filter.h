@@ -14,7 +14,6 @@
 
 #ifndef NET_BASE_GZIP_FILTER_H_
 #define NET_BASE_GZIP_FILTER_H_
-#pragma once
 
 #include "base/basictypes.h"
 #include "base/memory/scoped_ptr.h"
@@ -49,7 +48,8 @@ class GZipFilter : public Filter {
   // stream_buffer_. On the other hand, *dest_len can be 0 upon successful
   // return. For example, the internal zlib may process some pre-filter data
   // but not produce output yet.
-  virtual FilterStatus ReadFilteredData(char* dest_buffer, int* dest_len);
+  virtual FilterStatus ReadFilteredData(char* dest_buffer,
+                                        int* dest_len) OVERRIDE;
 
  private:
   enum DecodingStatus {

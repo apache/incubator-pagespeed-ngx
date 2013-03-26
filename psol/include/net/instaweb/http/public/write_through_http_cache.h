@@ -98,6 +98,7 @@ class WriteThroughHTTPCache : public HTTPCache {
   // size limit.  Note that both the key and value will count
   // torward the size.
   void set_cache1_limit(size_t limit) { cache1_size_limit_ = limit; }
+  size_t cache1_limit() const { return cache1_size_limit_; }
 
   virtual const char* Name() const { return name_.c_str(); }
 

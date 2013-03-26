@@ -1,20 +1,20 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_BASE_NET_ERRORS_H__
 #define NET_BASE_NET_ERRORS_H__
-#pragma once
 
 #include <vector>
 
 #include "base/basictypes.h"
-#include "net/base/net_api.h"
+#include "base/platform_file.h"
+#include "net/base/net_export.h"
 
 namespace net {
 
 // Error domain of the net module's error codes.
-NET_API extern const char kErrorDomain[];
+NET_EXPORT extern const char kErrorDomain[];
 
 // Error values are negative.
 enum Error {
@@ -30,7 +30,7 @@ enum Error {
 };
 
 // Returns a textual representation of the error code for logging purposes.
-NET_API const char* ErrorToString(int error);
+NET_EXPORT const char* ErrorToString(int error);
 
 // Returns true if |error| is a certificate error code.
 inline bool IsCertificateError(int error) {
@@ -40,7 +40,7 @@ inline bool IsCertificateError(int error) {
 }
 
 // Map system error code to Error.
-NET_API Error MapSystemError(int os_error);
+NET_EXPORT Error MapSystemError(int os_error);
 
 // Returns a list of all the possible net error codes (not counting OK). This
 // is intended for use with UMA histograms that are reporting the result of
@@ -50,6 +50,10 @@ NET_API Error MapSystemError(int os_error);
 // sample values). Also note that a guard bucket is created after any valid
 // error code that is not followed immediately by a valid error code.
 std::vector<int> GetAllErrorCodesForUma();
+
+// A convenient function to translate platform file error to net error code.
+NET_EXPORT Error PlatformFileErrorToNetError(
+    base::PlatformFileError file_error);
 
 }  // namespace net
 

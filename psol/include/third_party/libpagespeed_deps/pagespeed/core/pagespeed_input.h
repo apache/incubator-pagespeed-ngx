@@ -19,7 +19,7 @@
 #include <string>
 
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
+#include "base/memory/scoped_ptr.h"
 #include "pagespeed/core/input_capabilities.h"
 #include "pagespeed/core/instrumentation_data.h"
 #include "pagespeed/core/resource.h"

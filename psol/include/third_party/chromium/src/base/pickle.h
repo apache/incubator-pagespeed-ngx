@@ -1,18 +1,86 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_PICKLE_H__
 #define BASE_PICKLE_H__
-#pragma once
 
 #include <string>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
+#include "base/compiler_specific.h"
 #include "base/gtest_prod_util.h"
 #include "base/logging.h"
 #include "base/string16.h"
+
+class Pickle;
+
+// PickleIterator reads data from a Pickle. The Pickle object must remain valid
+// while the PickleIterator object is in use.
+class BASE_EXPORT PickleIterator {
+ public:
+  PickleIterator() : read_ptr_(NULL), read_end_ptr_(NULL) {}
+  explicit PickleIterator(const Pickle& pickle);
+
+  // Methods for reading the payload of the Pickle. To read from the start of
+  // the Pickle, create a PickleIterator from a Pickle. If successful, these
+  // methods return true. Otherwise, false is returned to indicate that the
+  // result could not be extracted.
+  bool ReadBool(bool* result) WARN_UNUSED_RESULT;
+  bool ReadInt(int* result) WARN_UNUSED_RESULT;
+  bool ReadLong(long* result) WARN_UNUSED_RESULT;
+  bool ReadUInt16(uint16* result) WARN_UNUSED_RESULT;
+  bool ReadUInt32(uint32* result) WARN_UNUSED_RESULT;
+  bool ReadInt64(int64* result) WARN_UNUSED_RESULT;
+  bool ReadUInt64(uint64* result) WARN_UNUSED_RESULT;
+  bool ReadString(std::string* result) WARN_UNUSED_RESULT;
+  bool ReadWString(std::wstring* result) WARN_UNUSED_RESULT;
+  bool ReadString16(string16* result) WARN_UNUSED_RESULT;
+  bool ReadData(const char** data, int* length) WARN_UNUSED_RESULT;
+  bool ReadBytes(const char** data, int length) WARN_UNUSED_RESULT;
+
+  // Safer version of ReadInt() checks for the result not being negative.
+  // Use it for reading the object sizes.
+  bool ReadLength(int* result) WARN_UNUSED_RESULT {
+    return ReadInt(result) && *result >= 0;
+  }
+
+  // Skips bytes in the read buffer and returns true if there are at least
+  // num_bytes available. Otherwise, does nothing and returns false.
+  bool SkipBytes(int num_bytes) WARN_UNUSED_RESULT {
+    return !!GetReadPointerAndAdvance(num_bytes);
+  }
+
+ private:
+  // Aligns 'i' by rounding it up to the next multiple of 'alignment'
+  static size_t AlignInt(size_t i, int alignment) {
+    return i + (alignment - (i % alignment)) % alignment;
+  }
+
+  // Read Type from Pickle.
+  template <typename Type>
+  inline bool ReadBuiltinType(Type* result);
+
+  // Get read pointer for Type and advance read pointer.
+  template<typename Type>
+  inline const char* GetReadPointerAndAdvance();
+
+  // Get read pointer for |num_bytes| and advance read pointer. This method
+  // checks num_bytes for negativity and wrapping.
+  const char* GetReadPointerAndAdvance(int num_bytes);
+
+  // Get read pointer for (num_elements * size_element) bytes and advance read
+  // pointer. This method checks for int overflow, negativity and wrapping.
+  inline const char* GetReadPointerAndAdvance(int num_elements,
+                                              size_t size_element);
+
+  // Pointers to the Pickle data.
+  const char* read_ptr_;
+  const char* read_end_ptr_;
+
+  FRIEND_TEST_ALL_PREFIXES(PickleTest, GetReadPointerAndAdvance);
+};
 
 // This class provides facilities for basic binary value packing and unpacking.
 //
@@ -31,7 +99,7 @@
 // space is controlled by the header_size parameter passed to the Pickle
 // constructor.
 //
-class BASE_API Pickle {
+class BASE_EXPORT Pickle {
  public:
   // Initialize a Pickle object using the default header size.
   Pickle();
@@ -50,6 +118,11 @@ class BASE_API Pickle {
   // Initializes a Pickle as a deep copy of another Pickle.
   Pickle(const Pickle& other);
 
+  // Note: There are no virtual methods in this class.  This destructor is
+  // virtual as an element of defensive coding.  Other classes have derived from
+  // this class, and there is a *chance* that they will cast into this base
+  // class before destruction.  At least one such class does have a virtual
+  // destructor, suggesting at least some need to call more derived destructors.
   virtual ~Pickle();
 
   // Performs a deep copy.
@@ -61,27 +134,59 @@ class BASE_API Pickle {
   // Returns the data for this Pickle.
   const void* data() const { return header_; }
 
-  // Methods for reading the payload of the Pickle.  To read from the start of
-  // the Pickle, initialize *iter to NULL.  If successful, these methods return
-  // true.  Otherwise, false is returned to indicate that the result could not
-  // be extracted.
-  bool ReadBool(void** iter, bool* result) const;
-  bool ReadInt(void** iter, int* result) const;
-  bool ReadLong(void** iter, long* result) const;
-  bool ReadSize(void** iter, size_t* result) const;
-  bool ReadUInt16(void** iter, uint16* result) const;
-  bool ReadUInt32(void** iter, uint32* result) const;
-  bool ReadInt64(void** iter, int64* result) const;
-  bool ReadUInt64(void** iter, uint64* result) const;
-  bool ReadString(void** iter, std::string* result) const;
-  bool ReadWString(void** iter, std::wstring* result) const;
-  bool ReadString16(void** iter, string16* result) const;
-  bool ReadData(void** iter, const char** data, int* length) const;
-  bool ReadBytes(void** iter, const char** data, int length) const;
+  // For compatibility, these older style read methods pass through to the
+  // PickleIterator methods.
+  // TODO(jbates) Remove these methods.
+  bool ReadBool(PickleIterator* iter, bool* result) const {
+    return iter->ReadBool(result);
+  }
+  bool ReadInt(PickleIterator* iter, int* result) const {
+    return iter->ReadInt(result);
+  }
+  bool ReadLong(PickleIterator* iter, long* result) const {
+    return iter->ReadLong(result);
+  }
+  bool ReadUInt16(PickleIterator* iter, uint16* result) const {
+    return iter->ReadUInt16(result);
+  }
+  bool ReadUInt32(PickleIterator* iter, uint32* result) const {
+    return iter->ReadUInt32(result);
+  }
+  bool ReadInt64(PickleIterator* iter, int64* result) const {
+    return iter->ReadInt64(result);
+  }
+  bool ReadUInt64(PickleIterator* iter, uint64* result) const {
+    return iter->ReadUInt64(result);
+  }
+  bool ReadString(PickleIterator* iter, std::string* result) const {
+    return iter->ReadString(result);
+  }
+  bool ReadWString(PickleIterator* iter, std::wstring* result) const {
+    return iter->ReadWString(result);
+  }
+  bool ReadString16(PickleIterator* iter, string16* result) const {
+    return iter->ReadString16(result);
+  }
+  // A pointer to the data will be placed in *data, and the length will be
+  // placed in *length. This buffer will be into the message's buffer so will
+  // be scoped to the lifetime of the message (or until the message data is
+  // mutated).
+  bool ReadData(PickleIterator* iter, const char** data, int* length) const {
+    return iter->ReadData(data, length);
+  }
+  // A pointer to the data will be placed in *data. The caller specifies the
+  // number of bytes to read, and ReadBytes will validate this length. The
+  // returned buffer will be into the message's buffer so will be scoped to the
+  // lifetime of the message (or until the message data is mutated).
+  bool ReadBytes(PickleIterator* iter, const char** data, int length) const {
+    return iter->ReadBytes(data, length);
+  }
 
   // Safer version of ReadInt() checks for the result not being negative.
   // Use it for reading the object sizes.
-  bool ReadLength(void** iter, int* result) const;
+  bool ReadLength(PickleIterator* iter, int* result) const {
+    return iter->ReadLength(result);
+  }
 
   // Methods for adding to the payload of the Pickle.  These values are
   // appended to the end of the Pickle's payload.  When reading values from a
@@ -93,10 +198,12 @@ class BASE_API Pickle {
   bool WriteInt(int value) {
     return WriteBytes(&value, sizeof(value));
   }
-  bool WriteLong(long value) {
-    return WriteBytes(&value, sizeof(value));
-  }
-  bool WriteSize(size_t value) {
+  // WARNING: DO NOT USE THIS METHOD IF PICKLES ARE PERSISTED IN ANY WAY.
+  // It will write whatever a "long" is on this architecture. On 32-bit
+  // platforms, it is 32 bits. On 64-bit platforms, it is 64 bits. If persisted
+  // pickles are still around after upgrading to 64-bit, or if they are copied
+  // between dissimilar systems, YOUR PICKLES WILL HAVE GONE BAD.
+  bool WriteLongUsingDangerousNonPortableLessPersistableForm(long value) {
     return WriteBytes(&value, sizeof(value));
   }
   bool WriteUInt16(uint16 value) {
@@ -114,7 +221,12 @@ class BASE_API Pickle {
   bool WriteString(const std::string& value);
   bool WriteWString(const std::wstring& value);
   bool WriteString16(const string16& value);
+  // "Data" is a blob with a length. When you read it out you will be given the
+  // length. See also WriteBytes.
   bool WriteData(const char* data, int length);
+  // "Bytes" is a blob with no length. The caller must specify the lenght both
+  // when reading and writing. It is normally used to serialize PoD types of a
+  // known size. See also WriteData.
   bool WriteBytes(const void* data, int data_len);
 
   // Same as WriteData, but allows the caller to write directly into the
@@ -157,25 +269,15 @@ class BASE_API Pickle {
     return static_cast<const T*>(header_);
   }
 
-  // Returns true if the given iterator could point to data with the given
-  // length. If there is no room for the given data before the end of the
-  // payload, returns false.
-  bool IteratorHasRoomFor(const void* iter, int len) const {
-    if ((len < 0) || (iter < header_) || iter > end_of_payload())
-      return false;
-    const char* end_of_region = reinterpret_cast<const char*>(iter) + len;
-    // Watch out for overflow in pointer calculation, which wraps.
-    return (iter <= end_of_region) && (end_of_region <= end_of_payload());
+  // The payload is the pickle data immediately following the header.
+  size_t payload_size() const { return header_->payload_size; }
+  const char* payload() const {
+    return reinterpret_cast<const char*>(header_) + header_size_;
   }
 
  protected:
-  size_t payload_size() const { return header_->payload_size; }
-
   char* payload() {
     return reinterpret_cast<char*>(header_) + header_size_;
-  }
-  const char* payload() const {
-    return reinterpret_cast<const char*>(header_) + header_size_;
   }
 
   // Returns the address of the byte immediately following the currently valid
@@ -215,13 +317,6 @@ class BASE_API Pickle {
     return i + (alignment - (i % alignment)) % alignment;
   }
 
-  // Moves the iterator by the given number of bytes, making sure it is aligned.
-  // Pointer (iterator) is NOT aligned, but the change in the pointer
-  // is guaranteed to be a multiple of sizeof(uint32).
-  static void UpdateIter(void** iter, int bytes) {
-    *iter = static_cast<char*>(*iter) + AlignInt(bytes, sizeof(uint32));
-  }
-
   // Find the end of the pickled data that starts at range_start.  Returns NULL
   // if the entire Pickle is not found in the given data range.
   static const char* FindNext(size_t header_size,
@@ -232,6 +327,8 @@ class BASE_API Pickle {
   static const int kPayloadUnit;
 
  private:
+  friend class PickleIterator;
+
   Header* header_;
   size_t header_size_;  // Supports extra data between header and payload.
   // Allocation size of payload (or -1 if allocation is const).
@@ -241,7 +338,6 @@ class BASE_API Pickle {
   FRIEND_TEST_ALL_PREFIXES(PickleTest, Resize);
   FRIEND_TEST_ALL_PREFIXES(PickleTest, FindNext);
   FRIEND_TEST_ALL_PREFIXES(PickleTest, FindNextWithIncompleteHeader);
-  FRIEND_TEST_ALL_PREFIXES(PickleTest, IteratorHasRoom);
 };
 
 #endif  // BASE_PICKLE_H__

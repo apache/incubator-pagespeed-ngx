@@ -6,13 +6,12 @@
 // Windows Event Tracing for logging transport and control.
 #ifndef BASE_WIN_EVENT_TRACE_PROVIDER_H_
 #define BASE_WIN_EVENT_TRACE_PROVIDER_H_
-#pragma once
 
 #include <windows.h>
 #include <wmistr.h>
 #include <evntrace.h>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
 
 namespace base {
@@ -82,7 +81,7 @@ template <size_t N> class EtwMofEvent: public EtwMofEventBase<N> {
 // a particular trace level, and whether particular enable flags are set,
 // before other resources are consumed to generate and issue the log
 // messages themselves.
-class BASE_API EtwTraceProvider {
+class BASE_EXPORT EtwTraceProvider {
  public:
   // Creates an event trace provider identified by provider_name, which
   // will be the name registered with Event Tracing for Windows (ETW).

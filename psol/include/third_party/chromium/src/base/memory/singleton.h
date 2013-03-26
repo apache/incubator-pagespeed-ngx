@@ -18,13 +18,29 @@
 
 #ifndef BASE_MEMORY_SINGLETON_H_
 #define BASE_MEMORY_SINGLETON_H_
-#pragma once
 
 #include "base/at_exit.h"
 #include "base/atomicops.h"
+#include "base/base_export.h"
+#include "base/memory/aligned_memory.h"
 #include "base/third_party/dynamic_annotations/dynamic_annotations.h"
-#include "base/threading/platform_thread.h"
 #include "base/threading/thread_restrictions.h"
+
+namespace base {
+namespace internal {
+
+// Our AtomicWord doubles as a spinlock, where a value of
+// kBeingCreatedMarker means the spinlock is being held for creation.
+static const subtle::AtomicWord kBeingCreatedMarker = 1;
+
+// We pull out some of the functionality into a non-templated function, so that
+// we can implement the more complicated pieces out of line in the .cc file.
+BASE_EXPORT subtle::AtomicWord WaitForInstance(subtle::AtomicWord* instance);
+
+}  // namespace internal
+}  // namespace base
+
+// TODO(joth): Move more of this file into namespace base
 
 // Default traits for Singleton<Type>. Calls operator new and operator delete on
 // the object. Registers automatic deletion at process exit.
@@ -90,18 +106,14 @@ struct StaticMemorySingletonTraits {
   // WARNING: User has to deal with get() in the singleton class
   // this is traits for returning NULL.
   static Type* New() {
+    // Only constructs once and returns pointer; otherwise returns NULL.
     if (base::subtle::NoBarrier_AtomicExchange(&dead_, 1))
       return NULL;
-    Type* ptr = reinterpret_cast<Type*>(buffer_);
 
-    // We are protected by a memory barrier.
-    new(ptr) Type();
-    return ptr;
+    return new(buffer_.void_data()) Type();
   }
 
   static void Delete(Type* p) {
-    base::subtle::NoBarrier_Store(&dead_, 1);
-    base::subtle::MemoryBarrier();
     if (p != NULL)
       p->Type::~Type();
   }
@@ -115,16 +127,13 @@ struct StaticMemorySingletonTraits {
   }
 
  private:
-  static const size_t kBufferSize = (sizeof(Type) +
-                                     sizeof(intptr_t) - 1) / sizeof(intptr_t);
-  static intptr_t buffer_[kBufferSize];
-
+  static base::AlignedMemory<sizeof(Type), ALIGNOF(Type)> buffer_;
   // Signal the object was already deleted, so it is not revived.
   static base::subtle::Atomic32 dead_;
 };
 
-template <typename Type> intptr_t
-    StaticMemorySingletonTraits<Type>::buffer_[kBufferSize];
+template <typename Type> base::AlignedMemory<sizeof(Type), ALIGNOF(Type)>
+    StaticMemorySingletonTraits<Type>::buffer_;
 template <typename Type> base::subtle::Atomic32
     StaticMemorySingletonTraits<Type>::dead_ = 0;
 
@@ -140,7 +149,7 @@ template <typename Type> base::subtle::Atomic32
 // Example usage:
 //
 // In your header:
-//   #include "base/memory/singleton.h"
+//   template <typename T> struct DefaultSingletonTraits;
 //   class FooClass {
 //    public:
 //     static FooClass* GetInstance();  <-- See comment below on this.
@@ -153,6 +162,7 @@ template <typename Type> base::subtle::Atomic32
 //   };
 //
 // In your source file:
+//  #include "base/memory/singleton.h"
 //  FooClass* FooClass::GetInstance() {
 //    return Singleton<FooClass>::get();
 //  }
@@ -205,29 +215,30 @@ class Singleton {
   // method and call Singleton::get() from within that.
   friend Type* Type::GetInstance();
 
+  // Allow TraceLog tests to test tracing after OnExit.
+  friend class DeleteTraceLogForTesting;
+
   // This class is safe to be constructed and copy-constructed since it has no
   // member.
 
   // Return a pointer to the one true instance of the class.
   static Type* get() {
+#ifndef NDEBUG
+    // Avoid making TLS lookup on release builds.
     if (!Traits::kAllowedToAccessOnNonjoinableThread)
       base::ThreadRestrictions::AssertSingletonAllowed();
-
-    // Our AtomicWord doubles as a spinlock, where a value of
-    // kBeingCreatedMarker means the spinlock is being held for creation.
-    static const base::subtle::AtomicWord kBeingCreatedMarker = 1;
+#endif
 
     base::subtle::AtomicWord value = base::subtle::NoBarrier_Load(&instance_);
-    if (value != 0 && value != kBeingCreatedMarker) {
+    if (value != 0 && value != base::internal::kBeingCreatedMarker) {
       // See the corresponding HAPPENS_BEFORE below.
       ANNOTATE_HAPPENS_AFTER(&instance_);
       return reinterpret_cast<Type*>(value);
     }
 
     // Object isn't created yet, maybe we will get to create it, let's try...
-    if (base::subtle::Acquire_CompareAndSwap(&instance_,
-                                             0,
-                                             kBeingCreatedMarker) == 0) {
+    if (base::subtle::Acquire_CompareAndSwap(
+          &instance_, 0, base::internal::kBeingCreatedMarker) == 0) {
       // instance_ was NULL and is now kBeingCreatedMarker.  Only one thread
       // will ever get here.  Threads might be spinning on us, and they will
       // stop right after we do this store.
@@ -246,19 +257,8 @@ class Singleton {
       return newval;
     }
 
-    // We hit a race.  Another thread beat us and either:
-    // - Has the object in BeingCreated state
-    // - Already has the object created...
-    // We know value != NULL.  It could be kBeingCreatedMarker, or a valid ptr.
-    // Unless your constructor can be very time consuming, it is very unlikely
-    // to hit this race.  When it does, we just spin and yield the thread until
-    // the object has been created.
-    while (true) {
-      value = base::subtle::NoBarrier_Load(&instance_);
-      if (value != kBeingCreatedMarker)
-        break;
-      base::PlatformThread::YieldCurrentThread();
-    }
+    // We hit a race. Wait for the other thread to complete it.
+    value = base::internal::WaitForInstance(&instance_);
 
     // See the corresponding HAPPENS_BEFORE above.
     ANNOTATE_HAPPENS_AFTER(&instance_);

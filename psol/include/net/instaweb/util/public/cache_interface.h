@@ -32,8 +32,11 @@ namespace net_instaweb {
 class CacheInterface {
  public:
   enum KeyState {
-    kAvailable,    // Requested key is available for serving
-    kNotFound      // Requested key needs to be written
+    kAvailable = 0,     // Requested key is available for serving
+    kNotFound = 1,      // Requested key needs to be written
+    kOverload = 2,      // Lookup is discarded due to cache server is overloaded
+    kNetworkError = 3,  // Cache lookup ended up in network error
+    kTimeout = 4,       // Request timeout
   };
 
   class Callback {
@@ -156,6 +159,11 @@ class CacheInterface {
 
   // The name of this CacheInterface -- used for logging and debugging.
   virtual const char* Name() const = 0;
+
+  // If this cache is merely a wrapper around a backend that actually
+  // does all the work, returns that backend cache object. Otherwise
+  // just returns 'this'. Used for testing.
+  virtual CacheInterface* Backend();
 
   // Returns true if this cache is guaranteed to call its callbacks before
   // returning from Get and MultiGet.

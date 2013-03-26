@@ -4,11 +4,11 @@
 
 #ifndef BASE_MD5_H_
 #define BASE_MD5_H_
-#pragma once
 
-#include <string>
+#include "base/base_export.h"
+#include "base/string_piece.h"
 
-#include "base/base_api.h"
+namespace base {
 
 // MD5 stands for Message Digest algorithm 5.
 // MD5 is a robust hash function, designed for cyptography, but often used
@@ -33,10 +33,10 @@
 //
 // You can call MD5DigestToBase16() to generate a string of the digest.
 
-// The output of an MD5 operation
-typedef struct MD5Digest_struct {
+// The output of an MD5 operation.
+struct MD5Digest {
   unsigned char a[16];
-} MD5Digest;
+};
 
 // Used for storing intermediate data during an MD5 computation. Callers
 // should not access the data.
@@ -44,25 +44,26 @@ typedef char MD5Context[88];
 
 // Computes the MD5 sum of the given data buffer with the given length.
 // The given 'digest' structure will be filled with the result data.
-BASE_API void MD5Sum(const void* data, size_t length, MD5Digest* digest);
+BASE_EXPORT void MD5Sum(const void* data, size_t length, MD5Digest* digest);
 
 // Initializes the given MD5 context structure for subsequent calls to
 // MD5Update().
-BASE_API void MD5Init(MD5Context* context);
+BASE_EXPORT void MD5Init(MD5Context* context);
 
-// For the given buffer of data, updates the given MD5 context with the sum of
-// the data. You can call this any number of times during the computation,
-// except that MD5Init() must have been called first.
-BASE_API void MD5Update(MD5Context* context, const void* buf, size_t len);
+// For the given buffer of |data| as a StringPiece, updates the given MD5
+// context with the sum of the data. You can call this any number of times
+// during the computation, except that MD5Init() must have been called first.
+BASE_EXPORT void MD5Update(MD5Context* context, const StringPiece& data);
 
 // Finalizes the MD5 operation and fills the buffer with the digest.
-BASE_API void MD5Final(MD5Digest* digest, MD5Context* pCtx);
+BASE_EXPORT void MD5Final(MD5Digest* digest, MD5Context* context);
 
 // Converts a digest into human-readable hexadecimal.
-BASE_API std::string MD5DigestToBase16(const MD5Digest& digest);
+BASE_EXPORT std::string MD5DigestToBase16(const MD5Digest& digest);
 
 // Returns the MD5 (in hexadecimal) of a string.
-BASE_API std::string MD5String(const std::string& str);
+BASE_EXPORT std::string MD5String(const StringPiece& str);
+
+}  // namespace base
 
 #endif  // BASE_MD5_H_
-

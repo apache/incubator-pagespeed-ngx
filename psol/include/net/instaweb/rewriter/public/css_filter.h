@@ -103,7 +103,8 @@ class CssFilter : public RewriteFilter {
 
   virtual const char* Name() const { return "CssFilter"; }
   virtual const char* id() const { return RewriteOptions::kCssFilterId; }
-  virtual int FilterCacheFormatVersion() const;
+  virtual void EncodeUserAgentIntoResourceContext(
+      ResourceContext* context) const;
 
   static const char kBlocksRewritten[];
   static const char kParseFailures[];
@@ -124,6 +125,10 @@ class CssFilter : public RewriteFilter {
       const ResourcePtr& resource, const GoogleString& location,
       CssFilter::Context* rewriter, RewriteContext* parent,
       CssHierarchy* hierarchy);
+
+  virtual const RewriteOptions::Filter* RelatedFilters(int* num_filters) const;
+  virtual const RewriteOptions::OptionEnum* RelatedOptions(
+      int* num_options) const;
 
  protected:
   virtual RewriteContext* MakeRewriteContext();
@@ -274,6 +279,10 @@ class CssFilter::Context : public SingleRewriteContext {
   virtual OutputResourceKind kind() const { return kRewrittenResource; }
   virtual GoogleString CacheKeySuffix() const;
   virtual const UrlSegmentEncoder* encoder() const;
+
+  // Implements UserAgentCacheKey method of RewriteContext.
+  virtual GoogleString UserAgentCacheKey(
+      const ResourceContext* resource_context) const;
 
  private:
   bool RewriteCssText(const GoogleUrl& css_base_gurl,

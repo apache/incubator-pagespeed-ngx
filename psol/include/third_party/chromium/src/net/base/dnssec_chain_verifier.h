@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "base/string_piece.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
 namespace net {
 
@@ -19,7 +19,7 @@ namespace net {
 // name. For example, if the fingerprint of a certificate was stored in a CERT
 // record for a given domain, then a chain could prove the validity of that
 // fingerprint.
-class NET_TEST DNSSECChainVerifier {
+class NET_EXPORT_PRIVATE DNSSECChainVerifier {
  public:
   enum Error {
     OK = 0,
@@ -103,7 +103,7 @@ class NET_TEST DNSSECChainVerifier {
 // Authority Authorization records. These are DNS records which can express
 // limitations regarding acceptable certificates for a domain. See
 // http://tools.ietf.org/html/draft-hallambaker-donotissue-04
-class NET_TEST DnsCAARecord {
+class NET_EXPORT_PRIVATE DnsCAARecord {
  public:
   enum ParseResult {
     SUCCESS,  // parse successful.
@@ -115,7 +115,7 @@ class NET_TEST DnsCAARecord {
   // A CAAPolicy is the result of parsing a set of CAA records. It describes a
   // number of properies of certificates in a chain, any of which is sufficient
   // to validate the chain.
-  struct NET_TEST Policy {
+  struct NET_EXPORT_PRIVATE Policy {
    public:
     Policy();
     ~Policy();
