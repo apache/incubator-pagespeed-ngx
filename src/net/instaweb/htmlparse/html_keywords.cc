@@ -384,6 +384,10 @@ HtmlKeywords::HtmlKeywords() {
 }
 
 void HtmlKeywords::InitEscapeSequences() {
+  unescape_insensitive_map_.set_deleted_key("");
+  unescape_sensitive_map_.set_deleted_key("");
+  escape_map_.set_deleted_key("");
+
   StringSetInsensitive case_sensitive_symbols;
   for (size_t i = 0; i < arraysize(kHtmlKeywordsSequences); ++i) {
     // Put all symbols in the case-sensitive map
@@ -397,7 +401,7 @@ void HtmlKeywords::InitEscapeSequences() {
         case_sensitive_symbols.end()) {
       // If this symbol is already present in the insensitive map, then it
       // must be case-sensitive.  E.g. &AElig; and &aelig; are distinct.
-      StringStringMapInsensitive::iterator p =
+      StringStringSparseHashMapInsensitive::iterator p =
           unescape_insensitive_map_.find(seq.sequence);
       if (p != unescape_insensitive_map_.end()) {
         // As this symbol is case-sensitive, we must remove it from the
@@ -577,7 +581,7 @@ bool HtmlKeywords::TryUnescape(bool accumulate_numeric_code,
     // code-points) whereas some are case-insensitive (&quot; and
     // &QUOT; both work.  So do the case-sensitive lookup first, and
     // if that fails, do an insensitive lookup.
-    StringStringMapSensitive::const_iterator p =
+    StringStringSparseHashMapSensitive::const_iterator p =
         unescape_sensitive_map_.find(escape);
     if (p != unescape_sensitive_map_.end()) {
       *buf += p->second;
@@ -601,7 +605,7 @@ bool HtmlKeywords::TryUnescape(bool accumulate_numeric_code,
         // valid escape sequence, e.g. QUOT;, but there is no
         // multi-byte match (e.g. Yuml;).  We can allow sloppy
         // interpretation with a case insensitive lookup here.
-        StringStringMapInsensitive::const_iterator q =
+        StringStringSparseHashMapInsensitive::const_iterator q =
             unescape_insensitive_map_.find(escape);
         if (q != unescape_insensitive_map_.end()) {
           *buf += q->second;
@@ -657,7 +661,7 @@ StringPiece HtmlKeywords::EscapeHelper(const StringPiece& unescaped,
         (ch == '<') || (ch == '>')) {
       char_to_escape.clear();
       char_to_escape += ch;
-      StringStringMapSensitive::const_iterator p =
+      StringStringSparseHashMapSensitive::const_iterator p =
           escape_map_.find(char_to_escape);
       if (p == escape_map_.end()) {
         StringAppendF(buf, "&#%02d;", static_cast<int>(ch));

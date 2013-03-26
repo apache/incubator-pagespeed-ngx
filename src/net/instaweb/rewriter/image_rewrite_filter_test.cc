@@ -707,6 +707,13 @@ TEST_F(ImageRewriteTest, ImgTag) {
   RewriteImage("img", kContentTypeJpeg);
 }
 
+TEST_F(ImageRewriteTest, ImgTagWithComputeStatistics) {
+  options()->EnableFilter(RewriteOptions::kComputeStatistics);
+  RewriteImage("img", kContentTypeJpeg);
+  EXPECT_EQ(1, logging_info()->image_stats().num_img_tags());
+  EXPECT_EQ(0, logging_info()->image_stats().num_inlined_img_tags());
+}
+
 TEST_F(ImageRewriteTest, ImgTagWebp) {
   if (RunningOnValgrind()) {
     return;

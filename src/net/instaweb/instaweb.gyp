@@ -659,7 +659,7 @@
       ],
       'includes': [
         'gperf.gypi',
-      ]
+      ],
     },
     {
       'target_name': 'instaweb_rewriter_html_option_gperf',
@@ -671,7 +671,7 @@
       ],
       'includes': [
         'gperf.gypi',
-      ]
+      ],
     },
     {
       # TODO: break this up into sub-libs (mocks, real, etc)
@@ -685,13 +685,13 @@
         'instaweb_logging_pb',
         'instaweb_propcache_pb',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
-        '<(DEPTH)/third_party/instaweb/util.gyp:util',
-        '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/instaweb/util.gyp:util',
         '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
-        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
+        '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
         '<(DEPTH)/third_party/re2/re2.gyp:re2',
+        '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [
         # TODO(sligocki): Move http/ files to instaweb_http.
@@ -818,7 +818,7 @@
       },
       'export_dependent_settings': [
         'instaweb_http',
-      ]
+      ],
     },
     {
       'target_name': 'instaweb_util_pthread',
@@ -1145,6 +1145,7 @@
         'instaweb_deterministic_data2c',
         'instaweb_deterministic_opt_data2c',
         'instaweb_flush_early_pb',
+        'instaweb_htmlparse',
         'instaweb_http',
         'instaweb_js_defer_data2c',
         'instaweb_js_defer_opt_data2c',

@@ -32,6 +32,7 @@
 #include "net/instaweb/htmlparse/public/html_filter.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/htmlparse/public/html_writer_filter.h"
+#include "net/instaweb/htmlparse/public/logging_html_filter.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/cache_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -219,6 +220,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       default_url_async_fetcher_(url_async_fetcher),
       url_async_fetcher_(default_url_async_fetcher_),
       add_instrumentation_filter_(NULL),
+      logging_filter_(NULL),
       scan_filter_(this),
       domain_rewriter_(NULL),
       controlling_pool_(NULL),
@@ -826,16 +828,21 @@ void RewriteDriver::AddPreRenderFilters() {
     add_event_listener(new FlushHtmlFilter(this));
   }
 
+  if (rewrite_options->Enabled(RewriteOptions::kComputeStatistics)) {
+    logging_filter_ = new LoggingFilter;
+    AddOwnedEarlyPreRenderFilter(logging_filter_);
+  }
+
+  if (rewrite_options->Enabled(RewriteOptions::kDecodeRewrittenUrls)) {
+    AddOwnedEarlyPreRenderFilter(new DecodeRewrittenUrlsFilter(this));
+  }
+
   // We disable combine_css and combine_javascript when flush_subresources is
   // enabled, since the way CSS and JS is combined is not deterministic.
   // However, we do not disable combine_javascript when defer_javascript is
   // enabled since in this case, flush_subresources does not flush JS resources.
   bool flush_subresources_enabled = rewrite_options->Enabled(
       RewriteOptions::kFlushSubresources);
-
-  if (rewrite_options->Enabled(RewriteOptions::kDecodeRewrittenUrls)) {
-    AddOwnedEarlyPreRenderFilter(new DecodeRewrittenUrlsFilter(this));
-  }
 
   if (rewrite_options->Enabled(RewriteOptions::kAddBaseTag) ||
       rewrite_options->Enabled(RewriteOptions::kAddHead) ||
@@ -2275,6 +2282,10 @@ void RewriteDriver::PrintStateToErrorLog(bool show_detached_contexts) {
 
 void RewriteDriver::FinishParse() {
   HtmlParse::FinishParse();
+  if (logging_filter_ != NULL && log_record() != NULL) {
+    log_record()->SetImageStats(logging_filter_->num_img_tags(),
+                                logging_filter_->num_inlined_img_tags());
+  }
   WriteClientStateIntoPropertyCache();
   Cleanup();
 }

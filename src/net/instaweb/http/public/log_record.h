@@ -171,6 +171,9 @@ class LogRecord  {
   // Sets the number of critical images in CSS.
   void SetNumCssCriticalImages(int num_css_critical_images);
 
+  // Sets image related statistics.
+  void SetImageStats(int num_img_tags, int num_inlined_img_tags);
+
  protected:
   // Non-initializing default constructor for subclasses. Subclasses that invoke
   // this constructor should implement and call their own initializer that

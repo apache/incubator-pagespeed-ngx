@@ -20,11 +20,12 @@
 #define NET_INSTAWEB_HTMLPARSE_PUBLIC_HTML_KEYWORDS_H_
 
 #include <algorithm>
-#include <map>
 #include <vector>
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/util/public/sparse_hash_map.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_hash.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -169,12 +170,23 @@ class HtmlKeywords {
                              GoogleString* buf,
                              bool* decoding_error) const;
 
-  typedef std::map<GoogleString, GoogleString,
-                   StringCompareInsensitive> StringStringMapInsensitive;
-  typedef std::map<GoogleString, GoogleString> StringStringMapSensitive;
-  StringStringMapInsensitive unescape_insensitive_map_;
-  StringStringMapSensitive unescape_sensitive_map_;
-  StringStringMapSensitive escape_map_;
+  // Conventional wisdom suggests this application calls for dense_hash_map,
+  // but my microbenchmarks show that sparse_hash_map has better performance.
+  // My theory is that the maps are sufficiently small that the algorithmic
+  // differences are not dominant, but keeping the data small helps the
+  // processor cache behavior.
+  typedef sparse_hash_map<
+    GoogleString, const char*,
+    CaseFoldStringHash,
+    CaseFoldStringEqual> StringStringSparseHashMapInsensitive;
+  typedef sparse_hash_map<
+    GoogleString, const char*,
+    CasePreserveStringHash> StringStringSparseHashMapSensitive;
+
+  StringStringSparseHashMapInsensitive unescape_insensitive_map_;
+  StringStringSparseHashMapSensitive unescape_sensitive_map_;
+  StringStringSparseHashMapSensitive escape_map_;
+
   CharStarVector keyword_vector_;
 
   // These vectors of KeywordPair and Keyword are sorted numerically during

@@ -280,8 +280,17 @@ message ResourceUrlInfo {
   repeated string url = 1;
 }
 
+// Statistics related to images on the HTML page.
+// Next id for ImageStats: 3
+message ImageStats {
+  // Number of img tags in the page.
+  optional int32 num_img_tags = 1;
+  // Number of img tags in the page which have inlined data.
+  optional int32 num_inlined_img_tags = 2;
+}
+
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 21
+// Next id for LoggingInfo: 22
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -328,4 +337,6 @@ message LoggingInfo {
   // to easily differentiate between the field being unset and there being no
   // critical images.
   optional int32 num_css_critical_images = 20 [ default = -1 ];
+  // Statistics related to images on the HTML page.
+  optional ImageStats image_stats = 21;
 }

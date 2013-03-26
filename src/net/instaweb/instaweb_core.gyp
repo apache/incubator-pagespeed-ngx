@@ -26,6 +26,7 @@
       'type': '<(library)',
       'dependencies': [
         '<(DEPTH)/base/base.gyp:base',
+        '<(DEPTH)/third_party/google-sparsehash/google-sparsehash.gyp:include',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
       ],
       'sources': [
@@ -70,7 +71,7 @@
       ],
       'includes': [
         'gperf.gypi',
-      ]
+      ],
     },
     {
       'target_name': 'instaweb_htmlparse_core',

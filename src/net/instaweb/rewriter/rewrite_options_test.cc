@@ -1749,7 +1749,7 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
             options_.ToExperimentDebugString());
   EXPECT_EQ("", options_.ToExperimentString());
   options_.SetFuriousState(1);
-  EXPECT_EQ("Experiment: 1; ah,ai,cc,gp,jp,mc,pj,ec,ei,es,fc,if,hw,ci,ii,"
+  EXPECT_EQ("Experiment: 1; ah,ai,ca,cc,gp,jp,mc,pj,ec,ei,es,fc,if,hw,ci,ii,"
             "il,ji,ig,js,rj,rp,rw,ri,cf,jm,cu,cp,md,css:2048,im:2048,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 1", options_.ToExperimentString());
@@ -1760,7 +1760,7 @@ TEST_F(RewriteOptionsTest, FuriousPrintTest) {
   // add_instrumentation, html_writer, insert_ga) plus rewrite_css.
   // The image inline threshold is 0 because ImageInlineMaxBytes()
   // only returns the threshold if inline_images is enabled.
-  EXPECT_EQ("Experiment: 2; ah,ai,hw,ig,cf,css:4096,im:0,js:2048;",
+  EXPECT_EQ("Experiment: 2; ah,ai,ca,hw,ig,cf,css:4096,im:0,js:2048;",
             options_.ToExperimentDebugString());
   EXPECT_EQ("Experiment: 2", options_.ToExperimentString());
 

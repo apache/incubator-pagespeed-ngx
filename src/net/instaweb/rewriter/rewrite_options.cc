@@ -323,6 +323,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "ah", "Add Head" },
   { RewriteOptions::kAddInstrumentation,
     "ai", "Add Instrumentation" },
+  { RewriteOptions::kComputeStatistics,
+    "ca", "Compute HTML statistics" },
   { RewriteOptions::kCacheHtml,
     "ct", "Cache Html" },
   { RewriteOptions::kCanonicalizeJavascriptLibraries,
@@ -3018,6 +3020,7 @@ bool RewriteOptions::SetupFuriousRewriters() {
 void RewriteOptions::SetRequiredFuriousFilters() {
   ForceEnableFilter(RewriteOptions::kAddHead);
   ForceEnableFilter(RewriteOptions::kAddInstrumentation);
+  ForceEnableFilter(RewriteOptions::kComputeStatistics);
   ForceEnableFilter(RewriteOptions::kInsertGA);
   ForceEnableFilter(RewriteOptions::kHtmlWriterFilter);
 }

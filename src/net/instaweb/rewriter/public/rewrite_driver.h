@@ -67,6 +67,7 @@ class FlushEarlyRenderInfo;
 class Function;
 class HtmlFilter;
 class HtmlWriterFilter;
+class LoggingFilter;
 class LogRecord;
 class MessageHandler;
 class OutputResource;
@@ -1282,6 +1283,7 @@ class RewriteDriver : public HtmlParse {
   std::vector<UrlAsyncFetcher*> owned_url_async_fetchers_;
 
   AddInstrumentationFilter* add_instrumentation_filter_;
+  LoggingFilter* logging_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
 
   ScanFilter scan_filter_;

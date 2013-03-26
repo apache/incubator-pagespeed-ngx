@@ -18,7 +18,10 @@
 
 #include "net/instaweb/htmlparse/public/logging_html_filter.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/statistics_log.h"
+#include "net/instaweb/util/public/data_url.h"
+#include "net/instaweb/util/public/string_util.h"
 
 // TODO(jmarantz): convert to Statistics interface
 
@@ -29,7 +32,7 @@ namespace {
 const char* kStatisticNames[] = {
   "explicit_close", "implicit_close", "brief_close", "closed", "unclosed",
   "spurious_close", "tags", "cdata", "comments", "directives", "documents",
-  "IE_directives",
+  "IE_directives", "img_tags", "inlined_img_tags",
 };
 }
 
@@ -78,6 +81,16 @@ void LoggingFilter::EndElement(HtmlElement* element) {
       // Another form of unmated tag, again do nothing.
       break;
     }
+  }
+  if (element->keyword() == HtmlName::kImg) {
+    HtmlElement::Attribute* src = element->FindAttribute(HtmlName::kSrc);
+    if (src != NULL) {
+      StringPiece url(src->DecodedValueOrNull());
+      if (!url.empty() && IsDataUrl(url)) {
+        ++stats_[NUM_INLINED_IMG_TAGS];
+      }
+    }
+    ++stats_[NUM_IMG_TAGS];
   }
 }
 

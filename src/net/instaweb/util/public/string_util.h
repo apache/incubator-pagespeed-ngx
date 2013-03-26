@@ -257,7 +257,11 @@ bool AccumulateDecimalValue(char c, uint32* value);
 bool AccumulateHexValue(char c, uint32* value);
 
 // Return true iff the two strings are equal, ignoring case.
-bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2);
+bool MemCaseEqual(const char* s1, size_t size1, const char* s2, size_t size2);
+inline bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2) {
+  return MemCaseEqual(s1.data(), s1.size(), s2.data(), s2.size());
+}
+
 // Return true iff str starts with prefix, ignoring case.
 bool StringCaseStartsWith(const StringPiece& str, const StringPiece& prefix);
 // Return true iff str ends with suffix, ignoring case.

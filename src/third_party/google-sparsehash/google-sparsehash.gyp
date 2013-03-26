@@ -21,7 +21,7 @@
     {
       'target_name': 'include',
       'type': 'none',
-      'direct_dependent_settings': {
+      'all_dependent_settings': {
         'include_dirs': [
           '<(sparsehash_gen_arch_root)/include',  # For sparseconfig.h
           '<(sparsehash_root)/src',  # For everything else.

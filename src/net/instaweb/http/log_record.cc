@@ -342,4 +342,11 @@ void LogRecord::SetNumCssCriticalImages(int num_css_critical_images) {
   logging_info()->set_num_css_critical_images(num_css_critical_images);
 }
 
+void LogRecord::SetImageStats(int num_img_tags, int num_inlined_img_tags) {
+  ScopedMutex lock(mutex_.get());
+  logging_info()->mutable_image_stats()->set_num_img_tags(num_img_tags);
+  logging_info()->mutable_image_stats()
+      ->set_num_inlined_img_tags(num_inlined_img_tags);
+}
+
 }  // namespace net_instaweb

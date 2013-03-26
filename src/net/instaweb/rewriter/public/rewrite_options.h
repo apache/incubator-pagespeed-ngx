@@ -78,6 +78,7 @@ class RewriteOptions {
     kAddBaseTag,  // Update kFirstFilter if you add something before this.
     kAddHead,
     kAddInstrumentation,
+    kComputeStatistics,
     kCacheHtml,
     kCanonicalizeJavascriptLibraries,
     kCollapseWhitespace,

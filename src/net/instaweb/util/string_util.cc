@@ -236,10 +236,6 @@ GoogleString JoinStringStar(const ConstStringStarVector& vector,
   return result;
 }
 
-bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2) {
-  return ((s1.size() == s2.size()) && (0 == StringCaseCompare(s1, s2)));
-}
-
 bool StringCaseStartsWith(const StringPiece& str, const StringPiece& prefix) {
   return ((str.size() >= prefix.size()) &&
           (0 == StringCaseCompare(prefix, str.substr(0, prefix.size()))));
@@ -391,6 +387,18 @@ int StringCaseCompare(const StringPiece& s1, const StringPiece& s2) {
     return 1;
   }
   return 0;
+}
+
+bool MemCaseEqual(const char* s1, size_t size1, const char* s2, size_t size2) {
+  if (size1 != size2) {
+    return false;
+  }
+  for (; size1 != 0; --size1, ++s1, ++s2) {
+    if (UpperChar(*s1) != UpperChar(*s2)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 namespace {
