@@ -274,28 +274,25 @@ namespace net_instaweb {
       return;
     }
 
-    // TODO: document locking here. It's very easy to deadlock at this
-    // point
-    //ScopedMutex lock(fetcher->mutex_);
     std::vector<NgxFetch*> to_start;
     
     switch (command) {
       // All the new fetches are appended in the pending_fetches.
       // Start all these fetches.
       case 'F':
-        if (!fetcher->pending_fetches_.empty()) {
-          fetcher->mutex_->Lock();
-          for (Pool<NgxFetch>::iterator p = fetcher->pending_fetches_.begin(),
-              e = fetcher->pending_fetches_.end(); p != e; p++) {
-            NgxFetch* fetch = *p;
-            to_start.push_back(fetch);
-          }
-          fetcher->pending_fetches_.Clear();
-          fetcher->mutex_->Unlock();
-          
-          for (size_t i = 0; i < to_start.size(); i++) {
-            fetcher->StartFetch(to_start[i]);
-          }
+        fetcher->mutex_->Lock();
+
+        for (Pool<NgxFetch>::iterator p = fetcher->pending_fetches_.begin(),
+                 e = fetcher->pending_fetches_.end(); p != e; p++) {
+          NgxFetch* fetch = *p;
+          to_start.push_back(fetch);
+        }
+
+        fetcher->pending_fetches_.Clear();
+        fetcher->mutex_->Unlock();
+
+        for (size_t i = 0; i < to_start.size(); i++) {
+          fetcher->StartFetch(to_start[i]);
         }
         CHECK(ngx_handle_read_event(cmdev, 0) == NGX_OK);
         break;
@@ -324,10 +321,7 @@ namespace net_instaweb {
     return;
   }
 
-  // It's locked in the CommandHandler.
-  // Don't need add the mutex here.
   bool NgxUrlAsyncFetcher::StartFetch(NgxFetch* fetch) {
-    // ScopedMutex lock(mutex_);
     mutex_->Lock();
     // TODO: doc this, why we always add fetch to the active fetchers
     active_fetches_.Add(fetch);
@@ -357,7 +351,6 @@ namespace net_instaweb {
     fetchers_count_--;
     active_fetches_.Remove(fetch);
     delete fetch;
-    PrintActiveFetches(fetch->message_handler());
   }
 
   void NgxUrlAsyncFetcher::PrintActiveFetches(MessageHandler* handler) const {
