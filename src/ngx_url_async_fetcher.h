@@ -50,14 +50,10 @@ class Variable;
 
 class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
   public:
-    NgxUrlAsyncFetcher(const char* proxy, ngx_pool_t* pool,
-        ngx_msec_t resolver_timeout, ngx_msec_t fetch_timeout,
-        ngx_resolver_t* resolver, MessageHandler* handler);
     NgxUrlAsyncFetcher(const char* proxy, ngx_log_t* log,
         ngx_msec_t resolver_timeout, ngx_msec_t fetch_timeout,
         ngx_resolver_t* resolver, ThreadSystem* thread_system,MessageHandler* handler);
-    NgxUrlAsyncFetcher(NgxUrlAsyncFetcher *parent, char* proxy);
-
+    
     ~NgxUrlAsyncFetcher();
 
     // It should be called in the module init_process callback function. Do some

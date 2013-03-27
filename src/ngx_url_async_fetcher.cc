@@ -49,28 +49,6 @@ extern "C" {
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
-  NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(const char* proxy,
-                                         ngx_pool_t* pool,
-                                         ngx_msec_t resolver_timeout, // timer for resolver
-                                         ngx_msec_t fetch_timeout, // timer for fetch
-                                         ngx_resolver_t* resolver,
-                                         MessageHandler* handler)
-    : fetchers_count_(0),
-      shutdown_(false),
-      track_original_content_length_(false),
-      byte_count_(0),
-      message_handler_(handler) {
-    resolver_timeout_ = resolver_timeout;
-    fetch_timeout_ = fetch_timeout;
-    ngx_memzero(&url_, sizeof(ngx_url_t));
-    url_.url.data = (u_char*)(proxy);
-    url_.url.len = ngx_strlen(proxy);
-    pool_ = pool;
-    log_ = pool->log;
-    command_connection_ = NULL;
-    pipe_fd_ = 0;
-    resolver_ = resolver;
-  }
 
   NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(const char* proxy,
                                          ngx_log_t* log,
@@ -100,27 +78,6 @@ namespace net_instaweb {
     resolver_ = resolver;
   }
 
-  NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(NgxUrlAsyncFetcher* parent,
-                                         char* proxy)
-    : fetchers_count_(parent->fetchers_count_),
-      shutdown_(false),
-      track_original_content_length_(parent->track_original_content_length_),
-      byte_count_(parent->byte_count_),
-      message_handler_(parent->message_handler_),
-      resolver_timeout_(parent->resolver_timeout_),
-      fetch_timeout_(parent->fetch_timeout_) {
-    ngx_memzero(&url_, sizeof(ngx_url_t));
-    if (proxy != NULL && *proxy != '\0') {
-      url_.url.data = reinterpret_cast<u_char*>(proxy);
-      url_.url.len = ngx_strlen(proxy);
-    }
-    pool_ = parent->pool_;
-    log_ = parent->log_;
-    resolver_ = parent->resolver_;
-    command_connection_ = NULL;
-    pipe_fd_ = -1;
-  }
-
   NgxUrlAsyncFetcher::~NgxUrlAsyncFetcher() {
     message_handler_->Message(
         kInfo,
@@ -130,9 +87,6 @@ namespace net_instaweb {
     CancelActiveFetches();
     active_fetches_.DeleteAll();
 
-    // TODO(oschaaf): Do we always own this? It seems that
-    // we may need to track ownership if we get the pool
-    // from the parent async fetcher pass in during construction
     if (pool_ != NULL ) {
       ngx_destroy_pool(pool_);
       pool_ = NULL;
