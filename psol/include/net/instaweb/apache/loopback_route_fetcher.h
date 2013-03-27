@@ -15,7 +15,8 @@
 // Author: morlovich@google.com (Maksim Orlovich)
 //
 // This fetcher routes requests to hosts that are not explicitly mentioned in
-// the DomainLawyer via the loopback.
+// the DomainLawyer towards our own IP, as extracted from the incoming
+// connection.
 
 #ifndef NET_INSTAWEB_APACHE_LOOPBACK_ROUTE_FETCHER_H_
 #define NET_INSTAWEB_APACHE_LOOPBACK_ROUTE_FETCHER_H_
@@ -36,12 +37,14 @@ class MessageHandler;
 class LoopbackRouteFetcher : public UrlAsyncFetcher {
  public:
   // Does not take ownership of anything. own_port is the port the incoming
-  // request came in on. If the backend_fetcher does actual fetching (and is
-  // not merely simulating it for testing purposes) it should be the Serf
-  // fetcher, as others may not direct requests this class produces properly.
-  // (As this fetcher may produce requests that need to connect to 127.0.0.1
+  // request came in on, and own_ip is the same for the IP. If the
+  // backend_fetcher does actual fetching (and is not merely simulating it for
+  // testing purposes) it should be the Serf fetcher, as others may not direct
+  // requests this class produces properly.
+  // (As this fetcher may produce requests that need to connect to some IP
   //  but have a Host: and URL from somewhere else).
   LoopbackRouteFetcher(const RewriteOptions* options,
+                       const GoogleString& own_ip,
                        int own_port,
                        UrlAsyncFetcher* backend_fetcher);
   virtual ~LoopbackRouteFetcher();
@@ -59,6 +62,7 @@ class LoopbackRouteFetcher : public UrlAsyncFetcher {
 
  private:
   const RewriteOptions* const options_;
+  GoogleString own_ip_;
   int own_port_;
   UrlAsyncFetcher* const backend_fetcher_;
 
