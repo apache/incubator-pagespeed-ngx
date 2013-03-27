@@ -41,13 +41,13 @@ LogRecord::LogRecord()
       mutex_(NULL),
       rewriter_info_max_size_(-1),
       allow_logging_urls_(false),
-      log_url_indices_(true) {}
+      log_url_indices_(false) {}
 
 void LogRecord::InitLogging() {
   logging_info_.reset(new LoggingInfo);
   rewriter_info_max_size_ = -1;
   allow_logging_urls_ = false;
-  log_url_indices_ = true;
+  log_url_indices_ = false;
 }
 
 LogRecord::~LogRecord() {
@@ -138,7 +138,7 @@ void LogRecord::SetRewriterLoggingStatus(
   }
 
   ScopedMutex lock(mutex_.get());
-  if (log_url_indices_ && url != "") {
+  if ((allow_logging_urls_ || log_url_indices_) && url != "") {
     PopulateUrl(url, rewriter_info->mutable_rewrite_resource_info());
   }
 
@@ -293,7 +293,7 @@ void LogRecord::LogFlushEarlyActivity(
   }
 
   ScopedMutex lock(mutex_.get());
-  if (log_url_indices_ && url != "") {
+  if ((allow_logging_urls_ || log_url_indices_) && url != "") {
     PopulateUrl(url, rewriter_info->mutable_rewrite_resource_info());
   }
   rewriter_info->set_status(status);
@@ -324,7 +324,7 @@ void LogRecord::LogImageRewriteActivity(
   ScopedMutex lock(mutex_.get());
   RewriteResourceInfo* rewrite_resource_info =
       rewriter_info->mutable_rewrite_resource_info();
-  if (log_url_indices_ && url != "") {
+  if ((allow_logging_urls_ || log_url_indices_) && url != "") {
     PopulateUrl(url, rewrite_resource_info);
   }
 
@@ -379,6 +379,7 @@ void LogRecord::LogLazyloadFilter(
 
 void LogRecord::PopulateUrl(
     const GoogleString& url, RewriteResourceInfo* rewrite_resource_info) {
+  mutex()->DCheckLocked();
   std::pair<StringIntMap::iterator, bool> result = url_index_map_.insert(
       std::make_pair(url, 0));
   StringIntMap::iterator iter = result.first;

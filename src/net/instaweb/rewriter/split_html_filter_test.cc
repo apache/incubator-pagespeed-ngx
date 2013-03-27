@@ -196,7 +196,29 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithDriverHavingCriticalLineInfo) {
   Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                                    1, blink_js_url_,
-                                   kSplitHtmlBelowTheFoldData));
+                                   kSplitHtmlBelowTheFoldData, "false"));
+  EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kPagespeedFunc,
+                   SplitHtmlFilter::kSplitInit, kSplitHtmlMiddle,
+                   suffix), output_);
+  VerifyAppliedRewriters(
+      RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
+  VerifyJsonSize(strlen(kSplitHtmlBelowTheFoldData));
+}
+
+TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushingCachedHtml) {
+  CriticalLineInfo* config = new CriticalLineInfo;
+  Panel* panel = config->add_panels();
+  panel->set_start_xpath("div[@id = \"container\"]/div[4]");
+  panel = config->add_panels();
+  panel->set_start_xpath("img[3]");
+  panel->set_end_marker_xpath("h1[@id = \"footer\"]");
+  rewrite_driver()->set_critical_line_info(config);
+  rewrite_driver()->set_flushing_cached_html(true);
+
+  Parse("split_with_pcache", StrCat(kHtmlInputPart1, kHtmlInputPart2));
+  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                                   1, blink_js_url_,
+                                   kSplitHtmlBelowTheFoldData, "true"));
   EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kPagespeedFunc,
                    SplitHtmlFilter::kSplitInit, kSplitHtmlMiddle,
                    suffix), output_);
@@ -212,7 +234,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithOptions) {
   Parse("split_with_options", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                                    1, blink_js_url_,
-                                   kSplitHtmlBelowTheFoldData));
+                                   kSplitHtmlBelowTheFoldData, "false"));
   EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kPagespeedFunc,
                    SplitHtmlFilter::kSplitInit, kSplitHtmlMiddle,
                    suffix), output_);
@@ -232,7 +254,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushes) {
   html_parse()->FinishParse();
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                                    1, blink_js_url_,
-                                   kSplitHtmlBelowTheFoldData));
+                                   kSplitHtmlBelowTheFoldData, "false"));
   EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kPagespeedFunc,
                      SplitHtmlFilter::kSplitInit, kSplitHtmlMiddle,
                      suffix), output_);
@@ -255,7 +277,7 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
       "</head>"
       "<body></body></html>";
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
-                                   0, blink_js_url_, "{}"));
+                                   0, blink_js_url_, "{}", "false"));
   GoogleString post_head_output = StrCat(
       "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
       "<script src=\"b.js\"></script>",
@@ -311,7 +333,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpaths) {
   Parse("split_without_xpaths", StrCat(kHtmlInputPart1, kHtmlInputPart2));
   GoogleString expected_output(kSplitHtmlPrefix);
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
-                                   1, blink_js_url_, "{}"));
+                                   1, blink_js_url_, "{}", "false"));
   StrAppend(&expected_output, SplitHtmlFilter::kPagespeedFunc,
             SplitHtmlFilter::kSplitInit,
             kSplitHtmlMiddleWithoutPanelStubs,
@@ -326,7 +348,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsWithLazyload) {
   rewrite_driver_->set_is_lazyload_script_flushed(true);
   Parse("split_with_lazyload", kHtmlInputForLazyload);
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
-                                   0, blink_js_url_, "{}"));
+                                   0, blink_js_url_, "{}", "false"));
   EXPECT_EQ(StrCat("<html><head>", SplitHtmlFilter::kSplitInit,
                    "</head><body></body></html>", suffix), output_);
   VerifyAppliedRewriters("");
@@ -342,7 +364,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithLazyLoad) {
       "//img[3]://h1[@id = \"footer\"]");
   Parse("split_with_lazyload", kHtmlInputForLazyload);
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
-                                   0, blink_js_url_, "{}"));
+                                   0, blink_js_url_, "{}", "false"));
   EXPECT_EQ(StrCat("<html><head>", "<script type=\"text/javascript\">",
                    lazyload_js, "</script>", SplitHtmlFilter::kSplitInit,
                    "</head><body></body></html>", suffix), output_);
@@ -359,7 +381,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithScriptsFlushedEarly) {
       "//img[3]://h1[@id = \"footer\"]");
   Parse("split_with_scripts_flushed_early", kHtmlInputForLazyload);
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
-                                   0, blink_js_url_, "{}"));
+                                   0, blink_js_url_, "{}", "false"));
   EXPECT_EQ(StrCat("<html><head>", SplitHtmlFilter::kSplitInit,
                    "</head><body></body></html>", suffix), output_);
   VerifyAppliedRewriters("");
@@ -383,7 +405,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript1) {
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                    0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
                    "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
-                   "__psa_lt;/h1__psa_gt;\"}]}"));
+                   "__psa_lt;/h1__psa_gt;\"}]}", "false"));
   GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
                                   SplitHtmlFilter::kSplitInit));
 
@@ -401,7 +423,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript2) {
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                    0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
                    "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
-                   "__psa_lt;/h1__psa_gt;\"}]}"));
+                   "__psa_lt;/h1__psa_gt;\"}]}", "false"));
   GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
                                   SplitHtmlFilter::kSplitInit));
 
@@ -421,7 +443,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript3) {
       StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                    0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
                    "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
-                   "__psa_lt;/h1__psa_gt;\"}]}"));
+                   "__psa_lt;/h1__psa_gt;\"}]}", "false"));
   GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
                                   SplitHtmlFilter::kSplitInit));
 
@@ -445,7 +467,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript4) {
                    "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
                    "__psa_lt;/h1__psa_gt;"
                    "__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
-                   "__psa_lt;/h1__psa_gt;\"}]}"));
+                   "__psa_lt;/h1__psa_gt;\"}]}", "false"));
   GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
                                   SplitHtmlFilter::kSplitInit));
 
@@ -465,7 +487,7 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript5) {
                    "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
                    "__psa_lt;/h1__psa_gt;"
                    "__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
-                   "__psa_lt;/h1__psa_gt;\"}]}"));
+                   "__psa_lt;/h1__psa_gt;\"}]}", "false"));
   GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
                                   SplitHtmlFilter::kSplitInit));
 

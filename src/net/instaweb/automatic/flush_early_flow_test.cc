@@ -363,7 +363,7 @@ const char kRewrittenSplitHtmlWithLazyloadScriptFlushedEarly[] =
       "pagespeed.panelLoaderInit();"
       "pagespeed.panelLoader.invokedFromSplit();"
       "pagespeed.panelLoader.loadCriticalData({});"
-      "pagespeed.panelLoader.bufferNonCriticalData({});"
+      "pagespeed.panelLoader.bufferNonCriticalData({}, false);"
     "</script>\n</body></html>\n";
 const char kRewrittenPageSpeedLazyImg[] = "<img pagespeed_lazy_src=\"%s\""
     " src=\"/psajs/1.0.gif\""

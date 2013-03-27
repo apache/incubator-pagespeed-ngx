@@ -24,6 +24,7 @@
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/http.pb.h"
 #include "net/instaweb/http/public/async_fetch.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/http_value.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
@@ -41,6 +42,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
@@ -714,20 +716,27 @@ void CacheHtmlFlow::CacheHtmlHit(PropertyPage* page) {
 
   InitDriverWithPropertyCacheValues(new_driver, page);
 
+  bool flushed_split_js =
+      new_driver->options()->Enabled(RewriteOptions::kSplitHtml) &&
+      new_driver->device_properties()->SupportsSplitHtml(
+          new_driver->options()->enable_aggressive_rewriters_for_mobile());
   new_driver->ParseText(cached_html);
   new_driver->FinishParseAsync(
-      MakeFunction(this, &CacheHtmlFlow::CacheHtmlRewriteDone));
+      MakeFunction(this, &CacheHtmlFlow::CacheHtmlRewriteDone,
+                   flushed_split_js));
 }
 
-void CacheHtmlFlow::CacheHtmlRewriteDone() {
+void CacheHtmlFlow::CacheHtmlRewriteDone(bool flushed_split_js) {
   rewrite_driver_->set_flushed_cached_html(true);
 
   StaticAssetManager* static_asset_manager =
       server_context_->static_asset_manager();
-  base_fetch_->Write(StringPrintf(kBlinkJsString,
-      static_asset_manager->GetAssetUrl(
-          StaticAssetManager::kBlinkJs, options_).c_str()), handler_);
-  base_fetch_->Write(kCacheHtmlSuffixJsString, handler_);
+  if (!flushed_split_js) {
+    base_fetch_->Write(StringPrintf(kBlinkJsString,
+        static_asset_manager->GetAssetUrl(
+            StaticAssetManager::kBlinkJs, options_).c_str()), handler_);
+    base_fetch_->Write(kCacheHtmlSuffixJsString, handler_);
+  }
   const char* user_ip = base_fetch_->request_headers()->Lookup1(
       HttpAttributes::kXForwardedFor);
   if (user_ip != NULL && server_context_->factory()->IsDebugClient(user_ip) &&
