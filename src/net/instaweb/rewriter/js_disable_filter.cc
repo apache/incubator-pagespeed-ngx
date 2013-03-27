@@ -22,7 +22,6 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
@@ -55,7 +54,18 @@ JsDisableFilter::~JsDisableFilter() {
 }
 
 void JsDisableFilter::DetermineEnabled() {
-  set_is_enabled(JsDeferDisabledFilter::ShouldApply(rewrite_driver_));
+  bool should_apply = JsDeferDisabledFilter::ShouldApply(rewrite_driver_);
+  set_is_enabled(should_apply);
+  LogRecord* log_record = rewrite_driver_->log_record();
+  if (should_apply) {
+    log_record->LogRewriterHtmlStatus(
+        RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
+        RewriterStats::ACTIVE);
+  } else if (!rewrite_driver_->flushing_early()) {
+    log_record->LogRewriterHtmlStatus(
+        RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
+        RewriterStats::USER_AGENT_NOT_SUPPORTED);
+  }
 }
 
 void JsDisableFilter::StartDocument() {
@@ -118,16 +128,14 @@ void JsDisableFilter::StartElement(HtmlElement* element) {
         ScriptTagScanner::kJavaScript) {
       if (element->FindAttribute(HtmlName::kPagespeedNoDefer)) {
         rewrite_driver_->log_record()->LogJsDisableFilter(
-            RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
-            RewriterInfo::APPLIED_OK, true);
+            RewriteOptions::FilterId(RewriteOptions::kDisableJavascript), true);
         return;
       }
 
       // TODO(rahulbansal): Add a separate bool to track the inline
       // scripts till first external script which aren't deferred.1
       rewrite_driver_->log_record()->LogJsDisableFilter(
-          RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
-          RewriterInfo::APPLIED_OK, false);
+          RewriteOptions::FilterId(RewriteOptions::kDisableJavascript), false);
 
       // TODO(rahulbansal): Add logging for prioritize scripts
       if (src != NULL) {

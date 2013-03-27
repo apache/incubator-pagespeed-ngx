@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 
+#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
@@ -32,7 +33,6 @@
 
 namespace net_instaweb {
 
-class LogRecord;
 class Statistics;
 
 // By default, CriticalImagesFinder does not return meaningful results. However,
@@ -262,6 +262,16 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
   ExpectLogRecord(3, RewriterInfo::NOT_APPLIED, false, true);
   EXPECT_EQ(-1, logging_info()->num_html_critical_images());
   EXPECT_EQ(-1, logging_info()->num_css_critical_images());
+  rewrite_driver_->log_record()->WriteLog();
+  for (int i = 0; i < logging_info()->rewriter_stats_size(); i++) {
+    if (logging_info()->rewriter_stats(i).id() == "ll" &&
+        logging_info()->rewriter_stats(i).has_html_status()) {
+      EXPECT_EQ(RewriterStats::ACTIVE,
+                logging_info()->rewriter_stats(i).html_status());
+      return;
+    }
+  }
+  FAIL();
 }
 
 TEST_F(LazyloadImagesFilterTest, SingleHeadLoadOnOnload) {
@@ -452,6 +462,17 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForGooglebot) {
       "<img src=\"1.jpg\"/>"
       "</body>";
   ValidateNoChanges("googlebot_useragent", input_html);
+  rewrite_driver_->log_record()->WriteLog();
+  LoggingInfo* logging_info = rewrite_driver_->log_record()->logging_info();
+  for (int i = 0; i < logging_info->rewriter_stats_size(); i++) {
+    if (logging_info->rewriter_stats(i).id() == "ll" &&
+        logging_info->rewriter_stats(i).has_html_status()) {
+      EXPECT_EQ(RewriterStats::USER_AGENT_NOT_SUPPORTED,
+                logging_info->rewriter_stats(i).html_status());
+      return;
+    }
+  }
+  FAIL();
 }
 
 }  // namespace net_instaweb

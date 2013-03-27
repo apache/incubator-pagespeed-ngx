@@ -38,7 +38,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -68,12 +67,18 @@ class CriticalCssFilter : public EmptyHtmlFilter {
   virtual const char* Name() const { return "CriticalCss"; }
 
  private:
+  // Decodes the link tag into a valid url.
+  GoogleString DecodeUrl(const GoogleString& url);
+
   // Returns the critical CSS rules for the |decoded_url| of a <link> tag.
   // If data is unavailable (e.g., not yet determined, or flushed from
-  //     page property cache), the returned StringPiece .data() is NULL.
-  // If no CSS is critical for |decoded_url|, the returned StringPiece is empty.
+  //     page property cache), the returned value is NULL.
   const CriticalCssResult_LinkRules* GetLinkRules(
-      StringPiece decoded_url) const;
+      const GoogleString& decoded_url);
+
+  // Log the status of an attempt to rewrite.
+  // TODO(gee): This probably belongs in an ancestor class.
+  void LogRewrite(int status);
 
   RewriteDriver* driver_;
   CssTagScanner css_tag_scanner_;
@@ -92,6 +97,10 @@ class CriticalCssFilter : public EmptyHtmlFilter {
   CssStyleElement* current_style_element_;
   bool has_critical_css_;
 
+  // TODO(slamm): Are these just for logging, or do you want to export these
+  // to varz as well.  Just in general, I think someone intimately familiar with
+  // this filter needs to make a pass and figure out what we should be
+  // monitoring.
   int total_critical_size_;
   int total_original_size_;
   int repeated_style_blocks_size_;

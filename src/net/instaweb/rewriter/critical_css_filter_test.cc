@@ -16,8 +16,13 @@
 
 // Author: slamm@google.com (Stephen Lamm)
 
+#include <utility>
+#include <vector>
+
 #include "net/instaweb/rewriter/public/critical_css_filter.h"
 
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -27,6 +32,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -118,6 +124,31 @@ class CriticalCssFilterTest : public RewriteTestBase {
     pcache->Read(page);
   }
 
+  typedef std::vector<std::pair<int, int> > ExpApplicationVector;
+  void ValidateRewriterLogging(
+      RewriterStats::RewriterHtmlStatus html_status,
+      ExpApplicationVector expected_application_counts) {
+    rewrite_driver()->log_record()->WriteLog();
+
+    const char* id = RewriteOptions::FilterId(
+        RewriteOptions::kPrioritizeCriticalCss);
+
+    const LoggingInfo& logging_info =
+        *rewrite_driver()->log_record()->logging_info();
+    ASSERT_EQ(1, logging_info.rewriter_stats_size());
+    const RewriterStats& rewriter_stats = logging_info.rewriter_stats(0);
+
+    EXPECT_EQ(html_status, rewriter_stats.html_status());
+    EXPECT_EQ(expected_application_counts.size(),
+              rewriter_stats.status_counts_size());
+    for (int i = 0; i < expected_application_counts.size(); i++) {
+      EXPECT_EQ(expected_application_counts[i].first,
+                rewriter_stats.status_counts(i).application_status());
+      EXPECT_EQ(expected_application_counts[i].second,
+                rewriter_stats.status_counts(i).count());
+    }
+  }
+
   scoped_ptr<CriticalCssFilter> filter_;
   MockCriticalCssFinder* finder_;  // owned by server_context
 };
@@ -138,7 +169,13 @@ TEST_F(CriticalCssFilterTest, UnchangedWhenPcacheEmpty) {
 
   ValidateExpected("unchanged_when_pcache_empty", input_html, input_html);
 
-  // TODO(slamm): webkit headless gets called
+  ExpApplicationVector exp_application_counts;
+  ValidateRewriterLogging(RewriterStats::PROPERTY_CACHE_MISS,
+                          exp_application_counts);
+
+  // Validate logging.
+  ASSERT_FALSE(
+      rewrite_driver()->log_record()->logging_info()->has_critical_css_info());
 }
 
 TEST_F(CriticalCssFilterTest, InlineAndMove) {
@@ -190,6 +227,18 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
   finder_->AddCriticalCss("http://test.com/c.css", "c_used {color: cyan }", 3);
 
   ValidateExpected("inline_and_move", input_html, expected_html);
+
+  ExpApplicationVector exp_application_counts;
+  exp_application_counts.push_back(make_pair(RewriterInfo::APPLIED_OK, 3));
+  ValidateRewriterLogging(RewriterStats::ACTIVE,
+                          exp_application_counts);
+
+  // Validate logging.
+  const CriticalCssInfo& info =
+      rewrite_driver()->log_record()->logging_info()->critical_css_info();
+  ASSERT_EQ(64, info.critical_inlined_bytes());
+  ASSERT_EQ(6, info.original_external_bytes());
+  ASSERT_EQ(85, info.overhead_bytes());
 }
 
 TEST_F(CriticalCssFilterTest, InvalidUrl) {
@@ -233,6 +282,22 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
   finder_->AddCriticalCss("http://test.com/c.css", "c_used {color: cyan }", 33);
 
   ValidateExpected("invalid_url", input_html, expected_html);
+
+  ExpApplicationVector exp_application_counts;
+  exp_application_counts.push_back(make_pair(RewriterInfo::APPLIED_OK, 1));
+  // TODO(slamm): There is either a bug in this test case, or in the code,
+  // because it is not treating the url as invalid.
+  // PROPERTY_NOT_FOUND
+  exp_application_counts.push_back(make_pair(RewriterInfo::PROPERTY_NOT_FOUND,
+                                             1));
+  ValidateRewriterLogging(RewriterStats::ACTIVE, exp_application_counts);
+
+  // Validate logging.
+  const CriticalCssInfo& info =
+      rewrite_driver()->log_record()->logging_info()->critical_css_info();
+  ASSERT_EQ(21, info.critical_inlined_bytes());
+  ASSERT_EQ(33, info.original_external_bytes());
+  ASSERT_EQ(21, info.overhead_bytes());
 }
 
 TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
@@ -288,6 +353,19 @@ TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
   finder_->AddCriticalCss("http://test.com/c.css", "c_used {color: cyan }", 6);
 
   ValidateExpected("null_and_empty_critical_rules", input_html, expected_html);
+
+  ExpApplicationVector exp_application_counts;
+  exp_application_counts.push_back(make_pair(RewriterInfo::APPLIED_OK, 2));
+  exp_application_counts.push_back(make_pair(RewriterInfo::PROPERTY_NOT_FOUND,
+                                             1));
+  ValidateRewriterLogging(RewriterStats::ACTIVE, exp_application_counts);
+
+  // Validate logging.
+  const CriticalCssInfo& info =
+      rewrite_driver()->log_record()->logging_info()->critical_css_info();
+  ASSERT_EQ(21, info.critical_inlined_bytes());
+  ASSERT_EQ(10, info.original_external_bytes());
+  ASSERT_EQ(42, info.overhead_bytes());
 }
 
 TEST_F(CriticalCssFilterTest, DebugFilterAddsStats) {
@@ -366,6 +444,19 @@ TEST_F(CriticalCssFilterTest, DebugFilterAddsStats) {
   finder_->SetCriticalCssStats(5, 8, 11);
 
   ValidateExpected("stats_flag_adds_stats", input_html, expected_html);
+
+  ExpApplicationVector exp_application_counts;
+  exp_application_counts.push_back(make_pair(RewriterInfo::APPLIED_OK, 2));
+  exp_application_counts.push_back(make_pair(RewriterInfo::PROPERTY_NOT_FOUND,
+                                             1));
+  ValidateRewriterLogging(RewriterStats::ACTIVE, exp_application_counts);
+
+  // Validate logging.
+  const CriticalCssInfo& info =
+      rewrite_driver()->log_record()->logging_info()->critical_css_info();
+  ASSERT_EQ(19, info.critical_inlined_bytes());
+  ASSERT_EQ(555, info.original_external_bytes());
+  ASSERT_EQ(40, info.overhead_bytes());
 }
 
 }  // namespace net_instaweb

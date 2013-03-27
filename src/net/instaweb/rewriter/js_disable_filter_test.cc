@@ -19,7 +19,6 @@
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -106,6 +105,38 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
   ExpectLogRecord(1, RewriterInfo::APPLIED_OK, false);
   ExpectLogRecord(2, RewriterInfo::APPLIED_OK, false);
   ExpectLogRecord(3, RewriterInfo::APPLIED_OK, true);
+  rewrite_driver_->log_record()->WriteLog();
+  for (int i = 0; i < logging_info()->rewriter_stats_size(); i++) {
+    if (logging_info()->rewriter_stats(i).id() == "jd" &&
+        logging_info()->rewriter_stats(i).has_html_status()) {
+      EXPECT_EQ(RewriterStats::ACTIVE,
+                logging_info()->rewriter_stats(i).html_status());
+      return;
+    }
+  }
+  FAIL();
+}
+
+TEST_F(JsDisableFilterTest, InvalidUserAgent) {
+  rewrite_driver()->SetUserAgent("BlackListUserAgent");
+  const char script[] = "<head>"
+      "<script "
+      "src='http://www.google.com/javascript/ajax_apis.js'></script>"
+      "<script"
+      "> func();</script>"
+      "</head><body>Hello, world!</body>";
+
+  ValidateNoChanges("defer_script", script);
+  rewrite_driver_->log_record()->WriteLog();
+  for (int i = 0; i < logging_info()->rewriter_stats_size(); i++) {
+    if (logging_info()->rewriter_stats(i).id() == "jd" &&
+        logging_info()->rewriter_stats(i).has_html_status()) {
+      EXPECT_EQ(RewriterStats::USER_AGENT_NOT_SUPPORTED,
+                logging_info()->rewriter_stats(i).html_status());
+      return;
+    }
+  }
+  FAIL();
 }
 
 TEST_F(JsDisableFilterTest, DisablesScriptWithExperimental) {

@@ -66,7 +66,18 @@ LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
 
 void LazyloadImagesFilter::DetermineEnabled() {
-  set_is_enabled(ShouldApply(driver()));
+  bool should_apply = ShouldApply(driver());
+  set_is_enabled(should_apply);
+  LogRecord* log_record = driver()->log_record();
+  if (should_apply) {
+    log_record->LogRewriterHtmlStatus(
+        RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
+        RewriterStats::ACTIVE);
+  } else if (!driver()->flushing_early()) {
+    log_record->LogRewriterHtmlStatus(
+        RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
+        RewriterStats::USER_AGENT_NOT_SUPPORTED);
+  }
 }
 
 void LazyloadImagesFilter::StartDocumentImpl() {

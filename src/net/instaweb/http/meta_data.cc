@@ -22,6 +22,7 @@
 namespace net_instaweb {
 
 const char HttpAttributes::kAcceptEncoding[] = "Accept-Encoding";
+const char HttpAttributes::kAllow[] = "Allow";
 const char HttpAttributes::kAuthorization[] = "Authorization";
 const char HttpAttributes::kCacheControl[] = "Cache-Control";
 const char HttpAttributes::kConnection[] = "Connection";

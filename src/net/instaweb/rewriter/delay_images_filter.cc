@@ -236,4 +236,19 @@ bool DelayImagesFilter::DisableInplaceLowResForMobile() const {
       driver_->device_properties()->IsMobileUserAgent();
 }
 
+void DelayImagesFilter::DetermineEnabled() {
+  LogRecord* log_record = driver_->log_record();
+  if (!driver_->device_properties()->SupportsImageInlining()) {
+    log_record->LogRewriterHtmlStatus(
+        RewriteOptions::FilterId(RewriteOptions::kDelayImages),
+        RewriterStats::USER_AGENT_NOT_SUPPORTED);
+    set_is_enabled(false);
+    return;
+  }
+  log_record->LogRewriterHtmlStatus(
+      RewriteOptions::FilterId(RewriteOptions::kDelayImages),
+      RewriterStats::ACTIVE);
+  set_is_enabled(true);
+}
+
 }  // namespace net_instaweb

@@ -127,7 +127,9 @@ void LogRecord::SetRewriterLoggingStatus(
 
 void LogRecord::SetRewriterLoggingStatus(
     const char* id, const GoogleString& url,
-    RewriterInfo::RewriterApplicationStatus status) {
+    RewriterInfo::RewriterApplicationStatus application_status) {
+  LogRewriterApplicationStatus(id, application_status);
+
   RewriterInfo* rewriter_info = NewRewriterInfo(id);
   if (rewriter_info == NULL) {
     return;
@@ -138,7 +140,25 @@ void LogRecord::SetRewriterLoggingStatus(
     PopulateUrl(url, rewriter_info->mutable_rewrite_resource_info());
   }
 
-  rewriter_info->set_status(status);
+  rewriter_info->set_status(application_status);
+}
+
+void LogRecord::LogRewriterHtmlStatus(
+    const char* rewriter_id,
+    RewriterStats::RewriterHtmlStatus status) {
+  ScopedMutex lock(mutex_.get());
+  DCHECK(RewriterStats::RewriterHtmlStatus_IsValid(status)) << status;
+  // TODO(gee): Verify this is called only once?
+  rewriter_stats_[rewriter_id].html_status = status;
+}
+
+void LogRecord::LogRewriterApplicationStatus(
+    const char* rewriter_id,
+    RewriterInfo::RewriterApplicationStatus status) {
+  ScopedMutex lock(mutex_.get());
+  DCHECK(RewriterInfo::RewriterApplicationStatus_IsValid(status));
+  RewriterStatsInternal* stats = &rewriter_stats_[rewriter_id];
+  stats->status_counts[status]++;
 }
 
 void LogRecord::SetBlinkRequestFlow(int flow) {
@@ -211,6 +231,7 @@ void LogRecord::SetCacheHtmlLoggingInfo(const GoogleString& user_agent) {
 
 bool LogRecord::WriteLog() {
   ScopedMutex lock(mutex_.get());
+  PopulateRewriterStatusCounts();
   return WriteLogImpl();
 }
 
@@ -224,6 +245,9 @@ GoogleString LogRecord::AppliedRewritersString() {
       applied_rewriters.insert(info.id());
     }
   }
+
+  // TODO(gee): Use the rewriter stats to construct the string.
+
   GoogleString rewriters_str;
   for (StringSet::iterator begin = applied_rewriters.begin(),
        iter = applied_rewriters.begin(), end = applied_rewriters.end();
@@ -257,6 +281,8 @@ void LogRecord::LogImageRewriteActivity(
     bool try_low_res_src_insertion,
     bool low_res_src_inserted,
     int low_res_data_size) {
+  LogRewriterApplicationStatus(id, status);
+
   RewriterInfo* rewriter_info = NewRewriterInfo(id);
   if (rewriter_info == NULL) {
     return;
@@ -282,9 +308,10 @@ void LogRecord::LogImageRewriteActivity(
   rewriter_info->set_status(status);
 }
 
-void LogRecord::LogJsDisableFilter(
-    const char* id, RewriterInfo::RewriterApplicationStatus status,
-    bool has_pagespeed_no_defer) {
+void LogRecord::LogJsDisableFilter(const char* id,
+                                   bool has_pagespeed_no_defer) {
+  LogRewriterApplicationStatus(id, RewriterInfo::APPLIED_OK);
+
   RewriterInfo* rewriter_info = NewRewriterInfo(id);
   if (rewriter_info == NULL) {
     return;
@@ -294,7 +321,7 @@ void LogRecord::LogJsDisableFilter(
   RewriteResourceInfo* rewrite_resource_info =
       rewriter_info->mutable_rewrite_resource_info();
   rewrite_resource_info->set_has_pagespeed_no_defer(has_pagespeed_no_defer);
-  rewriter_info->set_status(status);
+  rewriter_info->set_status(RewriterInfo::APPLIED_OK);
 }
 
 void LogRecord::LogLazyloadFilter(
@@ -347,6 +374,50 @@ void LogRecord::SetImageStats(int num_img_tags, int num_inlined_img_tags) {
   logging_info()->mutable_image_stats()->set_num_img_tags(num_img_tags);
   logging_info()->mutable_image_stats()
       ->set_num_inlined_img_tags(num_inlined_img_tags);
+}
+
+void LogRecord::SetCriticalCssInfo(int critical_inlined_bytes,
+                                   int original_external_bytes,
+                                   int overhead_bytes) {
+  ScopedMutex lock(mutex_.get());
+  CriticalCssInfo* info = logging_info()->mutable_critical_css_info();
+  info->set_critical_inlined_bytes(critical_inlined_bytes);
+  info->set_original_external_bytes(original_external_bytes);
+  info->set_overhead_bytes(overhead_bytes);
+}
+
+void LogRecord::PopulateRewriterStatusCounts() {
+  mutex_->DCheckLocked();
+  if (logging_info_.get() == NULL) {
+    return;
+  }
+
+  if (logging_info_->rewriter_stats_size() > 0) {
+    DLOG(FATAL) <<  "PopulateRewriterStatusCounts should be called only once";
+    return;
+  }
+
+  for (RewriterStatsMap::const_iterator iter = rewriter_stats_.begin();
+       iter != rewriter_stats_.end();
+       ++iter) {
+    const GoogleString& rewriter_id = iter->first;
+    const RewriterStatsInternal& stats = iter->second;
+    RewriterStats* stats_proto = logging_info_->add_rewriter_stats();
+    stats_proto->set_id(rewriter_id);
+    stats_proto->set_html_status(stats.html_status);
+    for (std::map<int, int>::const_iterator iter = stats.status_counts.begin();
+         iter != stats.status_counts.end();
+         ++iter) {
+      const int application_status = iter->first;
+      DCHECK(RewriterInfo::RewriterApplicationStatus_IsValid(
+          application_status));
+      const int count = iter->second;
+      CHECK_GE(count, 1);
+      RewriteStatusCount* status_count = stats_proto->add_status_counts();
+      status_count->set_application_status(application_status);
+      status_count->set_count(count);
+    }
+  }
 }
 
 }  // namespace net_instaweb

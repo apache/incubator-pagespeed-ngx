@@ -199,6 +199,20 @@ message FlushEarlyResourceInfo {
   optional bool in_head = 4;
 }
 
+// This proto stores information about the critical CSS filter.
+// Next id for CriticalCssInfo: 4
+message CriticalCssInfo {
+  // Number of bytes of uncompressed critical CSS inlined for one HTML page.
+  optional int64 critical_inlined_bytes = 1;
+  // Number of bytes of uncompressed external CSS (flattened) that corresponds
+  // to the inlined critical CSS.
+  optional int64 original_external_bytes = 2;
+  // Number of bytes of critical CSS inlined plus inline blocks copied
+  // to the full CSS load at the bottom of the page.
+  // Does count the mark-up nor the JavaScript added.
+  optional int64 overhead_bytes = 3;
+}
+
 // This proto stores all Cache Html flow requests related information.
 // Next id for CacheHtmlLoggingInfo : 6
 message CacheHtmlLoggingInfo {
@@ -260,6 +274,9 @@ message RewriterInfo {
     UNKNOWN_STATUS = 0;
     APPLIED_OK = 1;
     NOT_APPLIED = 2;
+    PROPERTY_NOT_FOUND = 3;
+    INPUT_URL_INVALID = 4;
+    REPLACE_FAILED = 5;
   }
 
   // The rewriter's id.
@@ -289,8 +306,37 @@ message ImageStats {
   optional int32 num_inlined_img_tags = 2;
 }
 
+message RewriteStatusCount {
+  // RewriterInfo::RewriterApplicationStatus
+  optional int32 application_status = 1;
+  // Count for status.
+  optional int32 count = 2;
+}
+
+message RewriterStats {
+  // The rewriter's id. This is a two character string indicating the rewrite
+  // filter used (e.g. "ic" for image compression) on the resource while
+  // proxying the HTML page.
+  optional string id = 1;
+
+  // Status of rewriter at the HTML level.  This would include failure reasons
+  // such as the rewriter being disabled, the url being blacklisted, or missing
+  // the property cache (for those rewriters which rely on properties).
+  enum RewriterHtmlStatus {
+    UNKNOWN_STATUS = 0;
+    ACTIVE = 1;
+    DISABLED = 2;
+    PROPERTY_CACHE_MISS = 3;
+    USER_AGENT_NOT_SUPPORTED = 4;
+  }
+  optional RewriterHtmlStatus html_status = 2;
+
+  // Status of rewriter applications on resources.
+  repeated RewriteStatusCount status_counts = 3;
+}
+
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 22
+// Next id for LoggingInfo: 24
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -311,6 +357,8 @@ message LoggingInfo {
   optional PropertyPageInfo property_page_info = 8;
   // Rewriter information for this request.
   repeated RewriterInfo rewriter_info = 9;
+  // Rewriter statistics for this request.
+  repeated RewriterStats rewriter_stats = 22;
   // Whether the response is HTML.
   optional bool is_html_response = 10 [ default = false ];
   // Whether request URL is disallowed.
@@ -339,4 +387,6 @@ message LoggingInfo {
   optional int32 num_css_critical_images = 20 [ default = -1 ];
   // Statistics related to images on the HTML page.
   optional ImageStats image_stats = 21;
+  // Critical CSS info for this request.
+  optional CriticalCssInfo critical_css_info = 23;
 }

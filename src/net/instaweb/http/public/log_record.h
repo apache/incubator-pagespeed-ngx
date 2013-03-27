@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_LOG_RECORD_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_LOG_RECORD_H_
 
+#include <map>
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -82,6 +83,17 @@ class LogRecord  {
       const char* rewriter_id, const GoogleString& url,
       RewriterInfo::RewriterApplicationStatus status);
 
+  // Log the HTML level status for a filter.  This should be called only once
+  // per filter, at the point where it is determined the filter is either
+  // active or not.
+  void LogRewriterHtmlStatus(const char* rewriter_id,
+                             RewriterStats::RewriterHtmlStatus status);
+
+  // Log the status of a rewriter application on a resource.
+  // TODO(gee): I'd really prefer rewriter_id was an enum.
+  void LogRewriterApplicationStatus(
+      const char* rewriter_id, RewriterInfo::RewriterApplicationStatus status);
+
   // Return the LoggingInfo proto wrapped by this class. Calling code must
   // guard any reads and writes to this using mutex().
   virtual LoggingInfo* logging_info();
@@ -141,9 +153,8 @@ class LogRecord  {
       bool low_res_src_inserted,
       int low_res_data_size);
 
-  void LogJsDisableFilter(const char* id,
-                          RewriterInfo::RewriterApplicationStatus status,
-                          bool has_pagespeed_no_defer);
+  // TODO(gee): Change the callsites.
+  void LogJsDisableFilter(const char* id, bool has_pagespeed_no_defer);
 
   void LogLazyloadFilter(const char* id,
                          RewriterInfo::RewriterApplicationStatus status,
@@ -174,6 +185,11 @@ class LogRecord  {
   // Sets image related statistics.
   void SetImageStats(int num_img_tags, int num_inlined_img_tags);
 
+  // Sets critical CSS related byte counts (all uncompressed).
+  void SetCriticalCssInfo(int critical_inlined_bytes,
+                          int original_external_bytes,
+                          int overhead_bytes);
+
  protected:
   // Non-initializing default constructor for subclasses. Subclasses that invoke
   // this constructor should implement and call their own initializer that
@@ -199,6 +215,10 @@ class LogRecord  {
   void PopulateUrl(
       const GoogleString& url, RewriteResourceInfo* rewrite_resource_info);
 
+  // Fill LoggingInfo proto with information collected from LogRewriterStatus
+  // and LogRewrite.
+  void PopulateRewriterStatusCounts();
+
   scoped_ptr<LoggingInfo> logging_info_;
 
   // Thus must be set. Implementation constructors must minimally default this
@@ -213,6 +233,18 @@ class LogRecord  {
 
   // Map which maintains the url to index for logging urls.
   StringIntMap url_index_map_;
+
+  // Stats collected from calls to LogRewrite.
+  struct RewriterStatsInternal {
+    RewriterStats::RewriterHtmlStatus html_status;
+
+    // RewriteInfo::RewriterApplicationStatus -> count.
+    std::map<int, int> status_counts;
+
+    RewriterStatsInternal() : html_status(RewriterStats::UNKNOWN_STATUS) {}
+  };
+  typedef std::map<GoogleString, RewriterStatsInternal> RewriterStatsMap;
+  RewriterStatsMap rewriter_stats_;
 
   DISALLOW_COPY_AND_ASSIGN(LogRecord);
 };
