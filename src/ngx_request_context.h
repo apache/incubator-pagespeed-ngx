@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
+// Author: oschaaf@google.com (Otto van der Schaaf)
 //
+// I tried to keep this as close to ApacheRequestContext as possible.
 // Captures the NGINX request details in our request context, including
-// the port (used for loopback fetches)
+// the port (used for loopback fetches).
 
 #ifndef NGX_REQUEST_CONTEXT_H_
 #define NGX_REQUEST_CONTEXT_H_

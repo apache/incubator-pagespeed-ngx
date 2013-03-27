@@ -34,7 +34,7 @@ class NgxBaseFetch;
 class ProxyFetch;
 class RewriteDriver;
 
-} //namespace net_instaweb
+}  // namespace net_instaweb
 
 namespace ngx_psol {
 

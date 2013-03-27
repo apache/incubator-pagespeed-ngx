@@ -32,15 +32,15 @@ NgxRequestContext::NgxRequestContext(AbstractMutex* logging_mutex,
     : RequestContext(logging_mutex),
       local_port_(-1) {
   // Note that at the time we create a RequestContext we have full
-  // access to the Ngx request_rec.  However, due to Cloning and (I
-  // believe) Detaching, we can initiate fetches after the Ngx
+  // access to the nginx internal request structure.  However,
+  // due to Cloning and (I believe) Detaching, we can initiate fetches after
   // http_http_request_t* has been retired.  So deep-copy the bits we need
   // at the time we create our RequestContext.
 
   // Save our own IP as well, LoopbackRouteFetcher will need it.
-  // Based on ngx_http_variable_server_port.
 
-  ngx_http_request_t* req = ps_request_ctx->r; 
+  // Based on ngx_http_variable_server_port.
+  ngx_http_request_t* req = ps_request_ctx->r;
   bool port_set = false;
 #if (NGX_HAVE_INET6)
   if (req->connection->local_sockaddr->sa_family == AF_INET6) {

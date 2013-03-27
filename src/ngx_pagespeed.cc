@@ -288,20 +288,6 @@ typedef struct {
   net_instaweb::MessageHandler* handler;
 } ps_loc_conf_t;
 
-/*typedef struct {
-  net_instaweb::ProxyFetch* proxy_fetch;
-  net_instaweb::NgxBaseFetch* base_fetch;
-  net_instaweb::RewriteDriver* driver;
-  bool data_received;
-  int pipe_fd;
-  ngx_connection_t* pagespeed_connection;
-  ngx_http_request_t* r;
-  bool is_resource_fetch;
-  bool sent_headers;
-  bool write_pending;
-  net_instaweb::GzipInflater* inflater_;
-  } ps_request_ctx_t;*/
-
 ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
 void* ps_create_srv_conf(ngx_conf_t* cf);
