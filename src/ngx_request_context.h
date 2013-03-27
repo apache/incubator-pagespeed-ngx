@@ -40,17 +40,12 @@ class NgxRequestContext : public RequestContext {
   NgxRequestContext(AbstractMutex* logging_mutex,
                     ngx_psol::ps_request_ctx_t* ps_request_context);
 
-  // Captures the original URL of the request, which is used to help
-  // authorize domains for fetches we do on behalf of that request.
-  void set_url(StringPiece url) { url.CopyToString(&url_); }
-
   // Returns rc as an NgxRequestContext* if it is one and CHECK
   // fails if it is not. Returns NULL if rc is NULL.
   static NgxRequestContext* DynamicCast(RequestContext* rc);
 
   int local_port() const { return local_port_; }
   const GoogleString& local_ip() const { return local_ip_; }
-  StringPiece url() const { return url_; }
 
  protected:
   virtual ~NgxRequestContext();
@@ -58,7 +53,6 @@ class NgxRequestContext : public RequestContext {
  private:
   int local_port_;
   GoogleString local_ip_;
-  GoogleString url_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRequestContext);
 };
