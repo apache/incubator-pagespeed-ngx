@@ -205,73 +205,14 @@ run it you need to first build and configure nginx.  Set it up something like:
 
     ...
     http {
-      pagespeed on;
-
-      // TODO(jefftk): this should be the default.
-      pagespeed RewriteLevel CoreFilters;
-
-      # This can be anywhere on your filesystem.
-      pagespeed FileCachePath /path/to/ngx_pagespeed_cache;
-
-      # For testing that the Library command works.
-      pagespeed Library 43 1o978_K0_LNE5_ystNklf
-                http://www.modpagespeed.com/rewrite_javascript.js;
-
-      # These gzip options are needed for tests that assume that pagespeed
-      # always enables gzip.  Which it does in apache, but not in nginx.
-      gzip on;
-      gzip_vary on;
-
-      # Turn on gzip for all content types that should benefit from it.
-      gzip_types application/ecmascript;
-      gzip_types application/javascript;
-      gzip_types application/json;
-      gzip_types application/pdf;
-      gzip_types application/postscript;
-      gzip_types application/x-javascript;
-      gzip_types image/svg+xml;
-      gzip_types text/css;
-      gzip_types text/csv;
-      # "gzip_types text/html" is assumed.
-      gzip_types text/javascript;
-      gzip_types text/plain;
-      gzip_types text/xml;
-
-      gzip_http_version 1.0;
-
-      ...
-
-      server {
-        listen 8050;
-        server_name localhost;
-        root /path/to/mod_pagespeed/src/install;
-        index index.html;
-
-        add_header Cache-Control "public, max-age=600";
-
-        # Disable parsing if the size of the HTML exceeds 50kB.
-        pagespeed MaxHtmlParseBytes 50000;
-
-        location /mod_pagespeed_test/no_cache/ {
-          add_header Cache-Control no-cache;
-        }
-
-        location /mod_pagespeed_test/compressed/ {
-          add_header Cache-Control max-age=600;
-          add_header Content-Encoding gzip;
-          types {
-            text/javascript custom_ext;
-          }
-        }
-
-        ...
-      }
+      include "/path/to/ngx_pagespeed/test/pagespeed_test.conf";
     }
 
 Then run the test, using the port you set up with `listen` in the configuration
-file:
+file.  It needs the file cache path passed in as an environment variable:
 
-    /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
+    FILE_CACHE_PATH=/path/to/ngx_pagespeed_cache \
+      /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
 
 This should print out a lot of lines like:
 
@@ -302,16 +243,14 @@ you to [submit a bug](https://github.com/pagespeed/ngx_pagespeed/issues/new).
 
 Start an memcached server:
 
-    memcached -p 11213
+    memcached -p 11211
 
-To the configuration above add to the main or server block:
+To `ngx_pagespeed/test/pagespeed_test.conf.template` uncomment:
 
-    pagespeed MemcachedServers "localhost:11213";
+    pagespeed MemcachedServers "localhost:11211";
     pagespeed MemcachedThreads 1;
 
-Then run the system test:
-
-    /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
+Then run the system test as above.  You still need a file cache path.
 
 #### Testing with valgrind
 

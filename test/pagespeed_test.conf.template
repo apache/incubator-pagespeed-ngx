@@ -1,0 +1,107 @@
+# nginx_system_test.sh makes a few substitutions to this file to generate
+# pagespeed_test.conf so to run tests you should make your nginx./conf look
+# like:
+#
+# http {
+#   include "/path/to/pagespeed_test.conf";
+# }
+#
+
+root /var/ngx-www;
+
+include       mime.types;
+default_type  application/octet-stream;
+
+sendfile        on;
+
+keepalive_timeout  65;
+
+# set up gzip
+gzip  on;
+gzip_vary on;
+# Turn on gzip for all content types that should benefit from it.
+gzip_types application/ecmascript;
+gzip_types application/javascript;
+gzip_types application/json;
+gzip_types application/pdf;
+gzip_types application/postscript;
+gzip_types application/x-javascript;
+gzip_types image/svg+xml;
+gzip_types text/css;
+gzip_types text/csv;
+# "gzip_types text/html" is assumed.
+gzip_types text/javascript;
+gzip_types text/plain;
+gzip_types text/xml;
+
+gzip_http_version 1.0;
+
+server {
+  listen       8050;
+  server_name  localhost;
+  pagespeed FileCachePath "@@FILE_CACHE_PATH@@";
+
+  # uncomment the following two lines if you're testing memcached
+  #pagespeed MemcachedServers "localhost:11211";
+  #pagespeed MemcachedThreads 1;
+
+  pagespeed on;
+
+  pagespeed RewriteLevel CoreFilters;
+  pagespeed EnableFilters insert_ga,trim_urls;
+
+  #pagespeed CacheFlushPollIntervalSec 1;
+
+  #pagespeed RunExperiment on;
+  #pagespeed AnalyticsID "UA-27645543-1";
+  #pagespeed ExperimentSpec "id=1;percent=50;default";
+  #pagespeed ExperimentSpec "id=2;percent=50";
+
+  pagespeed Library 43 1o978_K0_LNE5_ystNklf
+  http://www.modpagespeed.com/rewrite_javascript.js;
+
+  # Disable parsing if the size of the HTML exceeds 50kB.
+  pagespeed MaxHtmlParseBytes 50000;
+
+
+  location /mod_pagespeed_example/core_filters/ {
+    pagespeed RewriteLevel CoreFilters;
+  }
+
+  location /mod_pagespeed_example/pass_through/ {
+    pagespeed RewriteLevel PassThrough;
+  }
+
+  #location / {
+  #  proxy_pass http://www.google.com;
+  #}
+
+  location /mod_pagespeed_test/no_cache/ {
+    add_header Cache-Control no-cache;
+  }
+
+  location /mod_pagespeed_test/compressed/ {
+    add_header Content-Encoding gzip;
+    types {
+      text/javascript custom_ext;
+    }
+  }
+
+  pagespeed EnableFilters remove_comments;
+
+  #charset koi8-r;
+
+  #access_log  logs/host.access.log  main;
+
+  index index.html;
+
+
+  #error_page  404              /404.html;
+
+  # redirect server error pages to the static page /50x.html
+  #
+  error_page   500 502 503 504  /50x.html;
+  location = /50x.html {
+    root   html;
+  }
+}
