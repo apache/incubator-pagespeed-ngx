@@ -1003,26 +1003,6 @@ GoogleString RewriteTestBase::AppliedRewriterStringFromLog() {
     log_record()->AppliedRewritersString();
 }
 
-
-void RewriteTestBase::VerifyRewriterInfoEntry(
-    LogRecord* log_record, const GoogleString& id, int url_index,
-    int rewriter_info_index, int rewriter_info_size, int url_list_size,
-    const GoogleString& url) {
-  ScopedMutex lock(log_record->mutex());
-  EXPECT_GE(log_record->logging_info()->rewriter_info_size(),
-            rewriter_info_size);
-  const RewriterInfo& rewriter_info =
-      log_record->logging_info()->rewriter_info(rewriter_info_index);
-  EXPECT_STREQ(id, rewriter_info.id());
-  EXPECT_TRUE(rewriter_info.has_rewrite_resource_info());
-  EXPECT_EQ(url_index,
-      rewriter_info.rewrite_resource_info().original_resource_url_index());
-  EXPECT_EQ(url_list_size,
-            log_record->logging_info()->resource_url_info().url_size());
-  EXPECT_EQ(url,
-      log_record->logging_info()->resource_url_info().url(url_index));
-}
-
 // Logging at the INFO level slows down tests, adds to the noise, and
 // adds considerably to the speed variability.
 class RewriteTestBaseProcessContext {

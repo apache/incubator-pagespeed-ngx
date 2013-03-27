@@ -142,16 +142,6 @@ class LogRecord  {
   // Override SetCacheHtmlInfoImpl if necessary.
   void SetCacheHtmlLoggingInfo(const GoogleString& user_agent);
 
-  // Log a RewriterInfo for the flush early filter.
-  void LogFlushEarlyActivity(
-      const char* id,
-      const GoogleString& url,
-      RewriterInfo::RewriterApplicationStatus status,
-      FlushEarlyResourceInfo::ContentType content_type,
-      FlushEarlyResourceInfo::ResourceType resource_type,
-      bool is_bandwidth_affected,
-      bool in_head);
-
   // Log a RewriterInfo for the image rewrite filter.
   void LogImageRewriteActivity(
       const char* id,
@@ -185,10 +175,6 @@ class LogRecord  {
   // Sets whether urls should be logged. This could potentially generate a lot
   // of logs data, so this should be switched on only for debugging.
   void SetAllowLoggingUrls(bool allow_logging_urls);
-
-  // Sets whether URL indices should be logged for every rewriter application
-  // or not.
-  void SetLogUrlIndices(bool log_url_indices);
 
   // Sets the number of critical images in HTML.
   void SetNumHtmlCriticalImages(int num_html_critical_images);
@@ -244,9 +230,6 @@ class LogRecord  {
 
   // Allow urls to be logged.
   bool allow_logging_urls_;
-
-  // Allow url indices to be logged.
-  bool log_url_indices_;
 
   // Map which maintains the url to index for logging urls.
   StringIntMap url_index_map_;

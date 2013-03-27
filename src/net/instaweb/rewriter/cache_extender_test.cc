@@ -21,10 +21,6 @@
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
-#include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/logging_proto.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
-#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/css_outline_filter.h"
 #include "net/instaweb/rewriter/public/cache_extender.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
@@ -39,7 +35,6 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
-#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -143,9 +138,6 @@ class CacheExtenderTest : public RewriteTestBase {
     for (int i = 0; i < 3; i++) {
       const GoogleString input_html = GenerateHtml(kCssFile, "b.jpg", "c.js");
       if (lru_cache()->IsHealthy()) {
-        LogRecord* log_record =
-            rewrite_driver()->request_context()->log_record();
-        log_record->SetAllowLoggingUrls(true);
         ValidateExpected(
             "do_extend",
             input_html,
@@ -155,12 +147,6 @@ class CacheExtenderTest : public RewriteTestBase {
         EXPECT_EQ((i + 1) * 3, num_cache_extended_->Get())
             << "Number of cache extended resources is wrong";
         EXPECT_STREQ("ec,ei,es", AppliedRewriterStringFromLog());
-        VerifyRewriterInfoEntry(log_record, "ec", 0, (i * 3), (i + 1) * 3,
-                                3, "http://test.com/sub/a.css?v=1");
-        VerifyRewriterInfoEntry(log_record, "ei", 1, 1 + (i * 3), (i + 1) * 3,
-                                3, "http://test.com/b.jpg");
-        VerifyRewriterInfoEntry(log_record, "es", 2, 2 + (i * 3), (i + 1) * 3,
-                                3, "http://test.com/c.js");
       } else {
         ValidateNoChanges("unhealthy", input_html);
         EXPECT_EQ(0, num_cache_extended_->Get())

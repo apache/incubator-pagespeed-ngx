@@ -24,8 +24,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/logging_proto.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -35,7 +33,6 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
-#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -165,8 +162,6 @@ class JavascriptFilterTest : public RewriteTestBase {
 
 TEST_F(JavascriptFilterTest, DoRewrite) {
   InitFiltersAndTest(100);
-  LogRecord* log_record = rewrite_driver_->request_context()->log_record();
-  log_record->SetAllowLoggingUrls(true);
   ValidateExpected("do_rewrite",
                    GenerateHtml(kOrigJsName),
                    GenerateHtml(expected_rewritten_path_.c_str()));
@@ -178,8 +173,6 @@ TEST_F(JavascriptFilterTest, DoRewrite) {
   EXPECT_EQ(STATIC_STRLEN(kJsData), total_original_bytes_->Get());
   EXPECT_EQ(1, num_uses_->Get());
   EXPECT_STREQ("jm", AppliedRewriterStringFromLog());
-  VerifyRewriterInfoEntry(log_record, "jm", 0, 0, 1, 1,
-                        "http://test.com/hello.js");
 }
 
 TEST_F(JavascriptFilterTest, RewriteButExceedLogThreshold) {

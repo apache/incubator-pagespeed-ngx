@@ -40,14 +40,12 @@ LogRecord::LogRecord()
     : logging_info_(NULL),
       mutex_(NULL),
       rewriter_info_max_size_(-1),
-      allow_logging_urls_(false),
-      log_url_indices_(true) {}
+      allow_logging_urls_(false) {}
 
 void LogRecord::InitLogging() {
   logging_info_.reset(new LoggingInfo);
   rewriter_info_max_size_ = -1;
   allow_logging_urls_ = false;
-  log_url_indices_ = true;
 }
 
 LogRecord::~LogRecord() {
@@ -138,7 +136,7 @@ void LogRecord::SetRewriterLoggingStatus(
   }
 
   ScopedMutex lock(mutex_.get());
-  if (log_url_indices_ && url != "") {
+  if (allow_logging_urls_ && url != "") {
     PopulateUrl(url, rewriter_info->mutable_rewrite_resource_info());
   }
 
@@ -274,37 +272,6 @@ void LogRecord::SetAllowLoggingUrls(bool allow_logging_urls) {
   allow_logging_urls_ = allow_logging_urls;
 }
 
-void LogRecord::SetLogUrlIndices(bool log_url_indices) {
-  ScopedMutex lock(mutex_.get());
-  log_url_indices_ = log_url_indices;
-}
-
-void LogRecord::LogFlushEarlyActivity(
-    const char* id,
-    const GoogleString& url,
-    RewriterInfo::RewriterApplicationStatus status,
-    FlushEarlyResourceInfo::ContentType content_type,
-    FlushEarlyResourceInfo::ResourceType resource_type,
-    bool is_bandwidth_affected,
-    bool in_head) {
-  RewriterInfo* rewriter_info = NewRewriterInfo(id);
-  if (rewriter_info == NULL) {
-    return;
-  }
-
-  ScopedMutex lock(mutex_.get());
-  if (log_url_indices_ && url != "") {
-    PopulateUrl(url, rewriter_info->mutable_rewrite_resource_info());
-  }
-  rewriter_info->set_status(status);
-  FlushEarlyResourceInfo* flush_early_resource_info =
-      rewriter_info->mutable_flush_early_resource_info();
-  flush_early_resource_info->set_content_type(content_type);
-  flush_early_resource_info->set_resource_type(resource_type);
-  flush_early_resource_info->set_is_bandwidth_affected(is_bandwidth_affected);
-  flush_early_resource_info->set_in_head(in_head);
-}
-
 void LogRecord::LogImageRewriteActivity(
     const char* id,
     const GoogleString& url,
@@ -324,7 +291,7 @@ void LogRecord::LogImageRewriteActivity(
   ScopedMutex lock(mutex_.get());
   RewriteResourceInfo* rewrite_resource_info =
       rewriter_info->mutable_rewrite_resource_info();
-  if (log_url_indices_ && url != "") {
+  if (allow_logging_urls_ && url != "") {
     PopulateUrl(url, rewrite_resource_info);
   }
 
@@ -383,12 +350,10 @@ void LogRecord::PopulateUrl(
       std::make_pair(url, 0));
   StringIntMap::iterator iter = result.first;
   if (result.second) {
-    iter->second = url_index_map_.size() - 1;
-    if (allow_logging_urls_) {
-      ResourceUrlInfo* resource_url_info =
-          logging_info()->mutable_resource_url_info();
-      resource_url_info->add_url(url);
-    }
+    ResourceUrlInfo* resource_url_info =
+        logging_info()->mutable_resource_url_info();
+    resource_url_info->add_url(url);
+    iter->second =  resource_url_info->url_size() - 1;
   }
 
   rewrite_resource_info->set_original_resource_url_index(iter->second);

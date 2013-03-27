@@ -272,8 +272,6 @@ void RewriteDriver::set_request_context(const RequestContextPtr& x) {
         options()->max_rewrite_info_log_size());
     request_context_->log_record()->SetAllowLoggingUrls(
         options()->allow_logging_urls_in_log_record());
-    request_context_->log_record()->SetLogUrlIndices(
-        options()->log_url_indices());
   }
 }
 

@@ -114,7 +114,6 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
 
   void ExpectLogRecord(int index,
                        RewriterInfo::RewriterApplicationStatus status,
-                       int resource_index,
                        FlushEarlyResourceInfo::ContentType content_type,
                        FlushEarlyResourceInfo::ResourceType resource_type,
                        bool is_bandwidth_affected,
@@ -125,13 +124,6 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
         rewriter_info.flush_early_resource_info();
     EXPECT_EQ("fs", rewriter_info.id());
     EXPECT_EQ(status, rewriter_info.status());
-    if (resource_index >= 0) {
-      EXPECT_TRUE(rewriter_info.has_rewrite_resource_info());
-      EXPECT_EQ(resource_index,
-          rewriter_info.rewrite_resource_info().original_resource_url_index());
-    } else {
-      EXPECT_FALSE(rewriter_info.has_rewrite_resource_info());
-    }
     EXPECT_EQ(content_type, resource_info.content_type());
     EXPECT_EQ(resource_type, resource_info.resource_type());
     EXPECT_EQ(is_bandwidth_affected, resource_info.is_bandwidth_affected());
@@ -202,7 +194,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   // user-agent.
   ExpectLogRecord(0,
                   RewriterInfo::NOT_APPLIED,
-                  -1,
                   FlushEarlyResourceInfo::JS,
                   FlushEarlyResourceInfo::DEFERJS_SCRIPT,
                   false /* not affected by bandwidth */,
@@ -225,7 +216,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   // a.css is non-rewritten CSS.
   ExpectLogRecord(0,
                   RewriterInfo::NOT_APPLIED,
-                  0,
                   FlushEarlyResourceInfo::CSS,
                   FlushEarlyResourceInfo::NON_PAGESPEED,
                   false /* not affected by bandwidth */,
@@ -233,7 +223,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   // b.js is non-rewritten JS.
   ExpectLogRecord(1,
                   RewriterInfo::NOT_APPLIED,
-                  1,
                   FlushEarlyResourceInfo::JS,
                   FlushEarlyResourceInfo::NON_PAGESPEED,
                   false /* not affected by bandwidth */,
@@ -241,7 +230,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   // c.js is rewritten JS.
   ExpectLogRecord(2,
                   RewriterInfo::APPLIED_OK,
-                  2,
                   FlushEarlyResourceInfo::JS,
                   FlushEarlyResourceInfo::PAGESPEED,
                   false /* not affected by bandwidth */,
@@ -249,7 +237,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   // d.css is rewritten CSS.
   ExpectLogRecord(3,
                   RewriterInfo::APPLIED_OK,
-                  3,
                   FlushEarlyResourceInfo::CSS,
                   FlushEarlyResourceInfo::PAGESPEED,
                   false /* not affected by bandwidth */,
@@ -258,7 +245,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   // images.
   ExpectLogRecord(4,
                   RewriterInfo::NOT_APPLIED,
-                  4,
                   FlushEarlyResourceInfo::IMAGE,
                   FlushEarlyResourceInfo::PAGESPEED,
                   false /* not affected by bandwidth */,
@@ -267,7 +253,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   // images.
   ExpectLogRecord(5,
                   RewriterInfo::NOT_APPLIED,
-                  5,
                   FlushEarlyResourceInfo::IMAGE,
                   FlushEarlyResourceInfo::PAGESPEED,
                   false /* not affected by bandwidth */,
@@ -275,7 +260,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   // d.js is JS in the body.
   ExpectLogRecord(6,
                   RewriterInfo::NOT_APPLIED,
-                  6,
                   FlushEarlyResourceInfo::JS,
                   FlushEarlyResourceInfo::PAGESPEED,
                   false /* not affected by bandwidth */,
@@ -283,7 +267,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   // e.js is JS in the body.
   ExpectLogRecord(7,
                   RewriterInfo::NOT_APPLIED,
-                  7,
                   FlushEarlyResourceInfo::JS,
                   FlushEarlyResourceInfo::PAGESPEED,
                   false /* not affected by bandwidth */,
@@ -293,7 +276,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
   // disabled.
   ExpectLogRecord(8,
                   RewriterInfo::NOT_APPLIED,
-                  -1,
                   FlushEarlyResourceInfo::JS,
                   FlushEarlyResourceInfo::DEFERJS_SCRIPT,
                   false /* not affected by bandwidth */,
@@ -404,46 +386,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, NoResourcesToFlush) {
   EXPECT_EQ(RewrittenOutputWithResources(html_output, 0), output_);
 }
 
-TEST_F(FlushEarlyContentWriterFilterTest, CombinedRewrittenUrl) {
-  Clear();
-  GoogleString html_input =
-      "<!DOCTYPE html>"
-      "<html>"
-      "<head>"
-      "<link type=\"text/css\" rel=\"stylesheet\" "
-      "href=\"http://www.test.com/I.e.css+f.css.pagespeed.cc.0.css\" "
-      "media=\"print\"/>"
-      "</head>"
-      "<body>"
-      "</body></html>";
-  GoogleString html_output;
-
-  // Set the User-Agent to prefetch_link_rel_subresource.
-  rewrite_driver()->SetUserAgent("prefetch_link_rel_subresource");
-  Parse("prefetch_link_rel_subresource", html_input);
-
-  EXPECT_EQ(RewrittenOutputWithResources(html_output, 0), output_);
-  ExpectNumLogRecords(2);
-
-  // Since flush-early does not handle combined URLs, we see this combined
-  // URL not getting flushed and appearing as a non-pagespeed resource
-  // in our logs.
-  ExpectLogRecord(0,
-                  RewriterInfo::NOT_APPLIED,
-                  0,
-                  FlushEarlyResourceInfo::CSS,
-                  FlushEarlyResourceInfo::NON_PAGESPEED,
-                  false /* not affected by bandwidth */,
-                  true /* in HEAD */);
-  ExpectLogRecord(1,
-                  RewriterInfo::NOT_APPLIED,
-                  -1,
-                  FlushEarlyResourceInfo::JS,
-                  FlushEarlyResourceInfo::DEFERJS_SCRIPT,
-                  false /* affected by bandwidth */,
-                  false /* not in HEAD */);
-}
-
 TEST_F(FlushEarlyContentWriterFilterTest, TooManyRewriterInfoRecords) {
   Clear();
   GoogleString html_input = GetOutputWithHash(
@@ -490,7 +432,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, FlushDeferJsEarlyIfTimePermits) {
   ExpectAvailableTimeMs(0);
   ExpectLogRecord(0,
                   RewriterInfo::NOT_APPLIED,
-                  -1,
                   FlushEarlyResourceInfo::JS,
                   FlushEarlyResourceInfo::DEFERJS_SCRIPT,
                   true /* affected by bandwidth */,
@@ -509,7 +450,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, FlushDeferJsEarlyIfTimePermits) {
   ExpectAvailableTimeMs(200);
   ExpectLogRecord(0,
                   RewriterInfo::APPLIED_OK,
-                  -1,
                   FlushEarlyResourceInfo::JS,
                   FlushEarlyResourceInfo::DEFERJS_SCRIPT,
                   true /* affected by bandwidth */,
@@ -547,7 +487,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources2) {
   // a.css is private cacheable CSS.
   ExpectLogRecord(0,
                   RewriterInfo::APPLIED_OK,
-                  0,
                   FlushEarlyResourceInfo::CSS,
                   FlushEarlyResourceInfo::PRIVATE_CACHEABLE,
                   false /* not affected by bandwidth */,
@@ -555,7 +494,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources2) {
   // b.js is non-rewritten JS.
   ExpectLogRecord(1,
                   RewriterInfo::NOT_APPLIED,
-                  1,
                   FlushEarlyResourceInfo::JS,
                   FlushEarlyResourceInfo::NON_PAGESPEED,
                   false /* not affected by bandwidth */,
@@ -563,7 +501,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources2) {
   // c.js is rewritten JS.
   ExpectLogRecord(2,
                   RewriterInfo::APPLIED_OK,
-                  2,
                   FlushEarlyResourceInfo::JS,
                   FlushEarlyResourceInfo::PAGESPEED,
                   false /* not affected by bandwidth */,
@@ -571,7 +508,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources2) {
   // d.css is rewritten CSS.
   ExpectLogRecord(3,
                   RewriterInfo::APPLIED_OK,
-                  3,
                   FlushEarlyResourceInfo::CSS,
                   FlushEarlyResourceInfo::PAGESPEED,
                   false /* not affected by bandwidth */,
@@ -579,7 +515,6 @@ TEST_F(FlushEarlyContentWriterFilterTest, CacheablePrivateResources2) {
   // defer_javascript is not enabled.
   ExpectLogRecord(4,
                   RewriterInfo::NOT_APPLIED,
-                  -1,
                   FlushEarlyResourceInfo::JS,
                   FlushEarlyResourceInfo::DEFERJS_SCRIPT,
                   false /* not affected by bandwidth */,
