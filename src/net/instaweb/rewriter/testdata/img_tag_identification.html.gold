@@ -30,15 +30,15 @@
                         </a>
 <td>
 <img height=1 width=1 src=http://file.name/xPuzzle.jpg.pagespeed.ic.0.jpg alt="Attempt to prefetch & preoptimize Puzzle.  Shouldn't be resized.">
-<img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAEBMgA7" alt=""/>
+<img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAEBMgA7" alt="" id=extensionless />
 <!-- img with long script url (gets truncated?) -->
 <img alt="" id=livestats src="o.gif?Nonsensical~but~very~long/and~slashy~CGI~URL~"/>
-</td><td valign=top class=gffffff width=14><img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" width=14 height=1 alt="" border=0 vspace=0 hspace=0></td>
+</td><td valign=top class=gffffff width=14><img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" width=14 height=1 alt="" border=0 vspace=0 hspace=0 id=o1></td>
 <td class=image><img src="http://file.name/1023x766xPuzzle.jpg.pagespeed.ic.0.jpg" align=left width=1023 height=766 alt="A lovely puzzle purchased at a wool-and-puzzle shop in New Zealand" border=0 vspace=0 hspace=0></td>
 <td class=image><img src="http://file.name/256x192xPuzzle.jpg.pagespeed.ic.0.jpg" align=left width=256 height=192 alt="The same, but smaller." border=0 vspace=0 hspace=0></td>
 <td class=image><img src="http://file.name/256x192xPuzzle-low-quality.jpg.pagespeed.ic.0.jpg" align=left width=256 height=192 alt="The same, but smaller & poorer in quality." border=0 vspace=0 hspace=0></td>
-<img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" width=1 height=5 alt="" border=0 vspace=0 class="" hspace=0><br/>
-<img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" align=left width=5 height=49 alt="" border=0 vspace=0 hspace=0>
+<img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" width=1 height=5 alt="" border=0 vspace=0 class="" hspace=0 id=o2><br/>
+<img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" align=left width=5 height=49 alt="" border=0 vspace=0 hspace=0 id=o3>
 <noscript>
         <div>
                 <img src="data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAID///8AAAACAkQBADs=" style="display: none;" alt=Emptiness />
@@ -50,7 +50,7 @@
                 <img src="b2?lots=terrible&amp;obnoxious=1&amp;nasty=17&amp;ick=54/j/&amp;cgi=arguments" style=display:none width=0 height=0 alt=""/>
         </div>
 </noscript>
-<img src="http://file.name/84x68xExplosiveEgress.png.pagespeed.ic.0.png" width=84. height=68 />
+<img src="http://file.name/84x68xExplosiveEgress.png.pagespeed.ic.0.png" width=84. height=68 id=egress />
 <img src="http://file.name/96x128xIronChef2.gif.pagespeed.ic.0.png" width=95.5 height=128 />
 <img src="http://file.name/xBikeCrashIcn.png.pagespeed.ic.0.png" alt=Cheese id=bbq-pitss width=100 height=100 />
 <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEEAAABGCAAAAAC2maYhAAACyUlEQVRYw+3XXWjVdRzH8ffZXE5wK4T0SnFCzJYXSlghofiADwQmEyy6G01KSBEKDNMlgXMYyIaRj3SRESlOnIweoDJR1FLQkEQsrTnFqQg+rrkdz7uLc86F+j/n/H4EQbjvze/m/3vx//8ePl/++G+LQeFxED7vyI4dH3Wq2tWSjhOOMVvVsxW8r2oTh6OEzIvUq7oAvlDNjGN9lLAP3lM9nYKTqj/BO1HCy/CZ6mKoSqu+BR/GCL8DZ9RMNcxU9XlojxH2QLXqH0CDaroSDsUIrVB+V+0Cpqr2lcMnMUIn8L3qaBh6VbUOpsQI3cBi1TeAZtVV5DYldC9GwIh+9RtgzH21qwzejhEWAd9mDxJ0qs6FqtsRQgfQqLoSeFX1K+DLCOEiMFr1F+DJ/NKsiLkXwyD1t3oL4JJ6G1gWczfHAldVn4Bh93IvszPmHSqhRvU8MEN1G5RfjhD+ApbnF3BD7q4tjdnNjTD0ouo8qLunnoBRN2KEabBS9c8UqYOqDbAj5lRfKaO2T/XT3EnsqmB+VNKegt2q1lN7J/tVT/dECTeZlFF1PD+rup6tkWn/Qi5O5r2SHXc92x8pDORDvzs79nb/Vz1r+wcBtfpYEWE6IbWuiDA/SGje39qy5Vqy0EBwVTf3JgnvBgPlMD1JWBs0e8mPZ65nGuFogrApSDiiOlDDwgRhdwhQdlfV1UxMEH4LEWqzz37M5AShvyJAeD37bFu+Cz54qp8LEFryGfRmkvBa6EJ6EA4kCetKA0+lVS/XUZNJEs6WFupVLzwDm5Nv9+SSwibtaxsJSwrkQ2tJ4bv2pjHAnIECQs+QoGM5YUe6YEY1lZxdNbFhf7GUG3ip6PSpe3tK5uS5qiJXoi0oafdWFhQ2BGb10bGFgiE47W81Jn7CmvsR/aJ9+CPArF/jOs7XqYeA5dE96/gPD1bv4P/moPC/Ef4BwgJ0BoZbWwQAAAAASUVORK5CYII=" alt=Cuppa id=cuppa />
@@ -64,7 +64,7 @@
      compute the resizability once, but will find two places where we
      decide not to rewrite it.
   -->
-<img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" width=14 height=1 alt="" border=0 vspace=0 hspace=0 />
+<img src="data:image/gif;base64,R0lGODlhAQABAID/AMDAwAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==" width=14 height=1 alt="" border=0 vspace=0 hspace=0 id=o4 />
 
 <!-- And this tests the presence of unit-annotated width and height, which ought
      to induce resizing just as with non-unit-annotated width and height.
