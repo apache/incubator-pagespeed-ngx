@@ -60,7 +60,7 @@ while [ $(pgrep $httpd|wc -l) -ne 0 ]; do
 done
 
 first=1
-while [ $(netstat -anp |& grep -c "::$port .* LISTEN ") -ne 0 ]; do
+while [ $(netstat -anp 2>&1 | grep -c "::$port .* LISTEN ") -ne 0 ]; do
   if [ $first -eq 1 ]; then
     /bin/echo -n "Waiting for netstat to stop including refs to port $port"
     first=0
