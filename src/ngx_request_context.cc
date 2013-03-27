@@ -46,7 +46,7 @@ NgxRequestContext::NgxRequestContext(AbstractMutex* logging_mutex,
   if (req->connection->local_sockaddr->sa_family == AF_INET6) {
     local_port_ = ntohs(reinterpret_cast<struct sockaddr_in6*>(
         req->connection->local_sockaddr)->sin6_port);
-    have_port= true;
+    port_set = true;
   }
 #endif
   if (!port_set) {
