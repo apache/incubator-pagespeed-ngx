@@ -33,8 +33,7 @@
 #include <vector>
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "base/scoped_ptr.h"
-#include "base/stl_util-inl.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/inflating_fetch.h"
 #include "net/instaweb/http/public/request_headers.h"

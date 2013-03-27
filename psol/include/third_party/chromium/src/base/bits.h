@@ -6,7 +6,6 @@
 
 #ifndef BASE_BITS_H_
 #define BASE_BITS_H_
-#pragma once
 
 #include "base/basictypes.h"
 #include "base/logging.h"

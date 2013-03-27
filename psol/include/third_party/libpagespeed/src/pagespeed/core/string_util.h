@@ -41,6 +41,17 @@ typedef std::map<std::string, std::string,
                  CaseInsensitiveStringComparator>
     CaseInsensitiveStringStringMap;
 
+// Returns true if the passed string is empty or contains only white-space
+// characters.
+bool ContainsOnlyWhitespaceASCII(const std::string& str);
+// Determines the type of ASCII character, independent of locale (the
+// C library versions will change based on locale). Note that unicode
+// defines additional whitespace characters, which may be treated as
+// whitespace by browsers, but which would not be identified as
+// whitespace here.
+inline bool IsAsciiWhitespace(char c) {
+  return c == ' ' || c == '\r' || c == '\n' || c == '\t';
+}
 // Return true iff the two strings are equal, ignoring case.
 bool StringCaseEqual(const base::StringPiece& s1,
                      const base::StringPiece& s2);

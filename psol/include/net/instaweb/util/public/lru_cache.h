@@ -66,6 +66,9 @@ class LRUCache : public CacheInterface {
   // Total size in bytes of keys and values stored.
   size_t size_bytes() const { return current_bytes_in_cache_; }
 
+  // Maximum capacity.
+  size_t max_bytes_in_cache() const { return max_bytes_in_cache_; }
+
   // Number of elements stored
   size_t num_elements() const { return map_.size(); }
 

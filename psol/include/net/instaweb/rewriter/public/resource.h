@@ -84,7 +84,9 @@ class Resource : public RefCounted<Resource> {
 
   // Answers question: Are we allowed to rewrite the contents now?
   // Checks if valid and cacheable and if it has a no-transform header.
-  bool IsSafeToRewrite() const;
+  // rewrite_uncacheable is used to answer question whether the resource can be
+  // optimizaed even if it is not cacheable.
+  bool IsSafeToRewrite(bool rewrite_uncacheable) const;
 
   // TODO(sligocki): Do we need these or can we just use IsValidAndCacheable
   // everywhere?
@@ -142,8 +144,6 @@ class Resource : public RefCounted<Resource> {
   StringPiece charset() const { return charset_; }
   void set_charset(StringPiece c) { c.CopyToString(&charset_); }
 
-  virtual bool IsCacheableTypeOfResource() const { return true; }
-
   // Gets the absolute URL of the resource
   virtual GoogleString url() const = 0;
 
@@ -152,7 +152,7 @@ class Resource : public RefCounted<Resource> {
   void DetermineContentType();
 
   // Obtain rewrite options for this. Any resources which return true
-  // for IsCacheable() but don't unconditionally return true for loaded()
+  // for UseHttpCache() but don't unconditionally return true for loaded()
   // must override this in a useful way. Used in cache invalidation.
   virtual const RewriteOptions* rewrite_options() const = 0;
 
@@ -225,6 +225,11 @@ class Resource : public RefCounted<Resource> {
     fetch_response_status_ = x;
   }
 
+  // Returns whether this type of resource should use the HTTP Cache.  This
+  // method is based on properties of the class, not the resource itself, and
+  // helps short-circuit pointless cache lookups for file-based and data URLs.
+  virtual bool UseHttpCache() const = 0;
+
  protected:
   virtual ~Resource();
   REFCOUNT_FRIEND_DECLARATION(Resource);
@@ -234,17 +239,17 @@ class Resource : public RefCounted<Resource> {
   friend class ResourceManagerHttpCallback;
 
   // Load the resource asynchronously, storing ResponseHeaders and
-  // contents in cache.  Returns true, if the resource is already
-  // loaded or loaded synchronously. Never reports uncacheable resources.
-  virtual bool Load(MessageHandler* message_handler) = 0;
-
-  // Same as Load, but calls a callback when finished.  The ResourcePtr
-  // used to construct 'callback' must be the same as the resource used
-  // to invoke this method. If the resource is uncacheable, will only
-  // return true if not_cacheable_policy == kLoadEvenIfNotCacheable.
+  // contents in object.  Calls 'callback' when finished.  The
+  // ResourcePtr used to construct 'callback' must be the same as the
+  // resource used to invoke this method.
+  //
+  // Setting not_cacheable_policy to kLoadEvenIfNotCacheable will permit it
+  // to consider loading to be successful on Cache-Control:private and
+  // Cache-Control:no-cache resources.  It should not affect /whether/ the
+  // callback gets involved, only whether it gets true or false.
   virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,
                                AsyncCallback* callback,
-                               MessageHandler* message_handler);
+                               MessageHandler* message_handler) = 0;
 
   ServerContext* server_context_;
 

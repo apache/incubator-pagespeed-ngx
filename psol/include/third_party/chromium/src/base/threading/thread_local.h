@@ -47,9 +47,8 @@
 
 #ifndef BASE_THREADING_THREAD_LOCAL_H_
 #define BASE_THREADING_THREAD_LOCAL_H_
-#pragma once
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
 
 #if defined(OS_POSIX)
@@ -61,7 +60,7 @@ namespace base {
 namespace internal {
 
 // Helper functions that abstract the cross-platform APIs.  Do not use directly.
-struct BASE_API ThreadLocalPlatform {
+struct BASE_EXPORT ThreadLocalPlatform {
 #if defined(OS_WIN)
   typedef unsigned long SlotType;
 #elif defined(OS_POSIX)
@@ -93,7 +92,8 @@ class ThreadLocalPointer {
   }
 
   void Set(Type* ptr) {
-    internal::ThreadLocalPlatform::SetValueInSlot(slot_, ptr);
+    internal::ThreadLocalPlatform::SetValueInSlot(
+        slot_, const_cast<void*>(static_cast<const void*>(ptr)));
   }
 
  private:
@@ -114,7 +114,7 @@ class ThreadLocalBoolean {
   }
 
   void Set(bool val) {
-    tlp_.Set(reinterpret_cast<void*>(val ? 1 : 0));
+    tlp_.Set(val ? this : NULL);
   }
 
  private:

@@ -1,47 +1,62 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_BASE_UPLOAD_DATA_STREAM_H_
 #define NET_BASE_UPLOAD_DATA_STREAM_H_
-#pragma once
 
-#include "base/memory/scoped_ptr.h"
-#include "net/base/net_api.h"
+#include "base/gtest_prod_util.h"
+#include "base/memory/ref_counted.h"
+#include "base/memory/scoped_vector.h"
+#include "base/memory/weak_ptr.h"
+#include "net/base/completion_callback.h"
+#include "net/base/net_export.h"
 #include "net/base/upload_data.h"
 
 namespace net {
 
-class FileStream;
 class IOBuffer;
+class UploadElementReader;
 
-class NET_API UploadDataStream {
+class NET_EXPORT UploadDataStream {
  public:
+  explicit UploadDataStream(UploadData* upload_data);
   ~UploadDataStream();
 
-  // Returns a new instance of UploadDataStream if it can be created and
-  // initialized successfully. If not, NULL will be returned and the error
-  // code will be set if the output parameter error_code is not empty.
-  static UploadDataStream* Create(UploadData* data, int* error_code);
+  // Initializes the stream. This function must be called exactly once,
+  // before calling any other method. It is not valid to call any method
+  // (other than the destructor) if Init() returns a failure.
+  //
+  // Does the initialization synchronously and returns the result if possible,
+  // otherwise returns ERR_IO_PENDING and runs the callback with the result.
+  //
+  // Returns OK on success. Returns ERR_UPLOAD_FILE_CHANGED if the expected
+  // file modification time is set (usually not set, but set for sliced
+  // files) and the target file is changed.
+  int Init(const CompletionCallback& callback);
 
-  // Returns the stream's buffer and buffer length.
-  IOBuffer* buf() const { return buf_; }
-  size_t buf_len() const { return buf_len_; }
+  // Initializes the stream synchronously.
+  // Use this method only in tests and Chrome Frame.
+  int InitSync();
 
-  // TODO(satish): We should ideally have UploadDataStream expose a Read()
-  // method which returns data in a caller provided IOBuffer. That would do away
-  // with this method and make the interface cleaner as well with less memmove
-  // calls.
-  size_t GetMaxBufferSize() const { return kBufSize; }
-
-  // Call to indicate that a portion of the stream's buffer was consumed.  This
-  // call modifies the stream's buffer so that it contains the next segment of
-  // the upload data to be consumed.
-  void MarkConsumedAndFillBuffer(size_t num_bytes);
+  // Reads up to |buf_len| bytes from the upload data stream to |buf|. The
+  // number of bytes read is returned. Partial reads are allowed.  Zero is
+  // returned on a call to Read when there are no remaining bytes in the
+  // stream, and IsEof() will return true hereafter.
+  //
+  // If there's less data to read than we initially observed (i.e. the actual
+  // upload data is smaller than size()), zeros are padded to ensure that
+  // size() bytes can be read, which can happen for TYPE_FILE payloads.
+  //
+  // If the upload data stream is chunked (i.e. is_chunked() is true),
+  // ERR_IO_PENDING is returned to indicate there is nothing to read at the
+  // moment, but more data to come at a later time. If not chunked, reads
+  // won't fail.
+  int Read(IOBuffer* buf, int buf_len);
 
   // Sets the callback to be invoked when new chunks are available to upload.
   void set_chunk_callback(ChunkCallback* callback) {
-    data_->set_chunk_callback(callback);
+    upload_data_->set_chunk_callback(callback);
   }
 
   // Returns the total size of the data stream and the current position.
@@ -51,63 +66,57 @@ class NET_API UploadDataStream {
   uint64 size() const { return total_size_; }
   uint64 position() const { return current_position_; }
 
-  bool is_chunked() const { return data_->is_chunked(); }
+  bool is_chunked() const { return upload_data_->is_chunked(); }
 
-  // Returns whether there is no more data to read, regardless of whether
-  // position < size.
-  bool eof() const { return eof_; }
+  // Returns true if all data has been consumed from this upload data
+  // stream.
+  bool IsEOF() const;
 
-  // Returns whether the data available in buf() includes the last chunk in a
-  // chunked data stream. This method returns true once the final chunk has been
-  // placed in the IOBuffer returned by buf(), in contrast to eof() which
-  // returns true only after the data in buf() has been consumed.
-  bool IsOnLastChunk() const;
-
-  // This method is provided only to be used by unit tests.
-  static void set_merge_chunks(bool merge) { merge_chunks_ = merge; }
+  // Returns true if the upload data in the stream is entirely in memory.
+  bool IsInMemory() const;
 
  private:
-  enum { kBufSize = 16384 };
+  friend class SpdyHttpStreamSpdy2Test;
+  friend class SpdyHttpStreamSpdy3Test;
+  friend class SpdyNetworkTransactionSpdy2Test;
+  friend class SpdyNetworkTransactionSpdy3Test;
 
-  // Protects from public access since now we have a static creator function
-  // which will do both creation and initialization and might return an error.
-  explicit UploadDataStream(UploadData* data);
+  // TODO(hashimoto): Stop directly accsssing element_readers_ from tests and
+  // remove these friend declarations.
+  FRIEND_TEST_ALL_PREFIXES(UploadDataStreamTest, InitAsync);
+  FRIEND_TEST_ALL_PREFIXES(UploadDataStreamTest, InitAsyncFailureAsync);
+  FRIEND_TEST_ALL_PREFIXES(UploadDataStreamTest, InitAsyncFailureSync);
 
-  // Fills the buffer with any remaining data and sets eof_ if there was nothing
-  // left to fill the buffer with.
-  // Returns OK if the operation succeeds. Otherwise error code is returned.
-  int FillBuf();
+  // Runs Init() for all element readers.
+  // This method is used to implement Init().
+  void InitInternal(int start_index,
+                    const CompletionCallback& callback,
+                    int previous_result);
 
-  scoped_refptr<UploadData> data_;
+  // Finalizes the initialization process.
+  // This method is used to implement Init().
+  void FinalizeInitialization();
 
-  // This buffer is filled with data to be uploaded.  The data to be sent is
-  // always at the front of the buffer.  If we cannot send all of the buffer at
-  // once, then we memmove the remaining portion and back-fill the buffer for
-  // the next "write" call.  buf_len_ indicates how much data is in the buffer.
-  scoped_refptr<IOBuffer> buf_;
-  size_t buf_len_;
+  // These methods are provided only to be used by unit tests.
+  static void ResetMergeChunks();
+  static void set_merge_chunks(bool merge) { merge_chunks_ = merge; }
 
-  // Index of the upload element to be written to the send buffer next.
-  size_t next_element_;
+  scoped_refptr<UploadData> upload_data_;
+  ScopedVector<UploadElementReader> element_readers_;
 
-  // The byte offset into next_element_'s data buffer if the next element is
-  // a TYPE_BYTES element.
-  size_t next_element_offset_;
+  // Index of the current upload element (i.e. the element currently being
+  // read). The index is used as a cursor to iterate over elements in
+  // |upload_data_|.
+  size_t element_index_;
 
-  // A stream to the currently open file, for next_element_ if the next element
-  // is a TYPE_FILE element.
-  scoped_ptr<FileStream> next_element_stream_;
-
-  // The number of bytes remaining to be read from the currently open file
-  // if the next element is of TYPE_FILE.
-  uint64 next_element_remaining_;
-
-  // Size and current read position within the stream.
+  // Size and current read position within the upload data stream.
   uint64 total_size_;
   uint64 current_position_;
 
-  // Whether there is no data left to read.
-  bool eof_;
+  // True if the initialization was successful.
+  bool initialized_successfully_;
+
+  base::WeakPtrFactory<UploadDataStream> weak_ptr_factory_;
 
   // TODO(satish): Remove this once we have a better way to unit test POST
   // requests with chunked uploads.

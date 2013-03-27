@@ -44,6 +44,7 @@ class CssMoveToHeadFilter : public CommonFilter {
   virtual void EndElementImpl(HtmlElement* element);
 
   virtual const char* Name() const { return "CssMoveToHead"; }
+  virtual void DetermineEnabled();
 
  private:
   CssTagScanner css_tag_scanner_;

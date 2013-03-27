@@ -4,7 +4,6 @@
 
 #ifndef BASE_ID_MAP_H_
 #define BASE_ID_MAP_H_
-#pragma once
 
 #include <set>
 

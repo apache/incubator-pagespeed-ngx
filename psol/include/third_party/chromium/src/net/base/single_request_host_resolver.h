@@ -4,7 +4,6 @@
 
 #ifndef NET_BASE_SINGLE_REQUEST_HOST_RESOLVER_H_
 #define NET_BASE_SINGLE_REQUEST_HOST_RESOLVER_H_
-#pragma once
 
 #include "net/base/host_resolver.h"
 
@@ -13,7 +12,7 @@ namespace net {
 // This class represents the task of resolving a hostname (or IP address
 // literal) to an AddressList object.  It wraps HostResolver to resolve only a
 // single hostname at a time and cancels this request when going out of scope.
-class NET_API SingleRequestHostResolver {
+class NET_EXPORT SingleRequestHostResolver {
  public:
   // |resolver| must remain valid for the lifetime of |this|.
   explicit SingleRequestHostResolver(HostResolver* resolver);
@@ -27,7 +26,7 @@ class NET_API SingleRequestHostResolver {
   // |addresses| object upon success. See HostResolver::Resolve() for details.
   int Resolve(const HostResolver::RequestInfo& info,
               AddressList* addresses,
-              CompletionCallback* callback,
+              const CompletionCallback& callback,
               const BoundNetLog& net_log);
 
   // Cancels the in-progress request, if any. This prevents the callback
@@ -44,10 +43,10 @@ class NET_API SingleRequestHostResolver {
 
   // The current request (if any).
   HostResolver::RequestHandle cur_request_;
-  CompletionCallback* cur_request_callback_;
+  CompletionCallback cur_request_callback_;
 
   // Completion callback for when request to |resolver_| completes.
-  CompletionCallbackImpl<SingleRequestHostResolver> callback_;
+  CompletionCallback callback_;
 
   DISALLOW_COPY_AND_ASSIGN(SingleRequestHostResolver);
 };

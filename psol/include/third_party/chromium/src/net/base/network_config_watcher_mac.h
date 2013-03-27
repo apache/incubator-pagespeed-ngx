@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,7 +8,6 @@
 #include <SystemConfiguration/SCDynamicStore.h>
 
 #include "base/basictypes.h"
-#include "base/message_loop.h"
 #include "base/mac/scoped_cftyperef.h"
 #include "base/memory/scoped_ptr.h"
 
@@ -18,7 +17,7 @@ class Thread;
 
 namespace net {
 
-// Base class for watching the Mac OS system network settings.
+// Helper class for watching the Mac OS system network settings.
 class NetworkConfigWatcherMac {
  public:
   // NOTE: The lifetime of Delegate is expected to exceed the lifetime of
@@ -26,6 +25,15 @@ class NetworkConfigWatcherMac {
   class Delegate {
    public:
     virtual ~Delegate() {}
+
+    // Called to let the delegate do any setup work the must be run on the
+    // notifier thread immediately after it starts.
+    virtual void Init() {}
+
+    // Called to start receiving notifications from the SCNetworkReachability
+    // API.
+    // Will be called on the notifier thread.
+    virtual void StartReachabilityNotifications() = 0;
 
     // Called to register the notification keys on |store|.
     // Implementors are expected to call SCDynamicStoreSetNotificationKeys().
@@ -38,7 +46,7 @@ class NetworkConfigWatcherMac {
   };
 
   explicit NetworkConfigWatcherMac(Delegate* delegate);
-  virtual ~NetworkConfigWatcherMac();
+  ~NetworkConfigWatcherMac();
 
  private:
   // The thread used to listen for notifications.  This relays the notification

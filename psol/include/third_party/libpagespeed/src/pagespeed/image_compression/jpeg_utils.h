@@ -38,7 +38,8 @@ class JpegUtils {
   //
   // See comments in implementation for additional details on how quality is
   // computed.
-  static int GetImageQualityFromImage(const std::string& src);
+  static int GetImageQualityFromImage(const void* image_data,
+                                      size_t image_length);
 
  private:
   JpegUtils();

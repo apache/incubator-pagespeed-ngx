@@ -1,24 +1,24 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_BASE_TEST_ROOT_CERTS_H_
 #define NET_BASE_TEST_ROOT_CERTS_H_
-#pragma once
 
 #include "base/lazy_instance.h"
+#include "base/memory/ref_counted.h"
 #include "build/build_config.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
-#if defined(OS_WIN)
+#if defined(USE_NSS) || defined(OS_IOS)
+#include <list>
+#elif defined(OS_WIN)
 #include <windows.h>
 #include <wincrypt.h>
 #elif defined(OS_MACOSX)
 #include <CoreFoundation/CFArray.h>
 #include <Security/SecTrust.h>
 #include "base/mac/scoped_cftyperef.h"
-#elif defined(USE_NSS)
-#include <list>
 #endif
 
 class FilePath;
@@ -30,7 +30,7 @@ class X509Certificate;
 // TestRootCerts is a helper class for unit tests that is used to
 // artificially mark a certificate as trusted, independent of the local
 // machine configuration.
-class NET_TEST TestRootCerts {
+class NET_EXPORT_PRIVATE TestRootCerts {
  public:
   // Obtains the Singleton instance to the trusted certificates.
   static TestRootCerts* GetInstance();
@@ -54,7 +54,7 @@ class NET_TEST TestRootCerts {
   // Returns true if there are no certificates that have been marked trusted.
   bool IsEmpty() const;
 
-#if defined(OS_MACOSX)
+#if defined(OS_MACOSX) && !defined(OS_IOS)
   CFArrayRef temporary_roots() const { return temporary_roots_; }
 
   // Modifies the root certificates of |trust_ref| to include the
@@ -80,15 +80,15 @@ class NET_TEST TestRootCerts {
   // Performs platform-dependent initialization.
   void Init();
 
-#if defined(OS_MACOSX)
-  base::mac::ScopedCFTypeRef<CFMutableArrayRef> temporary_roots_;
-#elif defined(OS_WIN)
-  HCERTSTORE temporary_roots_;
-#elif defined(USE_NSS)
+#if defined(USE_NSS) || defined(OS_IOS)
   // It is necessary to maintain a cache of the original certificate trust
   // settings, in order to restore them when Clear() is called.
   class TrustEntry;
   std::list<TrustEntry*> trust_cache_;
+#elif defined(OS_WIN)
+  HCERTSTORE temporary_roots_;
+#elif defined(OS_MACOSX)
+  base::mac::ScopedCFTypeRef<CFMutableArrayRef> temporary_roots_;
 #endif
 
 #if defined(OS_WIN) || defined(USE_OPENSSL)
@@ -97,6 +97,27 @@ class NET_TEST TestRootCerts {
 #endif
 
   DISALLOW_COPY_AND_ASSIGN(TestRootCerts);
+};
+
+// Scoped helper for unittests to handle safely managing trusted roots.
+class NET_EXPORT_PRIVATE ScopedTestRoot {
+ public:
+  ScopedTestRoot();
+  // Creates a ScopedTestRoot that will adds|cert| to the TestRootCerts store.
+  explicit ScopedTestRoot(X509Certificate* cert);
+  ~ScopedTestRoot();
+
+  // Assigns |cert| to be the new test root cert. If |cert| is NULL, undoes
+  // any work the ScopedTestRoot may have previously done.
+  // If |cert_| contains a certificate (due to a prior call to Reset or due to
+  // a cert being passed at construction), the existing TestRootCerts store is
+  // cleared.
+  void Reset(X509Certificate* cert);
+
+ private:
+  scoped_refptr<X509Certificate> cert_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedTestRoot);
 };
 
 }  // namespace net

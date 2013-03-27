@@ -52,7 +52,7 @@
 //
 //  In either case this macro has no effect on runtime behavior and performance
 //  of code.
-#if defined(__clang__) && defined(LANG_CXX11) && defined(__has_warning)
+#if defined(__clang__) && __cplusplus >= 201103L && defined(__has_warning)
 #if __has_feature(cxx_attributes) && __has_warning("-Wimplicit-fallthrough")
 #define FALLTHROUGH_INTENDED [[clang::fallthrough]]  // NOLINT
 #endif
@@ -62,5 +62,12 @@
 #define FALLTHROUGH_INTENDED do { } while (0)
 #endif
 
+
+// Lazily-initialized boolean value
+enum LazyBool {
+  kNotSet = -1,
+  kFalse = 0,
+  kTrue = 1
+};
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_BASICTYPES_H_

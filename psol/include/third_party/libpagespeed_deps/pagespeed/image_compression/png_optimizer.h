@@ -20,7 +20,8 @@
 #define PNG_OPTIMIZER_H_
 
 #include <string>
-#include <setjmp.h>
+// Note: we should not include setjmp.h here, since libpng 1.2 headers
+// include it themselves, and get unhappy if we do it ourselves.
 
 extern "C" {
 #ifdef USE_SYSTEM_LIBPNG
@@ -31,12 +32,15 @@ extern "C" {
 }  // extern "C"
 
 #include "base/basictypes.h"
+#include "base/memory/scoped_ptr.h"
 
 #include "pagespeed/image_compression/scanline_interface.h"
 
 namespace pagespeed {
 
 namespace image_compression {
+
+class PngInput;
 
 struct PngCompressParams {
   PngCompressParams(int level, int strategy);
@@ -72,7 +76,10 @@ class ScopedPngStruct {
   ~ScopedPngStruct();
 
   bool valid() const { return png_ptr_ != NULL && info_ptr_ != NULL; }
-  void reset();
+
+  // This will only return false as a result of a longjmp due to an
+  // unhandled libpng error.
+  bool reset();
 
   png_structp png_ptr() const { return png_ptr_; }
   png_infop info_ptr() const { return info_ptr_; }
@@ -160,7 +167,9 @@ class PngScanlineReader : public ScanlineReaderInterface {
 
   jmp_buf* GetJmpBuf();
 
-  virtual void Reset();
+  // This will only return false as a result of a longjmp due to an
+  // unhandled libpng error.
+  virtual bool Reset();
 
   // Initializes the read structures with the given input.
   bool InitializeRead(const PngReaderInterface& reader, const std::string& in);
@@ -215,10 +224,10 @@ class PngOptimizer {
   void EnableBestCompression() { best_compression_ = true; }
 
   bool WritePng(ScopedPngStruct* write, std::string* buffer);
-  void CopyReadToWrite();
+  bool CopyReadToWrite();
   // The 'from' object is conceptually const, but libpng doesn't accept const
   // pointers in the read functions.
-  void CopyPngStructs(ScopedPngStruct* from, ScopedPngStruct* to);
+  bool CopyPngStructs(ScopedPngStruct* from, ScopedPngStruct* to);
   bool CreateBestOptimizedPngForParams(const PngCompressParams* param_list,
                                        size_t param_list_size,
                                        std::string* out);
@@ -251,6 +260,66 @@ class PngReader : public PngReaderInterface {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PngReader);
+};
+
+// Class PngScanlineReaderRaw decodes PNG images and outputs the raw pixel data,
+// image size, pixel type, etc. The class accepts all formats supported by
+// libpng. The output is Gray_8, RGB_888, or RGBA_8888. The following
+// transformations are used:
+//   - Image with depth other than 8 bits/pixel is expanded or stripped to
+//     8 bits/pixel.
+//   - Paletted image is converted to RGB or RGBA depending on whether
+//     transparency is specified.
+//   - Gray_Alpha is converted to RGBA.
+//
+// Note: The input image stream must be valid throughout the life of the
+//   object. In other words, the image_buffer input you set to the Initialize()
+//   method cannot be changed until your last call to the ReadNextScanline()
+//   method.
+//
+class PngScanlineReaderRaw : public ScanlineReaderInterface {
+ public:
+  PngScanlineReaderRaw();
+  virtual ~PngScanlineReaderRaw();
+
+  // This will only return false as a result of a longjmp due to an
+  // unhandled libpng error.
+  virtual bool Reset();
+
+  // Initialize the reader with the given image stream. Note that image_buffer
+  // must remain unchanged until the last call to ReadNextScanline().
+  bool Initialize(const void* image_buffer, size_t buffer_length);
+
+  // Return the next row of pixels. For non-progressive PNG, ReadNextScanline
+  // will decode one row of pixels each time when it is called, but for
+  // progressive PNG, ReadNextScanline will decode the entire image at the
+  // first time when it is called.
+  virtual bool ReadNextScanline(void** out_scanline_bytes);
+
+  // Return the number of bytes in a row (without padding).
+  virtual size_t GetBytesPerScanline() { return bytes_per_row_; }
+
+  virtual bool HasMoreScanLines() { return (row_ < height_); }
+  virtual PixelFormat GetPixelFormat() { return pixel_format_; }
+  virtual size_t GetImageHeight() { return height_; }
+  virtual size_t GetImageWidth() {  return width_; }
+
+ private:
+  PixelFormat pixel_format_;
+  bool is_progressive_;
+  size_t height_;
+  size_t width_;
+  size_t bytes_per_row_;
+  size_t row_;
+  bool was_initialized_;
+  scoped_array<png_byte> image_buffer_;
+  ScopedPngStruct png_struct_;
+  // png_input_ stores a pointer to the input image stream. It also keeps
+  // tracking the length of data that libpng has read. It is initialized
+  // in Initialize() and is updated in ReadNextScanline().
+  scoped_ptr<PngInput> png_input_;
+
+  DISALLOW_COPY_AND_ASSIGN(PngScanlineReaderRaw);
 };
 
 }  // namespace image_compression

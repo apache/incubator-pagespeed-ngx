@@ -40,7 +40,7 @@ class FlushEarlyInfoFinder {
   // implementation does not, but classes inheriting likely do. Users of
   // GetCharset should check this function and supply a default behavior if
   // IsMeaningful returns false.
-  virtual bool IsMeaningful() const {
+  virtual bool IsMeaningful(const RewriteDriver* driver) const {
     return false;
   }
 

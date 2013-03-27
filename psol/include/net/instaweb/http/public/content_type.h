@@ -21,6 +21,8 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_CONTENT_TYPE_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_CONTENT_TYPE_H_
 
+#include <set>
+
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -42,6 +44,7 @@ struct ContentType {
     kJpeg,
     kSwf,
     kWebp,
+    kIco,
     kJson,
     kPdf,
     kVideo,
@@ -58,6 +61,9 @@ struct ContentType {
   // TODO(sligocki): Stop returning '.' in file_extension().
   const char* file_extension() const { return file_extension_; }
   Type type() const { return type_; }
+
+  // Return true iff this content type is CSS.
+  bool IsCss() const;
 
   // Return true iff this content type is HTML, or XHTML, or some other such
   // thing (e.g. CE-HTML) that we can rewrite.
@@ -100,11 +106,12 @@ extern const ContentType& kContentTypeGif;
 extern const ContentType& kContentTypeJpeg;
 extern const ContentType& kContentTypeSwf;
 extern const ContentType& kContentTypeWebp;
-// Pdf:
+extern const ContentType& kContentTypeIco;
+// PDF:
 extern const ContentType& kContentTypePdf;
 
 // Binary/octet-stream.
-extern const ContentType& kBinaryOctetStream;
+extern const ContentType& kContentTypeBinaryOctetStream;
 
 // Given a name (file or url), see if it has the canonical extension
 // corresponding to a particular content type.
@@ -125,7 +132,7 @@ bool ParseContentType(const StringPiece& content_type_str,
 // present.
 void MimeTypeListToContentTypeSet(
     const GoogleString& in,
-    std::set<ContentType::Type>* out);
+    std::set<const ContentType*>* out);
 
 }  // namespace net_instaweb
 

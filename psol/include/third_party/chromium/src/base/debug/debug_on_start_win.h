@@ -8,7 +8,6 @@
 
 #ifndef BASE_DEBUG_DEBUG_ON_START_WIN_H_
 #define BASE_DEBUG_DEBUG_ON_START_WIN_H_
-#pragma once
 
 #include "base/basictypes.h"
 #include "build/build_config.h"
@@ -27,7 +26,7 @@ namespace debug {
 // There is no way for this code, as currently implemented, to work across DLLs.
 // TODO(rvargas): It looks like we really don't use this code, at least not for
 // Chrome. Figure out if it's really worth implementing something simpler.
-#if !defined(BASE_DLL)
+#if !defined(COMPONENT_BUILD)
 
 // Debug on start functions and data.
 class DebugOnStart {
@@ -74,7 +73,7 @@ DECLSPEC_SELECTANY DebugOnStart::PIFV debug_on_start = &DebugOnStart::Init;
 
 #endif  // _WIN64
 
-#endif  // defined(BASE_DLL)
+#endif  // defined(COMPONENT_BUILD)
 
 }  // namespace debug
 }  // namespace base

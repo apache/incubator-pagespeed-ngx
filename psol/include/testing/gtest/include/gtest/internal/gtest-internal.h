@@ -122,7 +122,7 @@ class TestInfoImpl;                    // Opaque implementation of TestInfo
 class UnitTestImpl;                    // Opaque implementation of UnitTest
 
 // How many times InitGoogleTest() has been called.
-extern int g_init_gtest_count;
+GTEST_API_ extern int g_init_gtest_count;
 
 // The text used in failure messages to indicate the start of the
 // stack trace.
@@ -194,61 +194,6 @@ class GTEST_API_ ScopedTrace {
 // compiler.
 template <typename T>
 String StreamableToString(const T& streamable);
-
-// When this operand is a const char* or char*, if the other operand
-// is a ::std::string or ::string, we print this operand as a C string
-// rather than a pointer (we do the same for wide strings); otherwise
-// we print it as a pointer to be safe.
-
-// This internal macro is used to avoid duplicated code.
-// Making the first operand const reference works around a bug in the
-// Symbian compiler which is unable to select the correct specialization of
-// FormatForComparisonFailureMessage.
-#define GTEST_FORMAT_IMPL_(operand2_type, operand1_printer)\
-inline String FormatForComparisonFailureMessage(\
-    operand2_type::value_type* const& str, const operand2_type& /*operand2*/) {\
-  return operand1_printer(str);\
-}\
-inline String FormatForComparisonFailureMessage(\
-    const operand2_type::value_type* const& str, \
-    const operand2_type& /*operand2*/) {\
-  return operand1_printer(str);\
-}
-
-GTEST_FORMAT_IMPL_(::std::string, String::ShowCStringQuoted)
-#if GTEST_HAS_STD_WSTRING
-GTEST_FORMAT_IMPL_(::std::wstring, String::ShowWideCStringQuoted)
-#endif  // GTEST_HAS_STD_WSTRING
-
-#if GTEST_HAS_GLOBAL_STRING
-GTEST_FORMAT_IMPL_(::string, String::ShowCStringQuoted)
-#endif  // GTEST_HAS_GLOBAL_STRING
-#if GTEST_HAS_GLOBAL_WSTRING
-GTEST_FORMAT_IMPL_(::wstring, String::ShowWideCStringQuoted)
-#endif  // GTEST_HAS_GLOBAL_WSTRING
-
-#undef GTEST_FORMAT_IMPL_
-
-// The next four overloads handle the case where the operand being
-// printed is a char/wchar_t pointer and the other operand is not a
-// string/wstring object.  In such cases, we just print the operand as
-// a pointer to be safe.
-//
-// Making the first operand const reference works around a bug in the
-// Symbian compiler which is unable to select the correct specialization of
-// FormatForComparisonFailureMessage.
-#define GTEST_FORMAT_CHAR_PTR_IMPL_(CharType)                       \
-  template <typename T>                                             \
-  String FormatForComparisonFailureMessage(CharType* const& p, const T&) { \
-    return PrintToString(static_cast<const void*>(p));              \
-  }
-
-GTEST_FORMAT_CHAR_PTR_IMPL_(char)
-GTEST_FORMAT_CHAR_PTR_IMPL_(const char)
-GTEST_FORMAT_CHAR_PTR_IMPL_(wchar_t)
-GTEST_FORMAT_CHAR_PTR_IMPL_(const wchar_t)
-
-#undef GTEST_FORMAT_CHAR_PTR_IMPL_
 
 // Constructs and returns the message for an equality assertion
 // (e.g. ASSERT_EQ, EXPECT_STREQ, etc) failure.
@@ -788,11 +733,18 @@ struct RemoveConst { typedef T type; };  // NOLINT
 template <typename T>
 struct RemoveConst<const T> { typedef T type; };  // NOLINT
 
-// MSVC 8.0 and Sun C++ have a bug which causes the above definition
-// to fail to remove the const in 'const int[3]'.  The following
-// specialization works around the bug.  However, it causes trouble
-// with GCC and thus needs to be conditionally compiled.
-#if defined(_MSC_VER) || defined(__SUNPRO_CC)
+// MSVC 8.0, Sun C++, and IBM XL C++ have a bug which causes the above
+// definition to fail to remove the const in 'const int[3]' and 'const
+// char[3][4]'.  The following specialization works around the bug.
+template <typename T, size_t N>
+struct RemoveConst<const T[N]> {
+  typedef typename RemoveConst<T>::type type[N];
+};
+
+#if defined(_MSC_VER) && _MSC_VER < 1400
+// This is the only specialization that allows VC++ 7.1 to remove const in
+// 'const int[3] and 'const int[3][4]'.  However, it causes trouble with GCC
+// and thus needs to be conditionally compiled.
 template <typename T, size_t N>
 struct RemoveConst<T[N]> {
   typedef typename RemoveConst<T>::type type[N];

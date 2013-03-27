@@ -20,35 +20,23 @@
 
 #include <cstdio>
 
-#include "ngx_cache.h"
 #include "ngx_message_handler.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_thread_system.h"
 #include "ngx_server_context.h"
 #include "ngx_url_async_fetcher.h"
 
-#include "net/instaweb/apache/apr_mem_cache.h"
-#include "net/instaweb/apache/apr_thread_compatible_pool.h"
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
-#include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/wget_url_fetcher.h"
-#include "net/instaweb/http/public/write_through_http_cache.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
-#include "net/instaweb/util/public/async_cache.h"
-#include "net/instaweb/util/public/cache_batcher.h"
-#include "net/instaweb/util/public/cache_copy.h"
-#include "net/instaweb/util/public/cache_stats.h"
-#include "net/instaweb/util/public/fallback_cache.h"
-#include "net/instaweb/util/public/file_cache.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/google_timer.h"
-#include "net/instaweb/util/public/lru_cache.h"
-#include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
 #include "pthread_shared_mem.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
@@ -60,12 +48,9 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
-#include "net/instaweb/util/public/threadsafe_cache.h"
-#include "net/instaweb/util/public/write_through_cache.h"
 
 namespace net_instaweb {
 
-class CacheInterface;
 class FileSystem;
 class Hasher;
 class MessageHandler;
@@ -75,21 +60,19 @@ class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
 
+const char NgxRewriteDriverFactory::kStaticAssetPrefix[] =
+    "/ngx_pagespeed_static/";
+
 namespace {
 
-const size_t kRefererStatisticsNumberOfPages = 1024;
-const size_t kRefererStatisticsAverageUrlLength = 64;
 const char kShutdownCount[] = "child_shutdown_count";
 
 }  // namespace
 
-const char NgxRewriteDriverFactory::kMemcached[] = "memcached";
-
 NgxRewriteDriverFactory::NgxRewriteDriverFactory()
     : RewriteDriverFactory(new NgxThreadSystem()),
       // TODO(oschaaf): mod_pagespeed ifdefs this:
-      shared_mem_runtime_(new PthreadSharedMem()),
-      cache_hasher_(20),
+      shared_mem_runtime_(new ngx::PthreadSharedMem()),
       main_conf_(NULL),
       threads_started_(false),
       use_per_vhost_statistics_(false),
@@ -109,37 +92,23 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
   set_message_handler(ngx_message_handler_);
   set_html_parse_message_handler(ngx_html_parse_message_handler_);
+
+  // TODO(oschaaf): determine a sensible limit
+  int thread_limit = 2;
+  caches_.reset(
+      new SystemCaches(this, shared_mem_runtime_.get(), thread_limit));
 }
 
 NgxRewriteDriverFactory::~NgxRewriteDriverFactory() {
   delete timer_;
   timer_ = NULL;
-  if (!is_root_process_ && slow_worker_ != NULL) {
-    slow_worker_->ShutDown();
-  }
 
   ShutDown();
 
   CHECK(uninitialized_server_contexts_.empty() || is_root_process_);
   STLDeleteElements(&uninitialized_server_contexts_);
-
-  for (PathCacheMap::iterator p = path_cache_map_.begin(),
-           e = path_cache_map_.end(); p != e; ++p) {
-    NgxCache* cache = p->second;
-    defer_cleanup(new Deleter<NgxCache>(cache));
-  }
-
-  for (MemcachedMap::iterator p = memcached_map_.begin(),
-           e = memcached_map_.end(); p != e; ++p) {
-    CacheInterface* memcached = p->second;
-    defer_cleanup(new Deleter<CacheInterface>(memcached));
-  }
-
   shared_mem_statistics_.reset(NULL);
 }
-
-const char NgxRewriteDriverFactory::kStaticJavaScriptPrefix[] =
-    "/ngx_pagespeed_static/";
 
 Hasher* NgxRewriteDriverFactory::NewHasher() {
   return new MD5Hasher;
@@ -190,43 +159,7 @@ NamedLockManager* NgxRewriteDriverFactory::DefaultLockManager() {
 }
 
 void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
-  // TODO(jefftk): see the ngx_rewrite_options.h note on OriginRewriteOptions;
-  // this would move to OriginRewriteOptions.
-
-  NgxRewriteOptions* options = NgxRewriteOptions::DynamicCast(
-      server_context->global_options());
-
-  NgxCache* ngx_cache = GetCache(options);
-  CacheInterface* l1_cache = ngx_cache->l1_cache();
-  CacheInterface* l2_cache = ngx_cache->l2_cache();
-  CacheInterface* memcached = GetMemcached(options, l2_cache);
-  if (memcached != NULL) {
-    l2_cache = memcached;
-    server_context->set_owned_cache(memcached);
-    server_context->set_filesystem_metadata_cache(
-        new CacheCopy(GetFilesystemMetadataCache(options)));
-  }
-  Statistics* stats = server_context->statistics();
-
-  // Note that a user can disable the L1 cache by setting its byte-count
-  // to 0, in which case we don't build the write-through mechanisms.
-  if (l1_cache == NULL) {
-    HTTPCache* http_cache = new HTTPCache(l2_cache, timer(), hasher(), stats);
-    server_context->set_http_cache(http_cache);
-    server_context->set_metadata_cache(new CacheCopy(l2_cache));
-    server_context->MakePropertyCaches(l2_cache);
-  } else {
-    WriteThroughHTTPCache* write_through_http_cache = new WriteThroughHTTPCache(
-        l1_cache, l2_cache, timer(), hasher(), stats);
-    write_through_http_cache->set_cache1_limit(options->lru_cache_byte_limit());
-    server_context->set_http_cache(write_through_http_cache);
-
-    WriteThroughCache* write_through_cache = new WriteThroughCache(
-        l1_cache, l2_cache);
-    write_through_cache->set_cache1_limit(options->lru_cache_byte_limit());
-    server_context->set_metadata_cache(write_through_cache);
-    server_context->MakePropertyCaches(l2_cache);
-  }
+  caches_->SetupCaches(server_context);
 
   // TODO(oschaaf): see the property cache setup in the apache rewrite
   // driver factory
@@ -237,122 +170,16 @@ RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
   return new NgxRewriteOptions();
 }
 
+
+void NgxRewriteDriverFactory::InitStaticAssetManager(
+    StaticAssetManager* static_asset_manager) {
+  static_asset_manager->set_library_url_prefix(kStaticAssetPrefix);
+}
+
 void NgxRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
-  for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
-    AprMemCache* mem_cache = memcache_servers_[i];
-    if (!mem_cache->GetStatus(out)) {
-      StrAppend(out, "\nError getting memcached server status for ",
-                mem_cache->server_spec());
-    }
-  }
-}
-
-void NgxRewriteDriverFactory::InitStaticJavascriptManager(
-    StaticJavascriptManager* static_js_manager) {
-  static_js_manager->set_library_url_prefix(kStaticJavaScriptPrefix);
-}
-
-NgxCache* NgxRewriteDriverFactory::GetCache(NgxRewriteOptions* options) {
-  const GoogleString& path = options->file_cache_path();
-  std::pair<PathCacheMap::iterator, bool> result = path_cache_map_.insert(
-      PathCacheMap::value_type(path, static_cast<NgxCache*>(NULL)));
-  PathCacheMap::iterator iter = result.first;
-  if (result.second) {
-    iter->second = new NgxCache(path, *options, this);
-  }
-  return iter->second;
-}
-
-AprMemCache* NgxRewriteDriverFactory::NewAprMemCache(
-    const GoogleString& spec) {
-  // TODO(oschaaf): determine a sensible limit
-  int thread_limit = 2;
-  return new AprMemCache(spec, thread_limit, &cache_hasher_, statistics(),
-                         timer(), message_handler());
-}
-
-CacheInterface* NgxRewriteDriverFactory::GetMemcached(
-    NgxRewriteOptions* options, CacheInterface* l2_cache) {
-  CacheInterface* memcached = NULL;
-
-  // Find a memcache that matches the current spec, or create a new one
-  // if needed. Note that this means that two different VirtualHost's will
-  // share a memcached if their specs are the same but will create their own
-  // if the specs are different.
-  if (!options->memcached_servers().empty()) {
-    const GoogleString& server_spec = options->memcached_servers();
-    std::pair<MemcachedMap::iterator, bool> result = memcached_map_.insert(
-        MemcachedMap::value_type(server_spec, memcached));
-    if (result.second) {
-      AprMemCache* mem_cache = NewAprMemCache(server_spec);
-
-      memcache_servers_.push_back(mem_cache);
-
-      int num_threads = options->memcached_threads();
-      if (num_threads != 0) {
-        if (memcached_pool_.get() == NULL) {
-          // Note -- we will use the first value of ModPagespeedMemCacheThreads
-          // that we see in a VirtualHost, ignoring later ones.
-          memcached_pool_.reset(new QueuedWorkerPool(num_threads,
-                                                     thread_system()));
-        }
-        AsyncCache* async_cache = new AsyncCache(mem_cache,
-                                                 memcached_pool_.get());
-        async_caches_.push_back(async_cache);
-        memcached = async_cache;
-      } else {
-        message_handler()->Message(kWarning,
-          "Running memcached synchronously, this may hurt performance");
-        memcached = mem_cache;
-      }
-
-      // Put the batcher above the stats so that the stats sees the MultiGets
-      // and can show us the histogram of how they are sized.
-#if CACHE_STATISTICS
-      memcached = new CacheStats(kMemcached, memcached, timer(), statistics());
-#endif
-      CacheBatcher* batcher = new CacheBatcher(
-          memcached, thread_system()->NewMutex(), statistics());
-      if (num_threads != 0) {
-        batcher->set_max_parallel_lookups(num_threads);
-      }
-      memcached = batcher;
-      result.first->second = memcached;
-    } else {
-      memcached = result.first->second;
-    }
-
-    // Note that a distinct FallbackCache gets created for every VirtualHost
-    // that employs memcached, even if the memcached and file-cache
-    // specifications are identical.  This does no harm, because there
-    // is no data in the cache object itself; just configuration.  Sharing
-    // FallbackCache* objects would require making a map using the
-    // memcache & file-cache specs as a key, so it's simpler to make a new
-    // small FallbackCache object for each VirtualHost.
-    memcached = new FallbackCache(memcached, l2_cache,
-                                  AprMemCache::kValueSizeThreshold,
-                                  message_handler());
-  }
-  return memcached;
-}
-
-CacheInterface* NgxRewriteDriverFactory::GetFilesystemMetadataCache(
-    NgxRewriteOptions* options) {
-  // Reuse the memcached server(s) for the filesystem metadata cache. We need
-  // to search for our config's entry in the vector of servers (not the more
-  // obvious map) because the map's entries are wrapped in an AsyncCache, and
-  // the filesystem metadata cache requires a blocking cache (like memcached).
-  // Note that if we have a server spec we *know* it's in the searched vector.
-  // We perform a linear scan assuming that the searched set will be small
-  DCHECK_EQ(options->memcached_servers().empty(), memcache_servers_.empty());
-  const GoogleString& server_spec = options->memcached_servers();
-  for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
-    if (server_spec == memcache_servers_[i]->server_spec()) {
-      return memcache_servers_[i];
-    }
-  }
-
-  return NULL;
+  // TODO(morlovich): Port the client code to proper API, so it gets
+  // shm stats, too.
+  caches_->PrintCacheStats(SystemCaches::kIncludeMemcached, out);
 }
 
 bool NgxRewriteDriverFactory::InitNgxUrlAsyncFecther() {
@@ -374,16 +201,7 @@ bool NgxRewriteDriverFactory::HasResolver() {
 
 void NgxRewriteDriverFactory::StopCacheActivity() {
   RewriteDriverFactory::StopCacheActivity();
-
-  // Iterate through the map of CacheInterface* objects constructed for
-  // the memcached.  Note that these are not typically AprMemCache* objects,
-  // but instead are a hierarchy of CacheStats*, CacheBatcher*, AsyncCache*,
-  // and AprMemCache*, all of which must be stopped.
-  for (MemcachedMap::iterator p = memcached_map_.begin(),
-           e = memcached_map_.end(); p != e; ++p) {
-    CacheInterface* cache = p->second;
-    cache->ShutDown();
-  }
+  caches_->StopCacheActivity();
 }
 
 NgxServerContext* NgxRewriteDriverFactory::MakeNgxServerContext() {
@@ -392,7 +210,13 @@ NgxServerContext* NgxRewriteDriverFactory::MakeNgxServerContext() {
   return server_context;
 }
 
+ServerContext* NgxRewriteDriverFactory::NewServerContext() {
+  LOG(DFATAL) << "MakeNgxServerContext should be used instead";
+  return NULL;
+}
+
 void NgxRewriteDriverFactory::ShutDown() {
+  StopCacheActivity();
   if (!is_root_process_) {
     Variable* child_shutdown_count = statistics()->GetVariable(kShutdownCount);
     child_shutdown_count->Add(1);
@@ -400,11 +224,10 @@ void NgxRewriteDriverFactory::ShutDown() {
   } else {
     message_handler()->Message(kInfo, "Shutting down ngx_pagespeed root");
   }
-  RewriteDriverFactory::ShutDown();
 
-  // Take down any memcached threads.
-  // TODO(oschaaf): should be refactored with the Apache shutdown code
-  memcached_pool_.reset(NULL);
+  RewriteDriverFactory::ShutDown();
+  caches_->ShutDown(message_handler());
+
   ngx_message_handler_->set_buffer(NULL);
   ngx_html_parse_message_handler_->set_buffer(NULL);
 
@@ -419,8 +242,6 @@ void NgxRewriteDriverFactory::ShutDown() {
     if (shared_circular_buffer_ != NULL) {
       shared_circular_buffer_->GlobalCleanup(message_handler());
     }
-    // TODO(oschaaf): Should the shared memory lock manager be cleaning up here
-    // as well? In mod_pagespeed, it doesn't.
   }
 }
 
@@ -470,38 +291,26 @@ void NgxRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
 void NgxRewriteDriverFactory::RootInit(ngx_log_t* log) {
   ParentOrChildInit(log);
 
+  // Let SystemCaches know about the various paths we have in configuration
+  // first, as well as the memcached instances.
   for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
     NgxServerContext* server_context = *p;
-
-    // Determine the set of caches needed based on the unique
-    // file_cache_path()s in the manager configurations.  We ignore
-    // the GetCache return value because our goal is just to populate
-    // the map which we'll iterate on below.
-    GetCache(server_context->config());
+    caches_->RegisterConfig(server_context->config());
   }
 
-  for (PathCacheMap::iterator p = path_cache_map_.begin(),
-           e = path_cache_map_.end(); p != e; ++p) {
-    NgxCache* cache = p->second;
-    cache->RootInit();
-  }
+  caches_->RootInit();
 }
 
 void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
   is_root_process_ = false;
 
   ParentOrChildInit(log);
-  slow_worker_.reset(new SlowWorker(thread_system()));
   if (shared_mem_statistics_.get() != NULL) {
     shared_mem_statistics_->Init(false, message_handler());
   }
 
-  for (PathCacheMap::iterator p = path_cache_map_.begin(),
-           e = path_cache_map_.end(); p != e; ++p) {
-    NgxCache* cache = p->second;
-    cache->ChildInit();
-  }
+  caches_->ChildInit();
   for (NgxServerContextSet::iterator p = uninitialized_server_contexts_.begin(),
            e = uninitialized_server_contexts_.end(); p != e; ++p) {
     NgxServerContext* server_context = *p;
@@ -509,15 +318,6 @@ void NgxRewriteDriverFactory::ChildInit(ngx_log_t* log) {
   }
 
   uninitialized_server_contexts_.clear();
-
-  for (int i = 0, n = memcache_servers_.size(); i < n; ++i) {
-    AprMemCache* mem_cache = memcache_servers_[i];
-    bool connected = mem_cache->Connect();
-    if (!connected) {
-      message_handler()->Message(kError, "Failed to attach memcached, abort");
-      abort();
-    }
-  }
 }
 
 // Initializes global statistics object if needed, using factory to
@@ -559,12 +359,8 @@ void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
 
   // Init Ngx-specific stats.
   NgxServerContext::InitStats(statistics);
-  AprMemCache::InitStats(statistics);
+  SystemCaches::InitStats(statistics);
   SerfUrlAsyncFetcher::InitStats(statistics);
-
-  CacheStats::InitStats(NgxCache::kFileCache, statistics);
-  CacheStats::InitStats(NgxCache::kLruCache, statistics);
-  CacheStats::InitStats(kMemcached, statistics);
 
   statistics->AddVariable(kShutdownCount);
 }

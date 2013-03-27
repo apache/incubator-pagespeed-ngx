@@ -4,7 +4,6 @@
 
 #ifndef BASE_STRING_UTIL_POSIX_H_
 #define BASE_STRING_UTIL_POSIX_H_
-#pragma once
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -45,15 +44,8 @@ inline int strncmp16(const char16* s1, const char16* s2, size_t count) {
 
 inline int vswprintf(wchar_t* buffer, size_t size,
                      const wchar_t* format, va_list arguments) {
-#if defined(OS_OPENBSD)
-  // TODO(phajdan.jr): There is a patch to add vswprintf to OpenBSD,
-  // http://marc.info/?l=openbsd-tech&m=130003157729839&w=2
-  NOTIMPLEMENTED();
-  return -1;
-#else
   DCHECK(IsWprintfFormatPortable(format));
   return ::vswprintf(buffer, size, format, arguments);
-#endif
 }
 
 }  // namespace base

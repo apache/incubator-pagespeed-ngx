@@ -33,8 +33,6 @@ namespace net_instaweb {
 // Can be used multiple times by calling Reset in between.
 class ExpectStringAsyncFetch : public StringAsyncFetch {
  public:
-  explicit ExpectStringAsyncFetch(bool expect_success)
-      : expect_success_(expect_success) {}
   ExpectStringAsyncFetch(bool expect_success,
                          const RequestContextPtr& request_context)
       : StringAsyncFetch(request_context), expect_success_(expect_success) {}

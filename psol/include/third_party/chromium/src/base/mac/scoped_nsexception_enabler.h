@@ -4,8 +4,10 @@
 
 #ifndef BASE_MAC_SCOPED_NSEXCEPTION_ENABLER_H_
 #define BASE_MAC_SCOPED_NSEXCEPTION_ENABLER_H_
-#pragma once
 
+#import <Foundation/Foundation.h>
+
+#include "base/base_export.h"
 #include "base/basictypes.h"
 
 namespace base {
@@ -23,7 +25,7 @@ namespace mac {
 // top-level event loop, things are cleared in -reportException:.  If
 // the exception is caught at a lower level, a higher level scoper
 // should eventually reset things.
-class ScopedNSExceptionEnabler {
+class BASE_EXPORT ScopedNSExceptionEnabler {
  public:
   ScopedNSExceptionEnabler();
   ~ScopedNSExceptionEnabler();
@@ -37,8 +39,13 @@ class ScopedNSExceptionEnabler {
 // Access the exception setting for the current thread.  This is for
 // the support code in BrowserCrApplication, other code should use
 // the scoper.
-bool GetNSExceptionsAllowed();
-void SetNSExceptionsAllowed(bool allowed);
+BASE_EXPORT bool GetNSExceptionsAllowed();
+BASE_EXPORT void SetNSExceptionsAllowed(bool allowed);
+
+// Executes [target performSelector:sel] with fatal-exceptions turned
+// off, and returns the result.  If an exception is thrown during the
+// perform, nil is returned.
+BASE_EXPORT id PerformSelectorIgnoringExceptions(NSObject* target, SEL sel);
 
 }  // namespace mac
 }  // namespace base

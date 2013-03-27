@@ -4,9 +4,10 @@
 
 #ifndef BASE_MAC_OBJC_PROPERTY_RELEASER_H_
 #define BASE_MAC_OBJC_PROPERTY_RELEASER_H_
-#pragma once
 
 #import <Foundation/Foundation.h>
+
+#include "base/base_export.h"
 
 namespace base {
 namespace mac {
@@ -81,7 +82,7 @@ namespace mac {
 // will only operate on instance variables in the immediate object in which
 // the property releaser is placed.
 
-class ObjCPropertyReleaser {
+class BASE_EXPORT ObjCPropertyReleaser {
  public:
   // ObjCPropertyReleaser can only be owned by an Objective-C object, so its
   // memory is always guaranteed to be 0-initialized. Not defining the default

@@ -216,14 +216,14 @@ template<class Var, class Hist, class TimedVar> class StatisticsTemplate
 // do scalar statistics variables.
 template<class Var>
 class ScalarStatisticsTemplate
-    : public StatisticsTemplate<Var, NullHistogram, FakeTimedVariable> {
+    : public StatisticsTemplate<Var, CountHistogram, FakeTimedVariable> {
  public:
   ScalarStatisticsTemplate() {}
   virtual ~ScalarStatisticsTemplate() {}
 
  protected:
-  virtual NullHistogram* NewHistogram(const StringPiece& name) {
-    return new NullHistogram;
+  virtual CountHistogram* NewHistogram(const StringPiece& name) {
+    return new CountHistogram;
   }
 
   virtual FakeTimedVariable* NewTimedVariable(const StringPiece& name,

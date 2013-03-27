@@ -20,15 +20,16 @@
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_FILTER_H_
 
 #include "net/instaweb/rewriter/public/common_filter.h"
-#include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class OutputResource;
+class Resource;
+class ResourceContext;
 class RewriteContext;
 class RewriteDriver;
 class UrlSegmentEncoder;
@@ -47,11 +48,6 @@ class RewriteFilter : public CommonFilter {
   // inheriting from RewriteDriver that use the DOM cohort should override
   // UsePropertyCacheDomCohort to return true.
   virtual void DetermineEnabled();
-
-  // Create an input resource by decoding output_resource using the
-  // filter's. Assures legality by explicitly permission-checking the result.
-  ResourcePtr CreateInputResourceFromOutputResource(
-      OutputResource* output_resource);
 
   // All RewriteFilters define how they encode URLs and other
   // associated information needed for a rewrite into a URL.
@@ -77,6 +73,12 @@ class RewriteFilter : public CommonFilter {
   // This is used to implement ajax rewriting.
   virtual RewriteContext* MakeNestedRewriteContext(
       RewriteContext* parent, const ResourceSlotPtr& slot);
+
+  // Encodes user agent information needed by the filter into ResourceContext.
+  // See additional header document for
+  // RewriteContext::EncodeUserAgentIntoResourceContext.
+  virtual void EncodeUserAgentIntoResourceContext(
+      ResourceContext* context) const {}
 
   // Determine the charset of a script. Logic taken from:
   //   http://www.whatwg.org/specs/web-apps/current-work/multipage/
@@ -111,9 +113,38 @@ class RewriteFilter : public CommonFilter {
       const StringPiece attribute_charset,
       const StringPiece enclosing_charset);
 
-  // Add this filter to the logged list of applied rewriters.
+  // Determines which filters are related to this RewriteFilter.  Note,
+  // for example, that the ImageRewriteFilter class implements lots of
+  // different RewriteOptions::Filters.
+  //
+  // This is used for embedding the relevant enabled filter IDs.  See
+  // the doc for RewriteOptions::add_options_to_urls_.  We want to support
+  // that without bloating URLs excessively adding unrelated filter settings.
+  //
+  // The vector is returned in numerically increasing order so binary_search
+  // is possible.
+  //
+  // *num_filters is set to the size of this array.
+  //
+  // Ownership of the filter-vector is not transferred to the caller; it
+  // is expected to return a pointer to a static vector.
+  virtual const RewriteOptions::Filter* RelatedFilters(int* num_filters) const;
+
+  // Determines which options are related to this RewriteFilter.
+  //
+  // The vector is returned in numerically increasing order so binary_search
+  // is possible.
+  //
+  // *num_options is set to the size of this array.
+  //
+  // Ownership of the filter-vector is not transferred to the caller; it
+  // is expected to return a pointer to a static vector.
+  virtual const RewriteOptions::OptionEnum* RelatedOptions(
+      int* num_options) const;
+
+ protected:
   // This class logs using id().
-  virtual void LogFilterModifiedContent();
+  virtual const char* LoggingId() { return id(); }
 
  private:
   // Filters should override this and return true if they write to the property

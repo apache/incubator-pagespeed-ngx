@@ -15,10 +15,18 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_USER_AGENT_MATCHER_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_USER_AGENT_MATCHER_H_
 
+#include <map>
+#include <utility>
+
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/re2.h"
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/fast_wildcard_group.h"
+#include "third_party/instaweb/util/fast_wildcard_group.h"
+
+using std::pair;
+using std::make_pair;
+using std::map;
 
 namespace net_instaweb {
 
@@ -42,6 +50,15 @@ class UserAgentMatcher {
     kDoesNotSupportBlink,
   };
 
+  enum DeviceType {
+    kDesktop,
+    kTablet,
+    kMobile,
+    // This should always be the last type. This is used to mark the size of an
+    // array containing various DeviceTypes.
+    kEndOfDeviceType
+  };
+
   enum PrefetchMechanism {
     kPrefetchNotSupported,
     kPrefetchLinkRelSubresource,
@@ -49,6 +66,11 @@ class UserAgentMatcher {
     kPrefetchObjectTag,
     kPrefetchLinkScriptTag,
   };
+
+  // Cohort descriptors for PropertyCache lookups of device objects.
+  static const char kDevicePropertiesCohort[];
+  static const char kScreenWidth[];
+  static const char kScreenHeight[];
 
   UserAgentMatcher();
   virtual ~UserAgentMatcher();
@@ -69,9 +91,13 @@ class UserAgentMatcher {
       const char* user_agent, const RequestHeaders* request_headers) const;
 
   // Returns the supported prefetch mechanism depending upon the user agent.
-  PrefetchMechanism GetPrefetchMechanism(
-      const StringPiece& user_agent,
-      const RequestHeaders* request_headers) const;
+  PrefetchMechanism GetPrefetchMechanism(const StringPiece& user_agent) const;
+
+  // Returns the DeviceType for the given user agent string.
+  DeviceType GetDeviceTypeForUA(const StringPiece& user_agent) const;
+
+  // Returns the suffix for the given device_type.
+  static StringPiece DeviceTypeSuffix(DeviceType device_type);
 
   bool SupportsJsDefer(const StringPiece& user_agent, bool allow_mobile) const;
   bool SupportsWebp(const StringPiece& user_agent) const;
@@ -99,6 +125,14 @@ class UserAgentMatcher {
   virtual bool SupportsSplitHtml(const StringPiece& user_agent,
                                  bool allow_mobile) const;
 
+  // Returns true and sets width and height if we know them for the UA.
+  virtual bool GetScreenResolution(
+        const StringPiece& user_agent, int* width, int* height);
+
+  bool UserAgentExceedsChromeAndroidBuildAndPatch(
+      const StringPiece& user_agent, int required_build,
+      int required_patch) const;
+
  private:
   FastWildcardGroup supports_image_inlining_;
   FastWildcardGroup blink_desktop_whitelist_;
@@ -113,6 +147,8 @@ class UserAgentMatcher {
   FastWildcardGroup supports_dns_prefetch_;
 
   const RE2 chrome_version_pattern_;
+  mutable map <GoogleString, pair<int, int> > screen_dimensions_map_;
+  GoogleString known_devices_pattern_;
 
   DISALLOW_COPY_AND_ASSIGN(UserAgentMatcher);
 };

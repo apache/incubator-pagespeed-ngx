@@ -4,7 +4,6 @@
 
 #ifndef NET_BASE_DNSRR_RESOLVER_H_
 #define NET_BASE_DNSRR_RESOLVER_H_
-#pragma once
 
 #include <map>
 #include <string>
@@ -17,13 +16,13 @@
 #include "base/time.h"
 #include "build/build_config.h"
 #include "net/base/completion_callback.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 #include "net/base/network_change_notifier.h"
 
 namespace net {
 
 // RRResponse contains the result of a successful request for a resource record.
-struct NET_TEST RRResponse {
+struct NET_EXPORT_PRIVATE RRResponse {
   RRResponse();
   ~RRResponse();
 
@@ -31,9 +30,11 @@ struct NET_TEST RRResponse {
   // |current_time|.
   bool HasExpired(base::Time current_time) const;
 
+#if defined(OS_POSIX) && !defined(OS_ANDROID)
   // For testing only
   bool ParseFromResponse(const uint8* data, unsigned len,
                          uint16 rrtype_requested);
+#endif
 
   // name contains the canonical name of the resulting domain. If the queried
   // name was a CNAME then this can differ.
@@ -67,8 +68,9 @@ class RRResolverJob;
 // the name is a fully qualified DNS domain.
 //
 // A DnsRRResolver must be used from the MessageLoop which created it.
-class NET_API DnsRRResolver : NON_EXPORTED_BASE(public base::NonThreadSafe),
-                              public NetworkChangeNotifier::IPAddressObserver {
+class NET_EXPORT DnsRRResolver
+    : NON_EXPORTED_BASE(public base::NonThreadSafe),
+      public NetworkChangeNotifier::IPAddressObserver {
  public:
   typedef intptr_t Handle;
 
@@ -98,7 +100,7 @@ class NET_API DnsRRResolver : NON_EXPORTED_BASE(public base::NonThreadSafe),
   // this function returns kInvalidHandle then the resolution failed
   // immediately because it was improperly formed.
   Handle Resolve(const std::string& name, uint16 rrtype,
-                 uint16 flags, CompletionCallback* callback,
+                 uint16 flags, const CompletionCallback& callback,
                  RRResponse* response, int priority,
                  const BoundNetLog& netlog);
 
@@ -107,7 +109,7 @@ class NET_API DnsRRResolver : NON_EXPORTED_BASE(public base::NonThreadSafe),
   void CancelResolve(Handle handle);
 
   // Implementation of NetworkChangeNotifier::IPAddressObserver
-  virtual void OnIPAddressChanged();
+  virtual void OnIPAddressChanged() OVERRIDE;
 
  private:
   friend class RRResolverWorker;

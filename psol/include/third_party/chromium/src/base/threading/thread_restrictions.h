@@ -1,14 +1,75 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_THREADING_THREAD_RESTRICTIONS_H_
 #define BASE_THREADING_THREAD_RESTRICTIONS_H_
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
 
+// See comment at top of thread_checker.h
+#if (!defined(NDEBUG) || defined(DCHECK_ALWAYS_ON))
+#define ENABLE_THREAD_RESTRICTIONS 1
+#else
+#define ENABLE_THREAD_RESTRICTIONS 0
+#endif
+
+class AcceleratedPresenter;
+class BrowserProcessImpl;
+class HistogramSynchronizer;
+class GpuChannelHost;
+class MetricsService;
+class NativeBackendKWallet;
+class ScopedAllowWaitForLegacyWebViewApi;
+class TestingAutomationProvider;
+class TextInputClientMac;
+
+namespace browser_sync {
+class NonFrontendDataTypeController;
+class UIModelWorker;
+}
+namespace chromeos {
+class AudioMixerAlsa;
+class BlockingMethodCaller;
+namespace system {
+class StatisticsProviderImpl;
+}
+}
+namespace chrome_browser_net {
+class Predictor;
+}
+namespace content {
+class BrowserGpuChannelHostFactory;
+class GLHelper;
+class RenderWidgetHelper;
+}
+namespace dbus {
+class Bus;
+}
+namespace disk_cache {
+class BackendImpl;
+class InFlightIO;
+}
+namespace media {
+class AudioOutputController;
+}
+namespace net {
+class FileStreamPosix;
+class FileStreamWin;
+class NetworkManagerApi;
+}
+
+namespace remoting {
+class AutoThread;
+}
+
 namespace base {
+
+class SequencedWorkerPool;
+class SimpleThread;
+class Thread;
+class ThreadTestHelper;
 
 // Certain behavior is disallowed on certain threads.  ThreadRestrictions helps
 // enforce these rules.  Examples of such rules:
@@ -27,7 +88,6 @@ namespace base {
 //    current thread is allowed:
 //      base::ThreadRestrictions::AssertIOAllowed();
 //
-// ThreadRestrictions does nothing in release builds; it is debug-only.
 //
 // Style tip: where should you put AssertIOAllowed checks?  It's best
 // if you put them as close to the disk access as possible, at the
@@ -36,11 +96,11 @@ namespace base {
 // only calls other functions in Chrome and not fopen(), you should go
 // add the AssertIOAllowed checks in the helper functions.
 
-class BASE_API ThreadRestrictions {
+class BASE_EXPORT ThreadRestrictions {
  public:
   // Constructing a ScopedAllowIO temporarily allows IO for the current
   // thread.  Doing this is almost certainly always incorrect.
-  class BASE_API ScopedAllowIO {
+  class BASE_EXPORT ScopedAllowIO {
    public:
     ScopedAllowIO() { previous_value_ = SetIOAllowed(true); }
     ~ScopedAllowIO() { SetIOAllowed(previous_value_); }
@@ -53,7 +113,7 @@ class BASE_API ThreadRestrictions {
 
   // Constructing a ScopedAllowSingleton temporarily allows accessing for the
   // current thread.  Doing this is almost always incorrect.
-  class BASE_API ScopedAllowSingleton {
+  class BASE_EXPORT ScopedAllowSingleton {
    public:
     ScopedAllowSingleton() { previous_value_ = SetSingletonAllowed(true); }
     ~ScopedAllowSingleton() { SetSingletonAllowed(previous_value_); }
@@ -65,7 +125,7 @@ class BASE_API ThreadRestrictions {
     DISALLOW_COPY_AND_ASSIGN(ScopedAllowSingleton);
   };
 
-#ifndef NDEBUG
+#if ENABLE_THREAD_RESTRICTIONS
   // Set whether the current thread to make IO calls.
   // Threads start out in the *allowed* state.
   // Returns the previous value.
@@ -83,16 +143,85 @@ class BASE_API ThreadRestrictions {
   // Check whether the current thread is allowed to use singletons (Singleton /
   // LazyInstance).  DCHECKs if not.
   static void AssertSingletonAllowed();
+
+  // Disable waiting on the current thread. Threads start out in the *allowed*
+  // state. Returns the previous value.
+  static void DisallowWaiting();
+
+  // Check whether the current thread is allowed to wait, and DCHECK if not.
+  static void AssertWaitAllowed();
 #else
-  // In Release builds, inline the empty definitions of these functions so
-  // that they can be compiled out.
+  // Inline the empty definitions of these functions so that they can be
+  // compiled out.
   static bool SetIOAllowed(bool allowed) { return true; }
   static void AssertIOAllowed() {}
   static bool SetSingletonAllowed(bool allowed) { return true; }
   static void AssertSingletonAllowed() {}
+  static void DisallowWaiting() {}
+  static void AssertWaitAllowed() {}
 #endif
 
  private:
+  // DO NOT ADD ANY OTHER FRIEND STATEMENTS, talk to jam or brettw first.
+  // BEGIN ALLOWED USAGE.
+  friend class content::RenderWidgetHelper;
+  friend class ::HistogramSynchronizer;
+  friend class ::ScopedAllowWaitForLegacyWebViewApi;
+  friend class ::TestingAutomationProvider;
+  friend class remoting::AutoThread;
+  friend class SequencedWorkerPool;
+  friend class SimpleThread;
+  friend class Thread;
+  friend class ThreadTestHelper;
+
+  // END ALLOWED USAGE.
+  // BEGIN USAGE THAT NEEDS TO BE FIXED.
+  friend class ::chromeos::AudioMixerAlsa;        // http://crbug.com/125206
+  friend class ::chromeos::BlockingMethodCaller;  // http://crbug.com/125360
+  friend class ::chromeos::system::StatisticsProviderImpl;  // http://crbug.com/125385
+  friend class browser_sync::NonFrontendDataTypeController;  // http://crbug.com/19757
+  friend class browser_sync::UIModelWorker;       // http://crbug.com/19757
+  friend class chrome_browser_net::Predictor;     // http://crbug.com/78451
+  friend class
+      content::BrowserGpuChannelHostFactory;      // http://crbug.com/125248
+  friend class content::GLHelper;                 // http://crbug.com/125415
+  friend class dbus::Bus;                         // http://crbug.com/125222
+  friend class disk_cache::BackendImpl;           // http://crbug.com/74623
+  friend class disk_cache::InFlightIO;            // http://crbug.com/74623
+  friend class media::AudioOutputController;      // http://crbug.com/120973
+  friend class net::FileStreamPosix;              // http://crbug.com/115067
+  friend class net::FileStreamWin;                // http://crbug.com/115067
+  friend class net::NetworkManagerApi;            // http://crbug.com/125097
+  friend class ::AcceleratedPresenter;            // http://crbug.com/125391
+  friend class ::BrowserProcessImpl;              // http://crbug.com/125207
+  friend class ::GpuChannelHost;                  // http://crbug.com/125264
+  friend class ::MetricsService;                  // http://crbug.com/124954
+  friend class ::TextInputClientMac;              // http://crbug.com/121917
+  friend class ::NativeBackendKWallet;            // http://crbug.com/125331
+  // END USAGE THAT NEEDS TO BE FIXED.
+
+#if ENABLE_THREAD_RESTRICTIONS
+  static bool SetWaitAllowed(bool allowed);
+#else
+  static bool SetWaitAllowed(bool allowed) { return true; }
+#endif
+
+  // Constructing a ScopedAllowWait temporarily allows waiting on the current
+  // thread.  Doing this is almost always incorrect, which is why we limit who
+  // can use this through friend. If you find yourself needing to use this, find
+  // another way. Talk to jam or brettw.
+  class BASE_EXPORT ScopedAllowWait {
+   public:
+    ScopedAllowWait() { previous_value_ = SetWaitAllowed(true); }
+    ~ScopedAllowWait() { SetWaitAllowed(previous_value_); }
+   private:
+    // Whether singleton use is allowed when the ScopedAllowWait was
+    // constructed.
+    bool previous_value_;
+
+    DISALLOW_COPY_AND_ASSIGN(ScopedAllowWait);
+  };
+
   DISALLOW_IMPLICIT_CONSTRUCTORS(ThreadRestrictions);
 };
 

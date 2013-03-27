@@ -4,9 +4,8 @@
 
 #ifndef BASE_PROCESS_H_
 #define BASE_PROCESS_H_
-#pragma once
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
 #include "build/build_config.h"
 
@@ -34,37 +33,24 @@ const ProcessHandle kNullProcessHandle = 0;
 const ProcessId kNullProcessId = 0;
 #endif  // defined(OS_WIN)
 
-#if defined(OS_POSIX) && !defined(OS_MACOSX)
-// saved_priority_ will be set to this to indicate that it's not holding
-// a valid value. -20 to 19 are valid process priorities.
-const int kUnsetProcessPriority = 256;
-#endif
-
-class BASE_API Process {
+class BASE_EXPORT Process {
  public:
   Process() : process_(kNullProcessHandle) {
-#if defined(OS_POSIX) && !defined(OS_MACOSX)
-    saved_priority_ = kUnsetProcessPriority;
-#endif
   }
 
   explicit Process(ProcessHandle handle) : process_(handle) {
-#if defined(OS_POSIX) && !defined(OS_MACOSX)
-    saved_priority_ = kUnsetProcessPriority;
-#endif
   }
 
   // A handle to the current process.
   static Process Current();
+
+  static bool CanBackgroundProcesses();
 
   // Get/Set the handle for this process. The handle will be 0 if the process
   // is no longer running.
   ProcessHandle handle() const { return process_; }
   void set_handle(ProcessHandle handle) {
     process_ = handle;
-#if defined(OS_POSIX) && !defined(OS_MACOSX)
-    saved_priority_ = kUnsetProcessPriority;
-#endif
   }
 
   // Get the PID for this process.
@@ -98,11 +84,6 @@ class BASE_API Process {
 
  private:
   ProcessHandle process_;
-#if defined(OS_POSIX) && !defined(OS_MACOSX)
-  // Holds the priority that the process was set to when it was backgrounded.
-  // If the process wasn't backgrounded it will be kUnsetProcessPriority.
-  int saved_priority_;
-#endif
 };
 
 }  // namespace base

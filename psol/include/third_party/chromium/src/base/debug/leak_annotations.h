@@ -4,13 +4,13 @@
 
 #ifndef BASE_DEBUG_LEAK_ANNOTATIONS_H_
 #define BASE_DEBUG_LEAK_ANNOTATIONS_H_
-#pragma once
 
 #include "build/build_config.h"
 
-#if defined(OS_POSIX) && !defined(OS_MACOSX) && defined(USE_HEAPCHECKER)
+#if defined(OS_POSIX) && !defined(OS_MACOSX) && !defined(OS_NACL) && \
+    defined(USE_HEAPCHECKER)
 
-#include "third_party/tcmalloc/chromium/src/google/heap-checker.h"
+#include "third_party/tcmalloc/chromium/src/gperftools/heap-checker.h"
 
 // Annotate a program scope as having memory leaks. Tcmalloc's heap leak
 // checker will ignore them. Note that these annotations may mask real bugs

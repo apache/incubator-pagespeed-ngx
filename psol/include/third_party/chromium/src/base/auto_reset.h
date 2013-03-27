@@ -1,22 +1,20 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_AUTO_RESET_H_
 #define BASE_AUTO_RESET_H_
-#pragma once
 
 #include "base/basictypes.h"
 
-// AutoResetValue is useful for setting a variable to some value only
-// during a particular scope.  If you have code that has to add "var =
-// false;" or "var = old_var;" at all the exit points of a block, for
-// example, you would benefit from using this instead.
+// AutoReset<> is useful for setting a variable to a new value only within a
+// particular scope. An AutoReset<> object resets a variable to its original
+// value upon destruction, making it an alternative to writing "var = false;"
+// or "var = old_val;" at all of a block's exit points.
 //
-// This should be obvious, but note that the AutoResetValue instance
-// should have a shorter lifetime than the scoped_variable, to prevent
-// writing to invalid memory when the AutoResetValue goes out of
-// scope.
+// This should be obvious, but note that an AutoReset<> instance should have a
+// shorter lifetime than its scoped_variable, to prevent invalid memory writes
+// when the AutoReset<> object is destroyed.
 
 template<typename T>
 class AutoReset {

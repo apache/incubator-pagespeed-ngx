@@ -5,16 +5,28 @@
 #define HASH_MAP_CLASS hash_map
 
 /* the location of <hash_map> */
+#if defined(USE_STLPORT)
+#define HASH_MAP_H <hash_map>
+#else
 #define HASH_MAP_H <ext/hash_map>
+#endif
 
 /* the namespace of hash_map/hash_set */
+#if defined(USE_STLPORT)
+#define HASH_NAMESPACE std
+#else
 #define HASH_NAMESPACE __gnu_cxx
+#endif
 
 /* the name of <hash_set> */
 #define HASH_SET_CLASS hash_set
 
 /* the location of <hash_set> */
+#if defined(USE_STLPORT)
+#define HASH_SET_H <hash_set>
+#else
 #define HASH_SET_H <ext/hash_set>
+#endif
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #define HAVE_DLFCN_H 1

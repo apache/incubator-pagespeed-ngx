@@ -55,6 +55,7 @@ class CacheStats : public CacheInterface {
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
   virtual const char* Name() const { return name_.c_str(); }
+  virtual CacheInterface* Backend() { return cache_.get(); }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
 
   virtual bool IsHealthy() const {

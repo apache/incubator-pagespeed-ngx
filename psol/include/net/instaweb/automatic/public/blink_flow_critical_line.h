@@ -44,6 +44,8 @@ class TimedVariable;
 // lookups to compute the critical line and insert it into cache.
 class BlinkFlowCriticalLine {
  public:
+  class LogHelper;
+
   // These strings identify sync-points for reproducing races between foreground
   // serving request and background blink computation requests in tests.
   static const char kBackgroundComputationDone[];
@@ -146,14 +148,13 @@ class BlinkFlowCriticalLine {
   // Returns true if property cache has last response code as non 200.
   bool IsLastResponseCodeInvalid(PropertyPage* page);
 
-  // Convenience method to access the log record from base_fetch_'s request
-  // context.
-  LogRecord* log_record();
-
   GoogleString url_;
   GoogleUrl google_url_;
   GoogleString critical_html_;
   AsyncFetch* base_fetch_;
+  // Blink needs its own log record since it needs to log even after the main
+  // log record is written out when the request processing is finished.
+  scoped_ptr<LogRecord> blink_log_record_;
   RewriteOptions* options_;
   ProxyFetchFactory* factory_;
   ServerContext* manager_;
@@ -163,6 +164,7 @@ class BlinkFlowCriticalLine {
   int64 request_start_time_ms_;
   int64 time_to_start_blink_flow_critical_line_ms_;
   int64 time_to_critical_line_data_look_up_done_ms_;
+  scoped_ptr<LogHelper> blink_log_helper_;
 
   TimedVariable* num_blink_html_cache_hits_;
   TimedVariable* num_blink_shared_fetches_started_;

@@ -19,7 +19,6 @@
 
 #ifndef NET_BASE_SDCH_MANAGER_H_
 #define NET_BASE_SDCH_MANAGER_H_
-#pragma once
 
 #include <map>
 #include <set>
@@ -29,8 +28,9 @@
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
+#include "base/threading/non_thread_safe.h"
 #include "googleurl/src/gurl.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
 namespace net {
 
@@ -55,7 +55,7 @@ class SdchFetcher {
 
 //------------------------------------------------------------------------------
 
-class NET_API SdchManager {
+class NET_EXPORT SdchManager : public NON_EXPORTED_BASE(base::NonThreadSafe) {
  public:
   // A list of errors that appeared and were either resolved, or used to turn
   // off sdch encoding.
@@ -162,7 +162,7 @@ class NET_API SdchManager {
 
   // There is one instance of |Dictionary| for each memory-cached SDCH
   // dictionary.
-  class NET_TEST Dictionary : public base::RefCounted<Dictionary> {
+  class NET_EXPORT_PRIVATE Dictionary : public base::RefCounted<Dictionary> {
    public:
     // Sdch filters can get our text to use in decoding compressed data.
     const std::string& text() const { return text_; }
@@ -244,14 +244,12 @@ class NET_API SdchManager {
   static void SdchErrorRecovery(ProblemCodes problem);
 
   // Register a fetcher that this class can use to obtain dictionaries.
-  void set_sdch_fetcher(SdchFetcher* fetcher) { fetcher_.reset(fetcher); }
+  void set_sdch_fetcher(SdchFetcher* fetcher);
 
-  // If called with an empty string, advertise and support sdch on all domains.
-  // If called with a specific string, advertise and support only the specified
-  // domain.  Function assumes the existence of a global SdchManager instance.
-  void EnableSdchSupport(const std::string& domain);
+  // Enables or disables SDCH compression.
+  static void EnableSdchSupport(bool enabled);
 
-  static bool sdch_enabled() { return global_ && global_->sdch_enabled_; }
+  static bool sdch_enabled() { return g_sdch_enabled_; }
 
   // Briefly prevent further advertising of SDCH on this domain (if SDCH is
   // enabled). After enough calls to IsInSupportedDomain() the blacklisting
@@ -343,6 +341,9 @@ class NET_API SdchManager {
   // The one global instance of that holds all the data.
   static SdchManager* global_;
 
+  // Support SDCH compression, by advertising in headers.
+  static bool g_sdch_enabled_;
+
   // A simple implementation of a RFC 3548 "URL safe" base64 encoder.
   static void UrlSafeBase64Encode(const std::string& input,
                                   std::string* output);
@@ -350,13 +351,6 @@ class NET_API SdchManager {
 
   // An instance that can fetch a dictionary given a URL.
   scoped_ptr<SdchFetcher> fetcher_;
-
-  // Support SDCH compression, by advertising in headers.
-  bool sdch_enabled_;
-
-  // Empty string means all domains.  Non-empty means support only the given
-  // domain is supported.
-  std::string supported_domain_;
 
   // List domains where decode failures have required disabling sdch, along with
   // count of how many additonal uses should be blacklisted.

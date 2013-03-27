@@ -1,12 +1,11 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_SYNCHRONIZATION_WAITABLE_EVENT_H_
 #define BASE_SYNCHRONIZATION_WAITABLE_EVENT_H_
-#pragma once
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
 
 #if defined(OS_WIN)
@@ -42,7 +41,7 @@ class TimeDelta;
 // by a Windows event object.  This is intentional.  If you are writing Windows
 // specific code and you need other features of a Windows event, then you might
 // be better off just using an Windows event directly.
-class BASE_API WaitableEvent {
+class BASE_EXPORT WaitableEvent {
  public:
   // If manual_reset is true, then to set the event state to non-signaled, a
   // consumer must call the Reset method.  If this parameter is false, then the
@@ -73,9 +72,8 @@ class BASE_API WaitableEvent {
   // is not a manual reset event, then this test will cause a reset.
   bool IsSignaled();
 
-  // Wait indefinitely for the event to be signaled.  Returns true if the event
-  // was signaled, else false is returned to indicate that waiting failed.
-  bool Wait();
+  // Wait indefinitely for the event to be signaled.
+  void Wait();
 
   // Wait up until max_time has passed for the event to be signaled.  Returns
   // true if the event was signaled.  If this method returns false, then it
@@ -146,7 +144,6 @@ class BASE_API WaitableEvent {
       public RefCountedThreadSafe<WaitableEventKernel> {
    public:
     WaitableEventKernel(bool manual_reset, bool initially_signaled);
-    virtual ~WaitableEventKernel();
 
     bool Dequeue(Waiter* waiter, void* tag);
 
@@ -154,6 +151,10 @@ class BASE_API WaitableEvent {
     const bool manual_reset_;
     bool signaled_;
     std::list<Waiter*> waiters_;
+
+   private:
+    friend class RefCountedThreadSafe<WaitableEventKernel>;
+    ~WaitableEventKernel();
   };
 
   typedef std::pair<WaitableEvent*, size_t> WaiterAndIndex;

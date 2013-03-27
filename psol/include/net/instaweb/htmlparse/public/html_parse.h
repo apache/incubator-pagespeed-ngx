@@ -344,6 +344,7 @@ class HtmlParse {
   // Provide timer to helping to report timing of each filter.  You must also
   // set_log_rewrite_timing(true) to turn on this reporting.
   void set_timer(Timer* timer) { timer_ = timer; }
+  Timer* timer() const { return timer_; }
   void set_log_rewrite_timing(bool x) { log_rewrite_timing_ = x; }
 
   // Adds a filter to be called during parsing as new events are added.
@@ -372,18 +373,6 @@ class HtmlParse {
 
   // Returns the number of events on the event queue.
   size_t GetEventQueueSize();
-
-  // Move the entire contents of extra_events onto the end of the event queue.
-  void AppendEventsToQueue(HtmlEventList* extra_events);
-
-  // Move the entire event queue after the first event in event_set to the end
-  // of tail.  Return that event, or NULL if there was none.
-  HtmlEvent* SplitQueueOnFirstEventInSet(const ConstHtmlEventSet& event_set,
-                                         HtmlEventList* tail);
-
-  // Return the EndElementEvent for this element, or NULL if it doesn't exist
-  // yet.
-  HtmlEvent* GetEndElementEvent(const HtmlElement* element);
 
   virtual void ParseTextInternal(const char* content, int size);
 

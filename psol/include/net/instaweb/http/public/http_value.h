@@ -49,6 +49,7 @@ class HTTPValue : public Writer {
   //
   // If Clear() is called, then SetHeaders() can be called once again.
   //
+  // Does NOT take ownership of headers.
   // A non-const pointer is required for the response headers so that
   // the cache fields can be updated if necessary.
   void SetHeaders(ResponseHeaders* headers);

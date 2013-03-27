@@ -22,6 +22,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -51,12 +52,52 @@ class RequestContext : public RefCounted<RequestContext> {
   //             Makes a request context for running tests.
   static RequestContextPtr NewTestRequestContext(ThreadSystem* thread_system);
 
-  RequestTrace* trace_context() { return trace_context_.get(); }
+  // Creates a new, unowned LogRecord, for use by some subordinate action.
+  // Also useful in case of background activity where logging is required after
+  // the response is written out, e.g., blink flow.
+  virtual LogRecord* NewSubordinateLogRecord(AbstractMutex* logging_mutex);
+
+  // The root trace context is associated with the user request which we
+  // are attempting to serve. If this is a request with constituent resources
+  // that we rewrite, there may be several dependent fetches synthesized
+  // by PSOL during rewrites. Those are traced separately.
+  RequestTrace* root_trace_context() { return root_trace_context_.get(); }
   // Takes ownership of the given context.
-  void set_trace_context(RequestTrace* x);
+  void set_root_trace_context(RequestTrace* x);
+
+  // Creates a new RequestTrace associated with a request depending on the
+  // root user request; e.g., a subresource fetch for an HTML page.
+  //
+  // This implementation is a no-op. Subclasses should customize this based
+  // on their underlying tracing system. A few interface notes:
+  // - The caller is not responsible for releasing memory or managing the
+  //   lifecycle of the RequestTrace.
+  // - A call to CreateDependentTraceContext() need not be matched by a call
+  //   to ReleaseDependentTraceContext(). Cleanup should be automatic and
+  //   managed by RequestContext subclass implementations.
+  virtual RequestTrace* CreateDependentTraceContext(const StringPiece& label) {
+    return NULL;
+  }
+
+  // Releases this object's reference to the given context and frees memory.
+  // Calls to CreateDependentTraceContext need not be matched by
+  // calls to this function. If a dependent trace span is not released when
+  // the request context reference count drops to zero, this object will clean
+  // all dependent traces.
+  //
+  // Note that automatic cleanup of dependent traces is provided for safety.
+  // To provide meaningful performance statistics, cleanup should be
+  // coupled with the completion of the event being traced.
+  //
+  // Subclasses should customize this based on their underlying tracing system.
+  virtual void ReleaseDependentTraceContext(RequestTrace* t);
 
   // The log record for the this request, created when the request context is.
   LogRecord* log_record();
+
+  // Determines whether this request is using the SPDY protocol.
+  bool using_spdy() const { return using_spdy_; }
+  void set_using_spdy(bool x) { using_spdy_ = x; }
 
  protected:
   // The default constructor will not create a LogRecord. Subclass constructors
@@ -75,8 +116,10 @@ class RequestContext : public RefCounted<RequestContext> {
   // Always non-NULL.
   scoped_ptr<LogRecord> log_record_;
 
-  // Logs tracing events.
-  scoped_ptr<RequestTrace> trace_context_;
+  // Logs tracing events associated with the root request.
+  scoped_ptr<RequestTrace> root_trace_context_;
+
+  bool using_spdy_;
 
   DISALLOW_COPY_AND_ASSIGN(RequestContext);
 };

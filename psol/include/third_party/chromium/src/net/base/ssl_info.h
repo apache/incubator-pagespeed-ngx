@@ -1,15 +1,15 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_BASE_SSL_INFO_H_
 #define NET_BASE_SSL_INFO_H_
-#pragma once
 
 #include <vector>
 
 #include "base/memory/ref_counted.h"
-#include "net/base/net_api.h"
+#include "net/base/cert_status_flags.h"
+#include "net/base/net_export.h"
 #include "net/base/x509_cert_types.h"
 
 namespace net {
@@ -18,8 +18,16 @@ class X509Certificate;
 
 // SSL connection info.
 // This is really a struct.  All members are public.
-class NET_API SSLInfo {
+class NET_EXPORT SSLInfo {
  public:
+  // HandshakeType enumerates the possible resumption cases after an SSL
+  // handshake.
+  enum HandshakeType {
+    HANDSHAKE_UNKNOWN = 0,
+    HANDSHAKE_RESUME,  // we resumed a previous session.
+    HANDSHAKE_FULL,  // we negotiated a new session.
+  };
+
   SSLInfo();
   SSLInfo(const SSLInfo& info);
   ~SSLInfo();
@@ -38,7 +46,7 @@ class NET_API SSLInfo {
   // Bitmask of status info of |cert|, representing, for example, known errors
   // and extended validation (EV) status.
   // See cert_status_flags.h for values.
-  int cert_status;
+  CertStatus cert_status;
 
   // The security strength, in bits, of the SSL cipher suite.
   // 0 means the connection is not encrypted.
@@ -54,8 +62,18 @@ class NET_API SSLInfo {
   // standard CA root. (As opposed to a user-installed root.)
   bool is_issued_by_known_root;
 
-  // The hashes of the SubjectPublicKeyInfos from each certificate in the chain.
-  std::vector<SHA1Fingerprint> public_key_hashes;
+  // True if a client certificate was sent to the server.  Note that sending
+  // a Certificate message with no client certificate in it does not count.
+  bool client_cert_sent;
+
+  // True if a channel ID was sent to the server.
+  bool channel_id_sent;
+
+  HandshakeType handshake_type;
+
+  // The hashes, in several algorithms, of the SubjectPublicKeyInfos from
+  // each certificate in the chain.
+  HashValueVector public_key_hashes;
 };
 
 }  // namespace net

@@ -32,6 +32,8 @@ extern "C" {
 }
 
 #include <unistd.h>
+#include <vector>
+#include <set>
 
 #include "ngx_base_fetch.h"
 #include "ngx_message_handler.h"
@@ -42,13 +44,14 @@ extern "C" {
 #include "apr_time.h"
 
 #include "net/instaweb/automatic/public/proxy_fetch.h"
-#include "net/instaweb/automatic/public/resource_fetch.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/process_context.h"
+#include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/static_javascript_manager.h"
+#include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/public/version.h"
 #include "net/instaweb/util/public/google_message_handler.h"
@@ -56,6 +59,7 @@ extern "C" {
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "pthread_shared_mem.h"
 #include "net/instaweb/util/public/query_params.h"
+#include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/time_util.h"
@@ -672,6 +676,18 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   delete cfg_s->options;
   cfg_s->options = NULL;
 
+  // Validate FileCachePath
+  net_instaweb::GoogleMessageHandler handler;
+  const char* file_cache_path =
+      cfg_s->server_context->config()->file_cache_path().c_str();
+  if (file_cache_path[0] == '\0') {
+    return const_cast<char*>("FileCachePath must be set");
+  } else if (!cfg_m->driver_factory->file_system()->IsDir(
+      file_cache_path, &handler).is_true()) {
+    return const_cast<char*>(
+        "FileCachePath must be an nginx-writeable directory");
+  }
+
   return NGX_CONF_OK;
 }
 
@@ -1180,7 +1196,7 @@ CreateRequestContext::Response ps_create_request_context(
 
   if (is_resource_fetch && !cfg_s->server_context->IsPagespeedResource(url)) {
     if (url.PathSansLeaf() ==
-        net_instaweb::NgxRewriteDriverFactory::kStaticJavaScriptPrefix) {
+        net_instaweb::NgxRewriteDriverFactory::kStaticAssetPrefix) {
       return CreateRequestContext::kStaticContent;
     }
     if (url.PathSansQuery() == "/ngx_pagespeed_statistics"
@@ -1658,11 +1674,12 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
   // Strip out the common prefix url before sending to
   // StaticJavascriptManager.
   StringPiece file_name = request_uri_path.substr(
-      strlen(net_instaweb::NgxRewriteDriverFactory::kStaticJavaScriptPrefix));
+      strlen(net_instaweb::NgxRewriteDriverFactory::kStaticAssetPrefix));
   StringPiece file_contents;
   StringPiece cache_header;
-  bool found = cfg_s->server_context->static_javascript_manager()->GetJsSnippet(
-      file_name, &file_contents, &cache_header);
+  net_instaweb::ContentType content_type;
+  bool found = cfg_s->server_context->static_asset_manager()->GetAsset(
+      file_name, &file_contents, &content_type, &cache_header);
   if (!found) {
     return NGX_DECLINED;
   }
@@ -1672,10 +1689,16 @@ ngx_int_t ps_static_handler(ngx_http_request_t* r) {
 
   // Content length
   r->headers_out.content_length_n = file_contents.size();
-  r->headers_out.content_type.len = sizeof("text/javascript") - 1;
-  r->headers_out.content_type_len = r->headers_out.content_type.len;
-  r->headers_out.content_type.data =
-      reinterpret_cast<u_char*>(const_cast<char*>("text/javascript"));
+
+  // Content type
+  StringPiece content_type_sp(content_type.mime_type());
+  r->headers_out.content_type_len = content_type_sp.length();
+  r->headers_out.content_type.len = content_type_sp.length();
+  r->headers_out.content_type.data = reinterpret_cast<u_char*>(
+      string_piece_to_pool_string(r->pool, content_type_sp));
+  if (r->headers_out.content_type.data == NULL) {
+    return NGX_ERROR;
+  }
   r->headers_out.content_type_lowcase = r->headers_out.content_type.data;
 
   // Cache control
@@ -1943,7 +1966,16 @@ ps_beacon_handler(ngx_http_request_t* r) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   CHECK(cfg_s != NULL);
 
-  cfg_s->server_context->HandleBeacon(str_to_string_piece(r->unparsed_uri));
+  StringPiece user_agent;
+  if (r->headers_in.user_agent != NULL) {
+    user_agent = str_to_string_piece(r->headers_in.user_agent->value);
+  }
+
+  cfg_s->server_context->HandleBeacon(
+      str_to_string_piece(r->unparsed_uri),
+      user_agent,
+      net_instaweb::RequestContextPtr(new net_instaweb::RequestContext(
+          cfg_s->server_context->thread_system()->NewMutex())));
 
   return NGX_HTTP_NO_CONTENT;
 }

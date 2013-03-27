@@ -18,6 +18,7 @@
 #ifndef NET_INSTAWEB_APACHE_SERF_URL_ASYNC_FETCHER_H_
 #define NET_INSTAWEB_APACHE_SERF_URL_ASYNC_FETCHER_H_
 
+#include <set>
 #include <vector>
 
 #include "net/instaweb/http/public/url_pollable_async_fetcher.h"
@@ -141,6 +142,11 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   }
   void set_track_original_content_length(bool x);
 
+  void set_inflation_content_type_blacklist(
+      const std::set<const ContentType*>& bypass_set) {
+    inflation_content_type_blacklist_ = bypass_set;
+  }
+
   // Indicates that direct HTTPS fetching should be allowed, and how picky
   // to be about certificates.  The directive is a comma separated list of
   // these keywords:
@@ -242,6 +248,10 @@ class SerfUrlAsyncFetcher : public UrlPollableAsyncFetcher {
   bool track_original_content_length_;
   uint32 https_options_;  // Composed of HttpsOptions ORed together.
   MessageHandler* message_handler_;
+
+  // Set of content types that will not be inflated, when passing through
+  // inflating fetch.
+  std::set<const ContentType*> inflation_content_type_blacklist_;
 
   DISALLOW_COPY_AND_ASSIGN(SerfUrlAsyncFetcher);
 };

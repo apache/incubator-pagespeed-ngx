@@ -32,6 +32,16 @@ class RewriteDriver;
 class Statistics;
 class Variable;
 
+// The instantiated CriticalImagesFinder is held by ServerContext, meaning
+// there is only 1 per server. CriticalImagesInfo stores all of the request
+// specific data needed by CriticalImagesFinder, and is held by the
+// RewriteDriver.
+struct CriticalImagesInfo {
+  StringSet html_critical_images;
+  StringSet css_critical_images;
+};
+
+
 // Finds critical images i.e. images which are above the fold for a given url.
 // This information may be used by DelayImagesFilter.
 class CriticalImagesFinder {
@@ -45,21 +55,32 @@ class CriticalImagesFinder {
 
   static void InitStats(Statistics* statistics);
 
-  // Checks whether IsCriticalImage will return meaningful results about
-  // critical images. Users of IsCriticalImage should check this function and
-  // supply a default behavior if IsMeaningful returns false.
-  virtual bool IsMeaningful() const = 0;
+  // Checks whether IsHtmlCriticalImage will return meaningful results about
+  // critical images. Users of IsHtmlCriticalImage should check this function
+  // and supply a default behavior if IsMeaningful returns false.
+  virtual bool IsMeaningful(const RewriteDriver* driver) const = 0;
 
   // Checks whether the requested image is present in the critical set or not.
   // Users of this function should also check IsMeaningful() to see if the
   // implementation of this function returns meaningful results and provide a
   // default behavior if it does not.
-  virtual bool IsCriticalImage(const GoogleString& image_url,
-                               const RewriteDriver* driver) const;
+  virtual bool IsHtmlCriticalImage(const GoogleString& image_url,
+                                   RewriteDriver* driver);
 
-  // Gets critical images if present in the property cache and
-  // updates the critical_images set in RewriteDriver with the obtained set.
-  virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver);
+  virtual bool IsCssCriticalImage(const GoogleString& image_url,
+                                  RewriteDriver* driver);
+
+  // Get the critical image sets. Returns an empty set if there is no critical
+  // image information.
+  const StringSet& GetHtmlCriticalImages(RewriteDriver* driver);
+  const StringSet& GetCssCriticalImages(RewriteDriver* driver);
+
+  // Utility functions for manually setting the critical image sets. These
+  // should only be used by unit tests that need to setup a specific set of
+  // critical images. For normal users of CriticalImagesFinder, the critical
+  // images will be populated from entries in the property cache.
+  StringSet* mutable_html_critical_images(RewriteDriver* driver);
+  StringSet* mutable_css_critical_images(RewriteDriver* driver);
 
   // Compute the critical images for the given url.
   virtual void ComputeCriticalImages(StringPiece url,
@@ -88,17 +109,26 @@ class CriticalImagesFinder {
       StringSet* critical_images_set,
       StringSet* css_critical_images_set);
 
- private:
-  static const char kCriticalImagesPropertyName[];
-  static const char kCssCriticalImagesPropertyName[];
+ protected:
+  // Gets critical images if present in the property cache and updates the
+  // critical_images set in RewriteDriver with the obtained set.  If you
+  // override this method, driver->critical_images_info() must not return NULL
+  // after this function has been called.
+  virtual void UpdateCriticalImagesSetInDriver(RewriteDriver* driver);
 
   // Extracts and returns the critical images from the given property_value,
   // after checking if the property value is still valid using the provided TTL.
   // It also updates stats variables if track_stats is true.
-  StringSet* ExtractCriticalImagesSet(
+  void ExtractCriticalImagesSet(
       RewriteDriver* driver,
       const PropertyValue* property_value,
-      bool track_stats);
+      bool track_stats,
+      StringSet* critical_images);
+
+
+ private:
+  static const char kCriticalImagesPropertyName[];
+  static const char kCssCriticalImagesPropertyName[];
 
   Variable* critical_images_valid_count_;
   Variable* critical_images_expired_count_;

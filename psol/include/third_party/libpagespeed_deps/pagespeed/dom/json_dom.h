@@ -17,13 +17,15 @@
 
 #include "pagespeed/core/dom.h"
 
+namespace base {
 class DictionaryValue;
+}  // namespace base
 
 namespace pagespeed {
 namespace dom {
 
 // Create DomDocument from JSON. The created docuemnt owns the JSON.
-pagespeed::DomDocument* CreateDocument(const DictionaryValue* json);
+pagespeed::DomDocument* CreateDocument(const base::DictionaryValue* json);
 
 }  // namespace dom
 }  // namespace pagespeed

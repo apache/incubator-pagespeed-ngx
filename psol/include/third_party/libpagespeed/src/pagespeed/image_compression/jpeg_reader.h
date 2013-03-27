@@ -51,7 +51,7 @@ public:
 
   jpeg_decompress_struct *decompress_struct() const { return jpeg_decompress_; }
 
-  void PrepareForRead(const std::string& src);
+  void PrepareForRead(const void* image_data, size_t image_length);
 
 private:
   jpeg_decompress_struct *jpeg_decompress_;

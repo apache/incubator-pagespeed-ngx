@@ -1,14 +1,13 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_LOGGING_WIN_H_
 #define BASE_LOGGING_WIN_H_
-#pragma once
 
 #include <string>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
 #include "base/win/event_trace_provider.h"
 #include "base/logging.h"
@@ -19,7 +18,7 @@ struct StaticMemorySingletonTraits;
 namespace logging {
 
 // Event ID for the log messages we generate.
-extern const GUID kLogEventId;
+BASE_EXPORT extern const GUID kLogEventId;
 
 // Feature enable mask for LogEventProvider.
 enum LogEnableMask {
@@ -50,7 +49,7 @@ enum LogMessageTypes {
 
 // Trace provider class to drive log control and transport
 // with Event Tracing for Windows.
-class BASE_API LogEventProvider : public base::win::EtwTraceProvider {
+class BASE_EXPORT LogEventProvider : public base::win::EtwTraceProvider {
  public:
   static LogEventProvider* GetInstance();
 

@@ -161,6 +161,15 @@ class CssRewriteTestBase : public RewriteTestBase {
                                      const GoogleString& expected_css_output,
                                      int flags);
 
+  // Makes an HTML document with an external CSS link.
+  GoogleString MakeHtmlWithExternalCssLink(const StringPiece& css_url,
+                                           int flags);
+
+  // Makes a CSS body with an external image link, with nice indentation.
+  GoogleString MakeIndentedCssWithImage(StringPiece image_url);
+
+  // Makes a minified CSS body with an external image link.
+  GoogleString MakeMinifiedCssWithImage(StringPiece image_url);
 
   void ValidateRewrite(const StringPiece& id,
                        const GoogleString& css_input,

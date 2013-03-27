@@ -84,16 +84,22 @@ class AtomicInt32 {
     return base::subtle::Acquire_Load(&value_);
   }
 
-  // Add atomically amount to the value currently stored, return the new value.
-  // Has *no ordering semantics* with respect to operations on other memory
-  // locations.
-  int32 increment(int32 amount) {
-    return base::subtle::NoBarrier_AtomicIncrement(&value_, amount);
-  }
-
   // Store value.  Has release semantics (see above).
   void set_value(int32 value) {
     base::subtle::Release_Store(&value_, value);
+  }
+
+  // Atomically add an amount to the value currently stored, return the new
+  // value. Has *no ordering semantics* with respect to operations on other
+  // memory locations.
+  int32 NoBarrierIncrement(int32 amount) {
+    return base::subtle::NoBarrier_AtomicIncrement(&value_, amount);
+  }
+
+  // Atomically add an amount to the value stored, return the new value.
+  // Provides a full barrier --- both acquire and release.
+  int32 BarrierIncrement(int32 amount) {
+    return base::subtle::Barrier_AtomicIncrement(&value_, amount);
   }
 
   // Atomic compare and swap.  If current value == expected_value, atomically

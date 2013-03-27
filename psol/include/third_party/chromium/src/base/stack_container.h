@@ -1,15 +1,16 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_STACK_CONTAINER_H_
 #define BASE_STACK_CONTAINER_H_
-#pragma once
 
 #include <string>
 #include <vector>
 
 #include "base/basictypes.h"
+#include "build/build_config.h"
+#include "base/memory/aligned_memory.h"
 
 // This allocator can be used with STL containers to provide a stack buffer
 // from which to allocate memory and overflows onto the heap. This stack buffer
@@ -43,22 +44,18 @@ class StackAllocator : public std::allocator<T> {
     }
 
     // Casts the buffer in its right type.
-    T* stack_buffer() { return reinterpret_cast<T*>(stack_buffer_); }
+    T* stack_buffer() { return stack_buffer_.template data_as<T>(); }
     const T* stack_buffer() const {
-      return reinterpret_cast<const T*>(stack_buffer_);
+      return stack_buffer_.template data_as<T>();
     }
-
-    //
-    // IMPORTANT: Take care to ensure that stack_buffer_ is aligned
-    // since it is used to mimic an array of T.
-    // Be careful while declaring any unaligned types (like bool)
-    // before stack_buffer_.
-    //
 
     // The buffer itself. It is not of type T because we don't want the
     // constructors and destructors to be automatically called. Define a POD
     // buffer of the right size instead.
-    char stack_buffer_[sizeof(T[stack_capacity])];
+    base::AlignedMemory<sizeof(T[stack_capacity]), ALIGNOF(T)> stack_buffer_;
+#if defined(OS_ANDROID)
+    COMPILE_ASSERT(ALIGNOF(T) <= 16, crbug_115612);
+#endif
 
     // Set when the stack buffer is used for an allocation. We do not track
     // how much of the buffer is used, only that somebody is using it.

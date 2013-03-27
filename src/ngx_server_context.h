@@ -36,6 +36,9 @@ class NgxServerContext : public ServerContext {
   explicit NgxServerContext(NgxRewriteDriverFactory* factory);
   virtual ~NgxServerContext();
 
+  // We expect to use ProxyFetch with HTML.
+  virtual bool ProxiesHtml() const { return true; }
+
   // Call only when you need an NgxRewriteOptions.  If you don't need
   // nginx-specific behavior, call global_options() instead which doesn't
   // downcast.

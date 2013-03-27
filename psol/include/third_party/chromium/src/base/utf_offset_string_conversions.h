@@ -4,17 +4,13 @@
 
 #ifndef BASE_UTF_OFFSET_STRING_CONVERSIONS_H_
 #define BASE_UTF_OFFSET_STRING_CONVERSIONS_H_
-#pragma once
 
 #include <string>
 #include <vector>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/string16.h"
-
-namespace base {
-class StringPiece;
-}
+#include "base/string_piece.h"
 
 // Like the conversions in utf_string_conversions.h, but also takes one or more
 // offsets (|offset[s]_for_adjustment|) into the source strings, each offset
@@ -22,20 +18,27 @@ class StringPiece;
 // If this isn't possible because an offset points past the end of the source
 // strings or into the middle of a multibyte sequence, the offending offset will
 // be set to string16::npos. |offset[s]_for_adjustment| may be NULL.
-BASE_API bool UTF8ToUTF16AndAdjustOffset(const char* src,
-                                         size_t src_len,
-                                         string16* output,
-                                         size_t* offset_for_adjustment);
-BASE_API bool UTF8ToUTF16AndAdjustOffsets(
+BASE_EXPORT bool UTF8ToUTF16AndAdjustOffset(const char* src,
+                                            size_t src_len,
+                                            string16* output,
+                                            size_t* offset_for_adjustment);
+BASE_EXPORT bool UTF8ToUTF16AndAdjustOffsets(
     const char* src,
     size_t src_len,
     string16* output,
     std::vector<size_t>* offsets_for_adjustment);
 
-BASE_API string16 UTF8ToUTF16AndAdjustOffset(const base::StringPiece& utf8,
-                                             size_t* offset_for_adjustment);
-BASE_API string16 UTF8ToUTF16AndAdjustOffsets(
+BASE_EXPORT string16 UTF8ToUTF16AndAdjustOffset(const base::StringPiece& utf8,
+                                                size_t* offset_for_adjustment);
+BASE_EXPORT string16 UTF8ToUTF16AndAdjustOffsets(
     const base::StringPiece& utf8,
+    std::vector<size_t>* offsets_for_adjustment);
+
+BASE_EXPORT std::string UTF16ToUTF8AndAdjustOffset(
+    const base::StringPiece16& utf16,
+    size_t* offset_for_adjustment);
+BASE_EXPORT std::string UTF16ToUTF8AndAdjustOffsets(
+    const base::StringPiece16& utf16,
     std::vector<size_t>* offsets_for_adjustment);
 
 // Limiting function callable by std::for_each which will replace any value
@@ -59,9 +62,9 @@ struct LimitOffset {
 // (each Adjustment gives the |original_offset| of a substring and the lengths
 // of the substring before and after transforming).  When the OffsetAdjuster
 // goes out of scope, all the offsets in the provided vector will be updated.
-class BASE_API OffsetAdjuster {
+class BASE_EXPORT OffsetAdjuster {
  public:
-  struct BASE_API Adjustment {
+  struct BASE_EXPORT Adjustment {
     Adjustment(size_t original_offset,
                size_t original_length,
                size_t output_length);

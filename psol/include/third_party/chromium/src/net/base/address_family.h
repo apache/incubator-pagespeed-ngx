@@ -4,7 +4,6 @@
 
 #ifndef NET_BASE_ADDRESS_FAMILY_H_
 #define NET_BASE_ADDRESS_FAMILY_H_
-#pragma once
 
 namespace net {
 

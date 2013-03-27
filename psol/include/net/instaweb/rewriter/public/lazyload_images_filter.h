@@ -27,7 +27,7 @@ namespace net_instaweb {
 class HtmlElement;
 class RewriteDriver;
 class RewriteOptions;
-class StaticJavascriptManager;
+class StaticAssetManager;
 class Statistics;
 
 // Filter to lazyload images by replacing the src with a pagespeed_lazy_src
@@ -74,7 +74,6 @@ class Statistics;
 class LazyloadImagesFilter : public CommonFilter {
  public:
   static const char* kImageLazyloadCode;
-  static const char* kBlankImageSrc;
   static const char* kImageOnloadCode;
   static const char* kLoadAllImages;
   static const char* kOverrideAttributeFunctions;
@@ -92,7 +91,7 @@ class LazyloadImagesFilter : public CommonFilter {
   static bool ShouldApply(RewriteDriver* driver);
   static GoogleString GetLazyloadJsSnippet(
       const RewriteOptions* options,
-      StaticJavascriptManager* static_js_manager);
+      StaticAssetManager* static_asset_manager);
 
  private:
   virtual void StartDocumentImpl();
@@ -104,7 +103,9 @@ class LazyloadImagesFilter : public CommonFilter {
   // Clears all state associated with the filter.
   void Clear();
 
-  static GoogleString GetBlankImageSrc(const RewriteOptions* options);
+  static GoogleString GetBlankImageSrc(
+      const RewriteOptions* options,
+      const StaticAssetManager* static_asset_manager);
 
   // Inserts the lazyload JS code before the given element.
   void InsertLazyloadJsCode(HtmlElement* element);

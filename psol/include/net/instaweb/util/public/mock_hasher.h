@@ -32,6 +32,10 @@ class MockHasher : public Hasher {
       : Hasher(kint32max),
         hash_value_("\xd0") {  // base64-encodes to "0"
   }
+  explicit MockHasher(StringPiece hash_value)
+      : Hasher(hash_value.size()),
+        hash_value_(hash_value.data(), hash_value.size()) {
+  }
 
   virtual ~MockHasher();
 

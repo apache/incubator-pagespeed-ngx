@@ -32,6 +32,8 @@
 
 namespace net_instaweb {
 
+namespace ngx {
+
 namespace {
 
 // This implementation relies on readonly copies of old memory and shared R/W
@@ -231,8 +233,7 @@ void PthreadSharedMem::UnlockSegmentBases() {
   lock.Unlock();
 }
 
-GoogleString PthreadSharedMem::PrefixSegmentName(const GoogleString& name)
-{
+GoogleString PthreadSharedMem::PrefixSegmentName(const GoogleString& name) {
   GoogleString res;
   StrAppend(&res, "[", IntegerToString(instance_number_), "]", name);
   return res;
@@ -250,5 +251,7 @@ void PthreadSharedMem::Terminate() {
   }
   lock.Unlock();
 }
+
+}  // namespace ngx
 
 }  // namespace net_instaweb

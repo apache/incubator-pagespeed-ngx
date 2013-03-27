@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "net/instaweb/http/public/http_cache.h"
+#include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -38,16 +39,14 @@
 namespace net_instaweb {
 
 class AsyncFetch;
-class CachedResult;
 class GoogleUrl;
-class InputInfo;
 class MessageHandler;
 class NamedLock;
-class OutputPartitions;
-class ResourceContext;
+class RequestTrace;
 class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
+class Statistics;
 class Writer;
 
 // A RewriteContext is all the contextual information required to
@@ -92,6 +91,33 @@ class Writer;
 // RewriteDriver.
 class RewriteContext {
  public:
+  typedef std::vector<InputInfo*> InputInfoStarVector;
+  static const char kNumDeadlineAlarmInvocations[];
+  // Used to pass the result of the metadata cache lookups. Recipient must
+  // take ownership.
+  struct CacheLookupResult {
+    CacheLookupResult()
+        : cache_ok(false),
+          can_revalidate(false),
+          partitions(new OutputPartitions) {}
+
+    bool cache_ok;
+    bool can_revalidate;
+    InputInfoStarVector revalidate;
+    scoped_ptr<OutputPartitions> partitions;
+  };
+
+  // Used for LookupMetadataForOutputResource.
+  class CacheLookupResultCallback {
+   public:
+    CacheLookupResultCallback() {}
+    virtual ~CacheLookupResultCallback();
+    virtual void Done(const GoogleString& cache_key,
+                      CacheLookupResult* result) = 0;
+   private:
+    DISALLOW_COPY_AND_ASSIGN(CacheLookupResultCallback);
+  };
+
   // Takes ownership of resource_context, which must be NULL or
   // allocated with 'new'.
   RewriteContext(RewriteDriver* driver,   // exactly one of driver & parent
@@ -153,6 +179,25 @@ class RewriteContext {
              AsyncFetch* fetch,
              MessageHandler* message_handler);
 
+  // Attempts to lookup the metadata cache info that would be used for the
+  // output resource at url with the RewriteOptions set on driver.
+  //
+  // If there is a problem with the URL, returns false, and *error_out
+  // will contain an error message.
+  //
+  // If it can determine the metadata cache key successfully, returns true,
+  // and eventually callback will be invoked with the metadata cache key
+  // and the decoding results.
+  //
+  // Do not use the driver passed to this method for anything else.
+  //
+  // Note: this method is meant for debugging use only.
+  static bool LookupMetadataForOutputResource(
+      const GoogleString& url,
+      RewriteDriver* driver,
+      GoogleString* error_out,
+      CacheLookupResultCallback* callback);
+
   // Runs after all Rewrites have been completed, and all nested
   // RewriteContexts have completed and harvested.
   //
@@ -196,7 +241,16 @@ class RewriteContext {
   // If called with true, forces a rewrite and re-generates the output.
   void set_force_rewrite(bool x) { force_rewrite_ = x; }
 
-  const ResourceContext* resource_context() { return resource_context_.get(); }
+  const ResourceContext* resource_context() const {
+    return resource_context_.get();
+  }
+
+  bool is_metadata_cache_miss() const { return is_metadata_cache_miss_; }
+
+  bool rewrite_uncacheable() const { return rewrite_uncacheable_; }
+  void set_rewrite_uncacheable(bool rewrite_uncacheable) {
+    rewrite_uncacheable_ = rewrite_uncacheable;
+  }
 
   // Removes this RewriteContext from all slots.  This is done normally when
   // a RewriteContext is completed and we are ready to run the successors.
@@ -204,9 +258,27 @@ class RewriteContext {
   // unhealthy.
   void DetachSlots();
 
+  // Returns debug information about this RewriteContext.
+  GoogleString ToString(StringPiece prefix) const;
+
+  // Initializes statistics.
+  static void InitStats(Statistics* stats);
+
  protected:
-  typedef std::vector<InputInfo*> InputInfoStarVector;
   typedef std::vector<GoogleUrl*> GoogleUrlStarVector;
+
+  // Creates a new request trace associated with this context with a given
+  // |label|.
+  void AttachDependentRequestTrace(const StringPiece& label);
+
+  // Provides the dependent request trace associated with this context, if any.
+  // Note that this is distinct from the root user request trace, available
+  // in Driver().
+  RequestTrace* dependent_request_trace() { return dependent_request_trace_; }
+
+  // A convenience wrapper to log a trace annotation in both the request
+  // trace (if present) as well as the root user request trace (if present).
+  void TracePrintf(const char* fmt, ...);
 
   // The following methods are provided for the benefit of subclasses.
 
@@ -244,8 +316,12 @@ class RewriteContext {
   void StartNestedTasks();
 
   // Deconstructs a URL by name and creates an output resource that
-  // corresponds to it.
+  // corresponds to it. If force_hash_to_zero is present, we are
+  // processing a stale rewrite, and we should use "0" as the hash
+  // so that the client browser sends a request for the freshened
+  // rewritten resource.
   bool CreateOutputResourceForCachedOutput(const CachedResult* cached_result,
+                                           bool force_hash_to_zero,
                                            OutputResourcePtr* output_resource);
 
   // If this returns true, running the rewriter isn't required for
@@ -428,9 +504,30 @@ class RewriteContext {
   // Indicates whether we are serving a stale rewrite.
   bool stale_rewrite() const { return stale_rewrite_; }
 
+  // Returns an interval in milliseconds to wait when configuring the deadline
+  // alarm in FetchContext::SetupDeadlineAlarm(). Subclasses may configure the
+  // deadline based on rewrite type, e.g., IPRO vs. HTML-path.
+  virtual int64 GetRewriteDeadlineAlarmMs() const;
+
+  // Indicates user agent capabilities that must be stored in the cache key.
+  //
+  // Note that the context may be NULL as it may not be set before this. Since
+  // it isn't going to be modified in the method, ResourceContext is passed
+  // as a const pointer.
+  virtual GoogleString UserAgentCacheKey(
+      const ResourceContext* context) const {
+    return "";
+  }
+
+  // Encodes User Agent into the ResourceContext.
+  // A subclass ResourceContext should normally call
+  // RewriteFilter::EncodeUserAgentIntoResourceContext if it has access to
+  // a RewriteFilter.
+  virtual void EncodeUserAgentIntoResourceContext(ResourceContext* context) {}
+
  private:
-  struct CacheLookupResult;
   class OutputCacheCallback;
+  class LookupMetadataForOutputResourceCallback;
   friend class OutputCacheCallback;
   class HTTPCacheCallback;
   friend class HTTPCacheCallback;
@@ -569,6 +666,13 @@ class RewriteContext {
   // high-priority rewrite thread.
   void StartNestedTasksImpl();
 
+  // Sets up all the state needed for Fetch, but doesn't register this context
+  // or actually start the rewrite process.
+  bool PrepareFetch(
+      const OutputResourcePtr& output_resource,
+      AsyncFetch* fetch,
+      MessageHandler* message_handler);
+
   // Callback for metadata lookup on fetch path.
   void FetchCacheDone(CacheLookupResult* cache_result);
 
@@ -582,6 +686,10 @@ class RewriteContext {
   // kFallbackEmergency) or the system thinks that would avoid a latency
   // spike or overload (kFallbackDiscretional).
   bool CanFetchFallbackToOriginal(FallbackCondition circumstance) const;
+
+  // Whether stale rewrites should be done (only if within
+  // metadata_cache_staleness_threshold_ms).  Default is true.
+  virtual bool do_stale_rewrite() const { return true; }
 
   // To perform a rewrite, we need to have data for all of its input slots.
   ResourceSlotVector slots_;
@@ -708,6 +816,18 @@ class RewriteContext {
   // Indicates that the current rewrite involves at least one resource which
   // is stale.
   bool stale_rewrite_;
+
+  // Indicates whether we have a metadata miss (or an unsuccessful revalidation
+  // attempt) on the html path.
+  bool is_metadata_cache_miss_;
+
+  // If set to true, we'll try to rewrite un-cacheable resources.
+  // The flag is expected to be set to true only from IPRO context.
+  bool rewrite_uncacheable_;
+
+  // An optional request trace associated with this context. May be NULL.
+  // Always owned externally.
+  RequestTrace* dependent_request_trace_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };

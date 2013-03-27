@@ -1,21 +1,20 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_SYNCHRONIZATION_WAITABLE_EVENT_WATCHER_H_
 #define BASE_SYNCHRONIZATION_WAITABLE_EVENT_WATCHER_H_
-#pragma once
 
+#include "base/base_export.h"
 #include "build/build_config.h"
 
 #if defined(OS_WIN)
 #include "base/win/object_watcher.h"
 #else
+#include "base/callback.h"
 #include "base/message_loop.h"
 #include "base/synchronization/waitable_event.h"
 #endif
-
-#include "base/base_api.h"
 
 namespace base {
 
@@ -60,8 +59,8 @@ class WaitableEvent;
 // it with a Watcher. It will act as if the event was never signaled.
 // -----------------------------------------------------------------------------
 
-class BASE_API WaitableEventWatcher
-#if defined(OS_POSIX)
+class BASE_EXPORT WaitableEventWatcher
+#if !defined(OS_WIN)
     : public MessageLoop::DestructionObserver
 #endif
 {
@@ -70,10 +69,8 @@ class BASE_API WaitableEventWatcher
   WaitableEventWatcher();
   virtual ~WaitableEventWatcher();
 
-  class Delegate {
+  class BASE_EXPORT Delegate {
    public:
-    virtual ~Delegate() { }
-
     // -------------------------------------------------------------------------
     // This is called on the MessageLoop thread when WaitableEvent has been
     // signaled.
@@ -83,6 +80,9 @@ class BASE_API WaitableEventWatcher
     // the past.
     // -------------------------------------------------------------------------
     virtual void OnWaitableEventSignaled(WaitableEvent* waitable_event) = 0;
+
+   protected:
+    virtual ~Delegate() { }
   };
 
   // ---------------------------------------------------------------------------
@@ -145,12 +145,12 @@ class BASE_API WaitableEventWatcher
   // ---------------------------------------------------------------------------
   // Implementation of MessageLoop::DestructionObserver
   // ---------------------------------------------------------------------------
-  virtual void WillDestroyCurrentMessageLoop();
+  virtual void WillDestroyCurrentMessageLoop() OVERRIDE;
 
   MessageLoop* message_loop_;
   scoped_refptr<Flag> cancel_flag_;
   AsyncWaiter* waiter_;
-  AsyncCallbackTask* callback_task_;
+  base::Closure callback_;
   scoped_refptr<WaitableEvent::WaitableEventKernel> kernel_;
 #endif
 

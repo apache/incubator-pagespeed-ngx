@@ -4,7 +4,6 @@
 
 #ifndef BASE_WIN_SCOPED_HGLOBAL_H_
 #define BASE_WIN_SCOPED_HGLOBAL_H_
-#pragma once
 
 #include <windows.h>
 

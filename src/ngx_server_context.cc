@@ -18,9 +18,9 @@
 
 #include "ngx_server_context.h"
 
-#include "ngx_cache.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_rewrite_driver_factory.h"
+#include "net/instaweb/system/public/system_caches.h"
 
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
@@ -53,8 +53,7 @@ void NgxServerContext::ChildInit() {
   DCHECK(!initialized_);
   if (!initialized_) {
     initialized_ = true;
-    NgxCache* cache = ngx_factory_->GetCache(config());
-    set_lock_manager(cache->lock_manager());
+    set_lock_manager(ngx_factory_->caches()->GetLockManager(config()));
 
     if (split_statistics_.get() != NULL) {
       // Readjust the SHM stuff for the new process

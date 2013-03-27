@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "base/basictypes.h"
-#include "base/scoped_ptr.h"
+#include "base/memory/scoped_ptr.h"
 #include "pagespeed/l10n/user_facing_string.h"
 #include "pagespeed/proto/pagespeed_proto_formatter.pb.h"
 

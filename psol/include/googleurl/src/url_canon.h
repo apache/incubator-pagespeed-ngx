@@ -29,7 +29,7 @@
 #ifndef GOOGLEURL_SRC_URL_CANON_H__
 #define GOOGLEURL_SRC_URL_CANON_H__
 
-#include <memory.h>
+#include <string.h>
 #include <stdlib.h>
 
 #include "base/string16.h"
@@ -360,6 +360,17 @@ struct CanonHostInfo {
   // CanonicalizeIPAddress() only sets this field if |family| is IPV4 or IPV6.
   // CanonicalizeHostVerbose() always sets it.
   url_parse::Component out_host;
+
+  // |address| contains the parsed IP Address (if any) in its first
+  // AddressLength() bytes, in network order. If IsIPAddress() is false
+  // AddressLength() will return zero and the content of |address| is undefined.
+  unsigned char address[16];
+
+  // Convenience function to calculate the length of an IP address corresponding
+  // to the current IP version in |family|, if any. For use with |address|.
+  int AddressLength() const {
+    return family == IPV4 ? 4 : (family == IPV6 ? 16 : 0);
+  }
 };
 
 
@@ -538,6 +549,20 @@ GURL_API bool CanonicalizeFileURL(const char16* spec,
                                   CanonOutput* output,
                                   url_parse::Parsed* new_parsed);
 
+// Use for filesystem URLs.
+GURL_API bool CanonicalizeFileSystemURL(const char* spec,
+                                        int spec_len,
+                                        const url_parse::Parsed& parsed,
+                                        CharsetConverter* query_converter,
+                                        CanonOutput* output,
+                                        url_parse::Parsed* new_parsed);
+GURL_API bool CanonicalizeFileSystemURL(const char16* spec,
+                                        int spec_len,
+                                        const url_parse::Parsed& parsed,
+                                        CharsetConverter* query_converter,
+                                        CanonOutput* output,
+                                        url_parse::Parsed* new_parsed);
+
 // Use for path URLs such as javascript. This does not modify the path in any
 // way, for example, by escaping it.
 GURL_API bool CanonicalizePathURL(const char* spec,
@@ -571,7 +596,7 @@ GURL_API bool CanonicalizeMailtoURL(const char16* spec,
 
 // Internal structure used for storing separate strings for each component.
 // The basic canonicalization functions use this structure internally so that
-// component remplacement (different strings for different components) can be
+// component replacement (different strings for different components) can be
 // treated on the same code path as regular canonicalization (the same string
 // for each component).
 //
@@ -763,6 +788,21 @@ GURL_API bool ReplaceStandardURL(const char* base,
                                  CanonOutput* output,
                                  url_parse::Parsed* new_parsed);
 
+// Filesystem URLs can only have the path, query, or ref replaced.
+// All other components will be ignored.
+GURL_API bool ReplaceFileSystemURL(const char* base,
+                                   const url_parse::Parsed& base_parsed,
+                                   const Replacements<char>& replacements,
+                                   CharsetConverter* query_converter,
+                                   CanonOutput* output,
+                                   url_parse::Parsed* new_parsed);
+GURL_API bool ReplaceFileSystemURL(const char* base,
+                                   const url_parse::Parsed& base_parsed,
+                                   const Replacements<char16>& replacements,
+                                   CharsetConverter* query_converter,
+                                   CanonOutput* output,
+                                   url_parse::Parsed* new_parsed);
+
 // Replacing some parts of a file URL is not permitted. Everything except
 // the host, path, query, and ref will be ignored.
 GURL_API bool ReplaceFileURL(const char* base,
@@ -811,7 +851,7 @@ GURL_API bool ReplaceMailtoURL(const char* base,
 // relative, the relevant portion of the URL will be placed into
 // |*relative_component| (there may have been trimmed whitespace, for example).
 // This value is passed to ResolveRelativeURL. If the input is not relative,
-// this value is UNDEFINED (it may be changed by the functin).
+// this value is UNDEFINED (it may be changed by the function).
 //
 // Returns true on success (we successfully determined the URL is relative or
 // not). Failure means that the combination of URLs doesn't make any sense.

@@ -4,21 +4,21 @@
 
 #ifndef BASE_BASE64_H__
 #define BASE_BASE64_H__
-#pragma once
 
 #include <string>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
+#include "base/string_piece.h"
 
 namespace base {
 
 // Encodes the input string in base64.  Returns true if successful and false
 // otherwise.  The output string is only modified if successful.
-BASE_API bool Base64Encode(const std::string& input, std::string* output);
+BASE_EXPORT bool Base64Encode(const StringPiece& input, std::string* output);
 
 // Decodes the base64 input string.  Returns true if successful and false
 // otherwise.  The output string is only modified if successful.
-BASE_API bool Base64Decode(const std::string& input, std::string* output);
+BASE_EXPORT bool Base64Decode(const StringPiece& input, std::string* output);
 
 }  // namespace base
 

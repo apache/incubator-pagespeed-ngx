@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,15 +7,11 @@
 
 #ifndef BASE_FILE_UTIL_H_
 #define BASE_FILE_UTIL_H_
-#pragma once
 
 #include "build/build_config.h"
 
 #if defined(OS_WIN)
 #include <windows.h>
-#if defined(UNIT_TEST)
-#include <aclapi.h>
-#endif
 #elif defined(OS_POSIX)
 #include <sys/stat.h>
 #include <unistd.h>
@@ -23,11 +19,12 @@
 
 #include <stdio.h>
 
+#include <set>
 #include <stack>
 #include <string>
 #include <vector>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
 #include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
@@ -46,23 +43,25 @@ class Time;
 
 namespace file_util {
 
+extern bool g_bug108724_debug;
+
 //-----------------------------------------------------------------------------
 // Functions that operate purely on a path string w/o touching the filesystem:
 
 // Returns true if the given path ends with a path separator character.
-BASE_API bool EndsWithSeparator(const FilePath& path);
+BASE_EXPORT bool EndsWithSeparator(const FilePath& path);
 
 // Makes sure that |path| ends with a separator IFF path is a directory that
 // exists. Returns true if |path| is an existing directory, false otherwise.
-BASE_API bool EnsureEndsWithSeparator(FilePath* path);
+BASE_EXPORT bool EnsureEndsWithSeparator(FilePath* path);
 
 // Convert provided relative path into an absolute path.  Returns false on
 // error. On POSIX, this function fails if the path does not exist.
-BASE_API bool AbsolutePath(FilePath* path);
+BASE_EXPORT bool AbsolutePath(FilePath* path);
 
 // Returns true if |parent| contains |child|. Both paths are converted to
 // absolute paths before doing the comparison.
-BASE_API bool ContainsPath(const FilePath& parent, const FilePath& child);
+BASE_EXPORT bool ContainsPath(const FilePath& parent, const FilePath& child);
 
 //-----------------------------------------------------------------------------
 // Functions that involve filesystem access or modification:
@@ -75,15 +74,15 @@ BASE_API bool ContainsPath(const FilePath& parent, const FilePath& child);
 // timestmap of file creation time. If you need to avoid such
 // mis-detection perfectly, you should wait one second before
 // obtaining |file_time|.
-BASE_API int CountFilesCreatedAfter(const FilePath& path,
-                                    const base::Time& file_time);
+BASE_EXPORT int CountFilesCreatedAfter(const FilePath& path,
+                                       const base::Time& file_time);
 
 // Returns the total number of bytes used by all the files under |root_path|.
 // If the path does not exist the function returns 0.
 //
 // This function is implemented using the FileEnumerator class so it is not
 // particularly speedy in any platform.
-BASE_API int64 ComputeDirectorySize(const FilePath& root_path);
+BASE_EXPORT int64 ComputeDirectorySize(const FilePath& root_path);
 
 // Returns the total number of bytes used by all files matching the provided
 // |pattern|, on this |directory| (without recursion). If the path does not
@@ -91,8 +90,8 @@ BASE_API int64 ComputeDirectorySize(const FilePath& root_path);
 //
 // This function is implemented using the FileEnumerator class so it is not
 // particularly speedy in any platform.
-BASE_API int64 ComputeFilesSize(const FilePath& directory,
-                                const FilePath::StringType& pattern);
+BASE_EXPORT int64 ComputeFilesSize(const FilePath& directory,
+                                   const FilePath::StringType& pattern);
 
 // Deletes the given path, whether it's a file or a directory.
 // If it's a directory, it's perfectly happy to delete all of the
@@ -100,9 +99,12 @@ BASE_API int64 ComputeFilesSize(const FilePath& directory,
 // subdirectories and their contents as well.
 // Returns true if successful, false otherwise.
 //
+// In posix environment and if |path| is a symbolic link, this deletes only
+// the symlink. (even if the symlink points to a non-existent file)
+//
 // WARNING: USING THIS WITH recursive==true IS EQUIVALENT
 //          TO "rm -rf", SO USE WITH CAUTION.
-BASE_API bool Delete(const FilePath& path, bool recursive);
+BASE_EXPORT bool Delete(const FilePath& path, bool recursive);
 
 #if defined(OS_WIN)
 // Schedules to delete the given path, whether it's a file or a directory, until
@@ -110,24 +112,25 @@ BASE_API bool Delete(const FilePath& path, bool recursive);
 // Note:
 // 1) The file/directory to be deleted should exist in a temp folder.
 // 2) The directory to be deleted must be empty.
-BASE_API bool DeleteAfterReboot(const FilePath& path);
+BASE_EXPORT bool DeleteAfterReboot(const FilePath& path);
 #endif
 
 // Moves the given path, whether it's a file or a directory.
 // If a simple rename is not possible, such as in the case where the paths are
 // on different volumes, this will attempt to copy and delete. Returns
 // true for success.
-BASE_API bool Move(const FilePath& from_path, const FilePath& to_path);
+BASE_EXPORT bool Move(const FilePath& from_path, const FilePath& to_path);
 
 // Renames file |from_path| to |to_path|. Both paths must be on the same
 // volume, or the function will fail. Destination file will be created
 // if it doesn't exist. Prefer this function over Move when dealing with
 // temporary files. On Windows it preserves attributes of the target file.
 // Returns true on success.
-BASE_API bool ReplaceFile(const FilePath& from_path, const FilePath& to_path);
+BASE_EXPORT bool ReplaceFile(const FilePath& from_path,
+                             const FilePath& to_path);
 
 // Copies a single file. Use CopyDirectory to copy directories.
-BASE_API bool CopyFile(const FilePath& from_path, const FilePath& to_path);
+BASE_EXPORT bool CopyFile(const FilePath& from_path, const FilePath& to_path);
 
 // Copies the given path, and optionally all subdirectories and their contents
 // as well.
@@ -136,181 +139,165 @@ BASE_API bool CopyFile(const FilePath& from_path, const FilePath& to_path);
 // Don't use wildcards on the names, it may stop working without notice.
 //
 // If you only need to copy a file use CopyFile, it's faster.
-BASE_API bool CopyDirectory(const FilePath& from_path, const FilePath& to_path,
-                            bool recursive);
+BASE_EXPORT bool CopyDirectory(const FilePath& from_path,
+                               const FilePath& to_path,
+                               bool recursive);
 
 // Returns true if the given path exists on the local filesystem,
 // false otherwise.
-BASE_API bool PathExists(const FilePath& path);
+BASE_EXPORT bool PathExists(const FilePath& path);
 
 // Returns true if the given path is writable by the user, false otherwise.
-BASE_API bool PathIsWritable(const FilePath& path);
+BASE_EXPORT bool PathIsWritable(const FilePath& path);
 
 // Returns true if the given path exists and is a directory, false otherwise.
-BASE_API bool DirectoryExists(const FilePath& path);
+BASE_EXPORT bool DirectoryExists(const FilePath& path);
 
 #if defined(OS_WIN)
 // Gets the creation time of the given file (expressed in the local timezone),
 // and returns it via the creation_time parameter.  Returns true if successful,
 // false otherwise.
-BASE_API bool GetFileCreationLocalTime(const std::wstring& filename,
-                                       LPSYSTEMTIME creation_time);
+BASE_EXPORT bool GetFileCreationLocalTime(const std::wstring& filename,
+                                          LPSYSTEMTIME creation_time);
 
 // Same as above, but takes a previously-opened file handle instead of a name.
-BASE_API bool GetFileCreationLocalTimeFromHandle(HANDLE file_handle,
-                                                 LPSYSTEMTIME creation_time);
+BASE_EXPORT bool GetFileCreationLocalTimeFromHandle(HANDLE file_handle,
+                                                    LPSYSTEMTIME creation_time);
 #endif  // defined(OS_WIN)
 
 // Returns true if the contents of the two files given are equal, false
 // otherwise.  If either file can't be read, returns false.
-BASE_API bool ContentsEqual(const FilePath& filename1,
-                            const FilePath& filename2);
+BASE_EXPORT bool ContentsEqual(const FilePath& filename1,
+                               const FilePath& filename2);
 
 // Returns true if the contents of the two text files given are equal, false
 // otherwise.  This routine treats "\r\n" and "\n" as equivalent.
-BASE_API bool TextContentsEqual(const FilePath& filename1,
-                                const FilePath& filename2);
+BASE_EXPORT bool TextContentsEqual(const FilePath& filename1,
+                                   const FilePath& filename2);
 
 // Read the file at |path| into |contents|, returning true on success.
 // |contents| may be NULL, in which case this function is useful for its
 // side effect of priming the disk cache.
 // Useful for unit tests.
-BASE_API bool ReadFileToString(const FilePath& path, std::string* contents);
+BASE_EXPORT bool ReadFileToString(const FilePath& path, std::string* contents);
 
 #if defined(OS_POSIX)
 // Read exactly |bytes| bytes from file descriptor |fd|, storing the result
 // in |buffer|. This function is protected against EINTR and partial reads.
 // Returns true iff |bytes| bytes have been successfuly read from |fd|.
-BASE_API bool ReadFromFD(int fd, char* buffer, size_t bytes);
+BASE_EXPORT bool ReadFromFD(int fd, char* buffer, size_t bytes);
 
 // Creates a symbolic link at |symlink| pointing to |target|.  Returns
 // false on failure.
-BASE_API bool CreateSymbolicLink(const FilePath& target,
-                                 const FilePath& symlink);
+BASE_EXPORT bool CreateSymbolicLink(const FilePath& target,
+                                    const FilePath& symlink);
 
 // Reads the given |symlink| and returns where it points to in |target|.
 // Returns false upon failure.
-BASE_API bool ReadSymbolicLink(const FilePath& symlink, FilePath* target);
+BASE_EXPORT bool ReadSymbolicLink(const FilePath& symlink, FilePath* target);
+
+// Bits ans masks of the file permission.
+enum FilePermissionBits {
+  FILE_PERMISSION_MASK              = S_IRWXU | S_IRWXG | S_IRWXO,
+  FILE_PERMISSION_USER_MASK         = S_IRWXU,
+  FILE_PERMISSION_GROUP_MASK        = S_IRWXG,
+  FILE_PERMISSION_OTHERS_MASK       = S_IRWXO,
+
+  FILE_PERMISSION_READ_BY_USER      = S_IRUSR,
+  FILE_PERMISSION_WRITE_BY_USER     = S_IWUSR,
+  FILE_PERMISSION_EXECUTE_BY_USER   = S_IXUSR,
+  FILE_PERMISSION_READ_BY_GROUP     = S_IRGRP,
+  FILE_PERMISSION_WRITE_BY_GROUP    = S_IWGRP,
+  FILE_PERMISSION_EXECUTE_BY_GROUP  = S_IXGRP,
+  FILE_PERMISSION_READ_BY_OTHERS    = S_IROTH,
+  FILE_PERMISSION_WRITE_BY_OTHERS   = S_IWOTH,
+  FILE_PERMISSION_EXECUTE_BY_OTHERS = S_IXOTH,
+};
+
+// Reads the permission of the given |path|, storing the file permission
+// bits in |mode|. If |path| is symbolic link, |mode| is the permission of
+// a file which the symlink points to.
+BASE_EXPORT bool GetPosixFilePermissions(const FilePath& path,
+                                         int* mode);
+// Sets the permission of the given |path|. If |path| is symbolic link, sets
+// the permission of a file which the symlink points to.
+BASE_EXPORT bool SetPosixFilePermissions(const FilePath& path,
+                                         int mode);
 #endif  // defined(OS_POSIX)
 
 #if defined(OS_WIN)
-// Resolve Windows shortcut (.LNK file)
-// This methods tries to resolve a shortcut .LNK file. If the |path| is valid
-// returns true and puts the target into the |path|, otherwise returns
-// false leaving the path as it is.
-BASE_API bool ResolveShortcut(FilePath* path);
-
-// Create a Windows shortcut (.LNK file)
-// This method creates a shortcut link using the information given. Ensure
-// you have initialized COM before calling into this function. 'source'
-// and 'destination' parameters are required, everything else can be NULL.
-// 'source' is the existing file, 'destination' is the new link file to be
-// created; for best results pass the filename with the .lnk extension.
-// The 'icon' can specify a dll or exe in which case the icon index is the
-// resource id. 'app_id' is the app model id for the shortcut on Win7.
-// Note that if the shortcut exists it will overwrite it.
-BASE_API bool CreateShortcutLink(const wchar_t *source,
-                                 const wchar_t *destination,
-                                 const wchar_t *working_dir,
-                                 const wchar_t *arguments,
-                                 const wchar_t *description,
-                                 const wchar_t *icon,
-                                 int icon_index,
-                                 const wchar_t* app_id);
-
-// Update a Windows shortcut (.LNK file). This method assumes the shortcut
-// link already exists (otherwise false is returned). Ensure you have
-// initialized COM before calling into this function. Only 'destination'
-// parameter is required, everything else can be NULL (but if everything else
-// is NULL no changes are made to the shortcut). 'destination' is the link
-// file to be updated. 'app_id' is the app model id for the shortcut on Win7.
-// For best results pass the filename with the .lnk extension.
-BASE_API bool UpdateShortcutLink(const wchar_t *source,
-                                 const wchar_t *destination,
-                                 const wchar_t *working_dir,
-                                 const wchar_t *arguments,
-                                 const wchar_t *description,
-                                 const wchar_t *icon,
-                                 int icon_index,
-                                 const wchar_t* app_id);
-
-// Pins a shortcut to the Windows 7 taskbar. The shortcut file must already
-// exist and be a shortcut that points to an executable.
-BASE_API bool TaskbarPinShortcutLink(const wchar_t* shortcut);
-
-// Unpins a shortcut from the Windows 7 taskbar. The shortcut must exist and
-// already be pinned to the taskbar.
-BASE_API bool TaskbarUnpinShortcutLink(const wchar_t* shortcut);
-
 // Copy from_path to to_path recursively and then delete from_path recursively.
 // Returns true if all operations succeed.
 // This function simulates Move(), but unlike Move() it works across volumes.
 // This fuction is not transactional.
-BASE_API bool CopyAndDeleteDirectory(const FilePath& from_path,
-                                     const FilePath& to_path);
+BASE_EXPORT bool CopyAndDeleteDirectory(const FilePath& from_path,
+                                        const FilePath& to_path);
 #endif  // defined(OS_WIN)
 
 // Return true if the given directory is empty
-BASE_API bool IsDirectoryEmpty(const FilePath& dir_path);
+BASE_EXPORT bool IsDirectoryEmpty(const FilePath& dir_path);
 
 // Get the temporary directory provided by the system.
 // WARNING: DON'T USE THIS. If you want to create a temporary file, use one of
 // the functions below.
-BASE_API bool GetTempDir(FilePath* path);
+BASE_EXPORT bool GetTempDir(FilePath* path);
 // Get a temporary directory for shared memory files.
 // Only useful on POSIX; redirects to GetTempDir() on Windows.
-BASE_API bool GetShmemTempDir(FilePath* path);
+BASE_EXPORT bool GetShmemTempDir(FilePath* path, bool executable);
 
 // Get the home directory.  This is more complicated than just getenv("HOME")
 // as it knows to fall back on getpwent() etc.
-BASE_API FilePath GetHomeDir();
+BASE_EXPORT FilePath GetHomeDir();
 
 // Creates a temporary file. The full path is placed in |path|, and the
 // function returns true if was successful in creating the file. The file will
 // be empty and all handles closed after this function returns.
-BASE_API bool CreateTemporaryFile(FilePath* path);
+BASE_EXPORT bool CreateTemporaryFile(FilePath* path);
 
 // Same as CreateTemporaryFile but the file is created in |dir|.
-BASE_API bool CreateTemporaryFileInDir(const FilePath& dir,
-                                       FilePath* temp_file);
+BASE_EXPORT bool CreateTemporaryFileInDir(const FilePath& dir,
+                                          FilePath* temp_file);
 
 // Create and open a temporary file.  File is opened for read/write.
 // The full path is placed in |path|.
 // Returns a handle to the opened file or NULL if an error occured.
-BASE_API FILE* CreateAndOpenTemporaryFile(FilePath* path);
+BASE_EXPORT FILE* CreateAndOpenTemporaryFile(FilePath* path);
 // Like above but for shmem files.  Only useful for POSIX.
-BASE_API FILE* CreateAndOpenTemporaryShmemFile(FilePath* path);
+// The executable flag says the file needs to support using
+// mprotect with PROT_EXEC after mapping.
+BASE_EXPORT FILE* CreateAndOpenTemporaryShmemFile(FilePath* path,
+                                                  bool executable);
 // Similar to CreateAndOpenTemporaryFile, but the file is created in |dir|.
-BASE_API FILE* CreateAndOpenTemporaryFileInDir(const FilePath& dir,
-                                               FilePath* path);
+BASE_EXPORT FILE* CreateAndOpenTemporaryFileInDir(const FilePath& dir,
+                                                  FilePath* path);
 
 // Create a new directory. If prefix is provided, the new directory name is in
 // the format of prefixyyyy.
 // NOTE: prefix is ignored in the POSIX implementation.
 // If success, return true and output the full path of the directory created.
-BASE_API bool CreateNewTempDirectory(const FilePath::StringType& prefix,
-                                     FilePath* new_temp_path);
+BASE_EXPORT bool CreateNewTempDirectory(const FilePath::StringType& prefix,
+                                        FilePath* new_temp_path);
 
 // Create a directory within another directory.
 // Extra characters will be appended to |prefix| to ensure that the
 // new directory does not have the same name as an existing directory.
-BASE_API bool CreateTemporaryDirInDir(const FilePath& base_dir,
-                                      const FilePath::StringType& prefix,
-                                      FilePath* new_dir);
+BASE_EXPORT bool CreateTemporaryDirInDir(const FilePath& base_dir,
+                                         const FilePath::StringType& prefix,
+                                         FilePath* new_dir);
 
 // Creates a directory, as well as creating any parent directories, if they
 // don't exist. Returns 'true' on successful creation, or if the directory
 // already exists.  The directory is only readable by the current user.
-BASE_API bool CreateDirectory(const FilePath& full_path);
+BASE_EXPORT bool CreateDirectory(const FilePath& full_path);
 
 // Returns the file size. Returns true on success.
-BASE_API bool GetFileSize(const FilePath& file_path, int64* file_size);
+BASE_EXPORT bool GetFileSize(const FilePath& file_path, int64* file_size);
 
 // Returns true if the given path's base name is ".".
-BASE_API bool IsDot(const FilePath& path);
+BASE_EXPORT bool IsDot(const FilePath& path);
 
 // Returns true if the given path's base name is "..".
-BASE_API bool IsDotDot(const FilePath& path);
+BASE_EXPORT bool IsDotDot(const FilePath& path);
 
 // Sets |real_path| to |path| with symbolic links and junctions expanded.
 // On windows, make sure the path starts with a lettered drive.
@@ -318,65 +305,112 @@ BASE_API bool IsDotDot(const FilePath& path);
 // a directory or to a nonexistent path.  On windows, this function will
 // fail if |path| is a junction or symlink that points to an empty file,
 // or if |real_path| would be longer than MAX_PATH characters.
-BASE_API bool NormalizeFilePath(const FilePath& path, FilePath* real_path);
+BASE_EXPORT bool NormalizeFilePath(const FilePath& path, FilePath* real_path);
 
 #if defined(OS_WIN)
-// Given an existing file in |path|, it returns in |real_path| the path
-// in the native NT format, of the form "\Device\HarddiskVolumeXX\..".
-// Returns false it it fails. Empty files cannot be resolved with this
-// function.
-BASE_API bool NormalizeToNativeFilePath(const FilePath& path,
-                                        FilePath* nt_path);
+
+// Given a path in NT native form ("\Device\HarddiskVolumeXX\..."),
+// return in |drive_letter_path| the equivalent path that starts with
+// a drive letter ("C:\...").  Return false if no such path exists.
+BASE_EXPORT bool DevicePathToDriveLetterPath(const FilePath& device_path,
+                                             FilePath* drive_letter_path);
+
+// Given an existing file in |path|, set |real_path| to the path
+// in native NT format, of the form "\Device\HarddiskVolumeXX\..".
+// Returns false if the path can not be found. Empty files cannot
+// be resolved with this function.
+BASE_EXPORT bool NormalizeToNativeFilePath(const FilePath& path,
+                                           FilePath* nt_path);
 #endif
 
 // This function will return if the given file is a symlink or not.
-BASE_API bool IsLink(const FilePath& file_path);
+BASE_EXPORT bool IsLink(const FilePath& file_path);
 
 // Returns information about the given file path.
-BASE_API bool GetFileInfo(const FilePath& file_path,
-                          base::PlatformFileInfo* info);
+BASE_EXPORT bool GetFileInfo(const FilePath& file_path,
+                             base::PlatformFileInfo* info);
 
 // Sets the time of the last access and the time of the last modification.
-BASE_API bool TouchFile(const FilePath& path,
-                        const base::Time& last_accessed,
-                        const base::Time& last_modified);
+BASE_EXPORT bool TouchFile(const FilePath& path,
+                           const base::Time& last_accessed,
+                           const base::Time& last_modified);
 
 // Set the time of the last modification. Useful for unit tests.
-BASE_API bool SetLastModifiedTime(const FilePath& path,
-                                  const base::Time& last_modified);
+BASE_EXPORT bool SetLastModifiedTime(const FilePath& path,
+                                     const base::Time& last_modified);
 
 #if defined(OS_POSIX)
 // Store inode number of |path| in |inode|. Return true on success.
-BASE_API bool GetInode(const FilePath& path, ino_t* inode);
+BASE_EXPORT bool GetInode(const FilePath& path, ino_t* inode);
 #endif
 
 // Wrapper for fopen-like calls. Returns non-NULL FILE* on success.
-BASE_API FILE* OpenFile(const FilePath& filename, const char* mode);
+BASE_EXPORT FILE* OpenFile(const FilePath& filename, const char* mode);
 
 // Closes file opened by OpenFile. Returns true on success.
-BASE_API bool CloseFile(FILE* file);
+BASE_EXPORT bool CloseFile(FILE* file);
 
 // Truncates an open file to end at the location of the current file pointer.
 // This is a cross-platform analog to Windows' SetEndOfFile() function.
-BASE_API bool TruncateFile(FILE* file);
+BASE_EXPORT bool TruncateFile(FILE* file);
 
 // Reads the given number of bytes from the file into the buffer.  Returns
 // the number of read bytes, or -1 on error.
-BASE_API int ReadFile(const FilePath& filename, char* data, int size);
+BASE_EXPORT int ReadFile(const FilePath& filename, char* data, int size);
 
 // Writes the given buffer into the file, overwriting any data that was
 // previously there.  Returns the number of bytes written, or -1 on error.
-BASE_API int WriteFile(const FilePath& filename, const char* data, int size);
+BASE_EXPORT int WriteFile(const FilePath& filename, const char* data, int size);
 #if defined(OS_POSIX)
 // Append the data to |fd|. Does not close |fd| when done.
-BASE_API int WriteFileDescriptor(const int fd, const char* data, int size);
+BASE_EXPORT int WriteFileDescriptor(const int fd, const char* data, int size);
 #endif
+// Append the given buffer into the file. Returns the number of bytes written,
+// or -1 on error.
+BASE_EXPORT int AppendToFile(const FilePath& filename,
+                             const char* data, int size);
 
 // Gets the current working directory for the process.
-BASE_API bool GetCurrentDirectory(FilePath* path);
+BASE_EXPORT bool GetCurrentDirectory(FilePath* path);
 
 // Sets the current working directory for the process.
-BASE_API bool SetCurrentDirectory(const FilePath& path);
+BASE_EXPORT bool SetCurrentDirectory(const FilePath& path);
+
+// Attempts to find a number that can be appended to the |path| to make it
+// unique. If |path| does not exist, 0 is returned.  If it fails to find such
+// a number, -1 is returned. If |suffix| is not empty, also checks the
+// existence of it with the given suffix.
+BASE_EXPORT int GetUniquePathNumber(const FilePath& path,
+                                    const FilePath::StringType& suffix);
+
+#if defined(OS_POSIX)
+// Test that |path| can only be changed by a given user and members of
+// a given set of groups.
+// Specifically, test that all parts of |path| under (and including) |base|:
+// * Exist.
+// * Are owned by a specific user.
+// * Are not writable by all users.
+// * Are owned by a memeber of a given set of groups, or are not writable by
+//   their group.
+// * Are not symbolic links.
+// This is useful for checking that a config file is administrator-controlled.
+// |base| must contain |path|.
+BASE_EXPORT bool VerifyPathControlledByUser(const FilePath& base,
+                                            const FilePath& path,
+                                            uid_t owner_uid,
+                                            const std::set<gid_t>& group_gids);
+#endif  // defined(OS_POSIX)
+
+#if defined(OS_MACOSX) && !defined(OS_IOS)
+// Is |path| writable only by a user with administrator privileges?
+// This function uses Mac OS conventions.  The super user is assumed to have
+// uid 0, and the administrator group is assumed to be named "admin".
+// Testing that |path|, and every parent directory including the root of
+// the filesystem, are owned by the superuser, controlled by the group
+// "admin", are not writable by all users, and contain no symbolic links.
+// Will return false if |path| does not exist.
+BASE_EXPORT bool VerifyPathControlledByAdmin(const FilePath& path);
+#endif  // defined(OS_MACOSX) && !defined(OS_IOS)
 
 // A class to handle auto-closing of FILE*'s.
 class ScopedFILEClose {
@@ -397,7 +431,7 @@ class ScopedFDClose {
   inline void operator()(int* x) const {
     if (x && *x >= 0) {
       if (HANDLE_EINTR(close(*x)) < 0)
-        PLOG(ERROR) << "close";
+        DPLOG(ERROR) << "close";
     }
   }
 };
@@ -410,7 +444,7 @@ typedef scoped_ptr_malloc<int, ScopedFDClose> ScopedFD;
 //
 // DO NOT USE FROM THE MAIN THREAD of your application unless it is a test
 // program where latency does not matter. This class is blocking.
-class BASE_API FileEnumerator {
+class BASE_EXPORT FileEnumerator {
  public:
 #if defined(OS_WIN)
   typedef WIN32_FIND_DATA FindInfo;
@@ -421,7 +455,7 @@ class BASE_API FileEnumerator {
   } FindInfo;
 #endif
 
-  enum FILE_TYPE {
+  enum FileType {
     FILES                 = 1 << 0,
     DIRECTORIES           = 1 << 1,
     INCLUDE_DOT_DOT       = 1 << 2,
@@ -438,8 +472,8 @@ class BASE_API FileEnumerator {
   // files in one directory will be returned before any files in a
   // subdirectory.
   //
-  // |file_type| specifies whether the enumerator should match files,
-  // directories, or both.
+  // |file_type|, a bit mask of FileType, specifies whether the enumerator
+  // should match files, directories, or both.
   //
   // |pattern| is an optional pattern for which files to match. This
   // works like shell globbing. For example, "*.txt" or "Foo???.doc".
@@ -452,10 +486,10 @@ class BASE_API FileEnumerator {
   // TODO(erikkay): Fix the pattern matching to work at all levels.
   FileEnumerator(const FilePath& root_path,
                  bool recursive,
-                 FileEnumerator::FILE_TYPE file_type);
+                 int file_type);
   FileEnumerator(const FilePath& root_path,
                  bool recursive,
-                 FileEnumerator::FILE_TYPE file_type,
+                 int file_type,
                  const FilePath::StringType& pattern);
   ~FileEnumerator();
 
@@ -469,6 +503,8 @@ class BASE_API FileEnumerator {
   static bool IsDirectory(const FindInfo& info);
 
   static FilePath GetFilename(const FindInfo& find_info);
+  static int64 GetFilesize(const FindInfo& find_info);
+  static base::Time GetLastModifiedTime(const FindInfo& find_info);
 
  private:
   // Returns true if the given path should be skipped in enumeration.
@@ -499,7 +535,7 @@ class BASE_API FileEnumerator {
 
   FilePath root_path_;
   bool recursive_;
-  FILE_TYPE file_type_;
+  int file_type_;
   FilePath::StringType pattern_;  // Empty when we want to find everything.
 
   // A stack that keeps track of which subdirectories we still need to
@@ -509,7 +545,7 @@ class BASE_API FileEnumerator {
   DISALLOW_COPY_AND_ASSIGN(FileEnumerator);
 };
 
-class BASE_API MemoryMappedFile {
+class BASE_EXPORT MemoryMappedFile {
  public:
   // The default constructor sets all members to invalid/null values.
   MemoryMappedFile();
@@ -562,78 +598,10 @@ class BASE_API MemoryMappedFile {
   DISALLOW_COPY_AND_ASSIGN(MemoryMappedFile);
 };
 
-// Renames a file using the SHFileOperation API to ensure that the target file
-// gets the correct default security descriptor in the new path.
-BASE_API bool RenameFileAndResetSecurityDescriptor(
-    const FilePath& source_file_path,
-    const FilePath& target_file_path);
-
 // Returns whether the file has been modified since a particular date.
-BASE_API bool HasFileBeenModifiedSince(
+BASE_EXPORT bool HasFileBeenModifiedSince(
     const FileEnumerator::FindInfo& find_info,
     const base::Time& cutoff_time);
-
-#ifdef UNIT_TEST
-
-inline bool MakeFileUnreadable(const FilePath& path) {
-#if defined(OS_POSIX)
-  struct stat stat_buf;
-  if (stat(path.value().c_str(), &stat_buf) != 0)
-    return false;
-  stat_buf.st_mode &= ~(S_IRUSR | S_IRGRP | S_IROTH);
-
-  return chmod(path.value().c_str(), stat_buf.st_mode) == 0;
-
-#elif defined(OS_WIN)
-  PACL old_dacl;
-  PSECURITY_DESCRIPTOR security_descriptor;
-  if (GetNamedSecurityInfo(const_cast<wchar_t*>(path.value().c_str()),
-                           SE_FILE_OBJECT,
-                           DACL_SECURITY_INFORMATION, NULL, NULL, &old_dacl,
-                           NULL, &security_descriptor) != ERROR_SUCCESS)
-    return false;
-
-  // Deny Read access for the current user.
-  EXPLICIT_ACCESS change;
-  change.grfAccessPermissions = GENERIC_READ;
-  change.grfAccessMode = DENY_ACCESS;
-  change.grfInheritance = 0;
-  change.Trustee.pMultipleTrustee = NULL;
-  change.Trustee.MultipleTrusteeOperation = NO_MULTIPLE_TRUSTEE;
-  change.Trustee.TrusteeForm = TRUSTEE_IS_NAME;
-  change.Trustee.TrusteeType = TRUSTEE_IS_USER;
-  change.Trustee.ptstrName = L"CURRENT_USER";
-
-  PACL new_dacl;
-  if (SetEntriesInAcl(1, &change, old_dacl, &new_dacl) != ERROR_SUCCESS) {
-    LocalFree(security_descriptor);
-    return false;
-  }
-
-  DWORD rc = SetNamedSecurityInfo(const_cast<wchar_t*>(path.value().c_str()),
-                                  SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
-                                  NULL, NULL, new_dacl, NULL);
-  LocalFree(security_descriptor);
-  LocalFree(new_dacl);
-
-  return rc == ERROR_SUCCESS;
-#else
-  NOTIMPLEMENTED();
-  return false;
-#endif
-}
-
-#endif  // UNIT_TEST
-
-#if defined(OS_WIN)
-  // Loads the file passed in as an image section and touches pages to avoid
-  // subsequent hard page faults during LoadLibrary. The size to be pre read
-  // is passed in. If it is 0 then the whole file is paged in. The step size
-  // which indicates the number of bytes to skip after every page touched is
-  // also passed in.
-bool BASE_API PreReadImage(const wchar_t* file_path, size_t size_to_read,
-                           size_t step_size);
-#endif  // OS_WIN
 
 #if defined(OS_LINUX)
 // Broad categories of file systems as returned by statfs() on Linux.
@@ -652,13 +620,9 @@ enum FileSystemType {
 
 // Attempts determine the FileSystemType for |path|.
 // Returns false if |path| doesn't exist.
-BASE_API bool GetFileSystemType(const FilePath& path, FileSystemType* type);
+BASE_EXPORT bool GetFileSystemType(const FilePath& path, FileSystemType* type);
 #endif
 
 }  // namespace file_util
-
-// Deprecated functions have been moved to this separate header file,
-// which must be included last after all the above definitions.
-#include "base/file_util_deprecated.h"
 
 #endif  // BASE_FILE_UTIL_H_

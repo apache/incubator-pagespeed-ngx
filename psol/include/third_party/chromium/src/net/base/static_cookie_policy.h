@@ -4,10 +4,9 @@
 
 #ifndef NET_BASE_STATIC_COOKIE_POLICY_H_
 #define NET_BASE_STATIC_COOKIE_POLICY_H_
-#pragma once
 
 #include "base/basictypes.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
 class GURL;
 
@@ -15,7 +14,7 @@ namespace net {
 
 // The StaticCookiePolicy class implements a static cookie policy that supports
 // three modes: allow all, deny all, or block third-party cookies.
-class NET_API StaticCookiePolicy {
+class NET_EXPORT StaticCookiePolicy {
  public:
   // Do not change the order of these types as they are persisted in
   // preferences.

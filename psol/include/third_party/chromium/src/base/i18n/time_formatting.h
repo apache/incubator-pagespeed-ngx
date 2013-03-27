@@ -7,8 +7,8 @@
 
 #ifndef BASE_I18N_TIME_FORMATTING_H_
 #define BASE_I18N_TIME_FORMATTING_H_
-#pragma once
 
+#include "base/i18n/base_i18n_export.h"
 #include "base/string16.h"
 
 namespace base {
@@ -28,37 +28,38 @@ enum AmPmClockType {
 };
 
 // Returns the time of day, e.g., "3:07 PM".
-string16 TimeFormatTimeOfDay(const Time& time);
+BASE_I18N_EXPORT string16 TimeFormatTimeOfDay(const Time& time);
 
 // Returns the time of day in the specified hour clock type. e.g.
 // "3:07 PM" (type == k12HourClock, ampm == kKeepAmPm).
 // "3:07"    (type == k12HourClock, ampm == kDropAmPm).
 // "15:07"   (type == k24HourClock).
-string16 TimeFormatTimeOfDayWithHourClockType(const Time& time,
-                                              HourClockType type,
-                                              AmPmClockType ampm);
+BASE_I18N_EXPORT string16 TimeFormatTimeOfDayWithHourClockType(
+    const Time& time,
+    HourClockType type,
+    AmPmClockType ampm);
 
 // Returns a shortened date, e.g. "Nov 7, 2007"
-string16 TimeFormatShortDate(const Time& time);
+BASE_I18N_EXPORT string16 TimeFormatShortDate(const Time& time);
 
 // Returns a numeric date such as 12/13/52.
-string16 TimeFormatShortDateNumeric(const Time& time);
+BASE_I18N_EXPORT string16 TimeFormatShortDateNumeric(const Time& time);
 
 // Returns a numeric date and time such as "12/13/52 2:44:30 PM".
-string16 TimeFormatShortDateAndTime(const Time& time);
+BASE_I18N_EXPORT string16 TimeFormatShortDateAndTime(const Time& time);
 
 // Formats a time in a friendly sentence format, e.g.
 // "Monday, March 6, 2008 2:44:30 PM".
-string16 TimeFormatFriendlyDateAndTime(const Time& time);
+BASE_I18N_EXPORT string16 TimeFormatFriendlyDateAndTime(const Time& time);
 
 // Formats a time in a friendly sentence format, e.g.
 // "Monday, March 6, 2008".
-string16 TimeFormatFriendlyDate(const Time& time);
+BASE_I18N_EXPORT string16 TimeFormatFriendlyDate(const Time& time);
 
 // Gets the hour clock type of the current locale. e.g.
 // k12HourClock (en-US).
 // k24HourClock (en-GB).
-HourClockType GetHourClockType();
+BASE_I18N_EXPORT HourClockType GetHourClockType();
 
 }  // namespace base
 

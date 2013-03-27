@@ -1,10 +1,9 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_GLOBAL_DESCRIPTORS_POSIX_H_
 #define BASE_GLOBAL_DESCRIPTORS_POSIX_H_
-#pragma once
 
 #include "build/build_config.h"
 
@@ -34,10 +33,11 @@ namespace base {
 // It maps from an abstract key to a descriptor. If independent modules each
 // need to define keys, then values should be chosen randomly so as not to
 // collide.
-class BASE_API GlobalDescriptors {
+class BASE_EXPORT GlobalDescriptors {
  public:
   typedef uint32_t Key;
-  typedef std::vector<std::pair<Key, int> > Mapping;
+  typedef std::pair<Key, int> KeyFDPair;
+  typedef std::vector<KeyFDPair> Mapping;
 
   // Often we want a canonical descriptor for a given Key. In this case, we add
   // the following constant to the key value:

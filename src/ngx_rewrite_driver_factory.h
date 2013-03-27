@@ -29,9 +29,9 @@ extern "C" {
 #include <set>
 
 #include "apr_pools.h"
-#include "base/scoped_ptr.h"
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 
 // TODO(oschaaf): We should reparent ApacheRewriteDriverFactory and
 // NgxRewriteDriverFactory to a new class OriginRewriteDriverFactory and factor
@@ -40,11 +40,7 @@ extern "C" {
 namespace net_instaweb {
 
 class AbstractSharedMem;
-class AprMemCache;
-class AsyncCache;
-class CacheInterface;
 class NgxServerContext;
-class NgxCache;
 class NgxMessageHandler;
 class NgxRewriteOptions;
 class NgxUrlAsyncFetcher;
@@ -52,13 +48,13 @@ class SharedCircularBuffer;
 class SharedMemRefererStatistics;
 class SharedMemStatistics;
 class SlowWorker;
-class StaticJavaScriptManager;
+class StaticAssetManager;
 class Statistics;
+class SystemCaches;
 
 class NgxRewriteDriverFactory : public RewriteDriverFactory {
  public:
-  static const char kStaticJavaScriptPrefix[];
-  static const char kMemcached[];
+  static const char kStaticAssetPrefix[];
 
   // main_conf will have only options set in the main block.  It may be NULL,
   // and we do not take ownership.
@@ -76,15 +72,15 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   // Create a new RewriteOptions.  In this implementation it will be an
   // NgxRewriteOptions.
   virtual RewriteOptions* NewRewriteOptions();
+  // Initializes the StaticAssetManager.
+  virtual void InitStaticAssetManager(
+      StaticAssetManager* static_asset_manager);
   // Print out details of all the connections to memcached servers.
   void PrintMemCacheStats(GoogleString* out);
-  // Initializes the StaticJavascriptManager.
-  virtual void InitStaticJavascriptManager(
-      StaticJavascriptManager* static_js_manager);
-  // Initalizes the NgxUrlAsyncFetcher.
   bool InitNgxUrlAsyncFecther();
   // Check resolver configed or not.
   bool HasResolver();
+
   // Release all the resources. It also calls the base class ShutDown to
   // release the base class resources.
   // Initializes all the statistics objects created transitively by
@@ -94,34 +90,12 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   virtual void ShutDown();
   virtual void StopCacheActivity();
   NgxServerContext* MakeNgxServerContext();
-  // Finds a Cache for the file_cache_path in the config.  If none exists,
-  // creates one, using all the other parameters in the NgxRewriteOptions.
-  // Currently, no checking is done that the other parameters (e.g. cache
-  // size, cleanup interval, etc.) are consistent.
-  NgxCache* GetCache(NgxRewriteOptions* rewrite_options);
-
+  ServerContext* NewServerContext();
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
   }
 
-  SlowWorker* slow_worker() { return slow_worker_.get(); }
-
-  // Create a new AprMemCache from the given hostname[:port] specification.
-  AprMemCache* NewAprMemCache(const GoogleString& spec);
-
-  // Makes a memcached-based cache if the configuration contains a
-  // memcached server specification.  The l2_cache passed in is used
-  // to handle puts/gets for huge (>1M) values.  NULL is returned if
-  // memcached is not specified for this server.
-  //
-  // If a non-null CacheInterface* is returned, its ownership is transferred
-  // to the caller and must be freed on destruction.
-  CacheInterface* GetMemcached(NgxRewriteOptions* options,
-                               CacheInterface* l2_cache);
-
-  // Returns the filesystem metadata cache for the given config's specification
-  // (if it has one). NULL is returned if no cache is specified.
-  CacheInterface* GetFilesystemMetadataCache(NgxRewriteOptions* config);
+  SystemCaches* caches() { return caches_.get(); }
 
   // Starts pagespeed threads if they've not been started already.  Must be
   // called after the caller has finished any forking it intends to do.
@@ -192,37 +166,17 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
 
  private:
   Timer* timer_;
-  scoped_ptr<SlowWorker> slow_worker_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
-  typedef std::map<GoogleString, NgxCache*> PathCacheMap;
-  PathCacheMap path_cache_map_;
-  MD5Hasher cache_hasher_;
+
   // main_conf will have only options set in the main block.  It may be NULL,
   // and we do not take ownership.
   NgxRewriteOptions* main_conf_;
   typedef std::set<NgxServerContext*> NgxServerContextSet;
   NgxServerContextSet uninitialized_server_contexts_;
 
-  // memcache connections are expensive.  Just allocate one per
-  // distinct server-list.  At the moment there is no consistency
-  // checking for other parameters.  Note that each memcached
-  // interface share the thread allocation, based on the
-  // ModPagespeedMemcachedThreads settings first encountered for
-  // a particular server-set.
-  //
-  // The QueuedWorkerPool for async cache-gets is shared among all
-  // memcached connections.
-  //
-  // The CacheInterface* value in the MemcacheMap now includes,
-  // depending on options, instances of CacheBatcher, AsyncCache,
-  // and CacheStats.  Explicit lists of AprMemCache instances and
-  // AsyncCache objects are also included, as they require extra
-  // treatment during startup and shutdown.
-  typedef std::map<GoogleString, CacheInterface*> MemcachedMap;
-  MemcachedMap memcached_map_;
-  scoped_ptr<QueuedWorkerPool> memcached_pool_;
-  std::vector<AprMemCache*> memcache_servers_;
-  std::vector<AsyncCache*> async_caches_;
+  // Manages all our caches & lock managers.
+  scoped_ptr<SystemCaches> caches_;
+
   bool threads_started_;
   // If true, we'll have a separate statistics object for each vhost
   // (along with a global aggregate), rather than just a single object

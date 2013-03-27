@@ -167,15 +167,8 @@ class AsyncFetch : public Writer {
 // TODO(jmarantz): move StringAsyncFetch into its own file.
 class StringAsyncFetch : public AsyncFetch {
  public:
-  // TODO(marq): Remove constructors lacking a request context.
-  StringAsyncFetch() : buffer_pointer_(&buffer_) { Init(); }
-
   explicit StringAsyncFetch(const RequestContextPtr& request_ctx)
       : AsyncFetch(request_ctx), buffer_pointer_(&buffer_) {
-    Init();
-  }
-
-  explicit StringAsyncFetch(GoogleString* buffer) : buffer_pointer_(buffer) {
     Init();
   }
 

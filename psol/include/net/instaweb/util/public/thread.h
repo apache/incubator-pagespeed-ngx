@@ -24,6 +24,8 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
@@ -41,19 +43,24 @@ class ThreadSystem::Thread {
   //
   // Any mutexes and condvars you use must be compatible with the passed in
   // 'runtime'.
-  Thread(ThreadSystem* runtime, ThreadFlags flags);
+  //
+  // The 'name' will be used purely for debugging purposes. Note that on
+  // many systems (e.g. Linux PThreads) the OS will only keep track of
+  // 15 characters, so you may not want to get too wordy.
+  Thread(ThreadSystem* runtime, StringPiece name, ThreadFlags flags);
 
   // Note: it is safe to delete the Thread object from within ::Run
   // as far as this baseclass is concerned.
   virtual ~Thread();
 
   // Invokes Run() in a separate thread. Returns if successful or not.
-  // ### MessageHandler?
   bool Start();
 
   // Waits for the thread executing Run() to exit. This must be called on
   // every thread created with kJoinable.
   void Join();
+
+  GoogleString name() const { return name_; }
 
   virtual void Run() = 0;
 
@@ -64,6 +71,8 @@ class ThreadSystem::Thread {
   // The other code is ThreadImpl which is subclassed by the actual
   // implementation of threading and which does the actual threading work.
   scoped_ptr<ThreadImpl> impl_;
+
+  GoogleString name_;
 
   ThreadFlags flags_;
   bool started_;
