@@ -21,8 +21,10 @@
 
 extern "C" {
   #include <ngx_core.h>
+  #include <ngx_http.h>
 }
 
+#include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace ngx_psol {
@@ -30,12 +32,11 @@ namespace ngx_psol {
 // Allocate chain links and buffers from the supplied pool, and copy over the
 // data from the string piece.  If the string piece is empty, return
 // NGX_DECLINED immediately unless send_last_buf.
-ngx_int_t
-string_piece_to_buffer_chain(ngx_pool_t* pool, StringPiece sp,
-                             ngx_chain_t** link_ptr, bool send_last_buf);
+ngx_int_t string_piece_to_buffer_chain(
+    ngx_pool_t* pool, StringPiece sp,
+    ngx_chain_t** link_ptr, bool send_last_buf);
 
-StringPiece
-str_to_string_piece(ngx_str_t s);
+StringPiece str_to_string_piece(ngx_str_t s);
 
 // s1: ngx_str_t, s2: string literal
 // true if they're equal, false otherwise
@@ -43,10 +44,21 @@ str_to_string_piece(ngx_str_t s);
     ((s1).len == (sizeof(s2)-1) &&      \
      ngx_strncmp((s1).data, (s2), (sizeof(s2)-1)) == 0)
 
+// s1: ngx_str_t, s2: string literal
+// true if they're equal ignoring case, false otherwise
+#define STR_CASE_EQ_LITERAL(s1, s2)     \
+    ((s1).len == (sizeof(s2)-1) &&      \
+     ngx_strncasecmp((s1).data, (       \
+       reinterpret_cast<u_char*>(       \
+         const_cast<char*>(s2))),       \
+       (sizeof(s2)-1)) == 0)
+
 // Allocate memory out of the pool for the string piece, and copy the contents
 // over.  Returns NULL if we can't get memory.
-char*
-string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
+char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
+ngx_int_t copy_response_headers_to_ngx(
+    ngx_http_request_t* r,
+    const net_instaweb::ResponseHeaders& pagespeed_headers);
 
 }  // namespace ngx_psol
 
