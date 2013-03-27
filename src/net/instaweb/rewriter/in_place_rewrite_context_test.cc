@@ -1215,8 +1215,8 @@ TEST_F(InPlaceRewriteContextTest, NonCacheableUrlRewriting) {
   // The ttl is just a value in proto, actual cacheable values will be checked
   // below.
   FetchAndCheckResponse(nocache_js_url_, StrCat(cache_body_, ":", "jm"),
-                        true /* success */, 31536000000 /* ttl (s) */, etag_,
-                        timer()->NowMs());
+                        true /* success */, Timer::kYearMs /* ttl (ms) */,
+                        etag_, timer()->NowMs());
 
   // Shouldn't be cacheable at all.
   EXPECT_FALSE(response_headers_.IsCacheable());
