@@ -29,6 +29,8 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/public/association_transformer.h"
@@ -253,8 +255,9 @@ void CssFilter::Context::Render() {
     } else if (rewrite_inline_attribute_ != NULL) {
       rewrite_inline_attribute_->SetValue(result.inlined_data());
     } else {
-      // Log only when we rewrite external css.
-      filter_->LogFilterModifiedContent();
+      // External css.
+      driver_->log_record()->SetRewriterLoggingStatus(
+          id(), slot(0)->resource()->url(), RewriterInfo::APPLIED_OK);
     }
     filter_->num_uses_->Add(1);
   }

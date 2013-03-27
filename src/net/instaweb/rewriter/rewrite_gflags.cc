@@ -166,6 +166,8 @@ DEFINE_int32(
     "Duration after which the furious cookie used for A/B experiments "
     "should expire on the user's browser.");
 DEFINE_bool(log_rewrite_timing, false, "Log time taken by rewrite filters.");
+DEFINE_bool(log_url_indices, false, "Log URL indices for every rewriter "
+            "application.");
 DEFINE_int64(max_html_cache_time_ms,
              net_instaweb::RewriteOptions::kDefaultMaxHtmlCacheTimeMs,
              "Default Cache-Control TTL for HTML. "
@@ -471,6 +473,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("log_rewrite_timing")) {
     options->set_log_rewrite_timing(FLAGS_log_rewrite_timing);
+  }
+  if (WasExplicitlySet("log_url_indices")) {
+    options->set_log_url_indices(FLAGS_log_url_indices);
   }
   if (WasExplicitlySet("max_html_cache_time_ms")) {
     options->set_max_html_cache_time_ms(FLAGS_max_html_cache_time_ms);

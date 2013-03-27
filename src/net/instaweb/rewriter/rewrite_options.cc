@@ -927,6 +927,11 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Whether or not to report timing information about HtmlParse.");
   AddBaseProperty(
+      true, &RewriteOptions::log_url_indices_, "lui",
+      kLogUrlIndices,
+      kDirectoryScope,
+      "Whether or not to log URL indices for rewriter applications.");
+  AddBaseProperty(
       false, &RewriteOptions::lowercase_html_names_, "lh",
       kLowercaseHtmlNames,
       kDirectoryScope,
@@ -1423,6 +1428,7 @@ void RewriteOptions::AddProperties() {
   //
   // in_place_rewriting_enabled_.DoNotUseForSignatureComputation();
   // log_rewrite_timing_.DoNotUseForSignatureComputation();
+  // log_url_indices_.DoNotUseForSignatureComputation();
   // serve_stale_if_fetch_error_.DoNotUseForSignatureComputation();
   // enable_defer_js_experimental_.DoNotUseForSignatureComputation();
   // enable_blink_critical_line_.DoNotUseForSignatureComputation();

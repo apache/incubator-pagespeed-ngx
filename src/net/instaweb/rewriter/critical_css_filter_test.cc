@@ -102,6 +102,8 @@ class CriticalCssFilterTest : public RewriteTestBase {
   virtual void SetUp() {
     RewriteTestBase::SetUp();
 
+    SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
+
     finder_ = new MockCriticalCssFinder(rewrite_driver(), statistics());
     server_context()->set_critical_css_finder(finder_);
 
@@ -129,9 +131,6 @@ class CriticalCssFilterTest : public RewriteTestBase {
       RewriterStats::RewriterHtmlStatus html_status,
       ExpApplicationVector expected_application_counts) {
     rewrite_driver()->log_record()->WriteLog();
-
-    const char* id = RewriteOptions::FilterId(
-        RewriteOptions::kPrioritizeCriticalCss);
 
     const LoggingInfo& logging_info =
         *rewrite_driver()->log_record()->logging_info();
@@ -210,7 +209,7 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
       "<style type='text/css'>t {color: turquoise }</style>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script type=\"text/javascript\">//<![CDATA[\n",
+      "<script type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -220,7 +219,7 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
       "  'num_replaced_links': 3,"
       "  'num_unreplaced_links': 0"
       "};"
-      "\n//]]></script>");
+      "</script>");
 
   finder_->AddCriticalCss("http://test.com/a.css", "a_used {color: azure }", 1);
   finder_->AddCriticalCss("http://test.com/b.css", "b_used {color: blue }", 2);
@@ -267,7 +266,7 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
       "<link rel='stylesheet' href='Hi there!' type='text/css'>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script type=\"text/javascript\">//<![CDATA[\n",
+      "<script type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -277,7 +276,7 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
       "  'num_replaced_links': 1,"
       "  'num_unreplaced_links': 1"
       "};"
-      "\n//]]></script>");
+      "</script>");
 
   finder_->AddCriticalCss("http://test.com/c.css", "c_used {color: cyan }", 33);
 
@@ -332,7 +331,7 @@ TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
       "<style type='text/css'>t {color: turquoise }</style>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script type=\"text/javascript\">//<![CDATA[\n",
+      "<script type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -342,7 +341,7 @@ TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
       "  'num_replaced_links': 2,"
       "  'num_unreplaced_links': 1"
       "};"
-      "\n//]]></script>");
+      "</script>");
 
   // Skip adding a critical CSS for a.css.
   //     In the filtered html, the original link is left in place and
@@ -411,7 +410,7 @@ TEST_F(CriticalCssFilterTest, DebugFilterAddsStats) {
       "<style type='text/css'>t {color: turquoise }</style>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script type=\"text/javascript\">//<![CDATA[\n",
+      "<script type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -421,7 +420,7 @@ TEST_F(CriticalCssFilterTest, DebugFilterAddsStats) {
       "  'num_replaced_links': 2,"
       "  'num_unreplaced_links': 1"
       "};"
-      "\n//]]></script>"
+      "</script>"
       "<!--Additional Critical CSS stats:\n"
       "  num_repeated_style_blocks=1\n"
       "  repeated_style_blocks_size=21\n"

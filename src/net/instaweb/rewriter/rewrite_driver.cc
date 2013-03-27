@@ -272,6 +272,8 @@ void RewriteDriver::set_request_context(const RequestContextPtr& x) {
         options()->max_rewrite_info_log_size());
     request_context_->log_record()->SetAllowLoggingUrls(
         options()->allow_logging_urls_in_log_record());
+    request_context_->log_record()->SetLogUrlIndices(
+        options()->log_url_indices());
   }
 }
 
@@ -2272,12 +2274,16 @@ void RewriteDriver::PrintStateToErrorLog(bool show_detached_contexts) {
                              ToString(show_detached_contexts).c_str());
 }
 
-void RewriteDriver::FinishParse() {
-  HtmlParse::FinishParse();
+void RewriteDriver::LogStats() {
   if (logging_filter_ != NULL && log_record() != NULL) {
     log_record()->SetImageStats(logging_filter_->num_img_tags(),
                                 logging_filter_->num_inlined_img_tags());
   }
+}
+
+void RewriteDriver::FinishParse() {
+  HtmlParse::FinishParse();
+  LogStats();
   WriteClientStateIntoPropertyCache();
   Cleanup();
 }
@@ -2298,6 +2304,7 @@ void RewriteDriver::QueueFinishParseAfterFlush(Function* user_callback) {
 void RewriteDriver::FinishParseAfterFlush(Function* user_callback) {
   DCHECK_EQ(0U, GetEventQueueSize());
   HtmlParse::EndFinishParse();
+  LogStats();
   WriteClientStateIntoPropertyCache();
 
   // Update stats.
