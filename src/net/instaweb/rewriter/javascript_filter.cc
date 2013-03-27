@@ -179,7 +179,7 @@ class JavascriptFilter::Context : public SingleRewriteContext {
     }
     // The url or script content is changing, so log that fact.
     Driver()->log_record()->SetRewriterLoggingStatus(
-        id(), RewriterInfo::APPLIED_OK);
+        id(), output_slot->resource()->url(), RewriterInfo::APPLIED_OK);
     config_->num_uses()->Add(1);
   }
 

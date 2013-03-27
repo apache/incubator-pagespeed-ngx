@@ -132,10 +132,14 @@ class CriticalCssFilterTest : public RewriteTestBase {
       ExpApplicationVector expected_application_counts) {
     rewrite_driver()->log_record()->WriteLog();
 
+    const char* id = RewriteOptions::FilterId(
+        RewriteOptions::kPrioritizeCriticalCss);
+
     const LoggingInfo& logging_info =
         *rewrite_driver()->log_record()->logging_info();
     ASSERT_EQ(1, logging_info.rewriter_stats_size());
     const RewriterStats& rewriter_stats = logging_info.rewriter_stats(0);
+    EXPECT_EQ(id, rewriter_stats.id());
 
     EXPECT_EQ(html_status, rewriter_stats.html_status());
     EXPECT_EQ(expected_application_counts.size(),

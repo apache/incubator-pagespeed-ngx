@@ -63,15 +63,18 @@ const char FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly[] =
 struct ResourceInfo {
  public:
   ResourceInfo(const GoogleString& url,
+               const GoogleString& original_url,
                int64 time_to_download,
                bool is_pagespeed_resource,
                bool in_head)
       : url_(url),
+        original_url_(original_url),
         time_to_download_(time_to_download),
         is_pagespeed_resource_(is_pagespeed_resource),
         in_head_(in_head) {}
 
   GoogleString url_;
+  GoogleString original_url_;
   int64 time_to_download_;
   bool is_pagespeed_resource_;
   bool in_head_;
@@ -99,7 +102,8 @@ inline int64 TimeToDownload(int64 size) {
 // Returns true if attr has a valid url (returned in gurl), false otherwise.
 bool ExtractUrl(const HtmlElement::Attribute* attr,
                 const RewriteDriver* driver,
-                GoogleUrl* gurl) {
+                GoogleUrl* gurl,
+                GoogleString* original_url) {
   if (attr == NULL) {
     return false;
   }
@@ -108,29 +112,20 @@ bool ExtractUrl(const HtmlElement::Attribute* attr,
     return false;
   }
   gurl->Reset(driver->base_url(), url);
-  return gurl->is_valid();
-}
-
-void LogFilterAction(RewriterInfo::RewriterApplicationStatus status,
-                     FlushEarlyResourceInfo::ContentType content_type,
-                     FlushEarlyResourceInfo::ResourceType resource_type,
-                     bool is_bandwidth_affected,
-                     bool in_head,
-                     LogRecord* log_record) {
-  RewriterInfo* rewriter_info = log_record->NewRewriterInfo(
-       RewriteOptions::FilterId(RewriteOptions::kFlushSubresources));
-  if (rewriter_info == NULL) {
-    return;
+  if (!gurl->is_valid()) {
+    return false;
   }
-
-  ScopedMutex lock(log_record->mutex());
-  rewriter_info->set_status(status);
-  FlushEarlyResourceInfo* flush_early_resource_info =
-      rewriter_info->mutable_flush_early_resource_info();
-  flush_early_resource_info->set_content_type(content_type);
-  flush_early_resource_info->set_resource_type(resource_type);
-  flush_early_resource_info->set_is_bandwidth_affected(is_bandwidth_affected);
-  flush_early_resource_info->set_in_head(in_head);
+  StringVector decoded_url;
+  if (driver->DecodeUrl(*gurl, &decoded_url) && decoded_url.size() == 1) {
+    // An encoded URL.
+    *original_url = decoded_url.at(0);
+  } else {
+    // Flush early does not handle combined rewritten URLs right now.
+    // So, we should not enter this block. But, if we do, we log the rewritten
+    // URL as is.
+    *original_url = gurl->spec_c_str();
+  }
+  return true;
 }
 
 // Returns the ContentType enum value for a given semantic_type.
@@ -218,12 +213,14 @@ void FlushEarlyContentWriterFilter::EndDocument() {
         GetResourceType(gurl, js_resource_info->is_pagespeed_resource_);
     RewriterInfo::RewriterApplicationStatus status = is_flushed ?
         RewriterInfo::APPLIED_OK : RewriterInfo::NOT_APPLIED;
-    LogFilterAction(status,
-                    FlushEarlyResourceInfo::JS,
-                    resource_type,
-                    true /* affected by bandwidth */,
-                    js_resource_info->in_head_,
-                    driver_->log_record());
+    driver_->log_record()->LogFlushEarlyActivity(
+       RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
+       js_resource_info->original_url_,
+       status,
+       FlushEarlyResourceInfo::JS,
+       resource_type,
+       true /* affected by bandwidth */,
+       js_resource_info->in_head_);
   }
   TryFlushingDeferJavascriptEarly();
 
@@ -272,12 +269,14 @@ void FlushEarlyContentWriterFilter::TryFlushingDeferJavascriptEarly() {
   }
   RewriterInfo::RewriterApplicationStatus status = is_flushed ?
       RewriterInfo::APPLIED_OK : RewriterInfo::NOT_APPLIED;
-  LogFilterAction(status,
-                  FlushEarlyResourceInfo::JS,
-                  FlushEarlyResourceInfo::DEFERJS_SCRIPT,
-                  is_bandwidth_affected,
-                  !in_body_,
-                  driver_->log_record());
+  driver_->log_record()->LogFlushEarlyActivity(
+       RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
+       "",  // defer-js url need not be logged.
+       status,
+       FlushEarlyResourceInfo::JS,
+       FlushEarlyResourceInfo::DEFERJS_SCRIPT,
+       is_bandwidth_affected,
+       !in_body_);
 }
 
 void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
@@ -309,8 +308,9 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
       // Don't flush javascript resources if defer_javascript is enabled.
       // TOOD(nikhilmadan): Check if the User-Agent supports defer_javascript.
       GoogleUrl gurl;
+      GoogleString original_url;
       if (flush_more_resources_early_if_time_permits_ &&
-          ExtractUrl(attr, driver_, &gurl)) {
+          ExtractUrl(attr, driver_, &gurl, &original_url)) {
         bool is_pagespeed_resource =
             driver_->server_context()->IsNonStalePagespeedResource(gurl);
         // Scripts can be flushed for kPrefetchLinkScriptTag prefetch
@@ -330,18 +330,20 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
           // kPrefetchLinkScriptTag.
           int64 time_to_download = TimeToDownload(size);
           ResourceInfo* js_info = new ResourceInfo(
-              attr->DecodedValueOrNull(), time_to_download,
+              attr->DecodedValueOrNull(), original_url, time_to_download,
               is_pagespeed_resource, !in_body_);
           js_resources_info_.push_back(js_info);
         } else {
           FlushEarlyResourceInfo::ResourceType resource_type =
               GetResourceType(gurl, is_pagespeed_resource);
-          LogFilterAction(RewriterInfo::NOT_APPLIED,
-                          FlushEarlyResourceInfo::JS,
-                          resource_type,
-                          false /* not affected by bandwidth */,
-                          !in_body_,
-                          driver_->log_record());
+          driver_->log_record()->LogFlushEarlyActivity(
+              RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
+              original_url,
+              RewriterInfo::NOT_APPLIED,
+              FlushEarlyResourceInfo::JS,
+              resource_type,
+              false /* not affected by bandwidth */,
+              !in_body_);
         }
       }
     } else if (category == semantic_type::kPrefetch) {
@@ -354,7 +356,8 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
       }
     } else {
       GoogleUrl gurl;
-      if (ExtractUrl(attr, driver_, &gurl)) {
+      GoogleString original_url;
+      if (ExtractUrl(attr, driver_, &gurl, &original_url)) {
         bool call_flush_resources = true;
         int64 time_to_download = 0;
         bool is_bandwidth_affected = false;
@@ -387,12 +390,14 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
             GetResourceType(gurl, is_pagespeed_resource);
         RewriterInfo::RewriterApplicationStatus status = is_flushed ?
             RewriterInfo::APPLIED_OK : RewriterInfo::NOT_APPLIED;
-        LogFilterAction(status,
-                        GetContentType(category),
-                        resource_type,
-                        is_bandwidth_affected,
-                        !in_body_,
-                        driver_->log_record());
+        driver_->log_record()->LogFlushEarlyActivity(
+            RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
+            original_url,
+            status,
+            GetContentType(category),
+            resource_type,
+            is_bandwidth_affected,
+            !in_body_);
       }
     }
   }

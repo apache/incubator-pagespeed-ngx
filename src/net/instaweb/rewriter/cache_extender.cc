@@ -216,7 +216,7 @@ void CacheExtender::Context::Render() {
         }
         // TODO(anupama): Log cache extension for pdfs etc.
         driver_->log_record()->SetRewriterLoggingStatus(
-            filter_id, RewriterInfo::APPLIED_OK);
+            filter_id, slot(0)->resource()->url(), RewriterInfo::APPLIED_OK);
       }
     }
   }
