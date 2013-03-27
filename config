@@ -137,6 +137,7 @@ if [ $ngx_found = yes ]; then
     $ps_src/ngx_thread_system.cc \
     $ps_src/ngx_message_handler.cc \
     $ps_src/pthread_shared_mem.cc \
+    $mod_pagespeed_dir/net/instaweb/apache/loopback_route_fetcher.cc \
     $mod_pagespeed_dir/net/instaweb/apache/serf_url_async_fetcher.cc"
   HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
   CORE_LIBS="$CORE_LIBS $pagespeed_libs"

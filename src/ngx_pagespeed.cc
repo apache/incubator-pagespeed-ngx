@@ -43,6 +43,7 @@ extern "C" {
 
 #include "apr_time.h"
 
+#include "net/instaweb/apache/loopback_route_fetcher.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
@@ -1313,6 +1314,11 @@ CreateRequestContext::Response ps_create_request_context(
       ctx->driver = cfg_s->server_context->NewCustomRewriteDriver(
           custom_options, ctx->base_fetch->request_context());
     }
+
+    ctx->driver->SetSessionFetcher(new net_instaweb::LoopbackRouteFetcher(
+        ctx->driver->options(), ntohs(reinterpret_cast<struct sockaddr_in*>(
+            r->connection->local_sockaddr)->sin_port),
+        ctx->driver->async_fetcher()));
 
     // TODO(jefftk): FlushEarlyFlow would go here.
 
