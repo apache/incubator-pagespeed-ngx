@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Checks that that memcached is already installed, and then runs it on
 # port 6765.  The command in $@ is then run (e.g. a test binary)
