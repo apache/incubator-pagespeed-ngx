@@ -77,7 +77,7 @@ namespace net_instaweb {
       int get_status_code() {
         return static_cast<int>(status_->code);
       }
-      
+
       ngx_event_t* timeout_event() {
         return timeout_event_;
       };
@@ -90,8 +90,8 @@ namespace net_instaweb {
       // Do the initialized work and start the resolver work.
       bool Init();
       bool ParseUrl();
-      // Prepare the request and write it to remote server. 
-      int InitRquest();
+      // Prepare the request and write it to remote server.
+      int InitRequest();
       // Create the connection with remote server.
       int Connect();
       void set_response_handler(response_handler_pt handler) {
@@ -99,7 +99,7 @@ namespace net_instaweb {
       }
       // Only the Static functions could be used in callbacks.
       static void NgxFetchResolveDone(ngx_resolver_ctx_t* ctx);
-      
+
       // Write the request
       static void NgxFetchWrite(ngx_event_t* wev);
 
@@ -142,7 +142,7 @@ namespace net_instaweb {
       ngx_event_t* timeout_event_;
       ngx_connection_t* connection_;
       ngx_resolver_ctx_t* resolver_ctx_;
-      
+
       DISALLOW_COPY_AND_ASSIGN(NgxFetch);
   };
 } // namespace net_instaweb
