@@ -46,8 +46,6 @@ pagespeed.CriticalCssBeacon = function(beaconUrl, htmlUrl, optionsHash,
   this.htmlUrl_ = htmlUrl;
   this.optionsHash_ = optionsHash;
   this.selectors_ = selectors;
-  this.windowSize_ = this.getWindowSize_();
-  this.imgLocations_ = {};
 };
 
 /**
