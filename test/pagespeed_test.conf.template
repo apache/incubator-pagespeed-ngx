@@ -49,9 +49,13 @@ http {
     pagespeed Library 43 1o978_K0_LNE5_ystNklf
     http://www.modpagespeed.com/rewrite_javascript.js;
 
+    # If X-PSA-Blocking-Rewrite request header is present and its value matches
+    # the value of BlockingRewriteKey below, the response will be fully
+    # rewritten before being flushed to the client.
+    pagespeed BlockingRewriteKey psatest;
+
     # Disable parsing if the size of the HTML exceeds 50kB.
     pagespeed MaxHtmlParseBytes 50000;
-
 
     location /mod_pagespeed_example/core_filters/ {
       pagespeed RewriteLevel CoreFilters;
