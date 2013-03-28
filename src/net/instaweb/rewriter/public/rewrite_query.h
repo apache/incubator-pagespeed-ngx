@@ -112,6 +112,7 @@ class RewriteQuery {
   FRIEND_TEST(RewriteQueryTest, ClientOptionsMultipleHeaders);
   FRIEND_TEST(RewriteQueryTest, ClientOptionsOrder1);
   FRIEND_TEST(RewriteQueryTest, ClientOptionsOrder2);
+  FRIEND_TEST(RewriteQueryTest, ClientOptionsCaseInsensitive);
   FRIEND_TEST(RewriteQueryTest, ClientOptionsNonDefaultProxyMode);
   FRIEND_TEST(RewriteQueryTest, ClientOptionsValidVersionBadOptions);
   FRIEND_TEST(RewriteQueryTest, ClientOptionsInvalidVersion);

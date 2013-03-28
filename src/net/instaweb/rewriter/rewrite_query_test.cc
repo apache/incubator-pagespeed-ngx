@@ -704,6 +704,19 @@ TEST_F(RewriteQueryTest, ClientOptionsOrder2) {
                     RewriteQuery::kImageQualityHigh);
 }
 
+TEST_F(RewriteQueryTest, ClientOptionsCaseInsensitive) {
+  RequestHeaders request_headers;
+  GoogleString lower(HttpAttributes::kXPsaClientOptions);
+  LowerString(&lower);
+
+  request_headers.Replace(lower, "v=1,iqp=3,m=1");
+  // Image quality is set.
+  TestClientOptions(&request_headers,
+                    true, /* expected_parsing_result */
+                    RewriteQuery::kProxyModeNoImageTransform,
+                    RewriteQuery::kImageQualityDefault);
+}
+
 TEST_F(RewriteQueryTest, ClientOptionsNonDefaultProxyMode) {
   RequestHeaders request_headers;
 
