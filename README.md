@@ -201,18 +201,25 @@ you can set your beacons to go to another site by specifying a full path:
 ### Testing
 
 The generic Pagespeed system test is ported, and all but three tests pass.  To
-run it you need to first build and configure nginx.  Set it up something like:
+run it you need to first build nginx.  You also need to check out mod_pagespeed,
+but we can take a shortcut and do this the easy way, without gyp, because we
+don't need any dependencies:
 
-    ...
-    http {
-      include "/path/to/ngx_pagespeed/test/pagespeed_test.conf";
-    }
+    $ svn checkout https://modpagespeed.googlecode.com/svn/trunk/ mod_pagespeed
 
-Then run the test, using the port you set up with `listen` in the configuration
-file.  It needs the file cache path passed in as an environment variable:
+Then run:
 
-    FILE_CACHE_PATH=/path/to/ngx_pagespeed_cache \
-      /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
+    test/nginx_system_test.sh \
+      primary_port \
+      secondary_port \
+      mod_pagespeed_dir \
+      file_cache_path \
+      nginx_executable_path
+
+For example:
+
+    $ test/nginx_system_test.sh 8050 8051 /path/to/mod_pagespeed \
+        /path/to/ngx_pagespeed_cache /path/to/sbin/nginx
 
 This should print out a lot of lines like:
 
@@ -245,12 +252,12 @@ Start an memcached server:
 
     memcached -p 11211
 
-To `ngx_pagespeed/test/pagespeed_test.conf.template` uncomment:
+In `ngx_pagespeed/test/pagespeed_test.conf.template` uncomment:
 
     pagespeed MemcachedServers "localhost:11211";
     pagespeed MemcachedThreads 1;
 
-Then run the system test as above.  You still need a file cache path.
+Then run the system test as above.
 
 #### Testing with valgrind
 
