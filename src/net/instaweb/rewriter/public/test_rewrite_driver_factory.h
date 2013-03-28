@@ -144,6 +144,15 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
     rewriter_callback_vector_.clear();
   }
 
+  // By default this is false, but can be reset.
+  virtual bool UseBeaconResultsInFilters() const {
+    return use_beacon_results_in_filters_;
+  }
+
+  void set_use_beacon_results_in_filters(bool b) {
+    use_beacon_results_in_filters_ = b;
+  }
+
   // Does NOT take ownership of the callback.
   void AddPlatformSpecificConfigurationCallback(
       PlatformSpecificConfigurationCallback* callback) {
@@ -216,6 +225,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   SimpleStats simple_stats_;
   MockMessageHandler* mock_message_handler_;
   MockMessageHandler* mock_html_message_handler_;
+  bool use_beacon_results_in_filters_;
   bool use_test_url_namer_;
   bool add_platform_specific_decoding_passes_;
   std::vector<CreateFilterCallback*> filter_callback_vector_;

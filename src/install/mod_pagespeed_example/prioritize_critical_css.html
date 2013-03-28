@@ -1,0 +1,16 @@
+<html>
+  <head>
+    <title>prioritize_critical_css example</title>
+    <link rel="stylesheet" href="styles/all_styles.css">
+    <link rel="stylesheet" href="styles/blue.css" media="print">
+    <link rel="stylesheet" href="styles/bold.css" media="not decodable">
+    <link rel="stylesheet" href="styles/yellow.css" media=", ,print, screen ">
+    <link rel="stylesheet" href="styles/rewrite_css_images.css" media="all">
+  </head>
+  <body>
+    <div class="blue">
+      CSS that was linked should be inlined with only a rule for .blue in the source.
+      The linked CSS should be added at the bottom of the html source.
+    </div>
+  </body>
+</html>

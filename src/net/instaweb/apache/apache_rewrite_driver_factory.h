@@ -210,6 +210,12 @@ class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
 
   SystemCaches* caches() { return caches_.get(); }
 
+  // mod_pagespeed uses a beacon handler to collect data for critical images,
+  // css, etc., so filters should be configured accordingly.
+  virtual bool UseBeaconResultsInFilters() const {
+    return true;
+  }
+
   // Finds a fetcher for the settings in this config, sharing with
   // existing fetchers if possible, otherwise making a new one (and
   // its required thread).

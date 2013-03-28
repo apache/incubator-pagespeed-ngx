@@ -191,6 +191,11 @@ class RewriteDriverFactory {
   // MakePropertyCaches.
   virtual void SetupCaches(ServerContext* server_context) = 0;
 
+  // Returns true if this platform uses beacon-based measurements to make
+  // run-time decisions.  This is used to determine how to configure various
+  // beacon-based filters.
+  virtual bool UseBeaconResultsInFilters() const = 0;
+
   // Provides an optional hook for adding rewrite passes to the HTML filter
   // chain.  This should be used for filters that are specific to a particular
   // RewriteDriverFactory implementation.

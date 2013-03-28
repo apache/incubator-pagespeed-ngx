@@ -40,11 +40,12 @@
 namespace net_instaweb {
 
 // RewriteFilter prefixes
+const char RewriteOptions::kCacheExtenderId[] = "ce";
+const char RewriteOptions::kCollectFlushEarlyContentFilterId[] = "fe";
 const char RewriteOptions::kCssCombinerId[] = "cc";
 const char RewriteOptions::kCssFilterId[] = "cf";
 const char RewriteOptions::kCssImportFlattenerId[] = "if";
 const char RewriteOptions::kCssInlineId[] = "ci";
-const char RewriteOptions::kCacheExtenderId[] = "ce";
 const char RewriteOptions::kImageCombineId[] = "is";
 const char RewriteOptions::kImageCompressionId[] = "ic";
 const char RewriteOptions::kInPlaceRewriteId[] = "aj";  // Comes from ajax.
@@ -52,7 +53,6 @@ const char RewriteOptions::kJavascriptCombinerId[] = "jc";
 const char RewriteOptions::kJavascriptMinId[] = "jm";
 const char RewriteOptions::kJavascriptInlineId[] = "ji";
 const char RewriteOptions::kLocalStorageCacheId[] = "ls";
-const char RewriteOptions::kCollectFlushEarlyContentFilterId[] = "fe";
 const char RewriteOptions::kPanelCommentPrefix[] = "GooglePanel";
 const char RewriteOptions::kPrioritizeCriticalCssId[] = "pr";
 
@@ -305,6 +305,9 @@ const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
   // We do not include kPrioritizeVisibleContent since we do not want to attach
   // SupportNoscriptFilter in the case of blink pcache miss pass-through, since
   // this response will not have any custom script inserted.
+  // Do the various critical css filters belong here?  Arguably not, since even
+  // if we transform a page based on beacon results we'll enclose the necessary
+  // in a noscript block and the page will still load / function normally.
 };
 
 // Array of mappings from Filter enum to corresponding filter id and name,
@@ -485,7 +488,7 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
 const RewriteOptions::Filter kImagePreserveUrlForbiddenFilters[] = {
     // TODO(jkarlin): Remove kResizeImages from the forbid list and allow image
     // squashing prefetching in HTML path (but don't allow resizing based on
-    // HTML attributes.
+    // HTML attributes).
   RewriteOptions::kDelayImages,
   RewriteOptions::kExtendCacheImages,
   RewriteOptions::kInlineImages,

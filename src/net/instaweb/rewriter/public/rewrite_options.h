@@ -389,9 +389,6 @@ class RewriteOptions {
   // options->set_default.
   static const int kOptionsVersion = 13;
 
-  static const char kCacheExtenderId[];
-  static const char kCollectFlushEarlyContentFilterId[];
-
   // Determines the scope at which an option is evaluated.  In Apache,
   // for example, kDirectoryScope indicates it can be changed via .htaccess
   // files, which is the only way that sites using shared hosting can change
@@ -402,6 +399,8 @@ class RewriteOptions {
     kProcessScope,    // customized at process level only (command-line flags)
   };
 
+  static const char kCacheExtenderId[];
+  static const char kCollectFlushEarlyContentFilterId[];
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
   static const char kCssImportFlattenerId[];
