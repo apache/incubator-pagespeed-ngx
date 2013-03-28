@@ -37,6 +37,7 @@ extern "C" {
 
 #include "ngx_base_fetch.h"
 #include "ngx_message_handler.h"
+#include "ngx_request_context.h"
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
@@ -285,20 +286,6 @@ typedef struct {
   net_instaweb::NgxRewriteOptions* options;
   net_instaweb::MessageHandler* handler;
 } ps_loc_conf_t;
-
-typedef struct {
-  net_instaweb::ProxyFetch* proxy_fetch;
-  net_instaweb::NgxBaseFetch* base_fetch;
-  net_instaweb::RewriteDriver* driver;
-  bool data_received;
-  int pipe_fd;
-  ngx_connection_t* pagespeed_connection;
-  ngx_http_request_t* r;
-  bool is_resource_fetch;
-  bool sent_headers;
-  bool write_pending;
-  net_instaweb::GzipInflater* inflater_;
-} ps_request_ctx_t;
 
 ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
@@ -1262,8 +1249,8 @@ CreateRequestContext::Response ps_create_request_context(
   // the BaseFetch ourselves.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(
       r, file_descriptors[1],
-      net_instaweb::RequestContextPtr(new net_instaweb::RequestContext(
-          cfg_s->server_context->thread_system()->NewMutex())));
+      net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
+          cfg_s->server_context->thread_system()->NewMutex(), ctx)));
 
   // If null, that means use global options.
   net_instaweb::RewriteOptions* custom_options = NULL;
@@ -1965,11 +1952,12 @@ ps_beacon_handler(ngx_http_request_t* r) {
     user_agent = str_to_string_piece(r->headers_in.user_agent->value);
   }
 
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
   cfg_s->server_context->HandleBeacon(
       str_to_string_piece(r->unparsed_uri),
       user_agent,
-      net_instaweb::RequestContextPtr(new net_instaweb::RequestContext(
-          cfg_s->server_context->thread_system()->NewMutex())));
+      net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
+          cfg_s->server_context->thread_system()->NewMutex(), ctx)));
 
   return NGX_HTTP_NO_CONTENT;
 }

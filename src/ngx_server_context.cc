@@ -18,10 +18,16 @@
 
 #include "ngx_server_context.h"
 
+#include "ngx_request_context.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_rewrite_driver_factory.h"
+// TODO(oschaaf): next time we update the binaries, we can drop our own
+// versions of add_headers_fetcher and loopback_route_fetcher
+#include "add_headers_fetcher.h"
+#include "loopback_route_fetcher.h"
 #include "net/instaweb/system/public/system_caches.h"
 
+#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/split_statistics.h"
@@ -103,6 +109,35 @@ void NgxServerContext::InitStats(Statistics* statistics) {
   html_rewrite_time_us_histogram->SetMaxValue(2 * Timer::kSecondUs);
   // TODO(oschaaf): Once the ServerContext owns the fetchers,
   // initialise UrlAsyncFetcherStats here
+}
+
+void NgxServerContext::ApplySessionFetchers(
+    const RequestContextPtr& request, RewriteDriver* driver) {
+  const NgxRewriteOptions* conf = NgxRewriteOptions::DynamicCast(
+      driver->options());
+  CHECK(conf != NULL);
+  NgxRequestContext* ngx_request = NgxRequestContext::DynamicCast(
+      request.get());
+  if (ngx_request == NULL) {
+    return;  // decoding_driver has a null RequestContext.
+  }
+
+  // Note that these fetchers are applied in the opposite order of how they are
+  // added
+  // TODO(oschaaf): in mod_pagespeed, LoopbackRouteFetcher is not added when
+  // one of these is set:  disable_loopback_routing, slurping_enabled, or
+  // test_proxy.
+
+  // Note the port here is our port, not from the request, since
+  // LoopbackRouteFetcher may decide we should be talking to ourselves.
+  driver->SetSessionFetcher(new LoopbackRouteFetcher(
+      driver->options(), ngx_request->local_ip(),
+      ngx_request->local_port(), driver->async_fetcher()));
+
+  if (driver->options()->num_custom_fetch_headers() > 0) {
+    driver->SetSessionFetcher(new AddHeadersFetcher(driver->options(),
+                                                    driver->async_fetcher()));
+  }
 }
 
 }  // namespace net_instaweb

@@ -27,6 +27,15 @@ extern "C" {
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string_util.h"
 
+namespace net_instaweb {
+
+class GzipInflater;
+class NgxBaseFetch;
+class ProxyFetch;
+class RewriteDriver;
+
+}  // namespace net_instaweb
+
 namespace ngx_psol {
 
 // Allocate chain links and buffers from the supplied pool, and copy over the
@@ -59,6 +68,20 @@ char* string_piece_to_pool_string(ngx_pool_t* pool, StringPiece sp);
 ngx_int_t copy_response_headers_to_ngx(
     ngx_http_request_t* r,
     const net_instaweb::ResponseHeaders& pagespeed_headers);
+
+typedef struct {
+  net_instaweb::ProxyFetch* proxy_fetch;
+  net_instaweb::NgxBaseFetch* base_fetch;
+  net_instaweb::RewriteDriver* driver;
+  bool data_received;
+  int pipe_fd;
+  ngx_connection_t* pagespeed_connection;
+  ngx_http_request_t* r;
+  bool is_resource_fetch;
+  bool sent_headers;
+  bool write_pending;
+  net_instaweb::GzipInflater* inflater_;
+} ps_request_ctx_t;
 
 }  // namespace ngx_psol
 
