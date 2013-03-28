@@ -25,25 +25,21 @@
 # Exits with status 2 if command line args are wrong.
 #
 # Usage:
-#   ./ngx_system_test.sh primary_port secondary_port \
-#                        mod_pagespeed_dir file_cache_path
-#   for example:
-#     ./ngx_system_test.sh 8050 8051 \
-#         /path/to/mod_pagespeed \
-#         /path.to/ngx_pagespeed_cache
+#   ./ngx_system_test.sh primary_port secondary_port mod_pagespeed_dir
+# Example:
+#   ./ngx_system_test.sh 8050 8051 /path/to/mod_pagespeed
 #
 
-if [ "$#" -ne 5 ] ; then
+if [ "$#" -ne 4 ] ; then
   echo "Usage: $0 primary_port secondary_port mod_pagespeed_dir"
-  echo "  file_cache_path nginx_executable"
-  exit 1
+  echo "  nginx_executable"
+  exit 2
 fi
 
 PRIMARY_PORT="$1"
 SECONDARY_PORT="$2"
 MOD_PAGESPEED_DIR="$3"
-FILE_CACHE_PATH="$4"
-NGINX_EXECUTABLE="$5"
+NGINX_EXECUTABLE="$4"
 
 PRIMARY_HOSTNAME="localhost:$PRIMARY_PORT"
 SECONDARY_HOSTNAME="localhost:$SECONDARY_PORT"
@@ -54,7 +50,7 @@ SERVER_ROOT="$MOD_PAGESPEED_DIR/src/install/"
 # them.
 function handle_failure_simple() {
   echo "FAIL"
-  exit 2
+  exit 1
 }
 function check_simple() {
   echo "     check" "$@"
@@ -66,6 +62,8 @@ function check_not_simple() {
 }
 
 this_dir="$( cd $(dirname "$0") && pwd)"
+
+FILE_CACHE_PATH="$this_dir/tmp-file-cache"
 
 # set up the config file for the test
 PAGESPEED_CONF="$this_dir/pagespeed_test.conf"
@@ -89,6 +87,10 @@ check_not_simple grep @@ $PAGESPEED_CONF
 # restart nginx with new config
 killall nginx
 sleep .1
+
+rm -r "$FILE_CACHE_PATH"
+check_simple mkdir "$FILE_CACHE_PATH"
+
 check_simple "$NGINX_EXECUTABLE" -c "$PAGESPEED_CONF"
 
 # run generic system tests
