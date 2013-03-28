@@ -271,6 +271,20 @@ class HtmlParse {
   // We do not expect to see a close-tag for meta and should never insert one.
   bool IsImplicitlyClosedTag(HtmlName::Keyword keyword) const;
 
+  // Determines whether a tag should be interpreted as a 'literal'
+  // tag. That is, a tag whose contents are not parsed until a
+  // corresponding matching end tag is encountered.
+  bool IsLiteralTag(HtmlName::Keyword keyword) const;
+
+  // Determines whether a tag is interpreted as a 'literal' tag in
+  // some user agents. Since some user agents will interpret the
+  // contents of these tags, our parser never treats them as literal
+  // tags. However, a filter that wants to insert new tags that should
+  // be processed by all user agents should not insert those tags into
+  // a tag that is sometimes parsed as a literal tag. Those filters
+  // can use this method to determine if they are within such a tag.
+  bool IsSometimesLiteralTag(HtmlName::Keyword keyword) const;
+
   // An optionally closed tag ranges from <p>, which is typically not closed,
   // but we infer the closing from context.  Also consider <html>, which usually
   // is closed but not always.  E.g. www.google.com does not close its html tag.

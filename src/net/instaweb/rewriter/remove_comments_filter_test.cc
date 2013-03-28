@@ -59,7 +59,7 @@ TEST_F(RemoveCommentsFilterTest, RemoveComment) {
 
 TEST_F(RemoveCommentsFilterTest, RemoveMultipleComments) {
   ValidateExpected("remove_multiple_comments",
-                   "<head><!--1--><title>Hi<!--2--></title></head>"
+                   "<head><!--1--><title>Hi</title><!--2--></head>"
                    "<body><!--3-->hello<!--4--><!--5--></body>",
                    "<head><title>Hi</title></head>"
                    "<body>hello</body>");

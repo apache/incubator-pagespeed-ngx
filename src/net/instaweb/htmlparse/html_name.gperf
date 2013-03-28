@@ -132,6 +132,7 @@ struct KeywordMap {const char* name; net_instaweb::HtmlName::Keyword keyword;};
 "name",                      HtmlName::kName
 "nav",                       HtmlName::kNav
 "noembed",                   HtmlName::kNoembed
+"noframes",                  HtmlName::kNoframes
 "nohref",                    HtmlName::kNohref
 "noresize",                  HtmlName::kNoresize
 "noscript",                  HtmlName::kNoscript

@@ -81,14 +81,45 @@ const HtmlName::Keyword kNonBriefTerminatedTags[] = {
   HtmlName::kXmp,
 };
 
-// These tags cause the text inside them to retained literally
-// and not interpreted.
+// These tags cause the text inside them to be retained literally and not
+// interpreted. See
+// http://www.whatwg.org/specs/web-apps/current-work/multipage/the-end.html#parsing-html-fragments
+// for more information.
+//
+// Note that we do not include noscript, noembed, or noframes tags
+// here. For noembed and noframes, HTML5 compatible user agents will
+// not parse their contents, but older user agents that don't support
+// embed/frames tags will still parse their contents. noscript content
+// is parsed conditionally depending on whether the client has
+// scripting enabled. Thus we need to parse the content within these
+// tags as HTML, since some user agents will parse their contents as
+// HTML. These tags are included in kSometimesLiteralTags below.
+//
+// In addition, we do not include the 'plaintext' tag in kLiteralTags,
+// since it works slightly differently from the other literal
+// tags. plaintext indicates that *all* text that follows, up to end
+// of document, should be interpreted as plain text. There is no
+// closing plaintext tag. Thus, if we want to support plaintext, we
+// need to handle it differently from the kLiteralTags.
 const HtmlName::Keyword kLiteralTags[] = {
   HtmlName::kIframe,
   HtmlName::kScript,
   HtmlName::kStyle,
   HtmlName::kTextarea,
+  HtmlName::kTitle,
   HtmlName::kXmp,
+};
+
+// These tags cause the text inside them to be retained literally and
+// not interpreted in some user agents. Since some user agents will
+// interpret the contents of these tags, our lexer never treats them
+// as literal tags. However, a filter that wants to insert new tags
+// that should be processed by all user agents should not insert those
+// elements into one of these tags.
+const HtmlName::Keyword kSometimesLiteralTags[] = {
+  HtmlName::kNoembed,
+  HtmlName::kNoframes,
+  HtmlName::kNoscript,
 };
 
 // We start our stack-iterations from 1, because we put a NULL into
@@ -137,6 +168,7 @@ HtmlLexer::HtmlLexer(HtmlParse* html_parse)
   CHECK_KEYWORD_SET_ORDERING(kImplicitlyClosedHtmlTags);
   CHECK_KEYWORD_SET_ORDERING(kNonBriefTerminatedTags);
   CHECK_KEYWORD_SET_ORDERING(kLiteralTags);
+  CHECK_KEYWORD_SET_ORDERING(kSometimesLiteralTags);
 #endif
 }
 
@@ -623,7 +655,7 @@ void HtmlLexer::EmitTagOpen(bool allow_implicit_close) {
     skip_parsing_ = true;
   }
   element_stack_.push_back(element_);
-  if (IS_IN_SET(kLiteralTags, element_->keyword())) {
+  if (IsLiteralTag(element_->keyword())) {
     state_ = LITERAL_TAG;
     literal_close_ = "</";
     literal_close_ += element_->name_str();
@@ -970,6 +1002,14 @@ void HtmlLexer::Parse(const char* text, int size) {
 
 bool HtmlLexer::IsImplicitlyClosedTag(HtmlName::Keyword keyword) const {
   return IS_IN_SET(kImplicitlyClosedHtmlTags, keyword);
+}
+
+bool HtmlLexer::IsLiteralTag(HtmlName::Keyword keyword) const {
+  return IS_IN_SET(kLiteralTags, keyword);
+}
+
+bool HtmlLexer::IsSometimesLiteralTag(HtmlName::Keyword keyword) const {
+  return IS_IN_SET(kSometimesLiteralTags, keyword);
 }
 
 bool HtmlLexer::TagAllowsBriefTermination(HtmlName::Keyword keyword) const {
