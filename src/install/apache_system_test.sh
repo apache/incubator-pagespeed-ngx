@@ -942,7 +942,8 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
   # since mod_pagespeed remembers fetch-failures in its cache for 5 minutes.
   # Because of the empty cache requirement, we conditionalize it on a single
   # value of NO_VHOST_MERGE, so it runs only once per apache_debug_smoke_test
-  if [ "$NO_VHOST_MERGE" = "on" ]; then
+  if [ \( $NO_VHOST_MERGE = "on" \) -a \( "${VIRTUALBOX_TEST:-}" = "" \) ]
+  then
     start_test Connection refused handling
 
     # Monitor the Apache log starting now.  tail -F will catch log rotations.
@@ -986,7 +987,9 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
     echo Check that ModPagespeedSerfListOutstandingUrlsOnError works
     check grep "URL http://modpagespeed.com:1023/someimage.png active for " \
         $SERF_REFUSED_PATH
+  fi
 
+  if [ "$NO_VHOST_MERGE" = "on" ]; then
     # Likewise, blocking rewrite tests are only run once.
     start_test Blocking rewrite enabled.
     # We assume that blocking_rewrite_test_dont_reuse_1.jpg will not be
