@@ -66,6 +66,22 @@ class CriticalImagesFinder {
   // and supply a default behavior if IsMeaningful returns false.
   virtual bool IsMeaningful(const RewriteDriver* driver) const = 0;
 
+  // In order to handle varying critical image sets returned by the beacon, we
+  // store a history of the last N critical images, and only declare an image
+  // critical if it appears critical in the last M out of N sets reported. This
+  // function returns what percentage of the sets need to include the image for
+  // it be considered critical.
+  virtual int PercentSeenForCritical() const {
+    return kDefaultPercentSeenForCritial;
+  }
+
+  // The number of past critical image sets to keep. By default, we only keep
+  // the most recent one. The beacon critical image finder should override this
+  // to store a larger number of sets.
+  virtual int NumSetsToKeep() const {
+    return kDefaultNumSetsToKeep;
+  }
+
   // Checks whether the requested image is present in the critical set or not.
   // Users of this function should also check IsMeaningful() to see if the
   // implementation of this function returns meaningful results and provide a
@@ -136,6 +152,11 @@ class CriticalImagesFinder {
 
 
  private:
+  // By default, store 1 critical image set and require an image to be in that
+  // set for it to be critical.
+  static const int kDefaultPercentSeenForCritial = 100;
+  static const int kDefaultNumSetsToKeep = 1;
+
   Variable* critical_images_valid_count_;
   Variable* critical_images_expired_count_;
   Variable* critical_images_not_found_count_;

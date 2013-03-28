@@ -18,7 +18,9 @@
 
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 
+#include <map>
 #include <set>
+#include <utility>
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/log_record.h"
@@ -31,7 +33,6 @@
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string_util.h"
-
 
 namespace net_instaweb {
 
@@ -83,6 +84,55 @@ bool PopulateCriticalImagesInfoFromPropertyValue(
     return true;
   }
   return false;
+}
+
+void UpdateCriticalImagesSetInProto(
+    const StringSet& critical_images_set,
+    const int& max_set_size,
+    const int& percent_needed_for_critical,
+    protobuf::RepeatedPtrField<CriticalImages::CriticalImageSet>* set_field,
+    protobuf::RepeatedPtrField<GoogleString>* critical_images_field) {
+  DCHECK_GT(max_set_size, 0);
+
+  // Update the set field first, which contains the history of up to
+  // max_set_size critical image responses. If we already have max_set_size,
+  // drop the first response, and append the new response to the end.
+  CriticalImages::CriticalImageSet* new_set;
+  if (set_field->size() >= max_set_size) {
+    DCHECK_EQ(set_field->size(), max_set_size);
+    for (int i = 1; i < set_field->size(); ++i) {
+      *set_field->Mutable(i - 1) = set_field->Get(i);
+    }
+    new_set = set_field->Mutable(set_field->size() - 1);
+    new_set->Clear();
+  } else {
+    new_set = set_field->Add();
+  }
+
+  for (StringSet::iterator i = critical_images_set.begin();
+       i != critical_images_set.end(); ++i) {
+    new_set->add_critical_images(*i);
+  }
+
+  // Now recalculate the critical image set.
+  std::map<GoogleString, int> image_count;
+  for (int i = 0; i < set_field->size(); ++i) {
+    const CriticalImages::CriticalImageSet& set = set_field->Get(i);
+    for (int j = 0; j < set.critical_images_size(); ++j) {
+      const GoogleString& img = set.critical_images(j);
+      image_count[img]++;
+    }
+  }
+
+  int num_needed_for_critical =
+      set_field->size() * percent_needed_for_critical / 100;
+  critical_images_field->Clear();
+  for (std::map<GoogleString, int>::const_iterator it = image_count.begin();
+      it != image_count.end(); ++it) {
+    if (it->second >= num_needed_for_critical) {
+      *critical_images_field->Add() = it->first;
+    }
+  }
 }
 
 }  // namespace
@@ -267,20 +317,20 @@ bool CriticalImagesFinder::UpdateCriticalImages(
     CriticalImages* critical_images) const {
   DCHECK(critical_images != NULL);
   if (html_critical_images != NULL) {
-    // Update critical images from html.
-    critical_images->clear_html_critical_images();
-    for (StringSet::iterator i = html_critical_images->begin();
-         i != html_critical_images->end(); ++i) {
-      critical_images->add_html_critical_images(*i);
-    }
+    UpdateCriticalImagesSetInProto(
+        *html_critical_images,
+        NumSetsToKeep(),
+        PercentSeenForCritical(),
+        critical_images->mutable_html_critical_images_sets(),
+        critical_images->mutable_html_critical_images());
   }
   if (css_critical_images != NULL) {
-    // Update critical images from css.
-    critical_images->clear_css_critical_images();
-    for (StringSet::iterator i = css_critical_images->begin();
-         i != css_critical_images->end(); ++i) {
-      critical_images->add_css_critical_images(*i);
-    }
+    UpdateCriticalImagesSetInProto(
+        *css_critical_images,
+        NumSetsToKeep(),
+        PercentSeenForCritical(),
+        critical_images->mutable_css_critical_images_sets(),
+        critical_images->mutable_css_critical_images());
   }
   // We updated if either StringSet* was set.
   return (html_critical_images != NULL || css_critical_images != NULL);

@@ -22,8 +22,21 @@ option optimize_for = LITE_RUNTIME;
 
 package net_instaweb;
 
-// This represents the list of all above-the-fold images.
+// This represents the list of all above-the-fold images. We aggregate critical
+// image information from multiple beacons, and so we store a history of
+// multiple critical image beacon responses to deal with noisy data.
 message CriticalImages {
+  // The set of images in the above-the-fold portion of the webpage. Duplicates
+  // should not be included.
+  message CriticalImageSet {
+    repeated string critical_images = 1;
+  }
+
+  // Keep the aggregated set of critical images. This should be recalculated and
+  // updated whenever a new set is added to *_critical_images_sets below.
   repeated string html_critical_images = 1;
   repeated string css_critical_images = 2;
+
+  repeated CriticalImageSet html_critical_images_sets = 3;
+  repeated CriticalImageSet css_critical_images_sets = 4;
 }
