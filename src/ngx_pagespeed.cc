@@ -44,7 +44,6 @@ extern "C" {
 
 #include "apr_time.h"
 
-#include "net/instaweb/apache/loopback_route_fetcher.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
