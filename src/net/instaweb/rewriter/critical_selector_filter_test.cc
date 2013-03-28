@@ -77,6 +77,14 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     page_ = NewMockPage(kRequestUrl);
     rewrite_driver()->set_property_page(page_);
     pcache_->Read(page_);
+    SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
+  }
+
+  GoogleString LoadRestOfCss(StringPiece orig_css) {
+    return StrCat("<noscript id=\"psa_add_styles\">", orig_css, "</noscript>",
+                  StrCat("<script type=\"text/javascript\">",
+                         CriticalSelectorFilter::kAddStylesScript,
+                         "</script>"));
   }
 
   virtual bool AddHtmlTags() const { return false; }
@@ -110,11 +118,71 @@ TEST_F(CriticalSelectorFilterTest, BasicOperation) {
   ValidateExpected(
       "foo", html,
       StrCat("<head><style>", critical_css, "</style></head>",
-              "<body><div>Stuff</div></body>",
-              "<noscript id=\"psa_add_styles\">", css, "</noscript>",
-              StrCat("<script type=\"text/javascript\">//<![CDATA[\n",
-                     CriticalSelectorFilter::kAddStylesScript,
-                     "\n//]]></script>")));
+             "<body><div>Stuff</div></body>",
+             LoadRestOfCss(css)));
+}
+
+TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
+  // We should not reuse results for same CSS when selectors are different.
+  GoogleString css = "<style>div,span { display: inline-block; }</style>";
+
+  GoogleString critical_css_div = "div{display:inline-block}";
+  GoogleString critical_css_span = "span{display:inline-block}";
+
+  // Check what we compute for a page with div.
+  ValidateNoChanges("with_div", StrCat(css, "<div>Foo</div>"));
+  ResetDriver();
+  ValidateExpected("with_div", StrCat(css, "<div>Foo</div>"),
+                   StrCat("<style>", critical_css_div, "</style>",
+                          "<div>Foo</div>", LoadRestOfCss(css)));
+
+  // Now do it on a page with spans, with selector list updated appropriately.
+  // We also clear the property cache entry for our result, which is needed
+  // because the test harness not really keying the pcache by the URL like
+  // the real system would.
+  StringSet selectors;
+  selectors.insert("span");
+  server_context()->critical_selector_finder()->
+      WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kBeaconCohort));
+  page_->DeleteProperty(
+      pcache_->GetCohort(RewriteDriver::kDomCohort),
+      CriticalSelectorFilter::kSummarizedCssProperty);
+  page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kDomCohort));
+
+  ResetDriver();
+
+  ValidateNoChanges("with_span", StrCat(css, "<span>Foo</span>"));
+  ResetDriver();
+  ValidateExpected("width_span", StrCat(css, "<span>Foo</span>"),
+                   StrCat("<style>", critical_css_span, "</style>",
+                          "<span>Foo</span>", LoadRestOfCss(css)));
+}
+
+TEST_F(CriticalSelectorFilterTest, RetainPseudoOnly) {
+  // Make sure we handle things like :hover OK.
+  GoogleString css = ":hover { border: 2px solid red; }";
+  SetResponseWithDefaultHeaders("c.css", kContentTypeCss,
+                                css, 100);
+  ValidateNoChanges("hover", CssLinkHref("c.css"));
+  ResetDriver();
+  ValidateExpected("hover", CssLinkHref("c.css"),
+                   StrCat("<style>:hover{border:2px solid red}</style>",
+                          LoadRestOfCss(CssLinkHref("c.css"))));
+}
+
+TEST_F(CriticalSelectorFilterTest, RetainUnparseable) {
+  // Make sure we keep unparseable fragments around, particularly when
+  // the problem is with the selector, as well as with the entire region.
+  GoogleString css = "!huh! {background: white; } @huh { display: block; }";
+  SetResponseWithDefaultHeaders("c.css", kContentTypeCss,
+                                css, 100);
+  ValidateNoChanges("partly_unparseable", CssLinkHref("c.css"));
+  ResetDriver();
+  ValidateExpected(
+      "partly_unparseable", CssLinkHref("c.css"),
+      StrCat("<style>!huh! {background:#fff}@huh { display: block; }</style>",
+             LoadRestOfCss(CssLinkHref("c.css"))));
 }
 
 }  // namespace

@@ -86,6 +86,10 @@ class CssSummarizerBase : public RewriteFilter {
     GoogleString location;
   };
 
+  // This method should be overridden in case the subclass's summary computation
+  // depends on things other than the input CSS.
+  virtual GoogleString CacheKeySuffix() const;
+
   // This should be overridden to compute a per-resource summary.
   // The method should not modify the object state, and only
   // put the result into *out as it may not be invoked in case of a

@@ -48,6 +48,7 @@ class RewriteDriver;
 class CriticalSelectorFilter : public CssSummarizerBase {
  public:
   static const char kAddStylesScript[];
+  static const char kSummarizedCssProperty[];
 
   explicit CriticalSelectorFilter(RewriteDriver* rewrite_driver);
   virtual ~CriticalSelectorFilter();
@@ -62,6 +63,10 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   virtual void Summarize(Css::Stylesheet* stylesheet,
                          GoogleString* out) const;
   virtual void SummariesDone();
+
+  // Since our computation depends on the selectors that are relevant to the
+  // webpage, we incorporate them into the cache key as well.
+  virtual GoogleString CacheKeySuffix() const;
 
   // Overrides of CssSummarizerBase CSS notification API. These hand us
   // the entirety of CSS, so we can handle it with lower priority.
@@ -90,6 +95,9 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   // These are just copied over from the finder and turned into a set for easier
   // membership checking.
   StringSet critical_selectors_;
+
+  // Summary of critical_selectors_ as a short string.
+  GoogleString cache_key_suffix_;
 
   // Info on CSS we are delaying till the end
   CssElementVector css_elements_;

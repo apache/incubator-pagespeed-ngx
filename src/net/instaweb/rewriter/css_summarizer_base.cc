@@ -40,7 +40,6 @@
 #include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
-#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -239,19 +238,7 @@ bool CssSummarizerBase::Context::Partition(OutputPartitions* partitions,
 }
 
 GoogleString CssSummarizerBase::Context::CacheKeySuffix() const {
-  GoogleString suffix;
-  if (rewrite_inline_) {
-    // Incorporate the base path of the HTML as part of the key --- it
-    // matters for inline CSS since resources are resolved against
-    // that (while it doesn't for external CSS, since that uses the
-    // stylesheet as the base).
-    // TODO(morlovich): this doesn't actually matter for what we use this for,
-    // though?
-    const Hasher* hasher = FindServerContext()->lock_hasher();
-    StrAppend(&suffix, "_@", hasher->Hash(css_base_gurl_.AllExceptLeaf()));
-  }
-
-  return suffix;
+  return filter_->CacheKeySuffix();
 }
 
 CssSummarizerBase::CssSummarizerBase(RewriteDriver* driver)
@@ -262,6 +249,10 @@ CssSummarizerBase::CssSummarizerBase(RewriteDriver* driver)
 
 CssSummarizerBase::~CssSummarizerBase() {
   Clear();
+}
+
+GoogleString CssSummarizerBase::CacheKeySuffix() const {
+  return GoogleString();
 }
 
 void CssSummarizerBase::NotifyInlineCss(HtmlElement* style_element,

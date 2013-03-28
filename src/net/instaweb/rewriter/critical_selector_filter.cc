@@ -21,7 +21,7 @@
 #include "net/instaweb/rewriter/public/critical_selector_filter.h"
 
 #include <algorithm>
-#include <map>
+#include <set>
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -50,8 +51,6 @@ namespace net_instaweb {
 
 namespace {
 
-const char kSummarizedCssProperty[] = "selector_summarized_css";
-
 // Helper that takes a std::vector-like collection, and compacts
 // any null holes in it.
 template<typename VectorType> void Compact(VectorType* cl) {
@@ -62,6 +61,9 @@ template<typename VectorType> void Compact(VectorType* cl) {
 }
 
 }  // namespace
+
+const char CriticalSelectorFilter::kSummarizedCssProperty[] =
+    "selector_summarized_css";
 
 // TODO(ksimbili): Move this to appropriate event instead of 'onload'.
 const char CriticalSelectorFilter::kAddStylesScript[] =
@@ -148,9 +150,11 @@ void CriticalSelectorFilter::Summarize(Css::Stylesheet* stylesheet,
   for (int ruleset_index = 0, num_rulesets = stylesheet->rulesets().size();
        ruleset_index < num_rulesets; ++ruleset_index) {
     Css::Ruleset* r = stylesheet->mutable_rulesets().at(ruleset_index);
-
-    // TODO(morlovich): Make sure we're sufficiently careful with unparseable
-    // stuff.
+    if (r->type() == Css::Ruleset::UNPARSED_REGION) {
+      // Couldn't parse this as a rule, leave unaltered. Hopefully it's not
+      // too big..
+      continue;
+    }
 
     // TODO(morlovich): This does a lot of repeated work as the same media
     // entries are repeated for tons of rulesets.
@@ -172,12 +176,16 @@ void CriticalSelectorFilter::Summarize(Css::Stylesheet* stylesheet,
     bool any_selectors_apply = false;
     if (any_media_apply) {
       // See which of the selectors for given declaration apply.
+      // Note that in some partial parse errors we will get 0 selectors here,
+      // in which case we retain things to be conservative.
+      any_selectors_apply = r->selectors().empty();
       for (int selector_index = 0, num_selectors = r->selectors().size();
           selector_index < num_selectors; ++selector_index) {
         Css::Selector* s = r->mutable_selectors().at(selector_index);
         GoogleString portion_to_compare = css_util::JsDetectableSelector(*s);
-        if (critical_selectors_.find(portion_to_compare)
-            != critical_selectors_.end()) {
+        if (portion_to_compare.empty() ||
+            critical_selectors_.find(portion_to_compare)
+                != critical_selectors_.end()) {
           any_selectors_apply = true;
         } else {
           delete s;
@@ -252,10 +260,15 @@ void CriticalSelectorFilter::NotifyExternalCss(HtmlElement* link) {
   }
 }
 
+GoogleString CriticalSelectorFilter::CacheKeySuffix() const {
+  return cache_key_suffix_;
+}
+
 void CriticalSelectorFilter::StartDocumentImpl() {
   CssSummarizerBase::StartDocumentImpl();
 
   // Read critical selector info from pcache.
+  // TODO(morlovich): Distinguish the case where this is not available!
   critical_selectors_.clear();
   CriticalSelectorSet* pcache_selectors = driver_->CriticalSelectors();
   if (pcache_selectors != NULL) {
@@ -263,6 +276,10 @@ void CriticalSelectorFilter::StartDocumentImpl() {
       critical_selectors_.insert(pcache_selectors->critical_selectors(i));
     }
   }
+
+  GoogleString all_selectors = JoinCollection(critical_selectors_, ",");
+  cache_key_suffix_ =
+      driver_->server_context()->lock_hasher()->Hash(all_selectors);
 
   // Read critical css info from pcache.
   PropertyCacheDecodeResult status;
