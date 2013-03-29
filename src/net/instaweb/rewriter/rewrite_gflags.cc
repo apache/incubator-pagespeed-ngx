@@ -862,7 +862,7 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   return FLAGS_lru_cache_size_bytes;
 }
 
-bool RewriteGflags::WasExplicitlySet(const char* name) const {
+bool RewriteGflags::WasExplicitlySet(const char* name) {
   CommandLineFlagInfo flag_info;
   CHECK(GetCommandLineFlagInfo(name, &flag_info));
   return !flag_info.is_default;

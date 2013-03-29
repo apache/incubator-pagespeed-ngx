@@ -401,6 +401,25 @@ bool MemCaseEqual(const char* s1, size_t size1, const char* s2, size_t size2) {
   return true;
 }
 
+bool SplitStringPieceToIntegerVector(
+    const StringPiece& src, const StringPiece& separators,
+    std::vector<int>* ints) {
+  StringPieceVector values;
+  SplitStringPieceToVector(
+      src, separators, &values, true /* omit_empty_strings */);
+  ints->clear();
+  int v;
+  for (int i = 0, n = values.size(); i < n; ++i) {
+    if (StringToInt(values[i].as_string(), &v)) {
+      ints->push_back(v);
+    } else {
+      ints->clear();
+      return false;
+    }
+  }
+  return true;
+}
+
 namespace {
 
 // From Hypertext Transfer Protocol -- HTTP/1.1

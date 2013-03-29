@@ -289,6 +289,22 @@ class RewriteDriverFactory {
   // a specific furious experiment.
   virtual FuriousMatcher* NewFuriousMatcher();
 
+  // Returns the preferred webp image quality vector for client options.
+  const std::vector<int>* preferred_webp_qualities() {
+    return &preferred_webp_qualities_;
+  }
+
+  // Returns the preferred jpeg image quality vector for client options.
+  const std::vector<int>* preferred_jpeg_qualities() {
+    return &preferred_jpeg_qualities_;
+  }
+
+  // Returns true if the correct number of WebP qualities are parsed and set.
+  bool SetPreferredWebpQualities(const StringPiece& qualities);
+
+  // Returns true if the correct number of JPEG qualities are parsed and set.
+  bool SetPreferredJpegQualities(const StringPiece& qualities);
+
  protected:
   bool FetchersComputed() const;
   virtual void StopCacheActivity();
@@ -443,6 +459,13 @@ class RewriteDriverFactory {
 
   // The hostname we're running on. Used to set the same field in ServerContext.
   GoogleString hostname_;
+
+  // Image qualities used for client options.
+  // Each vector contains 5 integers used as recompression qualities for
+  // quality preference and screen resolution combinations.
+  // Note that the default values cannot be changed in Apache currently.
+  std::vector<int> preferred_webp_qualities_;
+  std::vector<int> preferred_jpeg_qualities_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };

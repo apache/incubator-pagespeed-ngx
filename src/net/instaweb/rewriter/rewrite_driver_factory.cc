@@ -19,6 +19,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 
 #include "base/logging.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/http_dump_url_fetcher.h"
@@ -61,6 +62,14 @@
 
 namespace net_instaweb {
 
+namespace {
+
+// Default image qualities for client options.
+const int kWebpQualityArray[] = {20, 35, 50, 70, 85};
+const int kJpegQualityArray[] = {30, 50, 65, 80, 90};
+
+}
+
 class Statistics;
 
 RewriteDriverFactory::RewriteDriverFactory(ThreadSystem* thread_system)
@@ -84,6 +93,11 @@ void RewriteDriverFactory::Init() {
   server_context_mutex_.reset(thread_system_->NewMutex());
   worker_pools_.assign(kNumWorkerPools, NULL);
   hostname_ = GetHostname();
+
+  preferred_webp_qualities_.assign(
+      kWebpQualityArray, kWebpQualityArray + arraysize(kWebpQualityArray));
+  preferred_jpeg_qualities_.assign(
+      kJpegQualityArray, kJpegQualityArray + arraysize(kJpegQualityArray));
 
   // Pre-initializes the default options.  IMPORTANT: subclasses overridding
   // NewRewriteOptions() should re-call this method from their constructor
@@ -672,6 +686,22 @@ RewriteOptions* RewriteDriverFactory::NewRewriteOptionsForQuery() {
 
 FuriousMatcher* RewriteDriverFactory::NewFuriousMatcher() {
   return new FuriousMatcher;
+}
+
+bool RewriteDriverFactory::SetPreferredWebpQualities(
+    const StringPiece& qualities) {
+  return SplitStringPieceToIntegerVector(
+      qualities, ",", &preferred_webp_qualities_) &&
+      (static_cast<int>(preferred_webp_qualities_.size()) ==
+          DeviceProperties::GetPreferredImageQualityCount());
+}
+
+bool RewriteDriverFactory::SetPreferredJpegQualities(
+    const StringPiece& qualities) {
+  return SplitStringPieceToIntegerVector(
+      qualities, ",", &preferred_jpeg_qualities_) &&
+      (static_cast<int>(preferred_jpeg_qualities_.size()) ==
+          DeviceProperties::GetPreferredImageQualityCount());
 }
 
 }  // namespace net_instaweb

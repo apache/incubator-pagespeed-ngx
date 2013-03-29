@@ -296,6 +296,12 @@ struct StringCompareInsensitive {
   };
 };
 
+// Parse a list of integers into a vector. Empty values are ignored.
+// Returns true if all non-empty values are converted into integers.
+bool SplitStringPieceToIntegerVector(
+    const StringPiece& src, const StringPiece& separators,
+    std::vector<int>* ints);
+
 // Does a path end in slash?
 inline bool EndsInSlash(const StringPiece& path) {
   return path.ends_with("/");

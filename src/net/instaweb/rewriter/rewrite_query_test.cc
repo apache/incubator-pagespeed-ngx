@@ -139,9 +139,9 @@ class RewriteQueryTest : public RewriteTestBase {
       RequestHeaders* request_headers,
       bool expected_parsing_result,
       RewriteQuery::ProxyMode expected_proxy_mode,
-      RewriteQuery::ImageQualityPreference expected_quality_preference) {
+      DeviceProperties::ImageQualityPreference expected_quality_preference) {
     RewriteQuery::ProxyMode proxy_mode;
-    RewriteQuery::ImageQualityPreference quality_preference;
+    DeviceProperties::ImageQualityPreference quality_preference;
     const StringPiece header_value(
         request_headers->Lookup1(HttpAttributes::kXPsaClientOptions));
     bool parsing_result = RewriteQuery::ParseClientOptions(
@@ -157,7 +157,7 @@ class RewriteQueryTest : public RewriteTestBase {
       RequestHeaders* request_headers,
       bool expected_parsing_result,
       RewriteQuery::ProxyMode expected_proxy_mode,
-      RewriteQuery::ImageQualityPreference expected_quality_preference) {
+      DeviceProperties::ImageQualityPreference expected_quality_preference) {
     ResponseHeaders response_headers;
     GoogleString in_query, out_query, out_req_string, out_resp_string;
 
@@ -190,7 +190,8 @@ class RewriteQueryTest : public RewriteTestBase {
       EXPECT_FALSE(options->Enabled(RewriteOptions::kResizeMobileImages));
     } else {
       EXPECT_EQ(RewriteQuery::kProxyModeDefault, expected_proxy_mode);
-      if (expected_quality_preference == RewriteQuery::kImageQualityDefault) {
+      if (expected_quality_preference ==
+          DeviceProperties::kImageQualityDefault) {
         EXPECT_TRUE(options == NULL);
       }
     }
@@ -666,7 +667,7 @@ TEST_F(RewriteQueryTest, ClientOptionsEmptyHeader) {
   TestClientOptions(&request_headers,
                     false, /* expected_parsing_result */
                     RewriteQuery::kProxyModeDefault,
-                    RewriteQuery::kImageQualityDefault);
+                    DeviceProperties::kImageQualityDefault);
 }
 
 TEST_F(RewriteQueryTest, ClientOptionsMultipleHeaders) {
@@ -677,7 +678,7 @@ TEST_F(RewriteQueryTest, ClientOptionsMultipleHeaders) {
   TestClientOptions(&request_headers,
                     false, /* expected_parsing_result */
                     RewriteQuery::kProxyModeDefault,
-                    RewriteQuery::kImageQualityDefault);
+                    DeviceProperties::kImageQualityDefault);
 }
 
 TEST_F(RewriteQueryTest, ClientOptionsOrder1) {
@@ -688,7 +689,7 @@ TEST_F(RewriteQueryTest, ClientOptionsOrder1) {
   TestClientOptions(&request_headers,
                     true, /* expected_parsing_result */
                     RewriteQuery::kProxyModeDefault,
-                    RewriteQuery::kImageQualityMedium);
+                    DeviceProperties::kImageQualityMedium);
 }
 
 TEST_F(RewriteQueryTest, ClientOptionsOrder2) {
@@ -701,7 +702,7 @@ TEST_F(RewriteQueryTest, ClientOptionsOrder2) {
   TestClientOptions(&request_headers,
                     true, /* expected_parsing_result */
                     RewriteQuery::kProxyModeDefault,
-                    RewriteQuery::kImageQualityHigh);
+                    DeviceProperties::kImageQualityHigh);
 }
 
 TEST_F(RewriteQueryTest, ClientOptionsCaseInsensitive) {
@@ -714,7 +715,7 @@ TEST_F(RewriteQueryTest, ClientOptionsCaseInsensitive) {
   TestClientOptions(&request_headers,
                     true, /* expected_parsing_result */
                     RewriteQuery::kProxyModeNoImageTransform,
-                    RewriteQuery::kImageQualityDefault);
+                    DeviceProperties::kImageQualityDefault);
 }
 
 TEST_F(RewriteQueryTest, ClientOptionsNonDefaultProxyMode) {
@@ -725,7 +726,7 @@ TEST_F(RewriteQueryTest, ClientOptionsNonDefaultProxyMode) {
   TestClientOptions(&request_headers,
                     true, /* expected_parsing_result */
                     RewriteQuery::kProxyModeNoImageTransform,
-                    RewriteQuery::kImageQualityDefault);
+                    DeviceProperties::kImageQualityDefault);
 }
 
 TEST_F(RewriteQueryTest, ClientOptionsValidVersionBadOptions) {
@@ -737,7 +738,7 @@ TEST_F(RewriteQueryTest, ClientOptionsValidVersionBadOptions) {
   TestClientOptions(&request_headers,
                     true, /* expected_parsing_result */
                     RewriteQuery::kProxyModeDefault,
-                    RewriteQuery::kImageQualityDefault);
+                    DeviceProperties::kImageQualityDefault);
 }
 
 TEST_F(RewriteQueryTest, ClientOptionsInvalidVersion) {
@@ -747,7 +748,7 @@ TEST_F(RewriteQueryTest, ClientOptionsInvalidVersion) {
   TestClientOptions(&request_headers,
                     false, /* expected_parsing_result */
                     RewriteQuery::kProxyModeDefault,
-                    RewriteQuery::kImageQualityDefault);
+                    DeviceProperties::kImageQualityDefault);
 }
 
 }  // namespace net_instaweb

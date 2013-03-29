@@ -15,6 +15,7 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_QUERY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_QUERY_H_
 
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -22,7 +23,6 @@
 
 namespace net_instaweb {
 
-class DeviceProperties;
 class GoogleUrl;
 class MessageHandler;
 class QueryParams;
@@ -127,17 +127,6 @@ class RewriteQuery {
     kProxyModeNoTransform,
   };
 
-  enum ImageQualityPreference {
-    // Client prefers that the server uses its own default image quality.
-    kImageQualityDefault,
-    // Client prefers lows image quality.
-    kImageQualityLow,
-    // Client prefers medium image quality.
-    kImageQualityMedium,
-    // Client prefers high image quality.
-    kImageQualityHigh,
-  };
-
   // Returns true if the params/headers look like they might have some
   // options.  This is used as a cheap pre-scan before doing the more
   // expensive query processing.
@@ -166,12 +155,12 @@ class RewriteQuery {
   static bool ParseClientOptions(
       const StringPiece& client_options,
       ProxyMode* proxy_mode,
-      ImageQualityPreference* image_quality);
+      DeviceProperties::ImageQualityPreference* image_quality);
 
   // Set image qualities in options.
   // Returns true if any option is explicitly set.
   static bool SetEffectiveImageQualities(
-      ImageQualityPreference quality_preference,
+      DeviceProperties::ImageQualityPreference quality_preference,
       DeviceProperties* device_properties,
       RewriteOptions* options);
 
@@ -185,7 +174,8 @@ class RewriteQuery {
 
   // Returns true if a valid ImageQualityPreference parsed and returned.
   static bool ParseImageQualityPreference(
-      const GoogleString* preference_name, ImageQualityPreference* preference);
+      const GoogleString* preference_name,
+      DeviceProperties::ImageQualityPreference* preference);
 };
 
 }  // namespace net_instaweb

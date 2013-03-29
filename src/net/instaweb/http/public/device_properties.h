@@ -15,6 +15,8 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_DEVICE_PROPERTIES_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_DEVICE_PROPERTIES_H_
 
+#include <vector>
+
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/string.h"
@@ -44,10 +46,39 @@ class DeviceProperties {
   bool CanPreloadResources() const;
   bool GetScreenResolution(int* width, int* height) const;
 
+  enum ImageQualityPreference {
+    // Server uses its own default image quality.
+    kImageQualityDefault,
+    // The request asks for low image quality.
+    kImageQualityLow,
+    // The request asks for medium image quality.
+    kImageQualityMedium,
+    // The request asks for high image quality.
+    kImageQualityHigh,
+  };
+  static const int kMediumScreenWidthThreshold = 720;
+  static const int kLargeScreenWidthThreshold = 1500;
+
+  // Does not own the vectors. Callers must ensure the lifetime of vectors
+  // exceeds that of the DeviceProperties.
+  void SetPreferredImageQualities(
+      const std::vector<int>* webp,  const std::vector<int>* jpeg);
+  // Returns true iff WebP and Jpeg image quality are set for the preference.
+  bool GetPreferredImageQualities(
+      ImageQualityPreference preference, int* webp, int* jpeg) const;
+  static int GetPreferredImageQualityCount();
+
  private:
   friend class ImageRewriteTest;
   FRIEND_TEST(ImageRewriteTest, SquashImagesForMobileScreen);
+  FRIEND_TEST(DevicePropertiesTest, GetScreenGroupIndex);
+
+  // Returns true if a valid screen_index is returned for the screen_width.
+  // The returned screen_index represents a small, medium or large screen group.
+  static bool GetScreenGroupIndex(int screen_width, int* screen_index);
   void SetScreenResolution(int width, int height) const;
+  // Returns true if there are valid preferred image qualities.
+  bool HasPreferredImageQualities() const;
 
   GoogleString user_agent_;
   UserAgentMatcher* ua_matcher_;
@@ -64,6 +95,8 @@ class DeviceProperties {
   mutable LazyBool screen_dimensions_set_;
   mutable int screen_width_;
   mutable int screen_height_;
+  const std::vector<int>* preferred_webp_qualities_;
+  const std::vector<int>* preferred_jpeg_qualities_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceProperties);
 };

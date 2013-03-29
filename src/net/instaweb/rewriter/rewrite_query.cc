@@ -201,8 +201,7 @@ RewriteQuery::Status RewriteQuery::Scan(
 
   scoped_ptr<DeviceProperties> device_properties;
   if (request_headers != NULL) {
-    device_properties.reset(
-        new DeviceProperties(server_context->user_agent_matcher()));
+    device_properties.reset(server_context->NewDeviceProperties());
     device_properties->set_user_agent(
         request_headers->Lookup1(HttpAttributes::kUserAgent));
   }
@@ -490,14 +489,15 @@ bool RewriteQuery::ParseProxyMode(
 }
 
 bool RewriteQuery::ParseImageQualityPreference(
-    const GoogleString* preference_name, ImageQualityPreference* preference) {
+    const GoogleString* preference_value,
+    DeviceProperties::ImageQualityPreference* preference) {
   int value = 0;
-  if (preference_name != NULL &&
-      !preference_name->empty() &&
-      StringToInt(*preference_name, &value) &&
-      value >= kImageQualityDefault &&
-      value <= kImageQualityHigh) {
-    *preference = static_cast<ImageQualityPreference>(value);
+  if (preference_value != NULL &&
+      !preference_value->empty() &&
+      StringToInt(*preference_value, &value) &&
+      value >= DeviceProperties::kImageQualityDefault &&
+      value <= DeviceProperties::kImageQualityHigh) {
+    *preference = static_cast<DeviceProperties::ImageQualityPreference>(value);
     return true;
   }
   return false;
@@ -505,7 +505,7 @@ bool RewriteQuery::ParseImageQualityPreference(
 
 bool RewriteQuery::ParseClientOptions(
     const StringPiece& client_options, ProxyMode* proxy_mode,
-    ImageQualityPreference* image_quality_preference) {
+    DeviceProperties::ImageQualityPreference* image_quality_preference) {
   StringMultiMapSensitive options;
   options.AddFromNameValuePairs(
       client_options, kProxyOptionSeparator, kProxyOptionValueSeparator,
@@ -517,7 +517,7 @@ bool RewriteQuery::ParseClientOptions(
   if (version_value != NULL &&
       *version_value == kProxyOptionValidVersionValue) {
     *proxy_mode = kProxyModeDefault;
-    *image_quality_preference = kImageQualityDefault;
+    *image_quality_preference = DeviceProperties::kImageQualityDefault;
     ParseProxyMode(options.Lookup1(kProxyOptionMode), proxy_mode);
 
     if (*proxy_mode == kProxyModeDefault) {
@@ -531,16 +531,20 @@ bool RewriteQuery::ParseClientOptions(
 }
 
 bool RewriteQuery::SetEffectiveImageQualities(
-    ImageQualityPreference quality_preference,
+    DeviceProperties::ImageQualityPreference quality_preference,
     DeviceProperties* device_properties,
     RewriteOptions* options) {
-  if (quality_preference == kImageQualityDefault ||
+  if (quality_preference == DeviceProperties::kImageQualityDefault ||
       device_properties == NULL) {
     return false;
   }
-  // TODO(bolian): Set jpeg and webp image qualities based on screen
-  // resolution and client hint options.
-  // For now, do nothing and keep using default values.
+  int webp = -1, jpeg = -1;
+  if (device_properties->GetPreferredImageQualities(
+      quality_preference, &webp, &jpeg)) {
+    options->set_image_webp_recompress_quality(webp);
+    options->set_image_jpeg_recompress_quality(jpeg);
+    return true;
+  }
   return false;
 }
 
@@ -548,7 +552,8 @@ bool RewriteQuery::UpdateRewriteOptionsWithClientOptions(
     const GoogleString& client_options, DeviceProperties* device_properties,
     RewriteOptions* options) {
   ProxyMode proxy_mode = kProxyModeDefault;
-  ImageQualityPreference quality_preference = kImageQualityDefault;
+  DeviceProperties::ImageQualityPreference quality_preference =
+      DeviceProperties::kImageQualityDefault;
   if (!ParseClientOptions(client_options, &proxy_mode, &quality_preference)) {
     return false;
   }

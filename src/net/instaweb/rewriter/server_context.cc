@@ -24,6 +24,7 @@
 
 #include "base/logging.h"               // for operator<<, etc
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_headers.h"
@@ -1173,6 +1174,15 @@ RewriteDriverPool* ServerContext::SelectDriverPool(bool using_spdy) {
 
 void ServerContext::ApplySessionFetchers(const RequestContextPtr& req,
                                          RewriteDriver* driver) {
+}
+
+DeviceProperties* ServerContext::NewDeviceProperties() {
+  DeviceProperties* device_properties =
+      new DeviceProperties(user_agent_matcher());
+  device_properties->SetPreferredImageQualities(
+      factory_->preferred_webp_qualities(),
+      factory_->preferred_jpeg_qualities());
+  return device_properties;
 }
 
 }  // namespace net_instaweb

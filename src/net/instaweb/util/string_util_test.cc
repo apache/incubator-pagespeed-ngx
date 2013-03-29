@@ -634,6 +634,36 @@ TEST_F(TrimQuoteTest, TrimQuoteTestAll) {
   CheckTrimQuote("\"one two\"", "one two");
 }
 
+TEST(SplitStringPieceToIntegerVectorTest, SplitStringPieceToIntegerVector) {
+  std::vector<int> ints;
+
+  EXPECT_TRUE(SplitStringPieceToIntegerVector("30,40,50", ",", &ints));
+  EXPECT_EQ(3, ints.size());
+  EXPECT_EQ(30, ints[0]);
+  EXPECT_EQ(40, ints[1]);
+  EXPECT_EQ(50, ints[2]);
+
+  EXPECT_TRUE(SplitStringPieceToIntegerVector("", ",", &ints));
+  EXPECT_EQ(0, ints.size());
+
+  EXPECT_TRUE(SplitStringPieceToIntegerVector("30#, 50.", "#, .", &ints));
+  EXPECT_EQ(2, ints.size());
+  EXPECT_EQ(30, ints[0]);
+  EXPECT_EQ(50, ints[1]);
+
+  EXPECT_FALSE(SplitStringPieceToIntegerVector("30,xyz,", ",", &ints));
+  EXPECT_EQ(0, ints.size());
+
+  EXPECT_FALSE(SplitStringPieceToIntegerVector("30x", ",", &ints));
+  EXPECT_EQ(0, ints.size());
+
+  EXPECT_FALSE(SplitStringPieceToIntegerVector("x30,", ",", &ints));
+  EXPECT_EQ(0, ints.size());
+
+  EXPECT_FALSE(SplitStringPieceToIntegerVector("30.30, ", ",", &ints));
+  EXPECT_EQ(0, ints.size());
+}
+
 }  // namespace
 
 }  // namespace net_instaweb
