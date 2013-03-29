@@ -132,8 +132,8 @@ const int64 RewriteOptions::kDefaultImagesRecompressQuality = -1;
 const int64 RewriteOptions::kDefaultImageJpegRecompressQuality = -1;
 
 // Number of scans to output for jpeg images when using progressive mode. If set
-// to -1, we ignore this setting.
-const int RewriteOptions::kDefaultImageJpegNumProgressiveScans = -1;
+// to -1, we do not produce progressive jpegs.
+const int64 RewriteOptions::kDefaultImageJpegNumProgressiveScans = -1;
 
 // Percentage savings in order to retain rewritten images; these default
 // to 100% so that we always attempt to resize downsized images, and
@@ -1186,7 +1186,19 @@ void RewriteOptions::AddProperties() {
       &RewriteOptions::image_jpeg_num_progressive_scans_, "ijps",
       kImageJpegNumProgressiveScans,
       kDirectoryScope,
-      NULL);  // TODO(jmarantz): write help & doc for mod_pagespeed.
+      "Number of progressive scans [1,10] to emit when rewriting images as "
+      "ten-scan progressive jpegs. A value of -1 disables rewriting as "
+      "progressive jpegs.");
+  // Use kDefaultImageJpegNumProgressiveScans as default.
+  AddBaseProperty(
+      kDefaultImageJpegNumProgressiveScans,
+      &RewriteOptions::image_jpeg_num_progressive_scans_for_small_screens_,
+      "ijpst",
+      kImageJpegNumProgressiveScansForSmallScreens,
+      kDirectoryScope,
+      "Number of progressive scans [1,10] to emit when rewriting images as"
+      "ten-scan progressive jpegs for small screens. A value of -1 falls "
+      "back to kImageJpegNumProgressiveScans.");
   AddBaseProperty(
       false, &RewriteOptions::cache_small_images_unrewritten_, "csiu",
       kCacheSmallImagesUnrewritten,

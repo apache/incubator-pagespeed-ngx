@@ -68,6 +68,7 @@ struct OptionName {
 "IdleFlushTimeMs",                       RewriteOptions::kIdleFlushTimeMs
 "ImageInlineMaxBytes",                   RewriteOptions::kImageInlineMaxBytes
 "ImageJpegNumProgressiveScans",          RewriteOptions::kImageJpegNumProgressiveScans
+"ImageJpegNumProgressiveScansForSmallScreens", RewriteOptions::kImageJpegNumProgressiveScansForSmallScreens
 "ImageLimitOptimizedPercent",            RewriteOptions::kImageLimitOptimizedPercent
 "ImageLimitResizeAreaPercent",           RewriteOptions::kImageLimitResizeAreaPercent
 "ImageMaxRewritesAtOnce",                RewriteOptions::kImageMaxRewritesAtOnce

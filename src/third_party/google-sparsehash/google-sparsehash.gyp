@@ -26,6 +26,14 @@
           '<(sparsehash_gen_arch_root)/include',  # For sparseconfig.h
           '<(sparsehash_root)/src',  # For everything else.
         ],
+        # google/sparsehash/sparseconfig.h on Windows is in a different spot.
+        'conditions': [
+          ['OS=="win"', {
+            'include_dirs+': [
+              '<(sparsehash_root)/src/windows/',
+            ],
+          }],
+        ],
       },
     },
   ],

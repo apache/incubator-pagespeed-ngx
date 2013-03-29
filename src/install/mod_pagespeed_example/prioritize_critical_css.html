@@ -1,16 +1,40 @@
+<!doctype html>
 <html>
   <head>
     <title>prioritize_critical_css example</title>
-    <link rel="stylesheet" href="styles/all_styles.css">
-    <link rel="stylesheet" href="styles/blue.css" media="print">
-    <link rel="stylesheet" href="styles/bold.css" media="not decodable">
-    <link rel="stylesheet" href="styles/yellow.css" media=", ,print, screen ">
+    <link rel="stylesheet" type="text/css" href="styles/blue.css">
+    <link rel="stylesheet" type="text/css" href="styles/big.css">
+    <style>
+      @import url(styles/all_using_imports.css);
+    </style>
     <link rel="stylesheet" href="styles/rewrite_css_images.css" media="all">
   </head>
   <body>
-    <div class="blue">
-      CSS that was linked should be inlined with only a rule for .blue in the source.
-      The linked CSS should be added at the bottom of the html source.
+    <div class="foo" style="display:inline-block;"></div>
+    <span class="blue big">Prioritize Critical CSS</span>
+    <div class="bold">
+      <p>
+      This filter first instruments the page to discover which CSS selectors
+      will be used by the browser.  It uses instrumentation results to select
+      the critical CSS rules from the page and inlines those in &lt;style&gt;
+      tags at the top of the document.  It lazily loads the original CSS
+      &lt;style&gt; and &lt;link&gt; tags after the page has loaded. </p>
+      <p>
+      When you load this page, you may see one of several things:
+      <ul>
+        <li>An unoptimized, uninstrumented page if pagespeed is still loading
+        and processing the CSS resources on the page.</li>
+        <li>An unoptimized page with instrumentation code at the bottom, once
+        pagespeed has obtained all the CSS resources the page contains.</li>
+        <li>A page with the critical CSS in &lt;style&gt; tags at the top of the
+        document.  The original CSS will be in a &lt;noscript&gt; block at the
+        bottom of the page, followed by a script that makes them visible to the
+        browser.  This page might also contain additional instrumentation code
+        to ensure that the critical CSS is still valid.</li>
+      </ul>
+      <p>If you see a flash of unstyled content as the page is loading, it is
+      possible the beacon results that pagespeed collected did not include rules
+      that apply to your browser. </p>
     </div>
   </body>
 </html>
