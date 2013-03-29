@@ -472,10 +472,9 @@ bool handle_as_resource(ApacheServerContext* server_context,
     return false;
   }
 
-  // We must potentially poll for cache.flush (which can mutate global_options)
-  // before constructing the options that we use to decide whether IPRO is
-  // enabled.
-  server_context->PollFilesystemForCacheFlush();
+  // Flushing the cache mutates global_options, so this has to happen before we
+  // construct the options that we use to decide whether IPRO is enabled.
+  server_context->FlushCacheIfNecessary();
 
   ApacheRequestContext* apache_request_context = new ApacheRequestContext(
       server_context->thread_system()->NewMutex(), request);

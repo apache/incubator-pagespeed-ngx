@@ -32,11 +32,8 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/system/public/system_caches.h"
-#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
-#include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/split_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -47,9 +44,6 @@
 namespace net_instaweb {
 
 namespace {
-
-const char kCacheFlushCount[] = "cache_flush_count";
-const char kCacheFlushTimestampMs[] = "cache_flush_timestamp_ms";
 
 // Statistics histogram names.
 const char kHtmlRewriteTimeUsHistogram[] = "Html Time us Histogram";
@@ -86,11 +80,7 @@ ApacheServerContext::ApacheServerContext(
       initialized_(false),
       local_statistics_(NULL),
       spdy_driver_pool_(NULL),
-      html_rewrite_time_us_histogram_(NULL),
-      cache_flush_mutex_(thread_system()->NewMutex()),
-      last_cache_flush_check_sec_(0),
-      cache_flush_count_(NULL),           // Lazy-initialized under mutex.
-      cache_flush_timestamp_ms_(NULL) {   // Lazy-initialized under mutex.
+      html_rewrite_time_us_histogram_(NULL) {
   config()->set_description(hostname_identifier_);
   // We may need the message handler for error messages very early, before
   // we get to InitServerContext in ChildInit().
@@ -110,8 +100,7 @@ ApacheServerContext::~ApacheServerContext() {
 }
 
 void ApacheServerContext::InitStats(Statistics* statistics) {
-  statistics->AddVariable(kCacheFlushCount);
-  statistics->AddVariable(kCacheFlushTimestampMs);
+  SystemServerContext::InitStats(statistics);
   Histogram* html_rewrite_time_us_histogram =
       statistics->AddHistogram(kHtmlRewriteTimeUsHistogram);
   // We set the boundary at 2 seconds which is about 2 orders of magnitude
@@ -259,85 +248,8 @@ bool ApacheServerContext::PoolDestroyed() {
   return apache_factory_->PoolDestroyed(this);
 }
 
-// TODO(jmarantz): implement an HTTP request in instaweb_handler.cc that
-// writes the cache-flush file, so we can allow cache flush via:
-// http://yourhost.com:port/flushcache.  We still have to write the file
-// so that all child processes see the flush, and so the flush persists
-// across server restart.
-void ApacheServerContext::PollFilesystemForCacheFlush() {
-  int64 cache_flush_poll_interval_sec =
-      config()->cache_flush_poll_interval_sec();
-  if (cache_flush_poll_interval_sec > 0) {
-    int64 now_sec = timer()->NowMs() / Timer::kSecondMs;
-    bool check_cache_file = false;
-    {
-      ScopedMutex lock(cache_flush_mutex_.get());
-      if (now_sec >= (last_cache_flush_check_sec_ +
-                      cache_flush_poll_interval_sec)) {
-        last_cache_flush_check_sec_ = now_sec;
-        check_cache_file = true;
-      }
-      if (cache_flush_count_ == NULL) {
-        cache_flush_count_ = statistics()->GetVariable(kCacheFlushCount);
-        cache_flush_timestamp_ms_ = statistics()->GetVariable(
-            kCacheFlushTimestampMs);
-      }
-    }
-
-    if (check_cache_file) {
-      GoogleString cache_flush_filename = config()->cache_flush_filename();
-      if (cache_flush_filename.empty()) {
-        cache_flush_filename = "cache.flush";
-      }
-      if (cache_flush_filename[0] != '/') {
-        // Note that we catch this in mod_instaweb.cc in the parsing of
-        // option kModPagespeedFileCachePath.
-        DCHECK_EQ('/', config()->file_cache_path()[0]);
-        cache_flush_filename = StrCat(config()->file_cache_path(), "/",
-                                      cache_flush_filename);
-      }
-      int64 cache_flush_timestamp_sec;
-      NullMessageHandler null_handler;
-      if (file_system()->Mtime(cache_flush_filename,
-                               &cache_flush_timestamp_sec,
-                               &null_handler)) {
-        int64 timestamp_ms = cache_flush_timestamp_sec * Timer::kSecondMs;
-
-        bool flushed = UpdateCacheFlushTimestampMs(timestamp_ms);
-
-        // Apache's multiple child processes each must independently
-        // discover a fresh cache.flush and update the options. However,
-        // as shown in
-        //     http://code.google.com/p/modpagespeed/issues/detail?id=568
-        // we should only bump the flush-count and print a warning to
-        // the log once per new timestamp.
-        if (flushed &&
-            (timestamp_ms !=
-             cache_flush_timestamp_ms_->SetReturningPreviousValue(
-                 timestamp_ms))) {
-          int count = cache_flush_count_->Add(1);
-          message_handler()->Message(kWarning, "Cache Flush %d", count);
-        }
-      }
-    } else {
-      // Check on every request whether another child process has updated the
-      // statistic.
-      int64 timestamp_ms = cache_flush_timestamp_ms_->Get();
-
-      // Do the difference-check first because that involves only a
-      // reader-lock, so we have zero contention risk when the cache is not
-      // being flushed.
-      if ((timestamp_ms > 0) &&
-          (global_options()->cache_invalidation_timestamp() < timestamp_ms)) {
-        UpdateCacheFlushTimestampMs(timestamp_ms);
-      }
-    }
-  }
-}
-
 bool ApacheServerContext::UpdateCacheFlushTimestampMs(int64 timestamp_ms) {
-  bool flushed = global_options()->UpdateCacheInvalidationTimestampMs(
-      timestamp_ms, lock_hasher());
+  bool flushed = SystemServerContext::UpdateCacheFlushTimestampMs(timestamp_ms);
   if (SpdyConfig() != NULL) {
     // We need to make sure to update the invalidation timestamp in the
     // SPDY configuration as well, so it also gets any cache flushes.

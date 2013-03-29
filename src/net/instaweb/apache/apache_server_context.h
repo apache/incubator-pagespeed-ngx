@@ -29,7 +29,6 @@ struct server_rec;
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class ApacheRewriteDriverFactory;
 class Histogram;
 class ProxyFetchFactory;
@@ -39,7 +38,6 @@ class RewriteStats;
 class SharedMemStatistics;
 class Statistics;
 class UrlAsyncFetcherStats;
-class Variable;
 
 // Creates an Apache-specific ServerContext.  This differs from base class
 // that it incorporates by adding per-VirtualHost configuration, including:
@@ -116,21 +114,6 @@ class ApacheServerContext : public SystemServerContext {
   // if this is the last ServerContext that exists.
   bool PoolDestroyed();
 
-  // Poll; if we haven't checked the timestamp of
-  // $FILE_PREFIX/cache.flush in the past
-  // cache_flush_poll_interval_sec_ (default 5) seconds do so, and if
-  // the timestamp has expired then update the
-  // cache_invalidation_timestamp in global_options, thus flushing the
-  // cache.
-  //
-  // TODO(jmarantz): allow configuration of this option.
-  // TODO(jmarantz): allow a URL-based mechanism to flush cache, even if
-  // we implement it by simply writing the cache.flush file so other
-  // servers can see it.  Note that using shared-memory is not a great
-  // plan because we need the cache-invalidation to persist across server
-  // restart.
-  void PollFilesystemForCacheFlush();
-
   // Accumulate in a histogram the amount of time spent rewriting HTML.
   // TODO(sligocki): Remove in favor of RewriteStats::rewrite_latency_histogram.
   void AddHtmlRewriteTimeUs(int64 rewrite_time_us);
@@ -156,7 +139,7 @@ class ApacheServerContext : public SystemServerContext {
   virtual bool ProxiesHtml() const { return false; }
 
  private:
-  bool UpdateCacheFlushTimestampMs(int64 timestamp_ms);
+  virtual bool UpdateCacheFlushTimestampMs(int64 timestamp_ms);
 
   ApacheRewriteDriverFactory* apache_factory_;
   server_rec* server_rec_;
@@ -192,15 +175,6 @@ class ApacheServerContext : public SystemServerContext {
   RewriteDriverPool* spdy_driver_pool_;
 
   Histogram* html_rewrite_time_us_histogram_;
-
-  // State used to implement periodic polling of $FILE_PREFIX/cache.flush.
-  // last_cache_flush_check_sec_ is ctor-initialized to 0 so the first
-  // time we Poll we will read the file.
-  scoped_ptr<AbstractMutex> cache_flush_mutex_;
-  int64 last_cache_flush_check_sec_;  // seconds since 1970
-
-  Variable* cache_flush_count_;
-  Variable* cache_flush_timestamp_ms_;
 
   scoped_ptr<ProxyFetchFactory> proxy_fetch_factory_;
 
