@@ -39,7 +39,6 @@
 #include "net/instaweb/util/public/null_shared_mem.h"
 #include "pthread_shared_mem.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
-#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/scheduler_thread.h"
 #include "net/instaweb/util/public/slow_worker.h"
