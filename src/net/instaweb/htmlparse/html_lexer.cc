@@ -1004,11 +1004,11 @@ bool HtmlLexer::IsImplicitlyClosedTag(HtmlName::Keyword keyword) const {
   return IS_IN_SET(kImplicitlyClosedHtmlTags, keyword);
 }
 
-bool HtmlLexer::IsLiteralTag(HtmlName::Keyword keyword) const {
+bool HtmlLexer::IsLiteralTag(HtmlName::Keyword keyword) {
   return IS_IN_SET(kLiteralTags, keyword);
 }
 
-bool HtmlLexer::IsSometimesLiteralTag(HtmlName::Keyword keyword) const {
+bool HtmlLexer::IsSometimesLiteralTag(HtmlName::Keyword keyword) {
   return IS_IN_SET(kSometimesLiteralTags, keyword);
 }
 

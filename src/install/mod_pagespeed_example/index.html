@@ -622,6 +622,27 @@
 
 <tr class="filter_row">
   <td class="code">
+    <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-prioritize-critical-css">
+      prioritize_critical_css
+    </a>
+  </td>
+  <td class="desc">
+    Instruments the page, inlines its critical CSS at the top, and lazily loads the rest.
+  </td>
+  <td class="before">
+    <a href="prioritize_critical_css.html?ModPagespeed=off">
+      before
+    </a>
+  </td>
+  <td class="after">
+    <a href="prioritize_critical_css.html?ModPagespeed=on&amp;ModPagespeedFilters=rewrite_css,flatten_css_imports,inline_import_to_link,prioritize_critical_css">
+      after
+    </a>
+  </td>
+</tr>
+
+<tr class="filter_row">
+  <td class="code">
     <a href="https://developers.google.com/speed/docs/mod_pagespeed/filter-js-outline">
       ModPagespeedMapProxyDomain
     </a>

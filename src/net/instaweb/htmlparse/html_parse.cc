@@ -813,12 +813,12 @@ bool HtmlParse::IsImplicitlyClosedTag(HtmlName::Keyword keyword) const {
   return lexer_->IsImplicitlyClosedTag(keyword);
 }
 
-bool HtmlParse::IsLiteralTag(HtmlName::Keyword keyword) const {
-  return lexer_->IsLiteralTag(keyword);
+bool HtmlParse::IsLiteralTag(HtmlName::Keyword keyword) {
+  return HtmlLexer::IsLiteralTag(keyword);
 }
 
-bool HtmlParse::IsSometimesLiteralTag(HtmlName::Keyword keyword) const {
-  return lexer_->IsSometimesLiteralTag(keyword);
+bool HtmlParse::IsSometimesLiteralTag(HtmlName::Keyword keyword) {
+  return HtmlLexer::IsSometimesLiteralTag(keyword);
 }
 
 bool HtmlParse::IsOptionallyClosedTag(HtmlName::Keyword keyword) const {

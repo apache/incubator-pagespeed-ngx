@@ -424,11 +424,11 @@ void LogRecord::SetCriticalCssInfo(int critical_inlined_bytes,
 
 void LogRecord::PopulateRewriterStatusCounts() {
   mutex_->DCheckLocked();
-  if (logging_info_.get() == NULL) {
+  if (logging_info() == NULL) {
     return;
   }
 
-  if (logging_info_->rewriter_stats_size() > 0) {
+  if (logging_info()->rewriter_stats_size() > 0) {
     DLOG(FATAL) <<  "PopulateRewriterStatusCounts should be called only once";
     return;
   }
@@ -438,7 +438,7 @@ void LogRecord::PopulateRewriterStatusCounts() {
        ++iter) {
     const GoogleString& rewriter_id = iter->first;
     const RewriterStatsInternal& stats = iter->second;
-    RewriterStats* stats_proto = logging_info_->add_rewriter_stats();
+    RewriterStats* stats_proto = logging_info()->add_rewriter_stats();
     stats_proto->set_id(rewriter_id);
     stats_proto->set_html_status(stats.html_status);
     for (std::map<int, int>::const_iterator iter = stats.status_counts.begin();
