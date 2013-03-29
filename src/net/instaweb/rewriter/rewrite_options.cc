@@ -1758,45 +1758,32 @@ bool RewriteOptions::ForbidFiltersByCommaSeparatedList(
 
 void RewriteOptions::DisableAllFilters() {
   DCHECK(!frozen_);
+  modified_ = true;
   enabled_filters_.clear();
   SetRewriteLevel(RewriteOptions::kPassThrough);
-  // Note: Disabling all filters is not efficient for subsequent merges.
-  // We do that for now to make the disabled filters survive subsequent merges.
-  // This is something we'd like to improve later.
-  for (int f = kFirstFilter; f != kEndOfFilters; ++f) {
-    DisableFilter(static_cast<Filter>(f));
-  }
+  disabled_filters_.SetAll();
 }
 
 void RewriteOptions::DisableAllFiltersNotExplicitlyEnabled() {
-  for (int f = kFirstFilter; f != kEndOfFilters; ++f) {
-    Filter filter = static_cast<Filter>(f);
-    if (enabled_filters_.find(filter) == enabled_filters_.end()) {
-      DisableFilter(filter);
-    }
-  }
+  modified_ |= disabled_filters_.MergeInverted(enabled_filters_);
 }
 
 void RewriteOptions::EnableFilter(Filter filter) {
   DCHECK(!frozen_);
-  std::pair<FilterSet::iterator, bool> inserted =
-      enabled_filters_.insert(filter);
-  modified_ |= inserted.second;
+  modified_ |= enabled_filters_.Insert(filter);
 }
 
 void RewriteOptions::ForceEnableFilter(Filter filter) {
   DCHECK(!frozen_);
 
   // insert into set of enabled filters.
-  std::pair<FilterSet::iterator, bool> inserted =
-      enabled_filters_.insert(filter);
-  modified_ |= inserted.second;
+  modified_ |= enabled_filters_.Insert(filter);
 
   // remove from set of disabled filters.
-  modified_ |= disabled_filters_.erase(filter);
+  modified_ |= disabled_filters_.Erase(filter);
 
   // remove from set of forbidden filters.
-  modified_ |= forbidden_filters_.erase(filter);
+  modified_ |= forbidden_filters_.Erase(filter);
 }
 
 void RewriteOptions::DistributeFiltersByCommaSeparatedList(
@@ -1829,40 +1816,27 @@ void RewriteOptions::EnableExtendCacheFilters() {
 
 void RewriteOptions::DisableFilter(Filter filter) {
   DCHECK(!frozen_);
-  std::pair<FilterSet::iterator, bool> inserted =
-      disabled_filters_.insert(filter);
-  modified_ |= inserted.second;
+  modified_ |= disabled_filters_.Insert(filter);
 }
 
 void RewriteOptions::ForbidFilter(Filter filter) {
   DCHECK(!frozen_);
-  std::pair<FilterSet::iterator, bool> inserted =
-      forbidden_filters_.insert(filter);
-  modified_ |= inserted.second;
+  modified_ |= forbidden_filters_.Insert(filter);
 }
 
 void RewriteOptions::EnableFilters(
     const RewriteOptions::FilterSet& filter_set) {
-  for (RewriteOptions::FilterSet::const_iterator iter = filter_set.begin();
-       iter != filter_set.end(); ++iter) {
-    EnableFilter(*iter);
-  }
+  modified_ |= enabled_filters_.Merge(filter_set);
 }
 
 void RewriteOptions::DisableFilters(
     const RewriteOptions::FilterSet& filter_set) {
-  for (RewriteOptions::FilterSet::const_iterator iter = filter_set.begin();
-       iter != filter_set.end(); ++iter) {
-    DisableFilter(*iter);
-  }
+  modified_ |= disabled_filters_.Merge(filter_set);
 }
 
 void RewriteOptions::ForbidFilters(
     const RewriteOptions::FilterSet& filter_set) {
-  for (RewriteOptions::FilterSet::const_iterator iter = filter_set.begin();
-       iter != filter_set.end(); ++iter) {
-    ForbidFilter(*iter);
-  }
+  modified_ |= forbidden_filters_.Merge(filter_set);
 }
 
 void RewriteOptions::ClearFilters() {
@@ -1954,36 +1928,36 @@ bool RewriteOptions::AddByNameToFilterSet(
     // here will be invokable by outside people, so they better not crash
     // if that happens!
     if (option == "rewrite_images") {
-      set->insert(kConvertGifToPng);
-      set->insert(kConvertJpegToProgressive);
-      set->insert(kInlineImages);
-      set->insert(kJpegSubsampling);
-      set->insert(kRecompressJpeg);
-      set->insert(kRecompressPng);
-      set->insert(kRecompressWebp);
-      set->insert(kResizeImages);
-      set->insert(kStripImageMetaData);
-      set->insert(kStripImageColorProfile);
+      set->Insert(kConvertGifToPng);
+      set->Insert(kConvertJpegToProgressive);
+      set->Insert(kInlineImages);
+      set->Insert(kJpegSubsampling);
+      set->Insert(kRecompressJpeg);
+      set->Insert(kRecompressPng);
+      set->Insert(kRecompressWebp);
+      set->Insert(kResizeImages);
+      set->Insert(kStripImageMetaData);
+      set->Insert(kStripImageColorProfile);
     } else if (option == "recompress_images") {
-      set->insert(kConvertGifToPng);
-      set->insert(kConvertJpegToProgressive);
-      set->insert(kJpegSubsampling);
-      set->insert(kRecompressJpeg);
-      set->insert(kRecompressPng);
-      set->insert(kRecompressWebp);
-      set->insert(kStripImageMetaData);
-      set->insert(kStripImageColorProfile);
+      set->Insert(kConvertGifToPng);
+      set->Insert(kConvertJpegToProgressive);
+      set->Insert(kJpegSubsampling);
+      set->Insert(kRecompressJpeg);
+      set->Insert(kRecompressPng);
+      set->Insert(kRecompressWebp);
+      set->Insert(kStripImageMetaData);
+      set->Insert(kStripImageColorProfile);
     } else if (option == "extend_cache") {
-      set->insert(kExtendCacheCss);
-      set->insert(kExtendCacheImages);
-      set->insert(kExtendCacheScripts);
+      set->Insert(kExtendCacheCss);
+      set->Insert(kExtendCacheImages);
+      set->Insert(kExtendCacheScripts);
     } else if (option == "testing") {
       for (int i = 0, n = arraysize(kTestFilterSet); i < n; ++i) {
-        set->insert(kTestFilterSet[i]);
+        set->Insert(kTestFilterSet[i]);
       }
     } else if (option == "core") {
       for (int i = 0, n = arraysize(kCoreFilterSet); i < n; ++i) {
-        set->insert(kCoreFilterSet[i]);
+        set->Insert(kCoreFilterSet[i]);
       }
     } else {
       if (handler != NULL) {
@@ -1993,10 +1967,10 @@ bool RewriteOptions::AddByNameToFilterSet(
       ret = false;
     }
   } else {
-    set->insert(filter);
+    set->Insert(filter);
     // kResizeMobileImages requires kDelayImages.
     if (filter == kResizeMobileImages) {
-      set->insert(kDelayImages);
+      set->Insert(kDelayImages);
     }
   }
   return ret;
@@ -2389,10 +2363,10 @@ bool RewriteOptions::ParseFromString(const GoogleString& value_string,
 }
 
 bool RewriteOptions::Enabled(Filter filter) const {
-  if (disabled_filters_.find(filter) != disabled_filters_.end()) {
+  if (disabled_filters_.IsSet(filter)) {
     return false;
   }
-  if (forbidden_filters_.find(filter) != forbidden_filters_.end()) {
+  if (forbidden_filters_.IsSet(filter)) {
     return false;
   }
   switch (level_.value()) {
@@ -2415,16 +2389,18 @@ bool RewriteOptions::Enabled(Filter filter) const {
     case kPassThrough:
       break;
   }
-  return enabled_filters_.find(filter) != enabled_filters_.end();
+  return enabled_filters_.IsSet(filter);
 }
 
 bool RewriteOptions::Forbidden(StringPiece filter_id) const {
   // It's forbidden if it's expressly forbidden or if it's disabled and all
   //  disabled filters are forbidden.
   RewriteOptions::Filter filter = RewriteOptions::LookupFilterById(filter_id);
-  return (forbidden_filters_.find(filter) != forbidden_filters_.end() ||
-          (forbid_all_disabled_filters() &&
-           disabled_filters_.find(filter) != disabled_filters_.end()));
+  // TODO(jmarantz): handle "ce" which is not indexed as a single filter.
+  return ((filter != kEndOfFilters) &&
+          (forbidden_filters_.IsSet(filter) ||
+           (forbid_all_disabled_filters() &&
+            disabled_filters_.IsSet(filter))));
 }
 
 int64 RewriteOptions::ImageInlineMaxBytes() const {
@@ -2522,11 +2498,11 @@ void RewriteOptions::AddBlinkCacheableFamily(
 }
 
 void RewriteOptions::GetEnabledFiltersRequiringScriptExecution(
-    FilterSet* filter_set) const {
+    RewriteOptions::FilterVector* filters) const {
   for (int i = 0, n = arraysize(kRequiresScriptExecutionFilterSet); i < n;
        ++i) {
     if (Enabled(kRequiresScriptExecutionFilterSet[i])) {
-      filter_set->insert(kRequiresScriptExecutionFilterSet[i]);
+      filters->push_back(kRequiresScriptExecutionFilterSet[i]);
     }
   }
 }
@@ -2556,36 +2532,21 @@ void RewriteOptions::Merge(const RewriteOptions& src) {
   // filter that isn't already enabled, meaning the filters enabled in 'src'
   // cannot be enabled in 'this'.
   if (!forbid_all_disabled_filters()) {
-    for (FilterSet::const_iterator p = src.enabled_filters_.begin(),
-             e = src.enabled_filters_.end(); p != e; ++p) {
-      Filter filter = *p;
-      // A filter forbidden in 'this' cannot be enabled by 'src',
-      // but otherwise enabling in 'src' trumps disabling in 'this'.
-      if (forbidden_filters_.find(filter) == forbidden_filters_.end()) {
-        disabled_filters_.erase(filter);
-        enabled_filters_.insert(filter);
-      } else {
-        LOG(WARNING) << "Filter is forbidden: " << FilterName(filter);
-      }
-    }
+    // Enabled filters in src override disabled filters in this.
+    disabled_filters_.EraseSet(src.enabled_filters_);
   }
 
-  for (FilterSet::const_iterator p = src.disabled_filters_.begin(),
-           e = src.disabled_filters_.end(); p != e; ++p) {
-    Filter filter = *p;
-    // Disabling in 'src' trumps enabling in 'this'.
-    disabled_filters_.insert(filter);
-    enabled_filters_.erase(filter);
-  }
+  modified_ |= enabled_filters_.Merge(src.enabled_filters_);
+  modified_ |= disabled_filters_.Merge(src.disabled_filters_);
 
-  for (FilterSet::const_iterator p = src.forbidden_filters_.begin(),
-           e = src.forbidden_filters_.end(); p != e; ++p) {
-    Filter filter = *p;
-    // Forbidding in 'src' trumps enabling in 'this'.
-    forbidden_filters_.insert(filter);
-    disabled_filters_.insert(filter);
-    enabled_filters_.erase(filter);
-  }
+  // Clean up enabled filters list to make debugging easier.
+  enabled_filters_.EraseSet(disabled_filters_);
+
+  // Forbidden filters strictly merge, with no exclusions.  E.g. You can never
+  // enable a filter in an .htaccess file that was forbidden above.
+  modified_ |= forbidden_filters_.Merge(src.forbidden_filters_);
+
+  enabled_filters_.EraseSet(forbidden_filters_);
 
   for (FilterIdSet::const_iterator p = src.distributable_filters_.begin(),
            e = src.distributable_filters_.end(); p != e; ++p) {
@@ -2856,6 +2817,18 @@ GoogleString RewriteOptions::ToString(const BeaconUrl& beacon_url) {
   return result;
 }
 
+GoogleString RewriteOptions::FilterSetToString(
+    const FilterSet& filter_set) const {
+  GoogleString output;
+  for (int i = kFirstFilter; i != kEndOfFilters; ++i) {
+    Filter filter = static_cast<Filter>(i);
+    if (filter_set.IsSet(filter)) {
+      StrAppend(&output, FilterId(filter), "\t", FilterName(filter), "\n");
+    }
+  }
+  return output;
+}
+
 GoogleString RewriteOptions::OptionsToString() const {
   GoogleString output;
   StrAppend(&output, "Version: ", IntegerToString(kOptionsVersion), "\n\n");
@@ -3076,14 +3049,8 @@ RewriteOptions::FuriousSpec::FuriousSpec(int id)
 RewriteOptions::FuriousSpec::~FuriousSpec() { }
 
 void RewriteOptions::FuriousSpec::Merge(const FuriousSpec& spec) {
-  for (FilterSet::const_iterator iter = spec.enabled_filters_.begin();
-       iter != spec.enabled_filters_.end(); ++iter) {
-    enabled_filters_.insert(*iter);
-  }
-  for (FilterSet::const_iterator iter = spec.disabled_filters_.begin();
-       iter != spec.disabled_filters_.end(); ++iter) {
-    disabled_filters_.insert(*iter);
-  }
+  enabled_filters_.Merge(spec.enabled_filters_);
+  disabled_filters_.Merge(spec.disabled_filters_);
   for (OptionSet::const_iterator iter = spec.filter_options_.begin();
        iter != spec.filter_options_.end(); ++iter) {
     filter_options_.insert(*iter);

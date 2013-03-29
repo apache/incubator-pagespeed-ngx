@@ -18,8 +18,6 @@
 
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
-#include <set>
-
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -33,7 +31,7 @@ namespace net_instaweb {
 
 class RewriteOptionsTest : public RewriteOptionsTestBase<RewriteOptions> {
  protected:
-  typedef std::set<RewriteOptions::Filter> FilterSet;
+  typedef RewriteOptions::FilterSet FilterSet;
 
   bool NoneEnabled() {
     FilterSet s;
@@ -45,7 +43,7 @@ class RewriteOptionsTest : public RewriteOptionsTestBase<RewriteOptions> {
     for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
          ret && (f < RewriteOptions::kEndOfFilters);
          f = static_cast<RewriteOptions::Filter>(f + 1)) {
-      if (filters.find(f) != filters.end()) {
+      if (filters.IsSet(f)) {
         if (!options_.Enabled(f)) {
           ret = false;
         }
@@ -60,7 +58,7 @@ class RewriteOptionsTest : public RewriteOptionsTestBase<RewriteOptions> {
 
   bool OnlyEnabled(RewriteOptions::Filter filter) {
     FilterSet s;
-    s.insert(filter);
+    s.Insert(filter);
     return OnlyEnabled(s);
   }
 
@@ -155,7 +153,7 @@ TEST_F(RewriteOptionsTest, CoreFilters) {
        f < RewriteOptions::kEndOfFilters;
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
     if (options_.Enabled(f)) {
-      s.insert(f);
+      s.Insert(f);
     }
   }
 
@@ -169,8 +167,8 @@ TEST_F(RewriteOptionsTest, Enable) {
   for (RewriteOptions::Filter f = RewriteOptions::kFirstFilter;
        f < RewriteOptions::kEndOfFilters;
        f = static_cast<RewriteOptions::Filter>(f + 1)) {
-    s.insert(f);
-    s.insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
+    s.Insert(f);
+    s.Insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
     options_.EnableFilter(f);
     ASSERT_TRUE(OnlyEnabled(s));
   }
@@ -178,9 +176,9 @@ TEST_F(RewriteOptionsTest, Enable) {
 
 TEST_F(RewriteOptionsTest, CommaSeparatedList) {
   FilterSet s;
-  s.insert(RewriteOptions::kAddInstrumentation);
-  s.insert(RewriteOptions::kLeftTrimUrls);
-  s.insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
+  s.Insert(RewriteOptions::kAddInstrumentation);
+  s.Insert(RewriteOptions::kLeftTrimUrls);
+  s.Insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
   const char* kList = "add_instrumentation,trim_urls";
   NullMessageHandler handler;
   ASSERT_TRUE(
@@ -195,17 +193,17 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
   FilterSet s;
   // TODO(jmaessen): add kConvertJpegToWebp here when it becomes part of
   // rewrite_images.
-  s.insert(RewriteOptions::kConvertGifToPng);
-  s.insert(RewriteOptions::kConvertJpegToProgressive);
-  s.insert(RewriteOptions::kInlineImages);
-  s.insert(RewriteOptions::kJpegSubsampling);
-  s.insert(RewriteOptions::kRecompressJpeg);
-  s.insert(RewriteOptions::kRecompressPng);
-  s.insert(RewriteOptions::kRecompressWebp);
-  s.insert(RewriteOptions::kResizeImages);
-  s.insert(RewriteOptions::kStripImageMetaData);
-  s.insert(RewriteOptions::kStripImageColorProfile);
-  s.insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
+  s.Insert(RewriteOptions::kConvertGifToPng);
+  s.Insert(RewriteOptions::kConvertJpegToProgressive);
+  s.Insert(RewriteOptions::kInlineImages);
+  s.Insert(RewriteOptions::kJpegSubsampling);
+  s.Insert(RewriteOptions::kRecompressJpeg);
+  s.Insert(RewriteOptions::kRecompressPng);
+  s.Insert(RewriteOptions::kRecompressWebp);
+  s.Insert(RewriteOptions::kResizeImages);
+  s.Insert(RewriteOptions::kStripImageMetaData);
+  s.Insert(RewriteOptions::kStripImageColorProfile);
+  s.Insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
   const char* kList = "rewrite_images";
   NullMessageHandler handler;
   ASSERT_TRUE(
@@ -218,15 +216,15 @@ TEST_F(RewriteOptionsTest, CompoundFlag) {
 
 TEST_F(RewriteOptionsTest, CompoundFlagRecompressImages) {
   FilterSet s;
-  s.insert(RewriteOptions::kConvertGifToPng);
-  s.insert(RewriteOptions::kConvertJpegToProgressive);
-  s.insert(RewriteOptions::kJpegSubsampling);
-  s.insert(RewriteOptions::kRecompressJpeg);
-  s.insert(RewriteOptions::kRecompressPng);
-  s.insert(RewriteOptions::kRecompressWebp);
-  s.insert(RewriteOptions::kStripImageMetaData);
-  s.insert(RewriteOptions::kStripImageColorProfile);
-  s.insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
+  s.Insert(RewriteOptions::kConvertGifToPng);
+  s.Insert(RewriteOptions::kConvertJpegToProgressive);
+  s.Insert(RewriteOptions::kJpegSubsampling);
+  s.Insert(RewriteOptions::kRecompressJpeg);
+  s.Insert(RewriteOptions::kRecompressPng);
+  s.Insert(RewriteOptions::kRecompressWebp);
+  s.Insert(RewriteOptions::kStripImageMetaData);
+  s.Insert(RewriteOptions::kStripImageColorProfile);
+  s.Insert(RewriteOptions::kHtmlWriterFilter);  // enabled by default
   const char* kList = "recompress_images";
   NullMessageHandler handler;
   ASSERT_TRUE(
@@ -1308,8 +1306,8 @@ TEST_F(RewriteOptionsTest, ParseAndSetOptionFromEnum1) {
   EXPECT_EQ(2, spec->id());
   EXPECT_EQ(50, spec->percent());
   EXPECT_EQ(1,  spec->enabled_filters().size());
-  EXPECT_NE(spec->enabled_filters().end(),
-            spec->enabled_filters().find(RewriteOptions::kRecompressPng));
+  EXPECT_TRUE(
+      spec->enabled_filters().IsSet(RewriteOptions::kRecompressPng));
 
   EXPECT_EQ(RewriteOptions::kOptionValueInvalid,
             options_.ParseAndSetOptionFromEnum1(
@@ -1995,7 +1993,7 @@ TEST_F(RewriteOptionsTest, EnabledFiltersRequiringJavaScriptTest) {
   foo.ClearFilters();
   foo.EnableFilter(RewriteOptions::kDeferJavascript);
   foo.EnableFilter(RewriteOptions::kResizeImages);
-  FilterSet foo_fs;
+  RewriteOptions::FilterVector foo_fs;
   foo.GetEnabledFiltersRequiringScriptExecution(&foo_fs);
   EXPECT_FALSE(foo_fs.empty());
   EXPECT_EQ(1, foo_fs.size());
@@ -2004,7 +2002,7 @@ TEST_F(RewriteOptionsTest, EnabledFiltersRequiringJavaScriptTest) {
   bar.ClearFilters();
   bar.EnableFilter(RewriteOptions::kResizeImages);
   bar.EnableFilter(RewriteOptions::kConvertPngToJpeg);
-  FilterSet bar_fs;
+  RewriteOptions::FilterVector bar_fs;
   bar.GetEnabledFiltersRequiringScriptExecution(&bar_fs);
   EXPECT_TRUE(bar_fs.empty());
 }

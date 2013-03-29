@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/enum_set.h"
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -428,8 +429,8 @@ class RewriteOptions {
   // Used for enumerating over all entries in the Filter enum.
   static const Filter kFirstFilter = kAddBaseTag;
 
-  // Convenience name for a set of rewrite filters.
-  typedef std::set<Filter> FilterSet;
+  typedef EnumSet<Filter, kEndOfFilters> FilterSet;
+  typedef std::vector<Filter> FilterVector;
 
   // Convenience name for a set of rewrite filter ids.
   typedef std::set<GoogleString> FilterIdSet;
@@ -1013,7 +1014,7 @@ class RewriteOptions {
   bool Forbidden(StringPiece filter_id) const;
 
   // Returns the set of enabled filters that require JavaScript for execution.
-  void GetEnabledFiltersRequiringScriptExecution(FilterSet* filter_set) const;
+  void GetEnabledFiltersRequiringScriptExecution(FilterVector* filters) const;
 
   // Disables all filters that depend on executing custom javascript.
   void DisableFiltersRequiringScriptExecution();
@@ -2164,6 +2165,7 @@ class RewriteOptions {
   }
 
   virtual GoogleString OptionsToString() const;
+  GoogleString FilterSetToString(const FilterSet& filter_set) const;
 
   // Returns a string identifying the currently running Furious experiment to
   // be used in tagging Google Analytics data.
@@ -2559,7 +2561,6 @@ class RewriteOptions {
   static Properties* all_properties_;      // includes subclass properties
 
   FRIEND_TEST(RewriteOptionsTest, FuriousMergeTest);
-  typedef std::vector<Filter> FilterVector;
 
   // A family of urls for which prioritize_visible_content filter can be
   // applied.  url_pattern represents the actual set of urls,

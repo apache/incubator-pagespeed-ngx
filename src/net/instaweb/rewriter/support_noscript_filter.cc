@@ -17,8 +17,6 @@
 
 #include "net/instaweb/rewriter/public/support_noscript_filter.h"
 
-#include <set>
-
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
@@ -79,41 +77,38 @@ void SupportNoscriptFilter::StartElement(HtmlElement* element) {
 }
 
 bool SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() const {
-  RewriteOptions::FilterSet js_filters;
   const RewriteOptions* options = rewrite_driver_->options();
   const DeviceProperties* device_properties =
       rewrite_driver_->device_properties();
+  RewriteOptions::FilterVector js_filters;
   options->GetEnabledFiltersRequiringScriptExecution(&js_filters);
-  if (!js_filters.empty()) {
-    for (RewriteOptions::FilterSet::const_iterator p = js_filters.begin(),
-         e = js_filters.end(); p != e; ++p) {
-      RewriteOptions::Filter filter = *p;
-      bool filter_enabled = true;
-      switch (filter) {
-        case RewriteOptions::kDeferIframe:
-        case RewriteOptions::kDeferJavascript:
-        case RewriteOptions::kDetectReflowWithDeferJavascript:
-        case RewriteOptions::kSplitHtml:
-          filter_enabled = device_properties->SupportsJsDefer(
-              options->enable_aggressive_rewriters_for_mobile());
-          break;
-        case RewriteOptions::kDelayImages:
-        case RewriteOptions::kLazyloadImages:
-        case RewriteOptions::kLocalStorageCache:
-          filter_enabled = device_properties->SupportsImageInlining();
-          break;
-        case RewriteOptions::kFlushSubresources:
-          filter_enabled = rewrite_driver_->SupportsFlushEarly();
-          break;
-        case RewriteOptions::kCacheHtml:
-          filter_enabled = rewrite_driver_->flushing_cached_html();
-          break;
-        default:
-          break;
+  for (int i = 0, n = js_filters.size(); i < n; ++i) {
+    RewriteOptions::Filter filter = js_filters[i];
+    bool filter_enabled = true;
+    switch (filter) {
+      case RewriteOptions::kDeferIframe:
+      case RewriteOptions::kDeferJavascript:
+      case RewriteOptions::kDetectReflowWithDeferJavascript:
+      case RewriteOptions::kSplitHtml:
+        filter_enabled = device_properties->SupportsJsDefer(
+            options->enable_aggressive_rewriters_for_mobile());
+        break;
+      case RewriteOptions::kDelayImages:
+      case RewriteOptions::kLazyloadImages:
+      case RewriteOptions::kLocalStorageCache:
+        filter_enabled = device_properties->SupportsImageInlining();
+        break;
+      case RewriteOptions::kFlushSubresources:
+        filter_enabled = rewrite_driver_->SupportsFlushEarly();
+        break;
+      case RewriteOptions::kCacheHtml:
+        filter_enabled = rewrite_driver_->flushing_cached_html();
+        break;
+      default:
+        break;
       }
-      if (filter_enabled) {
-        return true;
-      }
+    if (filter_enabled) {
+      return true;
     }
   }
   return false;

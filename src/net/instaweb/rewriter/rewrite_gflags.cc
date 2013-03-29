@@ -356,10 +356,18 @@ DEFINE_int64(
     net_instaweb::RewriteOptions::kDefaultBlinkHtmlChangeDetectionTimeMs,
     "Time after which we should try to detect if publisher html has changed");
 
+DEFINE_bool(enable_blink_html_change_detection, false,
+            "If enabled automatically detect publisher changes in html in "
+            "blink.");
+
 DEFINE_bool(enable_blink_html_change_detection_logging, false,
             "If enabled, html change detection is applied to all blink sites"
             " and the results are logged. Critical line recomputation is not"
             " triggered in case of mismatch.");
+
+DEFINE_bool(use_smart_diff_in_blink, false,
+            "If enabled use smart diff to detect publisher changes in html "
+            "in blink");
 
 DEFINE_bool(enable_lazyload_in_blink, false,
     "If it is set to true, don't force disable lazyload in blink");
@@ -668,9 +676,16 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
     options->set_blink_html_change_detection_time_ms(
         FLAGS_blink_html_change_detection_time_ms);
   }
+  if (WasExplicitlySet("enable_blink_html_change_detection")) {
+    options->set_enable_blink_html_change_detection(
+        FLAGS_enable_blink_html_change_detection);
+  }
   if (WasExplicitlySet("enable_blink_html_change_detection_logging")) {
     options->set_enable_blink_html_change_detection_logging(
         FLAGS_enable_blink_html_change_detection_logging);
+  }
+  if (WasExplicitlySet("use_smart_diff_in_blink")) {
+    options->set_use_smart_diff_in_blink(FLAGS_use_smart_diff_in_blink);
   }
   if (WasExplicitlySet("max_image_bytes_for_webp_in_css")) {
     options->set_max_image_bytes_for_webp_in_css(
