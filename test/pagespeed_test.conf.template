@@ -21,6 +21,55 @@ http {
   root "@@SERVER_ROOT@@";
 
   server {
+    listen       @@SECONDARY_PORT@@;
+    server_name  proxypass.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" { }
+    location ~ "^/ngx_pagespeed_static/" { }
+    location ~ "^/ngx_pagespeed_beacon$" { }
+
+    location / {
+      proxy_pass http://www.google.com;
+    }
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name tryfiles.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" { }
+    location ~ "^/ngx_pagespeed_static/" { }
+    location ~ "^/ngx_pagespeed_beacon$" { }
+
+    try_files $uri $uri/ /mod_pagespeed_example/index.html;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name ifblock.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" { }
+    location ~ "^/ngx_pagespeed_static/" { }
+    location ~ "^/ngx_pagespeed_beacon$" { }
+
+    # This is a complex if block, that could probably be replaced with a
+    # try_files, but we should support it if we can.
+    if (!-d $request_filename) { set $rule_0 1$rule_0; }
+    if (!-f $request_filename) { set $rule_0 2$rule_0; }
+    if ($rule_0 = "21") {
+      rewrite ^/(.*)$ /mod_pagespeed_example/index.html last;
+    }
+  }
+
+  # TODO(jefftk): add static file test for resources
+  # TODO(jefftk): add access module test for resources
+  # TODO(jefftk): add limit_conn test for resources
+  # TODO(jefftk): add rewrite test for resources
+
+  server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
@@ -198,5 +247,4 @@ http {
     video/x-msvideo                       avi;
   }
   default_type  application/octet-stream;
-
 }

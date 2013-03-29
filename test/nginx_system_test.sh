@@ -99,12 +99,6 @@ check_simple "$NGINX_EXECUTABLE" -c "$PAGESPEED_CONF"
 # run generic system tests
 SYSTEM_TEST_FILE="$MOD_PAGESPEED_DIR/src/install/system_test.sh"
 
-if [ ! -e "$SYSTEM_TEST_FILE" ] ; then
-  echo "Not finding $SYSTEM_TEST_FILE -- is mod_pagespeed not in a parallel"
-  echo "directory to ngx_pagespeed?"
-  exit 2
-fi
-
 PSA_JS_LIBRARY_URL_PREFIX="ngx_pagespeed_static"
 
 PAGESPEED_EXPECTED_FAILURES="
@@ -112,6 +106,7 @@ PAGESPEED_EXPECTED_FAILURES="
   ~convert_meta_tags~
   ~insert_dns_prefetch~
   ~In-place resource optimization~
+  ~Check that we work with ifblock~
 "
 
 # The existing system test takes its arguments as positional parameters, and
@@ -140,5 +135,44 @@ fetch_until "$URL" "fgrep -c .pagespeed." 1 --header=Host:www.google.com
 # a 404.  Instead it should use a loopback fetch and succeed.
 URL="$HOSTNAME/mod_pagespeed_example/.pagespeed.ce.8CfGBvwDhH.css"
 check wget -O /dev/null --header=Host:www.google.com "$URL"
+
+# When we're used in a proxy setup we need to be sure that requests for
+# .pagespeed. urls go to us and not to the upstream.
+start_test Handle pagespeed resources without proxying
+
+URL="http://www.google.com/favicon.ico.pagespeed.ce.0123456789.ico"
+http_proxy=$SECONDARY_HOSTNAME check wget -O /dev/null "$URL"
+
+for server in tryfiles ifblock ; do
+  start_test Check that we work with $server
+
+  host="Host:$server.example.com"
+  echo "Testing $host"
+
+  URL="$SECONDARY_HOSTNAME/this-does-not-exist"
+  check wget --header=$host -O /dev/null "$URL"
+
+  URL="$SECONDARY_HOSTNAME/mod_pagespeed_example/rewrite_javascript.html"
+  URL+="?ModPagespeed=on&ModPagespeedFilters=rewrite_javascript"
+
+  # Make sure we're getting the right page.
+  OUT=$($WGET_DUMP --header=$host "$URL")
+  check_from "$OUT" fgrep 'rewrite_javascript example'
+
+  # Resources should be rewritten in html.
+  fetch_until "$URL" "fgrep -c .pagespeed." 2 --header=$host
+
+  # Resources should be available and rewritten.
+  URL="$SECONDARY_HOSTNAME/mod_pagespeed_example/"
+  URL+="rewrite_javascript.js.pagespeed.jm.1o978_K0_L.js"
+  OUT=$($WGET_DUMP --header=$host "$URL")
+  check_from "$OUT" fgrep 'state+=1'
+
+  # Resource served directly by ngx-pagespeed should be available.
+  URL="$SECONDARY_HOSTNAME/ngx_pagespeed_static/js_defer.4Wv5zwfokU.js"
+  check wget -O /dev/null --header=$host "$URL"
+  OUT=$($WGET_DUMP --header=$host "$URL")
+  check_from "$OUT" fgrep 'addEventListener'
+done
 
 check_failures_and_exit
