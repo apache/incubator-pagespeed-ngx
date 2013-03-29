@@ -63,6 +63,9 @@ function check_not_simple() {
 
 this_dir="$( cd $(dirname "$0") && pwd)"
 
+# stop nginx
+killall nginx
+
 TEST_TMP="$this_dir/tmp"
 rm -r "$TEST_TMP"
 check_simple mkdir "$TEST_TMP"
@@ -90,10 +93,7 @@ cat $PAGESPEED_CONF_TEMPLATE \
 # make sure we substituted all the variables
 check_not_simple grep @@ $PAGESPEED_CONF
 
-# restart nginx with new config
-killall nginx
-sleep .1
-
+# start nginx with new config
 check_simple "$NGINX_EXECUTABLE" -c "$PAGESPEED_CONF"
 
 # run generic system tests
