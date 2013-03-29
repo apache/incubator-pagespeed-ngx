@@ -80,6 +80,9 @@ void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
                                     bool ok_to_disable_downstream_headers,
                                     request_rec* request) {
   request->status = response_headers.status_code();
+  // proto_num is the version number of protocol; 1.1 = 1001
+  request->proto_num = response_headers.major_version() * 1000 +
+                       response_headers.minor_version();
   AddResponseHeadersToRequest(&response_headers, NULL,
                               ok_to_disable_downstream_headers, request);
 }
