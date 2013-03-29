@@ -1,20 +1,14 @@
-# nginx_system_test.sh makes a few substitutions to this file to generate
-# pagespeed_test.conf
+# nginx_system_test.sh makes a few substitutions to pagespeed_test.conf.template
+# file to generate @@TEST_TMP@@/pagespeed_test.conf
 
-#user  nobody;
 worker_processes  1;
 
 # for debugging
 #daemon off;
 #master_process off;
 
-#error_log  logs/error.log;
-#error_log  logs/error.log  notice;
-#error_log  logs/error.log  info;
-error_log  logs/error.log  debug;
-
-#pid        logs/nginx.pid;
-
+error_log "@@TEST_TMP@@/error.log" debug;
+pid "@@TEST_TMP@@/nginx.pid";
 
 events {
   worker_connections  1024;
@@ -22,6 +16,7 @@ events {
 
 
 http {
+  access_log "@@TEST_TMP@@/access.log";
 
   root "@@SERVER_ROOT@@";
 
@@ -77,7 +72,7 @@ http {
   server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
-    pagespeed FileCachePath "@@FILE_CACHE_PATH@@";
+    pagespeed FileCachePath "@@FILE_CACHE@@";
 
     # uncomment the following two lines if you're testing memcached
     #pagespeed MemcachedServers "localhost:11211";

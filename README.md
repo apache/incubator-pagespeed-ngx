@@ -213,13 +213,12 @@ Then run:
       primary_port \
       secondary_port \
       mod_pagespeed_dir \
-      file_cache_path \
       nginx_executable_path
 
 For example:
 
     $ test/nginx_system_test.sh 8050 8051 /path/to/mod_pagespeed \
-        /path/to/ngx_pagespeed_cache /path/to/sbin/nginx
+        /path/to/sbin/nginx
 
 This should print out a lot of lines like:
 
