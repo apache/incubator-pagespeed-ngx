@@ -148,6 +148,14 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
     message_buffer_size_ = x;
   }
 
+  // We use a beacon handler to collect data for critical images,
+  // css, etc., so filters should be configured accordingly.
+  //
+  // TODO(jefftk): move to SystemRewriteDriverFactory
+  virtual bool UseBeaconResultsInFilters() const {
+    return true;
+  }
+
  private:
   Timer* timer_;
   scoped_ptr<AbstractSharedMem> shared_mem_runtime_;
