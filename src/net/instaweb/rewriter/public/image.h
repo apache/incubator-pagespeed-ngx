@@ -129,7 +129,7 @@ class Image {
     bool retain_color_profile;
     bool retain_color_sampling;
     bool retain_exif_data;
-    int64 jpeg_num_progressive_scans;
+    int jpeg_num_progressive_scans;
     int64 webp_conversion_timeout_ms;
 
     // These fields are set by the conversion routines to report

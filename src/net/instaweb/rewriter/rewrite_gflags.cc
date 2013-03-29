@@ -81,14 +81,6 @@ DEFINE_int32(image_jpeg_recompress_quality_for_small_screens,
              "for small screens. This should be in the range [0,100]. 100 "
              "refers to the highest quality. If -1 or not set, "
              "image_jpeg_recompress_quality will be used.");
-DEFINE_int32(image_jpeg_num_progressive_scans,
-             net_instaweb::RewriteOptions::kDefaultImageJpegNumProgressiveScans,
-             "The number of scans, [0,10] to serve for jpeg images that "
-             "are encoded as ten-scan progressive jpegs.");
-DEFINE_int32(image_jpeg_num_progressive_scans_for_small_screens,
-             net_instaweb::RewriteOptions::kDefaultImageJpegNumProgressiveScans,
-             "The number of scans, [0,10], to serve to small-screen devices "
-             "for jpeg images that are encoded as ten-scan progressive jpegs.");
 DEFINE_int32(image_webp_recompress_quality,
              net_instaweb::RewriteOptions::kDefaultImageWebpRecompressQuality,
              "Quality parameter to use while recompressing webp images. "
@@ -519,14 +511,6 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("image_jpeg_recompress_quality_for_small_screens")) {
       options->set_image_jpeg_recompress_quality_for_small_screens(
           FLAGS_image_jpeg_recompress_quality_for_small_screens);
-  }
-  if (WasExplicitlySet("image_jpeg_num_progressive_scans")) {
-    options->set_image_jpeg_num_progressive_scans(
-        FLAGS_image_jpeg_num_progressive_scans);
-  }
-  if (WasExplicitlySet("image_jpeg_num_progressive_scans_for_small_screens")) {
-    options->set_image_jpeg_num_progressive_scans_for_small_screens(
-        FLAGS_image_jpeg_num_progressive_scans_for_small_screens);
   }
   if (WasExplicitlySet("image_webp_recompress_quality")) {
     options->set_image_webp_recompress_quality(

@@ -86,7 +86,6 @@ const int ImageRewriteFilter::kRelatedFiltersSize = arraysize(kRelatedFilters);
 
 const RewriteOptions::OptionEnum ImageRewriteFilter::kRelatedOptions[] = {
   RewriteOptions::kImageJpegNumProgressiveScans,
-  RewriteOptions::kImageJpegNumProgressiveScansForSmallScreens,
   RewriteOptions::kImageJpegRecompressionQuality,
   RewriteOptions::kImageJpegRecompressionQualityForSmallScreens,
   RewriteOptions::kImageLimitOptimizedPercent,
@@ -509,13 +508,6 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
     image_options->webp_quality =
         options->image_webp_recompress_quality_for_small_screens();
   }
-  image_options->jpeg_num_progressive_scans =
-      options->image_jpeg_num_progressive_scans();
-  if (options->image_jpeg_num_progressive_scans_for_small_screens() != -1 &&
-      resource_context.use_small_screen_quality()) {
-    image_options->jpeg_num_progressive_scans =
-        options->image_jpeg_num_progressive_scans_for_small_screens();
-  }
   image_options->progressive_jpeg =
       options->Enabled(RewriteOptions::kConvertJpegToProgressive) &&
       input_size >= options->progressive_jpeg_min_bytes();
@@ -537,6 +529,8 @@ Image::CompressionOptions* ImageRewriteFilter::ImageOptionsForLoadedResource(
       !options->Enabled(RewriteOptions::kStripImageColorProfile);
   image_options->retain_exif_data =
       !options->Enabled(RewriteOptions::kStripImageMetaData);
+  image_options->jpeg_num_progressive_scans =
+      options->image_jpeg_num_progressive_scans();
   image_options->retain_color_sampling =
       !options->Enabled(RewriteOptions::kJpegSubsampling);
   image_options->webp_conversion_timeout_ms =

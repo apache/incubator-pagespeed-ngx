@@ -227,7 +227,6 @@ class RewriteOptions {
     kIdleFlushTimeMs,
     kImageInlineMaxBytes,
     kImageJpegNumProgressiveScans,
-    kImageJpegNumProgressiveScansForSmallScreens,
     kImageJpegRecompressionQuality,
     kImageJpegRecompressionQualityForSmallScreens,
     kImageLimitOptimizedPercent,
@@ -577,11 +576,13 @@ class RewriteOptions {
   static const char kDefaultBeaconUrl[];
   static const int64 kDefaultImagesRecompressQuality;
   static const int64 kDefaultImageJpegRecompressQuality;
+  static const int64 kDefaultImageJpegRecompressQualityForSmallScreens;
   static const int kDefaultImageLimitOptimizedPercent;
   static const int kDefaultImageLimitResizeAreaPercent;
   static const int64 kDefaultImageResolutionLimitBytes;
-  static const int64 kDefaultImageJpegNumProgressiveScans;
+  static const int kDefaultImageJpegNumProgressiveScans;
   static const int64 kDefaultImageWebpRecompressQuality;
+  static const int64 kDefaultImageWebpRecompressQualityForSmallScreens;
   static const int64 kDefaultImageWebpTimeoutMs;
   static const int kDefaultDomainShardCount;
   static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;
@@ -1658,18 +1659,11 @@ class RewriteOptions {
     set_option(x, &image_limit_resize_area_percent_);
   }
 
-  int64 image_jpeg_num_progressive_scans() const {
+  int image_jpeg_num_progressive_scans() const {
     return image_jpeg_num_progressive_scans_.value();
   }
-  void set_image_jpeg_num_progressive_scans(int64 x) {
+  void set_image_jpeg_num_progressive_scans(int x) {
     set_option(x, &image_jpeg_num_progressive_scans_);
-  }
-
-  int64 image_jpeg_num_progressive_scans_for_small_screens() const {
-    return image_jpeg_num_progressive_scans_for_small_screens_.value();
-  }
-  void set_image_jpeg_num_progressive_scans_for_small_screens(int64 x) {
-    set_option(x, &image_jpeg_num_progressive_scans_for_small_screens_);
   }
 
   int64 image_webp_recompress_quality() const {
@@ -2816,8 +2810,7 @@ class RewriteOptions {
   // Options related to jpeg compression.
   Option<int64> image_jpeg_recompress_quality_;
   Option<int64> image_jpeg_recompress_quality_for_small_screens_;
-  Option<int64> image_jpeg_num_progressive_scans_;
-  Option<int64> image_jpeg_num_progressive_scans_for_small_screens_;
+  Option<int> image_jpeg_num_progressive_scans_;
   Option<bool> image_retain_color_profile_;
   Option<bool> image_retain_color_sampling_;
   Option<bool> image_retain_exif_data_;
