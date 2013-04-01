@@ -676,7 +676,7 @@ void CacheHtmlFlow::CacheHtmlHit(PropertyPage* page) {
   cache_html_log_helper_->SetCacheHtmlRequestFlow(
       CacheHtmlLoggingInfo::CACHE_HTML_HIT);
   cache_html_log_helper_->LogAppliedRewriter(
-            RewriteOptions::FilterId(RewriteOptions::kCacheHtml));
+            RewriteOptions::FilterId(RewriteOptions::kCachePartialHtml));
 
   ResponseHeaders* response_headers = base_fetch_->response_headers();
   response_headers->SetStatusAndReason(HttpStatus::kOK);
@@ -778,8 +778,8 @@ void CacheHtmlFlow::TriggerProxyFetch() {
     // PassThrough case.
     // This flow has side effect that DeferJs is applied in passthrough case
     // even when it is not explicitly enabled since it is added in
-    // RewriteDriver::AddPostRenderFilters() if RewriteOptions::kCacheHtml is
-    // enabled.
+    // RewriteDriver::AddPostRenderFilters() if
+    // RewriteOptions::kCachePartialHtml is enabled.
     fetch = base_fetch_;
   }
   if (cache_html_computation_fetch == NULL) {

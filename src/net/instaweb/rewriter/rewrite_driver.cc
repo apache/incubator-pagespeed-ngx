@@ -1066,7 +1066,7 @@ void RewriteDriver::AddPostRenderFilters() {
     AddOwnedPostRenderFilter(new DeferIframeFilter(this));
     AddOwnedPostRenderFilter(new JsDisableFilter(this));
   } else if (rewrite_options->Enabled(RewriteOptions::kDeferJavascript) ||
-             rewrite_options->Enabled(RewriteOptions::kCacheHtml)) {
+             rewrite_options->Enabled(RewriteOptions::kCachePartialHtml)) {
     // Defers javascript download and execution to post onload. This filter
     // should be applied before JsDisableFilter and JsDeferFilter.
     // kDeferIframe filter should never be turned on when either defer_js
@@ -1221,7 +1221,7 @@ void RewriteDriver::SetWriter(Writer* writer) {
   if (html_writer_filter_ == NULL) {
     if (options()->Enabled(RewriteOptions::kServeNonCacheableNonCritical)) {
       html_writer_filter_.reset(new BlinkFilter(this));
-    } else if (options()->Enabled(RewriteOptions::kCacheHtml) &&
+    } else if (options()->Enabled(RewriteOptions::kCachePartialHtml) &&
                flushed_cached_html_) {
       html_writer_filter_.reset(new CacheHtmlFilter(this));
     } else if (options()->Enabled(RewriteOptions::kFlushSubresources) &&

@@ -80,7 +80,7 @@ class RewriteOptions {
     kAddHead,
     kAddInstrumentation,
     kComputeStatistics,
-    kCacheHtml,
+    kCachePartialHtml,
     kCanonicalizeJavascriptLibraries,
     kCollapseWhitespace,
     kCollectFlushEarlyContentFilter,

@@ -265,7 +265,7 @@ const RewriteOptions::Filter kTestFilterSet[] = {
 
 // Note: These filters should not be included even if the level is "All".
 const RewriteOptions::Filter kDangerousFilterSet[] = {
-  RewriteOptions::kCacheHtml,
+  RewriteOptions::kCachePartialHtml,
   RewriteOptions::kCanonicalizeJavascriptLibraries,
   RewriteOptions::kComputeVisibleText,  // internal, enabled conditionally
   RewriteOptions::kDeferIframe,
@@ -293,7 +293,7 @@ const RewriteOptions::Filter kDangerousFilterSet[] = {
 // SupportNoscriptFilter::IsAnyFilterRequiringScriptExecutionEnabled() method
 // if you update this list.
 const RewriteOptions::Filter kRequiresScriptExecutionFilterSet[] = {
-  RewriteOptions::kCacheHtml,
+  RewriteOptions::kCachePartialHtml,
   RewriteOptions::kDeferIframe,
   RewriteOptions::kDeferJavascript,
   RewriteOptions::kDelayImages,
@@ -328,8 +328,8 @@ const RewriteOptions::FilterEnumToIdAndNameEntry
     "ai", "Add Instrumentation" },
   { RewriteOptions::kComputeStatistics,
     "ca", "Compute HTML statistics" },
-  { RewriteOptions::kCacheHtml,
-    "ct", "Cache Html" },
+  { RewriteOptions::kCachePartialHtml,
+    "ct", "Cache Partial Html" },
   { RewriteOptions::kCanonicalizeJavascriptLibraries,
     "ij", "Canonicalize Javascript library URLs" },
   { RewriteOptions::kCollapseWhitespace,

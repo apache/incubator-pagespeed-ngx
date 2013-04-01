@@ -427,7 +427,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     sync->AllowSloppyTermination(
         CacheHtmlFlow::kBackgroundComputationDone);
     options_.reset(server_context()->NewOptions());
-    options_->EnableFilter(RewriteOptions::kCacheHtml);
+    options_->EnableFilter(RewriteOptions::kCachePartialHtml);
     options_->EnableFilter(RewriteOptions::kRewriteJavascript);
     options_->AddBlinkCacheableFamily("http://test.com/text.html",
                                       1000 * Timer::kSecondMs,

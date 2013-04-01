@@ -116,6 +116,18 @@ TEST_F(CriticalImagesFinderTest, UpdateCriticalImagesCacheEntrySuccess) {
   EXPECT_TRUE(CallUpdateCriticalImagesCacheEntry(
       rewrite_driver(), critical_images_set, css_critical_images_set));
   EXPECT_TRUE(GetCriticalImagesUpdatedValue()->has_value());
+
+  // Verify that when NumSetsToKeep() is 1, we only update the *_critical_images
+  // field, and not *_critical_images_sets. Storing history in this case just
+  // causes an increased cache size.
+  ArrayInputStream input(GetCriticalImagesUpdatedValue()->value().data(),
+                         GetCriticalImagesUpdatedValue()->value().size());
+  CriticalImages parsed_proto;
+  parsed_proto.ParseFromZeroCopyStream(&input);
+  EXPECT_EQ(1, parsed_proto.html_critical_images_size());
+  EXPECT_EQ(1, parsed_proto.css_critical_images_size());
+  EXPECT_EQ(0, parsed_proto.html_critical_images_sets_size());
+  EXPECT_EQ(0, parsed_proto.css_critical_images_sets_size());
 }
 
 TEST_F(CriticalImagesFinderTest,

@@ -88,11 +88,23 @@ bool PopulateCriticalImagesInfoFromPropertyValue(
 
 void UpdateCriticalImagesSetInProto(
     const StringSet& critical_images_set,
-    const int& max_set_size,
-    const int& percent_needed_for_critical,
+    int max_set_size,
+    int percent_needed_for_critical,
     protobuf::RepeatedPtrField<CriticalImages::CriticalImageSet>* set_field,
     protobuf::RepeatedPtrField<GoogleString>* critical_images_field) {
   DCHECK_GT(max_set_size, 0);
+
+  // If we have a max_set_size of 1 we can just directly set the
+  // critical_images_field to the new set, we don't need to store any history of
+  // responses.
+  if (max_set_size == 1) {
+    critical_images_field->Clear();
+    for (StringSet::const_iterator it = critical_images_set.begin();
+         it != critical_images_set.end(); ++it) {
+      *critical_images_field->Add() = *it;
+    }
+    return;
+  }
 
   // Update the set field first, which contains the history of up to
   // max_set_size critical image responses. If we already have max_set_size,

@@ -545,7 +545,8 @@ void ProxyInterface::ProxyRequestCallback(
         bool is_cache_html_request = BlinkUtil::IsBlinkRequest(
             *request_url, async_fetch, driver->options(),
             driver->user_agent().c_str(),
-            server_context_->user_agent_matcher(), RewriteOptions::kCacheHtml);
+            server_context_->user_agent_matcher(),
+            RewriteOptions::kCachePartialHtml);
         if (is_cache_html_request) {
           CacheHtmlFlow::Start(url_string, async_fetch, driver,
                                proxy_fetch_factory_.get(),
