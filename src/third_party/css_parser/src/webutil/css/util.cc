@@ -306,7 +306,7 @@ bool MediaAppliesToScreen(const StringPiece& media) {
 
   for (std::vector<StringPiece>::iterator iter = values.begin();
        iter < values.end(); ++iter) {
-    StringPieceUtils::RemoveWhitespaceContext(&(*iter));
+    strings::RemoveWhitespaceContext(&(*iter));
     if (MediumAppliesToScreen(*iter))
       return true;
   }
