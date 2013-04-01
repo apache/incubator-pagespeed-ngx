@@ -21,7 +21,7 @@
 #ifndef NGX_SERVER_CONTEXT_H_
 #define NGX_SERVER_CONTEXT_H_
 
-#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/system/public/system_server_context.h"
 
 namespace net_instaweb {
 
@@ -31,7 +31,7 @@ class RewriteStats;
 class SharedMemStatistics;
 class Statistics;
 
-class NgxServerContext : public ServerContext {
+class NgxServerContext : public SystemServerContext {
  public:
   explicit NgxServerContext(NgxRewriteDriverFactory* factory);
   virtual ~NgxServerContext();

@@ -43,7 +43,7 @@ const char kHtmlRewriteTimeUsHistogram[] = "Html Time us Histogram";
 
 
 NgxServerContext::NgxServerContext(NgxRewriteDriverFactory* factory)
-    : ServerContext(factory),
+    : SystemServerContext(factory),
       ngx_factory_(factory),
       initialized_(false) {
 }
