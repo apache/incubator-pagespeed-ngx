@@ -42,5 +42,24 @@ message CriticalSelectorSet {
 // TODO(morlovich):This will need to be a list of media/style pairs,
 // so we can retain any media that's in the tag (and not CSS itself).
 message CriticalSelectorSummarizedCss {
-  optional string content = 1;
+  optional string deprecated_content = 1;
+  message ResourceSummary {
+    // Excerpted portion of CSS relevant to critical selectors.
+    optional string content = 1;
+
+    // Media that comes from HTML, and is relevant to screen.
+    optional string media = 2;
+
+    // This is true if the HTML had some media, but none of them
+    // applied to screen (which results in media empty, but is different
+    // from not having any media listed at all, which does apply to all)
+    optional bool all_media_non_screen = 3 [ default = false ];
+
+    // True if CSS is out-of-line.
+    optional bool external = 4 [ default = false ];
+
+    // Used only when external = true
+    optional string base = 5;
+  }
+  repeated ResourceSummary summary = 2;
 }

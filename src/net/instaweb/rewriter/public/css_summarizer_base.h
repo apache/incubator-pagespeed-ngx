@@ -84,6 +84,15 @@ class CssSummarizerBase : public RewriteFilter {
     // Human-readable description of the location of the CSS. For use in debug
     // messages.
     GoogleString location;
+
+    // Base to use for resolving links in the CSS resource.
+    GoogleString base;
+
+    // CSS media there were applied to the resource by the HTML.
+    GoogleString media_from_html;
+
+    // True if it's a <link rel=stylesheet href=>, false for <style>
+    bool is_external;
   };
 
   // This method should be overridden in case the subclass's summary computation
@@ -162,20 +171,24 @@ class CssSummarizerBase : public RewriteFilter {
   // describing what happened with every CSS resource.
   void ReportSummariesDone();
 
-  // Starts the asynchronous rewrite process for inline CSS 'text'.
-  void StartInlineRewrite(HtmlCharactersNode* text);
+  // Starts the asynchronous rewrite process for inline CSS 'text', contained
+  // within the style element 'style'.
+  void StartInlineRewrite(HtmlElement* style, HtmlCharactersNode* text);
 
   // Starts the asynchronous rewrite process for external CSS referenced by
   // attribute 'src' of 'link'.
   void StartExternalRewrite(HtmlElement* link, HtmlElement::Attribute* src);
 
-  // Creates our rewrite context for the given slot. Also registers it
-  // with the summaries_ vector and gives it an id. The context will
-  // still need to have SetupInlineRewrite / SetupExternalRewrite and
-  // InitiateRewrite called on it.
+  // Creates our rewrite context for the given slot and registers it
+  // with the summaries_ vector, filling in the SummaryInfo struct in
+  // a pending state.  The context will still need to have SetupInlineRewrite
+  // or SetupExternalRewrite and InitiateRewrite called on it.
   // location is used to identify the resource in debug comments.
-  Context* CreateContextForSlot(const ResourceSlotPtr& slot,
-                                const GoogleString& location);
+  Context* CreateContextAndSummaryInfo(const HtmlElement* element,
+                                       bool external,
+                                       const ResourceSlotPtr& slot,
+                                       const GoogleString& location,
+                                       StringPiece base_for_resources);
 
   ResourceSlot* MakeSlotForInlineCss(const StringPiece& content);
 

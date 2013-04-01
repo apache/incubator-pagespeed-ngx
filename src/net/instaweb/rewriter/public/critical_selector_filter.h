@@ -79,6 +79,10 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   virtual void EndDocument();
   virtual void EndElementImpl(HtmlElement* element);
 
+  // Filter control API.
+  virtual void DetermineEnabled();
+  virtual bool UsesPropertyCacheDomCohort() const;
+
  private:
   class CssElement;
   class CssStyleElement;
