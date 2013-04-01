@@ -311,25 +311,31 @@ void PropertyCache::Read(PropertyPage* page) const {
 void PropertyCache::ReadWithCohorts(const CohortVector& cohort_list,
                                     PropertyPage* page) const {
   if (!enabled_ || cohort_list.empty()) {
-    page->CallDone(false);
+    page->Abort();
     return;
   }
-  page->SetupCohorts(cohort_list);
+  page->Read(cohort_list);
+}
 
-  PropertyPage::CallbackCollector* collector =
-      new PropertyPage::CallbackCollector(
-          page, cohort_list.size(), thread_system_->NewMutex());
+void PropertyPage::Abort() {
+  CallDone(false);
+}
+
+void PropertyPage::Read(const PropertyCache::CohortVector& cohort_list) {
+  DCHECK(!cohort_list.empty());
+  SetupCohorts(cohort_list);
+  CallbackCollector* collector = new CallbackCollector(
+      this, cohort_list.size(), property_cache_->thread_system()->NewMutex());
   for (int j = 0, n = cohort_list.size(); j < n; ++j) {
-    const Cohort* cohort = cohort_list[j];
+    const PropertyCache::Cohort* cohort = cohort_list[j];
     PropertyPage::CohortDataMap::iterator cohort_itr =
-        page->cohort_data_map_.find(cohort);
-    CHECK(cohort_itr != page->cohort_data_map_.end());
+        cohort_data_map_.find(cohort);
+    CHECK(cohort_itr != cohort_data_map_.end());
     PropertyPage::PropertyMapStruct* pmap_struct = cohort_itr->second;
-    page->LogPageCohortInfo(page->log_record(), pmap_struct->cohort_index);
-    const GoogleString cache_key = CacheKey(page->key(), cohort);
-    cohort->cache()->Get(
-        cache_key,
-        new CacheInterfaceCallback(page, cohort, pmap_struct, collector));
+    LogPageCohortInfo(log_record(), pmap_struct->cohort_index);
+    const GoogleString cache_key = property_cache_->CacheKey(key(), cohort);
+    cohort->cache()->Get(cache_key, new PropertyCache::CacheInterfaceCallback(
+        this, cohort, pmap_struct, collector));
   }
 }
 

@@ -155,6 +155,7 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
   }
 
   GoogleString headers_fetch_time;
+  GoogleString time_to_first_byte;
   GoogleString fetch_time;
   LogRecord* log_record = driver_->log_record();
   {
@@ -173,6 +174,12 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
         // came from cache.
         fetch_time = Integer64ToString(fetch_ms);
       }
+      if (log_record->logging_info()->timing_info()
+          .has_time_to_first_byte_ms()) {
+        int64 ttfb_ms =
+            log_record->logging_info()->timing_info().time_to_first_byte_ms();
+        time_to_first_byte = Integer64ToString(ttfb_ms);
+      }
     }
   }
 
@@ -185,6 +192,7 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
   StrAppend(&init_js, "'", *beacon_url, "', ");
   StrAppend(&init_js, "'", js_event, "', ");
   StrAppend(&init_js, "'", headers_fetch_time, "', ");
+  StrAppend(&init_js, "'", time_to_first_byte, "', ");
   StrAppend(&init_js, "'", fetch_time, "', ");
   StrAppend(&init_js, "'", expt_id_param, "', ");
   StrAppend(&init_js, "'", html_url, "');");

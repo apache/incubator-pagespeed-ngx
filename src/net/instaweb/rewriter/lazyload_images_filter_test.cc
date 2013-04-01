@@ -79,22 +79,19 @@ class LazyloadImagesFilterTest : public RewriteTestBase {
     rewrite_driver()->AddFilter(lazyload_images_filter_.get());
   }
 
-  GoogleString GetScriptHtml(const StringPiece& script, bool add_no_defer) {
+  GoogleString GetScriptHtml(const StringPiece& script) {
     return StrCat("<script type=\"text/javascript\"",
-                  add_no_defer ? " pagespeed_no_defer=\"\"" : "",
-                  ">", script, "</script>");
+                  " pagespeed_no_defer=\"\"", ">", script, "</script>");
   }
 
   GoogleString GetLazyloadScriptHtml() {
     return GetScriptHtml(
         LazyloadImagesFilter::GetLazyloadJsSnippet(
-            options(), server_context()->static_asset_manager()),
-        false);
+            options(), server_context()->static_asset_manager()));
   }
 
   GoogleString GetOverrideAttributesScriptHtml() {
-    return GetScriptHtml(
-        LazyloadImagesFilter::kOverrideAttributeFunctions, true);
+    return GetScriptHtml(LazyloadImagesFilter::kOverrideAttributeFunctions);
   }
 
   GoogleString GenerateRewrittenImageTag(

@@ -32,7 +32,6 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
-#include "net/instaweb/rewriter/public/lazyload_images_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -51,6 +50,9 @@ namespace net_instaweb {
 
 const char SplitHtmlFilter::kSplitInit[] =
     "<script type=\"text/javascript\">"
+    "window[\"pagespeed\"] = window[\"pagespeed\"] || {};"
+    "var pagespeed = window[\"pagespeed\"];</script>"
+    "<script type=\"text/javascript\">"
     "pagespeed.splitOnload = function() {"
     "pagespeed.num_high_res_images_loaded++;"
     "if (pagespeed.panelLoader && pagespeed.num_high_res_images_loaded == "
@@ -59,10 +61,6 @@ const char SplitHtmlFilter::kSplitInit[] =
     "}};"
     "pagespeed.num_high_res_images_loaded=0;"
     "</script>";
-const char SplitHtmlFilter::kPagespeedFunc[] =
-    "<script type=\"text/javascript\">"
-    "window[\"pagespeed\"] = window[\"pagespeed\"] || {};"
-    "var pagespeed = window[\"pagespeed\"];</script>";
 
 // TODO(rahulbansal): We are sending an extra close body and close html tag.
 // Fix that.
@@ -86,7 +84,8 @@ SplitHtmlFilter::SplitHtmlFilter(RewriteDriver* rewrite_driver)
       rewrite_driver_(rewrite_driver),
       options_(rewrite_driver->options()),
       current_panel_parent_element_(NULL),
-      static_asset_manager_(NULL) {
+      static_asset_manager_(NULL),
+      script_tag_scanner_(rewrite_driver) {
 }
 
 SplitHtmlFilter::~SplitHtmlFilter() {
@@ -114,9 +113,9 @@ void SplitHtmlFilter::StartDocument() {
   current_panel_id_.clear();
   url_ = rewrite_driver_->google_url().Spec();
   script_written_ = false;
-  send_lazyload_script_ = false;
   num_low_res_images_inlined_ = 0;
   current_panel_parent_element_ = NULL;
+  inside_pagespeed_no_defer_script_ = false;
 
   // Push the base panel.
   StartPanelInstance(static_cast<HtmlElement*>(NULL));
@@ -150,10 +149,6 @@ void SplitHtmlFilter::EndDocument() {
 
   ServeNonCriticalPanelContents(json[0]);
   Cleanup();
-
-  rewrite_driver_->UpdatePropertyValueInDomCohort(
-      LazyloadImagesFilter::kIsLazyloadScriptInsertedPropertyName,
-      send_lazyload_script_ ? "1" : "0");
 }
 
 void SplitHtmlFilter::WriteString(const StringPiece& str) {
@@ -301,23 +296,6 @@ void SplitHtmlFilter::InsertSplitInitScripts(HtmlElement* element) {
     StrAppend(&defer_js_with_blink, "<head>");
   }
 
-  // TODO(rahulbansal): It is sub-optimal to send lazyload script in the head.
-  // Figure out a better way to do it.
-  send_lazyload_script_ =
-      LazyloadImagesFilter::ShouldApply(rewrite_driver_) &&
-      options_->Enabled(RewriteOptions::kLazyloadImages);
-
-  if (send_lazyload_script_ &&
-      !rewrite_driver_->is_lazyload_script_flushed()) {
-    GoogleString lazyload_js = LazyloadImagesFilter::GetLazyloadJsSnippet(
-        options_, static_asset_manager_);
-    StrAppend(&defer_js_with_blink, "<script type=\"text/javascript\">",
-              lazyload_js, "</script>");
-  }
-
-  if (!send_lazyload_script_) {
-    StrAppend(&defer_js_with_blink, kPagespeedFunc);
-  }
   StrAppend(&defer_js_with_blink, kSplitInit);
   if (include_head) {
     StrAppend(&defer_js_with_blink, "</head>");
@@ -333,6 +311,18 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
   if (disable_filter_) {
     InvokeBaseHtmlFilterStartElement(element);
     return;
+  }
+
+  if (element->FindAttribute(HtmlName::kPagespeedNoDefer) &&
+      element_json_stack_.size() > 1 ) {
+    HtmlElement::Attribute* src = NULL;
+    if (script_tag_scanner_.ParseScriptElement(element, &src) ==
+        ScriptTagScanner::kJavaScript) {
+      set_writer(original_writer_);
+      inside_pagespeed_no_defer_script_ = true;
+      InvokeBaseHtmlFilterStartElement(element);
+      return;
+    }
   }
 
   if (!num_children_stack_.empty()) {
@@ -396,6 +386,13 @@ void SplitHtmlFilter::StartElement(HtmlElement* element) {
 void SplitHtmlFilter::EndElement(HtmlElement* element) {
   if (disable_filter_) {
     InvokeBaseHtmlFilterEndElement(element);
+    return;
+  }
+
+  if (inside_pagespeed_no_defer_script_) {
+    InvokeBaseHtmlFilterEndElement(element);
+    set_writer(json_writer_.get());
+    inside_pagespeed_no_defer_script_ = false;
     return;
   }
 

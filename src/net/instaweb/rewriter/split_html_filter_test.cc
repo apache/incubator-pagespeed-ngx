@@ -64,6 +64,7 @@ const char kHtmlInputPart2[] =
       "<h3 id=\"afterInspirations\"> This is after Inspirations </h3>"
     "</div>"
     "<img id=\"image\" src=\"image_panel.1\">"
+    "<script pagespeed_no_defer=\"\"></script>"
     "<h1 id=\"footer\" name style>"
       "This is the footer"
     "</h1>"
@@ -88,6 +89,7 @@ const char kSplitHtmlMiddle[] =
       "<!--GooglePanel begin panel-id.0--><!--GooglePanel end panel-id.0-->"
     "</div>"
     "<!--GooglePanel begin panel-id.1--><!--GooglePanel end panel-id.1-->"
+    "<script pagespeed_no_defer=\"\"></script>"
     "<h1 id=\"footer\" name style>"
       "This is the footer"
     "</h1>"
@@ -197,9 +199,9 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithDriverHavingCriticalLineInfo) {
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                                    1, blink_js_url_,
                                    kSplitHtmlBelowTheFoldData, "false"));
-  EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kPagespeedFunc,
-                   SplitHtmlFilter::kSplitInit, kSplitHtmlMiddle,
-                   suffix), output_);
+  EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kSplitInit,
+                   kSplitHtmlMiddle, suffix),
+            output_);
   VerifyAppliedRewriters(
       RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
   VerifyJsonSize(strlen(kSplitHtmlBelowTheFoldData));
@@ -219,9 +221,9 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushingCachedHtml) {
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                                    1, blink_js_url_,
                                    kSplitHtmlBelowTheFoldData, "true"));
-  EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kPagespeedFunc,
-                   SplitHtmlFilter::kSplitInit, kSplitHtmlMiddle,
-                   suffix), output_);
+  EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kSplitInit,
+                   kSplitHtmlMiddle, suffix),
+            output_);
   VerifyAppliedRewriters(
       RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
   VerifyJsonSize(strlen(kSplitHtmlBelowTheFoldData));
@@ -235,9 +237,9 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithOptions) {
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                                    1, blink_js_url_,
                                    kSplitHtmlBelowTheFoldData, "false"));
-  EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kPagespeedFunc,
-                   SplitHtmlFilter::kSplitInit, kSplitHtmlMiddle,
-                   suffix), output_);
+  EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kSplitInit,
+                   kSplitHtmlMiddle, suffix),
+            output_);
   VerifyAppliedRewriters(
       RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
   VerifyJsonSize(strlen(kSplitHtmlBelowTheFoldData));
@@ -255,9 +257,9 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlWithFlushes) {
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                                    1, blink_js_url_,
                                    kSplitHtmlBelowTheFoldData, "false"));
-  EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kPagespeedFunc,
-                     SplitHtmlFilter::kSplitInit, kSplitHtmlMiddle,
-                     suffix), output_);
+  EXPECT_EQ(StrCat(kSplitHtmlPrefix, SplitHtmlFilter::kSplitInit,
+                   kSplitHtmlMiddle, suffix),
+            output_);
   VerifyAppliedRewriters(
       RewriteOptions::FilterId(RewriteOptions::kSplitHtml));
   VerifyJsonSize(strlen(kSplitHtmlBelowTheFoldData));
@@ -281,7 +283,7 @@ TEST_F(SplitHtmlFilterTest, FlushEarlyHeadSuppress) {
   GoogleString post_head_output = StrCat(
       "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
       "<script src=\"b.js\"></script>",
-      SplitHtmlFilter::kPagespeedFunc, SplitHtmlFilter::kSplitInit,
+      SplitHtmlFilter::kSplitInit,
       "</head><body></body></html>", suffix);
   GoogleString html_input = StrCat(pre_head_input, post_head_input);
 
@@ -334,56 +336,10 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpaths) {
   GoogleString expected_output(kSplitHtmlPrefix);
   GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
                                    1, blink_js_url_, "{}", "false"));
-  StrAppend(&expected_output, SplitHtmlFilter::kPagespeedFunc,
-            SplitHtmlFilter::kSplitInit,
+  StrAppend(&expected_output, SplitHtmlFilter::kSplitInit,
             kSplitHtmlMiddleWithoutPanelStubs,
             kHtmlInputPart2, suffix);
   EXPECT_EQ(expected_output, output_);
-  VerifyAppliedRewriters("");
-  VerifyJsonSize(0);
-}
-
-TEST_F(SplitHtmlFilterTest, SplitHtmlNoXpathsWithLazyload) {
-  options_->ForceEnableFilter(RewriteOptions::kLazyloadImages);
-  rewrite_driver_->set_is_lazyload_script_flushed(true);
-  Parse("split_with_lazyload", kHtmlInputForLazyload);
-  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
-                                   0, blink_js_url_, "{}", "false"));
-  EXPECT_EQ(StrCat("<html><head>", SplitHtmlFilter::kSplitInit,
-                   "</head><body></body></html>", suffix), output_);
-  VerifyAppliedRewriters("");
-  VerifyJsonSize(0);
-}
-
-TEST_F(SplitHtmlFilterTest, SplitHtmlWithLazyLoad) {
-  options_->ForceEnableFilter(RewriteOptions::kLazyloadImages);
-  GoogleString lazyload_js = LazyloadImagesFilter::GetLazyloadJsSnippet(
-      options_, rewrite_driver_->server_context()->static_asset_manager());
-  options_->set_critical_line_config(
-      "//div[@id = \"container\"]/div[4],"
-      "//img[3]://h1[@id = \"footer\"]");
-  Parse("split_with_lazyload", kHtmlInputForLazyload);
-  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
-                                   0, blink_js_url_, "{}", "false"));
-  EXPECT_EQ(StrCat("<html><head>", "<script type=\"text/javascript\">",
-                   lazyload_js, "</script>", SplitHtmlFilter::kSplitInit,
-                   "</head><body></body></html>", suffix), output_);
-  VerifyAppliedRewriters("");
-  VerifyJsonSize(0);
-}
-
-TEST_F(SplitHtmlFilterTest, SplitHtmlWithScriptsFlushedEarly) {
-  options_->ForceEnableFilter(RewriteOptions::kLazyloadImages);
-  rewrite_driver_->set_is_lazyload_script_flushed(true);
-
-  options_->set_critical_line_config(
-      "//div[@id = \"container\"]/div[4],"
-      "//img[3]://h1[@id = \"footer\"]");
-  Parse("split_with_scripts_flushed_early", kHtmlInputForLazyload);
-  GoogleString suffix(StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
-                                   0, blink_js_url_, "{}", "false"));
-  EXPECT_EQ(StrCat("<html><head>", SplitHtmlFilter::kSplitInit,
-                   "</head><body></body></html>", suffix), output_);
   VerifyAppliedRewriters("");
   VerifyJsonSize(0);
 }
@@ -406,13 +362,10 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript1) {
                    0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
                    "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
                    "__psa_lt;/h1__psa_gt;\"}]}", "false"));
-  GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
-                                  SplitHtmlFilter::kSplitInit));
-
   GoogleString input(StringPrintf(kHtmlInputForIgnoreScript, "", ""));
   Parse("split_ignore_script1", input);
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript1,
-                         head_script.c_str(), "", "",
+                         SplitHtmlFilter::kSplitInit, "", "",
                          expected_output_suffix.c_str()).c_str(), output_);
   VerifyAppliedRewriters("sh");
 }
@@ -424,14 +377,11 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript2) {
                    0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
                    "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
                    "__psa_lt;/h1__psa_gt;\"}]}", "false"));
-  GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
-                                  SplitHtmlFilter::kSplitInit));
-
   GoogleString input = StringPrintf(kHtmlInputForIgnoreScript, "",
                                     "<script></script><noscript></noscript>");
   Parse("split_ignore_script2", input);
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript1,
-                         head_script.c_str(), "",
+                         SplitHtmlFilter::kSplitInit, "",
                          "<script></script><noscript></noscript>",
                          expected_output_suffix.c_str()).c_str(), output_);
   VerifyAppliedRewriters("sh");
@@ -444,15 +394,12 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript3) {
                    0, blink_js_url_, "{\"panel-id.0\":[{\"instance_html\":"
                    "\"__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
                    "__psa_lt;/h1__psa_gt;\"}]}", "false"));
-  GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
-                                  SplitHtmlFilter::kSplitInit));
-
   GoogleString input = StringPrintf(kHtmlInputForIgnoreScript,
                                     "<script></script><noscript></noscript>",
                                     "<script></script><noscript></noscript>");
   Parse("split_ignore_script3", input);
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript1,
-                         head_script.c_str(),
+                         SplitHtmlFilter::kSplitInit,
                          "<script></script><noscript></noscript>",
                          "<script></script><noscript></noscript>",
                          expected_output_suffix.c_str()).c_str(), output_);
@@ -468,13 +415,10 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript4) {
                    "__psa_lt;/h1__psa_gt;"
                    "__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
                    "__psa_lt;/h1__psa_gt;\"}]}", "false"));
-  GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
-                                  SplitHtmlFilter::kSplitInit));
-
   GoogleString input = StringPrintf(kHtmlInputForIgnoreScript, "", "");
   Parse("split_ignore_script4", input);
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript2,
-                         head_script.c_str(), "",
+                         SplitHtmlFilter::kSplitInit, "",
                          expected_output_suffix.c_str()).c_str(), output_);
   VerifyAppliedRewriters("sh");
 }
@@ -488,16 +432,13 @@ TEST_F(SplitHtmlFilterTest, SplitHtmlIgnoreScriptNoscript5) {
                    "__psa_lt;/h1__psa_gt;"
                    "__psa_lt;h1 panel-id=\\\"panel-id.0\\\"__psa_gt;"
                    "__psa_lt;/h1__psa_gt;\"}]}", "false"));
-  GoogleString head_script(StrCat(SplitHtmlFilter::kPagespeedFunc,
-                                  SplitHtmlFilter::kSplitInit));
-
   GoogleString input = StringPrintf(
       kHtmlInputForIgnoreScript,
       "<script></script><noscript></noscript>"
       "<style></style><link href=\"http://a.com/\">", "");
       Parse("split_ignore_script5", input);
   EXPECT_EQ(StringPrintf(kHtmlExpectedOutputForIgnoreScript2,
-                         head_script.c_str(),
+                         SplitHtmlFilter::kSplitInit,
                          "<script></script><noscript></noscript>"
                          "<style></style><link href=\"http://a.com/\">",
                          expected_output_suffix.c_str()).c_str(), output_);

@@ -63,7 +63,7 @@ const char kDeferJsTemplate[] =
     "<script type=\"text/javascript\" src=\"/psajs/js_defer.0.js\"></script>";
 
 const char kLazyloadTemplate[] =
-    "<script type=\"text/javascript\">"
+    "<script type=\"text/javascript\" pagespeed_no_defer=\"\">"
     "%s"
     "\npagespeed.lazyLoadInit(false, \"%s\");\n"
     "</script>";

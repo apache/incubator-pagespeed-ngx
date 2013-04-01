@@ -591,6 +591,9 @@ TEST_F(CssFilterTest, RewriteVariousCss) {
     // Mismatched {}s that are acceptable because they do not fail to close {s,
     // but instead have stray }s that would not be parsed as closing previous {s
     "a[}]{color:red}",
+
+    // Don't "fix" font properties.
+    "a{font:12px,clean}",
   };
 
   for (int i = 0; i < arraysize(good_examples); ++i) {
@@ -1283,6 +1286,12 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "oYBhgARgDJjEAAkAAEC99wFuu0VFAAAAAElFTkSuQmCC) repeat;"
       "background:white url(http://static.uncyc.org/skins/common/images/Checke"
       "r-16x16.png?2012-02-15T12:25:00Z) repeat!ie}" },
+
+    { "body{font:13px/1.231,clean;*font-size:small;*font:x-small;"
+      "font-family:Arial !important}",
+
+      "body{font:13px/1.231,clean;*font-size:small;*font:x-small;"
+      "font-family:Arial!important}" },
   };
 
   for (int i = 0; i < arraysize(examples); ++i) {

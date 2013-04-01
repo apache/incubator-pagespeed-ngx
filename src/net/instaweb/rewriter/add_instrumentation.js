@@ -32,16 +32,18 @@ var pagespeed = window['pagespeed'];
  * @param {string} beaconUrlPrefix The prefix portion of the beacon url.
  * @param {string} event Event to trigger on, either 'load' or 'beforeunload'.
  * @param {string} headerFetchTime Time to fetch header.
+ * @param {string} timeToFirstByte Time to first byte at server.
  * @param {string} originFetchTime Time to fetch origin.
  * @param {string} experimentId Id of current experiment.
  * @param {string} htmlUrl Url of the page the beacon is being inserted on.
  */
 pagespeed.AddInstrumentation = function(beaconUrlPrefix, event, headerFetchTime,
-                                        originFetchTime, experimentId,
-                                        htmlUrl) {
+                                        timeToFirstByte, originFetchTime,
+                                        experimentId, htmlUrl) {
   this.beaconUrlPrefix_ = beaconUrlPrefix;
   this.event_ = event;
   this.headerFetchTime_ = headerFetchTime;
+  this.timeToFirstByte_ = timeToFirstByte;
   this.originFetchTime_ = originFetchTime;
   this.experimentId_ = experimentId;
   this.htmlUrl_ = htmlUrl;
@@ -76,19 +78,31 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
   // If not present, we set the start time to when the rendering started.
   // TODO(satyanarayana): Remove the oldStartTime usages once
   // devconsole code has been updated to use the new "rload" param value.
-  url += '&r' + this.event_ + '=';
-  var newStartTime = oldStartTime;
-  if (window['performance']) {
-    var timingApi = window['performance']['timing'];
-    newStartTime = timingApi['navigationStart'];
-    url += (timingApi['loadEventStart'] - newStartTime);
-  } else {
-   url += traditionalPLT;
-  }
 
   if (this.event_ == 'beforeunload' && window['mod_pagespeed_loaded']) {
     return;
   }
+
+  url += '&r' + this.event_ + '=';
+  if (window['performance']) {
+    var timingApi = window['performance']['timing'];
+    var navStartTime = timingApi['navigationStart'];
+    url += (timingApi[this.event_ + 'EventStart'] - navStartTime);
+    url += '&nav=' + (timingApi['fetchStart'] - navStartTime);
+    url += '&dns=' + (
+        timingApi['domainLookupEnd'] - timingApi['domainLookupStart']);
+    url += '&connect=' + (
+        timingApi['connectEnd'] - timingApi['connectStart']);
+    url += '&req_start=' + (timingApi['requestStart'] - navStartTime);
+    url += '&ttfb=' + (
+        timingApi['responseStart'] - timingApi['requestStart']);
+    url += '&dwld=' + (
+        timingApi['responseEnd'] - timingApi['responseStart']);
+    url += '&dom_c=' + (timingApi['domContentLoadedEventStart'] - navStartTime);
+  } else {
+   url += traditionalPLT;
+  }
+
   url += (window.parent != window) ? '&ifr=1' : '&ifr=0';
   if (this.event_ == 'load') {
     window['mod_pagespeed_loaded'] = true;
@@ -99,7 +113,7 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
     }
     var prefetchStartTime = window['mod_pagespeed_prefetch_start'];
     if (prefetchStartTime) {
-      url += '&htmlAt=' + (newStartTime - prefetchStartTime);
+      url += '&htmlAt=' + (oldStartTime - prefetchStartTime);
     }
   }
 
@@ -126,6 +140,9 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
   if (this.headerFetchTime_ != '') {
     url += '&hft=' + this.headerFetchTime_;
   }
+  if (this.timeToFirstByte_ != '') {
+    url += '&s_ttfb=' + this.timeToFirstByte_;
+  }
   if (this.originFetchTime_ != '') {
     url += '&ft=' + this.originFetchTime_;
   }
@@ -143,17 +160,18 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
  * @param {string} beaconUrl Url of beacon.
  * @param {string} event Event to trigger on, either 'load' or 'beforeunload'.
  * @param {string} headerFetchTime Time to fetch header.
+ * @param {string} timeToFirstByte Time to first byte at server.
  * @param {string} originFetchTime Time to fetch origin.
  * @param {string} experimentId Id of current experiment.
  * @param {string} htmlUrl Url of the page the beacon is being inserted on.
  */
 pagespeed.addInstrumentationInit = function(beaconUrl, event, headerFetchTime,
-                                            originFetchTime, experimentId,
-                                            htmlUrl) {
+                                            timeToFirstByte, originFetchTime,
+                                            experimentId, htmlUrl) {
 
   var temp = new pagespeed.AddInstrumentation(beaconUrl, event, headerFetchTime,
-                                              originFetchTime, experimentId,
-                                              htmlUrl);
+                                              timeToFirstByte, originFetchTime,
+                                              experimentId, htmlUrl);
   if (window.addEventListener) {
     window.addEventListener(event, function() { temp.sendBeacon() }, false);
   } else {

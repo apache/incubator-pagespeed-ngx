@@ -250,10 +250,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
         return;
       }
     }
-    if (!main_script_inserted_ &&
-        // Split HTML filter sends the lazyload script after critical
-        // images are sent.
-        !driver_->options()->Enabled(RewriteOptions::kSplitHtml)) {
+    if (!main_script_inserted_) {
       InsertLazyloadJsCode(element);
      }
     // Replace the src with pagespeed_lazy_src.
@@ -281,6 +278,7 @@ void LazyloadImagesFilter::InsertLazyloadJsCode(HtmlElement* element) {
     GoogleString lazyload_js = GetLazyloadJsSnippet(
         driver()->options(), static_asset_manager);
     static_asset_manager->AddJsToElement(lazyload_js, script, driver());
+    driver()->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
   }
   main_script_inserted_ = true;
 }

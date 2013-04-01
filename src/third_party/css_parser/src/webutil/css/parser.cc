@@ -1119,10 +1119,16 @@ bool Parser::ExpandBackground(const Declaration& original_declaration,
 }
 
 // Parses font-family. It is special in that it uses commas as delimiters. It
-// also concatenates adjacent idents into one name. Strings can be also used
-// and they are separate from others even without commas.
+// also concatenates adjacent idents into one name. Strings can be also used.
+// They must also be separated from each other with commas.
+// From http://www.w3.org/TR/CSS2/fonts.html#propdef-font-family:
+//   'font-family'
+//     Value:  [[ <family-name> | <generic-family> ]
+//              [, <family-name>| <generic-family>]* ] | inherit
+//
 // E.g, Courier New, Sans -> "Courier New", "Sans"
-//      Arial "MS Times" monospace -> "Arial", "MS Times", "monospace".
+//      Arial, "MS Times", monospace -> "Arial", "MS Times", "monospace".
+//      Arial "MS Times" monospace -> Parse error.
 // If you make any change to this function, please also update ParseValues,
 // ParseBackground and ParseFont if applicable.
 bool Parser::ParseFontFamily(Values* values) {
@@ -1132,39 +1138,53 @@ bool Parser::ParseFontFamily(Values* values) {
   if (Done()) return true;
   DCHECK_LT(in_, end_);
 
-  UnicodeText family;
-  while (SkipToNextAny()) {
-    DCHECK(!Done());
-    if (*in_ == ',') {
-      if (!family.empty()) {
-        values->push_back(new Value(Identifier(family)));
-        family.clear();
-      }
-      in_++;
-    } else {
-      scoped_ptr<Value> v(ParseAny());
-      if (!v.get()) return false;
-      switch (v->GetLexicalUnitType()) {
-        case Value::STRING:
-          if (!family.empty()) {
-            values->push_back(new Value(Identifier(family)));
-            family.clear();
+  while (true) {
+    const char* oldin = in_;
+    scoped_ptr<Value> v(ParseAny());
+    if (v.get() == NULL) {
+      ReportParsingError(kValueError, "Unexpected token in font-family.");
+      in_ = oldin;  // We did not use token, so unconsume it.
+      return false;
+    }
+    // Font families can be either strings or space separated identifiers.
+    switch (v->GetLexicalUnitType()) {
+      case Value::STRING:
+        // For example: "Times New Roman"
+        // Font name is just the string value.
+        values->push_back(v.release());
+        break;
+      case Value::IDENT: {
+        // For example: Times New Roman
+        // Font name is the string made from combining all identifiers with
+        // a single space separator between each.
+        UnicodeText family;
+        family.append(v->GetIdentifierText());
+        while (SkipToNextAny() && !Done() && *in_ != ',') {
+          const char* oldin = in_;
+          v.reset(ParseAny());
+          if (v.get() == NULL || v->GetLexicalUnitType() != Value::IDENT) {
+            ReportParsingError(kValueError, "Unexpected token after "
+                               "identifier in font-family.");
+            in_ = oldin;  // We did not use token, so unconsume it.
+            return false;
           }
-          values->push_back(v.release());
-          break;
-        case Value::IDENT:
-          if (!family.empty())
-            family.push_back(static_cast<char32>(' '));
+          family.push_back(static_cast<char32>(' '));
           family.append(v->GetIdentifierText());
-          break;
-        default:
-          return false;
+        }
+        values->push_back(new Value(Identifier(family)));
+        break;
       }
+      default:
+        ReportParsingError(kValueError, "Unexpected token in font-family.");
+        return false;
+    }
+    SkipSpace();
+    if (!Done() && *in_ == ',') {
+      ++in_;
+    } else {
+      return true;
     }
   }
-  if (!family.empty())
-    values->push_back(new Value(Identifier(family)));
-  return true;
 }
 
 // Parse font. It is special in that it uses a special format (see spec):
@@ -1251,10 +1271,13 @@ Values* Parser::ParseFont() {
     } else if (v->GetLexicalUnitType() == Value::NUMBER &&
                v->GetDimension() == Value::NO_UNIT) {
       switch (v->GetIntegerValue()) {
-        // Different browsers handle this quite differently. But there
-        // is at least a test that is consistent between IE and
-        // firefox: try <span style="font:120 serif"> and <span
-        // style="font:100 serif">, the first one treats 120 as
+        // In standards-mode, font-sizes must have units (or be 0) and thus
+        // unitless numbers 100-900 must be font-weights.
+        //
+        // However, in quirks-mode, different browsers handle this quite
+        // differently. But there is at least a test that is consistent
+        // between IE and firefox: try <span style="font:120 serif"> and
+        // <span style="font:100 serif">, the first one treats 120 as
         // font-size, and the second does not.
         case 100: case 200: case 300: case 400:
         case 500: case 600: case 700: case 800:

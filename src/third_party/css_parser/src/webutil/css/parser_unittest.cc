@@ -606,7 +606,7 @@ TEST_F(ParserTest, background) {
 
 TEST_F(ParserTest, font_family) {
   scoped_ptr<Parser> a(new Parser(
-      " Arial font 'Sans' system, menu new "));
+      " Arial font, 'Sans', system, menu new "));
   scoped_ptr<Values> t(new Values);
 
   EXPECT_TRUE(a->ParseFontFamily(t.get()));
@@ -631,6 +631,60 @@ TEST_F(ParserTest, font_family) {
   ASSERT_EQ(1, t->size());
   EXPECT_EQ(Value::IDENT, t->get(0)->GetLexicalUnitType());
   EXPECT_EQ("Verdana", UnicodeTextToUTF8(t->get(0)->GetIdentifierText()));
+
+  // Legal base example.
+  scoped_ptr<Declarations> d;
+  a.reset(new Parser("font-family: foo"));
+  d.reset(a->ParseRawDeclarations());
+  ASSERT_TRUE(NULL != d.get());
+  ASSERT_EQ(1, d->size());
+  EXPECT_EQ(1, d->at(0)->values()->size());
+
+  // Illegal leading comma.
+  a.reset(new Parser("font-family: ,foo"));
+  d.reset(a->ParseRawDeclarations());
+  ASSERT_TRUE(NULL != d.get());
+  EXPECT_EQ(0, d->size());
+
+  // Illegal trailing comma.
+  a.reset(new Parser("font-family: foo,"));
+  d.reset(a->ParseRawDeclarations());
+  ASSERT_TRUE(NULL != d.get());
+  EXPECT_EQ(0, d->size());
+
+  // Legal empty string with separating comma.
+  a.reset(new Parser("font-family: '',foo"));
+  d.reset(a->ParseRawDeclarations());
+  ASSERT_TRUE(NULL != d.get());
+  ASSERT_EQ(1, d->size());
+  EXPECT_EQ(2, d->at(0)->values()->size());
+
+  // Illegal empty elements in comma-separated list.
+  a.reset(new Parser("font-family: '',,foo"));
+  d.reset(a->ParseRawDeclarations());
+  ASSERT_TRUE(NULL != d.get());
+  EXPECT_EQ(0, d->size());
+
+  // Fonts must be comma separated.
+  a.reset(new Parser("font-family: 'bar' foo"));
+  d.reset(a->ParseRawDeclarations());
+  ASSERT_TRUE(NULL != d.get());
+  EXPECT_EQ(0, d->size());
+
+  a.reset(new Parser("font-family: 'bar' 'foo'"));
+  d.reset(a->ParseRawDeclarations());
+  ASSERT_TRUE(NULL != d.get());
+  EXPECT_EQ(0, d->size());
+
+  a.reset(new Parser("font-family: bar 'foo'"));
+  d.reset(a->ParseRawDeclarations());
+  ASSERT_TRUE(NULL != d.get());
+  EXPECT_EQ(0, d->size());
+
+  a.reset(new Parser("font-family: 'bar'foo"));
+  d.reset(a->ParseRawDeclarations());
+  ASSERT_TRUE(NULL != d.get());
+  EXPECT_EQ(0, d->size());
 }
 
 TEST_F(ParserTest, font) {
@@ -660,6 +714,10 @@ TEST_F(ParserTest, font) {
 
   a.reset(new Parser("normal 10px /120% Arial 'Sans'"));
   scoped_ptr<Values> t(a->ParseFont());
+  EXPECT_TRUE(NULL == t.get());
+
+  a.reset(new Parser("normal 10px /120% Arial, 'Sans'"));
+  t.reset(a->ParseFont());
   ASSERT_EQ(7, t->size());
   EXPECT_DOUBLE_EQ(10, t->get(3)->GetFloatValue());
   EXPECT_EQ(Value::PERCENT, t->get(4)->GetDimension());
@@ -821,23 +879,19 @@ TEST_F(ParserTest, values) {
                                       ->GetIdentifierText()));
 }
 
-void ParseFontFamily(Parser* parser) {
-  Values values;
-  parser->ParseFontFamily(&values);
-}
-
-TEST_F(ParserTest, ParseBlock) {
+TEST_F(ParserTest, SkipBlock) {
   static const char* truetestcases[] = {
     "{{{{}}}} serif",
     "{ {  { {  }    }   }    } serif",  // whitespace
     "{@ident1{{ @ident {}}}} serif",    // @-idents
-    "{{}} @ident {{}} @ident serif",    // multiple blocks
     "{{ident{{}ident2}}} serif",        // idents
   };
   for (int i = 0; i < arraysize(truetestcases); ++i) {
     SCOPED_TRACE(truetestcases[i]);
+    Parser p(truetestcases[i]);
+    EXPECT_TRUE(p.SkipBlock());
     Values values;
-    EXPECT_TRUE(Parser(truetestcases[i]).ParseFontFamily(&values));
+    EXPECT_TRUE(p.ParseFontFamily(&values));
     ASSERT_EQ(1, values.size());
     EXPECT_EQ(Value::IDENT, values.get(0)->GetLexicalUnitType());
     EXPECT_EQ("serif", UnicodeTextToUTF8(values.get(0)->GetIdentifierText()));
@@ -850,8 +904,10 @@ TEST_F(ParserTest, ParseBlock) {
   };
   for (int i = 0; i < arraysize(falsetestcases); ++i) {
     SCOPED_TRACE(falsetestcases[i]);
+    Parser p(falsetestcases[i]);
+    p.SkipBlock();
     Values values;
-    Parser(falsetestcases[i]).ParseFontFamily(&values);
+    p.ParseFontFamily(&values);
     EXPECT_EQ(0, values.size());
   }
 
@@ -926,7 +982,7 @@ TEST_F(ParserTest, declarations) {
   EXPECT_EQ(1, t->get(6)->values()->size());
 
   // expand font
-  a.reset(new Parser("font: small-caps 24px Arial 'Sans', monospace; "));
+  a.reset(new Parser("font: small-caps 24px Arial, 'Sans', monospace; "));
   t.reset(a->ParseDeclarations());
   ASSERT_EQ(7, t->size());
   EXPECT_EQ(Property::FONT, t->get(0)->prop());

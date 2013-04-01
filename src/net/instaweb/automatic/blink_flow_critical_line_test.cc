@@ -639,7 +639,7 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
     noblink_output_with_lazy_load_ = StringPrintf(kLazyLoadHtml,
         StringPrintf(kNoScriptRedirectFormatter,
                      kNoScriptTextUrl, kNoScriptTextUrl).c_str(),
-        StrCat("<script type=\"text/javascript\">",
+        StrCat("<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
                lazyload_js_code, "\npagespeed.lazyLoadInit(false, \"",
                blank_gif_url,
                "\");\n</script>").c_str());
