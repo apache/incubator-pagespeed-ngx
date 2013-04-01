@@ -547,6 +547,13 @@ $WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.xhtml\
 check [ $(grep -c "\&amp;" $WGET_OUTPUT) = 0 ]
 check [ $(grep -c '//<\!\[CDATA\[' $WGET_OUTPUT) = 1 ]
 
+start_test cache_partial_html enabled has no effect
+$WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.html\
+?ModPagespeedFilters=cache_partial_html
+check [ $(grep -c '<html>' $WGET_OUTPUT) = 1 ]
+check [ $(grep -c '<body>' $WGET_OUTPUT) = 1 ]
+check [ $(grep -c 'pagespeed.panelLoader' $WGET_OUTPUT) = 0 ]
+
 start_test flush_subresources rewriter is not applied
 URL="$TEST_ROOT/flush_subresources.html?\
 ModPagespeedFilters=flush_subresources,extend_cache_css,\
