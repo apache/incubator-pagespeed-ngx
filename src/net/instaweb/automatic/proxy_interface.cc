@@ -34,13 +34,15 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/blink_util.h"
 #include "net/instaweb/rewriter/public/furious_matcher.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_fetch.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
+#include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/hostname_util.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -53,7 +55,6 @@
 
 namespace net_instaweb {
 
-class AbstractMutex;
 class MessageHandler;
 
 const char ProxyInterface::kBlinkRequestCount[] = "blink-requests";
@@ -475,8 +476,7 @@ void ProxyInterface::ProxyRequestCallback(
     const char* user_agent = async_fetch->request_headers()->Lookup1(
         HttpAttributes::kUserAgent);
     bool is_blink_request = BlinkUtil::IsBlinkRequest(
-        *request_url, async_fetch, options, user_agent,
-        server_context_->user_agent_matcher(),
+        *request_url, async_fetch, options, user_agent, server_context_,
         RewriteOptions::kPrioritizeVisibleContent);
     bool apply_blink_critical_line =
         BlinkUtil::ShouldApplyBlinkFlowCriticalLine(server_context_,
@@ -544,8 +544,7 @@ void ProxyInterface::ProxyRequestCallback(
           driver->options()->IsAllowed(url_string)) {
         bool is_cache_html_request = BlinkUtil::IsBlinkRequest(
             *request_url, async_fetch, driver->options(),
-            driver->user_agent().c_str(),
-            server_context_->user_agent_matcher(),
+            driver->user_agent().c_str(), server_context_,
             RewriteOptions::kCachePartialHtml);
         if (is_cache_html_request) {
           CacheHtmlFlow::Start(url_string, async_fetch, driver,

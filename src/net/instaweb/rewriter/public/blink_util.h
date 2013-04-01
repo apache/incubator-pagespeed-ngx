@@ -74,7 +74,7 @@ bool IsBlinkRequest(const GoogleUrl& url,
                     AsyncFetch* async_fetch,
                     const RewriteOptions* options,
                     const char* user_agent,
-                    UserAgentMatcher* user_agent_matcher_,
+                    const ServerContext* server_context,
                     RewriteOptions::Filter filter);
 
 // Checks if blink critical line flow can be applied.

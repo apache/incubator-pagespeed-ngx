@@ -1227,11 +1227,11 @@ class RewriteOptions {
     set_option(x, &override_ie_document_mode_);
   }
 
-  bool is_blink_auto_blacklisted() const {
-    return is_blink_auto_blacklisted_.value();
+  int64 blink_blacklist_end_timestamp_ms() const {
+    return blink_blacklist_end_timestamp_ms_.value();
   }
-  void set_is_blink_auto_blacklisted(bool x) {
-    set_option(x, &is_blink_auto_blacklisted_);
+  void set_blink_blacklist_end_timestamp_ms(int64 x) {
+    set_option(x, &blink_blacklist_end_timestamp_ms_);
   }
 
   // Returns false if there is an entry in url_cache_invalidation_entries_ with
@@ -3010,7 +3010,8 @@ class RewriteOptions {
   std::vector<PrioritizeVisibleContentFamily*>
       prioritize_visible_content_families_;
 
-  Option<bool> is_blink_auto_blacklisted_;
+  // The timestamp when blink blacklist expires.
+  Option<int64> blink_blacklist_end_timestamp_ms_;
 
   Option<GoogleString> ga_id_;
 

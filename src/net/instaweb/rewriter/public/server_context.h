@@ -260,7 +260,7 @@ class ServerContext {
   }
   void set_flush_early_info_finder(FlushEarlyInfoFinder* finder);
 
-  UserAgentMatcher* user_agent_matcher() {
+  UserAgentMatcher* user_agent_matcher() const {
     return user_agent_matcher_;
   }
   void set_user_agent_matcher(UserAgentMatcher* n) { user_agent_matcher_ = n; }

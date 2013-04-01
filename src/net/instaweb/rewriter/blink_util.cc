@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 namespace BlinkUtil {
@@ -102,13 +103,16 @@ bool IsBlinkRequest(const GoogleUrl& url,
                     AsyncFetch* async_fetch,
                     const RewriteOptions* options,
                     const char* user_agent,
-                    UserAgentMatcher* user_agent_matcher,
+                    const ServerContext* server_context,
                     RewriteOptions::Filter filter) {
   if (options != NULL &&
       // Is rewriting enabled?
       options->enabled() &&
       // Is Get Request?
       async_fetch->request_headers()->method() == RequestHeaders::kGet &&
+      // Ensure there is no blink blacklist for this domain.
+      (server_context->timer()->NowMs() >
+       options->blink_blacklist_end_timestamp_ms()) &&
       // Is the filter enabled?
       options->Enabled(filter) &&
       // Is url allowed? (i.e., it is not in black-list.)
@@ -118,8 +122,9 @@ bool IsBlinkRequest(const GoogleUrl& url,
       // Does url match a cacheable family pattern specified in config?
       options->IsInBlinkCacheableFamily(url) &&
       // Is the user agent allowed to enter the blink flow?
-      IsUserAgentAllowedForBlink(async_fetch, options,
-                                 user_agent, user_agent_matcher)) {
+      IsUserAgentAllowedForBlink(
+          async_fetch, options, user_agent,
+          server_context->user_agent_matcher())) {
     // Is the request a HTTP request?
     if (url.SchemeIs("http")) {
       return true;
@@ -133,12 +138,12 @@ bool IsBlinkRequest(const GoogleUrl& url,
 }
 
 bool ShouldApplyBlinkFlowCriticalLine(
-    const ServerContext* manager,
+    const ServerContext* server_context,
     const RewriteOptions* options) {
   return options != NULL &&
       // Blink flow critical line is enabled in rewrite options.
       options->enable_blink_critical_line() &&
-      manager->blink_critical_line_data_finder() != NULL;
+      server_context->blink_critical_line_data_finder() != NULL;
 }
 
 bool IsJsonEmpty(const Json::Value& json) {

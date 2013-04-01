@@ -804,9 +804,9 @@ class BlinkFlowCriticalLineTest : public RewriteTestBase {
                                        ResponseHeaders* headers_out,
                                        GoogleString* user_agent_out,
                                        bool wait_for_background_computation) {
-  FetchFromProxy(url, expect_success, request_headers, string_out,
-                 headers_out, user_agent_out,
-                 wait_for_background_computation);
+    FetchFromProxy(url, expect_success, request_headers, string_out,
+                   headers_out, user_agent_out,
+                   wait_for_background_computation);
   }
 
   void VerifyNonBlinkResponse(ResponseHeaders* response_headers) {
@@ -2221,6 +2221,29 @@ TEST_F(BlinkFlowCriticalLineTest,
       BlinkFlowCriticalLine::kNumBlinkHtmlCacheHits)->Get());
   VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_HIT, false,
                   "http://test.com/flaky.html");
+}
+
+TEST_F(BlinkFlowCriticalLineTest, TestBlinkBlacklisted) {
+  options_->ClearSignatureForTesting();
+  options_->set_blink_blacklist_end_timestamp_ms(timer()->NowMs() + 100);
+  server_context()->ComputeSignature(options_.get());
+  GoogleString text;
+  ResponseHeaders response_headers;
+
+  FetchFromProxy("noblink_text.html", true, &text, &response_headers, false);
+  EXPECT_STREQ(noblink_output_, text);
+  // No blink flow should have happened.
+  EXPECT_EQ(0, statistics()->FindVariable(
+      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
+
+  // Advance time beyond the blacklist end point.
+  AdvanceTimeMs(101);
+
+  FetchFromProxy("noblink_text.html", true, &text, &response_headers, true);
+  EXPECT_STREQ(kHtmlInputForNoBlink, text);
+  // Blink flow should have happened.
+  EXPECT_EQ(1, statistics()->FindVariable(
+      ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
 }
 
 }  // namespace net_instaweb

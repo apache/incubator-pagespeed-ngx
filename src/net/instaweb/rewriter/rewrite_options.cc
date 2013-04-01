@@ -1402,7 +1402,7 @@ void RewriteOptions::AddProperties() {
       "Allows defer_javascript and defer_iframe for mobile browsers");
 
   AddRequestProperty(
-      false, &RewriteOptions::is_blink_auto_blacklisted_, "ibab");
+      -1, &RewriteOptions::blink_blacklist_end_timestamp_ms_, "bbet");
   AddBaseProperty(
       false, &RewriteOptions::allow_logging_urls_in_log_record_,
       "alulr", kAllowLoggingUrlsInLogRecord, kDirectoryScope,
