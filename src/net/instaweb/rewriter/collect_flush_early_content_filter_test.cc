@@ -114,6 +114,27 @@ TEST_F(CollectFlushEarlyContentFilterTest, WithInlineInportToLinkFilter) {
                flush_early_info->resource_html());
 }
 
+TEST_F(CollectFlushEarlyContentFilterTest, RelativeUrlsWithBaseTag) {
+  GoogleString html_input =
+      "<!doctype html PUBLIC \"HTML 4.0.1 Strict>"
+      "<html>"
+      "<head>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"a.css\"/>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"/b.css\"/>"
+        "<base href=\"http://test.com/path/\"/>"
+        "<link type=\"text/css\" rel=\"stylesheet\" href=\"/c.css\"/>"
+      "</head>"
+      "<body>"
+      "</body>"
+      "</html>";
+
+  Parse("not_flushed_early", html_input);
+  FlushEarlyInfo* flush_early_info = rewrite_driver()->flush_early_info();
+  EXPECT_STREQ("<link type=\"text/css\" rel=\"stylesheet\" "
+               "href=\"http://test.com/c.css\"/><body></body>",
+               flush_early_info->resource_html());
+}
+
 TEST_F(CollectFlushEarlyContentFilterTest, ApplyIfFlushingEarlyAndOptionSet) {
   rewrite_driver()->set_flushing_early(true);
   options()->ClearSignatureForTesting();

@@ -459,8 +459,8 @@ class CriticalLineFetch : public AsyncFetch {
         property_cache->GetCohort(BlinkUtil::kBlinkCohort);
     bool diff_info_updated =
         server_context_->blink_critical_line_data_finder()->UpdateDiffInfo(
-            recompute_critical_line, now_ms, rewrite_driver_,
-            server_context_->factory());
+            recompute_critical_line, now_ms, blink_log_record_.get(),
+            rewrite_driver_, server_context_->factory());
     if (options_->enable_blink_html_change_detection() &&
         recompute_critical_line) {
       num_blink_html_mismatches_cache_deletes_->IncBy(1);

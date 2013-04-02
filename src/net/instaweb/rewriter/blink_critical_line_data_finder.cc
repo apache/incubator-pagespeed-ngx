@@ -51,8 +51,8 @@ void BlinkCriticalLineDataFinder::PropagateCacheDeletes(
 }
 
 bool BlinkCriticalLineDataFinder::UpdateDiffInfo(
-    bool is_diff, int64 now_ms, RewriteDriver* rewrite_driver,
-    RewriteDriverFactory* factory) {
+    bool is_diff, int64 now_ms, LogRecord* blink_log_record,
+    RewriteDriver* rewrite_driver, RewriteDriverFactory* factory) {
   // Default interface is empty and derived classes can override.
   return false;
 }

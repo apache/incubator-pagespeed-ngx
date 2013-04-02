@@ -130,28 +130,30 @@ void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
   if (url.empty() || IsDataUrl(url)) {
     return;
   }
+  ResourcePtr resource = CreateInputResource(url);
+  if (resource.get() == NULL) {
+    return;
+  }
+
   if (driver()->flushing_early() &&
       driver()->options()->flush_more_resources_early_if_time_permits()) {
     if (category == semantic_type::kStylesheet ||
         category == semantic_type::kScript ||
         category == semantic_type::kImage) {
-      ResourcePtr resource = CreateInputResource(url);
-      if (resource.get() != NULL) {
-        ResourceSlotPtr slot(driver()->GetSlot(resource, element, attr));
-        Context* context = new Context(driver());
-        context->AddSlot(slot);
-        driver()->InitiateRewrite(context);
-      }
+      ResourceSlotPtr slot(driver()->GetSlot(resource, element, attr));
+      Context* context = new Context(driver());
+      context->AddSlot(slot);
+      driver()->InitiateRewrite(context);
     }
     return;
   }
   // Find javascript elements in the head, and css elements in the entire page.
   if ((category == semantic_type::kStylesheet ||
        (category == semantic_type::kScript))) {
-    // TODO(pulkitg): Collect images which can be flushed early.
-    // Absolutify the url before storing its value so that we handle
-    // <base> tags correctly.
-    GoogleUrl gurl(driver()->base_url(), url);
+    // We need to always use the abosultified urls while flushing, else we might
+    // end up flushing wrong resources. Use the absolutified url that is
+    // computed in CreateInputResource call.
+    GoogleUrl gurl(resource->url());
     if (gurl.is_valid()) {
       StringVector decoded_url;
       // Decode the url if it is encoded.
