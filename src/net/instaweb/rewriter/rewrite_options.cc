@@ -556,6 +556,10 @@ const char* RewriteOptions::FilterId(Filter filter) {
   return "UF";
 }
 
+int RewriteOptions::NumFilterIds() {
+  return arraysize(kFilterVectorStaticInitializer);
+}
+
 bool RewriteOptions::ParseRewriteLevel(
     const StringPiece& in, RewriteLevel* out) {
   bool ret = false;
@@ -927,7 +931,7 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "Whether or not to report timing information about HtmlParse.");
   AddBaseProperty(
-      true, &RewriteOptions::log_url_indices_, "lui",
+      false, &RewriteOptions::log_url_indices_, "lui",
       kLogUrlIndices,
       kDirectoryScope,
       "Whether or not to log URL indices for rewriter applications.");

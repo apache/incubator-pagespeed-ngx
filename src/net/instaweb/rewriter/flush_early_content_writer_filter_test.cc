@@ -75,11 +75,13 @@ class FlushEarlyContentWriterFilterTest : public RewriteTestBase {
     rewrite_driver()->SetWriter(&writer_);
     server_context()->set_flush_early_info_finder(
         new MeaningfulFlushEarlyInfoFinder);
+    rewrite_driver_->log_record()->SetLogUrlIndices(true);
   }
 
   virtual void Clear() {
     ClearRewriteDriver();
     rewrite_driver_->flush_early_info()->set_average_fetch_latency_ms(190);
+    rewrite_driver_->log_record()->SetLogUrlIndices(true);
     rewrite_driver()->set_request_headers(&request_headers_);
     output_.clear();
   }

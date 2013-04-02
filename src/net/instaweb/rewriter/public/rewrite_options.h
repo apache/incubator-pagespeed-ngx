@@ -425,6 +425,10 @@ class RewriteOptions {
   // URLs.
   static const char* FilterId(Filter filter);
 
+  // Returns the number of filter ids. This is used to loop over all filter ids
+  // using the FilterId() method.
+  static int NumFilterIds();
+
   // Used for enumerating over all entries in the Filter enum.
   static const Filter kFirstFilter = kAddBaseTag;
 
