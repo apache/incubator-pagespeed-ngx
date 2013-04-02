@@ -152,7 +152,6 @@ use" below, add this to the top of your configuration:
 In your `nginx.conf`, add to the main or server block:
 
     pagespeed on;
-    pagespeed RewriteLevel CoreFilters;
 
     # needs to exist and be writable by nginx
     pagespeed FileCachePath /var/ngx_pagespeed_cache;

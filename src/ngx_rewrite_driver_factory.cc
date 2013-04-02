@@ -162,7 +162,9 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
 }
 
 RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
-  return new NgxRewriteOptions();
+  NgxRewriteOptions* options = new NgxRewriteOptions();
+  options->SetRewriteLevel(RewriteOptions::kCoreFilters);
+  return options;
 }
 
 
