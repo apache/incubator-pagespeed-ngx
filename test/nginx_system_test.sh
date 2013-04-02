@@ -128,10 +128,13 @@ check_from "$OUT" egrep -q \
 start_test pagespeed is defaulting to more than PassThrough
 fetch_until $TEST_ROOT/bot_test.html 'grep -c \.pagespeed\.' 2
 
-
-
-
-
+# Test that loopback route fetcher works with vhosts not listening on
+# 127.0.0.1
+start_test IP choice for loopback fetches.
+HOST_NAME="loopbackfetch.example.com"
+URL="$HOST_NAME/mod_pagespeed_example/rewrite_images.html"
+http_proxy=127.0.0.2:$SECONDARY_PORT \
+    fetch_until $URL 'grep -c .pagespeed.ic' 2
 
 # When we allow ourself to fetch a resource because the Host header tells us
 # that it is one of our resources, we should be fetching it from ourself.
