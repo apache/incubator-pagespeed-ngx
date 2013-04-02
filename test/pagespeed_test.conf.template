@@ -21,6 +21,12 @@ http {
   root "@@SERVER_ROOT@@";
 
   server {
+    listen 127.0.0.2:@@SECONDARY_PORT@@;
+    server_name loopbackfetch.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+  }
+
+  server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
