@@ -156,4 +156,31 @@ fetch_until "$URL" "fgrep -c .pagespeed." 1 --header=Host:www.google.com
 URL="$HOSTNAME/mod_pagespeed_example/.pagespeed.ce.8CfGBvwDhH.css"
 check wget -O /dev/null --header=Host:www.google.com "$URL"
 
+test_filter combine_css combines 4 CSS files into 1.
+fetch_until $URL 'grep -c text/css' 1
+check run_wget_with_args $URL
+test_resource_ext_corruption $URL $combine_css_filename
+
+test_filter extend_cache rewrites an image tag.
+fetch_until $URL 'grep -c src.*91_WewrLtP' 1
+check run_wget_with_args $URL
+echo about to test resource ext corruption...
+test_resource_ext_corruption $URL images/Puzzle.jpg.pagespeed.ce.91_WewrLtP.jpg
+
+test_filter outline_javascript outlines large scripts, but not small ones.
+check run_wget_with_args $URL
+check egrep -q '<script.*large.*src=' $FETCHED       # outlined
+check egrep -q '<script.*small.*var hello' $FETCHED  # not outlined
+start_test compression is enabled for rewritten JS.
+JS_URL=$(egrep -o http://.*[.]pagespeed.*[.]js $FETCHED)
+echo "JS_URL=\$\(egrep -o http://.*[.]pagespeed.*[.]js $FETCHED\)=\"$JS_URL\""
+JS_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+  $JS_URL 2>&1)
+echo JS_HEADERS=$JS_HEADERS
+check_from "$JS_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
+check_from "$JS_HEADERS" fgrep -qi 'Content-Encoding: gzip'
+check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
+check_from "$JS_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
+check_from "$JS_HEADERS" fgrep -qi 'Last-Modified:'
+
 check_failures_and_exit
