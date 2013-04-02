@@ -96,7 +96,13 @@ class UserAgentMatcher {
   PrefetchMechanism GetPrefetchMechanism(const StringPiece& user_agent) const;
 
   // Returns the DeviceType for the given user agent string.
-  DeviceType GetDeviceTypeForUA(const StringPiece& user_agent) const;
+  virtual DeviceType GetDeviceTypeForUA(const StringPiece& user_agent) const;
+
+  // Returns the DeviceType using the given user agent string and request
+  // headers.
+  virtual DeviceType GetDeviceTypeForUAAndHeaders(
+      const StringPiece& user_agent,
+      const RequestHeaders* request_headers) const;
 
   // Returns the suffix for the given device_type.
   static StringPiece DeviceTypeSuffix(DeviceType device_type);
@@ -111,11 +117,6 @@ class UserAgentMatcher {
   // Refer: http://blogs.msdn.com/b/ie/archive/2011/03/17/internet-explorer-9-network-performance-improvements.aspx NOLINT
   bool SupportsDnsPrefetchUsingRelPrefetch(const StringPiece& user_agent) const;
   bool SupportsDnsPrefetch(const StringPiece& user_agent) const;
-
-  virtual bool IsMobileUserAgent(const StringPiece& user_agent) const;
-  virtual bool IsMobileRequest(
-      const StringPiece& user_agent,
-      const RequestHeaders* request_headers) const;
 
   virtual bool IsAndroidUserAgent(const StringPiece& user_agent) const;
 

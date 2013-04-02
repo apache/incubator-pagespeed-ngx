@@ -456,4 +456,30 @@ void LogRecord::PopulateRewriterStatusCounts() {
   }
 }
 
+void LogRecord::LogDeviceInfo(
+    int device_type,
+    bool supports_image_inlining,
+    bool supports_lazyload_images,
+    bool supports_critical_images_beacon,
+    bool supports_deferjs,
+    bool supports_webp,
+    bool supports_webplossless_alpha,
+    bool is_bot,
+    bool supports_split_html,
+    bool can_preload_resources) {
+  ScopedMutex lock(mutex_.get());
+  DeviceInfo* device_info = logging_info()->mutable_device_info();
+  device_info->set_device_type(device_type);
+  device_info->set_supports_image_inlining(supports_image_inlining);
+  device_info->set_supports_lazyload_images(supports_lazyload_images);
+  device_info->set_supports_critical_images_beacon(
+      supports_critical_images_beacon);
+  device_info->set_supports_deferjs(supports_deferjs);
+  device_info->set_supports_webp(supports_webp);
+  device_info->set_supports_webplossless_alpha(supports_webplossless_alpha);
+  device_info->set_is_bot(is_bot);
+  device_info->set_supports_split_html(supports_split_html);
+  device_info->set_can_preload_resources(can_preload_resources);
+}
+
 }  // namespace net_instaweb

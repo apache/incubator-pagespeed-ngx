@@ -1537,7 +1537,7 @@ bool ImageRewriteFilter::SquashImagesForMobileScreenEnabled() const {
   const RewriteOptions* options = driver_->options();
   return options->Enabled(RewriteOptions::kResizeImages) &&
       options->Enabled(RewriteOptions::kSquashImagesForMobileScreen) &&
-      driver_->device_properties()->IsMobileUserAgent();
+      driver_->device_properties()->IsMobile();
 }
 
 bool ImageRewriteFilter::UpdateDesiredImageDimsIfNecessary(

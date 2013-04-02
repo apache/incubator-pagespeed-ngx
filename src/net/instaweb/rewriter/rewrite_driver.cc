@@ -113,6 +113,7 @@
 #include "net/instaweb/rewriter/public/resource_namer.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_context.h"
+#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_query.h"
@@ -2290,6 +2291,19 @@ void RewriteDriver::LogStats() {
     log_record()->SetImageStats(logging_filter_->num_img_tags(),
                                 logging_filter_->num_inlined_img_tags());
   }
+  log_record()->LogDeviceInfo(
+      device_properties_->GetDeviceType(),
+      device_properties_->SupportsImageInlining(),
+      device_properties_->SupportsLazyloadImages(),
+      device_properties_->SupportsCriticalImagesBeacon(),
+      device_properties_->SupportsJsDefer(
+          options()->enable_aggressive_rewriters_for_mobile()),
+      device_properties_->SupportsWebp(),
+      device_properties_->SupportsWebpLosslessAlpha(),
+      device_properties_->IsBot(),
+      device_properties_->SupportsSplitHtml(
+          options()->enable_aggressive_rewriters_for_mobile()),
+      device_properties_->CanPreloadResources());
 }
 
 void RewriteDriver::FinishParse() {

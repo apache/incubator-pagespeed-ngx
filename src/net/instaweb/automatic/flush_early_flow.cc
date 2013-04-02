@@ -365,8 +365,7 @@ FlushEarlyFlow::FlushEarlyFlow(
   // If mobile, do not flush preconnects as it can potentially block useful
   // connections to resources. This is also used to determine whether to
   // flush early the lazy load js snippet.
-  is_mobile_user_agent_ =
-      driver_->device_properties()->IsMobileUserAgent();
+  is_mobile_user_agent_ = driver_->device_properties()->IsMobile();
 }
 
 FlushEarlyFlow::~FlushEarlyFlow() {

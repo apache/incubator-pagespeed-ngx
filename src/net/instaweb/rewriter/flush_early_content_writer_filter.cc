@@ -192,7 +192,7 @@ void FlushEarlyContentWriterFilter::StartDocument() {
   // tuning the RTT, bandwidth numbers for mobile.
   flush_more_resources_early_if_time_permits_ =
       driver_->options()->flush_more_resources_early_if_time_permits() &&
-      !driver_->user_agent_matcher()->IsMobileUserAgent(driver_->user_agent());
+      !driver_->device_properties()->IsMobile();
 }
 
 void FlushEarlyContentWriterFilter::EndDocument() {

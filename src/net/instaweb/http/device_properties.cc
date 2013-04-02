@@ -88,7 +88,8 @@ DeviceProperties::DeviceProperties(UserAgentMatcher* matcher)
       is_mobile_user_agent_(kNotSet),
       supports_split_html_(kNotSet), supports_flush_early_(kNotSet),
       screen_dimensions_set_(kNotSet), screen_width_(0), screen_height_(0),
-      preferred_webp_qualities_(NULL), preferred_jpeg_qualities_(NULL) {
+      preferred_webp_qualities_(NULL), preferred_jpeg_qualities_(NULL),
+      device_type_set_(kNotSet), device_type_(UserAgentMatcher::kDesktop) {
 #ifndef NDEBUG
   CheckPreferredImageQualities();
 #endif
@@ -175,14 +176,6 @@ bool DeviceProperties::IsBot() const {
   return (is_bot_ == kTrue);
 }
 
-bool DeviceProperties::IsMobileUserAgent() const {
-  if (is_mobile_user_agent_ == kNotSet) {
-    is_mobile_user_agent_ =
-        ua_matcher_->IsMobileUserAgent(user_agent_) ? kTrue : kFalse;
-  }
-  return (is_mobile_user_agent_ == kTrue);
-}
-
 bool DeviceProperties::SupportsSplitHtml(bool allow_mobile) const {
   if (supports_split_html_ == kNotSet) {
     supports_split_html_ =
@@ -214,6 +207,14 @@ void DeviceProperties::SetScreenResolution(int width, int height) const {
   screen_dimensions_set_ = kTrue;
   screen_width_ = width;
   screen_height_ = height;
+}
+
+UserAgentMatcher::DeviceType DeviceProperties::GetDeviceType() const {
+  if (device_type_set_ == kNotSet) {
+    device_type_ = ua_matcher_->GetDeviceTypeForUA(user_agent_);
+    device_type_set_ = kTrue;
+  }
+  return device_type_;
 }
 
 void DeviceProperties::SetPreferredImageQualities(

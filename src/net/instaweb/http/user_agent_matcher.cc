@@ -19,6 +19,7 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/re2.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "third_party/instaweb/util/fast_wildcard_group.h"
@@ -327,7 +328,7 @@ UserAgentMatcher::BlinkRequestType UserAgentMatcher::GetBlinkRequestType(
   if (user_agent == NULL || user_agent[0] == '\0') {
     return kNullOrEmpty;
   }
-  if (IsMobileRequest(user_agent, request_headers)) {
+  if (GetDeviceTypeForUAAndHeaders(user_agent, request_headers) != kDesktop) {
     if (blink_mobile_whitelist_.Match(user_agent, false)) {
       return kBlinkWhiteListForMobile;
     }
@@ -362,7 +363,7 @@ bool UserAgentMatcher::SupportsDnsPrefetch(
 bool UserAgentMatcher::SupportsJsDefer(const StringPiece& user_agent,
                                        bool allow_mobile) const {
   // TODO(ksimbili): Use IsMobileRequest?
-  if (IsMobileUserAgent(user_agent)) {
+  if (GetDeviceTypeForUA(user_agent) != kDesktop) {
     return allow_mobile && blink_mobile_whitelist_.Match(user_agent, false);
   }
   return user_agent.empty() ||
@@ -381,14 +382,10 @@ bool UserAgentMatcher::SupportsWebpLosslessAlpha(
   return supports_webp_lossless_alpha_.Match(user_agent, false);
 }
 
-bool UserAgentMatcher::IsMobileUserAgent(const StringPiece& user_agent) const {
-  return mobile_user_agents_.Match(user_agent, false);
-}
-
-bool UserAgentMatcher::IsMobileRequest(
+UserAgentMatcher::DeviceType UserAgentMatcher::GetDeviceTypeForUAAndHeaders(
     const StringPiece& user_agent,
     const RequestHeaders* request_headers) const {
-  return IsMobileUserAgent(user_agent);
+  return GetDeviceTypeForUA(user_agent);
 }
 
 bool UserAgentMatcher::IsAndroidUserAgent(const StringPiece& user_agent) const {
@@ -412,9 +409,11 @@ bool UserAgentMatcher::SupportsSplitHtml(const StringPiece& user_agent,
   return SupportsJsDefer(user_agent, allow_mobile);
 }
 
+// TODO(bharathbhushan): Make sure GetDeviceTypeForUA is called only once per
+// http request.
 UserAgentMatcher::DeviceType UserAgentMatcher::GetDeviceTypeForUA(
     const StringPiece& user_agent) const {
-  if (IsMobileUserAgent(user_agent)) {
+  if (mobile_user_agents_.Match(user_agent, false)) {
     return kMobile;
   }
   return kDesktop;

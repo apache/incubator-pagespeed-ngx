@@ -335,8 +335,33 @@ message RewriterStats {
   repeated RewriteStatusCount status_counts = 3;
 }
 
+// Information about the device making the request.
+// Next id for DeviceInfo: 11
+message DeviceInfo {
+  // Refer to UserAgentMatcher::DeviceType to interpret this field.
+  optional int32 device_type = 1;
+  // Is image inlining supported.
+  optional bool supports_image_inlining = 2;
+  // Is lazyload images supported.
+  optional bool supports_lazyload_images = 3;
+  // Is critical images beacon supported.
+  optional bool supports_critical_images_beacon = 4;
+  // Is defer javascript supported.
+  optional bool supports_deferjs = 5;
+  // Is webp supported.
+  optional bool supports_webp = 6;
+  // Is webp lossless with alpha supported.
+  optional bool supports_webplossless_alpha = 7;
+  // Is the useragent a bot.
+  optional bool is_bot = 8;
+  // Is split html supported.
+  optional bool supports_split_html = 9;
+  // Is flush early supported.
+  optional bool can_preload_resources = 10;
+}
+
 // This proto stores all information which we would like to log.
-// Next id for LoggingInfo: 24
+// Next id for LoggingInfo: 25
 message LoggingInfo {
   // Used to track time taken by various components of page speed service
   // processing.
@@ -389,4 +414,6 @@ message LoggingInfo {
   optional ImageStats image_stats = 21;
   // Critical CSS info for this request.
   optional CriticalCssInfo critical_css_info = 23;
+  // Information about the device making the request.
+  optional DeviceInfo device_info = 24;
 }

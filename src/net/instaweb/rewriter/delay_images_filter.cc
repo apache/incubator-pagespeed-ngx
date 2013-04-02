@@ -71,7 +71,7 @@ DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
            !driver_->options()->Enabled(RewriteOptions::kDeferJavascript) ||
            !driver_->options()->Enabled(RewriteOptions::kLazyloadImages));
   lazyload_highres_images_ = driver_->options()->lazyload_highres_images() &&
-      driver_->device_properties()->IsMobileUserAgent();
+      driver_->device_properties()->IsMobile();
 }
 
 DelayImagesFilter::~DelayImagesFilter() {}
@@ -233,7 +233,7 @@ void DelayImagesFilter::InsertDelayImagesJS(HtmlElement* element) {
 bool DelayImagesFilter::DisableInplaceLowResForMobile() const {
   const RewriteOptions* options = driver_->options();
   return options->enable_aggressive_rewriters_for_mobile() &&
-      driver_->device_properties()->IsMobileUserAgent();
+      driver_->device_properties()->IsMobile();
 }
 
 void DelayImagesFilter::DetermineEnabled() {

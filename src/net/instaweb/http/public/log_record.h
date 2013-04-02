@@ -204,6 +204,19 @@ class LogRecord  {
                           int original_external_bytes,
                           int overhead_bytes);
 
+  // Log information related to the user agent and device making the request.
+  void LogDeviceInfo(
+      int device_type,
+      bool supports_image_inlining,
+      bool supports_lazyload_images,
+      bool supports_critical_images_beacon,
+      bool supports_deferjs,
+      bool supports_webp,
+      bool supports_webplossless_alpha,
+      bool is_bot,
+      bool supports_split_html,
+      bool can_preload_resources);
+
  protected:
   // Non-initializing default constructor for subclasses. Subclasses that invoke
   // this constructor should implement and call their own initializer that

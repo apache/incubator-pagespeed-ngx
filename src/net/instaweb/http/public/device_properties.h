@@ -17,14 +17,13 @@
 
 #include <vector>
 
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
-
-class UserAgentMatcher;
 
 // This class keeps track of the device properties of the client, which are
 // for the most part learned from the UserAgent string.
@@ -41,10 +40,13 @@ class DeviceProperties {
   bool SupportsWebp() const;
   bool SupportsWebpLosslessAlpha() const;
   bool IsBot() const;
-  bool IsMobileUserAgent() const;
   bool SupportsSplitHtml(bool enable_mobile) const;
   bool CanPreloadResources() const;
   bool GetScreenResolution(int* width, int* height) const;
+  UserAgentMatcher::DeviceType GetDeviceType() const;
+  bool IsMobile() const {
+    return GetDeviceType() == UserAgentMatcher::kMobile;
+  }
 
   enum ImageQualityPreference {
     // Server uses its own default image quality.
@@ -97,6 +99,9 @@ class DeviceProperties {
   mutable int screen_height_;
   const std::vector<int>* preferred_webp_qualities_;
   const std::vector<int>* preferred_jpeg_qualities_;
+  // Used to lazily set device_type_.
+  mutable LazyBool device_type_set_;
+  mutable UserAgentMatcher::DeviceType device_type_;
 
   DISALLOW_COPY_AND_ASSIGN(DeviceProperties);
 };

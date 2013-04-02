@@ -18,6 +18,7 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
@@ -28,6 +29,11 @@ const char kTestingWebpLosslessAlpha[] = "webp-la";
 
 class UserAgentMatcherTest : public testing::Test {
  protected:
+  bool IsMobileUserAgent(const StringPiece& user_agent) {
+    return user_agent_matcher_.GetDeviceTypeForUA(user_agent) ==
+        UserAgentMatcher::kMobile;
+  }
+
   UserAgentMatcher user_agent_matcher_;
 };
 
@@ -426,23 +432,15 @@ TEST_F(UserAgentMatcherTest, SplitHtmlRelated) {
 }
 
 TEST_F(UserAgentMatcherTest, IsMobileUserAgent) {
-  EXPECT_TRUE(user_agent_matcher_.IsMobileUserAgent(
-      UserAgentStrings::kAndroidICSUserAgent));
-  EXPECT_TRUE(user_agent_matcher_.IsMobileUserAgent(
-      UserAgentStrings::kAndroidNexusSUserAgent));
-  EXPECT_TRUE(user_agent_matcher_.IsMobileUserAgent(
-      UserAgentStrings::kAndroidChrome21UserAgent));
-  EXPECT_TRUE(user_agent_matcher_.IsMobileUserAgent(
-      UserAgentStrings::kIPhoneChrome21UserAgent));
-  EXPECT_TRUE(user_agent_matcher_.IsMobileUserAgent(
-      UserAgentStrings::kIPhoneUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kAndroidICSUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kAndroidNexusSUserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kAndroidChrome21UserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kIPhoneChrome21UserAgent));
+  EXPECT_TRUE(IsMobileUserAgent(UserAgentStrings::kIPhoneUserAgent));
 
-  EXPECT_FALSE(user_agent_matcher_.IsMobileUserAgent(
-      UserAgentStrings::kNexus7ChromeUserAgent));
-  EXPECT_FALSE(user_agent_matcher_.IsMobileUserAgent(
-      UserAgentStrings::kIPadUserAgent));
-  EXPECT_FALSE(user_agent_matcher_.IsMobileUserAgent(
-      UserAgentStrings::kSafariUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kNexus7ChromeUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kIPadUserAgent));
+  EXPECT_FALSE(IsMobileUserAgent(UserAgentStrings::kSafariUserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, GetDeviceTypeForUA) {
