@@ -25,6 +25,13 @@ http {
     server_name loopbackfetch.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
   }
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name xfp.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RespectXForwardedProto on;
+  }
 
   server {
     listen       @@PRIMARY_PORT@@;

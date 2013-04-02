@@ -183,4 +183,12 @@ check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
 check_from "$JS_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
 check_from "$JS_HEADERS" fgrep -qi 'Last-Modified:'
 
+start_test Respect X-Forwarded-Proto when told to
+FETCHED=$OUTDIR/x_forwarded_proto
+URL=$SECONDARY_HOSTNAME/mod_pagespeed_example/?ModPagespeedFilters=add_base_tag
+HEADERS="--header=X-Forwarded-Proto:https --header=Host:xfp.example.com"
+check $WGET_DUMP -O $FETCHED $HEADERS $URL
+# When enabled, we respect X-Forwarded-Proto and thus list base as https.
+check fgrep -q '<base href="https://' $FETCHED
+
 check_failures_and_exit

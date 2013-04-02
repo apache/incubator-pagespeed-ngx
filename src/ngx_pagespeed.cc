@@ -1158,6 +1158,65 @@ bool ps_determine_options(ngx_http_request_t* r,
   return true;
 }
 
+// Fix URL based on X-Forwarded-Proto.
+// http://code.google.com/p/modpagespeed/issues/detail?id=546 For example, if
+// Apache gives us the URL "http://www.example.com/" and there is a header:
+// "X-Forwarded-Proto: https", then we update this base URL to
+// "https://www.example.com/".  This only ever changes the protocol of the url.
+//
+// Returns true if it modified url, false otherwise.
+bool ps_apply_x_forwarded_proto(ngx_http_request_t* r, GoogleString* url) {
+  // First check for an X-Forwarded-Proto header.
+  const ngx_str_t* x_forwarded_proto_header = NULL;
+
+  // Standard nginx idiom for iterating over a list.  See ngx_list.h
+  ngx_uint_t i;
+  ngx_list_part_t* part = &(r->headers_in.headers.part);
+  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
+
+  for (i = 0 ; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+
+      part = part->next;
+      header = static_cast<ngx_table_elt_t*>(part->elts);
+      i = 0;
+    }
+    if (STR_CASE_EQ_LITERAL(header[i].key, "X-Forwarded-Proto")) {
+      x_forwarded_proto_header = &header[i].value;
+      break;
+    }
+  }
+
+  if (x_forwarded_proto_header == NULL) {
+    return false;  // No X-Forwarded-Proto header found.
+  }
+
+  StringPiece x_forwarded_proto
+      = str_to_string_piece(*x_forwarded_proto_header);
+
+  if (!STR_CASE_EQ_LITERAL(*x_forwarded_proto_header, "http") &&
+      !STR_CASE_EQ_LITERAL(*x_forwarded_proto_header, "https")) {
+    LOG(WARNING) << "Unsupported X-Forwarded-Proto: " << x_forwarded_proto
+                 << " for URL " << url << " protocol not changed.";
+    return false;
+  }
+
+  StringPiece url_sp(*url);
+  StringPiece::size_type colon_pos = url_sp.find(":");
+
+  if (colon_pos == StringPiece::npos) {
+    return false;  // URL appears to have no protocol; give up.
+  }
+
+  // Replace URL protocol with that specified in X-Forwarded-Proto.
+  *url = net_instaweb::StrCat(x_forwarded_proto, url_sp.substr(colon_pos));
+
+  return true;
+}
+
 
 // Set us up for processing a request.
 CreateRequestContext::Response ps_create_request_context(
@@ -1278,6 +1337,16 @@ CreateRequestContext::Response ps_create_request_context(
     return CreateRequestContext::kPagespeedDisabled;
   }
 
+  if (options->respect_x_forwarded_proto()) {
+    bool modified_url = ps_apply_x_forwarded_proto(r, &url_string);
+    if (modified_url) {
+      url.Reset(url_string);
+      CHECK(url.is_valid()) << "The output of ps_apply_x_forwarded_proto should"
+                            << " always be a valid url because it only changes"
+                            << " the scheme between http and https.";
+    }
+  }
+
   // TODO(jefftk): port ProxyInterface::InitiatePropertyCacheLookup so that we
   // have the propery cache in nginx.
 
@@ -1310,6 +1379,8 @@ CreateRequestContext::Response ps_create_request_context(
         NULL /* property_callback */,
         NULL /* original_content_fetch */);
   }
+
+
 
   // Set up a cleanup handler on the request.
   ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
