@@ -121,6 +121,7 @@ struct OptionName {
 "ObliviousPagespeedUrls",                RewriteOptions::kObliviousPagespeedUrls
 "OverrideCachingTtlMs",                  RewriteOptions::kOverrideCachingTtlMs
 "OverrideIeDocumentMode",                RewriteOptions::kOverrideIeDocumentMode
+"PersistBlinkBlacklist",                 RewriteOptions::kPersistBlinkBlacklist
 "ProgressiveJpegMinBytes",               RewriteOptions::kProgressiveJpegMinBytes
 "RejectBlacklisted",                     RewriteOptions::kRejectBlacklisted
 "RejectBlacklistedStatusCode",           RewriteOptions::kRejectBlacklistedStatusCode

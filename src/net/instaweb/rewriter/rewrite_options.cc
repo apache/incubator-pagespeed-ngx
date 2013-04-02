@@ -1408,6 +1408,13 @@ void RewriteOptions::AddProperties() {
   AddRequestProperty(
       -1, &RewriteOptions::blink_blacklist_end_timestamp_ms_, "bbet");
   AddBaseProperty(
+      false,
+      &RewriteOptions::persist_blink_blacklist_,
+      "pbb", kPersistBlinkBlacklist,
+      kDirectoryScope,
+      NULL);  // Not applicable for mod_pagespeed.
+
+  AddBaseProperty(
       false, &RewriteOptions::allow_logging_urls_in_log_record_,
       "alulr", kAllowLoggingUrlsInLogRecord, kDirectoryScope,
       NULL);   // Not applicable for mod_pagespeed.

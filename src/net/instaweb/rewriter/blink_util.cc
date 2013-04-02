@@ -26,12 +26,13 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/async_fetch.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/timer.h"
@@ -61,8 +62,7 @@ bool IsAllIncludedIn(const StringPieceVector& spec_vector,
   return true;
 }
 
-}  // namespace
-
+// Checks whether the user agent is allowed to go into the blink flow.
 bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
                                 const RewriteOptions* options,
                                 const char* user_agent,
@@ -98,6 +98,20 @@ bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
   return false;
 }
 
+bool IsBlinkBlacklistActive(int64 now_ms,
+                            int64 blink_blacklist_end_timestamp_ms,
+                            LogRecord* log_record) {
+  bool is_blacklisted = blink_blacklist_end_timestamp_ms >= now_ms;
+  if (is_blacklisted) {
+    ScopedMutex lock(log_record->mutex());
+    log_record->logging_info()->mutable_blink_info()->set_blink_request_flow(
+        BlinkInfo::BLINK_BLACKLISTED);
+  }
+  return is_blacklisted;
+}
+
+}  // namespace
+
 // TODO(rahulbansal): Add tests for this.
 bool IsBlinkRequest(const GoogleUrl& url,
                     AsyncFetch* async_fetch,
@@ -110,9 +124,6 @@ bool IsBlinkRequest(const GoogleUrl& url,
       options->enabled() &&
       // Is Get Request?
       async_fetch->request_headers()->method() == RequestHeaders::kGet &&
-      // Ensure there is no blink blacklist for this domain.
-      (server_context->timer()->NowMs() >
-       options->blink_blacklist_end_timestamp_ms()) &&
       // Is the filter enabled?
       options->Enabled(filter) &&
       // Is url allowed? (i.e., it is not in black-list.)
@@ -124,7 +135,11 @@ bool IsBlinkRequest(const GoogleUrl& url,
       // Is the user agent allowed to enter the blink flow?
       IsUserAgentAllowedForBlink(
           async_fetch, options, user_agent,
-          server_context->user_agent_matcher())) {
+          server_context->user_agent_matcher()) &&
+      // Ensure there is no blink blacklist for this domain.
+      !IsBlinkBlacklistActive(server_context->timer()->NowMs(),
+                              options->blink_blacklist_end_timestamp_ms(),
+                              async_fetch->log_record())) {
     // Is the request a HTTP request?
     if (url.SchemeIs("http")) {
       return true;

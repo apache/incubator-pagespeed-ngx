@@ -279,6 +279,7 @@ class RewriteOptions {
     kOverrideCachingTtlMs,
     kOverrideIeDocumentMode,
     kPassthroughBlinkForInvalidResponseCode,
+    kPersistBlinkBlacklist,
     kProgressiveJpegMinBytes,
     kPropagateBlinkCacheDeletes,
     kRejectBlacklisted,
@@ -1236,6 +1237,13 @@ class RewriteOptions {
   }
   void set_blink_blacklist_end_timestamp_ms(int64 x) {
     set_option(x, &blink_blacklist_end_timestamp_ms_);
+  }
+
+  bool persist_blink_blacklist() const {
+    return persist_blink_blacklist_.value();
+  }
+  void set_persist_blink_blacklist(bool x) {
+    set_option(x, &persist_blink_blacklist_);
   }
 
   // Returns false if there is an entry in url_cache_invalidation_entries_ with
@@ -3016,6 +3024,8 @@ class RewriteOptions {
 
   // The timestamp when blink blacklist expires.
   Option<int64> blink_blacklist_end_timestamp_ms_;
+  // Persist blink blacklist.
+  Option<bool> persist_blink_blacklist_;
 
   Option<GoogleString> ga_id_;
 

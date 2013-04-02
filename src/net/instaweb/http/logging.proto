@@ -48,8 +48,9 @@ message TimingInfo  {
   optional int64 processing_time_ms = 9;
 }
 
-// This proto stores all Blink related information.
-// Next id for BlinkInfo : 8
+// This proto stores all Blink requests related information.  These are logged
+// in the blink log record.
+// Next id for BlinkInfo : 9
 message BlinkInfo {
   enum BlinkRequestFlow {
     BLINK_CACHE_HIT = 1;
@@ -59,11 +60,16 @@ message BlinkInfo {
     FOUND_MALFORMED_HTML = 5;
     FOUND_LAST_STATUS_CODE_NON_OK = 6;
     FOUND_CONTENT_LENGTH_OVER_THRESHOLD = 7;
+    // The following is only set in the main log record and not in the blink log
+    // record.
+    BLINK_BLACKLISTED = 8;  // Diff mismatch based blacklist active.
   };
-  // Tracks the flow of a Blink request.
+  // Tracks the flow of a Blink request.  Set in main log record also.
   optional BlinkRequestFlow blink_request_flow = 1;
 
   // The event id of the user request for which blink flow was triggered.
+  // To parse this field, refer:
+  // net/instaweb/util/public/string_util.h#StringToInt64
   optional string request_event_id_time_usec = 2;
 
   // Tracks whether html change detection full-diff found a match or not.
@@ -77,13 +83,14 @@ message BlinkInfo {
     NULL_OR_EMPTY = 4;
     NOT_SUPPORT_BLINK = 5;
   };
-
+  // user agent which initiated the blink request.  This is set only in main log
+  // record and not in blink log record.
   optional UserAgent blink_user_agent = 4;
 
-  // Url of the request.
+  // URL of the request.
   optional string url = 5;
 
-  // Tracks whether html change detection smart_diff found a match or not.
+  // Tracks whether html change detection smart-diff found a match or not.
   optional bool html_smart_diff_match = 6;
 
   // Tracks whether we hit the #mismatches threshold for blacklisting.

@@ -372,6 +372,9 @@ DEFINE_bool(use_smart_diff_in_blink, false,
 DEFINE_bool(enable_lazyload_in_blink, false,
     "If it is set to true, don't force disable lazyload in blink");
 
+DEFINE_bool(persist_blink_blacklist, false,
+            "Persist the blink blacklist by writing to kansas.");
+
 DEFINE_bool(enable_prioritizing_scripts, false,
     "If it is set to true, defer javascript will prioritize scripts with"
     "data-pagespeed-prioritize attibute.");
@@ -694,6 +697,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("enable_lazyload_in_blink")) {
     options->set_enable_lazyload_in_blink(
         FLAGS_enable_lazyload_in_blink);
+  }
+  if (WasExplicitlySet("persist_blink_blacklist")) {
+    options->set_persist_blink_blacklist(
+        FLAGS_persist_blink_blacklist);
   }
   if (WasExplicitlySet("enable_prioritizing_scripts")) {
     options->set_enable_prioritizing_scripts(

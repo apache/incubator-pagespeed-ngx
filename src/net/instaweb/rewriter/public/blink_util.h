@@ -36,7 +36,6 @@ class HtmlElement;
 class Panel;
 class PanelSet;
 class ServerContext;
-class UserAgentMatcher;
 
 typedef std::map<GoogleString, const Panel*> PanelIdToSpecMap;
 typedef std::multimap<GoogleString, std::pair<GoogleString, const int>,
@@ -62,12 +61,6 @@ const char kBlinkCriticalLineDataPropertyName[] = "blink_critical_line_data";
 const char kCacheHtmlRewriterInfo[] = "cache_html";
 const char kComputeVisibleTextFilterOutputEndMarker[] =
     "<!--GooglePanel **** Output end ****-->";
-
-// Checks whether the user agent is allowed to go into the blink flow.
-bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
-                                const RewriteOptions* options,
-                                const char* user_agent,
-                                UserAgentMatcher* user_agent_matcher);
 
 // Checks whether the request for 'url' is a valid blink request.
 bool IsBlinkRequest(const GoogleUrl& url,

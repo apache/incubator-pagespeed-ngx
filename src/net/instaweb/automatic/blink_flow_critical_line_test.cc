@@ -2235,6 +2235,9 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkBlacklisted) {
   // No blink flow should have happened.
   EXPECT_EQ(0, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
+  EXPECT_EQ(BlinkInfo::BLINK_BLACKLISTED,
+            logging_info()->blink_info().blink_request_flow());
+  ClearStats();
 
   // Advance time beyond the blacklist end point.
   AdvanceTimeMs(101);
@@ -2244,6 +2247,8 @@ TEST_F(BlinkFlowCriticalLineTest, TestBlinkBlacklisted) {
   // Blink flow should have happened.
   EXPECT_EQ(1, statistics()->FindVariable(
       ProxyInterface::kBlinkCriticalLineRequestCount)->Get());
+  VerifyBlinkInfo(BlinkInfo::BLINK_CACHE_MISS_TRIGGERED_REWRITE,
+                  "http://test.com/noblink_text.html");
 }
 
 }  // namespace net_instaweb
