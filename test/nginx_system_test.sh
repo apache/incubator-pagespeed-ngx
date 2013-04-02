@@ -72,7 +72,6 @@ check_simple mkdir "$TEST_TMP"
 FILE_CACHE="$TEST_TMP/file-cache/"
 check_simple mkdir "$FILE_CACHE"
 
-
 # set up the config file for the test
 PAGESPEED_CONF="$TEST_TMP/pagespeed_test.conf"
 PAGESPEED_CONF_TEMPLATE="$this_dir/pagespeed_test.conf.template"
@@ -120,6 +119,19 @@ set -- "$PRIMARY_HOSTNAME"
 source $SYSTEM_TEST_FILE
 
 # nginx-specific system tests
+
+start_test Check for correct default X-Page-Speed header format.
+OUT=$($WGET_DUMP $EXAMPLE_ROOT/combine_css.html)
+check_from "$OUT" egrep -q \
+  '^X-Page-Speed: [0-9]+[.][0-9]+[.][0-9]+[.][0-9]+-[0-9]+'
+
+start_test pagespeed is defaulting to more than PassThrough
+fetch_until $TEST_ROOT/bot_test.html 'grep -c \.pagespeed\.' 2
+
+
+
+
+
 
 # When we allow ourself to fetch a resource because the Host header tells us
 # that it is one of our resources, we should be fetching it from ourself.

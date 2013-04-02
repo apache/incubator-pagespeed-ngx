@@ -31,9 +31,6 @@ http {
 
     pagespeed on;
 
-    pagespeed RewriteLevel CoreFilters;
-    pagespeed EnableFilters insert_ga,trim_urls;
-
     #pagespeed CacheFlushPollIntervalSec 1;
 
     #pagespeed RunExperiment on;
