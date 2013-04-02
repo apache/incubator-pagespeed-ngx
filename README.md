@@ -3,8 +3,7 @@
 This is the [nginx](http://nginx.org/) port of
 [mod_pagespeed](https://developers.google.com/speed/pagespeed/mod).
 
-**ngx_pagespeed is alpha**, and is only ready for production use if you really
-like to live on the edge. If you are interested in test-driving the module, or
+**ngx_pagespeed is alpha**. If you are interested in test-driving the module, or
 contributing to the project, see below. For feedback, questions, and to follow
 the progress of the project:
 
