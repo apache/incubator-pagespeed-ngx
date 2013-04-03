@@ -71,6 +71,8 @@ rm -r "$TEST_TMP"
 check_simple mkdir "$TEST_TMP"
 FILE_CACHE="$TEST_TMP/file-cache/"
 check_simple mkdir "$FILE_CACHE"
+SECONDARY_CACHE="$TEST_TMP/file-cache/secondary/"
+check_simple mkdir "$SECONDARY_CACHE"
 
 # set up the config file for the test
 PAGESPEED_CONF="$TEST_TMP/pagespeed_test.conf"
@@ -85,6 +87,7 @@ EOF
 cat $PAGESPEED_CONF_TEMPLATE \
   | sed 's#@@TEST_TMP@@#'"$TEST_TMP/"'#' \
   | sed 's#@@FILE_CACHE@@#'"$FILE_CACHE/"'#' \
+  | sed 's#@@SECONDARY_CACHE@@#'"$SECONDARY_CACHE/"'#' \
   | sed 's#@@SERVER_ROOT@@#'"$SERVER_ROOT"'#' \
   | sed 's#@@PRIMARY_PORT@@#'"$PRIMARY_PORT"'#' \
   | sed 's#@@SECONDARY_PORT@@#'"$SECONDARY_PORT"'#' \
@@ -138,7 +141,7 @@ http_proxy=127.0.0.2:$SECONDARY_PORT \
 
 # When we allow ourself to fetch a resource because the Host header tells us
 # that it is one of our resources, we should be fetching it from ourself.
-start_test Loopback fetches go to local IPs without DNS lookup
+start_test "Loopback fetches go to local IPs without DNS lookup"
 
 # If we're properly fetching from ourself we will issue loopback fetches for
 # /mod_pagespeed_example/combine_javascriptN.js, which will succeed, so
@@ -183,6 +186,8 @@ check_from "$JS_HEADERS" fgrep -qi 'Vary: Accept-Encoding'
 check_from "$JS_HEADERS" egrep -qi '(Etag: W/"0")|(Etag: W/"0-gzip")'
 check_from "$JS_HEADERS" fgrep -qi 'Last-Modified:'
 
+WGET_ARGS="" # Done with test_filter, so clear WGET_ARGS.
+
 start_test Respect X-Forwarded-Proto when told to
 FETCHED=$OUTDIR/x_forwarded_proto
 URL=$SECONDARY_HOSTNAME/mod_pagespeed_example/?ModPagespeedFilters=add_base_tag
@@ -190,5 +195,109 @@ HEADERS="--header=X-Forwarded-Proto:https --header=Host:xfp.example.com"
 check $WGET_DUMP -O $FETCHED $HEADERS $URL
 # When enabled, we respect X-Forwarded-Proto and thus list base as https.
 check fgrep -q '<base href="https://' $FETCHED
+
+# Several cache flushing tests.
+
+start_test Touching cache.flush flushes the cache.
+
+# If we write fixed values into the css file here, there is a risk that
+# we will end up seeing the 'right' value because an old process hasn't
+# invalidated things yet, rather than because it updated to what we expect
+# in the first run followed by what we expect in the second run.
+# So, we incorporate the timestamp into RGB colors, using hours
+# prefixed with 1 (as 0-123 fits the 0-255 range) to get a second value.
+# A one-second precision is good enough since there is a sleep 2 below.
+COLOR_SUFFIX=`date +%H,%M,%S\)`
+COLOR0=rgb\($COLOR_SUFFIX
+COLOR1=rgb\(1$COLOR_SUFFIX
+
+# We test on three different cache setups:
+#
+#   1. A virtual host using the normal FileCachePath.
+#   2. Another virtual host with a different FileCachePath.
+#   3. Another virtual host with a different CacheFlushFilename.
+#
+# This means we need to repeat many of the steps three times.
+
+echo "Clear out our existing state before we begin the test."
+check touch "$FILE_CACHE/cache.flush"
+check touch "$FILE_CACHE/othercache.flush"
+check touch "$SECONDARY_CACHE/cache.flush"
+sleep 1
+
+CSS_FILE="$SERVER_ROOT/mod_pagespeed_test/update.css"
+echo ".class myclass { color: $COLOR0; }" > "$CSS_FILE"
+
+URL_PATH="mod_pagespeed_test/cache_flush_test.html"
+
+URL="$SECONDARY_HOSTNAME/$URL_PATH"
+CACHE_A="--header=Host:cache_a.example.com"
+fetch_until $URL "grep -c $COLOR0" 1 $CACHE_A
+
+CACHE_B="--header=Host:cache_b.example.com"
+fetch_until $URL "grep -c $COLOR0" 1 $CACHE_B
+
+CACHE_C="--header=Host:cache_c.example.com"
+fetch_until $URL "grep -c $COLOR0" 1 $CACHE_C
+
+# All three caches are now populated.
+
+# TODO(jefftk): Check statistics here.  In apache_system_test.sh we can track
+# reported flushed by looking at statistics, but this isn't ported to nginx
+# yet.  Once that is ported, come back here and make sure it's correct.
+
+# Now change the file to $COLOR1.
+echo ".class myclass { color: $COLOR1; }" > "$CSS_FILE"
+
+# We expect to have a stale cache for 5 minutes, so the result should stay
+# $COLOR0.  This only works because we have only one worker process.  If we had
+# more than one then the worker process handling this request might be different
+# than the one that got the previous one, and it wouldn't be in cache.
+OUT="$($WGET_DUMP $CACHE_A "$URL")"
+check_from "$OUT" fgrep $COLOR0
+
+OUT="$($WGET_DUMP $CACHE_B "$URL")"
+check_from "$OUT" fgrep $COLOR0
+
+OUT="$($WGET_DUMP $CACHE_C "$URL")"
+check_from "$OUT" fgrep $COLOR0
+
+# Flush the cache by touching a special file in the cache directory.  Now
+# css gets re-read and we get $COLOR1 in the output.  Sleep here to avoid
+# a race due to 1-second granularity of file-system timestamp checks.  For
+# the test to pass we need to see time pass from the previous 'touch'.
+#
+# The three vhosts here all have CacheFlushPollIntervalSec set to 1.
+
+sleep 2
+check touch "$FILE_CACHE/cache.flush"
+sleep 1
+
+# Check that CACHE_A flushed properly.
+fetch_until $URL "grep -c $COLOR1" 1 $CACHE_A
+
+start_test Flushing one cache does not flush all caches.
+
+# Check that CACHE_B and CACHE_C are still serving a stale version.
+OUT="$($WGET_DUMP $CACHE_B "$URL")"
+check_from "$OUT" fgrep $COLOR0
+
+OUT="$($WGET_DUMP $CACHE_C "$URL")"
+check_from "$OUT" fgrep $COLOR0
+
+start_test Secondary caches also flush.
+
+# Now flush the other two files so they can see the color change.
+check touch "$FILE_CACHE/othercache.flush"
+check touch "$SECONDARY_CACHE/cache.flush"
+sleep 1
+
+# Check that CACHE_B and C flushed properly.
+fetch_until $URL "grep -c $COLOR1" 1 $CACHE_B
+fetch_until $URL "grep -c $COLOR1" 1 $CACHE_C
+
+# Clean up update.css from mod_pagespeed_test so it doesn't leave behind
+# a stray file not under source control.
+rm -f $CSS_FILE
 
 check_failures_and_exit

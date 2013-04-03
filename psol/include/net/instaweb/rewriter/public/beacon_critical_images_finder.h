@@ -30,16 +30,21 @@ class Statistics;
 
 // Support critical (above the fold) image detection through a javascript beacon
 // on the client.
-// TODO(jud): This class is not yet implemented.
 class BeaconCriticalImagesFinder : public CriticalImagesFinder {
  public:
-  static const char kBeaconCohort[];
-
   explicit BeaconCriticalImagesFinder(Statistics* stats);
   virtual ~BeaconCriticalImagesFinder();
 
   virtual bool IsMeaningful(const RewriteDriver* driver) const {
     return driver->options()->critical_images_beacon_enabled();
+  }
+
+  virtual int PercentSeenForCritical() const {
+    return kBeaconPercentSeenForCritical;
+  }
+
+  virtual int NumSetsToKeep() const {
+    return kBeaconNumSetsToKeep;
   }
 
   // Checks whether the requested image is present in the critical set or not.
@@ -53,8 +58,14 @@ class BeaconCriticalImagesFinder : public CriticalImagesFinder {
                                      RewriteDriver* driver);
 
   virtual const char* GetCriticalImagesCohort() const {
-    return kBeaconCohort;
+    return RewriteDriver::kBeaconCohort;
   }
+
+ private:
+  // 80% is a guess at a reasonable value for this param.
+  static const int kBeaconPercentSeenForCritical = 80;
+  // This is a guess for how many samples we need to get stable data.
+  static const int kBeaconNumSetsToKeep = 10;
 };
 
 }  // namespace net_instaweb

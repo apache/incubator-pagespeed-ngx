@@ -28,8 +28,12 @@
 
 namespace net_instaweb {
 
+class Function;
+
 class MockTimer : public Timer {
  public:
+  typedef void (*Callback)(void* user_data);
+
   // A useful recent time-constant for testing.
   static const int64 kApr_5_2010_ms;
 
@@ -48,7 +52,15 @@ class MockTimer : public Timer {
   void AdvanceMs(int64 delta_ms) { AdvanceUs(1000 * delta_ms); }
 
   // Set time advances in microseconds for the next calls to NowUs/NowMs.
-  void SetTimeDeltaUs(int64 delta_us) { deltas_us_.push_back(delta_us); }
+  void SetTimeDeltaUs(int64 delta_us) {
+    SetTimeDeltaUsWithCallback(delta_us, NULL);
+  }
+
+  // Set time advances in microseconds for the next calls to
+  // NowUs/NowMs, with the corresponding callback to execute right
+  // before that time is returned.
+  void SetTimeDeltaUsWithCallback(int64 delta_us,
+                                  Function* callback);
 
   // Set time advances in milliseconds for the next calls to NowUs/NowMs.
   void SetTimeDeltaMs(int64 delta_ms) { SetTimeDeltaUs(1000 * delta_ms); }
@@ -64,9 +76,13 @@ class MockTimer : public Timer {
   void set_mutex(AbstractMutex* mutex) { mutex_.reset(mutex); }
 
  private:
+  typedef struct {
+    int64 time;
+    Function* callback;
+  } TimeAndCallback;
   mutable int64 time_us_;
   scoped_ptr<AbstractMutex> mutex_;
-  std::vector<int64> deltas_us_;
+  std::vector<TimeAndCallback> deltas_us_;
   mutable unsigned int next_delta_;
 
   DISALLOW_COPY_AND_ASSIGN(MockTimer);

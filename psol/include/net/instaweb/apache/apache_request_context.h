@@ -49,6 +49,7 @@ class ApacheRequestContext : public RequestContext {
 
   bool use_spdy_fetcher() const { return use_spdy_fetcher_; }
   int local_port() const { return local_port_; }
+  const GoogleString& local_ip() const { return local_ip_; }
   StringPiece url() const { return url_; }
   spdy_slave_connection_factory* spdy_connection_factory() {
     return spdy_connection_factory_;
@@ -60,6 +61,7 @@ class ApacheRequestContext : public RequestContext {
  private:
   bool use_spdy_fetcher_;
   int local_port_;
+  GoogleString local_ip_;
   GoogleString url_;
   spdy_slave_connection_factory* spdy_connection_factory_;
 

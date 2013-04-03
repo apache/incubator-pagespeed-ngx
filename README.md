@@ -83,7 +83,7 @@ First build mod_pagespeed against the current revision we work at:
     $ gclient config http://modpagespeed.googlecode.com/svn/trunk/src
     $ gclient sync --force --jobs=1
     $ cd src/
-    $ svn up -r2618
+    $ svn up -r2748
     $ gclient runhooks
     $ make AR.host="$PWD/build/wrappers/ar.sh" \
            AR.target="$PWD/build/wrappers/ar.sh" \

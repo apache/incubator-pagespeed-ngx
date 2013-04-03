@@ -31,6 +31,7 @@ namespace net_instaweb {
 // to use these shared constants.
 struct HttpAttributes {
   static const char kAcceptEncoding[];
+  static const char kAllow[];
   static const char kAuthorization[];
   static const char kCacheControl[];
   static const char kConnection[];
@@ -71,6 +72,9 @@ struct HttpAttributes {
   // If this header's value matches the configured blocking rewrite key, then
   // all rewrites are completed before the response is sent to the client.
   static const char kXPsaBlockingRewrite[];
+
+  // A request header for client to specify client options.
+  static const char kXPsaClientOptions[];
 
   // This header is set on optional fetches that got dropped due to load.
   static const char kXPsaLoadShed[];

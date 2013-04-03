@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/javascript_library_identification.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/enum_set.h"
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -78,7 +79,8 @@ class RewriteOptions {
     kAddBaseTag,  // Update kFirstFilter if you add something before this.
     kAddHead,
     kAddInstrumentation,
-    kCacheHtml,
+    kComputeStatistics,
+    kCachePartialHtml,
     kCanonicalizeJavascriptLibraries,
     kCollapseWhitespace,
     kCollectFlushEarlyContentFilter,
@@ -103,7 +105,6 @@ class RewriteOptions {
     kDisableJavascript,
     kDivStructure,
     kElideAttributes,
-    kExperimentSpdy,  // Temporary and will be removed soon.
     kExplicitCloseTags,
     kExtendCacheCss,
     kExtendCacheImages,
@@ -181,6 +182,7 @@ class RewriteOptions {
     kAlwaysRewriteCss,
     kAnalyticsID,
     kAvoidRenamingIntrospectiveJavascript,
+    kBeaconReinstrumentTimeSec,
     kBeaconUrl,
     kBlinkDesktopUserAgent,
     kBlinkMaxHtmlSizeRewritable,
@@ -225,6 +227,7 @@ class RewriteOptions {
     kIdleFlushTimeMs,
     kImageInlineMaxBytes,
     kImageJpegNumProgressiveScans,
+    kImageJpegNumProgressiveScansForSmallScreens,
     kImageJpegRecompressionQuality,
     kImageJpegRecompressionQualityForSmallScreens,
     kImageLimitOptimizedPercent,
@@ -255,6 +258,7 @@ class RewriteOptions {
     kLazyloadImagesAfterOnload,
     kLazyloadImagesBlankUrl,
     kLogRewriteTiming,
+    kLogUrlIndices,
     kLowercaseHtmlNames,
     kMaxCacheableResponseContentLength,
     kMaxCombinedJsBytes,
@@ -275,6 +279,7 @@ class RewriteOptions {
     kOverrideCachingTtlMs,
     kOverrideIeDocumentMode,
     kPassthroughBlinkForInvalidResponseCode,
+    kPersistBlinkBlacklist,
     kProgressiveJpegMinBytes,
     kPropagateBlinkCacheDeletes,
     kRejectBlacklisted,
@@ -322,7 +327,6 @@ class RewriteOptions {
     // apache/ or system/ specific:
     kCacheFlushFilename,
     kCacheFlushPollIntervalSec,
-    kCollectRefererStatistics,
     kExperimentalFetchFromModSpdy,
     kFetchHttps,
     kFetcherProxy,
@@ -331,7 +335,6 @@ class RewriteOptions {
     kFileCacheCleanIntervalMs,
     kFileCacheCleanSizeKb,
     kFileCachePath,
-    kHashRefererStatistics,
     kLruCacheByteLimit,
     kLruCacheKbPerProcess,
     kMemcachedServers,
@@ -339,7 +342,6 @@ class RewriteOptions {
     kMemcachedTimeoutUs,
     kMessageBufferSize,
     kRateLimitBackgroundFetches,
-    kRefererStatisticsOutputLevel,
     kSlurpDirectory,
     kSlurpFlushLimit,
     kSlurpReadOnly,
@@ -389,9 +391,6 @@ class RewriteOptions {
   // options->set_default.
   static const int kOptionsVersion = 13;
 
-  static const char kCacheExtenderId[];
-  static const char kCollectFlushEarlyContentFilterId[];
-
   // Determines the scope at which an option is evaluated.  In Apache,
   // for example, kDirectoryScope indicates it can be changed via .htaccess
   // files, which is the only way that sites using shared hosting can change
@@ -402,6 +401,8 @@ class RewriteOptions {
     kProcessScope,    // customized at process level only (command-line flags)
   };
 
+  static const char kCacheExtenderId[];
+  static const char kCollectFlushEarlyContentFilterId[];
   static const char kCssCombinerId[];
   static const char kCssFilterId[];
   static const char kCssImportFlattenerId[];
@@ -425,11 +426,18 @@ class RewriteOptions {
   // URLs.
   static const char* FilterId(Filter filter);
 
+  // Returns the number of filter ids. This is used to loop over all filter ids
+  // using the FilterId() method.
+  static int NumFilterIds();
+
   // Used for enumerating over all entries in the Filter enum.
   static const Filter kFirstFilter = kAddBaseTag;
 
-  // Convenience name for a set of rewrite filters.
-  typedef std::set<Filter> FilterSet;
+  typedef EnumSet<Filter, kEndOfFilters> FilterSet;
+  typedef std::vector<Filter> FilterVector;
+
+  // Convenience name for a set of rewrite filter ids.
+  typedef std::set<GoogleString> FilterIdSet;
 
   // Lookup the given name to see if it's a filter name or one of the special
   // names like "core" or "rewrite_images", and if so add the corresponding
@@ -550,6 +558,7 @@ class RewriteOptions {
     kOptionValueInvalid
   };
 
+  static const int kDefaultBeaconReinstrumentTimeSec;
   static const int64 kDefaultBlinkMaxHtmlSizeRewritable;
   static const int64 kDefaultCssFlattenMaxBytes;
   static const int64 kDefaultCssImageInlineMaxBytes;
@@ -573,13 +582,11 @@ class RewriteOptions {
   static const char kDefaultBeaconUrl[];
   static const int64 kDefaultImagesRecompressQuality;
   static const int64 kDefaultImageJpegRecompressQuality;
-  static const int64 kDefaultImageJpegRecompressQualityForSmallScreens;
   static const int kDefaultImageLimitOptimizedPercent;
   static const int kDefaultImageLimitResizeAreaPercent;
   static const int64 kDefaultImageResolutionLimitBytes;
-  static const int kDefaultImageJpegNumProgressiveScans;
+  static const int64 kDefaultImageJpegNumProgressiveScans;
   static const int64 kDefaultImageWebpRecompressQuality;
-  static const int64 kDefaultImageWebpRecompressQualityForSmallScreens;
   static const int64 kDefaultImageWebpTimeoutMs;
   static const int kDefaultDomainShardCount;
   static const int64 kDefaultBlinkHtmlChangeDetectionTimeMs;
@@ -963,6 +970,9 @@ class RewriteOptions {
   bool ForbidFiltersByCommaSeparatedList(const StringPiece& filters,
                                          MessageHandler* handler);
 
+  // Set rewrite level to kPassThrough and explicitly disable all filters.
+  void DisableAllFilters();
+
   // Explicitly disable all filters which are not *currently* explicitly enabled
   //
   // Note: Do not call EnableFilter(...) for this options object after calling
@@ -972,18 +982,17 @@ class RewriteOptions {
   // Which implies that all filters not listed should be disabled.
   void DisableAllFiltersNotExplicitlyEnabled();
 
-  // Adds a set of filters to the distributable set. Returns false if any of the
-  // filter names are invalid, but all the valid ones will be added anyway.
-  // For experimentation, may be removed later.
-  bool DistributeFiltersByCommaSeparatedList(const StringPiece& filters,
-                                                   MessageHandler* handler);
+  // Adds a set of filter prefixes (ids) to the set of distributable filters.
+  // The names are not verified and all prefixes will be added.
+  void DistributeFiltersByCommaSeparatedList(const StringPiece& filter_ids,
+                                               MessageHandler* handler);
   // Adds the filter to the list of distributable filters.
   // For experimentation, may be removed later.
-  void DistributeFilter(Filter filter);
+  void DistributeFilter(const StringPiece& filter_id);
 
   // Returns true if the filter is in the list of distributable filters.
   // For experimentation, may be removed later.
-  bool Distributable(Filter filter) const;
+  bool Distributable(const StringPiece& filter_id) const;
 
   // Adds the filter to the list of enabled filters. However, if the filter
   // is also present in either the list of disabled or forbidden filters,
@@ -1009,7 +1018,7 @@ class RewriteOptions {
   bool Forbidden(StringPiece filter_id) const;
 
   // Returns the set of enabled filters that require JavaScript for execution.
-  void GetEnabledFiltersRequiringScriptExecution(FilterSet* filter_set) const;
+  void GetEnabledFiltersRequiringScriptExecution(FilterVector* filters) const;
 
   // Disables all filters that depend on executing custom javascript.
   void DisableFiltersRequiringScriptExecution();
@@ -1223,11 +1232,18 @@ class RewriteOptions {
     set_option(x, &override_ie_document_mode_);
   }
 
-  bool is_blink_auto_blacklisted() const {
-    return is_blink_auto_blacklisted_.value();
+  int64 blink_blacklist_end_timestamp_ms() const {
+    return blink_blacklist_end_timestamp_ms_.value();
   }
-  void set_is_blink_auto_blacklisted(bool x) {
-    set_option(x, &is_blink_auto_blacklisted_);
+  void set_blink_blacklist_end_timestamp_ms(int64 x) {
+    set_option(x, &blink_blacklist_end_timestamp_ms_);
+  }
+
+  bool persist_blink_blacklist() const {
+    return persist_blink_blacklist_.value();
+  }
+  void set_persist_blink_blacklist(bool x) {
+    set_option(x, &persist_blink_blacklist_);
   }
 
   // Returns false if there is an entry in url_cache_invalidation_entries_ with
@@ -1426,6 +1442,11 @@ class RewriteOptions {
   }
   bool log_rewrite_timing() const { return log_rewrite_timing_.value(); }
 
+  void set_log_url_indices(bool x) {
+    set_option(x, &log_url_indices_);
+  }
+  bool log_url_indices() const { return log_url_indices_.value(); }
+
   void set_lowercase_html_names(bool x) {
     set_option(x, &lowercase_html_names_);
   }
@@ -1487,6 +1508,13 @@ class RewriteOptions {
   }
   bool critical_images_beacon_enabled() const {
     return critical_images_beacon_enabled_.value();
+  }
+
+  void set_beacon_reinstrument_beacon_time_sec(int x) {
+    set_option(x, &beacon_reinstrument_time_sec_);
+  }
+  int beacon_reinstrument_time_sec() const {
+    return beacon_reinstrument_time_sec_.value();
   }
 
   void set_lazyload_images_after_onload(bool x) {
@@ -1642,11 +1670,18 @@ class RewriteOptions {
     set_option(x, &image_limit_resize_area_percent_);
   }
 
-  int image_jpeg_num_progressive_scans() const {
+  int64 image_jpeg_num_progressive_scans() const {
     return image_jpeg_num_progressive_scans_.value();
   }
-  void set_image_jpeg_num_progressive_scans(int x) {
+  void set_image_jpeg_num_progressive_scans(int64 x) {
     set_option(x, &image_jpeg_num_progressive_scans_);
+  }
+
+  int64 image_jpeg_num_progressive_scans_for_small_screens() const {
+    return image_jpeg_num_progressive_scans_for_small_screens_.value();
+  }
+  void set_image_jpeg_num_progressive_scans_for_small_screens(int64 x) {
+    set_option(x, &image_jpeg_num_progressive_scans_for_small_screens_);
   }
 
   int64 image_webp_recompress_quality() const {
@@ -2141,6 +2176,7 @@ class RewriteOptions {
   }
 
   virtual GoogleString OptionsToString() const;
+  GoogleString FilterSetToString(const FilterSet& filter_set) const;
 
   // Returns a string identifying the currently running Furious experiment to
   // be used in tagging Google Analytics data.
@@ -2536,7 +2572,6 @@ class RewriteOptions {
   static Properties* all_properties_;      // includes subclass properties
 
   FRIEND_TEST(RewriteOptionsTest, FuriousMergeTest);
-  typedef std::vector<Filter> FilterVector;
 
   // A family of urls for which prioritize_visible_content filter can be
   // applied.  url_pattern represents the actual set of urls,
@@ -2738,7 +2773,7 @@ class RewriteOptions {
 
   // The set of filters that can be distributed to other tasks.
   // For experimentation, may be removed later.
-  FilterSet distributable_filters_;
+  FilterIdSet distributable_filters_;
 
   // Note: using the template class Option here saves a lot of repeated
   // and error-prone merging code.  However, it is not space efficient as
@@ -2793,7 +2828,8 @@ class RewriteOptions {
   // Options related to jpeg compression.
   Option<int64> image_jpeg_recompress_quality_;
   Option<int64> image_jpeg_recompress_quality_for_small_screens_;
-  Option<int> image_jpeg_num_progressive_scans_;
+  Option<int64> image_jpeg_num_progressive_scans_;
+  Option<int64> image_jpeg_num_progressive_scans_for_small_screens_;
   Option<bool> image_retain_color_profile_;
   Option<bool> image_retain_color_sampling_;
   Option<bool> image_retain_exif_data_;
@@ -2844,6 +2880,7 @@ class RewriteOptions {
   Option<bool> in_place_preemptive_rewrite_javascript_;
   Option<bool> combine_across_paths_;
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?
+  Option<bool> log_url_indices_;
   Option<bool> lowercase_html_names_;
   Option<bool> always_rewrite_css_;  // For tests/debugging.
   Option<bool> respect_vary_;
@@ -2933,6 +2970,11 @@ class RewriteOptions {
   // RewriteDriver::fully_rewrite_on_flush flag will be set.
   Option<GoogleString> blocking_rewrite_key_;
 
+  // Indicates how often we should reinstrument pages with the critical images
+  // beacon, based on the time since the last write to the property cache by a
+  // beacon response.
+  Option<int> beacon_reinstrument_time_sec_;
+
   // Number of first N images for which low res image is generated. Negative
   // values will bypass image index check.
   Option<int> max_inlined_preview_images_index_;
@@ -2980,7 +3022,10 @@ class RewriteOptions {
   std::vector<PrioritizeVisibleContentFamily*>
       prioritize_visible_content_families_;
 
-  Option<bool> is_blink_auto_blacklisted_;
+  // The timestamp when blink blacklist expires.
+  Option<int64> blink_blacklist_end_timestamp_ms_;
+  // Persist blink blacklist.
+  Option<bool> persist_blink_blacklist_;
 
   Option<GoogleString> ga_id_;
 

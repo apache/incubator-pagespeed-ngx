@@ -48,7 +48,6 @@ class CriticalImagesFinderTestBase : public RewriteTestBase {
   void ResetDriver();
 
   const PropertyValue* GetCriticalImagesUpdatedValue();
-  const PropertyValue* GetCssCriticalImagesUpdatedValue();
 
  private:
   static const char kRequestUrl[];

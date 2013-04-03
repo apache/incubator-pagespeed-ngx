@@ -137,23 +137,25 @@ class CreateFilterCallback
 class BackgroundFetchCheckingAsyncFetch : public SharedAsyncFetch {
  public:
   explicit BackgroundFetchCheckingAsyncFetch(AsyncFetch* base_fetch)
-      : SharedAsyncFetch(base_fetch) {}
+      : SharedAsyncFetch(base_fetch),
+        async_fetch_(base_fetch) {}
   virtual ~BackgroundFetchCheckingAsyncFetch() {}
 
   virtual void HandleHeadersComplete() {
-    base_fetch()->HeadersComplete();
+    SharedAsyncFetch::HandleHeadersComplete();
     response_headers()->Add(kBackgroundFetchHeader,
-                            base_fetch()->IsBackgroundFetch() ? "1" : "0");
+                            async_fetch_->IsBackgroundFetch() ? "1" : "0");
     // Call ComputeCaching again since Add sets cache_fields_dirty_ to true.
     response_headers()->ComputeCaching();
   }
 
   virtual void HandleDone(bool success) {
-    base_fetch()->Done(success);
+    SharedAsyncFetch::HandleDone(success);
     delete this;
   }
 
  private:
+  AsyncFetch* async_fetch_;
   DISALLOW_COPY_AND_ASSIGN(BackgroundFetchCheckingAsyncFetch);
 };
 

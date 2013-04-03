@@ -1,6 +1,7 @@
 # nginx_system_test.sh makes a few substitutions to pagespeed_test.conf.template
 # file to generate @@TEST_TMP@@/pagespeed_test.conf
 
+# The cache flush test depends on worker_processes=1.
 worker_processes  1;
 
 # for debugging
@@ -19,6 +20,7 @@ http {
   access_log "@@TEST_TMP@@/access.log";
 
   root "@@SERVER_ROOT@@";
+  pagespeed UsePerVHostStatistics on;
 
   server {
     listen 127.0.0.2:@@SECONDARY_PORT@@;
@@ -31,6 +33,37 @@ http {
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
     pagespeed RespectXForwardedProto on;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name cache_a.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed CacheFlushPollIntervalSec 1;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters inline_css;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name cache_b.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+
+    pagespeed CacheFlushPollIntervalSec 1;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters inline_css;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name cache_c.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed CacheFlushFilename "othercache.flush";
+    pagespeed CacheFlushPollIntervalSec 1;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters inline_css;
   }
 
   server {

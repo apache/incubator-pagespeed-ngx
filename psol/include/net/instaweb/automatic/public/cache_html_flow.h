@@ -88,7 +88,7 @@ class CacheHtmlFlow {
   void Cancel();
 
   // Callback that is invoked after we rewrite the cached html.
-  void CacheHtmlRewriteDone();
+  void CacheHtmlRewriteDone(bool flushed_split_js);
 
   // Serves the cached html content to the client and triggers the proxy fetch
   // for non cacheable content.

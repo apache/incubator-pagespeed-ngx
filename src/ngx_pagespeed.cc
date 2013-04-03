@@ -1249,6 +1249,7 @@ CreateRequestContext::Response ps_create_request_context(
 
     net_instaweb::RewriteOptions* global_options =
         cfg_s->server_context->global_options();
+
     const GoogleString* beacon_url;
     if (ps_is_https(r)) {
       beacon_url = &(global_options->beacon_url().https);
@@ -1452,6 +1453,8 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     return ngx_http_next_body_filter(r, in);
   }
 
+  // Don't need to check for a cache flush; already did in ps_header_filter.
+
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
   if (ctx == NULL) {
@@ -1612,6 +1615,9 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     // Pagespeed is on for some server block but not this one.
     return ngx_http_next_header_filter(r);
   }
+
+  // Poll for cache flush on every request (polls are rate-limited).
+  cfg_s->server_context->FlushCacheIfNecessary();
 
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
@@ -2045,6 +2051,9 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
     // Pagespeed is on for some server block but not this one.
     return NGX_DECLINED;
   }
+
+  // Poll for cache flush on every request (polls are rate-limited).
+  cfg_s->server_context->FlushCacheIfNecessary();
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed handler \"%V\"", &r->uri);

@@ -27,7 +27,6 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
@@ -55,6 +54,7 @@ class MessageHandler;
 class OutputPartitions;
 class ResourceContext;
 class RewriteContext;
+class RewriteDriver;
 class RewriteDomainTransformer;
 class Statistics;
 class UrlSegmentEncoder;
@@ -325,15 +325,7 @@ class CssFilter::Context : public SingleRewriteContext {
   // Determine the appropriate image inlining threshold based upon whether we're
   // in an html file (<style> tag or style= attribute) or in an external css
   // file.
-  int64 ImageInlineMaxBytes() const {
-    if (rewrite_inline_element_ != NULL) {
-      // We're in an html context.
-      return driver_->options()->ImageInlineMaxBytes();
-    } else {
-      // We're in a standalone CSS file.
-      return driver_->options()->CssImageInlineMaxBytes();
-    }
-  }
+  int64 ImageInlineMaxBytes() const;
 
   CssFilter* filter_;
   RewriteDriver* driver_;

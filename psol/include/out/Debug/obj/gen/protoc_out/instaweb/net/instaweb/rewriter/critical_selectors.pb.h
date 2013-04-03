@@ -32,6 +32,7 @@ void protobuf_AssignDesc_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eprot
 void protobuf_ShutdownFile_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eproto();
 
 class CriticalSelectorSet;
+class CriticalSelectorSummarizedCss;
 
 // ===================================================================
 
@@ -123,6 +124,93 @@ class CriticalSelectorSet : public ::google::protobuf::MessageLite {
   void InitAsDefaultInstance();
   static CriticalSelectorSet* default_instance_;
 };
+// -------------------------------------------------------------------
+
+class CriticalSelectorSummarizedCss : public ::google::protobuf::MessageLite {
+ public:
+  CriticalSelectorSummarizedCss();
+  virtual ~CriticalSelectorSummarizedCss();
+  
+  CriticalSelectorSummarizedCss(const CriticalSelectorSummarizedCss& from);
+  
+  inline CriticalSelectorSummarizedCss& operator=(const CriticalSelectorSummarizedCss& from) {
+    CopyFrom(from);
+    return *this;
+  }
+  
+  static const CriticalSelectorSummarizedCss& default_instance();
+  
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  // Returns the internal default instance pointer. This function can
+  // return NULL thus should not be used by the user. This is intended
+  // for Protobuf internal code. Please use default_instance() declared
+  // above instead.
+  static inline const CriticalSelectorSummarizedCss* internal_default_instance() {
+    return default_instance_;
+  }
+  #endif
+  
+  void Swap(CriticalSelectorSummarizedCss* other);
+  
+  // implements Message ----------------------------------------------
+  
+  CriticalSelectorSummarizedCss* New() const;
+  void CheckTypeAndMergeFrom(const ::google::protobuf::MessageLite& from);
+  void CopyFrom(const CriticalSelectorSummarizedCss& from);
+  void MergeFrom(const CriticalSelectorSummarizedCss& from);
+  void Clear();
+  bool IsInitialized() const;
+  
+  int ByteSize() const;
+  bool MergePartialFromCodedStream(
+      ::google::protobuf::io::CodedInputStream* input);
+  void SerializeWithCachedSizes(
+      ::google::protobuf::io::CodedOutputStream* output) const;
+  int GetCachedSize() const { return _cached_size_; }
+  private:
+  void SharedCtor();
+  void SharedDtor();
+  void SetCachedSize(int size) const;
+  public:
+  
+  ::std::string GetTypeName() const;
+  
+  // nested types ----------------------------------------------------
+  
+  // accessors -------------------------------------------------------
+  
+  // optional string content = 1;
+  inline bool has_content() const;
+  inline void clear_content();
+  static const int kContentFieldNumber = 1;
+  inline const ::std::string& content() const;
+  inline void set_content(const ::std::string& value);
+  inline void set_content(const char* value);
+  inline void set_content(const char* value, size_t size);
+  inline ::std::string* mutable_content();
+  inline ::std::string* release_content();
+  
+  // @@protoc_insertion_point(class_scope:net_instaweb.CriticalSelectorSummarizedCss)
+ private:
+  inline void set_has_content();
+  inline void clear_has_content();
+  
+  ::std::string* content_;
+  
+  mutable int _cached_size_;
+  ::google::protobuf::uint32 _has_bits_[(1 + 31) / 32];
+  
+  #ifdef GOOGLE_PROTOBUF_NO_STATIC_INITIALIZER
+  friend void  protobuf_AddDesc_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eproto_impl();
+  #else
+  friend void  protobuf_AddDesc_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eproto();
+  #endif
+  friend void protobuf_AssignDesc_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eproto();
+  friend void protobuf_ShutdownFile_net_2finstaweb_2frewriter_2fcritical_5fselectors_2eproto();
+  
+  void InitAsDefaultInstance();
+  static CriticalSelectorSummarizedCss* default_instance_;
+};
 // ===================================================================
 
 
@@ -172,6 +260,68 @@ CriticalSelectorSet::critical_selectors() const {
 inline ::google::protobuf::RepeatedPtrField< ::std::string>*
 CriticalSelectorSet::mutable_critical_selectors() {
   return &critical_selectors_;
+}
+
+// -------------------------------------------------------------------
+
+// CriticalSelectorSummarizedCss
+
+// optional string content = 1;
+inline bool CriticalSelectorSummarizedCss::has_content() const {
+  return (_has_bits_[0] & 0x00000001u) != 0;
+}
+inline void CriticalSelectorSummarizedCss::set_has_content() {
+  _has_bits_[0] |= 0x00000001u;
+}
+inline void CriticalSelectorSummarizedCss::clear_has_content() {
+  _has_bits_[0] &= ~0x00000001u;
+}
+inline void CriticalSelectorSummarizedCss::clear_content() {
+  if (content_ != &::google::protobuf::internal::kEmptyString) {
+    content_->clear();
+  }
+  clear_has_content();
+}
+inline const ::std::string& CriticalSelectorSummarizedCss::content() const {
+  return *content_;
+}
+inline void CriticalSelectorSummarizedCss::set_content(const ::std::string& value) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(value);
+}
+inline void CriticalSelectorSummarizedCss::set_content(const char* value) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(value);
+}
+inline void CriticalSelectorSummarizedCss::set_content(const char* value, size_t size) {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  content_->assign(reinterpret_cast<const char*>(value), size);
+}
+inline ::std::string* CriticalSelectorSummarizedCss::mutable_content() {
+  set_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    content_ = new ::std::string;
+  }
+  return content_;
+}
+inline ::std::string* CriticalSelectorSummarizedCss::release_content() {
+  clear_has_content();
+  if (content_ == &::google::protobuf::internal::kEmptyString) {
+    return NULL;
+  } else {
+    ::std::string* temp = content_;
+    content_ = const_cast< ::std::string*>(&::google::protobuf::internal::kEmptyString);
+    return temp;
+  }
 }
 
 
