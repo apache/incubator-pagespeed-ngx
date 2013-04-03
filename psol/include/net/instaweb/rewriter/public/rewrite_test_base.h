@@ -59,6 +59,7 @@ class HTTPValue;
 class Hasher;
 class HtmlWriterFilter;
 class LRUCache;
+class LogRecord;
 class MessageHandler;
 class MockScheduler;
 class PropertyCache;
@@ -435,6 +436,9 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   MockUrlFetcher* mock_url_fetcher() {
     return &mock_url_fetcher_;
   }
+  MockUrlFetcher* mock_distributed_fetcher() {
+    return &mock_distributed_fetcher_;
+  }
   Hasher* hasher() { return server_context_->hasher(); }
   DelayCache* delay_cache() { return factory_->delay_cache(); }
   LRUCache* lru_cache() { return factory_->lru_cache(); }
@@ -475,7 +479,9 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   CountingUrlAsyncFetcher* counting_url_async_fetcher() {
     return factory_->counting_url_async_fetcher();
   }
-
+  CountingUrlAsyncFetcher* counting_distributed_fetcher() {
+    return factory_->counting_distributed_async_fetcher();
+  }
   void SetMockHashValue(const GoogleString& value) {
     factory_->mock_hasher()->set_hash_value(value);
   }
@@ -562,7 +568,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   MockPropertyPage* NewMockPage(const StringPiece& key) {
     return new MockPropertyPage(
         server_context_->thread_system(),
-        *server_context_->page_property_cache(),
+        server_context_->page_property_cache(),
         key);
   }
 
@@ -570,7 +576,7 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   MockPropertyPage* NewMockClientPage(const StringPiece& key) {
     return new MockPropertyPage(
         server_context_->thread_system(),
-        *server_context_->client_property_cache(),
+        server_context_->client_property_cache(),
         key);
   }
 
@@ -616,13 +622,21 @@ class RewriteTestBase : public RewriteOptionsTestBase {
   // from the current request context's log record. Thread-safe.
   GoogleString AppliedRewriterStringFromLog();
 
+  // Convenience method for verifying that the rewriter info entries have
+  // expected values.
+  void VerifyRewriterInfoEntry(LogRecord* log_record, const GoogleString& id,
+      int url_index, int rewriter_info_index, int rewriter_info_size,
+      int url_list_size, const GoogleString& url);
+
   // Sets current_user_agent_
   void SetCurrentUserAgent(const StringPiece& user_agent) {
     current_user_agent_ = user_agent;
   }
 
-  // The mock fetcher & stats are global across all Factories used in the tests.
+  // The mock fetchers & stats are global across all Factories used in the
+  // tests.
   MockUrlFetcher mock_url_fetcher_;
+  MockUrlFetcher mock_distributed_fetcher_;
   scoped_ptr<Statistics> statistics_;
 
   // We have two independent RewriteDrivers representing two completely

@@ -48,6 +48,7 @@ class ContentType;
 class CriticalCssFinder;
 class CriticalImagesFinder;
 class CriticalSelectorFinder;
+class DeviceProperties;
 class FileSystem;
 class FilenameEncoder;
 class FlushEarlyInfoFinder;
@@ -259,7 +260,7 @@ class ServerContext {
   }
   void set_flush_early_info_finder(FlushEarlyInfoFinder* finder);
 
-  UserAgentMatcher* user_agent_matcher() {
+  UserAgentMatcher* user_agent_matcher() const {
     return user_agent_matcher_;
   }
   void set_user_agent_matcher(UserAgentMatcher* n) { user_agent_matcher_ = n; }
@@ -585,6 +586,9 @@ class ServerContext {
   // be set to 'false' as that command is intended only for reosurces, not
   // for HTML.
   virtual bool ProxiesHtml() const = 0;
+
+  // Makes a new DeviceProperties.
+  DeviceProperties* NewDeviceProperties();
 
  protected:
   // Takes ownership of the given pool, making sure to clean it up at the

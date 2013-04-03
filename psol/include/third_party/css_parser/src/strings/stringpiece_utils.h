@@ -25,11 +25,15 @@
 #include <vector>
 #include "strings/stringpiece.h"
 
-namespace StringPieceUtils {
+namespace strings {
 
 // removes leading and trailing ascii_isspace() chars. Returns
 // number of chars removed
 int RemoveWhitespaceContext(StringPiece* text);
+
+}  // namespace strings
+
+namespace StringPieceUtils {
 
 // similar to SplitStringUsing (see strings/split.h).
 // this one returns a vector of pieces in the original string thus eliminating

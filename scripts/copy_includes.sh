@@ -58,6 +58,8 @@ rsync -arvz "$MOD_PAGESPEED_SRC/" "psol/include/" --prune-empty-dirs \
   --include="apr_mem_cache.cc" \
   --include="key_value_codec.cc" \
   --include="apr_memcache2.c" \
+  --include="loopback_route_fetcher.cc" \
+  --include="add_headers_fetcher.cc" \
   --exclude='*'
 git add psol/include/
 

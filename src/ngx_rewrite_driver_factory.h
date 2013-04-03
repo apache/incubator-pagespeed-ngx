@@ -29,7 +29,7 @@ extern "C" {
 #include <set>
 
 #include "apr_pools.h"
-#include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 
@@ -52,7 +52,7 @@ class StaticAssetManager;
 class Statistics;
 class SystemCaches;
 
-class NgxRewriteDriverFactory : public RewriteDriverFactory {
+class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
  public:
   static const char kStaticAssetPrefix[];
 
@@ -162,6 +162,14 @@ class NgxRewriteDriverFactory : public RewriteDriverFactory {
   void set_resolver_timeout(ngx_msec_t resolver_timeout) {
     resolver_timeout_ = resolver_timeout == NGX_CONF_UNSET_MSEC ?
         1000 : resolver_timeout;
+  }
+
+  // We use a beacon handler to collect data for critical images,
+  // css, etc., so filters should be configured accordingly.
+  //
+  // TODO(jefftk): move to SystemRewriteDriverFactory
+  virtual bool UseBeaconResultsInFilters() const {
+    return true;
   }
 
  private:

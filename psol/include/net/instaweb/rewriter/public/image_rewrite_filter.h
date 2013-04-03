@@ -208,6 +208,9 @@ class ImageRewriteFilter : public RewriteFilter {
   virtual const RewriteOptions::OptionEnum* RelatedOptions(
       int* num_options) const;
 
+  // Disable all filters listed in kRelatedFilters in options.
+  static void DisableRelatedFilters(RewriteOptions* options);
+
  protected:
   virtual const UrlSegmentEncoder* encoder() const;
 

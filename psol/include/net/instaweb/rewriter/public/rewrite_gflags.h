@@ -49,7 +49,7 @@ class RewriteGflags {
 
   // Determines whether a flag was explicitly set, as opposed to having its
   // default value.
-  bool WasExplicitlySet(const char* name) const;
+  static bool WasExplicitlySet(const char* name);
 
   // Sets the rewrite level/list passed on the specified option names
   // & values.  The flag names are passed in to provide better error

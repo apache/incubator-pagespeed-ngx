@@ -37,6 +37,7 @@ extern "C" {
 
 #include "ngx_base_fetch.h"
 #include "ngx_message_handler.h"
+#include "ngx_request_context.h"
 #include "ngx_rewrite_driver_factory.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_server_context.h"
@@ -285,20 +286,6 @@ typedef struct {
   net_instaweb::NgxRewriteOptions* options;
   net_instaweb::MessageHandler* handler;
 } ps_loc_conf_t;
-
-typedef struct {
-  net_instaweb::ProxyFetch* proxy_fetch;
-  net_instaweb::NgxBaseFetch* base_fetch;
-  net_instaweb::RewriteDriver* driver;
-  bool data_received;
-  int pipe_fd;
-  ngx_connection_t* pagespeed_connection;
-  ngx_http_request_t* r;
-  bool is_resource_fetch;
-  bool sent_headers;
-  bool write_pending;
-  net_instaweb::GzipInflater* inflater_;
-} ps_request_ctx_t;
 
 ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in);
 
@@ -1177,6 +1164,65 @@ bool ps_determine_options(ngx_http_request_t* r,
   return true;
 }
 
+// Fix URL based on X-Forwarded-Proto.
+// http://code.google.com/p/modpagespeed/issues/detail?id=546 For example, if
+// Apache gives us the URL "http://www.example.com/" and there is a header:
+// "X-Forwarded-Proto: https", then we update this base URL to
+// "https://www.example.com/".  This only ever changes the protocol of the url.
+//
+// Returns true if it modified url, false otherwise.
+bool ps_apply_x_forwarded_proto(ngx_http_request_t* r, GoogleString* url) {
+  // First check for an X-Forwarded-Proto header.
+  const ngx_str_t* x_forwarded_proto_header = NULL;
+
+  // Standard nginx idiom for iterating over a list.  See ngx_list.h
+  ngx_uint_t i;
+  ngx_list_part_t* part = &(r->headers_in.headers.part);
+  ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(part->elts);
+
+  for (i = 0 ; /* void */; i++) {
+    if (i >= part->nelts) {
+      if (part->next == NULL) {
+        break;
+      }
+
+      part = part->next;
+      header = static_cast<ngx_table_elt_t*>(part->elts);
+      i = 0;
+    }
+    if (STR_CASE_EQ_LITERAL(header[i].key, "X-Forwarded-Proto")) {
+      x_forwarded_proto_header = &header[i].value;
+      break;
+    }
+  }
+
+  if (x_forwarded_proto_header == NULL) {
+    return false;  // No X-Forwarded-Proto header found.
+  }
+
+  StringPiece x_forwarded_proto
+      = str_to_string_piece(*x_forwarded_proto_header);
+
+  if (!STR_CASE_EQ_LITERAL(*x_forwarded_proto_header, "http") &&
+      !STR_CASE_EQ_LITERAL(*x_forwarded_proto_header, "https")) {
+    LOG(WARNING) << "Unsupported X-Forwarded-Proto: " << x_forwarded_proto
+                 << " for URL " << url << " protocol not changed.";
+    return false;
+  }
+
+  StringPiece url_sp(*url);
+  StringPiece::size_type colon_pos = url_sp.find(":");
+
+  if (colon_pos == StringPiece::npos) {
+    return false;  // URL appears to have no protocol; give up.
+  }
+
+  // Replace URL protocol with that specified in X-Forwarded-Proto.
+  *url = net_instaweb::StrCat(x_forwarded_proto, url_sp.substr(colon_pos));
+
+  return true;
+}
+
 
 // Set us up for processing a request.
 CreateRequestContext::Response ps_create_request_context(
@@ -1209,6 +1255,7 @@ CreateRequestContext::Response ps_create_request_context(
 
     net_instaweb::RewriteOptions* global_options =
         cfg_s->server_context->global_options();
+
     const GoogleString* beacon_url;
     if (ps_is_https(r)) {
       beacon_url = &(global_options->beacon_url().https);
@@ -1268,8 +1315,8 @@ CreateRequestContext::Response ps_create_request_context(
   // the BaseFetch ourselves.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(
       r, file_descriptors[1],
-      net_instaweb::RequestContextPtr(new net_instaweb::RequestContext(
-          cfg_s->server_context->thread_system()->NewMutex())));
+      net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
+          cfg_s->server_context->thread_system()->NewMutex(), ctx)));
 
   // If null, that means use global options.
   net_instaweb::RewriteOptions* custom_options = NULL;
@@ -1295,6 +1342,16 @@ CreateRequestContext::Response ps_create_request_context(
     ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
     ps_release_request_context(ctx);
     return CreateRequestContext::kPagespeedDisabled;
+  }
+
+  if (options->respect_x_forwarded_proto()) {
+    bool modified_url = ps_apply_x_forwarded_proto(r, &url_string);
+    if (modified_url) {
+      url.Reset(url_string);
+      CHECK(url.is_valid()) << "The output of ps_apply_x_forwarded_proto should"
+                            << " always be a valid url because it only changes"
+                            << " the scheme between http and https.";
+    }
   }
 
   // TODO(jefftk): port ProxyInterface::InitiatePropertyCacheLookup so that we
@@ -1329,6 +1386,8 @@ CreateRequestContext::Response ps_create_request_context(
         NULL /* property_callback */,
         NULL /* original_content_fetch */);
   }
+
+
 
   // Set up a cleanup handler on the request.
   ngx_http_cleanup_t* cleanup = ngx_http_cleanup_add(r, 0);
@@ -1399,6 +1458,8 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     // Pagespeed is on for some server block but not this one.
     return ngx_http_next_body_filter(r, in);
   }
+
+  // Don't need to check for a cache flush; already did in ps_header_filter.
 
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
@@ -1560,6 +1621,9 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     // Pagespeed is on for some server block but not this one.
     return ngx_http_next_header_filter(r);
   }
+
+  // Poll for cache flush on every request (polls are rate-limited).
+  cfg_s->server_context->FlushCacheIfNecessary();
 
   ps_request_ctx_t* ctx = ps_get_request_context(r);
 
@@ -1971,11 +2035,12 @@ ps_beacon_handler(ngx_http_request_t* r) {
     user_agent = str_to_string_piece(r->headers_in.user_agent->value);
   }
 
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
   cfg_s->server_context->HandleBeacon(
       str_to_string_piece(r->unparsed_uri),
       user_agent,
-      net_instaweb::RequestContextPtr(new net_instaweb::RequestContext(
-          cfg_s->server_context->thread_system()->NewMutex())));
+      net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
+          cfg_s->server_context->thread_system()->NewMutex(), ctx)));
 
   return NGX_HTTP_NO_CONTENT;
 }
@@ -1992,6 +2057,9 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
     // Pagespeed is on for some server block but not this one.
     return NGX_DECLINED;
   }
+
+  // Poll for cache flush on every request (polls are rate-limited).
+  cfg_s->server_context->FlushCacheIfNecessary();
 
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed handler \"%V\"", &r->uri);
@@ -2019,10 +2087,40 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   CHECK(ctx != NULL);
 
-  // Tell nginx we're still working on this one.
-  r->count++;
-
+  // generic checker will not finalize request
+  // so do not need increase r->count here
   return NGX_DONE;
+}
+
+// preaccess_handler should be at generic phase before try_files
+ngx_int_t ps_preaccess_handler(ngx_http_request_t *r) {
+
+  ngx_http_core_main_conf_t *cmcf;
+  ngx_http_phase_handler_t *ph;
+  ngx_uint_t i;
+
+  cmcf = static_cast<ngx_http_core_main_conf_t *>(
+                    ngx_http_get_module_main_conf(r, ngx_http_core_module));
+
+  ph = cmcf->phase_engine.handlers;
+
+  i = r->phase_handler;
+  // move handlers before try_files && content phase
+  while (ph[i + 1].checker != ngx_http_core_try_files_phase
+      && ph[i + 1].checker != ngx_http_core_content_phase) {
+    ph[i] = ph[i + 1];
+    ph[i].next--;
+    i++;
+  }
+
+  // insert content handler
+  ph[i].checker = ngx_http_core_generic_phase;
+  ph[i].handler = ps_content_handler;
+  ph[i].next = i + 1;
+
+  // next preaccess handler
+  r->phase_handler--;
+  return NGX_DECLINED;
 }
 
 ngx_int_t ps_init(ngx_conf_t* cf) {
@@ -2053,12 +2151,13 @@ ngx_int_t ps_init(ngx_conf_t* cf) {
 
     ngx_http_core_main_conf_t* cmcf = static_cast<ngx_http_core_main_conf_t*>(
         ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module));
+
     ngx_http_handler_pt* h = static_cast<ngx_http_handler_pt*>(
-        ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers));
+        ngx_array_push(&cmcf->phases[NGX_HTTP_PREACCESS_PHASE].handlers));
     if (h == NULL) {
       return NGX_ERROR;
     }
-    *h = ps_content_handler;
+    *h = ps_preaccess_handler;
   }
 
   return NGX_OK;

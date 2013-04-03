@@ -19,6 +19,6 @@
 #define NET_INSTAWEB_UTIL_PUBLIC_DENSE_HASH_SET_H_
 
 #include "google/dense_hash_set"
-using namespace google;
+namespace net_instaweb { using google::dense_hash_set; }
 
 #endif  // NET_INSTAWEB_UTIL_PUBLIC_DENSE_HASH_SET_H_

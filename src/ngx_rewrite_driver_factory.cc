@@ -40,7 +40,6 @@
 #include "net/instaweb/util/public/null_shared_mem.h"
 #include "pthread_shared_mem.h"
 #include "net/instaweb/util/public/shared_circular_buffer.h"
-#include "net/instaweb/util/public/shared_mem_referer_statistics.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/scheduler_thread.h"
 #include "net/instaweb/util/public/slow_worker.h"
@@ -70,7 +69,7 @@ const char kShutdownCount[] = "child_shutdown_count";
 }  // namespace
 
 NgxRewriteDriverFactory::NgxRewriteDriverFactory()
-    : RewriteDriverFactory(new NgxThreadSystem()),
+    : SystemRewriteDriverFactory(new NgxThreadSystem()),
       // TODO(oschaaf): mod_pagespeed ifdefs this:
       shared_mem_runtime_(new ngx::PthreadSharedMem()),
       main_conf_(NULL),
@@ -167,7 +166,9 @@ void NgxRewriteDriverFactory::SetupCaches(ServerContext* server_context) {
 }
 
 RewriteOptions* NgxRewriteDriverFactory::NewRewriteOptions() {
-  return new NgxRewriteOptions();
+  NgxRewriteOptions* options = new NgxRewriteOptions();
+  options->SetRewriteLevel(RewriteOptions::kCoreFilters);
+  return options;
 }
 
 

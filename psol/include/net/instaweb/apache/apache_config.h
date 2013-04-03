@@ -31,15 +31,6 @@ class Hasher;
 // options, either via .htaccess or <Directory>...</Directory>.
 class ApacheConfig : public SystemRewriteOptions {
  public:
-  enum RefererStatisticsOutputLevel {
-    kFast,
-    kSimple,
-    kOrganized,
-  };
-
-  static bool ParseRefererStatisticsOutputLevel(
-      const StringPiece& in, RefererStatisticsOutputLevel* out);
-
   static void Initialize();
   static void Terminate();
 
@@ -59,18 +50,6 @@ class ApacheConfig : public SystemRewriteOptions {
   void set_slurp_flush_limit(int64 x) {
     set_option(x, &slurp_flush_limit_);
   }
-  bool collect_referer_statistics() const {
-    return collect_referer_statistics_.value();
-  }
-  void set_collect_referer_statistics(bool x) {
-    set_option(x, &collect_referer_statistics_);
-  }
-  bool hash_referer_statistics() const {
-    return hash_referer_statistics_.value();
-  }
-  void set_hash_referer_statistics(bool x) {
-    set_option(x, &hash_referer_statistics_);
-  }
   bool slurp_read_only() const {
     return slurp_read_only_.value();
   }
@@ -79,12 +58,6 @@ class ApacheConfig : public SystemRewriteOptions {
   }
   bool rate_limit_background_fetches() const {
     return rate_limit_background_fetches_.value();
-  }
-  RefererStatisticsOutputLevel referer_statistics_output_level() const {
-    return referer_statistics_output_level_.value();
-  }
-  void set_referer_statistics_output_level(RefererStatisticsOutputLevel x) {
-    set_option(x, &referer_statistics_output_level_);
   }
   const GoogleString& slurp_directory() const {
     return slurp_directory_.value();
@@ -135,33 +108,6 @@ class ApacheConfig : public SystemRewriteOptions {
   static const ApacheConfig* DynamicCast(const RewriteOptions* instance);
   static ApacheConfig* DynamicCast(RewriteOptions* instance);
 
- protected:
-  template<class T> class ApacheOption : public OptionTemplateBase<T> {
-   public:
-    ApacheOption() {}
-
-    // Sets value_ from value_string.
-    virtual bool SetFromString(const GoogleString& value_string) {
-      T value;
-      bool success = ApacheConfig::ParseFromString(value_string, &value);
-      if (success) {
-        this->set(value);
-      }
-      return success;
-    }
-
-    virtual GoogleString Signature(const Hasher* hasher) const {
-      return ApacheConfig::OptionSignature(this->value(), hasher);
-    }
-
-    virtual GoogleString ToString() const {
-      return ApacheConfig::ToString(this->value());
-    }
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(ApacheOption);
-  };
-
  private:
   // Keeps the properties added by this subclass.  These are merged into
   // RewriteOptions::all_properties_ during Initialize().
@@ -183,33 +129,11 @@ class ApacheConfig : public SystemRewriteOptions {
   static void AddProperties();
   void Init();
 
-  static bool ParseFromString(const GoogleString& value_string,
-                              RefererStatisticsOutputLevel* value) {
-    return ParseRefererStatisticsOutputLevel(value_string, value);
-  }
-
-  static GoogleString OptionSignature(RefererStatisticsOutputLevel x,
-                                      const Hasher* hasher) {
-    // TODO(sriharis):  This is what we had so far due to implicit cast to int.
-    // Do we need something better now?
-    return IntegerToString(x);
-  }
-
-  static GoogleString ToString(RefererStatisticsOutputLevel x) {
-    // TODO(sriharis):  This is what we had so far due to implicit cast to int.
-    // Do we need something better now?
-    return IntegerToString(x);
-  }
-
   GoogleString description_;
 
   Option<GoogleString> slurp_directory_;
   Option<GoogleString> test_proxy_slurp_;
 
-  ApacheOption<RefererStatisticsOutputLevel> referer_statistics_output_level_;
-
-  Option<bool> collect_referer_statistics_;
-  Option<bool> hash_referer_statistics_;
   Option<bool> slurp_read_only_;
   Option<bool> test_proxy_;
   Option<bool> rate_limit_background_fetches_;

@@ -67,6 +67,7 @@ class FlushEarlyRenderInfo;
 class Function;
 class HtmlFilter;
 class HtmlWriterFilter;
+class LoggingFilter;
 class LogRecord;
 class MessageHandler;
 class OutputResource;
@@ -135,6 +136,8 @@ class RewriteDriver : public HtmlParse {
   // that are computed from the DOM, and thus can, if desired, be rewritten
   // on every HTML request.
   static const char kDomCohort[];
+  // The cohort for properties that are written by the beacon handler.
+  static const char kBeaconCohort[];
 
   // Property Names in DomCohort.
   // Tracks the timestamp when we last received a request for this url.
@@ -1095,6 +1098,9 @@ class RewriteDriver : public HtmlParse {
   // Used by CreateCacheFetcher() and CreateCacheOnlyFetcher().
   CacheUrlAsyncFetcher* CreateCustomCacheFetcher(UrlAsyncFetcher* base_fetcher);
 
+  // Log statistics to the LogRecord.
+  void LogStats();
+
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
   // tag, if one exists.  See
@@ -1280,6 +1286,7 @@ class RewriteDriver : public HtmlParse {
   std::vector<UrlAsyncFetcher*> owned_url_async_fetchers_;
 
   AddInstrumentationFilter* add_instrumentation_filter_;
+  LoggingFilter* logging_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
 
   ScanFilter scan_filter_;

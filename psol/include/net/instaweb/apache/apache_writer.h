@@ -42,7 +42,12 @@ class ApacheWriter : public Writer {
   // headers_out structure.  This must be done before any bytes are flushed.
   //
   // Note: if strip_cokies is set, the cookies will be stripped here.
+  //
+  // If set_content_length was previously called, this will set a
+  // content length to avoid chunked encoding, otherwise it will clear
+  // any content-length specified in the response headers.
   void OutputHeaders(ResponseHeaders* response_headers);
+  void set_content_length(int64 x) { content_length_ = x; }
 
   // Disables mod_expires and mod_headers to allow the headers to
   // be under control of mod_pagespeed.  Default is false.
@@ -61,6 +66,7 @@ class ApacheWriter : public Writer {
   bool headers_out_;
   bool disable_downstream_header_filters_;
   bool strip_cookies_;
+  int64 content_length_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheWriter);
 };

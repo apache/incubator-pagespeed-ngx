@@ -21,7 +21,7 @@
 #ifndef NGX_SERVER_CONTEXT_H_
 #define NGX_SERVER_CONTEXT_H_
 
-#include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/system/public/system_server_context.h"
 
 namespace net_instaweb {
 
@@ -31,7 +31,7 @@ class RewriteStats;
 class SharedMemStatistics;
 class Statistics;
 
-class NgxServerContext : public ServerContext {
+class NgxServerContext : public SystemServerContext {
  public:
   explicit NgxServerContext(NgxRewriteDriverFactory* factory);
   virtual ~NgxServerContext();
@@ -50,6 +50,8 @@ class NgxServerContext : public ServerContext {
   // ::Initialize called on it.
   void CreateLocalStatistics(Statistics* global_statistics);
   static void InitStats(Statistics* statistics);
+  virtual void ApplySessionFetchers(const RequestContextPtr& req,
+                                    RewriteDriver* driver);
   bool initialized() const { return initialized_; }
   GoogleString hostname_identifier() { return hostname_identifier_; }
   void set_hostname_identifier(GoogleString x) { hostname_identifier_ = x; }

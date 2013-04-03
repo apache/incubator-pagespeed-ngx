@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_LAZYLOAD_IMAGES_FILTER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_LAZYLOAD_IMAGES_FILTER_H_
 
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/public/common_filter.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -88,7 +90,7 @@ class LazyloadImagesFilter : public CommonFilter {
   static void Terminate();
 
   // Lazyload filter will be no op for the request if ShouldApply returns false.
-  static bool ShouldApply(RewriteDriver* driver);
+  static RewriterStats::RewriterHtmlStatus ShouldApply(RewriteDriver* driver);
   static GoogleString GetLazyloadJsSnippet(
       const RewriteOptions* options,
       StaticAssetManager* static_asset_manager);

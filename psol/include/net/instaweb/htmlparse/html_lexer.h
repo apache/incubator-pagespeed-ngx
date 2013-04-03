@@ -59,6 +59,17 @@ class HtmlLexer {
   // Determines whether a tag should be terminated in HTML.
   bool IsImplicitlyClosedTag(HtmlName::Keyword keyword) const;
 
+  // Determines whether a tag should be interpreted as a 'literal'
+  // tag. That is, a tag whose contents are not parsed until a
+  // corresponding matching end tag is encountered.
+  static bool IsLiteralTag(HtmlName::Keyword keyword);
+
+  // Determines whether a tag is interpreted as a 'literal' tag in
+  // some user agents. Since some user agents will interpret the
+  // contents of these tags, our lexer never treats them as literal
+  // tags.
+  static bool IsSometimesLiteralTag(HtmlName::Keyword keyword);
+
   // Determines whether a tag can be terminated briefly (e.g. <tag/>)
   bool TagAllowsBriefTermination(HtmlName::Keyword keyword) const;
 

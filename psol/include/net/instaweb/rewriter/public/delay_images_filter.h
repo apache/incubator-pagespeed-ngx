@@ -97,6 +97,8 @@ class DelayImagesFilter : public EmptyHtmlFilter {
 
   virtual const char* Name() const { return "DelayImages"; }
 
+  virtual void DetermineEnabled();
+
   static void InitStats(Statistics* statistics);
   static void Terminate();
 

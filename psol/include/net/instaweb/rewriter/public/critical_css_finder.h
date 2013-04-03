@@ -37,6 +37,7 @@ class CriticalCssFinder {
   static const char kCriticalCssValidCount[];
   static const char kCriticalCssExpiredCount[];
   static const char kCriticalCssNotFoundCount[];
+  static const char kCriticalCssPropertyName[];
 
   explicit CriticalCssFinder(Statistics* stats);
   virtual ~CriticalCssFinder();
@@ -60,8 +61,6 @@ class CriticalCssFinder {
   PropertyValue* GetPropertyValue(RewriteDriver* driver);
 
  private:
-  static const char kCriticalCssPropertyName[];
-
   TimedVariable* critical_css_valid_count_;
   TimedVariable* critical_css_expired_count_;
   TimedVariable* critical_css_not_found_count_;
