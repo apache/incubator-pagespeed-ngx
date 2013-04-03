@@ -166,11 +166,17 @@ void FlushEarlyContentWriterFilter::StartDocument() {
     finder->UpdateFlushEarlyInfoInDriver(driver_);
     FlushEarlyRenderInfo* flush_early_render_info =
         driver_->flush_early_render_info();
-    if (flush_early_render_info != NULL &&
-        flush_early_render_info->private_cacheable_url_size() > 0) {
-      private_cacheable_resources_.reset(new StringSet(
-          flush_early_render_info->private_cacheable_url().begin(),
-          flush_early_render_info->private_cacheable_url().end()));
+    if (flush_early_render_info != NULL) {
+      if (flush_early_render_info->private_cacheable_url_size() > 0) {
+        private_cacheable_resources_.reset(new StringSet(
+            flush_early_render_info->private_cacheable_url().begin(),
+            flush_early_render_info->private_cacheable_url().end()));
+      }
+      if (flush_early_render_info->public_cacheable_url_size() > 0) {
+        public_cacheable_resources_.reset(new StringSet(
+            flush_early_render_info->public_cacheable_url().begin(),
+            flush_early_render_info->public_cacheable_url().end()));
+      }
     }
   }
   FlushEarlyInfo* flush_early_info = driver_->flush_early_info();
@@ -321,9 +327,11 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
             UserAgentMatcher::kPrefetchLinkScriptTag &&
             driver_->options()->flush_more_resources_in_ie_and_firefox() &&
             !defer_javascript_enabled_;
+        FlushEarlyResourceInfo::ResourceType resource_type =
+            GetResourceType(gurl, is_pagespeed_resource);
         if ((prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag ||
              can_flush_js_for_prefetch_link_script_tag) &&
-            IsFlushable(gurl, is_pagespeed_resource) && size > 0) {
+            IsFlushable(gurl, resource_type) && size > 0) {
           // TODO(pulkitg): Add size of private resources also.
           // TODO(pulkitg): Add a mechanism to flush javascript if
           // defer_javascript is enabled and prefetch mechanism is
@@ -334,8 +342,6 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
               is_pagespeed_resource, !in_body_);
           js_resources_info_.push_back(js_info);
         } else {
-          FlushEarlyResourceInfo::ResourceType resource_type =
-              GetResourceType(gurl, is_pagespeed_resource);
           driver_->log_record()->LogFlushEarlyActivity(
               RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
               original_url,
@@ -379,15 +385,15 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
         }
         bool is_pagespeed_resource =
             driver_->server_context()->IsNonStalePagespeedResource(gurl);
+        FlushEarlyResourceInfo::ResourceType resource_type =
+            GetResourceType(gurl, is_pagespeed_resource);
         if (call_flush_resources &&
-            IsFlushable(gurl, is_pagespeed_resource)) {
+            IsFlushable(gurl, resource_type)) {
           StringPiece url(attr->DecodedValueOrNull());
           FlushResources(url, time_to_download, is_pagespeed_resource,
                          category);
           is_flushed = true;
         }
-        FlushEarlyResourceInfo::ResourceType resource_type =
-            GetResourceType(gurl, is_pagespeed_resource);
         RewriterInfo::RewriterApplicationStatus status = is_flushed ?
             RewriterInfo::APPLIED_OK : RewriterInfo::NOT_APPLIED;
         driver_->log_record()->LogFlushEarlyActivity(
@@ -419,6 +425,7 @@ void FlushEarlyContentWriterFilter::Clear() {
   prefetch_mechanism_ = UserAgentMatcher::kPrefetchNotSupported;
   original_writer_ = NULL;
   private_cacheable_resources_.reset(NULL);
+  public_cacheable_resources_.reset(NULL);
   HtmlWriterFilter::Clear();
   time_consumed_ms_ = 0;
   max_available_time_ms_ = 0;
@@ -429,11 +436,12 @@ void FlushEarlyContentWriterFilter::Clear() {
 }
 
 bool FlushEarlyContentWriterFilter::IsFlushable(
-    const GoogleUrl& gurl, bool is_pagespeed_resource) {
-  return is_pagespeed_resource ||
-      (private_cacheable_resources_ != NULL &&
-       private_cacheable_resources_->find(gurl.spec_c_str()) !=
-           private_cacheable_resources_->end());
+    const GoogleUrl& gurl,
+    const FlushEarlyResourceInfo::ResourceType& resource_type) {
+  return resource_type == FlushEarlyResourceInfo::PAGESPEED ||
+      resource_type == FlushEarlyResourceInfo::PRIVATE_CACHEABLE ||
+      (resource_type == FlushEarlyResourceInfo::PUBLIC_CACHEABLE &&
+       !driver_->options()->IsAllowed(gurl.spec_c_str()));
 }
 
 void FlushEarlyContentWriterFilter::FlushResources(
@@ -500,6 +508,11 @@ FlushEarlyContentWriterFilter::GetResourceType(const GoogleUrl& gurl,
       private_cacheable_resources_->find(gurl.spec_c_str()) !=
       private_cacheable_resources_->end()) {
     return FlushEarlyResourceInfo::PRIVATE_CACHEABLE;
+  }
+  if (public_cacheable_resources_ != NULL &&
+      public_cacheable_resources_->find(gurl.spec_c_str()) !=
+      public_cacheable_resources_->end()) {
+    return FlushEarlyResourceInfo::PUBLIC_CACHEABLE;
   }
   return FlushEarlyResourceInfo::NON_PAGESPEED;
 }

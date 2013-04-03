@@ -70,7 +70,8 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   void WriteToOriginalWriter(const GoogleString& in);
 
   // Check whether resource can be flushed or not.
-  bool IsFlushable(const GoogleUrl& gurl, bool is_pagespeed_resource);
+  bool IsFlushable(const GoogleUrl& gurl,
+                   const FlushEarlyResourceInfo::ResourceType& resource_type);
 
   // Flush the resource and update time_consumed_ms_ based on time_to_download.
   void FlushResources(
@@ -96,6 +97,7 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
   HtmlElement* current_element_;
   UserAgentMatcher::PrefetchMechanism prefetch_mechanism_;
   scoped_ptr<StringSet> private_cacheable_resources_;
+  scoped_ptr<StringSet> public_cacheable_resources_;
   int64 time_consumed_ms_;
   int64 max_available_time_ms_;
   typedef std::list<ResourceInfo*> ResourceInfoList;

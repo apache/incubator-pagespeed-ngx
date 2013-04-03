@@ -187,6 +187,7 @@ message FlushEarlyResourceInfo {
     NON_PAGESPEED = 2;
     PRIVATE_CACHEABLE = 3;
     DEFERJS_SCRIPT = 4;
+    PUBLIC_CACHEABLE = 5;
   }
 
   enum ContentType {

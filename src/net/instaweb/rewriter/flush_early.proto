@@ -81,7 +81,7 @@ message FlushEarlyInfo {
 
 // FlushEarlyRenderInfo stores information for flushing a request early i.e.
 // before receiving a response form the origin server.
-// NextId: 4
+// NextId: 5
 message FlushEarlyRenderInfo {
   // Url of privately cacheable resources.
   repeated string private_cacheable_url = 1;
@@ -91,4 +91,7 @@ message FlushEarlyRenderInfo {
 
   // This is a marker in property cache stating if the entry was ever updated.
   optional bool updated = 3;
+
+  // Url of public cacheable resources.
+  repeated string public_cacheable_url = 4;
 }

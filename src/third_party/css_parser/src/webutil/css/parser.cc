@@ -63,6 +63,7 @@ const int Parser::kMaxErrorsRemembered;
 class Tracer {  // in opt mode, do nothing.
  public:
   Tracer(const char* name, const Parser* parser) { }
+  ~Tracer() { }
 };
 
 
