@@ -35,8 +35,10 @@ class CustomRewriteTestBase : public RewriteTestBase {
  public:
   class CustomTestRewriteDriverFactory : public TestRewriteDriverFactory {
    public:
-    explicit CustomTestRewriteDriverFactory(MockUrlFetcher* url_fetcher)
-        : TestRewriteDriverFactory(GTestTempDir(), url_fetcher) {
+    explicit CustomTestRewriteDriverFactory(MockUrlFetcher* url_fetcher,
+                                            MockUrlFetcher* distributed_fetcher)
+        : TestRewriteDriverFactory(GTestTempDir(), url_fetcher,
+                                   distributed_fetcher) {
       InitializeDefaultOptions();
     }
 
@@ -45,7 +47,9 @@ class CustomRewriteTestBase : public RewriteTestBase {
     }
   };
 
-  CustomRewriteTestBase() : RewriteTestBase(MakeFactories(&mock_url_fetcher_)) {
+  CustomRewriteTestBase()
+      : RewriteTestBase(MakeFactories(&mock_url_fetcher_,
+                                      &mock_distributed_fetcher_)) {
   }
 
   virtual ~CustomRewriteTestBase() {
@@ -53,7 +57,8 @@ class CustomRewriteTestBase : public RewriteTestBase {
   }
 
   virtual TestRewriteDriverFactory* MakeTestFactory() {
-    return new CustomTestRewriteDriverFactory(&mock_url_fetcher_);
+    return new CustomTestRewriteDriverFactory(&mock_url_fetcher_,
+                                              &mock_distributed_fetcher_);
   }
 
   static void SetUpTestCase() {
@@ -66,11 +71,15 @@ class CustomRewriteTestBase : public RewriteTestBase {
   // We must call the static Initialize method on the options class before
   // we construct a factory, which will 'new' the OptionsClass.
   static std::pair<TestRewriteDriverFactory*, TestRewriteDriverFactory*>
-      MakeFactories(MockUrlFetcher* mock_fetcher) {
+      MakeFactories(MockUrlFetcher* mock_fetcher,
+                    MockUrlFetcher* mock_distributed_fetcher) {
     OptionsClass::Initialize();
 
-    return make_pair(new CustomTestRewriteDriverFactory(mock_fetcher),
-                     new CustomTestRewriteDriverFactory(mock_fetcher));
+    return make_pair(
+        new CustomTestRewriteDriverFactory(mock_fetcher,
+                                           mock_distributed_fetcher),
+        new CustomTestRewriteDriverFactory(mock_fetcher,
+                                           mock_distributed_fetcher));
   }
 };
 

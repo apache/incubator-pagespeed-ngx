@@ -47,6 +47,12 @@ enum Encoding {
 void DataUrl(const ContentType& content_type, const Encoding encoding,
              const StringPiece& content, GoogleString* result);
 
+// Determine if the given URL is a data: URL. Cheaper than ParseDataUrl.
+bool IsDataUrl(const StringPiece url);
+
+// Determine if the given URL is a data:image URL (aka an inlined image).
+bool IsDataImageUrl(const StringPiece url);
+
 // Dismantle a data: url into its component pieces, but do not decode the
 // content.  Note that encoded_content will be a substring of the input url and
 // shares its lifetime.  Invalidates all outputs if url does not parse.

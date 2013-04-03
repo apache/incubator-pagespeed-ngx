@@ -21,6 +21,7 @@
 
 #include <cstddef>
 
+#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
@@ -70,6 +71,25 @@ struct CaseFold {
 
   static bool Compare(const StringPiece& a, const StringPiece& b) {
     return StringCaseCompare(a, b) < 0;
+  }
+};
+
+// Functors for constructing case-insensitive and case-sensitive hash-tables.
+struct CasePreserveStringHash {
+  size_t operator()(const GoogleString& str) const {
+    return HashString<CasePreserve, size_t>(str.data(), str.size());
+  }
+};
+
+struct CaseFoldStringHash {
+  size_t operator()(const GoogleString& str) const {
+    return HashString<CaseFold, size_t>(str.data(), str.size());
+  }
+};
+
+struct CaseFoldStringEqual {
+  bool operator()(const GoogleString& a, const GoogleString& b) const {
+    return MemCaseEqual(a.data(), a.size(), b.data(), b.size());
   }
 };
 

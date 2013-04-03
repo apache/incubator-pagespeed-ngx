@@ -22,6 +22,7 @@
 #include <map>
 #include <vector>
 
+#include "net/instaweb/rewriter/public/script_tag_scanner.h"
 #include "net/instaweb/rewriter/public/suppress_prehead_filter.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/json.h"
@@ -59,7 +60,6 @@ typedef std::map<GoogleString, XpathUnits*> XpathMap;
 class SplitHtmlFilter : public SuppressPreheadFilter {
  public:
   static const char kSplitInit[];
-  static const char kPagespeedFunc[];
   static const char kSplitSuffixJsFormatString[];
 
   explicit SplitHtmlFilter(RewriteDriver* rewrite_driver);
@@ -166,10 +166,11 @@ class SplitHtmlFilter : public SuppressPreheadFilter {
   bool script_written_;
   bool flush_head_enabled_;
   bool disable_filter_;
-  bool send_lazyload_script_;
+  bool inside_pagespeed_no_defer_script_;
   int num_low_res_images_inlined_;
   HtmlElement* current_panel_parent_element_;
   StaticAssetManager* static_asset_manager_;  // Owned by rewrite_driver_.
+  ScriptTagScanner script_tag_scanner_;
 
   DISALLOW_COPY_AND_ASSIGN(SplitHtmlFilter);
 };

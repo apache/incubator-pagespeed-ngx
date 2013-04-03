@@ -49,6 +49,7 @@ class StaticAssetManager {
     kBlankGif,
     kBlinkJs,
     kClientDomainRewriter,
+    kCriticalCssBeaconJs,
     kCriticalImagesBeaconJs,
     kDeferIframe,
     kDeferJs,

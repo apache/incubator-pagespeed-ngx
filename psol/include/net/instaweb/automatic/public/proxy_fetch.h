@@ -129,7 +129,7 @@ class ProxyFetchPropertyCallback : public PropertyPage {
   };
 
   ProxyFetchPropertyCallback(CacheType cache_type,
-                             const PropertyCache& property_cache,
+                             PropertyCache* property_cache,
                              const StringPiece& key,
                              UserAgentMatcher::DeviceType device_type,
                              ProxyFetchPropertyCallbackCollector* collector,

@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_HTTP_PUBLIC_LOG_RECORD_H_
 #define NET_INSTAWEB_HTTP_PUBLIC_LOG_RECORD_H_
 
+#include <map>
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -82,6 +83,17 @@ class LogRecord  {
       const char* rewriter_id, const GoogleString& url,
       RewriterInfo::RewriterApplicationStatus status);
 
+  // Log the HTML level status for a filter.  This should be called only once
+  // per filter, at the point where it is determined the filter is either
+  // active or not.
+  void LogRewriterHtmlStatus(const char* rewriter_id,
+                             RewriterStats::RewriterHtmlStatus status);
+
+  // Log the status of a rewriter application on a resource.
+  // TODO(gee): I'd really prefer rewriter_id was an enum.
+  void LogRewriterApplicationStatus(
+      const char* rewriter_id, RewriterInfo::RewriterApplicationStatus status);
+
   // Return the LoggingInfo proto wrapped by this class. Calling code must
   // guard any reads and writes to this using mutex().
   virtual LoggingInfo* logging_info();
@@ -130,6 +142,16 @@ class LogRecord  {
   // Override SetCacheHtmlInfoImpl if necessary.
   void SetCacheHtmlLoggingInfo(const GoogleString& user_agent);
 
+  // Log a RewriterInfo for the flush early filter.
+  void LogFlushEarlyActivity(
+      const char* id,
+      const GoogleString& url,
+      RewriterInfo::RewriterApplicationStatus status,
+      FlushEarlyResourceInfo::ContentType content_type,
+      FlushEarlyResourceInfo::ResourceType resource_type,
+      bool is_bandwidth_affected,
+      bool in_head);
+
   // Log a RewriterInfo for the image rewrite filter.
   void LogImageRewriteActivity(
       const char* id,
@@ -141,9 +163,8 @@ class LogRecord  {
       bool low_res_src_inserted,
       int low_res_data_size);
 
-  void LogJsDisableFilter(const char* id,
-                          RewriterInfo::RewriterApplicationStatus status,
-                          bool has_pagespeed_no_defer);
+  // TODO(gee): Change the callsites.
+  void LogJsDisableFilter(const char* id, bool has_pagespeed_no_defer);
 
   void LogLazyloadFilter(const char* id,
                          RewriterInfo::RewriterApplicationStatus status,
@@ -164,6 +185,37 @@ class LogRecord  {
   // Sets whether urls should be logged. This could potentially generate a lot
   // of logs data, so this should be switched on only for debugging.
   void SetAllowLoggingUrls(bool allow_logging_urls);
+
+  // Sets whether URL indices should be logged for every rewriter application
+  // or not.
+  void SetLogUrlIndices(bool log_url_indices);
+
+  // Sets the number of critical images in HTML.
+  void SetNumHtmlCriticalImages(int num_html_critical_images);
+
+  // Sets the number of critical images in CSS.
+  void SetNumCssCriticalImages(int num_css_critical_images);
+
+  // Sets image related statistics.
+  void SetImageStats(int num_img_tags, int num_inlined_img_tags);
+
+  // Sets critical CSS related byte counts (all uncompressed).
+  void SetCriticalCssInfo(int critical_inlined_bytes,
+                          int original_external_bytes,
+                          int overhead_bytes);
+
+  // Log information related to the user agent and device making the request.
+  void LogDeviceInfo(
+      int device_type,
+      bool supports_image_inlining,
+      bool supports_lazyload_images,
+      bool supports_critical_images_beacon,
+      bool supports_deferjs,
+      bool supports_webp,
+      bool supports_webplossless_alpha,
+      bool is_bot,
+      bool supports_split_html,
+      bool can_preload_resources);
 
  protected:
   // Non-initializing default constructor for subclasses. Subclasses that invoke
@@ -190,6 +242,10 @@ class LogRecord  {
   void PopulateUrl(
       const GoogleString& url, RewriteResourceInfo* rewrite_resource_info);
 
+  // Fill LoggingInfo proto with information collected from LogRewriterStatus
+  // and LogRewrite.
+  void PopulateRewriterStatusCounts();
+
   scoped_ptr<LoggingInfo> logging_info_;
 
   // Thus must be set. Implementation constructors must minimally default this
@@ -202,8 +258,23 @@ class LogRecord  {
   // Allow urls to be logged.
   bool allow_logging_urls_;
 
+  // Allow url indices to be logged.
+  bool log_url_indices_;
+
   // Map which maintains the url to index for logging urls.
   StringIntMap url_index_map_;
+
+  // Stats collected from calls to LogRewrite.
+  struct RewriterStatsInternal {
+    RewriterStats::RewriterHtmlStatus html_status;
+
+    // RewriteInfo::RewriterApplicationStatus -> count.
+    std::map<int, int> status_counts;
+
+    RewriterStatsInternal() : html_status(RewriterStats::UNKNOWN_STATUS) {}
+  };
+  typedef std::map<GoogleString, RewriterStatsInternal> RewriterStatsMap;
+  RewriterStatsMap rewriter_stats_;
 
   DISALLOW_COPY_AND_ASSIGN(LogRecord);
 };

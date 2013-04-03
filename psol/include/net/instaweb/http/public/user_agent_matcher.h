@@ -20,6 +20,7 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/re2.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "third_party/instaweb/util/fast_wildcard_group.h"
@@ -84,6 +85,7 @@ class UserAgentMatcher {
   bool IsIe9(const StringPiece& user_agent) const;
 
   virtual bool SupportsImageInlining(const StringPiece& user_agent) const;
+  bool SupportsLazyloadImages(StringPiece user_agent) const;
 
   // Returns the request type for the given request. The return type currently
   // supports desktop, mobile and not supported.
@@ -94,7 +96,13 @@ class UserAgentMatcher {
   PrefetchMechanism GetPrefetchMechanism(const StringPiece& user_agent) const;
 
   // Returns the DeviceType for the given user agent string.
-  DeviceType GetDeviceTypeForUA(const StringPiece& user_agent) const;
+  virtual DeviceType GetDeviceTypeForUA(const StringPiece& user_agent) const;
+
+  // Returns the DeviceType using the given user agent string and request
+  // headers.
+  virtual DeviceType GetDeviceTypeForUAAndHeaders(
+      const StringPiece& user_agent,
+      const RequestHeaders* request_headers) const;
 
   // Returns the suffix for the given device_type.
   static StringPiece DeviceTypeSuffix(DeviceType device_type);
@@ -109,11 +117,6 @@ class UserAgentMatcher {
   // Refer: http://blogs.msdn.com/b/ie/archive/2011/03/17/internet-explorer-9-network-performance-improvements.aspx NOLINT
   bool SupportsDnsPrefetchUsingRelPrefetch(const StringPiece& user_agent) const;
   bool SupportsDnsPrefetch(const StringPiece& user_agent) const;
-
-  virtual bool IsMobileUserAgent(const StringPiece& user_agent) const;
-  virtual bool IsMobileRequest(
-      const StringPiece& user_agent,
-      const RequestHeaders* request_headers) const;
 
   virtual bool IsAndroidUserAgent(const StringPiece& user_agent) const;
 
@@ -135,6 +138,7 @@ class UserAgentMatcher {
 
  private:
   FastWildcardGroup supports_image_inlining_;
+  FastWildcardGroup supports_lazyload_images_;
   FastWildcardGroup blink_desktop_whitelist_;
   FastWildcardGroup blink_desktop_blacklist_;
   FastWildcardGroup blink_mobile_whitelist_;
@@ -147,8 +151,8 @@ class UserAgentMatcher {
   FastWildcardGroup supports_dns_prefetch_;
 
   const RE2 chrome_version_pattern_;
+  scoped_ptr<RE2> known_devices_pattern_;
   mutable map <GoogleString, pair<int, int> > screen_dimensions_map_;
-  GoogleString known_devices_pattern_;
 
   DISALLOW_COPY_AND_ASSIGN(UserAgentMatcher);
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2013 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-// Author: jmaessen@google.com (Jan Maessen)
+// Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_DENSE_HASH_SET_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_DENSE_HASH_SET_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_DENSE_HASH_MAP_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_DENSE_HASH_MAP_H_
 
-#include "google/dense_hash_set"
-namespace net_instaweb { using google::dense_hash_set; }
+#include "google/dense_hash_map"
+namespace net_instaweb { using google::dense_hash_map; }
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_DENSE_HASH_SET_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_DENSE_HASH_MAP_H_

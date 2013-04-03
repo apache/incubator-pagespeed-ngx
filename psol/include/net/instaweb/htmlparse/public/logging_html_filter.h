@@ -33,6 +33,8 @@
 //   NUM_DIRECTIVES      - directives
 //   NUM_DOCUMENTS       - started documents
 //   NUM_IE_DIRECTIVES   - ie directives
+//   NUM_IMG_TAGS        - Number of IMG tags.
+//   NUM_INLINED_IMG_TAGS - Number of IMG tags which have inlined data.
 // Reporting:
 //     We report this information via a StatisticsLog: filter.ToString(log)
 //     Two sets of statistics (eg before and after processing) can be
@@ -72,6 +74,8 @@ class LoggingFilter : public EmptyHtmlFilter {
     NUM_DIRECTIVES,
     NUM_DOCUMENTS,
     NUM_IE_DIRECTIVES,
+    NUM_IMG_TAGS,
+    NUM_INLINED_IMG_TAGS,
     MAX_STAT
   };
 
@@ -96,6 +100,9 @@ class LoggingFilter : public EmptyHtmlFilter {
 
   // Report all statistics
   void LogStatistics(StatisticsLog *statistics_log) const;
+
+  int num_img_tags() const { return stats_[NUM_IMG_TAGS]; }
+  int num_inlined_img_tags() const { return stats_[NUM_INLINED_IMG_TAGS]; }
 
   void Reset();
 

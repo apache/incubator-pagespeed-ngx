@@ -22,6 +22,7 @@
 #include <set>
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -48,7 +49,6 @@ class RewriteOptions;
 class SerfUrlAsyncFetcher;
 class ServerContext;
 class SharedCircularBuffer;
-class SharedMemRefererStatistics;
 class SharedMemStatistics;
 class SlowWorker;
 class StaticAssetManager;
@@ -61,7 +61,7 @@ class UrlPollableAsyncFetcher;
 class Writer;
 
 // Creates an Apache RewriteDriver.
-class ApacheRewriteDriverFactory : public RewriteDriverFactory {
+class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
  public:
   // Path prefix where we serve static assets (primarily images and js
   // resources) needed by some filters.
@@ -83,9 +83,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
-  }
-  SharedMemRefererStatistics* shared_mem_referer_statistics() const {
-    return shared_mem_referer_statistics_.get();
   }
   // Give access to apache_message_handler_ for the cases we need
   // to use ApacheMessageHandler rather than MessageHandler.
@@ -118,8 +115,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   bool is_root_process() const { return is_root_process_; }
   void RootInit();
   void ChildInit();
-
-  void DumpRefererStatistics(Writer* writer);
 
   // Build global shared-memory statistics.  This is invoked if at least
   // one server context (global or VirtualHost) enables statistics.
@@ -215,6 +210,12 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   SystemCaches* caches() { return caches_.get(); }
 
+  // mod_pagespeed uses a beacon handler to collect data for critical images,
+  // css, etc., so filters should be configured accordingly.
+  virtual bool UseBeaconResultsInFilters() const {
+    return true;
+  }
+
   // Finds a fetcher for the settings in this config, sharing with
   // existing fetchers if possible, otherwise making a new one (and
   // its required thread).
@@ -283,9 +284,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // ApacheHtmlParseMessageHandler. is_root is true if this is invoked from
   // root (ie. parent) process.
   void SharedCircularBufferInit(bool is_root);
-  // Initialize shared_mem_referer_statistics_; is_root should be true if this
-  // is invoked from the root (i.e. parent) process
-  void SharedMemRefererStatisticsInit(bool is_root);
 
   // Release all the resources. It also calls the base class ShutDown to release
   // the base class resources.
@@ -326,8 +324,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   bool fetch_with_gzip_;
   bool track_original_content_length_;
   bool list_outstanding_urls_on_error_;
-
-  scoped_ptr<SharedMemRefererStatistics> shared_mem_referer_statistics_;
 
   // hostname_identifier_ equals to "server_hostname:port" of Apache,
   // it's used to distinguish the name of shared memory,

@@ -137,10 +137,8 @@ class RewriteDriverFactory {
   // been called.
   void set_base_url_fetcher(UrlFetcher* url_fetcher);
   void set_base_url_async_fetcher(UrlAsyncFetcher* url_fetcher);
-
-  // Takes ownership of fetcher. This should only be called once.
-  void SetDistributedAsyncFetcher(UrlAsyncFetcher* fetcher);
-
+  // Takes ownership of distributed_fetcher.
+  void set_base_distributed_async_fetcher(UrlAsyncFetcher* distributed_fetcher);
   bool set_filename_prefix(StringPiece p);
 
   // Determines whether Slurping is enabled.
@@ -166,12 +164,13 @@ class RewriteDriverFactory {
   Scheduler* scheduler();
   UsageDataReporter* usage_data_reporter();
 
-  // Computes URL fetchers using the based fetcher, and optionally,
+  // Computes URL fetchers using the base fetcher, and optionally,
   // slurp_directory and slurp_read_only.  These are not thread-safe;
   // they must be called once prior to spawning threads, e.g. via
   // CreateServerContext.
   virtual UrlFetcher* ComputeUrlFetcher();
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
+  virtual UrlAsyncFetcher* ComputeDistributedFetcher();
 
   // Threadsafe mechanism to create a managed ServerContext.  The
   // ServerContext is owned by the factory, and should not be
@@ -191,6 +190,11 @@ class RewriteDriverFactory {
   // set_http_cache, set_metadata_cache, set_filesystem_metadata_cache, and
   // MakePropertyCaches.
   virtual void SetupCaches(ServerContext* server_context) = 0;
+
+  // Returns true if this platform uses beacon-based measurements to make
+  // run-time decisions.  This is used to determine how to configure various
+  // beacon-based filters.
+  virtual bool UseBeaconResultsInFilters() const = 0;
 
   // Provides an optional hook for adding rewrite passes to the HTML filter
   // chain.  This should be used for filters that are specific to a particular
@@ -285,6 +289,22 @@ class RewriteDriverFactory {
   // a specific furious experiment.
   virtual FuriousMatcher* NewFuriousMatcher();
 
+  // Returns the preferred webp image quality vector for client options.
+  const std::vector<int>* preferred_webp_qualities() {
+    return &preferred_webp_qualities_;
+  }
+
+  // Returns the preferred jpeg image quality vector for client options.
+  const std::vector<int>* preferred_jpeg_qualities() {
+    return &preferred_jpeg_qualities_;
+  }
+
+  // Returns true if the correct number of WebP qualities are parsed and set.
+  bool SetPreferredWebpQualities(const StringPiece& qualities);
+
+  // Returns true if the correct number of JPEG qualities are parsed and set.
+  bool SetPreferredJpegQualities(const StringPiece& qualities);
+
  protected:
   bool FetchersComputed() const;
   virtual void StopCacheActivity();
@@ -310,6 +330,8 @@ class RewriteDriverFactory {
   // Creates a new ServerContext* object.  ServerContexst itself must be
   // overridden per Factory as it has at least one pure virtual method.
   virtual ServerContext* NewServerContext() = 0;
+
+  virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher() { return NULL; }
 
   virtual CriticalCssFinder* DefaultCriticalCssFinder();
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
@@ -384,6 +406,7 @@ class RewriteDriverFactory {
   UrlAsyncFetcher* distributed_async_fetcher_;
   scoped_ptr<UrlFetcher> base_url_fetcher_;
   scoped_ptr<UrlAsyncFetcher> base_url_async_fetcher_;
+  scoped_ptr<UrlAsyncFetcher> base_distributed_async_fetcher_;
   scoped_ptr<Hasher> hasher_;
   scoped_ptr<FilenameEncoder> filename_encoder_;
   scoped_ptr<UrlNamer> url_namer_;
@@ -436,6 +459,13 @@ class RewriteDriverFactory {
 
   // The hostname we're running on. Used to set the same field in ServerContext.
   GoogleString hostname_;
+
+  // Image qualities used for client options.
+  // Each vector contains 5 integers used as recompression qualities for
+  // quality preference and screen resolution combinations.
+  // Note that the default values cannot be changed in Apache currently.
+  std::vector<int> preferred_webp_qualities_;
+  std::vector<int> preferred_jpeg_qualities_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };
