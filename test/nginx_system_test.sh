@@ -335,4 +335,23 @@ fetch_until $URL 'grep -c document\.write(\"External' 1
 # Check that the image was optimized.
 fetch_until $URL 'grep -c BikeCrashIcn\.png\.pagespeed\.' 2
 
+# When Cache-Control: no-transform is in the response make sure that
+# the URL is not rewritten and that the no-transform header remains
+# in the resource.
+start_test HonorNoTransform cache-control: no-transform
+WGET_ARGS="--header=X-PSA-Blocking-Rewrite:psatest"
+WGET_ARGS+=" --header=Host:notransform.example.com"
+URL="$SECONDARY_HOSTNAME/mod_pagespeed_test/no_transform/image.html"
+FETCHED=$OUTDIR/output
+wget -O - $URL $WGET_ARGS > $FETCHED
+sleep .1  # Give pagespeed time to transform the image if it's going to.
+wget -O - $URL $WGET_ARGS > $FETCHED
+# Make sure that the URLs in the html are not rewritten
+check_not fgrep -q '.pagespeed.' $FETCHED
+URL="$SECONDARY_HOSTNAME/mod_pagespeed_test/no_transform/BikeCrashIcn.png"
+wget -O - -S $URL $WGET_ARGS &> $FETCHED
+# Make sure that the no-transfrom header is still there
+check grep -q 'Cache-Control:.*no-transform' $FETCHED
+WGET_ARGS=""
+
 check_failures_and_exit
