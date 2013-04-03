@@ -100,11 +100,11 @@ void RecordingFetch::HandleHeadersComplete() {
     // Save the headers, and wait to finalize them in HandleDone().
     saved_headers_.CopyFrom(*response_headers());
     if (streaming_) {
-      base_fetch()->HeadersComplete();
+      SharedAsyncFetch::HandleHeadersComplete();
     }
   } else {
     FreeDriver();
-    base_fetch()->HeadersComplete();
+    SharedAsyncFetch::HandleHeadersComplete();
   }
 }
 
@@ -123,7 +123,7 @@ bool RecordingFetch::HandleWrite(const StringPiece& content,
                                  MessageHandler* handler) {
   bool result = true;
   if (streaming_) {
-    result = base_fetch()->Write(content, handler);
+    result = SharedAsyncFetch::HandleWrite(content, handler);
   }
   if (can_in_place_rewrite_) {
     if (cache_value_writer_.CanCacheContent(content)) {
@@ -138,11 +138,12 @@ bool RecordingFetch::HandleWrite(const StringPiece& content,
         // We need to start streaming now so write out what we've cached so far.
         streaming_ = true;
         in_place_oversized_opt_stream_->Add(1);
-        base_fetch()->HeadersComplete();
         StringPiece cache_contents;
         cache_value_.ExtractContents(&cache_contents);
-        base_fetch()->Write(cache_contents, handler);
-        base_fetch()->Write(content, handler);
+        set_content_length(cache_contents.size() + content.size());
+        SharedAsyncFetch::HandleHeadersComplete();
+        SharedAsyncFetch::HandleWrite(cache_contents, handler);
+        SharedAsyncFetch::HandleWrite(content, handler);
       }
       FreeDriver();
     }
@@ -152,7 +153,7 @@ bool RecordingFetch::HandleWrite(const StringPiece& content,
 
 bool RecordingFetch::HandleFlush(MessageHandler* handler) {
   if (streaming_) {
-    return base_fetch()->Flush(handler);
+    return SharedAsyncFetch::HandleFlush(handler);
   }
   return true;
 }
@@ -174,7 +175,7 @@ void RecordingFetch::HandleDone(bool success) {
   }
 
   if (streaming_) {
-    base_fetch()->Done(success);
+    SharedAsyncFetch::HandleDone(success);
   }
 
   if (success && can_in_place_rewrite_) {

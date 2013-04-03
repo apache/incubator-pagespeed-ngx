@@ -463,3 +463,10 @@ function scrape_stat {
 function scrape_content_length {
   grep 'Content-Length' | awk '{print $2}' | tr -d '\r'
 }
+
+# Pulls the headers out of a 'wget --save-headers' dump.
+function extract_headers {
+  carriage_return=$(printf "\r")
+  last_line_number=$(grep --text -n \^${carriage_return}\$ $1 | cut -f1 -d:)
+  head --lines=$last_line_number "$1"
+}

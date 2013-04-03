@@ -100,13 +100,13 @@ class CachePutFetch : public SharedAsyncFetch {
       saved_headers_.CopyFrom(*headers);
     }
 
-    base_fetch()->HeadersComplete();
+    SharedAsyncFetch::HandleHeadersComplete();
   }
 
   virtual bool HandleWrite(const StringPiece& content,
                            MessageHandler* handler) {
     bool ret = true;
-    ret &= base_fetch()->Write(content, handler);
+    ret &= SharedAsyncFetch::HandleWrite(content, handler);
     if (cacheable_) {
       ret &= cache_value_writer_.Write(content, handler);
     }
@@ -115,7 +115,7 @@ class CachePutFetch : public SharedAsyncFetch {
 
   virtual bool HandleFlush(MessageHandler* handler) {
     // Note cache_value_.Flush doesn't do anything.
-    return base_fetch()->Flush(handler);
+    return SharedAsyncFetch::HandleFlush(handler);
   }
 
   virtual void HandleDone(bool success) {
@@ -139,11 +139,11 @@ class CachePutFetch : public SharedAsyncFetch {
       cache_value_writer_.SetHeaders(&saved_headers_);
     } else {
       // Set is_original_resource_cacheable.
-      base_fetch()->log_record()->SetIsOriginalResourceCacheable(false);
+      log_record()->SetIsOriginalResourceCacheable(false);
     }
 
     // Finish fetch.
-    base_fetch()->Done(success);
+    SharedAsyncFetch::HandleDone(success);
     // Add result to cache.
     if (insert_into_cache) {
       cache_->Put(url_, &cache_value_, handler_);
@@ -152,6 +152,7 @@ class CachePutFetch : public SharedAsyncFetch {
   }
 
  private:
+  AsyncFetch* base_fetch_;
   const GoogleString url_;
   bool respect_vary_;
   bool default_cache_html_;

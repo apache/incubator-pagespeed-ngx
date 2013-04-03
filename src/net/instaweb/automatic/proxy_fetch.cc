@@ -442,6 +442,7 @@ ProxyFetch::ProxyFetch(
       idle_alarm_(NULL),
       factory_(factory),
       prepare_success_(false) {
+  driver_->SetWriter(async_fetch);
   set_request_headers(async_fetch->request_headers());
   set_response_headers(async_fetch->response_headers());
 
@@ -490,8 +491,6 @@ ProxyFetch::~ProxyFetch() {
 }
 
 bool ProxyFetch::StartParse() {
-  driver_->SetWriter(base_fetch());
-
   // The response headers get munged between when we initially determine
   // which rewrite options we need (in proxy_interface.cc) and here.
   // Therefore, we can not set the Set-Cookie header there, and must
@@ -562,6 +561,18 @@ void ProxyFetch::HandleHeadersComplete() {
       response_headers()->ComputeCaching();
     }
   }
+
+  // We do not call SharedAsyncFetch::HandleHeadersComplete() because
+  // we are going to defer propagating headers to the HTTP server
+  // infrastructure until we have seen some content.  For example if
+  // we may not add a X-PageSpeed header if we don't sniff HTML.
+  //
+  // Another reason is convert_meta_tags, in which we alter HTTP response
+  // headers based on HTML meta-tags.
+  //
+  // However we want to propagate whether the content size is known to
+  // the base fetch.
+  PropagateContentLength();
 }
 
 void ProxyFetch::AddPagespeedHeader() {
@@ -604,7 +615,7 @@ void ProxyFetch::SetupForHtml() {
       // When testing, wait a little here for unit tests to make sure
       // we don't race ahead & run filters while we are still cleaning
       // up headers.  When this particular bug is fixed,
-      // HeadersComplete will *not* be called on base_fetch() until
+      // HeadersComplete will *not* be called on async_fetch_ until
       // after this function returns, so we'd block indefinitely.
       // Instead, block just for 200ms so the test can pass with
       // limited delay.  Note that this is a no-op except in test
@@ -829,8 +840,7 @@ bool ProxyFetch::HandleWrite(const StringPiece& str,
       ScheduleQueueExecutionIfNeeded();
     }
   } else {
-    // Pass other data (css, js, images) directly to http writer.
-    ret = base_fetch()->Write(str, message_handler);
+    ret = SharedAsyncFetch::HandleWrite(str, message_handler);
   }
   return ret;
 }
@@ -854,7 +864,7 @@ bool ProxyFetch::HandleFlush(MessageHandler* message_handler) {
       ScheduleQueueExecutionIfNeeded();
     }
   } else {
-    ret = base_fetch()->Flush(message_handler);
+    ret = SharedAsyncFetch::HandleFlush(message_handler);
   }
   return ret;
 }
@@ -879,7 +889,7 @@ void ProxyFetch::HandleDone(bool success) {
       GoogleString buffered;
       html_detector_.ReleaseBuffered(&buffered);
       AddPagespeedHeader();
-      base_fetch()->HeadersComplete();
+      SharedAsyncFetch::HandleHeadersComplete();
       Write(buffered, server_context_->message_handler());
     }
   } else if (!response_headers()->headers_complete()) {
@@ -1066,7 +1076,7 @@ void ProxyFetch::Finish(bool success) {
     }
   }
 
-  base_fetch()->Done(success);
+  SharedAsyncFetch::HandleDone(success);
   done_called_ = true;
   factory_->RegisterFinishedFetch(this);
 

@@ -724,7 +724,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   EMBED_CONFIGURATION_IMAGE_TAIL=$(ls $OUTDIR | grep 256x192xPuz | grep iq=)
   EMBED_CONFIGURATION_IMAGE+="$EMBED_CONFIGURATION_IMAGE_TAIL"
   EMBED_CONFIGURATION_IMAGE_LENGTH=$( \
-    head -10 "$OUTDIR/$EMBED_CONFIGURATION_IMAGE_TAIL" | \
+    extract_headers "$OUTDIR/$EMBED_CONFIGURATION_IMAGE_TAIL" | \
     scrape_content_length)
 
   # Grab the URL for the CSS file.
@@ -1638,17 +1638,23 @@ fetch_until -save $URL "wc -c" 230000 "--save-headers" "-lt"
 # and descend as time expires from when we strobed the image.  However, we
 # provide a non-trivial etag with the content hash, but we'll just match the
 # common prefix.
-check_from "$(head $FETCH_UNTIL_OUTFILE)" fgrep -q 'Etag: W/"PSA-aj-'
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Etag: W/"PSA-aj-'
+
+# Ideally this response should not have a 'chunked' encoding, because
+# once we were able to optimize it, we know its length.
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Content-Length:'
+check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
+    fgrep -q 'Transfer-Encoding: chunked'
 
 # Now add set jpeg compression to 75 and we expect 73238, but will test for 90k.
 # Note that wc -c will include the headers.
 start_test Proxying image from another domain, customizing image compression.
 URL+="?ModPagespeedJpegRecompressionQuality=75"
 fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
-check_from "$(head $FETCH_UNTIL_OUTFILE)" fgrep -q 'Etag: W/"PSA-aj-'
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Etag: W/"PSA-aj-'
 
 echo Ensure that rewritten images strip cookies present at origin
-check_not_from "$(head $FETCH_UNTIL_OUTFILE)" fgrep -c 'Set-Cookie'
+check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -c 'Set-Cookie'
 ORIGINAL_HEADERS=$($WGET_DUMP http://modpagespeed.com/do_not_modify/Puzzle.jpg \
     | head)
 check_from "$ORIGINAL_HEADERS" fgrep -c 'Set-Cookie'
@@ -1663,6 +1669,14 @@ start_test Fetching the HTML directly from the origin is fine including cookie.
 URL="http://modpagespeed.com/do_not_modify/evil.html"
 OUT=$($WGET_DUMP $URL)
 check_from "$OUT" fgrep -q 'Set-Cookie: test-cookie'
+
+start_test IPRO-optimized resources should have fixed size, not chunked.
+URL="$EXAMPLE_ROOT/images/Puzzle.jpg"
+URL+="?ModPagespeedJpegRecompressionQuality=75"
+fetch_until -save $URL "wc -c" 90000 "--save-headers" "-lt"
+check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Content-Length:'
+check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" \
+    fgrep -q 'Transfer-Encoding: chunked'
 
 # Test handling of large HTML files. We first test with a cold cache, and verify
 # that we bail out of parsing and insert a script redirecting to

@@ -17,6 +17,7 @@
 #include "base/logging.h"
 #include "net/instaweb/apache/apache_writer.h"
 #include "net/instaweb/apache/header_util.h"
+#include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -31,7 +32,8 @@ ApacheWriter::ApacheWriter(request_rec* r)
     : request_(r),
       headers_out_(false),
       disable_downstream_header_filters_(false),
-      strip_cookies_(false) {
+      strip_cookies_(false),
+      content_length_(AsyncFetch::kContentLengthUnknown) {
 }
 
 ApacheWriter::~ApacheWriter() {
@@ -73,6 +75,9 @@ void ApacheWriter::OutputHeaders(ResponseHeaders* response_headers) {
   // Apache will fill this data in when it issues the response.
   response_headers->RemoveAll(HttpAttributes::kTransferEncoding);
   response_headers->RemoveAll(HttpAttributes::kContentLength);
+  if (content_length_ != AsyncFetch::kContentLengthUnknown) {
+    ap_set_content_length(request_, content_length_);
+  }
 
   ResponseHeadersToApacheRequest(*response_headers,
                                  disable_downstream_header_filters_,

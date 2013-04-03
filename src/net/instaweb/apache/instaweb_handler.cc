@@ -21,7 +21,6 @@
 #include <set>
 #include <vector>
 
-#include "base/logging.h"
 #include "net/instaweb/apache/apache_config.h"
 #include "net/instaweb/apache/apache_message_handler.h"
 #include "net/instaweb/apache/apache_request_context.h"
@@ -150,6 +149,9 @@ class ApacheProxyFetch : public AsyncFetchUsingWriter {
     status_ok_ = (status_code != 0) && (status_code < 400);
     if (handle_error_ || status_ok_) {
       // TODO(sligocki): Add X-Mod-Pagespeed header.
+      if (content_length_known()) {
+        apache_writer_.set_content_length(content_length());
+      }
       apache_writer_.OutputHeaders(response_headers());
     }
   }

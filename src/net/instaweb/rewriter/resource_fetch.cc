@@ -22,6 +22,7 @@
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/sync_fetcher_adapter_callback.h"
 #include "net/instaweb/public/global_constants.h"
@@ -180,7 +181,7 @@ void ResourceFetch::HandleHeadersComplete() {
 
   response_headers()->Add(kPageSpeedHeader,
                           driver_->options()->x_header_value());
-  base_fetch()->HeadersComplete();
+  SharedAsyncFetch::HandleHeadersComplete();
 }
 
 void ResourceFetch::HandleDone(bool success) {
@@ -201,7 +202,7 @@ void ResourceFetch::HandleDone(bool success) {
   if (cleanup_mode_ == kAutoCleanupDriver) {
     driver_->Cleanup();
   }
-  base_fetch()->Done(success);
+  SharedAsyncFetch::HandleDone(success);
   delete this;
 }
 

@@ -870,8 +870,10 @@ class RewriteContext::FetchContext {
         // Use the most conservative Cache-Control considering all inputs.
         ApplyInputCacheControl(response_headers);
         AddMetadataHeaderIfNecessary(response_headers);
+        StringPiece contents = output_resource_->contents();
+        async_fetch_->set_content_length(contents.size());
         async_fetch_->HeadersComplete();
-        ok = async_fetch_->Write(output_resource_->contents(), handler_);
+        ok = async_fetch_->Write(contents, handler_);
       } else {
         // Our rewrite produced a different hash than what was requested;
         // we better not give it an ultra-long TTL.
@@ -902,10 +904,11 @@ class RewriteContext::FetchContext {
           // Note that this is needed because FixFetchFallbackHeaders might
           // actually relax things a bit if the input was no-cache.
           ApplyInputCacheControl(response_headers);
+          StringPiece contents = input_resource->contents();
+          async_fetch_->set_content_length(contents.size());
           async_fetch_->HeadersComplete();
-
           ok = rewrite_context_->AbsolutifyIfNeeded(
-              input_resource->contents(), async_fetch_, handler_);
+              contents, async_fetch_, handler_);
         } else {
           GoogleString url = input_resource->url();
           handler_->Warning(
@@ -949,6 +952,7 @@ class RewriteContext::FetchContext {
     // Use the most conservative Cache-Control considering all inputs.
     ApplyInputCacheControl(async_fetch_->response_headers());
     AddMetadataHeaderIfNecessary(async_fetch_->response_headers());
+    async_fetch_->set_content_length(contents.size());
     async_fetch_->HeadersComplete();
 
     bool ok = rewrite_context_->AbsolutifyIfNeeded(contents, async_fetch_,

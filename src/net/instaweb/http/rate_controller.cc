@@ -172,7 +172,7 @@ class RateController::CustomFetch : public SharedAsyncFetch {
         controller_(controller) {}
 
   virtual void HandleDone(bool success) {
-    base_fetch()->Done(success);
+    SharedAsyncFetch::HandleDone(success);
     fetch_info_->decrement_num_outbound_fetches();
     // Check if there is any fetch queued up for this host and the number of
     // outstanding fetches for the host is less than the threshold.

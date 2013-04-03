@@ -1492,7 +1492,7 @@ class FilterFetch : public SharedAsyncFetch {
     } else {
       stats->failed_filter_resource_fetches()->Add(1);
     }
-    base_fetch()->Done(success);
+    SharedAsyncFetch::HandleDone(success);
     driver_->FetchComplete();
     delete this;
   }
