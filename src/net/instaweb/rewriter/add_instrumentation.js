@@ -99,6 +99,10 @@ pagespeed.AddInstrumentation.prototype.sendBeacon = function() {
     url += '&dwld=' + (
         timingApi['responseEnd'] - timingApi['responseStart']);
     url += '&dom_c=' + (timingApi['domContentLoadedEventStart'] - navStartTime);
+
+    if (window['performance']['navigation']) {
+      url += '&nt=' + window['performance']['navigation']['type'];
+    }
   } else {
    url += traditionalPLT;
   }
