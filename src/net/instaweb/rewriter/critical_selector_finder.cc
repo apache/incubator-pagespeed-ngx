@@ -113,6 +113,18 @@ void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
   // Construct the protobuf CriticalSelectorSet from the input StringSet to
   // write to the property cache.
   CriticalSelectorSet selectors;
+  // If selector_set.empty(), we'd like to simply store an empty selectors (no
+  // critical selectors).  The problem: that yields a protobuf whose
+  // serialization is "" (the empty string).  PropertyPage::EncodeCacheEntry
+  // can't distinguish that from the case where we attempt to write back a
+  // pcache miss.  So we need to ensure that the pcache data has a non-empty
+  // protobuf encoding.  We do this by setting the is_empty flag.
+  // TODO(jmaessen): Strip when is_empty is no longer needed (ie when omitting
+  // the field no longer attempts to write "" to the pcache, because we're
+  // storing more metadata alongside the entry)
+  if (selector_set.empty()) {
+    selectors.set_is_empty(true);
+  }
   for (StringSet::const_iterator i = selector_set.begin();
        i != selector_set.end(); ++i) {
     selectors.add_critical_selectors(*i);

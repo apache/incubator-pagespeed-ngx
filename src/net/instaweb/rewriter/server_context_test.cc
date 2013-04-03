@@ -83,6 +83,7 @@ namespace {
 const char kResourceUrl[] = "http://example.com/image.png";
 const char kResourceUrlBase[] = "http://example.com";
 const char kResourceUrlPath[] = "/image.png";
+const char kOptionsHash[] = "1234";
 
 const char kUrlPrefix[] = "http://www.example.com/";
 const size_t kUrlPrefixLength = STATIC_STRLEN(kUrlPrefix);
@@ -369,78 +370,6 @@ class ServerContextTest : public RewriteTestBase {
       critical_images.add_html_critical_images(*i);
     }
     return critical_images.SerializeAsString();
-  }
-
-  // Send a beacon through ServerContext::HandleBeacon and verify that that
-  // property cache entry for critical images was updated correctly.
-  void TestBeacon(const StringSet* critical_image_hashes,
-                  const StringSet* critical_css_selectors,
-                  StringPiece user_agent,
-                  GoogleString* critical_images_property_value,
-                  GoogleString* critical_css_selectors_property_value) {
-    // Setup the beacon_url and pass to HandleBeacon.
-    GoogleString options_hash = "1234";
-    GoogleString beacon_url = StrCat(
-        "url=http%3A%2F%2Fwww.example.com"
-        "&oh=", options_hash);
-    if (critical_image_hashes != NULL) {
-      StrAppend(&beacon_url, "&ci=");
-      for (StringSet::const_iterator it = critical_image_hashes->begin();
-           it != critical_image_hashes->end(); ++it) {
-        if (it != critical_image_hashes->begin()) {
-          StrAppend(&beacon_url, ",");
-        }
-        StrAppend(&beacon_url, *it);
-      }
-    }
-
-    if (critical_css_selectors != NULL) {
-      StrAppend(&beacon_url, "&cs=");
-      for (StringSet::const_iterator it = critical_css_selectors->begin();
-           it != critical_css_selectors->end(); ++it) {
-        if (it != critical_css_selectors->begin()) {
-          StrAppend(&beacon_url, ",");
-        }
-        StrAppend(&beacon_url, *it);
-      }
-    }
-
-    EXPECT_TRUE(server_context()->HandleBeacon(
-        beacon_url,
-        user_agent,
-        CreateRequestContext()));
-
-    UserAgentMatcher::DeviceType device_type =
-        server_context()->user_agent_matcher()->GetDeviceTypeForUA(
-            user_agent);
-    StringPiece device_type_suffix =
-        UserAgentMatcher::DeviceTypeSuffix(device_type);
-
-    GoogleString key = server_context()->GetPagePropertyCacheKey(
-        kUrlPrefix,
-        options_hash,
-        device_type_suffix);
-
-    // Read the property cache value for critical images, and verify that it has
-    // the expected value.
-    scoped_ptr<MockPropertyPage> page(NewMockPage(key));
-    PropertyCache* property_cache = server_context()->page_property_cache();
-    property_cache->Read(page.get());
-    const PropertyCache::Cohort* cohort = property_cache->GetCohort(
-        RewriteDriver::kBeaconCohort);
-    if (critical_image_hashes != NULL) {
-      PropertyValue* property = page->GetProperty(
-          cohort, CriticalImagesFinder::kCriticalImagesPropertyName);
-      EXPECT_TRUE(property->has_value());
-      property->value().CopyToString(critical_images_property_value);
-    }
-
-    if (critical_css_selectors != NULL) {
-      PropertyValue* property = page->GetProperty(
-          cohort, CriticalSelectorFinder::kCriticalSelectorsPropertyName);
-      EXPECT_TRUE(property->has_value());
-      property->value().CopyToString(critical_css_selectors_property_value);
-    }
   }
 };
 
@@ -1022,6 +951,33 @@ TEST_F(ServerContextTest, TestOnTheFly) {
   EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
 }
 
+TEST_F(ServerContextTest, TestNotGenerated) {
+  // For derived resources we can and should use the rewrite
+  // summary/metadata cache
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+  OutputResourcePtr output_resource(
+      rewrite_driver()->CreateOutputResourceWithPath(
+          kUrlPrefix, RewriteOptions::kCssFilterId, "_", kRewrittenResource));
+  ASSERT_TRUE(output_resource.get() != NULL);
+  EXPECT_EQ(NULL, output_resource->cached_result());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+
+  rewrite_driver()->Write(
+      ResourceVector(), "", &kContentTypeCss, StringPiece(),
+      output_resource.get());
+  EXPECT_TRUE(output_resource->cached_result() != NULL);
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(0, lru_cache()->num_misses());
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+}
+
 TEST_F(ServerContextTest, TestHandleBeaconNoLoadParam) {
   EXPECT_FALSE(server_context()->HandleBeacon(
       "", UserAgentStrings::kChromeUserAgent,
@@ -1058,28 +1014,114 @@ TEST_F(ServerContextTest, TestHandleBeacon) {
       UserAgentStrings::kChromeUserAgent, CreateRequestContext()));
 }
 
-TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
-  PropertyCache* property_cache = server_context()->page_property_cache();
-  property_cache->set_enabled(true);
-  SetupCohort(property_cache, RewriteDriver::kBeaconCohort);
-  const PropertyCache::Cohort* cohort = property_cache->GetCohort(
+class BeaconTest : public ServerContextTest {
+ protected:
+  BeaconTest() : property_cache_(NULL) { }
+  virtual ~BeaconTest() { }
+
+  virtual void SetUp() {
+    ServerContextTest::SetUp();
+
+    property_cache_ = server_context()->page_property_cache();
+    property_cache_->set_enabled(true);
+    SetupCohort(property_cache_, RewriteDriver::kBeaconCohort);
+  }
+
+  // Send a beacon through ServerContext::HandleBeacon and verify that the
+  // property cache entries for critical images and critical selectors were
+  // updated correctly.
+  void TestBeacon(const StringSet* critical_image_hashes,
+                  const StringSet* critical_css_selectors,
+                  StringPiece user_agent) {
+    // Setup the beacon_url and pass to HandleBeacon.
+    GoogleString beacon_url = StrCat(
+        "url=http%3A%2F%2Fwww.example.com"
+        "&oh=", kOptionsHash);
+    if (critical_image_hashes != NULL) {
+      StrAppend(&beacon_url, "&ci=");
+      for (StringSet::const_iterator it = critical_image_hashes->begin();
+           it != critical_image_hashes->end(); ++it) {
+        if (it != critical_image_hashes->begin()) {
+          StrAppend(&beacon_url, ",");
+        }
+        StrAppend(&beacon_url, *it);
+      }
+    }
+
+    if (critical_css_selectors != NULL) {
+      StrAppend(&beacon_url, "&cs=");
+      for (StringSet::const_iterator it = critical_css_selectors->begin();
+           it != critical_css_selectors->end(); ++it) {
+        if (it != critical_css_selectors->begin()) {
+          StrAppend(&beacon_url, ",");
+        }
+        StrAppend(&beacon_url, *it);
+      }
+    }
+
+    EXPECT_TRUE(server_context()->HandleBeacon(
+        beacon_url,
+        user_agent,
+        CreateRequestContext()));
+
+    UserAgentMatcher::DeviceType device_type =
+        server_context()->user_agent_matcher()->GetDeviceTypeForUA(
+            user_agent);
+    StringPiece device_type_suffix =
+        UserAgentMatcher::DeviceTypeSuffix(device_type);
+
+    GoogleString key = server_context()->GetPagePropertyCacheKey(
+        kUrlPrefix, kOptionsHash, device_type_suffix);
+
+    // Read the property cache value for critical images, and verify that it has
+    // the expected value.
+    scoped_ptr<MockPropertyPage> page(NewMockPage(key));
+    PropertyCache* property_cache = server_context()->page_property_cache();
+    property_cache->Read(page.get());
+    const PropertyCache::Cohort* cohort = property_cache->GetCohort(
+        RewriteDriver::kBeaconCohort);
+    if (critical_image_hashes != NULL) {
+      PropertyValue* property = page->GetProperty(
+          cohort, CriticalImagesFinder::kCriticalImagesPropertyName);
+      EXPECT_TRUE(property->has_value());
+      property->value().CopyToString(&critical_images_property_value_);
+    }
+
+    if (critical_css_selectors != NULL) {
+      PropertyValue* property = page->GetProperty(
+          cohort, CriticalSelectorFinder::kCriticalSelectorsPropertyName);
+      EXPECT_TRUE(property->has_value());
+      property->value().CopyToString(&critical_css_selectors_property_value_);
+    }
+  }
+
+  PropertyCache* property_cache_;
+  // These fields hold serialized protobuf data from pcache after a BeaconTest
+  // call.
+  GoogleString critical_images_property_value_;
+  GoogleString critical_css_selectors_property_value_;
+};
+
+TEST_F(BeaconTest, BasicPcacheSetup) {
+  const PropertyCache::Cohort* cohort = property_cache_->GetCohort(
       RewriteDriver::kBeaconCohort);
-  GoogleString options_hash = "1234";
   UserAgentMatcher::DeviceType device_type =
       server_context()->user_agent_matcher()->GetDeviceTypeForUA(
           UserAgentStrings::kChromeUserAgent);
   StringPiece device_type_suffix =
       UserAgentMatcher::DeviceTypeSuffix(device_type);
-
   GoogleString key = server_context()->GetPagePropertyCacheKey(
       kUrlPrefix,
-      options_hash,
+      kOptionsHash,
       device_type_suffix);
+
   scoped_ptr<MockPropertyPage> page(NewMockPage(key));
-  property_cache->Read(page.get());
+  property_cache_->Read(page.get());
   PropertyValue* property = page->GetProperty(cohort, "critical_images");
   EXPECT_FALSE(property->has_value());
+}
 
+TEST_F(BeaconTest, HandleBeaconCritImages) {
   GoogleString img1 = "http://www.example.com/img1.png";
   GoogleString img2 = "http://www.example.com/img2.png";
   GoogleString hash1 = IntegerToString(
@@ -1088,16 +1130,12 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
       HashString<CasePreserve, int>(img2.c_str(), img2.size()));
 
   CriticalImages proto;
-  GoogleString critical_images_property_value,
-               critical_css_selectors_property_value;
-
   StringSet critical_image_hashes;
   critical_image_hashes.insert(hash1);
   proto.add_html_critical_images(hash1);
   proto.add_html_critical_images_sets()->add_critical_images(hash1);
-  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kChromeUserAgent,
-      &critical_images_property_value, &critical_css_selectors_property_value);
-  EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value);
+  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kChromeUserAgent);
+  EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value_);
 
   critical_image_hashes.insert(hash2);
   proto.add_html_critical_images(hash2);
@@ -1106,62 +1144,43 @@ TEST_F(ServerContextTest, TestHandleBeaconCritImages) {
       proto.add_html_critical_images_sets();
   field->add_critical_images(hash1);
   field->add_critical_images(hash2);
-  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kChromeUserAgent,
-      &critical_images_property_value, &critical_css_selectors_property_value);
-  EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value);
+  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kChromeUserAgent);
+  EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value_);
 
   critical_image_hashes.clear();
   critical_image_hashes.insert(hash1);
   proto.clear_html_critical_images();
   proto.add_html_critical_images(hash1);
   proto.add_html_critical_images_sets()->add_critical_images(hash1);
-  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kChromeUserAgent,
-      &critical_images_property_value, &critical_css_selectors_property_value);
-  EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value);
+  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kChromeUserAgent);
+  EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value_);
 
   proto.clear_html_critical_images_sets();
   proto.add_html_critical_images_sets()->add_critical_images(hash1);
-  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kIPhoneUserAgent,
-      &critical_images_property_value, &critical_css_selectors_property_value);
-  EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value);
+  TestBeacon(&critical_image_hashes, NULL, UserAgentStrings::kIPhoneUserAgent);
+  EXPECT_STREQ(proto.SerializeAsString(), critical_images_property_value_);
+}
 
+TEST_F(BeaconTest, HandleBeaconCriticalCss) {
   StringSet critical_css_selector;
   critical_css_selector.insert(".foo");
   critical_css_selector.insert("#bar");
   CriticalSelectorSet css_selector_proto;
   css_selector_proto.add_critical_selectors("#bar");
   css_selector_proto.add_critical_selectors(".foo");
-  TestBeacon(NULL, &critical_css_selector, UserAgentStrings::kChromeUserAgent,
-      &critical_images_property_value, &critical_css_selectors_property_value);
+  TestBeacon(NULL, &critical_css_selector, UserAgentStrings::kChromeUserAgent);
   EXPECT_STREQ(css_selector_proto.SerializeAsString(),
-               critical_css_selectors_property_value);
+               critical_css_selectors_property_value_);
 }
 
-TEST_F(ServerContextTest, TestNotGenerated) {
-  // For derived resources we can and should use the rewrite
-  // summary/metadata cache
-  EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
-  OutputResourcePtr output_resource(
-      rewrite_driver()->CreateOutputResourceWithPath(
-          kUrlPrefix, RewriteOptions::kCssFilterId, "_", kRewrittenResource));
-  ASSERT_TRUE(output_resource.get() != NULL);
-  EXPECT_EQ(NULL, output_resource->cached_result());
-  EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(0, lru_cache()->num_inserts());
-  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
-
-  rewrite_driver()->Write(
-      ResourceVector(), "", &kContentTypeCss, StringPiece(),
-      output_resource.get());
-  EXPECT_TRUE(output_resource->cached_result() != NULL);
-  EXPECT_EQ(0, lru_cache()->num_hits());
-  EXPECT_EQ(0, lru_cache()->num_misses());
-  EXPECT_EQ(1, lru_cache()->num_inserts());
-  EXPECT_EQ(0, lru_cache()->num_identical_reinserts());
+TEST_F(BeaconTest, EmptyCriticalCss) {
+  StringSet empty_critical_selectors;
+  CriticalSelectorSet empty_selector_proto;
+  empty_selector_proto.set_is_empty(true);
+  TestBeacon(NULL, &empty_critical_selectors,
+             UserAgentStrings::kChromeUserAgent);
+  EXPECT_STREQ(empty_selector_proto.SerializeAsString(),
+               critical_css_selectors_property_value_);
 }
 
 class ResourceFreshenTest : public ServerContextTest {

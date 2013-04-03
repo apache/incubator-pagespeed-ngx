@@ -551,9 +551,15 @@ void write_handler_response(const StringPiece& output,
   send_out_headers_and_body(request, response_headers, output.as_string());
 }
 
+void write_handler_response(const StringPiece& output,
+                            request_rec* request,
+                            ContentType content_type) {
+  write_handler_response(output, request, kContentTypeHtml,
+                         HttpAttributes::kNoCache);
+}
+
 void write_handler_response(const StringPiece& output, request_rec* request) {
-  write_handler_response(output, request,
-                         kContentTypeHtml, HttpAttributes::kNoCache);
+  write_handler_response(output, request, kContentTypeHtml);
 }
 
 // Returns request URL if it was a .pagespeed. rewritten resource URL.
@@ -810,8 +816,7 @@ apr_status_t instaweb_statistics_handler(
   }
 
   if (json) {
-    write_handler_response(output, request,
-                           kContentTypeJson, HttpAttributes::kNoCache);
+    write_handler_response(output, request, kContentTypeJson);
   } else {
     write_handler_response(output, request);
   }

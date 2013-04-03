@@ -113,9 +113,10 @@ pagespeed.CriticalCssBeacon.prototype.checkCssSelectors_ = function() {
   }
   var data = 'url=' + encodeURIComponent(this.htmlUrl_);
   data += '&oh=' + this.optionsHash_;
-  data += '&cs=' + encodeURIComponent(critical_selectors[0]);
-  for (var i = 1; i < critical_selectors.length; ++i) {
-    var tmp = ',' + encodeURIComponent(critical_selectors[i]);
+  data += '&cs=';
+  for (var i = 0; i < critical_selectors.length; ++i) {
+    var tmp = (i > 0) ? ',' : '';
+    tmp += encodeURIComponent(critical_selectors[i]);
     // TODO(jud): Don't truncate the critical selectors list if we exceed
     // MAX_DATA_LEN. Either send a signal back that we exceeded the limit, or
     // send multiple beacons back with all the data.

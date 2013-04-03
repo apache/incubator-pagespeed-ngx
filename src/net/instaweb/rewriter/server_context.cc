@@ -104,13 +104,15 @@ const char* kExcludedAttributes[] = {
   HttpAttributes::kVary
 };
 
-void CommaSeparatedStringToSet(StringPiece str, StringSet* set) {
+StringSet* CommaSeparatedStringToSet(StringPiece str) {
   StringPieceVector str_values;
   SplitStringPieceToVector(str, ",", &str_values, true);
+  StringSet* set = new StringSet();
   for (StringPieceVector::const_iterator it = str_values.begin();
        it != str_values.end(); ++it) {
     set->insert(it->as_string());
   }
+  return set;
 }
 
 // Track a property cache lookup triggered from a beacon response. When
@@ -761,17 +763,15 @@ bool ServerContext::HandleBeacon(StringPiece params,
   scoped_ptr<StringSet> css_critical_images_set;
   query_param_str = query_params.Lookup1(kBeaconCriticalImagesQueryParam);
   if (query_param_str != NULL) {
-    html_critical_images_set.reset(new StringSet);
-    CommaSeparatedStringToSet(*query_param_str,
-                              html_critical_images_set.get());
+    html_critical_images_set.reset(
+        CommaSeparatedStringToSet(*query_param_str));
   }
 
   scoped_ptr<StringSet> critical_css_selector_set;
   query_param_str = query_params.Lookup1(kBeaconCriticalCssQueryParam);
   if (query_param_str != NULL) {
-    critical_css_selector_set.reset(new StringSet);
-    CommaSeparatedStringToSet(*query_param_str,
-                              critical_css_selector_set.get());
+    critical_css_selector_set.reset(
+        CommaSeparatedStringToSet(*query_param_str));
   }
 
   // Store the critical information in the property cache. This is done by

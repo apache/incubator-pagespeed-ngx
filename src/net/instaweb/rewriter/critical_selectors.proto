@@ -25,7 +25,7 @@ package net_instaweb;
 // This represents aggregated list of all selectors of the CSS that was needed
 // to render the above-the-fold portion of a page.
 //
-// Next free id: 2
+// Next free id: 3
 // TODO(morlovich): We may want to keep track of information on inputs to detect
 // case of HTML inputs. We may also need history information, to deal with
 // noisiness of the data.
@@ -37,6 +37,11 @@ message CriticalSelectorSet {
   // pseudo-element (e.g. foo::before), only the base portion should be
   // included.
   repeated string critical_selectors = 1;
+  // TODO(jmaessen): strip this field once we're serializing a non-empty string
+  // when there are no critical_selectors found.  That should happen once we
+  // store a history of multiple beacon responses.  See
+  // CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache.
+  optional bool is_empty = 2 [ default = false ];
 }
 
 // TODO(morlovich):This will need to be a list of media/style pairs,
