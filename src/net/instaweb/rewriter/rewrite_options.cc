@@ -926,6 +926,11 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       "How often (in seconds) to reinstrument pages with beacons.");
   AddBaseProperty(
+      false, &RewriteOptions::log_background_rewrites_, "lbr",
+      kLogBackgroundRewrite,
+      kServerScope,
+      NULL);  // TODO(huibao): write help & doc for mod_pagespeed.
+  AddBaseProperty(
       false, &RewriteOptions::log_rewrite_timing_, "lr",
       kLogRewriteTiming,
       kDirectoryScope,
@@ -1450,6 +1455,7 @@ void RewriteOptions::AddProperties() {
   // infrastructure.
   //
   // in_place_rewriting_enabled_.DoNotUseForSignatureComputation();
+  // log_background_rewrites_.DoNotUseForSignatureComputation();
   // log_rewrite_timing_.DoNotUseForSignatureComputation();
   // log_url_indices_.DoNotUseForSignatureComputation();
   // serve_stale_if_fetch_error_.DoNotUseForSignatureComputation();

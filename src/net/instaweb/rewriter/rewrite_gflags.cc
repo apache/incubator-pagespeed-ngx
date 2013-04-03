@@ -173,6 +173,8 @@ DEFINE_int32(
     net_instaweb::RewriteOptions::kDefaultFuriousCookieDurationMs,
     "Duration after which the furious cookie used for A/B experiments "
     "should expire on the user's browser.");
+DEFINE_bool(log_background_rewrites, false,
+            "Log rewriting that cannot finish in the line-of-request.");
 DEFINE_bool(log_rewrite_timing, false, "Log time taken by rewrite filters.");
 DEFINE_bool(log_url_indices, false, "Log URL indices for every rewriter "
             "application.");
@@ -489,6 +491,9 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("image_max_rewrites_at_once")) {
     options->set_image_max_rewrites_at_once(
         FLAGS_image_max_rewrites_at_once);
+  }
+  if (WasExplicitlySet("log_background_rewrites")) {
+    options->set_log_background_rewrites(FLAGS_log_background_rewrites);
   }
   if (WasExplicitlySet("log_rewrite_timing")) {
     options->set_log_rewrite_timing(FLAGS_log_rewrite_timing);

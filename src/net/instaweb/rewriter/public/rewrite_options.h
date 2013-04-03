@@ -257,6 +257,7 @@ class RewriteOptions {
     kJsPreserveURLs,
     kLazyloadImagesAfterOnload,
     kLazyloadImagesBlankUrl,
+    kLogBackgroundRewrite,
     kLogRewriteTiming,
     kLogUrlIndices,
     kLowercaseHtmlNames,
@@ -1436,6 +1437,13 @@ class RewriteOptions {
     set_option(x, &combine_across_paths_);
   }
   bool combine_across_paths() const { return combine_across_paths_.value(); }
+
+  void set_log_background_rewrites(bool x) {
+    set_option(x, &log_background_rewrites_);
+  }
+  bool log_background_rewrites() const {
+    return log_background_rewrites_.value();
+  }
 
   void set_log_rewrite_timing(bool x) {
     set_option(x, &log_rewrite_timing_);
@@ -2879,6 +2887,7 @@ class RewriteOptions {
   // when IPRO of JS is enabled.
   Option<bool> in_place_preemptive_rewrite_javascript_;
   Option<bool> combine_across_paths_;
+  Option<bool> log_background_rewrites_;
   Option<bool> log_rewrite_timing_;   // Should we time HtmlParser?
   Option<bool> log_url_indices_;
   Option<bool> lowercase_html_names_;

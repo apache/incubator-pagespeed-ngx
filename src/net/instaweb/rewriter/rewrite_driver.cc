@@ -377,7 +377,10 @@ void RewriteDriver::Clear() {
   serve_blink_non_critical_ = false;
   is_blink_request_ = false;
   can_rewrite_resources_ = true;
-  request_context_.reset(NULL);
+  if (request_context_.get() != NULL) {
+    request_context_->WriteBackgroundRewriteLog();
+    request_context_.reset(NULL);
+  }
   start_time_ms_ = 0;
   is_nested_ = false;
 

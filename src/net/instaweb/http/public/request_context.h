@@ -99,6 +99,17 @@ class RequestContext : public RefCounted<RequestContext> {
   bool using_spdy() const { return using_spdy_; }
   void set_using_spdy(bool x) { using_spdy_ = x; }
 
+  // Write the log for background rewriting into disk.
+  void WriteBackgroundRewriteLog();
+
+  // Return the log record for background rewrites. If it doesn't exist, create
+  // a new one.
+  LogRecord* GetBackgroundRewriteLog(
+      ThreadSystem* thread_system,
+      bool log_urls,
+      bool log_url_indices,
+      int max_rewrite_info_log_size);
+
  protected:
   // The default constructor will not create a LogRecord. Subclass constructors
   // must do this explicitly.
@@ -118,6 +129,9 @@ class RequestContext : public RefCounted<RequestContext> {
 
   // Logs tracing events associated with the root request.
   scoped_ptr<RequestTrace> root_trace_context_;
+
+  // Log for recording background rewritings.
+  scoped_ptr<LogRecord> background_rewrite_log_record_;
 
   bool using_spdy_;
 

@@ -32,6 +32,7 @@ namespace net_instaweb {
 const char kRewriterIdSeparator[] = ",";
 
 LogRecord::LogRecord(AbstractMutex* mutex) : mutex_(mutex) {
+  // TODO(gee): Remove multiple initialization methods.
   InitLogging();
 }
 
@@ -480,6 +481,66 @@ void LogRecord::LogDeviceInfo(
   device_info->set_is_bot(is_bot);
   device_info->set_supports_split_html(supports_split_html);
   device_info->set_can_preload_resources(can_preload_resources);
+}
+
+void LogRecord::LogImageBackgroundRewriteActivity(
+    RewriterInfo::RewriterApplicationStatus status,
+    const GoogleString& url,
+    const char* id,
+    int original_size,
+    int optimized_size,
+    bool is_recompressed,
+    ImageType original_image_type,
+    ImageType optimized_image_type,
+    bool is_resized) {
+  RewriterInfo* rewriter_info = NewRewriterInfo(id);
+  if (rewriter_info == NULL) {
+    return;
+  }
+
+  ScopedMutex lock(mutex());
+  RewriteResourceInfo* rewrite_resource_info =
+      rewriter_info->mutable_rewrite_resource_info();
+
+  // Log the URL and URL indices if rewriting failed and if logging them
+  // are enabled.
+  if ((status != RewriterInfo::APPLIED_OK) &&
+      (allow_logging_urls_ || log_url_indices_) && !url.empty()) {
+    PopulateUrl(url, rewrite_resource_info);
+  }
+
+  rewriter_info->set_id(id);
+  rewriter_info->set_status(status);
+
+  rewrite_resource_info->set_original_size(original_size);
+  // Size of the optimized image is logged when it is different from that of
+  // the original image.
+  if (original_size != optimized_size) {
+    rewrite_resource_info->set_optimized_size(optimized_size);
+  }
+  rewrite_resource_info->set_is_recompressed(is_recompressed);
+
+  ImageRewriteResourceInfo* image_rewrite_resource_info =
+      rewriter_info->mutable_image_rewrite_resource_info();
+  image_rewrite_resource_info->set_original_image_type(
+      original_image_type);
+  // Type of the optimized image is logged when it is different from that of
+  // the original image.
+  if (original_image_type != optimized_image_type) {
+    image_rewrite_resource_info->set_optimized_image_type(
+        optimized_image_type);
+  }
+
+  image_rewrite_resource_info->set_is_resized(is_resized);
+}
+
+void LogRecord::SetBackgroundRewriteInfo(
+    bool log_urls,
+    bool log_url_indices,
+    int max_rewrite_info_log_size) {
+  SetAllowLoggingUrls(log_urls);
+  SetLogUrlIndices(log_url_indices);
+  SetRewriterInfoMaxSize(max_rewrite_info_log_size);
 }
 
 }  // namespace net_instaweb

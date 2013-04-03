@@ -22,6 +22,7 @@
 #include <map>
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -97,6 +98,23 @@ class LogRecord  {
   // Return the LoggingInfo proto wrapped by this class. Calling code must
   // guard any reads and writes to this using mutex().
   virtual LoggingInfo* logging_info();
+
+  // TODO(huibao): Rename LogImageBackgroundRewriteActivity() to make it clear
+  // that it will log even when the rewriting finishes in the line-of-request.
+
+  // Log image rewriting activity, which may not finish when the request
+  // processing is done. The outcome is a new log record with request type
+  // set to "BACKGROUND_REWRITE".
+  void LogImageBackgroundRewriteActivity(
+      RewriterInfo::RewriterApplicationStatus status,
+      const GoogleString& url,
+      const char* id,
+      int original_size,
+      int optimized_size,
+      bool is_recompressed,
+      ImageType original_image_type,
+      ImageType optimized_image_type,
+      bool is_resized);
 
   // Atomically sets is_html_response in the logging proto.
   void SetIsHtml(bool is_html);
@@ -216,6 +234,13 @@ class LogRecord  {
       bool is_bot,
       bool supports_split_html,
       bool can_preload_resources);
+
+  // Sets initial information for background rewrite log.
+  virtual void SetBackgroundRewriteInfo(
+    bool log_urls,
+    bool log_url_indices,
+    int max_rewrite_info_log_size);
+
 
  protected:
   // Non-initializing default constructor for subclasses. Subclasses that invoke

@@ -248,7 +248,7 @@ message CacheHtmlLoggingInfo {
 }
 
 // Information that applies to a resource.
-// Next id for RewriteResourceInfo: 6
+// Next id for RewriteResourceInfo: 9
 message RewriteResourceInfo {
   // True if we inlined the resource.
   optional bool is_inlined = 1 [ default = false ];
@@ -260,17 +260,30 @@ message RewriteResourceInfo {
   optional bool is_blacklisted = 4 [ default = false ];
    // Index of the original resource url in resource url info.
   optional int32 original_resource_url_index = 5 [ default = -1 ];
-
+  // Size (in bytes) of the original resource.
+  optional int32 original_size = 6 [ default = 0 ];
+  // Size (in bytes) of the optimized resource.
+  optional int32 optimized_size = 7 [ default = 0 ];
+  // True if the resource has been recompressed.
+  optional bool is_recompressed = 8 [ default = false ];
 }
 
 // Information related to each resource considered by the image rewrite filter.
-// Next id for ImageRewriteResourceInfo: 2
+// Next id for ImageRewriteResourceInfo: 6
 message ImageRewriteResourceInfo {
   // True if the low_res_src html attribute was inserted.
   optional bool is_low_res_src_inserted = 1 [ default = false ];
   // Size of the low resolution image. If it is zero, the low res image was not
   // found.
   optional int32 low_res_size = 2 [ default = 0 ];
+  // Type of the original image.
+  optional net_instaweb.ImageType original_image_type = 3
+      [ default = IMAGE_UNKNOWN ];
+  // Type of the optimized image.
+  optional net_instaweb.ImageType optimized_image_type = 4
+      [ default = IMAGE_UNKNOWN ];
+  // True if the image has been resized.
+  optional bool is_resized = 5 [ default = false ];
 }
 
 // This proto stores information describing each rewriter's activity in a
