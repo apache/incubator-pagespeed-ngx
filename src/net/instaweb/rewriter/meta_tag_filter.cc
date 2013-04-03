@@ -88,7 +88,11 @@ bool MetaTagFilter::ExtractAndUpdateMetaTagDetails(
       // and a mime_type and/or a charset, but we need a mime_type.
       if (!mime_type.empty()) {
         const ContentType* type = MimeTypeToContentType(mime_type);
-        if (type != NULL && type->IsHtmlLike()) {
+        // We only want to propagate the charset for HTML;
+        // XHTML is forced to UTF-8 anyway and we really don't want to propagate
+        // an XHTML type in cases where Apache is unsure just to propagate
+        // a charset that's not supposed to take any effect.
+        if (type != NULL && type->type() == ContentType::kHtml) {
           if (response_headers->MergeContentType(content)) {
             return true;
           }

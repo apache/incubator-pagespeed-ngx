@@ -41,9 +41,10 @@ class MetaTagFilterTest : public RewriteTestBase {
     rewrite_driver()->AddFilters();
     headers_.Clear();
     rewrite_driver()->set_response_headers_ptr(&headers_);
+    headers_.Replace(HttpAttributes::kContentType, "text/html");
   }
 
-  const ResponseHeaders* headers() {
+  ResponseHeaders* headers() {
     return &headers_;
   }
  private:
@@ -61,7 +62,8 @@ TEST_F(MetaTagFilterTest, TestTags) {
   ConstStringStarVector values;
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
-  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html;  charset=UTF-8"));
+  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html; charset=UTF-8"))
+      << *values[0];
 }
 
 const char kMetaTagDoubleDoc[] =
@@ -77,7 +79,8 @@ TEST_F(MetaTagFilterTest, TestDoubleTags) {
   ConstStringStarVector values;
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
-  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html;  charset=UTF-8"));
+  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html; charset=UTF-8"))
+      << *values[0];
 }
 
 TEST_F(MetaTagFilterTest, TestEquivNoValue) {
@@ -98,7 +101,8 @@ TEST_F(MetaTagFilterTest, TestConflictingTags) {
   ConstStringStarVector values;
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
-  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html;  charset=UTF-8"));
+  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html; charset=UTF-8"))
+      << *values[0];
 }
 
 const char kMetaTagCharset[] =
@@ -115,7 +119,8 @@ TEST_F(MetaTagFilterTest, TestCharset) {
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
   const GoogleString* val = values[0];
-  EXPECT_TRUE(StringCaseEqual(*val, "text/html; charset=UTF-8"));
+  EXPECT_TRUE(StringCaseEqual(*val, "text/html; charset=UTF-8"))
+      << *val;
 }
 
 const char kMetaTagCharsetOnly[] =
@@ -124,6 +129,19 @@ const char kMetaTagCharsetOnly[] =
     "</head><body></body></html>";
 
 TEST_F(MetaTagFilterTest, TestCharsetOnly) {
+  // Merges charset into pre-existing mimetype.
+  ValidateNoChanges("convert_charset_only", kMetaTagCharsetOnly);
+  ConstStringStarVector values;
+  EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
+  ASSERT_EQ(1, values.size());
+  const GoogleString* val = values[0];
+  EXPECT_TRUE(StringCaseEqual(*val, "text/html; charset=UTF-8"))
+      << *val;
+}
+
+TEST_F(MetaTagFilterTest, TestCharsetNoUpstream) {
+  // No mimetype to merge charset into, it gets dropped.
+  headers()->RemoveAll(HttpAttributes::kContentType);
   ValidateNoChanges("convert_charset_only", kMetaTagCharsetOnly);
   ConstStringStarVector values;
   EXPECT_FALSE(headers()->Lookup(HttpAttributes::kContentType, &values));
@@ -140,7 +158,8 @@ const char kMetaTagDoNothing[] =
 
 TEST_F(MetaTagFilterTest, TestDoNothing) {
   ValidateNoChanges("do_nothing", kMetaTagDoNothing);
-  ASSERT_EQ(0, headers()->NumAttributes());
+  ASSERT_EQ(1, headers()->NumAttributes());
+  EXPECT_STREQ("text/html", headers()->Lookup1(HttpAttributes::kContentType));
 }
 
 const char kMetaTagNoScriptDoc[] =
@@ -152,7 +171,8 @@ const char kMetaTagNoScriptDoc[] =
 
 TEST_F(MetaTagFilterTest, TestNoScript) {
   ValidateNoChanges("no_script", kMetaTagDoNothing);
-  ASSERT_EQ(0, headers()->NumAttributes());
+  ASSERT_EQ(1, headers()->NumAttributes());
+  EXPECT_STREQ("text/html", headers()->Lookup1(HttpAttributes::kContentType));
 }
 
 const char kMetaTagNoQuotes[] =
@@ -167,7 +187,28 @@ TEST_F(MetaTagFilterTest, TestNoQuotes) {
   ConstStringStarVector values;
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
-  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html; charset=UTF-8"));
+  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html; charset=UTF-8"))
+      << *values[0];
+}
+
+TEST_F(MetaTagFilterTest, DoNotOverrideWithXhtmlUnsure) {
+  // We shouldn't override with XHTML even if mimetype is unknown
+  headers()->RemoveAll(HttpAttributes::kContentType);
+  ValidateNoChanges("no_override", "<meta http-equiv=\"Content-Type\" "
+                                   "content=\"text/xhtml; charset=UTF-8\">");
+  ConstStringStarVector values;
+  EXPECT_FALSE(headers()->Lookup(HttpAttributes::kContentType, &values));
+}
+
+TEST_F(MetaTagFilterTest, DoNotOverrideWithXhtmlKnown) {
+  // We shouldn't override with XHTML if the server already knows it's HTML
+  ValidateNoChanges("no_override", "<meta http-equiv=\"Content-Type\" "
+                                   "content=\"text/xhtml; charset=UTF-8\">");
+  ConstStringStarVector values;
+  EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
+  ASSERT_EQ(1, values.size());
+  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html"))
+      << *values[0];
 }
 
 }  // namespace
