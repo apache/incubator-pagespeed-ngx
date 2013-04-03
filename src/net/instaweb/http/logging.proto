@@ -259,7 +259,7 @@ message RewriteResourceInfo {
   // True if the resource is blacklisted.
   optional bool is_blacklisted = 4 [ default = false ];
    // Index of the original resource url in resource url info.
-  optional int32 original_resource_url_index = 5;
+  optional int32 original_resource_url_index = 5 [ default = -1 ];
 
 }
 
