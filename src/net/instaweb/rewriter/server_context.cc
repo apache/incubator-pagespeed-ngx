@@ -1065,7 +1065,6 @@ RewriteOptions* ServerContext::GetCustomOptions(RequestHeaders* request_headers,
     if (custom_options == NULL) {
       custom_options.reset(options->Clone());
     }
-    custom_options->DisableFilter(RewriteOptions::kLazyloadImages);
     custom_options->DisableFilter(RewriteOptions::kDelayImages);
     custom_options->DisableFilter(RewriteOptions::kPrioritizeVisibleContent);
     custom_options->DisableFilter(RewriteOptions::kDeferJavascript);

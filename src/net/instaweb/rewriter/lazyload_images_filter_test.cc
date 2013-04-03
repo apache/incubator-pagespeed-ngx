@@ -20,6 +20,8 @@
 
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
+#include "net/instaweb/http/public/meta_data.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -465,6 +467,31 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForGooglebot) {
     if (logging_info->rewriter_stats(i).id() == "ll" &&
         logging_info->rewriter_stats(i).has_html_status()) {
       EXPECT_EQ(RewriterStats::USER_AGENT_NOT_SUPPORTED,
+                logging_info->rewriter_stats(i).html_status());
+      return;
+    }
+  }
+  FAIL();
+}
+
+TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForXHR) {
+  InitLazyloadImagesFilter(false);
+  RequestHeaders request_headers;
+  request_headers.Add(
+      HttpAttributes::kXRequestedWith, HttpAttributes::kXmlHttpRequest);
+  rewrite_driver_->set_request_headers(&request_headers);
+  GoogleString input_html = "<head>"
+      "</head>"
+      "<body>"
+      "<img src=\"1.jpg\"/>"
+      "</body>";
+  ValidateNoChanges("xhr_requests", input_html);
+  rewrite_driver_->log_record()->WriteLog();
+  LoggingInfo* logging_info = rewrite_driver_->log_record()->logging_info();
+  for (int i = 0; i < logging_info->rewriter_stats_size(); i++) {
+    if (logging_info->rewriter_stats(i).id() == "ll" &&
+        logging_info->rewriter_stats(i).has_html_status()) {
+      EXPECT_EQ(RewriterStats::DISABLED,
                 logging_info->rewriter_stats(i).html_status());
       return;
     }
