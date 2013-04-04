@@ -67,6 +67,18 @@ http {
   }
 
   server {
+    listen @@SECONDARY_PORT@@;
+    server_name tryfiles.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" { }
+    location ~ "^/ngx_pagespeed_static/" { }
+    location ~ "^/ngx_pagespeed_beacon$" { }
+
+    try_files $uri $uri/ /mod_pagespeed_example/index.html;
+  }
+
+  server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
