@@ -415,4 +415,30 @@ fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2 # 2 images optimized
 # is tuned to avoid that.
 check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8157   # resized
 
+IMAGES_QUALITY="ModPagespeedImageRecompressionQuality"
+JPEG_QUALITY="ModPagespeedJpegRecompressionQuality"
+WEBP_QUALITY="ModPagespeedImageWebpRecompressionQuality"
+
+start_test quality of jpeg output images
+IMG_REWRITE=$TEST_ROOT"/jpeg_rewriting/rewrite_images.html"
+REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
+URL=$REWRITE_URL",recompress_jpeg&"$IMAGES_QUALITY"=85&"$JPEG_QUALITY"=70"
+fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images
+optimized
+#
+# If this this test fails because the image size is 7673 bytes it means
+# that image_rewrite_filter.cc decided it was a good idea to convert to
+# progressive jpeg, and in this case it's not.  See the not above on
+# kJpegPixelToByteRatio.
+check_file_size "$OUTDIR/*256x192*Puzzle*" -le 7564   # resized
+
+start_test quality of webp output images
+rm -rf $OUTDIR
+mkdir $OUTDIR
+IMG_REWRITE=$TEST_ROOT"/webp_rewriting/rewrite_images.html"
+REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
+URL=$REWRITE_URL",convert_jpeg_to_webp&"$IMAGES_QUALITY"=75&"$WEBP_QUALITY"=65"
+check run_wget_with_args --header 'X-PSA-Blocking-Rewrite: psatest' $URL
+check_file_size "$OUTDIR/*webp*" -le 1784   # resized, optimized to webp
+
 check_failures_and_exit
