@@ -194,6 +194,11 @@ http {
       pagespeed EnableFilters extend_cache;
     }
 
+    location /mod_pagespeed_test/retain_cache_control/ {
+      pagespeed ModifyCachingHeaders off;
+      add_header Cache-Control "private, max-age=3000";
+    }
+
     pagespeed EnableFilters remove_comments;
 
     # Test LoadFromFile mapping by mapping one dir to another.
