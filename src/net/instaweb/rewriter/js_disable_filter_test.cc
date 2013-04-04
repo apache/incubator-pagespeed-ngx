@@ -23,6 +23,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -101,10 +102,10 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "</body>");
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
-  ExpectLogRecord(0, RewriterInfo::APPLIED_OK, false);
-  ExpectLogRecord(1, RewriterInfo::APPLIED_OK, false);
-  ExpectLogRecord(2, RewriterInfo::APPLIED_OK, false);
-  ExpectLogRecord(3, RewriterInfo::APPLIED_OK, true);
+  ExpectLogRecord(0, RewriterApplication::APPLIED_OK, false);
+  ExpectLogRecord(1, RewriterApplication::APPLIED_OK, false);
+  ExpectLogRecord(2, RewriterApplication::APPLIED_OK, false);
+  ExpectLogRecord(3, RewriterApplication::APPLIED_OK, true);
   rewrite_driver_->log_record()->WriteLog();
   for (int i = 0; i < logging_info()->rewriter_stats_size(); i++) {
     if (logging_info()->rewriter_stats(i).id() == "jd" &&

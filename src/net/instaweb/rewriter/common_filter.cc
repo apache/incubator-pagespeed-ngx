@@ -22,11 +22,11 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -188,8 +188,8 @@ bool CommonFilter::ExtractMetaTagDetails(const HtmlElement& element,
 }
 
 void CommonFilter::LogFilterModifiedContent() {
-  driver()->log_record()->SetRewriterLoggingStatus(LoggingId(),
-                                                   RewriterInfo::APPLIED_OK);
+  driver()->log_record()->SetRewriterLoggingStatus(
+      LoggingId(), RewriterApplication::APPLIED_OK);
 }
 
 }  // namespace net_instaweb

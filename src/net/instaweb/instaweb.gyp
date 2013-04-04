@@ -1283,6 +1283,19 @@
       ],
     },
     {
+      'target_name': 'instaweb_util_enums_pb',
+      'variables': {
+        'instaweb_protoc_subdir': 'net/instaweb/util',
+      },
+      'sources': [
+        'util/enums.proto',
+        '<(protoc_out_dir)/<(instaweb_protoc_subdir)/enums.pb.cc',
+      ],
+      'includes': [
+        'protoc.gypi',
+      ],
+    },
+    {
       'target_name': 'instaweb_logging_pb',
       'variables': {
         'instaweb_protoc_subdir': 'net/instaweb/http',
@@ -1293,6 +1306,7 @@
       ],
       'dependencies': [
         'instaweb_image_types_pb',
+        'instaweb_util_enums_pb',
       ],
       'includes': [
         'protoc.gypi',

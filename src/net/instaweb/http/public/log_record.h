@@ -20,6 +20,8 @@
 #define NET_INSTAWEB_HTTP_PUBLIC_LOG_RECORD_H_
 
 #include <map>
+// TODO(gee): Should this be in public?  Do we really care?
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/image_types.pb.h"
@@ -76,13 +78,13 @@ class LogRecord  {
   // Creates a new rewriter logging submessage for |rewriter_id|,
   // and sets status it.
   void SetRewriterLoggingStatus(
-      const char* rewriter_id, RewriterInfo::RewriterApplicationStatus status);
+      const char* rewriter_id, RewriterApplication::Status status);
 
   // Creates a new rewriter logging submessage for |rewriter_id|,
   // sets status and the url index.
   void SetRewriterLoggingStatus(
       const char* rewriter_id, const GoogleString& url,
-      RewriterInfo::RewriterApplicationStatus status);
+      RewriterApplication::Status status);
 
   // Log the HTML level status for a filter.  This should be called only once
   // per filter, at the point where it is determined the filter is either
@@ -93,7 +95,7 @@ class LogRecord  {
   // Log the status of a rewriter application on a resource.
   // TODO(gee): I'd really prefer rewriter_id was an enum.
   void LogRewriterApplicationStatus(
-      const char* rewriter_id, RewriterInfo::RewriterApplicationStatus status);
+      const char* rewriter_id, RewriterApplication::Status status);
 
   // Return the LoggingInfo proto wrapped by this class. Calling code must
   // guard any reads and writes to this using mutex().
@@ -106,7 +108,7 @@ class LogRecord  {
   // processing is done. The outcome is a new log record with request type
   // set to "BACKGROUND_REWRITE".
   void LogImageBackgroundRewriteActivity(
-      RewriterInfo::RewriterApplicationStatus status,
+      RewriterApplication::Status status,
       const GoogleString& url,
       const char* id,
       int original_size,
@@ -164,7 +166,7 @@ class LogRecord  {
   void LogFlushEarlyActivity(
       const char* id,
       const GoogleString& url,
-      RewriterInfo::RewriterApplicationStatus status,
+      RewriterApplication::Status status,
       FlushEarlyResourceInfo::ContentType content_type,
       FlushEarlyResourceInfo::ResourceType resource_type,
       bool is_bandwidth_affected,
@@ -174,7 +176,7 @@ class LogRecord  {
   void LogImageRewriteActivity(
       const char* id,
       const GoogleString& url,
-      RewriterInfo::RewriterApplicationStatus status,
+      RewriterApplication::Status status,
       bool is_image_inlined,
       bool is_critical_image,
       bool try_low_res_src_insertion,
@@ -185,7 +187,7 @@ class LogRecord  {
   void LogJsDisableFilter(const char* id, bool has_pagespeed_no_defer);
 
   void LogLazyloadFilter(const char* id,
-                         RewriterInfo::RewriterApplicationStatus status,
+                         RewriterApplication::Status status,
                          bool is_blacklisted, bool is_critical);
 
   // Mutex-guarded log-writing operations. Derived classes should override
@@ -290,11 +292,12 @@ class LogRecord  {
   StringIntMap url_index_map_;
 
   // Stats collected from calls to LogRewrite.
+  typedef std::map<RewriterApplication::Status, int> RewriteStatusCountMap;
   struct RewriterStatsInternal {
     RewriterStats::RewriterHtmlStatus html_status;
 
-    // RewriteInfo::RewriterApplicationStatus -> count.
-    std::map<int, int> status_counts;
+    // RewriterApplication::Status -> count.
+    RewriteStatusCountMap status_counts;
 
     RewriterStatsInternal() : html_status(RewriterStats::UNKNOWN_STATUS) {}
   };

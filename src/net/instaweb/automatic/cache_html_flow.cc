@@ -42,9 +42,9 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
-#include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
@@ -104,8 +104,10 @@ class CacheHtmlFlow::LogHelper {
   }
 
   void LogAppliedRewriter(const char* filter_id) {
-    log_record1_->SetRewriterLoggingStatus(filter_id, RewriterInfo::APPLIED_OK);
-    log_record2_->SetRewriterLoggingStatus(filter_id, RewriterInfo::APPLIED_OK);
+    log_record1_->SetRewriterLoggingStatus(filter_id,
+                                           RewriterApplication::APPLIED_OK);
+    log_record2_->SetRewriterLoggingStatus(filter_id,
+                                           RewriterApplication::APPLIED_OK);
   }
 
  private:

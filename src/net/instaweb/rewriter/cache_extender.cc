@@ -23,7 +23,6 @@
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
@@ -39,6 +38,7 @@
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/rewriter/public/javascript_code_block.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -216,7 +216,9 @@ void CacheExtender::Context::Render() {
         }
         // TODO(anupama): Log cache extension for pdfs etc.
         driver_->log_record()->SetRewriterLoggingStatus(
-            filter_id, slot(0)->resource()->url(), RewriterInfo::APPLIED_OK);
+            filter_id,
+            slot(0)->resource()->url(),
+            RewriterApplication::APPLIED_OK);
       }
     }
   }

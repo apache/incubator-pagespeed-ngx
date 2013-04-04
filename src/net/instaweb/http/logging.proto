@@ -19,6 +19,7 @@ syntax = "proto2";
 option optimize_for = LITE_RUNTIME;
 
 import "net/instaweb/rewriter/image_types.proto";
+import "net/instaweb/util/enums.proto";
 
 package net_instaweb;
 
@@ -291,19 +292,12 @@ message ImageRewriteResourceInfo {
 // request.
 // Next id for RewriterInfo: 5
 message RewriterInfo {
-  enum RewriterApplicationStatus {
-    UNKNOWN_STATUS = 0;
-    APPLIED_OK = 1;
-    NOT_APPLIED = 2;
-    PROPERTY_NOT_FOUND = 3;
-    INPUT_URL_INVALID = 4;
-    REPLACE_FAILED = 5;
-  }
-
   // The rewriter's id.
   optional string id = 1;
   // Status of this rewriter application.
-  optional RewriterApplicationStatus status = 2;
+  // TODO(gee): Remove this package hack.  This is only necessary for the
+  // logging_non_lite_proto build rule.
+  optional net_instaweb.RewriterApplication.Status status = 2;
   // Flush subresources specific information.
   optional FlushEarlyResourceInfo flush_early_resource_info = 3;
   // Information about a resource.
@@ -328,8 +322,8 @@ message ImageStats {
 }
 
 message RewriteStatusCount {
-  // RewriterInfo::RewriterApplicationStatus
-  optional int32 application_status = 1;
+  // Application status.
+  optional net_instaweb.RewriterApplication.Status application_status = 1;
   // Count for status.
   optional int32 count = 2;
 }

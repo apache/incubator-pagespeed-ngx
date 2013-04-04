@@ -28,17 +28,10 @@ namespace net_instaweb {
 
 RequestContext::RequestContext(AbstractMutex* logging_mutex)
     : log_record_(new LogRecord(logging_mutex)),
-      root_trace_context_(NULL),
-      background_rewrite_log_record_(NULL),
       using_spdy_(false) {
 }
 
-RequestContext::RequestContext()
-    : log_record_(NULL),
-      root_trace_context_(NULL),
-      background_rewrite_log_record_(NULL),
-      using_spdy_(false) {
-}
+RequestContext::RequestContext() : using_spdy_(false) {}
 
 RequestContext::~RequestContext() {
   // Please do not add non-diagnostic functionality here.

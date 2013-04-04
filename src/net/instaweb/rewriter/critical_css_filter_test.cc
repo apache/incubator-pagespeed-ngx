@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -232,7 +233,8 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
   ValidateExpected("inline_and_move", input_html, expected_html);
 
   ExpApplicationVector exp_application_counts;
-  exp_application_counts.push_back(make_pair(RewriterInfo::APPLIED_OK, 3));
+  exp_application_counts.push_back(
+      make_pair(RewriterApplication::APPLIED_OK, 3));
   ValidateRewriterLogging(RewriterStats::ACTIVE,
                           exp_application_counts);
 
@@ -287,12 +289,13 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
   ValidateExpected("invalid_url", input_html, expected_html);
 
   ExpApplicationVector exp_application_counts;
-  exp_application_counts.push_back(make_pair(RewriterInfo::APPLIED_OK, 1));
+  exp_application_counts.push_back(
+      make_pair(RewriterApplication::APPLIED_OK, 1));
   // TODO(slamm): There is either a bug in this test case, or in the code,
   // because it is not treating the url as invalid.
   // PROPERTY_NOT_FOUND
-  exp_application_counts.push_back(make_pair(RewriterInfo::PROPERTY_NOT_FOUND,
-                                             1));
+  exp_application_counts.push_back(
+      make_pair(RewriterApplication::PROPERTY_NOT_FOUND, 1));
   ValidateRewriterLogging(RewriterStats::ACTIVE, exp_application_counts);
 
   // Validate logging.
@@ -358,9 +361,10 @@ TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
   ValidateExpected("null_and_empty_critical_rules", input_html, expected_html);
 
   ExpApplicationVector exp_application_counts;
-  exp_application_counts.push_back(make_pair(RewriterInfo::APPLIED_OK, 2));
-  exp_application_counts.push_back(make_pair(RewriterInfo::PROPERTY_NOT_FOUND,
-                                             1));
+  exp_application_counts.push_back(
+      make_pair(RewriterApplication::APPLIED_OK, 2));
+  exp_application_counts.push_back(
+      make_pair(RewriterApplication::PROPERTY_NOT_FOUND, 1));
   ValidateRewriterLogging(RewriterStats::ACTIVE, exp_application_counts);
 
   // Validate logging.
@@ -449,9 +453,10 @@ TEST_F(CriticalCssFilterTest, DebugFilterAddsStats) {
   ValidateExpected("stats_flag_adds_stats", input_html, expected_html);
 
   ExpApplicationVector exp_application_counts;
-  exp_application_counts.push_back(make_pair(RewriterInfo::APPLIED_OK, 2));
-  exp_application_counts.push_back(make_pair(RewriterInfo::PROPERTY_NOT_FOUND,
-                                             1));
+  exp_application_counts.push_back(
+      make_pair(RewriterApplication::APPLIED_OK, 2));
+  exp_application_counts.push_back(
+      make_pair(RewriterApplication::PROPERTY_NOT_FOUND, 1));
   ValidateRewriterLogging(RewriterStats::ACTIVE, exp_application_counts);
 
   // Validate logging.

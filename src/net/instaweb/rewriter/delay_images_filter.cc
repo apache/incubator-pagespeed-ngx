@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -128,7 +129,7 @@ void DelayImagesFilter::EndElement(HtmlElement* element) {
           // from img tag.
           driver_->log_record()->SetRewriterLoggingStatus(
               RewriteOptions::FilterId(RewriteOptions::kDelayImages),
-              RewriterInfo::APPLIED_OK);
+              RewriterApplication::APPLIED_OK);
           driver_->SetAttributeName(src, HtmlName::kPagespeedHighResSrc);
           if (insert_low_res_images_inplace_) {
             driver_->AddAttribute(element, HtmlName::kSrc,

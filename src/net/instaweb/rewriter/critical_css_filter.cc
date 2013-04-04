@@ -42,6 +42,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -290,14 +291,14 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
   const GoogleString url = DecodeUrl(href->DecodedValueOrNull());
   if (url.empty()) {
     // Unable to decode the link into a valid url.
-    LogRewrite(RewriterInfo::INPUT_URL_INVALID);
+    LogRewrite(RewriterApplication::INPUT_URL_INVALID);
     return;
   }
 
   const CriticalCssResult_LinkRules* link_rules = GetLinkRules(url);
   if (link_rules == NULL) {
     // The property wasn't found so we have no rules to apply.
-    LogRewrite(RewriterInfo::PROPERTY_NOT_FOUND);
+    LogRewrite(RewriterApplication::PROPERTY_NOT_FOUND);
     return;
   }
 
@@ -305,7 +306,7 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
   HtmlElement* style_element =
       driver_->NewElement(element->parent(), HtmlName::kStyle);
   if (!driver_->ReplaceNode(element, style_element)) {
-    LogRewrite(RewriterInfo::REPLACE_FAILED);
+    LogRewrite(RewriterApplication::REPLACE_FAILED);
     return;
   }
 
@@ -331,7 +332,7 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
   }
 
   num_replaced_links_++;
-  LogRewrite(RewriterInfo::APPLIED_OK);
+  LogRewrite(RewriterApplication::APPLIED_OK);
 }
 
 GoogleString CriticalCssFilter::DecodeUrl(const GoogleString& url) {
@@ -374,7 +375,7 @@ const CriticalCssResult_LinkRules* CriticalCssFilter::GetLinkRules(
 void CriticalCssFilter::LogRewrite(int status) {
   driver_->log_record()->SetRewriterLoggingStatus(
       RewriteOptions::FilterId(RewriteOptions::kPrioritizeCriticalCss),
-      static_cast<RewriterInfo::RewriterApplicationStatus>(status));
+      static_cast<RewriterApplication::Status>(status));
 }
 
 }  // namespace net_instaweb

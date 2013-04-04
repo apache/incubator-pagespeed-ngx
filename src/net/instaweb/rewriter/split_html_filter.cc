@@ -36,6 +36,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/json_writer.h"
@@ -168,7 +169,7 @@ void SplitHtmlFilter::ServeNonCriticalPanelContents(const Json::Value& json) {
   if (!json.empty()) {
     rewrite_driver_->log_record()->SetRewriterLoggingStatus(
         RewriteOptions::FilterId(RewriteOptions::kSplitHtml),
-        RewriterInfo::APPLIED_OK);
+        RewriterApplication::APPLIED_OK);
     ScopedMutex lock(rewrite_driver_->log_record()->mutex());
     rewrite_driver_->log_record()->logging_info()->mutable_split_html_info()
         ->set_json_size(non_critical_json.size());

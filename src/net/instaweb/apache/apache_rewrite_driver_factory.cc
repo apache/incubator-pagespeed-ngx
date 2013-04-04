@@ -95,7 +95,6 @@ ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
 #else
       shared_mem_runtime_(new NullSharedMem()),
 #endif
-      shared_circular_buffer_(NULL),
       version_(version.data(), version.size()),
       statistics_frozen_(false),
       is_root_process_(true),

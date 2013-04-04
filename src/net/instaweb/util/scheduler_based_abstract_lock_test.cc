@@ -321,7 +321,6 @@ class ThreadedSchedulerBasedLockTest : public SchedulerBasedAbstractLockTest {
   ThreadedSchedulerBasedLockTest()
       : never_lock_(&scheduler_),
         startup_condvar_(scheduler_.mutex()->NewCondvar()),
-        helper_thread_(NULL),
         helper_thread_method_(
             &ThreadedSchedulerBasedLockTest::DoNothingHelper) { }
   void SleepUntilMs(int64 end_ms) {

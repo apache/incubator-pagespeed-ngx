@@ -28,6 +28,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -176,14 +177,16 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
                     "</body>")));
   EXPECT_EQ(4, logging_info()->rewriter_info().size());
   ExpectLogRecord(
-      0, RewriterInfo::APPLIED_OK /* img with src 1.jpg */, false, false);
-  ExpectLogRecord(
-      1, RewriterInfo::NOT_APPLIED /* img with src 1.jpg and data-src */,
+      0, RewriterApplication::APPLIED_OK /* img with src 1.jpg */,
       false, false);
   ExpectLogRecord(
-      2, RewriterInfo::APPLIED_OK /* img with src 2's.jpg*/, false, false);
+      1, RewriterApplication::NOT_APPLIED /* img with src 1.jpg and data-src */,
+      false, false);
   ExpectLogRecord(
-      3, RewriterInfo::NOT_APPLIED /* img with src 1.jpg and onload */,
+      2, RewriterApplication::APPLIED_OK /* img with src 2's.jpg*/,
+      false, false);
+  ExpectLogRecord(
+      3, RewriterApplication::NOT_APPLIED /* img with src 1.jpg and onload */,
       false, false);
 }
 
@@ -212,9 +215,9 @@ TEST_F(LazyloadImagesFilterTest, Blacklist) {
                  GetOverrideAttributesScriptHtml(),
                  "</body>")));
   EXPECT_EQ(3, logging_info()->rewriter_info().size());
-  ExpectLogRecord(0, RewriterInfo::NOT_APPLIED, true, false);
-  ExpectLogRecord(1, RewriterInfo::APPLIED_OK, false, false);
-  ExpectLogRecord(2, RewriterInfo::APPLIED_OK, false, false);
+  ExpectLogRecord(0, RewriterApplication::NOT_APPLIED, true, false);
+  ExpectLogRecord(1, RewriterApplication::APPLIED_OK, false, false);
+  ExpectLogRecord(2, RewriterApplication::APPLIED_OK, false, false);
 }
 
 TEST_F(LazyloadImagesFilterTest, CriticalImages) {
@@ -255,10 +258,10 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
                  GetOverrideAttributesScriptHtml(),
                  "</body>")));
   EXPECT_EQ(4, logging_info()->rewriter_info().size());
-  ExpectLogRecord(0, RewriterInfo::NOT_APPLIED, false, true);
-  ExpectLogRecord(1, RewriterInfo::APPLIED_OK, false, false);
-  ExpectLogRecord(2, RewriterInfo::NOT_APPLIED, false, true);
-  ExpectLogRecord(3, RewriterInfo::NOT_APPLIED, false, true);
+  ExpectLogRecord(0, RewriterApplication::NOT_APPLIED, false, true);
+  ExpectLogRecord(1, RewriterApplication::APPLIED_OK, false, false);
+  ExpectLogRecord(2, RewriterApplication::NOT_APPLIED, false, true);
+  ExpectLogRecord(3, RewriterApplication::NOT_APPLIED, false, true);
   EXPECT_EQ(-1, logging_info()->num_html_critical_images());
   EXPECT_EQ(-1, logging_info()->num_css_critical_images());
   rewrite_driver_->log_record()->WriteLog();

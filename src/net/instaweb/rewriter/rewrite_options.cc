@@ -624,8 +624,7 @@ RewriteOptions::RewriteOptions()
       options_uniqueness_checked_(false),
       need_to_store_experiment_data_(false),
       furious_id_(furious::kFuriousNotSet),
-      furious_percent_(0),
-      url_valued_attributes_(NULL) {
+      furious_percent_(0) {
   DCHECK(properties_ != NULL)
       << "Call RewriteOptions::Initialize() before construction";
 

@@ -32,6 +32,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -217,8 +218,8 @@ void FlushEarlyContentWriterFilter::EndDocument() {
     GoogleUrl gurl(driver_->base_url(), js_resource_info->url_);
     FlushEarlyResourceInfo::ResourceType resource_type =
         GetResourceType(gurl, js_resource_info->is_pagespeed_resource_);
-    RewriterInfo::RewriterApplicationStatus status = is_flushed ?
-        RewriterInfo::APPLIED_OK : RewriterInfo::NOT_APPLIED;
+    RewriterApplication::Status status = is_flushed ?
+        RewriterApplication::APPLIED_OK : RewriterApplication::NOT_APPLIED;
     driver_->log_record()->LogFlushEarlyActivity(
        RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
        js_resource_info->original_url_,
@@ -273,8 +274,8 @@ void FlushEarlyContentWriterFilter::TryFlushingDeferJavascriptEarly() {
       is_flushed = true;
     }
   }
-  RewriterInfo::RewriterApplicationStatus status = is_flushed ?
-      RewriterInfo::APPLIED_OK : RewriterInfo::NOT_APPLIED;
+  RewriterApplication::Status status = is_flushed ?
+      RewriterApplication::APPLIED_OK : RewriterApplication::NOT_APPLIED;
   driver_->log_record()->LogFlushEarlyActivity(
        RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
        "",  // defer-js url need not be logged.
@@ -345,7 +346,7 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
           driver_->log_record()->LogFlushEarlyActivity(
               RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
               original_url,
-              RewriterInfo::NOT_APPLIED,
+              RewriterApplication::NOT_APPLIED,
               FlushEarlyResourceInfo::JS,
               resource_type,
               false /* not affected by bandwidth */,
@@ -394,8 +395,8 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
                          category);
           is_flushed = true;
         }
-        RewriterInfo::RewriterApplicationStatus status = is_flushed ?
-            RewriterInfo::APPLIED_OK : RewriterInfo::NOT_APPLIED;
+        RewriterApplication::Status status = is_flushed ?
+            RewriterApplication::APPLIED_OK : RewriterApplication::NOT_APPLIED;
         driver_->log_record()->LogFlushEarlyActivity(
             RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
             original_url,

@@ -42,6 +42,7 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/rewritten_content_scanning_filter.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -445,7 +446,7 @@ void FlushEarlyFlow::FlushEarly() {
 
         new_driver->log_record()->SetRewriterLoggingStatus(
             RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
-            RewriterInfo::APPLIED_OK);
+            RewriterApplication::APPLIED_OK);
 
         InitFlushEarlyDriverWithPropertyCacheValues(new_driver, page);
         if (flush_early_info.has_average_fetch_latency_ms()) {

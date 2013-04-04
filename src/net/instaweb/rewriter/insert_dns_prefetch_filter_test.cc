@@ -50,9 +50,7 @@ namespace net_instaweb {
 
 class InsertDnsPrefetchFilterTest : public RewriteTestBase {
  public:
-  InsertDnsPrefetchFilterTest()
-      : writer_(&output_), filter_(NULL) {
-  }
+  InsertDnsPrefetchFilterTest() : writer_(&output_) {}
 
  protected:
   virtual void SetUp() {

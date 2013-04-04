@@ -129,7 +129,6 @@ TestRewriteDriverFactory::TestRewriteDriverFactory(
     proxy_url_fetcher_(NULL),
     mock_url_fetcher_(mock_fetcher),
     mock_distributed_fetcher_(mock_distributed_fetcher),
-    mock_url_async_fetcher_(NULL),
     mock_distributed_async_fetcher_(NULL),
     counting_url_async_fetcher_(NULL),
     counting_distributed_async_fetcher_(NULL),

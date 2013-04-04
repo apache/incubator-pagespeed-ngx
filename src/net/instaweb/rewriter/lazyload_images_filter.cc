@@ -30,6 +30,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string.h"
@@ -203,7 +204,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
       element->FindAttribute(HtmlName::kPagespeedLazySrc) != NULL) {
     log_record->LogLazyloadFilter(
         RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
-        RewriterInfo::NOT_APPLIED, false, false);
+        RewriterApplication::NOT_APPLIED, false, false);
     return;
   }
   // Decode the url if it is rewritten.
@@ -228,7 +229,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
     // Do not lazily load images with blacklisted urls.
     log_record->LogLazyloadFilter(
         RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
-        RewriterInfo::NOT_APPLIED, true, false);
+        RewriterApplication::NOT_APPLIED, true, false);
     return;
   }
 
@@ -249,7 +250,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
       if (finder->IsHtmlCriticalImage(full_url.data(), driver())) {
         log_record->LogLazyloadFilter(
             RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
-            RewriterInfo::NOT_APPLIED, false, true);
+            RewriterApplication::NOT_APPLIED, false, true);
         // Do not try to lazily load this image since it is critical.
         return;
       }
@@ -262,7 +263,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
     driver()->AddAttribute(element, HtmlName::kSrc, blank_image_url_);
     log_record->LogLazyloadFilter(
         RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
-        RewriterInfo::APPLIED_OK, false, false);
+        RewriterApplication::APPLIED_OK, false, false);
   } else {
     // Add pagespeed_blank_src as the blank image.
     driver()->AddAttribute(

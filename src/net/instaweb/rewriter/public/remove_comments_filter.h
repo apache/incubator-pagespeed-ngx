@@ -73,9 +73,7 @@ class RemoveCommentsFilter : public EmptyHtmlFilter {
   };
 
   explicit RemoveCommentsFilter(HtmlParse* html_parse)
-      : html_parse_(html_parse),
-        options_(NULL) {
-  }
+      : html_parse_(html_parse) {}
 
   // RemoveCommentsFilter takes ownership of the passed in
   // OptionsInterface instance. It is ok for OptionsInterface to be

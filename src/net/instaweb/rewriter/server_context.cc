@@ -250,7 +250,6 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       default_system_fetcher_(NULL),
       default_distributed_fetcher_(NULL),
       hasher_(NULL),
-      blink_critical_line_data_finder_(NULL),
       lock_hasher_(20),
       contents_hasher_(21),
       statistics_(NULL),

@@ -21,6 +21,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/enums.pb.h"  // for RewriterApplication_Status, etc
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
 
@@ -73,10 +74,10 @@ TEST_F(DecodeRewrittenUrlsFilterTest, TestAll) {
   ValidateExpected("different_urls", input_html, output_html);
   EXPECT_EQ(4, rewrite_driver()->log_record()->logging_info()->
             rewriter_info().size());
-  ExpectLogRecord(0, RewriterInfo::APPLIED_OK);
-  ExpectLogRecord(1, RewriterInfo::NOT_APPLIED);
-  ExpectLogRecord(2, RewriterInfo::APPLIED_OK);
-  ExpectLogRecord(3, RewriterInfo::APPLIED_OK);
+  ExpectLogRecord(0, RewriterApplication::APPLIED_OK);
+  ExpectLogRecord(1, RewriterApplication::NOT_APPLIED);
+  ExpectLogRecord(2, RewriterApplication::APPLIED_OK);
+  ExpectLogRecord(3, RewriterApplication::APPLIED_OK);
 }
 
 }  // namespace net_instaweb

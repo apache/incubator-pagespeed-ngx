@@ -29,6 +29,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string.h"
@@ -273,7 +274,7 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
 
   RewriterInfo expected1;
   expected1.set_id("ic");
-  expected1.set_status(RewriterInfo::NOT_APPLIED);
+  expected1.set_status(RewriterApplication::NOT_APPLIED);
   RewriteResourceInfo& expected_resource1 =
       *(expected1.mutable_rewrite_resource_info());
   expected_resource1.set_is_inlined(false);
@@ -285,7 +286,7 @@ TEST_F(DelayImagesFilterTest, DelayImagesAcrossDifferentFlushWindow) {
 
   RewriterInfo expected2;
   expected2.set_id("di");
-  expected2.set_status(RewriterInfo::APPLIED_OK);
+  expected2.set_status(RewriterApplication::APPLIED_OK);
 
   ExpectLogRecord(0, expected1);
   ExpectLogRecord(1, expected2);
@@ -810,7 +811,7 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionWithSmallImage) {
   const RewriterInfo& rewriter_info = rewrite_driver()->log_record()
       ->logging_info()->rewriter_info(0);
   EXPECT_EQ("ic", rewriter_info.id());
-  EXPECT_EQ(RewriterInfo::NOT_APPLIED, rewriter_info.status());
+  EXPECT_EQ(RewriterApplication::NOT_APPLIED, rewriter_info.status());
   EXPECT_TRUE(rewriter_info.has_rewrite_resource_info());
   EXPECT_TRUE(rewriter_info.has_image_rewrite_resource_info());
 

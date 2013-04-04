@@ -48,6 +48,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -182,7 +183,7 @@ namespace {
 
 void LogImageBackgroundRewriteActivity(
     RewriteDriver* driver,
-    RewriterInfo::RewriterApplicationStatus status,
+    RewriterApplication::Status status,
     const GoogleString& url,
     const char* id,
     int original_size,
@@ -917,7 +918,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
 
   LogImageBackgroundRewriteActivity(driver(),
       rewrite_result == kRewriteOk ?
-          RewriterInfo::APPLIED_OK : RewriterInfo::NOT_APPLIED,
+          RewriterApplication::APPLIED_OK : RewriterApplication::NOT_APPLIED,
       input_resource->url(), LoggingId(), original_size, optimized_size,
       is_recompressed, original_image_type, optimized_image_type, is_resized);
 
@@ -1287,7 +1288,9 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
   driver_->log_record()->LogImageRewriteActivity(
       LoggingId(),
       image_gurl.spec_c_str(),
-      rewrote_url ? RewriterInfo::APPLIED_OK : RewriterInfo::NOT_APPLIED,
+      (rewrote_url ?
+       RewriterApplication::APPLIED_OK :
+       RewriterApplication::NOT_APPLIED),
       image_inlined,
       is_critical_image,
       try_low_res_src_insertion,

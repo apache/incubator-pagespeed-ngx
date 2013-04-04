@@ -39,10 +39,7 @@ const int64 ClientState::kClientStateExpiryTimeThresholdMs = 60 * 1000;
 // track recent URLs.
 
 ClientState::ClientState()
-    : timer_(NULL),
-      create_time_ms_(0),
-      property_page_(NULL),
-      property_cache_(NULL) { }
+    : timer_(NULL), create_time_ms_(0), property_cache_(NULL) {}
 
 ClientState::~ClientState() { }
 

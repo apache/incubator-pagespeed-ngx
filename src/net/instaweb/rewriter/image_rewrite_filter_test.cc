@@ -50,6 +50,7 @@
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
@@ -764,7 +765,7 @@ class ImageRewriteTest : public RewriteTestBase {
   void TestBackgroundRewritingLog(
       int rewrite_info_size,
       int rewrite_info_index,
-      RewriterInfo::RewriterApplicationStatus status,
+      RewriterApplication::Status status,
       const char* id,
       const GoogleString& url,
       ImageType original_type,
@@ -1030,7 +1031,7 @@ TEST_F(ImageRewriteTest, PngToWebpWithWebpLaUaAndFlag) {
   TestBackgroundRewritingLog(
       1, /* rewrite_info_size */
       0, /* rewrite_info_index */
-      RewriterInfo::APPLIED_OK, /* status */
+      RewriterApplication::APPLIED_OK, /* status */
       "ic", /* rewrite ID */
       "", /* URL */
       IMAGE_PNG, /* original_type */
@@ -1504,7 +1505,7 @@ TEST_F(ImageRewriteTest, InlineTestWithoutOptimize) {
     EXPECT_EQ(1, logging_info()->rewriter_info_size());
     const RewriterInfo& rewriter_info = logging_info()->rewriter_info(0);
     EXPECT_EQ("ic", rewriter_info.id());
-    EXPECT_EQ(RewriterInfo::NOT_APPLIED, rewriter_info.status());
+    EXPECT_EQ(RewriterApplication::NOT_APPLIED, rewriter_info.status());
     EXPECT_TRUE(rewriter_info.has_rewrite_resource_info());
     EXPECT_FALSE(rewriter_info.has_image_rewrite_resource_info());
 
@@ -1520,7 +1521,7 @@ TEST_F(ImageRewriteTest, InlineTestWithoutOptimize) {
   TestBackgroundRewritingLog(
       1, /* rewrite_info_size */
       0, /* rewrite_info_index */
-      RewriterInfo::NOT_APPLIED, /* status */
+      RewriterApplication::NOT_APPLIED, /* status */
       "ic", /* ID */
       "http://test.com/IronChef2.gif", /* URL */
       IMAGE_GIF, /* original_type */
@@ -1553,7 +1554,7 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
     EXPECT_EQ(1, logging_info()->rewriter_info_size());
     const RewriterInfo& rewriter_info = logging_info()->rewriter_info(0);
     EXPECT_EQ("ic", rewriter_info.id());
-    EXPECT_EQ(RewriterInfo::APPLIED_OK, rewriter_info.status());
+    EXPECT_EQ(RewriterApplication::APPLIED_OK, rewriter_info.status());
     EXPECT_TRUE(rewriter_info.has_rewrite_resource_info());
     EXPECT_FALSE(rewriter_info.has_image_rewrite_resource_info());
     EXPECT_EQ(0, logging_info()->resource_url_info().url_size());
@@ -1569,7 +1570,7 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimize) {
   TestBackgroundRewritingLog(
       1, /* rewrite_info_size */
       0, /* rewrite_info_index */
-      RewriterInfo::APPLIED_OK, /* status */
+      RewriterApplication::APPLIED_OK, /* status */
       "ic", /* ID */
       "", /* URL */
       IMAGE_GIF, /* original_type */
@@ -1602,7 +1603,7 @@ TEST_F(ImageRewriteTest, InlineTestWithResizeWithOptimizeAndUrlLogging) {
                               kContentTypePng, kResizedDims, "", true, true);
   ScopedMutex lock(rewrite_driver()->log_record()->mutex());
   const RewriterInfo& rewriter_info = logging_info()->rewriter_info(0);
-  EXPECT_EQ(RewriterInfo::APPLIED_OK, rewriter_info.status());
+  EXPECT_EQ(RewriterApplication::APPLIED_OK, rewriter_info.status());
   EXPECT_EQ(1, logging_info()->resource_url_info().url_size());
   EXPECT_EQ(0, logging_info()->rewriter_info(0).rewrite_resource_info().
             original_resource_url_index());

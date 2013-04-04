@@ -834,7 +834,7 @@ SharedMemStatistics::SharedMemStatistics(
     const GoogleString& filename_prefix, AbstractSharedMem* shm_runtime,
     MessageHandler* message_handler, FileSystem* file_system, Timer* timer)
     : shm_runtime_(shm_runtime), filename_prefix_(filename_prefix),
-      frozen_(false), logger_(NULL) {
+      frozen_(false) {
   if (logging) {
     if (logging_file.size() > 0) {
       // Variables account for the possibility that the Logger is NULL.

@@ -18,11 +18,11 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/public/resource_tag_scanner.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -51,7 +51,7 @@ void DecodeRewrittenUrlsFilter::StartElement(HtmlElement* element) {
       if (decoded_url.size() == 1) {
         driver_->log_record()->SetRewriterLoggingStatus(
             RewriteOptions::FilterId(RewriteOptions::kDecodeRewrittenUrls),
-            RewriterInfo::APPLIED_OK);
+            RewriterApplication::APPLIED_OK);
         // Replace attr value with decoded URL.
         attr->SetValue(decoded_url.at(0));
       } else {
@@ -60,7 +60,7 @@ void DecodeRewrittenUrlsFilter::StartElement(HtmlElement* element) {
         // constituent (that are other wise identical to 'element')?
         driver_->log_record()->SetRewriterLoggingStatus(
             RewriteOptions::FilterId(RewriteOptions::kDecodeRewrittenUrls),
-            RewriterInfo::NOT_APPLIED);
+            RewriterApplication::NOT_APPLIED);
       }
     }
   }

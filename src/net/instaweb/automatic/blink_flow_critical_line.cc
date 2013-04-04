@@ -55,6 +55,7 @@
 #include "net/instaweb/rewriter/public/rewrite_query.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/charset_util.h"
 #include "net/instaweb/util/public/function.h"
@@ -110,8 +111,10 @@ class BlinkFlowCriticalLine::LogHelper {
   }
 
   void LogAppliedRewriter(const char* filter_id) {
-    log_record1_->SetRewriterLoggingStatus(filter_id, RewriterInfo::APPLIED_OK);
-    log_record2_->SetRewriterLoggingStatus(filter_id, RewriterInfo::APPLIED_OK);
+    log_record1_->SetRewriterLoggingStatus(filter_id,
+                                           RewriterApplication::APPLIED_OK);
+    log_record2_->SetRewriterLoggingStatus(filter_id,
+                                           RewriterApplication::APPLIED_OK);
   }
 
  private:

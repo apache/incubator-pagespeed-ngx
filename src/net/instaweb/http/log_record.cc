@@ -38,9 +38,7 @@ LogRecord::LogRecord(AbstractMutex* mutex) : mutex_(mutex) {
 
 // Non-initializing constructor for subclasses to invoke.
 LogRecord::LogRecord()
-    : logging_info_(NULL),
-      mutex_(NULL),
-      rewriter_info_max_size_(-1),
+    : rewriter_info_max_size_(-1),
       allow_logging_urls_(false),
       log_url_indices_(false) {}
 
@@ -124,13 +122,13 @@ RewriterInfo* LogRecord::NewRewriterInfo(const char* rewriter_id) {
 }
 
 void LogRecord::SetRewriterLoggingStatus(
-    const char* id, RewriterInfo::RewriterApplicationStatus status) {
+    const char* id, RewriterApplication::Status status) {
   SetRewriterLoggingStatus(id, "", status);
 }
 
 void LogRecord::SetRewriterLoggingStatus(
     const char* id, const GoogleString& url,
-    RewriterInfo::RewriterApplicationStatus application_status) {
+    RewriterApplication::Status application_status) {
   LogRewriterApplicationStatus(id, application_status);
 
   RewriterInfo* rewriter_info = NewRewriterInfo(id);
@@ -157,9 +155,9 @@ void LogRecord::LogRewriterHtmlStatus(
 
 void LogRecord::LogRewriterApplicationStatus(
     const char* rewriter_id,
-    RewriterInfo::RewriterApplicationStatus status) {
+    RewriterApplication::Status status) {
   ScopedMutex lock(mutex_.get());
-  DCHECK(RewriterInfo::RewriterApplicationStatus_IsValid(status));
+  DCHECK(RewriterApplication::Status_IsValid(status));
   RewriterStatsInternal* stats = &rewriter_stats_[rewriter_id];
   stats->status_counts[status]++;
 }
@@ -244,7 +242,7 @@ GoogleString LogRecord::AppliedRewritersString() {
   for (int i = 0, e = logging_info()->rewriter_info_size();
        i < e; ++i) {
     RewriterInfo info = logging_info()->rewriter_info(i);
-    if (info.status() == RewriterInfo::APPLIED_OK) {
+    if (info.status() == RewriterApplication::APPLIED_OK) {
       applied_rewriters.insert(info.id());
     }
   }
@@ -283,7 +281,7 @@ void LogRecord::SetLogUrlIndices(bool log_url_indices) {
 void LogRecord::LogFlushEarlyActivity(
     const char* id,
     const GoogleString& url,
-    RewriterInfo::RewriterApplicationStatus status,
+    RewriterApplication::Status status,
     FlushEarlyResourceInfo::ContentType content_type,
     FlushEarlyResourceInfo::ResourceType resource_type,
     bool is_bandwidth_affected,
@@ -309,7 +307,7 @@ void LogRecord::LogFlushEarlyActivity(
 void LogRecord::LogImageRewriteActivity(
     const char* id,
     const GoogleString& url,
-    RewriterInfo::RewriterApplicationStatus status,
+    RewriterApplication::Status status,
     bool is_image_inlined,
     bool is_critical_image,
     bool try_low_res_src_insertion,
@@ -344,7 +342,7 @@ void LogRecord::LogImageRewriteActivity(
 
 void LogRecord::LogJsDisableFilter(const char* id,
                                    bool has_pagespeed_no_defer) {
-  LogRewriterApplicationStatus(id, RewriterInfo::APPLIED_OK);
+  LogRewriterApplicationStatus(id, RewriterApplication::APPLIED_OK);
 
   RewriterInfo* rewriter_info = NewRewriterInfo(id);
   if (rewriter_info == NULL) {
@@ -355,11 +353,11 @@ void LogRecord::LogJsDisableFilter(const char* id,
   RewriteResourceInfo* rewrite_resource_info =
       rewriter_info->mutable_rewrite_resource_info();
   rewrite_resource_info->set_has_pagespeed_no_defer(has_pagespeed_no_defer);
-  rewriter_info->set_status(RewriterInfo::APPLIED_OK);
+  rewriter_info->set_status(RewriterApplication::APPLIED_OK);
 }
 
 void LogRecord::LogLazyloadFilter(
-    const char* id, RewriterInfo::RewriterApplicationStatus status,
+    const char* id, RewriterApplication::Status status,
     bool is_blacklisted, bool is_critical) {
   RewriterInfo* rewriter_info = NewRewriterInfo(id);
   if (rewriter_info == NULL) {
@@ -442,12 +440,12 @@ void LogRecord::PopulateRewriterStatusCounts() {
     RewriterStats* stats_proto = logging_info()->add_rewriter_stats();
     stats_proto->set_id(rewriter_id);
     stats_proto->set_html_status(stats.html_status);
-    for (std::map<int, int>::const_iterator iter = stats.status_counts.begin();
+    for (RewriteStatusCountMap::const_iterator iter =
+             stats.status_counts.begin();
          iter != stats.status_counts.end();
          ++iter) {
-      const int application_status = iter->first;
-      DCHECK(RewriterInfo::RewriterApplicationStatus_IsValid(
-          application_status));
+      const RewriterApplication::Status application_status = iter->first;
+      DCHECK(RewriterApplication::Status_IsValid(application_status));
       const int count = iter->second;
       CHECK_GE(count, 1);
       RewriteStatusCount* status_count = stats_proto->add_status_counts();
@@ -484,7 +482,7 @@ void LogRecord::LogDeviceInfo(
 }
 
 void LogRecord::LogImageBackgroundRewriteActivity(
-    RewriterInfo::RewriterApplicationStatus status,
+    RewriterApplication::Status status,
     const GoogleString& url,
     const char* id,
     int original_size,
@@ -504,7 +502,7 @@ void LogRecord::LogImageBackgroundRewriteActivity(
 
   // Log the URL and URL indices if rewriting failed and if logging them
   // are enabled.
-  if ((status != RewriterInfo::APPLIED_OK) &&
+  if ((status != RewriterApplication::APPLIED_OK) &&
       (allow_logging_urls_ || log_url_indices_) && !url.empty()) {
     PopulateUrl(url, rewrite_resource_info);
   }
