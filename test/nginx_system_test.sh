@@ -354,4 +354,65 @@ wget -O - -S $URL $WGET_ARGS &> $FETCHED
 check grep -q 'Cache-Control:.*no-transform' $FETCHED
 WGET_ARGS=""
 
+test_filter rewrite_images inlines, compresses, and resizes.
+fetch_until $URL 'grep -c data:image/png' 1  # inlined
+fetch_until $URL 'grep -c .pagespeed.ic' 2   # two images optimized
+
+# Verify with a blocking fetch that pagespeed_no_transform worked and was
+# stripped.
+fetch_until $URL 'grep -c "images/disclosure_open_plus.png"' 1 \
+  '--header=X-PSA-Blocking-Rewrite:psatest'
+fetch_until $URL 'grep -c "pagespeed_no_transform"' 0 \
+  '--header=X-PSA-Blocking-Rewrite:psatest'
+
+check run_wget_with_args $URL
+check_file_size "$OUTDIR/xBikeCrashIcn*" -lt 25000     # re-encoded
+check_file_size "$OUTDIR/*256x192*Puzzle*" -lt 24126   # resized
+URL=$EXAMPLE_ROOT"/rewrite_images.html?ModPagespeedFilters=rewrite_images"
+IMG_URL=$(egrep -o http://.*.pagespeed.*.jpg $FETCHED | head -n1)
+check [ x"$IMG_URL" != x ]
+start_test headers for rewritten image
+echo IMG_URL="$IMG_URL"
+IMG_HEADERS=$($WGET -O /dev/null -q -S --header='Accept-Encoding: gzip' \
+  $IMG_URL 2>&1)
+echo "IMG_HEADERS=\"$IMG_HEADERS\""
+check_from "$IMG_HEADERS" egrep -qi 'HTTP/1[.]. 200 OK'
+# Make sure we have some valid headers.
+check_from "$IMG_HEADERS" fgrep -qi 'Content-Type: image/jpeg'
+# Make sure the response was not gzipped.
+start_test Images are not gzipped.
+check_not_from "$IMG_HEADERS" fgrep -i 'Content-Encoding: gzip'
+# Make sure there is no vary-encoding
+start_test Vary is not set for images.
+check_not_from "$IMG_HEADERS" fgrep -i 'Vary: Accept-Encoding'
+# Make sure there is an etag
+start_test Etags is present.
+check_from "$IMG_HEADERS" fgrep -qi 'Etag: W/"0"'
+# Make sure an extra header is propagated from input resource to output
+# resource.  X-Extra-Header is added in pagespeed_test.conf.template
+start_test Extra header is present
+check_from "$IMG_HEADERS" fgrep -qi 'X-Extra-Header'
+# Make sure there is a last-modified tag
+start_test Last-modified is present.
+check_from "$IMG_HEADERS" fgrep -qi 'Last-Modified'
+
+IMAGES_QUALITY="ModPagespeedImageRecompressionQuality"
+JPEG_QUALITY="ModPagespeedJpegRecompressionQuality"
+WEBP_QUALITY="ModPagespeedImageWebpRecompressionQuality"
+start_test quality of jpeg output images with generic quality flag
+IMG_REWRITE=$TEST_ROOT"/image_rewriting/rewrite_images.html"
+REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
+URL=$REWRITE_URL"&"$IMAGES_QUALITY"=75"
+fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2 # 2 images optimized
+# This filter produces different images on 32 vs 64 bit builds. On 32 bit, the
+# size is 8157B, while on 64 it is 8155B. Initial investigation showed no
+# visible differences between the generated images.
+# TODO(jmaessen) Verify that this behavior is expected.
+#
+# Note that if this test fails with 8251 it means that you have managed to get
+# progressive jpeg conversion turned on in this testcase, which makes the output
+# larger.  The threshold factor kJpegPixelToByteRatio in image_rewrite_filter.cc
+# is tuned to avoid that.
+check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8157   # resized
+
 check_failures_and_exit
