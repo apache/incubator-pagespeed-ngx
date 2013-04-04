@@ -431,11 +431,6 @@ const char* const global_only_options[] = {
   "TrackOriginalContentLength",
   "UsePerVHostStatistics",
   "XHeaderValue",
-  "CustomFetchHeader",
-  "MapOriginDomain",
-  "MapProxyDomain",
-  "MapRewriteDomain",
-  "ShardDomain",
   "LoadFromFile",
   "LoadFromFileMatch",
   "LoadFromFileRule",
@@ -477,7 +472,8 @@ char* ps_configure(ngx_conf_t* cf,
 
   if (option_level == PsConfigure::kLocation && n_args > 1) {
     if (ps_is_global_only_option(args[0])) {
-      return const_cast<char*>("Option can not be set at location scope");
+      return string_piece_to_pool_string(cf->pool, net_instaweb::StrCat(
+          "\"", args[0], "\" cannot be set at location scope"));
     }
   }
 
