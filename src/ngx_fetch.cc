@@ -46,6 +46,7 @@
 #include "net/instaweb/util/public/pool.h"
 #include "net/instaweb/util/public/pool_element.h"
 #include "net/instaweb/util/public/statistics.h"
+#include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
@@ -226,7 +227,6 @@ namespace net_instaweb {
   }
 
   bool NgxFetch::ParseUrl() {
-    fprintf(stderr, "## [%s]\n", str_url_.c_str());
     url_.url.len = str_url_.length();
     url_.url.data = static_cast<u_char*>(ngx_palloc(pool_, url_.url.len));
     if (url_.url.data == NULL) {
@@ -303,7 +303,7 @@ namespace net_instaweb {
     }
 
     FixUserAgent();
-    FixHost();
+
     RequestHeaders* request_headers = async_fetch_->request_headers();
     ConstStringStarVector v;
     size_t size = 0;
@@ -317,6 +317,7 @@ namespace net_instaweb {
     }
     size += 2; // "\r\n";
     out_ = ngx_create_temp_buf(pool_, size);
+
     if (out_ == NULL) {
       return NGX_ERROR;
     }
@@ -337,7 +338,8 @@ namespace net_instaweb {
     }
     *(out_->last++) = CR;
     *(out_->last++) = LF;
-
+    // TODO(oschaaf): remove
+    fprintf(stderr, "req\n%.*s\n\n", (int)size, (char*)(out_->last-size));
     response_handler = NgxFetchHandleStatusLine;
     int rc = Connect();
     if (rc == NGX_AGAIN) {
@@ -461,6 +463,8 @@ namespace net_instaweb {
     ngx_int_t n = ngx_http_parse_status_line(fetch->r_, fetch->in_,
                                              fetch->status_);
     if (n == NGX_ERROR) { // parse status line error
+      fetch->message_handler()->Message(
+          kWarning, "NgxFetch: failed to parse status line");
       return false;
     } else if (n == NGX_AGAIN) { // not completed
       return true;
@@ -494,6 +498,13 @@ namespace net_instaweb {
             content_length);
       }
 
+      // TODO(oschaaf): remove
+      GoogleString s;
+      StringWriter sw(&s);
+      fetch->async_fetch_->response_headers()->WriteAsHttp(
+          &sw, fetch->message_handler());
+      fprintf(stderr, "##response headers\n%s", s.c_str());
+      
       fetch->in_->pos += n;
       fetch->set_response_handler(NgxFetchHandleBody);
       return fetch->response_handler(c);
@@ -525,14 +536,6 @@ namespace net_instaweb {
   void NgxFetch::NgxFetchTimeout(ngx_event_t* tev) {
     NgxFetch* fetch = static_cast<NgxFetch*>(tev->data);
     fetch->CallbackDone(false);
-  }
-
-  void NgxFetch::FixHost() {
-    RequestHeaders* request_headers = async_fetch_->request_headers();
-    request_headers->RemoveAll(HttpAttributes::kHost);
-
-    request_headers->Add(HttpAttributes::kHost,
-        GoogleString(reinterpret_cast<char*>(url_.host.data), url_.host.len));
   }
 
   void NgxFetch::FixUserAgent() {
