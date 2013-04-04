@@ -20,6 +20,7 @@
 
 #include "net/instaweb/rewriter/public/meta_tag_filter.h"
 
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/meta_data.h"  // for HttpAttributes, etc
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
@@ -119,8 +120,7 @@ TEST_F(MetaTagFilterTest, TestCharset) {
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
   const GoogleString* val = values[0];
-  EXPECT_TRUE(StringCaseEqual(*val, "text/html; charset=UTF-8"))
-      << *val;
+  EXPECT_TRUE(StringCaseEqual(*val, "text/html; charset=UTF-8")) << *val;
 }
 
 const char kMetaTagCharsetOnly[] =
@@ -135,8 +135,7 @@ TEST_F(MetaTagFilterTest, TestCharsetOnly) {
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
   const GoogleString* val = values[0];
-  EXPECT_TRUE(StringCaseEqual(*val, "text/html; charset=UTF-8"))
-      << *val;
+  EXPECT_TRUE(StringCaseEqual(*val, "text/html; charset=UTF-8")) << *val;
 }
 
 TEST_F(MetaTagFilterTest, TestCharsetNoUpstream) {
@@ -191,8 +190,9 @@ TEST_F(MetaTagFilterTest, TestNoQuotes) {
       << *values[0];
 }
 
-TEST_F(MetaTagFilterTest, DoNotOverrideWithXhtmlUnsure) {
-  // We shouldn't override with XHTML even if mimetype is unknown
+TEST_F(MetaTagFilterTest, DoNotOverrideWithFakeXhtmlUnsure) {
+  // We shouldn't override with XHTML even if mimetype is unknown.
+  // This uses a bogus "XHTML" mimetype which we recognized for some versions.
   headers()->RemoveAll(HttpAttributes::kContentType);
   ValidateNoChanges("no_override", "<meta http-equiv=\"Content-Type\" "
                                    "content=\"text/xhtml; charset=UTF-8\">");
@@ -200,15 +200,54 @@ TEST_F(MetaTagFilterTest, DoNotOverrideWithXhtmlUnsure) {
   EXPECT_FALSE(headers()->Lookup(HttpAttributes::kContentType, &values));
 }
 
-TEST_F(MetaTagFilterTest, DoNotOverrideWithXhtmlKnown) {
+TEST_F(MetaTagFilterTest, DoNotOverrideWithRealXhtmlUnsure) {
+  // We shouldn't override with XHTML even if mimetype is unknown.
+  headers()->RemoveAll(HttpAttributes::kContentType);
+  ValidateNoChanges("no_override",
+                    StrCat("<meta http-equiv=\"Content-Type\" content=\"",
+                           kContentTypeXhtml.mime_type(),
+                           " ;charset=UTF-8\">"));
+  ConstStringStarVector values;
+  EXPECT_FALSE(headers()->Lookup(HttpAttributes::kContentType, &values));
+}
+
+TEST_F(MetaTagFilterTest, DoNotOverrideWithFakeXhtmlKnown) {
   // We shouldn't override with XHTML if the server already knows it's HTML
+  // This uses a bogus "XHTML" mimetype which we recognized for some versions.
   ValidateNoChanges("no_override", "<meta http-equiv=\"Content-Type\" "
                                    "content=\"text/xhtml; charset=UTF-8\">");
   ConstStringStarVector values;
   EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
   ASSERT_EQ(1, values.size());
-  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html"))
-      << *values[0];
+  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html")) << *values[0];
+}
+
+TEST_F(MetaTagFilterTest, DoNotOverrideWithRealXhtmlKnown) {
+  // We shouldn't override with XHTML if the server already knows it's HTML
+  ValidateNoChanges("no_override",
+                    StrCat("<meta http-equiv=\"Content-Type\" content=\"",
+                           kContentTypeXhtml.mime_type(), ";charset=UTF-8\">"));
+  ConstStringStarVector values;
+  EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
+  ASSERT_EQ(1, values.size());
+  EXPECT_TRUE(StringCaseEqual(*values[0], "text/html")) << *values[0];
+}
+
+TEST_F(MetaTagFilterTest, DoNotOverrideCharsetBothXhtml) {
+  // An XHTML document specifying a non-utf8 encoding via a http-equiv meta
+  // should not take effect, either.
+  GoogleString initial_header = StrCat(kContentTypeXhtml.mime_type(),
+                                       "; charset=UTF-8");
+  headers()->Replace(HttpAttributes::kContentType, initial_header);
+
+  ValidateNoChanges("no_override",
+                    StrCat("<meta http-equiv=\"Content-Type\" content=\"",
+                           kContentTypeXhtml.mime_type(),
+                           "; charset=KOI8-R\">"));
+  ConstStringStarVector values;
+  EXPECT_TRUE(headers()->Lookup(HttpAttributes::kContentType, &values));
+  ASSERT_EQ(1, values.size());
+  EXPECT_EQ(initial_header, *values[0]);
 }
 
 }  // namespace
