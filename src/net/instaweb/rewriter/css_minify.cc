@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/string_writer.h"
 #include "net/instaweb/util/public/writer.h"
 #include "util/utf8/public/unicodetext.h"
+#include "webutil/css/identifier.h"
 #include "webutil/css/media.h"
 #include "webutil/css/parser.h"
 #include "webutil/css/property.h"
@@ -353,37 +354,44 @@ void CssMinify::Minify(const Css::SimpleSelector& sselector) {
 
 namespace {
 
-// TODO(sligocki): Either make this an accessible function in
-// webutil/css/tostring or specialize it for minifier.
-//
-// Note that currently the style is terrible and it will crash the program if
-// we have >= 5 args.
-GoogleString FontToString(const Css::Values& font_values) {
-  CHECK_LE(5U, font_values.size());
-  GoogleString tmp, result;
-
-  // font-style: defaults to normal
-  tmp = font_values.get(0)->ToString();
-  if (tmp != "normal") result += tmp + " ";
-  // font-variant: defaults to normal
-  tmp = font_values.get(1)->ToString();
-  if (tmp != "normal") result += tmp + " ";
-  // font-weight: defaults to normal
-  tmp = font_values.get(2)->ToString();
-  if (tmp != "normal") result += tmp + " ";
-  // font-size is required
-  result += font_values.get(3)->ToString();
-  // line-height: defaults to normal
-  tmp = font_values.get(4)->ToString();
-  if (tmp != "normal") result += "/" + tmp;
-  // font-family:
-  for (int i = 5, n = font_values.size(); i < n; ++i)
-    result += (i == 5 ? " " : ",") + font_values.get(i)->ToString();
-
-  return result;
+bool IsValueNormalIdentifier(const Css::Value& value) {
+  return (value.GetLexicalUnitType() == Css::Value::IDENT &&
+          value.GetIdentifier().ident() == Css::Identifier::NORMAL);
 }
 
 }  // namespace
+
+void CssMinify::MinifyFont(const Css::Values& font_values) {
+  CHECK_LE(5U, font_values.size());
+
+  // font-style: defaults to normal
+  if (!IsValueNormalIdentifier(*font_values.get(0))) {
+    Minify(*font_values.get(0));
+    Write(" ");
+  }
+  // font-variant: defaults to normal
+  if (!IsValueNormalIdentifier(*font_values.get(1))) {
+    Minify(*font_values.get(1));
+    Write(" ");
+  }
+  // font-weight: defaults to normal
+  if (!IsValueNormalIdentifier(*font_values.get(2))) {
+    Minify(*font_values.get(2));
+    Write(" ");
+  }
+  // font-size is required
+  Minify(*font_values.get(3));
+  // line-height: defaults to normal
+  if (!IsValueNormalIdentifier(*font_values.get(4))) {
+    Write("/");
+    Minify(*font_values.get(4));
+  }
+  // font-family:
+  for (int i = 5, n = font_values.size(); i < n; ++i) {
+    Write(i == 5 ? " " : ",");
+    Minify(*font_values.get(i));
+  }
+}
 
 void CssMinify::Minify(const Css::Declaration& declaration) {
   if (declaration.prop() == Css::Property::UNPARSEABLE) {
@@ -401,7 +409,7 @@ void CssMinify::Minify(const Css::Declaration& declaration) {
           JoinMinify(*declaration.values(), " ");
           // Normal font notation.
         } else if (declaration.values()->size() >= 5) {
-          Write(FontToString(*declaration.values()));
+          MinifyFont(*declaration.values());
         } else {
           handler_->Message(kError, "Unexpected number of values in "
                             "font declaration: %d",
@@ -422,19 +430,29 @@ void CssMinify::Minify(const Css::Declaration& declaration) {
 void CssMinify::Minify(const Css::Value& value) {
   switch (value.GetLexicalUnitType()) {
     case Css::Value::NUMBER: {
-      // TODO(sligocki): Minify number
-      // TODO(sligocki): Check that exponential notation is appropriate.
-      // TODO(sligocki): Distinguish integers from float and print differently.
-      // We use .16 to get most precision without getting rounding artifacts.
-      GoogleString float_string = StringPrintf("%.16g", value.GetFloatValue());
-      if (StringPiece(float_string).starts_with("0.")) {
-        // Optimization: Strip "0.25" -> ".25".
-        float_string.erase(0, 1);
-      } else if (StringPiece(float_string).starts_with("-0.")) {
-        // Optimization: Strip "-0.25" -> "-.25".
-        float_string.erase(1, 1);
+      GoogleString buffer;
+      StringPiece number_string;
+      if (!value.bytes_in_original_buffer().empty()) {
+        // All parsed values should have verbatim bytes set and we use them
+        // to ensure we keep the original precision.
+        number_string = value.bytes_in_original_buffer();
+      } else {
+        // Values added or modified outside of the parsing code need
+        // to be converted to strings by us.
+        buffer = StringPrintf("%.16g", value.GetFloatValue());
+        number_string = buffer;
       }
-      Write(float_string);
+      if (number_string.starts_with("0.")) {
+        // Optimization: Strip "0.25" -> ".25".
+        Write(number_string.substr(1));
+      } else if (number_string.starts_with("-0.")) {
+        // Optimization: Strip "-0.25" -> "-.25".
+        Write("-");
+        Write(number_string.substr(2));
+      } else {
+        // Otherwise just print the original string.
+        Write(number_string);
+      }
 
       GoogleString unit = value.GetDimensionUnitText();
       // Unit can be either "%" or an identifier.
@@ -467,8 +485,17 @@ void CssMinify::Minify(const Css::Value& value) {
           value.GetColorValue()));
       break;
     case Css::Value::STRING:
-      // Note: bytes_in_original_buffer() contains quote chars.
-      Write(value.bytes_in_original_buffer());
+      if (!value.bytes_in_original_buffer().empty()) {
+        // All parsed strings should have verbatim bytes set.
+        // Note: bytes_in_original_buffer() contains quote chars.
+        Write(value.bytes_in_original_buffer());
+      } else {
+        // Strings added or modified outside of the parsing code will need
+        // to be serialized by us.
+        Write("\"");
+        Write(Css::EscapeString(value.GetStringValue()));
+        Write("\"");
+      }
       break;
     case Css::Value::IDENT:
       Write(Css::EscapeIdentifier(value.GetIdentifierText()));

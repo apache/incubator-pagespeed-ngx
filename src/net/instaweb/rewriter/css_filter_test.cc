@@ -789,7 +789,7 @@ TEST_F(CssFilterTest, ComplexCssTest) {
 
     // http://code.google.com/p/modpagespeed/issues/detail?id=121
     { "body { font: 2em sans-serif; }", "body{font:2em sans-serif}" },
-    { "body { font: 0.75em sans-serif; }", "body{font:0.75em sans-serif}" },
+    { "body { font: 0.75em sans-serif; }", "body{font:.75em sans-serif}" },
 
     // http://code.google.com/p/modpagespeed/issues/detail?id=128
     { "#breadcrumbs ul { list-style-type: none; }",
@@ -865,8 +865,20 @@ TEST_F(CssFilterTest, ComplexCssTest) {
       "#foo{z-index:2147483649}" },
 
     { "#foo { z-index: 123456789012345678901234567890; }",
-      // TODO(sligocki): "#foo{z-index:12345678901234567890}" },
-      "#foo{z-index:1.234567890123457e+29}" },
+      "#foo{z-index:123456789012345678901234567890}" },
+
+    // Don't drop precision on long floating point numbers.
+    { ".ad-contain .ad-jump {\n"
+      "  color: #000;\n"
+      "  font: bold 1.54545455em/0.823529412 \"Benton Sans Bold\", Arial, "
+      "Helvetica, sans-serif;   /* 17px / 11px; 14px / 17px */\n"
+      "  margin-bottom: 1em;\n"
+      "}",
+
+      // Note: we drop the leading 0 from 0.823... but not any of the
+      // digits of precision.
+      ".ad-contain .ad-jump{color:#000;font:bold 1.54545455em/.823529412 "
+      "\"Benton Sans Bold\",Arial,Helvetica,sans-serif;margin-bottom:1em}" },
 
     // Parse and serialize "\n" correctly as "n" and "\A " correctly as newline.
     // But leave the original string without messing with escaping.

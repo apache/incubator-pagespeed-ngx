@@ -468,7 +468,10 @@ Value* Parser::ParseStringValue() {
   UnicodeText string_contents = ParseString<delim>();
   StringPiece verbatim_bytes(oldin, in_ - oldin);
   Value* value = new Value(Value::STRING, string_contents);
-  value->set_bytes_in_original_buffer(verbatim_bytes);
+  if (preservation_mode_) {
+    value->set_bytes_in_original_buffer(verbatim_bytes);
+  }
+
   return value;
 }
 
@@ -503,16 +506,29 @@ Value* Parser::ParseNumber() {
         "Failed to parse number %s", string(begin, in_ - begin).c_str()));
     return NULL;
   }
+
+  // Set the verbatim_bytes for the number before we parse the unit below
+  // (before the in_ pointer moves).
+  StringPiece verbatim_bytes(begin, in_ - begin);
+  Value* value;
   if (Done()) {
-    return new Value(num, Value::NO_UNIT);
+    value = new Value(num, Value::NO_UNIT);
   } else if (*in_ == '%') {
     in_++;
-    return new Value(num, Value::PERCENT);
+    value = new Value(num, Value::PERCENT);
   } else if (StartsIdent(*in_)) {
-    return new Value(num, ParseIdent());
+    value = new Value(num, ParseIdent());
   } else {
-    return new Value(num, Value::NO_UNIT);
+    value = new Value(num, Value::NO_UNIT);
   }
+
+  if (preservation_mode_) {
+    // Store verbatim bytes so that we can reconstruct this with exactly the
+    // same precision.
+    value->set_bytes_in_original_buffer(verbatim_bytes);
+  }
+
+  return value;
 }
 
 HtmlColor Parser::ParseColor() {

@@ -78,15 +78,18 @@ class ParserTest : public testing::Test {
 
   // Checks that ParseAny(s) returns goldennum with goldenunit unit.
   void TestAnyNum(const char* s, int parselen, double goldennum,
-                  Value::Unit goldenunit) {
+                  Value::Unit goldenunit, bool preservation_mode,
+                  string verbatim_text) {
     SCOPED_TRACE(s);
     Parser a(s);
+    a.set_preservation_mode(preservation_mode);
     if (parselen == -1) parselen = strlen(s);
     scoped_ptr<Value> t(a.ParseAny());
     EXPECT_EQ(t->GetLexicalUnitType(), Value::NUMBER);
     EXPECT_EQ(t->GetDimension(), goldenunit);
     EXPECT_DOUBLE_EQ(t->GetFloatValue(), goldennum);
     EXPECT_EQ(parselen, a.getpos() - s);
+    EXPECT_EQ(verbatim_text, t->bytes_in_original_buffer());
   }
 
   // Checks that ParseAny(s) returns goldennum with OTHER unit (with
@@ -290,13 +293,13 @@ TEST_F(ParserTest, string) {
 }
 
 TEST_F(ParserTest, anynum) {
-  TestAnyNum("3.1415 4aone", 6, 3.1415, Value::NO_UNIT);
-  TestAnyNum(".1415 4aone", 5, .1415, Value::NO_UNIT);
-  TestAnyNum("5 4aone", 1, 5, Value::NO_UNIT);
+  TestAnyNum("3.1415 4aone", 6, 3.1415, Value::NO_UNIT, false, "");
+  TestAnyNum(".1415 4aone", 5, 0.1415, Value::NO_UNIT, true, ".1415");
+  TestAnyNum("5 4aone", 1, 5, Value::NO_UNIT, true, "5");
 
-  TestAnyNum("3.1415pt 4aone", 8, 3.1415, Value::PT);
-  TestAnyNum(".1415pc 4aone", 7, .1415, Value::PC);
-  TestAnyNum("5s 4aone", 2, 5, Value::S);
+  TestAnyNum("0.1415pt 4aone", 8, 0.1415, Value::PT, true, "0.1415");
+  TestAnyNum(".1415pc 4aone", 7, 0.1415, Value::PC, true, ".1415");
+  TestAnyNum("5s 4aone", 2, 5, Value::S, false, "");
 
   TestAnyNumOtherUnit("5sacks 4aone", 6, 5, "sacks");
   TestAnyNumOtherUnit("5灣 4aone", 4, 5, "灣");

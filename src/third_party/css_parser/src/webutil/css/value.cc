@@ -109,7 +109,8 @@ Value::Value(const Value& other)
     identifier_(other.identifier_),
     str_(other.str_),
     params_(new FunctionParameters),
-    color_(other.color_) {
+    color_(other.color_),
+    bytes_in_original_buffer_(other.bytes_in_original_buffer_) {
   if (other.params_.get() != NULL) {
     params_->Copy(*other.params_);
   }
@@ -123,6 +124,7 @@ Value& Value::operator=(const Value& other) {
   identifier_ = other.identifier_;
   str_ = other.str_;
   color_ = other.color_;
+  bytes_in_original_buffer_ = other.bytes_in_original_buffer_;
   if (other.params_.get() != NULL) {
     params_->Copy(*other.params_);
   } else {

@@ -135,6 +135,10 @@ class Value {
   const Identifier& GetIdentifier() const;     // IDENT: identifier.
   const HtmlColor&   GetColorValue() const;    // COLOR: the color value
 
+  // Verbatim bytes parsed for the declaration. Only stored for some Values.
+  // Only available using preservation-mode parsing and only stored for things
+  // like strings and numbers where the original contents may not be fully
+  // recoverable after value parsing.
   // Note: May be invalid UTF8.
   StringPiece bytes_in_original_buffer() const {
     return bytes_in_original_buffer_;
@@ -152,7 +156,6 @@ class Value {
   scoped_ptr<FunctionParameters> params_;  // FUNCTION and RECT params
   HtmlColor color_;           // COLOR
 
-  // Verbatim bytes parsed for the declaration. Only stored for some Values.
   string bytes_in_original_buffer_;
 
   // kDimensionUnitText stores the name of each unit (see TextFromUnit)
