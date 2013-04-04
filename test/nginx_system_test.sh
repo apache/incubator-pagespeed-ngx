@@ -300,4 +300,10 @@ fetch_until $URL "grep -c $COLOR1" 1 $CACHE_C
 # a stray file not under source control.
 rm -f $CSS_FILE
 
+# Test RetainComment directive.
+test_filter remove_comments retains appropriate comments.
+URL="$SECONDARY_HOSTNAME/mod_pagespeed_example/$FILE"
+check run_wget_with_args $URL --header=Host:retaincomment.example.com
+check grep -q retained $FETCHED        # RetainComment directive
+
 check_failures_and_exit
