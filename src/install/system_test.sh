@@ -253,20 +253,17 @@ URL=$TEST_ROOT/blacklist/blacklist.html?ModPagespeedFilters=extend_cache,rewrite
 FETCHED=$OUTDIR/blacklist.html
 fetch_until $URL 'grep -c .js.pagespeed.' 4
 $WGET_DUMP $URL > $FETCHED
-JS_TMP="$TEMPDIR/js_grep.$$"
-# Note: These commands are redirecting the output from check into $JS_TMP.
-# Since $JS_TMP is never used, that's probably fine, but odd.
-check grep "<script src=\".*normal\.js\.pagespeed\..*\.js\">" $FETCHED  > $JS_TMP
-check grep "<script src=\"js_tinyMCE\.js\"></script>" $FETCHED >> $JS_TMP
-check grep "<script src=\"tiny_mce\.js\"></script>" $FETCHED >> $JS_TMP
-check grep "<script src=\"tinymce\.js\"></script>" $FETCHED >> $JS_TMP
-check grep "<script src=\"scriptaculous\.js?load=effects,builder\"></script>" \
-  $FETCHED >> $JS_TMP
-check grep "<script src=\".*jquery.*\.js\.pagespeed\..*\.js\">" $FETCHED >> $JS_TMP
-check grep "<script src=\".*ckeditor\.js\">" $FETCHED >> $JS_TMP
-check grep "<script src=\".*swfobject\.js\.pagespeed\..*\.js\">" $FETCHED >> $JS_TMP
-check grep "<script src=\".*another_normal\.js\.pagespeed\..*\.js\">" $FETCHED >> $JS_TMP
-rm -f $JS_TMP
+check grep -q "<script src=\".*normal\.js\.pagespeed\..*\.js\">" $FETCHED
+check grep -q "<script src=\"js_tinyMCE\.js\"></script>" $FETCHED
+check grep -q "<script src=\"tiny_mce\.js\"></script>" $FETCHED
+check grep -q "<script src=\"tinymce\.js\"></script>" $FETCHED
+check grep -q \
+  "<script src=\"scriptaculous\.js?load=effects,builder\"></script>" $FETCHED
+check grep -q "<script src=\".*jquery.*\.js\.pagespeed\..*\.js\">" $FETCHED
+check grep -q "<script src=\".*ckeditor\.js\">" $FETCHED
+check grep -q "<script src=\".*swfobject\.js\.pagespeed\..*\.js\">" $FETCHED
+check grep -q \
+  "<script src=\".*another_normal\.js\.pagespeed\..*\.js\">" $FETCHED
 
 WGET_ARGS=""
 start_test move_css_above_scripts works.
