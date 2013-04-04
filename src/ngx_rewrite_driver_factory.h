@@ -79,7 +79,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   void PrintMemCacheStats(GoogleString* out);
   bool InitNgxUrlAsyncFecther();
   // Check resolver configed or not.
-  bool HasResolver();
+  bool CheckResolver();
 
   // Release all the resources. It also calls the base class ShutDown to
   // release the base class resources.

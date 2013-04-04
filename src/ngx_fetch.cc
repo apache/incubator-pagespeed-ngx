@@ -139,9 +139,11 @@ namespace net_instaweb {
     temp.name.len = url_.host.len;
     resolver_ctx_ = ngx_resolve_start(fetcher_->resolver_, &temp);
     if (resolver_ctx_ == NULL || resolver_ctx_ == NGX_NO_RESOLVER) {
+      // TODO(oschaaf): this spams the log, but is usefull in the fetchers
+      // current state
       message_handler_->Message(
           kError,"NgxFetch: Couldn't start resolving, "
-          "is there a resolver configured in nginx.conf?");
+          "is there a proper resolver configured in nginx.conf?");
       return false;
     }
 
@@ -156,7 +158,6 @@ namespace net_instaweb {
       message_handler_->Message(kWarning,"NgxFetch: ngx_resolve_name failed");
       return false;
     }
-
     return true;
   }
 

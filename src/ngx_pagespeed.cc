@@ -2139,10 +2139,6 @@ ngx_int_t ps_init(ngx_conf_t* cf) {
   // filter, and content handler will run in every server block.  This is ok,
   // because they will notice that the server context is NULL and do nothing.
   if (cfg_m->driver_factory != NULL) {
-    if (!cfg_m->driver_factory->HasResolver()) {
-      ngx_log_error(NGX_LOG_EMERG, cf->log, 0, "resolver wasn't configed");
-      return NGX_ERROR;
-    }
     ngx_http_next_header_filter = ngx_http_top_header_filter;
     ngx_http_top_header_filter = ps_header_filter;
 
@@ -2238,14 +2234,19 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       statistics = cfg_m->driver_factory->statistics();
       net_instaweb::NgxRewriteDriverFactory::InitStats(statistics);
     }
+
     ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
         ngx_http_conf_get_module_loc_conf((*cscfp), ngx_http_core_module));
-    //cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory(
-    //  clcf->resolver_timeout, clcf->resolver);
-    fprintf(stderr, "set resolver [%p]\n", clcf->resolver);
-    fprintf(stderr, "set resolver timeout [%u]\n", (unsigned int)clcf->resolver_timeout);
+
     cfg_m->driver_factory->set_resolver(clcf->resolver);
     cfg_m->driver_factory->set_resolver_timeout(clcf->resolver_timeout);
+
+    if (!cfg_m->driver_factory->CheckResolver()) {
+      cfg_m->handler->Message(
+          net_instaweb::kError,
+          "UseNativeFetcher is on, please configure a resolver.");
+      return NGX_ERROR;
+    }
 
     cfg_m->driver_factory->RootInit(cycle->log);
   } else {

@@ -205,8 +205,8 @@ bool NgxRewriteDriverFactory::InitNgxUrlAsyncFecther() {
   return ngx_url_async_fetcher_->Init();
 }
 
-bool NgxRewriteDriverFactory::HasResolver() {
-  if (ngx_url_async_fetcher_ != NULL && resolver_ == NULL) {
+bool NgxRewriteDriverFactory::CheckResolver() {
+  if (use_native_fetcher_ && resolver_ == NULL) {
     return false;
   }
   return true;
