@@ -196,6 +196,18 @@ http {
 
     pagespeed EnableFilters remove_comments;
 
+    # Test LoadFromFile mapping by mapping one dir to another.
+    pagespeed LoadFromFile
+      "http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/load_from_file/web_dir/"
+      "@@SERVER_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/";
+    pagespeed LoadFromFileMatch
+      "^http://localhost:@@PRIMARY_PORT@@/mod_pagespeed_test/load_from_file_match/web_([^/]*)/"
+      "@@SERVER_ROOT@@/mod_pagespeed_test/load_from_file/file_\1/";
+    pagespeed LoadFromFileRule Disallow
+      "@@SERVER_ROOT@@/mod_pagespeed_test/load_from_file/file_dir/httponly/";
+    pagespeed LoadFromFileRuleMatch Disallow \.ssp.css$;
+    pagespeed LoadFromFileRuleMatch Allow exception\.ssp\.css$;
+
     #charset koi8-r;
 
     #access_log  logs/host.access.log  main;
