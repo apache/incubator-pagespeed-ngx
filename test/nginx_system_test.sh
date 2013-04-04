@@ -415,4 +415,9 @@ fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2 # 2 images optimized
 # is tuned to avoid that.
 check_file_size "$OUTDIR/*256x192*Puzzle*" -le 8157   # resized
 
+start_test server-side includes
+fetch_until -save $TEST_ROOT/ssi/ssi.shtml?ModPagespeedFilters=combine_css \
+    'grep -c \.pagespeed\.' 1
+check [ $(grep -ce $combine_css_filename $FETCH_FILE) = 1 ];
+
 check_failures_and_exit

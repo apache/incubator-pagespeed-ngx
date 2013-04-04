@@ -168,6 +168,14 @@ http {
     #  proxy_pass http://www.google.com;
     #}
 
+    location /mod_pagespeed_test/ssi/ {
+      ssi on;
+
+      pagespeed EnableFilters collapse_whitespace,remove_comments,combine_css;
+      pagespeed DisableFilters add_instrumentation;
+      pagespeed DisableFilters inline_css;
+    }
+
     location /mod_pagespeed_test/no_cache/ {
       add_header Cache-Control no-cache;
     }
