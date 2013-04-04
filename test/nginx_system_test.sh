@@ -567,4 +567,25 @@ $WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.xhtml\
 check [ $(grep -c "\&amp;" $WGET_OUTPUT) = 0 ]
 check [ $(grep -c '//<\!\[CDATA\[' $WGET_OUTPUT) = 1 ]
 
+start_test cache_partial_html enabled has no effect
+$WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.html\
+?ModPagespeedFilters=cache_partial_html
+check [ $(grep -c '<html>' $WGET_OUTPUT) = 1 ]
+check [ $(grep -c '<body>' $WGET_OUTPUT) = 1 ]
+check [ $(grep -c 'pagespeed.panelLoader' $WGET_OUTPUT) = 0 ]
+
+start_test flush_subresources rewriter is not applied
+URL="$TEST_ROOT/flush_subresources.html?\
+ModPagespeedFilters=flush_subresources,extend_cache_css,\
+extend_cache_scripts"
+# Fetch once with X-PSA-Blocking-Rewrite so that the resources get rewritten and
+# property cache (once it's ported to ngx_pagespeed) is updated with them.
+wget -O - --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $TEMPDIR/flush.$$
+# Fetch again. The property cache has (would have, if it were ported) the
+# subresources this time but flush_subresources rewriter is not applied. This is
+# a negative test case because this rewriter does not exist in ngx_pagespeed
+# yet.
+check [ `wget -O - $URL | grep -o 'link rel="subresource"' | wc -l` = 0 ]
+rm -f $TEMPDIR/flush.$$
+
 check_failures_and_exit
