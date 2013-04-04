@@ -322,6 +322,7 @@ enum Response {
   kBeacon,
   kStatistics,
   kMessages,
+  kPagespeedSubrequest,
 };
 }  // namespace CreateRequestContext
 
@@ -1223,6 +1224,14 @@ bool ps_apply_x_forwarded_proto(ngx_http_request_t* r, GoogleString* url) {
   return true;
 }
 
+bool is_pagespeed_subrequest(ngx_http_request_t* r) {
+  ngx_table_elt_t* user_agent_header = r->headers_in.user_agent;
+  if (user_agent_header == NULL) {
+    return false;
+  }
+  StringPiece user_agent = str_to_string_piece(user_agent_header->value);
+  return (user_agent.find(kModPagespeedSubrequestUserAgent) != user_agent.npos);
+}
 
 // Set us up for processing a request.
 CreateRequestContext::Response ps_create_request_context(
@@ -1238,6 +1247,10 @@ CreateRequestContext::Response ps_create_request_context(
     // Let nginx deal with the error however it wants; we will see a NULL ctx in
     // the body filter or content handler and do nothing.
     return CreateRequestContext::kInvalidUrl;
+  }
+
+  if (is_pagespeed_subrequest(r)) {
+    return CreateRequestContext::kPagespeedSubrequest;
   }
 
   if (is_resource_fetch && !cfg_s->server_context->IsPagespeedResource(url)) {
@@ -1665,6 +1678,7 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     case CreateRequestContext::kInvalidUrl:
     case CreateRequestContext::kStatistics:
     case CreateRequestContext::kMessages:
+    case CreateRequestContext::kPagespeedSubrequest:
       return ngx_http_next_header_filter(r);
     case CreateRequestContext::kOk:
       break;
@@ -2071,6 +2085,7 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
     case CreateRequestContext::kNotUnderstood:
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kInvalidUrl:
+    case CreateRequestContext::kPagespeedSubrequest:
       return NGX_DECLINED;
     case CreateRequestContext::kBeacon:
       return ps_beacon_handler(r);

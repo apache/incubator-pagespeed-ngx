@@ -21,14 +21,11 @@
 #include "ngx_request_context.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_rewrite_driver_factory.h"
-// TODO(oschaaf): next time we update the binaries, we can drop our own
-// versions of add_headers_fetcher and loopback_route_fetcher
-#include "add_headers_fetcher.h"
-#include "loopback_route_fetcher.h"
-#include "net/instaweb/system/public/system_caches.h"
-
+#include "net/instaweb/apache/add_headers_fetcher.h"
+#include "net/instaweb/apache/loopback_route_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
+#include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/split_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
