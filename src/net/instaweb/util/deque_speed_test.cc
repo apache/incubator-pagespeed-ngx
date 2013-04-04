@@ -144,7 +144,7 @@ static void BM_Deque4(int iters) {
 }
 
 static void BM_VectorDeque4(int iters) {
-  FourElementWorkout<VectorDeque<int> >(iters, 4);
+  FourElementWorkout<net_instaweb::VectorDeque<int> >(iters, 4);
 }
 
 static void BM_DequeUsingStdVector4(int iters) {
@@ -160,7 +160,7 @@ static void BM_Deque100(int iters) {
 }
 
 static void BM_VectorDeque100(int iters) {
-  FourElementWorkout<VectorDeque<int> >(iters, 100);
+  FourElementWorkout<net_instaweb::VectorDeque<int> >(iters, 100);
 }
 
 static void BM_DequeUsingStdVector100(int iters) {
