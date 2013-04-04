@@ -345,4 +345,13 @@ void NgxRewriteDriverFactory::InitStats(Statistics* statistics) {
   statistics->AddVariable(kShutdownCount);
 }
 
+void NgxRewriteDriverFactory::Initialize() {
+  apr_initialize();
+  RewriteDriverFactory::Initialize();
+}
+void NgxRewriteDriverFactory::Terminate() {
+  RewriteDriverFactory::Terminate();
+  apr_terminate();
+}
+
 }  // namespace net_instaweb
