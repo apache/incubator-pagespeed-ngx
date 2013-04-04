@@ -219,6 +219,7 @@
         'util/delay_cache_test.cc',
         'util/escaping_test.cc',
         'util/fallback_cache_test.cc',
+        'util/fallback_property_page_test.cc',
         'util/file_cache_test.cc',
         'util/file_system_lock_manager_test.cc',
         'util/filename_encoder_test.cc',

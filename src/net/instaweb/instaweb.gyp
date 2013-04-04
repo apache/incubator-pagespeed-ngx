@@ -741,6 +741,7 @@
         'util/delegating_cache_callback.cc',
         'util/escaping.cc',
         'util/fallback_cache.cc',
+        'util/fallback_property_page.cc',
         'util/file_cache.cc',
         'util/file_system.cc',
         'util/file_system_lock_manager.cc',

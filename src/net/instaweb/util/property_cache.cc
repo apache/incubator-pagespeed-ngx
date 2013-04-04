@@ -127,6 +127,8 @@ PropertyCache::~PropertyCache() {
 // Helper class to receive low-level cache callbacks, decode them
 // as properties with meta-data (e.g. value stability), and
 // store the payload for PropertyPage::Done().
+// TODO(pulkitg): Remove PropertyCache::CacheInterfaceCallback as friend class
+// of PropertyPage.
 class PropertyCache::CacheInterfaceCallback : public CacheInterface::Callback {
  public:
   CacheInterfaceCallback(PropertyPage* page, const Cohort* cohort,
@@ -425,10 +427,14 @@ void PropertyCache::InitCohortStats(const GoogleString& cohort,
   CacheStats::InitStats(GetStatsPrefix(cohort), statistics);
 }
 
-PropertyPage::PropertyPage(const StringPiece& key,
-                           const RequestContextPtr& request_context,
-                           AbstractMutex* mutex,
-                           PropertyCache* property_cache)
+AbstractPropertyPage::~AbstractPropertyPage() {
+}
+
+PropertyPage::PropertyPage(
+    const StringPiece& key,
+    const RequestContextPtr& request_context,
+    AbstractMutex* mutex,
+    PropertyCache* property_cache)
       : mutex_(mutex),
         key_(key.as_string()),
         request_context_(request_context),
@@ -526,8 +532,8 @@ void PropertyPage::set_cache_state_for_tests(
   pmap_struct->cache_state = x;
 }
 
-void PropertyPage::DeleteProperty(const PropertyCache::Cohort* cohort,
-                                  const StringPiece& property_name) {
+void PropertyPage::DeleteProperty(
+    const PropertyCache::Cohort* cohort, const StringPiece& property_name) {
   DCHECK(was_read_);
   DCHECK(cohort != NULL);
   ScopedMutex lock(mutex_.get());

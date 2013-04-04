@@ -301,9 +301,42 @@ class PropertyCache {
   DISALLOW_COPY_AND_ASSIGN(PropertyCache);
 };
 
+// Abstract interface for implementing a PropertyPage.
+class AbstractPropertyPage {
+ public:
+  virtual ~AbstractPropertyPage();
+  // Gets a property given the property name.  The property can then be
+  // mutated, prior to the PropertyPage being written back to the cache.
+  virtual PropertyValue* GetProperty(
+      const PropertyCache::Cohort* cohort,
+      const StringPiece& property_name) const = 0;
+
+  // Updates the value of a property, tracking stability & discarding
+  // writes when the existing data is more up-to-date.
+  virtual void UpdateValue(
+     const PropertyCache::Cohort* cohort, const StringPiece& property_name,
+     const StringPiece& value) = 0;
+
+  // Updates a Cohort of properties into the cache.  It is a
+  // programming error (dcheck-fail) to Write a PropertyPage that
+  // was not read first.  It is fine to Write after a failed Read.
+  virtual void WriteCohort(const PropertyCache::Cohort* cohort) = 0;
+
+  // This function returns the cache state for a given cohort.
+  virtual CacheInterface::KeyState GetCacheState(
+     const PropertyCache::Cohort* cohort) = 0;
+
+  // Deletes a property given the property name.
+  virtual void DeleteProperty(const PropertyCache::Cohort* cohort,
+                              const StringPiece& property_name) = 0;
+
+  virtual const GoogleString& key() const = 0;
+};
+
+
 // Holds the property values associated with a single key.  See more
 // extensive comment for PropertyPage above.
-class PropertyPage {
+class PropertyPage : public AbstractPropertyPage {
  public:
   virtual ~PropertyPage();
 
