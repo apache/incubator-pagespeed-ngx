@@ -115,6 +115,17 @@ http {
   }
 
   server {
+    listen @@SECONDARY_PORT@@;
+    server_name notransform.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_images;
+
+    add_header Cache-Control no-transform;
+  }
+
+  server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
