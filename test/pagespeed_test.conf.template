@@ -27,6 +27,15 @@ http {
     server_name loopbackfetch.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
   }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name retaincomment.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RetainComment " google_ad_section*";
+  }
+
   server {
     listen @@SECONDARY_PORT@@;
     server_name xfp.example.com;
