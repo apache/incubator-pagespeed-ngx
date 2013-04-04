@@ -23,6 +23,33 @@ http {
   pagespeed UsePerVHostStatistics on;
 
   server {
+    listen @@SECONDARY_PORT@@;
+    server_name preserveurls.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed EnableFilters inline_preview_images,lazyload_images;
+    pagespeed EnableFilters resize_mobile_images,rewrite_images,sprite_images;
+    pagespeed EnableFilters fallback_rewrite_css_urls,flatten_css_imports;
+    pagespeed EnableFilters inline_css,move_css_above_scripts,move_css_to_head;
+    pagespeed EnableFilters outline_css,rewrite_css,combine_css;
+    pagespeed EnableFilters combine_javascript,defer_javascript;
+    pagespeed EnableFilters inline_javascript;
+    pagespeed EnableFilters outline_javascript,rewrite_javascript;
+
+    location /mod_pagespeed_test/preserveurls/on/ {
+       pagespeed JsPreserveURLs On;
+       pagespeed ImagePreserveURLs On;
+       pagespeed CssPreserveURLs On;
+    }
+
+    location /mod_pagespeed_test/preserveurls/off/ {
+       pagespeed JsPreserveURLs Off;
+       pagespeed ImagePreserveURLs Off;
+       pagespeed CssPreserveURLs Off;
+    }
+  }
+
+  server {
     listen 127.0.0.2:@@SECONDARY_PORT@@;
     server_name loopbackfetch.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
