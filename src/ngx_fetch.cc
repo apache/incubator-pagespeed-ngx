@@ -40,6 +40,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/response_headers_parser.h"
 #include "net/instaweb/public/version.h"
+#include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/pool.h"
@@ -225,6 +226,7 @@ namespace net_instaweb {
   }
 
   bool NgxFetch::ParseUrl() {
+    fprintf(stderr, "## [%s]\n", str_url_.c_str());
     url_.url.len = str_url_.length();
     url_.url.data = static_cast<u_char*>(ngx_palloc(pool_, url_.url.len));
     if (url_.url.data == NULL) {
@@ -416,8 +418,9 @@ namespace net_instaweb {
       }
 
       if (n == 0) {
-        // connection is closed prematurely by remote server
-        fetch->CallbackDone(false);
+        // connection is closed prematurely by remote server,
+        // or the content-length was 0
+        fetch->CallbackDone(fetch->content_length_ == 0);
         return;
       } else if (n > 0) {
         fetch->in_->pos = fetch->in_->start;
@@ -549,7 +552,13 @@ namespace net_instaweb {
       request_headers->RemoveAll(HttpAttributes::kUserAgent);
     }
     if (user_agent.empty()) {
-      user_agent += "mod_pagespeed";
+      user_agent += "NgxNativeFetcher";
+    }
+    GoogleString version = StrCat(
+        " ", kModPagespeedSubrequestUserAgent,
+        "/" MOD_PAGESPEED_VERSION_STRING "-" LASTCHANGE_STRING);
+    if (!StringPiece(user_agent).ends_with(version)) {
+      user_agent += version;
     }
     request_headers->Add(HttpAttributes::kUserAgent, user_agent);
   }
