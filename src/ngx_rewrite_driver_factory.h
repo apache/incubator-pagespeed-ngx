@@ -163,6 +163,12 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
     resolver_timeout_ = resolver_timeout == NGX_CONF_UNSET_MSEC ?
         1000 : resolver_timeout;
   }
+  bool use_native_fetcher() {
+    return use_native_fetcher_;
+  }
+  void set_use_native_fetcher(bool x) {
+    use_native_fetcher_ = x;
+  }
 
   // We use a beacon handler to collect data for critical images,
   // css, etc., so filters should be configured accordingly.
@@ -203,6 +209,8 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   ngx_log_t* log_;
   ngx_msec_t resolver_timeout_;
   ngx_resolver_t* resolver_;
+  bool use_native_fetcher_;
+  
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

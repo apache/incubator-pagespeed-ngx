@@ -85,7 +85,8 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
       statistics_frozen_(false),
       ngx_url_async_fetcher_(NULL),
       log_(NULL),
-      resolver_timeout_(NGX_CONF_UNSET_MSEC) {
+      resolver_timeout_(NGX_CONF_UNSET_MSEC),
+      use_native_fetcher_(false) {
   timer_ = DefaultTimer();
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
@@ -122,18 +123,31 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
   if (main_conf_ != NULL) {
     fetcher_proxy = main_conf_->fetcher_proxy().c_str();
   }
-  fprintf(stderr, "construct async url fetcher\n");
-  net_instaweb::NgxUrlAsyncFetcher* fetcher =
-      new net_instaweb::NgxUrlAsyncFetcher(
-        fetcher_proxy,
-        log_,
-        resolver_timeout_,
-        60000,
-        resolver_,
-        thread_system(),
-        message_handler());
-  ngx_url_async_fetcher_ = fetcher;
-  return fetcher;
+
+  if (use_native_fetcher_) {
+    net_instaweb::NgxUrlAsyncFetcher* fetcher =
+        new net_instaweb::NgxUrlAsyncFetcher(
+            fetcher_proxy,
+            log_,
+            resolver_timeout_,
+            60000, // TODO(oschaaf): 
+            resolver_,
+            thread_system(),
+            message_handler());
+    ngx_url_async_fetcher_ = fetcher;
+    return fetcher;
+  } else {
+    net_instaweb::UrlAsyncFetcher* fetcher =
+        new net_instaweb::SerfUrlAsyncFetcher(
+            fetcher_proxy,
+            NULL,
+            thread_system(),
+            statistics(),
+            timer(),
+            2500,
+            message_handler());
+    return fetcher;
+  }
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
@@ -185,10 +199,8 @@ void NgxRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
 
 bool NgxRewriteDriverFactory::InitNgxUrlAsyncFecther() {
   if (ngx_url_async_fetcher_ == NULL) {
-    fprintf(stderr, "no ngx url async fetcher, no init\n");
     return true;
   }
-  fprintf(stderr, "have ngx url async fetcher, call init\n");
   log_ = ngx_cycle->log;
   return ngx_url_async_fetcher_->Init();
 }
