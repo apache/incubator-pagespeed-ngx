@@ -34,3 +34,16 @@ message RewriterApplication {
     REPLACE_FAILED = 5;
   }
 }
+
+// Status of rewriter at the HTML level.  This would include failure reasons
+// such as the rewriter being disabled, the url being blacklisted, or missing
+// the property cache (for those rewriters which rely on properties).
+message RewriterHtmlApplication {
+  enum Status {
+    UNKNOWN_STATUS = 0;
+    ACTIVE = 1;
+    DISABLED = 2;
+    PROPERTY_CACHE_MISS = 3;
+    USER_AGENT_NOT_SUPPORTED = 4;
+  }
+}

@@ -90,7 +90,7 @@ class LogRecord  {
   // per filter, at the point where it is determined the filter is either
   // active or not.
   void LogRewriterHtmlStatus(const char* rewriter_id,
-                             RewriterStats::RewriterHtmlStatus status);
+                             RewriterHtmlApplication::Status status);
 
   // Log the status of a rewriter application on a resource.
   // TODO(gee): I'd really prefer rewriter_id was an enum.
@@ -294,12 +294,13 @@ class LogRecord  {
   // Stats collected from calls to LogRewrite.
   typedef std::map<RewriterApplication::Status, int> RewriteStatusCountMap;
   struct RewriterStatsInternal {
-    RewriterStats::RewriterHtmlStatus html_status;
+    RewriterHtmlApplication::Status html_status;
 
     // RewriterApplication::Status -> count.
     RewriteStatusCountMap status_counts;
 
-    RewriterStatsInternal() : html_status(RewriterStats::UNKNOWN_STATUS) {}
+    RewriterStatsInternal()
+        : html_status(RewriterHtmlApplication::UNKNOWN_STATUS) {}
   };
   typedef std::map<GoogleString, RewriterStatsInternal> RewriterStatsMap;
   RewriterStatsMap rewriter_stats_;

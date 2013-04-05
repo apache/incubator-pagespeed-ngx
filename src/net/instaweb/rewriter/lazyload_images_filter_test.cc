@@ -268,7 +268,7 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
   for (int i = 0; i < logging_info()->rewriter_stats_size(); i++) {
     if (logging_info()->rewriter_stats(i).id() == "ll" &&
         logging_info()->rewriter_stats(i).has_html_status()) {
-      EXPECT_EQ(RewriterStats::ACTIVE,
+      EXPECT_EQ(RewriterHtmlApplication::ACTIVE,
                 logging_info()->rewriter_stats(i).html_status());
       return;
     }
@@ -469,7 +469,7 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForGooglebot) {
   for (int i = 0; i < logging_info->rewriter_stats_size(); i++) {
     if (logging_info->rewriter_stats(i).id() == "ll" &&
         logging_info->rewriter_stats(i).has_html_status()) {
-      EXPECT_EQ(RewriterStats::USER_AGENT_NOT_SUPPORTED,
+      EXPECT_EQ(RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED,
                 logging_info->rewriter_stats(i).html_status());
       return;
     }
@@ -494,7 +494,7 @@ TEST_F(LazyloadImagesFilterTest, LazyloadDisabledForXHR) {
   for (int i = 0; i < logging_info->rewriter_stats_size(); i++) {
     if (logging_info->rewriter_stats(i).id() == "ll" &&
         logging_info->rewriter_stats(i).has_html_status()) {
-      EXPECT_EQ(RewriterStats::DISABLED,
+      EXPECT_EQ(RewriterHtmlApplication::DISABLED,
                 logging_info->rewriter_stats(i).html_status());
       return;
     }

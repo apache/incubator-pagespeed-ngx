@@ -35,7 +35,6 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -175,14 +174,14 @@ void CriticalCssFilter::StartDocument() {
       const GoogleString& url = critical_css_result_->link_rules(i).link_url();
       url_indexes_.insert(make_pair(url, i));
     }
-    log_record->LogRewriterHtmlStatus(pcc_id, RewriterStats::ACTIVE);
+    log_record->LogRewriterHtmlStatus(pcc_id, RewriterHtmlApplication::ACTIVE);
   } else {
     // TODO(gee): In the future it may be necessary for the finder to
     // communicate the exact reason for not returning the property (parse
     // failure, expiration, etc.), but for the time being lump all reasons
     // into the single category.
-    log_record->LogRewriterHtmlStatus(pcc_id,
-                                      RewriterStats::PROPERTY_CACHE_MISS);
+    log_record->LogRewriterHtmlStatus(
+        pcc_id, RewriterHtmlApplication::PROPERTY_CACHE_MISS);
   }
 }
 

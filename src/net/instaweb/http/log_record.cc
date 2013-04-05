@@ -146,9 +146,9 @@ void LogRecord::SetRewriterLoggingStatus(
 
 void LogRecord::LogRewriterHtmlStatus(
     const char* rewriter_id,
-    RewriterStats::RewriterHtmlStatus status) {
+    RewriterHtmlApplication::Status status) {
   ScopedMutex lock(mutex_.get());
-  DCHECK(RewriterStats::RewriterHtmlStatus_IsValid(status)) << status;
+  DCHECK(RewriterHtmlApplication::Status_IsValid(status)) << status;
   // TODO(gee): Verify this is called only once?
   rewriter_stats_[rewriter_id].html_status = status;
 }

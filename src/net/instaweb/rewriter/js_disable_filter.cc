@@ -22,11 +22,11 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/js_defer_disabled_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
@@ -60,11 +60,11 @@ void JsDisableFilter::DetermineEnabled() {
   if (should_apply) {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
-        RewriterStats::ACTIVE);
+        RewriterHtmlApplication::ACTIVE);
   } else if (!rewrite_driver_->flushing_early()) {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),
-        RewriterStats::USER_AGENT_NOT_SUPPORTED);
+        RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
   }
 }
 

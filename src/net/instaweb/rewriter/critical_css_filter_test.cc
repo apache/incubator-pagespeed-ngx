@@ -129,7 +129,7 @@ class CriticalCssFilterTest : public RewriteTestBase {
 
   typedef std::vector<std::pair<int, int> > ExpApplicationVector;
   void ValidateRewriterLogging(
-      RewriterStats::RewriterHtmlStatus html_status,
+      RewriterHtmlApplication::Status html_status,
       ExpApplicationVector expected_application_counts) {
     rewrite_driver()->log_record()->WriteLog();
 
@@ -174,7 +174,7 @@ TEST_F(CriticalCssFilterTest, UnchangedWhenPcacheEmpty) {
   ValidateExpected("unchanged_when_pcache_empty", input_html, input_html);
 
   ExpApplicationVector exp_application_counts;
-  ValidateRewriterLogging(RewriterStats::PROPERTY_CACHE_MISS,
+  ValidateRewriterLogging(RewriterHtmlApplication::PROPERTY_CACHE_MISS,
                           exp_application_counts);
 
   // Validate logging.
@@ -235,7 +235,7 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
   ExpApplicationVector exp_application_counts;
   exp_application_counts.push_back(
       make_pair(RewriterApplication::APPLIED_OK, 3));
-  ValidateRewriterLogging(RewriterStats::ACTIVE,
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE,
                           exp_application_counts);
 
   // Validate logging.
@@ -296,7 +296,8 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
   // PROPERTY_NOT_FOUND
   exp_application_counts.push_back(
       make_pair(RewriterApplication::PROPERTY_NOT_FOUND, 1));
-  ValidateRewriterLogging(RewriterStats::ACTIVE, exp_application_counts);
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE,
+                          exp_application_counts);
 
   // Validate logging.
   const CriticalCssInfo& info =
@@ -365,7 +366,8 @@ TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
       make_pair(RewriterApplication::APPLIED_OK, 2));
   exp_application_counts.push_back(
       make_pair(RewriterApplication::PROPERTY_NOT_FOUND, 1));
-  ValidateRewriterLogging(RewriterStats::ACTIVE, exp_application_counts);
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE,
+                          exp_application_counts);
 
   // Validate logging.
   const CriticalCssInfo& info =
@@ -457,7 +459,8 @@ TEST_F(CriticalCssFilterTest, DebugFilterAddsStats) {
       make_pair(RewriterApplication::APPLIED_OK, 2));
   exp_application_counts.push_back(
       make_pair(RewriterApplication::PROPERTY_NOT_FOUND, 1));
-  ValidateRewriterLogging(RewriterStats::ACTIVE, exp_application_counts);
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE,
+                          exp_application_counts);
 
   // Validate logging.
   const CriticalCssInfo& info =

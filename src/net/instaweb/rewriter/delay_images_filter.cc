@@ -28,7 +28,6 @@
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -242,13 +241,13 @@ void DelayImagesFilter::DetermineEnabled() {
   if (!driver_->device_properties()->SupportsImageInlining()) {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDelayImages),
-        RewriterStats::USER_AGENT_NOT_SUPPORTED);
+        RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
     set_is_enabled(false);
     return;
   }
   log_record->LogRewriterHtmlStatus(
       RewriteOptions::FilterId(RewriteOptions::kDelayImages),
-      RewriterStats::ACTIVE);
+      RewriterHtmlApplication::ACTIVE);
   set_is_enabled(true);
 }
 

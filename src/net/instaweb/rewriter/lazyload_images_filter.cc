@@ -23,7 +23,6 @@
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/log_record.h"
-#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -68,8 +67,8 @@ LazyloadImagesFilter::LazyloadImagesFilter(RewriteDriver* driver)
 LazyloadImagesFilter::~LazyloadImagesFilter() {}
 
 void LazyloadImagesFilter::DetermineEnabled() {
-  RewriterStats::RewriterHtmlStatus should_apply = ShouldApply(driver());
-  set_is_enabled(should_apply == RewriterStats::ACTIVE);
+  RewriterHtmlApplication::Status should_apply = ShouldApply(driver());
+  set_is_enabled(should_apply == RewriterHtmlApplication::ACTIVE);
   if (!driver()->flushing_early()) {
     driver()->log_record()->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kLazyloadImages),
@@ -95,17 +94,17 @@ void LazyloadImagesFilter::Clear() {
   num_images_lazily_loaded_ = 0;
 }
 
-RewriterStats::RewriterHtmlStatus LazyloadImagesFilter::ShouldApply(
+RewriterHtmlApplication::Status LazyloadImagesFilter::ShouldApply(
     RewriteDriver* driver) {
   if (!driver->device_properties()->SupportsLazyloadImages()) {
-    return RewriterStats::USER_AGENT_NOT_SUPPORTED;
+    return RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED;
   }
   if (driver->flushing_early() ||
       (driver->request_headers() != NULL &&
        driver->request_headers()->IsXmlHttpRequest())) {
-    return RewriterStats::DISABLED;
+    return RewriterHtmlApplication::DISABLED;
   }
-  return RewriterStats::ACTIVE;
+  return RewriterHtmlApplication::ACTIVE;
 }
 
 void LazyloadImagesFilter::StartElementImpl(HtmlElement* element) {
