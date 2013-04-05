@@ -588,4 +588,15 @@ wget -O - --header 'X-PSA-Blocking-Rewrite: psatest' $URL > $TEMPDIR/flush.$$
 check [ `wget -O - $URL | grep -o 'link rel="subresource"' | wc -l` = 0 ]
 rm -f $TEMPDIR/flush.$$
 
+WGET_ARGS=""
+start_test Respect custom options on resources.
+IMG_NON_CUSTOM="$EXAMPLE_ROOT/images/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
+IMG_CUSTOM="$TEST_ROOT/custom_options/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
+
+# Identical images, but in the location block for the custom_options directory
+# we additionally disable core-filter convert_jpeg_to_progressive which gives a
+# larger file.
+fetch_until $IMG_NON_CUSTOM 'wc -c' 216942
+fetch_until $IMG_CUSTOM 'wc -c' 231192
+
 check_failures_and_exit
