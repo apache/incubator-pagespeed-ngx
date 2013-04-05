@@ -440,4 +440,16 @@ URL=$REWRITE_URL",convert_jpeg_to_webp&"$IMAGES_QUALITY"=75&"$WEBP_QUALITY"=65"
 check run_wget_with_args --header 'X-PSA-Blocking-Rewrite: psatest' $URL
 check_file_size "$OUTDIR/*webp*" -le 1784   # resized, optimized to webp
 
+start_test respect vary user-agent
+WGET_ARGS=""
+URL="$SECONDARY_HOSTNAME/mod_pagespeed_test/vary/index.html"
+URL+="?ModPagespeedFilters=inline_css"
+FETCH_CMD="$WGET_DUMP --header=Host:respectvary.example.com $URL"
+OUT=$($FETCH_CMD)
+# We want to verify that css is not inlined, but if we just check once then
+# pagespeed doesn't have long enough to be able to inline it.
+sleep .1
+OUT=$($FETCH_CMD)
+check_not_from "$OUT" fgrep "<style>"
+
 check_failures_and_exit

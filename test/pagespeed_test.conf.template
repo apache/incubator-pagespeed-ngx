@@ -73,6 +73,15 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    server_name respectvary.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RespectVary on;
+    add_header Vary User-Agent;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
     server_name cache_a.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
