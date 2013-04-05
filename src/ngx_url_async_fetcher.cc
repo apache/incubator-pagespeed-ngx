@@ -242,7 +242,7 @@ namespace net_instaweb {
       // Start all these fetches.
       case 'F':
         fetcher->mutex_->Lock();
-
+        fetcher->completed_fetches_.DeleteAll();
         for (Pool<NgxFetch>::iterator p = fetcher->pending_fetches_.begin(),
                  e = fetcher->pending_fetches_.end(); p != e; p++) {
           NgxFetch* fetch = *p;
@@ -282,9 +282,10 @@ namespace net_instaweb {
     return;
   }
 
+  // TODO(oschaaf): return value is ignored.
   bool NgxUrlAsyncFetcher::StartFetch(NgxFetch* fetch) {
     mutex_->Lock();
-    // TODO: doc this, why we always add fetch to the active fetchers
+    // TODO(oschaaf): doc this, why we always add fetch to the active fetchers
     active_fetches_.Add(fetch);
     fetchers_count_++;
     mutex_->Unlock();
@@ -311,7 +312,7 @@ namespace net_instaweb {
     byte_count_ += fetch->bytes_received();
     fetchers_count_--;
     active_fetches_.Remove(fetch);
-    delete fetch;
+    completed_fetches_.Add(fetch);
   }
 
   void NgxUrlAsyncFetcher::PrintActiveFetches(MessageHandler* handler) const {

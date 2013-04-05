@@ -120,6 +120,7 @@ class NgxUrlAsyncFetcher : public UrlAsyncFetcher {
     NgxFetchPool active_fetches_;
     // Add the pending task to this list
     NgxFetchPool pending_fetches_;
+    NgxFetchPool completed_fetches_;
     ngx_url_t url_;
 
     int fetchers_count_;

@@ -187,6 +187,7 @@ namespace net_instaweb {
     }
 
     async_fetch_->Done(success);
+
     if (fetcher_ != NULL) {
       if (fetcher_->track_original_content_length()
           && async_fetch_->response_headers()->Has(
@@ -196,6 +197,7 @@ namespace net_instaweb {
       }
       fetcher_->FetchComplete(this);
     }
+    
     async_fetch_ = NULL;
   }
 
@@ -489,7 +491,7 @@ namespace net_instaweb {
     if (n > size) {
       return false;
     } else if (fetch->parser_.headers_complete()) {
-      int64 content_length;
+      int64 content_length = -1;
       fetch->async_fetch_->response_headers()->FindContentLength(
           &content_length);
       fetch->content_length_ = content_length;
