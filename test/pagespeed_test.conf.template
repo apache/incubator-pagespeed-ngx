@@ -188,6 +188,12 @@ http {
       }
     }
 
+    location /mod_pagespeed_test/shard/ {
+      pagespeed ShardDomain "localhost:@@PRIMARY_PORT@@" shard1,shard2;
+      pagespeed RewriteLevel PassThrough;
+      pagespeed EnableFilters extend_cache;
+    }
+
     pagespeed EnableFilters remove_comments;
 
     #charset koi8-r;
