@@ -423,8 +423,7 @@ start_test quality of jpeg output images
 IMG_REWRITE=$TEST_ROOT"/jpeg_rewriting/rewrite_images.html"
 REWRITE_URL=$IMG_REWRITE"?ModPagespeedFilters=rewrite_images"
 URL=$REWRITE_URL",recompress_jpeg&"$IMAGES_QUALITY"=85&"$JPEG_QUALITY"=70"
-fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2   # 2 images
-optimized
+fetch_until -save -recursive $URL 'grep -c .pagespeed.ic' 2 # 2 images optimized
 #
 # If this this test fails because the image size is 7673 bytes it means
 # that image_rewrite_filter.cc decided it was a good idea to convert to
