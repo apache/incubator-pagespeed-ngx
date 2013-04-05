@@ -452,4 +452,10 @@ sleep .1
 OUT=$($FETCH_CMD)
 check_not_from "$OUT" fgrep "<style>"
 
+WGET_ARGS=""
+start_test ModPagespeedShardDomain directive in location block
+fetch_until -save $TEST_ROOT/shard/shard.html 'grep -c \.pagespeed\.' 4
+check [ $(grep -ce href=\"http://shard1 $FETCH_FILE) = 2 ];
+check [ $(grep -ce href=\"http://shard2 $FETCH_FILE) = 2 ];
+
 check_failures_and_exit
