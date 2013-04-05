@@ -62,7 +62,8 @@ namespace net_instaweb {
       track_original_content_length_(false),
       byte_count_(0),
       thread_system_(thread_system),
-      message_handler_(handler) {
+      message_handler_(handler),
+      mutex_(NULL) {
     resolver_timeout_ = resolver_timeout;
     fetch_timeout_ = fetch_timeout;
     ngx_memzero(&url_, sizeof(url_));
@@ -98,6 +99,10 @@ namespace net_instaweb {
     if (pipe_fd_ != -1) {
       close(pipe_fd_);
       pipe_fd_ = -1;
+    }
+    if (mutex_ != NULL) {
+      delete mutex_;
+      mutex_ = NULL;
     }
   }
 
