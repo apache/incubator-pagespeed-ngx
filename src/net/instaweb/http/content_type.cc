@@ -63,7 +63,6 @@ const ContentType kTypes[] = {
   {"image/jpg",                ".jpg",  ContentType::kJpeg},
   {"image/vnd.microsoft.icon", ".ico",  ContentType::kIco},
   {"text/html",                ".htm",  ContentType::kHtml},
-  {"text/xhtml",               ".html", ContentType::kXhtml},
   {"application/xml",          ".xml",  ContentType::kXml},  // RFC 3023
 
   {"video/mpeg",                ".mpg", ContentType::kVideo},  // RFC 2045
