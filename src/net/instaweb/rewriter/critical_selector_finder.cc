@@ -19,12 +19,14 @@
 
 #include <set>
 
+#include "base/logging.h"
 #include "net/instaweb/rewriter/critical_selectors.pb.h"
 #include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -110,29 +112,45 @@ void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
     const PropertyCache* cache, PropertyPage* page,
     MessageHandler* message_handler) {
 
-  // Construct the protobuf CriticalSelectorSet from the input StringSet to
-  // write to the property cache.
-  CriticalSelectorSet selectors;
-  // If selector_set.empty(), we'd like to simply store an empty selectors (no
-  // critical selectors).  The problem: that yields a protobuf whose
-  // serialization is "" (the empty string).  PropertyPage::EncodeCacheEntry
-  // can't distinguish that from the case where we attempt to write back a
-  // pcache miss.  So we need to ensure that the pcache data has a non-empty
-  // protobuf encoding.  We do this by setting the is_empty flag.
-  // TODO(jmaessen): Strip when is_empty is no longer needed (ie when omitting
-  // the field no longer attempts to write "" to the pcache, because we're
-  // storing more metadata alongside the entry)
-  if (selector_set.empty()) {
-    selectors.set_is_empty(true);
+  // We can't do anything here if page is NULL, so bail out early.
+  if (page == NULL) {
+    return;
   }
-  for (StringSet::const_iterator i = selector_set.begin();
-       i != selector_set.end(); ++i) {
-    selectors.add_critical_selectors(*i);
+
+  // We first need to read the current critical selectors in the property cache,
+  // then update it with the new set if it exists, or create it if it doesn't.
+  PropertyCacheDecodeResult decode_result;
+  scoped_ptr<CriticalSelectorSet> critical_selectors(
+      DecodeFromPropertyCache<CriticalSelectorSet>(
+          cache, page, cohort_, kCriticalSelectorsPropertyName, -1,
+          &decode_result));
+  switch (decode_result) {
+    case kPropertyCacheDecodeOk:
+      // We successfully decoded the property cache value, so use the returned
+      // CriticalSelectorSet.
+      break;
+    case kPropertyCacheDecodeNotFound:
+      // We either got here because the property cache is not set up correctly
+      // (the cohort doesn't exist), or we just don't have a value already. For
+      // the former, bail out since there is no use trying to update the
+      // property cache if it is not setup. For the later, create a new
+      // CriticalSelectorSet, since we just haven't written a value before.
+      if (cache->GetCohort(cohort_) == NULL) {
+        return;
+      }
+      FALLTHROUGH_INTENDED;
+    case kPropertyCacheDecodeExpired:
+    case kPropertyCacheDecodeParseError:
+      // We can proceed here, but we need to create a new CriticalSelectorSet.
+      critical_selectors.reset(new CriticalSelectorSet);
+      break;
   }
+
+  UpdateCriticalSelectorSet(selector_set, critical_selectors.get());
 
   PropertyCacheUpdateResult result =
       UpdateInPropertyCache(
-          selectors, cache, cohort_, kCriticalSelectorsPropertyName,
+          *critical_selectors, cache, cohort_, kCriticalSelectorsPropertyName,
           false /* don't write cohort*/, page);
   switch (result) {
     case kPropertyCacheUpdateNotFound:
@@ -146,6 +164,54 @@ void CriticalSelectorFinder::WriteCriticalSelectorsToPropertyCache(
     case kPropertyCacheUpdateOk:
       // Nothing more to do.
       break;
+  }
+}
+
+void CriticalSelectorFinder::UpdateCriticalSelectorSet(
+    const StringSet& new_set, CriticalSelectorSet* critical_selector_set) {
+  DCHECK(critical_selector_set != NULL);
+
+  // Update the selector_sets field first, which contains the history of up to
+  // NumSetsToKeep() critical selector responses. If we already have
+  // NumSetsToKeep(), drop the first (oldest) response, and append the new
+  // response to the end.
+  CriticalSelectorSet::BeaconResponse* new_selector_set;
+  if (critical_selector_set->selector_set_history_size() >= NumSetsToKeep()) {
+    DCHECK_EQ(critical_selector_set->selector_set_history_size(),
+              NumSetsToKeep());
+    protobuf::RepeatedPtrField<CriticalSelectorSet::BeaconResponse>*
+        selector_history =
+            critical_selector_set->mutable_selector_set_history();
+    for (int i = 1; i < selector_history->size(); ++i) {
+      selector_history->SwapElements(i - 1, i);
+    }
+    new_selector_set = selector_history->Mutable(selector_history->size() - 1);
+    new_selector_set->Clear();
+  } else {
+    new_selector_set = critical_selector_set->add_selector_set_history();
+  }
+
+  for (StringSet::const_iterator it = new_set.begin();
+       it != new_set.end(); ++it) {
+    new_selector_set->add_selectors(*it);
+  }
+
+  // Now recalculate the critical_selectors field as the union of all selectors
+  // reported by beacons. Aggregate all the selectors into a StringSet first to
+  // remove duplicates.
+  StringSet new_critical_selectors;
+  for (int i = 0; i < critical_selector_set->selector_set_history_size(); ++i) {
+    const CriticalSelectorSet::BeaconResponse& curr_set =
+        critical_selector_set->selector_set_history(i);
+    for (int j = 0; j < curr_set.selectors_size(); ++j) {
+      new_critical_selectors.insert(curr_set.selectors(j));
+    }
+  }
+
+  critical_selector_set->clear_critical_selectors();
+  for (StringSet::const_iterator it = new_critical_selectors.begin();
+       it != new_critical_selectors.end(); ++it) {
+    critical_selector_set->add_critical_selectors(*it);
   }
 }
 

@@ -53,9 +53,11 @@ class CriticalSelectorFinder {
   CriticalSelectorSet* DecodeCriticalSelectorsFromPropertyCache(
       RewriteDriver* driver);
 
-  // Writes out the given critical selector set to the property cache.
-  // This updates the value in the in-memory property page but does not write
-  // the cohort.
+  // Updates the critical selectors in the property cache. The new selector_set
+  // is added to the list of previous beacon responses, and the
+  // critical_selectors field is recomputed by taking the union of the selectors
+  // in the previous NumSetsToKeep() sets. This updates the value in the
+  // in-memory property page but does not write the cohort.
   void WriteCriticalSelectorsToPropertyCache(
       const StringSet& selector_set, RewriteDriver* driver);
 
@@ -63,10 +65,26 @@ class CriticalSelectorFinder {
       const StringSet& selector_set, const PropertyCache* cache,
       PropertyPage* page, MessageHandler* message_handler);
 
+  // Get the number of critical selector beacon results to keep.
+  int NumSetsToKeep() const {
+    return kDefaultNumSetsToKeep;
+  }
+
   // TODO(morlovich): Add an API for enabling the appropriate instrumentation
   // filter; once it's clear when the configuration resolving takes place.
 
  private:
+  // The number of beacon results to keep. This is an estimate for how many
+  // samples it will take to get stable results.
+  static const int kDefaultNumSetsToKeep = 10;
+
+  // Merge the given set into the existing critical selector sets by adding the
+  // new set to the history of sets, discarding the oldest if we exceed
+  // NumSetsToKeep(), then recalculating the critical selectors as the union of
+  // all the selectors in all the sets in the history.
+  void UpdateCriticalSelectorSet(
+    const StringSet& new_set, CriticalSelectorSet* set);
+
   GoogleString cohort_;
 
   TimedVariable* critical_selectors_valid_count_;

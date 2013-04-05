@@ -54,10 +54,25 @@ T* DecodeFromPropertyCache(RewriteDriver* driver,
                            StringPiece property_name,
                            int64 cache_ttl_ms,
                            PropertyCacheDecodeResult* status) {
+  return DecodeFromPropertyCache<T>(
+      driver->server_context()->page_property_cache(),
+      driver->property_page(),
+      cohort_name,
+      property_name,
+      cache_ttl_ms,
+      status);
+}
+
+template<typename T>
+T* DecodeFromPropertyCache(const PropertyCache* cache,
+                           const PropertyPage* page,
+                           StringPiece cohort_name,
+                           StringPiece property_name,
+                           int64 cache_ttl_ms,
+                           PropertyCacheDecodeResult* status) {
+  // TODO(jud): Split out the error checking below into a separate function.
   scoped_ptr<T> result;
-  const PropertyCache* cache = driver->server_context()->page_property_cache();
   const PropertyCache::Cohort* cohort = cache->GetCohort(cohort_name);
-  PropertyPage* page = driver->property_page();
   if (cohort == NULL || page == NULL) {
     *status = kPropertyCacheDecodeNotFound;
     return NULL;

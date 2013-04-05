@@ -1163,11 +1163,29 @@ TEST_F(BeaconTest, HandleBeaconCritImages) {
 
 TEST_F(BeaconTest, HandleBeaconCriticalCss) {
   StringSet critical_css_selector;
-  critical_css_selector.insert(".foo");
-  critical_css_selector.insert("#bar");
+  critical_css_selector.insert("#foo");
+  critical_css_selector.insert(".bar");
+  // Setup expected protobuf value.
   CriticalSelectorSet css_selector_proto;
-  css_selector_proto.add_critical_selectors("#bar");
-  css_selector_proto.add_critical_selectors(".foo");
+  css_selector_proto.add_critical_selectors("#foo");
+  css_selector_proto.add_critical_selectors(".bar");
+  CriticalSelectorSet::BeaconResponse* set =
+      css_selector_proto.add_selector_set_history();
+  set->add_selectors("#foo");
+  set->add_selectors(".bar");
+  TestBeacon(NULL, &critical_css_selector, UserAgentStrings::kChromeUserAgent);
+  EXPECT_STREQ(css_selector_proto.SerializeAsString(),
+               critical_css_selectors_property_value_);
+
+  // Send another beacon response, and make sure we are storing a history of
+  // responses.
+  critical_css_selector.clear();
+  critical_css_selector.insert(".bar");
+  critical_css_selector.insert("img");
+  css_selector_proto.add_critical_selectors("img");
+  set = css_selector_proto.add_selector_set_history();
+  set->add_selectors(".bar");
+  set->add_selectors("img");
   TestBeacon(NULL, &critical_css_selector, UserAgentStrings::kChromeUserAgent);
   EXPECT_STREQ(css_selector_proto.SerializeAsString(),
                critical_css_selectors_property_value_);
@@ -1176,7 +1194,7 @@ TEST_F(BeaconTest, HandleBeaconCriticalCss) {
 TEST_F(BeaconTest, EmptyCriticalCss) {
   StringSet empty_critical_selectors;
   CriticalSelectorSet empty_selector_proto;
-  empty_selector_proto.set_is_empty(true);
+  empty_selector_proto.add_selector_set_history();
   TestBeacon(NULL, &empty_critical_selectors,
              UserAgentStrings::kChromeUserAgent);
   EXPECT_STREQ(empty_selector_proto.SerializeAsString(),

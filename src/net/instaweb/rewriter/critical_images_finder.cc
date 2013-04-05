@@ -113,7 +113,7 @@ void UpdateCriticalImagesSetInProto(
   if (set_field->size() >= max_set_size) {
     DCHECK_EQ(set_field->size(), max_set_size);
     for (int i = 1; i < set_field->size(); ++i) {
-      *set_field->Mutable(i - 1) = set_field->Get(i);
+      set_field->SwapElements(i - 1, i);
     }
     new_set = set_field->Mutable(set_field->size() - 1);
     new_set->Clear();

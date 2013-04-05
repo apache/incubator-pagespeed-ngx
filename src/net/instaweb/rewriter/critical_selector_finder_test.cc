@@ -66,6 +66,20 @@ class CriticalSelectorFinderTest : public RewriteTestBase {
         CriticalSelectorFinder::kCriticalSelectorsNotFoundCount)->Get());
   }
 
+  bool IsCriticalSelector(StringPiece selector) {
+    scoped_ptr<CriticalSelectorSet> read_selectors(
+        finder_->DecodeCriticalSelectorsFromPropertyCache(rewrite_driver()));
+    if (read_selectors.get() == NULL) {
+      return false;
+    }
+    for (int i = 0; i < read_selectors->critical_selectors_size(); ++i) {
+      if (read_selectors->critical_selectors(i) == selector) {
+        return true;
+      }
+    }
+    return false;
+  }
+
  protected:
   scoped_ptr<CriticalSelectorFinder> finder_;
 };
@@ -105,6 +119,34 @@ TEST_F(CriticalSelectorFinderTest, StoreRestore) {
       finder_->DecodeCriticalSelectorsFromPropertyCache(rewrite_driver()));
   EXPECT_TRUE(read_selectors.get() == NULL);
   CheckCriticalSelectorFinderStats(1, 1, 1);
+}
+
+// Verify that writing multiple beacon results are stored and aggregated. The
+// critical selector set should be equal to all selectors seen in the last
+// NumSetsToKeep() beacon responses.
+TEST_F(CriticalSelectorFinderTest, StoreMultiple) {
+  StringSet selectors;
+  selectors.insert(".a");
+  finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  EXPECT_TRUE(IsCriticalSelector(".a"));
+  EXPECT_FALSE(IsCriticalSelector(".b"));
+
+  selectors.clear();
+  selectors.insert(".b");
+  for (int i = 0; i < finder_->NumSetsToKeep() - 1; ++i) {
+    finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+    EXPECT_TRUE(IsCriticalSelector(".a"));
+    EXPECT_TRUE(IsCriticalSelector(".b"));
+  }
+
+  // We send one more beacon response, which should kick .a out of the critical
+  // selector set.
+  selectors.clear();
+  selectors.insert("#c");
+  finder_->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  EXPECT_FALSE(IsCriticalSelector(".a"));
+  EXPECT_TRUE(IsCriticalSelector(".b"));
+  EXPECT_TRUE(IsCriticalSelector("#c"));
 }
 
 }  // namespace

@@ -198,6 +198,7 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
 
   GoogleString critical_css_div = "div{display:inline-block}";
   GoogleString critical_css_span = "span{display:inline-block}";
+  GoogleString critical_css_div_span = "div,span{display:inline-block}";
 
   // Check what we compute for a page with div.
   ValidateNoChanges("with_div", StrCat(css, "<div>Foo</div>"));
@@ -206,25 +207,47 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
                    StrCat("<style>", critical_css_div, "</style>",
                           "<div>Foo</div>", LoadRestOfCss(css)));
 
-  // Now do it on a page with spans, with selector list updated appropriately.
-  // We also clear the property cache entry for our result, which is needed
-  // because the test harness not really keying the pcache by the URL like
-  // the real system would.
+  // Update the selector list with span. Because we are storing the last N
+  // beacon entries, both div and span should now be in the critical set. We
+  // also clear the property cache entry for our result, which is needed because
+  // the test harness is not really keying the pcache by the URL like the real
+  // system would.
   StringSet selectors;
   selectors.insert("span");
-  server_context()->critical_selector_finder()->
-      WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  CriticalSelectorFinder* finder = server_context()->critical_selector_finder();
+  finder->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
   page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kBeaconCohort));
   page_->DeleteProperty(
       pcache_->GetCohort(RewriteDriver::kDomCohort),
       CriticalSelectorFilter::kSummarizedCssProperty);
   page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kDomCohort));
 
+  // Note that calling ResetDriver() just resets the state in the
+  // driver. Whatever has been written to the property cache so far
+  // will persist. Upon rewriting, the property cache contents will be read and
+  // the critical selector info in the driver will be repopulated.
   ResetDriver();
 
+  ValidateNoChanges("with_div_span", StrCat(css, "<span>Foo</span>"));
+  ResetDriver();
+  ValidateExpected("with_div_span", StrCat(css, "<span>Foo</span>"),
+                   StrCat("<style>", critical_css_div_span, "</style>",
+                          "<span>Foo</span>", LoadRestOfCss(css)));
+
+  // Now send enough beacons to clear div from the critical selector set, so
+  // only span should be left.
+  for (int i = 0; i < finder->NumSetsToKeep(); ++i) {
+    finder->WriteCriticalSelectorsToPropertyCache(selectors, rewrite_driver());
+  }
+  page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kBeaconCohort));
+  page_->DeleteProperty(
+      pcache_->GetCohort(RewriteDriver::kDomCohort),
+      CriticalSelectorFilter::kSummarizedCssProperty);
+  page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kDomCohort));
+  ResetDriver();
   ValidateNoChanges("with_span", StrCat(css, "<span>Foo</span>"));
   ResetDriver();
-  ValidateExpected("width_span", StrCat(css, "<span>Foo</span>"),
+  ValidateExpected("with_span", StrCat(css, "<span>Foo</span>"),
                    StrCat("<style>", critical_css_span, "</style>",
                           "<span>Foo</span>", LoadRestOfCss(css)));
 }
