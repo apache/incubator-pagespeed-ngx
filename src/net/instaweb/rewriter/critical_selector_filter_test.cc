@@ -295,6 +295,16 @@ TEST_F(CriticalSelectorFilterTest, NoSelectorInfo) {
   ValidateNoChanges("no_sel_info", StrCat(css, "<div>Foo</div>"));
 }
 
+TEST_F(CriticalSelectorFilterTest, ResolveUrlsProperly) {
+  SetResponseWithDefaultHeaders("dir/c.css", kContentTypeCss,
+                                "* { background-image: url(d.png); }", 100);
+  ValidateNoChanges("rel_path", CssLinkHref("dir/c.css"));
+  ResetDriver();
+  ValidateExpected("rel_path", CssLinkHref("dir/c.css"),
+                   StrCat("<style>*{background-image:url(dir/d.png)}</style>",
+                          LoadRestOfCss(CssLinkHref("dir/c.css"))));
+}
+
 }  // namespace
 
 }  // namespace net_instaweb

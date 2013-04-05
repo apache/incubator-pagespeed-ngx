@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -406,13 +407,25 @@ void CriticalSelectorFilter::InsertCriticalCssIfNeeded(
     // TODO(morlovich): This is unsafe inside <noscript>. Actually, what should
     // the summarizer do with <noscript>?
 
-    // TODO(morlovich): Resolve relative URLs for external CSS if needed.
+    // If we're inlining an external CSS file, make sure to adjust the URLs
+    // inside to the new base.
+    const GoogleString* css_to_use = &summary.content();
+    GoogleString resolved_css;
+    if (summary.external()) {
+      StringWriter writer(&resolved_css);
+      GoogleUrl input_css_base(summary.base());
+      if (driver_->ResolveCssUrls(
+              input_css_base, driver_->base_url().Spec(), summary.content(),
+              &writer, driver_->message_handler()) == RewriteDriver::kSuccess) {
+        css_to_use = &resolved_css;
+      }
+    }
 
     // Coalesce this into the previous element if possible.
     if ((prev_content != NULL) &&
         (prev_has_media == summary.has_media()) &&
         (prev_media == summary.media())) {
-      prev_content->Append(summary.content());
+      prev_content->Append(*css_to_use);
     } else {
       // Otherwise we need a separate <style> node.
       HtmlElement* style_element = driver_->NewElement(NULL, HtmlName::kStyle);
@@ -423,7 +436,7 @@ void CriticalSelectorFilter::InsertCriticalCssIfNeeded(
       }
 
       HtmlCharactersNode* content =
-          driver_->NewCharactersNode(style_element, summary.content());
+          driver_->NewCharactersNode(style_element, *css_to_use);
       driver_->AppendChild(style_element, content);
 
       if (summary.has_media()) {
