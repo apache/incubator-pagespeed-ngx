@@ -203,6 +203,10 @@ http {
       pagespeed AvoidRenamingIntrospectiveJavascript on;
     }
 
+    location /mod_pagespeed_test/custom_options/ {
+      pagespeed DisableFilters convert_jpeg_to_progressive;
+    }
+
     pagespeed EnableFilters remove_comments;
 
     # Test LoadFromFile mapping by mapping one dir to another.
