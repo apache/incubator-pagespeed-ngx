@@ -439,7 +439,8 @@ const char* const global_only_options[] = {
   "LoadFromFile",
   "LoadFromFileMatch",
   "LoadFromFileRule",
-  "LoadFromFileRuleMatch"
+  "LoadFromFileRuleMatch",
+  "UseNativeFetcher"
 };
 
 bool ps_is_global_only_option(const StringPiece& option_name) {
@@ -475,6 +476,12 @@ char* ps_configure(ngx_conf_t* cf,
     args[i] = str_to_string_piece(value[i+1]);
   }
 
+  if (option_level == PsConfigure::kServer && n_args > 1) {
+    if (net_instaweb::StringCaseEqual("UseNativeFetcher", args[0])) {
+      return const_cast<char*>(
+          "UseNativeFetcher can only be set in the http{} block.");
+    }
+  }
   if (option_level == PsConfigure::kLocation && n_args > 1) {
     if (ps_is_global_only_option(args[0])) {
       return const_cast<char*>("Option can not be set at location scope");
