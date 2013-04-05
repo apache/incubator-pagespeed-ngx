@@ -182,6 +182,32 @@ TEST_F(CriticalCssFilterTest, UnchangedWhenPcacheEmpty) {
       rewrite_driver()->log_record()->logging_info()->has_critical_css_info());
 }
 
+// Similar to empty pcache case above except rewriter logged as "ACTIVE".
+TEST_F(CriticalCssFilterTest, UnchangedWithNoCriticalRules) {
+  static const char input_html[] =
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "</head>\n"
+      "<body>\n"
+      "  Hello,\n"
+      "  <link rel='stylesheet' href='a.css' type='text/css'>"
+      "</body>\n";
+
+  // When WKH returns an empty result, the finder still writes empty
+  // critical CSS stats to the property cache. Simulate that.
+  finder_->SetCriticalCssStats(0, 0, 0);
+
+  ValidateExpected("unchanged_with_no_critical_rules", input_html, input_html);
+
+  ExpApplicationVector exp_application_counts;
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE,
+                          exp_application_counts);
+
+  // Validate logging.
+  ASSERT_FALSE(
+      rewrite_driver()->log_record()->logging_info()->has_critical_css_info());
+}
+
 TEST_F(CriticalCssFilterTest, InlineAndMove) {
   static const char input_html[] =
       "<head>\n"

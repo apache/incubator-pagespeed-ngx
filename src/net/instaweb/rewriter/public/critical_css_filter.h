@@ -90,12 +90,13 @@ class CriticalCssFilter : public EmptyHtmlFilter {
   typedef std::map<GoogleString, int> UrlIndexes;
   UrlIndexes url_indexes_;
 
+  bool has_critical_css_;
+
   class CssElement;
   class CssStyleElement;
   typedef std::vector<CssElement*> CssElementVector;
   CssElementVector css_elements_;
   CssStyleElement* current_style_element_;
-  bool has_critical_css_;
 
   // TODO(slamm): Are these just for logging, or do you want to export these
   // to varz as well.  Just in general, I think someone intimately familiar with

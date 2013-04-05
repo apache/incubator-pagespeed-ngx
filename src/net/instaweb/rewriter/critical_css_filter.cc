@@ -136,53 +136,49 @@ CriticalCssFilter::CriticalCssFilter(RewriteDriver* driver,
                                      CriticalCssFinder* finder)
     : driver_(driver),
       css_tag_scanner_(driver),
-      finder_(finder) {
+      finder_(finder),
+      current_style_element_(NULL) {
+  CHECK(finder_);  // a valid finder is expected
 }
 
 CriticalCssFilter::~CriticalCssFilter() {
 }
 
 void CriticalCssFilter::StartDocument() {
-  DCHECK(css_elements_.empty());
+  // If there is no critical CSS data, the filter is a no-op.
+  // However, the property cache is unavailable in DetermineEnabled
+  // where disabling is possible.
+  CHECK(finder_);
+  critical_css_result_.reset(finder_->GetCriticalCssFromCache(driver_));
 
-  // StartDocument may be called multiple times, reset internal state.
-  current_style_element_ = NULL;
+  const bool is_property_cache_miss = critical_css_result_.get() == NULL;
+
+  driver_->log_record()->LogRewriterHtmlStatus(
+      RewriteOptions::FilterId(RewriteOptions::kPrioritizeCriticalCss),
+      (is_property_cache_miss ?
+       RewriterHtmlApplication::PROPERTY_CACHE_MISS :
+       RewriterHtmlApplication::ACTIVE));
+
+  url_indexes_.clear();
+  if (!is_property_cache_miss) {
+    for (int i = 0, n = critical_css_result_->link_rules_size(); i < n; ++i) {
+      const GoogleString& url = critical_css_result_->link_rules(i).link_url();
+      url_indexes_.insert(make_pair(url, i));
+    }
+  }
+
+  has_critical_css_ = !url_indexes_.empty();
+
+  DCHECK(css_elements_.empty());  // emptied in EndDocument()
+  DCHECK(current_style_element_ == NULL);  // cleared in EndElement()
+
+  // Reset the stats since a filter instance may be reused.
   total_critical_size_ = 0;
   total_original_size_ = 0;
   repeated_style_blocks_size_ = 0;
   num_repeated_style_blocks_ = 0;
   num_links_ = 0;
   num_replaced_links_ = 0;
-
-  has_critical_css_ = false;
-
-  if (finder_ != NULL) {
-    // This cannot go in DetermineEnabled() because the cache is not ready.
-    critical_css_result_.reset(finder_->GetCriticalCssFromCache(driver_));
-    if (critical_css_result_.get() != NULL &&
-        critical_css_result_->link_rules_size() > 0) {
-      has_critical_css_ = true;
-    }
-  }
-
-  const char* pcc_id = RewriteOptions::FilterId(
-      RewriteOptions::kPrioritizeCriticalCss);
-  LogRecord* log_record = driver_->log_record();
-  url_indexes_.clear();
-  if (has_critical_css_) {
-    for (int i = 0, n = critical_css_result_->link_rules_size(); i < n; ++i) {
-      const GoogleString& url = critical_css_result_->link_rules(i).link_url();
-      url_indexes_.insert(make_pair(url, i));
-    }
-    log_record->LogRewriterHtmlStatus(pcc_id, RewriterHtmlApplication::ACTIVE);
-  } else {
-    // TODO(gee): In the future it may be necessary for the finder to
-    // communicate the exact reason for not returning the property (parse
-    // failure, expiration, etc.), but for the time being lump all reasons
-    // into the single category.
-    log_record->LogRewriterHtmlStatus(
-        pcc_id, RewriterHtmlApplication::PROPERTY_CACHE_MISS);
-  }
 }
 
 void CriticalCssFilter::EndDocument() {
@@ -272,15 +268,10 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
     return;
   }
 
-  if (element->keyword() != HtmlName::kLink) {
-    // We only rewrite link tags.
-    return;
-  }
-
   HtmlElement::Attribute* href;
   const char* media;
   if (!css_tag_scanner_.ParseCssElement(element, &href, &media)) {
-    // Not a css element.
+    // Not a css link element.
     return;
   }
 
@@ -324,7 +315,7 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
   if (driver_->DebugMode()) {
     driver_->InsertComment(StringPrintf(
         "Critical CSS applied:\n"
-          "critical_size=%d\n"
+        "critical_size=%d\n"
         "original_size=%d\n"
         "original_src=%s\n",
         critical_size, original_size, link_rules->link_url().c_str()));
