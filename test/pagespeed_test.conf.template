@@ -21,13 +21,11 @@ http {
 
   root "@@SERVER_ROOT@@";
   pagespeed UsePerVHostStatistics on;
-  pagespeed UseNativeFetcher on;
 
   server {
     listen @@SECONDARY_PORT@@;
     server_name preserveurls.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
-  pagespeed UseNativeFetcher on;
 
     pagespeed EnableFilters inline_preview_images,lazyload_images;
     pagespeed EnableFilters resize_mobile_images,rewrite_images,sprite_images;
