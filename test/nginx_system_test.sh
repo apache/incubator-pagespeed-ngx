@@ -458,4 +458,31 @@ fetch_until -save $TEST_ROOT/shard/shard.html 'grep -c \.pagespeed\.' 4
 check [ $(grep -ce href=\"http://shard1 $FETCH_FILE) = 2 ];
 check [ $(grep -ce href=\"http://shard2 $FETCH_FILE) = 2 ];
 
+start_test ModPagespeedLoadFromFile
+URL=$TEST_ROOT/load_from_file/index.html?ModPagespeedFilters=inline_css
+fetch_until $URL 'grep -c blue' 1
+
+# The "httponly" directory is disallowed.
+fetch_until $URL 'fgrep -c web.httponly.example.css' 1
+
+# Loading .ssp.css files from file is disallowed.
+fetch_until $URL 'fgrep -c web.example.ssp.css' 1
+
+# There's an exception "allow" rule for "exception.ssp.css" so it can be loaded
+# directly from the filesystem.
+fetch_until $URL 'fgrep -c file.exception.ssp.css' 1
+
+start_test ModPagespeedLoadFromFileMatch
+URL=$TEST_ROOT/load_from_file_match/index.html?ModPagespeedFilters=inline_css
+fetch_until $URL 'grep -c blue' 1
+
+start_test Custom headers remain on HTML, but cache should be disabled.
+URL=$TEST_ROOT/rewrite_compressed_js.html
+echo $WGET_DUMP $URL
+HTML_HEADERS=$($WGET_DUMP $URL)
+check_from "$HTML_HEADERS" egrep -q "X-Extra-Header: 1"
+# The extra header should only be added once, not twice.
+check_not_from "$HTML_HEADERS" egrep -q "X-Extra-Header: 1, 1"
+check_from "$HTML_HEADERS" egrep -q 'Cache-Control: max-age=0, no-cache'
+
 check_failures_and_exit
