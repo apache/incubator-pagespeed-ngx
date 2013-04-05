@@ -199,6 +199,10 @@ http {
       add_header Cache-Control "private, max-age=3000";
     }
 
+    location /mod_pagespeed_test/avoid_renaming_introspective_javascript__on/ {
+      pagespeed AvoidRenamingIntrospectiveJavascript on;
+    }
+
     pagespeed EnableFilters remove_comments;
 
     # Test LoadFromFile mapping by mapping one dir to another.
