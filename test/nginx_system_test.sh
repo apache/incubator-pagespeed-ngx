@@ -496,4 +496,56 @@ start_test combine_javascript with long URL still works
 URL=$TEST_ROOT/combine_js_very_many.html?ModPagespeedFilters=combine_javascript
 fetch_until $URL 'grep -c src=' 4
 
+start_test aris disables js combining for introspective js and only i-js
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/"
+URL+="?ModPagespeedFilters=combine_javascript"
+fetch_until $URL 'grep -c src=' 2
+
+start_test aris disables js combining only when enabled
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__off.html?"
+URL+="ModPagespeedFilters=combine_javascript"
+fetch_until $URL 'grep -c src=' 1
+
+test_filter inline_javascript inlines a small JS file
+start_test aris disables js inlining for introspective js and only i-js
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/"
+URL+="?ModPagespeedFilters=inline_javascript"
+fetch_until $URL 'grep -c src=' 1
+
+start_test aris disables js inlining only when enabled
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__off.html"
+URL+="?ModPagespeedFilters=inline_javascript"
+fetch_until $URL 'grep -c src=' 0
+
+test_filter rewrite_javascript minifies JavaScript and saves bytes.
+start_test aris disables js cache extention for introspective js and only i-js
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/"
+URL+="?ModPagespeedFilters=rewrite_javascript"
+# first check something that should get rewritten to know we're done with
+# rewriting
+fetch_until -save $URL 'grep -c "src=\"../normal.js\""' 0
+check [ $(grep -c "src=\"../introspection.js\"" $FETCH_FILE) = 1 ]
+
+start_test aris disables js cache extension only when enabled
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__off.html"
+URL+="?ModPagespeedFilters=rewrite_javascript"
+fetch_until -save $URL 'grep -c src=\"normal.js\"' 0
+check [ $(grep -c src=\"introspection.js\" $FETCH_FILE) = 0 ]
+
+# Check that no filter changes urls for introspective javascript if
+# avoid_renaming_introspective_javascript is on
+start_test aris disables url modification for introspective js
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__on/"
+URL+="?ModPagespeedFilters=testing,core"
+# first check something that should get rewritten to know we're done with
+# rewriting
+fetch_until -save $URL 'grep -c src=\"../normal.js\"' 0
+check [ $(grep -c src=\"../introspection.js\" $FETCH_FILE) = 1 ]
+
+start_test aris disables url modification only when enabled
+URL="$TEST_ROOT/avoid_renaming_introspective_javascript__off.html"
+URL+="?ModPagespeedFilters=testing,core"
+fetch_until -save $URL 'grep -c src=\"normal.js\"' 0
+check [ $(grep -c src=\"introspection.js\" $FETCH_FILE) = 0 ]
+
 check_failures_and_exit
