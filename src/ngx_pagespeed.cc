@@ -766,24 +766,71 @@ bool ps_is_https(ngx_http_request_t* r) {
   return false;
 }
 
-GoogleString ps_determine_url(ngx_http_request_t* r) {
+int ps_determine_port(ngx_http_request_t* r) {
+  // Return -1 if the port isn't specified, the port number otherwise.
+  //
+  // If a Host header was provided, get the host from that.  Otherwise fall back
+  // to the local port of the incoming connection.
+
+  int port = -1;
+  ngx_table_elt_t* host = r->headers_in.host;
+
+  if (host != NULL) {
+    // Host headers can look like:
+    //
+    //   www.example.com        // normal
+    //   www.example.com:8080   // port specified
+    //   127.0.0.1              // IPv4
+    //   127.0.0.1:8080         // IPv4 with port
+    //   [::1]                  // IPv6
+    //   [::1]:8080             // IPv6 with port
+    //
+    // The IPv6 ones are the annoying ones, but the square brackets allow us to
+    // disambiguate.  To find the port number, we can say:
+    //
+    //   1) Take the text after the final colon.
+    //   2) If all of those characters are digits, that's your port number
+    //
+    // In the case of a plain IPv6 address with no port number, the text after
+    // the final colon will include a ']', so we'll stop processing.
+
+    StringPiece host_str = str_to_string_piece(host->value);
+    size_t colon_index = host_str.rfind(":");
+    if (colon_index == host_str.npos) {
+      return -1;
+    }
+    // Strip everything up to and including the final colon.
+    host_str.remove_prefix(colon_index + 1);
+
+    bool ok = StringToInt(host_str, &port);
+    if (!ok) {
+      // Might be malformed port, or just IPv6 with no port specified.
+      return -1;
+    }
+
+    return port;
+  }
+
   // Based on ngx_http_variable_server_port.
-  ngx_uint_t port;
-  bool have_port = false;
 #if (NGX_HAVE_INET6)
   if (r->connection->local_sockaddr->sa_family == AF_INET6) {
     port = ntohs(reinterpret_cast<struct sockaddr_in6*>(
         r->connection->local_sockaddr)->sin6_port);
-    have_port= true;
   }
 #endif
-  if (!have_port) {
+  if (port == -1 /* still need port */) {
     port = ntohs(reinterpret_cast<struct sockaddr_in*>(
         r->connection->local_sockaddr)->sin_port);
   }
 
+  return port;
+}
+
+GoogleString ps_determine_url(ngx_http_request_t* r) {
+  int port = ps_determine_port(r);
   GoogleString port_string;
-  if ((ps_is_https(r) && port == 443) || (!ps_is_https(r) && port == 80)) {
+  if ((ps_is_https(r) && (port == 443 || port == -1)) ||
+      (!ps_is_https(r) && (port == 80 || port == -1))) {
     // No port specifier needed for requests on default ports.
     port_string = "";
   } else {
@@ -1236,6 +1283,7 @@ CreateRequestContext::Response ps_create_request_context(
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
 
   GoogleString url_string = ps_determine_url(r);
+
   net_instaweb::GoogleUrl url(url_string);
 
   if (!url.is_valid()) {
