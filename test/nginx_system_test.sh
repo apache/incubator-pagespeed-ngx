@@ -599,4 +599,29 @@ IMG_CUSTOM="$TEST_ROOT/custom_options/xPuzzle.jpg.pagespeed.ic.fakehash.jpg"
 fetch_until $IMG_NON_CUSTOM 'wc -c' 216942
 fetch_until $IMG_CUSTOM 'wc -c' 231192
 
+# Test our handling of headers when a FLUSH event occurs.
+# Always fetch the first file so we can check if PHP is enabled.
+start_test Headers are not destroyed by a flush event.
+FILE=php_withoutflush.php
+URL=$TEST_ROOT/$FILE
+FETCHED=$OUTDIR/$FILE
+$WGET_DUMP $URL > $FETCHED
+check_not grep -q '<?php' $FETCHED
+
+check [ $(grep -c '^X-Page-Speed:'               $FETCHED) = 1 ]
+check [ $(grep -c '^X-My-PHP-Header: without_flush' $FETCHED) = 1 ]
+
+# mod_pagespeed doesn't clear the content length header if there aren't any
+# flushes, but ngx_pagespeed does.  It's possible that ngx_pagespeed should also
+# avoid clearing the content length, but it doesn't and I don't think it's
+# important, so don't check for content-length.
+# check [ $(grep -c '^Content-Length: [0-9]'          $FETCHED) = 1 ]
+
+FILE=php_withflush.php
+URL=$TEST_ROOT/$FILE
+FETCHED=$OUTDIR/$FILE
+$WGET_DUMP $URL > $FETCHED
+check [ $(grep -c '^X-Page-Speed:'               $FETCHED) = 1 ]
+check [ $(grep -c '^X-My-PHP-Header: with_flush'    $FETCHED) = 1 ]
+
 check_failures_and_exit
