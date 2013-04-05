@@ -145,5 +145,7 @@ namespace net_instaweb {
 
       DISALLOW_COPY_AND_ASSIGN(NgxFetch);
   };
-} // namespace net_instaweb
-#endif // 
+
+}  // namespace net_instaweb
+
+#endif  // NET_INSTAWEB_NGX_FETCHER_H_

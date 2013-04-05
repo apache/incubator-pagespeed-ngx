@@ -586,11 +586,6 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   CHECK(!factory_deleted);
   net_instaweb::NgxRewriteOptions::Initialize();
   net_instaweb::NgxRewriteDriverFactory::Initialize();
-  // TODO:
-  //ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
-  //    ngx_http_conf_get_module_loc_conf(cf, ngx_http_core_module));
-  //fprintf(stderr, "pre set resolver [%p]\n", clcf->resolver);
-  //fprintf(stderr, "pre set resolver timeout [%u]\n", (unsigned int)clcf->resolver_timeout);
 
   cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
@@ -2116,7 +2111,6 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
 
 // preaccess_handler should be at generic phase before try_files
 ngx_int_t ps_preaccess_handler(ngx_http_request_t *r) {
-
   ngx_http_core_main_conf_t *cmcf;
   ngx_http_phase_handler_t *ph;
   ngx_uint_t i;

@@ -119,7 +119,7 @@ UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
 }
 
 UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
- const char* fetcher_proxy = "";
+  const char* fetcher_proxy = "";
   if (main_conf_ != NULL) {
     fetcher_proxy = main_conf_->fetcher_proxy().c_str();
   }
@@ -130,7 +130,7 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
             fetcher_proxy,
             log_,
             resolver_timeout_,
-            60000, // TODO(oschaaf): 
+            25000,
             resolver_,
             thread_system(),
             message_handler());

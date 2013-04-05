@@ -210,7 +210,7 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   ngx_msec_t resolver_timeout_;
   ngx_resolver_t* resolver_;
   bool use_native_fetcher_;
-  
+
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
 

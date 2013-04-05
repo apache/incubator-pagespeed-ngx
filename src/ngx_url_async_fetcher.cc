@@ -17,8 +17,8 @@
 // Author: x.dinic@gmail.com (Junmin Xiong)
 
 extern "C" {
- #include <ngx_http.h>
- #include <ngx_core.h>
+  #include <ngx_http.h>
+  #include <ngx_core.h>
 }
 
 #include "ngx_url_async_fetcher.h"
@@ -68,7 +68,7 @@ namespace net_instaweb {
     fetch_timeout_ = fetch_timeout;
     ngx_memzero(&url_, sizeof(url_));
     if (proxy != NULL && *proxy != '\0') {
-      url_.url.data = (u_char *)(proxy);
+      url_.url.data = reinterpret_cast<u_char *>(proxy);
       url_.url.len = ngx_strlen(proxy);
     }
     mutex_ = thread_system_->NewMutex();
@@ -88,7 +88,7 @@ namespace net_instaweb {
     CancelActiveFetches();
     active_fetches_.DeleteAll();
 
-    if (pool_ != NULL ) {
+    if (pool_ != NULL) {
       ngx_destroy_pool(pool_);
       pool_ = NULL;
     }
@@ -108,7 +108,7 @@ namespace net_instaweb {
 
   // If there are still active requests, cancel them.
   void NgxUrlAsyncFetcher::CancelActiveFetches() {
-    // TODO(oschaaf): TODO: this seems tricky, this may end up calling
+    // TODO(oschaaf): this seems tricky, this may end up calling
     // FetchComplete, modifying the active fetches while we are looping
     // it
     for (NgxFetchPool::const_iterator p = active_fetches_.begin(),
@@ -285,7 +285,6 @@ namespace net_instaweb {
   // TODO(oschaaf): return value is ignored.
   bool NgxUrlAsyncFetcher::StartFetch(NgxFetch* fetch) {
     mutex_->Lock();
-    // TODO(oschaaf): doc this, why we always add fetch to the active fetchers
     active_fetches_.Add(fetch);
     fetchers_count_++;
     mutex_->Unlock();
@@ -322,4 +321,4 @@ namespace net_instaweb {
       handler->Message(kInfo, "Active fetch: %s", fetch->str_url());
     }
   }
-} // namespace net_instaweb
+}  // namespace net_instaweb

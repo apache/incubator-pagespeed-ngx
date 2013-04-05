@@ -101,12 +101,12 @@ namespace net_instaweb {
   bool NgxFetch::Init() {
     pool_ = ngx_create_pool(12288, log_);
     if (pool_ == NULL) {
-      message_handler_->Message(kError,"NgxFetch: ngx_create_pool failed");
+      message_handler_->Message(kError, "NgxFetch: ngx_create_pool failed");
       return false;
     }
 
     if (!ParseUrl()) {
-      message_handler_->Message(kError,"NgxFetch: ParseUrl() failed");
+      message_handler_->Message(kError, "NgxFetch: ParseUrl() failed");
       return false;
     }
 
@@ -144,7 +144,7 @@ namespace net_instaweb {
       // TODO(oschaaf): this spams the log, but is usefull in the fetchers
       // current state
       message_handler_->Message(
-          kError,"NgxFetch: Couldn't start resolving, "
+          kError, "NgxFetch: Couldn't start resolving, "
           "is there a proper resolver configured in nginx.conf?");
       return false;
     }
@@ -157,7 +157,7 @@ namespace net_instaweb {
     resolver_ctx_->timeout = fetcher_->resolver_timeout_;
 
     if (ngx_resolve_name(resolver_ctx_) != NGX_OK) {
-      message_handler_->Message(kWarning,"NgxFetch: ngx_resolve_name failed");
+      message_handler_->Message(kWarning, "NgxFetch: ngx_resolve_name failed");
       return false;
     }
     return true;
@@ -171,9 +171,10 @@ namespace net_instaweb {
   // not.
   void NgxFetch::CallbackDone(bool success) {
     if (async_fetch_ == NULL) {
-      LOG(FATAL) << "BUG: NgxFetch callback called more than once on same fetch"
-                 << str_url_.c_str() << "(" << this << ").Please report this at"
-                 << "https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss";
+      LOG(FATAL)
+          << "BUG: NgxFetch callback called more than once on same fetch"
+          << str_url_.c_str() << "(" << this << ").Please report this at"
+          << "https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss";
       return;
     }
 
@@ -197,7 +198,7 @@ namespace net_instaweb {
       }
       fetcher_->FetchComplete(this);
     }
-    
+
     async_fetch_ = NULL;
   }
 
@@ -237,10 +238,12 @@ namespace net_instaweb {
     str_url_.copy(reinterpret_cast<char*>(url_.url.data), str_url_.length(), 0);
     size_t scheme_offset;
     u_short port;
-    if (ngx_strncasecmp(url_.url.data, (u_char*)"http://", 7) == 0) {
+    if (ngx_strncasecmp(url_.url.data,
+                        reinterpret_cast<u_char*>("http://"), 7) == 0) {
       scheme_offset = 7;
       port = 80;
-    } else if (ngx_strncasecmp(url_.url.data, (u_char*)"https://", 8) == 0) {
+    } else if (ngx_strncasecmp(url_.url.data,
+                               reinterpret_cast<u_char*>("https://"), 8) == 0) {
       scheme_offset = 8;
       port = 443;
     } else {
@@ -273,7 +276,7 @@ namespace net_instaweb {
       }
       fetch->message_handler()->Message(
           kWarning, "NgxFetch: failed to resolve host [%.*s]",
-          (int)resolver_ctx->name.len, resolver_ctx->name.data);
+          static_cast<int>(resolver_ctx->name.len), resolver_ctx->name.data);
       fetch->CallbackDone(false);
       ngx_resolve_name_done(resolver_ctx);
       return;
@@ -289,10 +292,11 @@ namespace net_instaweb {
 
     fetch->message_handler()->Message(
         kInfo, "NgxFetch: Resolved host [%.*s] to [%s]",
-        (int)resolver_ctx->name.len, resolver_ctx->name.data,ip_address);
+        static_cast<int>(resolver_ctx->name.len), resolver_ctx->name.data,
+        ip_address);
 
     if (fetch->InitRequest() != NGX_OK) {
-      fetch->message_handler()->Message(kError,"NgxFetch: InitRequest failed");
+      fetch->message_handler()->Message(kError, "NgxFetch: InitRequest failed");
       fetch->CallbackDone(false);
     }
   }
@@ -311,13 +315,12 @@ namespace net_instaweb {
     size_t size = 0;
     size = sizeof("GET ") - 1 + url_.uri.len + sizeof(" HTTP/1.0\r\n") - 1;
     for (int i = 0; i < request_headers->NumAttributes(); i++) {
-
       // name: value\r\n
       size += request_headers->Name(i).length()
            + request_headers->Value(i).length()
-           + 4; // for ": \r\n"
+           + 4;  // for ": \r\n"
     }
-    size += 2; // "\r\n";
+    size += 2;  // "\r\n";
     out_ = ngx_create_temp_buf(pool_, size);
 
     if (out_ == NULL) {
@@ -340,8 +343,7 @@ namespace net_instaweb {
     }
     *(out_->last++) = CR;
     *(out_->last++) = LF;
-    // TODO(oschaaf): remove
-    fprintf(stderr, "req\n%.*s\n\n", (int)size, (char*)(out_->last-size));
+
     response_handler = NgxFetchHandleStatusLine;
     int rc = Connect();
     if (rc == NGX_AGAIN) {
@@ -373,7 +375,7 @@ namespace net_instaweb {
     connection_->read->handler = NgxFetchRead;
     connection_->data = this;
 
-    //TODO(junmin): set connect timeout when rc == NGX_AGAIN
+    // TODO(junmin): set connect timeout when rc == NGX_AGAIN
     return rc;
   }
 
@@ -464,11 +466,11 @@ namespace net_instaweb {
     // ngx_http_parse_status_line didn't save http_version.
     ngx_int_t n = ngx_http_parse_status_line(fetch->r_, fetch->in_,
                                              fetch->status_);
-    if (n == NGX_ERROR) { // parse status line error
+    if (n == NGX_ERROR) {  // parse status line error
       fetch->message_handler()->Message(
           kWarning, "NgxFetch: failed to parse status line");
       return false;
-    } else if (n == NGX_AGAIN) { // not completed
+    } else if (n == NGX_AGAIN) {  // not completed
       return true;
     }
     ResponseHeaders* response_headers =
@@ -500,13 +502,6 @@ namespace net_instaweb {
             content_length);
       }
 
-      // TODO(oschaaf): remove
-      GoogleString s;
-      StringWriter sw(&s);
-      fetch->async_fetch_->response_headers()->WriteAsHttp(
-          &sw, fetch->message_handler());
-      fprintf(stderr, "##response headers\n%s", s.c_str());
-      
       fetch->in_->pos += n;
       fetch->set_response_handler(NgxFetchHandleBody);
       return fetch->response_handler(c);
@@ -545,7 +540,7 @@ namespace net_instaweb {
     ConstStringStarVector v;
     RequestHeaders* request_headers = async_fetch_->request_headers();
     if (request_headers->Lookup(HttpAttributes::kUserAgent, &v)) {
-      for(int i = 0, n = v.size(); i < n; i++) {
+      for (int i = 0, n = v.size(); i < n; i++) {
         if (i != 0) {
           user_agent += " ";
         }
@@ -567,4 +562,4 @@ namespace net_instaweb {
     }
     request_headers->Add(HttpAttributes::kUserAgent, user_agent);
   }
-} // namespace net_instaweb
+}  // namespace net_instaweb
