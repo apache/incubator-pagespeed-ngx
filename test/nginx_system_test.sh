@@ -548,4 +548,23 @@ URL+="?ModPagespeedFilters=testing,core"
 fetch_until -save $URL 'grep -c src=\"normal.js\"' 0
 check [ $(grep -c src=\"introspection.js\" $FETCH_FILE) = 0 ]
 
+start_test HTML add_instrumentation lacks '&amp;' and does not contain CDATA
+$WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.html\
+?ModPagespeedFilters=add_instrumentation
+check [ $(grep -c "\&amp;" $WGET_OUTPUT) = 0 ]
+# In mod_pagespeed this check is that we *do* contain CDATA.  That's because
+# mod_pagespeed generally runs before response headers are finalized so it has
+# to assume the page is xhtml because the 'Content-Type' header might just not
+# have been set yet.  See RewriteDriver::MimeTypeXhtmlStatus().  In
+# ngx_pagespeed response headers are already final when we're processing the
+# body, so we know whether we're dealing with xhtml and in this case know we
+# don't need CDATA.
+check [ $(grep -c '//<\!\[CDATA\[' $WGET_OUTPUT) = 0 ]
+
+start_test XHTML add_instrumentation also lacks '&amp;' but contains CDATA
+$WGET -O $WGET_OUTPUT $TEST_ROOT/add_instrumentation.xhtml\
+?ModPagespeedFilters=add_instrumentation
+check [ $(grep -c "\&amp;" $WGET_OUTPUT) = 0 ]
+check [ $(grep -c '//<\!\[CDATA\[' $WGET_OUTPUT) = 1 ]
+
 check_failures_and_exit
