@@ -29,6 +29,16 @@
 
 namespace net_instaweb {
 
+// Represents an HTML tag, including all its attributes.  These are never
+// constructed independently, but are managed by class HtmlParse.  They
+// are constructed when parsing an HTML document, and they can also be
+// synthesized via methods in HtmlParse::NewElement.
+//
+// Note that HtmlElement* saved during filter execution are valid only until
+// a Flush occurs.  HtmlElement* can still be fully accessed during a Flush, but
+// after that, to save memory, the contents of the HtmlElement* are cleared.
+// After that, the only method it's legal to do is to call is
+// HtmlParse::IsRewriteable(), which will return false.
 class HtmlElement : public HtmlNode {
  public:
   // Tags can be closed in three ways: implicitly (e.g. <img ..>),
@@ -209,7 +219,14 @@ class HtmlElement : public HtmlNode {
 
   virtual ~HtmlElement();
 
+  // Determines whether this node is still accessible via API.  Note that
+  // when a FLUSH occurs after an open-element, the element will be live()
+  // but will not be rewritable.  Specifically, node->live() can be true when
+  // html_parse->IsRewritable(node) is false.  Once a node is closed, a FLUSH
+  // will cause the node's data to be freed, which triggers this method
+  // returning false.
   virtual bool live() const { return (data_.get() != NULL) && data_->live_; }
+
   virtual void MarkAsDead(const HtmlEventListIterator& end);
 
   // Add a copy of an attribute to this element.  The attribute may come

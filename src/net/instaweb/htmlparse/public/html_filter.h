@@ -28,6 +28,8 @@ class HtmlDirectiveNode;
 class HtmlElement;
 class HtmlIEDirectiveNode;
 
+// Base-class used to register for HTML Parser Callbacks.  Derive from this
+// class and register with HtmlParse::AddFilter to use the HTML Parser.
 class HtmlFilter {
  public:
   HtmlFilter();

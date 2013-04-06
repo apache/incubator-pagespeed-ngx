@@ -30,6 +30,9 @@
 
 namespace net_instaweb {
 
+// Helper class for HtmlParser to recognize HTML keywords, handle escaping
+// and unescaping, and assist the lexer in understanding how to interpret
+// unbalanced tags.
 class HtmlKeywords {
  public:
   // Initialize a singleton instance of this class.  This call is

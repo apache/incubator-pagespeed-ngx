@@ -55,6 +55,7 @@ class HtmlElement;
 class HtmlIEDirectiveNode;
 class StatisticsLog;
 
+// Counts some basic statistics observed as HTML is parsed.
 class LoggingFilter : public EmptyHtmlFilter {
  public:
   // internal names of statistics.

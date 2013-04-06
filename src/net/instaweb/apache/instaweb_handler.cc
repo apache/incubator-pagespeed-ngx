@@ -855,8 +855,17 @@ bool parse_body_from_post(const request_rec* request, GoogleString* data,
   // coming back as NULL, even when the header was set correctly.
   const char* content_type = apr_table_get(request->headers_in,
                                            HttpAttributes::kContentType);
-  if (content_type == NULL ||
-      (!StringCaseEqual(content_type, "application/x-www-form-urlencoded"))) {
+  if (content_type == NULL) {
+    *ret = HTTP_BAD_REQUEST;
+    return false;
+  }
+  GoogleString mime_type;
+  GoogleString charset;
+  if (!ParseContentType(content_type, &mime_type, &charset)) {
+    *ret = HTTP_BAD_REQUEST;
+    return false;
+  }
+  if (!StringCaseEqual(mime_type, "application/x-www-form-urlencoded")) {
     *ret = HTTP_BAD_REQUEST;
     return false;
   }

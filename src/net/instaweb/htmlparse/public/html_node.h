@@ -37,7 +37,9 @@ class HtmlEvent;
 typedef std::list<HtmlEvent*> HtmlEventList;
 typedef HtmlEventList::iterator HtmlEventListIterator;
 
-// Base class for HtmlElement and HtmlLeafNode
+// Base class for HtmlElement and HtmlLeafNode.  Generally represents all
+// lexical tokens in HTML, except that for subclass HtmlElement, which
+// represents both the opening & closing token.
 class HtmlNode {
  public:
   virtual ~HtmlNode();
