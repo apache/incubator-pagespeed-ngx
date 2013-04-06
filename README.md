@@ -35,27 +35,34 @@ ngx_pagespeed as a build-time dependency.
 
 ### Simple method: Using a binary Pagespeed Optimization Library
 
-Install dependencies:
+1. Install [mod_pagespeed binary](https://developers.google.com/speed/docs/mod_pagespeed/download)
+1. Install dependencies:
 
-    # These are for RedHat, CentOS, and Fedora.
-    $ sudo yum install git gcc-c++ pcre-dev pcre-devel zlib-devel make
+```bash
+# These are for RedHat, CentOS, and Fedora.
+$ sudo yum install git gcc-c++ pcre-dev pcre-devel zlib-devel make
 
-    # These are for Debian. Ubuntu will be similar.
-    $ sudo apt-get install git-core build-essential zlib1g-dev libpcre3 libpcre3-dev
+# These are for Debian. Ubuntu will be similar.
+$ sudo apt-get install git-core build-essential zlib1g-dev libpcre3 libpcre3-dev
+```
 
-Check out ngx_pagespeed:
+1. Check out ngx_pagespeed:
 
-    $ cd ~
-    $ git clone https://github.com/pagespeed/ngx_pagespeed.git
+```bash
+$ cd ~
+$ git clone https://github.com/pagespeed/ngx_pagespeed.git
+```
 
-Download and build nginx:
+1. Download and build nginx:
 
-    $ # check http://nginx.org/en/download.html for the latest version
-    $ wget http://nginx.org/download/nginx-1.2.6.tar.gz
-    $ tar -xvzf nginx-1.2.6.tar.gz
-    $ cd nginx-1.2.6/
-    $ ./configure --add-module=$HOME/ngx_pagespeed
-    $ make install
+```bash
+$ # check http://nginx.org/en/download.html for the latest version
+$ wget http://nginx.org/download/nginx-1.3.15.tar.gz
+$ tar -xvzf nginx-1.3.15.tar.gz
+$ cd nginx-1.3.15/
+$ ./configure --add-module=$HOME/ngx_pagespeed
+$ make install
+```
 
 
 If `make` fails with `unknown type name ‘off64_t’`,
