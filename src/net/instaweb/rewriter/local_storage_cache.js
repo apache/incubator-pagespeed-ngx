@@ -209,7 +209,7 @@ pagespeed.LocalStorageCache.prototype.generateCookie_ = function() {
     // Set the cookie.
     var expires = '';
     if (minExpiry) expires = '; expires=' + (new Date(minExpiry)).toUTCString();
-    document.cookie = '_GPSLSC=' + goodUns.join(',') + expires;
+    document.cookie = '_GPSLSC=' + goodUns.join('!') + expires;
     // Remove all expired objects.
     for (var i = 0, n = deadUns.length; i < n; ++i) {
       window.localStorage.removeItem(deadUns[i]);

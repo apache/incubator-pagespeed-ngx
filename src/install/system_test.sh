@@ -701,7 +701,7 @@ check grep -q "ModPagespeed=noscript" $FETCHED
 HASHES=$(grep "pagespeed_lsc_hash=" $FETCHED |\
          sed -e 's/^.*pagespeed_lsc_hash=.//' |\
          sed -e 's/".*$//')
-HASHES=$(echo "$HASHES" | tr '\n' ',' | sed -e 's/,$//')
+HASHES=$(echo "$HASHES" | tr '\n' '!' | sed -e 's/!$//')
 check [ -n "$HASHES" ]
 COOKIE="Cookie: _GPSLSC=$HASHES"
 # Check that the prior run did inline the data.

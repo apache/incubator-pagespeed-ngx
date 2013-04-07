@@ -337,7 +337,7 @@ TEST_F(LocalStorageCacheTest, RepeatViews) {
 
   // The JavaScript would set these cookies for the next request.
   GoogleString cookie = StrCat(LocalStorageCacheFilter::kLscCookieName,
-                               "=Fe1SLPZ14c,du_OhARrJl");
+                               "=", "Fe1SLPZ14c", "!", "du_OhARrJl");
   request_headers_.Add(HttpAttributes::kCookie, cookie);
 
   // Third view will not send the inlined data and will send scripts in place
@@ -419,7 +419,7 @@ TEST_F(LocalStorageCacheTest, RepeatViewsWithOtherAttributes) {
 
   // The JavaScript would set these cookies for the next request.
   GoogleString cookie = StrCat(LocalStorageCacheFilter::kLscCookieName,
-                               "=Fe1SLPZ14c,du_OhARrJl");
+                               "=", "Fe1SLPZ14c", "!", "du_OhARrJl");
   request_headers_.Add(HttpAttributes::kCookie, cookie);
 
   // Third view will not send the inlined data and will send scripts in place

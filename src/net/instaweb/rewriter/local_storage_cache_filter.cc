@@ -226,7 +226,6 @@ bool LocalStorageCacheFilter::AddStorableResource(const StringPiece& url,
 
 bool LocalStorageCacheFilter::AddLscAttributes(const StringPiece url,
                                                const CachedResult& cached,
-                                               bool has_url,
                                                RewriteDriver* driver,
                                                HtmlElement* element) {
   if (!driver->options()->Enabled(RewriteOptions::kLocalStorageCache)) {
@@ -234,7 +233,7 @@ bool LocalStorageCacheFilter::AddLscAttributes(const StringPiece url,
   }
 
   // Don't add the other attributes if we don't have a pagespeed_lsc_url.
-  if (has_url && element->AttributeValue(HtmlName::kPagespeedLscUrl) == NULL) {
+  if (element->AttributeValue(HtmlName::kPagespeedLscUrl) == NULL) {
     return false;
   }
 
@@ -250,9 +249,6 @@ bool LocalStorageCacheFilter::AddLscAttributes(const StringPiece url,
   GoogleUrl gurl(driver->base_url(), url);
   StringPiece lsc_url(gurl.is_valid() ? gurl.Spec() : url);
   GoogleString hash = driver->server_context()->hasher()->Hash(lsc_url);
-  if (!has_url) {
-    driver->AddAttribute(element, HtmlName::kPagespeedLscUrl, lsc_url);
-  }
   driver->AddAttribute(element, HtmlName::kPagespeedLscHash, hash);
   if (cached.input_size() > 0) {
     const InputInfo& input_info = cached.input(0);
@@ -303,11 +299,11 @@ bool LocalStorageCacheFilter::IsHashInCookie(const RewriteDriver* driver,
         SplitStringPieceToVector(*(v[i]), ";", &cookie_vector, true);
         for (int j = 0, nc = cookie_vector.size(); j < nc; ++j) {
           StringPiece cookie(cookie_vector[j]);
-          TrimWhitespace(&cookie);
+          TrimQuote(&cookie);
           if (StringCaseStartsWith(cookie, prefix)) {
             cookie.remove_prefix(prefix.length());
             StringPieceVector hashes;
-            SplitStringPieceToVector(cookie, ",", &hashes, true /*omit empty*/);
+            SplitStringPieceToVector(cookie, "!", &hashes, true /*omit empty*/);
             for (int k = 0, nh = hashes.size(); k < nh; ++k) {
               hash_set->insert(hashes[k]);
             }

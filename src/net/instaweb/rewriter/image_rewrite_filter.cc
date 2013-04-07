@@ -1215,7 +1215,6 @@ bool ImageRewriteFilter::FinishRewriteImageUrl(
     }
     // Note the use of the ORIGINAL url not the data url.
     LocalStorageCacheFilter::AddLscAttributes(src_value, *cached,
-                                              true /* has_url */,
                                               driver_, element);
     image_inline_count_->Add(1);
     rewrote_url = true;
