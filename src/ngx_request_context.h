@@ -38,7 +38,7 @@ class AbstractMutex;
 class NgxRequestContext : public RequestContext {
  public:
   NgxRequestContext(AbstractMutex* logging_mutex,
-                    ngx_psol::ps_request_ctx_t* ps_request_context);
+                    ngx_http_request_t* ps_request_context);
 
   // Returns rc as an NgxRequestContext* if it is one and CHECK
   // fails if it is not. Returns NULL if rc is NULL.

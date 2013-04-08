@@ -28,7 +28,7 @@ extern "C" {
 namespace net_instaweb {
 
 NgxRequestContext::NgxRequestContext(AbstractMutex* logging_mutex,
-                                     ngx_psol::ps_request_ctx_t* ps_request_ctx)
+                                     ngx_http_request_t* r)
     : RequestContext(logging_mutex),
       local_port_(-1) {
   // Note that at the time we create a RequestContext we have full
@@ -40,25 +40,24 @@ NgxRequestContext::NgxRequestContext(AbstractMutex* logging_mutex,
   // Save our own IP as well, LoopbackRouteFetcher will need it.
 
   // Based on ngx_http_variable_server_port.
-  ngx_http_request_t* req = ps_request_ctx->r;
   bool port_set = false;
 #if (NGX_HAVE_INET6)
-  if (req->connection->local_sockaddr->sa_family == AF_INET6) {
+  if (r->connection->local_sockaddr->sa_family == AF_INET6) {
     local_port_ = ntohs(reinterpret_cast<struct sockaddr_in6*>(
-        req->connection->local_sockaddr)->sin6_port);
+        r->connection->local_sockaddr)->sin6_port);
     port_set = true;
   }
 #endif
   if (!port_set) {
     local_port_ = ntohs(reinterpret_cast<struct sockaddr_in*>(
-        req->connection->local_sockaddr)->sin_port);
+        r->connection->local_sockaddr)->sin_port);
   }
 
   ngx_str_t  s;
   u_char addr[NGX_SOCKADDR_STRLEN];
   s.len = NGX_SOCKADDR_STRLEN;
   s.data = addr;
-  ngx_int_t rc = ngx_connection_local_sockaddr(req->connection, &s, 0);
+  ngx_int_t rc = ngx_connection_local_sockaddr(r->connection, &s, 0);
   if (rc != NGX_OK) {
     s.len = 0;
   }
