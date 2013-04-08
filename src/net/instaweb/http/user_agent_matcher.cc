@@ -219,10 +219,6 @@ const pair<GoogleString, pair<int, int> > kKnownScreenDimensions[] = {
 };
 }  // namespace
 
-const char UserAgentMatcher::kDevicePropertiesCohort[] = "deviceproperties";
-const char UserAgentMatcher::kScreenWidth[] = "screen_width";
-const char UserAgentMatcher::kScreenHeight[] = "screen_height";
-
 UserAgentMatcher::UserAgentMatcher()
     : chrome_version_pattern_(kChromeVersionPattern) {
   // Initialize FastWildcardGroup for image inlining whitelist & blacklist.

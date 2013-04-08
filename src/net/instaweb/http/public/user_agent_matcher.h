@@ -68,11 +68,6 @@ class UserAgentMatcher {
     kPrefetchLinkScriptTag,
   };
 
-  // Cohort descriptors for PropertyCache lookups of device objects.
-  static const char kDevicePropertiesCohort[];
-  static const char kScreenWidth[];
-  static const char kScreenHeight[];
-
   UserAgentMatcher();
   virtual ~UserAgentMatcher();
 
