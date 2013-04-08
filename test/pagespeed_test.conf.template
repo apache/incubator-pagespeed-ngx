@@ -124,6 +124,19 @@ http {
   }
 
   server {
+    # Proxy modpagespeed.com for testing Issue 582.
+    listen @@SECONDARY_PORT@@;
+    server_name modpagespeed.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed off;
+
+    location / {
+      proxy_pass http://modpagespeed.com;
+    }
+  }
+
+  server {
     listen @@SECONDARY_PORT@@;
     server_name notransform.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
