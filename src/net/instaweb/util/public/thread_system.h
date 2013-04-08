@@ -129,6 +129,8 @@ class ThreadSystem {
   virtual RWLock* NewRWLock() = 0;
 
   // Creates an appropriate ThreadSystem for the platform.
+  //
+  // TODO(jmarantz): get rid of this wrapper (there are a lot of call sites)
   static ThreadSystem* CreateThreadSystem();
 
   // Creates and returns a real-time timer.  Caller is responsible for deleting.

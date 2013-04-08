@@ -20,7 +20,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/condvar.h"
 #include "net/instaweb/util/public/condvar_test_base.h"
-#include "net/instaweb/util/public/google_timer.h"
+#include "net/instaweb/util/public/posix_timer.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -52,7 +52,7 @@ class PthreadCondvarTest : public CondvarTestBase {
   PthreadCondvar pthread_startup_condvar_;
   PthreadCondvar pthread_condvar_;
   pthread_t helper_thread_;
-  GoogleTimer timer_;
+  PosixTimer timer_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PthreadCondvarTest);

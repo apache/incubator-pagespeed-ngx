@@ -16,25 +16,22 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/google_timer.h"
+#include "net/instaweb/util/public/posix_timer.h"
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/timer.h"
-#include <sys/errno.h>
 #include <sys/time.h>
 #include <unistd.h>
-#include <ctime>
+#include <cerrno>
+
 #include "base/logging.h"
+#include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
 
-GoogleTimer::GoogleTimer() {
+PosixTimer::~PosixTimer() {
 }
 
-GoogleTimer::~GoogleTimer() {
-}
-
-int64 GoogleTimer::NowUs() const {
+int64 PosixTimer::NowUs() const {
   struct timeval tv;
   struct timezone tz = { 0, 0 };  // UTC
   if (gettimeofday(&tv, &tz) != 0) {
@@ -43,7 +40,7 @@ int64 GoogleTimer::NowUs() const {
   return (static_cast<int64>(tv.tv_sec) * 1000000) + tv.tv_usec;
 }
 
-void GoogleTimer::SleepUs(int64 us) {
+void PosixTimer::SleepUs(int64 us) {
   usleep(us);
 }
 

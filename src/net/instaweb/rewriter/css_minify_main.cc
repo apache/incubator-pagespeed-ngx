@@ -25,7 +25,6 @@
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_writer.h"
 #include "net/instaweb/util/public/gflags.h"
-#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/string.h"
@@ -35,8 +34,7 @@
 namespace net_instaweb {
 
 bool MinifyCss_main(int argc, char** argv) {
-  GoogleTimer timer;
-  StdioFileSystem file_system(&timer);
+  StdioFileSystem file_system;
   FileMessageHandler handler(stderr);
   FileSystem::OutputFile* error_file = file_system.Stderr();
 

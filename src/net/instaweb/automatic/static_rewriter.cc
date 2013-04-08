@@ -31,10 +31,10 @@
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/rewrite_gflags.h"
 #include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/stdio_file_system.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
@@ -105,11 +105,11 @@ MessageHandler* FileRewriter::DefaultMessageHandler() {
 }
 
 FileSystem* FileRewriter::DefaultFileSystem() {
-  return new StdioFileSystem(timer());
+  return new StdioFileSystem;
 }
 
 Timer* FileRewriter::DefaultTimer() {
-  return new GoogleTimer;
+  return Platform::CreateTimer();
 }
 
 void FileRewriter::SetupCaches(ServerContext* resource_manager) {

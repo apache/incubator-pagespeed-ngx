@@ -406,6 +406,7 @@ BoolOrError StdioFileSystem::TryLock(const StringPiece& lock_name,
 
 BoolOrError StdioFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
                                                 int64 timeout_ms,
+                                                const Timer* timer,
                                                 MessageHandler* handler) {
   const GoogleString lock_string = lock_name.as_string();
   BoolOrError result = TryLock(lock_name, handler);
@@ -419,7 +420,7 @@ BoolOrError StdioFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
     return BoolOrError();
   }
 
-  int64 now_us = timer_->NowUs();
+  int64 now_us = timer->NowUs();
   int64 elapsed_since_lock_us = now_us - Timer::kSecondUs * m_time_sec;
   int64 timeout_us = Timer::kMsUs * timeout_ms;
   if (elapsed_since_lock_us < timeout_us) {

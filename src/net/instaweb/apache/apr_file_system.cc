@@ -202,8 +202,7 @@ AprFileSystem::~AprFileSystem() {
 
 int AprFileSystem::MaxPathLength(const StringPiece& base) const {
   // We delegate to StdioFileSystem for simplicity.
-  AprTimer timer;
-  return StdioFileSystem(&timer).MaxPathLength(base);
+  return StdioFileSystem().MaxPathLength(base);
 }
 
 FileSystem::InputFile* AprFileSystem::OpenInputFile(
@@ -452,6 +451,7 @@ BoolOrError AprFileSystem::TryLock(const StringPiece& lock_name,
 
 BoolOrError AprFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
                                               int64 timeout_ms,
+                                              const Timer* timer,
                                               MessageHandler* handler) {
   const GoogleString lock_string = lock_name.as_string();
   const char* lock_str = lock_string.c_str();

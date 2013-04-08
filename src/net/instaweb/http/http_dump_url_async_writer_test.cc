@@ -35,7 +35,6 @@ class HttpDumpUrlAsyncWriterTest : public FetcherTest {
   HttpDumpUrlAsyncWriterTest()
       : root_dir_(GTestTempDir() + "/http_dump_url_async_writer_test/"),
         mock_timer_(0),
-        file_system_(&mock_timer_),
         dump_fetcher_(root_dir_, &mock_async_fetcher_, &file_system_,
                       &mock_timer_) {
   }

@@ -391,7 +391,7 @@ bool RewriteTestBase::LoadFile(const StringPiece& filename,
   // We need to load a file from the testdata directory. Don't use this
   // physical filesystem for anything else, use file_system_ which can be
   // abstracted as a MemFileSystem instead.
-  StdioFileSystem stdio_file_system(timer());
+  StdioFileSystem stdio_file_system;
   GoogleString filename_str = StrCat(GTestSrcDir(), kTestData, filename);
   return stdio_file_system.ReadFile(
       filename_str.c_str(), contents, message_handler());

@@ -16,28 +16,26 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_TIMER_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_TIMER_H_
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_POSIX_TIMER_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_POSIX_TIMER_H_
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/timer.h"
 
-
 namespace net_instaweb {
 
-class GoogleTimer : public Timer {
+class PosixTimer : public Timer {
  public:
-  GoogleTimer();
-  virtual ~GoogleTimer();
+  PosixTimer() {}
+  virtual ~PosixTimer();
 
   virtual int64 NowUs() const;
   virtual void SleepUs(int64 us);
 
  private:
-
-  DISALLOW_COPY_AND_ASSIGN(GoogleTimer);
+  DISALLOW_COPY_AND_ASSIGN(PosixTimer);
 };
 
 }  // namespace net_instaweb
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_GOOGLE_TIMER_H_
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_POSIX_TIMER_H_

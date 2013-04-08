@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Google Inc.
+ * Copyright 2013 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,32 +14,28 @@
  * limitations under the License.
  */
 
-// Author: morlovich@google.com (Maksim Orlovich)
-
-#include "net/instaweb/util/public/thread_system.h"
+// Author: jmarantz@google.com (Joshua Marantz)
 
 #include "net/instaweb/util/public/platform.h"
 
+#include "net/instaweb/util/public/pthread_thread_system.h"
+#include "net/instaweb/util/public/checking_thread_system.h"
+
+#include "net/instaweb/util/public/posix_timer.h"
+
 namespace net_instaweb {
 
-ThreadSystem::~ThreadSystem() {
+ThreadSystem* Platform::CreateThreadSystem() {
+  ThreadSystem* impl = new PthreadThreadSystem;
+#ifdef NDEBUG
+  return impl;
+#else
+  return new CheckingThreadSystem(impl);
+#endif
 }
 
-ThreadSystem::CondvarCapableMutex::~CondvarCapableMutex() {
-}
-
-ThreadSystem::RWLock::~RWLock() {
-}
-
-ThreadSystem::ThreadImpl::~ThreadImpl() {
-}
-
-void ThreadSystem::RWLock::DCheckReaderLocked() {
-}
-
-// TODO(jmarantz): get rid of this wrapper (there are a lot of call sites)
-ThreadSystem* ThreadSystem::CreateThreadSystem() {
-  return Platform::CreateThreadSystem();
+Timer* Platform::CreateTimer() {
+  return new PosixTimer;
 }
 
 }  // namespace net_instaweb

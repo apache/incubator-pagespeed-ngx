@@ -32,8 +32,7 @@ class Timer;
 
 class StdioFileSystem : public FileSystem {
  public:
-  // The timer will be used only by TryLockWithTimeout.
-  explicit StdioFileSystem(Timer* timer) : timer_(timer) {}
+  StdioFileSystem() {}
   virtual ~StdioFileSystem();
 
   virtual int MaxPathLength(const StringPiece& base) const;
@@ -70,6 +69,7 @@ class StdioFileSystem : public FileSystem {
                               MessageHandler* handler);
   virtual BoolOrError TryLockWithTimeout(const StringPiece& lock_name,
                                          int64 timeout_ms,
+                                         const Timer* timer,
                                          MessageHandler* handler);
 
   virtual bool Unlock(const StringPiece& lock_name, MessageHandler* handler);
@@ -83,7 +83,6 @@ class StdioFileSystem : public FileSystem {
   bool Stat(const StringPiece& path, struct stat* statbuf,
             MessageHandler* handler);
 
-  Timer* timer_;
   DISALLOW_COPY_AND_ASSIGN(StdioFileSystem);
 };
 

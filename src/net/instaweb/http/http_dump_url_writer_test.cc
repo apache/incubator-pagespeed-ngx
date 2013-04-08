@@ -41,7 +41,6 @@ class HttpDumpUrlWriterTest : public FetcherTest {
  protected:
   HttpDumpUrlWriterTest()
       : mock_timer_(0),
-        file_system_(&mock_timer_),
         http_dump_writer_(GTestTempDir() + "/http_dump/", &mock_fetcher_,
                           &file_system_, &mock_timer_) {
   }

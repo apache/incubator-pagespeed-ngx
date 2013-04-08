@@ -24,7 +24,7 @@
 #include <pthread.h>
 
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/google_timer.h"
+#include "net/instaweb/util/public/posix_timer.h"
 #include "net/instaweb/util/public/pthread_rw_lock.h"
 #include "net/instaweb/util/public/pthread_mutex.h"
 #include "net/instaweb/util/public/string.h"
@@ -131,7 +131,7 @@ ThreadSystem::ThreadImpl* PthreadThreadSystem::NewThreadImpl(
 }
 
 Timer* PthreadThreadSystem::NewTimer() {
-  return new GoogleTimer;
+  return new PosixTimer;
 }
 
 }  // namespace net_instaweb

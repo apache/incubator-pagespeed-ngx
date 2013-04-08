@@ -19,7 +19,6 @@
 
 #include <unistd.h>
 
-#include <cstddef>
 #include <algorithm>
 #include <utility>
 
@@ -154,7 +153,7 @@ ApacheRewriteDriverFactory::~ApacheRewriteDriverFactory() {
 }
 
 FileSystem* ApacheRewriteDriverFactory::DefaultFileSystem() {
-  return new StdioFileSystem(timer());
+  return new StdioFileSystem;
 }
 
 Hasher* ApacheRewriteDriverFactory::NewHasher() {

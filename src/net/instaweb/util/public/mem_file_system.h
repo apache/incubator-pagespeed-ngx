@@ -81,6 +81,7 @@ class MemFileSystem : public FileSystem {
                               MessageHandler* handler);
   virtual BoolOrError TryLockWithTimeout(const StringPiece& lock_name,
                                          int64 timeout_ms,
+                                         const Timer* timer,
                                          MessageHandler* handler);
   virtual bool Unlock(const StringPiece& lock_name, MessageHandler* handler);
 

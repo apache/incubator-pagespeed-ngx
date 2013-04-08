@@ -19,6 +19,7 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system.h"
+#include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/scheduler_based_abstract_lock.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -26,7 +27,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class Scheduler;
 
 class FileSystemLock : public SchedulerBasedAbstractLock {
  public:
@@ -48,7 +48,8 @@ class FileSystemLock : public SchedulerBasedAbstractLock {
   virtual bool TryLockStealOld(int64 timeout_ms) {
     bool result = false;
     if (manager_->file_system()->
-        TryLockWithTimeout(name_, timeout_ms, manager_->handler()).is_true()) {
+        TryLockWithTimeout(name_, timeout_ms, scheduler()->timer(),
+                           manager_->handler()).is_true()) {
       held_ = result = true;
     }
     return result;

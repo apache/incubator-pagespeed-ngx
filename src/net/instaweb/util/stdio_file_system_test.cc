@@ -22,17 +22,19 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/file_system_test.h"
 #include "net/instaweb/util/public/google_message_handler.h"
-#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/platform.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
-class Timer;
 
 class StdioFileSystemTest : public FileSystemTest {
  protected:
-  StdioFileSystemTest() : stdio_file_system_(&timer_) {
+  StdioFileSystemTest()
+      : timer_(Platform::CreateTimer()) {
     // Create the temp directory, so we are not dependent on test order
     // to make it.
     file_system()->RecursivelyMakeDir(test_tmpdir(), &handler_);
@@ -65,7 +67,7 @@ class StdioFileSystemTest : public FileSystemTest {
   virtual FileSystem* file_system() {
     return &stdio_file_system_;
   }
-  virtual Timer* timer()  { return &timer_; }
+  virtual Timer* timer()  { return timer_.get(); }
 
   // Disk based file systems should return the number of disk blocks allocated
   // for a file, not the size of the contents.
@@ -97,7 +99,7 @@ class StdioFileSystemTest : public FileSystemTest {
     }
   }
 
-  GoogleTimer timer_;
+  scoped_ptr<Timer> timer_;
   StdioFileSystem stdio_file_system_;
   int64 default_dir_size_;
   int64 default_file_size_;

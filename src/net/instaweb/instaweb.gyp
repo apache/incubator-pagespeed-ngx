@@ -748,7 +748,6 @@
         'util/file_writer.cc',
         'util/filename_encoder.cc',
         'util/function.cc',
-        'util/google_timer.cc',
         'util/gzip_inflater.cc',
         'util/hasher.cc',
         'util/hostname_util.cc',
@@ -767,6 +766,8 @@
         'util/null_shared_mem.cc',
         'util/null_statistics.cc',
         'util/null_writer.cc',
+        'util/platform.cc',
+        'util/posix_timer.cc',
         'util/property_cache.cc',
         'util/queued_alarm.cc',
         'util/queued_worker.cc',
@@ -1368,7 +1369,7 @@
       'sources': [
         'rewriter/rewrite_gflags.cc',
         'util/gflags.cc',
-        'util/google_timer.cc',
+        'util/posix_timer.cc',
       ],
     },
     {

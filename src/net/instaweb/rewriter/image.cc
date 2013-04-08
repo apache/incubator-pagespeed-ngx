@@ -919,8 +919,7 @@ bool ImageImpl::TempFileForImage(FileSystem* fs,
 }
 
 bool ImageImpl::LoadOpenCvFromBuffer(const StringPiece& data) {
-  GoogleTimer timer;
-  StdioFileSystem fs(&timer);
+  StdioFileSystem fs;
   GoogleString filename;
   bool ok = TempFileForImage(&fs, data, &filename);
   if (ok) {
@@ -931,8 +930,7 @@ bool ImageImpl::LoadOpenCvFromBuffer(const StringPiece& data) {
 }
 
 bool ImageImpl::SaveOpenCvToBuffer(OpenCvBuffer* buf) {
-  GoogleTimer timer;
-  StdioFileSystem fs(&timer);
+  StdioFileSystem fs;
   GoogleString filename;
   bool ok = TempFileForImage(&fs, StringPiece(), &filename);
   if (ok) {

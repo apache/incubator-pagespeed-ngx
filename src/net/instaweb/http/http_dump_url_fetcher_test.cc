@@ -49,7 +49,6 @@ class HttpDumpUrlFetcherTest : public testing::Test {
  public:
   HttpDumpUrlFetcherTest()
       : mock_timer_(0),
-        file_system_(&mock_timer_),
         content_writer_(&content_),
         http_dump_fetcher_(
             GTestSrcDir() + "/net/instaweb/http/testdata",

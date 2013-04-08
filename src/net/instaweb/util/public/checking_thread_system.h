@@ -35,7 +35,7 @@ class Timer;
 // around an unchecked implementation.  This implementation checks invariants
 // using CHECK (so does checking unconditionally).  To check conditionally, do
 // the wrapping depending upon the setting of NDEBUG.  This is done by the
-// ThreadSystem::CreateThreadSystem() factory by default, which is why the
+// Platform::CreateThreadSystem() factory by default, which is why the
 // invariant checking method is called DCheckLock (Debug check lock) and not
 // CheckLock.
 class CheckingThreadSystem : public ThreadSystem {

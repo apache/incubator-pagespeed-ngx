@@ -26,14 +26,14 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
+#include "net/instaweb/util/public/platform.h"
+#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler_thread.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/timer.h"
-#include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
@@ -62,7 +62,7 @@ class QueuedAlarmTest : public WorkerTestBase {
   }
 
   void SetupWithRealScheduler() {
-    timer_.reset(new GoogleTimer);
+    timer_.reset(Platform::CreateTimer());
     scheduler_.reset(new Scheduler(thread_system_.get(), timer_.get()));
     SetupWorker();
   }

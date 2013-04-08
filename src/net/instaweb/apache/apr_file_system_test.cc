@@ -25,6 +25,7 @@
 #include "net/instaweb/util/public/dynamic_annotations.h"  // RunningOnValgrind
 #include "net/instaweb/util/public/file_system_test.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "testing/gtest/include/gtest/gtest.h"

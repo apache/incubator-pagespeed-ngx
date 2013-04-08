@@ -463,7 +463,7 @@ class InlineCssImageRewriterTest : public CssImageRewriterTest {
     AddFileToMockFetcher(StrCat(kTestDomain, file_name),
                          file_name, kContentTypePng, 100);
 
-    StdioFileSystem stdio_file_system(timer());
+    StdioFileSystem stdio_file_system;
     GoogleString file_path = StrCat(GTestSrcDir(), kTestData, file_name);
     EXPECT_TRUE(stdio_file_system.ReadFile(
         file_path.c_str(), &test_image_file_contents_, message_handler()));

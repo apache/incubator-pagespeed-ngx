@@ -1,5 +1,5 @@
 /*
- * Copyright 2011 Google Inc.
+ * Copyright 2013 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,32 +14,25 @@
  * limitations under the License.
  */
 
-// Author: morlovich@google.com (Maksim Orlovich)
-
-#include "net/instaweb/util/public/thread_system.h"
-
-#include "net/instaweb/util/public/platform.h"
+#ifndef NET_INSTAWEB_UTIL_PUBLIC_PLATFORM_H_
+#define NET_INSTAWEB_UTIL_PUBLIC_PLATFORM_H_
 
 namespace net_instaweb {
 
-ThreadSystem::~ThreadSystem() {
-}
+class ThreadSystem;
+class Timer;
 
-ThreadSystem::CondvarCapableMutex::~CondvarCapableMutex() {
-}
+// Encapsulates the creation of objects that may have different applications
+// across platforms.
+class Platform {
+ public:
+  // Creates an appropriate ThreadSystem for the platform.
+  static ThreadSystem* CreateThreadSystem();
 
-ThreadSystem::RWLock::~RWLock() {
-}
-
-ThreadSystem::ThreadImpl::~ThreadImpl() {
-}
-
-void ThreadSystem::RWLock::DCheckReaderLocked() {
-}
-
-// TODO(jmarantz): get rid of this wrapper (there are a lot of call sites)
-ThreadSystem* ThreadSystem::CreateThreadSystem() {
-  return Platform::CreateThreadSystem();
-}
+  // Creates an appropriate Timer for the platform.
+  static Timer* CreateTimer();
+};
 
 }  // namespace net_instaweb
+
+#endif  // NET_INSTAWEB_UTIL_PUBLIC_PLATFORM_H_

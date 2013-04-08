@@ -347,16 +347,17 @@ BoolOrError MemFileSystem::TryLock(const StringPiece& lock_name,
 
 BoolOrError MemFileSystem::TryLockWithTimeout(const StringPiece& lock_name,
                                               int64 timeout_ms,
+                                              const Timer* timer,
                                               MessageHandler* handler) {
   ScopedMutex lock(lock_map_mutex_.get());
 
   GoogleString name = lock_name.as_string();
-  int64 now = timer_->NowMs();
+  int64 now = timer->NowMs();
   if (lock_map_.count(name) != 0 &&
       now <= lock_map_[name] + timeout_ms) {
     return BoolOrError(false);
   } else {
-    lock_map_[name] = timer_->NowMs();
+    lock_map_[name] = timer->NowMs();
     return BoolOrError(true);
   }
 }

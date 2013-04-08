@@ -20,7 +20,6 @@
 
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/google_timer.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -35,13 +34,13 @@ class SchedulerThreadTest : public WorkerTestBase {
  protected:
   SchedulerThreadTest()
       : thread_system_(ThreadSystem::CreateThreadSystem()),
-        timer_(),
-        scheduler_(thread_system_.get(), &timer_),
+        timer_(thread_system_->NewTimer()),
+        scheduler_(thread_system_.get(), timer_.get()),
         scheduler_thread_(
             new SchedulerThread(thread_system_.get(), &scheduler_)) {}
 
   scoped_ptr<ThreadSystem> thread_system_;
-  GoogleTimer timer_;
+  scoped_ptr<Timer> timer_;
   Scheduler scheduler_;
   SchedulerThread* scheduler_thread_;
 
@@ -54,11 +53,11 @@ TEST_F(SchedulerThreadTest, BasicOperation) {
   // and cleanups safely.
   ASSERT_TRUE(scheduler_thread_->Start());
   SyncPoint sync(thread_system_.get());
-  int64 start_us = timer_.NowUs();
+  int64 start_us = timer_->NowUs();
   scheduler_.AddAlarm(start_us + 25 * Timer::kMsUs,
                       new NotifyRunFunction(&sync));
   sync.Wait();
-  int64 end_us = timer_.NowUs();
+  int64 end_us = timer_->NowUs();
   EXPECT_LT(start_us + 24 * Timer::kMsUs, end_us);
   EXPECT_GT(start_us + Timer::kMinuteUs, end_us);
   scheduler_thread_->MakeDeleter()->CallRun();
