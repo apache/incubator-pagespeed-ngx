@@ -40,29 +40,6 @@ enum PropertyCacheDecodeResult {
   kPropertyCacheDecodeOk
 };
 
-// Decodes a protobuf of type T from the property named 'property_name'
-// in the cohort 'cohort_name' in the driver's property cache, and makes
-// sure it has not exceeded its TTL of 'cache_ttl_ms'. Passing in 'cache_ttl_ms'
-// of -1 will disable the check.
-//
-// *status will denote the decoding state; if it's kPropertyCacheDecodeOk
-// then a pointer to a freshly allocated decoded proto is returned; otherwise
-// NULL is returned.
-template<typename T>
-T* DecodeFromPropertyCache(RewriteDriver* driver,
-                           StringPiece cohort_name,
-                           StringPiece property_name,
-                           int64 cache_ttl_ms,
-                           PropertyCacheDecodeResult* status) {
-  return DecodeFromPropertyCache<T>(
-      driver->server_context()->page_property_cache(),
-      driver->property_page(),
-      cohort_name,
-      property_name,
-      cache_ttl_ms,
-      status);
-}
-
 // Returns PropertyValue object for given cohort and property name,
 // setting *status and returning NULL if any errors were found.
 const PropertyValue* DecodeFromPropertyCacheHelper(
@@ -73,6 +50,13 @@ const PropertyValue* DecodeFromPropertyCacheHelper(
     int64 cache_ttl_ms,
     PropertyCacheDecodeResult* status);
 
+// Decodes a protobuf of type T from the property named 'property_name' in the
+// cohort 'cohort_name' in the given property cache, and makes sure it has not
+// exceeded its TTL of 'cache_ttl_ms' (a value of -1 will disable this check).
+//
+// *status will denote the decoding state; if it's kPropertyCacheDecodeOk
+// then a pointer to a freshly allocated decoded proto is returned; otherwise
+// NULL is returned.
 template<typename T>
 T* DecodeFromPropertyCache(const PropertyCache* cache,
                            const PropertyPage* page,
@@ -98,6 +82,23 @@ T* DecodeFromPropertyCache(const PropertyCache* cache,
 
   *status = kPropertyCacheDecodeOk;
   return result.release();
+}
+
+// Wrapper version of the above function that gets the property cache and the
+// property page from the given driver.
+template<typename T>
+T* DecodeFromPropertyCache(RewriteDriver* driver,
+                           StringPiece cohort_name,
+                           StringPiece property_name,
+                           int64 cache_ttl_ms,
+                           PropertyCacheDecodeResult* status) {
+  return DecodeFromPropertyCache<T>(
+      driver->server_context()->page_property_cache(),
+      driver->property_page(),
+      cohort_name,
+      property_name,
+      cache_ttl_ms,
+      status);
 }
 
 enum PropertyCacheUpdateResult {
