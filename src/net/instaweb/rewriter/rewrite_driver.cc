@@ -733,11 +733,11 @@ void RewriteDriver::Terminate() {
   }
 }
 
-void RewriteDriver::SetResourceManager(ServerContext* resource_manager) {
+void RewriteDriver::SetServerContext(ServerContext* server_context) {
   DCHECK(server_context_ == NULL);
-  server_context_ = resource_manager;
+  server_context_ = server_context;
   scheduler_ = server_context_->scheduler();
-  set_timer(resource_manager->timer());
+  set_timer(server_context->timer());
   rewrite_worker_ = server_context_->rewrite_workers()->NewSequence();
   html_worker_ = server_context_->html_workers()->NewSequence();
   low_priority_rewrite_worker_ =

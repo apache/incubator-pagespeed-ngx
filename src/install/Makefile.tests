@@ -183,6 +183,10 @@ apache_debug_memcached_test : memcached_test_prepare apache_install_conf \
 	$(INSTALL_DATA_DIR)/run_program_with_memcached.sh -multi \
 	    $(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
 	        $(APACHE_HTTPS_SERVER) \; \
+	    env \
+	    CACHE_FLUSH_TEST=on \
+	    APACHE_SECONDARY_PORT=$(APACHE_SECONDARY_PORT) \
+	    APACHE_DOC_ROOT=$(APACHE_DOC_ROOT) \
 	    $(INSTALL_DATA_DIR)/apache_system_test.sh $(APACHE_SERVER) \
 	        $(APACHE_HTTPS_SERVER)
 	$(MAKE) apache_debug_stop

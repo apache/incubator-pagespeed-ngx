@@ -63,6 +63,16 @@ T* DecodeFromPropertyCache(RewriteDriver* driver,
       status);
 }
 
+// Returns PropertyValue object for given cohort and property name,
+// setting *status and returning NULL if any errors were found.
+const PropertyValue* DecodeFromPropertyCacheHelper(
+    const PropertyCache* cache,
+    const PropertyPage* page,
+    StringPiece cohort_name,
+    StringPiece property_name,
+    int64 cache_ttl_ms,
+    PropertyCacheDecodeResult* status);
+
 template<typename T>
 T* DecodeFromPropertyCache(const PropertyCache* cache,
                            const PropertyPage* page,
@@ -70,26 +80,15 @@ T* DecodeFromPropertyCache(const PropertyCache* cache,
                            StringPiece property_name,
                            int64 cache_ttl_ms,
                            PropertyCacheDecodeResult* status) {
-  // TODO(jud): Split out the error checking below into a separate function.
-  scoped_ptr<T> result;
-  const PropertyCache::Cohort* cohort = cache->GetCohort(cohort_name);
-  if (cohort == NULL || page == NULL) {
-    *status = kPropertyCacheDecodeNotFound;
+  const PropertyValue* property_value =
+      DecodeFromPropertyCacheHelper(cache, page, cohort_name, property_name,
+                                    cache_ttl_ms, status);
+  if (property_value == NULL) {
+    // *status set by helper
     return NULL;
   }
 
-  PropertyValue* property_value = page->GetProperty(cohort, property_name);
-  if (property_value == NULL || !property_value->has_value()) {
-    *status = kPropertyCacheDecodeNotFound;
-    return NULL;
-  }
-
-  if ((cache_ttl_ms != -1) && cache->IsExpired(property_value, cache_ttl_ms)) {
-    *status = kPropertyCacheDecodeExpired;
-    return NULL;
-  }
-
-  result.reset(new T);
+  scoped_ptr<T> result(new T);
   ArrayInputStream input(property_value->value().data(),
                          property_value->value().size());
   if (!result->ParseFromZeroCopyStream(&input)) {
@@ -107,51 +106,22 @@ enum PropertyCacheUpdateResult {
   kPropertyCacheUpdateOk
 };
 
+PropertyCacheUpdateResult UpdateInPropertyCache(
+    const protobuf::MessageLite& value, const PropertyCache* cache,
+    StringPiece cohort_name, StringPiece property_name, bool write_cohort,
+    PropertyPage* page);
+
 // Updates the property 'property_name' in cohort 'cohort_name' of the property
 // cache managed by the rewrite driver with the new value of the proto T.
 // If 'write_cohort' is true, will also additionally write out the cohort
 // to the cache backing.
-template<typename T>
-PropertyCacheUpdateResult UpdateInPropertyCache(const T& value,
-                                                RewriteDriver* driver,
-                                                StringPiece cohort_name,
-                                                StringPiece property_name,
-                                                bool write_cohort) {
+inline PropertyCacheUpdateResult UpdateInPropertyCache(
+    const protobuf::MessageLite& value, RewriteDriver* driver,
+    StringPiece cohort_name, StringPiece property_name, bool write_cohort) {
   const PropertyCache* cache = driver->server_context()->page_property_cache();
   PropertyPage* page = driver->property_page();
   return UpdateInPropertyCache(
       value, cache, cohort_name, property_name, write_cohort, page);
-}
-
-template<typename T>
-PropertyCacheUpdateResult UpdateInPropertyCache(const T& value,
-                                                const PropertyCache* cache,
-                                                StringPiece cohort_name,
-                                                StringPiece property_name,
-                                                bool write_cohort,
-                                                PropertyPage* page) {
-  const PropertyCache::Cohort* cohort = cache->GetCohort(cohort_name);
-  if (cohort == NULL || page == NULL) {
-    return kPropertyCacheUpdateNotFound;
-  }
-
-  PropertyValue* property_value = page->GetProperty(cohort, property_name);
-  if (property_value == NULL) {
-    return kPropertyCacheUpdateNotFound;
-  }
-
-  GoogleString buf;
-  if (!value.SerializeToString(&buf)) {
-    return kPropertyCacheUpdateEncodeError;
-  }
-
-  page->UpdateValue(cohort, property_name, buf);
-
-  if (write_cohort) {
-    page->WriteCohort(cohort);
-  }
-
-  return kPropertyCacheUpdateOk;
 }
 
 }  // namespace net_instaweb

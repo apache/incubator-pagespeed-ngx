@@ -1219,6 +1219,7 @@
         'rewriter/local_storage_cache_filter.cc',
         'rewriter/meta_tag_filter.cc',
         'rewriter/pedantic_filter.cc',
+        'rewriter/property_cache_util.cc',
         'rewriter/redirect_on_size_limit_filter.cc',
         'rewriter/resource_combiner.cc',
         'rewriter/resource_fetch.cc',

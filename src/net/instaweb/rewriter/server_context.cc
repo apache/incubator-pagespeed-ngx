@@ -839,7 +839,7 @@ RewriteDriver* ServerContext::NewUnmanagedRewriteDriver(
   RewriteDriver* rewrite_driver = new RewriteDriver(
       message_handler_, file_system_, default_system_fetcher_);
   rewrite_driver->set_options_for_pool(pool, options);
-  rewrite_driver->SetResourceManager(this);
+  rewrite_driver->SetServerContext(this);
   rewrite_driver->ClearDeviceProperties();
   rewrite_driver->set_request_context(request_ctx);
   if (has_default_distributed_fetcher()) {

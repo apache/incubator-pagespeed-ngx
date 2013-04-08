@@ -175,9 +175,9 @@ class RewriteDriver : public HtmlParse {
   static void Initialize();
   static void Terminate();
 
-  // Adds a server context enabling the rewriting of
-  // resources. This will replace any previous resource managers.
-  void SetResourceManager(ServerContext* resource_manager);
+  // Sets a server context enabling the rewriting of
+  // resources. This will replace any previous server context.
+  void SetServerContext(ServerContext* server_context);
 
   // Returns true if we may cache extend Css, Images, PDFs, or Scripts
   // respectively.
