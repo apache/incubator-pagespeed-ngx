@@ -24,6 +24,15 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    server_name mpd.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+
+    pagespeed MapProxyDomain mpd.example.com:@@SECONDARY_PORT@@/pss_images
+                             http://ref.pssdemos.com/filter/images;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
     server_name preserveurls.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
@@ -177,6 +186,11 @@ http {
     pagespeed MaxHtmlParseBytes 50000;
 
     add_header X-Extra-Header 1;
+
+    # Establish a proxy mapping where the current server proxies an image
+    # stored on ref.pssdemos.com.
+    pagespeed MapProxyDomain localhost:@@PRIMARY_PORT@@/pss_images
+                             http://ref.pssdemos.com/filter/images;
 
     location ~ \.php$ {
       fastcgi_param SCRIPT_FILENAME $request_filename;
