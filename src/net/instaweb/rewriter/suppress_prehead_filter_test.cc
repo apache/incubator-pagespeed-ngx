@@ -187,6 +187,8 @@ TEST_F(SuppressPreheadFilterTest, FlushEarlyHeadSuppressWithCacheableHtml) {
   logging_info()->mutable_timing_info()->set_header_fetch_ms(100);
   rewrite_driver_->log_record()->logging_info()->
       set_is_original_resource_cacheable(true);
+  rewrite_driver_->flush_early_info()->set_last_n_fetch_latencies("96,98");
+  rewrite_driver_->flush_early_info()->set_average_fetch_latency_ms(97);
   Parse("not_flushed_early", html_input);
   EXPECT_EQ(html_input, output_);
 

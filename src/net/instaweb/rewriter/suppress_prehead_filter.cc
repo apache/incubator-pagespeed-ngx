@@ -152,6 +152,9 @@ void SuppressPreheadFilter::EndDocument() {
 
   if (header_fetch_ms >= 0) {
     UpdateFetchLatencyInFlushEarlyProto(header_fetch_ms, driver_);
+  } else {
+    driver_->flush_early_info()->clear_average_fetch_latency_ms();
+    driver_->flush_early_info()->clear_last_n_fetch_latencies();
   }
 
   driver_->flush_early_info()->set_pre_head(pre_head_);
