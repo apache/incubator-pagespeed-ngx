@@ -1319,7 +1319,7 @@ CreateRequestContext::Response ps_create_request_context(
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(
       r, file_descriptors[1],
       net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
-          cfg_s->server_context->thread_system()->NewMutex(), ctx)));
+          cfg_s->server_context->thread_system()->NewMutex(), r)));
 
   // If null, that means use global options.
   net_instaweb::RewriteOptions* custom_options = NULL;
@@ -1650,17 +1650,17 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
       // properly after ourselves somewhere?
       return NGX_ERROR;
     case CreateRequestContext::kNotUnderstood:
-      // This should only happen when ctx->is_resource_fetch is true,
+    case CreateRequestContext::kBeacon:
+    case CreateRequestContext::kStaticContent:
+    case CreateRequestContext::kStatistics:
+    case CreateRequestContext::kMessages:
+      // These should only happen when ctx->is_resource_fetch is true,
       // in which case we can not get here.
       CHECK(false);
       return NGX_ERROR;
-    case CreateRequestContext::kBeacon:
-    case CreateRequestContext::kPagespeedDisabled:
-    case CreateRequestContext::kStaticContent:
-    case CreateRequestContext::kInvalidUrl:
-    case CreateRequestContext::kStatistics:
-    case CreateRequestContext::kMessages:
     case CreateRequestContext::kPagespeedSubrequest:
+    case CreateRequestContext::kPagespeedDisabled:
+    case CreateRequestContext::kInvalidUrl:
       return ngx_http_next_header_filter(r);
     case CreateRequestContext::kOk:
       break;
@@ -2041,12 +2041,14 @@ ps_beacon_handler(ngx_http_request_t* r) {
     user_agent = str_to_string_piece(r->headers_in.user_agent->value);
   }
 
-  ps_request_ctx_t* ctx = ps_get_request_context(r);
   cfg_s->server_context->HandleBeacon(
       str_to_string_piece(r->unparsed_uri),
       user_agent,
       net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
-          cfg_s->server_context->thread_system()->NewMutex(), ctx)));
+          cfg_s->server_context->thread_system()->NewMutex(), r)));
+
+  // TODO(jefftk): figure out how to insert Content-Length:0 as a response
+  // header so wget doesn't hang.
 
   return NGX_HTTP_NO_CONTENT;
 }

@@ -4,9 +4,8 @@
 # The cache flush test depends on worker_processes=1.
 worker_processes  1;
 
-# for debugging
-#daemon off;
-#master_process off;
+daemon @@DAEMON@@;
+master_process @@MASTER_PROCESS@@;
 
 error_log "@@TEST_TMP@@/error.log" debug;
 pid "@@TEST_TMP@@/nginx.pid";
