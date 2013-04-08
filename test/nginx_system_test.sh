@@ -624,4 +624,23 @@ $WGET_DUMP $URL > $FETCHED
 check [ $(grep -c '^X-Page-Speed:'               $FETCHED) = 1 ]
 check [ $(grep -c '^X-My-PHP-Header: with_flush'    $FETCHED) = 1 ]
 
+# Test fetching a pagespeed URL via Nginx running as a reverse proxy, with
+# pagespeed loaded, but disabled for the proxied domain. As reported in
+# Issue 582 this used to fail in mod_pagespeed with a 403 (Forbidden).
+start_test Reverse proxy a pagespeed URL.
+
+PROXY_PATH="http://modpagespeed.com/styles"
+ORIGINAL="${PROXY_PATH}/yellow.css"
+FILTERED="${PROXY_PATH}/A.yellow.css.pagespeed.cf.KM5K8SbHQL.css"
+WGET_ARGS="--save-headers"
+
+# We should be able to fetch the original ...
+echo  http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $ORIGINAL
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $ORIGINAL 2>&1)
+check_from "$OUT" fgrep " 200 OK"
+# ... AND the rewritten version.
+echo  http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $FILTERED
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET --save-headers -O - $FILTERED 2>&1)
+check_from "$OUT" fgrep " 200 OK"
+
 check_failures_and_exit
