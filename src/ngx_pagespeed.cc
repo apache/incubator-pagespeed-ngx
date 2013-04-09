@@ -752,9 +752,9 @@ void ps_release_request_context(void* data) {
 // a write handler.  See src/http/ngx_http_request.c:2083.
 void ps_set_buffered(ngx_http_request_t* r, bool on) {
   if (on) {
-    r->buffered |= NGX_HTTP_SSI_BUFFERED;
+    r->buffered |= 0x08;
   } else {
-    r->buffered &= ~NGX_HTTP_SSI_BUFFERED;
+    r->buffered &= ~0x08;
   }
 }
 
@@ -1465,7 +1465,10 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     // Pagespeed is on for some server block but not this one.
     return ngx_http_next_body_filter(r, in);
   }
-
+  if (r != r->main) {
+    // Pagespeed is on for some server block but not this one.
+    return ngx_http_next_body_filter(r, in);
+  }
   // Don't need to check for a cache flush; already did in ps_header_filter.
 
   ps_request_ctx_t* ctx = ps_get_request_context(r);
@@ -1628,7 +1631,9 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     // Pagespeed is on for some server block but not this one.
     return ngx_http_next_header_filter(r);
   }
-
+  if (r != r->main) {
+    return ngx_http_next_header_filter(r);
+  }
   // Poll for cache flush on every request (polls are rate-limited).
   cfg_s->server_context->FlushCacheIfNecessary();
 
