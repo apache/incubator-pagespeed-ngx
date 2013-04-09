@@ -50,6 +50,7 @@
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
+#include "net/instaweb/system/public/handlers.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -641,7 +642,9 @@ void instaweb_static_handler(request_rec* request,
   }
 }
 
-apr_status_t instaweb_console_handler(
+// TODO(sligocki): This handler is currently unused, integrate this into
+// the mod_pagespeed_console.
+apr_status_t instaweb_statistics_graphs_handler(
     request_rec* request, ApacheConfig* config,
     ApacheMessageHandler* message_handler) {
   GoogleString output;
@@ -960,7 +963,11 @@ apr_status_t instaweb_handler(request_rec* request) {
     ret = instaweb_statistics_handler(request, server_context, factory,
                                       message_handler);
   } else if (request_handler_str == kConsoleHandler) {
-    ret = instaweb_console_handler(request, config, message_handler);
+    GoogleString output;
+    StringWriter writer(&output);
+    ConsoleHandler(server_context, &writer, message_handler);
+    write_handler_response(output, request);
+    ret = OK;
 
   } else if (request_handler_str == kMessageHandler) {
     // Request for page /mod_pagespeed_message.

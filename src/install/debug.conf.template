@@ -262,6 +262,12 @@ ModPagespeedCustomFetchHeader x-other False
   SetHandler mod_pagespeed_log_request_headers
 </Location>
 
+# Enable console handler in debug.conf so that we can use it without exposing
+# the config to users in pagespeed.conf.template.
+<Location /mod_pagespeed_console>
+  SetHandler mod_pagespeed_console
+</Location>
+
 ModPagespeedInPlaceResourceOptimization on
 
 ModPagespeedRespectXForwardedProto on

@@ -737,6 +737,7 @@
         'util/client_state.cc',
         'util/compressed_cache.cc',
         'util/condvar.cc',
+        'util/console_suggestions.cc',
         'util/data_url.cc',
         'util/debug.cc',
         'util/delegating_cache_callback.cc',
@@ -1350,6 +1351,7 @@
       'sources': [
         'system/apr_mem_cache.cc',
         'system/apr_thread_compatible_pool.cc',
+        'system/handlers.cc',
         'system/system_cache_path.cc',
         'system/system_caches.cc',
         'system/system_rewrite_driver_factory.cc',

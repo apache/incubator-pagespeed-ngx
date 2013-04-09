@@ -1736,7 +1736,14 @@ check_from "$LARGE_OUT" grep -q window.location=".*&ModPagespeed=off"
 fetch_until -save $URL 'grep -c window.location=".*&ModPagespeed=off"' 0
 check_not fgrep -q pagespeed.ic $FETCH_FILE
 
-# TODO(matterbury): Uncomment these lines then the test is fixed.
+# Simple test just to make sure the console loads and has some generated
+# content on it (for example, if you have a typo in a statistics name, that
+# will only fail at runtime when the console is loaded).
+start_test mod_pagespeed_console
+OUT=$($WGET_DUMP http://$HOSTNAME/mod_pagespeed_console)
+check_from "$OUT" grep -q "Fetch failure rate"
+
+# TODO(matterbury): Uncomment these lines when the test is fixed.
 :<< COMMENTING_BLOCK
 start_test ModPagespeedIf application
 # Without SPDY, we should combine things

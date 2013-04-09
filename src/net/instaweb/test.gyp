@@ -215,6 +215,7 @@
         'util/circular_buffer_test.cc',
         'util/client_state_test.cc',
         'util/compressed_cache_test.cc',
+        'util/console_suggestions_test.cc',
         'util/countdown_timer_test.cc',
         'util/data_url_test.cc',
         'util/delay_cache_test.cc',
