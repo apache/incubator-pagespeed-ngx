@@ -265,10 +265,12 @@ bool LocalStorageCacheFilter::AddLscAttributes(const StringPiece url,
 
 void LocalStorageCacheFilter::RemoveLscAttributes(HtmlElement* element,
                                                   RewriteDriver* driver) {
+  if (!driver->options()->Enabled(RewriteOptions::kLocalStorageCache)) {
+    return;
+  }
   element->DeleteAttribute(HtmlName::kPagespeedLscUrl);
   element->DeleteAttribute(HtmlName::kPagespeedLscHash);
   element->DeleteAttribute(HtmlName::kPagespeedLscExpiry);
-  element->DeleteAttribute(HtmlName::kPagespeedNoDefer);
 
   RewriteFilter* filter =
       driver->FindFilter(RewriteOptions::kLocalStorageCacheId);
