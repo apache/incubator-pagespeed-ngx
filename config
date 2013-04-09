@@ -141,7 +141,17 @@ if [ $ngx_found = yes ]; then
     $mod_pagespeed_dir/net/instaweb/apache/add_headers_fetcher.cc \
     $mod_pagespeed_dir/net/instaweb/apache/loopback_route_fetcher.cc \
     $mod_pagespeed_dir/net/instaweb/apache/serf_url_async_fetcher.cc"
-  HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
+  #HTTP_AUX_FILTER_MODULES="$HTTP_AUX_FILTER_MODULES $ngx_addon_name"
+
+HTTP_FILTER_MODULES=`echo $HTTP_FILTER_MODULES | sed "s/$HTTP_GZIP_FILTER_MODULE/$HTTP_GZIP_FILTER_MODULE $ngx_addon_name/"`  
+
+
+# rewrite alleen main request. subrequse niet, maar wel keepalive;
+#HTTP_FILTER_MODULES=`echo $HTTP_FILTER_MODULES | sed "s/$HTTP_SSI_FILTER_MODULE/$ngx_addon_name $HTTP_SSI_FILTER_MODULE/"`
+#HTTP_FILTER_MODULES=`echo $HTTP_FILTER_MODULES | sed "s/$HTTP_GZIP_FILTER_MODULE/$ngx_addon_name $HTTP_GZIP_FILTER_MODULE/"`
+
+
+
   CORE_LIBS="$CORE_LIBS $pagespeed_libs"
   CORE_INCS="$CORE_INCS $pagespeed_include"
 else
