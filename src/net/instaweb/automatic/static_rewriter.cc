@@ -49,7 +49,6 @@ class FileSystem;
 class Hasher;
 class MessageHandler;
 class Statistics;
-class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
@@ -72,7 +71,8 @@ class FileServerContext : public ServerContext {
 
 FileRewriter::FileRewriter(const net_instaweb::RewriteGflags* gflags,
                            bool echo_errors_to_stdout)
-    : gflags_(gflags),
+    : RewriteDriverFactory(Platform::CreateThreadSystem()),
+      gflags_(gflags),
       echo_errors_to_stdout_(echo_errors_to_stdout) {
   net_instaweb::RewriteDriverFactory::InitStats(&simple_stats_);
   SetStatistics(&simple_stats_);
@@ -106,10 +106,6 @@ MessageHandler* FileRewriter::DefaultMessageHandler() {
 
 FileSystem* FileRewriter::DefaultFileSystem() {
   return new StdioFileSystem;
-}
-
-Timer* FileRewriter::DefaultTimer() {
-  return Platform::CreateTimer();
 }
 
 void FileRewriter::SetupCaches(ServerContext* resource_manager) {

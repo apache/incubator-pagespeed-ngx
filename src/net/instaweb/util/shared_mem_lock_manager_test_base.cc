@@ -22,10 +22,10 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
-#include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
@@ -42,7 +42,7 @@ SharedMemLockManagerTestBase::SharedMemLockManagerTestBase(
     : test_env_(test_env),
       shmem_runtime_(test_env->CreateSharedMemRuntime()),
       timer_(0),
-      thread_system_(ThreadSystem::CreateThreadSystem()),
+      thread_system_(Platform::CreateThreadSystem()),
       scheduler_(thread_system_.get(), &timer_) {
 }
 

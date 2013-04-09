@@ -23,6 +23,7 @@
 #include "net/instaweb/util/public/inprocess_shared_mem.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/string.h"
@@ -42,7 +43,7 @@ const char kTimedVar[] = "tv";
 class SplitStatisticsTest : public testing::Test {
  public:
   SplitStatisticsTest()
-      : threads_(ThreadSystem::CreateThreadSystem()),
+      : threads_(Platform::CreateThreadSystem()),
         timer_(MockTimer::kApr_5_2010_ms),
         fs_(threads_.get(), &timer_),
         global_(MakeInMemory(&global_store_)),

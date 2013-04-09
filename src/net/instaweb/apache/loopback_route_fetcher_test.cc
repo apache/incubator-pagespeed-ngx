@@ -31,6 +31,7 @@
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"  // for ThreadSystem
@@ -50,7 +51,7 @@ class LoopbackRouteFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
   LoopbackRouteFetcherTest()
       : pool_(NULL),
         loopback_route_fetcher_(&options_, kOwnIp, 42, &reflecting_fetcher_),
-        thread_system_(ThreadSystem::CreateThreadSystem()) {}
+        thread_system_(Platform::CreateThreadSystem()) {}
 
   static void SetUpTestCase() {
     apr_initialize();

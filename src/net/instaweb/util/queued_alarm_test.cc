@@ -42,7 +42,7 @@ namespace {
 class QueuedAlarmTest : public WorkerTestBase {
  public:
   QueuedAlarmTest()
-      : thread_system_(ThreadSystem::CreateThreadSystem()),
+      : thread_system_(Platform::CreateThreadSystem()),
         sequence_(NULL),
         done_(false),
         cancel_(false) {

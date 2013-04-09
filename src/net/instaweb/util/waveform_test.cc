@@ -17,6 +17,7 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -38,7 +39,8 @@ class WaveformTest : public testing::Test {
  protected:
   WaveformTest()
       : timer_(MockTimer::kApr_5_2010_ms),
-        thread_system_(ThreadSystem::CreateThreadSystem()) {
+        thread_system_(Platform::CreateThreadSystem()),
+        stats_(thread_system_.get()) {
   }
 
   GoogleString Format(int time_ms, int value) {

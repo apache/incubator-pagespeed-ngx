@@ -82,9 +82,6 @@ class RewriteDriverFactory {
   // Takes ownership of thread_system.
   explicit RewriteDriverFactory(ThreadSystem* thread_system);
 
-  // Initializes thread_system_ using ThreadSystem::ComputeThreadSystem().
-  RewriteDriverFactory();
-
   // Initializes default options we want to hard-code into the
   // base-class to get consistency across deployments.  Subclasses
   // that override NewRewriteOptions() should call this method from
@@ -317,13 +314,14 @@ class RewriteDriverFactory {
 
   // Implementors of RewriteDriverFactory must supply default definitions
   // for each of these methods, although they may be overridden via set_
-  // methods above.
+  // methods above.  These methods all instantiate objects and transfer
+  // ownership to the caller.
   virtual UrlFetcher* DefaultUrlFetcher() = 0;
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher() = 0;
   virtual MessageHandler* DefaultHtmlParseMessageHandler() = 0;
   virtual MessageHandler* DefaultMessageHandler() = 0;
   virtual FileSystem* DefaultFileSystem() = 0;
-  virtual Timer* DefaultTimer() = 0;
+  virtual Timer* DefaultTimer();
 
   virtual Hasher* NewHasher() = 0;
 

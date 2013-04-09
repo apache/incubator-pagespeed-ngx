@@ -20,6 +20,7 @@
 
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
@@ -33,7 +34,7 @@ namespace {
 class SchedulerThreadTest : public WorkerTestBase {
  protected:
   SchedulerThreadTest()
-      : thread_system_(ThreadSystem::CreateThreadSystem()),
+      : thread_system_(Platform::CreateThreadSystem()),
         timer_(thread_system_->NewTimer()),
         scheduler_(thread_system_.get(), timer_.get()),
         scheduler_thread_(

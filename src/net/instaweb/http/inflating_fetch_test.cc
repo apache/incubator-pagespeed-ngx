@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -85,7 +86,7 @@ class InflatingFetchTest : public testing::Test {
       : inflating_fetch_(NULL),
         gzipped_data_(reinterpret_cast<const char*>(kGzippedData),
                       STATIC_STRLEN(kGzippedData)),
-        thread_system_(ThreadSystem::CreateThreadSystem()) {
+        thread_system_(Platform::CreateThreadSystem()) {
   }
 
   virtual void SetUp() {

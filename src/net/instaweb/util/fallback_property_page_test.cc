@@ -24,6 +24,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -44,7 +45,7 @@ class FallbackPropertyPageTest : public testing::Test {
   FallbackPropertyPageTest()
       : lru_cache_(kMaxCacheSize),
         timer_(MockTimer::kApr_5_2010_ms),
-        thread_system_(ThreadSystem::CreateThreadSystem()),
+        thread_system_(Platform::CreateThreadSystem()),
         property_cache_("test/", &lru_cache_, &timer_, &stats_,
                         thread_system_.get()) {
     PropertyCache::InitCohortStats(kCohortName1, &stats_);

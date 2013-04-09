@@ -48,9 +48,6 @@
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/system/public/system_caches.h"
 #include "net/instaweb/util/public/abstract_shared_mem.h"
-#ifndef NDEBUG
-#include "net/instaweb/util/public/checking_thread_system.h"
-#endif
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/md5_hasher.h"
@@ -81,13 +78,7 @@ const char ApacheRewriteDriverFactory::kStaticAssetPrefix[] =
 
 ApacheRewriteDriverFactory::ApacheRewriteDriverFactory(
     server_rec* server, const StringPiece& version)
-    : SystemRewriteDriverFactory(
-#ifdef NDEBUG
-        new ApacheThreadSystem
-#else
-        new CheckingThreadSystem(new ApacheThreadSystem)
-#endif
-                           ),
+    : SystemRewriteDriverFactory(new ApacheThreadSystem),
       server_rec_(server),
 #ifdef PAGESPEED_SUPPORT_POSIX_SHARED_MEM
       shared_mem_runtime_(new PthreadSharedMem()),

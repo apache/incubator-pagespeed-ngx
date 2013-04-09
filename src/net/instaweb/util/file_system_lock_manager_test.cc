@@ -27,6 +27,7 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/named_lock_manager.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -45,7 +46,7 @@ class FileSystemLockManagerTest : public testing::Test {
  protected:
   FileSystemLockManagerTest()
       : timer_(0),
-        thread_system_(ThreadSystem::CreateThreadSystem()),
+        thread_system_(Platform::CreateThreadSystem()),
         scheduler_(thread_system_.get(), &timer_),
         file_system_(thread_system_.get(), &timer_),
         manager_(&file_system_, GTestTempDir(), &scheduler_, &handler_) { }

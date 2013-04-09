@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -144,7 +145,7 @@ class DelayedFetcher : public UrlPollableAsyncFetcher {
 class SyncFetcherAdapterTest : public testing::Test {
  public:
   SyncFetcherAdapterTest(): timer_(0) {
-    thread_system_.reset(ThreadSystem::CreateThreadSystem());
+    thread_system_.reset(Platform::CreateThreadSystem());
   }
 
  protected:

@@ -29,11 +29,11 @@
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/http/public/url_fetcher.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
-#include "net/instaweb/util/public/thread_system.h"
 #include "net/instaweb/util/public/writer.h"
 #include "net/instaweb/util/public/gtest.h"
 
@@ -54,7 +54,7 @@ SimpleStats* FetcherTest::statistics_ = NULL;
 
 FetcherTest::FetcherTest()
     : mock_async_fetcher_(&mock_fetcher_),
-      thread_system_(ThreadSystem::CreateThreadSystem()) {
+      thread_system_(Platform::CreateThreadSystem()) {
 }
 
 void FetcherTest::ValidateMockFetcherResponse(

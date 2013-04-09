@@ -39,6 +39,7 @@
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -173,7 +174,7 @@ class CacheUrlAsyncFetcherTest : public ::testing::Test {
         ttl_ms_(Timer::kHourMs),
         implicit_cache_ttl_ms_(500 * Timer::kSecondMs),
         cache_result_valid_(true),
-        thread_system_(ThreadSystem::CreateThreadSystem()) {
+        thread_system_(Platform::CreateThreadSystem()) {
     HTTPCache::InitStats(&statistics_);
     http_cache_.reset(new HTTPCache(&lru_cache_, &timer_, &mock_hasher_,
                                     &statistics_));

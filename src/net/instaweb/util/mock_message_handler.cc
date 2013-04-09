@@ -25,14 +25,16 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
+
 MockMessageHandler::MockMessageHandler() {
   // TODO(morlovich): Allow providing the thread system as an argument.
-  scoped_ptr<ThreadSystem> thread_runtime(ThreadSystem::CreateThreadSystem());
+  scoped_ptr<ThreadSystem> thread_runtime(Platform::CreateThreadSystem());
   mutex_.reset(thread_runtime->NewMutex());
 }
 

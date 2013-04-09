@@ -105,6 +105,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_util_pthread.a \
   net/instaweb/libinstaweb_util_enums_pb.a \
   net/instaweb/libprocess_context.a \
+  net/instaweb/libtest_infrastructure.a \
   third_party/base64/libbase64.a \
   third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a \
   third_party/css_parser/libcss_parser.a \

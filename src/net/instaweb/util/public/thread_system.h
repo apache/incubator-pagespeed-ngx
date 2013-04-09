@@ -128,12 +128,9 @@ class ThreadSystem {
   // - Writer Priority, this ensures no writer starvation.
   virtual RWLock* NewRWLock() = 0;
 
-  // Creates an appropriate ThreadSystem for the platform.
-  //
-  // TODO(jmarantz): get rid of this wrapper (there are a lot of call sites)
-  static ThreadSystem* CreateThreadSystem();
-
   // Creates and returns a real-time timer.  Caller is responsible for deleting.
+  //
+  // TODO(jmarantz): consider removing this and controlling timers separately.
   virtual Timer* NewTimer() = 0;
 
  private:

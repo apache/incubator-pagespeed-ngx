@@ -27,6 +27,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -42,7 +43,7 @@ class ReflectingFetcherTest : public ::testing::Test {
 };
 
 TEST_F(ReflectingFetcherTest, ReflectingFetcherWorks) {
-  scoped_ptr<ThreadSystem> ts(ThreadSystem::CreateThreadSystem());
+  scoped_ptr<ThreadSystem> ts(Platform::CreateThreadSystem());
   ExpectStringAsyncFetch dest(
       true, RequestContext::NewTestRequestContext(ts.get()));
   dest.request_headers()->Add("A", "First letter");

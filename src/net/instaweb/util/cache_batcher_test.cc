@@ -27,6 +27,7 @@
 #include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -44,9 +45,10 @@ namespace net_instaweb {
 class CacheBatcherTest : public CacheTestBase {
  protected:
   CacheBatcherTest() : expected_pending_(0) {
-    CacheBatcher::InitStats(&statistics_);
+    thread_system_.reset(Platform::CreateThreadSystem());
+    statistics_.reset(new SimpleStats(thread_system_.get()));
+    CacheBatcher::InitStats(statistics_.get());
     lru_cache_ = new LRUCache(kMaxSize);
-    thread_system_.reset(ThreadSystem::CreateThreadSystem());
     timer_.reset(thread_system_->NewTimer());
     pool_.reset(
         new QueuedWorkerPool(kMaxWorkers, "cache", thread_system_.get()));
@@ -55,7 +57,7 @@ class CacheBatcherTest : public CacheTestBase {
     async_cache_.reset(new AsyncCache(threadsafe_cache, pool_.get()));
     delay_cache_ = new DelayCache(async_cache_.get(), thread_system_.get());
     batcher_.reset(new CacheBatcher(delay_cache_, thread_system_->NewMutex(),
-                                    &statistics_));
+                                    statistics_.get()));
     set_mutex(thread_system_->NewMutex());
   }
 
@@ -112,7 +114,7 @@ class CacheBatcherTest : public CacheTestBase {
   scoped_ptr<QueuedWorkerPool> pool_;
   scoped_ptr<AsyncCache> async_cache_;
   DelayCache* delay_cache_;  // owned by CacheBatcher.
-  SimpleStats statistics_;
+  scoped_ptr<SimpleStats> statistics_;
   scoped_ptr<CacheBatcher> batcher_;
   int expected_pending_;
 };
@@ -230,7 +232,7 @@ TEST_F(CacheBatcherTest, ExceedMaxQueueAndDrop) {
   EXPECT_EQ(4, outstanding_fetches());
   Callback* n3 = InitiateGet("n3");     // This will be dropped immediately and
   WaitAndCheckNotFound(n3);             // reported as not found.
-  EXPECT_EQ(1, statistics_.GetVariable("cache_batcher_dropped_gets")->Get());
+  EXPECT_EQ(1, statistics_->GetVariable("cache_batcher_dropped_gets")->Get());
 
   ReleaseKey("n0");
   WaitAndCheck(n0, "v0");

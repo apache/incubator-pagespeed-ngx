@@ -22,6 +22,7 @@
 
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -35,7 +36,7 @@ namespace {
 class ThreadSynchronizerTest : public testing::Test {
  public:
   ThreadSynchronizerTest()
-      : thread_system_(ThreadSystem::CreateThreadSystem()),
+      : thread_system_(Platform::CreateThreadSystem()),
         synchronizer_(thread_system_.get()),
         pool_(1, "thread_synchronizer_test", thread_system_.get()),
         sequence_(pool_.NewSequence()),

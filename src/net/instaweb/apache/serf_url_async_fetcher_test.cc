@@ -36,6 +36,7 @@
 #include "net/instaweb/util/public/gzip_inflater.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -146,7 +147,7 @@ class SerfUrlAsyncFetcherTest: public ::testing::Test {
     apr_pool_create(&pool_, NULL);
     timer_.reset(new MockTimer(MockTimer::kApr_5_2010_ms));
     SerfUrlAsyncFetcher::InitStats(&statistics_);
-    thread_system_.reset(ThreadSystem::CreateThreadSystem());
+    thread_system_.reset(Platform::CreateThreadSystem());
     serf_url_async_fetcher_.reset(
         new SerfUrlAsyncFetcher(kProxy, pool_, thread_system_.get(),
                                 &statistics_, timer_.get(), kFetcherTimeoutMs,

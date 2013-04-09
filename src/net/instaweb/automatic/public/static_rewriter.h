@@ -32,7 +32,6 @@ class Hasher;
 class MessageHandler;
 class ServerContext;
 class Statistics;
-class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
 class Writer;
@@ -54,7 +53,6 @@ class FileRewriter : public RewriteDriverFactory {
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
   virtual MessageHandler* DefaultMessageHandler();
   virtual FileSystem* DefaultFileSystem();
-  virtual Timer* DefaultTimer();
   virtual void SetupCaches(ServerContext* resource_manager);
   virtual Statistics* statistics();
   virtual ServerContext* NewServerContext();

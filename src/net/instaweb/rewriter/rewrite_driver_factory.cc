@@ -41,6 +41,7 @@
 #include "net/instaweb/rewriter/public/usage_data_reporter.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/cache_batcher.h"
+#include "net/instaweb/util/public/checking_thread_system.h"
 #include "net/instaweb/util/public/client_state.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/file_system_lock_manager.h"
@@ -72,13 +73,15 @@ const int kJpegQualityArray[] = {30, 50, 65, 80, 90};
 
 class Statistics;
 
-RewriteDriverFactory::RewriteDriverFactory(ThreadSystem* thread_system)
-    : thread_system_(thread_system) {
-  Init();
-}
-
-RewriteDriverFactory::RewriteDriverFactory()
-    : thread_system_(ThreadSystem::CreateThreadSystem()) {
+RewriteDriverFactory::RewriteDriverFactory(ThreadSystem* thread_system) {
+#ifdef NDEBUG
+  // For release binaries, use the thread-system directly.
+  thread_system_.reset(thread_system);
+#else
+  // When compiling for debug, interpose a layer that CHECKs for clean mutex
+  // semantics.
+  thread_system_.reset(new CheckingThreadSystem(thread_system));
+#endif
   Init();
 }
 
@@ -261,6 +264,10 @@ FileSystem* RewriteDriverFactory::file_system() {
     file_system_.reset(DefaultFileSystem());
   }
   return file_system_.get();
+}
+
+Timer* RewriteDriverFactory::DefaultTimer() {
+  return thread_system()->NewTimer();
 }
 
 Timer* RewriteDriverFactory::timer() {

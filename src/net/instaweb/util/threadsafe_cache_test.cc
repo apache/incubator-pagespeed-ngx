@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/dynamic_annotations.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/string.h"
@@ -110,7 +111,7 @@ class ThreadsafeCacheTest : public testing::Test {
  protected:
   ThreadsafeCacheTest()
       : lru_cache_(new LRUCache(kMaxSize)),
-        thread_runtime_(ThreadSystem::CreateThreadSystem()),
+        thread_runtime_(Platform::CreateThreadSystem()),
         threadsafe_cache_(lru_cache_, thread_runtime_->NewMutex()) {
   }
 

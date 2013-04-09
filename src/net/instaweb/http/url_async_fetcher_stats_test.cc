@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_mutex.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_statistics.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -47,7 +48,7 @@ class StatsMaker {
  public:
   StatsMaker()
       : timer_(MockTimer::kApr_5_2010_ms),
-        threads_(ThreadSystem::CreateThreadSystem()),
+        threads_(Platform::CreateThreadSystem()),
         fs_(threads_.get(), &timer_),
         mem_runtime_(new InProcessSharedMem(threads_.get())),
         stats_(new SharedMemStatistics(3000 /* log dump interval*/,
@@ -82,7 +83,7 @@ class UrlAsyncFetcherStatsTest : public testing::Test {
       : timer_(MockTimer::kApr_5_2010_ms),
         wait_fetcher_(&mock_fetcher_, new NullMutex),
         stats_fetcher_("test", &wait_fetcher_, &timer_, stats_),
-        thread_system_(ThreadSystem::CreateThreadSystem()) {
+        thread_system_(Platform::CreateThreadSystem()) {
     // We don't want delays unless we're testing timing stuff.
     wait_fetcher_.SetPassThroughMode(true);
   }

@@ -64,6 +64,7 @@
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -1678,7 +1679,7 @@ class ThreadAlternatingCache : public CacheInterface {
 class ResourceManagerTestThreadedCache : public ServerContextTest {
  public:
   ResourceManagerTestThreadedCache()
-      : threads_(ThreadSystem::CreateThreadSystem()),
+      : threads_(Platform::CreateThreadSystem()),
         cache_backend_(new LRUCache(100000)),
         cache_(new ThreadAlternatingCache(
             mock_scheduler(),

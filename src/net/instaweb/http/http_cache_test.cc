@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string.h"
@@ -101,7 +102,7 @@ class HTTPCacheTest : public testing::Test {
       : mock_timer_(ParseDate(kStartDate)),
         lru_cache_(kMaxSize),
         http_cache_(&lru_cache_, &mock_timer_, &mock_hasher_, simple_stats_),
-        thread_system_(ThreadSystem::CreateThreadSystem()) {}
+        thread_system_(Platform::CreateThreadSystem()) {}
 
   void InitHeaders(ResponseHeaders* headers, const char* cache_control) {
     headers->Add("name", "value");

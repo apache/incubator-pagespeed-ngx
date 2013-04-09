@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -38,7 +39,7 @@ class Timer;
 class MemFileSystemTest : public FileSystemTest {
  protected:
   MemFileSystemTest()
-      : thread_system_(ThreadSystem::CreateThreadSystem()),
+      : thread_system_(Platform::CreateThreadSystem()),
         timer_(0),
         mem_file_system_(thread_system_.get(), &timer_) {
     mem_file_system_.set_advance_time_on_update(true, &timer_);

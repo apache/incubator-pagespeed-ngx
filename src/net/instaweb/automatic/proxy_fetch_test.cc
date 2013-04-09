@@ -34,6 +34,7 @@
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -86,7 +87,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
 
  protected:
   ProxyFetchPropertyCallbackCollectorTest() :
-    thread_system_(ThreadSystem::CreateThreadSystem()),
+    thread_system_(Platform::CreateThreadSystem()),
     server_context_(server_context()),
     post_lookup_called_(false) {}
 

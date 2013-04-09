@@ -21,12 +21,13 @@
 #include "net/instaweb/util/worker_test_base.h"
 
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/thread_system.h"
 
 namespace net_instaweb {
 
 WorkerTestBase::WorkerTestBase() {
-  thread_runtime_.reset(ThreadSystem::CreateThreadSystem());
+  thread_runtime_.reset(Platform::CreateThreadSystem());
 }
 
 WorkerTestBase::~WorkerTestBase() {

@@ -43,6 +43,7 @@
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/mock_time_cache.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"            // for scoped_ptr
 #include "net/instaweb/util/public/string.h"
@@ -122,22 +123,23 @@ const char TestRewriteDriverFactory::kUrlNamerScheme[] = "URL_NAMER_SCHEME";
 TestRewriteDriverFactory::TestRewriteDriverFactory(
     const StringPiece& temp_dir, MockUrlFetcher* mock_fetcher,
     MockUrlFetcher* mock_distributed_fetcher)
-  : mock_timer_(NULL),
-    mock_scheduler_(NULL),
-    delay_cache_(NULL),
-    lru_cache_(NULL),
-    proxy_url_fetcher_(NULL),
-    mock_url_fetcher_(mock_fetcher),
-    mock_distributed_fetcher_(mock_distributed_fetcher),
-    mock_distributed_async_fetcher_(NULL),
-    counting_url_async_fetcher_(NULL),
-    counting_distributed_async_fetcher_(NULL),
-    mem_file_system_(NULL),
-    mock_hasher_(NULL),
-    mock_message_handler_(NULL),
-    mock_html_message_handler_(NULL),
-    use_beacon_results_in_filters_(false),
-    add_platform_specific_decoding_passes_(true) {
+    : RewriteDriverFactory(Platform::CreateThreadSystem()),
+      mock_timer_(NULL),
+      mock_scheduler_(NULL),
+      delay_cache_(NULL),
+      lru_cache_(NULL),
+      proxy_url_fetcher_(NULL),
+      mock_url_fetcher_(mock_fetcher),
+      mock_distributed_fetcher_(mock_distributed_fetcher),
+      mock_distributed_async_fetcher_(NULL),
+      counting_url_async_fetcher_(NULL),
+      counting_distributed_async_fetcher_(NULL),
+      mem_file_system_(NULL),
+      mock_hasher_(NULL),
+      mock_message_handler_(NULL),
+      mock_html_message_handler_(NULL),
+      use_beacon_results_in_filters_(false),
+      add_platform_specific_decoding_passes_(true) {
   set_filename_prefix(StrCat(temp_dir, "/"));
   use_test_url_namer_ = (getenv(kUrlNamerScheme) != NULL &&
                          strcmp(getenv(kUrlNamerScheme), "test") == 0);

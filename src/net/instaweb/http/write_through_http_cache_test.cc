@@ -33,6 +33,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -106,7 +107,7 @@ class WriteThroughHTTPCacheTest : public testing::Test {
   WriteThroughHTTPCacheTest()
       : mock_timer_(ParseDate(kStartDate)),
         cache1_(kMaxSize), cache2_(kMaxSize),
-        thread_system_(ThreadSystem::CreateThreadSystem()),
+        thread_system_(Platform::CreateThreadSystem()),
         key_("http://www.test.com/1"),
         key2_("http://www.test.com/2"),
         content_("content"), header_name_("name"),

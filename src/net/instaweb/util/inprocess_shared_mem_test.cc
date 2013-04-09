@@ -27,6 +27,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_circular_buffer_test_base.h"
 #include "net/instaweb/util/public/shared_dynamic_string_map_test_base.h"
@@ -48,7 +49,7 @@ namespace {
 class InProcessSharedMemEnv : public SharedMemTestEnv {
  public:
   InProcessSharedMemEnv()
-      : thread_system_(ThreadSystem::CreateThreadSystem()) {
+      : thread_system_(Platform::CreateThreadSystem()) {
   }
 
   virtual AbstractSharedMem* CreateSharedMemRuntime() {

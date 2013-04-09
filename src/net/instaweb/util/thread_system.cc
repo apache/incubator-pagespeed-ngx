@@ -18,8 +18,6 @@
 
 #include "net/instaweb/util/public/thread_system.h"
 
-#include "net/instaweb/util/public/platform.h"
-
 namespace net_instaweb {
 
 ThreadSystem::~ThreadSystem() {
@@ -35,11 +33,6 @@ ThreadSystem::ThreadImpl::~ThreadImpl() {
 }
 
 void ThreadSystem::RWLock::DCheckReaderLocked() {
-}
-
-// TODO(jmarantz): get rid of this wrapper (there are a lot of call sites)
-ThreadSystem* ThreadSystem::CreateThreadSystem() {
-  return Platform::CreateThreadSystem();
 }
 
 }  // namespace net_instaweb

@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -167,7 +168,7 @@ class AsyncCacheTest : public CacheTestBase {
 
   AsyncCacheTest()
       : lru_cache_(new LRUCache(kMaxSize)),
-        thread_system_(ThreadSystem::CreateThreadSystem()),
+        thread_system_(Platform::CreateThreadSystem()),
         delay_map_(thread_system_.get()),
         timer_(thread_system_->NewTimer()),
         suppress_post_get_cleanup_(false),

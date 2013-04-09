@@ -29,6 +29,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/shared_string.h"
@@ -48,7 +49,7 @@ class CacheStatsTest : public testing::Test {
  protected:
   CacheStatsTest()
       : lru_cache_(kMaxSize),
-        thread_system_(ThreadSystem::CreateThreadSystem()),
+        thread_system_(Platform::CreateThreadSystem()),
         delay_cache_(new DelayCache(&lru_cache_, thread_system_.get())),
         timer_(MockTimer::kApr_5_2010_ms) {
     CacheStats::InitStats("test", &stats_);

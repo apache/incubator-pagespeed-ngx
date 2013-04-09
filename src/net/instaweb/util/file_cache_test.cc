@@ -30,6 +30,7 @@
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/mem_file_system.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/slow_worker.h"
@@ -44,7 +45,7 @@ namespace net_instaweb {
 class FileCacheTest : public CacheTestBase {
  protected:
   FileCacheTest()
-      : thread_system_(ThreadSystem::CreateThreadSystem()),
+      : thread_system_(Platform::CreateThreadSystem()),
         worker_("cleaner", thread_system_.get()),
         mock_timer_(0),
         file_system_(thread_system_.get(), &mock_timer_),

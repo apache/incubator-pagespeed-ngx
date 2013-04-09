@@ -45,7 +45,7 @@ class AprFileSystemTest : public FileSystemTest {
     apr_initialize();
     atexit(apr_terminate);
     apr_pool_create(&pool_, NULL);
-    thread_system_.reset(ThreadSystem::CreateThreadSystem());
+    thread_system_.reset(Platform::CreateThreadSystem());
     file_system_.reset(new AprFileSystem(pool_, thread_system_.get()));
 
     // Create the temp directory, so we are not dependent on test order

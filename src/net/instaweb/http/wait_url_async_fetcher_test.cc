@@ -24,6 +24,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/google_message_handler.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -37,7 +38,7 @@ const char kBody[] = "Contents.";
 class WaitUrlAsyncFetcherTest : public ::testing::Test {
  protected:
   virtual void SetUp() {
-    thread_system_.reset(ThreadSystem::CreateThreadSystem());
+    thread_system_.reset(Platform::CreateThreadSystem());
     wait_fetcher_.reset(new WaitUrlAsyncFetcher(
         &base_fetcher_, thread_system_->NewMutex()));
 

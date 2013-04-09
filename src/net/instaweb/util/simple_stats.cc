@@ -19,6 +19,7 @@
 #include "net/instaweb/util/public/simple_stats.h"
 
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
 
@@ -27,13 +28,21 @@ namespace net_instaweb {
 SimpleStatsVariable::~SimpleStatsVariable() {
 }
 
-SimpleStats::SimpleStats() {
-  // TODO(jmarantz): provide an alternate constructor to pass in the thread
-  // system.
-  thread_system_.reset(ThreadSystem::CreateThreadSystem());
+SimpleStats::SimpleStats()
+    : thread_system_(Platform::CreateThreadSystem()),
+      own_thread_system_(true) {
+}
+
+SimpleStats::SimpleStats(ThreadSystem* thread_system)
+    : thread_system_(thread_system),
+      own_thread_system_(false) {
 }
 
 SimpleStats::~SimpleStats() {
+  if (own_thread_system_) {
+    delete thread_system_;
+  }
+  thread_system_ = NULL;
 }
 
 SimpleStatsVariable* SimpleStats::NewVariable(

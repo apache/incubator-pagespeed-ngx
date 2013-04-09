@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/json.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_test_base.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -53,7 +54,7 @@ SharedMemStatisticsTestBase::SharedMemStatisticsTestBase(
 void SharedMemStatisticsTestBase::SetUp() {
   // This time is in the afternoon of 17 July 2012.
   timer_.reset(new MockTimer(1342567288560ULL));
-  thread_system_.reset(ThreadSystem::CreateThreadSystem());
+  thread_system_.reset(Platform::CreateThreadSystem());
   file_system_.reset(new MemFileSystem(thread_system_.get(), timer_.get()));
   stats_.reset(new SharedMemStatistics(
       3000, kStatsLogFile, true, kPrefix, shmem_runtime_.get(),

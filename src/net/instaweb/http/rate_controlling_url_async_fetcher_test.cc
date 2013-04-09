@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
@@ -93,7 +94,7 @@ class RateControllingUrlAsyncFetcherTest : public ::testing::Test {
         body2_("b2"),
         ttl_ms_(Timer::kHourMs) {
     RateController::InitStats(&stats_);
-    thread_system_.reset(ThreadSystem::CreateThreadSystem());
+    thread_system_.reset(Platform::CreateThreadSystem());
     wait_fetcher_.reset(new WaitUrlAsyncFetcher(
         &mock_fetcher_, thread_system_->NewMutex()));
     counting_fetcher_.reset(new CountingUrlAsyncFetcher((wait_fetcher_.get())));

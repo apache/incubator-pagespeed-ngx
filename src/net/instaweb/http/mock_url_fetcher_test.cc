@@ -26,6 +26,7 @@
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_writer.h"
@@ -65,7 +66,7 @@ class MockFetchContainer {
 
 class MockUrlFetcherTest : public ::testing::Test {
  protected:
-  MockUrlFetcherTest() : thread_system_(ThreadSystem::CreateThreadSystem()) {
+  MockUrlFetcherTest() : thread_system_(Platform::CreateThreadSystem()) {
     fetcher_.set_fail_on_unexpected(false);
   }
 

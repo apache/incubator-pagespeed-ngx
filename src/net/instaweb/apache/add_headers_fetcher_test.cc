@@ -37,7 +37,7 @@ namespace {
 class AddHeadersFetcherTest : public RewriteOptionsTestBase<RewriteOptions> {
  public:
   AddHeadersFetcherTest()
-    : thread_system_(ThreadSystem::CreateThreadSystem()) {
+    : thread_system_(Platform::CreateThreadSystem()) {
     options_.AddCustomFetchHeader("Custom", "custom-header");
     options_.AddCustomFetchHeader("Extra", "extra-header");
     add_headers_fetcher_.reset(new AddHeadersFetcher(

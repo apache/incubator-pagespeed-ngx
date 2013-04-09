@@ -31,6 +31,7 @@ namespace net_instaweb {
 class AbstractMutex;
 class ThreadSystem;
 
+// These variables are thread-safe.
 class SimpleStatsVariable : public Variable {
  public:
   explicit SimpleStatsVariable(AbstractMutex* mutex);
@@ -49,14 +50,21 @@ class SimpleStatsVariable : public Variable {
 // Simple name/value pair statistics implementation.
 class SimpleStats : public ScalarStatisticsTemplate<SimpleStatsVariable> {
  public:
+  // TODO(jmarantz): this form will ultimately be removed so that you
+  // are required to pass a thread system to the constructor.
   SimpleStats();
+
+  // SimpleStats will not take ownership of thread_system.  The thread system is
+  // used to instantiate mutexes to allow SimpleStatsVariable to be thread-safe.
+  explicit SimpleStats(ThreadSystem* thread_system);
   virtual ~SimpleStats();
 
  protected:
   virtual SimpleStatsVariable* NewVariable(const StringPiece& name, int index);
 
  private:
-  scoped_ptr<ThreadSystem> thread_system_;
+  ThreadSystem* thread_system_;
+  bool own_thread_system_;
 
   DISALLOW_COPY_AND_ASSIGN(SimpleStats);
 };

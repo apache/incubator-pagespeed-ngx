@@ -44,6 +44,7 @@
 #include "net/instaweb/util/public/named_lock_manager.h"
 #include "net/instaweb/util/public/null_shared_mem.h"
 #include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_mem_lock_manager.h"
 #include "net/instaweb/util/public/shared_string.h"
@@ -130,7 +131,7 @@ class SystemCachesTest : public CustomRewriteTestBase<SystemRewriteOptions> {
   };
 
   SystemCachesTest()
-      : thread_system_(ThreadSystem::CreateThreadSystem()) {
+      : thread_system_(Platform::CreateThreadSystem()) {
     shared_mem_.reset(new InProcessSharedMem(thread_system_.get()));
     factory_->set_hasher(new MD5Hasher());
     SystemCaches::InitStats(factory()->statistics());

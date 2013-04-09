@@ -20,6 +20,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/mock_scheduler.h"
 #include "net/instaweb/util/public/mock_timer.h"
+#include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scheduler.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
@@ -78,7 +79,7 @@ class MockSchedulerTest : public testing::Test {
  protected:
   MockSchedulerTest()
       : timer_(0),
-        thread_system_(ThreadSystem::CreateThreadSystem()),
+        thread_system_(Platform::CreateThreadSystem()),
         scheduler_(new MockScheduler(thread_system_.get(), &timer_)),
         was_run_(false),
         was_cancelled_(false) {}
