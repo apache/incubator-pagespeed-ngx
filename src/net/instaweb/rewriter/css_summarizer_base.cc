@@ -80,8 +80,8 @@ class CssSummarizerBase::Context : public SingleRewriteContext {
 
   // Calls to finish initialization for given rewrite type; should be called
   // soon after construction.
-  void SetupInlineRewrite();
-  void SetupExternalRewrite();
+  void SetupInlineRewrite(HtmlElement* element, HtmlCharactersNode* text);
+  void SetupExternalRewrite(HtmlElement* element);
 
  protected:
   virtual void Render();
@@ -103,6 +103,9 @@ class CssSummarizerBase::Context : public SingleRewriteContext {
   int pos_;  // our position in the list of all styles in the page.
   CssSummarizerBase* filter_;
 
+  HtmlElement* element_;
+  HtmlCharactersNode* text_;
+
   // True if we're rewriting a <style> block, false if it's a <link>
   bool rewrite_inline_;
 
@@ -115,26 +118,25 @@ CssSummarizerBase::Context::Context(int pos,
     : SingleRewriteContext(driver, NULL /*parent*/, NULL /* resource_context*/),
       pos_(pos),
       filter_(filter),
+      element_(NULL),
+      text_(NULL),
       rewrite_inline_(false) {
 }
 
 CssSummarizerBase::Context::~Context() {
 }
 
-void CssSummarizerBase::InjectSummaryData(HtmlNode* data) {
-  if (injection_point_ != NULL && driver()->IsRewritable(injection_point_)) {
-    driver()->AppendChild(injection_point_, data);
-  } else {
-    driver()->InsertElementBeforeCurrent(data);
-  }
-}
-
-void CssSummarizerBase::Context::SetupInlineRewrite() {
+void CssSummarizerBase::Context::SetupInlineRewrite(HtmlElement* element,
+                                                    HtmlCharactersNode* text) {
   rewrite_inline_ = true;
+  element_ = element;
+  text_ = text;
 }
 
-void CssSummarizerBase::Context::SetupExternalRewrite() {
+void CssSummarizerBase::Context::SetupExternalRewrite(HtmlElement* element) {
   rewrite_inline_ = false;
+  element_ = element;
+  text_ = NULL;
 }
 
 void CssSummarizerBase::Context::ReportDone() {
@@ -161,13 +163,15 @@ void CssSummarizerBase::Context::Render() {
     summary_info.state = kSummaryInputUnavailable;
   } else {
     const CachedResult& result = *output_partition(0);
-    // Transfer the result out to the summary table; we have to do it here
-    // so it's available on the cache hit. Conveniently this will also never
-    // race with the HTML thread, so the summary accessors will be safe to
-    // access off parser events.
+    // Transfer the summarization result from the metadata cache (where it was
+    // stored by RewriteSingle) to the summary table;  we have to do it here
+    // so it's available on a cache hit. Conveniently this will also never race
+    // with the HTML thread, so the summary accessors will be safe to access
+    // off parser events.
     if (result.has_inlined_data()) {
       summary_info.state = kSummaryOk;
       summary_info.data = result.inlined_data();
+      filter_->RenderSummary(pos_, element_, text_);
     } else {
       summary_info.state = kSummaryCssParseError;
     }
@@ -245,6 +249,21 @@ GoogleString CssSummarizerBase::CacheKeySuffix() const {
   return GoogleString();
 }
 
+void CssSummarizerBase::InjectSummaryData(HtmlNode* data) {
+  if (injection_point_ != NULL && driver()->IsRewritable(injection_point_)) {
+    driver()->AppendChild(injection_point_, data);
+  } else {
+    driver()->InsertElementBeforeCurrent(data);
+  }
+}
+
+void CssSummarizerBase::SummariesDone() {
+}
+
+void CssSummarizerBase::RenderSummary(
+    int pos, HtmlElement* element, HtmlCharactersNode* char_node) {
+}
+
 void CssSummarizerBase::NotifyInlineCss(HtmlElement* style_element,
                                         HtmlCharactersNode* content) {
 }
@@ -295,7 +314,6 @@ void CssSummarizerBase::Characters(HtmlCharactersNode* characters_node) {
   if (style_element_ != NULL) {
     // Note: HtmlParse should guarantee that we only get one CharactersNode
     // per <style> block even if it is split by a flush.
-    // TODO(morlovich): Validate media
     injection_point_ = NULL;
     StartInlineRewrite(style_element_, characters_node);
     NotifyInlineCss(style_element_, characters_node);
@@ -319,7 +337,6 @@ void CssSummarizerBase::EndElementImpl(HtmlElement* element) {
   switch (element->keyword()) {
     case HtmlName::kLink: {
       // Rewrite an external style.
-      // TODO(morlovich): Validate media
       // TODO(morlovich): This is wrong with alternate; current
       //     CssTagScanner is wrong with title=
       injection_point_ = NULL;
@@ -395,7 +412,7 @@ void CssSummarizerBase::StartInlineRewrite(
       CreateContextAndSummaryInfo(style, false /* not external */,
                                   slot, slot->LocationString(),
                                   driver_->decoded_base());
-  context->SetupInlineRewrite();
+  context->SetupInlineRewrite(style, text);
   driver_->InitiateRewrite(context);
 }
 
@@ -421,7 +438,7 @@ void CssSummarizerBase::StartExternalRewrite(
   Context* context = CreateContextAndSummaryInfo(
       link, true /* external*/, slot, input_resource->url() /* location*/,
       input_resource->url() /* base */);
-  context->SetupExternalRewrite();
+  context->SetupExternalRewrite(link);
   driver_->InitiateRewrite(context);
 }
 

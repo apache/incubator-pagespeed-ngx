@@ -106,9 +106,9 @@ TEST_F(CriticalSelectorFilterTest, BasicOperation) {
       CssLinkHref("b.css"));
 
   GoogleString critical_css =
-      "*{display:none}"  // from the inline
-      "div,*::first-letter{display:block}"  // from a.css
-      "@media screen{*{margin:0px}}";  // from b.css
+      "<style>*{display:none}</style>"  // from the inline
+      "<style>div,*::first-letter{display:block}</style>"  // from a.css
+      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
 
   GoogleString html = StrCat(
       "<head>",
@@ -116,13 +116,9 @@ TEST_F(CriticalSelectorFilterTest, BasicOperation) {
       "</head>"
       "<body><div>Stuff</div></body>");
 
-  // First run just collects the result into pcache
-  ValidateNoChanges("foo", html);
-
-  ResetDriver();
   ValidateExpected(
       "foo", html,
-      StrCat("<head><style>", critical_css, "</style></head>",
+      StrCat("<head>", critical_css, "</head>",
              "<body><div>Stuff</div></body>",
              LoadRestOfCss(css)));
 }
@@ -137,6 +133,8 @@ TEST_F(CriticalSelectorFilterTest, Media) {
   GoogleString critical_css =
       "<style media=\"screen\">"
           "*{display:none}"  // from the inline
+      "</style>"
+      "<style media=\"screen\">"
           "div,*::first-letter{display:block}"  // from a.css
       "</style>"
       "<style media=\"screen and (color)\">"
@@ -149,10 +147,6 @@ TEST_F(CriticalSelectorFilterTest, Media) {
       "</head>"
       "<body><div>Stuff</div></body>");
 
-  // First run just collects the result into pcache.
-  ValidateNoChanges("foo", html);
-
-  ResetDriver();
   ValidateExpected(
       "foo", html,
       StrCat("<head>", critical_css, "</head>",
@@ -181,10 +175,6 @@ TEST_F(CriticalSelectorFilterTest, NonScreenMedia) {
       "</head>"
       "<body><div>Stuff</div></body>");
 
-  // First run just collects the result into pcache.
-  ValidateNoChanges("foo", html);
-
-  ResetDriver();
   ValidateExpected(
       "foo", html,
       StrCat("<head>", critical_css, "</head>",
@@ -201,8 +191,6 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
   GoogleString critical_css_div_span = "div,span{display:inline-block}";
 
   // Check what we compute for a page with div.
-  ValidateNoChanges("with_div", StrCat(css, "<div>Foo</div>"));
-  ResetDriver();
   ValidateExpected("with_div", StrCat(css, "<div>Foo</div>"),
                    StrCat("<style>", critical_css_div, "</style>",
                           "<div>Foo</div>", LoadRestOfCss(css)));
@@ -223,12 +211,9 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
   page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kDomCohort));
 
   // Note that calling ResetDriver() just resets the state in the
-  // driver. Whatever has been written to the property cache so far
+  // driver. Whatever has been written to the property & metadata caches so far
   // will persist. Upon rewriting, the property cache contents will be read and
   // the critical selector info in the driver will be repopulated.
-  ResetDriver();
-
-  ValidateNoChanges("with_div_span", StrCat(css, "<span>Foo</span>"));
   ResetDriver();
   ValidateExpected("with_div_span", StrCat(css, "<span>Foo</span>"),
                    StrCat("<style>", critical_css_div_span, "</style>",
@@ -245,8 +230,6 @@ TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
       CriticalSelectorFilter::kSummarizedCssProperty);
   page_->WriteCohort(pcache_->GetCohort(RewriteDriver::kDomCohort));
   ResetDriver();
-  ValidateNoChanges("with_span", StrCat(css, "<span>Foo</span>"));
-  ResetDriver();
   ValidateExpected("with_span", StrCat(css, "<span>Foo</span>"),
                    StrCat("<style>", critical_css_span, "</style>",
                           "<span>Foo</span>", LoadRestOfCss(css)));
@@ -257,8 +240,6 @@ TEST_F(CriticalSelectorFilterTest, RetainPseudoOnly) {
   GoogleString css = ":hover { border: 2px solid red; }";
   SetResponseWithDefaultHeaders("c.css", kContentTypeCss,
                                 css, 100);
-  ValidateNoChanges("hover", CssLinkHref("c.css"));
-  ResetDriver();
   ValidateExpected("hover", CssLinkHref("c.css"),
                    StrCat("<style>:hover{border:2px solid red}</style>",
                           LoadRestOfCss(CssLinkHref("c.css"))));
@@ -270,8 +251,6 @@ TEST_F(CriticalSelectorFilterTest, RetainUnparseable) {
   GoogleString css = "!huh! {background: white; } @huh { display: block; }";
   SetResponseWithDefaultHeaders("c.css", kContentTypeCss,
                                 css, 100);
-  ValidateNoChanges("partly_unparseable", CssLinkHref("c.css"));
-  ResetDriver();
   ValidateExpected(
       "partly_unparseable", CssLinkHref("c.css"),
       StrCat("<style>!huh! {background:#fff}@huh { display: block; }</style>",
@@ -298,8 +277,6 @@ TEST_F(CriticalSelectorFilterTest, NoSelectorInfo) {
 TEST_F(CriticalSelectorFilterTest, ResolveUrlsProperly) {
   SetResponseWithDefaultHeaders("dir/c.css", kContentTypeCss,
                                 "* { background-image: url(d.png); }", 100);
-  ValidateNoChanges("rel_path", CssLinkHref("dir/c.css"));
-  ResetDriver();
   ValidateExpected("rel_path", CssLinkHref("dir/c.css"),
                    StrCat("<style>*{background-image:url(dir/d.png)}</style>",
                           LoadRestOfCss(CssLinkHref("dir/c.css"))));

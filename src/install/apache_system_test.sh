@@ -1698,8 +1698,20 @@ BEACON_URL="http://${HOSTNAME}${BEACON_PATH}"
 BEACON_DATA="url=${ESCAPED_URL}&oh=${OPTIONS_HASH}&cs=.big,.blue,.bold,.foo"
 run_wget_with_args --post-data "$BEACON_DATA" "$BEACON_URL"
 # Now make sure we see the correct critical css rules.
+fetch_until $URL \
+  'grep -c <style>[.]blue{[^}]*}</style>' 1
+fetch_until $URL \
+  'grep -c <style>[.]big{[^}]*}</style>' 1
+fetch_until $URL \
+  'grep -c <style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' 1
 fetch_until -save $URL \
-  'grep -c <style>[.]blue{.*}[.]big{.*}[.]blue{.*}[.]bold{.*}[.]foo{.*}</style>' 1
+  'grep -c <style>[.]foo{[^}]*}</style>' 1
+
+# The last one should also have the other 3, too.
+check [ `grep -c '<style>[.]blue{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
+check [ `grep -c '<style>[.]big{[^}]*}</style>' $FETCH_UNTIL_OUTFILE` = 1 ]
+check [ `grep -c '<style>[.]blue{[^}]*}[.]bold{[^}]*}</style>' \
+  $FETCH_UNTIL_OUTFILE` = 1 ]
 
 # Test handling of large HTML files. We first test with a cold cache, and verify
 # that we bail out of parsing and insert a script redirecting to

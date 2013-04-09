@@ -32,9 +32,7 @@
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/util/public/null_message_handler.h"
-#include "net/instaweb/rewriter/public/property_cache_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -138,9 +136,7 @@ class CriticalSelectorFilter::CssStyleElement
 
 // Wrap CSS related elements so they can be moved later in the document.
 CriticalSelectorFilter::CriticalSelectorFilter(RewriteDriver* driver)
-    : CssSummarizerBase(driver),
-      style_element_to_delete_(NULL),
-      inserted_critical_css_(false) {
+    : CssSummarizerBase(driver) {
 }
 
 CriticalSelectorFilter::~CriticalSelectorFilter() {
@@ -213,83 +209,74 @@ void CriticalSelectorFilter::Summarize(Css::Stylesheet* stylesheet,
   CssMinify::Stylesheet(*stylesheet, &writer, &handler);
 }
 
-void CriticalSelectorFilter::SummariesDone() {
-  // TODO(morlovich): How do we decide to invalidate things here?
-  bool all_ok = true;
-  CriticalSelectorSummarizedCss summary;
-  for (int i = 0; i < NumStyles(); ++i) {
-    const SummaryInfo& fragment = GetSummaryForStyle(i);
-    if (fragment.state == kSummaryOk) {
-      CriticalSelectorSummarizedCss::ResourceSummary* out_fragment =
-          summary.add_summary();
-      out_fragment->set_content(fragment.data);
+void CriticalSelectorFilter::RenderSummary(
+    int pos, HtmlElement* element, HtmlCharactersNode* char_node) {
+  const SummaryInfo& summary = GetSummaryForStyle(pos);
+  DCHECK_EQ(kSummaryOk, summary.state);
 
-      StringVector all_media;
-      css_util::VectorizeMediaAttribute(fragment.media_from_html, &all_media);
-
-      // If the input fragment has media, copy those that affect the screen
-      // to the output fragment; if that's none we also mark it as having
-      // no screen affecting media (to distinguish from the case of having no
-      // media at all).
-      if (!all_media.empty()) {
-        StringVector relevant_media;
-        for (int i = 0, n = all_media.size(); i < n; ++i) {
-          const GoogleString& medium = all_media[i];
-          if (css_util::CanMediaAffectScreen(medium)) {
-            relevant_media.push_back(medium);
-          }
-        }
-
-        if (!relevant_media.empty()) {
-          out_fragment->set_media(
-              css_util::StringifyMediaVector(relevant_media));
-        } else {
-          out_fragment->set_all_media_non_screen(true);
-        }
-      }
-
-      if (fragment.is_external) {
-        out_fragment->set_external(true);
-        out_fragment->set_base(fragment.base);
-      }
-    } else {
-      all_ok = false;
+  // If we're inlining an external CSS file, make sure to adjust the URLs
+  // inside to the new base.
+  const GoogleString* css_to_use = &summary.data;
+  GoogleString resolved_css;
+  if (summary.is_external) {
+    StringWriter writer(&resolved_css);
+    GoogleUrl input_css_base(summary.base);
+    if (driver_->ResolveCssUrls(
+            input_css_base, driver_->base_url().Spec(), summary.data,
+            &writer, driver_->message_handler()) == RewriteDriver::kSuccess) {
+      css_to_use = &resolved_css;
     }
   }
-  if (all_ok) {
-    // We don't write cohort here since RewriteDriver takes care of committing
-    // the DOM cohort.
-    bool write_cohort = false;
-    UpdateInPropertyCache(summary, driver_, RewriteDriver::kDomCohort,
-                          kSummarizedCssProperty, write_cohort);
-    driver_->set_write_property_cache_dom_cohort(true);
+
+  // Update the DOM --- either an existing style element, or replace link
+  // with style.
+  if (char_node != NULL) {
+    *char_node->mutable_contents() = *css_to_use;
+  } else {
+    HtmlElement* style_element = driver_->NewElement(NULL, HtmlName::kStyle);
+    driver_->InsertElementBeforeElement(element, style_element);
+
+    HtmlCharactersNode* content =
+        driver_->NewCharactersNode(style_element, *css_to_use);
+    driver_->AppendChild(style_element, content);
+    driver_->DeleteElement(element);
+    element = style_element;
+  }
+
+  // Update the media attribute to just the media that's relevant to screen.
+  StringVector all_media;
+  css_util::VectorizeMediaAttribute(summary.media_from_html, &all_media);
+
+  element->DeleteAttribute(HtmlName::kMedia);
+  if (!all_media.empty()) {
+    StringVector relevant_media;
+    for (int i = 0, n = all_media.size(); i < n; ++i) {
+      const GoogleString& medium = all_media[i];
+      if (css_util::CanMediaAffectScreen(medium)) {
+        relevant_media.push_back(medium);
+      }
+    }
+
+    if (!relevant_media.empty()) {
+      driver_->AddAttribute(element, HtmlName::kMedia,
+                            css_util::StringifyMediaVector(relevant_media));
+    } else {
+      // None of the media applied to the screen -- we can nuke the entire
+      // element.
+      driver_->DeleteElement(element);
+    }
   }
 }
 
 void CriticalSelectorFilter::NotifyInlineCss(HtmlElement* style_element,
                                              HtmlCharactersNode* content) {
-  if (critical_css_.get() != NULL) {
-    CssStyleElement* save = new CssStyleElement(driver_, style_element);
-    save->AppendCharactersNode(content);
-    css_elements_.push_back(save);
-    // We remove both the style element and content in case we get a flush
-    // window in the middle, which would render the element itself uneditable.
-    // (Though we also need to wait till </style> to delete the element.
-    // TODO(morlovich): Testcase of flush thing.
-    driver_->DeleteElement(content);
-    style_element_to_delete_ = style_element;
-    InsertCriticalCssIfNeeded(style_element);
-  }
+  CssStyleElement* save = new CssStyleElement(driver_, style_element);
+  save->AppendCharactersNode(content);
+  css_elements_.push_back(save);
 }
 
 void CriticalSelectorFilter::NotifyExternalCss(HtmlElement* link) {
-  if (critical_css_.get() != NULL) {
-    css_elements_.push_back(new CssElement(driver_, link));
-    if (!driver_->DeleteElement(link)) {
-      driver_->WarningHere("Trouble removing non-critical CSS link?");
-    }
-    InsertCriticalCssIfNeeded(link);
-  }
+  css_elements_.push_back(new CssElement(driver_, link));
 }
 
 GoogleString CriticalSelectorFilter::CacheKeySuffix() const {
@@ -312,26 +299,19 @@ void CriticalSelectorFilter::StartDocumentImpl() {
   cache_key_suffix_ =
       driver_->server_context()->lock_hasher()->Hash(all_selectors);
 
-  // Read critical css info from pcache.
-  PropertyCacheDecodeResult status;
-  critical_css_.reset(DecodeFromPropertyCache<CriticalSelectorSummarizedCss>(
-      driver_, RewriteDriver::kDomCohort, kSummarizedCssProperty,
-      driver_->options()->finder_properties_cache_expiration_time_ms(),
-      &status));
-
   // Clear state between re-uses / check to make sure we wrapped up properly.
   DCHECK(css_elements_.empty());
-  style_element_to_delete_ = NULL;
-  inserted_critical_css_ = false;
 }
 
 void CriticalSelectorFilter::EndDocument() {
   CssSummarizerBase::EndDocument();
 
-  // In case we didn't spot a nice spot for insertion of critical CSS, put it
-  // out now.
-  InsertCriticalCssIfNeeded(NULL);
-  if (critical_css_.get() != NULL && !css_elements_.empty()) {
+  // TODO(morlovich): There is some risk that we will end up duplicating
+  // CSS and not actually reducing anything on a first load.
+
+  // TODO(morlovich): This still doesn't fix IE-conditional/noscript stuff,
+  // since we're not repeating it.
+  if (!css_elements_.empty()) {
     // Insert the full CSS, but comment all the style, link tags so that
     // look-ahead parser cannot find them.
     HtmlElement* noscript_element =
@@ -352,103 +332,11 @@ void CriticalSelectorFilter::EndDocument() {
   if (!css_elements_.empty()) {
     STLDeleteElements(&css_elements_);
   }
-  critical_css_.reset(NULL);
-}
-
-void CriticalSelectorFilter::EndElementImpl(HtmlElement* element) {
-  CssSummarizerBase::EndElementImpl(element);
-  if (element == style_element_to_delete_) {
-    InsertCriticalCssIfNeeded(style_element_to_delete_);
-    driver_->DeleteElement(element);
-    style_element_to_delete_ = NULL;
-  }
-
-  if (element->keyword() == HtmlName::kHead) {
-    // An explicit </head> may be a good spot for injection.
-    InsertCriticalCssIfNeeded(element);
-  }
 }
 
 void CriticalSelectorFilter::DetermineEnabled() {
   bool can_run = (driver_->CriticalSelectors() != NULL);
   set_is_enabled(can_run);
-  if (can_run) {
-    driver_->set_write_property_cache_dom_cohort(true);
-  }
-}
-
-bool CriticalSelectorFilter::UsesPropertyCacheDomCohort() const {
-  // This technically isn't needed since we override
-  // RewriteFilter::DetermineEnabled, but let's make things clear.
-  return true;
-}
-
-void CriticalSelectorFilter::InsertCriticalCssIfNeeded(
-    HtmlElement* insert_before) {
-  if (critical_css_.get() == NULL || inserted_critical_css_) {
-    return;
-  }
-
-  if (insert_before != NULL && !driver_->IsRewritable(insert_before)) {
-    return;
-  }
-
-  HtmlCharactersNode* prev_content = NULL;
-  bool prev_has_media = false;
-  GoogleString prev_media;
-
-  for (int i = 0, n = critical_css_->summary_size(); i < n; ++i) {
-    const CriticalSelectorSummarizedCss::ResourceSummary& summary =
-        critical_css_->summary(i);
-    if (summary.all_media_non_screen()) {
-      continue;
-    }
-
-    // TODO(morlovich): This is unsafe inside <noscript>. Actually, what should
-    // the summarizer do with <noscript>?
-
-    // If we're inlining an external CSS file, make sure to adjust the URLs
-    // inside to the new base.
-    const GoogleString* css_to_use = &summary.content();
-    GoogleString resolved_css;
-    if (summary.external()) {
-      StringWriter writer(&resolved_css);
-      GoogleUrl input_css_base(summary.base());
-      if (driver_->ResolveCssUrls(
-              input_css_base, driver_->base_url().Spec(), summary.content(),
-              &writer, driver_->message_handler()) == RewriteDriver::kSuccess) {
-        css_to_use = &resolved_css;
-      }
-    }
-
-    // Coalesce this into the previous element if possible.
-    if ((prev_content != NULL) &&
-        (prev_has_media == summary.has_media()) &&
-        (prev_media == summary.media())) {
-      prev_content->Append(*css_to_use);
-    } else {
-      // Otherwise we need a separate <style> node.
-      HtmlElement* style_element = driver_->NewElement(NULL, HtmlName::kStyle);
-      if (insert_before != NULL) {
-        driver_->InsertElementBeforeElement(insert_before, style_element);
-      } else {
-        driver_->InsertElementBeforeCurrent(style_element);
-      }
-
-      HtmlCharactersNode* content =
-          driver_->NewCharactersNode(style_element, *css_to_use);
-      driver_->AppendChild(style_element, content);
-
-      if (summary.has_media()) {
-        driver_->AddAttribute(style_element, HtmlName::kMedia, summary.media());
-      }
-
-      prev_content = content;
-      prev_has_media = summary.has_media();
-      prev_media = summary.media();
-    }
-  }
-  inserted_critical_css_ = true;
 }
 
 }  // namespace net_instaweb

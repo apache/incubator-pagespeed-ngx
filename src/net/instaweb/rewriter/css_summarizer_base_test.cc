@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/css_summarizer_base.h"
 
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -41,7 +42,7 @@ const char kExpectedResult[] =
 class MinifyExcerptFilter : public CssSummarizerBase {
  public:
   explicit MinifyExcerptFilter(RewriteDriver* driver)
-      : CssSummarizerBase(driver) {}
+      : CssSummarizerBase(driver), render_summaries_in_place_(false) {}
 
   virtual const char* Name() const { return "Minify10"; }
   virtual const char* id() const { return "csr"; }
@@ -70,6 +71,30 @@ class MinifyExcerptFilter : public CssSummarizerBase {
     }
   };
 
+  virtual void RenderSummary(int pos,
+                             HtmlElement* element,
+                             HtmlCharactersNode* char_node) {
+    if (!render_summaries_in_place_) {
+      return;
+    }
+
+    const SummaryInfo& summary = GetSummaryForStyle(pos);
+
+    if (char_node != NULL) {
+      *char_node->mutable_contents() = summary.data;
+    } else {
+      // Replace link with style. Note: real one should also keep media,
+      // test code does not have to.
+      HtmlElement* style_element = driver_->NewElement(NULL, HtmlName::kStyle);
+      driver_->InsertElementBeforeElement(element, style_element);
+
+      HtmlCharactersNode* content =
+          driver_->NewCharactersNode(style_element, summary.data);
+      driver_->AppendChild(style_element, content);
+      EXPECT_TRUE(driver_->DeleteElement(element));
+    }
+  }
+
   virtual void SummariesDone() {
     result_.clear();
     for (int i = 0; i < NumStyles(); ++i) {
@@ -81,8 +106,13 @@ class MinifyExcerptFilter : public CssSummarizerBase {
 
   const GoogleString& result() { return result_; }
 
+  void set_render_summaries_in_place(bool x) {
+    render_summaries_in_place_ = x;
+  }
+
  private:
   GoogleString result_;
+  bool render_summaries_in_place_;
 };
 
 class CssSummarizerBaseTest : public RewriteTestBase {
@@ -176,6 +206,14 @@ TEST_F(CssSummarizerBaseTest, BasicOperationWhitespace) {
       FullTest("basic", "<body> <p>some content</p> ", "</body>\n</html>");
   EXPECT_STREQ(expected, output_buffer_);
   EXPECT_STREQ(kExpectedResult, filter_->result());
+}
+
+TEST_F(CssSummarizerBaseTest, RenderSummary) {
+  filter_->set_render_summaries_in_place(true);
+  Parse("link", StrCat(CssLinkHref("a.css"),
+                       "<style>* { background: blue; }</style>"));
+  EXPECT_STREQ("<html>\n<style>div{displa</style><style>*{backgrou</style>\n"
+               "<!--OK/div{displa|OK/*{backgrou|--></html>", output_buffer_);
 }
 
 TEST_F(CssSummarizerBaseTest, NoBody) {

@@ -27,7 +27,7 @@ package net_instaweb;
 //
 // Next free id: 4
 // TODO(morlovich): We may want to keep track of information on inputs to detect
-// case of HTML inputs.
+// changes to HTML.
 message CriticalSelectorSet {
   message BeaconResponse {
     repeated string selectors = 1;
@@ -48,27 +48,4 @@ message CriticalSelectorSet {
   // storing a new critical image beacon response. It will be set to the union
   // of all critical selectors received so far.
   repeated BeaconResponse selector_set_history = 3;
-}
-
-message CriticalSelectorSummarizedCss {
-  optional string deprecated_content = 1;
-  message ResourceSummary {
-    // Excerpted portion of CSS relevant to critical selectors.
-    optional string content = 1;
-
-    // Media that comes from HTML, and is relevant to screen.
-    optional string media = 2;
-
-    // This is true if the HTML had some media, but none of them
-    // applied to screen (which results in media empty, but is different
-    // from not having any media listed at all, which does apply to all)
-    optional bool all_media_non_screen = 3 [ default = false ];
-
-    // True if CSS is out-of-line.
-    optional bool external = 4 [ default = false ];
-
-    // Used only when external = true
-    optional string base = 5;
-  }
-  repeated ResourceSummary summary = 2;
 }

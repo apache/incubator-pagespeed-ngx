@@ -109,6 +109,26 @@ class CssSummarizerBase : public RewriteFilter {
   virtual void Summarize(Css::Stylesheet* stylesheet,
                          GoogleString* out) const = 0;
 
+  // This can be optionally overridden to modify a CSS element based on a
+  // successfully computed summary. It might not be invoked if cached
+  // information is not readily available, and will not be invoked if CSS
+  // parsing failed or some other error occurred. Invocation occurs from a
+  // thread with HTML parser context state, so both DOM modification and
+  // GetSummaryForStyle() are safe to use. If invoked, the method will be called
+  // later than the corresponding Notify{Internal,External}Css method and before
+  // SummariesDone().
+  //
+  // pos is the position of the element in the summary table.
+  //
+  // element points to the <link> or <style> element that was summarized.
+  // If the element was a <style>, char_node will also point to its contents
+  // node; otherwise it will be NULL.
+  //
+  // The default implementation does nothing.
+  virtual void RenderSummary(int pos,
+                             HtmlElement* element,
+                             HtmlCharactersNode* char_node);
+
   // This is called at the end of the document when all outstanding summary
   // computations have completed, regardless of whether successful or not. It
   // will not be called at all if they are still ongoing, however.
@@ -116,7 +136,7 @@ class CssSummarizerBase : public RewriteFilter {
   // It's called from a context which allows HTML parser state access.  You can
   // insert things at end of document by constructing an HtmlNode* using the
   // factories in HtmlParse and calling InjectSummaryData(element).
-  virtual void SummariesDone() = 0;
+  virtual void SummariesDone();
 
   // Inject summary data at the end of the document.  Intended to be called from
   // SummariesDone().  Tries to inject just before </body> if nothing else
