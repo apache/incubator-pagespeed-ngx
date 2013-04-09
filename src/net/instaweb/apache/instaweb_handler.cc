@@ -925,6 +925,7 @@ bool parse_body_from_post(const request_rec* request, GoogleString* data,
         break;
       }
     }
+    apr_brigade_cleanup(bbin);
   }
 
   // No need to modify ret as it is only used if reading the POST failed.
