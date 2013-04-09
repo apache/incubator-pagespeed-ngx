@@ -735,6 +735,7 @@
         'util/chunking_writer.cc',
         'util/circular_buffer.cc',
         'util/client_state.cc',
+        'util/compressed_cache.cc',
         'util/condvar.cc',
         'util/data_url.cc',
         'util/debug.cc',

@@ -27,6 +27,8 @@
 #include "third_party/zlib/zlib.h"
 #endif
 #include "net/instaweb/util/public/string.h"
+#include "net/instaweb/util/public/writer.h"
+#include "net/instaweb/util/stack_buffer.h"
 
 namespace {
 
@@ -302,6 +304,102 @@ int GzipInflater::InflateBytes(char *buf, size_t buf_size) {
 
 void GzipInflater::ShutDown() {
   Free();
+}
+
+// One-shot contiguous-buffer inflate/deflate code adapted from
+// http://www.zlib.net/zpipe.c.  The Inflate usage model here is
+// a little simpler to use than the incremental InflateBytes flow.
+//
+// TODO(jmarantz): make an incremental interface to Deflate.
+bool GzipInflater::Deflate(StringPiece in, Writer* writer) {
+  z_stream strm;
+  char out[kStackBufferSize];
+
+  // allocate deflate state
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
+  int ret = deflateInit(&strm, Z_DEFAULT_COMPRESSION);
+  if (ret != Z_OK) {
+    return false;
+  }
+
+  // compress until end of file
+  strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(in.data()));
+  strm.avail_in = in.size();
+  // run deflate() on input until output buffer not full, finish
+  // compression if all of source has been read in
+  do {
+    strm.avail_out = kStackBufferSize;
+    strm.next_out = reinterpret_cast<Byte*>(out);
+    ret = deflate(&strm, Z_FINISH);    // no bad return value
+    if (ret == Z_STREAM_ERROR) {
+      return false;
+    }
+    int have = kStackBufferSize - strm.avail_out;
+    if (!writer->Write(StringPiece(out, have), NULL)) {
+      deflateEnd(&strm);
+      return false;
+    }
+  } while (strm.avail_out == 0);
+  if (strm.avail_in != 0) {
+    return false;
+  }
+
+  // clean up and return
+  deflateEnd(&strm);
+  return true;
+}
+
+// TODO(jmarantz): Consider using the incremental interface to implement
+// Inflate.
+bool GzipInflater::Inflate(StringPiece in, Writer* writer) {
+  z_stream strm;
+  char out[kStackBufferSize];
+  const int kOutSize = sizeof(out);
+
+  // allocate inflate state
+  strm.zalloc = Z_NULL;
+  strm.zfree = Z_NULL;
+  strm.opaque = Z_NULL;
+  strm.avail_in = 0;
+  strm.next_in = Z_NULL;
+  if (inflateInit(&strm) != Z_OK) {
+    return false;
+  }
+
+  strm.next_in = reinterpret_cast<Bytef*>(const_cast<char*>(in.data()));
+  strm.avail_in = in.size();
+
+  // run inflate() on input until output buffer not full
+  do {
+    strm.avail_out = kOutSize;
+    strm.next_out = reinterpret_cast<Bytef*>(out);
+    switch (inflate(&strm, Z_NO_FLUSH)) {
+      case Z_STREAM_ERROR:
+        LOG(DFATAL) << "state should not be not clobbered";
+        FALLTHROUGH_INTENDED;
+      case Z_NEED_DICT:
+        FALLTHROUGH_INTENDED;
+      case Z_DATA_ERROR:
+      case Z_MEM_ERROR:
+        inflateEnd(&strm);
+        return false;
+      case Z_STREAM_END:
+        break;
+      default:
+        break;
+    }
+    int have = kOutSize - strm.avail_out;
+    if (!writer->Write(StringPiece(static_cast<char*>(out), have), NULL)) {
+      inflateEnd(&strm);
+      return false;
+    }
+  } while (strm.avail_out == 0);
+
+  // clean up and return
+  inflateEnd(&strm);
+  return true;
 }
 
 }  // namespace net_instaweb

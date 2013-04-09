@@ -214,6 +214,7 @@
         'util/chunking_writer_test.cc',
         'util/circular_buffer_test.cc',
         'util/client_state_test.cc',
+        'util/compressed_cache_test.cc',
         'util/countdown_timer_test.cc',
         'util/data_url_test.cc',
         'util/delay_cache_test.cc',
@@ -368,6 +369,7 @@
         'util/mock_scheduler.cc',
         'util/mock_timer.cc',
         'util/mock_time_cache.cc',
+        'util/simple_random.cc',
       ],
     },
     {
@@ -389,6 +391,7 @@
         'htmlparse/html_parse_speed_test.cc',
         'rewriter/css_minify_speed_test.cc',
         'rewriter/rewrite_driver_speed_test.cc',
+        'util/compressed_cache_speed_test.cc',
         'util/deque_speed_test.cc',
         'util/url_escaper_speed_test.cc',
         '<(DEPTH)/third_party/instaweb/util/fast_wildcard_group_speed_test.cc',
