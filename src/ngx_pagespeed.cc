@@ -874,7 +874,11 @@ ngx_int_t ps_update(ps_request_ctx_t* ctx, ngx_event_t* ev) {
     // From Weibin: This function should be called mutiple times. Store the
     // whole file in one chain buffers is too aggressive. It could consume
     // too much memory in busy servers.
-    rc = ngx_http_next_body_filter(ctx->r, cl);
+    if (cl == NULL) {
+      
+      return done ? NGX_OK : NGX_AGAIN;
+    }
+    rc = ngx_http_next_body_filter(ctx->r, cl);    
     if (rc == NGX_AGAIN && done) {
       ctx->write_pending = 1;
       return NGX_OK;
