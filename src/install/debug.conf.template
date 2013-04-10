@@ -38,12 +38,12 @@ ModPagespeedFetchHttps enable,allow_self_signed
 
 # Test proxying of non-.pagespeed. resources.
 ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/modpagespeed_http \
-                           http://modpagespeed.com/do_not_modify
+                           http://@@TEST_PROXY_ORIGIN@@/do_not_modify
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/https_fetch" >
-  ModPagespeedDomain https://modpagespeed.com
+  ModPagespeedDomain https://@@TEST_PROXY_ORIGIN@@
   ModPagespeedMapProxyDomain http://@@APACHE_DOMAIN@@/modpagespeed_dot_com \
-                             https://modpagespeed.com/do_not_modify
+                             https://@@TEST_PROXY_ORIGIN@@/do_not_modify
 </Directory>
 
 # These caching headers are set up for the document root, and

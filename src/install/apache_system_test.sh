@@ -13,7 +13,6 @@
 # NO_VHOST_MERGE=on can be passed to tell tests to assume
 # that ModPagespeedInheritVHostConfig has been turned off.
 
-
 if [ -z $APACHE_DEBUG_PAGESPEED_CONF ]; then
   APACHE_DEBUG_PAGESPEED_CONF=/usr/local/apache2/conf/pagespeed.conf
 fi
@@ -32,6 +31,7 @@ CACHE_FLUSH_TEST=${CACHE_FLUSH_TEST:-off}
 NO_VHOST_MERGE=${NO_VHOST_MERGE:-off}
 SUDO=${SUDO:-}
 SECONDARY_HOSTNAME=${SECONDARY_HOSTNAME:-}
+TEST_PROXY_ORIGIN=${TEST_PROXY_ORIGIN:-modpagespeed.com}
 
 # Run General system tests.
 this_dir=$(dirname $0)
@@ -646,7 +646,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # Issue 582 this used to fail with a 403 (Forbidden).
   start_test Reverse proxy a pagespeed URL.
 
-  PROXY_PATH="http://modpagespeed.com/styles"
+  PROXY_PATH="http://$TEST_PROXY_ORIGIN/mod_pagespeed_example/styles"
   ORIGINAL="${PROXY_PATH}/yellow.css"
   FILTERED="${PROXY_PATH}/A.yellow.css.pagespeed.cf.KM5K8SbHQL.css"
   WGET_ARGS="--save-headers"
@@ -956,7 +956,7 @@ if [ "$CACHE_FLUSH_TEST" = "on" ]; then
 
     # Monitor the Apache log starting now.  tail -F will catch log rotations.
     SERF_REFUSED_PATH=$TEMPDIR/instaweb_apache_serf_refused.$$
-    rm $SERF_REFUSED_PATH
+    rm -f $SERF_REFUSED_PATH
     echo APACHE_LOG = $APACHE_LOG
     tail --sleep-interval=0.1 -F $APACHE_LOG > $SERF_REFUSED_PATH &
     TAIL_PID=$!
@@ -1656,7 +1656,7 @@ check_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -q 'Etag: W/"PSA-aj-'
 
 echo Ensure that rewritten images strip cookies present at origin
 check_not_from "$(extract_headers $FETCH_UNTIL_OUTFILE)" fgrep -c 'Set-Cookie'
-ORIGINAL_HEADERS=$($WGET_DUMP http://modpagespeed.com/do_not_modify/Puzzle.jpg \
+ORIGINAL_HEADERS=$($WGET_DUMP http://$TEST_PROXY_ORIGIN/do_not_modify/Puzzle.jpg \
     | head)
 check_from "$ORIGINAL_HEADERS" fgrep -c 'Set-Cookie'
 
@@ -1667,7 +1667,7 @@ check [ $? = 8 ]
 check_not_from "$OUT" fgrep -q 'Set-Cookie:'
 
 start_test Fetching the HTML directly from the origin is fine including cookie.
-URL="http://modpagespeed.com/do_not_modify/evil.html"
+URL="http://$TEST_PROXY_ORIGIN/do_not_modify/evil.html"
 OUT=$($WGET_DUMP $URL)
 check_from "$OUT" fgrep -q 'Set-Cookie: test-cookie'
 

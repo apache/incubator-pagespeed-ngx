@@ -58,6 +58,11 @@ APACHE_STOP_COMMAND      = stop
 APACHE_PIDFILE           = /var/run/apache2.pid
 APACHE_PROGRAM           = /usr/sbin/apache2
 
+# For testing proxying of an external domain, this represents the domain we
+# are proxying from.
+TEST_PROXY_ORIGIN ?= modpagespeed.com
+export TEST_PROXY_ORIGIN
+
 # The installation directory for executables
 BINDIR = /usr/bin
 
@@ -332,6 +337,7 @@ $(STAGING_DIR)/pagespeed.conf : common/pagespeed.conf.template debug.conf.templa
 	    -e "s!@@APACHE_HTTPS_DOMAIN@@!$(APACHE_HTTPS_DOMAIN)!g" \
 	    -e "s!@@APACHE_MODULES@@!$(APACHE_MODULES)!g" \
 	    -e "s!@@APACHE_SECONDARY_PORT@@!$(APACHE_SECONDARY_PORT)!g" \
+	    -e "s!@@TEST_PROXY_ORIGIN@@!$(TEST_PROXY_ORIGIN)!g" \
 	    -e "s!@@MOD_PAGESPEED_CACHE@@!$(MOD_PAGESPEED_CACHE)!g" \
 	    -e "s!@@MOD_PAGESPEED_STATS_LOG@@!$(MOD_PAGESPEED_STATS_LOG)!g" \
 	    -e "s@# ModPagespeedSlurpDirectory ...@$(APACHE_SLURP_DIR_COMMAND)@g" \
