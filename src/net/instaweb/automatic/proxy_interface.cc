@@ -341,6 +341,7 @@ ProxyFetchPropertyCallbackCollector*
 
   ProxyFetchPropertyCallback* client_callback = NULL;
   ProxyFetchPropertyCallback* property_callback = NULL;
+  ProxyFetchPropertyCallback* fallback_property_callback = NULL;
   PropertyCache* page_property_cache = server_context_->page_property_cache();
   PropertyCache* client_property_cache =
       server_context_->client_property_cache();
@@ -357,13 +358,30 @@ ProxyFetchPropertyCallbackCollector*
     GoogleString page_key = server_context_->GetPagePropertyCacheKey(
         request_url.Spec(), options, device_type_suffix);
     property_callback = new ProxyFetchPropertyCallback(
-        ProxyFetchPropertyCallback::kPagePropertyCache,
+        ProxyFetchPropertyCallback::kPropertyCachePage,
         page_property_cache, page_key, device_type,
         callback_collector.get(), mutex);
     callback_collector->AddCallback(property_callback);
     added_callback = true;
     if (added_page_property_callback != NULL) {
       *added_page_property_callback = true;
+    }
+    // Trigger property cache lookup for the requests which contains query param
+    // as cache key without query params. The result of this lookup will be used
+    // if actual property page does not contains property value.
+    if (options != NULL &&
+        options->use_fallback_property_cache_values() &&
+        request_url.has_query()) {
+      GoogleString fallback_page_key =
+          server_context_->GetFallbackPagePropertyCacheKey(
+              request_url.AllExceptQuery(), options, device_type_suffix);
+      fallback_property_callback =
+          new ProxyFetchPropertyCallback(
+              ProxyFetchPropertyCallback::kPropertyCacheFallbackPage,
+              page_property_cache, fallback_page_key, device_type,
+              callback_collector.get(),
+              server_context_->thread_system()->NewMutex());
+      callback_collector->AddCallback(fallback_property_callback);
     }
   }
 
@@ -375,7 +393,7 @@ ProxyFetchPropertyCallbackCollector*
       if (client_property_cache->enabled()) {
         AbstractMutex* mutex = server_context_->thread_system()->NewMutex();
         client_callback = new ProxyFetchPropertyCallback(
-            ProxyFetchPropertyCallback::kClientPropertyCache,
+            ProxyFetchPropertyCallback::kClientPropertyCachePage,
             client_property_cache, client_id,
             UserAgentMatcher::kEndOfDeviceType,
             callback_collector.get(), mutex);
@@ -388,6 +406,9 @@ ProxyFetchPropertyCallbackCollector*
   // All callbacks need to be registered before Reads to avoid race.
   if (property_callback != NULL) {
     page_property_cache->Read(property_callback);
+  }
+  if (fallback_property_callback != NULL) {
+    page_property_cache->Read(fallback_property_callback);
   }
   if (client_callback != NULL) {
     client_property_cache->Read(client_callback);

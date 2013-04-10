@@ -30,6 +30,7 @@ namespace net_instaweb {
 
 class AbstractLogRecord;
 class AsyncFetch;
+class FallbackPropertyPage;
 class MessageHandler;
 class PropertyPage;
 class ProxyFetchPropertyCallbackCollector;
@@ -92,7 +93,10 @@ class CacheHtmlFlow {
 
   // Serves the cached html content to the client and triggers the proxy fetch
   // for non cacheable content.
-  void CacheHtmlHit(PropertyPage* page);
+  // TODO(pulkitg): Change the function GetHtmlCriticalImages to take
+  // AbstractPropertyPage so that dependency on FallbackPropertyPage can be
+  // removed.
+  void CacheHtmlHit(FallbackPropertyPage* page);
 
   // Serves the request in passthru mode and triggers a background request to
   // compute CacheHtmlInfo.

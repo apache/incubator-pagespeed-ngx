@@ -386,6 +386,12 @@ class ServerContext {
                                        StringPiece options_signature_hash,
                                        StringPiece device_type_suffix);
 
+  // Returns the fallback page property cache key to be used for the proxy
+  // interface flow. Options are expected to be frozen.
+  GoogleString GetFallbackPagePropertyCacheKey(StringPiece url,
+                                               const RewriteOptions* options,
+                                               StringPiece device_type_suffix);
+
   // Generates a new managed RewriteDriver using the RewriteOptions
   // managed by this class.  Each RewriteDriver is not thread-safe,
   // but you can generate a RewriteDriver* for each thread.  The

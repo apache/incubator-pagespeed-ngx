@@ -46,6 +46,7 @@
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/client_state.h"
+#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -221,8 +222,7 @@ class ProxyInterfaceTest : public ProxyInterfaceTestBase {
         false, gurl, options(), &callback));
     EXPECT_NE(static_cast<ProxyFetchPropertyCallbackCollector*>(NULL),
               callback_collector.get());
-    PropertyPage* page = callback_collector->GetPropertyPageWithoutOwnership(
-        ProxyFetchPropertyCallback::kPagePropertyCache);
+    PropertyPage* page = callback_collector->property_page();
     EXPECT_NE(static_cast<PropertyPage*>(NULL), page);
     server_context()->ComputeSignature(options());
     GoogleString expected = StrCat(
@@ -3018,6 +3018,46 @@ TEST_F(ProxyInterfaceTest, ClientStateTest) {
 TEST_F(ProxyInterfaceTest, TestOptionsAndDeviceTypeUsedInCacheKey) {
   TestOptionsAndDeviceTypeUsedInCacheKey(UserAgentMatcher::kMobile);
   TestOptionsAndDeviceTypeUsedInCacheKey(UserAgentMatcher::kDesktop);
+}
+
+TEST_F(ProxyInterfaceTest, TestFallbackPropertiesUsage) {
+  GoogleUrl gurl("http://www.test.com/?withquery=some");
+  GoogleString kPropertyName("prop");
+  GoogleString kValue("value");
+  options()->set_use_fallback_property_cache_values(true);
+  // No fallback value is present.
+  const PropertyCache::Cohort* cohort =
+      page_property_cache()->GetCohort(RewriteDriver::kDomCohort);
+  StringAsyncFetch callback(
+      RequestContext::NewTestRequestContext(server_context()->thread_system()));
+  RequestHeaders request_headers;
+  callback.set_request_headers(&request_headers);
+  scoped_ptr<ProxyFetchPropertyCallbackCollector> callback_collector(
+      proxy_interface_->InitiatePropertyCacheLookup(
+          false, gurl, options(), &callback));
+
+  FallbackPropertyPage* fallback_page =
+      callback_collector->fallback_property_page();
+  fallback_page->UpdateValue(cohort, kPropertyName, kValue);
+  fallback_page->WriteCohort(cohort);
+
+  // Read from fallback value.
+  GoogleUrl new_gurl("http://www.test.com/?withquery=different");
+  callback_collector.reset(proxy_interface_->InitiatePropertyCacheLookup(
+      false, new_gurl, options(), &callback));
+  fallback_page = callback_collector->fallback_property_page();
+  EXPECT_FALSE(fallback_page->actual_property_page()->GetProperty(
+      cohort, kPropertyName)->has_value());
+  EXPECT_EQ(kValue, fallback_page->GetProperty(cohort, kPropertyName)->value());
+
+  // If use_fallback_property_cache_values option is set to false, fallback
+  // values will not be used.
+  options()->ClearSignatureForTesting();
+  options()->set_use_fallback_property_cache_values(false);
+  callback_collector.reset(proxy_interface_->InitiatePropertyCacheLookup(
+        false, new_gurl, options(), &callback));
+  EXPECT_FALSE(callback_collector->fallback_property_page()->GetProperty(
+      cohort, kPropertyName)->has_value());
 }
 
 TEST_F(ProxyInterfaceTest, BailOutOfParsing) {

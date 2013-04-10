@@ -39,6 +39,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
@@ -53,6 +54,7 @@ namespace net_instaweb {
 
 class AbstractLogRecord;
 class AbstractMutex;
+class AbstractPropertyPage;
 class AddInstrumentationFilter;
 class AsyncFetch;
 class CacheUrlAsyncFetcher;
@@ -830,10 +832,16 @@ class RewriteDriver : public HtmlParse {
   void set_client_id(const StringPiece& id) { client_id_ = id.as_string(); }
   const GoogleString& client_id() const { return client_id_; }
 
-  PropertyPage* property_page() const { return property_page_; }
-  void set_property_page(PropertyPage* page);  // Takes ownership of page.
+  PropertyPage* property_page() const;
+  AbstractPropertyPage* fallback_property_page() const {
+    return fallback_property_page_;
+  }
+  // Takes ownership of page.
+  void set_property_page(PropertyPage* page);
+  // Takes ownership of page.
+  void set_fallback_property_page(FallbackPropertyPage* page);
   // Does not take the ownership of the page.
-  void set_unowned_property_page(PropertyPage* page);
+  void set_unowned_fallback_property_page(FallbackPropertyPage* page);
 
   // Used by ImageRewriteFilter for identifying critical images.
   const CriticalLineInfo* critical_line_info() const;
@@ -1333,7 +1341,7 @@ class RewriteDriver : public HtmlParse {
   scoped_ptr<AbstractClientState> client_state_;
 
   // Stores any cached properties associated with the current URL.
-  PropertyPage* property_page_;
+  FallbackPropertyPage* fallback_property_page_;
 
   // Boolean value which tells whether property page is owned by driver or not.
   bool owns_property_page_;

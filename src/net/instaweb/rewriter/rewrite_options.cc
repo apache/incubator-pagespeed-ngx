@@ -1301,6 +1301,13 @@ void RewriteOptions::AddProperties() {
       "rewrites are completed before sending the response to the "
       "client.");
   AddBaseProperty(
+        false,
+        &RewriteOptions::use_fallback_property_cache_values_,
+        "fbcv", kUseFallbackPropertyCacheValues,
+        kServerScope,
+        "If this is set to true, use fallback values from property cache if "
+        "actual value is not present.");
+  AddBaseProperty(
       true, &RewriteOptions::support_noscript_enabled_, "snse",
       kSupportNoScriptEnabled,
       kDirectoryScope,

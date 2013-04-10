@@ -179,14 +179,15 @@ void ProxyFetchFactory::RegisterFinishedFetch(ProxyFetch* fetch) {
 }
 
 ProxyFetchPropertyCallback::ProxyFetchPropertyCallback(
-    CacheType cache_type,
+    PageType page_type,
     PropertyCache* property_cache,
     const StringPiece& key,
     UserAgentMatcher::DeviceType device_type,
     ProxyFetchPropertyCallbackCollector* collector,
     AbstractMutex* mutex)
-    : PropertyPage(key, collector->request_context(), mutex, property_cache),
-      cache_type_(cache_type),
+    : PropertyPage(
+          key, collector->request_context(), mutex, property_cache),
+      page_type_(page_type),
       device_type_(device_type),
       collector_(collector) {
 }
@@ -201,8 +202,9 @@ void ProxyFetchPropertyCallback::Done(bool success) {
 
 void ProxyFetchPropertyCallback::LogPageCohortInfo(
     AbstractLogRecord* log_record, int cohort_index) {
+  // TODO(pulkitg): Change the name CacheType to PageType in logging info.
   log_record->SetDeviceAndCacheTypeForCohortInfo(
-      cohort_index, device_type_, cache_type_);
+      cohort_index, device_type_, page_type_);
 }
 
 ProxyFetchPropertyCallbackCollector::ProxyFetchPropertyCallbackCollector(
@@ -239,20 +241,15 @@ void ProxyFetchPropertyCallbackCollector::AddCallback(
   pending_callbacks_.insert(callback);
 }
 
-PropertyPage* ProxyFetchPropertyCallbackCollector::GetPropertyPage(
-    ProxyFetchPropertyCallback::CacheType cache_type) {
+PropertyPage* ProxyFetchPropertyCallbackCollector::ReleasePropertyPage(
+    ProxyFetchPropertyCallback::PageType page_type) {
   ScopedMutex lock(mutex_.get());
-  PropertyPage* page = property_pages_[cache_type];
-  property_pages_[cache_type] = NULL;
-  return page;
-}
-
-PropertyPage*
-ProxyFetchPropertyCallbackCollector::GetPropertyPageWithoutOwnership(
-    ProxyFetchPropertyCallback::CacheType cache_type) {
-  ScopedMutex lock(mutex_.get());
-  PropertyPage* page = property_pages_[cache_type];
-  return page;
+  if (property_pages_.find(page_type) != property_pages_.end()) {
+    PropertyPage* page = property_pages_[page_type];
+    property_pages_[page_type] = NULL;
+    return page;
+  }
+  return NULL;
 }
 
 bool ProxyFetchPropertyCallbackCollector::IsCacheValid(
@@ -288,7 +285,7 @@ void ProxyFetchPropertyCallbackCollector::Done(
   {
     ScopedMutex lock(mutex_.get());
     pending_callbacks_.erase(callback);
-    property_pages_[callback->cache_type()] = callback;
+    property_pages_[callback->page_type()] = callback;
     success_ &= success;
 
     if (pending_callbacks_.empty()) {
@@ -306,6 +303,15 @@ void ProxyFetchPropertyCallbackCollector::Done(
     request_context_->log_record()->SetTimeToPcacheEnd(
         server_context_->timer()->NowMs());
 
+    // Compose the primary and fallback property pages into a
+    // FallbackPropertyPage, so filters can use the fallback property in the
+    // absence of the primary.
+    PropertyPage* actual_page = ReleasePropertyPage(
+        ProxyFetchPropertyCallback::kPropertyCachePage);
+    PropertyPage* fallback_page = ReleasePropertyPage(
+        ProxyFetchPropertyCallback::kPropertyCacheFallbackPage);
+    fallback_property_page_.reset(
+        new FallbackPropertyPage(actual_page, fallback_page));
     ThreadSynchronizer* sync = resource_manager->thread_synchronizer();
     sync->Signal(ProxyFetch::kCollectorReady);
     sync->Wait(ProxyFetch::kCollectorDetach);
@@ -351,9 +357,8 @@ void ProxyFetchPropertyCallbackCollector::UpdateStatusCodeInPropertyCache() {
   // If we have not transferred the ownership of PagePropertyCache to
   // ProxyFetch yet, and we have the status code, then write the status_code in
   // PropertyCache.
-  PropertyPage* page =
-      property_pages_[ProxyFetchPropertyCallback::kPagePropertyCache];
   PropertyCache* pcache = server_context_->page_property_cache();
+  PropertyPage* page = property_page();
   if (pcache != NULL && page != NULL &&
       status_code_ != HttpStatus::kUnknownStatusCode) {
     const PropertyCache::Cohort* dom = pcache->GetCohort(
@@ -738,9 +743,8 @@ void ProxyFetch::PropertyCacheComplete(
   } else {
     // Set the page property, device property and client state objects
     // in the driver.
-    driver_->set_property_page(
-        callback_collector->GetPropertyPage(
-            ProxyFetchPropertyCallback::kPagePropertyCache));
+    driver_->set_fallback_property_page(
+        callback_collector->ReleaseFallbackPropertyPage());
     driver_->set_device_type(callback_collector->device_type());
     driver_->set_client_state(GetClientState(callback_collector));
   }
@@ -767,8 +771,8 @@ AbstractClientState* ProxyFetch::GetClientState(
     return NULL;
   }
   PropertyCache* cache = server_context_->client_property_cache();
-  PropertyPage* client_property_page = collector->GetPropertyPage(
-      ProxyFetchPropertyCallback::kClientPropertyCache);
+  PropertyPage* client_property_page = collector->ReleasePropertyPage(
+      ProxyFetchPropertyCallback::kClientPropertyCachePage);
   AbstractClientState* client_state =
       server_context_->factory()->NewClientState();
   client_state->InitFromPropertyCache(

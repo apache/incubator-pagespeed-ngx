@@ -742,8 +742,7 @@ BlinkFlowCriticalLine::BlinkFlowCriticalLine(
 
 void BlinkFlowCriticalLine::BlinkCriticalLineDataLookupDone(
     ProxyFetchPropertyCallbackCollector* collector) {
-  PropertyPage* page = collector->GetPropertyPageWithoutOwnership(
-      ProxyFetchPropertyCallback::kPagePropertyCache);
+  PropertyPage* page = collector->property_page();
   time_to_critical_line_data_look_up_done_ms_ =
       GetTimeElapsedFromStartRequest();
   // finder_ will be never NULL because it is checked before entering

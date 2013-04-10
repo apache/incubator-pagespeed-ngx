@@ -26,8 +26,8 @@
 namespace net_instaweb {
 
 class CriticalImages;
+class AbstractPropertyPage;
 class PropertyCache;
-class PropertyPage;
 class PropertyValue;
 class RewriteDriver;
 class Statistics;
@@ -128,7 +128,7 @@ class CriticalImagesFinder {
   // TODO(jud): Modify to not take ownership of the sets. This will make the
   // memory management of BeaconPropertyCallback clearer.
   bool UpdateCriticalImagesCacheEntry(
-      PropertyPage* page,
+      AbstractPropertyPage* page,
       PropertyCache* page_property_cache,
       StringSet* critical_images_set,
       StringSet* css_critical_images_set);

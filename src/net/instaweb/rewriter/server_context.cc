@@ -86,6 +86,8 @@ const char kBeaconCriticalCssQueryParam[] = "cs";
 
 const int64 kRefreshExpirePercent = 80;
 
+const char kFallbackPageCacheKeySuffix[] = "@";
+
 // Attributes that should not be automatically copied from inputs to outputs
 const char* kExcludedAttributes[] = {
   HttpAttributes::kCacheControl,
@@ -1096,6 +1098,13 @@ GoogleString ServerContext::GetPagePropertyCacheKey(
   }
   StrAppend(&result, device_type_suffix);
   return result;
+}
+
+GoogleString ServerContext::GetFallbackPagePropertyCacheKey(
+    StringPiece url, const RewriteOptions* options,
+    StringPiece device_type_suffix) {
+  return StrCat(GetPagePropertyCacheKey(url, options, device_type_suffix),
+                kFallbackPageCacheKeySuffix);
 }
 
 void ServerContext::ComputeSignature(RewriteOptions* rewrite_options) const {

@@ -47,6 +47,10 @@
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
 #include "net/instaweb/util/public/basictypes.h"
+// TODO(pulkitg): Change the function GetHtmlCriticalImages to take
+// AbstractPropertyPage so that fallback_property_page.h dependency can be
+// removed.
+#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/null_mutex.h"
@@ -125,8 +129,12 @@ namespace {
 // TODO(mmohabey): Move the logic of copying properties in rewrite_driver when
 // it is cloned.
 void InitDriverWithPropertyCacheValues(
-    RewriteDriver* cache_html_driver, PropertyPage* page) {
-  cache_html_driver->set_unowned_property_page(page);
+    RewriteDriver* cache_html_driver, FallbackPropertyPage* page) {
+  // TODO(pulkitg): Change the function GetHtmlCriticalImages to take
+  // AbstractPropertyPage as a parameter so that
+  // set_unowned_fallback_property_page function call can be removed. Also make
+  // the function take AbstractPropertyPage instead of FallbackPropertyPage.
+  cache_html_driver->set_unowned_fallback_property_page(page);
   // TODO(mmohabey): Critical line info should be populated here.
 
   // Because we are resetting the property page at the end of this function, we
@@ -139,7 +147,7 @@ void InitDriverWithPropertyCacheValues(
   cache_html_driver->server_context()->critical_images_finder()->
       GetHtmlCriticalImages(cache_html_driver);
 
-  cache_html_driver->set_unowned_property_page(NULL);
+  cache_html_driver->set_unowned_fallback_property_page(NULL);
 }
 
 class CacheHtmlComputationFetch : public AsyncFetch {
@@ -653,14 +661,13 @@ CacheHtmlFlow::~CacheHtmlFlow() {
 }
 
 void CacheHtmlFlow::CacheHtmlLookupDone() {
-  PropertyPage* page = property_cache_callback_->
-      GetPropertyPageWithoutOwnership(
-          ProxyFetchPropertyCallback::kPagePropertyCache);
-  PopulateCacheHtmlInfo(page);
+  FallbackPropertyPage* fallback_page =
+      property_cache_callback_->fallback_property_page();
+  PopulateCacheHtmlInfo(fallback_page->actual_property_page());
 
   // TODO(mmohabey): Add CSI timings.
   if (cache_html_info_.has_cached_html()) {
-    CacheHtmlHit(page);
+    CacheHtmlHit(fallback_page);
   } else {
     CacheHtmlMiss();
   }
@@ -671,7 +678,7 @@ void CacheHtmlFlow::CacheHtmlMiss() {
   TriggerProxyFetch();
 }
 
-void CacheHtmlFlow::CacheHtmlHit(PropertyPage* page) {
+void CacheHtmlFlow::CacheHtmlHit(FallbackPropertyPage* page) {
   num_cache_html_hits_->IncBy(1);
   StringPiece cached_html = cache_html_info_.cached_html();
   // TODO(mmohabey): Handle malformed html case.

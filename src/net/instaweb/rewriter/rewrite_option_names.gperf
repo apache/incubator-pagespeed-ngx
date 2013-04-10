@@ -134,6 +134,7 @@ struct OptionName {
 "RunExperiment",                         RewriteOptions::kRunningFurious
 "ServeStaleIfFetchError",                RewriteOptions::kServeStaleIfFetchError
 "SupportNoScriptEnabled",                RewriteOptions::kSupportNoScriptEnabled
+"UseFallbackPropertyCacheValues",        RewriteOptions::kUseFallbackPropertyCacheValues
 "UseSmartDiffInBlink",                   RewriteOptions::kUseSmartDiffInBlink
 "XHeaderValue",                          RewriteOptions::kXModPagespeedHeaderValue
 #

@@ -102,10 +102,10 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
             RequestContext::NewTestRequestContext(thread_system_.get()),
             options(), UserAgentMatcher::kDesktop);
     // Collector should not contain any PropertyPages
-    EXPECT_EQ(NULL, collector->GetPropertyPage(
-        ProxyFetchPropertyCallback::kPagePropertyCache));
-    EXPECT_EQ(NULL, collector->GetPropertyPage(
-        ProxyFetchPropertyCallback::kClientPropertyCache));
+    EXPECT_EQ(NULL, collector->ReleasePropertyPage(
+        ProxyFetchPropertyCallback::kPropertyCachePage));
+    EXPECT_EQ(NULL, collector->ReleasePropertyPage(
+        ProxyFetchPropertyCallback::kClientPropertyCachePage));
 
     return collector;
   }
@@ -113,16 +113,16 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
   // Add a callback of the given type to the collector.
   ProxyFetchPropertyCallback* AddCallback(
       ProxyFetchPropertyCallbackCollector* collector,
-      ProxyFetchPropertyCallback::CacheType cache_type) {
+      ProxyFetchPropertyCallback::PageType page_type) {
     AbstractMutex* mutex = thread_system_->NewMutex();
     PropertyCache* property_cache =
-        (cache_type == ProxyFetchPropertyCallback::kPagePropertyCache) ?
+        (page_type == ProxyFetchPropertyCallback::kPropertyCachePage) ?
         page_property_cache() : server_context()->client_property_cache();
     ProxyFetchPropertyCallback* callback =
         new ProxyFetchPropertyCallback(
-            cache_type, property_cache, RewriteTestBase::kTestDomain,
+            page_type, property_cache, RewriteTestBase::kTestDomain,
             UserAgentMatcher::kDesktop, collector, mutex);
-    EXPECT_EQ(cache_type, callback->cache_type());
+    EXPECT_EQ(page_type, callback->page_type());
     collector->AddCallback(callback);
     return callback;
   }
@@ -163,7 +163,7 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
     scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
     collector.reset(MakeCollector());
     ProxyFetchPropertyCallback* page_callback = AddCallback(
-        collector.get(), ProxyFetchPropertyCallback::kPagePropertyCache);
+        collector.get(), ProxyFetchPropertyCallback::kPropertyCachePage);
     ExpectStringAsyncFetch async_fetch(
         true, RequestContext::NewTestRequestContext(thread_system_.get()));
     ProxyFetchFactory factory(server_context_);
@@ -238,7 +238,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeDetach) {
   // Test that calling Done() before Detach() works.
   ProxyFetchPropertyCallbackCollector* collector = MakeCollector();
   ProxyFetchPropertyCallback* callback = AddCallback(
-      collector, ProxyFetchPropertyCallback::kPagePropertyCache);
+      collector, ProxyFetchPropertyCallback::kPropertyCachePage);
 
   // callback->IsCacheValid could be called anytime before callback->Done.
   // Will return true because there are no cache invalidation URL patterns.
@@ -248,14 +248,13 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeDetach) {
   callback->Done(true);
 
   // Collector should now have a page property.
-  scoped_ptr<PropertyPage> page;
-  page.reset(collector->GetPropertyPage(
-      ProxyFetchPropertyCallback::kPagePropertyCache));
+  scoped_ptr<AbstractPropertyPage> page;
+  page.reset(collector->ReleaseFallbackPropertyPage());
   EXPECT_TRUE(NULL != page.get());
 
   // ... but not a client property.
-  EXPECT_EQ(NULL, collector->GetPropertyPage(
-      ProxyFetchPropertyCallback::kClientPropertyCache));
+  EXPECT_EQ(NULL, collector->ReleasePropertyPage(
+      ProxyFetchPropertyCallback::kClientPropertyCachePage));
 
   // This should not fail - will also delete the collector.
   collector->Detach(HttpStatus::kUnknownStatusCode);
@@ -267,7 +266,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, UrlInvalidDoneBeforeDetach) {
   // Test that calling Done() before Detach() works.
   ProxyFetchPropertyCallbackCollector* collector = MakeCollector();
   ProxyFetchPropertyCallback* callback = AddCallback(
-      collector, ProxyFetchPropertyCallback::kPagePropertyCache);
+      collector, ProxyFetchPropertyCallback::kPropertyCachePage);
 
   // callback->IsCacheValid could be called anytime before callback->Done.
   // Will return false due to the invalidation entry.
@@ -277,14 +276,13 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, UrlInvalidDoneBeforeDetach) {
   callback->Done(true);
 
   // Collector should now have a page property.
-  scoped_ptr<PropertyPage> page;
-  page.reset(collector->GetPropertyPage(
-      ProxyFetchPropertyCallback::kPagePropertyCache));
+  scoped_ptr<AbstractPropertyPage> page;
+  page.reset(collector->ReleaseFallbackPropertyPage());
   EXPECT_TRUE(NULL != page.get());
 
   // ... but not a client property.
-  EXPECT_EQ(NULL, collector->GetPropertyPage(
-      ProxyFetchPropertyCallback::kClientPropertyCache));
+  EXPECT_EQ(NULL, collector->ReleasePropertyPage(
+      ProxyFetchPropertyCallback::kClientPropertyCachePage));
 
   // This should not fail - will also delete the collector.
   collector->Detach(HttpStatus::kUnknownStatusCode);
@@ -294,7 +292,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DetachBeforeDone) {
   // Test that calling Detach() before Done() works.
   ProxyFetchPropertyCallbackCollector* collector = MakeCollector();
   ProxyFetchPropertyCallback* callback = AddCallback(
-      collector, ProxyFetchPropertyCallback::kPagePropertyCache);
+      collector, ProxyFetchPropertyCallback::kPropertyCachePage);
 
   // callback->IsCacheValid could be called anytime before callback->Done.
   // Will return true because there are no cache invalidation URL patterns.
@@ -317,7 +315,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeSetProxyFetch) {
   scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
   collector.reset(MakeCollector());
   ProxyFetchPropertyCallback* callback = AddCallback(
-      collector.get(), ProxyFetchPropertyCallback::kPagePropertyCache);
+      collector.get(), ProxyFetchPropertyCallback::kPropertyCachePage);
 
   // callback->IsCacheValid could be called anytime before callback->Done.
   // Will return true because there are no cache invalidation URL patterns.
@@ -337,14 +335,13 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DoneBeforeSetProxyFetch) {
   EXPECT_FALSE(mock_proxy_fetch->complete());
 
   // Collector should now have a page property.
-  scoped_ptr<PropertyPage> page;
-  page.reset(collector.get()->GetPropertyPage(
-      ProxyFetchPropertyCallback::kPagePropertyCache));
+  scoped_ptr<AbstractPropertyPage> page;
+  page.reset(collector->ReleaseFallbackPropertyPage());
   EXPECT_TRUE(NULL != page.get());
 
   // ... but not a client property.
-  EXPECT_EQ(NULL, collector.get()->GetPropertyPage(
-      ProxyFetchPropertyCallback::kClientPropertyCache));
+  EXPECT_EQ(NULL, collector.get()->ReleasePropertyPage(
+      ProxyFetchPropertyCallback::kClientPropertyCachePage));
 
   collector.get()->ConnectProxyFetch(mock_proxy_fetch);
   // Should be complete since SetProxyFetch() called after Done().
@@ -359,7 +356,7 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, SetProxyFetchBeforeDone) {
   scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
   collector.reset(MakeCollector());
   ProxyFetchPropertyCallback* callback = AddCallback(
-      collector.get(), ProxyFetchPropertyCallback::kPagePropertyCache);
+      collector.get(), ProxyFetchPropertyCallback::kPropertyCachePage);
 
   // Construct mock ProxyFetch to test SetProxyFetch().
   ExpectStringAsyncFetch async_fetch(
@@ -382,14 +379,13 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, SetProxyFetchBeforeDone) {
   callback->Done(true);
 
   // Collector should now have a page property.
-  scoped_ptr<PropertyPage> page;
-  page.reset(collector.get()->GetPropertyPage(
-      ProxyFetchPropertyCallback::kPagePropertyCache));
+  scoped_ptr<AbstractPropertyPage> page;
+  page.reset(collector->ReleaseFallbackPropertyPage());
   EXPECT_TRUE(NULL != page.get());
 
   // ... but not a client property.
-  EXPECT_EQ(NULL, collector.get()->GetPropertyPage(
-      ProxyFetchPropertyCallback::kClientPropertyCache));
+  EXPECT_EQ(NULL, collector.get()->ReleasePropertyPage(
+      ProxyFetchPropertyCallback::kClientPropertyCachePage));
 
   // Should be complete since Done() called.
   EXPECT_TRUE(mock_proxy_fetch->complete());
@@ -403,10 +399,10 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, BothCallbacksComplete) {
   collector.reset(MakeCollector());
 
   ProxyFetchPropertyCallback* page_callback = AddCallback(
-      collector.get(), ProxyFetchPropertyCallback::kPagePropertyCache);
+      collector.get(), ProxyFetchPropertyCallback::kPropertyCachePage);
 
   ProxyFetchPropertyCallback* client_callback = AddCallback(
-      collector.get(), ProxyFetchPropertyCallback::kClientPropertyCache);
+      collector.get(), ProxyFetchPropertyCallback::kClientPropertyCachePage);
 
   // Construct mock ProxyFetch to test SetProxyFetch().
   ExpectStringAsyncFetch async_fetch(
@@ -426,8 +422,8 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, BothCallbacksComplete) {
   EXPECT_FALSE(mock_proxy_fetch->complete());
 
   // ... no client property as well.
-  EXPECT_EQ(NULL, collector.get()->GetPropertyPage(
-      ProxyFetchPropertyCallback::kClientPropertyCache));
+  EXPECT_EQ(NULL, collector.get()->ReleasePropertyPage(
+      ProxyFetchPropertyCallback::kClientPropertyCachePage));
 
   // Now invoke the client callback.
   client_callback->Done(true);
@@ -436,14 +432,13 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, BothCallbacksComplete) {
   EXPECT_TRUE(mock_proxy_fetch->complete());
 
   // Collector should now have a page property.
-  scoped_ptr<PropertyPage> page;
-  page.reset(collector.get()->GetPropertyPage(
-      ProxyFetchPropertyCallback::kPagePropertyCache));
+  scoped_ptr<AbstractPropertyPage> page;
+  page.reset(collector->ReleaseFallbackPropertyPage());
   EXPECT_TRUE(NULL != page.get());
 
   // Collector should now have a client property.
-  page.reset(collector.get()->GetPropertyPage(
-      ProxyFetchPropertyCallback::kClientPropertyCache));
+  page.reset(collector.get()->ReleasePropertyPage(
+      ProxyFetchPropertyCallback::kClientPropertyCachePage));
   EXPECT_TRUE(NULL != page.get());
 
   // Needed for cleanup.

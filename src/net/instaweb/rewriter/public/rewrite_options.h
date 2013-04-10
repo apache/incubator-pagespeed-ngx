@@ -294,6 +294,7 @@ class RewriteOptions {
     kRunningFurious,
     kServeStaleIfFetchError,
     kSupportNoScriptEnabled,
+    kUseFallbackPropertyCacheValues,
     kUseSmartDiffInBlink,
     kXModPagespeedHeaderValue,
     kXPsaBlockingRewrite,
@@ -1789,6 +1790,13 @@ class RewriteOptions {
     return use_smart_diff_in_blink_.value();
   }
 
+  void set_use_fallback_property_cache_values(bool x) {
+    set_option(x, &use_fallback_property_cache_values_);
+  }
+  bool use_fallback_property_cache_values() const {
+    return use_fallback_property_cache_values_.value();
+  }
+
   void set_enable_lazyload_in_blink(bool x) {
     set_option(x, &enable_lazyload_in_blink_);
   }
@@ -3058,6 +3066,8 @@ class RewriteOptions {
   Option<bool> enable_blink_html_change_detection_logging_;
   // Use smart diff to detect publisher changes in html in blink.
   Option<bool> use_smart_diff_in_blink_;
+  // Use fallback values from property cache.
+  Option<bool> use_fallback_property_cache_values_;
   // Don't force disable lazyload in blink;
   Option<bool> enable_lazyload_in_blink_;
   // Enable Prioritizing of scripts in defer javascript.

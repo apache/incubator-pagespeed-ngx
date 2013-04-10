@@ -251,7 +251,8 @@ void CriticalImagesFinder::UpdateCriticalImagesSetInDriver(
       driver->server_context()->page_property_cache();
   const PropertyCache::Cohort* cohort =
       page_property_cache->GetCohort(GetCriticalImagesCohort());
-  PropertyPage* page = driver->property_page();
+  // Fallback properties can be used for critical images.
+  AbstractPropertyPage* page = driver->fallback_property_page();
   if (page != NULL && cohort != NULL) {
     PropertyValue* property_value = page->GetProperty(
         cohort, kCriticalImagesPropertyName);
@@ -271,7 +272,8 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntryFromDriver(
     StringSet* css_critical_images_set) {
   // Update property cache if above the fold critical images are successfully
   // determined.
-  PropertyPage* page = driver->property_page();
+  // Fallback properties will be updated for critical images.
+  AbstractPropertyPage* page = driver->fallback_property_page();
   PropertyCache* page_property_cache =
       driver->server_context()->page_property_cache();
   return UpdateCriticalImagesCacheEntry(
@@ -279,7 +281,7 @@ bool CriticalImagesFinder::UpdateCriticalImagesCacheEntryFromDriver(
 }
 
 bool CriticalImagesFinder::UpdateCriticalImagesCacheEntry(
-    PropertyPage* page, PropertyCache* page_property_cache,
+    AbstractPropertyPage* page, PropertyCache* page_property_cache,
     StringSet* html_critical_images_set, StringSet* css_critical_images_set) {
   // Update property cache if above the fold critical images are successfully
   // determined.

@@ -43,6 +43,7 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -82,12 +83,15 @@ class StaticAssetManager;
 namespace {
 
 void InitFlushEarlyDriverWithPropertyCacheValues(
-    RewriteDriver* flush_early_driver, PropertyPage* page) {
+    RewriteDriver* flush_early_driver, FallbackPropertyPage* page) {
   // Reading Flush early flow info from Property Page. After reading,
   // property page in new_driver is set to NULL, so that no one writes to
   // property cache while flushing early. Also property page isn't guaranteed to
   // exist in flush_early_driver lifetime.
-  flush_early_driver->set_unowned_property_page(page);
+  // TODO(pulkitg): Change the functions GetHtmlCriticalImages and
+  // UpdateFlushEarlyInfoInDriver to take AbstractPropertyPage as a parameter so
+  // that set_unowned_fallback_property_page function call can be removed.
+  flush_early_driver->set_unowned_fallback_property_page(page);
   // Populates all fields which are needed from property_page as property_page
   // will be set to NULL afterwards.
   flush_early_driver->flush_early_info();
@@ -107,7 +111,7 @@ void InitFlushEarlyDriverWithPropertyCacheValues(
   flush_early_driver->server_context()->critical_images_finder()->
       GetHtmlCriticalImages(flush_early_driver);
 
-  flush_early_driver->set_unowned_property_page(NULL);
+  flush_early_driver->set_unowned_fallback_property_page(NULL);
 }
 
 }  // namespace
@@ -376,10 +380,10 @@ void FlushEarlyFlow::FlushEarly() {
   const RewriteOptions* options = driver_->options();
   const PropertyCache::Cohort* cohort = manager_->page_property_cache()->
       GetCohort(RewriteDriver::kDomCohort);
-  PropertyPage* page =
-      property_cache_callback_->GetPropertyPageWithoutOwnership(
-          ProxyFetchPropertyCallback::kPagePropertyCache);
-  if (page != NULL && cohort != NULL) {
+  FallbackPropertyPage* fallback_page =
+      property_cache_callback_->fallback_property_page();
+  PropertyPage* page = fallback_page->actual_property_page();
+  if (fallback_page != NULL && cohort != NULL) {
     PropertyValue* num_rewritten_resources_property_value = page->GetProperty(
         cohort,
         RewrittenContentScanningFilter::kNumProxiedRewrittenResourcesProperty);
@@ -447,7 +451,7 @@ void FlushEarlyFlow::FlushEarly() {
             RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
             RewriterApplication::APPLIED_OK);
 
-        InitFlushEarlyDriverWithPropertyCacheValues(new_driver, page);
+        InitFlushEarlyDriverWithPropertyCacheValues(new_driver, fallback_page);
         if (flush_early_info.has_average_fetch_latency_ms()) {
           average_fetch_time_ = flush_early_info.average_fetch_latency_ms();
         }

@@ -229,7 +229,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       rewrite_worker_(NULL),
       low_priority_rewrite_worker_(NULL),
       writer_(NULL),
-      property_page_(NULL),
+      fallback_property_page_(NULL),
       owns_property_page_(false),
       device_type_(UserAgentMatcher::kDesktop),
       critical_images_info_(NULL),
@@ -386,9 +386,9 @@ void RewriteDriver::Clear() {
   critical_line_info_.reset(NULL);
 
   if (owns_property_page_) {
-    delete property_page_;
+    delete fallback_property_page_;
   }
-  property_page_ = NULL;
+  fallback_property_page_ = NULL;
   owns_property_page_ = false;
   device_type_ = UserAgentMatcher::kDesktop;
 
@@ -2680,21 +2680,36 @@ bool RewriteDriver::ShouldAbsolutifyUrl(const GoogleUrl& input_base,
   return result;
 }
 
+PropertyPage* RewriteDriver::property_page() const {
+  return fallback_property_page_ == NULL ?
+      NULL : fallback_property_page_->actual_property_page();
+}
+
 // This is in the .cc rather than the header to avoid the need to
 // include property_cache.h in the header.
 void RewriteDriver::set_property_page(PropertyPage* page) {
-  if (owns_property_page_) {
-    delete property_page_;
+  if (page == NULL) {
+    set_fallback_property_page(NULL);
+    return;
   }
-  property_page_ = page;
+  FallbackPropertyPage* fallback_page = new FallbackPropertyPage(page, NULL);
+  set_fallback_property_page(fallback_page);
+}
+
+void RewriteDriver::set_fallback_property_page(FallbackPropertyPage* page) {
+  if (owns_property_page_) {
+    delete fallback_property_page_;
+  }
+  fallback_property_page_ = page;
   owns_property_page_ = true;
 }
 
-void RewriteDriver::set_unowned_property_page(PropertyPage* page) {
+void RewriteDriver::set_unowned_fallback_property_page(
+    FallbackPropertyPage* page) {
   if (owns_property_page_) {
-    delete property_page_;
+    delete fallback_property_page_;
   }
-  property_page_ = page;
+  fallback_property_page_ = page;
   owns_property_page_ = false;
 }
 
