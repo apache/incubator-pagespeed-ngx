@@ -143,6 +143,8 @@ PAGESPEED_EXPECTED_FAILURES="
 set -- "$PRIMARY_HOSTNAME"
 source $SYSTEM_TEST_FILE
 
+STATISTICS_URL=http://$HOSTNAME/ngx_pagespeed_statistics
+
 # nginx-specific system tests
 
 start_test Check for correct default X-Page-Speed header format.
@@ -711,7 +713,11 @@ check_from "$OUT" grep '^HTTP/1.1 204'
 
 start_test statistics load
 
-OUT=$($WGET_DUMP http://$HOSTNAME/ngx_pagespeed_statistics)
+OUT=$($WGET_DUMP $STATISTICS_URL)
 check_from "$OUT" grep 'VHost-Specific Statistics'
+
+start_test scrape stats works
+
+check test $(scrape_stat image_rewrite_total_original_bytes) -ge 10000
 
 check_failures_and_exit
