@@ -709,4 +709,9 @@ OUT=$(wget -q  --save-headers -O - -t 1 --timeout=1 \
       http://$HOSTNAME/ngx_pagespeed_beacon?ets=load:13)
 check_from "$OUT" grep '^HTTP/1.1 204'
 
+start_test server-side includes
+fetch_until -save $TEST_ROOT/ssi/ssi.shtml?ModPagespeedFilters=combine_css \
+    'grep -c \.pagespeed\.' 1
+check [ $(grep -ce $combine_css_filename $FETCH_FILE) = 1 ];
+
 check_failures_and_exit

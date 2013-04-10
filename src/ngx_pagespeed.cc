@@ -76,6 +76,10 @@ extern ngx_module_t ngx_pagespeed;
 #define CDBG(cf, args...)                                     \
   ngx_conf_log_error(NGX_LOG_DEBUG, cf, 0, args)
 
+// Unused flag, see
+// http://lxr.evanmiller.org/http/source/http/ngx_http_request.h#L130
+#define  NGX_HTTP_PAGESPEED_BUFFERED 0x08
+
 namespace ngx_psol {
 
 StringPiece str_to_string_piece(ngx_str_t s) {
@@ -748,9 +752,9 @@ void ps_release_request_context(void* data) {
 // a write handler.  See src/http/ngx_http_request.c:2083.
 void ps_set_buffered(ngx_http_request_t* r, bool on) {
   if (on) {
-    r->buffered |= NGX_HTTP_SSI_BUFFERED;
+    r->buffered |= NGX_HTTP_PAGESPEED_BUFFERED;
   } else {
-    r->buffered &= ~NGX_HTTP_SSI_BUFFERED;
+    r->buffered &= ~NGX_HTTP_PAGESPEED_BUFFERED;
   }
 }
 
@@ -866,6 +870,9 @@ ngx_int_t ps_update(ps_request_ctx_t* ctx, ngx_event_t* ev) {
 
     PDBG(ctx, "pagespeed update: %p, done: %d", cl, done);
 
+    if (cl == NULL) {
+      return done ? NGX_OK : NGX_AGAIN;
+    }
     // Pass the optimized content along to later body filters.
     // From Weibin: This function should be called mutiple times. Store the
     // whole file in one chain buffers is too aggressive. It could consume
@@ -1462,6 +1469,10 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
     return ngx_http_next_body_filter(r, in);
   }
 
+  if (r != r->main) {
+    // Don't handle subrequests.
+    return ngx_http_next_body_filter(r, in);
+  }
   // Don't need to check for a cache flush; already did in ps_header_filter.
 
   ps_request_ctx_t* ctx = ps_get_request_context(r);
@@ -1617,6 +1628,10 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     return ngx_http_next_header_filter(r);
   }
 
+  if (r != r->main) {
+    // Don't handle subrequests.
+    return ngx_http_next_header_filter(r);
+  }
   // Poll for cache flush on every request (polls are rate-limited).
   cfg_s->server_context->FlushCacheIfNecessary();
 
