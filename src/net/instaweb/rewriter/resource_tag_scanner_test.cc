@@ -28,14 +28,16 @@
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 typedef std::vector<semantic_type::Category> CategoryVector;
 class ResourceTagScannerTest : public HtmlParseTestBase {
  protected:
-  ResourceTagScannerTest() {
+  ResourceTagScannerTest() : collector_(this) { }
+
+  virtual void SetUp() {
+    html_parse_.AddFilter(&collector_);
   }
 
   virtual bool AddBody() const { return true; }
@@ -43,179 +45,570 @@ class ResourceTagScannerTest : public HtmlParseTestBase {
   // Helper class to collect all external resources.
   class ResourceCollector : public EmptyHtmlFilter {
    public:
-    ResourceCollector(StringVector* resources,
-                      CategoryVector* resource_category)
-        : resources_(resources),
-          resource_category_(resource_category) {
-    }
+    explicit ResourceCollector(ResourceTagScannerTest* test) : test_(test) { }
 
     virtual void StartElement(HtmlElement* element) {
       semantic_type::Category resource_category;
       HtmlElement::Attribute* src = resource_tag_scanner::ScanElement(
           element, NULL /* driver */, &resource_category);
       if (src != NULL) {
-        resources_->push_back(src->DecodedValueOrNull());
-        resource_category_->push_back(resource_category);
+        test_->resources_.push_back(src->DecodedValueOrNull());
+        test_->resource_category_.push_back(resource_category);
       }
     }
 
     virtual const char* Name() const { return "ResourceCollector"; }
 
    private:
-    StringVector* resources_;
-    CategoryVector* resource_category_;
+    ResourceTagScannerTest* test_;
 
     DISALLOW_COPY_AND_ASSIGN(ResourceCollector);
   };
+
+  StringVector resources_;
+  CategoryVector resource_category_;
+  ResourceCollector collector_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ResourceTagScannerTest);
 };
 
-TEST_F(ResourceTagScannerTest, FindTags) {
-  StringVector resources;
-  CategoryVector resource_category;
-  ResourceCollector collector(&resources, &resource_category);
-  html_parse_.AddFilter(&collector);
+TEST_F(ResourceTagScannerTest, SimpleScript) {
   ValidateNoChanges(
-      "simple_script",
-      "<script src='myscript.js'></script>\n"
-      "<script src='action.as' type='application/ecmascript'></script>\n"
-      "<img src=\"image.jpg\"/>\n"
-      "<link rel=\"prefetch\" href=\"do_find_prefetch\">\n"
-      "<link rel=\"stylesheet\" type=\"text/css\" href=\"nomedia.css\">\n"
-      "<link rel=stylesheet type=text/css href=id.css id=id>\n"
-      "<link rel=stylesheet href=no_type.style>\n"
-      "<link rel=stylesheet type=text/css href=media.css media=print>"
-      "<a href=\"find_link\"/>"
-      "<form action=\"find_form_action\"/>"
-      "<link rel=StyleSheet href='case.css'>"
-      "<body background=background_image.jpg>"
-      "<link rel=icon href=favicon.ico>"
-      "<link rel=apple-touch-icon href=apple-extension.jpg>"
-      "<link rel=apple-touch-icon-precomposed href=apple-extension2.jpg>"
-      "<link rel=apple-touch-startup-image href=apple-extension3.jpg>"
-      "<input src=dont-find-image.jpg>"
-      "<input type=image src=do-find-image.jpg>"
-      "<input type=IMAGE src=find-image.jpg formaction=dont-find-formaction>"
-      "<input formaction=still-dont-find-formaction>"
-      "<button formaction=do-find-formaction></button>"
-      "<command icon=some-icon.jpg></command>"
-      "<base href=dont-find-base>"
-      "<applet codebase=dont-find-applet-codebase></applet>"
-      "<object codebase=dont-find-object-codebase></object>"
-      "<html manifest=html-manifest></html>"
-      "<blockquote cite=blockquote-citation></blockquote>"
-      "<body cite=dont-find-body-citation></body>"
-      "<q cite=q-citation>"
-      "<ins cite=ins-citiation></ins>"
-      "<del cite=del-citiation></del>"
-      "<area href=find-area-link>"
-      "<img src=find-image longdesc=dont-find-longdesc>"
-      "<img longdesc=still-dont-find-longdesc>"
-      "<frame src=find-frame-src longdesc=dont-find-frame-longdesc></frame>"
-      "<iframe src=find-iframe-src longdesc=dont-find-iframe-longdesc></iframe>"
-      "<head profile=dont-find-profile></head>"
-      "<track src=track-src>"
-      "<audio src=audio-src></audio>"
-      "<video poster=dont-find-poster src=find-video-src></video>"
-      "<embed src=embed-src>"
-      "<source src=source-src>"
-      "<applet archive=archive-unsafe-because-of-codebase></applet>"
-      "<applet code=code-unsafe-because-of-codebase></applet>"
-      "<object classid=classid-unsafe-because-of-codebase></object>"
-      "<object data=data-unsafe-because-of-codebase></object>"
-      "<object archive=archive-unsafe-because-of-codebase></object>"
-      "<img usemap=ignore-img-usemap>"
-      "<input type=image usemap=ignore-input-usemap>"
-      "<object usemap=ignore-object-usemap></object>"
-      "<td background=td_background_image.jpg></td>"
-      "<th background=th_background_image.jpg></th>"
-      "<table background=table_background_image.jpg></table>"
-      "<tbody background=tbody_background_image.jpg></tbody>"
-      "<tfoot background=tfoot_background_image.jpg></tfoot>"
-      "<thead background=thead_background_image.jpg></thead>"
-);
-  ASSERT_EQ(static_cast<size_t>(40), resources.size());
-  EXPECT_EQ(GoogleString("myscript.js"), resources[0]);
-  EXPECT_EQ(semantic_type::kScript, resource_category[0]);
-  EXPECT_EQ(GoogleString("action.as"), resources[1]);
-  EXPECT_EQ(semantic_type::kScript, resource_category[1]);
-  EXPECT_EQ(GoogleString("image.jpg"), resources[2]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[2]);
-  EXPECT_EQ(GoogleString("do_find_prefetch"), resources[3]);
-  EXPECT_EQ(semantic_type::kPrefetch, resource_category[3]);
-  EXPECT_EQ(GoogleString("nomedia.css"), resources[4]);
-  EXPECT_EQ(semantic_type::kStylesheet, resource_category[4]);
-  EXPECT_EQ(GoogleString("id.css"), resources[5]);
-  EXPECT_EQ(semantic_type::kStylesheet, resource_category[5]);
-  EXPECT_EQ(GoogleString("no_type.style"), resources[6]);
-  EXPECT_EQ(semantic_type::kStylesheet, resource_category[6]);
-  EXPECT_EQ(GoogleString("media.css"), resources[7]);
-  EXPECT_EQ(semantic_type::kStylesheet, resource_category[7]);
-  EXPECT_EQ(GoogleString("find_link"), resources[8]);
-  EXPECT_EQ(semantic_type::kHyperlink, resource_category[8]);
-  EXPECT_EQ(GoogleString("find_form_action"), resources[9]);
-  EXPECT_EQ(semantic_type::kHyperlink, resource_category[9]);
-  EXPECT_EQ(GoogleString("case.css"), resources[10]);
-  EXPECT_EQ(semantic_type::kStylesheet, resource_category[10]);
-  EXPECT_EQ(GoogleString("background_image.jpg"), resources[11]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[11]);
-  EXPECT_EQ(GoogleString("favicon.ico"), resources[12]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[12]);
-  EXPECT_EQ(GoogleString("apple-extension.jpg"), resources[13]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[13]);
-  EXPECT_EQ(GoogleString("apple-extension2.jpg"), resources[14]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[14]);
-  EXPECT_EQ(GoogleString("apple-extension3.jpg"), resources[15]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[15]);
-  EXPECT_EQ(GoogleString("do-find-image.jpg"), resources[16]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[16]);
-  EXPECT_EQ(GoogleString("find-image.jpg"), resources[17]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[17]);
-  EXPECT_EQ(GoogleString("do-find-formaction"), resources[18]);
-  EXPECT_EQ(semantic_type::kHyperlink, resource_category[18]);
-  EXPECT_EQ(GoogleString("some-icon.jpg"), resources[19]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[19]);
-  EXPECT_EQ(GoogleString("html-manifest"), resources[20]);
-  EXPECT_EQ(semantic_type::kOtherResource, resource_category[20]);
-  EXPECT_EQ(GoogleString("blockquote-citation"), resources[21]);
-  EXPECT_EQ(semantic_type::kHyperlink, resource_category[21]);
-  EXPECT_EQ(GoogleString("q-citation"), resources[22]);
-  EXPECT_EQ(semantic_type::kHyperlink, resource_category[22]);
-  EXPECT_EQ(GoogleString("ins-citiation"), resources[23]);
-  EXPECT_EQ(semantic_type::kHyperlink, resource_category[23]);
-  EXPECT_EQ(GoogleString("del-citiation"), resources[24]);
-  EXPECT_EQ(semantic_type::kHyperlink, resource_category[24]);
-  EXPECT_EQ(GoogleString("find-area-link"), resources[25]);
-  EXPECT_EQ(semantic_type::kHyperlink, resource_category[25]);
-  EXPECT_EQ(GoogleString("find-image"), resources[26]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[26]);
-  EXPECT_EQ(GoogleString("find-frame-src"), resources[27]);
-  EXPECT_EQ(semantic_type::kOtherResource, resource_category[27]);
-  EXPECT_EQ(GoogleString("find-iframe-src"), resources[28]);
-  EXPECT_EQ(semantic_type::kOtherResource, resource_category[28]);
-  EXPECT_EQ(GoogleString("track-src"), resources[29]);
-  EXPECT_EQ(semantic_type::kOtherResource, resource_category[29]);
-  EXPECT_EQ(GoogleString("audio-src"), resources[30]);
-  EXPECT_EQ(semantic_type::kOtherResource, resource_category[30]);
-  EXPECT_EQ(GoogleString("find-video-src"), resources[31]);
-  EXPECT_EQ(semantic_type::kOtherResource, resource_category[31]);
-  EXPECT_EQ(GoogleString("embed-src"), resources[32]);
-  EXPECT_EQ(semantic_type::kOtherResource, resource_category[32]);
-  EXPECT_EQ(GoogleString("source-src"), resources[33]);
-  EXPECT_EQ(semantic_type::kOtherResource, resource_category[33]);
-  EXPECT_EQ(GoogleString("td_background_image.jpg"), resources[34]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[34]);
-  EXPECT_EQ(GoogleString("th_background_image.jpg"), resources[35]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[35]);
-  EXPECT_EQ(GoogleString("table_background_image.jpg"), resources[36]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[36]);
-  EXPECT_EQ(GoogleString("tbody_background_image.jpg"), resources[37]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[37]);
-  EXPECT_EQ(GoogleString("tfoot_background_image.jpg"), resources[38]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[38]);
-  EXPECT_EQ(GoogleString("thead_background_image.jpg"), resources[39]);
-  EXPECT_EQ(semantic_type::kImage, resource_category[39]);
+      "SimpleScript",
+      "<script src='myscript.js'></script>\n");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("myscript.js", resources_[0]);
+  EXPECT_EQ(semantic_type::kScript, resource_category_[0]);
 }
+
+TEST_F(ResourceTagScannerTest, EcmaScript) {
+  ValidateNoChanges(
+      "EcmaScript",
+      "<script src='action.as' type='application/ecmascript'></script>\n");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("action.as", resources_[0]);
+  EXPECT_EQ(semantic_type::kScript, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, Image) {
+  ValidateNoChanges(
+      "Image",
+      "<img src=\"image.jpg\"/>\n");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("image.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, Prefetch) {
+  ValidateNoChanges(
+      "Prefetch",
+      "<link rel=\"prefetch\" href=\"do_find_prefetch\">\n");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("do_find_prefetch", resources_[0]);
+  EXPECT_EQ(semantic_type::kPrefetch, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, NoMediaCss) {
+  ValidateNoChanges(
+      "NoMediaCss",
+      "<link rel=\"stylesheet\" type=\"text/css\" href=\"nomedia.css\">\n");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("nomedia.css", resources_[0]);
+  EXPECT_EQ(semantic_type::kStylesheet, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, IdCss) {
+  ValidateNoChanges(
+      "IdCss",
+      "<link rel=stylesheet type=text/css href=id.css id=id>\n");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("id.css", resources_[0]);
+  EXPECT_EQ(semantic_type::kStylesheet, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, NoTypeCss) {
+  ValidateNoChanges(
+      "NoTypeCss",
+      "<link rel=stylesheet href=no_type.style>\n");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("no_type.style", resources_[0]);
+  EXPECT_EQ(semantic_type::kStylesheet, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, MediaCss) {
+  ValidateNoChanges(
+      "MediaCss",
+      "<link rel=stylesheet type=text/css href=media.css media=print>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("media.css", resources_[0]);
+  EXPECT_EQ(semantic_type::kStylesheet, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, Link) {
+  ValidateNoChanges(
+      "Link",
+      "<a href=\"find_link\"/>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("find_link", resources_[0]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, FormAction) {
+  ValidateNoChanges(
+      "FormAction",
+      "<form action=\"find_form_action\"/>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("find_form_action", resources_[0]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, RelCase) {
+  ValidateNoChanges(
+      "RelCase",
+      "<link rel=StyleSheet href='case.css'>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("case.css", resources_[0]);
+  EXPECT_EQ(semantic_type::kStylesheet, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, BodyBackground) {
+  ValidateNoChanges(
+      "BodyBackground",
+      "<body background=background_image.jpg>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("background_image.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, FavIcon) {
+  ValidateNoChanges(
+      "FavIcon",
+      "<link rel=icon href=favicon.ico>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("favicon.ico", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, ShortcutIcon) {
+  ValidateNoChanges(
+      "ShortcutIcon",
+      "<link rel='shortcut icon' href=favicon.ico>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("favicon.ico", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, AppleTouchIcon) {
+  ValidateNoChanges(
+      "AppleTouchIcon",
+      "<link rel=apple-touch-icon href=apple-extension.jpg>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("apple-extension.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, AppleTouchIconPrecomposed) {
+  ValidateNoChanges(
+      "AppleTouchIconPrecomposed",
+      "<link rel=apple-touch-icon-precomposed href=apple-extension2.jpg>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("apple-extension2.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, AppleTouchStartup) {
+  ValidateNoChanges(
+      "AppleTouchStartup",
+      "<link rel=apple-touch-startup-image href=apple-extension3.jpg>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("apple-extension3.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, DontFindImage) {
+  ValidateNoChanges(
+      "DontFindImage",
+      "<input src=dont-find-image.jpg>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, DoFindImage) {
+  ValidateNoChanges(
+      "DoFindImage",
+      "<input type=image src=do-find-image.jpg>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("do-find-image.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, ImageNotAction) {
+  ValidateNoChanges(
+      "ImageNotAction",
+      "<input type=IMAGE src=find-image.jpg formaction=dont-find-formaction>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("find-image.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, DontFindAction) {
+  ValidateNoChanges(
+      "DontFindAction",
+      "<input formaction=still-dont-find-formaction>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, DoFindAction) {
+  ValidateNoChanges(
+      "DoFindAction",
+      "<button formaction=do-find-formaction></button>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("do-find-formaction", resources_[0]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, CommandIcon) {
+  ValidateNoChanges(
+      "CommandIcon",
+      "<command icon=some-icon.jpg></command>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("some-icon.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, DontFindBase) {
+  ValidateNoChanges(
+      "DontFindBase",
+      "<base href=dont-find-base>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, DontFindApplet) {
+  ValidateNoChanges(
+      "DontFindApplet",
+      "<applet codebase=dont-find-applet-codebase></applet>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, DontFindObject) {
+  ValidateNoChanges(
+      "DontFindObject",
+      "<object codebase=dont-find-object-codebase></object>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, Manifest) {
+  ValidateNoChanges(
+      "Manifest",
+      "<html manifest=html-manifest></html>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("html-manifest", resources_[0]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, BlockquoteCitation) {
+  ValidateNoChanges(
+      "BlockquoteCitation",
+      "<blockquote cite=blockquote-citation></blockquote>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("blockquote-citation", resources_[0]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, DontFindBodyCitation) {
+  ValidateNoChanges(
+      "NoBodyCitation",
+      "<body cite=dont-find-body-citation></body>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, QCitation) {
+  ValidateNoChanges(
+      "QCitation",
+      "<q cite=q-citation>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("q-citation", resources_[0]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, InsCitation) {
+  ValidateNoChanges(
+      "InsCitation",
+      "<ins cite=ins-citation></ins>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("ins-citation", resources_[0]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, DelCitation) {
+  ValidateNoChanges(
+      "DelCitation",
+      "<del cite=del-citation></del>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("del-citation", resources_[0]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, AreaLink) {
+  ValidateNoChanges(
+      "AreaLink",
+      "<area href=find-area-link>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("find-area-link", resources_[0]);
+  EXPECT_EQ(semantic_type::kHyperlink, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, ImageNotLongdesc) {
+  ValidateNoChanges(
+      "ImageNotLongdesc",
+      "<img src=find-image longdesc=dont-find-longdesc>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("find-image", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, DontFindLongdesc) {
+  ValidateNoChanges(
+      "DontFindLongdesc",
+      "<img longdesc=still-dont-find-longdesc>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, FrameSrcNotLongdesc) {
+  ValidateNoChanges(
+      "FrameSrcNotLongdesc",
+      "<frame src=find-frame-src longdesc=dont-find-frame-longdesc></frame>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("find-frame-src", resources_[0]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, IFrameSrcNotLongdesc) {
+  ValidateNoChanges(
+    "IFrameSrcNotLongdesc",
+    "<iframe src=find-iframe-src longdesc=dont-find-iframe-longdesc></iframe>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("find-iframe-src", resources_[0]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, DontFindProfile) {
+  ValidateNoChanges(
+      "DontFindProfile",
+      "<head profile=dont-find-profile></head>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, TrackSrc) {
+  ValidateNoChanges(
+      "TrackSrc",
+      "<track src=track-src>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("track-src", resources_[0]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, AudioSrc) {
+  ValidateNoChanges(
+      "AudioSrc",
+      "<audio src=audio-src></audio>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("audio-src", resources_[0]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, VideoSrc) {
+  ValidateNoChanges(
+      "VideoSrc",
+      "<video poster=dont-find-poster src=find-video-src></video>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("find-video-src", resources_[0]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, EmbedSrc) {
+  ValidateNoChanges(
+      "EmbedSrc",
+      "<embed src=embed-src>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("embed-src", resources_[0]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, SourceSrc) {
+  ValidateNoChanges(
+      "SourceSrc",
+      "<source src=source-src>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("source-src", resources_[0]);
+  EXPECT_EQ(semantic_type::kOtherResource, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, DontFindArchive) {
+  ValidateNoChanges(
+      "DontFindArchive",
+      "<applet archive=archive-unsafe-because-of-codebase></applet>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, DontFindCode) {
+  ValidateNoChanges(
+      "DontFindCode",
+      "<applet code=code-unsafe-because-of-codebase></applet>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, DontFindClassid) {
+  ValidateNoChanges(
+      "DontFindClassid",
+      "<object classid=classid-unsafe-because-of-codebase></object>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, DontFindData) {
+  ValidateNoChanges(
+      "DontFindData",
+      "<object data=data-unsafe-because-of-codebase></object>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, DontFindObjectArchive) {
+  ValidateNoChanges(
+      "DontFindObjectArchive",
+      "<object archive=archive-unsafe-because-of-codebase></object>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, DontFindUsemap) {
+  ValidateNoChanges(
+      "DontFindUsemap",
+      "<img usemap=ignore-img-usemap>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, DontFindImageUsemap) {
+  ValidateNoChanges(
+      "DontFindImageUsemap",
+      "<input type=image usemap=ignore-input-usemap>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, DontFindObjectUsemap) {
+  ValidateNoChanges(
+      "DontFindObjectUsemap",
+      "<object usemap=ignore-object-usemap></object>");
+  EXPECT_TRUE(resources_.empty());
+  EXPECT_TRUE(resource_category_.empty());
+}
+
+TEST_F(ResourceTagScannerTest, TdBackgroundImage) {
+  ValidateNoChanges(
+      "TdBackgroundImage",
+      "<td background=td_background_image.jpg></td>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("td_background_image.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, ThBackgroundImage) {
+  ValidateNoChanges(
+      "ThBackgroundImage",
+      "<th background=th_background_image.jpg></th>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("th_background_image.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, TableBackgroundImage) {
+  ValidateNoChanges(
+      "TableBackgroundImage",
+      "<table background=table_background_image.jpg></table>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("table_background_image.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, TBodyBackgroundImage) {
+  ValidateNoChanges(
+      "TBodyBackgroundImage",
+      "<tbody background=tbody_background_image.jpg></tbody>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("tbody_background_image.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, TFootBackgroundImage) {
+  ValidateNoChanges(
+      "TFootBackgroundImage",
+      "<tfoot background=tfoot_background_image.jpg></tfoot>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("tfoot_background_image.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
+TEST_F(ResourceTagScannerTest, THeadBackgroundImage) {
+  ValidateNoChanges(
+      "THeadBackgroundImage",
+      "<thead background=thead_background_image.jpg></thead>");
+  ASSERT_EQ(static_cast<size_t>(1), resources_.size());
+  ASSERT_EQ(static_cast<size_t>(1), resource_category_.size());
+  EXPECT_STREQ("thead_background_image.jpg", resources_[0]);
+  EXPECT_EQ(semantic_type::kImage, resource_category_[0]);
+}
+
 }  // namespace net_instaweb
