@@ -709,4 +709,9 @@ OUT=$(wget -q  --save-headers -O - -t 1 --timeout=1 \
       http://$HOSTNAME/ngx_pagespeed_beacon?ets=load:13)
 check_from "$OUT" grep '^HTTP/1.1 204'
 
+start_test statistics load
+
+OUT=$($WGET_DUMP http://$HOSTNAME/ngx_pagespeed_statistics)
+check_from "$OUT" grep 'VHost-Specific Statistics'
+
 check_failures_and_exit
