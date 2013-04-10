@@ -478,6 +478,15 @@ fetch_until $URL 'fgrep -c web.example.ssp.css' 1
 # directly from the filesystem.
 fetch_until $URL 'fgrep -c file.exception.ssp.css' 1
 
+# Test that ngx_pagespeed keeps working after nginx gets a signal to reload the
+# configuration.  This is in the middle of tests so that significant work
+# happens both before and after.
+start_test "Reload config"
+
+check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css
+check_simple "$NGINX_EXECUTABLE" -s reload -c "$PAGESPEED_CONF"
+check wget $EXAMPLE_ROOT/styles/W.rewrite_css_images.css.pagespeed.cf.Hash.css
+
 start_test ModPagespeedLoadFromFileMatch
 URL=$TEST_ROOT/load_from_file_match/index.html?ModPagespeedFilters=inline_css
 fetch_until $URL 'grep -c blue' 1
