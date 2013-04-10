@@ -457,7 +457,7 @@ class FakeBlinkCriticalLineDataFinder : public BlinkCriticalLineDataFinder {
   }
 
   virtual bool UpdateDiffInfo(
-      bool is_diff, int64 now_ms, LogRecord* blink_log_record,
+      bool is_diff, int64 now_ms, AbstractLogRecord* blink_log_record,
       RewriteDriver* rewrite_driver, RewriteDriverFactory* factory) {
     EXPECT_EQ(expect_diff_update_mismatch_, is_diff);
     return false;
@@ -559,26 +559,6 @@ class ProxyInterfaceWithDelayCache : public ProxyInterface {
   DISALLOW_COPY_AND_ASSIGN(ProxyInterfaceWithDelayCache);
 };
 
-// LogRecord that copies logging_info() when in WriteLog.  This should be
-// useful for testing any logging flow where an owned subordinate log record is
-// needed.
-class CopyOnWriteLogRecord : public LogRecord {
- public:
-  CopyOnWriteLogRecord(AbstractMutex* logging_mutex, LoggingInfo* logging_info)
-      : LogRecord(logging_mutex), logging_info_copy_(logging_info) {}
-
- protected:
-  virtual bool WriteLogImpl() {
-    logging_info_copy_->CopyFrom(*logging_info());
-    return true;
-  }
-
- private:
-  LoggingInfo* logging_info_copy_;  // Not owned by us.
-
-  DISALLOW_COPY_AND_ASSIGN(CopyOnWriteLogRecord);
-};
-
 // RequestContext that overrides NewSubordinateLogRecord to return a
 // CopyOnWriteLogRecord that copies to a logging_info given at construction
 // time.
@@ -588,7 +568,8 @@ class TestRequestContext : public RequestContext {
       : RequestContext(mutex),
         logging_info_copy_(logging_info) {}
 
-  virtual LogRecord* NewSubordinateLogRecord(AbstractMutex* logging_mutex) {
+  virtual AbstractLogRecord* NewSubordinateLogRecord(
+      AbstractMutex* logging_mutex) {
     return new CopyOnWriteLogRecord(logging_mutex, logging_info_copy_);
   }
 

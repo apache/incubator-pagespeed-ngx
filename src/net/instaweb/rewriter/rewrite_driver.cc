@@ -278,7 +278,7 @@ void RewriteDriver::set_request_context(const RequestContextPtr& x) {
   }
 }
 
-LogRecord* RewriteDriver::log_record() {
+AbstractLogRecord* RewriteDriver::log_record() {
   CHECK(request_context_.get() != NULL);
   return request_context_->log_record();
 }

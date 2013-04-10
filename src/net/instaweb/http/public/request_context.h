@@ -26,8 +26,8 @@
 
 namespace net_instaweb {
 
+class AbstractLogRecord;
 class AbstractMutex;
-class LogRecord;
 class RequestContext;
 class RequestTrace;
 class ThreadSystem;
@@ -43,8 +43,8 @@ typedef RefCountedPtr<RequestContext> RequestContextPtr;
 // explicit transfer of ownership in these cases.
 class RequestContext : public RefCounted<RequestContext> {
  public:
-  // |logging_mutex| will be passed to the request context's LogRecord, which
-  // will take ownership of it. If you will be doing logging in a real
+  // |logging_mutex| will be passed to the request context's AbstractLogRecord,
+  // which will take ownership of it. If you will be doing logging in a real
   // (threaded) environment, pass in a real mutex. If not, a NullMutex is fine.
   explicit RequestContext(AbstractMutex* logging_mutex);
 
@@ -52,10 +52,11 @@ class RequestContext : public RefCounted<RequestContext> {
   //             Makes a request context for running tests.
   static RequestContextPtr NewTestRequestContext(ThreadSystem* thread_system);
 
-  // Creates a new, unowned LogRecord, for use by some subordinate action.
-  // Also useful in case of background activity where logging is required after
-  // the response is written out, e.g., blink flow.
-  virtual LogRecord* NewSubordinateLogRecord(AbstractMutex* logging_mutex);
+  // Creates a new, unowned AbstractLogRecord, for use by some subordinate
+  // action.  Also useful in case of background activity where logging is
+  // required after the response is written out, e.g., blink flow.
+  virtual AbstractLogRecord* NewSubordinateLogRecord(
+      AbstractMutex* logging_mutex);
 
   // The root trace context is associated with the user request which we
   // are attempting to serve. If this is a request with constituent resources
@@ -93,7 +94,7 @@ class RequestContext : public RefCounted<RequestContext> {
   virtual void ReleaseDependentTraceContext(RequestTrace* t);
 
   // The log record for the this request, created when the request context is.
-  LogRecord* log_record();
+  virtual AbstractLogRecord* log_record();
 
   // Determines whether this request is using the SPDY protocol.
   bool using_spdy() const { return using_spdy_; }
@@ -104,34 +105,30 @@ class RequestContext : public RefCounted<RequestContext> {
 
   // Return the log record for background rewrites. If it doesn't exist, create
   // a new one.
-  LogRecord* GetBackgroundRewriteLog(
+  AbstractLogRecord* GetBackgroundRewriteLog(
       ThreadSystem* thread_system,
       bool log_urls,
       bool log_url_indices,
       int max_rewrite_info_log_size);
 
  protected:
+  // TODO(gee): Fix this, it sucks.
   // The default constructor will not create a LogRecord. Subclass constructors
   // must do this explicitly.
   RequestContext();
-
-  // The log record can only be set once. This should only be used by a subclass
-  // during initialization.
-  void set_log_record(LogRecord* l);
-
   // Destructors in refcounted classes should be protected.
   virtual ~RequestContext();
   REFCOUNT_FRIEND_DECLARATION(RequestContext);
 
  private:
   // Always non-NULL.
-  scoped_ptr<LogRecord> log_record_;
+  scoped_ptr<AbstractLogRecord> log_record_;
 
   // Logs tracing events associated with the root request.
   scoped_ptr<RequestTrace> root_trace_context_;
 
   // Log for recording background rewritings.
-  scoped_ptr<LogRecord> background_rewrite_log_record_;
+  scoped_ptr<AbstractLogRecord> background_rewrite_log_record_;
 
   bool using_spdy_;
 

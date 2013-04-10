@@ -1147,7 +1147,7 @@ void RewriteContext::Start() {
     if (slot(c)->disable_further_processing()) {
       rewrite_done_ = true;
       if (!has_parent()) {
-        LogRecord* log_record = Driver()->log_record();
+        AbstractLogRecord* log_record = Driver()->log_record();
         ScopedMutex lock(log_record->mutex());
         MetadataCacheInfo* metadata_log_info =
             log_record->logging_info()->mutable_metadata_cache_info();
@@ -1232,7 +1232,7 @@ void RewriteContext::LogMetadataCacheInfo(bool cache_ok, bool can_revalidate) {
     return;
   }
   {
-    LogRecord* log_record = Driver()->log_record();
+    AbstractLogRecord* log_record = Driver()->log_record();
     ScopedMutex lock(log_record->mutex());
     MetadataCacheInfo* metadata_log_info =
         log_record->logging_info()->mutable_metadata_cache_info();
@@ -1607,7 +1607,7 @@ void RewriteContext::ResourceRevalidateDone(InputInfo* input_info,
     if (revalidate_ok_) {
       // Increment num_successful_revalidates.
       if (!has_parent()) {
-        LogRecord* log_record = Driver()->log_record();
+        AbstractLogRecord* log_record = Driver()->log_record();
         ScopedMutex lock(log_record->mutex());
         MetadataCacheInfo* metadata_log_info =
             log_record->logging_info()->mutable_metadata_cache_info();
@@ -1724,7 +1724,7 @@ void RewriteContext::FinalizeRewriteForHtml() {
 
   int num_repeated = repeated_.size();
   if (!has_parent() && num_repeated > 0) {
-    LogRecord* log_record = Driver()->log_record();
+    AbstractLogRecord* log_record = Driver()->log_record();
     ScopedMutex lock(log_record->mutex());
     MetadataCacheInfo* metadata_log_info =
         log_record->logging_info()->mutable_metadata_cache_info();

@@ -19,7 +19,6 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_BLINK_CRITICAL_LINE_DATA_FINDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_BLINK_CRITICAL_LINE_DATA_FINDER_H_
 
-#include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -27,6 +26,7 @@
 
 namespace net_instaweb {
 
+class AbstractLogRecord;
 class BlinkCriticalLineData;
 class PropertyPage;
 class ResponseHeaders;
@@ -58,7 +58,7 @@ class BlinkCriticalLineDataFinder {
                                      UserAgentMatcher::DeviceType device_type);
 
   virtual bool UpdateDiffInfo(
-      bool is_diff, int64 now_ms, LogRecord* blink_log_record,
+      bool is_diff, int64 now_ms, AbstractLogRecord* blink_log_record,
       RewriteDriver* rewrite_driver, RewriteDriverFactory* factory);
 
  private:

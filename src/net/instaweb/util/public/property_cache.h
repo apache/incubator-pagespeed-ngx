@@ -105,8 +105,8 @@
 
 namespace net_instaweb {
 
+class AbstractLogRecord;
 class AbstractMutex;
-class LogRecord;
 class PropertyValueProtobuf;
 class PropertyPage;
 class Statistics;
@@ -402,12 +402,13 @@ class PropertyPage : public AbstractPropertyPage {
 
   const GoogleString& key() const { return key_; }
 
-  LogRecord* log_record() {
+  AbstractLogRecord* log_record() {
     return request_context_->log_record();
   }
 
   // Adds logs for the given PropertyPage to the specified cohort info index.
-  virtual void LogPageCohortInfo(LogRecord* log_record, int cohort_index) {}
+  virtual void LogPageCohortInfo(AbstractLogRecord* log_record,
+                                 int cohort_index) {}
 
   // Read the property page from cache.
   void Read(const PropertyCache::CohortVector& cohort_list);
@@ -455,13 +456,13 @@ class PropertyPage : public AbstractPropertyPage {
   typedef std::map<GoogleString, PropertyValue*> PropertyMap;
 
   struct PropertyMapStruct {
-    PropertyMapStruct(LogRecord* log, int index)
+    PropertyMapStruct(AbstractLogRecord* log, int index)
         : has_deleted_property(false),
           log_record(log),
           cohort_index(index) {}
     PropertyMap pmap;
     bool has_deleted_property;
-    LogRecord* log_record;
+    AbstractLogRecord* log_record;
     int cohort_index;
     CacheInterface::KeyState cache_state;
   };

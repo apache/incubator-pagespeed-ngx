@@ -155,27 +155,6 @@ const char MeaningfulCriticalImagesFinder::kCriticalImagesCohort[] =
 // TODO(huibao): Move CopyOnWriteLogRecord and TestRequestContext to a shared
 // file.
 
-// LogRecord that copies logging_info() when in WriteLog. This should be
-// useful for testing any logging flow where an owned subordinate log record is
-// needed. The client is responsible for cleaning up logging_info when it is not
-// longer used by CopyOnWriteLogRecord.
-class CopyOnWriteLogRecord : public LogRecord {
- public:
-  CopyOnWriteLogRecord(AbstractMutex* logging_mutex, LoggingInfo* logging_info)
-      : LogRecord(logging_mutex), logging_info_copy_(logging_info) {}
-
- protected:
-  virtual bool WriteLogImpl() {
-    logging_info_copy_->CopyFrom(*logging_info());
-    return true;
-  }
-
- private:
-  LoggingInfo* logging_info_copy_;  // Not owned by us.
-
-  DISALLOW_COPY_AND_ASSIGN(CopyOnWriteLogRecord);
-};
-
 // RequestContext that overrides NewSubordinateLogRecord to return a
 // CopyOnWriteLogRecord that copies to a logging_info given at construction
 // time.
@@ -187,7 +166,8 @@ class TestRequestContext : public RequestContext {
         logging_info_copy_(logging_info) {
   }
 
-  virtual LogRecord* NewSubordinateLogRecord(AbstractMutex* logging_mutex) {
+  virtual AbstractLogRecord* NewSubordinateLogRecord(
+      AbstractMutex* logging_mutex) {
     return new CopyOnWriteLogRecord(logging_mutex, logging_info_copy_);
   }
 

@@ -100,7 +100,7 @@ bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
 
 bool IsBlinkBlacklistActive(int64 now_ms,
                             int64 blink_blacklist_end_timestamp_ms,
-                            LogRecord* log_record) {
+                            AbstractLogRecord* log_record) {
   bool is_blacklisted = blink_blacklist_end_timestamp_ms >= now_ms;
   if (is_blacklisted) {
     ScopedMutex lock(log_record->mutex());

@@ -143,7 +143,7 @@ class CacheExtenderTest : public RewriteTestBase {
     for (int i = 0; i < 3; i++) {
       const GoogleString input_html = GenerateHtml(kCssFile, "b.jpg", "c.js");
       if (lru_cache()->IsHealthy()) {
-        LogRecord* log_record =
+        AbstractLogRecord* log_record =
             rewrite_driver()->request_context()->log_record();
         log_record->SetAllowLoggingUrls(true);
         ValidateExpected(

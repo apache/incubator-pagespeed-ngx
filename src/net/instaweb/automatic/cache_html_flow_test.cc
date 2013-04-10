@@ -237,7 +237,7 @@ const char kCookieScript[] =
 
 const char kBlinkOutputSuffix[] =
     "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-1.0\":{\"instance_html\":\"<h2 id=\\\"beforeItems\\\"> This is before Items </h2>\",\"xpath\":\"//div[@id=\\\"container\\\"]/h2[1]\"}}\n);</script>"  // NOLINT
-    "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.0\":{\"instance_html\":\"<div class=\\\"item\\\"><img src=\\\"image1\\\"><img src=\\\"image2\\\"></div>\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[2]\"}}\n);</script>"  // NOLINT
+    "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.0\":{\"instance_html\":\"<div class=\\\"item\\\"><img src=\\\"%s\\\"><img src=\\\"image2\\\"></div>\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[2]\"}}\n);</script>"  // NOLINT
     "<script>pagespeed.panelLoader.loadNonCacheableObject({\"panel-id-0.1\":{\"instance_html\":\"<div class=\\\"item\\\"><img src=\\\"image3\\\"><div class=\\\"item\\\"><img src=\\\"image4\\\"></div></div>\",\"xpath\":\"//div[@id=\\\"container\\\"]/div[3]\"}}\n);</script>"  // NOLINT
     "<script>pagespeed.panelLoader.bufferNonCriticalData({});</script>";  // NOLINT
 
@@ -333,26 +333,6 @@ class FlakyFakeUrlNamer : public FakeUrlNamer {
 
 }  // namespace
 
-// LogRecord that copies logging_info() when in WriteLog.  This should be
-// useful for testing any logging flow where an owned subordinate log record is
-// needed.
-class CopyOnWriteLogRecord : public LogRecord {
- public:
-  CopyOnWriteLogRecord(AbstractMutex* logging_mutex, LoggingInfo* logging_info)
-      : LogRecord(logging_mutex), logging_info_copy_(logging_info) {}
-
- protected:
-  virtual bool WriteLogImpl() {
-    logging_info_copy_->CopyFrom(*logging_info());
-    return true;
-  }
-
- private:
-  LoggingInfo* logging_info_copy_;  // Not owned by us.
-
-  DISALLOW_COPY_AND_ASSIGN(CopyOnWriteLogRecord);
-};
-
 // RequestContext that overrides NewSubordinateLogRecord to return a
 // CopyOnWriteLogRecord that copies to a logging_info given at construction
 // time.
@@ -362,7 +342,8 @@ class TestRequestContext : public RequestContext {
       : RequestContext(new NullMutex),
         logging_info_copy_(logging_info) {}
 
-  virtual LogRecord* NewSubordinateLogRecord(AbstractMutex* logging_mutex) {
+  virtual AbstractLogRecord* NewSubordinateLogRecord(
+      AbstractMutex* logging_mutex) {
     return new CopyOnWriteLogRecord(logging_mutex, logging_info_copy_);
   }
 
@@ -399,7 +380,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
         kBlinkOutputCommon, GetJsDisableScriptSnippet(options).c_str(),
         kTestUrl, kTestUrl);
     blink_output_ = StrCat(blink_output_partial_.c_str(), kCookieScript,
-                           kBlinkOutputSuffix);
+                           StringPrintf(kBlinkOutputSuffix, "image1"));
     noblink_output_ = StrCat("<html><head></head><body>",
                              StringPrintf(kNoScriptRedirectFormatter,
                                           kNoBlinkUrl, kNoBlinkUrl),
@@ -1133,6 +1114,37 @@ TEST_F(CacheHtmlFlowTest, NonHtmlContent) {
       CacheHtmlLoggingInfo::CACHE_HTML_MISS_FOUND_RESOURCE,
       "http://test.com/non_html.html");
   CheckStats(0, 0, 0, 0, 0, 3);
+}
+
+TEST_F(CacheHtmlFlowTest, TestCacheHtmlWithWebp) {
+  rewrite_driver_->server_context()->set_hasher(factory_->mock_hasher());
+  AddFileToMockFetcher(StrCat(kTestDomain, "image1"), "Puzzle.jpg",
+                       kContentTypeJpeg, 100);
+  options_->ClearSignatureForTesting();
+  options_->EnableFilter(RewriteOptions::kConvertJpegToWebp);
+  server_context()->ComputeSignature(options_.get());
+  GoogleString text;
+  ResponseHeaders response_headers;
+  // First request updates the property cache with cached html.
+  FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
+  VerifyNonCacheHtmlResponse(response_headers);
+  ClearStats();
+  // Cache Html hit case.
+  response_headers.Clear();
+  FetchFromProxyNoWaitForBackground("text.html", true, &text,
+                                    &response_headers);
+  ClearStats();
+  VerifyCacheHtmlResponse(response_headers);
+  UnEscapeString(&text);
+  GoogleString correct_url = Encode(
+      kTestDomain, RewriteOptions::kImageCompressionId, "0", "image1", "webp");
+
+  GoogleString blink_output_with_webp =
+      StrCat(blink_output_partial_.c_str(), kCookieScript,
+             StringPrintf(
+                 kBlinkOutputSuffix,
+                 correct_url.c_str()));
+  EXPECT_STREQ(blink_output_with_webp, text);
 }
 
 // TODO(mmohabey): Add remaining test cases from

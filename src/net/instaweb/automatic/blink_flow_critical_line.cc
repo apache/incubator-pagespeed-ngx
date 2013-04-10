@@ -102,7 +102,7 @@ const char BlinkFlowCriticalLine::kNumBlinkHtmlSmartdiffMismatches[] =
 // ownership of the passed in log records.
 class BlinkFlowCriticalLine::LogHelper {
  public:
-  LogHelper(LogRecord* log_record1, LogRecord* log_record2)
+  LogHelper(AbstractLogRecord* log_record1, AbstractLogRecord* log_record2)
       : log_record1_(log_record1), log_record2_(log_record2) {}
 
   void SetBlinkRequestFlow(int32 blink_request_flow) {
@@ -118,8 +118,8 @@ class BlinkFlowCriticalLine::LogHelper {
   }
 
  private:
-  LogRecord* log_record1_;
-  LogRecord* log_record2_;
+  AbstractLogRecord* log_record1_;
+  AbstractLogRecord* log_record2_;
 
   DISALLOW_COPY_AND_ASSIGN(LogHelper);
 };
@@ -143,7 +143,7 @@ class CriticalLineFetch : public AsyncFetch {
                     RewriteOptions* options,
                     RewriteDriver* rewrite_driver,
                     BlinkCriticalLineData* blink_critical_line_data,
-                    LogRecord* blink_log_record,
+                    AbstractLogRecord* blink_log_record,
                     BlinkFlowCriticalLine::LogHelper* blink_log_helper)
       : AsyncFetch(rewrite_driver->request_context()),
         url_(url),
@@ -511,7 +511,7 @@ class CriticalLineFetch : public AsyncFetch {
   RewriteDriver* critical_line_computation_driver_;
   RewriteDriver* html_change_detection_driver_;
   scoped_ptr<BlinkCriticalLineData> blink_critical_line_data_;
-  scoped_ptr<LogRecord> blink_log_record_;
+  scoped_ptr<AbstractLogRecord> blink_log_record_;
   scoped_ptr<BlinkFlowCriticalLine::LogHelper> blink_log_helper_;
   Function* complete_finish_parse_critical_line_driver_fn_;
   Function* complete_finish_parse_html_change_driver_fn_;

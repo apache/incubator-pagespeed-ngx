@@ -95,7 +95,7 @@ const char CacheHtmlFlow::kNumCacheHtmlSmartdiffMismatches[] =
 // Does not take ownership of the passed in log records.
 class CacheHtmlFlow::LogHelper {
  public:
-  LogHelper(LogRecord* log_record1, LogRecord* log_record2)
+  LogHelper(AbstractLogRecord* log_record1, AbstractLogRecord* log_record2)
       : log_record1_(log_record1), log_record2_(log_record2) {}
 
   void SetCacheHtmlRequestFlow(int32 cache_html_request_flow) {
@@ -111,8 +111,8 @@ class CacheHtmlFlow::LogHelper {
   }
 
  private:
-  LogRecord* log_record1_;
-  LogRecord* log_record2_;
+  AbstractLogRecord* log_record1_;
+  AbstractLogRecord* log_record2_;
 
   DISALLOW_COPY_AND_ASSIGN(LogHelper);
 };
@@ -147,7 +147,7 @@ class CacheHtmlComputationFetch : public AsyncFetch {
   CacheHtmlComputationFetch(const GoogleString& url,
                             RewriteDriver* rewrite_driver,
                             CacheHtmlInfo* cache_html_info,
-                            LogRecord* cache_html_log_record,
+                            AbstractLogRecord* cache_html_log_record,
                             CacheHtmlFlow::LogHelper* cache_html_log_helper)
       : AsyncFetch(rewrite_driver->request_context()),
         url_(url),
@@ -512,7 +512,7 @@ class CacheHtmlComputationFetch : public AsyncFetch {
   // RewriteDriver used to parse the buffered html content.
   RewriteDriver* cache_html_computation_driver_;
   RewriteDriver* html_change_detection_driver_;
-  scoped_ptr<LogRecord> cache_html_log_record_;
+  scoped_ptr<AbstractLogRecord> cache_html_log_record_;
   scoped_ptr<CacheHtmlFlow::LogHelper> cache_html_log_helper_;
   scoped_ptr<CacheHtmlInfo> cache_html_info_;
   Function* complete_finish_parse_cache_html_driver_fn_;
@@ -714,6 +714,7 @@ void CacheHtmlFlow::CacheHtmlHit(PropertyPage* page) {
   new_driver->set_response_headers_ptr(base_fetch_->response_headers());
   new_driver->set_flushing_cached_html(true);
   new_driver->SetWriter(base_fetch_);
+  new_driver->SetUserAgent(rewrite_driver_->user_agent());
   new_driver->StartParse(url_);
 
   InitDriverWithPropertyCacheValues(new_driver, page);

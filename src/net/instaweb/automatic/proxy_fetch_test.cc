@@ -216,7 +216,8 @@ TEST_F(ProxyFetchTest, TestInhibitParsing) {
   // We never parsed the HTML, but we did log HTML content type.
   EXPECT_FALSE(mock_proxy_fetch->started_parse_);
   {
-    LogRecord* log_record = mock_proxy_fetch->request_context()->log_record();
+    AbstractLogRecord* log_record =
+        mock_proxy_fetch->request_context()->log_record();
     ScopedMutex lock(log_record->mutex());
     LoggingInfo* info = log_record->logging_info();
     EXPECT_TRUE(info->is_html_response());

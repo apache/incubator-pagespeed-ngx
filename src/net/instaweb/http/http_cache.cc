@@ -468,7 +468,7 @@ HTTPCache::Callback::~Callback() {
   }
 }
 
-LogRecord* HTTPCache::Callback::log_record() {
+AbstractLogRecord* HTTPCache::Callback::log_record() {
   return request_context()->log_record();
 }
 

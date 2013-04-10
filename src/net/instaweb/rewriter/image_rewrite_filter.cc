@@ -197,11 +197,12 @@ void LogImageBackgroundRewriteActivity(
     return;
   }
 
-  LogRecord* log_record = driver->request_context()->GetBackgroundRewriteLog(
-      driver->server_context()->thread_system(),
-      options->allow_logging_urls_in_log_record(),
-      options->log_url_indices(),
-      options->max_rewrite_info_log_size());
+  AbstractLogRecord* log_record =
+      driver->request_context()->GetBackgroundRewriteLog(
+          driver->server_context()->thread_system(),
+          options->allow_logging_urls_in_log_record(),
+          options->log_url_indices(),
+          options->max_rewrite_info_log_size());
 
   // Write log for background rewrites.
   log_record->LogImageBackgroundRewriteActivity(status, url, id, original_size,

@@ -53,13 +53,13 @@
 
 namespace net_instaweb {
 
+class AbstractLogRecord;
 class CountingUrlAsyncFetcher;
 class DelayCache;
 class HTTPValue;
 class Hasher;
 class HtmlWriterFilter;
 class LRUCache;
-class LogRecord;
 class MessageHandler;
 class MockScheduler;
 class PropertyCache;
@@ -624,9 +624,13 @@ class RewriteTestBase : public RewriteOptionsTestBase {
 
   // Convenience method for verifying that the rewriter info entries have
   // expected values.
-  void VerifyRewriterInfoEntry(LogRecord* log_record, const GoogleString& id,
-      int url_index, int rewriter_info_index, int rewriter_info_size,
-      int url_list_size, const GoogleString& url);
+  void VerifyRewriterInfoEntry(AbstractLogRecord* log_record,
+                               const GoogleString& id,
+                               int url_index,
+                               int rewriter_info_index,
+                               int rewriter_info_size,
+                               int url_list_size,
+                               const GoogleString& url);
 
   // Sets current_user_agent_
   void SetCurrentUserAgent(const StringPiece& user_agent) {

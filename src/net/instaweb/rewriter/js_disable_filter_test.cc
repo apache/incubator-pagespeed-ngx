@@ -61,7 +61,7 @@ class JsDisableFilterTest : public RewriteTestBase {
   }
 
   void ExpectLogRecord(int index, int status, bool has_pagespeed_no_defer) {
-    LogRecord* log_record = rewrite_driver_->log_record();
+    AbstractLogRecord* log_record = rewrite_driver_->log_record();
     const RewriterInfo& rewriter_info =
         log_record->logging_info()->rewriter_info(index);
     EXPECT_EQ("jd", rewriter_info.id());

@@ -43,10 +43,10 @@
 namespace net_instaweb {
 
 class AbstractClientState;
+class AbstractLogRecord;
 class AbstractMutex;
 class CacheUrlAsyncFetcher;
 class Function;
-class LogRecord;
 class MessageHandler;
 class ProxyFetch;
 class ProxyFetchPropertyCallbackCollector;
@@ -145,7 +145,8 @@ class ProxyFetchPropertyCallback : public PropertyPage {
   virtual void Done(bool success);
 
   // Adds logs for the given PropertyPage to the specified cohort info index.
-  virtual void LogPageCohortInfo(LogRecord* log_record, int cohort_index);
+  virtual void LogPageCohortInfo(AbstractLogRecord* log_record,
+                                 int cohort_index);
 
  private:
   CacheType cache_type_;

@@ -31,9 +31,9 @@
 
 namespace net_instaweb {
 
+class AbstractLogRecord;
 class CacheInterface;
 class Hasher;
-class LogRecord;
 class MessageHandler;
 class RequestHeaders;
 class Statistics;
@@ -140,7 +140,7 @@ class HTTPCache {
     }
     HTTPValue* fallback_http_value() { return &fallback_http_value_; }
 
-    LogRecord* log_record();
+    AbstractLogRecord* log_record();
     const RequestContextPtr& request_context() { return request_ctx_; }
     void set_log_timing(bool t) { log_timing_ = t; }
     bool log_timing() const { return log_timing_; }

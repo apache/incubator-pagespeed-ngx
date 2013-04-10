@@ -55,13 +55,13 @@ class AbstractMutex;
 //      contexts.
 
 // Subclasses may wrap some other type of protobuf; they must still provide
-// access to a LogRecord instance, however.
-class LogRecord  {
+// access to a LoggingInfo instance, however.
+class AbstractLogRecord  {
  public:
-  // Construct a LogRecord with a new LoggingInfo proto and caller-
+  // Construct a AbstractLogRecord with a new LoggingInfo proto and caller-
   // supplied mutex. This class takes ownership of the mutex.
-  explicit LogRecord(AbstractMutex* mutex);
-  virtual ~LogRecord();
+  explicit AbstractLogRecord(AbstractMutex* mutex);
+  virtual ~AbstractLogRecord();
 
   // For compatibility with older logging methods, returns a comma-joined string
   // concatenating the sorted coalesced rewriter ids of APPLIED_OK entries in
@@ -97,9 +97,10 @@ class LogRecord  {
   void LogRewriterApplicationStatus(
       const char* rewriter_id, RewriterApplication::Status status);
 
+  // TODO(gee): Deprecate raw access to proto.
   // Return the LoggingInfo proto wrapped by this class. Calling code must
   // guard any reads and writes to this using mutex().
-  virtual LoggingInfo* logging_info();
+  virtual LoggingInfo* logging_info() = 0;
 
   // TODO(huibao): Rename LogImageBackgroundRewriteActivity() to make it clear
   // that it will log even when the rewriting finishes in the line-of-request.
@@ -195,7 +196,7 @@ class LogRecord  {
   bool WriteLog();
 
   // Return the mutex associated with this instance. Calling code should
-  // guard reads and writes of LogRecords
+  // guard reads and writes of AbstractLogRecords
   AbstractMutex* mutex() { return mutex_.get(); }
 
   // Sets the maximum number of RewriterInfo submessages that can accumulate in
@@ -244,15 +245,34 @@ class LogRecord  {
     int max_rewrite_info_log_size);
 
 
+  // Sets the time from the start of the request till it begins getting
+  // processed.
+  void SetTimeToStartProcessing(int64 end_ms) {
+    SetTimeFromRequestStart(
+        &TimingInfo::set_time_to_start_processing_ms, end_ms);
+  }
+
+  // Sets the time from the start of the request till the start of parsing.
+  void SetTimeToStartParse(int64 end_ms) {
+    SetTimeFromRequestStart(
+        &TimingInfo::set_time_to_start_parse_ms, end_ms);
+  }
+
+  // Sets the time from the start of the request till the start of the pcache
+  // lookup.
+  void SetTimeToPcacheStart(int64 end_ms) {
+    SetTimeFromRequestStart(
+        &TimingInfo::set_time_to_pcache_lookup_start_ms, end_ms);
+  }
+
+  // Sets the time from the start of the request till the end of the pcache
+  // lookup.
+  void SetTimeToPcacheEnd(int64 end_ms) {
+    SetTimeFromRequestStart(
+        &TimingInfo::set_time_to_pcache_lookup_end_ms, end_ms);
+  }
+
  protected:
-  // Non-initializing default constructor for subclasses. Subclasses that invoke
-  // this constructor should implement and call their own initializer that
-  // instantiates the wrapped logging proto and calls set_mutex with a valid
-  // Mutex object.
-  LogRecord();
-
-  void set_mutex(AbstractMutex* m);
-
   // Implements setting Blink-specific log information; base impl is a no-op.
   virtual void SetBlinkInfoImpl(const GoogleString& user_agent) {}
 
@@ -260,9 +280,11 @@ class LogRecord  {
   void SetCacheHtmlInfoImpl(const GoogleString& user_agent) {}
   // Implements writing a log, base implementation is a no-op. Returns false if
   // writing failed.
-  virtual bool WriteLogImpl() { return true; }
+  virtual bool WriteLogImpl() = 0;
 
  private:
+  typedef void (TimingInfo::*SetTimeFromStartFn)(int64);
+
   // Called on construction.
   void InitLogging();
 
@@ -273,7 +295,7 @@ class LogRecord  {
   // and LogRewrite.
   void PopulateRewriterStatusCounts();
 
-  scoped_ptr<LoggingInfo> logging_info_;
+  void SetTimeFromRequestStart(SetTimeFromStartFn fn, int64 end_ms);
 
   // Thus must be set. Implementation constructors must minimally default this
   // to a NullMutex.
@@ -305,7 +327,45 @@ class LogRecord  {
   typedef std::map<GoogleString, RewriterStatsInternal> RewriterStatsMap;
   RewriterStatsMap rewriter_stats_;
 
-  DISALLOW_COPY_AND_ASSIGN(LogRecord);
+  DISALLOW_COPY_AND_ASSIGN(AbstractLogRecord);
+};
+
+// Simple AbstractLogRecord implementation which owns a LoggingInfo protobuf.
+class LogRecord : public AbstractLogRecord {
+ public:
+  explicit LogRecord(AbstractMutex* mutex);
+
+  virtual ~LogRecord();
+
+  LoggingInfo* logging_info() { return logging_info_.get(); }
+
+  bool WriteLogImpl() { return true; }
+
+ private:
+  scoped_ptr<LoggingInfo> logging_info_;
+};
+
+// TODO(gee): I'm pretty sure the functionality can be provided by the previous
+// ALR implementation, but for the time being leave this around to make the
+// refactoring as limited as possilble.
+// AbstractLogRecord that copies logging_info() when in WriteLog.  This should
+// be useful for testing any logging flow where an owned subordinate log record
+// is needed.
+class CopyOnWriteLogRecord : public LogRecord {
+ public:
+  CopyOnWriteLogRecord(AbstractMutex* logging_mutex, LoggingInfo* logging_info)
+      : LogRecord(logging_mutex), logging_info_copy_(logging_info) {}
+
+ protected:
+  virtual bool WriteLogImpl() {
+    logging_info_copy_->CopyFrom(*logging_info());
+    return true;
+  }
+
+ private:
+  LoggingInfo* logging_info_copy_;  // Not owned by us.
+
+  DISALLOW_COPY_AND_ASSIGN(CopyOnWriteLogRecord);
 };
 
 }  // namespace net_instaweb

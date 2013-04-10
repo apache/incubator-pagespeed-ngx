@@ -52,6 +52,7 @@
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
 
@@ -392,7 +393,10 @@ ProxyFetchPropertyCallbackCollector*
     client_property_cache->Read(client_callback);
   }
 
-  if (!added_callback) {
+  if (added_callback) {
+    AbstractLogRecord* log_record = request_ctx->log_record();
+    log_record->SetTimeToPcacheStart(server_context_->timer()->NowMs());
+  } else {
     callback_collector.reset(NULL);
   }
   return callback_collector.release();
@@ -438,7 +442,8 @@ void ProxyInterface::ProxyRequestCallback(
   // Note: We preserve the User-Agent and Cookies so that the origin servers
   // send us the correct HTML. We will need to consider this for caching HTML.
 
-  LogRecord* log_record = async_fetch->request_context()->log_record();
+  AbstractLogRecord* log_record = async_fetch->request_context()->log_record();
+  log_record->SetTimeToStartProcessing(server_context_->timer()->NowMs());
   {
     ScopedMutex lock(log_record->mutex());
     log_record->logging_info()->set_is_pagespeed_resource(is_resource_fetch);

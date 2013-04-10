@@ -56,7 +56,7 @@ JsDisableFilter::~JsDisableFilter() {
 void JsDisableFilter::DetermineEnabled() {
   bool should_apply = JsDeferDisabledFilter::ShouldApply(rewrite_driver_);
   set_is_enabled(should_apply);
-  LogRecord* log_record = rewrite_driver_->log_record();
+  AbstractLogRecord* log_record = rewrite_driver_->log_record();
   if (should_apply) {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDisableJavascript),

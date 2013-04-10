@@ -31,49 +31,29 @@ namespace net_instaweb {
 
 const char kRewriterIdSeparator[] = ",";
 
-LogRecord::LogRecord(AbstractMutex* mutex) : mutex_(mutex) {
-  // TODO(gee): Remove multiple initialization methods.
-  InitLogging();
-}
-
-// Non-initializing constructor for subclasses to invoke.
-LogRecord::LogRecord()
-    : rewriter_info_max_size_(-1),
+AbstractLogRecord::AbstractLogRecord(AbstractMutex* mutex)
+    : mutex_(mutex),
+      rewriter_info_max_size_(-1),
       allow_logging_urls_(false),
-      log_url_indices_(false) {}
-
-void LogRecord::InitLogging() {
-  logging_info_.reset(new LoggingInfo);
-  rewriter_info_max_size_ = -1;
-  allow_logging_urls_ = false;
-  log_url_indices_ = false;
+      log_url_indices_(false) {
 }
 
-LogRecord::~LogRecord() {
+AbstractLogRecord::~AbstractLogRecord() {
   mutex_->DCheckUnlocked();
   // Please do not add non-diagnostic functionality here.
   //
-  // LogRecords are typically owned by reference counted objects, and
+  // AbstractLogRecords are typically owned by reference counted objects, and
   // doing work in the dtor will result in actions being taken at
   // unpredictable times, leading to difficult to diagnose performance
   // and correctness bugs.
 }
 
-void LogRecord::set_mutex(AbstractMutex* m) {
-  CHECK(mutex_.get() == NULL);
-  mutex_.reset(m);
-}
-
-LoggingInfo* LogRecord::logging_info() {
-  return logging_info_.get();
-}
-
-void LogRecord::SetIsHtml(bool is_html) {
+void AbstractLogRecord::SetIsHtml(bool is_html) {
   ScopedMutex lock(mutex_.get());
   logging_info()->set_is_html_response(true);
 }
 
-int LogRecord::AddPropertyCohortInfo(const GoogleString& cohort) {
+int AbstractLogRecord::AddPropertyCohortInfo(const GoogleString& cohort) {
   ScopedMutex lock(mutex_.get());
   PropertyCohortInfo* cohort_info =
       logging_info()->mutable_property_page_info()->add_cohort_info();
@@ -81,14 +61,14 @@ int LogRecord::AddPropertyCohortInfo(const GoogleString& cohort) {
   return logging_info()->property_page_info().cohort_info_size() - 1;
 }
 
-void LogRecord::AddFoundPropertyToCohortInfo(
+void AbstractLogRecord::AddFoundPropertyToCohortInfo(
     int index, const GoogleString& property) {
   ScopedMutex lock(mutex_.get());
   logging_info()->mutable_property_page_info()->mutable_cohort_info(index)->
       add_properties_found(property);
 }
 
-void LogRecord::SetCacheStatusForCohortInfo(
+void AbstractLogRecord::SetCacheStatusForCohortInfo(
     int index, bool found, int key_state) {
   ScopedMutex lock(mutex_.get());
   PropertyCohortInfo* cohort_info =
@@ -97,8 +77,8 @@ void LogRecord::SetCacheStatusForCohortInfo(
   cohort_info->set_cache_key_state(key_state);
 }
 
-void LogRecord::SetDeviceAndCacheTypeForCohortInfo(int index, int device_type,
-                                                   int cache_type) {
+void AbstractLogRecord::SetDeviceAndCacheTypeForCohortInfo(
+    int index, int device_type, int cache_type) {
   ScopedMutex lock(mutex_.get());
   PropertyCohortInfo* cohort_info =
       logging_info()->mutable_property_page_info()->mutable_cohort_info(index);
@@ -106,7 +86,7 @@ void LogRecord::SetDeviceAndCacheTypeForCohortInfo(int index, int device_type,
   cohort_info->set_cache_type(cache_type);
 }
 
-RewriterInfo* LogRecord::NewRewriterInfo(const char* rewriter_id) {
+RewriterInfo* AbstractLogRecord::NewRewriterInfo(const char* rewriter_id) {
   ScopedMutex lock(mutex_.get());
   if (rewriter_info_max_size_ != -1 &&
       logging_info()->rewriter_info_size() >= rewriter_info_max_size_) {
@@ -121,12 +101,12 @@ RewriterInfo* LogRecord::NewRewriterInfo(const char* rewriter_id) {
   return rewriter_info;
 }
 
-void LogRecord::SetRewriterLoggingStatus(
+void AbstractLogRecord::SetRewriterLoggingStatus(
     const char* id, RewriterApplication::Status status) {
   SetRewriterLoggingStatus(id, "", status);
 }
 
-void LogRecord::SetRewriterLoggingStatus(
+void AbstractLogRecord::SetRewriterLoggingStatus(
     const char* id, const GoogleString& url,
     RewriterApplication::Status application_status) {
   LogRewriterApplicationStatus(id, application_status);
@@ -144,7 +124,7 @@ void LogRecord::SetRewriterLoggingStatus(
   rewriter_info->set_status(application_status);
 }
 
-void LogRecord::LogRewriterHtmlStatus(
+void AbstractLogRecord::LogRewriterHtmlStatus(
     const char* rewriter_id,
     RewriterHtmlApplication::Status status) {
   ScopedMutex lock(mutex_.get());
@@ -153,7 +133,7 @@ void LogRecord::LogRewriterHtmlStatus(
   rewriter_stats_[rewriter_id].html_status = status;
 }
 
-void LogRecord::LogRewriterApplicationStatus(
+void AbstractLogRecord::LogRewriterApplicationStatus(
     const char* rewriter_id,
     RewriterApplication::Status status) {
   ScopedMutex lock(mutex_.get());
@@ -162,14 +142,14 @@ void LogRecord::LogRewriterApplicationStatus(
   stats->status_counts[status]++;
 }
 
-void LogRecord::SetBlinkRequestFlow(int flow) {
+void AbstractLogRecord::SetBlinkRequestFlow(int flow) {
   DCHECK(BlinkInfo::BlinkRequestFlow_IsValid(flow));
   ScopedMutex lock(mutex_.get());
   logging_info()->mutable_blink_info()->set_blink_request_flow(
       static_cast<BlinkInfo::BlinkRequestFlow>(flow));
 }
 
-void LogRecord::SetCacheHtmlRequestFlow(int flow) {
+void AbstractLogRecord::SetCacheHtmlRequestFlow(int flow) {
   DCHECK(CacheHtmlLoggingInfo::CacheHtmlRequestFlow_IsValid(flow));
   ScopedMutex lock(mutex_.get());
   CacheHtmlLoggingInfo* cache_html_logging_info =
@@ -178,27 +158,27 @@ void LogRecord::SetCacheHtmlRequestFlow(int flow) {
       static_cast<CacheHtmlLoggingInfo::CacheHtmlRequestFlow>(flow));
 }
 
-void LogRecord::SetIsOriginalResourceCacheable(bool cacheable) {
+void AbstractLogRecord::SetIsOriginalResourceCacheable(bool cacheable) {
   ScopedMutex lock(mutex_.get());
   logging_info()->set_is_original_resource_cacheable(cacheable);
 }
 
-void LogRecord::SetTimingRequestStartMs(int64 ms) {
+void AbstractLogRecord::SetTimingRequestStartMs(int64 ms) {
   ScopedMutex lock(mutex_.get());
   logging_info()->mutable_timing_info()->set_request_start_ms(ms);
 }
 
-void LogRecord::SetTimingHeaderFetchMs(int64 ms) {
+void AbstractLogRecord::SetTimingHeaderFetchMs(int64 ms) {
   ScopedMutex lock(mutex_.get());
   logging_info()->mutable_timing_info()->set_header_fetch_ms(ms);
 }
 
-void LogRecord::SetTimingFetchMs(int64 ms) {
+void AbstractLogRecord::SetTimingFetchMs(int64 ms) {
   ScopedMutex lock(mutex_.get());
   logging_info()->mutable_timing_info()->set_fetch_ms(ms);
 }
 
-int64 LogRecord::GetTimingFetchMs() {
+int64 AbstractLogRecord::GetTimingFetchMs() {
   ScopedMutex lock(mutex_.get());
   if (logging_info()->has_timing_info()) {
     return logging_info()->timing_info().fetch_ms();
@@ -207,36 +187,49 @@ int64 LogRecord::GetTimingFetchMs() {
   }
 }
 
-void LogRecord::SetTimingProcessingTimeMs(int64 ms) {
+void AbstractLogRecord::SetTimingProcessingTimeMs(int64 ms) {
   ScopedMutex lock(mutex_.get());
   logging_info()->mutable_timing_info()->set_processing_time_ms(ms);
 }
 
-void LogRecord::UpdateTimingInfoWithFetchStartTime(int64 start_time_ms) {
+void AbstractLogRecord::UpdateTimingInfoWithFetchStartTime(
+    int64 start_time_ms) {
+  // Do not log this if it has already been logged.
   ScopedMutex lock(mutex_.get());
   TimingInfo* timing_info = logging_info()->mutable_timing_info();
-  if (timing_info->has_request_start_ms()) {
+  if (timing_info->has_request_start_ms() &&
+      !timing_info->has_time_to_start_fetch_ms()) {
     timing_info->set_time_to_start_fetch_ms(
-      start_time_ms - timing_info->request_start_ms());
+        start_time_ms - timing_info->request_start_ms());
   }
 }
 
-void LogRecord::SetBlinkInfo(const GoogleString& user_agent) {
+void AbstractLogRecord::SetTimeFromRequestStart(SetTimeFromStartFn fn,
+                                                int64 end_ms) {
+  ScopedMutex lock(mutex_.get());
+  TimingInfo* timing_info = logging_info()->mutable_timing_info();
+  if (timing_info->has_request_start_ms()) {
+    (timing_info->*fn)(end_ms - timing_info->request_start_ms());
+  }
+}
+
+void AbstractLogRecord::SetBlinkInfo(const GoogleString& user_agent) {
   ScopedMutex lock(mutex_.get());
   SetBlinkInfoImpl(user_agent);
 }
 
-void LogRecord::SetCacheHtmlLoggingInfo(const GoogleString& user_agent) {
+void AbstractLogRecord::SetCacheHtmlLoggingInfo(
+    const GoogleString& user_agent) {
   SetCacheHtmlInfoImpl(user_agent);
 }
 
-bool LogRecord::WriteLog() {
+bool AbstractLogRecord::WriteLog() {
   ScopedMutex lock(mutex_.get());
   PopulateRewriterStatusCounts();
   return WriteLogImpl();
 }
 
-GoogleString LogRecord::AppliedRewritersString() {
+GoogleString AbstractLogRecord::AppliedRewritersString() {
   mutex_->DCheckLocked();
   StringSet applied_rewriters;
   for (int i = 0, e = logging_info()->rewriter_info_size();
@@ -263,22 +256,22 @@ GoogleString LogRecord::AppliedRewritersString() {
   return rewriters_str;
 }
 
-void LogRecord::SetRewriterInfoMaxSize(int x) {
+void AbstractLogRecord::SetRewriterInfoMaxSize(int x) {
   ScopedMutex lock(mutex_.get());
   rewriter_info_max_size_ = x;
 }
 
-void LogRecord::SetAllowLoggingUrls(bool allow_logging_urls) {
+void AbstractLogRecord::SetAllowLoggingUrls(bool allow_logging_urls) {
   ScopedMutex lock(mutex_.get());
   allow_logging_urls_ = allow_logging_urls;
 }
 
-void LogRecord::SetLogUrlIndices(bool log_url_indices) {
+void AbstractLogRecord::SetLogUrlIndices(bool log_url_indices) {
   ScopedMutex lock(mutex_.get());
   log_url_indices_ = log_url_indices;
 }
 
-void LogRecord::LogFlushEarlyActivity(
+void AbstractLogRecord::LogFlushEarlyActivity(
     const char* id,
     const GoogleString& url,
     RewriterApplication::Status status,
@@ -304,7 +297,7 @@ void LogRecord::LogFlushEarlyActivity(
   flush_early_resource_info->set_in_head(in_head);
 }
 
-void LogRecord::LogImageRewriteActivity(
+void AbstractLogRecord::LogImageRewriteActivity(
     const char* id,
     const GoogleString& url,
     RewriterApplication::Status status,
@@ -340,7 +333,7 @@ void LogRecord::LogImageRewriteActivity(
   rewriter_info->set_status(status);
 }
 
-void LogRecord::LogJsDisableFilter(const char* id,
+void AbstractLogRecord::LogJsDisableFilter(const char* id,
                                    bool has_pagespeed_no_defer) {
   LogRewriterApplicationStatus(id, RewriterApplication::APPLIED_OK);
 
@@ -356,7 +349,7 @@ void LogRecord::LogJsDisableFilter(const char* id,
   rewriter_info->set_status(RewriterApplication::APPLIED_OK);
 }
 
-void LogRecord::LogLazyloadFilter(
+void AbstractLogRecord::LogLazyloadFilter(
     const char* id, RewriterApplication::Status status,
     bool is_blacklisted, bool is_critical) {
   RewriterInfo* rewriter_info = NewRewriterInfo(id);
@@ -376,7 +369,7 @@ void LogRecord::LogLazyloadFilter(
   rewriter_info->set_status(status);
 }
 
-void LogRecord::PopulateUrl(
+void AbstractLogRecord::PopulateUrl(
     const GoogleString& url, RewriteResourceInfo* rewrite_resource_info) {
   mutex()->DCheckLocked();
   std::pair<StringIntMap::iterator, bool> result = url_index_map_.insert(
@@ -394,24 +387,25 @@ void LogRecord::PopulateUrl(
   rewrite_resource_info->set_original_resource_url_index(iter->second);
 }
 
-void LogRecord::SetNumHtmlCriticalImages(int num_html_critical_images) {
+void AbstractLogRecord::SetNumHtmlCriticalImages(int num_html_critical_images) {
   ScopedMutex lock(mutex_.get());
   logging_info()->set_num_html_critical_images(num_html_critical_images);
 }
 
-void LogRecord::SetNumCssCriticalImages(int num_css_critical_images) {
+void AbstractLogRecord::SetNumCssCriticalImages(int num_css_critical_images) {
   ScopedMutex lock(mutex_.get());
   logging_info()->set_num_css_critical_images(num_css_critical_images);
 }
 
-void LogRecord::SetImageStats(int num_img_tags, int num_inlined_img_tags) {
+void AbstractLogRecord::SetImageStats(int num_img_tags,
+                                      int num_inlined_img_tags) {
   ScopedMutex lock(mutex_.get());
   logging_info()->mutable_image_stats()->set_num_img_tags(num_img_tags);
   logging_info()->mutable_image_stats()
       ->set_num_inlined_img_tags(num_inlined_img_tags);
 }
 
-void LogRecord::SetCriticalCssInfo(int critical_inlined_bytes,
+void AbstractLogRecord::SetCriticalCssInfo(int critical_inlined_bytes,
                                    int original_external_bytes,
                                    int overhead_bytes) {
   ScopedMutex lock(mutex_.get());
@@ -421,7 +415,7 @@ void LogRecord::SetCriticalCssInfo(int critical_inlined_bytes,
   info->set_overhead_bytes(overhead_bytes);
 }
 
-void LogRecord::PopulateRewriterStatusCounts() {
+void AbstractLogRecord::PopulateRewriterStatusCounts() {
   mutex_->DCheckLocked();
   if (logging_info() == NULL) {
     return;
@@ -455,7 +449,7 @@ void LogRecord::PopulateRewriterStatusCounts() {
   }
 }
 
-void LogRecord::LogDeviceInfo(
+void AbstractLogRecord::LogDeviceInfo(
     int device_type,
     bool supports_image_inlining,
     bool supports_lazyload_images,
@@ -481,7 +475,7 @@ void LogRecord::LogDeviceInfo(
   device_info->set_can_preload_resources(can_preload_resources);
 }
 
-void LogRecord::LogImageBackgroundRewriteActivity(
+void AbstractLogRecord::LogImageBackgroundRewriteActivity(
     RewriterApplication::Status status,
     const GoogleString& url,
     const char* id,
@@ -532,7 +526,7 @@ void LogRecord::LogImageBackgroundRewriteActivity(
   image_rewrite_resource_info->set_is_resized(is_resized);
 }
 
-void LogRecord::SetBackgroundRewriteInfo(
+void AbstractLogRecord::SetBackgroundRewriteInfo(
     bool log_urls,
     bool log_url_indices,
     int max_rewrite_info_log_size) {
@@ -540,5 +534,12 @@ void LogRecord::SetBackgroundRewriteInfo(
   SetLogUrlIndices(log_url_indices);
   SetRewriterInfoMaxSize(max_rewrite_info_log_size);
 }
+
+LogRecord::LogRecord(AbstractMutex* mutex)
+    : AbstractLogRecord(mutex),
+      logging_info_(new LoggingInfo) {
+}
+
+LogRecord::~LogRecord() {}
 
 }  // namespace net_instaweb

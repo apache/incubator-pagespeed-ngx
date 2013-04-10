@@ -44,6 +44,7 @@
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/message_handler.h"
 #include "net/instaweb/util/public/queued_alarm.h"
+#include "net/instaweb/util/public/ref_counted_ptr.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -199,7 +200,7 @@ void ProxyFetchPropertyCallback::Done(bool success) {
 }
 
 void ProxyFetchPropertyCallback::LogPageCohortInfo(
-    LogRecord* log_record, int cohort_index) {
+    AbstractLogRecord* log_record, int cohort_index) {
   log_record->SetDeviceAndCacheTypeForCohortInfo(
       cohort_index, device_type_, cache_type_);
 }
@@ -301,6 +302,10 @@ void ProxyFetchPropertyCallbackCollector::Done(
     }
   }
   if (call_post) {
+    DCHECK(request_context_.get() != NULL);
+    request_context_->log_record()->SetTimeToPcacheEnd(
+        server_context_->timer()->NowMs());
+
     ThreadSynchronizer* sync = resource_manager->thread_synchronizer();
     sync->Signal(ProxyFetch::kCollectorReady);
     sync->Wait(ProxyFetch::kCollectorDetach);
@@ -989,15 +994,7 @@ void ProxyFetch::ExecuteQueued() {
   }
 
   if (!parse_text_called_) {
-    DCHECK(request_context().get() != NULL);
-    ScopedMutex lock(log_record()->mutex());
-    TimingInfo* timing_info =
-        log_record()->logging_info()->mutable_timing_info();
-    if (timing_info->has_request_start_ms()) {
-      timing_info->set_time_to_start_parse_ms(
-          server_context_->timer()->NowMs() -
-              timing_info->request_start_ms());
-    }
+    log_record()->SetTimeToStartParse(server_context_->timer()->NowMs());
     parse_text_called_ = true;
   }
 

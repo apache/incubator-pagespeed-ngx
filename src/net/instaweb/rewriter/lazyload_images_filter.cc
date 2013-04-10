@@ -197,7 +197,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
     // TODO(rahulbansal): Log separately for pagespeed_no_defer.
     return;
   }
-  LogRecord* log_record = driver_->log_record();
+  AbstractLogRecord* log_record = driver_->log_record();
   if (element->FindAttribute(HtmlName::kOnload) != NULL ||
       element->FindAttribute(HtmlName::kDataSrc) != NULL ||
       element->FindAttribute(HtmlName::kPagespeedLazySrc) != NULL) {

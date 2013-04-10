@@ -237,7 +237,7 @@ bool DelayImagesFilter::DisableInplaceLowResForMobile() const {
 }
 
 void DelayImagesFilter::DetermineEnabled() {
-  LogRecord* log_record = driver_->log_record();
+  AbstractLogRecord* log_record = driver_->log_record();
   if (!driver_->device_properties()->SupportsImageInlining()) {
     log_record->LogRewriterHtmlStatus(
         RewriteOptions::FilterId(RewriteOptions::kDelayImages),

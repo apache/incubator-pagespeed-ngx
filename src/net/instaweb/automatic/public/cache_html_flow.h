@@ -28,8 +28,8 @@
 
 namespace net_instaweb {
 
+class AbstractLogRecord;
 class AsyncFetch;
-class LogRecord;
 class MessageHandler;
 class PropertyPage;
 class ProxyFetchPropertyCallbackCollector;
@@ -110,7 +110,7 @@ class CacheHtmlFlow {
   AsyncFetch* base_fetch_;
   // Cache Html Flow needs its own log record since it needs to log even after
   // the main log record is written out when the request processing is finished.
-  scoped_ptr<LogRecord> cache_html_log_record_;
+  scoped_ptr<AbstractLogRecord> cache_html_log_record_;
   RewriteDriver* rewrite_driver_;
   const RewriteOptions* options_;
   ProxyFetchFactory* factory_;

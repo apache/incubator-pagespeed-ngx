@@ -24,16 +24,38 @@ import "net/instaweb/util/enums.proto";
 package net_instaweb;
 
 
-// This proto stores all information related to latency.
-// Next id for TimingInfo : 10
-message TimingInfo  {
-  // Local cache lookup time in ms.
+// This proto is expected to track the time taken by various components of page
+// speed service processing. Overall, the PSS processing time can be broken down
+// into time taken by the following constituents:
+// Kansas lookup
+// Local + remote cache lookup
+// Property cache lookup
+// Fastnet fetch
+// Rewriting
+// Streaming
+//
+// Here is the ordering of events.
+// 1. request_start_ms
+// 2. time_to_start_processing_ms
+// 3. time_to_pcache_lookup_start_ms
+// 4. time_to_start_fetch_ms | time_to_pcache_lookup_end_ms
+// 5. time_to_start_parse_ms
+// 6. time_to_first_byte_ms
+//
+// Note that cache1_ms, cache2_ms, header_fetch_ms and fetch_ms represent the
+// absolute times for the HTTP cache lookup and the fetch.
+//
+// Please make sure you keep this proto in sync with the proto at
+// //net/instaweb/http/logging.proto
+// Next id for TimingInfo: 13
+message TimingInfo {
+  // Local HTTP cache lookup time in ms.
   optional int64 cache1_ms = 1;
-  // Remote cache lookup time in ms.
+  // Remote HTTP cache lookup time in ms.
   optional int64 cache2_ms = 2;
   // Time taken to fetch the http header.
   optional int64 header_fetch_ms = 3;
-  // Time taken to fetch the resource from the source.
+  // Time taken by fastnet to fetch the entire resource.
   optional int64 fetch_ms = 4;
   // Time taken to send the first byte back to the client.
   optional int64 time_to_first_byte_ms = 5;
@@ -45,8 +67,15 @@ message TimingInfo  {
   // Time from the start of the request to when the fetch is triggered. Note
   // that this is only set for requests that require a fetch.
   optional int64 time_to_start_fetch_ms = 8;
-  // Time for processing the request.
+  // Time for processing the request, i.e. wall time when the response is fully
+  // generated - request_start_ms - fetch_ms.
   optional int64 processing_time_ms = 9;
+  // Time from start of request till we begin processing it.
+  optional int64 time_to_start_processing_ms = 10;
+  // Time from start of request till pcache lookup is started.
+  optional int64 time_to_pcache_lookup_start_ms = 11;
+  // Time from start of request till pcache lookup is completed.
+  optional int64 time_to_pcache_lookup_end_ms = 12;
 }
 
 // This proto stores all Blink requests related information.  These are logged

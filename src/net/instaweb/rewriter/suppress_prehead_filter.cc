@@ -131,7 +131,7 @@ void SuppressPreheadFilter::Clear() {
 void SuppressPreheadFilter::EndDocument() {
   int64 header_fetch_ms = -1;
   {
-    LogRecord* log_record = driver_->log_record();
+    AbstractLogRecord* log_record = driver_->log_record();
     ScopedMutex lock(log_record->mutex());
     // It is assumed that default value of is_original_resource_cacheable is
     // true. This field will be set only if original resource is not cacheable.

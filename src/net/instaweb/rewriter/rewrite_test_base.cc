@@ -1005,7 +1005,7 @@ GoogleString RewriteTestBase::AppliedRewriterStringFromLog() {
 
 
 void RewriteTestBase::VerifyRewriterInfoEntry(
-    LogRecord* log_record, const GoogleString& id, int url_index,
+    AbstractLogRecord* log_record, const GoogleString& id, int url_index,
     int rewriter_info_index, int rewriter_info_size, int url_list_size,
     const GoogleString& url) {
   ScopedMutex lock(log_record->mutex());

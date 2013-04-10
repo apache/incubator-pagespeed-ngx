@@ -51,6 +51,7 @@
 
 namespace net_instaweb {
 
+class AbstractLogRecord;
 class AbstractMutex;
 class AddInstrumentationFilter;
 class AsyncFetch;
@@ -68,7 +69,6 @@ class Function;
 class HtmlFilter;
 class HtmlWriterFilter;
 class LoggingFilter;
-class LogRecord;
 class MessageHandler;
 class OutputResource;
 class PropertyPage;
@@ -935,9 +935,9 @@ class RewriteDriver : public HtmlParse {
   // be used in subsequent request.
   void SaveOriginalHeaders(const ResponseHeaders& response_headers);
 
-  // log_record() always returns a pointer to a valid LogRecord, owned by the
-  // rewrite_driver's request context.
-  LogRecord* log_record();
+  // log_record() always returns a pointer to a valid AbstractLogRecord, owned
+  // by the rewrite_driver's request context.
+  AbstractLogRecord* log_record();
 
   // Determines whether the system is healthy enough to rewrite resources.
   // Currently, systems get sick based on the health of the metadata cache.
@@ -1098,7 +1098,7 @@ class RewriteDriver : public HtmlParse {
   // Used by CreateCacheFetcher() and CreateCacheOnlyFetcher().
   CacheUrlAsyncFetcher* CreateCustomCacheFetcher(UrlAsyncFetcher* base_fetcher);
 
-  // Log statistics to the LogRecord.
+  // Log statistics to the AbstractLogRecord.
   void LogStats();
 
   // Only the first base-tag is significant for a document -- any subsequent

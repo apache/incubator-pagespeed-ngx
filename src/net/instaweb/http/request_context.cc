@@ -46,7 +46,7 @@ RequestContextPtr RequestContext::NewTestRequestContext(
   return RequestContextPtr(new RequestContext(thread_system->NewMutex()));
 }
 
-LogRecord* RequestContext::NewSubordinateLogRecord(
+AbstractLogRecord* RequestContext::NewSubordinateLogRecord(
     AbstractMutex* logging_mutex) {
   return new LogRecord(logging_mutex);
 }
@@ -55,14 +55,9 @@ void RequestContext::set_root_trace_context(RequestTrace* x) {
   root_trace_context_.reset(x);
 }
 
-LogRecord* RequestContext::log_record() {
+AbstractLogRecord* RequestContext::log_record() {
   DCHECK(log_record_.get() != NULL);
   return log_record_.get();
-}
-
-void RequestContext::set_log_record(LogRecord* l) {
-  CHECK(log_record_.get() == NULL);
-  log_record_.reset(l);
 }
 
 void RequestContext::WriteBackgroundRewriteLog() {
@@ -71,7 +66,7 @@ void RequestContext::WriteBackgroundRewriteLog() {
   }
 }
 
-LogRecord* RequestContext::GetBackgroundRewriteLog(
+AbstractLogRecord* RequestContext::GetBackgroundRewriteLog(
     ThreadSystem* thread_system,
     bool log_urls,
     bool log_url_indices,
@@ -79,7 +74,7 @@ LogRecord* RequestContext::GetBackgroundRewriteLog(
   // The mutex of the main log record is purposefully used to synchronize the
   // creation of background log record.
   ScopedMutex lock(log_record()->mutex());
-  LogRecord* log_record = background_rewrite_log_record_.get();
+  AbstractLogRecord* log_record = background_rewrite_log_record_.get();
   if (log_record == NULL) {
     // We need to create a new log record.
     log_record = NewSubordinateLogRecord(thread_system->NewMutex());

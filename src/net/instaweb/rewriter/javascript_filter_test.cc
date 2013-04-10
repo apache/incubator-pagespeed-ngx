@@ -165,7 +165,8 @@ class JavascriptFilterTest : public RewriteTestBase {
 
 TEST_F(JavascriptFilterTest, DoRewrite) {
   InitFiltersAndTest(100);
-  LogRecord* log_record = rewrite_driver_->request_context()->log_record();
+  AbstractLogRecord* log_record =
+      rewrite_driver_->request_context()->log_record();
   log_record->SetAllowLoggingUrls(true);
   ValidateExpected("do_rewrite",
                    GenerateHtml(kOrigJsName),

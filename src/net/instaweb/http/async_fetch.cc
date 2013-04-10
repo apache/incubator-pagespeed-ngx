@@ -68,7 +68,7 @@ AsyncFetch::~AsyncFetch() {
   }
 }
 
-LogRecord* AsyncFetch::log_record() {
+AbstractLogRecord* AsyncFetch::log_record() {
   CHECK(request_context().get() != NULL);
   return request_context()->log_record();
 }

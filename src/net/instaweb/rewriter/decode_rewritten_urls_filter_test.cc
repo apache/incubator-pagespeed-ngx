@@ -36,7 +36,7 @@ class DecodeRewrittenUrlsFilterTest : public RewriteTestBase {
   }
 
   void ExpectLogRecord(int index, int status) {
-    LogRecord* log_record = rewrite_driver_->log_record();
+    AbstractLogRecord* log_record = rewrite_driver_->log_record();
     const RewriterInfo& rewriter_info =
         log_record->logging_info()->rewriter_info(index);
     EXPECT_EQ("du", rewriter_info.id());

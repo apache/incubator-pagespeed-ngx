@@ -157,7 +157,7 @@ void AddInstrumentationFilter::AddScriptNode(HtmlElement* element,
   GoogleString headers_fetch_time;
   GoogleString time_to_first_byte;
   GoogleString fetch_time;
-  LogRecord* log_record = driver_->log_record();
+  AbstractLogRecord* log_record = driver_->log_record();
   {
     ScopedMutex lock(log_record->mutex());
     if (log_record->logging_info()->has_timing_info()) {
