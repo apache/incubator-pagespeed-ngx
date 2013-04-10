@@ -99,7 +99,8 @@ class MinifyExcerptFilter : public CssSummarizerBase {
     result_.clear();
     for (int i = 0; i < NumStyles(); ++i) {
       const SummaryInfo& sum = GetSummaryForStyle(i);
-      StrAppend(&result_, EncodeState(sum.state), "/", sum.data, "|");
+      StrAppend(&result_, EncodeState(sum.state), "/", sum.data,
+                (sum.is_inside_noscript ? "/noscr" : ""), "|");
     }
     InjectSummaryData(driver()->NewCommentNode(NULL, result_));
   }
@@ -214,6 +215,12 @@ TEST_F(CssSummarizerBaseTest, RenderSummary) {
                        "<style>* { background: blue; }</style>"));
   EXPECT_STREQ("<html>\n<style>div{displa</style><style>*{backgrou</style>\n"
                "<!--OK/div{displa|OK/*{backgrou|--></html>", output_buffer_);
+}
+
+TEST_F(CssSummarizerBaseTest, NoScriptHandling) {
+  Parse("ns", StrCat(CssLinkHref("a.css"),
+                     "<noscript>", CssLinkHref("a.css"), "</noscript>"));
+  EXPECT_STREQ("OK/div{displa|OK/div{displa/noscr|", filter_->result());
 }
 
 TEST_F(CssSummarizerBaseTest, NoBody) {

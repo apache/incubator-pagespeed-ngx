@@ -80,11 +80,19 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
     SetHtmlMimetype();  // Don't wrap scripts in <![CDATA[ ]]>
   }
 
+  GoogleString WrapForJsLoad(StringPiece orig_css) {
+    return StrCat("<noscript class=\"psa_add_styles\">", orig_css,
+                  "</noscript>");
+  }
+
+  GoogleString JsLoader() {
+    return StrCat("<script type=\"text/javascript\">",
+                  CriticalSelectorFilter::kAddStylesScript,
+                  "</script>");
+  }
+
   GoogleString LoadRestOfCss(StringPiece orig_css) {
-    return StrCat("<noscript id=\"psa_add_styles\">", orig_css, "</noscript>",
-                  StrCat("<script type=\"text/javascript\">",
-                         CriticalSelectorFilter::kAddStylesScript,
-                         "</script>"));
+    return StrCat(WrapForJsLoad(orig_css), JsLoader());
   }
 
   GoogleString CssLinkHrefMedia(StringPiece url, StringPiece media) {
@@ -121,6 +129,36 @@ TEST_F(CriticalSelectorFilterTest, BasicOperation) {
       StrCat("<head>", critical_css, "</head>",
              "<body><div>Stuff</div></body>",
              LoadRestOfCss(css)));
+}
+
+TEST_F(CriticalSelectorFilterTest, NoScript) {
+  GoogleString css1 =
+      "<style>*,p {display: none; } span {display: inline; }</style>";
+  GoogleString css2 =
+      StrCat("<noscript>", CssLinkHref("a.css"), "</noscript>");
+  GoogleString css3 =
+      CssLinkHref("b.css");
+  GoogleString css = StrCat(css1, css2, css3);
+
+  GoogleString critical_css =
+      "<style>*{display:none}</style>"  // from the inline
+      "<noscript></noscript>"  // from a.css
+      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+
+  GoogleString html = StrCat(
+      "<head>",
+      css,
+      "</head>"
+      "<body><div>Stuff</div></body>");
+
+  ValidateExpected(
+      "foo", html,
+      StrCat("<head>", critical_css, "</head>",
+             "<body><div>Stuff</div></body>",
+             WrapForJsLoad(css1),
+             css2,  // noscript, so not marked for JS load.
+             WrapForJsLoad(css3),
+             JsLoader()));
 }
 
 TEST_F(CriticalSelectorFilterTest, Media) {

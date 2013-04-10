@@ -138,6 +138,20 @@ TEST_F(CriticalCssBeaconFilterTest, ExtractFromOpt) {
   ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
+TEST_F(CriticalCssBeaconFilterTest, DontExtractFromNoScript) {
+  GoogleString css = StrCat(CssLinkHref("a.css"),
+                            "<noscript>", CssLinkHref("b.css"), "</noscript>");
+  GoogleString opt = StrCat(
+      CssLinkHref("a.css"),
+      "<noscript>", CssLinkHrefOpt("b.css"), "</noscript>");
+  GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
+  // Selectors only from a.css, since b.css in the noscript.
+  GoogleString output_html = StringPrintf(
+      kHtmlTemplate, opt.c_str(),
+      BeaconScriptFor("\".sec h1#id\",\"div ul > li\"").c_str());
+  ValidateExpectedUrl(kTestDomain, input_html, output_html);
+}
+
 TEST_F(CriticalCssBeaconFilterTest, Unauthorized) {
   GoogleString css = StrCat(CssLinkHref(kEvilUrl), kInlineStyle);
   GoogleString html = StringPrintf(kHtmlTemplate, css.c_str(), "");

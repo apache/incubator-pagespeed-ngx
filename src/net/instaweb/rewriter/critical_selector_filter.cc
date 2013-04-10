@@ -67,9 +67,23 @@ const char CriticalSelectorFilter::kSummarizedCssProperty[] =
 // TODO(ksimbili): Move this to appropriate event instead of 'onload'.
 const char CriticalSelectorFilter::kAddStylesScript[] =
     "var addAllStyles = function() {"
-    "  var div = document.createElement(\"div\");"
-    "  div.innerHTML = document.getElementById(\"psa_add_styles\").textContent;"
-    "  document.body.appendChild(div);"
+    "  var n = document.getElementsByTagName(\"noscript\");"
+    // Note that this uses separate loops to walk the noscript NodeList and
+    // to modify the DOM as modifying the DOM while walking a collection risks
+    // turning the walk quadratic.
+    "  var r = [];"
+    "  for (var i = 0; i < n.length; ++i) {"
+    "    var e = n[i];"
+    "    if (e.className == \"psa_add_styles\") {"
+    "      r.push(e);"
+    "    }"
+    "  }"
+    "  for (var i = 0; i < r.length; ++i) {"
+    "    var e = r[i];"
+    "    var div = document.createElement(\"div\");"
+    "    div.innerHTML = e.textContent;"
+    "    document.body.appendChild(div);"
+    "  }"
     "};"
     "if (window.addEventListener) {"
     "  window.addEventListener(\"load\", addAllStyles, false);"
@@ -86,8 +100,9 @@ const char CriticalSelectorFilter::kAddStylesScript[] =
 // are inserted different.
 class CriticalSelectorFilter::CssElement {
  public:
-  CssElement(HtmlParse* p, HtmlElement* e)
-      : html_parse_(p), element_(p->CloneElement(e)) {}
+  CssElement(HtmlParse* p, HtmlElement* e, bool inside_noscript)
+      : html_parse_(p), element_(p->CloneElement(e)),
+        inside_noscript_(inside_noscript) {}
 
   // HtmlParse deletes the element (regardless of whether it is inserted).
   virtual ~CssElement() {}
@@ -96,9 +111,12 @@ class CriticalSelectorFilter::CssElement {
     html_parse_->AppendChild(parent, element_);
   }
 
+  bool inside_noscript() const { return inside_noscript_; }
+
  protected:
   HtmlParse* html_parse_;
   HtmlElement* element_;
+  bool inside_noscript_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CssElement);
@@ -108,7 +126,8 @@ class CriticalSelectorFilter::CssElement {
 class CriticalSelectorFilter::CssStyleElement
     : public CriticalSelectorFilter::CssElement {
  public:
-  CssStyleElement(HtmlParse* p, HtmlElement* e) : CssElement(p, e) {}
+  CssStyleElement(HtmlParse* p, HtmlElement* e, bool inside_noscript)
+      : CssElement(p, e, inside_noscript) {}
   virtual ~CssStyleElement() {}
 
   // Call before InsertBeforeCurrent.
@@ -248,7 +267,13 @@ void CriticalSelectorFilter::RenderSummary(
   css_util::VectorizeMediaAttribute(summary.media_from_html, &all_media);
 
   element->DeleteAttribute(HtmlName::kMedia);
-  if (!all_media.empty()) {
+  bool drop_entire_element = false;
+  if (summary.is_inside_noscript) {
+    // Optimize summary version for scriptable environment, since noscript
+    // environment will eagerly load the whole CSS anyway at the foot of the
+    // page.
+    drop_entire_element = true;
+  } else if (!all_media.empty()) {
     StringVector relevant_media;
     for (int i = 0, n = all_media.size(); i < n; ++i) {
       const GoogleString& medium = all_media[i];
@@ -261,22 +286,27 @@ void CriticalSelectorFilter::RenderSummary(
       driver_->AddAttribute(element, HtmlName::kMedia,
                             css_util::StringifyMediaVector(relevant_media));
     } else {
-      // None of the media applied to the screen -- we can nuke the entire
-      // element.
-      driver_->DeleteElement(element);
+      // None of the media applied to the screen, so remove the entire element.
+      drop_entire_element = true;
     }
+  }
+
+  if (drop_entire_element) {
+    driver_->DeleteElement(element);
   }
 }
 
 void CriticalSelectorFilter::NotifyInlineCss(HtmlElement* style_element,
                                              HtmlCharactersNode* content) {
-  CssStyleElement* save = new CssStyleElement(driver_, style_element);
+  CssStyleElement* save = new CssStyleElement(driver_, style_element,
+                                              noscript_element() != NULL);
   save->AppendCharactersNode(content);
   css_elements_.push_back(save);
 }
 
 void CriticalSelectorFilter::NotifyExternalCss(HtmlElement* link) {
-  css_elements_.push_back(new CssElement(driver_, link));
+  css_elements_.push_back(new CssElement(driver_, link,
+                                         noscript_element() != NULL));
 }
 
 GoogleString CriticalSelectorFilter::CacheKeySuffix() const {
@@ -309,19 +339,33 @@ void CriticalSelectorFilter::EndDocument() {
   // TODO(morlovich): There is some risk that we will end up duplicating
   // CSS and not actually reducing anything on a first load.
 
-  // TODO(morlovich): This still doesn't fix IE-conditional/noscript stuff,
+  // TODO(morlovich): This still doesn't fix IE-conditional stuff,
   // since we're not repeating it.
   if (!css_elements_.empty()) {
-    // Insert the full CSS, but comment all the style, link tags so that
-    // look-ahead parser cannot find them.
-    HtmlElement* noscript_element =
-        driver_->NewElement(NULL, HtmlName::kNoscript);
-    driver_->AddAttribute(noscript_element, HtmlName::kId, "psa_add_styles");
-    driver_->InsertElementBeforeCurrent(noscript_element);
-    // Write the full original CSS elements.
-    for (CssElementVector::iterator it = css_elements_.begin(),
-         end = css_elements_.end(); it != end; ++it) {
-      (*it)->AppendTo(noscript_element);
+    HtmlElement* noscript_element = NULL;
+    for (int i = 0, n = css_elements_.size(); i < n; ++i) {
+      // Insert the full CSS, but hide all the style, link tags inside noscript
+      // blocks so that look-ahead parser cannot find them; and mark the
+      // portions that were visible to scripting-aware browser with
+      // class = psa_add_styles.
+      //
+      // If the browser has scripting off, it will therefore read everything,
+      // including portions of original CSS that were in noscript block.
+      //
+      // If the browser has scripting on, the parser will not do anything, but
+      // we will add a loader script which will load things with
+      // class = psa_add_styles (thus skipping over things that were originally
+      // inside noscript).
+      if (i == 0 || (css_elements_[i]->inside_noscript() !=
+                     css_elements_[i - 1]->inside_noscript())) {
+        noscript_element = driver_->NewElement(NULL, HtmlName::kNoscript);
+        if (!css_elements_[i]->inside_noscript()) {
+          driver_->AddAttribute(noscript_element, HtmlName::kClass,
+                                "psa_add_styles");
+        }
+        driver_->InsertElementBeforeCurrent(noscript_element);
+      }
+      css_elements_[i]->AppendTo(noscript_element);
     }
 
     HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
@@ -329,9 +373,8 @@ void CriticalSelectorFilter::EndDocument() {
     driver_->server_context()->static_asset_manager()->AddJsToElement(
         kAddStylesScript, script, driver_);
   }
-  if (!css_elements_.empty()) {
-    STLDeleteElements(&css_elements_);
-  }
+
+  STLDeleteElements(&css_elements_);
 }
 
 void CriticalSelectorFilter::DetermineEnabled() {

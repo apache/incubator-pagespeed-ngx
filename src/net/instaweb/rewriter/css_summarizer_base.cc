@@ -469,6 +469,7 @@ CssSummarizerBase::Context* CssSummarizerBase::CreateContextAndSummaryInfo(
     new_summary.media_from_html = media_attribute->DecodedValueOrNull();
   }
   new_summary.is_external = external;
+  new_summary.is_inside_noscript = (noscript_element() != NULL);
 
   ++outstanding_rewrites_;
 

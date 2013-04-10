@@ -133,6 +133,12 @@ void CriticalCssBeaconFilter::SummariesDone() {
       // Don't beacon unless all CSS was correctly parsed and summarized.
       return;
     }
+    // The critical_selector_filter doesn't include <noscript>-specific CSS
+    // in the critical CSS it computes; so there is no need to figure out
+    // critical selectors for such CSS.
+    if (block_info.is_inside_noscript) {
+      continue;
+    }
     StringPieceVector temp;
     SplitStringPieceToVector(block_info.data, ",", &temp,
                              false /* empty shouldn't happen */);

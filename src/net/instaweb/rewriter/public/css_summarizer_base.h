@@ -72,7 +72,10 @@ class CssSummarizerBase : public RewriteFilter {
   };
 
   struct SummaryInfo {
-    SummaryInfo() : state(kSummaryStillPending) {}
+    SummaryInfo()
+        : state(kSummaryStillPending),
+          is_external(false),
+          is_inside_noscript(false) {}
 
     // data actually computed by the subclass's Summarize method. Make sure to
     // check state == kSummaryOk before using it.
@@ -93,6 +96,9 @@ class CssSummarizerBase : public RewriteFilter {
 
     // True if it's a <link rel=stylesheet href=>, false for <style>
     bool is_external;
+
+    // True if the style was included inside a noscript section.
+    bool is_inside_noscript;
   };
 
   // This method should be overridden in case the subclass's summary computation
