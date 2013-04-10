@@ -315,7 +315,9 @@ void CssSummarizerBase::Characters(HtmlCharactersNode* characters_node) {
     // Note: HtmlParse should guarantee that we only get one CharactersNode
     // per <style> block even if it is split by a flush.
     injection_point_ = NULL;
-    StartInlineRewrite(style_element_, characters_node);
+    if (MustSummarize(style_element_)) {
+      StartInlineRewrite(style_element_, characters_node);
+    }
     NotifyInlineCss(style_element_, characters_node);
   } else if (injection_point_ != NULL &&
              !OnlyWhitespace(characters_node->contents())) {
@@ -346,7 +348,9 @@ void CssSummarizerBase::EndElementImpl(HtmlElement* element) {
             HtmlName::kHref);
         if (element_href != NULL) {
           // If it has a href= attribute
-          StartExternalRewrite(element, element_href);
+          if (MustSummarize(element)) {
+            StartExternalRewrite(element, element_href);
+          }
           NotifyExternalCss(element);
         }
       }

@@ -105,6 +105,14 @@ class CssSummarizerBase : public RewriteFilter {
   // depends on things other than the input CSS.
   virtual GoogleString CacheKeySuffix() const;
 
+  // This method should be overridden if some CSS should not go through the
+  // summarization process (eg because it uses an inapplicable media type and
+  // we'll just throw it away when we're done anyway).  By default all CSS
+  // must be summarized.
+  virtual bool MustSummarize(HtmlElement* element) const {
+    return true;
+  }
+
   // This should be overridden to compute a per-resource summary.
   // The method should not modify the object state, and only
   // put the result into *out as it may not be invoked in case of a
@@ -169,8 +177,8 @@ class CssSummarizerBase : public RewriteFilter {
 
   // These notify the subclass of external or inline CSS the summarizer has
   // noticed. Overriding these is optional, and base implementations do nothing.
-  // TODO(morlovich): wire up external media; or should we store them in the
-  //                  summaries_ vector?
+  // These methods are called even if the CSS is not summarized (because
+  // MustSummarize returned false).
   // Note that the inline method is called before </style> is called, so you
   // may need to wait until EndElementImpl if you need to alter the DOM for it.
   virtual void NotifyInlineCss(HtmlElement* style_element,

@@ -71,6 +71,14 @@ void CriticalCssBeaconFilter::InitStats(Statistics* statistics) {
   statistics->AddVariable(kCriticalCssSkippedDueToCharset);
 }
 
+bool CriticalCssBeaconFilter::MustSummarize(HtmlElement* element) const {
+  // Don't summarize non-screen-affecting CSS at all; the time we spend doing
+  // that is better devoted to summarizing CSS selectors we will actually
+  // consider critical.
+  return css_util::CanMediaAffectScreen(
+      element->AttributeValue(HtmlName::kMedia));
+}
+
 void CriticalCssBeaconFilter::Summarize(Stylesheet* stylesheet,
                                         GoogleString* out) const {
   StringSet selectors;

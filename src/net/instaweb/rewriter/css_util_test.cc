@@ -260,6 +260,7 @@ TEST_F(CssUtilTest, ClearVectorIfContainsMediaAll) {
 
 TEST_F(CssUtilTest, CanMediaAffectScreenTest) {
   EXPECT_TRUE(css_util::CanMediaAffectScreen(""));
+  EXPECT_TRUE(css_util::CanMediaAffectScreen("  \t\n "));
   EXPECT_TRUE(css_util::CanMediaAffectScreen("  screen  "));
   EXPECT_TRUE(css_util::CanMediaAffectScreen("all\n"));
   // Case insensitive, handles multiple (possibly junk) media types.

@@ -161,6 +161,13 @@ CriticalSelectorFilter::CriticalSelectorFilter(RewriteDriver* driver)
 CriticalSelectorFilter::~CriticalSelectorFilter() {
 }
 
+bool CriticalSelectorFilter::MustSummarize(HtmlElement* element) const {
+  // Don't summarize non-screen-affecting CSS.  Note that we still need
+  // to defer it, which is done by the Notify...Css methods below.
+  return css_util::CanMediaAffectScreen(
+      element->AttributeValue(HtmlName::kMedia));
+}
+
 void CriticalSelectorFilter::Summarize(Css::Stylesheet* stylesheet,
                                        GoogleString* out) const {
   for (int ruleset_index = 0, num_rulesets = stylesheet->rulesets().size();
@@ -302,15 +309,36 @@ void CriticalSelectorFilter::NotifyInlineCss(HtmlElement* style_element,
                                               noscript_element() != NULL);
   save->AppendCharactersNode(content);
   css_elements_.push_back(save);
+  // We can't delete non-screen CSS we skipped here, because
+  // the close </style> tag hasn't happened yet.
 }
 
 void CriticalSelectorFilter::NotifyExternalCss(HtmlElement* link) {
   css_elements_.push_back(new CssElement(driver_, link,
                                          noscript_element() != NULL));
+  if (!css_util::CanMediaAffectScreen(
+          link->AttributeValue(HtmlName::kMedia))) {
+    // Treat as if we were rendering a link with no critical css, which would
+    // cause us to delete the element from the page.  In this case we didn't
+    // Summarize the link at all, so we need to remove it here rather than in
+    // Summarize.
+    driver_->DeleteElement(link);
+  }
 }
 
 GoogleString CriticalSelectorFilter::CacheKeySuffix() const {
   return cache_key_suffix_;
+}
+
+void CriticalSelectorFilter::EndElementImpl(HtmlElement* element) {
+  CssSummarizerBase::EndElementImpl(element);
+  if (element->keyword() == HtmlName::kStyle &&
+      !css_util::CanMediaAffectScreen(
+          element->AttributeValue(HtmlName::kMedia))) {
+    // Similar to NotifyExternalCss, we must handle non-screen inline <style>s,
+    // which we didn't Summarize but need to delete.
+    driver_->DeleteElement(element);
+  }
 }
 
 void CriticalSelectorFilter::StartDocumentImpl() {

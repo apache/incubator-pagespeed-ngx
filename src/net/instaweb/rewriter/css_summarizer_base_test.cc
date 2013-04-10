@@ -47,6 +47,10 @@ class MinifyExcerptFilter : public CssSummarizerBase {
   virtual const char* Name() const { return "Minify10"; }
   virtual const char* id() const { return "csr"; }
 
+  virtual bool MustSummarize(HtmlElement* element) const {
+    return (!element->FindAttribute(HtmlName::kPagespeedNoDefer));
+  }
+
   virtual void Summarize(Css::Stylesheet* stylesheet,
                          GoogleString* out) const {
     StringWriter write_out(out);
@@ -204,7 +208,7 @@ TEST_F(CssSummarizerBaseTest, BasicOperation) {
 
 TEST_F(CssSummarizerBaseTest, BasicOperationWhitespace) {
   GoogleString expected =
-      FullTest("basic", "<body> <p>some content</p> ", "</body>\n</html>");
+      FullTest("whitespace", "<body> <p>some content</p> ", "</body>\n</html>");
   EXPECT_STREQ(expected, output_buffer_);
   EXPECT_STREQ(kExpectedResult, filter_->result());
 }
@@ -221,6 +225,21 @@ TEST_F(CssSummarizerBaseTest, NoScriptHandling) {
   Parse("ns", StrCat(CssLinkHref("a.css"),
                      "<noscript>", CssLinkHref("a.css"), "</noscript>"));
   EXPECT_STREQ("OK/div{displa|OK/div{displa/noscr|", filter_->result());
+}
+
+TEST_F(CssSummarizerBaseTest, IgnoreNonSummarizable) {
+  filter_->set_render_summaries_in_place(true);
+  Parse("non-summarizable",
+        "<style>* { background: blue; }</style>"
+        "<style pagespeed_no_defer>div {display:none;}</style>"
+        "<link rel=stylesheet href='b.css' pagespeed_no_defer>"
+        "<link rel=stylesheet href='a.css'>");
+  EXPECT_STREQ("<html>\n"
+               "<style>*{backgrou</style>"
+               "<style pagespeed_no_defer>div {display:none;}</style>"
+               "<link rel=stylesheet href='b.css' pagespeed_no_defer>"
+               "<style>div{displa</style>\n"
+               "<!--OK/*{backgrou|OK/div{displa|--></html>", output_buffer_);
 }
 
 TEST_F(CssSummarizerBaseTest, NoBody) {

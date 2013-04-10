@@ -59,6 +59,7 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   // Overrides of CssSummarizerBase summary API. These help us compute
   // the critical portions of the various fragments in the page, and to
   // write them out to the page.
+  virtual bool MustSummarize(HtmlElement* element) const;
   virtual void Summarize(Css::Stylesheet* stylesheet,
                          GoogleString* out) const;
   virtual void RenderSummary(int pos,
@@ -76,6 +77,7 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   virtual void NotifyExternalCss(HtmlElement* link);
 
   // Parser callbacks.
+  virtual void EndElementImpl(HtmlElement* element);
   virtual void StartDocumentImpl();
   virtual void EndDocument();
 

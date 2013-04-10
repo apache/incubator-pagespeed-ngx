@@ -43,13 +43,18 @@ const char kInlineStyle[] =
     "a:visited{color:green}"
     "p{color:green}"
     "</style>";
+const char kInlinePrint[] =
+    "<style media='print'>"
+    "span{color:red}"
+    "</style>";
 const char kStyleA[] =
     "div ul:hover>li{color:red}"
     ":hover{color:red}"
     ".sec h1#id{color:green}";
 const char kStyleB[] =
     "a{color:green}"
-    "p:hover{color:red}"
+    "@media screen { p:hover{color:red} }"
+    "@media print { span{color:green} }"
     "div ul > li{color:green}";
 const char kStyleCorrupt[] =
     "span{color:";
@@ -171,15 +176,27 @@ TEST_F(CriticalCssBeaconFilterTest, Corrupt) {
   ValidateNoChanges("corrupt", html);
 }
 
+TEST_F(CriticalCssBeaconFilterTest, NonScreenMediaInline) {
+  GoogleString html = StringPrintf(kHtmlTemplate, kInlinePrint, "");
+  ValidateNoChanges("non-screen-inline", html);
+}
+
+TEST_F(CriticalCssBeaconFilterTest, NonScreenMediaExternal) {
+  GoogleString css = "<link rel=stylesheet href='a.css' media='print'>";
+  GoogleString html = StringPrintf(kHtmlTemplate, css.c_str(), "");
+  ValidateNoChanges("non-screen-external", html);
+}
+
 TEST_F(CriticalCssBeaconFilterTest, MixOfGoodAndBad) {
   // Make sure we don't see any strange interactions / missed connections.
   SetFetchFailOnUnexpected(false);
   GoogleString css = StrCat(
       CssLinkHref("a.css"), CssLinkHref("404.css"), kInlineStyle,
-      CssLinkHref(kEvilUrl), CssLinkHref("corrupt.css"), CssLinkHref("b.css"));
+      CssLinkHref(kEvilUrl), CssLinkHref("corrupt.css"), kInlinePrint,
+      CssLinkHref("b.css"));
   GoogleString opt = StrCat(
       CssLinkHref("a.css"), CssLinkHref("404.css"), kInlineStyle,
-      CssLinkHref(kEvilUrl), CssLinkHref("corrupt.css"),
+      CssLinkHref(kEvilUrl), CssLinkHref("corrupt.css"), kInlinePrint,
       CssLinkHrefOpt("b.css"));
   GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
   GoogleString output_html = StringPrintf(kHtmlTemplate, opt.c_str(), "");
@@ -230,8 +247,6 @@ TEST_F(CriticalCssBeaconFilterTest, ExtantPCache) {
   GoogleString output_html = StringPrintf(kHtmlTemplate, opt.c_str(), "");
   ValidateExpected("already_beaconed", input_html, output_html);
 }
-
-// TODO(jmaessen): Make sure we ignore non-screen resources (NYI)
 
 }  // namespace
 
