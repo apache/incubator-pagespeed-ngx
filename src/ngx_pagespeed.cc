@@ -1474,7 +1474,7 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   }
 
   if (r != r->main) {
-    // Pagespeed is on for some server block but not this one.
+    // Don't handle subrequests.
     return ngx_http_next_body_filter(r, in);
   }
   // Don't need to check for a cache flush; already did in ps_header_filter.
@@ -1641,6 +1641,7 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
   }
 
   if (r != r->main) {
+    // Don't handle subrequests.
     return ngx_http_next_header_filter(r);
   }
   // Poll for cache flush on every request (polls are rate-limited).
