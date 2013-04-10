@@ -270,6 +270,16 @@ TEST_F(LazyloadImagesFilterTest, CriticalImages) {
         logging_info()->rewriter_stats(i).has_html_status()) {
       EXPECT_EQ(RewriterHtmlApplication::ACTIVE,
                 logging_info()->rewriter_stats(i).html_status());
+      const RewriteStatusCount& count_applied =
+          logging_info()->rewriter_stats(i).status_counts(0);
+      EXPECT_EQ(RewriterApplication::APPLIED_OK,
+                count_applied.application_status());
+      EXPECT_EQ(1, count_applied.count());
+      const RewriteStatusCount& count_not_applied =
+          logging_info()->rewriter_stats(i).status_counts(1);
+      EXPECT_EQ(RewriterApplication::NOT_APPLIED,
+                count_not_applied.application_status());
+      EXPECT_EQ(3, count_not_applied.count());
       return;
     }
   }

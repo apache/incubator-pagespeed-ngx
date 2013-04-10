@@ -825,6 +825,19 @@ TEST_F(ImageRewriteTest, ImgTagWithComputeStatistics) {
   EXPECT_EQ(0, logging_info()->image_stats().num_inlined_img_tags());
 }
 
+TEST_F(ImageRewriteTest, ImgTagWithRewriterStatsChecking) {
+  options()->EnableFilter(RewriteOptions::kComputeStatistics);
+  RewriteImage("img", kContentTypeJpeg);
+  rewrite_driver_->log_record()->WriteLog();
+  EXPECT_EQ(1, logging_info()->rewriter_stats_size());
+  const RewriterStats& stats = logging_info()->rewriter_stats(0);
+  EXPECT_EQ(RewriterHtmlApplication::ACTIVE, stats.html_status());
+  EXPECT_EQ(1, stats.status_counts_size());
+  EXPECT_EQ(RewriterApplication::APPLIED_OK,
+            stats.status_counts(0).application_status());
+  EXPECT_EQ(3, stats.status_counts(0).count());
+}
+
 TEST_F(ImageRewriteTest, ImgTagWebp) {
   if (RunningOnValgrind()) {
     return;

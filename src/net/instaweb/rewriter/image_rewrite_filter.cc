@@ -501,6 +501,8 @@ void ImageRewriteFilter::InitStats(Statistics* statistics) {
 void ImageRewriteFilter::StartDocumentImpl() {
   image_counter_ = 0;
   inlinable_urls_.clear();
+  driver_->log_record()->LogRewriterHtmlStatus(
+      RewriteOptions::kImageCompressionId, RewriterHtmlApplication::ACTIVE);
 }
 
 // Allocate and initialize CompressionOptions object based on RewriteOptions and

@@ -106,14 +106,14 @@ void AbstractLogRecord::SetRewriterLoggingStatus(
   SetRewriterLoggingStatus(id, "", status);
 }
 
-void AbstractLogRecord::SetRewriterLoggingStatus(
+RewriterInfo* AbstractLogRecord::SetRewriterLoggingStatusHelper(
     const char* id, const GoogleString& url,
     RewriterApplication::Status application_status) {
   LogRewriterApplicationStatus(id, application_status);
 
   RewriterInfo* rewriter_info = NewRewriterInfo(id);
   if (rewriter_info == NULL) {
-    return;
+    return NULL;
   }
 
   ScopedMutex lock(mutex_.get());
@@ -122,6 +122,7 @@ void AbstractLogRecord::SetRewriterLoggingStatus(
   }
 
   rewriter_info->set_status(application_status);
+  return rewriter_info;
 }
 
 void AbstractLogRecord::LogRewriterHtmlStatus(
@@ -279,16 +280,12 @@ void AbstractLogRecord::LogFlushEarlyActivity(
     FlushEarlyResourceInfo::ResourceType resource_type,
     bool is_bandwidth_affected,
     bool in_head) {
-  RewriterInfo* rewriter_info = NewRewriterInfo(id);
+  RewriterInfo* rewriter_info = SetRewriterLoggingStatusHelper(id, url, status);
   if (rewriter_info == NULL) {
     return;
   }
 
   ScopedMutex lock(mutex_.get());
-  if ((allow_logging_urls_ || log_url_indices_) && url != "") {
-    PopulateUrl(url, rewriter_info->mutable_rewrite_resource_info());
-  }
-  rewriter_info->set_status(status);
   FlushEarlyResourceInfo* flush_early_resource_info =
       rewriter_info->mutable_flush_early_resource_info();
   flush_early_resource_info->set_content_type(content_type);
@@ -306,9 +303,7 @@ void AbstractLogRecord::LogImageRewriteActivity(
     bool try_low_res_src_insertion,
     bool low_res_src_inserted,
     int low_res_data_size) {
-  LogRewriterApplicationStatus(id, status);
-
-  RewriterInfo* rewriter_info = NewRewriterInfo(id);
+  RewriterInfo* rewriter_info = SetRewriterLoggingStatusHelper(id, url, status);
   if (rewriter_info == NULL) {
     return;
   }
@@ -316,10 +311,6 @@ void AbstractLogRecord::LogImageRewriteActivity(
   ScopedMutex lock(mutex_.get());
   RewriteResourceInfo* rewrite_resource_info =
       rewriter_info->mutable_rewrite_resource_info();
-  if ((allow_logging_urls_ || log_url_indices_) && url != "") {
-    PopulateUrl(url, rewrite_resource_info);
-  }
-
   rewrite_resource_info->set_is_inlined(is_image_inlined);
   rewrite_resource_info->set_is_critical(is_critical_image);
   if (try_low_res_src_insertion) {
@@ -329,15 +320,12 @@ void AbstractLogRecord::LogImageRewriteActivity(
         low_res_src_inserted);
     image_rewrite_resource_info->set_low_res_size(low_res_data_size);
   }
-
-  rewriter_info->set_status(status);
 }
 
 void AbstractLogRecord::LogJsDisableFilter(const char* id,
                                    bool has_pagespeed_no_defer) {
-  LogRewriterApplicationStatus(id, RewriterApplication::APPLIED_OK);
-
-  RewriterInfo* rewriter_info = NewRewriterInfo(id);
+  RewriterInfo* rewriter_info = SetRewriterLoggingStatusHelper(
+      id, "", RewriterApplication::APPLIED_OK);
   if (rewriter_info == NULL) {
     return;
   }
@@ -346,13 +334,13 @@ void AbstractLogRecord::LogJsDisableFilter(const char* id,
   RewriteResourceInfo* rewrite_resource_info =
       rewriter_info->mutable_rewrite_resource_info();
   rewrite_resource_info->set_has_pagespeed_no_defer(has_pagespeed_no_defer);
-  rewriter_info->set_status(RewriterApplication::APPLIED_OK);
 }
 
 void AbstractLogRecord::LogLazyloadFilter(
     const char* id, RewriterApplication::Status status,
     bool is_blacklisted, bool is_critical) {
-  RewriterInfo* rewriter_info = NewRewriterInfo(id);
+  RewriterInfo* rewriter_info = SetRewriterLoggingStatusHelper(
+      id, "", status);
   if (rewriter_info == NULL) {
     return;
   }
@@ -366,7 +354,6 @@ void AbstractLogRecord::LogLazyloadFilter(
   if (is_critical) {
     rewrite_resource_info->set_is_critical(is_critical);
   }
-  rewriter_info->set_status(status);
 }
 
 void AbstractLogRecord::PopulateUrl(

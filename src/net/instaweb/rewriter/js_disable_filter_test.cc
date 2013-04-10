@@ -112,6 +112,11 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
         logging_info()->rewriter_stats(i).has_html_status()) {
       EXPECT_EQ(RewriterHtmlApplication::ACTIVE,
                 logging_info()->rewriter_stats(i).html_status());
+      const RewriteStatusCount& count_applied =
+          logging_info()->rewriter_stats(i).status_counts(0);
+      EXPECT_EQ(RewriterApplication::APPLIED_OK,
+                count_applied.application_status());
+      EXPECT_EQ(4, count_applied.count());
       return;
     }
   }

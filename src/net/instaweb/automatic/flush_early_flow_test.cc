@@ -42,6 +42,7 @@
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
+#include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/mock_timer.h"
@@ -976,6 +977,18 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTest) {
 TEST_F(FlushEarlyFlowTest, FlushEarlyFlowTestPrefetch) {
   TestFlushEarlyFlow("prefetch_link_rel_subresource",
                      UserAgentMatcher::kPrefetchLinkRelSubresource);
+  rewrite_driver_->log_record()->WriteLog();
+  EXPECT_EQ(5, logging_info()->rewriter_stats_size());
+  EXPECT_EQ("fs", logging_info()->rewriter_stats(2).id());
+  const RewriterStats& stats = logging_info()->rewriter_stats(2);
+  EXPECT_EQ(RewriterHtmlApplication::UNKNOWN_STATUS, stats.html_status());
+  EXPECT_EQ(2, stats.status_counts_size());
+  const RewriteStatusCount& applied = stats.status_counts(0);
+  EXPECT_EQ(RewriterApplication::APPLIED_OK, applied.application_status());
+  EXPECT_EQ(6, applied.count());
+  const RewriteStatusCount& not_applied = stats.status_counts(1);
+  EXPECT_EQ(RewriterApplication::NOT_APPLIED, not_applied.application_status());
+  EXPECT_EQ(2, not_applied.count());
 }
 
 // TODO(rahulbansal): Remove the flakiness and uncomment this.

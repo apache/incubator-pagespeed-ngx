@@ -84,7 +84,9 @@ class AbstractLogRecord  {
   // sets status and the url index.
   void SetRewriterLoggingStatus(
       const char* rewriter_id, const GoogleString& url,
-      RewriterApplication::Status status);
+      RewriterApplication::Status status) {
+    SetRewriterLoggingStatusHelper(rewriter_id, url, status);
+  }
 
   // Log the HTML level status for a filter.  This should be called only once
   // per filter, at the point where it is determined the filter is either
@@ -296,6 +298,13 @@ class AbstractLogRecord  {
   void PopulateRewriterStatusCounts();
 
   void SetTimeFromRequestStart(SetTimeFromStartFn fn, int64 end_ms);
+
+  // Helper function which creates a new rewriter logging submessage for
+  // |rewriter_id|, sets status and the url index. It is intended to be called
+  // only inside logging code.
+  RewriterInfo* SetRewriterLoggingStatusHelper(
+      const char* rewriter_id, const GoogleString& url,
+      RewriterApplication::Status status);
 
   // Thus must be set. Implementation constructors must minimally default this
   // to a NullMutex.
