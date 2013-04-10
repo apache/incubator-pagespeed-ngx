@@ -72,6 +72,8 @@ class NgxServerContext : public SystemServerContext {
   // These are non-NULL if we have per-vhost stats.
   scoped_ptr<RewriteStats> local_rewrite_stats_;
 
+  scoped_ptr<UrlAsyncFetcher> fetcher_;
+
   DISALLOW_COPY_AND_ASSIGN(NgxServerContext);
 };
 

@@ -110,25 +110,14 @@ Hasher* NgxRewriteDriverFactory::NewHasher() {
 }
 
 UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
-  return new WgetUrlFetcher;
+  CHECK(false) << "Nothing should still be using DefaultUrlFetcher()";
+  return NULL;
 }
 
 UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
-  const char* fetcher_proxy = "";
-  if (main_conf_ != NULL) {
-    fetcher_proxy = main_conf_->fetcher_proxy().c_str();
-  }
-
-  net_instaweb::UrlAsyncFetcher* fetcher =
-      new net_instaweb::SerfUrlAsyncFetcher(
-          fetcher_proxy,
-          NULL,
-          thread_system(),
-          statistics(),
-          timer(),
-          2500,
-          message_handler());
-  return fetcher;
+  CHECK(false) << "Don't use DefaultAsyncUrlFatcher() because then you "
+               << "don't get per-server-block fetcher configuration";
+  return NULL;
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
