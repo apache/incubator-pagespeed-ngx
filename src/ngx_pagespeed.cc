@@ -1250,33 +1250,33 @@ CreateRequestContext::Response ps_create_request_context(
     return CreateRequestContext::kPagespeedSubrequest;
   }
 
+  if (url.PathSansLeaf() ==
+      net_instaweb::NgxRewriteDriverFactory::kStaticAssetPrefix) {
+    return CreateRequestContext::kStaticContent;
+  }
+  if (url.PathSansQuery() == "/ngx_pagespeed_statistics"
+      || url.PathSansQuery() == "/ngx_pagespeed_global_statistics" ) {
+    return CreateRequestContext::kStatistics;
+  }
+  if (url.PathSansQuery() == "/ngx_pagespeed_message") {
+    return CreateRequestContext::kMessages;
+  }
+
+  net_instaweb::RewriteOptions* global_options =
+      cfg_s->server_context->global_options();
+
+  const GoogleString* beacon_url;
+  if (ps_is_https(r)) {
+    beacon_url = &(global_options->beacon_url().https);
+  } else {
+    beacon_url = &(global_options->beacon_url().http);
+  }
+
+  if (url.PathSansQuery() == StringPiece(*beacon_url)) {
+    return CreateRequestContext::kBeacon;
+  }
+
   if (is_resource_fetch && !cfg_s->server_context->IsPagespeedResource(url)) {
-    if (url.PathSansLeaf() ==
-        net_instaweb::NgxRewriteDriverFactory::kStaticAssetPrefix) {
-      return CreateRequestContext::kStaticContent;
-    }
-    if (url.PathSansQuery() == "/ngx_pagespeed_statistics"
-        || url.PathSansQuery() == "/ngx_pagespeed_global_statistics" ) {
-      return CreateRequestContext::kStatistics;
-    }
-    if (url.PathSansQuery() == "/ngx_pagespeed_message") {
-      return CreateRequestContext::kMessages;
-    }
-
-    net_instaweb::RewriteOptions* global_options =
-        cfg_s->server_context->global_options();
-
-    const GoogleString* beacon_url;
-    if (ps_is_https(r)) {
-      beacon_url = &(global_options->beacon_url().https);
-    } else {
-      beacon_url = &(global_options->beacon_url().http);
-    }
-
-    if (url.PathSansQuery() == StringPiece(*beacon_url)) {
-      return CreateRequestContext::kBeacon;
-    }
-
     DBG(r, "Passing on content handling for non-pagespeed resource '%s'",
         url_string.c_str());
     return CreateRequestContext::kNotUnderstood;
@@ -1302,6 +1302,7 @@ CreateRequestContext::Response ps_create_request_context(
   }
 
   ps_request_ctx_t* ctx = new ps_request_ctx_t();
+
   ctx->r = r;
   ctx->pipe_fd = file_descriptors[0];
   ctx->is_resource_fetch = is_resource_fetch;
@@ -1665,14 +1666,14 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
       // properly after ourselves somewhere?
       return NGX_ERROR;
     case CreateRequestContext::kNotUnderstood:
+      // This should only happen when ctx->is_resource_fetch is true,
+      // in which case we can not get here.
+      CHECK(false);
+      return NGX_ERROR;
     case CreateRequestContext::kBeacon:
     case CreateRequestContext::kStaticContent:
     case CreateRequestContext::kStatistics:
     case CreateRequestContext::kMessages:
-      // These should only happen when ctx->is_resource_fetch is true,
-      // in which case we can not get here.
-      CHECK(false);
-      return NGX_ERROR;
     case CreateRequestContext::kPagespeedSubrequest:
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kInvalidUrl:
