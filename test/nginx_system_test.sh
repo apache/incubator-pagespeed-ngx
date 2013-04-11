@@ -1003,6 +1003,43 @@ check [ $ERRS -ge 1 ]
 #check grep "URL http://modpagespeed.com:1023/someimage.png active for " \
 #  $SERF_REFUSED_PATH
 
+start_test Blocking rewrite enabled.
+# We assume that blocking_rewrite_test_dont_reuse_1.jpg will not be
+# rewritten on the first request since it takes significantly more time to
+# rewrite than the rewrite deadline and it is not already accessed by
+# another request earlier.
+BLOCKING_REWRITE_URL="$TEST_ROOT/blocking_rewrite.html"
+BLOCKING_REWRITE_URL+="?ModPagespeedFilters=rewrite_images"
+OUTFILE=$OUTDIR/blocking_rewrite.out.html
+OLDSTATS=$OUTDIR/blocking_rewrite_stats.old
+NEWSTATS=$OUTDIR/blocking_rewrite_stats.new
+$WGET_DUMP $STATISTICS_URL > $OLDSTATS
+check $WGET_DUMP --header 'X-PSA-Blocking-Rewrite: psatest'\
+      $BLOCKING_REWRITE_URL -O $OUTFILE
+$WGET_DUMP $STATISTICS_URL > $NEWSTATS
+check_stat $OLDSTATS $NEWSTATS image_rewrites 1
+check_stat $OLDSTATS $NEWSTATS cache_hits 0
+# Something about IPRO means that in mod_pagespeed this comes in as 2.  Before
+# IPRO this said 1, and we're getting 1 in ngx_pagespeed, so I think this is
+# probably correct.
+check_stat $OLDSTATS $NEWSTATS cache_misses 1
+# In mod_pagespeed this is 2 cache inserts for image + 1 for HTML in IPRO flow.
+# We don't have IPRO, so this is just 2 cache inserts for the image.
+check_stat $OLDSTATS $NEWSTATS cache_inserts 2
+# TODO(sligocki): There is no stat num_rewrites_executed. Fix.
+#check_stat $OLDSTATS $NEWSTATS num_rewrites_executed 1
+
+start_test Blocking rewrite enabled using wrong key.
+URL="blocking.example.com/mod_pagespeed_test/blocking_rewrite_another.html"
+OUTFILE=$OUTDIR/blocking_rewrite.out.html
+http_proxy=$SECONDARY_HOSTNAME check $WGET_DUMP \
+  --header 'X-PSA-Blocking-Rewrite: junk' \
+  $URL > $OUTFILE
+check [ $(grep -c "[.]pagespeed[.]" $OUTFILE) -lt 1 ]
+  
+http_proxy=$SECONDARY_HOSTNAME fetch_until $URL \
+  'grep -c [.]pagespeed[.]' 1
+
 run_post_cache_flush
 
 check_failures_and_exit

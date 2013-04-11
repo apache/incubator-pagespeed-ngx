@@ -195,6 +195,16 @@ http {
   }
 
   server {
+    listen @@SECONDARY_PORT@@;
+    server_name blocking.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+
+    pagespeed BlockingRewriteKey psatest;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_images;
+  }
+
+  server {
     listen       @@PRIMARY_PORT@@;
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
