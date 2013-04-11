@@ -240,6 +240,8 @@ http {
       deny all;
     }
 
+    pagespeed Domain modpagespeed.com:1023;
+
     location ~ \.php$ {
       fastcgi_param SCRIPT_FILENAME $request_filename;
       fastcgi_param QUERY_STRING $query_string;
