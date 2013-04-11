@@ -178,6 +178,42 @@ check_from "$OUT" egrep -q \
 start_test pagespeed is defaulting to more than PassThrough
 fetch_until $TEST_ROOT/bot_test.html 'grep -c \.pagespeed\.' 2
 
+start_test 404s are served and properly recorded.
+NUM_404=$(scrape_stat resource_404_count)
+echo "Initial 404s: $NUM_404"
+WGET_ERROR=$($WGET -O /dev/null $BAD_RESOURCE_URL 2>&1)
+check_from "$WGET_ERROR" fgrep -q "404 Not Found"
+
+# Check that the stat got bumped.
+NUM_404_FINAL=$(scrape_stat resource_404_count)
+echo "Final 404s: $NUM_404_FINAL"
+check [ $(expr $NUM_404_FINAL - $NUM_404) -eq 1 ]
+
+# Check that the stat doesn't get bumped on non-404s.
+URL="http://$HOSTNAME/mod_pagespeed_example/styles/"
+URL+="W.rewrite_css_images.css.pagespeed.cf.Hash.css"
+OUT=$(wget -O - -q $URL)
+check_from "$OUT" grep background-image
+NUM_404_REALLY_FINAL=$(scrape_stat resource_404_count)
+check [ $NUM_404_FINAL -eq $NUM_404_REALLY_FINAL ]
+
+start_test Non-local access to statistics fails.
+MACHINE_NAME=$(hostname)
+ALT_STAT_URL=$(echo $STATISTICS_URL | sed s#localhost#$MACHINE_NAME#)
+
+echo "wget $ALT_STAT_URL >& $TEMPDIR/alt_stat_url.$$"
+wget $ALT_STAT_URL >& "$TEMPDIR/alt_stat_url.$$"
+check [ $? = 8 ]
+rm -f "$TEMPDIR/alt_stat_url.$$"
+
+ALT_CE_URL="$ALT_STAT_URL.pagespeed.ce.8CfGBvwDhH.css"
+wget -O - $ALT_CE_URL  >& "$TEMPDIR/alt_ce_url.$$"
+check [ $? = 8 ]
+
+wget -O - --header="Host: $HOSTNAME" $ALT_CE_URL >& "$TEMPDIR/alt_ce_url.$$"
+check [ $? = 8 ]
+rm -f "$TEMPDIR/alt_ce_url.$$"
+
 # Test that loopback route fetcher works with vhosts not listening on
 # 127.0.0.1
 start_test IP choice for loopback fetches.
