@@ -94,6 +94,27 @@ http {
   }
 
   server {
+    listen @@SECONDARY_PORT@@;
+    server_name url-attribute.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    # Don't actually try to rewrite any resources; the ones in
+    # rewrite_domains.html don't actually exist.
+    pagespeed RewriteLevel PassThrough;
+
+    # This is used for testing dynamically defined url-valued
+    # attributes
+    pagespeed UrlValuedAttribute span src Hyperlink;
+    pagespeed UrlValuedAttribute hr imgsrc Image;
+    pagespeed DomainRewriteHyperlinks on;
+    pagespeed MapRewriteDomain http://dst.example.com http://src.example.com;
+    pagespeed EnableFilters rewrite_domains;
+    pagespeed UrlValuedAttribute custom a Image;
+    pagespeed UrlValuedAttribute custom b otherResource;
+    pagespeed UrlValuedAttribute custom c hyperlink;
+  }
+
+  server {
     listen 127.0.0.2:@@SECONDARY_PORT@@;
     server_name loopbackfetch.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
