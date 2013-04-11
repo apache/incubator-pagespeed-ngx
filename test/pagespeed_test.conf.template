@@ -125,6 +125,13 @@ http {
     pagespeed RespectXForwardedProto on;
   }
 
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name xheader.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed XHeaderValue "UNSPECIFIED VERSION";
+  }
 
   # Support for embedded configurations, where image flags in the
   # VirtualHost serving HTML is not the same as the one serving resources,
