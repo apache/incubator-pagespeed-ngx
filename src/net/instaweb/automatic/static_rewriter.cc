@@ -115,7 +115,7 @@ void FileRewriter::SetupCaches(ServerContext* resource_manager) {
   HTTPCache* http_cache = new HTTPCache(cache, timer(), hasher(), statistics());
   resource_manager->set_http_cache(http_cache);
   resource_manager->set_metadata_cache(cache);
-  resource_manager->MakePropertyCaches(cache);
+  resource_manager->MakePropertyCaches(false, cache);
 }
 
 Statistics* FileRewriter::statistics() {

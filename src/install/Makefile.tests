@@ -63,6 +63,9 @@ apache_vm_system_tests :
 # TODO(jmarantz): fix this.
 apache_system_tests : apache_vm_system_tests
 	$(MAKE) FAST_RESTART=1 apache_debug_serf_empty_header_test
+	# TODO(sligocki): The stats-logging tests got stale and need to
+	# be fixed.
+	# $(MAKE) FAST_RESTART=1 apache_debug_stats_logging_test
 	$(MAKE) apache_install_conf
 	$(MAKE) FAST_RESTART=1 apache_debug_restart
 

@@ -191,6 +191,7 @@ class RewriteOptions {
     kCacheSmallImagesUnrewritten,
     kClientDomainRewrite,
     kCombineAcrossPaths,
+    kCompressMetadataCache,
     kCriticalImagesBeaconEnabled,
     kCriticalLineConfig,
     kCssFlattenMaxBytes,

@@ -1127,7 +1127,10 @@ void ServerContext::set_enable_property_cache(bool enabled) {
   }
 }
 
-void ServerContext::MakePropertyCaches(CacheInterface* backend_cache) {
+// TODO(jmarantz): simplify the cache ownership model so that the layered
+// caches don't own one another; the ServerContext owns all the caches.
+void ServerContext::MakePropertyCaches(bool take_ownership_of_cache,
+                                       CacheInterface* backend_cache) {
   // The property caches are L2-only.  We cannot use the L1 cache because
   // this data can get stale quickly.
   page_property_cache_.reset(MakePropertyCache(
@@ -1135,6 +1138,9 @@ void ServerContext::MakePropertyCaches(CacheInterface* backend_cache) {
   client_property_cache_.reset(MakePropertyCache(
       PropertyCache::kClientPropertyCacheKeyPrefix, backend_cache));
   client_property_cache_->AddCohort(ClientState::kClientStateCohort);
+  if (take_ownership_of_cache) {
+    owned_pcache_backend_.reset(backend_cache);
+  }
 }
 
 PropertyCache* ServerContext::MakePropertyCache(

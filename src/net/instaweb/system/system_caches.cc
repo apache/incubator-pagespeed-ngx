@@ -35,6 +35,7 @@
 #include "net/instaweb/util/public/cache_copy.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/cache_stats.h"
+#include "net/instaweb/util/public/compressed_cache.h"
 #include "net/instaweb/util/public/fallback_cache.h"
 #include "net/instaweb/util/public/file_cache.h"
 #include "net/instaweb/util/public/message_handler.h"
@@ -349,15 +350,29 @@ void SystemCaches::SetupCaches(ServerContext* server_context) {
     metadata_l2 = http_l2;  // memcached or file.
   }
 
+  CacheInterface* metadata_cache;
+
   if (metadata_l1 != NULL) {
     WriteThroughCache* write_through_cache = new WriteThroughCache(
         metadata_l1, metadata_l2);
     write_through_cache->set_cache1_limit(l1_size_limit);
-    server_context->set_metadata_cache(write_through_cache);
+    metadata_cache = write_through_cache;
   } else {
-    server_context->set_metadata_cache(new CacheCopy(metadata_l2));
+    metadata_cache = new CacheCopy(metadata_l2);
   }
-  server_context->MakePropertyCaches(metadata_l2);
+
+  // TODO(jmarantz): We probably want to store HTTP cache compressed
+  // even without this flag, but we should do it differently, storing
+  // only the content compressed and putting in content-encoding:gzip
+  // so that mod_gzip doesn't have to recompress on every request.
+  if (config->compress_metadata_cache()) {
+    metadata_cache = new CompressedCache(metadata_cache, stats);
+    server_context->MakePropertyCaches(
+        true, new CompressedCache(new CacheCopy(metadata_l2), stats));
+  } else {
+    server_context->MakePropertyCaches(false, metadata_l2);
+  }
+  server_context->set_metadata_cache(metadata_cache);
 }
 
 void SystemCaches::RegisterConfig(SystemRewriteOptions* config) {
@@ -447,6 +462,7 @@ void SystemCaches::InitStats(Statistics* statistics) {
   CacheStats::InitStats(SystemCachePath::kLruCache, statistics);
   CacheStats::InitStats(kShmCache, statistics);
   CacheStats::InitStats(kMemcached, statistics);
+  CompressedCache::InitStats(statistics);
 }
 
 void SystemCaches::PrintCacheStats(StatFlags flags, GoogleString* out) {

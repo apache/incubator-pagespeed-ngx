@@ -200,7 +200,8 @@ class ServerContext {
 
   Timer* timer() const { return http_cache_->timer(); }
 
-  void MakePropertyCaches(CacheInterface* backend_cache);
+  void MakePropertyCaches(bool take_ownership_of_cache,
+                          CacheInterface* backend_cache);
 
   HTTPCache* http_cache() const { return http_cache_.get(); }
   void set_http_cache(HTTPCache* x) { http_cache_.reset(x); }
@@ -728,6 +729,7 @@ class ServerContext {
   UsageDataReporter* usage_data_reporter_;
 
   scoped_ptr<CacheInterface> owned_cache_;
+  scoped_ptr<CacheInterface> owned_pcache_backend_;
 
   // A convenient central place to store the hostname we're running on.
   GoogleString hostname_;

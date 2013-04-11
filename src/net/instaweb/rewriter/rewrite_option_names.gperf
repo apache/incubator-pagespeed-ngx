@@ -38,6 +38,7 @@ struct OptionName {
 "CacheSmallImagesUnrewritten",           RewriteOptions::kCacheSmallImagesUnrewritten
 "ClientDomainRewrite",                   RewriteOptions::kClientDomainRewrite
 "CombineAcrossPaths",                    RewriteOptions::kCombineAcrossPaths
+"CompressMetadataCache",                 RewriteOptions::kCompressMetadataCache
 "CriticalImagesBeaconEnabled",           RewriteOptions::kCriticalImagesBeaconEnabled
 "CriticalLineConfig",                    RewriteOptions::kCriticalLineConfig
 "CssFlattenMaxBytes",                    RewriteOptions::kCssFlattenMaxBytes

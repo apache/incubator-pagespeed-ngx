@@ -223,7 +223,7 @@ void TestRewriteDriverFactory::SetupCaches(ServerContext* resource_manager) {
                                         hasher(), statistics());
   resource_manager->set_http_cache(http_cache);
   resource_manager->set_metadata_cache(delay_cache_);
-  resource_manager->MakePropertyCaches(delay_cache_);
+  resource_manager->MakePropertyCaches(false, delay_cache_);
 }
 
 Hasher* TestRewriteDriverFactory::NewHasher() {

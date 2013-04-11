@@ -79,7 +79,7 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
     } else {
       server_context->set_metadata_cache(new CacheCopy(cache2_));
     }
-    server_context->MakePropertyCaches(cache2_);
+    server_context->MakePropertyCaches(false, cache2_);
     server_context->set_enable_property_cache(false);
   }
 

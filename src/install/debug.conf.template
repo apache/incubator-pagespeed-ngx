@@ -276,6 +276,8 @@ ModPagespeedRespectXForwardedProto on
   SetHandler mod_pagespeed_response_options_handler
 </Location>
 
+ModPagespeedCompressMetadataCache true
+
 # Another VirtualHost can be enabled by default as it does no harm.  This can
 # be used for testing alternate configuration settings in system tests without
 # restarting Apache.
@@ -292,6 +294,7 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   DocumentRoot "@@APACHE_DOC_ROOT@@"
   ModPagespeed on
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/_secondary/"
+  ModPagespeedCompressMetadataCache false
 
   ModPagespeedMapProxyDomain secondary.example.com/pss_images \
                              http://ref.pssdemos.com/filter/images
@@ -638,6 +641,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@/with_shm" 8
 #COVERAGE
 #MEMCACHE_COVERAGE   ModPagespeedMemcachedServers localhost:6765
 #COVERAGE   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/"
+#COVERAGE   ModPagespeedCompressMetadataCache true
 #COVERAGE   ModPagespeedRewriteLevel AllFilters
 #COVERAGE   ModPagespeedEnableFilters elide_attributes
 #COVERAGE   ModPagespeedDomain *
@@ -863,6 +867,7 @@ Listen 127.0.0.2:8085
 #ALL_DIRECTIVES ModPagespeedClientDomainRewrite false
 #ALL_DIRECTIVES ModPagespeedCollectRefererStatistics false
 #ALL_DIRECTIVES ModPagespeedCombineAcrossPaths true
+#ALL_DIRECTIVES ModPagespeedCompressMetadataCache true
 #ALL_DIRECTIVES ModPagespeedCriticalImagesBeaconEnabled true
 #ALL_DIRECTIVES ModPagespeedCreateSharedMemoryMetadataCache config 10000
 #ALL_DIRECTIVES ModPagespeedCssFlattenMaxBytes 2000

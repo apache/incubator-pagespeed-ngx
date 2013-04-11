@@ -208,6 +208,7 @@ class PropertyCache {
 
   typedef std::vector<const Cohort*> CohortVector;
 
+  // Does not take ownership of the cache, timer, stats, or threads objects.
   PropertyCache(const GoogleString& cache_key_prefix,
                 CacheInterface* cache, Timer* timer,
                 Statistics* stats, ThreadSystem* threads);

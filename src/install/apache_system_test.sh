@@ -77,11 +77,21 @@ fi
 rm -rf $OUTDIR
 mkdir -p $OUTDIR
 
+statistics_enabled="0"
+statistics_logging_enabled="0"
+if egrep -q "^    # ModPagespeedStatistics off$" \
+    $APACHE_DEBUG_PAGESPEED_CONF; then
+  statistics_enabled="1"
+  echo STATS is ON
+  if egrep -q "^ ModPagespeedStatisticsLogging on$" \
+     $APACHE_DEBUG_PAGESPEED_CONF; then
+    statistics_logging_enabled="1"
+  fi
+fi
+
 # Grab a timestamp now so that we can check that logging works.
 # Also determine where the log file is.
-if egrep -q "^    # ModPagespeedStatistics off$" $APACHE_DEBUG_PAGESPEED_CONF &&
-   egrep -q "^ ModPagespeedStatisticsLogging on$" $APACHE_DEBUG_PAGESPEED_CONF;
-   then
+if [ $statistics_logging_enabled = "1" ]; then
   MOD_PAGESPEED_STATS_LOG=$(sed -n 's/^ ModPagespeedStatisticsLoggingFile //p' \
       $APACHE_DEBUG_PAGESPEED_CONF)
   MOD_PAGESPEED_STATS_LOG=$(echo $MOD_PAGESPEED_STATS_LOG | sed -n 's/\"//gp')
@@ -89,9 +99,6 @@ if egrep -q "^    # ModPagespeedStatistics off$" $APACHE_DEBUG_PAGESPEED_CONF &&
   rm $MOD_PAGESPEED_STATS_LOG*
   START_TIME=$(date +%s)000 # We need this in milliseconds.
   sleep 2; # Make sure we're around long enough to log stats.
-  statistics_enabled="1"
-else
-  statistics_enabled="0"
 fi
 
 # General system tests
@@ -1249,9 +1256,7 @@ check_from "$(cat $FETCH_FILE)" grep "$X_OTHER_HEADER"
 
 # Check that statistics logging was functional during these tests
 # if it was enabled.
-if egrep -q "^    # ModPagespeedStatistics off$" $APACHE_DEBUG_PAGESPEED_CONF &&
-   egrep -q "^ ModPagespeedStatisticsLogging on$" $APACHE_DEBUG_PAGESPEED_CONF;
-   then
+if [ $statistics_logging_enabled = "1" ]; then
   start_test Statistics logging works.
   check [ $(grep "timestamp: " $MOD_PAGESPEED_STATS_LOG* | wc -l) -ge 1 ]
   # An array of all the timestamps that were logged.
@@ -1612,7 +1617,7 @@ WGET_ARGS=""
 start_test Issue 609 -- proxying non-.pagespeed content, and caching it locally
 URL="http://$HOSTNAME/modpagespeed_http/not_really_a_font.woff"
 echo $WGET_DUMP $URL ....
-OUT1=$(wget -O - --save-headers $URL)
+OUT1=$($WGET_DUMP $URL)
 check_from "$OUT1" egrep -q "This is not really font data"
 if [ $statistics_enabled = "1" ]; then
   OLDSTATS=$OUTDIR/proxy_fetch_stats.old
@@ -1742,6 +1747,32 @@ check_not fgrep -q pagespeed.ic $FETCH_FILE
 start_test mod_pagespeed_console
 OUT=$($WGET_DUMP http://$HOSTNAME/mod_pagespeed_console)
 check_from "$OUT" grep -q "Fetch failure rate"
+
+function scrape_secondary_stat {
+  http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+    http://secondary.example.com/mod_pagespeed_statistics/ | \
+    egrep "^$1:? " | awk '{print $2}'
+}
+
+if [ $statistics_enabled = "1" ]; then
+  start_test CompressedCache is racking up savings on the root vhost
+  original_size=$(scrape_stat compressed_cache_original_size)
+  compressed_size=$(scrape_stat compressed_cache_compressed_size)
+  echo original_size=$original_size compressed_size=$compressed_size
+  check [ "$compressed_size" -lt "$original_size" ];
+  check [ "$compressed_size" -gt 0 ];
+  check [ "$original_size" -gt 0 ];
+
+  if [ "$SECONDARY_HOSTNAME" != "" ]; then
+    start_test CompressedCache is turned off for the secondary vhost
+    original_size=$(scrape_secondary_stat compressed_cache_original_size)
+    compressed_size=$(scrape_secondary_stat compressed_cache_compressed_size)
+    check [ "$compressed_size" -eq 0 ];
+    check [ "$original_size" -eq 0 ];
+  fi
+else
+  echo skipping CompressedCache test because stats is $statistics_enabled
+fi
 
 # TODO(matterbury): Uncomment these lines when the test is fixed.
 :<< COMMENTING_BLOCK
