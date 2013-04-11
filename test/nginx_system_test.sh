@@ -847,9 +847,21 @@ fetch_until $URL "grep -c $COLOR0" 1 $CACHE_C
 
 # All three caches are now populated.
 
-# TODO(jefftk): Check statistics here.  In apache_system_test.sh we can track
-# reported flushed by looking at statistics, but this isn't ported to nginx
-# yet.  Once that is ported, come back here and make sure it's correct.
+# Track how many flushes were noticed by pagespeed processes up till this point
+# in time.  Note that each process/vhost separately detects the 'flush'.
+
+# A helper function just used here to look up the cache flush count for each
+# cache.
+function cache_flush_count_scraper {
+  CACHE_LETTER=$1  # a, b, or c
+  URL="$SECONDARY_HOSTNAME/ngx_pagespeed_statistics"
+  HOST="--header=Host:cache_${CACHE_LETTER}.example.com"
+  $WGET_DUMP $HOST $URL | egrep "^cache_flush_count:? " | awk '{print $2}'
+}
+
+NUM_INITIAL_FLUSHES_A=$(cache_flush_count_scraper a)
+NUM_INITIAL_FLUSHES_B=$(cache_flush_count_scraper b)
+NUM_INITIAL_FLUSHES_C=$(cache_flush_count_scraper c)
 
 # Now change the file to $COLOR1.
 echo ".class myclass { color: $COLOR1; }" > "$CSS_FILE"
@@ -881,6 +893,15 @@ sleep 1
 # Check that CACHE_A flushed properly.
 fetch_until $URL "grep -c $COLOR1" 1 $CACHE_A
 
+# Cache was just flushed, so it should see see exactly one flush and the other
+# two should see none.
+NUM_MEDIAL_FLUSHES_A=$(cache_flush_count_scraper a)
+NUM_MEDIAL_FLUSHES_B=$(cache_flush_count_scraper b)
+NUM_MEDIAL_FLUSHES_C=$(cache_flush_count_scraper c)
+check [ $(($NUM_MEDIAL_FLUSHES_A - $NUM_INITIAL_FLUSHES_A)) -eq 1 ]
+check [ $NUM_MEDIAL_FLUSHES_B -eq $NUM_INITIAL_FLUSHES_B ]
+check [ $NUM_MEDIAL_FLUSHES_C -eq $NUM_INITIAL_FLUSHES_C ]
+
 start_test Flushing one cache does not flush all caches.
 
 # Check that CACHE_B and CACHE_C are still serving a stale version.
@@ -900,6 +921,14 @@ sleep 1
 # Check that CACHE_B and C flushed properly.
 fetch_until $URL "grep -c $COLOR1" 1 $CACHE_B
 fetch_until $URL "grep -c $COLOR1" 1 $CACHE_C
+
+# Now cache A should see no flush while caches B and C should each see a flush.
+NUM_FINAL_FLUSHES_A=$(cache_flush_count_scraper a)
+NUM_FINAL_FLUSHES_B=$(cache_flush_count_scraper b)
+NUM_FINAL_FLUSHES_C=$(cache_flush_count_scraper c)
+check [ $NUM_FINAL_FLUSHES_A -eq $NUM_MEDIAL_FLUSHES_A ]
+check [ $(($NUM_FINAL_FLUSHES_B - $NUM_MEDIAL_FLUSHES_B)) -eq 1 ]
+check [ $(($NUM_FINAL_FLUSHES_C - $NUM_MEDIAL_FLUSHES_C)) -eq 1 ]
 
 # Clean up update.css from mod_pagespeed_test so it doesn't leave behind
 # a stray file not under source control.
