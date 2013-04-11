@@ -241,6 +241,15 @@ class RewriteContext {
   // If called with true, forces a rewrite and re-generates the output.
   void set_force_rewrite(bool x) { force_rewrite_ = x; }
 
+  // Returns true if this context will prevent any attempt at distributing a
+  // rewrite (although its nested context still may be distributed). See
+  // ShouldDistributeRewrite for more detail on when a rewrite should be
+  // distributed.
+  bool block_distribute_rewrite() const { return block_distribute_rewrite_; }
+  void set_block_distribute_rewrite(const bool x) {
+    block_distribute_rewrite_ = x;
+  }
+
   const ResourceContext* resource_context() const {
     return resource_context_.get();
   }
@@ -439,6 +448,15 @@ class RewriteContext {
   // calling of base version until that is complete.
   virtual void StartFetchReconstruction();
 
+  // Determines if the given rewrite should be distributed. This is based on
+  // whether distributed servers have been configured, if the current filter is
+  // configured to be distributed, if a distributed fetcher is in place, and if
+  // distribution has been explicitly disabled for this context.
+  bool ShouldDistributeRewrite() const;
+
+  // Dispatches the rewrite to another task with a distributed fetcher.
+  void DistributeRewrite();
+
   // Makes the rest of a fetch run in background, not producing
   // a result or invoking callbacks. Will arrange for appropriate
   // memory management with the rewrite driver itself; but the caller
@@ -526,6 +544,8 @@ class RewriteContext {
   virtual void EncodeUserAgentIntoResourceContext(ResourceContext* context) {}
 
  private:
+  class DistributedRewriteCallback;
+  class DistributedRewriteFetch;
   class OutputCacheCallback;
   class LookupMetadataForOutputResourceCallback;
   friend class OutputCacheCallback;
@@ -596,6 +616,12 @@ class RewriteContext {
   // Input fetches done for async rewrite initiations should fail fast to help
   // avoid having multiple concurrent processes attempt the same rewrite.
   void FetchInputs();
+
+  // Callback to a distributed rewrite fetch. Queued to run in the high-priority
+  // thread. Fetch path: If the fetch succeeded then the rest of the flow is
+  // skipped and that result is used, otherwise the original resource is fetched
+  // and returned, bypassing rewriting.
+  void DistributeRewriteDone(bool success);
 
   // Generally a RewriteContext is waiting for one or more
   // asynchronous events to take place.  Activate is called
@@ -828,6 +854,13 @@ class RewriteContext {
   // An optional request trace associated with this context. May be NULL.
   // Always owned externally.
   RequestTrace* dependent_request_trace_;
+
+  // Set true if this rewrite context should be blocked from distributing its
+  // rewrite.
+  bool block_distribute_rewrite_;
+
+  // Stores the resulting headers and content of a distributed rewrite.
+  scoped_ptr<DistributedRewriteFetch> distributed_fetch_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };

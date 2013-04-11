@@ -221,6 +221,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       scheduler_(NULL),
       default_url_async_fetcher_(url_async_fetcher),
       url_async_fetcher_(default_url_async_fetcher_),
+      distributed_async_fetcher_(NULL),
       add_instrumentation_filter_(NULL),
       logging_filter_(NULL),
       scan_filter_(this),
@@ -325,6 +326,7 @@ void RewriteDriver::Clear() {
   base_url_.Clear();
   DCHECK(!base_url_.is_valid());
   decoded_base_url_.Clear();
+  fetch_url_.clear();
   resource_map_.clear();
 
   if (!server_context_->shutting_down()) {
@@ -1616,6 +1618,13 @@ bool RewriteDriver::FetchResource(const StringPiece& url,
   DCHECK_EQ(0, pending_rewrites_) << this;
   bool handled = false;
 
+  fetch_url_ = url.as_string();
+
+  // Set the request headers if they haven't been yet.
+  if (request_headers_ == NULL && async_fetch->request_headers() != NULL) {
+    set_request_headers(async_fetch->request_headers());
+  }
+
   // Note that this does permission checking and parsing of the url, but doesn't
   // actually fetch any data until we specifically ask it to.
   RewriteFilter* filter = NULL;
@@ -1644,11 +1653,16 @@ void RewriteDriver::FetchInPlaceResource(const GoogleUrl& gurl,
                                          bool proxy_mode,
                                          AsyncFetch* async_fetch) {
   CHECK(gurl.is_valid()) << "Invalid URL " << gurl.spec_c_str();
+  fetch_url_ = gurl.Spec().as_string();
   StringPiece base = gurl.AllExceptLeaf();
   ResourceNamer namer;
   OutputResourcePtr output_resource(new OutputResource(
       server_context_, base, base, base, namer, options(), kRewrittenResource));
   SetBaseUrlForFetch(gurl.Spec());
+  // Set the request headers if they haven't been yet.
+  if (request_headers_ == NULL && async_fetch->request_headers() != NULL) {
+    set_request_headers(async_fetch->request_headers());
+  }
   fetch_queued_ = true;
   InPlaceRewriteContext* context = new InPlaceRewriteContext(this, gurl.Spec());
   context->set_proxy_mode(proxy_mode);

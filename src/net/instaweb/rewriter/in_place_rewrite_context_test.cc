@@ -358,7 +358,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
   void AddResponse(const GoogleString& url, const ContentType& content_type,
                    const GoogleString& body, int64 now_ms, int64 ttl_ms,
                    const GoogleString& etag, bool write_to_cache,
-                   bool no_transform) {
+                   bool no_transform, MockUrlFetcher* fetcher) {
     ResponseHeaders response_headers;
     SetDefaultHeaders(content_type, &response_headers);
     if (ttl_ms > 0) {
@@ -377,11 +377,19 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     if (!etag.empty()) {
       response_headers.Add(HttpAttributes::kEtag, etag);
     }
-    mock_url_fetcher()->SetResponse(url, response_headers, body);
+    fetcher->SetResponse(url, response_headers, body);
     if (write_to_cache) {
       response_headers.ComputeCaching();
       http_cache()->Put(url, &response_headers, body, message_handler());
     }
+  }
+
+  void AddResponse(const GoogleString& url, const ContentType& content_type,
+                   const GoogleString& body, int64 now_ms, int64 ttl_ms,
+                   const GoogleString& etag, bool write_to_cache,
+                   bool no_transform) {
+    AddResponse(url, content_type, body, now_ms, ttl_ms, etag, write_to_cache,
+                no_transform, mock_url_fetcher());
   }
 
   void SetDefaultHeaders(const ContentType& content_type,
@@ -411,7 +419,7 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
     if (!user_agent_.empty()) {
       rewrite_driver()->SetUserAgent(user_agent_);
     }
-
+    rewrite_driver()->set_request_headers(&request_headers_);
     rewrite_driver()->FetchResource(url, &mock_fetch);
     // If we're testing if the rewrite takes too long, we need to push
     // time forward here.
@@ -547,6 +555,190 @@ class InPlaceRewriteContextTest : public RewriteTestBase {
   Variable* oversized_stream_;
   Variable* in_place_uncacheable_rewrites_;
 };
+
+TEST_F(InPlaceRewriteContextTest, IngressDistributedRewrite) {
+  // TODO(jkarlin): IPRO and RewriteContext tests need to actually test
+  // the ingress and rewrite tasks communicating.
+
+  // Distribute an image rewrite (the response of the rewrite task is mocked).
+  options_->DistributeFilter("aj");
+  options_->set_distributed_rewrite_servers("example.com:80");
+  Init();
+
+  // Create a new resource that the distributed fetcher can respond to but would
+  // fail on the normal url fetcher.
+  const char kDistUrl[] = "http://www.example.com/distributed.jpg";
+
+  AddResponse(kDistUrl, kContentTypeJpeg, "good:ic", start_time_ms(), ttl_ms_,
+              etag_, kNoWriteToCache, kTransform, mock_distributed_fetcher());
+
+  // The result should look normal but the request should have been
+  // distributed.
+  FetchAndCheckResponse(kDistUrl, "good:ic", true, ttl_ms_, etag_,
+                        start_time_ms());
+
+  // We miss the aj metadata cache and then distribute the rewrite and write
+  // nothing back to cache (the rewrite task writes to shared cache). This means
+  // that distributed IPRO requests have the overhead of 1 metadata miss plus
+  // the RPC.
+  EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  // Fetching again should yield the same response.
+  ClearStats();
+  FetchAndCheckResponse(kDistUrl, "good:ic", true, ttl_ms_, etag_,
+                        start_time_ms());
+
+  // We miss the aj metadata cache and then distribute the rewrite and write
+  // nothing back to cache (the rewrite task writes to shared cache).
+  EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+}
+
+TEST_F(InPlaceRewriteContextTest, IngressDistributedRewriteNotFound) {
+  // If the distributed fetcher gets a 404 then that's what should be returned.
+  options_->DistributeFilter("aj");
+  options_->set_distributed_rewrite_servers("example.com:80");
+  Init();
+  ResponseHeaders response_headers;
+  response_headers.SetStatusAndReason(HttpStatus::kNotFound);
+  mock_distributed_fetcher()->SetResponse(cache_jpg_url_, response_headers,
+                                          StringPiece());
+  // Distributed a rewrite for a file that the distributed fetcher doesn't have
+  // but the url fetcher does.
+  FetchAndCheckResponse(cache_jpg_url_, "", true, 0, NULL, 0);
+
+  EXPECT_EQ(HttpStatus::kNotFound, response_headers_.status_code());
+
+  // We miss the metadata cache and then distribute the rewrite, not storing the
+  // results.
+  EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+}
+
+TEST_F(InPlaceRewriteContextTest, IngressDistributedRewriteFailFallback) {
+  // If the distributed fetch fails mid-stream then the unoptimized resource
+  // should be returned.
+  options_->DistributeFilter("aj");
+  options_->set_distributed_rewrite_servers("example.com:80");
+  Init();
+
+  // Simulate distributed fetch failure and ensure that we fallback to the
+  // original.
+  mock_distributed_fetcher()->set_fail_after_headers(true);
+  static const char kDistUrl[] = "http://www.example.com/distributed.jpg";
+
+  AddResponse(kDistUrl, kContentTypeJpeg, "distributed_bad", start_time_ms(),
+              ttl_ms_, original_etag_, kNoWriteToCache, kTransform,
+              mock_distributed_fetcher());
+  AddResponse(kDistUrl, kContentTypeJpeg, cache_body_, start_time_ms(), ttl_ms_,
+              original_etag_, kNoWriteToCache, kTransform, mock_url_fetcher());
+
+  FetchAndCheckResponse(kDistUrl, "good", true, ttl_ms_, original_etag_,
+                        start_time_ms());
+
+  // We miss the aj metadata cache and then fallback to fetching the original
+  // and storing it in the cache.
+  EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(1, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(2, lru_cache()->num_misses());
+  // HTTP resource is inserted but no metadata is stored.
+  EXPECT_EQ(1, lru_cache()->num_inserts());
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  // Fetching again should yield the same response.
+  ClearStats();
+  FetchAndCheckResponse(kDistUrl, "good", true, ttl_ms_, original_etag_,
+                        start_time_ms());
+
+  // Tried to fetch from a remote task again, which failed again. Serve the
+  // cached http response.
+  EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
+  EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(1, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(0, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(0, http_cache()->cache_inserts()->Get());
+  EXPECT_EQ(1, lru_cache()->num_hits());
+  EXPECT_EQ(1, lru_cache()->num_misses());
+  EXPECT_EQ(0, lru_cache()->num_inserts());    // No metadata is stored.
+  EXPECT_EQ(0, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+}
+
+TEST_F(InPlaceRewriteContextTest, RewriteTaskDistributedRewrite) {
+  // The recipient of the distributed rewrite should behave as if rewrite
+  // distribution was off and return a normal (optimized) response.  So, this is
+  // a copy of the CacheableJpgUrlRewritingSucceeds test but with distributed
+  // options turned on.
+  options_->DistributeFilter("aj");
+  options_->set_distributed_rewrite_servers("example.com:80");
+  Init();
+
+  // This is the header that a distributed task would receive.
+  request_headers_.Add(HttpAttributes::kXPsaDistributedRewriteFetch, "");
+  // Handle a fetch with distributed rewrite headers, make sure it performs the
+  // optimization locally and doesn't redistribute the fetch. Note that a
+  // distributed fetch would fail since the resource has not been added to it.
+  FetchAndCheckResponse(cache_jpg_url_, cache_body_, true, ttl_ms_, NULL,
+                        start_time_ms());
+
+  // First fetch misses initial cache lookup, succeeds at fetch and inserts
+  // result into cache. Also, the resource gets rewritten and the rewritten
+  // resource gets inserted into cache.
+  EXPECT_EQ(0, counting_distributed_fetcher()->fetch_count());
+  EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
+  EXPECT_EQ(0, http_cache()->cache_hits()->Get());
+  EXPECT_EQ(1, http_cache()->cache_misses()->Get());
+  EXPECT_EQ(2, http_cache()->cache_inserts()->Get());  // rewritten + original
+  EXPECT_EQ(0, lru_cache()->num_hits());
+  EXPECT_EQ(3, lru_cache()->num_misses());
+  EXPECT_EQ(4, lru_cache()->num_inserts());
+  EXPECT_EQ(1, img_filter_->num_rewrites());
+  EXPECT_EQ(0, js_filter_->num_rewrites());
+  EXPECT_EQ(0, css_filter_->num_rewrites());
+
+  ResetHeadersAndStats();
+  SetTimeMs((start_time_ms() + ttl_ms_ / 2));
+  FetchAndCheckResponse(cache_jpg_url_, "good:ic", true, ttl_ms_ / 2, etag_,
+                        start_time_ms() + ttl_ms_ / 2);
+  // Second fetch hits the metadata cache and the rewritten resource is served
+  // out.
+  CheckWarmCache("second_fetch_12");
+}
 
 TEST_F(InPlaceRewriteContextTest, CacheableHtmlUrlNoRewriting) {
   // All these entries find no in-place rewrite metadata and no rewriting

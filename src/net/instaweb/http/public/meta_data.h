@@ -76,6 +76,14 @@ struct HttpAttributes {
   // A request header for client to specify client options.
   static const char kXPsaClientOptions[];
 
+  // This header is set in distributed rewrite requests that originated from
+  // fetch requests (.pagespeed. and IPRO).
+  static const char kXPsaDistributedRewriteFetch[];
+
+  // This header is set in distributed rewrite requests that originated from
+  // HTML requests (HTML and nested filters).
+  static const char kXPsaDistributedRewriteHtml[];
+
   // This header is set on optional fetches that got dropped due to load.
   static const char kXPsaLoadShed[];
 

@@ -331,6 +331,9 @@ class RewriteDriver : public HtmlParse {
   // will not be called.  If the callback -is- called, then this should be the
   // 'final word' on this request, whether it was called with success=true or
   // success=false.
+  //
+  // Note that if the request headers have not yet been set on the driver then
+  // they'll be taken from the fetch.
   bool FetchResource(const StringPiece& url, AsyncFetch* fetch);
 
   // Initiates an In-Place Resource Optimization (IPRO) fetch (A resource which
@@ -347,6 +350,9 @@ class RewriteDriver : public HtmlParse {
   // async_fetch->Done(false) will be called and async_fetch->status_code()
   // will be CacheUrlAsyncFetcher::kNotInCacheStatus (to distinguish this
   // from a different reason for failure, like kRecentFetchNotCacheable).
+  //
+  // Note that if the request headers have not yet been set on the driver then
+  // they'll be taken from the fetch.
   void FetchInPlaceResource(const GoogleUrl& gurl, bool proxy_mode,
                             AsyncFetch* async_fetch);
 
@@ -556,6 +562,9 @@ class RewriteDriver : public HtmlParse {
   // in the document.  Note that HtmlParse::google_url() is the URL
   // for the HTML file and is used for printing html syntax errors.
   const GoogleUrl& base_url() const { return base_url_; }
+
+  // The URL that was requested if FetchResource was called.
+  StringPiece fetch_url() const { return fetch_url_; }
 
   // Returns the decoded version of base_gurl() in case it was encoded by a
   // non-default UrlNamer (for the default UrlNamer this returns the same value
@@ -1219,6 +1228,10 @@ class RewriteDriver : public HtmlParse {
   // base as the original resource. decoded_base_url_ stores the base
   // of the original (un-rewritten) resource.
   GoogleUrl decoded_base_url_;
+
+  // This is the URL that is being fetched in a fetch path (not valid in HTML
+  // path).
+  GoogleString fetch_url_;
 
   GoogleString user_agent_;
 

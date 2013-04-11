@@ -60,21 +60,25 @@ const char HttpAttributes::kXForwardedFor[] = "X-Forwarded-For";
 const char HttpAttributes::kXForwardedProto[] = "X-Forwarded-Proto";
 const char HttpAttributes::kXGooglePagespeedClientId[] =
     "X-Google-Pagespeed-Client-Id";
-// Warning: The header name is subject to change.
-const char HttpAttributes::kXPsaClientOptions[] = "X-PSA-Client-Options";
-
-const char HttpAttributes::kXPsaRequestMetadata[] =
-    "X-PSA-Request-Metadata";
-const char HttpAttributes::kXPsaResponseMetadata[] =
-    "X-PSA-Response-Metadata";
-
 const char HttpAttributes::kXGoogleRequestEventId[] =
     "X-Google-Request-Event-Id";
 const char HttpAttributes::kXOriginalContentLength[] =
     "X-Original-Content-Length";
 const char HttpAttributes::kXPsaBlockingRewrite[] = "X-PSA-Blocking-Rewrite";
+// Warning: The header name is subject to change.
+const char HttpAttributes::kXPsaClientOptions[] = "X-PSA-Client-Options";
+const char HttpAttributes::kXPsaDistributedRewriteFetch[] =
+    "X-PSA-Distributed-Rewrite-Fetch";
+const char HttpAttributes::kXPsaDistributedRewriteHtml[] =
+    "X-PSA-Distributed-Rewrite-Html";
 const char HttpAttributes::kXPsaOptimizeForSpdy[] = "X-PSA-Optimize-For-SPDY";
 const char HttpAttributes::kXPsaLoadShed[] = "X-Psa-Load-Shed";
+const char HttpAttributes::kXPsaRequestMetadata[] =
+    "X-PSA-Request-Metadata";
+// TODO(jkarlin): Make sure (with tests) that this header does not leak beyond
+// pagespeed servers.
+const char HttpAttributes::kXPsaResponseMetadata[] =
+    "X-PSA-Response-Metadata";
 const char HttpAttributes::kXRequestedWith[] = "X-Requested-With";
 const char HttpAttributes::kXUACompatible[] = "X-UA-Compatible";
 
