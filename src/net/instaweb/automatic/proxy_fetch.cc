@@ -289,39 +289,56 @@ void ProxyFetchPropertyCallbackCollector::Done(
     success_ &= success;
 
     if (pending_callbacks_.empty()) {
-      // There is a race where Detach() can be called immediately after we
-      // release the lock below, and it (Detach) deletes 'this' (because we
-      // just set done_ to true), which means we cannot rely on any data
-      // members being valid after releasing the lock, so we copy them all.
       resource_manager = server_context_;
-      post_lookup_task_vector.reset(post_lookup_task_vector_.release());
       call_post = true;
     }
   }
+
   if (call_post) {
     DCHECK(request_context_.get() != NULL);
     request_context_->log_record()->SetTimeToPcacheEnd(
         server_context_->timer()->NowMs());
-
-    // Compose the primary and fallback property pages into a
-    // FallbackPropertyPage, so filters can use the fallback property in the
-    // absence of the primary.
-    PropertyPage* actual_page = ReleasePropertyPage(
-        ProxyFetchPropertyCallback::kPropertyCachePage);
-    PropertyPage* fallback_page = ReleasePropertyPage(
-        ProxyFetchPropertyCallback::kPropertyCacheFallbackPage);
-    fallback_property_page_.reset(
-        new FallbackPropertyPage(actual_page, fallback_page));
     ThreadSynchronizer* sync = resource_manager->thread_synchronizer();
     sync->Signal(ProxyFetch::kCollectorReady);
     sync->Wait(ProxyFetch::kCollectorDetach);
     sync->Wait(ProxyFetch::kCollectorDone);
+
+    PropertyPage* actual_page = ReleasePropertyPage(
+        ProxyFetchPropertyCallback::kPropertyCachePage);
+    if (actual_page != NULL) {
+      // actual_page can be NULL if client property cache is enabled and
+      // page property cache is disabled.
+      // Compose the primary and fallback property pages into a
+      // FallbackPropertyPage, so filters can use the fallback property in the
+      // absence of the primary.
+      PropertyPage* fallback_page = ReleasePropertyPage(
+          ProxyFetchPropertyCallback::kPropertyCacheFallbackPage);
+      fallback_property_page_.reset(
+          new FallbackPropertyPage(actual_page, fallback_page));
+    }
+    {
+      ScopedMutex lock(mutex_.get());
+      // This should be called only after fallback property page is set because
+      // there can be post lookup task which requires fallback_property_page.
+      // This is to avoid a race between AddPostLookupTask() and Done(). If
+      // post_lookup_task_vector_ is released before fallback_page is set, then
+      // any call to AddPostLookupTask() will execute the the task immediately
+      // and fallback page will be NULL as it is not yet set.
+      // If fallback_property_page is not set because page property page is
+      // disaabled, then there should not be any post lookup task waiting which
+      // requires fallback_property_page.
+      post_lookup_task_vector.reset(post_lookup_task_vector_.release());
+    }
     if (post_lookup_task_vector.get() != NULL) {
       for (int i = 0, n = post_lookup_task_vector->size(); i < n; ++i) {
         (*post_lookup_task_vector.get())[i]->CallRun();
       }
     }
     {
+      // There is a race where Detach() can be called immediately after we
+      // release the lock below, and it (Detach) deletes 'this' (because we
+      // just set done_ to true), which means we cannot rely on any data
+      // members being valid after releasing the lock, so we copy them all.
       ScopedMutex lock(mutex_.get());
       done_ = true;
       fetch = proxy_fetch_;
@@ -405,6 +422,10 @@ void ProxyFetchPropertyCallbackCollector::Detach(HttpStatus::Code status_code) {
 }
 
 void ProxyFetchPropertyCallbackCollector::AddPostLookupTask(Function* func) {
+  // Following sync points are added to simulate the race in test. In
+  // production binaries, these are no-op.
+  ThreadSynchronizer* sync = server_context_->thread_synchronizer();
+  sync->Wait(ProxyFetch::kCollectorReady);
   bool do_run = false;
   {
     ScopedMutex lock(mutex_.get());
@@ -417,6 +438,7 @@ void ProxyFetchPropertyCallbackCollector::AddPostLookupTask(Function* func) {
   if (do_run) {
     func->CallRun();
   }
+  sync->Signal(ProxyFetch::kCollectorDone);
 }
 
 ProxyFetch::ProxyFetch(

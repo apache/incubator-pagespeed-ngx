@@ -36,7 +36,9 @@
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/thread_synchronizer.h"
 #include "net/instaweb/util/public/thread_system.h"
+#include "net/instaweb/util/worker_test_base.h"
 
 namespace net_instaweb {
 
@@ -83,6 +85,19 @@ class ProxyFetchPropertyCallbackCollectorTest : public RewriteTestBase {
  public:
   void PostLookupTask() {
     post_lookup_called_ = true;
+  }
+  void CheckPageNotNullPostLookupTask(
+      ProxyFetchPropertyCallbackCollector* collector) {
+    EXPECT_TRUE(collector->fallback_property_page() != NULL);
+  }
+
+  void AddCheckPageNotNullPostLookupTask(
+      ProxyFetchPropertyCallbackCollector* collector) {
+    collector->AddPostLookupTask(MakeFunction(
+        this,
+        &ProxyFetchPropertyCallbackCollectorTest::
+            CheckPageNotNullPostLookupTask,
+        collector));
   }
 
  protected:
@@ -455,6 +470,38 @@ TEST_F(ProxyFetchPropertyCallbackCollectorTest, DonePostLookupProxyFetch) {
 
 TEST_F(ProxyFetchPropertyCallbackCollectorTest, ProxyFetchPostLookupDone) {
   TestAddPostlookupTask(true, false);
+}
+
+TEST_F(ProxyFetchPropertyCallbackCollectorTest, FallbackPagePostLookupRace) {
+  // This test will check PostLookup tasks should not have Null
+  // fallback_property_page.
+  GoogleString kUrl("http://www.test.com/");
+  scoped_ptr<ProxyFetchPropertyCallbackCollector> collector;
+  collector.reset(MakeCollector());
+  ProxyFetchPropertyCallback* page_callback = AddCallback(
+      collector.get(), ProxyFetchPropertyCallback::kPropertyCachePage);
+  ExpectStringAsyncFetch async_fetch(
+      true, RequestContext::NewTestRequestContext(thread_system_.get()));
+  ProxyFetchFactory factory(server_context_);
+  MockProxyFetch* mock_proxy_fetch = new MockProxyFetch(
+      &async_fetch, &factory, server_context_);
+
+  ThreadSynchronizer* sync = server_context()->thread_synchronizer();
+  sync->EnableForPrefix(ProxyFetch::kCollectorReady);
+  sync->EnableForPrefix(ProxyFetch::kCollectorDone);
+  ThreadSystem* thread_system = server_context()->thread_system();
+  QueuedWorkerPool pool(1, "test", thread_system);
+  QueuedWorkerPool::Sequence* sequence = pool.NewSequence();
+  WorkerTestBase::SyncPoint sync_point(thread_system);
+  sequence->Add(
+      MakeFunction(
+          static_cast<ProxyFetchPropertyCallbackCollectorTest*>(this),
+          &ProxyFetchPropertyCallbackCollectorTest::
+              AddCheckPageNotNullPostLookupTask,
+          collector.get()));
+  page_callback->Done(true);
+  collector->ConnectProxyFetch(mock_proxy_fetch);
+  mock_proxy_fetch->Done(true);
 }
 
 }  // namespace net_instaweb

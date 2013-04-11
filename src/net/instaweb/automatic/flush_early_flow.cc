@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <set>
 
+#include "base/logging.h"
 #include "net/instaweb/automatic/public/proxy_fetch.h"
 #include "net/instaweb/htmlparse/public/html_keywords.h"
 #include "net/instaweb/http/http.pb.h"  // for HttpResponseHeaders
@@ -43,7 +44,6 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/fallback_property_page.h"
 #include "net/instaweb/util/public/function.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -78,6 +78,7 @@ const int kMinLatencyForPreconnectMs = 100;
 
 namespace net_instaweb {
 
+class FallbackPropertyPage;
 class StaticAssetManager;
 
 namespace {
@@ -380,10 +381,9 @@ void FlushEarlyFlow::FlushEarly() {
   const RewriteOptions* options = driver_->options();
   const PropertyCache::Cohort* cohort = manager_->page_property_cache()->
       GetCohort(RewriteDriver::kDomCohort);
-  FallbackPropertyPage* fallback_page =
-      property_cache_callback_->fallback_property_page();
-  PropertyPage* page = fallback_page->actual_property_page();
-  if (fallback_page != NULL && cohort != NULL) {
+  PropertyPage* page = property_cache_callback_->property_page();
+  DCHECK(page != NULL);
+  if (page != NULL && cohort != NULL) {
     PropertyValue* num_rewritten_resources_property_value = page->GetProperty(
         cohort,
         RewrittenContentScanningFilter::kNumProxiedRewrittenResourcesProperty);
@@ -451,7 +451,9 @@ void FlushEarlyFlow::FlushEarly() {
             RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),
             RewriterApplication::APPLIED_OK);
 
-        InitFlushEarlyDriverWithPropertyCacheValues(new_driver, fallback_page);
+        // Allow the usage of fallback properties for critical images.
+        InitFlushEarlyDriverWithPropertyCacheValues(
+            new_driver, property_cache_callback_->fallback_property_page());
         if (flush_early_info.has_average_fetch_latency_ms()) {
           average_fetch_time_ = flush_early_info.average_fetch_latency_ms();
         }
