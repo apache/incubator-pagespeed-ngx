@@ -919,6 +919,14 @@ void RewriteOptions::AddProperties() {
       "Enable inserting client-side critical images detection "
       "js for image optimization filters.");
   AddBaseProperty(
+      false,
+  &RewriteOptions::test_only_prioritize_critical_css_dont_apply_original_css_,
+      "dlacae",
+      kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss,
+      kDirectoryScope,
+      "Stops the prioritize_critical_css filter from invoking its JavaScript "
+      "that applies all the 'hidden' CSS at onload. Intended for testing.");
+  AddBaseProperty(
       kDefaultBeaconReinstrumentTimeSec,
       &RewriteOptions::beacon_reinstrument_time_sec_, "brts",
       kBeaconReinstrumentTimeSec,

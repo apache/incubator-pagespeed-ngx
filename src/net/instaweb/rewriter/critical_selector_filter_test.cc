@@ -87,7 +87,8 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
 
   GoogleString JsLoader() {
     return StrCat("<script type=\"text/javascript\">",
-                  CriticalSelectorFilter::kAddStylesScript,
+                  CriticalSelectorFilter::kAddStylesFunction,
+                  CriticalSelectorFilter::kAddStylesInvocation,
                   "</script>");
   }
 

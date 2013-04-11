@@ -46,7 +46,8 @@ class RewriteDriver;
 
 class CriticalSelectorFilter : public CssSummarizerBase {
  public:
-  static const char kAddStylesScript[];
+  static const char kAddStylesFunction[];
+  static const char kAddStylesInvocation[];
   static const char kSummarizedCssProperty[];
 
   explicit CriticalSelectorFilter(RewriteDriver* rewrite_driver);

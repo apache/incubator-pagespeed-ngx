@@ -264,6 +264,11 @@ DEFINE_bool(critical_images_beacon_enabled, false, "Boolean indicating whether "
             "critical images beacon should be inserted for image rewriting "
             "filters.");
 
+DEFINE_bool(test_only_prioritize_critical_css_dont_apply_original_css, false,
+            "Boolean indicating whether the prioritize_critical_css filter "
+            "should invoke its JavaScript function to load all 'hidden' CSS "
+            "at onload.");
+
 DEFINE_int64(implicit_cache_ttl_ms,
              net_instaweb::RewriteOptions::kDefaultImplicitCacheTtlMs,
              "The number of milliseconds of cache TTL we assign to resources "
@@ -620,6 +625,11 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   if (WasExplicitlySet("critical_images_beacon_enabled")) {
     options->set_critical_images_beacon_enabled(
         FLAGS_critical_images_beacon_enabled);
+  }
+  if (WasExplicitlySet(
+          "test_only_prioritize_critical_css_dont_apply_original_css")) {
+    options->set_test_only_prioritize_critical_css_dont_apply_original_css(
+        FLAGS_test_only_prioritize_critical_css_dont_apply_original_css);
   }
   if (WasExplicitlySet("implicit_cache_ttl_ms")) {
     options->set_implicit_cache_ttl_ms(FLAGS_implicit_cache_ttl_ms);

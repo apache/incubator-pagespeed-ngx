@@ -295,6 +295,7 @@ class RewriteOptions {
     kRunningFurious,
     kServeStaleIfFetchError,
     kSupportNoScriptEnabled,
+    kTestOnlyPrioritizeCriticalCssDontApplyOriginalCss,
     kUseFallbackPropertyCacheValues,
     kUseSmartDiffInBlink,
     kXModPagespeedHeaderValue,
@@ -1347,6 +1348,13 @@ class RewriteOptions {
   }
   void set_test_instant_fetch_rewrite_deadline(bool x) {
     set_option(x, &test_instant_fetch_rewrite_deadline_);
+  }
+
+  void set_test_only_prioritize_critical_css_dont_apply_original_css(bool x) {
+    set_option(x, &test_only_prioritize_critical_css_dont_apply_original_css_);
+  }
+  bool test_only_prioritize_critical_css_dont_apply_original_css() const {
+    return test_only_prioritize_critical_css_dont_apply_original_css_.value();
   }
 
   int domain_shard_count() const { return domain_shard_count_.value(); }
@@ -2980,6 +2988,11 @@ class RewriteOptions {
 
   // Test-only flag to get fetch deadlines to trigger instantly.
   Option<bool> test_instant_fetch_rewrite_deadline_;
+
+  // Indicates whether the prioritize_critical_css filter should invoke its
+  // JavaScript function to load all the "hidden" CSS files at onload.
+  // Intended for testing only.
+  Option<bool> test_only_prioritize_critical_css_dont_apply_original_css_;
 
   // Enables blocking rewrite of html. RewriteDriver provides a flag
   // fully_rewrite_on_flush which makes sure that all rewrites are done before

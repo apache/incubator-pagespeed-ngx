@@ -33,6 +33,7 @@
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/public/basictypes.h"
@@ -64,8 +65,11 @@ template<typename VectorType> void Compact(VectorType* cl) {
 const char CriticalSelectorFilter::kSummarizedCssProperty[] =
     "selector_summarized_css";
 
-// TODO(ksimbili): Move this to appropriate event instead of 'onload'.
-const char CriticalSelectorFilter::kAddStylesScript[] =
+// Function and invocation are separate so we can suppress the invocation when
+// running tests while still being able to manually invoke it from the JS
+// console if desired.
+// See ModPagespeedTestOnlyCriticalSelectorFilterDontApplyOriginalCss.
+const char CriticalSelectorFilter::kAddStylesFunction[] =
     "var addAllStyles = function() {"
     "  var n = document.getElementsByTagName(\"noscript\");"
     // Note that this uses separate loops to walk the noscript NodeList and
@@ -84,7 +88,9 @@ const char CriticalSelectorFilter::kAddStylesScript[] =
     "    div.innerHTML = e.textContent;"
     "    document.body.appendChild(div);"
     "  }"
-    "};"
+    "};";
+// TODO(ksimbili): Move this to appropriate event instead of 'onload'.
+const char CriticalSelectorFilter::kAddStylesInvocation[] =
     "if (window.addEventListener) {"
     "  window.addEventListener(\"load\", addAllStyles, false);"
     "} else if (window.attachEvent) {"
@@ -398,8 +404,14 @@ void CriticalSelectorFilter::EndDocument() {
 
     HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
     driver_->InsertElementBeforeCurrent(script);
-    driver_->server_context()->static_asset_manager()->AddJsToElement(
-        kAddStylesScript, script, driver_);
+    if (driver_->options()
+        ->test_only_prioritize_critical_css_dont_apply_original_css()) {
+      driver_->server_context()->static_asset_manager()->AddJsToElement(
+          kAddStylesFunction, script, driver_);
+    } else {
+      driver_->server_context()->static_asset_manager()->AddJsToElement(
+          StrCat(kAddStylesFunction, kAddStylesInvocation), script, driver_);
+    }
   }
 
   STLDeleteElements(&css_elements_);
