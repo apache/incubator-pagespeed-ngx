@@ -297,6 +297,17 @@ http {
 
     pagespeed Domain modpagespeed.com:1023;
 
+    location /mod_pagespeed_test/forbid_all_disabled/disabled {
+      # Prevent the enabling of these filters for files in this directory
+      # -and- all subdirectories.
+      #
+      # Apache checks here that they can't be renabled with .htaccess, but
+      # that's not how Nginx location blocks work.
+      pagespeed ForbidAllDisabledFilters true;
+      pagespeed DisableFilters remove_quotes,remove_comments;
+      pagespeed DisableFilters collapse_whitespace;
+    }
+
     location ~ \.php$ {
       fastcgi_param SCRIPT_FILENAME $request_filename;
       fastcgi_param QUERY_STRING $query_string;
