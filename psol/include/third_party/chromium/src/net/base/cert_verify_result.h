@@ -4,26 +4,39 @@
 
 #ifndef NET_BASE_CERT_VERIFY_RESULT_H_
 #define NET_BASE_CERT_VERIFY_RESULT_H_
-#pragma once
 
 #include <vector>
 
-#include "net/base/net_api.h"
+#include "net/base/cert_status_flags.h"
+#include "net/base/net_export.h"
+#include "base/memory/ref_counted.h"
 #include "net/base/x509_cert_types.h"
 
 namespace net {
 
-// The result of certificate verification.  Eventually this may contain the
-// certificate chain that was constructed during certificate verification.
-class NET_API CertVerifyResult {
+class X509Certificate;
+
+// The result of certificate verification.
+class NET_EXPORT CertVerifyResult {
  public:
   CertVerifyResult();
   ~CertVerifyResult();
 
   void Reset();
 
-  // Bitmask of CERT_STATUS_* from net/base/cert_status_flags.h
-  int cert_status;
+  // The certificate and chain that was constructed during verification.
+  // Note that the though the verified certificate will match the originally
+  // supplied certificate, the intermediate certificates stored within may
+  // be substantially different. In the event of a verification failure, this
+  // will contain the chain as supplied by the server. This may be NULL if
+  // running within the sandbox.
+  scoped_refptr<X509Certificate> verified_cert;
+
+  // Bitmask of CERT_STATUS_* from net/base/cert_status_flags.h. Note that
+  // these status flags apply to the certificate chain returned in
+  // |verified_cert|, rather than the originally supplied certificate
+  // chain.
+  CertStatus cert_status;
 
   // Properties of the certificate chain.
   bool has_md5;
@@ -32,10 +45,10 @@ class NET_API CertVerifyResult {
   bool has_md5_ca;
   bool has_md2_ca;
 
-  // If the certificate was successfully verified then this contains the SHA1
-  // fingerprints of the SubjectPublicKeyInfos of the chain. The fingerprint
-  // from the leaf certificate will be the first element of the vector.
-  std::vector<SHA1Fingerprint> public_key_hashes;
+  // If the certificate was successfully verified then this contains the
+  // hashes, in several hash algorithms, of the SubjectPublicKeyInfos of the
+  // chain.
+  HashValueVector public_key_hashes;
 
   // is_issued_by_known_root is true if we recognise the root CA as a standard
   // root.  If it isn't then it's probably the case that this certificate was

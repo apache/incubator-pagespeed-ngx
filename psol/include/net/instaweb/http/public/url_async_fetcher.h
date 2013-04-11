@@ -80,7 +80,7 @@ class UrlAsyncFetcher {
   // be corrupted if you use it with anything other than the IPRO path.
   AsyncFetch* EnableInflation(
       AsyncFetch* fetch,
-      const std::set<ContentType::Type>* inflation_content_type_blacklist)
+      const std::set<const ContentType*>* inflation_content_type_blacklist)
           const;
 
  protected:

@@ -1,10 +1,9 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_COMPILER_SPECIFIC_H_
 #define BASE_COMPILER_SPECIFIC_H_
-#pragma once
 
 #include "build/build_config.h"
 
@@ -63,9 +62,9 @@
 //
 // MSVC Compiler warning C4275:
 // non dll-interface class 'Bar' used as base for dll-interface class 'Foo'.
-// Note that this is intended to be used only when no access to the base class
-// can be gained through the derived class. For more info, see
-// http://msdn.microsoft.com/en-us/library/3tdb471s(VS.80).aspx
+// Note that this is intended to be used only when no access to the base class'
+// static data is done through derived classes or inline methods. For more info,
+// see http://msdn.microsoft.com/en-us/library/3tdb471s(VS.80).aspx
 #define NON_EXPORTED_BASE(code) MSVC_SUPPRESS_WARNING(4275) \
                                 code
 
@@ -90,10 +89,40 @@
 //   int x ALLOW_UNUSED = ...;
 #if defined(COMPILER_GCC)
 #define ALLOW_UNUSED __attribute__((unused))
-#define NOINLINE __attribute__((noinline))
 #else
 #define ALLOW_UNUSED
+#endif
+
+// Annotate a function indicating it should not be inlined.
+// Use like:
+//   NOINLINE void DoStuff() { ... }
+#if defined(COMPILER_GCC)
+#define NOINLINE __attribute__((noinline))
+#elif defined(COMPILER_MSVC)
+#define NOINLINE __declspec(noinline)
+#else
 #define NOINLINE
+#endif
+
+// Specify memory alignment for structs, classes, etc.
+// Use like:
+//   class ALIGNAS(16) MyClass { ... }
+//   ALIGNAS(16) int array[4];
+#if defined(COMPILER_MSVC)
+#define ALIGNAS(byte_alignment) __declspec(align(byte_alignment))
+#elif defined(COMPILER_GCC)
+#define ALIGNAS(byte_alignment) __attribute__((aligned(byte_alignment)))
+#endif
+
+// Return the byte alignment of the given type (available at compile time).  Use
+// sizeof(type) prior to checking __alignof to workaround Visual C++ bug:
+// http://goo.gl/isH0C
+// Use like:
+//   ALIGNOF(int32)  // this would be 4
+#if defined(COMPILER_MSVC)
+#define ALIGNOF(type) (sizeof(type) - sizeof(type) + __alignof(type))
+#elif defined(COMPILER_GCC)
+#define ALIGNOF(type) __alignof__(type)
 #endif
 
 // Annotate a virtual method indicating it must be overriding a virtual

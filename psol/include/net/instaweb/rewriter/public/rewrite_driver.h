@@ -25,24 +25,25 @@
 
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
-#include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/http_cache.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
+#include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
-#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/scan_filter.h"
+#include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/public/abstract_client_state.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/printf_format.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/scheduler.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -54,20 +55,22 @@ class AbstractMutex;
 class AddInstrumentationFilter;
 class AsyncFetch;
 class CacheUrlAsyncFetcher;
-class CollectSubresourcesFilter;
 class CommonFilter;
 class CriticalLineInfo;
+class CriticalSelectorSet;
 class DebugFilter;
+class DeviceProperties;
 class DomainRewriteFilter;
 class FileSystem;
 class FlushEarlyInfo;
 class FlushEarlyRenderInfo;
 class Function;
-class HtmlEvent;
 class HtmlFilter;
 class HtmlWriterFilter;
+class LoggingFilter;
 class LogRecord;
 class MessageHandler;
+class OutputResource;
 class PropertyPage;
 class RequestHeaders;
 class RequestTrace;
@@ -81,7 +84,6 @@ class ScopedMutex;
 class Statistics;
 class UrlAsyncFetcher;
 class UrlLeftTrimFilter;
-class UserAgentMatcher;
 class Writer;
 
 // This extends class HtmlParse (which should renamed HtmlContext) by providing
@@ -103,13 +105,6 @@ class RewriteDriver : public HtmlParse {
                            // and anything else that finishes within deadline.
     kWaitForShutDown       // Makes sure that all work, including any that's
                            // being done in background, finishes.
-  };
-
-  // Lazily-initialized boolean value
-  enum LazyBool {
-    kNotSet = -1,
-    kFalse = 0,
-    kTrue = 1
   };
 
   // Indicates document's mimetype as XHTML, HTML, or is not
@@ -141,21 +136,17 @@ class RewriteDriver : public HtmlParse {
   // that are computed from the DOM, and thus can, if desired, be rewritten
   // on every HTML request.
   static const char kDomCohort[];
+  // The cohort for properties that are written by the beacon handler.
+  static const char kBeaconCohort[];
 
-  // The name of the property in the DomCohort that tracks the timestamp when
-  // we last received a request for this url.
+  // Property Names in DomCohort.
+  // Tracks the timestamp when we last received a request for this url.
   static const char kLastRequestTimestamp[];
-
-  // The name of the property in the DomCohort that tracks whether we exceeded
-  // the maximum size limit of html which we should parse.
+  // Tracks if we exceeded the maximum size limit of html which we should parse.
   static const char kParseSizeLimitExceeded[];
-
-  // This proprty is used to store information regarding the subresources
-  // associted with the HTML page.
+  // Flush Subresources Info associted with the HTML page.
   static const char kSubresourcesPropertyName[];
-
-  // Key for storage of information regarding the status codes of previous
-  // responses.
+  // Status codes of previous responses.
   static const char kStatusCodePropertyName[];
 
   RewriteDriver(MessageHandler* message_handler,
@@ -196,24 +187,19 @@ class RewriteDriver : public HtmlParse {
   bool MayCacheExtendScripts() const;
 
   void RememberResource(const StringPiece& url, const ResourcePtr& resource);
-  const GoogleString& user_agent() const {
-    return user_agent_;
-  }
-  void set_user_agent(const StringPiece& user_agent_string) {
-    user_agent_string.CopyToString(&user_agent_);
-    user_agent_is_bot_ = kNotSet;
-    user_agent_supports_image_inlining_ = kNotSet;
-    user_agent_supports_js_defer_ = kNotSet;
-    user_agent_supports_webp_ = kNotSet;
-    user_agent_supports_webp_lossless_alpha_ = kNotSet;
-    is_mobile_user_agent_ = kNotSet;
-    user_agent_supports_split_html_ = kNotSet;
-    is_screen_resolution_set_ = kNotSet;
+  const GoogleString& user_agent() const { return user_agent_; }
+
+  void SetUserAgent(const StringPiece& user_agent_string);
+
+  const DeviceProperties* device_properties() const {
+    return device_properties_.get();
   }
 
+  // Reinitializes device_properties_, clearing any cached values.
+  void ClearDeviceProperties();
+
   // Returns true if the request we're rewriting was made using SPDY.
-  bool using_spdy() const { return using_spdy_; }
-  void set_using_spdy(bool x) { using_spdy_ = x; }
+  bool using_spdy() const { return request_context_->using_spdy(); }
 
   bool write_property_cache_dom_cohort() const {
     return write_property_cache_dom_cohort_;
@@ -261,24 +247,15 @@ class RewriteDriver : public HtmlParse {
   }
 
   const RequestHeaders* request_headers() const {
-    DCHECK(request_headers_ != NULL);
     return request_headers_;
   }
 
-  const UserAgentMatcher& user_agent_matcher() const {
+  UserAgentMatcher* user_agent_matcher() const {
     DCHECK(server_context() != NULL);
     return server_context()->user_agent_matcher();
   }
-  bool UserAgentSupportsImageInlining() const;
-  bool UserAgentSupportsJsDefer() const;
-  bool UserAgentSupportsWebp() const;
-  bool UserAgentSupportsWebpLosslessAlpha() const;
-  bool IsMobileUserAgent() const;
-  bool GetScreenResolution(int* width, int* height);
-  void SetScreenResolution(int width, int height);
-  // Whether flush early flow is supported for this request.
+
   bool SupportsFlushEarly() const;
-  bool UserAgentSupportsSplitHtml() const;
 
   // Adds the filters from the options, specified by name in enabled_filters.
   // This must be called explicitly after object construction to provide an
@@ -357,15 +334,18 @@ class RewriteDriver : public HtmlParse {
   // Initiates an In-Place Resource Optimization (IPRO) fetch (A resource which
   // is served under the original URL, but is still able to be rewritten).
   //
-  // perform_http_fetch indicates whether or not an HTTP fetch should be done
-  // to get the resource if a cache lookup fails. Proxy implementations will
-  // want to set this to true because there is no other way to get the content.
-  // However, origin implementations will want to set this to false so that
-  // they can fall back to locally serving the contents.
+  // proxy_mode indicates whether we are running as a proxy where users
+  // depend on us to send contents. When set true, we will perform HTTP fetches
+  // to get contents if not in cache and will ignore kRecentFetchNotCacheable
+  // and kRecentFetchFailed since we'll have to fetch the resource for users
+  // anyway. Origin implementations (like mod_pagespeed) should set this to
+  // false and let the serve serve the resource if it's not in cache.
   //
-  // async_fetch->Done(false) will be called if perform_http_fetch is false
-  // and the resource could not be found in HTTP cache.
-  void FetchInPlaceResource(const GoogleUrl& gurl, bool perform_http_fetch,
+  // If proxy_mode is false and the resource could not be found in HTTP cache,
+  // async_fetch->Done(false) will be called and async_fetch->status_code()
+  // will be CacheUrlAsyncFetcher::kNotInCacheStatus (to distinguish this
+  // from a different reason for failure, like kRecentFetchNotCacheable).
+  void FetchInPlaceResource(const GoogleUrl& gurl, bool proxy_mode,
                             AsyncFetch* async_fetch);
 
   // See FetchResource.  There are two differences:
@@ -407,6 +387,12 @@ class RewriteDriver : public HtmlParse {
   // fetcher, and will keep it around until Clear(), even if further calls
   // to this method are made.
   void SetSessionFetcher(UrlAsyncFetcher* f);
+
+  UrlAsyncFetcher* distributed_fetcher() { return distributed_async_fetcher_; }
+  // Does not take ownership.
+  void set_distributed_fetcher(UrlAsyncFetcher* fetcher) {
+    distributed_async_fetcher_ = fetcher;
+  }
 
   // Creates a cache fetcher that uses the driver's fetcher and its options.
   // Note: this means the driver's fetcher must survive as long as this does.
@@ -455,28 +441,6 @@ class RewriteDriver : public HtmlParse {
   // deleted at the point the callback is invoked.
   void FinishParseAsync(Function* callback);
 
-  // Prevent the EndElementEvent for element from flushing.  If it has already
-  // flushed, this has no effect.  Should only be called from an event listener.
-  // Useful for giving an active filter time to complete an RPC that provides
-  // data to append to element.
-  void InhibitEndElement(const HtmlElement* element);
-
-  // Permits the EndElementEvent for element to flush.  If it was not previously
-  // prevented from doing so by InhibitEndElement, this has no effect.  Should
-  // only be called from an active filter, in coordination with an event
-  // listener that called InhibitEndElement.  If we are currently flushing,
-  // another flush will be scheduled as soon as this one finishes.  If we are
-  // not, another flush will be scheduled immediately.
-  void UninhibitEndElement(const HtmlElement* element);
-
-  // Returns true if the EndElementEvent for element is inhibited from flushing.
-  bool EndElementIsInhibited(const HtmlElement* element);
-
-  // Will return true if the EndElementEvent of element is inhibited from
-  // flushing, and that event determined the size of the current flush.  Will
-  // return false if a flush is not currently in progress.
-  bool EndElementIsStoppingFlush(const HtmlElement* element);
-
   // Report error message with description of context's location
   // (such as filenames and line numbers). context may be NULL, in which case
   // the current parse position will be used.
@@ -521,6 +485,13 @@ class RewriteDriver : public HtmlParse {
       const StringPiece& mapped_path, const StringPiece& unmapped_path,
       const StringPiece& base_url, const StringPiece& filter_id,
       const StringPiece& name, OutputResourceKind kind);
+
+  // Fills in the resource namer based on the give filter_id, name and options
+  // stored in the driver.
+  void PopulateResourceNamer(
+    const StringPiece& filter_id,
+    const StringPiece& name,
+    ResourceNamer* full_name);
 
   // Version of CreateOutputResourceWithPath which first takes only the
   // unmapped path and finds the mapped path using the DomainLawyer
@@ -651,6 +622,11 @@ class RewriteDriver : public HtmlParse {
   // are no longer interested in its results.
   void Cleanup();
 
+  // Debugging routines to print out data about the driver.
+  GoogleString ToString(bool show_detached_contexts);
+  void PrintState(bool show_detached_contexts);            // For debugging.
+  void PrintStateToErrorLog(bool show_detached_contexts);  // For logs.
+
   // Wait for outstanding Rewrite to complete.  Once the rewrites are
   // complete they can be rendered.
   void WaitForCompletion();
@@ -729,6 +705,10 @@ class RewriteDriver : public HtmlParse {
   }
   int max_page_processing_delay_ms() { return max_page_processing_delay_ms_; }
 
+  // Sets the device type chosen for the current property_page.
+  void set_device_type(UserAgentMatcher::DeviceType x) { device_type_ = x; }
+  UserAgentMatcher::DeviceType device_type() { return device_type_; }
+
   // Tries to register the given rewrite context as working on
   // its partition key. If this context is the first one to try to handle it,
   // returns NULL. Otherwise returns the previous such context.
@@ -778,10 +758,8 @@ class RewriteDriver : public HtmlParse {
   virtual void Flush();
 
   // Initiates an asynchronous Flush.  done->Run() will be called when
-  // the flush is complete.  The inhibits_mutex_ will be held while the callback
-  // is running, so the callback should not attempt to inhibit or uninhibit
-  // an element.  Further calls to ParseText should be deferred until the
-  // callback is called.
+  // the flush is complete.  Further calls to ParseText should be deferred until
+  // the callback is called.
   void FlushAsync(Function* done);
 
   // Queues up a task to run on the (high-priority) rewrite thread.
@@ -865,28 +843,23 @@ class RewriteDriver : public HtmlParse {
   void set_critical_line_info(CriticalLineInfo* critical_line_info);
 
   // Used by ImageRewriteFilter for identifying critical images.
-  const StringSet* critical_images() const {
-    return critical_images_.get();
+  CriticalImagesInfo* critical_images_info() const {
+    return critical_images_info_.get();
   }
 
   // Inserts the critical images present on the requested html page. It takes
-  // the ownership of critical_images.
-  void set_critical_images(StringSet* critical_images) {
-    critical_images_.reset(critical_images);
+  // ownership of critical_images_info. This should only be called by the
+  // CriticalImagesFinder, normal users should just be using the automatic
+  // management of critical_images_info that CriticalImagesFinder provides.
+  void set_critical_images_info(CriticalImagesInfo* critical_images_info) {
+    critical_images_info_.reset(critical_images_info);
   }
 
-  const StringSet* css_critical_images() const {
-    return css_critical_images_.get();
-  }
-
-  // Inserts the critical images present in the css. It takes the ownership of
-  // css_critical_images.
-  void set_css_critical_images(StringSet* css_critical_images) {
-    css_critical_images_.reset(css_critical_images);
-  }
-
-  bool updated_critical_images() const { return updated_critical_images_; }
-  void set_updated_critical_images(bool x) { updated_critical_images_ = x; }
+  // Returns computed critical selector set for this page, or NULL
+  // if not available. Should only be called from HTML-safe thread context.
+  // (parser threar or Render() callbacks). The returned value is owned by
+  // the rewrite driver.
+  CriticalSelectorSet* CriticalSelectors();
 
   // We expect to this method to be called on the HTML parser thread.
   // Returns the number of images whose low quality images are inlined in the
@@ -920,23 +893,23 @@ class RewriteDriver : public HtmlParse {
   // that browsers should parse it as XHTML.
   XhtmlStatus MimeTypeXhtmlStatus();
 
+  void set_flushed_cached_html(bool x) { flushed_cached_html_ = x; }
+  bool flushed_cached_html() { return flushed_cached_html_; }
+
+  void set_flushing_cached_html(bool x) { flushing_cached_html_ = x; }
+  bool flushing_cached_html() const { return flushing_cached_html_; }
+
   void set_flushed_early(bool x) { flushed_early_ = x; }
-  bool flushed_early() { return flushed_early_; }
+  bool flushed_early() const { return flushed_early_; }
 
   void set_flushing_early(bool x) { flushing_early_ = x; }
-  bool flushing_early() { return flushing_early_; }
+  bool flushing_early() const { return flushing_early_; }
 
   void set_is_lazyload_script_flushed(bool x) {
     is_lazyload_script_flushed_ = x;
   }
-  bool is_lazyload_script_flushed() { return is_lazyload_script_flushed_; }
-
-  void set_is_defer_javascript_script_flushed(bool x) {
-    is_defer_javascript_script_flushed_ = x;
-  }
-  bool is_defer_javascript_script_flushed() {
-    return is_defer_javascript_script_flushed_;
-  }
+  bool is_lazyload_script_flushed() const {
+    return is_lazyload_script_flushed_; }
 
   // This method is not thread-safe. Call it only from the html parser thread.
   FlushEarlyInfo* flush_early_info();
@@ -968,23 +941,32 @@ class RewriteDriver : public HtmlParse {
 
   // Determines whether the system is healthy enough to rewrite resources.
   // Currently, systems get sick based on the health of the metadata cache.
-  bool can_rewrite_resources() { return can_rewrite_resources_; }
+  bool can_rewrite_resources() const { return can_rewrite_resources_; }
 
   // Sets the is_nested property on the driver.
   void set_is_nested(bool n) { is_nested_ = n; }
+  bool is_nested() const { return is_nested_; }
 
-  // Sets must compute finder properties to true. Note that this value is
-  // sticky. Once it is set to true for a given request, it remains true till
-  // the driver is reset.
-  void enable_must_compute_finder_properties() {
-    must_compute_finder_properties_ = true;
-  }
-
-  bool must_compute_finder_properties() {
-    return must_compute_finder_properties_;
-  }
+  // Writes the specified contents into the output resource, and marks it
+  // as optimized. 'inputs' described the input resources that were used
+  // to construct the output, and is used to determine whether the
+  // result can be safely cache extended and be marked publicly cacheable.
+  // 'content_type' and 'charset' specify the mimetype and encoding of
+  // the contents, and will help form the Content-Type header.
+  // 'charset' may be empty when not specified.
+  //
+  // Note that this does not escape charset.
+  //
+  // Callers should take care that dangerous types like 'text/html' do not
+  // sneak into content_type.
+  bool Write(const ResourceVector& inputs,
+             const StringPiece& contents,
+             const ContentType* type,
+             StringPiece charset,
+             OutputResource* output);
 
  private:
+  friend class RewriteContext;
   friend class RewriteDriverTest;
   friend class RewriteTestBase;
   friend class ServerContextTest;
@@ -1088,12 +1070,6 @@ class RewriteDriver : public HtmlParse {
   void AddPreRenderFilters();
   void AddPostRenderFilters();
 
-  // After removing an inhibition, finish the parse if necessary.
-  void UninhibitFlushDone(Function* user_callback);
-
-  // Move anything on queue_ after the first inhibited event to deferred_queue_.
-  void SplitQueueIfNecessary();
-
   // Helper function to decode the pagespeed url.
   bool DecodeOutputResourceNameHelper(const GoogleUrl& url,
                                       ResourceNamer* name_out,
@@ -1121,6 +1097,9 @@ class RewriteDriver : public HtmlParse {
 
   // Used by CreateCacheFetcher() and CreateCacheOnlyFetcher().
   CacheUrlAsyncFetcher* CreateCustomCacheFetcher(UrlAsyncFetcher* base_fetcher);
+
+  // Log statistics to the LogRecord.
+  void LogStats();
 
   // Only the first base-tag is significant for a document -- any subsequent
   // ones are ignored.  There should be no URLs referenced prior to the base
@@ -1189,6 +1168,12 @@ class RewriteDriver : public HtmlParse {
   bool flush_requested_;
   bool flush_occurred_;
 
+  // If it is true, then cached html is flushed.
+  bool flushed_cached_html_;
+
+  // If it is true, then we are using this RewriteDriver to flush cached html.
+  bool flushing_cached_html_;
+
   // If it is true, then the bytes were flushed before receiving bytes from the
   // origin server.
   bool flushed_early_;
@@ -1200,9 +1185,6 @@ class RewriteDriver : public HtmlParse {
   // If it is set to true, then lazyload script is flushed with flush early
   // flow.
   bool is_lazyload_script_flushed_;
-  // If it is set to true, then defer_javascript script is flushed with flush
-  // early flow.
-  bool is_defer_javascript_script_flushed_;
 
   // Set to true if RewriteDriver can be released.
   bool release_driver_;
@@ -1211,15 +1193,6 @@ class RewriteDriver : public HtmlParse {
   // enabled. Writes to the property cache for this cohort are predicated on
   // this.
   bool write_property_cache_dom_cohort_;
-
-  scoped_ptr<AbstractMutex> inhibits_mutex_;
-  typedef std::set <const HtmlElement*> ConstHtmlElementSet;
-  ConstHtmlElementSet end_elements_inhibited_;  // protected by inhibits_mutex_
-  HtmlEventList deferred_queue_;                // protected by inhibits_mutex_
-  Function* finish_parse_on_hold_;              // protected by inhibits_mutex_
-  HtmlEvent* inhibiting_event_;                 // protected by inhibits_mutex_
-  bool flush_in_progress_;                      // protected by inhibits_mutex_
-  bool uninhibit_reflush_requested_;            // protected by inhibits_mutex_
 
   // Tracks the number of RewriteContexts that have been completed,
   // but not yet deleted.  Once RewriteComplete has been called,
@@ -1240,24 +1213,9 @@ class RewriteDriver : public HtmlParse {
   GoogleUrl decoded_base_url_;
 
   GoogleString user_agent_;
-  // Properties of the user_agent_ that are computed once and cached.
-  mutable LazyBool user_agent_is_bot_;
-  mutable LazyBool user_agent_supports_image_inlining_;
-  mutable LazyBool user_agent_supports_js_defer_;
-  mutable LazyBool user_agent_supports_webp_;
-  mutable LazyBool user_agent_supports_webp_lossless_alpha_;
-  mutable LazyBool is_mobile_user_agent_;
-  mutable LazyBool supports_flush_early_;
-  mutable LazyBool user_agent_supports_split_html_;
 
   LazyBool should_skip_parsing_;
-
-  LazyBool is_screen_resolution_set_;
-  int user_agent_screen_resolution_width_;
-  int user_agent_screen_resolution_height_;
-
-  // If true, request is known to have been made using SPDY.
-  bool using_spdy_;
+  mutable LazyBool supports_flush_early_;
 
   StringFilterMap resource_filter_map_;
 
@@ -1318,11 +1276,17 @@ class RewriteDriver : public HtmlParse {
   // This is either owned externally or via owned_url_async_fetchers_.
   UrlAsyncFetcher* url_async_fetcher_;
 
+  // This is the fetcher that is used to distribute rewrites if enabled. This
+  // can be NULL if distributed rewriting is not configured. This is owned
+  // externally.
+  UrlAsyncFetcher* distributed_async_fetcher_;
+
   // A list of all the UrlAsyncFetchers that we own, as set with
   // SetSessionFetcher.
   std::vector<UrlAsyncFetcher*> owned_url_async_fetchers_;
 
   AddInstrumentationFilter* add_instrumentation_filter_;
+  LoggingFilter* logging_filter_;
   scoped_ptr<HtmlWriterFilter> html_writer_filter_;
 
   ScanFilter scan_filter_;
@@ -1374,16 +1338,17 @@ class RewriteDriver : public HtmlParse {
   // Boolean value which tells whether property page is owned by driver or not.
   bool owns_property_page_;
 
+  // Device type for the current property page.
+  UserAgentMatcher::DeviceType device_type_;
+
   scoped_ptr<CriticalLineInfo> critical_line_info_;
 
-  // Stores all the critical images for the current URL.
-  scoped_ptr<StringSet> critical_images_;
+  // Stores all the critical image info for the current URL.
+  scoped_ptr<CriticalImagesInfo> critical_images_info_;
 
-  // Stores all the critical images for the current URL present in css.
-  scoped_ptr<StringSet> css_critical_images_;
-
-  // Indicates if the critical images were updated here.
-  bool updated_critical_images_;
+  // We lazy-initialize critical_selector_info_ from the finder.
+  bool critical_selector_info_computed_;
+  scoped_ptr<CriticalSelectorSet> critical_selector_info_;
 
   // Memoized computation of whether the current doc has an XHTML mimetype.
   bool xhtml_mimetype_computed_;
@@ -1399,7 +1364,6 @@ class RewriteDriver : public HtmlParse {
   // The total number of bytes for which ParseText is called.
   int num_bytes_in_;
 
-  CollectSubresourcesFilter* collect_subresources_filter_;
   DebugFilter* debug_filter_;
 
   scoped_ptr<FlushEarlyInfo> flush_early_info_;
@@ -1413,9 +1377,6 @@ class RewriteDriver : public HtmlParse {
   bool is_blink_request_;
   bool can_rewrite_resources_;
 
-  // Indicates whether we must properties of any of the finders.
-  bool must_compute_finder_properties_;
-
   // Additional request context that may outlive this RewriteDriver. (Thus,
   // the context is reference counted.)
   RequestContextPtr request_context_;
@@ -1425,8 +1386,16 @@ class RewriteDriver : public HtmlParse {
 
   // True if this driver has been cloned from another to execute subordinate
   // rewrites. Some logging operations aren't executed on nested rewrite
-  // drivers. Note that this is totally distinct from nested rewrite contexts.
+  // drivers, and timeout policies are changed. Note that this is totally
+  // distinct from nested rewrite contexts.
   bool is_nested_;
+
+  scoped_ptr<DeviceProperties> device_properties_;
+
+  // Helps make sure RewriteDriver and its children are initialized exactly
+  // once, allowing for multiple calls to RewriteDriver::Initialize as long
+  // as they are matched to RewriteDriver::Terminate.
+  static int initialized_count_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriver);
 };

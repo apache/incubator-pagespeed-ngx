@@ -21,14 +21,12 @@
 #include "net/instaweb/rewriter/public/critical_images_finder_test_base.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
-#include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/null_statistics.h"
-#include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
 
-class AbstractMutex;
+class PropertyValue;
 class RewriteDriver;
 
 class CriticalImagesFinderTestBase : public RewriteTestBase {
@@ -46,27 +44,13 @@ class CriticalImagesFinderTestBase : public RewriteTestBase {
  protected:
   NullStatistics stats_;
 
-  virtual void SetUp();
-
   // Resets the state of the driver.
   void ResetDriver();
 
   const PropertyValue* GetCriticalImagesUpdatedValue();
-  const PropertyValue* GetCssCriticalImagesUpdatedValue();
 
  private:
   static const char kRequestUrl[];
-
-  class MockPage : public PropertyPage {
-   public:
-    MockPage(AbstractMutex* mutex, const StringPiece& key)
-        : PropertyPage(mutex, key) {}
-    virtual ~MockPage();
-    virtual void Done(bool valid) {}
-
-   private:
-    DISALLOW_COPY_AND_ASSIGN(MockPage);
-  };
 };
 
 }  // namespace net_instaweb

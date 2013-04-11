@@ -21,14 +21,18 @@
 
 #include <cstddef>
 
+#include "net/instaweb/rewriter/image_types.pb.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+class Histogram;
 class ImageDim;
 class MessageHandler;
+class Timer;
+class Variable;
 struct ContentType;
 
 class Image {
@@ -45,24 +49,48 @@ class Image {
   // metadata is retrieved; the object is to do so locally in this class without
   // disrupting any of its clients.
 
-  enum Type {
-    // Update kImageTypeStart if you add something before this.
-    IMAGE_UNKNOWN = 0,
-    IMAGE_JPEG,
-    IMAGE_PNG,
-    IMAGE_GIF,
-    IMAGE_WEBP,  // Update kImageTypeEnd if you add something after this.
-  };
-
   enum PreferredWebp {
     WEBP_NONE = 0,
     WEBP_LOSSY,
     WEBP_LOSSLESS
   };
 
+  struct ConversionBySourceVariable {
+    ConversionBySourceVariable()
+        : timeout_count(NULL),
+          success_ms(NULL),
+          failure_ms(NULL) {}
+
+    Variable* timeout_count;  // # of timed-out conversions.
+    Histogram* success_ms;    // Successful conversion duration.
+    Histogram* failure_ms;    // Failed (and non-timed-out) conversion duration.
+  };
+
+  struct ConversionVariables {
+    enum VariableType {
+      FROM_UNKNOWN_FORMAT = 0,
+      FROM_GIF,
+      FROM_PNG,
+      FROM_JPEG,
+      OPAQUE,
+      NONOPAQUE,
+      NUM_VARIABLE_TYPE
+    };
+    ConversionBySourceVariable* Get(VariableType var_type) {
+      if ((var_type < FROM_UNKNOWN_FORMAT) ||
+          (var_type >= NUM_VARIABLE_TYPE)) {
+        return NULL;
+      }
+      return &(vars[var_type]);
+    }
+
+    ConversionBySourceVariable vars[NUM_VARIABLE_TYPE];
+  };
+
   struct CompressionOptions {
     CompressionOptions()
         : preferred_webp(WEBP_NONE),
+          allow_webp_alpha(false),
           webp_quality(RewriteOptions::kDefaultImagesRecompressQuality),
           jpeg_quality(RewriteOptions::kDefaultImagesRecompressQuality),
           progressive_jpeg_min_bytes(
@@ -78,8 +106,16 @@ class Image {
           retain_color_sampling(false),
           retain_exif_data(false),
           jpeg_num_progressive_scans(
-              RewriteOptions::kDefaultImageJpegNumProgressiveScans) {}
+              RewriteOptions::kDefaultImageJpegNumProgressiveScans),
+          webp_conversion_timeout_ms(-1),
+          conversions_attempted(0),
+          preserve_lossless(false),
+          webp_conversion_variables(NULL) {}
+
+    // These options are set by the client to specify what type of
+    // conversion to perform:
     PreferredWebp preferred_webp;
+    bool allow_webp_alpha;
     int64 webp_quality;
     int64 jpeg_quality;
     int64 progressive_jpeg_min_bytes;
@@ -93,17 +129,21 @@ class Image {
     bool retain_color_profile;
     bool retain_color_sampling;
     bool retain_exif_data;
-    int jpeg_num_progressive_scans;
+    int64 jpeg_num_progressive_scans;
+    int64 webp_conversion_timeout_ms;
+
+    // These fields are set by the conversion routines to report
+    // characteristics of the conversion process.
+    int conversions_attempted;
+    bool preserve_lossless;
+
+    ConversionVariables* webp_conversion_variables;
   };
 
   virtual ~Image();
 
-  // static method to convert Type to mime type.
-  static const ContentType* TypeToContentType(Type t);
-
-  // Used for checking valid ImageType enum integer.
-  static const Type kImageTypeStart = IMAGE_UNKNOWN;
-  static const Type kImageTypeEnd = IMAGE_WEBP;
+  // static method to convert image type to content type.
+  static const ContentType* TypeToContentType(ImageType t);
 
   // Stores the image dimensions in natural_dim (on success, sets
   // natural_dim->{width, height} and
@@ -131,7 +171,7 @@ class Image {
     return ret;
   }
 
-  Type image_type() {
+  ImageType image_type() {
     if (image_type_ == IMAGE_UNKNOWN) {
       ComputeImageType();
     }
@@ -174,7 +214,7 @@ class Image {
 
  protected:
   explicit Image(const StringPiece& original_contents);
-  explicit Image(Type type);
+  explicit Image(ImageType type);
 
   // Internal helpers
   virtual void ComputeImageType() = 0;
@@ -188,7 +228,7 @@ class Image {
   virtual bool ShouldConvertToProgressive(int64 quality) const = 0;
 
 
-  Type image_type_;  // Lazily initialized, initially IMAGE_UNKNOWN.
+  ImageType image_type_;  // Lazily initialized, initially IMAGE_UNKNOWN.
   const StringPiece original_contents_;
   GoogleString output_contents_;  // Lazily filled.
   bool output_valid_;             // Indicates output_contents_ now correct.
@@ -206,15 +246,6 @@ class Image {
 // intent is that an Image is created in a scoped fashion from an existing known
 // resource.
 //
-// The webp_preferred flag indicates that webp output should be produced rather
-// than jpg, unless webp creation fails for any reason (in which case jpg is
-// used as a fallback).  It has no effect if original_contents are a non-jpg or
-// non-webp image format.
-//
-// The jpeg_quality flag indicates what quality to use while recompressing jpeg
-// images. Quality value of 75 is used as default for web images by most of the
-// image libraries. Recommended setting for this is 85.
-//
 // The options should be set via Image::SetOptions after construction, before
 // the image is used for anything but determining its natural dimension size.
 //
@@ -224,12 +255,14 @@ Image* NewImage(const StringPiece& original_contents,
                 const GoogleString& url,
                 const StringPiece& file_prefix,
                 Image::CompressionOptions* options,
+                Timer* timer,
                 MessageHandler* handler);
 
 // Creates a blank image of the given dimensions and type.
 // For now, this is assumed to be an 8-bit 3-channel image.
-Image* BlankImageWithOptions(int width, int height, Image::Type type,
+Image* BlankImageWithOptions(int width, int height, ImageType type,
                              const StringPiece& tmp_dir,
+                             Timer* timer,
                              MessageHandler* handler,
                              Image::CompressionOptions* options);
 

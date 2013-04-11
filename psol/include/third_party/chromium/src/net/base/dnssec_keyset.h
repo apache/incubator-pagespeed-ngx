@@ -9,13 +9,13 @@
 #include <vector>
 
 #include "base/string_piece.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
 namespace net {
 
 // DNSSECKeySet function wraps crypto/signature_verifier.h to accept
 // DNSSEC encodings. (See RFC 4043)
-class NET_TEST DNSSECKeySet {
+class NET_EXPORT_PRIVATE DNSSECKeySet {
  public:
   DNSSECKeySet();
   ~DNSSECKeySet();

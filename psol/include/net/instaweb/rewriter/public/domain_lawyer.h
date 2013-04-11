@@ -169,9 +169,9 @@ class DomainLawyer {
   //
   // Wildcards may not be used in the proxy_domain or origin_domain.
   //
-  // Subdirectories should normally be used in both the proxy_domain and
-  // origin_domain.  This is a not a strict requirement.  If you fully
-  // control the entire origin domain and are dedicating a proxy domain
+  // Subdirectories should normally be used in the proxy_domain, the
+  // origin_domain, and to_domain. This is a not a strict requirement. If you
+  // fully control the entire origin domain and are dedicating a proxy domain
   // for the sole use of that origin domain then subdirectories are not needed.
   //
   // The proxy_domain must be running mod_pagespeed and configured
@@ -181,11 +181,15 @@ class DomainLawyer {
   // The origin_domain does not need to run mod_pagespeed; it is used
   // to fetch the resources.
   //
+  // If to_domain is provided then resources are rewritten to to_domain instead
+  // of proxy_domain.  This is useful for rewriting to a CDN.
+  //
   // It is invalid to use the same origin_domain in AddProxyDomainMapping
   // and to_domain of AddOriginDomainMapping.  The latter requires
   // a overriding the Host: request-header on fetches.
   bool AddProxyDomainMapping(const StringPiece& proxy_domain,
                              const StringPiece& origin_domain,
+                             const StringPiece& to_domain_name,
                              MessageHandler* handler);
 
   // Adds domain mappings that handle fetches on both http and https for the

@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "base/at_exit.h"
-#include "base/scoped_ptr.h"
+#include "base/memory/scoped_ptr.h"
 #include "pagespeed/core/image_attributes.h"
 #include "pagespeed/core/pagespeed_input.h"
 #include "pagespeed/core/resource.h"
@@ -239,7 +239,7 @@ template <class RULE> class PagespeedRuleTest : public PagespeedTest {
 
   const pagespeed::RuleInput* rule_input() { return rule_input_.get(); }
   const pagespeed::RuleResults& rule_results() const { return rule_results_; }
-  const int num_results() const { return rule_results_.results_size(); }
+  int num_results() const { return rule_results_.results_size(); }
   const pagespeed::Result& result(int i) const {
     return rule_results_.results(i);
   }

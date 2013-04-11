@@ -60,7 +60,7 @@ namespace net_instaweb {
 
 class HtmlElement;
 class RewriteDriver;
-class StaticJavascriptManager;
+class StaticAssetManager;
 
 class DeferIframeFilter : public EmptyHtmlFilter {
  public:
@@ -78,7 +78,7 @@ class DeferIframeFilter : public EmptyHtmlFilter {
 
  private:
   RewriteDriver* driver_;
-  StaticJavascriptManager* static_js_manager_;
+  StaticAssetManager* static_asset_manager_;
   bool script_inserted_;
 
   DISALLOW_COPY_AND_ASSIGN(DeferIframeFilter);

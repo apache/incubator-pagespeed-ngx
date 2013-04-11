@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,7 +17,7 @@
 //   500-599 ?
 //   600-699 FTP errors
 //   700-799 Certificate manager errors
-//
+//   800-899 DNS resolver errors
 
 // An asynchronous IO operation is not yet complete.  This usually does not
 // indicate a fatal error.  Typically this error will be generated as a
@@ -68,6 +68,21 @@ NET_ERROR(UPLOAD_FILE_CHANGED, -14)
 
 // The socket is not connected.
 NET_ERROR(SOCKET_NOT_CONNECTED, -15)
+
+// The file already exists.
+NET_ERROR(FILE_EXISTS, -16)
+
+// The path or file name is too long.
+NET_ERROR(FILE_PATH_TOO_LONG, -17)
+
+// Not enough room left on the disk.
+NET_ERROR(FILE_NO_SPACE, -18)
+
+// The file has a virus.
+NET_ERROR(FILE_VIRUS_INFECTED, -19)
+
+// The client chose to block the request.
+NET_ERROR(BLOCKED_BY_CLIENT, -20)
 
 // A connection was closed (corresponding to a TCP FIN).
 NET_ERROR(CONNECTION_CLOSED, -100)
@@ -184,10 +199,7 @@ NET_ERROR(PROXY_CONNECTION_FAILED, -130)
 // that a mandatory PAC script could not be fetched, parsed or executed.
 NET_ERROR(MANDATORY_PROXY_CONFIGURATION_FAILED, -131)
 
-// We detected an ESET product intercepting our HTTPS connections. Since these
-// products are False Start intolerant, we return this error so that we can
-// give the user a helpful error message rather than have the connection hang.
-NET_ERROR(ESET_ANTI_VIRUS_SSL_INTERCEPTION, -132)
+// -132 was formerly ERR_ESET_ANTI_VIRUS_SSL_INTERCEPTION
 
 // We've hit the max socket limit for the socket pool while preconnecting.  We
 // don't bother trying to preconnect more sockets.
@@ -231,26 +243,37 @@ NET_ERROR(SSL_CLIENT_AUTH_SIGNATURE_FAILED, -141)
 // which exceeds size threshold).
 NET_ERROR(MSG_TOO_BIG, -142)
 
-// DNS resolver received a malformed response.
-NET_ERROR(DNS_MALFORMED_RESPONSE, -143)
+// A SPDY session already exists, and should be used instead of this connection.
+NET_ERROR(SPDY_SESSION_ALREADY_EXISTS, -143)
 
-// DNS server requires TCP
-NET_ERROR(DNS_SERVER_REQUIRES_TCP, -144)
+// Error -144 was removed (LIMIT_VIOLATION).
 
-// DNS server failed.  This error is returned for all of the following
-// error conditions:
-// 1 - Format error - The name server was unable to interpret the query.
-// 2 - Server failure - The name server was unable to process this query
-//     due to a problem with the name server.
-// 4 - Not Implemented - The name server does not support the requested
-//     kind of query.
-// 5 - Refused - The name server refuses to perform the specified
-//     operation for policy reasons.
-NET_ERROR(DNS_SERVER_FAILED, -145)
+// Error -145 was removed (WS_PROTOCOL_ERROR).
 
 // Connection was aborted for switching to another ptotocol.
 // WebSocket abort SocketStream connection when alternate protocol is found.
 NET_ERROR(PROTOCOL_SWITCHED, -146)
+
+// Returned when attempting to bind an address that is already in use.
+NET_ERROR(ADDRESS_IN_USE, -147)
+
+// An operation failed because the SSL handshake has not completed.
+NET_ERROR(SSL_HANDSHAKE_NOT_COMPLETED, -148)
+
+// SSL peer's public key is invalid.
+NET_ERROR(SSL_BAD_PEER_PUBLIC_KEY, -149)
+
+// The certificate didn't match the built-in public key pins for the host name.
+// The pins are set in net/base/transport_security_state.cc and require that
+// one of a set of public keys exist on the path from the leaf to the root.
+NET_ERROR(SSL_PINNED_KEY_NOT_IN_CERT_CHAIN, -150)
+
+// Server request for client certificate did not contain any types we support.
+NET_ERROR(CLIENT_AUTH_CERT_TYPE_UNSUPPORTED, -151)
+
+// Server requested one type of cert, then requested a different type while the
+// first was still being generated.
+NET_ERROR(ORIGIN_BOUND_CERT_GENERATION_TYPE_MISMATCH, -152)
 
 // Certificate error codes
 //
@@ -340,12 +363,14 @@ NET_ERROR(CERT_INVALID, -207)
 // signature algorithm.
 NET_ERROR(CERT_WEAK_SIGNATURE_ALGORITHM, -208)
 
-// The domain has CERT records which are tagged as being an exclusive list of
-// valid fingerprints. But the certificate presented was not in this list.
-NET_ERROR(CERT_NOT_IN_DNS, -209)
+// -209 is availible: was CERT_NOT_IN_DNS.
 
 // The host name specified in the certificate is not unique.
 NET_ERROR(CERT_NON_UNIQUE_NAME, -210)
+
+// The server responded with a certificate that contains a weak key (e.g.
+// a too-small RSA key).
+NET_ERROR(CERT_WEAK_KEY, -211)
 
 // Add new certificate error codes here.
 //
@@ -353,7 +378,7 @@ NET_ERROR(CERT_NON_UNIQUE_NAME, -210)
 // code.
 
 // The value immediately past the last certificate error code.
-NET_ERROR(CERT_END, -211)
+NET_ERROR(CERT_END, -212)
 
 // The URL is invalid.
 NET_ERROR(INVALID_URL, -300)
@@ -460,7 +485,7 @@ NET_ERROR(UNDOCUMENTED_SECURITY_LIBRARY_STATUS, -344)
 // The HTTP response was too big to drain.
 NET_ERROR(RESPONSE_BODY_TOO_BIG_TO_DRAIN, -345)
 
-// The HTTP response was too big to drain.
+// The HTTP response contained multiple distinct Content-Length headers.
 NET_ERROR(RESPONSE_HEADERS_MULTIPLE_CONTENT_LENGTH, -346)
 
 // SPDY Headers have been received, but not all of them - status or version
@@ -472,13 +497,38 @@ NET_ERROR(INCOMPLETE_SPDY_HEADERS, -347)
 // PAC URL configured in DHCP.
 NET_ERROR(PAC_NOT_IN_DHCP, -348)
 
+// The HTTP response contained multiple Content-Disposition headers.
+NET_ERROR(RESPONSE_HEADERS_MULTIPLE_CONTENT_DISPOSITION, -349)
+
+// The HTTP response contained multiple Location headers.
+NET_ERROR(RESPONSE_HEADERS_MULTIPLE_LOCATION, -350)
+
+// SPDY server refused the stream. Client should retry. This should never be a
+// user-visible error.
+NET_ERROR(SPDY_SERVER_REFUSED_STREAM, -351)
+
+// SPDY server didn't respond to the PING message.
+NET_ERROR(SPDY_PING_FAILED, -352)
+
+// The request couldn't be completed on an HTTP pipeline. Client should retry.
+NET_ERROR(PIPELINE_EVICTION, -353)
+
+// The HTTP response body transferred fewer bytes than were advertised by the
+// Content-Length header when the connection is closed.
+NET_ERROR(CONTENT_LENGTH_MISMATCH, -354)
+
+// The HTTP response body is transferred with Chunked-Encoding, but the
+// terminating zero-length chunk was never sent when the connection is closed.
+NET_ERROR(INCOMPLETE_CHUNKED_ENCODING, -355)
+
 // The cache does not have the requested entry.
 NET_ERROR(CACHE_MISS, -400)
 
 // Unable to read from the disk cache.
 NET_ERROR(CACHE_READ_FAILURE, -401)
 
-// ****NOTE THAT code -402 is available****
+// Unable to write to the disk cache.
+NET_ERROR(CACHE_WRITE_FAILURE, -402)
 
 // The operation is not supported for this entry.
 NET_ERROR(CACHE_OPERATION_NOT_SUPPORTED, -403)
@@ -557,3 +607,52 @@ NET_ERROR(IMPORT_CA_CERT_FAILED, -705)
 
 // Server certificate import failed due to some internal error.
 NET_ERROR(IMPORT_SERVER_CERT_FAILED, -706)
+
+// PKCS #12 import failed due to invalid MAC.
+NET_ERROR(PKCS12_IMPORT_INVALID_MAC, -707)
+
+// PKCS #12 import failed due to invalid/corrupt file.
+NET_ERROR(PKCS12_IMPORT_INVALID_FILE, -708)
+
+// PKCS #12 import failed due to unsupported features.
+NET_ERROR(PKCS12_IMPORT_UNSUPPORTED, -709)
+
+// Key generation failed.
+NET_ERROR(KEY_GENERATION_FAILED, -710)
+
+// Server-bound certificate generation failed.
+NET_ERROR(ORIGIN_BOUND_CERT_GENERATION_FAILED, -711)
+
+// Failure to export private key.
+NET_ERROR(PRIVATE_KEY_EXPORT_FAILED, -712)
+
+// DNS error codes.
+
+// DNS resolver received a malformed response.
+NET_ERROR(DNS_MALFORMED_RESPONSE, -800)
+
+// DNS server requires TCP
+NET_ERROR(DNS_SERVER_REQUIRES_TCP, -801)
+
+// DNS server failed.  This error is returned for all of the following
+// error conditions:
+// 1 - Format error - The name server was unable to interpret the query.
+// 2 - Server failure - The name server was unable to process this query
+//     due to a problem with the name server.
+// 4 - Not Implemented - The name server does not support the requested
+//     kind of query.
+// 5 - Refused - The name server refuses to perform the specified
+//     operation for policy reasons.
+NET_ERROR(DNS_SERVER_FAILED, -802)
+
+// DNS transaction timed out.
+NET_ERROR(DNS_TIMED_OUT, -803)
+
+// The entry was not found in cache, for cache-only lookups.
+NET_ERROR(DNS_CACHE_MISS, -804)
+
+// Suffix search list rules prevent resolution of the given host name.
+NET_ERROR(DNS_SEARCH_EMPTY, -805)
+
+// Failed to sort addresses according to RFC3484.
+NET_ERROR(DNS_SORT_ERROR, -806)

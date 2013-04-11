@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -18,7 +18,8 @@
 //   class MyClass {
 //    public:
 //     void StartDoingStuff() {
-//       timer_.Start(TimeDelta::FromSeconds(1), this, &MyClass::DoStuff);
+//       timer_.Start(FROM_HERE, TimeDelta::FromSeconds(1),
+//                    this, &MyClass::DoStuff);
 //     }
 //     void StopDoingStuff() {
 //       timer_.Stop();
@@ -37,173 +38,175 @@
 // calling Reset on timer_ would postpone DoStuff by another 1 second.  In
 // other words, Reset is shorthand for calling Stop and then Start again with
 // the same arguments.
+//
+// NOTE: These APIs are not thread safe. Always call from the same thread.
 
 #ifndef BASE_TIMER_H_
 #define BASE_TIMER_H_
-#pragma once
 
 // IMPORTANT: If you change timer code, make sure that all tests (including
 // disabled ones) from timer_unittests.cc pass locally. Some are disabled
 // because they're flaky on the buildbot, but when you run them locally you
 // should be able to tell the difference.
 
-#include "base/base_api.h"
-#include "base/logging.h"
-#include "base/task.h"
+#include "base/base_export.h"
+#include "base/bind.h"
+#include "base/bind_helpers.h"
+#include "base/callback.h"
+#include "base/location.h"
 #include "base/time.h"
 
 class MessageLoop;
 
 namespace base {
 
+class BaseTimerTaskInternal;
+
 //-----------------------------------------------------------------------------
-// This class is an implementation detail of OneShotTimer and RepeatingTimer.
-// Please do not use this class directly.
+// This class wraps MessageLoop::PostDelayedTask to manage delayed and repeating
+// tasks. It must be destructed on the same thread that starts tasks. There are
+// DCHECKs in place to verify this.
 //
-// This class exists to share code between BaseTimer<T> template instantiations.
-//
-class BASE_API BaseTimer_Helper {
+class BASE_EXPORT Timer {
  public:
-  // Stops the timer.
-  ~BaseTimer_Helper() {
-    OrphanDelayedTask();
-  }
+  // Construct a timer in repeating or one-shot mode. Start or SetTaskInfo must
+  // be called later to set task info. |retain_user_task| determines whether the
+  // user_task is retained or reset when it runs or stops.
+  Timer(bool retain_user_task, bool is_repeating);
+
+  // Construct a timer with retained task info.
+  Timer(const tracked_objects::Location& posted_from,
+        TimeDelta delay,
+        const base::Closure& user_task,
+        bool is_repeating);
+
+  virtual ~Timer();
 
   // Returns true if the timer is running (i.e., not stopped).
   bool IsRunning() const {
-    return delayed_task_ != NULL;
+    return is_running_;
   }
 
-  // Returns the current delay for this timer.  May only call this method when
-  // the timer is running!
+  // Returns the current delay for this timer.
   TimeDelta GetCurrentDelay() const {
-    DCHECK(IsRunning());
-    return delayed_task_->delay_;
+    return delay_;
   }
+
+  // Start the timer to run at the given |delay| from now. If the timer is
+  // already running, it will be replaced to call the given |user_task|.
+  void Start(const tracked_objects::Location& posted_from,
+             TimeDelta delay,
+             const base::Closure& user_task);
+
+  // Call this method to stop and cancel the timer.  It is a no-op if the timer
+  // is not running.
+  void Stop();
+
+  // Call this method to reset the timer delay. The user_task_ must be set. If
+  // the timer is not running, this will start it by posting a task.
+  void Reset();
+
+  const base::Closure& user_task() const { return user_task_; }
+  const TimeTicks& desired_run_time() const { return desired_run_time_; }
 
  protected:
-  BaseTimer_Helper() : delayed_task_(NULL) {}
+  // Used to initiate a new delayed task.  This has the side-effect of disabling
+  // scheduled_task_ if it is non-null.
+  void SetTaskInfo(const tracked_objects::Location& posted_from,
+                   TimeDelta delay,
+                   const base::Closure& user_task);
 
-  // We have access to the timer_ member so we can orphan this task.
-  class TimerTask : public Task {
-   public:
-    explicit TimerTask(TimeDelta delay) : timer_(NULL), delay_(delay) {
-    }
-    virtual ~TimerTask() {}
-    BaseTimer_Helper* timer_;
-    TimeDelta delay_;
-  };
+ private:
+  friend class BaseTimerTaskInternal;
 
-  // Used to orphan delayed_task_ so that when it runs it does nothing.
-  void OrphanDelayedTask();
+  // Allocates a new scheduled_task_ and posts it on the current MessageLoop
+  // with the given |delay|. scheduled_task_ must be NULL. scheduled_run_time_
+  // and desired_run_time_ are reset to Now() + delay.
+  void PostNewScheduledTask(TimeDelta delay);
 
-  // Used to initiated a new delayed task.  This has the side-effect of
-  // orphaning delayed_task_ if it is non-null.
-  void InitiateDelayedTask(TimerTask* timer_task);
+  // Disable scheduled_task_ and abandon it so that it no longer refers back to
+  // this object.
+  void AbandonScheduledTask();
 
-  TimerTask* delayed_task_;
+  // Called by BaseTimerTaskInternal when the MessageLoop runs it.
+  void RunScheduledTask();
 
-  DISALLOW_COPY_AND_ASSIGN(BaseTimer_Helper);
+  // Stop running task (if any) and abandon scheduled task (if any).
+  void StopAndAbandon() {
+    Stop();
+    AbandonScheduledTask();
+  }
+
+  // When non-NULL, the scheduled_task_ is waiting in the MessageLoop to call
+  // RunScheduledTask() at scheduled_run_time_.
+  BaseTimerTaskInternal* scheduled_task_;
+
+  // Location in user code.
+  tracked_objects::Location posted_from_;
+  // Delay requested by user.
+  TimeDelta delay_;
+  // user_task_ is what the user wants to be run at desired_run_time_.
+  base::Closure user_task_;
+
+  // The estimated time that the MessageLoop will run the scheduled_task_ that
+  // will call RunScheduledTask().
+  TimeTicks scheduled_run_time_;
+
+  // The desired run time of user_task_. The user may update this at any time,
+  // even if their previous request has not run yet. If desired_run_time_ is
+  // greater than scheduled_run_time_, a continuation task will be posted to
+  // wait for the remaining time. This allows us to reuse the pending task so as
+  // not to flood the MessageLoop with orphaned tasks when the user code
+  // excessively Stops and Starts the timer.
+  TimeTicks desired_run_time_;
+
+  // Thread ID of current MessageLoop for verifying single-threaded usage.
+  int thread_id_;
+
+  // Repeating timers automatically post the task again before calling the task
+  // callback.
+  const bool is_repeating_;
+
+  // If true, hold on to the user_task_ closure object for reuse.
+  const bool retain_user_task_;
+
+  // If true, user_task_ is scheduled to run sometime in the future.
+  bool is_running_;
+
+  DISALLOW_COPY_AND_ASSIGN(Timer);
 };
 
 //-----------------------------------------------------------------------------
 // This class is an implementation detail of OneShotTimer and RepeatingTimer.
 // Please do not use this class directly.
 template <class Receiver, bool kIsRepeating>
-class BaseTimer : public BaseTimer_Helper {
+class BaseTimerMethodPointer : public Timer {
  public:
   typedef void (Receiver::*ReceiverMethod)();
 
-  // Call this method to start the timer.  It is an error to call this method
-  // while the timer is already running.
-  void Start(TimeDelta delay, Receiver* receiver, ReceiverMethod method) {
-    DCHECK(!IsRunning());
-    InitiateDelayedTask(new TimerTask(delay, receiver, method));
+  BaseTimerMethodPointer() : Timer(kIsRepeating, kIsRepeating) {}
+
+  // Start the timer to run at the given |delay| from now. If the timer is
+  // already running, it will be replaced to call a task formed from
+  // |reviewer->*method|.
+  void Start(const tracked_objects::Location& posted_from,
+             TimeDelta delay,
+             Receiver* receiver,
+             ReceiverMethod method) {
+    Timer::Start(posted_from, delay,
+                 base::Bind(method, base::Unretained(receiver)));
   }
-
-  // Call this method to stop the timer.  It is a no-op if the timer is not
-  // running.
-  void Stop() {
-    OrphanDelayedTask();
-  }
-
-  // Call this method to reset the timer delay of an already running timer.
-  void Reset() {
-    DCHECK(IsRunning());
-    InitiateDelayedTask(static_cast<TimerTask*>(delayed_task_)->Clone());
-  }
-
- private:
-  typedef BaseTimer<Receiver, kIsRepeating> SelfType;
-
-  class TimerTask : public BaseTimer_Helper::TimerTask {
-   public:
-    TimerTask(TimeDelta delay, Receiver* receiver, ReceiverMethod method)
-        : BaseTimer_Helper::TimerTask(delay),
-          receiver_(receiver),
-          method_(method) {
-    }
-
-    virtual ~TimerTask() {
-      // This task may be getting cleared because the MessageLoop has been
-      // destructed.  If so, don't leave the Timer with a dangling pointer
-      // to this now-defunct task.
-      ClearBaseTimer();
-    }
-
-    virtual void Run() {
-      if (!timer_)  // timer_ is null if we were orphaned.
-        return;
-      if (kIsRepeating)
-        ResetBaseTimer();
-      else
-        ClearBaseTimer();
-      DispatchToMethod(receiver_, method_, Tuple0());
-    }
-
-    TimerTask* Clone() const {
-      return new TimerTask(delay_, receiver_, method_);
-    }
-
-   private:
-    // Inform the Base that the timer is no longer active.
-    void ClearBaseTimer() {
-      if (timer_) {
-        SelfType* self = static_cast<SelfType*>(timer_);
-        // It is possible that the Timer has already been reset, and that this
-        // Task is old.  So, if the Timer points to a different task, assume
-        // that the Timer has already taken care of properly setting the task.
-        if (self->delayed_task_ == this)
-          self->delayed_task_ = NULL;
-        // By now the delayed_task_ in the Timer does not point to us anymore.
-        // We should reset our own timer_ because the Timer can not do this
-        // for us in its destructor.
-        timer_ = NULL;
-      }
-    }
-
-    // Inform the Base that we're resetting the timer.
-    void ResetBaseTimer() {
-      DCHECK(timer_);
-      DCHECK(kIsRepeating);
-      SelfType* self = static_cast<SelfType*>(timer_);
-      self->Reset();
-    }
-
-    Receiver* receiver_;
-    ReceiverMethod method_;
-  };
 };
 
 //-----------------------------------------------------------------------------
 // A simple, one-shot timer.  See usage notes at the top of the file.
 template <class Receiver>
-class OneShotTimer : public BaseTimer<Receiver, false> {};
+class OneShotTimer : public BaseTimerMethodPointer<Receiver, false> {};
 
 //-----------------------------------------------------------------------------
 // A simple, repeating timer.  See usage notes at the top of the file.
 template <class Receiver>
-class RepeatingTimer : public BaseTimer<Receiver, true> {};
+class RepeatingTimer : public BaseTimerMethodPointer<Receiver, true> {};
 
 //-----------------------------------------------------------------------------
 // A Delay timer is like The Button from Lost. Once started, you have to keep
@@ -217,54 +220,19 @@ class RepeatingTimer : public BaseTimer<Receiver, true> {};
 // If destroyed, the timeout is canceled and will not occur even if already
 // inflight.
 template <class Receiver>
-class DelayTimer {
+class DelayTimer : protected Timer {
  public:
   typedef void (Receiver::*ReceiverMethod)();
 
-  DelayTimer(TimeDelta delay, Receiver* receiver, ReceiverMethod method)
-      : receiver_(receiver),
-        method_(method),
-        delay_(delay) {
-  }
+  DelayTimer(const tracked_objects::Location& posted_from,
+             TimeDelta delay,
+             Receiver* receiver,
+             ReceiverMethod method)
+      : Timer(posted_from, delay,
+              base::Bind(method, base::Unretained(receiver)),
+              false) {}
 
-  void Reset() {
-    DelayFor(delay_);
-  }
-
- private:
-  void DelayFor(TimeDelta delay) {
-    trigger_time_ = TimeTicks::Now() + delay;
-
-    // If we already have a timer that will expire at or before the given delay,
-    // then we have nothing more to do now.
-    if (timer_.IsRunning() && timer_.GetCurrentDelay() <= delay)
-      return;
-
-    // The timer isn't running, or will expire too late, so restart it.
-    timer_.Stop();
-    timer_.Start(delay, this, &DelayTimer<Receiver>::Check);
-  }
-
-  void Check() {
-    if (trigger_time_.is_null())
-      return;
-
-    // If we have not waited long enough, then wait some more.
-    const TimeTicks now = TimeTicks::Now();
-    if (now < trigger_time_) {
-      DelayFor(trigger_time_ - now);
-      return;
-    }
-
-    (receiver_->*method_)();
-  }
-
-  Receiver *const receiver_;
-  const ReceiverMethod method_;
-  const TimeDelta delay_;
-
-  OneShotTimer<DelayTimer<Receiver> > timer_;
-  TimeTicks trigger_time_;
+  void Reset() { Timer::Reset(); }
 };
 
 }  // namespace base

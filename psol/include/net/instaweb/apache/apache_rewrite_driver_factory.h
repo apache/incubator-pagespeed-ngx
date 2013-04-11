@@ -20,45 +20,40 @@
 
 #include <map>
 #include <set>
-#include <vector>
 
 #include "net/instaweb/rewriter/public/rewrite_driver_factory.h"
+#include "net/instaweb/system/public/system_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/md5_hasher.h"
+#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
+#include "net/instaweb/util/public/shared_mem_cache.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
 
 struct apr_pool_t;
-struct request_rec;
 struct server_rec;
 
 namespace net_instaweb {
 
 class AbstractSharedMem;
-class ApacheCache;
 class ApacheConfig;
 class ApacheMessageHandler;
 class ApacheServerContext;
-class AprMemCache;
-class AsyncCache;
-class CacheInterface;
 class FileSystem;
 class Hasher;
 class MessageHandler;
 class ModSpdyFetchController;
 class NamedLockManager;
 class QueuedWorkerPool;
-class RewriteDriver;
 class RewriteOptions;
 class SerfUrlAsyncFetcher;
 class ServerContext;
 class SharedCircularBuffer;
-class SharedMemRefererStatistics;
 class SharedMemStatistics;
 class SlowWorker;
-class StaticJavascriptManager;
+class StaticAssetManager;
 class Statistics;
+class SystemCaches;
 class Timer;
 class UrlAsyncFetcher;
 class UrlFetcher;
@@ -66,10 +61,11 @@ class UrlPollableAsyncFetcher;
 class Writer;
 
 // Creates an Apache RewriteDriver.
-class ApacheRewriteDriverFactory : public RewriteDriverFactory {
+class ApacheRewriteDriverFactory : public SystemRewriteDriverFactory {
  public:
-  static const char kMemcached[];
-  static const char kStaticJavaScriptPrefix[];
+  // Path prefix where we serve static assets (primarily images and js
+  // resources) needed by some filters.
+  static const char kStaticAssetPrefix[];
 
   ApacheRewriteDriverFactory(server_rec* server, const StringPiece& version);
   virtual ~ApacheRewriteDriverFactory();
@@ -87,9 +83,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
 
   AbstractSharedMem* shared_mem_runtime() const {
     return shared_mem_runtime_.get();
-  }
-  SharedMemRefererStatistics* shared_mem_referer_statistics() const {
-    return shared_mem_referer_statistics_.get();
   }
   // Give access to apache_message_handler_ for the cases we need
   // to use ApacheMessageHandler rather than MessageHandler.
@@ -123,10 +116,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   void RootInit();
   void ChildInit();
 
-  void DumpRefererStatistics(Writer* writer);
-
-  SlowWorker* slow_worker() { return slow_worker_.get(); }
-
   // Build global shared-memory statistics.  This is invoked if at least
   // one server context (global or VirtualHost) enables statistics.
   Statistics* MakeGlobalSharedMemStatistics(bool logging,
@@ -138,7 +127,9 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
       const StringPiece& name, const bool logging,
       const int64 logging_interval_ms, const GoogleString& logging_file);
 
-  ApacheServerContext* MakeApacheServerContext(server_rec* server);
+  virtual ApacheServerContext* MakeApacheServerContext(server_rec* server);
+  ServerContext* NewServerContext();
+
 
   // Makes fetches from PSA to origin-server request
   // accept-encoding:gzip, even when used in a context when we want
@@ -217,31 +208,13 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
     install_crash_handler_ = x;
   }
 
-  // Finds a Cache for the file_cache_path in the config.  If none exists,
-  // creates one, using all the other parameters in the ApacheConfig.
-  // Currently, no checking is done that the other parameters (e.g. cache
-  // size, cleanup interval, etc.) are consistent.
-  ApacheCache* GetCache(ApacheConfig* config);
+  SystemCaches* caches() { return caches_.get(); }
 
-  // Create a new AprMemCache from the given hostname[:port] specification.
-  AprMemCache* NewAprMemCache(const GoogleString& spec);
-
-  // Makes a memcached-based cache if the configuration contains a
-  // memcached server specification.  The l2_cache passed in is used
-  // to handle puts/gets for huge (>1M) values.  NULL is returned if
-  // memcached is not specified for this server.
-  //
-  // If a non-null CacheInterface* is returned, its ownership is transferred
-  // to the caller and must be freed on destruction.
-  CacheInterface* GetMemcached(ApacheConfig* config, CacheInterface* l2_cache);
-
-  // Returns the filesystem metadata cache for the given config's specification
-  // (if it has one). NULL is returned if no cache is specified.
-  CacheInterface* GetFilesystemMetadataCache(ApacheConfig* config);
-
-  // Stops any further Gets from occuring in the Async cache.  This is used to
-  // help wind down activity during a shutdown.
-  void StopAsyncGets();
+  // mod_pagespeed uses a beacon handler to collect data for critical images,
+  // css, etc., so filters should be configured accordingly.
+  virtual bool UseBeaconResultsInFilters() const {
+    return true;
+  }
 
   // Finds a fetcher for the settings in this config, sharing with
   // existing fetchers if possible, otherwise making a new one (and
@@ -272,23 +245,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   static void Initialize();
   static void Terminate();
 
-  // Print out details of all the connections to memcached servers.
-  void PrintMemCacheStats(GoogleString* out);
-
-  // If needed, sets session fetchers on the driver to do the following:
-  // a) Adds custom headers when configured in RewriteOptions.
-  // b) Route requests directly to this very server when they are not
-  //    configured to be external.
-  // c) Route requests to mod_spdy's slave connection code if configured to.
-  void ApplySessionFetchers(ApacheServerContext* manager,
-                            RewriteDriver* driver, request_rec* req);
-
-  // Returns true if we should handle request as SPDY.
-  // This happens in two cases:
-  // 1) It's actually a SPDY request using mod_spdy
-  // 2) The header X-PSA-Optimize-For-SPDY is present, with any value.
-  static bool TreatRequestAsSpdy(request_rec* req);
-
   // Parses a comma-separated list of HTTPS options.  If successful, applies
   // the options to the fetcher and returns true.  If the options were invalid,
   // *error_message is populated and false is returned.
@@ -297,6 +253,10 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // when support is not compiled in.  However, an error message will be logged
   // in the server log, and the option-setting will have no effect.
   bool SetHttpsOptions(StringPiece directive, GoogleString* error_message);
+
+  ModSpdyFetchController* mod_spdy_fetch_controller() {
+    return mod_spdy_fetch_controller_.get();
+  }
 
  protected:
   virtual UrlFetcher* DefaultUrlFetcher();
@@ -310,7 +270,8 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   virtual Timer* DefaultTimer();
   virtual void SetupCaches(ServerContext* resource_manager);
   virtual NamedLockManager* DefaultLockManager();
-  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolName name);
+  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolCategory pool,
+                                             StringPiece name);
 
   // Disable the Resource Manager's filesystem since we have a
   // write-through http_cache.
@@ -323,19 +284,24 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // ApacheHtmlParseMessageHandler. is_root is true if this is invoked from
   // root (ie. parent) process.
   void SharedCircularBufferInit(bool is_root);
-  // Initialize shared_mem_referer_statistics_; is_root should be true if this
-  // is invoked from the root (i.e. parent) process
-  void SharedMemRefererStatisticsInit(bool is_root);
 
   // Release all the resources. It also calls the base class ShutDown to release
   // the base class resources.
   virtual void ShutDown();
 
-  // Initializes the StaticJavascriptManager.
-  virtual void InitStaticJavascriptManager(
-      StaticJavascriptManager* static_js_manager);
+  // Initializes the StaticAssetManager.
+  virtual void InitStaticAssetManager(StaticAssetManager* static_asset_manager);
 
  private:
+  typedef SharedMemCache<64> MetadataShmCache;
+  struct MetadataShmCacheInfo {
+    MetadataShmCacheInfo() : cache_backend(NULL) {}
+
+    // Note that the fields may be NULL if e.g. initialization failed.
+    scoped_ptr<CacheInterface> cache_to_use;  // may be CacheStats or such.
+    MetadataShmCache* cache_backend;
+  };
+
   // Updates num_rewrite_threads_ and num_expensive_rewrite_threads_
   // with sensible values if they are not explicitly set.
   void AutoDetectThreadCounts();
@@ -358,8 +324,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   bool fetch_with_gzip_;
   bool track_original_content_length_;
   bool list_outstanding_urls_on_error_;
-
-  scoped_ptr<SharedMemRefererStatistics> shared_mem_referer_statistics_;
 
   // hostname_identifier_ equals to "server_hostname:port" of Apache,
   // it's used to distinguish the name of shared memory,
@@ -418,39 +382,6 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   // /mod_pagespeed_messages.
   int message_buffer_size_;
 
-  // File-Caches are expensive.  Just allocate one per distinct file-cache path.
-  // At the moment there is no consistency checking for other parameters.  Note
-  // that the LRUCache is instantiated inside the ApacheCache, so we get a new
-  // LRUCache for each distinct file-cache path.  Also note that only the
-  // file-cache path is used as the key in this map.  Other parameters changed,
-  // such as lru cache size or file cache clean interval, are taken from the
-  // first file-cache found configured to one address.
-  //
-  // TODO(jmarantz): Consider instantiating one LRUCache per process.
-  typedef std::map<GoogleString, ApacheCache*> PathCacheMap;
-  PathCacheMap path_cache_map_;
-
-  // memcache connections are expensive.  Just allocate one per
-  // distinct server-list.  At the moment there is no consistency
-  // checking for other parameters.  Note that each memcached
-  // interface share the thread allocation, based on the
-  // ModPagespeedMemcachedThreads settings first encountered for
-  // a particular server-set.
-  //
-  // The QueuedWorkerPool for async cache-gets is shared among all
-  // memcached connections.
-  //
-  // The CacheInterface* value in the MemcacheMap now includes,
-  // depending on options, instances of CacheBatcher, AsyncCache,
-  // and CacheStats.  Explicit lists of AprMemCache instances and
-  // AsyncCache objects are also included, as they require extra
-  // treatment during startup and shutdown.
-  typedef std::map<GoogleString, CacheInterface*> MemcachedMap;
-  MemcachedMap memcached_map_;
-  scoped_ptr<QueuedWorkerPool> memcached_pool_;
-  std::vector<AprMemCache*> memcache_servers_;
-  std::vector<AsyncCache*> async_caches_;
-
   // Serf fetchers are expensive -- they each cost a thread. Allocate
   // one for each proxy/slurp-setting.  Currently there is no
   // consistency checking for fetcher timeout.
@@ -458,12 +389,14 @@ class ApacheRewriteDriverFactory : public RewriteDriverFactory {
   FetcherMap fetcher_map_;
   typedef std::map<GoogleString, SerfUrlAsyncFetcher*> SerfFetcherMap;
   SerfFetcherMap serf_fetcher_map_;
-  MD5Hasher cache_hasher_;
 
   // Helps coordinate direct-to-mod_spdy fetches.
   scoped_ptr<ModSpdyFetchController> mod_spdy_fetch_controller_;
 
   GoogleString https_options_;
+
+  // Manages all our caches & lock managers.
+  scoped_ptr<SystemCaches> caches_;
 
   DISALLOW_COPY_AND_ASSIGN(ApacheRewriteDriverFactory);
 };

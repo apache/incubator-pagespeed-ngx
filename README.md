@@ -3,8 +3,7 @@
 This is the [nginx](http://nginx.org/) port of
 [mod_pagespeed](https://developers.google.com/speed/pagespeed/mod).
 
-**ngx_pagespeed is alpha**, and is only ready for production use if you really
-like to live on the edge. If you are interested in test-driving the module, or
+**ngx_pagespeed is alpha**. If you are interested in test-driving the module, or
 contributing to the project, see below. For feedback, questions, and to follow
 the progress of the project:
 
@@ -38,9 +37,11 @@ ngx_pagespeed as a build-time dependency.
 
 Install dependencies:
 
-    # These are for RedHat, CentOS, and Fedora.  Debian and Ubuntu will be
-    # similar.
+    # These are for RedHat, CentOS, and Fedora.
     $ sudo yum install git gcc-c++ pcre-dev pcre-devel zlib-devel make
+
+    # These are for Debian. Ubuntu will be similar.
+    $ sudo apt-get install git-core build-essential zlib1g-dev libpcre3 libpcre3-dev
 
 Check out ngx_pagespeed:
 
@@ -56,8 +57,15 @@ Download and build nginx:
     $ ./configure --add-module=$HOME/ngx_pagespeed
     $ make install
 
+
+If `make` fails with `unknown type name ‘off64_t’`,
+add `--with-cc-opt='-DLINUX=2 -D_REENTRANT -D_LARGEFILE64_SOURCE -march=i686 -pthread'`
+to `./configure` and try to `make` again.
+
 If `configure` fails with `checking for psol ... not found` then open
-`objs/autoconf.err` and search for `psol`.  If it's not clear what's wrong from
+`objs/autoconf.err` and search for `psol`.
+
+If it's not clear what's wrong from
 the error message, then send it to the [mailing
 list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss) and we'll
 have a look at it.
@@ -66,14 +74,21 @@ have a look at it.
 
 First build mod_pagespeed against the current revision we work at:
 
+    $ mkdir -p ~/bin
+    $ cd ~/bin
+    $ svn co http://src.chromium.org/svn/trunk/tools/depot_tools
+    $ export PATH=$PATH:~/bin/depot_tools
     $ mkdir ~/mod_pagespeed
     $ cd ~/mod_pagespeed
     $ gclient config http://modpagespeed.googlecode.com/svn/trunk/src
     $ gclient sync --force --jobs=1
     $ cd src/
-    $ svn up -r2338
+    $ svn up -r2748
     $ gclient runhooks
-    $ make BUILDTYPE=Release mod_pagespeed_test pagespeed_automatic_test
+    $ make AR.host="$PWD/build/wrappers/ar.sh" \
+           AR.target="$PWD/build/wrappers/ar.sh" \
+           BUILDTYPE=Release \
+           mod_pagespeed_test pagespeed_automatic_test
 
 (See [mod_pagespeed: build from
 source](https://developers.google.com/speed/docs/mod_pagespeed/build_from_source) if
@@ -82,7 +97,12 @@ you run into trouble, or ask for help on the mailing list.)
 Then build the pagespeed optimization library:
 
     $ cd ~/mod_pagespeed/src/net/instaweb/automatic
-    $ make all
+    $ make AR.host="$PWD/../../../build/wrappers/ar.sh" \
+           AR.target="$PWD/../../../build/wrappers/ar.sh" \
+           all
+
+While `make all` will always report an error, as long as it creates
+`pagespeed_automatic.a` you have what you need.
 
 Check out ngx_pagespeed:
 
@@ -105,12 +125,33 @@ For a debug build, remove the `BUILDTYPE=Release` option when running `make
 mod_pagespeed_test pagespeed_automatic_test` and add the flag `--with-debug` to
 `./configure --add-module=...`.
 
+### Alternate method: Use Tengine
+
+Tengine is an Nginx distribution that supports dynamically loaded modules.  You
+can add ngx_pagespeed to an existing Tengine install without recompiling
+Tengine.  First follow one of the two installation methods above until you get
+to the "Download and build nginx" section.  Then run:
+
+    # This might be /usr/local/tengine, depending on your configuration.
+    $ cd /path/to/tengine/sbin/
+    $ ./dso_tool --add-module=/path/to/ngx_pagespeed
+
+This will prepare a dynamically loadable module out of ngx_pagespeed.  To check
+that it worked you can verify that `/path/to/tengine/modules/` contains an
+`ngx_pagespeed.so`.
+
+You need to tell tengine to load this module.  Before continuing with "How to
+use" below, add this to the top of your configuration:
+
+    dso {
+        load ngx_pagespeed.so;
+    }
+
 ## How to use
 
 In your `nginx.conf`, add to the main or server block:
 
     pagespeed on;
-    pagespeed RewriteLevel CoreFilters;
 
     # needs to exist and be writable by nginx
     pagespeed FileCachePath /var/ngx_pagespeed_cache;
@@ -119,8 +160,9 @@ In every server block where pagespeed is enabled add:
 
     # This is a temporary workaround that ensures requests for pagespeed
     # optimized resources go to the pagespeed handler.
-    location ~ "\.pagespeed\.[a-z]{2}\.[^.]{10}\.[^.]+" { }
+    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" { }
     location ~ "^/ngx_pagespeed_static/" { }
+    location ~ "^/ngx_pagespeed_beacon$" { }
 
 If you're proxying, you need to strip off the `Accept-Encoding` header because
 ngx_pagespeed does not (yet) handle compression from upstreams:
@@ -136,80 +178,45 @@ To confirm that the module is loaded, fetch a page and check that you see the
 Looking at the source of a few pages you should see various changes, such as
 urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 
+### Configuration Differences From mod_pagespeed
+
+#### BeaconUrl
+
+PageSpeed can use a beacon to track load times.  By default PageSpeed sends
+beacons to `/ngx_pagespeed_beacon` on your site, but you can change this:
+
+    pagespeed BeaconUrl /path/to/beacon;
+
+If you do, you also need to change the regexp above from `location ~
+"^/ngx_pagespeed_beacon$" { }` to `location ~ "^/path/to/beacon$" { }`.
+
+As with <a
+href="https://developers.google.com/speed/docs/mod_pagespeed/filter-instrumentation-add">ModPagespeedBeaconUrl</a>
+you can set your beacons to go to another site by specifying a full path:
+
+    pagespeed BeaconUrl http://thirdpartyanalytics.example.com/my/beacon;
+
 ### Testing
 
 The generic Pagespeed system test is ported, and all but three tests pass.  To
-run it you need to first build and configure nginx.  Set it up something like:
+run it you need to first build nginx.  You also need to check out mod_pagespeed,
+but we can take a shortcut and do this the easy way, without gyp, because we
+don't need any dependencies:
 
-    ...
-    http {
-      pagespeed on;
+    $ svn checkout https://modpagespeed.googlecode.com/svn/trunk/ mod_pagespeed
 
-      // TODO(jefftk): this should be the default.
-      pagespeed RewriteLevel CoreFilters;
+Then run:
 
-      # This can be anywhere on your filesystem.
-      pagespeed FileCachePath /path/to/ngx_pagespeed_cache;
+    test/nginx_system_test.sh \
+      primary_port \
+      secondary_port \
+      mod_pagespeed_dir \
+      nginx_executable_path
 
-      # For testing that the Library command works.
-      pagespeed Library 43 1o978_K0_LNE5_ystNklf
-                http://www.modpagespeed.com/rewrite_javascript.js;
+For example:
 
-      # These gzip options are needed for tests that assume that pagespeed
-      # always enables gzip.  Which it does in apache, but not in nginx.
-      gzip on;
-      gzip_vary on;
-
-      # Turn on gzip for all content types that should benefit from it.
-      gzip_types application/ecmascript;
-      gzip_types application/javascript;
-      gzip_types application/json;
-      gzip_types application/pdf;
-      gzip_types application/postscript;
-      gzip_types application/x-javascript;
-      gzip_types image/svg+xml;
-      gzip_types text/css;
-      gzip_types text/csv;
-      # "gzip_types text/html" is assumed.
-      gzip_types text/javascript;
-      gzip_types text/plain;
-      gzip_types text/xml;
-
-      gzip_http_version 1.0;
-
-      ...
-
-      server {
-        listen 8050;
-        server_name localhost;
-        root /path/to/mod_pagespeed/src/install;
-        index index.html;
-
-        add_header Cache-Control "public, max-age=600";
-
-        # Disable parsing if the size of the HTML exceeds 50kB.
-        pagespeed MaxHtmlParseBytes 50000;
-
-        location /mod_pagespeed_test/no_cache/ {
-          add_header Cache-Control no-cache;
-        }
-
-        location /mod_pagespeed_test/compressed/ {
-          add_header Cache-Control max-age=600;
-          add_header Content-Encoding gzip;
-          types {
-            text/javascript custom_ext;
-          }
-        }
-
-        ...
-      }
-    }
-
-Then run the test, using the port you set up with `listen` in the configuration
-file:
-
-    /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
+    $ test/nginx_system_test.sh 8050 8051 /path/to/mod_pagespeed \
+        /path/to/sbin/nginx
 
 This should print out a lot of lines like:
 
@@ -240,16 +247,14 @@ you to [submit a bug](https://github.com/pagespeed/ngx_pagespeed/issues/new).
 
 Start an memcached server:
 
-    memcached -p 11213
+    memcached -p 11211
 
-To the configuration above add to the main or server block:
+In `ngx_pagespeed/test/pagespeed_test.conf.template` uncomment:
 
-    pagespeed MemcachedServers "localhost:11213";
+    pagespeed MemcachedServers "localhost:11211";
     pagespeed MemcachedThreads 1;
 
-Then run the system test:
-
-    /path/to/ngx_pagespeed/test/nginx_system_test.sh localhost:8050
+Then run the system test as above.
 
 #### Testing with valgrind
 

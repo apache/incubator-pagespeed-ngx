@@ -1,23 +1,23 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_MEMORY_REF_COUNTED_H_
 #define BASE_MEMORY_REF_COUNTED_H_
-#pragma once
+
+#include <cassert>
 
 #include "base/atomic_ref_count.h"
-#include "base/base_api.h"
+#include "base/base_export.h"
+#include "base/compiler_specific.h"
 #include "base/threading/thread_collision_warner.h"
 
 namespace base {
 
 namespace subtle {
 
-class BASE_API RefCountedBase {
+class BASE_EXPORT RefCountedBase {
  public:
-  static bool ImplementsThreadSafeReferenceCounting() { return false; }
-
   bool HasOneRef() const { return ref_count_ == 1; }
 
  protected:
@@ -40,10 +40,8 @@ class BASE_API RefCountedBase {
   DISALLOW_COPY_AND_ASSIGN(RefCountedBase);
 };
 
-class BASE_API RefCountedThreadSafeBase {
+class BASE_EXPORT RefCountedThreadSafeBase {
  public:
-  static bool ImplementsThreadSafeReferenceCounting() { return true; }
-
   bool HasOneRef() const;
 
  protected:
@@ -83,8 +81,7 @@ class BASE_API RefCountedThreadSafeBase {
 template <class T>
 class RefCounted : public subtle::RefCountedBase {
  public:
-  RefCounted() { }
-  ~RefCounted() { }
+  RefCounted() {}
 
   void AddRef() const {
     subtle::RefCountedBase::AddRef();
@@ -95,6 +92,9 @@ class RefCounted : public subtle::RefCountedBase {
       delete static_cast<const T*>(this);
     }
   }
+
+ protected:
+  ~RefCounted() {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RefCounted<T>);
@@ -131,8 +131,7 @@ struct DefaultRefCountedThreadSafeTraits {
 template <class T, typename Traits = DefaultRefCountedThreadSafeTraits<T> >
 class RefCountedThreadSafe : public subtle::RefCountedThreadSafeBase {
  public:
-  RefCountedThreadSafe() { }
-  ~RefCountedThreadSafe() { }
+  RefCountedThreadSafe() {}
 
   void AddRef() const {
     subtle::RefCountedThreadSafeBase::AddRef();
@@ -143,6 +142,9 @@ class RefCountedThreadSafe : public subtle::RefCountedThreadSafeBase {
       Traits::Destruct(static_cast<const T*>(this));
     }
   }
+
+ protected:
+  ~RefCountedThreadSafe() {}
 
  private:
   friend struct DefaultRefCountedThreadSafeTraits<T>;
@@ -162,6 +164,10 @@ class RefCountedData : public base::RefCounted< base::RefCountedData<T> > {
   RefCountedData(const T& in_value) : data(in_value) {}
 
   T data;
+
+ private:
+  friend class base::RefCounted<base::RefCountedData<T> >;
+  ~RefCountedData() {}
 };
 
 }  // namespace base
@@ -217,6 +223,8 @@ class RefCountedData : public base::RefCounted< base::RefCountedData<T> > {
 template <class T>
 class scoped_refptr {
  public:
+  typedef T element_type;
+
   scoped_refptr() : ptr_(NULL) {
   }
 
@@ -243,14 +251,17 @@ class scoped_refptr {
 
   T* get() const { return ptr_; }
   operator T*() const { return ptr_; }
-  T* operator->() const { return ptr_; }
+  T* operator->() const {
+    assert(ptr_ != NULL);
+    return ptr_;
+  }
 
   // Release a pointer.
   // The return value is the current pointer held by this object.
   // If this object holds a NULL pointer, the return value is NULL.
   // After this operation, this object will hold a NULL pointer,
   // and will not own the object any more.
-  T* release() {
+  T* release() WARN_UNUSED_RESULT {
     T* retVal = ptr_;
     ptr_ = NULL;
     return retVal;
@@ -260,9 +271,10 @@ class scoped_refptr {
     // AddRef first so that self assignment should work
     if (p)
       p->AddRef();
-    if (ptr_ )
-      ptr_ ->Release();
+    T* old_ptr = ptr_;
     ptr_ = p;
+    if (old_ptr)
+      old_ptr->Release();
     return *this;
   }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -7,21 +7,23 @@
 
 #ifndef BASE_PROCESS_UTIL_H_
 #define BASE_PROCESS_UTIL_H_
-#pragma once
 
 #include "base/basictypes.h"
+#include "base/time.h"
 
 #if defined(OS_WIN)
 #include <windows.h>
 #include <tlhelp32.h>
-#elif defined(OS_MACOSX)
+#elif defined(OS_MACOSX) || defined(OS_BSD)
 // kinfo_proc is defined in <sys/sysctl.h>, but this forward declaration
 // is sufficient for the vector<kinfo_proc> below.
 struct kinfo_proc;
 // malloc_zone_t is defined in <malloc/malloc.h>, but this forward declaration
 // is sufficient for GetPurgeableZone() below.
 typedef struct _malloc_zone_t malloc_zone_t;
+#if !defined(OS_BSD)
 #include <mach/mach.h>
+#endif
 #elif defined(OS_POSIX)
 #include <dirent.h>
 #include <limits.h>
@@ -29,11 +31,12 @@ typedef struct _malloc_zone_t malloc_zone_t;
 #endif
 
 #include <list>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/file_descriptor_shuffle.h"
 #include "base/file_path.h"
 #include "base/process.h"
@@ -131,15 +134,31 @@ enum TerminationStatus {
   TERMINATION_STATUS_MAX_ENUM
 };
 
+#if defined(USE_LINUX_BREAKPAD)
+BASE_EXPORT extern size_t g_oom_size;
+#endif
+
+#if defined(OS_WIN)
+// Output multi-process printf, cout, cerr, etc to the cmd.exe console that ran
+// chrome. This is not thread-safe: only call from main thread.
+BASE_EXPORT void RouteStdioToConsole();
+#endif
+
 // Returns the id of the current process.
-BASE_API ProcessId GetCurrentProcId();
+BASE_EXPORT ProcessId GetCurrentProcId();
 
 // Returns the ProcessHandle of the current process.
-BASE_API ProcessHandle GetCurrentProcessHandle();
+BASE_EXPORT ProcessHandle GetCurrentProcessHandle();
+
+#if defined(OS_WIN)
+// Returns the module handle to which an address belongs. The reference count
+// of the module is not incremented.
+BASE_EXPORT HMODULE GetModuleFromAddress(void* address);
+#endif
 
 // Converts a PID to a process handle. This handle must be closed by
 // CloseProcessHandle when you are done with it. Returns true on success.
-BASE_API bool OpenProcessHandle(ProcessId pid, ProcessHandle* handle);
+BASE_EXPORT bool OpenProcessHandle(ProcessId pid, ProcessHandle* handle);
 
 // Converts a PID to a process handle. On Windows the handle is opened
 // with more access rights and must only be used by trusted code.
@@ -147,48 +166,202 @@ BASE_API bool OpenProcessHandle(ProcessId pid, ProcessHandle* handle);
 // on success.
 // TODO(sanjeevr): Replace all calls to OpenPrivilegedProcessHandle with the
 // more specific OpenProcessHandleWithAccess method and delete this.
-BASE_API bool OpenPrivilegedProcessHandle(ProcessId pid, ProcessHandle* handle);
+BASE_EXPORT bool OpenPrivilegedProcessHandle(ProcessId pid,
+                                             ProcessHandle* handle);
 
 // Converts a PID to a process handle using the desired access flags. Use a
 // combination of the kProcessAccess* flags defined above for |access_flags|.
-BASE_API bool OpenProcessHandleWithAccess(ProcessId pid,
-                                          uint32 access_flags,
-                                          ProcessHandle* handle);
+BASE_EXPORT bool OpenProcessHandleWithAccess(ProcessId pid,
+                                             uint32 access_flags,
+                                             ProcessHandle* handle);
 
 // Closes the process handle opened by OpenProcessHandle.
-BASE_API void CloseProcessHandle(ProcessHandle process);
+BASE_EXPORT void CloseProcessHandle(ProcessHandle process);
 
 // Returns the unique ID for the specified process. This is functionally the
 // same as Windows' GetProcessId(), but works on versions of Windows before
 // Win XP SP1 as well.
-BASE_API ProcessId GetProcId(ProcessHandle process);
+BASE_EXPORT ProcessId GetProcId(ProcessHandle process);
 
-#if defined(OS_LINUX)
+#if defined(OS_LINUX) || defined(OS_ANDROID) || defined(OS_BSD)
 // Returns the path to the executable of the given process.
-BASE_API FilePath GetProcessExecutablePath(ProcessHandle process);
+BASE_EXPORT FilePath GetProcessExecutablePath(ProcessHandle process);
+#endif
 
+#if defined(OS_LINUX) || defined(OS_ANDROID)
 // Parse the data found in /proc/<pid>/stat and return the sum of the
 // CPU-related ticks.  Returns -1 on parse error.
 // Exposed for testing.
-BASE_API int ParseProcStatCPU(const std::string& input);
+BASE_EXPORT int ParseProcStatCPU(const std::string& input);
 
-static const char kAdjustOOMScoreSwitch[] = "--adjust-oom-score";
+// The maximum allowed value for the OOM score.
+const int kMaxOomScore = 1000;
 
-// This adjusts /proc/process/oom_adj so the Linux OOM killer will prefer
-// certain process types over others. The range for the adjustment is
-// [-17,15], with [0,15] being user accessible.
-BASE_API bool AdjustOOMScore(ProcessId process, int score);
-#endif
+// This adjusts /proc/<pid>/oom_score_adj so the Linux OOM killer will
+// prefer to kill certain process types over others. The range for the
+// adjustment is [-1000, 1000], with [0, 1000] being user accessible.
+// If the Linux system doesn't support the newer oom_score_adj range
+// of [0, 1000], then we revert to using the older oom_adj, and
+// translate the given value into [0, 15].  Some aliasing of values
+// may occur in that case, of course.
+BASE_EXPORT bool AdjustOOMScore(ProcessId process, int score);
+
+// /proc/self/exe refers to the current executable.
+BASE_EXPORT extern const char kProcSelfExe[];
+#endif  // defined(OS_LINUX) || defined(OS_ANDROID)
 
 #if defined(OS_POSIX)
 // Returns the ID for the parent of the given process.
-BASE_API ProcessId GetParentProcessId(ProcessHandle process);
+BASE_EXPORT ProcessId GetParentProcessId(ProcessHandle process);
 
 // Close all file descriptors, except those which are a destination in the
 // given multimap. Only call this function in a child process where you know
 // that there aren't any other threads.
-BASE_API void CloseSuperfluousFds(const InjectiveMultimap& saved_map);
-#endif
+BASE_EXPORT void CloseSuperfluousFds(const InjectiveMultimap& saved_map);
+#endif  // defined(OS_POSIX)
+
+typedef std::vector<std::pair<std::string, std::string> > EnvironmentVector;
+typedef std::vector<std::pair<int, int> > FileHandleMappingVector;
+
+#if defined(OS_MACOSX)
+// Used with LaunchOptions::synchronize and LaunchSynchronize, a
+// LaunchSynchronizationHandle is an opaque value that LaunchProcess will
+// create and set, and that LaunchSynchronize will consume and destroy.
+typedef int* LaunchSynchronizationHandle;
+#endif  // defined(OS_MACOSX)
+
+// Options for launching a subprocess that are passed to LaunchProcess().
+// The default constructor constructs the object with default options.
+struct LaunchOptions {
+  LaunchOptions() : wait(false),
+#if defined(OS_WIN)
+                    start_hidden(false), inherit_handles(false), as_user(NULL),
+                    empty_desktop_name(false), job_handle(NULL),
+                    force_breakaway_from_job_(false)
+#else
+                    environ(NULL), fds_to_remap(NULL), maximize_rlimits(NULL),
+                    new_process_group(false)
+#if defined(OS_LINUX)
+                  , clone_flags(0)
+#endif  // OS_LINUX
+#if defined(OS_CHROMEOS)
+                  , ctrl_terminal_fd(-1)
+#endif  // OS_CHROMEOS
+#if defined(OS_MACOSX)
+                  , synchronize(NULL)
+#endif  // defined(OS_MACOSX)
+#endif  // !defined(OS_WIN)
+      {}
+
+  // If true, wait for the process to complete.
+  bool wait;
+
+#if defined(OS_WIN)
+  bool start_hidden;
+
+  // If true, the new process inherits handles from the parent.
+  bool inherit_handles;
+
+  // If non-NULL, runs as if the user represented by the token had launched it.
+  // Whether the application is visible on the interactive desktop depends on
+  // the token belonging to an interactive logon session.
+  //
+  // To avoid hard to diagnose problems, when specified this loads the
+  // environment variables associated with the user and if this operation fails
+  // the entire call fails as well.
+  UserTokenHandle as_user;
+
+  // If true, use an empty string for the desktop name.
+  bool empty_desktop_name;
+
+  // If non-NULL, launches the application in that job object. The process will
+  // be terminated immediately and LaunchProcess() will fail if assignment to
+  // the job object fails.
+  HANDLE job_handle;
+
+  // If set to true, ensures that the child process is launched with the
+  // CREATE_BREAKAWAY_FROM_JOB flag which allows it to breakout of the parent
+  // job if any.
+  bool force_breakaway_from_job_;
+#else
+  // If non-NULL, set/unset environment variables.
+  // See documentation of AlterEnvironment().
+  // This pointer is owned by the caller and must live through the
+  // call to LaunchProcess().
+  const EnvironmentVector* environ;
+
+  // If non-NULL, remap file descriptors according to the mapping of
+  // src fd->dest fd to propagate FDs into the child process.
+  // This pointer is owned by the caller and must live through the
+  // call to LaunchProcess().
+  const FileHandleMappingVector* fds_to_remap;
+
+  // Each element is an RLIMIT_* constant that should be raised to its
+  // rlim_max.  This pointer is owned by the caller and must live through
+  // the call to LaunchProcess().
+  const std::set<int>* maximize_rlimits;
+
+  // If true, start the process in a new process group, instead of
+  // inheriting the parent's process group.  The pgid of the child process
+  // will be the same as its pid.
+  bool new_process_group;
+
+#if defined(OS_LINUX)
+  // If non-zero, start the process using clone(), using flags as provided.
+  int clone_flags;
+#endif  // defined(OS_LINUX)
+
+#if defined(OS_CHROMEOS)
+  // If non-negative, the specified file descriptor will be set as the launched
+  // process' controlling terminal.
+  int ctrl_terminal_fd;
+#endif  // defined(OS_CHROMEOS)
+
+#if defined(OS_MACOSX)
+  // When non-NULL, a new LaunchSynchronizationHandle will be created and
+  // stored in *synchronize whenever LaunchProcess returns true in the parent
+  // process. The child process will have been created (with fork) but will
+  // be waiting (before exec) for the parent to call LaunchSynchronize with
+  // this handle. Only when LaunchSynchronize is called will the child be
+  // permitted to continue execution and call exec. LaunchSynchronize
+  // destroys the handle created by LaunchProcess.
+  //
+  // When synchronize is non-NULL, the parent must call LaunchSynchronize
+  // whenever LaunchProcess returns true. No exceptions.
+  //
+  // Synchronization is useful when the parent process needs to guarantee that
+  // it can take some action (such as recording the newly-forked child's
+  // process ID) before the child does something (such as using its process ID
+  // to communicate with its parent).
+  //
+  // |synchronize| and |wait| must not both be set simultaneously.
+  LaunchSynchronizationHandle* synchronize;
+#endif  // defined(OS_MACOSX)
+
+#endif  // !defined(OS_WIN)
+};
+
+// Launch a process via the command line |cmdline|.
+// See the documentation of LaunchOptions for details on |options|.
+//
+// Returns true upon success.
+//
+// Upon success, if |process_handle| is non-NULL, it will be filled in with the
+// handle of the launched process.  NOTE: In this case, the caller is
+// responsible for closing the handle so that it doesn't leak!
+// Otherwise, the process handle will be implicitly closed.
+//
+// Unix-specific notes:
+// - All file descriptors open in the parent process will be closed in the
+//   child process except for any preserved by options::fds_to_remap, and
+//   stdin, stdout, and stderr. If not remapped by options::fds_to_remap,
+//   stdin is reopened as /dev/null, and the child is allowed to inherit its
+//   parent's stdout and stderr.
+// - If the first argument on the command line does not contain a slash,
+//   PATH will be searched.  (See man execvp.)
+BASE_EXPORT bool LaunchProcess(const CommandLine& cmdline,
+                               const LaunchOptions& options,
+                               ProcessHandle* process_handle);
 
 #if defined(OS_WIN)
 
@@ -201,90 +374,31 @@ enum IntegrityLevel {
 // Determine the integrity level of the specified process. Returns false
 // if the system does not support integrity levels (pre-Vista) or in the case
 // of an underlying system failure.
-BASE_API bool GetProcessIntegrityLevel(ProcessHandle process,
-                                       IntegrityLevel *level);
+BASE_EXPORT bool GetProcessIntegrityLevel(ProcessHandle process,
+                                          IntegrityLevel* level);
 
-// Runs the given application name with the given command line. Normally, the
-// first command line argument should be the path to the process, and don't
-// forget to quote it.
+// Windows-specific LaunchProcess that takes the command line as a
+// string.  Useful for situations where you need to control the
+// command line arguments directly, but prefer the CommandLine version
+// if launching Chrome itself.
 //
-// If wait is true, it will block and wait for the other process to finish,
-// otherwise, it will just continue asynchronously.
+// The first command line argument should be the path to the process,
+// and don't forget to quote it.
 //
 // Example (including literal quotes)
 //  cmdline = "c:\windows\explorer.exe" -foo "c:\bar\"
-//
-// If process_handle is non-NULL, the process handle of the launched app will be
-// stored there on a successful launch.
-// NOTE: In this case, the caller is responsible for closing the handle so
-//       that it doesn't leak!
-BASE_API bool LaunchApp(const std::wstring& cmdline,
-                        bool wait, bool start_hidden,
-                        ProcessHandle* process_handle);
-
-// Same as LaunchApp, except allows the new process to inherit handles of the
-// parent process.
-BASE_API bool LaunchAppWithHandleInheritance(const std::wstring& cmdline,
-                                             bool wait, bool start_hidden,
-                                             ProcessHandle* process_handle);
-
-// Runs the given application name with the given command line as if the user
-// represented by |token| had launched it. The caveats about |cmdline| and
-// |process_handle| explained for LaunchApp above apply as well.
-//
-// Whether the application is visible on the interactive desktop depends on
-// the token belonging to an interactive logon session.
-//
-// To avoid hard to diagnose problems, this function internally loads the
-// environment variables associated with the user and if this operation fails
-// the entire call fails as well.
-BASE_API bool LaunchAppAsUser(UserTokenHandle token,
-                              const std::wstring& cmdline,
-                              bool start_hidden,
-                              ProcessHandle* process_handle);
-
-// Has the same behavior as LaunchAppAsUser, but offers the boolean option to
-// use an empty string for the desktop name and a boolean for allowing the
-// child process to inherit handles from its parent.
-BASE_API bool LaunchAppAsUser(UserTokenHandle token,
-                              const std::wstring& cmdline,
-                              bool start_hidden, ProcessHandle* process_handle,
-                              bool empty_desktop_name, bool inherit_handles);
-
+BASE_EXPORT bool LaunchProcess(const string16& cmdline,
+                               const LaunchOptions& options,
+                               ProcessHandle* process_handle);
 
 #elif defined(OS_POSIX)
-// Runs the application specified in argv[0] with the command line argv.
-// Before launching all FDs open in the parent process will be marked as
-// close-on-exec.  |fds_to_remap| defines a mapping of src fd->dest fd to
-// propagate FDs into the child process.
-//
-// As above, if wait is true, execute synchronously. The pid will be stored
-// in process_handle if that pointer is non-null.
-//
-// Note that the first argument in argv must point to the executable filename.
-// If the filename is not fully specified, PATH will be searched.
-typedef std::vector<std::pair<int, int> > file_handle_mapping_vector;
-BASE_API bool LaunchApp(const std::vector<std::string>& argv,
-                        const file_handle_mapping_vector& fds_to_remap,
-                        bool wait, ProcessHandle* process_handle);
-
-// Similar to the above, but also (un)set environment variables in child process
-// through |environ|.
-typedef std::vector<std::pair<std::string, std::string> > environment_vector;
-BASE_API bool LaunchApp(const std::vector<std::string>& argv,
-                        const environment_vector& environ,
-                        const file_handle_mapping_vector& fds_to_remap,
-                        bool wait, ProcessHandle* process_handle);
-
-// Similar to the above two methods, but starts the child process in a process
-// group of its own, instead of allowing it to inherit the parent's process
-// group. The pgid of the child process will be the same as its pid.
-BASE_API bool LaunchAppInNewProcessGroup(
-    const std::vector<std::string>& argv,
-    const environment_vector& environ,
-    const file_handle_mapping_vector& fds_to_remap,
-    bool wait,
-    ProcessHandle* process_handle);
+// A POSIX-specific version of LaunchProcess that takes an argv array
+// instead of a CommandLine.  Useful for situations where you need to
+// control the command line arguments directly, but prefer the
+// CommandLine version if launching Chrome itself.
+BASE_EXPORT bool LaunchProcess(const std::vector<std::string>& argv,
+                               const LaunchOptions& options,
+                               ProcessHandle* process_handle);
 
 // AlterEnvironment returns a modified environment vector, constructed from the
 // given environment and the list of changes given in |changes|. Each key in
@@ -293,28 +407,54 @@ BASE_API bool LaunchAppInNewProcessGroup(
 // the second is empty, in which case the key-value is removed.
 //
 // The returned array is allocated using new[] and must be freed by the caller.
-BASE_API char** AlterEnvironment(const environment_vector& changes,
-                                 const char* const* const env);
+BASE_EXPORT char** AlterEnvironment(const EnvironmentVector& changes,
+                                    const char* const* const env);
+
+#if defined(OS_MACOSX)
+
+// After a successful call to LaunchProcess with LaunchOptions::synchronize
+// set, the parent process must call LaunchSynchronize to allow the child
+// process to proceed, and to destroy the LaunchSynchronizationHandle.
+BASE_EXPORT void LaunchSynchronize(LaunchSynchronizationHandle handle);
+
+#endif  // defined(OS_MACOSX)
 #endif  // defined(OS_POSIX)
 
-// Executes the application specified by cl. This function delegates to one
-// of the above two platform-specific functions.
-BASE_API bool LaunchApp(const CommandLine& cl, bool wait, bool start_hidden,
-                        ProcessHandle* process_handle);
+#if defined(OS_WIN)
+// Set JOBOBJECT_EXTENDED_LIMIT_INFORMATION to JobObject |job_object|.
+// As its limit_info.BasicLimitInformation.LimitFlags has
+// JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE.
+// When the provide JobObject |job_object| is closed, the binded process will
+// be terminated.
+BASE_EXPORT bool SetJobObjectAsKillOnJobClose(HANDLE job_object);
+#endif  // defined(OS_WIN)
 
 // Executes the application specified by |cl| and wait for it to exit. Stores
 // the output (stdout) in |output|. Redirects stderr to /dev/null. Returns true
 // on success (application launched and exited cleanly, with exit code
 // indicating success).
-BASE_API bool GetAppOutput(const CommandLine& cl, std::string* output);
+BASE_EXPORT bool GetAppOutput(const CommandLine& cl, std::string* output);
 
 #if defined(OS_POSIX)
+// A POSIX-specific version of GetAppOutput that takes an argv array
+// instead of a CommandLine.  Useful for situations where you need to
+// control the command line arguments directly.
+BASE_EXPORT bool GetAppOutput(const std::vector<std::string>& argv,
+                              std::string* output);
+
 // A restricted version of |GetAppOutput()| which (a) clears the environment,
 // and (b) stores at most |max_output| bytes; also, it doesn't search the path
 // for the command.
-BASE_API bool GetAppOutputRestricted(const CommandLine& cl,
-                                     std::string* output, size_t max_output);
-#endif
+BASE_EXPORT bool GetAppOutputRestricted(const CommandLine& cl,
+                                        std::string* output, size_t max_output);
+
+// A version of |GetAppOutput()| which also returns the exit code of the
+// executed command. Returns true if the application runs and exits cleanly. If
+// this is the case the exit code of the application is available in
+// |*exit_code|.
+BASE_EXPORT bool GetAppOutputWithExitCode(const CommandLine& cl,
+                                          std::string* output, int* exit_code);
+#endif  // defined(OS_POSIX)
 
 // Used to filter processes by process ID.
 class ProcessFilter {
@@ -330,32 +470,33 @@ class ProcessFilter {
 // Returns the number of processes on the machine that are running from the
 // given executable name.  If filter is non-null, then only processes selected
 // by the filter will be counted.
-BASE_API int GetProcessCount(const FilePath::StringType& executable_name,
-                             const ProcessFilter* filter);
+BASE_EXPORT int GetProcessCount(const FilePath::StringType& executable_name,
+                                const ProcessFilter* filter);
 
 // Attempts to kill all the processes on the current machine that were launched
 // from the given executable name, ending them with the given exit code.  If
 // filter is non-null, then only processes selected by the filter are killed.
 // Returns true if all processes were able to be killed off, false if at least
 // one couldn't be killed.
-BASE_API bool KillProcesses(const FilePath::StringType& executable_name,
-                            int exit_code, const ProcessFilter* filter);
+BASE_EXPORT bool KillProcesses(const FilePath::StringType& executable_name,
+                               int exit_code, const ProcessFilter* filter);
 
 // Attempts to kill the process identified by the given process
 // entry structure, giving it the specified exit code. If |wait| is true, wait
 // for the process to be actually terminated before returning.
 // Returns true if this is successful, false otherwise.
-BASE_API bool KillProcess(ProcessHandle process, int exit_code, bool wait);
+BASE_EXPORT bool KillProcess(ProcessHandle process, int exit_code, bool wait);
 
 #if defined(OS_POSIX)
 // Attempts to kill the process group identified by |process_group_id|. Returns
 // true on success.
-BASE_API bool KillProcessGroup(ProcessHandle process_group_id);
-#endif
+BASE_EXPORT bool KillProcessGroup(ProcessHandle process_group_id);
+#endif  // defined(OS_POSIX)
 
 #if defined(OS_WIN)
-BASE_API bool KillProcessById(ProcessId process_id, int exit_code, bool wait);
-#endif
+BASE_EXPORT bool KillProcessById(ProcessId process_id, int exit_code,
+                                 bool wait);
+#endif  // defined(OS_WIN)
 
 // Get the termination status of the process by interpreting the
 // circumstances of the child process' death. |exit_code| is set to
@@ -365,14 +506,14 @@ BASE_API bool KillProcessById(ProcessId process_id, int exit_code, bool wait);
 // will only return a useful result the first time it is called after
 // the child exits (because it will reap the child and the information
 // will no longer be available).
-BASE_API TerminationStatus GetTerminationStatus(ProcessHandle handle,
-                                                int* exit_code);
+BASE_EXPORT TerminationStatus GetTerminationStatus(ProcessHandle handle,
+                                                   int* exit_code);
 
 // Waits for process to exit. On POSIX systems, if the process hasn't been
 // signaled then puts the exit code in |exit_code|; otherwise it's considered
 // a failure. On Windows |exit_code| is always filled. Returns true on success,
 // and closes |handle| in any case.
-BASE_API bool WaitForExitCode(ProcessHandle handle, int* exit_code);
+BASE_EXPORT bool WaitForExitCode(ProcessHandle handle, int* exit_code);
 
 // Waits for process to exit. If it did exit within |timeout_milliseconds|,
 // then puts the exit code in |exit_code|, and returns true.
@@ -380,23 +521,24 @@ BASE_API bool WaitForExitCode(ProcessHandle handle, int* exit_code);
 // to -1. Returns false on failure (the caller is then responsible for closing
 // |handle|).
 // The caller is always responsible for closing the |handle|.
-BASE_API bool WaitForExitCodeWithTimeout(ProcessHandle handle, int* exit_code,
-                                         int64 timeout_milliseconds);
+BASE_EXPORT bool WaitForExitCodeWithTimeout(ProcessHandle handle,
+                                            int* exit_code,
+                                            base::TimeDelta timeout);
 
 // Wait for all the processes based on the named executable to exit.  If filter
 // is non-null, then only processes selected by the filter are waited on.
 // Returns after all processes have exited or wait_milliseconds have expired.
 // Returns true if all the processes exited, false otherwise.
-BASE_API bool WaitForProcessesToExit(
+BASE_EXPORT bool WaitForProcessesToExit(
     const FilePath::StringType& executable_name,
-    int64 wait_milliseconds,
+    base::TimeDelta wait,
     const ProcessFilter* filter);
 
 // Wait for a single process to exit. Return true if it exited cleanly within
 // the given time limit. On Linux |handle| must be a child process, however
 // on Mac and Windows it can be any process.
-BASE_API bool WaitForSingleProcess(ProcessHandle handle,
-                                   int64 wait_milliseconds);
+BASE_EXPORT bool WaitForSingleProcess(ProcessHandle handle,
+                                      base::TimeDelta wait);
 
 // Waits a certain amount of time (can be 0) for all the processes with a given
 // executable name to exit, then kills off any of them that are still around.
@@ -404,16 +546,38 @@ BASE_API bool WaitForSingleProcess(ProcessHandle handle,
 // on.  Killed processes are ended with the given exit code.  Returns false if
 // any processes needed to be killed, true if they all exited cleanly within
 // the wait_milliseconds delay.
-BASE_API bool CleanupProcesses(const FilePath::StringType& executable_name,
-                               int64 wait_milliseconds,
-                               int exit_code,
-                               const ProcessFilter* filter);
+BASE_EXPORT bool CleanupProcesses(const FilePath::StringType& executable_name,
+                                  base::TimeDelta wait,
+                                  int exit_code,
+                                  const ProcessFilter* filter);
+
+// This method ensures that the specified process eventually terminates, and
+// then it closes the given process handle.
+//
+// It assumes that the process has already been signalled to exit, and it
+// begins by waiting a small amount of time for it to exit.  If the process
+// does not appear to have exited, then this function starts to become
+// aggressive about ensuring that the process terminates.
+//
+// On Linux this method does not block the calling thread.
+// On OS X this method may block for up to 2 seconds.
+//
+// NOTE: The process handle must have been opened with the PROCESS_TERMINATE
+// and SYNCHRONIZE permissions.
+//
+BASE_EXPORT void EnsureProcessTerminated(ProcessHandle process_handle);
+
+#if defined(OS_POSIX) && !defined(OS_MACOSX)
+// The nicer version of EnsureProcessTerminated() that is patient and will
+// wait for |process_handle| to finish and then reap it.
+BASE_EXPORT void EnsureProcessGetsReaped(ProcessHandle process_handle);
+#endif
 
 // This class provides a way to iterate through a list of processes on the
 // current machine with a specified filter.
 // To use, create an instance and then call NextProcessEntry() until it returns
 // false.
-class BASE_API ProcessIterator {
+class BASE_EXPORT ProcessIterator {
  public:
   typedef std::list<ProcessEntry> ProcessEntries;
 
@@ -447,11 +611,11 @@ class BASE_API ProcessIterator {
 #if defined(OS_WIN)
   HANDLE snapshot_;
   bool started_iteration_;
-#elif defined(OS_MACOSX)
+#elif defined(OS_MACOSX) || defined(OS_BSD)
   std::vector<kinfo_proc> kinfo_procs_;
   size_t index_of_kinfo_proc_;
 #elif defined(OS_POSIX)
-  DIR *procfs_dir_;
+  DIR* procfs_dir_;
 #endif
   ProcessEntry entry_;
   const ProcessFilter* filter_;
@@ -463,14 +627,14 @@ class BASE_API ProcessIterator {
 // on the current machine that were started from the given executable
 // name.  To use, create an instance and then call NextProcessEntry()
 // until it returns false.
-class BASE_API NamedProcessIterator : public ProcessIterator {
+class BASE_EXPORT NamedProcessIterator : public ProcessIterator {
  public:
   NamedProcessIterator(const FilePath::StringType& executable_name,
                        const ProcessFilter* filter);
   virtual ~NamedProcessIterator();
 
  protected:
-  virtual bool IncludeEntry();
+  virtual bool IncludeEntry() OVERRIDE;
 
  private:
   FilePath::StringType executable_name_;
@@ -528,23 +692,25 @@ struct FreeMBytes {
 };
 
 // Convert a POSIX timeval to microseconds.
-BASE_API int64 TimeValToMicroseconds(const struct timeval& tv);
+BASE_EXPORT int64 TimeValToMicroseconds(const struct timeval& tv);
 
 // Provides performance metrics for a specified process (CPU usage, memory and
 // IO counters). To use it, invoke CreateProcessMetrics() to get an instance
 // for a specific process, then access the information with the different get
 // methods.
-class BASE_API ProcessMetrics {
+class BASE_EXPORT ProcessMetrics {
  public:
   ~ProcessMetrics();
 
   // Creates a ProcessMetrics for the specified process.
   // The caller owns the returned object.
-#if !defined(OS_MACOSX)
+#if !defined(OS_MACOSX) || defined(OS_IOS)
   static ProcessMetrics* CreateProcessMetrics(ProcessHandle process);
 #else
   class PortProvider {
    public:
+    virtual ~PortProvider() {}
+
     // Should return the mach task for |process| if possible, or else
     // |MACH_PORT_NULL|. Only processes that this returns tasks for will have
     // metrics on OS X (except for the current process, which always gets
@@ -557,7 +723,7 @@ class BASE_API ProcessMetrics {
   // only returns valid metrics if |process| is the current process.
   static ProcessMetrics* CreateProcessMetrics(ProcessHandle process,
                                               PortProvider* port_provider);
-#endif  // !defined(OS_MACOSX)
+#endif  // !defined(OS_MACOSX) || defined(OS_IOS)
 
   // Returns the current space allocated for the pagefile, in bytes (these pages
   // may or may not be in memory).  On Linux, this returns the total virtual
@@ -605,11 +771,11 @@ class BASE_API ProcessMetrics {
   bool GetIOCounters(IoCounters* io_counters) const;
 
  private:
-#if !defined(OS_MACOSX)
+#if !defined(OS_MACOSX) || defined(OS_IOS)
   explicit ProcessMetrics(ProcessHandle process);
 #else
   ProcessMetrics(ProcessHandle process, PortProvider* port_provider);
-#endif  // !defined(OS_MACOSX)
+#endif  // !defined(OS_MACOSX) || defined(OS_IOS)
 
   ProcessHandle process_;
 
@@ -620,6 +786,7 @@ class BASE_API ProcessMetrics {
   int64 last_time_;
   int64 last_system_time_;
 
+#if !defined(OS_IOS)
 #if defined(OS_MACOSX)
   // Queries the port provider if it's set.
   mach_port_t TaskForPid(ProcessHandle process) const;
@@ -628,14 +795,37 @@ class BASE_API ProcessMetrics {
 #elif defined(OS_POSIX)
   // Jiffie count at the last_time_ we updated.
   int last_cpu_;
-#endif  // defined(OS_MACOSX)
+#endif  // defined(OS_POSIX)
+#endif  // !defined(OS_IOS)
 
   DISALLOW_COPY_AND_ASSIGN(ProcessMetrics);
 };
 
-// Returns the memory commited by the system in KBytes.
+#if defined(OS_LINUX) || defined(OS_ANDROID)
+// Data from /proc/meminfo about system-wide memory consumption.
+// Values are in KB.
+struct BASE_EXPORT SystemMemoryInfoKB {
+  SystemMemoryInfoKB();
+
+  int total;
+  int free;
+  int buffers;
+  int cached;
+  int active_anon;
+  int inactive_anon;
+  int active_file;
+  int inactive_file;
+  int shmem;
+};
+// Retrieves data from /proc/meminfo about system-wide memory consumption.
+// Fills in the provided |meminfo| structure. Returns true on success.
+// Exposed for memory debugging widget.
+BASE_EXPORT bool GetSystemMemoryInfo(SystemMemoryInfoKB* meminfo);
+#endif  // defined(OS_LINUX) || defined(OS_ANDROID)
+
+// Returns the memory committed by the system in KBytes.
 // Returns 0 if it can't compute the commit charge.
-BASE_API size_t GetSystemCommitCharge();
+BASE_EXPORT size_t GetSystemCommitCharge();
 
 // Enables low fragmentation heap (LFH) for every heaps of this process. This
 // won't have any effect on heaps created after this function call. It will not
@@ -643,30 +833,23 @@ BASE_API size_t GetSystemCommitCharge();
 // better to call this function early in initialization and again before
 // entering the main loop.
 // Note: Returns true on Windows 2000 without doing anything.
-BASE_API bool EnableLowFragmentationHeap();
+BASE_EXPORT bool EnableLowFragmentationHeap();
 
 // Enables 'terminate on heap corruption' flag. Helps protect against heap
 // overflow. Has no effect if the OS doesn't provide the necessary facility.
-BASE_API void EnableTerminationOnHeapCorruption();
+BASE_EXPORT void EnableTerminationOnHeapCorruption();
 
-#if !defined(OS_WIN)
-// Turns on process termination if memory runs out. This is handled on Windows
-// inside RegisterInvalidParamHandler().
-BASE_API void EnableTerminationOnOutOfMemory();
-#if defined(OS_MACOSX)
-// Exposed for testing.
-malloc_zone_t* GetPurgeableZone();
-#endif
-#endif
+// Turns on process termination if memory runs out.
+BASE_EXPORT void EnableTerminationOnOutOfMemory();
 
 // Enables stack dump to console output on exception and signals.
 // When enabled, the process will quit immediately. This is meant to be used in
-// unit_tests only!
-BASE_API bool EnableInProcessStackDumping();
+// unit_tests only! This is not thread-safe: only call from main thread.
+BASE_EXPORT bool EnableInProcessStackDumping();
 
 // If supported on the platform, and the user has sufficent rights, increase
 // the current process's scheduling priority to a high priority.
-BASE_API void RaiseProcessToHighPriority();
+BASE_EXPORT void RaiseProcessToHighPriority();
 
 #if defined(OS_MACOSX)
 // Restore the default exception handler, setting it to Apple Crash Reporter
@@ -677,6 +860,20 @@ BASE_API void RaiseProcessToHighPriority();
 // in the child after forking will restore the standard exception handler.
 // See http://crbug.com/20371/ for more details.
 void RestoreDefaultExceptionHandler();
+#endif  // defined(OS_MACOSX)
+
+#if defined(OS_MACOSX)
+// Very large images or svg canvases can cause huge mallocs.  Skia
+// does tricks on tcmalloc-based systems to allow malloc to fail with
+// a NULL rather than hit the oom crasher.  This replicates that for
+// OSX.
+//
+// IF YOU USE THIS WITHOUT CONSULTING YOUR FRIENDLY OSX DEVELOPER,
+// YOUR CODE IS LIKELY TO BE REVERTED.  THANK YOU.
+//
+// TODO(shess): Weird place to put it, but this is where the OOM
+// killer currently lives.
+BASE_EXPORT void* UncheckedMalloc(size_t size);
 #endif  // defined(OS_MACOSX)
 
 }  // namespace base

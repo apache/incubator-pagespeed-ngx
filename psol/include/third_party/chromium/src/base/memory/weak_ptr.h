@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -45,31 +45,54 @@
 // dereferencing the Controller back pointer after the Controller has been
 // destroyed.
 //
-// WARNING: weak pointers are not threadsafe!!!  You must only use a WeakPtr
-// instance on thread where it was created.
+// ------------------------ Thread-safety notes ------------------------
+// When you get a WeakPtr (from a WeakPtrFactory or SupportsWeakPtr), if it's
+// the only one pointing to the object, the object become bound to the
+// current thread, as well as this WeakPtr and all later ones get created.
+//
+// You may only dereference the WeakPtr on the thread it binds to. However, it
+// is safe to destroy the WeakPtr object on another thread. Because of this,
+// querying WeakPtrFactory's HasWeakPtrs() method can be racy.
+//
+// On the other hand, the object that supports WeakPtr (extends SupportsWeakPtr)
+// can only be deleted from the thread it binds to, until all WeakPtrs are
+// deleted.
+//
+// Calling SupportsWeakPtr::DetachFromThread() can work around the limitations
+// above and cancel the thread binding of the object and all WeakPtrs pointing
+// to it, but it's not recommended and unsafe.
+//
+// WeakPtrs may be copy-constructed or assigned on threads other than the thread
+// they are bound to. This does not change the thread binding. So these WeakPtrs
+// may only be dereferenced on the thread that the original WeakPtr was bound
+// to.
 
 #ifndef BASE_MEMORY_WEAK_PTR_H_
 #define BASE_MEMORY_WEAK_PTR_H_
-#pragma once
 
-#include "base/base_api.h"
+#include "base/basictypes.h"
+#include "base/base_export.h"
 #include "base/logging.h"
 #include "base/memory/ref_counted.h"
+#include "base/template_util.h"
 #include "base/threading/thread_checker.h"
 
 namespace base {
+
+template <typename T> class SupportsWeakPtr;
+template <typename T> class WeakPtr;
 
 namespace internal {
 // These classes are part of the WeakPtr implementation.
 // DO NOT USE THESE CLASSES DIRECTLY YOURSELF.
 
-class BASE_API WeakReference {
+class BASE_EXPORT WeakReference {
  public:
   // While Flag is bound to a specific thread, it may be deleted from another
   // via base::WeakPtr::~WeakPtr().
   class Flag : public RefCountedThreadSafe<Flag> {
    public:
-    explicit Flag(Flag** handle);
+    Flag();
 
     void Invalidate();
     bool IsValid() const;
@@ -82,20 +105,20 @@ class BASE_API WeakReference {
     ~Flag();
 
     ThreadChecker thread_checker_;
-    Flag** handle_;
+    bool is_valid_;
   };
 
   WeakReference();
-  WeakReference(Flag* flag);
+  explicit WeakReference(const Flag* flag);
   ~WeakReference();
 
   bool is_valid() const;
 
  private:
-  scoped_refptr<Flag> flag_;
+  scoped_refptr<const Flag> flag_;
 };
 
-class BASE_API WeakReferenceOwner {
+class BASE_EXPORT WeakReferenceOwner {
  public:
   WeakReferenceOwner();
   ~WeakReferenceOwner();
@@ -103,7 +126,7 @@ class BASE_API WeakReferenceOwner {
   WeakReference GetRef() const;
 
   bool HasRefs() const {
-    return flag_ != NULL;
+    return flag_.get() && !flag_->HasOneRef();
   }
 
   void Invalidate();
@@ -114,27 +137,56 @@ class BASE_API WeakReferenceOwner {
   }
 
  private:
-  mutable WeakReference::Flag* flag_;
+  mutable scoped_refptr<WeakReference::Flag> flag_;
 };
 
 // This class simplifies the implementation of WeakPtr's type conversion
 // constructor by avoiding the need for a public accessor for ref_.  A
 // WeakPtr<T> cannot access the private members of WeakPtr<U>, so this
 // base class gives us a way to access ref_ in a protected fashion.
-class BASE_API WeakPtrBase {
+class BASE_EXPORT WeakPtrBase {
  public:
   WeakPtrBase();
   ~WeakPtrBase();
 
  protected:
-  WeakPtrBase(const WeakReference& ref);
+  explicit WeakPtrBase(const WeakReference& ref);
 
   WeakReference ref_;
 };
 
+// This class provides a common implementation of common functions that would
+// otherwise get instantiated separately for each distinct instantiation of
+// SupportsWeakPtr<>.
+class SupportsWeakPtrBase {
+ public:
+  // A safe static downcast of a WeakPtr<Base> to WeakPtr<Derived>. This
+  // conversion will only compile if there is exists a Base which inherits
+  // from SupportsWeakPtr<Base>. See base::AsWeakPtr() below for a helper
+  // function that makes calling this easier.
+  template<typename Derived>
+  static WeakPtr<Derived> StaticAsWeakPtr(Derived* t) {
+    typedef
+        is_convertible<Derived, internal::SupportsWeakPtrBase&> convertible;
+    COMPILE_ASSERT(convertible::value,
+                   AsWeakPtr_argument_inherits_from_SupportsWeakPtr);
+    return AsWeakPtrImpl<Derived>(t, *t);
+  }
+
+ private:
+  // This template function uses type inference to find a Base of Derived
+  // which is an instance of SupportsWeakPtr<Base>. We can then safely
+  // static_cast the Base* to a Derived*.
+  template <typename Derived, typename Base>
+  static WeakPtr<Derived> AsWeakPtrImpl(
+      Derived* t, const SupportsWeakPtr<Base>&) {
+    WeakPtr<Base> ptr = t->Base::AsWeakPtr();
+    return WeakPtr<Derived>(ptr.ref_, static_cast<Derived*>(ptr.ptr_));
+  }
+};
+
 }  // namespace internal
 
-template <typename T> class SupportsWeakPtr;
 template <typename T> class WeakPtrFactory;
 
 // The WeakPtr class holds a weak reference to |T*|.
@@ -164,7 +216,7 @@ class WeakPtr : public internal::WeakPtrBase {
   T* get() const { return ref_.is_valid() ? ptr_ : NULL; }
   operator T*() const { return get(); }
 
-  T* operator*() const {
+  T& operator*() const {
     DCHECK(get() != NULL);
     return *get();
   }
@@ -179,11 +231,13 @@ class WeakPtr : public internal::WeakPtrBase {
   }
 
  private:
+  friend class internal::SupportsWeakPtrBase;
   friend class SupportsWeakPtr<T>;
   friend class WeakPtrFactory<T>;
 
   WeakPtr(const internal::WeakReference& ref, T* ptr)
-      : WeakPtrBase(ref), ptr_(ptr) {
+      : WeakPtrBase(ref),
+        ptr_(ptr) {
   }
 
   // This pointer is only valid when ref_.is_valid() is true.  Otherwise, its
@@ -196,7 +250,7 @@ class WeakPtr : public internal::WeakPtrBase {
 // pointer to your class.  It also has the property that you don't need to
 // initialize it from your constructor.
 template <class T>
-class SupportsWeakPtr {
+class SupportsWeakPtr : public internal::SupportsWeakPtrBase {
  public:
   SupportsWeakPtr() {}
 
@@ -209,10 +263,36 @@ class SupportsWeakPtr {
     weak_reference_owner_.DetachFromThread();
   }
 
+ protected:
+  ~SupportsWeakPtr() {}
+
  private:
   internal::WeakReferenceOwner weak_reference_owner_;
   DISALLOW_COPY_AND_ASSIGN(SupportsWeakPtr);
 };
+
+// Helper function that uses type deduction to safely return a WeakPtr<Derived>
+// when Derived doesn't directly extend SupportsWeakPtr<Derived>, instead it
+// extends a Base that extends SupportsWeakPtr<Base>.
+//
+// EXAMPLE:
+//   class Base : public base::SupportsWeakPtr<Producer> {};
+//   class Derived : public Base {};
+//
+//   Derived derived;
+//   base::WeakPtr<Derived> ptr = base::AsWeakPtr(&derived);
+//
+// Note that the following doesn't work (invalid type conversion) since
+// Derived::AsWeakPtr() is WeakPtr<Base> SupportsWeakPtr<Base>::AsWeakPtr(),
+// and there's no way to safely cast WeakPtr<Base> to WeakPtr<Derived> at
+// the caller.
+//
+//   base::WeakPtr<Derived> ptr = derived.AsWeakPtr();  // Fails.
+
+template <typename Derived>
+WeakPtr<Derived> AsWeakPtr(Derived* t) {
+  return internal::SupportsWeakPtrBase::StaticAsWeakPtr<Derived>(t);
+}
 
 // A class may alternatively be composed of a WeakPtrFactory and thereby
 // control how it exposes weak pointers to itself.  This is helpful if you only
@@ -225,22 +305,30 @@ class WeakPtrFactory {
   explicit WeakPtrFactory(T* ptr) : ptr_(ptr) {
   }
 
+  ~WeakPtrFactory() {
+    ptr_ = NULL;
+  }
+
   WeakPtr<T> GetWeakPtr() {
+    DCHECK(ptr_);
     return WeakPtr<T>(weak_reference_owner_.GetRef(), ptr_);
   }
 
   // Call this method to invalidate all existing weak pointers.
   void InvalidateWeakPtrs() {
+    DCHECK(ptr_);
     weak_reference_owner_.Invalidate();
   }
 
   // Call this method to determine if any weak pointers exist.
   bool HasWeakPtrs() const {
+    DCHECK(ptr_);
     return weak_reference_owner_.HasRefs();
   }
 
   // Indicates that this object will be used on another thread from now on.
   void DetachFromThread() {
+    DCHECK(ptr_);
     weak_reference_owner_.DetachFromThread();
   }
 

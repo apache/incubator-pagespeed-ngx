@@ -45,6 +45,7 @@ class MockScheduler;
 class MockTimer;
 class MockTimeCache;
 class MockUrlFetcher;
+class PropertyCache;
 class ServerContext;
 class RewriteDriver;
 class RewriteFilter;
@@ -95,7 +96,8 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   };
 
   TestRewriteDriverFactory(const StringPiece& temp_dir,
-                           MockUrlFetcher* mock_fetcher);
+                           MockUrlFetcher* mock_fetcher,
+                           MockUrlFetcher* mock_distributed_fetcher);
   virtual ~TestRewriteDriverFactory();
 
   DelayCache* delay_cache() { return delay_cache_; }
@@ -111,6 +113,9 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   }
   CountingUrlAsyncFetcher* counting_url_async_fetcher() {
     return counting_url_async_fetcher_;
+  }
+  CountingUrlAsyncFetcher* counting_distributed_async_fetcher() {
+    return counting_distributed_async_fetcher_;
   }
   MockTimeCache* mock_time_cache() { return mock_time_cache_.get(); }
 
@@ -139,6 +144,15 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
     rewriter_callback_vector_.clear();
   }
 
+  // By default this is false, but can be reset.
+  virtual bool UseBeaconResultsInFilters() const {
+    return use_beacon_results_in_filters_;
+  }
+
+  void set_use_beacon_results_in_filters(bool b) {
+    use_beacon_results_in_filters_ = b;
+  }
+
   // Does NOT take ownership of the callback.
   void AddPlatformSpecificConfigurationCallback(
       PlatformSpecificConfigurationCallback* callback) {
@@ -151,6 +165,9 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
 
   // Note that this disables ajax rewriting by default.
   virtual RewriteOptions* NewRewriteOptions();
+
+  // Note that this enables html proxying.
+  virtual ServerContext* NewServerContext();
 
   virtual bool IsDebugClient(const GoogleString& ip) const {
     return ip == "127.0.0.1";
@@ -169,12 +186,16 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   // Advances the mock scheduler by delta_ms.
   void AdvanceTimeMs(int64 delta_ms);
 
+  // Sets up the cohort in the PropertyCache provided.
+  void SetupCohort(PropertyCache* cache, const GoogleString& cohort_name);
+
  protected:
   virtual Hasher* NewHasher();
   virtual MessageHandler* DefaultHtmlParseMessageHandler();
   virtual MessageHandler* DefaultMessageHandler();
   virtual UrlFetcher* DefaultUrlFetcher();
   virtual UrlAsyncFetcher* DefaultAsyncUrlFetcher();
+  virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher();
   virtual FileSystem* DefaultFileSystem();
   virtual Timer* DefaultTimer();
   virtual void SetupCaches(ServerContext* resource_manager);
@@ -192,8 +213,11 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   LRUCache* lru_cache_;
   UrlFetcher* proxy_url_fetcher_;
   MockUrlFetcher* mock_url_fetcher_;
+  MockUrlFetcher* mock_distributed_fetcher_;
   scoped_ptr<FakeUrlAsyncFetcher> mock_url_async_fetcher_;
+  scoped_ptr<FakeUrlAsyncFetcher> mock_distributed_async_fetcher_;
   CountingUrlAsyncFetcher* counting_url_async_fetcher_;
+  CountingUrlAsyncFetcher* counting_distributed_async_fetcher_;
   scoped_ptr<WaitUrlAsyncFetcher> wait_url_async_fetcher_;
   scoped_ptr<MockTimeCache> mock_time_cache_;
   MemFileSystem* mem_file_system_;  // owned by base class file_system_.
@@ -201,6 +225,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   SimpleStats simple_stats_;
   MockMessageHandler* mock_message_handler_;
   MockMessageHandler* mock_html_message_handler_;
+  bool use_beacon_results_in_filters_;
   bool use_test_url_namer_;
   bool add_platform_specific_decoding_passes_;
   std::vector<CreateFilterCallback*> filter_callback_vector_;

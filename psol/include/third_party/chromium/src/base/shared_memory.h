@@ -1,23 +1,27 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_SHARED_MEMORY_H_
 #define BASE_SHARED_MEMORY_H_
-#pragma once
 
 #include "build/build_config.h"
 
-#if defined(OS_POSIX)
-#include <sys/types.h>
-#include <semaphore.h>
-#include "base/file_descriptor_posix.h"
-#endif
 #include <string>
 
-#include "base/base_api.h"
+#if defined(OS_POSIX)
+#include <stdio.h>
+#include <sys/types.h>
+#include <semaphore.h>
+#endif
+
+#include "base/base_export.h"
 #include "base/basictypes.h"
 #include "base/process.h"
+
+#if defined(OS_POSIX)
+#include "base/file_descriptor_posix.h"
+#endif
 
 class FilePath;
 
@@ -38,9 +42,32 @@ typedef ino_t SharedMemoryId;
 // needed.
 #endif
 
+// Options for creating a shared memory object.
+struct SharedMemoryCreateOptions {
+  SharedMemoryCreateOptions() : name(NULL), size(0), open_existing(false),
+                                executable(false) {}
+
+  // If NULL, the object is anonymous.  This pointer is owned by the caller
+  // and must live through the call to Create().
+  const std::string* name;
+
+  // Size of the shared memory object to be created.
+  // When opening an existing object, this has no effect.
+  uint32 size;
+
+  // If true, and the shared memory already exists, Create() will open the
+  // existing shared memory and ignore the size parameter.  If false,
+  // shared memory must not exist.  This flag is meaningless unless name is
+  // non-NULL.
+  bool open_existing;
+
+  // If true, mappings might need to be made executable later.
+  bool executable;
+};
+
 // Platform abstraction for shared memory.  Provides a C++ wrapper
 // around the OS primitive for a memory mapped file.
-class BASE_API SharedMemory {
+class BASE_EXPORT SharedMemory {
  public:
   SharedMemory();
 
@@ -74,13 +101,21 @@ class BASE_API SharedMemory {
   // Closes a shared memory handle.
   static void CloseHandle(const SharedMemoryHandle& handle);
 
+  // Creates a shared memory object as described by the options struct.
+  // Returns true on success and false on failure.
+  bool Create(const SharedMemoryCreateOptions& options);
+
   // Creates and maps an anonymous shared memory segment of size size.
   // Returns true on success and false on failure.
   bool CreateAndMapAnonymous(uint32 size);
 
   // Creates an anonymous shared memory segment of size size.
   // Returns true on success and false on failure.
-  bool CreateAnonymous(uint32 size);
+  bool CreateAnonymous(uint32 size) {
+    SharedMemoryCreateOptions options;
+    options.size = size;
+    return Create(options);
+  }
 
   // Creates or opens a shared memory segment based on a name.
   // If open_existing is true, and the shared memory already exists,
@@ -88,7 +123,13 @@ class BASE_API SharedMemory {
   // If open_existing is false, shared memory must not exist.
   // size is the size of the block to be created.
   // Returns true on success, false on failure.
-  bool CreateNamed(const std::string& name, bool open_existing, uint32 size);
+  bool CreateNamed(const std::string& name, bool open_existing, uint32 size) {
+    SharedMemoryCreateOptions options;
+    options.name = &name;
+    options.open_existing = open_existing;
+    options.size = size;
+    return Create(options);
+  }
 
   // Deletes resources associated with a shared memory segment based on name.
   // Not all platforms require this call.
@@ -101,8 +142,10 @@ class BASE_API SharedMemory {
 
   // Maps the shared memory into the caller's address space.
   // Returns true on success, false otherwise.  The memory address
-  // is accessed via the memory() accessor.
+  // is accessed via the memory() accessor.  The mapped address is guaranteed to
+  // have an alignment of at least MAP_MINIMUM_ALIGNMENT.
   bool Map(uint32 bytes);
+  enum { MAP_MINIMUM_ALIGNMENT = 32 };
 
   // Unmaps the shared memory from the caller's address space.
   // Returns true if successful; returns false on error or if the
@@ -128,7 +171,7 @@ class BASE_API SharedMemory {
   // identifier is not portable.
   SharedMemoryHandle handle() const;
 
-#if defined(OS_POSIX)
+#if defined(OS_POSIX) && !defined(OS_NACL)
   // Returns a unique identifier for this shared memory segment. Inode numbers
   // are technically only unique to a single filesystem. However, we always
   // allocate shared memory backing files from the same directory, so will end
@@ -163,14 +206,11 @@ class BASE_API SharedMemory {
   }
 
   // Locks the shared memory.
-  // This is a cross-process lock which may be recursively
-  // locked by the same thread.
-  // TODO(port):
-  // WARNING: on POSIX the lock only works across processes, not
-  // across threads.  2 threads in the same process can both grab the
-  // lock at the same time.  There are several solutions for this
-  // (futex, lockf+anon_semaphore) but none are both clean and common
-  // across Mac and Linux.
+  //
+  // WARNING: on POSIX the memory locking primitive only works across
+  // processes, not across threads.  The Lock method is not currently
+  // used in inner loops, so we protect against multiple threads in a
+  // critical section using a class global lock.
   void Lock();
 
 #if defined(OS_WIN)
@@ -185,7 +225,7 @@ class BASE_API SharedMemory {
   void Unlock();
 
  private:
-#if defined(OS_POSIX)
+#if defined(OS_POSIX) && !defined(OS_NACL)
   bool PrepareMapFile(FILE *fp);
   bool FilePathForMemoryName(const std::string& mem_name, FilePath* path);
   void LockOrUnlockCommon(int function);

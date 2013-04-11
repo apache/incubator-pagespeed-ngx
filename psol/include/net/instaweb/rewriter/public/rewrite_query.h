@@ -15,6 +15,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_QUERY_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_REWRITE_QUERY_H_
 
+#include "net/instaweb/http/public/device_properties.h"
+#include "net/instaweb/util/public/gtest_prod.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -26,8 +28,11 @@ class MessageHandler;
 class QueryParams;
 class RequestHeaders;
 class ResponseHeaders;
+class RewriteDriver;
 class RewriteDriverFactory;
+class RewriteFilter;
 class RewriteOptions;
+class ServerContext;
 
 class RewriteQuery {
  public:
@@ -61,10 +66,18 @@ class RewriteQuery {
   // If NULL is passed for request_headers or response_headers those particular
   // headers will be skipped in the scan.
   //
+  // 'allow_related_options' applies only to .pagespeed. resources.
+  // It enables the parsing of filters & options by ID, that have been
+  // declared in the RelatedOptions() and RelatedFilters() methods of
+  // the filter identified in the .pagespeed. URL.  See GenerateResourceOption
+  // for how they get into URLs in the first place.
+  //
   // TODO(jmarantz): consider allowing an alternative prefix to "ModPagespeed"
   // to accomodate other Page Speed Automatic applications that might want to
   // brand differently.
-  static Status Scan(RewriteDriverFactory* factory,
+  static Status Scan(bool allow_related_options,
+                     RewriteDriverFactory* factory,
+                     ServerContext* server_context,
                      GoogleUrl* request_url,
                      RequestHeaders* request_headers,
                      ResponseHeaders* response_headers,
@@ -81,23 +94,88 @@ class RewriteQuery {
   // grow in this call.
   template <class HeaderT>
   static Status ScanHeader(HeaderT* headers,
+                           DeviceProperties* device_properties,
                            RewriteOptions* options,
                            MessageHandler* handler);
 
+
+  // Given a two-letter filter ID string, generates a query-param for
+  // any in the driver's options that are related to the filter, and
+  // differ from the default.  If no settings have been altered the
+  // empty string is returned.
+  static GoogleString GenerateResourceOption(StringPiece filter_id,
+                                             RewriteDriver* driver);
+
  private:
+  friend class RewriteQueryTest;
+  FRIEND_TEST(RewriteQueryTest, ClientOptionsEmptyHeader);
+  FRIEND_TEST(RewriteQueryTest, ClientOptionsMultipleHeaders);
+  FRIEND_TEST(RewriteQueryTest, ClientOptionsOrder1);
+  FRIEND_TEST(RewriteQueryTest, ClientOptionsOrder2);
+  FRIEND_TEST(RewriteQueryTest, ClientOptionsCaseInsensitive);
+  FRIEND_TEST(RewriteQueryTest, ClientOptionsNonDefaultProxyMode);
+  FRIEND_TEST(RewriteQueryTest, ClientOptionsValidVersionBadOptions);
+  FRIEND_TEST(RewriteQueryTest, ClientOptionsInvalidVersion);
+
+  enum ProxyMode {
+    // Client prefers that the server operates in its default mode.
+    kProxyModeDefault,
+    // Client prefers that no image be transformed.
+    kProxyModeNoImageTransform,
+    // Client prefers that no resource be transformed.
+    // This is equivalent to "?ModPagespeedFilters=" in the request URL.
+    kProxyModeNoTransform,
+  };
+
+  // Returns true if the params/headers look like they might have some
+  // options.  This is used as a cheap pre-scan before doing the more
+  // expensive query processing.
   static bool MayHaveCustomOptions(const QueryParams& params,
                                    const RequestHeaders* req_headers,
                                    const ResponseHeaders* resp_headers);
 
+  // As above, but only for headers.
   template <class HeaderT>
   static bool HeadersMayHaveCustomOptions(const QueryParams& params,
                                           const HeaderT* headers);
 
-
+  // Examines a name/value pair for options.
   static Status ScanNameValue(const StringPiece& name,
                               const GoogleString& value,
+                              DeviceProperties* device_properties,
                               RewriteOptions* options,
                               MessageHandler* handler);
+
+  // Parses a resource option based on the specified filter's related options.
+  static Status ParseResourceOption(StringPiece value, RewriteOptions* options,
+                                    const RewriteFilter* rewrite_filter);
+
+  // Returns true if a kXPsaClientOptions header is found, parsed successfully,
+  // and valid proxy_mode and image_quality are returned.
+  static bool ParseClientOptions(
+      const StringPiece& client_options,
+      ProxyMode* proxy_mode,
+      DeviceProperties::ImageQualityPreference* image_quality);
+
+  // Set image qualities in options.
+  // Returns true if any option is explicitly set.
+  static bool SetEffectiveImageQualities(
+      DeviceProperties::ImageQualityPreference quality_preference,
+      DeviceProperties* device_properties,
+      RewriteOptions* options);
+
+  // Returns true if any option is explicitly set.
+  static bool UpdateRewriteOptionsWithClientOptions(
+      const GoogleString& header_value, DeviceProperties* device_properties,
+      RewriteOptions* options);
+
+  // Returns true if a valid ProxyMode parsed and returned.
+  static bool ParseProxyMode(const GoogleString* mode_name, ProxyMode* mode);
+
+  // Returns true if a valid ImageQualityPreference parsed and returned.
+  static bool ParseImageQualityPreference(
+      const GoogleString* preference_name,
+      DeviceProperties::ImageQualityPreference* preference);
 };
 
 }  // namespace net_instaweb

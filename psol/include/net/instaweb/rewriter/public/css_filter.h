@@ -27,7 +27,6 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/resource_slot.h"
-#include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/single_rewrite_context.h"
@@ -55,6 +54,7 @@ class MessageHandler;
 class OutputPartitions;
 class ResourceContext;
 class RewriteContext;
+class RewriteDriver;
 class RewriteDomainTransformer;
 class Statistics;
 class UrlSegmentEncoder;
@@ -103,7 +103,8 @@ class CssFilter : public RewriteFilter {
 
   virtual const char* Name() const { return "CssFilter"; }
   virtual const char* id() const { return RewriteOptions::kCssFilterId; }
-  virtual int FilterCacheFormatVersion() const;
+  virtual void EncodeUserAgentIntoResourceContext(
+      ResourceContext* context) const;
 
   static const char kBlocksRewritten[];
   static const char kParseFailures[];
@@ -124,6 +125,10 @@ class CssFilter : public RewriteFilter {
       const ResourcePtr& resource, const GoogleString& location,
       CssFilter::Context* rewriter, RewriteContext* parent,
       CssHierarchy* hierarchy);
+
+  virtual const RewriteOptions::Filter* RelatedFilters(int* num_filters) const;
+  virtual const RewriteOptions::OptionEnum* RelatedOptions(
+      int* num_options) const;
 
  protected:
   virtual RewriteContext* MakeRewriteContext();
@@ -275,6 +280,10 @@ class CssFilter::Context : public SingleRewriteContext {
   virtual GoogleString CacheKeySuffix() const;
   virtual const UrlSegmentEncoder* encoder() const;
 
+  // Implements UserAgentCacheKey method of RewriteContext.
+  virtual GoogleString UserAgentCacheKey(
+      const ResourceContext* resource_context) const;
+
  private:
   bool RewriteCssText(const GoogleUrl& css_base_gurl,
                       const GoogleUrl& css_trim_gurl,
@@ -316,15 +325,7 @@ class CssFilter::Context : public SingleRewriteContext {
   // Determine the appropriate image inlining threshold based upon whether we're
   // in an html file (<style> tag or style= attribute) or in an external css
   // file.
-  int64 ImageInlineMaxBytes() const {
-    if (rewrite_inline_element_ != NULL) {
-      // We're in an html context.
-      return driver_->options()->ImageInlineMaxBytes();
-    } else {
-      // We're in a standalone CSS file.
-      return driver_->options()->CssImageInlineMaxBytes();
-    }
-  }
+  int64 ImageInlineMaxBytes() const;
 
   CssFilter* filter_;
   RewriteDriver* driver_;

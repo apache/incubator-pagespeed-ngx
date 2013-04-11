@@ -20,6 +20,7 @@
 
 #include "net/instaweb/automatic/public/html_detector.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/property_cache.h"
@@ -48,6 +49,14 @@ class RewriteDriver;
 class RewriteOptions;
 
 const char kPagespeedOriginalUrl[] = "mod_pagespeed_original_url";
+
+// Generic deleter meant to be used with apr_pool_cleanup_register().
+template <class T>
+apr_status_t apache_cleanup(void* object) {
+  T* resolved = static_cast<T*>(object);
+  delete resolved;
+  return APR_SUCCESS;
+}
 
 // Tracks a single property-cache lookup.
 class PropertyCallback : public PropertyPage {
@@ -90,7 +99,7 @@ class InstawebContext {
                   const ContentType& content_type,
                   ApacheServerContext* server_context,
                   const GoogleString& base_url,
-                  bool using_spdy,
+                  const RequestContextPtr& request_context,
                   bool use_custom_options,
                   const RewriteOptions& options);
   ~InstawebContext();
@@ -140,8 +149,6 @@ class InstawebContext {
   // response headers.
   // If there was one, make sure to set the options state appropriately.
   void SetFuriousStateAndCookie(request_rec* request, RewriteOptions* options);
-
-  static apr_status_t Cleanup(void* object);
 
   GoogleString output_;  // content after instaweb rewritten.
   apr_bucket_brigade* bucket_brigade_;

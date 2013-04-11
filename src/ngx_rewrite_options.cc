@@ -16,23 +16,24 @@
 
 // Author: jefftk@google.com (Jeff Kaufman)
 
+#include "ngx_rewrite_options.h"
+
 extern "C" {
   #include <ngx_config.h>
   #include <ngx_core.h>
   #include <ngx_http.h>
 }
 
-
-#include "ngx_rewrite_options.h"
 #include "ngx_pagespeed.h"
+#include "ngx_rewrite_driver_factory.h"
+
 #include "net/instaweb/public/version.h"
-#include "net/instaweb/rewriter/public/rewrite_options.h"
-#include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/system/public/system_caches.h"
+#include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
-
-const char NgxRewriteOptions::kClassName[] = "NgxRewriteOptions";
 
 RewriteOptions::Properties* NgxRewriteOptions::ngx_properties_ = NULL;
 
@@ -47,33 +48,7 @@ void NgxRewriteOptions::Init() {
 }
 
 void NgxRewriteOptions::AddProperties() {
-  // TODO(jefftk): All these caching-related properties could move to an
-  // OriginRewriteOptions.
-  add_ngx_option("", &NgxRewriteOptions::file_cache_path_, "nfcp",
-                 RewriteOptions::kFileCachePath);
-  add_ngx_option(Timer::kHourMs,
-                 &NgxRewriteOptions::file_cache_clean_interval_ms_,
-                 "nfcci", RewriteOptions::kFileCacheCleanIntervalMs);
-  add_ngx_option(100 * 1024,  // 100MB
-                 &NgxRewriteOptions::file_cache_clean_size_kb_, "nfc",
-                 RewriteOptions::kFileCacheCleanSizeKb);
-  add_ngx_option(500000,
-                 &NgxRewriteOptions::file_cache_clean_inode_limit_, "nfcl",
-                 RewriteOptions::kFileCacheCleanInodeLimit);
-  add_ngx_option(16384,  //16MB
-                 &NgxRewriteOptions::lru_cache_byte_limit_, "nlcb",
-                 RewriteOptions::kLruCacheByteLimit);
-  add_ngx_option(1024,  // 1MB
-                 &NgxRewriteOptions::lru_cache_kb_per_process_, "nlcp",
-                 RewriteOptions::kLruCacheKbPerProcess);
-  add_ngx_option("", &NgxRewriteOptions::memcached_servers_, "ams",
-                 RewriteOptions::kMemcachedServers);
-  add_ngx_option(1, &NgxRewriteOptions::memcached_threads_, "amt",
-                 RewriteOptions::kMemcachedThreads);
-  add_ngx_option(false, &NgxRewriteOptions::use_shared_mem_locking_, "ausml",
-                 RewriteOptions::kUseSharedMemLocking);
-  add_ngx_option("", &NgxRewriteOptions::fetcher_proxy_, "afp",
-                 RewriteOptions::kFetcherProxy);
+  // Nothing ngx-specific for now.
 
   MergeSubclassProperties(ngx_properties_);
   NgxRewriteOptions config;
@@ -89,14 +64,14 @@ void NgxRewriteOptions::InitializeSignaturesAndDefaults() {
 
 void NgxRewriteOptions::Initialize() {
   if (Properties::Initialize(&ngx_properties_)) {
-    RewriteOptions::Initialize();
+    SystemRewriteOptions::Initialize();
     AddProperties();
   }
 }
 
 void NgxRewriteOptions::Terminate() {
   if (Properties::Terminate(&ngx_properties_)) {
-    RewriteOptions::Terminate();
+    SystemRewriteOptions::Terminate();
   }
 }
 
@@ -108,167 +83,43 @@ bool NgxRewriteOptions::IsDirective(StringPiece config_directive,
 RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions0(
     StringPiece directive, GoogleString* msg, MessageHandler* handler) {
   if (IsDirective(directive, "on")) {
-    set_enabled(true);
+    set_enabled(RewriteOptions::kEnabledOn);
   } else if (IsDirective(directive, "off")) {
-    set_enabled(false);
+    set_enabled(RewriteOptions::kEnabledOff);
+  } else if (IsDirective(directive, "unplugged")) {
+    set_enabled(RewriteOptions::kEnabledUnplugged);
   } else {
     return RewriteOptions::kOptionNameUnknown;
   }
   return RewriteOptions::kOptionOk;
 }
 
-RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions1(
-    StringPiece directive, StringPiece arg,
-    GoogleString* msg, MessageHandler* handler) {
 
+RewriteOptions::OptionSettingResult
+    NgxRewriteOptions::ParseAndSetOptionFromEnum1(
+        OptionEnum directive, StringPiece arg,
+        GoogleString* msg, MessageHandler* handler) {
   // FileCachePath needs error checking.
-  if (IsDirective(directive, "FileCachePath")) {
+  if (directive == kFileCachePath) {
     if (!StringCaseStartsWith(arg, "/")) {
       *msg = "must start with a slash";
       return RewriteOptions::kOptionValueInvalid;
-    } else {
-      set_file_cache_path(arg.as_string());
     }
   }
 
-  RewriteOptions::OptionSettingResult result =
-      SetOptionFromName(directive, arg.as_string(), msg);
-  if (result != RewriteOptions::kOptionNameUnknown) {
-    return result;
-  }
+  // TODO(jefftk): port these (no enums for them yet, even!)
+  //  DangerPermitFetchFromUnknownHosts, FetchWithGzip, ForceCaching
 
-  if (IsDirective(directive, "Allow")) {
-    Allow(arg);
-  } else if (IsDirective(directive, "DangerPermitFetchFromUnknownHosts")) {
-    // TODO(jefftk): port this.
-    *msg = "not supported";
-    return RewriteOptions::kOptionValueInvalid;
-  } else if (IsDirective(directive, "DisableFilters")) {
-    bool ok = DisableFiltersByCommaSeparatedList(arg, handler);
-    if (!ok) {
-      *msg = "Failed to disable some filters.";
-      return RewriteOptions::kOptionValueInvalid;
-    }
-  } else if (IsDirective(directive, "Disallow")) {
-    Disallow(arg);
-  } else if (IsDirective(directive, "Domain")) {
-    domain_lawyer()->AddDomain(arg, handler);
-  } else if (IsDirective(directive, "EnableFilters")) {
-    bool ok = EnableFiltersByCommaSeparatedList(arg, handler);
-    if (!ok) {
-      *msg = "Failed to enable some filters.";
-      return RewriteOptions::kOptionValueInvalid;
-    }
-  } else if (IsDirective(directive, "FetchWithGzip")) {
-    // TODO(jefftk): port this.
-    *msg = "not supported";
-    return RewriteOptions::kOptionValueInvalid;
-  } else if (IsDirective(directive, "ForceCaching")) {
-    // TODO(jefftk): port this.
-    *msg = "not supported";
-    return RewriteOptions::kOptionValueInvalid;
-  } else if (IsDirective(directive, "ExperimentVariable")) {
-    int slot;
-    bool ok = StringToInt(arg.as_string().c_str(), &slot);
-    if (!ok || slot < 1 || slot > 5) {
-      *msg = "must be an integer between 1 and 5";
-      return RewriteOptions::kOptionValueInvalid;
-    }
-    set_furious_ga_slot(slot);
-  } else if (IsDirective(directive, "ExperimentSpec")) {
-    bool ok = AddFuriousSpec(arg, handler);
-    if (!ok) {
-      *msg = "not a valid experiment spec";
-      return RewriteOptions::kOptionValueInvalid;
-    }
-  } else if (IsDirective(directive, "RetainComment")) {
-    RetainComment(arg);
-  } else if (IsDirective(directive, "BlockingRewriteKey")) {
-    set_blocking_rewrite_key(arg);
-  } else {
-    return RewriteOptions::kOptionNameUnknown;
-  }
-
-  return RewriteOptions::kOptionOk;
-}
-
-RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions2(
-    StringPiece directive, StringPiece arg1, StringPiece arg2,
-    GoogleString* msg, MessageHandler* handler) {
-  if (IsDirective(directive, "MapRewriteDomain")) {
-    domain_lawyer()->AddRewriteDomainMapping(arg1, arg2, handler);
-  } else if (IsDirective(directive, "MapOriginDomain")) {
-    domain_lawyer()->AddOriginDomainMapping(arg1, arg2, handler);
-  } else if (IsDirective(directive, "MapProxyDomain")) {
-    domain_lawyer()->AddProxyDomainMapping(arg1, arg2, handler);
-  } else if (IsDirective(directive, "ShardDomain")) {
-    domain_lawyer()->AddShard(arg1, arg2, handler);
-  } else if (IsDirective(directive, "CustomFetchHeader")) {
-    AddCustomFetchHeader(arg1, arg2);
-  } else if (IsDirective(directive, "LoadFromFile")) {
-    file_load_policy()->Associate(arg1,arg2);
-  } else if (IsDirective(directive, "LoadFromFileMatch")) {
-    if (!file_load_policy()->AssociateRegexp(arg1,arg2,msg)) {
-      return RewriteOptions::kOptionValueInvalid;
-    }
-  } else if (IsDirective(directive, "LoadFromFileRule")
-             || IsDirective(directive, "LoadFromFileRuleMatch")) {
-    bool is_regexp = IsDirective(directive, "LoadFromFileRuleMatch");
-    bool allow;
-    // TODO(oschaaf): we should probably define consts for Allow/Disallow
-    if (IsDirective(arg1, "Allow")) {
-      allow = true;
-    } else if (IsDirective(arg1, "Disallow")) {
-      allow = false;
-    } else {
-      *msg = "Argument 1 must be either 'Allow' or 'Disallow'";
-      return RewriteOptions::kOptionValueInvalid;
-    }
-    if (!file_load_policy()->AddRule(arg2.as_string().c_str(),
-                                     is_regexp, allow, msg)) {
-      return RewriteOptions::kOptionValueInvalid;
-    }
-  } else {
-    return RewriteOptions::kOptionNameUnknown;
-  }
-  return RewriteOptions::kOptionOk;
-}
-
-RewriteOptions::OptionSettingResult NgxRewriteOptions::ParseAndSetOptions3(
-    StringPiece directive, StringPiece arg1, StringPiece arg2, StringPiece arg3,
-    GoogleString* msg, MessageHandler* handler) {
-  if (IsDirective(directive, "UrlValuedAttribute")) {
-    semantic_type::Category category;
-    bool ok = semantic_type::ParseCategory(arg3, &category);
-    if (!ok) {
-      *msg = "Invalid resource category";
-      return RewriteOptions::kOptionValueInvalid;
-    }
-    AddUrlValuedAttribute(arg1, arg2, category);
-  } else if (IsDirective(directive, "Library")) {
-    int64 bytes;
-    bool ok = StringToInt64(arg1.as_string().c_str(), &bytes);
-    if (!ok || bytes < 0) {
-      *msg = "Size must be a positive 64-bit integer";
-      return RewriteOptions::kOptionValueInvalid;
-    }
-    ok = RegisterLibrary(bytes, arg2, arg3);
-    if (!ok) {
-      *msg = "Format is size md5 url; bad md5 or URL";
-      return RewriteOptions::kOptionValueInvalid;
-    }    
-  } else {
-    return RewriteOptions::kOptionNameUnknown;
-  }
-  return RewriteOptions::kOptionOk;
+  return SystemRewriteOptions::ParseAndSetOptionFromEnum1(
+      directive, arg, msg, handler);
 }
 
 // Very similar to apache/mod_instaweb::ParseDirective.
-// TODO(jefftk): Move argument parsing to OriginRewriteOptions.
 const char*
 NgxRewriteOptions::ParseAndSetOptions(
-    StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler) {
-  CHECK(n_args >= 1);
+    StringPiece* args, int n_args, ngx_pool_t* pool, MessageHandler* handler,
+    NgxRewriteDriverFactory* driver_factory) {
+  CHECK_GE(n_args, 1);
 
   int i;
   fprintf(stderr, "Setting option from (");
@@ -292,11 +143,74 @@ NgxRewriteOptions::ParseAndSetOptions(
   if (n_args == 1) {
     result = ParseAndSetOptions0(directive, &msg, handler);
   } else if (n_args == 2) {
-    result = ParseAndSetOptions1(directive, args[1], &msg, handler);
+    StringPiece arg = args[1];
+    // TODO(morlovich): Remove these special hacks, and handle these via
+    // ParseAndSetOptionFromEnum1.
+    if (IsDirective(directive, "UsePerVHostStatistics")) {
+        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+        if (IsDirective(arg, "on")) {
+          driver_factory->set_use_per_vhost_statistics(true);
+          result = RewriteOptions::kOptionOk;
+        } else if (IsDirective(arg, "off")) {
+          driver_factory->set_use_per_vhost_statistics(false);
+          result = RewriteOptions::kOptionOk;
+        } else {
+          result = RewriteOptions::kOptionValueInvalid;
+        }
+      } else if (IsDirective(directive, "InstallCrashHandler")) {
+        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+        if (IsDirective(arg, "on")) {
+          driver_factory->set_install_crash_handler(true);
+          result = RewriteOptions::kOptionOk;
+        } else if (IsDirective(arg, "off")) {
+          driver_factory->set_install_crash_handler(false);
+          result = RewriteOptions::kOptionOk;
+        } else {
+          result = RewriteOptions::kOptionValueInvalid;
+        }
+      } else if (IsDirective(directive, "MessageBufferSize")) {
+        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+        int message_buffer_size;
+        bool ok = StringToInt(arg.as_string(), &message_buffer_size);
+        if (ok && message_buffer_size >= 0) {
+          driver_factory->set_message_buffer_size(message_buffer_size);
+          result = RewriteOptions::kOptionOk;
+        } else {
+          result = RewriteOptions::kOptionValueInvalid;
+        }
+      } else if (IsDirective(directive, "UseNativeFetcher")) {
+        // TODO(oschaaf): mod_pagespeed has a nicer way to do this.
+        if (IsDirective(arg, "on")) {
+          driver_factory->set_use_native_fetcher(true);
+          result = RewriteOptions::kOptionOk;
+        } else if (IsDirective(arg, "off")) {
+          driver_factory->set_use_native_fetcher(false);
+          result = RewriteOptions::kOptionOk;
+        } else {
+          result = RewriteOptions::kOptionValueInvalid;
+        }
+      } else {
+        result = ParseAndSetOptionFromName1(directive, args[1], &msg, handler);
+      }
   } else if (n_args == 3) {
-    result = ParseAndSetOptions2(directive, args[1], args[2], &msg, handler);
+    // Short-term special handling, until this moves to common code.
+    // TODO(morlovich): Clean this up.
+    if (StringCaseEqual(directive, "CreateSharedMemoryMetadataCache")) {
+      int64 kb = 0;
+      if (!StringToInt64(args[2], &kb) || kb < 0) {
+        result = RewriteOptions::kOptionValueInvalid;
+        msg = "size_kb must be a positive 64-bit integer";
+      } else {
+        bool ok = driver_factory->caches()->CreateShmMetadataCache(
+            args[1].as_string(), kb, &msg);
+        result = ok ? kOptionOk : kOptionValueInvalid;
+      }
+    } else {
+      result = ParseAndSetOptionFromName2(directive, args[1], args[2],
+                                          &msg, handler);
+    }
   } else if (n_args == 4) {
-    result = ParseAndSetOptions3(
+    result = ParseAndSetOptionFromName3(
         directive, args[1], args[2], args[3], &msg, handler);
   } else {
     return "unknown option";
@@ -333,22 +247,11 @@ NgxRewriteOptions* NgxRewriteOptions::Clone() const {
 
 const NgxRewriteOptions* NgxRewriteOptions::DynamicCast(
     const RewriteOptions* instance) {
-  return (instance == NULL ||
-          instance->class_name() != NgxRewriteOptions::kClassName
-          ? NULL
-          : static_cast<const NgxRewriteOptions*>(instance));
+  return dynamic_cast<const NgxRewriteOptions*>(instance);
 }
 
 NgxRewriteOptions* NgxRewriteOptions::DynamicCast(RewriteOptions* instance) {
-  return (instance == NULL ||
-          instance->class_name() != NgxRewriteOptions::kClassName
-          ? NULL
-          : static_cast<NgxRewriteOptions*>(instance));
+  return dynamic_cast<NgxRewriteOptions*>(instance);
 }
-
-const char* NgxRewriteOptions::class_name() const {
-  return NgxRewriteOptions::kClassName;
-}
-
 
 }  // namespace net_instaweb

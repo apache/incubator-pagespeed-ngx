@@ -1,14 +1,14 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_DEBUG_STACK_TRACE_H_
 #define BASE_DEBUG_STACK_TRACE_H_
-#pragma once
 
 #include <iosfwd>
+#include <string>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "build/build_config.h"
 
 #if defined(OS_WIN)
@@ -21,10 +21,15 @@ namespace debug {
 // A stacktrace can be helpful in debugging. For example, you can include a
 // stacktrace member in a object (probably around #ifndef NDEBUG) so that you
 // can later see where the given object was created from.
-class BASE_API StackTrace {
+class BASE_EXPORT StackTrace {
  public:
   // Creates a stacktrace from the current location.
   StackTrace();
+
+  // Creates a stacktrace from an existing array of instruction
+  // pointers (such as returned by Addresses()).  |count| will be
+  // trimmed to |kMaxTraces|.
+  StackTrace(const void* const* trace, size_t count);
 
 #if defined(OS_WIN)
   // Creates a stacktrace for an exception.
@@ -47,6 +52,9 @@ class BASE_API StackTrace {
   // Resolves backtrace to symbols and write to stream.
   void OutputToStream(std::ostream* os) const;
 
+  // Resolves backtrace to symbols and returns as string.
+  std::string ToString() const;
+
  private:
   // From http://msdn.microsoft.com/en-us/library/bb204633.aspx,
   // the sum of FramesToSkip and FramesToCapture must be less than 63,
@@ -55,7 +63,9 @@ class BASE_API StackTrace {
   static const int kMaxTraces = 62;
 
   void* trace_[kMaxTraces];
-  int count_;
+
+  // The number of valid frames in |trace_|.
+  size_t count_;
 };
 
 }  // namespace debug

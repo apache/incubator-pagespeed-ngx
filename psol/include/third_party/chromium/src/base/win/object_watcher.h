@@ -4,11 +4,12 @@
 
 #ifndef BASE_WIN_OBJECT_WATCHER_H_
 #define BASE_WIN_OBJECT_WATCHER_H_
-#pragma once
 
 #include <windows.h>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
+#include "base/callback.h"
+#include "base/memory/weak_ptr.h"
 #include "base/message_loop.h"
 
 namespace base {
@@ -42,13 +43,13 @@ namespace win {
 // scope, the watcher_ will be destroyed, and there is no need to worry about
 // OnObjectSignaled being called on a deleted MyClass pointer.  Easy!
 //
-class BASE_API ObjectWatcher : public MessageLoop::DestructionObserver {
+class BASE_EXPORT ObjectWatcher : public MessageLoop::DestructionObserver {
  public:
-  class BASE_API Delegate {
+  class BASE_EXPORT Delegate {
    public:
     virtual ~Delegate() {}
     // Called from the MessageLoop when a signaled object is detected.  To
-    // continue watching the object, AddWatch must be called again.
+    // continue watching the object, StartWatching must be called again.
     virtual void OnObjectSignaled(HANDLE object) = 0;
   };
 
@@ -79,12 +80,17 @@ class BASE_API ObjectWatcher : public MessageLoop::DestructionObserver {
   // Called on a background thread when done waiting.
   static void CALLBACK DoneWaiting(void* param, BOOLEAN timed_out);
 
+  void Signal(Delegate* delegate);
+
   // MessageLoop::DestructionObserver implementation:
   virtual void WillDestroyCurrentMessageLoop();
 
   // Internal state.
-  struct Watch;
-  Watch* watch_;
+  WeakPtrFactory<ObjectWatcher> weak_factory_;
+  Closure callback_;
+  HANDLE object_;             // The object being watched
+  HANDLE wait_object_;        // Returned by RegisterWaitForSingleObject
+  MessageLoop* origin_loop_;  // Used to get back to the origin thread
 
   DISALLOW_COPY_AND_ASSIGN(ObjectWatcher);
 };

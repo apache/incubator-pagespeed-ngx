@@ -57,6 +57,9 @@ class RequestHeaders : public Headers<HttpRequestHeaders> {
   // Determines whether a request header accepts gzipped content.
   bool AcceptsGzip() const;
 
+  // Determines whether metadata was requested in the response.
+  bool MetadataRequested() const;
+
   // Returns true if these request headers are for an XmlHttp request (i.e. ajax
   // request).  This mechanism is not reliable because sometimes this header is
   // not set even for XmlHttp requests.

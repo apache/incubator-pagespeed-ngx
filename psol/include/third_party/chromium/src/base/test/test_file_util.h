@@ -1,14 +1,16 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_TEST_TEST_FILE_UTIL_H_
 #define BASE_TEST_TEST_FILE_UTIL_H_
-#pragma once
 
 // File utility functions used only by tests.
 
 #include <string>
+
+#include "base/compiler_specific.h"
+#include "base/file_path.h"
 
 class FilePath;
 
@@ -48,6 +50,25 @@ bool HasInternetZoneIdentifier(const FilePath& full_path);
 // convenient to be able to compare paths to literals like L"foobar".
 std::wstring FilePathAsWString(const FilePath& path);
 FilePath WStringAsFilePath(const std::wstring& path);
+
+// For testing, make the file unreadable or unwritable.
+// In POSIX, this does not apply to the root user.
+bool MakeFileUnreadable(const FilePath& path) WARN_UNUSED_RESULT;
+bool MakeFileUnwritable(const FilePath& path) WARN_UNUSED_RESULT;
+
+// Saves the current permissions for a path, and restores it on destruction.
+class PermissionRestorer {
+ public:
+  explicit PermissionRestorer(const FilePath& path);
+  ~PermissionRestorer();
+
+ private:
+  const FilePath path_;
+  void* info_;  // The opaque stored permission information.
+  size_t length_;  // The length of the stored permission information.
+
+  DISALLOW_COPY_AND_ASSIGN(PermissionRestorer);
+};
 
 }  // namespace file_util
 

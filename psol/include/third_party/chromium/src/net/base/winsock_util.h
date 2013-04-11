@@ -4,7 +4,6 @@
 
 #ifndef NET_BASE_WINSOCK_UTIL_H_
 #define NET_BASE_WINSOCK_UTIL_H_
-#pragma once
 
 #include <winsock2.h>
 

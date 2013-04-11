@@ -4,11 +4,11 @@
 
 #ifndef BASE_I18N_BIDI_LINE_ITERATOR_H_
 #define BASE_I18N_BIDI_LINE_ITERATOR_H_
-#pragma once
 
 #include "unicode/ubidi.h"
 
 #include "base/basictypes.h"
+#include "base/i18n/base_i18n_export.h"
 #include "base/string16.h"
 
 namespace base {
@@ -17,7 +17,7 @@ namespace i18n {
 // A simple wrapper class for the bidirectional iterator of ICU.
 // This class uses the bidirectional iterator of ICU to split a line of
 // bidirectional texts into visual runs in its display order.
-class BiDiLineIterator {
+class BASE_I18N_EXPORT BiDiLineIterator {
  public:
   BiDiLineIterator();
   ~BiDiLineIterator();

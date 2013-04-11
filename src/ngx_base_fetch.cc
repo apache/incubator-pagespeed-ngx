@@ -17,10 +17,12 @@
 // Author: jefftk@google.com (Jeff Kaufman)
 
 #include "ngx_base_fetch.h"
+
 #include "ngx_pagespeed.h"
-#include "net/instaweb/http/public/response_headers.h"
+
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
+#include "net/instaweb/http/public/response_headers.h"
 
 namespace net_instaweb {
 
@@ -141,85 +143,10 @@ ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
 }
 
 ngx_int_t NgxBaseFetch::CollectHeaders(ngx_http_headers_out_t* headers_out) {
-  // Copy from response_headers() into headers_out.
-
   Lock();
   const ResponseHeaders* pagespeed_headers = response_headers();
   Unlock();
-
-  headers_out->status = pagespeed_headers->status_code();
-
-  ngx_int_t i;
-  for (i = 0 ; i < pagespeed_headers->NumAttributes() ; i++) {
-    const GoogleString& name_gs = pagespeed_headers->Name(i);
-    const GoogleString& value_gs = pagespeed_headers->Value(i);
-
-    ngx_str_t name, value;
-    name.len = name_gs.length();
-    name.data = reinterpret_cast<u_char*>(const_cast<char*>(name_gs.data()));
-    value.len = value_gs.length();
-    value.data = reinterpret_cast<u_char*>(const_cast<char*>(value_gs.data()));
-
-    // TODO(jefftk): If we're setting a cache control header we'd like to
-    // prevent any downstream code from changing it.  Specifically, if we're
-    // serving a cache-extended resource the url will change if the resource
-    // does and so we've given it a long lifetime.  If the site owner has done
-    // something like set all css files to a 10-minute cache lifetime, that
-    // shouldn't apply to our generated resources.  See Apache code in
-    // net/instaweb/apache/header_util:AddResponseHeadersToRequest
-
-    // Make copies of name and value to put into headers_out.
-
-    u_char* value_s = ngx_pstrdup(request_->pool, &value);
-    if (value_s == NULL) {
-      return NGX_ERROR;
-    }
-
-    if (STR_EQ_LITERAL(name, "Content-Type")) {
-      // Unlike all the other headers, content_type is just a string.
-      headers_out->content_type.data = value_s;
-      headers_out->content_type.len = value.len;
-      headers_out->content_type_len = value.len;
-      // In ngx_http_test_content_type() nginx will allocate and calculate
-      // content_type_lowcase if we leave it as null.
-      headers_out->content_type_lowcase = NULL;
-      continue;
-    }
-
-    u_char* name_s = ngx_pstrdup(request_->pool, &name);
-    if (name_s == NULL) {
-      return NGX_ERROR;
-    }
-
-    ngx_table_elt_t* header = static_cast<ngx_table_elt_t*>(
-        ngx_list_push(&headers_out->headers));
-    if (header == NULL) {
-      return NGX_ERROR;
-    }
-
-    header->hash = 1;  // Include this header in the output.
-    header->key.len = name.len;
-    header->key.data = name_s;
-    header->value.len = value.len;
-    header->value.data = value_s;
-
-    // Populate the shortcuts to commonly used headers.
-    if (STR_EQ_LITERAL(name, "Date")) {
-      headers_out->date = header;
-    } else if (STR_EQ_LITERAL(name, "Etag")) {
-      headers_out->etag = header;
-    } else if (STR_EQ_LITERAL(name, "Expires")) {
-      headers_out->expires = header;
-    } else if (STR_EQ_LITERAL(name, "Last-Modified")) {
-      headers_out->last_modified = header;
-    } else if (STR_EQ_LITERAL(name, "Location")) {
-      headers_out->location = header;
-    } else if (STR_EQ_LITERAL(name, "Server")) {
-      headers_out->server = header;
-    }
-  }
-
-  return NGX_OK;
+  return ngx_psol::copy_response_headers_to_ngx(request_, *pagespeed_headers);
 }
 
 void NgxBaseFetch::RequestCollection() {

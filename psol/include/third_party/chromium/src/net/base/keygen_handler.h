@@ -4,14 +4,13 @@
 
 #ifndef NET_BASE_KEYGEN_HANDLER_H_
 #define NET_BASE_KEYGEN_HANDLER_H_
-#pragma once
 
 #include <string>
 
 #include "base/memory/scoped_ptr.h"
 #include "build/build_config.h"
 #include "googleurl/src/gurl.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
 #if defined(USE_NSS)
 #include "crypto/crypto_module_blocking_password_delegate.h"
@@ -24,7 +23,7 @@ namespace net {
 // <http://dev.w3.org/html5/spec/Overview.html#the-keygen-element>
 // <https://developer.mozilla.org/En/HTML/HTML_Extensions/KEYGEN_Tag>
 
-class NET_API KeygenHandler {
+class NET_EXPORT KeygenHandler {
  public:
   // Creates a handler that will generate a key with the given key size and
   // incorporate the |challenge| into the Netscape SPKAC structure. The request

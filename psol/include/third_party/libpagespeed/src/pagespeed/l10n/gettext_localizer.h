@@ -20,7 +20,7 @@
 #include <map>
 #include <sstream>
 
-#include "base/scoped_ptr.h"
+#include "base/memory/scoped_ptr.h"
 #include "pagespeed/l10n/localizer.h"
 
 namespace pagespeed {

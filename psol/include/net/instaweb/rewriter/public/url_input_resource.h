@@ -48,6 +48,12 @@ class UrlInputResource : public Resource {
 
   virtual void Freshen(FreshenCallback* callback, MessageHandler* handler);
 
+  // Return whether this type of resource should use the HTTP Cache.
+  // TODO(jmarantz): move the guts of ServerContext::ReadAsync (including
+  // the callback class) into url_input_resource.cc and access via
+  // LoadAndCallback, to reduce the implementation complexity.
+  virtual bool UseHttpCache() const { return true; }
+
  protected:
   virtual bool Load(MessageHandler* message_handler);
   virtual void LoadAndCallback(NotCacheablePolicy not_cacheable_policy,

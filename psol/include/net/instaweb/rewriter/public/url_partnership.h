@@ -82,17 +82,17 @@ class UrlPartnership {
   // will be and avoid exceeding URL limits.
   void IncrementalResolve(int index);
 
-  // Based on the UrlNamer and DomainLawyer, find the domain
-  // associated with a request, removing any proxy prefix that may
-  // have been added by the UrlNamer.  The meaning of "associated" is
-  // defined by the UrlNamer implementation.
+  // Based on the UrlNamer and DomainLawyer, find the domain associated with a
+  // request, removing any proxy prefix that may have been added by the
+  // UrlNamer. The meaning of "associated" is defined by the UrlNamer
+  // implementation.
   bool FindResourceDomain(GoogleUrl* resource,
                           GoogleString* domain,
                           MessageHandler* handler) const;
 
   typedef std::vector<GoogleUrl*> GurlVector;
   GurlVector url_vector_;
-  GoogleString domain_;
+  GoogleString domain_and_path_prefix_;
   const RewriteOptions* rewrite_options_;
   const UrlNamer* url_namer_;
   GoogleUrl original_origin_and_path_;

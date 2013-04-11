@@ -1,0 +1,306 @@
+# nginx_system_test.sh makes a few substitutions to pagespeed_test.conf.template
+# file to generate @@TEST_TMP@@/pagespeed_test.conf
+
+# The cache flush test depends on worker_processes=1.
+worker_processes  1;
+
+# for debugging
+#daemon off;
+#master_process off;
+
+error_log "@@TEST_TMP@@/error.log" debug;
+pid "@@TEST_TMP@@/nginx.pid";
+
+events {
+  worker_connections  1024;
+}
+
+
+http {
+  access_log "@@TEST_TMP@@/access.log";
+
+  root "@@SERVER_ROOT@@";
+  pagespeed UsePerVHostStatistics on;
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name preserveurls.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed EnableFilters inline_preview_images,lazyload_images;
+    pagespeed EnableFilters resize_mobile_images,rewrite_images,sprite_images;
+    pagespeed EnableFilters fallback_rewrite_css_urls,flatten_css_imports;
+    pagespeed EnableFilters inline_css,move_css_above_scripts,move_css_to_head;
+    pagespeed EnableFilters outline_css,rewrite_css,combine_css;
+    pagespeed EnableFilters combine_javascript,defer_javascript;
+    pagespeed EnableFilters inline_javascript;
+    pagespeed EnableFilters outline_javascript,rewrite_javascript;
+
+    location /mod_pagespeed_test/preserveurls/on/ {
+       pagespeed JsPreserveURLs On;
+       pagespeed ImagePreserveURLs On;
+       pagespeed CssPreserveURLs On;
+    }
+
+    location /mod_pagespeed_test/preserveurls/off/ {
+       pagespeed JsPreserveURLs Off;
+       pagespeed ImagePreserveURLs Off;
+       pagespeed CssPreserveURLs Off;
+    }
+  }
+
+  server {
+    listen 127.0.0.2:@@SECONDARY_PORT@@;
+    server_name loopbackfetch.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name retaincomment.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RetainComment " google_ad_section*";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name xfp.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RespectXForwardedProto on;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name cache_a.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed CacheFlushPollIntervalSec 1;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters inline_css;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name cache_b.example.com;
+    pagespeed FileCachePath "@@SECONDARY_CACHE@@";
+
+    pagespeed CacheFlushPollIntervalSec 1;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters inline_css;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name cache_c.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed CacheFlushFilename "othercache.flush";
+    pagespeed CacheFlushPollIntervalSec 1;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters inline_css;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name tryfiles.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" { }
+    location ~ "^/ngx_pagespeed_static/" { }
+    location ~ "^/ngx_pagespeed_beacon$" { }
+
+    try_files $uri $uri/ /mod_pagespeed_example/index.html;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name notransform.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_images;
+
+    add_header Cache-Control no-transform;
+  }
+
+  server {
+    listen       @@PRIMARY_PORT@@;
+    server_name  localhost;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    # uncomment the following two lines if you're testing memcached
+    #pagespeed MemcachedServers "localhost:11211";
+    #pagespeed MemcachedThreads 1;
+
+    pagespeed on;
+
+    #pagespeed CacheFlushPollIntervalSec 1;
+
+    #pagespeed RunExperiment on;
+    #pagespeed AnalyticsID "UA-XXXXXXXX-Y";
+    #pagespeed ExperimentSpec "id=1;percent=50;default";
+    #pagespeed ExperimentSpec "id=2;percent=50";
+
+    pagespeed Library 43 1o978_K0_LNE5_ystNklf
+    http://www.modpagespeed.com/rewrite_javascript.js;
+
+    # If X-PSA-Blocking-Rewrite request header is present and its value matches
+    # the value of BlockingRewriteKey below, the response will be fully
+    # rewritten before being flushed to the client.
+    pagespeed BlockingRewriteKey psatest;
+
+    # Disable parsing if the size of the HTML exceeds 50kB.
+    pagespeed MaxHtmlParseBytes 50000;
+
+    add_header X-Extra-Header 1;
+
+    location /mod_pagespeed_example/core_filters/ {
+      pagespeed RewriteLevel CoreFilters;
+    }
+
+    location /mod_pagespeed_example/pass_through/ {
+      pagespeed RewriteLevel PassThrough;
+    }
+
+    #location / {
+    #  proxy_pass http://www.google.com;
+    #}
+
+    location /mod_pagespeed_test/no_cache/ {
+      add_header Cache-Control no-cache;
+    }
+
+    location /mod_pagespeed_test/compressed/ {
+      add_header Content-Encoding gzip;
+      types {
+        text/javascript custom_ext;
+      }
+    }
+
+    pagespeed EnableFilters remove_comments;
+
+    #charset koi8-r;
+
+    #access_log  logs/host.access.log  main;
+
+    index index.html;
+
+
+    #error_page  404              /404.html;
+
+    # redirect server error pages to the static page /50x.html
+    #
+    error_page   500 502 503 504  /50x.html;
+    location = /50x.html {
+      root   html;
+    }
+  }
+
+  sendfile        on;
+
+  keepalive_timeout  65;
+
+  # set up gzip
+  gzip  on;
+  gzip_vary on;
+  # Turn on gzip for all content types that should benefit from it.
+  gzip_types application/ecmascript;
+  gzip_types application/javascript;
+  gzip_types application/json;
+  gzip_types application/pdf;
+  gzip_types application/postscript;
+  gzip_types application/x-javascript;
+  gzip_types image/svg+xml;
+  gzip_types text/css;
+  gzip_types text/csv;
+  # "gzip_types text/html" is assumed.
+  gzip_types text/javascript;
+  gzip_types text/plain;
+  gzip_types text/xml;
+
+  gzip_http_version 1.0;
+
+  types {
+    text/html                             html htm shtml;
+    text/css                              css;
+    text/xml                              xml;
+    image/gif                             gif;
+    image/jpeg                            jpeg jpg;
+    application/x-javascript              js;
+    application/atom+xml                  atom;
+    application/rss+xml                   rss;
+
+    text/mathml                           mml;
+    text/plain                            txt;
+    text/vnd.sun.j2me.app-descriptor      jad;
+    text/vnd.wap.wml                      wml;
+    text/x-component                      htc;
+
+    image/png                             png;
+    image/tiff                            tif tiff;
+    image/vnd.wap.wbmp                    wbmp;
+    image/x-icon                          ico;
+    image/x-jng                           jng;
+    image/x-ms-bmp                        bmp;
+    image/svg+xml                         svg svgz;
+    image/webp                            webp;
+
+    application/java-archive              jar war ear;
+    application/mac-binhex40              hqx;
+    application/msword                    doc;
+    application/pdf                       pdf;
+    application/postscript                ps eps ai;
+    application/rtf                       rtf;
+    application/vnd.ms-excel              xls;
+    application/vnd.ms-powerpoint         ppt;
+    application/vnd.wap.wmlc              wmlc;
+    application/vnd.google-earth.kml+xml  kml;
+    application/vnd.google-earth.kmz      kmz;
+    application/x-7z-compressed           7z;
+    application/x-cocoa                   cco;
+    application/x-java-archive-diff       jardiff;
+    application/x-java-jnlp-file          jnlp;
+    application/x-makeself                run;
+    application/x-perl                    pl pm;
+    application/x-pilot                   prc pdb;
+    application/x-rar-compressed          rar;
+    application/x-redhat-package-manager  rpm;
+    application/x-sea                     sea;
+    application/x-shockwave-flash         swf;
+    application/x-stuffit                 sit;
+    application/x-tcl                     tcl tk;
+    application/x-x509-ca-cert            der pem crt;
+    application/x-xpinstall               xpi;
+    application/xhtml+xml                 xhtml;
+    application/zip                       zip;
+
+    application/octet-stream              bin exe dll;
+    application/octet-stream              deb;
+    application/octet-stream              dmg;
+    application/octet-stream              eot;
+    application/octet-stream              iso img;
+    application/octet-stream              msi msp msm;
+
+    audio/midi                            mid midi kar;
+    audio/mpeg                            mp3;
+    audio/ogg                             ogg;
+    audio/x-m4a                           m4a;
+    audio/x-realaudio                     ra;
+
+    video/3gpp                            3gpp 3gp;
+    video/mp4                             mp4;
+    video/mpeg                            mpeg mpg;
+    video/quicktime                       mov;
+    video/webm                            webm;
+    video/x-flv                           flv;
+    video/x-m4v                           m4v;
+    video/x-mng                           mng;
+    video/x-ms-asf                        asx asf;
+    video/x-ms-wmv                        wmv;
+    video/x-msvideo                       avi;
+  }
+  default_type  application/octet-stream;
+
+}

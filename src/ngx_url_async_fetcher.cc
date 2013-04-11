@@ -17,8 +17,8 @@
 // Author: x.dinic@gmail.com (Junmin Xiong)
 
 extern "C" {
- #include <ngx_http.h>
- #include <ngx_core.h>
+  #include <ngx_http.h>
+  #include <ngx_core.h>
 }
 
 #include "ngx_url_async_fetcher.h"
@@ -49,28 +49,6 @@ extern "C" {
 #include "net/instaweb/util/public/writer.h"
 
 namespace net_instaweb {
-  NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(const char* proxy,
-                                         ngx_pool_t* pool,
-                                         ngx_msec_t resolver_timeout, // timer for resolver
-                                         ngx_msec_t fetch_timeout, // timer for fetch
-                                         ngx_resolver_t* resolver,
-                                         MessageHandler* handler)
-    : fetchers_count_(0),
-      shutdown_(false),
-      track_original_content_length_(false),
-      byte_count_(0),
-      message_handler_(handler) {
-    resolver_timeout_ = resolver_timeout;
-    fetch_timeout_ = fetch_timeout;
-    ngx_memzero(&url_, sizeof(ngx_url_t));
-    url_.url.data = (u_char*)(proxy);
-    url_.url.len = ngx_strlen(proxy);
-    pool_ = pool;
-    log_ = pool->log;
-    command_connection_ = NULL;
-    pipe_fd_ = 0;
-    resolver_ = resolver;
-  }
 
   NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(const char* proxy,
                                          ngx_log_t* log,
@@ -84,12 +62,13 @@ namespace net_instaweb {
       track_original_content_length_(false),
       byte_count_(0),
       thread_system_(thread_system),
-      message_handler_(handler) {
+      message_handler_(handler),
+      mutex_(NULL) {
     resolver_timeout_ = resolver_timeout;
     fetch_timeout_ = fetch_timeout;
     ngx_memzero(&url_, sizeof(url_));
     if (proxy != NULL && *proxy != '\0') {
-      url_.url.data = (u_char *)(proxy);
+      url_.url.data = reinterpret_cast<u_char *>(proxy);
       url_.url.len = ngx_strlen(proxy);
     }
     mutex_ = thread_system_->NewMutex();
@@ -100,37 +79,38 @@ namespace net_instaweb {
     resolver_ = resolver;
   }
 
-  NgxUrlAsyncFetcher::NgxUrlAsyncFetcher(NgxUrlAsyncFetcher* parent,
-                                         char* proxy)
-    : fetchers_count_(parent->fetchers_count_),
-      shutdown_(false),
-      track_original_content_length_(parent->track_original_content_length_),
-      byte_count_(parent->byte_count_),
-      message_handler_(parent->message_handler_),
-      resolver_timeout_(parent->resolver_timeout_),
-      fetch_timeout_(parent->fetch_timeout_) {
-    ngx_memzero(&url_, sizeof(ngx_url_t));
-    if (proxy != NULL && *proxy != '\0') {
-      url_.url.data = reinterpret_cast<u_char*>(proxy);
-      url_.url.len = ngx_strlen(proxy);
-    }
-    pool_ = parent->pool_;
-    log_ = parent->log_;
-    resolver_ = parent->resolver_;
-    command_connection_ = NULL;
-    pipe_fd_ = -1;
-  }
-
   NgxUrlAsyncFetcher::~NgxUrlAsyncFetcher() {
+    message_handler_->Message(
+        kInfo,
+        "Destruct NgxUrlAsyncFetcher with [%d] active fetchers",
+        ApproximateNumActiveFetches());
+
     CancelActiveFetches();
     active_fetches_.DeleteAll();
-    ngx_destroy_pool(pool_);
-    ngx_close_connection(command_connection_);
-    close(pipe_fd_);
+
+    if (pool_ != NULL) {
+      ngx_destroy_pool(pool_);
+      pool_ = NULL;
+    }
+    if (command_connection_ != NULL) {
+      ngx_close_connection(command_connection_);
+      command_connection_ = NULL;
+    }
+    if (pipe_fd_ != -1) {
+      close(pipe_fd_);
+      pipe_fd_ = -1;
+    }
+    if (mutex_ != NULL) {
+      delete mutex_;
+      mutex_ = NULL;
+    }
   }
 
   // If there are still active requests, cancel them.
   void NgxUrlAsyncFetcher::CancelActiveFetches() {
+    // TODO(oschaaf): this seems tricky, this may end up calling
+    // FetchComplete, modifying the active fetches while we are looping
+    // it
     for (NgxFetchPool::const_iterator p = active_fetches_.begin(),
         e = active_fetches_.end(); p != e; ++p) {
       NgxFetch* fetch = *p;
@@ -142,6 +122,7 @@ namespace net_instaweb {
   // thread. It should be called in the worker process.
   bool NgxUrlAsyncFetcher::Init() {
     log_ = ngx_cycle->log;
+
     if (pool_ == NULL) {
       pool_ = ngx_create_pool(4096, log_);
       if (pool_ == NULL) {
@@ -171,6 +152,7 @@ namespace net_instaweb {
     if (command_connection_ == NULL) {
       close(pipe_fds[1]);
       close(pipe_fds[0]);
+      pipe_fd_ = -1;
       return false;
     }
 
@@ -188,6 +170,9 @@ namespace net_instaweb {
     if (url_.url.len == 0) {
       return true;
     }
+
+    // TODO(oschaaf): shouldn't we do this earlier? Do we need to clean
+    // up when parsing the url failed?
     if (ngx_parse_url(pool_, &url_) != NGX_OK) {
       ngx_log_error(NGX_LOG_ERR, log_, 0,
           "NgxUrlAsyncFetcher::Init parse proxy[%V] failed", &url_.url);
@@ -250,18 +235,25 @@ namespace net_instaweb {
       return;
     }
 
-    ScopedMutex lock(fetcher->mutex_); 
+    std::vector<NgxFetch*> to_start;
+
     switch (command) {
       // All the new fetches are appended in the pending_fetches.
       // Start all these fetches.
       case 'F':
-        if (!fetcher->pending_fetches_.empty()) {
-          for (Pool<NgxFetch>::iterator p = fetcher->pending_fetches_.begin(),
-              e = fetcher->pending_fetches_.end(); p != e; p++) {
-            NgxFetch* fetch = *p;
-            fetcher->StartFetch(fetch);
-          }
-          fetcher->pending_fetches_.Clear();
+        fetcher->mutex_->Lock();
+        fetcher->completed_fetches_.DeleteAll();
+        for (Pool<NgxFetch>::iterator p = fetcher->pending_fetches_.begin(),
+                 e = fetcher->pending_fetches_.end(); p != e; p++) {
+          NgxFetch* fetch = *p;
+          to_start.push_back(fetch);
+        }
+
+        fetcher->pending_fetches_.Clear();
+        fetcher->mutex_->Unlock();
+
+        for (size_t i = 0; i < to_start.size(); i++) {
+          fetcher->StartFetch(to_start[i]);
         }
         CHECK(ngx_handle_read_event(cmdev, 0) == NGX_OK);
         break;
@@ -290,25 +282,36 @@ namespace net_instaweb {
     return;
   }
 
-  // It's locked in the CommandHandler.
-  // Don't need add the mutex here.
+  // TODO(oschaaf): return value is ignored.
   bool NgxUrlAsyncFetcher::StartFetch(NgxFetch* fetch) {
-    bool started = !shutdown_ && fetch->Start(this);
-    if (started) {
-      active_fetches_.Add(fetch);
-      fetchers_count_++;
-    } else {
-      LOG(WARNING) << "Fetch failed to start: " << fetch->str_url();
+    mutex_->Lock();
+    active_fetches_.Add(fetch);
+    fetchers_count_++;
+    mutex_->Unlock();
+
+    // Don't initiate the fetch when we are shutting down
+    if (shutdown_) {
+      fetch->CallbackDone(false);
+      return false;
+    }
+
+    bool started = fetch->Start(this);
+
+    if (!started) {
+      message_handler_->Message(kWarning, "Fetch failed to start: %s",
+                                fetch->str_url());
       fetch->CallbackDone(false);
     }
+
     return started;
   }
 
   void NgxUrlAsyncFetcher::FetchComplete(NgxFetch* fetch) {
-    fetch->message_handler()->Message(kInfo, "Fetch complete:%s",
-                    fetch->str_url());
+    ScopedMutex lock(mutex_);
     byte_count_ += fetch->bytes_received();
     fetchers_count_--;
+    active_fetches_.Remove(fetch);
+    completed_fetches_.Add(fetch);
   }
 
   void NgxUrlAsyncFetcher::PrintActiveFetches(MessageHandler* handler) const {
@@ -318,4 +321,4 @@ namespace net_instaweb {
       handler->Message(kInfo, "Active fetch: %s", fetch->str_url());
     }
   }
-} // namespace net_instaweb
+}  // namespace net_instaweb

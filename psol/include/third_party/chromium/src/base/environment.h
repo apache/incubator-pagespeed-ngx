@@ -4,11 +4,10 @@
 
 #ifndef BASE_ENVIRONMENT_H_
 #define BASE_ENVIRONMENT_H_
-#pragma once
 
 #include <string>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "build/build_config.h"
 
 namespace base {
@@ -16,12 +15,12 @@ namespace base {
 namespace env_vars {
 
 #if defined(OS_POSIX)
-BASE_API extern const char kHome[];
+BASE_EXPORT extern const char kHome[];
 #endif
 
 }  // namespace env_vars
 
-class BASE_API Environment {
+class BASE_EXPORT Environment {
  public:
   virtual ~Environment();
 

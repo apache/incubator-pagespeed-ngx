@@ -76,7 +76,7 @@ class CommonFilter : public EmptyHtmlFilter {
   // base tag.  After the filter sees the base tag, it will return true.
   bool BaseUrlIsValid() const;
 
-  RewriteDriver* driver() { return driver_; }
+  RewriteDriver* driver() const { return driver_; }
 
   // Returns whether the current options specify the "debug" filter.
   // If set, then other filters can annotate output HTML with HTML
@@ -116,7 +116,10 @@ class CommonFilter : public EmptyHtmlFilter {
   virtual void StartElementImpl(HtmlElement* element) = 0;
   virtual void EndElementImpl(HtmlElement* element) = 0;
 
-  // Protected pointers for inheriter's to use
+  // ID string used in logging. Inheritors should supply whatever short ID
+  // string they use.
+  virtual const char* LoggingId() { return Name(); }
+  // Protected pointers for inheritors to use.
   RewriteDriver* driver_;
   ServerContext* server_context_;
   const RewriteOptions* rewrite_options_;

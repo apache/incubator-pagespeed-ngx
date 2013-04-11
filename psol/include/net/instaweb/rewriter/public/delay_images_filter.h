@@ -79,7 +79,7 @@ namespace net_instaweb {
 
 class HtmlElement;
 class RewriteDriver;
-class StaticJavascriptManager;
+class StaticAssetManager;
 class Statistics;
 
 class DelayImagesFilter : public EmptyHtmlFilter {
@@ -97,6 +97,8 @@ class DelayImagesFilter : public EmptyHtmlFilter {
 
   virtual const char* Name() const { return "DelayImages"; }
 
+  virtual void DetermineEnabled();
+
   static void InitStats(Statistics* statistics);
   static void Terminate();
 
@@ -109,8 +111,12 @@ class DelayImagesFilter : public EmptyHtmlFilter {
   // this node just after element.
   void InsertDelayImagesInlineJS(HtmlElement* element);
 
+  // Returns a boolean for whether mobile aggressive rewriters are enabled and
+  // the current request is from a mobile user agent.
+  bool DisableInplaceLowResForMobile() const;
+
   RewriteDriver* driver_;
-  StaticJavascriptManager* static_js_manager_;
+  StaticAssetManager* static_asset_manager_;
 
   // pagespeed_low_res_src will be added to the low_res_data_map_ until
   // low_res_inserted is false. As soon as low_res_map_inserted_ is true, there
@@ -124,9 +130,15 @@ class DelayImagesFilter : public EmptyHtmlFilter {
   // end of body tag.
   bool insert_low_res_images_inplace_;
 
-  // is_experimental_enabled_ is set to true if
+  // is_experimental_inline_preview_enabled_ is set to true if
   // enable_inline_preview_images_experimental is true.
-  bool is_experimental_enabled_;
+  bool is_experimental_inline_preview_enabled_;
+
+  // lazyload_highres_images_ is set to true if lazyload_highres flag is true.
+  // It enables the feature that lazily loads the high res images after their
+  // low res versions are rendered. This flag is used especially in the case
+  // of mobile.
+  bool lazyload_highres_images_;
   DISALLOW_COPY_AND_ASSIGN(DelayImagesFilter);
 };
 

@@ -1,15 +1,14 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef NET_BASE_ASN1_UTIL_H_
 #define NET_BASE_ASN1_UTIL_H_
-#pragma once
 
 #include <vector>
 
 #include "base/string_piece.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
 namespace net {
 
@@ -18,6 +17,7 @@ namespace asn1 {
 // These are the DER encodings of the tag byte for ASN.1 objects.
 static const unsigned kBOOLEAN = 0x01;
 static const unsigned kINTEGER = 0x02;
+static const unsigned kBITSTRING = 0x03;
 static const unsigned kOCTETSTRING = 0x04;
 static const unsigned kOID = 0x06;
 static const unsigned kSEQUENCE = 0x30;
@@ -60,8 +60,15 @@ bool GetElement(base::StringPiece* in,
 // ExtractSPKIFromDERCert parses the DER encoded certificate in |cert| and
 // extracts the bytes of the SubjectPublicKeyInfo. On successful return,
 // |spki_out| is set to contain the SPKI, pointing into |cert|.
-NET_TEST bool ExtractSPKIFromDERCert(base::StringPiece cert,
-                                     base::StringPiece* spki_out);
+NET_EXPORT_PRIVATE bool ExtractSPKIFromDERCert(base::StringPiece cert,
+                                               base::StringPiece* spki_out);
+
+// ExtractSubjectPublicKeyFromSPKI parses the DER encoded SubjectPublicKeyInfo
+// in |spki| and extracts the bytes of the SubjectPublicKey. On successful
+// return, |spk_out| is set to contain the public key, pointing into |spki|.
+NET_EXPORT_PRIVATE bool ExtractSubjectPublicKeyFromSPKI(
+    base::StringPiece spki,
+    base::StringPiece* spk_out);
 
 // ExtractCRLURLsFromDERCert parses the DER encoded certificate in |cert| and
 // extracts the URL of each CRL. On successful return, the elements of
@@ -75,7 +82,7 @@ NET_TEST bool ExtractSPKIFromDERCert(base::StringPiece cert,
 // The nested set of GeneralNames is flattened into a single list because
 // having several CRLs with one location is equivalent to having one CRL with
 // several locations as far as a CRL filter is concerned.
-NET_TEST bool ExtractCRLURLsFromDERCert(
+NET_EXPORT_PRIVATE bool ExtractCRLURLsFromDERCert(
     base::StringPiece cert,
     std::vector<base::StringPiece>* urls_out);
 

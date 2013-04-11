@@ -4,7 +4,6 @@
 
 #ifndef NET_BASE_NET_TEST_SUITE_H_
 #define NET_BASE_NET_TEST_SUITE_H_
-#pragma once
 
 #include "base/memory/ref_counted.h"
 #include "base/test/test_suite.h"
@@ -22,17 +21,27 @@ class NetTestSuite : public base::TestSuite {
   NetTestSuite(int argc, char** argv);
   virtual ~NetTestSuite();
 
-  virtual void Initialize();
+  virtual void Initialize() OVERRIDE;
 
-  virtual void Shutdown();
+  virtual void Shutdown() OVERRIDE;
 
  protected:
+  // This constructor is only accessible to specialized net test
+  // implementations which need to control the creation of an AtExitManager
+  // instance for the duration of the test.
+  NetTestSuite(int argc, char** argv, bool create_at_exit_manager);
 
   // Called from within Initialize(), but separate so that derived classes
   // can initialize the NetTestSuite instance only and not
   // TestSuite::Initialize().  TestSuite::Initialize() performs some global
   // initialization that can only be done once.
   void InitializeTestThread();
+
+  // Same as above, except it does not create a mock
+  // NetworkChangeNotifier.  Use this if your test needs to create and
+  // manage its own mock NetworkChangeNotifier, or if your test uses
+  // the production NetworkChangeNotifier.
+  void InitializeTestThreadNoNetworkChangeNotifier();
 
  private:
   scoped_ptr<net::NetworkChangeNotifier> network_change_notifier_;

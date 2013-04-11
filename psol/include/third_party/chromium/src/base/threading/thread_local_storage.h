@@ -1,12 +1,11 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_THREADING_THREAD_LOCAL_STORAGE_H_
 #define BASE_THREADING_THREAD_LOCAL_STORAGE_H_
-#pragma once
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
 
 #if defined(OS_POSIX)
@@ -17,7 +16,7 @@ namespace base {
 
 // Wrapper for thread local storage.  This class doesn't do much except provide
 // an API for portability.
-class BASE_API ThreadLocalStorage {
+class BASE_EXPORT ThreadLocalStorage {
  public:
 
   // Prototype for the TLS destructor function, which can be optionally used to
@@ -25,15 +24,18 @@ class BASE_API ThreadLocalStorage {
   // stored in thread local storage.
   typedef void (*TLSDestructorFunc)(void* value);
 
+  // StaticSlot uses its own struct initializer-list style static
+  // initialization, as base's LINKER_INITIALIZED requires a constructor and on
+  // some compilers (notably gcc 4.4) this still ends up needing runtime
+  // initialization.
+  #define TLS_INITIALIZER {0}
+
   // A key representing one value stored in TLS.
-  class BASE_API Slot {
-   public:
-    explicit Slot(TLSDestructorFunc destructor = NULL);
-
-    // This constructor should be used for statics.
-    // It returns an uninitialized Slot.
-    explicit Slot(base::LinkerInitialized x) {}
-
+  // Initialize like
+  //   ThreadLocalStorage::StaticSlot my_slot = TLS_INITIALIZER;
+  // If you're not using a static variable, use the convenience class
+  // ThreadLocalStorage::Slot (below) instead.
+  struct BASE_EXPORT StaticSlot {
     // Set up the TLS slot.  Called by the constructor.
     // 'destructor' is a pointer to a function to perform per-thread cleanup of
     // this object.  If set to NULL, no cleanup is done for this TLS slot.
@@ -56,7 +58,6 @@ class BASE_API ThreadLocalStorage {
 
     bool initialized() const { return initialized_; }
 
-   private:
     // The internals of this struct should be considered private.
     bool initialized_;
 #if defined(OS_WIN)
@@ -65,28 +66,24 @@ class BASE_API ThreadLocalStorage {
     pthread_key_t key_;
 #endif
 
-    DISALLOW_COPY_AND_ASSIGN(Slot);
   };
 
+  // A convenience wrapper around StaticSlot with a constructor. Can be used
+  // as a member variable.
+  class BASE_EXPORT Slot : public StaticSlot {
+   public:
+    // Calls StaticSlot::Initialize().
+    explicit Slot(TLSDestructorFunc destructor = NULL);
+
+   private:
+    using StaticSlot::initialized_;
 #if defined(OS_WIN)
-  // Function called when on thread exit to call TLS
-  // destructor functions.  This function is used internally.
-  static void ThreadExit();
-
- private:
-  // Function to lazily initialize our thread local storage.
-  static void **Initialize();
-
- private:
-  // The maximum number of 'slots' in our thread local storage stack.
-  // For now, this is fixed.  We could either increase statically, or
-  // we could make it dynamic in the future.
-  static const int kThreadLocalStorageSize = 64;
-
-  static long tls_key_;
-  static long tls_max_;
-  static TLSDestructorFunc tls_destructors_[kThreadLocalStorageSize];
-#endif  // OS_WIN
+    using StaticSlot::slot_;
+#elif defined(OS_POSIX)
+    using StaticSlot::key_;
+#endif
+    DISALLOW_COPY_AND_ASSIGN(Slot);
+  };
 
   DISALLOW_COPY_AND_ASSIGN(ThreadLocalStorage);
 };

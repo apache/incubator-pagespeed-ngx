@@ -1,15 +1,15 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_WIN_REGISTRY_H_
 #define BASE_WIN_REGISTRY_H_
-#pragma once
 
 #include <windows.h>
 #include <string>
+#include <vector>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/basictypes.h"
 
 namespace base {
@@ -22,7 +22,7 @@ namespace win {
 // Note:
 // ReadValue family of functions guarantee that the return arguments
 // are not touched in case of failure.
-class BASE_API RegKey {
+class BASE_EXPORT RegKey {
  public:
   RegKey();
   RegKey(HKEY rootkey, const wchar_t* subkey, REGSAM access);
@@ -33,20 +33,28 @@ class BASE_API RegKey {
   LONG CreateWithDisposition(HKEY rootkey, const wchar_t* subkey,
                              DWORD* disposition, REGSAM access);
 
-  LONG Open(HKEY rootkey, const wchar_t* subkey, REGSAM access);
-
   // Creates a subkey or open it if it already exists.
   LONG CreateKey(const wchar_t* name, REGSAM access);
 
-  // Opens a subkey
-  LONG OpenKey(const wchar_t* name, REGSAM access);
+  // Opens an existing reg key.
+  LONG Open(HKEY rootkey, const wchar_t* subkey, REGSAM access);
 
+  // Opens an existing reg key, given the relative key name.
+  LONG OpenKey(const wchar_t* relative_key_name, REGSAM access);
+
+  // Closes this reg key.
   void Close();
 
-  DWORD ValueCount() const;
+  // Returns false if this key does not have the specified value, of if an error
+  // occurrs while attempting to access it.
+  bool HasValue(const wchar_t* value_name) const;
+
+  // Returns the number of values for this key, of 0 if the number cannot be
+  // determined.
+  DWORD GetValueCount() const;
 
   // Determine the nth value's name.
-  LONG ReadName(int index, std::wstring* name) const;
+  LONG GetValueNameAt(int index, std::wstring* name) const;
 
   // True while the key is valid.
   bool Valid() const { return key_ != NULL; }
@@ -58,18 +66,45 @@ class BASE_API RegKey {
   // Deletes a single value within the key.
   LONG DeleteValue(const wchar_t* name);
 
-  bool ValueExists(const wchar_t* name) const;
+  // Getters:
 
-  LONG ReadValue(const wchar_t* name, void* data, DWORD* dsize,
+  // Returns an int32 value. If |name| is NULL or empty, returns the default
+  // value, if any.
+  LONG ReadValueDW(const wchar_t* name, DWORD* out_value) const;
+
+  // Returns an int64 value. If |name| is NULL or empty, returns the default
+  // value, if any.
+  LONG ReadInt64(const wchar_t* name, int64* out_value) const;
+
+  // Returns a string value. If |name| is NULL or empty, returns the default
+  // value, if any.
+  LONG ReadValue(const wchar_t* name, std::wstring* out_value) const;
+
+  // Reads a REG_MULTI_SZ registry field into a vector of strings. Clears
+  // |values| initially and adds further strings to the list. Returns
+  // ERROR_CANTREAD if type is not REG_MULTI_SZ.
+  LONG ReadValues(const wchar_t* name, std::vector<std::wstring>* values);
+
+  // Returns raw data. If |name| is NULL or empty, returns the default
+  // value, if any.
+  LONG ReadValue(const wchar_t* name,
+                 void* data,
+                 DWORD* dsize,
                  DWORD* dtype) const;
-  LONG ReadValue(const wchar_t* name, std::wstring* value) const;
-  LONG ReadValueDW(const wchar_t* name, DWORD* value) const;
-  LONG ReadInt64(const wchar_t* name, int64* value) const;
 
-  LONG WriteValue(const wchar_t* name, const void* data, DWORD dsize,
+  // Setters:
+
+  // Sets an int32 value.
+  LONG WriteValue(const wchar_t* name, DWORD in_value);
+
+  // Sets a string value.
+  LONG WriteValue(const wchar_t* name, const wchar_t* in_value);
+
+  // Sets raw data, including type.
+  LONG WriteValue(const wchar_t* name,
+                  const void* data,
+                  DWORD dsize,
                   DWORD dtype);
-  LONG WriteValue(const wchar_t* name, const wchar_t* value);
-  LONG WriteValue(const wchar_t* name, DWORD value);
 
   // Starts watching the key to see if any of its values have changed.
   // The key must have been opened with the KEY_NOTIFY access privilege.
@@ -99,7 +134,7 @@ class BASE_API RegKey {
 // For this application I happen to know I wont need data size larger
 // than MAX_PATH, but in real life this wouldn't neccessarily be
 // adequate.
-class BASE_API RegistryValueIterator {
+class BASE_EXPORT RegistryValueIterator {
  public:
   RegistryValueIterator(HKEY root_key, const wchar_t* folder_key);
 
@@ -139,7 +174,7 @@ class BASE_API RegistryValueIterator {
   DISALLOW_COPY_AND_ASSIGN(RegistryValueIterator);
 };
 
-class BASE_API RegistryKeyIterator {
+class BASE_EXPORT RegistryKeyIterator {
  public:
   RegistryKeyIterator(HKEY root_key, const wchar_t* folder_key);
 

@@ -1,1 +1,4 @@
 2013-01-04: Updated from mod_pagespeed r2338 (jefftk)
+2013-03-18: Updated from mod_pagespeed r2577 (jefftk)
+2013-03-18: Updated from mod_pagespeed r2618 (jefftk)
+2013-04-03: Updated from mod_pagespeed r2748 (jefftk)

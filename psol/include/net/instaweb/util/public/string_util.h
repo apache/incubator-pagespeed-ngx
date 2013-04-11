@@ -19,6 +19,7 @@
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_STRING_UTIL_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_STRING_UTIL_H_
 
+#include <cstddef>
 #include <map>
 #include <set>
 #include <vector>
@@ -38,6 +39,8 @@ using base::StringAppendF;
 using base::StringAppendV;
 using base::SStringPrintf;
 using base::StringPiece;
+
+typedef StringPiece::size_type stringpiece_ssize_type;
 
 // Quick macro to get the size of a static char[] without trailing '\0'.
 // Note: Cannot be used for char*, std::string, etc.
@@ -59,6 +62,10 @@ typedef std::vector<const char*> CharStarVector;
 
 inline GoogleString IntegerToString(int i) {
   return base::IntToString(i);
+}
+
+inline GoogleString UintToString(unsigned int i) {
+  return base::UintToString(i);
 }
 
 inline GoogleString Integer64ToString(int64 i) {
@@ -196,6 +203,15 @@ inline char LowerChar(char c) {
   return c;
 }
 
+// Check if given character is an HTML (or CSS) space (not the same as isspace,
+// and not locale-dependent!).  Note in particular that isspace always includes
+// '\v' and HTML does not.  See:
+//    http://www.whatwg.org/specs/web-apps/current-work/multipage/common-microsyntaxes.html#space-character
+//    http://www.w3.org/TR/CSS21/grammar.html
+inline char IsHtmlSpace(char c) {
+  return (c == ' ') || (c == '\t') || (c == '\r') || (c == '\n') || (c == '\f');
+}
+
 inline char* strdup(const char* str) {
   return base::strdup(str);
 }
@@ -212,18 +228,25 @@ inline bool IsAsciiAlphaNumeric(char ch) {
           ((ch >= '0') && (ch <= '9')));
 }
 
-inline void TrimWhitespace(const StringPiece& in, GoogleString* output) {
-  static const char whitespace[] = " \r\n\t";
-  TrimString(GoogleString(in.data(), in.size()), whitespace, output);
-}
-
-void TrimWhitespace(StringPiece* str);
+// In-place removal of leading and trailing HTML whitespace.  Returns true if
+// any whitespace was trimmed.
+bool TrimWhitespace(StringPiece* str);
 
 // In-place removal of leading and trailing quote.
 void TrimQuote(StringPiece* str);
 
-// Trims only whitespace at the beginning of the string.
-void TrimLeadingWhitespace(StringPiece* str);
+// Trims leading HTML whitespace.  Returns true if any whitespace was trimmed.
+bool TrimLeadingWhitespace(StringPiece* str);
+
+// Trims trailing HTML whitespace.  Returns true if any whitespace was trimmed.
+bool TrimTrailingWhitespace(StringPiece* str);
+
+// Non-destructive TrimWhitespace.
+inline void TrimWhitespace(const StringPiece& in, GoogleString* output) {
+  StringPiece temp(in);   // Mutable copy
+  TrimWhitespace(&temp);  // Modifies temp
+  temp.CopyToString(output);
+}
 
 // Accumulates a decimal value from 'c' into *value.
 // Returns false and leaves *value unchanged if c is not a decimal digit.
@@ -234,7 +257,11 @@ bool AccumulateDecimalValue(char c, uint32* value);
 bool AccumulateHexValue(char c, uint32* value);
 
 // Return true iff the two strings are equal, ignoring case.
-bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2);
+bool MemCaseEqual(const char* s1, size_t size1, const char* s2, size_t size2);
+inline bool StringCaseEqual(const StringPiece& s1, const StringPiece& s2) {
+  return MemCaseEqual(s1.data(), s1.size(), s2.data(), s2.size());
+}
+
 // Return true iff str starts with prefix, ignoring case.
 bool StringCaseStartsWith(const StringPiece& str, const StringPiece& prefix);
 // Return true iff str ends with suffix, ignoring case.
@@ -269,6 +296,12 @@ struct StringCompareInsensitive {
   };
 };
 
+// Parse a list of integers into a vector. Empty values are ignored.
+// Returns true if all non-empty values are converted into integers.
+bool SplitStringPieceToIntegerVector(
+    const StringPiece& src, const StringPiece& separators,
+    std::vector<int>* ints);
+
 // Does a path end in slash?
 inline bool EndsInSlash(const StringPiece& path) {
   return path.ends_with("/");
@@ -283,6 +316,8 @@ inline void EnsureEndsInSlash(GoogleString* dir) {
 
 // Given a string such as:  a b "c d" e 'f g'
 // Parse it into a vector:  ["a", "b", "c d", "e", "f g"]
+// NOTE: actually used for html doctype recognition,
+// so assumes HtmlSpace separation.
 void ParseShellLikeString(const StringPiece& input,
                           std::vector<GoogleString>* output);
 
@@ -300,6 +335,45 @@ bool HasIllicitTokenCharacter(const StringPiece& str);
 inline GoogleString* StringVectorAdd(StringVector* v) {
   v->push_back(GoogleString());
   return &v->back();
+}
+
+// Append string-like objects accessed through an iterator.
+template<typename I>
+void AppendJoinIterator(
+    GoogleString* dest, I start, I end, StringPiece sep) {
+  if (start == end) {
+    // Skip a lot of set-up and tear-down in empty case.
+    return;
+  }
+  size_t size = dest->size();
+  size_t sep_size = 0;  // No separator before initial element
+  for (I str = start; str != end; ++str) {
+    size += str->size() + sep_size;
+    sep_size = sep.size();
+  }
+  dest->reserve(size);
+  StringPiece to_prepend("");
+  for (I str = start; str != end; ++str) {
+    StrAppend(dest, to_prepend, *str);
+    to_prepend = sep;
+  }
+}
+
+// Append an arbitrary iterable collection of strings such as a StringSet,
+// StringVector, or StringPieceVector, separated by a given separator, with
+// given initial and final strings.  Argument order chosen to be consistent
+// with StrAppend.
+template<typename C>
+void AppendJoinCollection(
+    GoogleString* dest, const C& collection, StringPiece sep) {
+  AppendJoinIterator(dest, collection.begin(), collection.end(), sep);
+}
+
+template<typename C>
+GoogleString JoinCollection(const C& collection, StringPiece sep) {
+  GoogleString result;
+  AppendJoinCollection(&result, collection, sep);
+  return result;
 }
 
 

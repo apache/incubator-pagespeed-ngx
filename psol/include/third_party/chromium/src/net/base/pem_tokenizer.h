@@ -4,13 +4,12 @@
 
 #ifndef NET_BASE_PEM_TOKENIZER_H_
 #define NET_BASE_PEM_TOKENIZER_H_
-#pragma once
 
 #include <string>
 #include <vector>
 
 #include "base/string_piece.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 
 namespace net {
 
@@ -18,7 +17,7 @@ namespace net {
 // using RFC 1421, Privacy Enhancement for Internet Electronic Mail. It
 // does not implement the full specification, most notably it does not
 // support the Encapsulated Header Portion described in Section 4.4.
-class NET_TEST PEMTokenizer {
+class NET_EXPORT_PRIVATE PEMTokenizer {
  public:
   // Create a new PEMTokenizer that iterates through |str| searching for
   // instances of PEM encoded blocks that are of the |allowed_block_types|.

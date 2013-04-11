@@ -57,6 +57,8 @@ class FileRewriter : public RewriteDriverFactory {
   virtual Timer* DefaultTimer();
   virtual void SetupCaches(ServerContext* resource_manager);
   virtual Statistics* statistics();
+  virtual ServerContext* NewServerContext();
+  virtual bool UseBeaconResultsInFilters() const { return false; }
 
  private:
   const RewriteGflags* gflags_;

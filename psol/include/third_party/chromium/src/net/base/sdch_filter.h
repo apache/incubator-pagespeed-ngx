@@ -13,13 +13,12 @@
 
 #ifndef NET_BASE_SDCH_FILTER_H_
 #define NET_BASE_SDCH_FILTER_H_
-#pragma once
 
 #include <string>
 
 #include "base/memory/scoped_ptr.h"
 #include "net/base/filter.h"
-#include "net/base/net_api.h"
+#include "net/base/net_export.h"
 #include "net/base/sdch_manager.h"
 
 namespace open_vcdiff {
@@ -28,7 +27,7 @@ class VCDiffStreamingDecoder;
 
 namespace net {
 
-class NET_TEST SdchFilter : public Filter {
+class NET_EXPORT_PRIVATE SdchFilter : public Filter {
  public:
   virtual ~SdchFilter();
 
@@ -41,7 +40,8 @@ class NET_TEST SdchFilter : public Filter {
   // Upon entry, *dest_len is the total size (in number of chars) of the
   // destination buffer. Upon exit, *dest_len is the actual number of chars
   // written into the destination buffer.
-  virtual FilterStatus ReadFilteredData(char* dest_buffer, int* dest_len);
+  virtual FilterStatus ReadFilteredData(char* dest_buffer,
+                                        int* dest_len) OVERRIDE;
 
  private:
   // Internal status.  Once we enter an error state, we stop processing data.

@@ -18,7 +18,9 @@
 #include <string>
 #include <vector>
 
+namespace base {
 class ListValue;
+}  // namespace base
 
 namespace pagespeed {
 
@@ -33,7 +35,7 @@ bool CreateTimelineProtoFromJsonString(
 
 // Return false if there were any errors, true otherwise.
 bool CreateTimelineProtoFromJsonValue(
-    const ListValue& json,
+    const base::ListValue& json,
     std::vector<const InstrumentationData*>* proto_out);
 
 }  // namespace timeline

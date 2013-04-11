@@ -19,7 +19,7 @@
 
 namespace pagespeed {
 
-void Init();
+bool Init();
 void ShutDown();
 
 }  // namespace pagespeed

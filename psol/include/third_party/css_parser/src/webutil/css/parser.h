@@ -592,6 +592,7 @@ class Parser {
   FRIEND_TEST(ParserTest, font_family);
   FRIEND_TEST(ParserTest, ParseBlock);
   FRIEND_TEST(ParserTest, font);
+  FRIEND_TEST(ParserTest, numbers);
   FRIEND_TEST(ParserTest, values);
   FRIEND_TEST(ParserTest, declarations);
   FRIEND_TEST(ParserTest, universalselector);
@@ -604,8 +605,9 @@ class Parser {
   FRIEND_TEST(ParserTest, ruleset_starts_with_combinator);
   FRIEND_TEST(ParserTest, atrules);
   FRIEND_TEST(ParserTest, percentage_colors);
-  FRIEND_TEST(ParserTest, ValueError);
+  FRIEND_TEST(ParserTest, SkipBlock);
   FRIEND_TEST(ParserTest, SkippedTokenError);
+  FRIEND_TEST(ParserTest, ValueError);
   friend void ParseFontFamily(Parser* parser);
   friend class MediaAppliesToScreenTest;
 

@@ -25,13 +25,16 @@
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
+
 class FileSystem;
 class FilenameEncoder;
 class Hasher;
 class MessageHandler;
 class SharedString;
 class SlowWorker;
+class Statistics;
 class Timer;
+class Variable;
 
 // Simple C++ implementation of file cache.
 class FileCache : public CacheInterface {
@@ -52,18 +55,33 @@ class FileCache : public CacheInterface {
 
   FileCache(const GoogleString& path, FileSystem* file_system,
             SlowWorker* worker, FilenameEncoder* filename_encoder,
-            CachePolicy* policy, MessageHandler* handler);
+            CachePolicy* policy, Statistics* stats, MessageHandler* handler);
   virtual ~FileCache();
+
+  static void InitStats(Statistics* statistics);
 
   virtual void Get(const GoogleString& key, Callback* callback);
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
   void set_worker(SlowWorker* worker) { worker_ = worker; }
+  SlowWorker* worker() { return worker_; }
 
   virtual const char* Name() const { return "FileCache"; }
   virtual bool IsBlocking() const { return true; }
   virtual bool IsHealthy() const { return true; }
   virtual void ShutDown() {}  // TODO(jmarantz): implement.
+
+  const CachePolicy* cache_policy() const { return cache_policy_.get(); }
+  const GoogleString& path() const { return path_; }
+
+  // Variable names.
+  // Number of times we checked disk usage in preparation from cleanup.
+  static const char kDiskChecks[];
+  // Number of times we actually cleaned cache because usage was high enough.
+  static const char kCleanups[];
+  // Files evicted from cache during cleanup.
+  static const char kEvictions[];
+  static const char kBytesFreedInCleanup[];
 
  private:
   class CacheCleanFunction;
@@ -101,14 +119,21 @@ class FileCache : public CacheInterface {
   const scoped_ptr<CachePolicy> cache_policy_;
   int64 next_clean_ms_;
   int path_length_limit_;  // Maximum total length of path file_system_ supports
-  // The full path to our cleanup timestamp file.
+  // The full paths to our cleanup timestamp and lock files.
   GoogleString clean_time_path_;
+  GoogleString clean_lock_path_;
   bool last_conditional_clean_result_;
+
+  Variable* disk_checks_;
+  Variable* cleanups_;
+  Variable* evictions_;
+  Variable* bytes_freed_in_cleanup_;
 
   // The filename where we keep the next scheduled cleanup time in seconds.
   static const char kCleanTimeName[];
   // The name of the global mutex protecting reads and writes to that file.
   static const char kCleanLockName[];
+
   DISALLOW_COPY_AND_ASSIGN(FileCache);
 };
 

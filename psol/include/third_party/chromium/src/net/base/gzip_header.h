@@ -14,7 +14,6 @@
 
 #ifndef NET_BASE_GZIP_HEADER_H_
 #define NET_BASE_GZIP_HEADER_H_
-#pragma once
 
 #include "base/basictypes.h"
 

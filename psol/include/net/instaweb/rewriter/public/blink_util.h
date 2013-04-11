@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/util/public/json.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -35,8 +36,6 @@ class HtmlElement;
 class Panel;
 class PanelSet;
 class ServerContext;
-class RewriteOptions;
-class UserAgentMatcher;
 
 typedef std::map<GoogleString, const Panel*> PanelIdToSpecMap;
 typedef std::multimap<GoogleString, std::pair<GoogleString, const int>,
@@ -59,21 +58,17 @@ const char kXpath[] = "xpath";
 // TODO(rahulbansal): Use these constants everywhere in the code from here.
 const char kBlinkCohort[] = "blink";
 const char kBlinkCriticalLineDataPropertyName[] = "blink_critical_line_data";
+const char kCacheHtmlRewriterInfo[] = "cache_html";
 const char kComputeVisibleTextFilterOutputEndMarker[] =
     "<!--GooglePanel **** Output end ****-->";
-
-// Checks whether the user agent is allowed to go into the blink flow.
-bool IsUserAgentAllowedForBlink(AsyncFetch* async_fetch,
-                                const RewriteOptions* options,
-                                const char* user_agent,
-                                const UserAgentMatcher& user_agent_matcher);
 
 // Checks whether the request for 'url' is a valid blink request.
 bool IsBlinkRequest(const GoogleUrl& url,
                     AsyncFetch* async_fetch,
                     const RewriteOptions* options,
                     const char* user_agent,
-                    const UserAgentMatcher& user_agent_matcher_);
+                    const ServerContext* server_context,
+                    RewriteOptions::Filter filter);
 
 // Checks if blink critical line flow can be applied.
 bool ShouldApplyBlinkFlowCriticalLine(

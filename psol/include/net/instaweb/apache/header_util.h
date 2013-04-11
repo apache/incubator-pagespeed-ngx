@@ -40,6 +40,7 @@ void ApacheRequestToResponseHeaders(const request_rec& request,
 
 
 // Converts ResponseHeaders into an Apache request's headers_out table.
+// This function does not alter the major/minor version of the Apache request.
 void ResponseHeadersToApacheRequest(const ResponseHeaders& response_headers,
                                     bool ok_to_disable_downstream_headers,
                                     request_rec* request);

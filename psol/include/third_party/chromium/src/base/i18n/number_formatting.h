@@ -4,9 +4,9 @@
 
 #ifndef BASE_I18N_NUMBER_FORMATTING_H_
 #define BASE_I18N_NUMBER_FORMATTING_H_
-#pragma once
 
 #include "base/basictypes.h"
+#include "base/i18n/base_i18n_export.h"
 #include "base/string16.h"
 
 namespace base {
@@ -14,18 +14,18 @@ namespace base {
 // Return a number formatted with separators in the user's locale.
 // Ex: FormatNumber(1234567)
 //         => "1,234,567" in English, "1.234.567" in German
-string16 FormatNumber(int64 number);
+BASE_I18N_EXPORT string16 FormatNumber(int64 number);
 
 // Return a number formatted with separators in the user's locale.
 // Ex: FormatDouble(1234567.8, 1)
 //         => "1,234,567.8" in English, "1.234.567,8" in German
-string16 FormatDouble(double number, int fractional_digits);
+BASE_I18N_EXPORT string16 FormatDouble(double number, int fractional_digits);
 
 namespace testing {
 
 // Causes cached formatters to be discarded and recreated. Only useful for
 // testing.
-void ResetFormatters();
+BASE_I18N_EXPORT void ResetFormatters();
 
 }  // namespace testing
 

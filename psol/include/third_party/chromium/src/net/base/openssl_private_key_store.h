@@ -4,7 +4,6 @@
 
 #ifndef NET_BASE_OPENSSL_PRIVATE_KEY_STORE_H_
 #define NET_BASE_OPENSSL_PRIVATE_KEY_STORE_H_
-#pragma once
 
 #include "base/basictypes.h"
 

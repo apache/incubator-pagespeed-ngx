@@ -19,6 +19,8 @@
 #ifndef NET_INSTAWEB_REWRITER_PUBLIC_BLINK_CRITICAL_LINE_DATA_FINDER_H_
 #define NET_INSTAWEB_REWRITER_PUBLIC_BLINK_CRITICAL_LINE_DATA_FINDER_H_
 
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -29,6 +31,7 @@ class BlinkCriticalLineData;
 class PropertyPage;
 class ResponseHeaders;
 class RewriteDriver;
+class RewriteDriverFactory;
 
 // Finds BlinkCriticalLineData from the given html content. This information
 // will be used by BlinkFlowCriticalLine.
@@ -41,8 +44,7 @@ class BlinkCriticalLineDataFinder {
 
   // Gets BlinkCriticalLineData from the given PropertyPage.
   virtual BlinkCriticalLineData* ExtractBlinkCriticalLineData(
-      int64 cache_time_ms, PropertyPage* page, int64 now_ms, bool diff_enabled,
-      bool propagate_cache_deletes);
+      int64 cache_time_ms, PropertyPage* page, int64 now_ms, bool diff_enabled);
 
   // Computes BlinkCriticalLineData for the given html content.
   virtual void ComputeBlinkCriticalLineData(
@@ -52,7 +54,12 @@ class BlinkCriticalLineDataFinder {
       const ResponseHeaders* response_headers,
       RewriteDriver* driver);
 
-  virtual void PropagateCacheDeletes(const GoogleString& key);
+  virtual void PropagateCacheDeletes(const GoogleString& url, int furious_id,
+                                     UserAgentMatcher::DeviceType device_type);
+
+  virtual bool UpdateDiffInfo(
+      bool is_diff, int64 now_ms, LogRecord* blink_log_record,
+      RewriteDriver* rewrite_driver, RewriteDriverFactory* factory);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BlinkCriticalLineDataFinder);

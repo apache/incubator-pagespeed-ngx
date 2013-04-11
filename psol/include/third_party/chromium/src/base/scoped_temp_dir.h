@@ -4,7 +4,6 @@
 
 #ifndef BASE_SCOPED_TEMP_DIR_H_
 #define BASE_SCOPED_TEMP_DIR_H_
-#pragma once
 
 // An object representing a temporary / scratch directory that should be cleaned
 // up (recursively) when this object goes out of scope.  Note that since
@@ -16,10 +15,10 @@
 // (CreateUniqueTempDir, CreateUniqueTempDirUnderPath, and Set) must have
 // intervening calls to Delete or Take, or the calls will fail.
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/file_path.h"
 
-class BASE_API ScopedTempDir {
+class BASE_EXPORT ScopedTempDir {
  public:
   // No directory is owned/created initially.
   ScopedTempDir();

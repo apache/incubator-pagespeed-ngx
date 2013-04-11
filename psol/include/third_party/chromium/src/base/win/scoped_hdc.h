@@ -1,53 +1,74 @@
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_WIN_SCOPED_HDC_H_
 #define BASE_WIN_SCOPED_HDC_H_
-#pragma once
 
 #include <windows.h>
 
 #include "base/basictypes.h"
+#include "base/logging.h"
+#include "base/win/scoped_handle.h"
 
 namespace base {
 namespace win {
 
 // Like ScopedHandle but for HDC.  Only use this on HDCs returned from
-// CreateCompatibleDC.  For an HDC returned by GetDC, use ReleaseDC instead.
-class ScopedHDC {
+// GetDC.
+class ScopedGetDC {
  public:
-  ScopedHDC() : hdc_(NULL) { }
-  explicit ScopedHDC(HDC h) : hdc_(h) { }
-
-  ~ScopedHDC() {
-    Close();
+  explicit ScopedGetDC(HWND hwnd)
+      : hwnd_(hwnd),
+        hdc_(GetDC(hwnd)) {
+    if (hwnd_) {
+      DCHECK(IsWindow(hwnd_));
+      DCHECK(hdc_);
+    } else {
+      // If GetDC(NULL) returns NULL, something really bad has happened, like
+      // GDI handle exhaustion.  In this case Chrome is going to behave badly no
+      // matter what, so we may as well just force a crash now.
+      CHECK(hdc_);
+    }
   }
 
-  HDC Get() {
-    return hdc_;
-  }
-
-  void Set(HDC h) {
-    Close();
-    hdc_ = h;
+  ~ScopedGetDC() {
+    if (hdc_)
+      ReleaseDC(hwnd_, hdc_);
   }
 
   operator HDC() { return hdc_; }
 
  private:
-  void Close() {
-#ifdef NOGDI
-    assert(false);
-#else
-    if (hdc_)
-      DeleteDC(hdc_);
-#endif  // NOGDI
+  HWND hwnd_;
+  HDC hdc_;
+
+  DISALLOW_COPY_AND_ASSIGN(ScopedGetDC);
+};
+
+// Like ScopedHandle but for HDC.  Only use this on HDCs returned from
+// CreateCompatibleDC, CreateDC and CreateIC.
+class CreateDCTraits {
+ public:
+  typedef HDC Handle;
+
+  static bool CloseHandle(HDC handle) {
+    return ::DeleteDC(handle) != FALSE;
   }
 
-  HDC hdc_;
-  DISALLOW_COPY_AND_ASSIGN(ScopedHDC);
+  static bool IsHandleValid(HDC handle) {
+    return handle != NULL;
+  }
+
+  static HDC NullHandle() {
+    return NULL;
+  }
+
+ private:
+  DISALLOW_IMPLICIT_CONSTRUCTORS(CreateDCTraits);
 };
+
+typedef GenericScopedHandle<CreateDCTraits, VerifierTraits> ScopedCreateDC;
 
 }  // namespace win
 }  // namespace base

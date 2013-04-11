@@ -1,4 +1,4 @@
-// Copyright 2007, Google Inc.
+// Copyright 2011, Google Inc.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -47,7 +47,7 @@ class ICUCharsetConverter : public CharsetConverter {
   // be managed by the creator such that it is alive as long as this is.
   GURL_API ICUCharsetConverter(UConverter* converter);
 
-  GURL_API virtual ~ICUCharsetConverter() {}
+  GURL_API virtual ~ICUCharsetConverter();
 
   GURL_API virtual void ConvertFromUTF16(const char16* input,
                                          int input_len,

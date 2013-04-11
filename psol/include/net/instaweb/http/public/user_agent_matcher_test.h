@@ -33,6 +33,12 @@ const char kAndroidICSUserAgent[] =
 const char kAndroidNexusSUserAgent[] =
     "Mozilla/5.0 (Linux; U; Android 2.3.3; en-gb; Nexus S Build/GRI20)"
     "AppleWebKit/533.1 (KHTML, like Gecko) Version/4.0 Mobile Safari/533.1";
+const char kBlackBerryOS5UserAgent[] =
+    "BlackBerry9000/5.0.0.93 Profile/MIDP-2.0 Configuration/CLDC-1.1 "
+    "VendorID/179";
+const char kBlackBerryOS6UserAgent[] =
+    "Mozilla/5.0 (BlackBerry; U; BlackBerry 9800; en-US) AppleWebKit/534.11+ "
+    "(KHTML, like Gecko) Version/6.0.0.141 Mobile Safari/534.11+";
 const char kChromeUserAgent[] =
     "Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) "
     "AppleWebKit/525.13 (KHTML, like Gecko) Chrome/0.A.B.C Safari/525.13";
@@ -72,6 +78,8 @@ const char kFirefox1UserAgent[] =
     "Gecko/20060909 Firefox/1.5.0.7 MG (Novarra-Vision/6.1)";
 const char kFirefox5UserAgent[] =
     "Mozilla/5.0 (X11; U; Linux i586; de; rv:5.0) Gecko/20100101 Firefox/5.0";
+const char kGooglebotUserAgent[] =
+    "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
 const char kIe6UserAgent[] =
     "Mozilla/5.0 (Windows; U; MSIE 6.0; Windows NT 5.1; SV1;"
     " .NET CLR 2.0.50727)";
@@ -112,6 +120,12 @@ const char kIPadUserAgent[] =
 const char kNexus7ChromeUserAgent[] =
     "Mozilla/5.0 (Linux; Android 4.2; Nexus 7 Build/JOP32C) AppleWebKit/535.19"
     "(KHTML, like Gecko) Chrome/18.0.1025.166 Safari/535.19";
+const char kNexus10ChromeUserAgent[] =
+    "Mozilla/5.0 (Linux; Android 4.2.2; Nexus 10 Build/JDQ39) AppleWebKit/"
+    "537.31 (KHTML, like Gecko) Chrome/26.0.1408.0 Safari/537.31";
+const char XT907UserAgent[] =
+    "Mozilla/5.0 (Linux; Android 4.1.1; XT907 Build/9.8.1Q_27-2) AppleWebKit"
+    "/537.25 (KHTML, like Gecko) Chrome/26.0.1376.1 Mobile Safari/537.25";
 const char kAcceptHeaderValueNonMobile[] = "text/html";
 const char kAcceptHeaderValueMobile[] =
     "text/html,application/vnd.wap.xhtml+xml";

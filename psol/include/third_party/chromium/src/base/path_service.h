@@ -1,23 +1,27 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_PATH_SERVICE_H_
 #define BASE_PATH_SERVICE_H_
-#pragma once
 
 #include <string>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/base_paths.h"
+#include "base/gtest_prod_util.h"
 #include "build/build_config.h"
 
 class FilePath;
 
+namespace base {
+class ScopedPathOverride;
+}  // namespace
+
 // The path service is a global table mapping keys to file system paths.  It is
 // OK to use this service from multiple threads.
 //
-class BASE_API PathService {
+class BASE_EXPORT PathService {
  public:
   // Retrieves a path to a special directory or file and places it into the
   // string pointed to by 'path'. If you ask for a directory it is guaranteed
@@ -40,6 +44,13 @@ class BASE_API PathService {
   // over the lifetime of the app, so this method should be used with caution.
   static bool Override(int key, const FilePath& path);
 
+  // This function does the same as PathService::Override but it takes an extra
+  // parameter |create| which guides whether the directory to be overriden must
+  // be created in case it doesn't exist already.
+  static bool OverrideAndCreateIfNeeded(int key,
+                                        const FilePath& path,
+                                        bool create);
+
   // To extend the set of supported keys, you can register a path provider,
   // which is just a function mirroring PathService::Get.  The ProviderFunc
   // returns false if it cannot provide a non-empty path for the given key.
@@ -55,10 +66,15 @@ class BASE_API PathService {
   static void RegisterProvider(ProviderFunc provider,
                                int key_start,
                                int key_end);
+
  private:
-  static bool GetFromCache(int key, FilePath* path);
-  static bool GetFromOverrides(int key, FilePath* path);
-  static void AddToCache(int key, const FilePath& path);
+  friend class base::ScopedPathOverride;
+  FRIEND_TEST_ALL_PREFIXES(PathServiceTest, RemoveOverride);
+
+  // Removes an override for a special directory or file. Returns true if there
+  // was an override to remove or false if none was present.
+  // NOTE: This function is intended to be used by tests only!
+  static bool RemoveOverride(int key);
 };
 
 #endif  // BASE_PATH_SERVICE_H_

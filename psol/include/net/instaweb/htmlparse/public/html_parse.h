@@ -271,6 +271,20 @@ class HtmlParse {
   // We do not expect to see a close-tag for meta and should never insert one.
   bool IsImplicitlyClosedTag(HtmlName::Keyword keyword) const;
 
+  // Determines whether a tag should be interpreted as a 'literal'
+  // tag. That is, a tag whose contents are not parsed until a
+  // corresponding matching end tag is encountered.
+  static bool IsLiteralTag(HtmlName::Keyword keyword);
+
+  // Determines whether a tag is interpreted as a 'literal' tag in
+  // some user agents. Since some user agents will interpret the
+  // contents of these tags, our parser never treats them as literal
+  // tags. However, a filter that wants to insert new tags that should
+  // be processed by all user agents should not insert those tags into
+  // a tag that is sometimes parsed as a literal tag. Those filters
+  // can use this method to determine if they are within such a tag.
+  static bool IsSometimesLiteralTag(HtmlName::Keyword keyword);
+
   // An optionally closed tag ranges from <p>, which is typically not closed,
   // but we infer the closing from context.  Also consider <html>, which usually
   // is closed but not always.  E.g. www.google.com does not close its html tag.
@@ -344,6 +358,7 @@ class HtmlParse {
   // Provide timer to helping to report timing of each filter.  You must also
   // set_log_rewrite_timing(true) to turn on this reporting.
   void set_timer(Timer* timer) { timer_ = timer; }
+  Timer* timer() const { return timer_; }
   void set_log_rewrite_timing(bool x) { log_rewrite_timing_ = x; }
 
   // Adds a filter to be called during parsing as new events are added.
@@ -372,18 +387,6 @@ class HtmlParse {
 
   // Returns the number of events on the event queue.
   size_t GetEventQueueSize();
-
-  // Move the entire contents of extra_events onto the end of the event queue.
-  void AppendEventsToQueue(HtmlEventList* extra_events);
-
-  // Move the entire event queue after the first event in event_set to the end
-  // of tail.  Return that event, or NULL if there was none.
-  HtmlEvent* SplitQueueOnFirstEventInSet(const ConstHtmlEventSet& event_set,
-                                         HtmlEventList* tail);
-
-  // Return the EndElementEvent for this element, or NULL if it doesn't exist
-  // yet.
-  HtmlEvent* GetEndElementEvent(const HtmlElement* element);
 
   virtual void ParseTextInternal(const char* content, int size);
 

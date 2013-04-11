@@ -1,15 +1,14 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 // This file contains the Windows-specific declarations for trace_event.h.
 #ifndef BASE_DEBUG_TRACE_EVENT_WIN_H_
 #define BASE_DEBUG_TRACE_EVENT_WIN_H_
-#pragma once
 
 #include <string>
 
-#include "base/base_api.h"
+#include "base/base_export.h"
 #include "base/debug/trace_event.h"
 #include "base/win/event_trace_provider.h"
 
@@ -22,7 +21,7 @@ namespace debug {
 
 // This EtwTraceProvider subclass implements ETW logging
 // for the macros above on Windows.
-class BASE_API TraceEventETWProvider : public base::win::EtwTraceProvider {
+class BASE_EXPORT TraceEventETWProvider : public base::win::EtwTraceProvider {
  public:
   // Start logging trace events.
   // This is a noop in this implementation.
@@ -37,14 +36,14 @@ class BASE_API TraceEventETWProvider : public base::win::EtwTraceProvider {
   // be used for length.
   static void Trace(const char* name,
                     size_t name_len,
-                    TraceEventPhase type,
+                    char type,
                     const void* id,
                     const char* extra,
                     size_t extra_len);
 
   // Allows passing extra as a std::string for convenience.
   static void Trace(const char* name,
-                    TraceEventPhase type,
+                    char type,
                     const void* id,
                     const std::string& extra) {
     return Trace(name, -1, type, id, extra.c_str(), extra.length());
@@ -53,7 +52,7 @@ class BASE_API TraceEventETWProvider : public base::win::EtwTraceProvider {
   // Allows passing extra as a const char* to avoid constructing temporary
   // std::string instances where not needed.
   static void Trace(const char* name,
-                    TraceEventPhase type,
+                    char type,
                     const void* id,
                     const char* extra) {
     return Trace(name, -1, type, id, extra, -1);
@@ -75,7 +74,7 @@ class BASE_API TraceEventETWProvider : public base::win::EtwTraceProvider {
   //    string will be used.
   void TraceEvent(const char* name,
                   size_t name_len,
-                  TraceEventPhase type,
+                  char type,
                   const void* id,
                   const char* extra,
                   size_t extra_len);
@@ -93,13 +92,13 @@ class BASE_API TraceEventETWProvider : public base::win::EtwTraceProvider {
 };
 
 // The ETW trace provider GUID.
-BASE_API extern const GUID kChromeTraceProviderName;
+BASE_EXPORT extern const GUID kChromeTraceProviderName;
 
 // The ETW event class GUID for 32 bit events.
-BASE_API extern const GUID kTraceEventClass32;
+BASE_EXPORT extern const GUID kTraceEventClass32;
 
 // The ETW event class GUID for 64 bit events.
-BASE_API extern const GUID kTraceEventClass64;
+BASE_EXPORT extern const GUID kTraceEventClass64;
 
 // The ETW event types, IDs 0x00-0x09 are reserved, so start at 0x10.
 const base::win::EtwEventType kTraceEventTypeBegin = 0x10;
@@ -107,7 +106,7 @@ const base::win::EtwEventType kTraceEventTypeEnd = 0x11;
 const base::win::EtwEventType kTraceEventTypeInstant = 0x12;
 
 // If this flag is set in enable flags
-enum TraceEventFlags {
+enum TraceEventETWFlags {
   CAPTURE_STACK_TRACE = 0x0001,
 };
 
@@ -118,10 +117,7 @@ enum TraceEventFlags {
 // Optionally the stack trace, consisting of a DWORD "depth", followed
 //    by an array of void* (machine bitness) of length "depth".
 
-// Forward decl.
-struct TraceLogSingletonTraits;
-
-}  // nemspace debug
+}  // namespace debug
 }  // namespace base
 
 #endif  // BASE_DEBUG_TRACE_EVENT_WIN_H_

@@ -1,10 +1,9 @@
-// Copyright (c) 2011 The Chromium Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #ifndef BASE_MACH_IPC_MAC_H_
 #define BASE_MACH_IPC_MAC_H_
-#pragma once
 
 #include <mach/mach.h>
 #include <mach/message.h>
@@ -13,6 +12,7 @@
 
 #include <CoreServices/CoreServices.h>
 
+#include "base/base_export.h"
 #include "base/basictypes.h"
 
 //==============================================================================
@@ -138,7 +138,7 @@ class MachMsgPortDescriptor : public mach_msg_port_descriptor_t {
 //  A MachMessage object is used by ReceivePort::WaitForMessage
 //  and MachPortSender::SendMessage
 //
-class MachMessage {
+class BASE_EXPORT MachMessage {
  public:
   static const size_t kEmptyMessageSize;
 
@@ -244,7 +244,7 @@ class MachReceiveMessage : public MachMessage {
 };
 
 //==============================================================================
-class MachSendMessage : public MachMessage {
+class BASE_EXPORT MachSendMessage : public MachMessage {
  public:
   explicit MachSendMessage(int32_t message_id);
   MachSendMessage(void *storage, size_t storage_length, int32_t message_id);
@@ -257,7 +257,7 @@ class MachSendMessage : public MachMessage {
 
 //==============================================================================
 // Represents a Mach port for which we have receive rights
-class ReceivePort {
+class BASE_EXPORT ReceivePort {
  public:
   // Creates a new Mach port for receiving messages and registers a name for it
   explicit ReceivePort(const char *receive_port_name);
@@ -288,7 +288,7 @@ class ReceivePort {
 
 //==============================================================================
 // Represents a Mach port for which we have send rights
-class MachPortSender {
+class BASE_EXPORT MachPortSender {
  public:
   // get a port with send rights corresponding to a named registered service
   explicit MachPortSender(const char *receive_port_name);
@@ -307,6 +307,19 @@ class MachPortSender {
 
   DISALLOW_COPY_AND_ASSIGN(MachPortSender);
 };
+
+//==============================================================================
+// Static utility functions.
+
+namespace mac {
+
+// Returns the number of Mach ports to which the given task has a right.
+// Note that unless the calling task has send rights to the passed task port,
+// this will fail unless the calling task is running as root.
+kern_return_t BASE_EXPORT GetNumberOfMachPorts(mach_port_t task_port,
+                                               int* port_count);
+
+}  // namespace mac
 
 }  // namespace base
 

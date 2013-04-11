@@ -34,7 +34,10 @@ namespace net_instaweb {
 class AbstractClientState;
 class AbstractMutex;
 class BlinkCriticalLineDataFinder;
+class CacheHtmlInfoFinder;
+class CriticalCssFinder;
 class CriticalImagesFinder;
+class CriticalSelectorFinder;
 class FileSystem;
 class FilenameEncoder;
 class FlushEarlyInfoFinder;
@@ -49,7 +52,7 @@ class RewriteDriver;
 class RewriteOptions;
 class RewriteStats;
 class Scheduler;
-class StaticJavascriptManager;
+class StaticAssetManager;
 class Statistics;
 class ThreadSystem;
 class Timer;
@@ -68,7 +71,7 @@ class RewriteDriverFactory {
   // Helper for users of defer_cleanup; see below.
   template<class T> class Deleter;
 
-  enum WorkerPoolName {
+  enum WorkerPoolCategory {
     kHtmlWorkers,
     kRewriteWorkers,
     kLowPriorityRewriteWorkers,
@@ -134,7 +137,8 @@ class RewriteDriverFactory {
   // been called.
   void set_base_url_fetcher(UrlFetcher* url_fetcher);
   void set_base_url_async_fetcher(UrlAsyncFetcher* url_fetcher);
-
+  // Takes ownership of distributed_fetcher.
+  void set_base_distributed_async_fetcher(UrlAsyncFetcher* distributed_fetcher);
   bool set_filename_prefix(StringPiece p);
 
   // Determines whether Slurping is enabled.
@@ -149,28 +153,31 @@ class RewriteDriverFactory {
   FilenameEncoder* filename_encoder() { return filename_encoder_.get(); }
   UrlNamer* url_namer();
   UserAgentMatcher* user_agent_matcher();
-  StaticJavascriptManager* static_javascript_manager();
+  StaticAssetManager* static_asset_manager();
   RewriteOptions* default_options() { return default_options_.get(); }
 
   // These accessors are *not* thread-safe.  They must be called once prior
   // to forking threads, e.g. via ComputeUrlFetcher().
   Timer* timer();
   NamedLockManager* lock_manager();
-  QueuedWorkerPool* WorkerPool(WorkerPoolName pool);
+  QueuedWorkerPool* WorkerPool(WorkerPoolCategory pool);
   Scheduler* scheduler();
   UsageDataReporter* usage_data_reporter();
 
-  // Computes URL fetchers using the based fetcher, and optionally,
+  // Computes URL fetchers using the base fetcher, and optionally,
   // slurp_directory and slurp_read_only.  These are not thread-safe;
   // they must be called once prior to spawning threads, e.g. via
   // CreateServerContext.
   virtual UrlFetcher* ComputeUrlFetcher();
   virtual UrlAsyncFetcher* ComputeUrlAsyncFetcher();
+  virtual UrlAsyncFetcher* ComputeDistributedFetcher();
 
   // Threadsafe mechanism to create a managed ServerContext.  The
   // ServerContext is owned by the factory, and should not be
   // deleted directly.  Currently it is not possible to delete a
   // server context except by deleting the entire factory.
+  //
+  // Implemented in terms of NewServerContext().
   ServerContext* CreateServerContext();
 
   // Initializes a ServerContext that has been new'd directly.  This
@@ -183,6 +190,11 @@ class RewriteDriverFactory {
   // set_http_cache, set_metadata_cache, set_filesystem_metadata_cache, and
   // MakePropertyCaches.
   virtual void SetupCaches(ServerContext* server_context) = 0;
+
+  // Returns true if this platform uses beacon-based measurements to make
+  // run-time decisions.  This is used to determine how to configure various
+  // beacon-based filters.
+  virtual bool UseBeaconResultsInFilters() const = 0;
 
   // Provides an optional hook for adding rewrite passes to the HTML filter
   // chain.  This should be used for filters that are specific to a particular
@@ -277,6 +289,22 @@ class RewriteDriverFactory {
   // a specific furious experiment.
   virtual FuriousMatcher* NewFuriousMatcher();
 
+  // Returns the preferred webp image quality vector for client options.
+  const std::vector<int>* preferred_webp_qualities() {
+    return &preferred_webp_qualities_;
+  }
+
+  // Returns the preferred jpeg image quality vector for client options.
+  const std::vector<int>* preferred_jpeg_qualities() {
+    return &preferred_jpeg_qualities_;
+  }
+
+  // Returns true if the correct number of WebP qualities are parsed and set.
+  bool SetPreferredWebpQualities(const StringPiece& qualities);
+
+  // Returns true if the correct number of JPEG qualities are parsed and set.
+  bool SetPreferredJpegQualities(const StringPiece& qualities);
+
  protected:
   bool FetchersComputed() const;
   virtual void StopCacheActivity();
@@ -299,10 +327,22 @@ class RewriteDriverFactory {
 
   virtual Hasher* NewHasher() = 0;
 
+  // Creates a new ServerContext* object.  ServerContexst itself must be
+  // overridden per Factory as it has at least one pure virtual method.
+  virtual ServerContext* NewServerContext() = 0;
+
+  virtual UrlAsyncFetcher* DefaultDistributedUrlFetcher() { return NULL; }
+
+  virtual CriticalCssFinder* DefaultCriticalCssFinder();
   virtual CriticalImagesFinder* DefaultCriticalImagesFinder();
+  virtual CriticalSelectorFinder* DefaultCriticalSelectorFinder();
 
   // Default implementation returns NULL.
   virtual BlinkCriticalLineDataFinder* DefaultBlinkCriticalLineDataFinder(
+      PropertyCache* cache);
+
+  // Default implementation returns NULL.
+  virtual CacheHtmlInfoFinder* DefaultCacheHtmlInfoFinder(
       PropertyCache* cache);
 
   // Default implementation returns NULL.
@@ -322,7 +362,8 @@ class RewriteDriverFactory {
   // Subclasses can override this to create an appropriately-sized thread
   // pool for their environment. The default implementation will always
   // make one with a single thread.
-  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolName name);
+  virtual QueuedWorkerPool* CreateWorkerPool(WorkerPoolCategory pool,
+                                             StringPiece name);
 
   // Subclasses can override this method to request load-shedding to happen
   // if the low-priority work pool has too many inactive sequences queued up
@@ -344,15 +385,15 @@ class RewriteDriverFactory {
   // filename_prefix()
   virtual StringPiece LockFilePrefix();
 
-  // Initializes the StaticJavascriptManager.
-  virtual void InitStaticJavascriptManager(
-      StaticJavascriptManager* static_js_manager) {}
+  // Initializes the StaticAssetManager.
+  virtual void InitStaticAssetManager(
+      StaticAssetManager* static_asset_manager) {}
 
  private:
-  // Creates a StaticJavascriptManager instance. Default implementation creates
-  // an instance that disables serving of filter javascript via gstatic
+  // Creates a StaticAssetManager instance. Default implementation creates an
+  // instance that disables serving of filter javascript via gstatic
   // (gstatic.com is the domain google uses for serving static content).
-  StaticJavascriptManager* DefaultStaticJavascriptManager();
+  StaticAssetManager* DefaultStaticAssetManager();
 
   void SetupSlurpDirectories();
   void Init();  // helper-method for constructors.
@@ -362,13 +403,15 @@ class RewriteDriverFactory {
   scoped_ptr<FileSystem> file_system_;
   UrlFetcher* url_fetcher_;
   UrlAsyncFetcher* url_async_fetcher_;
+  UrlAsyncFetcher* distributed_async_fetcher_;
   scoped_ptr<UrlFetcher> base_url_fetcher_;
   scoped_ptr<UrlAsyncFetcher> base_url_async_fetcher_;
+  scoped_ptr<UrlAsyncFetcher> base_distributed_async_fetcher_;
   scoped_ptr<Hasher> hasher_;
   scoped_ptr<FilenameEncoder> filename_encoder_;
   scoped_ptr<UrlNamer> url_namer_;
   scoped_ptr<UserAgentMatcher> user_agent_matcher_;
-  scoped_ptr<StaticJavascriptManager> static_javascript_manager_;
+  scoped_ptr<StaticAssetManager> static_asset_manager_;
   scoped_ptr<Timer> timer_;
   scoped_ptr<Scheduler> scheduler_;
   scoped_ptr<UsageDataReporter> usage_data_reporter_;
@@ -416,6 +459,13 @@ class RewriteDriverFactory {
 
   // The hostname we're running on. Used to set the same field in ServerContext.
   GoogleString hostname_;
+
+  // Image qualities used for client options.
+  // Each vector contains 5 integers used as recompression qualities for
+  // quality preference and screen resolution combinations.
+  // Note that the default values cannot be changed in Apache currently.
+  std::vector<int> preferred_webp_qualities_;
+  std::vector<int> preferred_jpeg_qualities_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverFactory);
 };
