@@ -230,6 +230,16 @@ http {
     pagespeed MapProxyDomain localhost:@@PRIMARY_PORT@@/pss_images
                              http://ref.pssdemos.com/filter/images;
 
+    location /ngx_pagespeed_statistics {
+      allow 127.0.0.1;
+      deny all;
+    }
+
+    location /ngx_pagespeed_message {
+      allow 127.0.0.1;
+      deny all;
+    }
+
     location ~ \.php$ {
       fastcgi_param SCRIPT_FILENAME $request_filename;
       fastcgi_param QUERY_STRING $query_string;

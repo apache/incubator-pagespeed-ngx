@@ -45,6 +45,8 @@ extern "C" {
 
 #include "ngx_pagespeed.h"
 
+#include "ngx_server_context.h"
+
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/headers.h"
 #include "net/instaweb/util/public/string.h"
@@ -54,6 +56,7 @@ namespace net_instaweb {
 class NgxBaseFetch : public AsyncFetch {
  public:
   NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
+               NgxServerContext* server_context,
                const RequestContextPtr& request_ctx);
   virtual ~NgxBaseFetch();
 
@@ -113,6 +116,7 @@ class NgxBaseFetch : public AsyncFetch {
 
   ngx_http_request_t* request_;
   GoogleString buffer_;
+  NgxServerContext* server_context_;
   bool done_called_;
   bool last_buf_sent_;
   int pipe_fd_;
