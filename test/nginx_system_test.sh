@@ -145,6 +145,29 @@ source $SYSTEM_TEST_FILE
 
 STATISTICS_URL=http://$HOSTNAME/ngx_pagespeed_statistics
 
+# Define a mechanism to start a test before the cache-flush and finish it
+# after the cache-flush.  This mechanism is preferable to flushing cache
+# within a test as that requires waiting 5 seconds for the poll, so we'd
+# like to limit the number of cache flushes and exploit it on behalf of
+# multiple tests.
+
+# Variable holding a space-separated lists of bash functions to run after
+# flushing cache.
+post_cache_flush_test=""
+
+# Adds a new function to run after cache flush.
+function on_cache_flush() {
+  post_cache_flush_test+=" $1"
+}
+
+# Called after cache-flush to run all the functions specified to
+# on_cache_flush.
+function run_post_cache_flush() {
+  for test in $post_cache_flush_test; do
+    $test
+  done
+}
+
 # nginx-specific system tests
 
 start_test Check for correct default X-Page-Speed header format.
@@ -219,110 +242,6 @@ HEADERS="--header=X-Forwarded-Proto:https --header=Host:xfp.example.com"
 check $WGET_DUMP -O $FETCHED $HEADERS $URL
 # When enabled, we respect X-Forwarded-Proto and thus list base as https.
 check fgrep -q '<base href="https://' $FETCHED
-
-# Several cache flushing tests.
-
-start_test Touching cache.flush flushes the cache.
-
-# If we write fixed values into the css file here, there is a risk that
-# we will end up seeing the 'right' value because an old process hasn't
-# invalidated things yet, rather than because it updated to what we expect
-# in the first run followed by what we expect in the second run.
-# So, we incorporate the timestamp into RGB colors, using hours
-# prefixed with 1 (as 0-123 fits the 0-255 range) to get a second value.
-# A one-second precision is good enough since there is a sleep 2 below.
-COLOR_SUFFIX=`date +%H,%M,%S\)`
-COLOR0=rgb\($COLOR_SUFFIX
-COLOR1=rgb\(1$COLOR_SUFFIX
-
-# We test on three different cache setups:
-#
-#   1. A virtual host using the normal FileCachePath.
-#   2. Another virtual host with a different FileCachePath.
-#   3. Another virtual host with a different CacheFlushFilename.
-#
-# This means we need to repeat many of the steps three times.
-
-echo "Clear out our existing state before we begin the test."
-check touch "$FILE_CACHE/cache.flush"
-check touch "$FILE_CACHE/othercache.flush"
-check touch "$SECONDARY_CACHE/cache.flush"
-sleep 1
-
-CSS_FILE="$SERVER_ROOT/mod_pagespeed_test/update.css"
-echo ".class myclass { color: $COLOR0; }" > "$CSS_FILE"
-
-URL_PATH="mod_pagespeed_test/cache_flush_test.html"
-
-URL="$SECONDARY_HOSTNAME/$URL_PATH"
-CACHE_A="--header=Host:cache_a.example.com"
-fetch_until $URL "grep -c $COLOR0" 1 $CACHE_A
-
-CACHE_B="--header=Host:cache_b.example.com"
-fetch_until $URL "grep -c $COLOR0" 1 $CACHE_B
-
-CACHE_C="--header=Host:cache_c.example.com"
-fetch_until $URL "grep -c $COLOR0" 1 $CACHE_C
-
-# All three caches are now populated.
-
-# TODO(jefftk): Check statistics here.  In apache_system_test.sh we can track
-# reported flushed by looking at statistics, but this isn't ported to nginx
-# yet.  Once that is ported, come back here and make sure it's correct.
-
-# Now change the file to $COLOR1.
-echo ".class myclass { color: $COLOR1; }" > "$CSS_FILE"
-
-# We expect to have a stale cache for 5 minutes, so the result should stay
-# $COLOR0.  This only works because we have only one worker process.  If we had
-# more than one then the worker process handling this request might be different
-# than the one that got the previous one, and it wouldn't be in cache.
-OUT="$($WGET_DUMP $CACHE_A "$URL")"
-check_from "$OUT" fgrep $COLOR0
-
-OUT="$($WGET_DUMP $CACHE_B "$URL")"
-check_from "$OUT" fgrep $COLOR0
-
-OUT="$($WGET_DUMP $CACHE_C "$URL")"
-check_from "$OUT" fgrep $COLOR0
-
-# Flush the cache by touching a special file in the cache directory.  Now
-# css gets re-read and we get $COLOR1 in the output.  Sleep here to avoid
-# a race due to 1-second granularity of file-system timestamp checks.  For
-# the test to pass we need to see time pass from the previous 'touch'.
-#
-# The three vhosts here all have CacheFlushPollIntervalSec set to 1.
-
-sleep 2
-check touch "$FILE_CACHE/cache.flush"
-sleep 1
-
-# Check that CACHE_A flushed properly.
-fetch_until $URL "grep -c $COLOR1" 1 $CACHE_A
-
-start_test Flushing one cache does not flush all caches.
-
-# Check that CACHE_B and CACHE_C are still serving a stale version.
-OUT="$($WGET_DUMP $CACHE_B "$URL")"
-check_from "$OUT" fgrep $COLOR0
-
-OUT="$($WGET_DUMP $CACHE_C "$URL")"
-check_from "$OUT" fgrep $COLOR0
-
-start_test Secondary caches also flush.
-
-# Now flush the other two files so they can see the color change.
-check touch "$FILE_CACHE/othercache.flush"
-check touch "$SECONDARY_CACHE/cache.flush"
-sleep 1
-
-# Check that CACHE_B and C flushed properly.
-fetch_until $URL "grep -c $COLOR1" 1 $CACHE_B
-fetch_until $URL "grep -c $COLOR1" 1 $CACHE_C
-
-# Clean up update.css from mod_pagespeed_test so it doesn't leave behind
-# a stray file not under source control.
-rm -f $CSS_FILE
 
 # Test RetainComment directive.
 test_filter remove_comments retains appropriate comments.
@@ -724,5 +643,228 @@ check_from "$OUT" grep 'VHost-Specific Statistics'
 start_test scrape stats works
 
 check test $(scrape_stat image_rewrite_total_original_bytes) -ge 10000
+
+start_test Embed image configuration in rewritten image URL.
+
+# The apache test names these virtual hosts as embed_config_*, which is
+# unfortunate as underscores are not allowed in domain names.  Apache doesn't
+# care, and nginx doesn't either, except when you're proxying.  So you can do:
+#
+#    GET /embed_config.html HTTP/1.1
+#    Host: embed_config_html.example.com
+#
+# and it will work fine, but if you do:
+#
+#    GET http://embed_config_html.example.com/embed_config.html HTTP/1.1
+#
+# then nginx will close the connection before you can even give it a Host
+# header.  I've modified this test code to replace embed_config_ with
+# embed-config-, but the html file on disk has the underscore versions.  Let's
+# make a new html file that has the hyphen version:
+cat "$SERVER_ROOT/mod_pagespeed_test/embed_config.html" | \
+  sed s/embed_config_/embed-config-/g > \
+  "$SERVER_ROOT/mod_pagespeed_test/embed-config.html"
+
+# The embedded configuration is placed between the "pagespeed" and "ic", e.g.
+# *xPuzzle.jpg.pagespeed.gp+jp+pj+js+rj+rp+rw+ri+cp+md+iq=73.ic.oFXPiLYMka.jpg
+# We use a regex matching "gp+jp+pj+js+rj+rp+rw+ri+cp+md+iq=73" rather than
+# spelling it out to avoid test regolds when we add image filter IDs.
+WGET_ARGS="--save-headers"
+http_proxy=$SECONDARY_HOSTNAME fetch_until -save -recursive \
+    http://embed-config-html.example.com/embed-config.html \
+    'fgrep -c .pagespeed.' 3
+
+# with the default rewriters in vhost embed-config-resources.example.com
+# the image will be >200k.  But by enabling resizing & compression 73
+# as specified in the HTML domain, and transmitting that configuration via
+# image URL query param, the image file (including headers) is 8341 bytes.
+# We check against 10000 here so this test isn't sensitive to
+# image-compression tweaks (we have enough of those elsewhere).
+check_file_size "$OUTDIR/256x192xPuz*.pagespeed.*iq=*.ic.*" -lt 10000
+
+# The CSS file gets rewritten with embedded options, and will have an
+# embedded image in it as well.
+check_file_size "$OUTDIR/*rewrite_css_images.css.pagespeed.*+ii+*+iq=*.cf.*" \
+    -lt 600
+
+# The JS file is rewritten but has no related options set, so it will
+# not get the embedded options between "pagespeed" and "jm".
+check_file_size "$OUTDIR/rewrite_javascript.js.pagespeed.jm.*.js" -lt 500
+
+# Count how many bytes there are of body, skipping the initial headers
+function body_size {
+  fname="$1"
+  tail -n+$(($(extract_headers $fname | wc -l) + 1)) $fname | wc -c
+}
+
+# One flaw in the above test is that it short-circuits the decoding
+# of the query-params because when pagespeed responds to the recursive
+# wget fetch of the image, it finds the rewritten resource in the
+# cache.  The two vhosts are set up with the same cache.  If they
+# had different caches we'd have a different problem, which is that
+# the first load of the image-rewrite from the resource vhost would
+# not be resized.  To make sure the decoding path works, we'll
+# "finish" this test below after performing a cache flush, saving
+# the encoded image and expected size.
+EMBED_CONFIGURATION_IMAGE="http://embed-config-resources.example.com/images/"
+EMBED_CONFIGURATION_IMAGE_TAIL=$(ls $OUTDIR | grep 256x192xPuz | grep iq=)
+EMBED_CONFIGURATION_IMAGE+="$EMBED_CONFIGURATION_IMAGE_TAIL"
+EMBED_CONFIGURATION_IMAGE_LENGTH=$(
+  body_size "$OUTDIR/$EMBED_CONFIGURATION_IMAGE_TAIL")
+
+# Grab the URL for the CSS file.
+EMBED_CONFIGURATION_CSS_LEAF=$(ls $OUTDIR | \
+    grep '\.pagespeed\..*+ii+.*+iq=.*\.cf\..*')
+EMBED_CONFIGURATION_CSS_LENGTH=$(
+  body_size $OUTDIR/$EMBED_CONFIGURATION_CSS_LEAF)
+
+EMBED_CONFIGURATION_CSS_URL="http://embed-config-resources.example.com/styles"
+EMBED_CONFIGURATION_CSS_URL+="/$EMBED_CONFIGURATION_CSS_LEAF"
+
+# Grab the URL for that embedded image; it should *also* have the embedded
+# configuration options in it, though wget/recursive will not have pulled
+# it to a file for us (wget does not parse CSS) so we'll have to request it.
+EMBED_CONFIGURATION_CSS_IMAGE=$OUTDIR/*images.css.pagespeed.*+ii+*+iq=*.cf.*
+EMBED_CONFIGURATION_CSS_IMAGE_URL=$(egrep -o \
+  'http://.*iq=[0-9]*\.ic\..*\.jpg' \
+  $EMBED_CONFIGURATION_CSS_IMAGE)
+# fetch that file and make sure it has the right cache-control
+http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+   $EMBED_CONFIGURATION_CSS_IMAGE_URL > "$OUTDIR/img"
+CSS_IMAGE_HEADERS=$(head -10 "$OUTDIR/img")
+check_from "$CSS_IMAGE_HEADERS" fgrep -q "Cache-Control: max-age=31536000"
+EMBED_CONFIGURATION_CSS_IMAGE_LENGTH=$(body_size "$OUTDIR/img")
+
+function embed_image_config_post_flush() {
+  # Finish off the url-params-.pagespeed.-resource tests with a clear
+  # cache.  We split the test like this to avoid having multiple
+  # places where we flush cache, which requires sleeps since the
+  # cache-flush is poll driven.
+  start_test Embed image/css configuration decoding with clear cache.
+  WGET_ARGS=""
+  echo Looking for $EMBED_CONFIGURATION_IMAGE expecting \
+      $EMBED_CONFIGURATION_IMAGE_LENGTH bytes
+  http_proxy=$SECONDARY_HOSTNAME fetch_until "$EMBED_CONFIGURATION_IMAGE" \
+      "wc -c" $EMBED_CONFIGURATION_IMAGE_LENGTH
+
+  echo Looking for $EMBED_CONFIGURATION_CSS_IMAGE_URL expecting \
+      $EMBED_CONFIGURATION_CSS_IMAGE_LENGTH bytes
+  http_proxy=$SECONDARY_HOSTNAME fetch_until \
+      "$EMBED_CONFIGURATION_CSS_IMAGE_URL" \
+      "wc -c" $EMBED_CONFIGURATION_CSS_IMAGE_LENGTH
+
+  echo Looking for $EMBED_CONFIGURATION_CSS_URL expecting \
+      $EMBED_CONFIGURATION_CSS_LENGTH bytes
+  http_proxy=$SECONDARY_HOSTNAME fetch_until \
+      "$EMBED_CONFIGURATION_CSS_URL" \
+      "wc -c" $EMBED_CONFIGURATION_CSS_LENGTH
+}
+on_cache_flush embed_image_config_post_flush
+
+# Several cache flushing tests.
+
+start_test Touching cache.flush flushes the cache.
+
+# If we write fixed values into the css file here, there is a risk that
+# we will end up seeing the 'right' value because an old process hasn't
+# invalidated things yet, rather than because it updated to what we expect
+# in the first run followed by what we expect in the second run.
+# So, we incorporate the timestamp into RGB colors, using hours
+# prefixed with 1 (as 0-123 fits the 0-255 range) to get a second value.
+# A one-second precision is good enough since there is a sleep 2 below.
+COLOR_SUFFIX=`date +%H,%M,%S\)`
+COLOR0=rgb\($COLOR_SUFFIX
+COLOR1=rgb\(1$COLOR_SUFFIX
+
+# We test on three different cache setups:
+#
+#   1. A virtual host using the normal FileCachePath.
+#   2. Another virtual host with a different FileCachePath.
+#   3. Another virtual host with a different CacheFlushFilename.
+#
+# This means we need to repeat many of the steps three times.
+
+echo "Clear out our existing state before we begin the test."
+check touch "$FILE_CACHE/cache.flush"
+check touch "$FILE_CACHE/othercache.flush"
+check touch "$SECONDARY_CACHE/cache.flush"
+sleep 1
+
+CSS_FILE="$SERVER_ROOT/mod_pagespeed_test/update.css"
+echo ".class myclass { color: $COLOR0; }" > "$CSS_FILE"
+
+URL_PATH="mod_pagespeed_test/cache_flush_test.html"
+
+URL="$SECONDARY_HOSTNAME/$URL_PATH"
+CACHE_A="--header=Host:cache_a.example.com"
+fetch_until $URL "grep -c $COLOR0" 1 $CACHE_A
+
+CACHE_B="--header=Host:cache_b.example.com"
+fetch_until $URL "grep -c $COLOR0" 1 $CACHE_B
+
+CACHE_C="--header=Host:cache_c.example.com"
+fetch_until $URL "grep -c $COLOR0" 1 $CACHE_C
+
+# All three caches are now populated.
+
+# TODO(jefftk): Check statistics here.  In apache_system_test.sh we can track
+# reported flushed by looking at statistics, but this isn't ported to nginx
+# yet.  Once that is ported, come back here and make sure it's correct.
+
+# Now change the file to $COLOR1.
+echo ".class myclass { color: $COLOR1; }" > "$CSS_FILE"
+
+# We expect to have a stale cache for 5 minutes, so the result should stay
+# $COLOR0.  This only works because we have only one worker process.  If we had
+# more than one then the worker process handling this request might be different
+# than the one that got the previous one, and it wouldn't be in cache.
+OUT="$($WGET_DUMP $CACHE_A "$URL")"
+check_from "$OUT" fgrep $COLOR0
+
+OUT="$($WGET_DUMP $CACHE_B "$URL")"
+check_from "$OUT" fgrep $COLOR0
+
+OUT="$($WGET_DUMP $CACHE_C "$URL")"
+check_from "$OUT" fgrep $COLOR0
+
+# Flush the cache by touching a special file in the cache directory.  Now
+# css gets re-read and we get $COLOR1 in the output.  Sleep here to avoid
+# a race due to 1-second granularity of file-system timestamp checks.  For
+# the test to pass we need to see time pass from the previous 'touch'.
+#
+# The three vhosts here all have CacheFlushPollIntervalSec set to 1.
+
+sleep 2
+check touch "$FILE_CACHE/cache.flush"
+sleep 1
+
+# Check that CACHE_A flushed properly.
+fetch_until $URL "grep -c $COLOR1" 1 $CACHE_A
+
+start_test Flushing one cache does not flush all caches.
+
+# Check that CACHE_B and CACHE_C are still serving a stale version.
+OUT="$($WGET_DUMP $CACHE_B "$URL")"
+check_from "$OUT" fgrep $COLOR0
+
+OUT="$($WGET_DUMP $CACHE_C "$URL")"
+check_from "$OUT" fgrep $COLOR0
+
+start_test Secondary caches also flush.
+
+# Now flush the other two files so they can see the color change.
+check touch "$FILE_CACHE/othercache.flush"
+check touch "$SECONDARY_CACHE/cache.flush"
+sleep 1
+
+# Check that CACHE_B and C flushed properly.
+fetch_until $URL "grep -c $COLOR1" 1 $CACHE_B
+fetch_until $URL "grep -c $COLOR1" 1 $CACHE_C
+
+# Clean up update.css from mod_pagespeed_test so it doesn't leave behind
+# a stray file not under source control.
+rm -f $CSS_FILE
+
+run_post_cache_flush
 
 check_failures_and_exit

@@ -26,7 +26,7 @@ http {
     server_name mpd.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
 
-    pagespeed MapProxyDomain mpd.example.com:@@SECONDARY_PORT@@/pss_images
+    pagespeed MapProxyDomain mpd.example.com/pss_images
                              http://ref.pssdemos.com/filter/images;
   }
 
@@ -77,6 +77,45 @@ http {
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
     pagespeed RespectXForwardedProto on;
+  }
+
+
+  # Support for embedded configurations, where image flags in the
+  # VirtualHost serving HTML is not the same as the one serving resources,
+  # and thus we must embed the image flags in the rewritten image URLs.
+  #
+  # Note that we test with two distinct caches.
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name embed-config-html.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    root "@@SERVER_ROOT@@/mod_pagespeed_test";
+
+    pagespeed AddOptionsToUrls on;
+    pagespeed JpegRecompressionQuality 73;
+    pagespeed DisableFilters inline_css,extend_cache,inline_javascript;
+    pagespeed Domain embed-config-resources.example.com;
+
+    pagespeed LoadFromFile "http://embed-config-resources.example.com/"
+      "@@SERVER_ROOT@@/mod_pagespeed_example/";
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name embed-config-resources.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    root "@@SERVER_ROOT@@/mod_pagespeed_example";
+
+    pagespeed AddOptionsToUrls on;
+
+    # Note that we do not set the jpeg quality here, but take
+    # it from image URL query parameters that we synthesize in
+    # from embed-config-html.example.com.
+
+    pagespeed LoadFromFile "http://embed-config-resources.example.com/"
+      "@@SERVER_ROOT@@/mod_pagespeed_example/";
   }
 
   server {
