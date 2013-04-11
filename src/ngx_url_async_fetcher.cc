@@ -68,7 +68,7 @@ namespace net_instaweb {
     fetch_timeout_ = fetch_timeout;
     ngx_memzero(&url_, sizeof(url_));
     if (proxy != NULL && *proxy != '\0') {
-      url_.url.data = reinterpret_cast<u_char *>(proxy);
+      url_.url.data = reinterpret_cast<u_char*>(const_cast<char*>(proxy));
       url_.url.len = ngx_strlen(proxy);
     }
     mutex_ = thread_system_->NewMutex();

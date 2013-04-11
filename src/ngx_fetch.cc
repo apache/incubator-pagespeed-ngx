@@ -238,12 +238,12 @@ namespace net_instaweb {
     str_url_.copy(reinterpret_cast<char*>(url_.url.data), str_url_.length(), 0);
     size_t scheme_offset;
     u_short port;
-    if (ngx_strncasecmp(url_.url.data,
-                        reinterpret_cast<u_char*>("http://"), 7) == 0) {
+    if (ngx_strncasecmp(url_.url.data, reinterpret_cast<u_char*>(
+                                     const_cast<char*>("http://")), 7) == 0) {
       scheme_offset = 7;
       port = 80;
-    } else if (ngx_strncasecmp(url_.url.data,
-                               reinterpret_cast<u_char*>("https://"), 8) == 0) {
+    } else if (ngx_strncasecmp(url_.url.data, reinterpret_cast<u_char*>(
+                                    const_cast<char*>("https://")), 8) == 0) {
       scheme_offset = 8;
       port = 443;
     } else {
