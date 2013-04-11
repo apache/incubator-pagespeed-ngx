@@ -23,6 +23,7 @@
 
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/public/css_util.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -178,6 +179,13 @@ void CriticalCssBeaconFilter::SummariesDone() {
   if (critical_css_beacon_added_count_ != NULL) {
     critical_css_beacon_added_count_->Add(1);
   }
+}
+
+void CriticalCssBeaconFilter::DetermineEnabled() {
+  // Currently CriticalSelectorFilter can't deal with IE conditional comments,
+  // so we disable ourselves for IE.
+  // Note: this should match the logic in CriticalSelectorFilter.
+  set_is_enabled(!driver_->user_agent_matcher()->IsIe(driver_->user_agent()));
 }
 
 void CriticalCssBeaconFilter::FindSelectorsFromRuleset(

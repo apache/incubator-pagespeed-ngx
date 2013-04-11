@@ -20,6 +20,7 @@
 
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
+#include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -126,10 +127,24 @@ TEST_F(CriticalSelectorFilterTest, BasicOperation) {
       "<body><div>Stuff</div></body>");
 
   ValidateExpected(
-      "foo", html,
+      "basic", html,
       StrCat("<head>", critical_css, "</head>",
              "<body><div>Stuff</div></body>",
              LoadRestOfCss(css)));
+}
+
+TEST_F(CriticalSelectorFilterTest, DisabledForIE) {
+  rewrite_driver()->SetUserAgent(UserAgentStrings::kIe7UserAgent);
+  GoogleString css = StrCat(
+      "<style>*,p {display: none; } span {display: inline; }</style>",
+      CssLinkHref("a.css"),
+      CssLinkHref("b.css"));
+  GoogleString html = StrCat(
+      "<head>",
+      css,
+      "</head>"
+      "<body><div>Stuff</div></body>");
+  ValidateNoChanges("on_ie", html);
 }
 
 TEST_F(CriticalSelectorFilterTest, NoScript) {

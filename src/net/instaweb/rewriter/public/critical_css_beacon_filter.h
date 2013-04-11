@@ -64,6 +64,8 @@ class CriticalCssBeaconFilter : public CssSummarizerBase {
                          GoogleString* out) const;
   virtual void SummariesDone();
 
+  virtual void DetermineEnabled();
+
  private:
   static void FindSelectorsFromRuleset(const Css::Ruleset& ruleset,
                                        StringSet* selectors);

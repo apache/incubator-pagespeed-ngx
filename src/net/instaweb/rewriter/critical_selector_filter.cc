@@ -28,10 +28,10 @@
 #include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_node.h"
 #include "net/instaweb/htmlparse/public/html_parse.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/critical_selectors.pb.h"
 #include "net/instaweb/rewriter/public/css_minify.h"
 #include "net/instaweb/rewriter/public/css_util.h"
-#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -39,6 +39,7 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/hasher.h"
+#include "net/instaweb/util/public/null_message_handler.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -418,7 +419,17 @@ void CriticalSelectorFilter::EndDocument() {
 }
 
 void CriticalSelectorFilter::DetermineEnabled() {
-  bool can_run = (driver_->CriticalSelectors() != NULL);
+  // We shouldn't do anything if there is no information on critical selectors
+  // in the property cache. Unfortunately, we also cannot run safely in case of
+  // IE, since we do not understand IE conditional comments well enough to
+  // replicate their behavior in the load-everything section.
+  // TODO(morlovich): IE10 in strict mode disables the conditional comments
+  // feature; but the strict mode is determined by combination of doctype and
+  // X-UA-Compatible, which can come in both meta and header flavors. Once we
+  // have a good way of detecting this case, we can enable us for strict IE10.
+  // Note: the UA logic should be the same in CriticalCssBeaconFilter.
+  bool can_run = (driver_->CriticalSelectors() != NULL) &&
+                 !driver_->user_agent_matcher()->IsIe(driver_->user_agent());
   set_is_enabled(can_run);
 }
 

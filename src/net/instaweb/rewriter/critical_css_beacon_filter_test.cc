@@ -18,6 +18,7 @@
 
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
+#include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/public/critical_css_beacon_filter.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -121,6 +122,12 @@ TEST_F(CriticalCssBeaconFilterTest, ExtractFromInlineStyle) {
       StringPrintf(kHtmlTemplate, kInlineStyle,
                    BeaconScriptFor("\"a\",\"p\"").c_str());
   ValidateExpectedUrl(kTestDomain, input_html, output_html);
+}
+
+TEST_F(CriticalCssBeaconFilterTest, DisabledForIE) {
+  rewrite_driver()->SetUserAgent(UserAgentStrings::kIe7UserAgent);
+  GoogleString input_html = StringPrintf(kHtmlTemplate, kInlineStyle, "");
+  ValidateNoChanges(kTestDomain, input_html);
 }
 
 TEST_F(CriticalCssBeaconFilterTest, ExtractFromUnopt) {
