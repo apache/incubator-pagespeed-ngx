@@ -276,6 +276,7 @@ class RewriteOptions {
     kMinImageSizeLowResolutionBytes,
     kMinResourceCacheTimeToRewriteMs,
     kModifyCachingHeaders,
+    kNonCacheablesForCachePartialHtml,
     kObliviousPagespeedUrls,
     kOverrideBlinkCacheTimeMs,
     kOverrideCachingTtlMs,
@@ -2030,6 +2031,13 @@ class RewriteOptions {
     return allow_logging_urls_in_log_record_.value();
   }
 
+  void set_non_cacheables_for_cache_partial_html(const StringPiece& p) {
+    set_option(p.as_string(), &non_cacheables_for_cache_partial_html_);
+  }
+  const GoogleString& non_cacheables_for_cache_partial_html() const {
+    return non_cacheables_for_cache_partial_html_.value();
+  }
+
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this' (except that
   // filters forbidden in 'this' cannot be enabled by 'src'), although
@@ -3143,6 +3151,9 @@ class RewriteOptions {
 
   // Whether to allow logging urls as part of LogRecord.
   Option<bool> allow_logging_urls_in_log_record_;
+
+  // Non cacheables used when partial HTML is cached.
+  Option<GoogleString> non_cacheables_for_cache_partial_html_;
 
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,

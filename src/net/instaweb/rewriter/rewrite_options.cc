@@ -1438,6 +1438,12 @@ void RewriteOptions::AddProperties() {
       "alulr", kAllowLoggingUrlsInLogRecord, kDirectoryScope,
       NULL);   // Not applicable for mod_pagespeed.
 
+  AddBaseProperty(
+      "", &RewriteOptions::non_cacheables_for_cache_partial_html_, "nccp",
+      kNonCacheablesForCachePartialHtml,
+      kDirectoryScope,
+      NULL);  // Not applicable for mod_pagespeed.
+
   // Test-only, so no enum.
   AddRequestProperty(
       false, &RewriteOptions::test_instant_fetch_rewrite_deadline_, "tifrwd");

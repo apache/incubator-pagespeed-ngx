@@ -118,6 +118,7 @@ struct OptionName {
 "MetadataCacheStalenessThresholdMs",     RewriteOptions::kMetadataCacheStalenessThresholdMs
 "MinImageSizeLowResolutionBytes",        RewriteOptions::kMinImageSizeLowResolutionBytes
 "MinResourceCacheTimeToRewriteMs",       RewriteOptions::kMinResourceCacheTimeToRewriteMs
+"NonCacheablesForCachePartialHtml",      RewriteOptions::kNonCacheablesForCachePartialHtml
 "ModifyCachingHeaders",                  RewriteOptions::kModifyCachingHeaders
 "ObliviousPagespeedUrls",                RewriteOptions::kObliviousPagespeedUrls
 "OverrideCachingTtlMs",                  RewriteOptions::kOverrideCachingTtlMs
