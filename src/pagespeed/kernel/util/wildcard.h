@@ -15,8 +15,8 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //         jmaessen@google.com (Jan-Willem Maessen)
 
-#ifndef THIRD_PARTY_INSTAWEB_UTIL_WILDCARD_H_
-#define THIRD_PARTY_INSTAWEB_UTIL_WILDCARD_H_
+#ifndef PAGESPEED_KERNEL_UTIL_WILDCARD_H_
+#define PAGESPEED_KERNEL_UTIL_WILDCARD_H_
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
@@ -63,4 +63,4 @@ class Wildcard {
 
 }  // namespace net_instaweb
 
-#endif  // THIRD_PARTY_INSTAWEB_UTIL_WILDCARD_H_
+#endif  // PAGESPEED_KERNEL_UTIL_WILDCARD_H_

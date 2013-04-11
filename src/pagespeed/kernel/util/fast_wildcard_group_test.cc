@@ -16,7 +16,7 @@
 
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
-#include "third_party/instaweb/util/fast_wildcard_group.h"
+#include "pagespeed/kernel/util/fast_wildcard_group.h"
 
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/gtest.h"

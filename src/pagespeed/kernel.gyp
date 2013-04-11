@@ -18,8 +18,8 @@
       'target_name': 'util',
       'type': '<(library)',
       'sources': [
-        'util/fast_wildcard_group.cc',
-        'util/wildcard.cc',
+        'kernel/util/fast_wildcard_group.cc',
+        'kernel/util/wildcard.cc',
       ],
       'include_dirs': [
         '<(DEPTH)',

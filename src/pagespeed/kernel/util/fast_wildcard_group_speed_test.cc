@@ -21,8 +21,8 @@
 #include "net/instaweb/util/public/benchmark.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/string_util.h"
-#include "third_party/instaweb/util/fast_wildcard_group.h"
-#include "third_party/instaweb/util/wildcard_group.h"
+#include "pagespeed/kernel/util/fast_wildcard_group.h"
+#include "pagespeed/kernel/util/wildcard_group.h"
 
 
 namespace net_instaweb {

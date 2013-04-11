@@ -16,8 +16,8 @@
 
 // Author: jmaessen@google.com (Jan-Willem Maessen)
 
-#ifndef THIRD_PARTY_INSTAWEB_UTIL_FAST_WILDCARD_GROUP_H_
-#define THIRD_PARTY_INSTAWEB_UTIL_FAST_WILDCARD_GROUP_H_
+#ifndef PAGESPEED_KERNEL_UTIL_FAST_WILDCARD_GROUP_H_
+#define PAGESPEED_KERNEL_UTIL_FAST_WILDCARD_GROUP_H_
 
 #include <vector>
 #include "net/instaweb/util/public/atomic_int32.h"
@@ -143,4 +143,4 @@ class FastWildcardGroup {
 
 }  // namespace net_instaweb
 
-#endif  // THIRD_PARTY_INSTAWEB_UTIL_FAST_WILDCARD_GROUP_H_
+#endif  // PAGESPEED_KERNEL_UTIL_FAST_WILDCARD_GROUP_H_

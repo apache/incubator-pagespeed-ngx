@@ -686,7 +686,7 @@
         'instaweb_propcache_pb',
         '<(instaweb_root)/third_party/base64/base64.gyp:base64',
         '<(DEPTH)/base/base.gyp:base',
-        '<(DEPTH)/third_party/instaweb/util.gyp:util',
+        '<(DEPTH)/pagespeed/kernel.gyp:util',
         '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',

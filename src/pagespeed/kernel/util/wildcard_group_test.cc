@@ -16,7 +16,7 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "third_party/instaweb/util/wildcard_group.h"
+#include "pagespeed/kernel/util/wildcard_group.h"
 
 #include "net/instaweb/util/public/gtest.h"
 

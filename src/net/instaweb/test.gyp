@@ -285,11 +285,11 @@
         'util/waveform_test.cc',
         'util/worker_test_base.cc',
         'util/write_through_cache_test.cc',
-        '<(DEPTH)/third_party/instaweb/util/fast_wildcard_group_test.cc',
-        '<(DEPTH)/third_party/instaweb/util/fast_wildcard_group_speed_test.cc',
-        '<(DEPTH)/third_party/instaweb/util/wildcard_group.cc',
-        '<(DEPTH)/third_party/instaweb/util/wildcard_group_test.cc',
-        '<(DEPTH)/third_party/instaweb/util/wildcard_test.cc',
+        '<(DEPTH)/pagespeed/kernel/util/fast_wildcard_group_test.cc',
+        '<(DEPTH)/pagespeed/kernel/util/fast_wildcard_group_speed_test.cc',
+        '<(DEPTH)/pagespeed/kernel/util/wildcard_group.cc',
+        '<(DEPTH)/pagespeed/kernel/util/wildcard_group_test.cc',
+        '<(DEPTH)/pagespeed/kernel/util/wildcard_test.cc',
 #        'util/split_writer_test.cc',               # not currently needed
       ],
       'conditions': [
@@ -410,8 +410,8 @@
         'util/compressed_cache_speed_test.cc',
         'util/deque_speed_test.cc',
         'util/url_escaper_speed_test.cc',
-        '<(DEPTH)/third_party/instaweb/util/fast_wildcard_group_speed_test.cc',
-        '<(DEPTH)/third_party/instaweb/util/wildcard_group.cc',
+        '<(DEPTH)/pagespeed/kernel/util/fast_wildcard_group_speed_test.cc',
+        '<(DEPTH)/pagespeed/kernel/util/wildcard_group.cc',
       ],
     },
     {

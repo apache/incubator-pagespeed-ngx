@@ -39,10 +39,12 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
+#include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/url_namer.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
+#include "net/instaweb/util/public/mock_hasher.h"
 #include "net/instaweb/util/public/mock_message_handler.h"
 #include "net/instaweb/util/public/mock_timer.h"
 #include "net/instaweb/util/public/null_message_handler.h"
@@ -56,7 +58,7 @@
 #include "net/instaweb/util/public/timer.h"
 #include "net/instaweb/util/public/time_util.h"
 #include "net/instaweb/util/worker_test_base.h"
-#include "third_party/instaweb/util/wildcard.h"
+#include "pagespeed/kernel/util/wildcard.h"
 
 namespace net_instaweb {
 

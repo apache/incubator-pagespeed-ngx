@@ -106,6 +106,7 @@ BASE_LIBS = \
   net/instaweb/libinstaweb_util_enums_pb.a \
   net/instaweb/libprocess_context.a \
   net/instaweb/libtest_infrastructure.a \
+  pagespeed/libutil.a \
   third_party/base64/libbase64.a \
   third_party/chromium/src/base/third_party/dynamic_annotations/libdynamic_annotations.a \
   third_party/css_parser/libcss_parser.a \
@@ -115,7 +116,6 @@ BASE_LIBS = \
   third_party/gflags/libgflags.a \
   third_party/icu/libicudata.a \
   third_party/icu/libicuuc.a \
-  third_party/instaweb/libutil.a \
   third_party/jsoncpp/libjsoncpp.a \
   third_party/libjpeg/libjpeg.a \
   third_party/libpagespeed/src/pagespeed/core/libpagespeed_core.a \
