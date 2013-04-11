@@ -77,6 +77,10 @@ const int64 kRewriteDelayMs = 47;
 class RewriteContextTest : public RewriteContextTestBase {
  protected:
   RewriteContextTest() {
+    rewrite_failures_ = statistics()->GetVariable(
+        RewriteContext::kNumDistributedRewriteFailures);
+    rewrite_successes_ = statistics()->GetVariable(
+        RewriteContext::kNumDistributedRewriteSuccesses);
     fetch_failures_ = statistics()->GetVariable(
         RewriteStats::kNumResourceFetchFailures);
     fetch_successes_ = statistics()->GetVariable(
@@ -149,6 +153,8 @@ class RewriteContextTest : public RewriteContextTestBase {
 
   Variable* fetch_failures_;
   Variable* fetch_successes_;
+  Variable* rewrite_failures_;
+  Variable* rewrite_successes_;
 };
 
 }  // namespace
@@ -183,6 +189,8 @@ TEST_F(RewriteContextTest, IngressDistributedRewriteFetch) {
   // distributed .pagespeed. requests have the overhead of 2 http cache misses
   // and 1 metadata miss plus the RPC. This could probably be reduced in the
   // future.
+  EXPECT_EQ(1, rewrite_successes_->Get());
+  EXPECT_EQ(0, rewrite_failures_->Get());
   EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
@@ -219,9 +227,10 @@ TEST_F(RewriteContextTest, IngressDistributedRewriteNotFoundFetch) {
   EXPECT_TRUE(FetchResourceUrl(dist_url, &request_headers, &content,
                                &response_headers));
   EXPECT_EQ(HttpStatus::kNotFound, response_headers.status_code());
-
   // We miss the http cache twice (we check it twice) and the metadata cache and
   // then distribute the rewrite, not storing the results.
+  EXPECT_EQ(1, rewrite_successes_->Get());
+  EXPECT_EQ(0, rewrite_failures_->Get());
   EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
   EXPECT_EQ(0, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
@@ -263,6 +272,8 @@ TEST_F(RewriteContextTest, IngressDistributedRewriteFailFallbackFetch) {
   // We miss the http cache twice, then the metadata, then distribute the
   // rewrite but that fails so fetch the original (after a cache check), cache
   // it, and return it.
+  EXPECT_EQ(0, rewrite_successes_->Get());
+  EXPECT_EQ(1, rewrite_failures_->Get());
   EXPECT_EQ(1, counting_distributed_fetcher()->fetch_count());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());
@@ -297,6 +308,8 @@ TEST_F(RewriteContextTest, RewriteTaskDistributedRewriteFetch) {
   // then a metadata miss, then an input http miss, then input fetch and store,
   // then rewrite and store of metadata and output.
   EXPECT_STREQ("a", content);
+  EXPECT_EQ(0, rewrite_successes_->Get());
+  EXPECT_EQ(0, rewrite_failures_->Get());
   EXPECT_EQ(0, counting_distributed_fetcher()->fetch_count());
   EXPECT_EQ(1, counting_url_async_fetcher()->fetch_count());
   EXPECT_EQ(0, http_cache()->cache_hits()->Get());

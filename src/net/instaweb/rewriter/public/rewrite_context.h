@@ -47,6 +47,7 @@ class ResponseHeaders;
 class RewriteDriver;
 class RewriteOptions;
 class Statistics;
+class Variable;
 class Writer;
 
 // A RewriteContext is all the contextual information required to
@@ -93,6 +94,8 @@ class RewriteContext {
  public:
   typedef std::vector<InputInfo*> InputInfoStarVector;
   static const char kNumDeadlineAlarmInvocations[];
+  static const char kNumDistributedRewriteSuccesses[];
+  static const char kNumDistributedRewriteFailures[];
   // Used to pass the result of the metadata cache lookups. Recipient must
   // take ownership.
   struct CacheLookupResult {
@@ -861,6 +864,9 @@ class RewriteContext {
 
   // Stores the resulting headers and content of a distributed rewrite.
   scoped_ptr<DistributedRewriteFetch> distributed_fetch_;
+
+  Variable* const num_distributed_rewrite_failures_;
+  Variable* const num_distributed_rewrite_successes_;
 
   DISALLOW_COPY_AND_ASSIGN(RewriteContext);
 };

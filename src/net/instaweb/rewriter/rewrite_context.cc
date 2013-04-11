@@ -1115,11 +1115,17 @@ RewriteContext::CacheLookupResultCallback::~CacheLookupResultCallback() {
 }
 
 void RewriteContext::InitStats(Statistics* stats) {
+  stats->AddVariable(kNumDistributedRewriteSuccesses);
+  stats->AddVariable(kNumDistributedRewriteFailures);
   RewriteContext::FetchContext::InitStats(stats);
 }
 
 const char RewriteContext::kNumDeadlineAlarmInvocations[] =
     "num_deadline_alarm_invocations";
+const char RewriteContext::kNumDistributedRewriteFailures[] =
+    "num_distributed_rewrite_failures";
+const char RewriteContext::kNumDistributedRewriteSuccesses[] =
+    "num_distributed_rewrite_successes";
 
 RewriteContext::RewriteContext(RewriteDriver* driver,
                                RewriteContext* parent,
@@ -1144,7 +1150,11 @@ RewriteContext::RewriteContext(RewriteDriver* driver,
     is_metadata_cache_miss_(false),
     rewrite_uncacheable_(false),
     dependent_request_trace_(NULL),
-    block_distribute_rewrite_(false) {
+    block_distribute_rewrite_(false),
+    num_distributed_rewrite_failures_(
+        Driver()->statistics()->GetVariable(kNumDistributedRewriteFailures)),
+    num_distributed_rewrite_successes_(
+        Driver()->statistics()->GetVariable(kNumDistributedRewriteSuccesses)) {
   partitions_.reset(new OutputPartitions);
 }
 
@@ -1569,6 +1579,9 @@ void RewriteContext::DistributeRewrite() {
 // response otherwise fall back to the original URL in the HTML path or the
 // unoptimized resource in the fetch path.
 void RewriteContext::DistributeRewriteDone(bool success) {
+  success ? num_distributed_rewrite_successes_->Add(1) :
+            num_distributed_rewrite_failures_->Add(1);
+
   bool fetch_path = fetch_.get() != NULL;
   ResponseHeaders* response_headers = distributed_fetch_->response_headers();
   StringPiece contents = distributed_fetch_->contents();
