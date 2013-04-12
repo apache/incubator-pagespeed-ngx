@@ -579,13 +579,17 @@ fetch_until $IMG_NON_CUSTOM 'wc -c' 216942
 fetch_until $IMG_CUSTOM 'wc -c' 231192
 
 # Test our handling of headers when a FLUSH event occurs.
+start_test PHP is enabled.
+echo "This test requires php.  One way to set up php is with:"
+echo "    php-cgi -b 127.0.0.1:9000"
 # Always fetch the first file so we can check if PHP is enabled.
-start_test Headers are not destroyed by a flush event.
 FILE=php_withoutflush.php
 URL=$TEST_ROOT/$FILE
 FETCHED=$OUTDIR/$FILE
-$WGET_DUMP $URL > $FETCHED
+check $WGET_DUMP $URL -O $FETCHED
 check_not grep -q '<?php' $FETCHED
+
+start_test Headers are not destroyed by a flush event.
 
 check [ $(grep -c '^X-Page-Speed:'               $FETCHED) = 1 ]
 check [ $(grep -c '^X-My-PHP-Header: without_flush' $FETCHED) = 1 ]

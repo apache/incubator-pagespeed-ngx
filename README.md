@@ -286,6 +286,28 @@ Each of these failed tests is a known issue:
  - [convert_meta_tags](https://github.com/pagespeed/ngx_pagespeed/issues/56)
  - [insert_dns_prefetch](https://github.com/pagespeed/ngx_pagespeed/issues/114)
 
+If it fails with:
+
+    TEST: PHP is enabled.
+    ...
+    in 'PHP is enabled.'
+    FAIL.
+
+the problem is that the test expects a php server to be running on port 9000.
+One way to do that is:
+
+```bash
+$ sudo apt-get install php5-fpm
+$ sudo service php5-fpm restart
+```
+
+Alternatively you can do:
+
+```bash
+$ sudo apt-get install php5-cgi
+$ php-cgi -b 127.0.0.1:9000 &
+```
+
 If it fails with some other error, that's a problem, and it would be helpful for
 you to [submit a bug](https://github.com/pagespeed/ngx_pagespeed/issues/new).
 
