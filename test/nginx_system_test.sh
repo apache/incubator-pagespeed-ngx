@@ -1084,4 +1084,45 @@ check_from "$CCONTROL" grep -w private
 
 run_post_cache_flush
 
+# Test ForbidAllDisabledFilters, which is set in the config for
+# /mod_pagespeed_test/forbid_all_disabled/disabled/ where we've disabled
+# remove_quotes, remove_comments, and collapse_whitespace.  We fetch 3 times
+# trying to circumvent the forbidden flag: a normal fetch, a fetch using a query
+# parameter to try to enable the forbidden filters, and a fetch using a request
+# header to try to enable the forbidden filters.
+function test_forbid_all_disabled() {
+  QUERYP="$1"
+  HEADER="$2"
+  if [ -n "$QUERYP" ]; then
+    INLINE_CSS=",-inline_css"
+  else
+    INLINE_CSS="?ModPagespeedFilters=-inline_css"
+  fi
+  WGET_ARGS="--header=X-PSA-Blocking-Rewrite:psatest"
+  URL=$TEST_ROOT/forbid_all_disabled/disabled/forbidden.html
+  OUTFILE="$TEMPDIR/test_forbid_all_disabled.$$"
+  # Fetch testing that forbidden filters stay disabled.
+  echo $WGET $HEADER $URL$QUERYP$INLINE_CSS
+  $WGET $WGET_ARGS -q -O $OUTFILE $HEADER $URL$QUERYP$INLINE_CSS
+  check     egrep -q '<link rel="stylesheet' $OUTFILE
+  check     egrep -q '<!--'                  $OUTFILE
+  check     egrep -q '    <li>'              $OUTFILE
+  # Fetch testing that enabling inline_css works.
+  echo $WGET $HEADER $URL
+  $WGET $WGET_ARGS -q -O $OUTFILE $HEADER $URL
+  check     egrep -q '<style>.yellow'        $OUTFILE
+  rm -f $OUTFILE
+  WGET_ARGS=""
+}
+start_test ForbidAllDisabledFilters baseline check.
+test_forbid_all_disabled "" ""
+start_test ForbidAllDisabledFilters query parameters check.
+QUERYP="?ModPagespeedFilters="
+QUERYP="${QUERYP}+remove_quotes,+remove_comments,+collapse_whitespace"
+test_forbid_all_disabled $QUERYP ""
+start_test ForbidAllDisabledFilters request headers check.
+HEADER="--header=ModPagespeedFilters:"
+HEADER="${HEADER}+remove_quotes,+remove_comments,+collapse_whitespace"
+test_forbid_all_disabled "" $HEADER
+
 check_failures_and_exit
