@@ -58,6 +58,24 @@ http {
   }
 
   server {
+    # Sets up a virtual host where we can specify forbidden filters without
+    # affecting any other hosts.
+    listen @@SECONDARY_PORT@@;
+    server_name forbidden.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed BlockingRewriteKey psatest;
+
+    # Start with all core filters enabled ...
+    pagespeed RewriteLevel CoreFilters;
+    # ... then forbid these filters ...
+    pagespeed ForbidFilters remove_quotes,remove_comments,collapse_whitespace;
+    pagespeed ForbidFilters rewrite_css,resize_images;
+    # ... and disable but not forbid this one (to ensure we retain its URL).
+    pagespeed DisableFilters inline_css;
+  }
+
+  server {
     listen 127.0.0.2:@@SECONDARY_PORT@@;
     server_name loopbackfetch.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
