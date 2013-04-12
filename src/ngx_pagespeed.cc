@@ -658,16 +658,18 @@ char* ps_merge_srv_conf(ngx_conf_t* cf, void* parent, void* child) {
   delete cfg_s->options;
   cfg_s->options = NULL;
 
-  // Validate FileCachePath
-  net_instaweb::GoogleMessageHandler handler;
-  const char* file_cache_path =
-      cfg_s->server_context->config()->file_cache_path().c_str();
-  if (file_cache_path[0] == '\0') {
-    return const_cast<char*>("FileCachePath must be set");
-  } else if (!cfg_m->driver_factory->file_system()->IsDir(
-      file_cache_path, &handler).is_true()) {
-    return const_cast<char*>(
-        "FileCachePath must be an nginx-writeable directory");
+  if (cfg_s->server_context->global_options()->enabled()) {
+    // Validate FileCachePath
+    net_instaweb::GoogleMessageHandler handler;
+    const char* file_cache_path =
+        cfg_s->server_context->config()->file_cache_path().c_str();
+    if (file_cache_path[0] == '\0') {
+      return const_cast<char*>("FileCachePath must be set");
+    } else if (!cfg_m->driver_factory->file_system()->IsDir(
+        file_cache_path, &handler).is_true()) {
+      return const_cast<char*>(
+          "FileCachePath must be an nginx-writeable directory");
+    }
   }
 
   return NGX_CONF_OK;
@@ -1282,6 +1284,11 @@ CreateRequestContext::Response ps_create_request_context(
     ngx_http_request_t* r, bool is_resource_fetch) {
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
 
+  if (!cfg_s->server_context->global_options()->enabled()) {
+    // Not enabled for this server block.
+    return CreateRequestContext::kPagespeedDisabled;
+  }
+
   GoogleString url_string = ps_determine_url(r);
 
   net_instaweb::GoogleUrl url(url_string);
@@ -1399,6 +1406,8 @@ CreateRequestContext::Response ps_create_request_context(
   }
 
   if (!options->enabled()) {
+    // Disabled via query params or request headers.
+
     ctx->base_fetch->Done(false);  // Not passed to Proxy/ResourceFetch yet.
     ps_release_request_context(ctx);
     return CreateRequestContext::kPagespeedDisabled;

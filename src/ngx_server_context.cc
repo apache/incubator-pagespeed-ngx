@@ -23,6 +23,7 @@
 #include "ngx_rewrite_driver_factory.h"
 #include "net/instaweb/apache/add_headers_fetcher.h"
 #include "net/instaweb/apache/loopback_route_fetcher.h"
+#include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/system/public/system_caches.h"
@@ -42,7 +43,8 @@ const char kHtmlRewriteTimeUsHistogram[] = "Html Time us Histogram";
 NgxServerContext::NgxServerContext(NgxRewriteDriverFactory* factory)
     : SystemServerContext(factory),
       ngx_factory_(factory),
-      initialized_(false) {
+      initialized_(false),
+      fetcher_(NULL) {
 }
 
 NgxServerContext::~NgxServerContext() {
@@ -73,9 +75,20 @@ void NgxServerContext::ChildInit() {
       set_rewrite_stats(local_rewrite_stats_.get());
     }
 
+    // We need to set the system fetcher here instead of in the
+    // NgxRewriteDriverFactory's DefaultAsyncUrlFetcher() because we need to
+    // allow server blocks to have their own fetch settings.
+    fetcher_.reset(new SerfUrlAsyncFetcher(
+        config()->fetcher_proxy().c_str(),
+        NULL,
+        ngx_factory_->thread_system(),
+        ngx_factory_->statistics(),
+        ngx_factory_->timer(),
+        2500,
+        ngx_factory_->message_handler()));
+    set_default_system_fetcher(fetcher_.get());
+
     ngx_factory_->InitServerContext(this);
-    // TODO(oschaaf): in mod_pagespeed, the ServerContext owns
-    // the fetchers, and sets up the UrlAsyncFetcherStats here
   }
 }
 
