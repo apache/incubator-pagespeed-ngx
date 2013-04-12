@@ -217,7 +217,7 @@ urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 
 Often pagespeed needs to request urls referenced from other files in order to
 optimize them.  To do this it uses a fetcher.  By default it uses the same
-fetcher mod_pagespeed does, [serf](https://code.google.com/p/serf/) but it also
+fetcher mod_pagespeed does, [serf](https://code.google.com/p/serf/), but it also
 has an experimental fetcher that avoids the need for a separate thread by using
 native nginx events.  In initial testing this fetcher is about 10% faster.  To
 use it, put in your http block:
