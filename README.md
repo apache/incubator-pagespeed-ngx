@@ -216,6 +216,24 @@ X-Page-Speed: 1.4.0.0-2729
 Looking at the source of a few pages you should see various changes, such as
 urls being replaced with new ones like `yellow.css.pagespeed.ce.lzJ8VcVi1l.css`.
 
+### Fetcher
+
+Often pagespeed needs to request urls referenced from other files in order to
+optimize them.  To do this it uses a fetcher.  By default it uses the same
+fetcher mod_pagespeed does, [serf](https://code.google.com/p/serf/) but it also
+has an experimental fetcher that avoids the need for a separate thread by using
+native nginx events.  In initial testing this fetcher is about 10% faster.  To
+use it, put in your http block:
+
+    pagespeed UseNativeFetcher on;
+    resolver 8.8.8.8;
+
+Your DNS resolver doesn't have to be <a
+href="https://developers.google.com/speed/public-dns/">8.8.8.8</a>; any domain
+name server your server has access to will work. If you don't specify a DNS
+resolver, pagespeed will still work but will be limited to fetching only from IP
+addresses.
+
 ### Configuration Differences From mod_pagespeed
 
 #### BeaconUrl
@@ -248,7 +266,7 @@ $ svn checkout https://modpagespeed.googlecode.com/svn/trunk/ mod_pagespeed
 Then run:
 
 ```bash
-test/nginx_system_test.sh \
+test/run_tests.sh \
   primary_port \
   secondary_port \
   mod_pagespeed_dir \
@@ -258,7 +276,7 @@ test/nginx_system_test.sh \
 For example:
 
 ```bash
-$ test/nginx_system_test.sh 8050 8051 /path/to/mod_pagespeed \
+$ test/run_tests.sh 8050 8051 /path/to/mod_pagespeed \
     /path/to/sbin/nginx
 ```
 

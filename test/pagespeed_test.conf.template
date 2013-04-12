@@ -39,6 +39,9 @@ http {
     pagespeed MaxCacheableContentLength 85;
   }
 
+  pagespeed UseNativeFetcher "@@NATIVE_FETCHER@@";
+  @@RESOLVER@@
+
   server {
     listen @@SECONDARY_PORT@@;
     server_name mpd.example.com;

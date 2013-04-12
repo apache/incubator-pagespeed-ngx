@@ -17,33 +17,22 @@
 # Author: jefftk@google.com (Jeff Kaufman)
 #
 #
-# Runs pagespeed's generic system test.  Will eventually run nginx-specific
-# tests as well.
+# Runs pagespeed's generic system test and nginx-specific system tests.  Not
+# intended to be run on it's own; use run_tests.sh instead.
 #
 # Exits with status 0 if all tests pass.
 # Exits with status 1 immediately if any test fails.
 # Exits with status 2 if command line args are wrong.
-#
-# Usage:
-#   ./ngx_system_test.sh primary_port secondary_port mod_pagespeed_dir
-# Example:
-#   ./ngx_system_test.sh 8050 8051 /path/to/mod_pagespeed
-#
+# Exits with status 3 if all failures were expected.
+# Exits with status 4 if instructed not to run any tests.
 
-# To run this test with valgrind, set the environment variable USE_VALGRIND to
-# true.
-USE_VALGRIND=${USE_VALGRIND:-false}
-
-if [ "$#" -ne 4 ] ; then
-  echo "Usage: $0 primary_port secondary_port mod_pagespeed_dir"
-  echo "  nginx_executable"
-  exit 2
-fi
-
-PRIMARY_PORT="$1"
-SECONDARY_PORT="$2"
-MOD_PAGESPEED_DIR="$3"
-NGINX_EXECUTABLE="$4"
+# Inherits the following from environment variables:
+: ${USE_VALGRIND:?"Set USE_VALGRIND to true or false"}
+: ${NATIVE_FETCHER:?"Set NATIVE_FETCHER to off or on"}
+: ${PRIMARY_PORT:?"Set PRIMARY_PORT"}
+: ${SECONDARY_PORT:?"Set SECONDARY_PORT"}
+: ${MOD_PAGESPEED_DIR:?"Set MOD_PAGESPEED_DIR"}
+: ${NGINX_EXECUTABLE:?"Set NGINX_EXECUTABLE"}
 
 PRIMARY_HOSTNAME="localhost:$PRIMARY_PORT"
 SECONDARY_HOSTNAME="localhost:$SECONDARY_PORT"
@@ -90,6 +79,12 @@ else
   MASTER_PROCESS=on
 fi
 
+if [ "$NATIVE_FETCHER" = "on" ]; then
+  RESOLVER="resolver 8.8.8.8;"
+else
+  RESOLVER=""
+fi
+
 # set up the config file for the test
 PAGESPEED_CONF="$TEST_TMP/pagespeed_test.conf"
 PAGESPEED_CONF_TEMPLATE="$this_dir/pagespeed_test.conf.template"
@@ -110,6 +105,8 @@ cat $PAGESPEED_CONF_TEMPLATE \
   | sed 's#@@SERVER_ROOT@@#'"$SERVER_ROOT"'#' \
   | sed 's#@@PRIMARY_PORT@@#'"$PRIMARY_PORT"'#' \
   | sed 's#@@SECONDARY_PORT@@#'"$SECONDARY_PORT"'#' \
+  | sed 's#@@NATIVE_FETCHER@@#'"$NATIVE_FETCHER"'#' \
+  | sed 's#@@RESOLVER@@#'"$RESOLVER"'#' \
   >> $PAGESPEED_CONF
 # make sure we substituted all the variables
 check_not_simple grep @@ $PAGESPEED_CONF
@@ -121,6 +118,13 @@ if $USE_VALGRIND; then
   read
 else
   check_simple "$NGINX_EXECUTABLE" -c "$PAGESPEED_CONF"
+fi
+
+if $RUN_TESTS; then
+  echo "Starting tests"
+else
+  echo "Not running tests; commence manual testing"
+  exit 4
 fi
 
 # run generic system tests
@@ -961,16 +965,15 @@ rm -f $CSS_FILE
 start_test Connection refused handling
 
 # Monitor the log starting now.  tail -F will catch log rotations.
-SERF_REFUSED_PATH=$TEMPDIR/instaweb_apache_serf_refused.$$
-rm $SERF_REFUSED_PATH
+FETCHER_REFUSED_PATH=$TEMPDIR/instaweb_fetcher_refused.$$
+rm $FETCHER_REFUSED_PATH
 LOG="$TEST_TMP/error.log"
 echo LOG = $LOG
-tail --sleep-interval=0.1 -F $LOG > $SERF_REFUSED_PATH &
+tail --sleep-interval=0.1 -F $LOG > $FETCHER_REFUSED_PATH &
 TAIL_PID=$!
-
 # Wait for tail to start.
 echo -n "Waiting for tail to start..."
-while [ ! -s $SERF_REFUSED_PATH ]; do
+while [ ! -s $FETCHER_REFUSED_PATH ]; do
   sleep 0.1
   echo -n "."
 done
@@ -984,8 +987,13 @@ echo check done
 # If we are spewing errors, this gives time to spew lots of them.
 sleep 1
 # Wait up to 10 seconds for the background fetch of someimage.png to fail.
+if [ "$NATIVE_FETCHER" = "on" ]; then
+  EXPECTED="111: Connection refused"
+else
+  EXPECTED="Serf status 111"
+fi
 for i in {1..100}; do
-  ERRS=$(grep -c "Serf status 111" $SERF_REFUSED_PATH)
+  ERRS=$(grep -c "$EXPECTED" $FETCHER_REFUSED_PATH)
   if [ $ERRS -ge 1 ]; then
     break;
   fi;
@@ -1004,7 +1012,7 @@ check [ $ERRS -ge 1 ]
 ## is on in the config file.
 #echo Check that ListOutstandingUrlsOnError works
 #check grep "URL http://modpagespeed.com:1023/someimage.png active for " \
-#  $SERF_REFUSED_PATH
+#  $FETCHER_REFUSED_PATH
 
 # http://code.google.com/p/modpagespeed/issues/detail?id=494 -- test
 # that fetching a css with embedded relative images from a different
@@ -1216,5 +1224,23 @@ http_proxy=$SECONDARY_HOSTNAME \
 # There are five images that should be optimized.
 http_proxy=$SECONDARY_HOSTNAME \
     fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.ic' 5
+
+# check_failures_and_exit will actually call exit, but we don't want it to.
+# Specifically we want it to call exit 3 instad of exit 1 if it finds
+# something.  Reimplement it here:
+#
+# TODO(jefftk): change this in mod_pagespeed and push it out, then remove this
+# modified copy.
+
+function check_failures_and_exit() {
+  if [ -e $FAILURES ] ; then
+    echo Failing Tests:
+    sed 's/^/  /' $FAILURES
+    echo "FAIL."
+    exit 3
+  fi
+  echo "PASS."
+  exit 0
+}
 
 check_failures_and_exit
