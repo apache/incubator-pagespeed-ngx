@@ -24,6 +24,7 @@
 #include "ngx_rewrite_options.h"
 #include "ngx_thread_system.h"
 #include "ngx_server_context.h"
+#include "ngx_url_async_fetcher.h"
 
 #include "net/instaweb/apache/serf_url_async_fetcher.h"
 #include "net/instaweb/http/public/content_type.h"
@@ -81,7 +82,11 @@ NgxRewriteDriverFactory::NgxRewriteDriverFactory()
       install_crash_handler_(false),
       message_buffer_size_(0),
       shared_circular_buffer_(NULL),
-      statistics_frozen_(false) {
+      statistics_frozen_(false),
+      ngx_url_async_fetcher_(NULL),
+      log_(NULL),
+      resolver_timeout_(NGX_CONF_UNSET_MSEC),
+      use_native_fetcher_(false) {
   timer_ = DefaultTimer();
   InitializeDefaultOptions();
   default_options()->set_beacon_url("/ngx_pagespeed_beacon");
@@ -110,7 +115,7 @@ Hasher* NgxRewriteDriverFactory::NewHasher() {
 }
 
 UrlFetcher* NgxRewriteDriverFactory::DefaultUrlFetcher() {
-  return new WgetUrlFetcher;
+  return NULL;
 }
 
 UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
@@ -119,16 +124,30 @@ UrlAsyncFetcher* NgxRewriteDriverFactory::DefaultAsyncUrlFetcher() {
     fetcher_proxy = main_conf_->fetcher_proxy().c_str();
   }
 
-  net_instaweb::UrlAsyncFetcher* fetcher =
-      new net_instaweb::SerfUrlAsyncFetcher(
-          fetcher_proxy,
-          NULL,
-          thread_system(),
-          statistics(),
-          timer(),
-          2500,
-          message_handler());
-  return fetcher;
+  if (use_native_fetcher_) {
+    net_instaweb::NgxUrlAsyncFetcher* fetcher =
+        new net_instaweb::NgxUrlAsyncFetcher(
+            fetcher_proxy,
+            log_,
+            resolver_timeout_,
+            25000,
+            resolver_,
+            thread_system(),
+            message_handler());
+    ngx_url_async_fetcher_ = fetcher;
+    return fetcher;
+  } else {
+    net_instaweb::UrlAsyncFetcher* fetcher =
+        new net_instaweb::SerfUrlAsyncFetcher(
+            fetcher_proxy,
+            NULL,
+            thread_system(),
+            statistics(),
+            timer(),
+            2500,
+            message_handler());
+    return fetcher;
+  }
 }
 
 MessageHandler* NgxRewriteDriverFactory::DefaultHtmlParseMessageHandler() {
@@ -176,6 +195,21 @@ void NgxRewriteDriverFactory::PrintMemCacheStats(GoogleString* out) {
   // TODO(morlovich): Port the client code to proper API, so it gets
   // shm stats, too.
   caches_->PrintCacheStats(SystemCaches::kIncludeMemcached, out);
+}
+
+bool NgxRewriteDriverFactory::InitNgxUrlAsyncFecther() {
+  if (ngx_url_async_fetcher_ == NULL) {
+    return true;
+  }
+  log_ = ngx_cycle->log;
+  return ngx_url_async_fetcher_->Init();
+}
+
+bool NgxRewriteDriverFactory::CheckResolver() {
+  if (use_native_fetcher_ && resolver_ == NULL) {
+    return false;
+  }
+  return true;
 }
 
 void NgxRewriteDriverFactory::StopCacheActivity() {

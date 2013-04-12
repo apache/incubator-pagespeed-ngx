@@ -438,7 +438,8 @@ const char* const global_only_options[] = {
   "LoadFromFile",
   "LoadFromFileMatch",
   "LoadFromFileRule",
-  "LoadFromFileRuleMatch"
+  "LoadFromFileRuleMatch",
+  "UseNativeFetcher"
 };
 
 bool ps_is_global_only_option(const StringPiece& option_name) {
@@ -474,6 +475,12 @@ char* ps_configure(ngx_conf_t* cf,
     args[i] = str_to_string_piece(value[i+1]);
   }
 
+  if (net_instaweb::StringCaseEqual("UseNativeFetcher", args[0])) {
+    if (option_level != PsConfigure::kServer) {
+      return const_cast<char*>(
+          "UseNativeFetcher can only be set in the http{} block.");
+    }
+  }
   if (option_level == PsConfigure::kLocation && n_args > 1) {
     if (ps_is_global_only_option(args[0])) {
       return string_piece_to_pool_string(cf->pool, net_instaweb::StrCat(
@@ -579,6 +586,7 @@ void* ps_create_main_conf(ngx_conf_t* cf) {
   CHECK(!factory_deleted);
   net_instaweb::NgxRewriteOptions::Initialize();
   net_instaweb::NgxRewriteDriverFactory::Initialize();
+
   cfg_m->driver_factory = new net_instaweb::NgxRewriteDriverFactory();
   ps_set_conf_cleanup_handler(cf, ps_cleanup_main_conf, cfg_m);
   return cfg_m;
@@ -2168,7 +2176,6 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
 
 // preaccess_handler should be at generic phase before try_files
 ngx_int_t ps_preaccess_handler(ngx_http_request_t *r) {
-
   ngx_http_core_main_conf_t *cmcf;
   ngx_http_phase_handler_t *ph;
   ngx_uint_t i;
@@ -2309,6 +2316,19 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
       net_instaweb::NgxRewriteDriverFactory::InitStats(statistics);
     }
 
+    ngx_http_core_loc_conf_t* clcf = static_cast<ngx_http_core_loc_conf_t*>(
+        ngx_http_conf_get_module_loc_conf((*cscfp), ngx_http_core_module));
+
+    cfg_m->driver_factory->set_resolver(clcf->resolver);
+    cfg_m->driver_factory->set_resolver_timeout(clcf->resolver_timeout);
+
+    if (!cfg_m->driver_factory->CheckResolver()) {
+      cfg_m->handler->Message(
+          net_instaweb::kError,
+          "UseNativeFetcher is on, please configure a resolver.");
+      return NGX_ERROR;
+    }
+
     cfg_m->driver_factory->RootInit(cycle->log);
   } else {
     delete cfg_m->driver_factory;
@@ -2322,7 +2342,6 @@ ngx_int_t ps_init_module(ngx_cycle_t* cycle) {
 ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
   ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
       ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
-
   if (cfg_m->driver_factory == NULL) {
     return NGX_OK;
   }
@@ -2350,6 +2369,9 @@ ngx_int_t ps_init_child_process(ngx_cycle_t* cycle) {
     }
   }
 
+  if (!cfg_m->driver_factory->InitNgxUrlAsyncFecther()) {
+    return NGX_ERROR;
+  }
   cfg_m->driver_factory->StartThreads();
 
   return NGX_OK;
