@@ -1086,9 +1086,9 @@ blocking_rewrite_another.html?ModPagespeedFilters=rewrite_images"
   test_forbid_filters "" ""
   start_test ModPagespeedForbidFilters query parameters check.
   QUERYP="?ModPagespeedFilters="
-  QUERYP="${QUERYP}+remove_quotes,+remove_comments,+collapse_whitespace
+  QUERYP="${QUERYP}+remove_quotes,+remove_comments,+collapse_whitespace"
   test_forbid_filters $QUERYP ""
-  start_test ModPagespeedForbidFilters request headers check."
+  start_test "ModPagespeedForbidFilters request headers check."
   HEADER="--header=ModPagespeedFilters:"
   HEADER="${HEADER}+remove_quotes,+remove_comments,+collapse_whitespace"
   test_forbid_filters "" $HEADER
