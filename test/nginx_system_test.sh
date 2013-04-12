@@ -214,6 +214,21 @@ wget -O - --header="Host: $HOSTNAME" $ALT_CE_URL >& "$TEMPDIR/alt_ce_url.$$"
 check [ $? = 8 ]
 rm -f "$TEMPDIR/alt_ce_url.$$"
 
+start_test Accept bad query params and headers
+
+# The examples page should have this EXPECTED_EXAMPLES_TEXT on it.
+EXPECTED_EXAMPLES_TEXT="PageSpeed Examples Directory"
+OUT=$(wget -O - $EXAMPLE_ROOT)
+check_from "$OUT" grep "$EXPECTED_EXAMPLES_TEXT"
+
+# It should still be there with bad query params.
+OUT=$(wget -O - $EXAMPLE_ROOT?ModPagespeedFilters=bogus)
+check_from "$OUT" grep "$EXPECTED_EXAMPLES_TEXT"
+
+# And also with bad request headers.
+OUT=$(wget -O - --header=ModPagespeedFilters:bogus $EXAMPLE_ROOT)
+check_from "$OUT" grep "$EXPECTED_EXAMPLES_TEXT"
+
 # Test that loopback route fetcher works with vhosts not listening on
 # 127.0.0.1
 start_test IP choice for loopback fetches.

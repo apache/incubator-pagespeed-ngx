@@ -1065,12 +1065,11 @@ ps_loc_conf_t* ps_get_loc_config(ngx_http_request_t* r) {
 }
 
 // Wrapper around GetQueryOptions()
-bool ps_determine_request_options(
+net_instaweb::RewriteOptions* ps_determine_request_options(
     ngx_http_request_t* r,
     ps_request_ctx_t* ctx,
     ps_srv_conf_t* cfg_s,
-    net_instaweb::GoogleUrl* url,
-    net_instaweb::RewriteOptions** request_options) {
+    net_instaweb::GoogleUrl* url) {
   // Stripping ModPagespeed query params before the property cache lookup to
   // make cache key consistent for both lookup and storing in cache.
   //
@@ -1080,19 +1079,17 @@ bool ps_determine_request_options(
           url, ctx->base_fetch->request_headers(), NULL);
   bool get_query_options_success = query_options_success.second;
   if (!get_query_options_success) {
-    // Failed to parse query params or request headers.
-    // TODO(jefftk): send a helpful error message to the visitor.
-    ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+    // Failed to parse query params or request headers.  Treat this as if there
+    // were no query params given.
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
                   "ps_create_request_context: "
                   "parsing headers or query params failed.");
-    return false;
+    return NULL;
   }
 
   // Will be NULL if there aren't any options set with query params or in
   // headers.
-  *request_options = query_options_success.first;
-
-  return true;
+  return query_options_success.first;
 }
 
 // Check whether this visitor is already in an experiment.  If they're not,
@@ -1167,11 +1164,8 @@ bool ps_determine_options(ngx_http_request_t* r,
 
   // Request-specific options, nearly always null.  If set they need to be
   // rebased on the directory options or the global options.
-  net_instaweb::RewriteOptions* request_options;
-  bool ok = ps_determine_request_options(r, ctx, cfg_s, url, &request_options);
-  if (!ok) {
-    return false;
-  }
+  net_instaweb::RewriteOptions* request_options =
+      ps_determine_request_options(r, ctx, cfg_s, url);
 
   // Because the caller takes memory ownership of any options we return, the
   // only situation in which we can avoid allocating a new RewriteOptions is if
@@ -1196,7 +1190,7 @@ bool ps_determine_options(ngx_http_request_t* r,
     (*options)->Merge(*request_options);
     delete request_options;
   } else if ((*options)->running_furious()) {
-    ok = ps_set_furious_state_and_cookie(r, ctx, *options, url->Host());
+    bool ok = ps_set_furious_state_and_cookie(r, ctx, *options, url->Host());
     if (!ok) {
       if (*options != NULL) {
         delete *options;
