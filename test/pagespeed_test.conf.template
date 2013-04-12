@@ -101,6 +101,34 @@ http {
 
   server {
     listen @@SECONDARY_PORT@@;
+    server_name domain-hyperlinks-on.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    # Don't actually try to rewrite any resources; the ones in
+    # rewrite_domains.html don't actually exist.
+    pagespeed RewriteLevel PassThrough;
+
+    pagespeed DomainRewriteHyperlinks on;
+    pagespeed MapRewriteDomain http://dst.example.com http://src.example.com;
+    pagespeed EnableFilters rewrite_domains;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name domain-hyperlinks-off.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    # Don't actually try to rewrite any resources; the ones in
+    # rewrite_domains.html don't actually exist.
+    pagespeed RewriteLevel PassThrough;
+
+    pagespeed DomainRewriteHyperlinks off;
+    pagespeed MapRewriteDomain http://dst.example.com http://src.example.com;
+    pagespeed EnableFilters rewrite_domains;
+  }
+
+  server {
+    listen @@SECONDARY_PORT@@;
     server_name retaincomment.example.com;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
