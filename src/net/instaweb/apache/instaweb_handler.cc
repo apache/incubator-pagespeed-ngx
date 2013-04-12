@@ -710,7 +710,7 @@ apr_status_t instaweb_statistics_handler(
     // Default values for start_time, end_time, and granularity_ms in case the
     // query does not include these parameters.
     start_time = 0;
-    end_time = statistics->console_logger()->timer()->NowMs();
+    end_time = server_context->timer()->NowMs();
     // Granularity is the difference in ms between data points. If it is not
     // specified by the query, the default value is 3000 ms, the same as the
     // default logging granularity.
@@ -744,6 +744,14 @@ apr_status_t instaweb_statistics_handler(
       } else if (strcmp(name, "granularity") == 0) {
         StringToInt64(value, &granularity_ms);
       }
+    }
+  } else {
+    if (params.Has("json")) {
+      request->status = HTTP_NOT_FOUND;
+      ap_set_content_type(request, "text/html");
+      ap_rputs("<p>console_logger must be enabled to use '?json' query "
+               "parameter.</p>", request);
+      return OK;
     }
   }
   GoogleString output;

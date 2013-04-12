@@ -590,6 +590,7 @@ ModPagespeedCreateSharedMemoryMetadataCache "@@MOD_PAGESPEED_CACHE@@/with_shm" 8
 #PER_VHOST_STATS ModPagespeedUsePerVHostStatistics on
 #PER_VHOST_STATS # Make sure we behave OK with this on, too.
 #PER_VHOST_STATS ModPagespeedFetchWithGzip on
+#NO_PER_VHOST_STATS # Overrides "ModPagespeedUsePerVHostStatistics on" above.
 #NO_PER_VHOST_STATS ModPagespeedUsePerVHostStatistics off
 
 #STATS_LOGGING ModPagespeedStatistics on

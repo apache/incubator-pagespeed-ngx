@@ -35,6 +35,7 @@
 namespace net_instaweb {
 
 class MessageHandler;
+class SharedMemConsoleStatisticsLogger;
 class Timer;
 class Writer;
 
@@ -80,7 +81,7 @@ class SharedMemVariable : public Variable {
   // share some state with parent.
   void Reset();
 
-  void SetConsoleStatisticsLogger(ConsoleStatisticsLogger* logger);
+  void SetConsoleStatisticsLogger(SharedMemConsoleStatisticsLogger* logger);
 
   // Set the variable assuming that the lock is already held. Also, doesn't call
   // ConsoleStatisticsLogger::UpdateAndDumpIfRequired. (This method is intended
@@ -103,7 +104,7 @@ class SharedMemVariable : public Variable {
   // The object used to log updates to a file. Owned by Statistics object, with
   // a copy shared with every Variable. Note that this may be NULL if
   // SetConsoleStatisticsLogger has not yet been called.
-  ConsoleStatisticsLogger* logger_;
+  SharedMemConsoleStatisticsLogger* console_logger_;
 
   DISALLOW_COPY_AND_ASSIGN(SharedMemVariable);
 };
@@ -141,17 +142,20 @@ class SharedMemConsoleStatisticsLogger : public ConsoleStatisticsLogger {
       SharedMemVariable* var, MessageHandler* message_handler,
       Statistics* stats, FileSystem *file_system, Timer* timer);
   virtual ~SharedMemConsoleStatisticsLogger();
-  virtual void UpdateAndDumpIfRequired();
-  Timer* timer() { return timer_;}
+
   // Writes filtered variable and histogram data in JSON format to the given
   // writer. Variable data is a time series collected from with data points from
   // start_time to end_time, whereas histograms are aggregated histogram data as
   // of the given end_time. Granularity is the minimum time difference between
   // each successive data point.
-  void DumpJSON(const std::set<GoogleString>& var_titles,
-                const std::set<GoogleString>& hist_titles, int64 start_time,
-                int64 end_time, int64 granularity_ms, Writer* writer,
-                MessageHandler* message_handler) const;
+  virtual void DumpJSON(const std::set<GoogleString>& var_titles,
+                        const std::set<GoogleString>& hist_titles,
+                        int64 start_time, int64 end_time, int64 granularity_ms,
+                        Writer* writer, MessageHandler* message_handler) const;
+
+  // If it's been longer than kStatisticsDumpIntervalMs, update the
+  // timestamp to now and dump the current state of the Statistics.
+  void UpdateAndDumpIfRequired();
 
  private:
   friend class SharedMemStatisticsTestBase;
@@ -316,7 +320,9 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
   // no further children are expected to start.
   void GlobalCleanup(MessageHandler* message_handler);
 
-  ConsoleStatisticsLogger* console_logger() const { return logger_.get(); }
+  SharedMemConsoleStatisticsLogger* console_logger() {
+    return console_logger_.get();
+  }
 
   virtual void DumpConsoleVarsToWriter(int64 current_time_ms, Writer* writer,
                                        MessageHandler* message_handler);
@@ -341,7 +347,7 @@ class SharedMemStatistics : public StatisticsTemplate<SharedMemVariable,
   GoogleString filename_prefix_;
   scoped_ptr<AbstractSharedMemSegment> segment_;
   bool frozen_;
-  scoped_ptr<SharedMemConsoleStatisticsLogger> logger_;
+  scoped_ptr<SharedMemConsoleStatisticsLogger> console_logger_;
   // The variables that we're interested in displaying on the console.
   std::set<GoogleString> important_variables_;
 

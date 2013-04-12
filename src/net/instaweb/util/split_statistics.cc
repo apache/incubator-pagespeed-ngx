@@ -56,23 +56,6 @@ int64 SplitVariable::Add(int delta) {
   return rw_->Add(delta);
 }
 
-SplitConsoleStatisticsLogger::SplitConsoleStatisticsLogger(
-    ConsoleStatisticsLogger* a, ConsoleStatisticsLogger* b)
-    : a_(a), b_(b) {
-}
-
-SplitConsoleStatisticsLogger::~SplitConsoleStatisticsLogger() {
-}
-
-void SplitConsoleStatisticsLogger::UpdateAndDumpIfRequired() {
-  if (a_ != NULL) {
-    a_->UpdateAndDumpIfRequired();
-  }
-  if (b_ != NULL) {
-    b_->UpdateAndDumpIfRequired();
-  }
-}
-
 SplitHistogram::SplitHistogram(
     ThreadSystem* threads, Histogram* rw, Histogram* w)
     : lock_(threads->NewMutex()), rw_(rw), w_(w) {

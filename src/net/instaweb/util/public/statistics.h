@@ -31,7 +31,6 @@
 namespace net_instaweb {
 
 class MessageHandler;
-class Timer;
 class Writer;
 
 class Variable {
@@ -69,17 +68,13 @@ class Variable {
 class ConsoleStatisticsLogger {
  public:
   virtual ~ConsoleStatisticsLogger();
-  // If it's been longer than kStatisticsDumpIntervalMs, update the
-  // timestamp to now and dump the current state of the Statistics.
-  virtual void UpdateAndDumpIfRequired() = 0;
   // Writes the data from the logfile in JSON format for the given variables,
   // filtered with the given parameters.
   virtual void DumpJSON(const std::set<GoogleString>& var_titles,
                         const std::set<GoogleString>& hist_titles,
-                        int64 startTime, int64 endTime, int64 granularity_ms,
+                        int64 start_time, int64 end_time, int64 granularity_ms,
                         Writer* writer,
                         MessageHandler* message_handler) const = 0;
-  virtual Timer* timer() = 0;
 };
 
 class Histogram {
@@ -364,7 +359,7 @@ class Statistics {
   // need it. In the context in which it is needed we only have access to a
   // Statistics*, rather than the specific subclass, hence its being here.
   // Return the ConsoleStatisticsLogger associated with this Statistics.
-  virtual ConsoleStatisticsLogger* console_logger() const { return NULL; }
+  virtual ConsoleStatisticsLogger* console_logger() { return NULL; }
 
  protected:
   // A helper for subclasses that do not fully implement timed variables.

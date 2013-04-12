@@ -81,7 +81,7 @@ namespace net_instaweb {
 SharedMemVariable::SharedMemVariable(const StringPiece& name)
     : name_(name.as_string()),
       value_ptr_(NULL),
-      logger_(NULL) {
+      console_logger_(NULL) {
 }
 
 int64 SharedMemVariable::Get() const {
@@ -106,8 +106,8 @@ int64 SharedMemVariable::SetReturningPreviousValue(int64 new_value) {
       *value_ptr_ = new_value;
     }
     // The variable was changed, so dump statistics if past the update interval.
-    if (logger_ != NULL) {
-      logger_->UpdateAndDumpIfRequired();
+    if (console_logger_ != NULL) {
+      console_logger_->UpdateAndDumpIfRequired();
     }
   }
   return previous_value;
@@ -120,8 +120,8 @@ void SharedMemVariable::Set(int64 new_value) {
       *value_ptr_ = new_value;
     }
     // The variable was changed, so dump statistics if past the update interval.
-    if (logger_ != NULL) {
-      logger_->UpdateAndDumpIfRequired();
+    if (console_logger_ != NULL) {
+      console_logger_->UpdateAndDumpIfRequired();
     }
   }
 }
@@ -131,8 +131,8 @@ void SharedMemVariable::SetLockHeldNoUpdate(int64 new_value) {
 }
 
 void SharedMemVariable::SetConsoleStatisticsLogger(
-    ConsoleStatisticsLogger* logger) {
-  logger_ = logger;
+    SharedMemConsoleStatisticsLogger* logger) {
+  console_logger_ = logger;
 }
 
 int64 SharedMemVariable::Add(int delta) {
@@ -144,8 +144,8 @@ int64 SharedMemVariable::Add(int delta) {
       value = *value_ptr_;
     }
     // The variable was changed, so dump statistics if past the update interval.
-    if (logger_ != NULL) {
-      logger_->UpdateAndDumpIfRequired();
+    if (console_logger_ != NULL) {
+      console_logger_->UpdateAndDumpIfRequired();
     }
   }
   return value;
@@ -843,12 +843,12 @@ SharedMemStatistics::SharedMemStatistics(
         important_variables_.insert(kImportant[i]);
       }
       SharedMemVariable* timestampVar = AddVariable(kTimestampVariable);
-      logger_.reset(new SharedMemConsoleStatisticsLogger(
+      console_logger_.reset(new SharedMemConsoleStatisticsLogger(
           logging_interval_ms, logging_file, timestampVar,
           message_handler, this, file_system, timer));
       // The Logger needs a Variable which needs a Logger, hence the setter.
-      timestampVar->SetConsoleStatisticsLogger(logger_.get());
-      logger_->UpdateAndDumpIfRequired();
+      timestampVar->SetConsoleStatisticsLogger(console_logger_.get());
+      console_logger_->UpdateAndDumpIfRequired();
     } else {
       message_handler->Message(kError,
           "Error: ModPagespeedStatisticsLoggingFile is required if "
@@ -868,7 +868,7 @@ SharedMemVariable* SharedMemStatistics::NewVariable(const StringPiece& name,
     return NULL;
   } else {
     SharedMemVariable* var = new SharedMemVariable(name);
-    var->SetConsoleStatisticsLogger(logger_.get());
+    var->SetConsoleStatisticsLogger(console_logger_.get());
     return var;
   }
 }

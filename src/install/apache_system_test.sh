@@ -92,11 +92,17 @@ fi
 # Grab a timestamp now so that we can check that logging works.
 # Also determine where the log file is.
 if [ $statistics_logging_enabled = "1" ]; then
-  MOD_PAGESPEED_STATS_LOG=$(sed -n 's/^ ModPagespeedStatisticsLoggingFile //p' \
-      $APACHE_DEBUG_PAGESPEED_CONF)
-  MOD_PAGESPEED_STATS_LOG=$(echo $MOD_PAGESPEED_STATS_LOG | sed -n 's/\"//gp')
+  MOD_PAGESPEED_STATS_PREFIX="$(\
+    sed -n 's/^ ModPagespeedStatisticsLoggingFile //p' \
+    $APACHE_DEBUG_PAGESPEED_CONF)"
+  MOD_PAGESPEED_STATS_PREFIX="$(\
+    echo $MOD_PAGESPEED_STATS_PREFIX | sed -n 's/\"//gp')"
   # Wipe the logs so we get a clean start.
-  rm $MOD_PAGESPEED_STATS_LOG*
+  rm $MOD_PAGESPEED_STATS_PREFIX*
+  # The specific log file that the console will use.
+  # If per-vhost stats is enabled, this is the main vhost suffix ":0".
+  # If per-vhost stats is not enabled, this is the global suffix "global".
+  MOD_PAGESPEED_STATS_LOG="${MOD_PAGESPEED_STATS_PREFIX}:0"
   START_TIME=$(date +%s)000 # We need this in milliseconds.
   sleep 2; # Make sure we're around long enough to log stats.
 fi
@@ -634,7 +640,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   PROXIED_IMAGE="$SECONDARY_HOST/$(basename $OUTDIR/xPuzzle*)"
   WGET_ARGS="--save-headers"
 
-  echo $PROXIED_IMAGE expecting one year cache.
+  start_test $PROXIED_IMAGE expecting one year cache.
   http_proxy=$SECONDARY_HOSTNAME fetch_until $PROXIED_IMAGE \
       "grep -c max-age=31536000" 1
 
@@ -642,7 +648,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # cache hit.
   WRONG_HASH="0"
   PROXIED_IMAGE="$SECONDARY_HOST/xPuzzle.jpg.pagespeed.ic.$WRONG_HASH.jpg"
-  echo Fetching $PROXIED_IMAGE expecting short private cache.
+  start_test Fetching $PROXIED_IMAGE expecting short private cache.
   http_proxy=$SECONDARY_HOSTNAME fetch_until $PROXIED_IMAGE \
       "grep -c max-age=300,private" 1
 
@@ -1258,23 +1264,27 @@ check_from "$(cat $FETCH_FILE)" grep "$X_OTHER_HEADER"
 # if it was enabled.
 if [ $statistics_logging_enabled = "1" ]; then
   start_test Statistics logging works.
-  check [ $(grep "timestamp: " $MOD_PAGESPEED_STATS_LOG* | wc -l) -ge 1 ]
+  check ls $MOD_PAGESPEED_STATS_LOG
+  check [ $(grep "timestamp: " $MOD_PAGESPEED_STATS_LOG | wc -l) -ge 1 ]
   # An array of all the timestamps that were logged.
-  TIMESTAMPS=($(sed -n '/timestamp: /s/[^0-9]*//gp' $MOD_PAGESPEED_STATS_LOG*))
+  TIMESTAMPS=($(sed -n '/timestamp: /s/[^0-9]*//gp' $MOD_PAGESPEED_STATS_LOG))
   check [ ${#TIMESTAMPS[@]} -ge 1 ]
   for T in ${TIMESTAMPS[@]}; do
     check [ $T -ge $START_TIME ]
   done
   # Check a few arbitrary statistics to make sure logging is taking place.
-  check [ $(grep "num_flushes: " $MOD_PAGESPEED_STATS_LOG* | wc -l) -ge 1 ]
-  check [ $(grep "histogram#" $MOD_PAGESPEED_STATS_LOG* | wc -l) -ge 1 ]
-  check [ $(grep "image_ongoing_rewrites: " $MOD_PAGESPEED_STATS_LOG* | wc -l) \
-      -ge 1 ]
+  check [ $(grep "num_flushes: " $MOD_PAGESPEED_STATS_LOG | wc -l) -ge 1 ]
+  check [ $(grep "histogram#" $MOD_PAGESPEED_STATS_LOG | wc -l) -ge 1 ]
+  check [ $(grep "image_ongoing_rewrites: " $MOD_PAGESPEED_STATS_LOG | wc -l) \
+    -ge 1 ]
 
   start_test Statistics logging JSON handler works.
   JSON=$OUTDIR/console_json.json
-  STATS_JSON_URL="$(echo $STATISTICS_URL)?json&granularity=0&var_titles=num_\
+  # $STATISTICS_URL ends in ?ModPagespeed=off, so we need & for now.
+  # If we remove the query from $STATISTICS_URL, s/&/?/.
+  STATS_JSON_URL="$STATISTICS_URL&json&granularity=0&var_titles=num_\
 flushes,image_ongoing_rewrites&hist_titles=Html%20Time%20us%20Histogram"
+  echo "$WGET_DUMP $STATS_JSON_URL > $JSON"
   $WGET_DUMP $STATS_JSON_URL > $JSON
   # Each variable we ask for should show up once.
   check [ $(grep "\"num_flushes\": " $JSON | wc -l) -eq 1 ]
