@@ -309,6 +309,22 @@ TEST_F(DelayImagesFilterTest, DelayImagesPreserveURLsOn) {
   MatchOutputAndCountBytes(kInputHtml, kInputHtml);
 }
 
+TEST_F(DelayImagesFilterTest, DelayImageInsideNoscript) {
+  options()->EnableFilter(RewriteOptions::kLazyloadImages);
+  AddFilter(RewriteOptions::kDelayImages);
+  AddFileToMockFetcher("http://test.com/1.webp", kSampleWebpFile,
+                       kContentTypeWebp, 100);
+  GoogleString input_html = "<head></head>"
+      "<body>"
+      "<noscript><img src=\"http://test.com/1.webp\" /></noscript>"
+      "</body>";
+  GoogleString output_html = StrCat(
+      "<head></head>",
+      StrCat("<body>", GetNoscript(), "<noscript>"
+             "<img src=\"http://test.com/1.webp\"/></noscript></body>"));
+  MatchOutputAndCountBytes(input_html, output_html);
+}
+
 TEST_F(DelayImagesFilterTest, DelayImageWithDeferJavascriptDisabled) {
   options()->EnableFilter(RewriteOptions::kLazyloadImages);
   AddFilter(RewriteOptions::kDelayImages);

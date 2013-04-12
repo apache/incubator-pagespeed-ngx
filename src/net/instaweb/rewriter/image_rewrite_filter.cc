@@ -217,13 +217,14 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   Context(int64 css_image_inline_max_bytes,
           ImageRewriteFilter* filter, RewriteDriver* driver,
           RewriteContext* parent, ResourceContext* resource_context,
-          bool is_css, int html_index)
+          bool is_css, int html_index, bool in_noscript_element)
       : SingleRewriteContext(driver, parent, resource_context),
         css_image_inline_max_bytes_(css_image_inline_max_bytes),
         filter_(filter),
         driver_(driver),
         is_css_(is_css),
-        html_index_(html_index) {}
+        html_index_(html_index),
+        in_noscript_element_(in_noscript_element) {}
   virtual ~Context() {}
 
   virtual void Render();
@@ -249,6 +250,7 @@ class ImageRewriteFilter::Context : public SingleRewriteContext {
   RewriteDriver* driver_;
   bool is_css_;
   const int html_index_;
+  bool in_noscript_element_;
   DISALLOW_COPY_AND_ASSIGN(Context);
 };
 
@@ -837,7 +839,7 @@ RewriteResult ImageRewriteFilter::RewriteLoadedResourceImpl(
     }
 
     int64 image_size = static_cast<int64>(image->output_size());
-    if (options->NeedLowResImages() &&
+    if (options->NeedLowResImages() && !rewrite_context->in_noscript_element_ &&
         !cached->has_low_resolution_inlined_data() &&
         image_size >= options->min_image_size_low_resolution_bytes() &&
         image_size <= options->max_image_size_low_resolution_bytes()) {
@@ -1067,7 +1069,8 @@ void ImageRewriteFilter::BeginRewriteImageUrl(HtmlElement* element,
     Context* context = new Context(0 /* No CSS inlining, it's html */,
                                    this, driver_, NULL /*not nested */,
                                    resource_context.release(),
-                                   false /*not css */, image_counter_++);
+                                   false /*not css */, image_counter_++,
+                                   noscript_element() != NULL);
     ResourceSlotPtr slot(driver_->GetSlot(input_resource, element, src));
     context->AddSlot(slot);
     if (driver_->options()->image_preserve_urls()) {
@@ -1551,7 +1554,8 @@ RewriteContext* ImageRewriteFilter::MakeRewriteContext() {
   return new Context(0 /*No CSS inlining, it's html */,
                      this, driver_, NULL /*not nested */,
                      resource_context, false /*not css */,
-                     kNotCriticalIndex);
+                     kNotCriticalIndex,
+                     false /*not in noscript */);
 }
 
 RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
@@ -1576,7 +1580,8 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContextForCss(
   Context* context = new Context(css_image_inline_max_bytes,
                                  this, NULL /* driver*/, parent,
                                  cloned_context, true /*is css */,
-                                 kNotCriticalIndex);
+                                 kNotCriticalIndex,
+                                 false /*not in noscript */);
   context->AddSlot(slot);
   return context;
 }
@@ -1591,7 +1596,7 @@ RewriteContext* ImageRewriteFilter::MakeNestedRewriteContext(
   }
   Context* context = new Context(
       0 /*No Css inling */, this, NULL /* driver */, parent, resource_context,
-      false /*not css */, kNotCriticalIndex);
+      false /*not css */, kNotCriticalIndex, false /*not in noscript */);
   context->AddSlot(slot);
   return context;
 }
