@@ -169,10 +169,10 @@ CriticalSelectorFilter::~CriticalSelectorFilter() {
 }
 
 bool CriticalSelectorFilter::MustSummarize(HtmlElement* element) const {
-  // Don't summarize non-screen-affecting CSS.  Note that we still need
-  // to defer it, which is done by the Notify...Css methods below.
-  return css_util::CanMediaAffectScreen(
-      element->AttributeValue(HtmlName::kMedia));
+  // Don't summarize non-screen-affecting or <noscript> CSS.  Note that we still
+  // need to defer it, which is done by the Notify...Css methods below.
+  return (noscript_element() == NULL) &&
+      css_util::CanMediaAffectScreen(element->AttributeValue(HtmlName::kMedia));
 }
 
 void CriticalSelectorFilter::Summarize(Css::Stylesheet* stylesheet,
@@ -323,12 +323,11 @@ void CriticalSelectorFilter::NotifyInlineCss(HtmlElement* style_element,
 void CriticalSelectorFilter::NotifyExternalCss(HtmlElement* link) {
   css_elements_.push_back(new CssElement(driver_, link,
                                          noscript_element() != NULL));
-  if (!css_util::CanMediaAffectScreen(
-          link->AttributeValue(HtmlName::kMedia))) {
-    // Treat as if we were rendering a link with no critical css, which would
-    // cause us to delete the element from the page.  In this case we didn't
-    // Summarize the link at all, so we need to remove it here rather than in
-    // Summarize.
+  if (!MustSummarize(link)) {
+    // Treat as if we were rendering a link with no critical css, or inside a
+    // <noscript> block, which would cause us to delete the element from the
+    // page in RenderSummary above.  In this case we didn't Summarize the link
+    // at all, so we need to remove it here.
     driver_->DeleteElement(link);
   }
 }
@@ -339,11 +338,10 @@ GoogleString CriticalSelectorFilter::CacheKeySuffix() const {
 
 void CriticalSelectorFilter::EndElementImpl(HtmlElement* element) {
   CssSummarizerBase::EndElementImpl(element);
-  if (element->keyword() == HtmlName::kStyle &&
-      !css_util::CanMediaAffectScreen(
-          element->AttributeValue(HtmlName::kMedia))) {
-    // Similar to NotifyExternalCss, we must handle non-screen inline <style>s,
-    // which we didn't Summarize but need to delete.
+  if (element->keyword() == HtmlName::kStyle && !MustSummarize(element)) {
+    // Similar to NotifyExternalCss, we must handle inline <style>s that are in
+    // <noscript> or don't affect the screen, which we didn't Summarize but need
+    // to delete.
     driver_->DeleteElement(element);
   }
 }
