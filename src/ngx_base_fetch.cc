@@ -20,16 +20,23 @@
 
 #include "ngx_pagespeed.h"
 
+#include "net/instaweb/http/public/response_headers.h"
+#include "net/instaweb/rewriter/public/rewrite_stats.h"
 #include "net/instaweb/util/public/google_message_handler.h"
 #include "net/instaweb/util/public/message_handler.h"
-#include "net/instaweb/http/public/response_headers.h"
 
 namespace net_instaweb {
 
 NgxBaseFetch::NgxBaseFetch(ngx_http_request_t* r, int pipe_fd,
+                           NgxServerContext* server_context,
                            const RequestContextPtr& request_ctx)
-    : AsyncFetch(request_ctx), request_(r), done_called_(false),
-      last_buf_sent_(false), pipe_fd_(pipe_fd), references_(2) {
+    : AsyncFetch(request_ctx),
+      request_(r),
+      server_context_(server_context),
+      done_called_(false),
+      last_buf_sent_(false),
+      pipe_fd_(pipe_fd),
+      references_(2) {
   if (pthread_mutex_init(&mutex_, NULL)) CHECK(0);
   PopulateRequestHeaders();
 }
@@ -168,6 +175,11 @@ void NgxBaseFetch::RequestCollection() {
 }
 
 void NgxBaseFetch::HandleHeadersComplete() {
+  // If this is a 404 response we need to count it in the stats.
+  if (response_headers()->status_code() == HttpStatus::kNotFound) {
+    server_context_->rewrite_stats()->resource_404_count()->Add(1);
+  }
+
   RequestCollection();  // Headers available.
 }
 

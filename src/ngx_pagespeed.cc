@@ -1374,6 +1374,7 @@ CreateRequestContext::Response ps_create_request_context(
   // the BaseFetch ourselves.
   ctx->base_fetch = new net_instaweb::NgxBaseFetch(
       r, file_descriptors[1],
+      cfg_s->server_context,
       net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
           cfg_s->server_context->thread_system()->NewMutex(), r)));
 
