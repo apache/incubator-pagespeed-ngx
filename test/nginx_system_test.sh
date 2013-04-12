@@ -77,6 +77,8 @@ FILE_CACHE="$TEST_TMP/file-cache/"
 check_simple mkdir "$FILE_CACHE"
 SECONDARY_CACHE="$TEST_TMP/file-cache/secondary/"
 check_simple mkdir "$SECONDARY_CACHE"
+SHM_CACHE="$TEST_TMP/file-cache/with_shm/"
+check_simple mkdir "$SHM_CACHE"
 
 VALGRIND_OPTIONS=""
 
@@ -104,6 +106,7 @@ cat $PAGESPEED_CONF_TEMPLATE \
   | sed 's#@@TEST_TMP@@#'"$TEST_TMP/"'#' \
   | sed 's#@@FILE_CACHE@@#'"$FILE_CACHE/"'#' \
   | sed 's#@@SECONDARY_CACHE@@#'"$SECONDARY_CACHE/"'#' \
+  | sed 's#@@SHM_CACHE@@#'"$SHM_CACHE/"'#' \
   | sed 's#@@SERVER_ROOT@@#'"$SERVER_ROOT"'#' \
   | sed 's#@@PRIMARY_PORT@@#'"$PRIMARY_PORT"'#' \
   | sed 's#@@SECONDARY_PORT@@#'"$SECONDARY_PORT"'#' \
@@ -1124,5 +1127,11 @@ start_test ForbidAllDisabledFilters request headers check.
 HEADER="--header=ModPagespeedFilters:"
 HEADER="${HEADER}+remove_quotes,+remove_comments,+collapse_whitespace"
 test_forbid_all_disabled "" $HEADER
+
+# Test that we work fine with SHM metadata cache.
+start_test Using SHM metadata cache
+HOST_NAME="http://shmcache.example.com"
+URL="$HOST_NAME/mod_pagespeed_example/rewrite_images.html"
+http_proxy=$SECONDARY_HOSTNAME fetch_until $URL 'grep -c .pagespeed.ic' 2
 
 check_failures_and_exit

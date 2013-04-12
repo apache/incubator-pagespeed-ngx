@@ -21,6 +21,8 @@ http {
   root "@@SERVER_ROOT@@";
   pagespeed UsePerVHostStatistics on;
 
+  pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
+
   server {
     listen @@SECONDARY_PORT@@;
     server_name mpd.example.com;
@@ -87,6 +89,16 @@ http {
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
     pagespeed RetainComment " google_ad_section*";
+  }
+
+  server {
+    # Test host for shared memory cache.
+    listen @@SECONDARY_PORT@@;
+    server_name shmcache.example.com;
+    pagespeed FileCachePath "@@SHM_CACHE@@";
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_images;
   }
 
   server {
