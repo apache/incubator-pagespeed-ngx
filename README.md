@@ -89,6 +89,7 @@ $ mkdir ~/mod_pagespeed
 $ cd ~/mod_pagespeed
 $ gclient config http://modpagespeed.googlecode.com/svn/trunk/src
 $ gclient sync --revision src@2748 --force --jobs=1
+$ cd src/
 $ make AR.host="$PWD/build/wrappers/ar.sh" \
        AR.target="$PWD/build/wrappers/ar.sh" \
        BUILDTYPE=Release \
