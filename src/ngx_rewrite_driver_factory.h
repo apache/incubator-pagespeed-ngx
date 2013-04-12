@@ -21,6 +21,8 @@
 
 extern "C" {
   #include <ngx_core.h>
+  #include <ngx_http.h>
+  #include <ngx_config.h>
   #include <ngx_log.h>
 }
 
@@ -41,6 +43,7 @@ class AbstractSharedMem;
 class NgxServerContext;
 class NgxMessageHandler;
 class NgxRewriteOptions;
+class NgxUrlAsyncFetcher;
 class SharedCircularBuffer;
 class SharedMemRefererStatistics;
 class SharedMemStatistics;
@@ -53,6 +56,8 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
  public:
   static const char kStaticAssetPrefix[];
 
+  // main_conf will have only options set in the main block.  It may be NULL,
+  // and we do not take ownership.
   explicit NgxRewriteDriverFactory();
   virtual ~NgxRewriteDriverFactory();
   virtual Hasher* NewHasher();
@@ -72,6 +77,10 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
       StaticAssetManager* static_asset_manager);
   // Print out details of all the connections to memcached servers.
   void PrintMemCacheStats(GoogleString* out);
+  bool InitNgxUrlAsyncFecther();
+  // Check resolver configed or not.
+  bool CheckResolver();
+
   // Release all the resources. It also calls the base class ShutDown to
   // release the base class resources.
   // Initializes all the statistics objects created transitively by
@@ -147,6 +156,19 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   void set_message_buffer_size(int x) {
     message_buffer_size_ = x;
   }
+  void set_resolver(ngx_resolver_t* resolver) {
+    resolver_ = resolver;
+  }
+  void set_resolver_timeout(ngx_msec_t resolver_timeout) {
+    resolver_timeout_ = resolver_timeout == NGX_CONF_UNSET_MSEC ?
+        1000 : resolver_timeout;
+  }
+  bool use_native_fetcher() {
+    return use_native_fetcher_;
+  }
+  void set_use_native_fetcher(bool x) {
+    use_native_fetcher_ = x;
+  }
 
   // We use a beacon handler to collect data for critical images,
   // css, etc., so filters should be configured accordingly.
@@ -182,6 +204,12 @@ class NgxRewriteDriverFactory : public SystemRewriteDriverFactory {
   scoped_ptr<SharedCircularBuffer> shared_circular_buffer_;
   scoped_ptr<SharedMemStatistics> shared_mem_statistics_;
   bool statistics_frozen_;
+
+  NgxUrlAsyncFetcher* ngx_url_async_fetcher_;
+  ngx_log_t* log_;
+  ngx_msec_t resolver_timeout_;
+  ngx_resolver_t* resolver_;
+  bool use_native_fetcher_;
 
   DISALLOW_COPY_AND_ASSIGN(NgxRewriteDriverFactory);
 };
