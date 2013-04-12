@@ -24,6 +24,22 @@ http {
   pagespeed CreateSharedMemoryMetadataCache "@@SHM_CACHE@@" 8192;
 
   server {
+    # Sets up a logical home-page server on
+    # max-cacheable-content-length.example.com.  This server is only used to
+    # test ModPagespeedMaxCacheableContentLength, i.e.,
+    # max_cacheable_response_content_length.
+    listen @@SECONDARY_PORT@@;
+    server_name max-cacheable-content-length.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed BlockingRewriteKey psatest;
+
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_javascript;
+    pagespeed MaxCacheableContentLength 85;
+  }
+
+  server {
     listen @@SECONDARY_PORT@@;
     server_name mpd.example.com;
     pagespeed FileCachePath "@@SECONDARY_CACHE@@";
