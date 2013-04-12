@@ -1134,4 +1134,17 @@ HOST_NAME="http://shmcache.example.com"
 URL="$HOST_NAME/mod_pagespeed_example/rewrite_images.html"
 http_proxy=$SECONDARY_HOSTNAME fetch_until $URL 'grep -c .pagespeed.ic' 2
 
+# Test max_cacheable_response_content_length.  There are two Javascript files
+# in the html file.  The smaller Javascript file should be rewritten while
+# the larger one shouldn't.
+start_test Maximum length of cacheable response content.
+HOST_NAME="http://max-cacheable-content-length.example.com"
+DIR_NAME="mod_pagespeed_test/max_cacheable_content_length"
+HTML_NAME="test_max_cacheable_content_length.html"
+URL=$HOST_NAME/$DIR_NAME/$HTML_NAME
+RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header \
+    'X-PSA-Blocking-Rewrite: psatest' $URL)
+check_from     "$RESPONSE_OUT" fgrep -qi small.js.pagespeed.
+check_not_from "$RESPONSE_OUT" fgrep -qi large.js.pagespeed.
+
 check_failures_and_exit
