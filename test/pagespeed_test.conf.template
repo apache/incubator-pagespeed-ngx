@@ -158,6 +158,43 @@ http {
     pagespeed EnableFilters inline_css;
   }
 
+  # The next three server blocks are for a cdn test.
+  server {
+    # Sets up a logical home-page server on www.example.com
+    listen @@SECONDARY_PORT@@;
+    server_name www.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed LoadFromFile http://cdn.example.com @@SERVER_ROOT@@;
+    pagespeed MapRewriteDomain cdn.example.com origin.example.com;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_css,rewrite_images;
+  }
+  server {
+    # Sets up a logical origin for CDNs to fetch content from, on
+    # origin.example.com.
+    listen @@SECONDARY_PORT@@;
+    server_name origin.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed LoadFromFile http://cdn.example.com @@SERVER_ROOT@@;
+    pagespeed MapRewriteDomain cdn.example.com origin.example.com;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_css,rewrite_images;
+  }
+  server {
+    # Sets up a logical cdn, which is where we tell browsers to fetch resources
+    # from.
+    listen @@SECONDARY_PORT@@;
+    server_name cdn.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed LoadFromFile http://cdn.example.com @@SERVER_ROOT@@;
+    pagespeed MapRewriteDomain cdn.example.com origin.example.com;
+    pagespeed RewriteLevel PassThrough;
+    pagespeed EnableFilters rewrite_css,rewrite_images;
+  }
+
   server {
     listen @@SECONDARY_PORT@@;
     server_name tryfiles.example.com;
