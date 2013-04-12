@@ -88,10 +88,7 @@ $ export PATH=$PATH:~/bin/depot_tools
 $ mkdir ~/mod_pagespeed
 $ cd ~/mod_pagespeed
 $ gclient config http://modpagespeed.googlecode.com/svn/trunk/src
-$ gclient sync --force --jobs=1
-$ cd src/
-$ svn up -r2748
-$ gclient runhooks
+$ gclient sync --revision src@2748 --force --jobs=1
 $ make AR.host="$PWD/build/wrappers/ar.sh" \
        AR.target="$PWD/build/wrappers/ar.sh" \
        BUILDTYPE=Release \
@@ -290,13 +287,18 @@ This should print out a lot of lines like:
 and then eventually:
 
     Failing Tests:
-      compression is enabled for rewritten JS.
+      In-place resource optimization
+      In-place resource optimization
+      In-place resource optimization
       convert_meta_tags
       insert_dns_prefetch
       insert_dns_prefetch
     FAIL.
+    With serf fetcher setup.
 
 Each of these failed tests is a known issue:
+ - [In-place resource
+   optimization](https://github.com/pagespeed/ngx_pagespeed/issues/42)
  - [compression is enabled for rewritten JS.](
     https://github.com/pagespeed/ngx_pagespeed/issues/70)
    - If you're running a version of nginx without etag support (pre-1.3.3) you
@@ -328,6 +330,8 @@ $ php-cgi -b 127.0.0.1:9000 &
 
 If it fails with some other error, that's a problem, and it would be helpful for
 you to [submit a bug](https://github.com/pagespeed/ngx_pagespeed/issues/new).
+
+Log files are in `test/tmp/error.log` and `test/tmp/access.log`.
 
 #### Testing with memcached
 
