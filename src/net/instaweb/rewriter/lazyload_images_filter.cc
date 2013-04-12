@@ -192,8 +192,7 @@ void LazyloadImagesFilter::EndElementImpl(HtmlElement* element) {
 
   StringPiece url(src->DecodedValueOrNull());
   if (url.empty() || IsDataUrl(url) ||
-      element->DeleteAttribute(HtmlName::kPagespeedNoDefer)) {
-    // Note that we remove the pagespeed_no_defer if it was present.
+      element->FindAttribute(HtmlName::kPagespeedNoDefer) != NULL) {
     // TODO(rahulbansal): Log separately for pagespeed_no_defer.
     return;
   }

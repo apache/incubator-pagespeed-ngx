@@ -80,7 +80,7 @@ class FlushEarlyContentWriterFilter : public HtmlWriterFilter {
       bool is_pagespeed_resource,
       semantic_type::Category category);
 
-  void TryFlushingDeferJavascriptEarly();
+  void FlushDeferJavascriptEarly();
 
   // Returns the type of resource based on the url.
   FlushEarlyResourceInfo::ResourceType GetResourceType(

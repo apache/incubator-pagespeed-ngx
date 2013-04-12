@@ -164,7 +164,7 @@ TEST_F(LazyloadImagesFilterTest, SingleHead) {
              "</marquee>",
              GetLazyloadScriptHtml(),
              GenerateRewrittenImageTag("img", "1.jpg", ""),
-             "<img src=\"1.jpg\"/>"
+             "<img src=\"1.jpg\" pagespeed_no_defer />"
              "<img src=\"1.jpg\" data-src=\"2.jpg\"/>",
              StrCat("<img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhE\"/>",
                     GenerateRewrittenImageTag("img", "2's.jpg",

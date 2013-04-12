@@ -556,7 +556,9 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
       return StringPrintf(
           kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly,
           rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
-          rewritten_css_url_3_.data(), "", 3, "",
+          rewritten_css_url_3_.data(),
+          "<script type=\"psa_prefetch\" src=\"/psajs/js_defer.0.js\">"
+          "</script>\n", 4, "",
           cookie_script.data(),
           "<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">",
           rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),

@@ -229,7 +229,7 @@ void FlushEarlyContentWriterFilter::EndDocument() {
        true /* affected by bandwidth */,
        js_resource_info->in_head_);
   }
-  TryFlushingDeferJavascriptEarly();
+  FlushDeferJavascriptEarly();
 
   if (insert_close_script_) {
     WriteToOriginalWriter("})()</script>");
@@ -247,34 +247,30 @@ void FlushEarlyContentWriterFilter::EndDocument() {
   Clear();
 }
 
-void FlushEarlyContentWriterFilter::TryFlushingDeferJavascriptEarly() {
-  bool is_flushed = false;
+void FlushEarlyContentWriterFilter::FlushDeferJavascriptEarly() {
   bool is_bandwidth_affected = false;
   const RewriteOptions* options = driver_->options();
-  // We don't flush defer js here if SplitHtml filter is enabled since blink js
-  // contains defer js.
-  bool should_try_flushing_early_js_defer_script =
-      !options->Enabled(RewriteOptions::kSplitHtml) &&
-      defer_javascript_enabled_ &&
+  bool should_flush_early_js_defer_script =
+      (options->Enabled(RewriteOptions::kSplitHtml) ||
+       defer_javascript_enabled_) &&
       driver_->device_properties()->SupportsJsDefer(
-          driver_->options()->enable_aggressive_rewriters_for_mobile()) &&
-      flush_more_resources_early_if_time_permits_;
-  if (should_try_flushing_early_js_defer_script) {
+          driver_->options()->enable_aggressive_rewriters_for_mobile());
+  if (should_flush_early_js_defer_script) {
+    const StaticAssetManager::StaticAsset& defer_js_module =
+        defer_javascript_enabled_ ? StaticAssetManager::kDeferJs :
+        StaticAssetManager::kBlinkJs;
     StaticAssetManager* static_asset_manager =
         driver_->server_context()->static_asset_manager();
     GoogleString defer_js = static_asset_manager->GetAsset(
-            StaticAssetManager::kDeferJs, options);
+            defer_js_module, options);
     int64 time_to_download = TimeToDownload(defer_js.size());
     is_bandwidth_affected = true;
-    if (time_consumed_ms_ + time_to_download < max_available_time_ms_) {
-      GoogleString defer_js_url = static_asset_manager->GetAssetUrl(
-          StaticAssetManager::kDeferJs, options);
-      FlushResources(defer_js_url, time_to_download, false,
-                     semantic_type::kScript);
-      is_flushed = true;
-    }
+    GoogleString defer_js_url = static_asset_manager->GetAssetUrl(
+        defer_js_module, options);
+    FlushResources(defer_js_url, time_to_download, false,
+                   semantic_type::kScript);
   }
-  RewriterApplication::Status status = is_flushed ?
+  RewriterApplication::Status status = should_flush_early_js_defer_script ?
       RewriterApplication::APPLIED_OK : RewriterApplication::NOT_APPLIED;
   driver_->log_record()->LogFlushEarlyActivity(
        RewriteOptions::FilterId(RewriteOptions::kFlushSubresources),

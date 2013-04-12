@@ -387,10 +387,12 @@ TEST_F(FlushEarlyContentWriterFilterTest, TestDifferentBrowsers) {
       "<link rel=\"dns-prefetch\" href=\"//test.com\">"
       "<link rel=\"prefetch\" href=\"//test1.com\">"
       "<link rel=\"stylesheet\" href=\"d.css.pagespeed.cf.%s.css\" "
-      "media=\"print\" disabled=\"true\"/>\n");
+      "media=\"print\" disabled=\"true\"/>\n"
+      "<script type=\"psa_prefetch\" src=\"/psajs/js_defer.0.js\">"
+      "</script>\n");
 
   Parse("prefetch_link_script_tag", html_input);
-  EXPECT_EQ(RewrittenOutputWithResources(html_output, 2), output_);
+  EXPECT_EQ(RewrittenOutputWithResources(html_output, 3), output_);
 }
 
 TEST_F(FlushEarlyContentWriterFilterTest, NoResourcesToFlush) {
@@ -489,7 +491,7 @@ TEST_F(FlushEarlyContentWriterFilterTest, TooManyRewriterInfoRecords) {
   EXPECT_TRUE(logging_info()->rewriter_info_size_limit_exceeded());
 }
 
-TEST_F(FlushEarlyContentWriterFilterTest, FlushDeferJsEarlyIfTimePermits) {
+TEST_F(FlushEarlyContentWriterFilterTest, FlushDeferJsEarly) {
   GoogleString html_input =
       "<!DOCTYPE html>"
       "<html>"
@@ -497,26 +499,9 @@ TEST_F(FlushEarlyContentWriterFilterTest, FlushDeferJsEarlyIfTimePermits) {
       "</head>"
       "<body></body></html>";
 
-  // Set fetch latency to 0. DeferJs should not be flushed early.
+  // Set fetch latency to 0.
+  // Irrespective of AvailableTimeMs, DeferJs should be flushed early always.
   EnableDeferJsAndSetFetchLatency(0);
-  // User-Agent: prefetch_link_script_tag.
-  output_.clear();
-  rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
-  Parse("prefetch_link_script_tag", html_input);
-  EXPECT_EQ(RewrittenOutputWithResources("", 0), output_);
-
-  ExpectNumLogRecords(1);
-  ExpectAvailableTimeMs(0);
-  ExpectLogRecord(0,
-                  RewriterApplication::NOT_APPLIED,
-                  -1,
-                  FlushEarlyResourceInfo::JS,
-                  FlushEarlyResourceInfo::DEFERJS_SCRIPT,
-                  true /* affected by bandwidth */,
-                  false /* not in HEAD */);
-
-  // Set fetch latency to 200. DeferJs should be flushed early.
-  EnableDeferJsAndSetFetchLatency(200);
   // User-Agent: prefetch_link_script_tag.
   output_.clear();
   rewrite_driver()->SetUserAgent("prefetch_link_script_tag");
@@ -524,8 +509,9 @@ TEST_F(FlushEarlyContentWriterFilterTest, FlushDeferJsEarlyIfTimePermits) {
   EXPECT_EQ(RewrittenOutputWithResources(
       "<script type=\"psa_prefetch\" src=\"/psajs/js_defer.0.js\"></script>\n",
       1), output_);
+
   ExpectNumLogRecords(1);
-  ExpectAvailableTimeMs(200);
+  ExpectAvailableTimeMs(0);
   ExpectLogRecord(0,
                   RewriterApplication::APPLIED_OK,
                   -1,

@@ -1826,17 +1826,20 @@ TEST_F(ImageRewriteTest, HonorNoTransform) {
 
 TEST_F(ImageRewriteTest, YesTransform) {
   // Replicates above test but without no-transform to show that it works.
+  // We also verfiy that the pagespeed_no_defer attribute doesn't get removed
+  // when we rewrite images.
   options()->EnableFilter(RewriteOptions::kRecompressPng);
   rewrite_driver()->AddFilters();
 
   GoogleString url = StrCat(kTestDomain, "notransform.png");
   AddFileToMockFetcher(url, kBikePngFile,
                        kContentTypePng, 100);
-  ValidateExpected("YesTransform", StrCat("<img src=", url, ">"),
+  ValidateExpected("YesTransform",
+                   StrCat("<img src=", url, " pagespeed_no_defer>"),
                    StrCat("<img src=",
                           Encode("http://test.com/", "ic", "0",
                                  "notransform.png", "png"),
-                          ">"));
+                          " pagespeed_no_defer>"));
   // Validate twice in case changes in cache from the first request alter the
   // second.
   ValidateExpected("YesTransform", StrCat("<img src=", url, ">"),
