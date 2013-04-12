@@ -1147,4 +1147,11 @@ RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header \
 check_from     "$RESPONSE_OUT" fgrep -qi small.js.pagespeed.
 check_not_from "$RESPONSE_OUT" fgrep -qi large.js.pagespeed.
 
+# This test checks that the ModPagespeedXHeaderValue directive works.
+start_test ModPagespeedXHeaderValue directive
+
+RESPONSE_OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP \
+  http://xheader.example.com/mod_pagespeed_example)
+check_from "$RESPONSE_OUT" fgrep -q "X-Page-Speed: UNSPECIFIED VERSION"
+
 check_failures_and_exit
