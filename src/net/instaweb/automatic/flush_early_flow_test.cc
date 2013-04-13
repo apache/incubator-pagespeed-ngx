@@ -38,6 +38,7 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
+#include "net/instaweb/rewriter/public/split_html_filter.h"
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/rewriter/public/test_url_namer.h"
@@ -521,7 +522,7 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
       UserAgentMatcher::PrefetchMechanism value,
       bool defer_js_enabled, bool insert_dns_prefetch) {
     return FlushEarlyRewrittenHtml(value, defer_js_enabled,
-                                   insert_dns_prefetch, true, false);
+                                   insert_dns_prefetch, true, false, false);
   }
 
   GoogleString GetDeferJsCode() {
@@ -531,10 +532,15 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
                   "\"></script>");
   }
 
+  GoogleString GetSplitHtmlSuffixCode() {
+    return StringPrintf(SplitHtmlFilter::kSplitSuffixJsFormatString,
+                        0, "/psajs/blink.js", "{}", "false");
+  }
+
   GoogleString FlushEarlyRewrittenHtml(
       UserAgentMatcher::PrefetchMechanism value,
       bool defer_js_enabled, bool insert_dns_prefetch,
-      bool lazyload_enabled, bool redirect_psa_off) {
+      bool lazyload_enabled, bool redirect_psa_off, bool split_html_enabled) {
     GoogleString combined_js_url = Encode(
         kTestDomain, "jc", kMockHashValue,
         StringPrintf("1.js.pagespeed.jm.%s.jsX2.js.pagespeed.jm.%s.js",
@@ -553,24 +559,31 @@ class FlushEarlyFlowTest : public ProxyInterfaceTestBase {
     combined_js_url[combined_js_url.find('X')] = '+';
     if (value == UserAgentMatcher::kPrefetchLinkScriptTag && defer_js_enabled
         && !lazyload_enabled) {
+      GoogleString expected_url = split_html_enabled ? "/psajs/blink.js" :
+          "/psajs/js_defer.0.js";
+      GoogleString defer_js_injected_html1 = StrCat(
+          "<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
+          JsDisableFilter::GetJsDisableScriptSnippet(options_),
+          "</script>", split_html_enabled ? SplitHtmlFilter::kSplitInit : "");
+      GoogleString defer_js_injected_html2 =
+          split_html_enabled ? GetSplitHtmlSuffixCode() : GetDeferJsCode();
+
       return StringPrintf(
           kRewrittenHtmlLazyloadDeferJsScriptFlushedEarly,
           rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
           rewritten_css_url_3_.data(),
-          "<script type=\"psa_prefetch\" src=\"/psajs/js_defer.0.js\">"
-          "</script>\n", 4, "",
+          StrCat("<script type=\"psa_prefetch\" src=\"", expected_url, "\">"
+          "</script>\n").c_str(), 4, "",
           cookie_script.data(),
           "<meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">",
           rewritten_css_url_1_.data(), rewritten_css_url_2_.data(),
           rewritten_js_url_1_.data(), rewritten_js_url_2_.data(),
           StrCat("<img src=\"", rewritten_img_url_1.data(), "\"/>").c_str(),
-          StrCat("<script type=\"text/javascript\" pagespeed_no_defer=\"\">",
-                 JsDisableFilter::GetJsDisableScriptSnippet(options_),
-                 "</script>").c_str(),
+          defer_js_injected_html1.c_str(),
           StringPrintf(kNoScriptRedirectFormatter, redirect_url.c_str(),
                        redirect_url.c_str()).c_str(),
           rewritten_css_url_3_.data(),
-          GetDeferJsCode().c_str());
+          defer_js_injected_html2.c_str());
     } else if (value == UserAgentMatcher::kPrefetchLinkScriptTag
                && defer_js_enabled && lazyload_enabled) {
       return StringPrintf(
@@ -1557,10 +1570,35 @@ TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithIEAddUACompatibilityHeader) {
   FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
 
   EXPECT_EQ(FlushEarlyRewrittenHtml(UserAgentMatcher::kPrefetchLinkScriptTag,
-                                    true, false, false, false), text);
+                                    true, false, false, false, false), text);
   ConstStringStarVector values;
   EXPECT_TRUE(headers.Lookup(HttpAttributes::kXUACompatible, &values));
   EXPECT_STREQ("IE=edge", *(values[0]));
+}
+
+TEST_F(FlushEarlyFlowTest, FlushEarlyFlowWithDeferJsAndSplitEnabled) {
+  SetupForFlushEarlyFlow();
+  RequestHeaders request_headers;
+  request_headers.Replace(HttpAttributes::kUserAgent,
+                          " MSIE 9.");
+  scoped_ptr<RewriteOptions> custom_options(
+      server_context()->global_options()->Clone());
+  custom_options->EnableFilter(RewriteOptions::kDeferJavascript);
+  custom_options->EnableFilter(RewriteOptions::kSplitHtml);
+
+  ProxyUrlNamer url_namer;
+  url_namer.set_options(custom_options.get());
+  server_context()->set_url_namer(&url_namer);
+
+  GoogleString text;
+  ResponseHeaders headers;
+
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+  // Fetch the url again. This time FlushEarlyFlow should be triggered.
+  FetchFromProxy(kTestDomain, request_headers, true, &text, &headers);
+
+  EXPECT_EQ(FlushEarlyRewrittenHtml(UserAgentMatcher::kPrefetchLinkScriptTag,
+                                    true, false, false, false, true), text);
 }
 
 }  // namespace net_instaweb

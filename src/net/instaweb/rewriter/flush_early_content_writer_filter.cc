@@ -250,15 +250,15 @@ void FlushEarlyContentWriterFilter::EndDocument() {
 void FlushEarlyContentWriterFilter::FlushDeferJavascriptEarly() {
   bool is_bandwidth_affected = false;
   const RewriteOptions* options = driver_->options();
+  bool is_split_enabled = options->Enabled(RewriteOptions::kSplitHtml);
   bool should_flush_early_js_defer_script =
-      (options->Enabled(RewriteOptions::kSplitHtml) ||
-       defer_javascript_enabled_) &&
+      (is_split_enabled || defer_javascript_enabled_) &&
       driver_->device_properties()->SupportsJsDefer(
           driver_->options()->enable_aggressive_rewriters_for_mobile());
   if (should_flush_early_js_defer_script) {
     const StaticAssetManager::StaticAsset& defer_js_module =
-        defer_javascript_enabled_ ? StaticAssetManager::kDeferJs :
-        StaticAssetManager::kBlinkJs;
+        is_split_enabled ? StaticAssetManager::kBlinkJs :
+        StaticAssetManager::kDeferJs;
     StaticAssetManager* static_asset_manager =
         driver_->server_context()->static_asset_manager();
     GoogleString defer_js = static_asset_manager->GetAsset(
