@@ -74,14 +74,15 @@ typedef struct {
   net_instaweb::NgxBaseFetch* base_fetch;
   net_instaweb::RewriteDriver* driver;
   bool data_received;
-  int pipe_fd;
-  ngx_connection_t* pagespeed_connection;
   ngx_http_request_t* r;
   bool is_resource_fetch;
   bool sent_headers;
   bool write_pending;
   net_instaweb::GzipInflater* inflater_;
 } ps_request_ctx_t;
+
+// called by net_instaweb::NgxBaseFetch to notify event
+void ps_base_fetch_signal(ngx_http_request_t *r);
 
 }  // namespace ngx_psol
 
