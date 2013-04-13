@@ -18,6 +18,7 @@
 
 #include "net/instaweb/rewriter/public/rewrite_options.h"
 
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
 #include "net/instaweb/rewriter/public/rewrite_options_test_base.h"
 #include "net/instaweb/util/public/google_url.h"
@@ -247,6 +248,54 @@ TEST_F(RewriteOptionsTest, ParseRewriteLevel) {
   ASSERT_FALSE(RewriteOptions::ParseRewriteLevel("", &level));
   ASSERT_FALSE(RewriteOptions::ParseRewriteLevel("Garbage", &level));
 }
+
+TEST_F(RewriteOptionsTest, IsRequestDeclined) {
+  RewriteOptions one;
+  one.AddRejectedUrlWildcard("*blocked*");
+  one.AddRejectedHeaderWildcard(HttpAttributes::kUserAgent,
+                                "*blocked UA*");
+  one.AddRejectedHeaderWildcard(HttpAttributes::kXForwardedFor,
+                                "12.34.13.*");
+
+  RequestHeaders headers;
+  headers.Add(HttpAttributes::kUserAgent, "Chrome");
+  ASSERT_FALSE(one.IsRequestDeclined("www.test.com/a", &headers));
+  ASSERT_TRUE(one.IsRequestDeclined("www.test.com/blocked", &headers));
+
+  headers.Add(HttpAttributes::kUserAgent, "this is blocked UA agent");
+  ASSERT_TRUE(one.IsRequestDeclined("www.test.com/a", &headers));
+
+  headers.Add(HttpAttributes::kUserAgent, "Chrome");
+  headers.Add(HttpAttributes::kXForwardedFor, "12.34.13.1");
+  ASSERT_TRUE(one.IsRequestDeclined("www.test.com/a", &headers));
+
+  headers.Clear();
+  ASSERT_FALSE(one.IsRequestDeclined("www.test.com/a", &headers));
+}
+
+TEST_F(RewriteOptionsTest, IsRequestDeclinedMerge) {
+  RewriteOptions one, two;
+  RequestHeaders headers;
+  one.AddRejectedUrlWildcard("http://www.a.com/b/*");
+  EXPECT_TRUE(one.IsRequestDeclined("http://www.a.com/b/sdsd123", &headers));
+  EXPECT_FALSE(one.IsRequestDeclined("http://www.a.com/", &headers));
+  EXPECT_FALSE(one.IsRequestDeclined("http://www.b.com/b/", &headers));
+
+  two.AddRejectedHeaderWildcard(HttpAttributes::kUserAgent, "*Chrome*");
+  two.AddRejectedUrlWildcard("http://www.b.com/b/*");
+  MergeOptions(one, two);
+
+  EXPECT_TRUE(options_.IsRequestDeclined("http://www.a.com/b/sdsd13", &headers));
+  EXPECT_FALSE(options_.IsRequestDeclined("http://www.a.com/", &headers));
+  EXPECT_TRUE(options_.IsRequestDeclined("http://www.b.com/b/", &headers));
+
+  headers.Add(HttpAttributes::kUserAgent, "firefox");
+  EXPECT_FALSE(options_.IsRequestDeclined("http://www.a.com/", &headers));
+
+  headers.Add(HttpAttributes::kUserAgent, "abc Chrome 456");
+  EXPECT_TRUE(options_.IsRequestDeclined("http://www.a.com/", &headers));
+}
+
 
 TEST_F(RewriteOptionsTest, MergeLevelsDefault) {
   RewriteOptions one, two;
@@ -546,35 +595,6 @@ TEST_F(RewriteOptionsTest, AllDoesNotImplyStripScrips) {
   options_.SetRewriteLevel(RewriteOptions::kAllFilters);
   EXPECT_TRUE(options_.Enabled(RewriteOptions::kCombineCss));
   EXPECT_FALSE(options_.Enabled(RewriteOptions::kStripScripts));
-}
-
-TEST_F(RewriteOptionsTest, RejectedRequestUrl) {
-  options_.AddRejectedUrlWildcard("http://www.a.com/b/*");
-  EXPECT_TRUE(options_.IsRejectedUrl("http://www.a.com/b/sdsd123"));
-  EXPECT_FALSE(options_.IsRejectedUrl("http://www.a.com/"));
-  EXPECT_FALSE(options_.IsRejectedUrl("http://www.b.com/b/"));
-}
-
-TEST_F(RewriteOptionsTest, RejectedRequest) {
-  options_.AddRejectedHeaderWildcard("UserAgent", "*Chrome*");
-  EXPECT_FALSE(options_.IsRejectedRequest("Host", "www.a.com"));
-  EXPECT_FALSE(options_.IsRejectedRequest("UserAgent", "firefox"));
-  EXPECT_TRUE(options_.IsRejectedRequest("UserAgent", "abc Chrome 456"));
-}
-
-TEST_F(RewriteOptionsTest, RejectedRequestMerge) {
-  RewriteOptions one, two;
-  one.AddRejectedUrlWildcard("http://www.a.com/b/*");
-  one.AddRejectedHeaderWildcard("UserAgent", "*Chrome*");
-  two.AddRejectedUrlWildcard("http://www.b.com/b/*");
-  MergeOptions(one, two);
-
-  EXPECT_FALSE(options_.IsRejectedRequest("Host", "www.a.com"));
-  EXPECT_FALSE(options_.IsRejectedRequest("UserAgent", "firefox"));
-  EXPECT_TRUE(options_.IsRejectedRequest("UserAgent", "abc Chrome 456"));
-  EXPECT_TRUE(options_.IsRejectedUrl("http://www.a.com/b/sdsd123"));
-  EXPECT_FALSE(options_.IsRejectedUrl("http://www.a.com/"));
-  EXPECT_TRUE(options_.IsRejectedUrl("http://www.b.com/b/"));
 }
 
 TEST_F(RewriteOptionsTest, ExplicitlyEnabledDangerousFilters) {

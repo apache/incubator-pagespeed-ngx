@@ -196,6 +196,7 @@ void CriticalCssFilter::EndDocument() {
     }
 
     HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
+    driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
     driver_->InsertElementBeforeCurrent(script);
     int num_unreplaced_links_ = num_links_ - num_replaced_links_;
     int total_overhead_size =

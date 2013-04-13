@@ -112,20 +112,6 @@ bool UrlMightHavePropertyCacheEntry(const GoogleUrl& url) {
   return false;
 }
 
-bool HasRejectedHeader(const StringPiece& header_name,
-                       const RequestHeaders* request_headers,
-                       const RewriteOptions* options) {
-  ConstStringStarVector header_values;
-  if (request_headers->Lookup(header_name, &header_values)) {
-    for (int i = 0, n = header_values.size(); i < n; ++i) {
-      if (options->IsRejectedRequest(header_name, *header_values[i])) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
 // Provides a callback whose Done() function is executed once we have
 // rewrite options.
 class ProxyInterfaceUrlNamerCallback : public UrlNamer::Callback {
@@ -436,12 +422,8 @@ void ProxyInterface::ProxyRequestCallback(
   GoogleString url_string;
   RequestHeaders* request_headers = async_fetch->request_headers();
   request_url->Spec().CopyToString(&url_string);
-  if ((options != NULL) &&
-      (options->IsRejectedUrl(url_string) ||
-       HasRejectedHeader(
-           HttpAttributes::kUserAgent, request_headers, options) ||
-       HasRejectedHeader(
-           HttpAttributes::kXForwardedFor, request_headers, options))) {
+  if (options != NULL &&
+      options->IsRequestDeclined(url_string, request_headers)) {
     rejected_requests_->IncBy(1);
     ResponseHeaders* response_headers = async_fetch->response_headers();
     response_headers->SetStatusAndReason(HttpStatus::kProxyDeclinedRequest);

@@ -400,7 +400,7 @@ deferJsNs.DeferJs.PSA_ORIG_INDEX = 'orig_index';
  * Name of the deferred onload attribute.
  * @const {string}
  */
-deferJsNs.DeferJs.PAGESPEED_ONLOAD = 'pagespeed_onload';
+deferJsNs.DeferJs.PAGESPEED_ONLOAD = 'data-pagespeed-onload';
 
 /**
  * Add to defer_logs if logs are enabled.
@@ -1299,7 +1299,7 @@ deferJsNs.DeferJs.prototype.addDeferredOnloadListeners = function() {
   var onloadDeferredElements;
   if (document.querySelectorAll) {
     onloadDeferredElements = document.querySelectorAll(
-        '[' + deferJsNs.DeferJs.PAGESPEED_ONLOAD + ']');
+        '[' + deferJsNs.DeferJs.PAGESPEED_ONLOAD + '][data-pagespeed-loaded]');
   }
   for (var i = 0; i < onloadDeferredElements.length; i++) {
     var elem = onloadDeferredElements.item(i);

@@ -80,7 +80,7 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "<script></script>"
       "<script src=\"blah1\" random=\"true\">hi1</script>",
       kUnrelatedTags,
-      "<img src=\"abc.jpg\" onload=\"foo1();foo2();\">"
+      "<img src=\"abc.jpg\" onload=\"foo1('abc');foo2();\">"
       "<script src=\"blah2\" random=\"false\">hi2</script>"
       "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
       "</body>");
@@ -93,13 +93,13 @@ TEST_F(JsDisableFilterTest, DisablesScript) {
       "<script></script>"
       "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
-      kUnrelatedTags,
-      "<img src=\"abc.jpg\" onload=\"this.setAttribute('pagespeed_onload',"
-      "'foo1();foo2();');\">"
+      kUnrelatedTags, StrCat(
+      "<img src=\"abc.jpg\" data-pagespeed-onload=\"foo1('abc');foo2();\" "
+      "onload=\"", JsDisableFilter::kElementOnloadCode, "\">"
       "<script pagespeed_orig_src=\"blah2\" random=\"false\""
       " type=\"text/psajs\" orig_index=\"1\">hi2</script>"
       "<script src=\"blah3\" pagespeed_no_defer=\"\"></script>"
-      "</body>");
+      "</body>"));
 
   ValidateExpectedUrl("http://example.com/", input_html, expected);
   ExpectLogRecord(0, RewriterApplication::APPLIED_OK, false);
@@ -312,15 +312,15 @@ TEST_F(JsDisableFilterTest, ScriptWithPagespeedPrioritizeAttribute) {
       kUnrelatedNoscriptTags,
       "<script pagespeed_orig_src=\"blah1\" random=\"true\" type=\"text/psajs\""
       " orig_index=\"0\">hi1</script>",
-      kUnrelatedTags,
-      "<img src=\"abc.jpg\" onload=\"this.setAttribute('pagespeed_onload',"
-      "'foo1();foo2();');\">"
+      kUnrelatedTags, StrCat(
+      "<img src=\"abc.jpg\" data-pagespeed-onload=\"foo1();foo2();\" "
+      "onload=\"", JsDisableFilter::kElementOnloadCode, "\">"
       "<script pagespeed_orig_src=\"blah2\" random=\"false\" "
       "data-pagespeed-prioritize type=\"text/prioritypsajs\" orig_index=\"1\">"
       "hi2</script>"
       "<script data-pagespeed-prioritize type=\"text/prioritypsajs\" "
       "orig_index=\"2\">hi5</script>"
-      "</body>");
+      "</body>"));
   ValidateExpectedUrl("http://example.com/", input_html, expected);
 }
 

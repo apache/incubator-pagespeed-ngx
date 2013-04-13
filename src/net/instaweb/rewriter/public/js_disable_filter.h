@@ -44,6 +44,7 @@ class JsDisableFilter : public EmptyHtmlFilter {
 
   static const char kEnableJsExperimental[];
   static const char kDisableJsExperimental[];
+  static const char kElementOnloadCode[];
 
   virtual void StartDocument();
 

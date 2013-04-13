@@ -240,7 +240,7 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
       "<style type='text/css'>t {color: turquoise }</style>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script type=\"text/javascript\">",
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -298,7 +298,7 @@ TEST_F(CriticalCssFilterTest, InvalidUrl) {
       "<link rel='stylesheet' href='Hi there!' type='text/css'>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script type=\"text/javascript\">",
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -365,7 +365,7 @@ TEST_F(CriticalCssFilterTest, NullAndEmptyCriticalRules) {
       "<style type='text/css'>t {color: turquoise }</style>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script type=\"text/javascript\">",
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"
@@ -446,7 +446,7 @@ TEST_F(CriticalCssFilterTest, DebugFilterAddsStats) {
       "<style type='text/css'>t {color: turquoise }</style>"
       "<link rel='stylesheet' href='c.css' type='text/css'>"
       "</noscript>"
-      "<script type=\"text/javascript\">",
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
       CriticalCssFilter::kAddStylesScript,
       "window['pagespeed'] = window['pagespeed'] || {};"
       "window['pagespeed']['criticalCss'] = {"

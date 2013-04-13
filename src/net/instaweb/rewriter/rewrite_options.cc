@@ -23,6 +23,7 @@
 
 #include "base/logging.h"
 #include "net/instaweb/http/public/semantic_type.h"
+#include "net/instaweb/http/public/request_headers.h"
 #include "net/instaweb/rewriter/public/domain_lawyer.h"
 #include "net/instaweb/rewriter/public/file_load_policy.h"
 #include "net/instaweb/rewriter/public/furious_util.h"
@@ -2435,6 +2436,32 @@ bool RewriteOptions::Forbidden(StringPiece filter_id) const {
           (forbidden_filters_.IsSet(filter) ||
            (forbid_all_disabled_filters() &&
             disabled_filters_.IsSet(filter))));
+}
+
+bool RewriteOptions::HasRejectedHeader(
+    const StringPiece& header_name,
+    const RequestHeaders* request_headers) const {
+  ConstStringStarVector header_values;
+  if (request_headers->Lookup(header_name, &header_values)) {
+    for (int i = 0, n = header_values.size(); i < n; ++i) {
+      if (IsRejectedRequest(header_name, *header_values[i])) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+bool RewriteOptions::IsRequestDeclined(
+    const GoogleString& url,
+    const RequestHeaders* request_headers) const {
+  if (IsRejectedUrl(url) ||
+      HasRejectedHeader(HttpAttributes::kUserAgent, request_headers) ||
+      HasRejectedHeader(HttpAttributes::kXForwardedFor, request_headers)) {
+    return true;
+  }
+
+  return false;
 }
 
 int64 RewriteOptions::ImageInlineMaxBytes() const {

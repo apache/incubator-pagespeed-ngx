@@ -46,6 +46,7 @@ namespace net_instaweb {
 class GoogleUrl;
 class Hasher;
 class MessageHandler;
+class RequestHeaders;
 
 // Defines a set of customizations that can be applied to any Rewrite.  There
 // are multiple categories of customizations:
@@ -2152,19 +2153,11 @@ class RewriteOptions {
     insert_result.first->second->Allow(wildcard);
   }
 
-  bool IsRejectedUrl(const GoogleString& url) const {
-    return IsRejectedRequest(kRejectedRequestUrlKeyName, url);
-  }
+  // Determine if the request url needs to be declined based on the url,
+  // request headers and rewrite options.
+  bool IsRequestDeclined(const GoogleString& url,
+                         const RequestHeaders* request_headers) const;
 
-  bool IsRejectedRequest(const StringPiece& header_name,
-                         const StringPiece& value) const {
-    FastWildcardGroupMap::const_iterator it = rejected_request_map_.find(
-        header_name);
-    if (it != rejected_request_map_.end()) {
-      return it->second->Match(value, false);
-    }
-    return false;
-  }
   // Make an identical copy of these options and return it.  This does
   // *not* copy the signature, and the returned options are not in
   // a frozen state.
@@ -2605,6 +2598,25 @@ class RewriteOptions {
   static Properties* all_properties_;      // includes subclass properties
 
   FRIEND_TEST(RewriteOptionsTest, FuriousMergeTest);
+
+  // Helper functions to check if given header need to be blocked.
+  bool HasRejectedHeader(const StringPiece& header_name,
+                         const RequestHeaders* request_headers) const;
+
+  bool IsRejectedUrl(const GoogleString& url) const {
+    return IsRejectedRequest(kRejectedRequestUrlKeyName, url);
+  }
+
+  bool IsRejectedRequest(const StringPiece& header_name,
+                         const StringPiece& value) const {
+    FastWildcardGroupMap::const_iterator it = rejected_request_map_.find(
+        header_name);
+    if (it != rejected_request_map_.end()) {
+      return it->second->Match(value, false);
+    }
+    return false;
+  }
+
 
   // A family of urls for which prioritize_visible_content filter can be
   // applied.  url_pattern represents the actual set of urls,
