@@ -493,6 +493,7 @@ check_from "$HTML_HEADERS" egrep -q 'Cache-Control: max-age=0, no-cache'
 
 start_test ModPagespeedModifyCachingHeaders
 URL=$TEST_ROOT/retain_cache_control/index.html
+echo $WGET_DUMP $URL
 OUT=$($WGET_DUMP $URL)
 check_from "$OUT" grep -q "Cache-Control: private, max-age=3000"
 check_from "$OUT" grep -q "Last-Modified:"

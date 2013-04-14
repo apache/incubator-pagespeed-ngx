@@ -204,7 +204,6 @@ ngx_int_t copy_response_headers_to_ngx(
     value.len = value_gs.length();
     value.data = reinterpret_cast<u_char*>(const_cast<char*>(value_gs.data()));
 
-    DBG(r, "ps copy header from pagespeed \"%V:%V\"", &name, &value);
     // TODO(jefftk): If we're setting a cache control header we'd like to
     // prevent any downstream code from changing it.  Specifically, if we're
     // serving a cache-extended resource the url will change if the resource
@@ -326,6 +325,7 @@ enum Response {
 }  // namespace CreateRequestContext
 
 ngx_http_output_header_filter_pt ngx_http_next_header_filter;
+ngx_http_output_header_filter_pt ngx_http_header_filter;
 ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
 
@@ -338,17 +338,27 @@ ngx_int_t ps_send_response(ngx_http_request_t *r) {
                  "ps send response: %V", &r->uri);
 
   // Get output from pagespeed.
-  if (ctx->is_resource_fetch && !ctx->sent_headers) {
-  
+  if (!ctx->sent_headers) {
+
     // For resource fetches, the first pipe-byte tells us headers are available
     // for fetching.
-    rc = ctx->base_fetch->CollectHeaders(&r->headers_out);
-    PDBG(ctx, "CollectHeaders: %d, sent:%d", rc, ctx->sent_headers);
-    if (rc == NGX_ERROR) {
-      return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    if (ctx->driver == NULL 
+        || ctx->driver->options()->modify_caching_headers()) {
+
+      ngx_http_clean_header(r);
+
+      rc = ctx->base_fetch->CollectHeaders(&r->headers_out);
+      PDBG(ctx, "CollectHeaders: %d, sent:%d", rc, ctx->sent_headers);
+      if (rc == NGX_ERROR) {
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+      }
     }
     ctx->sent_headers = true;
-    rc = ngx_http_send_header(r);
+    if (ctx->is_resource_fetch) {
+      rc = ngx_http_send_header(r);
+    } else {
+      rc = ngx_http_header_filter(r);
+    }
 
     if (rc == NGX_ERROR || rc > NGX_OK) {
       return ngx_http_filter_finalize_request(r, NULL, rc);
@@ -1535,16 +1545,6 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
   ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "http pagespeed filter \"%V\"", &r->uri);
 
-  if (!ctx->data_received) {
-    // This is the first set of buffers we've got for this request.
-    ctx->data_received = true;
-    // Call this here and not in the header filter because we want to see the
-    // headers after any other filters are finished modifying them.  At this
-    // point they are final.
-    // TODO(jefftk): is this thread safe?
-    ctx->base_fetch->PopulateResponseHeaders();
-  }
-
   if (in != NULL) {
     // Send all input data to the proxy fetch.
     ps_send_to_pagespeed(r, ctx, cfg_s, in);
@@ -1779,23 +1779,22 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
 
   r->filter_need_in_memory = 1;
 
-  // Set the "X-Page-Speed: VERSION" header.
-  ngx_table_elt_t* x_pagespeed = static_cast<ngx_table_elt_t*>(
-      ngx_list_push(&r->headers_out.headers));
-  if (x_pagespeed == NULL) {
-    return NGX_ERROR;
-  }
-  // Tell ngx_http_header_filter_module to include this header in the response.
-  x_pagespeed->hash = 1;
-
-  ngx_str_set(&x_pagespeed->key, kPageSpeedHeader);
-  // It's safe to use c_str here because once we're handling requests the
-  // rewrite options are frozen and won't change out from under us.
-  x_pagespeed->value.data = reinterpret_cast<u_char*>(const_cast<char*>(
-      options->x_header_value().c_str()));
-  x_pagespeed->value.len = options->x_header_value().size();
-
   return ngx_http_next_header_filter(r);
+}
+
+ngx_int_t ps_copy_header_filter(ngx_http_request_t *r) {
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, 
+                 "ps copy header filter: %V", &r->uri);
+
+  ps_request_ctx_t* ctx = ps_get_request_context(r);
+
+  if (ctx && !ctx->is_resource_fetch) {
+    // TODO(jefftk): is this thread safe?
+    ctx->base_fetch->PopulateResponseHeaders();
+    return NGX_AGAIN;
+  }
+
+  return ngx_http_header_filter(r);
 }
 
 // TODO(oschaaf): make ps_static_handler use write_handler_response? for now,
@@ -2231,6 +2230,18 @@ ngx_int_t ps_init(ngx_conf_t* cf) {
   return NGX_OK;
 }
 
+ngx_int_t ps_copy_filter_init(ngx_conf_t* cf) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+      ngx_http_conf_get_module_main_conf(cf, ngx_pagespeed));
+
+  if (cfg_m->driver_factory != NULL) {
+    ngx_http_header_filter = ngx_http_top_header_filter;
+    ngx_http_top_header_filter = ps_copy_header_filter;
+  }
+
+  return NGX_OK;
+}
+
 ngx_http_module_t ps_module = {
   NULL,  // preconfiguration
   ps_init,  // postconfiguration
@@ -2243,6 +2254,21 @@ ngx_http_module_t ps_module = {
 
   ps_create_loc_conf,
   ps_merge_loc_conf
+};
+
+ngx_http_module_t ps_copy_filter_module = {
+  NULL,
+  ps_copy_filter_init,  // postconfiguration
+
+  NULL,
+  NULL,
+
+  NULL,
+  NULL,
+
+  NULL,
+  NULL
+
 };
 
 // called after configuration is complete, but before nginx starts forking
@@ -2390,3 +2416,19 @@ ngx_module_t ngx_pagespeed = {
   NULL,
   NGX_MODULE_V1_PADDING
 };
+
+ngx_module_t ngx_pagespeed_copy_filter = {
+  NGX_MODULE_V1,
+  &ngx_psol::ps_copy_filter_module,
+  NULL,
+  NGX_HTTP_MODULE,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NULL,
+  NGX_MODULE_V1_PADDING
+};
+
