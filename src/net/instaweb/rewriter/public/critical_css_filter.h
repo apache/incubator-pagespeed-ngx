@@ -58,6 +58,7 @@ class CriticalCssFilter : public EmptyHtmlFilter {
   static const char kStatsScriptTemplate[];
 
   // Overridden from EmptyHtmlFilter:
+  virtual void DetermineEnabled();
   virtual void StartDocument();
   virtual void EndDocument();
   virtual void StartElement(HtmlElement* element);

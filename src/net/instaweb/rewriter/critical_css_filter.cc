@@ -35,6 +35,7 @@
 #include "net/instaweb/htmlparse/public/html_parse.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/logging_proto.h"
+#include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
@@ -142,6 +143,26 @@ CriticalCssFilter::CriticalCssFilter(RewriteDriver* driver,
 }
 
 CriticalCssFilter::~CriticalCssFilter() {
+}
+
+void CriticalCssFilter::DetermineEnabled() {
+  bool is_ie = driver_->user_agent_matcher()->IsIe(driver_->user_agent());
+  if (is_ie) {
+    // Disable critical CSS for IE because conditional-comments are not handled
+    // by the filter.
+    // TODO(slamm): Add conditional-comment support, or enable on IE10
+    // or higher. By default, IE10 does not support conditional comments.
+    // However, pages can opt into the IE9 behavior with a meta tag:
+    //     <meta http-equiv="X-UA-Compatible" content="IE=EmulateIE9">
+    // IE10 could be enabled if the meta tag is not present.
+    // Short of full conditional-comment support, the filter could also detect
+    // whether conditional-comments are present (while computing critical CSS)
+    // and only disable the filter for IE if they are.
+    driver_->log_record()->LogRewriterHtmlStatus(
+        RewriteOptions::FilterId(RewriteOptions::kPrioritizeCriticalCss),
+        RewriterHtmlApplication::USER_AGENT_NOT_SUPPORTED);
+  }
+  set_is_enabled(!is_ie);
 }
 
 void CriticalCssFilter::StartDocument() {
