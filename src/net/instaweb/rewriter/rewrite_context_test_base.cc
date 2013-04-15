@@ -208,14 +208,20 @@ bool CombiningFilter::Context::Partition(OutputPartitions* partitions,
   MessageHandler* handler = Driver()->message_handler();
   CachedResult* partition = partitions->add_partition();
   for (int i = 0, n = num_slots(); i < n; ++i) {
-    slot(i)->resource()->AddInputInfoToPartition(
-        Resource::kIncludeInputHash, i, partition);
     if (!slot(i)->resource()->IsSafeToRewrite(rewrite_uncacheable()) ||
         !combiner_.AddResourceNoFetch(slot(i)->resource(), handler).value) {
       return false;
     }
+    // This should be called after checking IsSafeToRewrite, since
+    // AddInputInfoToPartition requires the resource to be loaded()
+    slot(i)->resource()->AddInputInfoToPartition(
+        Resource::kIncludeInputHash, i, partition);
   }
   OutputResourcePtr combination(combiner_.MakeOutput());
+  // MakeOutput can fail if for example there is only one input resource.
+  if (combination.get() == NULL) {
+    return false;
+  }
 
   // ResourceCombiner provides us with a pre-populated CachedResult,
   // so we need to copy it over to our CachedResult.  This is
