@@ -285,8 +285,6 @@ namespace net_instaweb {
     fetch->sin_.sin_family = AF_INET;
     fetch->sin_.sin_port = htons(fetch->url_.port);
     fetch->sin_.sin_addr.s_addr = resolver_ctx->addrs[0];
-    ngx_resolve_name_done(resolver_ctx);
-
 
     char* ip_address = inet_ntoa(fetch->sin_.sin_addr);
 
@@ -294,6 +292,8 @@ namespace net_instaweb {
         kInfo, "NgxFetch: Resolved host [%.*s] to [%s]",
         static_cast<int>(resolver_ctx->name.len), resolver_ctx->name.data,
         ip_address);
+
+    ngx_resolve_name_done(resolver_ctx);
 
     if (fetch->InitRequest() != NGX_OK) {
       fetch->message_handler()->Message(kError, "NgxFetch: InitRequest failed");
