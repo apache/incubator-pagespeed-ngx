@@ -376,6 +376,10 @@ http {
     server_name  localhost;
     pagespeed FileCachePath "@@FILE_CACHE@@";
 
+    location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {
+      add_header "" "";
+    }
+
     # uncomment the following two lines if you're testing memcached
     #pagespeed MemcachedServers "localhost:11211";
     #pagespeed MemcachedThreads 1;
@@ -465,6 +469,12 @@ http {
 
     location /mod_pagespeed_test/compressed/ {
       add_header Content-Encoding gzip;
+
+      # Even though this is also in the server block it must be repeated here
+      # because add_header directives are only inherited if you don't define
+      # more of them.  See: http://serverfault.com/questions/400197
+      add_header X-Extra-Header 1;
+
       types {
         text/javascript custom_ext;
       }
