@@ -204,27 +204,27 @@ check_from "$OUT" grep background-image
 NUM_404_REALLY_FINAL=$(scrape_stat resource_404_count)
 check [ $NUM_404_FINAL -eq $NUM_404_REALLY_FINAL ]
 
-# TODO(jefftk): fix this.  It relies on hostname resolving to something other
-# than 127.0.0.1 or localhost.
-#
-# https://github.com/pagespeed/ngx_pagespeed/issues/264
-#
-#start_test Non-local access to statistics fails.
-#MACHINE_NAME=$(hostname)
-#ALT_STAT_URL=$(echo $STATISTICS_URL | sed s#localhost#$MACHINE_NAME#)
-#
-#echo "wget $ALT_STAT_URL >& $TEMPDIR/alt_stat_url.$$"
-#wget $ALT_STAT_URL >& "$TEMPDIR/alt_stat_url.$$"
-#check [ $? = 8 ]
-#rm -f "$TEMPDIR/alt_stat_url.$$"
-#
-#ALT_CE_URL="$ALT_STAT_URL.pagespeed.ce.8CfGBvwDhH.css"
-#wget -O - $ALT_CE_URL  >& "$TEMPDIR/alt_ce_url.$$"
-#check [ $? = 8 ]
-#
-#wget -O - --header="Host: $HOSTNAME" $ALT_CE_URL >& "$TEMPDIR/alt_ce_url.$$"
-#check [ $? = 8 ]
-#rm -f "$TEMPDIR/alt_ce_url.$$"
+start_test Non-local access to statistics fails.
+MACHINE_NAME=$(hostname)
+
+if [ "$MACHINE_NAME" = "127.0.0.1" -o "$MACHINE_NAME" = "localhost" ] ; then
+  echo "Skipping non-local access to statistics because hostname isn't set."
+else
+  ALT_STAT_URL=$(echo $STATISTICS_URL | sed s#localhost#$MACHINE_NAME#)
+
+  echo "wget $ALT_STAT_URL >& $TEMPDIR/alt_stat_url.$$"
+  wget $ALT_STAT_URL >& "$TEMPDIR/alt_stat_url.$$"
+  check [ $? = 8 ]
+  rm -f "$TEMPDIR/alt_stat_url.$$"
+
+  ALT_CE_URL="$ALT_STAT_URL.pagespeed.ce.8CfGBvwDhH.css"
+  wget -O - $ALT_CE_URL  >& "$TEMPDIR/alt_ce_url.$$"
+  check [ $? = 8 ]
+
+  wget -O - --header="Host: $HOSTNAME" $ALT_CE_URL >& "$TEMPDIR/alt_ce_url.$$"
+  check [ $? = 8 ]
+  rm -f "$TEMPDIR/alt_ce_url.$$"
+fi
 
 start_test Accept bad query params and headers
 
