@@ -166,21 +166,27 @@ TEST_F(CriticalCssBeaconFilterTest, DontExtractFromNoScript) {
 
 TEST_F(CriticalCssBeaconFilterTest, Unauthorized) {
   GoogleString css = StrCat(CssLinkHref(kEvilUrl), kInlineStyle);
-  GoogleString html = StringPrintf(kHtmlTemplate, css.c_str(), "");
-  ValidateNoChanges("unauthorized", html);
+  GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
+  GoogleString output_html = StringPrintf(
+      kHtmlTemplate, css.c_str(), BeaconScriptFor("\"a\",\"p\"").c_str());
+  ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
 TEST_F(CriticalCssBeaconFilterTest, Missing) {
   SetFetchFailOnUnexpected(false);
   GoogleString css = StrCat(CssLinkHref("404.css"), kInlineStyle);
-  GoogleString html = StringPrintf(kHtmlTemplate, css.c_str(), "");
-  ValidateNoChanges("missing", html);
+  GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
+  GoogleString output_html = StringPrintf(
+      kHtmlTemplate, css.c_str(), BeaconScriptFor("\"a\",\"p\"").c_str());
+  ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
 TEST_F(CriticalCssBeaconFilterTest, Corrupt) {
   GoogleString css = StrCat(CssLinkHref("corrupt.css"), kInlineStyle);
-  GoogleString html = StringPrintf(kHtmlTemplate, css.c_str(), "");
-  ValidateNoChanges("corrupt", html);
+  GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
+  GoogleString output_html = StringPrintf(
+      kHtmlTemplate, css.c_str(), BeaconScriptFor("\"a\",\"p\"").c_str());
+  ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
 TEST_F(CriticalCssBeaconFilterTest, NonScreenMediaInline) {
@@ -206,8 +212,10 @@ TEST_F(CriticalCssBeaconFilterTest, MixOfGoodAndBad) {
       CssLinkHref(kEvilUrl), CssLinkHref("corrupt.css"), kInlinePrint,
       CssLinkHrefOpt("b.css"));
   GoogleString input_html = StringPrintf(kHtmlTemplate, css.c_str(), "");
-  GoogleString output_html = StringPrintf(kHtmlTemplate, opt.c_str(), "");
-  ValidateExpected("good_and_bad", input_html, output_html);
+  GoogleString output_html = StringPrintf(
+      kHtmlTemplate, opt.c_str(),
+      BeaconScriptFor("\".sec h1#id\",\"a\",\"div ul > li\",\"p\"").c_str());
+  ValidateExpectedUrl(kTestDomain, input_html, output_html);
 }
 
 TEST_F(CriticalCssBeaconFilterTest, EverythingThatParses) {

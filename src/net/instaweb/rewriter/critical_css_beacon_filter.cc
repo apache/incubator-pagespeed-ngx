@@ -138,9 +138,25 @@ void CriticalCssBeaconFilter::SummariesDone() {
   set<StringPiece> selectors;
   for (int i = 0; i < NumStyles(); ++i) {
     const SummaryInfo& block_info = GetSummaryForStyle(i);
-    if (block_info.state != kSummaryOk) {
-      // Don't beacon unless all CSS was correctly parsed and summarized.
-      return;
+    switch (block_info.state) {
+      case kSummaryStillPending:
+        // Don't beacon if we're still waiting for critical selector data.
+        return;
+      case kSummaryOk:
+        // Include the selectors in the beacon
+        break;
+      case kSummaryCssParseError:
+      case kSummaryResourceCreationFailed:
+      case kSummaryInputUnavailable:
+        // The script couldn't be fetched or parsed in some fashion.  This will
+        // be left in place by the rewriter, so we don't need to consider it for
+        // beaconing either.  NOTE: this requires the rewriter to inject
+        // critical CSS in situ so that we don't disrupt the cascade order
+        // around the unparseable data.
+        // TODO(jmaessen): Consider handling unparseable data within the CSS
+        // parse tree, which would let us extract critical CSS selectors from
+        // CSS with a mix of parseable and unparseable rules.
+        continue;
     }
     // The critical_selector_filter doesn't include <noscript>-specific CSS
     // in the critical CSS it computes; so there is no need to figure out
