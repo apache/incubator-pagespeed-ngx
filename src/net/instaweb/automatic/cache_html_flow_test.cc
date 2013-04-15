@@ -802,6 +802,8 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlCacheMissAndHit) {
   // First request updates the property cache with cached html.
   FetchFromProxyWaitForBackground("text.html", true, &text, &response_headers);
   VerifyNonCacheHtmlResponse(response_headers);
+  EXPECT_EQ(1, statistics()->FindVariable(
+      ProxyInterface::kCacheHtmlRequestCount)->Get());
   VerifyCacheHtmlLoggingInfo(
       CacheHtmlLoggingInfo::CACHE_HTML_MISS_TRIGGERED_REWRITE, false,
       "http://test.com/text.html");
@@ -1001,7 +1003,7 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlOverThreshold) {
       CacheHtmlLoggingInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD,
       "http://test.com/smalltest.html");
   // 1 Miss for original plain text,
-  // 1 Miss for DomCohort.
+  // 1 Miss for Blink Cohort.
   EXPECT_EQ(2, lru_cache()->num_misses());
 
   CheckStats(0, 0, 0, 0, 0, 1);
@@ -1054,7 +1056,11 @@ TEST_F(CacheHtmlFlowTest, TestCacheHtmlHeaderOverThreshold) {
   VerifyCacheHtmlLoggingInfo(
       CacheHtmlLoggingInfo::FOUND_CONTENT_LENGTH_OVER_THRESHOLD,
       "http://test.com/smalltest.html");
+  // 1 Miss for original plain text,
+  // 1 Miss for Blink Cohort.
   EXPECT_EQ(2, lru_cache()->num_misses());
+  EXPECT_EQ(1, statistics()->FindVariable(
+      ProxyInterface::kCacheHtmlRequestCount)->Get());
 }
 
 TEST_F(CacheHtmlFlowTest, Non200StatusCode) {
@@ -1067,7 +1073,7 @@ TEST_F(CacheHtmlFlowTest, Non200StatusCode) {
   VerifyCacheHtmlLoggingInfo(CacheHtmlLoggingInfo::CACHE_HTML_MISS_FETCH_NON_OK,
                              "http://test.com/404.html");
   // 1 Miss for original plain text,
-  // 1 Miss for DomCohort.
+  // 1 Miss for Blink Cohort.
   EXPECT_EQ(2, lru_cache()->num_misses());
   CheckStats(0, 0, 0, 0, 0, 1);
 }
@@ -1086,7 +1092,7 @@ TEST_F(CacheHtmlFlowTest, NonHtmlContent) {
       CacheHtmlLoggingInfo::CACHE_HTML_MISS_FOUND_RESOURCE,
       "http://test.com/plain.html");
   // 1 Miss for original plain text,
-  // 1 Miss for DomCohort.
+  // 1 Miss for Blink Cohort.
   EXPECT_EQ(2, lru_cache()->num_misses());
   EXPECT_EQ(0, lru_cache()->num_hits());
   EXPECT_EQ(1, lru_cache()->num_inserts());
@@ -1101,7 +1107,7 @@ TEST_F(CacheHtmlFlowTest, NonHtmlContent) {
   VerifyCacheHtmlLoggingInfo(
       CacheHtmlLoggingInfo::CACHE_HTML_MISS_FOUND_RESOURCE,
       "http://test.com/plain.html");
-  // 1 Miss for DomCohort.
+  // 1 Miss for Blink Cohort.
   CheckStats(0, 0, 0, 0, 0, 1);
   EXPECT_EQ(1, lru_cache()->num_misses());
   EXPECT_EQ(1, lru_cache()->num_hits());

@@ -61,7 +61,8 @@ class MessageHandler;
 const char ProxyInterface::kBlinkRequestCount[] = "blink-requests";
 const char ProxyInterface::kBlinkCriticalLineRequestCount[] =
     "blink-critical-line-requests";
-
+const char ProxyInterface::kCacheHtmlRequestCount[] =
+    "cache-html-requests";
 namespace {
 
 // Names for Statistics variables.
@@ -167,6 +168,8 @@ ProxyInterface::ProxyInterface(const StringPiece& hostname, int port,
       blink_requests_(stats->GetTimedVariable(kBlinkRequestCount)),
       blink_critical_line_requests_(
           stats->GetTimedVariable(kBlinkCriticalLineRequestCount)),
+      cache_html_flow_requests_(
+          stats->GetTimedVariable(kCacheHtmlRequestCount)),
       rejected_requests_(stats->GetTimedVariable(kRejectedRequestCount)) {
   proxy_fetch_factory_.reset(new ProxyFetchFactory(manager));
 }
@@ -182,6 +185,8 @@ void ProxyInterface::InitStats(Statistics* statistics) {
   statistics->AddTimedVariable(kBlinkRequestCount,
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kBlinkCriticalLineRequestCount,
+                               ServerContext::kStatisticsGroup);
+  statistics->AddTimedVariable(kCacheHtmlRequestCount,
                                ServerContext::kStatisticsGroup);
   statistics->AddTimedVariable(kRejectedRequestCount,
                                ServerContext::kStatisticsGroup);
@@ -555,6 +560,7 @@ void ProxyInterface::ProxyRequestCallback(
             driver->user_agent().c_str(), server_context_,
             RewriteOptions::kCachePartialHtml);
         if (is_cache_html_request) {
+          cache_html_flow_requests_->IncBy(1);
           CacheHtmlFlow::Start(url_string, async_fetch, driver,
                                proxy_fetch_factory_.get(),
                                property_callback.release());

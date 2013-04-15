@@ -78,6 +78,7 @@ class ProxyInterface : public UrlAsyncFetcher {
 
   static const char kBlinkRequestCount[];
   static const char kBlinkCriticalLineRequestCount[];
+  static const char kCacheHtmlRequestCount[];
 
   // Initiates the PropertyCache look up.
   virtual ProxyFetchPropertyCallbackCollector* InitiatePropertyCacheLookup(
@@ -123,6 +124,8 @@ class ProxyInterface : public UrlAsyncFetcher {
   TimedVariable* blink_requests_;
   // Blink requests in the critical line flow.
   TimedVariable* blink_critical_line_requests_;
+  // Cache Html requests.
+  TimedVariable* cache_html_flow_requests_;
   // Rejected requests counter.
   TimedVariable* rejected_requests_;
 
