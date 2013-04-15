@@ -2519,6 +2519,9 @@ int64 RewriteOptions::GetBlinkCacheTimeFor(const GoogleUrl& gurl) const {
 
 GoogleString RewriteOptions::GetBlinkNonCacheableElementsFor(
     const GoogleUrl& gurl) const {
+  if (!non_cacheables_for_cache_partial_html().empty()) {
+    return non_cacheables_for_cache_partial_html();
+  }
   const PrioritizeVisibleContentFamily* family =
       FindPrioritizeVisibleContentFamily(gurl.Spec());
   if (family == NULL || family->non_cacheable_elements.empty()) {

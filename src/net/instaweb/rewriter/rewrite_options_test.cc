@@ -1653,6 +1653,10 @@ TEST_F(RewriteOptionsTest, PrioritizeVisibleContentFamily) {
   EXPECT_EQ(40, options_.GetBlinkCacheTimeFor(gurl_two));
   EXPECT_EQ("all3", options_.GetBlinkNonCacheableElementsFor(gurl_one));
   EXPECT_EQ("all3", options_.GetBlinkNonCacheableElementsFor(gurl_two));
+
+  options_.set_non_cacheables_for_cache_partial_html("non_cacheables");
+  EXPECT_EQ("non_cacheables",
+            options_.GetBlinkNonCacheableElementsFor(gurl_one));
 }
 
 TEST_F(RewriteOptionsTest, FuriousSpecTest) {

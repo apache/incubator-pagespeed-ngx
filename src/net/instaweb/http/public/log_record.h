@@ -275,11 +275,11 @@ class AbstractLogRecord  {
   }
 
  protected:
-  // Implements setting Blink-specific log information; base impl is a no-op.
+  // Implements setting Blink specific log information; base impl is a no-op.
   virtual void SetBlinkInfoImpl(const GoogleString& user_agent) {}
 
-  // Implements setting CacheHtml-specific log information
-  void SetCacheHtmlInfoImpl(const GoogleString& user_agent) {}
+  // Implements setting Cache Html specific log information
+  virtual void SetCacheHtmlLoggingInfoImpl(const GoogleString& user_agent) {}
   // Implements writing a log, base implementation is a no-op. Returns false if
   // writing failed.
   virtual bool WriteLogImpl() = 0;

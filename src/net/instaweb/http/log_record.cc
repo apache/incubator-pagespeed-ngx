@@ -221,7 +221,8 @@ void AbstractLogRecord::SetBlinkInfo(const GoogleString& user_agent) {
 
 void AbstractLogRecord::SetCacheHtmlLoggingInfo(
     const GoogleString& user_agent) {
-  SetCacheHtmlInfoImpl(user_agent);
+  ScopedMutex lock(mutex_.get());
+  SetCacheHtmlLoggingInfoImpl(user_agent);
 }
 
 bool AbstractLogRecord::WriteLog() {
