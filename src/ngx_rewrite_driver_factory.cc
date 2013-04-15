@@ -20,6 +20,7 @@
 
 #include <cstdio>
 
+#include "log_message_handler.h"
 #include "ngx_message_handler.h"
 #include "ngx_rewrite_options.h"
 #include "ngx_thread_system.h"
@@ -302,6 +303,8 @@ void NgxRewriteDriverFactory::SharedCircularBufferInit(bool is_root) {
 }
 
 void NgxRewriteDriverFactory::RootInit(ngx_log_t* log) {
+  net_instaweb::log_message_handler::Install(log);
+
   ParentOrChildInit(log);
 
   // Let SystemCaches know about the various paths we have in configuration
