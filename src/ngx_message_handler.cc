@@ -104,7 +104,7 @@ void NgxMessageHandler::set_buffer(SharedCircularBuffer* buff) {
 }
 
 void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
-                                        va_list args) {
+                                     va_list args) {
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
   if (log_ != NULL) {
@@ -136,8 +136,8 @@ void NgxMessageHandler::MessageVImpl(MessageType type, const char* msg,
 }
 
 void NgxMessageHandler::FileMessageVImpl(MessageType type, const char* file,
-                                            int line, const char* msg,
-                                            va_list args) {
+                                         int line, const char* msg,
+                                         va_list args) {
   ngx_uint_t log_level = GetNgxLogLevel(type);
   GoogleString formatted_message = Format(msg, args);
   if (log_ != NULL) {
