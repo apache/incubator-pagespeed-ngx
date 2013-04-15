@@ -1267,6 +1267,99 @@ http_proxy=$SECONDARY_HOSTNAME \
 http_proxy=$SECONDARY_HOSTNAME \
     fetch_until $UVA_EXTEND_CACHE 'fgrep -c .pagespeed.ic' 5
 
+# Test the experiment framework (Furious).
+
+start_test _GFURIOUS cookie is set.
+EXP_EXAMPLE="http://experiment.example.com/mod_pagespeed_example"
+EXP_EXTEND_CACHE="$EXP_EXAMPLE/extend_cache.html"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $EXP_EXTEND_CACHE)
+check_from "$OUT" fgrep "_GFURIOUS="
+
+start_test ModPagespeedFilters query param should disable experiments.
+URL="$EXP_EXTEND_CACHE?ModPagespeed=on&ModPagespeedFilters=rewrite_css"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP $URL)
+check_not_from "$OUT" fgrep '_GFURIOUS='
+
+start_test If the user is already assigned, no need to assign them again.
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: _GFURIOUS=2' \
+      $EXP_EXTEND_CACHE)
+check_not_from "$OUT" fgrep '_GFURIOUS='
+
+start_test The beacon should include the experiment id.
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: _GFURIOUS=2' \
+      $EXP_EXTEND_CACHE)
+BEACON_CODE="pagespeed.addInstrumentationInit('/ngx_pagespeed_beacon', 'load',"
+BEACON_CODE+=" '', '', '', '2', 'http://experiment.example.com/"
+BEACON_CODE+="mod_pagespeed_example/extend_cache.html');"
+check_from "$OUT" grep "$BEACON_CODE"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: _GFURIOUS=7' \
+      $EXP_EXTEND_CACHE)
+BEACON_CODE="pagespeed.addInstrumentationInit('/ngx_pagespeed_beacon', 'load',"
+BEACON_CODE+=" '', '', '', '7', 'http://experiment.example.com/"
+BEACON_CODE+="mod_pagespeed_example/extend_cache.html');"
+check_from "$OUT" grep "$BEACON_CODE"
+
+start_test The no-experiment group beacon should not include an experiment id.
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: _GFURIOUS=0' \
+     $EXP_EXTEND_CACHE)
+check_not_from "$OUT" grep 'mod_pagespeed_beacon.*exptid'
+
+# We expect id=7 to be index=a and id=2 to be index=b because that's the
+# order they're defined in the config file.
+start_test Resource urls are rewritten to include experiment indexes.
+http_proxy=$SECONDARY_HOSTNAME \
+  WGET_ARGS="--header 'Cookie:_GFURIOUS=7'" fetch_until $EXP_EXTEND_CACHE \
+    "fgrep -c .pagespeed.a.ic." 1
+http_proxy=$SECONDARY_HOSTNAME \
+  WGET_ARGS="--header 'Cookie:_GFURIOUS=2'" fetch_until $EXP_EXTEND_CACHE \
+    "fgrep -c .pagespeed.b.ic." 1
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: _GFURIOUS=7' \
+      $EXP_EXTEND_CACHE)
+check_from "$OUT" fgrep ".pagespeed.a.ic."
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: _GFURIOUS=2' \
+      $EXP_EXTEND_CACHE)
+check_from "$OUT" fgrep ".pagespeed.b.ic."
+
+start_test Images are different when the url specifies different experiments.
+# While the images are the same, image B should be smaller because in the config
+# file we enable convert_jpeg_to_progressive only for id=2 (side B).  Ideally we
+# would check that it was actually progressive, by checking whether "identify
+# -verbose filename" produced "Interlace: JPEG" or "Interlace: None", but that
+# would introduce a dependency on imagemagick.  This is just as accurate, but
+# more brittle (because changes to our compression code would change the
+# computed file sizes).
+
+IMG_A="$EXP_EXAMPLE/images/xPuzzle.jpg.pagespeed.a.ic.fakehash.jpg"
+IMG_B="$EXP_EXAMPLE/images/xPuzzle.jpg.pagespeed.b.ic.fakehash.jpg"
+http_proxy=$SECONDARY_HOSTNAME fetch_until $IMG_A 'wc -c' 231192
+http_proxy=$SECONDARY_HOSTNAME fetch_until $IMG_B 'wc -c' 216942
+
+start_test Analytics javascript is added for the experimental group.
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: _GFURIOUS=2' \
+      $EXP_EXTEND_CACHE)
+check_from "$OUT" fgrep -q 'Experiment: 2'
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: _GFURIOUS=7' \
+      $EXP_EXTEND_CACHE)
+check_from "$OUT" fgrep -q 'Experiment: 7'
+
+start_test Analytics javascript is not added for the no-experiment group.
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: _GFURIOUS=0' \
+      $EXP_EXTEND_CACHE)
+check_not_from "$OUT" fgrep -q 'Experiment:'
+
+start_test Analytics javascript is not added for any group with Analytics off.
+EXP_NO_GA_EXTEND_CACHE="http://experiment.noga.example.com"
+EXP_NO_GA_EXTEND_CACHE+="/mod_pagespeed_example/extend_cache.html"
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: _GFURIOUS=2' \
+      $EXP_NO_GA_EXTEND_CACHE)
+check_not_from "$OUT" fgrep -q 'Experiment:'
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: _GFURIOUS=7' \
+      $EXP_NO_GA_EXTEND_CACHE)
+check_not_from "$OUT" fgrep -q 'Experiment:'
+OUT=$(http_proxy=$SECONDARY_HOSTNAME $WGET_DUMP --header='Cookie: _GFURIOUS=0' \
+      $EXP_NO_GA_EXTEND_CACHE)
+check_not_from "$OUT" fgrep -q 'Experiment:'
+
 # check_failures_and_exit will actually call exit, but we don't want it to.
 # Specifically we want it to call exit 3 instad of exit 1 if it finds
 # something.  Reimplement it here:

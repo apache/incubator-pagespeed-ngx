@@ -51,6 +51,31 @@ http {
                              http://ref.pssdemos.com/filter/images;
   }
 
+  # These two vhosts are for testing the experiment framework (Furious).
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name experiment.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RunExperiment on;
+    pagespeed AnalyticsID "123-45-6734";
+    pagespeed ExperimentVariable 2;
+    pagespeed ExperimentSpec
+      "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50";
+    pagespeed ExperimentSpec "id=2;enable=recompress_images;percent=50";
+  }
+  server {
+    listen @@SECONDARY_PORT@@;
+    server_name experiment.noga.example.com;
+    pagespeed FileCachePath "@@FILE_CACHE@@";
+
+    pagespeed RunExperiment on;
+    pagespeed ExperimentVariable 2;
+    pagespeed ExperimentSpec
+      "id=7;enable=recompress_images;disable=convert_jpeg_to_progressive;percent=50";
+    pagespeed ExperimentSpec "id=2;enable=recompress_images;percent=50";
+  }
+
   server {
     listen @@SECONDARY_PORT@@;
     server_name preserveurls.example.com;
