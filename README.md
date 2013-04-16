@@ -376,9 +376,24 @@ adjustment: replace '"ModPagespeed"' with '"pagespeed "':
       pagespeed ExperimentSpec "id=3;percent=50;default";
       pagespeed ExperimentSpec "id=4;percent=50";
 
-## Preparing the binary distribution
+## Distribution
+
+If you just want to run ngx_pagespeed you don't need this.  This is
+documentation on how the `psol/` directory was created and is maintained and how
+to make the `.tar.gz` files we distribute.
+
+### Preparing the binary libraries
 
 See: https://github.com/pagespeed/ngx_pagespeed/wiki/Building-Release-Binaries
 
-If you just want to run ngx_pagespeed you don't need this.  This is
-documentation on how the `psol/` directory was created and is maintained.
+## Preparing release tarballs
+
+```bash
+$ cd ngx_pagespeed
+$ git checkout [release-branch-name]
+$ git pull
+$ cd ..
+$ tar cvf ngx_pagespeed.[release-version].tar --exclude .git ngx_pagespeed
+$ gzip ngx_pagespeed.[release-version].tar
+$ # now you have ngx_pagespeed.[release-version].tar.gz
+```
