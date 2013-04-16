@@ -212,19 +212,19 @@ void NgxBaseFetch::HandleDone(bool success) {
   }
 
   Lock();
-  bool handledone = (done_called_ == false);
-  bool handleflush = (flush_ == false);
-
-  if (handleflush) {
+  if (done_called_ == true) {
+    Unlock();
+    return;
+  }
+  
+  done_called_ = true;
+  if (!flush_) {
     flush_ = true;
     ngx_psol::ps_base_fetch_signal(request_);
   }
 
-  if (handledone) {
-    done_called_ = true;
-    DecrefAndDeleteIfUnreferenced();
-  }
   Unlock();
+  DecrefAndDeleteIfUnreferenced();
 }
 
 }  // namespace net_instaweb
