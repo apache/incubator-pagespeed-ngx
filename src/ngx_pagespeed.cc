@@ -328,6 +328,7 @@ enum Response {
   kStatistics,
   kMessages,
   kPagespeedSubrequest,
+  kNotHeadOrGet,
 };
 }  // namespace CreateRequestContext
 
@@ -1484,6 +1485,10 @@ CreateRequestContext::Response ps_create_request_context(
     return CreateRequestContext::kBeacon;
   }
 
+  if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
+    return CreateRequestContext::kNotHeadOrGet;
+  }
+
   if (is_resource_fetch && !cfg_s->server_context->IsPagespeedResource(url)) {
     DBG(r, "Passing on content handling for non-pagespeed resource '%s'",
         url_string.c_str());
@@ -1892,6 +1897,7 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     case CreateRequestContext::kPagespeedSubrequest:
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kInvalidUrl:
+    case CreateRequestContext::kNotHeadOrGet:
       return ngx_http_next_header_filter(r);
     case CreateRequestContext::kOk:
       break;
@@ -2272,8 +2278,27 @@ ps_beacon_handler(ngx_http_request_t* r) {
     user_agent = str_to_string_piece(r->headers_in.user_agent->value);
   }
 
+  StringPiece beacon_data;
+  if (r->method == NGX_HTTP_POST) {
+    // Use post body.
+    beacon_data = "todo=support-post-body";
+  } else {
+    // Use query params.
+    StringPiece unparsed_uri = str_to_string_piece(r->unparsed_uri);
+    stringpiece_ssize_type question_mark_index = unparsed_uri.find("?");
+    if (question_mark_index == StringPiece::npos) {
+      beacon_data = "";
+    } else {
+      beacon_data = unparsed_uri.substr(
+          question_mark_index+1, unparsed_uri.size() - (question_mark_index+1));
+    }
+  }
+
+  ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                "BEACON %*s", beacon_data.size(), beacon_data.data());
+
   cfg_s->server_context->HandleBeacon(
-      str_to_string_piece(r->unparsed_uri),
+      beacon_data,
       user_agent,
       net_instaweb::RequestContextPtr(new net_instaweb::NgxRequestContext(
           cfg_s->server_context->thread_system()->NewMutex(), r)));
@@ -2287,10 +2312,6 @@ ps_beacon_handler(ngx_http_request_t* r) {
 // Handle requests for resources like example.css.pagespeed.ce.LyfcM6Wulf.css
 // and for static content like /ngx_pagespeed_static/js_defer.q1EBmcgYOC.js
 ngx_int_t ps_content_handler(ngx_http_request_t* r) {
-  if (r->method != NGX_HTTP_GET && r->method != NGX_HTTP_HEAD) {
-    return NGX_DECLINED;
-  }
-
   ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
   if (cfg_s->server_context == NULL) {
     // Pagespeed is on for some server block but not this one.
@@ -2311,6 +2332,7 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kInvalidUrl:
     case CreateRequestContext::kPagespeedSubrequest:
+    case CreateRequestContext::kNotHeadOrGet:
       return NGX_DECLINED;
     case CreateRequestContext::kBeacon:
       return ps_beacon_handler(r);
