@@ -1,4 +1,4 @@
-// Copyright 2010 Google Inc. All Rights Reserved.
+// Copyright 2011 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
-// Author: jmarantz@google.com (Joshua Marantz)
+// Author: morlovich@google.com (Maksim Orlovich)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_STRING_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_STRING_H_
+#ifndef PAGESPEED_KERNEL_UTIL_ATOMICOPS_H_
+#define PAGESPEED_KERNEL_UTIL_ATOMICOPS_H_
 
-// TODO(jmarantz): Remove this forwarding header and change all references.
-#include "pagespeed/kernel/base/string.h"
+#include "base/atomicops.h"
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_STRING_H_
+
+#endif  // PAGESPEED_KERNEL_UTIL_ATOMICOPS_H_

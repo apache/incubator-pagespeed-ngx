@@ -16,13 +16,13 @@
 
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <vector>
 
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 
@@ -137,7 +137,7 @@ GoogleString CEscape(const StringPiece& src) {
       case '\\': dest[used++] = '\\'; dest[used++] = '\\'; break;
       default:
         if (ch < 32 || ch >= 127) {
-          base::snprintf(dest + used, 5, "\\%03o", ch);
+          base::snprintf(dest + used, 5, "\\%03o", ch);  // NOLINT
           used += 4;
         } else {
           dest[used++] = ch;

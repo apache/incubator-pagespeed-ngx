@@ -18,8 +18,8 @@
 
 #include "pagespeed/kernel/util/fast_wildcard_group.h"
 
-#include "net/instaweb/util/public/string_util.h"
-#include "net/instaweb/util/public/gtest.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/base/gtest.h"
 
 namespace net_instaweb {
 namespace {

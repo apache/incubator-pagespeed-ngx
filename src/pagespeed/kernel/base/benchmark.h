@@ -14,13 +14,25 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
+// Author: morlovich@google.com (Maksim Orlovich)
 //
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_
+#ifndef PAGESPEED_KERNEL_BASE_BENCHMARK_H_
+#define PAGESPEED_KERNEL_BASE_BENCHMARK_H_
 
-// TODO(jmarantz): Remove this forwarding header and update references.
-#include "pagespeed/kernel/base/gtest.h"
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_
+#include "third_party/re2/src/util/benchmark.h"
+
+#undef BENCHMARK
+#define BENCHMARK(f) \
+    ::testing::Benchmark* _benchmark_##f = (new ::testing::Benchmark(#f, f))->\
+        ThreadRange(1, 1)
+
+#undef BENCHMARK_RANGE
+#define BENCHMARK_RANGE(f, lo, hi) \
+    ::testing::Benchmark* _benchmark_##f = \
+        (new ::testing::Benchmark(#f, f, lo, hi))->ThreadRange(1, 1)
+
+
+
+#endif  // PAGESPEED_KERNEL_BASE_BENCHMARK_H_

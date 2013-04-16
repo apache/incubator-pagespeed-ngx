@@ -15,15 +15,15 @@
  */
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/util/public/rolling_hash.h"
+#include "pagespeed/kernel/util/rolling_hash.h"
 
 #include <cstddef>
 #include <cstdio>
 #include <utility>
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/dense_hash_set.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string_util.h"
+#include "pagespeed/kernel/util/dense_hash_set.h"
 
 namespace net_instaweb {
 namespace {

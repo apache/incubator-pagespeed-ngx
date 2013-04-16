@@ -17,14 +17,16 @@
 // Author: jmarantz@google.com (Joshua Marantz)
 //
 
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
+#include "pagespeed/kernel/base/gtest.h"
+
 #include <dirent.h>
 #include <sys/stat.h>
 #include <unistd.h>  // For getpid()
 #include <vector>
-#include "net/instaweb/util/stack_buffer.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/stack_buffer.h"
+#include "pagespeed/kernel/base/string_util.h"
+
+#include "pagespeed/kernel/base/string.h"
 
 namespace net_instaweb {
 

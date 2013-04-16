@@ -690,7 +690,6 @@
         '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
         '<(DEPTH)/third_party/libpagespeed/src/pagespeed/core/core.gyp:pagespeed_core',
         '<(DEPTH)/third_party/protobuf/protobuf.gyp:protobuf_lite',
-        '<(DEPTH)/third_party/re2/re2.gyp:re2',
         '<(DEPTH)/third_party/zlib/zlib.gyp:zlib',
       ],
       'sources': [
@@ -774,7 +773,6 @@
         'util/queued_worker_pool.cc',
         'util/ref_counted.cc',
         'util/request_trace.cc',
-        'util/rolling_hash.cc',
         'util/scheduler.cc',
         'util/scheduler_based_abstract_lock.cc',
         'util/shared_circular_buffer.cc',
@@ -1161,7 +1159,6 @@
         '<(DEPTH)/base/base.gyp:base',
         '<(DEPTH)/third_party/css_parser/css_parser.gyp:css_parser',
         '<(DEPTH)/third_party/jsoncpp/jsoncpp.gyp:jsoncpp',
-        '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
       'sources': [
         'rewriter/add_head_filter.cc',

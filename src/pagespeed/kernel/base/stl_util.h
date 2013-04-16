@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 Google Inc.
+ * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_SPARSE_HASH_MAP_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_SPARSE_HASH_MAP_H_
+#ifndef PAGESPEED_KERNEL_BASE_STL_UTIL_H_
+#define PAGESPEED_KERNEL_BASE_STL_UTIL_H_
 
-#include "google/sparse_hash_map"
-namespace net_instaweb { using google::sparse_hash_map; }
+#include "base/stl_util.h"
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_SPARSE_HASH_MAP_H_
+#endif  // PAGESPEED_KERNEL_BASE_STL_UTIL_H_

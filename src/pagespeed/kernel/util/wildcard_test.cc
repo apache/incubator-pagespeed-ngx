@@ -17,9 +17,9 @@
 
 #include "pagespeed/kernel/util/wildcard.h"
 
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/scoped_ptr.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 

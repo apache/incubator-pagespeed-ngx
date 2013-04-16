@@ -1,5 +1,5 @@
 /*
- * Copyright 2010 Google Inc.
+ * Copyright 2012 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,15 @@
  * limitations under the License.
  */
 
-// Author: jmarantz@google.com (Joshua Marantz)
-//
+// Author: lsong@google.com (Libo Song)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_
+#ifndef PAGESPEED_KERNEL_BASE_SCOPED_PTR_H_
+#define PAGESPEED_KERNEL_BASE_SCOPED_PTR_H_
 
-// TODO(jmarantz): Remove this forwarding header and update references.
-#include "pagespeed/kernel/base/gtest.h"
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_GTEST_H_
+// Chromium has moved scoped_ptr.h from base directory to base/memory.
+// Thankfully, even older version we built against had it available in
+// base/memory, just with the compatibility alias still available.
+#include "base/memory/scoped_ptr.h"
+
+#endif  // PAGESPEED_KERNEL_BASE_SCOPED_PTR_H_

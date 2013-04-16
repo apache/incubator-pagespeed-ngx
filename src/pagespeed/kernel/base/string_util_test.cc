@@ -23,10 +23,10 @@
 #include <set>
 #include <vector>
 
-#include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/gtest.h"
-#include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/base/basictypes.h"
+#include "pagespeed/kernel/base/gtest.h"
+#include "pagespeed/kernel/base/string.h"
+#include "pagespeed/kernel/base/string_util.h"
 
 namespace net_instaweb {
 
@@ -54,11 +54,13 @@ TEST(STATIC_STRLEN_Test, CorrectStaticStringLengths) {
   //     STATIC_STRLEN(hello_world_ptr);
   //     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   //   In file included from net/instaweb/util/string_util_test.cc:25:
-  //   ./net/instaweb/util/public/string_util.h:46:39: note: instantiated from:
+  //   ./third_party/pagespeed/kernel/base/string_util.h:46:39: note:
+  //       instantiated from:
   //   #define STATIC_STRLEN(static_string) (arraysize(static_string) - 1)
   //                                         ^
   //   In file included from net/instaweb/util/string_util_test.cc:25:
-  //   In file included from ./net/instaweb/util/public/string_util.h:34:
+  //   In file included from
+  //       ./third_party/pagespeed/kernel/base/string_util.h:34:
   //   In file included from ./strings/join.h:16:
   //   ./base/macros.h:143:34: note: instantiated from:
   //   #define arraysize(array) (sizeof(ArraySizeHelper(array)))
@@ -72,9 +74,9 @@ TEST(STATIC_STRLEN_Test, CorrectStaticStringLengths) {
   //   char (&ArraySizeHelper(const T (&array)[N]))[N];
   //          ^
   // TODO(sligocki): Find a way to actively test this:
-  //GoogleString hello_world("Hello, world!");
-  //const char* hello_world_ptr = hello_world.data();
-  //STATIC_STRLEN(hello_world_ptr);
+  // GoogleString hello_world("Hello, world!");
+  // const char* hello_world_ptr = hello_world.data();
+  // STATIC_STRLEN(hello_world_ptr);
 }
 
 class IntegerToStringToIntTest : public testing::Test {

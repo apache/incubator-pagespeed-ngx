@@ -15,10 +15,10 @@
  */
 // Author: jmarantz@google.com (Joshua Marantz)
 
-#ifndef NET_INSTAWEB_UTIL_PUBLIC_DENSE_HASH_MAP_H_
-#define NET_INSTAWEB_UTIL_PUBLIC_DENSE_HASH_MAP_H_
+#ifndef PAGESPEED_KERNEL_UTIL_SPARSE_HASH_MAP_H_
+#define PAGESPEED_KERNEL_UTIL_SPARSE_HASH_MAP_H_
 
-#include "google/dense_hash_map"
-namespace net_instaweb { using google::dense_hash_map; }
+#include "google/sparse_hash_map"
+namespace net_instaweb { using google::sparse_hash_map; }
 
-#endif  // NET_INSTAWEB_UTIL_PUBLIC_DENSE_HASH_MAP_H_
+#endif  // PAGESPEED_KERNEL_UTIL_SPARSE_HASH_MAP_H_

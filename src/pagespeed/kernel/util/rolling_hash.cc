@@ -15,11 +15,11 @@
  */
 // Author: jmaessen@google.com (Jan Maessen)
 
-#include "net/instaweb/util/public/rolling_hash.h"
+#include "pagespeed/kernel/util/rolling_hash.h"
 
 #include <cstddef>
 #include "base/logging.h"
-#include "net/instaweb/util/public/basictypes.h"
+#include "pagespeed/kernel/base/basictypes.h"
 
 namespace net_instaweb {
 

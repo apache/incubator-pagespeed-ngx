@@ -1,5 +1,5 @@
 /*
- * Copyright 2012 Google Inc.
+ * Copyright 2010 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,21 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+// Author: jmaessen@google.com (Jan Maessen)
 
-// Author: gagansingh@google.com (Gagan Singh)
+#ifndef PAGESPEED_KERNEL_UTIL_DENSE_HASH_SET_H_
+#define PAGESPEED_KERNEL_UTIL_DENSE_HASH_SET_H_
 
-#include "net/instaweb/util/public/gtest.h"
+#include "google/dense_hash_set"
+namespace net_instaweb { using google::dense_hash_set; }
 
-#include "net/instaweb/util/public/re2.h"
-
-namespace net_instaweb {
-
-class Re2Test : public testing::Test {
-};
-
-TEST_F(Re2Test, FullMatch) {
-  EXPECT_FALSE(RE2::FullMatch("helo", "h.*oo"));
-  EXPECT_TRUE(RE2::FullMatch("helo", "h.*o"));
-}
-
-}  // namespace net_instaweb
+#endif  // PAGESPEED_KERNEL_UTIL_DENSE_HASH_SET_H_

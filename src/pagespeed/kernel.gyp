@@ -15,14 +15,48 @@
 {
   'targets': [
     {
+      'target_name': 'base',
+      'type': '<(library)',
+      'sources': [
+        'kernel/base/string_util.cc',
+      ],
+      'include_dirs': [
+        '<(DEPTH)',
+      ],
+    },
+    {
+      'target_name': 'base_test_util',
+      'type': '<(library)',
+      'sources': [
+        'kernel/base/gtest.cc',
+      ],
+      'all_dependent_settings': {
+        'include_dirs': [
+          '<(DEPTH)/testing/gtest/include',
+        ],
+      },
+      'include_dirs': [
+        '<(DEPTH)',
+        '<(DEPTH)/testing/gtest/include',
+      ],
+      'dependencies': [
+        '<(DEPTH)/testing/gtest.gyp:gtest_main',
+      ],
+    },
+    {
       'target_name': 'util',
       'type': '<(library)',
       'sources': [
         'kernel/util/fast_wildcard_group.cc',
+        'kernel/util/rolling_hash.cc',
         'kernel/util/wildcard.cc',
       ],
       'include_dirs': [
         '<(DEPTH)',
+      ],
+      'dependencies': [
+        'base',
+        '<(DEPTH)/third_party/re2/re2.gyp:re2',
       ],
     }
   ],
