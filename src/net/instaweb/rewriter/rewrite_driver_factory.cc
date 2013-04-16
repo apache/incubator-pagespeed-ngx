@@ -69,7 +69,7 @@ namespace {
 const int kWebpQualityArray[] = {20, 35, 50, 70, 85};
 const int kJpegQualityArray[] = {30, 50, 65, 80, 90};
 
-}
+}  // namespace
 
 class Statistics;
 

@@ -44,12 +44,12 @@ class CompressedCacheTest : public CacheTestBase {
   CompressedCacheTest()
       : lru_cache_(new LRUCache(kMaxSize)) {
     CompressedCache::InitStats(&stats_);
-    compressed_cache_.reset(new CompressedCache(lru_cache_, &stats_));
+    compressed_cache_.reset(new CompressedCache(lru_cache_.get(), &stats_));
   }
 
   // Get the raw compressed buffer out directly out of the LRU cache.
   GoogleString GetRawValue(const GoogleString& key) {
-    Callback* callback = InitiateGet(lru_cache_, key);
+    Callback* callback = InitiateGet(lru_cache_.get(), key);
     callback->Wait();
     EXPECT_TRUE(callback->called());
     GoogleString ret;
@@ -61,7 +61,7 @@ class CompressedCacheTest : public CacheTestBase {
   virtual CacheInterface* Cache() { return compressed_cache_.get(); }
 
   GoogleMessageHandler handler_;
-  LRUCache* lru_cache_;
+  scoped_ptr<LRUCache> lru_cache_;
   SimpleStats stats_;
   scoped_ptr<CompressedCache> compressed_cache_;
   SimpleRandom random_;
@@ -119,7 +119,7 @@ TEST_F(CompressedCacheTest, EmptyValue) {
 // compressed bytes directly in the lru_cache_.
 
 TEST_F(CompressedCacheTest, PhysicallyEmptyValue) {
-  CheckPut(lru_cache_, "key", "");
+  CheckPut(lru_cache_.get(), "key", "");
 
   // The physical value must have a signature written by
   // compressed_cache.cc, otherwise it reports a miss due to
@@ -129,7 +129,7 @@ TEST_F(CompressedCacheTest, PhysicallyEmptyValue) {
 }
 
 TEST_F(CompressedCacheTest, TotalGarbage) {
-  CheckPut(lru_cache_, "key", "garbage");
+  CheckPut(lru_cache_.get(), "key", "garbage");
   CheckNotFound("key");
   EXPECT_EQ(1, compressed_cache_->CorruptPayloads());
 }

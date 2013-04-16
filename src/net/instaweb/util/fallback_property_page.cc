@@ -24,9 +24,9 @@ namespace net_instaweb {
 
 FallbackPropertyPage::FallbackPropertyPage(
     PropertyPage* actual_property_page,
-    PropertyPage* fallback_property_page)
+    PropertyPage* property_page_with_fallback_values)
     :  actual_property_page_(actual_property_page),
-       fallback_property_page_(fallback_property_page) {
+       property_page_with_fallback_values_(property_page_with_fallback_values) {
   CHECK(actual_property_page != NULL);
 }
 
@@ -38,26 +38,28 @@ PropertyValue* FallbackPropertyPage::GetProperty(
       const StringPiece& property_name) const {
   PropertyValue* value = actual_property_page_->GetProperty(
       cohort, property_name);
-  if (value->has_value() || fallback_property_page_ == NULL) {
+  if (value->has_value() || property_page_with_fallback_values_ == NULL) {
     return value;
   }
-  return fallback_property_page_->GetProperty(cohort, property_name);
+  return property_page_with_fallback_values_->GetProperty(
+      cohort, property_name);
 }
 
 void FallbackPropertyPage::UpdateValue(
     const PropertyCache::Cohort* cohort, const StringPiece& property_name,
     const StringPiece& value) {
   actual_property_page_->UpdateValue(cohort, property_name, value);
-  if (fallback_property_page_ != NULL) {
-    fallback_property_page_->UpdateValue(cohort, property_name, value);
+  if (property_page_with_fallback_values_ != NULL) {
+    property_page_with_fallback_values_->UpdateValue(
+        cohort, property_name, value);
   }
 }
 
 void FallbackPropertyPage::WriteCohort(
     const PropertyCache::Cohort* cohort) {
   actual_property_page_->WriteCohort(cohort);
-  if (fallback_property_page_ != NULL) {
-    fallback_property_page_->WriteCohort(cohort);
+  if (property_page_with_fallback_values_ != NULL) {
+    property_page_with_fallback_values_->WriteCohort(cohort);
   }
 }
 
@@ -69,8 +71,8 @@ CacheInterface::KeyState FallbackPropertyPage::GetCacheState(
 void FallbackPropertyPage::DeleteProperty(const PropertyCache::Cohort* cohort,
                                           const StringPiece& property_name) {
   actual_property_page_->DeleteProperty(cohort, property_name);
-  if (fallback_property_page_ != NULL) {
-    fallback_property_page_->DeleteProperty(cohort, property_name);
+  if (property_page_with_fallback_values_ != NULL) {
+    property_page_with_fallback_values_->DeleteProperty(cohort, property_name);
   }
 }
 

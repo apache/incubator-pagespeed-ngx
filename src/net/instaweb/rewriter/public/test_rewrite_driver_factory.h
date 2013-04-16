@@ -101,7 +101,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   virtual ~TestRewriteDriverFactory();
 
   DelayCache* delay_cache() { return delay_cache_; }
-  LRUCache* lru_cache() { return lru_cache_; }
+  LRUCache* lru_cache() { return lru_cache_.get(); }
   MockTimer* mock_timer() { return mock_timer_; }
   MockHasher* mock_hasher() { return mock_hasher_; }
   MemFileSystem* mem_file_system() { return mem_file_system_; }
@@ -210,7 +210,7 @@ class TestRewriteDriverFactory : public RewriteDriverFactory {
   MockScheduler* mock_scheduler_;  // owned by RewriteDriverFactory::scheduler_.
   DelayCache* delay_cache_;
   scoped_ptr<ThreadsafeCache> threadsafe_cache_;
-  LRUCache* lru_cache_;
+  scoped_ptr<LRUCache> lru_cache_;
   UrlFetcher* proxy_url_fetcher_;
   MockUrlFetcher* mock_url_fetcher_;
   MockUrlFetcher* mock_distributed_fetcher_;

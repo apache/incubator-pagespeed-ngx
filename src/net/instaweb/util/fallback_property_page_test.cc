@@ -71,8 +71,9 @@ class FallbackPropertyPageTest : public testing::Test {
     property = fallback_page_->actual_property_page()->GetProperty(
         cohort_, kPropertyName1);
     EXPECT_FALSE(property->has_value());
-    property = fallback_page_->fallback_property_page()->GetProperty(
-          cohort_, kPropertyName1);
+    property =
+        fallback_page_->property_page_with_fallback_values()->GetProperty(
+            cohort_, kPropertyName1);
     EXPECT_FALSE(property->has_value());
   }
 
@@ -90,8 +91,9 @@ class FallbackPropertyPageTest : public testing::Test {
     EXPECT_EQ(value, property->value());
 
     // Property present in fallback page.
-    property = fallback_page_->fallback_property_page()->GetProperty(
-        cohort_, kPropertyName1);
+    property =
+        fallback_page_->property_page_with_fallback_values()->GetProperty(
+            cohort_, kPropertyName1);
     EXPECT_TRUE(property->has_value());
     EXPECT_EQ(value, property->value());
   }
@@ -154,7 +156,7 @@ TEST_F(FallbackPropertyPageTest, TestGetPropertyIfFallbackPageIsSet) {
   CheckNoValuePreset();
 
   // Update property in only fallback property page.
-  fallback_page_->fallback_property_page()->UpdateValue(
+  fallback_page_->property_page_with_fallback_values()->UpdateValue(
       cohort_, kPropertyName1, kValue1);
   fallback_page_->WriteCohort(cohort_);
 

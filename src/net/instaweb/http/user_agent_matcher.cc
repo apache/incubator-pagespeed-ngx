@@ -34,6 +34,10 @@ class RequestHeaders;
 // The user-agent string for Opera could be in the form of "Opera 7" or
 // "Opera/7", we use the wildcard pattern "Opera?7" for this case.
 namespace {
+
+const char kGooglePlusUserAgent[] =
+    "*Google (+https://developers.google.com/+/web/snippet/)*";
+
 const char* kImageInliningWhitelist[] = {
   "*Android*",
   "*Chrome/*",
@@ -61,14 +65,16 @@ const char* kImageInliningBlacklist[] = {
   "*MSIE 6.*",
   "*MSIE 7.*",
   "*Opera?5*",
-  "*Opera?6*"
+  "*Opera?6*",
+  kGooglePlusUserAgent
 };
 
 // Exclude BlackBerry OS 5.0 and older. See
 // http://supportforums.blackberry.com/t5/Web-and-WebWorks-Development/How-to-detect-the-BlackBerry-Browser/ta-p/559862
 // for details on BlackBerry UAs.
 const char* kLazyloadImagesBlacklist[] = {
-  "BlackBerry*CLDC*"
+  "BlackBerry*CLDC*",
+  kGooglePlusUserAgent
 };
 
 // For Panels and deferJs the list is same as of now.

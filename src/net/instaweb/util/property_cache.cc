@@ -25,7 +25,6 @@
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/util/property_cache.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
-#include "net/instaweb/util/public/cache_copy.h"
 #include "net/instaweb/util/public/cache_stats.h"
 #include "net/instaweb/util/public/proto_util.h"
 #include "net/instaweb/util/public/shared_string.h"
@@ -400,10 +399,8 @@ const PropertyCache::Cohort* PropertyCache::AddCohortWithCache(
   if (insertions.second) {
     // Create a new CacheStats for every cohort so that we can track cache
     // statistics independently for every cohort.
-    CacheInterface* cache_stats = new CacheStats(GetStatsPrefix(cohort_string),
-                                                 new CacheCopy(cache),
-                                                 timer_,
-                                                 stats_);
+    CacheInterface* cache_stats = new CacheStats(
+        GetStatsPrefix(cohort_string), cache, timer_, stats_);
     insertions.first->second = new Cohort(cohort_name, cache_stats);
     cohort_list_.push_back(insertions.first->second);
   }

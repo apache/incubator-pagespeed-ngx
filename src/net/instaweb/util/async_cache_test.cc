@@ -31,6 +31,7 @@
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/platform.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/shared_string.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
@@ -167,18 +168,17 @@ class AsyncCacheTest : public CacheTestBase {
   };
 
   AsyncCacheTest()
-      : lru_cache_(new LRUCache(kMaxSize)),
+      : lru_cache_(kMaxSize),
         thread_system_(Platform::CreateThreadSystem()),
         delay_map_(thread_system_.get()),
         timer_(thread_system_->NewTimer()),
         suppress_post_get_cleanup_(false),
-        synced_lru_cache_(NULL),
         expected_outstanding_operations_(0) {
     set_mutex(thread_system_->NewMutex());
     pool_.reset(new QueuedWorkerPool(1, "cache", thread_system_.get()));
-    synced_lru_cache_ = new SyncedLRUCache(
-        &delay_map_, lru_cache_, thread_system_->NewMutex());
-    async_cache_.reset(new AsyncCache(synced_lru_cache_, pool_.get()));
+    synced_lru_cache_.reset(new SyncedLRUCache(
+        &delay_map_, &lru_cache_, thread_system_->NewMutex()));
+    async_cache_.reset(new AsyncCache(synced_lru_cache_.get(), pool_.get()));
   }
 
   ~AsyncCacheTest() {
@@ -226,14 +226,14 @@ class AsyncCacheTest : public CacheTestBase {
     return callback;
   }
 
-  LRUCache* lru_cache_;
+  LRUCache lru_cache_;
   scoped_ptr<ThreadSystem> thread_system_;
   DelayMap delay_map_;
   scoped_ptr<Timer> timer_;
   scoped_ptr<QueuedWorkerPool> pool_;
   scoped_ptr<AsyncCache> async_cache_;
   bool suppress_post_get_cleanup_;
-  SyncedLRUCache* synced_lru_cache_;
+  scoped_ptr<SyncedLRUCache> synced_lru_cache_;
   int32 expected_outstanding_operations_;
 };
 
@@ -244,26 +244,26 @@ class AsyncCacheTest : public CacheTestBase {
 //
 // TODO(jmarantz): refactor this with LRUCacheTest::PutGetDelete.
 TEST_F(AsyncCacheTest, PutGetDelete) {
-  EXPECT_EQ(static_cast<size_t>(0), lru_cache_->size_bytes());
-  EXPECT_EQ(static_cast<size_t>(0), lru_cache_->num_elements());
+  EXPECT_EQ(static_cast<size_t>(0), lru_cache_.size_bytes());
+  EXPECT_EQ(static_cast<size_t>(0), lru_cache_.num_elements());
   CheckPut("Name", "Value");
   CheckGet("Name", "Value");
-  EXPECT_EQ(static_cast<size_t>(9), lru_cache_->size_bytes());
-  EXPECT_EQ(static_cast<size_t>(1), lru_cache_->num_elements());
+  EXPECT_EQ(static_cast<size_t>(9), lru_cache_.size_bytes());
+  EXPECT_EQ(static_cast<size_t>(1), lru_cache_.num_elements());
   CheckNotFound("Another Name");
 
   CheckPut("Name", "NewValue");
   CheckGet("Name", "NewValue");
-  EXPECT_EQ(static_cast<size_t>(12), lru_cache_->size_bytes());
-  EXPECT_EQ(static_cast<size_t>(1), lru_cache_->num_elements());
+  EXPECT_EQ(static_cast<size_t>(12), lru_cache_.size_bytes());
+  EXPECT_EQ(static_cast<size_t>(1), lru_cache_.num_elements());
 
   CheckDelete("Name");
-  lru_cache_->SanityCheck();
+  lru_cache_.SanityCheck();
   SharedString value_buffer;
   CheckNotFound("Name");
-  EXPECT_EQ(static_cast<size_t>(0), lru_cache_->size_bytes());
-  EXPECT_EQ(static_cast<size_t>(0), lru_cache_->num_elements());
-  lru_cache_->SanityCheck();
+  EXPECT_EQ(static_cast<size_t>(0), lru_cache_.size_bytes());
+  EXPECT_EQ(static_cast<size_t>(0), lru_cache_.num_elements());
+  lru_cache_.SanityCheck();
 }
 
 TEST_F(AsyncCacheTest, DelayN0NoParallelism) {

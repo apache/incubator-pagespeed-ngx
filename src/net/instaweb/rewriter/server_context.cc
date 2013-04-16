@@ -255,6 +255,8 @@ ServerContext::ServerContext(RewriteDriverFactory* factory)
       lock_hasher_(20),
       contents_hasher_(21),
       statistics_(NULL),
+      filesystem_metadata_cache_(NULL),
+      metadata_cache_(NULL),
       store_outputs_in_file_system_(false),
       response_headers_finalized_(true),
       enable_property_cache_(true),
@@ -1129,8 +1131,7 @@ void ServerContext::set_enable_property_cache(bool enabled) {
 
 // TODO(jmarantz): simplify the cache ownership model so that the layered
 // caches don't own one another; the ServerContext owns all the caches.
-void ServerContext::MakePropertyCaches(bool take_ownership_of_cache,
-                                       CacheInterface* backend_cache) {
+void ServerContext::MakePropertyCaches(CacheInterface* backend_cache) {
   // The property caches are L2-only.  We cannot use the L1 cache because
   // this data can get stale quickly.
   page_property_cache_.reset(MakePropertyCache(
@@ -1138,9 +1139,6 @@ void ServerContext::MakePropertyCaches(bool take_ownership_of_cache,
   client_property_cache_.reset(MakePropertyCache(
       PropertyCache::kClientPropertyCacheKeyPrefix, backend_cache));
   client_property_cache_->AddCohort(ClientState::kClientStateCohort);
-  if (take_ownership_of_cache) {
-    owned_pcache_backend_.reset(backend_cache);
-  }
 }
 
 PropertyCache* ServerContext::MakePropertyCache(
@@ -1196,6 +1194,10 @@ DeviceProperties* ServerContext::NewDeviceProperties() {
       factory_->preferred_webp_qualities(),
       factory_->preferred_jpeg_qualities());
   return device_properties;
+}
+
+void ServerContext::DeleteCacheOnDestruction(CacheInterface* cache) {
+  factory_->DeleteOnDestruction(cache);
 }
 
 }  // namespace net_instaweb

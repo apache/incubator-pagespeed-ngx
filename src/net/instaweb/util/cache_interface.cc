@@ -20,6 +20,9 @@
 
 namespace net_instaweb {
 
+CacheInterface::CacheInterface() {
+}
+
 CacheInterface::~CacheInterface() {
 }
 

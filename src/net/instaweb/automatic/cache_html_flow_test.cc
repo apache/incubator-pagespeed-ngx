@@ -35,6 +35,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/public/blink_critical_line_data_finder.h"
+#include "net/instaweb/rewriter/public/cache_html_info_finder.h"
 #include "net/instaweb/rewriter/public/js_disable_filter.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/server_context.h"
@@ -432,6 +433,7 @@ class CacheHtmlFlowTest : public ProxyInterfaceTestBase {
     flaky_fake_url_namer_->set_options(options_.get());
 
     server_context()->set_url_namer(fake_url_namer_.get());
+    server_context()->set_cache_html_info_finder(new CacheHtmlInfoFinder());
 
     SetTimeMs(MockTimer::kApr_5_2010_ms);
     SetFetchFailOnUnexpected(false);

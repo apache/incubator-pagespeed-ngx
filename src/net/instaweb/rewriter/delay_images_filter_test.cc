@@ -482,8 +482,8 @@ TEST_F(DelayImagesFilterTest, DelayJpegImage) {
 
 TEST_F(DelayImagesFilterTest, DelayImageWithMobileAggressiveEnabled) {
   options()->set_enable_aggressive_rewriters_for_mobile(true);
-  SetupUserAgentTest(kAndroidMobileUserAgent1);
   AddFilter(RewriteOptions::kDelayImages);
+  SetupUserAgentTest(kAndroidMobileUserAgent1);
   AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
                        kContentTypeJpeg, 100);
   GoogleString input_html = "<head></head>"
@@ -506,8 +506,8 @@ TEST_F(DelayImagesFilterTest, DelayImageWithMobileAggressiveEnabled) {
 TEST_F(DelayImagesFilterTest, DelayImageWithMobileLazyLoad) {
   options()->set_enable_aggressive_rewriters_for_mobile(true);
   options()->set_lazyload_highres_images(true);
-  SetupUserAgentTest(kAndroidMobileUserAgent1);
   AddFilter(RewriteOptions::kDelayImages);
+  SetupUserAgentTest(kAndroidMobileUserAgent1);
   AddFileToMockFetcher("http://test.com/1.jpeg", kSampleJpgFile,
                        kContentTypeJpeg, 100);
   GoogleString input_html = "<head></head>"
@@ -762,6 +762,7 @@ TEST_F(DelayImagesFilterTest, MultipleBodyTags) {
 TEST_F(DelayImagesFilterTest, ResizeForResolution) {
   options()->EnableFilter(RewriteOptions::kDelayImages);
   options()->EnableFilter(RewriteOptions::kResizeMobileImages);
+  options()->set_enable_aggressive_rewriters_for_mobile(false);
   rewrite_driver()->AddFilters();
   AddFileToMockFetcher("http://test.com/1.jpeg", kLargeJpgFile,
                        kContentTypeJpeg, 100);
@@ -843,6 +844,7 @@ TEST_F(DelayImagesFilterTest, ResizeForResolutionWithSmallImage) {
 }
 
 TEST_F(DelayImagesFilterTest, ResizeForResolutionNegative) {
+  options()->set_enable_aggressive_rewriters_for_mobile(false);
   AddFilter(RewriteOptions::kDelayImages);
   AddFileToMockFetcher("http://test.com/1.jpeg", kLargeJpgFile,
                        kContentTypeJpeg, 100);

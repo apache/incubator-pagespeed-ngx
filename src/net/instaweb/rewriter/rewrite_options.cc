@@ -1319,8 +1319,12 @@ void RewriteOptions::AddProperties() {
         &RewriteOptions::use_fallback_property_cache_values_,
         "fbcv", kUseFallbackPropertyCacheValues,
         kServerScope,
-        "If this is set to true, use fallback values from property cache if "
-        "actual value is not present.");
+        "If this is set to true, fallback values will be used from property "
+        "cache if actual value is not present. Here fallback values means "
+        "properties which are shared across all requests which have same url "
+        "if query paramaters are removed. Example: http://www.test.com?a=1 and "
+        "http://www.test.com?a=2 share same fallback properties though they "
+        "are two different urls.");
   AddBaseProperty(
       true, &RewriteOptions::support_noscript_enabled_, "snse",
       kSupportNoScriptEnabled,

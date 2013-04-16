@@ -57,8 +57,18 @@ DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
           driver->server_context()->static_asset_manager()),
       low_res_map_inserted_(false),
       num_low_res_inlined_images_(0),
+      insert_low_res_images_inplace_(false),
       is_experimental_inline_preview_enabled_(
-          driver_->options()->enable_inline_preview_images_experimental()) {
+          driver_->options()->enable_inline_preview_images_experimental()),
+      lazyload_highres_images_(false) {
+}
+
+DelayImagesFilter::~DelayImagesFilter() {}
+
+void DelayImagesFilter::StartDocument() {
+  low_res_map_inserted_ = false;
+  num_low_res_inlined_images_ = 0;
+
   // Low res images will be placed inside the respective image tag if any one of
   // kDeferJavascript or kLazyloadImages is turned off or
   // enable_inline_preview_images_experimental is set to true. Otherwise, low
@@ -72,13 +82,6 @@ DelayImagesFilter::DelayImagesFilter(RewriteDriver* driver)
            !driver_->options()->Enabled(RewriteOptions::kLazyloadImages));
   lazyload_highres_images_ = driver_->options()->lazyload_highres_images() &&
       driver_->device_properties()->IsMobile();
-}
-
-DelayImagesFilter::~DelayImagesFilter() {}
-
-void DelayImagesFilter::StartDocument() {
-  low_res_map_inserted_ = false;
-  num_low_res_inlined_images_ = 0;
 }
 
 void DelayImagesFilter::EndDocument() {

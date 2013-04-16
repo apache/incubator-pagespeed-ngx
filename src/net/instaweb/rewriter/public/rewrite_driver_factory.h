@@ -272,6 +272,12 @@ class RewriteDriverFactory {
   // may be useful for object deletion cleanups.
   void defer_cleanup(Function* f) { deferred_cleanups_.push_back(f); }
 
+  // Queues an object for deletion at the last phase of RewriteDriverFactory
+  // destruction.
+  template<class T> void DeleteOnDestruction(T* obj) {
+    defer_cleanup(new RewriteDriverFactory::Deleter<T>(obj));
+  }
+
   // Base method that returns true if the given ip is a debug ip.
   virtual bool IsDebugClient(const GoogleString& ip) const {
     return false;

@@ -841,7 +841,13 @@ class RewriteDriver : public HtmlParse {
   void set_client_id(const StringPiece& id) { client_id_ = id.as_string(); }
   const GoogleString& client_id() const { return client_id_; }
 
+  // Returns the property page which contains the cached properties associated
+  // with the current URL.
   PropertyPage* property_page() const;
+  // Returns the property page which contains the cached properties associated
+  // with the current URL and fallback URL (i.e. without query params). This
+  // should be used where a property is interested in fallback values if
+  // actual values are not present.
   AbstractPropertyPage* fallback_property_page() const {
     return fallback_property_page_;
   }
@@ -1354,7 +1360,8 @@ class RewriteDriver : public HtmlParse {
   // Stores the AbstractClientState object associated with the client, if any.
   scoped_ptr<AbstractClientState> client_state_;
 
-  // Stores any cached properties associated with the current URL.
+  // Stores any cached properties associated with the current URL and fallback
+  // URL (i.e. without query params).
   FallbackPropertyPage* fallback_property_page_;
 
   // Boolean value which tells whether property page is owned by driver or not.

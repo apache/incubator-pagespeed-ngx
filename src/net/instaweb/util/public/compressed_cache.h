@@ -21,7 +21,6 @@
 
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -34,7 +33,7 @@ class Variable;
 // Compressed cache adapter.
 class CompressedCache : public CacheInterface {
  public:
-  // Takes ownership of the cache.
+  // Does not takes ownership of cache or stats.
   CompressedCache(CacheInterface* cache, Statistics* stats);
   virtual ~CompressedCache();
 
@@ -44,7 +43,7 @@ class CompressedCache : public CacheInterface {
   virtual void Put(const GoogleString& key, SharedString* value);
   virtual void Delete(const GoogleString& key);
   virtual const char* Name() const { return name_.c_str(); }
-  virtual CacheInterface* Backend() { return cache_.get(); }
+  virtual CacheInterface* Backend() { return cache_; }
   virtual bool IsBlocking() const { return cache_->IsBlocking(); }
   virtual bool IsHealthy() const;
   virtual void ShutDown();
@@ -62,7 +61,7 @@ class CompressedCache : public CacheInterface {
   int64 CompressedSize() const;
 
  private:
-  scoped_ptr<CacheInterface> cache_;
+  CacheInterface* cache_;
   GoogleString name_;
   Histogram* compressed_cache_savings_;
   Variable* corrupt_payloads_;

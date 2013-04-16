@@ -252,7 +252,8 @@ DEFINE_bool(lazyload_images_after_onload, false, "Boolean indicating whether "
 
 DEFINE_bool(use_fallback_property_cache_values, false,
             "Boolean indicating whether to use fallback property cache "
-            "values.");
+            "values(i.e. without query params) in case actual values are not "
+            "available.");
 
 DEFINE_string(lazyload_images_blank_url, "",
               "The initial image url to load in the lazyload images filter.");

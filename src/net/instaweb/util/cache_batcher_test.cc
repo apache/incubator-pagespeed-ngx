@@ -29,6 +29,7 @@
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/platform.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
+#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/simple_stats.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/thread_system.h"
@@ -48,15 +49,17 @@ class CacheBatcherTest : public CacheTestBase {
     thread_system_.reset(Platform::CreateThreadSystem());
     statistics_.reset(new SimpleStats(thread_system_.get()));
     CacheBatcher::InitStats(statistics_.get());
-    lru_cache_ = new LRUCache(kMaxSize);
+    lru_cache_.reset(new LRUCache(kMaxSize));
     timer_.reset(thread_system_->NewTimer());
     pool_.reset(
         new QueuedWorkerPool(kMaxWorkers, "cache", thread_system_.get()));
-    ThreadsafeCache* threadsafe_cache = new ThreadsafeCache(
-        lru_cache_, thread_system_->NewMutex());
-    async_cache_.reset(new AsyncCache(threadsafe_cache, pool_.get()));
-    delay_cache_ = new DelayCache(async_cache_.get(), thread_system_.get());
-    batcher_.reset(new CacheBatcher(delay_cache_, thread_system_->NewMutex(),
+    threadsafe_cache_.reset(new ThreadsafeCache(
+        lru_cache_.get(), thread_system_->NewMutex()));
+    async_cache_.reset(new AsyncCache(threadsafe_cache_.get(), pool_.get()));
+    delay_cache_.reset(new DelayCache(async_cache_.get(),
+                                      thread_system_.get()));
+    batcher_.reset(new CacheBatcher(delay_cache_.get(),
+                                    thread_system_->NewMutex(),
                                     statistics_.get()));
     set_mutex(thread_system_->NewMutex());
   }
@@ -108,12 +111,13 @@ class CacheBatcherTest : public CacheTestBase {
     --expected_pending_;
   }
 
-  LRUCache* lru_cache_;  // owned by ThreadsafeCache.
+  scoped_ptr<LRUCache> lru_cache_;
   scoped_ptr<ThreadSystem> thread_system_;
+  scoped_ptr<ThreadsafeCache> threadsafe_cache_;
   scoped_ptr<Timer> timer_;
   scoped_ptr<QueuedWorkerPool> pool_;
   scoped_ptr<AsyncCache> async_cache_;
-  DelayCache* delay_cache_;  // owned by CacheBatcher.
+  scoped_ptr<DelayCache> delay_cache_;
   scoped_ptr<SimpleStats> statistics_;
   scoped_ptr<CacheBatcher> batcher_;
   int expected_pending_;

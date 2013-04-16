@@ -16,9 +16,10 @@
 
 // Author: pulkitg@google.com (Pulkit Goyal)
 //
-// This class holds fallback property page which can be used to retrieve and
-// update the property values in case if we fail to find it in actual property
-// page.
+// This class holds property page with fallback values (i.e. without query
+// params) which can be used to retrieve and update the property values in case
+// if we fail to find it in actual property page. Values retrieved from property
+// page without query params are named as fallback values.
 
 #ifndef NET_INSTAWEB_UTIL_PUBLIC_FALLBACK_PROPERTY_PAGE_H_
 #define NET_INSTAWEB_UTIL_PUBLIC_FALLBACK_PROPERTY_PAGE_H_
@@ -36,7 +37,7 @@ class FallbackPropertyPage : public AbstractPropertyPage {
  public:
   // FallbackPropertyPage takes the ownership of both the property pages.
   FallbackPropertyPage(PropertyPage* actual_property_page,
-                       PropertyPage* fallback_property_page);
+                       PropertyPage* property_page_with_fallback_values);
   virtual ~FallbackPropertyPage();
 
   // Gets a property given the property name. It returns the property
@@ -66,13 +67,13 @@ class FallbackPropertyPage : public AbstractPropertyPage {
   virtual const GoogleString& key() const;
 
   PropertyPage* actual_property_page() { return actual_property_page_.get(); }
-  PropertyPage* fallback_property_page() {
-    return fallback_property_page_.get();
+  PropertyPage* property_page_with_fallback_values() {
+    return property_page_with_fallback_values_.get();
   }
 
  private:
   scoped_ptr<PropertyPage> actual_property_page_;
-  scoped_ptr<PropertyPage> fallback_property_page_;
+  scoped_ptr<PropertyPage> property_page_with_fallback_values_;
   DISALLOW_COPY_AND_ASSIGN(FallbackPropertyPage);
 };
 

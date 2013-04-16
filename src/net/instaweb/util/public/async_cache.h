@@ -24,7 +24,6 @@
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -53,7 +52,7 @@ class AsyncCache : public CacheInterface {
   // time we encounter a page then I think we may need to bump this up.
   static const int64 kMaxQueueSize = 2000;
 
-  // Takes ownership of the synchronous cache that is passed in.
+  // Does not takes ownership of the synchronous cache that is passed in.
   // Does not take ownership of the pool, which might be shared with
   // other users.
   //
@@ -110,7 +109,7 @@ class AsyncCache : public CacheInterface {
 
   void MultiGetReportNotFound(MultiGetRequest* request);
 
-  scoped_ptr<CacheInterface> cache_;
+  CacheInterface* cache_;
   GoogleString name_;
   QueuedWorkerPool::Sequence* sequence_;
   AtomicBool stopped_;

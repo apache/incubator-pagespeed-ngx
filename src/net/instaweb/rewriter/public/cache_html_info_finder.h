@@ -22,9 +22,12 @@
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/string.h"
-#include "net/instaweb/util/public/string_util.h"
 
 namespace net_instaweb {
+
+class AbstractLogRecord;
+class RewriteDriver;
+class RewriteDriverFactory;
 
 // Manages the cache lifetimes of CacheHtmlInfo.
 class CacheHtmlInfoFinder {
@@ -34,6 +37,10 @@ class CacheHtmlInfoFinder {
 
   virtual void PropagateCacheDeletes(const GoogleString& url, int furious_id,
                                      UserAgentMatcher::DeviceType device_type);
+
+  virtual bool UpdateDiffInfo(
+      bool is_diff, int64 now_ms, AbstractLogRecord* cache_html_log_record,
+      RewriteDriver* rewrite_driver, RewriteDriverFactory* factory);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(CacheHtmlInfoFinder);

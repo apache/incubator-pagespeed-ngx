@@ -67,7 +67,7 @@ class CacheBatcher : public CacheInterface {
   // requests, calling the callback immediately with kNotFound.
   static const size_t kDefaultMaxQueueSize = 1000;
 
-  // Takes ownership of the cache and mutex.
+  // Does not take ownership of the cache. Takes ownership of the mutex.
   CacheBatcher(CacheInterface* cache, AbstractMutex* mutex,
                Statistics* statistics);
   virtual ~CacheBatcher();
@@ -102,7 +102,7 @@ class CacheBatcher : public CacheInterface {
   void GroupComplete();
   bool CanIssueGet() const;  // must be called with mutex_ held.
 
-  scoped_ptr<CacheInterface> cache_;
+  CacheInterface* cache_;
   scoped_ptr<AbstractMutex> mutex_;
   GoogleString name_;
   MultiGetRequest queue_;

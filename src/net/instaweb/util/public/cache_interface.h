@@ -123,6 +123,7 @@ class CacheInterface {
   };
   typedef std::vector<KeyCallback> MultiGetRequest;
 
+  CacheInterface();
   virtual ~CacheInterface();
 
   // Initiates a cache fetch, calling callback->ValidateCandidate()

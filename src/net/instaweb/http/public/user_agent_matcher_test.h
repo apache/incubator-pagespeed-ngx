@@ -80,6 +80,9 @@ const char kFirefox5UserAgent[] =
     "Mozilla/5.0 (X11; U; Linux i586; de; rv:5.0) Gecko/20100101 Firefox/5.0";
 const char kGooglebotUserAgent[] =
     "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
+const char kGooglePlusUserAgent[] =
+    "Mozilla/5.0 (Windows NT 6.1; rv:6.0) Gecko/20110814 Firefox/6.0 Google "
+    "(+https://developers.google.com/+/web/snippet/)";
 const char kIe6UserAgent[] =
     "Mozilla/5.0 (Windows; U; MSIE 6.0; Windows NT 5.1; SV1;"
     " .NET CLR 2.0.50727)";

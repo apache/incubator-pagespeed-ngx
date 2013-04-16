@@ -1683,7 +1683,7 @@ class ResourceManagerTestThreadedCache : public ServerContextTest {
         cache_backend_(new LRUCache(100000)),
         cache_(new ThreadAlternatingCache(
             mock_scheduler(),
-            new ThreadsafeCache(cache_backend_, threads_->NewMutex()),
+            new ThreadsafeCache(cache_backend_.get(), threads_->NewMutex()),
             new QueuedWorkerPool(2, "alternator", threads_.get()))),
         http_cache_(new HTTPCache(cache_.get(), timer(), hasher(),
                                   statistics())) {
@@ -1701,7 +1701,7 @@ class ResourceManagerTestThreadedCache : public ServerContextTest {
 
  private:
   scoped_ptr<ThreadSystem> threads_;
-  LRUCache* cache_backend_;
+  scoped_ptr<LRUCache> cache_backend_;
   scoped_ptr<CacheInterface> cache_;
   scoped_ptr<HTTPCache> http_cache_;
 };

@@ -33,7 +33,6 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_copy.h"
 #include "net/instaweb/util/public/delay_cache.h"
 #include "net/instaweb/util/public/file_system.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -46,6 +45,8 @@
 #include "net/instaweb/util/public/timer.h"
 
 namespace net_instaweb {
+
+class CacheInterface;
 
 // Reproduce MPS issue 488 emulating memcached with LRUCache. We use the
 // 2 server contexts to emulate different servers, each with their own
@@ -76,7 +77,7 @@ class SharedCacheTest : public RewriteContextTestBase {
                                           factory1_->timer(),
                                           factory1_->hasher(),
                                           factory1_->statistics()));
-    server2_->set_metadata_cache(new CacheCopy(factory1_->delay_cache()));
+    server2_->set_metadata_cache(factory1_->delay_cache());
 
     // The metadata cache and the HTTP cache share an underlying LRU cache at
     // the bottom, so the stats for them are combined into this:
@@ -106,8 +107,12 @@ class SharedCacheTest : public RewriteContextTestBase {
 
   void SetUpFilesystemMetadataCaches() {
     // Add a filesystem metadata cache to each server.
-    server1_->set_filesystem_metadata_cache(new LRUCache(10000));
-    server2_->set_filesystem_metadata_cache(new LRUCache(10000));
+    CacheInterface* cache = new LRUCache(10000);
+    server1_->set_filesystem_metadata_cache(cache);
+    server1_->DeleteCacheOnDestruction(cache);
+    cache = new LRUCache(10000);
+    server2_->set_filesystem_metadata_cache(cache);
+    server1_->DeleteCacheOnDestruction(cache);
   }
 
   void ValidateRewrite(StringPiece id,

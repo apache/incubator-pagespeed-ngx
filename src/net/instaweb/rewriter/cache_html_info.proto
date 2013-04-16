@@ -48,3 +48,14 @@ message CacheHtmlInfo {
   // Character-set from the previous response.
   optional string charset = 5;
 }
+
+// Protobuf for tracking diff match info.
+// Next id = 3
+message CacheDiffInfo {
+  // A bit string that keeps the match/mis-match info for the last N requests.
+  optional string diff_match_history = 1;
+
+  // If set, indicates the time when mismatch threshold for blacklisting was
+  // hit.
+  optional int64 blacklist_timestamp_ms = 2;
+}

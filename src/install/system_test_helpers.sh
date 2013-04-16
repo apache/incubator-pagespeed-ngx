@@ -66,8 +66,7 @@ else
   echo WGET = $WGET
 fi
 
-$WGET --version | head -1 | grep -q "1\.1[2-9]"
-if [ $? != 0 ]; then
+if ! $WGET --version | head -1 | grep -q "1\.1[2-9]"; then
   echo "You have the wrong version of wget. >1.12 is required."
   exit 1
 fi
@@ -116,9 +115,22 @@ REWRITTEN_TEST_ROOT=${REWRITTEN_TEST_ROOT:-$TEST_ROOT}
 HTTPS_HOST=${2:-}
 HTTPS_EXAMPLE_ROOT=https://$HTTPS_HOST/mod_pagespeed_example
 
+
+# Determines whether a variable is defined, even with set -u
+#   http://stackoverflow.com/questions/228544/
+#   how-to-tell-if-a-string-is-not-defined-in-a-bash-shell-script
+# albeit there are zero votes for that answer.
+function var_defined() {
+  local var_name=$1
+  set | grep "^${var_name}=" 1>/dev/null
+  return $?
+}
+
 # These are the root URLs for rewritten resources; by default, no change.
 REWRITTEN_ROOT=${REWRITTEN_ROOT:-$EXAMPLE_ROOT}
-PROXY_DOMAIN=${PROXY_DOMAIN:-$HOSTNAME}
+if ! var_defined PROXY_DOMAIN; then
+  PROXY_DOMAIN="$HOSTNAME"
+fi
 
 # Setup wget proxy information
 export http_proxy=${3:-}

@@ -452,14 +452,30 @@ class CacheHtmlComputationFetch : public AsyncFetch {
           (computed_hash_ !=
               cache_html_info_->hash());
     }
-    // TODO(mmohabey): Incorporate DiffInfo.
+
+    int64 now_ms = server_context_->timer()->NowMs();
+    PropertyPage* page = rewrite_driver_->property_page();
+    PropertyCache* property_cache =
+        rewrite_driver_->server_context()->page_property_cache();
+    const PropertyCache::Cohort* cohort =
+        property_cache->GetCohort(BlinkUtil::kBlinkCohort);
+    bool diff_info_updated =
+        server_context_->cache_html_info_finder()->UpdateDiffInfo(
+            compute_cache_html_info, now_ms, cache_html_log_record_.get(),
+            rewrite_driver_, server_context_->factory());
 
     if (options_->enable_blink_html_change_detection() &&
         compute_cache_html_info) {
+      num_cache_html_mismatches_cache_deletes_->IncBy(1);
       // TODO(mmohabey): Do not call delete here as we will be subsequently
       // updating the new value in property cache using
       // CreateCacheHtmlComputationDriverAndRewrite.
-      DeleteCacheHtmlInfoFromPropertyCache();
+      server_context_->cache_html_info_finder()->PropagateCacheDeletes(
+          url_,
+          rewrite_driver_->options()->furious_id(),
+          rewrite_driver_->device_type());
+      page->DeleteProperty(cohort, BlinkUtil::kCacheHtmlRewriterInfo);
+      page->WriteCohort(cohort);
       CreateCacheHtmlComputationDriverAndRewrite();
     } else if (options_->enable_blink_html_change_detection() ||
                computed_hash_ != cache_html_info_->hash() ||
@@ -468,6 +484,9 @@ class CacheHtmlComputationFetch : public AsyncFetch {
       UpdatePropertyCacheWithCacheHtmlInfo();
       delete this;
     } else {
+      if (diff_info_updated) {
+        page->WriteCohort(cohort);
+      }
       delete this;
     }
   }
@@ -483,26 +502,6 @@ class CacheHtmlComputationFetch : public AsyncFetch {
                           true /* write_cohort*/);
   }
 
-  void DeleteCacheHtmlInfoFromPropertyCache() {
-    num_cache_html_mismatches_cache_deletes_->IncBy(1);
-    ServerContext* server_context = rewrite_driver_->server_context();
-    const PropertyCache::Cohort* cohort =
-        server_context->page_property_cache()->
-            GetCohort(BlinkUtil::kBlinkCohort);
-    PropertyPage* page = rewrite_driver_->property_page();
-    page->DeleteProperty(cohort, BlinkUtil::kCacheHtmlRewriterInfo);
-    // TODO(mmohabey): Call WriteCohort only once in
-    // UpdatePropertyCacheWithCacheHtmlInfo and not here. This is to avoid
-    // property cache write race.
-    page->WriteCohort(cohort);
-    // Propagate the delete
-    if (server_context->cache_html_info_finder() != NULL) {
-      server_context->cache_html_info_finder()->PropagateCacheDeletes(
-          url_,
-          rewrite_driver_->options()->furious_id(),
-          rewrite_driver_->device_type());
-    }
-  }
 
  private:
   GoogleString url_;

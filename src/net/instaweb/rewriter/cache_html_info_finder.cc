@@ -26,4 +26,11 @@ void CacheHtmlInfoFinder::PropagateCacheDeletes(
   // Default interface is empty and derived classes can override.
 }
 
+bool CacheHtmlInfoFinder::UpdateDiffInfo(
+    bool is_diff, int64 now_ms, AbstractLogRecord* cache_html_log_record,
+    RewriteDriver* rewrite_driver, RewriteDriverFactory* factory) {
+  // Default interface is empty and derived classes can override.
+  return false;
+}
+
 }  // namespace net_instaweb

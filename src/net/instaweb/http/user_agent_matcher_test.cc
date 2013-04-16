@@ -84,16 +84,18 @@ TEST_F(UserAgentMatcherTest, SupportsImageInlining) {
 }
 
 TEST_F(UserAgentMatcherTest, SupportsLazyloadImages) {
-  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+  EXPECT_TRUE(user_agent_matcher_.SupportsLazyloadImages(
       UserAgentStrings::kChromeUserAgent));
-  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+  EXPECT_TRUE(user_agent_matcher_.SupportsLazyloadImages(
       UserAgentStrings::kFirefoxUserAgent));
-  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+  EXPECT_TRUE(user_agent_matcher_.SupportsLazyloadImages(
       UserAgentStrings::kIPhoneUserAgent));
-  EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
+  EXPECT_TRUE(user_agent_matcher_.SupportsLazyloadImages(
       UserAgentStrings::kBlackBerryOS6UserAgent));
-  EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(
+  EXPECT_FALSE(user_agent_matcher_.SupportsLazyloadImages(
       UserAgentStrings::kBlackBerryOS5UserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsLazyloadImages(
+      UserAgentStrings::kGooglePlusUserAgent));
 }
 
 TEST_F(UserAgentMatcherTest, NotSupportsImageInlining) {
@@ -107,6 +109,8 @@ TEST_F(UserAgentMatcherTest, NotSupportsImageInlining) {
       UserAgentStrings::kOpera5UserAgent));
   EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(
       UserAgentStrings::kPSPUserAgent));
+  EXPECT_FALSE(user_agent_matcher_.SupportsImageInlining(
+      UserAgentStrings::kGooglePlusUserAgent));
   EXPECT_TRUE(user_agent_matcher_.SupportsImageInlining(
       UserAgentStrings::kAndroidChrome18UserAgent));
 }

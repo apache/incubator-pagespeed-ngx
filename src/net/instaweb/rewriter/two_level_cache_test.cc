@@ -34,7 +34,6 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_copy.h"
 #include "net/instaweb/util/public/gtest.h"
 #include "net/instaweb/util/public/lru_cache.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -44,6 +43,7 @@
 
 namespace net_instaweb {
 
+class CacheInterface;
 class MockUrlFetcher;
 
 namespace {
@@ -74,12 +74,13 @@ class CustomRewriteDriverFactory : public TestRewriteDriverFactory {
     server_context->set_http_cache(
         new HTTPCache(cache1_, timer(), hasher(), statistics()));
     if (use_write_through_cache_) {
-      server_context->set_metadata_cache(new WriteThroughCache(cache1_,
-                                                               cache2_));
+      CacheInterface* write_through = new WriteThroughCache(cache1_, cache2_);
+      server_context->set_metadata_cache(write_through);
+      server_context->DeleteCacheOnDestruction(write_through);
     } else {
-      server_context->set_metadata_cache(new CacheCopy(cache2_));
+      server_context->set_metadata_cache(cache2_);
     }
-    server_context->MakePropertyCaches(false, cache2_);
+    server_context->MakePropertyCaches(cache2_);
     server_context->set_enable_property_cache(false);
   }
 

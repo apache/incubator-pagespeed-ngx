@@ -31,7 +31,6 @@
 #include "net/instaweb/rewriter/public/resource.h"
 #include "net/instaweb/util/public/atomic_bool.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/cache_interface.h"
 #include "net/instaweb/util/public/md5_hasher.h"
 #include "net/instaweb/util/public/queued_worker_pool.h"
 #include "net/instaweb/util/public/ref_counted_ptr.h"
@@ -44,6 +43,7 @@ namespace net_instaweb {
 class AbstractMutex;
 class BlinkCriticalLineDataFinder;
 class CacheHtmlInfoFinder;
+class CacheInterface;
 class ContentType;
 class CriticalCssFinder;
 class CriticalImagesFinder;
@@ -200,8 +200,7 @@ class ServerContext {
 
   Timer* timer() const { return http_cache_->timer(); }
 
-  void MakePropertyCaches(bool take_ownership_of_cache,
-                          CacheInterface* backend_cache);
+  void MakePropertyCaches(CacheInterface* backend_cache);
 
   HTTPCache* http_cache() const { return http_cache_.get(); }
   void set_http_cache(HTTPCache* x) { http_cache_.reset(x); }
@@ -215,31 +214,20 @@ class ServerContext {
   // Cache for storing file system metadata. It must be private to a server,
   // preferably but not necessarily shared between its processes, and is
   // required if using load-from-file and memcached (or any cache shared
-  // between servers). This class takes ownership.
+  // between servers). This class does not take ownership.
   CacheInterface* filesystem_metadata_cache() const {
-    return filesystem_metadata_cache_.get();
+    return filesystem_metadata_cache_;
   }
   void set_filesystem_metadata_cache(CacheInterface* x) {
-    filesystem_metadata_cache_.reset(x);
+    filesystem_metadata_cache_ = x;
   }
 
-  // Cache for small non-HTTP objects. This class takes ownership.
+  // Cache for small non-HTTP objects. This class does not take ownership.
   //
   // Note that this might share namespace with the HTTP cache, so make sure
   // your key names do not start with http://.
-  CacheInterface* metadata_cache() const { return metadata_cache_.get(); }
-  void set_metadata_cache(CacheInterface* x) { metadata_cache_.reset(x); }
-
-  // Release the metadata_cache and return the released pointer. For tests only.
-  CacheInterface* release_metadata_cache() { return metadata_cache_.release(); }
-
-  // If a CacheInterface* was created on behalf of this server context,
-  // then we can ensure its timely destruction by setting it here.  Note
-  // that ownership of the filesystem_metadata_cache and metadata_cache are
-  // also transferred to this class.
-  void set_owned_cache(CacheInterface* owned_cache) {
-    owned_cache_.reset(owned_cache);
-  }
+  CacheInterface* metadata_cache() const { return metadata_cache_; }
+  void set_metadata_cache(CacheInterface* x) { metadata_cache_ = x; }
 
   CriticalCssFinder* critical_css_finder() const {
     return critical_css_finder_.get();
@@ -387,8 +375,9 @@ class ServerContext {
                                        StringPiece options_signature_hash,
                                        StringPiece device_type_suffix);
 
-  // Returns the fallback page property cache key to be used for the proxy
-  // interface flow. Options are expected to be frozen.
+  // Returns the page property cache key for the page containing fallback
+  // values (i.e. wihtout query params) to be used for the proxy interface flow.
+  // Options are expected to be frozen.
   GoogleString GetFallbackPagePropertyCacheKey(StringPiece url,
                                                const RewriteOptions* options,
                                                StringPiece device_type_suffix);
@@ -597,6 +586,10 @@ class ServerContext {
   // Makes a new DeviceProperties.
   DeviceProperties* NewDeviceProperties();
 
+  // Puts the cache on a list to be destroyed at the last phase of system
+  // shutdown.
+  void DeleteCacheOnDestruction(CacheInterface* cache);
+
  protected:
   // Takes ownership of the given pool, making sure to clean it up at the
   // appropriate spot during shutdown.
@@ -651,8 +644,8 @@ class ServerContext {
   scoped_ptr<HTTPCache> http_cache_;
   scoped_ptr<PropertyCache> page_property_cache_;
   scoped_ptr<PropertyCache> client_property_cache_;
-  scoped_ptr<CacheInterface> filesystem_metadata_cache_;
-  scoped_ptr<CacheInterface> metadata_cache_;
+  CacheInterface* filesystem_metadata_cache_;
+  CacheInterface* metadata_cache_;
 
   bool store_outputs_in_file_system_;
   bool response_headers_finalized_;
@@ -727,9 +720,6 @@ class ServerContext {
   scoped_ptr<FuriousMatcher> furious_matcher_;
 
   UsageDataReporter* usage_data_reporter_;
-
-  scoped_ptr<CacheInterface> owned_cache_;
-  scoped_ptr<CacheInterface> owned_pcache_backend_;
 
   // A convenient central place to store the hostname we're running on.
   GoogleString hostname_;
