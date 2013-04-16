@@ -177,21 +177,15 @@ In your `nginx.conf`, add to the main or server block:
 
 In every server block where pagespeed is enabled add:
 
-    # This is a temporary workaround that ensures requests for pagespeed
-    # optimized resources go to the pagespeed handler.
+    #  Ensure requests for pagespeed optimized resources go to the pagespeed
+    #  handler and no extraneous headers get set.
     location ~ "\.pagespeed\.([a-z]\.)?[a-z]{2}\.[^.]{10}\.[^.]+" {
       add_header "" "";
     }
     location ~ "^/ngx_pagespeed_static/" { }
     location ~ "^/ngx_pagespeed_beacon$" { }
-    location /ngx_pagespeed_statistics {
-      allow 127.0.0.1;
-      deny all;
-    }
-    location /ngx_pagespeed_message {
-      allow 127.0.0.1;
-      deny all;
-    }
+    location /ngx_pagespeed_statistics { allow 127.0.0.1; deny all; }
+    location /ngx_pagespeed_message { allow 127.0.0.1; deny all; }
 
 If you're proxying, you may want to strip off the `Accept-Encoding` header.
 This makes the upstream send html uncompressed to pagespeed.  Because pagespeed
