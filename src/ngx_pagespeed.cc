@@ -330,36 +330,29 @@ ngx_http_output_body_filter_pt ngx_http_next_body_filter;
 
 
 ngx_int_t ps_send_response(ngx_http_request_t *r) {
-
   ps_request_ctx_t* ctx = ps_get_request_context(r);
   ngx_int_t rc;
 
-  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, 
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "ps send response: %V", &r->uri);
 
   // Get output from pagespeed.
-  if (!ctx->sent_headers) {
-
-    // For resource fetches, the first pipe-byte tells us headers are available
-    // for fetching.
-    if (ctx->driver == NULL 
-        || ctx->driver->options()->modify_caching_headers()) {
-
+  if (!r->header_sent) {
+    if (ctx->is_resource_fetch || ctx->modify_headers) {
       ngx_http_clean_header(r);
 
       rc = ctx->base_fetch->CollectHeaders(&r->headers_out);
-      PDBG(ctx, "CollectHeaders: %d, sent:%d", rc, ctx->sent_headers);
       if (rc == NGX_ERROR) {
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
       }
     }
-    ctx->sent_headers = true;
     if (ctx->is_resource_fetch) {
       rc = ngx_http_send_header(r);
     } else {
       rc = ngx_http_header_filter(r);
     }
 
+    // standard nginx send header check see ngx_http_send_response
     if (rc == NGX_ERROR || rc > NGX_OK) {
       return ngx_http_filter_finalize_request(r, NULL, rc);
     }
@@ -373,7 +366,7 @@ ngx_int_t ps_send_response(ngx_http_request_t *r) {
   // OK means last buffer has been sent
   rc = ctx->base_fetch->CollectAccumulatedWrites(&cl);
   PDBG(ctx, "CollectAccumulatedWrites, %d", rc);
-  
+
   if (rc == NGX_ERROR) {
       return NGX_HTTP_INTERNAL_SERVER_ERROR;
   }
@@ -384,8 +377,10 @@ ngx_int_t ps_send_response(ngx_http_request_t *r) {
   // From Weibin: This function should be called mutiple times. Store the
   // whole file in one chain buffers is too aggressive. It could consume
   // too much memory in busy servers.
-  
+
   bool done = (rc == NGX_OK);
+
+  // body_filter can handle NULL chain.
   rc = ngx_http_next_body_filter(r, cl);
 
   if (rc == NGX_OK) {
@@ -407,15 +402,20 @@ ngx_int_t ps_send_response(ngx_http_request_t *r) {
 
 
 ngx_connection_t *ps_base_fetch_conn = NULL;
-int ps_base_fetch_pipefds[2] = {-1,-1};
+int ps_base_fetch_pipefds[2] = {-1, -1};
 
-void ps_base_fetch_clear(ngx_http_request_t *skip) {
-  
+// handle base fetch event(Flush/HeadersComplete/Done),
+// and ignore the event corresponding to SKIP.
+// SKIP should only be specified in ps_release_request_context,
+// so that released base fetch event will be ignored.
+//
+// modified from ngx_channel_handler
+void ps_base_fetch_clear(ngx_http_request_t *skip = NULL) {
   for ( ;; ) {
-
     ngx_http_request_t *requests[512];
-    ssize_t size = read(ps_base_fetch_conn->fd, static_cast<void *>(requests), sizeof(requests));
-    
+    ssize_t size = read(ps_base_fetch_conn->fd,
+         static_cast<void *>(requests), sizeof(requests));
+
     if (size == -1) {
       if (ngx_errno == EINTR) {
         continue;
@@ -423,23 +423,24 @@ void ps_base_fetch_clear(ngx_http_request_t *skip) {
         return;
       }
     }
-    
+
     if (size <= 0) {
-      // NGX_ERROR
+      // Terminate
       if (ngx_event_flags & NGX_USE_EPOLL_EVENT) {
         ngx_del_conn(ps_base_fetch_conn, 0);
       }
-      
+
       ngx_close_connection(ps_base_fetch_conn);
       ps_base_fetch_conn = NULL;
       break;
     }
-    
+
     ngx_uint_t i;
     for (i = 0; i < size / sizeof(ngx_http_request_t *); i++) {
       ngx_http_request_t *r = requests[i];
       if (r == skip) {
-        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, "base fetch clear");
+        ngx_log_debug0(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+            "base fetch clear");
         continue;
       }
       ps_request_ctx_t* ctx = ps_get_request_context(r);
@@ -459,48 +460,53 @@ void ps_base_fetch_event_handler(ngx_event_t *ev) {
 }
 
 ngx_int_t ps_base_fetch_event_init(ngx_cycle_t *cycle) {
+  ps_main_conf_t* cfg_m = static_cast<ps_main_conf_t*>(
+         ngx_http_cycle_get_module_main_conf(cycle, ngx_pagespeed));
+
   if (::pipe(ps_base_fetch_pipefds) != 0) {
-    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_errno, "base fetch pipe() failed");
+    cfg_m->handler->Message(net_instaweb::kError, "base fetch pipe() failed");
     return NGX_ERROR;
   }
-  
+
   if (ngx_nonblocking(ps_base_fetch_pipefds[0]) == -1) {
-    ngx_log_error(NGX_LOG_EMERG, cycle->log, ngx_socket_errno,
-    ngx_nonblocking_n " base fetch pipe[0] failed");
+        cfg_m->handler->Message(net_instaweb::kError,
+        "base fetch pipe[0] " ngx_nonblocking_n " failed");
     goto failed;
   }
-  
+
   // following codes are modified from ngx_add_channel_event
   // we have to save ngx_connection_t, so can not use ngx_add_channel_event
   ngx_event_t *rev, *wev;
   ngx_connection_t *c;
-  
+
   c = ngx_get_connection(ps_base_fetch_pipefds[0], cycle->log);
-  
+
   if (c == NULL) {
     goto failed;
   }
-  
+
   c->pool = cycle->pool;
-  
+
   rev = c->read;
   wev = c->write;
-  
+
   rev->log = cycle->log;
   wev->log = cycle->log;
-  
-  #if (NGX_THREADS)
+
+#if (NGX_THREADS)
   rev->lock = &c->lock;
   wev->lock = &c->lock;
   rev->own_lock = &c->lock;
   wev->own_lock = &c->lock;
-  #endif
-  
+#endif
+
   rev->channel = 1;
   wev->channel = 1;
-  
+
   rev->handler = ps_base_fetch_event_handler;
-  
+
+  // only EPOLL event has both add_event and add_connection
+  // same as ngx_add_channel_event
   if (ngx_add_conn && (ngx_event_flags & NGX_USE_EPOLL_EVENT) == 0) {
     if (ngx_add_conn(c) == NGX_ERROR) {
       ngx_free_connection(c);
@@ -512,16 +518,18 @@ ngx_int_t ps_base_fetch_event_init(ngx_cycle_t *cycle) {
       goto failed;
     }
   }
-  
+
   ps_base_fetch_conn = c;
   return NGX_OK;
-failed:
-  
+ failed:
+
   if (close(ps_base_fetch_pipefds[0]) == -1) {
-    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno, "close() base fetch pipe[0] failed");
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+        "close() base fetch pipe[0] failed");
   }
   if (close(ps_base_fetch_pipefds[1]) == -1) {
-    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno, "close() base fetch pipe[1] failed");
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+        "close() base fetch pipe[1] failed");
   }
   return NGX_ERROR;
 }
@@ -531,10 +539,12 @@ void ps_base_fetch_event_terminate(ngx_cycle_t *cycle) {
     return;
   }
   if (close(ps_base_fetch_pipefds[0]) == -1) {
-    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno, "close() base fetch pipe[0] failed");
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+         "close() base fetch pipe[0] failed");
   }
   if (close(ps_base_fetch_pipefds[1]) == -1) {
-    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno, "close() base fetch pipe[1] failed");
+    ngx_log_error(NGX_LOG_ALERT, cycle->log, ngx_errno,
+         "close() base fetch pipe[1] failed");
   }
 }
 
@@ -547,7 +557,8 @@ void ps_base_fetch_signal(ngx_http_request_t *r) {
                  "base fetch signal");
 
   while (true) {
-    size = write(ps_base_fetch_pipefds[1], static_cast<void *>(&r), sizeof(ngx_http_request_t *));
+    size = write(ps_base_fetch_pipefds[1], static_cast<void *>(&r),
+          sizeof(ngx_http_request_t *));
     if (size == -1 && errno == EINTR) {
       continue;
     }
@@ -946,23 +957,26 @@ char* ps_merge_loc_conf(ngx_conf_t* cf, void* parent, void* child) {
 void ps_release_request_context(void* data) {
   ps_request_ctx_t* ctx = static_cast<ps_request_ctx_t*>(data);
 
-  // proxy_fetch deleted itself if we called Done(), but if an error happened
-  // before then we need to tell it to delete itself.
-  //
-  // If this is a resource fetch then proxy_fetch was never initialized.
-  if (ctx->proxy_fetch != NULL) {
-    ctx->proxy_fetch->Done(false /* failure */);
-  }
-
   // In the normal flow BaseFetch doesn't delete itself in HandleDone() because
   // we still need to receive notification via pipe and call
   // CollectAccumulatedWrites.  If there's an error and we're cleaning up early
   // then HandleDone() hasn't been called yet and we need the base fetch to wait
   // for that and then delete itself.
   if (ctx->base_fetch != NULL) {
+    // We must first disable event from BaseFetch,
+    // and then clear current pending event.
+    // So release() Should be called before ps_base_fetch_clear()
     ctx->base_fetch->Release();
     ps_base_fetch_clear(ctx->r);
     ctx->base_fetch = NULL;
+  }
+
+  // proxy_fetch deleted itself if we called Done(), but if an error happened
+  // before then we need to tell it to delete itself.
+  //
+  // If this is a resource fetch then proxy_fetch was never initialized.
+  if (ctx->proxy_fetch != NULL) {
+    ctx->proxy_fetch->Done(false /* failure */);
   }
 
   if (ctx->inflater_ != NULL) {
@@ -1371,7 +1385,6 @@ CreateRequestContext::Response ps_create_request_context(
   ctx->r = r;
   ctx->is_resource_fetch = is_resource_fetch;
   ctx->write_pending = false;
-  ctx->sent_headers = false;
 
 
   // Handles its own deletion.  We need to call Release() when we're done with
@@ -1434,21 +1447,26 @@ CreateRequestContext::Response ps_create_request_context(
     // rewrite drivers and so is faster because there's no wait to construct
     // them.  Otherwise we have to build a new one every time.
 
+    // Do not store driver in request_context, it's not safe.
+    net_instaweb::RewriteDriver* driver;
+
     if (custom_options == NULL) {
-      ctx->driver = cfg_s->server_context->NewRewriteDriver(
+      driver = cfg_s->server_context->NewRewriteDriver(
           ctx->base_fetch->request_context());
     } else {
       // NewCustomRewriteDriver takes ownership of custom_options.
-      ctx->driver = cfg_s->server_context->NewCustomRewriteDriver(
+      driver = cfg_s->server_context->NewCustomRewriteDriver(
           custom_options, ctx->base_fetch->request_context());
     }
+
+    ctx->modify_headers = driver->options()->modify_caching_headers();
 
     // TODO(jefftk): FlushEarlyFlow would go here.
 
     // Will call StartParse etc.  The rewrite driver will take care of deleting
     // itself if necessary.
     ctx->proxy_fetch = cfg_s->proxy_fetch_factory->CreateNewProxyFetch(
-        url_string, ctx->base_fetch, ctx->driver,
+        url_string, ctx->base_fetch, driver,
         NULL /* property_callback */,
         NULL /* original_content_fetch */);
   }
@@ -1553,7 +1571,7 @@ ngx_int_t ps_body_filter(ngx_http_request_t* r, ngx_chain_t* in) {
 
   if (ctx->write_pending) {
     return ps_send_response(r);
-  }  
+  }
   return NGX_AGAIN;
 }
 
@@ -1730,7 +1748,6 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
       break;
   }
   ctx = ps_get_request_context(r);
-  CHECK(ctx->driver != NULL);  // Not a resource fetch, so driver is defined.
 
   if (r->headers_out.content_encoding &&
       r->headers_out.content_encoding->value.len) {
@@ -1760,22 +1777,7 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     }
   }
 
-  const net_instaweb::RewriteOptions* options = ctx->driver->options();
-
   ps_strip_html_headers(r);
-
-  if (options->modify_caching_headers()) {
-    // Don't cache html.  See mod_instaweb:instaweb_fix_headers_filter.
-    ps_set_cache_control(r, const_cast<char*>("max-age=0, no-cache"));
-
-    // Pagespeed html doesn't need etags: it should never be cached.
-    ngx_http_clear_etag(r);
-
-    // An html page may change without the underlying file changing, because of
-    // how resources are included.  Pagespeed adds cache control headers for
-    // resources instead of using the last modified header.
-    ngx_http_clear_last_modified(r);
-  }
 
   r->filter_need_in_memory = 1;
 
@@ -1783,7 +1785,7 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
 }
 
 ngx_int_t ps_copy_header_filter(ngx_http_request_t *r) {
-  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0, 
+  ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                  "ps copy header filter: %V", &r->uri);
 
   ps_request_ctx_t* ctx = ps_get_request_context(r);
@@ -2268,7 +2270,6 @@ ngx_http_module_t ps_copy_filter_module = {
 
   NULL,
   NULL
-
 };
 
 // called after configuration is complete, but before nginx starts forking

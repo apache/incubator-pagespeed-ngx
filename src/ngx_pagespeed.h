@@ -72,12 +72,10 @@ ngx_int_t copy_response_headers_to_ngx(
 typedef struct {
   net_instaweb::ProxyFetch* proxy_fetch;
   net_instaweb::NgxBaseFetch* base_fetch;
-  net_instaweb::RewriteDriver* driver;
-  bool data_received;
   ngx_http_request_t* r;
   bool is_resource_fetch;
-  bool sent_headers;
   bool write_pending;
+  bool modify_headers;
   net_instaweb::GzipInflater* inflater_;
 } ps_request_ctx_t;
 

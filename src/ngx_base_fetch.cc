@@ -142,7 +142,6 @@ ngx_int_t NgxBaseFetch::CopyBufferToNginx(ngx_chain_t** link_ptr) {
 // think nginx will reject.
 ngx_int_t NgxBaseFetch::CollectAccumulatedWrites(ngx_chain_t** link_ptr) {
   ngx_int_t rc = NGX_DECLINED;
-  
   Lock();
   if (flush_) {
     rc = CopyBufferToNginx(link_ptr);
@@ -212,19 +211,19 @@ void NgxBaseFetch::HandleDone(bool success) {
   }
 
   Lock();
-  bool handledone = (done_called_ == false);
-  bool handleflush = (flush_ == false);
+  if (done_called_ == true) {
+    Unlock();
+    return;
+  }
 
-  if (handleflush) {
+  done_called_ = true;
+  if (!flush_) {
     flush_ = true;
     ngx_psol::ps_base_fetch_signal(request_);
   }
 
-  if (handledone) {
-    done_called_ = true;
-    DecrefAndDeleteIfUnreferenced();
-  }
   Unlock();
+  DecrefAndDeleteIfUnreferenced();
 }
 
 }  // namespace net_instaweb
