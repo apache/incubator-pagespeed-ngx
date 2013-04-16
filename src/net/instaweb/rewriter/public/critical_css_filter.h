@@ -36,7 +36,6 @@
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
 #include "net/instaweb/rewriter/public/css_tag_scanner.h"
 #include "net/instaweb/util/public/basictypes.h"
-#include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 
 namespace net_instaweb {
@@ -56,6 +55,10 @@ class CriticalCssFilter : public EmptyHtmlFilter {
 
   static const char kAddStylesScript[];
   static const char kStatsScriptTemplate[];
+  static const char kMoveAndApplyLinkScriptTemplate[];
+  static const char kMoveAndApplyLinkTagTemplate[];
+  static const char kNoscriptStylesId[];
+  static const char kMoveScriptId[];
 
   // Overridden from EmptyHtmlFilter:
   virtual void DetermineEnabled();
@@ -85,13 +88,15 @@ class CriticalCssFilter : public EmptyHtmlFilter {
   CssTagScanner css_tag_scanner_;
   CriticalCssFinder* finder_;
 
-  scoped_ptr<CriticalCssResult> critical_css_result_;
+  CriticalCssResult* critical_css_result_;
+  HtmlElement* noscript_element_;
 
   // Map link URLs to indexes in the critical CSS result.
   typedef std::map<GoogleString, int> UrlIndexes;
   UrlIndexes url_indexes_;
 
   bool has_critical_css_;
+  bool is_move_link_script_added_;
 
   class CssElement;
   class CssStyleElement;

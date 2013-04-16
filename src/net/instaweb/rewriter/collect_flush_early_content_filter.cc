@@ -23,6 +23,7 @@
 #include "net/instaweb/http/public/semantic_type.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/critical_css_filter.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
 #include "net/instaweb/rewriter/public/output_resource_kind.h"
 #include "net/instaweb/rewriter/public/resource.h"
@@ -112,10 +113,33 @@ void CollectFlushEarlyContentFilter::EndDocument() {
 }
 
 void CollectFlushEarlyContentFilter::StartElementImpl(HtmlElement* element) {
-  if (noscript_element() != NULL) {
-    // Do nothing.
+  // Collect the link stylesheet tags inside the noscript element only if
+  // they are added by the Critical CSS filter. In this case, the link tags
+  // thus collected will be parsed by a subsequent run of the Critical CSS
+  // filter in flush early phase. In this phase, Critical CSS filter replaces
+  // link tags with style elements with critical CSS rules inlined and a
+  // special attribute added (kDataPagespeedFlushStyle). Flush early content
+  // filter in turn looks for the special attribute in the style tag and flush
+  // the content early as inlined CSS link tags.
+  // Note that this may cause the order of CSS elements stored in resource html
+  // to be different from the order in which elements are parsed in HTML. This
+  // can cause downloads to be in a different order too.
+  if (element == noscript_element()) {
+    if (driver()->options()->enable_flush_early_critical_css()) {
+      const char* style_id = noscript_element()->AttributeValue(HtmlName::kId);
+      if (style_id != NULL && StringCaseEqual(style_id,
+          CriticalCssFilter::kNoscriptStylesId)) {
+        should_collect_critical_css_ = true;
+      }
+    }
     return;
   }
+
+  if (noscript_element() != NULL && !should_collect_critical_css_) {
+    // Do nothing
+    return;
+  }
+
   if (element->keyword() == HtmlName::kBody) {
     StrAppend(&resource_html_, "<body>");
     return;
@@ -205,7 +229,9 @@ void CollectFlushEarlyContentFilter::AppendAttribute(
 
 void CollectFlushEarlyContentFilter::EndElementImpl(HtmlElement* element) {
   if (noscript_element() != NULL) {
-    // Do nothing.
+    if (element == noscript_element()) {
+      should_collect_critical_css_ = false;
+    }
   } else if (element->keyword() == HtmlName::kBody) {
     StrAppend(&resource_html_, "</body>");
   }
@@ -214,6 +240,7 @@ void CollectFlushEarlyContentFilter::EndElementImpl(HtmlElement* element) {
 void CollectFlushEarlyContentFilter::Clear() {
   resource_html_.clear();
   found_resource_ = false;
+  should_collect_critical_css_ = false;
 }
 
 }  // namespace net_instaweb

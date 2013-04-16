@@ -59,6 +59,7 @@ class AddInstrumentationFilter;
 class AsyncFetch;
 class CacheUrlAsyncFetcher;
 class CommonFilter;
+class CriticalCssResult;
 class CriticalLineInfo;
 class CriticalSelectorSet;
 class DebugFilter;
@@ -859,6 +860,11 @@ class RewriteDriver : public HtmlParse {
   // the ownership of critical_line_info.
   void set_critical_line_info(CriticalLineInfo* critical_line_info);
 
+  CriticalCssResult* critical_css_result() const;
+  // Sets the Critical CSS rules info in the driver and the ownership of
+  // the rules stays with the driver.
+  void set_critical_css_result(CriticalCssResult* critical_css_rules);
+
   // Used by ImageRewriteFilter for identifying critical images.
   CriticalImagesInfo* critical_images_info() const {
     return critical_images_info_.get();
@@ -1366,6 +1372,8 @@ class RewriteDriver : public HtmlParse {
 
   // Stores all the critical image info for the current URL.
   scoped_ptr<CriticalImagesInfo> critical_images_info_;
+
+  scoped_ptr<CriticalCssResult> critical_css_result_;
 
   // We lazy-initialize critical_selector_info_ from the finder.
   bool critical_selector_info_computed_;

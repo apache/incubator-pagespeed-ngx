@@ -1022,6 +1022,11 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // Not applicable for mod_pagespeed.
   AddBaseProperty(
+      false, &RewriteOptions::enable_flush_early_critical_css_, "efcc",
+      kEnableFlushEarlyCriticalCss,
+      kDirectoryScope,
+      NULL);  // Not applicable for mod_pagespeed.
+  AddBaseProperty(
       false, &RewriteOptions::default_cache_html_, "dch",
       kDefaultCacheHtml,
       kDirectoryScope,

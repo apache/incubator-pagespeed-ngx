@@ -33,6 +33,7 @@
 #include "net/instaweb/util/public/string_util.h"
 #include "net/instaweb/util/public/string_writer.h"
 #include "testing/base/public/gunit.h"
+#include "pagespeed/kernel/util/wildcard.h"
 
 namespace net_instaweb {
 
@@ -776,6 +777,68 @@ TEST_F(FlushEarlyContentWriterFilterTest,
                   FlushEarlyResourceInfo::DEFERJS_SCRIPT,
                   false /* not affected by bandwidth */,
                   false /* not in HEAD */);
+}
+
+TEST_F(FlushEarlyContentWriterFilterTest, FlushEarlyStyleAsLinkDisabledTag) {
+  GoogleString html_input =
+      "<!DOCTYPE html>"
+      "<html>"
+      "<head>"
+      "<style data-pagespeed-flush-style=\"123\">b_used {color: blue }"
+      "</style>\n"
+      "</head>"
+      "<body>"
+      "<style data-pagespeed-flush-style=\"345\">c_used {color: cyan }"
+      "</style>\n"
+      "</body></html>";
+
+  const char kCssRulesLinkTag[] =
+      "<link id=\"%s\" href=\"data:text/css;base64*\" rel=\"stylesheet\" />"
+      "<script type=\"text/javascript\">"
+      "document.getElementById(\"%s\").disabled=true;</script>";
+
+  GoogleString html_output = StrCat(
+      StringPrintf(kCssRulesLinkTag, "123", "123"),
+      StringPrintf(kCssRulesLinkTag, "345", "345"),
+      StringPrintf(kPrefetchScript, 2));
+
+  Clear();
+  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
+  options()->set_enable_flush_early_critical_css(true);
+  server_context()->ComputeSignature(options());
+
+  Parse("prefetch_link_script_tag", html_input);
+  EXPECT_TRUE(Wildcard(html_output).Match(output_)) <<
+      "Expected:\n" << html_output << "\nGot:\n" << output_;
+}
+
+TEST_F(FlushEarlyContentWriterFilterTest, DontFlushEarlyStyleIfFlagDisabled) {
+  GoogleString html_input =
+      "<!DOCTYPE html>"
+      "<html>"
+      "<head>"
+      "<style data-pagespeed-flush-style=\"123\">b_used {color: blue }"
+      "</style>\n"
+      "</head>"
+      "<body>"
+      "<style data-pagespeed-flush-style=\"345\">c_used {color: cyan }"
+      "</style>\n"
+      "</body></html>";
+
+  GoogleString html_output = StringPrintf(kPrefetchScript, 0);
+
+  Clear();
+  rewrite_driver()->SetUserAgent("prefetch_image_tag");
+  options()->ClearSignatureForTesting();
+  options()->EnableFilter(RewriteOptions::kPrioritizeCriticalCss);
+  options()->set_enable_flush_early_critical_css(false);
+  server_context()->ComputeSignature(options());
+
+  Parse("prefetch_link_script_tag", html_input);
+  EXPECT_TRUE(Wildcard(html_output).Match(output_)) <<
+      "Expected:\n" << html_output << "\nGot:\n" << output_;
 }
 
 }  // namespace net_instaweb

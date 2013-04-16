@@ -47,6 +47,7 @@
 #include "net/instaweb/http/public/response_headers.h"
 #include "net/instaweb/http/public/url_async_fetcher.h"
 #include "net/instaweb/rewriter/cached_result.pb.h"
+#include "net/instaweb/rewriter/critical_css.pb.h"
 #include "net/instaweb/rewriter/critical_line_info.pb.h"
 #include "net/instaweb/rewriter/critical_selectors.pb.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
@@ -234,6 +235,7 @@ RewriteDriver::RewriteDriver(MessageHandler* message_handler,
       owns_property_page_(false),
       device_type_(UserAgentMatcher::kDesktop),
       critical_images_info_(NULL),
+      critical_css_result_(NULL),
       critical_selector_info_computed_(false),
       xhtml_mimetype_computed_(false),
       xhtml_status_(kXhtmlUnknown),
@@ -386,6 +388,7 @@ void RewriteDriver::Clear() {
 
   critical_images_info_.reset(NULL);
   critical_line_info_.reset(NULL);
+  critical_css_result_.reset(NULL);
 
   if (owns_property_page_) {
     delete fallback_property_page_;
@@ -2817,6 +2820,15 @@ const CriticalLineInfo* RewriteDriver::critical_line_info() const {
 void RewriteDriver::set_critical_line_info(
     CriticalLineInfo* critical_line_info) {
   critical_line_info_.reset(critical_line_info);
+}
+
+CriticalCssResult* RewriteDriver::critical_css_result() const {
+  return critical_css_result_.get();
+}
+
+void RewriteDriver::set_critical_css_result(
+    CriticalCssResult* critical_css_rules) {
+  critical_css_result_.reset(critical_css_rules);
 }
 
 FlushEarlyRenderInfo* RewriteDriver::flush_early_render_info() const {

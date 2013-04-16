@@ -25,6 +25,7 @@
 #include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
+#include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -32,11 +33,13 @@
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/gtest.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/mock_property_page.h"
 #include "net/instaweb/util/public/property_cache.h"
 #include "net/instaweb/util/public/scoped_ptr.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
+#include "pagespeed/kernel/util/wildcard.h"
 
 namespace {
 
@@ -281,6 +284,276 @@ TEST_F(CriticalCssFilterTest, InlineAndMove) {
   finder_->AddCriticalCss("http://test.com/c.css", "c_used {color: cyan }", 3);
 
   ValidateExpected("inline_and_move", input_html, expected_html);
+
+  ExpApplicationVector exp_application_counts;
+  exp_application_counts.push_back(
+      make_pair(RewriterApplication::APPLIED_OK, 3));
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE,
+                          exp_application_counts);
+
+  // Validate logging.
+  const CriticalCssInfo& info =
+      rewrite_driver()->log_record()->logging_info()->critical_css_info();
+  ASSERT_EQ(64, info.critical_inlined_bytes());
+  ASSERT_EQ(6, info.original_external_bytes());
+  ASSERT_EQ(85, info.overhead_bytes());
+}
+
+TEST_F(CriticalCssFilterTest, InlineAndDontFlushEarlyIfFlagDisabled) {
+  static const char input_html[] =
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "</head>\n"
+      "<body>\n"
+      "  Hello,\n"
+      "  <link rel='stylesheet' href='a.css' type='text/css' media='print'>"
+      "<link rel='stylesheet' href='b.css' type='text/css'>\n"
+      "  <style type='text/css'>t {color: turquoise }</style>\n"
+      "  World!\n"
+      "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
+      "</body>\n";
+
+  GoogleString expected_html = StrCat(
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "</head>\n"
+      "<body>\n"
+      "  Hello,\n"
+      "  <style media=\"print\">a_used {color: azure }</style>"
+      "<style>b_used {color: blue }</style>\n"
+      "  <style type='text/css'>t {color: turquoise }</style>\n"
+      "  World!\n"
+      "  <style>c_used {color: cyan }</style>\n"
+      "</body>\n"
+      "<noscript id=\"psa_add_styles\">"
+      "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
+      "<link rel='stylesheet' href='b.css' type='text/css'>"
+      "<style type='text/css'>t {color: turquoise }</style>"
+      "<link rel='stylesheet' href='c.css' type='text/css'>"
+      "</noscript>"
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      CriticalCssFilter::kAddStylesScript,
+      "window['pagespeed'] = window['pagespeed'] || {};"
+      "window['pagespeed']['criticalCss'] = {"
+      "  'total_critical_inlined_size': 64,"
+      "  'total_original_external_size': 6,"
+      "  'total_overhead_size': 85,"
+      "  'num_replaced_links': 3,"
+      "  'num_unreplaced_links': 0"
+      "};"
+      "</script>");
+
+  GoogleString a_url = "http://test.com/a.css";
+  GoogleString b_url = "http://test.com/b.css";
+  GoogleString c_url = "http://test.com/c.css";
+
+  finder_->AddCriticalCss(a_url, "a_used {color: azure }", 1);
+  finder_->AddCriticalCss(b_url, "b_used {color: blue }", 2);
+  finder_->AddCriticalCss(c_url, "c_used {color: cyan }", 3);
+
+  rewrite_driver()->set_flushed_early(true);
+  GoogleString resource_html = StrCat(a_url, b_url, c_url);
+  rewrite_driver()->flush_early_info()->set_resource_html(resource_html);
+  options()->set_enable_flush_early_critical_css(false);
+
+  ValidateExpected("inline_and_move", input_html, expected_html);
+
+  ExpApplicationVector exp_application_counts;
+  exp_application_counts.push_back(
+      make_pair(RewriterApplication::APPLIED_OK, 3));
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE,
+                          exp_application_counts);
+
+  // Validate logging.
+  const CriticalCssInfo& info =
+      rewrite_driver()->log_record()->logging_info()->critical_css_info();
+  ASSERT_EQ(64, info.critical_inlined_bytes());
+  ASSERT_EQ(6, info.original_external_bytes());
+  ASSERT_EQ(85, info.overhead_bytes());
+}
+
+TEST_F(CriticalCssFilterTest, DoNothingUnderNoscript) {
+  static const char input_html[] =
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "</head>\n"
+      "<body>\n"
+      "  Hello,\n"
+      "<noscript>"
+      "  <link rel='stylesheet' href='a.css' type='text/css' media='print'>"
+      "<link rel='stylesheet' href='b.css' type='text/css'>\n"
+      "  <style type='text/css'>t {color: turquoise }</style>\n"
+      "  World!\n"
+      "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
+      "</noscript>"
+      "</body>\n";
+
+  GoogleString a_url = "http://test.com/a.css";
+  GoogleString b_url = "http://test.com/b.css";
+  GoogleString c_url = "http://test.com/c.css";
+
+  finder_->AddCriticalCss(a_url, "a_used {color: azure }", 1);
+  finder_->AddCriticalCss(b_url, "b_used {color: blue }", 2);
+  finder_->AddCriticalCss(c_url, "c_used {color: cyan }", 3);
+
+  rewrite_driver()->set_flushed_early(true);
+  GoogleString resource_html = StrCat(a_url, b_url, c_url);
+  rewrite_driver()->flush_early_info()->set_resource_html(resource_html);
+  options()->set_enable_flush_early_critical_css(true);
+
+  ValidateExpected("inline_and_move", input_html, input_html);
+}
+
+TEST_F(CriticalCssFilterTest, InlineAndAddStyleForFlushingEarly) {
+  static const char input_html[] =
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "</head>\n"
+      "<body>\n"
+      "  Hello,\n"
+      "  <link rel='stylesheet' href='a.css' type='text/css' media='print'>"
+      "<link rel='stylesheet' href='b.css' type='text/css'>\n"
+      "  <style type='text/css'>t {color: turquoise }</style>\n"
+      "  World!\n"
+      "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
+      "</body>\n";
+
+  GoogleString expected_html = StrCat(
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "</head>\n"
+      "<body>\n"
+      "  Hello,\n"
+      "  <style media=\"print\" data-pagespeed-flush-style=\"*\">"
+      "a_used {color: azure }</style>"
+      "<style data-pagespeed-flush-style=\"*\">b_used {color: blue }</style>\n"
+      "  <style type='text/css'>t {color: turquoise }</style>\n"
+      "  World!\n"
+      "  <style data-pagespeed-flush-style=\"*\">c_used {color: cyan }"
+      "</style>\n</body>\n"
+      "<noscript id=\"psa_add_styles\">"
+      "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
+      "<link rel='stylesheet' href='b.css' type='text/css'>"
+      "<style type='text/css'>t {color: turquoise }</style>"
+      "<link rel='stylesheet' href='c.css' type='text/css'>"
+      "</noscript>"
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      CriticalCssFilter::kAddStylesScript,
+      "window['pagespeed'] = window['pagespeed'] || {};"
+      "window['pagespeed']['criticalCss'] = {"
+      "  'total_critical_inlined_size': 64,"
+      "  'total_original_external_size': 6,"
+      "  'total_overhead_size': 85,"
+      "  'num_replaced_links': 3,"
+      "  'num_unreplaced_links': 0"
+      "};"
+      "</script>");
+
+  finder_->AddCriticalCss("http://test.com/a.css", "a_used {color: azure }", 1);
+  finder_->AddCriticalCss("http://test.com/b.css", "b_used {color: blue }", 2);
+  finder_->AddCriticalCss("http://test.com/c.css", "c_used {color: cyan }", 3);
+
+  rewrite_driver()->set_flushing_early(true);
+  options()->set_enable_flush_early_critical_css(true);
+  Parse("inline_and_flush_early_with_styleid", input_html);
+  GoogleString full_html = doctype_string_ + AddHtmlBody(expected_html);
+  EXPECT_TRUE(Wildcard(full_html).Match(output_buffer_)) <<
+      "Expected:\n" << full_html << "\n\n Got:\n" << output_buffer_;
+
+  ExpApplicationVector exp_application_counts;
+  exp_application_counts.push_back(
+      make_pair(RewriterApplication::APPLIED_OK, 3));
+  ValidateRewriterLogging(RewriterHtmlApplication::ACTIVE,
+                          exp_application_counts);
+
+  // Validate logging.
+  const CriticalCssInfo& info =
+      rewrite_driver()->log_record()->logging_info()->critical_css_info();
+  ASSERT_EQ(64, info.critical_inlined_bytes());
+  ASSERT_EQ(6, info.original_external_bytes());
+  ASSERT_EQ(85, info.overhead_bytes());
+}
+
+TEST_F(CriticalCssFilterTest, InlineFlushEarly) {
+  static const char input_html[] =
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "</head>\n"
+      "<body>\n"
+      "  Hello,\n"
+      "  <link rel='stylesheet' href='a.css' type='text/css' media='print'>"
+      "<link rel='stylesheet' href='b.css' type='text/css'>\n"
+      "  <style type='text/css'>t {color: turquoise }</style>\n"
+      "  World!\n"
+      "  <link rel='stylesheet' href='c.css' type='text/css'>\n"
+      "</body>\n";
+
+  GoogleString a_url = "http://test.com/a.css";
+  GoogleString b_url = "http://test.com/b.css";
+  GoogleString c_url = "http://test.com/c.css";
+
+  finder_->AddCriticalCss(a_url, "a_used {color: azure }", 1);
+  finder_->AddCriticalCss(b_url, "b_used {color: blue }", 2);
+  finder_->AddCriticalCss(c_url, "c_used {color: cyan }", 3);
+
+  GoogleString a_styleId =
+      rewrite_driver()->server_context()->hasher()->Hash(a_url);
+  GoogleString b_styleId =
+      rewrite_driver()->server_context()->hasher()->Hash(b_url);
+  GoogleString c_styleId =
+      rewrite_driver()->server_context()->hasher()->Hash(c_url);
+
+  GoogleString expected_html = StrCat(
+      "<head>\n"
+      "  <title>Example</title>\n"
+      "</head>\n"
+      "<body>\n"
+      "  Hello,\n"
+      "  <script id=\"psa_flush_style_early\" pagespeed_no_defer=\"\""
+      " type=\"text/javascript\">",
+      CriticalCssFilter::kMoveAndApplyLinkScriptTemplate,
+      "</script>"
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      StringPrintf(CriticalCssFilter::kMoveAndApplyLinkTagTemplate,
+                   a_styleId.c_str(), "print"),
+      "</script>"
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      StringPrintf(CriticalCssFilter::kMoveAndApplyLinkTagTemplate,
+                   b_styleId.c_str(), ""));
+
+  StrAppend(&expected_html,
+      "</script>"
+      "\n  <style type='text/css'>t {color: turquoise }</style>\n"
+      "  World!\n"
+      "  <script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      StringPrintf(CriticalCssFilter::kMoveAndApplyLinkTagTemplate,
+                   c_styleId.c_str(), ""),
+      "</script>"
+      "\n</body>\n"
+      "<noscript id=\"psa_add_styles\">"
+      "<link rel='stylesheet' href='a.css' type='text/css' media='print'>"
+      "<link rel='stylesheet' href='b.css' type='text/css'>"
+      "<style type='text/css'>t {color: turquoise }</style>"
+      "<link rel='stylesheet' href='c.css' type='text/css'>"
+      "</noscript>"
+      "<script pagespeed_no_defer=\"\" type=\"text/javascript\">",
+      CriticalCssFilter::kAddStylesScript,
+      "window['pagespeed'] = window['pagespeed'] || {};"
+      "window['pagespeed']['criticalCss'] = {"
+      "  'total_critical_inlined_size': 64,"
+      "  'total_original_external_size': 6,"
+      "  'total_overhead_size': 85,"
+      "  'num_replaced_links': 3,"
+      "  'num_unreplaced_links': 0"
+      "};"
+      "</script>");
+
+  rewrite_driver()->set_flushed_early(true);
+  GoogleString resource_html = StrCat(a_url, b_url, c_url);
+  rewrite_driver()->flush_early_info()->set_resource_html(resource_html);
+  options()->set_enable_flush_early_critical_css(true);
+
+  ValidateExpected("inline_and_flush_early", input_html, expected_html);
 
   ExpApplicationVector exp_application_counts;
   exp_application_counts.push_back(

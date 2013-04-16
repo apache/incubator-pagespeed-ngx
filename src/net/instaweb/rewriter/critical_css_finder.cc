@@ -61,6 +61,23 @@ void CriticalCssFinder::InitStats(Statistics* statistics) {
                                ServerContext::kStatisticsGroup);
 }
 
+void CriticalCssFinder::UpdateCriticalCssInfoInDriver(RewriteDriver* driver) {
+  if (driver->critical_css_result() != NULL) {
+    return;
+  }
+
+  driver->set_critical_css_result(GetCriticalCssFromCache(driver));
+}
+
+CriticalCssResult* CriticalCssFinder::GetCriticalCss(RewriteDriver* driver) {
+  if (driver->critical_css_result() != NULL) {
+    return driver->critical_css_result();
+  }
+
+  UpdateCriticalCssInfoInDriver(driver);
+  return driver->critical_css_result();
+}
+
 // Copy critical CSS from property cache.
 CriticalCssResult* CriticalCssFinder::GetCriticalCssFromCache(
     RewriteDriver* driver) {

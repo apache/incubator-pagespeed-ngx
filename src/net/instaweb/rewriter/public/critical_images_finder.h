@@ -150,16 +150,8 @@ class CriticalImagesFinder {
       bool track_stats,
       CriticalImagesInfo* critical_images_info);
 
-
  private:
-  // By default, store 1 critical image set and require an image to be in that
-  // set for it to be critical.
-  static const int kDefaultPercentSeenForCritial = 100;
-  static const int kDefaultNumSetsToKeep = 1;
-
-  Variable* critical_images_valid_count_;
-  Variable* critical_images_expired_count_;
-  Variable* critical_images_not_found_count_;
+  friend class CriticalImagesFinderTestBase;
 
   // Update a CriticalImages protobuf value with new critical image sets. If
   // either of the html or css sets are NULL, those fields in critical_images
@@ -169,7 +161,15 @@ class CriticalImagesFinder {
                             const StringSet* css_critical_images,
                             CriticalImages* critical_images) const;
 
-  friend class CriticalImagesFinderTestBase;
+  // By default, store 1 critical image set and require an image to be in that
+  // set for it to be critical.
+  static const int kDefaultPercentSeenForCritial = 100;
+  static const int kDefaultNumSetsToKeep = 1;
+
+  Variable* critical_images_valid_count_;
+  Variable* critical_images_expired_count_;
+  Variable* critical_images_not_found_count_;
+
   DISALLOW_COPY_AND_ASSIGN(CriticalImagesFinder);
 };
 

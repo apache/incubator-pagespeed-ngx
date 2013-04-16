@@ -22,6 +22,8 @@
 #include "base/logging.h"
 #include "net/instaweb/htmlparse/public/html_element.h"
 #include "net/instaweb/htmlparse/public/html_name.h"
+#include "net/instaweb/htmlparse/public/html_node.h"
+#include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/http/public/log_record.h"
 #include "net/instaweb/http/public/semantic_type.h"
@@ -34,6 +36,7 @@
 #include "net/instaweb/rewriter/public/static_asset_manager.h"
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/abstract_mutex.h"
+#include "net/instaweb/util/public/data_url.h"
 #include "net/instaweb/util/public/google_url.h"
 #include "net/instaweb/util/public/statistics.h"
 #include "net/instaweb/util/public/stl_util.h"
@@ -60,6 +63,16 @@ const char FlushEarlyContentWriterFilter::kPrefetchStartTimeScript[] =
 
 const char FlushEarlyContentWriterFilter::kNumResourcesFlushedEarly[] =
     "num_resources_flushed_early";
+
+const char FlushEarlyContentWriterFilter::kInlineCriticalCssLinkTemplate[] =
+    "<link id=\"%s\" href=\"%s\" rel=\"stylesheet\" />";
+
+// This JS snippet is needed to disable the CSS link tag that is flushed early.
+// Adding the disabled attribute directly to the link tag does not work on
+// some browsers like Firefox.
+const char FlushEarlyContentWriterFilter::kDisableLinkTag[] =
+    "<script type=\"text/javascript\">"
+    "document.getElementById(\"%s\").disabled=true;</script>";
 
 struct ResourceInfo {
  public:
@@ -289,6 +302,13 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
   if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchNotSupported ||
       current_element_ != NULL) {
     // Do nothing.
+  } else if (driver_->options()->enable_flush_early_critical_css() &&
+      element->keyword() == HtmlName::kStyle &&
+      element->FindAttribute(HtmlName::kDataPagespeedFlushStyle) != NULL) {
+    // This style element was added by the critical css filter. Convert this
+    // into a link tag, disable the link and flush early.
+    is_flushing_critical_style_element_ = true;
+    css_output_content_.clear();
   } else {
     semantic_type::Category category;
     // Extract the resource urls from the page.
@@ -407,12 +427,46 @@ void FlushEarlyContentWriterFilter::StartElement(HtmlElement* element) {
   HtmlWriterFilter::StartElement(element);
 }
 
+void FlushEarlyContentWriterFilter::Characters(
+    HtmlCharactersNode* characters_node) {
+  if (is_flushing_critical_style_element_) {
+    css_output_content_ = characters_node->contents();
+  }
+}
+
 void FlushEarlyContentWriterFilter::EndElement(HtmlElement* element) {
   HtmlWriterFilter::EndElement(element);
+  if (is_flushing_critical_style_element_) {
+    // Create a new link tag disabled element and flush it.
+    const GoogleString style_id =
+        element->AttributeValue(HtmlName::kDataPagespeedFlushStyle);
+    GoogleString css_output = ComputeFlushEarlyCriticalCss(style_id);
+    int64 size = css_output.size();
+    WriteToOriginalWriter(css_output);
+    is_flushing_critical_style_element_ = false;
+    css_output_content_.clear();
+
+    int64 time_to_download = TimeToDownload(size);
+    UpdateStats(time_to_download, false);
+  }
   if (current_element_ == element) {
     current_element_ = NULL;
     set_writer(&null_writer_);
   }
+}
+
+GoogleString FlushEarlyContentWriterFilter::ComputeFlushEarlyCriticalCss(
+    const GoogleString& style_id) {
+  GoogleString encoded_rule;
+
+  DataUrl(kContentTypeCss, BASE64, css_output_content_, &encoded_rule);
+
+  GoogleString css_output = StringPrintf(kInlineCriticalCssLinkTemplate,
+      style_id.c_str(), encoded_rule.c_str());
+  StrAppend(&css_output, StringPrintf(kDisableLinkTag,
+      style_id.c_str()));
+
+  return css_output;
 }
 
 void FlushEarlyContentWriterFilter::Clear() {
@@ -428,6 +482,8 @@ void FlushEarlyContentWriterFilter::Clear() {
   max_available_time_ms_ = 0;
   STLDeleteElements(&js_resources_info_);
   defer_javascript_enabled_ = false;
+  is_flushing_critical_style_element_ = false;
+  css_output_content_.clear();
   flush_early_content_.clear();
   flush_more_resources_early_if_time_permits_ = false;
 }
@@ -441,9 +497,8 @@ bool FlushEarlyContentWriterFilter::IsFlushable(
        !driver_->options()->IsAllowed(gurl.spec_c_str()));
 }
 
-void FlushEarlyContentWriterFilter::FlushResources(
-    StringPiece url, int64 time_to_download,
-    bool is_pagespeed_resource, semantic_type::Category category) {
+void FlushEarlyContentWriterFilter::UpdateStats(
+    int64 time_to_download, bool is_pagespeed_resource) {
   // Check if they are rewritten. If so, insert the appropriate code to
   // make the browser load these resource early.
   if (is_pagespeed_resource) {
@@ -457,6 +512,13 @@ void FlushEarlyContentWriterFilter::FlushResources(
   time_consumed_ms_ += time_to_download;
 
   ++num_resources_flushed_;
+}
+
+void FlushEarlyContentWriterFilter::FlushResources(
+    StringPiece url, int64 time_to_download,
+    bool is_pagespeed_resource, semantic_type::Category category) {
+  UpdateStats(time_to_download, is_pagespeed_resource);
+
   if (prefetch_mechanism_ == UserAgentMatcher::kPrefetchImageTag) {
     if (!insert_close_script_) {
       WriteToOriginalWriter("<script type=\"text/javascript\">"

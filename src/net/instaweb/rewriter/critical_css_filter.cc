@@ -37,6 +37,7 @@
 #include "net/instaweb/http/public/logging_proto.h"
 #include "net/instaweb/http/public/user_agent_matcher.h"
 #include "net/instaweb/rewriter/critical_css.pb.h"
+#include "net/instaweb/rewriter/flush_early.pb.h"
 #include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 #include "net/instaweb/rewriter/public/rewrite_options.h"
@@ -45,6 +46,7 @@
 #include "net/instaweb/util/enums.pb.h"
 #include "net/instaweb/util/public/basictypes.h"
 #include "net/instaweb/util/public/google_url.h"
+#include "net/instaweb/util/public/hasher.h"
 #include "net/instaweb/util/public/stl_util.h"
 #include "net/instaweb/util/public/string.h"
 #include "net/instaweb/util/public/string_util.h"
@@ -76,6 +78,28 @@ const char CriticalCssFilter::kStatsScriptTemplate[] =
     "  'num_replaced_links': %d,"
     "  'num_unreplaced_links': %d"
     "};";
+
+// This script is used to find the previously flushed link tag with inlined
+// CSS and apply the styles by removing the disabled attribute. It also moves
+// the link Tag element to the current location in the document where the style
+// element exists.
+const char CriticalCssFilter::kMoveAndApplyLinkScriptTemplate[] =
+    "  var moveAndApplyLinkTag = function(link_id, mediaString) {"
+    "    var scripts = document.getElementsByTagName('script');"
+    "    var linkTag = document.getElementById(link_id);"
+    "    if (mediaString) {"
+    "      linkTag.setAttribute(\"media\", mediaString);"
+    "    }"
+    "    var currentScript = scripts[scripts.length-1];"
+    "    currentScript.parentNode.insertBefore(linkTag, currentScript);"
+    "    linkTag.removeAttribute('disabled');"
+    "  };";
+
+const char CriticalCssFilter::kMoveAndApplyLinkTagTemplate[] =
+    "moveAndApplyLinkTag(\"%s\", \"%s\");";
+
+const char CriticalCssFilter::kNoscriptStylesId[] = "psa_add_styles";
+const char CriticalCssFilter::kMoveScriptId[] = "psa_flush_style_early";
 
 // TODO(slamm): Check charset like CssInlineFilter::ShouldInline().
 
@@ -138,6 +162,8 @@ CriticalCssFilter::CriticalCssFilter(RewriteDriver* driver,
     : driver_(driver),
       css_tag_scanner_(driver),
       finder_(finder),
+      critical_css_result_(NULL),
+      noscript_element_(NULL),
       current_style_element_(NULL) {
   CHECK(finder_);  // a valid finder is expected
 }
@@ -170,9 +196,10 @@ void CriticalCssFilter::StartDocument() {
   // However, the property cache is unavailable in DetermineEnabled
   // where disabling is possible.
   CHECK(finder_);
-  critical_css_result_.reset(finder_->GetCriticalCssFromCache(driver_));
+  noscript_element_ = NULL;
+  critical_css_result_ = finder_->GetCriticalCss(driver_);
 
-  const bool is_property_cache_miss = critical_css_result_.get() == NULL;
+  const bool is_property_cache_miss = critical_css_result_ == NULL;
 
   driver_->log_record()->LogRewriterHtmlStatus(
       RewriteOptions::FilterId(RewriteOptions::kPrioritizeCriticalCss),
@@ -189,6 +216,7 @@ void CriticalCssFilter::StartDocument() {
   }
 
   has_critical_css_ = !url_indexes_.empty();
+  is_move_link_script_added_ = false;
 
   DCHECK(css_elements_.empty());  // emptied in EndDocument()
   DCHECK(current_style_element_ == NULL);  // cleared in EndElement()
@@ -208,7 +236,7 @@ void CriticalCssFilter::EndDocument() {
     // them.
     HtmlElement* noscript_element =
         driver_->NewElement(NULL, HtmlName::kNoscript);
-    driver_->AddAttribute(noscript_element, HtmlName::kId, "psa_add_styles");
+    driver_->AddAttribute(noscript_element, HtmlName::kId, kNoscriptStylesId);
     driver_->InsertElementBeforeCurrent(noscript_element);
     // Write the full set of CSS elements (critical and non-critical rules).
     for (CssElementVector::iterator it = css_elements_.begin(),
@@ -255,7 +283,6 @@ void CriticalCssFilter::EndDocument() {
   if (!css_elements_.empty()) {
     STLDeleteElements(&css_elements_);
   }
-  critical_css_result_.reset();
 }
 
 void CriticalCssFilter::StartElement(HtmlElement* element) {
@@ -264,6 +291,9 @@ void CriticalCssFilter::StartElement(HtmlElement* element) {
     // of document if critical CSS rules are used.
     current_style_element_ = new CssStyleElement(driver_, element);
     num_repeated_style_blocks_ += 1;
+  }
+  if (element->keyword() == HtmlName::kNoscript && noscript_element_ == NULL) {
+    noscript_element_ = element;
   }
 }
 
@@ -281,6 +311,17 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
     CHECK(element->keyword() == HtmlName::kStyle);
     css_elements_.push_back(current_style_element_);
     current_style_element_ = NULL;
+    return;
+  }
+
+  if (element->keyword() == HtmlName::kNoscript &&
+      element == noscript_element_) {
+    noscript_element_ = NULL;
+    return;
+  }
+
+  if (noscript_element_ != NULL) {
+    // We are inside a no script element. No point moving further.
     return;
   }
 
@@ -314,22 +355,74 @@ void CriticalCssFilter::EndElement(HtmlElement* element) {
     return;
   }
 
-  // Replace link with critical CSS rules.
-  HtmlElement* style_element =
-      driver_->NewElement(element->parent(), HtmlName::kStyle);
-  if (!driver_->ReplaceNode(element, style_element)) {
-    LogRewrite(RewriterApplication::REPLACE_FAILED);
-    return;
+  const GoogleString& style_id = driver_->server_context()->hasher()->Hash(url);
+
+  // If the resource has already been flushed early, just apply it here. This
+  // can be checked by looking up the url in the DOM cohort. If the url is
+  // present in the DOM cohort, it is guaranteed to have been flushed early.
+  if (driver_->flushed_early() &&
+      driver_->options()->enable_flush_early_critical_css() &&
+      driver_->flush_early_info() != NULL &&
+      driver_->flush_early_info()->resource_html().find(url) !=
+          GoogleString::npos) {
+    // In this case we have already added the CSS rules to the head as
+    // part of flushing early. Now, find the rule, remove the disabled tag
+    // and move it here.
+
+    // Add the JS function definition that moves and applies the flushed early
+    // CSS rules, if it has not already been added.
+    if (!is_move_link_script_added_) {
+      is_move_link_script_added_ = true;
+      HtmlElement* script =
+          driver_->NewElement(element->parent(), HtmlName::kScript);
+      driver_->AddAttribute(script, HtmlName::kId, kMoveScriptId);
+      driver_->AddAttribute(script, HtmlName::kPagespeedNoDefer, "");
+      driver_->InsertElementBeforeElement(element, script);
+      driver_->server_context()->static_asset_manager()->AddJsToElement(
+          kMoveAndApplyLinkScriptTemplate, script, driver_);
+    }
+
+    HtmlElement* script_element =
+        driver_->NewElement(element->parent(), HtmlName::kScript);
+    driver_->AddAttribute(script_element, HtmlName::kPagespeedNoDefer, "");
+    if (!driver_->ReplaceNode(element, script_element)) {
+      LogRewrite(RewriterApplication::REPLACE_FAILED);
+      return;
+    }
+    GoogleString js_data = StringPrintf(kMoveAndApplyLinkTagTemplate,
+                                        style_id.c_str(), media);
+
+    driver_->server_context()->static_asset_manager()->AddJsToElement(js_data,
+        script_element, driver_);
+  } else {
+    // Replace link with critical CSS rules.
+    HtmlElement* style_element =
+        driver_->NewElement(element->parent(), HtmlName::kStyle);
+    if (!driver_->ReplaceNode(element, style_element)) {
+      LogRewrite(RewriterApplication::REPLACE_FAILED);
+      return;
+    }
+
+    driver_->AppendChild(style_element, driver_->NewCharactersNode(
+        element, link_rules->critical_rules()));
+    // If the link tag has a media attribute, copy it over to the style.
+    if (media != NULL && strcmp(media, "") != 0) {
+      driver_->AddEscapedAttribute(
+          style_element, HtmlName::kMedia, media);
+    }
+
+    // Add a special attribute to style element so the flush early filter
+    // can identify the element and flush these elements early as link tags.
+    // By flushing the inlined link style tags early, the content can be
+    // downloaded early before the HTML arrives.
+    if (driver_->flushing_early()) {
+      driver_->AddAttribute(style_element, HtmlName::kDataPagespeedFlushStyle,
+                            style_id);
+    }
   }
 
-  driver_->AppendChild(style_element, driver_->NewCharactersNode(
-      element, link_rules->critical_rules()));
-  // If the link tag has a media attribute, copy it over to the style.
-  if (media != NULL && strcmp(media, "") != 0) {
-    driver_->AddEscapedAttribute(
-        style_element, HtmlName::kMedia, media);
-  }
-
+  // TODO(mpalem): Stats need to be updated for total critical css size when
+  // the css rules are flushed early.
   int critical_size = link_rules->critical_rules().length();
   int original_size = link_rules->original_size();
   total_critical_size_ += critical_size;

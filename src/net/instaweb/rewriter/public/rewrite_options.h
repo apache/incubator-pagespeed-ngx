@@ -212,6 +212,7 @@ class RewriteOptions {
     kEnableBlinkHtmlChangeDetection,
     kEnableBlinkHtmlChangeDetectionLogging,
     kEnableDeferJsExperimental,
+    kEnableFlushEarlyCriticalCss,
     kEnableFlushSubresourcesExperimental,
     kEnableInlinePreviewImagesExperimental,
     kEnableLazyLoadHighResImages,
@@ -1504,6 +1505,13 @@ class RewriteOptions {
   }
   bool enable_blink_critical_line() const {
     return enable_blink_critical_line_.value();
+  }
+
+  void set_enable_flush_early_critical_css(bool x) {
+    set_option(x, &enable_flush_early_critical_css_);
+  }
+  bool enable_flush_early_critical_css() const {
+    return enable_flush_early_critical_css_.value();
   }
 
   void set_default_cache_html(bool x) { set_option(x, &default_cache_html_); }
@@ -2937,6 +2945,8 @@ class RewriteOptions {
   Option<bool> serve_stale_if_fetch_error_;
   // Whether blink critical line flow should be enabled.
   Option<bool> enable_blink_critical_line_;
+  // Whether to flush the inlined critical css rules early.
+  Option<bool> enable_flush_early_critical_css_;
   // When default_cache_html_ is false (default) we do not cache
   // input HTML which lacks Cache-Control headers. But, when set true,
   // we will cache those inputs for the implicit lifetime just like we

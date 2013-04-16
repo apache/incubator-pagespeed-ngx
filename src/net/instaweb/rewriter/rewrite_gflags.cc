@@ -216,6 +216,9 @@ DEFINE_string(pagespeed_version, "", "Version number to put into X-Page-Speed "
               "response header.");
 DEFINE_bool(enable_blink_critical_line, false,
             "If true then blink critical line flow is enabled");
+DEFINE_bool(enable_flush_early_critical_css, false,
+            "If true, inlined critical css rules are flushed early if both"
+            "flush subresources and critical css filter are enabled");
 DEFINE_int32(max_inlined_preview_images_index,
              net_instaweb::RewriteOptions::kDefaultMaxInlinedPreviewImagesIndex,
              "Number of first N images for which low res image is generated. "
@@ -575,6 +578,10 @@ bool RewriteGflags::SetOptions(RewriteDriverFactory* factory,
   }
   if (WasExplicitlySet("enable_blink_critical_line")) {
     options->set_enable_blink_critical_line(FLAGS_enable_blink_critical_line);
+  }
+  if (WasExplicitlySet("enable_flush_early_critical_css")) {
+    options->set_enable_flush_early_critical_css(
+        FLAGS_enable_flush_early_critical_css);
   }
   if (WasExplicitlySet("max_inlined_preview_images_index")) {
     options->set_max_inlined_preview_images_index(

@@ -33,6 +33,7 @@
 #include "net/instaweb/http/public/device_properties.h"
 #include "net/instaweb/public/global_constants.h"
 #include "net/instaweb/rewriter/flush_early.pb.h"
+#include "net/instaweb/rewriter/public/critical_css_finder.h"
 #include "net/instaweb/rewriter/public/critical_images_finder.h"
 #include "net/instaweb/rewriter/public/flush_early_content_writer_filter.h"
 #include "net/instaweb/rewriter/public/flush_early_info_finder.h"
@@ -111,6 +112,12 @@ void InitFlushEarlyDriverWithPropertyCacheValues(
   // RewriteDriver, instead of ServerContext.
   flush_early_driver->server_context()->critical_images_finder()->
       GetHtmlCriticalImages(flush_early_driver);
+
+  CriticalCssFinder* css_finder =
+      flush_early_driver->server_context()->critical_css_finder();
+  if (css_finder != NULL) {
+    css_finder->UpdateCriticalCssInfoInDriver(flush_early_driver);
+  }
 
   flush_early_driver->set_unowned_fallback_property_page(NULL);
 }
@@ -442,7 +449,6 @@ void FlushEarlyFlow::FlushEarly() {
         new_driver->set_response_headers_ptr(base_fetch_->response_headers());
         new_driver->set_request_headers(base_fetch_->request_headers());
         new_driver->set_flushing_early(true);
-
         new_driver->SetWriter(base_fetch_);
         new_driver->SetUserAgent(driver_->user_agent());
         new_driver->StartParse(url_);

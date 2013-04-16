@@ -29,10 +29,7 @@ package net_instaweb;
 message CriticalLineInfo {
   // Panels that are below the critical line.
   repeated Panel panels = 1;
-  // URLs of images above the critical line.
-  repeated string critical_image_url = 2;
-  // URLs of css background images above the critical line.
-  repeated string css_critical_image_url = 3;
+  // Deleted fields 2 and 3.
 }
 
 message Panel {

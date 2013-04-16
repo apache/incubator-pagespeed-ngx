@@ -70,6 +70,7 @@ class CollectFlushEarlyContentFilter : public RewriteFilter {
 
   // It will be false if there is no resource to flush early.
   bool found_resource_;
+  bool should_collect_critical_css_;
   GoogleString resource_html_;  // The html text containing resource elements.
 
   DISALLOW_COPY_AND_ASSIGN(CollectFlushEarlyContentFilter);
