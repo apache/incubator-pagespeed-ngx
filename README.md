@@ -35,7 +35,6 @@ ngx_pagespeed as a build-time dependency.
 
 ### Simple method: Using a binary Pagespeed Optimization Library
 
-1. Install [mod_pagespeed binary](https://developers.google.com/speed/docs/mod_pagespeed/download)
 1. Install dependencies:
 
 ```bash
@@ -46,14 +45,14 @@ $ sudo yum install git gcc-c++ pcre-dev pcre-devel zlib-devel make
 $ sudo apt-get install git-core build-essential zlib1g-dev libpcre3 libpcre3-dev
 ```
 
-1. Check out ngx_pagespeed:
+2. Check out ngx_pagespeed:
 
 ```bash
 $ cd ~
 $ git clone https://github.com/pagespeed/ngx_pagespeed.git
 ```
 
-1. Download and build nginx:
+3. Download and build nginx:
 
 ```bash
 $ # check http://nginx.org/en/download.html for the latest version
