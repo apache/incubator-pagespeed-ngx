@@ -386,7 +386,7 @@ to make the `.tar.gz` files we distribute.
 
 See: https://github.com/pagespeed/ngx_pagespeed/wiki/Building-Release-Binaries
 
-## Preparing release tarballs
+### Preparing release tarballs
 
 ```bash
 $ cd ngx_pagespeed
