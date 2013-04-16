@@ -59,28 +59,26 @@ class CriticalSelectorFilter : public CssSummarizerBase {
  protected:
   // Overrides of CssSummarizerBase summary API. These help us compute
   // the critical portions of the various fragments in the page, and to
-  // write them out to the page.
-  virtual bool MustSummarize(HtmlElement* element) const;
+  // write them out to the page. We also use this to pick up the output
+  // of filters before us, like rewrite_css; so we run this even on things
+  // that will not contain on-screen critical CSS.
   virtual void Summarize(Css::Stylesheet* stylesheet,
                          GoogleString* out) const;
   virtual void RenderSummary(int pos,
                              HtmlElement* element,
                              HtmlCharactersNode* char_node);
+  virtual void WillNotRenderSummary(int pos,
+                                    HtmlElement* element,
+                                    HtmlCharactersNode* char_node);
 
   // Since our computation depends on the selectors that are relevant to the
   // webpage, we incorporate them into the cache key as well.
   virtual GoogleString CacheKeySuffix() const;
 
-  // Overrides of CssSummarizerBase CSS notification API. These hand us
-  // the entirety of CSS, so we can handle it with lower priority.
-  virtual void NotifyInlineCss(HtmlElement* style_element,
-                               HtmlCharactersNode* content);
-  virtual void NotifyExternalCss(HtmlElement* link);
-
   // Parser callbacks.
-  virtual void EndElementImpl(HtmlElement* element);
   virtual void StartDocumentImpl();
   virtual void EndDocument();
+  virtual void RenderDone();
 
   // Filter control API.
   virtual void DetermineEnabled();
@@ -90,6 +88,10 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   class CssStyleElement;
   typedef std::vector<CssElement*> CssElementVector;
 
+  void RememberFullCss(int pos,
+                       HtmlElement* element,
+                       HtmlCharactersNode* char_node);
+
   // Selectors that are critical for this page.
   // These are just copied over from the finder and turned into a set for easier
   // membership checking.
@@ -98,8 +100,13 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   // Summary of critical_selectors_ as a short string.
   GoogleString cache_key_suffix_;
 
-  // Info on CSS we are delaying till the end
+  // Info on all the CSS in the page, potentially as optimized by other filters.
+  // We will emit code to lazy-load it at the very end of the document.
+  // May contain NULL pointers.
   CssElementVector css_elements_;
+
+  // True if EndDocument was called; helps us identify last flush window.
+  bool saw_end_document_;
 
   DISALLOW_COPY_AND_ASSIGN(CriticalSelectorFilter);
 };

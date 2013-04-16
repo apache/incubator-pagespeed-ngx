@@ -180,6 +180,9 @@ CombiningFilter::CombiningFilter(RewriteDriver* driver,
                                  int64 rewrite_delay_ms)
     : RewriteFilter(driver),
       scheduler_(scheduler),
+      num_rewrites_(0),
+      num_render_(0),
+      num_will_not_render_(0),
       rewrite_delay_ms_(rewrite_delay_ms),
       rewrite_block_on_(NULL),
       rewrite_signal_on_(NULL),
@@ -276,11 +279,16 @@ void CombiningFilter::Context::DoRewrite(int partition_index,
 }
 
 void CombiningFilter::Context::Render() {
+  ++filter_->num_render_;
   // Slot 0 will be replaced by the combined resource as part of
   // rewrite_context.cc.  But we still need to delete slots 1-N.
   for (int p = 0, np = num_output_partitions(); p < np; ++p) {
     DisableRemovedSlots(output_partition(p));
   }
+}
+
+void CombiningFilter::Context::WillNotRender() {
+  ++filter_->num_will_not_render_;
 }
 
 void CombiningFilter::Context::DisableRemovedSlots(CachedResult* partition) {

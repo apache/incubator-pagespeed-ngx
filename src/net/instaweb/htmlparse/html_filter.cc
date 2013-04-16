@@ -26,4 +26,7 @@ HtmlFilter::HtmlFilter() : is_enabled_(true) {
 HtmlFilter::~HtmlFilter() {
 }
 
+void HtmlFilter::RenderDone() {
+}
+
 }  // namespace net_instaweb

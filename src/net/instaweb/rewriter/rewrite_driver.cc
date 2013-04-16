@@ -329,7 +329,6 @@ void RewriteDriver::Clear() {
   DCHECK(!base_url_.is_valid());
   decoded_base_url_.Clear();
   fetch_url_.clear();
-  resource_map_.clear();
 
   if (!server_context_->shutting_down()) {
     DCHECK(primary_rewrite_context_map_.empty());
@@ -631,50 +630,68 @@ void RewriteDriver::QueueFlushAsyncDone(int num_rewrites, Function* callback) {
 void RewriteDriver::FlushAsyncDone(int num_rewrites, Function* callback) {
   DCHECK(request_context_.get() != NULL);
   TracePrintf("RewriteDriver::FlushAsyncDone()");
-  ScopedMutex lock(rewrite_mutex());
-  DCHECK_EQ(0, possibly_quick_rewrites_);
-  int completed_rewrites = num_rewrites - pending_rewrites_;
 
-  // If the output cache lookup came as a HIT in after the deadline, that
-  // means that (a) we can't use the result and (b) we don't need
-  // to re-initiate the rewrite since it was in fact in cache.  Hopefully
-  // the cache system will respond to HIT by making the next HIT faster
-  // so it meets our deadline.  In either case we will track with stats.
-  //
-  RewriteStats* stats = server_context_->rewrite_stats();
-  stats->cached_output_hits()->Add(completed_rewrites);
-  stats->cached_output_missed_deadline()->Add(pending_rewrites_);
   {
-    // Add completed_rewrites (from this flush window) to the logged value.
-    ScopedMutex lock(log_record()->mutex());
-    MetadataCacheInfo* metadata_log_info =
-        log_record()->logging_info()->mutable_metadata_cache_info();
-    metadata_log_info->set_num_rewrites_completed(
-        metadata_log_info->num_rewrites_completed() + completed_rewrites);
-  }
+    ScopedMutex lock(rewrite_mutex());
+    DCHECK_EQ(0, possibly_quick_rewrites_);
+    int completed_rewrites = num_rewrites - pending_rewrites_;
 
-  // While new slots are created for distinct HtmlElements, Resources can be
-  // shared across multiple slots, via resource_map_.  However, to avoid
-  // races between outstanding RewriteContexts, we must create new Resources
-  // after each Flush.  Note that we only need to do this if there are
-  // outstanding rewrites.
-  if (pending_rewrites_ != 0) {
-    resource_map_.clear();
+    // If the output cache lookup came as a HIT in after the deadline, that
+    // means that (a) we can't use the result and (b) we don't need
+    // to re-initiate the rewrite since it was in fact in cache.  Hopefully
+    // the cache system will respond to HIT by making the next HIT faster
+    // so it meets our deadline.  In either case we will track with stats.
+    //
+    RewriteStats* stats = server_context_->rewrite_stats();
+    stats->cached_output_hits()->Add(completed_rewrites);
+    stats->cached_output_missed_deadline()->Add(pending_rewrites_);
+    {
+      // Add completed_rewrites (from this flush window) to the logged value.
+      ScopedMutex lock(log_record()->mutex());
+      MetadataCacheInfo* metadata_log_info =
+          log_record()->logging_info()->mutable_metadata_cache_info();
+      metadata_log_info->set_num_rewrites_completed(
+          metadata_log_info->num_rewrites_completed() + completed_rewrites);
+    }
+
+    // Detach all rewrites that are still outstanding, by moving them from
+    // initiated_rewrites_ to detached_rewrites_; also notify them that they
+    // will not be rendered.
     for (RewriteContextSet::iterator p = initiated_rewrites_.begin(),
               e = initiated_rewrites_.end(); p != e; ++p) {
       RewriteContext* rewrite_context = *p;
+      rewrite_context->WillNotRender();
       detached_rewrites_.insert(rewrite_context);
       --pending_rewrites_;
     }
     DCHECK_EQ(0, pending_rewrites_);
     initiated_rewrites_.clear();
-  } else {
-    DCHECK(initiated_rewrites_.empty());
+
+    slots_.clear();
   }
 
-  slots_.clear();
+  // Notify all enabled pre-render filters that rendering is done.
+  if (debug_filter_ != NULL) {
+    debug_filter_->RenderDone();
+  }
 
-  HtmlParse::Flush();  // Clears the queue_.
+  for (FilterList::iterator it = early_pre_render_filters_.begin();
+       it != early_pre_render_filters_.end(); ++it) {
+    HtmlFilter* filter = *it;
+    if (filter->is_enabled()) {
+      filter->RenderDone();
+    }
+  }
+  for (FilterList::iterator it = pre_render_filters_.begin();
+       it != pre_render_filters_.end(); ++it) {
+    HtmlFilter* filter = *it;
+    if (filter->is_enabled()) {
+      filter->RenderDone();
+    }
+  }
+
+  // Run all the post-render filters, and clear the event queue.
+  HtmlParse::Flush();
   flush_occurred_ = true;
   callback->CallRun();
 }
@@ -2512,12 +2529,6 @@ void RewriteDriver::SetBaseUrlForFetch(const StringPiece& url) {
   DCHECK(base_url_.is_valid());
   SetDecodedUrlFromBase();
   base_was_set_ = false;
-}
-
-void RewriteDriver::RememberResource(const StringPiece& url,
-                                     const ResourcePtr& resource) {
-  GoogleString url_str(url.data(), url.size());
-  resource_map_[url_str] = resource;
 }
 
 RewriteFilter* RewriteDriver::FindFilter(const StringPiece& id) const {

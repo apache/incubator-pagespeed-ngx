@@ -2051,6 +2051,9 @@ void RewriteContext::Harvest() {
 void RewriteContext::Render() {
 }
 
+void RewriteContext::WillNotRender() {
+}
+
 void RewriteContext::Propagate(bool render_slots) {
   DCHECK(rewrite_done_ && (num_pending_nested_ == 0));
   if (rewrite_done_ && (num_pending_nested_ == 0)) {

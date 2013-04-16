@@ -189,7 +189,6 @@ class RewriteDriver : public HtmlParse {
   bool MayCacheExtendPdfs() const;
   bool MayCacheExtendScripts() const;
 
-  void RememberResource(const StringPiece& url, const ResourcePtr& resource);
   const GoogleString& user_agent() const { return user_agent_; }
 
   void SetUserAgent(const StringPiece& user_agent_string);
@@ -1319,10 +1318,6 @@ class RewriteDriver : public HtmlParse {
   ScanFilter scan_filter_;
   scoped_ptr<DomainRewriteFilter> domain_rewriter_;
   scoped_ptr<UrlLeftTrimFilter> url_trim_filter_;
-
-  // Maps encoded URLs to output URLs.
-  typedef std::map<GoogleString, ResourcePtr> ResourceMap;
-  ResourceMap resource_map_;
 
   // Maps rewrite context partition keys to the context responsible for
   // rewriting them, in case a URL occurs more than once.

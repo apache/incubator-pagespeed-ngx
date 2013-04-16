@@ -18,12 +18,14 @@
 
 #include "net/instaweb/rewriter/public/critical_selector_filter.h"
 
+#include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/request_context.h"
 #include "net/instaweb/http/public/user_agent_matcher_test.h"
 #include "net/instaweb/rewriter/public/critical_selector_finder.h"
 #include "net/instaweb/rewriter/public/rewrite_test_base.h"
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
+#include "net/instaweb/rewriter/public/rewrite_options.h"
 #include "net/instaweb/rewriter/public/server_context.h"
 #include "net/instaweb/rewriter/public/test_rewrite_driver_factory.h"
 #include "net/instaweb/util/public/gtest.h"
@@ -42,6 +44,7 @@ class CriticalSelectorFilterTest : public RewriteTestBase {
  protected:
   virtual void SetUp() {
     RewriteTestBase::SetUp();
+    rewrite_driver()->AddFilters();
     filter_ = new CriticalSelectorFilter(rewrite_driver());
     rewrite_driver()->AppendOwnedPreRenderFilter(filter_);
     server_context()->ComputeSignature(options());
@@ -129,8 +132,8 @@ TEST_F(CriticalSelectorFilterTest, BasicOperation) {
   ValidateExpected(
       "basic", html,
       StrCat("<head>", critical_css, "</head>",
-             "<body><div>Stuff</div></body>",
-             LoadRestOfCss(css)));
+             "<body><div>Stuff</div>",
+             LoadRestOfCss(css), "</body>"));
 }
 
 TEST_F(CriticalSelectorFilterTest, DisabledForIE) {
@@ -169,12 +172,12 @@ TEST_F(CriticalSelectorFilterTest, NoScript) {
 
   ValidateExpected(
       "foo", html,
-      StrCat("<head>", critical_css, "</head>",
-             "<body><div>Stuff</div></body>",
+      StrCat("<head>", critical_css, "</head>"
+             "<body><div>Stuff</div>",
              WrapForJsLoad(css1),
              css2,  // noscript, so not marked for JS load.
              WrapForJsLoad(css3),
-             JsLoader()));
+             JsLoader(), "</body>"));
 }
 
 TEST_F(CriticalSelectorFilterTest, Media) {
@@ -204,8 +207,8 @@ TEST_F(CriticalSelectorFilterTest, Media) {
   ValidateExpected(
       "foo", html,
       StrCat("<head>", critical_css, "</head>",
-             "<body><div>Stuff</div></body>",
-             LoadRestOfCss(css)));
+             "<body><div>Stuff</div>",
+             LoadRestOfCss(css), "</body>"));
 }
 
 TEST_F(CriticalSelectorFilterTest, NonScreenMedia) {
@@ -232,8 +235,8 @@ TEST_F(CriticalSelectorFilterTest, NonScreenMedia) {
   ValidateExpected(
       "foo", html,
       StrCat("<head>", critical_css, "</head>",
-             "<body><div>Stuff</div></body>",
-             LoadRestOfCss(css)));
+             "<body><div>Stuff</div>",
+             LoadRestOfCss(css), "</body>"));
 }
 
 TEST_F(CriticalSelectorFilterTest, SameCssDifferentSelectors) {
@@ -334,6 +337,42 @@ TEST_F(CriticalSelectorFilterTest, ResolveUrlsProperly) {
   ValidateExpected("rel_path", CssLinkHref("dir/c.css"),
                    StrCat("<style>*{background-image:url(dir/d.png)}</style>",
                           LoadRestOfCss(CssLinkHref("dir/c.css"))));
+}
+
+class CriticalSelectorWithRewriteCssFilterTest
+    : public CriticalSelectorFilterTest {
+ protected:
+  virtual void SetUp() {
+    options()->EnableFilter(RewriteOptions::kRewriteCss);
+    CriticalSelectorFilterTest::SetUp();
+  }
+};
+
+TEST_F(CriticalSelectorWithRewriteCssFilterTest, ProperlyUsedOptimized) {
+  // Make sure that the lazy loading code for rest of CSS actually uses
+  // optimized resources.
+  GoogleString css = StrCat(
+      CssLinkHref("a.css"),
+      CssLinkHref("b.css"));
+
+  GoogleString critical_css =
+      "<style>div,*::first-letter{display:block}</style>"  // from a.css
+      "<style>@media screen{*{margin:0px}}</style>";  // from b.css
+
+  GoogleString optimized_css = StrCat(
+      CssLinkHref(Encode(kTestDomain, "cf", "0", "a.css", "css")),
+      CssLinkHref(Encode(kTestDomain, "cf", "0", "b.css", "css")));
+  GoogleString html = StrCat(
+      "<head>",
+      css,
+      "</head>"
+      "<body><div>Stuff</div></body>");
+
+  ValidateExpected("with_rewrite_css",
+                   html,
+                   StrCat("<head>", critical_css, "</head>"
+                          "<body><div>Stuff</div>",
+                          LoadRestOfCss(optimized_css), "</body>"));
 }
 
 }  // namespace

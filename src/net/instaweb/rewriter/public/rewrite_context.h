@@ -412,6 +412,18 @@ class RewriteContext {
   // were actually optimized successfully.
   virtual void Render();
 
+  // Notifies the subclass that the filter will not be able to render its
+  // output to the containing HTML document, because it wasn't ready in time.
+  // Note that neither Render() nor WillNotRender() may be called in case
+  // this rewrite got canceled due to disable_further_processing(), or in case
+  // Partition() failed. This is called from the HTML thread, but should only be
+  // used for read access, and subclasss implementations are required to be
+  // reasonably quick since it's called with rewrite_mutex() held. It's called
+  // after any earlier contexts in filter order had completed their rendering,
+  // if any, but with no order guarantees with respect to other WillNotRender()
+  // invocations.
+  virtual void WillNotRender();
+
   // This final set of protected methods can be optionally overridden
   // by subclasses.
 
@@ -551,18 +563,14 @@ class RewriteContext {
   class DistributedRewriteFetch;
   class OutputCacheCallback;
   class LookupMetadataForOutputResourceCallback;
-  friend class OutputCacheCallback;
   class HTTPCacheCallback;
-  friend class HTTPCacheCallback;
   class ResourceCallbackUtils;
-  friend class ResourceCallbackUtils;
   class ResourceFetchCallback;
   class ResourceReconstructCallback;
   class ResourceRevalidateCallback;
-  friend class ResourceRevalidateCallback;
   class InvokeRewriteFunction;
-  friend class InvokeRewriteFunction;
   class RewriteFreshenCallback;
+  friend class RewriteDriver;
 
   typedef std::set<RewriteContext*> ContextSet;
 

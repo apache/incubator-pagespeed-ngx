@@ -19,11 +19,14 @@
 #include "net/instaweb/rewriter/public/rewrite_driver.h"
 
 #include "net/instaweb/htmlparse/public/empty_html_filter.h"
+#include "net/instaweb/htmlparse/public/html_name.h"
 #include "net/instaweb/htmlparse/public/html_parse_test_base.h"
 #include "net/instaweb/http/public/async_fetch.h"
 #include "net/instaweb/http/public/content_type.h"
 #include "net/instaweb/http/public/counting_url_async_fetcher.h"
 #include "net/instaweb/http/public/fake_url_async_fetcher.h"
+#include "net/instaweb/http/public/log_record.h"
+#include "net/instaweb/http/public/logging_proto_impl.h"
 #include "net/instaweb/http/public/meta_data.h"
 #include "net/instaweb/http/public/mock_url_fetcher.h"
 #include "net/instaweb/http/public/response_headers.h"
@@ -53,10 +56,6 @@
 
 namespace net_instaweb {
 
-namespace {
-const char kBikePngFile[] = "BikeCrashIcn.png";
-}
-
 class RewriteFilter;
 
 class RewriteDriverTest : public RewriteTestBase {
@@ -84,6 +83,10 @@ class RewriteDriverTest : public RewriteTestBase {
  private:
   DISALLOW_COPY_AND_ASSIGN(RewriteDriverTest);
 };
+
+namespace {
+
+const char kBikePngFile[] = "BikeCrashIcn.png";
 
 TEST_F(RewriteDriverTest, NoChanges) {
   ValidateNoChanges("no_changes",
@@ -930,8 +933,6 @@ TEST_F(RewriteDriverTest, ResolveAnchorUrl) {
   rewrite_driver()->FinishParse();
 }
 
-namespace {
-
 // A rewrite context that's not actually capable of rewriting -- we just need
 // one to pass in to InfoAt in test below.
 class MockRewriteContext : public SingleRewriteContext {
@@ -944,8 +945,6 @@ class MockRewriteContext : public SingleRewriteContext {
   virtual const char* id() const { return "mock"; }
   virtual OutputResourceKind kind() const { return kOnTheFlyResource; }
 };
-
-}  // namespace
 
 TEST_F(RewriteDriverTest, DiagnosticsWithPercent) {
   // Regression test for crash in InfoAt where location has %stuff in it.
@@ -991,8 +990,6 @@ TEST_F(RewriteDriverTest, RejectDataResourceGracefully) {
   ResourcePtr resource(rewrite_driver()->CreateInputResource(dataUrl));
   EXPECT_TRUE(resource.get() == NULL);
 }
-
-namespace {
 
 class ResponseHeadersCheckingFilter : public EmptyHtmlFilter {
  public:
@@ -1060,8 +1057,6 @@ class DetermineEnabledCheckingFilter : public EmptyHtmlFilter {
   bool start_document_called_;
   bool enabled_value_;
 };
-
-}  // namespace
 
 TEST_F(RewriteDriverTest, DetermineEnabledTest) {
   RewriteDriver* driver = rewrite_driver();
@@ -1416,5 +1411,52 @@ TEST_F(RewriteDriverTest, DecodeMultiUrlsEncodesCorrectly) {
   EXPECT_EQ(multi_url, css_urls[0]);
 }
 
+// Records URL of the last img element it sees at point of RenderDone().
+class RenderDoneCheckingFilter : public EmptyHtmlFilter {
+ public:
+  RenderDoneCheckingFilter() : element_(NULL) {}
+  virtual ~RenderDoneCheckingFilter() {}
+  const GoogleString& src() const { return src_; }
+
+ protected:
+  virtual void StartElement(HtmlElement* element) {
+    if (element->keyword() == HtmlName::kImg) {
+      element_ = element;
+    }
+  }
+
+  virtual void RenderDone() {
+    if (element_ != NULL) {
+      const char* val = element_->AttributeValue(HtmlName::kSrc);
+      src_ = (val != NULL ? val : "");
+    }
+  }
+
+  virtual const char* Name() const { return "RenderDoneCheckingFilter"; }
+
+ private:
+  HtmlElement* element_;
+  GoogleString src_;
+  DISALLOW_COPY_AND_ASSIGN(RenderDoneCheckingFilter);
+};
+
+TEST_F(RewriteDriverTest, RenderDoneTest) {
+  // Test to make sure RenderDone sees output of a pre-render filter.
+  RewriteDriver* driver = rewrite_driver();
+  RenderDoneCheckingFilter* filter =
+      new RenderDoneCheckingFilter();
+  driver->AddOwnedEarlyPreRenderFilter(filter);
+  SetResponseWithDefaultHeaders("a.png", kContentTypePng, "PNGkinda", 100);
+  AddFilter(RewriteOptions::kExtendCacheImages);
+
+  driver->StartParse(kTestDomain);
+  rewrite_driver()->ParseText("<img src=\"a.png\">");
+  driver->FinishParse();
+  EXPECT_EQ(Encode(kTestDomain, RewriteOptions::kCacheExtenderId, "0",
+                   "a.png", "png"),
+            filter->src());
+}
+
+}  // namespace
 
 }  // namespace net_instaweb

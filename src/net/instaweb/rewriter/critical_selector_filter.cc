@@ -21,6 +21,7 @@
 #include "net/instaweb/rewriter/public/critical_selector_filter.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <set>
 
 #include "base/logging.h"
@@ -162,17 +163,10 @@ class CriticalSelectorFilter::CssStyleElement
 
 // Wrap CSS related elements so they can be moved later in the document.
 CriticalSelectorFilter::CriticalSelectorFilter(RewriteDriver* driver)
-    : CssSummarizerBase(driver) {
+    : CssSummarizerBase(driver), saw_end_document_(false) {
 }
 
 CriticalSelectorFilter::~CriticalSelectorFilter() {
-}
-
-bool CriticalSelectorFilter::MustSummarize(HtmlElement* element) const {
-  // Don't summarize non-screen-affecting or <noscript> CSS.  Note that we still
-  // need to defer it, which is done by the Notify...Css methods below.
-  return (noscript_element() == NULL) &&
-      css_util::CanMediaAffectScreen(element->AttributeValue(HtmlName::kMedia));
 }
 
 void CriticalSelectorFilter::Summarize(Css::Stylesheet* stylesheet,
@@ -244,6 +238,8 @@ void CriticalSelectorFilter::Summarize(Css::Stylesheet* stylesheet,
 
 void CriticalSelectorFilter::RenderSummary(
     int pos, HtmlElement* element, HtmlCharactersNode* char_node) {
+  RememberFullCss(pos, element, char_node);
+
   const SummaryInfo& summary = GetSummaryForStyle(pos);
   DCHECK_EQ(kSummaryOk, summary.state);
 
@@ -310,40 +306,13 @@ void CriticalSelectorFilter::RenderSummary(
   }
 }
 
-void CriticalSelectorFilter::NotifyInlineCss(HtmlElement* style_element,
-                                             HtmlCharactersNode* content) {
-  CssStyleElement* save = new CssStyleElement(driver_, style_element,
-                                              noscript_element() != NULL);
-  save->AppendCharactersNode(content);
-  css_elements_.push_back(save);
-  // We can't delete non-screen CSS we skipped here, because
-  // the close </style> tag hasn't happened yet.
-}
-
-void CriticalSelectorFilter::NotifyExternalCss(HtmlElement* link) {
-  css_elements_.push_back(new CssElement(driver_, link,
-                                         noscript_element() != NULL));
-  if (!MustSummarize(link)) {
-    // Treat as if we were rendering a link with no critical css, or inside a
-    // <noscript> block, which would cause us to delete the element from the
-    // page in RenderSummary above.  In this case we didn't Summarize the link
-    // at all, so we need to remove it here.
-    driver_->DeleteElement(link);
-  }
+void CriticalSelectorFilter::WillNotRenderSummary(
+    int pos, HtmlElement* element, HtmlCharactersNode* char_node) {
+  RememberFullCss(pos, element, char_node);
 }
 
 GoogleString CriticalSelectorFilter::CacheKeySuffix() const {
   return cache_key_suffix_;
-}
-
-void CriticalSelectorFilter::EndElementImpl(HtmlElement* element) {
-  CssSummarizerBase::EndElementImpl(element);
-  if (element->keyword() == HtmlName::kStyle && !MustSummarize(element)) {
-    // Similar to NotifyExternalCss, we must handle inline <style>s that are in
-    // <noscript> or don't affect the screen, which we didn't Summarize but need
-    // to delete.
-    driver_->DeleteElement(element);
-  }
 }
 
 void CriticalSelectorFilter::StartDocumentImpl() {
@@ -364,18 +333,28 @@ void CriticalSelectorFilter::StartDocumentImpl() {
 
   // Clear state between re-uses / check to make sure we wrapped up properly.
   DCHECK(css_elements_.empty());
+  saw_end_document_ = false;
 }
 
 void CriticalSelectorFilter::EndDocument() {
   CssSummarizerBase::EndDocument();
 
+  saw_end_document_ = true;
+}
+
+void CriticalSelectorFilter::RenderDone() {
+  CssSummarizerBase::RenderDone();
+
+  // Only do this on very last flush window.
+  if (!saw_end_document_) {
+    return;
+  }
+
   // TODO(morlovich): There is some risk that we will end up duplicating
   // CSS and not actually reducing anything on a first load.
-
-  // TODO(morlovich): This still doesn't fix IE-conditional stuff,
-  // since we're not repeating it.
   if (!css_elements_.empty()) {
     HtmlElement* noscript_element = NULL;
+    Compact(&css_elements_);
     for (int i = 0, n = css_elements_.size(); i < n; ++i) {
       // Insert the full CSS, but hide all the style, link tags inside noscript
       // blocks so that look-ahead parser cannot find them; and mark the
@@ -396,13 +375,13 @@ void CriticalSelectorFilter::EndDocument() {
           driver_->AddAttribute(noscript_element, HtmlName::kClass,
                                 "psa_add_styles");
         }
-        driver_->InsertElementBeforeCurrent(noscript_element);
+        InjectSummaryData(noscript_element);
       }
       css_elements_[i]->AppendTo(noscript_element);
     }
 
     HtmlElement* script = driver_->NewElement(NULL, HtmlName::kScript);
-    driver_->InsertElementBeforeCurrent(script);
+    InjectSummaryData(script);
     if (driver_->options()
         ->test_only_prioritize_critical_css_dont_apply_original_css()) {
       driver_->server_context()->static_asset_manager()->AddJsToElement(
@@ -429,6 +408,29 @@ void CriticalSelectorFilter::DetermineEnabled() {
   bool can_run = (driver_->CriticalSelectors() != NULL) &&
                  !driver_->user_agent_matcher()->IsIe(driver_->user_agent());
   set_is_enabled(can_run);
+}
+
+void CriticalSelectorFilter::RememberFullCss(
+    int pos, HtmlElement* element, HtmlCharactersNode* char_node) {
+  // Deep copy[1] into the css_elements_ array the CSS as optimized by all the
+  // filters that ran before us and rendered their results, so that we can
+  // emit it accurately at end, as a lazy-load sequence.
+  // [1] We need a deep copy since some of the DOM data will get freed up at the
+  //     end of each flush window.
+  if (static_cast<size_t>(pos) >= css_elements_.size()) {
+    css_elements_.resize(pos + 1);
+  }
+  bool noscript = GetSummaryForStyle(pos).is_inside_noscript;
+  CssElement* save = NULL;
+  if (char_node != NULL) {
+    CssStyleElement* save_inline =
+        new CssStyleElement(driver_, element, noscript);
+    save_inline->AppendCharactersNode(char_node);
+    save = save_inline;
+  } else {
+    save = new CssElement(driver_, element, noscript);
+  }
+  css_elements_[pos] = save;
 }
 
 }  // namespace net_instaweb

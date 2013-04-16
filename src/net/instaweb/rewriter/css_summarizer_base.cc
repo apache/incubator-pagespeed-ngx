@@ -85,6 +85,7 @@ class CssSummarizerBase::Context : public SingleRewriteContext {
 
  protected:
   virtual void Render();
+  virtual void WillNotRender();
   virtual bool Partition(OutputPartitions* partitions,
                          OutputResourceVector* outputs);
   virtual void RewriteSingle(const ResourcePtr& input,
@@ -161,6 +162,7 @@ void CssSummarizerBase::Context::Render() {
   if (num_output_partitions() == 0) {
     // Failed at partition -> resource fetch failed or uncacheable.
     summary_info.state = kSummaryInputUnavailable;
+    filter_->WillNotRenderSummary(pos_, element_, text_);
   } else {
     const CachedResult& result = *output_partition(0);
     // Transfer the summarization result from the metadata cache (where it was
@@ -174,10 +176,15 @@ void CssSummarizerBase::Context::Render() {
       filter_->RenderSummary(pos_, element_, text_);
     } else {
       summary_info.state = kSummaryCssParseError;
+      filter_->WillNotRenderSummary(pos_, element_, text_);
     }
   }
 
   ReportDone();
+}
+
+void CssSummarizerBase::Context::WillNotRender() {
+  filter_->WillNotRenderSummary(pos_, element_, text_);
 }
 
 void CssSummarizerBase::Context::RewriteSingle(
@@ -264,11 +271,8 @@ void CssSummarizerBase::RenderSummary(
     int pos, HtmlElement* element, HtmlCharactersNode* char_node) {
 }
 
-void CssSummarizerBase::NotifyInlineCss(HtmlElement* style_element,
-                                        HtmlCharactersNode* content) {
-}
-
-void CssSummarizerBase::NotifyExternalCss(HtmlElement* link) {
+void CssSummarizerBase::WillNotRenderSummary(
+    int pos, HtmlElement* element, HtmlCharactersNode* char_node) {
 }
 
 void CssSummarizerBase::Clear() {
@@ -318,7 +322,6 @@ void CssSummarizerBase::Characters(HtmlCharactersNode* characters_node) {
     if (MustSummarize(style_element_)) {
       StartInlineRewrite(style_element_, characters_node);
     }
-    NotifyInlineCss(style_element_, characters_node);
   } else if (injection_point_ != NULL &&
              !OnlyWhitespace(characters_node->contents())) {
     // Ignore whitespace between </body> and </html> or after </html> when
@@ -351,7 +354,6 @@ void CssSummarizerBase::EndElementImpl(HtmlElement* element) {
           if (MustSummarize(element)) {
             StartExternalRewrite(element, element_href);
           }
-          NotifyExternalCss(element);
         }
       }
       break;
@@ -430,6 +432,8 @@ void CssSummarizerBase::StartExternalRewrite(
     summaries_.back().state = kSummaryResourceCreationFailed;
     const char* url = src->DecodedValueOrNull();
     summaries_.back().location = (url != NULL ? url : driver_->UrlLine());
+
+    WillNotRenderSummary(summaries_.size() - 1, link, NULL);
 
     // TODO(morlovich): Stat?
     if (DebugMode()) {

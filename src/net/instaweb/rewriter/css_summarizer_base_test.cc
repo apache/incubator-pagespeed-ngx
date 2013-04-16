@@ -42,7 +42,9 @@ const char kExpectedResult[] =
 class MinifyExcerptFilter : public CssSummarizerBase {
  public:
   explicit MinifyExcerptFilter(RewriteDriver* driver)
-      : CssSummarizerBase(driver), render_summaries_in_place_(false) {}
+      : CssSummarizerBase(driver),
+        render_summaries_in_place_(false),
+        will_not_render_summaries_in_place_(false) {}
 
   virtual const char* Name() const { return "Minify10"; }
   virtual const char* id() const { return "csr"; }
@@ -99,6 +101,23 @@ class MinifyExcerptFilter : public CssSummarizerBase {
     }
   }
 
+  virtual void WillNotRenderSummary(int pos,
+                                    HtmlElement* element,
+                                    HtmlCharactersNode* char_node) {
+    // Note that these should not normally mutate the DOM, we only
+    // get away with this because the tests we use this in don't really do
+    // any flushing.
+    if (!will_not_render_summaries_in_place_) {
+      return;
+    }
+
+    const SummaryInfo& sum = GetSummaryForStyle(pos);
+    GoogleString annotation = StrCat("WillNotRender:", IntegerToString(pos),
+                                     " --- ", EncodeState(sum.state));
+    driver_->InsertElementBeforeElement(
+        element, driver_->NewCommentNode(NULL, annotation));
+  }
+
   virtual void SummariesDone() {
     result_.clear();
     for (int i = 0; i < NumStyles(); ++i) {
@@ -111,13 +130,20 @@ class MinifyExcerptFilter : public CssSummarizerBase {
 
   const GoogleString& result() { return result_; }
 
+  // Whether we should note the RenderSummary calls in place.
   void set_render_summaries_in_place(bool x) {
     render_summaries_in_place_ = x;
+  }
+
+  // Whether we should note the WillNotRenderSummary calls in place.
+  void set_will_not_render_summaries_in_place(bool x) {
+    will_not_render_summaries_in_place_ = x;
   }
 
  private:
   GoogleString result_;
   bool render_summaries_in_place_;
+  bool will_not_render_summaries_in_place_;
 };
 
 class CssSummarizerBaseTest : public RewriteTestBase {
@@ -219,6 +245,34 @@ TEST_F(CssSummarizerBaseTest, RenderSummary) {
                        "<style>* { background: blue; }</style>"));
   EXPECT_STREQ("<html>\n<style>div{displa</style><style>*{backgrou</style>\n"
                "<!--OK/div{displa|OK/*{backgrou|--></html>", output_buffer_);
+}
+
+TEST_F(CssSummarizerBaseTest, WillNotRenderSummary) {
+  filter_->set_will_not_render_summaries_in_place(true);
+  FullTest("will_not_render", "", "");
+  EXPECT_STREQ(StrCat("<html>\n",
+                      "<style>* {display: none; }</style>",
+                      CssLinkHref("a.css"),
+                      StrCat("<!--WillNotRender:2 --- ParseError-->",
+                             CssLinkHref("b.css")),
+                      StrCat("<!--WillNotRender:3 --- FetchError-->",
+                             CssLinkHref("404.css")),
+                      StrCat("<!--WillNotRender:4 --- ResourceError-->",
+                             CssLinkHref("http://evil.com/d.css")),
+                      StrCat("<!--", kExpectedResult, "-->")),
+               output_buffer_);
+}
+
+TEST_F(CssSummarizerBaseTest, WillNotRenderSummaryWait) {
+  filter_->set_will_not_render_summaries_in_place(true);
+  SetupWaitFetcher();
+  Parse("link", CssLinkHref("a.css"));
+  EXPECT_STREQ(StrCat("<html>\n",
+                      "<!--WillNotRender:0 --- Pending-->",
+                      CssLinkHref("a.css"),
+                      "\n</html>"),
+               output_buffer_);
+  CallFetcherCallbacks();
 }
 
 TEST_F(CssSummarizerBaseTest, NoScriptHandling) {

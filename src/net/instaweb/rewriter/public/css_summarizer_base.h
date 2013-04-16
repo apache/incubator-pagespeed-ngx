@@ -129,8 +129,7 @@ class CssSummarizerBase : public RewriteFilter {
   // parsing failed or some other error occurred. Invocation occurs from a
   // thread with HTML parser context state, so both DOM modification and
   // GetSummaryForStyle() are safe to use. If invoked, the method will be called
-  // later than the corresponding Notify{Internal,External}Css method and before
-  // SummariesDone().
+  // before SummariesDone().
   //
   // pos is the position of the element in the summary table.
   //
@@ -142,6 +141,18 @@ class CssSummarizerBase : public RewriteFilter {
   virtual void RenderSummary(int pos,
                              HtmlElement* element,
                              HtmlCharactersNode* char_node);
+
+  // Like RenderSummary, but called in cases where we're unable to render a
+  // summary for some reason (including not being able to compute one).
+  // Note: not called when we're canceled due to disable_further_processing.
+  // TODO(morlovich): Fix that, and test with combine_css.
+  //
+  // Like with RenderSummary, this corresponds to entry [pos] in the summary
+  // table, and elements points to the <link> or <style> containing CSS,
+  // with char_node being non-null in case it was a <style>.
+  virtual void WillNotRenderSummary(int pos,
+                                    HtmlElement* element,
+                                    HtmlCharactersNode* char_node);
 
   // This is called at the end of the document when all outstanding summary
   // computations have completed, regardless of whether successful or not. It
@@ -174,16 +185,6 @@ class CssSummarizerBase : public RewriteFilter {
   const SummaryInfo& GetSummaryForStyle(int pos) const {
     return summaries_.at(pos);
   }
-
-  // These notify the subclass of external or inline CSS the summarizer has
-  // noticed. Overriding these is optional, and base implementations do nothing.
-  // These methods are called even if the CSS is not summarized (because
-  // MustSummarize returned false).
-  // Note that the inline method is called before </style> is called, so you
-  // may need to wait until EndElementImpl if you need to alter the DOM for it.
-  virtual void NotifyInlineCss(HtmlElement* style_element,
-                               HtmlCharactersNode* content);
-  virtual void NotifyExternalCss(HtmlElement* link);
 
   // Overrides of the filter APIs. You should call through to this class's
   // implementations if you override them.

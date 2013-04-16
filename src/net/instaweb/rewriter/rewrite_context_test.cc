@@ -2530,6 +2530,48 @@ TEST_F(RewriteContextTest, NestedChained) {
             rewritten_contents);
 }
 
+TEST_F(RewriteContextTest, WillNotRewrite) {
+  // Make sure WillNotRewrite is called properly when filter misses the
+  // deadline.
+  RewriteDriver* driver = rewrite_driver();
+  TrimWhitespaceRewriter* trimmer =
+      new TrimWhitespaceRewriter(kRewrittenResource);
+  rewrite_driver()->AppendRewriteFilter(
+      new SimpleTextFilter(trimmer, rewrite_driver()));
+  CombiningFilter* combining_filter =
+      new CombiningFilter(driver, mock_scheduler(), 100 /* delay, ms */);
+  driver->AppendRewriteFilter(combining_filter);
+  server_context()->ComputeSignature(options());
+
+  GoogleString out_url_a = Encode(kTestDomain,
+                                  TrimWhitespaceRewriter::kFilterId,
+                                  "0", "a.css", "css");
+  GoogleString out_url_c = Encode(kTestDomain,
+                                  TrimWhitespaceRewriter::kFilterId,
+                                  "0", "c.css", "css");
+  InitResources();
+  ValidateExpected(
+      "will_not_rewrite",
+      StrCat(CssLinkHref("a.css"), CssLinkHref("c.css")),
+      StrCat(CssLinkHref(out_url_a), CssLinkHref(out_url_c)));
+  EXPECT_EQ(0, combining_filter->num_render());
+  EXPECT_EQ(1, combining_filter->num_will_not_render());
+}
+
+TEST_F(RewriteContextTest, RewritePartitionFailed) {
+  // PartitionFailed still calls Rewrite., as documented.
+  RewriteDriver* driver = rewrite_driver();
+  CombiningFilter* combining_filter =
+      new CombiningFilter(driver, mock_scheduler(), 0 /* delay, ms */);
+  driver->AppendRewriteFilter(combining_filter);
+  server_context()->ComputeSignature(options());
+  SetFetchResponse404("404.css");
+  ValidateNoChanges("will_not_rewrite_partition_failed",
+                    StrCat(CssLinkHref("404.css"), CssLinkHref("404.css")));
+  EXPECT_EQ(1, combining_filter->num_render());
+  EXPECT_EQ(0, combining_filter->num_will_not_render());
+}
+
 TEST_F(RewriteContextTest, DisableFurtherProcessing) {
   // Make sure that set_disable_further_processing() done in the combiner
   // prevents later rewrites from running. To test this, we add the combiner
