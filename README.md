@@ -30,10 +30,8 @@ optimizations, see our <a href="http://ngxpagespeed.com">demonstration site</a>.
 
 ## How to build
 
-Because nginx does not support dynamic loading of modules, you need to add
-ngx_pagespeed as a build-time dependency.
-
-### Simple method: Using a binary Pagespeed Optimization Library
+Because nginx does not support dynamic loading of modules, you need to compile
+nginx from source to add ngx_pagespeed.
 
 1. Install dependencies:
 
@@ -75,96 +73,12 @@ the error message, then send it to the [mailing
 list](https://groups.google.com/forum/#!forum/ngx-pagespeed-discuss) and we'll
 have a look at it.
 
-### Complex method: Building the Pagespeed Optimization Library from source
+This will use a binary distribution of the PageSpeed Optimization Library
+(PSOL).  If you would like to build PSOL from source there's [a more involved
+process](https://github.com/pagespeed/ngx_pagespeed/wiki/Building-PSOL-From-Source).
 
-First build mod_pagespeed against the current revision we work at:
-
-```bash
-$ mkdir -p ~/bin
-$ cd ~/bin
-$ svn co http://src.chromium.org/svn/trunk/tools/depot_tools
-$ export PATH=$PATH:~/bin/depot_tools
-$ mkdir ~/mod_pagespeed
-$ cd ~/mod_pagespeed
-$ gclient config http://modpagespeed.googlecode.com/svn/trunk/src
-$ gclient sync --revision src@2748 --force --jobs=1
-$ cd src/
-$ make AR.host="$PWD/build/wrappers/ar.sh" \
-       AR.target="$PWD/build/wrappers/ar.sh" \
-       BUILDTYPE=Release \
-       mod_pagespeed_test pagespeed_automatic_test
-```
-
-(See [mod_pagespeed: build from
-source](https://developers.google.com/speed/docs/mod_pagespeed/build_from_source) if
-you run into trouble, or ask for help on the mailing list.)
-
-Then build the pagespeed optimization library:
-
-```bash
-$ cd ~/mod_pagespeed/src/net/instaweb/automatic
-$ make AR.host="$PWD/../../../build/wrappers/ar.sh" \
-       AR.target="$PWD/../../../build/wrappers/ar.sh" \
-       all
-```
-
-While `make all` will always report an error, as long as it creates
-`pagespeed_automatic.a` you have what you need.
-
-Check out ngx_pagespeed:
-
-```bash
-$ cd ~
-$ git clone https://github.com/pagespeed/ngx_pagespeed.git
-```
-
-Download and build nginx:
-
-```bash
-$ # check http://nginx.org/en/download.html for the latest version
-$ wget http://nginx.org/download/nginx-1.2.6.tar.gz
-$ tar -xvzf nginx-1.2.6.tar.gz
-$ cd nginx-1.2.6/
-$ MOD_PAGESPEED_DIR="$HOME/mod_pagespeed/src" ./configure \
-    --add-module=$HOME/ngx_pagespeed
-$ make install
-```
-
-This assumes you put everything in your home directory; if not, change paths
-appropriately.  All paths need to be absolute.
-
-For a debug build, remove the `BUILDTYPE=Release` option when running `make
-mod_pagespeed_test pagespeed_automatic_test` and add the flag `--with-debug` to
-`./configure --add-module=...`.
-
-If you're testing this and don't want to install this as root, which is a good
-idea, you can use `--prefix`, as in `./configure
---add-module=... --prefix=$HOME/nginx` and then nginx will install to a single
-directory inside your home directory.
-
-### Alternate method: Use Tengine
-
-Tengine is an Nginx distribution that supports dynamically loaded modules.  You
-can add ngx_pagespeed to an existing Tengine install without recompiling
-Tengine.  First follow one of the two installation methods above until you get
-to the "Download and build nginx" section.  Then run:
-
-```bash
-# This might be /usr/local/tengine, depending on your configuration.
-$ cd /path/to/tengine/sbin/
-$ ./dso_tool --add-module=/path/to/ngx_pagespeed
-```
-
-This will prepare a dynamically loadable module out of ngx_pagespeed.  To check
-that it worked you can verify that `/path/to/tengine/modules/` contains an
-`ngx_pagespeed.so`.
-
-You need to tell tengine to load this module.  Before continuing with "How to
-use" below, add this to the top of your configuration:
-
-    dso {
-        load ngx_pagespeed.so;
-    }
+If you're using Tengine you can [install ngx_pagespeed without
+recompiling Tengine](https://github.com/pagespeed/ngx_pagespeed/wiki/Using-ngx_pagespeed-with-Tengine).
 
 ## How to use
 
