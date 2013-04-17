@@ -212,15 +212,7 @@ If it fails with:
     in 'PHP is enabled.'
     FAIL.
 
-the problem is that the test expects a php server to be running on port 9000.
-One way to do that is:
-
-```bash
-$ sudo apt-get install php5-fpm
-$ sudo service php5-fpm restart
-```
-
-Alternatively you can do:
+the problem is that the test expects a php server to be running on port 9000:
 
 ```bash
 $ sudo apt-get install php5-cgi
