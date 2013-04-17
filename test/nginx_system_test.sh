@@ -62,6 +62,8 @@ killall nginx
 TEST_TMP="$this_dir/tmp"
 rm -r "$TEST_TMP"
 check_simple mkdir "$TEST_TMP"
+check_simple mkdir "$TEST_TMP/proxycache"
+check_simple mkdir "$TEST_TMP/tmpproxycache"
 FILE_CACHE="$TEST_TMP/file-cache/"
 check_simple mkdir "$FILE_CACHE"
 SECONDARY_CACHE="$TEST_TMP/file-cache/secondary/"
