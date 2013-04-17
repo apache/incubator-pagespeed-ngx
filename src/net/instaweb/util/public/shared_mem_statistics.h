@@ -266,6 +266,7 @@ class SharedMemHistogram : public Histogram {
   // not consider the catcher buckets for out-of-range values.
   int FindBucket(double value);
   void Init();
+  void DCheckRanges() const;
   void Reset();
   void ClearInternal();  // expects mutex_ held, buffer_ != NULL
   const GoogleString name_;

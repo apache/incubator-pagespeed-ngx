@@ -528,6 +528,10 @@ void SharedMemHistogram::Init() {
   ClearInternal();
 }
 
+void SharedMemHistogram::DCheckRanges() const {
+  DCHECK_LT(buffer_->min_value_, buffer_->max_value_);
+}
+
 void SharedMemHistogram::AttachTo(
     AbstractSharedMemSegment* segment, size_t offset,
     MessageHandler* message_handler) {
@@ -676,6 +680,8 @@ void SharedMemHistogram::SetMaxValue(double value) {
     return;
   }
   DCHECK_LT(0, value) << "Upper-bound of a histogram should be larger than 0.";
+  DCHECK_LT(buffer_->min_value_, value) << "Upper-bound of a histogram should "
+      "be larger than its lower-bound.";
   ScopedMutex hold_lock(mutex_.get());
   if (buffer_->max_value_ != value) {
     buffer_->max_value_ = value;
@@ -973,6 +979,10 @@ void SharedMemStatistics::Init(bool parent,
       if (parent) {
         hist->Init();
       }
+      // Either because they were just initialized or because this is a child
+      // init and they were initialized in the parent, the histogram's min and
+      // max should be set sensibly by this point.
+      hist->DCheckRanges();
     } else {
       hist->Reset();
     }
