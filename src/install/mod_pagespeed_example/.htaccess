@@ -16,6 +16,7 @@ ModPagespeedAllow http*://*/images/*.png*
 ModPagespeedAllow http*://*/images/*.jpg*
 ModPagespeedAllow http*://*/images/*.gif*
 ModPagespeedAllow http*://*/styles/*.css*
+ModPagespeedAllow http*://www.gstatic.com/*
 ModPagespeedAllow http*://*/*.js*
 ModPagespeedAllow http*://*/*.pdf*
 ModPagespeedAllow http*://*/*.notpdf*

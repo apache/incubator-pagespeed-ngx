@@ -442,8 +442,6 @@ void ProxyInterface::ProxyRequestCallback(
     return;
   }
 
-  scoped_ptr<ProxyFetchPropertyCallbackCollector> property_callback;
-
   // Update request_headers.
   // We deal with encodings. So strip the users Accept-Encoding headers.
   async_fetch->request_headers()->RemoveAll(HttpAttributes::kAcceptEncoding);
@@ -495,9 +493,14 @@ void ProxyInterface::ProxyRequestCallback(
         BlinkUtil::ShouldApplyBlinkFlowCriticalLine(server_context_,
                                                     options);
     bool page_callback_added = false;
-    property_callback.reset(InitiatePropertyCacheLookup(
-        is_resource_fetch, *request_url, options, async_fetch,
-        &page_callback_added));
+    // Ownership of "property_callback" is eventually assumed by either
+    // CacheHtmlFlow or ProxyFetch.
+    ProxyFetchPropertyCallbackCollector* property_callback =
+        InitiatePropertyCacheLookup(is_resource_fetch,
+                                    *request_url,
+                                    options,
+                                    async_fetch,
+                                    &page_callback_added);
     if (options != NULL) {
       server_context_->ComputeSignature(options);
       {
@@ -528,7 +531,8 @@ void ProxyInterface::ProxyRequestCallback(
       BlinkFlowCriticalLine::Start(url_string, async_fetch, options,
                                    proxy_fetch_factory_.get(),
                                    server_context_,
-                                   property_callback.release());
+                                   // Takes ownership of property_callback.
+                                   property_callback);
     } else {
       RewriteDriver* driver = NULL;
       RequestContextPtr request_ctx = async_fetch->request_context();
@@ -561,27 +565,32 @@ void ProxyInterface::ProxyRequestCallback(
             RewriteOptions::kCachePartialHtml);
         if (is_cache_html_request) {
           cache_html_flow_requests_->IncBy(1);
-          CacheHtmlFlow::Start(url_string, async_fetch, driver,
+          CacheHtmlFlow::Start(url_string,
+                               async_fetch,
+                               driver,
                                proxy_fetch_factory_.get(),
-                               property_callback.release());
+                               // Takes ownership of property_callback.
+                               property_callback);
 
           return;
         }
+
         if (driver->SupportsFlushEarly()) {
-          FlushEarlyFlow::Start(url_string, &async_fetch, driver,
+          FlushEarlyFlow::Start(url_string,
+                                &async_fetch,
+                                driver,
                                 proxy_fetch_factory_.get(),
-                                property_callback.get());
+                                // Does NOT take ownership of property_callback.
+                                property_callback);
+          // NOTE: The FlushEarly flow will run in parallel with the ProxyFetch,
+          // but will not begin (FlushEarlyFlwow::FlushEarly) until the
+          // PropertyCache lookup has completed.
         }
       }
+      // Takes ownership of property_callback.
       proxy_fetch_factory_->StartNewProxyFetch(
-          url_string, async_fetch, driver, property_callback.release(), NULL);
+          url_string, async_fetch, driver, property_callback, NULL);
     }
-  }
-
-  if (property_callback.get() != NULL) {
-    // If management of the callback was not transferred to proxy fetch,
-    // then we must detach it so it deletes itself when complete.
-    property_callback.release()->Detach(HttpStatus::kUnknownStatusCode);
   }
 }
 

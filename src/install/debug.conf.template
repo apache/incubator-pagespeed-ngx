@@ -180,8 +180,8 @@ ModPagespeedEnableFilters add_instrumentation
 #      be confusing to demo a Proxying when the origin was the
 #      same as the proxy.
 #   2. A system-test of the feature to be run with our usual testing.
-ModPagespeedMapProxyDomain @@APACHE_DOMAIN@@/pss_images \
-                           http://ref.pssdemos.com/filter/images
+ModPagespeedMapProxyDomain @@APACHE_DOMAIN@@/gstatic_images \
+                           http://www.gstatic.com/psa/static
 
 <Directory "@@APACHE_DOC_ROOT@@/mod_pagespeed_test/forbid_all_disabled/disabled" >
     # Prevent the enabling of these filters for files in this directory
@@ -296,8 +296,9 @@ NameVirtualHost localhost:@@APACHE_SECONDARY_PORT@@
   ModPagespeedFileCachePath            "@@MOD_PAGESPEED_CACHE@@/_secondary/"
   ModPagespeedCompressMetadataCache false
 
-  ModPagespeedMapProxyDomain secondary.example.com/pss_images \
-                             http://ref.pssdemos.com/filter/images
+  ModPagespeedMapProxyDomain secondary.example.com/gstatic_images \
+                             http://www.gstatic.com/psa/static
+
   # This is the same memcached instance as the root configuration,
   # but with a different file-cache path.
 #MEMCACHED  ModPagespeedMemcachedServers localhost:6765

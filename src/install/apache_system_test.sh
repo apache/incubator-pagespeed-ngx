@@ -623,10 +623,9 @@ fi
 
 start_test ModPagespeedMapProxyDomain
 URL=$EXAMPLE_ROOT/proxy_external_resource.html
-echo Rewrite HTML with reference to a proxyable image.
-fetch_until -save -recursive $URL \
-    'grep -c pss_images/xPuzzle\.jpg\.pagespeed\.ic' 1
-check_file_size "$OUTDIR/xPuzzle*" -lt 60000
+echo Rewrite HTML with reference to a proxyable image
+fetch_until -save -recursive $URL?ModPagespeedFilters=-inline_images \
+    'grep -c 1.gif.pagespeed' 1
 
 # To make sure that we can reconstruct the proxied content by going back
 # to the origin, we must avoid hitting the output cache.
@@ -636,8 +635,8 @@ check_file_size "$OUTDIR/xPuzzle*" -lt 60000
 # virtual host attached to a different cache.
 if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # With the proper hash, we'll get a long cache lifetime.
-  SECONDARY_HOST="http://secondary.example.com/pss_images"
-  PROXIED_IMAGE="$SECONDARY_HOST/$(basename $OUTDIR/xPuzzle*)"
+  SECONDARY_HOST="http://secondary.example.com/gstatic_images"
+  PROXIED_IMAGE="$SECONDARY_HOST/$(basename $OUTDIR/*1.gif.pagespeed*)"
   WGET_ARGS="--save-headers"
 
   start_test $PROXIED_IMAGE expecting one year cache.
@@ -647,7 +646,7 @@ if [ "$SECONDARY_HOSTNAME" != "" ]; then
   # With the wrong hash, we'll get a short cache lifetime (and also no output
   # cache hit.
   WRONG_HASH="0"
-  PROXIED_IMAGE="$SECONDARY_HOST/xPuzzle.jpg.pagespeed.ic.$WRONG_HASH.jpg"
+  PROXIED_IMAGE="$SECONDARY_HOST/1.gif.pagespeed.ce.$WRONG_HASH.jpg"
   start_test Fetching $PROXIED_IMAGE expecting short private cache.
   http_proxy=$SECONDARY_HOSTNAME fetch_until $PROXIED_IMAGE \
       "grep -c max-age=300,private" 1
