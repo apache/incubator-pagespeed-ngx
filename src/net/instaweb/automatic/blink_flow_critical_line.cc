@@ -983,7 +983,8 @@ void BlinkFlowCriticalLine::TriggerProxyFetch(bool critical_line_data_found,
     options_->set_image_inline_max_bytes(0);
   }
   options_->DisableFilter(RewriteOptions::kInlineImages);
-  // Enable inlining for all the images in html.
+  options_->set_enable_fix_reflow(false);
+
   if (critical_line_data_found) {
     SetFilterOptions(options_);
     options_->ForceEnableFilter(RewriteOptions::kServeNonCacheableNonCritical);

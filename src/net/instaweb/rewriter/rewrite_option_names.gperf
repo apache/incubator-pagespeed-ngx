@@ -55,6 +55,7 @@ struct OptionName {
 "EnableBlinkHtmlChangeDetection",        RewriteOptions::kEnableBlinkHtmlChangeDetection
 "EnableBlinkHtmlChangeDetectionLogging", RewriteOptions::kEnableBlinkHtmlChangeDetectionLogging
 "EnableDeferJsExperimental",             RewriteOptions::kEnableDeferJsExperimental
+"EnableFixReflow",                       RewriteOptions::kEnableFixReflow,
 "EnableFlushSubresourcesExperimental",   RewriteOptions::kEnableFlushSubresourcesExperimental
 "EnableLazyloadInBlink",                 RewriteOptions::kEnableLazyloadInBlink
 "EnablePrioritizingScripts",             RewriteOptions::kEnablePrioritizingScripts

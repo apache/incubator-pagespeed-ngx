@@ -747,7 +747,7 @@ TEST_F(RewriteOptionsTest, SetOptionFromNameAndLog) {
 // kEndOfOptions explicitly (and assuming we add/delete an option value when we
 // add/delete an option name).
 TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
-  EXPECT_EQ(175, RewriteOptions::kEndOfOptions);
+  EXPECT_EQ(176, RewriteOptions::kEndOfOptions);
   EXPECT_STREQ("AddOptionsToUrls",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kAddOptionsToUrls));
@@ -841,6 +841,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
   EXPECT_STREQ("EnableDeferJsExperimental",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableDeferJsExperimental));
+  EXPECT_STREQ("EnableFixReflow",
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kEnableFixReflow));
   EXPECT_STREQ("EnableFlushSubresourcesExperimental",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kEnableFlushSubresourcesExperimental));
@@ -937,14 +940,14 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kInPlacePreemptiveRewriteCss));
   EXPECT_STREQ("InPlacePreemptiveRewriteCssImages",
-                 RewriteOptions::LookupOptionEnum(
-                     RewriteOptions::kInPlacePreemptiveRewriteCssImages));
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kInPlacePreemptiveRewriteCssImages));
   EXPECT_STREQ("InPlacePreemptiveRewriteImages",
-                 RewriteOptions::LookupOptionEnum(
-                     RewriteOptions::kInPlacePreemptiveRewriteImages));
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kInPlacePreemptiveRewriteImages));
   EXPECT_STREQ("InPlacePreemptiveRewriteJavascript",
-                 RewriteOptions::LookupOptionEnum(
-                     RewriteOptions::kInPlacePreemptiveRewriteJavascript));
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::kInPlacePreemptiveRewriteJavascript));
   EXPECT_STREQ("InPlaceRewriteDeadlineMs",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kInPlaceRewriteDeadlineMs));
@@ -958,9 +961,9 @@ TEST_F(RewriteOptionsTest, LookupOptionEnumTest) {
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kImageJpegRecompressionQuality));
   EXPECT_STREQ("JpegRecompressionQualityForSmallScreens",
-                 RewriteOptions::LookupOptionEnum(
-                     RewriteOptions::
-                     kImageJpegRecompressionQualityForSmallScreens));
+               RewriteOptions::LookupOptionEnum(
+                   RewriteOptions::
+                   kImageJpegRecompressionQualityForSmallScreens));
   EXPECT_STREQ("JsInlineMaxBytes",
                RewriteOptions::LookupOptionEnum(
                    RewriteOptions::kJsInlineMaxBytes));

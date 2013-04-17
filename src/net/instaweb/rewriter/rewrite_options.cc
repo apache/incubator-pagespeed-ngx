@@ -1454,6 +1454,10 @@ void RewriteOptions::AddProperties() {
       kDirectoryScope,
       NULL);  // Not applicable for mod_pagespeed.
 
+  AddBaseProperty(
+      false, &RewriteOptions::enable_fix_reflow_, "efr", kEnableFixReflow,
+      kDirectoryScope, NULL);   // Not applicable for mod_pagespeed.
+
   // Test-only, so no enum.
   AddRequestProperty(
       false, &RewriteOptions::test_instant_fetch_rewrite_deadline_, "tifrwd");

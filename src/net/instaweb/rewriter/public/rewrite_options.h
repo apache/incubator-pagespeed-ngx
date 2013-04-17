@@ -213,6 +213,7 @@ class RewriteOptions {
     kEnableBlinkHtmlChangeDetectionLogging,
     kEnableDeferJsExperimental,
     kEnableFlushEarlyCriticalCss,
+    kEnableFixReflow,
     kEnableFlushSubresourcesExperimental,
     kEnableInlinePreviewImagesExperimental,
     kEnableLazyLoadHighResImages,
@@ -2047,6 +2048,13 @@ class RewriteOptions {
     return non_cacheables_for_cache_partial_html_.value();
   }
 
+  void set_enable_fix_reflow(bool x) {
+    set_option(x, &enable_fix_reflow_);
+  }
+  bool enable_fix_reflow() const {
+    return enable_fix_reflow_.value();
+  }
+
   // Merge src into 'this'.  Generally, options that are explicitly
   // set in src will override those explicitly set in 'this' (except that
   // filters forbidden in 'this' cannot be enabled by 'src'), although
@@ -3176,6 +3184,9 @@ class RewriteOptions {
 
   // Non cacheables used when partial HTML is cached.
   Option<GoogleString> non_cacheables_for_cache_partial_html_;
+
+  // Fix reflows due to defer js.
+  Option<bool> enable_fix_reflow_;
 
   // Be sure to update constructor if when new fields is added so that they
   // are added to all_options_, which is used for Merge, and eventually,
