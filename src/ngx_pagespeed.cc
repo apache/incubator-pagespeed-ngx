@@ -329,6 +329,7 @@ enum Response {
   kMessages,
   kPagespeedSubrequest,
   kNotHeadOrGet,
+  kErrorResponse,
 };
 }  // namespace CreateRequestContext
 
@@ -1443,6 +1444,10 @@ CreateRequestContext::Response ps_create_request_context(
     return CreateRequestContext::kPagespeedDisabled;
   }
 
+  if (r->err_status != 0) {
+    return CreateRequestContext::kErrorResponse;
+  }
+
   GoogleString url_string = ps_determine_url(r);
 
   net_instaweb::GoogleUrl url(url_string);
@@ -1898,6 +1903,7 @@ ngx_int_t ps_header_filter(ngx_http_request_t* r) {
     case CreateRequestContext::kPagespeedDisabled:
     case CreateRequestContext::kInvalidUrl:
     case CreateRequestContext::kNotHeadOrGet:
+    case CreateRequestContext::kErrorResponse:
       return ngx_http_next_header_filter(r);
     case CreateRequestContext::kOk:
       break;
@@ -2268,34 +2274,20 @@ ngx_int_t ps_messages_handler(
   return NGX_OK;
 }
 
-ngx_int_t
-ps_beacon_handler(ngx_http_request_t* r) {
-  ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
-  CHECK(cfg_s != NULL);
+ngx_int_t ps_beacon_handler_helper(ngx_http_request_t* r,
+                                   StringPiece beacon_data) {
+  ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                "ps_beacon_handler_helper: beacon[%d] %*s",
+                beacon_data.size(),  beacon_data.size(),
+                beacon_data.data());
 
   StringPiece user_agent;
   if (r->headers_in.user_agent != NULL) {
     user_agent = str_to_string_piece(r->headers_in.user_agent->value);
   }
 
-  StringPiece beacon_data;
-  if (r->method == NGX_HTTP_POST) {
-    // Use post body.
-    beacon_data = "todo=support-post-body";
-  } else {
-    // Use query params.
-    StringPiece unparsed_uri = str_to_string_piece(r->unparsed_uri);
-    stringpiece_ssize_type question_mark_index = unparsed_uri.find("?");
-    if (question_mark_index == StringPiece::npos) {
-      beacon_data = "";
-    } else {
-      beacon_data = unparsed_uri.substr(
-          question_mark_index+1, unparsed_uri.size() - (question_mark_index+1));
-    }
-  }
-
-  ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
-                "BEACON %*s", beacon_data.size(), beacon_data.data());
+  ps_srv_conf_t* cfg_s = ps_get_srv_config(r);
+  CHECK(cfg_s != NULL);
 
   cfg_s->server_context->HandleBeacon(
       beacon_data,
@@ -2307,6 +2299,124 @@ ps_beacon_handler(ngx_http_request_t* r) {
   // header so wget doesn't hang.
 
   return NGX_HTTP_NO_CONTENT;
+}
+
+
+// Load the request body into out.  ngx_http_read_client_request_body must
+// already have been called.  Return false on failure, true on success.
+bool ps_request_body_to_string_piece(
+    ngx_http_request_t* r, StringPiece* out) {
+  if (r->request_body == NULL || r->request_body->bufs == NULL) {
+    ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                  "ps_request_body_to_string_piece: "
+                  "empty request body.");
+    return false;
+  }
+
+  if (r->request_body->temp_file) {
+    // For now raise an error instead of figuring out how to read temporary
+    // files.
+    ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                  "ps_request_body_to_string_piece: "
+                  "request body in temporary file unsupported."
+                  "Increase client_body_buffer_size.");
+    return false;
+  } else if (r->request_body->bufs->next == NULL) {
+    // There's just one buffer, so we can simply return a StringPiece pointing
+    // to this buffer.
+    ngx_buf_t* buffer = r->request_body->bufs->buf;
+    CHECK(!buffer->in_file);
+    int len = buffer->last - buffer->pos;
+    ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                  "ngx_pagespeed beacon: single buffer of %d", len);
+    *out = StringPiece(reinterpret_cast<char*>(buffer->pos), len);
+    return true;
+  } else {
+    // There are multiple buffers, so we need to allocate memory for a string to
+    // hold the whole result.  This should only happen when the POST is sent
+    // with "Transfer-Encoding: Chunked".
+
+    // First determine how much data there is.
+    int len = 0;
+    int buffers = 0;
+
+    ngx_chain_t* chain_link;
+    for (chain_link = r->request_body->bufs;
+         chain_link != NULL;
+         chain_link = chain_link->next) {
+      len += chain_link->buf->last - chain_link->buf->pos;
+      buffers++;
+    }
+
+    ngx_log_debug(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
+                  "ngx_pagespeed beacon: %d buffers totalling %d", len);
+
+    // Allocate a string to store the combined result.
+    u_char* s = static_cast<u_char*>(ngx_palloc(r->pool, len));
+    if (s == NULL) {
+      ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                    "ps_request_body_to_string_piece: "
+                    "failed to allocate memory");
+      return false;
+    }
+
+    // Copy the data into the combined string.
+    u_char* current_position = s;
+    int i;
+    for (chain_link = r->request_body->bufs, i = 0;
+         chain_link != NULL;
+         chain_link = chain_link->next, i++) {
+      ngx_buf_t* buffer = chain_link->buf;
+      CHECK(!buffer->in_file);
+      current_position = ngx_copy(current_position, buffer->pos,
+                                  buffer->last - buffer->pos);
+    }
+    CHECK_EQ(current_position, s + len);
+    *out = StringPiece(reinterpret_cast<char*>(s), len);
+    return true;
+  }
+}
+
+// Called after nginx reads the request body from the client.  For another
+// example processing request buffers, see ngx_http_form_input_module.c
+void ps_beacon_body_handler(ngx_http_request_t* r) {
+  StringPiece request_body;
+  ngx_int_t rc;
+  bool ok = ps_request_body_to_string_piece(r, &request_body);
+  if (ok) {
+    rc = ps_beacon_handler_helper(r, request_body);
+  } else {
+    rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+  }
+  ngx_http_finalize_request(r, rc);
+}
+
+ngx_int_t ps_beacon_handler(ngx_http_request_t* r) {
+  if (r->method == NGX_HTTP_POST) {
+    // Use post body. Handler functions are called before the request body has
+    // been read from the client, so we need to ask nginx to read it from the
+    // client and then call us back.  Control flow continues in
+    // ps_beacon_body_handler unless there's an error reading the request body.
+    //
+    // See: http://forum.nginx.org/read.php?2,31312,31312
+    ngx_int_t rc = ngx_http_read_client_request_body(r, ps_beacon_body_handler);
+    if (rc >= NGX_HTTP_SPECIAL_RESPONSE) {
+      return rc;
+    }
+    return NGX_DONE;
+  } else {
+    // Use query params.
+    StringPiece beacon_data;
+    StringPiece unparsed_uri = str_to_string_piece(r->unparsed_uri);
+    stringpiece_ssize_type question_mark_index = unparsed_uri.find("?");
+    if (question_mark_index == StringPiece::npos) {
+      beacon_data = "";
+    } else {
+      beacon_data = unparsed_uri.substr(
+          question_mark_index+1, unparsed_uri.size() - (question_mark_index+1));
+    }
+    return ps_beacon_handler_helper(r, beacon_data);
+  }
 }
 
 // Handle requests for resources like example.css.pagespeed.ce.LyfcM6Wulf.css
@@ -2333,6 +2443,7 @@ ngx_int_t ps_content_handler(ngx_http_request_t* r) {
     case CreateRequestContext::kInvalidUrl:
     case CreateRequestContext::kPagespeedSubrequest:
     case CreateRequestContext::kNotHeadOrGet:
+    case CreateRequestContext::kErrorResponse:
       return NGX_DECLINED;
     case CreateRequestContext::kBeacon:
       return ps_beacon_handler(r);
