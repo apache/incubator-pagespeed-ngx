@@ -108,6 +108,9 @@ class CriticalSelectorFilter : public CssSummarizerBase {
   // True if EndDocument was called; helps us identify last flush window.
   bool saw_end_document_;
 
+  // True if we rendered any block at all.
+  bool any_rendered_;
+
   DISALLOW_COPY_AND_ASSIGN(CriticalSelectorFilter);
 };
 

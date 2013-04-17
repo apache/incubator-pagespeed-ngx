@@ -163,7 +163,9 @@ class CriticalSelectorFilter::CssStyleElement
 
 // Wrap CSS related elements so they can be moved later in the document.
 CriticalSelectorFilter::CriticalSelectorFilter(RewriteDriver* driver)
-    : CssSummarizerBase(driver), saw_end_document_(false) {
+    : CssSummarizerBase(driver),
+      saw_end_document_(false),
+      any_rendered_(false) {
 }
 
 CriticalSelectorFilter::~CriticalSelectorFilter() {
@@ -304,6 +306,10 @@ void CriticalSelectorFilter::RenderSummary(
   if (drop_entire_element) {
     driver_->DeleteElement(element);
   }
+
+  // We've altered the CSS, so we should generate code to load the entire thing.
+  // TODO(morlovich): Check if we actually dropped something?
+  any_rendered_ = true;
 }
 
 void CriticalSelectorFilter::WillNotRenderSummary(
@@ -334,6 +340,7 @@ void CriticalSelectorFilter::StartDocumentImpl() {
   // Clear state between re-uses / check to make sure we wrapped up properly.
   DCHECK(css_elements_.empty());
   saw_end_document_ = false;
+  any_rendered_ = false;
 }
 
 void CriticalSelectorFilter::EndDocument() {
@@ -350,9 +357,7 @@ void CriticalSelectorFilter::RenderDone() {
     return;
   }
 
-  // TODO(morlovich): There is some risk that we will end up duplicating
-  // CSS and not actually reducing anything on a first load.
-  if (!css_elements_.empty()) {
+  if (!css_elements_.empty() && any_rendered_) {
     HtmlElement* noscript_element = NULL;
     Compact(&css_elements_);
     for (int i = 0, n = css_elements_.size(); i < n; ++i) {

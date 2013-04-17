@@ -339,6 +339,15 @@ TEST_F(CriticalSelectorFilterTest, ResolveUrlsProperly) {
                           LoadRestOfCss(CssLinkHref("dir/c.css"))));
 }
 
+TEST_F(CriticalSelectorFilterTest, DoNotLazyLoadIfNothingRewritten) {
+  // Make sure we don't do the whole 'lazy load rest of CSS' schpiel if we
+  // did not end up changing the main CSS.
+  SetupWaitFetcher();
+  ValidateNoChanges("not_loaded", StrCat(CssLinkHref("a.css"),
+                                         CssLinkHref("b.css")));
+  CallFetcherCallbacks();
+}
+
 class CriticalSelectorWithRewriteCssFilterTest
     : public CriticalSelectorFilterTest {
  protected:
