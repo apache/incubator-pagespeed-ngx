@@ -22,8 +22,11 @@ content or workflow. Features include:
 - Deferring image and JavaScript loading
 - HTML rewriting
 - Cache lifetime extension
-- and [more](https://developers.google.com/speed/docs/mod_pagespeed/config_filters)
-  - Note: not all mod_pagespeed features work in ngx_pagespeed yet.
+- and
+  [more](https://developers.google.com/speed/docs/mod_pagespeed/config_filters)
+
+Nearly all mod_pagespeed features work in ngx_pagespeed; see the ever-shrinking
+[list of missing features](https://github.com/pagespeed/ngx_pagespeed/wiki/List-of-missing-mod_pagespeed-features).
 
 To see ngx_pagespeed in action, with example pages for each of the
 optimizations, see our <a href="http://ngxpagespeed.com">demonstration site</a>.
